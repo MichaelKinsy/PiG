@@ -526,4 +526,327 @@ func TestStore(t *testing.T) {
 			_ = rejected(t, err, data.CodeReleased, "")
 		})
 	})
+
+	t.Run("a commit series", func(t *testing.T) {
+		// unchecked is a series commit with no check of its own.
+		unchecked := func(writes ...StagedWrite) SeriesCommit {
+			return SeriesCommit{Check: func(*Step) error { return nil }, Writes: writes}
+		}
+		// created is the creation of the document at the key of storeAddress.
+		created := func(key string) StagedWrite {
+			address := storeAddress
+			address.Key = &key
+			return CreateDocument(address, storeBase, "{}", nil)
+		}
+		noReceipt := func(int, int64, []int64) error { return nil }
+		// edits is the table a series creates.
+		edits, err := DefineTable("edits", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Str()), Col("at", Int())}, Key: []string{"id"}})
+		noError(t, err)
+		const tableName = "app.store:edits"
+
+		t.Run("stores its commits in one transaction, one seq each, each checked against the ones before it", func(t *testing.T) {
+			store := memoryStore(t, true)
+			var seen []int64
+			var receipts []string
+			telemetry := metered(t)
+			result, err := store.CommitSeries([]SeriesCommit{
+				unchecked(created("")),
+				// No writes: no seq, it stands at the commit before it.
+				unchecked(),
+				{
+					// The check reads through its step: it sees the first commit's creation.
+					Check: func(step *Step) error {
+						record, err := FindDocument(step, storeAddress, CurrentPoint)
+						if err != nil {
+							return err
+						}
+						if record == nil {
+							seen = append(seen, -1)
+						} else {
+							seen = append(seen, record.ID)
+						}
+						return nil
+					},
+					Writes: []StagedWrite{created("b")},
+				},
+			}, func(index int, seq int64, ids []int64) error {
+				receipts = append(receipts, fmt.Sprintf("%d %d %v", index, seq, ids))
+				return nil
+			}, telemetry.Context)
+			noError(t, err)
+			if result != (SeriesResult{Stored: 3}) {
+				t.Fatalf("result = %+v, want {Stored: 3}", result)
+			}
+			if !reflect.DeepEqual(seen, []int64{2}) {
+				t.Fatalf("the check saw %v, want [2]", seen)
+			}
+			if want := []string{"0 1 [2]", "1 1 []", "2 2 [3]"}; !reflect.DeepEqual(receipts, want) {
+				t.Fatalf("receipts = %q, want %q", receipts, want)
+			}
+			if store.LastSeq() != 2 {
+				t.Fatalf("lastSeq = %d, want 2", store.LastSeq())
+			}
+			if commits := telemetry.Counts()["chord.store.commits"]; commits != 2 {
+				t.Fatalf("chord.store.commits = %v, want 2", commits)
+			}
+			outbox, err := Read(store, func(executor sqlite.SqliteExecutor) ([]sqlite.SqliteRow, error) {
+				return executor.All("SELECT seq FROM chord_outbox")
+			}, background)
+			noError(t, err)
+			var seqs []int64
+			for _, row := range outbox {
+				seq, err := sqlite.RowInt(row, "seq")
+				noError(t, err)
+				seqs = append(seqs, seq)
+			}
+			if !reflect.DeepEqual(seqs, []int64{1, 2}) {
+				t.Fatalf("outbox seqs = %v, want [1 2]", seqs)
+			}
+		})
+
+		t.Run("stops at a check that refuses: the commits before it are stored, it and the ones after are not", func(t *testing.T) {
+			store := memoryStore(t)
+			refusal := errors.New("refused")
+			var receipts []int
+			result, err := store.CommitSeries([]SeriesCommit{
+				unchecked(created("")),
+				{Check: func(*Step) error { return refusal }, Writes: []StagedWrite{created("b")}},
+				unchecked(created("c")),
+			}, func(index int, _ int64, _ []int64) error {
+				receipts = append(receipts, index)
+				return nil
+			}, background)
+			noError(t, err)
+			if result.Stored != 1 || result.Refused != refusal {
+				t.Fatalf("result = %+v, want {Stored: 1, Refused: refused}", result)
+			}
+			if !reflect.DeepEqual(receipts, []int{0}) {
+				t.Fatalf("receipts = %v, want [0]", receipts)
+			}
+			if store.LastSeq() != 1 {
+				t.Fatalf("lastSeq = %d, want 1", store.LastSeq())
+			}
+			rows, err := Read(store, func(executor sqlite.SqliteExecutor) ([]sqlite.SqliteRow, error) {
+				return executor.All("SELECT key FROM chord_documents ORDER BY id")
+			}, background)
+			noError(t, err)
+			var keys []any
+			for _, row := range rows {
+				keys = append(keys, row["key"])
+			}
+			if !reflect.DeepEqual(keys, []any{""}) {
+				t.Fatalf("keys = %q, want [\"\"]", keys)
+			}
+			// The store goes on at the next seq.
+			adopted, fence := recording()
+			keyed := storeAddress
+			keyed.Key = new("b")
+			_, err = store.Commit([]StagedWrite{CreateDocument(keyed, storeBase, "{}", nil)}, fence, background)
+			noError(t, err)
+			sameAdoptions(t, *adopted, adoption{2, []int64{3}})
+		})
+
+		t.Run("rolls the whole series back when a check's statement fails, even if the check throws its own error", func(t *testing.T) {
+			store := memoryStore(t)
+			own := errors.New("own")
+			_, err := store.CommitSeries([]SeriesCommit{
+				unchecked(created("")),
+				{Check: func(step *Step) error {
+					// The check swallows the backend's failure and throws its own error.
+					_, _ = step.Get("SELECT * FROM no_such_table")
+					return own
+				}},
+			}, noReceipt, background)
+			if err != own {
+				t.Fatalf("CommitSeries = %v, want the check's own error", err)
+			}
+			if store.LastSeq() != 0 {
+				t.Fatalf("lastSeq = %d, want 0", store.LastSeq())
+			}
+			// A rollback, not a stop: the store goes on; the id the rolled back creation took is not given back (D3).
+			if id := storeCreated(t, store); id != 3 {
+				t.Fatalf("id after the rollback = %d, want 3", id)
+			}
+		})
+
+		t.Run("rolls the whole series back when a commit's writes throw, the store going on", func(t *testing.T) {
+			store := memoryStore(t)
+			var receipts []int
+			_, err := store.CommitSeries([]SeriesCommit{unchecked(created("")), unchecked(brokenWrite)}, func(index int, _ int64, _ []int64) error {
+				receipts = append(receipts, index)
+				return nil
+			}, background)
+			if err == nil || !strings.Contains(err.Error(), "no such table") {
+				t.Fatalf("CommitSeries = %v, want no such table", err)
+			}
+			if len(receipts) != 0 || store.LastSeq() != 0 {
+				t.Fatalf("[receipts, lastSeq] = [%v, %d], want [[], 0]", receipts, store.LastSeq())
+			}
+			if id := storeCreated(t, store); id != 3 {
+				t.Fatalf("id after the rollback = %d, want 3", id)
+			}
+		})
+
+		t.Run("writes the metadata once per series: three statements per delta with its outbox commit, plus one (cost guard)", func(t *testing.T) {
+			store := memoryStore(t, true)
+			id := storeCreated(t, store)
+			telemetry := metered(t)
+			change := func(n int) SeriesCommit {
+				ops := []delta.Op{{"s", []any{"n"}, float64(n)}}
+				content := DocumentContent{Kind: "delta", Version: 1, Ops: ops}
+				return unchecked(ChangeDocument(id, int64(n), content, fmt.Sprintf(`[["s",["n"],%d]]`, n)))
+			}
+			_, err := store.CommitSeries([]SeriesCommit{change(1), change(2), change(3)}, noReceipt, telemetry.Context)
+			noError(t, err)
+			// A delta committed alone is four statements with an outbox, the metadata among them; a series writes it once.
+			want := map[string]float64{"chord.store.commits": 3, "chord.store.statements": 3*3 + 1}
+			if got := telemetry.Counts(); !reflect.DeepEqual(got, want) {
+				t.Fatalf("counts = %v, want %v", got, want)
+			}
+			meta, err := Read(store, func(executor sqlite.SqliteExecutor) (sqlite.SqliteRow, error) {
+				return executor.Get("SELECT last_seq FROM chord_meta")
+			}, background)
+			noError(t, err)
+			if lastSeq, err := sqlite.RowInt(meta, "last_seq"); err != nil || lastSeq != 4 {
+				t.Fatalf("last_seq = %d (%v), want 4", lastSeq, err)
+			}
+		})
+
+		for _, c := range []struct {
+			at    string
+			write StagedWrite
+		}{{failBegin, nil}, {failCommit, nil}, {failRollback, brokenWrite}} {
+			t.Run(fmt.Sprintf("a failed %s is an unknown outcome: nothing is received, the store stops storage_failed", c.at), func(t *testing.T) {
+				store, fail := faultyStore(t)
+				var told []error
+				noError(t, store.Attach(Attachment{Failed: func(err error) { told = append(told, err) }, Batch: newBatch()}))
+				fail(c.at)
+				var receipts []int
+				second := c.write
+				if second == nil {
+					second = created("b")
+				}
+				_, err := store.CommitSeries([]SeriesCommit{unchecked(created("")), unchecked(second)}, func(index int, _ int64, _ []int64) error {
+					receipts = append(receipts, index)
+					return nil
+				}, background)
+				_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
+				if len(receipts) != 0 || store.LastSeq() != 0 || len(told) != 1 {
+					t.Fatalf("[receipts, lastSeq, told] = [%v, %d, %d], want [[], 0, 1]", receipts, store.LastSeq(), len(told))
+				}
+				_, err = store.CommitSeries([]SeriesCommit{unchecked(created(""))}, noReceipt, background)
+				_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
+			})
+		}
+
+		t.Run("lets a later commit see the table records an earlier one changed; a rollback leaves the catalog as it was", func(t *testing.T) {
+			store := memoryStore(t)
+			table := StageTable(&TableDefinitionWrite{
+				Table: tableName, Version: edits.Version, State: StateReady, Columns: edits.Record, Key: edits.Key, Fingerprint: edits.Fingerprint,
+			})
+			if _, err := store.CommitSeries([]SeriesCommit{unchecked(table), unchecked(brokenWrite)}, noReceipt, background); err == nil {
+				t.Fatal("a series whose second commit throws succeeded")
+			}
+			if store.Table(tableName) != nil {
+				t.Fatal("a rolled back series left its table in the catalog")
+			}
+			var seen []int
+			versionIn := func(step *Step) int {
+				if record := step.Table(tableName); record != nil {
+					return record.Version
+				}
+				return 0
+			}
+			sees := stagedWrite{order: OrderWrite, apply: func(step *Step) ([]StoreWrite, error) {
+				seen = append(seen, versionIn(step))
+				return nil, nil
+			}}
+			later := SeriesCommit{Check: func(step *Step) error {
+				seen = append(seen, versionIn(step))
+				return nil
+			}, Writes: []StagedWrite{sees}}
+			result, err := store.CommitSeries([]SeriesCommit{unchecked(table), later}, noReceipt, background)
+			noError(t, err)
+			if result != (SeriesResult{Stored: 2}) {
+				t.Fatalf("result = %+v, want {Stored: 2}", result)
+			}
+			if !reflect.DeepEqual(seen, []int{1, 1}) {
+				t.Fatalf("the later commit saw table versions %v, want [1 1]", seen)
+			}
+			if record := store.Table(tableName); record == nil || record.Version != 1 {
+				t.Fatalf("table record = %+v, want version 1", record)
+			}
+		})
+
+		t.Run("runs a commit queued behind a series after the series' receipts", func(t *testing.T) {
+			store := memoryStore(t)
+			var events []string
+			series := startQueued(t, store, func() (SeriesResult, error) {
+				return store.CommitSeries([]SeriesCommit{unchecked(created("")), unchecked(created("b"))}, func(index int, seq int64, _ []int64) error {
+					events = append(events, fmt.Sprintf("receive %d %d", index, seq))
+					return nil
+				}, background)
+			})
+			fence := CommitFence{
+				Admit: func() bool {
+					events = append(events, "admit")
+					return true
+				},
+				Adopt: func(seq int64, _ []int64) error {
+					events = append(events, fmt.Sprintf("adopt %d", seq))
+					return nil
+				},
+			}
+			queued := startQueued(t, store, func() (int64, error) {
+				return store.Commit([]StagedWrite{created("c")}, fence, background)
+			})
+			_, err := settledValue(t, series)
+			noError(t, err)
+			_, err = settledValue(t, queued)
+			noError(t, err)
+			if want := []string{"receive 0 1", "receive 1 2", "admit", "adopt 3"}; !reflect.DeepEqual(events, want) {
+				t.Fatalf("events = %q, want %q", events, want)
+			}
+		})
+
+		t.Run("counts only commits with writes against the seq bound: empty ones at Number.MAX_SAFE_INTEGER still stand", func(t *testing.T) {
+			parts := exported(t, memoryStore(t), background)
+			manifest := parts[0].(*ManifestPart)
+			values := []any{&ManifestPart{Format: manifest.Format, Schema: manifest.Schema, LastSeq: MaxSafeInteger - 1, NextID: manifest.NextID}}
+			for _, part := range parts[1:] {
+				values = append(values, part)
+			}
+			db, err := node.OpenNodeSqliteDatabase(":memory:", node.NodeSqliteDatabaseOptions{})
+			noError(t, err)
+			imported, err := ImportStore(SqliteBackend(db), SlicePartSource(values), background, StoreOptions{})
+			noError(t, err)
+			store := imported.(*ChordStore)
+			t.Cleanup(func() { _ = store.Close(background) })
+			storeCreated(t, store)
+			var receipts []string
+			empty, err := store.CommitSeries([]SeriesCommit{unchecked(), unchecked()}, func(index int, seq int64, _ []int64) error {
+				receipts = append(receipts, fmt.Sprintf("%d %d", index, seq))
+				return nil
+			}, background)
+			noError(t, err)
+			if empty != (SeriesResult{Stored: 2}) {
+				t.Fatalf("empty series = %+v, want {Stored: 2}", empty)
+			}
+			if want := []string{fmt.Sprintf("0 %d", MaxSafeInteger), fmt.Sprintf("1 %d", MaxSafeInteger)}; !reflect.DeepEqual(receipts, want) {
+				t.Fatalf("receipts = %q, want %q", receipts, want)
+			}
+			_, err = store.CommitSeries([]SeriesCommit{unchecked(created("b"))}, noReceipt, background)
+			_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
+		})
+
+		t.Run("stops the store when a receipt throws", func(t *testing.T) {
+			store := memoryStore(t)
+			_, err := store.CommitSeries([]SeriesCommit{unchecked(created(""))}, func(int, int64, []int64) error {
+				return errors.New("receipt threw")
+			}, background)
+			_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
+			_, err = Read(store, func(sqlite.SqliteExecutor) (int, error) { return 1, nil }, background)
+			_ = rejected(t, err, data.CodeUnavailable, data.ReasonStorageFailed)
+		})
+	})
 }

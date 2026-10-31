@@ -2,7 +2,9 @@ package store
 
 import (
 	"fmt"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -189,6 +191,59 @@ func TestTableHandle(t *testing.T) {
 			if row["meta"] != `{"a":0}` {
 				t.Fatalf("meta = %v, want {\"a\":0}", row["meta"])
 			}
+		})
+	})
+
+	t.Run("the version fence of old handles (R15, slice 7b §5)", func(t *testing.T) {
+		t.Run("refuses reads through a handle older than the stored table: released/version", func(t *testing.T) {
+			store := memoryStore(t)
+			definition := handleEdits(t)
+			old := tableIn(t, store, definition)
+			v2, err := EvolveTable(definition, func(e *TableEditor) *TableEditor { return e.Rename("note", "comment") })
+			noError(t, err)
+			tableIn(t, store, v2)
+			_, err = old.Get(Row{"id": "e0"}, background)
+			_ = rejected(t, err, data.CodeReleased, data.ReasonVersion)
+			_, err = old.Count(NewQuery(definition), background)
+			_ = rejected(t, err, data.CodeReleased, data.ReasonVersion)
+			if err := old.AssertVersion(); err == nil || !strings.Contains(err.Error(), "the store has version 2") {
+				t.Fatalf("AssertVersion = %v, want the store has version 2", err)
+			}
+		})
+	})
+
+	t.Run("the version fence against a migration in flight (fix round 1, Sol 8)", func(t *testing.T) {
+		t.Run("refuses an old handle's read made while the migration's commit runs, rather than issuing obsolete SQL", func(t *testing.T) {
+			v1, err := DefineTable("race", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Str()), Col("old", Str())}, Key: []string{"id"}})
+			noError(t, err)
+			v2, err := EvolveTable(v1, func(e *TableEditor) *TableEditor { return e.Rename("old", "new") })
+			noError(t, err)
+			store, hold := gatedStore(t)
+			old := tableIn(t, store, v1)
+			held := hold()
+			changing := make(chan error, 1)
+			go func() {
+				changing <- PrepareTables([]DeclaredTable{{Definition: v2, Table: "app.store:race"}}, store, openFence, "app.store", background)
+			}()
+			<-held.Entered()
+			// The read is made while the migration's commit is held: a fence that is missing would queue its SQL behind
+			// the migration, which this test would then wait for.
+			reading := make(chan error, 1)
+			go func() {
+				_, err := old.Get(Row{"id": "x"}, background)
+				reading <- err
+			}()
+			var refused error
+			select {
+			case refused = <-reading:
+			case <-time.After(10 * time.Second):
+				held.Release()
+				t.Fatal("an old handle's read did not settle while the migration's commit was held")
+			}
+			held.Release()
+			noError(t, <-changing)
+			_ = rejected(t, refused, data.CodeReleased, data.ReasonVersion)
+			noError(t, store.AssertUsable())
 		})
 	})
 }

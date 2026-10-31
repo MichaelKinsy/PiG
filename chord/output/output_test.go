@@ -108,6 +108,26 @@ func TestToolOutputBounds(t *testing.T) {
 		}
 	})
 
+	// #11604
+	t.Run("removes whole ANSI escape sequences, not only their ESC bytes", func(t *testing.T) {
+		for _, c := range [][2]string{
+			{"\x1b[31mERROR\x1b[0m\n", "ERROR\n"},
+			{"\x1b[1;38;5;208mx\x1b[?25l\x1b[2K\x1b(By\x1b7z", "xyz"},
+			{"\x1b]8;;https://pi.dev\x07link\x1b]8;;\x1b\\ \x1b]0;title\x07ok", "link ok"},
+		} {
+			if got := SanitizeOutput(c[0]); got != c[1] {
+				t.Fatalf("SanitizeOutput(%q) = %q, want %q", c[0], got, c[1])
+			}
+		}
+		buffer := NewOutputBuffer(OutputLimits{Retain: "tail", MaxBytes: 1024, MaxLines: 100})
+		buffer.PushString("\x1b[3")
+		buffer.PushString("1mERROR\x1b[0")
+		buffer.PushString("m\n")
+		if got := buffer.Snapshot().Text; got != "ERROR\n" {
+			t.Fatalf("snapshot text = %q, want %q", got, "ERROR\n")
+		}
+	})
+
 	t.Run("keeps output within the limits unchanged", func(t *testing.T) {
 		expectBound(t, bound("a\nb\n", headLimits(2)), boundResult{"a\nb\n", 0, 0})
 		expectBound(t, bound("a\nb", tailLimits(2)), boundResult{"a\nb", 0, 0})
