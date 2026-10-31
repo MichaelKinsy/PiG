@@ -18,6 +18,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
+	"github.com/MichaelKinsy/PiG/internal/entered"
+	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
 var internalNote = durable.DefineDoc(durable.DocDefinition[durable.JsonObject]{
@@ -65,6 +67,7 @@ func abortPrepared(tx *Transaction) {
 }
 
 type internalCall struct {
+	id    uint64
 	done  chan struct{}
 	value any
 	err   error
@@ -75,14 +78,20 @@ func (started *internalCall) wait() (any, error) {
 	return started.value, started.err
 }
 
-// commitTicketed issues a commit on the line now (a ticket) and runs it on its own goroutine; tx receives its transaction.
-func commitTicketed(kernel *SessionImpl, staged *Transaction, change func(tx *Transaction) (any, error), options ...durable.CommitOptions) *internalCall {
+// enter blocks until the call is parked in a wait or returned.
+func (started *internalCall) enter() { entered.Await(started.id, started.done) }
+
+// commitTicketed issues a commit on the line now (a ticket) and runs it on its own goroutine.
+func commitTicketed(kernel *SessionImpl, change func(tx *Transaction) (any, error), options ...durable.CommitOptions) *internalCall {
 	ticket := kernel.TakeLineTicket()
 	started := &internalCall{done: make(chan struct{})}
+	ids := make(chan uint64, 1)
 	go func() {
+		ids <- goroutineid.Current()
 		defer close(started.done)
 		started.value, started.err = kernel.CommitWithTicket(ticket, context.Background(), change, TransactionScope{}, options...)
 	}()
+	started.id = <-ids
 	return started
 }
 
@@ -158,15 +167,15 @@ func TestGroupCommitLeavesThePartsAfterOneWhoseAdoptionFailsUnpublished(t *testi
 		}
 		publish()
 	})
-	first := commitTicketed(kernel, nil, internalBump(a, nil))
+	first := commitTicketed(kernel, internalBump(a, nil))
 	<-entered
-	before := commitTicketed(kernel, nil, internalBump(b, nil))
-	failing := commitTicketed(kernel, nil, internalBump(c, &failingTx))
-	after := commitTicketed(kernel, nil, internalBump(d, nil))
-	// Wait until the three callbacks ran and were admitted behind the held one.
-	for kernel.LineSizes().Outstanding < 4 {
-		kernel.WaitDeliveries()
-	}
+	before := commitTicketed(kernel, internalBump(b, nil))
+	failing := commitTicketed(kernel, internalBump(c, &failingTx))
+	after := commitTicketed(kernel, internalBump(d, nil))
+	// Wait until the three callbacks ran and were admitted behind the held one: each is parked on its commit's outcome.
+	before.enter()
+	failing.enter()
+	after.enter()
 	close(release)
 	if _, err := first.wait(); err != nil {
 		t.Fatal(err)
@@ -246,10 +255,10 @@ func TestGroupCommitFailsTheSessionForADeferredCommitMemoryCannotAdopt(t *testin
 				publish()
 			})
 			forever := positiveInf()
-			held := commitTicketed(kernel, nil, internalBump(a, &staged), durable.CommitOptions{Persistence: &durable.CommitPersistence{Kind: durable.CommitDeferred, WithinMs: &forever}})
+			held := commitTicketed(kernel, internalBump(a, &staged), durable.CommitOptions{Persistence: &durable.CommitPersistence{Kind: durable.CommitDeferred, WithinMs: &forever}})
 			var after *internalCall
 			if !alone {
-				after = commitTicketed(kernel, nil, internalBump(b, nil))
+				after = commitTicketed(kernel, internalBump(b, nil))
 			}
 			_, err := held.wait()
 			if err == nil {

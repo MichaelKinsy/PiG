@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
+	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 )
 
 var (
@@ -303,13 +304,13 @@ func TestObserveDoc(t *testing.T) {
 			err         error
 		}
 		result := make(chan attached, 1)
+		attaching := make(chan struct{})
 		go func() {
-			observation, err := opened.session.ObserveDocErased(ctx, observeSessionCounter, observer)
+			observation, err := opened.session.ObserveDocErased(lineadmission.With(ctx, func() { close(attaching) }), observeSessionCounter, observer)
 			result <- attached{observation, err}
 		}()
-		// The attachment is queued behind the commit on the line.
-		for opened.session.LineJobs() < 2 {
-		}
+		// The attachment is queued behind the commit on the line, and reads what the commit wrote only once it is published.
+		<-attaching
 		gate.Release()
 		got := <-result
 		must(t, got.err)

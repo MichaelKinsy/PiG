@@ -122,6 +122,14 @@ type transactionHost struct {
 	evict func(addressId string, recordId durable.DocumentId)
 	// conversationCreated stages writes that belong to every newly created or forked conversation.
 	conversationCreated func(tx *Transaction, record durable.ConversationRecord) error
+	// touch waits while key has an unpublished writer (Session.AwaitTouch).
+	touch func(ctx context.Context, key string) error
+	// taskDocuments is the current documents of a live task when the Session knows all of them (it created the task).
+	taskDocuments func(taskId durable.TaskId) ([]durable.DocumentRecord, bool)
+	// latestEntryId is the newest entry ID visible from a conversation, known from the Session's commits.
+	latestEntryId func(ctx context.Context, conversationId durable.ConversationId) (*durable.EntryId, error)
+	// latestHeadMarker is the newest visible head marker of a conversation, known from the Session's commits.
+	latestHeadMarker func(ctx context.Context, conversationId durable.ConversationId) (*durable.EntryRecord, error)
 }
 
 // future is a memoized operation result shared by concurrent callers, like a
@@ -285,6 +293,8 @@ type Transaction struct {
 	plans                   []*documentPlan
 	documents               []*documentEntry
 	latestDocumentByAddress map[string]*documentEntry
+	// assembled are the writes settlement assembled, whose table records writeKeys keys.
+	assembled []durable.StorageWrite
 }
 
 var _ durable.Tx = (*Transaction)(nil)
@@ -435,10 +445,18 @@ func (tx *Transaction) ScanEntries(query durable.EntryQuery, limit int, cursor d
 	})
 }
 
-// LatestHeadMarker returns the newest visible entry of the conversation that carries a head.
+// LatestHeadMarker returns the newest visible entry of the conversation that carries a head, known from the Session's commits.
 func (tx *Transaction) LatestHeadMarker(conversationId durable.ConversationId) (*durable.EntryRecord, error) {
 	return read(tx, "latestHeadMarker", func() (*durable.EntryRecord, error) {
-		return tx.host.storage.FindLatestHeadMarker(tx.ctx, conversationId, nil)
+		return tx.host.latestHeadMarker(tx.ctx, conversationId)
+	})
+}
+
+// LatestEntryId returns the ID of the newest entry visible from the conversation, known from the Session's commits; nil when it
+// has none.
+func (tx *Transaction) LatestEntryId(conversationId durable.ConversationId) (*durable.EntryId, error) {
+	return read(tx, "latestEntryId", func() (*durable.EntryId, error) {
+		return tx.host.latestEntryId(tx.ctx, conversationId)
 	})
 }
 
@@ -936,6 +954,39 @@ func (tx *Transaction) StagedConversations() []durable.ConversationRecord {
 	return records
 }
 
+// CreatedTaskIds is internal: the IDs of the tasks this transaction creates (transaction.ts createdTaskIds).
+func (tx *Transaction) CreatedTaskIds() []durable.TaskId {
+	tx.mu.Lock()
+	defer tx.mu.Unlock()
+	var ids []durable.TaskId
+	for _, id := range tx.taskOrder {
+		if task := tx.tasksById[id]; task.write != nil && task.writeKind == taskCreate {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+// WriteKeys is internal: the keys this commit writes, once settled (and after takeHeld), for the Session's unpublished write
+// set: its table records, and the address and incarnation of every document it creates, changes, or retires, with the scope of
+// every incarnation it creates or retires (transaction.ts writeKeys).
+func (tx *Transaction) WriteKeys() []string {
+	tx.mu.Lock()
+	defer tx.mu.Unlock()
+	var keys []string
+	TableKeys(tx.assembled, &keys)
+	for _, plan := range tx.plans {
+		if plan.content == nil && !plan.retire {
+			continue
+		}
+		keys = append(keys, DocumentKey(plan.addressId), IncarnationKey(plan.record.id()))
+		if plan.retire || plan.record.committed == nil {
+			keys = append(keys, ScopeKey(plan.record.scope()))
+		}
+	}
+	return keys
+}
+
 // ─── Documents ─────────────────────────────────────────────────────────────
 
 // Doc returns the document's *delta.Object draft, creating the document when
@@ -1189,6 +1240,9 @@ func sameKey(left, right *string) bool {
 }
 
 func (tx *Transaction) findRetirement(entry *documentEntry) error {
+	if err := tx.host.touch(tx.ctx, DocumentKey(entry.addressId)); err != nil {
+		return err
+	}
 	var record *durable.DocumentRecord
 	if cached := tx.host.cached(entry.addressId); cached != nil {
 		committed := cached.Record
@@ -1271,6 +1325,9 @@ func (tx *Transaction) settleSuccess() ([]durable.StorageWrite, error) {
 		tx.mu.Unlock()
 		return nil, err
 	}
+	tx.mu.Lock()
+	tx.assembled = writes
+	tx.mu.Unlock()
 	return writes, nil
 }
 
@@ -1622,8 +1679,30 @@ func (tx *Transaction) assemble() ([]durable.StorageWrite, error) {
 			plan.retire = true
 			retiring[plan.record.id()] = true
 		}
+		retire := func(record durable.DocumentRecord) {
+			if retiring[record.Id] {
+				return
+			}
+			committed := record
+			tx.plans = append(tx.plans, &documentPlan{
+				addressId: durable.AddressId(durable.DocumentAddress{Kind: record.Kind, Scope: record.Scope, Key: record.Key}),
+				record:    planRecord{committed: &committed},
+				retire:    true,
+			})
+			retiring[record.Id] = true
+		}
 		for _, taskId := range terminalTaskIds {
 			if tx.tasksById[taskId].writeKind == taskCreate {
+				continue
+			}
+			// The Session knows the documents of the tasks it created; any other task's are scanned.
+			if err := tx.host.touch(tx.ctx, ScopeKey(durable.DocumentRecordScope{Kind: durable.ScopeTask, TaskId: taskId})); err != nil {
+				return nil, err
+			}
+			if known, ok := tx.host.taskDocuments(taskId); ok {
+				for _, record := range known {
+					retire(record)
+				}
 				continue
 			}
 			var cursor durable.Cursor
@@ -1633,16 +1712,7 @@ func (tx *Transaction) assemble() ([]durable.StorageWrite, error) {
 					return nil, err
 				}
 				for _, record := range page.Items {
-					if retiring[record.Id] {
-						continue
-					}
-					committed := record
-					tx.plans = append(tx.plans, &documentPlan{
-						addressId: durable.AddressId(durable.DocumentAddress{Kind: record.Kind, Scope: record.Scope, Key: record.Key}),
-						record:    planRecord{committed: &committed},
-						retire:    true,
-					})
-					retiring[record.Id] = true
+					retire(record)
 				}
 				if page.Next == nil {
 					break

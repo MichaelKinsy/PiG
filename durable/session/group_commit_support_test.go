@@ -4,7 +4,7 @@ package session_test
 // refused, or rejected after their receipts, and the calls a test issues to the Session line.
 //
 // Go mapping decisions:
-//   - Upstream's `await flush()` (one macrotask turn) is flush(calls...): it returns once every call named has entered, that is,
+//   - Upstream's `await flush()` (one macrotask turn) is quiesce(calls...): it returns once every call named has entered, that is,
 //     it is parked in a wait (a gate, its commit's outcome, the line) or has returned. A call that "has not settled after a
 //     flush" is a call that is still parked.
 //   - A commit extends the line synchronously upstream; a Go commit takes its position inside the callee, so a test that issues
@@ -223,8 +223,8 @@ func (started *call) settled() bool {
 	}
 }
 
-// flush returns once every call entered: upstream's `await flush()`, a macrotask turn in which what can run has run.
-func flush(calls ...*call) {
+// quiesce returns once every call entered: upstream's `await flush()`, a macrotask turn in which what can run has run.
+func quiesce(calls ...*call) {
 	for _, started := range calls {
 		started.enter()
 	}
