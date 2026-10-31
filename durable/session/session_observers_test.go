@@ -139,7 +139,7 @@ func TestObserveDoc(t *testing.T) {
 		must(t, opened.session.Close(ctx))
 	})
 
-	t.Run("starts at the committed value and advances inside adopt with each stored commit's ops", func(t *testing.T) {
+	t.Run("starts at the committed value and advances at the publication of each stored commit with its ops", func(t *testing.T) {
 		opened := openObserving()
 		opened.add(t, 1)
 		observer := opened.recorder()
@@ -150,7 +150,7 @@ func TestObserveDoc(t *testing.T) {
 		if len(calls) != 1 {
 			t.Fatalf("calls %+v", calls)
 		}
-		expectAdvance(t, calls[0], delta.JsonObjectOf("count", 3), []durable.Op{{"s", []any{"count"}, 3}}, false, true)
+		expectAdvance(t, calls[0], delta.JsonObjectOf("count", 3), []durable.Op{{"s", []any{"count"}, 3}}, false, false)
 		observation.Detach()
 		must(t, opened.session.Close(ctx))
 	})
@@ -198,11 +198,11 @@ func TestObserveDoc(t *testing.T) {
 		if len(calls) != 2 {
 			t.Fatalf("calls %+v", calls)
 		}
-		expectAdvance(t, calls[0], observation.Value(), nil, true, true)
+		expectAdvance(t, calls[0], observation.Value(), nil, true, false)
 		if !same(calls[0].advance.Value, observation.Value()) {
 			t.Fatal("a retirement carries the value the observer was given")
 		}
-		expectAdvance(t, calls[1], delta.JsonObjectOf("count", 9), []durable.Op{{"r", delta.JsonObjectOf("count", 9)}}, false, true)
+		expectAdvance(t, calls[1], delta.JsonObjectOf("count", 9), []durable.Op{{"r", delta.JsonObjectOf("count", 9)}}, false, false)
 		observation.Detach()
 		must(t, opened.session.Close(ctx))
 	})
