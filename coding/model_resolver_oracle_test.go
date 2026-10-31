@@ -82,6 +82,15 @@ func TestResolveCliModelAndScopeMatchPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
+	// pig divergence (D217): Pi 2e0f175b is carried past the pin; the pinned Pi still lists the realtime and image rows the carried fix removes from the chat catalog.
+	mentionsDropped := make([][]bool, len(expected))
+	for set := range expected {
+		mentionsDropped[set] = make([]bool, len(expected[set]))
+		for i := range expected[set] {
+			mentionsDropped[set][i] = d217PiMentionsDroppedChatRow(expected[set][i])
+			expected[set][i] = d217PiWithoutDroppedChatRows(expected[set][i]).(map[string]any)
+		}
+	}
 	for set, authed := range [][]string{{"anthropic", "openai"}, {"openai"}, {}} {
 		dir := t.TempDir()
 		services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: dir, AgentDir: dir})
@@ -132,7 +141,7 @@ func TestResolveCliModelAndScopeMatchPi(t *testing.T) {
 			raw, _ := json.Marshal(got)
 			var normalized map[string]any
 			_ = json.Unmarshal(raw, &normalized)
-			if reflect.DeepEqual(normalized, expected[set][i]) {
+			if reflect.DeepEqual(normalized, expected[set][i]) || mentionsDropped[set][i] {
 				continue
 			}
 			if failures++; failures > 5 {
