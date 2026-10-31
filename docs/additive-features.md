@@ -1944,7 +1944,7 @@ Stock disposition: product-neutral diagnostics. The report describes the Stock P
 
 What: Pi skips a configured local Package whose directory does not exist without a word (`package-manager.ts` `resolveLocalExtensionSource`: `if (!existsSync(resolved)) return;`; the resource loader calls `resolve()` without `onMissing`). PiG reports it twice:
 
-- At startup, as an extension warning in the session: `Extension package "<source>": failed to install (Path does not exist: <resolved path>). Run "pig remove <source>" to remove it from settings.json.` It is the warning Pi gives an npm or git Package that fails to install. The `[pig] Could not install` stderr line, whose advice (`run pig update when online`) does not apply to a path, leaves a local Package out.
+- At startup, as an extension warning in the session, and as a `LoadExtensionsResult.Warnings` entry of the SDK `DefaultResourceLoader` for programs that embed PiG: `Extension package "<source>": failed to install (Path does not exist: <resolved path>). Run "pig remove <source>" to remove it from settings.json.` It is the warning Pi gives an npm or git Package that fails to install. The `[pig] Could not install` stderr line, whose advice (`run pig update when online`) does not apply to a path, leaves a local Package out.
 - By `pig install --validate-only [--json]` with no source, which checks every `packages[]` entry of the user settings and of the trusted project settings that is a local path, resolved against its scope's settings directory under the current agent directory. It exits 1 when any does not resolve to a directory. npm and git entries are not checked: resolving them needs the network. With a source (or `--set`) the command validates those sources as before and does not read `packages[]`.
 
 JSON (`--json`, always one object on stdout, strict shape):
@@ -1957,7 +1957,7 @@ JSON (`--json`, always one object on stdout, strict shape):
 
 Why: 20 of 21 Packages on one host disappeared after a re-registration run through a symlinked `PIG_HOME`, with only a boot line on stderr to show it (#389). The owner took the two follow-ups: a Package that cannot load shows up in the session, and `--validate-only` checks that each entry resolves. The check runs with no source so a deployment can run it in the isolated `PIG_HOME` it already uses for validation, without naming a Package.
 
-Call-site markers: `coding/cli/cli_runtime_build.go` (the startup Package check), `coding/cli/package_validate_configured.go` (`validateConfiguredPackages`), `coding/cli/package_commands.go` (the no-source `--validate-only` dispatch), `internal/packagemanager/updates.go` (`MissingLocalPackages`).
+Call-site markers: `coding/cli/cli_runtime_build.go` (the startup Package check), `coding/resource_loader_extension_files.go` (`loadExtensionFiles`), `coding/cli/package_validate_configured.go` (`validateConfiguredPackages`), `coding/cli/package_commands.go` (the no-source `--validate-only` dispatch), `internal/packagemanager/updates.go` (`MissingLocalPackages`).
 
 Locked by: `TestStartupWarnsAboutAConfiguredLocalPackageThatDoesNotExist` and `TestInstallValidateOnlyWithoutSourceReportsConfiguredLocalPackages` (`coding/cli/package_local_path_test.go`).
 
