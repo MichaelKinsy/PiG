@@ -126605,6 +126605,17 @@
       "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.awaitIncomingEnded",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.awaitIncomingEnded",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.awaitSuspensions",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Conn.awaitSuspensions",
@@ -126768,6 +126779,17 @@
         "type": "func(env *Envelope) (*encodedFrame, error)"
       },
       "shapeHash": "sha256:ba998effd5443e501806c7ab5cd51f5d1f5a06ee8b1a6c61c95fd70434b74ece"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.endIncoming",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.endIncoming",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.endRequestWindowByReport",
@@ -129507,6 +129529,17 @@
         "type": "func(fn func()) bool"
       },
       "shapeHash": "sha256:aad2321bec8142b1cbf463d4882d72b913fca0163c376b6350def762308cb818"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.goHandleIncoming",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.goHandleIncoming",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(me *managedExt, conn *Conn)"
+      },
+      "shapeHash": "sha256:211e1c0d109ab362e202319a635fbae7a620fad5cff7a99a4f109c41e9432437"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.goRetirement",
@@ -143928,6 +143961,17 @@
         "type": "func(o github.com/MichaelKinsy/PiG/ai.ImagesOptions) map[string]any"
       },
       "shapeHash": "sha256:ff5361aad7e6af5b4572f971ddca34a3e8a580147101a985dc84c4bd1e656343"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#incomingLoop",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "incomingLoop",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "incomingLoop"
+      },
+      "shapeHash": "sha256:a72ec0f06e10a99a4bccf0123e4cb2c2764c5e4a4f775cd3d5ec1986f37bba9d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#initiatedOAuthLoginSession",
