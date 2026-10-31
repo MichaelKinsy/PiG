@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -63,8 +64,21 @@ const altScreenOracleStartMarker = "<terminal.start>\x1b[?25l"
 // terminal sizes (including 1-row and 3-row terminals), and frame sequences with growth, shrink, in-place edits, resizes, forced renders, scrolling
 // (by lines, to the top and to the bottom), overlays and hardware-cursor toggles, cursor markers, and unclipped components
 // (testdata/alt-screen-oracle.mjs). It compares the bytes start() wrote and the bytes each step wrote; the components return the lines Pi's
-// components returned at that step's size.
+// components returned at that step's size. Scrolling the rows that moved (D205) writes other bytes than Pi, so it is off here.
 func TestAltScreenFramesMatchPiOracle(t *testing.T) {
+	t.Setenv("PIG_TUI_SCROLL_ROWS", "0")
+	checkAltScreenOracle(t, false)
+}
+
+// With the rows that moved scrolled (D205), a step writes other bytes than Pi's step wherever rows moved, and must show what
+// Pi's step shows: Pi's bytes and PiG's are each replayed on a terminal (rowsVT), whose rows must be equal after every step.
+func TestAltScreenScrolledFramesShowPisScreens(t *testing.T) {
+	checkAltScreenOracle(t, true)
+}
+
+// checkAltScreenOracle runs the fixture's scenarios and compares each step's bytes with Pi's, or with screens set, the rows
+// they show.
+func checkAltScreenOracle(t *testing.T, screens bool) {
 	file, err := os.Open("testdata/alt-screen-oracle.json.gz")
 	if err != nil {
 		t.Fatal(err)
@@ -126,7 +140,7 @@ func TestAltScreenFramesMatchPiOracle(t *testing.T) {
 	// the images earlier tests or an earlier -count run registered, and leave none behind.
 	resetKittyRegistry(t)
 	t.Cleanup(func() { resetKittyRegistry(t) })
-	failures := 0
+	failures, scrolledSteps := 0, 0
 	report := func(format string, args ...any) {
 		if failures++; failures <= 6 {
 			t.Errorf(format, args...)
@@ -174,6 +188,9 @@ func TestAltScreenFramesMatchPiOracle(t *testing.T) {
 		if got := string(GetCapabilities().Images); got != sc.ImagesAfterStart {
 			report("scenario %d: images %q after start, Pi %q", index, got, sc.ImagesAfterStart)
 		}
+		pigVT, piVT := newRowsVT(max(1, sc.Rows)), newRowsVT(max(1, sc.Rows))
+		pigVT.apply(out.String())
+		piVT.apply(strings.ReplaceAll(sc.StartOut, altScreenOracleStartMarker, ""))
 		pending = nil
 		var overlays []*oracleLines
 		var handles []*OverlayHandle
@@ -249,7 +266,27 @@ func TestAltScreenFramesMatchPiOracle(t *testing.T) {
 				report("scenario %d (%dx%d) step %d: %d full redraws, Pi %d", index, sc.Cols, sc.Rows, step, got, want)
 				break
 			}
-			if got, want := out.String(), sc.Log[step].Out; got != want {
+			if screens {
+				// A new height redraws the whole screen; a resize to the same size draws nothing.
+				if spec.Resize != nil && max(1, spec.Resize[1]) != len(pigVT.rows) {
+					pigVT, piVT = newRowsVT(max(1, spec.Resize[1])), newRowsVT(max(1, spec.Resize[1]))
+				}
+				pigVT.apply(out.String())
+				piVT.apply(sc.Log[step].Out)
+				if !slices.Equal(pigVT.rows, piVT.rows) {
+					var rows strings.Builder
+					for row := range max(len(pigVT.rows), len(piVT.rows)) {
+						if pig, pi := altScreenRow(pigVT.rows, row), altScreenRow(piVT.rows, row); pig != pi {
+							fmt.Fprintf(&rows, "\nrow %d: PiG %q\n        Pi  %q", row, pig, pi)
+						}
+					}
+					report("scenario %d (%dx%d, images %q) step %d %+v shows other rows than Pi's step:%s\nPiG wrote %q\nPi wrote  %q", index, sc.Cols, sc.Rows, sc.Images, step, spec, rows.String(), out.String(), sc.Log[step].Out)
+					break
+				}
+				if out.String() != sc.Log[step].Out {
+					scrolledSteps++
+				}
+			} else if got, want := out.String(), sc.Log[step].Out; got != want {
 				report("scenario %d (%dx%d, images %q) step %d %+v\n got %q\nwant %q", index, sc.Cols, sc.Rows, sc.Images, step, spec, got, want)
 				break
 			}
@@ -265,6 +302,12 @@ func TestAltScreenFramesMatchPiOracle(t *testing.T) {
 	}
 	if failures > 0 {
 		t.Errorf("%d of %d scenarios differ from Pi", failures, len(scenarios))
+	}
+	if screens {
+		t.Logf("%d steps scrolled rows and wrote other bytes than Pi", scrolledSteps)
+		if scrolledSteps == 0 {
+			t.Error("no step scrolled rows, so no step was compared by what it shows")
+		}
 	}
 }
 

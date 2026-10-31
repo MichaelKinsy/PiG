@@ -51,10 +51,13 @@ func (h *altHarness) send(inputs ...string) {
 	h.render()
 }
 
+// viewport replays the output on rowsVT, which follows the scroll regions that frames move rows with.
 func (h *altHarness) viewport() []string {
-	rows := altScreenVisibleRows(h.t, h.out, h.w, h.h)
+	vt := newRowsVT(h.h)
+	vt.apply(h.out.String())
+	rows := vt.rows
 	for i := range rows {
-		rows[i] = strings.TrimRight(rows[i], " ")
+		rows[i] = strings.TrimRight(widthx.StripTerminalSequences(rows[i]), " ")
 	}
 	return rows
 }
