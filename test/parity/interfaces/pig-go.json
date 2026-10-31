@@ -53125,17 +53125,6 @@
       "shapeHash": "sha256:5f87f753b28381536fc36b6ce6c1269d65ee196e80a4060987cb710c0c4db721"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#openAIReasoningDetail.setString",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "openAIReasoningDetail.setString",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(name string, value string)"
-      },
-      "shapeHash": "sha256:885e279457db2bfda28d65fa0f7f6dd49c54f8a9ab961c47ef9fce3dcdd76b94"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#openAIReasoningDetail.stringField",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "openAIReasoningDetail.stringField",

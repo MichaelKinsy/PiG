@@ -406,6 +406,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6258d27](#bf-6258d27) | fix(rpc): a replacement aborts the compactions of its batch at its teardown only | PiG's own defect | All platforms | Unreleased |
 | [BF-625a32e](#bf-625a32e) | Display text that PiG cuts at a length (the `/tree` listing, the Piglet system-prompt preview, an extension… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-626dccc](#bf-626dccc) | OpenAI-compatible Chat Completions requests resolve `chat_template_args` (the `baseten` thinking format) and… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-62743f9](#bf-62743f9) | A streamed OpenRouter-style `reasoning_details` no longer costs more with every delta | PiG's own defect | All platforms | Unreleased |
 | [BF-62a1c87](#bf-62a1c87) | The `ExtensionSelector` and `ExtensionInput` oracles also run with the Kitty keyboard protocol active (CSI-u… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-62ae30d](#bf-62ae30d) | Durable: reading the history of a conversation whose parent conversation is not stored now fails with Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-62b009c](#bf-62b009c) | fix: relocate the transcript wire encoders' perf annotations; raise the headless default size ceilings for… | PiG's own defect | All platforms | Unreleased |
@@ -6695,6 +6696,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `626dccc66c` (2026-10-10)
 - **Tests:** `ai/anthropic_messages_payload_oracle_test.go::TestAnthropicMessagesPayloadMatchesPi`, `ai/openai_completions_chat_template_values_test.go::TestOpenAICompletionsChatTemplateEffortFollowsTheThinkingLevelMap`, `ai/openai_completions_chat_template_values_test.go::TestOpenAICompletionsChatTemplateValuesResolveTheSameForKwargsAndArgs`, `ai/thinking_level_map_clamp_test.go::TestThinkingLevelMapDecidesSupportedAndClampedLevels`
 - **Release note:** OpenAI-compatible Chat Completions requests resolve `chat_template_args` (the `baseten` thinking format) and `chat_template_kwargs` (the `chat-template` format) as Pi does. A `thinking.budget` variable in `chat_template_args` now sends the clamped thinking budget instead of being dropped. A `thinking.effort` variable sends the model's `thinkingLevelMap.off` value when reasoning is off and is left out when that entry is absent or not a string, instead of sending `"none"`. A `null` entry for the requested level also leaves it out, instead of sending the level name.
+
+### BF-62743f9
+
+**A streamed OpenRouter-style `reasoning_details` no longer costs more with every delta**
+
+- **Source:** PiG's own defect
+- **Symptom:** A streamed OpenRouter-style `reasoning_details` no longer costs more with every delta.
+- **Root cause:** reasoning_details are replay metadata. Each delta merged into the entry list and marshalled the whole signature again, quadratic in the number of deltas. Keep the entries in memory, merge text and summary content into one builder, and write the signature when the thinking block ends or the stream fails, as Pi does.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `62743f96f8` (2026-10-30)
+- **Tests:** `ai/openai_reasoning_details_scaling_norace_test.go::TestScalingOpenAIReasoningDetailsPerDelta`, `ai/openai_reasoning_details_signature_test.go::TestParseSSE_ReasoningDetailsSignatureBytes`, `ai/openai_reasoning_details_signature_test.go::TestParseSSE_ReasoningDetailsSignatureSetAtThinkingEndAndOnError`
+- **Release note:** A streamed OpenRouter-style `reasoning_details` no longer costs more with every delta. Each delta merged into the entry list and then wrote the whole thinking signature again, so a reasoning stream of 10000 deltas took seconds and gigabytes (10000 discrete `reasoning.encrypted` entries: 94 s and 51 GB; 10000 merged text deltas: 5.5 s and 6.4 GB). The details now accumulate in memory and the signature is written once, when the thinking block ends or the stream fails, as in Pi; 10000 merged text deltas take 87 ms and 25 MB, and the signature is byte for byte what it was.
 
 ### BF-62a1c87
 
