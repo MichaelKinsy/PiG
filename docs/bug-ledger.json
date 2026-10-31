@@ -28465,6 +28465,28 @@
       ]
     },
     {
+      "id": "BF-bf9911e",
+      "title": "Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a…",
+      "symptom": "Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a cut of the whole string they were taken from.",
+      "rootCause": "An append op held a Go substring of the whole string it was cut from, so ops from 10,000 commits of 8-byte appends to a growing text retained 430 MB for 80 KB of payload. emitChangedValue and DiffRevisions.emitString now clone the text, as Pi's ownedSlice does. Retention at 10,000 commits drops to 1.8 MB.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a cut of the whole string they were taken from. A delta chain, watch backlog or replica built from appends to a growing text no longer keeps one copy of the text per commit alive (10,000 commits of 8-byte appends retained 430 MB for 80 KB of payload).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bf9911e77c",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "chord/delta/op_text_retention_norace_test.go::TestAppendOpsDoNotRetainTheirSourceText"
+      ]
+    },
+    {
       "id": "BF-bfae6a0",
       "title": "Fullscreen double-click selection no longer splits paths and tokens at `~`, `.`, `\\`, `+` and `_`: the word…",
       "symptom": "Fullscreen double-click selection no longer splits paths and tokens at `~`, `.`, `\\`, `+` and `_`: the word characters are iTerm2 defaults.",

@@ -991,6 +991,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-beeb36a](#bf-beeb36a) | Running with no home directory now fails the way Pi's package manager does, instead of reading the project's… | PiG's own defect | All platforms | Unreleased |
 | [BF-bf45320](#bf-bf45320) | Go embedding hosts can bind extension appends through `coding.Session.AppendExtensionEntry`, retaining… | PiG's own defect | All platforms | Unreleased |
 | [BF-bf73e77](#bf-bf73e77) | fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices | PiG's own defect | All platforms | Unreleased |
+| [BF-bf9911e](#bf-bf9911e) | Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a… | PiG's own defect | All platforms | Unreleased |
 | [BF-bfae6a0](#bf-bfae6a0) | Fullscreen double-click selection no longer splits paths and tokens at `~`, `.`, `\`, `+` and `_`: the word… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1055c4](#bf-c1055c4) | Package manifest globs match as Node's `fs.globSync` does in Pi: brace sets and sequences, extglobs such as… | PiG's own defect | Windows, macOS | 0.5.0 |
 | [BF-c10ae73](#bf-c10ae73) | In RPC mode, runs that an extension command's handler sends with `sendMessage` or `sendUserMessage` start in… | PiG's own defect | All platforms | 0.5.0 |
@@ -14833,6 +14834,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `bf73e77f83` (2026-10-27)
 - **Tests:** `durable/core/jv/append_concat_test.go::TestAppendConcatJoinsSurrogatesAtTheBoundary`
+
+### BF-bf9911e
+
+**Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a cut of the whole string they were taken from.
+- **Root cause:** An append op held a Go substring of the whole string it was cut from, so ops from 10,000 commits of 8-byte appends to a growing text retained 430 MB for 80 KB of payload. emitChangedValue and DiffRevisions.emitString now clone the text, as Pi's ownedSlice does. Retention at 10,000 commits drops to 1.8 MB.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bf9911e77c` (2026-10-30)
+- **Tests:** `chord/delta/op_text_retention_norace_test.go::TestAppendOpsDoNotRetainTheirSourceText`
+- **Release note:** Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a cut of the whole string they were taken from. A delta chain, watch backlog or replica built from appends to a growing text no longer keeps one copy of the text per commit alive (10,000 commits of 8-byte appends retained 430 MB for 80 KB of payload).
 
 ### BF-bfae6a0
 
