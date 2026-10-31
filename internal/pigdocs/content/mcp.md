@@ -96,10 +96,10 @@ Keep personal servers and servers with credentials in the user-level file. Use t
 | `pig mcp add <server> [options] --url <url>` | Add or replace a streamable HTTP server |
 | `pig mcp remove <server> [-l]` | Remove a server; stored OAuth credentials are kept |
 | `pig mcp list [--json]` | Connect to every enabled server and print its state, tools and errors; exits 1 on failure |
-| `pig mcp login <server> [--timeout <seconds>]` | Sign in through the browser; `--timeout` limits the whole sign-in, including requests to the authorization server (default: 300 seconds) |
-| `pig mcp logout <server>` | Delete the stored OAuth credentials |
+| `pig mcp login <server> [-l] [--timeout <seconds>]` | Sign in through the browser; `--timeout` limits the whole sign-in, including requests to the authorization server (default: 300 seconds); `-l` requires the server to be defined in the project's `.pig/mcp.json` |
+| `pig mcp logout <server> [-l]` | Delete the stored OAuth credentials |
 
-Options for `add` and `remove`: `-l`, `--local` writes `.pig/mcp.json` in the current project instead of the user-level file.
+Options for `add`, `remove`, `login`, and `logout`: `-l`, `--local` writes `.pig/mcp.json` in the current project instead of the user-level file.
 
 Options for `add`:
 

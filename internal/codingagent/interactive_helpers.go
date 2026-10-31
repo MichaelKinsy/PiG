@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -38,15 +39,8 @@ func shortenPath(p string) string {
 	if err != nil || home == "" {
 		return p
 	}
-	if p == home {
-		return "~"
-	}
-	// Upstream formatDisplayPath shortens any path that starts with home, so
-	// on Windows a / after the home prefix counts as well as \.
-	if strings.HasPrefix(p, home) && len(p) > len(home) && os.IsPathSeparator(p[len(home)]) {
-		return "~" + p[len(home):]
-	}
-	return p
+	// pig divergence (D217): Pi 1be312b4 (#10488) anchors the home prefix at a path segment (resolvepath.ShortenHomePath); Pi 1.4.0+b3a29f11 matched a bare string prefix.
+	return resolvepath.ShortenHomePath(p, home)
 }
 
 // debugLog writes to pig-debug.log in the temporary directory when PIG_DEBUG is set. Used for

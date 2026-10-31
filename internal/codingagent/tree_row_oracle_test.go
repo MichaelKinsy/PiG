@@ -72,7 +72,8 @@ func treeOracleChains() [][]map[string]any {
 		}
 	}
 	cmds := []string{"ls", "echo hi\n\tthere", strings.Repeat("c", 50), strings.Repeat("c", 51), strings.Repeat("小", 50), strings.Repeat("小", 51), strings.Repeat("😀", 25), strings.Repeat("😀", 26), "  spaced " + strings.Repeat("x", 60), strings.Repeat("\n", 60) + "x", ""}
-	pathArgs := []string{"/home/oracle/a.go", "/home/oraclex/b", "/other", ""}
+	// pig divergence (D217) allowance, Pi 1be312b4 (#10488): "/home/oraclex/b" is left out. Pinned Pi shortens it to "~x/b" and PiG, anchoring the home directory at a path segment, keeps it; TestHomeShorteningAnchorsAtAPathSegment pins PiG's behavior.
+	pathArgs := []string{"/home/oracle/a.go", "/home/oracle", "/other", ""}
 	toolCall := func(id string) map[string]any {
 		switch rng.Intn(8) {
 		case 0:

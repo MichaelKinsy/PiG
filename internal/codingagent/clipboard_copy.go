@@ -66,6 +66,8 @@ func runClipboardCommandContext(parent context.Context, name string, args []stri
 	defer cancel()
 	//nolint:gosec // G204 (class a): program and args are a clipboard helper from PiG's fixed table (pbcopy, clip, wl-copy, xclip, xsel, termux-clipboard-set and the readers); the text goes to stdin, never to argv.
 	cmd := exec.CommandContext(ctx, name, args...)
+	// pig divergence (D217): Pi 6454d07e (#11592) runs clipboard helpers from /: they ignore the cwd, and WSL cannot start Windows executables when the cwd's \\wsl.localhost\... path exceeds MAX_PATH.
+	cmd.Dir = "/"
 	hideClipboardWindow(cmd)
 	detachClipboardChild(cmd)
 	// The parent owns its pipe end as an *os.File and closes it itself, so Wait joins only the child and never a copy that a descendant holds open.

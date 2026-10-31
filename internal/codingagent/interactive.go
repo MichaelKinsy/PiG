@@ -1531,8 +1531,12 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	mark := m.startupMark()
 	m.initStartupTheme()
 	mark("theme-detected")
-	if line := m.modelScopeLine(); line != "" {
-		_, _ = fmt.Fprintln(os.Stdout, line)
+	// pig divergence (D217): Pi 7391dbb0 (#11508) fullscreen shows the model scope in the header, not on stdout.
+	// Fullscreen renders on the alternate screen, so stdout text would stay in the shell after exit; its header shows the notice.
+	if m.opts.TuiMode != "fullscreen" {
+		if notice := m.getModelScopeNotice(); notice != "" {
+			_, _ = fmt.Fprintln(os.Stdout, notice)
+		}
 	}
 
 	// Set up TUI. Fullscreen mode uses the alternate-screen renderer; both

@@ -163279,6 +163279,17 @@
       "shapeHash": "sha256:54ea965de765eae14f6bcb7c4f63c68acb1248209e2f31f780c42933aa3ec3ae"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#editDistance",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "editDistance",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(a string, b string) int"
+      },
+      "shapeHash": "sha256:7267a6c24b7d07cf3a1e3ed32b194113d0bf96004feca9008c5d99cc5f0e1f8c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#editMcpServers",
       "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
       "name": "editMcpServers",
@@ -240274,9 +240285,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(open func(command string, content string, apply func(string)))"
+        "type": "func(open func(command string, content string, apply func(string), report func(message string)))"
       },
-      "shapeHash": "sha256:903c9bfb4a3f6fea8d9986c4e51f7bf528e27dede8dab6361a205e14dac0485f"
+      "shapeHash": "sha256:7e962a0c806a1775b94f65766bf36b0760611f8cc529b1c65c6d524eba9aa785"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExtensionEditorComponent.SetFocused",
@@ -240816,6 +240827,39 @@
         "type": "func(configured []github.com/MichaelKinsy/PiG/coding/extension.Extension, builtins []github.com/MichaelKinsy/PiG/coding/extension.Extension, explicit []string) []github.com/MichaelKinsy/PiG/coding/extension.Extension"
       },
       "shapeHash": "sha256:c94882c58709234f69f85e6322633dcda5ef8d3ded93049906938b801fd2caaa"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExternalEditorFailure",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ExternalEditorFailure",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ExternalEditorFailure"
+      },
+      "shapeHash": "sha256:12e89e7253d4aa955900b74bc7d87089baaf67c8502622e0cb66327ed9e75165"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExternalEditorFailure.Error",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ExternalEditorFailure.Error",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExternalEditorFailure.Unwrap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ExternalEditorFailure.Unwrap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#FetchUpdateManifest",
@@ -246549,6 +246593,17 @@
       "shapeHash": "sha256:3932c8f2e073ca781405ce8ee152f1faa1f1ba098a056531f9d18fe25f68efeb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.getModelScopeNotice",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.getModelScopeNotice",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.getThemeSelection",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.getThemeSelection",
@@ -247440,17 +247495,6 @@
       "shapeHash": "sha256:1dff212e502ad75a66ffd7a8dc0479338c0c63ced33c78902a69e4950ec13cb2"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.modelScopeLine",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "InteractiveMode.modelScopeLine",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() string"
-      },
-      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.mountInteractiveTui",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.mountInteractiveTui",
@@ -247677,9 +247721,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, command string, initial string, apply func(string))"
+        "type": "func(ctx context.Context, command string, initial string, apply func(string), report func(message string))"
       },
-      "shapeHash": "sha256:054f9478a4b390481c300bb3599280143753f810780fd7c04938069d47264c7d"
+      "shapeHash": "sha256:90556fb120b4988000f308b46d299221faf5e8c4fc7ebf97c5f6d8108082c598"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.openFrontend",
@@ -249957,6 +250001,17 @@
         "type": "func(message string, notifyType string)"
       },
       "shapeHash": "sha256:aeeb622c0406db9e784011796b2e2f1e0533872f347d15207d4a348b5778aecf"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.showFullscreenModelScopeNotice",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.showFullscreenModelScopeNotice",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(header *github.com/MichaelKinsy/PiG/tui.Container)"
+      },
+      "shapeHash": "sha256:4024a275aaed7eb12a8608afe32d3800e86f59ecb5372435ad61118e3886f2a3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.showInitNotices",
@@ -272905,6 +272960,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#editorSignal",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "editorSignal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err *os/exec.ExitError) string"
+      },
+      "shapeHash": "sha256:326f8bef83e72e94da061e821cb06d02c1b76761d0631b87a9a450986c0963b4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#editorTheme",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "editorTheme",
@@ -274443,6 +274509,17 @@
         "type": "untyped string"
       },
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#externalEditorFailure",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "externalEditorFailure",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(command string, name string, err error) *ExternalEditorFailure"
+      },
+      "shapeHash": "sha256:e2abb9ac7b6d90189c880537140c52ebdc45111c37783f26488ee541a5e800b2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#extractAgentMessageText",

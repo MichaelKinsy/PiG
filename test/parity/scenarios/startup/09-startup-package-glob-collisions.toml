@@ -39,7 +39,9 @@ wait_contains = ["drop files to attach"]
 
 [assert]
 both_reach_ready = true
-both_contain = ["suite/listed.md", "second/SKILL.md", "/root", "/nested", "/skip-keep", "[Skill conflicts]", '"same" collision:', "✓ git:github.com/pig-parity/glob-collisions (user) second/SKILL.md", "first/SKILL.md (skipped)"]
+both_contain = ["suite/listed.md", "second/SKILL.md", "/root", "/nested", "/skip-keep", '"same" collision:', "✓ git:github.com/pig-parity/glob-collisions (user) second/SKILL.md", "first/SKILL.md (skipped)"]
+pi_contains = ["[Skill conflicts]"]
+pig_contains = ["[Skill warnings]"]
 both_not_contain = ["excluded", "/skip,", "/.hidden", "ambiguous"]
 escaped_output_equal = true
 runs = 3
@@ -51,3 +53,9 @@ runs = 3
 pattern = '/[^\s\x1b]*/parity-snap-(?:PIG|PI)_CODING_AGENT_DIR-[0-9]+'
 with = '<agent>'
 reason = "D2: only the independently allocated agent-root prefix differs. Keep the complete skipped skill path and warning."
+
+# normalize-rationale: Pi f14813e9 (#11566), carried by PiG under D217 ahead of the pin, renames the heading Pi 1.4.0+b3a29f11 prints as [Skill conflicts] to [Skill warnings]. Only that heading differs; the per-side pi_contains/pig_contains pin each spelling and every other byte stays compared.
+[[assert.normalize_replace]]
+pattern = '\[Skill (?:conflicts|warnings)\]'
+with = '[Skill diagnostics]'
+reason = "D217: the pinned Pi prints [Skill conflicts], PiG carries Pi f14813e9 and prints [Skill warnings]; pi_contains and pig_contains assert each side's own heading."

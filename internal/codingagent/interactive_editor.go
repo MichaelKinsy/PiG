@@ -2,16 +2,18 @@ package codingagent
 
 import (
 	"context"
+	"errors"
 
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
 func (m *InteractiveMode) openExternalEditor(ctx context.Context) {
-	m.openExternalEditorBuffer(ctx, m.externalEditorCommand(), m.editor.GetExpandedText(), m.editor.SetText)
+	m.openExternalEditorBuffer(ctx, m.externalEditorCommand(), m.editor.GetExpandedText(), m.editor.SetText, m.showStatus)
 }
 
 // openExternalEditorBuffer hands terminal input and output to the child off the UI loop. Completion returns to the owner loop and only a successful edit replaces the caller's buffer.
-func (m *InteractiveMode) openExternalEditorBuffer(ctx context.Context, command, initial string, apply func(string)) {
+// pig divergence (D217): Pi 6454d07e (#11592) reports an editor that failed through report, which receives the status text; Pi 1.4.0+b3a29f11 stays silent.
+func (m *InteractiveMode) openExternalEditorBuffer(ctx context.Context, command, initial string, apply func(string), report func(message string)) {
 	if m.externalEditorActive {
 		return
 	}
@@ -52,6 +54,10 @@ func (m *InteractiveMode) openExternalEditorBuffer(ctx context.Context, command,
 			m.rawDrain = drain
 			if runErr == nil && ctx.Err() == nil {
 				apply(result)
+			}
+			var failure *ExternalEditorFailure
+			if errors.As(runErr, &failure) && ctx.Err() == nil && report != nil {
+				report(failure.Message)
 			}
 			if m.surface != nil {
 				// pig additive (D91): the frame after the handoff carries
