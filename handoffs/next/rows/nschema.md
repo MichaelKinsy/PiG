@@ -50,7 +50,7 @@ New Go packages: `schema` (root, `github.com/MichaelKinsy/PiG/schema`), `schema/
 All 39 `packages/schema/src/**` files are covered (10 root, 29 formats). Not tracked source and not ported: `packages/schema/{README.md,CHANGELOG.md,package.json,tsconfig.build.json,vitest.config.ts,LICENSES}` (the Go package has its own `schema/README.md`; TypeBox's license text is already in THIRD_PARTY_NOTICES.md).
 
 ## (b) PORT_MAP rows (new section; add `schema` to `test/parity/upstreampackages/packages.json` and the package scope list)
-Section heading: `## \`packages/schema/src/\``; columns as the other sections.
+Section heading: ## `packages/schema/src/`; columns as the other sections.
 
 | upstream | pig | status |
 |---|---|---|
