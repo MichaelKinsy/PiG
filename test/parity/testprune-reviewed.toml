@@ -183,9 +183,6 @@ cite = "packages/coding-agent/src/modes/interactive/components/user-message.ts:2
 reason = "Pi 64627838b (#11270) gives the user and assistant message components the trailing optional `messageId` and `timestamp` constructor parameters (user-message.ts:26-27, the assistant component likewise), undefined for a live message; the Go constructors take the two strings, empty for undefined, so the existing constructions pass \"\", \"\" and expect the same rendering."
 
 [[entry]]
-reason = "Pi 92ab53602 removes the replicated-state source attachments (the two attachment tests that isolate a listener failure and reset delivering are deleted with them) and gives the Session committed watches that end with an explicit source event and drop every reference into the Session once ended (session-watches.test.ts:781 \"retains neither its Session nor its listener once stopped, while still referenced\"; chord watch.ts:153-158 for the end). The added tests expect what the watch delivers and ends with on a null value, on retirement and when stopped (the retirement ending was superseded within this batch by the followed address of 8b0caefc, see the ledger entries of 832ba8ca17)."
-
-[[entry]]
 path = "ai/openrouter_cost_test.go"
 commit = "a9015090a506009d6d0354e68a229e39717d665a"
 class = "CITE"
