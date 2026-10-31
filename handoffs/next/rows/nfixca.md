@@ -26,6 +26,18 @@ path | disposition | PiG files | evidence | rationale
 - Renamed Go tests (integrator: update test-mapping/unit-evidence refs): TestMCPOAuthCIMDRegistersDynamicallyByDefaultEvenWhenTheServerSupportsDocuments -> ...RegistersDynamicallyWithDcrEvenWhenTheServerSupportsDocuments; TestMCPOAuthCIMDUsesPisDocumentWhenAuthorizationResponsesNameTheirIssuer -> ...UsesPisDocumentByDefaultWhenAuthorizationResponsesNameTheirIssuer.
 - config.test.ts 3 cases, package-command-paths 4 cases (+1 PiG no-source case), mcp-command, mcp-extension, mcp-oauth-refresh (4 new cases), system-prompt.test.ts: ported.
 
+## Integrator: Node shims and sdk-bundle refresh (do at the pin bump)
+Refresh the vendored pin release with automation/gen/vendor-pi-dist.sh against Pi 6d4b7443's installed packages in the same step as the pin bump, then regenerate vendor-manifest.json. This lane changes Pi text that lives in these shim files, so they must be refreshed, not hand-edited:
+- shims/pi-dist/pi-coding-agent/core/system-prompt.js, core/skills.js, core/tools/edit.js (705d047c);
+- shims/pi-dist/pi-coding-agent/sdk-bundle/chunk-HXXU3UR4.js (system prompt, skills) and chunk-YO7W7VLN.js (edit guidelines);
+- the MCP bundle chunks carrying extensions/mcp/{oauth,cli}.js and core/mcp-servers.js (908aa7b7), config.js and package-manager-cli.js (8bc94b19).
+After that refresh these oracle tests turn green: TestSystemPromptSectionsMatchPi, TestValidateMcpServerConfigMatchesPi, TestMcpCommandMatchesPi, the tool-definition oracles, and the parity scenarios cli-utils 33-37 (they compare against Pi 6d4b7443 and cannot pass against the pinned e7a0df27 release, which lacks the flag, `auto` and the config.ts functions). Re-dump coding/testdata/pi_tool_definitions.json then too.
+
+## Parity scenarios (new)
+- cli-utils/33..36 `pig mcp add --oauth-client-registration` (valid dcr, invalid mode, cimd with --oauth-client-name, stdio-only). Probed against Pi 6d4b7443 built on imladris; pig output matches byte for byte after the D2 `pig`->`pi` and agent-dir normalizations.
+- cli-utils/37 configured self-update command (Pi probe testdata/configured-self-update-pi.mjs vs Go TestConfiguredSelfUpdateParityProbe).
+- The self-update behavior against a release manifest has no Pi comparator (Pi fetches pi.dev; PiG the signed manifest, D39): covered by coding/cli TestConfiguredSelfUpdate*.
+
 ## Pending / integrator
 - Node shims (pi-dist system-prompt.js, skills.js, tools/edit.js, sdk-bundle chunks) are the vendored pin release with sha manifest; not hand-edited. They refresh with the pin bump (vendor-pi-dist.sh). Until then the oracle tests compare against old Pi and differ: TestSystemPromptSectionsMatchPi, TestValidateMcpServerConfigMatchesPi (`auto` message), TestMcpCommandMatchesPi (add --help), tool-definition oracles. Not red lane bugs.
 - `make generate` (test/parity/normalization-inventory.json regenerates from the edited rpc scenarios 26/59/64: removed aliases "asks about pig itself", "pig packages", "pig topics", "Always read pig .md"; preamble alias now "running inside pig,").
