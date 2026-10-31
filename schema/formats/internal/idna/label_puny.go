@@ -2,9 +2,10 @@
 
 package idna
 
-import "slices"
-
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // IsPunyLabel reports whether value is an "xn--" label whose payload decodes to a valid Unicode label.
 func IsPunyLabel(value string) bool {
