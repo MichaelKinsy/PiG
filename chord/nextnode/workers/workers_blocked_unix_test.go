@@ -10,18 +10,14 @@ import (
 )
 
 // Ports the tests of workers.test.ts that block a worker's event loop: a worker process stopped for the time its busy loop
-// takes (freeze), which has no Windows form.
+// takes (freezeWorker), which has no Windows form.
 
 func TestFailuresStayALinkLostWhileItsChildLivesABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceFailed(t *testing.T) {
 	ping, closeAfter := 100*time.Millisecond, 300*time.Millisecond
 	f := newFleet(t, fleetOptions{heartbeat: &host.HeartbeatOptions{Ping: &ping, Close: &closeAfter}})
 	notes := f.get(fixtureNotes, "S1")
 	defer notes.Release()
-	control := f.get(fixtureControl, "S1")
-	defer control.Release()
-	if _, err := control.Call("block", float64(20_000), background); err != nil {
-		t.Fatal(err)
-	}
+	f.freezeWorker("S1", 20*time.Second, false)
 	until(t, func() bool { return f.stateOf("S1") != nil && f.stateOf("S1").Status == WorkerStopping }, 5_000)
 	until(t, func() bool { return f.stateOf("S1") != nil && f.stateOf("S1").Status == WorkerFailed }, 10_000)
 	if message := f.stateOf("S1").Error.Message; message != "worker exited (SIGKILL)" {

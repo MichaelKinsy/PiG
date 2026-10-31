@@ -28,8 +28,9 @@ import (
 // exit or fail before connecting, never connect, a slow or endless load, slow closers that log their order to a file.
 //
 // Forced Go differences. A worker is the test binary run again (TestMain, fixtureEnv "worker"). `process.exit` is
-// exitProcess; an error `fn` returns is Pi's throw. A blocked event loop is the worker process stopped for the time Pi's
-// busy loop takes (freeze), so the worker answers nothing, a ping and a shutdown included. `Control.fatal` is not ported: a throw from a timer is a panic in a goroutine of the
+// exitProcess; an error `fn` returns is Pi's throw. `Control.block` and `blockThenCrash` (a busy loop that blocks the event
+// loop) are not ported: a Go worker has no single thread to block, and the tests that need an unresponsive worker stop its
+// process from outside (freezeWorker, SIGSTOP). `Control.fatal` is not ported: a throw from a timer is a panic in a goroutine of the
 // app, which ends a Go process with its own exit status (workers_main.go), and no test calls it. Every message the worker
 // sends (frame or control) is counted by wrapping its port.
 
@@ -45,8 +46,6 @@ var (
 		},
 		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
 			contracts.Meth("crash", contracts.NewMethod(contracts.Int())),
-			contracts.Meth("block", contracts.NewMethod(contracts.Int())),
-			contracts.Meth("blockThenCrash", contracts.NewMethod(contracts.Int())),
 			contracts.Meth("busy", contracts.NewMethod(contracts.Int())),
 			contracts.Meth("localCalls", contracts.NewMethod(contracts.Int(), contracts.Int())),
 		}})},
@@ -278,7 +277,7 @@ func runWorkerFixture() {
 		if behaviour.DisconnectAndBlock {
 			time.AfterFunc(300*time.Millisecond, func() {
 				// Blocks before `serve`'s own disconnect listener runs: the child lives on without its channel.
-				port.processPort.(*channel).prependDisconnect(func() { freeze(20 * time.Second) })
+				port.processPort.(*channel).prependDisconnect(func() { time.Sleep(20 * time.Second) })
 				port.Disconnect()
 			})
 		}
@@ -353,14 +352,6 @@ func fixtureCore(worker host.Host) host.Facet {
 					time.AfterFunc(10*time.Millisecond, func() { os.Exit(int(code.(float64))) })
 					return nil, nil
 				},
-				"block": func(ms delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
-					blockLater(ms, false)
-					return nil, nil
-				},
-				"blockThenCrash": func(ms delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
-					blockLater(ms, true)
-					return nil, nil
-				},
 				"busy": func(ms delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					if _, err := busy.Call("set", float64(1), ctx); err != nil {
 						return nil, err
@@ -392,18 +383,6 @@ func fixtureCore(worker host.Host) host.Facet {
 
 // fixturePort is the fixture worker's counting port, for `Control.localCalls`.
 var fixturePort *countingPort
-
-// blockLater is `setTimeout(() => { busy loop for ms; (then process.exit(9)) }, 10)`: the whole worker process frozen
-// (freeze), as a blocked JavaScript thread leaves nothing of Node running: no heartbeat, no message, no signal handler, no
-// timer.
-func blockLater(ms delta.JsonValue, crash bool) {
-	time.AfterFunc(10*time.Millisecond, func() {
-		freeze(time.Duration(ms.(float64)) * time.Millisecond)
-		if crash {
-			os.Exit(9)
-		}
-	})
-}
 
 func appendLog(path, text string) {
 	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)

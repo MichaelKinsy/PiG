@@ -22,8 +22,6 @@ func TestMain(m *testing.M) {
 		runChildFixture()
 	case "worker":
 		runWorkerFixture()
-	case "resume":
-		resumeFixture()
 	case "grandchild":
 		time.Sleep(60 * time.Second)
 		os.Exit(0)
