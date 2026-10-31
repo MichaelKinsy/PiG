@@ -85,6 +85,13 @@ const extras = [
 	{ schema: { type: "object", required: ["a"], additionalProperties: false }, values: [{ b: 1 }, { a: 1 }] },
 	{ schema: { type: "integer", multipleOf: 0.0001, minimum: -5 }, values: [3, -6, 1e308, 1e-9] },
 	{ schema: { type: "object", properties: { a: { type: "integer" } }, patternProperties: { "^x-": { type: "string" } }, unevaluatedProperties: false }, values: [{ a: "s", "x-b": 1, c: true }, { a: 1, "x-b": "s", c: true }] },
+	{ schema: { $id: "file:///a/b.json", $ref: "c.json" }, values: [1] },
+	{ schema: { $id: "custom://host/p/q.json", $ref: "../r.json#/x" }, values: [1] },
+	{ schema: { $id: "custom://host/p/q.json", properties: { a: { $id: "s.json", $ref: "t.json" } } }, values: [{}] },
+	{ schema: { $id: "urn:example:root", $ref: "c.json" }, values: [1] },
+	{ schema: { $id: "urn:example:root", $defs: { a: { $anchor: "x", type: "string" } }, $ref: "#x" }, values: [1, "a"] },
+	{ schema: { $id: "http://example.com/a/b/c.json", $ref: "../../d.json" }, values: [1] },
+	{ schema: { $id: "HTTP://Example.COM:80/a/./b/../c.json", $ref: "d.json" }, values: [1] },
 	{ schema: { minLength: 2, minimum: 3, minItems: 1, minProperties: 1, required: ["x"] }, values: ["a", 1, [], {}, null] },
 ];
 const formatsOnly = { ...formats };

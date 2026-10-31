@@ -128,6 +128,12 @@ func TestHandWrittenCaseErrorsMatchPi(t *testing.T) {
 			options.Formats = formats.Formats()
 		}
 		validator, err := schema.Compile(row.Value("schema"), options)
+		if want, failed := row.Get("compileError"); failed {
+			if err == nil || err.Error() != want.(string) {
+				t.Errorf("case %d %s: compile error %v, Pi's %q", i, jsonText(t, row.Value("schema")), err, want)
+			}
+			continue
+		}
 		if err != nil {
 			t.Errorf("case %d %s: compile: %v", i, jsonText(t, row.Value("schema")), err)
 			continue
