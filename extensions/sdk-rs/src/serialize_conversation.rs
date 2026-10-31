@@ -298,7 +298,7 @@ fn is_array_index(key: &[u16]) -> bool {
         && key[0] != u16::from(b'0')
         && String::from_utf16_lossy(key)
             .parse::<u64>()
-            .is_ok_and(|n| n <= u64::from(u32::MAX) - 1)
+            .is_ok_and(|n| n < u64::from(u32::MAX))
 }
 
 /// `JSON.stringify` for a decoded JSON value.

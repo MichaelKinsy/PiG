@@ -265,7 +265,7 @@ pub(crate) fn resolve_overlay_width(
 enum RemoteComponentEvent {
     Render,
     Input(crate::JsString),
-    ViewEvent(crate::kit::Event),
+    ViewEvent(Box<crate::kit::Event>),
     Mouse(MouseEvent),
     /// The host's `ui.custom.opened`: the overlay is mounted, with this state.
     Opened(OverlayState),
@@ -474,7 +474,7 @@ impl RemoteOverlay {
 
     /// Queues a `ui.view.event` behind the input already queued.
     pub(crate) fn send_view_event(&self, event: crate::kit::Event) -> Result<(), String> {
-        self.send(RemoteComponentEvent::ViewEvent(event))
+        self.send(RemoteComponentEvent::ViewEvent(Box::new(event)))
     }
 
     /// Queues a `ui.custom.mouse` event behind the input already queued.
@@ -532,7 +532,7 @@ fn render_remote_component_frame(
             crate::kit::Rendered::Lines(component.render(render_width))
         })),
         OverlayComponent::View(component) => catch_unwind(AssertUnwindSafe(|| {
-            crate::kit::Rendered::View(component.view(width))
+            crate::kit::Rendered::view(component.view(width))
         })),
     }
     .map_err(|_| io::Error::other("focused render panicked"))?;
@@ -575,7 +575,7 @@ fn render_remote_component_frame(
     conn.notify("ui.custom.render", Some(frame))
 }
 
-fn run_remote_component_worker(
+struct RemoteComponentWorker {
     conn: Arc<Connection>,
     key: String,
     overlay: RemoteComponentRef,
@@ -584,7 +584,19 @@ fn run_remote_component_worker(
     done: std::sync::mpsc::Sender<()>,
     request_parent: Option<Arc<crate::protocol::RequestParent>>,
     request_id: String,
-) {
+}
+
+fn run_remote_component_worker(worker: RemoteComponentWorker) {
+    let RemoteComponentWorker {
+        conn,
+        key,
+        overlay,
+        width,
+        events,
+        done,
+        request_parent,
+        request_id,
+    } = worker;
     while overlay.active.load(Ordering::Acquire) {
         let Ok(event) = events.recv() else {
             break;
@@ -627,7 +639,7 @@ fn run_remote_component_worker(
                             OverlayComponent::View(component),
                             RemoteComponentEvent::ViewEvent(event),
                         ) => Some(
-                            catch_unwind(AssertUnwindSafe(|| component.handle_view_event(event)))
+                            catch_unwind(AssertUnwindSafe(|| component.handle_view_event(*event)))
                                 .map_err(|_| "focused view event panicked".to_string()),
                         ),
                         (component, RemoteComponentEvent::Mouse(event)) => Some(
@@ -831,10 +843,7 @@ pub(crate) fn tool_declaration(
 
 pub(crate) fn call_result_to_io(result: CallResultMsg) -> io::Result<()> {
     if let Some(err) = result.error {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            host_error_message(err),
-        ));
+        return Err(io::Error::other(host_error_message(err)));
     }
     Ok(())
 }
@@ -859,10 +868,7 @@ fn invalid_reply(method: &str, field: &str) -> io::Error {
 
 fn call_result_value(result: CallResultMsg) -> io::Result<serde_json::Value> {
     if let Some(err) = result.error {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            host_error_message(err),
-        ));
+        return Err(io::Error::other(host_error_message(err)));
     }
     Ok(result.result.unwrap_or_default())
 }
@@ -2281,17 +2287,18 @@ impl SessionMirror {
         let append_len = appended.map(|a| a.len()).unwrap_or(0);
         let expected_base = entry_count.saturating_sub(append_len);
         let mut changed = false;
-        if let Some(id) = session.get("sessionId").and_then(|v| v.as_str()) {
-            if !id.is_empty() && id != self.session_id {
-                self.session_id = id.to_string();
-                self.entries.clear();
-                self.index.clear();
-                self.leaf_id.clear();
-                self.branch_cache = None;
-                self.branch_decoded = None;
-                self.reset_gen += 1;
-                changed = true;
-            }
+        if let Some(id) = session.get("sessionId").and_then(|v| v.as_str())
+            && !id.is_empty()
+            && id != self.session_id
+        {
+            self.session_id = id.to_string();
+            self.entries.clear();
+            self.index.clear();
+            self.leaf_id.clear();
+            self.branch_cache = None;
+            self.branch_decoded = None;
+            self.reset_gen += 1;
+            changed = true;
         }
 
         // The leaf is small and always tracked. The log itself is applied only
@@ -2468,10 +2475,10 @@ impl SessionMirror {
     }
 
     pub fn get_branch_entries(&mut self) -> Vec<std::sync::Arc<BranchEntry>> {
-        if let Some(ref cache) = self.branch_decoded {
-            if self.branch_decoded_for == self.revision {
-                return cache.clone();
-            }
+        if let Some(ref cache) = self.branch_decoded
+            && self.branch_decoded_for == self.revision
+        {
+            return cache.clone();
         }
         self.branch();
         let raw = self.branch_cache.as_deref().unwrap_or(&[]);
@@ -2575,12 +2582,12 @@ impl Context {
 
     /// The model's id and provider id. A replacement context asks the host, since this process replicates only the requesting Session's model.
     fn current_model(&self) -> (String, String) {
-        if self.replacement {
-            if let Ok(info) = self.get_model_info() {
-                return info
-                    .map(|info| (info.id, info.provider))
-                    .unwrap_or_default();
-            }
+        if self.replacement
+            && let Ok(info) = self.get_model_info()
+        {
+            return info
+                .map(|info| (info.id, info.provider))
+                .unwrap_or_default();
         }
         let identity = self.shared_identity.lock().unwrap();
         (identity.model.clone(), identity.model_provider.clone())
@@ -2614,10 +2621,10 @@ impl Context {
     /// updates keep it current and `set_session_name` is visible to the next read. A replacement Session's name comes from the host.
     pub fn session_name(&self) -> String {
         self.assert_active();
-        if self.replacement {
-            if let Ok(name) = self.get_session_name() {
-                return name.unwrap_or_default();
-            }
+        if self.replacement
+            && let Ok(name) = self.get_session_name()
+        {
+            return name.unwrap_or_default();
         }
         self.shared_identity.lock().unwrap().session_name.clone()
     }
@@ -3036,10 +3043,7 @@ impl Context {
     ) -> io::Result<Option<serde_json::Value>> {
         let result = self.call_wire(method, args)?;
         if let Some(err) = result.error {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                host_error_message(err),
-            ));
+            return Err(io::Error::other(host_error_message(err)));
         }
         Ok(result.result)
     }
@@ -3274,10 +3278,7 @@ impl Context {
         }
         let reply = self.call_wire_typed::<serde_json::Value, Text>("ui.getEditorText", None)?;
         if let Some(err) = reply.error {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                host_error_message(err),
-            ));
+            return Err(io::Error::other(host_error_message(err)));
         }
         reply
             .result
@@ -3775,16 +3776,16 @@ impl Context {
             thread::Builder::new()
                 .name(format!("pig-overlay-{key}"))
                 .spawn(move || {
-                    run_remote_component_worker(
+                    run_remote_component_worker(RemoteComponentWorker {
                         conn,
-                        worker_key,
-                        worker_overlay,
+                        key: worker_key,
+                        overlay: worker_overlay,
                         width,
-                        events_rx,
-                        worker_done_tx,
-                        worker_request_parent,
-                        worker_request_id,
-                    )
+                        events: events_rx,
+                        done: worker_done_tx,
+                        request_parent: worker_request_parent,
+                        request_id: worker_request_id,
+                    })
                 })
         };
         let worker = match worker {
@@ -4165,6 +4166,8 @@ impl Context {
         self.assert_active();
         let (options, key) = {
             let cell = state.lock();
+            // `rendered.0` is the options' JSON text; `String == Value` would compare it to a JSON string value instead.
+            #[allow(clippy::cmp_owned)]
             if cell.rendered.0 == cell.options.to_string() {
                 return Ok(cell.rendered.1.clone());
             }
@@ -4217,10 +4220,7 @@ impl Context {
             Some(serde_json::json!({"method": method, "args": args})),
         )?;
         if let Some(err) = reply.error {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                host_error_message(err),
-            ));
+            return Err(io::Error::other(host_error_message(err)));
         }
         Ok(reply
             .result
@@ -5130,8 +5130,10 @@ pub struct ToolInfo {
 #[derive(Clone)]
 pub struct ToolInfoReachesTools {
     tool: String,
-    ask: Arc<dyn Fn(&serde_json::Value) -> io::Result<crate::ToolReach> + Send + Sync>,
+    ask: ReachesToolsFn,
 }
+
+type ReachesToolsFn = Arc<dyn Fn(&serde_json::Value) -> io::Result<crate::ToolReach> + Send + Sync>;
 
 impl ToolInfoReachesTools {
     /// Which tools a call with `input` may reach.
@@ -6260,11 +6262,32 @@ mod login_call_tests {
             .apply_invalidate(&serde_json::json!({ "message": STALE }));
         ctx.conn
             .apply_invalidate(&serde_json::json!({ "message": "second" }));
-        let reads: [(&str, Box<dyn Fn() + '_>); 4] = [
-            ("cwd", Box::new(|| drop(ctx.cwd()))),
-            ("mode", Box::new(|| drop(ctx.mode()))),
-            ("model", Box::new(|| drop(ctx.model()))),
-            ("has_ui", Box::new(|| drop(ctx.has_ui()))),
+        type Read<'a> = Box<dyn Fn() + 'a>;
+        let reads: [(&str, Read<'_>); 4] = [
+            (
+                "cwd",
+                Box::new(|| {
+                    let _ = ctx.cwd();
+                }),
+            ),
+            (
+                "mode",
+                Box::new(|| {
+                    let _ = ctx.mode();
+                }),
+            ),
+            (
+                "model",
+                Box::new(|| {
+                    let _ = ctx.model();
+                }),
+            ),
+            (
+                "has_ui",
+                Box::new(|| {
+                    let _ = ctx.has_ui();
+                }),
+            ),
         ];
         for (name, read) in reads {
             let panic =
@@ -6947,11 +6970,10 @@ mod sdk_surface_call_tests {
                 .unwrap(),
             None
         );
-        assert_eq!(
-            roundtrip(|c| c.is_idle(), ok(Some(json!({"idle": false}))))
+        assert!(
+            !roundtrip(|c| c.is_idle(), ok(Some(json!({"idle": false}))))
                 .1
-                .unwrap(),
-            false
+                .unwrap()
         );
         // SetActiveTools([]) narrows the session to no tools: an empty list is a value, a null one a protocol error.
         assert_eq!(
@@ -7414,7 +7436,8 @@ mod tool_result_guard_tests {
     /// Pi core/extensions/types.ts:1315-1338: each tool_result guard is `e.toolName === "<tool>"`.
     #[test]
     fn each_guard_is_true_for_its_own_tool_only() {
-        let guards: [(&str, fn(&serde_json::Value) -> bool); 8] = [
+        type Guard = fn(&serde_json::Value) -> bool;
+        let guards: [(&str, Guard); 8] = [
             ("bash", is_bash_tool_result),
             ("powershell", is_powershell_tool_result),
             ("read", is_read_tool_result),

@@ -620,9 +620,7 @@ impl ExtendsResult {
         Self::outcome("ExtendsFalse", None)
     }
     fn has_inferred(value: &TValue) -> bool {
-        value
-            .member("inferred")
-            .is_some_and(|inferred| Type::is_schema(inferred))
+        value.member("inferred").is_some_and(Type::is_schema)
     }
     /// `ExtendsResult.IsExtendsUnion`.
     pub fn is_extends_union(value: impl Into<TValue>) -> bool {

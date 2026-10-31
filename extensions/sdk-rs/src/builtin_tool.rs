@@ -127,12 +127,14 @@ pub struct FindGlobOptions {
     pub limit: f64,
 }
 
+type FindGlobFn =
+    Arc<dyn Fn(&str, &str, FindGlobOptions) -> OperationResult<Vec<String>> + Send + Sync>;
+
 /// Pi's `FindOperations`. `glob(pattern, cwd, options)` returns paths relative to `cwd` or absolute.
 #[derive(Clone)]
 pub struct FindOperations {
     pub exists: PathOperation<bool>,
-    pub glob:
-        Arc<dyn Fn(&str, &str, FindGlobOptions) -> OperationResult<Vec<String>> + Send + Sync>,
+    pub glob: FindGlobFn,
 }
 
 /// Pi's `FindToolOptions`.

@@ -193,8 +193,8 @@ fn func_key_code(n: f64) -> Option<f64> {
 }
 
 fn functional_equivalent(codepoint: f64) -> f64 {
-    let mapped = match codepoint as i64 {
-        _ if codepoint.fract() != 0.0 || !codepoint.is_finite() => return codepoint,
+    match codepoint as i64 {
+        _ if codepoint.fract() != 0.0 || !codepoint.is_finite() => codepoint,
         57399..=57408 => codepoint - 57399.0 + 48.0,
         57409 => 46.0,
         57410 => 47.0,
@@ -214,8 +214,7 @@ fn functional_equivalent(codepoint: f64) -> f64 {
         57425 => INSERT,
         57426 => DELETE,
         _ => codepoint,
-    };
-    mapped
+    }
 }
 
 fn legacy_key_sequences(name: &str) -> &'static [&'static str] {
@@ -629,20 +628,21 @@ fn matches_kitty(data: &str, expected_codepoint: f64, expected_modifier: i32) ->
     if actual_mod == expected_mod && normalized == normalized_expected {
         return true;
     }
-    if let Some((cp, m)) = logical_shifted_symbol(parsed.shifted, actual_mod as f64, false) {
-        if (m & !LOCK_MASK) == expected_mod && cp == normalize_functional(expected_codepoint) {
-            return true;
-        }
+    if let Some((cp, m)) = logical_shifted_symbol(parsed.shifted, actual_mod as f64, false)
+        && (m & !LOCK_MASK) == expected_mod
+        && cp == normalize_functional(expected_codepoint)
+    {
+        return true;
     }
     if actual_mod != expected_mod {
         return false;
     }
-    if let Some(base) = parsed.base {
-        if base == expected_codepoint {
-            let is_latin_letter = (97.0..=122.0).contains(&normalized);
-            if !is_latin_letter && !is_symbol(normalized) {
-                return true;
-            }
+    if let Some(base) = parsed.base
+        && base == expected_codepoint
+    {
+        let is_latin_letter = (97.0..=122.0).contains(&normalized);
+        if !is_latin_letter && !is_symbol(normalized) {
+            return true;
         }
     }
     false
@@ -939,12 +939,12 @@ pub fn matches_key(data: &str, key_id: &str) -> bool {
     let raw_ctrl = raw_ctrl_char(ch);
     let is_letter = ch.is_ascii_lowercase();
     let is_digit = ch.is_ascii_digit();
-    if modifier == CTRL + ALT && !kitty_active {
-        if let Some(rc) = raw_ctrl {
-            if data == format!("\x1b{rc}") {
-                return true;
-            }
-        }
+    if modifier == CTRL + ALT
+        && !kitty_active
+        && let Some(rc) = raw_ctrl
+        && data == format!("\x1b{rc}")
+    {
+        return true;
     }
     if modifier == ALT
         && !kitty_active
@@ -954,10 +954,10 @@ pub fn matches_key(data: &str, key_id: &str) -> bool {
         return true;
     }
     if modifier == CTRL {
-        if let Some(rc) = raw_ctrl {
-            if data == rc.to_string() {
-                return true;
-            }
+        if let Some(rc) = raw_ctrl
+            && data == rc.to_string()
+        {
+            return true;
         }
         return matches_kitty(data, codepoint, CTRL)
             || matches_printable_modify_other(data, codepoint, CTRL);
@@ -1211,10 +1211,10 @@ pub fn decode_kitty_printable(data: &str) -> Option<String> {
         return None;
     }
     let mut effective = codepoint;
-    if modifier & SHIFT != 0 {
-        if let Some(s) = shifted {
-            effective = s;
-        }
+    if modifier & SHIFT != 0
+        && let Some(s) = shifted
+    {
+        effective = s;
     }
     effective = normalize_functional(effective);
     // Drop unmapped Kitty functional keys (F13-F35, media keys, ...).

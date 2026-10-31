@@ -337,7 +337,7 @@ impl ToolRenderers {
                         &mut render,
                         request.width,
                     )
-                    .map(Rendered::View),
+                    .map(Rendered::view),
                     (None, Some(handler)) => handler(
                         ctx,
                         request.result.unwrap_or_default(),
@@ -350,7 +350,7 @@ impl ToolRenderers {
                 },
                 (Some(set), _) => match (set.call_view, set.render_call) {
                     (Some(view), _) => {
-                        view(ctx, request.args, &mut render, request.width).map(Rendered::View)
+                        view(ctx, request.args, &mut render, request.width).map(Rendered::view)
                     }
                     (None, Some(handler)) => {
                         handler(ctx, request.args, &mut render, request.width).map(Rendered::Lines)
@@ -379,7 +379,7 @@ impl ToolRenderers {
                     &mut render,
                     request.width,
                 )
-                .map(Rendered::View),
+                .map(Rendered::view),
                 (None, Some(handler)) => handler(
                     ctx,
                     request.result.unwrap_or_default(),
@@ -400,7 +400,7 @@ impl ToolRenderers {
             };
             match (view, lines) {
                 (Some(view), _) => {
-                    view(ctx, request.args, &mut render, request.width).map(Rendered::View)
+                    view(ctx, request.args, &mut render, request.width).map(Rendered::view)
                 }
                 (None, Some(handler)) => {
                     handler(ctx, request.args, &mut render, request.width).map(Rendered::Lines)

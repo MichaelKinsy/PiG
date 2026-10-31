@@ -237,10 +237,8 @@ impl ToolStart {
         if let Some(slot) = slot {
             slot.close();
         }
-        if first {
-            if let Some(lease) = &self.lease {
-                lease.release();
-            }
+        if first && let Some(lease) = &self.lease {
+            lease.release();
         }
     }
 
@@ -565,7 +563,7 @@ mod tests {
             let (start, rec) = (starts[i].clone(), rec.clone());
             threads.push(thread::spawn(move || {
                 start.before_call();
-                rec.add(&["a", "b", "c"][i]);
+                rec.add(["a", "b", "c"][i]);
                 start.after_call();
                 // A second dialog of the same request does not wait again.
                 start.before_call();

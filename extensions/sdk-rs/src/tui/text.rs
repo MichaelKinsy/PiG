@@ -91,25 +91,24 @@ fn graphemes(text: &[char]) -> Vec<&[char]> {
             let cur = gcb(q);
             let brk = if prev == GB_CR && cur == GB_LF {
                 false
-            } else if prev == GB_CONTROL || prev == GB_CR || prev == GB_LF {
+            } else if prev == GB_CONTROL
+                || prev == GB_CR
+                || prev == GB_LF
+                || cur == GB_CONTROL
+                || cur == GB_CR
+                || cur == GB_LF
+            {
                 true
-            } else if cur == GB_CONTROL || cur == GB_CR || cur == GB_LF {
-                true
-            } else if prev == GB_L && matches!(cur, GB_L | GB_V | GB_LV | GB_LVT) {
-                false
-            } else if matches!(prev, GB_LV | GB_V) && matches!(cur, GB_V | GB_T) {
-                false
-            } else if matches!(prev, GB_LVT | GB_T) && cur == GB_T {
-                false
-            } else if cur == GB_EXTEND
+            } else if (prev == GB_L && matches!(cur, GB_L | GB_V | GB_LV | GB_LVT))
+                || (matches!(prev, GB_LV | GB_V) && matches!(cur, GB_V | GB_T))
+                || (matches!(prev, GB_LVT | GB_T) && cur == GB_T)
+                || cur == GB_EXTEND
                 || cur == GB_ZWJ
                 || cur == GB_SPACING_MARK
                 || prev == GB_PREPEND
+                || (incb_state == 2 && incb(q) == INCB_CONSONANT)
+                || (emoji_state == 2 && q & EXT_PICT != 0)
             {
-                false
-            } else if incb_state == 2 && incb(q) == INCB_CONSONANT {
-                false
-            } else if emoji_state == 2 && q & EXT_PICT != 0 {
                 false
             } else {
                 !(prev == GB_RI && cur == GB_RI && ri_count % 2 == 1)
@@ -221,14 +220,10 @@ fn ansi_code_length(s: &[char], pos: usize) -> usize {
         return 0;
     }
     match s.get(pos + 1) {
-        Some('[') => {
-            for j in pos + 2..s.len() {
-                if matches!(s[j], 'm' | 'G' | 'K' | 'H' | 'J') {
-                    return j + 1 - pos;
-                }
-            }
-            0
-        }
+        Some('[') => s[pos + 2..]
+            .iter()
+            .position(|c| matches!(c, 'm' | 'G' | 'K' | 'H' | 'J'))
+            .map_or(0, |offset| offset + 3),
         Some(']') | Some('_') => {
             for j in pos + 2..s.len() {
                 if s[j] == '\x07' {

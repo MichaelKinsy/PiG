@@ -18,14 +18,13 @@ pub fn new_extension() -> Extension {
         for i in 0..4_000_000u64 {
             x = x.rotate_left(5) ^ i.wrapping_mul(0x100000001b3);
         }
-        if let Ok(path) = std::env::var("BENCHEXT_COUNTER") {
-            if let Ok(mut f) = std::fs::OpenOptions::new()
+        if let Ok(path) = std::env::var("BENCHEXT_COUNTER")
+            && let Ok(mut f) = std::fs::OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(path)
-            {
-                let _ = writeln!(f, "rs {}", x & 1);
-            }
+        {
+            let _ = writeln!(f, "rs {}", x & 1);
         }
         None
     });

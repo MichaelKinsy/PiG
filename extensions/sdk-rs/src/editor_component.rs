@@ -295,10 +295,10 @@ impl EditorBase {
     /// it when it set one, then the editing.
     pub fn handle_input(&self, data: &JsString) -> io::Result<()> {
         let shortcut = self.hooks.lock().unwrap().on_extension_shortcut.clone();
-        if let Some(shortcut) = shortcut {
-            if shortcut(data).map_err(io::Error::other)? {
-                return Ok(());
-            }
+        if let Some(shortcut) = shortcut
+            && shortcut(data).map_err(io::Error::other)?
+        {
+            return Ok(());
         }
         let hooks = self.hooked();
         let reply = self.op_typed::<HookReply>(

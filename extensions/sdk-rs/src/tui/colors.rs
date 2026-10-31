@@ -237,8 +237,16 @@ const LAB_TO_LMS: M3 = [
     [1.0, -0.0894841775298119, -1.2914855480194092],
 ];
 const LMS_TO_LINEAR_SRGB: M3 = [
-    [4.0767416360759583, -3.3077115392580629, 0.2309699031821043],
-    [-1.2684379732850315, 2.6097573492876882, -0.341319376002657],
+    [
+        4.076_741_636_075_958,
+        -3.307_711_539_258_063,
+        0.2309699031821043,
+    ],
+    [
+        -1.2684379732850315,
+        2.609_757_349_287_688,
+        -0.341319376002657,
+    ],
     [-0.0041960761386756, -0.7034186179359362, 1.7076146940746117],
 ];
 const SATURATION_FIT: [([f64; 2], [f64; 5]); 3] = [
@@ -718,17 +726,17 @@ pub fn parse_color<'a>(value: impl Into<ColorValue<'a>>) -> Result<Color, ColorE
         ColorValue::Number(n) => return indexed_color(n),
         ColorValue::Text(t) => t,
     };
-    if let Some(hex) = value.strip_prefix('#') {
-        if (hex.len() == 3 || hex.len() == 6) && hex.bytes().all(|b| b.is_ascii_hexdigit()) {
-            let digits: String = if hex.len() == 3 {
-                hex.chars().flat_map(|c| [c, c]).collect()
-            } else {
-                hex.to_string()
-            };
-            let channel =
-                |i: usize| f64::from(u8::from_str_radix(&digits[i..i + 2], 16).unwrap_or(0));
-            return rgb_color(channel(0), channel(2), channel(4));
-        }
+    if let Some(hex) = value.strip_prefix('#')
+        && (hex.len() == 3 || hex.len() == 6)
+        && hex.bytes().all(|b| b.is_ascii_hexdigit())
+    {
+        let digits: String = if hex.len() == 3 {
+            hex.chars().flat_map(|c| [c, c]).collect()
+        } else {
+            hex.to_string()
+        };
+        let channel = |i: usize| f64::from(u8::from_str_radix(&digits[i..i + 2], 16).unwrap_or(0));
+        return rgb_color(channel(0), channel(2), channel(4));
     }
     if let Some((l, c, h)) = parse_oklch(value) {
         return oklch_color(l, c, h);

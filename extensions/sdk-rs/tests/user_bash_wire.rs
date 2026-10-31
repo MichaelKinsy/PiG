@@ -105,17 +105,16 @@ impl Drop for Host {
     }
 }
 
-fn operations() -> (
-    BashOperations,
-    Arc<
-        Mutex<
-            Option<(
-                Option<f64>,
-                Option<std::collections::HashMap<String, String>>,
-            )>,
-        >,
+type SeenExec = Arc<
+    Mutex<
+        Option<(
+            Option<f64>,
+            Option<std::collections::HashMap<String, String>>,
+        )>,
     >,
-) {
+>;
+
+fn operations() -> (BashOperations, SeenExec) {
     let seen = Arc::new(Mutex::new(None));
     let recorded = seen.clone();
     let operations = BashOperations {

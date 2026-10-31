@@ -135,7 +135,7 @@ fn incremental_branch_matches_an_uncached_walk_across_leaf_moves() {
             mirror.get_branch_entries();
         }
         let want = reference(&mirror, &log, &leaf);
-        assert_eq!(ids(&mirror.branch().to_vec()), want, "step {step}");
+        assert_eq!(ids(mirror.branch()), want, "step {step}");
         let decoded: Vec<String> = mirror
             .get_branch_entries()
             .iter()
@@ -162,7 +162,7 @@ fn incremental_branch_side_entry_and_repeated_id() {
     assert_eq!(second.len(), 2);
     assert!(Arc::ptr_eq(&first[0], &second[0]) && Arc::ptr_eq(&first[1], &second[1]));
     push(&mut mirror, "s", vec![entry("b", Some("side"))], 4, "b");
-    assert_eq!(ids(&mirror.branch().to_vec()), ["a", "side", "b"]);
+    assert_eq!(ids(mirror.branch()), ["a", "side", "b"]);
     let decoded: Vec<String> = mirror
         .get_branch_entries()
         .iter()

@@ -198,7 +198,7 @@ fn script(ctx: &Context, args: &Value) -> io::Result<Value> {
             json!({"type": "message", "id": "e1", "parentId": null, "timestamp": "2026-01-01T00:00:00.000Z", "message": {"role": "user", "content": "seed", "timestamp": 1}}),
         ]),
     )?;
-    r.insert("seeded".into(), json!({"count": seeded.get_entry_count()?, "leaf": seeded.get_leaf_id()?, "hasId": text(&seeded.get_session_id()?) != ""}));
+    r.insert("seeded".into(), json!({"count": seeded.get_entry_count()?, "leaf": seeded.get_leaf_id()?, "hasId": !text(&seeded.get_session_id()?).is_empty()}));
 
     let fork_dir = Path::new(other_dir)
         .join("sessions")

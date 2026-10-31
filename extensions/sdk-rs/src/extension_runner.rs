@@ -22,6 +22,12 @@ pub type Fn0<R> = Arc<dyn Fn() -> Result<R, String> + Send + Sync>;
 pub type Fn1<A, R> = Arc<dyn Fn(A) -> Result<R, String> + Send + Sync>;
 /// A bound function that takes two arguments.
 pub type Fn2<A, B, R> = Arc<dyn Fn(A, B) -> Result<R, String> + Send + Sync>;
+type CompactFn = Arc<dyn Fn(CompactOptions) -> Result<(), String> + Send + Sync>;
+type ExecuteToolFn =
+    Arc<dyn Fn(String, String, Value, ExecuteToolOptions) -> Result<Value, String> + Send + Sync>;
+type SelectFn = Fn2<(String, Vec<String>), Option<Value>, Option<String>>;
+type InputFn = Fn2<(String, Option<String>), Option<Value>, Option<String>>;
+type SetWidgetFn = Fn2<(String, Vec<String>), Option<Value>, ()>;
 
 /// `ExtensionActions` of Pi's `bindCore`: the functions the extensions' `pi.sendMessage` and the rest call. `None` is Pi's undefined: the function is not bound, and the runtime's own default applies. A function that returns `Err` is Pi's thrown error. Messages, options, models and tool lists are Pi's JSON values.
 #[derive(Default, Clone)]
@@ -56,17 +62,11 @@ pub struct ExtensionContextActions {
     pub shutdown: Option<Fn0<()>>,
     pub get_context_usage: Option<Fn0<Value>>,
     /// Receives the options of the extension that asked (its callbacks when this process asked through a context).
-    pub compact: Option<Arc<dyn Fn(CompactOptions) -> Result<(), String> + Send + Sync>>,
+    pub compact: Option<CompactFn>,
     pub get_system_prompt: Option<Fn0<String>>,
     pub get_system_prompt_options: Option<Fn0<Value>>,
     /// Runs the nested call: the arguments are the calling tool call's id, the tool name, its arguments and the options; the result is the outcome `{toolCall, result, isError}`. A call an extension of the runner makes passes no signal or update function (they run in that extension's process).
-    pub execute_tool: Option<
-        Arc<
-            dyn Fn(String, String, Value, ExecuteToolOptions) -> Result<Value, String>
-                + Send
-                + Sync,
-        >,
-    >,
+    pub execute_tool: Option<ExecuteToolFn>,
     pub get_callable_tools: Option<Fn0<Value>>,
 }
 
@@ -127,15 +127,15 @@ pub struct ExtensionCommandContextActions {
 /// Pi's `ExtensionUIContext` as the functions of this process that `set_ui_context` installs. `None` is Pi's no-op one. The members that take or return TUI components (setFooter, setHeader, custom, setEditorComponent, addAutocompleteProvider, theme and the theme functions, onTerminalInput) hold objects of the process that draws them and are not served.
 #[derive(Default, Clone)]
 pub struct ExtensionUIContext {
-    pub select: Option<Fn2<(String, Vec<String>), Option<Value>, Option<String>>>,
+    pub select: Option<SelectFn>,
     pub confirm: Option<Fn2<(String, String), Option<Value>, bool>>,
-    pub input: Option<Fn2<(String, Option<String>), Option<Value>, Option<String>>>,
+    pub input: Option<InputFn>,
     pub notify: Option<Fn2<String, Option<String>, ()>>,
     pub set_status: Option<Fn2<String, Option<String>, ()>>,
     pub set_working_message: Option<Fn1<Option<String>, ()>>,
     pub set_working_visible: Option<Fn1<bool, ()>>,
     pub set_hidden_thinking_label: Option<Fn1<Option<String>, ()>>,
-    pub set_widget: Option<Fn2<(String, Vec<String>), Option<Value>, ()>>,
+    pub set_widget: Option<SetWidgetFn>,
     pub set_title: Option<Fn1<String, ()>>,
     pub paste_to_editor: Option<Fn1<String, ()>>,
     pub set_editor_text: Option<Fn1<String, ()>>,

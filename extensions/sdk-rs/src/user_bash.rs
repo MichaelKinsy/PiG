@@ -2,17 +2,17 @@ use serde_json::{Value, json};
 
 // Native null represents the number-or-undefined exit code. Preserve its property presence before JSON encoding.
 pub(crate) fn user_bash_event_result(mut value: Option<Value>) -> Option<Value> {
-    if let Some(Value::Object(object)) = value.as_mut() {
-        if let Some(Value::Object(result)) = object.get_mut("result") {
-            let undefined = result.get("exitCode").is_some_and(Value::is_null);
-            if undefined {
-                result.remove("exitCode");
-            }
-            if result.get("fullOutputPath").is_some_and(Value::is_null) {
-                result.remove("fullOutputPath");
-            }
-            object.insert("_pigUserBashExitCodeUndefined".into(), json!(undefined));
+    if let Some(Value::Object(object)) = value.as_mut()
+        && let Some(Value::Object(result)) = object.get_mut("result")
+    {
+        let undefined = result.get("exitCode").is_some_and(Value::is_null);
+        if undefined {
+            result.remove("exitCode");
         }
+        if result.get("fullOutputPath").is_some_and(Value::is_null) {
+            result.remove("fullOutputPath");
+        }
+        object.insert("_pigUserBashExitCodeUndefined".into(), json!(undefined));
     }
     value
 }
@@ -22,10 +22,12 @@ use std::sync::{Arc, Mutex};
 
 use crate::provider::ProviderSignal;
 
+type OnData = Arc<dyn Fn(&[u8]) + Send + Sync>;
+
 /// What `BashOperations::exec` receives (core/tools/bash.ts): `on_data` gets the command's output as it arrives, in order; `signal` is set when the host aborts the command; `timeout` is seconds; `env`, when set, replaces the inherited environment.
 #[derive(Clone)]
 pub struct BashExecOptions {
-    pub on_data: Arc<dyn Fn(&[u8]) + Send + Sync>,
+    pub on_data: OnData,
     pub signal: ProviderSignal,
     pub timeout: Option<f64>,
     pub env: Option<HashMap<String, String>>,
@@ -87,7 +89,7 @@ pub(crate) fn run_user_bash_exec(
     let args = req.args.clone().unwrap_or(Value::Null);
     let finished = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let live = finished.clone();
-    let on_data: Arc<dyn Fn(&[u8]) + Send + Sync> = Arc::new(move |data| {
+    let on_data: OnData = Arc::new(move |data| {
         if !live.load(std::sync::atomic::Ordering::SeqCst) {
             notify(json!({ "data": base64(data) }));
         }
@@ -144,7 +146,7 @@ pub(crate) fn base64(data: &[u8]) -> String {
 pub(crate) fn base64_decode(text: &str) -> Option<Vec<u8>> {
     let mut out = Vec::with_capacity(text.len() / 4 * 3);
     let bytes = text.as_bytes();
-    if bytes.len() % 4 != 0 {
+    if !bytes.len().is_multiple_of(4) {
         return None;
     }
     for quad in bytes.chunks(4) {

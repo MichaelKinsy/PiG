@@ -444,14 +444,13 @@ impl TransportShim {
 #[derive(Default)]
 struct CredentialState {
     stores: HashMap<String, Arc<dyn McpOAuthServerStore>>,
-    locks: HashMap<
-        String,
-        (
-            mpsc::Sender<Option<String>>,
-            mpsc::Receiver<Result<(), String>>,
-        ),
-    >,
+    locks: HashMap<String, LockChannel>,
 }
+
+type LockChannel = (
+    mpsc::Sender<Option<String>>,
+    mpsc::Receiver<Result<(), String>>,
+);
 
 /// Serves the caller's credential store: the host's ops arrive as one callback.
 struct CredentialsShim {

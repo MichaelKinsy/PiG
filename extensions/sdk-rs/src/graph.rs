@@ -34,12 +34,7 @@ impl GraphObject {
             .get("handle")
             .and_then(Value::as_str)
             .filter(|handle| !handle.is_empty())
-            .ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::Other,
-                    "host returned no session graph handle",
-                )
-            })?
+            .ok_or_else(|| io::Error::other("host returned no session graph handle"))?
             .to_string();
         Ok(GraphObject {
             context: context.clone(),

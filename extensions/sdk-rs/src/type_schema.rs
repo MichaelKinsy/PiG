@@ -10,13 +10,16 @@ use serde_json::{Map, Number, Value, json};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+type RefineCheck = Arc<dyn Fn(&Value) -> Result<bool, String> + Send + Sync>;
+pub(crate) type RefineError = dyn Fn(&Value) -> Result<String, String> + Send + Sync;
+
 /// One entry of a schema's hidden `~refine` list (TypeBox's `{check, error}`): `check` decides whether a value passes and `error` words the failure (`None` is TypeBox's
 /// "Refine Error"). Pi runs them while it validates a tool call's arguments; an extension tool's refinements run in this process when the host asks for them. An `Err` is what a
 /// thrown JavaScript error is: it ends the validation and the tool call fails with its message.
 #[derive(Clone)]
 pub struct Refinement {
-    pub check: Arc<dyn Fn(&Value) -> Result<bool, String> + Send + Sync>,
-    pub error: Option<Arc<dyn Fn(&Value) -> Result<String, String> + Send + Sync>>,
+    pub check: RefineCheck,
+    pub error: Option<Arc<RefineError>>,
 }
 
 impl std::fmt::Debug for Refinement {
@@ -910,14 +913,12 @@ impl Type {
     pub fn refine(
         schema: impl Into<TSchema>,
         check: impl Fn(&Value) -> Result<bool, String> + Send + Sync + 'static,
-        error: Option<Box<dyn Fn(&Value) -> Result<String, String> + Send + Sync>>,
+        error: Option<Box<RefineError>>,
     ) -> TSchema {
         let mut schema: TSchema = schema.into();
         schema.refine.push(Refinement {
             check: Arc::new(check),
-            error: error.map(|error| {
-                Arc::from(error) as Arc<dyn Fn(&Value) -> Result<String, String> + Send + Sync>
-            }),
+            error: error.map(|error| Arc::from(error) as Arc<RefineError>),
         });
         schema
     }
@@ -926,7 +927,7 @@ impl Type {
     pub fn refine_value(
         value: impl Into<TValue>,
         check: impl Fn(&Value) -> Result<bool, String> + Send + Sync + 'static,
-        error: Option<Box<dyn Fn(&Value) -> Result<String, String> + Send + Sync>>,
+        error: Option<Box<RefineError>>,
     ) -> Result<TSchema, String> {
         let mut schema = match value.into() {
             TValue::Schema(schema) => schema,
@@ -934,9 +935,7 @@ impl Type {
         };
         schema.refine.push(Refinement {
             check: Arc::new(check),
-            error: error.map(|error| {
-                Arc::from(error) as Arc<dyn Fn(&Value) -> Result<String, String> + Send + Sync>
-            }),
+            error: error.map(|error| Arc::from(error) as Arc<RefineError>),
         });
         Ok(schema)
     }

@@ -1813,10 +1813,10 @@ impl ViewLedger {
                 })
             })
             .collect();
-        if !unsent.is_empty() {
-            if let Value::Object(body) = &mut body {
-                body.insert("images".into(), Value::Array(unsent));
-            }
+        if !unsent.is_empty()
+            && let Value::Object(body) = &mut body
+        {
+            body.insert("images".into(), Value::Array(unsent));
         }
         body
     }
@@ -1833,10 +1833,14 @@ impl ViewLedger {
 /// A renderer's output: lines, or an authoritative view the host renders.
 pub(crate) enum Rendered {
     Lines(Vec<String>),
-    View(View),
+    View(std::boxed::Box<View>),
 }
 
 impl Rendered {
+    pub(crate) fn view(view: View) -> Self {
+        Rendered::View(std::boxed::Box::new(view))
+    }
+
     /// The wire `RenderResult`: `{lines}`, or `{view}` with lines absent. A
     /// view that cannot be encoded is the renderer's error.
     pub(crate) fn into_result(self, ledger: &ViewLedger) -> Result<Value, String> {

@@ -224,7 +224,7 @@ fn is_system(message: &Value) -> bool {
     message.get("role").and_then(Value::as_str) == Some("system")
 }
 
-fn list<'a>(value: Option<&'a Value>) -> &'a [Value] {
+fn list(value: Option<&Value>) -> &[Value] {
     value.and_then(Value::as_array).map_or(&[], Vec::as_slice)
 }
 
@@ -679,9 +679,7 @@ mod js_regex {
                         (rest.starts_with(b"?<!"), rest.starts_with(b"?!"));
                     if not_behind {
                         self.at += 3;
-                    } else if not_ahead {
-                        self.at += 2;
-                    } else if rest.starts_with(b"?:") {
+                    } else if not_ahead || rest.starts_with(b"?:") {
                         self.at += 2;
                     }
                     let inner = self.alternation();

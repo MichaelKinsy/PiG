@@ -87,10 +87,10 @@ fn tui_theme_probe(args: &Value) -> ToolResult {
             }})
         }
         "highlight" => {
-            if let Some(name) = args["theme"].as_str().filter(|name| !name.is_empty()) {
-                if let Err(error) = pig_sdk::init_theme(Some(name)) {
-                    return ToolResult::Error(error.to_string());
-                }
+            if let Some(name) = args["theme"].as_str().filter(|name| !name.is_empty())
+                && let Err(error) = pig_sdk::init_theme(Some(name))
+            {
+                return ToolResult::Error(error.to_string());
             }
             json!({"lines": pig_sdk::highlight_code(args["code"].as_str().unwrap_or_default(), args["lang"].as_str())})
         }

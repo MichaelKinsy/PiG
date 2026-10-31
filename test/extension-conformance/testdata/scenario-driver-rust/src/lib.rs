@@ -352,7 +352,7 @@ fn register_command(extension: &mut Extension, command: &Value) {
             "error" => CommandResult::Error("command boom".to_string()),
             "crash" => panic!("command crash"),
             "ping" => write(path, "pong"),
-            "echo" => write(".echo-args", &path),
+            "echo" => write(".echo-args", path),
             "footer-data" => footer_data(ctx, path),
             "late-register" => match late_register(ctx, &arg) {
                 Ok(()) => write(path, "registered"),

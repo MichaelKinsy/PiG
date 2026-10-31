@@ -305,7 +305,7 @@ fn a_view_deeper_than_the_host_bound_is_an_error() {
         deeper.encode(false).unwrap_err(),
         "kit: view deeper than 64 nodes"
     );
-    let rendered = Rendered::View(deeper).into_result(&ViewLedger::default());
+    let rendered = Rendered::view(deeper).into_result(&ViewLedger::default());
     assert_eq!(rendered.unwrap_err(), "kit: view deeper than 64 nodes");
 }
 
@@ -473,7 +473,7 @@ fn rendered_results_carry_lines_or_a_view_never_both() {
             .unwrap(),
         json!({"lines": ["a"]})
     );
-    let view = Rendered::View(View::new(Spacer::new(1)))
+    let view = Rendered::view(View::new(Spacer::new(1)))
         .into_result(&ledger)
         .unwrap();
     assert_eq!(

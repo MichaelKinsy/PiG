@@ -6,10 +6,10 @@ use std::path::PathBuf;
 
 /// The part of Pi's `normalizePath` (`utils/paths.ts`) that `read_stored_credential`'s path can use: a leading `~` is the home directory and a `file://` URL is its path.
 fn normalize_path(path: &str) -> PathBuf {
-    if path == "~" || path.starts_with("~/") {
-        if let Some(home) = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }) {
-            return PathBuf::from(home).join(path[1..].trim_start_matches('/'));
-        }
+    if (path == "~" || path.starts_with("~/"))
+        && let Some(home) = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
+    {
+        return PathBuf::from(home).join(path[1..].trim_start_matches('/'));
     }
     PathBuf::from(path.strip_prefix("file://").unwrap_or(path))
 }

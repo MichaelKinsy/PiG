@@ -48,8 +48,7 @@ fn exact_i64(value: f64) -> Option<i64> {
 
 fn expires_projection(value: f64) -> i64 {
     if value.is_finite()
-        && value >= -9_223_372_036_854_775_808.0
-        && value < 9_223_372_036_854_775_808.0
+        && (-9_223_372_036_854_775_808.0..9_223_372_036_854_775_808.0).contains(&value)
     {
         value.trunc() as i64
     } else {

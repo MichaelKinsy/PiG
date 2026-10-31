@@ -424,6 +424,30 @@ impl UiState {
     }
 }
 
+/// chalk's stringEncaseCRLFWithFirstIndex: `prefix` before and `postfix` after every `\n`, a preceding `\r` staying with it.
+fn encase_line_breaks(text: &str, prefix: &str, postfix: &str) -> String {
+    let mut out = String::with_capacity(
+        text.len() + text.matches('\n').count() * (prefix.len() + postfix.len()),
+    );
+    let mut end = 0;
+    while let Some(offset) = text[end..].find('\n') {
+        let index = end + offset;
+        if index > 0 && text.as_bytes()[index - 1] == b'\r' {
+            out.push_str(&text[end..index - 1]);
+            out.push_str(prefix);
+            out.push_str("\r\n");
+        } else {
+            out.push_str(&text[end..index]);
+            out.push_str(prefix);
+            out.push('\n');
+        }
+        out.push_str(postfix);
+        end = index + 1;
+    }
+    out.push_str(&text[end..]);
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -705,28 +729,4 @@ mod tests {
             "\x1b[38;5;2mx\x1b[39m"
         );
     }
-}
-
-/// chalk's stringEncaseCRLFWithFirstIndex: `prefix` before and `postfix` after every `\n`, a preceding `\r` staying with it.
-fn encase_line_breaks(text: &str, prefix: &str, postfix: &str) -> String {
-    let mut out = String::with_capacity(
-        text.len() + text.matches('\n').count() * (prefix.len() + postfix.len()),
-    );
-    let mut end = 0;
-    while let Some(offset) = text[end..].find('\n') {
-        let index = end + offset;
-        if index > 0 && text.as_bytes()[index - 1] == b'\r' {
-            out.push_str(&text[end..index - 1]);
-            out.push_str(prefix);
-            out.push_str("\r\n");
-        } else {
-            out.push_str(&text[end..index]);
-            out.push_str(prefix);
-            out.push('\n');
-        }
-        out.push_str(postfix);
-        end = index + 1;
-    }
-    out.push_str(&text[end..]);
-    out
 }

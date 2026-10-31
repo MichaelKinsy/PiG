@@ -343,10 +343,7 @@ pub struct PromptOptions {
 fn call(conn: &Connection, method: &str, args: Value) -> io::Result<Option<Value>> {
     let result = conn.call(method, Some(args))?;
     if let Some(err) = result.error {
-        return Err(io::Error::new(
-            io::ErrorKind::Other,
-            crate::context::host_error_message(err),
-        ));
+        return Err(io::Error::other(crate::context::host_error_message(err)));
     }
     Ok(result.result)
 }
@@ -561,12 +558,7 @@ impl AgentSession {
         let handle = reply["handle"]
             .as_str()
             .filter(|handle| !handle.is_empty())
-            .ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::Other,
-                    "host returned no session graph handle",
-                )
-            })?;
+            .ok_or_else(|| io::Error::other("host returned no session graph handle"))?;
         Ok(crate::SessionManager::adopt(
             &self.context,
             handle.to_string(),

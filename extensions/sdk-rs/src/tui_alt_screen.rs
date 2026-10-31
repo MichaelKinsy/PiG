@@ -26,6 +26,11 @@ use std::io;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, Weak};
 
+type CopySelectionFn = Arc<dyn Fn(&str) -> CopySelectionOutcome + Send + Sync>;
+type OpenUrlFn = Arc<dyn Fn(&str) + Send + Sync>;
+type StyleFn = Arc<dyn Fn(&str) -> String + Send + Sync>;
+type NavigationStyleFn = Arc<dyn Fn(&str, bool) -> String + Send + Sync>;
+
 /// What a terminal calls with the data of one input event; it returns after the host handled the event.
 pub type TerminalInputFn = Arc<dyn Fn(&str) -> io::Result<()> + Send + Sync>;
 /// What a terminal calls when its dimensions changed; it returns after the host handled the resize.
@@ -286,12 +291,12 @@ pub struct TuiAltScreenOptions {
     /// Copies a completed text selection; the default is true.
     pub copy_on_select: Option<bool>,
     /// Writes selected text to the clipboard; the host's OSC 52 copy runs when absent.
-    pub copy_selection: Option<Arc<dyn Fn(&str) -> CopySelectionOutcome + Send + Sync>>,
+    pub copy_selection: Option<CopySelectionFn>,
     /// Activates an OSC 8 hyperlink on primary-button click.
-    pub open_url: Option<Arc<dyn Fn(&str) + Send + Sync>>,
-    pub search_match_style: Option<Arc<dyn Fn(&str) -> String + Send + Sync>>,
-    pub search_current_match_style: Option<Arc<dyn Fn(&str) -> String + Send + Sync>>,
-    pub search_navigation_button_style: Option<Arc<dyn Fn(&str, bool) -> String + Send + Sync>>,
+    pub open_url: Option<OpenUrlFn>,
+    pub search_match_style: Option<StyleFn>,
+    pub search_current_match_style: Option<StyleFn>,
+    pub search_navigation_button_style: Option<NavigationStyleFn>,
     pub scroll_to_end_indicator: Option<Arc<dyn Fn() -> String + Send + Sync>>,
     pub on_right_click_paste: Option<Arc<dyn Fn() + Send + Sync>>,
 }
@@ -1139,13 +1144,13 @@ impl TuiAltScreen {
                 Some(id)
             }
         };
-        if let Some(id) = added {
-            if let Err(err) = inner.call("addInputListener", json!({"listenerId": id})) {
-                let mut listeners = inner.listeners.lock().unwrap();
-                listeners.by_id.remove(&id);
-                listeners.by_ptr.remove(&pointer);
-                return Err(err);
-            }
+        if let Some(id) = added
+            && let Err(err) = inner.call("addInputListener", json!({"listenerId": id}))
+        {
+            let mut listeners = inner.listeners.lock().unwrap();
+            listeners.by_id.remove(&id);
+            listeners.by_ptr.remove(&pointer);
+            return Err(err);
         }
         let weak = Arc::downgrade(inner);
         Ok(Box::new(move || match weak.upgrade() {

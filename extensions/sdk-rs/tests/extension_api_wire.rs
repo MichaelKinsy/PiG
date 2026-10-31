@@ -685,7 +685,7 @@ fn reaches_tools_request_runs_the_tools_hook() {
                 ToolResult::text("x")
             });
         added.reaches_tools = Some(Box::new(|_| ToolReach::Words(vec!["late".into()])));
-        ctx.register_tool(added);
+        ctx.register_tool(added).expect("register the late tool");
         ToolResult::text("registered")
     });
     let mut host = Host::start(ext, json!({}));

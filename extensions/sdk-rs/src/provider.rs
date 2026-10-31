@@ -34,6 +34,14 @@ pub type ProviderFilterFn = Arc<
 >;
 type Callback = Arc<dyn Fn(Value) -> ProviderResult<Value> + Send + Sync>;
 type Callbacks = HashMap<String, Callback>;
+type APIKeyCheckFn =
+    Arc<dyn Fn(APIKeyAuthInput) -> ProviderResult<Option<AuthCheck>> + Send + Sync>;
+type ProviderPayloadHook = Arc<dyn Fn(Value, ProviderModel) -> ProviderResult<Value> + Send + Sync>;
+type ProviderEventHook = Arc<dyn Fn(Value, ProviderModel) -> ProviderResult<()> + Send + Sync>;
+type CancelDeferredFn =
+    Arc<dyn Fn(ProviderModel, Value, ProviderStreamOptions) -> ProviderResult<()> + Send + Sync>;
+type UpdateFn = Arc<dyn Fn() -> ProviderResult<()> + Send + Sync>;
+type MethodCallback = Arc<dyn Fn(&str, Value) -> ProviderResult<Value> + Send + Sync>;
 
 #[derive(Default)]
 struct SignalState {
@@ -174,8 +182,7 @@ pub struct LoginOptions {
 }
 pub struct APIKeyAuth {
     pub name: String,
-    pub check:
-        Option<Arc<dyn Fn(APIKeyAuthInput) -> ProviderResult<Option<AuthCheck>> + Send + Sync>>,
+    pub check: Option<APIKeyCheckFn>,
     pub resolve: Arc<dyn Fn(APIKeyAuthInput) -> ProviderResult<Option<AuthResult>> + Send + Sync>,
     pub login: Option<Arc<dyn Fn(AuthInteraction) -> ProviderResult<Value> + Send + Sync>>,
 }
@@ -196,12 +203,10 @@ pub struct ProviderAuth {
 pub struct ProviderStreamOptions {
     pub signal: ProviderSignal,
     pub values: Value,
-    pub on_payload:
-        Option<Arc<dyn Fn(Value, ProviderModel) -> ProviderResult<Value> + Send + Sync>>,
-    pub on_response: Option<Arc<dyn Fn(Value, ProviderModel) -> ProviderResult<()> + Send + Sync>>,
+    pub on_payload: Option<ProviderPayloadHook>,
+    pub on_response: Option<ProviderEventHook>,
     /// The caller's onProviderStreamEvent (upstream types.ts StreamOptions.onProviderStreamEvent). Pi's Models strips transformHeaders before Provider.stream (model-runtime.ts:671), so the options carry no transformHeaders.
-    pub on_provider_stream_event:
-        Option<Arc<dyn Fn(Value, ProviderModel) -> ProviderResult<()> + Send + Sync>>,
+    pub on_provider_stream_event: Option<ProviderEventHook>,
 }
 /// What an image or classifier implementation receives besides the model and the request: the resolved request options, and the request's cancellation.
 #[derive(Clone, Default)]
@@ -388,11 +393,7 @@ pub struct Provider {
     pub stream: ProviderStreamFn,
     pub stream_simple: ProviderStreamFn,
     pub fetch_deferred: Option<ProviderStreamFn>,
-    pub cancel_deferred: Option<
-        Arc<
-            dyn Fn(ProviderModel, Value, ProviderStreamOptions) -> ProviderResult<()> + Send + Sync,
-        >,
-    >,
+    pub cancel_deferred: Option<CancelDeferredFn>,
     /// The provider's image generation and classification, declared like its other methods.
     pub generate_images: Option<ProviderOperationFn>,
     pub classify: Option<ProviderOperationFn>,
@@ -403,7 +404,7 @@ pub(crate) struct ProviderObjects {
     native: Mutex<HashMap<String, Arc<Provider>>>,
     proxies: Mutex<HashMap<String, (String, Weak<Provider>)>>,
     callbacks: Mutex<HashMap<String, Callbacks>>,
-    updates: Mutex<HashMap<String, Arc<dyn Fn() -> ProviderResult<()> + Send + Sync>>>,
+    updates: Mutex<HashMap<String, UpdateFn>>,
     pub(crate) streams: crate::context::ModelStreams,
     pub(crate) workers: Arc<RequestThreads>,
 }
@@ -542,7 +543,7 @@ impl ProviderObjects {
             .get(key)
             .cloned()
             .ok_or("Provider object is no longer registered")?;
-        let callback: Arc<dyn Fn(&str, Value) -> ProviderResult<Value> + Send + Sync> = {
+        let callback: MethodCallback = {
             let conn = conn.clone();
             let parent = id.to_owned();
             let key = key.to_owned();

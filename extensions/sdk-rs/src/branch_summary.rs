@@ -273,23 +273,20 @@ fn date_time(entry: &Value) -> Value {
 
 /// Pi's `extractFileOpsFromMessage`: the tool calls of an assistant message. Pi also reads the calls a codemode script made from a tool result, but `prepareBranchEntries` never passes one.
 fn extract_file_ops(message: &Value, file_ops: &mut FileOperations) {
-    match message.get("role").and_then(Value::as_str) {
-        Some("assistant") => {
-            for block in message
-                .get("content")
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
+    if let Some("assistant") = message.get("role").and_then(Value::as_str) {
+        for block in message
+            .get("content")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+        {
+            if block.get("type").and_then(Value::as_str) == Some("toolCall")
+                && block.get("arguments").is_some()
+                && block.get("name").is_some()
             {
-                if block.get("type").and_then(Value::as_str) == Some("toolCall")
-                    && block.get("arguments").is_some()
-                    && block.get("name").is_some()
-                {
-                    add_file_op(block.get("name"), block.get("arguments"), file_ops);
-                }
+                add_file_op(block.get("name"), block.get("arguments"), file_ops);
             }
         }
-        _ => {}
     }
 }
 

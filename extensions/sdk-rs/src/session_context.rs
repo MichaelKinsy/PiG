@@ -131,7 +131,7 @@ fn members(source: &Value, names: [(&str, &str); 2]) -> Value {
     Value::Object(out)
 }
 
-fn context_entries<'a>(path: Vec<&'a Value>) -> Vec<&'a Value> {
+fn context_entries(path: Vec<&Value>) -> Vec<&Value> {
     let Some(compaction) = path
         .iter()
         .rev()
@@ -244,10 +244,10 @@ pub fn build_session_context(
     let context = context_entries(path);
     let mut edits: HashMap<IdKey<'_>, &Value> = HashMap::new();
     for entry in &context {
-        if entry_type(entry) == Some("context_edit") {
-            if let Some(target) = entry.get("targetId").and_then(key) {
-                edits.insert(target, entry);
-            }
+        if entry_type(entry) == Some("context_edit")
+            && let Some(target) = entry.get("targetId").and_then(key)
+        {
+            edits.insert(target, entry);
         }
     }
     let mut messages = Vec::new();

@@ -19,6 +19,11 @@ use std::sync::{
 };
 use std::{thread, time::Duration};
 
+type RefineCheck = Box<dyn Fn(&Value) -> Result<bool, String> + Send + Sync>;
+type RefineMessage = Box<dyn Fn(&Value) -> Result<String, String> + Send + Sync>;
+type SeenRequest = (String, String, Option<String>, String);
+type ToolGuard = fn(&Value) -> bool;
+
 struct FocusedList {
     items: [&'static str; 3],
     selected: usize,
@@ -986,25 +991,21 @@ fn main() {
         use pig_sdk::Type;
         use std::sync::{Arc, Mutex};
         let log: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
-        let checked =
-            |tag: &'static str,
-             log: Arc<Mutex<Vec<String>>>,
-             check: Box<dyn Fn(&Value) -> Result<bool, String> + Send + Sync>| {
-                move |value: &Value| -> Result<bool, String> {
-                    log.lock().unwrap().push(format!("check:{tag}"));
-                    check(value)
-                }
-            };
-        let worded =
-            |tag: &'static str,
-             log: Arc<Mutex<Vec<String>>>,
-             message: Box<dyn Fn(&Value) -> String + Send + Sync>|
-             -> Option<Box<dyn Fn(&Value) -> Result<String, String> + Send + Sync>> {
-                Some(Box::new(move |value: &Value| {
-                    log.lock().unwrap().push(format!("error:{tag}"));
-                    Ok(message(value))
-                }))
-            };
+        let checked = |tag: &'static str, log: Arc<Mutex<Vec<String>>>, check: RefineCheck| {
+            move |value: &Value| -> Result<bool, String> {
+                log.lock().unwrap().push(format!("check:{tag}"));
+                check(value)
+            }
+        };
+        let worded = |tag: &'static str,
+                      log: Arc<Mutex<Vec<String>>>,
+                      message: Box<dyn Fn(&Value) -> String + Send + Sync>|
+         -> Option<RefineMessage> {
+            Some(Box::new(move |value: &Value| {
+                log.lock().unwrap().push(format!("error:{tag}"));
+                Ok(message(value))
+            }))
+        };
         let equals = |tag: &'static str,
                       message_tag: &'static str,
                       want: &'static str,
@@ -1379,7 +1380,7 @@ fn main() {
     );
     // truncate_probe runs one SDK truncation helper on the JSON case in its argument and reports the result in Pi's shape (TestConformance_TruncationHelpersAgreeAcrossSDKs).
     ext.command("truncate_probe", "Run a truncation helper on a JSON case and report the result", |ctx, args| {
-        let case: Value = match serde_json::from_str(&args) {
+        let case: Value = match serde_json::from_str(args) {
             Ok(case) => case,
             Err(err) => return CommandResult::Error(err.to_string()),
         };
@@ -1408,7 +1409,7 @@ fn main() {
         "builtin_probe",
         "Delegate to a built-in tool through the SDK and report what it returned",
         |ctx, args| {
-            let case: Value = match serde_json::from_str(&args) {
+            let case: Value = match serde_json::from_str(args) {
                 Ok(case) => case,
                 Err(err) => return CommandResult::Error(err.to_string()),
             };
@@ -1423,7 +1424,7 @@ fn main() {
     );
     // message_probe reads the event payload in its JSON argument with the SDK's message_role and message_text helpers (TestConformance_MessageHelpersAgreeAcrossSDKs).
     ext.command("message_probe", "Report message_role and message_text of a JSON event payload", |ctx, args| {
-        let data: Value = match serde_json::from_str(&args) {
+        let data: Value = match serde_json::from_str(args) {
             Ok(data) => data,
             Err(err) => return CommandResult::Error(err.to_string()),
         };
@@ -1440,7 +1441,7 @@ fn main() {
         |ctx, args| {
             use std::collections::HashSet;
             use std::time::{Duration, Instant};
-            let case: Value = match serde_json::from_str(&args) {
+            let case: Value = match serde_json::from_str(args) {
                 Ok(case) => case,
                 Err(err) => return CommandResult::Error(err.to_string()),
             };
@@ -1560,7 +1561,7 @@ fn main() {
     ext.command(
         "host_helpers_probe",
         "Run the host-served pi helpers over the golden inputs",
-        |ctx, args| match host_helpers_probe(&ctx, &args) {
+        |ctx, args| match host_helpers_probe(ctx, args) {
             Ok(report) => {
                 ctx.notify(&format!("host_helpers:{report}:end"), "info");
                 CommandResult::Ok
@@ -1573,7 +1574,7 @@ fn main() {
     ext.command(
         "pi_ai_helpers_probe",
         "Run the golden pi-ai helper calls",
-        |ctx, args| match pi_ai_helpers_probe(&args) {
+        |ctx, args| match pi_ai_helpers_probe(args) {
             Ok(report) => {
                 ctx.notify(&format!("pi_ai_helpers:{report}:end"), "info");
                 CommandResult::Ok
@@ -2088,7 +2089,7 @@ fn main() {
                     ),
                     Err(err) => format!("{name}=error:{err}"),
                 };
-            let parts = vec![
+            let parts = [
                 cancelled("new", ctx.new_session(serde_json::json!({}))),
                 cancelled("fork", ctx.fork("entry", serde_json::json!({}))),
                 cancelled(
@@ -2872,7 +2873,7 @@ fn main() {
             let failures: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
             let recorded = failures.clone();
             let on_handle = move |handle: pig_sdk::OverlayHandle| {
-                let mut expect = |label: &str, ok: bool, detail: String| {
+                let expect = |label: &str, ok: bool, detail: String| {
                     if !ok {
                         recorded.lock().unwrap().push(format!("{label}: {detail}"));
                     }
@@ -2990,7 +2991,7 @@ fn main() {
         let registry = ctx.model_registry();
         let model = json!({"provider":"conformance","id":"declared","modelId":"declared","api":"openai-responses"});
         let request = json!({"systemPrompt":"fetch","messages":[{"role":"user","content":"hello","timestamp":1}]});
-        let seen: Arc<Mutex<Option<(String, String, Option<String>, String)>>> = Arc::new(Mutex::new(None));
+        let seen: Arc<Mutex<Option<SeenRequest>>> = Arc::new(Mutex::new(None));
         let recorded = seen.clone();
         let callbacks = pig_sdk::ModelStreamCallbacks::new().fetch(move |call| {
             let host = call.headers.iter().find(|(name, _)| name == "X-Host").map(|(_, value)| value.clone());
@@ -3313,7 +3314,7 @@ fn main() {
         let content = if args.is_empty() {
             serde_json::Value::String("hello-user".into())
         } else {
-            match serde_json::from_str::<serde_json::Value>(&args) {
+            match serde_json::from_str::<serde_json::Value>(args) {
                 Ok(value) => value,
                 Err(err) => return CommandResult::Error(err.to_string()),
             }
@@ -3706,7 +3707,7 @@ fn main() {
         move |_ctx, _args| {
             let subscription =
                 tool_result_guards_subscriber.on_event("tool_result", move |ctx, data| {
-                    let guards: [(&str, fn(&Value) -> bool); 8] = [
+                    let guards: [(&str, ToolGuard); 8] = [
                         ("bash", pig_sdk::is_bash_tool_result),
                         ("edit", pig_sdk::is_edit_tool_result),
                         ("find", pig_sdk::is_find_tool_result),
@@ -4982,7 +4983,7 @@ fn main() {
         }
         Some(json!({"action": "stop"}))
     });
-    ext.on_event("agent_before_settle", |ctx, mut data| {
+    ext.on_event("agent_before_settle", |ctx, data| {
         let outcome = data.get("outcome").and_then(Value::as_str).unwrap_or("");
         let entries = data.get("entries").and_then(Value::as_array).map_or(0, Vec::len);
         let continuation = data.get("continue").and_then(Value::as_bool).unwrap_or(false);
@@ -5002,7 +5003,7 @@ fn main() {
         data["entries"].as_array_mut().unwrap().push(json!({"type": "custom", "customType": "kept"}));
         None
     });
-    ext.on_event("agent_before_settle", |_, mut data| {
+    ext.on_event("agent_before_settle", |_, data| {
         data["entries"]
             .as_array_mut()
             .unwrap()
@@ -6605,8 +6606,10 @@ fn tui_alt_screen_probe(ctx: &pig_sdk::Context) -> std::io::Result<String> {
     f.push(format!("children={}", screen.children().len()));
     f.push(format!(
         "terminal={}",
-        Arc::as_ptr(&screen.terminal()) as *const () as usize
-            == Arc::as_ptr(&probe) as *const () as usize
+        std::ptr::eq(
+            Arc::as_ptr(&screen.terminal()) as *const (),
+            Arc::as_ptr(&probe) as *const ()
+        )
     ));
     if !screen.viewport_tui() {
         return Err(std::io::Error::other("TuiAltScreen is not a viewport TUI"));
@@ -6720,7 +6723,7 @@ fn tui_alt_screen_probe(ctx: &pig_sdk::Context) -> std::io::Result<String> {
         .ok_or_else(|| std::io::Error::other("the terminal was not started"))?;
     on_input("k")?;
     let listener: InputListener = Arc::new(|data: &str| {
-        (data == "c").then(|| InputListenerResult {
+        (data == "c").then_some(InputListenerResult {
             consume: true,
             data: None,
         })
@@ -6729,7 +6732,7 @@ fn tui_alt_screen_probe(ctx: &pig_sdk::Context) -> std::io::Result<String> {
     on_input("c")?;
     remove()?;
     on_input("c")?;
-    screen.add_input_listener(listener.clone())?;
+    let _ = screen.add_input_listener(listener.clone())?;
     screen.remove_input_listener(&listener)?;
     f.push(format!("inputs={}", foc.inputs.lock().unwrap().join(",")));
     let debugs = Arc::new(AtomicUsize::new(0));
@@ -7209,49 +7212,49 @@ struct ReentryDoc {
 
 impl pig_sdk::Component for ReentryDoc {
     fn render(&self, _width: u32) -> Vec<String> {
-        if self.armed.swap(false, Ordering::SeqCst) {
-            if let Some(screen) = self.screen.get().and_then(std::sync::Weak::upgrade) {
-                fn verdict<T>(result: std::io::Result<T>) -> &'static str {
-                    match result {
-                        Ok(_) => "ok",
-                        Err(err)
-                            if err
-                                .to_string()
-                                .contains("cannot run while a component renders") =>
-                        {
-                            "err"
-                        }
-                        Err(_) => "other",
+        if self.armed.swap(false, Ordering::SeqCst)
+            && let Some(screen) = self.screen.get().and_then(std::sync::Weak::upgrade)
+        {
+            fn verdict<T>(result: std::io::Result<T>) -> &'static str {
+                match result {
+                    Ok(_) => "ok",
+                    Err(err)
+                        if err
+                            .to_string()
+                            .contains("cannot run while a component renders") =>
+                    {
+                        "err"
                     }
+                    Err(_) => "other",
                 }
-                let mut facts = vec![
-                    format!("render={}", verdict(screen.render(10))),
-                    format!("renderNow={}", verdict(screen.render_now(false))),
-                    format!("start={}", verdict(screen.start())),
-                    format!("stop={}", verdict(screen.stop(Default::default()))),
-                    format!(
-                        "copy={}",
-                        verdict(screen.copy_active_selection_to_clipboard())
-                    ),
-                    format!(
-                        "colors={}",
-                        verdict(screen.query_terminal_colors(
-                            pig_sdk::QueryTerminalColorsOptions {
-                                timeout_ms: 20.0,
-                                on_late_reply: None
-                            }
-                        ))
-                    ),
-                ];
-                let after = screen
-                    .set_show_hardware_cursor(true)
-                    .and_then(|()| screen.get_show_hardware_cursor());
-                facts.push(format!(
-                    "after={}",
-                    after.map_or_else(|err| format!("error: {err}"), |value| value.to_string())
-                ));
-                *self.facts.lock().unwrap() = facts;
             }
+            let mut facts = vec![
+                format!("render={}", verdict(screen.render(10))),
+                format!("renderNow={}", verdict(screen.render_now(false))),
+                format!("start={}", verdict(screen.start())),
+                format!("stop={}", verdict(screen.stop(Default::default()))),
+                format!(
+                    "copy={}",
+                    verdict(screen.copy_active_selection_to_clipboard())
+                ),
+                format!(
+                    "colors={}",
+                    verdict(
+                        screen.query_terminal_colors(pig_sdk::QueryTerminalColorsOptions {
+                            timeout_ms: 20.0,
+                            on_late_reply: None
+                        })
+                    )
+                ),
+            ];
+            let after = screen
+                .set_show_hardware_cursor(true)
+                .and_then(|()| screen.get_show_hardware_cursor());
+            facts.push(format!(
+                "after={}",
+                after.map_or_else(|err| format!("error: {err}"), |value| value.to_string())
+            ));
+            *self.facts.lock().unwrap() = facts;
         }
         vec![
             "line 1".to_string(),

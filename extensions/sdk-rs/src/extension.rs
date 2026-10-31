@@ -557,6 +557,13 @@ impl FlagOptions {
 /// ```
 pub type Factory = fn() -> Extension;
 
+/// The start-order gates a request waits on before its handler runs.
+#[derive(Clone, Copy)]
+struct RequestStarts<'a> {
+    tool: Option<&'a crate::tool_start_order::ToolStart>,
+    request: Option<&'a crate::request_start_order::RequestStart>,
+}
+
 #[derive(Clone)]
 struct RequestCancel {
     signal: crate::ProviderSignal,
@@ -1520,7 +1527,7 @@ impl Extension {
         self.renderer_fns.insert(
             ty,
             Box::new(move |ctx, message, options, width| {
-                handler(ctx, message, options, width).map(Rendered::View)
+                handler(ctx, message, options, width).map(Rendered::view)
             }),
         );
     }
@@ -1563,7 +1570,7 @@ impl Extension {
         self.entry_renderer_fns.insert(
             ty,
             Box::new(move |ctx, entry, options, width| {
-                handler(ctx, entry, options, width).map(Rendered::View)
+                handler(ctx, entry, options, width).map(Rendered::view)
             }),
         );
     }
@@ -1821,10 +1828,10 @@ impl Extension {
         let shared_identity = Arc::new(Mutex::new(crate::context::SessionIdentity::default()));
         let shared_session = Arc::new(Mutex::new(crate::context::SessionMirror::default()));
         // Initialize session mirror from the ready payload.
-        if let Some(ref state) = ready.state {
-            if let Some(session) = state.get("session") {
-                let _ = shared_session.lock().unwrap().apply_update(session);
-            }
+        if let Some(ref state) = ready.state
+            && let Some(session) = state.get("session")
+        {
+            let _ = shared_session.lock().unwrap().apply_update(session);
         }
         let host_subs = Arc::new(crate::host_subscriptions::HostSubscriptions::new(
             self.provider_objects.workers.clone(),
@@ -2033,8 +2040,10 @@ impl Extension {
                                         &id,
                                         &mut req,
                                         cancel,
-                                        start.as_deref(),
-                                        request_start.as_deref(),
+                                        RequestStarts {
+                                            tool: start.as_deref(),
+                                            request: request_start.as_deref(),
+                                        },
                                     )
                                 }));
                                 if let Err(payload) = handled {
@@ -2183,34 +2192,32 @@ impl Extension {
                                 }
                             }
                             "state_update" => {
-                                if let Some(args) = &notify.args {
-                                    if let Some(state) =
+                                if let Some(args) = &notify.args
+                                    && let Some(state) =
                                         args.get("state").and_then(|s| s.as_object())
-                                    {
-                                        let change =
-                                            base_ctx.shared_ui.lock().unwrap().apply_state(state);
-                                        base_ctx.host_subs.publish(change);
-                                        base_ctx.shared_identity.lock().unwrap().apply_state(state);
-                                        conn.api_state.lock().unwrap().apply_state(state);
-                                        conn.views.apply_state(state);
-                                        let (footer_changed, branch_changed) =
-                                            conn.footer.apply(state);
-                                        if footer_changed {
-                                            base_ctx.refresh_footer();
-                                            if branch_changed {
-                                                conn.footer.notify_branch(|message| {
-                                                    base_ctx.notify(&message, "error")
-                                                });
-                                            }
+                                {
+                                    let change =
+                                        base_ctx.shared_ui.lock().unwrap().apply_state(state);
+                                    base_ctx.host_subs.publish(change);
+                                    base_ctx.shared_identity.lock().unwrap().apply_state(state);
+                                    conn.api_state.lock().unwrap().apply_state(state);
+                                    conn.views.apply_state(state);
+                                    let (footer_changed, branch_changed) = conn.footer.apply(state);
+                                    if footer_changed {
+                                        base_ctx.refresh_footer();
+                                        if branch_changed {
+                                            conn.footer.notify_branch(|message| {
+                                                base_ctx.notify(&message, "error")
+                                            });
                                         }
-                                        // Session replication: apply incremental entries.
-                                        if let Some(session) = state.get("session") {
-                                            let _ = base_ctx
-                                                .shared_session
-                                                .lock()
-                                                .unwrap()
-                                                .apply_update(session);
-                                        }
+                                    }
+                                    // Session replication: apply incremental entries.
+                                    if let Some(session) = state.get("session") {
+                                        let _ = base_ctx
+                                            .shared_session
+                                            .lock()
+                                            .unwrap()
+                                            .apply_update(session);
                                     }
                                 }
                             }
@@ -2223,57 +2230,49 @@ impl Extension {
                                 base_ctx.host_subs.publish(change);
                             }
                             "width_change" => {
-                                if let Some(args) = &notify.args {
-                                    if let Some(w) = args.get("width").and_then(|w| w.as_u64()) {
-                                        if w > 0 {
-                                            base_ctx
-                                                .shared_width
-                                                .store(w as u32, Ordering::Relaxed);
-                                            // After the store, so a handler that
-                                            // reads Context::width sees the new value.
-                                            let width_subs: Vec<_> = base_ctx
-                                                .width_change
-                                                .lock()
-                                                .map(|subs| {
-                                                    subs.iter().map(|(_, h)| h.clone()).collect()
-                                                })
-                                                .unwrap_or_default();
-                                            if !width_subs.is_empty() {
-                                                width_deliveries.submit(
-                                                    w as u32,
-                                                    width_subs,
-                                                    &request_threads,
-                                                );
-                                            }
-                                            base_ctx.refresh_surfaces();
-                                            if let Some(session) =
-                                                base_ctx.editor_slot.lock().unwrap().clone()
-                                            {
-                                                session.request_render();
-                                            }
-                                            let overlays: Vec<_> = base_ctx
-                                                .overlays
-                                                .lock()
-                                                .unwrap()
-                                                .values()
-                                                .cloned()
-                                                .collect();
-                                            for overlay in overlays {
-                                                overlay.request_render();
-                                            }
-                                        }
+                                if let Some(args) = &notify.args
+                                    && let Some(w) = args.get("width").and_then(|w| w.as_u64())
+                                    && w > 0
+                                {
+                                    base_ctx.shared_width.store(w as u32, Ordering::Relaxed);
+                                    // After the store, so a handler that
+                                    // reads Context::width sees the new value.
+                                    let width_subs: Vec<_> = base_ctx
+                                        .width_change
+                                        .lock()
+                                        .map(|subs| subs.iter().map(|(_, h)| h.clone()).collect())
+                                        .unwrap_or_default();
+                                    if !width_subs.is_empty() {
+                                        width_deliveries.submit(
+                                            w as u32,
+                                            width_subs,
+                                            &request_threads,
+                                        );
+                                    }
+                                    base_ctx.refresh_surfaces();
+                                    if let Some(session) =
+                                        base_ctx.editor_slot.lock().unwrap().clone()
+                                    {
+                                        session.request_render();
+                                    }
+                                    let overlays: Vec<_> = base_ctx
+                                        .overlays
+                                        .lock()
+                                        .unwrap()
+                                        .values()
+                                        .cloned()
+                                        .collect();
+                                    for overlay in overlays {
+                                        overlay.request_render();
                                     }
                                 }
                             }
                             "height_change" => {
-                                if let Some(args) = &notify.args {
-                                    if let Some(h) = args.get("height").and_then(|h| h.as_u64()) {
-                                        if h > 0 {
-                                            base_ctx
-                                                .shared_height
-                                                .store(h as u32, Ordering::Relaxed);
-                                        }
-                                    }
+                                if let Some(args) = &notify.args
+                                    && let Some(h) = args.get("height").and_then(|h| h.as_u64())
+                                    && h > 0
+                                {
+                                    base_ctx.shared_height.store(h as u32, Ordering::Relaxed);
                                 }
                             }
                             "ui.editor.input"
@@ -2583,9 +2582,12 @@ impl Extension {
         id: &str,
         req: &mut RequestMsg,
         cancel: RequestCancel,
-        start: Option<&crate::tool_start_order::ToolStart>,
-        request_start: Option<&crate::request_start_order::RequestStart>,
+        starts: RequestStarts<'_>,
     ) {
+        let RequestStarts {
+            tool: start,
+            request: request_start,
+        } = starts;
         match req.method.as_str() {
             "autocomplete.sync" | "autocomplete.suggest" => {
                 let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());

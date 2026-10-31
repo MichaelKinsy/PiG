@@ -87,7 +87,7 @@ pub fn get_last_assistant_usage<E: Borrow<Value>>(entries: &[E]) -> Option<Usage
                 .map(|key| usage_addend(usage.get(*key)))
                 .sum();
         }
-        if !(total > 0.0) {
+        if total.is_nan() || total <= 0.0 {
             continue;
         }
         return Some(UsageInfo {

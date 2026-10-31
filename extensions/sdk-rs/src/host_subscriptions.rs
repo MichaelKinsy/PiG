@@ -298,7 +298,5 @@ fn is_array_index(key: &str) -> bool {
             && key.len() <= 10
             && !key.starts_with('0')
             && key.bytes().all(|b| b.is_ascii_digit())
-            && key
-                .parse::<u64>()
-                .is_ok_and(|n| n <= u64::from(u32::MAX) - 1))
+            && key.parse::<u64>().is_ok_and(|n| n < u64::from(u32::MAX)))
 }
