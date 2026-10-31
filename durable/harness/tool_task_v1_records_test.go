@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 )
 
 // Pi 1.2.0 test/harness-nested-tools.test.ts "tool task version 1 records" (:1276-1342): a pi.tool task stored by version 1
@@ -49,7 +50,7 @@ func storeToolTaskVersion(t *testing.T, setup *chatState, checkpoint durable.Jso
 	record.Version = version
 	record.Input = input
 	record.State.Checkpoint = &checkpoint
-	if _, err := store.Commit(testContext, []durable.StorageWrite{durable.TaskWrite{Value: *record}}, func(durable.Seq) {}); err != nil {
+	if _, err := durabletest.CommitWrites(testContext, store, []durable.StorageWrite{durable.TaskWrite{Value: *record}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Close(testContext); err != nil {

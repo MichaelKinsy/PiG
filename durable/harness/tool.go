@@ -265,6 +265,12 @@ func toolCallPhase(ctx context.Context, task toolRecord, runtime toolRuntime) er
 	if replay == "" {
 		replay = durable.ReplayUnsafe
 	}
+	shown, err := delta.DecodeJson(finalJSON)
+	if err != nil {
+		return err
+	}
+	// The slot's status and arguments are presentation, stored like progress (ProgressCommit); the intent is durable before
+	// the tool runs. Parallel calls of one round then share no immediate write to pi.live.
 	if err := runtime.Commit(ctx, func(tx durable.Tx, _ toolRecord) (*toolNext, error) {
 		live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
 		if err != nil {
@@ -274,18 +280,19 @@ func toolCallPhase(ctx context.Context, task toolRecord, runtime toolRuntime) er
 			if err := slot.Set("status", string(ToolSlotRunning)); err != nil {
 				return nil, err
 			}
-			// A nested slot shows the arguments the call runs with, which repair, hooks, and coercion may have changed. They
-			// are compared with the input, which the slot got at admission: reading the draft would track every leaf.
-			if task.Input.Kind == ToolTaskNested && isNestedSlot(slot) && !jsonEqual(task.Input.Call.Arguments, final) {
-				shown, err := delta.DecodeJson(finalJSON)
-				if err != nil {
-					return nil, err
-				}
+			// A nested slot shows the arguments the call runs with, which repair, hooks, and coercion may have changed.
+			// Assigned whole: an equal value records no change, and a rerun corrects what an earlier attempt showed.
+			if isNestedSlot(slot) {
 				if err := slot.Set("arguments", shown); err != nil {
 					return nil, err
 				}
 			}
 		}
+		return nil, nil
+	}, ProgressCommit); err != nil {
+		return err
+	}
+	if err := runtime.Commit(ctx, func(durable.Tx, toolRecord) (*toolNext, error) {
 		intent := ToolTaskCheckpoint{Phase: toolPhaseExecute, Arguments: final, Replay: replay, argumentsJSON: finalJSON}
 		return &toolNext{Status: durable.TaskRunning, Checkpoint: &intent}, nil
 	}); err != nil {
@@ -310,7 +317,20 @@ func toolExecutePhase(ctx context.Context, task toolRecord, runtime toolRuntime)
 		return err
 	}
 	if checkpoint.Replay == durable.ReplaySafe && tool != nil && tool.Replay == durable.ReplaySafe {
-		// The rerun reports from scratch; clear what the interrupted attempt published.
+		// The rerun reports from scratch: clear what the interrupted attempt published, and show the slot running with the
+		// arguments it runs with again, as the deferred commit that showed them may have been lost with the crash.
+		arguments := checkpoint.Arguments
+		if arguments == nil {
+			arguments = map[string]any{}
+		}
+		encoded, err := json.Marshal(arguments)
+		if err != nil {
+			return err
+		}
+		shown, err := delta.DecodeJson(encoded)
+		if err != nil {
+			return err
+		}
 		if err := runtime.Commit(ctx, func(tx durable.Tx, _ toolRecord) (*toolNext, error) {
 			live, err := docDraft(tx, LiveDoc, runtime.ConversationId())
 			if err != nil {
@@ -318,6 +338,14 @@ func toolExecutePhase(ctx context.Context, task toolRecord, runtime toolRuntime)
 			}
 			if slot := FindToolSlot(live, runtime.TaskId()); slot != nil {
 				ClearProgress(slot)
+				if err := slot.Set("status", string(ToolSlotRunning)); err != nil {
+					return nil, err
+				}
+				if isNestedSlot(slot) {
+					if err := slot.Set("arguments", shown); err != nil {
+						return nil, err
+					}
+				}
 			}
 			return nil, nil
 		}); err != nil {

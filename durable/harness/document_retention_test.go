@@ -81,7 +81,7 @@ func TestHarnessDocumentRetentionFollowsSettings(t *testing.T) {
 	}
 	deadline := time.Now().Add(5 * time.Second)
 	for {
-		if _, err := kernel.ReadOnLine(func() (any, error) { return nil, nil }); err != nil {
+		if _, err := kernel.ReadOnLine(func(durable.Storage) (any, error) { return nil, nil }); err != nil {
 			t.Fatal(err)
 		}
 		if kernel.DocumentCacheSizes().Cached == 0 {

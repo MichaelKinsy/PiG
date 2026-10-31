@@ -296,12 +296,12 @@ func generationPrepareHandler(ctx context.Context, task durable.RunningTask[Gene
 		})
 	}
 	return runtime.Commit(ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
-		page, err := tx.ScanEntries(durable.EntryQuery{ConversationId: conversationId}, 1, nil)
+		latest, err := tx.LatestEntryId(conversationId)
 		if err != nil {
 			return nil, err
 		}
 		// The context ends in a message the model answers, so the conversation has an entry.
-		cutoff := &page.Items[0].Id
+		cutoff := latest
 		for _, entry := range entries {
 			appended, err := durable.TxAppendEntry(tx, durable.SystemEntry, conversationId, entry)
 			if err != nil {
@@ -348,6 +348,8 @@ func generationRequestHandler(ctx context.Context, task durable.RunningTask[Gene
 		return generationInterrupted(ctx, runtime, checkpoint)
 	}
 	conversationId := runtime.ConversationId()
+	// The attempt shown is presentation, stored like progress (ProgressCommit); converting a partial left by an interrupted
+	// attempt appends an entry, which makes the commit immediate.
 	if err := runtime.Commit(ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
 		live, err := docDraft(tx, LiveDoc, conversationId)
 		if err != nil {
@@ -357,7 +359,7 @@ func generationRequestHandler(ctx context.Context, task durable.RunningTask[Gene
 			return nil, err
 		}
 		return nil, live.Set("generation", delta.JsonObjectOf("attempt", float64(checkpoint.Attempt)))
-	}); err != nil {
+	}, ProgressCommit); err != nil {
 		return err
 	}
 	ref := *checkpoint.Model
@@ -398,6 +400,9 @@ func generationRequestHandler(ctx context.Context, task durable.RunningTask[Gene
 	options.Telemetry = chordctx.Telemetry(ctx)
 	if options.SessionID, err = ensureProviderSessionId(ctx, runtime); err != nil {
 		return err
+	}
+	options.OnPayload = func(payload any, model *ai.Model) (any, error) {
+		return providerPayload(ctx, runtime, model, payload)
 	}
 	message, err := streamResponse(ctx, runtime, model, messages, shared, options, checkpoint.Attempt)
 	if err != nil {
@@ -904,6 +909,32 @@ func ConvertPartial(tx durable.Tx, live *delta.Object, conversationId durable.Co
 	message.StopReason = ai.StopReasonAborted
 	_, err = appendAssistant(tx, conversationId, message)
 	return err
+}
+
+// providerPayload is the beforeProviderRequest replacement chain over one provider request body: it runs each time pi-ai
+// builds a body, and a hook's nil result keeps the body it was given. Nil is returned when no hook replaced the body,
+// which is what ai.StreamOptions.OnPayload takes as "keep the provider's own".
+func providerPayload(ctx context.Context, runtime generationRuntime, model *ai.Model, payload any) (any, error) {
+	current, replacedAny := payload, false
+	if err := runtime.Hooks().Each("beforeProviderRequest", func(hooks *GenerationHooks) error {
+		if hooks == nil || hooks.BeforeProviderRequest == nil {
+			return nil
+		}
+		replaced, err := hooks.BeforeProviderRequest(ctx, ProviderRequest{Model: model, Payload: current}, runtime)
+		if err != nil {
+			return err
+		}
+		if replaced != nil {
+			current, replacedAny = replaced.Payload, true
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	if !replacedAny {
+		return nil, nil
+	}
+	return current, nil
 }
 
 // streamResponse streams one request and returns the terminal message (generation.ts:354-405). Partials commit as

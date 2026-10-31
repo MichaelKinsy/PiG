@@ -23,6 +23,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
@@ -95,10 +96,10 @@ func seedRunningTask(t *testing.T, store durable.Storage) {
 		Version:        1,
 		State:          durable.TaskState[durable.JsonValue, durable.JsonValue]{Status: durable.TaskRunning, Checkpoint: &checkpoint},
 	}
-	if _, err := store.Commit(testContext, []durable.StorageWrite{
+	if _, err := durabletest.CommitWrites(testContext, store, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: durable.ConversationId(conversationId)}},
 		durable.TaskWrite{Value: task},
-	}, func(durable.Seq) {}); err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
 }

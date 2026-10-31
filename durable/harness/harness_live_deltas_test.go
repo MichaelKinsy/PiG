@@ -164,25 +164,27 @@ func TestLiveDeltas(t *testing.T) {
 			}
 		}
 		commits := ops.all()
-		if len(commits) != 8 {
+		if len(commits) != 5 {
 			t.Fatalf("commits = %s", jsonText(t, commits))
 		}
+		// submission
 		expectLike(t, commits[0], jsonText(t, []any{[]any{"s", []any{"run"}, map[string]any{"taskId": generations[0], "inputs": []any{"$number"}, "turns": 0, "first": "$number"}}}))
-		expectLike(t, commits[1], `[["s",["generation"],{"attempt":1}]]`)
-		expectContainsLike(t, commits[2], jsonText(t, []any{[]any{"d", []any{"generation"}}, []any{"s", []any{"tools"}, []any{map[string]any{"callId": "c1", "name": "noop", "taskId": tools[0], "status": "pending"}}}, []any{"s", []any{"run", "turns"}, 1}}))
-		expectLike(t, commits[3], `[["s",["tools",0,"status"],"running"]]`)
-		expectContainsLike(t, commits[4], jsonText(t, []any{[]any{"s", []any{"tools", 0, "status"}, "done"}, []any{"s", []any{"tools", 0, "entry"}, result}}))
-		expectContainsLike(t, commits[5], jsonText(t, []any{[]any{"d", []any{"tools"}}, []any{"s", []any{"run", "taskId"}, generations[1]}}))
-		expectLike(t, commits[6], `[["s",["generation"],{"attempt":1}]]`)
-		expectContainsLike(t, commits[7], `[["d",["run"]],["d",["generation"]]]`)
-		for _, index := range []int{2, 4, 5} {
-			want := 2
-			if index == 2 {
-				want = 3
-			}
-			if len(commits[index]) != want {
-				t.Fatalf("commit %d = %s, want two operations", index, jsonText(t, commits[index]))
-			}
+		// the generation starts its tool round and keeps the run, counting the round as one turn (#11043); the request's
+		// attempt is deferred, so it is stored here, its held operation first
+		expectLike(t, commits[1], jsonText(t, []any{
+			[]any{"s", []any{"generation"}, map[string]any{"attempt": 1}},
+			[]any{"s", []any{"tools"}, []any{map[string]any{"callId": "c1", "name": "noop", "taskId": tools[0], "status": "pending"}}},
+			[]any{"d", []any{"generation"}},
+			[]any{"s", []any{"run", "turns"}, 1},
+		}))
+		// result: the running status is deferred like progress, so it is stored with the result, folded into its write
+		expectLike(t, commits[2], jsonText(t, []any{[]any{"s", []any{"tools", 0, "status"}, "done"}, []any{"s", []any{"tools", 0, "entry"}, result}}))
+		// the generation's tools phase hands the run to the next generation
+		expectContainsLike(t, commits[3], jsonText(t, []any{[]any{"d", []any{"tools"}}, []any{"s", []any{"run", "taskId"}, generations[1]}}))
+		// the answer ends the run, with the second request's deferred attempt first
+		expectLike(t, commits[4], `[["s",["generation"],{"attempt":1}],["d",["run"]],["d",["generation"]]]`)
+		if len(commits[3]) != 2 {
+			t.Fatalf("commit 3 = %s, want two operations", jsonText(t, commits[3]))
 		}
 		closeHarness(t, harness)
 	})
@@ -314,6 +316,8 @@ func TestLiveDeltas(t *testing.T) {
 		}
 		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("first", map[string]any{}, &ai.FauxToolCallOptions{ID: "a"}), ai.FauxToolCall("second", map[string]any{}, &ai.FauxToolCallOptions{ID: "b"})), fauxAnswer("done")})
 		setup.SetSettings(func(settings *HarnessSettings) { settings.ToolExecution = durable.ToolExecutionSequential })
+		// Store deferred progress within each tool's run, so running slots reach Storage as deltas.
+		setup.SetSettings(func(settings *HarnessSettings) { settings.Progress = &ProgressPolicyPatch{PersistWithinMs: new(50.0)} })
 		harness, root := openChat(t, store, setup)
 		var mu sync.Mutex
 		values := map[durable.Seq]LiveState{}
@@ -490,23 +494,26 @@ func (store *recordingStorage) setLive(id durable.DocumentId) {
 	store.mu.Unlock()
 }
 
-func (store *recordingStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (store *recordingStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
 	store.mu.Lock()
 	liveId := store.liveId
 	store.mu.Unlock()
-	kind := ""
-	for _, write := range writes {
-		if change, ok := write.(durable.DocumentChangeWrite); ok && liveId != nil && change.Id == *liveId {
-			kind = string(change.Content.Kind)
+	kinds := make([]string, len(batches))
+	for index, writes := range batches {
+		for _, write := range writes {
+			if change, ok := write.(durable.DocumentChangeWrite); ok && liveId != nil && change.Id == *liveId {
+				kinds[index] = string(change.Content.Kind)
+			}
 		}
 	}
-	seq, err := store.MemoryStorage.Commit(ctx, writes, adopt)
-	if err == nil && kind != "" {
-		store.mu.Lock()
-		store.written[seq] = kind
-		store.mu.Unlock()
-	}
-	return seq, err
+	return store.MemoryStorage.Commit(ctx, batches, func(index int, seq durable.Seq) {
+		if kinds[index] != "" {
+			store.mu.Lock()
+			store.written[seq] = kinds[index]
+			store.mu.Unlock()
+		}
+		receive(index, seq)
+	})
 }
 
 func itoa(value int) string { return strconv.Itoa(value) }

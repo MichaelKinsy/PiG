@@ -3,6 +3,7 @@
 package harness
 
 import (
+	"slices"
 	"context"
 	"errors"
 	"fmt"
@@ -94,9 +95,11 @@ func (s *controlledStorage) commitAt(index int) []durable.StorageWrite {
 	return s.commits[index]
 }
 
-func (s *controlledStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+// Commit records and holds the call, then refuses its first batch if a failure is set (nothing stored), or commits it in
+// memory, adopting set while each receipt runs and afterAdopt run after the first one (session-support.ts
+// ControlledStorage.commit).
+func (s *controlledStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
 	s.mu.Lock()
-	s.commits = append(s.commits, append([]durable.StorageWrite(nil), writes...))
 	held := s.commitGate
 	s.mu.Unlock()
 	if held != nil {
@@ -110,16 +113,23 @@ func (s *controlledStorage) Commit(ctx context.Context, writes []durable.Storage
 	}
 	s.mu.Lock()
 	failure := s.commitFailure
-	s.commitFailure = nil
+	recorded := batches
+	if failure != nil {
+		s.commitFailure = nil
+		recorded = batches[:1]
+	}
+	for _, writes := range recorded {
+		s.commits = append(s.commits, append([]durable.StorageWrite(nil), writes...))
+	}
 	s.mu.Unlock()
 	if failure != nil {
-		return 0, failure
+		return durable.CommitResult{Refused: failure}, nil
 	}
-	return s.MemoryStorage.Commit(ctx, writes, func(seq durable.Seq) {
+	return s.MemoryStorage.Commit(ctx, batches, func(index int, seq durable.Seq) {
 		s.adopting.Store(true)
 		func() {
 			defer s.adopting.Store(false)
-			adopt(seq)
+			receive(index, seq)
 		}()
 		s.mu.Lock()
 		after := s.afterAdopt
@@ -175,18 +185,19 @@ func (s *lateResolvingStorage) setRejectAfterAdopt(reject func(writes []durable.
 	s.reject = reject
 }
 
-func (s *lateResolvingStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (s *lateResolvingStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
 	s.committing.Store(true)
 	defer s.committing.Store(false)
-	seq, err := s.controlledStorage.Commit(ctx, writes, adopt)
+	result, err := s.controlledStorage.Commit(ctx, batches, receive)
 	if err != nil {
-		return 0, err
+		return durable.CommitResult{}, err
 	}
+	stored := batches[:result.Stored]
 	time.Sleep(lateWork)
 	s.hookMu.Lock()
 	gap := s.gap
 	s.hookMu.Unlock()
-	if gap != nil && gap(writes) {
+	if gap != nil && slices.ContainsFunc(stored, gap) {
 		s.hookMu.Lock()
 		s.gap = nil
 		s.hookMu.Unlock()
@@ -196,13 +207,27 @@ func (s *lateResolvingStorage) Commit(ctx context.Context, writes []durable.Stor
 	s.hookMu.Lock()
 	reject := s.reject
 	s.hookMu.Unlock()
-	if reject != nil && reject(writes) {
+	if reject != nil && slices.ContainsFunc(stored, reject) {
 		s.hookMu.Lock()
 		s.reject = nil
 		s.hookMu.Unlock()
-		return 0, errReclaimFailed
+		return durable.CommitResult{}, errReclaimFailed
 	}
-	return seq, nil
+	return result, nil
+}
+
+// refusingAt commits batches through commit up to the first one refuses matches, which it refuses with err: what a storage
+// does whose own check refuses that batch (session-support.ts refusingAt).
+func refusingAt(ctx context.Context, commit func(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error), batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq), refuses func(writes []durable.StorageWrite) bool, refusal error) (durable.CommitResult, error) {
+	at := slices.IndexFunc(batches, refuses)
+	if at < 0 {
+		return commit(ctx, batches, receive)
+	}
+	result, err := commit(ctx, batches[:at], receive)
+	if err != nil || result.Stored < at {
+		return result, err
+	}
+	return durable.CommitResult{Stored: at, Refused: refusal}, nil
 }
 
 func (s *controlledStorage) Close(ctx context.Context) error {

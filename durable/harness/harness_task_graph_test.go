@@ -581,8 +581,8 @@ func TestTaskGraphView(t *testing.T) {
 	})
 }
 
-// harness-task-graph.test.ts "advances with the conversation view inside the one storage commit that changes both".
-func TestTaskGraphViewAdvancesWithTheConversationViewInsideTheOneStorageCommitThatChangesBoth(t *testing.T) {
+// harness-task-graph.test.ts "advances with the conversation view at the publication of the one commit that changes both".
+func TestTaskGraphViewAdvancesWithTheConversationViewAtThePublicationOfTheOneCommitThatChangesBoth(t *testing.T) {
 	store := newControlledStorage()
 	parentTask, childTask := graphFamily(graphGates{child: deferred(), late: deferred()})
 	harness, _, _ := openTasks(t, store, []durable.AnyTask{parentTask.Erased(), childTask.Erased()})
@@ -610,11 +610,11 @@ func TestTaskGraphViewAdvancesWithTheConversationViewInsideTheOneStorageCommitTh
 	}); err != nil {
 		t.Fatal(err)
 	}
-	// Both inside the one adopt, in no promised order.
+	// Both at the one publication, after Storage stored it, in no promised order.
 	mu.Lock()
 	sorted := slices.Sorted(slices.Values(seen))
 	mu.Unlock()
-	if !reflect.DeepEqual(sorted, []string{"graph adopting=true", "view adopting=true"}) {
+	if !reflect.DeepEqual(sorted, []string{"graph adopting=false", "view adopting=false"}) {
 		t.Fatalf("seen %v", sorted)
 	}
 	view.Detach()

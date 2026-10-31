@@ -144,10 +144,27 @@ type phaseResult struct {
 	failed     bool
 }
 
-// decision is the step decision: continue with the next phase, end the invocation, or end it by writing faulted.
-type decision struct {
-	proceed bool
-	fault   error
+// stepKind is what a step's decision region decided.
+type stepKind int
+
+const (
+	// stepContinue continues with the next phase, the first one.
+	stepContinue stepKind = iota
+	// stepProgress is rule 5: the phase made durable progress; progressLocked decides once the decision stands.
+	stepProgress
+	// stepEnd ends the invocation without a write.
+	stepEnd
+	// stepCascade ends it: an owner's cancellation intent reaches it before its cascade did; schedule the cascade.
+	stepCascade
+	// stepFault ends it by writing faulted.
+	stepFault
+)
+
+// stepPlan is the step decision, made in a decision region: continue with the next phase, end the invocation, or end it by
+// writing faulted.
+type stepPlan struct {
+	kind  stepKind
+	fault error
 }
 
 // SchedulerOutcome is a terminal outcome the scheduler writes without running task code: faulted or orphaned.
@@ -278,6 +295,17 @@ type TaskScheduler struct {
 	contexts map[durable.ConversationId]*keptContext
 	// expiry is the background timer for the earliest expiry of an idle context, unless the host declined it.
 	expiry *contextExpiry
+	// idleOrder holds the idle kept contexts by idleSince, oldest first: the expiry order, so neither an expiry nor
+	// finding the next one scans contexts. Kept sorted also when the Harness clock goes back (see markIdleLocked).
+	idleOrder *orderedSet[durable.ConversationId]
+	// idleNewest is at least the newest idleSince in idleOrder (drops do not lower it): an older one added means the
+	// clock went back.
+	idleNewest float64
+	// unknownsChanged is set when a chain load resolved what idleLocked treats as unknown for a live task whose chain is
+	// not loaded, which can make a scope idle without a task change below it; the next idle check then covers every scope.
+	unknownsChanged bool
+	// fullIdleChecks counts the idle checks that covered every scope (idleState, a test diagnostic).
+	fullIdleChecks int
 	// assistantCalls serves tool tasks the calls of the assistant entries they read, without copying the entry per call.
 	assistantCalls assistantCalls
 
@@ -310,6 +338,11 @@ type TaskScheduler struct {
 	waiters map[durable.TaskId]*orderedSet[durable.TaskId]
 	// sleeping holds the sleeping live tasks, due or not: the candidates of wakeDueLocked.
 	sleeping *orderedSet[durable.TaskId]
+	// pins holds the nodes chain loads installed for jobs whose commits are not published yet, with how many such jobs: the
+	// sweep keeps them, as work a pending commit creates below them needs them.
+	pins map[treeNode]int
+	// reading is the set of keys the decision region underway reads (regionLocked); nil when none runs.
+	reading map[string]struct{}
 	// timer is the timer for the earliest sleep, without OnWake while scheduling runs.
 	timer *wakeTimer
 	// lastWake is the last value given to OnWake, so an unchanged one is not repeated.
@@ -359,6 +392,9 @@ type TaskScheduler struct {
 type keptContext struct {
 	rng       *contextRange
 	idleSince *float64
+	// expiresAt is idleSince plus the retention of the moment the idle period started, nil while busy: an entry-only
+	// commit that finds the range past it drops the range without reading the settings.
+	expiresAt *float64
 }
 
 // contextExpiry is the pending timer that settles idle contexts at time at.
@@ -392,6 +428,9 @@ func NewTaskScheduler(options TaskSchedulerOptions) *TaskScheduler {
 		resumed:             map[durable.TaskId]struct{}{},
 		counted:             map[durable.TaskId]string{},
 		contexts:            map[durable.ConversationId]*keptContext{},
+		idleOrder:           newOrderedSet[durable.ConversationId](),
+		idleNewest:          math.Inf(-1),
+		pins:                map[treeNode]int{},
 		sealed:              make(chan struct{}),
 		live:                map[durable.TaskId]anyTaskRecord{},
 		invocations:         map[durable.TaskId]*invocation{},
@@ -450,6 +489,9 @@ func (s *TaskScheduler) Open(ctx context.Context) error {
 		s.kick()
 	})
 	_, err := s.options.Session.CommitWith(ctx, func(tx *session.Transaction) (any, error) {
+		if err := s.published(); err != nil {
+			return nil, err
+		}
 		// Every table read before the first write.
 		var scans [][]anyTaskRecord
 		for _, status := range liveTaskStatuses {
@@ -629,8 +671,13 @@ func (s *TaskScheduler) wakeLocked() Wake { return s.wakeAtLocked(s.options.Now(
 func (s *TaskScheduler) wakeAtLocked(now float64) Wake {
 	// A reconcile pass with work to do is work too: it finalizes held outcomes and marks cascades, at open as recovery. A
 	// process that dies before it lands must be woken again. A pass with nothing to do is not.
-	active := len(s.invocations) > 0 || s.reconcilingWork > 0 || s.reconcileWorkLocked()
-	var at *float64
+	active := len(s.invocations) > 0 || s.reconcilingWork > 0 || s.reconcileWorkLocked() || s.runsNowLocked(now)
+	// The earliest sleep not yet due: only sleeping holds sleeping tasks, so no pass visits every live task.
+	return Wake{Active: active, At: s.earliestSleepLocked(now)}
+}
+
+// runsNowLocked reports whether a live task can run now: the scan wake needs only while no invocation runs.
+func (s *TaskScheduler) runsNowLocked(now float64) bool {
 	var snapshot durable.RegistrySnapshot
 	snapshotFailed := false
 	for _, record := range s.liveValuesLocked() {
@@ -642,13 +689,6 @@ func (s *TaskScheduler) wakeAtLocked(now float64) Wake {
 			continue
 		}
 		if state.Status == durable.TaskSleeping && !record.AbortRequested && state.Until != nil && *state.Until > now {
-			if at == nil || *state.Until < *at {
-				until := *state.Until
-				at = &until
-			}
-			continue
-		}
-		if active {
 			continue
 		}
 		// An abort invocation waits for the live work below it, which counts itself.
@@ -665,9 +705,9 @@ func (s *TaskScheduler) wakeAtLocked(now float64) Wake {
 				continue
 			}
 		}
-		active = true
+		return true
 	}
-	return Wake{Active: active, At: at}
+	return false
 }
 
 // snapshotOrReportLocked takes a registry snapshot; one that panics is reported and yields nil.
@@ -762,7 +802,12 @@ func (s *TaskScheduler) Abort(ctx context.Context, id durable.TaskId, keepRestar
 			if _, err := s.loadScopesLocked(false); err != nil {
 				return marked{}, err
 			}
-			if !s.hasOwnedLiveLocked(id, nil, nil) {
+			owns, err := regionPlainLocked(s, func() bool { return s.hasOwnedLiveLocked(id, nil, nil) }, s.reloadScopesLocked)
+			if err != nil {
+				return marked{}, err
+			}
+			// Resolved once that decision stands, as it may run migrate.
+			if !owns {
 				resolution := s.resolveLocked(*current, s.options.Registry.Snapshot())
 				if resolution.blocked != "" {
 					reason := resolution.blocked
@@ -824,22 +869,29 @@ func (s *TaskScheduler) waitForTask(ctx context.Context, id durable.TaskId) (dur
 		record *anyTaskRecord
 		waiter *Waiter[durable.SettledTask[durable.JsonValue]]
 	}
-	result, err := readOnLine(s.options.Session, func() (found, error) {
+	result, err := readOnLine(s.options.Session, func(storage durable.Storage) (found, error) {
 		s.mu.Lock()
-		closing := s.sealing.Load()
-		_, live := s.live[id]
+		if s.sealing.Load() {
+			s.mu.Unlock()
+			return found{}, closedError(s.options.Session)
+		}
+		live, err := regionPlainLocked(s, func() bool { _, live := s.liveRecordLocked(id); return live }, nil)
 		var waiter *Waiter[durable.SettledTask[durable.JsonValue]]
-		if !closing && live {
+		closing := s.sealing.Load()
+		if err == nil && !closing && live {
 			waiter = s.taskWaiters.Add(ctx, id)
 		}
 		s.mu.Unlock()
+		if err != nil {
+			return found{}, err
+		}
 		if closing {
 			return found{}, closedError(s.options.Session)
 		}
 		if waiter != nil {
 			return found{waiter: waiter}, nil
 		}
-		record, err := s.options.Storage.Task(ctx, id)
+		record, err := storage.Task(ctx, id)
 		if err != nil {
 			return found{}, err
 		}
@@ -897,6 +949,9 @@ func (s *TaskScheduler) AbortConversation(ctx context.Context, conversationId du
 	reached, err := commitOnLine(ctx, s.options.Session, session.TransactionScope{}, func(tx *session.Transaction) ([]durable.TaskId, error) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
+		if err := s.publishedLocked(); err != nil {
+			return nil, err
+		}
 		queued, err := s.loadScopesLocked(true)
 		if err != nil {
 			return nil, err
@@ -919,7 +974,7 @@ func (s *TaskScheduler) AbortConversation(ctx context.Context, conversationId du
 		}
 		for _, id := range queued {
 			if inScope, known := s.inScopeLocked(up{conversation: id}, target, background); known && inScope {
-				if err := s.options.WithdrawInputs(tx, id); err != nil {
+				if err := s.withoutLock(func() error { return s.options.WithdrawInputs(tx, id) }); err != nil {
 					return nil, err
 				}
 			}
@@ -947,10 +1002,13 @@ func (s *TaskScheduler) observe(publication session.ObservedCommit) {
 		return
 	}
 	s.mu.Lock()
+	s.advanceContextsLocked(publication)
 	var failed []durable.TaskId
 	changed := false
 	var updated []anyTaskRecord
 	var terminal []anyTaskRecord
+	// The conversations whose idleness the commit's task changes can change; nil when a chain is not known.
+	dirty := map[durable.ConversationId]struct{}{}
 	// Edges first, so the tasks a commit creates in a new conversation hang from it.
 	for _, change := range publication.Changes {
 		if write, ok := change.(durable.ConversationWrite); ok {
@@ -975,6 +1033,11 @@ func (s *TaskScheduler) observe(publication session.ObservedCommit) {
 			before = &previous
 		}
 		s.trackLocked(before, record)
+		// Idleness counts live tasks, so only a task that became live or ended can change it. Collected before sweepLocked,
+		// which may forget the chain of a task that ended.
+		if liveness := !hadPrevious || record.State.Status == durable.TaskTerminal; liveness && dirty != nil && !s.addScopesAboveLocked(record, dirty) {
+			dirty = nil
+		}
 		if record.State.Status == durable.TaskTerminal {
 			delete(s.failedMigrations, record.Id)
 			delete(s.failFastChecks, record.Id)
@@ -1053,8 +1116,11 @@ func (s *TaskScheduler) observe(publication session.ObservedCommit) {
 	// Upstream settles the idle waits the commit's state decides here too, inside the observer (#settleIdle), where they are
 	// settled for good; only the code awaiting them resumes after the host listeners.
 	var idleWakes []func()
+	var idleScopes map[durable.ConversationId]struct{}
+	idleAll := false
 	if changed {
-		idleWakes = s.settleIdleWaitsLocked()
+		idleScopes, idleAll = s.idleScopesLocked(dirty)
+		idleWakes = s.settleIdleWaitsLocked(idleScopes, idleAll)
 	}
 	s.mu.Unlock()
 	// Upstream resolves a wait here, inside the observer, so it is settled for good and only the code awaiting it resumes
@@ -1069,16 +1135,19 @@ func (s *TaskScheduler) observe(publication session.ObservedCommit) {
 	if !changed {
 		return
 	}
-	s.options.Session.DeferUntilPublished(s.resolveIdleWaiters)
+	s.options.Session.DeferUntilPublished(func() { s.settleIdleScopes(idleScopes, idleAll) })
 	s.kick()
 }
 
-// settleIdleWaitsLocked takes the idle waits the state decides out of the pending set and fixes their result, as resolving
-// a promise does, and returns the functions that wake them (Waiters.Settle): a seal that comes before the wake can no
-// longer reject them.
-func (s *TaskScheduler) settleIdleWaitsLocked() []func() {
+// settleIdleWaitsLocked takes the idle waits of the conversations in scopes (every one when all) and the Harness-wide
+// ones, when the state decides them, out of the pending set and fixes their result, as resolving a promise does, and
+// returns the functions that wake them (Waiters.Settle): a seal that comes before the wake can no longer reject them.
+func (s *TaskScheduler) settleIdleWaitsLocked(scopes map[durable.ConversationId]struct{}, all bool) []func() {
 	var wakes []func()
 	for _, conversationId := range s.idleWaiters.Keys() {
+		if _, covered := scopes[conversationId]; !all && !covered {
+			continue
+		}
 		if s.idleLocked(&conversationId) {
 			wakes = append(wakes, s.idleWaiters.Settle(conversationId, struct{}{}))
 		}
@@ -1089,35 +1158,40 @@ func (s *TaskScheduler) settleIdleWaitsLocked() []func() {
 	return wakes
 }
 
-// resolveIdleWaiters resolves idle waiters, and drops each kept context whose conversation has been idle for the
-// retention period (scheduler.ts #settleIdle). It runs behind the host listeners of the commit that queued it, at the end
-// of a reconcile pass, and on the context expiry timer.
+// resolveIdleWaiters resolves every idle waiter the state decides, then checks expiry too, for hosts that decline the
+// expiry timer: the end of a reconcile pass, whose commit's task changes were settled at their publication. What a chain
+// load of the pass resolved can make any scope idle (unknownsChanged), which covers every scope.
 func (s *TaskScheduler) resolveIdleWaiters() {
-	now := s.options.Now()
-	// #settleIdle and the #scheduleExpiry it calls each read the setting, so a failing source is reported twice.
-	retention := s.contextRetentionMs()
-	expiryRetention := s.contextRetentionMs()
 	s.mu.Lock()
-	wakes := s.settleIdleWaitsLocked()
-	for conversationId, kept := range s.contexts {
-		switch {
-		case kept.idleSince != nil && now-*kept.idleSince >= retention:
-			delete(s.contexts, conversationId)
-		case !s.idleLocked(&conversationId):
-			kept.idleSince = nil
-		case retention > 0:
-			if kept.idleSince == nil {
-				kept.idleSince = &now
-			}
-		default:
-			delete(s.contexts, conversationId)
+	if s.unknownsChanged {
+		scopes, all := s.idleScopesLocked(nil)
+		wakes := s.settleIdleWaitsLocked(scopes, all)
+		s.mu.Unlock()
+		for _, wake := range wakes {
+			wake()
 		}
+		s.settleIdleScopes(nil, true)
+		return
 	}
-	s.scheduleExpiryLocked(now, expiryRetention)
+	wakes := s.settleIdleWaitsLocked(nil, true)
 	s.mu.Unlock()
 	for _, wake := range wakes {
 		wake()
 	}
+	s.expireIdleContexts()
+}
+
+// expireIdleContexts drops the kept contexts idle for the retention period, and arms the expiry for the next one: the
+// expiry timer's job, and the end of a reconcile pass's.
+func (s *TaskScheduler) expireIdleContexts() {
+	now := s.options.Now()
+	retention := s.contextRetentionMs()
+	// #expireContexts and the #scheduleExpiry after it each read the setting, so a failing source is reported twice.
+	expiryRetention := s.contextRetentionMs()
+	s.mu.Lock()
+	s.expireContextsLocked(now, retention)
+	s.scheduleExpiryLocked(now, expiryRetention)
+	s.mu.Unlock()
 }
 
 // contextRetentionMs is Settings().ContextRetentionMs, or 0 when the settings source panics, which it reports
@@ -1146,16 +1220,17 @@ func (s *TaskScheduler) contextRetention() (retention float64, err error) {
 	return s.options.Settings().ContextRetentionMs, nil
 }
 
-// scheduleExpiryLocked runs resolveIdleWaiters when the earliest idle context expires, on a background timer, which
+// scheduleExpiryLocked drops the expired contexts when the earliest idle context expires, on a background timer, which
 // never keeps the process alive: close stops it. Where the host declines it, none is kept, and task changes alone check
 // expiry.
 func (s *TaskScheduler) scheduleExpiryLocked(now float64, retention float64) {
 	var at *float64
-	for _, kept := range s.contexts {
-		if kept.idleSince != nil && (at == nil || *kept.idleSince+retention < *at) {
+	s.idleOrder.Range(func(conversationId durable.ConversationId) bool {
+		if kept := s.contexts[conversationId]; kept != nil && kept.idleSince != nil {
 			at = new(*kept.idleSince + retention)
 		}
-	}
+		return false
+	})
 	if s.expiry != nil && at != nil && s.expiry.at == *at {
 		return
 	}
@@ -1175,7 +1250,7 @@ func (s *TaskScheduler) scheduleExpiryLocked(now float64, retention float64) {
 		closing := s.sealing.Load()
 		s.mu.Unlock()
 		if !closing {
-			s.resolveIdleWaiters()
+			s.expireIdleContexts()
 		}
 	}, *at-now)
 	if disarm == nil {
@@ -1231,91 +1306,51 @@ func (s *TaskScheduler) reconcile(ticket *session.LineTicket) {
 	if work {
 		s.reconcilingWork++
 	}
-	cascade := s.cascadePending
-	s.cascadePending = false
-	checks := slices.Sorted(maps.Keys(s.failFastChecks))
-	clear(s.failFastChecks)
 	s.mu.Unlock()
-	_, err := s.options.Session.CommitWithTicket(ticket, s.options.Context, func(tx *session.Transaction) (any, error) {
+	_, err := s.options.Session.CommitInternalWithTicket(ticket, s.options.Context, func(tx *session.Transaction) (any, error) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		if s.sealing.Load() {
 			return nil, nil
 		}
+		// A cascade scans the queued inputs, which waits for every unpublished commit: a request made before the scan is
+		// covered by it, and none is published while the job holds the line after it.
+		cascade := s.cascadePending
 		queued, err := s.loadScopesLocked(cascade)
 		if err != nil {
 			return nil, err
 		}
-		// A cascade from an abandoned owner passes its restart reason on; any other intent marks, or upgrades a restart
-		// mark, as a request. Collected first, so a request wins over a restart mark of the same pass.
-		type staged struct {
-			record anyTaskRecord
-			reason durable.TaskAbortReason
+		if cascade {
+			s.cascadePending = false
 		}
-		marks := map[durable.TaskId]staged{}
-		var markOrder []durable.TaskId
-		mark := func(record anyTaskRecord, reason durable.TaskAbortReason) {
-			if found, ok := marks[record.Id]; ok && found.reason == "" {
-				return
-			}
-			if record.AbortRequested && (record.AbortReason == "" || reason != "") {
-				return
-			}
-			if _, ok := marks[record.Id]; !ok {
-				markOrder = append(markOrder, record.Id)
-			}
-			marks[record.Id] = staged{record, reason}
+		marks, err := s.marksLocked()
+		if err != nil {
+			return nil, err
 		}
-		// Every live foreground task below a live owner with cancellation intent, which is its nearest one: a walk down from
-		// each owner with intent does not enter another, whose own walk covers what is below it. Derived again on every
-		// pass, as loading edges can reveal a cancelled owner.
-		for _, id := range s.intent.Values() {
-			owner := s.live[id]
-			// Only an owner abandoned after a restart, and nothing else, passes its reason on.
-			var reason durable.TaskAbortReason
-			if owner.AbortReason == durable.AbortedByRestart && !failedOutcome(owner) {
-				reason = durable.AbortedByRestart
-			}
-			s.walkDownLocked(taskTreeNode(id), walkOptions{enter: func(below durable.TaskId) bool { return !s.intent.Has(below) }}, func(_ durable.TaskId, node taskNode, live bool, record anyTaskRecord) bool {
-				if live && !node.background {
-					mark(record, reason)
-				}
-				return true
-			})
-		}
-		for _, id := range checks {
-			waiter, ok := s.live[id]
-			if !ok || waiter.State.Status != durable.TaskWaiting {
-				continue
-			}
-			anyFailed, err := s.anyFailedLocked(waiter.State.On)
-			if err != nil {
-				return nil, err
-			}
-			if !anyFailed {
-				continue
-			}
-			// Every other live task: the failed one keeps its own outcome.
-			for _, member := range waiter.State.On {
-				if record, ok := s.live[member]; ok && !failedOutcome(record) {
-					mark(record, "")
-				}
-			}
-		}
-		for _, id := range markOrder {
-			if err := setTask(tx, withAbortMark(marks[id].record, marks[id].reason)); err != nil {
+		for _, mark := range marks {
+			if err := setTask(tx, withAbortMark(mark.record, mark.reason)); err != nil {
 				return nil, err
 			}
 		}
-		for _, id := range queued {
-			if s.belowCancelledLocked(up{conversation: id}) {
-				if err := s.options.WithdrawInputs(tx, id); err != nil {
-					return nil, err
+		withdrawn, err := regionPlainLocked(s, func() []durable.ConversationId {
+			var below []durable.ConversationId
+			for _, id := range queued {
+				if s.belowCancelledLocked(up{conversation: id}) {
+					below = append(below, id)
 				}
+			}
+			return below
+		}, s.reloadScopesLocked)
+		if err != nil {
+			return nil, err
+		}
+		for _, id := range withdrawn {
+			if err := s.withoutLock(func() error { return s.options.WithdrawInputs(tx, id) }); err != nil {
+				return nil, err
 			}
 		}
 		return nil, s.finalizeLocked(tx)
-	}, session.TransactionScope{})
+	})
 	if err != nil {
 		// Any pass may have staged marks, so a failed one is retried with the next commit.
 		// No extension code runs in this commit: a failure is a storage failure, a host callback, or a bug. None is fixed by
@@ -1328,7 +1363,131 @@ func (s *TaskScheduler) reconcile(ticket *session.LineTicket) {
 	}
 	s.scheduleWakeLocked()
 	s.mu.Unlock()
+	// Its commit's task changes were settled at their publication; a waiter that asked for this pass checks again, and what
+	// its chain loads resolved can make any scope idle.
 	s.resolveIdleWaiters()
+}
+
+// stagedMark is an abort mark a reconcile pass writes: reason is restart for an abandonment, empty for a request.
+type stagedMark struct {
+	record anyTaskRecord
+	reason durable.TaskAbortReason
+}
+
+// marksPlan is marksLocked's decision region: the marks, in the order they were found, the failFast waiters it checked, and
+// the members of their on it needs from Storage first.
+type marksPlan struct {
+	marks   []stagedMark
+	checked []durable.TaskId
+	missing []durable.TaskId
+}
+
+// marksLocked is the abort marks committed records imply (spec §5.4, §5.5): every live foreground task below a live owner
+// with cancellation intent, which is its nearest one (a walk down from each owner with intent does not enter another, whose
+// own walk covers what is below it), and every other live task in the on of a failFast waiter one of whose tasks failed. A
+// cascade from an abandoned owner passes its restart reason on; any other intent marks, or upgrades a restart mark, as a
+// request. Collected first, so a request wins over a restart mark of the same pass. Derived again on every pass, as loading
+// edges can reveal a cancelled owner. Takes the failFast checks once its decision stands.
+func (s *TaskScheduler) marksLocked() ([]stagedMark, error) {
+	// Terminal tasks in a checked on, read from Storage: each one's outcome is final. A nil record is a missing task.
+	ended := map[durable.TaskId]*anyTaskRecord{}
+	for {
+		plan, err := regionPlainLocked(s, func() marksPlan { return s.planMarksLocked(ended) }, s.reloadScopesLocked)
+		if err != nil {
+			return nil, err
+		}
+		if len(plan.missing) > 0 {
+			for _, id := range plan.missing {
+				record, err := s.lineTaskLocked(id)
+				if err != nil {
+					return nil, err
+				}
+				ended[id] = record
+			}
+			continue
+		}
+		for _, id := range plan.checked {
+			delete(s.failFastChecks, id)
+		}
+		return plan.marks, nil
+	}
+}
+
+// planMarksLocked is marksLocked's decision region; the failFast members it needs from Storage first, when ended lacks them.
+func (s *TaskScheduler) planMarksLocked(ended map[durable.TaskId]*anyTaskRecord) marksPlan {
+	var marks []stagedMark
+	at := map[durable.TaskId]int{}
+	// A mark rewrites the whole record, so the record it copies is read as a task record, keyed: a commit of the task that is
+	// not published yet makes the region wait and run again, rather than stage a mark over a stale checkpoint.
+	mark := func(found anyTaskRecord, reason durable.TaskAbortReason) {
+		record, _ := s.liveRecordLocked(found.Id)
+		index, staged := at[record.Id]
+		if staged && marks[index].reason == "" {
+			return
+		}
+		if record.AbortRequested && (record.AbortReason == "" || reason != "") {
+			return
+		}
+		if staged {
+			marks[index] = stagedMark{record, reason}
+			return
+		}
+		at[record.Id] = len(marks)
+		marks = append(marks, stagedMark{record, reason})
+	}
+	s.recordLocked(session.IntentKey)
+	for _, id := range s.intent.Values() {
+		owner, _ := s.liveRecordLocked(id)
+		// Only an owner abandoned after a restart, and nothing else, passes its reason on.
+		var reason durable.TaskAbortReason
+		if owner.AbortReason == durable.AbortedByRestart && !failedOutcome(owner) {
+			reason = durable.AbortedByRestart
+		}
+		s.walkDownLocked(taskTreeNode(id), walkOptions{enter: func(below durable.TaskId) bool { return !s.intent.Has(below) }}, func(_ durable.TaskId, node taskNode, live bool, record anyTaskRecord) bool {
+			if live && !node.background {
+				mark(record, reason)
+			}
+			return true
+		})
+	}
+	checked := slices.Sorted(maps.Keys(s.failFastChecks))
+	var missing []durable.TaskId
+	for _, id := range checked {
+		waiter, ok := s.liveRecordLocked(id)
+		if !ok || waiter.State.Status != durable.TaskWaiting {
+			continue
+		}
+		failed := false
+		for _, member := range waiter.State.On {
+			record, live := s.liveRecordLocked(member)
+			if live {
+				if failedOutcome(record) {
+					failed = true
+				}
+				continue
+			}
+			stored, loaded := ended[member]
+			switch {
+			case !loaded:
+				missing = append(missing, member)
+			case stored != nil && failedOutcome(*stored):
+				failed = true
+			}
+		}
+		if !failed {
+			continue
+		}
+		// Every other live task: the failed one keeps its own outcome.
+		for _, member := range waiter.State.On {
+			if record, live := s.liveRecordLocked(member); live && !failedOutcome(record) {
+				mark(record, "")
+			}
+		}
+	}
+	if len(missing) > 0 {
+		return marksPlan{missing: missing}
+	}
+	return marksPlan{marks: marks, checked: checked}
 }
 
 // reconcileWorkLocked reports whether a reconcile pass would have work: a cascade to derive, held outcomes to check, or
@@ -1357,77 +1516,126 @@ func (s *TaskScheduler) endReconcile() {
 	}
 }
 
-// anyFailedLocked reports whether any of ids holds or ended with an outcome other than completed.
-func (s *TaskScheduler) anyFailedLocked(ids []durable.TaskId) (bool, error) {
-	for _, id := range ids {
-		record, ok := s.live[id]
-		if !ok {
-			stored, err := s.options.Storage.Task(s.options.Context, id)
-			if err != nil {
-				return false, err
-			}
-			if stored == nil {
-				continue
-			}
-			record = *stored
-		}
-		if failedOutcome(record) {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-// finalizeLocked writes the terminal record of every completing task without live ordinary owned work, as a worklist:
-// the tasks that started holding, and the holders of work that ended. Finalizing one can free the nearest live task above
-// it, which goes on the list. Tasks finalized here have no live work below them, so walks down skip them. In rounds: the
-// holders the tasks of one round free are checked once, in the next, so a holder of many tasks that end together is
-// walked once, not once per task. A held scheduler outcome gets its Harness cleanup here.
+// finalizeLocked writes the terminal record of every completing task without live ordinary owned work, as a worklist: the
+// tasks that started holding, and the holders of work that ended. Finalizing one can free the nearest live task above it,
+// which goes on the list. Tasks finalized here have no live work below them, so walks down skip them. In rounds, one
+// decision region each: the holders the tasks of one round free are checked once, in the next, so a holder of many tasks
+// that end together is walked once, not once per task. The first round takes the completing tasks to check once its
+// decision stands. A held scheduler outcome gets its Harness cleanup here.
 func (s *TaskScheduler) finalizeLocked(tx *session.Transaction) error {
-	round := s.finalizeChecks.Values()
-	s.finalizeChecks.Clear()
 	done := map[durable.TaskId]bool{}
+	// The commit's candidates, kept in step with the terminal records each round stages.
 	staged := overlayOf(tx)
-	for len(round) > 0 {
-		next := newOrderedSet[durable.TaskId]()
-		for _, id := range round {
-			record, ok := staged.tasks[id]
-			if !ok {
-				record, ok = s.live[id]
+	var round []durable.TaskId
+	first := true
+	for {
+		ids, firstRound := round, first
+		plan, err := regionPlainLocked(s, func() roundPlan {
+			if firstRound {
+				ids = s.finalizeChecks.Values()
 			}
-			if !ok || record.State.Status != durable.TaskCompleting || done[id] {
-				continue
-			}
-			if s.hasOwnedLiveLocked(id, staged, done) {
-				continue
-			}
-			outcome := *record.State.Outcome
-			terminal := withState(record, anyTaskState{Status: durable.TaskTerminal, Outcome: &outcome})
-			if err := setTask(tx, terminal); err != nil {
+			return s.planRoundLocked(ids, staged, done)
+		}, s.reloadScopesLocked)
+		if err != nil {
+			return err
+		}
+		if first {
+			s.finalizeChecks.Clear()
+			first = false
+		}
+		for _, ended := range plan.finalized {
+			if err := setTask(tx, ended.terminal); err != nil {
 				return err
 			}
-			if _, listed := staged.tasks[id]; !listed {
-				staged.order = append(staged.order, id)
+			if _, listed := staged.tasks[ended.record.Id]; !listed {
+				staged.order = append(staged.order, ended.record.Id)
 			}
-			staged.tasks[id] = terminal
-			done[id] = true
+			staged.tasks[ended.record.Id] = ended.terminal
+			done[ended.record.Id] = true
+			outcome := *ended.record.State.Outcome
 			// Only the scheduler writes faulted and orphaned (spec §5.4); their cleanup waits for this commit.
 			if outcome.Status == durable.OutcomeFaulted || outcome.Status == durable.OutcomeOrphaned {
-				if err := s.options.SettleOutcome(tx, record, outcome); err != nil {
+				record := ended.record
+				if err := s.withoutLock(func() error { return s.options.SettleOutcome(tx, record, outcome) }); err != nil {
 					return err
 				}
 			}
-			if above, ok := s.nearestLiveAboveLocked(nodeOf(record), staged); ok && above.State.Status == durable.TaskCompleting {
-				next.Add(above.Id)
+		}
+		if len(plan.next) == 0 {
+			return nil
+		}
+		round = plan.next
+	}
+}
+
+// finalizedTask is a completing task a finalize round ends, with its terminal record.
+type finalizedTask struct {
+	record   anyTaskRecord
+	terminal anyTaskRecord
+}
+
+// roundPlan is one finalize round's decision: which tasks end, and the holders above them to check next.
+type roundPlan struct {
+	finalized []finalizedTask
+	next      []durable.TaskId
+}
+
+// planRoundLocked is one finalize round's decision: which of ids are completing without live ordinary owned work below
+// them, in the commit's candidates with the round's own finalizations applied in order, and the holders above them to check
+// next. Tasks finalized have no live work below them, so walks down skip them. It applies the round's terminal records to
+// staged while it decides and takes them back before it returns, so a run again starts from the same candidates.
+func (s *TaskScheduler) planRoundLocked(ids []durable.TaskId, staged *overlay, finalized map[durable.TaskId]bool) roundPlan {
+	// The tasks finalized so far, earlier rounds' and this one's, without copying the former.
+	round := map[durable.TaskId]bool{}
+	done := func(id durable.TaskId) bool { return round[id] || finalized[id] }
+	type ended struct {
+		finalizedTask
+		previous anyTaskRecord
+		wasStaged bool
+	}
+	var plan []ended
+	next := newOrderedSet[durable.TaskId]()
+	defer func() {
+		for _, each := range plan {
+			if each.wasStaged {
+				staged.tasks[each.record.Id] = each.previous
+			} else {
+				delete(staged.tasks, each.record.Id)
 			}
 		}
-		round = next.Values()
+	}()
+	for _, id := range ids {
+		previous, wasStaged := staged.tasks[id]
+		record := previous
+		found := wasStaged
+		if !wasStaged {
+			record, found = s.liveRecordLocked(id)
+		}
+		if !found || record.State.Status != durable.TaskCompleting || done(id) {
+			continue
+		}
+		if s.hasOwnedLiveLocked(id, staged, done) {
+			continue
+		}
+		outcome := *record.State.Outcome
+		terminal := withState(record, anyTaskState{Status: durable.TaskTerminal, Outcome: &outcome})
+		staged.tasks[id] = terminal
+		round[id] = true
+		plan = append(plan, ended{finalizedTask{record, terminal}, previous, wasStaged})
+		if above, ok := s.nearestLiveAboveLocked(nodeOf(record), staged); ok && above.State.Status == durable.TaskCompleting {
+			next.Add(above.Id)
+		}
 	}
-	return nil
+	result := roundPlan{next: next.Values()}
+	for _, each := range plan {
+		result.finalized = append(result.finalized, each.finalizedTask)
+	}
+	return result
 }
 
 // loadScopesLocked loads the owner chains of the tasks in unloaded and, with queued, of every conversation with queued
-// submissions; it returns the latter. It reads committed Storage directly, so it may run inside a commit callback.
+// submissions, on the Session line; it returns the latter. It reads through the line's Storage, so it may run inside a
+// commit callback; s.mu is released while it reads.
 func (s *TaskScheduler) loadScopesLocked(queued bool) ([]durable.ConversationId, error) {
 	for _, id := range s.unloaded.Values() {
 		// An earlier load in this loop may have passed it.
@@ -1440,10 +1648,13 @@ func (s *TaskScheduler) loadScopesLocked(queued bool) ([]durable.ConversationId,
 	if !queued {
 		return nil, nil
 	}
+	// A scan, which cannot be keyed: it waits for every unpublished commit.
 	status := durable.SubmissionQueued
+	s.mu.Unlock()
 	submissions, err := ScanAll(func(cursor durable.Cursor) (durable.Page[durable.SubmissionRecord, durable.Cursor], error) {
-		return s.options.Storage.ScanSubmissions(s.options.Context, durable.SubmissionQuery{Status: &status}, schedulerScanPageSize, cursor)
+		return s.options.Session.LineStorage().ScanSubmissions(s.options.Context, durable.SubmissionQuery{Status: &status}, schedulerScanPageSize, cursor)
 	})
+	s.mu.Lock()
 	if err != nil {
 		return nil, err
 	}
@@ -1466,66 +1677,109 @@ func (s *TaskScheduler) loadScopesLocked(queued bool) ([]durable.ConversationId,
 	return conversations, nil
 }
 
+// lineTaskLocked reads a task through the line's Storage: a task whose creation or end is not published yet waits for it.
+// s.mu is released while it reads.
+func (s *TaskScheduler) lineTaskLocked(id durable.TaskId) (*anyTaskRecord, error) {
+	s.mu.Unlock()
+	defer s.mu.Lock()
+	return s.options.Session.LineStorage().Task(s.options.Context, id)
+}
+
 // loadChainLocked loads the owner edges and task nodes from start up to its ownerless root. A known task outside unloaded
 // ends the walk, as its chain is loaded; the unloaded tasks passed have a loaded chain afterwards. Loading a node can
-// reveal a cancelled owner, so it makes the next reconcile derive cascade marks.
+// reveal a cancelled owner, so it makes the next reconcile derive cascade marks. The nodes it installs stay until the
+// job's commit is published (pinLocked). s.mu is released while it reads.
 func (s *TaskScheduler) loadChainLocked(start up, staged *overlay) error {
 	var passed []durable.TaskId
-	at := &start
-	for at != nil {
-		if at.isTask {
-			id := at.task
-			node, ok := s.nodeLocked(id, nil)
-			// Created in this commit: the load from its own record covers what is above it.
-			if _, created := staged.stagedTask(id); !ok && created {
-				break
+	installed := false
+	complete, err := func() (bool, error) {
+		at := &start
+		for at != nil {
+			if at.isTask {
+				id := at.task
+				node, ok := s.nodeLocked(id, nil)
+				// Created in this commit: the load from its own record covers what is above it.
+				if _, created := staged.stagedTask(id); !ok && created {
+					break
+				}
+				if ok && !s.unloaded.Has(id) {
+					break
+				}
+				if !ok {
+					record, err := s.lineTaskLocked(id)
+					if err != nil {
+						return false, err
+					}
+					if record == nil {
+						return false, nil
+					}
+					node = nodeOf(*record)
+					if record.State.Status == durable.TaskTerminal {
+						s.settleLocked(id, node)
+						s.pinLocked(taskTreeNode(id))
+						installed = true
+					}
+					// A loaded node can reveal a cancelling owner: the next reconcile derives marks again.
+					s.scheduleReconcileLocked()
+				}
+				passed = append(passed, id)
+				next := parentOf(node)
+				at = &next
+				continue
 			}
-			if ok && !s.unloaded.Has(id) {
-				break
-			}
-			if !ok {
-				record, err := s.options.Storage.Task(s.options.Context, id)
+			edge, known := s.edgeLocked(at.conversation, staged)
+			if !known {
+				// Through the line's Storage: a conversation whose creation is not published yet waits for it, so a missing
+				// record is never mistaken for an ownerless one.
+				s.mu.Unlock()
+				record, err := s.options.Session.LineStorage().Conversation(s.options.Context, at.conversation)
+				s.mu.Lock()
 				if err != nil {
-					return err
+					return false, err
 				}
-				if record == nil {
-					return nil
+				edge = nil
+				if record != nil {
+					edge = ownerTaskOf(*record)
 				}
-				node = nodeOf(*record)
-				if record.State.Status == durable.TaskTerminal {
-					s.settleLocked(id, node)
-				}
+				s.setEdgeLocked(at.conversation, edge)
+				s.pinLocked(conversationTreeNode(at.conversation))
+				installed = true
 				// A loaded node can reveal a cancelling owner: the next reconcile derives marks again.
 				s.scheduleReconcileLocked()
 			}
-			passed = append(passed, id)
-			next := parentOf(node)
-			at = &next
-			continue
-		}
-		edge, known := s.edgeLocked(at.conversation, staged)
-		if !known {
-			record, err := s.options.Storage.Conversation(s.options.Context, at.conversation)
-			if err != nil {
-				return err
+			if edge == nil {
+				at = nil
+			} else {
+				at = &up{isTask: true, task: *edge}
 			}
-			if record != nil {
-				edge = ownerTaskOf(*record)
-			}
-			s.setEdgeLocked(at.conversation, edge)
-			// A loaded node can reveal a cancelling owner: the next reconcile derives marks again.
-			s.scheduleReconcileLocked()
 		}
-		if edge == nil {
-			at = nil
-		} else {
-			at = &up{isTask: true, task: *edge}
-		}
+		return true, nil
+	}()
+	// idleLocked counts a live task whose chain is not loaded as inside every scope it may be in: what this load resolved,
+	// also when it stopped early, can make such a scope idle without a task change below it.
+	if slices.ContainsFunc(passed, func(id durable.TaskId) bool { _, live := s.live[id]; return live }) || (installed && s.liveUnloadedLocked()) {
+		s.unknownsChanged = true
+		// A waiter such a task held is checked again at the pass's end, also when this load was not a reconcile's.
+		s.scheduleReconcileLocked()
+	}
+	if err != nil || !complete {
+		return err
 	}
 	for _, id := range passed {
 		s.unloaded.Delete(id)
 	}
 	return nil
+}
+
+// liveUnloadedLocked reports whether a live task's chain is not loaded yet: one idleLocked counts as inside every scope it
+// may be in.
+func (s *TaskScheduler) liveUnloadedLocked() bool {
+	live := false
+	s.unloaded.Range(func(id durable.TaskId) bool {
+		_, live = s.live[id]
+		return !live
+	})
+	return live
 }
 
 // stagedTask returns the commit's candidate for id; staged may be nil.
@@ -1551,6 +1805,7 @@ func (s *TaskScheduler) edgeLocked(id durable.ConversationId, staged *overlay) (
 			return edge, true
 		}
 	}
+	s.recordLocked(session.ConversationKey(id))
 	edge, ok := s.edges[id]
 	return edge, ok
 }
@@ -1602,6 +1857,7 @@ func (s *TaskScheduler) aboveLocked(start up, staged *overlay) []step {
 // conversation, or an ownerless one for roots, without crossing a background owner, unless crossBackground. known is
 // false while an edge is not loaded.
 func (s *TaskScheduler) inScopeLocked(start up, target scope, crossBackground bool) (inScope, known bool) {
+	s.recordLocked(session.IntentKey)
 	for _, each := range s.aboveLocked(start, nil) {
 		switch each.kind {
 		case stepOwnerUnknown:
@@ -1622,6 +1878,7 @@ func (s *TaskScheduler) inScopeLocked(start up, target scope, crossBackground bo
 // belowCancelledLocked reports whether a live owner's cancellation intent reaches start: walking up finds an owner
 // with intent before a background owner without it. Terminal owners never cascade (spec §5.4).
 func (s *TaskScheduler) belowCancelledLocked(start up) bool {
+	s.recordLocked(session.IntentKey)
 	// Nothing cancels, the common case: no walk.
 	if s.intent.Len() == 0 {
 		return false
@@ -1675,6 +1932,7 @@ func (s *TaskScheduler) finishSealLocked() {
 		s.sealedRunning[id] = struct{}{}
 	}
 	clear(s.contexts)
+	s.idleOrder.Clear()
 	if s.expiry != nil {
 		s.expiry.disarm()
 		s.expiry = nil
@@ -1763,7 +2021,7 @@ func (s *TaskScheduler) reserve(ticket *session.LineTicket) ([]reservation, erro
 	}
 	var faulted []faultedTask
 	var abandoned []durable.TaskId
-	_, err := s.options.Session.CommitWithTicket(ticket, s.options.Context, func(tx *session.Transaction) (any, error) {
+	_, err := s.options.Session.CommitInternalWithTicket(ticket, s.options.Context, func(tx *session.Transaction) (any, error) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		if !s.enabled || s.sealing.Load() {
@@ -1777,15 +2035,26 @@ func (s *TaskScheduler) reserve(ticket *session.LineTicket) ([]reservation, erro
 			s.dirty = true
 			return nil, nil
 		}
-		for _, id := range s.abandoned.Values() {
-			if record, live := s.live[id]; live && !record.AbortRequested {
+		if s.abandoned.Len() > 0 {
+			ids := s.abandoned.Values()
+			unmarked, err := regionPlainLocked(s, func() []anyTaskRecord {
+				var records []anyTaskRecord
+				for _, id := range ids {
+					if record, live := s.liveRecordLocked(id); live && !record.AbortRequested {
+						records = append(records, record)
+					}
+				}
+				return records
+			}, nil)
+			if err != nil {
+				return nil, err
+			}
+			for _, record := range unmarked {
 				if err := setTask(tx, withAbortMark(record, durable.AbortedByRestart)); err != nil {
 					return nil, err
 				}
 			}
-		}
-		if s.abandoned.Len() > 0 {
-			abandoned = s.abandoned.Values()
+			abandoned = ids
 			return nil, nil
 		}
 		if _, err := s.loadScopesLocked(false); err != nil {
@@ -1794,38 +2063,26 @@ func (s *TaskScheduler) reserve(ticket *session.LineTicket) ([]reservation, erro
 		// Every pass picks up sleeps whose time has come: a pass started by any change may be the first to run after a
 		// deadline, and the wake it schedules no longer keeps a timer for a due sleep.
 		s.wakeDueLocked()
+		plan, err := regionPlainLocked(s, s.planReservationLocked, s.reloadScopesLocked)
+		if err != nil {
+			return nil, err
+		}
+		for _, id := range plan.dropped {
+			s.runnable.Delete(id)
+		}
+		// Work below an owner with cancellation intent waits for its cascade mark instead of running a phase; schedule the
+		// cascade, which may not have run yet.
+		if plan.cascade {
+			s.cascadePending = true
+			s.scheduleReconcileLocked()
+		}
 		// Taken once per pass, and only when some task is a candidate.
 		var snapshot durable.RegistrySnapshot
-		for _, id := range s.runnable.Values() {
-			record, live := s.live[id]
-			if !live || record.State.Status == durable.TaskCompleting {
-				s.runnable.Delete(id)
-				continue
-			}
-			if _, running := s.invocations[id]; running {
-				s.runnable.Delete(id)
-				continue
-			}
-			// It returns once what it waits for ends, its record changes, or the work below it ends.
-			if len(s.waitingOnLocked(record, true)) > 0 {
-				s.runnable.Delete(id)
-				continue
-			}
-			// It returns at the first pass after its time comes, which the timer, Resume, or any change starts.
-			if s.notDueLocked(record) {
-				s.runnable.Delete(id)
-				continue
-			}
+		for _, record := range plan.ready {
+			id := record.Id
 			mode := modeRun
 			if record.AbortRequested {
 				mode = modeAbort
-			}
-			// Work below an owner with cancellation intent waits for its cascade mark instead of running a phase; schedule
-			// the cascade, which may not have run yet.
-			if mode == modeRun && !record.Background && s.belowCancelledLocked(parentOf(nodeOf(record))) {
-				s.cascadePending = true
-				s.scheduleReconcileLocked()
-				continue
 			}
 			// Work cut off restartLimit times in a row would run forever: an abort handler, or a phase of a kind that does not
 			// end itself at the limit, ends the task faulted instead. The settings are read only for a task that was cut off at
@@ -1866,7 +2123,7 @@ func (s *TaskScheduler) reserve(ticket *session.LineTicket) ([]reservation, erro
 			reservations = append(reservations, reservation{invocation: s.createInvocationLocked(record, mode, installerOf(snapshot, resolution.task)), task: resolution.task, snapshot: snapshot, record: record})
 		}
 		return nil, nil
-	}, session.TransactionScope{})
+	})
 	if err != nil {
 		s.mu.Lock()
 		for _, reserved := range reservations {
@@ -1894,6 +2151,40 @@ func (s *TaskScheduler) reserve(ticket *session.LineTicket) ([]reservation, erro
 		s.mu.Unlock()
 	}
 	return reservations, nil
+}
+
+// reservationPlan is a reservation pass's decision region: the candidates it drops (gone, holding, waiting, asleep, or with
+// an invocation), whether one waits for a cascade, and the runnable records to resolve.
+type reservationPlan struct {
+	dropped []durable.TaskId
+	cascade bool
+	ready   []anyTaskRecord
+}
+
+// planReservationLocked is a reservation pass's decision region. Iterating the candidates is not keyed: a pass that misses a
+// task a pending commit makes runnable only delays it, as does skipping one with an invocation without reading its record,
+// or a waiter's check whether what it waits on is still live.
+func (s *TaskScheduler) planReservationLocked() reservationPlan {
+	var plan reservationPlan
+	for _, id := range s.runnable.Values() {
+		if _, running := s.invocations[id]; running {
+			plan.dropped = append(plan.dropped, id)
+			continue
+		}
+		record, live := s.liveRecordLocked(id)
+		// It returns once what it waits for ends, its record changes, or the work below it ends; a sleep at the first pass
+		// after its time comes, which the timer, Resume, or any change starts.
+		if !live || record.State.Status == durable.TaskCompleting || len(s.waitingOnLocked(record, true)) > 0 || s.notDueLocked(record) {
+			plan.dropped = append(plan.dropped, id)
+			continue
+		}
+		if !record.AbortRequested && !record.Background && s.belowCancelledLocked(parentOf(nodeOf(record))) {
+			plan.cascade = true
+			continue
+		}
+		plan.ready = append(plan.ready, record)
+	}
+	return plan
 }
 
 // waitingOnLocked returns the live tasks a task waits for before its next invocation: its live ordinary owned work when
@@ -2003,6 +2294,9 @@ func (s *TaskScheduler) fitLocked(id durable.TaskId, recordVersion int, task dur
 func (s *TaskScheduler) Inspect(snapshot durable.RegistrySnapshot) (string, []TaskInspection, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := s.publishedLocked(); err != nil {
+		return "", nil, err
+	}
 	if _, err := s.loadScopesLocked(false); err != nil {
 		return "", nil, err
 	}
@@ -2105,9 +2399,10 @@ func (s *TaskScheduler) run(reserved reservation) error {
 	invocation := reserved.invocation
 	phase := &phaseState{snapshot: reserved.snapshot, task: reserved.task}
 	runtime := s.runtime(invocation, phase)
-	current, ok := s.step(invocation, func(tx *session.Transaction, current anyTaskRecord) decision {
-		return s.decideLocked(tx, current, nil, phase, invocation)
-	})
+	progress := func(tx *session.Transaction, current anyTaskRecord) (bool, error) {
+		return s.progressLocked(tx, current, phase, invocation)
+	}
+	current, ok := s.step(invocation, func(current anyTaskRecord) stepPlan { return s.rulesLocked(current, nil) }, progress)
 	for ok && !s.isSealed() {
 		task := current
 		current, ok = s.phase(invocation, task, func(ctx context.Context) (anyTaskRecord, bool) {
@@ -2129,9 +2424,7 @@ func (s *TaskScheduler) run(reserved reservation) error {
 				failure = runHandler(func() error { return handler(ctx, task, runtime) })
 			}
 			previous := &phaseResult{checkpoint: checkpoint, failure: failure, failed: failure != nil}
-			return s.step(invocation, func(tx *session.Transaction, next anyTaskRecord) decision {
-				return s.decideLocked(tx, next, previous, phase, invocation)
-			})
+			return s.step(invocation, func(next anyTaskRecord) stepPlan { return s.rulesLocked(next, previous) }, progress)
 		})
 	}
 	return nil
@@ -2280,25 +2573,24 @@ func runHandler(handler func() error) (err error) {
 	return handler()
 }
 
-// decideLocked applies the precedence rules for a run invocation, on the line (scheduler.ts:879-912). Rules 1
-// (terminal, completing, or waiting) and 2 (closing) are applied by step.
-func (s *TaskScheduler) decideLocked(tx *session.Transaction, current anyTaskRecord, previous *phaseResult, phase *phaseState, invocation *invocation) decision {
+// rulesLocked applies the precedence rules for a run invocation, a decision region of its step. Rules 1 (terminal, completing,
+// waiting, or sleeping) and 2 (closing) are applied by step. Progress (rule 5) is decided by progressLocked once the decision
+// stands, as it takes a registry snapshot.
+func (s *TaskScheduler) rulesLocked(current anyTaskRecord, previous *phaseResult) stepPlan {
 	// 3. abort mark: end; a fresh abort invocation starts once the task's ordinary owned work is gone.
 	if current.AbortRequested {
-		return decision{}
+		return stepPlan{kind: stepEnd}
 	}
 	// An owner's cancellation intent ends it too, before its cascade marks it; reservation then holds it back.
 	if !current.Background && s.belowCancelledLocked(parentOf(nodeOf(current))) {
-		s.cascadePending = true
-		s.scheduleReconcileLocked()
-		return decision{}
+		return stepPlan{kind: stepCascade}
 	}
 	if previous == nil {
-		return decision{proceed: true}
+		return stepPlan{kind: stepContinue}
 	}
 	// 4. uncaught error.
 	if previous.failed {
-		return decision{fault: previous.failure}
+		return stepPlan{kind: stepFault, fault: previous.failure}
 	}
 	// 6. no durable progress.
 	var checkpoint durable.JsonValue
@@ -2306,30 +2598,37 @@ func (s *TaskScheduler) decideLocked(tx *session.Transaction, current anyTaskRec
 		checkpoint = *current.State.Checkpoint
 	}
 	if jsonEqual(checkpoint, previous.checkpoint) {
-		return decision{fault: fmt.Errorf("Task %s phase %s returned without durable progress", current.Kind, phaseName(previous.checkpoint))}
+		return stepPlan{kind: stepFault, fault: fmt.Errorf("Task %s phase %s returned without durable progress", current.Kind, phaseName(previous.checkpoint))}
 	}
-	// 5. progress: refresh the snapshot; hand over to a replacement definition that can take the task.
+	return stepPlan{kind: stepProgress}
+}
+
+// progressLocked is rule 5, progress: refresh the snapshot; hand over to a replacement definition that can take the task,
+// writing it back as pending, or keep running under the old one, reported once per resolved definition. It returns whether
+// the invocation continues.
+func (s *TaskScheduler) progressLocked(tx *session.Transaction, current anyTaskRecord, phase *phaseState, invocation *invocation) (bool, error) {
 	snapshot := s.options.Registry.Snapshot()
 	phase.mu.Lock()
 	defer phase.mu.Unlock()
 	phase.snapshot = snapshot
 	next := snapshot.Task(current.Kind)
-	if !sameTaskDefinition(next, phase.task) {
-		if next.Definition != nil && canReserve(next, current) {
-			if err := setTask(tx, withState(current, anyTaskState{Status: durable.TaskPending, Checkpoint: current.State.Checkpoint})); err != nil {
-				return decision{fault: err}
-			}
-			return decision{}
-		}
-		if phase.reported == nil || !sameTaskDefinition(phase.reported.task, next) {
-			phase.reported = &reportedTask{task: next}
-			reason := outdatedReason(next, current)
-			info := s.aboutRecord(durable.ReportTaskOutdated, current)
-			info.Extension, info.Reason = invocation.extension, reason
-			s.options.Report(invocation.telemetryContext(), fmt.Errorf("Task %d keeps running under its old %s definition", current.Id, current.Kind), info)
-		}
+	if sameTaskDefinition(next, phase.task) {
+		return true, nil
 	}
-	return decision{proceed: true}
+	if next.Definition != nil && canReserve(next, current) {
+		if err := setTask(tx, withState(current, anyTaskState{Status: durable.TaskPending, Checkpoint: current.State.Checkpoint})); err != nil {
+			return false, err
+		}
+		return false, nil
+	}
+	if phase.reported == nil || !sameTaskDefinition(phase.reported.task, next) {
+		phase.reported = &reportedTask{task: next}
+		reason := outdatedReason(next, current)
+		info := s.aboutRecord(durable.ReportTaskOutdated, current)
+		info.Extension, info.Reason = invocation.extension, reason
+		s.options.Report(invocation.telemetryContext(), fmt.Errorf("Task %d keeps running under its old %s definition", current.Id, current.Kind), info)
+	}
+	return true, nil
 }
 
 // runAbort runs the abort handler once; rules 1, 2, and 4 apply, and returning without an outcome faults.
@@ -2356,40 +2655,64 @@ func (s *TaskScheduler) runAbort(reserved reservation) error {
 		if failure == nil {
 			failure = fmt.Errorf("Abort handler of task %d returned without a terminal outcome", invocation.taskId)
 		}
-		return s.step(invocation, func(*session.Transaction, anyTaskRecord) decision { return decision{fault: failure} })
+		return s.step(invocation, func(anyTaskRecord) stepPlan { return stepPlan{kind: stepFault, fault: failure} }, nil)
 	})
 	return nil
 }
 
-// step makes one synchronous decision on the Session line (scheduler.ts:933-960). A task that is no longer running
-// (rule 1: terminal, completing, or waiting) or a closing Harness (rule 2) ends the invocation without a write;
-// otherwise decide may stage a write and returns whether the invocation continues. Ending happens inside the
-// callback, before a fault's Harness cleanup. A rejected step, such as admission after close, also ends the invocation.
-func (s *TaskScheduler) step(invocation *invocation, decide func(tx *session.Transaction, current anyTaskRecord) decision) (anyTaskRecord, bool) {
+// step makes one decision on the Session line, before a phase: a decision region that reads the task's record. A task that
+// is no longer running (rule 1: terminal, completing, waiting, or sleeping) or a closing Harness (rule 2) ends the
+// invocation without a write; otherwise plan decides, and a decision that stands is applied: the invocation continues, with
+// progress for rule 5, or ends, with a fault written. Ending happens inside the callback, before a fault's Harness
+// cleanup. A rejected step, such as admission after close, also ends the invocation. Its outcome goes to the invocation
+// only, so it is a scheduler commit (CommitInternal).
+func (s *TaskScheduler) step(invocation *invocation, plan func(current anyTaskRecord) stepPlan, progress func(tx *session.Transaction, current anyTaskRecord) (bool, error)) (anyTaskRecord, bool) {
 	type stepped struct {
 		record  anyTaskRecord
 		proceed bool
 	}
 	var fault error
-	result, err := commitOnLine(chordctx.WithTelemetry(s.options.Context, invocation.currentSpan()), s.options.Session, session.TransactionScope{}, func(tx *session.Transaction) (stepped, error) {
+	result, err := commitInternal(chordctx.WithTelemetry(s.options.Context, invocation.currentSpan()), s.options.Session, func(tx *session.Transaction) (stepped, error) {
 		fault = nil
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		found, ok := s.live[invocation.taskId]
-		running := ok && found.State.Status == durable.TaskRunning
-		outcome := decision{}
-		if running && !s.sealing.Load() {
-			outcome = decide(tx, found)
+		type decided struct {
+			current anyTaskRecord
+			plan    stepPlan
 		}
-		if outcome.proceed {
-			return stepped{record: found, proceed: true}, nil
+		chosen, err := regionPlainLocked(s, func() decided {
+			found, ok := s.liveRecordLocked(invocation.taskId)
+			if !ok || found.State.Status != durable.TaskRunning || s.sealing.Load() {
+				return decided{plan: stepPlan{kind: stepEnd}}
+			}
+			return decided{current: found, plan: plan(found)}
+		}, nil)
+		if err != nil {
+			return stepped{}, err
+		}
+		current := chosen.current
+		switch chosen.plan.kind {
+		case stepContinue:
+			return stepped{record: current, proceed: true}, nil
+		case stepProgress:
+			proceed, err := progress(tx, current)
+			if err != nil {
+				return stepped{}, err
+			}
+			if proceed {
+				return stepped{record: current, proceed: true}, nil
+			}
 		}
 		s.endLocked(invocation)
-		if outcome.fault != nil {
-			fault = outcome.fault
-			faulted := anyOutcome{Status: durable.OutcomeFaulted, Error: &durable.TaskOutcomeError{Message: outcome.fault.Error()}}
+		if chosen.plan.kind == stepCascade {
+			s.cascadePending = true
+			s.scheduleReconcileLocked()
+		}
+		if chosen.plan.kind == stepFault {
+			fault = chosen.plan.fault
+			faulted := anyOutcome{Status: durable.OutcomeFaulted, Error: &durable.TaskOutcomeError{Message: fault.Error()}}
 			invocation.fault = &faulted
-			if err := s.terminateLocked(tx, found, faulted); err != nil {
+			if err := s.terminateLocked(tx, current, faulted); err != nil {
 				return stepped{}, err
 			}
 		}
@@ -2418,13 +2741,17 @@ func (s *TaskScheduler) terminateLocked(tx *session.Transaction, record anyTaskR
 	if _, err := s.loadScopesLocked(false); err != nil {
 		return err
 	}
-	if s.hasOwnedLiveLocked(record.Id, overlayOf(tx), nil) {
+	owned, err := regionPlainLocked(s, func() bool { return s.hasOwnedLiveLocked(record.Id, overlayOf(tx), nil) }, s.reloadScopesLocked)
+	if err != nil {
+		return err
+	}
+	if owned {
 		return setTask(tx, withState(record, anyTaskState{Status: durable.TaskCompleting, Outcome: &outcome}))
 	}
 	if err := setTask(tx, withState(record, anyTaskState{Status: durable.TaskTerminal, Outcome: &outcome})); err != nil {
 		return err
 	}
-	return s.options.SettleOutcome(tx, record, outcome)
+	return s.withoutLock(func() error { return s.options.SettleOutcome(tx, record, outcome) })
 }
 
 // commitStateLocked replaces a running task's state with what it committed. A terminal state holds as completing while
@@ -2451,7 +2778,11 @@ func (s *TaskScheduler) commitStateLocked(tx *session.Transaction, invocation *i
 				return err
 			}
 		}
-		if s.hasOwnedLiveLocked(current.Id, staged, nil) {
+		owned, err := regionPlainLocked(s, func() bool { return s.hasOwnedLiveLocked(current.Id, overlayOf(tx), nil) }, s.reloadScopesLocked)
+		if err != nil {
+			return err
+		}
+		if owned {
 			return setTask(tx, withState(progressed(current), anyTaskState{Status: durable.TaskCompleting, Outcome: next.Outcome}))
 		}
 	}
@@ -2473,26 +2804,62 @@ func (s *TaskScheduler) validateWaitLocked(tx *session.Transaction, invocation *
 	if invocation.mode == modeAbort {
 		return fmt.Errorf("Abort handler of task %d cannot wait", current.Id)
 	}
-	staged := overlayOf(tx)
+	// Owned work is found by walks down, which need the chains of every live task loaded.
+	if _, err := s.loadScopesLocked(false); err != nil {
+		return err
+	}
+	// Tasks in on that are not live, read from Storage: terminal, or missing (nil).
+	ended := map[durable.TaskId]*anyTaskRecord{}
+	for {
+		checked, err := regionPlainLocked(s, func() waitCheck { return s.checkWaitLocked(current, on, policy, overlayOf(tx), ended) }, s.reloadScopesLocked)
+		if err != nil {
+			return err
+		}
+		if len(checked.missing) > 0 {
+			for _, id := range checked.missing {
+				record, err := s.lineTaskLocked(id)
+				if err != nil {
+					return err
+				}
+				ended[id] = record
+			}
+			continue
+		}
+		return checked.refused
+	}
+}
+
+// waitCheck is checkWaitLocked's result: why the wait is refused, nil when it may be stored, or the tasks in on it needs
+// from Storage first.
+type waitCheck struct {
+	missing []durable.TaskId
+	refused error
+}
+
+// checkWaitLocked is validateWaitLocked's decision region: why the wait is refused, nil when it may be stored, or the
+// tasks in on it needs from Storage first, when ended lacks them.
+func (s *TaskScheduler) checkWaitLocked(current anyTaskRecord, on []durable.TaskId, policy durable.JoinPolicy, staged *overlay, ended map[durable.TaskId]*anyTaskRecord) waitCheck {
 	var targets []durable.TaskId
+	var missing []durable.TaskId
 	for _, id := range on {
 		member, ok := staged.tasks[id]
 		if !ok {
-			member, ok = s.live[id]
+			member, ok = s.liveRecordLocked(id)
 		}
 		if !ok {
-			stored, err := s.options.Storage.Task(s.options.Context, id)
-			if err != nil {
-				return err
+			stored, loaded := ended[id]
+			if !loaded {
+				missing = append(missing, id)
+				continue
 			}
 			if stored == nil {
-				return fmt.Errorf("Task %d does not exist", id)
+				return waitCheck{refused: fmt.Errorf("Task %d does not exist", id)}
 			}
 			member = *stored
 		}
 		ownedByCurrent := member.Owner != nil && *member.Owner == current.Id
 		if policy == durable.JoinFailFast && !ownedByCurrent {
-			return fmt.Errorf("Task %d can wait failFast only on tasks it owns; %d is not one", current.Id, id)
+			return waitCheck{refused: fmt.Errorf("Task %d can wait failFast only on tasks it owns; %d is not one", current.Id, id)}
 		}
 		// A live child already holds the waiter (task-owned tasks are never background): waiting on it adds no edge. A
 		// terminal task has no edges.
@@ -2500,33 +2867,30 @@ func (s *TaskScheduler) validateWaitLocked(tx *session.Transaction, invocation *
 			targets = append(targets, id)
 		}
 	}
+	if len(missing) > 0 {
+		return waitCheck{missing: missing}
+	}
 	if len(targets) == 0 {
-		return nil
+		return waitCheck{}
 	}
-	cycle, err := s.waitCycleLocked(current.Id, targets, staged)
-	if err != nil {
-		return err
+	cycle := s.waitCycleLocked(current.Id, targets, staged)
+	if cycle == nil {
+		return waitCheck{}
 	}
-	if cycle != nil {
-		steps := make([]string, 0, len(cycle)+1)
-		steps = append(steps, strconv.FormatInt(int64(current.Id), 10))
-		for _, id := range cycle {
-			steps = append(steps, strconv.FormatInt(int64(id), 10))
-		}
-		return fmt.Errorf("Task %d cannot wait on %d: %s is a wait cycle", current.Id, cycle[0], strings.Join(steps, " -> "))
+	steps := make([]string, 0, len(cycle)+1)
+	steps = append(steps, strconv.FormatInt(int64(current.Id), 10))
+	for _, id := range cycle {
+		steps = append(steps, strconv.FormatInt(int64(id), 10))
 	}
-	return nil
+	return waitCheck{refused: fmt.Errorf("Task %d cannot wait on %d: %s is a wait cycle", current.Id, cycle[0], strings.Join(steps, " -> "))}
 }
 
 // waitCycleLocked returns the path from a member of on back to task in the wait-for graph, if the wait would close a
 // cycle (spec §5.1). An edge X -> Y means X cannot settle before Y: Y is in the on of waiting X that is not
 // abort-marked, or Y is live ordinary owned work of X, which holds X as completing. Each task is visited once and each
-// subtree walked once, so a check is bounded by the live work it reaches.
-func (s *TaskScheduler) waitCycleLocked(task durable.TaskId, on []durable.TaskId, staged *overlay) ([]durable.TaskId, error) {
-	// Owned work is found by walks down, which need the chains of every live task loaded.
-	if _, err := s.loadScopesLocked(false); err != nil {
-		return nil, err
-	}
+// subtree walked once, so a check is bounded by the live work it reaches. Part of a decision region: it records every record
+// it reads. Owned work is found by walks down, which need the chains of every live task loaded.
+func (s *TaskScheduler) waitCycleLocked(task durable.TaskId, on []durable.TaskId, staged *overlay) []durable.TaskId {
 	// from maps each reached task to the task whose edge reached it; the members of on map to the zero value with ok false.
 	type via struct {
 		task durable.TaskId
@@ -2557,11 +2921,11 @@ func (s *TaskScheduler) waitCycleLocked(task durable.TaskId, on []durable.TaskId
 		id := pending[len(pending)-1]
 		pending = pending[:len(pending)-1]
 		if id == task {
-			return path(id), nil
+			return path(id)
 		}
 		record, ok := staged.tasks[id]
 		if !ok {
-			record, ok = s.live[id]
+			record, ok = s.liveRecordLocked(id)
 		}
 		if !ok || record.State.Status == durable.TaskTerminal {
 			continue
@@ -2591,7 +2955,7 @@ func (s *TaskScheduler) waitCycleLocked(task durable.TaskId, on []durable.TaskId
 			walked[below] = true
 		}
 	}
-	return nil, nil
+	return nil
 }
 
 func (s *TaskScheduler) end(invocation *invocation) {
@@ -2635,6 +2999,9 @@ func (s *TaskScheduler) idleLocked(conversationId *durable.ConversationId) bool 
 	target := scope{roots: true}
 	if conversationId != nil {
 		target = scope{conversation: *conversationId}
+	} else {
+		// In a decision region, global idle reads the roots it starts from.
+		s.recordLocked(session.RootsKey)
 	}
 	// Tasks whose chain is not loaded are not listed below their scope yet; one counts as inside unless its walk up decides
 	// otherwise.
@@ -2918,8 +3285,8 @@ func (runtime *taskRuntime) GetTask(ctx context.Context, id durable.TaskId) (*an
 	if err := runtime.check(); err != nil {
 		return nil, err
 	}
-	return readOnLine(runtime.scheduler.options.Session, func() (*anyTaskRecord, error) {
-		return runtime.scheduler.options.Storage.Task(ctx, id)
+	return readOnLine(runtime.scheduler.options.Session, func(storage durable.Storage) (*anyTaskRecord, error) {
+		return storage.Task(ctx, id)
 	})
 }
 
@@ -2940,8 +3307,8 @@ func (runtime *taskRuntime) AbortOwned(ctx context.Context, id durable.TaskId) e
 	}
 	bound, stop := linkSignal(ctx, runtime.invocation.ctx)
 	defer stop()
-	record, err := readOnLine(runtime.scheduler.options.Session, func() (*anyTaskRecord, error) {
-		return runtime.scheduler.options.Storage.Task(bound, id)
+	record, err := readOnLine(runtime.scheduler.options.Session, func(storage durable.Storage) (*anyTaskRecord, error) {
+		return storage.Task(bound, id)
 	})
 	if err != nil {
 		return err
@@ -2967,7 +3334,7 @@ func (runtime *taskRuntime) OwnedTasks(ctx context.Context) ([]anyTaskRecord, er
 	}
 	bound, stop := linkSignal(ctx, runtime.invocation.ctx)
 	defer stop()
-	return readOnLine(runtime.scheduler.options.Session, func() ([]anyTaskRecord, error) {
+	return readOnLine(runtime.scheduler.options.Session, func(durable.Storage) ([]anyTaskRecord, error) {
 		// The step that ends the invocation may have run on the line before this.
 		if err := runtime.check(); err != nil {
 			return nil, err
@@ -2977,19 +3344,26 @@ func (runtime *taskRuntime) OwnedTasks(ctx context.Context) ([]anyTaskRecord, er
 		}
 		s := runtime.scheduler
 		s.mu.Lock()
-		var owned []anyTaskRecord
-		if children := s.below[taskTreeNode(runtime.invocation.taskId)]; children != nil {
-			children.Range(func(node treeNode) bool {
-				if node.conversation {
+		owned, err := regionPlainLocked(s, func() []anyTaskRecord {
+			s.recordLocked(ownedKey(taskTreeNode(runtime.invocation.taskId)))
+			var records []anyTaskRecord
+			if children := s.below[taskTreeNode(runtime.invocation.taskId)]; children != nil {
+				children.Range(func(node treeNode) bool {
+					if node.conversation {
+						return true
+					}
+					if record, live := s.liveRecordLocked(durable.TaskId(node.id)); live && record.Owner != nil && *record.Owner == runtime.invocation.taskId {
+						records = append(records, record)
+					}
 					return true
-				}
-				if record, live := s.live[durable.TaskId(node.id)]; live && record.Owner != nil && *record.Owner == runtime.invocation.taskId {
-					owned = append(owned, record)
-				}
-				return true
-			})
-		}
+				})
+			}
+			return records
+		}, nil)
 		s.mu.Unlock()
+		if err != nil {
+			return nil, err
+		}
 		slices.SortFunc(owned, func(a, b anyTaskRecord) int { return cmp.Compare(a.Id, b.Id) })
 		copies := make([]anyTaskRecord, 0, len(owned))
 		for _, record := range owned {
@@ -3011,10 +3385,10 @@ func (runtime *taskRuntime) Outcomes(ctx context.Context, ids []durable.TaskId) 
 	if err := runtime.check(); err != nil {
 		return nil, err
 	}
-	return readOnLine(runtime.scheduler.options.Session, func() ([]anyOutcome, error) {
+	return readOnLine(runtime.scheduler.options.Session, func(storage durable.Storage) ([]anyOutcome, error) {
 		outcomes := make([]anyOutcome, 0, len(ids))
 		for _, id := range ids {
-			record, err := runtime.scheduler.options.Storage.Task(ctx, id)
+			record, err := storage.Task(ctx, id)
 			if err != nil {
 				return nil, err
 			}
@@ -3039,8 +3413,19 @@ func (runtime *taskRuntime) Entry(ctx context.Context, id durable.EntryId) (*dur
 	if err := runtime.check(); err != nil {
 		return nil, err
 	}
-	found, err := readOnLine(runtime.scheduler.options.Session, func() (*durable.EntryAt, error) {
-		return runtime.scheduler.options.Storage.VisibleEntry(ctx, runtime.invocation.conversationId, id)
+	// An entry of the conversation's kept context range is committed and visible: no Storage read.
+	scheduler := runtime.scheduler
+	scheduler.mu.Lock()
+	if kept := scheduler.contexts[runtime.invocation.conversationId]; kept != nil {
+		if entry := rangeEntry(kept.rng, id); entry != nil {
+			copied := *entry
+			scheduler.mu.Unlock()
+			return &copied, nil
+		}
+	}
+	scheduler.mu.Unlock()
+	found, err := readOnLine(scheduler.options.Session, func(storage durable.Storage) (*durable.EntryAt, error) {
+		return storage.VisibleEntry(ctx, runtime.invocation.conversationId, id)
 	})
 	if err != nil || found == nil {
 		return nil, err
@@ -3054,8 +3439,8 @@ func (runtime *taskRuntime) Entries(ctx context.Context, query durable.EntryQuer
 		return durable.Page[durable.EntryRecord, durable.Cursor]{}, err
 	}
 	scan := conversationEntries(runtime.invocation.conversationId, query)
-	return readOnLine(runtime.scheduler.options.Session, func() (durable.Page[durable.EntryRecord, durable.Cursor], error) {
-		return runtime.scheduler.options.Storage.ScanEntries(ctx, scan, limit, cursor)
+	return readOnLine(runtime.scheduler.options.Session, func(storage durable.Storage) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+		return storage.ScanEntries(ctx, scan, limit, cursor)
 	})
 }
 
@@ -3074,7 +3459,7 @@ func (runtime *taskRuntime) Context(ctx context.Context, conversationId durable.
 		previous = kept.rng
 	}
 	scheduler.mu.Unlock()
-	view, rng, err := readContextFrom(ctx, lineAdapter{scheduler.options.Session}, scheduler.options.Storage, conversationId, at, previous)
+	view, rng, err := readContextFrom(ctx, sessionLine{scheduler.options.Session}, scheduler.options.Storage, conversationId, at, previous)
 	if err != nil {
 		return durable.ContextView{}, err
 	}
@@ -3095,6 +3480,15 @@ func (s *TaskScheduler) keepContext(runtime *taskRuntime, conversationId durable
 	// kept is the range this read leaves: nothing when the invocation ended, the Harness is sealing or a concurrent read already kept a
 	// newer one. Under the lock; a conversation that is not idle keeps it without a retention period.
 	s.mu.Lock()
+	// Checked again here, under the lock that publication's observe takes: a commit published since the read returned was
+	// not seen by advanceContextsLocked, so a range that missed it must not be advanced.
+	if rng.current {
+		if latest, known := s.options.Session.KnownLatestEntryId(conversationId); !known || latest == nil || *latest != rng.bounds.Tail {
+			copied := *rng
+			copied.current = false
+			rng = &copied
+		}
+	}
 	kept := s.contexts[conversationId]
 	if s.sealing.Load() || runtime.invocation.ended.Load() || (kept != nil && kept.rng.bounds.Tail > rng.bounds.Tail) {
 		s.mu.Unlock()
@@ -3102,6 +3496,7 @@ func (s *TaskScheduler) keepContext(runtime *taskRuntime, conversationId durable
 	}
 	if !s.idleLocked(&conversationId) {
 		s.contexts[conversationId] = &keptContext{rng: rng}
+		s.idleOrder.Delete(conversationId)
 		s.mu.Unlock()
 		return
 	}
@@ -3124,13 +3519,23 @@ func (s *TaskScheduler) keepContext(runtime *taskRuntime, conversationId durable
 	}
 	if !s.idleLocked(&conversationId) {
 		s.contexts[conversationId] = &keptContext{rng: rng}
+		s.idleOrder.Delete(conversationId)
 		return
 	}
-	idleSince := now
+	// An idle period that already started keeps its expiry and its place; a new one starts now.
+	idleSince, expiresAt := now, now+retention
 	if kept != nil && kept.idleSince != nil {
 		idleSince = *kept.idleSince
+		if kept.expiresAt != nil {
+			expiresAt = *kept.expiresAt
+		} else {
+			expiresAt = idleSince + retention
+		}
 	}
-	s.contexts[conversationId] = &keptContext{rng: rng, idleSince: &idleSince}
+	s.contexts[conversationId] = &keptContext{rng: rng, idleSince: &idleSince, expiresAt: &expiresAt}
+	if kept == nil || kept.idleSince == nil {
+		s.markIdleLocked(conversationId, idleSince)
+	}
 	s.scheduleExpiryLocked(now, retention)
 }
 
@@ -3267,20 +3672,30 @@ func gated[T any](ctx context.Context, runtime *taskRuntime, change func(tx *ses
 			return zero, err
 		}
 		scheduler.mu.Lock()
-		closing := scheduler.sealing.Load()
-		found, ok := scheduler.live[taskId]
-		scheduler.mu.Unlock()
-		if closing {
+		if scheduler.sealing.Load() {
+			scheduler.mu.Unlock()
 			return zero, closedError(scheduler.options.Session)
 		}
-		if !ok {
-			return zero, fmt.Errorf("Task %d is terminal", taskId)
+		found, err := regionLocked(scheduler, func() (anyTaskRecord, error) {
+			found, ok := scheduler.liveRecordLocked(taskId)
+			if !ok {
+				return found, fmt.Errorf("Task %d is terminal", taskId)
+			}
+			if found.State.Status != durable.TaskRunning {
+				return found, fmt.Errorf("Task %d is %s", taskId, found.State.Status)
+			}
+			if invocation.mode == modeRun && found.AbortRequested {
+				return found, fmt.Errorf("Task %d has a durable abort mark", taskId)
+			}
+			return found, nil
+		}, nil)
+		scheduler.mu.Unlock()
+		if err != nil {
+			return zero, err
 		}
-		if found.State.Status != durable.TaskRunning {
-			return zero, fmt.Errorf("Task %d is %s", taskId, found.State.Status)
-		}
-		if invocation.mode == modeRun && found.AbortRequested {
-			return zero, fmt.Errorf("Task %d has a durable abort mark", taskId)
+		// The step that ends it may have run while the region waited.
+		if err := runtime.check(); err != nil {
+			return zero, err
 		}
 		return change(tx, found)
 	}, options...)
@@ -3337,13 +3752,6 @@ func overlayOf(tx *session.Transaction) *overlay {
 }
 
 func setTask(tx *session.Transaction, record anyTaskRecord) error { return tx.SetTask(record) }
-
-// lineAdapter gives ReadContext the context-taking line reader it declares.
-type lineAdapter struct{ session *session.SessionImpl }
-
-func (adapter lineAdapter) ReadOnLine(_ context.Context, job func() (any, error)) (any, error) {
-	return adapter.session.ReadOnLine(job)
-}
 
 func missingMigration(record anyTaskRecord, definition *durable.AnyTaskDefinition) error {
 	return fmt.Errorf("Task %s version %d has no migration from %d", record.Kind, definition.Version, record.Version)
