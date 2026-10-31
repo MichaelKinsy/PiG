@@ -212,10 +212,10 @@ func waitingOnLine(operation string) int {
 	})
 }
 
-// queueOnLine runs start with a context that reports when the Session line admits its call, and waits for that or for the
+// queueOnLineAdmitted runs start with a context that reports when the Session line admits its call, and waits for that or for the
 // operation to settle: the call then holds its position behind the jobs ahead of it, as a TypeScript call that extended
 // the line's chain synchronously does (internal/lineadmission).
-func queueOnLine(t *testing.T, start func(ctx context.Context) <-chan struct{}) {
+func queueOnLineAdmitted(t *testing.T, start func(ctx context.Context) <-chan struct{}) {
 	t.Helper()
 	admitted := make(chan struct{})
 	done := start(lineadmission.With(testContext, func() { close(admitted) }))
@@ -254,4 +254,17 @@ func goroutinesMatching(match func(stack string) bool) int {
 		}
 	}
 	return count
+}
+
+// holdLine holds the Session line with a commit whose callback waits (harness-tasks.test.ts holdLine): the jobs queued after
+// it start once it is released. entered resolves once the callback runs; release lets it return.
+func holdLine(harness Harness) gate {
+	held := gate{entered: deferred(), held: deferred()}
+	go func() {
+		_, _ = durable.Commit(testContext, harness, func(durable.Tx) (struct{}, error) {
+			held.entered.resolve()
+			return struct{}{}, held.held.wait(crashedProcesses)
+		})
+	}()
+	return held
 }

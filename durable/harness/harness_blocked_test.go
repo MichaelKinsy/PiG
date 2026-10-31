@@ -172,7 +172,7 @@ func TestBlockedTasksOnTheReference(t *testing.T) {
 func tkMarkAdmitted(t *testing.T, harness Harness, id durable.TaskId) <-chan tkAbortResult {
 	t.Helper()
 	aborting := make(chan tkAbortResult, 1)
-	queueOnLine(t, func(ctx context.Context) <-chan struct{} {
+	queueOnLineAdmitted(t, func(ctx context.Context) <-chan struct{} {
 		done := make(chan struct{})
 		go func() {
 			defer close(done)

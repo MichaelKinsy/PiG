@@ -43,6 +43,22 @@ func observeLiveOps(harness Harness) *liveOps {
 	return collected
 }
 
+// observeStoredLiveOps collects the pi.live operations of the stored publications, as Pi's observeCommits: a held
+// (deferred) operation is part of the stored commit that takes it, first.
+func observeStoredLiveOps(harness Harness) *liveOps {
+	collected := &liveOps{}
+	observeStored(harness, func(_ context.Context, publication durable.CommitPublication) {
+		for _, change := range documentValues(publication.Changes) {
+			if change.Record.Kind == "pi.live" && len(change.Ops) > 0 {
+				collected.mu.Lock()
+				collected.commits = append(collected.commits, slices.Clone(change.Ops))
+				collected.mu.Unlock()
+			}
+		}
+	})
+	return collected
+}
+
 func (collected *liveOps) all() [][]durable.Op {
 	collected.mu.Lock()
 	defer collected.mu.Unlock()
@@ -143,7 +159,7 @@ func TestLiveDeltas(t *testing.T) {
 		addTool(t, setup.Registry, noopTool("noop"))
 		setup.Faux.SetResponses([]ai.FauxResponseStep{toolCallStep(ai.FauxToolCall("noop", map[string]any{}, &ai.FauxToolCallOptions{ID: "c1"})), fauxAnswer("done")})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
-		ops := observeLiveOps(harness)
+		ops := observeStoredLiveOps(harness)
 		must(submitInput(t, root, "go").Wait(testContext))
 		tasks := conversationTasks(t, harness, root)
 		ids := func(kind string) []durable.TaskId {
