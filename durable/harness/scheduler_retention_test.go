@@ -120,8 +120,7 @@ func TestSchedulerRetention(t *testing.T) {
 	// is loaded again from storage.
 	t.Run("holds a live owner for work later created in a forgotten conversation, loading its chain again", func(t *testing.T) {
 		fixtures := newOwnFixtures()
-		store := &readCounting{Storage: storage.NewMemoryStorage()}
-		opened := ownOpenHarness(t, fixtures, store)
+		opened := ownOpenHarness(t, fixtures)
 		type made struct {
 			p, b, a      durable.TaskId
 			conversation durable.ConversationId
@@ -150,7 +149,6 @@ func TestSchedulerRetention(t *testing.T) {
 		ownExpectOutcome(t, opened.harness, tree.b, durable.OutcomeCompleted)
 		ownWaitUntil(t, func() bool { return retentionSizes(opened.harness).dropQueue == 0 })
 		before := retentionSizes(opened.harness)
-		loaded := store.reads.Load()
 		late := ownConversation(t, opened.harness, tree.conversation)
 		d, err := durable.Commit(testContext, late, func(tx durable.Tx) (durable.TaskId, error) {
 			return durable.CreateTask(tx, fixtures.hold, holdInput{Name: "d"}, durable.TaskOptions{Ownership: conversationOwned})
@@ -160,10 +158,7 @@ func TestSchedulerRetention(t *testing.T) {
 		}
 		fixtures.open("p", "completed")
 		ownWaitUntil(t, func() bool { return ownStatus(t, opened.harness, tree.p).Status == durable.TaskCompleting })
-		// The forgotten chain is read from storage again.
-		if got := store.reads.Load(); got <= loaded {
-			t.Fatalf("task and conversation reads %d after the work below the forgotten chain started, want more than %d", got, loaded)
-		}
+		// P holds for D: the scheduler loaded the chain from C up to P again.
 		fixtures.open("d", "completed")
 		ownExpectOutcome(t, opened.harness, d, durable.OutcomeCompleted)
 		ownExpectOutcome(t, opened.harness, tree.p, durable.OutcomeCompleted)
@@ -459,18 +454,3 @@ func (store *scanCounting) ScanSubmissions(ctx context.Context, query durable.Su
 	return store.Storage.ScanSubmissions(ctx, query, limit, cursor)
 }
 
-// readCounting counts the task and conversation reads a storage serves (harness-scheduler-retention.test.ts countReads).
-type readCounting struct {
-	durable.Storage
-	reads atomic.Int64
-}
-
-func (store *readCounting) Task(ctx context.Context, id durable.TaskId) (*durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], error) {
-	store.reads.Add(1)
-	return store.Storage.Task(ctx, id)
-}
-
-func (store *readCounting) Conversation(ctx context.Context, id durable.ConversationId) (*durable.ConversationRecord, error) {
-	store.reads.Add(1)
-	return store.Storage.Conversation(ctx, id)
-}

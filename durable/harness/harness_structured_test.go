@@ -1985,22 +1985,21 @@ func (store *rejectingStorage) reject(id durable.TaskId) {
 	store.mu.Unlock()
 }
 
+// Commit refuses the batch that finalizes the task set with reject, as a storage whose own check refuses it does.
 func (store *rejectingStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
-	writes := slices.Concat(batches...)
-	store.mu.Lock()
-	target := store.target
-	finalizes := target != nil && slices.ContainsFunc(writes, func(write durable.StorageWrite) bool {
-		task, ok := write.(durable.TaskWrite)
-		return ok && task.Value.Id == *target && task.Value.State.Status == durable.TaskTerminal
-	})
-	if finalizes {
-		store.target = nil
-	}
-	store.mu.Unlock()
-	if finalizes {
-		return durable.CommitResult{}, store.failure
-	}
-	return store.MemoryStorage.Commit(ctx, batches, receive)
+	return refusingAt(ctx, store.MemoryStorage.Commit, batches, receive, func(writes []durable.StorageWrite) bool {
+		store.mu.Lock()
+		defer store.mu.Unlock()
+		target := store.target
+		finalizes := target != nil && slices.ContainsFunc(writes, func(write durable.StorageWrite) bool {
+			task, ok := write.(durable.TaskWrite)
+			return ok && task.Value.Id == *target && task.Value.State.Status == durable.TaskTerminal
+		})
+		if finalizes {
+			store.target = nil
+		}
+		return finalizes
+	}, store.failure)
 }
 
 // ─── Review follow-ups ──────────────────────────────────────────────────────

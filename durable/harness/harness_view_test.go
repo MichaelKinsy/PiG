@@ -277,8 +277,9 @@ func TestConversationView(t *testing.T) {
 		}
 		drained(harness)
 		frames := recorded.snapshot()
-		if len(frames) != touching.value() {
-			t.Fatalf("%d frames, %d touching commits", len(frames), touching.value())
+		// One frame per stored commit, and one for the attempt, a deferred commit stored with the answer.
+		if len(frames) != touching.value()+1 {
+			t.Fatalf("%d frames, %d touching commits and the attempt", len(frames), touching.value())
 		}
 		expectSameJSON(t, replay(t, recorded.initial, frames), committed(t, harness, root, recorded.initial.Conversation, len(lastView(frames, recorded.initial).Entries)))
 		containsOp := func(ops []durable.Op, match func(op any) bool) bool {

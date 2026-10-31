@@ -286,9 +286,10 @@ func TestDeferredGenerationPartials(t *testing.T) {
 		submission := submitInput(t, run.root, "hi")
 		waitForLong(t, func() bool { return run.memory.lastLength() > 40 })
 		crash(t, run.harness)
+		// The attempt is presentation, deferred like the partials: none of it was stored.
 		live := storedLive(t, storage, run.root.Id())
-		if live == nil || live.Generation == nil || live.Generation.Attempt != 1 {
-			t.Fatalf("stored pi.live = %+v, want generation attempt 1", live)
+		if live != nil && live.Generation != nil {
+			t.Fatalf("stored pi.live = %+v, want no generation", live)
 		}
 		if _, ok := storedText(t, live); ok {
 			t.Fatal("a partial was stored")

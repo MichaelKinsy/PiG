@@ -282,31 +282,23 @@ func TestInbox(t *testing.T) {
 			yielded.resolve()
 			return nil, nil
 		}})
-		store := newControlledStorage()
-		harness, root := openChat(t, store, setup)
+		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		submit(t, root, inputDraft("a"))
 		first.awaitReached(t)
 		f1 := submit(t, root, inputDraft("f1"))
 		f2 := submit(t, root, inputDraft("f2"))
-		// Occupy the line, let the answer queue its boundary commit behind it, then change the mode.
-		held := store.holdCommits()
-		markerDoc := durable.DefineDoc(durable.DocDefinition[markerState]{
-			CommonDocDefinition: durable.CommonDocDefinition[markerState]{Kind: "test.marker", Version: 1, Initial: func() markerState { return markerState{} }, CheckpointWhen: func(markerState, []durable.Op, durable.CheckpointInfo) bool { return false }},
-			DocumentSemantics:   durable.DocumentSemantics{Scope: durable.ScopeSession},
-		})
+		// Occupy the line with a commit whose callback waits, let the answer queue its boundary commit behind it, then
+		// change the mode.
+		entered, releaseLine := deferred(), deferred()
 		occupying := make(chan error, 1)
 		go func() {
-			_, err := durable.Commit(testContext, root, func(tx durable.Tx) (struct{}, error) {
-				marker, err := durable.TxDoc[markerState](tx, markerDoc)
-				if err != nil {
-					return struct{}{}, err
-				}
-				n, _ := marker.Get("n").(float64)
-				return struct{}{}, marker.Set("n", n+1)
+			_, err := durable.Commit(testContext, root, func(durable.Tx) (struct{}, error) {
+				entered.resolve()
+				return struct{}{}, releaseLine.wait(testContext)
 			})
 			occupying <- err
 		}()
-		if err := held.entered.wait(testContext); err != nil {
+		if err := entered.wait(testContext); err != nil {
 			t.Fatal(err)
 		}
 		first.release()
@@ -315,7 +307,7 @@ func TestInbox(t *testing.T) {
 		}
 		flush()
 		setup.SetSettings(func(settings *HarnessSettings) { settings.FollowUpMode = durable.QueueAll })
-		held.release()
+		releaseLine.resolve()
 		if err := <-occupying; err != nil {
 			t.Fatal(err)
 		}
@@ -1222,10 +1214,6 @@ func TestUsage(t *testing.T) {
 		}
 		closeHarness(t, harness)
 	})
-}
-
-type markerState struct {
-	N float64 `json:"n"`
 }
 
 // expectSameSettlement is toEqual({...settled, id, entry: expect.any(Number)}).

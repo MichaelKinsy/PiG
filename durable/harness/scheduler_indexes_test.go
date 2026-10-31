@@ -6,7 +6,6 @@
 package harness
 
 import (
-	"slices"
 	"context"
 	"path/filepath"
 	"sync"
@@ -24,12 +23,13 @@ type commitCounter struct {
 }
 
 func (store *commitCounter) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
-	writes := slices.Concat(batches...)
 	store.mu.Lock()
-	store.commits++
-	for _, write := range writes {
-		if task, ok := write.(durable.TaskWrite); ok && task.Value.State.Status == durable.TaskTerminal {
-			store.endedIn[task.Value.Id] = store.commits
+	for _, writes := range batches {
+		store.commits++
+		for _, write := range writes {
+			if task, ok := write.(durable.TaskWrite); ok && task.Value.State.Status == durable.TaskTerminal {
+				store.endedIn[task.Value.Id] = store.commits
+			}
 		}
 	}
 	store.mu.Unlock()
