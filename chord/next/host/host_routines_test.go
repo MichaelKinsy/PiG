@@ -1934,9 +1934,12 @@ func TestOnOnARemoteMemberWithNoValueYetAFirstValueFollowedAtOnceByAFailureCalls
 			must(t, err)
 			return []link.StateMember{{Member: editor.State["count"], Ops: part}}
 		}
-		// Two state messages in one receive turn: the first value, then a failure again.
-		peer.Send(&link.StateMessage{Holds: []link.StateEntry{{Hold: hold, Members: value(5), Failed: []link.FailedMember{}, Retired: []int{}}}})
-		peer.Send(&link.StateMessage{Holds: []link.StateEntry{{Hold: hold, Members: []link.StateMember{}, Failed: failed, Retired: []int{}}}})
+		// Two state messages in one receive turn: the first value, then a failure again. Both are queued before the loop runs
+		// the first (in Pi the sends are synchronous): a microtask the first one queues then runs after the second.
+		client.(*chordHost).loop().Run(func() {
+			peer.Send(&link.StateMessage{Holds: []link.StateEntry{{Hold: hold, Members: value(5), Failed: []link.FailedMember{}, Retired: []int{}}}})
+			peer.Send(&link.StateMessage{Holds: []link.StateEntry{{Hold: hold, Members: []link.StateMember{}, Failed: failed, Retired: []int{}}}})
+		})
 		turn(client)
 		scopeEventually(t, "the failure to be applied", func() bool { turn(client); return true })
 		mu.Lock()
