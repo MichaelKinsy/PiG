@@ -901,14 +901,6 @@ func (s *TaskScheduler) waitForTask(ctx context.Context, id durable.TaskId) (dur
 		return found{record: record}, nil
 	})
 	if err != nil {
-			return found{}, err
-		}
-		if record == nil {
-			return found{}, fmt.Errorf("Task %d does not exist", id)
-		}
-		return found{record: record}, nil
-	})
-	if err != nil {
 		return anyTaskRecord{}, err
 	}
 	if result.record != nil {
