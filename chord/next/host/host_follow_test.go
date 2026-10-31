@@ -109,17 +109,17 @@ func (r *followRuntime) counts() [2]int {
 	return counts
 }
 
-// followed is a followed source of a runtime and the ends its owner was told.
-type followed struct {
+// followedRuntime is a followed source of a runtime and the ends its owner was told.
+type followedRuntime struct {
 	source *followSource
 	ended  *[]chord.WatchEnd
 }
 
 // follow makes the followed source of runtime on h (not attached yet).
-func (h *memberHarness) follow(runtime *followRuntime, label string) followed {
+func (h *memberHarness) follow(runtime *followRuntime, label string) followedRuntime {
 	var ends []chord.WatchEnd
 	owner := followOwner{label: label, ctx: memberBackground, ended: func(end chord.WatchEnd) { ends = append(ends, end) }}
-	return followed{source: newFollowSource(runtime.attach, owner, h.batch, h.loop), ended: &ends}
+	return followedRuntime{source: newFollowSource(runtime.attach, owner, h.batch, h.loop), ended: &ends}
 }
 
 // summed is a derive over two followed sources, its computes counted (follow.test.ts `served`'s `sum`).
@@ -143,10 +143,10 @@ func (h *memberHarness) sum(t *testing.T, left, right *followSource) summed {
 }
 
 // attachBoth attaches the sources of a and b, as the activation does, and returns the sum over them.
-func (h *memberHarness) attachBoth(t *testing.T, a, b *followRuntime) (left, right followed, sum summed) {
+func (h *memberHarness) attachBoth(t *testing.T, a, b *followRuntime) (left, right followedRuntime, sum summed) {
 	t.Helper()
 	left, right = h.follow(a, "app.view(): follow #1"), h.follow(b, "app.view(): follow #2")
-	for _, each := range []followed{left, right} {
+	for _, each := range []followedRuntime{left, right} {
 		if err := each.source.attach(memberBackground); err != nil {
 			t.Fatalf("attach: %v", err)
 		}
@@ -651,7 +651,8 @@ func followServeOn(t *testing.T, a, b *followRuntime, loop *Loop) *followServed 
 	s.Errors = &hostErrors{}
 	s.Host = newHost(t, HostOptions{OnError: s.Errors.push, loop: loop})
 	go func() {
-		s.loaded <- s.Host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(followSetup(s))}}, background)
+		_, err := s.Host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(followSetup(s))}}, background)
+		s.loaded <- err
 	}()
 	return s
 }
@@ -879,7 +880,7 @@ func TestHostFollowAnEndWhileTheObjectActivatesAfterItsSourcesAttachedFailsTheAc
 	errs := &hostErrors{}
 	host := newHost(t, HostOptions{OnError: errs.push, loop: loop})
 	view := followView
-	must(t, host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(view, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			left := self.Follow(a.attach)
 			// The activation computes the derives after the follows attached: the runtime ends then.

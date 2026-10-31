@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"testing"
@@ -50,17 +51,13 @@ func writePlugin(t *testing.T, root, dir, name string, files map[string]string, 
 	t.Helper()
 	path := filepath.Join(root, dir)
 	fields := map[string]any{"name": name, "type": "module"}
-	for key, value := range manifest {
-		fields[key] = value
-	}
+	maps.Copy(fields, manifest)
 	text, err := json.Marshal(fields)
 	if err != nil {
 		t.Fatal(err)
 	}
 	all := map[string]string{"package.json": string(text)}
-	for file, content := range files {
-		all[file] = content
-	}
+	maps.Copy(all, files)
 	writeFiles(t, path, all)
 	return path
 }

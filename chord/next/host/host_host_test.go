@@ -226,7 +226,10 @@ func wantChordError(t testing.TB, err error, code data.ChordErrorCode, reason da
 // startLoad is `host.load(...)` unawaited: its result arrives on the channel.
 func startLoad(host Host, facets ...HostFacet) <-chan error {
 	done := make(chan error, 1)
-	go func() { done <- host.Load(facets, background) }()
+	go func() {
+		_, err := host.Load(facets, background)
+		done <- err
+	}()
 	return done
 }
 
@@ -251,32 +254,61 @@ func TestHostLoadRunsEverySetupAndActivatesTheTypesWithEmptyParamsBeforeItResolv
 		return servePage(h, func() { page.Add(1) })
 	})
 	host := newHost(t, HostOptions{OnError: noopOnError})
-	must(t, host.Load([]HostFacet{{Name: "@app/info", Facet: facet}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: facet}}, background))
 	if info.Load() != 1 || page.Load() != 0 {
 		t.Fatalf("factories: info %d, page %d; want 1 and 0", info.Load(), page.Load())
 	}
 	closeHosts(t, host)
 }
 
-// Mirrors "load › refuses invalid and duplicate plugin names, double serves and a second load".
-func TestHostLoadRefusesInvalidAndDuplicatePluginNamesDoubleServesAndASecondLoad(t *testing.T) {
+// failedMessages is the plugin and error message of each plugin `load` or `reload` left out.
+func failedMessages(failed []PluginFailure) [][2]string {
+	out := make([][2]string, 0, len(failed))
+	for _, each := range failed {
+		out = append(out, [2]string{each.Plugin, each.Error.Error()})
+	}
+	return out
+}
+
+// Mirrors "load › leaves out and reports invalid and duplicate plugin names and double serves (the later); refuses a second load".
+func TestHostLoadLeavesOutAndReportsInvalidAndDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad(t *testing.T) {
 	empty := DefineFacet(func(FacetHost, FacetSelf) error { return nil })
 	info := DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfoFactory(h, nil) })
-	for _, c := range []struct {
-		facets []HostFacet
-		want   string
-	}{
-		{[]HostFacet{{Name: "Bad Name", Facet: empty}}, `"Bad Name" is not a valid plugin name`},
-		{[]HostFacet{{Name: "a", Facet: empty}, {Name: "a", Facet: empty}}, `plugin "a" is loaded twice`},
-		{[]HostFacet{{Name: "a", Facet: info}, {Name: "b", Facet: info}}, "app.info is served twice"},
-	} {
-		if err := newHost(t, HostOptions{OnError: noopOnError}).Load(c.facets, background); err == nil || err.Error() != c.want {
-			t.Fatalf("load = %v, want %q", err, c.want)
-		}
+	loadedFailed := func(facets []HostFacet) [][2]string {
+		host := newHost(t, HostOptions{OnError: noopOnError})
+		report, err := host.Load(facets, background)
+		must(t, err)
+		closeHosts(t, host)
+		return failedMessages(report.Failed)
+	}
+	if got, want := loadedFailed([]HostFacet{{Name: "Bad Name", Facet: empty}}), [][2]string{{"Bad Name", `"Bad Name" is not a valid plugin name`}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("failed = %v, want %v", got, want)
+	}
+	twice := []HostFacet{{Name: "a", Facet: empty}, {Name: "a", Facet: empty}}
+	if got, want := loadedFailed(twice), [][2]string{{"a", `plugin "a" is loaded twice`}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("failed = %v, want %v", got, want)
+	}
+	throwing := DefineFacet(func(FacetHost, FacetSelf) error { return errors.New("first failed") })
+	// The first one's setup failing does not make the second one's name free (Sol).
+	failing := newHost(t, HostOptions{OnError: noopOnError})
+	report, err := failing.Load([]HostFacet{{Name: "a", Facet: throwing}, {Name: "a", Facet: info}}, background)
+	must(t, err)
+	if got, want := failedMessages(report.Failed), [][2]string{{"a", `plugin "a": first failed`}, {"a", `plugin "a" is loaded twice`}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("failed = %v, want %v", got, want)
+	}
+	held, err := failing.Hold(hostInfo, jsonObject(), background, GetOptions{})
+	must(t, err)
+	if kind := refStateOf(held).Kind; kind != RefStateFailed {
+		t.Fatalf("hold state = %v, want failed", kind)
+	}
+	closeHosts(t, failing)
+	served := []HostFacet{{Name: "a", Facet: info}, {Name: "b", Facet: info}}
+	if got, want := loadedFailed(served), [][2]string{{"b", `plugin "b": app.info is served twice (plugin "a")`}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("failed = %v, want %v", got, want)
 	}
 	host := newHost(t, HostOptions{OnError: noopOnError})
-	must(t, host.Load(nil, background))
-	if err := host.Load(nil, background); err == nil || err.Error() != "load runs once per host" {
+	mustLoad(t)(host.Load(nil, background))
+	if _, err := host.Load(nil, background); err == nil || err.Error() != "load runs once per host" {
 		t.Fatalf("second load = %v, want load runs once per host", err)
 	}
 }
@@ -292,7 +324,7 @@ func TestHostLoadMakesAGetBeforeItResolvesWaitForIt(t *testing.T) {
 		got <- ref
 	}()
 	awaitUnbound(t, host)
-	must(t, host.Load([]HostFacet{{Name: "a", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfoFactory(h, nil) })}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "a", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfoFactory(h, nil) })}}, background))
 	if title := memberOf(t, <-got, "title"); title != "t" {
 		t.Fatalf("title = %v, want t", title)
 	}
@@ -423,7 +455,7 @@ func TestHostStartBarrierEndsItsPassAtARemoteBlocker(t *testing.T) {
 			return readsN(self, Notes, jsonObject("session", "S1"), "count"), nil
 		}, ServeOptions{})
 	})
-	must(t, host.Load([]HostFacet{{Name: "@app/codemode", Facet: facet}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/codemode", Facet: facet}}, background))
 	if held := parent.Next("hold").(*link.HoldMessage); held.Type != Notes.Name {
 		t.Fatalf("hold type = %s, want %s", held.Type, Notes.Name)
 	}
@@ -614,7 +646,7 @@ func TestHostStartupAcrossHostsPlacesAHoldArrivingBeforeThePublicationHereNotOve
 	if kind := refStateOf(mine).Kind; kind != RefStateLoading {
 		t.Fatalf("state = %s, want loading", kind)
 	}
-	must(t, worker.Load([]HostFacet{{Name: "@test/w", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { _, err := serveNotes(h, PlacedNotes); return err })}}, background))
+	mustLoad(t)(worker.Load([]HostFacet{{Name: "@test/w", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { _, err := serveNotes(h, PlacedNotes); return err })}}, background))
 	if bound := child.Next("bound").(*link.BoundMessage); bound.Holds[0].Hold != 0 {
 		t.Fatalf("bound hold = %d, want 0", bound.Holds[0].Hold)
 	}
@@ -1090,7 +1122,7 @@ func TestHostCloseGoesOnWhenOnErrorThrows(t *testing.T) {
 			return impl("n", constant(id)), nil
 		}, ServeOptions{})
 	})
-	must(t, host.Load([]HostFacet{{Name: "a", Facet: facet}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "a", Facet: facet}}, background))
 	// The background end reports its throwing close; the next instance waits for that teardown.
 	first, err := host.Get(hostSvc, jsonObject("id", float64(1)), background, GetOptions{})
 	must(t, err)
@@ -1269,10 +1301,12 @@ func TestHostPrincipalsHostGetActsAsTheHostsPrincipalAHostWithoutOneServesNoRemo
 			t.Fatalf("who = %v, want server", who)
 		}
 		client := newHost(t, HostOptions{OnError: noopOnError})
-		err = client.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveAll(&seenList[string]{})(h) })}}, background)
-		if err == nil || err.Error() != "app.who: a host without a principal serves only local types" {
-			t.Fatalf("load = %v, want a host without a principal serves only local types", err)
+		report, err := client.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveAll(&seenList[string]{})(h) })}}, background)
+		must(t, err)
+		if got, want := failedMessages(report.Failed), [][2]string{{"@test/app", `plugin "@test/app": app.who: a host without a principal serves only local types`}}; !reflect.DeepEqual(got, want) {
+			t.Fatalf("failed = %v, want %v", got, want)
 		}
+		closeHosts(t, client)
 	})
 }
 
@@ -1280,10 +1314,12 @@ func TestHostPrincipalsHostGetActsAsTheHostsPrincipalAHostWithoutOneServesNoRemo
 func TestHostPrincipalsAHostWithoutAnAddressServesNoRemoteType(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		host := newHost(t, HostOptions{Principal: serverPrincipal(), OnError: noopOnError})
-		err := host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveAll(&seenList[string]{})(h) })}}, background)
-		if err == nil || err.Error() != "app.who: a host without an address serves only local types" {
-			t.Fatalf("load = %v, want a host without an address serves only local types", err)
+		report, err := host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveAll(&seenList[string]{})(h) })}}, background)
+		must(t, err)
+		if got, want := failedMessages(report.Failed), [][2]string{{"@test/app", `plugin "@test/app": app.who: a host without an address serves only local types`}}; !reflect.DeepEqual(got, want) {
+			t.Fatalf("failed = %v, want %v", got, want)
 		}
+		closeHosts(t, host)
 	})
 }
 
@@ -1333,7 +1369,7 @@ func TestHostPrincipalsIdentityIncludesThePrincipalKeyEqualKeysShareOneObject(t 
 			PrincipalKey: data.NewPrincipalKeyFunction(principalKind),
 		})
 		defer closeHosts(t, host)
-		must(t, host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveAll(&factories)(h) })}}, background))
+		mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveAll(&factories)(h) })}}, background))
 		a, b := link.MemoryLinkPair()
 		must(t, host.Accept(a, LinkOptions{Principal: guestPrincipal("S2"), Codec: testCodec()}, background))
 		peer := newRawPeer(t, b, rawPeerOptions{})
@@ -1403,7 +1439,7 @@ func TestHostPrincipalsALocalTypeNeverCrossesALinkARemoteTypeWithoutAParentLinkW
 		wantChordError(t, err, data.CodeUnavailable, "", "app.inner is not served here")
 		alone := newHost(t, HostOptions{OnError: noopOnError})
 		defer closeHosts(t, alone)
-		must(t, alone.Load(nil, background))
+		mustLoad(t)(alone.Load(nil, background))
 		held, err := alone.Hold(principalWho, jsonObject("id", float64(1)), background, GetOptions{})
 		must(t, err)
 		if kind := refStateOf(held).Kind; kind != RefStateLoading {
@@ -1459,7 +1495,7 @@ var absentRegistry = registries.Registry[any, any]{Kind: "registry", Name: "app.
 func TestHostRegistryEndsAWaitingHostRegistryAtTheCloseWithReleasedClosed(t *testing.T) {
 	loop := newScopeLoop()
 	host := newHost(t, HostOptions{OnError: noopOnError, loop: loop})
-	must(t, host.Load(nil, background))
+	mustLoad(t)(host.Load(nil, background))
 	outcome := make(chan error, 1)
 	go func() {
 		_, err := host.Registry(absentRegistry, background, GetOptions{ReadyTimeout: new(time.Minute)})
@@ -1511,7 +1547,7 @@ func TestHostProviderChecksWaitsASameHostRemoteRequestTheProvidersCodePlacesElse
 	host := newHost(t, HostOptions{Address: &address, Principal: ownerPrincipal(), OnError: noopOnError})
 	defer closeHosts(t, host)
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error { return h.Serve(provider, viewImplementer, ServeOptions{}) })
-	must(t, host.Load([]HostFacet{{Name: "@app/provider", Facet: facet}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/provider", Facet: facet}}, background))
 	ref, err := host.Hold(consumer, jsonObject(), background, GetOptions{})
 	must(t, err)
 	state := awaitRefState(t, "waiting", ref, func(s *RefState) bool { return s.Kind == RefStateFailed })
@@ -1538,8 +1574,8 @@ func TestHostProviderChecksFailsBrokenWhenTheProvidersHostAddressThrows(t *testi
 	client := newHost(t, HostOptions{OnError: noopOnError})
 	defer closeHosts(t, client, server)
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error { return h.Serve(provider, viewImplementer, ServeOptions{}) })
-	must(t, server.Load([]HostFacet{{Name: "@app/provider", Facet: facet}}, background))
-	must(t, client.Load(nil, background))
+	mustLoad(t)(server.Load([]HostFacet{{Name: "@app/provider", Facet: facet}}, background))
+	mustLoad(t)(client.Load(nil, background))
 	down, up := link.MemoryLinkPair()
 	must(t, server.Accept(down, LinkOptions{Principal: serverPrincipal()}, background))
 	must(t, client.Connect(up, LinkOptions{Principal: serverPrincipal()}, background))
@@ -1558,8 +1594,8 @@ func TestHostProviderChecksFailsBrokenWhenTheProvidersHostAddressThrows(t *testi
 	}
 }
 
-// Mirrors "a load whose setup throws › closes the host as close does, links included, and rejects with the setup's error".
-func TestHostALoadWhoseSetupThrowsClosesTheHostAsCloseDoesLinksIncluded(t *testing.T) {
+// Mirrors "a load whose setup throws (decision "Per plugin at startup and reload") › leaves that plugin out and reports it; the others publish, the host and its links stay open".
+func TestHostALoadWhoseSetupThrowsLeavesThatPluginOutAndReportsItTheOthersPublishTheHostAndItsLinksStayOpen(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		host := newHost(t, HostOptions{Principal: serverPrincipal(), OnError: noopOnError})
 		a, b := link.MemoryLinkPair()
@@ -1568,16 +1604,31 @@ func TestHostALoadWhoseSetupThrowsClosesTheHostAsCloseDoesLinksIncluded(t *testi
 		must(t, host.Connect(c, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
 		child := newRawPeer(t, b, rawPeerOptions{})
 		parent := newRawPeer(t, d, rawPeerOptions{})
-		facet := DefineFacet(func(FacetHost, FacetSelf) error { return errors.New("setup threw") })
-		if err := host.Load([]HostFacet{{Name: "@test/app", Facet: facet}}, background); err == nil || err.Error() != "setup threw" {
-			t.Fatalf("load = %v, want setup threw", err)
+		broken := DefineFacet(func(FacetHost, FacetSelf) error { return errors.New("setup threw") })
+		report, err := host.Load([]HostFacet{
+			{Name: "@test/broken", Facet: broken},
+			{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfoFactory(h, nil) })},
+		}, background)
+		must(t, err)
+		if got, want := failedMessages(report.Failed), [][2]string{{"@test/broken", `plugin "@test/broken": setup threw`}}; !reflect.DeepEqual(got, want) {
+			t.Fatalf("failed = %v, want %v", got, want)
 		}
 		transported(a, b, c, d)
-		if got := []bool{child.Closed(), parent.Closed()}; !reflect.DeepEqual(got, []bool{true, true}) {
-			t.Fatalf("closed = %v, want [true true]", got)
+		if got := []bool{child.Closed(), parent.Closed()}; !reflect.DeepEqual(got, []bool{false, false}) {
+			t.Fatalf("closed = %v, want [false false]", got)
 		}
-		_, err := host.Get(hostPage, jsonObject("id", float64(1)), background, GetOptions{})
-		wantChordError(t, err, data.CodeReleased, data.ReasonClosed, "the host is closed")
+		info, err := host.Get(hostInfo, jsonObject(), background, GetOptions{})
+		must(t, err)
+		if title := memberOf(t, info, "title"); title != "t" {
+			t.Fatalf("title = %v, want t", title)
+		}
+		// What the left-out plugin would have served waits as any missing type does.
+		page, err := host.Hold(hostPage, jsonObject("id", float64(1)), background, GetOptions{})
+		must(t, err)
+		if state := refStateOf(page); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
+			t.Fatalf("hold state = %+v, want failed waiting", state)
+		}
+		closeHosts(t, host)
 	})
 }
 
@@ -1603,7 +1654,7 @@ func TestHostAcquiringInvalidParamsAtOnceALocalTypeNotServedHereHoldWaitsGetReje
 	address := serverAddress()
 	host := newHost(t, HostOptions{Address: &address, Principal: serverPrincipal(), OnError: noopOnError, loop: loop})
 	defer closeHosts(t, host)
-	must(t, host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { _, err := serveNotes(h, nil); return err })}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { _, err := serveNotes(h, nil); return err })}}, background))
 	if _, err := host.Hold(Notes, jsonObject("session", float64(1)), background, GetOptions{}); err == nil || !strings.Contains(err.Error(), "params") {
 		t.Fatalf("hold = %v, want an error naming params", err)
 	}
@@ -1652,7 +1703,7 @@ func TestHostAcquiringBeforeLoadResolvedHoldIsLoadingGetWaits(t *testing.T) {
 			t.Fatalf("state before the load = %s, want loading", kind)
 		}
 	}
-	must(t, host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfoFactory(h, nil) })}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfoFactory(h, nil) })}}, background))
 	turn(host)
 	awaitRefState(t, "held live", held, func(s *RefState) bool { return s.Kind == RefStateLive })
 	if title := memberOf(t, <-got, "title"); title != "t" {
@@ -1674,7 +1725,7 @@ func TestHostAcquiringInvalidParamsBeforeLoadResolvedHoldThrowsAndGetRejectsInva
 	}
 	_, err := host.Get(hostPage, jsonObject("id", "x"), background, GetOptions{})
 	wantChordError(t, err, data.CodeInvalid, data.ReasonParams, "")
-	must(t, host.Load(nil, background))
+	mustLoad(t)(host.Load(nil, background))
 	closeHosts(t, host)
 }
 
@@ -1685,7 +1736,7 @@ func TestHostAcquiringAHoldReleasedBeforeLoadResolvedMakesNothingOnceItDid(t *te
 	ref, err := host.Hold(hostPage, jsonObject("id", float64(1)), background, GetOptions{})
 	must(t, err)
 	ref.Release()
-	must(t, host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return servePage(h, func() { factories.Add(1) }) })}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return servePage(h, func() { factories.Add(1) }) })}}, background))
 	turn(host)
 	must(t, host.Close(background))
 	if got := factories.Load(); got != 0 {
@@ -1776,7 +1827,7 @@ func TestHostAcquiringHostCloseQueuedCallsRejectReleasedReferencesGoReleasedThei
 	local, err := host.Hold(hostSvc, jsonObject("id", float64(1)), background, GetOptions{})
 	must(t, err)
 	remoteHost := newHost(t, HostOptions{OnError: noopOnError})
-	must(t, remoteHost.Load(nil, background))
+	mustLoad(t)(remoteHost.Load(nil, background))
 	remote, err := remoteHost.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
 	must(t, err)
 	call := startNotesCall(t, remote, "wait")
@@ -1852,7 +1903,7 @@ func newPlacedWorker(t *testing.T, parent bool) *placedWorker {
 		w.Parent = newRawPeer(t, b, rawPeerOptions{})
 		w.ends = append(w.ends, a, b)
 	}
-	must(t, host.Load([]HostFacet{{Name: "@test/w", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { _, err := serveNotes(h, PlacedNotes); return err })}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/w", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { _, err := serveNotes(h, PlacedNotes); return err })}}, background))
 	a, b := link.MemoryLinkPair()
 	must(t, host.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 	w.Child = newRawPeer(t, b, rawPeerOptions{})
@@ -2003,7 +2054,7 @@ func TestHostWhereAHoldGoesFailsAReferenceBrokenWithWhatItsHostAddressThrows(t *
 		}))
 		client := newHost(t, HostOptions{OnError: noopOnError})
 		defer closeHosts(t, client)
-		must(t, client.Load(nil, background))
+		mustLoad(t)(client.Load(nil, background))
 		_, err := client.Get(throwing, jsonObject(), background, GetOptions{})
 		wantChordError(t, err, data.CodeUnavailable, "", "app.throwing: hostAddress threw")
 		held, err := client.Hold(throwing, jsonObject(), background, GetOptions{})
@@ -2039,7 +2090,7 @@ func TestHostStoreReportsStorageFailedOnceAndClosesTheHostTheAppStillClosesTheSt
 	st, fail, _ := faultyStore(t)
 	errs := &hostErrors{}
 	host := newHost(t, HostOptions{Store: st, OnError: errs.push})
-	must(t, host.Load(nil, background))
+	mustLoad(t)(host.Load(nil, background))
 	fence := store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64) error { return nil }}
 	// A failed `COMMIT`: an unknown outcome (D4).
 	fail("COMMIT")
@@ -2105,4 +2156,478 @@ func countObjects(host Host) int {
 	var n int
 	h.enter(func() { n = len(h.objects) })
 	return n
+}
+
+// --- reload (slice 7b) ------------------------------------------------------------------------------------------------
+
+// infoFacet is a plugin's facet serving `Info` with the title title (a new facet value each call: a changed plugin).
+func infoFacet(title string) Facet {
+	return DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(hostInfo, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			return impl("title", constant(title)), nil
+		}, ServeOptions{})
+	})
+}
+
+// pageFacet is a plugin's facet serving `Page`.
+func pageFacet() Facet {
+	return DefineFacet(func(h FacetHost, _ FacetSelf) error { return servePage(h, nil) })
+}
+
+// emptyFacet is `defineFacet(() => {})`.
+func emptyFacet() Facet { return DefineFacet(func(FacetHost, FacetSelf) error { return nil }) }
+
+// Mirrors "reload: the API (slice 7b §1) › throws before load resolved and rejects released/closed after close".
+func TestHostReloadTheAPIThrowsBeforeLoadResolvedAndRejectsReleasedClosedAfterClose(t *testing.T) {
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	if _, err := host.Reload(nil, background, ReloadOptions{}); err == nil || err.Error() != "reload runs after load" {
+		t.Fatalf("reload before load = %v, want reload runs after load", err)
+	}
+	mustLoad(t)(host.Load(nil, background))
+	closeHosts(t, host)
+	_, err := host.Reload(nil, background, ReloadOptions{})
+	wantChordError(t, err, data.CodeReleased, data.ReasonClosed, "")
+}
+
+// Mirrors "reload: the API › reports plugins added, changed and removed; the same facet object is unchanged and untouched".
+func TestHostReloadTheAPIReportsPluginsAddedChangedAndRemovedTheSameFacetObjectIsUnchangedAndUntouched(t *testing.T) {
+	core := infoFacet("core")
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	defer closeHosts(t, host)
+	kept := DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(hostCounter, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			implementation := impl("count", constant(float64(1)))
+			implementation.Members.Methods = map[string]contracts.MethodFunction{
+				"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
+			}
+			return implementation, nil
+		}, ServeOptions{})
+	})
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/core", Facet: kept}, {Name: "@app/info", Facet: core}}, background))
+	counter := mustGet(t, host, hostCounter, jsonObject())
+	report, err := host.Reload([]HostFacet{{Name: "@app/core", Facet: kept}, {Name: "@app/page", Facet: pageFacet()}}, background, ReloadOptions{})
+	must(t, err)
+	wantReloadPlugins(t, report, []string{"@app/page"}, nil, []string{"@app/info"})
+	if want := []ReloadedObject{{Object: "app.info", Kind: ReloadEnded}}; !reflect.DeepEqual(report.Objects, want) {
+		t.Fatalf("objects = %+v, want %+v", report.Objects, want)
+	}
+	// Untouched: the same reference stays live on the same object.
+	if state := refStateOf(counter); state.Kind != RefStateLive {
+		t.Fatalf("state = %+v, want live", state)
+	}
+	page := mustGet(t, host, hostPage, jsonObject("id", float64(3)))
+	if id := memberOf(t, page, "id"); id != float64(3) {
+		t.Fatalf("id = %v, want 3", id)
+	}
+}
+
+// Mirrors "reload: the API › runs reloads one after another".
+func TestHostReloadTheAPIRunsReloadsOneAfterAnother(t *testing.T) {
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: infoFacet("a")}}, background))
+	var order seenList[string]
+	staged := func(title string) Facet {
+		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			order.add(title)
+			return h.Serve(hostInfo, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+				return impl("title", constant(title)), nil
+			}, ServeOptions{})
+		})
+	}
+	h := host.(*chordHost)
+	done := make(chan error, 2)
+	go func() {
+		_, err := host.Reload([]HostFacet{{Name: "@app/info", Facet: staged("b")}}, background, ReloadOptions{})
+		done <- err
+	}()
+	// The second call is made after the first one entered the chain.
+	for {
+		var queued bool
+		h.enter(func() { queued = h.reloading != nil })
+		if queued {
+			break
+		}
+	}
+	go func() {
+		_, err := host.Reload([]HostFacet{{Name: "@app/info", Facet: staged("c")}}, background, ReloadOptions{})
+		done <- err
+	}()
+	must(t, <-done)
+	must(t, <-done)
+	if got := order.all(); !reflect.DeepEqual(got, []string{"b", "c"}) {
+		t.Fatalf("setups ran in order %v, want [b c]", got)
+	}
+	info := mustGet(t, host, hostInfo, jsonObject())
+	if title := memberOf(t, info, "title"); title != "c" {
+		t.Fatalf("title = %v, want c", title)
+	}
+}
+
+// Mirrors "reload: the API › an abort before the commit rejects aborted and changes nothing".
+func TestHostReloadTheAPIAnAbortBeforeTheCommitRejectsAbortedAndChangesNothing(t *testing.T) {
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: infoFacet("a")}}, background))
+	aborted, cancel := chordctx.WithCancel(background)
+	cancel(errors.New("stop"))
+	_, err := host.Reload([]HostFacet{{Name: "@app/info", Facet: infoFacet("b")}}, aborted, ReloadOptions{})
+	wantChordError(t, err, data.CodeAborted, "", "")
+	info := mustGet(t, host, hostInfo, jsonObject())
+	if title := memberOf(t, info, "title"); title != "a" {
+		t.Fatalf("title = %v, want a", title)
+	}
+}
+
+// Mirrors "reload: the API › an abort after the commit rejects aborted naming what the commit applied, which stands".
+func TestHostReloadTheAPIAnAbortAfterTheCommitRejectsAbortedNamingWhatTheCommitAppliedWhichStands(t *testing.T) {
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: infoFacet("a")}, {Name: "@app/gone", Facet: emptyFacet()}}, background))
+	info := mustGet(t, host, hostInfo, jsonObject())
+	aborting, cancel := chordctx.WithCancel(background)
+	// The abort lands right after the commit, while the reload waits for its report: the swapped object's new factory
+	// runs after the commit's batch (its second run: the first is staging's).
+	var runs atomic.Int32
+	changed := DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(hostInfo, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			if runs.Add(1) == 2 {
+				cancel(errors.New("stop"))
+			}
+			return impl("title", constant("b")), nil
+		}, ServeOptions{})
+	})
+	_, err := host.Reload([]HostFacet{{Name: "@app/info", Facet: changed}, {Name: "@app/new", Facet: emptyFacet()}}, aborting, ReloadOptions{})
+	chordErr, ok := data.IsChordError(err)
+	if !ok || chordErr.Code != data.CodeAborted {
+		t.Fatalf("reload = %v, want aborted", err)
+	}
+	committed, _ := chordErr.Details.(*delta.JsonObject).Value("committed").(*delta.JsonObject)
+	for name, want := range map[string][]any{"added": {"@app/new"}, "changed": {"@app/info"}, "removed": {"@app/gone"}, "failed": {}} {
+		if got, _ := committed.Value(name).([]any); !reflect.DeepEqual(got, want) {
+			t.Fatalf("committed.%s = %v, want %v", name, got, want)
+		}
+	}
+	turn(host)
+	if title := memberOf(t, info, "title"); title != "b" {
+		t.Fatalf("title = %v, want b", title)
+	}
+}
+
+// Mirrors "reload: the API › reports a setup's or a factory's throw as failed, naming the plugin, which stays on its old code".
+func TestHostReloadTheAPIReportsASetupsOrAFactorysThrowAsFailedNamingThePluginWhichStaysOnItsOldCode(t *testing.T) {
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: infoFacet("a")}}, background))
+	info := mustGet(t, host, hostInfo, jsonObject())
+	throwing := DefineFacet(func(FacetHost, FacetSelf) error { return errors.New("setup threw") })
+	failedOf := func(facets []HostFacet) [][2]string {
+		report, err := host.Reload(facets, background, ReloadOptions{})
+		must(t, err)
+		return failedMessages(report.Failed)
+	}
+	if got, want := failedOf([]HostFacet{{Name: "@app/info", Facet: throwing}}), [][2]string{{"@app/info", `plugin "@app/info": setup threw`}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("failed = %v, want %v", got, want)
+	}
+	factoryThrows := DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(hostInfo, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{}, errors.New("factory threw")
+		}, ServeOptions{})
+	})
+	if got, want := failedOf([]HostFacet{{Name: "@app/info", Facet: factoryThrows}}), [][2]string{{"@app/info", `plugin "@app/info", app.info: factory threw`}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("failed = %v, want %v", got, want)
+	}
+	// A type another plugin serves already fails the plugin with new code; an added one is left out.
+	report, err := host.Reload([]HostFacet{{Name: "@app/info", Facet: infoFacet("b")}, {Name: "@app/other", Facet: infoFacet("c")}}, background, ReloadOptions{})
+	must(t, err)
+	wantReloadPlugins(t, report, nil, []string{"@app/info"}, nil)
+	if got, want := failedMessages(report.Failed), [][2]string{{"@app/other", `plugin "@app/other": app.info is served twice (plugin "@app/info")`}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("failed = %v, want %v", got, want)
+	}
+	turn(host)
+	if title := memberOf(t, info, "title"); title != "b" {
+		t.Fatalf("title = %v, want b", title)
+	}
+	if state := refStateOf(info); state.Kind != RefStateLive {
+		t.Fatalf("state = %+v, want live", state)
+	}
+}
+
+// Mirrors "reload: the commit (slice 7b §3) › serves added types, drops removed ones and their presence lists, and wakes requests per name".
+func TestHostReloadTheCommitServesAddedTypesDropsRemovedOnesAndTheirPresenceListsAndWakesRequestsPerName(t *testing.T) {
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: infoFacet("a")}}, background))
+	page := mustHold(t, host, hostPage, jsonObject("id", float64(1)))
+	other := mustHold(t, host, hostCore, jsonObject())
+	turn(host)
+	if state := refStateOf(page); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
+		t.Fatalf("page state = %+v, want failed waiting", state)
+	}
+	presence := host.References(hostInfo)
+	watch, err := refStateWatch(other, background)
+	must(t, err)
+	otherStates := statesOf(t, watch)
+	_, err = host.Reload([]HostFacet{{Name: "@app/info", Facet: infoFacet("a")}, {Name: "@app/page", Facet: pageFacet()}}, background, ReloadOptions{})
+	must(t, err)
+	turn(host)
+	if state := refStateOf(page); state.Kind != RefStateLive {
+		t.Fatalf("page state = %+v, want live", state)
+	}
+	if id := memberOf(t, page, "id"); id != float64(1) {
+		t.Fatalf("id = %v, want 1", id)
+	}
+	// Not a name the reload serves: still waiting, not checked again.
+	if state := refStateOf(other); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
+		t.Fatalf("other state = %+v, want failed waiting", state)
+	}
+	if got := otherStates.All(); len(got) != 0 {
+		t.Fatalf("other states = %v, want none", got)
+	}
+	_, err = host.Reload([]HostFacet{{Name: "@app/page", Facet: pageFacet()}}, background, ReloadOptions{})
+	must(t, err)
+	if host.References(hostInfo) == presence {
+		t.Fatal("the removed type's presence list was kept")
+	}
+}
+
+// namesProvider is the facet of `@app/names` of the registry cases: it serves Names with a compose joining the table with
+// separator and contributes "own".
+func namesProvider(names registries.Registry[string, string], separator string) Facet {
+	return DefineFacet(func(h FacetHost, self FacetSelf) error {
+		provider := registries.RegistryProvider[string, string]{
+			Compose: func(table registries.RegistryTable[string], _ registries.ComposeContext) (string, error) {
+				values := make([]string, 0, len(table))
+				for _, entry := range table {
+					values = append(values, entry.Value)
+				}
+				return strings.Join(values, separator), nil
+			},
+		}
+		if err := h.Serve(registries.Registry[any, any](names), provider.Erase(), ServeOptions{}); err != nil {
+			return err
+		}
+		return self.Contribute(registries.Registry[any, any](names), "own")
+	})
+}
+
+// contributorFacet is a facet contributing name to names.
+func contributorFacet(names registries.Registry[string, string], name string) Facet {
+	return DefineFacet(func(_ FacetHost, self FacetSelf) error {
+		return self.Contribute(registries.Registry[any, any](names), name)
+	})
+}
+
+// Mirrors "reload: the commit › replaces a reloaded registry's provider and its plugin's contributions; a removed provider's readers wait".
+func TestHostReloadTheCommitReplacesAReloadedRegistrysProviderAndItsPluginsContributionsARemovedProvidersReadersWait(t *testing.T) {
+	names, err := registries.DefineRegistry[string, string]("app.names", registries.DefineRegistryOptions{Version: 1})
+	must(t, err)
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/names", Facet: namesProvider(names, ",")}, {Name: "@app/x", Facet: contributorFacet(names, "x")}}, background))
+	value, err := host.Registry(registries.Registry[any, any](names), background, GetOptions{})
+	must(t, err)
+	current := func() (any, error) {
+		var got any
+		var err error
+		host.(*chordHost).enter(func() { got, err = value.Current() })
+		return got, err
+	}
+	if got, err := current(); err != nil || got != "own,x" {
+		t.Fatalf("names = %v, %v; want own,x", got, err)
+	}
+	_, err = host.Reload([]HostFacet{{Name: "@app/names", Facet: namesProvider(names, "+")}, {Name: "@app/x", Facet: contributorFacet(names, "y")}}, background, ReloadOptions{})
+	must(t, err)
+	if got, err := current(); err != nil || got != "own+y" {
+		t.Fatalf("names = %v, %v; want own+y", got, err)
+	}
+	_, err = host.Reload([]HostFacet{{Name: "@app/x", Facet: contributorFacet(names, "z")}}, background, ReloadOptions{})
+	must(t, err)
+	if _, err := current(); err == nil || !strings.Contains(err.Error(), "no plugin serves it here") {
+		t.Fatalf("names after the provider's removal = %v, want no plugin serves it here", err)
+	}
+	_, err = host.Reload([]HostFacet{{Name: "@app/names", Facet: namesProvider(names, ";")}, {Name: "@app/x", Facet: contributorFacet(names, "z")}}, background, ReloadOptions{})
+	must(t, err)
+	if got, err := current(); err != nil || got != "own;z" {
+		t.Fatalf("names = %v, %v; want own;z", got, err)
+	}
+}
+
+// Mirrors "reload: registries' older readers (slice 7b §3) › a reader of an older version follows the new provider's accepts[old].value; one it no longer serves waits".
+func TestHostReloadRegistriesOlderReadersAReaderOfAnOlderVersionFollowsTheNewProvidersAcceptsOldValueOneItNoLongerServesWaits(t *testing.T) {
+	namesV1, err := registries.DefineRegistry[string, string]("app.names", registries.DefineRegistryOptions{Version: 1})
+	must(t, err)
+	namesV2, err := registries.DefineRegistry[string, []string]("app.names", registries.DefineRegistryOptions{Version: 2})
+	must(t, err)
+	provider := func(mapped func(names []string) string) Facet {
+		return DefineFacet(func(h FacetHost, self FacetSelf) error {
+			served := registries.RegistryProvider[string, []string]{
+				Compose: func(table registries.RegistryTable[string], _ registries.ComposeContext) ([]string, error) {
+					values := make([]string, 0, len(table))
+					for _, entry := range table {
+						values = append(values, entry.Value)
+					}
+					return values, nil
+				},
+			}
+			if mapped != nil {
+				served.Accepts = registries.RegistryAccepts[string, []string]{1: {Value: func(current []string) (any, error) { return mapped(current), nil }}}
+			}
+			if err := h.Serve(registries.Registry[any, any](namesV2), served.Erase(), ServeOptions{}); err != nil {
+				return err
+			}
+			return self.Contribute(registries.Registry[any, any](namesV2), "a")
+		})
+	}
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/names", Facet: provider(func(names []string) string { return strings.Join(names, ",") })}}, background))
+	old, err := host.Registry(registries.Registry[any, any](namesV1), background, GetOptions{})
+	must(t, err)
+	current := func() (any, error) {
+		var got any
+		var err error
+		host.(*chordHost).enter(func() { got, err = old.Current() })
+		return got, err
+	}
+	if got, err := current(); err != nil || got != "a" {
+		t.Fatalf("old = %v, %v; want a", got, err)
+	}
+	_, err = host.Reload([]HostFacet{{Name: "@app/names", Facet: provider(func(names []string) string { return strings.Join(names, "+") + "!" })}}, background, ReloadOptions{})
+	must(t, err)
+	if got, err := current(); err != nil || got != "a!" {
+		t.Fatalf("old = %v, %v; want a!", got, err)
+	}
+	_, err = host.Reload([]HostFacet{{Name: "@app/names", Facet: provider(nil)}}, background, ReloadOptions{})
+	must(t, err)
+	if _, err := current(); err == nil || !strings.Contains(err.Error(), "version 1 is not served here") {
+		t.Fatalf("old after the adapter's removal = %v, want version 1 is not served here", err)
+	}
+}
+
+// reloadTitle is `Title`: a worker's title per session (v1: a string).
+var reloadTitle = mustContract(declareRemote("app.title", contracts.RemoteDeclaration{
+	Version: 1, Params: contracts.Params{contracts.Prop("session", contracts.Str())},
+	HostAddress: func(params *delta.JsonObject) (contracts.Address, error) {
+		session, _ := params.Value("session").(string)
+		return Session.Address(jsonObject("id", session)), nil
+	},
+	Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("title", contracts.Str())}})},
+}))
+
+// reloadTitleV2 is `TitleV2`: an object; v1 consumers map back through `accepts`.
+var reloadTitleV2 = func() *contracts.Contract {
+	evolved, err := contracts.Evolve(reloadTitle, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
+		return e.State("v", "title", contracts.Obj(contracts.Prop("text", contracts.Str())))
+	})
+	if err != nil {
+		panic(err)
+	}
+	return evolved
+}()
+
+// Mirrors "reload across hosts, in the app's order (slice 7b §11) › server, then worker, then tab: an old tab is mapped, then waits for its version, then reloads its own code".
+func TestHostReloadAcrossHostsInTheAppsOrderServerThenWorkerThenTabAnOldTabIsMappedThenWaitsForItsVersionThenReloadsItsOwnCode(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		serveV1 := func(h FacetHost) error {
+			return h.Serve(reloadTitle, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+				implementation := impl("title", constant("one"))
+				implementation.Variant = "v"
+				return implementation, nil
+			}, ServeOptions{})
+		}
+		serveV2 := func(text string, accept bool) func(h FacetHost) error {
+			return func(h FacetHost) error {
+				options := ServeOptions{}
+				if accept {
+					title := contracts.StateMapping{Func: func(current delta.JsonValue) (delta.JsonValue, error) {
+						return current.(*delta.JsonObject).Value("text"), nil
+					}}
+					variant := []contracts.Entry[contracts.StateMapping]{{Name: "title", Value: title}}
+					options.Accepts = contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
+						VariantState: []contracts.Entry[[]contracts.Entry[contracts.StateMapping]]{{Name: "v", Value: variant}},
+					}}}
+				}
+				return h.Serve(reloadTitleV2, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+					implementation := impl("title", constant(jsonObject("text", text)))
+					implementation.Variant = "v"
+					return implementation, nil
+				}, options)
+			}
+		}
+		workerSet := func(setup func(h FacetHost) error) []HostFacet {
+			return []HostFacet{{Name: "@test/worker", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+				if _, err := serveNotes(h, PlacedNotes); err != nil {
+					return err
+				}
+				return setup(h)
+			})}}
+		}
+		r := relay(t, relayedOptions{Worker: serveV1})
+		defer closeHosts(t, r.Server)
+		old := mustHold(t, r.Tab, reloadTitle, jsonObject("session", "S1"))
+		titleIs := func(ref *Reference, want string) func() bool {
+			return func() bool {
+				r.Transported()
+				title, err := ref.Member("title").Value()
+				if err != nil {
+					return false
+				}
+				if object, ok := title.(*delta.JsonObject); ok {
+					title = object.Value("text")
+				}
+				return title == want
+			}
+		}
+		scopeEventually(t, "the old tab reads one", titleIs(old, "one"))
+		stored, _ := r.Workers.Load("session|S1")
+		worker := stored.(Host)
+		// The server installs first: nothing of Title changes there.
+		_, err := r.Server.Reload([]HostFacet{{Name: "@test/server", Facet: emptyFacet()}}, background, ReloadOptions{})
+		must(t, err)
+		// The worker installs v2 accepting v1: the old tab is mapped.
+		_, err = worker.Reload(workerSet(serveV2("two", true)), background, ReloadOptions{})
+		must(t, err)
+		scopeEventually(t, "the old tab reads two through the mapping", titleIs(old, "two"))
+		if state := refStateOf(old); state.Kind != RefStateLive {
+			t.Fatalf("old state = %+v, want live", state)
+		}
+		// A worker install without the adapter: the old tab waits for its version (a remote failure is its reads' error).
+		_, err = worker.Reload(workerSet(serveV2("three", false)), background, ReloadOptions{})
+		must(t, err)
+		scopeEventually(t, "the old tab waits for its version", func() bool {
+			r.Transported()
+			state := refStateOf(old)
+			return state.Kind == RefStateFailed && state.Cause.Kind == data.FailureWaiting && state.Cause.Error.Code == data.CodeContractMismatch
+		})
+		// The tab reloads its own code: its new hold (v2) binds; the old one is released.
+		fresh := mustHold(t, r.Tab, reloadTitleV2, jsonObject("session", "S1"))
+		old.Release()
+		scopeEventually(t, "the new hold reads three", titleIs(fresh, "three"))
+	})
+}
+
+// Mirrors "reload: an abort while staging (fix round 1) › does not commit when the context is aborted by the synchronous setup".
+func TestHostReloadAnAbortWhileStagingDoesNotCommitWhenTheContextIsAbortedByTheSynchronousSetup(t *testing.T) {
+	typ := mustContract(declareLocal("astra.cancel", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())}}))
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	defer closeHosts(t, host)
+	serve := func(n float64, before func()) Facet {
+		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			if before != nil {
+				before()
+			}
+			return h.Serve(typ, func(*delta.JsonObject, Self) (contracts.Implementation, error) { return impl("n", constant(n)), nil }, ServeOptions{})
+		})
+	}
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@astra/cancel", Facet: serve(1, nil)}}, background))
+	ref := mustGet(t, host, typ, jsonObject())
+	aborting, cancel := chordctx.WithCancel(background)
+	_, _ = host.Reload([]HostFacet{{Name: "@astra/cancel", Facet: serve(2, func() { cancel(errors.New("abort")) })}}, aborting, ReloadOptions{})
+	turn(host)
+	actual := memberOf(t, ref, "n")
+	ref.Release()
+	if actual != float64(1) {
+		t.Fatalf("n = %v, want 1", actual)
+	}
 }

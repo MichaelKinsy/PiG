@@ -569,8 +569,9 @@ func TestRefStateOfARemoteReference(t *testing.T) {
 			if variant, _, _ := notes.Variant(); variant != "editor" {
 				t.Fatalf("variant while failed = %q, want editor", variant)
 			}
-			if _, err := notes.Member("count").Value(); err == nil || err.Error() != "offline" {
-				t.Fatalf("count while failed = %v, want offline", err)
+			// Its replica's last value stays readable while the hold is failed (rule 5).
+			if count, err := notes.Member("count").Value(); err != nil || count != 1.0 {
+				t.Fatalf("count while failed = %v (%v), want 1", count, err)
 			}
 			notes.Release()
 			if _, _, err := notes.Variant(); err == nil || err.Error() != "app.notes: released" {

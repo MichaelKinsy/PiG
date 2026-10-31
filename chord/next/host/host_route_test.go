@@ -577,7 +577,7 @@ func TestDeclaringRoutesIsDoneBeforeLoadOncePerKind(t *testing.T) {
 		if _, err := host.Route(Session, options, background); err == nil || err.Error() != "route: session is routed already" {
 			t.Fatalf("second route = %v, want route: session is routed already", err)
 		}
-		must(t, host.Load(nil, background))
+		mustLoad(t)(host.Load(nil, background))
 		if _, err := host.Route(mustKind(contracts.NewHostKind("other")), options, background); err == nil || err.Error() != "route: routes are declared before load" {
 			t.Fatalf("route after load = %v, want route: routes are declared before load", err)
 		}
@@ -612,7 +612,7 @@ func TestARoutesContextIsTheParentOfItsResolvesAndOfTheWorkArrivingOnItsLinks(t 
 				if err := made.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background); err != nil {
 					return ResolvedLink{}, err
 				}
-				err := made.Load([]HostFacet{{Name: "@test/worker", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+				_, err := made.Load([]HostFacet{{Name: "@test/worker", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 					_, err := serveNotes(h, PlacedNotes)
 					return err
 				})}}, background)
@@ -622,7 +622,7 @@ func TestARoutesContextIsTheParentOfItsResolvesAndOfTheWorkArrivingOnItsLinks(t 
 				return ResolvedLink{Link: a, Principal: workerPrincipal("S1"), Codec: testCodec()}, err
 			},
 		}, chordctx.WithValue(background, app, "the app's")))
-		must(t, server.Load([]HostFacet{{Name: "@test/server", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		mustLoad(t)(server.Load([]HostFacet{{Name: "@test/server", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 			return h.Serve(who, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
 				return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
 					Methods: map[string]contracts.MethodFunction{
@@ -686,7 +686,9 @@ func TestRouteGCAFailedOrSuspendedAddressKeepsNoRouteStateOnceItsHoldersAreRelea
 		h := r.Server.(*chordHost)
 		scopeEventually(t, "the route keeps no address", func() bool {
 			kept := -1
-			h.loop().Run(func() { kept = len(h.routes["session"].addresses) + len(h.routes["session"].keys) + len(h.routes["session"].links) })
+			h.loop().Run(func() {
+				kept = len(h.routes["session"].addresses) + len(h.routes["session"].keys) + len(h.routes["session"].links)
+			})
 			return kept == 0
 		})
 	})

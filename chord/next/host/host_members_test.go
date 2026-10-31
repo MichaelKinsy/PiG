@@ -38,13 +38,25 @@ func membersHeld(t *testing.T) *Reference {
 	return held
 }
 
-// wantMembersNotServed fails the test unless err is the failure the getter of membersHeld's member throws.
+// wantMembersNotServed fails the test unless err is the failure a read of membersHeld's member fails with.
 func wantMembersNotServed(t *testing.T, err error) {
 	t.Helper()
 	chordErr, ok := data.IsChordErrorCode(err, data.CodeUnavailable)
 	if !ok || chordErr == nil {
 		t.Fatalf("error = %v, want the not-served failure of the held reference", err)
 	}
+}
+
+// wantMembersResolved fails the test unless resolving membersHeld's member is accepted: a reference's member never throws
+// on resolving (decision "References are the only indirection": it is a source that has no value yet), and its reads fail
+// with the not-served failure of the held reference.
+func wantMembersResolved(t *testing.T, err error, member *ReferenceMember) {
+	t.Helper()
+	if err != nil {
+		t.Fatalf("resolving the member = %v, want it accepted", err)
+	}
+	_, readErr := member.Value()
+	wantMembersNotServed(t, readErr)
 }
 
 func membersLocal(t *testing.T, name string, params contracts.Params, members ...contracts.LocalEntry) *contracts.Contract {
@@ -162,9 +174,10 @@ func TestAttachDerivesReportsUnderTheExposingMemberAcceptsNativeSourcesAndPropag
 	if err := attachDerives([]*state.Derive{viaNative}, contracts.NewNamedMap[state.DeriveSource](0), report); err != nil {
 		t.Fatalf("attach over a native source: %v", err)
 	}
-	throwing := state.NewDerive([]any{membersHeld(t).Member("n")}, failing, h.batch)
+	heldMember := membersHeld(t).Member("n")
+	throwing := state.NewDerive([]any{heldMember}, failing, h.batch)
 	err := attachDerives([]*state.Derive{throwing}, contracts.NewNamedMap[state.DeriveSource](0), report)
-	wantMembersNotServed(t, err)
+	wantMembersResolved(t, err, heldMember)
 }
 
 // Own test of checkImplementation (members.ts): a local contract's members are checked as given: methods are functions,
@@ -215,12 +228,14 @@ func TestCheckImplementationChecksALocalContractsMembersAsGiven(t *testing.T) {
 		{"a state member that is no watchable", implementation{{"add", membersPlainMethod}, {"count", 5}}, "count: a state member is a JSON watchable"},
 		{"a missing state member", implementation{{"add", membersPlainMethod}}, "count: a state member is a JSON watchable"},
 		{"a keyed member that is no keyed handle", implementation{{"add", membersPlainMethod}, {"count", count}, {"list", list}, {"notes", count}}, "notes: a keyed member is a keyed document handle"},
-		{"a throwing state getter", implementation{{"add", membersPlainMethod}, {"count", membersHeld(t).Member("n")}}, ""},
+		{"a state getter of a reference that never bound (its reads fail, resolving does not)", implementation{{"notes", notes}, {"list", list}, {"count", membersHeld(t).Member("n")}, {"add", membersPlainMethod}}, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, _, err := membersCheck(store, factoryResult{members: tc.members})
 			if tc.want == "" {
-				wantMembersNotServed(t, err)
+				if err != nil {
+					t.Fatalf("check = %v, want a never-bound reference's member accepted", err)
+				}
 				return
 			}
 			wantMembersError(t, err, tc.want)
@@ -252,7 +267,7 @@ func TestCheckImplementationChecksARemoteContractsVariant(t *testing.T) {
 // Own test of contributionOf and its content (members.ts): a Chord watchable is followed, a native source is followed, any
 // other value is plain whatever it is, a throwing getter fails the contribution, and a registry's value that closes a
 // cycle of registries is refused `invalid/cycle`.
-func TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndRefusesACycle(t *testing.T) {
+func TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndFollowsAnotherRegistrysValue(t *testing.T) {
 	h := newMemberHarness(t)
 	record := registries.NewRegistryRecord("app.menu", h.batch, func(registries.RegistryError) {})
 	contributor := registries.Contributor{Plugin: "@test/app"}
@@ -282,18 +297,18 @@ func TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndRefus
 	}
 	throwing := membersHeld(t).Member("n")
 	_, err := contentOf(throwing)
-	wantMembersNotServed(t, err)
+	wantMembersResolved(t, err, throwing)
 	contribution, err := contributionOf(record, contributor, 1, "text")
 	if err != nil || contribution.Record != record || contribution.Contributor != contributor || contribution.Version != 1 {
 		t.Fatalf("contribution = %#v, %v", contribution, err)
 	}
 	_, err = contributionOf(record, contributor, 1, throwing)
-	wantMembersNotServed(t, err)
-	// A registry's own value contributed to it closes a cycle of one registry.
+	wantMembersResolved(t, err, throwing)
+	// Another registry's value is followed like any watchable; a cycle of registries is no refusal here any more (the ring
+	// check was removed upstream: it shows as a failed derive at the reads).
 	own := registries.NewRegistryValueSource(record, 1, h.batch)
-	_, err = contributionOf(record, contributor, 1, own)
-	if chordErr, ok := data.IsChordErrorCode(err, data.CodeInvalid); !ok || chordErr.Reason != data.ReasonCycle {
-		t.Fatalf("a registry contributing its own value = %v, want invalid/cycle", err)
+	if _, err = contributionOf(record, contributor, 1, own); err != nil {
+		t.Fatalf("a registry contributing its own value = %v, want it accepted", err)
 	}
 }
 

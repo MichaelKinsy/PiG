@@ -39,7 +39,7 @@ import (
 //     guestPrincipal(session), serverPrincipal, workerPrincipal(session) (Pi's `TestPrincipal` variants).
 //   - A blocking Promise is a returned `(value, error)`; every helper that awaits takes the test's `t` and fails it.
 //   - Milliseconds are `time.Duration`; an omitted option is nil (`*time.Duration`).
-//   - Assumed host API (HostCore): `CreateHost(HostOptions) Host`; `Host.Load([]HostFacet, ctx) error`,
+//   - Assumed host API (HostCore): `CreateHost(HostOptions) Host`; `Host.Load([]HostFacet, ctx) (LoadReport, error)`,
 //     `Get(Type, params, ctx, GetOptions) (Reference, error)`, `Hold`, `Accept(link, LinkOptions, ctx)`,
 //     `Connect(link, LinkOptions, ctx)`, `Route(kind, RouteOptions, ctx)`, `Close(ctx) error`; `HostFacet{Name, Facet}`;
 //     `HostOptions{Address *contracts.Address, Principal, Telemetry, OnError, CloseTimeout/ReadyTimeout
@@ -114,6 +114,20 @@ func mustRoute(t testing.TB) func(RouteHandle, error) RouteHandle {
 		t.Helper()
 		must(t, err)
 		return handle
+	}
+}
+
+// mustLoad is must for a `host.load` call, `mustLoad(t)(host.Load(...))`: it fails the test when err is not nil or a plugin
+// was left out (the call sites that expect the host to load; a test of a refused plugin reads LoadReport.Failed itself), and
+// returns the report.
+func mustLoad(t testing.TB) func(LoadReport, error) LoadReport {
+	return func(report LoadReport, err error) LoadReport {
+		t.Helper()
+		must(t, err)
+		for _, failed := range report.Failed {
+			t.Fatalf("plugin %q was left out: %v", failed.Plugin, failed.Error)
+		}
+		return report
 	}
 }
 
@@ -272,6 +286,8 @@ func restartableOf(
 type hostErrors struct {
 	mu   sync.Mutex
 	list []HostError
+	// Failed is Pi's `failed`: the plugins `load` left out (what loaded and loadedPlugins return next to `errors`).
+	Failed []PluginFailure
 }
 
 func (e *hostErrors) push(err HostError) {
@@ -310,7 +326,36 @@ func loaded(t testing.TB, setup func(host FacetHost, self FacetSelf) error, opti
 	if ctx == nil {
 		ctx = background
 	}
-	must(t, host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(setup)}}, ctx))
+	report, err := host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(setup)}}, ctx)
+	must(t, err)
+	errs.Failed = report.Failed
+	return host, errs
+}
+
+// pluginSetup is one entry of Pi's `loadedPlugins(setups)` record: a plugin's name and its facet's setup.
+type pluginSetup struct {
+	Name  string
+	Setup func(host FacetHost, self FacetSelf) error
+}
+
+// loadedPlugins is a host with background errors collected, loaded with one facet per setup, in the order given (Pi's
+// `loadedPlugins`); the plugins it left out are in the errors' Failed.
+func loadedPlugins(t testing.TB, options loadedOptions, setups ...pluginSetup) (Host, *hostErrors) {
+	t.Helper()
+	errs := &hostErrors{}
+	host := newHost(t, HostOptions{
+		Telemetry:    telemetryOf(options.Telemetry),
+		ReadyTimeout: options.ReadyTimeout,
+		OnError:      errs.push,
+		loop:         options.Loop,
+	})
+	facets := make([]HostFacet, 0, len(setups))
+	for _, each := range setups {
+		facets = append(facets, HostFacet{Name: each.Name, Facet: DefineFacet(each.Setup)})
+	}
+	report, err := host.Load(facets, background)
+	must(t, err)
+	errs.Failed = report.Failed
 	return host, errs
 }
 
@@ -696,13 +741,13 @@ func linked(t testing.TB, setup func(host FacetHost) error, options linkedOption
 		OnError:      result.ServerErrors.push,
 		loop:         options.Loop,
 	})
-	must(t, result.Server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
+	mustLoad(t)(result.Server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
 		return setup(host)
 	})}}, ctx))
 	result.Client = newHost(t, HostOptions{
 		Telemetry: telemetryOf(options.Telemetry), ReadyTimeout: options.ReadyTimeout, OnError: result.ClientErrors.push, loop: options.Loop,
 	})
-	must(t, result.Client.Load(nil, ctx))
+	mustLoad(t)(result.Client.Load(nil, ctx))
 	makePair := options.Pair
 	if makePair == nil {
 		makePair = link.MemoryLinkPair
@@ -950,7 +995,7 @@ func rawLinked(t testing.TB, setup func(host FacetHost) error, options rawLinked
 		OnError:      errs.push,
 		loop:         options.Loop,
 	})
-	must(t, server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
+	mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
 		return setup(host)
 	})}}, background))
 	a, b := link.MemoryLinkPair()
@@ -1219,7 +1264,7 @@ func rawProvider(t testing.TB, options rawLinkedOptions) *rawProviderHost {
 	t.Helper()
 	errs := &hostErrors{}
 	client := newHost(t, HostOptions{ReadyTimeout: options.ReadyTimeout, Compression: options.Compression, OnError: errs.push, loop: options.Loop})
-	must(t, client.Load(nil, background))
+	mustLoad(t)(client.Load(nil, background))
 	return &rawProviderHost{Client: client, Peer: rawParent(t, client, options.Limits), Errors: errs}
 }
 
@@ -1451,7 +1496,7 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 			return nil
 		})
 		// `void host.load(...)`: an unawaited promise.
-		go func() { _ = host.Load([]HostFacet{{Name: "@test/worker", Facet: facet}}, ctx) }()
+		go func() { _, _ = host.Load([]HostFacet{{Name: "@test/worker", Facet: facet}}, ctx) }()
 		result.Workers.Store(address.Key, host)
 		result.mu.Lock()
 		result.routeLinks = append(result.routeLinks, a)
@@ -1482,14 +1527,14 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 			return r.link(), err
 		},
 	}, ctx))
-	must(t, server.Load([]HostFacet{{Name: "@test/server", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(t)(server.Load([]HostFacet{{Name: "@test/server", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		if options.Server != nil {
 			return options.Server(h)
 		}
 		return nil
 	})}}, ctx))
 	tab := newHost(t, HostOptions{Compression: options.TabCompression, OnError: result.Errors.Tab.push, loop: options.Loop})
-	must(t, tab.Load(nil, ctx))
+	mustLoad(t)(tab.Load(nil, ctx))
 	a, b := link.MemoryLinkPair()
 	// A worker may be resolving already (a host object of the server started it during its load): its resolve appends to
 	// the same fields.

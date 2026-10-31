@@ -146,7 +146,7 @@ func openedWith(
 	}
 	result := &jobsOpened{t: t, Store: st, Errors: &hostErrors{}}
 	host := newJobHost(t, HostOptions{Store: st, OnError: result.Errors.push, CloseTimeout: new(200 * time.Millisecond)})
-	must(t, host.Load([]HostFacet{{Name: "notes", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(t)(host.Load([]HostFacet{{Name: "notes", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(jobNotesStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			result.Imports = self.Job(definition, JobImplementation{
 				Run: run,
@@ -314,7 +314,7 @@ func waitRecord(t *testing.T, st *store.ChordStore, id string, want map[string]a
 // persisted.test.ts › records › a run's record and state live in the store while it is unsettled; finish deletes the record, retires the state
 func TestPersistedRecordsARunsRecordAndStateLiveInTheStoreWhileItIsUnsettledFinishDeletesTheRecordRetiresTheState(t *testing.T) {
 	open := storeFile(t)
-	g, changed := newGate(), newGate()
+	g, changed := newJobGate(), newJobGate()
 	jobs := opened(t, open(), func(_ any, ctx JobCtx) (any, error) {
 		_, err := ctx.State().Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("done", float64(3)) }, ctx, ChangeOptions{})
 		if err != nil {
@@ -385,7 +385,7 @@ func TestPersistedCrashesAStateChangeResetsTheRestartCountStoredAtOnce(t *testin
 	run := jobStart(t, jobs.Imports, pathArgs("a"), background)
 	waitRecord(t, jobs.Store, run.ID(), map[string]any{"phase": "running"})
 	jobs.Crash()
-	reset := newGate()
+	reset := newJobGate()
 	jobs = opened(t, open(), func(_ any, ctx JobCtx) (any, error) {
 		_, err := ctx.State().Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("done", float64(1)) }, ctx,
 			ChangeOptions{Persistence: &documents.CommitPersistence{Kind: documents.CommitDeferred}})
@@ -632,7 +632,7 @@ func TestPersistedASealDuringTheReservationAnAbortJoinedToAReservationThatCommit
 // persisted.test.ts › the clean stop and the close writer › host close writes the stopped runs back: the next start resumes them without counting
 func TestPersistedTheCleanStopAndTheCloseWriterHostCloseWritesTheStoppedRunsBackTheNextStartResumesThemWithoutCounting(t *testing.T) {
 	open := storeFile(t)
-	started := newGate()
+	started := newJobGate()
 	jobs := opened(t, open(), func(_ any, ctx JobCtx) (any, error) {
 		started.Open()
 		untilDone(ctx)
@@ -657,8 +657,8 @@ func TestPersistedTheCleanStopAndTheCloseWriterASealStopsTheRunTheRetryResumesIt
 	open := storeFile(t)
 	var mu sync.Mutex
 	invocations := 0
-	old := newGate()
-	started := newGate()
+	old := newJobGate()
+	started := newJobGate()
 	jobs := opened(t, open(), func(any, JobCtx) (any, error) {
 		mu.Lock()
 		invocations++
@@ -715,7 +715,7 @@ func TestPersistedTheCleanStopAndTheCloseWriterACloseWriterThatCannotCommitLeave
 type sealedRun struct {
 	Jobs        *jobsOpened
 	Run         Run
-	Old         *gate
+	Old         *jobGate
 	mu          sync.Mutex
 	signals     []bool
 	invocations int
@@ -730,8 +730,8 @@ func (s *sealedRun) Invocations() int {
 func sealedInvocations(t *testing.T, next func(ctx JobCtx) (any, error), declared ...*JobDefinition) *sealedRun {
 	t.Helper()
 	open := storeFile(t)
-	s := &sealedRun{Old: newGate()}
-	started := newGate()
+	s := &sealedRun{Old: newJobGate()}
+	started := newJobGate()
 	s.Jobs = opened(t, open(), func(_ any, ctx JobCtx) (any, error) {
 		s.mu.Lock()
 		s.signals = append(s.signals, ctx.Err() != nil)
@@ -757,7 +757,7 @@ func sealedInvocations(t *testing.T, next func(ctx JobCtx) (any, error), declare
 
 // persisted.test.ts › invocations after a seal (R3, review regressions) › an invocation replaced after the bounded drain writes nothing and records nothing
 func TestPersistedInvocationsAfterASealAnInvocationReplacedAfterTheBoundedDrainWritesNothingAndRecordsNothing(t *testing.T) {
-	current := newGate()
+	current := newJobGate()
 	s := sealedInvocations(t, func(JobCtx) (any, error) {
 		current.Wait()
 		return countResult(2), nil
@@ -799,7 +799,7 @@ func TestPersistedInvocationsAfterASealAResumedInvocationGetsAFreshAbortSignal(t
 
 // persisted.test.ts › invocations after a seal (R3, review regressions) › abort joins the resumed invocation, not the first
 func TestPersistedInvocationsAfterASealAbortJoinsTheResumedInvocationNotTheFirst(t *testing.T) {
-	second := newGate()
+	second := newJobGate()
 	s := sealedInvocations(t, func(JobCtx) (any, error) {
 		second.Wait()
 		return countResult(2), nil
@@ -829,8 +829,8 @@ func TestPersistedInvocationsAfterASealAbortJoinsTheResumedInvocationNotTheFirst
 // persisted.test.ts › invocations after a seal (R3, review regressions) › resume abandon: a run the seal stopped finishes failed { aborted, restart } without a second run
 func TestPersistedInvocationsAfterASealResumeAbandonARunTheSealStoppedFinishesFailedAbortedRestartWithoutASecondRun(t *testing.T) {
 	open := storeFile(t)
-	old := newGate()
-	started := newGate()
+	old := newJobGate()
+	started := newJobGate()
 	var mu sync.Mutex
 	calls := 0
 	options := importOptions()
@@ -998,7 +998,7 @@ func TestPersistedFinishFailuresAreCountedOnTheRecordAcrossACrash(t *testing.T) 
 // persisted.test.ts › abort (D7) › is stored and joined: marked once run settled, terminal for an unknown id
 func TestPersistedAbortIsStoredAndJoinedMarkedOnceRunSettledTerminalForAnUnknownID(t *testing.T) {
 	open := storeFile(t)
-	started := newGate()
+	started := newJobGate()
 	jobs := opened(t, open(), func(_ any, ctx JobCtx) (any, error) {
 		started.Open()
 		untilDone(ctx)
@@ -1089,12 +1089,12 @@ func TestPersistedPinningAnUnsettledRunsStateNeverIdlesPastTheResidencyRetention
 	open := storeFile(t)
 	st := open()
 	loop := newVirtualLoop()
-	g, changed := newGate(), newGate()
+	g, changed := newJobGate(), newJobGate()
 	var mu sync.Mutex
 	var values []int
 	host := newJobHost(t, HostOptions{Store: st, OnError: func(HostError) {}, loop: loop})
 	var imports JobHandle
-	must(t, host.Load([]HostFacet{{Name: "notes", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(t)(host.Load([]HostFacet{{Name: "notes", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(jobNotesStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			imports = self.Job(jobImport, JobImplementation{Run: func(_ any, ctx JobCtx) (any, error) {
 				if _, err := ctx.State().Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("done", float64(3)) }, ctx, ChangeOptions{}); err != nil {
@@ -1153,7 +1153,7 @@ var infinity = math.Inf(1)
 // persisted.test.ts › deferred state (D8) › is adopted at once, held, and stored with the outcome
 func TestPersistedDeferredStateIsAdoptedAtOnceHeldAndStoredWithTheOutcome(t *testing.T) {
 	open := storeFile(t)
-	g := newGate()
+	g := newJobGate()
 	seen := make(chan int, 1)
 	jobs := opened(t, open(), func(_ any, ctx JobCtx) (any, error) {
 		if err := setDone(ctx, 1, deferredWithin(infinity)); err != nil {
@@ -1186,7 +1186,7 @@ func TestPersistedDeferredStateIsAdoptedAtOnceHeldAndStoredWithTheOutcome(t *tes
 // persisted.test.ts › deferred state (D8) › merges held ops into the next immediate change: one delta on the stored revision
 func TestPersistedDeferredStateMergesHeldOpsIntoTheNextImmediateChangeOneDeltaOnTheStoredRevision(t *testing.T) {
 	open := storeFile(t)
-	g, done := newGate(), newGate()
+	g, done := newJobGate(), newJobGate()
 	jobs := opened(t, open(), func(_ any, ctx JobCtx) (any, error) {
 		for _, n := range []float64{1, 2} {
 			if err := setDone(ctx, n, deferredWithin(infinity)); err != nil {
@@ -1229,7 +1229,7 @@ func TestPersistedDeferredStateMergesHeldOpsIntoTheNextImmediateChangeOneDeltaOn
 func TestPersistedDeferredStateFoldsHeldWrites100SetsOfOneLeafKeepOneOp(t *testing.T) {
 	open := storeFile(t)
 	st := open()
-	changed := newGate()
+	changed := newJobGate()
 	jobs := opened(t, st, func(_ any, ctx JobCtx) (any, error) {
 		for n := 1; n <= 100; n++ {
 			if err := setDone(ctx, float64(n), deferredWithin(infinity)); err != nil {
@@ -1275,7 +1275,7 @@ func TestPersistedDeferredStateAnOverflowOfHeldOpsStoresTheNextChangeAsABase(t *
 	options := importOptions()
 	options.State = itemsState
 	declared := mustDefineJob(DefineJob("notes.import", options))
-	changed := newGate()
+	changed := newJobGate()
 	jobs := opened(t, st, func(_ any, ctx JobCtx) (any, error) {
 		// One leaf each: nothing folds, and the queue passes its bound.
 		for n := 0; n <= delta.MaxPendingOps; n++ {
@@ -1304,7 +1304,7 @@ func TestPersistedDeferredStateAnOverflowOfHeldOpsStoresTheNextChangeAsABase(t *
 // persisted.test.ts › deferred state (D8) › is stored by the close writer at a clean stop, and after withinMs by the object's timer
 func TestPersistedDeferredStateIsStoredByTheCloseWriterAtACleanStopAndAfterWithinMsByTheObjectsTimer(t *testing.T) {
 	open := storeFile(t)
-	held := newGate()
+	held := newJobGate()
 	jobs := opened(t, open(), func(_ any, ctx JobCtx) (any, error) {
 		if err := setDone(ctx, 4, deferredWithin(infinity)); err != nil {
 			return nil, err
@@ -1317,7 +1317,7 @@ func TestPersistedDeferredStateIsStoredByTheCloseWriterAtACleanStopAndAfterWithi
 	held.Wait()
 	jobs.Close()
 	reopened := open()
-	timed := newGate()
+	timed := newJobGate()
 	var mu sync.Mutex
 	var problems []string
 	jobs = opened(t, reopened, func(_ any, ctx JobCtx) (any, error) {
@@ -1349,7 +1349,7 @@ func TestPersistedDeferredStateIsStoredByTheCloseWriterAtACleanStopAndAfterWithi
 		return len(ops) > 0 && ops[len(ops)-1].([]any)[2] == float64(5)
 	})
 	jobs.Crash()
-	third := newGate()
+	third := newJobGate()
 	jobs = opened(t, open(), func(_ any, ctx JobCtx) (any, error) {
 		value, err := ctx.State().Value()
 		mu.Lock()
@@ -1395,7 +1395,7 @@ func TestPersistedGCSettledRunsCancelledAbortWaitsAndAnEndedObjectWithAHeldChang
 	var runRefs []weak.Pointer[jobRun]
 	var objectRefs []weak.Pointer[jobRecords]
 	func() {
-		held := newGate()
+		held := newJobGate()
 		jobs := openedWith(t, open(), func(_ any, ctx JobCtx) (any, error) {
 			if err := setDone(ctx, 1, deferredWithin(60_000)); err != nil {
 				return nil, err
@@ -1451,4 +1451,71 @@ func TestPersistedGCSettledRunsCancelledAbortWaitsAndAnEndedObjectWithAHeldChang
 		t.Fatalf("%d cancelled abort waits left registered", left)
 	}
 	hanging.Crash()
+}
+
+// jobsReloaded is `host.reload([{ name, facet }], context)` of the jobs tests: it fails the test on an error or on a
+// plugin that failed.
+func jobsReloaded(t testing.TB, host Host, name string, facet Facet) ReloadReport {
+	t.Helper()
+	report, err := host.Reload([]HostFacet{{Name: name, Facet: facet}}, background, ReloadOptions{})
+	must(t, err)
+	if len(report.Failed) != 0 {
+		t.Fatalf("reload failed: %+v", report.Failed)
+	}
+	return report
+}
+
+// persisted.test.ts: versions resolved by a reload (slice 7b §8) › a persisted run blocked for its version at its load is resumed by the reload that brings its version
+func TestPersistedVersionsResolvedByAReloadAPersistedRunBlockedForItsVersionAtItsLoadIsResumedByTheReloadThatBringsItsVersion(t *testing.T) {
+	open := storeFile(t)
+	jobs := opened(t, open(), hang(t), nil)
+	run := jobStart(t, jobs.Imports, pathArgs("a"), background)
+	jobs.settle()
+	jobs.Crash()
+	st := open()
+	var mu sync.Mutex
+	var finished []Outcome
+	serve := func(declared *JobDefinition) Facet {
+		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			return h.Serve(jobNotesStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				self.Job(declared, JobImplementation{
+					Run: func(any, JobCtx) (any, error) { return countResult(7), nil },
+					Finish: func(outcome Outcome, _ documents.Tx) error {
+						mu.Lock()
+						defer mu.Unlock()
+						finished = append(finished, outcome)
+						return nil
+					},
+				})
+				return contracts.Implementation{}, nil
+			}, ServeOptions{})
+		})
+	}
+	host := newJobHost(t, HostOptions{Store: st, OnError: func(HostError) {}})
+	mustLoad(t)(host.Load([]HostFacet{{Name: "notes", Facet: serve(jobImportV2)}}, background))
+	hostDelivered(host)
+	nexttest.Flushed()
+	mu.Lock()
+	if len(finished) != 0 {
+		t.Fatalf("finished = %+v before the reload", finished)
+	}
+	mu.Unlock()
+	if stored := record(t, st, run.ID()); stored["version"] != float64(1) || stored["phase"] != "running" {
+		t.Fatalf("record = %v", stored)
+	}
+	jobsReloaded(t, host, "notes", serve(jobImport))
+	eventually(t, "the run to finish on the reloaded code", func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return len(finished) == 1
+	})
+	mu.Lock()
+	outcome := finished[0]
+	mu.Unlock()
+	if outcome.ID != run.ID() || outcome.Kind != OutcomeDone || !nexttest.JSONEqual(outcome.Result, countResult(7)) {
+		t.Fatalf("outcome = %+v", outcome)
+	}
+	eventually(t, "the record to be retired", func() bool { return record(t, st, run.ID()) == nil })
+	must(t, host.Close(background))
+	must(t, st.Close(background))
 }

@@ -68,7 +68,7 @@ func wantRootClosed(t testing.TB, err error) {
 func TestHostRootGivesFnACallContext(t *testing.T) {
 	host := newHost(t, HostOptions{Principal: serverPrincipal(), OnError: func(HostError) {}})
 	defer closeHosts(t, host)
-	must(t, host.Load([]HostFacet{{Name: "@app/info", Facet: DefineFacet(serveRootInfo)}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: DefineFacet(serveRootInfo)}}, background))
 	type seen struct {
 		principal   data.Principal
 		incarnation string
@@ -208,7 +208,7 @@ func TestHostRootACtxGetBeforeLoadResolvedParksUntilItDid(t *testing.T) {
 		got <- result{value, err}
 	}()
 	awaitUnbound(t, host)
-	must(t, host.Load([]HostFacet{{Name: "@app/info", Facet: DefineFacet(serveRootInfo)}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: DefineFacet(serveRootInfo)}}, background))
 	if outcome := <-got; outcome.err != nil || outcome.id != float64(3) {
 		t.Fatalf("root = %v, %v; want 3", outcome.id, outcome.err)
 	}
@@ -323,5 +323,61 @@ func TestHostRootKeepsNothingOnceSealedItsScopeAndReferencesAreCollected(t *test
 	nexttest.ExpectCollected(t, reference)
 	if long.Err() != nil {
 		t.Fatal("the caller's signal was aborted")
+	}
+}
+
+// Mirrors root.test.ts "host.root › runs anonymous with an explicit undefined principal; only an omitted one takes the host's (slice 10 §6)".
+func TestHostRootRunsAnonymousWithAnExplicitUndefinedPrincipalOnlyAnOmittedOneTakesTheHosts(t *testing.T) {
+	host := newHost(t, HostOptions{Principal: serverPrincipal(), OnError: func(HostError) {}})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load(nil, background))
+	anonymous, err := host.Root(func(ctx Ctx) (any, error) { return ctx.Principal(), nil }, background, RootOptions{Anonymous: true})
+	must(t, err)
+	if principal, _ := anonymous.(data.Principal); principal != nil {
+		t.Fatalf("anonymous principal = %v, want nil", principal)
+	}
+	omitted, err := host.Root(func(ctx Ctx) (any, error) { return ctx.Principal(), nil }, background, RootOptions{})
+	must(t, err)
+	if principal, _ := omitted.(data.Principal); principalKind(principal) != "server" {
+		t.Fatalf("omitted principal = %v, want the host's", omitted)
+	}
+}
+
+// Mirrors root.test.ts "host.root › refuses an anonymous scope a remote type served here (forbidden); a local one it gets" (Opus's build review F5).
+func TestHostRootRefusesAnAnonymousScopeARemoteTypeServedHereForbiddenALocalOneItGets(t *testing.T) {
+	secrets := mustContract(declareRemote("app.secrets", contracts.RemoteDeclaration{
+		Version:     1,
+		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
+		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
+			contracts.Meth("read", contracts.NewMethod(contracts.TSchema{}, contracts.Str())),
+		}})},
+	}))
+	address := serverAddress()
+	host := newHost(t, HostOptions{Address: &address, Principal: serverPrincipal(), OnError: func(HostError) {}})
+	defer closeHosts(t, host)
+	facet := DefineFacet(func(h FacetHost, self FacetSelf) error {
+		if err := serveRootInfo(h, self); err != nil {
+			return err
+		}
+		return h.Serve(secrets, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+				"read": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return "secret", nil },
+			}}}, nil
+		}, ServeOptions{})
+	})
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/secrets", Facet: facet}}, background))
+	anonymous := RootOptions{Anonymous: true}
+	_, err := host.Root(func(ctx Ctx) (any, error) { return ctx.Get(secrets, jsonObject(), GetOptions{}) }, background, anonymous)
+	wantChordError(t, err, data.CodeForbidden, "", "app.secrets: an anonymous caller gets no remote object")
+	id, err := host.Root(func(ctx Ctx) (any, error) {
+		info, err := ctx.Get(rootInfo, jsonObject("id", float64(3)), GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return info.Member("id").Value()
+	}, background, anonymous)
+	must(t, err)
+	if id != float64(3) {
+		t.Fatalf("id = %v, want 3", id)
 	}
 }

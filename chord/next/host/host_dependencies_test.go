@@ -1,10 +1,10 @@
 package host
 
 import (
-	"context"
 	"reflect"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -12,8 +12,10 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
+	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
 // Ports packages/chord/test/next/host/dependencies.test.ts. Its cases run hosts (loaded/createHost with defineFacet,
@@ -120,7 +122,7 @@ func depClient(t *testing.T, options HostOptions) (Host, *hostErrors, *RawPeer, 
 	options.OnError = errs.push
 	host := newHost(t, options)
 	peer, ends := rawParentLinks(t, host)
-	must(t, host.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(serveViewOfNotes)}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(serveViewOfNotes)}}, background))
 	return host, errs, peer, ends
 }
 
@@ -157,7 +159,7 @@ func TestTheDependencyCheckGoesLiveOnceEveryDependencyIs(t *testing.T) {
 			}}}, nil
 		}, ServeOptions{})
 	})
-	must(t, client.Load([]HostFacet{{Name: "@test/view", Facet: facet}}, background))
+	mustLoad(t)(client.Load([]HostFacet{{Name: "@test/view", Facet: facet}}, background))
 	view, err := client.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
 	must(t, err)
 	first := peer.Next("hold").(*link.HoldMessage)
@@ -274,9 +276,21 @@ func TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound(t *testin
 	held.Release()
 }
 
-// since is the report `parked_long` makes.
-func parkedLongOf(object, waitingFor string, since int64) HostError {
-	return HostError{Kind: ErrParkedLong, Object: object, WaitingFor: waitingFor, Since: since}
+// parkedLongOf is the report `parked_long` makes: the first blocker (`waitingFor`) and its state, loading or failed.
+func parkedLongOf(object, waitingFor, state string, since int64) HostError {
+	return HostError{Kind: ErrParkedLong, Object: object, WaitingFor: waitingFor, State: state, Since: since}
+}
+
+// depMissing is a local type nobody serves: `Missing` of the parked_long cases.
+var depMissing = mustContract(declareLocal("app.missing", contracts.LocalDeclaration{
+	Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
+}))
+
+// serveViewOfMissing serves View reading Missing's `n`.
+func serveViewOfMissing(h FacetHost, _ FacetSelf) error {
+	return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		return readsN(self, depMissing, jsonObject(), "n"), nil
+	}, ServeOptions{})
 }
 
 // parkedClient is a client host on a fake clock with readyTimeout 1000 ms and View loaded.
@@ -285,49 +299,181 @@ func parkedClient(t *testing.T, loop *scopeLoop) (Host, *hostErrors) {
 	errs := &hostErrors{}
 	ready := time.Second
 	host := newHost(t, HostOptions{ReadyTimeout: &ready, OnError: errs.push, loop: loop})
-	must(t, host.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(serveViewOfNotes)}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(serveViewOfNotes)}}, background))
 	return host, errs
 }
 
-// Mirrors "parked_long (dependency model §7) › starts its clock when the hold gets on a link: a late link is not reported at once (fix round 2, Opus F2)".
-func TestParkedLongStartsItsClockWhenTheHoldGetsOnALinkALateLinkIsNotReportedAtOnce(t *testing.T) {
+// Mirrors "parked_long (dependency model §7, audit A11) › is reported once after readyTimeout whatever the blocker: a missing local provider; nothing fails".
+func TestParkedLongIsReportedOnceAfterReadyTimeoutWhateverTheBlockerAMissingLocalProviderNothingFails(t *testing.T) {
 	loop := newScopeLoop()
-	client, errs := parkedClient(t, loop)
-	defer closeHosts(t, client)
-	view, err := client.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
-	must(t, err)
-	loop.AdvanceAsync(5000)
-	peer, _ := rawParentLinks(t, client)
-	peer.Next("hold")
-	linkedAt := loop.Now()
-	loop.AdvanceAsync(10)
+	ready := time.Second
+	host, errs := loaded(t, serveViewOfMissing, loadedOptions{Loop: loop, ReadyTimeout: &ready})
+	defer closeHosts(t, host)
+	view := mustHold(t, host, depView, jsonObject("id", float64(1)))
+	loop.AdvanceAsync(999)
 	if errs.Len() != 0 {
 		t.Fatalf("errors = %v, want none", errs.All())
 	}
-	loop.AdvanceAsync(990)
-	if got, want := errs.All(), []HostError{parkedLongOf("app.view(1)", "app.notes(S1)", linkedAt)}; !reflect.DeepEqual(got, want) {
+	loop.AdvanceAsync(1)
+	if got, want := errs.All(), []HostError{parkedLongOf("app.view(1)", "app.missing", "failed", 0)}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("errors = %+v, want %+v", got, want)
+	}
+	loop.AdvanceAsync(60000)
+	if errs.Len() != 1 {
+		t.Fatalf("errors = %d, want 1", errs.Len())
+	}
+	if state := refStateOf(view); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
+		t.Fatalf("state = %+v, want failed waiting", state)
+	}
+	view.Release()
+}
+
+// Mirrors "names the first blocker in declaration order with its state; its clock runs from parking, with no link yet too".
+func TestParkedLongNamesTheFirstBlockerInDeclarationOrderWithItsStateItsClockRunsFromParkingWithNoLinkYetToo(t *testing.T) {
+	loop := newScopeLoop()
+	errs := &hostErrors{}
+	ready := time.Second
+	client := newHost(t, HostOptions{ReadyTimeout: &ready, OnError: errs.push, loop: loop})
+	defer closeHosts(t, client)
+	mustLoad(t)(client.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			count := self.Get(Notes, jsonObject("session", "S1")).Member("count")
+			missing := self.Get(depMissing, jsonObject()).Member("n")
+			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+				"n": self.Derive([]any{count, missing}, func(values []any) (delta.JsonValue, error) {
+					return values[0].(float64) + values[1].(float64), nil
+				}),
+			}}}, nil
+		}, ServeOptions{})
+	})}}, background))
+	view := mustHold(t, client, depView, jsonObject("id", float64(1)))
+	loop.AdvanceAsync(1000)
+	// The remote one comes first (no link holds it yet), though the attempt shows the failed one.
+	if got, want := errs.All(), []HostError{parkedLongOf("app.view(1)", "app.notes(S1)", "loading", 0)}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("errors = %+v, want %+v", got, want)
+	}
+	if state := refStateOf(view); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
+		t.Fatalf("state = %+v, want failed waiting", state)
+	}
+	view.Release()
+}
+
+// Mirrors "keeps declaration order across registries and references: the parked cause and the report name the first (Astra)".
+func TestParkedLongKeepsDeclarationOrderAcrossRegistriesAndReferencesTheParkedCauseAndTheReportNameTheFirstAstra(t *testing.T) {
+	missingRegistry, err := registries.DefineRegistry[any, any]("app.missing-registry", registries.DefineRegistryOptions{Version: 1})
+	must(t, err)
+	loop := newScopeLoop()
+	ready := time.Second
+	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			self.Registry(registries.Registry[any, any](missingRegistry))
+			return readsN(self, depMissing, jsonObject(), "n"), nil
+		}, ServeOptions{})
+	}, loadedOptions{Loop: loop, ReadyTimeout: &ready})
+	defer closeHosts(t, host)
+	view := mustHold(t, host, depView, jsonObject("id", float64(1)))
+	turn(host)
+	state := refStateOf(view)
+	if state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting ||
+		!strings.HasPrefix(state.Cause.Error.Message, "waiting for registry app.missing-registry: ") {
+		t.Fatalf("state = %+v (cause %+v), want failed waiting for registry app.missing-registry", state, state.Cause)
+	}
+	loop.AdvanceAsync(1000)
+	want := []HostError{parkedLongOf("app.view(1)", "registry app.missing-registry", "failed", 0)}
+	if got := errs.All(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("errors = %+v, want %+v", got, want)
 	}
 	view.Release()
 }
 
-// Mirrors "is not reported while the path has no link: no remote attempt answers for it (fix round 1, Opus F2)".
-func TestParkedLongIsNotReportedWhileThePathHasNoLink(t *testing.T) {
+// Mirrors "names a reference whose pinned key still loads: the episode's clock includes the load (Sol)". Pi delays
+// `ChordObject.prototype.pinKey` with a spy; Go has no such hook, so the pin is delayed where it waits for real: the
+// persisted key's cold load, held at the store (as reference-keys' "delayed keyed pin").
+func TestParkedLongNamesAReferenceWhosePinnedKeyStillLoadsTheEpisodesClockIncludesTheLoadSol(t *testing.T) {
+	keys := mustContract(declareLocal("app.keys", contracts.LocalDeclaration{
+		Version: 1, Params: contracts.Params{},
+		Members: []contracts.LocalEntry{contracts.Mem("notes", contracts.Keyed(kmSchema))},
+	}))
+	rows := kmDefine("rows", documents.StateOptions{
+		Keyed: true, Persist: true,
+		CheckpointWhen: func(*delta.JsonObject, []delta.Op, documents.CheckpointInfo) bool { return false },
+	})
+	gate := newReadGate()
+	st := openMemoryStore(t, func(db sqlite.SqliteDatabase) sqlite.SqliteDatabase {
+		return &readGateDatabase{SqliteDatabase: db, gate: gate}
+	}, nil)
+	t.Cleanup(gate.Release)
+	var memos atomic.Pointer[documents.Keyed]
+	facet := func(h FacetHost, _ FacetSelf) error {
+		if err := h.Serve(keys, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			notes := self.State(rows).(*documents.Keyed)
+			memos.Store(notes)
+			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+		}, ServeOptions{}); err != nil {
+			return err
+		}
+		return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			row, err := self.Get(keys, jsonObject()).Keyed("notes").At("a")
+			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+				"n": self.Derive([]any{Expose(row)}, func(values []any) (delta.JsonValue, error) {
+					return values[0].(*delta.JsonObject).Value("n"), nil
+				}),
+			}}}, err
+		}, ServeOptions{})
+	}
+	// The key is stored by an earlier host: the second one finds it cold, and its pin loads it from the store.
+	seed, _ := loaded(t, facet, loadedOptions{Store: st})
+	mustGet(t, seed, keys, jsonObject())
+	kmSet(t, memos.Load(), "a", 4)
+	must(t, seed.Close(background))
 	loop := newScopeLoop()
-	client, errs := parkedClient(t, loop)
+	ready := time.Second
+	gate.armed.Store(true)
+	host, errs := loaded(t, facet, loadedOptions{Loop: loop, ReadyTimeout: &ready, Store: st})
+	defer closeHosts(t, host)
+	view := mustHold(t, host, depView, jsonObject("id", float64(1)))
+	<-gate.entered
+	loop.AdvanceAsync(1000)
+	if got, want := errs.All(), []HostError{parkedLongOf("app.view(1)", "app.keys", "loading", 0)}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("errors = %+v, want %+v", got, want)
+	}
+	gate.Release()
+	untilKind(t, view, RefStateLive)
+	view.Release()
+}
+
+// Mirrors "reports a ring across hosts whose member there waits on a failed dependency (it shows failed here)".
+func TestParkedLongReportsARingAcrossHostsWhoseMemberThereWaitsOnAFailedDependencyItShowsFailedHere(t *testing.T) {
+	loop := newScopeLoop()
+	errs := &hostErrors{}
+	ready := time.Second
+	client := newHost(t, HostOptions{ReadyTimeout: &ready, OnError: errs.push, loop: loop})
 	defer closeHosts(t, client)
-	view, err := client.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
-	must(t, err)
-	loop.AdvanceAsync(5000)
-	if errs.Len() != 0 {
-		t.Fatalf("errors = %v, want none", errs.All())
+	peer, ends := rawParentLinks(t, client)
+	mustLoad(t)(client.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(serveViewOfNotes)}}, background))
+	view := mustHold(t, client, depView, jsonObject("id", float64(1)))
+	hold := peer.Next("hold").(*link.HoldMessage).Hold
+	// The provider's object is parked there on a failed dependency (the ring's member back to this host waits too).
+	peer.Send(&link.FailedMessage{Hold: hold, Cause: link.WireCause{Kind: "waiting", Error: jsonObject(
+		"kind", "chord", "error", jsonObject("code", "unavailable", "message", "waiting for app.c: not served"))}})
+	transported(ends[0], ends[1])
+	loop.AdvanceAsync(1000)
+	if got, want := errs.All(), []HostError{parkedLongOf("app.view(1)", "app.notes(S1)", "failed", 0)}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("errors = %+v, want %+v", got, want)
 	}
-	if kind := refStateOf(view).Kind; kind != RefStateLoading {
-		t.Fatalf("state = %s, want loading", kind)
+	if state := refStateOf(view); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
+		t.Fatalf("state = %+v, want failed waiting", state)
 	}
-	// Once a link holds it and the remote attempt is only loading, it is.
-	peer, _ := rawParentLinks(t, client)
-	peer.Next("hold")
+	view.Release()
+}
+
+// Mirrors "is reported once per parking episode: again for an attempt that parks after leaving parking".
+func TestParkedLongIsReportedOncePerParkingEpisodeAgainForAnAttemptThatParksAfterLeavingParking(t *testing.T) {
+	loop := newScopeLoop()
+	ready := time.Second
+	host, errs := loaded(t, serveViewOfMissing, loadedOptions{Loop: loop, ReadyTimeout: &ready})
+	defer closeHosts(t, host)
+	view := mustHold(t, host, depView, jsonObject("id", float64(1)))
 	loop.AdvanceAsync(5000)
 	var kinds []HostErrorKind
 	for _, err := range errs.All() {
@@ -336,96 +482,40 @@ func TestParkedLongIsNotReportedWhileThePathHasNoLink(t *testing.T) {
 	if !reflect.DeepEqual(kinds, []HostErrorKind{ErrParkedLong}) {
 		t.Fatalf("error kinds = %v, want [parked_long]", kinds)
 	}
-	view.Release()
-}
-
-// Mirrors "is reported once per parking episode, after readyTimeout on a remote attempt only loading; nothing fails".
-func TestParkedLongIsReportedOncePerParkingEpisodeAfterReadyTimeout(t *testing.T) {
-	loop := newScopeLoop()
-	errs := &hostErrors{}
-	ready := time.Second
-	client := newHost(t, HostOptions{ReadyTimeout: &ready, OnError: errs.push, loop: loop})
-	defer closeHosts(t, client)
-	peer, _ := rawParentLinks(t, client)
-	must(t, client.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(serveViewOfNotes)}}, background))
-	view, err := client.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
+	// A reload of its plugin replaces the parked attempt: a new episode, its clock from its own parking.
+	_, err := host.Reload([]HostFacet{{Name: "@test/app", Facet: DefineFacet(serveViewOfMissing)}}, background, ReloadOptions{})
 	must(t, err)
-	peer.Next("hold")
 	loop.AdvanceAsync(999)
-	if errs.Len() != 0 {
-		t.Fatalf("errors = %v, want none", errs.All())
-	}
-	loop.AdvanceAsync(1)
-	if got, want := errs.All(), []HostError{parkedLongOf("app.view(1)", "app.notes(S1)", 0)}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("errors = %+v, want %+v", got, want)
-	}
-	loop.AdvanceAsync(60000)
 	if errs.Len() != 1 {
 		t.Fatalf("errors = %d, want 1", errs.Len())
 	}
-	if kind := refStateOf(view).Kind; kind != RefStateLoading {
-		t.Fatalf("state = %s, want loading", kind)
+	loop.AdvanceAsync(1)
+	if got, want := errs.All()[1], parkedLongOf("app.view(1)", "app.missing", "failed", 5000); !reflect.DeepEqual(got, want) {
+		t.Fatalf("second report = %+v, want %+v", got, want)
 	}
 	view.Release()
 }
 
-// Mirrors "is not reported for a remote blocker that failed: the parked attempt shows its cause instead".
-func TestParkedLongIsNotReportedForARemoteBlockerThatFailed(t *testing.T) {
+// Mirrors "is not reported for an attempt that leaves parking within readyTimeout: its timer stops".
+func TestParkedLongIsNotReportedForAnAttemptThatLeavesParkingWithinReadyTimeoutItsTimerStops(t *testing.T) {
 	loop := newScopeLoop()
 	errs := &hostErrors{}
 	ready := time.Second
 	client := newHost(t, HostOptions{ReadyTimeout: &ready, OnError: errs.push, loop: loop})
 	defer closeHosts(t, client)
 	peer, ends := rawParentLinks(t, client)
-	must(t, client.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(serveViewOfNotes)}}, background))
-	view, err := client.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
-	must(t, err)
+	mustLoad(t)(client.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(serveViewOfNotes)}}, background))
+	view := mustHold(t, client, depView, jsonObject("id", float64(1)))
 	hold := peer.Next("hold").(*link.HoldMessage).Hold
-	peer.Send(&link.FailedMessage{Hold: hold, Cause: link.WireCause{Kind: "waiting", Error: jsonObject(
-		"kind", "chord", "error", jsonObject("code", "unavailable", "message", "app.notes is not served here"))}})
+	loop.AdvanceAsync(500)
+	bindHold(t, peer, hold, jsonObject("text", "a"))
 	transported(ends[0], ends[1])
-	loop.AdvanceAsync(60000)
+	loop.AdvanceAsync(5000)
+	if state := refStateOf(view); state.Kind != RefStateLive {
+		t.Fatalf("state = %+v, want live", state)
+	}
 	if errs.Len() != 0 {
 		t.Fatalf("errors = %v, want none", errs.All())
-	}
-	state := awaitRefState(t, "the parked view shows its cause", view, func(s *RefState) bool { return s.Kind == RefStateFailed })
-	if state.Cause.Kind != data.FailureWaiting {
-		t.Fatalf("state = %+v, want failed waiting", state)
-	}
-	if got := loop.TimerCount(); got != 0 {
-		t.Fatalf("timers = %d, want 0", got)
-	}
-	view.Release()
-}
-
-// Mirrors "is not reported for a local blocker: its own deadline bounds it".
-func TestParkedLongIsNotReportedForALocalBlocker(t *testing.T) {
-	slow := mustContract(declareLocal("app.slow", contracts.LocalDeclaration{
-		Version: 1,
-		Params:  contracts.Params{contracts.Prop("id", contracts.Int())},
-		Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
-	}))
-	loop := newScopeLoop()
-	ready := time.Second
-	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
-		if err := h.Serve(slow, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
-			selfOpen(self, func(ctx context.Context) error { <-ctx.Done(); return nil }, func(NativeCloseReason) {})
-			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(float64(1))}}}, nil
-		}, ServeOptions{}); err != nil {
-			return err
-		}
-		return h.Serve(depView, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
-			return readsN(self, slow, jsonObject("id", float64(1)), "n"), nil
-		}, ServeOptions{})
-	}, loadedOptions{ReadyTimeout: &ready, Loop: loop})
-	defer closeHosts(t, host)
-	view, err := host.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
-	must(t, err)
-	loop.AdvanceAsync(5000)
-	for _, err := range errs.All() {
-		if err.Kind == ErrParkedLong {
-			t.Fatalf("a parked_long was reported: %+v", err)
-		}
 	}
 	view.Release()
 }
@@ -435,7 +525,7 @@ func TestAGetterOfAParkedObjectRejectsWithTheLastParkedCauseAfterItsDependencyFe
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
 	defer closeHosts(t, host)
 	peer, ends := rawParentLinks(t, host)
-	must(t, host.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(serveViewOfNotes)}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(serveViewOfNotes)}}, background))
 	ready := 80 * time.Millisecond
 	pending := make(chan error, 1)
 	go func() {
@@ -473,7 +563,8 @@ func TestTheDependencyCheckOfRegistryValues(t *testing.T) {
 	}
 	absent := registries.NewRegistryRecord("app.absent", e.batch, func(registries.RegistryError) {})
 	got := checkDependencies([]dependency{live, {kind: dependencyRegistry, value: absent.Value(1)}})
-	if got.kind != checkParked || got.shown.Kind != RefStateFailed || got.shown.Cause.Kind != data.FailureWaiting || !got.firstPass || got.remoteLoading != nil {
+	if got.kind != checkParked || got.shown.Kind != RefStateFailed || got.shown.Cause.Kind != data.FailureWaiting || !got.firstPass ||
+		got.blocker != (blocker{label: "registry app.absent", state: blockerFailed}) || got.loadingOn != nil {
 		t.Fatalf("check with an unserved registry = %+v, want parked waiting", got)
 	}
 	if message := got.shown.Cause.Error.Message; !strings.HasPrefix(message, "waiting for registry app.absent: ") {
