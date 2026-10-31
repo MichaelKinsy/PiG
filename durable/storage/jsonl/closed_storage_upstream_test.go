@@ -5,6 +5,7 @@ import (
 
 	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
 )
 
@@ -22,9 +23,9 @@ func TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage(t *testin
 		documentId := mint[durable.DocumentId](t, storage)
 		if poisoned {
 			instrumented.fail(failure{operation: "append", call: 1, mode: "before"})
-			if _, err := storage.Commit(testContext, []durable.StorageWrite{
+			if _, err := durabletest.CommitWrites(testContext, storage, []durable.StorageWrite{
 				durable.DocumentCreateWrite{Record: sessionDocument(documentId, "first"), Content: base(chorddelta.JsonObjectOf("text", "α"))},
-			}, func(durable.Seq) {}); err == nil {
+			}); err == nil {
 				t.Fatal("the failed publication did not fail the commit")
 			}
 		}
@@ -39,7 +40,7 @@ func TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage(t *testin
 		entryId := durable.IdFromNumber[durable.EntryId](1)
 		point := durable.CurrentPoint
 		_, mintErr := storage.MintId()
-		_, commitErr := storage.Commit(testContext, nil, func(durable.Seq) {})
+		_, commitErr := durabletest.CommitWrites(testContext, storage, nil)
 		_, conversationErr := storage.Conversation(testContext, root)
 		_, scanConversationsErr := storage.ScanConversations(testContext, durable.ConversationQuery{}, 1, nil)
 		_, entryErr := storage.Entry(testContext, entryId)

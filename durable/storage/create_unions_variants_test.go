@@ -12,6 +12,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
 
@@ -24,10 +25,10 @@ func storedSubmission(t *testing.T, create durable.SubmissionCreate) (durable.Su
 		t.Fatal(err)
 	}
 	record := create.Record(durable.IdFromNumber[durable.SubmissionId](id))
-	if _, err := memory.Commit(ctx, []durable.StorageWrite{
+	if _, err := durabletest.CommitWrites(ctx, memory, []durable.StorageWrite{
 		durable.ConversationWrite{Value: durable.ConversationRecord{Id: create.ConversationId}},
 		durable.SubmissionWrite{Value: record},
-	}, func(durable.Seq) {}); err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
 	stored, err := memory.Submission(ctx, record.Id)
@@ -105,7 +106,7 @@ func TestSettledSubmissionRecordUnionEveryVariantIsStored(t *testing.T) {
 	for _, record := range settled {
 		writes = append(writes, durable.SubmissionWrite{Value: record})
 	}
-	if _, err := memory.Commit(ctx, writes, func(durable.Seq) {}); err != nil {
+	if _, err := durabletest.CommitWrites(ctx, memory, writes); err != nil {
 		t.Fatal(err)
 	}
 	for _, record := range settled {
@@ -167,7 +168,7 @@ func TestDocumentCreateUnionEveryScopeHistoryAndForkIsStored(t *testing.T) {
 		created = append(created, create)
 		writes = append(writes, durable.DocumentCreateWrite{Record: create, Content: durable.DocumentContent{Kind: durable.ContentBase, Version: 1, Value: delta.JsonObjectOf("v", 1)}})
 	}
-	if _, err := memory.Commit(ctx, writes, func(durable.Seq) {}); err != nil {
+	if _, err := durabletest.CommitWrites(ctx, memory, writes); err != nil {
 		t.Fatal(err)
 	}
 	for _, create := range created {
