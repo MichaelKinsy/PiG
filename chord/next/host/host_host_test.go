@@ -186,10 +186,18 @@ func servePage(h FacetHost, factory func()) error {
 }
 
 // gatedSvc is `serveGated`: one native whose open waits for gate and whose close records its value and reason in closes.
-func gatedSvc(h FacetHost, gate <-chan struct{}, closes *seenList[string]) error {
+// starts, when given, records the id of each open as it is called: Pi's `await flushed()` runs an activation as far as its
+// open waiting on the gate, which a test here waits for by this (the activation goes on over tasks of the host).
+func gatedSvc(h FacetHost, gate <-chan struct{}, closes *seenList[string], starts ...*seenList[string]) error {
 	return h.Serve(hostSvc, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
 		id := params.Value("id")
-		self.Open(func(context.Context) (any, error) { <-gate; return fmt.Sprintf("svc %v", id), nil },
+		self.Open(func(context.Context) (any, error) {
+			for _, started := range starts {
+				started.add(fmt.Sprint(id))
+			}
+			<-gate
+			return fmt.Sprintf("svc %v", id), nil
+		},
 			func(value any, reason NativeCloseReason, _ context.Context) error {
 				closes.add(fmt.Sprintf("%v %s", value, reason.Kind))
 				return nil
@@ -896,8 +904,8 @@ func TestHostCloseEndsEveryObjectAtOnceCallsFailReleasedBeforeAnyCloseRan(t *tes
 // Mirrors "close › aborts a pending open and does not wait for it; its late value is closed with close".
 func TestHostCloseAbortsAPendingOpenAndDoesNotWaitForItItsLateValueIsClosedWithClose(t *testing.T) {
 	gate := make(chan struct{})
-	var closes seenList[string]
-	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return gatedSvc(h, gate, &closes) }, loadedOptions{})
+	var closes, opens seenList[string]
+	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return gatedSvc(h, gate, &closes, &opens) }, loadedOptions{})
 	got := make(chan error, 1)
 	go func() {
 		_, err := host.Get(hostSvc, jsonObject("id", float64(1)), background, GetOptions{})
@@ -905,6 +913,9 @@ func TestHostCloseAbortsAPendingOpenAndDoesNotWaitForItItsLateValueIsClosedWithC
 	}()
 	awaitUnboundOrObject(t, host)
 	turn(host)
+	// Pi's `await flushed()` runs the activation as far as the open waiting on its gate; `turn` does not wait for the host's
+	// tasks, so wait for the open to have been called.
+	scopeEventually(t, "the open started", func() bool { return opens.len() == 1 })
 	must(t, host.Close(background))
 	wantChordError(t, <-got, data.CodeReleased, data.ReasonEnded, "app.svc(1): ended")
 	close(gate)
@@ -1729,8 +1740,8 @@ func TestHostAcquiringABrokenFailureHoldIsFailedWithoutRetryAtGetRejectsAtOnce(t
 // Mirrors "acquiring › a cancelled context: no effect on a hold; a get releases its reference and rejects".
 func TestHostAcquiringACancelledContextNoEffectOnAHoldAGetReleasesItsReferenceAndRejects(t *testing.T) {
 	gate := make(chan struct{})
-	var closes seenList[string]
-	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return gatedSvc(h, gate, &closes) }, loadedOptions{})
+	var closes, opens seenList[string]
+	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return gatedSvc(h, gate, &closes, &opens) }, loadedOptions{})
 	defer closeHosts(t, host)
 	cancellable, cancel := chordctx.WithCancel(background)
 	held, err := host.Hold(hostSvc, jsonObject("id", float64(1)), cancellable, GetOptions{})
@@ -1741,6 +1752,9 @@ func TestHostAcquiringACancelledContextNoEffectOnAHoldAGetReleasesItsReferenceAn
 		got <- err
 	}()
 	scopeEventually(t, "the getter waits", func() bool { return countBindings(host) >= 2 })
+	// Pi cancels right after `get` and still finds svc 2's late value closed, so its opener was called by then. Here the
+	// activations go on over tasks of the host, so wait for both openers: only an open that started has a late value to close.
+	scopeEventually(t, "both opens started", func() bool { return opens.len() == 2 })
 	cancel(errors.New("user cancelled"))
 	if err := <-got; err == nil || err.Error() != "user cancelled" {
 		t.Fatalf("get = %v, want user cancelled", err)
