@@ -129,10 +129,14 @@ func TestHostReferencesChangesInTheBatchWhereAReferenceBindsOrEndsAWatchGetsOneS
 	watch, err := server.References(Notes).Watch(background)
 	must(t, err)
 	frames := nexttest.FramesOf(watch)
+	// Pi's `await` of each `get` lets the watch deliver its frame before the next change (a listener that keeps up gets one
+	// call per batch); here the scheduler delivers on goroutines, so wait for the deliveries between the steps.
 	one, err := client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
 	must(t, err)
+	deliveredOn(server, client)
 	_, err = client.Get(Notes, jsonObject("session", "S2"), background, GetOptions{})
 	must(t, err)
+	deliveredOn(server, client)
 	one.Release()
 	transported(hosts.Links[0], hosts.Links[1])
 	deliveredOn(server, client)
