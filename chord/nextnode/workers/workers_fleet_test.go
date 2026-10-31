@@ -1,0 +1,421 @@
+package workers
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sync"
+	"testing"
+	"time"
+
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
+)
+
+// Ports packages/chord/test/next-node/workers/support.ts: a server routing `Session` to forked fixture workers, the
+// fixture plugins copied into a temporary root, each address's start data (its behaviour) chosen by the test.
+
+var background = chordctx.Background()
+
+// fixtureServer is the server's own kind: `hostKind("server")`.
+var fixtureServer = mustFixture(contracts.NewHostKind("server"))
+
+// fleetOptions are the options of fleet; the zero value is the defaults of support.ts.
+type fleetOptions struct {
+	// idleMs is how long a worker idles before it is stopped (60 s by default).
+	idleMs    int
+	heartbeat *host.HeartbeatOptions
+	start     func(address contracts.Address, ctx context.Context) (delta.JsonValue, error)
+	principal func() (data.Principal, error)
+	authorize func() (bool, error)
+}
+
+// collector collects values from callbacks on other goroutines.
+type collector[T any] struct {
+	mu    sync.Mutex
+	items []T
+}
+
+func (c *collector[T]) add(item T) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.items = append(c.items, item)
+}
+
+func (c *collector[T]) all() []T {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]T(nil), c.items...)
+}
+
+// fleet is a server with workers; closed after the test.
+type fleet struct {
+	t       testing.TB
+	server  host.Host
+	workers Workers
+	plugins *testPlugins
+	// root is the copy of the fixture plugins.
+	root       string
+	errors     *collector[WorkersError]
+	hostErrors *collector[host.HostError]
+	// starts is the addresses `start` ran for, in order.
+	starts *collector[string]
+	// output is the workers' stdout lines, each with its address key.
+	output *collector[string]
+	// behaviours is each address's behaviour (its start data); none: a plain worker.
+	behaviours *behaviours
+	clock      *switchClock
+}
+
+type behaviours struct {
+	mu   sync.Mutex
+	byID map[string]workerBehaviour
+}
+
+func (b *behaviours) set(id string, behaviour workerBehaviour) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.byID[id] = behaviour
+}
+
+func (b *behaviours) get(id string) workerBehaviour {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.byID[id]
+}
+
+// newFleet starts a server routing `Session` to fixture workers; options override the workers' defaults.
+func newFleet(t testing.TB, options fleetOptions) *fleet {
+	t.Helper()
+	root := t.TempDir()
+	f := &fleet{
+		t: t, root: root, errors: &collector[WorkersError]{}, hostErrors: &collector[host.HostError]{}, starts: &collector[string]{},
+		output: &collector[string]{}, behaviours: &behaviours{byID: map[string]workerBehaviour{}}, clock: &switchClock{},
+	}
+	f.plugins = newTestPlugins(t, root)
+	serverAddress := fixtureServer.Address(nil)
+	serverOptions := host.HostOptions{Address: &serverAddress, Principal: delta.JsonObjectOf("kind", "server"), OnError: f.hostErrors.add}
+	if options.heartbeat != nil {
+		serverOptions.Heartbeat = options.heartbeat
+	}
+	server, err := host.CreateHost(serverOptions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.server = server
+	idle := 60_000
+	if options.idleMs != 0 {
+		idle = options.idleMs
+	}
+	workers, err := CreateWorkers(server, fixtureSession, WorkersOptions{
+		Kind:  "worker",
+		Entry: fixtureEntry(t),
+		Env:   fixtureEnvironment("worker"),
+		Authorize: func(data.Principal, contracts.Address) (bool, error) {
+			if options.authorize != nil {
+				return options.authorize()
+			}
+			return true, nil
+		},
+		Principal: func(address contracts.Address) (data.Principal, error) {
+			if options.principal != nil {
+				return options.principal()
+			}
+			id, _ := address.Params.Value("id").(string)
+			return delta.JsonObjectOf("kind", "worker", "id", id), nil
+		},
+		Start: func(address contracts.Address, ctx context.Context) (delta.JsonValue, error) {
+			f.starts.add(address.Key)
+			if options.start != nil {
+				return options.start(address, ctx)
+			}
+			id, _ := address.Params.Value("id").(string)
+			return f.behaviours.get(id).json(), nil
+		},
+		Lock:    func(address contracts.Address) (string, error) { return "chord-test:" + root + ":" + address.Key, nil },
+		IdleMs:  func() time.Duration { return time.Duration(idle) * time.Millisecond },
+		Plugins: f.plugins,
+		OnOutput: func(address contracts.Address, stream string, chunk []byte) {
+			if stream == "stdout" {
+				f.output.add(address.Key + " " + string(trimSpace(chunk)))
+			}
+		},
+		OnError: f.errors.add,
+		clock:   f.clock,
+	}, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.workers = workers
+	loadHost(t, server)
+	t.Cleanup(func() {
+		_ = workers.Close(background)
+		_ = server.Close(background)
+	})
+	return f
+}
+
+func trimSpace(chunk []byte) []byte {
+	start, end := 0, len(chunk)
+	for start < end && (chunk[start] == ' ' || chunk[start] == '\n' || chunk[start] == '\r' || chunk[start] == '\t') {
+		start++
+	}
+	for end > start && (chunk[end-1] == ' ' || chunk[end-1] == '\n' || chunk[end-1] == '\r' || chunk[end-1] == '\t') {
+		end--
+	}
+	return chunk[start:end]
+}
+
+func (f *fleet) hold(typ *contracts.Contract, id string) *host.Reference {
+	f.t.Helper()
+	reference, err := f.server.Hold(typ, delta.JsonObjectOf("id", id), background, host.GetOptions{})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return reference
+}
+
+func (f *fleet) get(typ *contracts.Contract, id string) *host.Reference {
+	f.t.Helper()
+	reference, err := f.server.Get(typ, delta.JsonObjectOf("id", id), background, host.GetOptions{})
+	if err != nil {
+		f.t.Fatalf("get %s %s: %v", typ.Name, id, err)
+	}
+	return reference
+}
+
+// session is `Session({ id })`.
+func session(id string) contracts.Address {
+	return fixtureSession.Address(delta.JsonObjectOf("id", id))
+}
+
+// stateOf is the state entry of id: nil when none.
+func (f *fleet) stateOf(id string) *WorkerState {
+	value, err := f.workers.State().Value()
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	object, _ := value.(*delta.JsonObject)
+	entry, ok := object.Value("session|" + id).(*delta.JsonObject)
+	if !ok {
+		return nil
+	}
+	state := &WorkerState{Status: WorkerStatus(entry.Value("status").(string))}
+	if pid, ok := entry.Value("pid").(float64); ok {
+		state.Pid = int(pid)
+	}
+	if failure, ok := entry.Value("error").(*delta.JsonObject); ok {
+		state.Error.Message, _ = failure.Value("message").(string)
+		state.Error.Code, _ = failure.Value("code").(string)
+	}
+	return state
+}
+
+// stateText is JSON.stringify(workers.state.value).
+func (f *fleet) stateText() string {
+	value, _ := f.workers.State().Value()
+	text, _ := delta.JsonObjectOf("v", value).MarshalJSON()
+	return string(text)
+}
+
+// kinds are the kinds of the errors the workers reported, as Pi spells them.
+func (f *fleet) kinds() []string {
+	var kinds []string
+	for _, each := range f.errors.all() {
+		kinds = append(kinds, errorKind(each))
+	}
+	return kinds
+}
+
+func errorKind(err WorkersError) string {
+	switch err.(type) {
+	case WorkerFailedError:
+		return "worker_failed"
+	case AuthorizeFailedError:
+		return "authorize_failed"
+	case WorkerExitedError:
+		return "worker_exited"
+	default:
+		return fmt.Sprintf("%T", err)
+	}
+}
+
+// firstFailure is the first `worker_failed` the workers reported.
+func (f *fleet) firstFailure() (WorkerFailedError, bool) {
+	for _, each := range f.errors.all() {
+		if failed, ok := each.(WorkerFailedError); ok {
+			return failed, true
+		}
+	}
+	return WorkerFailedError{}, false
+}
+
+// lastFailure is the last `worker_failed` the workers reported.
+func (f *fleet) lastFailure() (WorkerFailedError, bool) {
+	all := f.errors.all()
+	for index := len(all) - 1; index >= 0; index-- {
+		if failed, ok := all[index].(WorkerFailedError); ok {
+			return failed, true
+		}
+	}
+	return WorkerFailedError{}, false
+}
+
+// label reads `notes.label.value`.
+func labelOf(t testing.TB, reference *host.Reference) string {
+	t.Helper()
+	value, err := reference.Member("label").Value()
+	if err != nil {
+		t.Fatalf("label: %v", err)
+	}
+	text, _ := value.(string)
+	return text
+}
+
+// refKind is `ref.state.value.kind`.
+func refKind(reference *host.Reference) host.RefStateKind { return reference.State().Value().Kind }
+
+// fakeClock is vitest's fake timers for setTimeout and clearTimeout (and nothing else: Date is the real one).
+type fakeClock struct {
+	mu     sync.Mutex
+	now    time.Duration
+	timers []*fakeTimer
+}
+
+type fakeTimer struct {
+	clock *fakeClock
+	due   time.Duration
+	job   func()
+	done  bool
+}
+
+func (c *fakeClock) afterFunc(d time.Duration, job func()) host.Timer {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	timer := &fakeTimer{clock: c, due: c.now + d, job: job}
+	c.timers = append(c.timers, timer)
+	return timer
+}
+
+func (t *fakeTimer) Stop() bool {
+	t.clock.mu.Lock()
+	defer t.clock.mu.Unlock()
+	pending := !t.done
+	t.done = true
+	return pending
+}
+
+// advance is `vi.advanceTimersByTimeAsync(d)`: the timers due within d run in order of their due time.
+func (c *fakeClock) advance(d time.Duration) {
+	c.mu.Lock()
+	limit := c.now + d
+	c.mu.Unlock()
+	for {
+		c.mu.Lock()
+		var next *fakeTimer
+		for _, timer := range c.timers {
+			if !timer.done && timer.due <= limit && (next == nil || timer.due < next.due) {
+				next = timer
+			}
+		}
+		if next == nil {
+			c.now = limit
+			c.mu.Unlock()
+			return
+		}
+		next.done = true
+		if next.due > c.now {
+			c.now = next.due
+		}
+		c.mu.Unlock()
+		next.job()
+	}
+}
+
+// switchClock is the real clock until a test fakes the timers (`vi.useFakeTimers`), and again after it restores them.
+type switchClock struct {
+	mu   sync.Mutex
+	fake *fakeClock
+}
+
+func (c *switchClock) Now() int64 { return time.Now().UnixMilli() }
+
+func (c *switchClock) AfterFunc(d time.Duration, job func()) host.Timer {
+	c.mu.Lock()
+	fake := c.fake
+	c.mu.Unlock()
+	if fake != nil {
+		return fake.afterFunc(d, job)
+	}
+	return time.AfterFunc(d, job)
+}
+
+// useFakeTimers is `vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })`; the returned func restores the real ones.
+func (c *switchClock) useFakeTimers() (*fakeClock, func()) {
+	fake := &fakeClock{}
+	c.mu.Lock()
+	c.fake = fake
+	c.mu.Unlock()
+	return fake, func() {
+		c.mu.Lock()
+		c.fake = nil
+		c.mu.Unlock()
+	}
+}
+
+// testPlugins is the plugins component of the fleet: the fixture plugin `@test/notes` copied into root, its worker facet's
+// source the text of `notes/label` (the build of the label.ts fixture).
+type testPlugins struct {
+	root string
+}
+
+var _ plugins.Plugins = (*testPlugins)(nil)
+
+func newTestPlugins(t testing.TB, root string) *testPlugins {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(root, "notes"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	p := &testPlugins{root: root}
+	if err := p.writeLabel("v1"); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func (p *testPlugins) writeLabel(label string) error {
+	return os.WriteFile(filepath.Join(p.root, "notes", "label"), []byte(label), 0o600)
+}
+
+func (p *testPlugins) Scripts(_ string, _ context.Context) ([]plugins.PluginScript, error) {
+	source, err := os.ReadFile(filepath.Join(p.root, "notes", "label"))
+	if err != nil {
+		return nil, err
+	}
+	digest := sha256.Sum256(source)
+	return []plugins.PluginScript{{
+		Plugin: plugins.Plugin{Name: "@test/notes", Dir: filepath.Join(p.root, "notes")},
+		Built:  plugins.BuiltFacet{Kind: plugins.BuiltFacetScript, Plugin: "@test/notes", Facet: "worker", Source: string(source), Digest: hex.EncodeToString(digest[:])},
+	}}, nil
+}
+
+func (p *testPlugins) Current(string) ([]plugins.PluginScript, bool) { return nil, false }
+
+// childStarted reports whether the child of session `id` has told `started` (a look into the component, under its loop).
+func (f *fleet) childStarted(id string) bool {
+	component := f.workers.(*workersComponent)
+	var started bool
+	component.loop.Run(func() {
+		if record := component.addresses["session|"+id]; record != nil && record.child != nil {
+			started = record.child.started.isSettled()
+		}
+	})
+	return started
+}

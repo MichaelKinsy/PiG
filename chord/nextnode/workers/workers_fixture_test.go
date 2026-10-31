@@ -20,6 +20,10 @@ func TestMain(m *testing.M) {
 		os.Exit(m.Run())
 	case "child":
 		runChildFixture()
+	case "worker":
+		runWorkerFixture()
+	case "resume":
+		resumeFixture()
 	case "grandchild":
 		time.Sleep(60 * time.Second)
 		os.Exit(0)
@@ -48,7 +52,7 @@ func runChildFixture() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	fmt.Fprintf(os.Stdout, "grandchild %s\n", strconv.Itoa(grandchild.Process.Pid))
+	_, _ = fmt.Fprintf(os.Stdout, "grandchild %s\n", strconv.Itoa(grandchild.Process.Pid))
 	fmt.Fprint(os.Stderr, "an error line\n")
 	port := openProcessChannel()
 	port.start()
@@ -56,4 +60,15 @@ func runChildFixture() {
 	payload, _ := envelope(FromWorker{Kind: FromWorkerStarted})
 	port.SendControl(payload)
 	select {}
+}
+
+// fixtureEnvironment is the environment of a fixture worker of kind. A binary built with -race sleeps a second before it
+// exits (TSan's atexit_sleep_ms), which Node does not: the workers' tests are about when a worker stops, so a fixture
+// worker exits at once.
+func fixtureEnvironment(kind string) map[string]string {
+	race := "atexit_sleep_ms=0"
+	if existing := os.Getenv("GORACE"); existing != "" {
+		race = existing + " " + race
+	}
+	return map[string]string{fixtureEnv: kind, "GORACE": race}
 }

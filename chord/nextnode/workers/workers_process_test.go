@@ -19,7 +19,7 @@ func TestAWorkerProcessPipesItsOutputKeepsItsStderrTailQueuesAnEarlyFrameOnItsLi
 	child, err := NewWorkerProcess(
 		ForkOptions{
 			Entry: fixtureEntry(t),
-			Env:   map[string]string{fixtureEnv: "child"},
+			Env:   fixtureEnvironment("child"),
 			OnOutput: func(stream string, chunk []byte) {
 				mu.Lock()
 				defer mu.Unlock()
