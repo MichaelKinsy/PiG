@@ -5442,6 +5442,27 @@
       ]
     },
     {
+      "id": "BF-33558f6",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "wrap.go: the wrap branches as a switch (gocritic ifElseChain), and the SDK copy of it; the CJK URL test ranges over the string.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "33558f62b7",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "tui/markdown_cjk_url_test.go::TestMarkdownBareURLStopsAtCJKPunctuationPiCases"
+      ]
+    },
+    {
       "id": "BF-33dc8a0",
       "title": "fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does",
       "symptom": "fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does",

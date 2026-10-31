@@ -195,6 +195,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-333229c](#bf-333229c) | An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-334bb4b](#bf-334bb4b) | A Gemini or Mistral stream chunk with a member of an unexpected type no longer sorts the members of a tool… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3351167](#bf-3351167) | The OAuth callback server reads an absolute-form request target with a scheme other than http or https, a… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-33558f6](#bf-33558f6) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-33dc8a0](#bf-33dc8a0) | fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does | PiG's own defect | All platforms | Unreleased |
 | [BF-33ea9e4](#bf-33ea9e4) | fix(sdk): name the Go ModelRegistry.Find change in the upgrade rules; Node adoption survives an unbound leaf… | PiG's own defect | All platforms | Unreleased |
 | [BF-33fe10d](#bf-33fe10d) | `ModelsError` appends the cause detail the way Pi does: an Error cause with an empty message contributes its… | PiG's own defect | All platforms | 0.5.0 |
@@ -3791,6 +3792,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2c04c1445a` (2026-10-09), `31f4517fbe` (2026-10-09), `335116710e` (2026-10-09), `d1cbde3321` (2026-10-09), `d80c1cd150` (2026-10-09), `da8a8704c6` (2026-10-09)
 - **Tests:** `ai/authorization_input_oracle_test.go::TestAuthorizationInputParsersMatchPi`, `ai/chatgpt_manual_input_oracle_test.go::TestChatGPTManualInputMatchesPiOnSeededProbes`, `ai/radius_urls_oracle_test.go::TestRadiusURLsMatchPiOnSeededProbes`, `ai/service_urls_oracle_test.go::TestProviderServiceURLsMatchPiOnSeededProbes`, `internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode`, `internal/nodeurl/reference_test.go::TestResolveURLMatchesNodeURL`, `internal/nodeurl/resolve_request_oracle_test.go::TestResolveURLRequestTargetsMatchNode`, `internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL`
 - **Release note:** The OAuth callback server reads an absolute-form request target with a scheme other than http or https, a relative reference against a base that has a path and query, and a `\` path the way Node's `new URL(request.url, base)` does, instead of falling back to Go's `net/url`.
+
+### BF-33558f6
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** wrap.go: the wrap branches as a switch (gocritic ifElseChain), and the SDK copy of it; the CJK URL test ranges over the string.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `33558f62b7` (2026-10-30)
+- **Tests:** `tui/markdown_cjk_url_test.go::TestMarkdownBareURLStopsAtCJKPunctuationPiCases`
 
 ### BF-33dc8a0
 
