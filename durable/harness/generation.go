@@ -296,12 +296,12 @@ func generationPrepareHandler(ctx context.Context, task durable.RunningTask[Gene
 		})
 	}
 	return runtime.Commit(ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
-		page, err := tx.ScanEntries(durable.EntryQuery{ConversationId: conversationId}, 1, nil)
+		latest, err := tx.LatestEntryId(conversationId)
 		if err != nil {
 			return nil, err
 		}
 		// The context ends in a message the model answers, so the conversation has an entry.
-		cutoff := &page.Items[0].Id
+		cutoff := latest
 		for _, entry := range entries {
 			appended, err := durable.TxAppendEntry(tx, durable.SystemEntry, conversationId, entry)
 			if err != nil {
@@ -348,6 +348,8 @@ func generationRequestHandler(ctx context.Context, task durable.RunningTask[Gene
 		return generationInterrupted(ctx, runtime, checkpoint)
 	}
 	conversationId := runtime.ConversationId()
+	// The attempt shown is presentation, stored like progress (ProgressCommit); converting a partial left by an interrupted
+	// attempt appends an entry, which makes the commit immediate.
 	if err := runtime.Commit(ctx, func(tx durable.Tx, _ durable.RunningTask[GenerationInput, GenerationCheckpoint, GenerationResult]) (*generationNext, error) {
 		live, err := docDraft(tx, LiveDoc, conversationId)
 		if err != nil {
@@ -357,7 +359,7 @@ func generationRequestHandler(ctx context.Context, task durable.RunningTask[Gene
 			return nil, err
 		}
 		return nil, live.Set("generation", delta.JsonObjectOf("attempt", float64(checkpoint.Attempt)))
-	}); err != nil {
+	}, ProgressCommit); err != nil {
 		return err
 	}
 	ref := *checkpoint.Model
