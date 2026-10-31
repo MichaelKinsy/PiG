@@ -1,15 +1,21 @@
 # SPDX-License-Identifier: MIT
 name: Discord notifications
 
-# Posts to a Discord channel through a webhook: one message when a change lands on main, and one when a release is
-# published. Nothing else is announced, so a red CI run does not reach the channel.
+# Posts to Discord channels through webhooks: one message when a change lands on main, and one when a release is
+# published. Nothing else is announced, so a red CI run does not reach Discord.
+#
+# Routing. A landing or release always goes to the general channel, and additionally to a topic channel when its paths
+# or its tag name that topic: a changed path under extensions/ posts to extensions, one under piglets/ posts to piglets.
+# A release routes by tag prefix (extensions/sdk/v0.3.0, piglets/v1.2.0), so a release with no such prefix only reaches
+# general. Every topic secret is optional: a channel that has none falls back to the general webhook, so one secret is
+# enough to start.
 #
 # A push to main is the only moment a change is announced: ci.yml deliberately does not run on pushes to main (a change
 # lands on the tree that was tested), and the notification carries the commit, the pull request a squash title names,
 # and the compare link.
 #
-# The webhook URL is the repository secret DISCORD_WEBHOOK_URL. A repository without that secret posts nothing and the
-# run passes, so a fork is unaffected.
+# Secrets: DISCORD_WEBHOOK_URL (general), DISCORD_WEBHOOK_EXTENSIONS, DISCORD_WEBHOOK_PIGLETS. A repository with none of
+# them posts nothing and the run passes, so a fork is unaffected.
 on:
   push:
     branches: [main]
@@ -30,7 +36,9 @@ jobs:
     steps:
       - name: Post to Discord
         env:
-          WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          WEBHOOK_GENERAL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          WEBHOOK_EXTENSIONS: ${{ secrets.DISCORD_WEBHOOK_EXTENSIONS }}
+          WEBHOOK_PIGLETS: ${{ secrets.DISCORD_WEBHOOK_PIGLETS }}
           EVENT_NAME: ${{ github.event_name }}
           REPO: ${{ github.repository }}
           PUSH_SUBJECT: ${{ github.event.head_commit.message }}
@@ -43,9 +51,24 @@ jobs:
           RELEASE_BODY: ${{ github.event.release.body }}
         run: |
           set -euo pipefail
-          if [ -z "${WEBHOOK_URL}" ]; then
-            echo "DISCORD_WEBHOOK_URL is not set; nothing to post."
+          if [ -z "${WEBHOOK_GENERAL}${WEBHOOK_EXTENSIONS}${WEBHOOK_PIGLETS}" ]; then
+            echo "no Discord webhook secret is set; nothing to post."
             exit 0
+          fi
+
+          # Topics this event belongs to. A push reads the paths its commits touched from the event payload; a release
+          # reads its tag, because a release of the extension SDK is named extensions/sdk/v0.3.0 and a Piglet release
+          # piglets/v1.2.0.
+          topics=""
+          if [ "${EVENT_NAME}" = "push" ]; then
+            paths=$(jq -r '[.commits[]? | (.added[]?, .modified[]?, .removed[]?)] | .[]' "${GITHUB_EVENT_PATH}" 2>/dev/null || true)
+            printf '%s\n' "${paths}" | grep -q '^extensions/' && topics="${topics} extensions"
+            printf '%s\n' "${paths}" | grep -q '^piglets/' && topics="${topics} piglets"
+          else
+            case "${RELEASE_TAG}" in
+              extensions/*) topics="extensions" ;;
+              piglets/*) topics="piglets" ;;
+            esac
           fi
 
           # jq builds the payload so that a commit subject or a release body cannot break the JSON, and so that a long
@@ -88,8 +111,29 @@ jobs:
               }')
           fi
 
-          curl -fsS --retry 3 --retry-delay 2 \
-            -H 'Content-Type: application/json' \
-            --data-binary "${payload}" \
-            "${WEBHOOK_URL}" > /dev/null
-          echo "posted ${EVENT_NAME} notification"
+          # A channel that has no secret of its own falls back to another webhook, so the same URL can be selected twice;
+          # post each URL once.
+          posted_urls=" "
+          post() { # url label
+            [ -n "$1" ] || return 0
+            case "${posted_urls}" in *" $1 "*)
+              echo "skipped $2: same webhook as an earlier channel"
+              return 0
+              ;;
+            esac
+            posted_urls="${posted_urls}$1 "
+            curl -fsS --retry 3 --retry-delay 2 \
+              -H 'Content-Type: application/json' \
+              --data-binary "${payload}" \
+              "$1" > /dev/null
+            echo "posted ${EVENT_NAME} to $2"
+          }
+
+          # General carries every landing and every release; a topic channel carries only its own.
+          post "${WEBHOOK_GENERAL:-${WEBHOOK_EXTENSIONS:-${WEBHOOK_PIGLETS}}}" "general"
+          for topic in ${topics}; do
+            case "${topic}" in
+              extensions) post "${WEBHOOK_EXTENSIONS:-${WEBHOOK_GENERAL}}" "extensions" ;;
+              piglets) post "${WEBHOOK_PIGLETS:-${WEBHOOK_GENERAL}}" "piglets" ;;
+            esac
+          done
