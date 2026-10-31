@@ -50,9 +50,9 @@ func (c *BranchSummaryMessageComponent) updateDisplay() {
 	content.Add(NewText(theme.Fg("customMessageLabel", "\x1b[1m[branch]\x1b[22m")))
 	content.Add(NewSpacer(1))
 	if c.expanded {
-		content.Add(NewMarkdownWithOptions("**Branch Summary**\n\n"+c.summary, 0, 0, c.markdownTheme, &DefaultTextStyle{
+		content.Add(finishedMarkdown(NewMarkdownWithOptions("**Branch Summary**\n\n"+c.summary, 0, 0, c.markdownTheme, &DefaultTextStyle{
 			Color: func(text string) string { return ActiveTheme().Fg("customMessageText", text) },
-		}, nil))
+		}, nil)))
 	} else {
 		content.Add(NewText(theme.Fg("customMessageText", "Branch summary (") +
 			theme.Fg("dim", AppKeyText("app.tools.expand", "ctrl+o")) +

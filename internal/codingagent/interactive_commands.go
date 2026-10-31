@@ -237,7 +237,11 @@ func resolveModelFromItems(input string, items []tui.ModelSelectorItem) (string,
 func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 	var sc *SlashContext
 	sc = &SlashContext{
-		Append:           func(s string) { m.appendToChat(tui.NewMarkdown(s)) },
+		Append: func(s string) {
+			block := tui.NewMarkdown(s)
+			block.FinishStreaming()
+			m.appendToChat(block)
+		},
 		AppendText:       func(s string) { m.appendChatBlock(tui.NewPaddedText(s, 1, 0, nil)) },
 		AppendThemedText: func(build func() string) { m.appendChatBlock(tui.NewThemedText(build, 1, 0)) },
 		AppendBlock:      func(s string) { m.appendChatBlock(tui.NewPaddedText(s, 1, 1, nil)) },
