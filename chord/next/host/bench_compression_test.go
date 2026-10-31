@@ -83,7 +83,7 @@ func benchCompressionLinked(b *testing.B, server, client link.Compression) (serv
 	b.Helper()
 	onError := func(err HostError) { b.Errorf("onError %s", err.Kind) }
 	serverHost = newHost(b, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), Compression: server, OnError: onError})
-	must(b, serverHost.Load([]HostFacet{{Name: "@bench/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
+	mustLoad(b)(serverHost.Load([]HostFacet{{Name: "@bench/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
 		if err := host.Serve(benchCompressionStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"doc": Expose(self.State(benchCompressionDoc))},
@@ -101,7 +101,7 @@ func benchCompressionLinked(b *testing.B, server, client link.Compression) (serv
 		}, ServeOptions{})
 	})}}, background))
 	clientHost = newHost(b, HostOptions{Compression: client, OnError: onError})
-	must(b, clientHost.Load(nil, background))
+	mustLoad(b)(clientHost.Load(nil, background))
 	a, c := link.MemoryLinkPair()
 	counted := newCountedLink(c)
 	must(b, serverHost.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: link.BinaryCodec}, background))

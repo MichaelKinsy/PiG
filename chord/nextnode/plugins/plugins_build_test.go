@@ -38,7 +38,7 @@ func TestBuildingAFacetReturnsASyntaxErrorAndAMissingFacetAsFailedResultsNeverAT
 	if !reflect.DeepEqual(built, want) {
 		t.Fatalf("built = %#v, want %#v", built, want)
 	}
-	if n := builder.built["@test/syntax\x00server"]; n != 0 {
+	if n := builder.builds("@test/syntax", "server"); n != 0 {
 		t.Fatalf("the builder built the missing facet %d times", n)
 	}
 }
@@ -58,12 +58,33 @@ func TestBuildingAFacetThrowsOnlyWhenItsContextAborts(t *testing.T) {
 	if !errors.Is(err, stop) {
 		t.Fatalf("error = %v, want the abort's reason", err)
 	}
-	if len(builder.built) != 0 {
-		t.Fatalf("the builder ran: %v", builder.built)
+	if n := builder.builds("@test/p", "worker"); n != 0 {
+		t.Fatalf("the builder ran %d times", n)
 	}
 	// Not aborted, a build of the plugin's own facet is the builder's.
 	built, err := BuildFacet(builder, discovery.Plugins[0], "worker", BuildOptions{Platform: PlatformNode}, background)
 	if err != nil || built.Kind != BuiltFacetScript || built.Digest != sha256Hex([]byte(built.Source)) {
 		t.Fatalf("built = %+v, error = %v", built, err)
+	}
+}
+
+// Not upstream's: `inside` is `relative(dir, path)` not empty, not starting with `..`, not absolute.
+func TestInsideIsAPathUnderADirectoryNotTheDirectoryItselfNorADotDotName(t *testing.T) {
+	for _, each := range []struct {
+		dir, path string
+		want      bool
+	}{
+		{"/a/b", "/a/b/c", true},
+		{"/a/b", "/a/b/c/d.ts", true},
+		{"/a/b", "/a/b", false},
+		{"/a/b", "/a/c", false},
+		{"/a/b", "/a", false},
+		{"/a/b", "/a/b/../c", false},
+		// A file named `..x` counts as outside, as in upstream.
+		{"/a/b", "/a/b/..x", false},
+	} {
+		if got := inside(each.dir, each.path); got != each.want {
+			t.Errorf("inside(%q, %q) = %v, want %v", each.dir, each.path, got, each.want)
+		}
 	}
 }

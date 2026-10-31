@@ -68,7 +68,7 @@ func newDestinationRig(t testing.TB, own, parent bool) *destinationRig {
 			return ResolvedLink{}, context.Cause(ctx)
 		},
 	}, background))
-	must(t, host.Load(nil, background))
+	mustLoad(t)(host.Load(nil, background))
 	rig.host = host.(*chordHost)
 	rig.destination = rig.host.destination
 	a, b := link.MemoryLinkPair()

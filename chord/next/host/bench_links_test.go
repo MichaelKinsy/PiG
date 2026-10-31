@@ -3,10 +3,12 @@ package host
 import (
 	"context"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -227,8 +229,15 @@ func benchLinkEntry(id, length int) *delta.JsonObject {
 	return jsonObject("id", float64(id), "text", strings.Repeat("x", length), "author", "mario", "at", float64(1_700_000_000_000+id))
 }
 
-func benchLinkNotes() []*delta.JsonObject {
-	entries := make([]*delta.JsonObject, 1_000)
+// benchLinksWarmUpCommits are untimed commits before the timed ones. V8 sizes the young generation from the bytes
+// surviving its collections so far; with these, the timed loop runs nearer its steady size, so a scavenge's place and
+// cost depend less on the setup (slice 7b fix round 3, `benchmarks.md`).
+const benchLinksWarmUpCommits = 1_000
+
+func benchLinkNotes() []*delta.JsonObject { return benchLinkNotesOf(1_000) }
+
+func benchLinkNotesOf(length int) []*delta.JsonObject {
+	entries := make([]*delta.JsonObject, length)
 	for id := range entries {
 		entries[id] = benchLinkEntry(id, 80)
 	}
@@ -266,7 +275,7 @@ func benchLinksSetup(b *testing.B, name string, entries []*delta.JsonObject, cod
 		result.ctx = result.meter.Context
 	}
 	result.server = newHost(b, options)
-	must(b, result.server.Load([]HostFacet{{Name: "@bench/app", Facet: DefineFacet(benchLinksFacet(result.pings))}}, result.ctx))
+	mustLoad(b)(result.server.Load([]HostFacet{{Name: "@bench/app", Facet: DefineFacet(benchLinksFacet(result.pings))}}, result.ctx))
 	var err error
 	result.store, err = result.server.Get(benchLinksStore, jsonObject("name", name), result.ctx, GetOptions{})
 	must(b, err)
@@ -279,7 +288,7 @@ func benchLinksSetup(b *testing.B, name string, entries []*delta.JsonObject, cod
 	must(b, result.server.Accept(result.down, LinkOptions{Principal: ownerPrincipal(), Codec: codec}, result.ctx))
 	result.client = newHost(b, HostOptions{OnError: func(err HostError) { b.Errorf("onError %s", err.Kind) }})
 	must(b, result.client.Connect(result.up, LinkOptions{Principal: serverPrincipal(), Codec: codec}, result.ctx))
-	must(b, result.client.Load(nil, result.ctx))
+	mustLoad(b)(result.client.Load(nil, result.ctx))
 	return result
 }
 
@@ -358,46 +367,62 @@ func benchLinksRows(b *testing.B, codec link.Codec) {
 			b.StartTimer()
 		}
 	})
-	// One commit per run: commit-to-frame, bytes and messages per commit, encodes per hold.
+	// One commit per run, after benchLinksWarmUpCommits untimed ones: commit-to-frame (the mean is ns/op; the median and
+	// p90 of the runs are metrics, which the scavenges that fall in the loop do not carry), messages per commit, encodes
+	// per hold. extra notes more at the start, which the warm-up's writes take (a removal).
 	commits := []struct {
 		label string
+		extra int
 		write func(l *benchLinks, i int) error
 	}{
-		{"one appended item", func(l *benchLinks, i int) error {
+		{"one appended item", 0, func(l *benchLinks, i int) error {
 			_, err := l.store.Call("append", benchLinkEntry(10_000+i, 80), l.ctx)
 			return err
 		}},
-		{"one changed field", func(l *benchLinks, i int) error {
+		{"one changed field", 0, func(l *benchLinks, i int) error {
 			_, err := l.store.Call("edit", jsonObject("index", 500.0, "text", "edit "+strconv.Itoa(i)), l.ctx)
 			return err
 		}},
-		{"one removed item", func(l *benchLinks, i int) error {
+		{"one removed item", benchLinksWarmUpCommits, func(l *benchLinks, i int) error {
 			_, err := l.store.Call("remove", 0.0, l.ctx)
 			return err
 		}},
 	}
 	for _, each := range commits {
-		b.Run(each.label+": commit to frame", func(b *testing.B) {
-			l := benchLinksSetup(b, each.label, benchLinkNotes(), codec, true)
+		b.Run(each.label+": commit to frame (mean, median, p90)", func(b *testing.B) {
+			l := benchLinksSetup(b, each.label, benchLinkNotesOf(1_000+each.extra), codec, true)
 			defer l.close(b)
 			view, err := l.client.Get(benchLinksView, jsonObject("name", each.label), l.ctx, GetOptions{})
 			must(b, err)
 			arrived, stop := benchFrames(b, view)
 			defer stop()
+			for i := range benchLinksWarmUpCommits {
+				if err := each.write(l, 1_000+i); err != nil {
+					b.Fatal(err)
+				}
+				<-arrived
+			}
 			_, messages0 := l.down.sent()
 			encodes0 := l.encodes()
 			b.ReportAllocs()
-			runs := 0
+			var times []float64
 			for i := 0; b.Loop(); i++ {
+				start := time.Now()
 				if err := each.write(l, i); err != nil {
 					b.Fatal(err)
 				}
 				<-arrived
-				runs++
+				times = append(times, float64(time.Since(start).Nanoseconds())/1e6)
 			}
+			runs := len(times)
 			_, messages := l.down.sent()
 			b.ReportMetric(float64(messages-messages0)/float64(max(runs, 1)), "messages/commit")
 			b.ReportMetric((l.encodes()-encodes0)/float64(max(runs, 1)), "encodes/commit")
+			if runs > 0 {
+				slices.Sort(times)
+				b.ReportMetric(times[runs/2], "median-ms")
+				b.ReportMetric(times[min(runs-1, runs*9/10)], "p90-ms")
+			}
 		})
 	}
 	// A streamed reply: small text appends to one entry.
@@ -469,17 +494,31 @@ func benchLinksRows(b *testing.B, codec link.Codec) {
 			}
 		}
 	})
-	b.Run("call, 1 MiB bytes argument: round trip", func(b *testing.B) {
+	// The 1 MiB round trip is the median and p90 of bursts of 50 calls, each from a collected heap: the arguments fill
+	// memory outside the heap, and a full collection (about 0.25 ms per call over a burst) lands in one burst and not the
+	// next, so a single burst measured the collector, not the call.
+	b.Run("call, 1 MiB bytes argument: round trip (median, p90)", func(b *testing.B) {
 		l := benchLinksSetup(b, "calls", nil, codec, true)
 		defer l.close(b)
 		files, err := l.client.Get(benchLinksFiles, jsonObject(), l.ctx, GetOptions{})
 		must(b, err)
 		payload := make([]byte, 1024*1024)
 		b.ReportAllocs()
+		var bursts []float64
 		for b.Loop() {
-			if _, err := files.Call("put", jsonObject("data", payload), l.ctx); err != nil {
-				b.Fatal(err)
+			runtime.GC()
+			start := time.Now()
+			for range 50 {
+				if _, err := files.Call("put", jsonObject("data", payload), l.ctx); err != nil {
+					b.Fatal(err)
+				}
 			}
+			bursts = append(bursts, float64(time.Since(start).Nanoseconds())/1e6/50)
+		}
+		if n := len(bursts); n > 0 {
+			slices.Sort(bursts)
+			b.ReportMetric(bursts[n/2], "median-ms")
+			b.ReportMetric(bursts[min(n-1, n*9/10)], "p90-ms")
 		}
 	})
 	// Reconnects with references held of the 1,000-item view (one provider object, a hold each): time from `connect` to

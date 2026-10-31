@@ -95,24 +95,24 @@ func commandOf(args any) string { return args.(*delta.JsonObject).Value("command
 func outputOf(state any) string { return state.(*delta.JsonObject).Value("output").(string) }
 
 // gate is `Promise.withResolvers<void>()`: Open settles it once, Wait returns when it is settled.
-type gate struct {
+type jobGate struct {
 	once sync.Once
 	done chan struct{}
 }
 
-func newGate() *gate { return &gate{done: make(chan struct{})} }
+func newJobGate() *jobGate { return &jobGate{done: make(chan struct{})} }
 
 // Open is `resolve()`.
-func (g *gate) Open() { g.once.Do(func() { close(g.done) }) }
+func (g *jobGate) Open() { g.once.Do(func() { close(g.done) }) }
 
 // Wait is `await gate.promise`.
-func (g *gate) Wait() { <-g.done }
+func (g *jobGate) Wait() { <-g.done }
 
 // Done is the channel of the promise.
-func (g *gate) Done() <-chan struct{} { return g.done }
+func (g *jobGate) Done() <-chan struct{} { return g.done }
 
 // gated is a `run` that waits for g, then returns `text`.
-func gated(g *gate) func(args any, ctx JobCtx) (any, error) {
+func gated(g *jobGate) func(args any, ctx JobCtx) (any, error) {
 	return func(args any, _ JobCtx) (any, error) {
 		g.Wait()
 		return textOf(args), nil
@@ -183,7 +183,7 @@ func jobsLoaded(t testing.TB, setup func(host FacetHost) error, options jobHostO
 	if ctx == nil {
 		ctx = background
 	}
-	must(t, host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return setup(h) })}}, ctx))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return setup(h) })}}, ctx))
 	return host, errs
 }
 

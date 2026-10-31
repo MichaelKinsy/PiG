@@ -67,7 +67,7 @@ func presenceServer(t testing.TB, setup func(h FacetHost) error, options HostOpt
 		options.OnError = func(HostError) {}
 	}
 	server := newHost(t, options)
-	must(t, server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return setup(h) })}}, background))
+	mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return setup(h) })}}, background))
 	return server
 }
 
@@ -75,7 +75,7 @@ func presenceServer(t testing.TB, setup func(h FacetHost) error, options HostOpt
 func presenceTab(t testing.TB, server Host) (Host, *link.MemoryLink) {
 	t.Helper()
 	tab := newHost(t, HostOptions{OnError: func(HostError) {}})
-	must(t, tab.Load(nil, background))
+	mustLoad(t)(tab.Load(nil, background))
 	a, b := link.MemoryLinkPair()
 	must(t, server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 	must(t, tab.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
@@ -412,7 +412,7 @@ func TestHostReferencesRemovesABulkDepartureWithOneListAndOneSpliceOpPerEntryInO
 func TestHostReferencesCountsTwoTabsThroughARelayAsTwoIncarnationsOnTheWorker(t *testing.T) {
 	relayed := relay(t, relayedOptions{})
 	second := newHost(t, HostOptions{OnError: func(HostError) {}})
-	must(t, second.Load(nil, background))
+	mustLoad(t)(second.Load(nil, background))
 	a, b := link.MemoryLinkPair()
 	must(t, relayed.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 	must(t, second.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))

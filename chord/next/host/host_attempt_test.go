@@ -914,7 +914,7 @@ func two(t *testing.T, implementation contracts.Implementation) (Host, *hostErro
 	errs := &hostErrors{}
 	address := Server.Address(nil)
 	host := newHost(t, HostOptions{Address: &address, Principal: ownerPrincipal(), OnError: errs.push})
-	must(t, host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(attemptTwo, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
 			return implementation, nil
 		}, ServeOptions{})
@@ -1324,7 +1324,7 @@ var (
 	}))
 )
 
-func TestAttemptParkedAttemptsRunNoTimerWhileParkedNoDependencyDeadlineNoBackoffTheFactoryRunOnce(t *testing.T) {
+func TestAttemptParkedAttemptsRunNoTimerWhileParkedButParkedLongsNoDependencyDeadlineNoBackoffTheFactoryRunOnce(t *testing.T) {
 	loop := newScopeLoop()
 	var factories atomic.Int32
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -1343,11 +1343,13 @@ func TestAttemptParkedAttemptsRunNoTimerWhileParkedNoDependencyDeadlineNoBackoff
 		waiting.Cause.Error.Message != "waiting for app.missing: app.missing is not served here" {
 		t.Fatalf("state = %+v (cause %+v), want failed waiting for app.missing", waiting, waiting.Cause)
 	}
+	// `parked_long`'s one timer fired (once, after readyTimeout); nothing else runs.
 	if got := loop.TimerCount(); got != 0 {
 		t.Fatalf("timers = %d, want 0", got)
 	}
-	if got := factories.Load(); got != 1 || errs.Len() != 0 {
-		t.Fatalf("factories %d, errors %v, want 1 and none", got, errs.All())
+	wantErrors := []HostError{{Kind: ErrParkedLong, Object: "app.view", WaitingFor: "app.missing", State: "failed", Since: 0}}
+	if got := factories.Load(); got != 1 || !reflect.DeepEqual(errs.All(), wantErrors) {
+		t.Fatalf("factories %d, errors %v, want 1 and %v", got, errs.All(), wantErrors)
 	}
 	view.Release()
 }

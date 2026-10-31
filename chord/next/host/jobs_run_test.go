@@ -13,9 +13,9 @@ import (
 // Ports packages/chord/test/next/jobs/run.test.ts: one run's record: its `running` entry per phase, and its handle's
 // wait for the outcome.
 
-func entryOf(loop *Loop, run *jobRun, state *delta.JsonObject) *delta.JsonObject {
+func entryOf(loop *Loop, run *jobRun, state *delta.JsonObject, args delta.JsonValue) *delta.JsonObject {
 	var entry *delta.JsonObject
-	loop.Run(func() { entry = run.entryFor(state) })
+	loop.Run(func() { entry = run.entryFor(state, args) })
 	return entry
 }
 
@@ -23,38 +23,43 @@ func entryOf(loop *Loop, run *jobRun, state *delta.JsonObject) *delta.JsonObject
 func TestARunHasAnEntryPerPhaseArgsAndStateWhileRunningOrFinishingNeitherWhenBlockedWithItsReason(t *testing.T) {
 	loop := NewLoop()
 	key := "k"
-	run := newJobRun(loop, "r1", 2, &key, jsonObject("command", "ls"), phaseRunning, nil)
-	nexttest.RequireJSONEqual(t, entryOf(loop, run, jsonObject("output", "")), jsonObject(
+	run := newJobRun(loop, "r1", 2, "f2", &key, jsonObject("command", "ls"), phaseRunning, nil)
+	nexttest.RequireJSONEqual(t, entryOf(loop, run, jsonObject("output", ""), run.args), jsonObject(
 		"id", "r1", "version", float64(2), "key", "k", "args", jsonObject("command", "ls"),
 		"state", jsonObject("output", ""), "phase", "running"))
 	run.phase = phaseFinishing
-	other := newJobRun(loop, "r2", 1, nil, jsonObject("a", float64(1)), phaseRunning, nil)
-	nexttest.RequireJSONEqual(t, entryOf(loop, other, nil), jsonObject(
+	other := newJobRun(loop, "r2", 1, "f1", nil, jsonObject("a", float64(1)), phaseRunning, nil)
+	nexttest.RequireJSONEqual(t, entryOf(loop, other, nil, other.args), jsonObject(
 		"id", "r2", "version", float64(1), "args", jsonObject("a", float64(1)), "phase", "running"))
 	run.phase = phaseBlocked
 	finishFailed := BlockedFinishFailed
 	run.blocked = &finishFailed
-	nexttest.RequireJSONEqual(t, entryOf(loop, run, jsonObject("output", "x")), jsonObject(
+	nexttest.RequireJSONEqual(t, entryOf(loop, run, jsonObject("output", "x"), run.args), jsonObject(
 		"id", "r1", "version", float64(2), "phase", "blocked", "reason", "finish_failed"))
 	version := BlockedVersion
 	run.blocked = &version
-	entry := entryOf(loop, run, nil)
+	entry := entryOf(loop, run, nil, run.args)
 	if entry.Value("phase") != "blocked" || entry.Value("reason") != "version" {
 		t.Fatalf("entry = %v", entry)
 	}
 	// A persisted run waiting for its reservation, or stopped, runs (again): `running`.
 	for _, phase := range []Phase{phasePending, phaseStopped} {
 		run.phase = phase
-		if got := entryOf(loop, run, nil).Value("phase"); got != "running" {
+		if got := entryOf(loop, run, nil, run.args).Value("phase"); got != "running" {
 			t.Fatalf("phase %s shows as %v, want running", phase, got)
 		}
+	}
+	// An older run's entry shows its args as the current code takes them (mapped by its job).
+	run.phase = phaseRunning
+	if got := entryOf(loop, run, nil, jsonObject("command", "ls -l")).Value("args"); !nexttest.JSONEqual(got, jsonObject("command", "ls -l")) {
+		t.Fatalf("args = %v, want the mapped ones", got)
 	}
 }
 
 // run.test.ts: a run gives every waiter the outcome, late ones too; a waiter's context ends only its wait
 func TestARunGivesEveryWaiterTheOutcomeLateOnesTooAWaitersContextEndsOnlyItsWait(t *testing.T) {
 	loop := NewLoop()
-	run := newJobRun(loop, "r1", 1, nil, jsonObject(), phaseRunning, nil)
+	run := newJobRun(loop, "r1", 1, "f1", nil, jsonObject(), phaseRunning, nil)
 	waiting, cancel := chordctx.WithCancel(background)
 	cancel(errors.New("left"))
 	if _, err := run.handle.Outcome(waiting); err == nil || err.Error() != "left" {
@@ -67,7 +72,7 @@ func TestARunGivesEveryWaiterTheOutcomeLateOnesTooAWaitersContextEndsOnlyItsWait
 	if got != outcome {
 		t.Fatalf("outcome = %+v, want %+v", got, outcome)
 	}
-	rejected := newJobRun(loop, "r2", 1, nil, jsonObject(), phaseRunning, nil)
+	rejected := newJobRun(loop, "r2", 1, "f1", nil, jsonObject(), phaseRunning, nil)
 	loop.Run(func() {
 		rejected.reject(data.NewChordError(data.ChordErrorInit{Code: data.CodeAborted, Message: "dropped"}, nil))
 	})

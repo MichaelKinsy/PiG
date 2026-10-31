@@ -46,7 +46,7 @@ var benchItem = mustContract(contracts.Local("bench.item", contracts.LocalDeclar
 
 func BenchmarkCalls(b *testing.B) {
 	host := newHost(b, HostOptions{OnError: func(err HostError) { b.Errorf("onError %s", err.Kind) }})
-	must(b, host.Load([]HostFacet{{Name: "@bench/calls", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(b)(host.Load([]HostFacet{{Name: "@bench/calls", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		if err := h.Serve(benchStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			counter := self.State(benchCounterDoc).(*documents.Singleton)
 			return contracts.Implementation{Members: contracts.VariantImplementation{

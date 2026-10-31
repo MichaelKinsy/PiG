@@ -97,16 +97,19 @@ func (p *providerSide) message(message link.ProviderMessage) (*link.Handling, er
 		return nil, p.hold(typed)
 	case *link.ReleaseMessage:
 		p.release(typed.Hold)
+		p.settle()
 	case *link.CallMessage:
 		return p.call(typed)
 	case *link.AbortMessage:
 		p.abort(typed.Call)
+		p.settle()
 	case *link.RetryMessage:
 		if entry, found := p.entries.get(typed.Hold); found {
 			entry.retry(typed)
 		}
 	case *link.AckMessage:
 		p.ack()
+		p.settle()
 	}
 	return nil, nil
 }
@@ -299,6 +302,32 @@ func (p *providerSide) forget(entry providerEntry, err *data.ChordError) {
 	if served, isServed := entry.(*hold); isServed {
 		p.unbind(served)
 	}
+	p.settle()
+}
+
+// settle drops this side from its link once it holds nothing: no holds, no calls, nothing in flight. Its origin's next
+// hold makes a new one (origins are never reused), so a long-lived link keeps records only for live work.
+func (p *providerSide) settle() {
+	if p.entries.len() == 0 && p.calls.len() == 0 && len(p.sent) == 0 {
+		p.link.drop(p)
+	}
+}
+
+// unbound: a served hold left its object's binding (slice 7b §6, model §5): its unsent pending ops and a queued `bound`
+// are dropped (the ack slots of messages already sent stay until their `ack`), its calls in flight rejected with err
+// (each slot freed once).
+func (p *providerSide) unbound(h *hold, err *data.ChordError) {
+	p.unbind(h)
+	for _, id := range p.calls.keys() {
+		call, found := p.calls.get(id)
+		if !found || call.hold != providerEntry(h) {
+			continue
+		}
+		if call.served != nil {
+			call.abort(err)
+		}
+		p.reply(id, &link.ErrorMessage{Call: id, Error: wireError(err)})
+	}
 }
 
 // reply: a call ended with reply (a result or an error): its slot is free; nothing is sent for one already gone.
@@ -307,6 +336,7 @@ func (p *providerSide) reply(id int, reply link.OriginMessage) {
 		return
 	}
 	p.send(reply)
+	p.settle()
 }
 
 // bind: a hold's object is live: its `bound` goes now when a slot is free, else with the next free slot's bindings.
@@ -474,7 +504,7 @@ func (p *providerSide) call(message *link.CallMessage) (*link.Handling, error) {
 		return nil, nil
 	}
 	served := entry.(*hold)
-	if !served.bound() {
+	if !served.callable() {
 		p.refuse(message.Call, data.NewChordError(data.ChordErrorInit{
 			Code: data.CodeNotReady, Message: fmt.Sprintf("hold %d: not bound yet", served.id),
 		}, nil))
@@ -579,15 +609,23 @@ func (p *providerSide) flush(ctx context.Context) {
 	}
 	p.touchedHolds = nil
 	if p.free() {
-		entries := make([]link.StateEntry, len(holds))
-		for index, h := range holds {
-			entries[index] = h.entry(ctx)
+		// A hold touched in this batch may have left its binding since (a reload unbound it).
+		var entries []link.StateEntry
+		for _, h := range holds {
+			if h.bound() {
+				entries = append(entries, h.entry(ctx))
+			}
 		}
-		p.sendOwn(&link.StateMessage{Holds: entries})
+		if len(entries) > 0 {
+			p.sendOwn(&link.StateMessage{Holds: entries})
+		}
 		return
 	}
-	// Only a bound hold is touched, and a bound hold never waits for its binding.
+	// A bound hold never waits for its binding.
 	for _, h := range holds {
+		if !h.bound() {
+			continue
+		}
 		h.queue()
 		p.waiting.set(h, struct{}{})
 	}

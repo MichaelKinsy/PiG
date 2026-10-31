@@ -366,7 +366,7 @@ func TestHostLinkPrincipalsOnHolds(t *testing.T) {
 		// host-link.test.ts: principals on holds (section 4's table) › a hold relayed over a parent path names nobody: a child's principal and incarnation stay behind
 		t.Run("a hold relayed over a parent path names nobody: a child's principal and incarnation stay behind", func(t *testing.T) {
 			worker := rhCreate(t, HostOptions{Principal: workerPrincipal("S1"), OnError: func(HostError) {}})
-			must(t, worker.Load(nil, background))
+			mustLoad(t)(worker.Load(nil, background))
 			up, parentEnd := link.MemoryLinkPair()
 			must(t, worker.Connect(up, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
 			parent := newRawPeer(t, parentEnd, rawPeerOptions{})
@@ -435,7 +435,7 @@ func TestHostLinkPrincipalsOnHolds(t *testing.T) {
 		t.Run("two origins with equal principal keys but other incarnations are two upstream holds", func(t *testing.T) {
 			rig := rhPrincipalsRig(t, ownerPrincipal())
 			other := rhCreate(t, HostOptions{OnError: func(HostError) {}})
-			must(t, other.Load(nil, background))
+			mustLoad(t)(other.Load(nil, background))
 			a, b := link.MemoryLinkPair()
 			must(t, rig.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 			must(t, other.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
@@ -528,12 +528,12 @@ func rhCompress(t testing.TB, server, client link.Compression, limits link.PartL
 	result.Server = rhCreate(t, HostOptions{
 		Address: new(Server.Address(nil)), Principal: serverPrincipal(), Compression: server, OnError: errs.push,
 	})
-	must(t, result.Server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
+	mustLoad(t)(result.Server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
 		_, err := serveNotes(host, nil)
 		return err
 	})}}, background))
 	result.Client = rhCreate(t, HostOptions{Compression: client, Telemetry: meter.Telemetry, OnError: errs.push})
-	must(t, result.Client.Load(nil, background))
+	mustLoad(t)(result.Client.Load(nil, background))
 	a, b := link.MemoryLinkPair()
 	must(t, result.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 	must(t, result.Client.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec(), Limits: limits}, background))
@@ -690,7 +690,7 @@ func TestOnOnARemoteMemberFailedSinceItsBindingNoValueYetWaitsForItsFirstValue(t
 	halves := rhRemote("app.halves", []contracts.Property{rhProp("half", contracts.Int())},
 		contracts.Meth("set", contracts.NewMethod(contracts.Int())))
 	server := rhCreate(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
-	must(t, server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
+	mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
 		return host.Serve(halves, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
 			doc := stateOf(self, rhCounter)
 			return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
@@ -722,7 +722,7 @@ func TestOnOnARemoteMemberFailedSinceItsBindingNoValueYetWaitsForItsFirstValue(t
 	var calls []any
 	errs := &hostErrors{}
 	client := rhCreate(t, HostOptions{OnError: errs.push})
-	must(t, client.Load([]HostFacet{{Name: "@test/client", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
+	mustLoad(t)(client.Load([]HostFacet{{Name: "@test/client", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
 		return host.Serve(viewer, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			self.On(self.Get(halves, jsonObject()).Member("half"), func(call chord.WatchCall[delta.JsonValue], _ Ctx) *Handled {
 				mu.Lock()
@@ -756,4 +756,105 @@ func TestOnOnARemoteMemberFailedSinceItsBindingNoValueYetWaitsForItsFirstValue(t
 	if errs.Len() != 0 {
 		t.Fatalf("errors = %v", errs.All())
 	}
+}
+
+// host-link.test.ts: origins only from relays (decision, slice 10 security audit K1/K2).
+func TestHostLinkOriginsOnlyFromRelays(t *testing.T) {
+	spec := specOf(Notes)
+	editor := editorWire(t)
+	origin := link.Some(1)
+	hold := func(t testing.TB, id int, origin link.Optional[int]) *link.HoldMessage {
+		return &link.HoldMessage{
+			Origin: origin, Hold: id, Type: spec.Name, Version: spec.Version, Fingerprint: spec.Fingerprint,
+			Params: mustJSONPart(t, jsonObject("session", "S1")), Address: serverWireAddress,
+		}
+	}
+	withOrigin := []struct {
+		kind    string
+		message func(t testing.TB) link.Message
+	}{
+		{"hold", func(t testing.TB) link.Message { return hold(t, 0, origin) }},
+		{"call", func(testing.TB) link.Message {
+			return &link.CallMessage{Origin: origin, Call: 0, Hold: 0, Method: editor.Methods["wait"]}
+		}},
+		{"release", func(testing.TB) link.Message { return &link.ReleaseMessage{Origin: origin, Hold: 0} }},
+		{"abort", func(testing.TB) link.Message { return &link.AbortMessage{Origin: origin, Call: 0} }},
+		{"retry", func(testing.TB) link.Message { return &link.RetryMessage{Origin: origin, Hold: 0, Hops: 1} }},
+		{"ack", func(testing.TB) link.Message { return &link.AckMessage{Origin: origin} }},
+		{"closed", func(testing.TB) link.Message { return &link.ClosedMessage{Origin: 1} }},
+	}
+	forEachCodec(t, func(t *testing.T) {
+		for _, each := range withOrigin {
+			t.Run("closes a child link sending "+each.kind+" with an origin (a protocol error)", func(t *testing.T) {
+				s := rawLinked(t, func(h FacetHost) error { _, err := serveNotes(h, nil); return err }, rawLinkedOptions{})
+				s.Peer.Send(each.message(t))
+				settle(s.Peer)
+				if !s.Peer.Closed() {
+					t.Fatal("the child link stayed open")
+				}
+				requireStrings(t, protocolErrors(s.Errors), []string{each.kind + ": an origin on a child link"})
+			})
+		}
+
+		t.Run("honours origins on a parent link (a relay's): one window of calls per origin", func(t *testing.T) {
+			var probe *notesProbe
+			s := rawLinked(t, func(h FacetHost) error {
+				var err error
+				probe, err = serveNotes(h, nil)
+				return err
+			}, rawLinkedOptions{Parent: true})
+			s.Peer.Send(hold(t, 0, link.Some(1)))
+			s.Peer.Send(hold(t, 0, link.Some(2)))
+			rhSync(t, s.Peer)
+			for _, each := range []int{1, 2} {
+				s.Peer.Send(&link.CallMessage{Origin: link.Some(each), Call: 0, Hold: 0, Method: editor.Methods["wait"]})
+			}
+			rhSync(t, s.Peer)
+			if waits := probe.AwaitWaits(t, 2); len(waits) != 2 || s.Peer.Closed() {
+				t.Fatalf("waits = %d, closed = %v, want 2 and open", len(waits), s.Peer.Closed())
+			}
+		})
+
+		t.Run("keeps no record of an origin that holds nothing: 20,000 fresh origins held and released", func(t *testing.T) {
+			s := rawLinked(t, func(h FacetHost) error { _, err := serveNotes(h, nil); return err }, rawLinkedOptions{Parent: true})
+			forget := func() {
+				s.Peer.mu.Lock()
+				s.Peer.received = nil
+				s.Peer.mu.Unlock()
+			}
+			churn := func(from, to int) {
+				for each := from; each <= to; each++ {
+					s.Peer.Send(hold(t, 0, link.Some(each)))
+					s.Peer.Send(&link.ReleaseMessage{Origin: link.Some(each), Hold: 0})
+					if each%1_000 == 0 {
+						rhSync(t, s.Peer)
+						forget()
+					}
+				}
+				rhSync(t, s.Peer)
+				forget()
+			}
+			// A warm-up first: what a first run allocates for good (compiled code, caches) is no record.
+			churn(1, 2_000)
+			before := settledHeap()
+			churn(2_001, 22_000)
+			// About 1 KiB per origin before: 20 MiB. The bound leaves room for heap noise.
+			// The records themselves: none of the 22,000 origins is left on the link.
+			var records int
+			s.Server.(*chordHost).enter(func() {
+				for _, each := range s.Server.(*chordHost).links {
+					records += each.providers.len()
+				}
+			})
+			if records != 0 {
+				t.Fatalf("the link keeps %d provider sides, want none", records)
+			}
+			if grown := int64(settledHeap()) - int64(before); !raceDetector && grown >= 4*1024*1024 {
+				t.Fatalf("the heap grew by %d bytes over 20,000 origins, want under 4 MiB", grown)
+			}
+			if s.Peer.Closed() {
+				t.Fatal("the parent link closed")
+			}
+		})
+	})
 }

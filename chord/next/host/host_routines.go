@@ -175,6 +175,9 @@ func (r *routines) onNative(source NativeSource, fn OnNativeHandler[any]) {
 	r.declared = append(r.declared, declaration{kind: PositionOn, at: Position{Kind: PositionOn, Position: r.ons}, native: source, onNative: fn})
 }
 
+// empty is whether nothing was declared.
+func (r *routines) empty() bool { return len(r.declared) == 0 }
+
 // onLive declares `onLive(fn)`.
 func (r *routines) onLive(fn OnLiveHandler) {
 	r.lives++

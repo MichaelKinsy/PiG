@@ -20,9 +20,9 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Tests of packages/chord/test/next/host/member-source.test.ts. Every case of the upstream file serves objects through a
+// Tests of packages/chord/test/next/host/reference-source.test.ts. Every case of the upstream file serves objects through a
 // whole host (`loaded`, `serve`, `ChordObject` attempts, `failLive`, `defineState` documents, `createHost` with links), so
-// none is ported yet: they are `missing` for the host core. The tests below are own tests of memberSource over documents
+// none is ported yet: they are `missing` for the host core. The tests below are own tests of referenceSource over documents
 // and derives of the state package; each names the upstream case whose behavior it mirrors.
 
 // memberCountOf is the `n` of a test value {n}.
@@ -67,8 +67,16 @@ func (h *memberHarness) setDoc(t *testing.T, doc *memberDoc, n float64) {
 	h.loop.Run(func() { doc.set(t, memberCount(n)) })
 }
 
-func (h *memberHarness) member(source state.DeriveSource) *memberSource {
-	return newMemberSource(source, h.batch, h.scheduler)
+// noneOwner is the owner of a reference source in a test: a read that never had a value fails `not_ready`.
+type noneOwner struct{}
+
+func (noneOwner) none() error { return notReady("test: not live yet") }
+
+// member makes a reference source of the harness's batch bound to source (inside a batch, as a binding places one).
+func (h *memberHarness) member(source state.DeriveSource) *referenceSource {
+	m := newReferenceSource(h.batch, h.scheduler, noneOwner{})
+	h.loop.Run(func() { _ = h.batch.Within(func() error { m.bind(source); return nil }, memberBackground) })
+	return m
 }
 
 // value is the value of source now, or its error.
@@ -77,7 +85,7 @@ func (h *memberHarness) value(source state.DeriveSource) (value delta.JsonValue,
 	return value, err
 }
 
-// recorded is a subscriber's events, as member-source.test.ts "subscribers, directly" records them.
+// recorded is a subscriber's events, as reference-source.test.ts "subscribers, directly" records them.
 type recorded struct{ events []any }
 
 func (r *recorded) Advance(call chord.WatchCall[delta.JsonValue], _ context.Context) {
@@ -96,9 +104,9 @@ func rootReplacement(value float64) []any {
 	return []any{value, []delta.Op{{"r", value}}}
 }
 
-// Own test, mirrors member-source.test.ts › following the live attempt › passes the member's frames on as they are, and
+// Own test, mirrors reference-source.test.ts › following the live attempt › passes the member's frames on as they are, and
 // keeps a derive member lazy while nothing watches it.
-func TestMemberSourceFollowingTheLiveAttemptPassesTheMembersFramesOnAsTheyAreAndKeepsADeriveMemberLazyWhileNothingWatchesIt(t *testing.T) {
+func TestReferenceSourceFollowingTheLiveAttemptPassesTheMembersFramesOnAsTheyAreAndKeepsADeriveMemberLazyWhileNothingWatchesIt(t *testing.T) {
 	h := newMemberHarness(t)
 	doc := newMemberDoc(h.batch, memberCount(0))
 	count, computes := h.counting(t, doc, -1)
@@ -134,10 +142,10 @@ func TestMemberSourceFollowingTheLiveAttemptPassesTheMembersFramesOnAsTheyAreAnd
 	expectEqual(t, "computes after the watch stopped", *computes, stopped)
 }
 
-// Own test, mirrors member-source.test.ts › following the live attempt: the member's frames reach the watch as they are,
+// Own test, mirrors reference-source.test.ts › following the live attempt: the member's frames reach the watch as they are,
 // with no extra hop (`expect(lists[0]).toBe(own[0])`): the watch of the member source and the watch of the bound document
 // get the same ops.
-func TestMemberSourcePassesTheBoundDocumentsFramesOnWithoutACopy(t *testing.T) {
+func TestReferenceSourcePassesTheBoundDocumentsFramesOnWithoutACopy(t *testing.T) {
 	h := newMemberHarness(t)
 	doc := newMemberDoc(h.batch, memberCount(0))
 	m := h.member(doc)
@@ -153,38 +161,40 @@ func TestMemberSourcePassesTheBoundDocumentsFramesOnWithoutACopy(t *testing.T) {
 	}
 }
 
-// Own test, mirrors member-source.test.ts › a failed object's members › keep their last values and get no frames; a new
-// watch opens at the last value (slice 6a §1.4): frozen, then re-bound by the retried attempt.
-func TestMemberSourceAFailedObjectsMembersKeepTheirLastValuesAndGetNoFramesANewWatchOpensAtTheLastValue(t *testing.T) {
+// Own test, mirrors reference-source.test.ts › a failed object's members › keep their last values and get the failure
+// once; a new watch opens at the last value (slice 6a §1.4): failed, then re-bound by the retried attempt.
+func TestReferenceSourceAFailedObjectsMembersKeepTheirLastValuesAndGetTheFailureOnceANewWatchOpensAtTheLastValue(t *testing.T) {
 	h := newMemberHarness(t)
 	doc, retried := newMemberDoc(h.batch, memberCount(0)), newMemberDoc(h.batch, memberCount(0))
 	count, _ := h.counting(t, doc, -1)
 	m := h.member(count)
 	h.setDoc(t, doc, 1)
 	counted := nexttest.ChangesOf(h.watch(t, m))
-	h.loop.Run(m.freeze)
+	boom := data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil)
+	h.within(t, func() { m.fail(boom, memberBackground) })
 	// The failed attempt's document goes on changing only through the attempt, which is sealed: nothing reaches the watch.
 	h.setDoc(t, doc, 7)
 	h.delivered()
 	if v, _ := h.value(m); v != float64(1) {
-		t.Fatalf("frozen value = %v, want 1", v)
+		t.Fatalf("held value = %v, want 1", v)
 	}
 	late := h.watch(t, m)
 	expectEqual(t, "late watch value", late.Value(), delta.JsonValue(float64(1)))
 	lately := nexttest.ChangesOf(late)
-	expectEqual(t, "frames while frozen", counted.Items(), []chord.WatchCall[delta.JsonValue]{})
+	h.delivered()
+	expectEqual(t, "frames while held", nexttest.ValuesOf(counted.Items()), []any{nexttest.FailedValue{Failed: "boom"}})
 	// A retry: the new attempt's member shows the document the retried attempt loaded.
 	next, _ := h.counting(t, retried, -1)
 	h.setDoc(t, retried, 2)
 	h.within(t, func() { m.bind(next) })
 	h.delivered()
-	expectEqual(t, "frames of the old watch", nexttest.ValuesOf(counted.Items()), []any{float64(2)})
-	expectEqual(t, "frames of the late watch", nexttest.ValuesOf(lately.Items()), []any{float64(2)})
+	expectEqual(t, "frames of the old watch", nexttest.ValuesOf(counted.Items()), []any{nexttest.FailedValue{Failed: "boom"}, float64(2)})
+	expectEqual(t, "frames of the late watch", nexttest.ValuesOf(lately.Items()), []any{nexttest.FailedValue{Failed: "boom"}, float64(2)})
 }
 
-// Own test, mirrors member-source.test.ts › re-binding when a new attempt goes live › recovers a consumer's derive that
+// Own test, mirrors reference-source.test.ts › re-binding when a new attempt goes live › recovers a consumer's derive that
 // failed on the provider's earlier error, and the derives downstream.
-func TestMemberSourceRebindingRecoversAConsumersDeriveThatFailedOnTheProvidersEarlierErrorAndTheDerivesDownstream(t *testing.T) {
+func TestReferenceSourceRebindingRecoversAConsumersDeriveThatFailedOnTheProvidersEarlierErrorAndTheDerivesDownstream(t *testing.T) {
 	h := newMemberHarness(t)
 	first, second := newMemberDoc(h.batch, memberCount(0)), newMemberDoc(h.batch, memberCount(1))
 	count, _ := h.counting(t, first, 1)
@@ -202,7 +212,7 @@ func TestMemberSourceRebindingRecoversAConsumersDeriveThatFailedOnTheProvidersEa
 			t.Fatalf("%s = %v, want count broke", each.name, err)
 		}
 	}
-	h.loop.Run(m.freeze)
+	h.loop.Run(m.hold)
 	next, _ := h.counting(t, second, -1)
 	h.within(t, func() { m.bind(next) })
 	for _, each := range named {
@@ -216,9 +226,9 @@ func TestMemberSourceRebindingRecoversAConsumersDeriveThatFailedOnTheProvidersEa
 	expectEqual(t, "frames of hundreds", nexttest.ValuesOf(frames.Items()), []any{float64(200)})
 }
 
-// Own test, mirrors member-source.test.ts › re-binding when a new attempt goes live › re-binds a consumer's derive over a
+// Own test, mirrors reference-source.test.ts › re-binding when a new attempt goes live › re-binds a consumer's derive over a
 // retried provider's derive member, and its watches get frames again.
-func TestMemberSourceRebindingRebindsAConsumersDeriveOverARetriedProvidersDeriveMemberAndItsWatchesGetFramesAgain(t *testing.T) {
+func TestReferenceSourceRebindingRebindsAConsumersDeriveOverARetriedProvidersDeriveMemberAndItsWatchesGetFramesAgain(t *testing.T) {
 	h := newMemberHarness(t)
 	first, second := newMemberDoc(h.batch, memberCount(0)), newMemberDoc(h.batch, memberCount(0))
 	count, _ := h.counting(t, first, -1)
@@ -228,7 +238,7 @@ func TestMemberSourceRebindingRebindsAConsumersDeriveOverARetriedProvidersDerive
 	counted := nexttest.ChangesOf(h.watch(t, m))
 	h.setDoc(t, first, 1)
 	h.delivered()
-	h.loop.Run(m.freeze)
+	h.loop.Run(m.hold)
 	h.delivered()
 	for _, source := range []state.DeriveSource{m, tens} {
 		if _, err := h.value(source); err != nil {
@@ -249,16 +259,16 @@ func TestMemberSourceRebindingRebindsAConsumersDeriveOverARetriedProvidersDerive
 	expectEqual(t, "frames of the member", nexttest.ValuesOf(counted.Items()), []any{float64(1), float64(2)})
 }
 
-// Own test, mirrors member-source.test.ts › re-binding when a new attempt goes live › sends one frame from the last value
+// Own test, mirrors reference-source.test.ts › re-binding when a new attempt goes live › sends one frame from the last value
 // when the new attempt's member differs.
-func TestMemberSourceRebindingSendsOneFrameFromTheLastValueWhenTheNewAttemptsMemberDiffers(t *testing.T) {
+func TestReferenceSourceRebindingSendsOneFrameFromTheLastValueWhenTheNewAttemptsMemberDiffers(t *testing.T) {
 	h := newMemberHarness(t)
 	label := func(text string) *state.Derive {
 		return h.derive(t, nil, func([]any) (delta.JsonValue, error) { return text, nil })
 	}
 	m := h.member(label("old"))
 	frames := nexttest.ChangesOf(h.watch(t, m))
-	h.loop.Run(m.freeze)
+	h.loop.Run(m.hold)
 	h.within(t, func() { m.bind(label("new")) })
 	h.delivered()
 	if v, _ := h.value(m); v != "new" {
@@ -267,9 +277,9 @@ func TestMemberSourceRebindingSendsOneFrameFromTheLastValueWhenTheNewAttemptsMem
 	expectCalls(t, frames.Items(), []chord.WatchCall[delta.JsonValue]{valueCall("new", false, delta.Op{"r", "new"})})
 }
 
-// Own test, mirrors member-source.test.ts › subscribers, directly › are fed the member's calls: a failure, then its
+// Own test, mirrors reference-source.test.ts › subscribers, directly › are fed the member's calls: a failure, then its
 // recovery at the re-bind as a root replacement.
-func TestMemberSourceSubscribersDirectlyAreFedTheMembersCallsAFailureThenItsRecoveryAtTheRebindAsARootReplacement(t *testing.T) {
+func TestReferenceSourceSubscribersDirectlyAreFedTheMembersCallsAFailureThenItsRecoveryAtTheRebindAsARootReplacement(t *testing.T) {
 	h := newMemberHarness(t)
 	first, second := newMemberDoc(h.batch, memberCount(0)), newMemberDoc(h.batch, memberCount(2))
 	count, _ := h.counting(t, first, 2)
@@ -281,7 +291,7 @@ func TestMemberSourceSubscribersDirectlyAreFedTheMembersCallsAFailureThenItsReco
 	h.loop.Run(func() { m.Subscribe(subscriber) })
 	h.setDoc(t, first, 1)
 	h.setDoc(t, first, 2)
-	h.loop.Run(m.freeze)
+	h.loop.Run(m.hold)
 	next, _ := h.counting(t, second, -1)
 	h.within(t, func() { m.bind(next) })
 	h.setDoc(t, second, 3)
@@ -291,14 +301,14 @@ func TestMemberSourceSubscribersDirectlyAreFedTheMembersCallsAFailureThenItsReco
 	expectEqual(t, "events", subscriber.events, []any{rootReplacement(1), "count broke", rootReplacement(2), rootReplacement(3)})
 }
 
-// Own test, mirrors member-source.test.ts › a member the new attempt's variant lacks › fails: its watch gets one failure
+// Own test, mirrors reference-source.test.ts › a member the new attempt's variant lacks › fails: its watch gets one failure
 // call and stays open, reads fail invalid/member; a later attempt brings it back.
-func TestMemberSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFailureCallAndStaysOpenAndALaterAttemptBringsItBack(t *testing.T) {
+func TestReferenceSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFailureCallAndStaysOpenAndALaterAttemptBringsItBack(t *testing.T) {
 	h := newMemberHarness(t)
 	m := h.member(state.NewConstant(float64(1)))
 	calls := nexttest.ChangesOf(h.watch(t, m))
 	lacking := data.Invalid(data.ReasonMember, `app.two (variant view) has no state member "n"`)
-	h.loop.Run(m.freeze)
+	h.loop.Run(m.hold)
 	h.within(t, func() { m.vanish(lacking, memberBackground) })
 	h.delivered()
 	got := calls.Items()
@@ -312,7 +322,7 @@ func TestMemberSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFailur
 		t.Fatalf("read = %v, want the missing member", err)
 	}
 	// The same as over a link: the member comes back with the next attempt that has it.
-	h.loop.Run(m.freeze)
+	h.loop.Run(m.hold)
 	h.within(t, func() { m.bind(state.NewConstant(float64(3))) })
 	h.delivered()
 	if v, _ := h.value(m); v != float64(3) {
@@ -322,9 +332,9 @@ func TestMemberSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFailur
 	expectCalls(t, []chord.WatchCall[delta.JsonValue]{last}, []chord.WatchCall[delta.JsonValue]{valueCall(float64(3), false, delta.Op{"r", float64(3)})})
 }
 
-// Own test, mirrors member-source.test.ts › an ended object's members › mark the derives over them: a consumer's derive
+// Own test, mirrors reference-source.test.ts › an ended object's members › mark the derives over them: a consumer's derive
 // keeps no cached value, its read fails released; and the watches of the member end `ended`.
-func TestMemberSourceAnEndedObjectsMembersMarkTheDerivesOverThemAndEndTheirWatches(t *testing.T) {
+func TestReferenceSourceAnEndedObjectsMembersMarkTheDerivesOverThemAndEndTheirWatches(t *testing.T) {
 	h := newMemberHarness(t)
 	m := h.member(state.NewConstant(float64(4)))
 	twice := h.times(t, m, 2)
@@ -333,7 +343,7 @@ func TestMemberSourceAnEndedObjectsMembersMarkTheDerivesOverThemAndEndTheirWatch
 	}
 	watch := h.watch(t, m)
 	released := data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonEnded, Message: "app.paged(1): ended"}, nil)
-	h.within(t, func() { m.objectEnded(released) })
+	h.within(t, func() { m.end(released) })
 	_, err := h.value(twice)
 	if _, ok := data.IsChordErrorCode(err, data.CodeReleased); !ok {
 		t.Fatalf("read = %v, want released", err)
@@ -352,7 +362,7 @@ func TestMemberSourceAnEndedObjectsMembersMarkTheDerivesOverThemAndEndTheirWatch
 
 // Own test: a watch opened on a failed member starts at its last good value and its first call is the failure; one with
 // no last value cannot open (member-source.ts `openWatch`, as `Source.openWatch` starts one).
-func TestMemberSourceAWatchOpenedOnAFailedMemberStartsAtItsLastGoodValueAndGetsTheFailureFirst(t *testing.T) {
+func TestReferenceSourceAWatchOpenedOnAFailedMemberStartsAtItsLastGoodValueAndGetsTheFailureFirst(t *testing.T) {
 	h := newMemberHarness(t)
 	doc := newMemberDoc(h.batch, memberCount(1))
 	count, _ := h.counting(t, doc, 9)
@@ -361,7 +371,7 @@ func TestMemberSourceAWatchOpenedOnAFailedMemberStartsAtItsLastGoodValueAndGetsT
 		t.Fatalf("value = %v, want 1", v)
 	}
 	h.setDoc(t, doc, 9)
-	h.loop.Run(m.freeze)
+	h.loop.Run(m.hold)
 	watch := h.watch(t, m)
 	expectEqual(t, "watch value", watch.Value(), delta.JsonValue(float64(1)))
 	calls := nexttest.ChangesOf(watch)
@@ -373,7 +383,7 @@ func TestMemberSourceAWatchOpenedOnAFailedMemberStartsAtItsLastGoodValueAndGetsT
 	// Never had a value: nothing to start at.
 	never, _ := h.counting(t, newMemberDoc(h.batch, memberCount(9)), 9)
 	broken := h.member(never)
-	h.loop.Run(broken.freeze)
+	h.loop.Run(broken.hold)
 	var err error
 	h.loop.Run(func() { _, err = broken.Watch(memberBackground) })
 	if err == nil || err.Error() != "count broke" {
@@ -381,13 +391,13 @@ func TestMemberSourceAWatchOpenedOnAFailedMemberStartsAtItsLastGoodValueAndGetsT
 	}
 }
 
-// Own test, mirrors member-source.test.ts › member sources and memory › a failed attempt is collected after a retry while
+// Own test, mirrors reference-source.test.ts › member sources and memory › a failed attempt is collected after a retry while
 // the object, its member source and a retained watch live.
-func TestMemberSourceAFailedAttemptIsCollectedAfterARebindWhileTheMemberSourceAndARetainedWatchLive(t *testing.T) {
+func TestReferenceSourceAFailedAttemptIsCollectedAfterARebindWhileTheMemberSourceAndARetainedWatchLive(t *testing.T) {
 	h := newMemberHarness(t)
 	second := newMemberDoc(h.batch, memberCount(0))
 	next, _ := h.counting(t, second, -1)
-	var m *memberSource
+	var m *referenceSource
 	var oldDoc weak.Pointer[memberDoc]
 	var oldMember weak.Pointer[state.Derive]
 	func() {
@@ -397,7 +407,7 @@ func TestMemberSourceAFailedAttemptIsCollectedAfterARebindWhileTheMemberSourceAn
 		oldDoc, oldMember = weak.Make(first), weak.Make(count)
 	}()
 	frames := nexttest.ChangesOf(h.watch(t, m))
-	h.loop.Run(m.freeze)
+	h.loop.Run(m.hold)
 	h.within(t, func() { m.bind(next) })
 	h.setDoc(t, second, 1)
 	h.delivered()
@@ -406,27 +416,27 @@ func TestMemberSourceAFailedAttemptIsCollectedAfterARebindWhileTheMemberSourceAn
 	expectCollectedEventually(t, oldMember)
 }
 
-// Own test, mirrors member-source.test.ts › member sources and memory › an ended object's member sources are collected
+// Own test, mirrors reference-source.test.ts › member sources and memory › an ended object's member sources are collected
 // with it.
-func TestMemberSourceAnEndedObjectsMemberSourcesAreCollectedWithIt(t *testing.T) {
+func TestReferenceSourceAnEndedObjectsMemberSourcesAreCollectedWithIt(t *testing.T) {
 	h := newMemberHarness(t)
-	ref := func() weak.Pointer[memberSource] {
+	ref := func() weak.Pointer[referenceSource] {
 		doc := newMemberDoc(h.batch, memberCount(0))
 		m := h.member(doc)
 		if _, err := h.value(m); err != nil {
 			t.Fatalf("value: %v", err)
 		}
 		h.within(t, func() {
-			m.objectEnded(data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonEnded, Message: "ended"}, nil))
+			m.end(data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonEnded, Message: "ended"}, nil))
 		})
 		return weak.Make(m)
 	}()
 	expectCollectedEventually(t, ref)
 }
 
-// Own test of memberSource.OpenWatch (member-source.ts `openWatch`: `watch.observeAbort`): aborting the context a watch was
+// Own test of referenceSource.OpenWatch (member-source.ts `openWatch`: `watch.observeAbort`): aborting the context a watch was
 // opened with ends it `aborted`, and it stops following the member source.
-func TestMemberSourceAWatchEndsAbortedWithItsContextAndStopsFollowing(t *testing.T) {
+func TestReferenceSourceAWatchEndsAbortedWithItsContextAndStopsFollowing(t *testing.T) {
 	h := newMemberHarness(t)
 	m := h.member(newMemberDoc(h.batch, memberCount(0)))
 	abort, cancel := chordctx.WithCancel(memberBackground)
@@ -446,7 +456,7 @@ func TestMemberSourceAWatchEndsAbortedWithItsContextAndStopsFollowing(t *testing
 	}
 }
 
-// --- member-source.test.ts on whole hosts -----------------------------------------------------------------------------------
+// --- reference-source.test.ts on whole hosts -----------------------------------------------------------------------------------
 //
 // The upstream cases serve objects through a host (`loaded`, `serve`, `failLive`, `defineState` documents, `linked`), as
 // the tests below do; they carry the Go name of their title behind Host.
@@ -574,6 +584,15 @@ func msCall(call chord.WatchCall[delta.JsonValue]) []any {
 	return []any{string(call.Kind), call.Value, ops, call.Retired}
 }
 
+// msKinds is `calls.map((call) => call.kind)`.
+func msKinds(calls []chord.WatchCall[delta.JsonValue]) []any {
+	out := make([]any, len(calls))
+	for i, call := range calls {
+		out[i] = string(call.Kind)
+	}
+	return out
+}
+
 // msValue is `{ kind: "value", value, ops: [["r", value]], retired: false }`.
 func msValue(value any) []any {
 	return []any{string(chord.WatchCallValue), value, []any{[]any{"r", value}}, false}
@@ -587,6 +606,16 @@ func msCalls(calls []chord.WatchCall[delta.JsonValue]) []any {
 	return out
 }
 
+// msFailRetry is `failLive(self, error); ref.retry(); (await host.get(Type, params)).release()`: the failure and the retry
+// are one synchronous block of Pi's event loop (nothing of the host runs between them), so they are one section.
+func msFailRetry(t testing.TB, host Host, self Self, failure *data.ChordError, ref *Reference, typ *contracts.Contract, params *delta.JsonObject) {
+	t.Helper()
+	failLiveThen(host, self, failure, ref.Retry)
+	again, err := host.Get(typ, params, background, GetOptions{})
+	must(t, err)
+	again.Release()
+}
+
 // msRetry is `ref.retry(); (await host.get(Type, params)).release()`: the next attempt, live.
 func msRetry(t testing.TB, host Host, ref *Reference, typ *contracts.Contract, params *delta.JsonObject) {
 	t.Helper()
@@ -596,9 +625,9 @@ func msRetry(t testing.TB, host Host, ref *Reference, typ *contracts.Contract, p
 	again.Release()
 }
 
-// member-source.test.ts › following the live attempt › passes the member's frames on as they are, and keeps a derive member
+// reference-source.test.ts › following the live attempt › passes the member's frames on as they are, and keeps a derive member
 // lazy while nothing watches it.
-func TestHostMemberSourceFollowingTheLiveAttemptPassesTheMembersFramesOnAsTheyAreAndKeepsADeriveMemberLazyWhileNothingWatchesIt(t *testing.T) {
+func TestHostReferenceSourceFollowingTheLiveAttemptPassesTheMembersFramesOnAsTheyAreAndKeepsADeriveMemberLazyWhileNothingWatchesIt(t *testing.T) {
 	meter := nexttest.Metered(t)
 	s := msServe(t, loadedOptions{Telemetry: meter.Telemetry})
 	nexttest.RequireJSONEqual(t, kmMember(t, s.Store, "count"), float64(0))
@@ -639,13 +668,14 @@ func TestHostMemberSourceFollowingTheLiveAttemptPassesTheMembersFramesOnAsTheyAr
 	must(t, s.Host.Close(background))
 }
 
-// member-source.test.ts › a failed object's members › keep their last values and get no frames; a new watch opens at the
-// last value (slice 6a §1.4).
-func TestHostMemberSourceAFailedObjectsMembersKeepTheirLastValuesAndGetNoFramesANewWatchOpensAtTheLastValue(t *testing.T) {
+// reference-source.test.ts › a failed object's members › keep their last values and get the failure once; a new watch opens
+// at the last value (slice 6a §1.4).
+func TestHostReferenceSourceAFailedObjectsMembersKeepTheirLastValuesAndGetTheFailureOnceANewWatchOpensAtTheLastValue(t *testing.T) {
 	s := msServe(t, loadedOptions{})
 	msAdd(t, s.Store, "a")
 	counted := kmWatch(t, s.Store.Member("count"))
 	s.fail()
+	awaitWatchCalls(t, "the failure reaches the count watch", counted, 1)
 	deliveredOn(s.Host)
 	if kind := s.Store.State().Value().Kind; kind != RefStateFailed {
 		t.Fatalf("store state = %s, want failed", kind)
@@ -655,6 +685,8 @@ func TestHostMemberSourceAFailedObjectsMembersKeepTheirLastValuesAndGetNoFramesA
 	nexttest.RequireJSONEqual(t, late.Value(), float64(1))
 	lately := nexttest.ChangesOf(late)
 	listed := kmWatch(t, s.Store.Member("list"))
+	// Their failure calls are delivered before the next instance's value (Pi's awaits give its microtasks the turn).
+	deliveredOn(s.Host)
 	// The failed attempt's handle is sealed; the slot changes only through a new attempt.
 	value, err := s.list(0).Value()
 	must(t, err)
@@ -664,15 +696,18 @@ func TestHostMemberSourceAFailedObjectsMembersKeepTheirLastValuesAndGetNoFramesA
 	must(t, err)
 	msAdd(t, again, "b")
 	deliveredOn(s.Host)
-	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(counted.Items()), []any{float64(2)})
-	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(listed.Items()), []any{jsonObject("items", []any{"a", "b"})})
-	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(lately.Items()), []any{float64(2)})
+	// The failure once; after it, whole values: the next instance's (unchanged) 1, then 2.
+	boom := nexttest.FailedValue{Failed: "boom"}
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(counted.Items()), []any{boom, float64(1), float64(2)})
+	// Opened while failed: at the last value, the failure once, then whole values.
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(listed.Items()), []any{boom, jsonObject("items", []any{"a"}), jsonObject("items", []any{"a", "b"})})
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(lately.Items()), []any{boom, float64(1), float64(2)})
 	must(t, s.Host.Close(background))
 }
 
-// member-source.test.ts › a failed object's members › re-exposed from another object freeze with the re-exposing object;
+// reference-source.test.ts › a failed object's members › re-exposed from another object hold with the re-exposing object;
 // the provider's source goes on.
-func TestHostMemberSourceReExposedFromAnotherObjectFreezeWithTheReExposingObjectTheProvidersSourceGoesOn(t *testing.T) {
+func TestHostReferenceSourceReExposedFromAnotherObjectHoldWithTheReExposingObjectTheProvidersSourceGoesOn(t *testing.T) {
 	note := contracts.Obj(contracts.Prop("title", contracts.Str()))
 	memo, err := documents.DefineState("memo", documents.StateOptions{
 		Schema: note, Version: 1, Keyed: true, Initial: func() *delta.JsonObject { return jsonObject("title", "") },
@@ -734,6 +769,8 @@ func TestHostMemberSourceReExposedFromAnotherObjectFreezeWithTheReExposingObject
 	exposedNote := kmWatch(t, exposed.Member("note"))
 	providerN := kmWatch(t, providerRef.Member("n"))
 	failLive(registry.exposer(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil))
+	awaitWatchCalls(t, "the failure reaches the exposed n", exposedN, 1)
+	awaitWatchCalls(t, "the failure reaches the exposed note", exposedNote, 1)
 	deliveredOn(host)
 	_, err = providerRef.Call("set", float64(7), background)
 	must(t, err)
@@ -742,15 +779,15 @@ func TestHostMemberSourceReExposedFromAnotherObjectFreezeWithTheReExposingObject
 		t.Fatalf("exposer state = %s, want failed", kind)
 	}
 	nexttest.RequireJSONEqual(t, []any{kmMember(t, exposed, "n"), kmMember(t, exposed, "note")}, []any{float64(1), jsonObject("title", "x")})
-	nexttest.RequireJSONEqual(t, []any{msCalls(exposedN.Items()), msCalls(exposedNote.Items())}, []any{[]any{}, []any{}})
+	nexttest.RequireJSONEqual(t, []any{msKinds(exposedN.Items()), msKinds(exposedNote.Items())}, []any{[]any{"failed"}, []any{"failed"}})
 	nexttest.RequireJSONEqual(t, kmMember(t, providerRef, "n"), float64(7))
 	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(providerN.Items()), []any{float64(7)})
 	must(t, host.Close(background))
 }
 
-// member-source.test.ts › the window of a live failure › members following another object's sources freeze at once, while
-// an admitted commit of the object runs.
-func TestHostMemberSourceMembersFollowingAnotherObjectsSourcesFreezeAtOnceWhileAnAdmittedCommitOfTheObjectRuns(t *testing.T) {
+// reference-source.test.ts › the window of a live failure › every member follows on while an admitted commit of the object
+// runs, then all hold (audit A10).
+func TestHostReferenceSourceTheWindowOfALiveFailureEveryMemberFollowsOnWhileAnAdmittedCommitOfTheObjectRunsThenAllHold(t *testing.T) {
 	counter := kmDefine("counter", documents.StateOptions{})
 	persisted := kmDefine("own", documents.StateOptions{
 		Persist: true, CheckpointWhen: func(*delta.JsonObject, []delta.Op, documents.CheckpointInfo) bool { return false },
@@ -808,18 +845,22 @@ func TestHostMemberSourceMembersFollowingAnotherObjectsSourcesFreezeAtOnceWhileA
 	_, err = providerRef.Call("set", float64(9), background)
 	must(t, err)
 	deliveredOn(host)
-	nexttest.RequireJSONEqual(t, []any{kmMember(t, exposed, "n"), msCalls(frames.Items())}, []any{float64(1), []any{}})
+	// A re-exposed member shows one more change of its provider in the window.
+	nexttest.RequireJSONEqual(t, []any{kmMember(t, exposed, "n"), msKinds(frames.Items())}, []any{float64(9), []any{"value"}})
 	held.Release()
 	must(t, <-changed)
+	awaitWatchCalls(t, "the failure reaches the own member", owned, 2)
+	awaitWatchCalls(t, "the failure reaches the re-exposed member", frames, 2)
 	deliveredOn(host)
-	// The object's own admitted commit still publishes once.
-	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(owned.Items()), []any{kmN(5)})
+	// The object's own admitted commit still publishes once; then every member holds (the failure once).
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(owned.Items()), []any{kmN(5), nexttest.FailedValue{Failed: "boom"}})
+	nexttest.RequireJSONEqual(t, []any{kmMember(t, exposed, "n"), msKinds(frames.Items())}, []any{float64(9), []any{"value", "failed"}})
 	must(t, host.Close(background))
 }
 
-// member-source.test.ts › re-binding when a new attempt goes live › recovers a consumer's derive that failed on the
+// reference-source.test.ts › re-binding when a new attempt goes live › recovers a consumer's derive that failed on the
 // provider's earlier error, and the derives downstream.
-func TestHostMemberSourceRebindingRecoversAConsumersDeriveThatFailedOnTheProvidersEarlierErrorAndTheDerivesDownstream(t *testing.T) {
+func TestHostReferenceSourceRebindingRecoversAConsumersDeriveThatFailedOnTheProvidersEarlierErrorAndTheDerivesDownstream(t *testing.T) {
 	counted := mustContract(contracts.Local("app.counted", contracts.LocalDeclaration{
 		Params:  contracts.Params{},
 		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("count", contracts.Int()), contracts.Mem("add", contracts.NewMethod(contracts.Str()))},
@@ -868,8 +909,7 @@ func TestHostMemberSourceRebindingRecoversAConsumersDeriveThatFailedOnTheProvide
 			t.Fatalf("%s = %v, want it to throw count broke", member, err)
 		}
 	}
-	failLive(attempts.at(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil))
-	msRetry(t, host, countedRef, counted, jsonObject())
+	msFailRetry(t, host, attempts.at(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil), countedRef, counted, jsonObject())
 	nexttest.RequireJSONEqual(t, []any{kmMember(t, tens, "tens"), kmMember(t, tens, "hundreds")}, []any{float64(10), float64(100)})
 	frames := kmWatch(t, tens.Member("hundreds"))
 	_, err = countedRef.Call("add", "b", background)
@@ -879,9 +919,9 @@ func TestHostMemberSourceRebindingRecoversAConsumersDeriveThatFailedOnTheProvide
 	must(t, host.Close(background))
 }
 
-// member-source.test.ts › re-binding when a new attempt goes live › re-binds a consumer's derive over a retried provider's
+// reference-source.test.ts › re-binding when a new attempt goes live › re-binds a consumer's derive over a retried provider's
 // derive member, and its watches get frames again.
-func TestHostMemberSourceRebindingReBindsAConsumersDeriveOverARetriedProvidersDeriveMemberAndItsWatchesGetFramesAgain(t *testing.T) {
+func TestHostReferenceSourceRebindingReBindsAConsumersDeriveOverARetriedProvidersDeriveMemberAndItsWatchesGetFramesAgain(t *testing.T) {
 	s := msServe(t, loadedOptions{})
 	viewer, err := s.Host.Get(msViewer, jsonObject(), background, GetOptions{})
 	must(t, err)
@@ -890,6 +930,7 @@ func TestHostMemberSourceRebindingReBindsAConsumersDeriveOverARetriedProvidersDe
 	msAdd(t, s.Store, "a")
 	deliveredOn(s.Host)
 	s.fail()
+	awaitWatchCalls(t, "the failure reaches the count watch", counted, 2)
 	deliveredOn(s.Host)
 	nexttest.RequireJSONEqual(t, []any{kmMember(t, s.Store, "count"), kmMember(t, viewer, "tens")}, []any{float64(1), float64(10)})
 	s.Store.Retry()
@@ -902,13 +943,14 @@ func TestHostMemberSourceRebindingReBindsAConsumersDeriveOverARetriedProvidersDe
 	}
 	nexttest.RequireJSONEqual(t, []any{kmMember(t, s.Store, "count"), kmMember(t, viewer, "tens")}, []any{float64(2), float64(20)})
 	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(tens.Items()), []any{float64(10), float64(20)})
-	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(counted.Items()), []any{float64(1), float64(2)})
+	// A derive over the held member keeps its last value (no failure); the member's watch gets it once.
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(counted.Items()), []any{float64(1), nexttest.FailedValue{Failed: "boom"}, float64(1), float64(2)})
 	must(t, s.Host.Close(background))
 }
 
-// member-source.test.ts › re-binding when a new attempt goes live › sends one frame from the last value when the new
+// reference-source.test.ts › re-binding when a new attempt goes live › sends one frame from the last value when the new
 // attempt's member differs.
-func TestHostMemberSourceRebindingSendsOneFrameFromTheLastValueWhenTheNewAttemptsMemberDiffers(t *testing.T) {
+func TestHostReferenceSourceRebindingSendsOneFrameFromTheLastValueWhenTheNewAttemptsMemberDiffers(t *testing.T) {
 	shown := mustContract(contracts.Local("app.shown", contracts.LocalDeclaration{
 		Params:  contracts.Params{},
 		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("label", contracts.Str())},
@@ -928,17 +970,16 @@ func TestHostMemberSourceRebindingSendsOneFrameFromTheLastValueWhenTheNewAttempt
 	ref, err := host.Get(shown, jsonObject(), background, GetOptions{})
 	must(t, err)
 	frames := kmWatch(t, ref.Member("label"))
-	failLive(attempts.at(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil))
-	msRetry(t, host, ref, shown, jsonObject())
+	msFailRetry(t, host, attempts.at(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil), ref, shown, jsonObject())
 	deliveredOn(host)
 	nexttest.RequireJSONEqual(t, kmMember(t, ref, "label"), "new")
 	nexttest.RequireJSONEqual(t, msCalls(frames.Items()), []any{msValue("new")})
 	must(t, host.Close(background))
 }
 
-// member-source.test.ts › subscribers › a hold over a link on a remote object re-exposing a local member gets frames again
+// reference-source.test.ts › subscribers › a hold over a link on a remote object re-exposing a local member gets frames again
 // after the local retry.
-func TestHostMemberSourceSubscribersAHoldOverALinkOnARemoteObjectReExposingALocalMemberGetsFramesAgainAfterTheLocalRetry(t *testing.T) {
+func TestHostReferenceSourceSubscribersAHoldOverALinkOnARemoteObjectReExposingALocalMemberGetsFramesAgainAfterTheLocalRetry(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		count := mustContract(contracts.Local("app.count", contracts.LocalDeclaration{
 			Params:  contracts.Params{},
@@ -994,8 +1035,7 @@ func TestHostMemberSourceSubscribersAHoldOverALinkOnARemoteObjectReExposingALoca
 			value, err := viewRef.Member("n").Value()
 			return err == nil && nexttest.JSONEqual(value, kmN(10))
 		})
-		failLive(attempts.at(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil))
-		countRef.Retry()
+		failLiveThen(server, attempts.at(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil), countRef.Retry)
 		again, err := server.Get(count, jsonObject(), background, GetOptions{})
 		must(t, err)
 		_, err = again.Call("add", nil, background)
@@ -1040,9 +1080,9 @@ func (s *msSubscriber) Advance(call chord.WatchCall[delta.JsonValue], _ context.
 func (s *msSubscriber) End(end chord.WatchEnd) { s.push(string(end.Kind)) }
 func (s *msSubscriber) EndAfterDelivery()      { s.push("ended") }
 
-// member-source.test.ts › subscribers, directly › are fed the member's calls: a failure, then its recovery at the re-bind
+// reference-source.test.ts › subscribers, directly › are fed the member's calls: a failure, then its recovery at the re-bind
 // as a root replacement.
-func TestHostMemberSourceSubscribersDirectlyAreFedTheMembersCallsAFailureThenItsRecoveryAtTheRebindAsARootReplacement(t *testing.T) {
+func TestHostReferenceSourceSubscribersDirectlyAreFedTheMembersCallsAFailureThenItsRecoveryAtTheRebindAsARootReplacement(t *testing.T) {
 	counted := mustContract(contracts.Local("app.counted", contracts.LocalDeclaration{
 		Params:  contracts.Params{},
 		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("count", contracts.Int()), contracts.Mem("add", contracts.NewMethod(contracts.Str()))},
@@ -1081,8 +1121,7 @@ func TestHostMemberSourceSubscribersDirectlyAreFedTheMembersCallsAFailureThenIts
 		_, err = ref.Call("add", text, background)
 		must(t, err)
 	}
-	failLive(attempts.at(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil))
-	ref.Retry()
+	failLiveThen(host, attempts.at(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil), ref.Retry)
 	again, err := host.Get(counted, jsonObject(), background, GetOptions{})
 	must(t, err)
 	_, err = again.Call("add", "c", background)
@@ -1096,9 +1135,9 @@ func TestHostMemberSourceSubscribersDirectlyAreFedTheMembersCallsAFailureThenIts
 	must(t, host.Close(background))
 }
 
-// member-source.test.ts › a member the new attempt's variant lacks › fails: its watch gets one failure call and stays open,
+// reference-source.test.ts › a member the new attempt's variant lacks › fails: its watch gets one failure call and stays open,
 // reads throw invalid/member; a later attempt brings it back.
-func TestHostMemberSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFailureCallAndStaysOpenReadsThrowInvalidMemberALaterAttemptBringsItBack(t *testing.T) {
+func TestHostReferenceSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFailureCallAndStaysOpenReadsThrowInvalidMemberALaterAttemptBringsItBack(t *testing.T) {
 	two := mustContract(contracts.Remote("app.two", contracts.RemoteDeclaration{
 		Version: 1, Params: contracts.Params{},
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
@@ -1109,7 +1148,7 @@ func TestHostMemberSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFa
 	}))
 	host := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: ownerPrincipal(), OnError: func(HostError) {}})
 	attempts := &attemptList{}
-	must(t, host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(two, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
 			attempts.add(self)
 			self.State(msList)
@@ -1131,8 +1170,7 @@ func TestHostMemberSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFa
 	n := ref.Member("n")
 	calls := kmWatch(t, n)
 	boom := data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil)
-	failLive(attempts.at(0), boom)
-	msRetry(t, host, ref, two, jsonObject())
+	msFailRetry(t, host, attempts.at(0), boom, ref, two, jsonObject())
 	deliveredOn(host)
 	items := calls.Items()
 	if len(items) != 1 || items[0].Kind != chord.WatchCallFailed {
@@ -1146,9 +1184,10 @@ func TestHostMemberSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFa
 	if _, err := n.Value(); err == nil || err.Error() != `app.two (variant view) has no state member "n"` {
 		t.Fatalf("n = %v, want it to throw has no state member", err)
 	}
+	// The failed instance is followed until its admitted commits published (audit A10), when the retry's attempt loads
+	// already (no failure call for it); then the new variant's lack of it.
 	// The same as over a link: the member comes back with the next attempt that has it.
-	failLive(attempts.at(1), boom)
-	msRetry(t, host, ref, two, jsonObject())
+	msFailRetry(t, host, attempts.at(1), boom, ref, two, jsonObject())
 	deliveredOn(host)
 	nexttest.RequireJSONEqual(t, kmMember(t, ref, "n"), float64(3))
 	all := calls.Items()
@@ -1156,9 +1195,9 @@ func TestHostMemberSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFa
 	must(t, host.Close(background))
 }
 
-// member-source.test.ts › an ended object's members › mark the derives over them: a consumer's derive keeps no cached value,
+// reference-source.test.ts › an ended object's members › mark the derives over them: a consumer's derive keeps no cached value,
 // its read throws released.
-func TestHostMemberSourceAnEndedObjectsMembersMarkTheDerivesOverThemAConsumersDeriveKeepsNoCachedValueItsReadThrowsReleased(t *testing.T) {
+func TestHostReferenceSourceAnEndedObjectsMembersMarkTheDerivesOverThemAConsumersDeriveKeepsNoCachedValueItsReadThrowsReleased(t *testing.T) {
 	paged := mustContract(contracts.Local("app.paged", contracts.LocalDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())},
 		Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
@@ -1203,9 +1242,9 @@ func TestHostMemberSourceAnEndedObjectsMembersMarkTheDerivesOverThemAConsumersDe
 	must(t, host.Close(background))
 }
 
-// member-source.test.ts › member sources and memory › a failed attempt is collected after a retry while the object, its
+// reference-source.test.ts › member sources and memory › a failed attempt is collected after a retry while the object, its
 // member source and a retained watch live.
-func TestHostMemberSourceAFailedAttemptIsCollectedAfterARetryWhileTheObjectItsMemberSourceAndARetainedWatchLive(t *testing.T) {
+func TestHostReferenceSourceAFailedAttemptIsCollectedAfterARetryWhileTheObjectItsMemberSourceAndARetainedWatchLive(t *testing.T) {
 	var mu sync.Mutex
 	var attempts []weak.Pointer[attempt]
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -1246,9 +1285,9 @@ func TestHostMemberSourceAFailedAttemptIsCollectedAfterARetryWhileTheObjectItsMe
 	must(t, host.Close(background))
 }
 
-// member-source.test.ts › member sources and memory › an ended object's member sources are collected with it.
-func TestHostMemberSourceAnEndedObjectsMemberSourcesAreCollectedWithIt(t *testing.T) {
-	var refs []weak.Pointer[memberSource]
+// reference-source.test.ts › member sources and memory › an ended object's member sources are collected with it.
+func TestHostReferenceSourceAnEndedObjectsMemberSourcesAreCollectedWithIt(t *testing.T) {
+	var refs []weak.Pointer[referenceSource]
 	func() {
 		s := msServe(t, loadedOptions{})
 		source, err := s.Store.Member("count").source()
@@ -1256,8 +1295,195 @@ func TestHostMemberSourceAnEndedObjectsMemberSourcesAreCollectedWithIt(t *testin
 		if value, err := source.Value(); err != nil || value != float64(0) {
 			t.Fatalf("count = %v, %v, want 0", value, err)
 		}
-		refs = append(refs, weak.Make(source.(*memberSource)))
+		refs = append(refs, weak.Make(source.(*referenceSource)))
 		must(t, s.Host.Close(background))
 	}()
 	expectCollectedEventually(t, refs...)
+}
+
+// reference-source.test.ts › what a reference keeps (decision "References are the only indirection") › keeps nothing of an
+// ended instance while it waits with an open watch, its failure's error included.
+func TestHostReferenceSourceWhatAReferenceKeepsKeepsNothingOfAnEndedInstanceWhileItWaitsWithAnOpenWatchItsFailuresErrorIncluded(t *testing.T) {
+	count := mustContract(contracts.Local("app.kept", contracts.LocalDeclaration{
+		Params: contracts.Params{}, Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
+	}))
+	doc, err := documents.DefineState("kept", documents.StateOptions{
+		Schema: kmSchema, Version: 1, Initial: func() *delta.JsonObject { return jsonObject("n", float64(5)) },
+	})
+	must(t, err)
+	var mu sync.Mutex
+	var selves []weak.Pointer[attempt]
+	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(count, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			mu.Lock()
+			selves = append(selves, weak.Make(self.(*attempt)))
+			mu.Unlock()
+			handle := self.State(doc).(*documents.Singleton)
+			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+				"n": self.Derive([]any{handle}, func(values []any) (delta.JsonValue, error) {
+					return values[0].(*delta.JsonObject).Value("n"), nil
+				}),
+			}}}, nil
+		}, ServeOptions{})
+	})
+	host := newHost(t, HostOptions{OnError: func(HostError) {}})
+	h := host.(*chordHost)
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/kept", Facet: facet}}, background))
+	ref := refGet(t, host, count, jsonObject())
+	watch, err := ref.Member("n").Watch(background)
+	must(t, err)
+	calls := nexttest.ChangesOf(watch)
+	var objects []weak.Pointer[chordObject]
+	var documentSets []weak.Pointer[documents.Documents]
+	h.loop().Run(func() {
+		for _, object := range h.objectList() {
+			objects = append(objects, weak.Make(object))
+			documentSets = append(documentSets, weak.Make(object.documents))
+		}
+	})
+	// Removed: the reference waits with its last value and its failure; the instance ends.
+	if _, err := host.Reload(nil, background, ReloadOptions{}); err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	deliveredOn(host)
+	current := ref.State().Value()
+	if current.Kind != RefStateFailed {
+		t.Fatalf("state = %s, want failed", current.Kind)
+	}
+	kept := current.Cause.Error
+	value, err := ref.Member("n").Value()
+	must(t, err)
+	nexttest.RequireJSONEqual(t, []any{value, nexttest.ValuesOf(calls.Items())}, []any{float64(5), []any{nexttest.FailedValue{Failed: kept.Error()}}})
+	mu.Lock()
+	selfRefs := append([]weak.Pointer[attempt](nil), selves...)
+	mu.Unlock()
+	current = nil
+	expectCollectedEventually(t, selfRefs...)
+	expectCollectedEventually(t, objects...)
+	expectCollectedEventually(t, documentSets...)
+	// Released: its last values and bindings go with it.
+	released := weak.Make(ref)
+	_, err = watch.Stop()
+	must(t, err)
+	ref.Release()
+	ref = nil
+	expectCollectedEventually(t, released)
+	if kept.Code != data.CodeUnavailable {
+		t.Fatalf("kept code = %v, want unavailable", kept.Code)
+	}
+	must(t, host.Close(background))
+}
+
+// reference-source.test.ts › what a reference keeps (decision "References are the only indirection") › never takes values
+// from an instance it never attached to: a reference made while its object is failed has none.
+func TestHostReferenceSourceWhatAReferenceKeepsNeverTakesValuesFromAnInstanceItNeverAttachedToAReferenceMadeWhileItsObjectIsFailedHasNone(t *testing.T) {
+	s := msServe(t, loadedOptions{})
+	msAdd(t, s.Store, "a")
+	counted := kmWatch(t, s.Store.Member("count"))
+	s.fail()
+	awaitWatchCalls(t, "the failure reaches the count watch", counted, 1)
+	deliveredOn(s.Host)
+	late, err := s.Host.Hold(msStore, jsonObject(), background, GetOptions{})
+	must(t, err)
+	nexttest.RequireJSONEqual(t, kmMember(t, s.Store, "count"), float64(1))
+	if _, err := late.Member("count").Value(); err == nil || !strings.Contains(err.Error(), "boom") {
+		t.Fatalf("late count = %v, want it to throw boom", err)
+	}
+	late.Release()
+	must(t, s.Host.Close(background))
+}
+
+// reference-source.test.ts › what a reference keeps (decision "References are the only indirection") › computes a consumer's
+// derive over a watched reference member once per commit (cost guard).
+func TestHostReferenceSourceWhatAReferenceKeepsComputesAConsumersDeriveOverAWatchedReferenceMemberOncePerCommitCostGuard(t *testing.T) {
+	meter := nexttest.Metered(t)
+	s := msServe(t, loadedOptions{Telemetry: meter.Telemetry})
+	viewer, err := s.Host.Get(msViewer, jsonObject(), background, GetOptions{})
+	must(t, err)
+	counted := kmWatch(t, s.Store.Member("count"))
+	tens := kmWatch(t, viewer.Member("tens"))
+	msAdd(t, s.Store, "a")
+	deliveredOn(s.Host)
+	before := meter.Counts()["chord.derive.computes"]
+	for _, text := range []string{"b", "c", "d"} {
+		msAdd(t, s.Store, text)
+		// Each commit's frame is delivered before the next (Pi's awaits give its microtasks the turn): none coalesces.
+		deliveredOn(s.Host)
+	}
+	// The store's count and the viewer's tens: one compute each per commit, nothing for passing through.
+	if got := meter.Counts()["chord.derive.computes"] - before; got != 6 {
+		t.Fatalf("computes = %v, want 6", got)
+	}
+	nexttest.RequireJSONEqual(t, []any{nexttest.ValuesOf(counted.Items()), nexttest.ValuesOf(tens.Items())}, []any{
+		[]any{float64(1), float64(2), float64(3), float64(4)}, []any{float64(10), float64(20), float64(30), float64(40)},
+	})
+	must(t, s.Host.Close(background))
+}
+
+// reference-source.test.ts › a reference keeps the last values of its attached instance's variant (final review) › keeps an
+// unread member of a remote contract served on its host when the type is removed (Astra).
+func TestHostReferenceSourceAReferenceKeepsTheLastValuesOfItsAttachedInstancesVariantKeepsAnUnreadMemberOfARemoteContractServedOnItsHostWhenTheTypeIsRemovedAstra(t *testing.T) {
+	typ := mustContract(contracts.Remote("app.remote-unread", contracts.RemoteDeclaration{
+		Version: 1, Params: contracts.Params{},
+		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
+		Variants: []contracts.VariantEntry{contracts.Var("full", contracts.VariantDeclaration{
+			State: []contracts.Property{contracts.Prop("n", contracts.Int())},
+		})},
+	}))
+	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(typ, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Variant: "full", Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(state.NewConstant(float64(7)))},
+			}}, nil
+		}, ServeOptions{})
+	})
+	host := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: ownerPrincipal(), OnError: func(HostError) {}})
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/remote-unread", Facet: facet}}, background))
+	ref := refGet(t, host, typ, jsonObject())
+	// `n` never read: the removal takes its last value from the instance's variant (the object is live no more).
+	if _, err := host.Reload(nil, background, ReloadOptions{}); err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	deliveredOn(host)
+	nexttest.RequireJSONEqual(t, kmMember(t, ref, "n"), float64(7))
+	ref.Release()
+	must(t, host.Close(background))
+}
+
+// reference-source.test.ts › a failed object lets its ended instance go (final review) › collects the instance while a
+// reference keeps its last value with an open watch (Astra, GC).
+func TestHostReferenceSourceAFailedObjectLetsItsEndedInstanceGoCollectsTheInstanceWhileAReferenceKeepsItsLastValueWithAnOpenWatchAstraGC(t *testing.T) {
+	typ := mustContract(contracts.Local("app.failed-gc", contracts.LocalDeclaration{
+		Params: contracts.Params{}, Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
+	}))
+	var mu sync.Mutex
+	var self Self
+	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(typ, func(_ *delta.JsonObject, declared Self) (contracts.Implementation, error) {
+			mu.Lock()
+			self = declared
+			mu.Unlock()
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(state.NewConstant(float64(7)))},
+			}}, nil
+		}, ServeOptions{})
+	})
+	host := newHost(t, HostOptions{OnError: func(HostError) {}})
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/failed-gc", Facet: facet}}, background))
+	ref := refGet(t, host, typ, jsonObject())
+	watch, err := ref.Member("n").Watch(background)
+	must(t, err)
+	nexttest.ChangesOf(watch)
+	mu.Lock()
+	instance := weak.Make(self.(*attempt))
+	failLive(self, data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil))
+	self = nil
+	mu.Unlock()
+	nexttest.Flushed()
+	deliveredOn(host)
+	// The object stays failed (host lifetime) and its reference keeps 7: neither keeps the ended instance.
+	nexttest.RequireJSONEqual(t, kmMember(t, ref, "n"), float64(7))
+	expectCollectedEventually(t, instance)
+	ref.Release()
+	must(t, host.Close(background))
 }

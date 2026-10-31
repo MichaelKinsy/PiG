@@ -312,7 +312,7 @@ func TestRemoteObjectTransientFailuresOverALink(t *testing.T) {
 			virtual := newRhVirtual()
 			errs := &hostErrors{}
 			server := rhCreate(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: errs.push, loop: virtual.loop})
-			must(t, server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
+			mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
 				return host.Serve(flaky, func(params *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
 					self.Open(func(ctx context.Context) (any, error) {
 						if record("open") == 1 {
@@ -328,7 +328,7 @@ func TestRemoteObjectTransientFailuresOverALink(t *testing.T) {
 				}, ServeOptions{})
 			})}}, background))
 			client := rhCreate(t, HostOptions{OnError: errs.push, loop: virtual.loop})
-			must(t, client.Load(nil, background))
+			mustLoad(t)(client.Load(nil, background))
 			a, b := link.MemoryLinkPair()
 			must(t, server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 			must(t, client.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
@@ -369,11 +369,13 @@ func TestRemoteObjectTransientFailuresOverALink(t *testing.T) {
 
 // --- GC of a released remote reference -------------------------------------------------------------------------------
 
-func rhReplicaOf(t testing.TB, ref *Reference, member string) *replica {
+// rhReplicaOf is Pi's `resolveWatchable(notes.notes)`: what the reference's member resolves to (its own source, which a
+// reference's members attach to the object instance through).
+func rhReplicaOf(t testing.TB, ref *Reference, member string) *referenceSource {
 	t.Helper()
 	source, err := ref.Member(member).source()
 	must(t, err)
-	return source.(*replica)
+	return source.(*referenceSource)
 }
 
 func rhRemoteObjectOf(ref *Reference) *remoteObject { return ref.binding.target().(*remoteObject) }
@@ -477,7 +479,7 @@ func rhViewClient(t testing.TB, loop sectionLoop, factories *int, mu *sync.Mutex
 		}, ServeOptions{})
 	})
 	loading := rhGo(func() (struct{}, error) {
-		return struct{}{}, client.Load([]HostFacet{{Name: "@test/view", Facet: facet}}, background)
+		return struct{}{}, rhLoadErr(client, []HostFacet{{Name: "@test/view", Facet: facet}}, background)
 	})
 	return client, peer, errs, loading
 }
@@ -552,11 +554,11 @@ func TestRemoteObjectDependentOfAnObjectFailedTransientlyOverTheLink(t *testing.
 				Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 			}))
 			server := rhCreate(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}, loop: virtual.loop})
-			must(t, server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
+			mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
 				return rhServeFlaky(&rhFailing{left: 1000})(host)
 			})}}, background))
 			first := rhCreate(t, HostOptions{OnError: func(HostError) {}, loop: virtual.loop})
-			must(t, first.Load(nil, background))
+			mustLoad(t)(first.Load(nil, background))
 			a, b := link.MemoryLinkPair()
 			must(t, server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 			must(t, first.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
@@ -575,7 +577,7 @@ func TestRemoteObjectDependentOfAnObjectFailedTransientlyOverTheLink(t *testing.
 					}}, nil
 				}, ServeOptions{})
 			})
-			must(t, second.Load([]HostFacet{{Name: "@test/view", Facet: facet}}, background))
+			mustLoad(t)(second.Load([]HostFacet{{Name: "@test/view", Facet: facet}}, background))
 			rhSettleLinks(c, d)
 			if errs.Len() != 0 {
 				t.Fatalf("errors = %v", errs.All())
@@ -662,7 +664,7 @@ func rhShiftingClient(t testing.TB) *rhShiftingRig {
 		}, ServeOptions{})
 	})
 	loading := rhGo(func() (struct{}, error) {
-		return struct{}{}, client.Load([]HostFacet{{Name: "@test/view", Facet: facet}}, background)
+		return struct{}{}, rhLoadErr(client, []HostFacet{{Name: "@test/view", Facet: facet}}, background)
 	})
 	a := wireNames(t, rhShifting, "a")
 	hold := peer.Next("hold").(*link.HoldMessage).Hold
@@ -720,8 +722,8 @@ func TestRemoteObjectReHoldsAfterADrop(t *testing.T) {
 			}
 		})
 
-		// remote-object.test.ts: re-holds after a drop › apply bound in one batch: each member gets one frame [['r', value]] and a fresh decoder
-		t.Run("apply bound in one batch: each member gets one frame [['r', value]] and a fresh decoder", func(t *testing.T) {
+		// remote-object.test.ts: re-holds after a drop › apply bound in one batch: each member gets one frame (a diff from its last value) and a fresh decoder
+		t.Run("apply bound in one batch: each member gets one frame (a diff from its last value) and a fresh decoder", func(t *testing.T) {
 			rig := rhProvider(t)
 			notes := rhHoldRef(t, rig.Client, Notes, rhNotes("S1"))
 			bindNext(t, rig.Peer, jsonObject("text", "a"))
@@ -735,7 +737,8 @@ func TestRemoteObjectReHoldsAfterADrop(t *testing.T) {
 			rhWaitCalls(t, frames, 1)
 			rhWaitCalls(t, counts, 1)
 			list := []any{map[string]any{"text": "a"}, map[string]any{"text": "b"}}
-			rhEqual(t, "frames", frames.Items(), []nexttest.Frame[delta.JsonValue]{{Value: list, Ops: []delta.Op{{"r", list}}}})
+			// One frame each, a diff from the last value the reference kept while its hold re-bound.
+			rhEqual(t, "frames", frames.Items(), []nexttest.Frame[delta.JsonValue]{{Value: list, Ops: []delta.Op{{"p", []any{}, 1, 0, []any{map[string]any{"text": "b"}}}}}})
 			rhEqual(t, "counts", counts.Items(), []nexttest.Frame[delta.JsonValue]{{Value: float64(2), Ops: []delta.Op{{"r", float64(2)}}}})
 			// The fresh decoder: the provider's new encoder starts over, interning paths anew.
 			next.Send(rhStateEntry(hold, []link.StateMember{{Member: editorWire(t).State["count"], Ops: link.Text(`[["r",3]]`)}}, nil, nil))
@@ -880,7 +883,7 @@ func TestRemoteObjectReHoldsAfterADrop(t *testing.T) {
 			}))
 			hosts := linked(t, func(host FacetHost) error { _, err := serveNotes(host, nil); return err }, linkedOptions{})
 			upgraded := rhCreate(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
-			must(t, upgraded.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
+			mustLoad(t)(upgraded.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
 				return host.Serve(notesV2, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
 					return contracts.Implementation{Variant: "editor", Members: contracts.VariantImplementation{
 						State: map[string]chord.Watchable[delta.JsonValue]{"count": rhConst(float64(0))},
@@ -1034,8 +1037,8 @@ func TestRemoteObjectReHoldsAfterADrop(t *testing.T) {
 			rhWaitState(t, notes, RefStateLive)
 		})
 
-		// remote-object.test.ts: re-holds after a drop › a member watch before the first binding waits for it, and rejects when it fails or is released (race 16)
-		t.Run("a member watch before the first binding waits for it, and rejects when it fails or is released (race 16)", func(t *testing.T) {
+		// remote-object.test.ts: re-holds after a drop › a member watch before the first binding waits for it through a failure, and rejects when released (race 16)
+		t.Run("a member watch before the first binding waits for it through a failure, and rejects when released (race 16)", func(t *testing.T) {
 			rig := rhProvider(t)
 			bound := rhHoldRef(t, rig.Client, Notes, rhNotes("S1"))
 			failing := rhHoldRef(t, rig.Client, Notes, rhNotes("S2"))
@@ -1053,13 +1056,27 @@ func TestRemoteObjectReHoldsAfterADrop(t *testing.T) {
 			released.Release()
 			first := watches[0].must(t)
 			rhEqual(t, "bound count", first.Value(), 1)
-			_, err := watches[1].wait()
-			if got, want := rhJSON(t, rejection(t, err)), `{"code":"unavailable","message":"offline"}`; got != want {
-				t.Fatalf("failing = %s, want %s", got, want)
-			}
-			_, err = watches[2].wait()
+			_, err := watches[2].wait()
 			if got, want := rhJSON(t, rejection(t, err)), `{"code":"released","message":"app.notes: released"}`; got != want {
 				t.Fatalf("released = %s, want %s", got, want)
+			}
+			// A failure is waited through (Opus G3): the watch rejects only when its reference ends.
+			rhSync(t, rig.Peer)
+			settled := func() bool {
+				select {
+				case <-watches[1].done:
+					return true
+				default:
+					return false
+				}
+			}
+			if kind, done := rhRefState(failing), settled(); kind != RefStateFailed || done {
+				t.Fatalf("failing = (%v, settled %v), want (failed, false)", kind, done)
+			}
+			failing.Release()
+			_, err = watches[1].wait()
+			if got := rhJSON(t, rejection(t, err)); !strings.Contains(got, `"code":"released"`) {
+				t.Fatalf("failing = %s, want released", got)
 			}
 		})
 	})
@@ -1073,7 +1090,7 @@ func TestRemoteObjectAGetAcrossADrop(t *testing.T) {
 		t.Run("keeps waiting within its one deadline, from the moment it was called", func(t *testing.T) {
 			virtual := newRhVirtual()
 			client := rhCreate(t, HostOptions{OnError: func(HostError) {}, loop: virtual.loop})
-			must(t, client.Load(nil, background))
+			mustLoad(t)(client.Load(nil, background))
 			peer := rhNextParent(t, client)
 			timeout := time.Second
 			got := rhGo(func() (*Reference, error) {
@@ -1120,7 +1137,7 @@ func TestRemoteObjectActivatingDependentWhoseLinkDrops(t *testing.T) {
 			client := rhCreate(t, HostOptions{OnError: errs.push, loop: virtual.loop})
 			peer := rhNextParent(t, client)
 			loading := rhGo(func() (struct{}, error) {
-				return struct{}{}, client.Load([]HostFacet{{Name: "@test/view", Facet: facet}}, background)
+				return struct{}{}, rhLoadErr(client, []HostFacet{{Name: "@test/view", Facet: facet}}, background)
 			})
 			peer.Next("hold")
 			peer.Close()
@@ -1140,15 +1157,15 @@ func TestRemoteObjectActivatingDependentWhoseLinkDrops(t *testing.T) {
 			}
 		})
 
-		// remote-object.test.ts: an activating dependent whose remote dependency's link drops (audit; supersedes race 18) › dropped and never bound again, stays parked loading: nothing fails, no parked_long without a link
-		t.Run("dropped and never bound again, stays parked loading: nothing fails, no parked_long without a link", func(t *testing.T) {
+		// remote-object.test.ts: an activating dependent whose remote dependency's link drops (audit; supersedes race 18) › dropped and never bound again, stays parked loading: nothing fails, one parked_long (audit A11)
+		t.Run("dropped and never bound again, stays parked loading: nothing fails, one parked_long (audit A11)", func(t *testing.T) {
 			virtual := newRhVirtual()
 			errs := &hostErrors{}
 			timeout := time.Second
 			client := rhCreate(t, HostOptions{ReadyTimeout: &timeout, OnError: errs.push, loop: virtual.loop})
 			peer := rhNextParent(t, client)
 			loading := rhGo(func() (struct{}, error) {
-				return struct{}{}, client.Load([]HostFacet{{Name: "@test/view", Facet: facet}}, background)
+				return struct{}{}, rhLoadErr(client, []HostFacet{{Name: "@test/view", Facet: facet}}, background)
 			})
 			peer.Next("hold")
 			// A remote blocker ends the start barrier's first pass.
@@ -1156,9 +1173,11 @@ func TestRemoteObjectActivatingDependentWhoseLinkDrops(t *testing.T) {
 			peer.Close()
 			rhParentDown(t, client)
 			virtual.advance(10_000)
-			// No remote attempt answers for it while its path has no link (fix round 1, Opus F2).
-			if errs.Len() != 0 {
-				t.Fatalf("errors = %v", errs.All())
+			// A diagnostic whatever the blocker (audit A11): its path without a link too; nothing failed.
+			got := errs.All()
+			if len(got) != 1 || got[0].Kind != ErrParkedLong || got[0].Object != "app.view" || got[0].WaitingFor != "app.notes(S1)" ||
+				got[0].State != "loading" || got[0].Since != 0 {
+				t.Fatalf("errors = %+v, want one parked_long of app.view waiting for app.notes(S1), loading, since 0", got)
 			}
 			if kind := rhRefState(rhHoldRef(t, client, rhViewOfNotes, jsonObject())); kind != RefStateLoading {
 				t.Fatalf("state = %v, want loading", kind)
@@ -1171,7 +1190,7 @@ func TestRemoteObjectActivatingDependentWhoseLinkDrops(t *testing.T) {
 			errs := &hostErrors{}
 			timeout := time.Second
 			client := rhCreate(t, HostOptions{ReadyTimeout: &timeout, OnError: errs.push, loop: virtual.loop})
-			must(t, client.Load([]HostFacet{{Name: "@test/view", Facet: facet}}, background))
+			mustLoad(t)(client.Load([]HostFacet{{Name: "@test/view", Facet: facet}}, background))
 			virtual.advance(500)
 			if failed := failures(errs.All()); len(failed) != 0 {
 				t.Fatalf("failures = %v", failed)

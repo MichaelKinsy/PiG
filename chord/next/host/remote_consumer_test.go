@@ -137,7 +137,7 @@ func TestConsumerReferencesOverALink(t *testing.T) {
 			a, b := link.MemoryLinkPair()
 			must(t, l.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 			must(t, client.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
-			must(t, client.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			mustLoad(t)(client.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 				return h.Serve(View, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 					notes := self.Get(Notes, jsonObject("session", "S1"))
 					return contracts.Implementation{Members: contracts.VariantImplementation{
@@ -506,7 +506,7 @@ func TestConsumerCostGuards(t *testing.T) {
 			meter := nexttest.Metered(t)
 			l := linked(t, func(h FacetHost) error { _, err := serveNotes(h, nil); return err }, linkedOptions{})
 			client := newHost(t, HostOptions{OnError: func(HostError) {}})
-			must(t, client.Load(nil, background))
+			mustLoad(t)(client.Load(nil, background))
 			a, b := link.MemoryLinkPair()
 			must(t, l.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 			must(t, client.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, meter.Context))
@@ -605,7 +605,7 @@ func pairOf(t testing.TB) *pairHost {
 		}, ServeOptions{})
 	})
 	loading := make(chan error, 1)
-	go func() { loading <- client.Load([]HostFacet{{Name: "@test/pair", Facet: facet}}, background) }()
+	go func() { loading <- rhLoadErr(client, []HostFacet{{Name: "@test/pair", Facet: facet}}, background) }()
 	bindNext(t, peer)
 	bindNext(t, peer)
 	must(t, <-loading)
@@ -698,7 +698,7 @@ type narrowHost struct {
 func narrow(t testing.TB) *narrowHost {
 	t.Helper()
 	client := newHost(t, HostOptions{OnError: func(HostError) {}})
-	must(t, client.Load(nil, background))
+	mustLoad(t)(client.Load(nil, background))
 	a, b := link.MemoryLinkPair()
 	must(t, client.Connect(a, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
 	peer := newRawPeer(t, b, rawPeerOptions{Calls: 1})
