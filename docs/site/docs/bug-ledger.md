@@ -851,6 +851,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9d2095f](#bf-9d2095f) | fix(durable/core): fewer TinyGo heap sites for deferred commits; a read or host operation that stores held… | PiG's own defect | All platforms | Unreleased |
 | [BF-9d4fe9c](#bf-9d4fe9c) | Selecting a model or cycling models with Ctrl+P no longer freezes the interactive mode when an extension's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9d64980](#bf-9d64980) | fix(coding): provider order and availability of virtual models follow Pi | PiG's own defect | All platforms | Unreleased |
+| [BF-9df8c5c](#bf-9df8c5c) | `--session <id>` and `--fork <id>` with an exact session ID now read only the session headers of the… | PiG's own defect | All platforms | Unreleased |
 | [BF-9eda512](#bf-9eda512) | fix(durable/harness): a run's own context reads resolve no settings; the retention is read only for an idle… | PiG's own defect | All platforms | Unreleased |
 | [BF-9f4702c](#bf-9f4702c) | A failed extension shortcut handler is now reported as `Error: Shortcut handler error: …` in the error… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-D110](#bf-d110) | Git sources: `#subdirectory=` selects a subdirectory; `git://` and upper-case schemes yield usable… | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -12876,6 +12877,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `9d64980afc` (2026-10-10)
 - **Tests:** None recorded.
+
+### BF-9df8c5c
+
+**`--session <id>` and `--fork <id>` with an exact session ID now read only the session headers of the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `--session <id>` and `--fork <id>` with an exact session ID now read only the session headers of the project's session directory, as Pi does, and list sessions only to match an ID prefix or to search other projects.
+- **Root cause:** resolveSessionArgument listed and fully decoded every session before matching an exact ID. It now tries the header-only FindByID first, as Pi's main.ts resolveSessionPath does, and lists sessions only for prefix matches and the cross-project search.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9df8c5c8f5` (2026-10-30)
+- **Tests:** `coding/cli/startup_session_exact_id_norace_test.go::TestScalingResolveExactSessionIDWithSessionSize`, `coding/cli/startup_session_exact_id_test.go::TestResolveSessionArgumentRows`
+- **Release note:** `--session <id>` and `--fork <id>` with an exact session ID now read only the session headers of the project's session directory, as Pi does, and list sessions only to match an ID prefix or to search other projects. Resolving an exact ID no longer decodes every session first: with 20 sessions of 1000 messages it allocated 21.7 MB, growing with the sessions, and it now allocates a size-independent amount.
 
 ### BF-9eda512
 

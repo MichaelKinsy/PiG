@@ -24228,6 +24228,29 @@
       "tests": []
     },
     {
+      "id": "BF-9df8c5c",
+      "title": "`--session \u003cid\u003e` and `--fork \u003cid\u003e` with an exact session ID now read only the session headers of the…",
+      "symptom": "`--session \u003cid\u003e` and `--fork \u003cid\u003e` with an exact session ID now read only the session headers of the project's session directory, as Pi does, and list sessions only to match an ID prefix or to search other projects.",
+      "rootCause": "resolveSessionArgument listed and fully decoded every session before matching an exact ID. It now tries the header-only FindByID first, as Pi's main.ts resolveSessionPath does, and lists sessions only for prefix matches and the cross-project search.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`--session \u003cid\u003e` and `--fork \u003cid\u003e` with an exact session ID now read only the session headers of the project's session directory, as Pi does, and list sessions only to match an ID prefix or to search other projects. Resolving an exact ID no longer decodes every session first: with 20 sessions of 1000 messages it allocated 21.7 MB, growing with the sessions, and it now allocates a size-independent amount.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9df8c5c8f5",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "coding/cli/startup_session_exact_id_norace_test.go::TestScalingResolveExactSessionIDWithSessionSize",
+        "coding/cli/startup_session_exact_id_test.go::TestResolveSessionArgumentRows"
+      ]
+    },
+    {
       "id": "BF-9eda512",
       "title": "fix(durable/harness): a run's own context reads resolve no settings; the retention is read only for an idle…",
       "symptom": "fix(durable/harness): a run's own context reads resolve no settings; the retention is read only for an idle conversation (Pi scheduler.ts runtime.context)",
