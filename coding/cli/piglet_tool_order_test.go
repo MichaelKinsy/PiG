@@ -11,7 +11,7 @@ import (
 // declares agent.state.tools, which _applyToolLoadout builds by walking setActiveTools' names in argument order
 // (agent-session.ts:1561-1565, _applyToolLoadout), and starts with the default tools plus the extension's tools. The Piglet scope only
 // narrows that selection (#169), so it keeps the set and the order: an extension's setActiveTools(["read","grep","bash"])
-// reaches each provider API as [read, grep, bash] in every mode, not in tool-registry order, and without a selection
+// reaches each provider API as [read, bash, grep] in every mode (D217, Pi b9e3eef6 #11495: tools that stay active keep their order, here the default read, bash, and newly active grep is appended), not in tool-registry order, and without a selection
 // the default tools stay the default tools, not every registered built-in.
 func TestPigletKeepsTheSessionsToolSelectionInEveryMode(t *testing.T) {
 	if testing.Short() {
@@ -32,7 +32,7 @@ func TestPigletKeepsTheSessionsToolSelectionInEveryMode(t *testing.T) {
 						name, extension string
 						want            []string
 					}{
-						{"setActiveTools", `  pi.on("session_start", () => { pi.setActiveTools(["read", "grep", "bash"]); });` + "\n", []string{"read", "grep", "bash"}},
+						{"setActiveTools", `  pi.on("session_start", () => { pi.setActiveTools(["read", "grep", "bash"]); });` + "\n", []string{"read", "bash", "grep"}},
 						{"default", "", []string{"read", "bash", "edit", "write", "scoped_tool"}},
 					} {
 						t.Run(selection.name, func(t *testing.T) {
