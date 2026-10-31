@@ -12,14 +12,13 @@ import (
 
 // Pi 0.87.1 core/system-prompt.ts:147-160 supplies these sentences and destinations. Only D2/D22 identity spellings differ.
 const identityDocs = `<docs>
-Pi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):
+Pi documentation (read only when the user asks about the harness itself, its SDK, extensions, themes, skills, or TUI):
 - Main documentation: /oracle/package/README.md
 - Additional docs: /oracle/package/docs
 - Examples: /oracle/package/examples (extensions, custom tools, SDK)
 - When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory
-- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md)
-- When working on pi topics, read the docs and examples, and follow .md cross-references before implementing
-- Always read pi .md files completely and follow links to related docs (e.g., tui.md for TUI API details)
+- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), packages (docs/packages.md), environment variables (docs/environment-variables.md)
+- Before implementing harness changes, read the relevant docs and examples in full, following related cross-references.
 </docs>`
 
 func statsIdentityRecords(t *testing.T) (Result, Result) {
@@ -40,7 +39,7 @@ func statsIdentityRecords(t *testing.T) (Result, Result) {
 		}
 		return output.String()
 	}
-	pigDocs := strings.NewReplacer("Pi documentation", "PiG documentation", "about pi itself", "about pig itself", "reading pi docs", "reading pig docs", "pi packages (", "pig packages (", "on pi topics", "on pig topics", "read pi .md", "read pig .md", "/oracle/package/README.md", "/host/docs/README.md", "/oracle/package/docs", "/host/docs", "/oracle/package/examples", "https://github.com/MichaelKinsy/PiG/tree/main/examples").Replace(identityDocs)
+	pigDocs := strings.NewReplacer("Pi documentation", "PiG documentation", "reading pi docs", "reading pig docs", "/oracle/package/README.md", "/host/docs/README.md", "/oracle/package/docs", "/host/docs", "/oracle/package/examples", "https://github.com/MichaelKinsy/PiG/tree/main/examples").Replace(identityDocs)
 	const pigID = "00000000-0000-7000-8000-000000000001"
 	const piID = "00000000-0000-7000-8000-000000000002"
 	pig := Result{Output: record(pigDocs, "You are operating inside pig, a coding agent harness.", "/host/cwd", "/host/temp/sessions/2026-09-27T07-56-30-167Z_"+pigID+".jsonl", pigID), IdentityRoots: resultIdentityRoots("/host/cwd", "/host/temp", []string{"PIG_HOME=/host"})}
@@ -110,13 +109,13 @@ func TestSessionStatsIdentityAliasesPreserveSystemSections(t *testing.T) {
 		t.Fatalf("approved identity differences remain: %v", err)
 	}
 	for _, tc := range []struct{ name, old, new string }{
-		{"instruction", "read the docs and examples", "ignore the docs and examples"},
+		{"instruction", "read the relevant docs and examples", "ignore the relevant docs and examples"},
 		{"whitespace", "skills, or TUI", "skills,  or TUI"},
 		{"documentation filename", "docs/tui.md", "docs/other.md"},
 		{"README filename", "/host/docs/README.md", "/host/docs/OTHER.md"},
 		{"examples destination suffix", "/tree/main/examples (", "/tree/main/examples/wrong ("},
 		{"added sentence", `\u003c/docs\u003e`, `Do not follow links.\u003c/docs\u003e`},
-		{"missing instruction", "- Always read pig .md files completely", ""},
+		{"missing instruction", "- Before implementing harness changes", ""},
 		{"unknown identity", "inside pig,", "inside another, "},
 		{"unrelated product mention", "Keep this instruction.", "Keep pig identity literal."},
 		{"context instruction", "Keep this instruction.", "Lose this instruction."},

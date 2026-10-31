@@ -21,10 +21,8 @@ func TestToolSystemPromptContributionsPort(t *testing.T) {
 		{"bash", "Execute bash commands (ls, grep, find, etc.)", []string{"You can inspect PI_* environment variables for current model and session details."}},
 		{"powershell", "Execute PowerShell commands", []string{"You can inspect PI_* environment variables for current model and session details."}},
 		{"edit", "Make precise file edits with exact text replacement, including multiple disjoint edits in one call", []string{
-			"Use edit for precise changes (edits[].oldText must match exactly)",
-			"When changing multiple separate locations in one file, use one edit call with multiple entries in edits[] instead of multiple edit calls",
-			"Each edits[].oldText is matched against the original file, not after earlier edits are applied. Do not emit overlapping or nested edits. Merge nearby changes into one edit.",
-			"Keep edits[].oldText as small as possible while still being unique in the file. Do not pad with large unchanged regions.",
+			"Use edit for targeted changes. Batch changes to one file in a single call.",
+			"Each edits[].oldText must exactly and uniquely match the original file. Keep matches short and non-overlapping; merge nearby changes without including large unchanged regions.",
 		}},
 		{"write", "Create or overwrite files", []string{"Use write only for new files or complete rewrites."}},
 		{"grep", "Search file contents for patterns (respects .gitignore)", nil},

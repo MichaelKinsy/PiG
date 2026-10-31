@@ -25,7 +25,7 @@ func TestBuildDefaultPromptMatchesUpstreamLayout(t *testing.T) {
 	want := preamble + "\n\n<tools>\n" +
 		"- read: Read file contents\n- bash: Execute bash commands (ls, grep, find, etc.)\n" +
 		"- edit: Make precise file edits with exact text replacement, including multiple disjoint edits in one call\n- write: Create or overwrite files\n\n" +
-		"In addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>\n\n<rules>\n" +
+		"Additional tools may be available.\n</tools>\n\n<rules>\n" +
 		"- Use bash for file operations like ls, rg, find\n- Use read to examine files instead of cat or sed.\n- Use write only for new files or complete rewrites.\n" +
 		"- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>\n\n<docs>\n" + docsSectionAt(docs, "", "") + "\n</docs>\n\n<cwd>\n/work/app\n</cwd>"
 	if got != want {

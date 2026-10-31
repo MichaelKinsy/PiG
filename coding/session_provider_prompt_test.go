@@ -101,7 +101,7 @@ func TestRegisteredToolPromptContributions(t *testing.T) {
 						sections[s.Name] = *s.Value
 					}
 				}
-				wantTools = "<tools>\n" + wantTools + "\n\nIn addition to the tools above, you may have access to other custom tools depending on the project.\n</tools>"
+				wantTools = "<tools>\n" + wantTools + "\n\nAdditional tools may be available.\n</tools>"
 				wantRules = "<rules>\n" + wantRules + "- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>"
 				if sections["tools"] != wantTools || sections["rules"] != wantRules {
 					t.Fatalf("tools:\n%s\nrules:\n%s\nwant:\n%s\n%s", sections["tools"], sections["rules"], wantTools, wantRules)
