@@ -98,3 +98,18 @@ func TestContainsLiteralTmpPath_DetectsBypass(t *testing.T) {
 		})
 	}
 }
+
+func TestTokenContext_ExpandsRepoPlaceholder(t *testing.T) {
+	tc := newTokenContext(t, "test")
+	got := tc.expand("--import={{REPO}}/go.mod")
+	path := strings.TrimPrefix(got, "--import=")
+	if !filepath.IsAbs(path) || strings.Contains(got, "{{REPO}}") {
+		t.Fatalf("expand: got %q, want an absolute path", got)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("{{REPO}} is not the repository root: %v", err)
+	}
+	if tc.expand("plain") != "plain" {
+		t.Error("a string without the token must be unchanged")
+	}
+}

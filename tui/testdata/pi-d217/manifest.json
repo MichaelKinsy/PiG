@@ -1,0 +1,5 @@
+[
+  { "suffix": "/@earendil-works/pi-tui/dist/utils.js", "pinnedSha256": "42e0d12fe4f0fbd04fd997a044a305ac15d30c739b1a351c45c28aedb9cedd5a", "file": "utils.js" },
+  { "suffix": "/pi-dist/pi-tui/utils.js", "pinnedSha256": "62276fb1e679442e6334e869476637e55e575d5bc15bab3ef8ab10b334067cb6", "file": "utils.vendored.js" },
+  { "suffix": "/pi-dist/pi-coding-agent/utils/image-resize-core.js", "pinnedSha256": "6023f261c2d504cc0854e8f12d5ce813bd7edf944a1121fe953783f9673fb4ef", "file": "image-resize-core.js" }
+]

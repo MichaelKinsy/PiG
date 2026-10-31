@@ -10,7 +10,6 @@ import (
 	"image/png"
 	"math/rand/v2"
 	"reflect"
-	"strings"
 	"testing"
 
 	"golang.org/x/image/bmp"
@@ -38,7 +37,7 @@ type processImageOutcome struct {
 // TestProcessImageMatchesPi runs image-process.ts processImage and PiG's ProcessImage over 400 seeded inputs: PNG, JPEG, GIF, BMP, TIFF and WebP bytes (some larger than the resize
 // limits), garbage and empty bytes; declared types with parameters, case and spaces ("IMAGE/JPEG; q=1", " image/jpg "), unsupported types (image/bmp, image/tiff, image/x-icon, application/octet-stream,
 // the empty string) and types that do not match the bytes; automatic resizing on and off with small or default limits. Whether an image is returned, its mime type, the
-// conversion and dimension hints (in order) and the omission message must match. Not compared: the returned bytes (Photon's encoders differ from Go's).
+// conversion and dimension hints (in order) and the omission message must match. Not compared: the returned bytes (Photon's encoders differ from Go's) and, for a resized image whose PNG and JPEG candidates are within a factor of 1.5 of each other, which of the two is smaller (Pi picks the smaller, e7a0df27).
 func TestProcessImageMatchesPi(t *testing.T) {
 	rng := rand.New(rand.NewPCG(20261126, 9))
 	pick := func(xs ...string) string { return xs[rng.IntN(len(xs))] }
@@ -107,7 +106,7 @@ for (const c of input) {
 }
 emit(out);`, cases, &want)
 
-	failures, carried := 0, 0
+	failures, ties := 0, 0
 	for i, c := range cases {
 		raw, _ := base64.StdEncoding.DecodeString(c.Data)
 		data, mime, hints, err := ProcessImage(raw, c.MimeType, c.AutoResize, &ai.ModelImageResizeOptions{MaxWidth: c.MaxWidth, MaxHeight: c.MaxHeight})
@@ -115,15 +114,13 @@ emit(out);`, cases, &want)
 		if err != nil {
 			got.Message = err.Error()
 		}
-		// D217, Pi e7a0df27: PiG answers the smaller of PNG and JPEG where the pinned Pi answers the PNG that fits. The conversion hint
-		// names the format, so it is compared with the format masked.
-		if got.OK && want[i].OK && got.MimeType == "image/jpeg" && want[i].MimeType == "image/png" {
-			if config, _, configErr := image.DecodeConfig(bytes.NewReader(data)); configErr == nil && carriedJPEGOverPNG(t, raw, config.Width, config.Height, 0, 0) {
-				masked := strings.NewReplacer("image/jpeg", "image/*", "image/png", "image/*")
-				if masked.Replace(got.Hints) == masked.Replace(want[i].Hints) {
-					want[i].MimeType, want[i].Hints = got.MimeType, got.Hints
-					carried++
-				}
+		// Pi picks the smaller of the PNG and the JPEG candidate (e7a0df27): when the candidates are close, Photon's encoders and Go's
+		// disagree on which is smaller, so the format (and the hint that names it) is not compared for such an image.
+		if err == nil && want[i].OK && c.AutoResize {
+			if width, height := outputSize(t, data); encoderTie(t, raw, width, height, JPEGQuality, got.MimeType, want[i].MimeType) {
+				ties++
+				got.MimeType, got.Hints = want[i].MimeType, hintsWithoutFormat(got.Hints)
+				want[i].Hints = hintsWithoutFormat(want[i].Hints)
 			}
 		}
 		if !reflect.DeepEqual(got, want[i]) {
@@ -133,5 +130,5 @@ emit(out);`, cases, &want)
 			}
 		}
 	}
-	t.Logf("%d cases, %d failures, %d answered JPEG over the pinned Pi's PNG (D217)", len(cases), failures, carried)
+	t.Logf("%d cases, %d failures, %d PNG/JPEG encoder ties", len(cases), failures, ties)
 }

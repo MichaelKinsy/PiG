@@ -19,7 +19,10 @@ pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
 pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
 pi_extensions = ["../../testdata/test-faux-provider.ts"]
 pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
-pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+# D217: the pin's bundled bin/cli inlines pi-tui, which the hook cannot swap; the unbundled entry loads utils.js as a module.
+override_base_args = true
+pi_bin = "/usr/bin/env"
+pi_args = ["node", "--import", "{{REPO}}/tui/testdata/pi-d217/register.mjs", "{{REPO}}/extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/dist/cli.js", "--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
 
 [tmux]
 width = 100

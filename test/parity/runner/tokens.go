@@ -46,6 +46,9 @@ import (
 //                     used in scenarios that would otherwise launch a
 //                     real browser via OAuth login. PATH-shadow these
 //                     to keep tests hermetic.
+//   {{REPO}}      : absolute path of the repository root, for a scenario that
+//                     must name a file of the checkout from a side that does not
+//                     run in it (for example NODE_OPTIONS=--import={{REPO}}/...).
 //   {{PATH}}       : the parent process's PATH at test launch. Use
 //                     this when the scenario needs to prepend FAKE_BIN
 //                     without losing access to node / git / etc., e.g.
@@ -105,6 +108,9 @@ func (tc *tokenContext) expand(s string) string {
 	if strings.Contains(s, "{{FAKE_BIN}}") {
 		s = strings.ReplaceAll(s, "{{FAKE_BIN}}", fakeBinDir())
 	}
+	if strings.Contains(s, "{{REPO}}") {
+		s = strings.ReplaceAll(s, "{{REPO}}", repoRoot())
+	}
 	if strings.Contains(s, "{{PATH}}") {
 		s = strings.ReplaceAll(s, "{{PATH}}", os.Getenv("PATH"))
 	}
@@ -152,6 +158,15 @@ func fakeBinDir() string {
 		return "test/parity/testdata/fake-bin"
 	}
 	return filepath.Join(filepath.Dir(dir), "testdata", "fake-bin")
+}
+
+// repoRoot is the absolute path of the repository root: the parity runner package is test/parity/runner.
+func repoRoot() string {
+	dir, err := testenv.PackageDirPath()
+	if err != nil {
+		return "."
+	}
+	return filepath.ToSlash(filepath.Dir(filepath.Dir(filepath.Dir(dir))))
 }
 
 // shellQuote returns s safely quoted for inclusion in an inline shell
