@@ -228,6 +228,45 @@ func TestNativeALateValueIsClosedOnce(t *testing.T) {
 	}
 }
 
+// Own test (Pi has none: its `#ownSteps` checks `#abandoned` and `native.open` starts in one section, so no close comes between).
+// An attempt closes its natives once abandoned; an open that starts on its owned task after that (the check was made in the
+// section before) opens nothing, so the opener is never called and no value is left open and never closed.
+func TestNativeAnOpenThatStartsAfterItsCloseOpensNothing(t *testing.T) {
+	for _, kind := range []NativeCloseKind{NativeCloseEnd, NativeCloseClose} {
+		t.Run(string(kind), func(t *testing.T) {
+			h := newNativeHarness(t)
+			var opens atomic.Int32
+			var closes nexttest.Collector[string]
+			native := newNativeHandle(func(context.Context) (string, error) {
+				opens.Add(1)
+				return "value", nil
+			}, func(value string, reason NativeCloseReason, _ context.Context) error {
+				closes.Append(fmt.Sprint(value, " ", reason.Kind))
+				return nil
+			}, time.Second, h.owner(1))
+			if failure := native.close(NativeCloseReason{Kind: kind}); failure != nil {
+				t.Fatalf("close before the open: %+v", failure)
+			}
+			err := native.open(chordctx.Background())
+			if got, want := nativeReadText[string](native), "released/closed: app.res(1) native #1: closed"; got != want {
+				t.Fatalf("value after the open = %q, want %q", got, want)
+			}
+			if chordErr, ok := data.IsChordErrorCode(err, data.CodeReleased); !ok || chordErr.Reason != data.ReasonClosed {
+				t.Fatalf("open = %v, want released/closed", err)
+			}
+			if got := opens.Load(); got != 0 {
+				t.Fatalf("opener calls = %d, want 0", got)
+			}
+			if got := closes.Items(); len(got) != 0 {
+				t.Fatalf("closes = %v, want none", got)
+			}
+			if got := h.reports(); len(got) != 0 {
+				t.Fatalf("reports = %v, want none", got)
+			}
+		})
+	}
+}
+
 // Own test of the failure of a late value's close (`if (failure !== undefined) this.#owner.report(failure)`): it is reported,
 // not returned.
 func TestNativeAFailingCloseOfALateValueIsReported(t *testing.T) {

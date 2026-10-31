@@ -132,9 +132,17 @@ func (n *nativeHandle[T]) Value() (T, error) {
 }
 
 // open opens the value; one that arrives after its attempt was abandoned is closed at once, a failure reported. It
-// returns the opener's error.
+// returns the opener's error. A native closed before its open began opens nothing and returns `released`: Pi checks that its
+// attempt was abandoned and starts the open in one section, so no close comes between; here the open starts on an owned task
+// (awaitTask), after the section that checked, and the attempt may have closed its natives meanwhile.
 func (n *nativeHandle[T]) open(ctx context.Context) error {
-	n.set(nativeState[T]{kind: nativeOpening})
+	n.mu.Lock()
+	if n.state.kind == nativeClosed {
+		n.mu.Unlock()
+		return data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonClosed, Message: n.name() + ": closed"}, nil)
+	}
+	n.state = nativeState[T]{kind: nativeOpening}
+	n.mu.Unlock()
 	var value T
 	if err := nativeTry(func() (err error) {
 		value, err = n.opener(ctx)
@@ -160,12 +168,6 @@ func (n *nativeHandle[T]) close(reason NativeCloseReason) *closeFailed {
 		return n.closeValue(state.value, reason)
 	}
 	return nil
-}
-
-func (n *nativeHandle[T]) set(state nativeState[T]) {
-	n.mu.Lock()
-	n.state = state
-	n.mu.Unlock()
 }
 
 // opened keeps the value an open resolved with, or closes it at once when the native was closed meanwhile.
