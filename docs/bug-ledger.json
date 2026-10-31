@@ -36724,11 +36724,7 @@
           "date": "2026-10-21"
         }
       ],
-      "tests": [
-        "durable/core/driver/schema_backup_core_test.go::TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading",
-        "durable/storage/sqlite/node/schema_backup_test.go::TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading",
-        "durable/storage/sqlite/node/schema_backup_test.go::TestOpenNodeSqliteStorageDoesNotCopyANewOrCurrentStore"
-      ]
+      "tests": []
     },
     {
       "id": "BF-e55cdc2",
@@ -42151,10 +42147,6 @@
     {
       "id": "D187",
       "title": "A native SDK holds a batch's first host calls and responses in call and answer order, where Pi's single…"
-    },
-    {
-      "id": "D188",
-      "title": "Opening a store at an older Durable schema version keeps a copy of it first, where Pi upgrades it in place"
     },
     {
       "id": "D190",
