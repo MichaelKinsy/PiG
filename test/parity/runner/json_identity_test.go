@@ -42,8 +42,8 @@ func statsIdentityRecords(t *testing.T) (Result, Result) {
 	pigDocs := strings.NewReplacer("Pi documentation", "PiG documentation", "reading pi docs", "reading pig docs", "/oracle/package/README.md", "/host/docs/README.md", "/oracle/package/docs", "/host/docs", "/oracle/package/examples", "https://github.com/MichaelKinsy/PiG/tree/main/examples").Replace(identityDocs)
 	const pigID = "00000000-0000-7000-8000-000000000001"
 	const piID = "00000000-0000-7000-8000-000000000002"
-	pig := Result{Output: record(pigDocs, "You are operating inside pig, a coding agent harness.", "/host/cwd", "/host/temp/sessions/2026-09-27T07-56-30-167Z_"+pigID+".jsonl", pigID), IdentityRoots: resultIdentityRoots("/host/cwd", "/host/temp", []string{"PIG_HOME=/host"})}
-	pi := Result{Output: record(identityDocs, "You are operating inside pi, a coding agent harness.", "/oracle/cwd", "/oracle/temp/sessions/2026-09-27T07-56-30-375Z_"+piID+".jsonl", piID), IdentityRoots: resultIdentityRoots("/oracle/cwd", "/oracle/temp", []string{"PI_PACKAGE_DIR=/oracle/package"})}
+	pig := Result{Output: record(pigDocs, "You are running inside pig, a coding agent harness.", "/host/cwd", "/host/temp/sessions/2026-09-27T07-56-30-167Z_"+pigID+".jsonl", pigID), IdentityRoots: resultIdentityRoots("/host/cwd", "/host/temp", []string{"PIG_HOME=/host"})}
+	pi := Result{Output: record(identityDocs, "You are running inside pi, a coding agent harness.", "/oracle/cwd", "/oracle/temp/sessions/2026-09-27T07-56-30-375Z_"+piID+".jsonl", piID), IdentityRoots: resultIdentityRoots("/oracle/cwd", "/oracle/temp", []string{"PI_PACKAGE_DIR=/oracle/package"})}
 	return pig, pi
 }
 
