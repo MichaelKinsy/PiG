@@ -598,6 +598,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-73a6c8c](#bf-73a6c8c) | OpenAI-compatible chat completions requests keep the tool-call ids of the same model's earlier calls as they… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-73ef1ea](#bf-73ef1ea) | Reduced context-limit request failures by estimating input at 3.5 characters per token instead of 4 when… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7472171](#bf-7472171) | An extension dialog (`select`, `confirm`, `input`, `editor`) that opens while another is shown now replaces… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-7475a64](#bf-7475a64) | A Go extension that is sent an `events.dispatch` request while it loads, before the host's `ready`, no longer… | PiG's own defect | All platforms | Unreleased |
 | [BF-7489735](#bf-7489735) | `pig -e <directory>` now loads a Node extension whose entry file is `index.mjs` and that has no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-74bc69b](#bf-74bc69b) | fix(rpc): every Session replacement aborts the compactions of its batch, and an abort before the request… | PiG's own defect | All platforms | Unreleased |
 | [BF-74e801f](#bf-74e801f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -1284,6 +1285,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f98d129](#bf-f98d129) | Clearing the queued messages (RPC `clear_queue`, the SDK, the interactive restore-to-editor key) no longer… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f98d129-2](#bf-f98d129-2) | Omitting a failed retry attempt no longer makes the context usage jump to an estimate of the whole history | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f98d129-3](#bf-f98d129-3) | A request carries at most the model's `inputLimits.images.maxPerRequest` images | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
+| [BF-fa0eadb](#bf-fa0eadb) | A Lisp extension no longer ignores an `events.dispatch` request that the host sends after registration and… | PiG's own defect | All platforms | Unreleased |
 | [BF-fa3da97](#bf-fa3da97) | A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-fa3da97-10](#bf-fa3da97-10) | A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-fa3da97-11](#bf-fa3da97-11) | Durable task-graph and view watches no longer send or rebuild the whole graph or view on each commit: a… | PiG's own defect | All platforms | 0.5.2 |
@@ -9363,6 +9365,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `74721716a1` (2026-10-13), `ef0d4cb621` (2026-10-13)
 - **Tests:** `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogsDoNotWaitForEachOther`, `test/parity/scenarios/extensions-runtime/83-extension-dialog-displacement.toml`
 - **Release note:** An extension dialog (`select`, `confirm`, `input`, `editor`) that opens while another is shown now replaces it, as in Pi. This includes dialogs from subprocess extensions. The replaced dialog stays pending until its signal aborts it. Previously the second dialog failed with "another extension dialog is already open" or waited for the first to close.
+
+### BF-7475a64
+
+**A Go extension that is sent an `events.dispatch` request while it loads, before the host's `ready`, no longer…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go extension that is sent an `events.dispatch` request while it loads, before the host's `ready`, no longer answers it under another frame's ID with another frame's payload.
+- **Root cause:** runWithConn's wait for ready serves events.dispatch requests that arrive while the extension loads. The handler goroutine captured the loop's env variable, which the next receive overwrites, so it could read the ID and request of the following frame (the next dispatch, or ready itself) and answer under the wrong ID with the wrong payload; go test -race reports the read against the receive's write.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7475a64e35` (2026-10-30)
+- **Tests:** `extensions/sdk/preready_dispatch_race_test.go::TestPreReadyDispatchHandlersKeepTheirOwnRequest`
+- **Release note:** A Go extension that is sent an `events.dispatch` request while it loads, before the host's `ready`, no longer answers it under another frame's ID with another frame's payload. The listener's goroutine shared the receive loop's envelope variable, which the next received frame (a second dispatch, or `ready`) overwrote while the listener ran; `go test -race` flagged the read and the write. Each listener now keeps the request that started it.
 
 ### BF-7489735
 
@@ -18904,6 +18920,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5731351f4e` (2026-10-09), `f98d129beb` (2026-10-09)
 - **Tests:** `agent/image_limit_test.go::TestLimitImagesPerRequestKeepsTheNewestImages`, `agent/queue_clear_user_test.go::TestClearUserMessagesKeepsCustomMessagesInOrder`, `coding/session_pi_bugs_test.go::TestAbortInOverThresholdSessionDoesNotCompactBeforeSettling`, `coding/session_pi_bugs_test.go::TestClearQueueKeepsExtensionCustomMessages`, `coding/session_pi_bugs_test.go::TestContextUsageSurvivesAnOmittedFailedRetryAttempt`, `coding/session_pi_bugs_test.go::TestPromptSendsAtMostTheModelsImagesPerRequest`, `internal/codingagent/compaction/compaction_oracle_test.go::TestCompactionMatchesPi`, `internal/codingagent/compaction/context_edit_retry_anchor_test.go::TestEstimateDropsUsageAnchorWhenTheAnchorOrEarlierInputIsEdited` and 2 more in docs/bug-ledger.json
 - **Release note:** A request carries at most the model's `inputLimits.images.maxPerRequest` images. Older images become a text placeholder in the request and stay in the session (D137, Pi #10162).
+
+### BF-fa0eadb
+
+**A Lisp extension no longer ignores an `events.dispatch` request that the host sends after registration and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Lisp extension no longer ignores an `events.dispatch` request that the host sends after registration and before `ready`: the request was read and dropped, so the host waited for an answer that never came.
+- **Root cause:** serve's wait for ready read and discarded every frame but ready and ping, so an events.dispatch request the host sent between the register frame and ready was never answered and the host waited on it. The Go, Rust, Python and Node SDKs serve such a request: it is a listener of the extension, and a host can dispatch to it while the extension loads.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `fa0eadbe18` (2026-10-30)
+- **Tests:** None recorded.
+- **Release note:** A Lisp extension no longer ignores an `events.dispatch` request that the host sends after registration and before `ready`: the request was read and dropped, so the host waited for an answer that never came. The Lisp SDK now answers it once, under its own request ID, with its own payload, as the Go, Rust, Python and Node SDKs do.
 
 ### BF-fa3da97
 

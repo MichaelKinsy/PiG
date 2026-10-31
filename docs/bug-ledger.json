@@ -17230,6 +17230,28 @@
       ]
     },
     {
+      "id": "BF-7475a64",
+      "title": "A Go extension that is sent an `events.dispatch` request while it loads, before the host's `ready`, no longer…",
+      "symptom": "A Go extension that is sent an `events.dispatch` request while it loads, before the host's `ready`, no longer answers it under another frame's ID with another frame's payload.",
+      "rootCause": "runWithConn's wait for ready serves events.dispatch requests that arrive while the extension loads. The handler goroutine captured the loop's env variable, which the next receive overwrites, so it could read the ID and request of the following frame (the next dispatch, or ready itself) and answer under the wrong ID with the wrong payload; go test -race reports the read against the receive's write.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go extension that is sent an `events.dispatch` request while it loads, before the host's `ready`, no longer answers it under another frame's ID with another frame's payload. The listener's goroutine shared the receive loop's envelope variable, which the next received frame (a second dispatch, or `ready`) overwrote while the listener ran; `go test -race` flagged the read and the write. Each listener now keeps the request that started it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7475a64e35",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/preready_dispatch_race_test.go::TestPreReadyDispatchHandlersKeepTheirOwnRequest"
+      ]
+    },
+    {
       "id": "BF-7489735",
       "title": "`pig -e \u003cdirectory\u003e` now loads a Node extension whose entry file is `index.mjs` and that has no…",
       "symptom": "`pig -e \u003cdirectory\u003e` now loads a Node extension whose entry file is `index.mjs` and that has no `package.json`, `index.ts` or `index.js`, as Pi does.",
@@ -38918,6 +38940,26 @@
         "internal/codingagent/compaction/context_edit_retry_anchor_test.go::TestEstimateKeepsUsageAnchorWhenARetryOmissionEditsOnlyTheTrailingSuffix",
         "internal/codingagent/compaction/context_edit_retry_anchor_test.go::TestEstimateKeepsUsageAnchorWhenTrailingInputIsReplaced"
       ]
+    },
+    {
+      "id": "BF-fa0eadb",
+      "title": "A Lisp extension no longer ignores an `events.dispatch` request that the host sends after registration and…",
+      "symptom": "A Lisp extension no longer ignores an `events.dispatch` request that the host sends after registration and before `ready`: the request was read and dropped, so the host waited for an answer that never came.",
+      "rootCause": "serve's wait for ready read and discarded every frame but ready and ping, so an events.dispatch request the host sent between the register frame and ready was never answered and the host waited on it. The Go, Rust, Python and Node SDKs serve such a request: it is a listener of the extension, and a host can dispatch to it while the extension loads.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Lisp extension no longer ignores an `events.dispatch` request that the host sends after registration and before `ready`: the request was read and dropped, so the host waited for an answer that never came. The Lisp SDK now answers it once, under its own request ID, with its own payload, as the Go, Rust, Python and Node SDKs do.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fa0eadbe18",
+          "date": "2026-10-30"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-fa3da97",
