@@ -51,27 +51,27 @@ func (storage loggedStorage) ScanDocuments(context.Context, durable.DocumentQuer
 }
 
 func TestKeyFormats(t *testing.T) {
-	cases := map[string]string{
-		session.TaskKey(7):                         "task:7",
-		session.ConversationKey(2):                 "conv:2",
-		session.EntryKey(9):                        "entry:9",
-		session.AppendKey(2):                       "entry-append:2",
-		session.SubmissionKey(4):                   "sub:4",
-		session.RequestKey(2, "r-1"):               "req:2:r-1",
-		session.DocumentKey(`["k","session"]`):     `doc:["k","session"]`,
-		session.IncarnationKey(5):                  "docid:5",
-		session.ScopeKey(durable.DocumentRecordScope{Kind: durable.ScopeSession}):                          "docscope:session",
-		session.ScopeKey(durable.DocumentRecordScope{Kind: durable.ScopeConversation, ConversationId: 3}): "docscope:c3",
-		session.ScopeKey(durable.DocumentRecordScope{Kind: durable.ScopeTask, TaskId: 8}):                  "docscope:t8",
-		session.OwnedKey(durable.TaskId(6)):        "owned:6",
-		session.OwnedKey("c2"):                     "owned:c2",
-		session.RootsKey:                           "roots",
-		session.IntentKey:                          "intent",
-		session.AllKeys:                            "*",
+	cases := [][2]string{
+		{session.TaskKey(7), "task:7"},
+		{session.ConversationKey(2), "conv:2"},
+		{session.EntryKey(9), "entry:9"},
+		{session.AppendKey(2), "entry-append:2"},
+		{session.SubmissionKey(4), "sub:4"},
+		{session.RequestKey(2, "r-1"), "req:2:r-1"},
+		{session.DocumentKey(`["k","session"]`), `doc:["k","session"]`},
+		{session.IncarnationKey(5), "docid:5"},
+		{session.ScopeKey(durable.DocumentRecordScope{Kind: durable.ScopeSession}), "docscope:session"},
+		{session.ScopeKey(durable.DocumentRecordScope{Kind: durable.ScopeConversation, ConversationId: 3}), "docscope:c3"},
+		{session.ScopeKey(durable.DocumentRecordScope{Kind: durable.ScopeTask, TaskId: 8}), "docscope:t8"},
+		{session.OwnedKey(durable.TaskId(6)), "owned:6"},
+		{session.OwnedKey("c2"), "owned:c2"},
+		{session.RootsKey, "roots"},
+		{session.IntentKey, "intent"},
+		{session.AllKeys, "*"},
 	}
-	for got, want := range cases {
-		if got != want {
-			t.Errorf("key = %q, want %q", got, want)
+	for _, pair := range cases {
+		if pair[0] != pair[1] {
+			t.Errorf("key = %q, want %q", pair[0], pair[1])
 		}
 	}
 }
