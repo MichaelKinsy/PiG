@@ -126,9 +126,13 @@ func (s *Session) Clone() (*Session, error) {
 	}
 	s.toolRegistryMu.RLock()
 	defer s.toolRegistryMu.RUnlock()
-	// The clone is built through NewSession, so it has the same extension and
-	// caller hooks, thinking budgets, model runtime and event buffer as any
-	// other Session; its agent state is the cloned path-to-leaf.
+	// The clone serves the same caller as the source; a discarding source —
+	// by policy or by DiscardEvents — reads no Events, so the clone keeps
+	// dropping or that caller deadlocks.
+	var cloneEventPolicy EventPolicy
+	if s.discardEvents.Load() {
+		cloneEventPolicy = EventDrop
+	}
 	opts := SessionOptions{
 		ScopedModels:       s.ScopedModels(),
 		Model:              s.Model(),
@@ -145,6 +149,7 @@ func (s *Session) Clone() (*Session, error) {
 		SessionDir:         s.sessionDir,
 		NoSession:          s.noSession,
 		EventBufferSize:    s.callerHooks.eventBufferSize,
+		EventPolicy:        cloneEventPolicy,
 		Transport:          s.callerHooks.transport,
 		existing:           cloned,
 		ResourceLoader:     s.ResourceLoader(),

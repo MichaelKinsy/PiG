@@ -129,6 +129,12 @@ type SessionStartOptions struct {
 	// NoSession disables session persistence (ephemeral mode).
 	// Mirrors upstream --no-session (args.ts:92).
 	NoSession bool
+
+	// EventPolicy selects the session's Events() delivery when the consumer
+	// is absent or falls behind. Zero (EventBlock) keeps the default
+	// blocking delivery. Headless callers with no progress display select
+	// EventDrop so a turn that outgrows the event buffer cannot block Send.
+	EventPolicy EventPolicy
 }
 
 // NewRuntime constructs a Runtime.
@@ -324,6 +330,7 @@ func (rt *Runtime) startSessionWithFactory(opts SessionStartOptions, create func
 		SessionDir:             opts.SessionDir,
 		SessionID:              opts.SessionID,
 		NoSession:              opts.NoSession,
+		EventPolicy:            opts.EventPolicy,
 		Transport:              ai.Transport(rt.Services().Settings().Transport),
 		runnerShared:           true,
 		extensionHost:          rt.extensionHost,

@@ -232,6 +232,27 @@ type callerHooks struct {
 	transport       ai.Transport
 }
 
+// EventPolicy selects how the session's Events() stream is delivered when no
+// consumer reads it or it cannot keep up.
+type EventPolicy int
+
+const (
+	// EventBlock is the default: with the event buffer full, the agent loop
+	// blocks until the Events() consumer reads. A turn that emits more events
+	// than the buffer holds (2×64 by default) therefore never returns from
+	// Send() unless something reads Events() — a print-mode turn over long
+	// findings output hit this (TestSendDeadlocksWithoutEventDrainThenUnblocks).
+	EventBlock EventPolicy = iota
+	// EventDrop acknowledges and drops every event instead of queuing it:
+	// nothing is sent on Events() and the agent loop never blocks on the
+	// channel. Callers with no live progress display (headless turns, test
+	// runs) select this. No durable data is lost — the transcript file holds
+	// the complete record when persistence is enabled, and Send's returned
+	// messages do too. Equivalent to calling DiscardEvents before the first
+	// run.
+	EventDrop
+)
+
 // SessionOptions configures NewSession.
 type SessionOptions struct {
 	// SessionManager supplies the actual backing log instead of creating or loading another one.
@@ -379,6 +400,10 @@ type SessionOptions struct {
 	// → 64 (a sensible default that won't block typical UI consumers
 	// while still bounding memory).
 	EventBufferSize int
+
+	// EventPolicy selects Events() delivery when the consumer is absent or
+	// falls behind. Zero (EventBlock) keeps the default blocking delivery.
+	EventPolicy EventPolicy
 
 	// Transport requests a provider-specific streaming transport.
 	Transport ai.Transport
@@ -738,6 +763,9 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 			eventBufferSize: opts.EventBufferSize,
 			transport:       opts.Transport,
 		},
+	}
+	if opts.EventPolicy == EventDrop {
+		sess.discardEvents.Store(true)
 	}
 	sess.resourceLoader.Store(resourceLoader)
 	sess.SetScopedModels(opts.ScopedModels)
@@ -1107,7 +1135,9 @@ func (s *Session) RunAgentPrompt(ctx context.Context, start func(context.Context
 // dedicated goroutine.
 //
 // The channel is closed when the Session is Closed. A caller with no Events
-// consumer calls DiscardEvents instead of draining it.
+// consumer calls DiscardEvents instead of draining it — or constructs the
+// Session with EventPolicy: EventDrop, which applies the same behavior from
+// the first event.
 func (s *Session) Events() <-chan agent.AgentEvent { return s.events }
 
 // DiscardEvents declares that nothing reads Events: Subscribe listeners are the
@@ -1115,6 +1145,8 @@ func (s *Session) Events() <-chan agent.AgentEvent { return s.events }
 // publication never waits for or wakes a consumer, and FlushEvents returns once
 // every preceding event has executed, without a consumer acknowledgement. Call it
 // before the first run; markers already buffered on Events are acknowledged.
+// It is the runtime switch of EventPolicy: EventDrop, which applies it at
+// construction.
 //
 // With or without it, a producer whose event has nothing queued ahead executes
 // that event on its own goroutine, listeners included, as Pi's synchronous _emit
