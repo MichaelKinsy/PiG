@@ -1804,7 +1804,8 @@ func TestHostAcquiringHostCloseQueuedCallsRejectReleasedReferencesGoReleasedThei
 // Mirrors "connect after a drop › throws while the previous parent link is open or still closing, and takes the next once it closed (race 4)".
 func TestHostConnectAfterADropThrowsWhileThePreviousParentLinkIsOpenOrStillClosing(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
-		l := linked(t, func(h FacetHost) error { _, err := serveNotes(h, nil); return err }, linkedOptions{})
+		queue := newHeldQueue()
+		l := linked(t, func(h FacetHost) error { _, err := serveNotes(h, nil); return err }, linkedOptions{Pair: queue.pair})
 		defer closeHosts(t, l.Client, l.Server)
 		notes, err := l.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
 		must(t, err)
@@ -1812,11 +1813,14 @@ func TestHostConnectAfterADropThrowsWhileThePreviousParentLinkIsOpenOrStillClosi
 			end, _ := link.MemoryLinkPair()
 			return l.Client.Connect(end, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background)
 		}
-		// The server's end closes now, the client's a microtask later.
+		// The server's end closes now, the client's a microtask later: the queue holds that microtask while the test connects.
+		queue.hold()
+		defer queue.release()
 		l.Links[0].Close()
 		if err := next(); err == nil || err.Error() != "connect: this host has an open parent link" {
 			t.Fatalf("connect while closing = %v, want connect: this host has an open parent link", err)
 		}
+		queue.release()
 		transported(l.Links[0], l.Links[1])
 		if kind := refStateOf(notes).Kind; kind != RefStateLoading {
 			t.Fatalf("state = %s, want loading", kind)

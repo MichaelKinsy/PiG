@@ -581,6 +581,84 @@ type linkedOptions struct {
 	Telemetry    *telemetry.InMemoryTelemetryContext
 	ReadyTimeout *time.Duration
 	Loop         sectionLoop
+	// Pair makes the link between the hosts; nil is link.MemoryLinkPair.
+	Pair func() (*link.MemoryLink, *link.MemoryLink)
+}
+
+// heldQueue is the microtask queue of a memory link pair (link.MemoryLinkPairOn) that a test can hold: while held, what
+// is posted waits, so a close and the peer's close a microtask later are two steps the test takes between.
+type heldQueue struct {
+	mu      sync.Mutex
+	idle    *sync.Cond
+	held    bool
+	running bool
+	jobs    []func()
+}
+
+func newHeldQueue() *heldQueue {
+	queue := &heldQueue{}
+	queue.idle = sync.NewCond(&queue.mu)
+	return queue
+}
+
+// pair is a memory link pair on the queue.
+func (queue *heldQueue) pair() (*link.MemoryLink, *link.MemoryLink) {
+	return link.MemoryLinkPairOn(queue.post, queue.flush)
+}
+
+func (queue *heldQueue) post(job func()) {
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+	queue.jobs = append(queue.jobs, job)
+	queue.startLocked()
+}
+
+func (queue *heldQueue) startLocked() {
+	if !queue.running && !queue.held && len(queue.jobs) > 0 {
+		queue.running = true
+		go queue.drain()
+	}
+}
+
+func (queue *heldQueue) drain() {
+	for {
+		queue.mu.Lock()
+		if queue.held || len(queue.jobs) == 0 {
+			queue.running = false
+			queue.idle.Broadcast()
+			queue.mu.Unlock()
+			return
+		}
+		job := queue.jobs[0]
+		queue.jobs[0] = nil
+		queue.jobs = queue.jobs[1:]
+		queue.mu.Unlock()
+		job()
+	}
+}
+
+// hold stops the queue before its next job.
+func (queue *heldQueue) hold() {
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+	queue.held = true
+}
+
+// release runs what was posted while held, and what is posted after.
+func (queue *heldQueue) release() {
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+	queue.held = false
+	queue.startLocked()
+}
+
+// flush blocks until the queue ran everything posted; it must not be called while the queue is held.
+func (queue *heldQueue) flush() {
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+	for queue.running || len(queue.jobs) > 0 {
+		queue.idle.Wait()
+	}
 }
 
 // linkedHosts is what `linked` returns: Pi's `{ server, client, errors, links }`.
@@ -615,7 +693,11 @@ func linked(t testing.TB, setup func(host FacetHost) error, options linkedOption
 		Telemetry: telemetryOf(options.Telemetry), ReadyTimeout: options.ReadyTimeout, OnError: result.ClientErrors.push, loop: options.Loop,
 	})
 	must(t, result.Client.Load(nil, ctx))
-	a, b := link.MemoryLinkPair()
+	makePair := options.Pair
+	if makePair == nil {
+		makePair = link.MemoryLinkPair
+	}
+	a, b := makePair()
 	result.Links = [2]*link.MemoryLink{a, b}
 	child := options.Child
 	if child == nil {
