@@ -64,9 +64,44 @@ func TestBuiltinToolCardsMatchPi(t *testing.T) {
 	compareToolCards(t, probes, names)
 }
 
+// Cards for files in a language highlight.js registers only in its full load (README.md is markdown) and in one it never registers (schema.graphql: the mdCodeBlock color for an unsupported language, which the card
+// draws on either side of the load). Interactive mode's init runs that load within moments of a session starting, and the rest of a test process inherits it once any test starts a mode. The load is a one-way latch
+// in Pi and PiG alike, so this test loads PiG's before the oracle runs, as a test ahead of it in the process would: it fails on any ordering where the Pi side drew without the languages the PiG side had.
+func TestBuiltinToolCardsMatchPiAfterTheHighlightLanguageLoad(t *testing.T) {
+	tui.LoadAllHighlightLanguages()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := "# heading\n  indented\n\ttabbed\n\x1b[31mred\x1b[0m\n{ \"k\": [1, 2] }\n```go\npackage main\n```"
+	var probes []toolCardProbe
+	var names []string
+	for _, path := range []string{"README.md", "schema.graphql"} {
+		for _, tool := range []string{"read", "write"} {
+			args := map[string]any{"path": path}
+			result := &toolCardResult{Content: cardText(body)}
+			if tool == "write" {
+				args["content"] = body
+				result = &toolCardResult{Content: cardText("Successfully wrote 80 bytes to " + path)}
+			}
+			for _, theme := range []string{"dark", "light"} {
+				for _, expanded := range []bool{false, true} {
+					probes = append(probes, toolCardProbe{Tool: tool, Args: args, Result: result, Expanded: expanded, Width: 80, Theme: theme, CWD: cwd})
+					names = append(names, fmt.Sprintf("%s %s theme=%s expanded=%v", tool, path, theme, expanded))
+				}
+			}
+		}
+	}
+	compareToolCards(t, probes, names)
+}
+
 // compareToolCards renders each probe with Pi and with Pig and reports the first rows that differ.
 func compareToolCards(t *testing.T, probes []toolCardProbe, names []string) {
 	t.Helper()
+	// Both sides draw with every highlight.js language registered, as a session does once its startup load is done. The load is a one-way latch,
+	// so a test that ran earlier in the process (a mode's init, TestLoadRemainingHighlightLanguages...) may already have tripped it, and a load
+	// still running on a stopped mode's task finishes under this test. Waiting for it here makes the state the same on every run; the oracle loads Pi's.
+	tui.LoadAllHighlightLanguages()
 	input, err := json.Marshal(probes)
 	if err != nil {
 		t.Fatal(err)
