@@ -130,6 +130,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-20aee29](#bf-20aee29) | The crash notice prints the year of a crash time the way Node's toLocaleString does: unpadded, and counted… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-211af49](#bf-211af49) | `/hotkeys` lists extension shortcuts, and the extension shortcut listener tries them, in the order of Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2165463](#bf-2165463) | On Windows, saving credentials to `auth.json`, `models.json` or the MCP OAuth store no longer fails at once… | PiG's own defect | Windows | 0.5.0 |
+| [BF-21c27bf](#bf-21c27bf) | A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog… | PiG's own defect | All platforms | Unreleased |
 | [BF-224dbd9](#bf-224dbd9) | On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a… | PiG's own defect | macOS, Linux | Unreleased |
 | [BF-2280bf8](#bf-2280bf8) | The per-API stream entry points (`ai.AnthropicMessagesAPI()` through `ai.PiMessagesAPI()` and the deprecated… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-228dbea](#bf-228dbea) | fix(durable/core): follow the microtask schedule of Pi | PiG's own defect | All platforms | Unreleased |
@@ -2882,6 +2883,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `21654635e7` (2026-10-13)
 - **Tests:** `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasAcceptCustomCompatibilitySettingsAndRejectMalformedKnownFields`, `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasAcceptSchemaInKeybindingsJSONWithoutTreatingItAsAnAction`, `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasAcceptSchemaInSettingsJSON`, `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasValidateSchemaInModelsJSONAtRuntime`, `internal/pilock/delete_pending_windows_test.go::TestAcquireRetriesLockBeingRemovedAtMkdirThenSurfacesIt`, `internal/pilock/delete_pending_windows_test.go::TestAcquireSurfacesLockBeingRemovedAtStatThatIsStaleOrALink`, `internal/pilock/delete_pending_windows_test.go::TestAuthAcquireRetriesLockBeingRemovedAtStatThatIsStaleOrALink`, `internal/pilock/delete_pending_windows_test.go::TestAuthAcquireWaitsOutLockBeingRemovedAtMkdir` and 4 more in docs/bug-ledger.json
 - **Release note:** On Windows, saving credentials to `auth.json`, `models.json` or the MCP OAuth store no longer fails at once with `EPERM: operation not permitted, mkdir '….lock'` when another process has just released the lock and Windows still holds the directory pending deletion. As in Pi 1.2.0, the lock is retried: the synchronous path within its ten attempts, the cancellable path up to five times. Settings and trust locks still fail on the first `EPERM`, as in Pi.
+
+### BF-21c27bf
+
+**A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog and an extension's Markdown view no longer keep the memos a streamed Markdown holds for its next delta.
+- **Root cause:** A user, summary, custom or skill message is complete when it is built, but its Markdown never called FinishStreaming, so the memos that only speed up the next streamed delta stayed for the life of the message. Each owner now finishes its Markdown at construction.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `21c27bf578` (2026-10-30)
+- **Tests:** None recorded.
+- **Release note:** A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog and an extension's Markdown view no longer keep the memos a streamed Markdown holds for its next delta. They arrive whole and never call `FinishStreaming`, so the wraps, inline renderings and resume point stayed for the life of the message: a 1.2 KB user message retained 17.5 KB, and a transcript of 10,000 of them about 175 MB. Each now finishes its Markdown when it builds it: a user message keeps 9.2 KB (its 6.1 KB of padded, colored rows are the rest) and a boxed message 16 to 18 KB instead of 21 to 23 KB. The rows are unchanged.
 
 ### BF-224dbd9
 

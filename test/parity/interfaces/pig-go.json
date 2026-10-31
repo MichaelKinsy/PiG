@@ -357363,6 +357363,17 @@
       "shapeHash": "sha256:0db7bec3de65ce788dceee643fb9d27b0639cdb5b33e095c5c32422fc653035d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#finishedMarkdown",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "finishedMarkdown",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(m *Markdown) *Markdown"
+      },
+      "shapeHash": "sha256:1e4ab6adc2d481e0d5dd02fe5c528931833b215610a79b77f1f9534e07608392"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#flashEntry",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "flashEntry",
