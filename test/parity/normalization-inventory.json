@@ -17,17 +17,17 @@
     },
     {
       "source": "test/parity/runner/driver_ht.go",
-      "sha256": "69a91a07c9bc69269eca4ae4325da959194a5689037ff44f122d6995eb7416cf",
+      "sha256": "c8980e3ffd6d83345c6ad2b1efea0d1089ed43b44defe8d3dc30614f96a224f1",
       "reason": "Headless terminal state capture compares the declared visible surface, not transient bytes. Tool stderr is diagnostic transport noise, not product stderr."
     },
     {
       "source": "test/parity/runner/driver_rpc.go",
-      "sha256": "9e1aec0393b4e3185b23766f31cd4ad623a5770684b79c4cd46b3b997e9f481a",
+      "sha256": "2190e15eace424866a908660f68b6a26234c64f8efac4058976e18d07f654c8b",
       "reason": "canonical_json sorts JSON object keys only and preserves terminal framing. Raw stdout and stderr are retained. wait_contains/wait_event are new-output barriers, not acceptance assertions. A poll_until step resends one read-only query until its response holds the awaited state and then leaves every response to that query out of the compared and raw output, because their count follows timing; every other record, including the commands that prove the settled state, is compared."
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "b76c6974a5eaad47d77e42e17c9d4f5d6ae73bd6fc8b2150bd0a6806d2aa5305",
+      "sha256": "60dc3418aafb44dfe5ba4c600556aaaf1dc5658277ef359f0550fd016cb17391",
       "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage."
     },
     {
