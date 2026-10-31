@@ -37146,6 +37146,25 @@
       ]
     },
     {
+      "id": "BF-e046dd9",
+      "title": "fix(rust): resolve every clippy warning in the Rust crates",
+      "symptom": "fix(rust): resolve every clippy warning in the Rust crates",
+      "rootCause": "cargo clippy --all-targets -- -D warnings is clean for the SDK, the example, the conformance and parity fixtures and the benchmark extension. Public API and behaviour are unchanged: aliases replace complex callback types, the internal Rendered and remote-component event enums box their large variant, and long argument lists become parameter structs. No allow attributes.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e046dd9a93",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-e098463",
       "title": "A Gemini stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of…",
       "symptom": "A Gemini stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of ending the turn with `google: invalid SSE JSON`: a text that is not a string (or null) appends its string form, a `thought` or `thoughtSignature` of the wrong type is ignored, a `candidates`, candidate, content or `functionCall` that is not the expected shape reads as empty, `parts` that are a string are skipped and other non-arrays end the turn with `candidate.content.parts is not iterable`, a null part ends it with Pi's `Cannot read properties of null` error after the parts before it, a finish reason that is not a string ends it with `Unhandled stop reason: \u003cits string form\u003e`, and usage that is not an object reads as zeros, and a `candidatesTokenCount` of `true` counts as 1, as Pi's `+` makes it.",

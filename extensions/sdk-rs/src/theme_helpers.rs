@@ -97,16 +97,29 @@ pub fn get_select_list_theme() -> SelectListTheme {
 
 /// `theme.ts` `getEditorTheme`, which the interactive mode builds its editor with.
 pub fn get_editor_theme() -> EditorTheme {
-    EditorTheme { border_color: foreground_of("borderMuted"), select_list: get_select_list_theme() }
+    EditorTheme {
+        border_color: foreground_of("borderMuted"),
+        select_list: get_select_list_theme(),
+    }
 }
 
 /// pi-coding-agent's `getSettingsListTheme`.
 pub fn get_settings_list_theme() -> SettingsListTheme {
     SettingsListTheme {
-        label: Box::new(|text, selected| if selected { current_host_theme().fg("accent", text) } else { text.to_string() }),
+        label: Box::new(|text, selected| {
+            if selected {
+                current_host_theme().fg("accent", text)
+            } else {
+                text.to_string()
+            }
+        }),
         value: Box::new(|text, selected| {
             let theme = current_host_theme();
-            if selected { theme.fg("accent", text) } else { theme.fg("muted", text) }
+            if selected {
+                theme.fg("accent", text)
+            } else {
+                theme.fg("muted", text)
+            }
         }),
         description: foreground_of("dim"),
         cursor: current_host_theme().fg("accent", "→ "),
@@ -136,7 +149,9 @@ fn highlight(code: &str, lang: Option<&str>, markdown: bool) -> Vec<String> {
 /// The code's lines in the `mdCodeBlock` color, which Pi gives code it does not highlight.
 fn code_block_lines(code: &str) -> Vec<String> {
     let theme = current_host_theme();
-    code.split('\n').map(|line| theme.fg("mdCodeBlock", line)).collect()
+    code.split('\n')
+        .map(|line| theme.fg("mdCodeBlock", line))
+        .collect()
 }
 
 /// pi-coding-agent's `initTheme`: it makes the host's theme of that name, or the system theme for `None`, an empty name or one the host has no theme of, the global theme,

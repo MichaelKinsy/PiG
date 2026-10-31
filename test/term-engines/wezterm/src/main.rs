@@ -4,10 +4,10 @@
 
 use std::{fs, path::Path, sync::Arc};
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use wezterm_term::{
-    color::{ColorAttribute, ColorPalette},
     Intensity, Terminal, TerminalConfiguration, TerminalSize, Underline,
+    color::{ColorAttribute, ColorPalette},
 };
 
 #[derive(Debug)]
@@ -58,16 +58,26 @@ fn read_plan(dir: &Path) -> Vec<Scenario> {
                 steps: Vec::new(),
             }),
             _ => {
-                let resize = (fields.len() > 2).then(|| (fields[2].parse().unwrap(), fields[3].parse().unwrap()));
+                let resize = (fields.len() > 2)
+                    .then(|| (fields[2].parse().unwrap(), fields[3].parse().unwrap()));
                 let variant = scenarios.last_mut().unwrap().variants.last_mut().unwrap();
-                variant.steps.push(Step { end: fields[1].parse().unwrap(), resize });
+                variant.steps.push(Step {
+                    end: fields[1].parse().unwrap(),
+                    resize,
+                });
             }
         }
     }
     scenarios
 }
 fn size(cols: usize, rows: usize) -> TerminalSize {
-    TerminalSize { rows, cols, pixel_width: 0, pixel_height: 0, dpi: 0 }
+    TerminalSize {
+        rows,
+        cols,
+        pixel_width: 0,
+        pixel_height: 0,
+        dpi: 0,
+    }
 }
 
 fn dump(term: &Terminal, cols: usize, rows: usize) -> Value {
@@ -134,7 +144,11 @@ fn dump(term: &Terminal, cols: usize, rows: usize) -> Value {
             next += 1;
         }
         texts.push(text);
-        styles.push(runs.into_iter().map(|(x, n, s)| json!([x, n, s])).collect::<Vec<_>>());
+        styles.push(
+            runs.into_iter()
+                .map(|(x, n, s)| json!([x, n, s]))
+                .collect::<Vec<_>>(),
+        );
     }
     let cursor = term.cursor_pos();
     let margins = term.get_top_and_bottom_margins();
@@ -151,7 +165,13 @@ fn main() {
         for variant in &scenario.variants {
             let data = fs::read(dir.join(&variant.file)).expect("variant file");
             let (mut cols, mut rows) = (scenario.cols, scenario.rows);
-            let mut term = Terminal::new(size(cols, rows), Arc::new(Config), "pig", "0", Box::new(std::io::sink()));
+            let mut term = Terminal::new(
+                size(cols, rows),
+                Arc::new(Config),
+                "pig",
+                "0",
+                Box::new(std::io::sink()),
+            );
             let mut checkpoints = Vec::new();
             let mut start = 0;
             for step in &variant.steps {
@@ -163,7 +183,10 @@ fn main() {
                 start = step.end;
                 checkpoints.push(dump(&term, cols, rows));
             }
-            println!("{}", json!({ "scenario": scenario.name, "variant": variant.name, "checkpoints": checkpoints }));
+            println!(
+                "{}",
+                json!({ "scenario": scenario.name, "variant": variant.name, "checkpoints": checkpoints })
+            );
         }
     }
 }

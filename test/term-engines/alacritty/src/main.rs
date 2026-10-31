@@ -8,10 +8,10 @@ use alacritty_terminal::{
     event::{Event, EventListener},
     grid::Dimensions,
     index::{Column, Line, Point},
-    term::{cell::Flags, Config, Term, TermMode},
+    term::{Config, Term, TermMode, cell::Flags},
     vte::ansi::{Color, Processor},
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 struct Size {
     cols: usize,
@@ -72,9 +72,13 @@ fn read_plan(dir: &Path) -> Vec<Scenario> {
                 steps: Vec::new(),
             }),
             _ => {
-                let resize = (fields.len() > 2).then(|| (fields[2].parse().unwrap(), fields[3].parse().unwrap()));
+                let resize = (fields.len() > 2)
+                    .then(|| (fields[2].parse().unwrap(), fields[3].parse().unwrap()));
                 let variant = scenarios.last_mut().unwrap().variants.last_mut().unwrap();
-                variant.steps.push(Step { end: fields[1].parse().unwrap(), resize });
+                variant.steps.push(Step {
+                    end: fields[1].parse().unwrap(),
+                    resize,
+                });
             }
         }
     }
@@ -110,7 +114,11 @@ fn margins_full(scenario: &Scenario, data: &[u8], steps: &[Step]) -> bool {
     // Origin mode off, so the cursor addresses the screen; every row marked with a letter.
     let mut probe = String::from("\x1b[?6l");
     for row in 0..rows {
-        probe.push_str(&format!("\x1b[{};1H{}", row + 1, (b'A' + (row % 26) as u8) as char));
+        probe.push_str(&format!(
+            "\x1b[{};1H{}",
+            row + 1,
+            (b'A' + (row % 26) as u8) as char
+        ));
     }
     probe.push_str(&format!("\x1b[{rows};1H\n"));
     parser.advance(&mut term, probe.as_bytes());
@@ -136,7 +144,11 @@ fn dump(term: &Term<Quiet>, cols: usize, rows: usize, full_margins: bool) -> Val
             if let Some(extra) = cell.zerowidth() {
                 text.extend(extra.iter());
             }
-            let width = if cell.flags.contains(Flags::WIDE_CHAR) { 2 } else { 1 };
+            let width = if cell.flags.contains(Flags::WIDE_CHAR) {
+                2
+            } else {
+                1
+            };
             let mut parts: Vec<String> = Vec::new();
             parts.extend(color("fg", cell.fg));
             parts.extend(color("bg", cell.bg));
@@ -165,7 +177,11 @@ fn dump(term: &Term<Quiet>, cols: usize, rows: usize, full_margins: bool) -> Val
             }
         }
         texts.push(text);
-        styles.push(runs.into_iter().map(|(x, n, s)| json!([x, n, s])).collect::<Vec<_>>());
+        styles.push(
+            runs.into_iter()
+                .map(|(x, n, s)| json!([x, n, s]))
+                .collect::<Vec<_>>(),
+        );
     }
     let cursor = grid.cursor.point;
     let margins = json!({ "top": null, "bottom": null, "origin": term.mode().contains(TermMode::ORIGIN), "full": full_margins });
@@ -191,9 +207,17 @@ fn main() {
                 }
                 parser.advance(&mut term, &data[start..step.end]);
                 start = step.end;
-                checkpoints.push(dump(&term, cols, rows, margins_full(&scenario, &data, &variant.steps[..=index])));
+                checkpoints.push(dump(
+                    &term,
+                    cols,
+                    rows,
+                    margins_full(&scenario, &data, &variant.steps[..=index]),
+                ));
             }
-            println!("{}", json!({ "scenario": scenario.name, "variant": variant.name, "checkpoints": checkpoints }));
+            println!(
+                "{}",
+                json!({ "scenario": scenario.name, "variant": variant.name, "checkpoints": checkpoints })
+            );
         }
     }
 }

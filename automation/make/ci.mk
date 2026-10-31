@@ -26,13 +26,13 @@ ci-test-changed: test-changed sdk-vectors-changed
 # The SDK modules are not packages of the main module, so test-changed never runs their Pi vector suites. When the change touches the shared tui engine, an SDK or a vector file (automation/ci/sdk-vectors-changed.sh), run the vector check and each SDK's own suite.
 sdk-vectors-changed:
 	@if [ "$$(automation/ci/sdk-vectors-changed.sh)" = true ]; then \
-		node automation/gen/generate-sdk-vectors.mjs --check && $(MAKE) -s test-sdk-go test-sdk-rs test-sdk-py test-sdk-lisp; \
+		node automation/gen/generate-sdk-vectors.mjs --check && $(MAKE) -s test-sdk-go lint-rust test-sdk-rs test-sdk-py test-sdk-lisp; \
 	else echo "sdk-vectors-changed: no path the SDK vector suites read changed"; fi
 ci-test-cli-1: test-cli-1
 ci-test-cli-2: test-cli-2
 ci-test-subprocess: test-subprocess
 ci-test-conformance: test-conformance
-ci-sdk: test-go-modules test-sdk-rs test-sdk-py test-sdk-lisp test-sdk-ts
+ci-sdk: test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-lisp test-sdk-ts
 ci-extensions: typescript-extension-corpus examples-check standard-check
 ci-race: test-race
 ci-term-engines: test-term-engines

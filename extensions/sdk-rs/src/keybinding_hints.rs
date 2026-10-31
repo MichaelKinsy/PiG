@@ -28,7 +28,11 @@ fn is_darwin() -> bool {
 
 fn format_key_part(darwin: bool, part: &str, capitalize: bool) -> String {
     // `part.toLowerCase() === "alt"` holds only for the ASCII case variants of "alt".
-    let display = if darwin && part.eq_ignore_ascii_case("alt") { "option" } else { part };
+    let display = if darwin && part.eq_ignore_ascii_case("alt") {
+        "option"
+    } else {
+        part
+    };
     if !capitalize {
         return display.to_string();
     }
@@ -42,7 +46,13 @@ fn format_key_part(darwin: bool, part: &str, capitalize: bool) -> String {
 
 fn format_key_text_for(darwin: bool, key: &str, capitalize: bool) -> String {
     key.split('/')
-        .map(|alternative| alternative.split('+').map(|part| format_key_part(darwin, part, capitalize)).collect::<Vec<_>>().join("+"))
+        .map(|alternative| {
+            alternative
+                .split('+')
+                .map(|part| format_key_part(darwin, part, capitalize))
+                .collect::<Vec<_>>()
+                .join("+")
+        })
         .collect::<Vec<_>>()
         .join("/")
 }
@@ -78,7 +88,10 @@ pub fn key_hint(keybinding: &str, description: &str) -> String {
 /// pi-coding-agent's `rawKeyHint`: a hint for a key identifier that is not a keybinding.
 pub fn raw_key_hint(key: &str, description: &str) -> String {
     let theme = current_host_theme();
-    theme.fg("dim", &format_key_text(key, KeyTextFormatOptions::default())) + &theme.fg("muted", &format!(" {description}"))
+    theme.fg(
+        "dim",
+        &format_key_text(key, KeyTextFormatOptions::default()),
+    ) + &theme.fg("muted", &format!(" {description}"))
 }
 
 // pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and

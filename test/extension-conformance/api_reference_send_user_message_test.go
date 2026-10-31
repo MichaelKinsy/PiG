@@ -46,12 +46,14 @@ func TestConformanceAPISendUserMessageRunsATurn(t *testing.T) {
 	runner.AddErrorListener(func(err *extension.ExtensionError) { t.Errorf("extension runtime error: %+v", err) })
 	var api extension.API = userMessageRuntimeAPI{runtime: runtime}
 
+	// Events delivers from its first call, so it is called before the turn this message starts.
+	events := session.Events()
 	api.SendUserMessage("question from an extension", nil)
 
 	deadline := time.After(10 * time.Second)
 	for done := false; !done; {
 		select {
-		case event, ok := <-session.Events():
+		case event, ok := <-events:
 			if !ok {
 				t.Fatal("the event channel closed before the turn ended")
 			}

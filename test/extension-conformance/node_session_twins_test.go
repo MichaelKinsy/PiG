@@ -78,9 +78,10 @@ func newNodeSessionRig(t *testing.T, isolation, settings string, models []ai.Fau
 	bridge.SetHostAction("executeTool", tools.ExecuteTool)
 
 	events := make(chan struct{})
+	eventsCh := session.Events()
 	go func() {
 		defer close(events)
-		for event := range session.Events() {
+		for event := range eventsCh {
 			coding.AcknowledgeEvent(event)
 		}
 	}()

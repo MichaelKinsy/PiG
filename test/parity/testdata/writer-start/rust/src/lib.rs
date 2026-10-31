@@ -12,17 +12,23 @@ pub fn new_extension() -> Extension {
         ctx.set_status("writer", "writer: ready");
         None
     });
-    ext.command("writer-after", "Append, name and send from a command", |ctx, _args| {
-        if let Err(err) = ctx.append_entry("writer-after", json!({"text": "from-command"})) {
-            return CommandResult::Error(err.to_string());
-        }
-        if let Err(err) = ctx.set_session_name("after-name") {
-            return CommandResult::Error(err.to_string());
-        }
-        if let Err(err) = ctx.send_message("writer-after", "after-message", false, Some(false), None) {
-            return CommandResult::Error(err.to_string());
-        }
-        CommandResult::Ok
-    });
+    ext.command(
+        "writer-after",
+        "Append, name and send from a command",
+        |ctx, _args| {
+            if let Err(err) = ctx.append_entry("writer-after", json!({"text": "from-command"})) {
+                return CommandResult::Error(err.to_string());
+            }
+            if let Err(err) = ctx.set_session_name("after-name") {
+                return CommandResult::Error(err.to_string());
+            }
+            if let Err(err) =
+                ctx.send_message("writer-after", "after-message", false, Some(false), None)
+            {
+                return CommandResult::Error(err.to_string());
+            }
+            CommandResult::Ok
+        },
+    );
     ext
 }
