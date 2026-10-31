@@ -371,8 +371,9 @@ func TestJSONAndRPCProductionToolEventsMatchPersistedResult(t *testing.T) {
 	type wireEvent map[string]any
 	var toolEvents []wireEvent
 	done := make(chan error, 1)
+	eventsCh := session.Events()
 	go func() {
-		for event := range session.Events() {
+		for event := range eventsCh {
 			converted, err := rpcAgentEvent(event)
 			if err != nil {
 				done <- err

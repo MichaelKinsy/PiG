@@ -993,6 +993,7 @@ func drainEvents(t *testing.T, sess *Session) []agent.AgentEvent {
 func TestCompact_Smoke(t *testing.T) {
 	svcs := newTestServicesSmallKeep(t)
 	sess := buildSessionWithMessages(t, svcs, 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 
 	sess.completer = &fakeCompleter{summary: "summary text"}
@@ -1121,6 +1122,7 @@ func TestCompact_ExtensionOverrideAndLifecycle(t *testing.T) {
 
 func TestCompact_ExtensionCancellationIsAborted(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	fallback := &fakeCompleter{summary: "fallback must not run"}
 	sess.completer = fallback
@@ -1229,6 +1231,7 @@ func TestSessionNotifyListenersDoesNotAllocate(t *testing.T) {
 
 func TestCompactCancelsSynchronouslyFromStartEvent(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	completer := &fakeCompleter{summary: "must not run"}
 	sess.completer = completer
@@ -1261,6 +1264,7 @@ func TestCompactCancelsSynchronouslyFromStartEvent(t *testing.T) {
 
 func TestAutoCompactionCancelsSynchronouslyFromStartEvent(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	completer := &fakeCompleter{summary: "must not run"}
 	sess.completer = completer
@@ -1317,6 +1321,7 @@ func TestAutoCompactionProviderErrorsAreNotCancellation(t *testing.T) {
 	for _, message := range []string{"Compaction cancelled", "auth failed"} {
 		t.Run(message, func(t *testing.T) {
 			sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
+			_ = sess.Events()
 			defer func() { _ = sess.Close() }()
 			sess.completer = &fakeCompleter{err: errors.New(message)}
 
@@ -1364,6 +1369,7 @@ func TestAutoCompactionFailureAlwaysReportsWillRetryFalse(t *testing.T) {
 func TestAutoCompaction_NothingToCompactIsSilent(t *testing.T) {
 	svcs := newTestServices(t)
 	sess := buildSessionWithMessages(t, svcs, 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 
 	fakeComp := &fakeCompleter{summary: "must not be called"}
@@ -1384,6 +1390,7 @@ func TestAutoCompaction_NothingToCompactIsSilent(t *testing.T) {
 func TestAutoCompaction_SuccessEmitsEstimatedTokensAfter(t *testing.T) {
 	svcs := newTestServicesSmallKeep(t)
 	sess := buildSessionWithMessages(t, svcs, 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 
 	sess.completer = &fakeCompleter{summary: "auto summary"}
@@ -1440,6 +1447,7 @@ func TestCompact_NothingToCompact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	sess.completer = &fakeCompleter{summary: "should not be called"}
 	var failed *extension.SessionCompactFailedEvent
@@ -1632,6 +1640,7 @@ func TestNavigateTreeRejectsStreamingSession(t *testing.T) {
 func TestCompactAbortsInFlightManualCompactionAndRestarts(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
 	defer func() { _ = sess.Close() }()
+	_ = sess.Events()
 	completer := newBlockingCompactionCompleter()
 	sess.completer = completer
 	originalLeafID := *sess.inner.GetLeafID()
@@ -1656,6 +1665,7 @@ func TestCompactAbortsInFlightManualCompactionAndRestarts(t *testing.T) {
 func TestCompactAbortsInFlightAutoCompactionAndRestarts(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
 	defer func() { _ = sess.Close() }()
+	_ = sess.Events()
 	completer := newBlockingCompactionCompleter()
 	sess.completer = completer
 	originalLeafID := *sess.inner.GetLeafID()
@@ -1882,6 +1892,7 @@ func assistantMessageTexts(messages []agent.AgentMessage) []string {
 func TestCheckCompactionThreshold(t *testing.T) {
 	svcs := newTestServicesSmallKeep(t)
 	sess := buildSessionWithMessages(t, svcs, 5)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	sess.completer = &fakeCompleter{summary: "compact summary"}
 
@@ -1943,6 +1954,7 @@ func TestCheckCompactionThreshold(t *testing.T) {
 func TestCheckCompactionOverflow(t *testing.T) {
 	svcs := newTestServicesSmallKeep(t)
 	sess := buildSessionWithMessages(t, svcs, 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	sess.completer = &fakeCompleter{summary: "overflow summary"}
 
@@ -2011,6 +2023,7 @@ func TestCheckCompactionOverflow(t *testing.T) {
 func TestOverflowNoDoubleRetry(t *testing.T) {
 	svcs := newTestServices(t)
 	sess := buildSessionWithMessages(t, svcs, 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	sess.completer = &fakeCompleter{summary: "should not be called"}
 	var failed *extension.SessionCompactFailedEvent
@@ -3195,6 +3208,7 @@ func (c abortingCompactionCompleter) CompleteSimple(ctx context.Context, _ *ai.M
 }
 func TestCompactAbortReturnsOperationCancellation(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	sess.completer = abortingCompactionCompleter{abort: sess.AbortCompaction}
 	before := len(sess.Inner().GetEntries())
