@@ -550,6 +550,10 @@ func TestRemediationMessagesAreNonLoopingAndMentionExe(t *testing.T) {
 	if msg := UnsupportedRemediation(exe); !strings.Contains(msg, exe) || strings.Contains(msg, "pig update") {
 		t.Fatalf("unsupported remediation loops or omits exe: %s", msg)
 	}
+	// Pi 8bc94b19: the refusal names the configured update command as the way out.
+	if msg := UnsupportedRemediation(exe); !strings.Contains(msg, "PI_SELF_UPDATE_COMMAND") || !strings.Contains(msg, "selfUpdateCommand") {
+		t.Fatalf("unsupported remediation omits the configured update command: %s", msg)
+	}
 }
 
 func TestContainerRemediationUsesImageRefWhenSet(t *testing.T) {

@@ -348,6 +348,7 @@ type settingsWire struct {
 	QuietStartup           json.RawMessage          `json:"quietStartup,omitempty"`
 	ShellCommandPrefix     *string                  `json:"shellCommandPrefix,omitempty"`
 	NpmCommand             []string                 `json:"npmCommand,omitzero"`
+	SelfUpdateCommand      []string                 `json:"selfUpdateCommand,omitzero"`
 	CollapseChangelog      *bool                    `json:"collapseChangelog,omitempty"`
 	ShowCacheMissNotices   *bool                    `json:"showCacheMissNotices,omitempty"`
 	EnableInstallTelemetry *bool                    `json:"enableInstallTelemetry,omitempty"`
@@ -757,6 +758,12 @@ type Settings struct {
 	// Mirrors upstream settings.npmCommand (settings-manager.ts:830).
 	NpmCommand []string `json:"npmCommand,omitempty"`
 
+	// SelfUpdateCommand is the argv `pi update` runs to update the program itself, with {packageName}, {version}
+	// and {installSpec} placeholders. Only the global settings file is read for it, so a project cannot inject a
+	// command; PI_SELF_UPDATE_COMMAND takes precedence.
+	// Mirrors upstream settings.selfUpdateCommand (settings-schema.ts).
+	SelfUpdateCommand []string `json:"selfUpdateCommand,omitempty"`
+
 	// Markdown holds markdown rendering settings.
 	// Mirrors upstream settings.markdown (settings-manager.ts:965).
 	Markdown *MarkdownSettings `json:"markdown,omitempty"`
@@ -1054,6 +1061,7 @@ func cloneSettings(s Settings) Settings {
 		terminalTrueColor:              slices.Clone(s.terminalTrueColor),
 		ThinkingBudgets:                cloneThinkingBudgets(s.ThinkingBudgets),
 		NpmCommand:                     slices.Clone(s.NpmCommand),
+		SelfUpdateCommand:              slices.Clone(s.SelfUpdateCommand),
 		Markdown:                       cloneMarkdownSettings(s.Markdown),
 		Warnings:                       cloneWarningSettings(s.Warnings),
 	}
@@ -1093,6 +1101,7 @@ func (s Settings) MarshalJSON() ([]byte, error) {
 		Retry:                       s.Retry,
 		ShellPath:                   optionalString(s.ShellPath, s.emptyStrings.shellPath),
 		NpmCommand:                  s.NpmCommand,
+		SelfUpdateCommand:           s.SelfUpdateCommand,
 		EnableInstallTelemetry:      s.EnableInstallTelemetry,
 		EnableAnalytics:             s.EnableAnalytics,
 		TrackingID:                  s.TrackingID,
@@ -1371,6 +1380,7 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 	}
 	s.CacheWarming = w.CacheWarming
 	s.NpmCommand = w.NpmCommand
+	s.SelfUpdateCommand = w.SelfUpdateCommand
 	return nil
 }
 
@@ -3905,6 +3915,9 @@ func mergeSettings(global, project Settings) Settings {
 	}
 	if project.NpmCommand != nil {
 		m.NpmCommand = append([]string{}, project.NpmCommand...)
+	}
+	if project.SelfUpdateCommand != nil {
+		m.SelfUpdateCommand = append([]string{}, project.SelfUpdateCommand...)
 	}
 	if project.BranchSummary != nil {
 		if m.BranchSummary == nil {

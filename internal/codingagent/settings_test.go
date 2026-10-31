@@ -1793,3 +1793,25 @@ func TestSettingsClosedUnionsAreTypedAndKeepTheirDefaults(t *testing.T) {
 		})
 	}
 }
+
+// Pi 8bc94b19: selfUpdateCommand is an argv read from the global settings only, so a project's settings cannot inject a command.
+func TestSelfUpdateCommandSettingIsReadFromGlobalSettingsOnly(t *testing.T) {
+	dir, cwd := t.TempDir(), t.TempDir()
+	if err := os.MkdirAll(filepath.Join(cwd, ".pig"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"selfUpdateCommand":["nix","profile","upgrade","pi"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cwd, ".pig", "settings.json"), []byte(`{"selfUpdateCommand":["project","injected"]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sm := NewSettingsManagerWithProjectTrust(cwd, dir, true)
+	if got, want := sm.GetGlobalSettings().SelfUpdateCommand, []string{"nix", "profile", "upgrade", "pi"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("global selfUpdateCommand = %q, want %q", got, want)
+	}
+	data, err := json.Marshal(sm.GetGlobalSettings())
+	if err != nil || !strings.Contains(string(data), `"selfUpdateCommand":["nix","profile","upgrade","pi"]`) {
+		t.Fatalf("selfUpdateCommand not written back: %s %v", data, err)
+	}
+}

@@ -150,6 +150,7 @@ func settingsSchema() *Schema {
 		Optional("defaultProjectTrust", Union(literals("ask", "always", "never"), D("Global setting only."), Default(d.defaultProjectTrust))),
 		Optional("shellCommandPrefix", String(D("Prefix prepended to every bash command, for example to enable shell aliases."))),
 		Optional("npmCommand", stringArray(D(`Command used for npm package lookup and installation, in argv form such as ["mise", "exec", "node@20", "--", "npm"].`))),
+		Optional("selfUpdateCommand", Array(String(), Opt{"minItems", 1}, D(`Command `+"`pi update`"+` runs to update Pi itself, in argv form such as ["mise", "use", "-g", "npm:{packageName}@{version}"]. Placeholders: {packageName}, {version}, {installSpec}. PI_SELF_UPDATE_COMMAND takes precedence. Global setting only.`))),
 		Optional("collapseChangelog", Boolean(D("Show the condensed changelog after update; use /changelog for the full changelog."), Default(d.collapseChangelog))),
 		Optional("enableInstallTelemetry", Boolean(D("Send an anonymous version and update ping after changelog-detected updates."), Default(d.enableInstallTelemetry))),
 		Optional("enableAnalytics", Boolean(D("Opt in to analytics data sharing."), Default(d.enableAnalytics))),
