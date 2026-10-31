@@ -56,14 +56,92 @@ func Utf8ByteLength(content string) int {
 
 const outputNewline = 0x0a
 
-// SanitizeOutput removes control characters that break display and transcripts; tabs and newlines stay. It removes U+0000-U+0008, U+000B-U+001F, and U+FFF9-U+FFFB (output.ts:24).
+// SanitizeOutput removes escape sequences and control characters that break display and transcripts; tabs and newlines stay. It removes whole 7-bit escape sequences (see escapeSequenceLength), then U+0000-U+0008, U+000B-U+001F, and U+FFF9-U+FFFB (output.ts:24).
 func SanitizeOutput(text string) string {
+	// pig divergence (D217): Pi 50d9f823 (#11604) removes whole ANSI escape sequences, not only their ESC bytes.
+	text = removeEscapeSequences(text)
 	return strings.Map(func(r rune) rune {
 		if (r <= 0x08) || (r >= 0x0b && r <= 0x1f) || (r >= 0xfff9 && r <= 0xfffb) {
 			return -1
 		}
 		return r
 	}, text)
+}
+
+// removeEscapeSequences deletes every match of Pi's ESCAPE_SEQUENCE (output.ts):
+//
+//	\x1b[\]PX^_][^\x07\x1b]*(?:\x07|\x1b\\)  a string (OSC, DCS, SOS, PM, APC) up to BEL or ST
+//	\x1b\[[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]  CSI
+//	\x1b[\x20-\x2f]*[\x30-\x7e]               a short ESC form
+//
+// A lone ESC stays for the control-character pass.
+func removeEscapeSequences(text string) string {
+	first := strings.IndexByte(text, 0x1b)
+	if first < 0 {
+		return text
+	}
+	var out strings.Builder
+	out.Grow(len(text))
+	out.WriteString(text[:first])
+	for i := first; i < len(text); {
+		if text[i] != 0x1b {
+			next := strings.IndexByte(text[i:], 0x1b)
+			if next < 0 {
+				out.WriteString(text[i:])
+				break
+			}
+			out.WriteString(text[i : i+next])
+			i += next
+			continue
+		}
+		if n := escapeSequenceLength(text[i:]); n > 0 {
+			i += n
+		} else {
+			out.WriteByte(text[i])
+			i++
+		}
+	}
+	return out.String()
+}
+
+// escapeSequenceLength is the length of the escape sequence that text, which starts with ESC, begins with; 0 when none does.
+func escapeSequenceLength(text string) int {
+	if len(text) < 2 { //portlint:allow utf16units byte offsets of this Go string; the matched bytes are all ASCII
+		return 0
+	}
+	switch text[1] {
+	case ']', 'P', 'X', '^', '_':
+		for i := 2; i < len(text); i++ {
+			switch text[i] {
+			case 0x07:
+				return i + 1
+			case 0x1b:
+				if i+1 < len(text) && text[i+1] == '\\' {
+					return i + 2
+				}
+				i = len(text)
+			}
+		}
+	case '[':
+		i := 2
+		for i < len(text) && text[i] >= 0x30 && text[i] <= 0x3f {
+			i++
+		}
+		for i < len(text) && text[i] >= 0x20 && text[i] <= 0x2f {
+			i++
+		}
+		if i < len(text) && text[i] >= 0x40 && text[i] <= 0x7e {
+			return i + 1
+		}
+	}
+	i := 1
+	for i < len(text) && text[i] >= 0x20 && text[i] <= 0x2f {
+		i++
+	}
+	if i < len(text) && text[i] >= 0x30 && text[i] <= 0x7e {
+		return i + 1
+	}
+	return 0
 }
 
 // BoundOutput bounds text to whole lines within the limits: the first lines for "head", the last lines for "tail". The result is an exact slice, trailing newline included. A single line longer than MaxBytes is cut at the byte limit on a character boundary.

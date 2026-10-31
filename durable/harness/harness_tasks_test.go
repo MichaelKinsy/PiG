@@ -1341,7 +1341,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		awake := make(chan int, 1)
 		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
 			if publicationTerminal(publication, id) {
-				tasks.resolveIdleWaiters()
+				tasks.settleAfterReconcile()
 				count := 0
 				for _, wait := range []*Waiter[struct{}]{conversationWait, harnessWait} {
 					select {

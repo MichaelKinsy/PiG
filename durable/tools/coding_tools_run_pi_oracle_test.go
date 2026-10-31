@@ -122,8 +122,14 @@ func TestCodingToolsRunLikePi(t *testing.T) {
 		if got.HasStructuredOutput {
 			structured = scrubbed(t, normalized(t, got.StructuredOutput), executionEnv.Cwd())
 		}
-		if !reflect.DeepEqual(structured, pi.StructuredOutput) {
-			t.Errorf("%s: PiG structuredOutput %v, Pi %v", c.name, structured, pi.StructuredOutput)
+		wantStructured := pi.StructuredOutput
+		if c.tool == "read" {
+			// pig divergence (D217): Pi 04414839 (#11015), past the pin, makes read return its text, or its image block, as structuredOutput;
+			// the pinned Pi returns none. PiG's is the text of Pi's output.
+			wantStructured = readStructuredOutputOf(pi.Output)
+		}
+		if !reflect.DeepEqual(structured, wantStructured) {
+			t.Errorf("%s: PiG structuredOutput %v, Pi %v", c.name, structured, wantStructured)
 		}
 		var details any
 		if got.HasDetails {
@@ -204,4 +210,18 @@ func scrubbed(t *testing.T, value any, directory string) any {
 		t.Fatal(err)
 	}
 	return out
+}
+
+// readStructuredOutputOf is the structuredOutput Pi 04414839 gives a read: the text of the one text block of its output ("" with
+// none), or its image block. D217 allows it where the pinned Pi returns no structuredOutput.
+func readStructuredOutputOf(output any) any {
+	blocks, _ := output.([]any)
+	if len(blocks) == 0 {
+		return ""
+	}
+	block, _ := blocks[0].(map[string]any)
+	if block["type"] == "text" {
+		return block["text"]
+	}
+	return block
 }
