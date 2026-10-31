@@ -73,7 +73,7 @@ func TestSkillsSectionMatchesUpstreamFormat(t *testing.T) {
 	got := BuildDefaultPrompt(Options{Tools: []string{"bash"}, Skills: skills})
 	want := "<skills>\nThe following skills provide specialized instructions for specific tasks.\n" +
 		"Use bash to load a skill's file when the task matches its description.\n" +
-		"When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n" +
+		"Resolve relative paths against the skill's directory (parent of SKILL.md). Use absolute paths in tool calls.\n\n" +
 		"<available_skills>\n  <skill>\n    <name>pdf</name>\n    <description>Read &lt;PDF&gt; &amp; forms</description>\n    <location>/s/pdf/SKILL.md</location>\n  </skill>\n</available_skills>\n</skills>"
 	if !strings.Contains(got, want) || strings.Contains(got, "hidden") {
 		t.Fatalf("skills section:\n%s", got)
