@@ -154,7 +154,8 @@ func TestMCPConfigValidatesTheOAuthCallbackURLScopeAndClientName(t *testing.T) {
 		"metadata":{"url":"https://a.example/mcp","oauth":{"authServerMetadataUrl":"https://idp.example/m"}},
 		"plainMetadata":{"url":"https://a.example/mcp","oauth":{"authServerMetadataUrl":"http://idp.example/m"}},
 		"cimd":{"url":"https://a.example/mcp","oauth":{"clientRegistration":"cimd","callbackUrl":"http://localhost/callback"}},
-		"badRegistration":{"url":"https://a.example/mcp","oauth":{"clientRegistration":"auto"}},
+		"auto":{"url":"https://a.example/mcp","oauth":{"clientRegistration":"auto","clientName":"x"}},
+		"badRegistration":{"url":"https://a.example/mcp","oauth":{"clientRegistration":"oidc"}},
 		"cimdClient":{"url":"https://a.example/mcp","oauth":{"clientRegistration":"cimd","clientId":"x"}},
 		"cimdPath":{"url":"https://a.example/mcp","oauth":{"clientRegistration":"cimd","callbackUrl":"http://127.0.0.1/cb"}},
 		"cimdDots":{"url":"https://a.example/mcp","oauth":{"clientRegistration":"cimd","callbackUrl":"http://127.0.0.1/a/../callback"}},
@@ -166,14 +167,14 @@ func TestMCPConfigValidatesTheOAuthCallbackURLScopeAndClientName(t *testing.T) {
 		names = append(names, s.Name)
 	}
 	// cimdDots and cimdIPv6 are PiG additions: `new URL()` removes dot segments, and IPv6 loopback is rejected.
-	jsonEqual(t, names, `["ok","ipv6","same","named","metadata","cimd","cimdDots"]`)
+	jsonEqual(t, names, `["ok","ipv6","same","named","metadata","cimd","auto","cimdDots"]`)
 	wants := []string{
 		`server "remote": oauth.callbackUrl must be an http URI on localhost`,
 		`server "both": oauth.callbackUrl and oauth.callbackPort name different ports`,
 		`server "scope": oauth.scope must be a string`,
 		`server "unnamed": oauth.clientName must be a non-empty string`,
 		`server "plainMetadata": oauth.authServerMetadataUrl must be an https URL`,
-		`server "badRegistration": oauth.clientRegistration must be "dcr" or "cimd"`,
+		`server "badRegistration": oauth.clientRegistration must be "auto", "dcr", or "cimd"`,
 		`server "cimdClient": oauth.clientRegistration "cimd" cannot be combined`,
 		`server "cimdPath": oauth.clientRegistration "cimd" requires oauth.callbackUrl`,
 		`server "cimdIPv6": oauth.clientRegistration "cimd" requires oauth.callbackUrl`,

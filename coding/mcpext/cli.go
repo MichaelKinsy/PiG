@@ -124,6 +124,8 @@ Options for add:
                           Fixed OAuth callback port
   --oauth-client-name <name>
                           Client name sent when registering with the OAuth server
+  --oauth-client-registration <mode>
+                          auto (default), cimd, or dcr
   --exposure <mode>       codemode (default), deferred, direct, or hidden
   --description <text>    What the server offers, shown in the system prompt
 
@@ -394,18 +396,19 @@ func (c *mcpCLI) parsePairs(option string, pairs []string) (*orderedjson.Object,
 func (c *mcpCLI) add(args []string, projectConfig string) int {
 	usage := fmt.Sprintf("Usage: %s mcp add <server> [options] (--url <url> | -- <command> [args...])\n%s", c.app, c.helpHint())
 	parsed, ok := c.parseOptions(args, map[string]optionKind{
-		"local":                optionFlag,
-		"url":                  optionValue,
-		"env":                  optionList,
-		"cwd":                  optionValue,
-		"header":               optionList,
-		"bearer-token-env-var": optionValue,
-		"oauth-client-id":      optionValue,
-		"oauth-client-secret":  optionValue,
-		"oauth-callback-port":  optionValue,
-		"oauth-client-name":    optionValue,
-		"exposure":             optionValue,
-		"description":          optionValue,
+		"local":                     optionFlag,
+		"url":                       optionValue,
+		"env":                       optionList,
+		"cwd":                       optionValue,
+		"header":                    optionList,
+		"bearer-token-env-var":      optionValue,
+		"oauth-client-id":           optionValue,
+		"oauth-client-secret":       optionValue,
+		"oauth-callback-port":       optionValue,
+		"oauth-client-name":         optionValue,
+		"oauth-client-registration": optionValue,
+		"exposure":                  optionValue,
+		"description":               optionValue,
 	}, 2)
 	if !ok {
 		return 1
@@ -420,7 +423,7 @@ func (c *mcpCLI) add(args []string, projectConfig string) int {
 		c.error(usage)
 		return 1
 	}
-	httpOnly := []string{"header", "bearer-token-env-var", "oauth-client-id", "oauth-client-secret", "oauth-callback-port", "oauth-client-name"}
+	httpOnly := []string{"header", "bearer-token-env-var", "oauth-client-id", "oauth-client-secret", "oauth-callback-port", "oauth-client-name", "oauth-client-registration"}
 	stdioOnly := []string{"env", "cwd"}
 	misplacedOptions := httpOnly
 	if hasURL {
@@ -458,6 +461,9 @@ func (c *mcpCLI) add(args []string, projectConfig string) int {
 		}
 		if clientName, ok := parsed.values["oauth-client-name"]; ok {
 			_ = oauth.SetValue("clientName", clientName)
+		}
+		if registration, ok := parsed.values["oauth-client-registration"]; ok {
+			_ = oauth.SetValue("clientRegistration", registration)
 		}
 		_ = config.SetValue("url", serverURL)
 		if headers.Len() > 0 {
