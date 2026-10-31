@@ -119,9 +119,10 @@ type Host interface {
 	Connect(link link.Link, options LinkOptions, ctx context.Context) error
 	// Route is how this host reaches hosts of kind (called before `Load`, once per kind): Authorize admits every hold
 	// routed over it, Resolve makes the link of an address. Holds for an address wait while it resolves and again after
-	// its link drops (a backoff per address, 1 s doubling to 60 s), while they exist. ctx is the parent of the route's work,
-	// aborted for it when this host closes.
-	Route(kind *contracts.HostKind, options RouteOptions, ctx context.Context) error
+	// its link drops once; a rejected Resolve fails its holders `failed { waiting }` (they stay on its path), with no timer.
+	// ctx is the parent of the route's work, aborted for it when this host closes. It returns the RouteHandle: the app's
+	// controls of the route's addresses.
+	Route(kind *contracts.HostKind, options RouteOptions, ctx context.Context) (RouteHandle, error)
 	// Revoke revokes revocation (§4, R10, R11), synchronously: every remote object whose principal it revokes (`RevokedBy`)
 	// ends at once, whatever references remain (holders get `forbidden`, running calls are aborted, an activation is
 	// abandoned); every child link whose principal it revokes closes (never the parent, never this host's own principal);
@@ -370,8 +371,8 @@ func createHost(options HostOptions) (*chordHost, error) {
 		h.heartbeat.close = durationOr(options.Heartbeat.Close, defaultHeartbeat)
 	}
 	h.routing, h.routingCancel = chordctx.WithCancel(chordctx.Background())
-	h.parent = newPath(func() {})
-	h.unplaced = newPath(func() {})
+	h.parent = newPath(func(pathEvent) {})
+	h.unplaced = newPath(func(pathEvent) {})
 	h.destination = newDestination(h.address, h.routes, h.parent)
 	h.roots = newRootScopes(h)
 	if options.Store != nil {
@@ -545,8 +546,9 @@ func (h *chordHost) Connect(l link.Link, options LinkOptions, ctx context.Contex
 }
 
 // Route implements Host.
-func (h *chordHost) Route(kind *contracts.HostKind, options RouteOptions, ctx context.Context) error {
+func (h *chordHost) Route(kind *contracts.HostKind, options RouteOptions, ctx context.Context) (RouteHandle, error) {
 	var err error
+	var handle RouteHandle
 	h.enter(func() {
 		if err = h.assertOpen(); err != nil {
 			return
@@ -570,8 +572,12 @@ func (h *chordHost) Route(kind *contracts.HostKind, options RouteOptions, ctx co
 		}
 		h.routes[kind.Kind] = made
 		h.routeKinds = append(h.routeKinds, kind.Kind)
+		handle = RouteHandle{
+			Retry:   func(address contracts.Address) { h.enter(func() { made.retry(address.Key) }) },
+			Suspend: func(address contracts.Address) { h.enter(func() { made.suspend(address.Key) }) },
+		}
 	})
-	return err
+	return handle, err
 }
 
 // Revoke implements Host.
@@ -1019,7 +1025,7 @@ func (h *chordHost) routeLink(l link.Link, options routeLinkOptions, ctx context
 	return h.linkOf(l, linkRoleRoute, LinkOptions{Principal: options.principal, Trusted: options.trusted, Codec: options.codec, Limits: limits}, ctx)
 }
 
-// linkOpened: a link completed its handshake: a route's resets its address's backoff.
+// linkOpened: a link completed its handshake: a route's address resolves again once if it drops.
 func (h *chordHost) linkOpened(l *hostLink) {
 	if l.role != linkRoleRoute {
 		return
@@ -1336,9 +1342,6 @@ func (h *chordHost) runClose() *closePromise {
 	// Remote references end now: their parked calls reject `released`, no later link holds them.
 	// Code outside objects stops at its next use of Chord: an `fn` waiting in `sleep(ms, ctx)` ends.
 	h.roots.close(closed)
-	for _, kind := range h.routeKinds {
-		h.routes[kind].close()
-	}
 	for _, holder := range h.pathHolders() {
 		if remote, ok := holder.(*remoteObject); ok {
 			remote.lost(closed)

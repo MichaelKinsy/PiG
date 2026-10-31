@@ -90,6 +90,11 @@ func (h *relayedHold) dropped(err *data.ChordError) {
 	}
 }
 
+// unreachable: its path's address cannot be reached for now: downstream it fails `waiting` with err until the next link.
+func (h *relayedHold) unreachable(err *data.ChordError) {
+	h.downstream.send(&link.FailedMessage{Hold: h.id, Cause: link.WireCause{Kind: string(data.FailureWaiting), Error: wireError(err)}})
+}
+
 // waiting reports whether it waits for its path's link (a route still resolving, or a dropped link's next): a
 // revocation ends it then, since the link it is held on next gets no past `revoke` (§4).
 func (h *relayedHold) waiting() bool { return h.upstream == nil }

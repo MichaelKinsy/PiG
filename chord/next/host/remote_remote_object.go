@@ -152,6 +152,15 @@ func (r *remoteObject) attach(l *hostLink) {
 	}
 }
 
+// unreachable: its path's address cannot be reached for now (a route's `resolve` failed, a suspension): `failed { waiting }`
+// with err, still on the path, bound by its next link.
+func (r *remoteObject) unreachable(err *data.ChordError) {
+	r.failure = err
+	if r.refState.Kind != RefStateEnded {
+		r.move(&RefState{Kind: RefStateFailed, Cause: data.FailureCause{Kind: data.FailureWaiting, Error: err}})
+	}
+}
+
 // dropped: the link dropped: loading until a new link's hold is bound (startOver).
 func (r *remoteObject) dropped(*data.ChordError) {
 	r.held = nil
