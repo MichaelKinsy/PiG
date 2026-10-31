@@ -89,7 +89,8 @@ func wrapSingleLine(line string, width int) []string {
 			continue
 		}
 
-		if currentVisible+tokenWidth > width && currentVisible > 0 {
+		switch {
+		case currentVisible+tokenWidth > width && currentVisible > 0:
 			// Wrap. Trim trailing whitespace before wrapping.
 			toWrap := JSTrimEnd(string(current))
 			if isWhitespace {
@@ -111,11 +112,11 @@ func wrapSingleLine(line string, width int) []string {
 			current = append(current[:0], tr.ActiveCodes()...)
 			current = append(current, token...)
 			currentVisible = tokenWidth
-		} else if isWhitespace && currentVisible+tokenWidth > width && strings.Contains(token, "\x1b") {
+		case isWhitespace && currentVisible+tokenWidth > width && strings.Contains(token, "\x1b"):
 			// Whitespace wider than an empty line. Plain spaces are removed by the final trim, but codes after them (e.g. a trailing
 			// reset) would block that and leave the line wider than width. Keep only the codes.
 			current = append(current, extractAnsiCodes(token)...)
-		} else {
+		default:
 			current = append(current, token...)
 			currentVisible += tokenWidth
 		}

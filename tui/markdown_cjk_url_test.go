@@ -22,7 +22,7 @@ func cjkURLRender(t *testing.T, source string) string {
 // TestMarkdownBareURLStopsAtCJKPunctuationPiCases ports Pi fa168515 (earendil-works/pi#10933, packages/tui/test/markdown.test.ts): a bare URL ends at CJK punctuation and the following text stays, explicit links and angle autolinks keep it, and CJK letters stay part of the URL.
 func TestMarkdownBareURLStopsAtCJKPunctuationPiCases(t *testing.T) {
 	t.Run("stops at CJK punctuation and preserves the following text", func(t *testing.T) {
-		for _, punctuation := range []rune("。，；：！？、“”‘’（）【】《》「」『』…—·・〈〉［］｛｝．｡｢｣､･") {
+		for _, punctuation := range "。，；：！？、“”‘’（）【】《》「」『』…—·・〈〉［］｛｝．｡｢｣､･" {
 			for _, url := range []string{"https://example.com", "https://example.com/中文?q=搜索#片段", "www.example.com"} {
 				source := url + string(punctuation) + "后面的中文"
 				output := cjkURLRender(t, source)
