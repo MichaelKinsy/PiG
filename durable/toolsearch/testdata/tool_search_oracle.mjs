@@ -1,7 +1,7 @@
 // Run Pi's packages/durable/src/tool-search/tool-search.ts (imported as-is with types stripped): the tool_search tool's
 // execute over deferred tools, as the harness calls it.
 // Op: {deferred: [{name, description, parameters}], query, limit?}   (limit absent: the model gave none)
-// stdout: per op {result: {output, details, control?}} or {error: message}; plus the tool's declaration once as `declaration`.
+// stdout: per op {result: {output, details, control?}} or {error: message}, with `terms`, the number of distinct terms of the query by Pi's tokenizer; plus the tool's declaration once as `declaration`.
 // usage: node tool_search_oracle.mjs <packages dir>   (PI_INTEROP_DIR: a directory whose node_modules holds @earendil-works/pi-durable)
 import { realpathSync } from "node:fs";
 import module from "node:module";
@@ -20,6 +20,7 @@ module.registerHooks({
 		return next(specifier, context);
 	},
 });
+const search = await import(pathToFileURL(`${packages}durable/src/search.ts`).href);
 const toolSearch = await import(pathToFileURL(`${packages}durable/src/tool-search/tool-search.ts`).href);
 const tool = toolSearch.createToolSearchTool();
 const extension = toolSearch.createToolSearchExtension();
@@ -31,9 +32,9 @@ for (const op of JSON.parse(input)) {
 	try {
 		const args = op.limit === undefined || op.limit === null ? { query: op.query } : { query: op.query, limit: op.limit };
 		const result = await tool.execute(args, { agent: async () => ({ deferred: op.deferred }) }, {});
-		out.push({ result });
+		out.push({ result, terms: new Set(search.tokenize(op.query)).size });
 	} catch (error) {
-		out.push({ error: error instanceof Error ? error.message : String(error) });
+		out.push({ error: error instanceof Error ? error.message : String(error), terms: new Set(search.tokenize(op.query)).size });
 	}
 }
 process.stdout.write(

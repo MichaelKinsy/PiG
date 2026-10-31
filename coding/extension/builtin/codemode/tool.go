@@ -81,8 +81,8 @@ var promptGuidelines = []string{"Use codemode to batch independent tool calls (P
 var inputSchema = json.RawMessage(`{"type":"object","required":["code"],"properties":{"code":{"type":"string","description":"Raw JavaScript source."}}}`)
 
 // describeFields is the field names of an object schema, `{ output, exit_code, full_output_path? }`, with the fields of
-// object-typed fields depth levels deep: `{ content, structuredContent?: { results } }`. It reports false for other
-// schemas.
+// object-typed fields depth levels deep: `{ content, structuredContent?: { results } }`, and the value of `const`
+// fields: `{ action: "start", id }`. It reports false for other schemas.
 //
 // Ports packages/coding-agent/src/extensions/codemode/tool.ts (describeFields).
 func describeFields(schema json.RawMessage, depth int) (string, bool) {
@@ -128,8 +128,13 @@ func describeFields(schema json.RawMessage, depth int) (string, bool) {
 		if required[name] {
 			optional = ""
 		}
+		// pig divergence (D217): Pi f6ee9ce9 (#11501) show the value of a `const` field, so a discriminator such as `action: "start"` stays visible.
+		constValue := field(values[i], "const")
 		field := name + optional
-		if depth > 0 {
+		switch {
+		case constValue != nil:
+			field = strings.Join([]string{field, jsonStringify(constValue)}, ": ")
+		case depth > 0:
 			if nested, ok := describeFields(values[i], depth-1); ok {
 				field = strings.Join([]string{field, nested}, ": ")
 			}
@@ -140,10 +145,13 @@ func describeFields(schema json.RawMessage, depth int) (string, bool) {
 }
 
 // describeOutput is what a script call resolves to, in one line: `a string`, the field names of an object (see
-// describeFields), or the rendered type for anything else.
+// describeFields), the field names of each object in a union, the rendered type when it fits on one line, or a pointer
+// to describeTool() for anything longer.
 //
 // Ports packages/coding-agent/src/extensions/codemode/tool.ts (describeOutput).
-func describeOutput(schema json.RawMessage) (string, error) {
+//
+// pig divergence (D217): Pi f6ee9ce9 (#11501) summarize union and multi-line output types; pinned Pi inlines the whole rendered type with its whitespace collapsed.
+func describeOutput(name string, schema json.RawMessage) (string, error) {
 	rendered, err := sandbox.RenderToolOutputType(schema)
 	if err != nil {
 		return "", err
@@ -154,18 +162,49 @@ func describeOutput(schema json.RawMessage) (string, error) {
 	if fields, ok := describeFields(schema, 1); ok {
 		return "`" + fields + "`", nil
 	}
-	return "`" + jsWhitespace.ReplaceAllString(rendered, " ") + "`", nil
+	if fields, ok := describeUnionFields(schema); ok {
+		return "`" + fields + "`", nil
+	}
+	if !strings.Contains(rendered, "\n") {
+		return "`" + rendered + "`", nil
+	}
+	quoted, err := jsstring.MarshalJSON(name)
+	if err != nil {
+		return "", err
+	}
+	return "a value; `await describeTool(" + string(quoted) + ")` shows its type", nil
 }
 
-// jsWhitespace is JavaScript's `\s+`.
-var jsWhitespace = lazyregexp.New(`[\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]+`)
+// describeUnionFields is the field names of each variant of an `anyOf`/`oneOf` whose variants are all objects, joined by
+// `|`. It reports false for other schemas.
+//
+// Ports packages/coding-agent/src/extensions/codemode/tool.ts (describeUnionFields).
+func describeUnionFields(schema json.RawMessage) (string, bool) {
+	variants := field(schema, "anyOf")
+	if variants == nil || jsonKind(variants) == 'n' {
+		variants = field(schema, "oneOf")
+	}
+	var items []json.RawMessage
+	if jsonKind(variants) != '[' || json.Unmarshal(variants, &items) != nil || len(items) == 0 {
+		return "", false
+	}
+	described := make([]string, len(items))
+	for i, item := range items {
+		fields, ok := describeFields(item, 0)
+		if !ok {
+			return "", false
+		}
+		described[i] = fields
+	}
+	return strings.Join(described, " | "), true
+}
 
 // describeScriptCall is a declared tool's description followed by how scripts call it and what the call resolves to.
 // The arguments are the tool's declared parameters, so they are not repeated.
 //
 // Ports packages/coding-agent/src/extensions/codemode/tool.ts (describeScriptCall).
 func describeScriptCall(tool extension.AgentTool) (string, error) {
-	output, err := describeOutput(toDeclaration(tool, nil).OutputSchema)
+	output, err := describeOutput(tool.Name, toDeclaration(tool, nil).OutputSchema)
 	if err != nil {
 		return "", err
 	}

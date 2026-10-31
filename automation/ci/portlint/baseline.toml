@@ -4902,24 +4902,6 @@ snippet = "options, err := parseOptions(jsstring.Trim(trimmed[len(CodemodeOption
 
 [[hit]]
 check = "utf16units"
-file = "coding/extension/builtin/toolsearch/toolsearch.go"
-func = "stem"
-snippet = "case len(term) > 4 && strings.HasSuffix(term, \"ies\"):"
-
-[[hit]]
-check = "utf16units"
-file = "coding/extension/builtin/toolsearch/toolsearch.go"
-func = "stem"
-snippet = "case len(term) > 4 && pluralEnding.MatchString(term):"
-
-[[hit]]
-check = "utf16units"
-file = "coding/extension/builtin/toolsearch/toolsearch.go"
-func = "stem"
-snippet = "case len(term) > 3 && strings.HasSuffix(term, \"s\") && !strings.HasSuffix(term, \"ss\"):"
-
-[[hit]]
-check = "utf16units"
 file = "coding/extension/host/subprocess/host.go"
 func = "Host.markExtension"
 snippet = "if len(name) > 64 {"

@@ -114676,9 +114676,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(schema encoding/json.RawMessage) (string, error)"
+        "type": "func(name string, schema encoding/json.RawMessage) (string, error)"
       },
-      "shapeHash": "sha256:e102e9f98593e1293be2de6a823b6818dfa216f8701923a037b5b1439b706edc"
+      "shapeHash": "sha256:3b2fda44164b68a05b72ad2b95440b9e213ab3583db30e3fbca921c6374ab3d2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#describeScriptCall",
@@ -114690,6 +114690,17 @@
         "type": "func(tool github.com/MichaelKinsy/PiG/coding/extension.AgentTool) (string, error)"
       },
       "shapeHash": "sha256:c2c7405569e1ee8d59e42f99b05855eeb3ee241eb031b1d75f57d3c890fe405f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#describeUnionFields",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode",
+      "name": "describeUnionFields",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(schema encoding/json.RawMessage) (string, bool)"
+      },
+      "shapeHash": "sha256:e66ff37239c26e6244dba0caabd371f443b0af6eb71da73e52ff1253851a2948"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#describeValue",
@@ -114888,17 +114899,6 @@
         "type": "func(items []github.com/MichaelKinsy/PiG/ai.ToolResultMessageContent) []github.com/MichaelKinsy/PiG/ai.ToolResultMessageContent"
       },
       "shapeHash": "sha256:8ad1540ba3df2d7ca81bf4189ee867f1ae8c3282072c622cdf628d518ac95418"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#jsWhitespace",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode",
-      "name": "jsWhitespace",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
-      },
-      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#jsonKind",
@@ -116133,6 +116133,28 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch#indexDocument",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch",
+      "name": "indexDocument",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(document Document) indexedDocument"
+      },
+      "shapeHash": "sha256:4929c5fa6493ce076aab23ce66007204515a1fbeaa38541b4577df1391cc3269"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch#indexedDocument",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch",
+      "name": "indexedDocument",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "indexedDocument"
+      },
+      "shapeHash": "sha256:183d5ad9572714fc3735679e0bf1176787cd39e4d4121ad486f107d6f119893e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch#inputSchema",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch",
       "name": "inputSchema",
@@ -116144,9 +116166,9 @@
       "shapeHash": "sha256:c81ed3325efdbc9eb5c311dc0e67d69cd5bc75277f489a75383d134fe97c6da5"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch#isNameQuery",
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch#isExactNameQuery",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch",
-      "name": "isNameQuery",
+      "name": "isExactNameQuery",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -116166,17 +116188,6 @@
       "shapeHash": "sha256:815b5e4070c6d2d636ddb5daea754275cc3f571c161661dbe88f4ec288fabf0c"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch#lowerUpper",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch",
-      "name": "lowerUpper",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
-      },
-      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch#mapsKeys",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch",
       "name": "mapsKeys",
@@ -116188,6 +116199,28 @@
       "shapeHash": "sha256:9ce5b5c4c19854a23d66f7ccc248589e46e63b4f60465d47f84fbe6ffbbe362f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch#nameWeight",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch",
+      "name": "nameWeight",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch#namespaceWeight",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch",
+      "name": "namespaceWeight",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped float"
+      },
+      "shapeHash": "sha256:b997d0783dc31cd4ffb0eefe71094792416ab88a90341e44e49eba6282f8ea81"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch#normalizeName",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch",
       "name": "normalizeName",
@@ -116197,17 +116230,6 @@
         "type": "func(name string) string"
       },
       "shapeHash": "sha256:7d508d280c61decf247115e90b8749e71ea5dfc4d0ae712cc664fb5de63b74fe"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch#pluralEnding",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch",
-      "name": "pluralEnding",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
-      },
-      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch#resultTool",
@@ -116241,50 +116263,6 @@
         "type": "func(tc *github.com/MichaelKinsy/PiG/coding/extension.Context, query string, limit int) []resultTool"
       },
       "shapeHash": "sha256:4e140a7504b654e3df13e2234aff2034b62c89052f9b79b5373ca0c6a0b312c5"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch#stem",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch",
-      "name": "stem",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(term string) string"
-      },
-      "shapeHash": "sha256:81fb8b1db2bbdc3b70f41eba3109b7e8dd9bd1f96fa6571422287e55f221c697"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch#stopWords",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch",
-      "name": "stopWords",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "map[string]bool"
-      },
-      "shapeHash": "sha256:3af528a2ba91555bb23ee8186a48c3c9201b3cf65594c81b5d32e417b99fd811"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch#termRun",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch",
-      "name": "termRun",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
-      },
-      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch#upperRunUpper",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/builtin/toolsearch",
-      "name": "upperRunUpper",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
-      },
-      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#DefaultExtensionPath",

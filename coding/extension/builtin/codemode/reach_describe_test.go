@@ -30,7 +30,7 @@ func TestDescribeOutputDescribesTheFieldsOfObjectFieldsOneLevelDeep(t *testing.T
 		"string": {`{"type":"string"}`, "a string"},
 		"array":  {`{"type":"array","items":{"type":"string"}}`, "`Array<string>`"},
 	} {
-		got, err := describeOutput(json.RawMessage(tc.schema))
+		got, err := describeOutput("tool", json.RawMessage(tc.schema))
 		if err != nil || got != tc.want {
 			t.Errorf("%s: describeOutput = %q, %v; want %q", name, got, err, tc.want)
 		}
@@ -67,4 +67,27 @@ func mustJSON(t *testing.T, v any) []byte {
 		t.Fatal(err)
 	}
 	return b
+}
+
+// Pi f6ee9ce9 (#11501) describeOutput: a union of objects lists each variant, `const` fields show their value, and a type that spans lines is
+// replaced by a pointer to describeTool(); a single-line type stays.
+func TestDescribeOutputSummarizesUnionsConstFieldsAndMultiLineTypes(t *testing.T) {
+	variant := func(action string) string {
+		return `{"type":"object","properties":{"action":{"const":` + action + `,"type":"string"},"id":{"type":"string"}},"required":["action"]}`
+	}
+	for name, tc := range map[string]struct{ schema, want string }{
+		"anyOf":                 {`{"anyOf":[` + variant(`"a"`) + `,` + variant(`"b"`) + `]}`, "`{ action: \"a\", id? } | { action: \"b\", id? }`"},
+		"oneOf":                 {`{"oneOf":[` + variant(`"a"`) + `]}`, "`{ action: \"a\", id? }`"},
+		"null anyOf uses oneOf": {`{"anyOf":null,"oneOf":[` + variant(`1`) + `]}`, "`{ action: 1, id? }`"},
+		"const null and object": {`{"type":"object","properties":{"a":{"const":null},"b":{"const":{"z":1,"y":[true]}}}}`, "`{ a?: null, b?: {\"z\":1,\"y\":[true]} }`"},
+		"mixed union":           {`{"anyOf":[{"type":"object","properties":{"id":{"type":"string","description":"Id"}}},{"type":"string"}]}`, "a value; `await describeTool(\"tool\")` shows its type"},
+		"empty union":           {`{"anyOf":[]}`, "`never`"},
+		"array of objects":      {`{"type":"array","items":{"type":"object","properties":{"id":{"type":"string","description":"Entry id"}},"required":["id"]}}`, "a value; `await describeTool(\"tool\")` shows its type"},
+		"single line":           {`{"type":"number"}`, "`number`"},
+	} {
+		got, err := describeOutput("tool", json.RawMessage(tc.schema))
+		if err != nil || got != tc.want {
+			t.Errorf("%s: describeOutput = %q, %v; want %q", name, got, err, tc.want)
+		}
+	}
 }
