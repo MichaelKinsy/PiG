@@ -1274,7 +1274,8 @@ func (store *inboxRecordingStorage) setInbox(id durable.DocumentId) {
 	store.mu.Unlock()
 }
 
-func (store *inboxRecordingStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (store *inboxRecordingStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
+	writes := slices.Concat(batches...)
 	store.mu.Lock()
 	for _, write := range writes {
 		change, ok := write.(durable.DocumentChangeWrite)
@@ -1286,7 +1287,7 @@ func (store *inboxRecordingStorage) Commit(ctx context.Context, writes []durable
 		store.written = append(store.written, inboxWrite{Kind: string(change.Content.Kind), Empty: empty})
 	}
 	store.mu.Unlock()
-	return store.MemoryStorage.Commit(ctx, writes, adopt)
+	return store.MemoryStorage.Commit(ctx, batches, receive)
 }
 
 // documentRecordOf is the record of a document change, a retirement included.

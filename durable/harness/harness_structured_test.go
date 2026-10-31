@@ -1985,7 +1985,8 @@ func (store *rejectingStorage) reject(id durable.TaskId) {
 	store.mu.Unlock()
 }
 
-func (store *rejectingStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (store *rejectingStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
+	writes := slices.Concat(batches...)
 	store.mu.Lock()
 	target := store.target
 	finalizes := target != nil && slices.ContainsFunc(writes, func(write durable.StorageWrite) bool {
@@ -1997,9 +1998,9 @@ func (store *rejectingStorage) Commit(ctx context.Context, writes []durable.Stor
 	}
 	store.mu.Unlock()
 	if finalizes {
-		return 0, store.failure
+		return durable.CommitResult{}, store.failure
 	}
-	return store.MemoryStorage.Commit(ctx, writes, adopt)
+	return store.MemoryStorage.Commit(ctx, batches, receive)
 }
 
 // ─── Review follow-ups ──────────────────────────────────────────────────────

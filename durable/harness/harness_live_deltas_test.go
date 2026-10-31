@@ -490,23 +490,26 @@ func (store *recordingStorage) setLive(id durable.DocumentId) {
 	store.mu.Unlock()
 }
 
-func (store *recordingStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (store *recordingStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
 	store.mu.Lock()
 	liveId := store.liveId
 	store.mu.Unlock()
-	kind := ""
-	for _, write := range writes {
-		if change, ok := write.(durable.DocumentChangeWrite); ok && liveId != nil && change.Id == *liveId {
-			kind = string(change.Content.Kind)
+	kinds := make([]string, len(batches))
+	for index, writes := range batches {
+		for _, write := range writes {
+			if change, ok := write.(durable.DocumentChangeWrite); ok && liveId != nil && change.Id == *liveId {
+				kinds[index] = string(change.Content.Kind)
+			}
 		}
 	}
-	seq, err := store.MemoryStorage.Commit(ctx, writes, adopt)
-	if err == nil && kind != "" {
-		store.mu.Lock()
-		store.written[seq] = kind
-		store.mu.Unlock()
-	}
-	return seq, err
+	return store.MemoryStorage.Commit(ctx, batches, func(index int, seq durable.Seq) {
+		if kinds[index] != "" {
+			store.mu.Lock()
+			store.written[seq] = kinds[index]
+			store.mu.Unlock()
+		}
+		receive(index, seq)
+	})
 }
 
 func itoa(value int) string { return strconv.Itoa(value) }

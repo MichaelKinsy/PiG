@@ -7,6 +7,7 @@ package harness
 // pi: packages/durable/src/harness/scheduler.ts
 
 import (
+	"slices"
 	"context"
 	"errors"
 	"fmt"
@@ -156,7 +157,8 @@ func (store *ownMarkFailingStorage) fail(id durable.TaskId) {
 	store.mu.Unlock()
 }
 
-func (store *ownMarkFailingStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (store *ownMarkFailingStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
+	writes := slices.Concat(batches...)
 	store.mu.Lock()
 	marks := false
 	for _, write := range writes {
@@ -169,9 +171,9 @@ func (store *ownMarkFailingStorage) Commit(ctx context.Context, writes []durable
 	}
 	store.mu.Unlock()
 	if marks {
-		return 0, store.failure
+		return durable.CommitResult{}, store.failure
 	}
-	return store.Storage.Commit(ctx, writes, adopt)
+	return store.Storage.Commit(ctx, batches, receive)
 }
 
 func ownExpectFailedEnd(t *testing.T, harness Harness, failure error) {

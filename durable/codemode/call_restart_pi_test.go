@@ -3,6 +3,7 @@ package codemode
 // pi: packages/durable/src/codemode/codemode.ts
 
 import (
+	"slices"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -176,7 +177,8 @@ func (s *queuedStorage) markedCommits() any {
 	return append([]string{}, s.pushes...)
 }
 
-func (s *queuedStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (s *queuedStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
+	writes := slices.Concat(batches...)
 	s.mu.Lock()
 	s.entered++
 	if s.marked {
@@ -194,10 +196,10 @@ func (s *queuedStorage) Commit(ctx context.Context, writes []durable.StorageWrit
 		select {
 		case err := <-turn:
 			if err != nil {
-				return 0, err
+				return durable.CommitResult{}, err
 			}
 		case <-ctx.Done():
-			return 0, context.Cause(ctx)
+			return durable.CommitResult{}, context.Cause(ctx)
 		}
 	}
 	s.mu.Lock()
@@ -205,9 +207,9 @@ func (s *queuedStorage) Commit(ctx context.Context, writes []durable.StorageWrit
 	s.failure = nil
 	s.mu.Unlock()
 	if failure != nil {
-		return 0, failure
+		return durable.CommitResult{}, failure
 	}
-	return s.MemoryStorage.Commit(ctx, writes, adopt)
+	return s.MemoryStorage.Commit(ctx, batches, receive)
 }
 
 // gatedSandbox is the fixture's sandbox with what the VM reports and the call's request to stop it held on request
