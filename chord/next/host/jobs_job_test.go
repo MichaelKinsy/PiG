@@ -458,7 +458,9 @@ func TestJobStartAnAbortBetweenTheCommitAndTheStartIsMarkedThenTheSignalFiresThe
 	var signalled bool
 	var mu sync.Mutex
 	runStarted := make(chan struct{})
+	var runCtx JobCtx
 	fixture := echoJob(t, JobImplementation{Run: func(args any, ctx JobCtx) (any, error) {
+		runCtx = ctx
 		close(runStarted)
 		timerWait(loop, 20*time.Millisecond)
 		mu.Lock()
@@ -490,7 +492,9 @@ func TestJobStartAnAbortBetweenTheCommitAndTheStartIsMarkedThenTheSignalFiresThe
 	run := jobStart(t, job, textArgs("a"), background)
 	<-runStarted
 	eventually(t, "the sleeping run", func() bool { return loop.fake.TimerCount() == 1 })
-	// The watch's frame of the start's commit reaches the abort before the run wakes.
+	// The watch's frame of the start's commit reaches the abort before the run wakes. The run's ctx is derived from the
+	// invocation's signal and context.AfterFunc cancels it on a goroutine of its own, where Pi's `abortSignal.aborted` is
+	// the signal itself: wait for the ctx the run reads.
 	eventually(t, "the abort to fire the run's signal", func() bool {
 		var fired bool
 		recordsOf(job).loop.Run(func() {
@@ -498,7 +502,7 @@ func TestJobStartAnAbortBetweenTheCommitAndTheStartIsMarkedThenTheSignalFiresThe
 				fired = current.signal.Err() != nil
 			}
 		})
-		return fired
+		return fired && runCtx.Err() != nil
 	})
 	loop.fake.Advance(20)
 	if outcome := runOutcome(t, run); outcome.Kind != OutcomeDone || outcome.Result != "a" {
