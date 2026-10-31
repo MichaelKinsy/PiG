@@ -127,6 +127,24 @@ func Check(schema, value any) bool {
 	return err == nil && validator.Validate(Plain(value)) == nil
 }
 
+// Checker is Check for one schema compiled once: Value.Check on a schema a caller holds does not serialize it again for every
+// value. A schema the validator cannot compile matches nothing.
+type Checker struct {
+	validator *jsonschema.Schema
+	err       error
+}
+
+// NewChecker compiles schema (through the compiled-schema cache) for repeated checks.
+func NewChecker(schema any) *Checker {
+	validator, err := compile(schema)
+	return &Checker{validator: validator, err: err}
+}
+
+// Check is Value.Check against the compiled schema.
+func (checker *Checker) Check(value any) bool {
+	return checker.err == nil && checker.validator.Validate(Plain(value)) == nil
+}
+
 // Plain returns value with every *chordjson.Object as a map[string]any and every Go number as float64, the form the
 // validator reads. Other values are returned as they are.
 func Plain(value any) any {
