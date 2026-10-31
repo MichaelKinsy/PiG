@@ -1158,6 +1158,8 @@ func TestExample09Calls(t *testing.T) {
 	}))
 	var stored sync.Map
 	aborted := make(chan error, 2)
+	// reached receives once per slow call whose handler runs at the server: a call that never reached it sends nothing.
+	reached := make(chan struct{}, 2)
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(files, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
 			return exVariant("owner", nil, map[string]contracts.MethodFunction{
@@ -1182,7 +1184,10 @@ func TestExample09Calls(t *testing.T) {
 					return nil, data.NewPluginError("quota", "the store is full", jsonObject("limit", float64(1)))
 				},
 				// A handler's context is aborted when its caller cancels or releases the reference.
-				"slow": exBlocked(func(cause error) { aborted <- cause }),
+				"slow": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					reached <- struct{}{}
+					return exBlocked(func(cause error) { aborted <- cause })(args, ctx)
+				},
 			}), nil
 		}, ServeOptions{})
 	})
@@ -1217,7 +1222,7 @@ func TestExample09Calls(t *testing.T) {
 	cancellable, cancel := chordctx.WithCancel(background)
 	slowDone := make(chan error, 1)
 	go func() { _, err := reference.Call("slow", nil, cancellable); slowDone <- err }()
-	scopeEventually(t, "the call reached the server", func() bool { return exActivity(t, server).Calls == 1 })
+	<-reached
 	cancel(errors.New("the user gave up"))
 	if err := <-slowDone; err == nil || err.Error() != "the user gave up" {
 		t.Fatalf("client: slow rejected: %v", err)
@@ -1228,7 +1233,9 @@ func TestExample09Calls(t *testing.T) {
 	// Releasing the reference aborts a pending call.
 	pendingDone := make(chan error, 1)
 	go func() { _, err := reference.Call("slow", nil, background); pendingDone <- err }()
-	scopeEventually(t, "the second call reached the server", func() bool { return exActivity(t, server).Calls == 1 })
+	// The handler of this call runs. The activity count cannot say so: the first call's may not have drained yet, so a
+	// release could come before this call was made and reject it without it reaching the server, and `aborted` never fires.
+	<-reached
 	reference.Release()
 	_ = exCode(t, <-pendingDone, data.CodeReleased, "")
 	<-aborted
