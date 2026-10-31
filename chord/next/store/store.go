@@ -366,21 +366,262 @@ func (store *ChordStore) Commit(writes []StagedWrite, fence CommitFence, ctx con
 	return store.step(writes, fence, ctx)
 }
 
-// CommitInBatch is an adapter's commit (§1.3): Commit admitting every write, its adoption run in the attached host's
-// batch (`batch.Within`: it joins a running batch or opens one), plainly without a host. Durable's `adopt` publishes
-// inside it, so Chord sources over Durable's views are marked in the step.
-func (store *ChordStore) CommitInBatch(writes []StagedWrite, adopt func(seq int64) error, ctx context.Context) (int64, error) {
-	fence := CommitFence{
-		Admit: func() bool { return true },
-		Adopt: func(seq int64, _ []int64) error {
-			batch := store.Batch()
-			if batch == nil {
-				return adopt(seq)
-			}
-			return batch.Within(func() error { return adopt(seq) }, ctx)
-		},
+// SeriesCommit is one commit of a series (CommitSeries): its own check, which writes nothing, and its writes. The
+// check reads through the commit's step, which sees what the series' earlier commits wrote.
+type SeriesCommit struct {
+	// Check returns an error to refuse the commit: the series stops before it, the commits before it stand.
+	Check func(step *Step) error
+	// Writes are the commit's staged writes; none, and the commit takes no seq.
+	Writes []StagedWrite
+}
+
+// SeriesResult is what a series stored: how many of its commits, and why the next one was refused, if one was.
+type SeriesResult struct {
+	Stored  int
+	Refused error
+}
+
+// seriesStored is one stored commit of a series: its seq and its created documents.
+type seriesStored struct {
+	seq     int64
+	created []int64
+}
+
+// seriesProgress is a series while its transaction runs: each stored commit, its last step that wrote, the allocator's
+// value after it, the table records it changed (a copy of the catalog, made once one changed) and the statements run.
+type seriesProgress struct {
+	stored     []seriesStored
+	last       *Step
+	nextID     int64
+	changed    map[string]*TableRecord
+	statements int
+}
+
+// seriesDone is a series as its transaction leaves it: the stored commits; once a commit wrote, the last seq, the
+// allocator's value after it and the table records the series changed; the commits that wrote and the statements run.
+type seriesDone struct {
+	stored     []seriesStored
+	wrote      bool
+	lastSeq    int64
+	nextID     int64
+	tables     map[string]*TableRecord
+	written    int64
+	statements int
+}
+
+// CommitSeries commits commits in one backend transaction when the commit queue reaches them, one seq each, in
+// order: each commit's Check, which writes nothing, then its writes as Commit writes them, with its own outbox commit
+// and the metadata once (a commit without writes takes no seq: it stands at the one before). A Check that fails
+// refuses its commit: the series stops there and the transaction commits the ones before it (SeriesResult.Refused).
+// A Check one of whose backend statements failed, and a failure of a commit's writes, roll the whole series back and
+// return that error, the store going on (D4); any other failure is an unknown outcome that stops the store, as for
+// Commit. After COMMIT, receive(index, seq, ids) is called per stored commit, in order, before the next step starts
+// (ids: its created documents); a failing receive stops the store. ctx counts the step (no abort once queued).
+func (store *ChordStore) CommitSeries(commits []SeriesCommit, receive func(index int, seq int64, ids []int64) error, ctx context.Context) (SeriesResult, error) {
+	if err := store.AssertUsable(); err != nil {
+		return SeriesResult{}, err
 	}
-	return store.Commit(writes, fence, ctx)
+	previous, done := store.ticket()
+	<-previous
+	defer close(done)
+	return store.series(commits, receive, ctx)
+}
+
+// series is a series' turn in the queue: the backend transaction, then memory and the receipts as after step.
+func (store *ChordStore) series(commits []SeriesCommit, receive func(index int, seq int64, ids []int64) error, ctx context.Context) (SeriesResult, error) {
+	if err := store.AssertUsable(); err != nil {
+		return SeriesResult{}, err
+	}
+	// Past the safe range seqs stop counting exactly (a later one would repeat): the store cannot number further. Only
+	// a commit with writes takes a seq, as for Commit.
+	seqs := int64(0)
+	for _, commit := range commits {
+		if len(commit.Writes) > 0 {
+			seqs++
+		}
+	}
+	if store.LastSeq()+seqs > MaxSafeInteger {
+		return SeriesResult{}, store.fail(errors.New("store: no seq past Number.MAX_SAFE_INTEGER"))
+	}
+	var thrown, refusal error
+	var done seriesDone
+	err := store.db.Transaction(func(executor sqlite.SqliteExecutor) error {
+		var err error
+		done, refusal, err = store.writeSeries(executor, commits)
+		if err != nil {
+			thrown = err
+		}
+		return err
+	})
+	if err != nil {
+		// The facade rolled back and returns the series' own error: the store goes on (D4).
+		if thrown != nil && sameError(err, thrown) {
+			return SeriesResult{}, err
+		}
+		return SeriesResult{}, store.fail(err)
+	}
+	// COMMIT returned: the stored commits are durable, and memory follows.
+	if done.wrote {
+		store.mu.Lock()
+		store.lastSeq = done.lastSeq
+		store.committedNextID = done.nextID
+		if len(done.tables) > 0 {
+			store.catalog = withTables(store.catalog, done.tables)
+		}
+		store.mu.Unlock()
+	}
+	if metrics := chordctx.Telemetry(ctx).Metrics(); metrics != nil {
+		metrics.Counter("chord.store.commits", telemetry.InstrumentOptions{}).Add(float64(done.written), nil)
+		metrics.Counter("chord.store.statements", telemetry.InstrumentOptions{}).Add(float64(done.statements), nil)
+	}
+	for index, stored := range done.stored {
+		if err := receive(index, stored.seq, stored.created); err != nil {
+			return SeriesResult{}, store.fail(err)
+		}
+	}
+	return SeriesResult{Stored: len(done.stored), Refused: refusal}, nil
+}
+
+// writeSeries is the commits of a series in its backend transaction, until one is refused: each commit's check, then
+// its writes; the metadata once, at the end. It returns the refusal, if a check refused.
+func (store *ChordStore) writeSeries(executor sqlite.SqliteExecutor, commits []SeriesCommit) (done seriesDone, refusal, err error) {
+	calls := &watchedCalls{executor: executor}
+	progress := &seriesProgress{nextID: store.ids.Value()}
+	for _, commit := range commits {
+		refused, err := store.checkCommit(commit, calls, progress)
+		if err != nil {
+			return seriesDone{}, nil, err
+		}
+		if refused != nil {
+			refusal = refused
+			break
+		}
+		if err := store.writeCommit(commit, executor, progress); err != nil {
+			return seriesDone{}, nil, err
+		}
+	}
+	done, err = store.closeSeries(progress)
+	return done, refusal, err
+}
+
+// checkCommit runs commit's check on a step at the series' next seq whose backend calls are watched; it returns its
+// refusal, if it refused. A check one of whose backend calls failed returns that failure instead: not a refusal.
+func (store *ChordStore) checkCommit(commit SeriesCommit, calls *watchedCalls, progress *seriesProgress) (refusal, failure error) {
+	step := NewStep(calls, store.nextSeq(progress), store.ids, progress.catalog(store))
+	calls.failed = false
+	err := commit.Check(step)
+	progress.statements += step.Statements
+	if err == nil {
+		return nil, nil
+	}
+	if calls.failed {
+		return nil, err
+	}
+	return err, nil
+}
+
+// writeCommit writes commit on its own step at the series' next seq (write), unwatched, and keeps the table records
+// it changed in a copy of the catalog, made only once one changed; a commit without writes takes no seq.
+func (store *ChordStore) writeCommit(commit SeriesCommit, executor sqlite.SqliteExecutor, progress *seriesProgress) error {
+	seq := store.nextSeq(progress)
+	if len(commit.Writes) == 0 {
+		progress.stored = append(progress.stored, seriesStored{seq: seq - 1, created: []int64{}})
+		return nil
+	}
+	step := NewStep(executor, seq, store.ids, progress.catalog(store))
+	nextID, err := store.write(step, commit.Writes)
+	if err != nil {
+		return err
+	}
+	progress.nextID = nextID
+	progress.statements += step.Statements
+	if len(step.Tables) > 0 {
+		if progress.changed == nil {
+			progress.changed = maps.Clone(store.Tables())
+		}
+		maps.Copy(progress.changed, step.Tables)
+	}
+	progress.last = step
+	progress.stored = append(progress.stored, seriesStored{seq: seq, created: step.Created})
+	return nil
+}
+
+// catalog is the table records a series' next step sees: the store's, or the copy holding what the series changed.
+func (progress *seriesProgress) catalog(store *ChordStore) map[string]*TableRecord {
+	if progress.changed != nil {
+		return progress.changed
+	}
+	return store.Tables()
+}
+
+// nextSeq is the seq the series' next commit takes.
+func (store *ChordStore) nextSeq(progress *seriesProgress) int64 {
+	if progress.last != nil {
+		return progress.last.Seq + 1
+	}
+	return store.LastSeq() + 1
+}
+
+// closeSeries ends the series' writes with the metadata, once, after its last commit that wrote; it returns what
+// memory takes.
+func (store *ChordStore) closeSeries(progress *seriesProgress) (seriesDone, error) {
+	if progress.last == nil {
+		return seriesDone{stored: progress.stored, statements: progress.statements}, nil
+	}
+	if err := writeMeta(progress.last, progress.nextID); err != nil {
+		return seriesDone{}, err
+	}
+	return seriesDone{
+		stored:     progress.stored,
+		wrote:      true,
+		lastSeq:    progress.last.Seq,
+		nextID:     progress.nextID,
+		tables:     progress.changed,
+		written:    progress.last.Seq - store.LastSeq(),
+		statements: progress.statements + 1,
+	}, nil
+}
+
+// writeMeta records the step's seq as the store's last, and the allocator's value nextID.
+func writeMeta(step *Step, nextID int64) error {
+	return step.Run("UPDATE "+TableMeta+" SET last_seq = ?, next_id = ? WHERE singleton = 1", step.Seq, nextID)
+}
+
+// watchedCalls is an executor setting failed when one of its calls fails: a check that fails then failed in the
+// backend, not by its own decision (Pi's `watchCalls`).
+type watchedCalls struct {
+	executor sqlite.SqliteExecutor
+	failed   bool
+}
+
+func (calls *watchedCalls) Exec(sql string) error {
+	err := calls.executor.Exec(sql)
+	calls.failed = calls.failed || err != nil
+	return err
+}
+
+func (calls *watchedCalls) Run(sql string, params ...sqlite.SqliteValue) error {
+	err := calls.executor.Run(sql, params...)
+	calls.failed = calls.failed || err != nil
+	return err
+}
+
+func (calls *watchedCalls) RunCounted(sql string, params ...sqlite.SqliteValue) (int64, error) {
+	changed, err := calls.executor.RunCounted(sql, params...)
+	calls.failed = calls.failed || err != nil
+	return changed, err
+}
+
+func (calls *watchedCalls) Get(sql string, params ...sqlite.SqliteValue) (sqlite.SqliteRow, error) {
+	row, err := calls.executor.Get(sql, params...)
+	calls.failed = calls.failed || err != nil
+	return row, err
+}
+
+func (calls *watchedCalls) All(sql string, params ...sqlite.SqliteValue) ([]sqlite.SqliteRow, error) {
+	rows, err := calls.executor.All(sql, params...)
+	calls.failed = calls.failed || err != nil
+	return rows, err
 }
 
 // Read runs read on the backend under the guard (rule 11, Durable's `GuardedStorage`): refused once the store stopped
@@ -544,12 +785,17 @@ func (store *ChordStore) step(writes []StagedWrite, fence CommitFence, ctx conte
 	var thrown error
 	var done stepDone
 	err := store.db.Transaction(func(executor sqlite.SqliteExecutor) error {
-		var err error
-		done, err = store.write(executor, seq, writes)
+		step := NewStep(executor, seq, store.ids, store.Tables())
+		nextID, err := store.write(step, writes)
+		if err == nil {
+			err = writeMeta(step, nextID)
+		}
 		if err != nil {
 			thrown = err
+			return err
 		}
-		return err
+		done = stepDone{step: step, nextID: nextID}
+		return nil
 	})
 	if err != nil {
 		// The facade rolled back and returns the step's own error: a refusal, the store goes on (D4).
@@ -597,10 +843,10 @@ func withTables(catalog, changed map[string]*TableRecord) map[string]*TableRecor
 }
 
 // write is the step's writes inside its backend transaction: each staged write in its phase, the catalog, the outbox
-// commit, the metadata. The allocator's value is taken once, after the writes applied (mints meanwhile only raise
-// it).
-func (store *ChordStore) write(executor sqlite.SqliteExecutor, seq int64, writes []StagedWrite) (stepDone, error) {
-	step := NewStep(executor, seq, store.ids, store.Tables())
+// commit. It returns the allocator's value, taken once, after the writes applied (mints meanwhile only raise it); the
+// metadata (writeMeta) is the caller's.
+func (store *ChordStore) write(step *Step, writes []StagedWrite) (int64, error) {
+	seq := step.Seq
 	var recorded []StoreWrite
 	if store.outbox != nil {
 		recorded = []StoreWrite{}
@@ -612,7 +858,7 @@ func (store *ChordStore) write(executor sqlite.SqliteExecutor, seq int64, writes
 			}
 			done, err := write.Apply(step)
 			if err != nil {
-				return stepDone{}, err
+				return 0, err
 			}
 			if recorded != nil {
 				recorded = append(recorded, done...)
@@ -620,23 +866,20 @@ func (store *ChordStore) write(executor sqlite.SqliteExecutor, seq int64, writes
 		}
 	}
 	if err := WriteCatalog(step); err != nil {
-		return stepDone{}, err
+		return 0, err
 	}
 	nextID := store.ids.Value()
 	if recorded != nil {
 		text, err := jsstring.MarshalJSON(recorded)
 		if err != nil {
-			return stepDone{}, err
+			return 0, err
 		}
 		err = step.Run("INSERT INTO "+TableOutbox+" (seq, format, next_id, writes) VALUES (?, ?, ?, ?)", seq, OutboxFormat, nextID, string(text))
 		if err != nil {
-			return stepDone{}, err
+			return 0, err
 		}
 	}
-	if err := step.Run("UPDATE "+TableMeta+" SET last_seq = ?, next_id = ? WHERE singleton = 1", seq, nextID); err != nil {
-		return stepDone{}, err
-	}
-	return stepDone{step: step, nextID: nextID}, nil
+	return nextID, nil
 }
 
 // ReplayApply is what Replay runs in the commit queue's turn: it applies a batch in one backend transaction over the

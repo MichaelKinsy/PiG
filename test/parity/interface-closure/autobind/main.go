@@ -381,6 +381,7 @@ var libraryEntries = map[string][]string{
 	"durable:./storage/sqlite":            {"./durable/storage/sqlite"},
 	"durable:./storage/sqlite/node":       {"./durable/storage/sqlite/node"},
 	"durable:./storage/sqlite/cloudflare": {"./durable/storage/sqlite/cloudflare"},
+	"durable:./storage/store":             {"./durable/storage/store"},
 	"chord:.":                             {"./chord", "./chord/context", "./chord/delta", "./chord/host", "./durable", "./durable/core/internal/delta"},
 	"chord:./next":                        {"./chord", "./chord/next/contracts", "./chord/next/data", "./chord/next/documents", "./chord/next/host", "./chord/next/link", "./chord/next/registries", "./chord/next/state", "./chord/next/store"},
 	"chord:./context":                     {"./chord/context"},
