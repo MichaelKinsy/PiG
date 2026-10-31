@@ -5,6 +5,7 @@ package workers
 import (
 	"context"
 	"errors"
+	"syscall"
 	"testing"
 	"time"
 
@@ -39,13 +40,8 @@ func TestTheRolloutStepListsAWorkerStoppedCleanlyDuringItAsStoppedAndOneThatCras
 	built := f.build(f.dirty())
 	// Both workers block their event loops: their reloads wait; S1 is stopped meanwhile, S2 crashes before reading it.
 	first := f.get(fixtureControl, "S1")
-	if _, err := first.Call("block", float64(400), background); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := control.Call("blockThenCrash", float64(400), background); err != nil {
-		t.Fatal(err)
-	}
-	// Their event loops are blocked once their timers ran.
+	f.freezeWorker("S1", 400*time.Millisecond, false)
+	f.freezeWorker("S2", 400*time.Millisecond, true)
 	time.Sleep(50 * time.Millisecond)
 	rolling := f.asyncRollout(f.workers.Step("workers"), built, background)
 	time.Sleep(50 * time.Millisecond)
@@ -71,9 +67,7 @@ func TestTheRolloutStepAnAbortedWaitListsTheWorkerAbortedItsLateReplyKeepsTheChi
 	f.label("v2")
 	f.untilDirty()
 	built := f.build(f.dirty())
-	if _, err := control.Call("block", float64(300), background); err != nil {
-		t.Fatal(err)
-	}
+	f.freezeWorker("S1", 300*time.Millisecond, false)
 	time.Sleep(50 * time.Millisecond)
 	aborting, abort := chordctx.WithCancel(background)
 	step := f.workers.Step("workers")
@@ -97,9 +91,7 @@ func TestFixRound1AReloadQueuedBehindOneTheChildNeverAnswersSettlesWhenTheChildE
 	f.label("v2")
 	until(t, func() bool { return len(f.dirty()) > 0 })
 	built := f.build(f.dirty())
-	if _, err := control.Call("blockThenCrash", float64(600), background); err != nil {
-		t.Fatal(err)
-	}
+	f.freezeWorker("S1", 600*time.Millisecond, true)
 	time.Sleep(50 * time.Millisecond)
 	first := f.asyncRollout(f.workers.Step("one"), built, background)
 	time.Sleep(50 * time.Millisecond)
@@ -107,4 +99,24 @@ func TestFixRound1AReloadQueuedBehindOneTheChildNeverAnswersSettlesWhenTheChildE
 	requireListed(t, listed(<-first), "session|S1 worker: its link is gone")
 	requireListed(t, listed(<-second), "session|S1 worker: its link is gone")
 	control.Release()
+}
+
+// freezeWorker blocks the worker process of session `id` as Pi's busy loop blocks a worker's event loop: stopped for d (the
+// worker answers nothing), then continued, or, when crash, killed (Pi's `blockThenCrash` exits after its loop).
+func (f *fleet) freezeWorker(id string, d time.Duration, crash bool) {
+	f.t.Helper()
+	state := f.stateOf(id)
+	if state == nil {
+		f.t.Fatalf("no worker for session %s", id)
+	}
+	if err := syscall.Kill(state.Pid, syscall.SIGSTOP); err != nil {
+		f.t.Fatal(err)
+	}
+	time.AfterFunc(d, func() {
+		if crash {
+			_ = syscall.Kill(state.Pid, syscall.SIGKILL)
+			return
+		}
+		_ = syscall.Kill(state.Pid, syscall.SIGCONT)
+	})
 }
