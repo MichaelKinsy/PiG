@@ -850,6 +850,9 @@ func TestHostFollowAnEndedOrFailedEndBeforeTheAttachmentResolvedFailsTheActivati
 			a.end(tc.end)
 			close(a.gate)
 			must(t, <-s.loaded)
+			// The end failed the activation while the attachment was pending; the attachment that arrives is detached on its own
+			// task. Pi's `await loading` and `delivered()` run that continuation (a microtask) before `host.close`.
+			loop.Wait()
 			deliveredOn(s.Host)
 			var kinds []data.FailureKind
 			for _, each := range s.Errors.All() {
