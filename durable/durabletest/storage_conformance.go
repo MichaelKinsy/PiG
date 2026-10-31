@@ -308,7 +308,15 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			events = append(events, fmt.Sprintf("resolve %d", result.Stored))
 			expect(events).toEqual([]any{fmt.Sprintf("receive %d", seq), "resolve 1"})
 			// A storage that never received has failed the check above and started no read to wait for.
-			started := <-read
+			var started entryRead
+			select {
+			case started = <-read:
+			default:
+				if len(events) == 1 {
+					return
+				}
+				started = <-read
+			}
 			check(started.err)
 			expect(started.found.CommitSeq).toBe(seq)
 
@@ -1263,10 +1271,16 @@ func CreateStorageConformance(options StorageConformanceOptions) []StorageConfor
 			expect(result.Stored).toBe(3)
 			expect(result.Refused).toBeUndefined()
 			expect(len(receipts)).toBe(3)
+			if len(receipts) != 3 {
+				return
+			}
 			expect([]int{receipts[0].index, receipts[1].index, receipts[2].index}).toEqual([]any{0, 1, 2})
 			first, second, last := receipts[0].seq, receipts[1].seq, receipts[2].seq
 			expect(second).toBeGreaterThan(float64(first))
 			expect(last).toBeGreaterThan(float64(second))
+			if read == nil {
+				return
+			}
 			started := <-read
 			check(started.err)
 			expect(started.found.CommitSeq).toBe(last)

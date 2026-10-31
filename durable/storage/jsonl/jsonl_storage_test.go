@@ -1144,11 +1144,33 @@ func TestJsonlStoragePoisonsWhenAnAppendFailsAfterItsBatchesApplied(t *testing.T
 	}
 }
 
+// gatedAppendFileSystem holds the first AppendFile once armed until the gate opens; entered closes when it is held.
+type gatedAppendFileSystem struct {
+	*node.NodeFileSystem
+	armed   atomic.Bool
+	entered chan struct{}
+	once    sync.Once
+	gate    chan struct{}
+}
+
+func (fileSystem *gatedAppendFileSystem) AppendFile(ctx context.Context, path string, content any) error {
+	if fileSystem.armed.Load() {
+		fileSystem.once.Do(func() {
+			close(fileSystem.entered)
+			<-fileSystem.gate
+		})
+	}
+	return fileSystem.NodeFileSystem.AppendFile(ctx, path, content)
+}
+
 // Pi packages/durable/test/jsonl-storage.test.ts describe("JsonlStorage batches").
 func TestJsonlStorageBatches(t *testing.T) {
 	t.Run("appends a batch's markers in one write and recovers a shorter prefix from a torn one", func(t *testing.T) {
 		directory := tempDirectory(t)
-		storage := open(t, directory)
+		fileSystem := &gatedAppendFileSystem{
+			NodeFileSystem: &node.NodeFileSystem{Cwd: directory}, entered: make(chan struct{}), gate: make(chan struct{}),
+		}
+		storage := openStorage(t, directory, fileSystem, jsonl.JsonlStorageOptions{})
 		createRoot(t, storage)
 		documentId := mint[durable.DocumentId](t, storage)
 		commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(documentId, "test.document"), Content: base(chorddelta.JsonObjectOf("n", 0))})
@@ -1163,6 +1185,7 @@ func TestJsonlStorageBatches(t *testing.T) {
 			})
 		}
 		// Reads wait for the append: a read started while it runs sees every batch durable.
+		fileSystem.armed.Store(true)
 		type commitOutcome struct {
 			result durable.CommitResult
 			err    error
@@ -1172,8 +1195,10 @@ func TestJsonlStorageBatches(t *testing.T) {
 			result, err := storage.Commit(testContext, batches, func(int, durable.Seq) {})
 			committed <- commitOutcome{result, err}
 		}()
+		<-fileSystem.entered
 		read := make(chan *durable.EntryAt, 1)
 		go func() { read <- must(storage.Entry(testContext, entries[2])) }()
+		close(fileSystem.gate)
 		outcome := <-committed
 		mustDo(t, outcome.err)
 		if outcome.result.Stored != 3 || outcome.result.Refused != nil {
