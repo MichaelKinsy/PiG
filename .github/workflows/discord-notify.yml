@@ -56,8 +56,10 @@ jobs:
             exit 0
           fi
 
-          # jq builds the payload so that a commit subject or a release body cannot break the JSON, and so that a long
-          # release body stays inside Discord's 2000-character content limit.
+          # jq builds the payload so that a commit subject or a release body cannot break the JSON, and every message is
+          # cut to 1990 characters after it is assembled: Discord rejects content longer than 2000, and a commit subject
+          # or a release body alone does not bound the total, which also carries the tag, the name, the repository and
+          # the URL.
           if [ "${EVENT_NAME}" = "push" ]; then
             # A squash merge titles the commit "… (#123)"; link that pull request when the title carries it.
             subject=$(printf '%s' "${PUSH_SUBJECT}" | head -1)
@@ -75,9 +77,9 @@ jobs:
               --arg url "${PUSH_COMPARE}" \
               '{
                 username: "PiG",
-                content: ("**Merged to main** on `" + $repo + "`\n" + $subject
+                content: (("**Merged to main** on `" + $repo + "`\n" + $subject
                   + (if $pr == "" then "" else "\nhttps://github.com/" + $repo + "/pull/" + $pr end)
-                  + "\n`" + $sha + "` · by " + $author + "\n" + $url),
+                  + "\n`" + $sha + "` · by " + $author + "\n" + $url) | .[0:1990]),
                 allowed_mentions: { parse: [] }
               }')
           else
@@ -89,9 +91,9 @@ jobs:
               --arg body "${RELEASE_BODY}" \
               '{
                 username: "PiG",
-                content: ("**Release " + $tag + " published**" + (if $name == "" then "" else " — " + $name end)
+                content: (("**Release " + $tag + " published**" + (if $name == "" then "" else " — " + $name end)
                   + " on `" + $repo + "`\n" + $url
-                  + (if $body == "" then "" else "\n\n" + ($body | .[0:1500]) end)),
+                  + (if $body == "" then "" else "\n\n" + ($body | .[0:1500]) end)) | .[0:1990]),
                 allowed_mentions: { parse: [] }
               }')
           fi
