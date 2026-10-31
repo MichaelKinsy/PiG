@@ -30,12 +30,12 @@ func reviewedMember(root, id string) (reviewedSemantic, bool) {
 	switch root {
 	case "pkg:tui/.#Component":
 		behavior = map[string]string{
-			"render":          "calls component rendering synchronously with resolved content-cell width and returns ordered terminal lines without trailing newlines",
-			"handleInput":     "optional synchronous handler receives each eligible raw input chunk in order",
-			"wantsKeyRelease": "optional boolean opts into Kitty release delivery; omission is false",
+			"render":                "calls component rendering synchronously with resolved content-cell width and returns ordered terminal lines without trailing newlines",
+			"handleInput":           "optional synchronous handler receives each eligible raw input chunk in order",
+			"wantsKeyRelease":       "optional boolean opts into Kitty release delivery; omission is false",
 			"capturesViewportInput": "optional boolean; while true and focused, fullscreen viewport keys (tui.altScreen scrolling and prompt jumps) go to the component instead of the transcript, as for a focused overlay; omission is false",
-			"invalidate":      "synchronously discards component-local cached rendering state",
-			"handleMouse":     "optional synchronous handler receives each normalized mouse event with component-relative coordinates; undefined or a result claiming none of handled, capture, or focus passes the event on",
+			"invalidate":            "synchronously discards component-local cached rendering state",
+			"handleMouse":           "optional synchronous handler receives each normalized mouse event with component-relative coordinates; undefined or a result claiming none of handled, capture, or focus passes the event on",
 		}[property]
 	case "pkg:tui/.#Focusable":
 		behavior = map[string]string{"focused": "mutable strict component identity flag; the TUI sets it on focus transitions and the component uses it to emit APC cursor markers"}[property]
