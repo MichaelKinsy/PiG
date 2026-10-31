@@ -374,7 +374,7 @@ func (b *AssistantMessageComponent) SetAsyncMarkdownTransforms(text, thinking *A
 
 // SetOwnedThinkingRuns declares that an extension owns the thinking runs of this message. A run that is hidden, or whose rendering
 // draws no rows (an extension's transform rewrote it to nothing), then leaves no spacing: no spacer before it, none after it, and no
-// stub for a hidden one. It is Pi's hidden run with an empty label (assistant-message.ts updateContent `continue`), decided from what
+// empty line standing in for a hidden one. It is Pi's hidden run with an empty label (assistant-message.ts updateContent `continue`), decided from what
 // the run draws at render time and not only from its visibility. Without ownership the block is Pi's frame for frame.
 // pig additive (D214): a subprocess extension cannot patch AssistantMessageComponent.updateContent as an in-process Pi extension can.
 func (b *AssistantMessageComponent) SetOwnedThinkingRuns(owned bool) {
