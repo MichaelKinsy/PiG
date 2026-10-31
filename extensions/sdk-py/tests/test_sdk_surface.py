@@ -444,3 +444,32 @@ def test_session_log_getters_report_subscription_failure() -> None:
     for name in ("get_branch", "get_entries"):
         raised = _probe_getter(lambda c, name=name: getattr(c, name)(), None, failure)
         assert isinstance(raised, pig_sdk.HostCallError) and "log unavailable" in str(raised), name
+
+
+# pig divergence (D217) test: Pi c466a359 (#11360) exec.ts maxBuffer. The option crosses as options.maxBuffer and the result's truncated is read.
+def test_exec_max_buffer_option_and_truncated_result() -> None:
+    results: list[pig_sdk.ExecResult] = []
+    calls, _ = _run_command(
+        lambda ctx: results.append(ctx.exec("yes", [], max_buffer=1024)),
+        {"exec": {"stdout": "yyyy", "stderr": "", "code": 1, "killed": True, "truncated": True}},
+    )
+    assert calls[0]["call"]["args"] == {"command": "yes", "args": [], "options": {"maxBuffer": 1024}}
+    assert results == [pig_sdk.ExecResult(stdout="yyyy", stderr="", exit_code=1, killed=True, truncated=True)]
+
+
+def test_exec_result_without_truncated_reads_false_and_a_non_finite_max_buffer_sends_no_call() -> None:
+    results: list[pig_sdk.ExecResult] = []
+    errors: list[BaseException] = []
+
+    def handler(ctx: pig_sdk.Context) -> None:
+        results.append(ctx.exec("true", []))
+        for value in (float("nan"), float("inf"), float("-inf")):
+            try:
+                ctx.exec("true", [], max_buffer=value)
+            except ValueError as error:
+                errors.append(error)
+
+    calls, _ = _run_command(handler, {"exec": {"stdout": "", "stderr": "", "code": 0, "killed": False}})
+    assert len(calls) == 1, "only the exec without a cap reached the host"
+    assert results == [pig_sdk.ExecResult()]
+    assert len(errors) == 3 and all("maxBuffer must be an integer" in str(error) for error in errors)

@@ -171,6 +171,19 @@
                                                 (pig:exec-result-exit-code result)
                                                 (string-trim '(#\Space #\Newline #\Tab) (pig:exec-result-stdout result)))))
                      (pig:host-call-error (e) (core-info ctx (format nil "rejected:~A" (pig:host-call-error-message e))))))))
+  (pig:command ext "exec-limits-probe" "Run a command with a max_buffer and report truncation"
+               (lambda (ctx args)
+                 (let* ((probe (pig:from-json args)) (max-buffer (pig:jget probe "maxBuffer")))
+                   (handler-case
+                       (let ((result (apply #'pig:ctx-exec ctx (pig:jget probe "command") :args (coerce (pig:jget probe "args") 'list)
+                                            (and max-buffer (list :max-buffer max-buffer)))))
+                         (flet ((trimmed (text) (string-trim '(#\Space #\Newline #\Tab #\Return) text)))
+                           (core-info ctx (format nil "exec-limits:truncated=~A;killed=~A;code=~D;stdout=~A;stderr=~A"
+                                                  (if (pig:exec-result-truncated result) "true" "false")
+                                                  (if (pig:exec-result-killed result) "true" "false")
+                                                  (pig:exec-result-exit-code result)
+                                                  (trimmed (pig:exec-result-stdout result)) (trimmed (pig:exec-result-stderr result))))))
+                     (pig:host-call-error (e) (core-info ctx (format nil "rejected:~A" (pig:host-call-error-message e))))))))
   (pig:command ext "timeout-probe" "Send JavaScript-number timeouts"
                (lambda (ctx args) (declare (ignore args))
                  (dolist (timeout (list 0.5d0 4294967296.5d0 1d21)) (pig:ctx-exec ctx "timeout-command" :args '() :timeout timeout))

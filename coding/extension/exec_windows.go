@@ -20,6 +20,10 @@ func terminate(process *os.Process) (noExitCode bool) {
 	return process.Kill() == nil
 }
 
+// pig divergence (D217): Pi c466a359 (#11360) force-kills a child that ignores SIGTERM; pinned Pi never sent the SIGKILL.
+// forceTerminate is proc.kill("SIGKILL"), which exec.ts sends execForceKillDelay after SIGTERM to a child that has not exited; Node ends a Windows process the same way for every signal.
+func forceTerminate(process *os.Process) { _ = process.Kill() }
+
 // The child starts suspended and joins a job object before it runs, as the bash tool's shell does (internal/jobgroup), so that an empty job tells Wait
 // that no process holds the output pipes. Pi's exec kills the child alone: the job never kills anything.
 func prepareChildGroup(cmd *exec.Cmd)                  { jobgroup.Suspend(cmd) }

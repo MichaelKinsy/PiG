@@ -5,6 +5,7 @@ package sdk
 import (
 	"encoding/json"
 	"errors"
+	"math"
 	"reflect"
 	"strings"
 	"testing"
@@ -228,6 +229,48 @@ func TestExecWithOptionsSendsOptionsAndDecodesKilled(t *testing.T) {
 	}
 	if result := <-got; result == nil || *result != (ExecResult{Stdout: "out", Stderr: "err", ExitCode: 137, Killed: true}) {
 		t.Fatalf("exec result = %+v", result)
+	}
+	surfaceShutdown(t, host, done)
+}
+
+// pig divergence (D217) test: Pi c466a359 (#11360) exec.ts maxBuffer. The option crosses as options.maxBuffer and the result's truncated is read; NaN and the
+// infinities cannot cross the wire, so the call fails before it is sent.
+func TestExecWithMaxBufferSendsTheOptionAndDecodesTruncated(t *testing.T) {
+	ext := New("surface")
+	type outcome struct {
+		result *ExecResult
+		err    error
+	}
+	got := make(chan outcome, 1)
+	var nonFinite []error
+	ext.Command("exec", "", func(ctx Context, _ string) error {
+		for _, value := range []float64{math.NaN(), math.Inf(1), math.Inf(-1)} {
+			_, err := ctx.ExecWithOptions("yes", nil, ExecOptions{MaxBuffer: &value})
+			nonFinite = append(nonFinite, err)
+		}
+		limit := 8.0
+		result, err := ctx.ExecWithOptions("yes", nil, ExecOptions{MaxBuffer: &limit})
+		got <- outcome{result, err}
+		return err
+	})
+	host, _, done := surfaceHost(t, ext, nil)
+	calls, resp := runSurfaceCommand(t, host, "exec", func(*callMsg) *callResultMsg {
+		return &callResultMsg{Result: json.RawMessage(`{"stdout":"y\ny\ny\ny\n","stderr":"","code":1,"killed":true,"truncated":true}`)}
+	})
+	if resp.Error != nil || len(calls) != 1 || calls[0].Method != "exec" {
+		t.Fatalf("calls = %+v, response = %+v, want only the exec with a finite cap", calls, resp)
+	}
+	for i, err := range nonFinite {
+		if err == nil {
+			t.Errorf("non-finite maxBuffer %d: the call did not fail", i)
+		}
+	}
+	want := map[string]any{"command": "yes", "args": nil, "options": map[string]any{"maxBuffer": float64(8)}}
+	if args := decodeArgs(t, calls[0].Args); !reflect.DeepEqual(args, want) {
+		t.Fatalf("exec args = %#v, want %#v", args, want)
+	}
+	if result := <-got; result.err != nil || *result.result != (ExecResult{Stdout: "y\ny\ny\ny\n", ExitCode: 1, Killed: true, Truncated: true}) {
+		t.Fatalf("exec result = %+v, %v", result.result, result.err)
 	}
 	surfaceShutdown(t, host, done)
 }

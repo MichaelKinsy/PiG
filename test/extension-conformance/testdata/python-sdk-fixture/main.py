@@ -1362,6 +1362,21 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("exec-abort-probe", "Abort a running exec through its signal", exec_abort_probe)
 
+    def exec_limits_probe(ctx, args):
+        probe = json.loads(args)
+        try:
+            options = {"max_buffer": probe["maxBuffer"]} if "maxBuffer" in probe else {}
+            result = ctx.exec(probe["command"], probe["args"], **options)
+            ctx.notify(
+                f"exec-limits:truncated={str(result.truncated).lower()};killed={str(result.killed).lower()};code={result.exit_code}"
+                f";stdout={result.stdout.strip()};stderr={result.stderr.strip()}",
+                "info",
+            )
+        except RuntimeError as error:
+            ctx.notify(f"rejected:{error}", "info")
+
+    ext.command("exec-limits-probe", "Run a command with a max_buffer and report truncation", exec_limits_probe)
+
     def language_probe(ctx, args):
         ctx.notify("language:%s:end" % json.dumps({"lang": pig_sdk.get_language_from_path(json.loads(args)["path"])}, separators=(",", ":")), "info")
 
@@ -1564,6 +1579,12 @@ def new_extension() -> pig_sdk.Extension:
             % (message.get("content", ""), str(bool(options.get("expanded"))).lower(), width)
         ],
     )
+    # pig divergence (D217) test fixture: Pi 9376c8d1 (#4748) key_text and key_hint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
+    def hints_of(hints, keybinding):
+        return "%s | %s" % (hints.key_text(keybinding), hints.key_hint(keybinding, "to expand"))
+
+    ext.message_renderer("keyhints-message", lambda _ctx, message, options, _width: [hints_of(options, message.get("content", ""))])
+    ext.entry_renderer("keyhints-entry", lambda _ctx, entry, options, _width: [hints_of(options, entry.get("data", ""))])
     ext.message_view_renderer("kit-message", lambda _ctx, _message, _options, _width: kit_probe_view())
     ext.entry_view_renderer("kit-entry", lambda _ctx, _entry, _options, _width: kit_probe_view())
     def transform_markdown(markdown, context):
@@ -1593,6 +1614,8 @@ def new_extension() -> pig_sdk.Extension:
             renderers.call_view = lambda _ctx, _args, _render, _width: kit_probe_view()
             renderers.result_view = lambda _ctx, _result, _options, _render, _width: kit_probe_view()
             return renderers
+        if tool == "conformance_keyhints":
+            return pig_sdk.ToolRenderers(render_call=lambda _ctx, args, render, _width: [hints_of(render, args.get("q", ""))])
         if tool == "conformance_no_renderer":
             return None
         if tool == "conformance_fill":

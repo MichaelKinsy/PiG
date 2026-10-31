@@ -326,3 +326,15 @@
   (check= "Ctrl+Y" (pig:format-key-text "ctrl+y" t))
   (check= "ctrl+y/enter" (pig:format-key-text "ctrl+y/enter"))
   (check= (if (member :darwin *features*) "option+left" "alt+left") (pig:format-key-text "alt+left")))
+
+;; pig divergence (D217): Pi 9376c8d1 (#4748) key-text and key-hint on the tool render context and the message and entry options.
+(deftest render-hints-read-the-host-keybindings
+  (pig::ts-apply-host-state (tv-state "ctrl+y" "ctrl+j" "iterm2"))
+  (let ((context (pig:make-tool-render-context)) (options (pig:obj "expanded" t)))
+    (check= "ctrl+y" (pig:tool-render-context-key-text context "tui.input.submit") "the host's table, not Pi's default")
+    (check= "ctrl+y" (pig:message-render-options-key-text options "tui.input.submit"))
+    (check= "ctrl+y" (pig:entry-render-options-key-text options "tui.input.submit"))
+    (check= "" (pig:entry-render-options-key-text options "x.probe.missing"))
+    (check= (pig:key-hint "tui.input.submit" "to go") (pig:tool-render-context-key-hint context "tui.input.submit" "to go"))
+    (check= (pig:key-hint "tui.input.submit" "to go") (pig:message-render-options-key-hint options "tui.input.submit" "to go"))
+    (check= (pig:key-hint "tui.input.submit" "to go") (pig:entry-render-options-key-hint options "tui.input.submit" "to go"))))

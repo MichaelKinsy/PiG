@@ -410,6 +410,24 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("exec-abort:killed=%t;code=%d;stdout=%s", result.Killed, result.ExitCode, strings.TrimSpace(result.Stdout)), "info")
 		return nil
 	})
+	// pig divergence (D217) test fixture: Pi c466a359 (#11360) exec's maxBuffer and truncated, through the Go SDK.
+	ext.Command("exec-limits-probe", "Run a command under exec's maxBuffer and report truncation", func(ctx sdk.Context, args string) error {
+		var probe struct {
+			Command   string   `json:"command"`
+			Args      []string `json:"args"`
+			MaxBuffer *float64 `json:"maxBuffer"`
+		}
+		if err := json.Unmarshal([]byte(args), &probe); err != nil {
+			return err
+		}
+		result, err := ctx.ExecWithOptions(probe.Command, probe.Args, sdk.ExecOptions{MaxBuffer: probe.MaxBuffer})
+		if err != nil {
+			ctx.Notify("rejected:"+err.Error(), "info")
+			return nil
+		}
+		ctx.Notify(fmt.Sprintf("exec-limits:truncated=%t;killed=%t;code=%d;stdout=%s;stderr=%s", result.Truncated, result.Killed, result.ExitCode, strings.TrimSpace(result.Stdout), strings.TrimSpace(result.Stderr)), "info")
+		return nil
+	})
 	ext.Command("thinking-model", "Read the thinking level and switch the model", func(ctx sdk.Context, _ string) error {
 		level, err := ctx.GetThinkingLevel()
 		if err != nil {
@@ -531,6 +549,15 @@ func Extension() *sdk.Extension {
 		}
 		return []string{fmt.Sprintf("renderer:%v:expanded=%t:width=%d", message["content"], options.Expanded, width)}, nil
 	})
+	// pig divergence (D217) test fixture: Pi 9376c8d1 (#4748) KeyText and KeyHint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
+	ext.MessageRenderer("keyhints-message", func(_ sdk.Context, message map[string]any, options sdk.MessageRenderOptions, _ int) ([]string, error) {
+		id, _ := message["content"].(string)
+		return []string{options.KeyText(id) + " | " + options.KeyHint(id, "to expand")}, nil
+	})
+	ext.EntryRenderer("keyhints-entry", func(_ sdk.Context, entry map[string]any, options sdk.EntryRenderOptions, _ int) ([]string, error) {
+		id, _ := entry["data"].(string)
+		return []string{options.KeyText(id) + " | " + options.KeyHint(id, "to expand")}, nil
+	})
 	ext.MessageViewRenderer("kit-message", func(sdk.Context, map[string]any, sdk.MessageRenderOptions, int) (kit.View, error) {
 		return (&kitProbe{}).View(0), nil
 	})
@@ -562,6 +589,11 @@ func Extension() *sdk.Extension {
 				return (&kitProbe{}).View(0), nil
 			}
 			return &renderers
+		case "conformance_keyhints":
+			return &sdk.ToolRenderers{Call: func(_ sdk.Context, args map[string]any, render sdk.ToolRenderContext, _ int) ([]string, error) {
+				id, _ := args["q"].(string)
+				return []string{render.KeyText(id) + " | " + render.KeyHint(id, "to expand")}, nil
+			}}
 		case "conformance_no_renderer":
 			return nil
 		case "conformance_fill":

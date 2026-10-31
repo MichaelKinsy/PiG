@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 	"github.com/MichaelKinsy/PiG/internal/text"
+	"github.com/MichaelKinsy/PiG/internal/utf8stream"
 )
 
 // ─── Edit Tool ────────────────────────────────────────────────────────────────
@@ -305,8 +306,8 @@ func (t *EditTool) editLocked(ctx context.Context, absPath string, p editParams)
 	if aborted() {
 		return editError("Operation aborted")
 	}
-	var decoder utf8StreamDecoder
-	bom, content := text.SplitBom(decoder.decode(data, false))
+	var decoder utf8stream.Decoder
+	bom, content := text.SplitBom(decoder.Decode(data, false))
 	originalEnding := detectLineEnding(content)
 	normalized := normalizeToLF(content)
 	applied, err := applyEditsToNormalizedContent(normalized, p.Edits, p.Path)
