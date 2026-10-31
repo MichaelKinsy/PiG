@@ -125,18 +125,29 @@ emit(input.map((p) => {
 			}
 		}
 		ranked := NewBm25Ranker().Rank(p.Query, docs, p.Limit)
-		if len(ranked) != len(w.Ranked) {
+		// D217 (Pi e033f255, #11632): PiG ranks a tool matching more of the query's distinct terms first, the pinned Pi by score alone. The two agree on the order for a
+		// query of one term (every match covers it) and on the scores of every match; a many-term query is compared as the multiset of scores, where the limit keeps them all.
+		distinct := map[string]bool{}
+		for _, term := range Tokenize(p.Query) {
+			distinct[term] = true
+		}
+		mismatch := len(ranked) != len(w.Ranked)
+		if !mismatch && len(distinct) <= 1 {
+			for k := range ranked {
+				mismatch = mismatch || ranked[k].Name != w.Ranked[k].Name || ranked[k].Score != w.Ranked[k].Score
+			}
+		} else if !mismatch && len(w.Ranked) < p.Limit {
+			gotScores, wantScores := make([]float64, len(ranked)), make([]float64, len(ranked))
+			for k := range ranked {
+				gotScores[k], wantScores[k] = ranked[k].Score, w.Ranked[k].Score
+			}
+			slices.Sort(gotScores)
+			slices.Sort(wantScores)
+			mismatch = !slices.Equal(gotScores, wantScores)
+		}
+		if mismatch {
 			if bad++; bad <= 8 {
 				t.Errorf("probe %d rank %q limit %d: got %v, want %v", i, p.Query, p.Limit, ranked, w.Ranked)
-			}
-		} else {
-			for k := range ranked {
-				if ranked[k].Name != w.Ranked[k].Name || ranked[k].Score != w.Ranked[k].Score {
-					if bad++; bad <= 8 {
-						t.Errorf("probe %d rank %q limit %d: got %v, want %v", i, p.Query, p.Limit, ranked, w.Ranked)
-					}
-					break
-				}
 			}
 		}
 		for k, x := range append(append([]string{}, p.Texts...), p.Query) {

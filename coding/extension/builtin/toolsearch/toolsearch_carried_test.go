@@ -45,7 +45,6 @@ func TestBm25RankerRanksAToolFirstWhenTheQueryContainsItsWholeName(t *testing.T)
 	for query, want := range map[string]string{
 		"peekaboo app":               "mcp__peekaboo__app",
 		"open the peekaboo app tool": "mcp__peekaboo__app",
-		"describe app":               "mcp__peekaboo__app",
 		"read thread_read state":     "mcp__dev-app__thread_read",
 		// Without the whole name, mentions in descriptions decide.
 		"describe window": "mcp__peekaboo__see",
@@ -56,13 +55,39 @@ func TestBm25RankerRanksAToolFirstWhenTheQueryContainsItsWholeName(t *testing.T)
 	}
 }
 
-//go:embed testdata/cc44fa21_goldens.json
-var cc44fa21Goldens []byte
+// Ports tool-search.test.ts "ranks a tool matching more query terms first, whatever the scores" (Pi e033f255, #11632).
+func TestBm25RankerRanksAToolMatchingMoreQueryTermsFirst(t *testing.T) {
+	tools := []extension.ToolInfo{
+		info("mcp__peekaboo__app", "Launch, quit, focus, or switch applications by name or bundle identifier.", ""),
+		info("mcp__peekaboo__see", "Capture the app window and describe the UI elements of the app.", ""),
+		info("mcp__peekaboo__window", "Move, resize, or close a window of an app.", ""),
+		info("mcp__peekaboo__image", "Take a screenshot of the screen, an app, or a window.", ""),
+	}
+	documents := make([]toolsearch.Document, len(tools))
+	for i, tool := range tools {
+		documents[i] = toolsearch.CreateDocument(tool, nil)
+	}
+	ranker := toolsearch.NewBm25Ranker()
+	for query, want := range map[string]string{
+		// `window` and `app` are whole names, but each covers one of the two terms.
+		"screenshot window": "mcp__peekaboo__image",
+		"describe app":      "mcp__peekaboo__see",
+		// An exact name still ranks first.
+		"window": "mcp__peekaboo__window",
+	} {
+		if got := names(ranker.Rank(query, documents, 1)); !reflect.DeepEqual(got, []string{want}) {
+			t.Errorf("%q: %q, want %q", query, got, want)
+		}
+	}
+}
 
-// The goldens are Pi's own ranking at cc44fa21 (testdata/gen_cc44fa21_goldens.mjs) over random tool sets with namespaces, names that share words with the queries and
+//go:embed testdata/ranker_goldens.json
+var rankerGoldens []byte
+
+// The goldens are Pi's own ranking at e033f255, the newest carried ranker commit after cc44fa21 (testdata/gen_ranker_goldens.mjs) over random tool sets with namespaces, names that share words with the queries and
 // limits: names, order and scores must match exactly. The pinned Pi's oracle (toolsearch_oracle_test.go) cannot supply them: it scores the name and the namespace as part
 // of the text.
-func TestBm25RankerMatchesPiCC44fa21(t *testing.T) {
+func TestBm25RankerMatchesPiTheLatestCarriedRanker(t *testing.T) {
 	var probes []struct {
 		Tools []struct {
 			Name        string          `json:"name"`
@@ -81,7 +106,7 @@ func TestBm25RankerMatchesPiCC44fa21(t *testing.T) {
 			Score float64 `json:"score"`
 		} `json:"ranked"`
 	}
-	if err := json.Unmarshal(cc44fa21Goldens, &probes); err != nil {
+	if err := json.Unmarshal(rankerGoldens, &probes); err != nil {
 		t.Fatal(err)
 	}
 	ranked := 0

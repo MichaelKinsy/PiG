@@ -1,7 +1,8 @@
-// Generates cc44fa21_goldens.json: random tool sets, queries and limits ranked by Pi's own tool-search/tool.ts at commit
-// cc44fa21 (earendil-works/pi#11331), the first Pi release of the field-weighted ranker PiG carries (D217).
+// Generates ranker_goldens.json: random tool sets, queries and limits ranked by Pi's own tool-search/tool.ts at commit
+// e033f255 (earendil-works/pi#11331, #11632), the field-weighted, coverage-first ranker PiG carries (D217). It replaces the
+// cc44fa21 goldens, which e033f255's coverage-first order made stale.
 //
-//   PI_CHECKOUT=<pi checkout at cc44fa21> node gen_cc44fa21_goldens.mjs > cc44fa21_goldens.json
+//   PI_CHECKOUT=<pi checkout at e033f255> node gen_ranker_goldens.mjs > ranker_goldens.json
 //
 // The pinned Pi (b3a29f11) scores the name, description and namespace as one bag of words, so the Pi oracle cannot supply these.
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";

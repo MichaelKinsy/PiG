@@ -212,13 +212,14 @@ const nameWeight = 3
 const namespaceWeight = 0.5
 
 // Bm25Ranker is Okapi BM25 over the description, with the name and the namespace as separate fields:
+//   - a tool that matches more of the query's terms, in any field, ranks above one that matches fewer, whatever their scores: for `screenshot window`, a tool whose description has both words beats `window`, whose name has one;
 //   - a query term in the name scores more than any number of mentions in the description;
-//   - a tool whose whole local name is in the query (`app` in `peekaboo app` for `mcp__peekaboo__app`) gets a bonus worth one more match of every query term, so it mostly wins over tools that only mention the words;
-//   - a query that is exactly a tool's name ranks that tool first.
+//   - a tool whose whole local name is in the query (`app` in `peekaboo app` for `mcp__peekaboo__app`) gets a bonus worth one more match of every query term, so among tools matching as many terms it mostly wins over tools that only mention the words;
+//   - a query that is exactly a tool's name ranks that tool first, before coverage.
 //
 // The description alone is length-normalized, so a long name or long namespace instructions do not lower a tool's score. Ties keep document order.
 //
-// pig divergence (D217): Pi cc44fa21 (#11331) pinned Pi scores the name, description and namespace as one bag of words.
+// pig divergence (D217): Pi cc44fa21 (#11331) and e033f255 (#11632) pinned Pi scores the name, description and namespace as one bag of words and has no coverage-first order.
 type Bm25Ranker struct{ K1, B float64 }
 
 // NewBm25Ranker returns a ranker with k1 1.2 and b 0.75.
@@ -267,13 +268,15 @@ func (r *Bm25Ranker) Rank(query string, documents []Document, limit int) []Match
 	exactQuery := normalizeName(query)
 	type rankedMatch struct {
 		Match
-		exact bool
+		exact   bool
+		covered int
 	}
 	ranked := []rankedMatch{}
 	for _, document := range indexed {
 		// float64() rounds the product, so the compiler cannot fuse it into the addition below as a multiply-add (arm64 FMADD); JavaScript rounds every operation.
 		norm := float64(r.K1 * (1 - r.B + (r.B*document.textLength)/averageLength))
 		var score float64
+		covered := 0
 		for _, term := range queryTerms {
 			count := document.textCounts[term]
 			var weight float64
@@ -284,6 +287,9 @@ func (r *Bm25Ranker) Rank(query string, documents []Document, limit int) []Match
 				weight += namespaceWeight
 			}
 			weight += (float64(count) * (r.K1 + 1)) / (float64(count) + norm)
+			if weight > 0 {
+				covered++
+			}
 			score += float64(idf[term] * weight)
 		}
 		if score == 0 {
@@ -292,11 +298,14 @@ func (r *Bm25Ranker) Rank(query string, documents []Document, limit int) []Match
 		if len(document.localNameTerms) > 0 && !slices.ContainsFunc(document.localNameTerms, func(term string) bool { return !slices.Contains(queryTerms, term) }) {
 			score += fullNameBonus
 		}
-		ranked = append(ranked, rankedMatch{Match: Match{Name: document.name, Score: score}, exact: isExactNameQuery(exactQuery, document.name)})
+		ranked = append(ranked, rankedMatch{Match: Match{Name: document.name, Score: score}, exact: isExactNameQuery(exactQuery, document.name), covered: covered})
 	}
 	sort.SliceStable(ranked, func(a, b int) bool {
 		if ranked[a].exact != ranked[b].exact {
 			return ranked[a].exact
+		}
+		if ranked[a].covered != ranked[b].covered {
+			return ranked[a].covered > ranked[b].covered
 		}
 		return ranked[a].Score > ranked[b].Score
 	})
