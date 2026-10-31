@@ -169,6 +169,7 @@ in the 256-color palette, as Pi does. See [terminal setup](terminal-setup.md).
 | `shellCommandPrefix` | string |  | Prefix applied to every shell command. |
 | `externalEditor` | string |  | Editor opened by `app.editor.external`. |
 | `npmCommand` | string[] | `["npm"]` | Command and arguments used to run npm for package lookup and installation. |
+| `selfUpdateCommand` | string[] | none | Command and arguments `pig update` runs to update PiG itself, with `{packageName}`, `{version}` and `{installSpec}` placeholders. `PI_SELF_UPDATE_COMMAND` takes precedence. **Can only be set in agent-directory settings.** |
 
 ## Tools
 

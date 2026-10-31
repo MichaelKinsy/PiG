@@ -111,6 +111,7 @@ Options for `add`:
 | `--oauth-client-id <id>`, `--oauth-client-secret <secret>` | Pre-registered OAuth client; the secret can be `${NAME}` or `!command` |
 | `--oauth-callback-port <port>` | Fixed OAuth callback port |
 | `--oauth-client-name <name>` | Client name sent when registering with the OAuth server |
+| `--oauth-client-registration <mode>` | How PiG identifies itself without `--oauth-client-id`: `auto` (default), `cimd`, or `dcr` |
 | `--exposure <mode>` | `codemode` (default), `deferred`, `direct`, or `hidden` |
 | `--description <text>` | What the server offers, shown in the system prompt |
 
@@ -249,7 +250,7 @@ Remote servers that use OAuth, such as Sentry, need no credentials in `mcp.json`
 
 When the server rejects an unauthenticated connection, `/mcp` shows that it needs sign-in. Select "Sign in", run `/mcp login sentry`, or run `pig mcp login sentry`. PiG opens the authorization page and waits for approval. If the browser runs on another machine, such as over SSH, paste its redirected URL into the sign-in screen. The sign-in screens cancel with Esc at every step, a session that ends stops a running sign-in, and each request to the authorization server times out after 15 seconds. A running session uses the new credentials on its next turn.
 
-PiG registers itself with the authorization server, stores tokens in `~/.pig/agent/mcp-auth.json`, and refreshes access tokens when they expire or the server rejects them. If a server later requests additional scope, PiG asks for sign-in again and keeps the scope granted so far. Signing out deletes the stored credentials.
+PiG identifies itself to the authorization server by registering a client (or, with `clientRegistration` set to `cimd`, with Pi's Client ID Metadata Document), stores tokens in `~/.pig/agent/mcp-auth.json`, and refreshes access tokens when they expire or the server rejects them. If a server later requests additional scope, PiG asks for sign-in again and keeps the scope granted so far. Signing out deletes the stored credentials.
 
 Credentials belong to a server name and URL. Servers with the same URL under different names, such as one per account, sign in separately; servers with the same name and URL in different `mcp.json` files share one sign-in. Credentials that an earlier version stored by URL alone move to the first server that uses them.
 
@@ -282,7 +283,7 @@ PiG registers under its application name, `pig`. Some servers only accept regist
 
 The name is only sent when PiG registers a client. To register again under a new name, sign out first.
 
-Some authorization servers allow clients by their Client ID Metadata Document URL instead of registering them. Set `clientRegistration` to `cimd` to identify as Pi's document on pi.dev instead of registering:
+Some authorization servers allow clients by their Client ID Metadata Document URL instead of registering them. `clientRegistration` chooses how PiG identifies itself without `clientId`: `auto` (default), `dcr` to always register a client dynamically, or `cimd` to always use Pi's document on pi.dev. `auto` uses the document only when the application is named `pi`, the authorization server advertises support for documents and public clients, `clientName` is not set, and `callbackUrl` is `/callback` on `localhost` or `127.0.0.1` (Pi 908aa7b7 makes `auto` its default). PiG is not named `pi`, so under `auto` it registers a client, as Pi does for any rebranded build, and does not present itself as Pi's client; only `cimd` does. A client registered before stays in use while its redirect URI matches, until you sign out; `cimd` replaces it.
 
 ```json
 {
@@ -292,7 +293,7 @@ Some authorization servers allow clients by their Client ID Metadata Document UR
 }
 ```
 
-The client ID is `https://pi.dev/oauth/client.json` with the redirect URI `http://127.0.0.1:<port>/callback`. If the authorization server does not send the `iss` parameter in authorization responses (RFC 9207), PiG uses a document and redirect path specific to the MCP server instead: `https://pi.dev/oauth/<id>/client.json` with `http://127.0.0.1:<port>/callback/<id>`. The authorization server must advertise Client ID Metadata Document support and public clients, or sign-in fails. `cimd` cannot be combined with `clientId` or `clientName`, and a `callbackUrl` must use `localhost` or `127.0.0.1` with the path `/callback`.
+`pig mcp add --oauth-client-registration <mode>` sets it when adding a server. The client ID is `https://pi.dev/oauth/client.json` with the redirect URI `http://127.0.0.1:<port>/callback`. If the authorization server does not send the `iss` parameter in authorization responses (RFC 9207), PiG uses a document and redirect path specific to the MCP server instead: `https://pi.dev/oauth/<id>/client.json` with `http://127.0.0.1:<port>/callback/<id>`. The authorization server must advertise Client ID Metadata Document support and public clients, or sign-in fails. `cimd` cannot be combined with `clientId` or `clientName`, and a `callbackUrl` must use `localhost` or `127.0.0.1` with the path `/callback`.
 
 When an authorization response carries an `iss` parameter but PiG discovered no authorization server metadata, sign-in fails with an issuer mismatch error before the token request, as in Pi 1.4.0. Pi 1.1.0 skipped this check when metadata was absent.
 

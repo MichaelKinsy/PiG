@@ -68,7 +68,7 @@
   "promptSnippet": "Make precise file edits with exact text replacement, including multiple disjoint edits in one call",
   "promptGuidelines": [
    "Use edit for targeted changes. Batch changes to one file in a single call.",
-   "Each edits[].oldText must exactly and uniquely match the original file. Keep matches short and non-overlapping; merge nearby changes without including large unchanged regions.",
+   "Each edits[].oldText must exactly and uniquely match the original file. Keep matches short and non-overlapping; merge nearby changes without including large unchanged regions."
   ],
   "parameters": {
    "type": "object",
