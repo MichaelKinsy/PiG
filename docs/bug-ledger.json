@@ -15831,6 +15831,33 @@
       ]
     },
     {
+      "id": "BF-67eccd7",
+      "title": "Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor`…",
+      "symptom": "Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor` variants included, to read each scoped model, and the registry no longer derives those variants for a provider it lists no model of.",
+      "rootCause": "An earlier change (the OpenRouter routing-variant divergence) lists :nitro and :floor beside each of the 398 bundled OpenRouter models (796 entries). Its derivation had per-variant cost where nothing needed a variant:",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor` variants included, to read each scoped model, and the registry no longer derives those variants for a provider it lists no model of.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "67eccd768a",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "ai/openrouter_variants_allocs_norace_test.go::TestDerivingOpenRouterRoutingVariantsAllocatesOnlyTheEntries",
+        "ai/openrouter_variants_allocs_norace_test.go::TestListingOpenRouterRoutingVariantsAllocatesNothingPerVariant",
+        "ai/openrouter_variants_test.go::TestDerivedOpenRouterVariantsAreBuiltOnce",
+        "internal/codingagent/model_registry_available_variants_test.go::TestAvailableModelDataDerivesRoutingVariantsOnlyForAConfiguredOpenRouter",
+        "internal/codingagent/model_registry_variants_allocs_norace_test.go::TestRuntimeModelsAllocatesNothingPerRoutingVariant",
+        "internal/codingagent/model_registry_variants_allocs_norace_test.go::TestSelectorModelLookupBuildsOnlyTheModelRead"
+      ]
+    },
+    {
       "id": "BF-68a4ed2",
       "title": "PageUp and PageDown move the selection by a page in selection lists and selectors (settings, model…",
       "symptom": "PageUp and PageDown move the selection by a page in selection lists and selectors (settings, model, extension, session, tree, trust, login and the open editor autocomplete) and no longer scroll the fullscreen transcript behind them (Pi #7629, PR #7680).",

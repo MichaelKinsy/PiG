@@ -558,6 +558,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-66db311](#bf-66db311) | The login dialog now holds TUI focus while it is shown, so the prompt cursor appears in the right place for… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6708fbb](#bf-6708fbb) | When a Go, Rust or Python extension that shares a process registers under a different name than the one it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-677ded1](#bf-677ded1) | An indented line after a quoted heading, rule or fence in a blockquote renders as the code block Pi shows | PiG's own defect | All platforms | 0.5.0 |
+| [BF-67eccd7](#bf-67eccd7) | Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor`… | PiG's own defect | All platforms | Unreleased |
 | [BF-68a4ed2](#bf-68a4ed2) | PageUp and PageDown move the selection by a page in selection lists and selectors (settings, model… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-68a63f2](#bf-68a63f2) | A tool namespace registered with `aliases: []` keeps the empty array in `pi.getAllTools()` and the replicated… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-68b129d](#bf-68b129d) | `/export` to a directory that cannot be created on a read-only file system (such as macOS's root) reports… | PiG's own defect | macOS | 0.5.0 |
@@ -8862,6 +8863,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `677ded1860` (2026-10-11)
 - **Tests:** `tui/markdown_quote_lazy_oracle_test.go::TestMarkdownQuoteIndentedLazyLineAfterABlockMatchesPi`
 - **Release note:** An indented line after a quoted heading, rule or fence in a blockquote renders as the code block Pi shows.
+
+### BF-67eccd7
+
+**Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor` variants included, to read each scoped model, and the registry no longer derives those variants for a provider it lists no model of.
+- **Root cause:** An earlier change (the OpenRouter routing-variant divergence) lists :nitro and :floor beside each of the 398 bundled OpenRouter models (796 entries). Its derivation had per-variant cost where nothing needed a variant:
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `67eccd768a` (2026-10-31)
+- **Tests:** `ai/openrouter_variants_allocs_norace_test.go::TestDerivingOpenRouterRoutingVariantsAllocatesOnlyTheEntries`, `ai/openrouter_variants_allocs_norace_test.go::TestListingOpenRouterRoutingVariantsAllocatesNothingPerVariant`, `ai/openrouter_variants_test.go::TestDerivedOpenRouterVariantsAreBuiltOnce`, `internal/codingagent/model_registry_available_variants_test.go::TestAvailableModelDataDerivesRoutingVariantsOnlyForAConfiguredOpenRouter`, `internal/codingagent/model_registry_variants_allocs_norace_test.go::TestRuntimeModelsAllocatesNothingPerRoutingVariant`, `internal/codingagent/model_registry_variants_allocs_norace_test.go::TestSelectorModelLookupBuildsOnlyTheModelRead`
+- **Release note:** Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor` variants included, to read each scoped model, and the registry no longer derives those variants for a provider it lists no model of.
 
 ### BF-68a4ed2
 
