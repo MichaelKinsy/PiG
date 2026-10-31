@@ -660,6 +660,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7c848e3](#bf-7c848e3) | A Zhipu/Z.ai usage limit (HTTP 429 with error code `1308`, which resets after hours) is no longer retried, in… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-7cca5ee](#bf-7cca5ee) | A Node extension can default-import TypeBox (`import Type from "typebox"`, and likewise `typebox/value`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7d0621f](#bf-7d0621f) | fix(extension): keep Pi's three-parameter EmitBeforeAgentStart (prompt, images, options); a custom run's… | PiG's own defect | All platforms | Unreleased |
+| [BF-7d798ce](#bf-7d798ce) | fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock | PiG's own defect | All platforms | Unreleased |
 | [BF-7db4e68](#bf-7db4e68) | The alternate screen's viewport accessors (`ViewportTop`, `IsFollowingOutput`, `ScrollBy`, `ScrollToTop`… | PiG's own defect | All platforms | Unreleased |
 | [BF-7dc9b09](#bf-7dc9b09) | `-e <local Package>` now contributes its prompts, skills and themes, loaded before the project, user and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7dc9b09-2](#bf-7dc9b09-2) | `--prompt-template` and `--theme` paths are now merged after the project, user and Package resources, as in… | PiG's own defect | All platforms | 0.5.0 |
@@ -10267,6 +10268,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `7d0621f995` (2026-10-09)
 - **Tests:** None recorded.
+
+### BF-7d798ce
+
+**fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock
+- **Root cause:** rustc bakes env!("CARGO_MANIFEST_DIR") into a test binary, and Cargo reuses a cached binary whenever the sources' mtimes are older than it, whatever the checkout's path. SharedCargoTargetDir hashed only the package name and the lock and manifest contents, so a second checkout (a copy, a worktree, a clone older than the cached build) took the first one's target and ran the binary that opens the first checkout's fixtures: Type.json not found once that checkout was deleted (TestTypeEngineVectorsThroughTheHost/rust). A copy of a checkout kept the deleted path baked in, reproduced with two paths and identical mtimes. The hash now includes the absolute path of each input.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7d798ced1d` (2026-10-31)
+- **Tests:** `internal/testenv/cargotarget_test.go::TestSharedCargoTargetDirIsKeyedByTheAbsoluteRootAsWellAsTheContents`, `internal/testenv/cargotarget_test.go::TestSharedCargoTargetDirResolvesARelativeRootToTheSameTarget`, `test/extension-conformance/type_engine_vectors_host_test.go::TestTypeEngineVectorsThroughTheHost`
 
 ### BF-7db4e68
 

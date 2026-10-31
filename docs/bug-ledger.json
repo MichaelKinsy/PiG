@@ -18812,6 +18812,29 @@
       "tests": []
     },
     {
+      "id": "BF-7d798ce",
+      "title": "fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock",
+      "symptom": "fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock",
+      "rootCause": "rustc bakes env!(\"CARGO_MANIFEST_DIR\") into a test binary, and Cargo reuses a cached binary whenever the sources' mtimes are older than it, whatever the checkout's path. SharedCargoTargetDir hashed only the package name and the lock and manifest contents, so a second checkout (a copy, a worktree, a clone older than the cached build) took the first one's target and ran the binary that opens the first checkout's fixtures: Type.json not found once that checkout was deleted (TestTypeEngineVectorsThroughTheHost/rust). A copy of a checkout kept the deleted path baked in, reproduced with two paths and identical mtimes. The hash now includes the absolute path of each input.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "7d798ced1d",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "internal/testenv/cargotarget_test.go::TestSharedCargoTargetDirIsKeyedByTheAbsoluteRootAsWellAsTheContents",
+        "internal/testenv/cargotarget_test.go::TestSharedCargoTargetDirResolvesARelativeRootToTheSameTarget",
+        "test/extension-conformance/type_engine_vectors_host_test.go::TestTypeEngineVectorsThroughTheHost"
+      ]
+    },
+    {
       "id": "BF-7db4e68",
       "title": "The alternate screen's viewport accessors (`ViewportTop`, `IsFollowingOutput`, `ScrollBy`, `ScrollToTop`…",
       "symptom": "The alternate screen's viewport accessors (`ViewportTop`, `IsFollowingOutput`, `ScrollBy`, `ScrollToTop`, `ScrollToBottom`) read the layout of the last frame under the renderer's lock.",
