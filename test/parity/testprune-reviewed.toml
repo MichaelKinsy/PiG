@@ -622,3 +622,9 @@ commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
 class = "CITE"
 cite = "packages/chord/test/next/remote/host-link.test.ts:135"
 reason = "host-link.test.ts:135 expects the worker to receive an ack without origin and an ack of origin 1, one for each of the two holds' messages, each acknowledged by its consumer. The red commit's Go test counted two received messages after a sync; the changed lines read the acks in order (each one's origin), once for the two `bound` messages and once for the two `state` messages, and wait for the count 5 of both references, as the test of :111-135 reads them after transported()."
+
+[[entry]]
+path = "chord/internal/parking/stall_test.go"
+commit = "73a0b7e6f90076013d5a254c7e196f20d38f46ce"
+class = "NOBEHAVIOR"
+reason = "Go only, no Pi counterpart: the stall report of a section that waits for its handler. The test now guards a goroutine that waits on a Signal with Guard, so the report's stacks name the waiter as parking.(*Signal).Wait (the wait it calls, no longer the report's own); its other expected values are unchanged."
