@@ -9,16 +9,26 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/searchtext"
 )
 
+// Ports packages/durable/test/search.test.ts "tokenize" (Pi 79006f06, #11037) and the pinned Pi's expectations for plain text.
 func TestTokenizeMatchesPi(t *testing.T) {
 	for text, want := range map[string][]string{
 		"searchTools getHTTPResponse issues searches boxes classes buses a an the": {"search", "tool", "get", "http", "response", "issue", "search", "box", "class", "buse"},
-		"ABCDef2Go x_y-z.w": {"abc", "def2", "go", "x", "y", "z", "w"},
-		"dries tries":       {"dry", "try"},
-		"":                  {},
+		"ABCDef2Go x_y-z.w":              {"abc", "def2", "go", "x", "y", "z", "w"},
+		"dries tries":                    {"dry", "try"},
+		"":                               {},
+		"listIssues for the GitHub_repo": {"list", "issue", "git", "hub", "repo"},
+		"searches queries HTTPServer":    {"search", "query", "http", "server"},
+		"repo.issues/search:queries":     {"repo", "issue", "search", "query"},
+		"Éléments cafés":                 {"éléments", "cafés"},
+		"搜索GitHub_repoIssues résumé cafés": {"搜索", "git", "hub", "repo", "issue", "résumé", "cafés"},
+		"CAFÉ cafe\u0301":                  {"café", "café"},
+		" \t，。!? 😀 ":                       {},
 	} {
-		if got := tokenize(text); !slices.Equal(got, want) {
+		if got := searchtext.Tokenize(text); !slices.Equal(got, want) {
 			t.Errorf("tokenize(%q) = %v, want %v", text, got, want)
 		}
 	}

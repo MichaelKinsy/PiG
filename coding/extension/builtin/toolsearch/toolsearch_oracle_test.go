@@ -79,7 +79,7 @@ func TestToolSearchMatchesPi(t *testing.T) {
 		for range 3 {
 			p.Texts = append(p.Texts, text(rng.Intn(6)))
 		}
-		probes = append(probes, spaceOutCJK(t, p))
+		probes = append(probes, spaceOutNonASCII(t, p))
 	}
 	type matchOut struct {
 		Name  string  `json:"name"`
@@ -163,18 +163,18 @@ emit(input.map((p) => {
 	}
 }
 
-var cjkCharacter = regexp.MustCompile(`[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}]`)
+var nonASCIICharacter = regexp.MustCompile(`[^\x00-\x7f]`)
 
-// spaceOutCJK replaces every Chinese, Japanese and Korean character of a probe with a space before both sides see it. Pi 1.1.0 drops those characters as it splits
-// a term, which is a space; PiG makes each one a term of its own (Pi #10816, D173), so the probes are compared where the two agree.
-func spaceOutCJK[T any](t *testing.T, probe T) T {
+// spaceOutNonASCII replaces every character outside ASCII of a probe with a space before both sides see it. The pinned Pi splits a term at each of them, which is a space; PiG keeps the words of every
+// script (Pi 79006f06, #11037, D217), so the probes are compared where the two agree. TestTokenizeMatchesPiOnEveryScriptClass pins the carried tokenizer with Pi's own answers.
+func spaceOutNonASCII[T any](t *testing.T, probe T) T {
 	t.Helper()
 	raw, err := json.Marshal(probe)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var out T
-	if err := json.Unmarshal(cjkCharacter.ReplaceAll(raw, []byte(" ")), &out); err != nil {
+	if err := json.Unmarshal(nonASCIICharacter.ReplaceAll(raw, []byte(" ")), &out); err != nil {
 		t.Fatal(err)
 	}
 	return out

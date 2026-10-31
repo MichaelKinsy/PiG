@@ -18,7 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/jsmath"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/searchtext"
 )
 
 // ToolName is the name of the tool.
@@ -49,46 +49,10 @@ type Ranker interface {
 	Rank(query string, documents []Document, limit int) []Match
 }
 
-var stopWords = map[string]bool{
-	"a": true, "an": true, "and": true, "are": true, "as": true, "at": true, "be": true, "by": true, "for": true,
-	"from": true, "in": true, "is": true, "it": true, "of": true, "on": true, "or": true, "that": true, "the": true,
-	"this": true, "to": true, "with": true,
-}
-
-var (
-	lowerUpper    = lazyregexp.New(`([a-z0-9])([A-Z])`)
-	upperRunUpper = lazyregexp.New(`([A-Z]+)([A-Z][a-z])`)
-	// termRun is a run of ASCII letters and digits or of CJK-script characters: the characters of the scripts that write no spaces between words.
-	termRun      = lazyregexp.New(`[a-z0-9]+|[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}]`)
-	pluralEnding = lazyregexp.New(`(ches|shes|sses|xes|zes)$`)
-)
-
-// stem is a naive singular form, so `issues` matches `issue` and `searches` matches `search`. Terms are ASCII.
-func stem(term string) string {
-	switch {
-	case len(term) > 4 && strings.HasSuffix(term, "ies"):
-		return term[:len(term)-3] + "y"
-	case len(term) > 4 && pluralEnding.MatchString(term):
-		return term[:len(term)-2]
-	case len(term) > 3 && strings.HasSuffix(term, "s") && !strings.HasSuffix(term, "ss"):
-		return term[:len(term)-1]
-	}
-	return term
-}
-
-// Tokenize lowercases text into terms, splitting at camelCase boundaries and non-alphanumerics, without stop words.
-// pig divergence (D173): Pi's tokenizer splits on /[^a-z0-9]+/ and so drops every Chinese, Japanese and Korean character (Pi #10816); PiG makes each of those characters a term of its own, so a query in those scripts matches a tool whose metadata holds the same characters. Text without such characters tokenizes as in Pi.
-func Tokenize(text string) []string {
-	text = lowerUpper.ReplaceAllString(text, "$1 $2")
-	text = upperRunUpper.ReplaceAllString(text, "$1 $2")
-	terms := []string{}
-	for _, term := range termRun.FindAllString(jsstring.ToLower(text), -1) {
-		if !stopWords[term] {
-			terms = append(terms, stem(term))
-		}
-	}
-	return terms
-}
+// Tokenize is Pi's tokenize: Unicode word segmentation of the NFC-normalized text with identifier boundaries, without English stop words and with singular forms (searchtext.Tokenize).
+//
+// pig divergence (D217): Pi 79006f06 (#11037) pinned Pi lowercases the text and splits it on /[^a-z0-9]+/, which drops every letter outside ASCII.
+func Tokenize(text string) []string { return searchtext.Tokenize(text) }
 
 // schemaText collects schema descriptions and property names, recursively.
 func schemaText(schema any, parts *[]string) {

@@ -1,7 +1,8 @@
 // Generates ranker_goldens.json: random documents, queries and limits ranked by Pi's own durable/src/search.ts at commit
-// c7372af4 (earendil-works/pi#11631), the field-weighted, coverage-first ranker PiG carries (D217).
+// 79006f06 (earendil-works/pi#11631, #11037), the field-weighted, coverage-first ranker with Unicode word segmentation that PiG carries (D217).
+// The ranker is that of c7372af4; 79006f06 adds the words of other scripts to the probes and to the terms they rank by.
 //
-//   PI_CHECKOUT=<pi checkout at c7372af4> node gen_ranker_goldens.mjs > ranker_goldens.json
+//   PI_CHECKOUT=<pi checkout at 79006f06> node gen_ranker_goldens.mjs > ranker_goldens.json
 //
 // The pinned Pi (b3a29f11) scores the name as part of the text and has no namespace field, so the Pi oracle cannot supply these.
 import { join } from "node:path";
@@ -14,14 +15,18 @@ const rand = (n) => {
 	seed = (seed * 1664525 + 1013904223) % 4294967296;
 	return Math.floor((seed / 4294967296) * n);
 };
-const words = ["issue", "issues", "search", "searches", "boxes", "class", "status", "the", "and", "of", "GitHub", "getHTTPResponse", "list_issues", "deploy", "release", "app", "apps", "thread", "read", "state", "window", "describe", "peekaboo", "menu", "queue", "id", "URLs", "x-y.z", "UPPER", "Mixed3Case", "dev-app", "\u0130stanbul", "\u212aelvin", "x\u{1F600}y"];
-const text = (n, sep) => Array.from({ length: n }, () => words[rand(words.length)]).join(sep ?? " ");
+const words = ["issue", "issues", "search", "searches", "boxes", "class", "status", "the", "and", "of", "GitHub", "getHTTPResponse", "list_issues", "deploy", "release", "app", "apps", "thread", "read", "state", "window", "describe", "peekaboo", "menu", "queue", "id", "URLs", "x-y.z", "UPPER", "Mixed3Case", "dev-app", "\u0130stanbul", "\u212aelvin", "x\u{1F600}y", "café", "cafe\u0301", "résumé", "Поиск", "문서", "فايل", "फ़ाइल"];
+// The words of the scripts ICU segments with a dictionary are in half of the probes; a Binary built without the dictionaries (D92) keeps them whole, so the other half pins what it shares with Pi.
+const dictionaryWords = ["搜索记录", "文書を検索", "ค้นหาเอกสาร"];
+let pool = words;
+const text = (n, sep) => Array.from({ length: n }, () => pool[rand(pool.length)]).join(sep ?? " ");
 const name = () => {
 	const segments = 1 + rand(3);
 	return Array.from({ length: segments }, () => text(1 + rand(2), "_")).join("__");
 };
 const probes = [];
 for (let i = 0; i < 400; i++) {
+	pool = i % 2 === 0 ? words : [...words, ...dictionaryWords, ...dictionaryWords];
 	const documents = [];
 	for (let j = 0; j < 1 + rand(10); j++) {
 		const document = { name: name(), text: text(rand(8)) };

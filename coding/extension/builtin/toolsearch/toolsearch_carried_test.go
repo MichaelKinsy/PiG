@@ -84,7 +84,7 @@ func TestBm25RankerRanksAToolMatchingMoreQueryTermsFirst(t *testing.T) {
 //go:embed testdata/ranker_goldens.json
 var rankerGoldens []byte
 
-// The goldens are Pi's own ranking at e033f255, the newest carried ranker commit after cc44fa21 (testdata/gen_ranker_goldens.mjs) over random tool sets with namespaces, names that share words with the queries and
+// The goldens are Pi's own ranking at 79006f06, the newest carried commit of tool.ts (testdata/gen_ranker_goldens.mjs, run with Node on linux/amd64: Math.log differs in the last digits on arm64) over random tool sets with namespaces, names that share words with the queries, words of other scripts and
 // limits: names, order and scores must match exactly. The pinned Pi's oracle (toolsearch_oracle_test.go) cannot supply them: it scores the name and the namespace as part
 // of the text.
 func TestBm25RankerMatchesPiTheLatestCarriedRanker(t *testing.T) {
@@ -111,6 +111,19 @@ func TestBm25RankerMatchesPiTheLatestCarriedRanker(t *testing.T) {
 	}
 	ranked := 0
 	for i, probe := range probes {
+		// A Binary without the word dictionaries (D92) keeps dictionary scripts whole, so a probe that holds one is outside what Pi's answer pins there.
+		if stripsDictionaries() {
+			words := probe.Query
+			for _, tool := range probe.Tools {
+				words += tool.Name + tool.Description + string(tool.Parameters)
+				if tool.Namespace != nil {
+					words += tool.Namespace.Name + tool.Namespace.Description + tool.Namespace.Instructions
+				}
+			}
+			if usesDictionary(words) {
+				continue
+			}
+		}
 		var documents []toolsearch.Document
 		for _, tool := range probe.Tools {
 			var namespace *extension.ToolNamespace
@@ -132,7 +145,7 @@ func TestBm25RankerMatchesPiTheLatestCarriedRanker(t *testing.T) {
 			}
 		}
 	}
-	if ranked < len(probes) {
+	if ranked < 100 {
 		t.Fatalf("only %d matches over %d probes: the goldens do not exercise the ranker", ranked, len(probes))
 	}
 }

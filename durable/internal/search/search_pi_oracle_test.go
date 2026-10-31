@@ -8,10 +8,12 @@ import (
 	"math/rand/v2"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/searchtext"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -102,10 +104,18 @@ func sameSet(a, b []string) bool {
 	return slices.Equal(a, b)
 }
 
+var nonASCIICharacter = regexp.MustCompile(`[^\x00-\x7f]`)
+
 func TestTokenizeAndRankDocumentsMatchPiOnSeededInputs(t *testing.T) {
-	ops := searchOps()
-	input, err := json.Marshal(ops)
+	// D217 (Pi 79006f06, #11037): the pinned Pi splits a term at every character outside ASCII, PiG keeps the words of every script. Every such character becomes a space before both sides see
+	// the probes, so they are compared where the two agree; TestTokenizeMatchesPiOnEveryScriptClass pins the carried tokenizer with Pi's own answers.
+	input, err := json.Marshal(searchOps())
 	if err != nil {
+		t.Fatal(err)
+	}
+	input = nonASCIICharacter.ReplaceAll(input, []byte(" "))
+	var ops []searchOp
+	if err := json.Unmarshal(input, &ops); err != nil {
 		t.Fatal(err)
 	}
 	root := testenv.ModuleRoot(t)
@@ -126,7 +136,7 @@ func TestTokenizeAndRankDocumentsMatchPiOnSeededInputs(t *testing.T) {
 		var got []string
 		switch op.Op {
 		case "tokenize":
-			got = tokenize(op.Text)
+			got = searchtext.Tokenize(op.Text)
 			if len(pi[i]) > 0 {
 				tokens++
 			}
@@ -140,7 +150,7 @@ func TestTokenizeAndRankDocumentsMatchPiOnSeededInputs(t *testing.T) {
 			}
 			got = RankDocuments(op.Query, documents, op.Limit)
 			distinct := map[string]bool{}
-			for _, term := range tokenize(op.Query) {
+			for _, term := range searchtext.Tokenize(op.Query) {
 				distinct[term] = true
 			}
 			switch {

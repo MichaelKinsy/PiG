@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -155,8 +156,14 @@ func TestToolSearchMatchesPiOnSeededDeferredTools(t *testing.T) {
 			cases = append(cases, toolSearchCase{Deferred: tools, Query: query, Limit: limits[rng.IntN(len(limits))]})
 		}
 	}
+	// D217 (Pi 79006f06, #11037): the pinned Pi splits a term at every character outside ASCII, PiG keeps the words of every script. Every such character becomes a space before both sides see
+	// the cases, so they are compared where the two agree; TestTokenizeMatchesPiOnEveryScriptClass of durable/internal/search pins the carried tokenizer with Pi's own answers.
 	input, err := json.Marshal(cases)
 	if err != nil {
+		t.Fatal(err)
+	}
+	input = regexp.MustCompile(`[^\x00-\x7f]`).ReplaceAll(input, []byte(" "))
+	if err := json.Unmarshal(input, &cases); err != nil {
 		t.Fatal(err)
 	}
 	root := testenv.ModuleRoot(t)

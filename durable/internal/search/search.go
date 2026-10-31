@@ -10,7 +10,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsmath"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
-	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+	"github.com/MichaelKinsy/PiG/internal/searchtext"
 )
 
 // Document is a tool as the ranker sees it: its name, its text and the text of its namespace.
@@ -22,45 +22,6 @@ type Document struct {
 	Text string
 	// NamespaceText is the name, description and instructions of the tool's namespace.
 	NamespaceText string
-}
-
-var stopWords = map[string]bool{
-	"a": true, "an": true, "and": true, "are": true, "as": true, "at": true, "be": true, "by": true, "for": true,
-	"from": true, "in": true, "is": true, "it": true, "of": true, "on": true, "or": true, "that": true, "the": true,
-	"this": true, "to": true, "with": true,
-}
-
-var (
-	lowerUpper     = lazyregexp.New(`([a-z0-9])([A-Z])`)
-	upperRunUpper  = lazyregexp.New(`([A-Z]+)([A-Z][a-z])`)
-	nonAlphanumRun = lazyregexp.New(`[^a-z0-9]+`)
-	pluralEnding   = lazyregexp.New(`(ches|shes|sses|xes|zes)$`)
-)
-
-// stem is a naive singular form, so `issues` matches `issue` and `searches` matches `search`. Terms are ASCII.
-func stem(term string) string {
-	switch {
-	case len(term) > 4 && strings.HasSuffix(term, "ies"): //portlint:allow utf16units tokenize splits at [^a-z0-9]+, so a term is ASCII
-		return term[:len(term)-3] + "y"
-	case len(term) > 4 && pluralEnding.MatchString(term): //portlint:allow utf16units tokenize splits at [^a-z0-9]+, so a term is ASCII
-		return term[:len(term)-2]
-	case len(term) > 3 && strings.HasSuffix(term, "s") && !strings.HasSuffix(term, "ss"): //portlint:allow utf16units a term is ASCII ([^a-z0-9]+ split)
-		return term[:len(term)-1]
-	}
-	return term
-}
-
-// tokenize lowercases text into terms, splitting at camelCase boundaries and non-alphanumerics, without stop words.
-func tokenize(text string) []string {
-	text = lowerUpper.ReplaceAllString(text, "$1 $2")
-	text = upperRunUpper.ReplaceAllString(text, "$1 $2")
-	terms := []string{}
-	for _, term := range nonAlphanumRun.Split(jsstring.ToLower(text), -1) {
-		if term != "" && !stopWords[term] {
-			terms = append(terms, stem(term))
-		}
-	}
-	return terms
 }
 
 // normalizeName is search.ts normalizeName: lowercase with every UTF-16 code unit that is not a script identifier character as `_`, so `dev-radius`
@@ -102,20 +63,20 @@ type indexedDocument struct {
 
 func indexDocument(document Document) indexedDocument {
 	indexed := indexedDocument{name: document.Name, nameTerms: map[string]struct{}{}, textCounts: map[string]int{}, namespaceTerms: map[string]struct{}{}}
-	for _, term := range tokenize(document.Text) {
+	for _, term := range searchtext.Tokenize(document.Text) {
 		indexed.textCounts[term]++
 		indexed.textLength++
 	}
-	for _, term := range tokenize(document.Name) {
+	for _, term := range searchtext.Tokenize(document.Name) {
 		indexed.nameTerms[term] = struct{}{}
 	}
 	segments := strings.Split(document.Name, "__")
-	for _, term := range tokenize(segments[len(segments)-1]) {
+	for _, term := range searchtext.Tokenize(segments[len(segments)-1]) {
 		if !slices.Contains(indexed.localNameTerms, term) {
 			indexed.localNameTerms = append(indexed.localNameTerms, term)
 		}
 	}
-	for _, term := range tokenize(document.NamespaceText) {
+	for _, term := range searchtext.Tokenize(document.NamespaceText) {
 		indexed.namespaceTerms[term] = struct{}{}
 	}
 	return indexed
@@ -141,7 +102,7 @@ const (
 // pig divergence (D217): Pi c7372af4 (#11631) pinned Pi scores the name, description and namespace as one bag of words and has no coverage-first order.
 func RankDocuments(query string, documents []Document, limit int) []string {
 	var queryTerms []string
-	for _, term := range tokenize(query) {
+	for _, term := range searchtext.Tokenize(query) {
 		if !slices.Contains(queryTerms, term) {
 			queryTerms = append(queryTerms, term)
 		}

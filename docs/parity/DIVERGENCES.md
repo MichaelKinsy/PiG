@@ -61,6 +61,8 @@ Every active divergence must have:
 
 - D171 — An errored Anthropic tool result carries no images (Pi #10792, #10794; Pi 34a8bb38). Retired by the Pi pin `1.2.0+5ab7fe74`: Pi commit `34a8bb38` replaced each image of an error tool result with a text note, and Pi commit `5ab7fe74` replaces it with a placeholder and sends the images after all tool results of the turn, in the same user message, under a caption naming the tool call (`splitErrorToolResultImages` in `packages/ai/src/api/transform-messages.ts`, used by `anthropic-messages.ts` and, for Claude, `bedrock-converse-stream.ts`). `ai.SplitErrorToolResultImages` and the Anthropic and Bedrock converters do the same, and the payload oracles no longer project Pi's payload.
 
+- D173 — Tool search matches Chinese, Japanese and Korean queries (Pi #10816). Retired by Pi 79006f06 (#11037, fixes #10816), which D217 carries: Pi's `tokenize` (`packages/coding-agent/src/extensions/tool-search/tool.ts`, `packages/durable/src/search.ts`) NFC-normalizes the text, reduces it to letters, marks and numbers and splits it with `Intl.Segmenter` at word granularity, so words in every script match and `搜索记录` is split into words by ICU's dictionary. `internal/searchtext.Tokenize` does the same with `internal/wordsegmenter` (ICU 78.3 word rules and the CJK, Thai, Lao, Khmer and Burmese dictionaries, which the editor already embeds) and `golang.org/x/text/unicode/norm`; PiG no longer makes each character a term. `TestTokenizeMatchesPiOnEveryScriptClass` (`coding/extension/builtin/toolsearch`, `durable/internal/search`) compares 4,854 Pi 79006f06 tokenizations of every script class with no difference, and `TestTokenizeSegmentsUnicodeWords` and `TestBm25RankerMatchesUnicodeQueries` port Pi's tests. A Piglet Binary built with `pig_strip_word_dictionaries` has no dictionary, so it keeps a run of Han, Hiragana, Katakana, Thai, Lao, Khmer or Myanmar text as one term (D92, `TestTokenizeKeepsDictionaryScriptRunsWholeWithoutDictionaries`). The ID remains reserved.
+
 - D179 — No Windows host manager (ForkDriver and ProcessChannel Unix-only). Retired before release: the Windows port (`chord/host/manager_fork_windows.go`, `manager_pipe_windows.go`, `manager_ipc_frames.go`) replaces the fallback, so `ForkDriver` and `ProcessChannel` exist on Unix and Windows and `NewNodeLoader` (D178) works on both. Native Windows evidence: all 27 chord/host C2 tests pass x1 and x5 on a Windows x64 runner with Node 24.22.0 (2026-10-14, PiG c0adb3e3cf), including real Node IPC (`TestProcessChannelIsNodesIPCChannel`) and every child-host `HostManager` case. The ID remains reserved.
 
 ## Active divergences
@@ -2260,26 +2262,6 @@ Evidence: `TestGenerateSummaryOfAHistoryLongerThanTheWindowIsChunked`, `TestGene
 Parity allowance: no paired scenario compacts a history longer than the model's window, and the oracle rows summarize histories that fit one request.
 
 Remove when: Pi summarizes over-window histories itself (chunking or trimming the summary input).
-
-SCRUTINIZED:approved
-
-## D173 Tool search matches Chinese, Japanese and Korean queries (Pi #10816)
-
-What: Pi's tool-search tokenizer (`tokenize` in `packages/coding-agent/src/extensions/tool-search/tool.ts`) lowercases text and splits it on `/[^a-z0-9]+/`, so every Chinese, Japanese and Korean character is dropped: `tokenize("记录")` is empty and a query in those scripts never matches a tool whose name, description or schema holds the same words. `tool_search` and codemode `searchTools()` both rank with it. PiG makes each Han, Hiragana, Katakana or Hangul character a term of its own, so `记录` becomes the terms `记` and `录` and matches a tool whose metadata holds them, and `search_notes 搜索记录` keeps its ASCII terms beside the four characters. Text without those characters tokenizes exactly as in Pi: accented Latin letters still split a word (`café` is `caf`), Cyrillic and Arabic are still dropped, and the Japanese prolonged sound mark (script Common) still splits a term.
-
-Why: A user who writes tool descriptions or queries in Chinese, Japanese or Korean cannot find their tools by search. Pi 1.4.0 and Pi main have the same tokenizer and no fix or pull request; the report was auto-closed.
-
-Scope: `Tokenize` in `coding/extension/builtin/toolsearch/toolsearch.go`, used by the BM25 ranker of `tool_search` and codemode search. Terms are single characters (no segmentation, no bigrams), so a two-character query matches a tool holding either character and BM25 ranks a tool holding both higher. Other scripts are not widened.
-
-Owner decision: 2026-10-12T04:15Z, owner approved the sign-off entry for #10816 (lane fix-pi-bugs-ai): ship it as a numbered divergence, CJK scripts only.
-
-Call-site markers: `coding/extension/builtin/toolsearch/toolsearch.go` (`Tokenize`).
-
-Evidence: `TestTokenizeKeepsCJKCharactersAsTerms` and `TestBm25RankerFindsAChineseQueryInChineseToolMetadata` (`coding/extension/builtin/toolsearch/toolsearch_cjk_test.go`; red without the change, with rows for text without CJK characters that stays Pi's).
-
-Parity allowance: `TestToolSearchMatchesPi` replaces every CJK character of its probes with a space on both sides before comparing (`spaceOutCJK`), because Pi 1.4.0 splits a term at each of them; the rest of its probes stay byte-equal with Pi.
-
-Remove when: Pi's tokenizer keeps Chinese, Japanese and Korean characters.
 
 SCRUTINIZED:approved
 
