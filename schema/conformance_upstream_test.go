@@ -12,17 +12,17 @@ import (
 
 var knownFailures = map[string]bool{
 	// Vocabularies switched off by a custom meta-schema are not supported.
-	"draft2020-12/vocabulary > schema that uses custom metaschema with with no validation vocabulary > no validation: invalid number, but it still validates":                 true,
-	"draft2020-12/optional/format-assertion > schema that uses custom metaschema with format-assertion: false > format-assertion: false: invalid string":                  true,
-	"draft2020-12/optional/format-assertion > schema that uses custom metaschema with format-assertion: true > format-assertion: true: invalid string":                    true,
+	"draft2020-12/vocabulary > schema that uses custom metaschema with with no validation vocabulary > no validation: invalid number, but it still validates": true,
+	"draft2020-12/optional/format-assertion > schema that uses custom metaschema with format-assertion: false > format-assertion: false: invalid string":      true,
+	"draft2020-12/optional/format-assertion > schema that uses custom metaschema with format-assertion: true > format-assertion: true: invalid string":        true,
 	// A $ref to a document of another draft is evaluated with the compile's draft.
 	"draft2020-12/optional/cross-draft > refs to historic drafts are processed as historic drafts > first item not a string is valid": true,
-	"draft7/optional/cross-draft > refs to future drafts are processed as future drafts > missing bar is invalid":                      true,
+	"draft7/optional/cross-draft > refs to future drafts are processed as future drafts > missing bar is invalid":                     true,
 	// contentMediaType and contentEncoding are annotations.
-	"draft7/optional/content > validation of string-encoded content based on media type > an invalid JSON document":                           true,
-	"draft7/optional/content > validation of binary string-encoding > an invalid base64 string (% is not a valid character)":                  true,
-	"draft7/optional/content > validation of binary-encoded media type documents > a validly-encoded invalid JSON document":                   true,
-	"draft7/optional/content > validation of binary-encoded media type documents > an invalid base64 string that is valid JSON":              true,
+	"draft7/optional/content > validation of string-encoded content based on media type > an invalid JSON document":             true,
+	"draft7/optional/content > validation of binary string-encoding > an invalid base64 string (% is not a valid character)":    true,
+	"draft7/optional/content > validation of binary-encoded media type documents > a validly-encoded invalid JSON document":     true,
+	"draft7/optional/content > validation of binary-encoded media type documents > an invalid base64 string that is valid JSON": true,
 }
 
 func TestConformanceSuite(t *testing.T) {
