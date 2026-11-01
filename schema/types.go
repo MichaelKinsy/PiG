@@ -56,3 +56,10 @@ type ValidationError struct {
 
 // Check is a compiled boolean check.
 type Check func(value any) bool
+
+// ParseResult is the result of CoercingValidator.Parse: the coerced Value when OK, else the Errors of the coerced value.
+type ParseResult struct {
+	OK     bool
+	Value  any
+	Errors []ValidationError
+}
