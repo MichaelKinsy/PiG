@@ -1,6 +1,6 @@
 package schema_test
 
-// Ports the additions of Pi 6536f801 to packages/schema/test/validator.test.ts (b556cfe5:packages/schema/test/validator.test.ts:192-323) except the coercion case "leave values at their place uncoerced", which is in the coercion tests (TestUnresolvedRefsCoerce).
+// Ports the additions of Pi 6536f801 to packages/schema/test/validator.test.ts (b556cfe5:packages/schema/test/validator.test.ts:192-323) except the coercion case "leave values at their place uncoerced", which is in the coercion tests (TestCoerceUnresolvedReferences).
 // Not ported as a Go case: "reject a TypeBox Ref without its definition" runs a TypeBox library call; the JSON Type.Ref("A") emits, {"$ref":"A"}, is the case below.
 
 import (
