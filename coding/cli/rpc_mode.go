@@ -78,6 +78,8 @@ type rpcModeResources struct {
 	// SessionManager is the startup Session log, or nil to start a new one.
 	SessionManager *coding.SessionManager
 	ResumePath     string
+	// Transport is where the session reads, writes and ends; nil is the process transport.
+	Transport *rpcTransport
 }
 
 type headlessCommandRunner interface {
@@ -212,11 +214,14 @@ func rpcResolvedSkills(skills []*codingagent.SkillDef, activePiglet *piglet.Pigl
 
 // runRPCMode owns the `--mode rpc` runtime. EOF and termination triggers dispose and exit the process; startup failures and caller cancellation return to main. Protocol records bypass startup's stdout redirection.
 func runRPCMode(ctx context.Context, flags Args, activePiglet *piglet.Piglet, resources rpcModeResources) (exitCode int) {
-	defer func() {
-		if sig := receivedTerminationSignal.Load(); sig != 0 {
-			exitCode = 128 + int(sig)
-		}
-	}()
+	transport := resources.transport()
+	if transport.processOwned {
+		defer func() {
+			if sig := receivedTerminationSignal.Load(); sig != 0 {
+				exitCode = 128 + int(sig)
+			}
+		}()
+	}
 	// The process context owns extension processes. Cancelling the mode's own context stops admission, but extensions still receive session_shutdown afterwards.
 	processCtx := ctx
 	ctx, cancel := context.WithCancel(ctx)
@@ -232,7 +237,7 @@ func runRPCMode(ctx context.Context, flags Args, activePiglet *piglet.Piglet, re
 	stdoutClosed := atomic.Bool{}
 	// RPC owns raw stdout; incidental startup/extension output follows the process-wide guard to stderr. Records are serialized in the caller and written through output-guard's ordered raw-stdout tail, so no caller blocks on a stopped reader.
 	var stdoutFailed atomic.Bool
-	rawStdout := newStdoutQueue(codingagent.RawStdoutWriter(), func(error) {
+	rawStdout := newStdoutQueue(transport.out, func(error) {
 		stdoutFailed.Store(true)
 		cancel()
 	})
@@ -336,7 +341,7 @@ func runRPCMode(ctx context.Context, flags Args, activePiglet *piglet.Piglet, re
 	host.rt = rt
 	runRpcMode(withRPCModeOptions(ctx, rpcModeOptions{
 		exitCode: &exitCode, host: host, cancel: cancel, shutdownRequested: &shutdownRequested, stdoutClosed: &stdoutClosed,
-		rawStdout: rawStdout, responses: responses, writeRPC: writeRPC, writeImmediate: writeImmediate, rpcUI: rpcUI,
+		rawStdout: rawStdout, transport: transport, responses: responses, writeRPC: writeRPC, writeImmediate: writeImmediate, rpcUI: rpcUI,
 		promptWG: &promptWG, bashWG: &bashWG, commandWG: &commandWG,
 	}), rt)
 	return exitCode
@@ -352,6 +357,7 @@ type rpcModeOptions struct {
 	shutdownRequested *atomic.Bool
 	stdoutClosed      *atomic.Bool
 	rawStdout         *stdoutQueue
+	transport         rpcTransport
 	responses         *rpcResponseTurn
 	writeRPC          func(any)
 	writeImmediate    func(any)
@@ -385,7 +391,7 @@ func runRpcMode(ctx context.Context, rt *coding.Runtime) {
 // serveRPCMode serves the commands of rt and returns the process exit code.
 func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOptions) (exitCode int) {
 	host, cancel := options.host, options.cancel
-	shutdownRequested, stdoutClosed, rawStdout := options.shutdownRequested, options.stdoutClosed, options.rawStdout
+	shutdownRequested, stdoutClosed, rawStdout, transport := options.shutdownRequested, options.stdoutClosed, options.rawStdout, options.transport
 	responses, writeRPC, writeImmediate, rpcUI := options.responses, options.writeRPC, options.writeImmediate, options.rpcUI
 	promptWG, bashWG, commandWG := options.promptWG, options.bashWG, options.commandWG
 	// Runtime.Close closes the current Session and retires its host. session_shutdown for quit has been emitted by then, by the shutdown below or by Close itself.
@@ -420,13 +426,21 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			// Upstream flushes stdout before process.exit unless the signal is SIGTERM; the queued tail is that pending output.
 			rawStdout.Wait(context.Background())
 		}
+		if !transport.processOwned {
+			// pig additive (D201): a connection's exit closes the connection only; the process and its extensions outlive it.
+			transport.exit(code)
+			return
+		}
 		terminateProcesses()
 		// PIG_PROFILE files are written here because os.Exit skips main's deferred stop; unset, this is a no-op.
 		stopProfiles()
 		// Upstream process.exit does not wait for providers or suspended extension callbacks.
-		os.Exit(code)
+		transport.exit(code)
 	}
 	forceSignal := func(sig os.Signal) {
+		if !transport.processOwned {
+			return
+		}
 		terminateProcesses()
 		dieBySignal(sig)
 	}
@@ -439,13 +453,16 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	// goes on only once a session_shutdown handler awaits a timer or I/O, or after the Session is disposed.
 	var holdMu sync.Mutex
 	releaseHold := func() {}
-	setTerminationPrelude(func() {
+	prelude := func() {
 		release := sess().HoldAgentEvents()
 		holdMu.Lock()
 		releaseHold = release
 		holdMu.Unlock()
-	})
-	defer setTerminationPrelude(nil)
+	}
+	if transport.processOwned {
+		setTerminationPrelude(prelude)
+		defer setTerminationPrelude(nil)
+	}
 	release := func() {
 		holdMu.Lock()
 		fn := releaseHold
@@ -546,8 +563,13 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	}
 	host.afterSettled = func() { scheduleRequestedShutdown() }
 	host.commandDone = checkRequestedShutdown
-	setTerminationShutdownHook(func() { shutdown.signal(syscall.Signal(receivedTerminationSignal.Load())) })
-	defer setTerminationShutdownHook(nil)
+	if transport.processOwned {
+		setTerminationShutdownHook(func() { shutdown.signal(syscall.Signal(receivedTerminationSignal.Load())) })
+		defer setTerminationShutdownHook(nil)
+	} else if transport.register != nil {
+		// pig additive (D201): a connection hands its controls to the server's signal fan-out instead of the process hooks.
+		defer transport.register(rpcSessionControls{prelude: prelude, shutdown: shutdown.signal})()
+	}
 
 	rt.SetRebindSession(func(ctx context.Context, session *coding.Session) error {
 		return host.bind(ctx, session, session.StartEvent(), false)
@@ -841,7 +863,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	// before stdin ended.
 	loopIdle := make(chan struct{})
 	go func() {
-		err := rpcclient.ReadJSONLBatches(os.Stdin, func(lines [][]byte) bool {
+		err := rpcclient.ReadJSONLBatches(transport.in, func(lines [][]byte) bool {
 			select {
 			case inputLines <- lines:
 				return true
