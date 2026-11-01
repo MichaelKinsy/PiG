@@ -73,6 +73,10 @@ type RuntimeLoad struct {
 	Compression bool
 	// Store is the subprocess host's store (`createHost`'s `store`); nil: none (StoreOptions).
 	Store *StoreOptions
+	// GoPackages are the host packages the app offers as Go functions and JSON values (GoPackage): the scripts' imports of
+	// each Specifier are answered with a module of asynchronous functions that call the Go functions, and the values. Kept
+	// for the host's reloads, as Modules are.
+	GoPackages []GoPackage
 }
 
 // PluginRuntime starts the Node subprocesses that host plugins, and loads and reloads them with complete sets of shipped
@@ -104,6 +108,7 @@ type loadRequest struct {
 	ReadyTimeout *int64     `json:"readyTimeout,omitempty"`
 	Compression  bool       `json:"compression,omitempty"`
 	Store        *storeWire `json:"store,omitempty"`
+	callbacksWire
 }
 
 // heartbeatWire is a host.HeartbeatOptions in milliseconds, as `createHost`'s `heartbeat`.
@@ -185,6 +190,10 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 	if options.Peer == nil {
 		return nil, host.LoadReport{}, errors.New("plugins.load: a Peer is required")
 	}
+	packages, err := goPackagesWire(options.GoPackages, options.Modules)
+	if err != nil {
+		return nil, host.LoadReport{}, err
+	}
 	request := &loadRequest{
 		Kind: options.Kind, Core: make([]coreWire, len(options.Core)), Scripts: scriptsWire(options.Scripts),
 		Modules: map[string]string(options.Modules), Principal: options.Principal, Peer: options.Peer,
@@ -228,6 +237,7 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 		return nil, host.LoadReport{}, err
 	}
 	h.kind = options.Kind
+	request.callbacksWire = h.enableCallbacks(options, packages)
 	call, err := h.send("load", request)
 	if err == nil {
 		var reply nodeReply

@@ -555,6 +555,8 @@ type NodeHost struct {
 	killReason string
 	stderr     tailWriter
 	startOne   sync.Once
+	// cb is what the process calls on the Go side (plugins_node_callbacks.go).
+	cb nodeCallbacks
 }
 
 // Exited is closed when the process ended.
@@ -936,6 +938,8 @@ func (h *NodeHost) control(payload []byte) {
 		return
 	}
 	switch message.Event {
+	case "call", "cancel":
+		h.callbackEvent(message.Event, payload)
 	case "started":
 		h.startOne.Do(func() { close(h.started) })
 	case "activity":

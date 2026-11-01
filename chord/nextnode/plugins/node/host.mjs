@@ -9,6 +9,8 @@
 // `abort` and `close` have no answer (a closed host ends this process's channel, and the process exits). Unrequested:
 // `{ event: "started" }`, `{ event: "activity", counts }` (the host's keep-alive counts), `{ event: "error", error }` (the host's onError) and `{ event: "fatal", error }` (an uncaught
 // exception or rejection; the process exits with code 1, after the exception was printed on stderr as Node prints it).
+// The calls to the Go side are `{ event: "call", call, name, args }` (answered by the request `{ op: "answer", id: call, ok,
+// result | error }`) and `{ event: "cancel", call }` (callbacks.mjs).
 //
 // The host is the child of the Go side: `load` makes it. It `connect`s the link as its parent link with the principal `peer`
 // (trusted), as Pi's forked worker does, when the Go side first uses the other end (`NodeHost.Link`, which the Go side
@@ -19,6 +21,8 @@ import { EventEmitter } from "node:events";
 import { enableCompileCache, registerHooks } from "node:module";
 import { connect } from "node:net";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import * as callbacks from "./callbacks.mjs";
+import { importGoPackage } from "./gopackage.mjs";
 import { openHostStore } from "./store.mjs";
 import { inspect } from "node:util";
 
@@ -135,6 +139,8 @@ await new Promise((resolve, reject) => {
 	socket.once("error", reject);
 });
 const port = new FramedPort(socket);
+// The calls of this process to the Go side (GoPackage functions) use this channel.
+callbacks.attach(port);
 // Made at once: the messages it receives queue until the host that connects it listens.
 const link = ipcLink(port);
 
@@ -182,6 +188,7 @@ async function load(request, context) {
 	if (hosted !== undefined) throw new Error("load: this process loaded its host already");
 	const modules = { "@earendil-works/chord/next": chordNext };
 	for (const [specifier, file] of Object.entries(request.modules)) modules[specifier] = await import(pathToFileURL(file).href);
+	for (const pkg of request.goPackages) modules[pkg.specifier] = await importGoPackage(pkg);
 	const core = [];
 	for (const { name, module } of request.core) {
 		core.push({ name, facet: (await import(pathToFileURL(module).href)).default });
@@ -249,6 +256,10 @@ const operations = { load, reload };
 
 port.on("message", (message) => {
 	if (message instanceof Uint8Array) return;
+	if (message.op === "answer") {
+		callbacks.answer(message);
+		return;
+	}
 	if (message.op === "abort") {
 		running.get(message.target)?.abort(new Error("the request was aborted by the Go side"));
 		return;

@@ -165,6 +165,8 @@ type PluginsLoad struct {
 	Compression  bool
 	// Store is the Node host's store (RuntimeLoad).
 	Store *StoreOptions
+	// GoPackages are the host packages the app offers as Go functions and JSON values (RuntimeLoad).
+	GoPackages []GoPackage
 }
 
 // CreatePlugins creates the plugins component (and its plugin runtime) and starts the watcher. Discovery runs at first use.
@@ -378,7 +380,8 @@ func (c *Plugins) Load(options PluginsLoad, ctx context.Context) (*NodeHost, hos
 		Kind: options.Kind, Core: options.Core, Scripts: scripts, Modules: options.Modules,
 		Address: options.Address, Principal: options.Principal, Peer: options.Peer, Heartbeat: options.Heartbeat,
 		CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout, Compression: options.Compression,
-		Store: options.Store,
+		Store:      options.Store,
+		GoPackages: options.GoPackages,
 	}, ctx)
 	if err != nil {
 		return nil, host.LoadReport{}, err
