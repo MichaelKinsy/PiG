@@ -417,7 +417,7 @@ func TestWriterFailsTheSessionForAThrowInTheReadCachesWriteThrough(t *testing.T)
 	if !slices.Equal(published, []int{0, 1}) {
 		t.Fatalf("published parts %v, want [0 1]", published)
 	}
-	if len(host.fails) != 1 || host.fails[0].err != failure {
+	if len(host.fails) != 1 || !errors.Is(host.fails[0].err, failure) {
 		t.Fatalf("session failures %+v, want one with %v", host.fails, failure)
 	}
 	if writer.Unpublished() != 0 {

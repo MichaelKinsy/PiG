@@ -893,7 +893,7 @@ func TestGroupCommitAFailureBetweenTwoPublications(t *testing.T) {
 		must(t, err)
 		_, err = two.wait()
 		cause, failed := isSessionFailed(err)
-		if !failed || cause != read {
+		if !failed || !errors.Is(cause, read) {
 			t.Fatalf("the part after the failure got %v, want SessionFailed caused by %v", err, read)
 		}
 		expectNames(t, g.published.entryKinds(), "lead", "one")
