@@ -34,7 +34,9 @@ type RouteOptions struct {
 	// check on it, Limits bound its parts (as `accept`'s). ctx is the route's, cancelled when this host closes. It runs at
 	// most once at a time per address. Its synchronous part runs inside the section that triggered it (a hold, a Retry), as
 	// Pi's does: it must call `chordctx.Suspend(ctx)` with its ctx before it waits for anything that is not a section of the
-	// host (a channel, a process, I/O), the same contract as a method handler's (DESIGN-go-layout.md section 10).
+	// host (a channel, a process, I/O), the same contract as a method handler's (DESIGN-go-layout.md section 10). Lock
+	// order: the synchronous part runs while RouteHandle.Retry's caller is inside the host's loop, so it must not enter a
+	// loop or lock that the caller of Retry or Suspend may hold; see the package doc, "Lock order".
 	Resolve func(address contracts.Address, ctx context.Context) (ResolvedLink, error)
 }
 
@@ -58,12 +60,19 @@ type routeLinkOptions struct {
 // RouteHandle is what `host.route` returns: the app's controls of its addresses (D10b, R1).
 type RouteHandle struct {
 	// Retry resolves address again now if it has holders and no link: its failure and its suspension end (a Retry button);
-	// an address nobody holds resolves at its next hold. It reports whether it started a resolve (held, no link, none
-	// running): Pi's `retry` runs `resolve` synchronously, so its caller sees that at once; the Go `Resolve` runs on an
-	// owned task, so the answer is the one thing a caller cannot see otherwise.
+	// an address nobody holds resolves at its next hold. Like Pi's `retry` it enters the host's loop and runs the app's
+	// `Resolve` inline, up to where it returns or suspends, before it returns. It reports whether it started a resolve
+	// (held, no link, none running): Pi's caller reads what its synchronous `resolve` recorded, which is one event loop's
+	// state; a Go caller that reads its own state in a later section than this call (the workers component reads its
+	// record then) cannot tell otherwise, because another address's or the same address's resolve may interleave.
+	//
+	// Lock order (Pi has one event loop, so it states none): do not call Retry or Suspend while holding another loop or
+	// lock that `Resolve` (before its `chordctx.Suspend`) enters, nor one that a Link's Close enters (the host closes links
+	// inside its sections): that is an AB/BA deadlock with the host's loop. Call them from outside the holder.
 	Retry func(address contracts.Address) bool
 	// Suspend makes address resolve nothing while it has holders: they wait `failed { waiting }` ("suspended") once its
-	// link is gone; the suspension ends with its last holder or Retry.
+	// link is gone; the suspension ends with its last holder or Retry. It enters the host's loop: the lock-order rule of
+	// Retry applies.
 	Suspend func(address contracts.Address)
 }
 

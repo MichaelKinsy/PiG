@@ -258,7 +258,8 @@ func (records *jobRecords) redefine(definition *JobDefinition) error {
 	if len(records.runs) == 0 {
 		return nil
 	}
-	_ = records.owner.documents.Batch().Within(func() error {
+	// Pi lets `batch.within` throw out of `redefine`.
+	return records.owner.documents.Batch().Within(func() error {
 		for _, run := range records.order.snapshot() {
 			if run.entry != nil {
 				records.replaceEntry(run)
@@ -266,7 +267,6 @@ func (records *jobRecords) redefine(definition *JobDefinition) error {
 		}
 		return nil
 	}, records.owner.context)
-	return nil
 }
 
 // undeclare is: the latest live attempt does not declare the job (slice 7b section 8): its runs not invoked and its
@@ -285,25 +285,28 @@ func (records *jobRecords) undeclare() {
 	}
 }
 
-// retryBlocked is: a reload brought new code (its attempt is live): blocked runs are retried, once: a `finish_failed`
-// one finishes again, a `version` one whose version the code now takes (its own, or an older one with an adapter) is
-// invoked or finished; the others stay blocked. A persisted run blocked at its load has its state document read first.
-// It blocks (the store's reads, the commit).
-func (records *jobRecords) retryBlocked(ctx context.Context) {
-	var retried []*jobRun
-	records.loop.Run(func() {
-		if !records.declared || records.ended != nil {
-			return
-		}
-		for _, run := range records.order.snapshot() {
-			if run.phase == phaseBlocked && (*run.blocked == BlockedFinishFailed || records.takes(run)) {
-				retried = append(retried, run)
-			}
-		}
-	})
-	if len(retried) == 0 {
-		return
+// blockedToRetry is the synchronous part of Pi's `retryBlocked` (an async function runs up to its first await when it is
+// called): a reload brought new code (its attempt is live), and the runs it retries are the blocked ones, a
+// `finish_failed` one or a `version` one whose version the code now takes (its own, or an older one with an adapter); the
+// others stay blocked. It is taken in the section that took the jobs, not in a later one: a run blocked or ended in
+// between is judged by retryBlocked's own checks. A section.
+func (records *jobRecords) blockedToRetry() []*jobRun {
+	if !records.declared || records.ended != nil {
+		return nil
 	}
+	var retried []*jobRun
+	for _, run := range records.order.snapshot() {
+		if run.phase == phaseBlocked && (*run.blocked == BlockedFinishFailed || records.takes(run)) {
+			retried = append(retried, run)
+		}
+	}
+	return retried
+}
+
+// retryBlocked is the rest of Pi's `retryBlocked`: the runs blockedToRetry took are retried, once: a `finish_failed` one
+// finishes again, a `version` one is invoked or finished. A persisted run blocked at its load has its state document read
+// first. It blocks (the store's reads, the commit).
+func (records *jobRecords) retryBlocked(retried []*jobRun, ctx context.Context) {
 	for _, run := range retried {
 		var blockedPhase bool
 		records.loop.Run(func() { blockedPhase = run.blockedPhase != nil })

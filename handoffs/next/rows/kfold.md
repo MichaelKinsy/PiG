@@ -677,3 +677,23 @@ None (all unexported).
 - test goroutine writes to a host writable go through a section of the host's loop (`rhSet`), as Pi's call from the event loop.
 - Tests ran via `/tmp/kfold/kreload.sh test -race -count=3` (scratch copy with other lanes' Load call sites patched): ok.
 - bench: Pi's median/p90 over bursts is reported as `testing.B` metrics (`median-ms`, `p90-ms`).
+
+## Review fixes (KFix2: foundations, store, output)
+- S1 `registries.sameFunc` removed (no `unsafe`, no nolint): `adaptation`, `mapping`, `mapFailure` carry the `*provided` record (one per `Serve`) and compare pointers, as Pi compares the provider's adapter objects. `RegistryRecord.ValueAdapter` and `RegistryContribution.Entry` became unexported (`valueAdapter`, `entryFor`; no caller outside the package). A typed provider served again is a new provider (`TestAReservedProviderMadeApartIsANewProvider`); the behavior is unchanged from before for `Erase`-built providers, so that test is green before and after.
+- S3 sanitize golden: `chord/output/testdata/sanitize_escape_golden.mjs` generates inputs (fixed seed) and Pi 6d4b7443's answers; `node testdata/sanitize_escape_golden.mjs <Pi tree> > testdata/sanitize_escape_golden.json`. The original generator was not recoverable, so the golden was regenerated (1279 inputs, not 1512; the test now compares its inputs with `--inputs` instead of a hard-coded count).
+- N2 doc on `CommitSeries`: `receive` must not commit.
+- S4 for the integrator: rebind these interface-mapping rows (test/parity/interfaces/mapping-v1.4.0+e7a0df27.json, ids `pkg:chord/next#ChordStore::property:commitInBatch` and `pkg:chord/next#ChordStore::property:commitInBatch::call:0`, target `chord/next/store/store.go#ChordStore.CommitInBatch`, ~lines 114881-114919; production `call:` and evidence `reach:` entries too) to `chord/next/store/store.go#ChordStore.CommitSeries`; and the `ChordStore` row in test/parity/upstream-sync/v1.4.0+e7a0df27.toml:2564 (rationale text names `Commit`/`CommitInBatch`) to `Commit`/`CommitSeries`. Types to map: `SeriesCommit`, `SeriesResult`.
+
+---
+
+# Review fixes (KFix1: `chord/next/host`, from kfold-host.md)
+
+- B1 `reloadReport` waits with `scheduler.AwaitEntered(ctx)` (aborted -> `aborted` + `details.committed`), not `Wait()`. Tests: `TestHostReloadAWatchListenerMayCallReloadItself`, `TestHostReloadAnAbortEndsTheReportsWaitForAListenerStillRunning` (both red with `Wait()`).
+- B2 `TestAHoldAfterItsObjectsLiveFailure...` runs `failLive` + `Set` in one section (`failLiveThen`). Production has no such race: the failed object's stop-of-following is a loop task, and two sections from independent goroutines are Pi's separate macrotasks.
+- B3 example 34 step 4 asserts exactly the v2 finish (with mapped args and result).
+- S1/S2 Retry doc restated (bool is for callers reading in a later section); lock-order rule on `RouteOptions.Resolve`, `RouteHandle`, `doc.go` "Lock order".
+- S3 `Facet` is an opaque handle (`definition *facetDefinition`), no exported field. API change for `chord/nextnode/plugins` tests: `facet.Setup == nil` -> `facet == (host.Facet{})` (PlugNode told).
+- S4 recording `self.State/Table` return real handles over sealed throwaway documents / a table owner whose reads return `errInert` (test `TestStagingAFactoryThatUsesTheHandlesItDeclaresIsInertNotAFailure`, red before).
+- S5-S8 strengthened: adapted case 1 (`ChangesOf`), ex33 step 3 (`loading`, log order), ex34 step 1 (tab frame ops), finishes checked after a turn (`finishesAfterATurn`, persisted), refused recovery commit via `refusingDatabase`.
+- S9 `relay` makes no worker once the test's cleanup started (`closing`). Root cause not reproduced; not proven.
+- N1 retry filter taken in `takeJobs`' section (`blockedToRetry`); N2 `redefine` returns `Within`'s error; N3 closed assert; N4 View member `old`; N5 GC comment; N6 bounded receives in ex33 (`exReceive`); the adapted polls stay polls (point-in-time reads after `deliveredOn` failed under race: the rebind/mapping lands on loop tasks after the scheduler is idle); N7 documented (`wake` idempotent). N1/N2 have no dedicated red test (no deterministic way to order/fail).

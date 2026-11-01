@@ -57,4 +57,15 @@
 // part of its synchronous part; pass it the handler's ctx. The package's own tests install parking.Watch in
 // TestMain: a section that waits for its handler longer than 2 s reports the stacks of every goroutine and fails the test
 // binary, so a raw block before the first host call is visible there; production builds start no timer.
+//
+// # Lock order
+//
+// Pi has one event loop, so no code waits for another. The host's loop is a lock in Go: every section holds it, so a
+// caller that holds another loop (a component's loop.Run, any mutex) while it enters a host section, and code inside a
+// host section that enters that other loop, are an AB/BA deadlock. Nothing in Pi's code forbids it, so the rule is stated
+// here. RouteHandle.Retry and RouteHandle.Suspend enter the host's loop and run the app's RouteOptions.Resolve inline, on
+// the caller's stack, until it returns or suspends: do not call them while holding a loop or lock that Resolve (before
+// chordctx.Suspend) enters, nor one that a Link's Close enters, because the host closes links inside its sections (a
+// heartbeat timeout, a closed host's links, the drop that resolves again). Call Retry and Suspend from outside the holder,
+// or have Resolve suspend before it takes the lock.
 package host
