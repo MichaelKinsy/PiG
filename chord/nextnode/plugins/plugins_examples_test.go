@@ -472,7 +472,15 @@ func TestExample36PluginFailures(t *testing.T) {
 	}
 	forecast := notLive("example.forecast", "text", "str")
 	weather := notLive("example.weather", "celsius", "int")
-	t.Logf("weather: %v forecast: %v", weather, forecast)
+	for name, state := range map[string]map[string]any{"example.weather": weather, "example.forecast": forecast} {
+		want := "example.weather is not served here"
+		if name == "example.forecast" {
+			want = "waiting for example.weather: example.weather is not served here"
+		}
+		if state["code"] != "unavailable" || state["message"] != want {
+			t.Fatalf("1. %s: %v, want failed waiting (unavailable: %s)", name, state, want)
+		}
+	}
 	values := func() []any {
 		return []any{
 			server.read("example.greeting", "text", "str"), server.read("example.boot", "mode", "str"),
@@ -503,7 +511,7 @@ func TestExample36PluginFailures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := exLineOf(report), (exLine{[]string{}, []string{}, []string{}, []string{"@example/boot", "@example/counter", "@example/greeter", "@example/prices", "@example/summary", "@example/weather"}}); !reflect.DeepEqual(got, want) {
+	if got, want := exLineOf(report), (exLine{[]string{}, []string{}, []string{}, []string{"@example/boot", "@example/greeter", "@example/prices", "@example/weather", "@example/counter", "@example/summary"}}); !reflect.DeepEqual(got, want) {
 		t.Fatalf("2. reload = %+v, want %+v", got, want)
 	}
 	if len(report.Objects) != 0 {
@@ -631,25 +639,27 @@ func TestExample37PluginImports(t *testing.T) {
 	if want := []string{"@example/paths", "@example/refused", "@example/report", "@example/ruler"}; !slices.Equal(order, want) {
 		t.Fatalf("1. left out: %v, want %v", order, want)
 	}
+	const hint = ` (a file of the plugin is read through pluginFile(path) from "@earendil-works/chord/next/plugins")`
+	const identity = "import.meta.url, __dirname and __filename are not available in a plugin script" + hint
 	wantLeft := map[string][]string{
 		"@example/paths": {
 			`plugin "@example/paths": its server facet failed to build:`,
-			`server.ts:9:13: "__dirname": a plugin script has no __dirname (read its files through pluginFile)`,
-			`server.ts:10:14: "__filename": a plugin script has no __filename (read its files through pluginFile)`,
+			"server.ts:8:19: " + identity,
+			"server.ts:9:14: " + identity,
 		},
 		"@example/refused": {
 			`plugin "@example/refused": its server facet failed to build:`,
-			`server.ts:6:17: "../../app/index.ts": outside the plugin: reach base code through a host package`,
-			`server.ts:9:14: a plugin script has no module identity (import.meta): read its files through pluginFile`,
-			`server.ts:10:14: "./other.ts": a literal dynamic import() is not supported in a plugin script`,
+			`server.ts:6:17: "../../app/index.ts": outside the plugin (base code is reached through a host package, packages through dependencies)`,
+			"server.ts:9:14: " + identity,
+			`server.ts:10:14: import("./other.ts"): a plugin script has no dynamic import` + hint,
 		},
 		"@example/report": {
 			`plugin "@example/report": its server facet failed to build:`,
-			`server.ts:10:20: Could not resolve "example-greeting"`,
+			`server.ts:12:23: Could not resolve "example-greeting"`,
 		},
 		"@example/ruler": {
 			`plugin "@example/ruler": its server facet failed to build:`,
-			`shapes/units.ts:4:21: "typebox": a copied file may import host packages and files of its own plugin only`,
+			`../shapes/units.ts:4:22: "typebox": a file copied from plugin "@example/shapes" may import only host packages and files of its own plugin`,
 		},
 	}
 	if !reflect.DeepEqual(left, wantLeft) {
@@ -786,7 +796,7 @@ func TestExample38WatchAndRollout(t *testing.T) {
 	}
 	result := rollout(steps, built)
 	want := []exLine{
-		{Added: []string{"@example/extra"}, Changed: []string{"@example/notes", "@example/tags"}, Removed: []string{"@example/old"}, Failed: none},
+		{Added: []string{"@example/extra"}, Changed: []string{"@example/notes"}, Removed: []string{"@example/old"}, Failed: none},
 		{Added: none, Changed: []string{"@example/notes"}, Removed: []string{"@example/tags"}, Failed: none},
 	}
 	if got := exReports(result); !reflect.DeepEqual(got, want) {
@@ -902,12 +912,8 @@ func TestExample39BrowserBuild(t *testing.T) {
 	if gallery.CSS == nil {
 		t.Fatal("no stylesheet")
 	}
-	t.Logf("stylesheet: %s %q", gallery.CSS.Name, strings.SplitN(gallery.CSS.Text, "\n", 2)[0])
-	if gallery.CSS.Name != "web.css" || strings.SplitN(gallery.CSS.Text, "\n", 2)[0] != "/* gallery/gallery.css */" {
-		t.Fatalf("stylesheet: %s %q", gallery.CSS.Name, strings.SplitN(gallery.CSS.Text, "\n", 2)[0])
-	}
-	if !strings.Contains(gallery.CSS.Text, ".gallery img {\n  width: 64px;\n}") {
-		t.Fatalf("stylesheet text: %q", gallery.CSS.Text)
+	if first := strings.SplitN(gallery.CSS.Text, "\n", 2)[0]; !regexp.MustCompile(`^web-[A-Z0-9]+\.css$`).MatchString(gallery.CSS.Name) || first != ".gallery{display:grid;gap:8px}.gallery img{width:64px}" {
+		t.Fatalf("stylesheet: %s %q", gallery.CSS.Name, first)
 	}
 	svg, err := os.ReadFile(filepath.Join(root, "gallery", "assets", "logo.svg"))
 	if err != nil {
