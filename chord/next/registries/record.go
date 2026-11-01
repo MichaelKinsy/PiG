@@ -212,7 +212,7 @@ func (r *RegistryRecord) Start() (state.NativeStart[any], error) {
 		return state.NativeStart[any]{Kind: state.StartFailed, Error: err}, nil
 	}
 	if r.dirty {
-		r.recompose(*r.provider)
+		r.recompose(r.provider)
 	}
 	current := r.composition
 	if current == nil {
@@ -258,12 +258,13 @@ func (r *RegistryRecord) InTable(from []*RegistryContribution) bool {
 	return true
 }
 
-// ValueAdapter is the adapter mapping the composed value back for readers of version; nil when there is none.
-func (r *RegistryRecord) ValueAdapter(version int) func(current any) (any, error) {
+// valueAdapter is the adapter mapping the composed value back for readers of version (nil when there is none), with the
+// provider it belongs to: Pi compares the adapter objects of a provider, and a provider made apart brings its own.
+func (r *RegistryRecord) valueAdapter(version int) (func(current any) (any, error), *provided) {
 	if r.provider == nil {
-		return nil
+		return nil, nil
 	}
-	return r.provider.provider.Accepts[version].Value
+	return r.provider.provider.Accepts[version].Value, r.provider
 }
 
 // Adapt runs an adapter of the provider as a pure compute, counted; a panic in it is its error.
@@ -323,11 +324,11 @@ func (r *RegistryRecord) invalidate() {
 // A failure is an episode: reported once, the last good composition kept while every contribution it was built from is
 // still in the table (decision 5: one whose contributor ended may hold a closed native); conflicts are reported once
 // per episode, as their message and plugins.
-func (r *RegistryRecord) recompose(served provided) {
+func (r *RegistryRecord) recompose(served *provided) {
 	r.dirty = false
 	r.composing = true
 	defer func() { r.composing = false }()
-	table, same := r.build(served.version, served.provider)
+	table, same := r.build(served)
 	if same && r.composition != nil {
 		return
 	}
@@ -374,12 +375,12 @@ func (r *RegistryRecord) recompose(served provided) {
 }
 
 // build is the table of the live contributions now; the last one itself (same) when every entry is the same object.
-func (r *RegistryRecord) build(version int, provider RegistryProvider[any, any]) (table []*RegistryEntry[any], same bool) {
+func (r *RegistryRecord) build(served *provided) (table []*RegistryEntry[any], same bool) {
 	previous := r.table
 	table = make([]*RegistryEntry[any], 0, len(r.contributions))
 	same = previous != nil
 	for _, contribution := range r.contributions {
-		entry := contribution.Entry(version, provider)
+		entry := contribution.entryFor(served)
 		if entry == nil {
 			continue
 		}

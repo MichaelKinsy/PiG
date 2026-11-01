@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -2311,6 +2312,98 @@ func TestHostReloadTheAPIAnAbortAfterTheCommitRejectsAbortedNamingWhatTheCommitA
 	turn(host)
 	if title := memberOf(t, info, "title"); title != "b" {
 		t.Fatalf("title = %v, want b", title)
+	}
+}
+
+// Own test (Pi's `#report` waits for no listener, and `host.reload` may be called from a watch callback): the watch
+// listener of a reference of the reloaded type calls `Reload` itself, from the delivery its first reload's commit
+// scheduled. A report that waited for every delivery to finish would wait for that listener, which waits for the first
+// reload to end: neither returns.
+func TestHostReloadAWatchListenerMayCallReloadItself(t *testing.T) {
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: infoFacet("a")}}, background))
+	info := mustGet(t, host, hostInfo, jsonObject())
+	watch, err := info.Member("title").Watch(background)
+	must(t, err)
+	type result struct {
+		report ReloadReport
+		err    error
+	}
+	inner := make(chan result, 1)
+	var once sync.Once
+	watch.Start(func(context.Context, chord.WatchCall[delta.JsonValue]) error {
+		once.Do(func() {
+			report, err := host.Reload([]HostFacet{{Name: "@app/info", Facet: infoFacet("c")}}, background, ReloadOptions{})
+			inner <- result{report, err}
+		})
+		return nil
+	})
+	outer := make(chan result, 1)
+	go func() {
+		report, err := host.Reload([]HostFacet{{Name: "@app/info", Facet: infoFacet("b")}}, background, ReloadOptions{})
+		outer <- result{report, err}
+	}()
+	for name, done := range map[string]chan result{"the reload": outer, "the reload the listener called": inner} {
+		select {
+		case got := <-done:
+			must(t, got.err)
+			if !reflect.DeepEqual(got.report.Plugins.Changed, []string{"@app/info"}) {
+				t.Fatalf("%s: changed = %v, want [@app/info]", name, got.report.Plugins.Changed)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatalf("%s did not return", name)
+		}
+	}
+	turn(host)
+	if title := memberOf(t, info, "title"); title != "c" {
+		t.Fatalf("title = %v, want c", title)
+	}
+}
+
+// Own test (Pi's `#report`: "`context`'s abort ends only this wait"): a listener of the reloaded object's reference is
+// still running (busy, not waiting) when the context aborts; the reload does not wait for it to return and rejects
+// `aborted` naming what the commit applied.
+func TestHostReloadAnAbortEndsTheReportsWaitForAListenerStillRunning(t *testing.T) {
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: infoFacet("a")}}, background))
+	info := mustGet(t, host, hostInfo, jsonObject())
+	watch, err := info.Member("title").Watch(background)
+	must(t, err)
+	var release atomic.Bool
+	defer release.Store(true)
+	running := make(chan struct{})
+	var once sync.Once
+	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
+		if call.Value == "b" {
+			once.Do(func() { close(running) })
+			for !release.Load() {
+				runtime.Gosched()
+			}
+		}
+		return nil
+	})
+	aborting, cancel := chordctx.WithCancel(background)
+	done := make(chan error, 1)
+	go func() {
+		_, err := host.Reload([]HostFacet{{Name: "@app/info", Facet: infoFacet("b")}}, aborting, ReloadOptions{})
+		done <- err
+	}()
+	<-running
+	cancel(errors.New("stop"))
+	select {
+	case err := <-done:
+		chordErr, ok := data.IsChordError(err)
+		if !ok || chordErr.Code != data.CodeAborted {
+			t.Fatalf("reload = %v, want aborted", err)
+		}
+		committed, _ := chordErr.Details.(*delta.JsonObject).Value("committed").(*delta.JsonObject)
+		if got, _ := committed.Value("changed").([]any); !reflect.DeepEqual(got, []any{"@app/info"}) {
+			t.Fatalf("committed.changed = %v, want [@app/info]", got)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the abort did not end the reload's wait for a running listener")
 	}
 }
 

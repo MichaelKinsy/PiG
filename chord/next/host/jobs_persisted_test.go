@@ -80,17 +80,83 @@ func countResult(count int) *delta.JsonObject { return jsonObject("count", float
 func pathArgs(path string) *delta.JsonObject { return jsonObject("path", path) }
 
 // storeFile is `storeFile()`: a store file opened by the returned function again after each crash or close.
-func storeFile(t *testing.T) func() *store.ChordStore {
+func storeFile(t *testing.T) func() *store.ChordStore { return storeFileWrapped(t, nil) }
+
+// storeFileWrapped is storeFile with every open's database wrapped by wrap (nil: as it is).
+func storeFileWrapped(t *testing.T, wrap func(sqlite.SqliteDatabase) sqlite.SqliteDatabase) func() *store.ChordStore {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "store.sqlite")
 	return func() *store.ChordStore {
 		t.Helper()
 		database, err := node.OpenNodeSqliteDatabase(path, node.NodeSqliteDatabaseOptions{})
 		must(t, err)
-		opened, err := store.OpenStore(store.SqliteBackend(database), background, store.StoreOptions{})
+		var backend sqlite.SqliteDatabase = database
+		if wrap != nil {
+			backend = wrap(backend)
+		}
+		opened, err := store.OpenStore(store.SqliteBackend(backend), background, store.StoreOptions{})
 		must(t, err)
 		return opened.(*store.ChordStore)
 	}
+}
+
+// refusingDatabase fails the first statement of the next backend transaction after refuseNext, once: the step's own code
+// fails inside its transaction, which the backend rolls back, returning that error unchanged (a refusal; the store goes
+// on).
+type refusingDatabase struct {
+	sqlite.SqliteDatabase
+	mu     sync.Mutex
+	armed  bool
+	failed bool
+}
+
+func (db *refusingDatabase) refuseNext() {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	db.armed = true
+}
+
+// refused reports whether a transaction was refused.
+func (db *refusingDatabase) refused() bool {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	return db.failed
+}
+
+func (db *refusingDatabase) Transaction(callback func(transaction sqlite.SqliteExecutor) error) error {
+	db.mu.Lock()
+	refuse := db.armed
+	db.armed = false
+	db.mu.Unlock()
+	return db.SqliteDatabase.Transaction(func(transaction sqlite.SqliteExecutor) error {
+		if refuse {
+			db.mu.Lock()
+			db.failed = true
+			db.mu.Unlock()
+			transaction = refusingExecutor{}
+		}
+		return callback(transaction)
+	})
+}
+
+// errRefusedRecovery is what a refusing transaction's statements fail with.
+var errRefusedRecovery = errors.New("refused recovery")
+
+// refusingExecutor fails every statement.
+type refusingExecutor struct{}
+
+func (refusingExecutor) Exec(string) error { return errRefusedRecovery }
+func (refusingExecutor) Run(string, ...sqlite.SqliteValue) error {
+	return errRefusedRecovery
+}
+func (refusingExecutor) RunCounted(string, ...sqlite.SqliteValue) (int64, error) {
+	return 0, errRefusedRecovery
+}
+func (refusingExecutor) Get(string, ...sqlite.SqliteValue) (sqlite.SqliteRow, error) {
+	return nil, errRefusedRecovery
+}
+func (refusingExecutor) All(string, ...sqlite.SqliteValue) ([]sqlite.SqliteRow, error) {
+	return nil, errRefusedRecovery
 }
 
 // jobsOpened is what one host over the store sees of the store object's jobs (Pi's `Opened`).
@@ -866,36 +932,22 @@ func TestPersistedInvocationsAfterASealResumeAbandonARunTheSealStoppedFinishesFa
 
 // persisted.test.ts › loading (review regressions) › a refused recovery commit loses nothing: the retry loads the runs again and counts the crash once
 //
-// Pi makes the recovery commit fail by replacing `store.commit`; the Go store has no hook for one commit, so the load
-// fails the way the code's own failure does (a state document that cannot be migrated, the case below): the activation
-// fails, nothing of the load stays, and the retry loads the run again and counts the crash once.
+// Pi replaces `store.commit` once with a rejection; `ChordStore.Commit` is a method of a concrete type, so the store's
+// next backend transaction fails at its first statement (refusingDatabase): the step's own code fails, the backend rolls
+// it back and the store goes on, which is what a refused commit is (D4).
 func TestPersistedLoadingALoadThatFailsLosesNothingTheRetryLoadsTheRunsAgainAndCountsTheCrashOnce(t *testing.T) {
-	open := storeFile(t)
+	var database *refusingDatabase
+	open := storeFileWrapped(t, func(inner sqlite.SqliteDatabase) sqlite.SqliteDatabase {
+		database = &refusingDatabase{SqliteDatabase: inner}
+		return database
+	})
 	jobs := opened(t, open(), hang(t), nil)
 	run := jobStart(t, jobs.Imports, pathArgs("a"), background)
 	waitRecord(t, jobs.Store, run.ID(), map[string]any{"phase": "running"})
 	jobs.Crash()
-	var mu sync.Mutex
-	failing := true
-	progress := mustDefineState(documents.DefineState("import.progress", documents.StateOptions{
-		Schema:  contracts.Obj(contracts.Prop("done", contracts.Int())),
-		Version: 2,
-		Migrate: func(old *delta.JsonObject, _ int) (*delta.JsonObject, error) {
-			mu.Lock()
-			defer mu.Unlock()
-			if failing {
-				return nil, errors.New("migrate failed")
-			}
-			return old, nil
-		},
-		Initial:        func() *delta.JsonObject { return jsonObject("done", float64(0)) },
-		Persist:        true,
-		CheckpointWhen: func(*documents.JsonObject, []delta.Op, documents.CheckpointInfo) bool { return false },
-	}))
-	options := importOptions()
-	options.State = progress
-	declared := mustDefineJob(DefineJob("notes.import", options))
 	st := open()
+	database.refuseNext()
+	var mu sync.Mutex
 	var invocations int
 	jobs = opened(t, st, func(any, JobCtx) (any, error) {
 		mu.Lock()
@@ -903,7 +955,7 @@ func TestPersistedLoadingALoadThatFailsLosesNothingTheRetryLoadsTheRunsAgainAndC
 		mu.Unlock()
 		<-t.Context().Done()
 		return nil, errors.New("the test ended")
-	}, nil, declared)
+	}, nil)
 	var activationFailed bool
 	for _, err := range jobs.Errors.All() {
 		activationFailed = activationFailed || err.Kind == ErrActivationFailed
@@ -911,9 +963,9 @@ func TestPersistedLoadingALoadThatFailsLosesNothingTheRetryLoadsTheRunsAgainAndC
 	if !activationFailed {
 		t.Fatalf("errors = %v", kindsOf(jobs.Errors.All()))
 	}
-	mu.Lock()
-	failing = false
-	mu.Unlock()
+	if !database.refused() {
+		t.Fatal("the recovery commit was not refused")
+	}
 	jobs.Retry()
 	jobs.Live()
 	waitRecord(t, st, run.ID(), map[string]any{"phase": "running", "restarts": float64(1)})
@@ -1509,9 +1561,15 @@ func TestPersistedVersionsResolvedByAReloadAPersistedRunBlockedForItsVersionAtIt
 		defer mu.Unlock()
 		return len(finished) == 1
 	})
+	// Pi's `toMatchObject([one outcome])` after its sleep: a second, spurious finish would show once a turn passed.
+	nexttest.Flushed()
 	mu.Lock()
-	outcome := finished[0]
+	all := append([]Outcome(nil), finished...)
 	mu.Unlock()
+	if len(all) != 1 {
+		t.Fatalf("finished = %+v, want exactly one outcome", all)
+	}
+	outcome := all[0]
 	if outcome.ID != run.ID() || outcome.Kind != OutcomeDone || !nexttest.JSONEqual(outcome.Result, countResult(7)) {
 		t.Fatalf("outcome = %+v", outcome)
 	}

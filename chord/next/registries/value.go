@@ -43,8 +43,8 @@ func sameError(a, b error) bool {
 // not built from a good composition record.
 type mapping struct {
 	from any
-	// adapter is the one it was made with: a reload's provider brings another, which maps again.
-	adapter          func(current any) (any, error)
+	// provider is the one whose adapter it was made with: a provider served apart brings another, which maps again.
+	provider         *provided
 	value            any
 	contributions    []*RegistryContribution
 	hasContributions bool
@@ -52,9 +52,9 @@ type mapping struct {
 
 // mapFailure is a failed mapping of composition from by adapter, until another composition or adapter maps.
 type mapFailure struct {
-	from    any
-	adapter func(current any) (any, error)
-	err     error
+	from     any
+	provider *provided
+	err      error
 }
 
 // told is what a value's waiters were last told: usable (a value, or a failure with a last good one), or the error it
@@ -260,16 +260,19 @@ func (v *RegistryValueSource) dropMapping() {
 }
 
 func (v *RegistryValueSource) startOf(record *RegistryRecord) (state.NativeStart[any], error) {
-	provided, ok := record.ProvidedVersion()
-	if !ok || provided == v.Version {
+	servedVersion, ok := record.ProvidedVersion()
+	if !ok || servedVersion == v.Version {
 		return record.Start()
 	}
-	var mapValue func(current any) (any, error)
-	if provided > v.Version {
-		mapValue = record.ValueAdapter(v.Version)
+	var (
+		mapValue func(current any) (any, error)
+		served   *provided
+	)
+	if servedVersion > v.Version {
+		mapValue, served = record.valueAdapter(v.Version)
 	}
 	if mapValue == nil {
-		message := fmt.Sprintf("registry %s: version %d is not served here (version %d is)", v.Name, v.Version, provided)
+		message := fmt.Sprintf("registry %s: version %d is not served here (version %d is)", v.Name, v.Version, servedVersion)
 		err := data.NewChordError(data.ChordErrorInit{Code: data.CodeContractMismatch, Message: message}, nil)
 		return state.NativeStart[any]{Kind: state.StartFailed, Error: err}, nil
 	}
@@ -277,12 +280,12 @@ func (v *RegistryValueSource) startOf(record *RegistryRecord) (state.NativeStart
 	if err != nil {
 		return state.NativeStart[any]{}, err
 	}
-	return v.mappedStart(record, current, mapValue), nil
+	return v.mappedStart(record, current, mapValue, served), nil
 }
 
 // mappedStart is the composition current mapped back with mapValue, once per composition; a failing mapping fails this
 // version only (reported once per episode), keeping its last good mapping; a composition mapped before heals it.
-func (v *RegistryValueSource) mappedStart(record *RegistryRecord, current state.NativeStart[any], mapValue func(current any) (any, error)) state.NativeStart[any] {
+func (v *RegistryValueSource) mappedStart(record *RegistryRecord, current state.NativeStart[any], mapValue func(current any) (any, error), served *provided) state.NativeStart[any] {
 	if current.Kind == state.StartFailed && !current.HasLast {
 		return current
 	}
@@ -296,19 +299,19 @@ func (v *RegistryValueSource) mappedStart(record *RegistryRecord, current state.
 		v.mapped = nil
 	}
 	mapped, failure := v.mapped, v.failure
-	if mapped != nil && state.Identical(mapped.from, from) && sameFunc(mapped.adapter, mapValue) {
+	if mapped != nil && state.Identical(mapped.from, from) && mapped.provider == served {
 		v.failure = nil
-	} else if failure == nil || !state.Identical(failure.from, from) || !sameFunc(failure.adapter, mapValue) {
+	} else if failure == nil || !state.Identical(failure.from, from) || failure.provider != served {
 		value, err := record.Adapt(func() (any, error) { return mapValue(from) })
 		if err == nil {
 			contributions, ok := record.ComposedFrom()
-			v.mapped = &mapping{from: from, adapter: mapValue, value: value, contributions: contributions, hasContributions: ok}
+			v.mapped = &mapping{from: from, provider: served, value: value, contributions: contributions, hasContributions: ok}
 			v.failure = nil
 		} else {
 			if failure == nil {
 				record.Failed(err)
 			}
-			v.failure = &mapFailure{from: from, adapter: mapValue, err: err}
+			v.failure = &mapFailure{from: from, provider: served, err: err}
 		}
 	}
 	start := state.NativeStart[any]{}

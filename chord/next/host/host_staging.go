@@ -23,9 +23,10 @@ import (
 // Forced Go differences. Pi's `Map`s are insertion ordered: `namedMap` keeps that order. A declaration that throws in Pi
 // panics in Go (Self's methods return no error), and the factory runs under tryPlugin, as an attempt's does. Pi's handles of
 // a recording `self` are one `Proxy` that gives itself back for every property and call (INERT): Go's are typed inert values
-// (a zero `*documents.Singleton` or `*store.TableHandle`, a never-bound `*Reference`, constants, an inert writable, native and job), valid
-// to pass on or return, whose own methods are not meant to be called while declaring (a factory that does panics, which
-// staging reports as the plugin's failure).
+// that are safe to use (a document handle of the recording's own sealed documents, whose reads return `not_ready`, as an
+// attempt's in its factory do before activation, and whose changes are refused `released`; a `*store.TableHandle` whose reads
+// and queries return errInert; a never-bound `*Reference`, constants, an inert writable, native and job), so a factory
+// that reads or calls one while staging neither panics nor reaches anything.
 
 // pluginNamePattern is an npm package name, scoped or not.
 var pluginNamePattern = regexp.MustCompile(`^(?:@[a-z0-9~-][a-z0-9._~-]*/)?[a-z0-9~-][a-z0-9._~-]*$`)
@@ -121,7 +122,7 @@ func stagePlugin(plugin HostFacet, host *chordHost) (*stagedPlugin, error) {
 	registryTable := newNamedMap[stagedRegistry]()
 	var contributions []facetContribution
 	_, err := tryPlugin(func() (any, error) {
-		if plugin.Facet.Setup == nil {
+		if !plugin.Facet.hasSetup() {
 			return nil, errors.New("the facet has no setup")
 		}
 		set, err := setUp(name, plugin.Facet, host.References)
@@ -308,6 +309,9 @@ type recordingSelf struct {
 	jobs          *namedMap[*JobDefinition]
 	contributions *namedMap[registries.Registry[any, any]]
 	requests      []request
+	// inert are the documents of the handles State returns and token their seal token; made by the first.
+	inert *documents.Documents
+	token *documents.SealToken
 }
 
 var _ StoreSelf = (*recordingSelf)(nil)
@@ -347,11 +351,55 @@ func (r *recordingSelf) State(definition documents.AnyDefinition) any {
 		panic(err)
 	}
 	r.documents.set(definition.Name, definition)
-	if definition.Keyed {
-		return &documents.Keyed{}
+	// Pi's INERT answers `self.state(D).value`, `.change(...)` and every other use of the handle, none of which touches
+	// anything. The handle here is a real one of the recording's own documents (not the object's: the object's slots
+	// stay as they are): a read is the `not_ready` error an attempt's own read in its factory is, before activation, and
+	// a change or retire is refused `released` (the documents are sealed).
+	handle, err := r.inertDocuments().Declare(definition, r.token, r)
+	if err != nil {
+		panic(err)
 	}
-	return &documents.Singleton{}
+	return handle
 }
+
+// inertDocuments is the documents the recording's handles are of: the object's, as a copy that never activates, whose
+// transactions are refused (sealed) and whose failures and store are none.
+func (r *recordingSelf) inertDocuments() *documents.Documents {
+	if r.inert == nil {
+		r.inert = documents.NewDocuments(&recordingDocuments{objectDocuments{objectClock{object: r.object}}})
+		r.inert.Seal()
+		r.token = documents.NewSealToken()
+	}
+	return r.inert
+}
+
+// At implements documents.KeyDeclarer: `state(D).at(key)` of a recorded factory is a source of the recording's own
+// documents (Pi's INERT), pinned for no one.
+func (r *recordingSelf) At(slot *documents.KeyedSlot, key string) (*documents.KeySource, error) {
+	r.assertDeclaring("state(...).at")
+	if _, err := slot.Pin(key, r.ctx); err != nil {
+		return nil, err
+	}
+	return slot.KeySourceOf(key), nil
+}
+
+// recordingDocuments is the owner of a recording's documents: the object's label, batch and context, but no store and a
+// failure that fails nothing.
+type recordingDocuments struct{ objectDocuments }
+
+// Store implements documents.DocumentsOwner: none, so nothing persists.
+func (*recordingDocuments) Store() (*store.ChordStore, string, bool) { return nil, "", false }
+
+// Fail implements documents.DocumentsOwner: a recorded factory fails nothing.
+func (*recordingDocuments) Fail(*data.ChordError) {}
+
+// inertTableOwner is the owner of a recording's table handles: never live, so every read and query returns errInert.
+type inertTableOwner struct{ label string }
+
+func (o inertTableOwner) Label() string         { return o.label }
+func (o inertTableOwner) Scope() any            { return nil }
+func (o inertTableOwner) AssertLive() error     { return errInert }
+func (o inertTableOwner) Fail(*data.ChordError) {}
 
 // Table implements StoreSelf.
 func (r *recordingSelf) Table(definition *store.TableDefinition) *store.TableHandle {
@@ -361,11 +409,13 @@ func (r *recordingSelf) Table(definition *store.TableDefinition) *store.TableHan
 		panic(declarationError(`%s: table "%s" is declared twice`, r.object.text, definition.Name))
 	}
 	object := r.object
-	if err := chordStore.Claims.AssertTable(store.TableSqlName(object.served.contract.Name, definition.Name), object); err != nil {
+	sqlName := store.TableSqlName(object.served.contract.Name, definition.Name)
+	if err := chordStore.Claims.AssertTable(sqlName, object); err != nil {
 		panic(err)
 	}
 	r.tables.set(definition.Name, definition)
-	return &store.TableHandle{}
+	// A handle whose reads and queries return errInert (its owner is never live): nothing reaches the store.
+	return store.NewTableHandle(definition, sqlName, chordStore, inertTableOwner{label: object.text})
 }
 
 // Derive implements Self.

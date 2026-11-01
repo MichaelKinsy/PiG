@@ -143,7 +143,7 @@ func TestAnOlderConsumerOfAProvidersAcceptedVersionReadsStateMappedWithDiffsPerC
 	old := mustGet(t, host, adaptedNotesV1, jsonObject())
 	watch, err := old.Member("items").Watch(background)
 	must(t, err)
-	items := nexttest.FramesOf(watch)
+	items := nexttest.ChangesOf(watch)
 	for index, text := range []string{"a", "b"} {
 		got, err := old.Call("add", jsonObject("text", text), background)
 		must(t, err)
@@ -152,11 +152,23 @@ func TestAnOlderConsumerOfAProvidersAcceptedVersionReadsStateMappedWithDiffsPerC
 		}
 	}
 	deliveredOn(host)
-	frames := items.Items()
+	// Pi's `changesOf`: the exact list of calls, their kind and `retired` included (a failure or a retirement between the
+	// two commits would show).
+	calls := items.Items()
 	want := [][]any{{[]any{"p", []any{}, 0.0, 0.0, []any{"a"}}}, {[]any{"p", []any{}, 1.0, 0.0, []any{"b"}}}}
-	if len(frames) != 2 || !reflect.DeepEqual(frames[0].Value, []any{"a"}) || !reflect.DeepEqual(frames[1].Value, []any{"a", "b"}) ||
-		!nexttest.JSONEqual(opsOf(frames), []any{want[0], want[1]}) {
-		t.Fatalf("items frames = %+v, want values [a] and [a b] with the push ops", frames)
+	wantValues := []any{[]any{"a"}, []any{"a", "b"}}
+	if len(calls) != 2 {
+		t.Fatalf("items calls = %+v, want two value calls", calls)
+	}
+	frames := make([]nexttest.Frame[delta.JsonValue], len(calls))
+	for i, call := range calls {
+		if call.Kind != chord.WatchCallValue || call.Retired || call.Error != nil || !reflect.DeepEqual(call.Value, wantValues[i]) {
+			t.Fatalf("items call %d = %+v, want a value call of %v, not retired", i, call, wantValues[i])
+		}
+		frames[i] = nexttest.Frame[delta.JsonValue]{Value: call.Value, Ops: call.Ops}
+	}
+	if !nexttest.JSONEqual(opsOf(frames), []any{want[0], want[1]}) {
+		t.Fatalf("items ops = %+v, want the push ops %v", opsOf(frames), want)
 	}
 	// Once for the watch's first value, then once per commit: never per consumer or per read.
 	if got := meter.Counts()["chord.contract.adapts"]; got != 3 {
@@ -460,13 +472,14 @@ func adaptedValueOf(ref *Reference, member string) delta.JsonValue {
 	return value
 }
 
-// adaptedPinView serves a View whose `n` reads the pinned row `key` of a keyed `member` of contract (`field` of the row when not empty).
-func adaptedPinView(view, contract *contracts.Contract, member, key, field string) Facet {
+// adaptedPinView serves a View whose member `name` reads the pinned row `key` of a keyed `member` of contract (`field` of the
+// row when not empty).
+func adaptedPinView(view, contract *contracts.Contract, member, key, field, name string) Facet {
 	return DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(view, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			pin, err := self.Get(contract, jsonObject()).Keyed(member).At(key)
 			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
-				"n": self.Derive([]any{Expose(pin)}, func(values []any) (delta.JsonValue, error) {
+				name: self.Derive([]any{Expose(pin)}, func(values []any) (delta.JsonValue, error) {
 					if field == "" {
 						return values[0], nil
 					}
@@ -526,9 +539,9 @@ func TestReloadKeyedMembersOfAnOlderVersionFollowTheProviderUpdatesMappingsOfAnE
 		return e.Keyed("entries", contracts.Obj(contracts.Prop("n", contracts.Int())))
 	})
 	view := mustContract(declareLocal("sol.keyed.view", contracts.LocalDeclaration{
-		Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
+		Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("old", contracts.Int())},
 	}))
-	viewFacet := adaptedPinView(view, v1, "entries", "k", "old")
+	viewFacet := adaptedPinView(view, v1, "entries", "k", "old", "old")
 	oldOf := func(factor float64) func(delta.JsonValue) (delta.JsonValue, error) {
 		return func(value delta.JsonValue) (delta.JsonValue, error) {
 			return jsonObject("old", value.(*delta.JsonObject).Value("n").(float64)*factor), nil
@@ -562,7 +575,7 @@ func TestReloadKeyedMembersOfAnOlderVersionFollowTheProviderUpdatesMappingsOfAnE
 	scopeEventually(t, "the older watch and the pin map through the new provider", func() bool {
 		deliveredOn(host)
 		values := nexttest.ValuesOf(calls.Items())
-		return len(values) > 0 && reflect.DeepEqual(values[len(values)-1], jsonObject("old", 20.0)) && adaptedValueOf(reader, "n") == 20.0
+		return len(values) > 0 && reflect.DeepEqual(values[len(values)-1], jsonObject("old", 20.0)) && adaptedValueOf(reader, "old") == 20.0
 	})
 	_, _ = watch.Stop()
 }
@@ -603,7 +616,7 @@ func TestReloadKeyedMembersUnchangedAtAConsumersVersionFollowALaterMapping(t *te
 	view := mustContract(declareLocal("app.rows.view", contracts.LocalDeclaration{
 		Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 	}))
-	viewFacet := adaptedPinView(view, rowsV1, "rows", "k", "n")
+	viewFacet := adaptedPinView(view, rowsV1, "rows", "k", "n", "n")
 	ten := func(value delta.JsonValue) (delta.JsonValue, error) {
 		return jsonObject("n", value.(*delta.JsonObject).Value("n").(float64)*10), nil
 	}
@@ -628,7 +641,11 @@ func TestReloadKeyedMembersUnchangedAtAConsumersVersionFollowALaterMapping(t *te
 		if _, err := old.Call("set", 2.0, background); err != nil {
 			t.Fatalf("set 2: %v", err)
 		}
-		scopeEventually(t, "the later mapping reaches the pin", func() bool { deliveredOn(host); return adaptedValueOf(reader, "n") == 20.0 })
+		// The watch is asserted below as the pin is: both land through loop tasks after the scheduler is idle.
+		scopeEventually(t, "the later mapping reaches the watch and the pin", func() bool {
+			deliveredOn(host)
+			return adaptedValueOf(reader, "n") == 20.0 && reflect.DeepEqual(watch.Value(), jsonObject("n", 20.0))
+		})
 		got, _, err = old.Keyed("rows").Get(background, "k")
 		must(t, err)
 		watched, pinned = watch.Value(), adaptedValueOf(reader, "n")
@@ -661,7 +678,7 @@ func TestReloadKeyedSourcesOfAnOlderVersionThroughARemovalReMapsAnOpenOlderKeyed
 	view := mustContract(declareLocal("app.keyed.removal.view", contracts.LocalDeclaration{
 		Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 	}))
-	viewFacet := adaptedPinView(view, v1, "rows", "a", "")
+	viewFacet := adaptedPinView(view, v1, "rows", "a", "", "n")
 	rows := func(factor float64) Facet {
 		return adaptedKeyedFacet(v2, "rows", "a", false, contracts.AcceptsTable{adaptedKeyedMapping("1", "rows", func(current delta.JsonValue) (delta.JsonValue, error) {
 			return current.(*delta.JsonObject).Value("n").(float64) * factor, nil
@@ -791,6 +808,10 @@ func TestReloadAVersionRefusalKeepsTheWaitingReferencesLastValuesKeepsAnOlderWat
 	read, _ := old.Member("n").Value()
 	if read != 9.0 || values[len(values)-1] != 9.0 {
 		t.Fatalf("read %v, last %v, want 9, 9", read, values[len(values)-1])
+	}
+	// Pi's `closed: false`: the older watch stayed open throughout.
+	if adaptedClosed(watch) {
+		t.Fatal("the older watch closed: it must stay open while its version is refused and after it heals")
 	}
 	old.Release()
 }

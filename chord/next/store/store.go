@@ -474,6 +474,9 @@ func (store *ChordStore) Commit(writes []StagedWrite, fence CommitFence, ctx con
 //
 // Async contract: Pi's `commitSeries` takes its place in the queue at the call and settles once its receipts ran; here
 // the call takes the place under the ticket (as Commit does) and blocks until then.
+//
+// receive runs while the series holds the queue ticket: a blocking Commit or CommitSeries called from inside it
+// deadlocks (Pi would queue it behind the series), as CommitFence.Adopt always has; it must not commit.
 func (store *ChordStore) CommitSeries(commits []SeriesCommit, receive func(index int, seq int64, ids []int64) error, ctx context.Context) (SeriesResult, error) {
 	if err := store.AssertUsable(); err != nil {
 		return SeriesResult{}, err

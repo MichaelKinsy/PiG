@@ -170,8 +170,9 @@ type Host interface {
 	// reported (LoadReport.Failed); it never closes the host. Runs once.
 	Load(facets []HostFacet, ctx context.Context) (LoadReport, error)
 	// Reload reloads this host's plugins (slice 7b): facets is its complete new plugin set; a plugin in it and not loaded
-	// is added, one loaded with another Facet value is changed (the same Facet value is unchanged: untouched; a Facet is
-	// compared by the identity of its Setup func), one loaded and not in it is removed. Staging runs every new setup and
+	// is added, one loaded with another Facet (another DefineFacet) is changed (the same Facet, as Pi's `===`, is
+	// unchanged: untouched; every copy of a DefineFacet's value is the same), one loaded and not in it is removed.
+	// Staging runs every new setup and
 	// every affected object's new factory against a recording `self`, per plugin: a plugin whose new code fails there keeps
 	// its old code (an added one is left out), and so does a changed plugin whose recorded requests would not bind because
 	// of it (the closure rule); both are reported (ReloadReport.Failed); options.Failed names plugins the caller passes as
@@ -2063,6 +2064,9 @@ func (h *chordHost) commit(plan *reloadPlan, ctx context.Context) ([]startedFate
 			delete(h.refs, name)
 		}
 	}
+	// Pi's `names` is a `Set`: a name used both as a type and as a registry is in it once. Here it may be listed twice,
+	// which is the same: `unbound.wake` takes a name's requests out of the index at its first occurrence, so the second
+	// wakes nothing.
 	var names []string
 	for _, name := range table.types.keys() {
 		if entry, _ := table.types.get(name); published.has(entry.plugin) {
@@ -2135,9 +2139,14 @@ func (h *chordHost) reloadReport(started []startedFate, committed CommittedReloa
 	}
 	// Pi's report completes at least three microtask ticks after a check settled (`await checked`, the async map's
 	// result, `Promise.all`), so what the same batch delivered first (a watcher of a reference that left `live` aborting
-	// the context from its callback) lands before the report: the batch's deliveries run, then the context is read.
+	// the context from its callback) enters its listener before the report: the deliveries scheduled so far have entered
+	// their listeners (up to a first wait), then the context is read. The wait is not for the listeners to return, which
+	// Pi's report never does: a listener may call `Reload` itself (its own delivery is skipped), a slow one does not delay
+	// the report, and ctx's abort ends the wait (`aborted`, as the wait for the checks).
 	h.enter(func() {})
-	h.scheduler.Wait()
+	if err := h.scheduler.AwaitEntered(ctx); err != nil {
+		return nil, committedAborted(committed)
+	}
 	h.enter(func() {})
 	if ctx.Err() != nil {
 		return nil, committedAborted(committed)

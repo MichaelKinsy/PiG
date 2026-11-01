@@ -89,28 +89,32 @@ type facetContribution struct {
 // Facet is a plugin's facet for hosts of the app's principal type (type only: nothing is checked at runtime).
 //
 // A reload compares facets by identity (Pi's `loaded.facet === facet`: the same facet object is unchanged, another one is
-// changed, even with the same code): a Facet made by DefineFacet carries the identity every copy of it shares. A Facet
-// literal has none and is never the same as another.
+// changed, even with the same code). Pi's facet is the object `defineFacet` returns; a Facet is the handle of the one
+// definition DefineFacet makes, so every copy of it is the same facet and nothing else can be: it has no exported field,
+// so no literal can make a facet that is never "the same" as itself. The zero Facet has no setup (a load or reload with it
+// reports the plugin failed).
 type Facet struct {
-	// Setup declares the facet's types, registries and contributions; its error is its throw.
-	Setup func(host FacetHost, self FacetSelf) error
-
-	// identity is what DefineFacet makes once per facet; copies share it.
-	identity *facetIdentity
+	definition *facetDefinition
 }
 
-// facetIdentity is a facet's identity (one allocation per DefineFacet; non-zero size so two never share an address).
-type facetIdentity struct{ _ byte }
+// facetDefinition is what DefineFacet makes once per facet: its setup, and its address as the facet's identity.
+type facetDefinition struct {
+	// setup declares the facet's types, registries and contributions; its error is its throw.
+	setup func(host FacetHost, self FacetSelf) error
+}
 
 // DefineFacet defines a facet; base code binds the principal type once, next to its principal type (type-level in Pi).
 func DefineFacet(setup func(host FacetHost, self FacetSelf) error) Facet {
-	return Facet{Setup: setup, identity: &facetIdentity{}}
+	return Facet{definition: &facetDefinition{setup: setup}}
 }
 
 // same is Pi's `facet === other`: both are one DefineFacet's.
 func (f Facet) same(other Facet) bool {
-	return f.identity != nil && f.identity == other.identity
+	return f.definition != nil && f.definition == other.definition
 }
+
+// hasSetup reports whether the facet was made by DefineFacet with a setup.
+func (f Facet) hasSetup() bool { return f.definition != nil && f.definition.setup != nil }
 
 // facetSetUp is what setUp returns: the types and registries a facet served, and its contributions, in order.
 type facetSetUp struct {
@@ -124,7 +128,7 @@ func setUp(name string, facet Facet, references func(typ *contracts.Contract) st
 	scope := &facetScope{name: name, open: true, references: references}
 	err := func() error {
 		defer func() { scope.open = false }()
-		return facet.Setup(scope, scope)
+		return facet.definition.setup(scope, scope)
 	}()
 	return facetSetUp{served: scope.served, contributions: scope.contributions}, err
 }
