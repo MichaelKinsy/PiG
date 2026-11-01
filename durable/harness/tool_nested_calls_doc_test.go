@@ -70,6 +70,8 @@ func TestOneDocumentPerNestedCallKeyedByItsKey(t *testing.T) {
 		}
 	}
 	recorder.mu.Unlock()
+	// The two calls run on goroutines, which admit in no fixed order (D181): upstream's Promise.all admits them in call order.
+	slices.Sort(nested)
 	if want := []string{"pi.tool.nested-call 1", "pi.tool.nested-call named"}; !slices.Equal(nested, want) {
 		t.Fatalf("documents created for nested calls %v, want %v", nested, want)
 	}
