@@ -674,31 +674,31 @@ rationale = "`PluginRuntime.reload` queue (`state.reloading.then`): blocking `Re
 
 [[files]]
 path = "packages/chord/src/next-node/workers/lock.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "microtask-ordering"]
+evidence = ["test:chord/nextnode/workers/workers_lock_test.go#TestProcessLockStopsWaitingWhenTheWaitersContextAborts", "test:chord/nextnode/workers/workers_lock_test.go#TestProcessLockMakesASecondTakerWaitUntilTheHolderReleasesThenTakesIt", "test:chord/nextnode/workers/workers_lock_test.go#TestSocketFileLocksFailClosedOnAStaleLockFileNamingItTwoTakersNeverBothTakeItOver", "test:chord/nextnode/workers/workers_lock_test.go#TestSocketFileLocksAreTakenWaitedForAndReleasedLikeTheOthers"]
+rationale = "lock.ts processLock / lockAt: blocking calls returning (handle, error); the abort returns `context.Cause(ctx)`; the waiter learns of the release by its connection's close, no polling (asserted: the waiter takes the lock within 100 ms) lock.ts listened, waitWhileHeld: `context.AfterFunc(ctx, conn.Close)` ends the read; a refused connect is the stale-file answer lock.ts release() (server.close + destroy waiters): `Release` closes the listener, joins the accept goroutine, then closes the waiters; releasing again returns the first result lock.ts process.once(\"exit\", removeFile): `atExit` hook run by `exitProcess` (lane nwork)"
 
 [[files]]
 path = "packages/chord/src/next-node/workers/main.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["detached-owned", "cancellable", "microtask-ordering"]
+evidence = ["test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideSendsStartedWhenTheAppConnectsThenReadyWithItsLoadReportAndIdleState", "test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideSendsFatalWithTheRedactedErrorAndExits1", "test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideShutsDownDuringItsStartupAbortsItRunsTheClosersRegisteredSoFarInReverseOrderExits0", "test:chord/nextnode/workers/workers_signal_unix_test.go#TestTheWorkersSideShutsDownOnSIGTERM", "test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideShutsDownOnTheParentsDisconnect", "test:chord/nextnode/workers/workers_workers_test.go#TestKeepAliveStopsAWorkerIdleSinceIdleMsAHoldKeepsOneRunningBusyKeepsItToo"]
+rationale = "main.ts #start (Promise.withResolvers): a one-slot channel filled by the first `start` main.ts void this.#run(fn).catch(...): one goroutine for the process's life; an error or panic is `fatal` unless stopping; shutdown ends the process (`exitProcess`) main.ts void this.#applyReloads(): an owned task per trigger, serialized by the `reloading` flag under the worker's mutex; the loop ends atomically with its last pop main.ts void this.#shutdown(), signals, disconnect: aborts the worker's context, runs the closers in reverse, forced exit after 3 s (`time.AfterFunc`), then `exitProcess(0)` main.ts #follow (watch.start(async () => flip())): the watch listener flips under the worker's mutex, sending `idle` in order of the flips main.ts #fatal (process.send(message, callback)): the channel's send callback runs once the message is written (or dropped with the channel), then `exitProcess(1)` (lane nwork)"
 
 [[files]]
 path = "packages/chord/src/next-node/workers/process.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["microtask-ordering", "detached-owned"]
+evidence = ["test:chord/nextnode/workers/workers_process_test.go#TestAWorkerProcessPipesItsOutputKeepsItsStderrTailQueuesAnEarlyFrameOnItsLinkTellsControlMessages", "test:chord/nextnode/workers/workers_workers_test.go#TestFixRound1AStopDuringTheWorkersStartupIsAStopItsClosersRunNothingFails", "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceFailed", "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayALinkLostWhileItsChildLivesABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceFailed"]
+rationale = "process.ts exited: Promise<Exit>: closed channel + `Exit()`; the `Exited` handler runs first, then the channel closes (Pi runs the `exit` listener before the promise's continuations) process.ts events (control, linkLost, linkClosed, exited): called from the goroutine that observes them (channel reader, waiter), in each source's order; the handler enters the component's loop process.ts output data listeners: one reader goroutine per stream, ends at the stream's end (every holder of its write end gone: the tree is killed at exit) (lane nwork)"
 
 [[files]]
 path = "packages/chord/src/next-node/workers/workers.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "concurrent-joined", "detached-owned", "microtask-ordering"]
+evidence = ["test:chord/nextnode/workers/workers_workers_test.go#TestFailuresStayAStartThatFailsFailsTheAddressHoldersFailWaitingWithItANewHoldForksNothingRetryStartsIt", "test:chord/nextnode/workers/workers_workers_test.go#TestStopAStopDuringAStartWaitsForItThenStopsAStartDuringAStopWaitsForItsExit", "test:chord/nextnode/workers/workers_workers_test.go#TestFixRound1CloseDuringAnAppsStartThatIgnoresItsSignalReturnsAtOnceNothingForksAfterIt", "test:chord/nextnode/workers/workers_workers_test.go#TestFixRound1CloseDuringAForkedStartThatNeverConnectsReturnsAtOnceNoFailure", "test:chord/nextnode/workers/workers_workers_test.go#TestCloseCancelsAStartWaitingInStartAddressNothingForksNewStartsRejectNoWorkerFailedAtShutdown", "test:chord/nextnode/workers/workers_workers_test.go#TestFailuresStayAnExitBeforeStartedFailsTheStartAWorkerThatNeverConnectsIsKilledAtTheStartTimer", "test:chord/nextnode/workers/workers_workers_test.go#TestFailuresStayTheStartTimerCoversOnlyTheStartASlowLoadAfterConnectingIsNotKilled", "test:chord/nextnode/workers/workers_workers_test.go#TestKeepAliveStopsAWorkerIdleSinceIdleMsAHoldKeepsOneRunningBusyKeepsItToo", "test:chord/nextnode/workers/workers_rollout_test.go#TestTheRolloutStepShipsTheCurrentSetToRunningWorkersRetriesHeldFailedOnesListsEach", "test:chord/nextnode/workers/workers_workers_test.go#TestStartsOnDemandStartsAWorkerForTheFirstHoldStartingThenRunningItsLinkBindsTheHolder"]
+rationale = "workers.ts resolve: blocks in the route's `Resolve` task; the synchronous part is one loop section workers.ts #enqueue (queue.then(operation)): a chain of `done` channels, one owned goroutine per operation; the address's bookkeeping runs before the awaiter and the next operation workers.ts #start awaits (options.start, plugins.scripts, started): the app's `Start` runs in its own goroutine whose outcome is dropped once the wait is aborted (it may never return: not joined) workers.ts setTimeout start timer, grace timers, setInterval idle check: `clock.AfterFunc` wrapped in `loop.Run`; fake timers in the tests (vitest's, for `setTimeout`/`clearTimeout` only) workers.ts close (Promise.all(stops)): every stop is queued, then awaited in order with the caller's ctx; `Close` joins the component's tasks as far as ctx lets it (the wait ends with ctx's cause) workers.ts #closeWith (void this.close(...).catch): `context.AfterFunc` starts an owned task joined by `Close` workers.ts #reload, child.reloading, #rollout (Promise.all of entries), #retried, bounded: entries are once-settled outcomes awaited in order with the caller's ctx (equal to `Promise.all` of `awaitWithContext`); one reload outstanding per child (a `done` channel chain) workers.ts WorkersState.refresh (queueMicrotask): `loop.Queue`, one publication per turn while watched or derived from (lane nwork)"
 
 [[files]]
 path = "packages/chord/src/next/contracts/accepts.ts"

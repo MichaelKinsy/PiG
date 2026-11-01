@@ -1782,44 +1782,44 @@ rationale = "`pluginWatcher` is a `state.Source`; fsnotify replaces `fs.watch`. 
 [[files]]
 path = "packages/chord/src/next-node/workers/control.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_control_test.go#TestErrorsCrossAsMessageCodeAndReasonNeverAStackOrCauseComeBackAsChordErrorsWhenTheyHadACode"]
+rationale = "`ToWorker`/`FromWorker` unions are one struct each tagged by `Kind`, each writing and reading its own JSON in Pi's key order; `controlOf[M]` is generic and takes what the channel delivers (`[]byte` frame, `json.RawMessage` control); `crossed(err any)`; the report's `ReloadReport` is `host.ReloadReport` (`ReloadedObject.Cause` is a value there). PiG: chord/nextnode/workers/workers_control.go (lane nwork)."
 
 [[files]]
 path = "packages/chord/src/next-node/workers/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "re-export barrel; the exported set is the package's (`CrossedError`, `ProcessLock`, `WorkerMain`, `WorkerStart`, `WorkerPlugins`, `WorkerResult`, `WorkerMainOptions`, `CreateWorkers`, `WorkerState`, `Workers`, `WorkersError`, `WorkersOptions`) (lane nwork)."
 
 [[files]]
 path = "packages/chord/src/next-node/workers/lock.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_lock_test.go#TestProcessLockMakesASecondTakerWaitUntilTheHolderReleasesThenTakesIt"]
+rationale = "`processLock` is `ProcessLock(name, ctx)` returning `ProcessLockHandle` (Go cannot give the function and the type one name); waiters are connections the holder keeps open and never answers, joined by `Release`; ctx abort returns `context.Cause`; abstract socket (`@chord-lock-`), socket file, named pipe. PiG: chord/nextnode/workers/workers_lock.go, workers_lock_unix.go, workers_lock_windows.go (lane nwork)."
 
 [[files]]
 path = "packages/chord/src/next-node/workers/main.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideShutsDownDuringItsStartupAbortsItRunsTheClosersRegisteredSoFarInReverseOrderExits0"]
+rationale = "see the design record; the worker's state is a mutex (every message, signal and watch listener enters through it; sends never block); `fn` and closers return errors; reloads run on an owned task. PiG: chord/nextnode/workers/workers_main.go (lane nwork)."
 
 [[files]]
 path = "packages/chord/src/next-node/workers/process.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_process_test.go#TestAWorkerProcessPipesItsOutputKeepsItsStderrTailQueuesAnEarlyFrameOnItsLinkTellsControlMessages"]
+rationale = "`exited` is a closed channel + `Exit()`; the `Exited` handler runs before waiters resume; a fork that fails to start is a process of pid -1 whose exit {null, null} is told, as Node's `error` event; stderr tail is the last 4096 UTF-16 units. PiG: chord/nextnode/workers/workers_process.go, workers_process_unix.go, workers_process_windows.go, workers_channel*.go (lane nwork)."
 
 [[files]]
 path = "packages/chord/src/next-node/workers/workers.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_workers_test.go#TestFailuresStayACrashAfterReadyStaysFailedWorkerExitedWorkerFailedNothingRestarts"]
+rationale = "`Workers.State()` is a `state.SourceHandle`; `WorkersError` is a sealed interface (`BatchWorkersError` wraps `state.BatchError`); `Workers<K>` kind parameter type-level; `IdleMs` is a `time.Duration`; a `clock` seam (unexported option) drives the timers with vitest-style fake timers; the component joins its own goroutines in `Close`; the call into the app's `Start` is not joined (it may never return). PiG: chord/nextnode/workers/workers_workers.go, workers_outcome.go (lane nwork)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/accepts.ts"
@@ -3154,9 +3154,9 @@ rationale = "PORT_MAP row is ✅ ported (coding/cli/main.go). coverage.md report
 [[files]]
 path = "packages/coding-agent/src/cli/args.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Partial: the help text is generated from Pi (coding/cli/help_upstream.txt via gen-help.sh) and was not regenerated at the pin: Pi 2c8d1feb's help lists `PI_SELF_UPDATE_COMMAND` (args.ts:466), help_upstream.txt does not yet; the setting itself is ported (see config.ts, package-manager-cli.ts, settings-schema.ts) and docs/site environment-variables.md documents it. Missing: regenerate coding/cli/help_upstream.txt and the PiG help for the new env row, then TestHelpMatchesPi at the pin. (lane nfixca)."
+disposition = "ported"
+evidence = ["test:coding/cli/help_oracle_test.go#TestHelpMatchesPi"]
+rationale = "Pi 2c8d1feb's help lists `PI_SELF_UPDATE_COMMAND` (args.ts:466). coding/cli/help_upstream.txt is generated from Pi (gen-help.sh) and carries the row at the pin; TestHelpMatchesPi compares PiG's help with Pi's. The setting itself is ported (config.ts, package-manager-cli.ts, settings-schema.ts) and docs/site environment-variables.md documents it."
 
 [[files]]
 path = "packages/coding-agent/src/cli/auth-check.ts"
@@ -3581,9 +3581,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/output_guard.go). 
 [[files]]
 path = "packages/coding-agent/src/core/package-manager.ts"
 change = "added"
-disposition = "deferred"
-evidence = ["test:internal/packagemanager/changelog_path_test.go#TestResolveExtensionSourcesExposesThePackageChangelogPath", "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged", "test:coding/cli/package_temporary_refresh_test.go#TestTemporaryNpmSourceRefreshesWhenANewerVersionExists", "test:coding/cli/package_temporary_refresh_test.go#TestTemporaryGitSourceWithABranchRefIsRefreshed", "test:coding/cli/git_update_upstream_test.go#TestGitUpdatesUpstream", "test:internal/packagemanager/package_identity_case_test.go#TestPackageSourcesMatchIgnoresLocalPathCasingOnWindows"]
-rationale = "Pi bec60c54 and cd6a8f7f (#11375) refresh temporary git sources pinned to a branch ref and unpinned temporary npm sources with a newer version (internal/packagemanager/temporary.go); e3da248e (#11648) keeps updating git packages when git clean fails (packagemanager.CleanAndInstallGitDependencies); 1be312b4 (#11588) compares local package identities and resource dedup keys case-insensitively (manager.go, resource_paths.go ResourcePathKey): all ported and tested. Missing: the ancestor .agents/skills exclusion of the user's ~/.agents/skills (resource_paths.go samePath at the two collectors) is an exact resolve compare, where Pi uses pathsEqual, so on Windows a cwd spelled with other casing lists the user skills as project skills."
+disposition = "ported"
+evidence = ["test:internal/packagemanager/changelog_path_test.go#TestResolveExtensionSourcesExposesThePackageChangelogPath", "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged", "test:coding/cli/package_temporary_refresh_test.go#TestTemporaryNpmSourceRefreshesWhenANewerVersionExists", "test:coding/cli/package_temporary_refresh_test.go#TestTemporaryGitSourceWithABranchRefIsRefreshed", "test:coding/cli/git_update_upstream_test.go#TestGitUpdatesUpstream", "test:internal/packagemanager/package_identity_case_test.go#TestPackageSourcesMatchIgnoresLocalPathCasingOnWindows", "test:internal/codingagent/windows_path_case_keys_test.go#TestAncestorAgentsSkillScanExcludesTheUserDirectoryAcrossWindowsPathCasing"]
+rationale = "Pi bec60c54 and cd6a8f7f (#11375) refresh temporary git sources pinned to a branch ref and unpinned temporary npm sources with a newer version (internal/packagemanager/temporary.go); e3da248e (#11648) keeps updating git packages when git clean fails (packagemanager.CleanAndInstallGitDependencies); 1be312b4 (#11588) compares local package identities and resource dedup keys case-insensitively (manager.go, resource_paths.go ResourcePathKey): all ported and tested. The ancestor .agents/skills exclusion of the user's ~/.agents/skills compares with resolvepath.PathsEqual (resource_paths.go, the two collectors), as Pi's pathsEqual; the test runs it under a simulated Windows platform."
 
 [[files]]
 path = "packages/coding-agent/src/core/pi-ai-schemas.ts"
@@ -4218,9 +4218,9 @@ rationale = "PORT_MAP row is ✅ ported (tui/compaction_summary.go). coverage.md
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/config-selector.ts"
 change = "added"
-disposition = "deferred"
-evidence = ["scenario:test/parity/scenarios/selectors/01-config-empty.toml", "scenario:test/parity/scenarios/selectors/02-config-resources-list.toml", "scenario:test/parity/scenarios/selectors/03-config-filter-narrow.toml"]
-rationale = "Pi 1be312b4 (#11588): formatBaseDir replaces only a leading home directory (ported: tui/config_selector.go formatBaseDir matches whole segments) and getResourceItemKey folds path casing on Windows. Missing: the Go inherited-state key (coding/cli/config_command.go configItemKey over canonicalStatusPath) does not apply resolvepath.ComparisonKey, so on Windows a global and a project resource whose paths differ only by case are not matched as the same item."
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/selectors/01-config-empty.toml", "scenario:test/parity/scenarios/selectors/02-config-resources-list.toml", "scenario:test/parity/scenarios/selectors/03-config-filter-narrow.toml", "test:coding/cli/config_command_test.go#TestConfigItemKeyFoldsPathCasingOnWindows"]
+rationale = "Pi 1be312b4 (#11588): formatBaseDir replaces only a leading home directory (ported: tui/config_selector.go formatBaseDir matches whole segments) and getResourceItemKey folds path casing on Windows. The inherited-state key (coding/cli/config_command.go configItemKey) is codingagent.ResourcePathKey (Pi getResourceItemKey over getResourcePathKey), so a global and a project resource whose paths differ only by case are one item on Windows."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/countdown-timer.ts"
@@ -4400,9 +4400,9 @@ rationale = "Ported per-field tiered search (Pi 8c03fef4d)."
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
 change = "added"
-disposition = "deferred"
-evidence = ["test:internal/codingagent/select_page_keys_test.go#TestSessionSelectorCapturesSelectionPageKeys", "test:internal/codingagent/home_shorten_test.go#TestHomeShorteningAnchorsAtAPathSegment"]
-rationale = "Pi 1be312b4 (#11588): home shortening is anchored (ported: internal/codingagent/session_selector.go ShortenHomePath) and the selector's session path keys fold casing on Windows (getSessionPathKey). Missing: canonicalSessionPath (session tree parent lookup, current-session marker, delete guard) is canonicalizePath only, without resolvepath.ComparisonKey, so on Windows two spellings of one session path are different keys."
+disposition = "ported"
+evidence = ["test:internal/codingagent/select_page_keys_test.go#TestSessionSelectorCapturesSelectionPageKeys", "test:internal/codingagent/home_shorten_test.go#TestHomeShorteningAnchorsAtAPathSegment", "test:internal/codingagent/windows_path_case_keys_test.go#TestBuildSessionTreeFindsTheParentAcrossWindowsPathCasing", "test:internal/codingagent/windows_path_case_keys_test.go#TestSessionSelectorFindsTheCurrentSessionAcrossWindowsPathCasing"]
+rationale = "Pi 1be312b4 (#11588): home shortening is anchored (ported: internal/codingagent/session_selector.go ShortenHomePath) and the selector's session path keys fold casing on Windows (getSessionPathKey). canonicalSessionPath is getSessionPathKey (canonicalizePath through resolvepath.ComparisonKey), used by the session tree parent lookup, the current-session marker and the delete guard."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/settings-selector.ts"

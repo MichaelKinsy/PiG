@@ -2493,28 +2493,54 @@
     },
     {
       "path": "packages/chord/test/next-node/workers/control.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5d2006929fe8401af3a5a37bee7ae973cb9b338c9236fc46ac2eefa9a0c27235"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5d2006929fe8401af3a5a37bee7ae973cb9b338c9236fc46ac2eefa9a0c27235",
+      "evidence": [
+        "chord/nextnode/workers/workers_control_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files (lane nwork)."
     },
     {
       "path": "packages/chord/test/next-node/workers/lock.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8502579a80133ee57ae52c8d004a17cb24a6bed349d2a4eb230cf3991d053911"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8502579a80133ee57ae52c8d004a17cb24a6bed349d2a4eb230cf3991d053911",
+      "evidence": [
+        "chord/nextnode/workers/workers_lock_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files (lane nwork)."
     },
     {
       "path": "packages/chord/test/next-node/workers/main.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2890f06e49a87fa9e1a8fafadabe80368491c40612fdcbb41b1c4442bf91f573"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2890f06e49a87fa9e1a8fafadabe80368491c40612fdcbb41b1c4442bf91f573",
+      "evidence": [
+        "chord/nextnode/workers/workers_main_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files (lane nwork)."
     },
     {
       "path": "packages/chord/test/next-node/workers/process.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:274ad5cda267a1323f65dd362b22969c5a4e36dd15c2a62f4d222114ccf1d3f7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:274ad5cda267a1323f65dd362b22969c5a4e36dd15c2a62f4d222114ccf1d3f7",
+      "evidence": [
+        "chord/nextnode/workers/workers_process_test.go"
+      ],
+      "rationale": "All 1 upstream cases run in the evidence files (lane nwork)."
     },
     {
       "path": "packages/chord/test/next-node/workers/workers.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d0747c5083fe0f9ea93c848fde8c262a1e81e0f6b03e0da26dc3a8e729205c60"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d0747c5083fe0f9ea93c848fde8c262a1e81e0f6b03e0da26dc3a8e729205c60",
+      "evidence": [
+        "chord/nextnode/workers/workers_workers_test.go",
+        "chord/nextnode/workers/workers_rollout_test.go",
+        "chord/nextnode/workers/workers_fleet_test.go",
+        "chord/nextnode/workers/workers_alive_unix_test.go",
+        "chord/nextnode/workers/workers_blocked_unix_test.go",
+        "chord/nextnode/workers/workers_rollout_blocked_unix_test.go",
+        "chord/nextnode/workers/workers_signal_unix_test.go"
+      ],
+      "rationale": "All 31 upstream cases run in the evidence files (lane nwork)."
     },
     {
       "path": "packages/chord/test/next/contracts/accepts.test.ts",
