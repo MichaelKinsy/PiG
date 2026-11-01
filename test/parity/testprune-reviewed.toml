@@ -642,3 +642,24 @@ path = "chord/internal/parking/stall_test.go"
 commit = "73a0b7e6f90076013d5a254c7e196f20d38f46ce"
 class = "NOBEHAVIOR"
 reason = "Go only, no Pi counterpart: the stall report of a section that waits for its handler. The test now guards a goroutine that waits on a Signal with Guard, so the report's stacks name the waiter as parking.(*Signal).Wait (the wait it calls, no longer the report's own); its other expected values are unchanged."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_endtoend_test.go"
+commit = "afb14da124492fad80b73f5f5e8abc07915b47dc"
+class = "CITE"
+cite = "packages/chord/src/next-node/workers/main.ts:114"
+reason = "The Node host is the child of the Go side, as Pi's forked worker connects to its parent (main.ts:114) and the server routes the worker's kind to it (workers.ts:98; plugins.test.ts's end to end `server.route(Worker, ...)`). The end-to-end case is Pi's: one observing server host holds Notes over the route, and the broken edit's reference state is compared with Pi's `toEqual({ kind: \"live\" })` (a whole RefState, not its kind), with failures recorded as `{ failed }` like `valuesOf`; the expected values follow."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_examples_test.go"
+commit = "afb14da124492fad80b73f5f5e8abc07915b47dc"
+class = "CITE"
+cite = "packages/chord/test/next/examples/36-plugin-failures/main.ts:139"
+reason = "Example 36 step 4 asserts what Pi's script prints and the first port left unchecked: the status reference's kinds `loading` then `live` (main.ts:139) and the final greeter reload's report (`plugins: changed @example/greeter`, `objects: example.greeting swapped`, `failed @example/weather: ...`, main.ts:151). The example 35 case reads notes and the server's types through one observing server host that routes both Node hosts."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_node_test.go"
+commit = "afb14da124492fad80b73f5f5e8abc07915b47dc"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The Node subprocess is PiG-original (no Pi file: Pi's workers fork the same shape). The expectation that changed is the load's refusal text: RuntimeLoad has no Parent any more (the host is the child of the Go side), so only the Peer is required (`a Peer is required`). The other edits add cases (link attach, heartbeat, fatal ordering, extraction repair) and check the manifest against the pin."
