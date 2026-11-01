@@ -10,7 +10,7 @@ import (
 
 // Pi schema.ts fits: an integer fits a number, not the reverse.
 func TestFitsAnIntegerFitsANumberNotTheReverse(t *testing.T) {
-	if !Fits(Schema{"type": "integer"}, tNumber()) || Fits(tNumber(), Schema{"type": "integer"}) {
+	if !Fits(kw("type", "integer"), tNumber()) || Fits(tNumber(), kw("type", "integer")) {
 		t.Fatal("integer and number")
 	}
 }
