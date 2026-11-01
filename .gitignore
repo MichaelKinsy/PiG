@@ -169,6 +169,9 @@ coding/extension/host/runtimecell/**/*.py[cod]
 
 # node_modules symlinks to a shared checkout are not directories, so node_modules/ does not match them.
 node_modules
+# Exception: Pi's chord runtime dependencies vendored for the plugins component's Node subprocess
+# (automation/gen/vendor-chord-plugins-node.sh): a package resolves from a directory named node_modules.
+!chord/nextnode/plugins/node/pi/node_modules
 internal/evals/.eval/
 
 # built tool binary of test/parity/interface-closure/autobind
@@ -185,6 +188,6 @@ internal/evals/.eval/
 # pin.py sync keeps only the active pin and reviewed baseline eligible for tracking.
 # BEGIN PINNED INTERFACE SNAPSHOTS
 /test/parity/interfaces/*-v*.json
-!/test/parity/interfaces/*-v1.4.0+2c8d1feb.json
+!/test/parity/interfaces/*-v1.4.0+b556cfe5.json
 !/test/parity/interfaces/*-v0.84.0.json
 # END PINNED INTERFACE SNAPSHOTS

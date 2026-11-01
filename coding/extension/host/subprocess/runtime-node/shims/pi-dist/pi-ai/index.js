@@ -1,4 +1,3 @@
-export { Type } from "../../typebox.mjs";
 export * from "./api/lazy.js";
 export * from "./auth/context.js";
 export * from "./auth/credential-store.js";
@@ -16,9 +15,9 @@ export * from "./utils/json-parse.js";
 export * from "./utils/overflow.js";
 export * from "./utils/retry.js";
 export * from "./utils/streaming-json.js";
+export * from "./utils/string-enum.js";
 export { contentText, getSystemMessageText, renderSystemMessageUpdate } from "./utils/text.js";
 export * from "./utils/transcript.js";
-export * from "./utils/typebox-helpers.js";
 export { uuidv7 } from "./utils/uuid.js";
 export * from "./utils/validation.js";
 export { PI_AI_VERSION } from "./utils/version.js";

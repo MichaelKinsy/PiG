@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.4.0+2c8d1feb",
+  "piVersion": "1.4.0+b556cfe5",
   "node": "v24.19.0",
   "api": "pi-messages",
   "bodies": {
@@ -312,7 +312,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 5
+                "durationMs": 3
               }
             },
             {
@@ -349,7 +349,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 5
+                "durationMs": 3
               }
             },
             {
@@ -386,7 +386,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 5
+                "durationMs": 3
               }
             },
             {
@@ -423,7 +423,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 5
+                "durationMs": 3
               }
             }
           ]
@@ -623,7 +623,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 4,
+                "durationMs": 3,
                 "thinkingLevel": "off"
               }
             }
@@ -772,7 +772,7 @@
             },
             "stopReason": "toolUse",
             "responseId": "msg-strict",
-            "durationMs": 23,
+            "durationMs": 24,
             "thinkingLevel": "off"
           }
         }
@@ -967,7 +967,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 155
+                "durationMs": 154
               }
             }
           ]
@@ -1078,7 +1078,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -1115,7 +1115,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -1152,7 +1152,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 153
+                "durationMs": 154
               }
             },
             {
@@ -1189,7 +1189,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 153
+                "durationMs": 154
               }
             }
           ]
@@ -2162,7 +2162,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 253,
+                "durationMs": 254,
                 "thinkingLevel": "off"
               }
             }
@@ -2302,7 +2302,7 @@
             },
             "stopReason": "toolUse",
             "responseId": "msg-strict",
-            "durationMs": 268,
+            "durationMs": 266,
             "thinkingLevel": "off"
           }
         }
@@ -2525,7 +2525,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 506
+                "durationMs": 504
               }
             }
           ]
@@ -2758,7 +2758,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 508
+                "durationMs": 502
               }
             }
           ]
@@ -3126,7 +3126,7 @@
             },
             "stopReason": "toolUse",
             "responseId": "msg-strict",
-            "durationMs": 519,
+            "durationMs": 518,
             "thinkingLevel": "off"
           }
         }
@@ -3323,7 +3323,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 303
+                "durationMs": 302
               }
             }
           ]
@@ -3467,7 +3467,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 303
+                "durationMs": 302
               }
             },
             {
@@ -3504,7 +3504,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 303
+                "durationMs": 302
               }
             },
             {
@@ -3541,7 +3541,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 303
+                "durationMs": 302
               }
             }
           ]
@@ -3743,7 +3743,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 303,
+                "durationMs": 302,
                 "thinkingLevel": "off"
               }
             }
@@ -3890,7 +3890,7 @@
             },
             "stopReason": "toolUse",
             "responseId": "msg-strict",
-            "durationMs": 319,
+            "durationMs": 318,
             "thinkingLevel": "off"
           }
         }
@@ -7138,7 +7138,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 154
+                "durationMs": 152
               }
             },
             {
@@ -7184,7 +7184,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 154
+                "durationMs": 152
               }
             },
             {
@@ -7230,7 +7230,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 154
+                "durationMs": 152
               }
             },
             {
@@ -7276,7 +7276,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 154
+                "durationMs": 152
               }
             }
           ]
@@ -7852,7 +7852,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 152,
+                "durationMs": 153,
                 "thinkingLevel": "off"
               }
             }
@@ -8801,7 +8801,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 479
+                "durationMs": 477
               }
             }
           ]
@@ -9435,7 +9435,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 479
+                "durationMs": 478
               }
             }
           ]
@@ -10383,7 +10383,7 @@
             },
             "stopReason": "toolUse",
             "responseId": "msg-strict",
-            "durationMs": 493,
+            "durationMs": 491,
             "thinkingLevel": "off"
           }
         }
@@ -11010,7 +11010,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 853
+                "durationMs": 856
               }
             }
           ]
@@ -11674,7 +11674,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 857
+                "durationMs": 858
               }
             }
           ]
@@ -12306,7 +12306,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 854,
+                "durationMs": 857,
                 "thinkingLevel": "off"
               }
             }
@@ -12652,7 +12652,7 @@
             },
             "stopReason": "toolUse",
             "responseId": "msg-strict",
-            "durationMs": 872,
+            "durationMs": 870,
             "thinkingLevel": "off"
           }
         }
@@ -13225,7 +13225,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 304
+                "durationMs": 303
               }
             }
           ]
@@ -14462,7 +14462,7 @@
                 },
                 "stopReason": "toolUse",
                 "responseId": "msg-strict",
-                "durationMs": 302,
+                "durationMs": 303,
                 "thinkingLevel": "off"
               }
             }
@@ -14813,7 +14813,7 @@
             },
             "stopReason": "toolUse",
             "responseId": "msg-strict",
-            "durationMs": 318,
+            "durationMs": 319,
             "thinkingLevel": "off"
           }
         }
@@ -15541,7 +15541,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 153
+                "durationMs": 152
               }
             }
           ]
@@ -15608,7 +15608,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 152
+                "durationMs": 154
               }
             },
             {
@@ -15642,7 +15642,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 152
+                "durationMs": 154
               }
             },
             {
@@ -15676,7 +15676,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 152
+                "durationMs": 154
               }
             },
             {
@@ -15710,7 +15710,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 152
+                "durationMs": 154
               }
             }
           ]
@@ -16127,7 +16127,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 229
+                "durationMs": 227
               }
             }
           ]
@@ -16288,7 +16288,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 226
+                "durationMs": 229
               }
             }
           ]
@@ -16443,7 +16443,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 227,
+                "durationMs": 226,
                 "thinkingLevel": "off"
               }
             }
@@ -16715,7 +16715,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 379
+                "durationMs": 378
               }
             }
           ]
@@ -16888,7 +16888,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 376
+                "durationMs": 378
               }
             }
           ]
@@ -17055,7 +17055,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 379,
+                "durationMs": 377,
                 "thinkingLevel": "off"
               }
             }
@@ -17161,7 +17161,7 @@
             "stopReason": "error",
             "errorMessage": "backend failed",
             "responseId": "msg-error",
-            "durationMs": 394,
+            "durationMs": 392,
             "thinkingLevel": "off"
           }
         }
@@ -17311,7 +17311,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 309
+                "durationMs": 308
               }
             }
           ]
@@ -17442,7 +17442,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 304
+                "durationMs": 302
               }
             },
             {
@@ -17476,7 +17476,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 304
+                "durationMs": 302
               }
             }
           ]
@@ -17627,7 +17627,7 @@
                 "stopReason": "error",
                 "errorMessage": "backend failed",
                 "responseId": "msg-error",
-                "durationMs": 302,
+                "durationMs": 303,
                 "thinkingLevel": "off"
               }
             }
@@ -17738,7 +17738,7 @@
             "stopReason": "error",
             "errorMessage": "backend failed",
             "responseId": "msg-error",
-            "durationMs": 318,
+            "durationMs": 317,
             "thinkingLevel": "off"
           }
         }
@@ -18285,7 +18285,7 @@
             },
             "stopReason": "error",
             "errorMessage": "p stream ended without a terminal event",
-            "durationMs": 25,
+            "durationMs": 24,
             "thinkingLevel": "off"
           }
         }
@@ -18979,7 +18979,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "p stream ended without a terminal event",
-                "durationMs": 227
+                "durationMs": 228
               }
             }
           ]
@@ -19133,7 +19133,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "p stream ended without a terminal event",
-                "durationMs": 226
+                "durationMs": 227
               }
             }
           ]
@@ -19281,7 +19281,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "p stream ended without a terminal event",
-                "durationMs": 228,
+                "durationMs": 226,
                 "thinkingLevel": "off"
               }
             }
@@ -19381,7 +19381,7 @@
             },
             "stopReason": "error",
             "errorMessage": "p stream ended without a terminal event",
-            "durationMs": 244,
+            "durationMs": 245,
             "thinkingLevel": "off"
           }
         }
@@ -19836,7 +19836,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "p stream ended without a terminal event",
-                "durationMs": 252,
+                "durationMs": 251,
                 "thinkingLevel": "off"
               }
             }
@@ -19936,7 +19936,7 @@
             },
             "stopReason": "error",
             "errorMessage": "p stream ended without a terminal event",
-            "durationMs": 271,
+            "durationMs": 269,
             "thinkingLevel": "off"
           }
         }
@@ -20081,7 +20081,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "p stream ended without a terminal event",
-                "durationMs": 453
+                "durationMs": 452
               }
             }
           ]
@@ -20489,7 +20489,7 @@
             },
             "stopReason": "error",
             "errorMessage": "p stream ended without a terminal event",
-            "durationMs": 470,
+            "durationMs": 471,
             "thinkingLevel": "off"
           }
         }
@@ -20823,7 +20823,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-                "durationMs": 2,
+                "durationMs": 1,
                 "thinkingLevel": "off"
               }
             }
@@ -21240,7 +21240,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-                "durationMs": 151,
+                "durationMs": 152,
                 "thinkingLevel": "off"
               }
             }
@@ -21323,7 +21323,7 @@
             },
             "stopReason": "error",
             "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-            "durationMs": 169,
+            "durationMs": 171,
             "thinkingLevel": "off"
           }
         }
@@ -21435,7 +21435,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-                "durationMs": 202
+                "durationMs": 203
               }
             }
           ]
@@ -21742,7 +21742,7 @@
             },
             "stopReason": "error",
             "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-            "durationMs": 218,
+            "durationMs": 219,
             "thinkingLevel": "off"
           }
         }
@@ -21856,7 +21856,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-                "durationMs": 228
+                "durationMs": 227
               }
             }
           ]
@@ -21974,7 +21974,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-                "durationMs": 229
+                "durationMs": 227
               }
             }
           ]
@@ -22167,7 +22167,7 @@
             },
             "stopReason": "error",
             "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-            "durationMs": 244,
+            "durationMs": 243,
             "thinkingLevel": "off"
           }
         }
@@ -22277,7 +22277,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-                "durationMs": 303
+                "durationMs": 302
               }
             }
           ]
@@ -22396,7 +22396,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-                "durationMs": 303
+                "durationMs": 302
               }
             }
           ]
@@ -22507,7 +22507,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-                "durationMs": 302,
+                "durationMs": 303,
                 "thinkingLevel": "off"
               }
             }
@@ -22590,7 +22590,7 @@
             },
             "stopReason": "error",
             "errorMessage": "Expected ',' or '}' after property value in JSON at position 49 (line 1 column 50)",
-            "durationMs": 318,
+            "durationMs": 319,
             "thinkingLevel": "off"
           }
         }
@@ -22813,7 +22813,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 3
+                "durationMs": 2
               }
             }
           ]
@@ -23111,7 +23111,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 152
+                "durationMs": 153
               }
             }
           ]
@@ -23227,7 +23227,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 153
+                "durationMs": 154
               }
             }
           ]
@@ -23335,7 +23335,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 151,
+                "durationMs": 153,
                 "thinkingLevel": "off"
               }
             }
@@ -23418,7 +23418,7 @@
             },
             "stopReason": "error",
             "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 171,
+            "durationMs": 169,
             "thinkingLevel": "off"
           }
         }
@@ -23529,7 +23529,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 202
+                "durationMs": 203
               }
             }
           ]
@@ -23644,7 +23644,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 207
+                "durationMs": 203
               }
             }
           ]
@@ -23669,422 +23669,6 @@
             "deliver:message_update",
             "decode:12",
             "push:s167:error",
-            "deliver:message_end",
-            "deliver:turn_end",
-            "deliver:agent_end"
-          ],
-          "states": [
-            {
-              "at": 10,
-              "event": "message_start",
-              "message": {
-                "role": "assistant",
-                "content": [],
-                "api": "pi-messages",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending"
-              }
-            },
-            {
-              "at": 15,
-              "event": "message_update",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": ""
-                  }
-                ],
-                "api": "pi-messages",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending"
-              }
-            },
-            {
-              "at": 18,
-              "event": "message_end",
-              "message": {
-                "role": "assistant",
-                "content": [],
-                "api": "pi-messages",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "error",
-                "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 202,
-                "thinkingLevel": "off"
-              }
-            }
-          ]
-        }
-      ],
-      "rpc": [
-        {
-          "type": "message_start",
-          "message": {
-            "role": "assistant",
-            "content": [],
-            "api": "pi-messages",
-            "provider": "p",
-            "model": "strict",
-            "usage": {
-              "input": 0,
-              "output": 0,
-              "cacheRead": 0,
-              "cacheWrite": 0,
-              "totalTokens": 0,
-              "cost": {
-                "input": 0,
-                "output": 0,
-                "cacheRead": 0,
-                "cacheWrite": 0,
-                "total": 0
-              }
-            },
-            "stopReason": "pending"
-          }
-        },
-        {
-          "type": "message_update",
-          "usage": {
-            "input": 0,
-            "output": 0,
-            "cacheRead": 0,
-            "cacheWrite": 0,
-            "totalTokens": 0,
-            "cost": {
-              "input": 0,
-              "output": 0,
-              "cacheRead": 0,
-              "cacheWrite": 0,
-              "total": 0
-            }
-          },
-          "assistantMessageEvent": {
-            "type": "text_start",
-            "contentIndex": 0
-          }
-        },
-        {
-          "type": "message_end",
-          "message": {
-            "role": "assistant",
-            "content": [],
-            "api": "pi-messages",
-            "provider": "p",
-            "model": "strict",
-            "usage": {
-              "input": 0,
-              "output": 0,
-              "cacheRead": 0,
-              "cacheWrite": 0,
-              "totalTokens": 0,
-              "cost": {
-                "input": 0,
-                "output": 0,
-                "cacheRead": 0,
-                "cacheWrite": 0,
-                "total": 0
-              }
-            },
-            "stopReason": "error",
-            "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-            "durationMs": 218,
-            "thinkingLevel": "off"
-          }
-        }
-      ]
-    },
-    {
-      "fixture": "notjson",
-      "delivery": "split",
-      "paths": [
-        {
-          "path": "direct",
-          "trace": [
-            "read",
-            "decode:40",
-            "parse:start",
-            "push:s168:start",
-            "read",
-            "deliver:start",
-            "decode:40",
-            "parse:text_start",
-            "push:s168:text_start",
-            "read",
-            "deliver:text_start",
-            "decode:2",
-            "push:s168:error",
-            "deliver:error"
-          ],
-          "states": [
-            {
-              "at": 6,
-              "event": "start",
-              "message": {
-                "role": "assistant",
-                "content": [],
-                "api": "pi-messages",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending"
-              }
-            },
-            {
-              "at": 11,
-              "event": "text_start",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": ""
-                  }
-                ],
-                "api": "pi-messages",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending"
-              }
-            },
-            {
-              "at": 14,
-              "event": "error",
-              "message": {
-                "role": "assistant",
-                "content": [],
-                "api": "pi-messages",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "error",
-                "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 202
-              }
-            }
-          ]
-        },
-        {
-          "path": "runtime",
-          "trace": [
-            "read",
-            "decode:40",
-            "parse:start",
-            "push:s169:start",
-            "read",
-            "push:s170:start",
-            "push:s171:start",
-            "push:s172:start",
-            "deliver:start",
-            "decode:40",
-            "parse:text_start",
-            "push:s169:text_start",
-            "read",
-            "push:s170:text_start",
-            "push:s171:text_start",
-            "push:s172:text_start",
-            "deliver:text_start",
-            "decode:2",
-            "push:s169:error",
-            "push:s170:error",
-            "push:s171:error",
-            "push:s172:error",
-            "deliver:error"
-          ],
-          "states": [
-            {
-              "at": 9,
-              "event": "start",
-              "message": {
-                "role": "assistant",
-                "content": [],
-                "api": "pi-messages",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending"
-              }
-            },
-            {
-              "at": 17,
-              "event": "text_start",
-              "message": {
-                "role": "assistant",
-                "content": [
-                  {
-                    "type": "text",
-                    "text": ""
-                  }
-                ],
-                "api": "pi-messages",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "pending"
-              }
-            },
-            {
-              "at": 23,
-              "event": "error",
-              "message": {
-                "role": "assistant",
-                "content": [],
-                "api": "pi-messages",
-                "provider": "p",
-                "model": "strict",
-                "usage": {
-                  "input": 0,
-                  "output": 0,
-                  "cacheRead": 0,
-                  "cacheWrite": 0,
-                  "totalTokens": 0,
-                  "cost": {
-                    "input": 0,
-                    "output": 0,
-                    "cacheRead": 0,
-                    "cacheWrite": 0,
-                    "total": 0
-                  }
-                },
-                "stopReason": "error",
-                "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 202
-              }
-            }
-          ]
-        },
-        {
-          "path": "agent",
-          "trace": [
-            "deliver:agent_start",
-            "deliver:turn_start",
-            "deliver:message_start",
-            "deliver:message_end",
-            "read",
-            "decode:40",
-            "parse:start",
-            "push:s173:start",
-            "read",
-            "deliver:message_start",
-            "decode:40",
-            "parse:text_start",
-            "push:s173:text_start",
-            "read",
-            "deliver:message_update",
-            "decode:2",
-            "push:s173:error",
             "deliver:message_end",
             "deliver:turn_end",
             "deliver:agent_end"
@@ -24258,6 +23842,422 @@
     },
     {
       "fixture": "notjson",
+      "delivery": "split",
+      "paths": [
+        {
+          "path": "direct",
+          "trace": [
+            "read",
+            "decode:40",
+            "parse:start",
+            "push:s168:start",
+            "read",
+            "deliver:start",
+            "decode:40",
+            "parse:text_start",
+            "push:s168:text_start",
+            "read",
+            "deliver:text_start",
+            "decode:2",
+            "push:s168:error",
+            "deliver:error"
+          ],
+          "states": [
+            {
+              "at": 6,
+              "event": "start",
+              "message": {
+                "role": "assistant",
+                "content": [],
+                "api": "pi-messages",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending"
+              }
+            },
+            {
+              "at": 11,
+              "event": "text_start",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": ""
+                  }
+                ],
+                "api": "pi-messages",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending"
+              }
+            },
+            {
+              "at": 14,
+              "event": "error",
+              "message": {
+                "role": "assistant",
+                "content": [],
+                "api": "pi-messages",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "error",
+                "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
+                "durationMs": 203
+              }
+            }
+          ]
+        },
+        {
+          "path": "runtime",
+          "trace": [
+            "read",
+            "decode:40",
+            "parse:start",
+            "push:s169:start",
+            "read",
+            "push:s170:start",
+            "push:s171:start",
+            "push:s172:start",
+            "deliver:start",
+            "decode:40",
+            "parse:text_start",
+            "push:s169:text_start",
+            "read",
+            "push:s170:text_start",
+            "push:s171:text_start",
+            "push:s172:text_start",
+            "deliver:text_start",
+            "decode:2",
+            "push:s169:error",
+            "push:s170:error",
+            "push:s171:error",
+            "push:s172:error",
+            "deliver:error"
+          ],
+          "states": [
+            {
+              "at": 9,
+              "event": "start",
+              "message": {
+                "role": "assistant",
+                "content": [],
+                "api": "pi-messages",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending"
+              }
+            },
+            {
+              "at": 17,
+              "event": "text_start",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": ""
+                  }
+                ],
+                "api": "pi-messages",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending"
+              }
+            },
+            {
+              "at": 23,
+              "event": "error",
+              "message": {
+                "role": "assistant",
+                "content": [],
+                "api": "pi-messages",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "error",
+                "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
+                "durationMs": 203
+              }
+            }
+          ]
+        },
+        {
+          "path": "agent",
+          "trace": [
+            "deliver:agent_start",
+            "deliver:turn_start",
+            "deliver:message_start",
+            "deliver:message_end",
+            "read",
+            "decode:40",
+            "parse:start",
+            "push:s173:start",
+            "read",
+            "deliver:message_start",
+            "decode:40",
+            "parse:text_start",
+            "push:s173:text_start",
+            "read",
+            "deliver:message_update",
+            "decode:2",
+            "push:s173:error",
+            "deliver:message_end",
+            "deliver:turn_end",
+            "deliver:agent_end"
+          ],
+          "states": [
+            {
+              "at": 10,
+              "event": "message_start",
+              "message": {
+                "role": "assistant",
+                "content": [],
+                "api": "pi-messages",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending"
+              }
+            },
+            {
+              "at": 15,
+              "event": "message_update",
+              "message": {
+                "role": "assistant",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": ""
+                  }
+                ],
+                "api": "pi-messages",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "pending"
+              }
+            },
+            {
+              "at": 18,
+              "event": "message_end",
+              "message": {
+                "role": "assistant",
+                "content": [],
+                "api": "pi-messages",
+                "provider": "p",
+                "model": "strict",
+                "usage": {
+                  "input": 0,
+                  "output": 0,
+                  "cacheRead": 0,
+                  "cacheWrite": 0,
+                  "totalTokens": 0,
+                  "cost": {
+                    "input": 0,
+                    "output": 0,
+                    "cacheRead": 0,
+                    "cacheWrite": 0,
+                    "total": 0
+                  }
+                },
+                "stopReason": "error",
+                "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
+                "durationMs": 201,
+                "thinkingLevel": "off"
+              }
+            }
+          ]
+        }
+      ],
+      "rpc": [
+        {
+          "type": "message_start",
+          "message": {
+            "role": "assistant",
+            "content": [],
+            "api": "pi-messages",
+            "provider": "p",
+            "model": "strict",
+            "usage": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "totalTokens": 0,
+              "cost": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0,
+                "total": 0
+              }
+            },
+            "stopReason": "pending"
+          }
+        },
+        {
+          "type": "message_update",
+          "usage": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "totalTokens": 0,
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "total": 0
+            }
+          },
+          "assistantMessageEvent": {
+            "type": "text_start",
+            "contentIndex": 0
+          }
+        },
+        {
+          "type": "message_end",
+          "message": {
+            "role": "assistant",
+            "content": [],
+            "api": "pi-messages",
+            "provider": "p",
+            "model": "strict",
+            "usage": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0,
+              "totalTokens": 0,
+              "cost": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0,
+                "total": 0
+              }
+            },
+            "stopReason": "error",
+            "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
+            "durationMs": 220,
+            "thinkingLevel": "off"
+          }
+        }
+      ]
+    },
+    {
+      "fixture": "notjson",
       "delivery": "tail",
       "paths": [
         {
@@ -24359,7 +24359,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 303
+                "durationMs": 302
               }
             }
           ]
@@ -24477,7 +24477,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 303
+                "durationMs": 302
               }
             }
           ]
@@ -24587,7 +24587,7 @@
                 },
                 "stopReason": "error",
                 "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-                "durationMs": 303,
+                "durationMs": 302,
                 "thinkingLevel": "off"
               }
             }
@@ -24788,7 +24788,7 @@
             },
             "stopReason": "aborted",
             "errorMessage": "This operation was aborted",
-            "durationMs": 151
+            "durationMs": 153
           }
         }
       ]
