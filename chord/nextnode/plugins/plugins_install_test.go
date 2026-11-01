@@ -12,6 +12,7 @@ import (
 	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Ports packages/chord/test/next-node/plugins/install.test.ts. Tests of installing a plugin's dependencies (slice 7c §5):
@@ -50,9 +51,7 @@ func TestInstallDependenciesRunsNpmInstallWithoutDevDependenciesPeersScriptsAudi
 	dir := writePlugin(t, elsewhere, "deps", "@test/deps", map[string]string{"worker.ts": ""}, map[string]any{
 		"dependencies": map[string]any{"a": "1.0.0"},
 	})
-	if err := os.Symlink(dir, filepath.Join(root, "deps")); err != nil {
-		t.Fatal(err)
-	}
+	testenv.RequireDirectoryLink(t, dir, filepath.Join(root, "deps"))
 	discovery, err := DiscoverPlugins([]string{root}, DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)

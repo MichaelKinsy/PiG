@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Ports packages/chord/test/next-node/plugins/watcher.test.ts. Tests of the watcher (slice 7c §5): dirty marks from the
@@ -354,9 +355,7 @@ func TestTheWatcherFixRound1WatchesADirectoryThatAppearsLaterAndMarksTheFilesInI
 
 func TestTheWatcherAndLinksSurvivesALinkLoopCreatedUnderARootItsStatNeverEscapesTheCallbackAndStillMarksItSol(t *testing.T) {
 	f := watched(t)
-	if err := os.Symlink("loop", filepath.Join(f.root, "a", "loop")); err != nil {
-		t.Fatal(err)
-	}
+	testenv.Symlink(t, "loop", filepath.Join(f.root, "a", "loop"))
 	eventually(t, 5*time.Second, `dirty ["@test/a"]`, func() bool { return reflect.DeepEqual(f.marks().Dirty, list("@test/a")) })
 	f.close()
 }
@@ -412,9 +411,7 @@ func TestTheWatcherAfterCloseOnlyAPluginLinkedFromOutsideGetsItsWatchAgain(t *te
 	elsewhere := realOf(t, tempRoot(t))
 	dir := writePlugin(t, elsewhere, "linked", "@test/linked", map[string]string{"worker.ts": ""}, nil)
 	root := realOf(t, tempRoot(t))
-	if err := os.Symlink(dir, filepath.Join(root, "link")); err != nil {
-		t.Fatal(err)
-	}
+	testenv.RequireDirectoryLink(t, dir, filepath.Join(root, "link"))
 	f := watcherOn(t, root, realOf(t, tempRoot(t)), nil)
 	f.know(f.discoverySnapshot())
 	f.run(func() {
