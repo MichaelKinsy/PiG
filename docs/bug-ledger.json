@@ -16186,13 +16186,6 @@
         "coding/packagecontent/filter_members_test.go::TestMemberFiltersMatchPisCandidates",
         "coding/packagecontent/filter_members_test.go::TestMinimatchFilterPatternLength",
         "coding/packagecontent/filter_members_test.go::TestMinimatchFilterWindowsUNCRoots",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductKeepsOnlyReachableValues",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductPrunesBelowAFullyReachedLevel",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductWithNoResult",
-        "coding/packagecontent/glob_braces_npm_test.go::TestMinimatchFilterExpandsBracesAsPi",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandBoundsAllocation",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandFollowsBraceExpansion5",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandLimitsFollowBraceExpansion5",
         "coding/packagecontent/glob_filter_test.go::TestManifestOverridesFollowMinimatch",
         "coding/packagecontent/glob_filter_test.go::TestMinimatchFilterEdgeRowsMatchMinimatch",
         "coding/packagecontent/glob_filter_test.go::TestMinimatchFilterGlobstarSectionsMatchMinimatch",
@@ -16371,13 +16364,6 @@
         "coding/packagecontent/filter_members_test.go::TestMemberFiltersMatchPisCandidates",
         "coding/packagecontent/filter_members_test.go::TestMinimatchFilterPatternLength",
         "coding/packagecontent/filter_members_test.go::TestMinimatchFilterWindowsUNCRoots",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductKeepsOnlyReachableValues",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductPrunesBelowAFullyReachedLevel",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductWithNoResult",
-        "coding/packagecontent/glob_braces_npm_test.go::TestMinimatchFilterExpandsBracesAsPi",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandBoundsAllocation",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandFollowsBraceExpansion5",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandLimitsFollowBraceExpansion5",
         "coding/packagecontent/glob_filter_test.go::TestManifestOverridesFollowMinimatch",
         "coding/packagecontent/glob_filter_test.go::TestMinimatchFilterEdgeRowsMatchMinimatch",
         "coding/packagecontent/glob_filter_test.go::TestMinimatchFilterGlobstarSectionsMatchMinimatch",
@@ -22655,6 +22641,31 @@
       ]
     },
     {
+      "id": "BF-8fead2d",
+      "title": "fix(chord/nextnode/workers,chord/nextnode/plugins): the workers run on the plugins' Node host; no test hooks…",
+      "symptom": "fix(chord/nextnode/workers,chord/nextnode/plugins): the workers run on the plugins' Node host; no test hooks in the watcher",
+      "rootCause": "The merge brought the workers component written against the first port's Builder/Evaluator seams. A worker's plugins now run as the plugins component does: WorkerPlugins.Load starts the worker's NodeHost (WorkerMainOptions.Node, HostPackages as module files, core facets as JavaScript modules), routes the worker's address kind to its link on the worker's Go host (a relay without an address) and loads it; the NodeHost's exit is the worker's exit (its exit code, or `fatal` with the exception it died of), its close a closer, and the worker's idle state reads the NodeHost's keep-alive counts (new: NodeOptions.OnActivity, NodeHost.Activity), which a routing Go host does not count. The driver…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "8fead2d31c",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeACoreModuleImportsChordByItsPackageName",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeTheHostsKeepAliveCountsReachTheApp",
+        "chord/nextnode/plugins/plugins_watcher_test.go::TestTheWatcherAfterCloseOnlyAPluginLinkedFromOutsideGetsItsWatchAgain",
+        "chord/nextnode/plugins/plugins_watcher_unix_test.go::TestTheWatcherReportsAFailureToWatchOnceAndStopsWatching",
+        "chord/nextnode/workers/workers_main_test.go::TestTheWorkersIdleStateReadsTheNodeHostsActivityThroughItsReports"
+      ]
+    },
+    {
       "id": "BF-905f3d0",
       "title": "A trap of the codemode module on a Worker no longer loses the output the script printed before it: the host…",
       "symptom": "A script that printed 100,000 one-character items used to trap the module on its heap and now completes (a batch of the same items took 1.06 s, against 1.56 s with the module holding them; the exchange count and the other timings are unchanged).",
@@ -27934,6 +27945,27 @@
       ]
     },
     {
+      "id": "BF-a8203b7",
+      "title": "fix(chord/nextnode/plugins): a request pending when the channel ends fails with how the process ended; go fix",
+      "symptom": "fix(chord/nextnode/plugins): a request pending when the channel ends fails with how the process ended; go fix",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a8203b7e39",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_examples_test.go::TestExample39BrowserBuild"
+      ]
+    },
+    {
       "id": "BF-a8a04f4",
       "title": "`PIG_DEBUG` writes its log with mode 0600 and refuses a symlink or a file owned by another user in the shared…",
       "symptom": "`PIG_DEBUG` writes its log with mode 0600 and refuses a symlink or a file owned by another user in the shared temporary directory; `PIG_DEBUG_KEYS` logs typed text and pastes only by length, so a key entered at a masked login prompt no longer reaches the log; `pig-render.log` is private (0600).",
@@ -28957,6 +28989,43 @@
         "coding/extension/host/subprocess/request_metadata_order_test.go::TestProviderOptionsWireKeepsRequestMetadataOrder",
         "coding/session_tree_wire_oracle_test.go::TestNavigateTreeEveryPointSendsValidToolFlow",
         "internal/codingagent/native_thinking_options_test.go::TestSubprocessRequestMetadataKeepsKeyOrder"
+      ]
+    },
+    {
+      "id": "BF-afb14da",
+      "title": "fix(chord/nextnode/plugins): the Node host is the child of the Go side, as Pi's forked worker is of its server",
+      "symptom": "fix(chord/nextnode/plugins): the Node host is the child of the Go side, as Pi's forked worker is of its server",
+      "rootCause": "The earlier route attempt timed out because the relaying Go host's hold reached a Node host that had accepted it as a child: \"hold: an origin on a child link\" (a child relays nothing), reported only to the Node host's onError.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "afb14da124",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildAnInputThatCannotBeReadIsNodesErrorText",
+        "chord/nextnode/plugins/plugins_endtoend_test.go::TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost",
+        "chord/nextnode/plugins/plugins_endtoend_test.go::TestEndToEndTheAppsGoHostCannotGetALocalTypeAPluginServes",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeAFatalReadAfterTheProcessWasWaitedForIsInTheExit",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeALinkAttachedAfterLoadAndOtherRequestsStillCarriesTheHost",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeALinkNotAttachedWithinTheHeartbeatEndsTheProcessAndTheLink",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeASendAfterTheChannelEndedReturnsTheProcessesExit",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeConcurrentExtractionsShareOneCompleteTree",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeTreeIsRepairedWhenItIsPartialOrHasNoMarker",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestEsbuildBuildAForbiddenInputFailsTheBuildWithNodesText",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeAFailedStartRemovesItsSocketDirectory",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeAStartThatDoesNotConnectInTimeKillsTheProcess",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeAbortedStartWhileTheProcessRunsKillsItAndReturnsTheCause",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeOlderThanTheMinimumNamesTheRequirementAndTheVersionFound",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeThatFailsItsVersionNamesWhatItSaid",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeWhoseVersionIsNoVersionIsRefused",
+        "chord/nextnode/plugins/plugins_runtime_test.go::TestRuntimeAFacetWithAPersistedDocumentFailsToActivateTheHostHasNoStore"
       ]
     },
     {
@@ -30945,13 +31014,6 @@
         "coding/packagecontent/filter_members_test.go::TestMemberFiltersMatchPisCandidates",
         "coding/packagecontent/filter_members_test.go::TestMinimatchFilterPatternLength",
         "coding/packagecontent/filter_members_test.go::TestMinimatchFilterWindowsUNCRoots",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductKeepsOnlyReachableValues",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductPrunesBelowAFullyReachedLevel",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductWithNoResult",
-        "coding/packagecontent/glob_braces_npm_test.go::TestMinimatchFilterExpandsBracesAsPi",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandBoundsAllocation",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandFollowsBraceExpansion5",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandLimitsFollowBraceExpansion5",
         "coding/packagecontent/glob_filter_test.go::TestManifestOverridesFollowMinimatch",
         "coding/packagecontent/glob_filter_test.go::TestMinimatchFilterEdgeRowsMatchMinimatch",
         "coding/packagecontent/glob_filter_test.go::TestMinimatchFilterGlobstarSectionsMatchMinimatch",
@@ -39869,6 +39931,27 @@
       ]
     },
     {
+      "id": "BF-f06ba8f",
+      "title": "fix(chord/nextnode/workers): a reload that fails while the worker shuts down is answered by its exit, so a…",
+      "symptom": "fix(chord/nextnode/workers): a reload that fails while the worker shuts down is answered by its exit, so a stop lists it as stopped",
+      "rootCause": "TestTheRolloutStepListsAWorkerStoppedCleanlyDuringItAsStoppedAndOneThatCrashedWithItsError failed 8 runs in 30 with hosts [\"session|S1 the node subprocess ended\" ...], want \"session|S1 stopped\".",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f06ba8fd15",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_rollout_blocked_unix_test.go::TestTheRolloutStepListsAWorkerStoppedCleanlyDuringItAsStoppedAndOneThatCrashedWithItsError"
+      ]
+    },
+    {
       "id": "BF-f07d033",
       "title": "A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144…",
       "symptom": "A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144, Pi #10697).",
@@ -43328,9 +43411,6 @@
         "coding/packagecontent/filter_members_test.go::TestMemberFiltersMatchPisCandidates",
         "coding/packagecontent/filter_members_test.go::TestMinimatchFilterPatternLength",
         "coding/packagecontent/filter_members_test.go::TestMinimatchFilterWindowsUNCRoots",
-        "coding/packagecontent/glob_braces_npm_test.go::TestMinimatchFilterExpandsBracesAsPi",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandFollowsBraceExpansion5",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandLimitsFollowBraceExpansion5",
         "coding/packagecontent/glob_filter_test.go::TestManifestOverridesFollowMinimatch",
         "coding/packagecontent/glob_filter_test.go::TestMinimatchFilterEdgeRowsMatchMinimatch",
         "coding/packagecontent/glob_filter_test.go::TestMinimatchFilterGlobstarSectionsMatchMinimatch",
@@ -44096,7 +44176,7 @@
   "exemptCommits": {
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 1,
-    "Follow-up to unreleased work": 1,
+    "Follow-up to unreleased work": 2,
     "Repair of a merge between development branches": 9,
     "Review follow-up to unreleased work": 3,
     "test-only": 1
