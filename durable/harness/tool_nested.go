@@ -250,6 +250,9 @@ func (n *NestedCalls) Execute(ctx context.Context, caller NestedCaller, name str
 		})
 		id, err = startNestedCall(admitted, caller, n.callId, name, args, key, option, !n.resumes)
 	}
+	// A caller whose commit does not report the Session line's admission (the core driver's) releases the next call once the
+	// creation commit settled; the call's own wait below must not hold it.
+	release.Do(func() { close(turn) })
 	n.admissions.Done()
 	if err != nil {
 		return durable.NestedToolExecutionResult{}, err

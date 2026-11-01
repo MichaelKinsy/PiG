@@ -87,7 +87,9 @@ class QueuedStorage extends ControlledStorage {
 	failNext(message) {
 		this.failure = new Error(message);
 	}
-	async commit(writes, adopt, commitContext) {
+	async commit(batches, receive, commitContext) {
+		// One call is one commit here, as the Go queuedStorage counts it: its batches' writes together.
+		const writes = batches.flat();
 		this.entered++;
 		if (this.marked) {
 			let appended = 0;
@@ -113,7 +115,7 @@ class QueuedStorage extends ControlledStorage {
 			this.failure = undefined;
 			throw failure;
 		}
-		return super.commit(writes, adopt, commitContext);
+		return super.commit(batches, receive, commitContext);
 	}
 }
 
