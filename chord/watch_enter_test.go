@@ -5,6 +5,7 @@ import (
 	"errors"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"testing"
 )
 
@@ -55,15 +56,23 @@ func TestAwaitEnteredDoesNotWaitForAListenerBlockedBehindTheCallersLock(t *testi
 	tracker := newPending()
 	var mu sync.Mutex
 	mu.Lock()
+	var acquired atomic.Bool
 	tracker.schedule(func() {
 		mu.Lock()
-		mu.Unlock()
+		defer mu.Unlock()
+		acquired.Store(true)
 	})
 	if err := tracker.awaitEntered(context.Background()); err != nil {
 		t.Fatal(err)
 	}
+	if acquired.Load() {
+		t.Fatal("the delivery got the lock the caller holds")
+	}
 	mu.Unlock()
 	tracker.wait()
+	if !acquired.Load() {
+		t.Fatal("the delivery never got the lock")
+	}
 }
 
 func TestAwaitEnteredReturnsTheCauseOfACancelledContext(t *testing.T) {
