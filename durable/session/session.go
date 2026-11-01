@@ -1442,6 +1442,10 @@ func (session *SessionImpl) beginClose(ctx context.Context) <-chan struct{} {
 				}
 				// The writer's goroutine ended: nothing is queued or in flight.
 				session.writer.Wait()
+				// The outcomes of the jobs admitted before the seal are delivered, in line order, and their callers have entered,
+				// before Storage closes: what a caller reads off the line right after its job (a context read derives its view from
+				// Storage) starts before the backend closes, as upstream's continuation precedes the close job's later awaits.
+				session.awaitFenceEmpty()
 				session.mu.Lock()
 				observers := session.commitOrder
 				session.commitOrder = nil
