@@ -131,13 +131,6 @@ func statusOf(t *testing.T, storage *session.CachedStorage, id int64) durable.Ta
 	return record.State.Status
 }
 
-func expectSizes(t *testing.T, got, want session.CachedSizes) {
-	t.Helper()
-	if got != want {
-		t.Fatalf("sizes = %+v, want %+v", got, want)
-	}
-}
-
 func TestCachedStorageServesWrittenRecordWithoutReadAndFollowsLaterWrites(t *testing.T) {
 	backend := newCountingBackend()
 	storage := session.NewCachedStorage(backend)

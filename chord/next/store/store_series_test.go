@@ -95,7 +95,7 @@ func TestCommitSeries(t *testing.T) {
 			return nil
 		}, background)
 		noError(t, err)
-		if result.Stored != 1 || result.Refused != refusal {
+		if result.Stored != 1 || !errors.Is(result.Refused, refusal) {
 			t.Fatalf("result = %+v, want stored 1 refused %v", result, refusal)
 		}
 		if !reflect.DeepEqual(receipts, []int{0}) || store.LastSeq() != 1 {
@@ -124,7 +124,7 @@ func TestCommitSeries(t *testing.T) {
 				},
 			},
 		}, noReceipt, background)
-		if err != own {
+		if !errors.Is(err, own) {
 			t.Fatalf("CommitSeries error = %v, want the check's own", err)
 		}
 		if store.LastSeq() != 0 {
