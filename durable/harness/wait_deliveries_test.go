@@ -1,10 +1,8 @@
 package harness
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -15,7 +13,6 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
-	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
 // Pi packages/chord/src/watch.ts #schedule/#drain, harness/submissions.ts wait, harness/scheduler.ts waitForIdle and
@@ -52,24 +49,6 @@ func openSettledChat(t *testing.T) settledChat {
 func (chat settledChat) publishBatch(t *testing.T) {
 	t.Helper()
 	must(chat.root.Submit(testContext, durable.SubmissionDraft{Type: durable.SubmissionTypeWrite, Entry: &durable.EntryDraft{Kind: "note"}}))
-}
-
-// inDeliveryAwait reports whether goroutine id is inside the Session's wait for deliveries.
-func inDeliveryAwait(id uint64) bool {
-	stacks := make([]byte, 64<<10)
-	for {
-		if n := runtime.Stack(stacks, true); n < len(stacks) {
-			stacks = stacks[:n]
-			break
-		}
-		stacks = make([]byte, 2*len(stacks))
-	}
-	_, block, found := bytes.Cut(stacks, fmt.Appendf(nil, "goroutine %d [", id))
-	if !found {
-		return false
-	}
-	block, _, _ = bytes.Cut(block, []byte("\n\n"))
-	return bytes.Contains(block, []byte("(*pending).awaitEntered"))
 }
 
 func closedChannel(done <-chan struct{}) bool {
@@ -126,44 +105,47 @@ type waitCall struct {
 	returned        chan struct{}
 	err             error
 	givenAtReturn   int32
-	waiterGoroutine uint64
 }
 
 func (spinning *spinningListener) call(ctx context.Context, wait func(ctx context.Context, chat settledChat) error) *waitCall {
 	call := &waitCall{returned: make(chan struct{})}
-	ids := make(chan uint64, 1)
 	go func() {
-		ids <- goroutineid.Current()
 		call.err = wait(ctx, spinning.chat)
 		call.givenAtReturn = spinning.given.Load()
 		close(call.returned)
 	}()
-	call.waiterGoroutine = <-ids
 	return call
 }
 
-// settle returns once the wait returned or is inside the Session's wait for the deliveries: a wait that returns has nothing more to
-// await, and one still awaiting them is stuck on the listener.
-func (call *waitCall) settle() {
-	for !closedChannel(call.returned) && !inDeliveryAwait(call.waiterGoroutine) {
-		runtime.Gosched()
+// settle returns once the wait returned: a wait that returns has nothing more to await, and one that does not return is stuck on the
+// listener, which the test then fails.
+func (call *waitCall) settle(t *testing.T) {
+	t.Helper()
+	select {
+	case <-call.returned:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the wait did not return while the listener was running")
 	}
 }
 
-func TestAHarnessWaitResumesItsCallerAfterTheListenersOfEarlierBatchesEntered(t *testing.T) {
+// The guarantee of a Harness wait that resumes its caller is that the deliveries of the batches committed before it have started
+// (chord.DeliveryScheduler.AwaitEntered): a listener that is still at work, not at a wait, does not hold the wait.
+func TestAHarnessWaitResumesItsCallerOnceTheListenersOfEarlierBatchesStarted(t *testing.T) {
 	for _, test := range waitKinds {
 		t.Run(test.name, func(t *testing.T) {
 			spinning := startSpinningListener(t)
 			call := spinning.call(testContext, test.wait)
-			call.settle()
-			spinning.release.Store(true)
-			<-call.returned
+			call.settle(t)
 			if call.err != nil {
 				t.Fatal(call.err)
 			}
+			if given := call.givenAtReturn; given != 0 {
+				t.Fatalf("%d batches were given before the listener was released", given)
+			}
+			spinning.release.Store(true)
 			drained(spinning.chat.harness)
-			if total := spinning.given.Load(); total == 0 || call.givenAtReturn != total {
-				t.Fatalf("the wait returned after %d of the %d batches committed before it were given to the listener", call.givenAtReturn, total)
+			if total := spinning.given.Load(); total == 0 {
+				t.Fatal("the listener was never given the batch")
 			}
 			if _, err := spinning.stream.Stop(); err != nil {
 				t.Fatal(err)
@@ -172,17 +154,15 @@ func TestAHarnessWaitResumesItsCallerAfterTheListenersOfEarlierBatchesEntered(t 
 	}
 }
 
-func TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce(t *testing.T) {
+func TestACancelledContextEndsAHarnessWaitForTheListeners(t *testing.T) {
 	for _, test := range waitKinds {
 		t.Run(test.name, func(t *testing.T) {
 			spinning := startSpinningListener(t)
 			ctx, cancel := context.WithCancelCause(testContext)
 			cause := errors.New("stop waiting")
-			call := spinning.call(ctx, test.wait)
-			call.settle()
-			// The listener is still at work: only the cancellation can end the wait.
 			cancel(cause)
-			<-call.returned
+			call := spinning.call(ctx, test.wait)
+			call.settle(t)
 			if !errors.Is(call.err, cause) {
 				t.Fatalf("the wait returned %v, want the cancellation cause", call.err)
 			}

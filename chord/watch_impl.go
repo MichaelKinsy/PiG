@@ -148,6 +148,10 @@ func (tracker *pending) awaitEntered(ctx context.Context) error {
 	scheduled := slices.DeleteFunc(slices.Clone(tracker.deliveries), (*delivery).finished)
 	tracker.mu.Unlock()
 	for _, d := range scheduled {
+		// A cancelled ctx ends the wait whether or not the delivery has started.
+		if ctx.Err() != nil {
+			return context.Cause(ctx)
+		}
 		select {
 		case <-d.entered:
 		case <-ctx.Done():
