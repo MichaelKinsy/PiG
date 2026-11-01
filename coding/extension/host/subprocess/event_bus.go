@@ -309,7 +309,7 @@ func (h *Host) migrateEventBus(ctx context.Context, me *managedExt) error {
 			return err
 		}
 		migrated := &busListener{conn: memberConn, realm: result.Realm, handlerID: listener.HandlerID, channel: listener.Channel}
-		// pig additive (D201): a migrated listener is retained and released like one events.on registered (loader.ts:201 trackEventBusSubscription), so a later events.off or invalidate finds its unsubscribe.
+		// A migrated listener is retained and released like one events.on registered (loader.ts:201 trackEventBusSubscription), so a later events.off or invalidate finds its unsubscribe.
 		migrated.untrack = h.providerRuntime.TrackEventBusSubscription(func() { h.removeBusListener(context.WithoutCancel(ctx), migrated) })
 		h.eventBus.add(migrated)
 	}
