@@ -1,4 +1,4 @@
-version = "1.4.0+2c8d1feb"
+version = "1.4.0+b556cfe5"
 
 [[files]]
 path = "packages/agent/src/agent-loop.ts"
@@ -23,10 +23,10 @@ rationale = "`(not needed: no TS proxy)`. Delta at Pi d0aa218c: f715a15c1 moves 
 
 [[files]]
 path = "packages/agent/src/types.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`agent/types.go + agent/agent.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = ""
 
 [[files]]
 path = "packages/ai/src/api/anthropic-messages.ts"
@@ -464,10 +464,10 @@ rationale = "observeModelRequest starts its span with `void start(...)`: nobody 
 
 [[files]]
 path = "packages/ai/src/types.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ported, but the per-file cross-language ordering/cancellation/error contract has not been reviewed for this pin, as for its sibling rows. Delta at Pi bd3c9b82: adc5fa9f adds the StreamOptions.identity member; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 7f225f25: adds ClassifierModel.compat; no added or removed line contains async, await, Promise or .then, so the delta adds no async contract to review. Pi 14c811841 rewords one comment; no async code changes."
+rationale = ""
 
 [[files]]
 path = "packages/ai/src/utils/abort.ts"
@@ -506,10 +506,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/prov
 
 [[files]]
 path = "packages/chord/src/cell.ts"
-disposition = "translated"
-contracts = ["awaited", "concurrent-joined"]
-evidence = ["test:chord/host/hydration_upstream_test.go#TestHydrationAnObjectThatForwardsAndDerivesFromARemoteMemberGoesLiveWithItsValue", "test:chord/host/hydration_upstream_test.go#TestHydrationAReferenceCycleAcrossHostsFailsAtReadyTimeoutWithACycleHint", "test:chord/replicated_state_upstream_test.go#TestTransactionalReplicatedState", "test:chord/host/awaiting_upstream_test.go#TestAwaitingCtxGetResolvesHydratedTheCallsReferenceIsReleasedWhenTheCallEnds"]
-rationale = "The async surface is Hydration.whenHydrated: a derived value over unhydrated remote members resolves with Promise.all of its sources' whenHydrated promises (so it resolves once every source has its snapshot and rejects as soon as one source ends first). cell.change and derive callbacks must be synchronous: a returned Promise throws TypeError('cell.change callbacks must be synchronous' / 'derive <key>: fn must be synchronous'). Go chord/host/cell.go declares Hydration.WhenHydrated as a *Promise[struct{}] on the host loop and joins the sources' promises (cell.go:711-715); the synchronous-callback guards have no Go form because a Go callback returns an error or a value, never a promise (the PromiseLike case of replicated-state.test.ts is recorded designed-out in the reviewed test mapping). The hydration tests pin the join (a derivation over a remote member goes live with its value, a reference cycle fails at readyTimeout with a cycle hint) and the awaiting test pins Ctx.get resolving once hydrated."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/chord/src/cluster.ts"
@@ -534,10 +534,10 @@ rationale = "A chord Context's abort signal is Go context cancellation, with the
 
 [[files]]
 path = "packages/chord/src/contract.ts"
-disposition = "no-runtime-async"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "No async function or Promise-producing code in the pinned source: the only Promise mentions are the type aliases Returned<R> (a handler returns the value or a Promise of it) and the typed method signatures that wrap results in Promise<Resolved<R>>; everything else (checkHeader and the contract builders) is synchronous. The behavior that awaits handlers is in host.ts and object.ts; the Go contract declarations are in chord/host/contract.go with blocking handlers."
+rationale = ""
 
 [[files]]
 path = "packages/chord/src/declare.ts"
@@ -555,10 +555,10 @@ rationale = "runAll awaits each step in order inside try/catch, keeps going afte
 
 [[files]]
 path = "packages/chord/src/host.ts"
-disposition = "translated"
-contracts = ["awaited", "cancellable", "concurrent-joined", "detached-owned"]
-evidence = ["test:chord/host/host_upstream_test.go#TestHostCoalescesConcurrentGetsAndKeepsTheObjectWhileHeld", "test:chord/host/host_upstream_test.go#TestHostForcedDisposalMakesRefsGoneAndAbortsInFlightCalls", "test:chord/host/host_upstream_test.go#TestHostClosesResourcesInReverseOrderRunsAllStepsAndAggregatesErrors", "test:chord/host/close_late_object_test.go#TestCloseDisposesAnObjectCreatedAfterItsSnapshot", "test:chord/host/host_test.go#TestRootSignal", "test:chord/host/host_test.go#TestInvalidatePrincipalPropagatesPatterns", "test:chord/host/host_test.go#TestResolveRouteAuthorization", "test:chord/host/awaiting_upstream_test.go#TestAwaitingAnAbortedGetRejectsAndReleasesOnlyItsReferenceTheBindingStaysForTheOthers", "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadAFailingVoteAbortsEveryHostTheErrorKeepsItsCodeAndNamesTheHost"]
-rationale = "Async uses in host.ts. load (:406-410) resolves the plugins, then installs every facet through one Promise.all without an await between installs (a host object's factory may consume a type a later facet serves); install returns the host objects' ready promise unless awaitHostObjects is false. Go Load installs in order on the loop and joins the readiness (TestLoadInstallsInOrder, TestHostCoalescesConcurrentGetsAndKeepsTheObjectWhileHeld). root/joinRoot (:612-660) run fn in a root whose signal is the caller's signal plus the code version's retirement and release the root in finally; TestRootSignal and TestCrossHostReloadForcedRetirementCancels... (connection row) prove both abort sources reach fn. get (:901-910) awaits awaitReady with the caller's signal and the readyTimeout: TestAwaitingAnAbortedGetRejectsAndReleasesOnlyItsReferenceTheBindingStaysForTheOthers pins abort rejection and release. invalidatePrincipal (:915-935) closes connections, then disposeHoldersFirst disposes holders in waves with Promise.allSettled and reports failures: TestInvalidatePrincipalPropagatesPatterns and TestHostForcedDisposalMakesRefsGoneAndAbortsInFlightCalls. #resolve/relay (:1140-1185) re-check authorization after every await (authorize, route.resolve, authorize, whenSynced) and refuse with the same error when the origin's generation moved: TestResolveRouteAuthorization and TestLinksReview2 (connection row). close (:1231-1270) disposes holders first and then the rest, in waves, aggregating failures; TestHostClosesResourcesInReverseOrderRunsAllStepsAndAggregatesErrors pins the order and the aggregate, TestCloseDisposesAnObjectCreatedAfterItsSnapshot that an object created while closing is still disposed. reload (:1187) delegates to runReload (reload.ts row); a vote that rejects aborts every participant: TestCrossHostReloadAFailingVoteAbortsEveryHostTheErrorKeepsItsCodeAndNamesTheHost. Go goTask/run own the goroutines the promise continuations became; closing the host joins them."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/chord/src/link.ts"
@@ -709,17 +709,17 @@ rationale = "Promise appears only in the type of a method's call signature (acce
 
 [[files]]
 path = "packages/chord/src/next/contracts/contract.ts"
-disposition = "no-runtime-async"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "Promise appears only in declared member types (contract.ts:83, 85, 92-93: get/watch and method call signatures of the contract's handle). The Go contract handles are data (*Contract holds its ContractData); the callable shapes are the host and remote lanes' blocking calls over context.Context. Delta at Pi 6d4b7443: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+rationale = ""
 
 [[files]]
 path = "packages/chord/src/next/data/args.ts"
-disposition = "no-runtime-async"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "Promise appears only in the declared type of a provided call (args.ts:31, 64, 75: `call: (args, context) => Promise<Value>`). Go's Provider call is a blocking function over context.Context (chord/next/data/args.go); CheckArgs and BindProvider are synchronous. Delta at Pi 6d4b7443: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+rationale = ""
 
 [[files]]
 path = "packages/chord/src/next/documents/documents.ts"
@@ -929,7 +929,7 @@ path = "packages/chord/src/next/remote/consumer.ts"
 disposition = "translated"
 contracts = ["awaited", "cancellable", "microtask-ordering"]
 evidence = ["test:chord/next/host/remote_consumer_test.go#TestConsumerReferencesOverALink", "test:chord/next/host/remote_consumer_test.go#TestConsumerCallWindow", "test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart"]
-rationale = "consumer.ts call (Promise.withResolvers, signal.addEventListener(\"abort\", cancel, {once}), signal.throwIfAborted()): `parkedCallResult` (settled once); `context.AfterFunc(ctx, \u2026)` whose callback enters `Loop.Run` and takes the call out of the window; an aborted context is rejected with `context.Cause` before anything is queued. | consumer.ts message(): void \\| Promise<void>, #reply: `(*link.Handling, error)`; a result with a deflated part is handled again after its inflate. (lane D5a) Delta at Pi 6d4b7443: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+rationale = "consumer.ts call (Promise.withResolvers, signal.addEventListener(\"abort\", cancel, {once}), signal.throwIfAborted()): `parkedCallResult` (settled once); `context.AfterFunc(ctx, …)` whose callback enters `Loop.Run` and takes the call out of the window; an aborted context is rejected with `context.Cause` before anything is queued. | consumer.ts message(): void \\| Promise<void>, #reply: `(*link.Handling, error)`; a result with a deflated part is handled again after its inflate. (lane D5a) Delta at Pi 6d4b7443: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
 
 [[files]]
 path = "packages/chord/src/next/remote/hold.ts"
@@ -1087,10 +1087,10 @@ rationale = "`Stage*`/`Apply*` run inside the commit step on its goroutine, stat
 
 [[files]]
 path = "packages/chord/src/object.ts"
-disposition = "translated"
-contracts = ["awaited", "cancellable", "concurrent-joined", "detached-owned"]
-evidence = ["test:chord/host/object_unit_test.go#TestObjectRaceSignal", "test:chord/host/object_unit_test.go#TestObjectResourceOpenAfterAbortClosesTheValue", "test:chord/host/object_open_order_test.go#TestResourcesCloseInReverseCompletionOrder", "test:chord/host/object_dispose_order_test.go#TestObjectCallDisposesTheIdleCalleeBeforeReleasingTheCallsRefs", "test:chord/host/host_upstream_test.go#TestHostDisposesAnAbandonedActivationOnceItSettles", "test:chord/host/host_upstream_test.go#TestHostForcedDisposalMakesRefsGoneAndAbortsInFlightCalls", "test:chord/host/awaiting_upstream_test.go#TestAwaitingAGetTimesOutAfterReadyTimeoutWithReadyTimeoutAndReleasesItsHold", "test:chord/host/hydration_upstream_test.go#TestHydrationAReferenceCycleAcrossHostsFailsAtReadyTimeoutWithACycleHint", "test:chord/host/reload_upstream_test.go#TestReloadATaskThatIgnoresItsAbortDelaysItsReplacementAtMostTaskStopDeadlineReported"]
-rationale = "Async uses in object.ts. ResourceImpl.open (:243-262) awaits spec.open and, when the signal aborted meanwhile, closes the opened value and rejects: TestObjectResourceOpenAfterAbortClosesTheValue. ResourceImpl.close and the open order (:263-270, 1194-1222) close resources in reverse completion order after their dependencies' ready: TestResourcesCloseInReverseCompletionOrder. raceSignal and awaitReady (:517-553) race a promise against abort and the ready timeout and clear the timer; TestObjectRaceSignal pins the abort case, TestAwaitingAGetTimesOutAfterReadyTimeoutWithReadyTimeoutAndReleasesItsHold the timeout and TestHydrationAReferenceCycleAcrossHostsFailsAtReadyTimeoutWithACycleHint the hydration wait (waitHydrated/withinReadyTimeout :1223-1262). #activate (:1095-1160) awaits the previous activation, opens resources, waits for hydration and initializes cells, and on failure waits out invocations and unwinds: TestHostDisposesAnAbandonedActivationOnceItSettles. Listener and task invocations (:1420-1510, 1618) are detached owned work tracked in #invocations/#stopped; a task that ignores its abort delays the replacement at most the stop deadline and the miss is reported: TestReloadATaskThatIgnoresItsAbortDelaysItsReplacementAtMostTaskStopDeadlineReported. call (:1555-1610) waits for a loading ref raced against the ctx signal and runs the method as an invocation; #dispose (:1681-1720) waits out the activation, joins the invocations and runs the close steps in order: TestHostForcedDisposalMakesRefsGoneAndAbortsInFlightCalls and TestObjectCallDisposesTheIdleCalleeBeforeReleasingTheCallsRefs. Go ObjectImpl keeps the same sequences with goroutines that the object joins before dispose returns."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/chord/src/output.ts"
@@ -1108,10 +1108,10 @@ rationale = "Async uses in reload.ts. runReload/beginReload (:119-158) resolve t
 
 [[files]]
 path = "packages/chord/src/remote.ts"
-disposition = "translated"
-contracts = ["awaited", "cancellable", "detached-owned"]
-evidence = ["test:chord/host/object_unit_test.go#TestObjectRaceSignal", "test:chord/host/awaiting_upstream_test.go#TestAwaitingAGetTimesOutAfterReadyTimeoutWithReadyTimeoutAndReleasesItsHold", "test:chord/host/bindings_upstream_test.go#TestBindingsLingerAKeepsItsHoldAndStateAReferenceTakenMeanwhileCostsNothingOnTheLink", "test:chord/host/requests_upstream_test.go#TestRequests8AHeldRemoteReferenceKeepsItsStateWithoutListeners", "test:chord/host/review_upstream_test.go#TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling", "test:chord/host/hydration_upstream_test.go#TestHydrationAReferenceCycleAcrossHostsFailsAtReadyTimeoutWithACycleHint", "test:chord/host/connection_call_cancel_test.go#TestConnectionCallCancelSendsCancelRejectsAndIgnoresTheLateResult"]
-rationale = "Async uses in remote.ts. whenHydrated (:214-218) resolves at once when hydrated, rejects with the terminal error once the binding ended and otherwise parks a waiter that hydration or the end settles: TestHydrationAReferenceCycleAcrossHostsFailsAtReadyTimeoutWithACycleHint (a never-hydrating ref fails at the ready timeout) and TestHydrationOverALinkNullEmptyAndUndefinedValuesHydrateAStateFreeVariantIsReadyAFailedSnapshotRejects (bindings_upstream_test.go). RemoteBinding.call (:335-380) loops: it throws the terminal error once ended, waits for the binding to be live raced against the ctx signal (raceSignal) while it re-holds, then calls over the hold; an abort during the wait rejects (TestObjectRaceSignal) and an abort during the call sends cancel (TestConnectionCallCancelSendsCancelRejectsAndIgnoresTheLateResult). The linger timer (:100, host.ts:1059) keeps a released binding's hold for a while and is cleared by a new get or the cap: TestBindingsLingerAKeepsItsHoldAndStateAReferenceTakenMeanwhileCostsNothingOnTheLink. The reference class (:489-658) exposes ready and per-member callers that return rejected promises for a foreign ctx or an ended binding rather than throwing: TestReviewARemoteReferenceRefusesAForeignCtxAndACtxNotMadeByChordWithoutCalling; a held reference keeps its state without listeners (TestRequests8AHeldRemoteReferenceKeepsItsStateWithoutListeners). The ready timeout releases the hold (TestAwaitingAGetTimesOutAfterReadyTimeoutWithReadyTimeoutAndReleasesItsHold). Go RemoteBinding blocks the calling goroutine in the same places and the loop goroutine settles the waiters."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/chord/src/sqlite/cloudflare.ts"
@@ -1409,10 +1409,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/loader.ts"
-disposition = "deferred"
-contracts = ["awaited"]
-evidence = ["test:coding/extension/host/subprocess/upstream_factory_failure_test.go", "test:coding/extension/host/subprocess/upstream_factory_transactions_test.go", "scenario:test/parity/scenarios/extensions-runtime/56-failed-factory-api.toml"]
-rationale = "Partial review: the Node loader awaits the factory before registration, discards its loading subscriptions on rejection, and makes retained ExtensionAPI methods throw the failed-extension error synchronously before effects, including methods that otherwise return Promises. Shared-cell siblings retain their APIs. Failed factory flag/provider changes stay unpublished; concurrently successful direct loads are preserved rather than rolled back globally. No new task, IPC or cancellation owner is introduced by the guard. Whole-file closure remains deferred for native shared loading, module/factory cache and runner queue/bind obligations. Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/runner.ts"
@@ -1437,10 +1437,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/core/model-config.ts"
-disposition = "translated"
-contracts = ["awaited"]
-evidence = ["test:internal/codingagent/settings_test.go#TestModelRegistryReadError", "test:internal/codingagent/settings_file_diagnostics_test.go#TestModelsJSONParseErrorsMatchPi", "test:internal/codingagent/config_schemas_runtime_upstream_test.go#TestConfigSchemasValidateSchemaInModelsJSONAtRuntime", "test:internal/codingagent/model_registry_test.go#TestModelRegistry_RefreshReloadsModelsJSON"]
-rationale = "ModelConfig.load awaits a single readFile and never rejects: a missing file (ENOENT) is an empty config, any other read error, a parse error and a schema error become the config's error string (Failed to load / Failed to parse models.json, Invalid models.json schema, each followed by the file path). Go reads the file synchronously in ModelRegistry.readConfig (internal/codingagent/model_registry.go:481) with the same three outcomes, and every caller waits for the result, so no ordering is observable beyond Pi's await. TestModelRegistryReadError pins the read-error text, TestModelsJSONParseErrorsMatchPi the parse errors against Pi's own loader, TestConfigSchemasValidateSchemaInModelsJSONAtRuntime the schema errors, and TestModelRegistry_RefreshReloadsModelsJSON that a refresh re-reads the file."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/model-registry.ts"
@@ -1496,7 +1496,7 @@ path = "packages/coding-agent/src/core/project-trust.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file \u2705 ported (`coding/cli/project_trust.go + internal/codingagent/trust_manager.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/cli/project_trust.go + internal/codingagent/trust_manager.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/core/provider-composer.ts"
@@ -1517,7 +1517,7 @@ path = "packages/coding-agent/src/core/resource-loader.ts"
 disposition = "deferred"
 contracts = []
 evidence = ["test:coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderWarnsAndKeepsLoadingWhenAConfiguredPackageCannotBeInstalled", "test:coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderPointsTemporaryExtensionSourcesAtTheSource", "test:coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderPointsProjectPackagesAtRemoveLocal", "test:coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderWarnsOnceAboutAFailingInstallWhenProjectTrustIsResolved"]
-rationale = "async/Promise source; PORT_MAP marks this file \u2705 ported (`coding/packagecontent/packagecontent.go + internal/codingagent/resources.go + coding/cli/configured_resources.go + internal/codingagent/prompt_templates.go + internal/codingagent/skills.go + coding/cli/config_command.go + coding/cli/reload_resources.go + coding/cli/resource_source_info.go + internal/codingagent/interactive.go + internal/codingagent/reload_resources.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Pi 6dfb54678 awaits resolve() and resolveExtensionSources() as before and adds only the synchronous formatting of their installFailures into warnings merged into the final extension set; the rest of the file stays deferred. Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/packagecontent/packagecontent.go + internal/codingagent/resources.go + coding/cli/configured_resources.go + internal/codingagent/prompt_templates.go + internal/codingagent/skills.go + coding/cli/config_command.go + coding/cli/reload_resources.go + coding/cli/resource_source_info.go + internal/codingagent/interactive.go + internal/codingagent/reload_resources.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Pi 6dfb54678 awaits resolve() and resolveExtensionSources() as before and adds only the synchronous formatting of their installFailures into warnings merged into the final extension set; the rest of the file stays deferred. Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/core/runtime-credentials.ts"
@@ -1538,7 +1538,7 @@ path = "packages/coding-agent/src/core/session-manager.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file \u2705 ported (`internal/codingagent/session_manager.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/session_manager.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/core/settings-manager.ts"
@@ -1549,10 +1549,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/bash.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/bash.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/edit-diff.ts"
@@ -1563,10 +1563,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/edit.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file \u2705 ported (`internal/codingagent/tools/edit.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 6d4b7443: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/file-mutation-queue.ts"
@@ -1577,24 +1577,24 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/find.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/find.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/grep.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/grep.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi fecc19e4: the changed line is the LF-only line split of the content that the awaited ops.readFile returned; no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/ls.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/ls.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/output-accumulator.ts"
@@ -1612,10 +1612,10 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`interna
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/read.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/read.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/renderers/edit.ts"
@@ -1626,24 +1626,24 @@ rationale = "PORT_MAP marks this file 🟡 partial: `partial: tui/tool_execution
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/tool-definition-wrapper.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/extension_bridge.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/write.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/write.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/core/trust-manager.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file \u2705 ported (`internal/codingagent/trust_manager.go (unit-tested + project-trust/01 behavioral scenario covers it)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/trust_manager.go (unit-tested + project-trust/01 behavioral scenario covers it)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/core/virtual-models.ts"
@@ -1661,10 +1661,10 @@ rationale = "Pi 885a564b (#11184): executeCodemode awaits reserveCodemodeWorker 
 
 [[files]]
 path = "packages/coding-agent/src/extensions/codemode/tool.ts"
-disposition = "deferred"
+disposition = "pending"
 contracts = []
 evidence = []
-rationale = "async/Promise source new in 0.99.1; PORT_MAP status ⬜ ((not started: codemode runs Pi's own extension code in the Node extension runtime, D-B)); no per-file ordering, cancellation and error contract has been reviewed yet, and no evidence is claimed. Review with the owning family before marking translated. Re-confirmed at Pi e7a0df27: the only async-matching line of the delta is a description string literal (await describeTool(...)), not async code."
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/extensions/llama/client.ts"
@@ -1755,7 +1755,7 @@ path = "packages/coding-agent/src/extensions/tool-search/tool.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source new in 0.99.1; PORT_MAP status \u2b1c ((not started: tool-search runs Pi's own extension code in the Node extension runtime, D-B)); no per-file ordering, cancellation and error contract has been reviewed yet, and no evidence is claimed. Review with the owning family before marking translated. Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+rationale = "async/Promise source new in 0.99.1; PORT_MAP status ⬜ ((not started: tool-search runs Pi's own extension code in the Node extension runtime, D-B)); no per-file ordering, cancellation and error contract has been reviewed yet, and no evidence is claimed. Review with the owning family before marking translated. Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/main.ts"
@@ -1804,7 +1804,7 @@ path = "packages/coding-agent/src/modes/interactive/components/extension-editor.
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file \u2705 ported (`tui/text_input.go + internal/codingagent/session_selectors.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/text_input.go + internal/codingagent/session_selectors.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/login-dialog.ts"
@@ -1832,14 +1832,14 @@ path = "packages/coding-agent/src/modes/interactive/components/session-selector.
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file \u2705 ported (`internal/codingagent/session_selector.go + session_selectors.go + interactive.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands. Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/session_selector.go + session_selectors.go + interactive.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Re-confirmed at Pi e7a0df27: the delta since b3a29f11 changes no line that mentions async, await, Promise, then/catch/finally, timers, signals or AbortSignal, so the contract stands. Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/external-editor.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file \u2705 ported (`ported+wired: OpenExternalEditor (internal/codingagent/external_editor.go) called interactive.go:7452, unit-tested`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 6454d07e: the exit Promise now resolves a signal name as well as a code; Go's cmd.Run returns the exit status or signal in one blocking call (internal/codingagent/external_editor.go), reported through TestOpenExternalEditorReportsFailures."
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ported+wired: OpenExternalEditor (internal/codingagent/external_editor.go) called interactive.go:7452, unit-tested`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 6454d07e: the exit Promise now resolves a signal name as well as a code; Go's cmd.Run returns the exit status or signal in one blocking call (internal/codingagent/external_editor.go), reported through TestOpenExternalEditorReportsFailures."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
@@ -1923,7 +1923,7 @@ path = "packages/coding-agent/src/utils/clipboard-command.ts"
 disposition = "deferred"
 contracts = []
 evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file \u2705 ported (`internal/codingagent/clipboard_copy.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/clipboard_copy.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators' Delta at Pi 2c8d1feb: no added or removed line contains async, await, Promise or .then, so the reviewed contract is unchanged."
 
 [[files]]
 path = "packages/coding-agent/src/utils/clipboard-image.ts"
@@ -2011,10 +2011,10 @@ rationale = "The Session-owned retry loop blocks in sleepContext until the timer
 
 [[files]]
 path = "packages/coding-agent/src/utils/syntax-highlight.ts"
-disposition = "translated"
-contracts = ["detached-owned", "ui-handoff"]
-evidence = ["test:internal/codingagent/highlight_languages_load_test.go#TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop", "test:internal/codingagent/highlight_languages_load_test.go#TestLoadRemainingHighlightLanguagesSkipsTheRepaintAfterStop", "test:tui/syntax_highlight_upstream_test.go#TestSyntaxHighlightRendererUpstream"]
-rationale = "loadAllHighlightLanguages memoizes one Promise that, after setImmediate, imports highlight.js/lib/index.js and resolves on success or failure, so the eager languages stay available either way; interactive-mode.ts init calls it unawaited after renderNow and, once it resolves and the mode is still initialized, invalidates and requests a render. Go links every grammar, so LoadAllHighlightLanguages is a sync.Once that registers them under the registry's lock and drops the memoized highlights; the interactive mode runs it on a background task owned by the mode's lifetime (joined at exit) and posts the invalidate and render to the owner loop, which a stopped mode never runs. Highlights requested meanwhile use the eager languages, as in Pi."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/coding-agent/src/utils/tool-result-images.ts"
@@ -2060,10 +2060,10 @@ rationale = "The module builds the code mode tool description and the `codemode`
 
 [[files]]
 path = "packages/durable/src/codemode/models.ts"
-disposition = "translated"
-contracts = ["awaited", "cancellable"]
-evidence = ["test:durable/codemode/models_test.go#TestCodeModeModels"]
-rationale = "catalogCall awaits models.getAvailableOfType with the call's abort signal (getModelsOfType and getModelOfType are synchronous), and the internal classify and generateImages tools await api.models.classify()/generateImages() with the tool's abort signal and resolve a failed model call with its result. Go's catalogCall and the model tools (durable/codemode/models.go) call the Models methods with the call's context, which the code mode call cancels when the script ends; MAX_CONCURRENT_MODEL_CALLS (4) bounds them through the slots of codemode.ts's row."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/codemode/output.ts"
@@ -2431,17 +2431,17 @@ rationale = ""
 
 [[files]]
 path = "packages/durable/src/tools/bash.ts"
-disposition = "translated"
-contracts = ["awaited", "cancellable"]
-evidence = ["test:durable/harness/tool_structured_bash_test.go#TestCallersOfBashGetItsRetainedOutputAndExitCodeAlsoForANonzeroExit", "test:durable/tools/tools_test.go#TestBashAnswersANonzeroExitWithAnErrorResultAndTimeoutsThrow"]
-rationale = "The command runs as one blocking call on the tool's context: cancelling it stops the command, output streams to the api as it arrives, and the returned result carries the exit code and structured output where the TypeScript awaits runCommand."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/tools/edit.ts"
-disposition = "translated"
-contracts = ["awaited", "cancellable"]
-evidence = ["test:durable/tools/tools_test.go#TestEditKeepsTheMutationQueueLockedUntilAnAbortedEditWriteSettles"]
-rationale = "The edit awaits the per-file mutation queue and the read and write of the file as blocking calls; an aborted write keeps the queue locked until the write settles."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/tools/file-mutation-queue.ts"
@@ -2480,10 +2480,10 @@ rationale = ""
 
 [[files]]
 path = "packages/durable/src/tools/write.ts"
-disposition = "translated"
-contracts = ["awaited", "cancellable"]
-evidence = ["test:durable/tools/tools_test.go#TestWriteKeepsTheMutationQueueLockedUntilAnAbortedWriteSettles"]
-rationale = "The write awaits the per-file mutation queue and the file write as blocking calls; an aborted write keeps the queue locked until the write settles."
+disposition = "pending"
+contracts = []
+evidence = []
+rationale = ""
 
 [[files]]
 path = "packages/durable/src/types.ts"
