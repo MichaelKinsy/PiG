@@ -26,6 +26,8 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl/node"
+	"github.com/MichaelKinsy/PiG/internal/entered"
+	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
 var testContext = context.Background()
@@ -1130,10 +1132,16 @@ func TestJsonlStoragePoisonsWhenAnAppendFailsAfterItsBatchesApplied(t *testing.T
 	// Started while the batches are in memory and the append waits.
 	<-fileSystem.entered
 	read := make(chan error, 1)
-	go func() {
+	awaitReader := entered.Go(func() {
 		_, err := storage.Conversation(testContext, conversationId)
 		read <- err
-	}()
+	})
+	awaitReader()
+	select {
+	case err := <-read:
+		t.Fatalf("a read started while the append is held returned %v, want it to wait", err)
+	default:
+	}
 	close(fileSystem.gate)
 	expectError(t, <-committed, "poisoned")
 	expectError(t, <-read, "poisoned")
@@ -1196,15 +1204,30 @@ func TestJsonlStorageBatches(t *testing.T) {
 			committed <- commitOutcome{result, err}
 		}()
 		<-fileSystem.entered
-		read := make(chan *durable.EntryAt, 1)
-		go func() { read <- must(storage.Entry(testContext, entries[2])) }()
+		type readOutcome struct {
+			entry *durable.EntryAt
+			err   error
+		}
+		read := make(chan readOutcome, 1)
+		awaitReader := entered.Go(func() {
+			entry, err := storage.Entry(testContext, entries[2])
+			read <- readOutcome{entry, err}
+		})
+		awaitReader()
+		select {
+		case early := <-read:
+			t.Fatalf("a read started while the append is held returned %+v, want it to wait", early)
+		default:
+		}
 		close(fileSystem.gate)
 		outcome := <-committed
 		mustDo(t, outcome.err)
 		if outcome.result.Stored != 3 || outcome.result.Refused != nil {
 			t.Fatalf("result = %+v, want 3 stored", outcome.result)
 		}
-		if <-read == nil {
+		got := <-read
+		mustDo(t, got.err)
+		if got.entry == nil {
 			t.Fatal("the read started during the append did not see the last batch")
 		}
 		main := string(must(os.ReadFile(mainPath)))
@@ -1234,5 +1257,52 @@ func TestJsonlStorageBatches(t *testing.T) {
 		}
 		again := open(t, directory)
 		expectEqual(t, must(again.Document(testContext, documentId, durable.CurrentPoint)).Value, map[string]any{"n": 9})
+	})
+
+	t.Run("Close waits for a commit in progress instead of closing the memory between its batches", func(t *testing.T) {
+		directory := tempDirectory(t)
+		fileSystem := &gatedAppendFileSystem{
+			NodeFileSystem: &node.NodeFileSystem{Cwd: directory}, entered: make(chan struct{}), gate: make(chan struct{}),
+		}
+		storage := openStorage(t, directory, fileSystem, jsonl.JsonlStorageOptions{})
+		createRoot(t, storage)
+		entries := []durable.EntryId{mint[durable.EntryId](t, storage), mint[durable.EntryId](t, storage)}
+		var batches [][]durable.StorageWrite
+		for _, id := range entries {
+			batches = append(batches, []durable.StorageWrite{
+				durable.EntryWrite{Value: durable.EntryRecord{Id: id, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "note"}},
+			})
+		}
+		fileSystem.armed.Store(true)
+		type commitOutcome struct {
+			result durable.CommitResult
+			err    error
+		}
+		committed := make(chan commitOutcome, 1)
+		go func() {
+			result, err := storage.Commit(testContext, batches, func(int, durable.Seq) {})
+			committed <- commitOutcome{result, err}
+		}()
+		<-fileSystem.entered
+		closed := make(chan error, 1)
+		ids := make(chan uint64, 1)
+		go func() {
+			ids <- goroutineid.Current()
+			closed <- storage.Close(testContext)
+		}()
+		// Close has returned or waits on the commit.
+		mustDo(t, entered.AwaitBlocked(testContext, <-ids, nil))
+		select {
+		case err := <-closed:
+			t.Fatalf("Close returned %v while a commit was being appended, want it to wait", err)
+		default:
+		}
+		close(fileSystem.gate)
+		outcome := <-committed
+		mustDo(t, outcome.err)
+		if outcome.result.Stored != 2 || outcome.result.Refused != nil {
+			t.Fatalf("result = %+v, want 2 stored", outcome.result)
+		}
+		mustDo(t, <-closed)
 	})
 }

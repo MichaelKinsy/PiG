@@ -198,8 +198,9 @@ func TestStoreStorageClaimsAndClose(t *testing.T) {
 			}
 		}})
 		committed := make(chan error, 1)
+		held := entryWrite(mintID[durable.EntryId](t, made.storage))
 		go func() {
-			_, err := commitWrites(made.storage, entryWrite(mintID[durable.EntryId](t, made.storage)))
+			_, err := commitWrites(made.storage, held)
 			committed <- err
 		}()
 		<-entered

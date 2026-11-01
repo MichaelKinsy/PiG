@@ -79,7 +79,7 @@ func (fileSystem *joinFailingFileSystem) JoinPath(ctx context.Context, parts []s
 	return fileSystem.instrumentedEnv.JoinPath(ctx, parts)
 }
 
-// resolveFile names the failed step: `JSONL path join failed: <file error>` (:827). The batch is applied in memory by
+// resolveFile names the failed step: `JSONL path join failed: <file error>` (storage.ts append, :346). The batch is applied in memory by
 // then, so Pi at 6d4b7443 poisons the storage (commit(): any failure once a batch applied), with that failure as the
 // cause; a reopened storage has no record of the batch.
 func TestJsonlCommitNamesAFailedSidecarPathJoin(t *testing.T) {
