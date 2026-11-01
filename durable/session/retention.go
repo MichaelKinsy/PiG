@@ -307,8 +307,11 @@ func (session *SessionImpl) DocumentCacheSizes() DocumentCacheSizes {
 	return sizes
 }
 
-// touchChanged notes the use of every document a commit changed.
-func (session *SessionImpl) touchChanged(documents []durable.DocumentCommitChange) {
+// refreshChanged notes the use of every document a commit changed, in its publication, while its keys are still unpublished: a
+// sweep that finds the keys gone finds the documents fresh. Upstream's publication is synchronous, so no sweep runs between the
+// removal of the keys and these touches.
+func (session *SessionImpl) refreshChanged(documents []durable.DocumentCommitChange) {
+	addressIds := make([]string, 0, len(documents))
 	for _, change := range documents {
 		var record durable.DocumentRecord
 		switch change := change.(type) {
@@ -319,6 +322,38 @@ func (session *SessionImpl) touchChanged(documents []durable.DocumentCommitChang
 		case durable.DocumentCopyChange:
 			record = change.Record
 		}
-		session.touchDocument(durable.AddressId(durable.DocumentAddress{Kind: record.Kind, Scope: record.Scope, Key: record.Key}))
+		addressIds = append(addressIds, durable.AddressId(durable.DocumentAddress{Kind: record.Kind, Scope: record.Scope, Key: record.Key}))
 	}
+	session.touchDocuments(addressIds)
+}
+
+// touchDocuments is touchDocument for several documents under one hold of the Session mutex, without scheduling an eviction: the
+// unattached cached ones become the newest idle ones.
+func (session *SessionImpl) touchDocuments(addressIds []string) {
+	if len(addressIds) == 0 {
+		return
+	}
+	// The clock and the retention source are host callbacks: they run outside the mutex.
+	now := session.clockNow()
+	retention := session.retention()
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	for _, addressId := range addressIds {
+		cached := session.documents[addressId]
+		if cached == nil || session.cache.attached[cached.Record.Id] > 0 {
+			continue
+		}
+		// A hot document moves to the back at most once per granule, as touchDocument's.
+		if element, ok := session.cache.idle[addressId]; ok && now-element.Value.(*idleDocument).since < math.Min(1_000, retention/10) {
+			continue
+		}
+		session.cache.removeIdle(addressId)
+		session.cache.idle[addressId] = session.cache.idleOrder.PushBack(&idleDocument{addressId: addressId, since: now})
+	}
+}
+
+// scheduleSweepNow schedules the eviction of the oldest idle document with no unpublished change, once: it runs after a
+// publication's keys left, so what the publication touched is seen by the sweep, and a burst arms at most one sweep.
+func (session *SessionImpl) scheduleSweepNow() {
+	session.scheduleDocumentSweep(session.clockNow(), session.retention())
 }
