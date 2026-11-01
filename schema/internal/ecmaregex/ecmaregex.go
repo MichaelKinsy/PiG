@@ -70,8 +70,7 @@ func compile(source string, unicode bool) (*Regexp, error) {
 
 // withSource completes the message of a syntax error with the pattern and the flags V8 prints in it.
 func withSource(err error, source, flags string) error {
-	var syntax *syntaxError
-	if errors.As(err, &syntax) {
+	if syntax, ok := errors.AsType[*syntaxError](err); ok {
 		syntax.source, syntax.flags = source, flags
 	}
 	return err
