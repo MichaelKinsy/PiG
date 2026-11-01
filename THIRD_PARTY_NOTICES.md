@@ -365,12 +365,38 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 ## TypeBox 1.3.27
 
-The Node extension runtime serves TypeBox for the `typebox`, `typebox/value`, `typebox/compile`, and `@sinclair/typebox*` specifiers, as Pi does. `coding/extension/host/subprocess/runtime-node/shims/typebox*.mjs` are an esbuild bundle of the npm package `typebox@1.3.27` (integrity `sha512-zu+jc1pcy4UiNThxikUr36f0Rybk9PEeCg/NE6adeWr/SKsdNO4EzZHYRDlv2YCVAfj3Odq3dESSo/jNyoBXzA==`), produced by `automation/gen/vendor-typebox.sh`.
+The Node extension runtime serves TypeBox for the `typebox`, `typebox/value`, `typebox/compile`, and `@sinclair/typebox*` specifiers, as Pi does. `coding/extension/host/subprocess/runtime-node/shims/typebox*.mjs` are an esbuild bundle of the npm package `typebox@1.3.27` (integrity `sha512-zu+jc1pcy4UiNThxikUr36f0Rybk9PEeCg/NE6adeWr/SKsdNO4EzZHYRDlv2YCVAfj3Odq3dESSo/jNyoBXzA==`), produced by `automation/gen/vendor-typebox.sh`. The format checks of `schema/formats` (`schema/formats/typebox_*.go` and `schema/formats/internal/idna`) are Go translations of the format checks Pi's `packages/schema` adapted from TypeBox 1.3.27.
 
 ```text
 The MIT License (MIT)
 
 Copyright (c) 2017-2026 Haydn Paterson
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+## JSON-Schema-Test-Suite
+
+`schema/testdata/json-schema-test-suite` is the vendored test suite of the JSON Schema organization (https://github.com/json-schema-org/JSON-Schema-Test-Suite), as Pi's `packages/schema` vendors it; its `LICENSE` is in that directory. `schema/testdata/meta-schemas` holds the official JSON Schema meta-schemas for drafts 7 and 2020-12, published by the JSON Schema organization under AFL-3.0 or BSD-3-Clause; PiG elects BSD-3-Clause.
+
+```text
+Copyright (c) 2012 Julian Berman
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
