@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
-	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // Pi b9e3eef6 (#11495): tools that stay active keep their current order and newly active tools are appended in the requested order.

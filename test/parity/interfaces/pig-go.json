@@ -314408,6 +314408,17 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#AltScreenFrame.IsFollowingOutput",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "AltScreenFrame.IsFollowingOutput",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#AltScreenFrame.RemoveChild",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "AltScreenFrame.RemoveChild",
@@ -314422,6 +314433,39 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#AltScreenFrame.ResetTextSelection",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "AltScreenFrame.ResetTextSelection",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#AltScreenFrame.ScrollBy",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "AltScreenFrame.ScrollBy",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(lines int)"
+      },
+      "shapeHash": "sha256:1876523c3e37f84577b2ea86ae514ae534b4068c0ee9252175351d8b4fb9fd94"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#AltScreenFrame.ScrollToBottom",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "AltScreenFrame.ScrollToBottom",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#AltScreenFrame.ScrollToTop",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "AltScreenFrame.ScrollToTop",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -314494,6 +314538,17 @@
         "type": "func(enabled bool)"
       },
       "shapeHash": "sha256:2d9901815061331839ab24581706a9a36267c7a1ff0836b5014c0554617bb335"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#AltScreenFrame.ViewportTop",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "AltScreenFrame.ViewportTop",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int"
+      },
+      "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#AltScreenSearchComponent",

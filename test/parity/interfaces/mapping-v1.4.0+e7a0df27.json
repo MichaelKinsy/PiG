@@ -294632,6 +294632,7 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.IsFollowingOutput"
       ],
       "evidence": [
+        "test:tui/tui_alt_frame_test.go#TestAltScreenFrameReadsAndMovesTheViewportAtOnce",
         "test:tui/tui_alt_screen_test.go#TestAltScreenScrollAndFollow",
         "test:tui/tui_alt_screen_v087_test.go#TestAltScreenPromptJumpsWithKittyAndCtrlArrows"
       ]
@@ -295564,8 +295565,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
+        "test:coding/extension/host/subprocess/tui_alt_frame_calls_test.go#TestTuiAltCallsFromARenderDoNotTakeTheFrameLockAgain",
+        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture"
       ]
     },
     {
@@ -295586,8 +295587,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
+        "test:coding/extension/host/subprocess/tui_alt_frame_calls_test.go#TestTuiAltCallsFromARenderDoNotTakeTheFrameLockAgain",
+        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture"
       ]
     },
     {
@@ -295629,9 +295630,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ViewportTop"
       ],
       "evidence": [
+        "test:tui/tui_alt_frame_test.go#TestAltScreenFrameReadsAndMovesTheViewportAtOnce",
         "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageInAPaddedColoredBoxWhoseFirstLineIsAboveTheViewport",
-        "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageWhosePlaceholderRowsContainText",
-        "test:tui/tui_alt_screen_release_split_test.go#TestAltScreenKittyReleaseNeverScrollsWhateverTheReadSplit"
+        "test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageWhosePlaceholderRowsContainText"
       ]
     },
     {
@@ -295889,7 +295890,7 @@
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
         "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi",
-        "test:tui/tui_input_pipeline_test.go#TestHandleTerminalInputMatchesTheDebugKeyAfterTheInputListeners"
+        "test:coding/extension/host/subprocess/tui_alt_frame_calls_test.go#TestTuiAltCallsFromARenderDoNotTakeTheFrameLockAgain"
       ]
     },
     {
@@ -295911,7 +295912,7 @@
       "evidence": [
         "test:tui/tui_base_members_upstream_test.go#TestViewportTUIInheritedMembers",
         "test:tui/viewport_tui_upstream_test.go#TestTUIInterfaceMembersBehaveLikePi",
-        "test:tui/tui_input_pipeline_test.go#TestHandleTerminalInputMatchesTheDebugKeyAfterTheInputListeners"
+        "test:coding/extension/host/subprocess/tui_alt_frame_calls_test.go#TestTuiAltCallsFromARenderDoNotTakeTheFrameLockAgain"
       ]
     },
     {
@@ -299053,8 +299054,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
+        "test:coding/extension/host/subprocess/tui_alt_frame_calls_test.go#TestTuiAltCallsFromARenderDoNotTakeTheFrameLockAgain",
+        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture"
       ]
     },
     {
@@ -299075,8 +299076,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
+        "test:coding/extension/host/subprocess/tui_alt_frame_calls_test.go#TestTuiAltCallsFromARenderDoNotTakeTheFrameLockAgain",
+        "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture"
       ]
     },
     {

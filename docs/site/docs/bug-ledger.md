@@ -368,6 +368,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-504869b](#bf-504869b) | The MCP client uses JavaScript's `trim()` and `\s` where Pi does: in stdio and Streamable HTTP blank-line and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-504869b-2](#bf-504869b-2) | MCP response headers are read as Node's `fetch` returns them, one Latin-1 character per byte | PiG's own defect | All platforms | 0.5.0 |
 | [BF-504869b-3](#bf-504869b-3) | A JSON-RPC number id is a JavaScript number | PiG's own defect | All platforms | 0.5.0 |
+| [BF-50ed346](#bf-50ed346) | fix: merge fallout of the 0.6.0 merge | PiG's own defect | All platforms | Unreleased |
 | [BF-50f526d](#bf-50f526d) | The Go, Rust and Python SDKs export Pi's `CURRENT_SESSION_VERSION`, `VIRTUAL_MODEL_STATE_ENTRY`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5144418](#bf-5144418) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-51c8f1c](#bf-51c8f1c) | The Rust, Python and Lisp extension SDKs now recognize F1-F12 reported with the Kitty keyboard protocol, as… | PiG's own defect | All platforms | Unreleased |
@@ -1123,6 +1124,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c9fbfcc](#bf-c9fbfcc) | Inline images render in Herdr again: `TERM_PROGRAM=herdr` detects the Kitty graphics protocol, as in Pi 1.2.0 | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ca06a0b](#bf-ca06a0b) | Tool arguments that TypeBox's Convert wraps in an array (an object where the schema asks for an array, such… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ca27ba6](#bf-ca27ba6) | The Go extension SDK accepts a native Provider object with no auth methods, as Pi's `ProviderAuth` (both… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ca41377](#bf-ca41377) | fix(tui): the alt-screen frame serves a render's viewport reads and ends a screen's callbacks at disposal… | PiG's own defect | All platforms | Unreleased |
 | [BF-ca675e0](#bf-ca675e0) | A list item whose text is `[ ] ` or `[x] ` with nothing after the spaces on the line is plain text, not a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cb00273](#bf-cb00273) | OpenRouter's signature-only `reasoning.text` delta for Claude is kept and replayed with its reasoning block… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-cb20ec0](#bf-cb20ec0) | After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from… | PiG's own defect | All platforms | Unreleased |
@@ -3850,7 +3852,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `2d23c915ee` (2026-10-30, #11495)
-- **Tests:** `coding/session_active_tools_order_test.go::TestReorderedActiveToolsDoNotPatchThePrompt`, `coding/session_active_tools_order_test.go::TestSetActiveToolsKeepsActiveOrderAndAppendsNewTools`, `coding/session_provider_prompt_test.go::TestRegisteredToolPromptContributions`, `coding/session_tools_restore_test.go::TestSetActiveToolsByName`
+- **Tests:** `coding/session_active_tools_order_test.go::TestSetActiveToolsKeepsActiveOrderAndAppendsNewTools`, `coding/session_provider_prompt_test.go::TestRegisteredToolPromptContributions`, `coding/session_tools_restore_test.go::TestSetActiveToolsByName`
 - **Release note:** A redundant system prompt update (tools, rules) no longer follows an extension setting the same active tools in a different order, for example a reversed `pi.setActiveTools()` list. Tools that stay active keep their order and newly activated tools are appended. Carried forward from Pi b9e3eef6 (earendil-works/pi#11495), past the 1.4.0+b3a29f11 pin.
 
 ### BF-2d31c33
@@ -6272,6 +6274,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `504869b911` (2026-10-09), `c0020ece56` (2026-10-09)
 - **Tests:** `coding/mcpext/oauth_challenge_latin1_test.go::TestMcpAuthProviderParsesTheChallengeHeaderAsLatin1`, `coding/mcpext/oauth_expire_at_test.go::TestMCPOAuthCredentialStoreSavesATokenExpiryThatOverflowsAsNull`, `durable/env/node/find_bash_trim_test.go::TestFindBashOnPathTrimsTheAnswerLikeJavaScript`, `env/js_trim_test.go::TestAcceptHostKeyStoresTheLineTrimmedLikeJavaScript`, `env/js_trim_test.go::TestCheckDaemonTrimsTheAnswerLikeJavaScript`, `env/js_trim_test.go::TestParseProbeReportsTheAnswerTrimmedLikeJavaScript`, `env/js_trim_test.go::TestSshErrorMessageTrimsTheDiagnosticsLikeJavaScript`, `internal/jsstring/latin1_test.go::TestFromLatin1DecodesEachByteAsOneCodePoint` and 9 more in docs/bug-ledger.json
 - **Release note:** A JSON-RPC number id is a JavaScript number. The unknown-response message renders the id as `String(id)` does, and the id is written as `JSON.stringify` writes it. A request with id `-0` is cancelled by `requestId: 0`.
+
+### BF-50ed346
+
+**fix: merge fallout of the 0.6.0 merge**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix: merge fallout of the 0.6.0 merge
+- **Root cause:** Duplicate bufferConstants import in the Node runtime, the image hook (the pin carries that fix), the duplicate active-tools order test, the SDK tables test's compressed-copy path (.gz tree), the replicated-state test over rustfmt-wrapped signatures, and a D217 row for.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `50ed346524` (2026-10-31)
+- **Tests:** `tui/widthx/sdk_tables_test.go::TestSDKTablesAreCurrent`
 
 ### BF-50f526d
 
@@ -16751,6 +16766,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ca27ba6e1d` (2026-10-09)
 - **Tests:** `ai/anthropic_oauth_test.go::TestAnthropicHistoryToolNames`
 - **Release note:** The Go extension SDK accepts a native Provider object with no auth methods, as Pi's `ProviderAuth` (both `apiKey` and `oauth` optional) allows. It used to panic at load with "Provider requires auth", while the Node, Python and Rust SDKs accepted it.
+
+### BF-ca41377
+
+**fix(tui): the alt-screen frame serves a render's viewport reads and ends a screen's callbacks at disposal…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(tui): the alt-screen frame serves a render's viewport reads and ends a screen's callbacks at disposal (dp/fix/060c-tui-alt-hang,)
+- **Root cause:** The 0.6.0 size-race fix takes t.mu in ViewportTop and Scroll*, which a render calls while the frame goroutine holds it; Shutdown then hangs in disposeTuiAlt.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ca413772f0` (2026-10-31)
+- **Tests:** `coding/extension/host/subprocess/tui_alt_dispose_test.go::TestDisposingAScreenEndsAFrameThatWaitsForAnExtensionThatNeverAnswers`, `coding/extension/host/subprocess/tui_alt_frame_calls_test.go::TestTuiAltCallsFromARenderDoNotTakeTheFrameLockAgain`, `tui/tui_alt_frame_test.go::TestAltScreenFrameReadsAndMovesTheViewportAtOnce`
 
 ### BF-ca675e0
 

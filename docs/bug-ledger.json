@@ -5207,7 +5207,6 @@
         }
       ],
       "tests": [
-        "coding/session_active_tools_order_test.go::TestReorderedActiveToolsDoNotPatchThePrompt",
         "coding/session_active_tools_order_test.go::TestSetActiveToolsKeepsActiveOrderAndAppendsNewTools",
         "coding/session_provider_prompt_test.go::TestRegisteredToolPromptContributions",
         "coding/session_tools_restore_test.go::TestSetActiveToolsByName"
@@ -10383,6 +10382,27 @@
         "mcp/jsonrpc_id_test.go::TestJSONRPCIDStringIsJavaScriptStringOfTheNumber",
         "mcp/oauth/tokens_expire_at_test.go::TestTokensExpireAtThatOverflowsIsKeptInMemoryAndWrittenAsNull",
         "mcp/progress_token_test.go::TestProgressTokenRoutesNotificationsToTheRequestThatCarriesIt"
+      ]
+    },
+    {
+      "id": "BF-50ed346",
+      "title": "fix: merge fallout of the 0.6.0 merge",
+      "symptom": "fix: merge fallout of the 0.6.0 merge",
+      "rootCause": "Duplicate bufferConstants import in the Node runtime, the image hook (the pin carries that fix), the duplicate active-tools order test, the SDK tables test's compressed-copy path (.gz tree), the replicated-state test over rustfmt-wrapped signatures, and a D217 row for.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "50ed346524",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "tui/widthx/sdk_tables_test.go::TestSDKTablesAreCurrent"
       ]
     },
     {
@@ -31811,6 +31831,29 @@
       ],
       "tests": [
         "ai/anthropic_oauth_test.go::TestAnthropicHistoryToolNames"
+      ]
+    },
+    {
+      "id": "BF-ca41377",
+      "title": "fix(tui): the alt-screen frame serves a render's viewport reads and ends a screen's callbacks at disposal…",
+      "symptom": "fix(tui): the alt-screen frame serves a render's viewport reads and ends a screen's callbacks at disposal (dp/fix/060c-tui-alt-hang,)",
+      "rootCause": "The 0.6.0 size-race fix takes t.mu in ViewportTop and Scroll*, which a render calls while the frame goroutine holds it; Shutdown then hangs in disposeTuiAlt.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ca413772f0",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/tui_alt_dispose_test.go::TestDisposingAScreenEndsAFrameThatWaitsForAnExtensionThatNeverAnswers",
+        "coding/extension/host/subprocess/tui_alt_frame_calls_test.go::TestTuiAltCallsFromARenderDoNotTakeTheFrameLockAgain",
+        "tui/tui_alt_frame_test.go::TestAltScreenFrameReadsAndMovesTheViewportAtOnce"
       ]
     },
     {
