@@ -146,63 +146,7 @@ pkg:durable/storage/store#StoreStorage::property:task	durable	child-gap
 pkg:durable/storage/store#StoreStorage::property:task::call:0	durable	child-gap	
 pkg:durable/testing#commitWrites	durable	no-go-symbol	
 pkg:durable/testing#commitWrites::call:0	durable	child-gap	
-pkg:schema/.#Annotations	schema	no-go-symbol	
-pkg:schema/.#Annotations::property:default	schema	child-gap	
-pkg:schema/.#Annotations::property:deprecated	schema	child-gap	
-pkg:schema/.#Annotations::property:description	schema	child-gap	
-pkg:schema/.#Annotations::property:examples	schema	child-gap	
-pkg:schema/.#Annotations::property:title	schema	child-gap	
 pkg:schema/.#Check	schema	not-exercised	schema/types.go#Check
 pkg:schema/.#Check::call:0	schema	not-exercised	schema/types.go#Check
 pkg:schema/.#FormatCheck	schema	not-exercised	schema/types.go#FormatCheck
 pkg:schema/.#FormatCheck::call:0	schema	not-exercised	schema/types.go#FormatCheck
-pkg:schema/.#LengthBounds	schema	no-go-symbol	
-pkg:schema/.#LengthBounds::property:maxLength	schema	child-gap	
-pkg:schema/.#LengthBounds::property:minLength	schema	child-gap	
-pkg:schema/.#NumberBounds	schema	no-go-symbol	
-pkg:schema/.#NumberBounds::property:exclusiveMaximum	schema	child-gap	
-pkg:schema/.#NumberBounds::property:exclusiveMinimum	schema	child-gap	
-pkg:schema/.#NumberBounds::property:maximum	schema	child-gap	
-pkg:schema/.#NumberBounds::property:minimum	schema	child-gap	
-pkg:schema/.#NumberBounds::property:multipleOf	schema	child-gap	
-pkg:schema/.#Optional	schema	no-go-symbol	
-pkg:schema/.#Optional::construct:0	schema	child-gap	
-pkg:schema/.#Optional::property:%5BSymbol.OPTIONAL_TYPE%5D	schema	child-gap	
-pkg:schema/.#Optional::property:schema	schema	child-gap	
-pkg:schema/.#Properties	schema	type-mismatch	schema/builders.go#Properties
-pkg:schema/.#Schema	schema	type-mismatch	schema/builders.go#Schema
-pkg:schema/.#Static	schema	no-go-symbol	
-pkg:schema/.#Validator	schema	child-gap	schema/validator.go#Validator
-pkg:schema/.#Validator::construct:0	schema	no-go-symbol	schema/validator.go#Validator
-pkg:schema/.#arr	schema	child-gap	schema/builders.go#Arr
-pkg:schema/.#arr::call:0	schema	signature-mismatch	schema/builders.go#Arr
-pkg:schema/.#bool	schema	child-gap	schema/builders.go#Bool
-pkg:schema/.#bool::call:0	schema	signature-mismatch	schema/builders.go#Bool
-pkg:schema/.#bytes	schema	child-gap	schema/builders.go#Bytes
-pkg:schema/.#bytes::call:0	schema	signature-mismatch	schema/builders.go#Bytes
-pkg:schema/.#int	schema	child-gap	schema/builders.go#Int
-pkg:schema/.#int::call:0	schema	signature-mismatch	schema/builders.go#Int
-pkg:schema/.#lit	schema	child-gap	schema/builders.go#Lit
-pkg:schema/.#lit::call:0	schema	signature-mismatch	schema/builders.go#Lit
-pkg:schema/.#map	schema	child-gap	schema/builders.go#Map
-pkg:schema/.#map::call:0	schema	signature-mismatch	schema/builders.go#Map
-pkg:schema/.#nul	schema	child-gap	schema/builders.go#Nul
-pkg:schema/.#nul::call:0	schema	signature-mismatch	schema/builders.go#Nul
-pkg:schema/.#nullable	schema	child-gap	schema/builders.go#Nullable
-pkg:schema/.#nullable::call:0	schema	signature-mismatch	schema/builders.go#Nullable
-pkg:schema/.#num	schema	child-gap	schema/builders.go#Num
-pkg:schema/.#num::call:0	schema	signature-mismatch	schema/builders.go#Num
-pkg:schema/.#obj	schema	child-gap	schema/builders.go#Obj
-pkg:schema/.#obj::call:0	schema	signature-mismatch	schema/builders.go#Obj
-pkg:schema/.#oneOf	schema	child-gap	schema/builders.go#OneOf
-pkg:schema/.#oneOf::call:0	schema	signature-mismatch	schema/builders.go#OneOf
-pkg:schema/.#opt	schema	child-gap	schema/builders.go#Opt
-pkg:schema/.#opt::call:0	schema	signature-mismatch	schema/builders.go#Opt
-pkg:schema/.#str	schema	child-gap	schema/builders.go#Str
-pkg:schema/.#str::call:0	schema	signature-mismatch	schema/builders.go#Str
-pkg:schema/.#tuple	schema	child-gap	schema/builders.go#Tuple
-pkg:schema/.#tuple::call:0	schema	signature-mismatch	schema/builders.go#Tuple
-pkg:schema/.#union	schema	child-gap	schema/builders.go#Union
-pkg:schema/.#union::call:0	schema	signature-mismatch	schema/builders.go#Union
-pkg:schema/.#unknown	schema	child-gap	schema/builders.go#Unknown
-pkg:schema/.#unknown::call:0	schema	signature-mismatch	schema/builders.go#Unknown

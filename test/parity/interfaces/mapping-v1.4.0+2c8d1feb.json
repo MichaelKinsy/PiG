@@ -271627,6 +271627,1080 @@
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
+      "id": "pkg:schema/.#Annotations",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:b6818a52fb735cb4394e0432b6a01251ed04c3c8363dcbed19cef525e5b62b63",
+      "rationale": "Pi packages/schema/src/builders.ts:15 Annotations (Pi 1.4.0+2c8d1feb): is a TypeScript-only type (an interface of the keywords every builder accepts (title, description, examples, deprecated, default), typed by the schema's value type T) with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries it as the Option values (Title, Description, Examples, Deprecated, Default, MinLength, MaxLength, Pattern, Format, Minimum, Maximum, ExclusiveMinimum, ExclusiveMaximum, MultipleOf, MinItems, MaxItems, UniqueItems; schema/builders.go:34-88), which every builder takes variadically. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Option"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Annotations::property:default",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:c32551b1d335ef8da55d4c72f3b7412c237a6db965586b9253587eac2c20cda7",
+      "rationale": "Pi packages/schema/src/builders.ts:21 Annotations::property:default (Pi 1.4.0+2c8d1feb): is a TypeScript-only type (an interface of the keywords every builder accepts (title, description, examples, deprecated, default), typed by the schema's value type T) with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries it as the Option values (Title, Description, Examples, Deprecated, Default, MinLength, MaxLength, Pattern, Format, Minimum, Maximum, ExclusiveMinimum, ExclusiveMaximum, MultipleOf, MinItems, MaxItems, UniqueItems; schema/builders.go:34-88), which every builder takes variadically. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Option"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Annotations::property:deprecated",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:6e10044db2aa43c5a5985fbd773519c6009dc32260a664f36a0ac3603dce6755",
+      "rationale": "Pi packages/schema/src/builders.ts:19 Annotations::property:deprecated (Pi 1.4.0+2c8d1feb): is a TypeScript-only type (an interface of the keywords every builder accepts (title, description, examples, deprecated, default), typed by the schema's value type T) with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries it as the Option values (Title, Description, Examples, Deprecated, Default, MinLength, MaxLength, Pattern, Format, Minimum, Maximum, ExclusiveMinimum, ExclusiveMaximum, MultipleOf, MinItems, MaxItems, UniqueItems; schema/builders.go:34-88), which every builder takes variadically. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Option"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Annotations::property:description",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:471da33e85ea5fa0db9508e5860dd7658ec913a10a6fdc1b4102c62736dc0455",
+      "rationale": "Pi packages/schema/src/builders.ts:17 Annotations::property:description (Pi 1.4.0+2c8d1feb): is a TypeScript-only type (an interface of the keywords every builder accepts (title, description, examples, deprecated, default), typed by the schema's value type T) with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries it as the Option values (Title, Description, Examples, Deprecated, Default, MinLength, MaxLength, Pattern, Format, Minimum, Maximum, ExclusiveMinimum, ExclusiveMaximum, MultipleOf, MinItems, MaxItems, UniqueItems; schema/builders.go:34-88), which every builder takes variadically. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Option"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Annotations::property:examples",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:abe46bf81c48e03614c174f300c5164fb35fe3e0f97c5150aff134c5ee150bc3",
+      "rationale": "Pi packages/schema/src/builders.ts:18 Annotations::property:examples (Pi 1.4.0+2c8d1feb): is a TypeScript-only type (an interface of the keywords every builder accepts (title, description, examples, deprecated, default), typed by the schema's value type T) with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries it as the Option values (Title, Description, Examples, Deprecated, Default, MinLength, MaxLength, Pattern, Format, Minimum, Maximum, ExclusiveMinimum, ExclusiveMaximum, MultipleOf, MinItems, MaxItems, UniqueItems; schema/builders.go:34-88), which every builder takes variadically. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Option"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Annotations::property:title",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:7457aaadf819760feaff7b9513481be79598cd4250d97392eb177a91191eeba1",
+      "rationale": "Pi packages/schema/src/builders.ts:16 Annotations::property:title (Pi 1.4.0+2c8d1feb): is a TypeScript-only type (an interface of the keywords every builder accepts (title, description, examples, deprecated, default), typed by the schema's value type T) with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries it as the Option values (Title, Description, Examples, Deprecated, Default, MinLength, MaxLength, Pattern, Format, Minimum, Maximum, ExclusiveMinimum, ExclusiveMaximum, MultipleOf, MinItems, MaxItems, UniqueItems; schema/builders.go:34-88), which every builder takes variadically. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Option"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#arr",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:994b0897319e425dc1a10c0163654ce13cc1a5ac979e1537a7e49b87f4352e9f",
+      "rationale": "Derived by the interface gap detector: arr is Go schema/builders.go#Arr (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Arr"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Arr"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
+        "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics",
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#arr::call:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0ada0d5e8933cea3084ec27a4107d259ebfe04b0b0e55dae1d1246d6584c5467",
+      "rationale": "Pi packages/schema/src/builders.ts:104 arr::call:0 (Pi 1.4.0+2c8d1feb): Pi's `arr` returns Schema<T[]>, an index-signature object { [keyword: string]: unknown } branded with the static type (a type-level brand); Go returns schema.Schema = *Object, the ordered JSON object with the same keywords (schema/builders.go:10). Pi's options object ({ title, description, minLength, pattern, ... }) is spread into the schema; Go has no optional parameter or mixed options object, so Arr takes variadic Option values applied in call order, the order the JS spread writes its members (schema/builders.go:13-31). Designed out as a Go language mechanic (functional options; owner review flagged).The items parameter Schema<T> is the same index-signature brand type; Arr takes a Schema. Exercised by TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Arr"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#bool",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:89a9993bbb07d88b0bcda1473f84041dedf1f49ce7a299a23ed4a37e812aa34a",
+      "rationale": "Derived by the interface gap detector: bool is Go schema/builders.go#Bool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Bool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Bool"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#bool::call:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:889c0ba0e9f6f5fa2a77cead93204b4e23e1c3db3bb89d56c454f135f7fc0c99",
+      "rationale": "Pi packages/schema/src/builders.ts:57 bool::call:0 (Pi 1.4.0+2c8d1feb): Pi's `bool` returns Schema<boolean>, an index-signature object { [keyword: string]: unknown } branded with the static type (a type-level brand); Go returns schema.Schema = *Object, the ordered JSON object with the same keywords (schema/builders.go:10). Pi's options object ({ title, description, minLength, pattern, ... }) is spread into the schema; Go has no optional parameter or mixed options object, so Bool takes variadic Option values applied in call order, the order the JS spread writes its members (schema/builders.go:13-31). Designed out as a Go language mechanic (functional options; owner review flagged). Exercised by TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Bool"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#bytes",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:52d86948cde740f8dc0c312bb49424ecdad054338603656431e7fab7d0593cd7",
+      "rationale": "Derived by the interface gap detector: bytes is Go schema/builders.go#Bytes (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Bytes"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Bytes"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#bytes::call:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:50a5b673506b84bd8829fe036676c1a05564dbb6ed0a366f8f53f046418c00ba",
+      "rationale": "Pi packages/schema/src/builders.ts:129 bytes::call:0 (Pi 1.4.0+2c8d1feb): Pi's `bytes` returns Schema<Uint8Array>, an index-signature object { [keyword: string]: unknown } branded with the static type (a type-level brand); Go returns schema.Schema = *Object, the ordered JSON object with the same keywords (schema/builders.go:10). Pi's options object ({ title, description, minLength, pattern, ... }) is spread into the schema; Go has no optional parameter or mixed options object, so Bytes takes variadic Option values applied in call order, the order the JS spread writes its members (schema/builders.go:13-31). Designed out as a Go language mechanic (functional options; owner review flagged). Exercised by TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Bytes"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Check",
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:778de1c9b829b07ff52e4dba47655b3d1a25ae6b1d4d0d4fdee4c5d7282d585a"
+    },
+    {
+      "id": "pkg:schema/.#Check::call:0",
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:b1db74ef5cfcde9ed82dfec39d1b8832807652341d3bcb5ed7fcb14dc2af9011"
+    },
+    {
+      "id": "pkg:schema/.#compile",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ff70f91173dcf76d57211be0d166fca597949459dc2a9576d7a57be4a08883ac",
+      "rationale": "Derived by the interface gap detector: compile is Go schema/validator.go#Compile (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/validator.go#Compile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/validator.go#Compile"
+      ],
+      "evidence": [
+        "test:schema/conformance_upstream_test.go#TestConformanceSuite",
+        "test:schema/validator_upstream_test.go#TestOptions",
+        "test:schema/validator_upstream_test.go#TestSchemas"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#compile::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:41e0557fb66bfad85ddf555b3ba69bc6a21156577e7357e155b2f6b295754c6a",
+      "rationale": "Derived by the interface gap detector: compile::call:0 is Go schema/validator.go#Compile (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/validator.go#Compile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/validator.go#Compile"
+      ],
+      "evidence": [
+        "test:schema/conformance_upstream_test.go#TestConformanceSuite",
+        "test:schema/validator_upstream_test.go#TestOptions",
+        "test:schema/validator_upstream_test.go#TestSchemas"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#CompileOptions",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e743df7052d6ae1eb994c81a008ca043820cdae2dfe1b0433d9115f1d2290953",
+      "rationale": "Derived by the interface gap detector: CompileOptions is Go schema/types.go#CompileOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/types.go#CompileOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/types.go#CompileOptions"
+      ],
+      "evidence": [
+        "test:schema/conformance_upstream_test.go#TestConformanceSuite",
+        "test:schema/validator_upstream_test.go#TestOptions",
+        "test:schema/validator_upstream_test.go#TestSchemas"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#CompileOptions::property:draft",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c3b2c0afc30d7c60b9da17febea5b903cbda83f5b7e7b427605599e5729a3298",
+      "rationale": "Derived by the interface gap detector: CompileOptions::property:draft is Go schema/types.go#CompileOptions.Draft (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/types.go#CompileOptions.Draft"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/types.go#CompileOptions.Draft"
+      ],
+      "evidence": [
+        "test:schema/validator_upstream_test.go#TestOptions"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#CompileOptions::property:formats",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9dfddfe8a22ec4ca3958edb864aea439623bfc25a2f7015d48a575cf9d3e77e9",
+      "rationale": "Derived by the interface gap detector: CompileOptions::property:formats is Go schema/types.go#CompileOptions.Formats (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/types.go#CompileOptions.Formats"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/types.go#CompileOptions.Formats"
+      ],
+      "evidence": [
+        "test:schema/validator_upstream_test.go#TestOptions"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#CompileOptions::property:schemas",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:39c4e9653888a60e906962a524a54ce55abc9585425c06c7e3718ea3487a8533",
+      "rationale": "Derived by the interface gap detector: CompileOptions::property:schemas is Go schema/types.go#CompileOptions.Schemas (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/types.go#CompileOptions.Schemas"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/types.go#CompileOptions.Schemas"
+      ],
+      "evidence": [
+        "test:schema/validator_upstream_test.go#TestOptions"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#FormatCheck",
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:7dfb08db8279872c10af15ac9652f145847e80f7cc4dd6e4de35551e80073fd8"
+    },
+    {
+      "id": "pkg:schema/.#FormatCheck::call:0",
+      "disposition": "pending",
+      "upstreamShapeHash": "sha256:aac456e59991e1844564f99629b2f72452de5cbf26ba7b7ba9eaa689e79482d0"
+    },
+    {
+      "id": "pkg:schema/.#int",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:96d902054a1a441add1ce29b624e85d4d2060821afdb8410049092030c059226",
+      "rationale": "Derived by the interface gap detector: int is Go schema/builders.go#Int (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Int"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Int"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
+        "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions",
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#int::call:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:826978f154f3c49f1698712e0bf38920e69831c56a180c5d3de56112ad6cef63",
+      "rationale": "Pi packages/schema/src/builders.ts:52 int::call:0 (Pi 1.4.0+2c8d1feb): Pi's `int` returns Schema<number>, an index-signature object { [keyword: string]: unknown } branded with the static type (a type-level brand); Go returns schema.Schema = *Object, the ordered JSON object with the same keywords (schema/builders.go:10). Pi's options object ({ title, description, minLength, pattern, ... }) is spread into the schema; Go has no optional parameter or mixed options object, so Int takes variadic Option values applied in call order, the order the JS spread writes its members (schema/builders.go:13-31). Designed out as a Go language mechanic (functional options; owner review flagged). Exercised by TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Int"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#JsonSchema",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a369e17b464076a798c85b843935cc4fff90c96fa102aec5de6004678d51650c",
+      "rationale": "Derived by the interface gap detector: JsonSchema is Go schema/types.go#JsonSchema (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/types.go#JsonSchema"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/types.go#JsonSchema"
+      ],
+      "evidence": [
+        "test:schema/validator_upstream_test.go#TestOptions",
+        "test:schema/conformance_upstream_test.go#TestConformanceSuite",
+        "test:schema/errors_golden_test.go#TestErrorsMatchPi"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#LengthBounds",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:d7078715b66b30915672fc7f6950ee8fccf220986e61f79dfab047c6f86f4db9",
+      "rationale": "Pi packages/schema/src/builders.ts:25 LengthBounds (Pi 1.4.0+2c8d1feb): is a TypeScript-only type (an interface { minLength?, maxLength? } of the bounds of a string, array or bytes) with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries it as the Option values (Title, Description, Examples, Deprecated, Default, MinLength, MaxLength, Pattern, Format, Minimum, Maximum, ExclusiveMinimum, ExclusiveMaximum, MultipleOf, MinItems, MaxItems, UniqueItems; schema/builders.go:34-88), which every builder takes variadically. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Option"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#LengthBounds::property:maxLength",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:9098c85fe0583e64cbd81a52b22afd1b5d19aebc4e576ab2f646c4944ae0ef34",
+      "rationale": "Pi packages/schema/src/builders.ts:27 LengthBounds::property:maxLength (Pi 1.4.0+2c8d1feb): is a TypeScript-only type (an interface { minLength?, maxLength? } of the bounds of a string, array or bytes) with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries it as the Option values (Title, Description, Examples, Deprecated, Default, MinLength, MaxLength, Pattern, Format, Minimum, Maximum, ExclusiveMinimum, ExclusiveMaximum, MultipleOf, MinItems, MaxItems, UniqueItems; schema/builders.go:34-88), which every builder takes variadically. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Option"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#LengthBounds::property:minLength",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:21ce0e2e930dab64e981aea43cdc0f0ea43dd5d1222ab0fb9f48a580bb876ee7",
+      "rationale": "Pi packages/schema/src/builders.ts:26 LengthBounds::property:minLength (Pi 1.4.0+2c8d1feb): is a TypeScript-only type (an interface { minLength?, maxLength? } of the bounds of a string, array or bytes) with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries it as the Option values (Title, Description, Examples, Deprecated, Default, MinLength, MaxLength, Pattern, Format, Minimum, Maximum, ExclusiveMinimum, ExclusiveMaximum, MultipleOf, MinItems, MaxItems, UniqueItems; schema/builders.go:34-88), which every builder takes variadically. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Option"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#lit",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3e968c9f1347eed02f03ab41aa59ab55d29465f6c526dc28e6eade1ca79c8367",
+      "rationale": "Derived by the interface gap detector: lit is Go schema/builders.go#Lit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Lit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Lit"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
+        "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions",
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#lit::call:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:86733f4a300dfbc60f7a30368234b9dbd4aad34de50dbec456c9774f9ead0beb",
+      "rationale": "Pi packages/schema/src/builders.ts:72 lit::call:0 (Pi 1.4.0+2c8d1feb): Pi's `lit` returns Schema<V>, an index-signature object { [keyword: string]: unknown } branded with the static type (a type-level brand); Go returns schema.Schema = *Object, the ordered JSON object with the same keywords (schema/builders.go:10). Pi's options object ({ title, description, minLength, pattern, ... }) is spread into the schema; Go has no optional parameter or mixed options object, so Lit takes variadic Option values applied in call order, the order the JS spread writes its members (schema/builders.go:13-31). Designed out as a Go language mechanic (functional options; owner review flagged).The const type parameter V is type-level; Lit takes the value as `any` (a string, number, boolean or nil). Exercised by TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Lit"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#map",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3ecf21e9c14e22be876fef6acd8956cd51d7eb2834ed0ac27e4a0add65ce330f",
+      "rationale": "Derived by the interface gap detector: map is Go schema/builders.go#Map (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Map"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Map"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#map::call:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:234442c2a49bf82775a906dbbbe1fa6e670082a25d7847963703a1e090ce330a",
+      "rationale": "Pi packages/schema/src/builders.ts:124 map::call:0 (Pi 1.4.0+2c8d1feb): Pi's `map` returns Schema<Record<string, T>>, an index-signature object { [keyword: string]: unknown } branded with the static type (a type-level brand); Go returns schema.Schema = *Object, the ordered JSON object with the same keywords (schema/builders.go:10). Pi's options object ({ title, description, minLength, pattern, ... }) is spread into the schema; Go has no optional parameter or mixed options object, so Map takes variadic Option values applied in call order, the order the JS spread writes its members (schema/builders.go:13-31). Designed out as a Go language mechanic (functional options; owner review flagged).The value parameter Schema<T> is the same index-signature brand type; Map takes a Schema. Exercised by TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Map"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#nul",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:16f257cedb98b673beeb849caeea514fc91ba1f1ac9bdd32603c7a9d11fa1fc5",
+      "rationale": "Derived by the interface gap detector: nul is Go schema/builders.go#Nul (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Nul"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Nul"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#nul::call:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:979acb6af880428755500f9751c274fea48883baee8d7911a30b30ac4100179a",
+      "rationale": "Pi packages/schema/src/builders.ts:62 nul::call:0 (Pi 1.4.0+2c8d1feb): Pi's `nul` returns Schema<null>, an index-signature object { [keyword: string]: unknown } branded with the static type (a type-level brand); Go returns schema.Schema = *Object, the ordered JSON object with the same keywords (schema/builders.go:10). Pi's options object ({ title, description, minLength, pattern, ... }) is spread into the schema; Go has no optional parameter or mixed options object, so Nul takes variadic Option values applied in call order, the order the JS spread writes its members (schema/builders.go:13-31). Designed out as a Go language mechanic (functional options; owner review flagged). Exercised by TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Nul"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#nullable",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:83a73317b253ed032f6a3f596dd18534ccbbebd5fa63fb261a679173c2b3858a",
+      "rationale": "Derived by the interface gap detector: nullable is Go schema/builders.go#Nullable (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Nullable"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Nullable"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#nullable::call:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:9ba6ffddd0f59f3799fb567e28dc2de015cea7b7a8ef6b7ab39aa09ce564f5e3",
+      "rationale": "Pi packages/schema/src/builders.ts:99 nullable::call:0 (Pi 1.4.0+2c8d1feb): Pi's `nullable` returns Schema<T | null>, an index-signature object { [keyword: string]: unknown } branded with the static type (a type-level brand); Go returns schema.Schema = *Object, the ordered JSON object with the same keywords (schema/builders.go:10). Pi's options object ({ title, description, minLength, pattern, ... }) is spread into the schema; Go has no optional parameter or mixed options object, so Nullable takes variadic Option values applied in call order, the order the JS spread writes its members (schema/builders.go:13-31). Designed out as a Go language mechanic (functional options; owner review flagged).The parameter Schema<T> is the same index-signature brand type; Nullable takes a Schema. Exercised by TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Nullable"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#num",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d5312503669a3dc0841ab6293df8bb872e34ae52e0e697a514a1aaff2b21465e",
+      "rationale": "Derived by the interface gap detector: num is Go schema/builders.go#Num (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Num"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Num"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
+        "test:schema/builders_upstream_test.go#TestBuildersNarrowValuesThroughACompiledCheck",
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#num::call:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:826978f154f3c49f1698712e0bf38920e69831c56a180c5d3de56112ad6cef63",
+      "rationale": "Pi packages/schema/src/builders.ts:47 num::call:0 (Pi 1.4.0+2c8d1feb): Pi's `num` returns Schema<number>, an index-signature object { [keyword: string]: unknown } branded with the static type (a type-level brand); Go returns schema.Schema = *Object, the ordered JSON object with the same keywords (schema/builders.go:10). Pi's options object ({ title, description, minLength, pattern, ... }) is spread into the schema; Go has no optional parameter or mixed options object, so Num takes variadic Option values applied in call order, the order the JS spread writes its members (schema/builders.go:13-31). Designed out as a Go language mechanic (functional options; owner review flagged). Exercised by TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Num"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#NumberBounds",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:844c84141f3f1ba7a6ea5ebbd4bd567cf79209eccd93dc646b23b15c19e8994c",
+      "rationale": "Pi packages/schema/src/builders.ts:38 NumberBounds (Pi 1.4.0+2c8d1feb): is a TypeScript-only type (an interface { minimum?, maximum?, exclusiveMinimum?, exclusiveMaximum?, multipleOf? } of the bounds of a number) with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries it as the Option values (Title, Description, Examples, Deprecated, Default, MinLength, MaxLength, Pattern, Format, Minimum, Maximum, ExclusiveMinimum, ExclusiveMaximum, MultipleOf, MinItems, MaxItems, UniqueItems; schema/builders.go:34-88), which every builder takes variadically. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Option"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#NumberBounds::property:exclusiveMaximum",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:b2a349583996f27ffd15bd3ac52ec8dbabeaba1cac74d7014589446685e54bcc",
+      "rationale": "Pi packages/schema/src/builders.ts:42 NumberBounds::property:exclusiveMaximum (Pi 1.4.0+2c8d1feb): is a TypeScript-only type (an interface { minimum?, maximum?, exclusiveMinimum?, exclusiveMaximum?, multipleOf? } of the bounds of a number) with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries it as the Option values (Title, Description, Examples, Deprecated, Default, MinLength, MaxLength, Pattern, Format, Minimum, Maximum, ExclusiveMinimum, ExclusiveMaximum, MultipleOf, MinItems, MaxItems, UniqueItems; schema/builders.go:34-88), which every builder takes variadically. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Option"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#NumberBounds::property:exclusiveMinimum",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:49c445641d9a4aa5fecb74b89fc6a81173072c06c50d99a39dba230baaf1b062",
+      "rationale": "Pi packages/schema/src/builders.ts:41 NumberBounds::property:exclusiveMinimum (Pi 1.4.0+2c8d1feb): is a TypeScript-only type (an interface { minimum?, maximum?, exclusiveMinimum?, exclusiveMaximum?, multipleOf? } of the bounds of a number) with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries it as the Option values (Title, Description, Examples, Deprecated, Default, MinLength, MaxLength, Pattern, Format, Minimum, Maximum, ExclusiveMinimum, ExclusiveMaximum, MultipleOf, MinItems, MaxItems, UniqueItems; schema/builders.go:34-88), which every builder takes variadically. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Option"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#NumberBounds::property:maximum",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:328d35b00999a3f382df40b5cb8de9e46a3ecc22747084ba236c93a78dd90811",
+      "rationale": "Pi packages/schema/src/builders.ts:40 NumberBounds::property:maximum (Pi 1.4.0+2c8d1feb): is a TypeScript-only type (an interface { minimum?, maximum?, exclusiveMinimum?, exclusiveMaximum?, multipleOf? } of the bounds of a number) with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries it as the Option values (Title, Description, Examples, Deprecated, Default, MinLength, MaxLength, Pattern, Format, Minimum, Maximum, ExclusiveMinimum, ExclusiveMaximum, MultipleOf, MinItems, MaxItems, UniqueItems; schema/builders.go:34-88), which every builder takes variadically. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Option"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#NumberBounds::property:minimum",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:53107a50e05a1f5af56b77fce8471e3bd44ac3fd890cdf3ee31fac2c7936f138",
+      "rationale": "Pi packages/schema/src/builders.ts:39 NumberBounds::property:minimum (Pi 1.4.0+2c8d1feb): is a TypeScript-only type (an interface { minimum?, maximum?, exclusiveMinimum?, exclusiveMaximum?, multipleOf? } of the bounds of a number) with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries it as the Option values (Title, Description, Examples, Deprecated, Default, MinLength, MaxLength, Pattern, Format, Minimum, Maximum, ExclusiveMinimum, ExclusiveMaximum, MultipleOf, MinItems, MaxItems, UniqueItems; schema/builders.go:34-88), which every builder takes variadically. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Option"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#NumberBounds::property:multipleOf",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:405d12ed528cd62529802d5fd62d3bb3a7f1df9d35c0718b1b562456ce7fba72",
+      "rationale": "Pi packages/schema/src/builders.ts:43 NumberBounds::property:multipleOf (Pi 1.4.0+2c8d1feb): is a TypeScript-only type (an interface { minimum?, maximum?, exclusiveMinimum?, exclusiveMaximum?, multipleOf? } of the bounds of a number) with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries it as the Option values (Title, Description, Examples, Deprecated, Default, MinLength, MaxLength, Pattern, Format, Minimum, Maximum, ExclusiveMinimum, ExclusiveMaximum, MultipleOf, MinItems, MaxItems, UniqueItems; schema/builders.go:34-88), which every builder takes variadically. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Option"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#obj",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a6f718f91d397e370acc766802ec8283199656beddb37b56b99348fd6dc21196",
+      "rationale": "Derived by the interface gap detector: obj is Go schema/builders.go#Obj (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Obj"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Obj"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions",
+        "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics",
+        "test:schema/builders_upstream_test.go#TestBuildersNarrowValuesThroughACompiledCheck"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#obj::call:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:699dacf8ae23dbd7c56ef7a39d12432d5dd0d9b53ba9cc945752184a12e94423",
+      "rationale": "Pi packages/schema/src/builders.ts:166 obj::call:0 (Pi 1.4.0+2c8d1feb): Pi's `obj` returns Schema<StaticObject<P>>, an index-signature object { [keyword: string]: unknown } branded with the static type (a type-level brand); Go returns schema.Schema = *Object, the ordered JSON object with the same keywords (schema/builders.go:10). The properties parameter is an object literal whose key order is observable; Go takes the ordered schema.Properties (Prop and Opt entries), and the options object ({ open, ...annotations }) is variadic ObjOption values: the Option values plus Open() (schema/builders.go:91-100). Designed out as Go language mechanics (ordered entries; functional options, owner review flagged). Exercised by TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Obj"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#oneOf",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7cbfef69fd34ef865642f8da3f8f6d547b920a1948a75a636eb874d602e79653",
+      "rationale": "Derived by the interface gap detector: oneOf is Go schema/builders.go#OneOf (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#OneOf"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#OneOf"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersProducePlainJSONSchema"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#oneOf::call:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:6c0227865a82d7de698922fc4e725dd0554898f5604cb5989e9bf65f0dad5041",
+      "rationale": "Pi packages/schema/src/builders.ts:80 oneOf::call:0 (Pi 1.4.0+2c8d1feb): Pi's `oneOf` returns Schema<V[number]>, an index-signature object { [keyword: string]: unknown } branded with the static type (a type-level brand); Go returns schema.Schema = *Object, the ordered JSON object with the same keywords (schema/builders.go:10). Pi's options object ({ title, description, minLength, pattern, ... }) is spread into the schema; Go has no optional parameter or mixed options object, so OneOf takes variadic Option values applied in call order, the order the JS spread writes its members (schema/builders.go:13-31). Designed out as a Go language mechanic (functional options; owner review flagged).The const tuple V is type-level; OneOf takes the values as []any. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#OneOf"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#opt",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:704ac0931051d57adb9b86da789a6571db83f0006f9344f301eaa687ff1822b3",
+      "rationale": "Derived by the interface gap detector: opt is Go schema/builders.go#Opt (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Opt"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Opt"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics",
+        "test:schema/builders_upstream_test.go#TestBuildersNarrowValuesThroughACompiledCheck",
+        "test:schema/builders_upstream_test.go#TestBuildersProducePlainJSONSchema"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#opt::call:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:471b504b75f5679cc09b7d5db52a59f4156a54a9395b808593580af754f8fd4f",
+      "rationale": "Pi packages/schema/src/builders.ts:144 opt::call:0 (Pi 1.4.0+2c8d1feb): Pi's Optional is a class wrapping a schema (`new Optional(schema)`, a `schema` member and a type-level OPTIONAL_TYPE brand) that obj() recognises with instanceof; Go has no instanceof over a wrapper, so a property carries its optionality: schema.Property has the Optional field, Opt(name, schema) makes one and Prop(name, schema) a required one (schema/builders.go:194-210). The name is part of the entry because Go's Properties is an ordered slice, not a name-keyed record. Designed out as a Go language mechanic. `opt(schema)` takes one parameter and Go's Opt takes the property name too. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Opt"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Optional",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:88ead9082af980d52bfa436d11cc12505b8c272259c06055c90d299bf2bc6e8f",
+      "rationale": "Pi packages/schema/src/builders.ts:134 Optional (Pi 1.4.0+2c8d1feb): Pi's Optional is a class wrapping a schema (`new Optional(schema)`, a `schema` member and a type-level OPTIONAL_TYPE brand) that obj() recognises with instanceof; Go has no instanceof over a wrapper, so a property carries its optionality: schema.Property has the Optional field, Opt(name, schema) makes one and Prop(name, schema) a required one (schema/builders.go:194-210). The name is part of the entry because Go's Properties is an ordered slice, not a name-keyed record. Designed out as a Go language mechanic. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Property",
+        "schema/builders.go#Opt"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Optional::construct:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:7efe9b41d9981db4c7593b6810fdb826f46063db46dd549f372ea0fd38b62703",
+      "rationale": "Pi packages/schema/src/builders.ts:134 Optional::construct:0 (Pi 1.4.0+2c8d1feb): Pi's Optional is a class wrapping a schema (`new Optional(schema)`, a `schema` member and a type-level OPTIONAL_TYPE brand) that obj() recognises with instanceof; Go has no instanceof over a wrapper, so a property carries its optionality: schema.Property has the Optional field, Opt(name, schema) makes one and Prop(name, schema) a required one (schema/builders.go:194-210). The name is part of the entry because Go's Properties is an ordered slice, not a name-keyed record. Designed out as a Go language mechanic. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Property",
+        "schema/builders.go#Opt"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Optional::property:%5BSymbol.OPTIONAL_TYPE%5D",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:4ea09369253b605cf77577af80a76c2f57537e7f165c646028b48c104f7398ce",
+      "rationale": "Pi packages/schema/src/builders.ts:135 Optional::property:%5BSymbol.OPTIONAL_TYPE%5D (Pi 1.4.0+2c8d1feb): Pi's Optional is a class wrapping a schema (`new Optional(schema)`, a `schema` member and a type-level OPTIONAL_TYPE brand) that obj() recognises with instanceof; Go has no instanceof over a wrapper, so a property carries its optionality: schema.Property has the Optional field, Opt(name, schema) makes one and Prop(name, schema) a required one (schema/builders.go:194-210). The name is part of the entry because Go's Properties is an ordered slice, not a name-keyed record. Designed out as a Go language mechanic. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Property",
+        "schema/builders.go#Opt"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Optional::property:schema",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:dace9d371fc1051f9210bc3e95fb1fa98538fb0186822069ff3878714995d112",
+      "rationale": "Pi packages/schema/src/builders.ts:136 Optional::property:schema (Pi 1.4.0+2c8d1feb): Pi's Optional is a class wrapping a schema (`new Optional(schema)`, a `schema` member and a type-level OPTIONAL_TYPE brand) that obj() recognises with instanceof; Go has no instanceof over a wrapper, so a property carries its optionality: schema.Property has the Optional field, Opt(name, schema) makes one and Prop(name, schema) a required one (schema/builders.go:194-210). The name is part of the entry because Go's Properties is an ordered slice, not a name-keyed record. Designed out as a Go language mechanic. Exercised by TestBuildersProducePlainJSONSchema (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Property",
+        "schema/builders.go#Opt"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Properties",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:d5b5365aa47c294dfc461d3f0da41a6524d5d517cbd2e829f018657c6d754470",
+      "rationale": "Pi packages/schema/src/builders.ts:149 Properties (Pi 1.4.0+2c8d1feb): Properties = { readonly [name: string]: Schema | Optional } is an object whose key order is observable (the order of `properties`, `required` and of reported errors); Go has no insertion-ordered map, so schema.Properties is the ordered []Property of Prop and Opt entries (schema/builders.go:194-210). Designed out as a Go language mechanic (owner 2026-10-29/30). Exercised by TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Properties"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Schema",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:a5c622b2c5a21c76c100eb9ba99a2cb3e8bbf8281f32232307233b16dbf162a9",
+      "rationale": "Pi packages/schema/src/builders.ts:9 Schema (Pi 1.4.0+2c8d1feb): is a TypeScript-only type (Schema<T> = { readonly [keyword: string]: unknown } & { readonly [STATIC]?: T } is an intersection of an index-signature object and a type-level brand) with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries it as schema.Schema = *Object, the chordjson.Object that keeps JavaScript's property order (schema/types.go:10, schema/builders.go:10); the brand T is the Go value the check accepts, typed any. Exercised by TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Schema"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Static",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0f816e914ef9118f05e44922ce9987da6d74c0b37e2d7455200111e11925a8fc",
+      "rationale": "Pi packages/schema/src/builders.ts:12 Static (Pi 1.4.0+2c8d1feb): is a TypeScript-only type (Static<S> extracts the value type a schema accepts from its brand with a conditional type (S extends { [STATIC]?: infer T } ? ...)) with no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); Go carries it as the JSON value the compiled Validator checks (any), since Go has no type that follows a schema value (the ai Static is designed out the same way). Exercised by TestErrors (schema/validator_upstream_test.go).",
+      "pigTargets": [
+        "schema/validator.go#Validator"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#StaticObject",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:6997c9b43568fb255a05ef9e72781a06848dff8a934619039c5b13e904a3096a",
+      "rationale": "TL: StaticObject<P> is a TypeScript type-level computation over its type parameters (Simplify< { -readonly [K in keyof P as P[K] extends Optional ? never : K]: Static<P[K]> } & { -readonly [K in keyof P as...); it has no value, member or call, so nothing of it exists at run time and Go generics cannot express it. PiG's concrete Go types carry the shapes it computes where they are used, here schema/builders.go#Properties. Designed out as a TypeScript-only artifact with no Go runtime meaning (reason class c of the design-out audit; the lead ruling LEAD-RULINGS-1520 of 2026-10-07 names the class).",
+      "pigTargets": [
+        "schema/builders.go#Properties"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#str",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:78c902458003e2e165ab8c5478b289cab371ad4631ee9e7c08225b00cf95fa6d",
+      "rationale": "Derived by the interface gap detector: str is Go schema/builders.go#Str (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Str"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Str"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
+        "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions",
+        "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#str::call:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:c50dabf4bc757c52823a54d39109e0780469e207efc6c9ce2b68257bb6d4336c",
+      "rationale": "Pi packages/schema/src/builders.ts:31 str::call:0 (Pi 1.4.0+2c8d1feb): Pi's `str` returns Schema<string>, an index-signature object { [keyword: string]: unknown } branded with the static type (a type-level brand); Go returns schema.Schema = *Object, the ordered JSON object with the same keywords (schema/builders.go:10). Pi's options object ({ title, description, minLength, pattern, ... }) is spread into the schema; Go has no optional parameter or mixed options object, so Str takes variadic Option values applied in call order, the order the JS spread writes its members (schema/builders.go:13-31). Designed out as a Go language mechanic (functional options; owner review flagged). Exercised by TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Str"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#tuple",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5948342e79d5995c6ce26f33b99a79da90aace42b4f4b0172fb578bf2e18f344",
+      "rationale": "Derived by the interface gap detector: tuple is Go schema/builders.go#Tuple (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Tuple"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Tuple"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#tuple::call:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:2e2a443ddda3f048c74a93ec37df90e609c8734232e37861e2cc3c950c921f61",
+      "rationale": "Pi packages/schema/src/builders.ts:116 tuple::call:0 (Pi 1.4.0+2c8d1feb): Pi's `tuple` returns Schema<a mapped tuple>, an index-signature object { [keyword: string]: unknown } branded with the static type (a type-level brand); Go returns schema.Schema = *Object, the ordered JSON object with the same keywords (schema/builders.go:10). Pi's options object ({ title, description, minLength, pattern, ... }) is spread into the schema; Go has no optional parameter or mixed options object, so Tuple takes variadic Option values applied in call order, the order the JS spread writes its members (schema/builders.go:13-31). Designed out as a Go language mechanic (functional options; owner review flagged).The const tuple S and its mapped value type are type-level; Tuple takes the items as []Schema. Exercised by TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Tuple"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#union",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:07f531f6d54718c2cb8aabd2ac95d868d866f2ab0ab44dc1cc70dec9783f394d",
+      "rationale": "Derived by the interface gap detector: union is Go schema/builders.go#Union (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Union"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Union"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
+        "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#union::call:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:15e2be5eeaa1973e6a9c4de80073e1c61e9ea59fd19d6d8e0bc3725f3086ceb9",
+      "rationale": "Pi packages/schema/src/builders.ts:91 union::call:0 (Pi 1.4.0+2c8d1feb): Pi's `union` returns Schema<Static<S[number]>>, an index-signature object { [keyword: string]: unknown } branded with the static type (a type-level brand); Go returns schema.Schema = *Object, the ordered JSON object with the same keywords (schema/builders.go:10). Pi's options object ({ title, description, minLength, pattern, ... }) is spread into the schema; Go has no optional parameter or mixed options object, so Union takes variadic Option values applied in call order, the order the JS spread writes its members (schema/builders.go:13-31). Designed out as a Go language mechanic (functional options; owner review flagged).The const tuple S is type-level; Union takes the schemas as []Schema. Exercised by TestBuildersAreDeterministicForTagUnions (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Union"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#unknown",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9f1d03cd42af1ae1b2545126bd76de197abac08e45376cd1654a348d587453d8",
+      "rationale": "Derived by the interface gap detector: unknown is Go schema/builders.go#Unknown (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Unknown"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Unknown"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#unknown::call:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:5326fdbfafcf7115f72a5f6e782eeca921eba62d781b070e82c9aee8a2ff7d85",
+      "rationale": "Pi packages/schema/src/builders.ts:67 unknown::call:0 (Pi 1.4.0+2c8d1feb): Pi's `unknown` returns Schema<unknown>, an index-signature object { [keyword: string]: unknown } branded with the static type (a type-level brand); Go returns schema.Schema = *Object, the ordered JSON object with the same keywords (schema/builders.go:10). Pi's options object ({ title, description, minLength, pattern, ... }) is spread into the schema; Go has no optional parameter or mixed options object, so Unknown takes variadic Option values applied in call order, the order the JS spread writes its members (schema/builders.go:13-31). Designed out as a Go language mechanic (functional options; owner review flagged). Exercised by TestBuildersProduceEveryLeaf (schema/builders_upstream_test.go).",
+      "pigTargets": [
+        "schema/builders.go#Unknown"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#ValidationError",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:dbdc6b78459bbb73f8e0de34b21a25dd36c978bceca017998727c260c8d35e8a",
+      "rationale": "Derived by the interface gap detector: ValidationError is Go schema/types.go#ValidationError (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/types.go#ValidationError"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/types.go#ValidationError"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions",
+        "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics",
+        "test:schema/validator_upstream_test.go#TestErrors"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#ValidationError::property:keyword",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5c3947eb65b9074b1d50a58e66357e30a9f5ebdb6c3502cea157e51a52b4dd22",
+      "rationale": "Derived by the interface gap detector: ValidationError::property:keyword is Go schema/types.go#ValidationError.Keyword (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/types.go#ValidationError.Keyword"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/types.go#ValidationError.Keyword"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#ValidationError::property:message",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:92ed253d0eb70f4bed1b93325b0464e59f3e7f40e1a2edb7de29a0eda188b89a",
+      "rationale": "Derived by the interface gap detector: ValidationError::property:message is Go schema/types.go#ValidationError.Message (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/types.go#ValidationError.Message"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/types.go#ValidationError.Message"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#ValidationError::property:path",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:523a40115b8d4decb7c0af5069951197a85aafb198eac1989678abca0a47b67b",
+      "rationale": "Derived by the interface gap detector: ValidationError::property:path is Go schema/types.go#ValidationError.Path (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/types.go#ValidationError.Path"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/types.go#ValidationError.Path"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Validator",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:317ace07b1080d20594604d39d207af984438a81c93478d181c43d0abeba9492",
+      "rationale": "Derived by the interface gap detector: Validator is Go schema/validator.go#Validator (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/validator.go#Validator"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/validator.go#Validator"
+      ],
+      "evidence": [
+        "test:schema/shared_upstream_test.go#TestSharedChecks",
+        "test:schema/errors_golden_test.go#TestHandWrittenCaseErrorsMatchPi",
+        "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Validator::construct:0",
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:80d350d9fe873a423b4b332572354a05be33d03dba4d401acb8bbef202452c07",
+      "rationale": "Pi packages/schema/src/validator.ts:19 Validator::construct:0 (Pi 1.4.0+2c8d1feb): `new Validator(schema, options, check)` is the class constructor that compile() alone calls with the compiled check; Go has no constructor on a struct type with unexported fields: Compile(schema, options) (*Validator, error) builds the Validator (schema/validator.go:11-27) and returns the compile throw as the error, so there is no NewValidator and no second way to make one. Exercised by TestErrors (schema/validator_upstream_test.go).",
+      "pigTargets": [
+        "schema/validator.go#Compile"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Validator::property:check",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e4d61d3a9822ceaffac2c171b2c30b7875159227d33cf95e14335f08a0b1cceb",
+      "rationale": "Derived by the interface gap detector: Validator::property:check is Go schema/validator.go#Validator.Check (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/validator.go#Validator.Check"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/validator.go#Validator.Check"
+      ],
+      "evidence": [
+        "test:schema/shared_upstream_test.go#TestSharedChecks"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Validator::property:check::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b1db74ef5cfcde9ed82dfec39d1b8832807652341d3bcb5ed7fcb14dc2af9011",
+      "rationale": "Derived by the interface gap detector: Validator::property:check::call:0 is Go schema/validator.go#Validator.Check (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/validator.go#Validator.Check"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/validator.go#Validator.Check"
+      ],
+      "evidence": [
+        "test:schema/shared_upstream_test.go#TestSharedChecks"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Validator::property:errors",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a6995631278aa9f21912c602915c36a4e0adecd716416d855cb1f54a2998b50b",
+      "rationale": "Derived by the interface gap detector: Validator::property:errors is Go schema/validator.go#Validator.Errors (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/validator.go#Validator.Errors"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/validator.go#Validator.Errors"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics"
+      ]
+    },
+    {
+      "id": "pkg:schema/.#Validator::property:errors::call:0",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9a97438146b91a462b90dfcf98a601481db5366db6de92b5baf3209ec06ee95e",
+      "rationale": "Derived by the interface gap detector: Validator::property:errors::call:0 is Go schema/validator.go#Validator.Errors (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/validator.go#Validator.Errors"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/validator.go#Validator.Errors"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics"
+      ]
+    },
+    {
+      "id": "pkg:schema/formats#formats",
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8dbcf021ed67007cafa023f542a366f6ff5beb0f79267137914e40a4bdcf6941",
+      "rationale": "Derived by the interface gap detector: formats is Go schema/formats/index.go#Formats (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/formats/index.go#Formats"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/formats/index.go#Formats"
+      ],
+      "evidence": [
+        "test:schema/conformance_upstream_test.go#TestConformanceSuite",
+        "test:schema/formats/conformance_test.go#TestConformance",
+        "test:schema/formats/oracle_test.go#TestOracleCorpus"
+      ]
+    },
+    {
       "id": "pkg:telemetry/.#AttributeValue",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:76a3ec17b65ed4cb97caa926b66f3860830ffe2c75ec7bb061c911349f9be06a",
