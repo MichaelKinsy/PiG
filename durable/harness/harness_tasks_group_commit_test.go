@@ -35,15 +35,20 @@ func (counting *documentScanCountingStorage) ScanDocuments(ctx context.Context, 
 }
 
 // holdLine holds the Session line with a commit whose callback waits: the jobs queued after it start once it is
-// released (holdLine of harness-tasks.test.ts).
-func holdLine(harness Harness) (entered *deferredGate, release func()) {
+// released (holdLine of harness-tasks.test.ts). A commit that fails fails the test and rejects entered, so what waits for the
+// hold fails instead of hanging; the callback also ends with the test.
+func holdLine(t testing.TB, harness Harness) (entered *deferredGate, release func()) {
+	t.Helper()
 	entered, released := deferred(), deferred()
 	go func() {
-		_, _ = harness.Commit(testContext, func(durable.Tx) (any, error) {
+		_, err := harness.Commit(testContext, func(durable.Tx) (any, error) {
 			entered.resolve()
-			_ = released.wait(testContext)
-			return nil, nil
+			return nil, released.wait(t.Context())
 		})
+		if err != nil && t.Context().Err() == nil {
+			t.Errorf("the commit holding the line failed: %v", err)
+			entered.reject(err)
+		}
 	}()
 	return entered, released.resolve
 }
@@ -220,7 +225,7 @@ func TestTaskCloseGroupCommit(t *testing.T) {
 		var harnessRef atomic.Pointer[Harness]
 		throws := tkOneStep("test.close-fault", func(context.Context, stepRecord, stepRuntime) error {
 			// The step after this phase queues behind a job that holds the line.
-			entered, release := holdLine(*harnessRef.Load())
+			entered, release := holdLine(t, *harnessRef.Load())
 			held.put(heldLine{entered, release})
 			if err := entered.wait(testContext); err != nil {
 				return err
@@ -236,7 +241,7 @@ func TestTaskCloseGroupCommit(t *testing.T) {
 		if err := line.entered.wait(testContext); err != nil {
 			t.Fatal(err)
 		}
-		flush()
+		awaitQuiescent(t)
 		closing := tkCloseSealed(t, opened.harness)
 		line.release()
 		if err := tkWaitErr(t, closing); err != nil {
@@ -256,7 +261,7 @@ func TestTaskCloseGroupCommit(t *testing.T) {
 		var harnessRef atomic.Pointer[Harness]
 		proceed, admitted := deferred(), deferred()
 		queuedTask := tkOneStep("test.close-queued-commit", func(_ context.Context, _ stepRecord, runtime stepRuntime) error {
-			entered, release := holdLine(*harnessRef.Load())
+			entered, release := holdLine(t, *harnessRef.Load())
 			held.put(heldLine{entered, release})
 			if err := entered.wait(testContext); err != nil {
 				return err
@@ -414,7 +419,7 @@ func TestPublicationAtAdoptionGroupCommit(t *testing.T) {
 			mu.Unlock()
 		})
 		note()
-		flush()
+		awaitQuiescent(t)
 		if late.len() != 0 {
 			t.Fatalf("late listener got %v", late.all())
 		}

@@ -112,7 +112,7 @@ func TestGroupCommitSchedulerRegions(t *testing.T) {
 		gcEntered(t, held)
 		// P's decision reads what the creation writes, so it waits for its publication, holding the line.
 		fixtures.gate("p").resolve()
-		gcFlush()
+		gcFlush(t)
 		held.release()
 		d := creating.wait(t)
 		eventually(t, func() bool { return gcStatus(t, harness, made.p) == "completing" })
@@ -153,11 +153,11 @@ func TestGroupCommitSchedulerRegions(t *testing.T) {
 		gcEntered(t, held)
 		// B ends; then D is created in C while B still shows live; then P ends.
 		fixtures.gate("b").resolve()
-		gcFlush()
+		gcFlush(t)
 		creating := gcGo(gcCreateHold(fixtures, c, "d"))
-		gcFlush()
+		gcFlush(t)
 		fixtures.gate("p").resolve()
-		gcFlush()
+		gcFlush(t)
 		held.release()
 		blocker.wait(t)
 		d := creating.wait(t)
@@ -198,7 +198,7 @@ func TestGroupCommitSchedulerRegions(t *testing.T) {
 		gcEntered(t, held)
 		// The child's phase returns: its step reads the intent set, which the unpublished mark changes.
 		fixtures.gate("t.return").resolve()
-		gcFlush()
+		gcFlush(t)
 		if ran := fixtures.ran("t.two"); ran != 0 {
 			t.Fatalf("the child ran its next phase %d times before the owner's abort mark was published", ran)
 		}
@@ -263,8 +263,10 @@ func TestGroupCommitSchedulerRegions(t *testing.T) {
 		fixtures.gate("x").resolve()
 		gcEntered(t, held)
 		fixtures.gate("y").resolve()
-		gcFlush()
+		gcFlush(t)
 		held.release()
+		// Without the refusal both wait on each other for good: fail on the missing refusal, not on the wait.
+		eventually(t, func() bool { return fixtures.refusal("y") != nil })
 		tkWaitOutcome(t, harness, made.y)
 		if err := fixtures.refusal("y"); err == nil || !strings.Contains(err.Error(), "wait cycle") {
 			t.Fatalf("the wait of y was refused with %v, want a wait cycle", err)
@@ -287,7 +289,7 @@ func TestGroupCommitSchedulerRegions(t *testing.T) {
 		held := store.holdCommits()
 		harness.Resume()
 		gcEntered(t, held)
-		gcFlush()
+		gcFlush(t)
 		if ran := fixtures.ran("r"); ran != 0 {
 			t.Fatalf("the invocation started %d times on an unpublished reservation", ran)
 		}
@@ -346,7 +348,7 @@ func TestGroupCommitSchedulerRegions(t *testing.T) {
 		})
 		gcEntered(t, held)
 		harness.Resume()
-		gcFlush()
+		gcFlush(t)
 		if got := migrations.Load(); got != 0 {
 			t.Fatalf("%d migrations ran before the write was published, want 0", got)
 		}
@@ -399,21 +401,26 @@ func TestGroupCommitSchedulerRegions(t *testing.T) {
 		})
 		gcEntered(t, held)
 		harness.Resume()
-		gcFlush()
+		gcFlush(t)
 		held.release()
 		writing.wait(t)
 		eventually(t, func() bool { return migrations.Load() > 0 })
-		gcFlush()
+		failedReports := func() int {
+			failed := 0
+			for _, info := range reports.allInfos() {
+				if info.Kind == durable.ReportMigrationFailed {
+					failed++
+				}
+			}
+			return failed
+		}
+		eventually(t, func() bool { return failedReports() > 0 })
+		// Nothing runs the migration or reports it again.
+		gcFlush(t)
 		if got := migrations.Load(); got != 1 {
 			t.Fatalf("%d migrations ran, want 1", got)
 		}
-		failed := 0
-		for _, info := range reports.allInfos() {
-			if info.Kind == durable.ReportMigrationFailed {
-				failed++
-			}
-		}
-		if failed != 1 {
+		if failed := failedReports(); failed != 1 {
 			t.Fatalf("%d migration_failed reports, want 1", failed)
 		}
 		closeHarness(t, harness)
@@ -442,7 +449,7 @@ func TestGroupCommitSchedulerRegions(t *testing.T) {
 				return id, err
 			})
 		})
-		gcFlush()
+		gcFlush(t)
 		// A reader of the roots on the line (global idle's key) waits until the creation is published too.
 		reading := gcReadAfter(harness, session.RootsKey, &created, published)
 		held.release()
@@ -492,7 +499,7 @@ func TestGroupCommitSchedulerRegions(t *testing.T) {
 				return id, err
 			})
 		})
-		gcFlush()
+		gcFlush(t)
 		reading := gcReadAfter(harness, session.RootsKey, &created, published)
 		held.release()
 		creating.wait(t)
@@ -545,7 +552,7 @@ func TestGroupCommitSchedulerRegions(t *testing.T) {
 				return id, err
 			})
 		})
-		gcFlush()
+		gcFlush(t)
 		// A reader of G's live work (as G's end decision is) waits until the creation is published too.
 		reading := gcReadAfter(harness, session.OwnedKey(made.g), &created, published)
 		held.release()
@@ -596,7 +603,7 @@ func TestGroupCommitSchedulerRegions(t *testing.T) {
 		if err := reopened.WaitForIdle(testContext); err != nil {
 			t.Fatal(err)
 		}
-		gcFlush()
+		gcFlush(t)
 		if got := sizes().settled; got != 1 {
 			t.Fatalf("settled %d while the creation is unpublished, want 1", got)
 		}
@@ -613,7 +620,7 @@ func TestGroupCommitSchedulerRegions(t *testing.T) {
 			t.Fatalf("pins %d after the creation is published, want 0", got)
 		}
 		idle := gcGo(func() (struct{}, error) { return struct{}{}, reopened.WaitForIdle(testContext) })
-		if idle.settled() {
+		if idle.settled(t) {
 			t.Fatal("waitForIdle settled although D is live")
 		}
 		reopened.Resume()
@@ -641,18 +648,18 @@ func gcRaceMark(t *testing.T, fixtures *gcFixtures, store *controlledStorage, ha
 		})
 	})
 	eventually(t, prepared.Load)
-	gcFlush()
+	gcFlush(t)
 	// Global idle schedules a reconcile pass, which reaches the line while both are unpublished.
 	go func() { _ = harness.WaitForIdle(testContext) }()
-	gcFlush()
+	gcFlush(t)
 	heldAdvance := store.holdCommits()
 	heldMark.release()
 	gcEntered(t, heldAdvance)
-	gcFlush()
+	gcFlush(t)
 	heldAdvance.release()
 	marking.wait(t)
 	advancing.wait(t)
-	gcFlush()
+	gcFlush(t)
 }
 
 func TestGroupCommitRecordsADecisionCopies(t *testing.T) {
@@ -673,7 +680,7 @@ func TestGroupCommitRecordsADecisionCopies(t *testing.T) {
 		}))
 		harness.Resume()
 		eventually(t, func() bool { return fixtures.probeRuntime("c") != nil })
-		gcFlush()
+		gcFlush(t)
 		gcRaceMark(t, fixtures, store, harness, "c", func() error {
 			_, err := harness.AbortTask(testContext, made.parent)
 			return err
@@ -699,7 +706,7 @@ func TestGroupCommitRecordsADecisionCopies(t *testing.T) {
 		}))
 		harness.Resume()
 		eventually(t, func() bool { return fixtures.probeRuntime("x") != nil && fixtures.probeRuntime("y") != nil })
-		gcFlush()
+		gcFlush(t)
 		y := fixtures.probeRuntime("y").TaskId()
 		// X fails while its commit is in flight; the pass that marks Y runs while Y's own commit is pending.
 		gcRaceMark(t, fixtures, store, harness, "y", func() error {
@@ -815,7 +822,7 @@ func TestGroupCommitOutcomesAndPublicationThroughTheHarness(t *testing.T) {
 		first := gcGo(func() (durable.Submission, error) { return root.Submit(testContext, draft) })
 		gcEntered(t, held)
 		second := gcGo(func() (durable.Submission, error) { return root.Submit(testContext, draft) })
-		gcFlush()
+		gcFlush(t)
 		held.release()
 		if got, want := second.wait(t).Id(), first.wait(t).Id(); got != want {
 			t.Fatalf("the second submission is %d, want the first, %d", got, want)
@@ -848,9 +855,9 @@ func TestGroupCommitOutcomesAndPublicationThroughTheHarness(t *testing.T) {
 			return struct{}{}, err
 		})
 		fixtures.gate("one").resolve()
-		gcFlush()
+		gcFlush(t)
 		fixtures.gate("two").resolve()
-		gcFlush()
+		gcFlush(t)
 		held.release()
 		blocker.wait(t)
 		waited.wait(t)
@@ -893,7 +900,7 @@ func TestGroupCommitOutcomesAndPublicationThroughTheHarness(t *testing.T) {
 		if err := signalled.wait(testContext); err != nil {
 			t.Fatal(err)
 		}
-		if closing.settled() {
+		if closing.settled(t) {
 			t.Fatal("close settled while a call was in flight")
 		}
 		held.release()

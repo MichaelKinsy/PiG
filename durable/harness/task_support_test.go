@@ -34,6 +34,14 @@ func deferred() *deferredGate { return &deferredGate{done: make(chan struct{})} 
 
 func (gate *deferredGate) resolve() { gate.once.Do(func() { close(gate.done) }) }
 
+// reject settles the gate with err, which every wait returns.
+func (gate *deferredGate) reject(err error) {
+	gate.once.Do(func() {
+		gate.err = err
+		close(gate.done)
+	})
+}
+
 // wait blocks until the gate settles or ctx is cancelled.
 func (gate *deferredGate) wait(ctx context.Context) error {
 	select {
@@ -205,12 +213,10 @@ func queueOnLineAdmittedFrom(t *testing.T, base context.Context, start func(ctx 
 	t.Helper()
 	admitted := make(chan struct{})
 	done := start(lineadmission.With(base, func() { close(admitted) }))
-	eventually(t, func() bool {
-		select {
-		case <-admitted:
-			return true
-		default:
-			return settled(done)
-		}
-	})
+	select {
+	case <-admitted:
+	case <-done:
+	case <-time.After(gcTimeout):
+		t.Fatal("the operation was neither admitted to the Session line nor settled")
+	}
 }
