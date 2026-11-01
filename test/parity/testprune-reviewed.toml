@@ -676,3 +676,31 @@ commit = "8fead2d31cb1638ad113f7df3f8f1a5d8a0b773a"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "Go only, no Pi line changed: the fleet's plugins component builds Pi's fixture plugin (testdata/plugins/notes: worker.ts, label.ts, package.json, byte for byte) with the real esbuild build instead of a stand-in Builder and Evaluator, which the plugins component no longer has; the expected labels and reports are Pi's."
+
+[[entry]]
+path = "internal/minimatch/minimatch_oracle_test.go"
+commit = "fffc16ae0a59ad1a839a70e260c6a8ecd6905dba"
+class = "CITE"
+cite = "packages/coding-agent/package.json:59"
+reason = "Pi b4c2e92a moves the coding agent's minimatch dependency from 10.2.6 to 11.0.3 (package.json:59, \"minimatch\": \"11.0.3\"). The oracle test compares internal/minimatch with the installed minimatch, so its expected values are the 11.0.3 results: an empty path portion matches only an empty pattern portion, case folds by Unicode simple case folding, and only a pattern over 65,536 units throws."
+
+[[entry]]
+path = "durable/core/driver/upgrade_in_place_core_test.go"
+commit = "caa5070223561fe78b68864daca314e726814a94"
+class = "CITE"
+cite = "packages/durable/src/storage/sqlite/migrations.ts:91"
+reason = "Pi 1.4.0 writes schema version 2 (migrations.ts:91, 'Version 2 adds the sleeping task status', the tasks table rebuilt in place), so an older store upgrades in place with no backup file. The test expects the upgraded store at SupportedSchemaVersion and no .schema-1.bak, where D188 made PiG refuse and back up."
+
+[[entry]]
+path = "extensions/sdk-py/bundle_test.go"
+commit = "e27a975dc1c7d51b2e985f36f20e0f400e5c47f4"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The SDK bundle layout is PiG-original packaging, which Pi does not have, so no Pi line governs it. The commit moves each gzip copy of a bundled SDK file under the bundle's hidden .gz directory (.gz/<name>.gz) so source-tree walks skip it; the staged files, their bytes and the staged-SDK digests are unchanged, and the test asserts only the new embedded name."
+
+[[entry]]
+path = "ai/catalog_options_upstream_test.go"
+commit = "e4f8e357736b7eae9f16439a3ebd49daa6add1bf"
+class = "CITE"
+cite = "packages/ai/test/openrouter-cache-control-models.test.ts:12"
+reason = "Pi 44f6851b (#9534) deletes packages/ai/test/openrouter-cache-control-models.test.ts (the commit's Pi-Behavior-Change trailer) and sends the OpenRouter ~anthropic/claude-*-latest aliases through the Anthropic Messages API with adaptive thinking, like the versioned Claude models. The Go port of that test now pins the new behavior (TestOpenRouterAnthropicLatestAliasesUseMessages), recorded under D217."
