@@ -160,8 +160,8 @@ func discoverNode(ctx context.Context) (string, error) {
 	}
 	output, err := linkerexec.CommandContext(ctx, path, "--version").CombinedOutput()
 	if err != nil {
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return "", ctxErr
+		if ctx.Err() != nil {
+			return "", context.Cause(ctx)
 		}
 		detail := strings.TrimSpace(string(output))
 		if detail == "" {

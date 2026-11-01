@@ -22,7 +22,7 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 )
 
-// Ports packages/chord/test/next-node/plugins/build.test.ts, which runs the real esbuild build, against esbuildFacet on
+// Ports packages/chord/test/next-node/plugins/build.test.ts, which runs the real esbuild build, against BuildFacet on
 // esbuild's Go API: every row of the import table, failures as results, source maps relative to the plugin and digests
 // stable across two checkout paths, inputs hashed as esbuild read them.
 
@@ -51,10 +51,10 @@ func esbuildDiscovered(t *testing.T, name string, roots ...string) ([]Plugin, Pl
 	return nil, Plugin{}
 }
 
-// esbuildBuild is esbuildFacet's result, which must not be an error.
+// esbuildBuild is BuildFacet's result, which must not be an error.
 func esbuildBuild(t *testing.T, plugin Plugin, kind string, options BuildOptions) BuiltFacet {
 	t.Helper()
-	built, err := esbuildFacet(plugin, kind, options, background)
+	built, err := BuildFacet(plugin, kind, options, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +230,7 @@ func TestEsbuildBuildGivesTheSameScriptAndDigestFromTwoCheckoutPaths(t *testing.
 			options.Plugins = discovery.Plugins
 			for _, plugin := range discovery.Plugins {
 				if plugin.Name == "@test/notes" {
-					builds[i], errs[i] = esbuildFacet(plugin, "worker", options, background)
+					builds[i], errs[i] = BuildFacet(plugin, "worker", options, background)
 				}
 			}
 		})
@@ -489,7 +489,7 @@ func TestEsbuildBuildAnAbortedContextIsItsCause(t *testing.T) {
 	ctx, cancel := context.WithCancelCause(chordctx.Background())
 	cause := os.ErrDeadlineExceeded
 	cancel(cause)
-	built, err := esbuildFacet(plugin, "worker", options, ctx)
+	built, err := BuildFacet(plugin, "worker", options, ctx)
 	if !errors.Is(err, cause) || !reflect.DeepEqual(built, BuiltFacet{}) {
 		t.Fatalf("built = %+v, err = %v, want the cause %v", built, err, cause)
 	}
