@@ -21,7 +21,10 @@ import (
 // medians over 7 runs by hand; Go's `testing.B` repeats and reports ns/op, and the other measures as metrics.
 // Run by hand (not in CI): go test -run '^$' -bench BenchmarkPlugins ./chord/nextnode/plugins/
 //
-// The plugins are Pi's own TypeScript (`benchWorker` is bench/plugins.ts's `worker`). The builds are the real esbuild build;
+// The plugins are Pi's own TypeScript (`benchWorker` is bench/plugins.ts's `worker`, with one change: the shared contract is
+// imported by the plugin's name, `@bench/contracts/contract`, where Pi's file says `../contracts/contract.ts`: build.ts
+// refuses that relative path into another plugin, so Pi's benchmark builds nothing but failed results, which it does not
+// check; here every build is checked and must be a script). The builds are the real esbuild build;
 // the evaluation and the reloads are the real Node subprocess's (Pi's evaluate.ts and runtime.ts): the evaluation is measured
 // inside it, by a probe (plugins_probe_test.go's shape) running Pi's `evaluateFacet`, and `--expose-gc` is the Node host's
 // flag (the heap is read by the probe after `gc()`). The probe's helpers take a *testing.T, which a benchmark has not: the
@@ -36,7 +39,7 @@ const (
 func benchWorker(index int, label string) string {
 	return strings.Join([]string{
 		`import { constant, defineFacet, defineState, int, local, method, obj, str } from "@earendil-works/chord/next";`,
-		`import { Shared } from "../contracts/contract.ts";`,
+		`import { Shared } from "@bench/contracts/contract";`,
 		`import { format } from "./format.ts";`,
 		fmt.Sprintf(`const Store = local("bench.store%d", { version: 1, params: {}, members: { label: str(), n: int(), bump: method(undefined, int()) } });`, index),
 		`const Count = defineState("count", { schema: obj({ n: int() }), version: 1, initial: () => ({ n: 0 }) });`,
