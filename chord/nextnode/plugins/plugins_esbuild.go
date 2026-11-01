@@ -283,11 +283,11 @@ func (rules *importRules) setup(builder api.PluginBuild) {
 		}
 		resolved := rules.resolve(args.Path, args.Importer, args.Kind)
 		switch resolved.kind {
-		case resolveError:
+		case resolvedError:
 			return api.OnResolveResult{Errors: []api.Message{{Text: resolved.text}}}, nil
-		case resolveExternal:
+		case resolvedExternal:
 			return api.OnResolveResult{Path: args.Path, External: true}, nil
-		case resolveDefault:
+		case resolvedDefault:
 			return api.OnResolveResult{}, nil
 		}
 		found := builder.Resolve(resolved.path, api.ResolveOptions{
@@ -362,10 +362,10 @@ func (rules *importRules) copied() []string {
 type resolutionKind uint8
 
 const (
-	resolveExternal resolutionKind = iota
-	resolveDefault
-	resolvePath
-	resolveError
+	resolvedExternal resolutionKind = iota
+	resolvedDefault
+	resolvedPath
+	resolvedError
 )
 
 // resolution is what an import becomes (see importRules.resolve).
@@ -382,31 +382,31 @@ type resolution struct {
 // the plugin's `dependencies`, or anything a package imports), or a path esbuild resolves and the rules check.
 func (rules *importRules) resolve(specifier, importer string, kind api.ResolveKind) resolution {
 	browser := rules.options.Platform == PlatformBrowser
-	failure := func(text string) resolution { return resolution{kind: resolveError, text: text} }
+	failure := func(text string) resolution { return resolution{kind: resolvedError, text: text} }
 	if kind == api.ResolveJSDynamicImport {
 		return failure(`import("` + specifier + `"): a plugin script has no dynamic import (` + pluginFileHint + `)`)
 	}
 	if specifier == pluginsSpecifier || rules.hostPackages[specifier] {
-		return resolution{kind: resolveExternal}
+		return resolution{kind: resolvedExternal}
 	}
 	if isBuiltin(specifier) {
 		if !browser {
-			return resolution{kind: resolveExternal}
+			return resolution{kind: resolvedExternal}
 		}
 		return failure(`"` + specifier + `": a Node builtin in a browser build`)
 	}
 	if path, ok := strings.CutSuffix(specifier, "?url"); ok {
 		if browser {
-			return resolution{kind: resolvePath, path: path, asset: true}
+			return resolution{kind: resolvedPath, path: path, asset: true}
 		}
 		return failure(`"` + specifier + `": assets by URL are for browser builds (` + pluginFileHint + `)`)
 	}
 	from := rules.place(importer)
 	if from.kind == placePackage {
-		return resolution{kind: resolveDefault}
+		return resolution{kind: resolvedDefault}
 	}
 	if strings.HasPrefix(specifier, ".") || filepath.IsAbs(specifier) {
-		return resolution{kind: resolvePath, path: specifier}
+		return resolution{kind: resolvedPath, path: specifier}
 	}
 	name := packageName(specifier)
 	var named *Plugin
@@ -428,12 +428,12 @@ func (rules *importRules) resolve(specifier, importer string, kind api.ResolveKi
 	}
 	if slices.Contains(rules.own.External, name) {
 		if !browser {
-			return resolution{kind: resolveExternal}
+			return resolution{kind: resolvedExternal}
 		}
 		return failure(`"` + specifier + `": chord.external packages are for Node builds`)
 	}
 	if slices.Contains(rules.own.Dependencies, name) {
-		return resolution{kind: resolveDefault}
+		return resolution{kind: resolvedDefault}
 	}
 	return failure(`"` + specifier + `": neither a host package, in the dependencies of plugin "` + rules.own.Name + `" nor a discovered plugin "` + name + `"`)
 }
@@ -446,12 +446,12 @@ func (rules *importRules) byName(specifier string, named *Plugin, from place) re
 		file = specifier[len(named.Name)+1:]
 	}
 	if file == "" {
-		return resolution{kind: resolveError, text: `"` + specifier + `": names plugin "` + named.Name + `", not a file of it ("` + named.Name + `/contract")`}
+		return resolution{kind: resolvedError, text: `"` + specifier + `": names plugin "` + named.Name + `", not a file of it ("` + named.Name + `/contract")`}
 	}
 	if from.kind == placeCopied && from.plugin != named {
-		return resolution{kind: resolveError, text: `"` + specifier + `": ` + copiedRule(*from.plugin)}
+		return resolution{kind: resolvedError, text: `"` + specifier + `": ` + copiedRule(*from.plugin)}
 	}
-	return resolution{kind: resolvePath, path: filepath.Join(named.Dir, file), named: named}
+	return resolution{kind: resolvedPath, path: filepath.Join(named.Dir, file), named: named}
 }
 
 // checkFile is why the file path (resolved from importer's import of specifier, by name of plugin named or a relative

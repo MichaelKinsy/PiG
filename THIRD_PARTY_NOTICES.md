@@ -722,3 +722,12 @@ Distributed files: `third_party/semver/`, a package of the root module. The dire
 
 - Copyright (C) 2014-2019 Matt Butcher and Matt Farina.
 - License: MIT, in `third_party/semver/LICENSE.txt` and `LICENSES/MIT.txt`.
+
+## evanw/esbuild v0.28.2 (plugin builds)
+
+Source: <https://github.com/evanw/esbuild/tree/v0.28.2>
+
+Linked as the Go module `github.com/evanw/esbuild` (its `pkg/api`) by `chord/nextnode/plugins`, which builds a plugin facet as Pi's `build.ts` does with esbuild 0.28.2.
+
+- Copyright (c) 2020 Evan Wallace.
+- License: MIT, in `LICENSES/MIT.txt`.

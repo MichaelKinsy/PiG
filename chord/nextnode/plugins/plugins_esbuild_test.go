@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -522,5 +523,26 @@ module.exports.default.setup("some-package").then((value) => console.log(JSON.st
 	}
 	if strings.TrimSpace(string(out)) != `"some-package"` {
 		t.Errorf("the require answered %q", out)
+	}
+}
+
+// A column is counted in UTF-16 code units, as the JavaScript esbuild API `build.ts` reads reports it (the Go API's own are
+// bytes): a build error and a free `__dirname` after non-ASCII text on their line.
+func TestEsbuildBuildColumnsAreUTF16CodeUnits(t *testing.T) {
+	root := tempRoot(t)
+	prefix := `const s = "é😀"; `
+	writePlugin(t, root, "wide", "@test/wide", map[string]string{
+		"worker.ts": prefix + "export default {",
+		"server.ts": "console.log(\"é😀\", __dirname);\nexport default { setup: () => 1 };",
+	}, nil)
+	_, plugin := esbuildDiscovered(t, "@test/wide", root)
+	got := esbuildErrors(t, esbuildBuild(t, plugin, "worker", esbuildNode))
+	if len(got) != 1 || !strings.HasPrefix(got[0], "worker.ts:1:"+strconv.Itoa(utf16Length(prefix+"export default {")+1)+": Expected ") {
+		t.Errorf("syntax error = %q, want it at column %d", got, utf16Length(prefix+"export default {")+1)
+	}
+	got = esbuildErrors(t, esbuildBuild(t, plugin, "server", esbuildNode))
+	want := "server.ts:1:" + strconv.Itoa(utf16Length(`console.log("é😀", `)+1) + ": " + noModuleIdentity
+	if len(got) != 1 || got[0] != want {
+		t.Errorf("__dirname = %q, want %q", got, want)
 	}
 }
