@@ -16,7 +16,7 @@ import (
 
 // Ports packages/durable/src/tools/read.ts.
 
-const readParameters = `{"type":"object","required":["path"],"properties":{"path":{"type":"string","description":"Path to the file to read (relative or absolute)"},"offset":{"type":"number","description":"Line number to start reading from (1-indexed)"},"limit":{"type":"number","description":"Maximum number of lines to read"}}}`
+const readParameters = `{"type":"object","properties":{"path":{"type":"string","description":"Path to the file to read (relative or absolute)"},"offset":{"type":"number","description":"Line number to start reading from (1-indexed)"},"limit":{"type":"number","description":"Maximum number of lines to read"}},"required":["path"]}`
 
 // ReadToolInput is the arguments of the read tool. Offset and Limit are JSON
 // numbers, which need not be whole.
@@ -83,7 +83,7 @@ func readStructuredOutputSchema() map[string]any {
 				"type":     "object",
 				"required": []any{"type", "data", "mimeType"},
 				"properties": map[string]any{
-					"type":     map[string]any{"const": "image", "type": "string"},
+					"type":     map[string]any{"const": "image"},
 					"data":     map[string]any{"type": "string"},
 					"mimeType": map[string]any{"type": "string"},
 				},

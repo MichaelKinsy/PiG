@@ -76,7 +76,7 @@ func TestStructuredOutputErrorUsesPiSchema(t *testing.T) {
 		{"a nested path", map[string]any{"type": "object", "properties": map[string]any{"items": map[string]any{"type": "array", "items": map[string]any{"type": "integer"}}}}, map[string]any{"items": []any{1.0, "x"}},
 			"Tool shell returned structuredOutput that does not match its schema: items.1: expected integer, got string"},
 		{"a reference that names nothing", map[string]any{"type": "object", "properties": map[string]any{"a": map[string]any{"$ref": "#/$defs/missing"}}}, map[string]any{"a": 1.0},
-			"Tool shell returned structuredOutput that does not match its schema: a: unresolved reference"},
+			"Tool shell returned structuredOutput that does not match its schema: a: unresolved reference #/$defs/missing"},
 		{"no string conversion", map[string]any{"type": "number"}, "1",
 			"Tool shell returned structuredOutput that does not match its schema: root: expected number, got string"},
 	} {
@@ -114,7 +114,7 @@ func TestModelIssuedCallLosesABrokenStructuredOutputAndTheHostLearnsOfIt(t *test
 	}
 	found := false
 	for _, report := range setup.Reports.all() {
-		found = found || strings.Contains(report.Error(), "Tool shell returned structuredOutput that does not match its schema: output: expected string, got number")
+		found = found || strings.Contains(report.Error(), "Tool shell returned structuredOutput that does not match its schema: output: expected string, got integer")
 	}
 	if !found {
 		t.Errorf("reports = %v, want the structuredOutput break", setup.Reports.all())
