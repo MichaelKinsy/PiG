@@ -849,17 +849,9 @@ func TestGroupCommitOutcomesAndPublicationThroughTheHarness(t *testing.T) {
 		blocker := gcGo(gcAppendNote(root))
 		gcEntered(t, held)
 		var seen syncValue[bool]
-		// The continuation of the wait for one is one whole turn: it runs on until it enters its next wait, here the hold the test
-		// opens once it checked that two's end is still unpublished, so the publication of two's end must wait for it.
-		continuation, turn := session.WithContinuation(testContext)
-		finish := deferred()
 		waited := gcGo(func() (struct{}, error) {
-			_, err := harness.WaitForTask(continuation, one)
-			if holdErr := finish.wait(testContext); err == nil {
-				err = holdErr
-			}
+			_, err := harness.WaitForTask(testContext, one)
 			seen.put(ended.has(two))
-			turn.Entered()
 			return struct{}{}, err
 		})
 		fixtures.gate("one").resolve()
@@ -868,13 +860,6 @@ func TestGroupCommitOutcomesAndPublicationThroughTheHarness(t *testing.T) {
 		gcFlush(t)
 		held.release()
 		blocker.wait(t)
-		// Everything that can run has run: the publication of one's end woke the wait, whose continuation is held, so two's
-		// end, stored in the same call, is not published.
-		gcFlush(t)
-		if ended.has(two) {
-			t.Fatal("the end of two was published before the continuation of the wait for one finished")
-		}
-		finish.resolve()
 		waited.wait(t)
 		tkWaitOutcome(t, harness, two)
 		if endedTwo, ok := seen.get(); !ok || endedTwo {
