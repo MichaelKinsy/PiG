@@ -400,7 +400,32 @@ func Normalize(schema Schema, value any, what string) (any, error) {
 	if err := assertValid("input", what, schema, normalized); err != nil {
 		return nil, err
 	}
+	if cleaner.holes {
+		// A hole is JavaScript's `undefined` in a list, which JSON.stringify writes as null: the value a caller gets is JSON.
+		normalized = holesAsNull(normalized)
+	}
 	return normalized, nil
+}
+
+// holesAsNull replaces the undefined elements of lists by null, in place.
+func holesAsNull(value any) any {
+	switch typed := value.(type) {
+	case []any:
+		for index, item := range typed {
+			if _, undefined := item.(absent); undefined {
+				typed[index] = nil
+				continue
+			}
+			typed[index] = holesAsNull(item)
+		}
+	default:
+		if object, ok := nodeOf(value); ok {
+			for _, key := range object.keys() {
+				object.set(key, holesAsNull(object.value(key)))
+			}
+		}
+	}
+	return value
 }
 
 // Cleaned is schema.ts cleaned: a copy of value with only what schema knows, unknown object fields dropped,
@@ -449,7 +474,11 @@ func cloneData(value any) any {
 
 // cleaner carries the first error of the validators and patterns a clean or a defaulting compiles; upstream's compile
 // throws where it fails.
-type cleaner struct{ err error }
+type cleaner struct {
+	err error
+	// holes is set when defaulting left a list element undefined (a tuple padded up to a later item).
+	holes bool
+}
 
 // valid is isValid(schema, value) that remembers a compile failure.
 func (c *cleaner) valid(schema, value any) bool {
@@ -603,7 +632,7 @@ func (c *cleaner) clean(schema, value any) any {
 				matched = known
 			}
 		}
-		if _, undefined := matched.(absent); undefined && isRecord && match(key) && recordValue != nil {
+		if _, undefined := matched.(absent); undefined && isRecord && match(key) {
 			matched = recordValue
 		}
 		item := object.value(key)
@@ -663,6 +692,7 @@ func (c *cleaner) defaults(schema, value any) any {
 				} else if !isUndefined(item) {
 					for len(list) < index {
 						list = append(list, absent{})
+						c.holes = true
 					}
 					list = append(list, item)
 				}
@@ -729,6 +759,17 @@ func schemaNodeHas(schema any, keyword string) bool {
 // patternMatcher is `new RegExp(pattern, "u")`'s `test`: whether a string matches the pattern anywhere, compiled as
 // pi-schema compiles a `pattern` keyword.
 func patternMatcher(pattern string) (func(string) bool, error) {
+	patternMatchers.RLock()
+	entry, ok := patternMatchers.byText[pattern]
+	patternMatchers.RUnlock()
+	if ok {
+		return entry.match, entry.err
+	}
+	return compilePatternMatcher(pattern)
+}
+
+// compilePatternMatcher compiles pattern and keeps it, once per pattern text.
+func compilePatternMatcher(pattern string) (func(string) bool, error) {
 	patternMatchers.Lock()
 	defer patternMatchers.Unlock()
 	if entry, ok := patternMatchers.byText[pattern]; ok {
@@ -758,7 +799,7 @@ type compiledPattern struct {
 }
 
 var patternMatchers struct {
-	sync.Mutex
+	sync.RWMutex
 	byText map[string]compiledPattern
 }
 

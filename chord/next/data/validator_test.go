@@ -162,7 +162,9 @@ func TestFailedChecks(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !validator.Check(delta.JsonObjectOf("mail", "a@b.c")) || !validator.Check(delta.JsonObjectOf("mail", "nope")) {
+		valid, _ := validator.Check(delta.JsonObjectOf("mail", "a@b.c"))
+		annotated, _ := validator.Check(delta.JsonObjectOf("mail", "nope"))
+		if !valid || !annotated {
 			t.Fatal("a format was checked")
 		}
 	})

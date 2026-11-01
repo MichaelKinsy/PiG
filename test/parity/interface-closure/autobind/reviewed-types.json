@@ -533,7 +533,7 @@
   },
   "pkg:chord/next#lit::call:0": {
     "go": "chord/next/contracts/schema.go#Lit",
-    "reason": "Pi chord/src/next/contracts/schema.ts:71 lit::call:0: Pi's TLiteral is a TypeBox schema type (Type.TLiteral) the builder returns; Go's builders return contracts.TSchema (contracts/schema.go:37), the one schema value whose JSON is the same schema node. Go: chord/next/contracts/schema.go#Lit. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go)."
+    "reason": "Pi chord/src/next/contracts/schema.ts:71 lit::call:0: Pi's TLiteral is a TypeBox schema type (Type.TLiteral) the builder returns; Go's builders return contracts.Schema (contracts/schema.go:37), the one schema value whose JSON is the same schema node. Go: chord/next/contracts/schema.go#Lit. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go)."
   },
   "pkg:chord/next#loadContent::call:0": {
     "go": "chord/next/store/engine.go#LoadContent",
@@ -545,7 +545,7 @@
   },
   "pkg:chord/next#map::call:0": {
     "go": "chord/next/contracts/schema.go#Map",
-    "reason": "Pi chord/src/next/contracts/schema.ts:103 map::call:0: Pi's TRecord is a TypeBox schema type (Type.TRecord) the builder returns; Go's builders return contracts.TSchema (contracts/schema.go:37), the one schema value whose JSON is the same schema node. Go: chord/next/contracts/schema.go#Map. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go)."
+    "reason": "Pi chord/src/next/contracts/schema.ts:103 map::call:0: Pi's TRecord is a TypeBox schema type (Type.TRecord) the builder returns; Go's builders return contracts.Schema (contracts/schema.go:37), the one schema value whose JSON is the same schema node. Go: chord/next/contracts/schema.go#Map. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go)."
   },
   "pkg:chord/next#max::call:0": {
     "go": "chord/next/store/expression.go#Max",
@@ -557,11 +557,11 @@
   },
   "pkg:chord/next#nul::call:0": {
     "go": "chord/next/contracts/schema.go#Nul",
-    "reason": "Pi chord/src/next/contracts/schema.ts:66 nul::call:0: Pi's TNull is a TypeBox schema type (Type.TNull) the builder returns; Go's builders return contracts.TSchema (contracts/schema.go:37), the one schema value whose JSON is the same schema node. Go: chord/next/contracts/schema.go#Nul. Exercised by TestEvolveEdits (chord/next/contracts/evolve_test.go)."
+    "reason": "Pi chord/src/next/contracts/schema.ts:66 nul::call:0: Pi's TNull is a TypeBox schema type (Type.TNull) the builder returns; Go's builders return contracts.Schema (contracts/schema.go:37), the one schema value whose JSON is the same schema node. Go: chord/next/contracts/schema.go#Nul. Exercised by TestEvolveEdits (chord/next/contracts/evolve_test.go)."
   },
   "pkg:chord/next#oneOf::call:0": {
     "go": "chord/next/contracts/schema.go#OneOf",
-    "reason": "Pi chord/src/next/contracts/schema.ts:76 oneOf::call:0: Pi's TUnion is a TypeBox schema type (Type.TUnion) the builder returns; Go's builders return contracts.TSchema (contracts/schema.go:37), the one schema value whose JSON is the same schema node. Go: chord/next/contracts/schema.go#OneOf. Exercised by TestParamsPolicy (chord/next/contracts/params_test.go)."
+    "reason": "Pi chord/src/next/contracts/schema.ts:76 oneOf::call:0: Pi's TUnion is a TypeBox schema type (Type.TUnion) the builder returns; Go's builders return contracts.Schema (contracts/schema.go:37), the one schema value whose JSON is the same schema node. Go: chord/next/contracts/schema.go#OneOf. Exercised by TestParamsPolicy (chord/next/contracts/params_test.go)."
   },
   "pkg:chord/next#opt::call:0": {
     "go": "chord/next/store/columns.go#Opt",
@@ -589,7 +589,7 @@
   },
   "pkg:chord/next#unknown::call:0": {
     "go": "chord/next/contracts/schema.go#Unknown",
-    "reason": "Pi chord/src/next/contracts/schema.ts:113 unknown::call:0: Pi's TUnknown is a TypeBox schema type (Type.TUnknown) the builder returns; Go's builders return contracts.TSchema (contracts/schema.go:37), the one schema value whose JSON is the same schema node. Go: chord/next/contracts/schema.go#Unknown. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go)."
+    "reason": "Pi chord/src/next/contracts/schema.ts:113 unknown::call:0: Pi's TUnknown is a TypeBox schema type (Type.TUnknown) the builder returns; Go's builders return contracts.Schema (contracts/schema.go:37), the one schema value whose JSON is the same schema node. Go: chord/next/contracts/schema.go#Unknown. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go)."
   },
   "pkg:chord/next#when::call:0": {
     "go": "chord/next/store/expression.go#When",

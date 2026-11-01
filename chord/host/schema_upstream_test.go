@@ -5,6 +5,7 @@ package host
 
 import (
 	"math"
+	"reflect"
 	"testing"
 )
 
@@ -28,5 +29,31 @@ func TestCanonicalJSONMatchesJavaScript(t *testing.T) {
 	// Pi: hash64("a😀") = hash over the UTF-16 code units.
 	if got := Hash64("a\U0001F600"); got != piHashOfASmiley {
 		t.Fatalf("hash64 %s, Pi %s", got, piHashOfASmiley)
+	}
+}
+
+// schema.ts recordOf/cleanFrom: a record whose value schema is `null` still matches its keys (`null !== undefined`), so
+// the field is cleaned with `{}` and kept; a key no pattern matches is dropped.
+func TestCleanedKeepsAFieldOfARecordWhoseValueSchemaIsNull(t *testing.T) {
+	schema := kw("type", "object", "patternProperties", kw("^x", nil))
+	got, err := Cleaned(schema, map[string]any{"x1": 1.0, "y": 2.0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := map[string]any{"x1": 1.0}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("cleaned %#v, want %#v", got, want)
+	}
+}
+
+// schema.ts withDefaults: a tuple padded up to a later item's default leaves JavaScript holes, which JSON.stringify
+// writes as null; a normalized value holds nil there, never an unexported placeholder.
+func TestNormalizeWritesATupleHoleAsNull(t *testing.T) {
+	schema := kw("type", "array", "prefixItems", []any{kw(), kw("type", "string", "default", "a")})
+	got, err := Normalize(schema, []any{}, "input")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []any{nil, "a"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("normalized %#v, want %#v", got, want)
 	}
 }
