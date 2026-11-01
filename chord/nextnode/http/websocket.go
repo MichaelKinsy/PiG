@@ -19,8 +19,9 @@ import (
 // never answers, `terminate` closing the connection at once (close code 1006), a frame above the largest payload
 // answered with a 1009 close frame and an `error` event. Go-only file.
 //
-// Reading starts with Start, which the component calls once a handler has attached its listeners (Pi attaches them in the
-// handler's synchronous part, before any frame is read): a frame sent before waits in the connection.
+// Reading starts at once for a plugin socket too, so pings, pongs and a close frame are answered while its handler runs
+// (the heartbeat depends on it). Pi's handler attaches its listeners in its synchronous part, before any frame is read; a Go
+// handler runs to its return, so the messages that arrive meanwhile are held and delivered in order when it returned.
 
 // WebSocketHandle is Pi's `WebSocketHandle`: the socket a plugin's handler gets.
 type WebSocketHandle = WebSocket
@@ -33,11 +34,22 @@ const (
 	WebSocketClosedState = 3
 )
 
-// Events beyond link's (`open`, `close`, `error`, `message`).
+// Events beyond link's (`open`, `close`, `error`, `message`): the control frames, and a frame of any kind arriving (the
+// heartbeat's).
 const (
-	WebSocketPing link.WebSocketEvent = "ping"
-	WebSocketPong link.WebSocketEvent = "pong"
+	webSocketPing  link.WebSocketEvent = "ping"
+	webSocketPong  link.WebSocketEvent = "pong"
+	webSocketFrame link.WebSocketEvent = "frame"
 )
+
+// Message is a data frame: its payload and whether it was a binary frame (else text, UTF-8).
+type Message struct {
+	Data   []byte
+	Binary bool
+}
+
+// Text is the payload as text.
+func (m Message) Text() string { return string(m.Data) }
 
 // CloseEvent is the data of a `close` event: the close code (1006 for a connection that ended without a close frame) and
 // reason.
@@ -77,6 +89,11 @@ type WebSocket struct {
 	started   bool
 	closeOnce sync.Once
 	timer     *time.Timer
+
+	// deliverMu serializes the delivery of messages; holding keeps them in held (until release) while a handler runs.
+	deliverMu sync.Mutex
+	holding   bool
+	held      []Message
 }
 
 // newWebSocket is the socket over conn (an upgraded server connection).
@@ -86,7 +103,7 @@ func newWebSocket(conn *websocket.Conn) *WebSocket {
 		// The pong first, then the event, as `ws` does.
 		//portlint:allow clock a write deadline of the connection: wall-clock I/O, not behavior a test drives
 		err := conn.WriteControl(websocket.PongMessage, []byte(payload), time.Now().Add(time.Second))
-		socket.emit(WebSocketPing, []byte(payload))
+		socket.emit(webSocketPing, []byte(payload))
 		if errors.Is(err, websocket.ErrCloseSent) {
 			return nil
 		}
@@ -97,7 +114,7 @@ func newWebSocket(conn *websocket.Conn) *WebSocket {
 		return err
 	})
 	conn.SetPongHandler(func(payload string) error {
-		socket.emit(WebSocketPong, []byte(payload))
+		socket.emit(webSocketPong, []byte(payload))
 		return nil
 	})
 	return socket
@@ -117,9 +134,8 @@ func (s *WebSocket) BufferedAmount() int64 {
 	return s.buffered
 }
 
-// On attaches a listener for event and returns its removal. A message event's data is a string for a text frame and
-// []byte for a binary one; `close`: a CloseEvent; `error`: an error; `ping` and `pong`: the payload.
-func (s *WebSocket) On(event link.WebSocketEvent, fn func(data any)) (remove func()) {
+// on attaches a listener for event and returns its removal (the data is what emit gets).
+func (s *WebSocket) on(event link.WebSocketEvent, fn func(data any)) (remove func()) {
 	listener := &socketListener{event: event, fn: fn}
 	s.mu.Lock()
 	s.listeners = append(s.listeners, listener)
@@ -136,17 +152,52 @@ func (s *WebSocket) On(event link.WebSocketEvent, fn func(data any)) (remove fun
 	}
 }
 
-// Once is On for the first event only.
-func (s *WebSocket) Once(event link.WebSocketEvent, fn func(data any)) (remove func()) {
+// once is on for the first event only.
+func (s *WebSocket) once(event link.WebSocketEvent, fn func(data any)) (remove func()) {
 	var once sync.Once
 	var removed func()
-	removed = s.On(event, func(data any) {
+	removed = s.on(event, func(data any) {
 		once.Do(func() {
 			removed()
 			fn(data)
 		})
 	})
 	return removed
+}
+
+// OnMessage attaches a listener for data frames and returns its removal.
+func (s *WebSocket) OnMessage(fn func(Message)) (remove func()) {
+	return s.on(link.WebSocketMessage, func(data any) { fn(data.(Message)) })
+}
+
+// OnClose attaches a listener for the close of the socket (once) and returns its removal.
+func (s *WebSocket) OnClose(fn func(CloseEvent)) (remove func()) {
+	return s.on(link.WebSocketClose, func(data any) { fn(data.(CloseEvent)) })
+}
+
+// OnceClose is OnClose for the first close only.
+func (s *WebSocket) OnceClose(fn func(CloseEvent)) (remove func()) {
+	return s.once(link.WebSocketClose, func(data any) { fn(data.(CloseEvent)) })
+}
+
+// OnError attaches a listener for errors of the socket (a frame above the largest payload) and returns its removal.
+func (s *WebSocket) OnError(fn func(error)) (remove func()) {
+	return s.on(link.WebSocketError, func(data any) { fn(data.(error)) })
+}
+
+// OnPing attaches a listener for ping frames (answered by the socket itself) and returns its removal.
+func (s *WebSocket) OnPing(fn func(payload []byte)) (remove func()) {
+	return s.on(webSocketPing, func(data any) { fn(data.([]byte)) })
+}
+
+// OncePing is OnPing for the first ping only.
+func (s *WebSocket) OncePing(fn func(payload []byte)) (remove func()) {
+	return s.once(webSocketPing, func(data any) { fn(data.([]byte)) })
+}
+
+// OnPong attaches a listener for pong frames and returns its removal.
+func (s *WebSocket) OnPong(fn func(payload []byte)) (remove func()) {
+	return s.on(webSocketPong, func(data any) { fn(data.([]byte)) })
 }
 
 // emit calls the listeners of event, in the order they were attached.
@@ -171,7 +222,7 @@ func (s *WebSocket) Send(data []byte, binary bool, done func(error)) {
 	if binary {
 		frame = websocket.BinaryMessage
 	}
-	if !s.enqueue(queued{frame: frame, data: data, done: done, byteCount: int64(len(data))}) && done != nil {
+	if !s.push(queued{frame: frame, data: data, done: done, byteCount: int64(len(data))}, false) && done != nil {
 		done(errors.New("WebSocket is not open"))
 	}
 }
@@ -179,15 +230,7 @@ func (s *WebSocket) Send(data []byte, binary bool, done func(error)) {
 // Close starts the close handshake with code and reason (no code: code 0), after what is queued; the connection is
 // terminated if the peer does not answer within 30 s.
 func (s *WebSocket) Close(code int, reason string) {
-	s.mu.Lock()
-	if s.state != WebSocketOpenState {
-		s.mu.Unlock()
-		return
-	}
-	s.state = WebSocketClosing
-	s.timer = time.AfterFunc(closeTimeout, s.Terminate)
-	s.mu.Unlock()
-	s.enqueueLocked(queued{frame: websocket.CloseMessage, code: code, hasCode: code != 0, reason: reason})
+	s.push(queued{frame: websocket.CloseMessage, code: code, hasCode: code != 0, reason: reason}, true)
 }
 
 // Terminate closes the connection at once, no close handshake.
@@ -234,11 +277,38 @@ func (s *WebSocket) read() {
 			s.readFailed(err)
 			return
 		}
-		if kind == websocket.BinaryMessage {
-			s.emit(link.WebSocketMessage, data)
-		} else {
-			s.emit(link.WebSocketMessage, string(data))
-		}
+		s.emit(webSocketFrame, nil)
+		s.deliver(Message{Data: data, Binary: kind == websocket.BinaryMessage})
+	}
+}
+
+// deliver emits a message, or holds it while a handler runs.
+func (s *WebSocket) deliver(message Message) {
+	s.deliverMu.Lock()
+	defer s.deliverMu.Unlock()
+	if s.holding {
+		s.held = append(s.held, message)
+		return
+	}
+	s.emit(link.WebSocketMessage, message)
+}
+
+// hold keeps the messages that arrive from now on until release (before Start).
+func (s *WebSocket) hold() {
+	s.deliverMu.Lock()
+	s.holding = true
+	s.deliverMu.Unlock()
+}
+
+// release delivers the messages held, in order, then every later one as it arrives.
+func (s *WebSocket) release() {
+	s.deliverMu.Lock()
+	defer s.deliverMu.Unlock()
+	s.holding = false
+	held := s.held
+	s.held = nil
+	for _, message := range held {
+		s.emit(link.WebSocketMessage, message)
 	}
 }
 
@@ -289,23 +359,17 @@ func (s *WebSocket) closed(event CloseEvent) {
 	})
 }
 
-// enqueue queues a frame when the socket is open.
-func (s *WebSocket) enqueue(job queued) bool {
+// push queues job when the socket is open, in one critical section with the state change a close frame makes: a send never
+// queues behind the close frame. closing makes it the close frame (the first one only). It starts the writer when it is idle.
+func (s *WebSocket) push(job queued, closing bool) bool {
 	s.mu.Lock()
 	if s.state != WebSocketOpenState {
 		s.mu.Unlock()
 		return false
 	}
-	s.mu.Unlock()
-	return s.enqueueLocked(job)
-}
-
-// enqueueLocked queues job and starts the writer when it is idle.
-func (s *WebSocket) enqueueLocked(job queued) bool {
-	s.mu.Lock()
-	if s.state == WebSocketClosedState {
-		s.mu.Unlock()
-		return false
+	if closing {
+		s.state = WebSocketClosing
+		s.timer = time.AfterFunc(closeTimeout, s.Terminate)
 	}
 	s.queue = append(s.queue, job)
 	s.buffered += job.byteCount

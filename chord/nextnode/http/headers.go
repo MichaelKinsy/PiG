@@ -183,8 +183,10 @@ func NewDefaultHeaders() *DefaultHeaders {
 }
 
 // Of is the default headers of a response to a request admitted as admitted (nil: refused before admission), with router's
-// framers and CSP sources (nil before the router is resolved), its CSP allowing scripts with nonce.
-func (d *DefaultHeaders) Of(admitted *Admitted, router *Router, nonce string) *AnswerHeaders {
+// framers and CSP sources (nil before the router is resolved), its CSP allowing scripts with nonce. It returns a *HeaderError
+// when a contributed CSP source is no header value (a CR, a LF): the headers of a request refused before admission or a
+// router never are.
+func (d *DefaultHeaders) Of(admitted *Admitted, router *Router, nonce string) (*AnswerHeaders, error) {
 	headers := NewAnswerHeaders()
 	headers.mustSet("Cache-Control", "no-store")
 	headers.mustSet("X-Content-Type-Options", "nosniff")
@@ -195,8 +197,10 @@ func (d *DefaultHeaders) Of(admitted *Admitted, router *Router, nonce string) *A
 		headers.mustSet("X-Frame-Options", "DENY")
 	}
 	policy := d.policy(admitted, router)
-	headers.mustSet("Content-Security-Policy", policy[0]+nonce+policy[1])
-	return headers
+	if err := headers.Set("Content-Security-Policy", policy[0]+nonce+policy[1]); err != nil {
+		return nil, err
+	}
+	return headers, nil
 }
 
 // policy is the CSP's text around the nonce for admitted under router.

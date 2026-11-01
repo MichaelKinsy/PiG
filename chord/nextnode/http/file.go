@@ -148,8 +148,19 @@ var mimeTypes = map[string]string{
 // mimeOf is the type of path by its extension: text, images, audio and video only. Active types (HTML, SVG) never come from
 // here: a route serving one names it (Mime).
 func mimeOf(path string) string {
-	if mime, ok := mimeTypes[strings.ToLower(filepath.Ext(path))]; ok {
+	if mime, ok := mimeTypes[asciiLower(extname(path))]; ok {
 		return mime
 	}
 	return "application/octet-stream"
+}
+
+// extname is Node's `path.extname`: the extension of the last element, "" when its only dot starts it (`.png` is a name, not
+// an extension).
+func extname(path string) string {
+	base := filepath.Base(path)
+	at := strings.LastIndexByte(base, '.')
+	if at <= 0 || base == ".." {
+		return ""
+	}
+	return base[at:]
 }

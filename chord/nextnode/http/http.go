@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
@@ -30,7 +31,7 @@ import (
 // its principal that lasts until its body is delivered; every answer carries the default headers.
 //
 // Forced Go differences. A Promise is a blocking call or a done channel; `AbortController` is a context.CancelCauseFunc
-// with its context; `Fetch` returns a *net/http.Response; `Upgrade` takes the request in hand (node.go); `HttpComponent<P>`'s
+// with its context; `Fetch` returns a *net/http.Response; `Upgrade` takes the request in hand (node.go); Pi's `HttpComponent<P>` interface is the HttpComponent struct (its one implementation); its
 // principal type is data.Principal; an `HttpError` union is one struct tagged by Kind. `close` returns nothing: it cannot
 // reject.
 
@@ -86,29 +87,8 @@ type HttpError struct {
 	Error   error
 }
 
-// HttpComponent is the running component.
-type HttpComponent interface {
-	// Facet is its facet (plugin `chord.http`): serves `Http` and `Authenticators`, and with Listen the listener, a
-	// host-lifetime object. The app loads it among its core facets, the same object at every reload.
-	Facet() host.Facet
-	// Fetch answers a request (an app's own server mounts it); connection is what the server knows of the socket: without
-	// LocalAddress and LocalPort no request is local. Requests before the publication wait for it (503 past the host's
-	// `readyTimeout`).
-	Fetch(request *nethttp.Request, connection Connection) *nethttp.Response
-	// Upgrade is the upgrade adapter: the app's handler calls it for a request asking for an upgrade (the links endpoint
-	// and plugin sockets).
-	Upgrade(w nethttp.ResponseWriter, request *nethttp.Request)
-	// Listening is where the listener listens, once it does (the real port when Listen.Port was 0); an error once the
-	// component closed or ctx ended.
-	Listening(ctx context.Context) (ListenAddress, error)
-	// Close refuses new requests and upgrades (503), closes sockets and links (1001, terminated at CloseTimeout), waits for
-	// running requests up to CloseTimeout (an aborted ctx: not at all), then seals them. Run it before `host.Close`, which
-	// seals every request's scope at once (the listener's close runs it then, too late to drain).
-	Close(ctx context.Context)
-}
-
 // CreateHttp builds the HTTP component on h (a request's scope is a `host.Root` with its principal).
-func CreateHttp(h host.Host, options HttpOptions, ctx context.Context) HttpComponent {
+func CreateHttp(h host.Host, options HttpOptions, ctx context.Context) *HttpComponent {
 	return newComponent(h, options, ctx, realAfter)
 }
 
@@ -131,6 +111,9 @@ type running struct {
 	cancel context.CancelCauseFunc
 	mu     sync.Mutex
 	done   <-chan struct{}
+	// routeAnswered is whether the route's answer is made: `close` then does not wait for its (maybe large) body to be written,
+	// only for the answers it makes itself (503 for a request sealed before its route answered) to reach the wire.
+	routeAnswered atomic.Bool
 	// scope is the request's scope once it has one: `close` waits for its seal to be seen by the route's context (Go links
 	// contexts by goroutines where an AbortSignal's abort is synchronous).
 	scope host.Ctx
@@ -174,7 +157,8 @@ func (p *listeningPromise) reject(err error) {
 	p.once.Do(func() { p.err = err; close(p.done) })
 }
 
-type component struct {
+// HttpComponent is the running component.
+type HttpComponent struct {
 	host    host.Host
 	options HttpOptions
 	onError func(HttpError)
@@ -191,23 +175,23 @@ type component struct {
 	// resolving is the registries while they resolve (once; again after a failed try), registries the values themselves.
 	resolving  *resolution
 	registries *registrySet
-	// closing is aborted at `close`: the router's watch.
+	// closing is aborted at `close`: new requests and upgrades are refused from then on.
 	closing context.Context
-	// latest is the router the follower saw last and revoking whether a task is revoking against it.
+	// latest is the router the follower saw last, revoking whether a task is revoking against it, revokeTasks joins that task;
+	// revokeHook (a test's) sees each router the task revokes against.
 	latest        *Router
 	revoking      bool
+	revokeTasks   sync.WaitGroup
+	revokeHook    func(*Router)
 	closingCancel context.CancelFunc
 	closeOnce     sync.Once
 	listening     *listeningPromise
 }
 
-var (
-	_ HttpComponent = (*component)(nil)
-	_ Handler       = (*component)(nil)
-)
+var _ Handler = (*HttpComponent)(nil)
 
-func newComponent(h host.Host, options HttpOptions, ctx context.Context, after afterFunc) *component {
-	c := &component{
+func newComponent(h host.Host, options HttpOptions, ctx context.Context, after afterFunc) *HttpComponent {
+	c := &HttpComponent{
 		host: h, options: options, onError: options.OnError, ctx: ctx, base: chordctx.WithoutAbortSignal(ctx),
 		defaults: NewDefaultHeaders(), nonces: NewNonces(), upgrades: NewUpgrades(), running: map[*running]struct{}{},
 		listening: &listeningPromise{done: make(chan struct{})},
@@ -256,10 +240,14 @@ func newComponent(h host.Host, options HttpOptions, ctx context.Context, after a
 	return c
 }
 
-func (c *component) Facet() host.Facet { return c.facet }
+// Facet is its facet (plugin `chord.http`): serves `Http` and `Authenticators`, and with Listen the listener, a host-lifetime
+// object. The app loads it among its core facets, the same object at every reload.
+func (c *HttpComponent) Facet() host.Facet { return c.facet }
 
-// Fetch answers request.
-func (c *component) Fetch(request *nethttp.Request, connection Connection) *nethttp.Response {
+// Fetch answers a request (an app's own server mounts it); connection is what the server knows of the socket: without
+// LocalAddress and LocalPort no request is local. Requests before the publication wait for it (503 past the host's
+// `readyTimeout`).
+func (c *HttpComponent) Fetch(request *nethttp.Request, connection Connection) *nethttp.Response {
 	served := c.Serve(WebIncoming(request), connection)
 	answer := served.Answer
 	// A whole body is out of the component's hands once its `Response` is; a pulled one ends when it is read.
@@ -282,7 +270,7 @@ func webResponse(answer Answer) *nethttp.Response {
 		header.Add(line.Name, line.Value)
 	}
 	response := &nethttp.Response{
-		Status: strconv.Itoa(answer.Status) + " " + statusText[answer.Status], StatusCode: answer.Status,
+		Status: strconv.Itoa(answer.Status) + " " + statusText(answer.Status), StatusCode: answer.Status,
 		Proto: "HTTP/1.1", ProtoMajor: 1, ProtoMinor: 1, Header: header, ContentLength: -1,
 	}
 	switch {
@@ -298,7 +286,9 @@ func webResponse(answer Answer) *nethttp.Response {
 	return response
 }
 
-func (c *component) Listening(ctx context.Context) (ListenAddress, error) {
+// Listening is where the listener listens, once it does (the real port when Listen.Port was 0); an error once the component
+// closed or ctx ended.
+func (c *HttpComponent) Listening(ctx context.Context) (ListenAddress, error) {
 	select {
 	case <-c.listening.done:
 		return c.listening.addr, c.listening.err
@@ -307,16 +297,18 @@ func (c *component) Listening(ctx context.Context) (ListenAddress, error) {
 	}
 }
 
-// Close is `close`.
-func (c *component) Close(ctx context.Context) {
+// Close refuses new requests and upgrades (503), closes sockets and links (1001, terminated at CloseTimeout), waits for
+// running requests up to CloseTimeout (an aborted ctx: not at all), then seals them. Run it before `host.Close`, which seals
+// every request's scope at once (the listener's close runs it then, too late to drain).
+func (c *HttpComponent) Close(ctx context.Context) {
 	c.closeOnce.Do(func() { c.runClose(ctx) })
 }
 
-func (c *component) isClosing() bool { return c.closing.Err() != nil }
+func (c *HttpComponent) isClosing() bool { return c.closing.Err() != nil }
 
 // Serve serves request: its answer, and what its consumer calls once the body is written or abandoned. It never fails:
 // whatever fails answers (503 before the publication or while closing, 403, 404, 500 reported).
-func (c *component) Serve(request Incoming, connection Connection) Served {
+func (c *HttpComponent) Serve(request Incoming, connection Connection) Served {
 	//portlint:allow ctxbackground an AbortController: the request's own root, ended by its client or by close
 	controller, cancel := context.WithCancelCause(context.Background())
 	finished := make(chan struct{})
@@ -364,10 +356,15 @@ func joined(a, b <-chan struct{}) <-chan struct{} {
 }
 
 // Refusal is the answer for a refused or failed request, outside any scope, with the default headers.
-func (c *component) Refusal(status int) Answer { return c.refusal(status, nil, nil, false) }
+func (c *HttpComponent) Refusal(status int) Answer { return c.refusal(status, nil, nil, false) }
 
-func (c *component) refusal(status int, admitted *Admitted, router *Router, head bool) Answer {
-	return errorAnswer(status, c.defaults.Of(admitted, router, c.nonces.Next()), nil, head)
+func (c *HttpComponent) refusal(status int, admitted *Admitted, router *Router, head bool) Answer {
+	headers, err := c.defaults.Of(admitted, router, c.nonces.Next())
+	if err != nil {
+		// A contributed CSP source that is no header value: the baseline alone, which cannot fail.
+		headers, _ = c.defaults.Of(nil, nil, c.nonces.Next())
+	}
+	return errorAnswer(status, headers, nil, head)
 }
 
 type served struct {
@@ -376,7 +373,7 @@ type served struct {
 }
 
 // serveSteps are the steps of `serve`: closing, the registries, admission, the route, origins, the principal, then the scope.
-func (c *component) serveSteps(request Incoming, connection Connection, controller context.Context, finished <-chan struct{}, current *running) served {
+func (c *HttpComponent) serveSteps(request Incoming, connection Connection, controller context.Context, finished <-chan struct{}, current *running) served {
 	head := request.Method() == "HEAD"
 	if c.isClosing() {
 		return served{answer: c.refusal(503, nil, nil, head)}
@@ -427,7 +424,9 @@ func (c *component) serveSteps(request Incoming, connection Connection, controll
 			current.mu.Lock()
 			current.scope = ctx
 			current.mu.Unlock()
-			answered <- c.run(request, webRequest, match, admitted, router, foreign, ctx)
+			answer := c.run(request, webRequest, match, admitted, router, foreign, ctx)
+			current.routeAnswered.Store(true)
+			answered <- answer
 			// The scope lasts until the body is written or abandoned (a `bytes` body reads in it).
 			<-finished
 			return nil, nil
@@ -444,7 +443,7 @@ func (c *component) serveSteps(request Incoming, connection Connection, controll
 }
 
 // run runs the wraps and the route in the request's scope ctx, and makes its answer (a failure: a reported 500).
-func (c *component) run(incoming Incoming, request *webRequest, match *RouteMatch, admitted *Admitted, router *Router, foreign bool, ctx host.Ctx) Answer {
+func (c *HttpComponent) run(incoming Incoming, request *webRequest, match *RouteMatch, admitted *Admitted, router *Router, foreign bool, ctx host.Ctx) Answer {
 	response, err := chainOf(match, ctx)(request)
 	if err != nil {
 		response = c.failure(err, match)
@@ -456,7 +455,11 @@ func (c *component) run(incoming Incoming, request *webRequest, match *RouteMatc
 	failed := func(err error) {
 		c.onError(HttpError{Kind: ErrResponseFailed, Pattern: match.Pattern, Error: err})
 	}
-	answer, err := answerOf(response, incoming, c.defaults.Of(admitted, router, request.Nonce()), ctx, failed)
+	defaults, err := c.defaults.Of(admitted, router, request.Nonce())
+	var answer Answer
+	if err == nil {
+		answer, err = answerOf(response, incoming, defaults, ctx, failed)
+	}
 	if err != nil {
 		failed(err)
 		return c.refusal(500, admitted, router, request.Method() == "HEAD")
@@ -465,7 +468,7 @@ func (c *component) run(incoming Incoming, request *webRequest, match *RouteMatc
 }
 
 // failure is what an error escaping the chain answers: its HttpFailure's status, else a reported 500 without its message.
-func (c *component) failure(err error, match *RouteMatch) HttpResponse {
+func (c *HttpComponent) failure(err error, match *RouteMatch) HttpResponse {
 	var by *thrown
 	if !errors.As(err, &by) {
 		by = &thrown{route: true, plugin: match.Plugin, cause: err}
@@ -488,7 +491,7 @@ func (c *component) failure(err error, match *RouteMatch) HttpResponse {
 // principal is the principal the authenticators give request; one that throws is reported and skipped. Raced against signal
 // (a disconnect, `close`'s seal): an authenticator ignoring it no longer holds the request; the caller sees the abort and
 // answers 503.
-func (c *component) principal(authenticators []AuthenticatorEntry, request HttpRequest, signal context.Context) data.Principal {
+func (c *HttpComponent) principal(authenticators []AuthenticatorEntry, request HttpRequest, signal context.Context) data.Principal {
 	failed := func(plugin string, err error) { c.hookFailed(HookAuthenticate, plugin, err) }
 	ctx := chordctx.WithAbortSignal(c.base, signal)
 	result := make(chan data.Principal, 1)
@@ -501,12 +504,12 @@ func (c *component) principal(authenticators []AuthenticatorEntry, request HttpR
 	}
 }
 
-func (c *component) hookFailed(hook HookName, plugin string, err error) {
+func (c *HttpComponent) hookFailed(hook HookName, plugin string, err error) {
 	c.onError(HttpError{Kind: ErrHookFailed, Hook: hook, Plugin: plugin, Error: err})
 }
 
 // registriesNow is the registries: resolved once, waiting for the publication; a failed try is tried again later.
-func (c *component) registriesNow() (*registrySet, error) {
+func (c *HttpComponent) registriesNow() (*registrySet, error) {
 	c.mu.Lock()
 	if c.registries != nil {
 		set := c.registries
@@ -525,7 +528,7 @@ func (c *component) registriesNow() (*registrySet, error) {
 	return current.set, current.err
 }
 
-func (c *component) resolve(current *resolution) {
+func (c *HttpComponent) resolve(current *resolution) {
 	router, err := c.host.Registry(registries.Registry[any, any](Http), c.ctx, host.GetOptions{})
 	var authenticators *registries.RegistryValueSource
 	if err == nil {
@@ -544,42 +547,52 @@ func (c *component) resolve(current *resolution) {
 }
 
 // follow is the router followed from the facet's follower object: connections its changes no longer admit are terminated. The
-// termination runs off the host's sections and only for the newest router (the connections the older ones admitted that the
-// newest does not are terminated by it).
-func (c *component) follow(router *Router) {
+// termination runs off the host's sections and only for the newest router (the newest also ends what older ones admitted);
+// nothing starts once `close` ran, and `close` joins the task that runs.
+func (c *HttpComponent) follow(router *Router) {
 	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.isClosing() {
+		return
+	}
 	c.latest = router
 	if c.revoking {
-		c.mu.Unlock()
 		return
 	}
 	c.revoking = true
-	c.mu.Unlock()
-	//portlint:allow golifetime one revoking task at a time; it ends when no newer router is waiting
+	c.revokeTasks.Add(1)
+	//portlint:allow golifetime one revoking task at a time; it ends when no newer router is waiting and close joins it
 	go func() {
+		defer c.revokeTasks.Done()
 		for {
 			c.mu.Lock()
 			next := c.latest
 			c.latest = nil
-			if next == nil {
+			if next == nil || c.isClosing() {
 				c.revoking = false
 				c.mu.Unlock()
 				return
 			}
 			c.mu.Unlock()
+			if c.revokeHook != nil {
+				c.revokeHook(next)
+			}
 			c.upgrades.revoke(next)
 		}
 	}()
 }
 
-// Upgrade is one upgrade, tracked from its arrival: refused while closing, else admitted and checked, then handed out.
-func (c *component) Upgrade(w nethttp.ResponseWriter, request *nethttp.Request) {
+// Upgrade is the upgrade adapter: the app's handler calls it for a request asking for an upgrade (the links endpoint and
+// plugin sockets). It tracks the upgrade from its arrival: refused while closing, else admitted and checked, then handed out.
+func (c *HttpComponent) Upgrade(w nethttp.ResponseWriter, request *nethttp.Request) {
 	//portlint:allow ctxmapping an AbortController: the upgrade's own root, ended by its client
 	controller, cancel := context.WithCancelCause(context.Background())
 	// A client gone while its upgrade authenticates aborts that work (a clean disconnect, a reset).
 	cancelledBy(request.Context(), func(error) { cancel(errors.New("http: the client disconnected")) })
 	done := make(chan struct{})
 	current := &running{cancel: cancel, done: done}
+	// An upgrade has no body of its own to write: `close` waits for its handshake in the running set, not afterwards.
+	current.routeAnswered.Store(true)
 	c.mu.Lock()
 	c.running[current] = struct{}{}
 	c.mu.Unlock()
@@ -595,7 +608,7 @@ func (c *component) Upgrade(w nethttp.ResponseWriter, request *nethttp.Request) 
 
 // upgradeSteps are the steps of an upgrade (the same rules as a request's; a socket needs a principal), checked again at
 // hand-out.
-func (c *component) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Request, signal context.Context) {
+func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Request, signal context.Context) {
 	if c.isClosing() {
 		refuse(w, 503)
 		return
@@ -657,6 +670,11 @@ func (c *component) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Request, s
 				return
 			}
 		}
+		if !c.upgrades.reserve() {
+			refuse(w, 503)
+			return
+		}
+		defer c.upgrades.release()
 		c.upgrades.Link(w, r, admission2, options, c.host, c.ctx)
 		return
 	}
@@ -673,6 +691,11 @@ func (c *component) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Request, s
 	failed := func(failure SocketFailure) {
 		c.onError(HttpError{Kind: ErrSocketFailed, Pattern: failure.Pattern, Plugin: failure.Plugin, Error: failure.Error})
 	}
+	if !c.upgrades.reserve() {
+		refuse(w, 503)
+		return
+	}
+	defer c.upgrades.release()
 	c.upgrades.Socket(w, r, admission2, match, webRequest, c.host, c.ctx, failed)
 }
 
@@ -686,7 +709,7 @@ func tryLinkOptions(options func(HttpRequest, data.Principal) (LinkOptions, erro
 }
 
 // listen is the listener's open: Chord's own server listening at listen.
-func (c *component) listen(listen ListenAddress, ctx context.Context) (*NodeListener, error) {
+func (c *HttpComponent) listen(listen ListenAddress, ctx context.Context) (*NodeListener, error) {
 	listener, err := ListenNode(c, listen, ctx)
 	if err != nil {
 		return nil, err
@@ -696,7 +719,7 @@ func (c *component) listen(listen ListenAddress, ctx context.Context) (*NodeList
 }
 
 // runClose is `close`: refuses from now on, then waits for sockets and running requests until the deadline, then seals.
-func (c *component) runClose(ctx context.Context) {
+func (c *HttpComponent) runClose(ctx context.Context) {
 	c.closingCancel()
 	c.listening.reject(errors.New("http: closed"))
 	timeout := c.options.CloseTimeout
@@ -752,6 +775,7 @@ func (c *component) runClose(ctx context.Context) {
 		sealing = append(sealing, each)
 	}
 	c.mu.Unlock()
+	c.revokeTasks.Wait()
 	// Sealed, as `abort()` is for the routes' signals once it returns.
 	for _, each := range sealing {
 		each.mu.Lock()
@@ -759,6 +783,13 @@ func (c *component) runClose(ctx context.Context) {
 		each.mu.Unlock()
 		if scope != nil {
 			<-scope.Done()
+		}
+	}
+	// A request sealed before its route answered is answered 503 by the component: that answer is on the wire before `close`
+	// returns, so the listener's close that follows does not cut it (Pi writes it in microtasks before `closeAllConnections`).
+	for _, each := range sealing {
+		if !each.routeAnswered.Load() {
+			<-each.doneChan()
 		}
 	}
 }

@@ -118,14 +118,16 @@ func answerOf(response HttpResponse, request Incoming, defaults *AnswerHeaders, 
 	case KindHTML:
 		return whole(statusOr(response.Status, 200), headers, "text/html; charset=utf-8", response.Body, head)
 	case KindRedirect:
-		headers.mustSet("Location", response.To)
+		if err := headers.Set("Location", response.To); err != nil {
+			return Answer{}, err
+		}
 		return whole(statusOr(response.Status, 302), headers, "", "", head)
 	case KindError:
 		message := ""
 		if response.Message != nil {
 			message = *response.Message
 		} else {
-			message = statusText[response.Status]
+			message = statusText(response.Status)
 		}
 		return whole(response.Status, headers, "text/plain; charset=utf-8", message, head)
 	case KindBytes:
@@ -143,15 +145,11 @@ func statusOr(status, fallback int) int {
 
 // errorAnswer is the answer for an error status with its reason phrase (or message) as plain text.
 func errorAnswer(status int, headers *AnswerHeaders, message *string, head bool) Answer {
-	text := statusText[status]
+	text := statusText(status)
 	if message != nil {
 		text = *message
 	}
-	answer, err := whole(status, headers, "text/plain; charset=utf-8", text, head)
-	if err != nil {
-		panic(err)
-	}
-	return answer
+	return wholeBody(status, headers, "text/plain; charset=utf-8", text, head)
 }
 
 // whole is a whole body: type unless a header set one, and its length; none for `HEAD`, and neither for a status that
@@ -160,10 +158,15 @@ func whole(status int, headers *AnswerHeaders, contentType string, text string, 
 	if status < 200 || status > 599 {
 		return Answer{}, fmt.Errorf("response: status %d", status)
 	}
+	return wholeBody(status, headers, contentType, text, head), nil
+}
+
+// wholeBody is whole for a status already checked.
+func wholeBody(status int, headers *AnswerHeaders, contentType string, text string, head bool) Answer {
 	if bodyless[status] {
 		headers.Delete("Content-Type")
 		headers.Delete("Content-Length")
-		return Answer{Status: status, Headers: headers}, nil
+		return Answer{Status: status, Headers: headers}
 	}
 	if contentType != "" && !headers.Has("content-type") {
 		headers.mustSet("Content-Type", contentType)
@@ -172,7 +175,7 @@ func whole(status int, headers *AnswerHeaders, contentType string, text string, 
 	if head || text == "" {
 		text = ""
 	}
-	return Answer{Status: status, Headers: headers, Text: text}, nil
+	return Answer{Status: status, Headers: headers, Text: text}
 }
 
 // bodyless are the statuses whose responses carry no body.

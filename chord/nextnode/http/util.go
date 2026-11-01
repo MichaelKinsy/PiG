@@ -29,13 +29,30 @@ func recoverAs(err *error) {
 	}
 }
 
-// jsonString is JSON.stringify of a string.
+// jsonString is JSON.stringify of a string (a Go string always has a JSON form).
 func jsonString(text string) string {
 	out, err := chordjson.Marshal(text)
 	if err != nil {
-		return `""`
+		panic(err)
 	}
 	return string(out)
+}
+
+// asciiLower is `toLowerCase` for the ASCII letters only: a header's host is compared as the client sent it, and Go's
+// strings.ToLower folds characters (U+0130) that JavaScript's does not fold to ASCII.
+func asciiLower(text string) string {
+	for i := 0; i < len(text); i++ {
+		if text[i] >= 'A' && text[i] <= 'Z' {
+			lowered := []byte(text)
+			for j := i; j < len(lowered); j++ {
+				if lowered[j] >= 'A' && lowered[j] <= 'Z' {
+					lowered[j] += 'a' - 'A'
+				}
+			}
+			return string(lowered)
+		}
+	}
+	return text
 }
 
 // StringSet is a set of strings in insertion order (a JavaScript `Set<string>`).

@@ -5,7 +5,6 @@ import (
 	"io"
 	"iter"
 	nethttp "net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,7 +17,7 @@ import (
 // default, malformed 400, too large 413) and `Body(limit)`, a sequence of chunks.
 //
 // Forced Go differences. `Headers` is a net/http.Header (with `Host` in it; HeaderGet reads one as `Headers.get` does),
-// `URLSearchParams` is url.Values, `Record<string, string>` params a map. `limit?: number` is an optional variadic
+// `URLSearchParams` is URLSearchParams (query.go), `Record<string, string>` params a map. `limit?: number` is an optional variadic
 // argument. The async iterable `body` is an iter.Seq2 of chunks and the error a `for await` would throw. A `throw` of
 // HttpFailure is a returned *HttpFailure.
 
@@ -29,7 +28,7 @@ type HttpRequest interface {
 	Path() string
 	// Params are the matched pattern's params, percent-decoded (`*` for the rest of a `/*` pattern).
 	Params() map[string]string
-	Query() url.Values
+	Query() *URLSearchParams
 	// Headers are the request's headers; read only.
 	Headers() nethttp.Header
 	// Origin is `http://<host>` on loopback, `https://<host>` for an allowed host, a relay's origin for a relayed request.
@@ -71,7 +70,7 @@ type webRequest struct {
 	incoming   Incoming
 	// search is the query string (without `?`), parsed when first read.
 	search string
-	query  url.Values
+	query  *URLSearchParams
 	mu     sync.Mutex
 	// taken is whether a reader took the body (it is read once).
 	taken bool
@@ -97,14 +96,11 @@ func (r *webRequest) Nonce() string             { return r.nonce }
 
 func (r *webRequest) Headers() nethttp.Header { return requestHeaders(r.incoming.Request()) }
 
-func (r *webRequest) Query() url.Values {
+func (r *webRequest) Query() *URLSearchParams {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.query == nil {
-		r.query, _ = url.ParseQuery(r.search)
-		if r.query == nil {
-			r.query = url.Values{}
-		}
+		r.query = ParseURLSearchParams(r.search)
 	}
 	return r.query
 }
@@ -143,6 +139,10 @@ func (r *webRequest) Body(limit ...int) iter.Seq2[[]byte, error] {
 				yield(nil, NewHttpFailure(413, fmt.Sprintf("the body is larger than %d bytes", max)))
 				return
 			}
+		}
+		// Chord's listener makes the Web `Request` of a GET or HEAD without a body, whatever the client sent.
+		if bodyless, ok := r.incoming.(interface{ bodyless() bool }); ok && bodyless.bodyless() {
+			return
 		}
 		body := r.incoming.Request().Body
 		if body == nil || body == nethttp.NoBody {

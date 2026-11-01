@@ -7,9 +7,11 @@ import (
 	"math"
 	"net"
 	nethttp "net/http"
+	neturl "net/url"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -23,12 +25,19 @@ import (
 //   - Node's limits stay its defaults on the listener, in Go's settings: `headersTimeout` 60 s is ReadHeaderTimeout,
 //     `requestTimeout` 300 s ReadTimeout, 16 KiB of headers (431) MaxHeaderBytes less the request line's allowance Go adds,
 //     keep-alive 5 s IdleTimeout.
-//   - net/http answers some malformed requests itself, before the component sees them: two `Host` headers are 400 (Node's
-//     parser keeps them and the component answers 403), as is a malformed `Host`; `Fetch` and `NodeRequest` still refuse
-//     both as Pi does for a server that hands the component the headers it read.
+//   - net/http answers some malformed requests itself, before any handler runs and with no default security headers: two
+//     `Host` headers are 400 (net/http request.go "too many Host headers"; Node's parser keeps them and the component
+//     answers 403), as is a `Host` with userinfo (server.go "malformed Host header": `@` is no host byte; Node's component
+//     answers 403) and a malformed `Host`; `Fetch` and `NodeRequestOf` still refuse them as Pi does for a server that hands
+//     the component the headers it read. No `http.Server` option reaches these checks.
 //   - A Web `Request` is made only when something asks for it in Pi; Go's request exists already (incoming.go).
 //   - The reason phrase of the status line is Go's (the answers' own text is Node's table, statuscodes.go); header names are
-//     written in canonical case.
+//     written in canonical case; an HTTP/1.0 request's answer has an `HTTP/1.0` status line (Node writes `HTTP/1.1`); an
+//     upgrade's refusal also carries a `Date` header.
+//   - net/http starts watching the connection for a disconnect only once the request's body is read (or at once without
+//     one): a client that goes away while its body is unread is seen when the route reads or writes, where Node sees the
+//     socket close at any time. The scope's abort reason is Pi's (`http: the client disconnected`), and a request context
+//     ending when the handler returns is no disconnect.
 //   - A small unread body is drained by net/http after the handler returns (up to 256 KiB); the component decides only
 //     whether the connection closes (a declared length above 64 KiB, or chunked).
 //   - `Upgrade` requests are handled by the component's Upgrade (Node's `upgrade` event) on the same connection.
@@ -68,7 +77,7 @@ type NodeListener struct {
 
 // ListenNode is a server for handler listening at listen; it returns the listen error (a port in use).
 func ListenNode(handler Handler, listen ListenAddress, ctx context.Context) (*NodeListener, error) {
-	listener, err := net.Listen("tcp", net.JoinHostPort(listen.Host, strconv.Itoa(listen.Port)))
+	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", net.JoinHostPort(listen.Host, strconv.Itoa(listen.Port)))
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +153,13 @@ func serveNode(handler Handler, w nethttp.ResponseWriter, r *nethttp.Request) {
 	if r.Body != nil && r.Body != nethttp.NoBody {
 		r.Body = &trackedBody{ReadCloser: r.Body}
 	}
-	write(r, w, handler.Serve(incoming, connectionOf(r)))
+	served := handler.Serve(incoming, connectionOf(r))
+	finished := served.Finished
+	served.Finished = func() {
+		incoming.finished.Store(true)
+		finished()
+	}
+	write(r, w, served)
 }
 
 // isUpgrade is whether r asks for an upgrade (Node emits `upgrade` for a request with an `Upgrade` header and the
@@ -166,6 +181,28 @@ func isUpgrade(r *nethttp.Request) bool {
 // nodeIncoming is a request as the component reads it on net/http's server: its URL parsed once.
 type nodeIncoming struct {
 	webIncoming
+	// finished is set once its response was written: the request's context ending after that is no disconnect.
+	finished atomic.Bool
+}
+
+// bodyless is whether the request has no body as the component reads it: Pi's Web `Request` for a GET or HEAD has none.
+func (n *nodeIncoming) bodyless() bool {
+	return n.request.Method == nethttp.MethodGet || n.request.Method == nethttp.MethodHead
+}
+
+// Cancelled calls abort when the client goes away before its answer is written (at once when it has).
+func (n *nodeIncoming) Cancelled(abort func(reason error)) {
+	gone := func() {
+		if !n.finished.Load() {
+			abort(errors.New("http: the client disconnected"))
+		}
+	}
+	ctx := n.request.Context()
+	if ctx.Err() != nil {
+		gone()
+		return
+	}
+	context.AfterFunc(ctx, gone)
 }
 
 // WireRefusal is what refuses a request at the wire, with its status (400, 403 or 501).
@@ -192,7 +229,7 @@ func nodeIncomingOf(r *nethttp.Request) (*nodeIncoming, *WireRefusal) {
 	if status != 0 {
 		return nil, &WireRefusal{Status: status}
 	}
-	return &nodeIncoming{webIncoming{request: r, url: href}}, nil
+	return &nodeIncoming{webIncoming: webIncoming{request: r, url: href}}, nil
 }
 
 // NodeRequest is a request as an app mounting `Fetch` on its own server gets it: a request, or refused.
@@ -214,7 +251,11 @@ func NodeRequestOf(r *nethttp.Request) NodeRequest {
 	}
 	converted := r.Clone(r.Context())
 	converted.Header = requestHeaders(r)
-	if parsed, err := parseURLString(incoming.url); err == nil {
+	// Pi's Web `Request` has no body for a GET or HEAD.
+	if converted.Method == nethttp.MethodGet || converted.Method == nethttp.MethodHead {
+		converted.Body = nethttp.NoBody
+	}
+	if parsed, err := neturl.Parse(incoming.url); err == nil {
 		converted.URL = parsed
 	}
 	return NodeRequest{Request: converted, Connection: connectionOf(r)}

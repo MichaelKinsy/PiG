@@ -82,6 +82,12 @@ type Upgrades struct {
 	mu    sync.Mutex
 	open  map[*upgraded]struct{}
 	after afterFunc
+	// closing is set by Close; pending counts the upgrades reserved and not yet kept. Reserving and Close's snapshot are one
+	// critical section, so an upgrade is either kept before Close runs (and gets its 1001) or refused: Pi's single thread
+	// gives that for free.
+	closing bool
+	pending int
+	drained chan struct{}
 }
 
 // NewUpgrades is an empty set of connections.
@@ -110,19 +116,21 @@ func (u *Upgrades) Socket(w nethttp.ResponseWriter, r *nethttp.Request, admissio
 	upgrade(w, r, match.MaxPayload, func(socket *WebSocket) {
 		closedCtx, closeSocket := chordctx.WithCancel(chordctx.Background())
 		seal := func() { closeSocket(errors.New("http: the socket closed")) }
-		socket.Once(link.WebSocketClose, func(any) { seal() })
+		socket.OnceClose(func(CloseEvent) { seal() })
 		u.keep(&upgraded{socket: socket, allowed: admission.Allowed, relay: admission.Relay, handler: match.Handler, seal: seal})
 		u.heartbeat(socket)
 		scope := chordctx.WithAbortSignal(chordctx.WithoutAbortSignal(ctx), closedCtx)
 		run := func(callCtx host.Ctx) (any, error) {
+			// Reading starts before the handler: its pongs and the peer's close are served while it runs; the messages wait.
+			socket.hold()
+			socket.Start()
 			err := tryHandler(match.Handler, socket, request, callCtx)
 			if err != nil {
 				failed(SocketFailure{Pattern: match.Pattern, Plugin: match.Plugin, Error: err})
 				socket.Close(1011, "internal error")
-				socket.Start()
 				return nil, nil
 			}
-			socket.Start()
+			socket.release()
 			<-closedCtx.Done()
 			return nil, nil
 		}
@@ -156,8 +164,46 @@ func (u *Upgrades) revoke(router *Router) {
 	}
 }
 
-// Close closes every connection (1001, "going away"); those still open when deadline is closed are terminated.
+// reserve admits an upgrade that is about to be handed out, false once Close ran: it is then refused (503). Every successful
+// reserve is released after the upgrade's socket was kept (or the handshake failed).
+func (u *Upgrades) reserve() bool {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if u.closing {
+		return false
+	}
+	u.pending++
+	return true
+}
+
+// release ends a reservation.
+func (u *Upgrades) release() {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	u.pending--
+	if u.closing && u.pending == 0 && u.drained != nil {
+		close(u.drained)
+		u.drained = nil
+	}
+}
+
+// Close closes every connection (1001, "going away"); those still open when deadline is closed are terminated. Upgrades
+// reserved before it are waited for (a handshake takes no time) and closed with the rest; later ones are refused.
 func (u *Upgrades) Close(deadline <-chan struct{}) {
+	u.mu.Lock()
+	u.closing = true
+	var drained <-chan struct{}
+	if u.pending > 0 {
+		u.drained = make(chan struct{})
+		drained = u.drained
+	}
+	u.mu.Unlock()
+	if drained != nil {
+		select {
+		case <-drained:
+		case <-deadline:
+		}
+	}
 	open := u.snapshot()
 	var closed sync.WaitGroup
 	for _, each := range open {
@@ -169,7 +215,7 @@ func (u *Upgrades) Close(deadline <-chan struct{}) {
 			done(nil)
 			continue
 		}
-		socket.Once(link.WebSocketClose, done)
+		socket.OnceClose(func(CloseEvent) { done(nil) })
 		// Closed between the check and the listener.
 		if socket.ReadyState() == WebSocketClosedState {
 			done(nil)
@@ -205,11 +251,11 @@ func (u *Upgrades) snapshot() []*upgraded {
 // keep keeps connection until its socket closes; an error (an oversized frame) terminates only that socket.
 func (u *Upgrades) keep(connection *upgraded) {
 	socket := connection.socket
-	socket.On(link.WebSocketError, func(any) { socket.Terminate() })
+	socket.OnError(func(error) { socket.Terminate() })
 	u.mu.Lock()
 	u.open[connection] = struct{}{}
 	u.mu.Unlock()
-	socket.Once(link.WebSocketClose, func(any) {
+	socket.OnceClose(func(CloseEvent) {
 		u.mu.Lock()
 		delete(u.open, connection)
 		u.mu.Unlock()
@@ -266,10 +312,11 @@ func (u *Upgrades) heartbeat(socket *WebSocket) {
 		timer.Reset(silence)
 		mu.Unlock()
 	}
-	socket.On(link.WebSocketMessage, heard)
-	socket.On(WebSocketPong, heard)
-	socket.On(WebSocketPing, heard)
-	socket.Once(link.WebSocketClose, func(any) {
+	// Any frame the peer sent is a sign of life, also a message a running handler holds back.
+	socket.on(webSocketFrame, heard)
+	socket.on(webSocketPong, heard)
+	socket.on(webSocketPing, heard)
+	socket.OnceClose(func(CloseEvent) {
 		mu.Lock()
 		timer.Stop()
 		mu.Unlock()
@@ -287,7 +334,7 @@ type limitable interface {
 	Send(data []byte, binary bool, done func(error))
 	Terminate()
 	Close(code int, reason string)
-	On(event link.WebSocketEvent, fn func(data any)) (remove func())
+	on(event link.WebSocketEvent, fn func(data any)) (remove func())
 }
 
 type sentFrame struct{ bytes int }
@@ -344,6 +391,21 @@ func (l *limited) Send(data []byte) error {
 
 func (l *limited) Close() { l.socket.Close(0, "") }
 
+// AddEventListener is the link's view of the socket's events: a message is the frame's bytes for a binary one and its text
+// for a text one.
 func (l *limited) AddEventListener(event link.WebSocketEvent, listener func(data any)) (remove func()) {
-	return l.socket.On(event, listener)
+	if event != link.WebSocketMessage {
+		return l.socket.on(event, listener)
+	}
+	return l.socket.on(event, func(data any) {
+		message, ok := data.(Message)
+		switch {
+		case !ok:
+			listener(data)
+		case message.Binary:
+			listener(message.Data)
+		default:
+			listener(message.Text())
+		}
+	})
 }

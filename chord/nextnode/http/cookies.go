@@ -21,6 +21,23 @@ import (
 // now is `Date.now()` as a time.
 var now = time.Now
 
+// SameSite is a cookie's `SameSite` attribute: Pi's closed union `"Strict" | "Lax"`, which no text can extend.
+type SameSite uint8
+
+const (
+	// SameSiteStrict is the default.
+	SameSiteStrict SameSite = iota
+	// SameSiteLax lets a top-level navigation from another site carry the cookie.
+	SameSiteLax
+)
+
+func (s SameSite) String() string {
+	if s == SameSiteLax {
+		return "Lax"
+	}
+	return "Strict"
+}
+
 // CookieOptions is what `cookie` takes besides the name and the value.
 type CookieOptions struct {
 	// Secret is the key it is signed with (HMAC-SHA256).
@@ -28,7 +45,7 @@ type CookieOptions struct {
 	// Request is the request it answers: a remote one gets `Secure`.
 	Request HttpRequest
 	// SameSite is `Strict` by default; `Lax` lets a top-level navigation from another site carry it.
-	SameSite string
+	SameSite SameSite
 	// MaxAge is the seconds until it expires; nil: a session cookie.
 	MaxAge *float64
 }
@@ -42,15 +59,11 @@ func Cookie(name, value string, options CookieOptions) string {
 		expires = formatNumber(math.Floor(float64(now().UnixMilli())/1000 + *options.MaxAge))
 	}
 	payload := encoded + "." + expires
-	sameSite := options.SameSite
-	if sameSite == "" {
-		sameSite = "Strict"
-	}
 	parts := []string{
 		name + "=" + payload + "." + signature(name, payload, options.Secret),
 		"HttpOnly",
 		"Path=/",
-		"SameSite=" + sameSite,
+		"SameSite=" + options.SameSite.String(),
 	}
 	if options.Request.Provenance().Kind != "local" {
 		parts = append(parts, "Secure")

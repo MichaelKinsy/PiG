@@ -3,7 +3,6 @@ package http
 import (
 	nethttp "net/http"
 	"net/netip"
-	neturl "net/url"
 	"strconv"
 	"strings"
 )
@@ -191,6 +190,3 @@ func forbiddenHostByte(b byte) bool {
 	}
 	return false
 }
-
-// parseURLString is s as a *url.URL.
-func parseURLString(s string) (*neturl.URL, error) { return neturl.Parse(s) }

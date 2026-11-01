@@ -77,7 +77,7 @@ func (*Refused) admission()  {}
 // verifies.
 func admit(request Incoming, connection Connection, hosts *StringSet, relays []*HttpRelay) Admission {
 	value, ok := request.Header("host")
-	host := strings.ToLower(value)
+	host := asciiLower(value)
 	// Several `Host` headers arrive joined with commas.
 	if !ok || host == "" || strings.Contains(host, ",") {
 		return refusedAdmission
@@ -232,6 +232,10 @@ func isOrigin(text string) bool {
 				return false
 			}
 		}
+		// A zone (`%eth0`) is no part of a URL host.
+		if strings.Contains(host, "%") {
+			return false
+		}
 		address, err := netip.ParseAddr(host[1 : len(host)-1])
 		if err != nil || !address.Is6() || address.Is4In6() || address.String() != host[1:len(host)-1] {
 			return false
@@ -285,7 +289,13 @@ func looksNumeric(label string) bool {
 	if label == "" {
 		return false
 	}
-	if strings.HasPrefix(strings.ToLower(label), "0x") {
+	if strings.HasPrefix(asciiLower(label), "0x") {
+		// `0x` alone is a number too; the digits after it must be hexadecimal.
+		for i := 2; i < len(label); i++ {
+			if !isHex(label[i]) {
+				return false
+			}
+		}
 		return true
 	}
 	for i := 0; i < len(label); i++ {

@@ -77,7 +77,8 @@ type HttpWrap struct {
 }
 
 // HttpSocket is a plugin socket's handler (D6): a WebSocket after the checks and authentication, its `error` listener
-// attached; its scope lasts until the socket closes. Message reading begins when Handle returns.
+// attached; its scope lasts until the socket closes. Frames are read while Handle runs (pings, pongs and the peer's close are
+// served); the messages that arrive meanwhile are delivered to its OnMessage listeners, in order, when it returned.
 type HttpSocket struct {
 	Handle func(socket *WebSocketHandle, request HttpRequest, ctx host.Ctx) error
 }
@@ -205,7 +206,7 @@ func ComposeRouter(table registries.RegistryTable[HttpContribution], ctx registr
 	for _, each := range table {
 		plugin, value := each.Plugin, each.Value
 		for _, host := range value.Hosts {
-			router.Hosts.Add(strings.ToLower(host))
+			router.Hosts.Add(asciiLower(host))
 		}
 		for _, framer := range value.Framers {
 			router.Framers.Add(framer)
@@ -218,11 +219,11 @@ func ComposeRouter(table registries.RegistryTable[HttpContribution], ctx registr
 			key := route.Key
 			method, segments, ok := parseRoute(key)
 			if !ok {
-				report(registries.RegistryConflict{Message: fmt.Sprintf("route %s is no \"METHOD /pattern\"", jsonString(key)), Plugins: []string{plugin}})
+				report(registries.RegistryConflict{Message: fmt.Sprintf("route \"%s\" is no \"METHOD /pattern\"", key), Plugins: []string{plugin}})
 				continue
 			}
 			if UNCARRIED[method] {
-				report(registries.RegistryConflict{Message: fmt.Sprintf("route %s: %s is served for no resource (501)", jsonString(key), method), Plugins: []string{plugin}})
+				report(registries.RegistryConflict{Message: fmt.Sprintf("route \"%s\": %s is served for no resource (501)", key, method), Plugins: []string{plugin}})
 				continue
 			}
 			tree := routes[method]
@@ -237,7 +238,7 @@ func ComposeRouter(table registries.RegistryTable[HttpContribution], ctx registr
 			if taken := insert(tree, segments, entry); taken == nil {
 				entries = append(entries, entry)
 			} else {
-				report(registries.RegistryConflict{Message: fmt.Sprintf("route %s is contributed twice", jsonString(key)), Plugins: []string{taken.plugin, plugin}})
+				report(registries.RegistryConflict{Message: fmt.Sprintf("route \"%s\" is contributed twice", key), Plugins: []string{taken.plugin, plugin}})
 			}
 		}
 		maxPayload := value.MaxPayload
@@ -247,14 +248,14 @@ func ComposeRouter(table registries.RegistryTable[HttpContribution], ctx registr
 		for _, socket := range value.Sockets {
 			segments, ok := parsePattern(socket.Pattern)
 			if !ok {
-				report(registries.RegistryConflict{Message: fmt.Sprintf("socket %s is no pattern", jsonString(socket.Pattern)), Plugins: []string{plugin}})
+				report(registries.RegistryConflict{Message: fmt.Sprintf("socket \"%s\" is no pattern", socket.Pattern), Plugins: []string{plugin}})
 				continue
 			}
 			entry := &socketEntry{pattern: socket.Pattern, plugin: plugin, handler: socket.Handler, segments: segments, maxPayload: maxPayload}
 			if taken := insert(sockets, segments, entry); taken == nil {
 				router.SocketHandlers[socket.Handler] = struct{}{}
 			} else {
-				report(registries.RegistryConflict{Message: fmt.Sprintf("socket %s is contributed twice", jsonString(socket.Pattern)), Plugins: []string{taken.plugin, plugin}})
+				report(registries.RegistryConflict{Message: fmt.Sprintf("socket \"%s\" is contributed twice", socket.Pattern), Plugins: []string{taken.plugin, plugin}})
 			}
 		}
 	}
@@ -568,7 +569,7 @@ func resolveWraps(table registries.RegistryTable[HttpContribution], routes []*ro
 		}
 		if !contributed {
 			report(registries.RegistryConflict{
-				Message: fmt.Sprintf("wrap %s names route %s, which nobody contributes", jsonString(wrap.Name), jsonString(wrap.Route)),
+				Message: fmt.Sprintf("wrap \"%s\" names route \"%s\", which nobody contributes", wrap.Name, wrap.Route),
 				Plugins: []string{each.Plugin},
 			})
 		}
