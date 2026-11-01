@@ -5318,7 +5318,7 @@
       "path": "minimatch/dist/commonjs/assert-valid-pattern.d.ts",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/commonjs/assert-valid-pattern.d.ts",
@@ -5329,7 +5329,7 @@
       "path": "minimatch/dist/commonjs/assert-valid-pattern.d.ts.map",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/commonjs/assert-valid-pattern.d.ts.map",
@@ -5340,7 +5340,7 @@
       "path": "minimatch/dist/commonjs/assert-valid-pattern.js",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/commonjs/assert-valid-pattern.js",
@@ -5351,7 +5351,7 @@
       "path": "minimatch/dist/commonjs/assert-valid-pattern.js.map",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/commonjs/assert-valid-pattern.js.map",
@@ -5359,98 +5359,10 @@
       "sha256": "93d366c74b6028b0b32b257a681cb52d6b1243113916fdd6c2a67daf597d69e3"
     },
     {
-      "path": "minimatch/dist/commonjs/ast.d.ts",
-      "package": {
-        "name": "minimatch",
-        "version": "10.2.6",
-        "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-      },
-      "source": "dist/commonjs/ast.d.ts",
-      "sourceSha256": "a2db9e9a763c2249e423e2fa06fe16979684125f0ea41b04ca96c73467fcadc5",
-      "sha256": "a2db9e9a763c2249e423e2fa06fe16979684125f0ea41b04ca96c73467fcadc5"
-    },
-    {
-      "path": "minimatch/dist/commonjs/ast.d.ts.map",
-      "package": {
-        "name": "minimatch",
-        "version": "10.2.6",
-        "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-      },
-      "source": "dist/commonjs/ast.d.ts.map",
-      "sourceSha256": "315df5e430a9155e035c25b5d3070476448672b64b1fff86693949ed1c6c62fb",
-      "sha256": "315df5e430a9155e035c25b5d3070476448672b64b1fff86693949ed1c6c62fb"
-    },
-    {
-      "path": "minimatch/dist/commonjs/ast.js",
-      "package": {
-        "name": "minimatch",
-        "version": "10.2.6",
-        "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-      },
-      "source": "dist/commonjs/ast.js",
-      "sourceSha256": "64eef2ec09b28ba2db87a46111ad87e1e56c73b603baf6de86a12eb5b591f324",
-      "sha256": "64eef2ec09b28ba2db87a46111ad87e1e56c73b603baf6de86a12eb5b591f324"
-    },
-    {
-      "path": "minimatch/dist/commonjs/ast.js.map",
-      "package": {
-        "name": "minimatch",
-        "version": "10.2.6",
-        "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-      },
-      "source": "dist/commonjs/ast.js.map",
-      "sourceSha256": "0b16255f8226f2c53384857fb0c2419e69aa8c21f184f2987b29e46fbb7db1f6",
-      "sha256": "0b16255f8226f2c53384857fb0c2419e69aa8c21f184f2987b29e46fbb7db1f6"
-    },
-    {
-      "path": "minimatch/dist/commonjs/brace-expressions.d.ts",
-      "package": {
-        "name": "minimatch",
-        "version": "10.2.6",
-        "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-      },
-      "source": "dist/commonjs/brace-expressions.d.ts",
-      "sourceSha256": "c653127b895660361106b3b5131a61060dd1ef9da6c4fded89ab2400064c6d53",
-      "sha256": "c653127b895660361106b3b5131a61060dd1ef9da6c4fded89ab2400064c6d53"
-    },
-    {
-      "path": "minimatch/dist/commonjs/brace-expressions.d.ts.map",
-      "package": {
-        "name": "minimatch",
-        "version": "10.2.6",
-        "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-      },
-      "source": "dist/commonjs/brace-expressions.d.ts.map",
-      "sourceSha256": "cf91bac080d3e18d62c7e0dad10d89ca9f73a0db75c046cf41dad08cb289cfab",
-      "sha256": "cf91bac080d3e18d62c7e0dad10d89ca9f73a0db75c046cf41dad08cb289cfab"
-    },
-    {
-      "path": "minimatch/dist/commonjs/brace-expressions.js",
-      "package": {
-        "name": "minimatch",
-        "version": "10.2.6",
-        "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-      },
-      "source": "dist/commonjs/brace-expressions.js",
-      "sourceSha256": "12054a62fa32362027b8103896d28d65adad412efb2a41f01af2e2e7400bbf9a",
-      "sha256": "12054a62fa32362027b8103896d28d65adad412efb2a41f01af2e2e7400bbf9a"
-    },
-    {
-      "path": "minimatch/dist/commonjs/brace-expressions.js.map",
-      "package": {
-        "name": "minimatch",
-        "version": "10.2.6",
-        "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-      },
-      "source": "dist/commonjs/brace-expressions.js.map",
-      "sourceSha256": "2c0a3cdf3d76e73aea6af64132738d8b8bd0ac76cd0d06abe25075373f28ca1c",
-      "sha256": "2c0a3cdf3d76e73aea6af64132738d8b8bd0ac76cd0d06abe25075373f28ca1c"
-    },
-    {
       "path": "minimatch/dist/commonjs/escape.d.ts",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/commonjs/escape.d.ts",
@@ -5461,7 +5373,7 @@
       "path": "minimatch/dist/commonjs/escape.d.ts.map",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/commonjs/escape.d.ts.map",
@@ -5472,7 +5384,7 @@
       "path": "minimatch/dist/commonjs/escape.js",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/commonjs/escape.js",
@@ -5483,7 +5395,7 @@
       "path": "minimatch/dist/commonjs/escape.js.map",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/commonjs/escape.js.map",
@@ -5494,51 +5406,51 @@
       "path": "minimatch/dist/commonjs/index.d.ts",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/commonjs/index.d.ts",
-      "sourceSha256": "4a3fbf9bb0ebcae246f172ba1f5df33404a4dc0fde03a5241434889b1ca595a5",
-      "sha256": "4a3fbf9bb0ebcae246f172ba1f5df33404a4dc0fde03a5241434889b1ca595a5"
+      "sourceSha256": "16c357d775998e72a60942626811db8e8297d9f6e408aebd5dcaf37b3486e3f9",
+      "sha256": "16c357d775998e72a60942626811db8e8297d9f6e408aebd5dcaf37b3486e3f9"
     },
     {
       "path": "minimatch/dist/commonjs/index.d.ts.map",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/commonjs/index.d.ts.map",
-      "sourceSha256": "17bddd11b7c36d9588648943fc18fc17578d09226b14db02b4a12fb74178f1d1",
-      "sha256": "17bddd11b7c36d9588648943fc18fc17578d09226b14db02b4a12fb74178f1d1"
+      "sourceSha256": "6641f3906f6a032f427663dc97facfb41f1cdc663bfcb499d5e293341eeeab80",
+      "sha256": "6641f3906f6a032f427663dc97facfb41f1cdc663bfcb499d5e293341eeeab80"
     },
     {
       "path": "minimatch/dist/commonjs/index.js",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/commonjs/index.js",
-      "sourceSha256": "d224f71f20d7c206fcc5b7e9f747324c7698345a0b2c28d717dd9cf698306783",
-      "sha256": "d224f71f20d7c206fcc5b7e9f747324c7698345a0b2c28d717dd9cf698306783"
+      "sourceSha256": "235c5458355f1449cc100f1cea1a43d45f788a4feb524a83497aa146bea88f32",
+      "sha256": "235c5458355f1449cc100f1cea1a43d45f788a4feb524a83497aa146bea88f32"
     },
     {
       "path": "minimatch/dist/commonjs/index.js.map",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/commonjs/index.js.map",
-      "sourceSha256": "4345abdf627c9208d8c34f654a03a3ee3378a10c5241c7e434f8048db21b8240",
-      "sha256": "4345abdf627c9208d8c34f654a03a3ee3378a10c5241c7e434f8048db21b8240"
+      "sourceSha256": "75215732b7034a1452c539efd89145d726232d97e58514f4c35adb157e0b5d7d",
+      "sha256": "75215732b7034a1452c539efd89145d726232d97e58514f4c35adb157e0b5d7d"
     },
     {
       "path": "minimatch/dist/commonjs/package.json",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/commonjs/package.json",
@@ -5549,7 +5461,7 @@
       "path": "minimatch/dist/commonjs/unescape.d.ts",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/commonjs/unescape.d.ts",
@@ -5560,7 +5472,7 @@
       "path": "minimatch/dist/commonjs/unescape.d.ts.map",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/commonjs/unescape.d.ts.map",
@@ -5571,7 +5483,7 @@
       "path": "minimatch/dist/commonjs/unescape.js",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/commonjs/unescape.js",
@@ -5582,7 +5494,7 @@
       "path": "minimatch/dist/commonjs/unescape.js.map",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/commonjs/unescape.js.map",
@@ -5593,7 +5505,7 @@
       "path": "minimatch/dist/esm/assert-valid-pattern.d.ts",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/esm/assert-valid-pattern.d.ts",
@@ -5604,7 +5516,7 @@
       "path": "minimatch/dist/esm/assert-valid-pattern.d.ts.map",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/esm/assert-valid-pattern.d.ts.map",
@@ -5615,7 +5527,7 @@
       "path": "minimatch/dist/esm/assert-valid-pattern.js",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/esm/assert-valid-pattern.js",
@@ -5626,7 +5538,7 @@
       "path": "minimatch/dist/esm/assert-valid-pattern.js.map",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/esm/assert-valid-pattern.js.map",
@@ -5634,98 +5546,10 @@
       "sha256": "83dd43a7bb36f95e216c8473f43f731d9ce2d1a27cfc5246226efb8a1d5232d9"
     },
     {
-      "path": "minimatch/dist/esm/ast.d.ts",
-      "package": {
-        "name": "minimatch",
-        "version": "10.2.6",
-        "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-      },
-      "source": "dist/esm/ast.d.ts",
-      "sourceSha256": "a2db9e9a763c2249e423e2fa06fe16979684125f0ea41b04ca96c73467fcadc5",
-      "sha256": "a2db9e9a763c2249e423e2fa06fe16979684125f0ea41b04ca96c73467fcadc5"
-    },
-    {
-      "path": "minimatch/dist/esm/ast.d.ts.map",
-      "package": {
-        "name": "minimatch",
-        "version": "10.2.6",
-        "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-      },
-      "source": "dist/esm/ast.d.ts.map",
-      "sourceSha256": "315df5e430a9155e035c25b5d3070476448672b64b1fff86693949ed1c6c62fb",
-      "sha256": "315df5e430a9155e035c25b5d3070476448672b64b1fff86693949ed1c6c62fb"
-    },
-    {
-      "path": "minimatch/dist/esm/ast.js",
-      "package": {
-        "name": "minimatch",
-        "version": "10.2.6",
-        "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-      },
-      "source": "dist/esm/ast.js",
-      "sourceSha256": "ec35db8358a5a7333dbd6bdb1ea6bd3f03d1433297de7d615f24f7df5fba06b5",
-      "sha256": "ec35db8358a5a7333dbd6bdb1ea6bd3f03d1433297de7d615f24f7df5fba06b5"
-    },
-    {
-      "path": "minimatch/dist/esm/ast.js.map",
-      "package": {
-        "name": "minimatch",
-        "version": "10.2.6",
-        "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-      },
-      "source": "dist/esm/ast.js.map",
-      "sourceSha256": "5ad23d943e7f6c173ea38160035a946064332fd5443134e893ad52b225ba582d",
-      "sha256": "5ad23d943e7f6c173ea38160035a946064332fd5443134e893ad52b225ba582d"
-    },
-    {
-      "path": "minimatch/dist/esm/brace-expressions.d.ts",
-      "package": {
-        "name": "minimatch",
-        "version": "10.2.6",
-        "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-      },
-      "source": "dist/esm/brace-expressions.d.ts",
-      "sourceSha256": "c653127b895660361106b3b5131a61060dd1ef9da6c4fded89ab2400064c6d53",
-      "sha256": "c653127b895660361106b3b5131a61060dd1ef9da6c4fded89ab2400064c6d53"
-    },
-    {
-      "path": "minimatch/dist/esm/brace-expressions.d.ts.map",
-      "package": {
-        "name": "minimatch",
-        "version": "10.2.6",
-        "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-      },
-      "source": "dist/esm/brace-expressions.d.ts.map",
-      "sourceSha256": "cf91bac080d3e18d62c7e0dad10d89ca9f73a0db75c046cf41dad08cb289cfab",
-      "sha256": "cf91bac080d3e18d62c7e0dad10d89ca9f73a0db75c046cf41dad08cb289cfab"
-    },
-    {
-      "path": "minimatch/dist/esm/brace-expressions.js",
-      "package": {
-        "name": "minimatch",
-        "version": "10.2.6",
-        "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-      },
-      "source": "dist/esm/brace-expressions.js",
-      "sourceSha256": "7c888d47a86b751d5e876938095c0875e837e7dd30da626ede6117c00481baeb",
-      "sha256": "7c888d47a86b751d5e876938095c0875e837e7dd30da626ede6117c00481baeb"
-    },
-    {
-      "path": "minimatch/dist/esm/brace-expressions.js.map",
-      "package": {
-        "name": "minimatch",
-        "version": "10.2.6",
-        "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
-      },
-      "source": "dist/esm/brace-expressions.js.map",
-      "sourceSha256": "4e6e5a28a7b30dd6732bb4cbf8c65eea3e70b074489bca563c769b2da2ab255b",
-      "sha256": "4e6e5a28a7b30dd6732bb4cbf8c65eea3e70b074489bca563c769b2da2ab255b"
-    },
-    {
       "path": "minimatch/dist/esm/escape.d.ts",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/esm/escape.d.ts",
@@ -5736,7 +5560,7 @@
       "path": "minimatch/dist/esm/escape.d.ts.map",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/esm/escape.d.ts.map",
@@ -5747,7 +5571,7 @@
       "path": "minimatch/dist/esm/escape.js",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/esm/escape.js",
@@ -5758,7 +5582,7 @@
       "path": "minimatch/dist/esm/escape.js.map",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/esm/escape.js.map",
@@ -5769,51 +5593,51 @@
       "path": "minimatch/dist/esm/index.d.ts",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/esm/index.d.ts",
-      "sourceSha256": "4a3fbf9bb0ebcae246f172ba1f5df33404a4dc0fde03a5241434889b1ca595a5",
-      "sha256": "4a3fbf9bb0ebcae246f172ba1f5df33404a4dc0fde03a5241434889b1ca595a5"
+      "sourceSha256": "16c357d775998e72a60942626811db8e8297d9f6e408aebd5dcaf37b3486e3f9",
+      "sha256": "16c357d775998e72a60942626811db8e8297d9f6e408aebd5dcaf37b3486e3f9"
     },
     {
       "path": "minimatch/dist/esm/index.d.ts.map",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/esm/index.d.ts.map",
-      "sourceSha256": "17bddd11b7c36d9588648943fc18fc17578d09226b14db02b4a12fb74178f1d1",
-      "sha256": "17bddd11b7c36d9588648943fc18fc17578d09226b14db02b4a12fb74178f1d1"
+      "sourceSha256": "6641f3906f6a032f427663dc97facfb41f1cdc663bfcb499d5e293341eeeab80",
+      "sha256": "6641f3906f6a032f427663dc97facfb41f1cdc663bfcb499d5e293341eeeab80"
     },
     {
       "path": "minimatch/dist/esm/index.js",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/esm/index.js",
-      "sourceSha256": "59821ec2ce0d3df968292036e5c831ad322b33e9c33a949ecbc9dfe125d165be",
-      "sha256": "59821ec2ce0d3df968292036e5c831ad322b33e9c33a949ecbc9dfe125d165be"
+      "sourceSha256": "b238ca70371b1f192817ae9516afaacb566d1df2a7a85e47c6c24f41f1707864",
+      "sha256": "b238ca70371b1f192817ae9516afaacb566d1df2a7a85e47c6c24f41f1707864"
     },
     {
       "path": "minimatch/dist/esm/index.js.map",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/esm/index.js.map",
-      "sourceSha256": "5c3e65c473cad1e082a2bcf0c8d40c63d4b72efe239906380515b33a5023a384",
-      "sha256": "5c3e65c473cad1e082a2bcf0c8d40c63d4b72efe239906380515b33a5023a384"
+      "sourceSha256": "dd7eb0b0b733eebae0ea35b1e3e2fb2995e3b3b54e2f9debdbc005a6556b843d",
+      "sha256": "dd7eb0b0b733eebae0ea35b1e3e2fb2995e3b3b54e2f9debdbc005a6556b843d"
     },
     {
       "path": "minimatch/dist/esm/package.json",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/esm/package.json",
@@ -5824,7 +5648,7 @@
       "path": "minimatch/dist/esm/unescape.d.ts",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/esm/unescape.d.ts",
@@ -5835,7 +5659,7 @@
       "path": "minimatch/dist/esm/unescape.d.ts.map",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/esm/unescape.d.ts.map",
@@ -5846,7 +5670,7 @@
       "path": "minimatch/dist/esm/unescape.js",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/esm/unescape.js",
@@ -5857,7 +5681,7 @@
       "path": "minimatch/dist/esm/unescape.js.map",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "dist/esm/unescape.js.map",
@@ -5868,12 +5692,282 @@
       "path": "minimatch/LICENSE.md",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "LICENSE.md",
       "sourceSha256": "2c7c5d22ed5a8ee968c64757710979afcd77438c48b4a265b94e615babd8a901",
       "sha256": "2c7c5d22ed5a8ee968c64757710979afcd77438c48b4a265b94e615babd8a901"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/commonjs/index.d.ts",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/commonjs/index.d.ts",
+      "sourceSha256": "1be72eb51818ce83f56dc2990aca0fd497375035fa4aa04d9c49087520422db5",
+      "sha256": "1be72eb51818ce83f56dc2990aca0fd497375035fa4aa04d9c49087520422db5"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/commonjs/index.d.ts.map",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/commonjs/index.d.ts.map",
+      "sourceSha256": "3f71d51402a1c8f96e348e13e1c43da4017330dd88ff8bbe1f8d7e28f5359971",
+      "sha256": "3f71d51402a1c8f96e348e13e1c43da4017330dd88ff8bbe1f8d7e28f5359971"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/commonjs/index.js",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/commonjs/index.js",
+      "sourceSha256": "a8cb786b8c1efd57c8f341a62e769cbc3bef9d27d9742b01f73e0a4d2c4c6eec",
+      "sha256": "a8cb786b8c1efd57c8f341a62e769cbc3bef9d27d9742b01f73e0a4d2c4c6eec"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/commonjs/index.js.map",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/commonjs/index.js.map",
+      "sourceSha256": "258864edaf37f4724926c92fad2903f3d276845ec392b76317843d7bf62ad4c2",
+      "sha256": "258864edaf37f4724926c92fad2903f3d276845ec392b76317843d7bf62ad4c2"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/commonjs/index.min.js",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/commonjs/index.min.js",
+      "sourceSha256": "8218c636c3ade2dd25459f6b0e9397b5cd0890c59eb00fb5eafa475c8297332c",
+      "sha256": "8218c636c3ade2dd25459f6b0e9397b5cd0890c59eb00fb5eafa475c8297332c"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/commonjs/index.min.js.map",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/commonjs/index.min.js.map",
+      "sourceSha256": "af5cb47848fc0e4ec1a1c685317d38a186db36ed8c89454287d6d3391362f016",
+      "sha256": "af5cb47848fc0e4ec1a1c685317d38a186db36ed8c89454287d6d3391362f016"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/commonjs/package.json",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/commonjs/package.json",
+      "sourceSha256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "sha256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/commonjs/parse-class.d.ts",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/commonjs/parse-class.d.ts",
+      "sourceSha256": "6023be2defc749e6ec7b3b3a9b7dd38e3ec82e6672f18ab708688fe1c28649d8",
+      "sha256": "6023be2defc749e6ec7b3b3a9b7dd38e3ec82e6672f18ab708688fe1c28649d8"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/commonjs/parse-class.d.ts.map",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/commonjs/parse-class.d.ts.map",
+      "sourceSha256": "50d40008ab73c1cff7b89c3b29bb363cbb80fbabd60ee36f049b8556cb1ecaa4",
+      "sha256": "50d40008ab73c1cff7b89c3b29bb363cbb80fbabd60ee36f049b8556cb1ecaa4"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/commonjs/parse-class.js",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/commonjs/parse-class.js",
+      "sourceSha256": "7cb0ca86cf8daffc46ddacc8de1a835935bb6176761819d3bb98216fd25bbf5e",
+      "sha256": "7cb0ca86cf8daffc46ddacc8de1a835935bb6176761819d3bb98216fd25bbf5e"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/commonjs/parse-class.js.map",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/commonjs/parse-class.js.map",
+      "sourceSha256": "ee3c922d001c2de14debfe7addf98b3168b0cd9eabae146465510158220f0887",
+      "sha256": "ee3c922d001c2de14debfe7addf98b3168b0cd9eabae146465510158220f0887"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/esm/index.d.ts",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/esm/index.d.ts",
+      "sourceSha256": "1be72eb51818ce83f56dc2990aca0fd497375035fa4aa04d9c49087520422db5",
+      "sha256": "1be72eb51818ce83f56dc2990aca0fd497375035fa4aa04d9c49087520422db5"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/esm/index.d.ts.map",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/esm/index.d.ts.map",
+      "sourceSha256": "3f71d51402a1c8f96e348e13e1c43da4017330dd88ff8bbe1f8d7e28f5359971",
+      "sha256": "3f71d51402a1c8f96e348e13e1c43da4017330dd88ff8bbe1f8d7e28f5359971"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/esm/index.js",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/esm/index.js",
+      "sourceSha256": "973928f7ba6c7a0b6f4de1975f8b0a35e7f9085fca65051ab22762b340156efb",
+      "sha256": "973928f7ba6c7a0b6f4de1975f8b0a35e7f9085fca65051ab22762b340156efb"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/esm/index.js.map",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/esm/index.js.map",
+      "sourceSha256": "13f5a94405a672d535a5774f5be0dd0ce5f9da2c8eda7b6bf64c9c2ecabebea5",
+      "sha256": "13f5a94405a672d535a5774f5be0dd0ce5f9da2c8eda7b6bf64c9c2ecabebea5"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/esm/index.min.js",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/esm/index.min.js",
+      "sourceSha256": "16667d34751654c6dbbccca5f691f188d9dbd08ed3aeac51fd2bfce1ab184fb2",
+      "sha256": "16667d34751654c6dbbccca5f691f188d9dbd08ed3aeac51fd2bfce1ab184fb2"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/esm/index.min.js.map",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/esm/index.min.js.map",
+      "sourceSha256": "4e36c0d27181ac69f100d2d8343292ad3db534b30b198218e6f249f9d1aa73ab",
+      "sha256": "4e36c0d27181ac69f100d2d8343292ad3db534b30b198218e6f249f9d1aa73ab"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/esm/package.json",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/esm/package.json",
+      "sourceSha256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "sha256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/esm/parse-class.d.ts",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/esm/parse-class.d.ts",
+      "sourceSha256": "6023be2defc749e6ec7b3b3a9b7dd38e3ec82e6672f18ab708688fe1c28649d8",
+      "sha256": "6023be2defc749e6ec7b3b3a9b7dd38e3ec82e6672f18ab708688fe1c28649d8"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/esm/parse-class.d.ts.map",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/esm/parse-class.d.ts.map",
+      "sourceSha256": "50d40008ab73c1cff7b89c3b29bb363cbb80fbabd60ee36f049b8556cb1ecaa4",
+      "sha256": "50d40008ab73c1cff7b89c3b29bb363cbb80fbabd60ee36f049b8556cb1ecaa4"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/esm/parse-class.js",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/esm/parse-class.js",
+      "sourceSha256": "26995e1481cf6853c33a541ebf30ee198e9d3796b15441f1cfdc128e3dbd0ab5",
+      "sha256": "26995e1481cf6853c33a541ebf30ee198e9d3796b15441f1cfdc128e3dbd0ab5"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/dist/esm/parse-class.js.map",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "dist/esm/parse-class.js.map",
+      "sourceSha256": "8d585c99b674025155f0df714cb2f417ffc1f99df56d84cab6f2bd9bab2db02b",
+      "sha256": "8d585c99b674025155f0df714cb2f417ffc1f99df56d84cab6f2bd9bab2db02b"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/LICENSE.md",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "LICENSE.md",
+      "sourceSha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+      "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/package.json",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "package.json",
+      "sourceSha256": "dd7fe938a874149eeb80ab429b30436e3c00190f6e59b549e09e3bb028c40e49",
+      "sha256": "dd7fe938a874149eeb80ab429b30436e3c00190f6e59b549e09e3bb028c40e49"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/README.md",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "README.md",
+      "sourceSha256": "31b4d92beeb51d83c0986189a2df06f81464213975fb27f523ff7c27f65fe08f",
+      "sha256": "31b4d92beeb51d83c0986189a2df06f81464213975fb27f523ff7c27f65fe08f"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/src/index.ts",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "src/index.ts",
+      "sourceSha256": "0ed2b077077f0398a2b97d960372d1f2cadb9eda3f4441d08fef20ce8021c4f5",
+      "sha256": "0ed2b077077f0398a2b97d960372d1f2cadb9eda3f4441d08fef20ce8021c4f5"
+    },
+    {
+      "path": "minimatch/node_modules/@isaacs/nonrecursive-glob-match/src/parse-class.ts",
+      "package": {
+        "name": "@isaacs/nonrecursive-glob-match",
+        "version": "1.0.3"
+      },
+      "source": "src/parse-class.ts",
+      "sourceSha256": "b49d7ddb711b1fa7c9db0420b90a3fc942aa92472d9c5e62089731d0f5cfbe5c",
+      "sha256": "b49d7ddb711b1fa7c9db0420b90a3fc942aa92472d9c5e62089731d0f5cfbe5c"
     },
     {
       "path": "minimatch/node_modules/brace-expansion/dist/commonjs/index.d.ts",
@@ -6165,23 +6259,23 @@
       "path": "minimatch/package.json",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "package.json",
-      "sourceSha256": "bb847ba240909c9a36d4eaeb4e0efdc3e31182aeef208c1611259a48f282ea75",
-      "sha256": "bb847ba240909c9a36d4eaeb4e0efdc3e31182aeef208c1611259a48f282ea75"
+      "sourceSha256": "ef4a771ea995978f41d37b063f9f8c061101ac89d0c53647cf4087df970e7ba5",
+      "sha256": "ef4a771ea995978f41d37b063f9f8c061101ac89d0c53647cf4087df970e7ba5"
     },
     {
       "path": "minimatch/README.md",
       "package": {
         "name": "minimatch",
-        "version": "10.2.6",
+        "version": "11.0.3",
         "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="
       },
       "source": "README.md",
-      "sourceSha256": "d0e7683a7fcabec7f4c87b5cd55ca7b0d024cfd50b308c2ab4c9fed1aff21b8d",
-      "sha256": "d0e7683a7fcabec7f4c87b5cd55ca7b0d024cfd50b308c2ab4c9fed1aff21b8d"
+      "sourceSha256": "3b6f410580ae7db1c5e7720cab561236f7de77499a096f91c08fe7056953faa8",
+      "sha256": "3b6f410580ae7db1c5e7720cab561236f7de77499a096f91c08fe7056953faa8"
     },
     {
       "path": "partial-json/dist/index.js",
@@ -7464,8 +7558,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/.manifest.json",
-      "sourceSha256": "8b4a3fbb81fbf43bee432a9f98243212d7282b9c2b64e13a04cf878bd01ce713",
-      "sha256": "8b4a3fbb81fbf43bee432a9f98243212d7282b9c2b64e13a04cf878bd01ce713"
+      "sourceSha256": "82d498e509af1eaf8a587bf711a544629ca28898b926586de34e90f822ee672e",
+      "sha256": "82d498e509af1eaf8a587bf711a544629ca28898b926586de34e90f822ee672e"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/amazon-bedrock.json",
@@ -7541,8 +7635,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/cloudflare-ai-gateway.json",
-      "sourceSha256": "89736349f607dbe9680f7cc6431ba53302726e8984209de98f899246e63dcefb",
-      "sha256": "89736349f607dbe9680f7cc6431ba53302726e8984209de98f899246e63dcefb"
+      "sourceSha256": "3931cdac8da96113a5667ee7fe166b72bb80b77696c06378a0947bcdd9276b9a",
+      "sha256": "3931cdac8da96113a5667ee7fe166b72bb80b77696c06378a0947bcdd9276b9a"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/cloudflare-workers-ai.json",
@@ -7684,8 +7778,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/mistral.json",
-      "sourceSha256": "f97d5a09edd370f2e8e731ba9880d793e8b7a00bcdee027c88ef3df56fe18cf6",
-      "sha256": "f97d5a09edd370f2e8e731ba9880d793e8b7a00bcdee027c88ef3df56fe18cf6"
+      "sourceSha256": "013b34618e8f9a3968e0442e7e1339cc2a1bbad467f04bab0b8589a9c451b780",
+      "sha256": "013b34618e8f9a3968e0442e7e1339cc2a1bbad467f04bab0b8589a9c451b780"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/moonshotai-cn.json",
@@ -7772,8 +7866,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/openrouter.json",
-      "sourceSha256": "9f4113062d5c817dd27bbd4db089e6b8a4176af230c4164bcfa7afb67b9b2d48",
-      "sha256": "9f4113062d5c817dd27bbd4db089e6b8a4176af230c4164bcfa7afb67b9b2d48"
+      "sourceSha256": "ac8a158a71cc77d8900500275ccda9543b801c436c49ecbda3aae2c11425b175",
+      "sha256": "ac8a158a71cc77d8900500275ccda9543b801c436c49ecbda3aae2c11425b175"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-cn.json",
@@ -7849,8 +7943,8 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "source": "dist/providers/data/vercel-ai-gateway.json",
-      "sourceSha256": "d44cae1fe5fd500a981446cad2907b06a6dde7da184b1c317ba6bc70cb0ef48b",
-      "sha256": "d44cae1fe5fd500a981446cad2907b06a6dde7da184b1c317ba6bc70cb0ef48b"
+      "sourceSha256": "c2916993734d69b3db9e6a2feabbf394863503a12244f841c3acc7dc3e907039",
+      "sha256": "c2916993734d69b3db9e6a2feabbf394863503a12244f841c3acc7dc3e907039"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xai.json",
@@ -8785,6 +8879,16 @@
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
+      "path": "pi-dist/pi-ai/sdk-bundle/chunk-6WTZUY3D.js",
+      "package": {
+        "name": "@earendil-works/pi-ai",
+        "version": "1.4.0",
+        "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
+      },
+      "sha256": "4114e5cc0a2d4e0d2990a1c342dfcf6c44636361338a05e049740c6fd1ef6a2e",
+      "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
+    },
+    {
       "path": "pi-dist/pi-ai/sdk-bundle/chunk-ABPQ4VM7.js",
       "package": {
         "name": "@earendil-works/pi-ai",
@@ -8792,16 +8896,6 @@
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
       "sha256": "318d599a964ef190f3b00bdd36e00aba913a3074587fc1dfa064e40d5a15244e",
-      "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
-    },
-    {
-      "path": "pi-dist/pi-ai/sdk-bundle/chunk-B6P6AMCE.js",
-      "package": {
-        "name": "@earendil-works/pi-ai",
-        "version": "1.4.0",
-        "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
-      },
-      "sha256": "55f58894545f4a7c61869c172689949502b6e9bdc131d1b0868d94707fe67e73",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -8915,16 +9009,6 @@
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-ai/sdk-bundle/chunk-TW2GTMRT.js",
-      "package": {
-        "name": "@earendil-works/pi-ai",
-        "version": "1.4.0",
-        "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
-      },
-      "sha256": "79d5de065075a1e7c918ca2f5e57201bd9edcbfaef988bf4250c55e52fedf72b",
-      "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
-    },
-    {
       "path": "pi-dist/pi-ai/sdk-bundle/chunk-U2B7BJMX.js",
       "package": {
         "name": "@earendil-works/pi-ai",
@@ -8945,6 +9029,16 @@
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
+      "path": "pi-dist/pi-ai/sdk-bundle/chunk-XQG2OHIL.js",
+      "package": {
+        "name": "@earendil-works/pi-ai",
+        "version": "1.4.0",
+        "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
+      },
+      "sha256": "166120d0ce59c09d0f4373b4085d4d481d74c1061e2bbafdaa2f4ae3a5a7505f",
+      "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
+    },
+    {
       "path": "pi-dist/pi-ai/sdk-bundle/chunk-ZHUX2MZ6.js",
       "package": {
         "name": "@earendil-works/pi-ai",
@@ -8961,7 +9055,7 @@
         "version": "1.4.0",
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
-      "sha256": "5de6e0e14479ac9052ea9a11a8f287b9bbcd2c940e14183f237ef1b29229165d",
+      "sha256": "fb0acb4b64db454f5a0a5dfb4751a254e2e11933c036b5794dd8f93d0770c2bc",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -8981,7 +9075,7 @@
         "version": "1.4.0",
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
-      "sha256": "862dec0beada9183973057ee7a6426682fcdee06c6824e43e7193abb51692857",
+      "sha256": "e80d1ba951e2868df1a95131c89937657451cd29d56103f829b5bc84d309b11b",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -9001,7 +9095,7 @@
         "version": "1.4.0",
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
-      "sha256": "20dfb3821860b66e53f8aa068cf5188e1184879ea548bb7f5b840aaac4d88068",
+      "sha256": "f392cec65a7cec95abb15e0cd3d620d5156549d23e34a36bfc5c86dc284b0c64",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -9011,7 +9105,7 @@
         "version": "1.4.0",
         "integrity": "sha512-hQM/C4+1w8rHYACzDDf+0vQMnEnpzIop1tptIERVgR3ZeT/hHSzBNG8PaWPgxWQjqSeKCyBZSyp8uTT6eKK1pQ=="
       },
-      "sha256": "5965f4c98c26797bd2f948a4cbda1c9a2bfe3ac019a64e80051865b8e170c9e1",
+      "sha256": "2cab039d9fd2e3ae2365f1553a16896733540e56bba0ec2a3d75722df891625a",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -9512,8 +9606,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "CHANGELOG.md",
-      "sourceSha256": "c09144546d84a2aa3437d0fecd4b00f809e7751bf5217e304ac32e7d2604cc5e",
-      "sha256": "c09144546d84a2aa3437d0fecd4b00f809e7751bf5217e304ac32e7d2604cc5e"
+      "sourceSha256": "fa6ea39c0e43359a3c113e3df3b9946c435664208df759b4738c3e90cbf92e22",
+      "sha256": "fa6ea39c0e43359a3c113e3df3b9946c435664208df759b4738c3e90cbf92e22"
     },
     {
       "path": "pi-dist/pi-coding-agent/cli/args.js",
@@ -9523,8 +9617,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/cli/args.js",
-      "sourceSha256": "58efc738a00fc5651eae69f62392c35d2bb3ce26296e2903e21d713c75211aeb",
-      "sha256": "391d4f5e9139130a0543fb3df5a8df177e0133151b0d0abb69a33ed18d4c952a",
+      "sourceSha256": "1bf64d7a9a5ee1ae64abf0ef346223ae1d94281907734fcb14f6cac0c25bf23b",
+      "sha256": "a31b15f89ef2a23624bce2f031edbb3b4c561520ea71e819945490ed9f08c86c",
       "rewrite": "module specifiers"
     },
     {
@@ -9651,8 +9745,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/config.js",
-      "sourceSha256": "b53418ca3bc54b70e18ccb192eb471696f5211c5aa2e80d68fe6fe3851ff23ae",
-      "sha256": "a8afae21d0244f65285569ddb31faf207d3ced18480e2fee0505af732e25b56e",
+      "sourceSha256": "8d84a58d53f1bd4360188f787b56b16444c20e00452d075cdc77056054387926",
+      "sha256": "97af0b38c16c1c1c6944668a0504b1dd64ee7bcfab60fe173c73c5c1145edefe",
       "rewrite": "D2 configuration and private asset paths; published bundled loader"
     },
     {
@@ -9663,8 +9757,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/agent-session-runtime.js",
-      "sourceSha256": "928b6528bb17d26273af8f7023a4f98e5f440d5896a4280d060b9b3e1f9a6882",
-      "sha256": "928b6528bb17d26273af8f7023a4f98e5f440d5896a4280d060b9b3e1f9a6882"
+      "sourceSha256": "0e0b6bcd83b092e108ed52bed2c8f0bc28e9d606f4a3ddd8877636163260a019",
+      "sha256": "0e0b6bcd83b092e108ed52bed2c8f0bc28e9d606f4a3ddd8877636163260a019"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/agent-session-services.js",
@@ -9948,8 +10042,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/export-html/tool-renderer.js",
-      "sourceSha256": "8d3bd1f1b068996fe8f7d003bdb6623284043e1393a2db92ff45aeb9d6c33b9a",
-      "sha256": "8d3bd1f1b068996fe8f7d003bdb6623284043e1393a2db92ff45aeb9d6c33b9a"
+      "sourceSha256": "447a90e3ba59d0a661635c74faddb8547f2d7c0ddf1f688f7ff6c09c2c8480b9",
+      "sha256": "447a90e3ba59d0a661635c74faddb8547f2d7c0ddf1f688f7ff6c09c2c8480b9"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/extensions/index.js",
@@ -9994,8 +10088,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/extensions/loader.js",
-      "sourceSha256": "c63226a56ab2f4f9e4e6c8ea97e4bcb9c71d723b38eba1ee3569559bba21a666",
-      "sha256": "c63226a56ab2f4f9e4e6c8ea97e4bcb9c71d723b38eba1ee3569559bba21a666"
+      "sourceSha256": "1248609b2a48a6d9711c4ef76116ef07f5e739324d196c971063f17ce268b0d6",
+      "sha256": "1248609b2a48a6d9711c4ef76116ef07f5e739324d196c971063f17ce268b0d6"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/extensions/runner.js",
@@ -10098,8 +10192,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/mcp-servers.js",
-      "sourceSha256": "b099709521b4c4aa118704762b807247ebccfc0ba4962f3a06055b17bb72d3ea",
-      "sha256": "b099709521b4c4aa118704762b807247ebccfc0ba4962f3a06055b17bb72d3ea"
+      "sourceSha256": "3523700ee4809fdb1bd98e93157fbe7114c51a745550828ef0a1b1c9a6dc1a60",
+      "sha256": "3523700ee4809fdb1bd98e93157fbe7114c51a745550828ef0a1b1c9a6dc1a60"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/messages.js",
@@ -10200,8 +10294,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/package-manager.js",
-      "sourceSha256": "efa2ad88771e2a4b69de0bc16cc81aeac37f1ba884b4b31770d33600a7bfced7",
-      "sha256": "3b413ab5aa4f714cdfedb49a6d010c31463dc2be111a8a4e9867ce4d6874ddb0",
+      "sourceSha256": "09d952572969a8266fe87d9976240b3f8b4dcd268c99fa45e1e951333875172d",
+      "sha256": "6200839d1d6b476c0a5f61f15aa088105a5e74b8f90d3a3a9d8a11223264ee80",
       "rewrite": "module specifiers"
     },
     {
@@ -10223,8 +10317,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/project-trust.js",
-      "sourceSha256": "da26783cf1b0c7d3024eb013d4912e77e88f08ea882df2772837133d4ffac469",
-      "sha256": "da26783cf1b0c7d3024eb013d4912e77e88f08ea882df2772837133d4ffac469"
+      "sourceSha256": "8000aac849fc2c876b9f5831346dca4033193e59fbf4a7dd886f4c2713e603f7",
+      "sha256": "8000aac849fc2c876b9f5831346dca4033193e59fbf4a7dd886f4c2713e603f7"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/prompt-templates.js",
@@ -10292,8 +10386,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/resource-loader.js",
-      "sourceSha256": "c789c43024de502ab6cc345d91c634f923380ff189fcd902e9af306abc7035ff",
-      "sha256": "545de8a6121b6494bfa4e246f56478bdf403291697dc7df606b7e1eb30fb21fa",
+      "sourceSha256": "57ece4ebd0ef6429bf45e1a22a7c581813251a988afa67bf2d3158eb752cdecc",
+      "sha256": "f7c1c3152be922103757c5857d91509cd9778867f49f06fd49ef43081ad1b42c",
       "rewrite": "module specifiers"
     },
     {
@@ -10349,8 +10443,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/session-manager.js",
-      "sourceSha256": "eb5b1e5d338c4ba024f33ed954333c4470046b0dbdf9c77a4ef625e8041d0a05",
-      "sha256": "47905b6ec8cc9777afa1966786a697337e320ff1791967eb38f62847eced9fd3",
+      "sourceSha256": "20f1e8b4e50e0bd983fb326c70ee4b0f088417e0da455166da7658d3e38aefe3",
+      "sha256": "d12e77129947a32f964e55ab5a0bdc84a915481c9085b814181b4eb2e24c2913",
       "rewrite": "module specifiers"
     },
     {
@@ -10396,8 +10490,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/skills.js",
-      "sourceSha256": "0e20ec500ed9783d5b01b5399e6600134fc3fdd10e6dc46c9113bc01565c9aa5",
-      "sha256": "5bf4fb590af8fb64d4a32723242ab4f6cd108e6ed3d5887515d1132cd852462e",
+      "sourceSha256": "806fe63a39cdb5ab6ff4dbbc917e24a3019ead482ede621518ffffc134de2b15",
+      "sha256": "d5a510c056d7840fca2b1807ebe90f7f81d9c5c7fb83da56dd5cc0da7ada23d1",
       "rewrite": "module specifiers"
     },
     {
@@ -10408,8 +10502,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/slash-commands.js",
-      "sourceSha256": "cdbaa9cb7594702d5b5608cf0d26764e6218163087801d220d31c3fb9e2ac7c5",
-      "sha256": "cdbaa9cb7594702d5b5608cf0d26764e6218163087801d220d31c3fb9e2ac7c5"
+      "sourceSha256": "093860b01a21d07ee53457e566f46f238d80f51634092713fae832184e7dbb88",
+      "sha256": "093860b01a21d07ee53457e566f46f238d80f51634092713fae832184e7dbb88"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/source-info.js",
@@ -10419,8 +10513,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/source-info.js",
-      "sourceSha256": "d60989890891992276ccd332e2c5c5a2379b3b6a5050d731fe5c58cbe023dd68",
-      "sha256": "d60989890891992276ccd332e2c5c5a2379b3b6a5050d731fe5c58cbe023dd68"
+      "sourceSha256": "8785b8ea42e12023ed2b81c5af81eb9e96e964aac8cf76db1f250b07c9c83537",
+      "sha256": "8785b8ea42e12023ed2b81c5af81eb9e96e964aac8cf76db1f250b07c9c83537"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/system-prompt.js",
@@ -10430,8 +10524,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/system-prompt.js",
-      "sourceSha256": "ab02924fa078eef81addcf39bc0e43d3663f06d627cb42ead403662a004a9e5c",
-      "sha256": "4bf27d3fd58ebd2d68e4b234de6377068cd760790fd5fce6ac614d24564886f4",
+      "sourceSha256": "5f68e89c31ba3d4d1af8ad2bfd0c7c548879d47ee6ab4aabee50a826100da32c",
+      "sha256": "5569c856d19ba6642049f1bd99989ef4965ab3575c269a3342b61098b5949641",
       "rewrite": "module specifiers"
     },
     {
@@ -10488,8 +10582,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/tools/edit.js",
-      "sourceSha256": "e2e7081b28b170eb11bdd8d4fc295c491d581364cd57ae0670f24031b4057265",
-      "sha256": "f1640dd8ab03b88acd9e48176c5546193ecc06034f4d5c32c3f56fcf28a444b9",
+      "sourceSha256": "7a220a800ed2997338f08b22e780a3d114243f106c66d66eb33d50c8d7930297",
+      "sha256": "83517b081fb8f80f930d8078f9b551e8d69b37eed70c9afb9d915f47ed648cdc",
       "rewrite": "module specifiers"
     },
     {
@@ -10604,8 +10698,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/tools/render-utils.js",
-      "sourceSha256": "c7e09796db181e98e65698ff340c82e74788048cbf63034086189d81623a8ee7",
-      "sha256": "df4c4ebe4622544887d754c25606aac8fd6b4c7dee98be5732d3510d00a85d8a",
+      "sourceSha256": "5e75cc6fe1282f49964ca226427ddece50804240fd694d4b80cc613269c004d9",
+      "sha256": "2a1da982362d39f1fca4d4d08830729efda67fb31fd84bd12c4534bc4402368b",
       "rewrite": "module specifiers"
     },
     {
@@ -10745,8 +10839,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/core/trust-manager.js",
-      "sourceSha256": "ce8644574983b5f8a04059545305b63463557cdf8d09049c35590cb937a70c76",
-      "sha256": "6ffc849f305ea358505dcd7845cdefb54df6c481ff3d292b8fa0266a19e380c6",
+      "sourceSha256": "c06b3eeaf4f613962d2ce36d03abf952e64a0bf706de67054a0340f4477937d4",
+      "sha256": "27fa599f951d7c04db2de0f2451b5f9064abf28a4ec3ff0418cb227c1123520c",
       "rewrite": "module specifiers"
     },
     {
@@ -10801,8 +10895,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "docs/cli.md",
-      "sourceSha256": "a734c3d3bf26e157252d623d350a0f6fab661e20f76ac25e90db86894f01b305",
-      "sha256": "a734c3d3bf26e157252d623d350a0f6fab661e20f76ac25e90db86894f01b305"
+      "sourceSha256": "6f3946d235aeebb27e0c7bdcae2bb16107c948579dbff3b45969d24d63930f2a",
+      "sha256": "6f3946d235aeebb27e0c7bdcae2bb16107c948579dbff3b45969d24d63930f2a"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/codemode.md",
@@ -10878,8 +10972,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "docs/environment-variables.md",
-      "sourceSha256": "4df216de7677400b4a41392ada0ea5b31ecadba5a263024eda87c29f77d69ce1",
-      "sha256": "4df216de7677400b4a41392ada0ea5b31ecadba5a263024eda87c29f77d69ce1"
+      "sourceSha256": "1a59b88928be611f04758e8607c96beea91327de803ff696c672c8216996dfc9",
+      "sha256": "1a59b88928be611f04758e8607c96beea91327de803ff696c672c8216996dfc9"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/extensions.md",
@@ -10889,8 +10983,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "docs/extensions.md",
-      "sourceSha256": "d0e4b1f593f6fef15047d6459d6ba03bcfadd627f1e5c179860bded1f0ed5dac",
-      "sha256": "d0e4b1f593f6fef15047d6459d6ba03bcfadd627f1e5c179860bded1f0ed5dac"
+      "sourceSha256": "be4a565813a79c4e1bb170854af753dbc05be8f189305d8b674f99acd7b2e427",
+      "sha256": "be4a565813a79c4e1bb170854af753dbc05be8f189305d8b674f99acd7b2e427"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/how-pi-works.md",
@@ -10999,8 +11093,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "docs/mcp.md",
-      "sourceSha256": "23b9cca35d1340e8adce6bed8b495da0ebb58931179a937db87d610a1b40b9bf",
-      "sha256": "23b9cca35d1340e8adce6bed8b495da0ebb58931179a937db87d610a1b40b9bf"
+      "sourceSha256": "c353a4cb49cfff85e5bf1839a7e702f58bfed9df2afcbeeb29cae2b5574cbe3b",
+      "sha256": "c353a4cb49cfff85e5bf1839a7e702f58bfed9df2afcbeeb29cae2b5574cbe3b"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/message-types.md",
@@ -11054,8 +11148,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "docs/packages.md",
-      "sourceSha256": "8182554a300e06d84e6c1f5a77034f4841190cca2c2dd1f947304a9885e804d3",
-      "sha256": "8182554a300e06d84e6c1f5a77034f4841190cca2c2dd1f947304a9885e804d3"
+      "sourceSha256": "f03ce96224985c1b0daac643cb6edc97a58701c492243c8eda16a7d1633e9dac",
+      "sha256": "f03ce96224985c1b0daac643cb6edc97a58701c492243c8eda16a7d1633e9dac"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/prompt-templates.md",
@@ -11164,8 +11258,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "docs/sessions.md",
-      "sourceSha256": "152d6489f61a6de9349c8ceaade95d5498fbc74f21771f41ba8e87ce0e5d8936",
-      "sha256": "152d6489f61a6de9349c8ceaade95d5498fbc74f21771f41ba8e87ce0e5d8936"
+      "sourceSha256": "094b5b33b4bc798ad489536da45eed038467f693b1b876584ae368c16022ba90",
+      "sha256": "094b5b33b4bc798ad489536da45eed038467f693b1b876584ae368c16022ba90"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/settings.md",
@@ -11175,8 +11269,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "docs/settings.md",
-      "sourceSha256": "c1a9157ba2772d46aff100ef2d6a299808fcdeecf007b4a93bf08d7b86ab1391",
-      "sha256": "c1a9157ba2772d46aff100ef2d6a299808fcdeecf007b4a93bf08d7b86ab1391"
+      "sourceSha256": "364026e551fdda13139ce885e3237c08977d2ec04662bd0fbf37d9dd01565b71",
+      "sha256": "364026e551fdda13139ce885e3237c08977d2ec04662bd0fbf37d9dd01565b71"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/shell-aliases.md",
@@ -11208,8 +11302,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "docs/slash-commands.md",
-      "sourceSha256": "e4a8422f7fdfaca8e7d5fbcabccb15b56eabbfebc4498f6b9398f7fc1a5d1b88",
-      "sha256": "e4a8422f7fdfaca8e7d5fbcabccb15b56eabbfebc4498f6b9398f7fc1a5d1b88"
+      "sourceSha256": "8d44fc21253e7f0cdd468d0484e6a6ed50cc90f3e2b639d9e804a00f1ea93080",
+      "sha256": "8d44fc21253e7f0cdd468d0484e6a6ed50cc90f3e2b639d9e804a00f1ea93080"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/terminal-setup.md",
@@ -11219,8 +11313,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "docs/terminal-setup.md",
-      "sourceSha256": "583381fb9dc466135a865ca406a3be299a7a8da2c9d810c5b73f401912a0a357",
-      "sha256": "583381fb9dc466135a865ca406a3be299a7a8da2c9d810c5b73f401912a0a357"
+      "sourceSha256": "a75900ac7ac18d14000c753dc5542dc43d0bfa6acf01ddfd034f6dc3275eba49",
+      "sha256": "a75900ac7ac18d14000c753dc5542dc43d0bfa6acf01ddfd034f6dc3275eba49"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/termux.md",
@@ -11252,8 +11346,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "docs/tmux.md",
-      "sourceSha256": "9ec0abdbf74c57d51d4a93f308fb4aec4d8a3574a24cbfd9ba481d2e39f1273c",
-      "sha256": "9ec0abdbf74c57d51d4a93f308fb4aec4d8a3574a24cbfd9ba481d2e39f1273c"
+      "sourceSha256": "cba8048064e0f3322d5b693b5e7b50a0d17c2e0af2aabc59285eb6024775b7d4",
+      "sha256": "cba8048064e0f3322d5b693b5e7b50a0d17c2e0af2aabc59285eb6024775b7d4"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/tui.md",
@@ -11296,8 +11390,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "docs/windows.md",
-      "sourceSha256": "e5a51792381a9eec859f034153c67f9ff52c36d3cff4c7a1faa0651f77f627c3",
-      "sha256": "e5a51792381a9eec859f034153c67f9ff52c36d3cff4c7a1faa0651f77f627c3"
+      "sourceSha256": "b30d75000d9623832c375b20a53b492929ef31d9631f1be90a0ed1469d8c0728",
+      "sha256": "b30d75000d9623832c375b20a53b492929ef31d9631f1be90a0ed1469d8c0728"
     },
     {
       "path": "pi-dist/pi-coding-agent/examples/extensions/auto-commit-on-exit.ts",
@@ -11494,8 +11588,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "examples/extensions/debug-provider.ts",
-      "sourceSha256": "a915f86a26a0257537939701797b1f613072275e76bdd8a27dd941bbf519643a",
-      "sha256": "a915f86a26a0257537939701797b1f613072275e76bdd8a27dd941bbf519643a"
+      "sourceSha256": "0de8958fdc86dc7d8bdd19aad5371ebf8bcec28cf333155d3c12dada8c8141b8",
+      "sha256": "0de8958fdc86dc7d8bdd19aad5371ebf8bcec28cf333155d3c12dada8c8141b8"
     },
     {
       "path": "pi-dist/pi-coding-agent/examples/extensions/dirty-repo-guard.ts",
@@ -12110,8 +12204,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "examples/extensions/README.md",
-      "sourceSha256": "b51e1095d338ed8bc6cb0a40dca12da66ffd12d6f4ec7bfd57815fac84d87662",
-      "sha256": "b51e1095d338ed8bc6cb0a40dca12da66ffd12d6f4ec7bfd57815fac84d87662"
+      "sourceSha256": "12a15e808b483c3d130fad851a1c75579a350e10e9fe405d2b21af2456dac3be",
+      "sha256": "12a15e808b483c3d130fad851a1c75579a350e10e9fe405d2b21af2456dac3be"
     },
     {
       "path": "pi-dist/pi-coding-agent/examples/extensions/reload-runtime.ts",
@@ -12134,39 +12228,6 @@
       "source": "examples/extensions/rpc-demo.ts",
       "sourceSha256": "3d54a396eee12eb04ea12d0ea03716a6edd3e8743502b6a529e3b8d429ae640d",
       "sha256": "3d54a396eee12eb04ea12d0ea03716a6edd3e8743502b6a529e3b8d429ae640d"
-    },
-    {
-      "path": "pi-dist/pi-coding-agent/examples/extensions/sandbox/index.ts",
-      "package": {
-        "name": "@earendil-works/pi-coding-agent",
-        "version": "1.4.0",
-        "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
-      },
-      "source": "examples/extensions/sandbox/index.ts",
-      "sourceSha256": "b5e527aac27254002f27b8bb9de7bc62e242e39eeb7c963683096039e0aa173e",
-      "sha256": "b5e527aac27254002f27b8bb9de7bc62e242e39eeb7c963683096039e0aa173e"
-    },
-    {
-      "path": "pi-dist/pi-coding-agent/examples/extensions/sandbox/package-lock.json",
-      "package": {
-        "name": "@earendil-works/pi-coding-agent",
-        "version": "1.4.0",
-        "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
-      },
-      "source": "examples/extensions/sandbox/package-lock.json",
-      "sourceSha256": "cd4e34dbd8a9d4b0efdb58becb6c4201eb2ad9e44228b9a272b6853bfb54539d",
-      "sha256": "cd4e34dbd8a9d4b0efdb58becb6c4201eb2ad9e44228b9a272b6853bfb54539d"
-    },
-    {
-      "path": "pi-dist/pi-coding-agent/examples/extensions/sandbox/package.json",
-      "package": {
-        "name": "@earendil-works/pi-coding-agent",
-        "version": "1.4.0",
-        "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
-      },
-      "source": "examples/extensions/sandbox/package.json",
-      "sourceSha256": "4b4bfe0ebeecf2af747a3e023a5edc143cba9c36137d10051e1124d1c1ad9732",
-      "sha256": "4b4bfe0ebeecf2af747a3e023a5edc143cba9c36137d10051e1124d1c1ad9732"
     },
     {
       "path": "pi-dist/pi-coding-agent/examples/extensions/send-user-message.ts",
@@ -12886,8 +12947,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/extensions/mcp/cli.js",
-      "sourceSha256": "e079aa618d451a566328ba134dd922c1f72ff9b14237ecbedb00010323e9e236",
-      "sha256": "30d769f3f60a40089c8374cb27d146f289f72d8dd116f945e697cbb700872cbb",
+      "sourceSha256": "946425eb03bbec4b8f8c7884c606b53a241237466f328e5cc7815c8d42ddfd86",
+      "sha256": "217d8323c2993188748c69972bdb93480d5106063ff16ab3f36c561d2823393e",
       "rewrite": "module specifiers"
     },
     {
@@ -12942,8 +13003,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/extensions/mcp/oauth.js",
-      "sourceSha256": "ad5ff842f07d8ebbe0916ad16033f91288292354a675d6ea0c5490d2bf3a971a",
-      "sha256": "ebc0cce832964638a745ccfcd61cda404f71a5bca74885f04d67d87fc807005f",
+      "sourceSha256": "d5d0410f68510a4ef4929099dea95483b4ba500151903476ef652bdef6b44451",
+      "sha256": "77b3871bc87113c0db22fbc24b2d3d936a39ccc086e301b7b012ed51a0304c44",
       "rewrite": "module specifiers"
     },
     {
@@ -13023,8 +13084,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/extensions/tool-search/tool.js",
-      "sourceSha256": "af11949ebf92721016ae21eeba7cb09523a716721f07ff879b1c47dda7e39c3d",
-      "sha256": "d0cf81f0437d18db90dd1a404031e52b62120e26acb36d080b5e1991419ae7c2",
+      "sourceSha256": "09aba67463b79ce429fd8f3fb61f9bd50160b534bf98f56727032351dbc20cc9",
+      "sha256": "1ca919ddaf5e0d94e096afd5ecd9505fa66353b63a8dca0d793438aff11d6cb0",
       "rewrite": "module specifiers"
     },
     {
@@ -13047,8 +13108,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/main.js",
-      "sourceSha256": "21de2a0bcb6c34cfd268cc7679d34761338ec32ffd855f5a7ba71da997c18566",
-      "sha256": "cf0025b505826ea33f900bb00a961cfd1a58bb05d1977ed73a5d2c1194f4b1c7",
+      "sourceSha256": "dec83f4f151de1351c9a39ed8ad6752cb5e5d91798daede5780fa401d0e6ec06",
+      "sha256": "cdb0d1b44078838e845df9406a48d46a6a90cb8875f15b1191fe88d4061c9bb3",
       "rewrite": "module specifiers"
     },
     {
@@ -13199,8 +13260,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/components/config-selector.js",
-      "sourceSha256": "f2322efaa4c2cee047a8254473a3569e92b35e1b71827c9ad6447083aed53a18",
-      "sha256": "0303495f141604e5bd2e640d4719b84d713927078f46e68e2c9514e66a38ff9b",
+      "sourceSha256": "ae98e9a863f3b15cab98391d826dfad3ec98a6715506bbfbcfdfef476e25e099",
+      "sha256": "7328b51404e9790a9b89c4fd565267441d11c4cdf014f9f8df914fe469629a48",
       "rewrite": "module specifiers"
     },
     {
@@ -13234,8 +13295,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/components/custom-entry.js",
-      "sourceSha256": "c948ce15ba76a931f8313f29d366a9727082c69ba38df511abaa2136f3512b90",
-      "sha256": "7e09ee8e9f6d448ff0254eabc7eb5fbb29b4d697f1c4a5b77777c6c3136ee3a0",
+      "sourceSha256": "5ba8128eb920003a866624469a0c6fa61296c843b62b8a660ca674b5d3739286",
+      "sha256": "aab561879582a404d99871954010c63908ae312cdf7c2bef4e7e1c4a0f8e9626",
       "rewrite": "module specifiers"
     },
     {
@@ -13246,8 +13307,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/components/custom-message.js",
-      "sourceSha256": "60eff1fc82a72e4997862af808ca7d03a62f8cefd6342ac44b07ab35d5950ec4",
-      "sha256": "876b082d141754fc18fa57061cefbb0a48e4b80370f5f1a46be9e05ebe5a7fde",
+      "sourceSha256": "582d3a2c1636fae31205f6b4c8289f4cf6c508406ddd24535cf442fca769da4f",
+      "sha256": "a0bf2d6218c98bc21d291617c9aa44bc43e8be0486e5b1906162c18618eec06c",
       "rewrite": "module specifiers"
     },
     {
@@ -13317,8 +13378,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/components/extension-editor.js",
-      "sourceSha256": "cec67ee4fe2a3248db81e980ba79a171c10d77330dc2be77b780718555bf1683",
-      "sha256": "eaf238819c7336a08881d7acf7a845e2e1ead8079dad181af61b9a631dbbdb38",
+      "sourceSha256": "22277979d2dd3367ccab9f67635b734276f9ae3902f989cb8c2f44d9cd222849",
+      "sha256": "709a30a0a9a6ccaa863f64183141b3342d89b8c97f2b192c6afb82eaa78e891d",
       "rewrite": "module specifiers"
     },
     {
@@ -13507,8 +13568,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/components/session-selector.js",
-      "sourceSha256": "eb85bc1ee6b51cb9a90cb9421368eb8e4a9b925d43f13baf4ce017926f46d62f",
-      "sha256": "1011c6c3c79bd71dcf2679c4a1e678b86dbe0116979f60093d275c926868ac05",
+      "sourceSha256": "fb45456c5f847dede4ddb2ff1046d0828275a3dde933591953fe804528c99ac5",
+      "sha256": "23344d8fea1dc53f635eed6220c8b911db7b0720a576c86021673eb2d8abefee",
       "rewrite": "module specifiers"
     },
     {
@@ -13615,8 +13676,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/components/tool-execution.js",
-      "sourceSha256": "c6fd01ee57b9d6d66558663a3edea88ce2d5adfdfb81625e26b4842ce32ef618",
-      "sha256": "065f83d0da136d9c9ca87e3974af8f2762f4db25a61683fd417e49ee2c11b006",
+      "sourceSha256": "a603fedabdba2412efc3c880251b6181492537394c8b5e7a7e3c11090ca045c7",
+      "sha256": "f10c2f09bdd33a55e42ed56b3b34786628848a02cfd56548b3a10a86c8cb2971",
       "rewrite": "module specifiers"
     },
     {
@@ -13627,8 +13688,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/components/tree-selector.js",
-      "sourceSha256": "6154552f005cce0a6938a7c24fa6f0695f3afa5748c59edf21f3a9f71a9978d4",
-      "sha256": "e30c5965cb5cfb804bf21714c51f17d1a2099d1133897b0924f88924134b6cf5",
+      "sourceSha256": "27e7283a1b2719326979507f10af4866c93f84f015e78262319ae2f958309a6c",
+      "sha256": "e90323c95c522112999afe2c40480361a8e33dabcba7a63d558e6e0bf07c2ba7",
       "rewrite": "module specifiers"
     },
     {
@@ -13687,8 +13748,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/external-editor.js",
-      "sourceSha256": "27c7133602240acd07c849994a82058eb9ef3ae15299f386808c1dd0b85486d6",
-      "sha256": "27c7133602240acd07c849994a82058eb9ef3ae15299f386808c1dd0b85486d6"
+      "sourceSha256": "7903f0d1ef8bcc4e40c7bb5242c2531ae04436c9e3dfc94516d58379b9a61ea2",
+      "sha256": "7903f0d1ef8bcc4e40c7bb5242c2531ae04436c9e3dfc94516d58379b9a61ea2"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/interactive-mode.js",
@@ -13698,8 +13759,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/modes/interactive/interactive-mode.js",
-      "sourceSha256": "85d641f1e5928aa109b163ed5cc64e4ae6c43bb3d6893a11af1fbaf20f92a771",
-      "sha256": "15b99537ebd26f63e2848a6d6769958514dde3ca189665c9a7a056cf83cb561a",
+      "sourceSha256": "718980c4931aa457ba8f531c07c0f2ef4d2c8f1f660f044028029f59f11daa2c",
+      "sha256": "b05251b7b8fb18e59f282455dcdac0c0ee30b05f25b73aa8e5d65ffc43266e3c",
       "rewrite": "module specifiers; D26 PiG product identity (automation/gen/pi-identity-patches.mjs)"
     },
     {
@@ -13902,8 +13963,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/package-manager-cli.js",
-      "sourceSha256": "a9a22ba5b72872f83ebd310dea430805892abb3680385838db9c7638c3e507f3",
-      "sha256": "936651199c8f6b59bf1b237d0dc24af351afef530088fffe1fbe5324896466a3",
+      "sourceSha256": "67a1fd86b8dc87b0cb23e7b4988cea1cb1d4dec28d975d54040273cecc273753",
+      "sha256": "16394f7c6aa6a112a7fe7d281d95d6a3f620da49edce3fc5216199817f3b0900",
       "rewrite": "module specifiers; D26 PiG product identity (automation/gen/pi-identity-patches.mjs)"
     },
     {
@@ -13914,8 +13975,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "package.json",
-      "sourceSha256": "f9c21f2fe252a5f988a19f6e4097bb058c411cb98e2eb60e39f85e88c54f05c9",
-      "sha256": "f9c21f2fe252a5f988a19f6e4097bb058c411cb98e2eb60e39f85e88c54f05c9"
+      "sourceSha256": "2b39d6c0591c078723e2efad930ed0a11135c879cef5a37846322efc4a1bbd41",
+      "sha256": "2b39d6c0591c078723e2efad930ed0a11135c879cef5a37846322efc4a1bbd41"
     },
     {
       "path": "pi-dist/pi-coding-agent/README.md",
@@ -13929,6 +13990,16 @@
       "sha256": "fbc7abec7d0829ac8bc4b217e950794e1ba4d8d1b3e0850f970da318ad72e863"
     },
     {
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-2FBPXM36.js",
+      "package": {
+        "name": "@earendil-works/pi-coding-agent",
+        "version": "1.4.0",
+        "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
+      },
+      "sha256": "57436ce11b2674efc1e4fd8446668b22787b02af96b3398b0a2193d71cd4db0f",
+      "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
+    },
+    {
       "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-2RLEIHIL.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
@@ -13939,43 +14010,63 @@
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-472CZNGH.js",
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-3MI7MSGD.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "2d304e5a2e40952543d2d1e7b14ee1afef5e7e269b6c759fc3d7942b3a8c3ccf",
+      "sha256": "9af82a2906e57ef935298c57d0a208849309a7e418b68bc0204fcd64ab8ab7a1",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-6VZPGKDV.js",
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-6NXEQ3PS.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "631aadc75e4fcece3ce656d2a0b960fbebdaf1f86cb1e76cb3fe8a7c6aa471a5",
+      "sha256": "19f6b981bfb74e6bef0c8b078bcdbeb261997196fd98653be6122979bc713b57",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-E5B65AQW.js",
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-AC3M6ZO6.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "ff0517e8dd7f9a0ba3c2c438a423f53df0e7f19daef10948c6a005be62ea02ca",
+      "sha256": "45dd207fd6e3f0e06572e2d8b9efb9998384c5a59b5768c5df4a1647771ed7ef",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-HXXU3UR4.js",
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-CC2IOZIE.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "55c6dd5ad3ccde94940d8b6ccbf95397de08747ab5cee7392b89a138b1547d06",
+      "sha256": "35d8cc62c906eb42701999e0a398e1e6356679e36107105d8cebf13f62fae8fe",
+      "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
+    },
+    {
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-DT2NM4PL.js",
+      "package": {
+        "name": "@earendil-works/pi-coding-agent",
+        "version": "1.4.0",
+        "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
+      },
+      "sha256": "d5fdde7e2d4e426447d4c840cb4df46a9ca072629ac9b9ccefe5d94ed49e7dd1",
+      "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
+    },
+    {
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-HAHVQ3BS.js",
+      "package": {
+        "name": "@earendil-works/pi-coding-agent",
+        "version": "1.4.0",
+        "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
+      },
+      "sha256": "6731c7a92723c245d095fca9fdaad5436dd886477488b492561caa92b9d05428",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -13989,33 +14080,13 @@
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-LNQUQKY2.js",
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-OWX7THTD.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "e06a052af8da0b553325667082d0afaca7d7d4dce266df95c5866d59223d5269",
-      "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
-    },
-    {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-N6HXWYKG.js",
-      "package": {
-        "name": "@earendil-works/pi-coding-agent",
-        "version": "1.4.0",
-        "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
-      },
-      "sha256": "aa785fb7e1d54255b47b3371ac979ddae6ac625b5e625b5a8469cdbd9932bd1c",
-      "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
-    },
-    {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-OH2Z3DNC.js",
-      "package": {
-        "name": "@earendil-works/pi-coding-agent",
-        "version": "1.4.0",
-        "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
-      },
-      "sha256": "a13ba7195626532712acc485fdb4ff44965ab193df5d13ce08b249d921bc0c5d",
+      "sha256": "d55d7b94a0b475ab3c0aca25ba33ffdd93b41ea1684265dcf577b323c89f75e5",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -14029,13 +14100,13 @@
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-S7TFHYGY.js",
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-RVA4E6A2.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "5f0705883a3ab2c56ae8e9c304f992da1f2136b6724f72cf70496904ef0e70b2",
+      "sha256": "276b1799e9fd684c1b3476bb643f6a8666bf36e7628e83d14b4db4531a6ada21",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -14049,63 +14120,63 @@
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-SKZPKAGV.js",
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-T4NPYDVZ.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "836520780c2baa3e04081644e4e0ad1830b45809d411e6872f474a252e3a2172",
+      "sha256": "16dcfc82357ab2af56e7a85b320de5e806552e5cb1e1d3de20a7aabef80fa69f",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-T2RT6V7W.js",
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-TBA7G64J.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "087aea7f4d9c730eea4e725f66809f2ee71c4997f4f2e944597571c91c5a8781",
+      "sha256": "d565f8c940a77bd4635b02c1194296867b947b32e43000509ef8c4615d9d88e1",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-UZ243LW5.js",
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-UAU2WSJW.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "141736438e32a0c102492f4c28b50091ef60defc0ab6689e1d4e9aafb6f86fa1",
+      "sha256": "12cce9492b3cbc0873ab41f7dd858c23eeb56efaff6b8db4743dd5b6d43ae6b4",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-XNXPQFJN.js",
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-UGZ7HYUS.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "f62d0a0bf1ecb33e21b02c08cb1af8be3137f3fb16d6709646befc3582b162e0",
+      "sha256": "276d00982b25f11d80fdb70bd6bd712594e6ed78cf65145e132fb463a9e64b37",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-XROSFU7A.js",
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-WYRO2GZC.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "f49d355d9e2f3fd9c88dc0a5969cc13add5233e6e73f0bd83140290aa61f211d",
+      "sha256": "74422972705c5cedeb2718e3730b87a39d29c2cee5b2aabd21d8217028eefd30",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-YO7W7VLN.js",
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-XVLGFP47.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "ea9112b2d71dbb11658a6f51c72858b1f06f884dfd0015cf6cd27ef1a40fe132",
+      "sha256": "ab014fddfd6f61c427eb7ddeb25d6164a55e9a54c09113ed31bbec7fe7ff8d15",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -14119,23 +14190,13 @@
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-YXY3JV6E.js",
-      "package": {
-        "name": "@earendil-works/pi-coding-agent",
-        "version": "1.4.0",
-        "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
-      },
-      "sha256": "afaeb466ad1c20803b7b2de927a186414a1e0e42d26f4f4f9825a61e97258051",
-      "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
-    },
-    {
       "path": "pi-dist/pi-coding-agent/sdk-bundle/index.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "1f4aa8051eb365ee98f49fe40b13ef931bbc3b42680fbd2f5e4674d9fb3646c3",
+      "sha256": "59b9d0c49b7b0d7ab22030114b46d0f8b747d6d702b17f5e71ca050a86f911db",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -14145,7 +14206,7 @@
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "21167daa1e736f4235c75c756c066a7a7f753e94f1158700c3653c8a66841d4d",
+      "sha256": "7ef6d440100581f921734aa34e72805e1fd040329471a9a13ccccbd0a5dec912",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -14155,7 +14216,7 @@
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "522f099ddb27143526bbe28c7dfa4d658d7f233a6cb4873d3553af9d8989745d",
+      "sha256": "787bcd9a2a82aee565f1af9f637ece5b228b0ae1de5a4e161376b69b7895b3f5",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -14165,7 +14226,7 @@
         "version": "1.4.0",
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
-      "sha256": "f66c9571ecd2cbad4632c4d9e2f02d61cd16495943058415b812600465a64ee5",
+      "sha256": "0f5820f1fe6a92ae9b3fe04b279dc9a9e72f9b228fe1e8129edcee01d80dca2a",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -14221,8 +14282,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/utils/clipboard-command.js",
-      "sourceSha256": "10e41ba8b85eab8b19a162e8255ee214eb359af2c06645fbae53d0493a4e6e51",
-      "sha256": "10e41ba8b85eab8b19a162e8255ee214eb359af2c06645fbae53d0493a4e6e51"
+      "sourceSha256": "0217e7833c895a814f714b50b82482603168f27fe46424d67f6b57aecbf38114",
+      "sha256": "0217e7833c895a814f714b50b82482603168f27fe46424d67f6b57aecbf38114"
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/clipboard-image.js",
@@ -14402,8 +14463,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/utils/open-browser.js",
-      "sourceSha256": "1268b4e07acbeff18bc8f7e4b39dbf19acd5be4f67f061fd5c17cac29646dfc2",
-      "sha256": "1268b4e07acbeff18bc8f7e4b39dbf19acd5be4f67f061fd5c17cac29646dfc2"
+      "sourceSha256": "32ad205bc422b5fce56ddaaa2bbc4d853e613ef9bfee9fa2f53bb2d38ab41a62",
+      "sha256": "32ad205bc422b5fce56ddaaa2bbc4d853e613ef9bfee9fa2f53bb2d38ab41a62"
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/output-files.js",
@@ -14424,8 +14485,8 @@
         "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
       },
       "source": "dist/utils/paths.js",
-      "sourceSha256": "d5d48c2b2b2442c7e72aee6e98a79d828a52dce9526b152288186834c1dcf4a5",
-      "sha256": "d5d48c2b2b2442c7e72aee6e98a79d828a52dce9526b152288186834c1dcf4a5"
+      "sourceSha256": "1ec599ce7dc000d4684d66dfe0a1a17159fd8fcf04261a1c8aab5c33cb856043",
+      "sha256": "1ec599ce7dc000d4684d66dfe0a1a17159fd8fcf04261a1c8aab5c33cb856043"
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/photon.js",
@@ -15379,7 +15440,7 @@
         "version": "1.4.0",
         "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
       },
-      "sha256": "811c784e95585fbb6cf7439db31bd6550ef088da61161a0e3e98b6bb23295f82",
+      "sha256": "4b1608cea111996621cc5a8defcdb10ad4728bd715b0a5027c57be7e0f57afef",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -15389,7 +15450,7 @@
         "version": "1.4.0",
         "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
       },
-      "sha256": "f4b03b6b3c4e7c623dac143a9a6b8c39f9e32361ee53d7c96c86513db88ef854",
+      "sha256": "d37d22890c1eff6fa0b4572818f05c7a470a3b334342b77ee961830f4a2498c1",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -15422,8 +15483,8 @@
         "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
       },
       "source": "dist/terminal-image.js",
-      "sourceSha256": "d821b29d465199a4e364ccf2366c97654fbc98d4014c7665b1bbbe16081a2cbb",
-      "sha256": "d821b29d465199a4e364ccf2366c97654fbc98d4014c7665b1bbbe16081a2cbb"
+      "sourceSha256": "246be165c50ca5db731224e766d642467fc79b8090baeae5eca578bbe579c108",
+      "sha256": "246be165c50ca5db731224e766d642467fc79b8090baeae5eca578bbe579c108"
     },
     {
       "path": "pi-dist/pi-tui/terminal.js",
@@ -15433,8 +15494,8 @@
         "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
       },
       "source": "dist/terminal.js",
-      "sourceSha256": "6aecdaab22f938c98a301f228fbcf7c496c862373c73090a18da6553dd13f27e",
-      "sha256": "6aecdaab22f938c98a301f228fbcf7c496c862373c73090a18da6553dd13f27e"
+      "sourceSha256": "9c20cce6eecc0f2b386d805b7b8a4de532c27451c0b46098a9d5f96d51f46461",
+      "sha256": "9c20cce6eecc0f2b386d805b7b8a4de532c27451c0b46098a9d5f96d51f46461"
     },
     {
       "path": "pi-dist/pi-tui/tui-alt-screen.js",
@@ -15489,8 +15550,8 @@
         "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
       },
       "source": "dist/utils.js",
-      "sourceSha256": "42e0d12fe4f0fbd04fd997a044a305ac15d30c739b1a351c45c28aedb9cedd5a",
-      "sha256": "62276fb1e679442e6334e869476637e55e575d5bc15bab3ef8ab10b334067cb6",
+      "sourceSha256": "7f6db62ad0964d157ed4b26d54e86d0fb6ca168d4fa3bb43b76d09422983b37d",
+      "sha256": "43f38990b959c848036698def5118dc7ebe33820443e6a8256e51a4736f2535e",
       "rewrite": "module specifiers"
     },
     {

@@ -1,7 +1,7 @@
 {
-  "piVersion": "1.4.0+e7a0df27",
+  "piVersion": "1.4.0+2c8d1feb",
   "awsSdkClientBedrockRuntime": "3.1127.0",
-  "smithyCore": "3.37.0",
+  "smithyCore": "3.38.1",
   "smithyNodeHttpHandler": "4.12.1",
   "axes": {
     "api": "bedrock-converse-stream",

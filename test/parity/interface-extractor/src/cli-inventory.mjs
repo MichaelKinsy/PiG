@@ -9,6 +9,7 @@ const SHORT_FLAG = /^-[a-z][a-z0-9-]*$/;
 const INTERNAL_COMMAND_FLAGS = new Map([
   ["runManagedNpmCi", new Set(["--ignore-scripts", "--min-release-age=0", "--omit=dev", "--include=optional", "--no-fund", "--no-audit", "--loglevel=error", "--progress=false"])],
   ["verifyManagedRelease", new Set(["--version"])],
+  ["readVersionOnPath", new Set(["--version"])],
 ]);
 
 function parseFile(file) {

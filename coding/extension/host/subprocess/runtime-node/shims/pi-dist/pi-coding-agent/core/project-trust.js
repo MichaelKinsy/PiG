@@ -20,7 +20,7 @@ export async function resolveProjectTrusted(options) {
         return options.trustOverride;
     }
     if (!hasTrustRequiringProjectResources(options.cwd)) {
-        return true;
+        return options.trustStore.get(options.cwd) ?? true;
     }
     if (options.extensionsResult) {
         const { result, errors } = await emitProjectTrustEvent(options.extensionsResult, { type: "project_trust", cwd: options.cwd }, options.projectTrustContext);

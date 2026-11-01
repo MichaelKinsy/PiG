@@ -6,7 +6,7 @@ import { basename, join, resolve } from "path";
 import { createInterface } from "readline";
 import { StringDecoder } from "string_decoder";
 import { APP_NAME, getAgentDir as getDefaultAgentDir, getSessionsDir } from "../config.js";
-import { normalizePath, resolvePath } from "../utils/paths.js";
+import { normalizePath, pathsEqual, resolvePath } from "../utils/paths.js";
 import { createBranchSummaryMessage, createCompactionSummaryMessage, createCustomMessage, } from "./messages.js";
 export const CURRENT_SESSION_VERSION = 3;
 function createSessionId() {
@@ -439,7 +439,7 @@ function getSessionHeaderCwd(header) {
     return typeof cwd === "string" ? cwd : undefined;
 }
 function sessionCwdMatches(cwd, resolvedCwd) {
-    return cwd !== undefined && cwd !== "" && resolvePath(cwd) === resolvedCwd;
+    return cwd !== undefined && cwd !== "" && pathsEqual(resolvePath(cwd), resolvedCwd);
 }
 /** Exported for testing */
 export function findMostRecentSession(sessionDir, cwd) {
@@ -774,7 +774,7 @@ export class SessionManager {
         return this.sessionDir;
     }
     usesDefaultSessionDir() {
-        return this.sessionDir === getDefaultSessionDirPath(this.cwd);
+        return pathsEqual(this.sessionDir, getDefaultSessionDirPath(this.cwd));
     }
     getSessionId() {
         return this.sessionId;
@@ -1364,7 +1364,7 @@ export class SessionManager {
      */
     static continueRecent(cwd, sessionDir) {
         const dir = sessionDir ? normalizePath(sessionDir) : getDefaultSessionDir(cwd);
-        const filterCwd = sessionDir !== undefined && dir !== getDefaultSessionDirPath(cwd);
+        const filterCwd = sessionDir !== undefined && !pathsEqual(dir, getDefaultSessionDirPath(cwd));
         const mostRecent = findMostRecentSession(dir, filterCwd ? cwd : undefined);
         if (mostRecent) {
             return new SessionManager(cwd, dir, mostRecent, true);
@@ -1438,7 +1438,7 @@ export class SessionManager {
      */
     static findById(cwd, id, sessionDir) {
         const dir = sessionDir ? normalizePath(sessionDir) : getDefaultSessionDir(cwd);
-        const filterCwd = sessionDir !== undefined && dir !== getDefaultSessionDirPath(cwd);
+        const filterCwd = sessionDir !== undefined && !pathsEqual(dir, getDefaultSessionDirPath(cwd));
         const resolvedCwd = resolvePath(cwd);
         try {
             for (const file of readdirSync(dir)) {
@@ -1466,7 +1466,7 @@ export class SessionManager {
      */
     static async list(cwd, sessionDir, onProgress, signal) {
         const dir = sessionDir ? normalizePath(sessionDir) : getDefaultSessionDir(cwd);
-        const filterCwd = sessionDir !== undefined && dir !== getDefaultSessionDirPath(cwd);
+        const filterCwd = sessionDir !== undefined && !pathsEqual(dir, getDefaultSessionDirPath(cwd));
         const resolvedCwd = resolvePath(cwd);
         const includeSession = (session) => !filterCwd || sessionCwdMatches(session.cwd, resolvedCwd);
         const progress = onProgress
