@@ -714,5 +714,5 @@ reason = "The SDK bundle layout is PiG-original packaging, which Pi does not hav
 path = "ai/catalog_options_upstream_test.go"
 commit = "e4f8e357736b7eae9f16439a3ebd49daa6add1bf"
 class = "CITE"
-cite = "packages/ai/scripts/openrouter-catalog.ts:1"
-reason = "Pi 44f6851b (#9534) deletes packages/ai/test/openrouter-cache-control-models.test.ts (the commit's Pi-Behavior-Change trailer) and sends the OpenRouter ~anthropic/claude-*-latest aliases through the Anthropic Messages API with adaptive thinking, like the versioned Claude models. The Go port of that test now pins the new behavior (TestOpenRouterAnthropicLatestAliasesUseMessages), recorded under D217."
+cite = "packages/ai/scripts/model-data.ts:1"
+reason = "Pi 44f6851b (#9534: scripts/generate-models.ts and scripts/openrouter-catalog.ts) deletes packages/ai/test/openrouter-cache-control-models.test.ts:12 (the commit's Pi-Behavior-Change trailer) and sends the OpenRouter ~anthropic/claude-*-latest aliases through the Anthropic Messages API with adaptive thinking, like the versioned Claude models. The Go port of that test now pins the new behavior (TestOpenRouterAnthropicLatestAliasesUseMessages), recorded under D217."
