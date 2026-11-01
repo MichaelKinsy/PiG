@@ -12,9 +12,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
-
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -926,7 +923,7 @@ func matchSessionSearch(search *sessionSearch, parsed parsedSearchQuery, queries
 }
 
 func normalizeWhitespaceLower(text string) string {
-	return strings.Join(strings.FieldsFunc(cases.Lower(language.Und).String(text), isJSWhitespace), " ")
+	return strings.Join(strings.FieldsFunc(jsstring.ToLower(text), isJSWhitespace), " ")
 }
 
 // renderNode mirrors one upstream SessionList row: cursor, dim tree prefix,

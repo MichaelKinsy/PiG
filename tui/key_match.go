@@ -24,8 +24,7 @@ import (
 	"sync/atomic"
 	"unicode/utf8"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Modifier bit constants: matches Kitty keyboard protocol.
@@ -454,7 +453,7 @@ func parseKeyID(keyID string) (baseKey string, modifier int, ok bool) {
 	if isASCII(keyID) {
 		lower = strings.ToLower(keyID)
 	} else {
-		lower = cases.Lower(language.Und).String(keyID)
+		lower = jsstring.ToLower(keyID)
 	}
 	modifierNames := [...]struct {
 		prefix string
