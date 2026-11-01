@@ -21,6 +21,7 @@ const connectionFlushTimeout = 5 * time.Second
 
 // flushConnectionTail waits for a connection's pending records, then gives up: the exit that follows closes the connection, which unblocks a writer stuck on a peer that stopped reading. pig additive (D201).
 func flushConnectionTail(tail *stdoutQueue) {
+	//portlint:allow ctxbackground the exit path of a connection has no caller context; connectionFlushTimeout bounds the wait
 	ctx, cancel := context.WithTimeout(context.Background(), connectionFlushTimeout)
 	defer cancel()
 	tail.Wait(ctx)
@@ -32,6 +33,8 @@ type listenControls struct {
 	next     int
 	live     map[int]rpcSessionControls
 	stopping bool
+	// late joins the shutdowns of sessions that registered after the fan-out began.
+	late sync.WaitGroup
 }
 
 // add registers a session's controls and returns the unregister. A session that registers after the fan-out began is shut down at once.
@@ -45,10 +48,10 @@ func (c *listenControls) add(controls rpcSessionControls) func() {
 	}
 	c.live[id] = controls
 	if c.stopping {
-		go func() {
+		c.late.Go(func() {
 			controls.prelude()
 			controls.shutdown(syscall.Signal(receivedTerminationSignal.Load()))
-		}()
+		})
 	}
 	return func() {
 		c.mu.Lock()
@@ -122,7 +125,7 @@ func (h *listenHosts) terminate() {
 // runRPCListen serves one RPC session per connection accepted on the Unix socket at flags.Listen until a termination signal, and returns the process exit code. pig additive (D201).
 func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, resources rpcModeResources) (exitCode int) {
 	path := flags.Listen
-	if _, err := os.Lstat(path); err == nil {
+	if _, err := os.Lstat(path); err == nil { //perf:ok cold: one stat per server start
 		fmt.Fprintf(os.Stderr, "pig --listen: %s exists\n", path)
 		return 1
 	}
@@ -135,7 +138,7 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 		fmt.Fprintf(os.Stderr, "pig --listen: listen %s: %v\n", path, err)
 		return 1
 	}
-	defer os.Remove(path)
+	defer func() { _ = os.Remove(path) }()
 	if err := os.Chmod(path, 0o600); err != nil {
 		_ = listener.Close()
 		fmt.Fprintf(os.Stderr, "pig --listen: chmod %s: %v\n", path, err)
@@ -175,7 +178,7 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 	defer setTerminationPrelude(nil)
 	defer setTerminationShutdownHook(nil)
 
-	var buildMu *sync.Mutex = builder.buildMu
+	buildMu := builder.buildMu
 	if buildMu == nil {
 		buildMu = &sync.Mutex{}
 		builder.buildMu = buildMu
@@ -199,7 +202,7 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 				return
 			}
 			conns.Go(func() {
-				defer conn.Close()
+				defer func() { _ = conn.Close() }()
 				buildMu.Lock()
 				if ctx.Err() != nil {
 					buildMu.Unlock()
@@ -246,7 +249,7 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 	_ = listener.Close()
 	if forcedSig == 0 {
 		allDone := make(chan struct{})
-		go func() { conns.Wait(); close(allDone) }()
+		go func() { conns.Wait(); controls.late.Wait(); close(allDone) }()
 		select {
 		case <-allDone:
 		case forcedSig = <-forced:
