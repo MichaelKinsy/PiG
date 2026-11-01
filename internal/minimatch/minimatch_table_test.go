@@ -426,6 +426,12 @@ var matchTable = []struct {
 	{"gpt-5.5", "*\\.5", false, false, true},
 	{"gpt-5.5", "*\\.5", true, false, true},
 	{"gpt-5.5", "*\\.5", false, true, true},
+	// A numeric brace range is expanded in JavaScript number arithmetic, as Pi's brace-expansion 5.0.12 does (minimatch 10.2.6 under Node 24).
+	{"x100000000000000000000", "x{99999999999999999999..99999999999999999999}", false, false, true},
+	{"x57", "x{99999999999999999999..99999999999999999999}", false, false, false},
+	{"x9007199254740992", "x{9007199254740993..9007199254740995}", false, false, true},
+	{"x9007199254740993", "x{9007199254740993..9007199254740995}", false, false, false},
+	{"x9007199254740996", "x{9007199254740993..9007199254740995}", false, false, false},
 }
 
 func TestMatchTable(t *testing.T) {
