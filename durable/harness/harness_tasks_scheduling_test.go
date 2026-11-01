@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -20,6 +19,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 )
 
 type tkNotes struct {

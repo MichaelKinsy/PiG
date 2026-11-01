@@ -197,7 +197,7 @@ func TestSubmissions(t *testing.T) {
 		id := must(root.Submit(testContext, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("hi")})).Id()
 		closeHarness(t, first)
 		// Reopen: the Session caches the submissions it writes, so only a reopened one reads it from Storage.
-		storage.MemoryStorage.Reopen()
+		storage.Reopen()
 		harness, _ := openChat(t, storage, setup)
 		submission := must(harness.Submission(testContext, id))
 		storage.hold.Store(true)

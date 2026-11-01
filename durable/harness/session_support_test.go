@@ -141,13 +141,6 @@ func (s *controlledStorage) Commit(ctx context.Context, batches [][]durable.Stor
 	})
 }
 
-// setAfterAdopt sets what the next commit runs right after adopt returned.
-func (s *controlledStorage) setAfterAdopt(after func()) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.afterAdopt = after
-}
-
 var errReclaimFailed = errors.New("reclaim failed")
 
 // lateWork is how long lateResolvingStorage works after adopting: a macrotask upstream, long enough here for the Session to
