@@ -1,29 +1,37 @@
-// Run Pi's packages/ai/src/utils/validation.ts validateToolArguments (typebox 1.3.27 Compile/Value/Check) over {schema, args} probes from stdin.
-// usage: node validate_tool_args.mjs <repo root> <typebox version>
-// Result: {ok: arguments} or {err: message}.
+// Run Pi's packages/ai/src/utils/validation.ts validateToolArguments (pi-schema compile with coerce, formats and unresolvedRefs "reject") over {name, schema, args} probes from stdin.
+// usage: node --disable-warning=ExperimentalWarning validate_tool_args.mjs <repo root>
+// The probes are JSON texts: schema is the tool's parameters, args the call's arguments. Result per probe: {ok: JSON.stringify of the validated arguments} or {err: the error's message}.
+// The Pi tree is .upstream/current, which must be Pi b556cfe5 or later (validation.ts imports @earendil-works/pi-schema); the package resolves to its TypeScript source there.
 import module from "node:module";
-import { pathToFileURL } from "node:url";
 import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+
 const root = process.argv[2];
-const typeboxDir = `${root}/internal/typebox/testdata/npm/`;
-const typeboxVersion = JSON.parse(readFileSync(typeboxDir + "node_modules/typebox/package.json", "utf8")).version;
-if (typeboxVersion !== process.argv[3]) throw new Error(`Wrong typebox ${typeboxVersion}`);
+const pi = `${root}/.upstream/current/packages/`;
+const validationPath = `${pi}ai/src/utils/validation.ts`;
+if (!readFileSync(validationPath, "utf8").includes('"@earendil-works/pi-schema"')) {
+	throw new Error(`${validationPath} does not validate with pi-schema: mirror Pi b556cfe5 or later (make upstream-mirror PI_UPSTREAM_REF=b556cfe5)`);
+}
+const schemaEntries = {
+	"@earendil-works/pi-schema": `${pi}schema/src/index.ts`,
+	"@earendil-works/pi-schema/formats": `${pi}schema/src/formats/index.ts`,
+};
 module.registerHooks({
 	resolve(specifier, context, next) {
-		if (specifier === "typebox" || specifier.startsWith("typebox/")) return next(specifier, { ...context, parentURL: pathToFileURL(typeboxDir + "x.mjs").href });
+		if (specifier in schemaEntries) return next(pathToFileURL(schemaEntries[specifier]).href, context);
 		return next(specifier, context);
 	},
 });
-const { validateToolArguments } = await import(pathToFileURL(`${root}/.upstream/current/packages/ai/src/utils/validation.ts`).href);
+const { validateToolArguments } = await import(pathToFileURL(validationPath).href);
 let input = "";
 process.stdin.setEncoding("utf8");
 for await (const chunk of process.stdin) input += chunk;
 process.stdout.write(
 	JSON.stringify(
 		JSON.parse(input).map((p) => {
-			const tool = { name: "probe", description: "", parameters: JSON.parse(p.schema) };
+			const tool = { name: p.name, description: "", parameters: JSON.parse(p.schema) };
 			try {
-				return { ok: validateToolArguments(tool, { type: "toolCall", id: "1", name: "probe", arguments: JSON.parse(p.args) }) };
+				return { ok: JSON.stringify(validateToolArguments(tool, { type: "toolCall", id: "1", name: p.name, arguments: JSON.parse(p.args) })) };
 			} catch (error) {
 				return { err: error.message };
 			}
