@@ -266,10 +266,14 @@ func (s *Schema) check(node jsonNode, path []string, errs *[]schemaError) bool {
 			return fail("must not have fewer than " + strconv.FormatFloat(minLength, 'f', -1, 64) + " characters")
 		}
 	case "number", "integer":
-		if !isNumber || (kind == "integer" && node.number != math.Trunc(node.number)) {
+		if !isNumber {
 			return fail("must be " + kind.(string))
 		}
+		// TypeBox checks the bounds of a number that is not an integer too: 0.5 for an integer of minimum 1 fails both.
 		ok := true
+		if kind == "integer" && node.number != math.Trunc(node.number) {
+			ok = fail("must be integer")
+		}
 		if minimum, has := s.number("minimum"); has && node.number < minimum {
 			ok = fail("must be >= " + strconv.FormatFloat(minimum, 'f', -1, 64))
 		}
