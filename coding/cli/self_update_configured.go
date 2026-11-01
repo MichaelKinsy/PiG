@@ -37,11 +37,8 @@ func runConfiguredSelfUpdate(argv []string, force bool) int {
 		fmt.Fprintf(os.Stderr, "%s %s is up to date.\n", codingagent.AppName, selfUpdateVersion())
 		return 0
 	}
-	packageName := strings.TrimSpace(manifest.PackageName)
-	if packageName == "" {
-		packageName = codingagent.PackageName
-	}
-	command := codingagent.MakeConfiguredSelfUpdateCommand(argv, codingagent.SelfUpdateRelease{PackageName: packageName, Version: manifest.Version})
+	// FetchUpdateManifest rejects an empty package name, so the release always names its package.
+	command := codingagent.MakeConfiguredSelfUpdateCommand(argv, codingagent.SelfUpdateRelease{PackageName: manifest.PackageName, Version: manifest.Version})
 	if note := strings.TrimSpace(manifest.Notes); note != "" {
 		fmt.Println()
 		fmt.Println(chalkBold(chalkYellow("Update note")))
@@ -49,13 +46,13 @@ func runConfiguredSelfUpdate(argv []string, force bool) int {
 		fmt.Println()
 	}
 	fmt.Println(chalkDim(fmt.Sprintf("Updating %s with %s...", codingagent.AppName, command.Display)))
-	if err := codingagent.RunConfiguredSelfUpdateCommand(command); err != nil {
+	if err := codingagent.RunConfiguredSelfUpdateCommand(context.Background(), command); err != nil {
 		fmt.Fprintln(os.Stderr, chalkRed("Error: "+err.Error()))
 		return 1
 	}
 	// Exit code 0 does not prove an update. A wrapper may install each version into a new directory and leave this
 	// executable untouched, so fall back to the pig on PATH.
-	installed := installedVersionAfterUpdate()
+	installed := installedVersionAfterUpdate(manifest.Version)
 	if sameRelease(installed, manifest.Version) {
 		fmt.Println(chalkGreen(fmt.Sprintf("Updated %s from %s to %s", codingagent.AppName, selfUpdateVersion(), manifest.Version)))
 		return 0
@@ -73,11 +70,13 @@ func sameRelease(installed, want string) bool {
 	return ok && order == 0
 }
 
-// installedVersionAfterUpdate is the version this executable now reports when the command replaced it in place, else
-// the one `pig --version` prints from PATH, the pig the user runs next. Empty when neither answers.
-func installedVersionAfterUpdate() string {
+// installedVersionAfterUpdate is the release version when the command replaced this executable in place and the
+// replaced executable reports it, else the version `pig --version` prints from PATH, the pig the user runs next. Empty
+// when neither answers. Ports package-manager-cli.ts runConfiguredSelfUpdate: the in-place result counts only when it
+// equals the release.
+func installedVersionAfterUpdate(want string) string {
 	if change := installchange.Detect(); change != nil && change.Kind == installchange.BinaryReplaced {
-		if version := readVersionOf(change.Path); version != "" {
+		if version := readVersionOf(change.Path); sameRelease(version, want) {
 			return version
 		}
 	}
@@ -89,11 +88,14 @@ func installedVersionAfterUpdate() string {
 }
 
 // readVersionOf runs `path --version`. The package directory overrides name this installation and would make the new
-// pig report the old version.
+// pig report the old version; PIG_VERSION_FORMAT (D63) would make it print the pinned Pi version, which never equals a
+// PiG release, while self-update comparisons use PiG's own version.
 func readVersionOf(path string) string {
-	env := make([]string, 0, len(os.Environ()))
+	var env []string
 	for _, kv := range os.Environ() {
-		if !strings.HasPrefix(kv, "PIG_PACKAGE_DIR=") && !strings.HasPrefix(kv, "PI_PACKAGE_DIR=") {
+		switch {
+		case strings.HasPrefix(kv, "PIG_PACKAGE_DIR="), strings.HasPrefix(kv, "PI_PACKAGE_DIR="), strings.HasPrefix(kv, "PIG_VERSION_FORMAT="):
+		default:
 			env = append(env, kv)
 		}
 	}

@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// Pi 0.87.1 core/system-prompt.ts:147-160 supplies these sentences and destinations. Only D2/D22 identity spellings differ.
+// Pi 6d4b7443 (705d047c) core/system-prompt.ts:162-168 supplies these sentences and destinations. Only D2/D22 identity spellings differ.
 const identityDocs = `<docs>
 Pi documentation (read only when the user asks about the harness itself, its SDK, extensions, themes, skills, or TUI):
 - Main documentation: /oracle/package/README.md

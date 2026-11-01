@@ -18,7 +18,7 @@ import (
 // PI_PACKAGE_DIR; the user's explicit command is the one owner of the update, selected before any tier.
 func ConfiguredSelfUpdateArgv(setting []string) []string {
 	for _, name := range []string{"PIG_SELF_UPDATE_COMMAND", "PI_SELF_UPDATE_COMMAND"} {
-		if argv := strings.FieldsFunc(jsTrim(os.Getenv(name)), isJSWhitespace); len(argv) > 0 {
+		if argv := strings.FieldsFunc(os.Getenv(name), isJSWhitespace); len(argv) > 0 {
 			return argv
 		}
 	}
@@ -54,20 +54,23 @@ func MakeConfiguredSelfUpdateCommand(argv []string, release SelfUpdateRelease) *
 	return makeSelfUpdateCommandStep(command, args)
 }
 
-// RunConfiguredSelfUpdateCommand runs the user's own update command with the terminal attached. It has no deadline: the
-// command is the user's, as Pi's runSelfUpdate spawns it with inherited stdio and waits.
-func RunConfiguredSelfUpdateCommand(cmd *SelfUpdateCommand) error {
-	c := crossspawn.Command(context.Background(), "", cmd.Command, cmd.Args...)
+// RunConfiguredSelfUpdateCommand runs the user's own update command with the terminal attached. It has no deadline of
+// its own: the command is the user's, as Pi's runSelfUpdate spawns it with inherited stdio and waits.
+func RunConfiguredSelfUpdateCommand(ctx context.Context, cmd *SelfUpdateCommand) error {
+	c := crossspawn.Command(ctx, "", cmd.Command, cmd.Args...)
 	c.Stdout, c.Stderr, c.Stdin = os.Stdout, os.Stderr, os.Stdin
 	err := c.Run()
 	if err == nil {
 		return nil
 	}
 	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
+		if signal := exitSignalName(exit); signal != "" {
+			return fmt.Errorf("%s terminated by signal %s", cmd.Display, signal)
+		}
 		if code := exit.ExitCode(); code >= 0 {
 			return fmt.Errorf("%s exited with code %d", cmd.Display, code)
 		}
-		return fmt.Errorf("%s terminated by a signal", cmd.Display)
+		return fmt.Errorf("%s exited with code unknown", cmd.Display)
 	}
 	return err
 }

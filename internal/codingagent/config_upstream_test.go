@@ -431,7 +431,13 @@ func TestConfigConfiguredSelfUpdateCommandFillsPlaceholdersInEveryArgument(t *te
 func TestConfiguredSelfUpdateParityProbe(t *testing.T) {
 	clearConfiguredSelfUpdateEnv(t)
 	emit := func(name, env string, setSetting bool, setting []string) {
-		t.Setenv("PI_SELF_UPDATE_COMMAND", env)
+		t.Setenv("PI_SELF_UPDATE_COMMAND", env) // registers the restore
+		if env == "" {
+			// The Pi probe deletes the variable for these cases.
+			if err := os.Unsetenv("PI_SELF_UPDATE_COMMAND"); err != nil {
+				t.Fatal(err)
+			}
+		}
 		if !setSetting {
 			setting = nil
 		}

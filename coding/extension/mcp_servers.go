@@ -742,5 +742,5 @@ func IsClientMetadataDocumentCallback(callbackURL string) bool {
 		return true
 	}
 	u, err := nodeurl.ParseHTTPURL(callbackURL)
-	return err != nil || (u.Hostname != "[::1]" && u.Pathname == "/callback")
+	return err == nil && u.Hostname != "[::1]" && u.Pathname == "/callback"
 }

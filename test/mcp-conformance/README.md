@@ -24,7 +24,7 @@ The run fails when:
 
 Checks that started passing are reported. Update the baseline to lock them in.
 
-`baseline.json` is identical to Pi 1.0.4's. The known failures are the same:
+`baseline.json` is Pi's 6d4b7443 baseline except `auth/basic-cimd`, which keeps `client-registration` passing: Pi now identifies with its metadata document there, while this client registers dynamically (the application is not `pi`). The known failures are the same:
 
 - `elicitation-sep1034-client-defaults`: PiG does not support elicitation.
 - `auth/basic-cimd`: PiG's `auto` registration uses pi's Client ID Metadata Document on pi.dev only as the application `pi`, and never the suite's `https://conformance-test.local/client-metadata.json`; PiG registers clients dynamically.

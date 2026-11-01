@@ -214,6 +214,7 @@
 				"passing": [
 					"authorization-request",
 					"authorization-server-metadata",
+					"client-registration",
 					"pi-client",
 					"pkce-code-challenge-sent",
 					"pkce-code-verifier-sent",

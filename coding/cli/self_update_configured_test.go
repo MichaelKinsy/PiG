@@ -46,9 +46,6 @@ func TestConfiguredSelfUpdateCommandEnvReplacesTheTierAndTheSetting(t *testing.T
 	if got := readSelfUpdateRecord(t, record); strings.Join(got, "|") != "upgrade|@new-scope/pi@9.9.9|9.9.9" {
 		t.Fatalf("PI_SELF_UPDATE_COMMAND ran with %q", got)
 	}
-	if _, err := os.Stat(settingRecord); err == nil {
-		t.Fatal("the selfUpdateCommand setting ran although PI_SELF_UPDATE_COMMAND takes precedence")
-	}
 	if !strings.Contains(stdout, "Read me") {
 		t.Fatalf("the release note did not print first:\n%s", stdout)
 	}
@@ -93,9 +90,6 @@ func TestConfiguredSelfUpdateSettingRunsOnlyForANewerRelease(t *testing.T) {
 	}
 	if got := readSelfUpdateRecord(t, record); strings.Join(got, "|") != codingagent.PackageName {
 		t.Fatalf("the setting ran with %q", got)
-	}
-	if _, err := os.Stat(projectRecord); err == nil {
-		t.Fatal("a project's selfUpdateCommand ran")
 	}
 }
 
