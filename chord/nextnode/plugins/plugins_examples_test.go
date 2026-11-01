@@ -518,12 +518,12 @@ func TestExample36PluginFailures(t *testing.T) {
 		t.Fatalf("2. objects = %+v", report.Objects)
 	}
 	wantFailures := map[string]string{
-		"@example/greeter": `plugin "@example/greeter": its server facet failed to build: label.ts:3:28: Unexpected end of file`,
-		"@example/prices":  `plugin "@example/prices": its server facet failed to build: server.ts:7:61: Expected ")" but found end of file`,
-		"@example/summary": `plugin "@example/summary": needs example.price v2, which plugin "@example/prices" serves on its old code`,
-		"@example/boot":    `boot: config missing boot/server.ts:6:7`,
-		"@example/counter": `counter: no seed counter/server.ts:7:8`,
-		"@example/weather": `plugin "@example/weather": weather: no API key configured weather/server.ts:10:33`,
+		"@example/greeter": `Error: plugin "@example/greeter": its server facet failed to build: label.ts:3:34: Unexpected ";"`,
+		"@example/prices":  `Error: plugin "@example/prices": its server facet failed to build: server.ts:6:85: Expected ")" but found "}"`,
+		"@example/summary": `Error: plugin "@example/summary": needs example.price v2, which plugin "@example/prices" serves on its old code`,
+		"@example/boot":    `Error: boot: config missing at boot/server.ts:5:7`,
+		"@example/counter": `Error: plugin "@example/counter", example.counter: counter: no seed`,
+		"@example/weather": `Error: plugin "@example/weather": weather: no API key configured`,
 	}
 	if got := exFailures(t, report.Failed); !reflect.DeepEqual(got, wantFailures) {
 		t.Fatalf("2. failures = %q, want %q", got, wantFailures)
@@ -929,8 +929,7 @@ func TestExample39BrowserBuild(t *testing.T) {
 	for _, input := range gallery.Inputs {
 		read = append(read, strings.TrimPrefix(input.File, root))
 	}
-	t.Logf("read: %v", read)
-	if want := []string{"/gallery/web.ts", "/gallery/gallery.css", "/gallery/assets/logo.svg"}; !slices.Equal(read, want) {
+	if want := []string{"/gallery/assets/logo.svg", "/gallery/gallery.css", "/gallery/web.ts"}; !slices.Equal(read, want) {
 		t.Fatalf("read: %v, want %v", read, want)
 	}
 	if got, want := strings.Join(bad.Errors, "; "), `web.ts:4:22: "node:path": a Node builtin in a browser build`; got != want {
