@@ -149,7 +149,6 @@ var notesContract = mustContract(contracts.Remote("test.notes", contracts.Remote
 	})},
 }))
 
-
 func TestProbeSmoke(t *testing.T) {
 	cache := t.TempDir()
 	address := workerKind.Address(nil)

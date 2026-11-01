@@ -149,7 +149,12 @@ func exStart(t *testing.T, plugins *Plugins, cache, kind string, modules HostPac
 	}
 	load := PluginsLoad{Kind: kind, Modules: modules, Parent: h, Address: address, Principal: principal, Peer: peer}
 	if withProbe {
-		load.Core = []CoreFacet{probeCore(t, cache, exOps)}
+		tree, err := extractNode(cache)
+		if err != nil {
+			t.Fatal(err)
+		}
+		src := "file://" + filepath.ToSlash(filepath.Join(tree, "pi", "chord", "src")) + "/"
+		load.Core = []CoreFacet{probeCore(t, cache, exOps+pcHoldOps(src))}
 	}
 	node, report, err := plugins.Load(load, background)
 	if err != nil {
@@ -573,16 +578,16 @@ func TestExample36PluginFailures(t *testing.T) {
 
 	// 4. A reload whose context aborts after its commit, while it waits for its report: the app shuts down the moment it sees
 	// the status object leave `live`. Pi's window for the abort is a few microtasks between the commit and the report, inside
-	// one process; here the app learns of the status leaving `live` through a call to the subprocess and cancels over the
-	// control channel, so which of the two reaches the subprocess first cannot be ordered, and the example's "rejected:
-	// aborted" is one of two outcomes (the other: the report). A reload that returns `aborted` names what its commit applied
-	// (`details.committed`); the commit stands either way, and the component's loaded set is what was committed.
+	// one process. Here the probe holds the report's wait (pcHoldOps: the same stand-in as plugins.test.ts's abort after the
+	// commit) so the window is open until the app has seen the status leave `live` and cancelled; the reload then rejects
+	// `aborted`, naming what its commit applied (`details.committed`), and the commit stands.
 	if got := server.read("example.status", "text", "str"); got != "cache v1" {
 		t.Fatalf("4. status: %v", got)
 	}
 	exEdit(t, root, "cache/server.ts", `const generation = "v1"`, `const generation = "v2"`)
 	cacheBuilt := buildDirty("@example/cache")
 	aborting, cancel := context.WithCancelCause(background)
+	p.must("holdChecks", nil)
 	left := make(chan any, 1)
 	go func() {
 		answer, err := p.call("armStatus", nil)
@@ -595,15 +600,12 @@ func TestExample36PluginFailures(t *testing.T) {
 	}()
 	eventually(t, 15*time.Second, "the status watch armed", func() bool { return p.must("armed", nil) == true })
 	_, err = plugins.Reload(server.node, cacheBuilt, aborting)
-	if err != nil {
-		var nodeErr *NodeError
-		if !errors.As(err, &nodeErr) || nodeErr.Chord == nil || nodeErr.Chord.Code != data.CodeAborted {
-			t.Fatalf("the reload returned %v, want a report or aborted", err)
-		}
-		t.Logf("4. rejected: %s %s %v", nodeErr.Chord.Code, nodeErr.Chord.Message, nodeErr.Chord.Details)
-	} else {
-		t.Log("4. the reload returned its report before the abort")
+	p.must("release", nil)
+	var nodeErr *NodeError
+	if !errors.As(err, &nodeErr) || nodeErr.Chord == nil || nodeErr.Chord.Code != data.CodeAborted {
+		t.Fatalf("4. the reload returned %v, want aborted", err)
 	}
+	t.Logf("4. rejected: %s %s %v", nodeErr.Chord.Code, nodeErr.Chord.Message, nodeErr.Chord.Details)
 	if answer := <-left; answer == nil {
 		t.Fatal("the status watch ended with nothing")
 	} else if _, isErr := answer.(error); isErr {
