@@ -24,7 +24,9 @@ func TestNodeIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSendMessage(
 		if name == "" {
 			name = "packed"
 		}
-		t.Run(name, func(t *testing.T) { testNodeIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSendMessage(t, isolation) })
+		t.Run(name, func(t *testing.T) {
+			testNodeIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSendMessage(t, isolation)
+		})
 	}
 }
 
