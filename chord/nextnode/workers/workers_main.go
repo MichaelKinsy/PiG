@@ -128,8 +128,6 @@ type worker struct {
 	idle     bool
 	idleSent bool
 	stopping bool
-	// tasks are the goroutines the worker owns (the reload loop, the watches' listeners).
-	tasks sync.WaitGroup
 	// start is the one start message.
 	startOnce sync.Once
 }
@@ -142,17 +140,20 @@ func newWorker(port processPort, options WorkerMainOptions) *worker {
 			w.message(control)
 		}
 	})
-	port.OnDisconnect(func() { go w.shutdown() })
+	port.OnDisconnect(w.shutdown)
 	port.start()
-	signals := make(chan os.Signal, 2)
-	signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT)
-	//portlint:allow golifetime the process ends through exitProcess, which is what the worker waits for
-	go func() {
-		<-signals
-		// `process.once`: the second signal takes the default action.
-		signal.Stop(signals)
-		w.shutdown()
-	}()
+	// `process.once(signal)` for each: a signal handled stops only its own listener, so the second of one takes the default
+	// action and the other still reaches the shutdown (a no-op by then).
+	for _, each := range []os.Signal{syscall.SIGTERM, syscall.SIGINT} {
+		signals := make(chan os.Signal, 1)
+		signal.Notify(signals, each)
+		//portlint:allow golifetime the process ends through exitProcess, which is what the worker waits for
+		go func() {
+			<-signals
+			signal.Stop(signals)
+			w.shutdown()
+		}()
+	}
 	return w
 }
 
@@ -257,9 +258,7 @@ func (w *worker) runStart(fn func(start WorkerStart, ctx context.Context) (*Work
 	w.sendLocked(FromWorker{Kind: FromWorkerReady, Idle: w.idle, Report: &loaded})
 	w.mu.Unlock()
 	//portlint:allow golifetime the reload loop returns when the reloads are applied or the worker stops; shutdown exits the process
-	w.tasks.Go(func() {
-		w.applyReloads()
-	})
+	go w.applyReloads()
 	return nil
 }
 
@@ -376,7 +375,7 @@ func (w *worker) message(message ToWorker) {
 	case ToWorkerStart:
 		w.startOnce.Do(func() { w.started <- message })
 	case ToWorkerShutdown:
-		go w.shutdown()
+		w.shutdown()
 	case ToWorkerReload:
 		w.mu.Lock()
 		// A worker shutting down applies no reload (its exit answers it).
@@ -389,9 +388,7 @@ func (w *worker) message(message ToWorker) {
 		w.mu.Unlock()
 		if ready {
 			//portlint:allow golifetime the reload loop returns when the reloads are applied or the worker stops; shutdown exits the process
-			w.tasks.Go(func() {
-				w.applyReloads()
-			})
+			go w.applyReloads()
 		}
 	}
 }
@@ -440,7 +437,9 @@ func (w *worker) applyReloads() {
 	}
 }
 
-// shutdown aborts the context, runs the closers in reverse order and exits (forced after 3 s).
+// shutdown stops the worker: `stopping` and the abort take effect before the next message is handled (as Pi's `#shutdown`
+// runs up to its first await), then the closers run in reverse order and the process exits (forced after 3 s). The closers
+// run on a goroutine of their own: they may wait for frames this call's caller (the channel's reader) delivers.
 func (w *worker) shutdown() {
 	w.mu.Lock()
 	if w.stopping {
@@ -453,12 +452,15 @@ func (w *worker) shutdown() {
 	w.abort(errShuttingDown)
 	time.AfterFunc(forcedExit, func() { exitProcess(0) })
 	slices.Reverse(closers)
-	for _, closer := range closers {
-		if err := w.safely(func() error { return closer(chordctx.Background()) }); err != nil {
-			w.options.OnError(err)
+	//portlint:allow golifetime the closers end with the process, which exitProcess ends
+	go func() {
+		for _, closer := range closers {
+			if err := w.safely(func() error { return closer(chordctx.Background()) }); err != nil {
+				w.options.OnError(err)
+			}
 		}
-	}
-	exitProcess(0)
+		exitProcess(0)
+	}()
 }
 
 // fatal sends `fatal` with the redacted error, then exits.
