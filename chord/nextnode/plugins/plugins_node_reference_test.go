@@ -24,7 +24,7 @@ import (
 
 // rfThingModule is a core facet serving `test.thing`: a local type with a constant, a derived count, a keyed member and
 // the methods that read and change them (the oracle is the fingerprint: the Go contract below declares the same members).
-const rfThingModule = `import { ChordError, constant, defineFacet, defineState, int, keyed, local, method, obj, str } from "@earendil-works/chord/next";
+const rfThingModule = `import { ChordError, bytes, constant, defineFacet, defineState, int, keyed, local, method, obj, str, unknown } from "@earendil-works/chord/next";
 const Thing = local("test.thing", {
 	version: 1,
 	params: { id: str() },
@@ -38,6 +38,9 @@ const Thing = local("test.thing", {
 		fail: method(),
 		forbid: method(),
 		wait: method(),
+		bin: bytes(),
+		echoBytes: method(bytes(), bytes()),
+		echoAny: method(unknown(), unknown()),
 	},
 });
 const Count = defineState("count", { schema: obj({ n: int() }), version: 1, initial: () => ({ n: 0 }) });
@@ -75,6 +78,9 @@ export default defineFacet((host) => {
 			forbid: async () => {
 				throw new ChordError({ code: "forbidden", message: "not for you" });
 			},
+			bin: constant(new Uint8Array([1, 2, 3])),
+			echoBytes: async (value) => value,
+			echoAny: async (value) => value,
 			wait: async (ctx) => {
 				await new Promise((_, reject) => ctx.abortSignal.addEventListener("abort", () => reject(ctx.abortSignal.reason)));
 			},
@@ -96,6 +102,9 @@ var rfThing = mustContract(contracts.Local("test.thing", contracts.LocalDeclarat
 		contracts.Mem("fail", contracts.NewMethod()),
 		contracts.Mem("forbid", contracts.NewMethod()),
 		contracts.Mem("wait", contracts.NewMethod()),
+		contracts.Mem("bin", contracts.Bytes()),
+		contracts.Mem("echoBytes", contracts.NewMethod(contracts.Bytes(), contracts.Bytes())),
+		contracts.Mem("echoAny", contracts.NewMethod(contracts.Unknown(), contracts.Unknown())),
 	},
 }))
 

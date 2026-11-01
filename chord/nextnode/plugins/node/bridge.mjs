@@ -10,6 +10,7 @@ import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/conte
 import { ChordError } from "@earendil-works/chord/next";
 import { contractOf, operations as contractOperations } from "./contracts.mjs";
 import { createProxies } from "./proxy.mjs";
+import { decodeValue, encodeValue } from "./wire.mjs";
 
 /** The specifier the Go core facets' proxy scripts import their host package by (plugins_node_bridged.go's `bridgePackage`). */
 export const GO_PACKAGE = "@earendil-works/chord/next/go";
@@ -39,6 +40,8 @@ export function createBridge({ port, wireError, host }) {
 	const handles = new Map();
 	/** The watches the Go side holds, by the id the Go side chose: the watch and the controller of its context. */
 	const watches = new Map();
+	/** The keys the Go side pinned, by the id the Go side chose. */
+	const pins = new Map();
 
 	function entry(handle) {
 		const found = handles.get(handle);
@@ -57,7 +60,7 @@ export function createBridge({ port, wireError, host }) {
 
 	function wireCall(call) {
 		if (call.kind === "failed") return { kind: "failed", error: wireError(call.error) };
-		return { kind: "value", value: call.value, ops: call.ops, retired: call.retired };
+		return { kind: "value", value: encodeValue(call.value), ops: encodeValue(call.ops), retired: call.retired };
 	}
 
 	function wireEnd(end) {
@@ -101,10 +104,10 @@ export function createBridge({ port, wireError, host }) {
 		if (request.key !== undefined) {
 			member(held, name, "keyed");
 			const found = await held.reference[name].get(request.key, context);
-			return found === undefined ? { found: false } : { found: true, value: found };
+			return found === undefined ? { found: false } : { found: true, value: encodeValue(found) };
 		}
 		member(held, name, "state");
-		return { value: held.reference[name].value };
+		return { value: encodeValue(held.reference[name].value) };
 	}
 
 	async function watch(request, context) {
@@ -142,7 +145,42 @@ export function createBridge({ port, wireError, host }) {
 				port.control({ event: "watchEnd", watch: id, end: wireEnd(end) });
 			});
 		});
-		return { value: acquired.value };
+		return { value: encodeValue(acquired.value) };
+	}
+
+	/**
+	 * `pin`: holds the document at `key` of keyed member `member` loaded and followed across the object's attempts (Pi's `pinKey`,
+	 * which a keyed watch takes for its life) until `unpin`, the release of the reference or the document's end. Nothing is delivered:
+	 * the watch that pins it is never started. The answer is `{ absent: true }` when there is no such document.
+	 */
+	async function pin(request, context) {
+		const held = entry(request.handle);
+		member(held, request.member, "keyed");
+		const controller = new AbortController();
+		const onAbort = () => controller.abort(context.abortSignal.reason);
+		context.abortSignal.addEventListener("abort", onAbort, { once: true });
+		let acquired;
+		try {
+			acquired = await held.reference[request.member].watch(request.key, withAbortSignal(controller.signal, BACKGROUND_CONTEXT));
+		} catch (error) {
+			controller.abort(error);
+			throw error;
+		} finally {
+			context.abortSignal.removeEventListener("abort", onAbort);
+		}
+		if (acquired === undefined) return { absent: true };
+		pins.set(request.pin, { watch: acquired, controller });
+		void acquired.closed.then(() => pins.delete(request.pin));
+		return {};
+	}
+
+	/** Notification `unpin`: the Go side released the pin. */
+	async function unpin(message) {
+		const found = pins.get(message.pin);
+		if (found === undefined) return;
+		pins.delete(message.pin);
+		await found.watch.stop();
+		found.controller.abort(new Error("unpinned"));
 	}
 
 	/** Notification `unwatch`: the Go side stopped the watch (or released its reference). */
@@ -159,8 +197,8 @@ export function createBridge({ port, wireError, host }) {
 		const name = request.method;
 		const spec = member(held, name, "args");
 		const noArgs = spec.args.type === "null" && Object.keys(spec.args).length === 1;
-		const result = await (noArgs ? held.reference[name](context) : held.reference[name](request.args, context));
-		return { result: result === undefined ? null : result };
+		const result = await (noArgs ? held.reference[name](context) : held.reference[name](decodeValue(request.args), context));
+		return { result: result === undefined ? null : encodeValue(result) };
 	}
 
 	/** Notification `release`: the Go side released the reference; its watches end `ended` with it. */
@@ -172,7 +210,7 @@ export function createBridge({ port, wireError, host }) {
 		await held.state.stop();
 	}
 
-	const notifications = { unwatch, release };
+	const notifications = { unwatch, unpin, release };
 
 	/** The requests this side made of the Go host and the Go side has not answered, by id. */
 	const asked = new Map();
@@ -216,10 +254,11 @@ export function createBridge({ port, wireError, host }) {
 		return wire.chord === undefined ? new Error(wire.message) : new ChordError(wire.chord);
 	}
 
-	const wireCallOf = (call) => (call.kind === "failed" ? { kind: "failed", error: errorOf(call.error) } : call);
+	const wireCallOf = (call) =>
+		call.kind === "failed" ? { kind: "failed", error: errorOf(call.error) } : { ...call, value: decodeValue(call.value), ops: decodeValue(call.ops) };
 
 	return {
-		operations: { ...contractOperations, get, value, watch, call },
+		operations: { ...contractOperations, get, value, watch, pin, call },
 		/** The host package of the Go core facets' proxies (`GO_PACKAGE`), answered to the scripts that import it. */
 		hostPackage: createProxies({ ask, tell, watches: observers }),
 		/**

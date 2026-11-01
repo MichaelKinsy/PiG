@@ -417,7 +417,7 @@ func (h *NodeHost) bridgedValue(handle int, name string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{"value": value}, nil
+	return map[string]any{"value": wireEncode(value)}, nil
 }
 
 // bridgedWatch watches a state member of a held Go reference: the answer is its value, then its frames and its end are sent
@@ -441,7 +441,7 @@ func (h *NodeHost) bridgedWatch(ctx context.Context, handle int, name string, id
 	serving.mu.Lock()
 	serving.watches[id] = watch
 	serving.mu.Unlock()
-	return map[string]any{"value": watch.Value()}, func() { h.startBridgedWatch(id, watch) }, nil
+	return map[string]any{"value": wireEncode(watch.Value())}, func() { h.startBridgedWatch(id, watch) }, nil
 }
 
 // startBridgedWatch sends the frames of watch and its end.
@@ -451,7 +451,11 @@ func (h *NodeHost) startBridgedWatch(id int, watch chord.WatchHandle[delta.JsonV
 		if call.Kind == chord.WatchCallFailed {
 			wire["error"] = errorData(call.Error)
 		} else {
-			wire["value"], wire["ops"], wire["retired"] = call.Value, call.Ops, call.Retired
+			ops := make([]any, len(call.Ops))
+			for i, op := range call.Ops {
+				ops[i] = op
+			}
+			wire["value"], wire["ops"], wire["retired"] = wireEncode(call.Value), wireEncode(ops), call.Retired
 		}
 		if port := h.port.Load(); port != nil {
 			return port.control(map[string]any{"op": "frame", "watch": id, "call": wire})
@@ -487,7 +491,7 @@ func (h *NodeHost) bridgedCall(ctx context.Context, handle int, method string, a
 	if err != nil {
 		return nil, err
 	}
-	decoded, err := delta.DecodeJson(args)
+	decoded, err := unmarshalWire(args)
 	if err != nil {
 		return nil, err
 	}
@@ -495,5 +499,5 @@ func (h *NodeHost) bridgedCall(ctx context.Context, handle int, method string, a
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{"result": result}, nil
+	return map[string]any{"result": wireEncode(result)}, nil
 }

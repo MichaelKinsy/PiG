@@ -77,6 +77,7 @@ type nodeBridge struct {
 	nextHandle int
 	references map[int]*NodeReference
 	nextWatch  int
+	nextPin    int
 	watches    map[int]*nodeWatch
 	bridged    []BridgedFacet
 	served     *bridgedServing
@@ -323,7 +324,7 @@ func (r *NodeReference) Call(method string, args delta.JsonValue, ctx context.Co
 	if _, found := r.methods[method]; !found {
 		return nil, fmt.Errorf("%s: %s is not a method", r.contract.Name, method)
 	}
-	encoded, err := json.Marshal(args)
+	encoded, err := marshalWire(args)
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +338,7 @@ func (r *NodeReference) Call(method string, args delta.JsonValue, ctx context.Co
 	if err := json.Unmarshal(reply.Result, &answer); err != nil {
 		return nil, err
 	}
-	return delta.DecodeJson(answer.Result)
+	return unmarshalWire(answer.Result)
 }
 
 // request sends a control request about the reference and awaits its reply; a released reference fails without one.
@@ -502,7 +503,7 @@ func (m *NodeMember) Value() (delta.JsonValue, error) {
 	if err := json.Unmarshal(reply.Result, &answer); err != nil {
 		return nil, err
 	}
-	return delta.DecodeJson(answer.Value)
+	return unmarshalWire(answer.Value)
 }
 
 // Watch is a watch of the member that ends when the reference is released (`ended`), when the Node host ends it (its end is
@@ -538,7 +539,7 @@ func (k *NodeKeyed) Get(ctx context.Context, key string) (value delta.JsonValue,
 	if !answer.Found {
 		return nil, false, nil
 	}
-	value, err = delta.DecodeJson(answer.Value)
+	value, err = unmarshalWire(answer.Value)
 	return value, err == nil, err
 }
 
@@ -595,7 +596,7 @@ func (r *NodeReference) watch(member string, key *string, ctx context.Context) (
 		forget()
 		return nil, nil
 	}
-	value, err := delta.DecodeJson(answer.Value)
+	value, err := unmarshalWire(answer.Value)
 	if err != nil {
 		r.node.stopWatch(id)
 		forget()
@@ -662,13 +663,17 @@ func (h *NodeHost) watchFrame(payload []byte) {
 		})
 		return
 	}
-	value, err := delta.DecodeJson(message.Call.Value)
+	value, err := unmarshalWire(message.Call.Value)
+	if err != nil {
+		return
+	}
+	ops, err := unwireOps(message.Call.Ops)
 	if err != nil {
 		return
 	}
 	sink.deliver(func(w *chord.Watch[delta.JsonValue]) {
 		w.Advance(chordctx.Background(), chord.WatchCall[delta.JsonValue]{
-			Kind: chord.WatchCallValue, Value: value, Ops: message.Call.Ops, Retired: message.Call.Retired,
+			Kind: chord.WatchCallValue, Value: value, Ops: ops, Retired: message.Call.Retired,
 		})
 	})
 }
@@ -714,4 +719,62 @@ func (h *NodeHost) referenceState(payload []byte) {
 	if reference := h.bridge.reference(message.Handle); reference != nil {
 		reference.setState(message.Seq, state)
 	}
+}
+
+// pinRequest is the `pin` control request: Pin is the id this side chose.
+type pinRequest struct {
+	envelope
+	Handle int    `json:"handle"`
+	Member string `json:"member"`
+	Key    string `json:"key"`
+	Pin    int    `json:"pin"`
+}
+
+// NodePinnedKey is a key of a keyed member held on the Node host (Pi's `pinKey`): the document at the key stays loaded and
+// followed across the object's attempts until Release. Additive Go API.
+type NodePinnedKey struct {
+	keyed   *NodeKeyed
+	key     string
+	id      int
+	release sync.Once
+}
+
+// Pin pins the document at key of the member on the Node host and returns it, nil when there is no such document: it blocks until
+// the Node host pinned, aborting ctx aborts it there. The pin is released by its Release and with the reference.
+func (k *NodeKeyed) Pin(ctx context.Context, key string) (*NodePinnedKey, error) {
+	r := k.reference
+	id := r.node.bridge.nextPinID()
+	reply, err := r.request("pin", &pinRequest{Handle: r.handle, Member: k.name, Key: key, Pin: id}, ctx)
+	if err != nil {
+		return nil, err
+	}
+	var answer struct {
+		Absent bool `json:"absent"`
+	}
+	if err := json.Unmarshal(reply.Result, &answer); err != nil {
+		return nil, err
+	}
+	if answer.Absent {
+		return nil, nil
+	}
+	return &NodePinnedKey{keyed: k, key: key, id: id}, nil
+}
+
+// Get is the pinned document's current value.
+func (p *NodePinnedKey) Get(ctx context.Context) (delta.JsonValue, bool, error) { return p.keyed.Get(ctx, p.key) }
+
+// Release releases the pin (idempotent): a notification, lost with a process that ended.
+func (p *NodePinnedKey) Release() {
+	p.release.Do(func() {
+		if port := p.keyed.reference.node.port.Load(); port != nil {
+			_ = port.control(map[string]any{"op": "unpin", "pin": p.id})
+		}
+	})
+}
+
+func (b *nodeBridge) nextPinID() int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.nextPin++
+	return b.nextPin
 }

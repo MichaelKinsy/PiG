@@ -13,6 +13,7 @@
 // ships it.
 import { defineFacet } from "@earendil-works/chord/next";
 import { contractOf } from "./contracts.mjs";
+import { decodeValue, encodeValue } from "./wire.mjs";
 
 /**
  * The proxy facets of one driver: `rpc` is the Go side's request channel (`ask`, `tell`, and `watches`: the observers of the
@@ -34,7 +35,7 @@ export function createProxies({ ask, tell, watches }) {
 			throw error;
 		}
 		return {
-			value: acquired.value,
+			value: decodeValue(acquired.value),
 			detach() {
 				if (watches.delete(id)) tell("unwatch", { watch: id });
 			},
@@ -53,7 +54,7 @@ export function createProxies({ ask, tell, watches }) {
 				members[name] = self.follow((observer, context) => follow(held.value, name, observer, context));
 			} else {
 				const noArgs = node.args.type === "null" && Object.keys(node.args).length === 1;
-				const call = (args, context) => ask("call", { handle: held.value, method: name, args }, context).then(({ result }) => result);
+				const call = (args, context) => ask("call", { handle: held.value, method: name, args: encodeValue(args) }, context).then(({ result }) => decodeValue(result));
 				members[name] = noArgs ? (context) => call(null, context) : call;
 			}
 		}
