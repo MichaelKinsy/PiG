@@ -335,6 +335,19 @@ func exStringListDoc(name string) *documents.StateDefinition {
 // exPush is `draft.list.push(item)`.
 func exPush(draft *delta.Object, item any) { _, _ = draft.Array("list").Push(item) }
 
+// exAdd is `await doc.change((draft) => void draft.list.push(item), ctx); return doc.value.list.length`. Pi reads
+// `doc.value` in the continuation of the await, on the event loop, where the change it awaited is the last one adopted.
+// A Go handler resumes on a goroutine of its own, outside a section (a document's value is read from a section), where
+// a concurrent call's commit may be adopted first. The length the change left is what its `push` returns, read in the
+// change's own step on the line.
+func exAdd(doc *singletonDoc, item any, ctx context.Context) (delta.JsonValue, error) {
+	var length int
+	if err := doc.Change(func(draft *delta.Object) { length, _ = draft.Array("list").Push(item) }, ctx); err != nil {
+		return nil, err
+	}
+	return float64(length), nil
+}
+
 // exCloseHost is `await host.close(context)`.
 func exCloseHost(t testing.TB, host Host) {
 	t.Helper()
@@ -1372,10 +1385,7 @@ func TestExample10Drops(t *testing.T) {
 				}),
 			}, map[string]contracts.MethodFunction{
 				"add": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
-					if err := notesDoc.Change(func(draft *delta.Object) { exPush(draft, args.Value("text")) }, ctx); err != nil {
-						return nil, err
-					}
-					return float64(len(notesDoc.Value().Value("list").([]any))), nil
+					return exAdd(notesDoc, args.Value("text"), ctx)
 				}),
 				"slow": exBlocked(nil),
 			}), nil
@@ -1610,10 +1620,7 @@ func TestExample12Routes(t *testing.T) {
 				}),
 			}, map[string]contracts.MethodFunction{
 				"add": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
-					if err := notesDoc.Change(func(draft *delta.Object) { exPush(draft, args.Value("text")) }, ctx); err != nil {
-						return nil, err
-					}
-					return float64(len(notesDoc.Value().Value("list").([]any))), nil
+					return exAdd(notesDoc, args.Value("text"), ctx)
 				}),
 			}), nil
 		}, ServeOptions{}); err != nil {
@@ -1739,7 +1746,9 @@ func TestExample12Routes(t *testing.T) {
 
 // exFramedPort is an IpcPort over a byte stream pair (a child's stdin and stdout): Pi's Node IPC channel with
 // `serialization: "advanced"`. A frame is a 4-byte length and a leading 0x00 for a link message; anything else is the
-// app's own message.
+// app's own message. Node emits a channel's messages from its event loop, after the synchronous section that made the
+// link (`ipcLink(process)`, `ipcLink(child)`) and so registered its listeners: no message arrives before them. The port
+// reads nothing until start, which the code that made the link calls once it has.
 type exFramedPort struct {
 	reader io.Reader
 	writer io.WriteCloser
@@ -1751,10 +1760,12 @@ type exFramedPort struct {
 }
 
 func newExFramedPort(reader io.Reader, writer io.WriteCloser) *exFramedPort {
-	port := &exFramedPort{reader: reader, writer: writer, connected: true}
-	go port.read()
-	return port
+	return &exFramedPort{reader: reader, writer: writer, connected: true}
 }
+
+// start begins the delivery of the stream's frames to the registered listeners: the event loop's first turn after the
+// section that registered them.
+func (p *exFramedPort) start() { go p.read() }
 
 func (p *exFramedPort) read() {
 	for {
@@ -1924,6 +1935,7 @@ func exRelayWorker(id string) {
 	sessionInfo, notes := exRelayContracts()
 	port := newExFramedPort(os.Stdin, os.Stdout)
 	workerLink := link.IpcLink(port)
+	port.start()
 	address := Session.Address(jsonObject("id", id))
 	worker, err := CreateHost(HostOptions{Address: &address, Principal: workerPrincipal(id), OnError: func(err HostError) {
 		fmt.Fprintln(os.Stderr, "worker error:", err.Kind, err.Error)
@@ -1955,10 +1967,7 @@ func exRelayWorker(id string) {
 				}),
 			}, map[string]contracts.MethodFunction{
 				"add": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
-					if err := notesDoc.Change(func(draft *delta.Object) { exPush(draft, args.Value("text")) }, ctx); err != nil {
-						return nil, err
-					}
-					return float64(len(notesDoc.Value().Value("list").([]any))), nil
+					return exAdd(notesDoc, args.Value("text"), ctx)
 				}),
 			}), nil
 		}, ServeOptions{})
@@ -2007,7 +2016,10 @@ func TestExample13Relay(t *testing.T) {
 			childrenMu.Lock()
 			children = append(children, child)
 			childrenMu.Unlock()
-			return ResolvedLink{Link: link.IpcLink(newExFramedPort(stdout, stdin)), Principal: workerPrincipal(id), Trusted: true}, nil
+			port := newExFramedPort(stdout, stdin)
+			made := link.IpcLink(port)
+			port.start()
+			return ResolvedLink{Link: made, Principal: workerPrincipal(id), Trusted: true}, nil
 		},
 	}, background))
 	mustLoad(t)(server.Load(nil, background))
@@ -4298,10 +4310,7 @@ func TestExample33Reload(t *testing.T) {
 							addWaiting.Add(1)
 						}
 						gate(&slowAdd, ctx)
-						if err := doc.Change(func(draft *delta.Object) { exPush(draft, exParam(args, "text")+" ("+banner+")") }, ctx); err != nil {
-							return nil, err
-						}
-						return float64(len(doc.Value().Value("list").([]any))), nil
+						return exAdd(doc, exParam(args, "text")+" ("+banner+")", ctx)
 					}),
 				}), nil
 			}, ServeOptions{})

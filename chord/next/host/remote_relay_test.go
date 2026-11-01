@@ -369,11 +369,14 @@ func reflectEqualPart(a, b link.Part) bool {
 // arrive in order. kinds lists what arrived, decoded with the test codec.
 type pausableLink struct {
 	link.Link
-	mu       sync.Mutex
-	paused   bool
-	held     [][]byte
-	kinds    []string
-	listener func(message []byte)
+	mu     sync.Mutex
+	paused bool
+	// delivering is set while a goroutine hands the held messages to the listener: what arrives meanwhile queues behind
+	// them (Pi's `resume` delivers the held ones in one synchronous step, so nothing arrives in between).
+	delivering bool
+	held       [][]byte
+	kinds      []string
+	listener   func(message []byte)
 }
 
 func newPausableLink(end link.Link) *pausableLink {
@@ -385,7 +388,7 @@ func newPausableLink(end link.Link) *pausableLink {
 		}
 		p.mu.Lock()
 		p.kinds = append(p.kinds, kind)
-		if p.paused || p.listener == nil {
+		if p.paused || p.delivering || p.listener == nil {
 			// Before the host listens, messages wait as a memory link's do.
 			p.held = append(p.held, message)
 			p.mu.Unlock()
@@ -401,14 +404,7 @@ func newPausableLink(end link.Link) *pausableLink {
 func (p *pausableLink) OnMessage(listener func(message []byte)) {
 	p.mu.Lock()
 	p.listener = listener
-	var early [][]byte
-	if !p.paused {
-		early, p.held = p.held, nil
-	}
-	p.mu.Unlock()
-	for _, message := range early {
-		listener(message)
-	}
+	p.deliverHeld()
 }
 
 func (p *pausableLink) pause() {
@@ -420,13 +416,26 @@ func (p *pausableLink) pause() {
 func (p *pausableLink) resume() {
 	p.mu.Lock()
 	p.paused = false
-	held := p.held
-	p.held = nil
-	listener := p.listener
-	p.mu.Unlock()
-	for _, message := range held {
-		listener(message)
+	p.deliverHeld()
+}
+
+// deliverHeld hands the held messages to the listener in order, those that arrive meanwhile after them. It runs with mu
+// locked and returns with it unlocked.
+func (p *pausableLink) deliverHeld() {
+	if p.delivering || p.listener == nil {
+		p.mu.Unlock()
+		return
 	}
+	p.delivering = true
+	for len(p.held) > 0 && !p.paused {
+		message, listener := p.held[0], p.listener
+		p.held = p.held[1:]
+		p.mu.Unlock()
+		listener(message)
+		p.mu.Lock()
+	}
+	p.delivering = false
+	p.mu.Unlock()
 }
 
 func (p *pausableLink) seen() []string {
@@ -543,15 +552,20 @@ func TestRelayWindow(t *testing.T) {
 			watch, err := view.Member("pair").Watch(background)
 			must(t, err)
 			watch.Start(func(context.Context, chord.WatchCall[delta.JsonValue]) error { return nil })
+			flush := func() {
+				flushOwn(rel)
+				transported(a, b)
+			}
+			// The tab's acks of the two `bound` messages have reached the worker (two hops, tab to server to worker) before its
+			// first commit: in Pi every hop is a microtask, which the awaits before the first `addNote` drain; here a hop is a
+			// goroutine, so each is flushed.
+			flush()
+			flush()
 			worker := rel.Worker(Session.Address(jsonObject("id", "S1")).Key)
 			slow.pause()
 			slow.forget()
 			for _, text := range []string{"a", "b", "c", "d", "e"} {
 				addNote(t, worker, "S1", text)
-			}
-			flush := func() {
-				flushOwn(rel)
-				transported(a, b)
 			}
 			flush()
 			// Two states in the tab origin's window at the worker, the other commits folded there.
