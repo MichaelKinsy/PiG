@@ -271,10 +271,18 @@ func (b sdkBundle) sync(configRoot string) ([]string, error) {
 	return written, nil
 }
 
-// stagedName is the name a file of the bundle is staged under: an embedded name ending in .gz holds the gzip of the file without it.
-func stagedName(embedded string) string { return strings.TrimSuffix(embedded, ".gz") }
+// compressedDir is the directory of a bundle that holds the gzip of each file it embeds compressed, under the file's own path (automation/gen/embed-bundle.go): .gz/<name>.gz is the gzip of <name>. A walk of a source tree skips it as hidden.
+const compressedDir = ".gz/"
 
-// gunzip expands an embedded file that is stored compressed. The bundles compress their generated unicode tables (the Python and Rust SDKs carry them as 186 KB and 189 KB of text); staging is the one place that reads the text, and the hash of the bundle covers the compressed bytes, so a start that stages nothing does not expand them.
+// stagedName is the name a file of the bundle is staged under: an embedded name under compressedDir holds the gzip of the file under the rest of its name, without .gz.
+func stagedName(embedded string) string {
+	if rest, compressed := strings.CutPrefix(embedded, compressedDir); compressed {
+		return strings.TrimSuffix(rest, ".gz")
+	}
+	return embedded
+}
+
+// gunzip expands an embedded file that is stored compressed. The bundles compress every source file; staging is the one place that reads the text, and the hash of the bundle covers the compressed bytes, so a start that stages nothing does not expand them.
 func gunzip(data []byte) ([]byte, error) {
 	reader, err := gzip.NewReader(bytes.NewReader(data))
 	if err != nil {

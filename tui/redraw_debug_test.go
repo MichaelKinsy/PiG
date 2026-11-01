@@ -15,7 +15,7 @@ func TestRedrawReasonIsLogged(t *testing.T) {
 	ui.SetLogDirectory(dir)
 	ui.Add(NewText("hello"))
 	ui.Render()
-	ui.width = 100
+	ui.SetFixedSize(100, ui.Height())
 	ui.Render()
 	data, err := os.ReadFile(filepath.Join(dir, "pi-tui-debug.log"))
 	if err != nil {
@@ -37,7 +37,7 @@ func TestRedrawReasonIsSilentByDefault(t *testing.T) {
 	ui.SetLogDirectory(dir)
 	ui.Add(NewText("hello"))
 	ui.Render()
-	ui.width = 100
+	ui.SetFixedSize(100, ui.Height())
 	ui.Render()
 	if _, err := os.Stat(filepath.Join(dir, "pi-tui-debug.log")); !os.IsNotExist(err) {
 		t.Error("redraw log written while switch off")
@@ -54,7 +54,7 @@ func TestStaleRedrawDebugAliasesDoNotEnableLogging(t *testing.T) {
 			ui.SetLogDirectory(dir)
 			ui.Add(NewText("hello"))
 			ui.Render()
-			ui.width = 100
+			ui.SetFixedSize(100, ui.Height())
 			ui.Render()
 			if _, err := os.Stat(filepath.Join(dir, "pi-tui-debug.log")); !os.IsNotExist(err) {
 				t.Errorf("stale %s alias enabled logging", name)
@@ -71,7 +71,7 @@ func TestRedrawLoggingTracksEnvironmentAndPropagatesIOFailure(t *testing.T) {
 	t.Setenv("PI_TUI_DEBUG_REDRAW", "")
 	ui.Render()
 	t.Setenv("PI_TUI_DEBUG_REDRAW", "1")
-	ui.width = 30
+	ui.SetFixedSize(30, ui.Height())
 	ui.Render()
 	data, err := os.ReadFile(filepath.Join(dir, "pi-tui-debug.log"))
 	if err != nil {
@@ -83,7 +83,7 @@ func TestRedrawLoggingTracksEnvironmentAndPropagatesIOFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	ui.SetLogDirectory(file)
-	ui.width = 20
+	ui.SetFixedSize(20, ui.Height())
 	defer func() {
 		if err, ok := recover().(error); !ok {
 			t.Fatalf("log write failure did not propagate as an error: %v", err)

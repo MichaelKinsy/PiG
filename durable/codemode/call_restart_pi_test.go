@@ -787,18 +787,25 @@ func (r *restartRun) step(step restartStep) {
 }
 
 // runRestartScenarios runs each scenario under Pi and under PiG and compares what they observed.
-func runRestartScenarios(t *testing.T, scenarios []restartScenario) {
+// piRestartOracleCmd is Pi's restart oracle over the scenarios, not yet run; stderr collects what it says.
+func piRestartOracleCmd(t *testing.T, scenarios []restartScenario) (cmd *exec.Cmd, stderr *bytes.Buffer) {
 	t.Helper()
 	root := testenv.ModuleRoot(t)
 	input, err := json.Marshal(scenarios)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/codemode_restart_oracle.mjs", filepath.Join(root, ".upstream", "current", "packages"))
+	cmd = exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning", "testdata/codemode_restart_oracle.mjs", filepath.Join(root, ".upstream", "current", "packages"))
 	cmd.Env = append(cmd.Environ(), "PI_INTEROP_DIR="+filepath.Join(root, "durable", "interop")+"/")
 	cmd.Stdin = bytes.NewReader(input)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+	stderr = new(bytes.Buffer)
+	cmd.Stderr = stderr
+	return cmd, stderr
+}
+
+func runRestartScenarios(t *testing.T, scenarios []restartScenario) {
+	t.Helper()
+	cmd, stderr := piRestartOracleCmd(t, scenarios)
 	output, err := cmd.Output()
 	if err != nil {
 		t.Fatalf("Pi's restart oracle: %v\n%s", err, stderr.String())

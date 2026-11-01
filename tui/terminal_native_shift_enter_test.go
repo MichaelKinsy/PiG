@@ -109,3 +109,51 @@ func TestNativeModifierKeysWithoutAHelper(t *testing.T) {
 		}
 	}
 }
+
+// Ports "rewrites ESC+CR to CSI-u Shift+Enter when Shift is pressed" (Pi 86dc686c, #11559; packages/tui/test/terminal.test.ts):
+// some Apple Terminal setups send ESC+CR for Shift+Enter, which parses as alt+enter and queues a follow-up.
+func TestNormalizeNativeShiftEnterInputRewritesEscapeReturn(t *testing.T) {
+	for _, tc := range []struct {
+		detect, shift bool
+		want          string
+	}{
+		{true, true, "\x1b[13;2u"},
+		{true, false, "\x1b\r"},
+		{false, true, "\x1b\r"},
+	} {
+		if got := NormalizeNativeShiftEnterInput("\x1b\r", tc.detect, tc.shift); got != tc.want {
+			t.Errorf("NormalizeNativeShiftEnterInput(ESC CR, %v, %v) = %q, want %q", tc.detect, tc.shift, got, tc.want)
+		}
+		if got := NormalizeAppleTerminalInput("\x1b\r", tc.detect, tc.shift); got != tc.want {
+			t.Errorf("NormalizeAppleTerminalInput(ESC CR, %v, %v) = %q, want %q", tc.detect, tc.shift, got, tc.want)
+		}
+	}
+}
+
+// ProcessTerminal.forwardInputSequence (Pi 86dc686c): ESC+CR probes the native Shift state like a lone CR, in Apple Terminal on
+// macOS and on Windows only.
+func TestNormalizeProcessInputSequenceForEscapeReturn(t *testing.T) {
+	for _, tc := range []struct {
+		name, goos, termProgram string
+		shift                   bool
+		want                    string
+		wantProbe               bool
+	}{
+		{"apple terminal shift", "darwin", "Apple_Terminal", true, "\x1b[13;2u", true},
+		{"apple terminal no shift stays alt+enter", "darwin", "Apple_Terminal", false, "\x1b\r", true},
+		{"windows shift", "windows", "", true, "\x1b[13;2u", true},
+		{"iterm2 never probes", "darwin", "iTerm.app", true, "\x1b\r", false},
+		{"linux never probes", "linux", "Apple_Terminal", true, "\x1b\r", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			probed := false
+			got := normalizeProcessInputSequenceFor("\x1b\r", tc.goos, tc.termProgram, func(key ModifierKey) bool {
+				probed = true
+				return tc.shift
+			})
+			if got != tc.want || probed != tc.wantProbe {
+				t.Fatalf("got %q probed %v, want %q probed %v", got, probed, tc.want, tc.wantProbe)
+			}
+		})
+	}
+}

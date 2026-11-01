@@ -3,8 +3,10 @@ package subprocess
 import (
 	"encoding/json"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 )
 
 // pig additive (D214): the register frame carries the extension's ownership of thinking runs and a later ownThinkingRuns call
@@ -74,4 +76,57 @@ func TestOwnsThinkingRunsDropsWhenTheExtensionStops(t *testing.T) {
 	if ext.OwnsThinkingRuns() || changes.Load() != 1 {
 		t.Fatalf("after shutdown owns=%v changes=%d", ext.OwnsThinkingRuns(), changes.Load())
 	}
+}
+
+// pig additive (D214): Shutdown returns only after the extension it stopped has withdrawn its ownership of thinking runs and told the
+// observers. The extension's read loop reaches the drop on its own goroutine once it has applied the calls the extension made, so
+// here it is held in a dialog call that has not returned: Shutdown must wait for the loop, and the drop must not run after it returned.
+func TestShutdownWithdrawsOwnedThinkingRunsBeforeItReturns(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		host := newWireHost(t)
+		entered, release := make(chan struct{}), make(chan struct{})
+		var releaseOnce sync.Once
+		unblock := func() { releaseOnce.Do(func() { close(release) }) }
+		defer unblock() // a failed check must not leave the dialog call held
+		host.SetCallHandler(func(_ string, call *CallPayload) (*CallResultPayload, error) {
+			if call.Method == "ui.select" {
+				close(entered)
+				<-release
+			}
+			return &CallResultPayload{}, nil
+		})
+		w := newWireExt(t)
+		ext, err := loadWireExt(t, host, w, &RegisterPayload{Name: "owner", OwnsThinkingRuns: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var changes atomic.Int32
+		stop := ext.ObserveThinkingRuns(func() { changes.Add(1) })
+		defer stop()
+		if err := w.send(&Envelope{Type: MsgCall, ID: "select", Call: &CallPayload{Method: "ui.select", Args: json.RawMessage(`{"title":"t","options":["keep"]}`)}}); err != nil {
+			t.Fatal(err)
+		}
+		<-entered
+		// The drain report waits for the dialog call, so the read loop is held inside its frames.
+		if err := w.send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: notifyRuntimeDrained}}); err != nil {
+			t.Fatal(err)
+		}
+		synctest.Wait()
+		done := make(chan struct{})
+		go func() {
+			host.Shutdown("test done")
+			close(done)
+		}()
+		synctest.Wait()
+		select {
+		case <-done:
+		default:
+			unblock()
+			synctest.Wait()
+			<-done
+		}
+		if ext.OwnsThinkingRuns() || changes.Load() != 1 {
+			t.Fatalf("after shutdown owns=%v changes=%d", ext.OwnsThinkingRuns(), changes.Load())
+		}
+	})
 }

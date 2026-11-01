@@ -3,10 +3,10 @@
   "upstream": "packages/chord/src/next/host/host.ts",
   "package": "./chord/next/host",
   "tests": [
-   "TestHostLoadRefusesInvalidAndDuplicatePluginNamesDoubleServesAndASecondLoad"
+   "TestHostLoadLeavesOutAndReportsInvalidAndDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad"
   ],
   "upstream_reference": "packages/chord/test/next/host/host.test.ts",
-  "mutation": "chord/next/host/host_host.go: `if _, ok := names[named.Name]; ok {` -> `if _, ok := names[named.Name]; ok && false {` (TestHostLoadRefusesInvalidAndDuplicatePluginNamesDoubleServesAndASecondLoad FAILS: host_host_test.go:266: load = <nil>, want \"plugin \\\"a\\\" is loaded twice\")"
+  "mutation": "chord/next/host/host_host.go (Load): `if twice {` -> `if twice && false {` (TestHostLoadLeavesOutAndReportsInvalidAndDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad FAILS: host_host_test.go:290: failed = [], want [[a plugin \"a\" is loaded twice]])"
  },
  {
   "upstream": "packages/chord/src/next/host/host.ts",
@@ -264,24 +264,24 @@
   "mutation": "chord/next/host/host_reference.go: `if b.state.kind != bindingUnbound || b.state.dependent == nil {` -> `if false {` (TestKeyedStateMembersRefMemberGetAndWatchWorkAnywhereAtKeyOnlyInAFactory FAILS: `host_reference_test.go:908: at = <nil>, want it valid only in the factory`)"
  },
  {
-  "upstream": "packages/chord/src/next/host/member-source.ts",
+  "upstream": "packages/chord/src/next/host/reference-source.ts",
   "package": "./chord/next/host",
   "tests": [
-   "TestHostMemberSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFailureCallAndStaysOpenReadsThrowInvalidMemberALaterAttemptBringsItBack",
-   "TestMemberSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFailureCallAndStaysOpenAndALaterAttemptBringsItBack"
+   "TestReferenceSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFailureCallAndStaysOpenAndALaterAttemptBringsItBack",
+   "TestHostReferenceSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFailureCallAndStaysOpenReadsThrowInvalidMemberALaterAttemptBringsItBack"
   ],
-  "upstream_reference": "packages/chord/test/next/host/member-source.test.ts",
-  "mutation": "chord/next/host/host_member_source.go: `m.call(chord.WatchCall[delta.JsonValue]{Kind: chord.WatchCallFailed, Error: state.HandedOut(err)}, ctx)` -> `_ = ctx` (both FAIL: `host_member_source_test.go:1139: calls = [], want one failure`, `host_member_source_test.go:306: calls = []chord.WatchCall[interface {}]{}, want one failure call`)"
+  "upstream_reference": "packages/chord/test/next/host/reference-source.test.ts",
+  "mutation": "chord/next/host/host_reference_source.go (vanish): `s.call(chord.WatchCall[delta.JsonValue]{Kind: chord.WatchCallFailed, Error: err}, ctx)` -> `_ = ctx` (both FAIL: `host_reference_source_test.go:1168: calls = [], want one failure`, `host_reference_source_test.go:316: calls = []chord.WatchCall[interface {}]{}, want one failure call`)"
  },
  {
-  "upstream": "packages/chord/src/next/host/keyed-members.ts",
+  "upstream": "packages/chord/src/next/host/reference-keys.ts",
   "package": "./chord/next/host",
   "tests": [
-   "TestKeyedMembersAConsumerReleasedWhileTheObjectReactivatesLeavesNoHoldBehindNothingIsKeptForIt",
-   "TestKeyedStateMembersTwoConsumersOfOneKeyShareOneSourceAndOnePinEachHoldIsReleasedOnceWithItsReference"
+   "TestReferenceKeysAConsumerReleasedWhileTheObjectReactivatesLeavesNoHoldBehindNothingIsKeptForIt",
+   "TestKeyedStateMembersTwoConsumersOfOneKeyEachHoldTheirOwnPinReferencesOwnTheirKeysEachReleasedOnceWithItsReference"
   ],
-  "upstream_reference": "packages/chord/test/next/host/keyed-members.test.ts",
-  "mutation": "chord/next/host/host_keyed_members.go (releaseAll): `current.following.pin.release()` -> `_ = current.following` (both FAIL: `host_keyed_members_test.go:703: never happened: no pins left`, `host_reference_test.go:867: never happened: the key's source is dropped`)"
+  "upstream_reference": "packages/chord/test/next/host/reference-keys.test.ts",
+  "mutation": "chord/next/host/host_reference_keys.go (unpin): `entry.pin.release()` -> `_ = entry.pin` (both FAIL: `host_reference_keys_test.go:732: never happened: no pins left`, `host_reference_test.go:860: never happened: one pin stays on the same source`)"
  },
  {
   "upstream": "packages/chord/src/next/host/members.ts",
@@ -316,10 +316,10 @@
   "upstream": "packages/chord/src/next/host/route.ts",
   "package": "./chord/next/host",
   "tests": [
-   "TestResolveFailuresAndReResolvesARejectedResolveLeavesTheHoldsLoadingIsReportedAndResolvesAgainAfterTheAddressesBackoffRace2"
+   "TestResolveFailuresAndReResolvesARejectedResolveFailsItsHoldersWaitingWithItsErrorIsReportedAndRunsNoTimerRace2"
   ],
   "upstream_reference": "packages/chord/test/next/host/route.test.ts",
-  "mutation": "chord/next/host/host_route.go (check): `if !r.backoff.waiting(address.Key) {` -> `if true {` (TestResolveFailuresAndReResolvesARejectedResolveLeavesTheHoldsLoadingIsReportedAndResolvesAgainAfterTheAddressesBackoffRace2 FAILS: `host_route_test.go:274: never happened: the server reported the resolve failures`)"
+  "mutation": "chord/next/host/host_route.go (settle): `routed.path.unreachable(err)` -> `_ = err` (TestResolveFailuresAndReResolvesARejectedResolveFailsItsHoldersWaitingWithItsErrorIsReportedAndRunsNoTimerRace2 FAILS: `host_route_test.go:266: never happened: the reference failed waiting: session|S1: no worker`)"
  },
  {
   "upstream": "packages/chord/src/next/host/destination.ts",

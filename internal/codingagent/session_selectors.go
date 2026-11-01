@@ -466,8 +466,8 @@ func (m *InteractiveMode) runEditorSlotExtensionSelectorAs(sel *tui.ExtensionSel
 // Uses the modal input channel to avoid racing with the main input
 // goroutine for stdin reads (same pattern as runEditorSlotTreeSelector).
 func (m *InteractiveMode) runEditorSlotExtensionEditor(ed *ExtensionEditorComponent, result func() (value string, done, cancelled bool)) (string, bool) {
-	ed.SetExternalEditor(func(command, content string, apply func(string)) {
-		m.openExternalEditorBuffer(m.runCtx, command, content, apply)
+	ed.SetExternalEditor(func(command, content string, apply func(string), report func(string)) {
+		m.openExternalEditorBuffer(m.runCtx, command, content, apply, report)
 	})
 	if m.layout == nil {
 		return "", false

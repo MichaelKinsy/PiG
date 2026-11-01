@@ -59,6 +59,7 @@ func TestAgentSessionCompactionE2EUpstream(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			_ = s.Events()
 			t.Cleanup(func() {
 				if err := s.Close(); err != nil {
 					t.Error(err)

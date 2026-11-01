@@ -1,3 +1,4 @@
+import { canonicalizePath, getPathComparisonKey } from "../utils/paths.js";
 export function getSourcePackageKey(identity) {
     return JSON.stringify({
         source: identity.source,
@@ -19,6 +20,10 @@ export function getSyntheticPathSource(path) {
 }
 export function isSyntheticPath(path) {
     return path.startsWith(BUILTIN_PATH_PREFIX) || path.startsWith("<");
+}
+/** Key for deduplicating resource paths: synthetic paths as-is, file paths via realpath and platform casing. */
+export function getResourcePathKey(path) {
+    return isSyntheticPath(path) ? path : getPathComparisonKey(canonicalizePath(path));
 }
 export function createSourceInfo(path, metadata) {
     return {

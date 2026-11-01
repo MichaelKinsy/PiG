@@ -70,9 +70,10 @@ func TestRPCSubscriberObservesBeforePersistenceAndChannelDrain(t *testing.T) {
 		t.Fatalf("RPC output before Events drain=%v; want %v", frames, want)
 	}
 	drained := make(chan struct{})
+	eventsCh := session.Events()
 	go func() {
 		defer close(drained)
-		for event := range session.Events() {
+		for event := range eventsCh {
 			coding.AcknowledgeEvent(event)
 		}
 	}()

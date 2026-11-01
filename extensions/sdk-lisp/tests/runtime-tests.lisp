@@ -294,6 +294,36 @@
                  (check-equal "c1" (pig:jget (hread-type host "response") "id"))))
           (stop-host host))))))
 
+;; A host can dispatch to a listener between the register frame and ready (an emit of an extension loading beside this one). The extension answers each
+;; request once, after ready and in arrival order, as the Go, Rust, Python and Node SDKs do; a request ignored there leaves the host waiting for its answer.
+(deftest events-dispatched-before-ready-are-answered-after-ready
+  (let* ((ext (pig:make-extension "rt-bus-early")) (seen '()) (lock (sb-thread:make-mutex)))
+    (pig:events-on (pig:extension-events ext) "ch"
+                   (lambda (ctx data) (declare (ignore ctx)) (sb-thread:with-mutex (lock) (push (pig:jget data "n") seen))))
+    (let* ((path (format nil "/tmp/pig-lisp-test-early-~D-~D.sock" (sb-posix:getpid) (random 1000000)))
+           (listener (make-instance 'sb-bsd-sockets:local-socket :type :stream)))
+      (ignore-errors (delete-file path))
+      (sb-bsd-sockets:socket-bind listener path)
+      (sb-bsd-sockets:socket-listen listener 4)
+      (let* ((thread (sb-thread:make-thread (lambda () (pig::serve ext (pig::connect-unix path))) :name "test-extension"))
+             (conn (pig::socket-conn (sb-bsd-sockets:socket-accept listener)))
+             (host (make-host :listener listener :conn conn :thread thread :ext ext :path path)))
+        (unwind-protect
+             (let* ((first (pig::read-frame conn)) (id (pig:jref first "call" "args" "handlerId")))
+               (pig::send-frame conn (pig:obj "type" "call_result" "id" (pig:jget first "id") "call_result" (pig:obj "result" (pig:obj))))
+               (check-equal "register" (pig:jget (pig::read-frame conn) "type"))
+               (request host "d1" "events.dispatch" "args" (pig:obj "handlerId" id "channel" "ch" "json" (pig:obj "n" 1)))
+               (request host "d2" "events.dispatch" "args" (pig:obj "handlerId" id "channel" "ch" "json" (pig:obj "n" 2)))
+               (pig::send-frame conn (pig:obj "type" "ready" "ready" (pig:obj "cwd" "/w" "mode" "tui" "width" 80 "state" (pig:obj))))
+               ;; a bounded wait, so an answer that never comes fails the test instead of hanging it
+               (let* ((answered '())
+                      (reader (sb-thread:make-thread
+                               (lambda () (handler-case (loop repeat 2 do (push (pig:jget (hread-type host "response") "id") answered)) (error () nil))))))
+                 (sb-thread:join-thread reader :default nil :timeout 10)
+                 (check-equal '("d1" "d2") (sort (copy-list answered) #'string<))
+                 (check-equal '(1 2) (sort (sb-thread:with-mutex (lock) (copy-list seen)) #'<))))
+          (stop-host host))))))
+
 (deftest events-on-validates-its-arguments
   (let ((bus (pig:extension-events (pig:make-extension "rt-bus-args"))))
     (check-error simple-error (pig:events-on bus 3 #'identity))

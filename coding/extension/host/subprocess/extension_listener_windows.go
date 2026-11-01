@@ -72,9 +72,12 @@ func ListenExtension(sockPath string, node bool) (net.Listener, string, error) {
 //
 // interrupt ends the wait for a client that has not connected, as a deadline
 // in the past ends a Unix listener's Accept (awaitConnection). A client that
-// has connected stays queued and its Accept returns it: the pipe driver sets
-// the connect's event as the client's open completes, so the listener, unlike
-// a Unix socket, has no connection the poller has yet to notice.
+// has connected stays queued and its Accept returns it. The listener, unlike a
+// Unix socket, has no connection the poller has yet to notice, but the
+// connect's event is not the test of whether a client has connected: the pipe
+// driver sets it from the open's completion, which runs on the thread that
+// issued the connect, so it can trail a client's open that has returned.
+// connected asks the pipe's state, which the open changes before it returns.
 type pipeListener struct {
 	path  string
 	attrs *windows.SecurityAttributes
@@ -207,15 +210,55 @@ func (p *pipeInstance) wait() error {
 	return err
 }
 
-// connected reports whether a client has connected to the instance, without
-// waiting for one. The connect's event is set as the client's open completes.
-// It is safe while an Accept waits on the instance, which writes done.
+// connected reports whether a client has opened the instance, without waiting
+// for one. The event the connect carries is set by the open's completion,
+// which runs on the thread that issued the connect. A thread that is waiting
+// or descheduled takes it up after the open has returned, so the event can
+// trail a client that is already connected. The pipe's state changes inside
+// the open, so it shows that client at once. An Accept on a connected instance
+// returns the client when the event is set. connected is safe while an Accept
+// waits on the instance, which writes done.
 func (p *pipeInstance) connected() bool {
 	if p.preConnected {
 		return true
 	}
-	state, err := windows.WaitForSingleObject(p.event, 0)
-	return err == nil && state == windows.WAIT_OBJECT_0
+	if state, err := windows.WaitForSingleObject(p.event, 0); err == nil && state == windows.WAIT_OBJECT_0 {
+		return true
+	}
+	return p.handle != windows.InvalidHandle && clientOpened(p.handle)
+}
+
+// pipeLocalInformation is FILE_PIPE_LOCAL_INFORMATION, the record that
+// NtQueryInformationFile returns for the class FilePipeLocalInformation.
+type pipeLocalInformation struct {
+	NamedPipeType          uint32
+	NamedPipeConfiguration uint32
+	MaximumInstances       uint32
+	CurrentInstances       uint32
+	InboundQuota           uint32
+	ReadDataAvailable      uint32
+	OutboundQuota          uint32
+	WriteQuotaAvailable    uint32
+	NamedPipeState         uint32
+	NamedPipeEnd           uint32
+}
+
+const (
+	filePipeLocalInformation = 24 // FILE_INFORMATION_CLASS FilePipeLocalInformation
+	filePipeConnectedState   = 3  // FILE_PIPE_CONNECTED_STATE: a client has the pipe open
+	filePipeClosingState     = 4  // FILE_PIPE_CLOSING_STATE: the client closed its end
+)
+
+// clientOpened reports whether a client has opened the server end h, whose
+// connect is pending or finished. A state that cannot be read counts as no
+// client.
+func clientOpened(h windows.Handle) bool {
+	var info pipeLocalInformation
+	var status windows.IO_STATUS_BLOCK
+	if err := windows.NtQueryInformationFile(h, &status, (*byte)(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info)), filePipeLocalInformation); err != nil { //nolint:gosec // G103: NtQueryInformationFile fills the caller's record, which x/sys takes as *byte.
+		return false
+	}
+	return info.NamedPipeState == filePipeConnectedState || info.NamedPipeState == filePipeClosingState
 }
 
 // abort closes the instance's pipe handle. The pipe driver then completes a

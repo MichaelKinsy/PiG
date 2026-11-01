@@ -88,7 +88,10 @@ impl EditorActionHandlers {
     }
     /// The handler of `action`.
     pub fn get(&self, action: &str) -> Option<&EditorHook> {
-        self.handlers.iter().find(|(id, _)| id == action).map(|(_, handler)| handler)
+        self.handlers
+            .iter()
+            .find(|(id, _)| id == action)
+            .map(|(_, handler)| handler)
     }
     /// The actions with a handler, in registration order.
     pub fn actions(&self) -> Vec<String> {
@@ -195,8 +198,21 @@ struct HookReply {
 }
 
 impl EditorBase {
-    fn op_typed<R: serde::de::DeserializeOwned + Send>(&self, op: &str, args: BaseArgs) -> io::Result<Option<R>> {
-        let reply = self.conn.call_typed::<_, R>(None, None, "ui.editor.base", Some(BaseCall { key: &self.key, op, args }))?;
+    fn op_typed<R: serde::de::DeserializeOwned + Send>(
+        &self,
+        op: &str,
+        args: BaseArgs,
+    ) -> io::Result<Option<R>> {
+        let reply = self.conn.call_typed::<_, R>(
+            None,
+            None,
+            "ui.editor.base",
+            Some(BaseCall {
+                key: &self.key,
+                op,
+                args,
+            }),
+        )?;
         if let Some(error) = reply.error {
             return Err(io::Error::other(crate::context::host_error_message(error)));
         }
@@ -248,7 +264,13 @@ impl EditorBase {
         if hooks.on_paste_image.is_some() {
             ids.push(ACTION_PASTE_IMAGE.to_string());
         }
-        let mut others: Vec<String> = actions.actions().into_iter().filter(|id| ![ACTION_INTERRUPT, ACTION_EXIT, ACTION_PASTE_IMAGE].contains(&id.as_str())).collect();
+        let mut others: Vec<String> = actions
+            .actions()
+            .into_iter()
+            .filter(|id| {
+                ![ACTION_INTERRUPT, ACTION_EXIT, ACTION_PASTE_IMAGE].contains(&id.as_str())
+            })
+            .collect();
         others.sort();
         ids.extend(others);
         if hooks.on_extension_shortcut.is_some() {
@@ -273,49 +295,105 @@ impl EditorBase {
     /// it when it set one, then the editing.
     pub fn handle_input(&self, data: &JsString) -> io::Result<()> {
         let shortcut = self.hooks.lock().unwrap().on_extension_shortcut.clone();
-        if let Some(shortcut) = shortcut {
-            if shortcut(data).map_err(io::Error::other)? {
-                return Ok(());
-            }
+        if let Some(shortcut) = shortcut
+            && shortcut(data).map_err(io::Error::other)?
+        {
+            return Ok(());
         }
         let hooks = self.hooked();
-        let reply = self.op_typed::<HookReply>("handleInput", BaseArgs { data: Some(data), hooks: (!hooks.is_empty()).then_some(&hooks[..]), ..Default::default() })?;
-        if let Some(handler) = reply.and_then(|reply| reply.hook).and_then(|hook| self.handler(&hook)) {
+        let reply = self.op_typed::<HookReply>(
+            "handleInput",
+            BaseArgs {
+                data: Some(data),
+                hooks: (!hooks.is_empty()).then_some(&hooks[..]),
+                ..Default::default()
+            },
+        )?;
+        if let Some(handler) = reply
+            .and_then(|reply| reply.hook)
+            .and_then(|hook| self.handler(&hook))
+        {
             handler().map_err(io::Error::other)?;
         }
         Ok(())
     }
     /// The default editor's handleMouse.
     pub fn handle_mouse(&self, event: &EditorMouseEvent) -> io::Result<()> {
-        self.op("handleMouse", BaseArgs { event: Some(event), ..Default::default() }).map(drop)
+        self.op(
+            "handleMouse",
+            BaseArgs {
+                event: Some(event),
+                ..Default::default()
+            },
+        )
+        .map(drop)
     }
     /// The default editor's render.
     pub fn render(&self, width: u32) -> io::Result<Vec<JsString>> {
-        Ok(self.op_typed::<LinesReply>("render", BaseArgs { width: Some(width), ..Default::default() })?.map(|reply| reply.lines).unwrap_or_default())
+        Ok(self
+            .op_typed::<LinesReply>(
+                "render",
+                BaseArgs {
+                    width: Some(width),
+                    ..Default::default()
+                },
+            )?
+            .map(|reply| reply.lines)
+            .unwrap_or_default())
     }
     /// The default editor's setText.
     pub fn set_text(&self, text: &JsString) -> io::Result<()> {
-        self.op("setText", BaseArgs { text: Some(text), ..Default::default() }).map(drop)
+        self.op(
+            "setText",
+            BaseArgs {
+                text: Some(text),
+                ..Default::default()
+            },
+        )
+        .map(drop)
     }
     /// The default editor's insertTextAtCursor.
     pub fn insert_text_at_cursor(&self, text: &JsString) -> io::Result<()> {
-        self.op("insertTextAtCursor", BaseArgs { text: Some(text), ..Default::default() }).map(drop)
+        self.op(
+            "insertTextAtCursor",
+            BaseArgs {
+                text: Some(text),
+                ..Default::default()
+            },
+        )
+        .map(drop)
     }
     /// The default editor's addToHistory.
     pub fn add_to_history(&self, text: &JsString) -> io::Result<()> {
-        self.op("addToHistory", BaseArgs { text: Some(text), ..Default::default() }).map(drop)
+        self.op(
+            "addToHistory",
+            BaseArgs {
+                text: Some(text),
+                ..Default::default()
+            },
+        )
+        .map(drop)
     }
     /// The default editor's getText.
     pub fn get_text(&self) -> io::Result<JsString> {
-        Ok(self.op_typed::<TextReply>("getText", BaseArgs::default())?.map(|reply| reply.text).unwrap_or_default())
+        Ok(self
+            .op_typed::<TextReply>("getText", BaseArgs::default())?
+            .map(|reply| reply.text)
+            .unwrap_or_default())
     }
     /// The default editor's getExpandedText: the text with paste markers expanded.
     pub fn get_expanded_text(&self) -> io::Result<JsString> {
-        Ok(self.op_typed::<TextReply>("getExpandedText", BaseArgs::default())?.map(|reply| reply.text).unwrap_or_default())
+        Ok(self
+            .op_typed::<TextReply>("getExpandedText", BaseArgs::default())?
+            .map(|reply| reply.text)
+            .unwrap_or_default())
     }
     /// The default editor's getLines.
     pub fn get_lines(&self) -> io::Result<Vec<JsString>> {
-        Ok(self.op_typed::<LinesReply>("getLines", BaseArgs::default())?.map(|reply| reply.lines).unwrap_or_default())
+        Ok(self
+            .op_typed::<LinesReply>("getLines", BaseArgs::default())?
+            .map(|reply| reply.lines)
+            .unwrap_or_default())
     }
     /// The default editor's getCursor.
     pub fn get_cursor(&self) -> io::Result<EditorCursor> {
@@ -323,57 +401,132 @@ impl EditorBase {
     }
     /// The default editor's isShowingAutocomplete.
     pub fn is_showing_autocomplete(&self) -> io::Result<bool> {
-        Ok(self.op("isShowingAutocomplete", BaseArgs::default())?.get("value").and_then(Value::as_bool).unwrap_or(false))
+        Ok(self
+            .op("isShowingAutocomplete", BaseArgs::default())?
+            .get("value")
+            .and_then(Value::as_bool)
+            .unwrap_or(false))
     }
     /// The default editor's setPaddingX.
     pub fn set_padding_x(&self, padding: u32) -> io::Result<()> {
-        self.op("setPaddingX", BaseArgs { n: Some(padding), ..Default::default() }).map(drop)
+        self.op(
+            "setPaddingX",
+            BaseArgs {
+                n: Some(padding),
+                ..Default::default()
+            },
+        )
+        .map(drop)
     }
     /// The default editor's setAutocompleteMaxVisible.
     pub fn set_autocomplete_max_visible(&self, max_visible: u32) -> io::Result<()> {
-        self.op("setAutocompleteMaxVisible", BaseArgs { n: Some(max_visible), ..Default::default() }).map(drop)
+        self.op(
+            "setAutocompleteMaxVisible",
+            BaseArgs {
+                n: Some(max_visible),
+                ..Default::default()
+            },
+        )
+        .map(drop)
     }
     /// The default editor's getPaddingX.
     pub fn get_padding_x(&self) -> io::Result<u32> {
-        Ok(self.op_typed::<NumberReply>("getPaddingX", BaseArgs::default())?.map(|reply| reply.n).unwrap_or_default())
+        Ok(self
+            .op_typed::<NumberReply>("getPaddingX", BaseArgs::default())?
+            .map(|reply| reply.n)
+            .unwrap_or_default())
     }
     /// The default editor's getAutocompleteMaxVisible.
     pub fn get_autocomplete_max_visible(&self) -> io::Result<u32> {
-        Ok(self.op_typed::<NumberReply>("getAutocompleteMaxVisible", BaseArgs::default())?.map(|reply| reply.n).unwrap_or_default())
+        Ok(self
+            .op_typed::<NumberReply>("getAutocompleteMaxVisible", BaseArgs::default())?
+            .map(|reply| reply.n)
+            .unwrap_or_default())
     }
     /// The default editor's borderColor called on `text`: the editor's border color for its thinking level or bash mode.
     pub fn border_color(&self, text: &JsString) -> io::Result<JsString> {
-        Ok(self.op_typed::<TextReply>("borderColor", BaseArgs { text: Some(text), ..Default::default() })?.map(|reply| reply.text).unwrap_or_default())
+        Ok(self
+            .op_typed::<TextReply>(
+                "borderColor",
+                BaseArgs {
+                    text: Some(text),
+                    ..Default::default()
+                },
+            )?
+            .map(|reply| reply.text)
+            .unwrap_or_default())
     }
     /// The default editor's disableSubmit.
     pub fn disable_submit(&self) -> io::Result<bool> {
-        Ok(self.op_typed::<BoolReply>("getDisableSubmit", BaseArgs::default())?.is_some_and(|reply| reply.value))
+        Ok(self
+            .op_typed::<BoolReply>("getDisableSubmit", BaseArgs::default())?
+            .is_some_and(|reply| reply.value))
     }
     /// Sets the default editor's disableSubmit.
     pub fn set_disable_submit(&self, disabled: bool) -> io::Result<()> {
-        self.op("setDisableSubmit", BaseArgs { value: Some(disabled), ..Default::default() }).map(drop)
+        self.op(
+            "setDisableSubmit",
+            BaseArgs {
+                value: Some(disabled),
+                ..Default::default()
+            },
+        )
+        .map(drop)
     }
     /// The default editor's focused, which the TUI sets as the editor takes and loses the focus.
     pub fn focused(&self) -> io::Result<bool> {
-        Ok(self.op_typed::<BoolReply>("getFocused", BaseArgs::default())?.is_some_and(|reply| reply.value))
+        Ok(self
+            .op_typed::<BoolReply>("getFocused", BaseArgs::default())?
+            .is_some_and(|reply| reply.value))
     }
     /// Sets the default editor's focused.
     pub fn set_focused(&self, focused: bool) -> io::Result<()> {
-        self.op("setFocused", BaseArgs { value: Some(focused), ..Default::default() }).map(drop)
+        self.op(
+            "setFocused",
+            BaseArgs {
+                value: Some(focused),
+                ..Default::default()
+            },
+        )
+        .map(drop)
     }
     /// The default editor's setAutocompleteProvider with Pi's CombinedAutocompleteProvider(commands, basePath); `None` leaves the
     /// editor without a provider.
-    pub fn set_autocomplete_provider(&self, provider: Option<&crate::kit::Autocomplete>) -> io::Result<()> {
+    pub fn set_autocomplete_provider(
+        &self,
+        provider: Option<&crate::kit::Autocomplete>,
+    ) -> io::Result<()> {
         let wire = provider.map(crate::kit::Autocomplete::wire);
-        self.op("setAutocompleteProvider", BaseArgs { provider: wire.as_ref(), ..Default::default() }).map(drop)
+        self.op(
+            "setAutocompleteProvider",
+            BaseArgs {
+                provider: wire.as_ref(),
+                ..Default::default()
+            },
+        )
+        .map(drop)
     }
     /// Calls the host's onSubmit callback with `text`, as an editor does when the user submits it.
     pub fn on_submit(&self, text: &JsString) -> io::Result<()> {
-        self.op("onSubmit", BaseArgs { text: Some(text), ..Default::default() }).map(drop)
+        self.op(
+            "onSubmit",
+            BaseArgs {
+                text: Some(text),
+                ..Default::default()
+            },
+        )
+        .map(drop)
     }
     /// Calls the host's onChange callback with `text`, as an editor does when its text changed.
     pub fn on_change(&self, text: &JsString) -> io::Result<()> {
-        self.op("onChange", BaseArgs { text: Some(text), ..Default::default() }).map(drop)
+        self.op(
+            "onChange",
+            BaseArgs {
+                text: Some(text),
+                ..Default::default()
+            },
+        )
+        .map(drop)
     }
 }
 
@@ -415,7 +568,9 @@ pub trait EditorComponent: Send {
         self.base().set_text(text).map_err(|e| e.to_string())
     }
     fn insert_text_at_cursor(&mut self, text: &JsString) -> Result<(), String> {
-        self.base().insert_text_at_cursor(text).map_err(|e| e.to_string())
+        self.base()
+            .insert_text_at_cursor(text)
+            .map_err(|e| e.to_string())
     }
     fn add_to_history(&mut self, text: &JsString) -> Result<(), String> {
         self.base().add_to_history(text).map_err(|e| e.to_string())
@@ -424,7 +579,10 @@ pub trait EditorComponent: Send {
     /// CustomEditor's `setWorkingStatusIndicator`, which the host calls when an editor that embeds the status
     /// ([`Self::embed_working_status`]) gets a new status, a new frame of it, or none. The host draws the status in the rows
     /// [`EditorBase::render`] returns; override this to read it.
-    fn set_working_status_indicator(&mut self, _status: Option<&EditorStatus>) -> Result<(), String> {
+    fn set_working_status_indicator(
+        &mut self,
+        _status: Option<&EditorStatus>,
+    ) -> Result<(), String> {
         Ok(())
     }
     /// The editor's `invalidate`, which the host calls when the theme changes. Pi's Editor has no cached state to drop; override this to
@@ -436,7 +594,8 @@ pub trait EditorComponent: Send {
 
 /// Builds the editor component around the host's default editor. Like Pi's factory it can be called again, and
 /// [`Context::get_editor_component`](crate::Context::get_editor_component) returns the one an extension installed.
-pub type EditorFactory = std::sync::Arc<dyn Fn(EditorBase) -> Box<dyn EditorComponent> + Send + Sync>;
+pub type EditorFactory =
+    std::sync::Arc<dyn Fn(EditorBase) -> Box<dyn EditorComponent> + Send + Sync>;
 
 /// One rendered frame; its rows are [`JsString`] so lone UTF-16 units reach the host.
 #[derive(Serialize)]
@@ -445,7 +604,10 @@ struct Frame<'a> {
     lines: &'a [JsString],
     width: u32,
     seq: u64,
-    #[serde(rename = "capturesViewportInput", skip_serializing_if = "std::ops::Not::not")]
+    #[serde(
+        rename = "capturesViewportInput",
+        skip_serializing_if = "std::ops::Not::not"
+    )]
     captures_viewport_input: bool,
 }
 
@@ -497,10 +659,17 @@ struct EditorWorker {
 
 impl EditorWorker {
     fn fail(&self, what: &str, message: String) {
-        let _ = self.conn.notify("ui.notify", Some(json!({"message": format!("editor {what} failed: {message}"), "level": "error"})));
+        let _ = self.conn.notify(
+            "ui.notify",
+            Some(json!({"message": format!("editor {what} failed: {message}"), "level": "error"})),
+        );
     }
 
-    fn guarded<T>(&mut self, what: &str, call: impl FnOnce(&mut dyn EditorComponent) -> Result<T, String>) -> Option<T> {
+    fn guarded<T>(
+        &mut self,
+        what: &str,
+        call: impl FnOnce(&mut dyn EditorComponent) -> Result<T, String>,
+    ) -> Option<T> {
         let component = &mut self.component;
         match catch_unwind(AssertUnwindSafe(|| call(component.as_mut()))) {
             Ok(Ok(value)) => Some(value),
@@ -524,11 +693,21 @@ impl EditorWorker {
             return;
         };
         let captures = self.component.captures_viewport_input();
-        if self.last.as_ref().is_some_and(|(w, l, c)| *w == width && *l == lines && *c == captures) {
+        if self
+            .last
+            .as_ref()
+            .is_some_and(|(w, l, c)| *w == width && *l == lines && *c == captures)
+        {
             return;
         }
         self.seq += 1;
-        let frame = Frame { key: &self.key, lines: &lines, width, seq: self.seq, captures_viewport_input: captures };
+        let frame = Frame {
+            key: &self.key,
+            lines: &lines,
+            width,
+            seq: self.seq,
+            captures_viewport_input: captures,
+        };
         let _ = self.conn.notify_typed("ui.editor.render", Some(frame));
         self.last = Some((width, lines, captures));
     }
@@ -540,7 +719,9 @@ impl EditorWorker {
                 EditorEvent::Input(data) => {
                     self.guarded("handleInput", |c| c.handle_input(&data));
                     self.render_now();
-                    let _ = self.conn.notify("ui.editor.inputDone", Some(json!({"key": self.key})));
+                    let _ = self
+                        .conn
+                        .notify("ui.editor.inputDone", Some(json!({"key": self.key})));
                     continue;
                 }
                 EditorEvent::Mouse(event) => {
@@ -556,11 +737,17 @@ impl EditorWorker {
                     self.guarded("addToHistory", |c| c.add_to_history(&text));
                 }
                 EditorEvent::Configure(status) => {
-                    let unchanged = if self.status_sent { self.status == status } else { status.is_none() };
+                    let unchanged = if self.status_sent {
+                        self.status == status
+                    } else {
+                        status.is_none()
+                    };
                     if !unchanged {
                         self.status_sent = true;
                         self.status = status.clone();
-                        self.guarded("setWorkingStatusIndicator", |c| c.set_working_status_indicator(status.as_ref()));
+                        self.guarded("setWorkingStatusIndicator", |c| {
+                            c.set_working_status_indicator(status.as_ref())
+                        });
                     }
                 }
                 EditorEvent::Invalidate => {
@@ -585,7 +772,11 @@ pub(crate) fn install_editor(
 ) -> io::Result<()> {
     let key = format!("editor-{seq}");
     let (events, receiver) = channel();
-    let session = Arc::new(EditorSession { key: key.clone(), events, factory: factory.clone() });
+    let session = Arc::new(EditorSession {
+        key: key.clone(),
+        events,
+        factory: factory.clone(),
+    });
     if let Some(previous) = slot.lock().unwrap().replace(session.clone()) {
         previous.close();
     }
@@ -596,11 +787,19 @@ pub(crate) fn install_editor(
         }
         let _ = conn.notify("ui.editor.clear", Some(json!({"key": key})));
     };
-    if let Err(err) = conn.notify("ui.editor.install", Some(json!({"key": key, "delegated": true}))) {
+    if let Err(err) = conn.notify(
+        "ui.editor.install",
+        Some(json!({"key": key, "delegated": true})),
+    ) {
         remove(slot);
         return Err(err);
     }
-    let base = EditorBase { conn: conn.clone(), key: key.clone(), hooks: Arc::default(), actions: Arc::default() };
+    let base = EditorBase {
+        conn: conn.clone(),
+        key: key.clone(),
+        hooks: Arc::default(),
+        actions: Arc::default(),
+    };
     let component = match catch_unwind(AssertUnwindSafe(|| factory(base))) {
         Ok(component) => component,
         Err(panic) => {
@@ -609,16 +808,36 @@ pub(crate) fn install_editor(
         }
     };
     let embed = component.embed_working_status();
-    let worker = EditorWorker { conn: conn.clone(), key: key.clone(), width: width.clone(), component, seq: 0, last: None, status: None, status_sent: false };
-    thread::Builder::new().name(format!("pig-{key}")).spawn(move || worker.run(receiver))?;
+    let worker = EditorWorker {
+        conn: conn.clone(),
+        key: key.clone(),
+        width: width.clone(),
+        component,
+        seq: 0,
+        last: None,
+        status: None,
+        status_sent: false,
+    };
+    thread::Builder::new()
+        .name(format!("pig-{key}"))
+        .spawn(move || worker.run(receiver))?;
     if embed {
-        conn.notify("ui.editor.options", Some(json!({"key": key, "embedWorkingStatus": true})))?;
+        conn.notify(
+            "ui.editor.options",
+            Some(json!({"key": key, "embedWorkingStatus": true})),
+        )?;
     }
     Ok(())
 }
 
 /// Route one of the host's editor notifies to the installed component.
-pub(crate) fn editor_notify(slot: &EditorSlot, method: &str, key: &str, text: Option<JsString>, args: Option<&Value>) {
+pub(crate) fn editor_notify(
+    slot: &EditorSlot,
+    method: &str,
+    key: &str,
+    text: Option<JsString>,
+    args: Option<&Value>,
+) {
     let session = slot.lock().unwrap().clone();
     let Some(session) = session.filter(|s| s.key == key) else {
         return;
@@ -627,13 +846,23 @@ pub(crate) fn editor_notify(slot: &EditorSlot, method: &str, key: &str, text: Op
         "ui.editor.input" => session.send(EditorEvent::Input(text.unwrap_or_default())),
         "ui.editor.setText" => session.send(EditorEvent::SetText(text.unwrap_or_default())),
         "ui.editor.insertText" => session.send(EditorEvent::InsertText(text.unwrap_or_default())),
-        "ui.editor.addToHistory" => session.send(EditorEvent::AddToHistory(text.unwrap_or_default())),
+        "ui.editor.addToHistory" => {
+            session.send(EditorEvent::AddToHistory(text.unwrap_or_default()))
+        }
         "ui.editor.mouse" => {
-            let event = args.and_then(|a| a.get("event")).cloned().and_then(|e| serde_json::from_value(e).ok()).unwrap_or_default();
+            let event = args
+                .and_then(|a| a.get("event"))
+                .cloned()
+                .and_then(|e| serde_json::from_value(e).ok())
+                .unwrap_or_default();
             session.send(EditorEvent::Mouse(event));
         }
         "ui.editor.configure" => {
-            let status = args.and_then(|a| a.get("workingStatus")).filter(|s| !s.is_null()).cloned().and_then(|s| serde_json::from_value(s).ok());
+            let status = args
+                .and_then(|a| a.get("workingStatus"))
+                .filter(|s| !s.is_null())
+                .cloned()
+                .and_then(|s| serde_json::from_value(s).ok());
             session.send(EditorEvent::Configure(status));
         }
         "ui.editor.invalidate" => session.send(EditorEvent::Invalidate),

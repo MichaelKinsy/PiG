@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"flag"
 	"os"
+	"os/signal"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -14,7 +17,8 @@ import (
 )
 
 // TestExecLimitsHelperProcess is the command the rows below run through pi.exec: it writes the bytes of its second argument (hex) to the stream
-// its first names ("stdout" or "stderr"), then ends. Run as an ordinary test it returns at once.
+// its first names ("stdout" or "stderr"), then ends. The stream "stubborn" is stdout, but the process ignores SIGTERM and then waits to be killed.
+// Run as an ordinary test it returns at once.
 func TestExecLimitsHelperProcess(t *testing.T) {
 	if flag.NArg() != 2 {
 		return
@@ -26,6 +30,11 @@ func TestExecLimitsHelperProcess(t *testing.T) {
 	out := os.Stdout
 	if flag.Arg(0) == "stderr" {
 		out = os.Stderr
+	}
+	if flag.Arg(0) == "stubborn" {
+		signal.Ignore(syscall.SIGTERM)
+		_, _ = out.Write(data)
+		time.Sleep(time.Minute)
 	}
 	_, _ = out.Write(data)
 	// The test binary would print PASS on stdout, which the byte caps count.
@@ -64,15 +73,19 @@ func TestExecLimitsAcrossSDKs(t *testing.T) {
 		text      string
 		maxBuffer *float64
 		want      string
+		// posixOnly rows need a signal that a child can ignore.
+		posixOnly bool
 	}{
-		{"cap-cuts-a-character-stdout", "stdout", "a€🙂", f(5), "exec-limits:truncated=true;killed=true;code=nonzero;stdout=a€;stderr="},
-		{"cap-cuts-a-character-stderr", "stderr", "a€🙂", f(5), "exec-limits:truncated=true;killed=true;code=nonzero;stdout=;stderr=a€"},
-		{"output-within-the-cap", "stdout", "abc", f(3), "exec-limits:truncated=false;killed=false;code=0;stdout=abc;stderr="},
-		{"zero-cap", "stdout", "x", f(0), "exec-limits:truncated=true;killed=true;code=nonzero;stdout=;stderr="},
-		{"no-cap", "stdout", "a€🙂", nil, "exec-limits:truncated=false;killed=false;code=0;stdout=a€🙂;stderr="},
-		{"negative-cap-rejects", "stdout", "x", f(-1), "rejected:"},
-		{"fractional-cap-rejects", "stdout", "x", f(0.5), "rejected:"},
-		{"cap-above-the-runtime-limit-rejects", "stdout", "x", f(1 << 40), "rejected:"},
+		{"cap-cuts-a-character-stdout", "stdout", "a€🙂", f(5), "exec-limits:truncated=true;killed=true;code=nonzero;stdout=a€;stderr=", false},
+		{"cap-cuts-a-character-stderr", "stderr", "a€🙂", f(5), "exec-limits:truncated=true;killed=true;code=nonzero;stdout=;stderr=a€", false},
+		{"output-within-the-cap", "stdout", "abc", f(3), "exec-limits:truncated=false;killed=false;code=0;stdout=abc;stderr=", false},
+		{"zero-cap", "stdout", "x", f(0), "exec-limits:truncated=true;killed=true;code=nonzero;stdout=;stderr=", false},
+		{"no-cap", "stdout", "a€🙂", nil, "exec-limits:truncated=false;killed=false;code=0;stdout=a€🙂;stderr=", false},
+		// Pi's own regression: a command that ignores SIGTERM is killed five seconds after the cap ended it, so the call returns with the capped output.
+		{"cap-on-a-child-that-ignores-sigterm", "stubborn", "xx", f(1), "exec-limits:truncated=true;killed=true;code=nonzero;stdout=x;stderr=", true},
+		{"negative-cap-rejects", "stdout", "x", f(-1), "rejected:", false},
+		{"fractional-cap-rejects", "stdout", "x", f(0.5), "rejected:", false},
+		{"cap-above-the-runtime-limit-rejects", "stdout", "x", f(1 << 40), "rejected:", false},
 	}
 	run := func(t *testing.T, h *harness) {
 		if h.bridge == nil {
@@ -87,6 +100,9 @@ func TestExecLimitsAcrossSDKs(t *testing.T) {
 			t.Fatal("exec-limits-probe command missing")
 		}
 		for _, row := range rows {
+			if row.posixOnly && runtime.GOOS == "windows" {
+				continue
+			}
 			*h.notify = nil
 			done := make(chan error, 1)
 			go func() {

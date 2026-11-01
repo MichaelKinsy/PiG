@@ -265,6 +265,13 @@ func TestMcpCommandAddsHTTPServersAndKeepsOtherContentOfTheFile(t *testing.T) {
 	if sentry["url"] != "https://mcp.sentry.dev/mcp" || !reflect.DeepEqual(sentry["oauth"], map[string]any{"clientId": "pi", "clientName": "Claude Code"}) {
 		t.Fatalf("sentry = %#v", sentry)
 	}
+
+	// Pi 908aa7b7: --oauth-client-registration sets oauth.clientRegistration.
+	runMcp(t, []string{"add", "linear", "--url", "https://mcp.linear.app/mcp", "--oauth-client-registration", "dcr"}, nil, result.agentDir)
+	linear := readMcpConfig(t, configPath)["mcpServers"].(map[string]any)["linear"].(map[string]any)
+	if linear["url"] != "https://mcp.linear.app/mcp" || !reflect.DeepEqual(linear["oauth"], map[string]any{"clientRegistration": "dcr"}) {
+		t.Fatalf("linear = %#v", linear)
+	}
 }
 
 // cli.ts add writes the value validateMcpServerConfig returns (addMcpServerConfig(path, name, validated)), a copy with exposure aliases resolved (mcp-servers.ts resolveExposureAliases), so `--exposure codemode-deferred` is saved as `codemode` in its place among the members.
@@ -297,6 +304,7 @@ func TestMcpCommandRejectsInvalidAddInvocationsWithoutWriting(t *testing.T) {
 		{"add", "x", "--header", "A=1", "--", "cmd"},
 		{"add", "x", "--env", "NOVALUE", "--", "cmd"},
 		{"add", "x", "--exposure", "loud", "--", "cmd"},
+		{"add", "x", "--url", "https://example.com", "--oauth-client-registration", "maybe"},
 	}
 	for _, args := range cases {
 		result := runMcp(t, args, nil, "")

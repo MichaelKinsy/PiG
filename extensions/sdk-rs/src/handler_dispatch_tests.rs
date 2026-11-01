@@ -8,11 +8,11 @@
 
 use super::{CommandResult, Extension};
 use crate::protocol::{CallResultMsg, Envelope, NotifyMsg, PingMsg, ReadyMsg, RequestMsg};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::io::{Read, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
@@ -65,7 +65,9 @@ impl Host {
 
     pub(super) fn send(&mut self, env: Envelope) {
         let data = serde_json::to_vec(&env).unwrap();
-        self.stream.write_all(&(data.len() as u32).to_be_bytes()).unwrap();
+        self.stream
+            .write_all(&(data.len() as u32).to_be_bytes())
+            .unwrap();
         self.stream.write_all(&data).unwrap();
     }
 
@@ -84,17 +86,25 @@ impl Host {
         }
     }
 
-    fn request(&mut self, id: &str, method: &str, tool: &str, event: Option<&str>, handler_id: u32) {
+    fn request(
+        &mut self,
+        id: &str,
+        method: &str,
+        tool: &str,
+        event: Option<&str>,
+        handler_id: u32,
+    ) {
         self.send(Envelope {
             msg_type: "request".into(),
             id: Some(id.into()),
             request: Some(RequestMsg {
                 refine: None,
-                child_session: None, terminal_input: None,
+                child_session: None,
+                terminal_input: None,
                 stream: None,
                 stream_error: None,
- tool_call_index: None,
- args_raw: None,
+                tool_call_index: None,
+                args_raw: None,
                 method: method.into(),
                 tool: (!tool.is_empty()).then(|| tool.into()),
                 event: event.map(Into::into),
@@ -143,7 +153,10 @@ impl Host {
         let extension = self.extension.take().unwrap();
         let deadline = std::time::Instant::now() + WAIT;
         while !extension.is_finished() {
-            assert!(std::time::Instant::now() < deadline, "the extension did not stop after shutdown");
+            assert!(
+                std::time::Instant::now() < deadline,
+                "the extension did not stop after shutdown"
+            );
             std::thread::sleep(Duration::from_millis(5));
         }
         extension.join().unwrap().unwrap();
@@ -193,16 +206,21 @@ fn width_handler_blocking_host_call_completes() {
     let call = host.read_until("call");
     assert_eq!(call.call.as_ref().unwrap().method, "ui.setFooter");
     host.answer(&call);
-    done_rx
-        .recv_timeout(WAIT)
-        .expect("the width handler's host call never returned: the extension stopped reading replies");
+    done_rx.recv_timeout(WAIT).expect(
+        "the width handler's host call never returned: the extension stopped reading replies",
+    );
     host.stop();
 }
 
 #[test]
 fn blocked_width_handler_does_not_stop_the_reader() {
     let mut ext = Extension::new("width-reader");
-    arm_widths(&mut ext, vec![Box::new(|ctx, _| ctx.notify("from the width handler", "info"))]);
+    arm_widths(
+        &mut ext,
+        vec![Box::new(|ctx, _| {
+            ctx.notify("from the width handler", "info")
+        })],
+    );
     ext.command("ping", "ping", |_, _| CommandResult::Ok);
     let mut host = armed(ext);
     host.width(100);
@@ -240,7 +258,9 @@ fn width_handlers_run_in_order_while_one_blocks() {
         let call = host.read_until("call");
         host.answer(&call);
     }
-    let seen: Vec<u32> = (0..3).map(|_| seen_rx.recv_timeout(WAIT).unwrap()).collect();
+    let seen: Vec<u32> = (0..3)
+        .map(|_| seen_rx.recv_timeout(WAIT).unwrap())
+        .collect();
     assert_eq!(seen, [100, 90, 80]);
     host.stop();
 }
@@ -261,7 +281,9 @@ fn panicking_width_handler_does_not_stop_the_extension() {
     let mut host = armed(ext);
     host.width(100);
     assert_eq!(
-        seen_rx.recv_timeout(WAIT).expect("a panicking handler stopped the other handlers"),
+        seen_rx
+            .recv_timeout(WAIT)
+            .expect("a panicking handler stopped the other handlers"),
         100
     );
     host.command("ping");
@@ -286,7 +308,9 @@ fn shutdown_ends_a_width_handler_blocked_on_a_host_call() {
     host.read_until("call");
     // The extension drains its handlers before it returns, so stop() also proves the wait ended.
     host.stop();
-    ended_rx.recv_timeout(WAIT).expect("shutdown left the width handler waiting");
+    ended_rx
+        .recv_timeout(WAIT)
+        .expect("shutdown left the width handler waiting");
 }
 
 #[test]
@@ -322,7 +346,9 @@ fn request_handlers_complete_blocking_host_calls() {
         let call = host.read_until("call");
         assert_eq!(call.call.as_ref().unwrap().method, "ui.setFooter", "{kind}");
         host.answer(&call);
-        done_rx.recv_timeout(WAIT).unwrap_or_else(|_| panic!("the {kind} handler never finished"));
+        done_rx
+            .recv_timeout(WAIT)
+            .unwrap_or_else(|_| panic!("the {kind} handler never finished"));
         host.read_until("response");
         host.stop();
     }

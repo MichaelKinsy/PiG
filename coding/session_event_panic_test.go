@@ -41,6 +41,7 @@ func TestSessionReportsAgentEventPanicAndKeepsForwarding(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 
 	for i := range 3 {
@@ -95,6 +96,7 @@ func TestSessionReportsAgentEventPanicAndKeepsForwarding(t *testing.T) {
 // listeners on the event and the compaction_end event keep flowing.
 func TestManualCompactionCompletesWhenCompactionStartHandlerPanics(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
+	_ = sess.Events()
 	defer func() { _ = sess.Close() }()
 	sess.completer = &fakeCompleter{summary: "summary after panic"}
 	runner := inproc.NewRunner(nil, t.TempDir())

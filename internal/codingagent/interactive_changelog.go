@@ -177,7 +177,9 @@ func (m *InteractiveMode) showStartupChangelog(newEntries []ChangelogEntry, exte
 // handleChangelogCommand appends every released entry oldest-first, with a separate title and borders. CollapseChangelog controls startup notices only.
 func (m *InteractiveMode) handleChangelogCommand() {
 	body := tui.NewPaddedBox(1, 1, nil)
-	body.AddChild(tui.NewMarkdownWithOptions(changelogMarkdown(ParseChangelog(bundledChangelog())), 0, 0, m.markdownThemeWithSettings(), nil, nil))
+	changelogBody := tui.NewMarkdownWithOptions(changelogMarkdown(ParseChangelog(bundledChangelog())), 0, 0, m.markdownThemeWithSettings(), nil, nil)
+	changelogBody.FinishStreaming()
+	body.AddChild(changelogBody)
 	m.chatContainer.Add(tui.NewSpacer(1))
 	m.chatContainer.Add(tui.NewDynamicBorder())
 	m.chatContainer.Add(tui.NewThemedText(func() string {

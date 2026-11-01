@@ -76,7 +76,7 @@ The project can use more than one tool for independent evidence:
 - Grype, OSV-Scanner, `govulncheck`, `npm audit`, and `pip-audit` for vulnerability evidence;
 - Code Insight, FOSSology, `go-licenses`, and REUSE for license evidence;
 - Gitleaks and TruffleHog for secret detection;
-- CodeQL, `staticcheck`, `golangci-lint`, Ruff, Bandit, and ShellCheck for source analysis.
+- CodeQL, `staticcheck`, `golangci-lint`, Ruff, Bandit, ShellCheck, and rustfmt with Clippy (`make lint-rust`, every Rust crate) for source analysis.
 
 No tool name is part of the compliance claim. The claim is that the final inventory is complete, accurate, reviewed, and bound to the exact artifact.
 

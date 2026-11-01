@@ -725,13 +725,11 @@ type tuiBase struct {
 	terminal Terminal
 	// derivedTerminal is the Terminal that Terminal creates on first use for a renderer constructed without one.
 	derivedTerminal atomic.Pointer[Terminal]
-	// sizeSnapshot publishes the width and height the renderer last took (publishSize) to readers that hold neither the frame nor the owner loop: Width and Height, which the extension host calls from its own goroutines, and a fixed-size renderer's derived Terminal, which components read during a frame while t.mu is held.
+	// sizeSnapshot is the renderer's width and height (setSize). Every reader takes it through size, so the frame that updates it never races with the readers on the input, overlay and extension-host goroutines, nor with the components that read it during a frame while t.mu is held, nor with a fixed-size renderer's derived Terminal.
 	sizeSnapshot atomic.Uint64
 	// direct is the unlogged writer for what upstream sends straight to stdout; nil when nothing is logged.
 	direct             io.Writer
 	terminalBackground *terminalBackgroundQueries
-	width              int
-	height             int
 
 	fullRedrawCount atomic.Int64
 
@@ -944,7 +942,7 @@ func (t *tuiBase) currentOverlayVisibility(opts OverlayOptions) bool {
 	if opts.visible == nil {
 		return true
 	}
-	return opts.visible(t.width, t.height)
+	return opts.visible(t.size())
 }
 
 func (t *tuiBase) applyOverlayCommand(command overlayCommand) overlayCommandResult {
@@ -1064,7 +1062,7 @@ func (h *OverlayHandle) setHidden(hidden bool) {
 }
 
 func (h *OverlayHandle) apply(command overlayCommand) {
-	h.tui.refreshOverlayVisibility(h.tui.width, h.tui.height)
+	h.tui.refreshOverlayVisibility(h.tui.size())
 	result := h.tui.applyOverlayCommand(command)
 	if result.changed {
 		if command.kind == overlayRemoveTarget {
@@ -1297,7 +1295,7 @@ func (t *tuiBase) overlaySnapshot() overlayStateSnapshot {
 // HideOverlay permanently removes the most recently appended mounted entry.
 // Focus and visual order do not affect this target. Mirrors upstream hideOverlay.
 func (t *tuiBase) HideOverlay() {
-	t.refreshOverlayVisibility(t.width, t.height)
+	t.refreshOverlayVisibility(t.size())
 	result := t.applyOverlayCommand(overlayCommand{kind: overlayRemoveAppendTail})
 	if result.changed {
 		t.hideTerminalCursorWithoutOverlays()
@@ -1380,7 +1378,7 @@ func (t *tuiBase) GetFocusedComponent() Component {
 
 // ActiveOverlay refreshes overlay visibility and restores eligible focus before input dispatch. An active replacement keeps input until it changes focus, even if it is not mounted in the render tree.
 func (t *tuiBase) ActiveOverlay() Component {
-	t.refreshOverlayVisibility(t.width, t.height)
+	t.refreshOverlayVisibility(t.size())
 	t.overlayMu.Lock()
 	previous := t.overlayModel.focusedComponent()
 	t.overlayModel.prepareInput()
@@ -1398,7 +1396,7 @@ func (t *tuiBase) ActiveOverlay() Component {
 // hasOverlay; HasOverlay below intentionally reports mounted entries for the
 // renderer-switch guard.
 func (t *tuiBase) hasOverlay() bool {
-	t.refreshOverlayVisibility(t.width, t.height)
+	t.refreshOverlayVisibility(t.size())
 	t.overlayMu.Lock()
 	visible := t.overlayModel.visibleAny()
 	t.overlayMu.Unlock()
@@ -1492,7 +1490,7 @@ func NewWithOutput(out io.Writer, cols, rows int) *TuiMainScreen {
 			},
 		},
 	}
-	t.setFixedDimensionsLocked(cols, rows)
+	t.setSize(cols, rows)
 	t.render = t.doRender
 	return t
 }
@@ -1572,17 +1570,14 @@ func (t *tuiBase) updateSize() {
 		return
 	}
 	if t.terminal != nil {
-		t.width, t.height = t.terminal.Columns(), t.terminal.Rows()
-		t.publishSize()
+		t.setSize(t.terminal.Columns(), t.terminal.Rows())
 		return
 	}
 	w, h, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
 		w, h = 80, 24
 	}
-	t.width = w
-	t.height = h
-	t.publishSize()
+	t.setSize(w, h)
 }
 
 // SetFixedSize changes the size of a renderer built with a fixed size
@@ -1592,7 +1587,7 @@ func (t *tuiBase) SetFixedSize(cols, rows int) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.fixedSize {
-		t.setFixedDimensionsLocked(cols, rows)
+		t.setSize(cols, rows)
 	}
 }
 
@@ -2170,13 +2165,14 @@ func (t *TuiMainScreen) doRender() {
 	t.lastRenderAt = t.now()
 
 	t.updateSize()
+	width, height := t.size()
 
 	// Collect lines from the component tree, then compose from an immutable
 	// overlay snapshot. Component rendering and visibility callbacks run with no
 	// overlay-state lock held.
 	// Resolve fake cursors before compositing so overlays and line slicing see plain SGR codes (tui-main-screen.ts doRender).
-	rootLines, rootVersion, kept := t.renderBorrowedSince(t.width, t.windowVersion)
-	newLines, unresolved := t.composeFrameLines(rootLines, t.width, t.height)
+	rootLines, rootVersion, kept := t.renderBorrowedSince(width, t.windowVersion)
+	newLines, unresolved := t.composeFrameLines(rootLines, width, height)
 	hasOverlay := t.HasOverlay()
 	// The reset cache may compare with the last frame's input when that array
 	// is unchanged: a composed array is the renderer's own, and the root
@@ -2210,7 +2206,7 @@ func (t *TuiMainScreen) doRender() {
 	// hardware terminal cursor at the end of the frame. Components that
 	// don't emit the marker fall back to the legacy behaviour where the
 	// cursor lands at the end of the last written line.
-	cursorPos, cursorRow, cursorFreeLine, hasCursorPos := findCursorPosition(newLines, t.height)
+	cursorPos, cursorRow, cursorFreeLine, hasCursorPos := findCursorPosition(newLines, height)
 	cursorFreeLine = stripOsc133ZonePrefix(cursorFreeLine)
 	if hasCursorPos && unresolved {
 		// Resolving keeps every cursor marker in place, so the marker is on the same row; the cursor-free line is the resolved one.
@@ -2230,7 +2226,6 @@ func (t *TuiMainScreen) doRender() {
 		diffFrom = resetFrom
 	}
 
-	width, height := t.width, t.height
 	if height < 1 {
 		height = 1
 	}

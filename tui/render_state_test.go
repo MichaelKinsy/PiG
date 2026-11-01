@@ -52,7 +52,7 @@ func TestTUIRender_TermuxHeightChangeBypassesFullRedraw(t *testing.T) {
 	out.Reset()
 
 	// Height change only. In Termux this should NOT force full clear/redraw.
-	ui.height = 6
+	ui.SetFixedSize(ui.Width(), 6)
 	ui.Render()
 	got := out.String()
 	if strings.Contains(got, "\x1b[2J\x1b[H\x1b[3J") {
@@ -69,7 +69,7 @@ func TestTUIRender_ResizeFullRedrawClearsScrollbackAndReplaysBuffer(t *testing.T
 	ui.Render()
 	out.Reset()
 
-	ui.width = 30
+	ui.SetFixedSize(30, ui.Height())
 	ui.Render()
 	got := out.String()
 	if !strings.Contains(got, "\x1b[2J\x1b[H\x1b[3J") {
@@ -221,14 +221,14 @@ func FuzzTUIRender_StateMachineInvariants(f *testing.F) {
 
 		for i := range counts {
 			lines = fuzzRenderLines(counts[i])
-			ui.height = max(1, int(heights[i]%6)+1)
+			ui.SetFixedSize(ui.Width(), max(1, int(heights[i]%6)+1))
 			ui.Render()
 
-			if ui.prevHeight != ui.height {
-				t.Fatalf("prevHeight=%d want %d", ui.prevHeight, ui.height)
+			if ui.prevHeight != ui.Height() {
+				t.Fatalf("prevHeight=%d want %d", ui.prevHeight, ui.Height())
 			}
-			if ui.prevWidth != ui.width {
-				t.Fatalf("prevWidth=%d want %d", ui.prevWidth, ui.width)
+			if ui.prevWidth != ui.Width() {
+				t.Fatalf("prevWidth=%d want %d", ui.prevWidth, ui.Width())
 			}
 			if ui.cursorRow != max(0, len(ui.prevLines)-1) {
 				t.Fatalf("cursorRow=%d want %d", ui.cursorRow, max(0, len(ui.prevLines)-1))
@@ -238,7 +238,7 @@ func FuzzTUIRender_StateMachineInvariants(f *testing.F) {
 			}
 			// The viewport is bounded by the working area, not by the current frame: a deletion-only render keeps the
 			// viewport (tui-main-screen.ts:445), so the top can sit above rows the shorter frame no longer has.
-			maxViewportTop := max(0, max(len(ui.prevLines), ui.maxLinesRendered, ui.height)-ui.height)
+			maxViewportTop := max(0, max(len(ui.prevLines), ui.maxLinesRendered, ui.Height())-ui.Height())
 			if ui.prevViewportTop < 0 || ui.prevViewportTop > maxViewportTop {
 				t.Fatalf("prevViewportTop=%d outside [0,%d]", ui.prevViewportTop, maxViewportTop)
 			}

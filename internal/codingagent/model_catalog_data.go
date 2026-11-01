@@ -135,6 +135,29 @@ func (r *ModelRegistry) GetProviderModelDataByID(id, modelID string) *ai.Model {
 	return nil
 }
 
+// modelData is the first model of GetAllModelData whose provider is provider and whose id is modelID, or nil, built without composing the rest of the catalog:
+// a plain bundled catalog is searched by entry (GetProviderModelDataByID) and only its match is built, where GetAllModelData builds every model of every
+// provider (and, with D199, every OpenRouter routing variant) to find one.
+func (r *ModelRegistry) modelData(provider, modelID string) *ai.Model {
+	for _, id := range r.modelProviderIDs() {
+		if r.isPlainGenerated(id) {
+			// The models of a plain bundled catalog are the provider's own.
+			if id == provider {
+				if model := r.GetProviderModelDataByID(id, modelID); model != nil {
+					return model
+				}
+			}
+			continue
+		}
+		for _, model := range r.GetProviderModelData(id) {
+			if model.ProviderID() == provider && model.ModelID() == modelID {
+				return model
+			}
+		}
+	}
+	return nil
+}
+
 // GetAllModelData returns the composed catalog in provider order without running credential configuration expressions.
 func (r *ModelRegistry) GetAllModelData() []*ai.Model {
 	var models []*ai.Model

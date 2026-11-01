@@ -43,6 +43,13 @@ func reportProjectTrust(cwd, agentDir string) projectTrustReport {
 		return projectTrustReport{State: projectTrustUntrusted, Reason: "the trust decision could not be read", Error: err.Error()}
 	}
 	if !codingagent.HasTrustRequiringProjectResources(cwd) {
+		if decision, err := store.Get(cwd); err == nil && decision != nil {
+			state := projectTrustUntrusted
+			if trusted {
+				state = projectTrustTrusted
+			}
+			return projectTrustReport{State: state, Reason: "saved decision for this folder"}
+		}
 		return projectTrustReport{State: projectTrustNotRequired, Reason: "the project has no settings or resources that need trust"}
 	}
 	state := projectTrustUntrusted

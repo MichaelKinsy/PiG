@@ -41,7 +41,11 @@ func resolveProjectTrusted(ctx context.Context, opts projectTrustResolutionOptio
 		hasTrustResources = codingagent.HasProjectContextFile(opts.CWD)
 	}
 	if !hasTrustResources {
-		return true, nil
+		decision, err := opts.Store.Get(opts.CWD)
+		if err != nil {
+			return false, err
+		}
+		return decision == nil || *decision, nil
 	}
 	if opts.Runner != nil {
 		result, handlerErrors, err := inproc.EmitProjectTrust(opts.Runner, ctx, extension.ProjectTrustEvent{

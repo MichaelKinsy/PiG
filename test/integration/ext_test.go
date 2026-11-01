@@ -312,72 +312,45 @@ func TestExt_ConventionDirectoryDiscovery(t *testing.T) {
 }
 
 // TestExt_CachedBinaryUsedOnSecondStartup proves the content-hash
-// cache works: first startup builds, second startup is faster.
+// cache works: first startup builds, second startup is faster. It builds the
+// in-repo Go example extension, so the release timing gate needs no external
+// checkout.
 func TestExt_CachedBinaryUsedOnSecondStartup(t *testing.T) {
-	subSrc := subagentSourceDir(t)
+	root, err := findRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
 	pigHome := t.TempDir()
-	writeTestExtensionSettings(t, pigHome, subSrc)
+	writeTestExtensionSettings(t, pigHome, filepath.Join(root, "examples", "extensions", "go-factory"))
 
-	// Cache dir now respects PIG_HOME.
-	cacheDir := filepath.Join(pigHome, "cache", "ext")
+	// A factory extension is built into a content-hash cell under PIG_HOME/cache/cells/go/<hash>/runner.
+	cellRunners := filepath.Join(pigHome, "cache", "cells", "go", "*", "runner")
 
-	bin := buildBinary(t)
+	trustIntegrationProject(t, pigHome)
+
+	// startAndWaitReady launches pig in a fresh session of the shared PIG_HOME and returns the time from the launch to a painted startup that lists the extension. It does not use harness.start, whose fixed settle sleep would hide the build.
+	startAndWaitReady := func() time.Duration {
+		h := newHarness(t)
+		began := time.Now()
+		h.send("PIG_OFFLINE=1 PIG_HOME=" + pigHome + " " + h.bin + " 2>/dev/null\r")
+		h.expectContains(startupReadyWait, interactiveReadyMarker, "[Extensions]")
+		elapsed := time.Since(began)
+		h.sendKey("C-d")
+		time.Sleep(500 * time.Millisecond)
+		h.kill()
+		return elapsed
+	}
 
 	// First startup: cold cache: must build.
-	start1 := time.Now()
-	s1 := "ext-cache-1-" + randID()
-	if err := tmuxCommand("new-session", "-d", "-s", s1, "-x", "100", "-y", "30").Run(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = tmuxCommand("kill-session", "-t", s1).Run() })
-	if err := tmuxCommand("send-keys", "-t", s1, "-l",
-		fmt.Sprintf("PIG_HOME=%s %s\r", pigHome, bin)).Run(); err != nil {
-		t.Fatal(err)
-	}
-	deadline := time.Now().Add(20 * time.Second)
-	for time.Now().Before(deadline) {
-		out, _ := tmuxCommand("capture-pane", "-t", s1, "-p").Output()
-		if strings.Contains(string(out), interactiveReadyMarker) && strings.Contains(string(out), "[Extensions]") {
-			break
-		}
-		time.Sleep(200 * time.Millisecond)
-	}
-	cold := time.Since(start1)
-	if err := tmuxCommand("send-keys", "-t", s1, "C-d").Run(); err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(500 * time.Millisecond)
-
-	// Verify cache was populated.
-	entries, _ := os.ReadDir(cacheDir)
-	if len(entries) == 0 {
-		t.Fatal("cache dir empty after first startup: builder didn't cache")
+	cold := startAndWaitReady()
+	if runners, _ := filepath.Glob(cellRunners); len(runners) == 0 {
+		t.Fatalf("no cached runner at %s after first startup: builder didn't cache", cellRunners)
 	}
 
-	// Second startup: warm cache: should be faster.
-	start2 := time.Now()
-	s2 := "ext-cache-2-" + randID()
-	if err := tmuxCommand("new-session", "-d", "-s", s2, "-x", "100", "-y", "30").Run(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = tmuxCommand("kill-session", "-t", s2).Run() })
-	if err := tmuxCommand("send-keys", "-t", s2, "-l",
-		fmt.Sprintf("PIG_HOME=%s %s\r", pigHome, bin)).Run(); err != nil {
-		t.Fatal(err)
-	}
-	deadline = time.Now().Add(15 * time.Second)
-	for time.Now().Before(deadline) {
-		out, _ := tmuxCommand("capture-pane", "-t", s2, "-p").Output()
-		if strings.Contains(string(out), interactiveReadyMarker) && strings.Contains(string(out), "[Extensions]") {
-			break
-		}
-		time.Sleep(200 * time.Millisecond)
-	}
-	warm := time.Since(start2)
-	_ = tmuxCommand("send-keys", "-t", s2, "C-d").Run()
+	// Second startup: warm cache: should be faster (no go build).
+	warm := startAndWaitReady()
 
 	t.Logf("cold startup: %s, warm startup: %s", cold, warm)
-	// Warm should be noticeably faster (no go build).
 	testenv.TimingGate(t, warm > cold, "warm startup (%s) slower than cold (%s): cache is not working", warm, cold)
 }
 

@@ -6,10 +6,10 @@ import {
   loadMcpConfig,
   openBrowser,
   updateMcpServerConfig
-} from "./chunk-N6HXWYKG.js";
+} from "./chunk-UAU2WSJW.js";
 import {
   ArminComponent
-} from "./chunk-S7TFHYGY.js";
+} from "./chunk-AC3M6ZO6.js";
 import {
   AgentSession,
   BUG_REPORT_CUSTOM_ENTRY_TYPE,
@@ -79,6 +79,7 @@ import {
   getLastAssistantUsage,
   getLatestCompactionEntry,
   getMissingSessionCwdIssue,
+  getResourcePathKey,
   getSourcePackageKey,
   isBashToolResult,
   isBuiltinExtension,
@@ -124,7 +125,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-HXXU3UR4.js";
+} from "./chunk-2FBPXM36.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -159,13 +160,13 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-YO7W7VLN.js";
+} from "./chunk-UGZ7HYUS.js";
 import {
   CODEMODE_TOOL_NAME,
   TOOL_SEARCH_TOOL_NAME,
   createCodemodeToolDefinition,
   createToolSearchToolDefinition
-} from "./chunk-E5B65AQW.js";
+} from "./chunk-OWX7THTD.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,
@@ -188,7 +189,7 @@ import {
   truncateTail,
   truncateToVisualLines,
   writeOutputFile
-} from "./chunk-SKZPKAGV.js";
+} from "./chunk-T4NPYDVZ.js";
 import {
   SYSTEM_THEME_NAME,
   THEME_TOKENS,
@@ -222,7 +223,7 @@ import {
   setThemeJsonValidator,
   stopThemeWatcher,
   theme
-} from "./chunk-472CZNGH.js";
+} from "./chunk-HAHVQ3BS.js";
 import {
   AuthStorage,
   LIST_MCP_RESOURCES_TOOL,
@@ -233,12 +234,12 @@ import {
   mcpNamespace,
   raceWithAbortSignal,
   readStoredCredential
-} from "./chunk-XNXPQFJN.js";
+} from "./chunk-TBA7G64J.js";
 import {
   getPowerShellConfig,
   getShellConfig,
   killTrackedDetachedChildren
-} from "./chunk-OH2Z3DNC.js";
+} from "./chunk-WYRO2GZC.js";
 import {
   APP_NAME,
   APP_TITLE,
@@ -256,24 +257,28 @@ import {
   getBinDir,
   getBundledInteractiveAssetPath,
   getChangelogPath,
+  getConfiguredSelfUpdateArgv,
   getCwdRelativePath,
   getDebugLogPath,
   getDocsPath,
   getExamplesPath,
   getPackageDir,
+  getPathComparisonKey,
   getReadmePath,
   getSelfUpdateCommand,
   getSelfUpdateUnavailableInstruction,
   getSettingsPath,
   getShareViewerUrl,
   isLocalPath,
+  makeConfiguredSelfUpdateCommand,
   normalizePath,
   resolvePath,
+  shortenHomePath,
   spawnProcess,
   spawnProcessSync,
   stripBom,
   waitForChildProcess
-} from "./chunk-YXY3JV6E.js";
+} from "./chunk-3MI7MSGD.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";
@@ -829,7 +834,7 @@ function createMcpResourceToolDefinitions(options) {
 __name(createMcpResourceToolDefinitions, "createMcpResourceToolDefinitions");
 
 // pi-dist/pi-coding-agent/extensions/mcp/runtime.lazy.js
-var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-XROSFU7A.js"), "loadMcpRuntime");
+var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-RVA4E6A2.js"), "loadMcpRuntime");
 
 // pi-dist/pi-coding-agent/extensions/mcp/ui.js
 import { Container as Container3, Input, SelectList, Spacer as Spacer2, Text as Text3, truncateToWidth, visibleWidth } from "../../../pi-tui.mjs";
@@ -850,6 +855,7 @@ function runClipboardCommand(command, args, options) {
   return new Promise((resolve7) => {
     const child = spawn(command, args, {
       stdio: ["pipe", options?.input === void 0 ? "pipe" : "ignore", "ignore"],
+      cwd: "/",
       detached: process.platform !== "win32",
       windowsHide: true
     });
@@ -3744,7 +3750,6 @@ import { setKeybindings as setKeybindings2 } from "../../../pi-tui.mjs";
 import { spawnSync } from "node:child_process";
 import { existsSync as existsSync3 } from "node:fs";
 import { unlink } from "node:fs/promises";
-import * as os from "node:os";
 import { Container as Container7, getKeybindings as getKeybindings4, Input as Input3, Spacer as Spacer6, Text as Text7, truncateToWidth as truncateToWidth2, visibleWidth as visibleWidth2 } from "../../../pi-tui.mjs";
 
 // pi-dist/pi-coding-agent/modes/interactive/components/session-selector-search.js
@@ -3955,16 +3960,6 @@ function filterAndSortSessions(sessions, query, sortMode, nameFilter = "all") {
 __name(filterAndSortSessions, "filterAndSortSessions");
 
 // pi-dist/pi-coding-agent/modes/interactive/components/session-selector.js
-function shortenPath(path5) {
-  const home = os.homedir();
-  if (!path5)
-    return path5;
-  if (path5.startsWith(home)) {
-    return `~${path5.slice(home.length)}`;
-  }
-  return path5;
-}
-__name(shortenPath, "shortenPath");
 function formatSessionDate(date) {
   const now = /* @__PURE__ */ new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -3986,12 +3981,10 @@ function formatSessionDate(date) {
   return `${Math.floor(diffDays / 365)}y`;
 }
 __name(formatSessionDate, "formatSessionDate");
-function canonicalizePath2(path5) {
-  if (!path5)
-    return path5;
-  return canonicalizePath(path5);
+function getSessionPathKey(path5) {
+  return getPathComparisonKey(canonicalizePath(path5));
 }
-__name(canonicalizePath2, "canonicalizePath");
+__name(getSessionPathKey, "getSessionPathKey");
 var SessionSelectorHeader = class {
   static {
     __name(this, "SessionSelectorHeader");
@@ -4110,14 +4103,14 @@ var SessionSelectorHeader = class {
 function buildSessionTree(sessions) {
   const byPath = /* @__PURE__ */ new Map();
   for (const session of sessions) {
-    const sessionPath = canonicalizePath2(session.path) ?? session.path;
+    const sessionPath = getSessionPathKey(session.path);
     byPath.set(sessionPath, { session, children: [], latestActivity: session.modified.getTime() });
   }
   const roots = [];
   for (const session of sessions) {
-    const sessionPath = canonicalizePath2(session.path) ?? session.path;
+    const sessionPath = getSessionPathKey(session.path);
     const node = byPath.get(sessionPath);
-    const parentPath = canonicalizePath2(session.parentSessionPath);
+    const parentPath = session.parentSessionPath ? getSessionPathKey(session.parentSessionPath) : void 0;
     if (parentPath && byPath.has(parentPath)) {
       byPath.get(parentPath).children.push(node);
     } else {
@@ -4180,7 +4173,7 @@ var SessionList = class {
   keybindings;
   showPath = false;
   confirmingDeletePath = null;
-  currentSessionCanonicalPath;
+  currentSessionPathKey;
   onSelect;
   onCancel;
   onExit = /* @__PURE__ */ __name(() => {
@@ -4212,7 +4205,7 @@ var SessionList = class {
     this.sortMode = sortMode;
     this.nameFilter = nameFilter;
     this.keybindings = keybindings;
-    this.currentSessionCanonicalPath = canonicalizePath2(currentSessionFilePath);
+    this.currentSessionPathKey = currentSessionFilePath ? getSessionPathKey(currentSessionFilePath) : void 0;
     this.filterSessions("");
     this.searchInput.onSubmit = () => {
       if (this.filteredSessions[this.selectedIndex]) {
@@ -4276,9 +4269,9 @@ var SessionList = class {
     this.setConfirmingDeletePath(selected.session.path);
   }
   isCurrentSessionPath(path5) {
-    if (!this.currentSessionCanonicalPath)
+    if (!this.currentSessionPathKey)
       return false;
-    return (canonicalizePath2(path5) ?? path5) === this.currentSessionCanonicalPath;
+    return getSessionPathKey(path5) === this.currentSessionPathKey;
   }
   invalidate() {
   }
@@ -4319,10 +4312,10 @@ var SessionList = class {
       const msgCount = String(session.messageCount);
       let rightPart = `${msgCount} ${age}`;
       if (this.showCwd && session.cwd) {
-        rightPart = `${shortenPath(session.cwd)} ${rightPart}`;
+        rightPart = `${shortenHomePath(session.cwd)} ${rightPart}`;
       }
       if (this.showPath) {
-        rightPart = `${shortenPath(session.path)} ${rightPart}`;
+        rightPart = `${shortenHomePath(session.path)} ${rightPart}`;
       }
       const cursor = isSelected ? theme.fg("accent", "\u203A ") : "  ";
       const prefixWidth = visibleWidth2(prefix);
@@ -4825,7 +4818,7 @@ async function resolveProjectTrusted(options) {
     return options.trustOverride;
   }
   if (!hasTrustRequiringProjectResources(options.cwd)) {
-    return true;
+    return options.trustStore.get(options.cwd) ?? true;
   }
   if (options.extensionsResult) {
     const { result, errors } = await emitProjectTrustEvent(options.extensionsResult, { type: "project_trust", cwd: options.cwd }, options.projectTrustContext);
@@ -5202,7 +5195,7 @@ var LlamaClient = class {
 
 // pi-dist/pi-coding-agent/extensions/llama/huggingface.js
 import { readFile as readFile2 } from "node:fs/promises";
-import { homedir as homedir2 } from "node:os";
+import { homedir } from "node:os";
 import { join as join4 } from "node:path";
 var DEFAULT_HUGGING_FACE_URL = "https://huggingface.co";
 var QUANTIZATION_PATTERN = /(?:^|[-_.])((?:UD-)?(?:IQ\d(?:_[A-Z0-9]+)+|Q\d(?:_[A-Z0-9]+)+|BF16|F16|F32|MXFP\d(?:_[A-Z0-9]+)*))$/iu;
@@ -5236,7 +5229,7 @@ async function findHuggingFaceToken(env = process.env) {
     env.HF_TOKEN_PATH,
     env.HF_HOME ? join4(env.HF_HOME, "token") : void 0,
     env.XDG_CACHE_HOME ? join4(env.XDG_CACHE_HOME, "huggingface", "token") : void 0,
-    join4(homedir2(), ".cache", "huggingface", "token")
+    join4(homedir(), ".cache", "huggingface", "token")
   ].filter((path5) => Boolean(path5));
   for (const path5 of new Set(paths)) {
     const token = await readToken(path5);
@@ -6237,7 +6230,7 @@ var builtInExtensions = [
 ];
 
 // pi-dist/pi-coding-agent/extensions/mcp/cli.lazy.js
-var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-T2RT6V7W.js"), "loadMcpCommand");
+var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-6NXEQ3PS.js"), "loadMcpCommand");
 
 // pi-dist/pi-coding-agent/migrations.js
 import chalk4 from "../../../chalk/source/index.js";
@@ -6463,7 +6456,7 @@ __name(runMigrations, "runMigrations");
 // pi-dist/pi-coding-agent/modes/interactive/interactive-mode.js
 import * as crypto2 from "node:crypto";
 import * as fs3 from "node:fs";
-import * as os3 from "node:os";
+import * as os2 from "node:os";
 import * as path4 from "node:path";
 import { isRetryableAssistantError } from "../../pi-ai/sdk-bundle/compat.js";
 import * as TuiLayouts from "../../../pi-tui.mjs";
@@ -6687,7 +6680,7 @@ var BUILTIN_SLASH_COMMANDS = [
   { name: "thinking", description: "Set thinking level", argumentHint: "<level>" },
   { name: "scoped-models", description: "Enable/disable models for Ctrl+P cycling" },
   { name: "export", description: "Export session (HTML default, or specify path: .html/.jsonl)" },
-  { name: "import", description: "Import and resume a session from a JSONL file" },
+  { name: "import", description: "Import a JSONL session, preserving its ID and working directory" },
   { name: "share", description: "Share session via a Radius artifact or a GitHub gist" },
   { name: "bug", description: "Report a bug to the Pi developers", argumentHint: "<description>" },
   { name: "copy", description: "Copy last agent message to clipboard" },
@@ -6702,7 +6695,7 @@ var BUILTIN_SLASH_COMMANDS = [
   { name: "logout", description: "Remove provider authentication" },
   { name: "new", description: "Start a new session" },
   { name: "compact", description: "Manually compact the session context" },
-  { name: "resume", description: "Resume a different session" },
+  { name: "resume", description: "Resume another session" },
   { name: "reload", description: "Reload keybindings, extensions, skills, prompts, themes, and context files" },
   { name: "quit", description: `Quit ${APP_NAME}` }
 ];
@@ -7312,16 +7305,22 @@ async function editInExternalEditor(options) {
     process.stdout.write(`Launching external editor: ${options.command}
 Pi will resume when the editor exits.
 `);
-    const exitCode = await new Promise((resolve7) => {
+    const exit = await new Promise((resolve7) => {
       const child = spawn2(editor, [...editorArgs, filePath], {
         stdio: "inherit",
         shell: process.platform === "win32"
       });
       child.on("error", () => resolve7(null));
-      child.on("close", (code) => resolve7(code));
+      child.on("close", (code, signal) => resolve7(code ?? signal));
     });
-    if (exitCode !== 0) {
-      return { status: "failed" };
+    if (exit === null) {
+      return { status: "failed", message: `Failed to launch external editor: ${options.command}` };
+    }
+    if (exit !== 0) {
+      return {
+        status: "failed",
+        message: `External editor exited with ${typeof exit === "number" ? `code ${exit}` : exit}; prompt unchanged`
+      };
     }
     return { status: "complete", content: stripBom(readFileSync7(filePath, "utf-8")).replace(/\n$/, "") };
   } finally {
@@ -7344,6 +7343,8 @@ var ExtensionEditorComponent = class extends Container10 {
   tui;
   keybindings;
   externalEditorCommand;
+  /** Shows external editor failures; renders nothing while empty. */
+  externalEditorStatus = new Text10("", 1, 0);
   _focused = false;
   get focused() {
     return this._focused;
@@ -7376,6 +7377,7 @@ var ExtensionEditorComponent = class extends Container10 {
       this.onSubmitCallback(text);
     };
     this.addChild(this.editor);
+    this.addChild(this.externalEditorStatus);
     this.addChild(new Spacer9(1));
     const hint = keyHint("tui.select.confirm", "submit") + "  " + keyHint("tui.input.newLine", "newline") + "  " + keyHint("tui.select.cancel", "cancel") + `  ${keyHint("app.editor.external", "external editor")}`;
     this.addChild(new Text10(hint, 1, 0));
@@ -7402,6 +7404,7 @@ var ExtensionEditorComponent = class extends Container10 {
         command: this.externalEditorCommand,
         content
       });
+      this.externalEditorStatus.setText(result.status === "failed" ? theme.fg("warning", result.message) : "");
       if (result.status === "complete") {
         this.editor.setText(result.content);
       }
@@ -7416,7 +7419,7 @@ var ExtensionEditorComponent = class extends Container10 {
 import { spawn as spawn3, spawnSync as spawnSync2 } from "node:child_process";
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
-import * as os2 from "node:os";
+import * as os from "node:os";
 import * as path2 from "node:path";
 import { DEFAULT_RADIUS_GATEWAY as DEFAULT_RADIUS_GATEWAY2 } from "../../pi-ai/providers/radius-config.js";
 import { hyperlink as hyperlink2 } from "../../../pi-tui.mjs";
@@ -7445,7 +7448,7 @@ function exportSessionForShare(filePath, session) {
 }
 __name(exportSessionForShare, "exportSessionForShare");
 async function shareSession(context) {
-  const tempDir = fs.mkdtempSync(path2.join(os2.tmpdir(), "pi-share-"));
+  const tempDir = fs.mkdtempSync(path2.join(os.tmpdir(), "pi-share-"));
   const jsonlFile = path2.join(tempDir, "session.jsonl");
   const htmlFile = path2.join(tempDir, "session.html");
   try {
@@ -8398,7 +8401,7 @@ var CustomEntryComponent = class extends Container15 {
     this.customComponent = void 0;
     let component;
     try {
-      component = this.renderer(this.entry, { expanded: this._expanded }, theme);
+      component = this.renderer(this.entry, { expanded: this._expanded, keyText, keyHint }, theme);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const box = new Box3(this.outputPad, 1, (text) => theme.bg("customMessageBg", text));
@@ -8461,7 +8464,7 @@ var CustomMessageComponent = class extends Container16 {
     this.removeChild(this.box);
     if (this.customRenderer) {
       try {
-        const component = this.customRenderer(this.message, { expanded: this._expanded, outputPad: this.outputPad }, theme);
+        const component = this.customRenderer(this.message, { expanded: this._expanded, outputPad: this.outputPad, keyText, keyHint }, theme);
         if (component) {
           this.customComponent = component;
           this.addChild(component);
@@ -8537,7 +8540,7 @@ function playEasterEgg3d(tui, egg) {
   if (tui.hasOverlay())
     return true;
   const screen = tui.getScreenLines();
-  import("./chunk-6VZPGKDV.js").then((module) => module.playEasterEgg3d(tui, screen, egg), () => {
+  import("./chunk-CC2IOZIE.js").then((module) => module.playEasterEgg3d(tui, screen, egg), () => {
   });
   return true;
 }
@@ -11253,7 +11256,9 @@ var ToolExecutionComponent = class extends Container26 {
       showImages: this.showImages,
       isError: this.result?.isError ?? false,
       durationMs: this.isPartial ? void 0 : this.result?.durationMs,
-      outputPad: this.outputPad
+      outputPad: this.outputPad,
+      keyText,
+      keyHint
     };
   }
   createCallFallback() {
@@ -12155,23 +12160,18 @@ var TreeList = class {
     return false;
   }
   formatToolCall(name, args) {
-    const shortenPath2 = /* @__PURE__ */ __name((p) => {
-      const home = process.env.HOME || process.env.USERPROFILE || "";
-      if (home && p.startsWith(home))
-        return `~${p.slice(home.length)}`;
-      return p;
-    }, "shortenPath");
+    const shortenPath = /* @__PURE__ */ __name((p) => shortenHomePath(p, process.env.HOME || process.env.USERPROFILE || ""), "shortenPath");
     switch (name) {
       case "read": {
-        const path5 = shortenPath2(String(args.path || args.file_path || ""));
+        const path5 = shortenPath(String(args.path || args.file_path || ""));
         return `[read: ${path5}${formatReadLineRange(args.offset, args.limit)}]`;
       }
       case "write": {
-        const path5 = shortenPath2(String(args.path || args.file_path || ""));
+        const path5 = shortenPath(String(args.path || args.file_path || ""));
         return `[write: ${path5}]`;
       }
       case "edit": {
-        const path5 = shortenPath2(String(args.path || args.file_path || ""));
+        const path5 = shortenPath(String(args.path || args.file_path || ""));
         return `[edit: ${path5}]`;
       }
       case "bash": {
@@ -12181,16 +12181,16 @@ var TreeList = class {
       }
       case "grep": {
         const pattern = String(args.pattern || "");
-        const path5 = shortenPath2(String(args.path || "."));
+        const path5 = shortenPath(String(args.path || "."));
         return `[grep: /${pattern}/ in ${path5}]`;
       }
       case "find": {
         const pattern = String(args.pattern || "");
-        const path5 = shortenPath2(String(args.path || "."));
+        const path5 = shortenPath(String(args.path || "."));
         return `[find: ${pattern} in ${path5}]`;
       }
       case "ls": {
-        const path5 = shortenPath2(String(args.path || "."));
+        const path5 = shortenPath(String(args.path || "."));
         return `[ls: ${path5}]`;
       }
       default: {
@@ -13919,12 +13919,7 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
   // Extension System
   // =========================================================================
   formatDisplayPath(p) {
-    const home = os3.homedir();
-    let result = p;
-    if (result.startsWith(home)) {
-      result = `~${result.slice(home.length)}`;
-    }
-    return result;
+    return shortenHomePath(p);
   }
   formatExtensionDisplayPath(path5) {
     let result = this.formatDisplayPath(path5);
@@ -15295,7 +15290,7 @@ ${message}`, ["Yes", "No"], opts, {
       }
       const image = await readClipboardImage();
       if (image) {
-        const tmpDir = os3.tmpdir();
+        const tmpDir = os2.tmpdir();
         const ext = extensionForImageMimeType(image.mimeType) ?? "png";
         const fileName = `pi-clipboard-${crypto2.randomUUID()}.${ext}`;
         const filePath = path4.join(tmpDir, fileName);
@@ -16457,6 +16452,8 @@ ${this.crashReportInstructions()}`);
       });
       if (result.status === "complete") {
         this.editor.setText(result.content);
+      } else {
+        this.showStatus(result.message);
       }
     } finally {
       this.ui.start();
@@ -19883,7 +19880,6 @@ import lockfile from "../../../proper-lockfile.mjs";
 import { ProcessTerminal as ProcessTerminal3, TuiMainScreen as TuiMainScreen4 } from "../../../pi-tui.mjs";
 
 // pi-dist/pi-coding-agent/modes/interactive/components/config-selector.js
-import { homedir as homedir4 } from "node:os";
 import { basename as basename2, dirname as dirname4, join as join12, relative as relative3 } from "node:path";
 import { Container as Container32, getKeybindings as getKeybindings15, Input as Input12, matchesKey as matchesKey3, Spacer as Spacer29, truncateToWidth as truncateToWidth8, visibleWidth as visibleWidth8 } from "../../../pi-tui.mjs";
 var RESOURCE_TYPES = ["extensions", "skills", "prompts", "themes"];
@@ -19894,16 +19890,7 @@ var RESOURCE_TYPE_LABELS = {
   themes: "Themes"
 };
 function formatBaseDir(baseDir) {
-  const homeDir = homedir4();
-  let displayPath;
-  if (baseDir === homeDir) {
-    displayPath = "~";
-  } else if (baseDir.startsWith(homeDir)) {
-    const rest = baseDir.slice(homeDir.length);
-    displayPath = `~${rest.replace(/\\/g, "/")}`;
-  } else {
-    displayPath = baseDir.replace(/\\/g, "/");
-  }
+  const displayPath = shortenHomePath(baseDir).replace(/\\/g, "/");
   return displayPath.endsWith("/") ? displayPath : `${displayPath}/`;
 }
 __name(formatBaseDir, "formatBaseDir");
@@ -20526,7 +20513,7 @@ var ResourceList = class {
     return entry.startsWith("!") || entry.startsWith("+") || entry.startsWith("-") ? entry.slice(1) : entry;
   }
   getResourceItemKey(item) {
-    return `${item.resourceType}:${canonicalizePath(item.path)}`;
+    return `${item.resourceType}:${getResourcePathKey(item.path)}`;
   }
   getItemScope(item) {
     return item.metadata.scope === "project" ? "project" : "user";
@@ -21227,6 +21214,7 @@ __name(refreshModelCatalogs2, "refreshModelCatalogs");
 function printSelfUpdateUnavailable(npmCommand, updatePackageTarget = PACKAGE_NAME) {
   console.error(`error: ${APP_NAME} cannot self-update this installation.`);
   console.error(getSelfUpdateUnavailableInstruction(PACKAGE_NAME, npmCommand, updatePackageTarget));
+  console.error(`To make \`${APP_NAME} update\` run your own update command, set PI_SELF_UPDATE_COMMAND or the selfUpdateCommand setting.`);
   const entrypoint = process.argv[1];
   if (entrypoint) {
     console.error("");
@@ -21310,6 +21298,38 @@ async function runSelfUpdate(command) {
   }
 }
 __name(runSelfUpdate, "runSelfUpdate");
+async function runConfiguredSelfUpdate(argv, plan) {
+  const command = makeConfiguredSelfUpdateCommand(argv, plan);
+  if (plan.note) {
+    printSelfUpdateNote(plan.note);
+  }
+  try {
+    await runSelfUpdate(command);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown self-update command error";
+    console.error(chalk6.red(`Error: ${message}`));
+    process.exitCode = 1;
+    return;
+  }
+  const change = detectInstallChange();
+  const installedVersion = change?.kind === "updated" && change.version === plan.version ? change.version : readVersionOnPath();
+  if (installedVersion === plan.version) {
+    console.log(chalk6.green(`Updated ${APP_NAME} from ${VERSION} to ${plan.version}`));
+    return;
+  }
+  console.log(chalk6.yellow(`Ran ${command.display}, but \`${APP_NAME} --version\` reports ${installedVersion ?? "no version"}, not ${plan.version}.`));
+}
+__name(runConfiguredSelfUpdate, "runConfiguredSelfUpdate");
+function readVersionOnPath() {
+  const { PI_PACKAGE_DIR: _, ...env } = process.env;
+  const result = spawnProcessSync(APP_NAME, ["--version"], {
+    encoding: "utf-8",
+    stdio: ["ignore", "pipe", "pipe"],
+    env
+  });
+  return result.status === 0 ? result.stdout.trim() || void 0 : void 0;
+}
+__name(readVersionOnPath, "readVersionOnPath");
 function prepareWindowsNpmSelfUpdate() {
   if (process.platform !== "win32") {
     return;
@@ -21575,7 +21595,8 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
           }
         }
         if (updateTargetIncludesSelf(target)) {
-          const managedInstallRoot = getActiveManagedInstallRoot();
+          const configuredSelfUpdateArgv = getConfiguredSelfUpdateArgv(settingsManager.getGlobalSettings().selfUpdateCommand);
+          const managedInstallRoot = configuredSelfUpdateArgv ? void 0 : getActiveManagedInstallRoot();
           if (managedInstallRoot && options.force) {
             console.error(chalk6.red(`Managed ${APP_NAME} installations do not support --force; rerun the installer to repair this installation.`));
             process.exitCode = 1;
@@ -21583,6 +21604,10 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
           }
           const selfUpdatePlan = await getSelfUpdatePlan(options.force);
           if (!selfUpdatePlan.shouldRun) {
+            return true;
+          }
+          if (configuredSelfUpdateArgv) {
+            await runConfiguredSelfUpdate(configuredSelfUpdateArgv, selfUpdatePlan);
             return true;
           }
           if (managedInstallRoot) {
@@ -22176,7 +22201,7 @@ async function main(args, options) {
     const cachedProjectTrust = projectTrustByCwd.get(cwd2);
     const hasTrustRequiringResources = hasTrustRequiringProjectResources(cwd2);
     const shouldResolveProjectTrust = parsed.projectTrustOverride === void 0 && cachedProjectTrust === void 0 && hasTrustRequiringResources;
-    const projectTrusted = shouldResolveProjectTrust ? false : cachedProjectTrust ?? parsed.projectTrustOverride ?? (!hasTrustRequiringResources || trustStore.get(cwd2) === true);
+    const projectTrusted = shouldResolveProjectTrust ? false : cachedProjectTrust ?? parsed.projectTrustOverride ?? trustStore.get(cwd2) ?? !hasTrustRequiringResources;
     const runtimeSettingsManager = SettingsManager.create(cwd2, agentDir2, { projectTrusted });
     const services2 = await createAgentSessionServices({
       cwd: cwd2,

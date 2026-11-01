@@ -20,6 +20,9 @@ func TestAssistantThinkingClicksThroughTerminal(t *testing.T) {
 	regular := NewWithOutput(&output, 80, 24)
 	zoneBlock := NewAssistantMessageComponent(nil, false, nil, "", nil, nil, "", "")
 	zoneBlock.SetContent(content)
+	if rendered := strings.Join(zoneBlock.Render(80), "\n"); !strings.Contains(rendered, "\x1b]133;A\x07") || !strings.Contains(rendered, "\x1b]133;B\x07\x1b]133;C\x07") {
+		t.Fatal("assistant component no longer produces its zone markers")
+	}
 	regular.Add(zoneBlock)
 	regular.Render()
 	if strings.Contains(output.String(), "\x1b]133;") || !strings.Contains(output.String(), "first reasoning") {

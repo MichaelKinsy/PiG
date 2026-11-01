@@ -61,7 +61,13 @@ Every active divergence must have:
 
 - D171 — An errored Anthropic tool result carries no images (Pi #10792, #10794; Pi 34a8bb38). Retired by the Pi pin `1.2.0+5ab7fe74`: Pi commit `34a8bb38` replaced each image of an error tool result with a text note, and Pi commit `5ab7fe74` replaces it with a placeholder and sends the images after all tool results of the turn, in the same user message, under a caption naming the tool call (`splitErrorToolResultImages` in `packages/ai/src/api/transform-messages.ts`, used by `anthropic-messages.ts` and, for Claude, `bedrock-converse-stream.ts`). `ai.SplitErrorToolResultImages` and the Anthropic and Bedrock converters do the same, and the payload oracles no longer project Pi's payload.
 
+- D173 — Tool search matches Chinese, Japanese and Korean queries (Pi #10816). Retired by Pi 79006f06 (#11037, fixes #10816), which D217 carries: Pi's `tokenize` (`packages/coding-agent/src/extensions/tool-search/tool.ts`, `packages/durable/src/search.ts`) NFC-normalizes the text, reduces it to letters, marks and numbers and splits it with `Intl.Segmenter` at word granularity, so words in every script match and `搜索记录` is split into words by ICU's dictionary. `internal/searchtext.Tokenize` does the same with `internal/wordsegmenter` (ICU 78.3 word rules and the CJK, Thai, Lao, Khmer and Burmese dictionaries, which the editor already embeds) and `golang.org/x/text/unicode/norm`; PiG no longer makes each character a term. `TestTokenizeMatchesPiOnEveryScriptClass` (`coding/extension/builtin/toolsearch`, `durable/internal/search`) compares 4,854 Pi 79006f06 tokenizations of every script class with no difference, and `TestTokenizeSegmentsUnicodeWords` and `TestBm25RankerMatchesUnicodeQueries` port Pi's tests. A Piglet Binary built with `pig_strip_word_dictionaries` has no dictionary, so it keeps a run of Han, Hiragana, Katakana, Thai, Lao, Khmer or Myanmar text as one term (D92, `TestTokenizeKeepsDictionaryScriptRunsWholeWithoutDictionaries`). The ID remains reserved.
+
 - D179 — No Windows host manager (ForkDriver and ProcessChannel Unix-only). Retired before release: the Windows port (`chord/host/manager_fork_windows.go`, `manager_pipe_windows.go`, `manager_ipc_frames.go`) replaces the fallback, so `ForkDriver` and `ProcessChannel` exist on Unix and Windows and `NewNodeLoader` (D178) works on both. Native Windows evidence: all 27 chord/host C2 tests pass x1 and x5 on a Windows x64 runner with Node 24.22.0 (2026-10-14, PiG c0adb3e3cf), including real Node IPC (`TestProcessChannelIsNodesIPCChannel`) and every child-host `HostManager` case. The ID remains reserved.
+
+- D188 — Opening a store at an older Durable schema version keeps a copy of it first, where Pi upgrades it in place. Retired by Pi 1.4.0 (npm `@earendil-works/pi-durable` 1.4.0, tag `v1.4.0` at `4a080252`, 2026-10-21), which writes SQLite schema version 2: Pi commit `f75b3240` (feat(durable): durable sleeping state replaces runtime.sleep, `packages/durable/src/storage/sqlite/migrations.ts:91-116`) adds the `sleeping` task status as migration 2, and the pin `1.4.0+b3a29f11` carries it unchanged. A user going back to a released Pi can open an upgraded store, so the copy PiG wrote to `<path>.schema-1.bak` is no longer needed. `durable/internal/schemabackup` and the two call-site markers are gone; `driver.OpenHarness` and `node.OpenNodeSqliteStorage` upgrade a version 1 store in place, as Pi does (`TestOpenHarnessUpgradesAVersionOneStoreInPlace`, `TestOpenNodeSqliteStorageUpgradesAVersionOneStoreInPlace`; Pi's migration test is twinned by `durable/storage/sqlite/sqlite_migrations_test.go`). Pi releases before 1.4.0 still refuse a version 2 store; a user who needs one keeps their own copy.
+
+- D217 — Pi bug fixes after the pin that next carried (Pi e7a0df27..e3da248e). Retired by pin 2c8d1feb, which is at or after every carried Pi commit (`86dc686c` through `e3da248e`); its fixes are Pi behavior, and the markers, oracle hooks and allowances are gone.
 
 ## Active divergences
 
@@ -319,6 +325,8 @@ The package-manager tier invokes the proven owner's exact `install -g` command. 
 Pi 1.4.0 prunes managed releases after `pi update` and keeps the new release and the one that ran the update (`package-manager-cli.ts` `pruneManagedReleases`, #10392). A standalone pig has no release directory: a replacement leaves only the new executable, with the rollback link and the lock sidecar removed (`TestSelfReplaceAtWithCommitKeepsOnlyTheNewExecutable`).
 
 Pi `476a303c1` (#11270) drops the `--min-release-age=0` override from the `npm ci` that a pi.dev installer update runs against its release lockfile (`package-manager-cli.ts` `runManagedNpmCi`). A standalone pig runs no managed `npm ci`, so the flag has no counterpart and nothing is ported; the update tiers above are unchanged.
+
+Pi 8bc94b19 adds `PI_SELF_UPDATE_COMMAND` and the global `selfUpdateCommand` setting. In PiG a configured command is the user's explicit choice of the one owner, made before tier resolution: it replaces the standalone, package-manager, immutable-binary and container tiers (as Pi lets it replace every install method) and never falls through to one, and a failing command surfaces as its own error. The release it fills `{packageName}`, `{version}` and `{installSpec}` from is the signed update manifest, so a configured command with no update source does not run. `PIG_SELF_UPDATE_COMMAND` is read before `PI_SELF_UPDATE_COMMAND`, as `PIG_PACKAGE_DIR` precedes `PI_PACKAGE_DIR`. Success is reported only when the replaced executable, else `pig --version` on PATH, reports the release version (build metadata ignored). Only the global settings are read, so a project cannot inject a command. The update note prints as plain text, and the unsupported-installation message names the variable and setting without repeating `pig update`. Locked by `coding/cli/self_update_configured_test.go` and `internal/codingagent/config_upstream_test.go`.
 
 Immutable-binary and container tiers emit exact pull/rebuild/redeploy
 remediation rather than in-place drift; read-only/Windows standalone/unknown
@@ -2210,26 +2218,6 @@ Remove when: Pi summarizes over-window histories itself (chunking or trimming th
 
 SCRUTINIZED:approved
 
-## D173 Tool search matches Chinese, Japanese and Korean queries (Pi #10816)
-
-What: Pi's tool-search tokenizer (`tokenize` in `packages/coding-agent/src/extensions/tool-search/tool.ts`) lowercases text and splits it on `/[^a-z0-9]+/`, so every Chinese, Japanese and Korean character is dropped: `tokenize("记录")` is empty and a query in those scripts never matches a tool whose name, description or schema holds the same words. `tool_search` and codemode `searchTools()` both rank with it. PiG makes each Han, Hiragana, Katakana or Hangul character a term of its own, so `记录` becomes the terms `记` and `录` and matches a tool whose metadata holds them, and `search_notes 搜索记录` keeps its ASCII terms beside the four characters. Text without those characters tokenizes exactly as in Pi: accented Latin letters still split a word (`café` is `caf`), Cyrillic and Arabic are still dropped, and the Japanese prolonged sound mark (script Common) still splits a term.
-
-Why: A user who writes tool descriptions or queries in Chinese, Japanese or Korean cannot find their tools by search. Pi 1.4.0 and Pi main have the same tokenizer and no fix or pull request; the report was auto-closed.
-
-Scope: `Tokenize` in `coding/extension/builtin/toolsearch/toolsearch.go`, used by the BM25 ranker of `tool_search` and codemode search. Terms are single characters (no segmentation, no bigrams), so a two-character query matches a tool holding either character and BM25 ranks a tool holding both higher. Other scripts are not widened.
-
-Owner decision: 2026-10-12T04:15Z, owner approved the sign-off entry for #10816 (lane fix-pi-bugs-ai): ship it as a numbered divergence, CJK scripts only.
-
-Call-site markers: `coding/extension/builtin/toolsearch/toolsearch.go` (`Tokenize`).
-
-Evidence: `TestTokenizeKeepsCJKCharactersAsTerms` and `TestBm25RankerFindsAChineseQueryInChineseToolMetadata` (`coding/extension/builtin/toolsearch/toolsearch_cjk_test.go`; red without the change, with rows for text without CJK characters that stays Pi's).
-
-Parity allowance: `TestToolSearchMatchesPi` replaces every CJK character of its probes with a space on both sides before comparing (`spaceOutCJK`), because Pi 1.4.0 splits a term at each of them; the rest of its probes stay byte-equal with Pi.
-
-Remove when: Pi's tokenizer keeps Chinese, Japanese and Korean characters.
-
-SCRUTINIZED:approved
-
 ## D177 The calls of a parallel durable tool round start in unspecified order
 
 What: In a parallel tool round (the default `toolExecution`, no call's tool requiring sequential execution) PiG runs each call's tool task as its own goroutine, so the calls start concurrently and the order of their first side effects within one round is unspecified. Pi 1.4.0's generation creates every tool task of the round in one commit and its single event loop runs each `execute` up to its first await in call order, so `harness-tools.test.ts:263` observes `["start a", "start b"]` exactly. Pi does not specify that order; it follows from running on one thread.
@@ -2434,28 +2422,6 @@ Remove when: a native SDK's handlers run where a blocked handler yields to the n
 
 SCRUTINIZED:approved
 
-## D188 Opening a store at an older Durable schema version keeps a copy of it first, where Pi upgrades it in place
-
-What: PiG's Durable writes SQLite schema version 2 (Pi main's `sleeping` task status, `packages/durable/src/storage/sqlite/migrations.ts`), which no Pi release writes yet: pi-durable 1.3.0 writes version 1 and refuses a newer store ("Durable SQLite schema version 2 is newer than supported version 1"). Pi upgrades a version 1 store in place when it opens it. PiG first copies the file to `<path>.schema-1.bak` (`VACUUM INTO`, which includes the WAL), then upgrades it as Pi does. If that name is taken it uses `<path>.schema-1-2.bak`, and so on: an earlier copy is never replaced. If the copy fails, the open fails and the store stays at version 1.
-
-Why: without the copy, trying PiG on a store pi-durable 1.3.0 wrote is a one-way step: the user cannot go back to the released Pi with their data (issue #245). The copy is a store pi-durable 1.3.0 opens as it was.
-
-Scope: the two openers that take a file path, `driver.OpenHarness` (`durable/core/driver/open.go`) and `node.OpenNodeSqliteStorage` (`durable/storage/sqlite/node/node.go`), through `schemabackup.BeforeUpgrade` (`durable/internal/schemabackup`). It copies only a file whose schema table holds a version from 1 up to one below the version PiG writes. A new or empty file, `:memory:`, a `file:` URI, a store at the current version, and storage opened over a database the caller already holds (`sqlite.Open`, the Cloudflare Durable Object storage, the contract gate's hosts) are unchanged.
-
-Workaround: none needed in PiG. In Pi, copy the database file before opening it with a newer release.
-
-Owner decision: approved by owner Michael Kinsy on 2026-10-20 ("proceed with your fix" on issue #245; choice: a copy before the upgrade rather than leaving version 1 stores unupgraded, because the harness relies on the `sleeping` status for retries and sleeps; user impact: one extra file the size of the store, written once per older store; parity cost: a file Pi does not write).
-
-Call-site markers: `durable/core/driver/open.go` (`openHarness`), `durable/storage/sqlite/node/node.go` (`OpenNodeSqliteStorage`).
-
-Evidence: `TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading` and `TestOpenNodeSqliteStorageDoesNotCopyANewOrCurrentStore` (`durable/storage/sqlite/node/schema_backup_test.go`), `TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading` (`durable/core/driver/schema_backup_core_test.go`). Checked by hand on 2026-10-20: a store pi-durable 1.3.0 created, opened by PiG, is refused by pi-durable 1.3.0, and its `.schema-1.bak` copy opens in pi-durable 1.3.0.
-
-Parity allowance: none needed. No paired scenario looks at the files next to a store, and the contract gate's hosts open stores without the copy, so every store, commit and order comparison is unchanged.
-
-Remove when: a Pi release writes schema version 2, so a user going back to released Pi can open the upgraded store; or the owner reverses the decision. Then `durable/internal/schemabackup`, the two call sites and the three tests go.
-
-SCRUTINIZED:approved
-
 ## D190 The built-in file mutation queue also orders mutations of one existing file reached through a hard link or a case alias Pi's realpath key keeps apart
 
 What: Pi's `withFileMutationQueue` (`packages/coding-agent/src/core/tools/file-mutation-queue.ts`) keys each call by `realpath(resolve(path))`, and a path that does not exist keeps its resolved name. PiG's queue (`FileMutationQueue`, behind the `edit` and `write` tools and `WithFileMutationQueue`) keeps that key and also makes a call wait for every earlier call that is still queued for the same existing file under another key (`os.SameFile`): the hard links of a file, and the case aliases of a file on a case-insensitive filesystem. Pi runs those calls at once. On macOS Pi's native `realpath` returns the on-disk case, so Pi orders case aliases there (reported from the #270 author's run of the pinned Pi on macOS; not rerun here), while Go's `filepath.EvalSymlinks` keeps the name as typed; the identity check restores that order and is parity on macOS. Pi's probe on Linux (pinned `1402973a`, `fs.promises.realpath` through glibc): two calls through a hard link both start while the first is held, and so do two calls through `Target.txt` and `target.txt` on an ext4 casefold directory.
@@ -2576,13 +2542,13 @@ What: for every `openrouter` chat model of Pi's catalog that does not already en
 
 Why: OpenRouter accepts `:nitro` (providers sorted by throughput, priority service tier endpoints admitted) and `:floor` (providers sorted by price, flex service tier endpoints admitted) on every model ID but never lists them in `GET /api/v1/models`, which is where Pi's catalog comes from, so a user cannot pick them in Pi's selector (issue #315). OpenRouter's variants page (https://openrouter.ai/docs/guides/routing/model-variants/overview, "Offering routing variants in a model picker") tells clients to derive them from the base entries and to read the metadata from the base entry.
 
-Scope: one rule, `ai/openrouter_variants.go` (`OpenRouterRoutingVariants`, `OpenRouterVariant`, `WithOpenRouterRoutingVariants`, and `WithOpenRouterRoutingVariantModels` for a saved list), data-driven from OpenRouter's documented suffix list; no model is named. Used by `ai.ListModels` (OpenRouter and the whole catalog), `ai.LookupModel` and `ai.LookupModelExact` (a variant the catalog does not list is derived from its base and cached), `builtinChatCatalogListed` (the registry's selector, `--list-models`, RPC and SDK lists; built on first use, so a caller that only resolves a model builds none), `GetProviderModelDataByID` and the model reference resolver (`withNamedRoutingVariants`: a reference that names `:nitro` or `:floor` finds the variant of the model it means). A partial model text (`--model 4o`, scoped-model patterns, the resolver's fuzzy match) is not matched against a variant unless the text itself names `:nitro` or `:floor`, so every text Pi resolves resolves to the same model here (Pi's reverse-collation tie break would otherwise prefer `:nitro`). The listed price is the base model's rate; OpenRouter bills a request at the rate of the endpoint that served it (a priority endpoint for `:nitro`, a flex endpoint for `:floor`). Image and classifier models, other providers, the remote catalog overlay and the other routing variants (`:exacto`, `:online`) are unchanged.
+Scope: one rule, `ai/openrouter_variants.go` (`OpenRouterRoutingVariants`, `OpenRouterVariant`, `WithOpenRouterRoutingVariants`, and `WithOpenRouterRoutingVariantModels` for a saved list), data-driven from OpenRouter's documented suffix list; no model is named. Used by `ai.ListModels` (OpenRouter and the whole catalog), `ai.LookupModel` and `ai.LookupModelExact` (a variant the catalog does not list is derived from its base and cached), `builtinChatCatalogListed` (the registry's selector, `--list-models`, RPC and SDK lists and `RuntimeModels`; built on first use, so a caller that only resolves a model, or reads the available models of a registry without OpenRouter auth, builds none), `GetProviderModelDataByID` and the model reference resolver (`withNamedRoutingVariants`: a reference that names `:nitro` or `:floor` finds the variant of the model it means). A partial model text (`--model 4o`, scoped-model patterns, the resolver's fuzzy match) is not matched against a variant unless the text itself names `:nitro` or `:floor`, so every text Pi resolves resolves to the same model here (Pi's reverse-collation tie break would otherwise prefer `:nitro`). The listed price is the base model's rate; OpenRouter bills a request at the rate of the endpoint that served it (a priority endpoint for `:nitro`, a flex endpoint for `:floor`). Image and classifier models, other providers, the remote catalog overlay and the other routing variants (`:exacto`, `:online`) are unchanged.
 
 Owner decision: approved by owner Michael Kinsy on 2026-10-24 (issue #315, an additive extension that overlaps Pi's catalog).
 
 Call-site markers: `ai/openrouter_variants.go` (`OpenRouterVariant`), `ai/registry.go` (`ListModels`, `LookupModel`, `LookupModelExact`), `internal/codingagent/builtin_chat_catalog.go` (`builtinChatCatalogListed`), `internal/codingagent/model_catalog_data.go` (`GetProviderModelData`, `GetProviderModelDataByID`), `internal/codingagent/remote_catalog_provider.go` (`withPersonalizedCatalogOverlay`), `internal/codingagent/model_pattern.go` (`withNamedRoutingVariants`, `fuzzyMatches`).
 
-Evidence: `TestRefreshedOpenRouterProviderListsRoutingVariantsOfTheRefreshedList`, `TestSavedOpenRouterListShowsRoutingVariantsOnEveryRegistryListing` (`internal/codingagent/remote_catalog_openrouter_variants_test.go`) and `TestRegistryPersonalizesTheOpenRouterCatalogThroughTheConfiguredBaseURL` pin the refreshed list; `TestOpenRouterRoutingVariantsMirrorTheirBaseEntries`, `TestOpenRouterRoutingVariantsAreLookedUpFromTheirBase` and `TestRewriteRecordIdentity` (`ai/openrouter_variants_test.go`) pin the rule from OpenRouter's documentation: both variants after each base entry, equal to the base but for id, name and record, found by lookup, none on another provider, none stored in `GeneratedModels`; `TestPartialModelTextIgnoresOpenRouterRoutingVariants` (`internal/codingagent/model_pattern_openrouter_variants_test.go`) pins the resolver rule against the failure the paired `TestResolveCliModelAndScopeMatchPi` showed when a variant was a candidate (`--model 4o` resolved to `:nitro`, Pi to `:batch`).
+Evidence: `TestRefreshedOpenRouterProviderListsRoutingVariantsOfTheRefreshedList`, `TestSavedOpenRouterListShowsRoutingVariantsOnEveryRegistryListing` (`internal/codingagent/remote_catalog_openrouter_variants_test.go`) and `TestRegistryPersonalizesTheOpenRouterCatalogThroughTheConfiguredBaseURL` pin the refreshed list; `TestOpenRouterRoutingVariantsMirrorTheirBaseEntries`, `TestOpenRouterRoutingVariantsAreLookedUpFromTheirBase` and `TestRewriteRecordIdentity` (`ai/openrouter_variants_test.go`) pin the rule from OpenRouter's documentation: both variants after each base entry, equal to the base but for id, name and record, found by lookup, none on another provider, none stored in `GeneratedModels`; `TestAvailableModelDataDerivesRoutingVariantsOnlyForAConfiguredOpenRouter` and `TestSelectorModelLookupBuildsOnlyTheModelRead` (`internal/codingagent`) pin that a variant is derived only where it is listed or named, and `TestPartialModelTextIgnoresOpenRouterRoutingVariants` (`internal/codingagent/model_pattern_openrouter_variants_test.go`) pins the resolver rule against the failure the paired `TestResolveCliModelAndScopeMatchPi` showed when a variant was a candidate (`--model 4o` resolved to `:nitro`, Pi to `:batch`).
 
 Parity allowance: the bundled catalog and every comparison of it with Pi (`TestCatalogModelJSONMatchesPiForEveryBuiltinModel`, `TestGeneratedCatalogsMatchPublishedPackage`, `TestModelObjectsMatchPisModelObjects`) are unchanged. The tests that compare a provider list with Pi's (`TestBuiltinCatalogsMatchPinnedProviderDataModules`, `TestProviderCatalogExportsMatchPinnedData`, the Anthropic catalog denominators, `TestModelRegistryMatchesPi`) leave the derived variants out of the comparison. `TestResolveCliModelAndScopeMatchPi` is unchanged and still equal to Pi.
 
@@ -2783,5 +2749,76 @@ Evidence: `TestInstalledAbsoluteLocalPackageResolvesThroughAnotherAgentDirSpelli
 Parity allowance: the ported case `package-command-paths.test.ts:431` ("allows local package install to initialize fresh project settings", `TestPortWave10PackageCommandPaths`) installs an absolute path and expects the entry relative to `.pi`; PiG's port asserts the path as typed. Scenario `cli-utils/04-package-install-local` installs a relative path, which is stored as Pi stores it.
 
 Remove when: Pi stores an absolute local path as typed, or the owner reverses the decision. Then the branch, the call-site marker and the tests' D215 cases go.
+
+SCRUTINIZED:approved
+
+## D218 Chord's HTTP listener runs on Go's net/http, which answers some malformed requests before the component does
+
+What: Pi's Chord HTTP listener is Node's `http` module; PiG's is a `net/http.Server` (`chord/nextnode/http`). Pi's parser hands a request with two `Host` headers, or a `Host` with userinfo, to the component, which refuses it 403 with the default security headers. Go's server refuses both itself, before any handler, with a canned `400 Bad Request` and none of the default headers (`net/http/request.go` "too many Host headers", `server.go` "malformed Host header"). Also: an HTTP/1.0 request's answer has an `HTTP/1.0` status line (Node writes `HTTP/1.1`); the status line's reason phrase is Go's (the answers' own text is Node's table); header names are written in canonical case; and net/http watches the connection for a disconnect only once the request body is read, so a client that goes away with an unread body is seen when the route reads or writes, where Node sees the socket close at any time.
+
+Why: no `http.Server` option, hook or `ErrorLog` reaches these checks, and a pre-scan or rewrite of the request bytes would be an HTTP framing parser. The listener keeps Node's limits (`headersTimeout`, `requestTimeout`, 16 KiB of headers, keep-alive 5 s) in Go's settings.
+
+Scope: the listener of `chord/nextnode/http` (`node.go`). `Fetch` and `NodeRequestOf`, which take a request from any server, still refuse these requests with Pi's 403. Every affected request is refused either way and no route runs, so the difference is visible only to whoever owns the listener.
+
+Owner decision: 2026-11-01, owner approved recording the net/http differences as one numbered divergence (D218).
+
+Call-site marker: `chord/nextnode/http/node.go` (the "Forced Go differences" block).
+
+Evidence: `TestTargetsRefuseAnAbsoluteFormTargetTwoHostHeadersAndNone` and the other tests of `chord/nextnode/http/node_test.go` state both answers; the review tests in `review_test.go` pin the cancellation reason `http: the client disconnected`.
+
+Parity allowance: none needed; the Pi side has no oracle that sends these requests to a Go listener.
+
+Remove when: Pi's listener stops being Node's `http` module, or Go's net/http lets a handler see a request it now refuses.
+
+SCRUTINIZED:approved
+
+## D219 pi-schema regular expressions differ from V8 in four contrived cases
+
+What: PiG's `schema` package compiles `pattern` and `patternProperties` keys and the `regex` format with `schema/internal/ecmaregex`, which translates an ECMAScript pattern to `dlclark/regexp2`; Pi runs V8 (`packages/schema/src/shared.ts`, `formats/typebox/regex.ts`). A schema whose pattern uses a case-insensitive modifier group `(?i:...)` (ES2025; Node 22 rejects it, so Pi on Node 22 throws at compile) with a backreference, or one of three Annex B patterns, or a subject V8 stores two bytes per unit although it holds only Latin-1 units, can accept or reject a string that Pi rejects or accepts. No pattern outside modifier groups and no u-mode pattern without `(?i:)` differs; every other row of the 3,821-pattern golden agrees with V8.
+
+Why: V8 compares a backreference inside `(?i:...)` by ECMAScript Canonicalize; regexp2 compares with `unicode.ToLower`, and a translation cannot change a comparison that runs inside regexp2. The three Annex B results have no deterministic rule in V8's regexp source. V8 decides some modifier-group results by whether the subject string is stored one byte per unit, which is not a function of the string value, so PiG uses "every unit is <= U+00FF".
+
+Scope: `schema/internal/ecmaregex` (the case-insensitive backreference translation in `emit.go` and `casefold.go`), reached through `schema.Compile` and `formats.IsRegex`. Oracle: Node 24.22.1.
+
+Owner decision: 2026-11-01, owner approved recording the four differences as one numbered divergence (D219).
+
+Call-site markers: `schema/internal/ecmaregex/emit.go`, `schema/internal/ecmaregex/casefold.go`.
+
+Evidence: `TestKnownGaps` (`schema/internal/ecmaregex/golden_test.go`) pins each row on both sides, so a change of either side fails it; the golden replay (`TestGoldenRegex`) covers every other row.
+
+The differences, in modifier groups with a backreference:
+
+| mode | pattern | input | V8 | PiG |
+|---|---|---|---|---|
+| u | `^(?i:(\w)\1)$` | `"s\u017f"` | true | false |
+| u | `^(?i:(s)\1)$` | `"s\u017f"` | true | false |
+| u | `^(?i:(\u017f)\1)$` | `"s\u017f"` | true | false |
+| u, annexB | `^(?i:(\u03c3)\1)$` | `"\u03c3\u03c2"` | true | false |
+| u, annexB | `^(?i:(\u03c2)\1)$` | `"\u03c2\u03c3"` | true | false |
+| u, annexB | `^(?i:(.)\1)$` | `"\u03c3\u03c2"`, `"\u03c2\u03c3"` (and `"s\u017f"` in u) | true | false |
+| u, annexB | `^(?i:(\w)\1)$` | `"i\u0130"` | false | true |
+| u, annexB | `^(?i:(i)\1)$` | `"i\u0130"` | false | true |
+| u, annexB | `^(?i:(\u0130)\1)$` | `"\u0130i"` | false | true |
+| u, annexB | `^(?i:(.)\1)$` | `"i\u0130"`, `"\u0130i"` | false | true |
+| annexB | `^(?i:(\w)\1)$` | `"k\u212a"` | false | true |
+| annexB | `^(?i:(k)\1)$` | `"k\u212a"` | false | true |
+| annexB | `^(?i:(\u212a)\1)$` | `"\u212ak"` | false | true |
+| annexB | `^(?i:(.)\1)$` | `"k\u212a"`, `"\u212ak"` | false | true |
+
+Annex B patterns with no deterministic V8 rule (they need `(?i:...)` with Annex B syntax, a lone `{`, `\a`, `\c`, `\ude00`, and only arise when the u-mode compile of the same source fails):
+
+| mode | pattern | input | V8 | PiG |
+|---|---|---|---|---|
+| annexB | `(?i:[\n\p{Lu}\x62]\|[^a-c😀x-z])\W\u0061` | `"A\u03c3a\u00b5"` | true | false |
+| annexB | `(?im-s:(?<n1>(?:)()\s{\|\u212a[\n\0K]()?)(?:()))` | `"\u212ak"` | false | true |
+| annexB | `(?ims:(?m:(?=\aΩ\c){,2}\n)(?<n1>\b(?=xx??)\d)\|\/(\w)[aA]\|[\u0061a-c\cA])+[^\ude00]` | `"AB"` | false | true |
+
+These need `(?i:...)` with Annex B syntax (a lone `{`, `\a`, `\c`, `\ude00`); they only arise when the u-mode compile of the same source fails.
+
+One-byte subject storage: `(?i-:[\-c\D]?\u212a{2})` on `"kK"` gave both results in one V8 run depending on how the subject was built; there is no PiG result to compare.
+
+Parity allowance: `schema/internal/ecmaregex/golden_test.go` (`TestKnownGaps`) states both sides of every row.
+
+Remove when: regexp2 gains Canonicalize-based case-insensitive backreference comparison, or PiG gets its own backtracking engine for the ECMAScript grammar. Then the markers, the rows of `knownGaps` and this record go.
 
 SCRUTINIZED:approved

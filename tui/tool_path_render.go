@@ -26,10 +26,7 @@ func shortenPath(path string) string {
 	if err != nil || home == "" {
 		return path
 	}
-	if strings.HasPrefix(path, home) {
-		return "~" + path[len(home):]
-	}
-	return path
+	return resolvepath.ShortenHomePath(path, home)
 }
 
 // linkPath wraps styledText in an OSC-8 hyperlink targeting the file://

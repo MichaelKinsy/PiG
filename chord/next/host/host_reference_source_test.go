@@ -1262,10 +1262,10 @@ func TestHostReferenceSourceAFailedAttemptIsCollectedAfterARetryWhileTheObjectIt
 		defer mu.Unlock()
 		return attempts[index]
 	}
-	failLive(attemptAt(0).Value(), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil))
-	store.Retry()
-	again := refGet(t, host, msStore, jsonObject())
-	again.Release()
+	// `failLive(...); store.retry(); (await host.get(Store, {})).release()` (reference-source.test.ts:503-505): the failure and
+	// the retry are one synchronous block of Pi's event loop, so the failed object's stop of following (a microtask) lands
+	// after the retry and the retained watch gets no failure call.
+	msFailRetry(t, host, attemptAt(0).Value(), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil), store, msStore, jsonObject())
 	msAdd(t, store, "a")
 	deliveredOn(host)
 	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(frames.Items()), []any{float64(1)})

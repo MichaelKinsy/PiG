@@ -68,8 +68,9 @@ func (t *TuiSurface) composeScreen(screen frontend.Screen, anchor Component) ([]
 	mainCols, dockCols := t.session.Columns()
 	t.mu.Lock()
 	document, dock := t.document, t.dock
-	width := max(1, t.width)
 	t.mu.Unlock()
+	columns, _ := t.size()
+	width := max(1, columns)
 	at := -1
 	var doc, docked []string
 	if document != nil {
@@ -205,9 +206,8 @@ func (t *TuiSurface) Click(click frontend.Click) {
 // mainRenderWidth is the width main's lines render at.
 func (t *TuiSurface) mainRenderWidth() int {
 	mainCols, _ := t.session.Columns()
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return regionWidth(mainCols, max(1, t.width))
+	columns, _ := t.size()
+	return regionWidth(mainCols, max(1, columns))
 }
 
 // clickedOverlay returns the component of the fullscreen overlay with node

@@ -45,9 +45,14 @@ export function refreshTerminalDimensions() {
         // Signal delivery not permitted in this environment; ignore.
     }
 }
+// Some Apple Terminal setups send ESC+CR (Alt+Enter) for Shift+Enter (#11559).
+function isNativeShiftEnterCandidate(data) {
+    return data === "\r" || data === "\x1b\r";
+}
 export function normalizeNativeShiftEnterInput(data, shouldDetectNativeShiftEnter, isShiftPressed) {
-    if (shouldDetectNativeShiftEnter && data === "\r" && isShiftPressed)
+    if (shouldDetectNativeShiftEnter && isNativeShiftEnterCandidate(data) && isShiftPressed) {
         return NATIVE_SHIFT_ENTER_SEQUENCE;
+    }
     return data;
 }
 export function normalizeAppleTerminalInput(data, isAppleTerminal, isShiftPressed) {
@@ -296,7 +301,7 @@ export class ProcessTerminal {
     forwardInputSequence(sequence) {
         if (!this.inputHandler)
             return;
-        const shouldDetectNativeShiftEnter = sequence === "\r" && (isAppleTerminalSession() || process.platform === "win32");
+        const shouldDetectNativeShiftEnter = isNativeShiftEnterCandidate(sequence) && (isAppleTerminalSession() || process.platform === "win32");
         const input = normalizeNativeShiftEnterInput(sequence, shouldDetectNativeShiftEnter, shouldDetectNativeShiftEnter && isNativeModifierPressed("shift"));
         this.inputHandler(input);
     }

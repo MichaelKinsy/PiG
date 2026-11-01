@@ -67,5 +67,4 @@ async function jsonCase() {
 const results = [];
 for (const delivery of ['buffered', 'pending', 'split']) results.push(await fetchCase(delivery));
 results.push(await jsonCase());
-console.log(JSON.stringify({node: process.version, results}, null, 1));
-process.exit(0);
+process.stdout.write(JSON.stringify({node: process.version, results}, null, 1) + "\n", () => process.exit(0));

@@ -464,6 +464,11 @@ func TestHoldsAcrossAReload(t *testing.T) {
 		})}}, background, ReloadOptions{})
 		must(t, err)
 		rel.Transported()
+		// The reload publishes the type, and the object the waiting hold asks for activates after it returned: in Pi that is
+		// microtasks, which `transported()` drains; here it is an owned task, so the tab's reference is awaited live, and
+		// the frames of its state watch delivered.
+		awaitLive(t, notes)
+		deliveredOn(rel.Tab)
 		if kind := rhRefState(notes); kind != RefStateLive {
 			t.Fatalf("state = %v, want live", kind)
 		}

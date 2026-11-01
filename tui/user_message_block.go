@@ -53,6 +53,7 @@ func (u *UserMessageComponent) rebuild() {
 	if u.inner == nil {
 		background := &DefaultTextStyle{BgColor: func(text string) string { return UserMessageBgOpen() + text + BgClose() }}
 		u.inner = NewMarkdownWithOptions(u.content, u.outputPad, 1, u.markdownTheme, background, &MarkdownOptions{PreserveOrderedListMarkers: true, PreserveBackslashEscapes: true, Transform: u.transform})
+		u.inner.FinishStreaming()
 		u.Add(u.inner)
 	} else {
 		u.inner.paddingX = u.outputPad

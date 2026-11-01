@@ -37,7 +37,8 @@ type ExtensionRuntime struct {
 	mu                           sync.Mutex
 	pendingNativeProviders       []PendingNativeProviderRegistration
 	staleMessage                 string
-	eventBusUnsubscribers        []*eventBusSubscription
+	eventBusHead, eventBusTail   *eventBusSubscription
+	eventBusRetained             int
 	factoryAPIs                  map[string]func(message string)
 	nativeBound                  bool
 	pendingProviderRegistrations *providerRegistrationQueue

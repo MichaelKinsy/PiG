@@ -1,0 +1,3 @@
+### Added
+
+- `pig update` can update PiG through a wrapper or another package manager. Set `PI_SELF_UPDATE_COMMAND` (or `PIG_SELF_UPDATE_COMMAND`, read first), for example `mise use -g npm:{packageName}@{version}`, or the global `selfUpdateCommand` setting. `pig update` runs it when the signed release manifest names a newer release (or with `--force`), fills `{packageName}`, `{version}` and `{installSpec}` from that release, and reports `Updated pig from X to Y` only when `pig --version` confirms Y. The command replaces PiG's own update tiers and never falls through to one; a project's settings cannot set it. See "Custom update command" in the CLI docs.

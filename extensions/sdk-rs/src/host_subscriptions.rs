@@ -7,7 +7,7 @@ use crate::theme::Theme;
 use serde_json::{Map, Value};
 use std::collections::VecDeque;
 use std::io;
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -33,7 +33,12 @@ pub(crate) struct Feed<T: Clone + Send + 'static> {
 impl<T: Clone + Send + 'static> Feed<T> {
     fn new(what: &'static str) -> Self {
         Self {
-            state: Mutex::new(FeedState { subs: Vec::new(), queue: VecDeque::new(), running: false, stopped: false }),
+            state: Mutex::new(FeedState {
+                subs: Vec::new(),
+                queue: VecDeque::new(),
+                running: false,
+                stopped: false,
+            }),
             next_id: AtomicU64::new(1),
             what,
         }
@@ -46,7 +51,15 @@ impl<T: Clone + Send + 'static> Feed<T> {
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
         self.state.lock().unwrap().subs.push((id, handler));
         let feed = self.clone();
-        HostSubscription { release: Some(Box::new(move || feed.state.lock().unwrap().subs.retain(|(sub, _)| *sub != id))) }
+        HostSubscription {
+            release: Some(Box::new(move || {
+                feed.state
+                    .lock()
+                    .unwrap()
+                    .subs
+                    .retain(|(sub, _)| *sub != id)
+            })),
+        }
     }
 
     /// Queue `value` for the handlers subscribed now.
@@ -56,7 +69,11 @@ impl<T: Clone + Send + 'static> Feed<T> {
             if state.stopped || state.subs.is_empty() {
                 return;
             }
-            let handlers = state.subs.iter().map(|(_, handler)| handler.clone()).collect();
+            let handlers = state
+                .subs
+                .iter()
+                .map(|(_, handler)| handler.clone())
+                .collect();
             state.queue.push_back((value, handlers));
             if state.running {
                 return;
@@ -65,10 +82,12 @@ impl<T: Clone + Send + 'static> Feed<T> {
         }
         threads.start();
         let (feed, finished) = (self.clone(), threads.clone());
-        let spawned = thread::Builder::new().name(format!("pig-{}-change", self.what)).spawn(move || {
-            feed.run();
-            finished.finish();
-        });
+        let spawned = thread::Builder::new()
+            .name(format!("pig-{}-change", self.what))
+            .spawn(move || {
+                feed.run();
+                finished.finish();
+            });
         if spawned.is_err() {
             let mut state = self.state.lock().unwrap();
             state.running = false;
@@ -138,7 +157,10 @@ pub(crate) struct LoadedGate {
 
 impl LoadedGate {
     pub(crate) fn new(done: bool) -> Self {
-        Self { done: Mutex::new(done), changed: std::sync::Condvar::new() }
+        Self {
+            done: Mutex::new(done),
+            changed: std::sync::Condvar::new(),
+        }
     }
 
     pub(crate) fn wait(&self) {
@@ -241,7 +263,9 @@ impl Context {
 
     /// The running tool call's arguments with every object, at any depth, in the member order JavaScript's `Object.keys` gives (array-index keys ascending, then the others in insertion order), which Pi's `execute` params keep and an extension that writes the arguments back out (`JSON.stringify(params.metadata)`) relies on. `None` outside a tool handler or when the arguments are not an object.
     pub fn tool_params(&self) -> Option<Map<String, Value>> {
-        let Value::Object(object) = js_ordered(serde_json::from_str(self.tool_input.as_deref()?).ok()?) else {
+        let Value::Object(object) =
+            js_ordered(serde_json::from_str(self.tool_input.as_deref()?).ok()?)
+        else {
             return None;
         };
         Some(object)
@@ -252,9 +276,16 @@ impl Context {
 fn js_ordered(value: Value) -> Value {
     match value {
         Value::Object(object) => {
-            let (mut indexes, others): (Vec<_>, Vec<_>) = object.into_iter().partition(|(key, _)| is_array_index(key));
+            let (mut indexes, others): (Vec<_>, Vec<_>) =
+                object.into_iter().partition(|(key, _)| is_array_index(key));
             indexes.sort_by_key(|(key, _)| key.parse::<u64>().unwrap_or(0));
-            Value::Object(indexes.into_iter().chain(others).map(|(key, value)| (key, js_ordered(value))).collect())
+            Value::Object(
+                indexes
+                    .into_iter()
+                    .chain(others)
+                    .map(|(key, value)| (key, js_ordered(value)))
+                    .collect(),
+            )
         }
         Value::Array(items) => Value::Array(items.into_iter().map(js_ordered).collect()),
         other => other,
@@ -262,5 +293,10 @@ fn js_ordered(value: Value) -> Value {
 }
 
 fn is_array_index(key: &str) -> bool {
-    key == "0" || (!key.is_empty() && key.len() <= 10 && !key.starts_with('0') && key.bytes().all(|b| b.is_ascii_digit()) && key.parse::<u64>().is_ok_and(|n| n <= u64::from(u32::MAX) - 1))
+    key == "0"
+        || (!key.is_empty()
+            && key.len() <= 10
+            && !key.starts_with('0')
+            && key.bytes().all(|b| b.is_ascii_digit())
+            && key.parse::<u64>().is_ok_and(|n| n < u64::from(u32::MAX)))
 }

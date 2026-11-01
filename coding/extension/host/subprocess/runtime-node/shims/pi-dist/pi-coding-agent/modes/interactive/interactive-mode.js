@@ -40,7 +40,7 @@ import { copyToClipboard, readClipboardFilePaths, readClipboardText } from "../.
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.js";
 import { parseGitUrl } from "../../utils/git.js";
 import { ensurePngTranscoder } from "../../utils/image-convert.js";
-import { getCwdRelativePath } from "../../utils/paths.js";
+import { getCwdRelativePath, shortenHomePath } from "../../utils/paths.js";
 import { getPiUserAgent } from "../../utils/pi-user-agent.js";
 import { killTrackedDetachedChildren } from "../../utils/shell.js";
 import { loadAllHighlightLanguages } from "../../utils/syntax-highlight.js";
@@ -1105,13 +1105,7 @@ export class InteractiveMode {
     // Extension System
     // =========================================================================
     formatDisplayPath(p) {
-        const home = os.homedir();
-        let result = p;
-        // Replace home directory with ~
-        if (result.startsWith(home)) {
-            result = `~${result.slice(home.length)}`;
-        }
-        return result;
+        return shortenHomePath(p);
     }
     formatExtensionDisplayPath(path) {
         let result = this.formatDisplayPath(path);
@@ -3850,6 +3844,9 @@ export class InteractiveMode {
             });
             if (result.status === "complete") {
                 this.editor.setText(result.content);
+            }
+            else {
+                this.showStatus(result.message);
             }
         }
         finally {

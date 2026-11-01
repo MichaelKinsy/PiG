@@ -171,7 +171,7 @@ func startLivenessSubprocess(t *testing.T, command func(string) *exec.Cmd, node 
 	}
 	t.Cleanup(func() { _ = listener.Close() })
 	cmd := command(address)
-	cmd.Env = append(os.Environ(), "PIG_EXT_SOCKET="+address, "PIG_EXT_NAME=liveness-conformance")
+	cmd.Env = append(append(os.Environ(), cmd.Env...), "PIG_EXT_SOCKET="+address, "PIG_EXT_NAME=liveness-conformance")
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}

@@ -53,9 +53,9 @@ func (s *SkillInvocationMessageComponent) updateDisplay() {
 		label := theme.Fg("customMessageLabel", "\x1b[1m[skill]\x1b[22m")
 		content.Add(NewText(label))
 		header := "**" + s.skillBlock.Name + "**\n\n"
-		content.Add(NewMarkdownWithOptions(header+s.skillBlock.Content, 0, 0, s.markdownTheme, &DefaultTextStyle{
+		content.Add(finishedMarkdown(NewMarkdownWithOptions(header+s.skillBlock.Content, 0, 0, s.markdownTheme, &DefaultTextStyle{
 			Color: func(text string) string { return ActiveTheme().Fg("customMessageText", text) },
-		}, nil))
+		}, nil)))
 	} else {
 		line := theme.Fg("customMessageLabel", "\x1b[1m[skill]\x1b[22m ") +
 			theme.Fg("customMessageText", s.skillBlock.Name) +

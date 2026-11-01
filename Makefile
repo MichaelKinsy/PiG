@@ -202,6 +202,7 @@ generate help-text: export FORCE_COLOR := 0
 generate: ## Regenerate committed inventories, coverage, catalogs, help, and docs mirrors
 	@$(MAKE) divergences
 	@$(MAKE) piglet-strip-ids
+	@$(MAKE) sdk-bundles
 	@$(MAKE) model-catalogs
 	@$(MAKE) node-runtime
 	@$(MAKE) highlight-grammars
@@ -255,7 +256,14 @@ piglet-strip-ids-drift: ## Fail when the Piglet strip ID table or the schema str
 piglet-strip-build: ## Vet every package and build cmd/pig with every Piglet strip build tag (D92)
 	@tags=$$(go run ./coding/piglet/internal/genstripids -print-tags) && go vet -tags "$$tags" ./... && CGO_ENABLED=0 go build -tags "$$tags" -o /dev/null ./cmd/pig
 
-.PHONY: generate divergences divergences-drift help-text highlight-grammars zone-names windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build changelog-unreleased changelog-check changelog-fold
+# The compressed SDK copies are pure Go to regenerate (go generate runs automation/gen/embed-bundle.go and pack-lisp-sdk.go): the .gz of each SDK source, the bundle_embed.go lists, the Lisp sdk.tgz and bundle_pack.go. Each generator keeps an existing copy that already holds the source's text, so only a stale copy is rewritten.
+sdk-bundles: ## Regenerate the compressed SDK copies and embed lists of extensions/sdk, sdk-lisp, sdk-py and sdk-rs from their sources (go generate)
+	@for dir in extensions/sdk extensions/sdk-lisp extensions/sdk-py extensions/sdk-rs; do (cd $$dir && go generate .) || exit 1; done
+
+sdk-bundles-drift: ## Fail when a compressed SDK copy differs from its source (regenerate with make sdk-bundles)
+	@./automation/ci/sdk-bundles-drift.sh
+
+.PHONY: sdk-bundles sdk-bundles-drift generate divergences divergences-drift help-text highlight-grammars zone-names windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build changelog-unreleased changelog-check changelog-fold
 
 ##@ Test and lint
 
@@ -341,6 +349,11 @@ test-aot-conformance: ## Run the extension conformance suite on the compiled aot
 # That is exactly how ReadyMsg.state reached main red.
 test-sdk-rs: ## Run the Rust extension SDK's unit tests
 	@cd extensions/sdk-rs && cargo test --quiet
+
+# Every tracked Rust crate (the SDK, the example, the conformance and parity fixtures, the benchmark extension) must be rustfmt-clean and clippy-clean with warnings denied.
+# Needs the rustfmt and clippy components: rustup component add rustfmt clippy
+lint-rust: ## cargo fmt --check and cargo clippy --all-targets -D warnings over every Rust crate
+	@./automation/ci/lint-rust.sh
 
 # The Python SDK's pytest suite, in a cached venv holding the hash-locked dev dependencies. Regenerate the lock after
 # changing the dev group in extensions/sdk-py/pyproject.toml with the command at the top of requirements-dev.txt.
@@ -575,7 +588,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 
 ##@ Gates
 
-check-core: startup-proxies build vet lint test test-go-modules test-sdk-rs test-sdk-py test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
 
 check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo

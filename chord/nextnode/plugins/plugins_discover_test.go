@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Ports packages/chord/test/next-node/plugins/discover.test.ts. Tests of discovery (slice 7c §1): names from package.json,
@@ -135,9 +136,7 @@ func TestDiscoveryFollowsASymlinkedPluginDirectoryToItsRealPath(t *testing.T) {
 	elsewhere := tempRoot(t)
 	root := tempRoot(t)
 	dir := writePlugin(t, elsewhere, "linked", "@test/linked", map[string]string{"worker.ts": ""}, nil)
-	if err := os.Symlink(dir, filepath.Join(root, "link")); err != nil {
-		t.Fatal(err)
-	}
+	testenv.RequireDirectoryLink(t, dir, filepath.Join(root, "link"))
 	discovery, err := DiscoverPlugins([]string{root}, DiscoveryOptions{Kinds: kinds}, background)
 	if err != nil {
 		t.Fatal(err)

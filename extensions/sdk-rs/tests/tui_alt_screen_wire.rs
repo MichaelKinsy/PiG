@@ -4,8 +4,9 @@
 //! requests are answered on their own request threads while the extension's thread is blocked in a `tui.alt` call.
 
 use pig_sdk::{
-    Component, ComponentRef, CopySelectionOutcome, Extension, ProgramStatus, Terminal, TerminalInputFn, TerminalResizeFn, ToolResult, TuiAltScreen,
-    TuiAltScreenOptions, TuiOverlayOptions, WheelScrollLines, empty_schema,
+    Component, ComponentRef, CopySelectionOutcome, Extension, ProgramStatus, Terminal,
+    TerminalInputFn, TerminalResizeFn, ToolResult, TuiAltScreen, TuiAltScreenOptions,
+    TuiOverlayOptions, WheelScrollLines, empty_schema,
 };
 use serde_json::{Value, json};
 use std::io::{Read, Write};
@@ -37,11 +38,17 @@ fn next(stream: &mut UnixStream) -> Value {
 }
 
 fn request(stream: &mut UnixStream, id: &str, method: &str, tool: &str, args: Value) {
-    send(stream, json!({"type": "request", "id": id, "request": {"method": method, "tool": tool, "args": args}}));
+    send(
+        stream,
+        json!({"type": "request", "id": id, "request": {"method": method, "tool": tool, "args": args}}),
+    );
 }
 
 fn answer(stream: &mut UnixStream, call: &Value, result: Value) {
-    send(stream, json!({"type": "call_result", "id": call["id"], "call_result": {"result": result}}));
+    send(
+        stream,
+        json!({"type": "call_result", "id": call["id"], "call_result": {"result": result}}),
+    );
 }
 
 struct Runtime {
@@ -60,14 +67,26 @@ impl Runtime {
         let thread = std::thread::spawn(move || ext.run_with_socket(socket.to_str().unwrap()));
         let (mut stream, _) = listener.accept().unwrap();
         // A missing frame fails the test after 10 s instead of hanging it.
-        stream.set_read_timeout(Some(std::time::Duration::from_secs(10))).unwrap();
+        stream
+            .set_read_timeout(Some(std::time::Duration::from_secs(10)))
+            .unwrap();
         assert_eq!(read(&mut stream)["type"], "register");
-        send(&mut stream, json!({"type": "ready", "ready": {"state": {"hasUI": true}, "width": 80}}));
-        Self { stream, thread: Some(thread), root }
+        send(
+            &mut stream,
+            json!({"type": "ready", "ready": {"state": {"hasUI": true}, "width": 80}}),
+        );
+        Self {
+            stream,
+            thread: Some(thread),
+            root,
+        }
     }
 
     fn shutdown(mut self) {
-        send(&mut self.stream, json!({"type": "shutdown", "shutdown": {"reason": "done"}}));
+        send(
+            &mut self.stream,
+            json!({"type": "shutdown", "shutdown": {"reason": "done"}}),
+        );
         self.thread.take().unwrap().join().unwrap().unwrap();
     }
 }
@@ -151,31 +170,40 @@ fn calls_carry_the_terminal_block_and_callbacks_run_while_a_call_is_blocked() {
     let doc = Arc::new(Doc::default());
     let mut ext = Extension::new("tui-alt-wire");
     let (handler_terminal, handler_doc) = (terminal.clone(), doc.clone());
-    ext.tool("alt", "Drive a TuiAltScreen", empty_schema(), move |ctx, _| {
-        let run = || -> std::io::Result<String> {
-            let screen = TuiAltScreen::new(
-                ctx,
-                handler_terminal.clone(),
-                TuiAltScreenOptions {
-                    mouse: Some(false),
-                    wheel_scroll_lines: Some(WheelScrollLines::Lines(3.0)),
-                    copy_selection: Some(Arc::new(|text: &str| {
-                        if text == "ok" { CopySelectionOutcome::Copied } else { CopySelectionOutcome::Message(format!("no: {text}")) }
-                    })),
-                    ..Default::default()
-                },
-            )?;
-            let component: ComponentRef = handler_doc.clone();
-            screen.add_child(&component)?;
-            screen.set_focus(Some(&component))?;
-            screen.scroll_by(-2)?;
-            Ok(screen.viewport_top()?.to_string())
-        };
-        match run() {
-            Ok(top) => ToolResult::text(top),
-            Err(err) => ToolResult::Error(err.to_string()),
-        }
-    });
+    ext.tool(
+        "alt",
+        "Drive a TuiAltScreen",
+        empty_schema(),
+        move |ctx, _| {
+            let run = || -> std::io::Result<String> {
+                let screen = TuiAltScreen::new(
+                    ctx,
+                    handler_terminal.clone(),
+                    TuiAltScreenOptions {
+                        mouse: Some(false),
+                        wheel_scroll_lines: Some(WheelScrollLines::Lines(3.0)),
+                        copy_selection: Some(Arc::new(|text: &str| {
+                            if text == "ok" {
+                                CopySelectionOutcome::Copied
+                            } else {
+                                CopySelectionOutcome::Message(format!("no: {text}"))
+                            }
+                        })),
+                        ..Default::default()
+                    },
+                )?;
+                let component: ComponentRef = handler_doc.clone();
+                screen.add_child(&component)?;
+                screen.set_focus(Some(&component))?;
+                screen.scroll_by(-2)?;
+                Ok(screen.viewport_top()?.to_string())
+            };
+            match run() {
+                Ok(top) => ToolResult::text(top),
+                Err(err) => ToolResult::Error(err.to_string()),
+            }
+        },
+    );
     let mut rt = Runtime::start("wire", ext);
     let s = &mut rt.stream;
     request(s, "alt", "tool_call", "alt", json!({}));
@@ -205,36 +233,123 @@ fn calls_carry_the_terminal_block_and_callbacks_run_while_a_call_is_blocked() {
     let callback = |s: &mut UnixStream, id: &str, args: Value| {
         request(s, id, "tui.alt.cb", "", args);
         let response = next(s);
-        assert_eq!((response["type"].as_str(), response["id"].as_str()), (Some("response"), Some(id)), "{response}");
+        assert_eq!(
+            (response["type"].as_str(), response["id"].as_str()),
+            (Some("response"), Some(id)),
+            "{response}"
+        );
         response["response"].clone()
     };
-    assert_eq!(callback(s, "cb1", json!({"id": "t1", "kind": "render", "key": "c1", "width": 7}))["result"], json!({"lines": ["w=7"]}));
-    assert_eq!(callback(s, "cb2", json!({"id": "t1", "kind": "input", "key": "c1", "data": "x"}))["result"], json!({}));
-    assert_eq!(callback(s, "cb3", json!({"id": "t1", "kind": "focus", "key": "c1", "focused": true}))["result"], json!({}));
-    // The host asks for the component's capturesViewportInput each time; the answer is the value at that moment.
-    assert_eq!(callback(s, "cb3a", json!({"id": "t1", "kind": "capturesViewportInput", "key": "c1"}))["result"], json!({"captures": false}));
-    doc.captures.store(true, std::sync::atomic::Ordering::SeqCst);
-    assert_eq!(callback(s, "cb3b", json!({"id": "t1", "kind": "capturesViewportInput", "key": "c1"}))["result"], json!({"captures": true}));
-    assert_eq!(callback(s, "cb4", json!({"id": "t1", "kind": "terminal", "method": "write", "data": "\u{1b}[?1049h"}))["result"], json!({}));
     assert_eq!(
-        callback(s, "cb5", json!({"id": "t1", "kind": "terminal", "method": "setProgramStatus", "status": {"state": "blocked", "kind": "auth"}}))["result"],
+        callback(
+            s,
+            "cb1",
+            json!({"id": "t1", "kind": "render", "key": "c1", "width": 7})
+        )["result"],
+        json!({"lines": ["w=7"]})
+    );
+    assert_eq!(
+        callback(
+            s,
+            "cb2",
+            json!({"id": "t1", "kind": "input", "key": "c1", "data": "x"})
+        )["result"],
         json!({})
     );
-    assert_eq!(callback(s, "cb6", json!({"id": "t1", "kind": "option", "name": "copySelection", "args": ["ok"]}))["result"], json!({"value": true}));
-    assert_eq!(callback(s, "cb7", json!({"id": "t1", "kind": "option", "name": "copySelection", "args": ["bad"]}))["result"], json!({"value": "no: bad"}));
-    assert_eq!(callback(s, "cb8", json!({"id": "t1", "kind": "listener", "listenerId": "l9", "data": "x"}))["result"], json!({}));
+    assert_eq!(
+        callback(
+            s,
+            "cb3",
+            json!({"id": "t1", "kind": "focus", "key": "c1", "focused": true})
+        )["result"],
+        json!({})
+    );
+    // The host asks for the component's capturesViewportInput each time; the answer is the value at that moment.
+    assert_eq!(
+        callback(
+            s,
+            "cb3a",
+            json!({"id": "t1", "kind": "capturesViewportInput", "key": "c1"})
+        )["result"],
+        json!({"captures": false})
+    );
+    doc.captures
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    assert_eq!(
+        callback(
+            s,
+            "cb3b",
+            json!({"id": "t1", "kind": "capturesViewportInput", "key": "c1"})
+        )["result"],
+        json!({"captures": true})
+    );
+    assert_eq!(
+        callback(
+            s,
+            "cb4",
+            json!({"id": "t1", "kind": "terminal", "method": "write", "data": "\u{1b}[?1049h"})
+        )["result"],
+        json!({})
+    );
+    assert_eq!(
+        callback(
+            s,
+            "cb5",
+            json!({"id": "t1", "kind": "terminal", "method": "setProgramStatus", "status": {"state": "blocked", "kind": "auth"}})
+        )["result"],
+        json!({})
+    );
+    assert_eq!(
+        callback(
+            s,
+            "cb6",
+            json!({"id": "t1", "kind": "option", "name": "copySelection", "args": ["ok"]})
+        )["result"],
+        json!({"value": true})
+    );
+    assert_eq!(
+        callback(
+            s,
+            "cb7",
+            json!({"id": "t1", "kind": "option", "name": "copySelection", "args": ["bad"]})
+        )["result"],
+        json!({"value": "no: bad"})
+    );
+    assert_eq!(
+        callback(
+            s,
+            "cb8",
+            json!({"id": "t1", "kind": "listener", "listenerId": "l9", "data": "x"})
+        )["result"],
+        json!({})
+    );
     let unknown = callback(s, "cb9", json!({"id": "t9", "kind": "debug"}));
-    assert!(unknown["error"]["message"].as_str().unwrap().contains("unknown TuiAltScreen"), "{unknown}");
+    assert!(
+        unknown["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("unknown TuiAltScreen"),
+        "{unknown}"
+    );
     answer(s, &add, json!({}));
 
     let focus = next(s);
     assert_eq!(focus["call"]["args"]["op"], "setFocus");
-    assert_eq!(focus["call"]["args"]["key"], "c1", "the component keeps its key");
+    assert_eq!(
+        focus["call"]["args"]["key"], "c1",
+        "the component keeps its key"
+    );
     assert_eq!(focus["call"]["args"]["caps"]["focusable"], true);
     answer(s, &focus, json!({}));
 
     let scroll = next(s);
-    assert_eq!((scroll["call"]["args"]["op"].as_str(), scroll["call"]["args"]["lines"].as_i64()), (Some("scrollBy"), Some(-2)));
+    assert_eq!(
+        (
+            scroll["call"]["args"]["op"].as_str(),
+            scroll["call"]["args"]["lines"].as_i64()
+        ),
+        (Some("scrollBy"), Some(-2))
+    );
     answer(s, &scroll, json!({}));
 
     let state = next(s);
@@ -243,39 +358,70 @@ fn calls_carry_the_terminal_block_and_callbacks_run_while_a_call_is_blocked() {
 
     // Dropping the last handle disposes the host's screen; dispose carries no terminal block.
     let dispose = next(s);
-    assert_eq!(dispose["call"]["args"], json!({"id": "t1", "op": "dispose"}));
+    assert_eq!(
+        dispose["call"]["args"],
+        json!({"id": "t1", "op": "dispose"})
+    );
     answer(s, &dispose, json!({}));
     assert_eq!(next(s)["type"], "response");
     rt.shutdown();
 
     assert_eq!(*doc.inputs.lock().unwrap(), vec!["x".to_string()]);
     assert_eq!(*doc.focused.lock().unwrap(), vec![true]);
-    assert_eq!(*terminal.writes.lock().unwrap(), vec!["\u{1b}[?1049h".to_string()]);
+    assert_eq!(
+        *terminal.writes.lock().unwrap(),
+        vec!["\u{1b}[?1049h".to_string()]
+    );
     let statuses = terminal.statuses.lock().unwrap();
     assert_eq!(statuses.len(), 1);
-    assert_eq!((statuses[0].state.as_str(), statuses[0].kind.as_deref(), statuses[0].app.as_deref()), ("blocked", Some("auth"), None));
+    assert_eq!(
+        (
+            statuses[0].state.as_str(),
+            statuses[0].kind.as_deref(),
+            statuses[0].app.as_deref()
+        ),
+        ("blocked", Some("auth"), None)
+    );
 }
 
 #[test]
 fn show_overlay_names_its_visible_callback_and_answers_the_hosts_size_asks() {
     let mut ext = Extension::new("tui-alt-visible");
-    ext.tool("alt", "Show an overlay with a visible callback", empty_schema(), |ctx, _| {
-        let run = || -> std::io::Result<()> {
-            let screen = TuiAltScreen::new(ctx, Arc::new(Recording::default()), TuiAltScreenOptions::default())?;
-            let component: ComponentRef = Arc::new(Doc::default());
-            screen.show_overlay(&component, Some(TuiOverlayOptions { layout: None, visible: Some(Arc::new(|width, _| width >= 20)) }))?;
-            Ok(())
-        };
-        match run() {
-            Ok(()) => ToolResult::text("ok"),
-            Err(err) => ToolResult::Error(err.to_string()),
-        }
-    });
+    ext.tool(
+        "alt",
+        "Show an overlay with a visible callback",
+        empty_schema(),
+        |ctx, _| {
+            let run = || -> std::io::Result<()> {
+                let screen = TuiAltScreen::new(
+                    ctx,
+                    Arc::new(Recording::default()),
+                    TuiAltScreenOptions::default(),
+                )?;
+                let component: ComponentRef = Arc::new(Doc::default());
+                screen.show_overlay(
+                    &component,
+                    Some(TuiOverlayOptions {
+                        layout: None,
+                        visible: Some(Arc::new(|width, _| width >= 20)),
+                    }),
+                )?;
+                Ok(())
+            };
+            match run() {
+                Ok(()) => ToolResult::text("ok"),
+                Err(err) => ToolResult::Error(err.to_string()),
+            }
+        },
+    );
     let mut rt = Runtime::start("visible", ext);
     let s = &mut rt.stream;
     request(s, "alt", "tool_call", "alt", json!({}));
     let create = next(s);
-    assert_eq!(create["call"]["args"], json!({"id": "t1", "op": "create", "terminal": {"columns": 20, "rows": 6, "kitty": false}}));
+    assert_eq!(
+        create["call"]["args"],
+        json!({"id": "t1", "op": "create", "terminal": {"columns": 20, "rows": 6, "kitty": false}})
+    );
     answer(s, &create, json!({}));
 
     let show = next(s);
@@ -288,12 +434,26 @@ fn show_overlay_names_its_visible_callback_and_answers_the_hosts_size_asks() {
         })
     );
     for (id, width, want) in [("v1", 20, true), ("v2", 19, false)] {
-        request(s, id, "tui.alt.cb", "", json!({"id": "t1", "kind": "visible", "key": "c1", "termWidth": width, "termHeight": 6}));
+        request(
+            s,
+            id,
+            "tui.alt.cb",
+            "",
+            json!({"id": "t1", "kind": "visible", "key": "c1", "termWidth": width, "termHeight": 6}),
+        );
         let response = next(s);
         assert_eq!(response["id"], id);
-        assert_eq!(response["response"]["result"], json!({"value": want}), "{response}");
+        assert_eq!(
+            response["response"]["result"],
+            json!({"value": want}),
+            "{response}"
+        );
     }
-    answer(s, &show, json!({"hidden": false, "focused": true, "visible": true}));
+    answer(
+        s,
+        &show,
+        json!({"hidden": false, "focused": true, "visible": true}),
+    );
     let dispose = next(s);
     assert_eq!(dispose["call"]["args"]["op"], "dispose");
     answer(s, &dispose, json!({}));
@@ -318,19 +478,30 @@ impl Component for Probing {
 #[test]
 fn a_call_made_inside_a_callback_is_a_child_of_the_callback_request() {
     let mut ext = Extension::new("tui-alt-lanes");
-    ext.tool("alt", "Add a component that calls the screen from render", empty_schema(), |ctx, _| {
-        let run = || -> std::io::Result<()> {
-            let screen = Arc::new(TuiAltScreen::new(ctx, Arc::new(Recording::default()), TuiAltScreenOptions::default())?);
-            let link = Arc::new(std::sync::OnceLock::new());
-            let component: ComponentRef = Arc::new(Probing { screen: link.clone() });
-            let _ = link.set(Arc::downgrade(&screen));
-            screen.add_child(&component)
-        };
-        match run() {
-            Ok(()) => ToolResult::text("ok"),
-            Err(err) => ToolResult::Error(err.to_string()),
-        }
-    });
+    ext.tool(
+        "alt",
+        "Add a component that calls the screen from render",
+        empty_schema(),
+        |ctx, _| {
+            let run = || -> std::io::Result<()> {
+                let screen = Arc::new(TuiAltScreen::new(
+                    ctx,
+                    Arc::new(Recording::default()),
+                    TuiAltScreenOptions::default(),
+                )?);
+                let link = Arc::new(std::sync::OnceLock::new());
+                let component: ComponentRef = Arc::new(Probing {
+                    screen: link.clone(),
+                });
+                let _ = link.set(Arc::downgrade(&screen));
+                screen.add_child(&component)
+            };
+            match run() {
+                Ok(()) => ToolResult::text("ok"),
+                Err(err) => ToolResult::Error(err.to_string()),
+            }
+        },
+    );
     let mut rt = Runtime::start("lanes", ext);
     let s = &mut rt.stream;
     request(s, "alt", "tool_call", "alt", json!({}));
@@ -342,14 +513,29 @@ fn a_call_made_inside_a_callback_is_a_child_of_the_callback_request() {
     // The extension's thread waits for addChild; the host asks the component to render meanwhile.
     let add = next(s);
     assert_eq!(add["call"]["args"]["op"], "addChild");
-    request(s, "cbr", "tui.alt.cb", "", json!({"id": "t1", "kind": "render", "key": "c1", "width": 5}));
+    request(
+        s,
+        "cbr",
+        "tui.alt.cb",
+        "",
+        json!({"id": "t1", "kind": "render", "key": "c1", "width": 5}),
+    );
     let inner = next(s);
     assert_eq!(inner["call"]["args"]["op"], "requestRender", "{inner}");
-    assert_eq!(inner["call"]["parent_request_id"], "cbr", "a call inside a callback gets the callback's own lane: {inner}");
-    assert!(inner["call"]["args"].get("inFrame").is_none(), "the wire no longer carries inFrame: {inner}");
+    assert_eq!(
+        inner["call"]["parent_request_id"], "cbr",
+        "a call inside a callback gets the callback's own lane: {inner}"
+    );
+    assert!(
+        inner["call"]["args"].get("inFrame").is_none(),
+        "the wire no longer carries inFrame: {inner}"
+    );
     answer(s, &inner, json!({}));
     let response = next(s);
-    assert_eq!((response["id"].as_str(), &response["response"]["result"]), (Some("cbr"), &json!({"lines": ["x"]})));
+    assert_eq!(
+        (response["id"].as_str(), &response["response"]["result"]),
+        (Some("cbr"), &json!({"lines": ["x"]}))
+    );
     answer(s, &add, json!({}));
 
     let dispose = next(s);
