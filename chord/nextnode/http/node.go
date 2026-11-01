@@ -21,6 +21,7 @@ import (
 // pulled piece by piece as the socket drains. A body the route left unread is drained after the response when small, else
 // the connection closes; the request's scope ends once the response is flushed or abandoned.
 //
+// pig divergence (D218): Go's net/http answers some malformed requests before the component does (see D218).
 // Forced Go differences (Node's `http` module is Go's net/http):
 //   - Node's limits stay its defaults on the listener, in Go's settings: `headersTimeout` 60 s is ReadHeaderTimeout,
 //     `requestTimeout` 300 s ReadTimeout, 16 KiB of headers (431) MaxHeaderBytes less the request line's allowance Go adds,
