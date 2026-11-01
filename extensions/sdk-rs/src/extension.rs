@@ -804,8 +804,6 @@ pub struct Extension {
 
     tool_fns: HashMap<String, ToolHandler>,
     tool_prepare_fns: HashMap<String, ToolPrepareArguments>,
-    /// The nodes of each typed tool's schema that carry refinements, which the host asks for with `tool_refine_arguments` (`Extension::tool_typed`).
-    tool_refinements: HashMap<String, Vec<crate::type_schema::RefinementSite>>,
     command_fns: HashMap<String, CommandHandler>,
     shortcut_fns: HashMap<String, ShortcutHandler>,
     renderer_fns: HashMap<String, MessageRenderFn>,
@@ -844,7 +842,6 @@ impl Extension {
             entry_renderers: Vec::new(),
             tool_fns: HashMap::new(),
             tool_prepare_fns: HashMap::new(),
-            tool_refinements: HashMap::new(),
             command_fns: HashMap::new(),
             shortcut_fns: HashMap::new(),
             renderer_fns: HashMap::new(),
@@ -968,40 +965,6 @@ impl Extension {
             .insert(name.to_string(), Box::new(handler));
     }
 
-    /// Runs refinement `request.index` of the node at `request.path` of the typed tool `name` on the request's value. A panic or an `Err` from the predicate is what a thrown
-    /// JavaScript error is: the host fails the tool call with its message.
-    fn run_refinement(
-        &self,
-        name: &str,
-        request: &crate::protocol::RefineRequest,
-    ) -> Result<Value, String> {
-        let refinement = self
-            .tool_refinements
-            .get(name)
-            .and_then(|sites| sites.iter().find(|site| site.path == request.path))
-            .and_then(|site| site.refinements.get(request.index))
-            .ok_or_else(|| {
-                format!(
-                    "tool {name} has no refinement {} at {:?}",
-                    request.index, request.path
-                )
-            })?;
-        let value = &request.value;
-        let passed = catch_unwind(AssertUnwindSafe(|| (refinement.check)(value)))
-            .map_err(|_| format!("a refinement of {name} panicked"))??;
-        let mut result = serde_json::Map::new();
-        result.insert("ok".into(), Value::Bool(passed));
-        if !passed && request.with_message {
-            let message = match &refinement.error {
-                Some(error) => catch_unwind(AssertUnwindSafe(|| error(value)))
-                    .map_err(|_| format!("a refinement message of {name} panicked"))??,
-                None => "Refine Error".to_string(),
-            };
-            result.insert("message".into(), Value::String(message));
-        }
-        Ok(Value::Object(result))
-    }
-
     /// Returns the extension's registered name.
     pub fn name(&self) -> &str {
         &self.name
@@ -1041,9 +1004,8 @@ impl Extension {
         self.tool_fns.insert(n, Box::new(handler));
     }
 
-    /// Register a tool whose parameters are built with [`Type`](crate::Type): like [`Extension::tool`], and the refinements the schema carries (`Type::refine`) run in this process when the
-    /// host validates a call's arguments. Panics before registration if a refinement sits under a schema keyword whose refinements the host does not run (it runs them under
-    /// `properties`, `patternProperties`, `additionalProperties`, `items`, `prefixItems`, `additionalItems`, `allOf`, `anyOf`, `oneOf`, `not`, `if`, `then`, `else` and `$defs`).
+    /// Register a tool whose parameters are built with [`Type`](crate::Type): like [`Extension::tool`] with the schema's JSON. The refinements the schema carries (`Type::refine`)
+    /// are not run: the host validates a call's arguments as plain JSON Schema, so arguments a refinement would reject are accepted (check such constraints in the handler).
     pub fn tool_typed(
         &mut self,
         name: impl Into<String>,
@@ -1051,30 +1013,7 @@ impl Extension {
         schema: &crate::TSchema,
         handler: impl Fn(&Context, Value) -> ToolResult + Send + Sync + 'static,
     ) {
-        let name = name.into();
-        let sites = schema.refinement_sites();
-        let found: usize = sites.iter().map(|site| site.refinements.len()).sum();
-        assert!(
-            found == schema.refinement_count(),
-            "Tool \"{name}\" registered by extension \"{}\" has a refinement under a schema keyword whose refinements the host does not run (it runs them under properties, patternProperties, additionalProperties, items, prefixItems, additionalItems, allOf, anyOf, oneOf, not, if, then, else and $defs).",
-            self.name
-        );
-        self.tool(name.clone(), description, schema.to_value(), handler);
-        if let Some(declaration) = self.tools.iter_mut().rev().find(|tool| tool.name == name) {
-            declaration.validation_parameters = Some(schema.to_validation_value());
-            declaration.refinements = sites
-                .iter()
-                .map(|site| crate::protocol::RefinementDecl {
-                    path: site.path.clone(),
-                    count: site.refinements.len(),
-                })
-                .collect();
-        }
-        if sites.is_empty() {
-            self.tool_refinements.remove(&name);
-        } else {
-            self.tool_refinements.insert(name, sites);
-        }
+        self.tool(name, description, schema.to_value(), handler);
     }
 
     /// Set the registered tool's optional system-prompt summary before running the extension.
@@ -1134,8 +1073,6 @@ impl Extension {
             prepares_loadout: prepare_loadout.is_some(),
             reaches_tools: reaches_tools.is_some(),
             prepares_arguments: prepare_arguments.is_some(),
-            refinements: Vec::new(),
-            validation_parameters: None,
         };
         match self.tools.iter_mut().find(|tool| tool.name == name) {
             Some(existing) => *existing = decl,
@@ -2900,29 +2837,6 @@ impl Extension {
                     }
                 }
             }
-            "tool_refine_arguments" => {
-                // upstream: validation.ts validateToolArguments: TypeBox calls a refinement's check (and error) while it validates; the host's traversal asks for each call here.
-                let name = req.tool.as_deref().unwrap_or("");
-                let outcome = match &req.refine {
-                    None => Err("tool_refine_arguments names no refinement".to_string()),
-                    Some(request) => self.run_refinement(name, request),
-                };
-                match outcome {
-                    Ok(result) => {
-                        let _ = conn.respond(id, Some(result), None);
-                    }
-                    Err(message) => {
-                        let _ = conn.respond(
-                            id,
-                            None,
-                            Some(ErrorInfo {
-                                code: None,
-                                message,
-                            }),
-                        );
-                    }
-                }
-            }
             "tool_reaches_tools" => {
                 // upstream: types.ts:621, the hook answers "all" or the words of the input that may name the tools a call reaches.
                 let name = req.tool.as_deref().unwrap_or("");
@@ -3928,7 +3842,6 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("r1".to_string()),
                 request: Some(RequestMsg {
-                    refine: None,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4014,7 +3927,6 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-1".to_string()),
                 request: Some(RequestMsg {
-                    refine: None,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4183,7 +4095,6 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("login-1".to_string()),
                 request: Some(RequestMsg {
-                    refine: None,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4253,7 +4164,6 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("key-1".to_string()),
                 request: Some(RequestMsg {
-                    refine: None,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4281,7 +4191,6 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("ref-1".to_string()),
                 request: Some(RequestMsg {
-                    refine: None,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4310,7 +4219,6 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("store-1".to_string()),
                 request: Some(RequestMsg {
-                    refine: None,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4336,7 +4244,6 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("status-1".to_string()),
                 request: Some(RequestMsg {
-                    refine: None,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4432,7 +4339,6 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-state".to_string()),
                 request: Some(RequestMsg {
-                    refine: None,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4468,7 +4374,6 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-user".to_string()),
                 request: Some(RequestMsg {
-                    refine: None,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4540,7 +4445,6 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-title".to_string()),
                 request: Some(RequestMsg {
-                    refine: None,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4601,7 +4505,6 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-panic".to_string()),
                 request: Some(RequestMsg {
-                    refine: None,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4684,7 +4587,6 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-label".to_string()),
                 request: Some(RequestMsg {
-                    refine: None,
                     child_session: None,
                     terminal_input: None,
                     stream: None,
@@ -4750,7 +4652,6 @@ mod tests {
             msg_type: "request".to_string(),
             id: Some(id.to_string()),
             request: Some(RequestMsg {
-                refine: None,
                 child_session: None,
                 terminal_input: None,
                 stream: None,

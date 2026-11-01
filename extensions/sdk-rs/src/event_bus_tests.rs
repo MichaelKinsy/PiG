@@ -113,7 +113,6 @@ impl Host {
                 msg_type: "request".into(),
                 id: Some(id.into()),
                 request: Some(RequestMsg {
-                    refine: None,
                     method: method.into(),
                     tool: tool.map(str::to_string),
                     event: None,

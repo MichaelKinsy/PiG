@@ -1038,7 +1038,7 @@ fn main() {
         );
     }
     {
-        // refine-probe (TestConformance_RefinedToolArgumentsAgreeAcrossSDKs): the schema of the "probe" cases of validateToolArguments.json; every predicate and message function logs its call.
+        // refine-probe (TestConformance_RefinedToolArgumentsAreNotRefined): the schema of the probe tool; every predicate and message function logs its call, and the test asserts the log stays empty (Pi 0.7.0 never runs a refinement).
         use pig_sdk::Type;
         use std::sync::{Arc, Mutex};
         let log: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
