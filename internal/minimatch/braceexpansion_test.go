@@ -1,4 +1,4 @@
-package packagecontent
+package minimatch
 
 import (
 	"crypto/sha256"
@@ -12,8 +12,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Rows recorded from braceExpand of Pi's npm minimatch (10.2.6, and 11.0.3 whose braceExpand is the same) (brace-expansion 5.0.12) under Node 24.19. Node's bundled copy, which braceExpand ports, gives fewer results for each: after a "{a},b}" rewrite it drops every empty or literal value of a set that is not first, where 5.0.12 drops only empty results of a first comma set. 95 of 200,000 random brace patterns differ this way.
-func TestNpmBraceExpandFollowsBraceExpansion5(t *testing.T) {
+// Rows recorded from braceExpand of Pi's npm minimatch (10.2.6, and 11.0.3 whose braceExpand is the same) (brace-expansion 5.0.12) under Node 24.19. Node's bundled copy, which coding/packagecontent ports for Node's glob, gives fewer results for each: after a "{a},b}" rewrite it drops every empty or literal value of a set that is not first, where 5.0.12 drops only empty results of a first comma set. 95 of 200,000 random brace patterns differ this way.
+func TestBraceExpandFollowsBraceExpansion5(t *testing.T) {
 	for _, tc := range []struct {
 		pattern string
 		want    []string
@@ -47,14 +47,14 @@ func TestNpmBraceExpandFollowsBraceExpansion5(t *testing.T) {
 		{"x{1..3}y", []string{"x1y", "x2y", "x3y"}},
 		{"plain", []string{"plain"}},
 	} {
-		if got := npmBraceExpand(tc.pattern); !slices.Equal(got, tc.want) {
-			t.Errorf("npmBraceExpand(%q) = %q, want %q", tc.pattern, got, tc.want)
+		if got := braceExpand(tc.pattern); !slices.Equal(got, tc.want) {
+			t.Errorf("braceExpand(%q) = %q, want %q", tc.pattern, got, tc.want)
 		}
 	}
 }
 
 // brace-expansion 5.0.12 bounds what Node's bundled copy does not: EXPANSION_MAX results, EXPANSION_MAX_LENGTH (4,000,000) UTF-16 units in one result or value set, EXPANSION_MAX_DEPTH (1,000) levels of nesting, after which the rest is literal, and EXPANSION_MAX_REWRITES (1,000) "{a},b}" rewrites. A sequence stops at EXPANSION_MAX items, so one whose step no longer advances a JavaScript number ends there instead of throwing "Invalid array length" as Node's copy does. Counts, total lengths and SHA-256 of the newline-joined results recorded from Pi's npm minimatch 10.2.6 under Node 24.19; none of these patterns holds an escape, so the random escape markers cannot shift a limit.
-func TestNpmBraceExpandLimitsFollowBraceExpansion5(t *testing.T) {
+func TestBraceExpandLimitsFollowBraceExpansion5(t *testing.T) {
 	nest := func(n int, pre, post string) string {
 		return pre + strings.Repeat("{", n) + "a,b" + strings.Repeat("}", n) + post
 	}
@@ -96,7 +96,7 @@ func TestNpmBraceExpandLimitsFollowBraceExpansion5(t *testing.T) {
 		{"long sequence", "x{1..200000}", 100000, 588895, "4f5b60aaf05462b3a0e05dd9fc2aa91c28b9663ac0b334894e93efd8f71f2722"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := npmBraceExpand(tc.pattern)
+			got := braceExpand(tc.pattern)
 			total := 0
 			for _, s := range got {
 				total += jsstring.Length(s)
@@ -106,28 +106,6 @@ func TestNpmBraceExpandLimitsFollowBraceExpansion5(t *testing.T) {
 				t.Fatalf("%d results, %d units, sha %x; want %d, %d, %s", len(got), total, sum, tc.count, tc.total, tc.sha)
 			}
 		})
-	}
-}
-
-// Pi's minimatch builds its set from brace-expansion 5.0.12, so a filter whose sequence Node's bundled copy cannot hold still compiles and matches. Probed with Pi 1.1.0 (r25): {"prompts":["!x{1..134217729}"]} starts and lists the prompt, and minimatch("x5", "x{1..134217729}") is true.
-func TestMinimatchFilterExpandsBracesAsPi(t *testing.T) {
-	for _, tc := range []struct {
-		pattern, path string
-		want          bool
-	}{
-		{"x{1..134217729}", "x5", true},
-		{"x{1..134217729}", "x100001", false},
-		{"{a.md,}{},,}", "a.md", true},
-		{"{a.md,}{},,}", "a.md}", true},
-		{"x{9007199254740993..9007199254740995}", "x9007199254740992", true},
-	} {
-		m, err := newMinimatchFilter(tc.pattern)
-		if err != nil {
-			t.Fatalf("newMinimatchFilter(%q): %v", tc.pattern, err)
-		}
-		if got := m.Match(tc.path); got != tc.want {
-			t.Errorf("minimatch(%q, %q) = %t, want %t", tc.path, tc.pattern, got, tc.want)
-		}
 	}
 }
 
@@ -155,10 +133,10 @@ func TestBraceProductKeepsOnlyReachableValues(t *testing.T) {
 	for _, level := range p.levels {
 		kept += len(level.values)
 	}
-	if want := 100000 + len(p.levels) - 1; p.count != braceExpansionMax || kept != want {
-		t.Fatalf("%d results, %d values kept over %d levels; want %d results and %d values", p.count, kept, len(p.levels), braceExpansionMax, want)
+	if want := 100000 + len(p.levels) - 1; p.count != expansionMax || kept != want {
+		t.Fatalf("%d results, %d values kept over %d levels; want %d results and %d values", p.count, kept, len(p.levels), expansionMax, want)
 	}
-	if got := p.textOf(braceExpansionMax-1, make([]int, len(p.levels))); got != "99999" {
+	if got := p.textOf(expansionMax-1, make([]int, len(p.levels))); got != "99999" {
 		t.Fatalf("last result %q, want 99999", got)
 	}
 	// One level's values and the results' lengths take about 5 MB; twenty levels' would take about 70 MB.
@@ -189,16 +167,16 @@ func TestBraceProductPrunesBelowAFullyReachedLevel(t *testing.T) {
 	for _, level := range p.levels {
 		kept = append(kept, len(level.values))
 	}
-	if !slices.Equal(kept, []int{5, 2, 10000}) || p.count != braceExpansionMax {
-		t.Fatalf("values kept per level %v, %d results; want [5 2 10000] and %d", kept, p.count, braceExpansionMax)
+	if !slices.Equal(kept, []int{5, 2, 10000}) || p.count != expansionMax {
+		t.Fatalf("values kept per level %v, %d results; want [5 2 10000] and %d", kept, p.count, expansionMax)
 	}
-	if got := p.textOf(braceExpansionMax-1, make([]int, 3)); got != "4bx9999" {
+	if got := p.textOf(expansionMax-1, make([]int, 3)); got != "4bx9999" {
 		t.Fatalf("last result %q, want 4bx9999", got)
 	}
 }
 
 // The limits bound memory, as V8's string ropes do: a sequence stops at EXPANSION_MAX_LENGTH before it builds more text, and parseCommaParts builds a long run of sets in one buffer.
-func TestNpmBraceExpandBoundsAllocation(t *testing.T) {
+func TestBraceExpandBoundsAllocation(t *testing.T) {
 	for _, tc := range []struct {
 		name, pattern string
 		maxMB         uint64
@@ -209,7 +187,7 @@ func TestNpmBraceExpandBoundsAllocation(t *testing.T) {
 		var before, after runtime.MemStats
 		runtime.GC()
 		runtime.ReadMemStats(&before)
-		npmBraceExpand(tc.pattern)
+		braceExpand(tc.pattern)
 		runtime.ReadMemStats(&after)
 		if mb := (after.TotalAlloc - before.TotalAlloc) >> 20; mb > tc.maxMB {
 			t.Errorf("%s: allocated %d MB, want at most %d", tc.name, mb, tc.maxMB)
