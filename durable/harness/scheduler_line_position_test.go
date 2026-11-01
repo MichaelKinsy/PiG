@@ -48,8 +48,6 @@ func TestReservationPassTakesItsLinePositionInThePublishingTurn(t *testing.T) {
 			}
 			// The scheduler takes its line position once the host listeners ran: hold its own goroutine back, start the second
 			// creation, and return once it is queued, ahead of the pass.
-			impl.tasks.mu.Lock()
-			defer impl.tasks.mu.Unlock()
 			jobs := impl.LineJobs()
 			go func() {
 				_, err := durable.Commit(testContext, opened.root, func(tx durable.Tx) (durable.TaskId, error) {
