@@ -79,7 +79,7 @@ func TestJobStartCompilesTheArgsCheckOncePerDefinition(t *testing.T) {
 
 // job.test.ts › start › returns the unsettled run with the same key, across transactions, whatever its args
 func TestJobStartReturnsTheUnsettledRunWithTheSameKeyAcrossTransactionsWhateverItsArgs(t *testing.T) {
-	g := newGate()
+	g := newJobGate()
 	fixture := echoJob(t, JobImplementation{Run: gated(g)}, jobHostOptions{})
 	job := fixture.Job
 	// Two starts at once: the line serializes them, the second sees the first's record.
@@ -116,7 +116,7 @@ func TestJobStartReturnsTheUnsettledRunWithTheSameKeyAcrossTransactionsWhateverI
 // Pi spies `Batch.prototype.commit`; the Go Batch has no hook, so the test checks what makes the commit empty: a start
 // that only dedupes stages nothing in its transaction (`tx.StagedOf`), and no frame of `running` follows it.
 func TestJobStartCommitsNothingForAStartThatOnlyDedupes(t *testing.T) {
-	g := newGate()
+	g := newJobGate()
 	fixture := echoJob(t, JobImplementation{Run: gated(g)}, jobHostOptions{})
 	job := fixture.Job
 	run := jobStart(t, job, textArgs("a"), background, "k")
@@ -170,7 +170,7 @@ func TestJobStartReturnsTheSameRunForAKeyStartedTwiceInOneTransaction(t *testing
 // job.test.ts › start › at the concurrency limit › rejects unavailable/busy: running and finishing runs count
 func TestJobStartAtTheConcurrencyLimitRejectsUnavailableBusyRunningAndFinishingRunsCount(t *testing.T) {
 	loop := newVirtualLoop()
-	runGate := newGate()
+	runGate := newJobGate()
 	var finishes int
 	var mu sync.Mutex
 	fixture := declaredJob(t, jobShell, func(Self, *singletonDoc) JobImplementation {
@@ -269,7 +269,7 @@ func TestJobStartLetsFinishChainTheSameJobAtConcurrency1ItsOwnRunIsNotCounted(t 
 
 // job.test.ts › start › lets finish start the same job again with the same key: a new run, not the finishing one
 func TestJobStartLetsFinishStartTheSameJobAgainWithTheSameKeyANewRunNotTheFinishingOne(t *testing.T) {
-	g := newGate()
+	g := newJobGate()
 	var successor Run
 	var job JobHandle
 	var mu sync.Mutex
@@ -372,7 +372,7 @@ func TestJobStartGivesAShortRunsHandleItsOutcomeHoweverLateTheCallerWaits(t *tes
 
 // job.test.ts › start › waits by id for unsettled runs only: settled and unknown ids reject gone
 func TestJobStartWaitsByIDForUnsettledRunsOnlySettledAndUnknownIDsRejectGone(t *testing.T) {
-	g := newGate()
+	g := newJobGate()
 	fixture := echoJob(t, JobImplementation{Run: gated(g)}, jobHostOptions{})
 	job := fixture.Job
 	run := jobStart(t, job, textArgs("a"), background)
@@ -524,7 +524,7 @@ func TestJobStartAnAbortBetweenTheCommitAndTheStartIsMarkedThenTheSignalFiresThe
 
 // job.test.ts › start › creates nothing for an aborted caller; a caller aborted after the commit does not cancel the run
 func TestJobStartCreatesNothingForAnAbortedCallerACallerAbortedAfterTheCommitDoesNotCancelTheRun(t *testing.T) {
-	g := newGate()
+	g := newJobGate()
 	var signalled bool
 	var mu sync.Mutex
 	fixture := echoJob(t, JobImplementation{Run: func(args any, ctx JobCtx) (any, error) {

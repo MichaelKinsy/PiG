@@ -10,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
@@ -452,7 +453,7 @@ func TestGCAReleasedHoldKeepsNeitherItsObjectNorItsStatesWatchesNorARemoteObject
 		}, ServeOptions{})
 	}, loadedOptions{})
 	client := newHost(t, HostOptions{OnError: func(HostError) {}})
-	must(t, client.Load(nil, background))
+	mustLoad(t)(client.Load(nil, background))
 	var watches []weak.Pointer[chord.NativeWatch[*RefState]]
 	var remotes []weak.Pointer[remoteObject]
 	func() {
@@ -578,7 +579,7 @@ func refTwoHost(t *testing.T, seen func(two *Reference)) Host {
 		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 	}))
 	host := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: ownerPrincipal(), OnError: func(HostError) {}})
-	must(t, host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		if err := h.Serve(refTwo, func(*delta.JsonObject, data.Principal, Self) (contracts.Implementation, error) {
 			return contracts.Implementation{Variant: "view", Members: contracts.VariantImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"m": refConstant(float64(1))},
@@ -829,9 +830,9 @@ func TestKeyedStateMembersAConsumersAtKeyIsTheProvidersPerKeySourceLoadedBeforeI
 	must(t, n.Host.Close(background))
 }
 
-// reference.test.ts › keyed state members (slice 6a §12) › two consumers of one key share one source and one pin; each hold
-// is released once, with its reference.
-func TestKeyedStateMembersTwoConsumersOfOneKeyShareOneSourceAndOnePinEachHoldIsReleasedOnceWithItsReference(t *testing.T) {
+// reference.test.ts › keyed state members (slice 6a §12) › two consumers of one key each hold their own pin (references own
+// their keys); each released once, with its reference.
+func TestKeyedStateMembersTwoConsumersOfOneKeyEachHoldTheirOwnPinReferencesOwnTheirKeysEachReleasedOnceWithItsReference(t *testing.T) {
 	n := refServeNotes(t, false)
 	refWrite(t, n.Store, "a", "x")
 	first := refGet(t, n.Host, refNoteView, jsonObject("id", "a", "copy", float64(1)))
@@ -841,28 +842,27 @@ func TestKeyedStateMembersTwoConsumersOfOneKeyShareOneSourceAndOnePinEachHoldIsR
 	for i, at := range pinned {
 		n.Host.(*chordHost).loop().Run(func() { sources[i], _ = at.source() })
 	}
-	// The store object's source of the key, which follows its attempts.
-	if len(sources) != 2 || sources[0] != sources[1] {
-		t.Fatalf("the two views' sources are not one: %v", sources)
+	// Each reference's own source of the key, on the store's instance (decision "References are the only indirection").
+	if len(sources) != 2 || sources[0] == sources[1] {
+		t.Fatalf("the two views' sources are one or missing: %v", sources)
 	}
 	shared := func() *documents.KeySource {
 		var source *documents.KeySource
 		n.Host.(*chordHost).loop().Run(func() { source = n.Memos().Slot.KeySourceOf("a") })
 		return source
 	}()
-	if pins, _ := refSourcePins(n.Host, n.Memos(), "a"); shared == nil || pins != 1 {
-		t.Fatalf("pins = %d, want one pin on one source", pins)
+	if pins, _ := refSourcePins(n.Host, n.Memos(), "a"); shared == nil || pins != 2 {
+		t.Fatalf("pins = %d, want two pins on the key's source", pins)
 	}
 	first.Release()
 	// The first view's teardown releases its pin in the background: wait for it before asserting what stays.
 	scopeEventually(t, "the first view ended", func() bool { return len(presenceList(t, n.Host, refNoteView)) == 1 })
-	if got := func() *documents.KeySource {
+	scopeEventually(t, "one pin stays on the same source", func() bool {
 		var source *documents.KeySource
 		n.Host.(*chordHost).loop().Run(func() { source = n.Memos().Slot.KeySourceOf("a") })
-		return source
-	}(); got != shared {
-		t.Fatalf("the source changed after the first release")
-	}
+		pins, _ := refSourcePins(n.Host, n.Memos(), "a")
+		return source == shared && pins == 1
+	})
 	second.Release()
 	scopeEventually(t, "the key's source is dropped", func() bool {
 		_, has := refSourcePins(n.Host, n.Memos(), "a")
@@ -1093,5 +1093,45 @@ func TestKeyedStateMembersAProviderReturningSomethingElseForAKeyedMemberFailsBro
 	if err == nil || !refContains(err.Error(), "notes: a keyed member is a keyed document handle") {
 		t.Fatalf("get = %v, want notes: a keyed member is a keyed document handle", err)
 	}
+	must(t, host.Close(background))
+}
+
+// releasingTarget is a target whose `hold` releases the binding at once, as `ChordObject.hold` lets a presence derive
+// release a holder synchronously.
+type releasingTarget struct {
+	target
+	release func()
+}
+
+func (r *releasingTarget) hold(holder holder) { r.release() }
+
+func (r *releasingTarget) unhold(holder holder) {}
+
+// reference.test.ts › a binding released while it binds (fix round 5) › ends cleanly when its object's hold releases it at
+// once, keeping nothing (Sol). Forced difference: Pi spies on `ChordObject.prototype.hold` while a reload binds a waiting
+// reference again; Go cannot wrap a method, so the binding binds to a target whose `hold` releases it, the same call
+// sequence inside `bind`.
+func TestABindingReleasedWhileItBindsFixRound5EndsCleanlyWhenItsObjectsHoldReleasesItAtOnceKeepingNothingSol(t *testing.T) {
+	host := refLoadCounter(t)
+	h := host.(*chordHost)
+	var released weak.Pointer[Reference]
+	func() {
+		b := newBinding(refCounter, h, h.batch, nil, caller{}, time.Second)
+		ref := b.reference
+		fake := &releasingTarget{release: ref.Release}
+		var failure any
+		h.loop().Run(func() {
+			defer func() { failure = recover() }()
+			b.bind(fake)
+		})
+		if failure != nil {
+			t.Fatalf("bind panicked: %v", failure)
+		}
+		if kind := ref.State().Value().Kind; kind != RefStateEnded {
+			t.Fatalf("state = %s, want ended", kind)
+		}
+		released = weak.Make(ref)
+	}()
+	expectCollectedEventually(t, released)
 	must(t, host.Close(background))
 }

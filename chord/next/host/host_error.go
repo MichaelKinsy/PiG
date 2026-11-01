@@ -66,8 +66,10 @@ const (
 	ErrJobInterrupted HostErrorKind = "job_interrupted"
 	// ErrJobDropped: a blocked run was dropped without `finish`: aborted, or its object ended (Object, Job, ID).
 	ErrJobDropped HostErrorKind = "job_dropped"
-	// ErrParkedLong: an attempt parked `readyTimeout` (since Since, Date.now() time) while WaitingFor, a remote attempt, is
-	// only loading: once per parking episode (Object, WaitingFor, Since).
+	// ErrParkedLong: an attempt parked longer than `readyTimeout` (since Since, Date.now() time), whatever its blocker:
+	// once per parking episode, naming the first blocker in declaration order (WaitingFor, a reference's label or
+	// `registry <name>`) and its State ("loading" or "failed"); a diagnostic of a ring across hosts started at the same
+	// moment or a long wait (nothing fails) (Object, WaitingFor, State, Since).
 	ErrParkedLong HostErrorKind = "parked_long"
 )
 
@@ -87,9 +89,11 @@ type HostError struct {
 	ID         string
 	Restarts   int
 	WaitingFor string
-	Since      int64
-	Batch      *state.BatchError
-	Registry   *registries.RegistryError
+	// State is a parked_long's blocker state: "loading" or "failed".
+	State    string
+	Since    int64
+	Batch    *state.BatchError
+	Registry *registries.RegistryError
 }
 
 // BatchHostError is a batch's report as a HostError.

@@ -780,7 +780,7 @@ func TestHostParkedCallsOnAReferenceReleasedWhileLoadingWithoutALinkNothingIsSen
 	forEachCodec(t, func(t *testing.T) {
 		client := newHost(t, HostOptions{OnError: func(HostError) {}})
 		defer closeHosts(t, client)
-		must(t, client.Load(nil, background))
+		mustLoad(t)(client.Load(nil, background))
 		notes, err := client.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
 		must(t, err)
 		other, err := client.Hold(Notes, jsonObject("session", "S2"), background, GetOptions{})

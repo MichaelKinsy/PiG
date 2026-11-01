@@ -49,8 +49,9 @@ const noDeadline = int64(math.MaxInt64)
 
 // runStates are a run's state documents. Created with the run, retired with its record; never drafted while absent.
 type runStates struct {
-	loop        eventLoop
-	owner       *documents.Documents
+	loop  eventLoop
+	owner *documents.Documents
+	// definition is the definition new documents are of: the job's latest declaration's state.
 	definition  *documents.SlotDefinition
 	persistence *documents.Persistence
 	states      runStatesOwner
@@ -59,6 +60,10 @@ type runStates struct {
 	held        map[string]*heldState
 	// heldOrder is the ids of held, in the order the changes were first held (a Map's insertion order).
 	heldOrder []string
+	// older are the definitions of documents older than `definition` (runs started before a reload's new job version), by
+	// run id: the old code keeps writing the version it knows; the document migrates once its run settles or moves to the
+	// new code (slice 7b section 8).
+	older map[string]*documents.SlotDefinition
 }
 
 var (
@@ -72,7 +77,48 @@ func newRunStates(loop eventLoop, definition *documents.StateDefinition, states 
 	return &runStates{
 		loop: loop, owner: states.documents, definition: documents.NewSlotDefinition(definition), persistence: persistence,
 		states: states, trackers: map[string]*delta.Tracker{}, stored: map[string]documents.Stored{}, held: map[string]*heldState{},
+		older: map[string]*documents.SlotDefinition{},
 	}
+}
+
+// redefine takes a reload's new job version's state `definition` for new documents (`SlotDefinition.Check` refuses an
+// older version or a schema changed without a bump); the documents there are keep the version they are of.
+func (states *runStates) redefine(definition *documents.StateDefinition) error {
+	current := states.definition
+	if definition == current.Current() {
+		return nil
+	}
+	if err := current.Check(definition); err != nil {
+		return err
+	}
+	if definition.Version != current.Current().Version {
+		for id := range states.trackers {
+			if _, found := states.older[id]; !found {
+				states.older[id] = current
+			}
+		}
+	}
+	states.definition = documents.NewSlotDefinition(definition)
+	return nil
+}
+
+// migrated is run `id`'s document as the current definition reads it: migrated when it is of an older version (its run's
+// outcome on the new code; the document itself is retired with the run), nil once retired.
+func (states *runStates) migrated(id string, ctx context.Context) (*delta.JsonObject, error) {
+	value := states.value(id)
+	older := states.older[id]
+	if value == nil || older == nil {
+		return value, nil
+	}
+	return states.definition.Current().Migrate(value, older.Current().Version, ctx)
+}
+
+// definitionOf is the definition run `key`'s document is of.
+func (states *runStates) definitionOf(key string) *documents.SlotDefinition {
+	if older := states.older[key]; older != nil {
+		return older
+	}
+	return states.definition
 }
 
 // Owner implements documents.DocumentSlot.
@@ -145,7 +191,7 @@ func (states *runStates) Stage(key string, change documents.DocumentChange, was 
 	if each := states.held[key]; each != nil {
 		held = heldOps(each)
 	}
-	return states.persistence.Stage(key, states.definition.Current(), was, change, writes, held)
+	return states.persistence.Stage(key, states.definitionOf(key).Current(), was, change, writes, held)
 }
 
 // Adopt implements documents.DocumentSlot.
@@ -168,6 +214,7 @@ func (states *runStates) Adopt(key string, tracker *delta.Tracker, prepared *del
 func (states *runStates) Retire(key string) {
 	delete(states.trackers, key)
 	delete(states.stored, key)
+	delete(states.older, key)
 	states.unhold(key)
 }
 
@@ -221,7 +268,7 @@ func (states *runStates) stageHeld(id string, writes *[]store.StagedWrite) (func
 	if each == nil || !found || tracker == nil {
 		return nil, nil
 	}
-	definition := states.definition.Current()
+	definition := states.definitionOf(id).Current()
 	version := int64(definition.Version)
 	value := tracker.Value()
 	held := heldOps(each)
@@ -257,6 +304,7 @@ func (states *runStates) drop() {
 	clear(states.trackers)
 	clear(states.stored)
 	clear(states.held)
+	clear(states.older)
 	states.heldOrder = nil
 }
 
@@ -293,7 +341,7 @@ func (states *runStates) hold(key string, prepared *delta.Prepared, change docum
 	if each.pending.Size() > 0 {
 		deltasSinceBase++
 	}
-	if states.definition.Current().CheckpointWhen(prepared.Value(), prepared.Ops(), documents.CheckpointInfo{DeltasSinceBase: deltasSinceBase}) {
+	if states.definitionOf(key).Current().CheckpointWhen(prepared.Value(), prepared.Ops(), documents.CheckpointInfo{DeltasSinceBase: deltasSinceBase}) {
 		each.base = true
 	}
 	// A base stores the whole value: no op needs keeping for it.

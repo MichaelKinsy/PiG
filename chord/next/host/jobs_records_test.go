@@ -1,16 +1,20 @@
 package host
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
+	"github.com/MichaelKinsy/PiG/chord/next/state"
+	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
 // Ports packages/chord/test/next/jobs/records.test.ts: a job's records on its object (slice 6a §1.2, §15 rule 5): runs
@@ -106,7 +110,7 @@ func TestRecordsARunCutOffByItsAttemptsSealEndsAbortedRestartAndIsFinishedOnTheN
 // records.test.ts › runs across attempts › refuses the cut run's changes made while it stops; its settling records nothing more
 func TestRecordsRefusesTheCutRunsChangesMadeWhileItStopsItsSettlingRecordsNothingMore(t *testing.T) {
 	late := make(chan error, 1)
-	started := newGate()
+	started := newJobGate()
 	var mu sync.Mutex
 	var jobs []JobHandle
 	runner := restartable(t, func(_ int, self Self) {
@@ -144,7 +148,7 @@ func TestRecordsRefusesTheCutRunsChangesMadeWhileItStopsItsSettlingRecordsNothin
 
 // records.test.ts › runs across attempts › a finish sealed mid-way is not counted as a failure and runs again on the next live attempt
 func TestRecordsAFinishSealedMidWayIsNotCountedAsAFailureAndRunsAgainOnTheNextLiveAttempt(t *testing.T) {
-	g := newGate()
+	g := newJobGate()
 	var mu sync.Mutex
 	var attempts []int
 	started := make(chan struct{}, 1)
@@ -268,4 +272,387 @@ func TestRecordsTheObjectsEndDuringAnAdmittedCommitARunStartedInACommitHeldInThe
 	if seq := st.LastSeq(); seq != 1 {
 		t.Fatalf("lastSeq = %d, want 1", seq)
 	}
+}
+
+// jobsRunner is the jobs object of the reload tests: `start` starts a run of `text`, `running` lists them.
+var jobsRunner = mustContract(contracts.Local("app.runner", contracts.LocalDeclaration{
+	Version: 1,
+	Params:  contracts.Params{},
+	Members: []contracts.LocalEntry{
+		contracts.Mem("start", contracts.NewMethod(contracts.Obj(contracts.Prop("text", contracts.Str())), contracts.Str())),
+		contracts.Mem("running", contracts.Arr(contracts.Unknown())),
+	},
+}))
+
+// jobWorkV2 is version 2 of `Work`: its args gained a priority, its result is an object; v1 runs map forwards.
+var jobWorkV2 = mustDefineJob(DefineJob("app.work", JobOptions{
+	Version: 2,
+	Args:    contracts.Obj(contracts.Prop("text", contracts.Str()), contracts.Prop("priority", contracts.Int())),
+	Result:  contracts.Obj(contracts.Prop("text", contracts.Str())),
+	State:   jobProgress,
+	Accepts: JobAccepts{1: {
+		Args: func(old any) (any, error) {
+			return jsonObject("text", old.(*delta.JsonObject).Value("text"), "priority", float64(0)), nil
+		},
+		Result: func(old any) (any, error) { return jsonObject("text", old), nil },
+	}},
+}))
+
+// jobWorkV2Strict is `WorkV2` without an adapter for version 1.
+var jobWorkV2Strict = mustDefineJob(DefineJob("app.work", JobOptions{
+	Version: 2,
+	Args:    contracts.Obj(contracts.Prop("text", contracts.Str()), contracts.Prop("priority", contracts.Int())),
+	Result:  contracts.Obj(contracts.Prop("text", contracts.Str())),
+	State:   jobProgress,
+}))
+
+type jobFinished struct {
+	code    string
+	outcome Outcome
+}
+
+// finishedLog is what the finishes of the reload tests recorded.
+type finishedLog struct {
+	mu   sync.Mutex
+	list []jobFinished
+}
+
+func (log *finishedLog) push(code string, outcome Outcome) {
+	log.mu.Lock()
+	defer log.mu.Unlock()
+	log.list = append(log.list, jobFinished{code, outcome})
+}
+
+func (log *finishedLog) all() []jobFinished {
+	log.mu.Lock()
+	defer log.mu.Unlock()
+	return append([]jobFinished(nil), log.list...)
+}
+
+// runnerOptions are the options of `runner`: the gates its runs wait for (the next queued one each) and whether the object
+// opens a native (a reload restarts it).
+type runnerOptions struct {
+	gates  []*jobGate
+	native bool
+}
+
+// runner is a facet serving `Runner` with `job` (labelled `code` in what its finish records into `finished`); its `run`
+// waits for the next queued gate; with `native` the object opens a native.
+func runner(code string, job *JobDefinition, finished *finishedLog, options runnerOptions) Facet {
+	var mu sync.Mutex
+	gates := options.gates
+	return DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(jobsRunner, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			if options.native {
+				self.Open(func(context.Context) (any, error) { return code, nil },
+					func(any, NativeCloseReason, context.Context) error { return nil })
+			}
+			if job == nil {
+				return contracts.Implementation{Members: contracts.VariantImplementation{
+					State: map[string]chord.Watchable[delta.JsonValue]{"running": Expose(state.NewConstant([]any{}))},
+					Methods: map[string]contracts.MethodFunction{
+						"start": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return "", nil },
+					},
+				}}, nil
+			}
+			handle := self.Job(job, JobImplementation{
+				Run: func(args any, ctx JobCtx) (any, error) {
+					var next *jobGate
+					mu.Lock()
+					if len(gates) > 0 {
+						next, gates = gates[0], gates[1:]
+					}
+					mu.Unlock()
+					if next != nil {
+						select {
+						case <-next.Done():
+						case <-ctx.Done():
+						}
+					}
+					if ctx.Err() != nil {
+						return nil, context.Cause(ctx)
+					}
+					text := textOf(args) + " by " + code
+					if job.Version == 1 {
+						return text, nil
+					}
+					return jsonObject("text", text), nil
+				},
+				Finish: func(outcome Outcome, _ documents.Tx) error {
+					finished.push(code, outcome)
+					return nil
+				},
+			})
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"running": Expose(handle.Running())},
+				Methods: map[string]contracts.MethodFunction{
+					"start": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+						text := args.(*delta.JsonObject).Value("text")
+						started := jsonObject("text", text)
+						if job.Version != 1 {
+							started = jsonObject("text", text, "priority", float64(1))
+						}
+						run, err := handle.Start(started, ctx, StartOptions{})
+						if err != nil {
+							return nil, err
+						}
+						return run.ID(), nil
+					},
+				},
+			}}, nil
+		}, ServeOptions{})
+	})
+}
+
+// runnerRunning is `jobs.running.value`.
+func runnerRunning(t testing.TB, jobs *Reference) []any {
+	t.Helper()
+	value, err := jobs.Member("running").Value()
+	must(t, err)
+	return value.([]any)
+}
+
+// startedBy is `jobs.start({ text }, context)`: the new run's id.
+func startedBy(t testing.TB, jobs *Reference, text string) string {
+	t.Helper()
+	id, err := jobs.Call("start", jsonObject("text", text), background)
+	must(t, err)
+	return id.(string)
+}
+
+// entryMatches is whether the `running` entries are exactly entries as `toMatchObject` reads them: the same number, each
+// of the listed fields equal.
+func entryMatches(got []any, want ...map[string]any) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for index, fields := range want {
+		entry, _ := got[index].(*delta.JsonObject)
+		if entry == nil {
+			return false
+		}
+		for key, value := range fields {
+			if !nexttest.JSONEqual(entry.Value(key), value) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func outcomeIs(outcome Outcome, kind OutcomeKind, result any) bool {
+	return outcome.Kind == kind && nexttest.JSONEqual(outcome.Result, result)
+}
+
+// records.test.ts › jobs across a reload (slice 7b §8) › an older run finishes on its old code across a swap; its finish runs on the new code, mapped forwards once
+func TestRecordsJobsAcrossAReloadAnOlderRunFinishesOnItsOldCodeAcrossASwapItsFinishRunsOnTheNewCodeMappedForwardsOnce(t *testing.T) {
+	finished := &finishedLog{}
+	g := newJobGate()
+	host := newJobHost(t, HostOptions{OnError: func(HostError) {}})
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: runner("v1", jobWork, finished, runnerOptions{gates: []*jobGate{g}})}}, background))
+	jobs, err := host.Get(jobsRunner, jsonObject(), background, GetOptions{})
+	must(t, err)
+	startedBy(t, jobs, "a")
+	nexttest.Flushed()
+	jobsReloaded(t, host, "@test/app", runner("v2", jobWorkV2, finished, runnerOptions{}))
+	nexttest.Flushed()
+	// Listed with its args mapped forwards.
+	eventually(t, "the old run listed with its args mapped forwards", func() bool {
+		return entryMatches(runnerRunning(t, jobs), map[string]any{
+			"version": float64(1), "args": jsonObject("text", "a", "priority", float64(0)), "phase": "running",
+		})
+	})
+	g.Open()
+	eventually(t, "its finish to run on the new code", func() bool { return len(finished.all()) == 1 })
+	got := finished.all()
+	if got[0].code != "v2" || got[0].outcome.Kind != OutcomeDone ||
+		!nexttest.JSONEqual(got[0].outcome.Args, jsonObject("text", "a", "priority", float64(0))) ||
+		!nexttest.JSONEqual(got[0].outcome.Result, jsonObject("text", "a by v1")) {
+		t.Fatalf("finished = %+v", got)
+	}
+	must(t, host.Close(background))
+}
+
+// records.test.ts › jobs across a reload (slice 7b §8) › a run without an adapter is blocked (version) until a reload brings matching code
+func TestRecordsJobsAcrossAReloadARunWithoutAnAdapterIsBlockedVersionUntilAReloadBringsMatchingCode(t *testing.T) {
+	finished := &finishedLog{}
+	g := newJobGate()
+	host := newJobHost(t, HostOptions{OnError: func(HostError) {}})
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: runner("v1", jobWork, finished, runnerOptions{gates: []*jobGate{g}})}}, background))
+	jobs, err := host.Get(jobsRunner, jsonObject(), background, GetOptions{})
+	must(t, err)
+	id := startedBy(t, jobs, "a")
+	nexttest.Flushed()
+	jobsReloaded(t, host, "@test/app", runner("v2", jobWorkV2Strict, finished, runnerOptions{}))
+	g.Open()
+	eventually(t, "the run to be blocked for its version", func() bool {
+		return entryMatches(runnerRunning(t, jobs), map[string]any{"id": id, "version": float64(1), "phase": "blocked", "reason": "version"})
+	})
+	nexttest.Flushed()
+	if len(finished.all()) != 0 {
+		t.Fatalf("finished = %+v", finished.all())
+	}
+	entry := runnerRunning(t, jobs)[0].(*delta.JsonObject)
+	if entry.Len() != 4 {
+		t.Fatalf("a blocked entry has only id, version, phase and reason: %v", entry)
+	}
+	jobsReloaded(t, host, "@test/app", runner("v1b", jobWork, finished, runnerOptions{}))
+	eventually(t, "its finish to run on the code that takes it", func() bool { return len(finished.all()) == 1 })
+	got := finished.all()
+	if got[0].code != "v1b" || !outcomeIs(got[0].outcome, OutcomeDone, "a by v1") {
+		t.Fatalf("finished = %+v", got)
+	}
+	eventually(t, "the list to be empty", func() bool { return len(runnerRunning(t, jobs)) == 0 })
+	must(t, host.Close(background))
+}
+
+// records.test.ts › jobs across a reload (slice 7b §8) › a native restart aborts running in-memory runs (reload); their finish runs on the new code
+func TestRecordsJobsAcrossAReloadANativeRestartAbortsRunningInMemoryRunsReloadTheirFinishRunsOnTheNewCode(t *testing.T) {
+	finished := &finishedLog{}
+	host := newJobHost(t, HostOptions{OnError: func(HostError) {}})
+	g := newJobGate()
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: runner("v1", jobWork, finished, runnerOptions{gates: []*jobGate{g}, native: true})}}, background))
+	jobs, err := host.Get(jobsRunner, jsonObject(), background, GetOptions{})
+	must(t, err)
+	startedBy(t, jobs, "a")
+	nexttest.Flushed()
+	jobsReloaded(t, host, "@test/app", runner("v2", jobWork, finished, runnerOptions{native: true}))
+	eventually(t, "its finish to run on the new code", func() bool { return len(finished.all()) == 1 })
+	got := finished.all()
+	if got[0].code != "v2" || got[0].outcome.Kind != OutcomeFailed ||
+		got[0].outcome.Error.Kind != JobAborted || got[0].outcome.Error.Reason != AbortedByReload {
+		t.Fatalf("finished = %+v", got)
+	}
+	must(t, host.Close(background))
+}
+
+// records.test.ts › jobs across a reload (slice 7b §8) › a job the new code no longer declares blocks its runs (version); declared again, they go on
+func TestRecordsJobsAcrossAReloadAJobTheNewCodeNoLongerDeclaresBlocksItsRunsVersionDeclaredAgainTheyGoOn(t *testing.T) {
+	finished := &finishedLog{}
+	g := newJobGate()
+	host := newJobHost(t, HostOptions{OnError: func(HostError) {}})
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: runner("v1", jobWork, finished, runnerOptions{gates: []*jobGate{g}})}}, background))
+	jobs, err := host.Get(jobsRunner, jsonObject(), background, GetOptions{})
+	must(t, err)
+	startedBy(t, jobs, "a")
+	nexttest.Flushed()
+	jobsReloaded(t, host, "@test/app", runner("v2", nil, finished, runnerOptions{}))
+	g.Open()
+	nexttest.Flushed()
+	if len(finished.all()) != 0 {
+		t.Fatalf("finished = %+v", finished.all())
+	}
+	jobsReloaded(t, host, "@test/app", runner("v3", jobWork, finished, runnerOptions{}))
+	eventually(t, "its finish to run on the new code", func() bool { return len(finished.all()) == 1 })
+	got := finished.all()
+	if got[0].code != "v3" || !outcomeIs(got[0].outcome, OutcomeDone, "a by v1") {
+		t.Fatalf("finished = %+v", got)
+	}
+	must(t, host.Close(background))
+}
+
+// nthTransactionDatabase holds the `n`th backend transaction after `arm` inside it, at its first statement (Go form of
+// Pi replacing `store.commit` to hold the second commit's step: `ChordStore.Commit` is a method of a concrete type).
+type nthTransactionDatabase struct {
+	sqlite.SqliteDatabase
+	mu    sync.Mutex
+	left  int
+	gate  *transactionGate
+	armed bool
+}
+
+func (db *nthTransactionDatabase) arm(n int) *transactionGate {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	db.left, db.armed, db.gate = n, true, newTransactionGate()
+	return db.gate
+}
+
+func (db *nthTransactionDatabase) Transaction(callback func(transaction sqlite.SqliteExecutor) error) error {
+	var held *transactionGate
+	db.mu.Lock()
+	if db.armed {
+		db.left--
+		if db.left == 0 {
+			held, db.armed = db.gate, false
+		}
+	}
+	db.mu.Unlock()
+	return db.SqliteDatabase.Transaction(func(transaction sqlite.SqliteExecutor) error {
+		if held != nil {
+			transaction = &gatedExecutor{SqliteExecutor: transaction, gate: held}
+		}
+		return callback(transaction)
+	})
+}
+
+// records.test.ts › a reservation released after a swap (final review) › starts the old code's run with its own args, not the new version's mapping (Sol)
+func TestRecordsAReservationReleasedAfterASwapStartsTheOldCodesRunWithItsOwnArgsNotTheNewVersionsMappingSol(t *testing.T) {
+	owner := mustContract(contracts.Local("app.reserve-owner", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{}}))
+	options := func(version int) JobOptions {
+		return JobOptions{Version: version, Result: contracts.Int(), Persist: &JobPersistence{Resume: ResumeRerun}}
+	}
+	v1Options := options(1)
+	v1Options.Args = contracts.Obj(contracts.Prop("n", contracts.Int()))
+	v1 := mustDefineJob(DefineJob("app.reserve", v1Options))
+	v2Options := options(2)
+	v2Options.Args = contracts.Obj(contracts.Prop("label", contracts.Str()))
+	v2Options.Accepts = JobAccepts{1: {
+		Args: func(old any) (any, error) {
+			return jsonObject("label", fmt.Sprintf("mapped %v", old.(*delta.JsonObject).Value("n"))), nil
+		},
+		Result: func(old any) (any, error) { return old, nil },
+	}}
+	v2 := mustDefineJob(DefineJob("app.reserve", v2Options))
+	var db *nthTransactionDatabase
+	st := openMemoryStore(t, func(inner sqlite.SqliteDatabase) sqlite.SqliteDatabase {
+		db = &nthTransactionDatabase{SqliteDatabase: inner}
+		return db
+	}, nil)
+	host := newJobHost(t, HostOptions{Store: st, OnError: func(HostError) {}})
+	var mu sync.Mutex
+	var seen []any
+	var handle JobHandle
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/reserve", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(owner, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			handle = self.Job(v1, JobImplementation{Run: func(args any, _ JobCtx) (any, error) {
+				mu.Lock()
+				defer mu.Unlock()
+				seen = append(seen, args.(*delta.JsonObject).Value("n"))
+				return float64(42), nil
+			}})
+			return contracts.Implementation{}, nil
+		}, ServeOptions{})
+	})}}, background))
+	// The object is live: Pi's `load` resolves with it served; hold a reference so it is.
+	reference, err := host.Get(owner, jsonObject(), background, GetOptions{})
+	must(t, err)
+	defer reference.Release()
+	// The run's reservation (the second commit after the start) waits on `gate` until the swap to V2 happened.
+	held := db.arm(2)
+	run := jobStart(t, handle, jsonObject("n", float64(1)), background)
+	<-held.Entered()
+	reloaded := make(chan error, 1)
+	go func() {
+		_, err := host.Reload([]HostFacet{{Name: "@app/reserve", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			return h.Serve(owner, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				self.Job(v2, JobImplementation{Run: func(any, JobCtx) (any, error) { return float64(43), nil }})
+				return contracts.Implementation{}, nil
+			}, ServeOptions{})
+		})}}, background, ReloadOptions{})
+		reloaded <- err
+	}()
+	hostDelivered(host)
+	nexttest.Flushed()
+	held.Release()
+	must(t, <-reloaded)
+	runOutcome(t, run)
+	// V1's handler got V1's args.
+	mu.Lock()
+	if len(seen) != 1 || seen[0] != float64(1) {
+		t.Fatalf("seen = %v", seen)
+	}
+	mu.Unlock()
+	must(t, host.Close(background))
+	must(t, st.Close(background))
 }

@@ -175,7 +175,7 @@ func TestKeyedMembers(t *testing.T) {
 		if keyed.Fingerprint == plain.Fingerprint {
 			t.Fatal("a keyed member and a state member share a fingerprint")
 		}
-		// Evolving the contract carries its keyed members over unchanged (their versions are slice 7's).
+		// Evolving the contract carries its keyed members over unchanged (an edit changes them: slice 7b).
 		next := must(contracts.Evolve(keyed, func(e *contracts.LocalEditor) *contracts.LocalEditor {
 			return e.AddMethod("clear", contracts.Str(), contracts.Str())
 		}))

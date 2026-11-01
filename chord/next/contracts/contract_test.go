@@ -121,3 +121,16 @@ func TestContractVariantNames(t *testing.T) {
 		t.Fatalf("VariantNamesOf = %+v", got)
 	}
 }
+
+func TestVariantsAt(t *testing.T) {
+	v1 := local(t, "info", 1, noParams(), contracts.Mem("title", contracts.Str()))
+	v2 := must(evolveLocal(v1, func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.AddState("body", contracts.Str()) }))
+	at1 := must(contracts.VariantsAt(v2, 1)).Value(contracts.LocalVariant)
+	at2 := must(contracts.VariantsAt(v2, 2)).Value(contracts.LocalVariant)
+	if len(keys(at1.State)) != 1 || len(keys(at2.State)) != 2 {
+		t.Fatalf("state at v1 = %v, at v2 = %v", keys(at1.State), keys(at2.State))
+	}
+	if _, err := contracts.VariantsAt(v2, 3); err == nil {
+		t.Fatal("an unknown version was found")
+	}
+}

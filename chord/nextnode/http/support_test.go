@@ -197,8 +197,12 @@ func (s *testServer) facets(more ...plugin) []host.HostFacet {
 // load loads the host with the facets and waits for the listener's port.
 func (s *testServer) load() {
 	s.t.Helper()
-	if err := s.host.Load(s.facets(), background); err != nil {
+	report, err := s.host.Load(s.facets(), background)
+	if err != nil {
 		s.t.Fatal(err)
+	}
+	for _, failed := range report.Failed {
+		s.t.Fatalf("plugin %q was left out: %v", failed.Plugin, failed.Error)
 	}
 	if s.listen {
 		address, err := s.http.Listening(background)

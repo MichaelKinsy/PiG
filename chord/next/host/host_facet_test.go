@@ -63,7 +63,8 @@ func TestFacetsOnlyDeclareASetupTakesTheHostAndASelfThatOnlyContributes(t *testi
 		t.Fatalf("FacetHost members = %v, want References and Serve (no state, on or onLive)", got)
 	}
 	setup, ok := reflect.TypeFor[Facet]().FieldByName("Setup")
-	if !ok || reflect.TypeFor[Facet]().NumField() != 1 ||
+	// Its other field is the unexported identity a reload compares facets by (Pi's `facet === other`).
+	if !ok || reflect.TypeFor[Facet]().NumField() != 2 || reflect.TypeFor[Facet]().Field(1).IsExported() ||
 		setup.Type != reflect.TypeFor[func(FacetHost, FacetSelf) error]() {
 		t.Fatalf("Facet is not exactly its setup(host FacetHost, self FacetSelf): %v", reflect.TypeFor[Facet]())
 	}
@@ -75,15 +76,16 @@ func TestFacetsContributeAtMostOneValuePerRegistryOnlyWhileTheirSetupRuns(t *tes
 		t.Fatal(err)
 	}
 	token := registries.Registry[any, any](Names)
-	_, err = scopeFacet(func(_ FacetHost, self FacetSelf) error {
+	twice, errs := loaded(t, func(_ FacetHost, self FacetSelf) error {
 		if err := self.Contribute(token, "a"); err != nil {
 			return err
 		}
 		return self.Contribute(token, "b")
-	})
-	if err == nil || err.Error() != "@test/app: registry app.names is contributed to twice" {
-		t.Fatalf("err = %v, want the twice error", err)
+	}, loadedOptions{})
+	if got, want := failedMessages(errs.Failed), [][2]string{{"@test/app", `plugin "@test/app": @test/app: registry app.names is contributed to twice`}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("failed = %v, want %v", got, want)
 	}
+	closeHosts(t, twice)
 	var later FacetSelf
 	if _, err := scopeFacet(func(host FacetHost, self FacetSelf) error {
 		provider := registries.RegistryProvider[string, int]{

@@ -151,7 +151,7 @@ func startRelayWorker(b testing.TB, start relayStart, end link.Link) Host {
 	worker := relayWorkerHost(b, start)
 	must(b, worker.Connect(end, LinkOptions{Principal: serverPrincipal(), Trusted: true, Codec: link.BinaryCodec}, background))
 	go func() {
-		_ = worker.Load([]HostFacet{{Name: "@bench/worker", Facet: DefineFacet(relayWorkerFacet(start))}}, background)
+		_, _ = worker.Load([]HostFacet{{Name: "@bench/worker", Facet: DefineFacet(relayWorkerFacet(start))}}, background)
 	}()
 	return worker
 }
@@ -325,7 +325,7 @@ func benchRelayServerOf(b testing.TB, kind relayWorkerKind, entries string) *ben
 		Address: new(Server.Address(nil)), Principal: serverPrincipal(),
 		OnError: func(err HostError) { b.Errorf("onError %s", err.Kind) },
 	})
-	must(b, server.host.Route(Session, RouteOptions{
+	mustRoute(b)(server.host.Route(Session, RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 		Resolve: func(address contracts.Address, _ context.Context) (ResolvedLink, error) {
 			start := relayStart{id: address.Params.Value("id").(string), entries: entries}
@@ -354,7 +354,7 @@ func benchRelayServerOf(b testing.TB, kind relayWorkerKind, entries string) *ben
 			return ResolvedLink{Link: resolved, Principal: principal, Trusted: true, Codec: link.BinaryCodec}, nil
 		},
 	}, background))
-	must(b, server.host.Load(nil, background))
+	mustLoad(b)(server.host.Load(nil, background))
 	return server
 }
 
@@ -363,7 +363,7 @@ func benchRelayTab(b testing.TB, end link.Link) Host {
 	b.Helper()
 	host := newHost(b, HostOptions{OnError: func(err HostError) { b.Errorf("onError %s", err.Kind) }})
 	must(b, host.Connect(end, LinkOptions{Principal: serverPrincipal(), Codec: link.BinaryCodec}, background))
-	must(b, host.Load(nil, background))
+	mustLoad(b)(host.Load(nil, background))
 	return host
 }
 
@@ -483,7 +483,7 @@ func benchRelayDirectOf(b testing.TB, entries string, wrap func(link.Link) link.
 	b.Helper()
 	start := relayStart{id: "D", entries: entries}
 	worker := relayWorkerHost(b, start)
-	must(b, worker.Load([]HostFacet{{Name: "@bench/worker", Facet: DefineFacet(relayWorkerFacet(start))}}, background))
+	mustLoad(b)(worker.Load([]HostFacet{{Name: "@bench/worker", Facet: DefineFacet(relayWorkerFacet(start))}}, background))
 	a, c := link.MemoryLinkPair()
 	counted := newCountedLink(a)
 	end := &timedLink{Link: counted}

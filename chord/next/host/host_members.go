@@ -19,17 +19,14 @@ import (
 // functions and state members JSON watchables; and the resolution of what Chord follows behind every derive's declared
 // sources (JSON and native) and every contribution to a registry (slice 8).
 //
-// The rule for watches across attempts (slice 6a §1.2, §1.4): references and other objects' derives follow a local
-// object's state member through its member source (`member-source.ts`), and a key of a keyed member they hold (`at`,
-// `watch(key)`) through a member source per key (`keyed-members.ts`); both live as long as the object. While the
-// object is failed or activating again they keep their last values and get no frames; when a new attempt goes live
-// they re-bind by name to that attempt's member (a pinned key loaded on it first), whether a document or a derive: one
-// frame from the last value, and every derive downstream recovers, one that failed on the old member's error included
-// (decision "self healing"). A re-exposed member is the re-exposing object's: it freezes with that object, its
-// provider's source goes on. At a live failure, members following another object's sources freeze at once; the
-// object's own documents and derives freeze once its admitted commits adopted, so until then an own derive over
-// another object's member may still change. Holds over a link follow the live attempt's members and take a snapshot at
-// each binding.
+// The rule for watches across attempts (decision "References are the only indirection"): consumers' watches and
+// derives over another object's member follow it through their reference's member (`reference-source.ts`) and keys
+// (`reference-keys.ts`), passed straight through to the instance's own document or derive. While the object points at
+// nothing they keep their last values (one `failed` call for a failure); when a new instance goes live they move by
+// name to its member (a key pinned there again), whether a document or a derive: one frame from the last value, and
+// every derive downstream recovers (decision "self healing"). A re-exposed member is the re-exposing object's
+// reference member: it holds with that object, its provider's source goes on. Holds over a link follow the live
+// instance's members and take a snapshot at each binding.
 
 // members is a checked implementation, as Chord calls and follows it.
 type members struct {
@@ -228,20 +225,13 @@ func attachDerives(
 
 // contributionOf is a contribution of contributor at version to record, as Chord follows it: a Chord watchable (a
 // source, a constant, a document handle, a reference member, a native source) is followed, anything else is a plain
-// value, whatever methods it has (registries carry natives). Refused (`invalid/cycle`) when it is a registry's value
-// that closes a cycle of registries, through the tables and the contributor's `pending` edges.
+// value, whatever methods it has (registries carry natives).
 func contributionOf(
 	record *registries.RegistryRecord,
 	contributor registries.Contributor,
 	version int,
 	value any,
-	pending []registries.RegistryEdge,
 ) (*registries.RegistryContribution, error) {
-	if source, ok := value.(*registries.RegistryValueSource); ok {
-		if err := record.AssertNoCycle(source, pending); err != nil {
-			return nil, err
-		}
-	}
 	content, err := contentOf(value)
 	if err != nil {
 		return nil, err

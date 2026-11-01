@@ -67,4 +67,32 @@ func TestClaims(t *testing.T) {
 			t.Fatal("Held = false, want true")
 		}
 	})
+
+	// Go-only evidence: claims.test.ts at Pi 6d4b7443 does not exercise `assertTable` and `assertDocuments` (the
+	// host's staging calls them, staging.ts); this pins their contract: the refusals of `table` and `documents`,
+	// claiming nothing.
+	t.Run("assert what a claim would refuse, claiming nothing", func(t *testing.T) {
+		claims := NewClaims()
+		a := &NamedClaimant{Label: "A"}
+		b := &NamedClaimant{Label: "B"}
+		claimed(t, claims.AssertTable("x:edits", a))
+		claimed(t, claims.AssertDocuments("x", "chord", a))
+		if claims.Held() {
+			t.Fatal("an assertion claimed something")
+		}
+		claimed(t, claims.Table("x:edits", a))
+		claimed(t, claims.Documents("x", "chord", a))
+		// The holder passes again; another claimant is refused as `table` and `documents` refuse it.
+		claimed(t, claims.AssertTable("x:edits", a))
+		claimed(t, claims.AssertDocuments("x", "chord", a))
+		claimFails(t, claims.AssertTable("x:edits", b), `table "x:edits" is claimed by A`)
+		claimFails(t, claims.AssertDocuments("x", "chord", b), `documents ["x","chord"] is claimed by A`)
+		claimed(t, claims.AssertTable("x:entries", b))
+		claims.Release(a)
+		claimed(t, claims.AssertTable("x:edits", b))
+		unlock := claims.Lock()
+		claimFails(t, claims.AssertTable("x:edits", b), "while a batch applies")
+		claimFails(t, claims.AssertDocuments("x", "chord", b), "while a batch applies")
+		unlock()
+	})
 }

@@ -503,7 +503,7 @@ func TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch(t *testing.T
 			}}, nil
 		}, ServeOptions{})
 	})
-	must(t, host.Load([]HostFacet{{Name: "@test/core", Facet: facet}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/core", Facet: facet}}, background))
 	ref, err := host.Get(busy, jsonObject(), background, GetOptions{})
 	must(t, err)
 	member := ref.Member("busy")

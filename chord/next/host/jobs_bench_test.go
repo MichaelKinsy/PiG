@@ -87,7 +87,7 @@ func servedWorker(b *testing.B, persisted bool) *benchWorker {
 	if persisted {
 		definition = benchPersistedImport
 	}
-	must(b, host.Load([]HostFacet{{Name: "@bench/jobs", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(b)(host.Load([]HostFacet{{Name: "@bench/jobs", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(benchWorkerType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			worker.jobs = self.Job(definition, JobImplementation{Run: func(_ any, ctx JobCtx) (any, error) {
 				ended := make(chan struct{})

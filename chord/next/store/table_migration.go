@@ -28,10 +28,13 @@ import (
 // ones by the store's FIFO. ctx's abort is checked between chunks (a chunk admitted to the step completes): the
 // error is `context.Cause(ctx)`, as `abortSignal.throwIfAborted()` throws the signal's reason. The commits run
 // without the activation's abort (a commit admitted to the step completes; the fence refuses one). The fallback
-// yield between chunks (Pi's `macrotask`: `setImmediate` or a MessageChannel message, so that other commits and
-// timers run between chunks) is `runtime.Gosched()` (the target's yield): Go has no timer clamp nor channel fallback
-// to choose between, so those mechanics are designed out; the rule they serve is proved by a yield between every two
-// chunks that a test replaces with one running its competing task (evidence_storeB_test.go).
+// yield between chunks (Pi's `macrotask`: `setImmediate`, read once from the global and called only when it is a
+// function, else a MessageChannel message, so that other commits and timers run between chunks) is
+// `runtime.Gosched()` (the target's yield): Go has no timer clamp nor channel fallback to choose between, so those
+// mechanics, the runtime feature check included, are designed out; the rule they serve is proved by a yield between
+// every two chunks that a test replaces with one running its competing task (evidence_storeB_test.go). A version's
+// migration is announced to the store before its first commit and withdrawn after its last (`AnnounceTable`), so
+// handles of the older version are refused while it runs (table handle `AssertVersion`).
 
 // DeclaredTable is a declared table: its newest definition and its SQL name.
 type DeclaredTable struct {
@@ -121,8 +124,17 @@ func migrateTable(plan TablePlan, target migrationTarget, ctx context.Context) e
 // MigrationChunk is the size of a `rows` chunk: one commit each.
 const MigrationChunk = 100
 
-// migrateVersion migrates to definition's version from its (A) commit (FirstBegin) or after it (FirstResume).
+// migrateVersion migrates to definition's version from its (A) commit (FirstBegin) or after it (FirstResume); old
+// handles of the table are refused from the start until its last commit.
 func migrateVersion(definition *TableDefinition, from string, target migrationTarget, ctx context.Context) error {
+	// Old handles are refused from now on: their SQL must never queue behind this version's DDL.
+	withdraw := target.store.AnnounceTable(target.table, definition.Version)
+	defer withdraw()
+	return migrateSteps(definition, from, target, ctx)
+}
+
+// migrateSteps is the commits of migrateVersion.
+func migrateSteps(definition *TableDefinition, from string, target migrationTarget, ctx context.Context) error {
 	migration := definition.Evolution.Migration
 	step, table := migration.Step, target.table
 	edits := func(list []TableEdit) []StagedWrite {

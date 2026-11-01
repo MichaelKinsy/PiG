@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 	"weak"
@@ -237,7 +238,7 @@ func (v *rhVirtual) rawServer(t testing.TB, setup func(host FacetHost) error) (H
 	server := rhCreate(t, HostOptions{
 		Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: errs.push, loop: v.loop,
 	})
-	must(t, server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
+	mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
 		return setup(host)
 	})}}, background))
 	return server, rhSecondPeer(t, server), errs
@@ -551,7 +552,7 @@ func TestHoldGCPending(t *testing.T) {
 			loadDone := make(chan error, 1)
 			go func() {
 				// A host-lifetime object whose open never resolves: `load` waits for it (until its readyTimeout).
-				loadDone <- server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
+				loadDone <- rhLoadErr(server, []HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
 					if err := rhServePending(host); err != nil {
 						return err
 					}
@@ -652,7 +653,7 @@ func TestHoldNoticesOfAFailedObject(t *testing.T) {
 					t.Fatalf("a broken failure names a retryIn: %+v", failed)
 				}
 			}
-			peer.Send(&link.RetryMessage{Hold: 0})
+			peer.Send(&link.RetryMessage{Hold: 0, Hops: 16})
 			for _, consumer := range []*RawPeer{peer, other} {
 				if loading := consumer.Next("loading").(*link.LoadingMessage); loading.Hold != 0 {
 					t.Fatalf("loading = %+v", loading)
@@ -672,7 +673,7 @@ func TestHoldNoticesOfAFailedObject(t *testing.T) {
 			peer.Next("failed")
 			rhHold(other, 0, rhFlaky)
 			other.Next("failed")
-			other.Send(&link.RetryMessage{Hold: 0})
+			other.Send(&link.RetryMessage{Hold: 0, Hops: 16})
 			for _, consumer := range []*RawPeer{peer, other} {
 				consumer.Next("loading")
 				consumer.Next("bound")
@@ -685,8 +686,8 @@ func TestHoldNoticesOfAFailedObject(t *testing.T) {
 			_, peer, _ := virtual.rawServer(t, rhServeFlaky(&rhFailing{left: 0}))
 			rhHold(peer, 0, rhFlaky)
 			peer.Next("bound")
-			peer.Send(&link.RetryMessage{Hold: 0})
-			peer.Send(&link.RetryMessage{Hold: 9})
+			peer.Send(&link.RetryMessage{Hold: 0, Hops: 16})
+			peer.Send(&link.RetryMessage{Hold: 9, Hops: 16})
 			rhSync(t, peer)
 			rhKindsAre(t, peer, "hello")
 			if peer.Closed() {
@@ -728,7 +729,7 @@ func TestHoldsThatBindToNothingYet(t *testing.T) {
 			refs, err := rig.Server.References(rhHalves).Value()
 			must(t, err)
 			rhEqual(t, "references(Halves)", refs, []any{})
-			peer.Send(&link.RetryMessage{Hold: 0})
+			peer.Send(&link.RetryMessage{Hold: 0, Hops: 16})
 			if loading := peer.Next("loading").(*link.LoadingMessage); loading.Hold != 0 {
 				t.Fatalf("loading = %+v", loading)
 			}
@@ -794,9 +795,9 @@ func TestHoldsThatBindToNothingYet(t *testing.T) {
 			check(peer.Next("failed"), "waiting for app.core: app.core: bug 1")
 			// A retry passes on through the parked object to its broken dependency (one host's retry operation). (Its new
 			// attempt failed within the batch of changes the parked object checks once: no loading between.)
-			peer.Send(&link.RetryMessage{Hold: 0})
+			peer.Send(&link.RetryMessage{Hold: 0, Hops: 16})
 			check(peer.Next("failed"), "waiting for app.core: app.core: bug 2")
-			peer.Send(&link.RetryMessage{Hold: 0})
+			peer.Send(&link.RetryMessage{Hold: 0, Hops: 16})
 			peer.Next("loading")
 			if bound := peer.Next("bound").(*link.BoundMessage); bound.Holds[0].Hold != 0 {
 				t.Fatalf("bound = %+v", bound)
@@ -936,7 +937,7 @@ type rhRetiringRig struct {
 func rhRetiringPeer(t testing.TB) *rhRetiringRig {
 	t.Helper()
 	server := rhCreate(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
-	must(t, server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
+	mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
 		return host.Serve(rhRetiring, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
 			doc := stateOf(self, rhCounter)
 			number := func(values []any) float64 { return values[0].(*delta.JsonObject).Value("n").(float64) }
@@ -1142,39 +1143,40 @@ func TestHoldFailuresWhileTheWindowIsFull(t *testing.T) {
 	})
 }
 
-// --- retry operations across links -----------------------------------------------------------------------------------
+// --- retries across links: the hop budget ------------------------------------------------------------------------------
 
-// rhCountingLink counts the `retry` messages sent through it (Pi wraps the link and decodes with the binary codec).
+// rhCountingLink records the hops of the `retry` messages sent through it (Pi wraps the link and decodes with the binary
+// codec).
 type rhCountingLink struct {
 	link.Link
 	retries *rhRetryCount
 }
 
 type rhRetryCount struct {
-	mu sync.Mutex
-	n  int
+	mu   sync.Mutex
+	hops []int
 }
 
-func (c *rhRetryCount) get() int {
+func (c *rhRetryCount) get() []int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.n
+	return slices.Clone(c.hops)
 }
 
 func (l *rhCountingLink) Send(bytes []byte) {
 	if message, err := link.BinaryCodec.Decode(bytes); err == nil && message.Kind() == "retry" {
 		l.retries.mu.Lock()
-		l.retries.n++
+		l.retries.hops = append(l.retries.hops, message.(*link.RetryMessage).Hops)
 		l.retries.mu.Unlock()
 	}
 	l.Link.Send(bytes)
 }
 
-// hold.test.ts: retry operations across links (fix rounds 1 and 2, Sol 3) › quiesce after %i concurrent Retries round a
-// waiting ring across hosts: each stops after one lap
-func TestHoldRetryOperationsQuiesceAcrossHosts(t *testing.T) {
+// hold.test.ts: retries across links: the hop budget (audit A5) › quiesce after %i concurrent Retries round a waiting
+// ring across hosts: each stops at its budget, no attempt started
+func TestHoldRetriesAcrossLinksQuiesceAtTheirBudget(t *testing.T) {
 	for _, operations := range []int{1, 9, 50} {
-		t.Run(fmt.Sprintf("quiesce after %d concurrent Retries round a waiting ring across hosts: each stops after one lap", operations), func(t *testing.T) {
+		t.Run(fmt.Sprintf("quiesce after %d concurrent Retries round a waiting ring across hosts: each stops at its budget, no attempt started", operations), func(t *testing.T) {
 			serverKind := mustKind(contracts.NewHostKind("app.retry-server"))
 			workerKind := mustKind(contracts.NewHostKind("app.retry-worker"))
 			local := func(name string) *contracts.Contract {
@@ -1196,10 +1198,11 @@ func TestHoldRetryOperationsQuiesceAcrossHosts(t *testing.T) {
 			remoteA, remoteB := reader("app.remote-a", serverKind), reader("app.remote-b", workerKind)
 			missing := local("app.missing")
 			retries := &rhRetryCount{}
+			var factories atomic.Int64
 			down, up := link.MemoryLinkPair()
 			server := rhCreate(t, HostOptions{Address: new(serverKind.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
 			worker := rhCreate(t, HostOptions{Address: new(workerKind.Address(nil)), Principal: workerPrincipal("1"), OnError: func(HostError) {}})
-			must(t, server.Route(workerKind, RouteOptions{
+			mustRoute(t)(server.Route(workerKind, RouteOptions{
 				Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 				Resolve: func(contracts.Address, context.Context) (ResolvedLink, error) {
 					return ResolvedLink{Link: &rhCountingLink{Link: down, retries: retries}, Principal: workerPrincipal("1"), Trusted: true, Codec: testCodec()}, nil
@@ -1221,27 +1224,31 @@ func TestHoldRetryOperationsQuiesceAcrossHosts(t *testing.T) {
 			wg.Add(2)
 			go func() {
 				defer wg.Done()
-				leftErr = server.Load([]HostFacet{{Name: "@test/a", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
+				_, leftErr = server.Load([]HostFacet{{Name: "@test/a", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
 					if err := host.Serve(localA, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+						factories.Add(1)
 						return localImpl(Expose(self.Get(remoteB, jsonObject()).Member("n"))), nil
 					}, ServeOptions{}); err != nil {
 						return err
 					}
 					return host.Serve(remoteA, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+						factories.Add(1)
 						return readerImpl(Expose(self.Get(localA, jsonObject()).Member("n"))), nil
 					}, ServeOptions{})
 				})}}, background)
 			}()
 			go func() {
 				defer wg.Done()
-				rightErr = worker.Load([]HostFacet{{Name: "@test/b", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
+				_, rightErr = worker.Load([]HostFacet{{Name: "@test/b", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
 					if err := host.Serve(localB, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+						factories.Add(1)
 						self.Get(missing, jsonObject())
 						return localImpl(Expose(self.Get(remoteA, jsonObject()).Member("n"))), nil
 					}, ServeOptions{}); err != nil {
 						return err
 					}
 					return host.Serve(remoteB, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+						factories.Add(1)
 						return readerImpl(Expose(self.Get(localB, jsonObject()).Member("n"))), nil
 					}, ServeOptions{})
 				})}}, background)
@@ -1260,18 +1267,30 @@ func TestHoldRetryOperationsQuiesceAcrossHosts(t *testing.T) {
 			if state := rhState(a); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
 				t.Fatalf("state = %+v, want failed waiting", state)
 			}
-			// More at once than an object remembers ids: `through` stops each at the object it passed through already.
+			made := factories.Load()
 			for range operations {
 				a.Retry()
 			}
 			rhSettleLinks(down, up)
-			// Each went round once: server → worker → server, then stopped at the object it started from.
-			if got := retries.get(); got != 2*operations {
-				t.Fatalf("retries = %d, want %d", got, 2*operations)
+			// Each passed round the ring with one hop less per host (16 from the first), never sent at 0.
+			var lap []int
+			for hop := 16; hop >= 1; hop-- {
+				for range operations {
+					lap = append(lap, hop)
+				}
+			}
+			got := retries.get()
+			slices.SortFunc(got, func(x, y int) int { return y - x })
+			if !slices.Equal(got, lap) {
+				t.Fatalf("hops = %v, want %v", got, lap)
 			}
 			rhSettleLinks(down, up)
-			if got := retries.get(); got != 2*operations {
-				t.Fatalf("retries = %d, want %d", got, 2*operations)
+			if n := len(retries.get()); n != 16*operations {
+				t.Fatalf("retries = %d, want %d", n, 16*operations)
+			}
+			// Parked objects only passed it on: no attempt started.
+			if got := factories.Load(); got != made {
+				t.Fatalf("factories = %d, want %d", got, made)
 			}
 		})
 	}

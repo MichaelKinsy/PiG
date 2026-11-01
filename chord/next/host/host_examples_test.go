@@ -15,6 +15,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -52,14 +53,15 @@ import (
 //     Variant() string, State() chord.NativeWatchable[*RefState], Retry(), Release().
 
 var (
-	exStr   = contracts.Str
-	exInt   = contracts.Int
-	exBool  = contracts.Bool
-	exObj   = contracts.Obj
-	exArr   = contracts.Arr
-	exOpt   = contracts.Opt
-	exProp  = contracts.Prop
-	exBytes = contracts.Bytes
+	exStr     = contracts.Str
+	exInt     = contracts.Int
+	exBool    = contracts.Bool
+	exObj     = contracts.Obj
+	exArr     = contracts.Arr
+	exUnknown = contracts.Unknown
+	exOpt     = contracts.Opt
+	exProp    = contracts.Prop
+	exBytes   = contracts.Bytes
 )
 
 // exLocal is `local(name, { version: 1, params, members })`.
@@ -225,7 +227,7 @@ func exAccept(t *testing.T, server Host, principal data.Principal) *exTab {
 	t.Helper()
 	errs := &hostErrors{}
 	host := newHost(t, HostOptions{OnError: errs.push})
-	must(t, host.Load(nil, background))
+	mustLoad(t)(host.Load(nil, background))
 	a, b := link.MemoryLinkPair()
 	must(t, server.Accept(a, LinkOptions{Principal: principal}, background))
 	must(t, host.Connect(b, LinkOptions{Principal: serverPrincipal()}, background))
@@ -242,7 +244,7 @@ func exServer(t *testing.T, revokedBy RevokedBy[delta.JsonValue], facets ...Host
 	t.Helper()
 	errs := &hostErrors{}
 	server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), RevokedBy: revokedBy, OnError: errs.push})
-	must(t, server.Load(facets, background))
+	mustLoad(t)(server.Load(facets, background))
 	t.Cleanup(func() {
 		if errs.Len() > 0 {
 			t.Errorf("server background errors: %v", errs.All())
@@ -552,7 +554,7 @@ func TestExample04Watches(t *testing.T) {
 		}
 		errs.push(err)
 	}})
-	must(t, host.Load([]HostFacet{{Name: "@example/counter", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@example/counter", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(counter, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			count := stateOf(self, countDoc)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
@@ -724,7 +726,7 @@ func TestExample05Errors(t *testing.T) {
 		}, ServeOptions{})
 	})
 	// A dependency cycle fails every object on it broken, with invalid/cycle; load still resolves.
-	must(t, host.Load([]HostFacet{{Name: "@example/errors", Facet: facet}, {Name: "@example/cycle", Facet: cycle}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@example/errors", Facet: facet}, {Name: "@example/cycle", Facet: cycle}}, background))
 	if got := reported.all(); len(got) == 0 || got[0] != "reported: example.ping failed broken" && got[0] != "reported: example.pong failed broken" {
 		t.Fatalf("cycle reports = %v", got)
 	}
@@ -816,7 +818,7 @@ func TestExample06Natives(t *testing.T) {
 		reported.add(string(err.Kind) + " " + err.Object)
 	}})
 	_ = errs
-	must(t, host.Load([]HostFacet{{Name: "@example/natives", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@example/natives", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		if err := h.Serve(clock, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			zone := exParam(params, "zone")
 			// `self.open(open, close)` declares a native; it opens after the references are live, in declaration order.
@@ -964,9 +966,14 @@ func TestExample07Failures(t *testing.T) {
 			reported.add(fmt.Sprintf("%s, %s: %s", err.Object, err.Failure.Kind, err.Failure.Error.Message))
 			return
 		}
+		// Pi's onError prints activation_failed only; an attempt parked longer than readyTimeout on any blocker is
+		// reported too now (`parked_long`, audit A11): a diagnostic nothing prints.
+		if err.Kind == ErrParkedLong {
+			return
+		}
 		errs.push(err)
 	}})
-	must(t, host.Load([]HostFacet{{Name: "@example/failures", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@example/failures", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		if err := h.Serve(remote, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			attempts++
 			attempt := attempts
@@ -1119,7 +1126,7 @@ func TestExample08Remote(t *testing.T) {
 	clientErrors := &hostErrors{}
 	client := newHost(t, HostOptions{OnError: clientErrors.push})
 	exTwoPartyHosts(t, server, client, guestPrincipal("S1"))
-	must(t, client.Load(nil, background))
+	mustLoad(t)(client.Load(nil, background))
 	own := exGet(t, server, notes, jsonObject("session", "S1"))
 	if exVariantName(own) != "editor" {
 		t.Fatalf("the server's variant = %q", exVariantName(own))
@@ -1208,7 +1215,7 @@ func TestExample09Calls(t *testing.T) {
 	clientErrors := &hostErrors{}
 	client := newHost(t, HostOptions{OnError: clientErrors.push})
 	exTwoPartyHosts(t, server, client, ownerPrincipal())
-	must(t, client.Load(nil, background))
+	mustLoad(t)(client.Load(nil, background))
 	reference := exGet(t, client, files, jsonObject())
 	whoami := exCall(t, reference, "whoami", nil).(string)
 	if !strings.HasPrefix(whoami, "owner from ") || len([]rune(strings.TrimPrefix(whoami, "owner from "))) != 9 || !strings.HasSuffix(whoami, "…") {
@@ -1365,7 +1372,7 @@ func TestExample10Drops(t *testing.T) {
 	server, _ := exServer(t, nil, HostFacet{Name: "@example/notes", Facet: facet})
 	clientErrors := &hostErrors{}
 	client := newHost(t, HostOptions{OnError: clientErrors.push})
-	must(t, client.Load(nil, background))
+	mustLoad(t)(client.Load(nil, background))
 	connect := func() *link.MemoryLink { return exTwoPartyHosts(t, server, client, ownerPrincipal()) }
 	held := exHold(t, client, notes, jsonObject("session", "S1"))
 	if exStateNow(t, held) != "loading" || exVariantName(held) != "" {
@@ -1460,7 +1467,7 @@ func TestExample11LingerAndRetry(t *testing.T) {
 	errs := &hostErrors{}
 	var reported exCollector
 	host := newHost(t, HostOptions{OnError: func(err HostError) { errs.push(err); reported.add(string(err.Kind)) }})
-	must(t, host.Load([]HostFacet{{Name: "@example/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@example/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		// 1. A draft lingers 200 ms after its last reference: a tab that closes and reopens quickly finds its text.
 		if err := h.Serve(draft, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			mu.Lock()
@@ -1639,7 +1646,7 @@ func TestExample12Routes(t *testing.T) {
 	var resolves int
 	var resolveMu sync.Mutex
 	var workerLink *link.MemoryLink
-	must(t, server.Route(Session, RouteOptions{
+	mustRoute(t)(server.Route(Session, RouteOptions{
 		Authorize: func(principal data.Principal, address contracts.Address) (bool, error) {
 			id, _ := address.Params.Value("id").(string)
 			return principalKind(principal) == "owner" || (principalKind(principal) == "guest" && principal.Value("session") == id), nil
@@ -1652,14 +1659,14 @@ func TestExample12Routes(t *testing.T) {
 			id, _ := address.Params.Value("id").(string)
 			worker := newHost(t, HostOptions{Address: &address, Principal: workerPrincipal(id), OnError: serverErrors.push})
 			must(t, worker.Connect(down, LinkOptions{Principal: serverPrincipal(), Trusted: true}, background))
-			go func() { _ = worker.Load([]HostFacet{{Name: "@example/worker", Facet: workerFacet}}, background) }()
+			go func() { _, _ = worker.Load([]HostFacet{{Name: "@example/worker", Facet: workerFacet}}, background) }()
 			resolveMu.Lock()
 			workerLink = up
 			resolveMu.Unlock()
 			return ResolvedLink{Link: up, Principal: workerPrincipal(id), Trusted: true}, nil
 		},
 	}, background))
-	must(t, server.Load([]HostFacet{{Name: "@example/server", Facet: serverFacet}}, background))
+	mustLoad(t)(server.Load([]HostFacet{{Name: "@example/server", Facet: serverFacet}}, background))
 	resolveCount := func() int { resolveMu.Lock(); defer resolveMu.Unlock(); return resolves }
 	// 2. The owner's tab gets S1's notes: tab -> server (relays) -> route -> worker. A second get shares the worker.
 	owner := exAccept(t, server, ownerPrincipal())
@@ -1944,7 +1951,7 @@ func exRelayWorker(id string) {
 			}), nil
 		}, ServeOptions{})
 	})
-	if err := worker.Load([]HostFacet{{Name: "@example/core", Facet: core}, {Name: "@example/notes", Facet: notesFacet}}, background); err != nil {
+	if _, err := worker.Load([]HostFacet{{Name: "@example/core", Facet: core}, {Name: "@example/notes", Facet: notesFacet}}, background); err != nil {
 		fmt.Fprintln(os.Stderr, "worker load:", err)
 		os.Exit(1)
 	}
@@ -1965,7 +1972,7 @@ func TestExample13Relay(t *testing.T) {
 	var children []*exec.Cmd
 	var childrenMu sync.Mutex
 	// 3. A route forks a worker per session and returns the IPC link at once.
-	must(t, server.Route(Session, RouteOptions{
+	mustRoute(t)(server.Route(Session, RouteOptions{
 		Authorize: func(principal data.Principal, _ contracts.Address) (bool, error) {
 			return principalKind(principal) == "owner", nil
 		},
@@ -1991,7 +1998,7 @@ func TestExample13Relay(t *testing.T) {
 			return ResolvedLink{Link: link.IpcLink(newExFramedPort(stdout, stdin)), Principal: workerPrincipal(id), Trusted: true}, nil
 		},
 	}, background))
-	must(t, server.Load(nil, background))
+	mustLoad(t)(server.Load(nil, background))
 	// 4. Tabs reach the server over a WebSocket; its entry point stamps each as the owner here.
 	upgrader := websocket.Upgrader{}
 	httpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -2013,7 +2020,7 @@ func TestExample13Relay(t *testing.T) {
 	tab := newHost(t, HostOptions{OnError: tabErrors.push})
 	must(t, tab.Connect(link.WebSocketLink(tabSocket), LinkOptions{Principal: serverPrincipal()}, background))
 	tabSocket.start()
-	must(t, tab.Load(nil, background))
+	mustLoad(t)(tab.Load(nil, background))
 	s1 := exGet(t, tab, notes, jsonObject("session", "S1"))
 	info := exValue(t, s1, "info").(*delta.JsonObject)
 	if info.Value("id") != "S1" || info.Value("title") != "Session S1" || info.Value("pid") == float64(os.Getpid()) || info.Value("pid").(float64) <= 0 {
@@ -2138,13 +2145,13 @@ func TestExample14FlowControl(t *testing.T) {
 	worker := func(id string) Host {
 		address := Session.Address(jsonObject("id", id))
 		host := newHost(t, HostOptions{Address: &address, Principal: workerPrincipal(id), OnError: errs.push})
-		must(t, host.Load([]HostFacet{{Name: "@example/worker", Facet: workerFacet}}, background))
+		mustLoad(t)(host.Load([]HostFacet{{Name: "@example/worker", Facet: workerFacet}}, background))
 		return host
 	}
 	tab := func(end link.Link) Host {
 		host := newHost(t, HostOptions{OnError: errs.push})
 		must(t, host.Connect(end, LinkOptions{Principal: serverPrincipal()}, background))
-		must(t, host.Load(nil, background))
+		mustLoad(t)(host.Load(nil, background))
 		return host
 	}
 	textLen := func(ref *Reference) int {
@@ -2181,7 +2188,7 @@ func TestExample14FlowControl(t *testing.T) {
 	var w2 Host
 	var w2Ends [2]*link.MemoryLink
 	var w2Mu sync.Mutex
-	must(t, server.Route(Session, RouteOptions{
+	mustRoute(t)(server.Route(Session, RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 		Resolve: func(address contracts.Address, _ context.Context) (ResolvedLink, error) {
 			a, b := link.MemoryLinkPair()
@@ -2194,7 +2201,7 @@ func TestExample14FlowControl(t *testing.T) {
 			return ResolvedLink{Link: a, Principal: workerPrincipal(id), Trusted: true}, nil
 		},
 	}, background))
-	must(t, server.Load(nil, background))
+	mustLoad(t)(server.Load(nil, background))
 	up2, down2 := link.MemoryLinkPair()
 	must(t, server.Accept(up2, LinkOptions{Principal: ownerPrincipal()}, background))
 	slow2 := newExPausable(down2)
@@ -2301,7 +2308,7 @@ func TestExample15Revocation(t *testing.T) {
 	server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), RevokedBy: revokedBy, OnError: errs.push})
 	var workers []Host
 	var workersMu sync.Mutex
-	must(t, server.Route(Session, RouteOptions{
+	mustRoute(t)(server.Route(Session, RouteOptions{
 		Authorize: func(principal data.Principal, address contracts.Address) (bool, error) {
 			id, _ := address.Params.Value("id").(string)
 			return principalKind(principal) == "owner" || (principalKind(principal) == "guest" && principal.Value("session") == id), nil
@@ -2311,14 +2318,14 @@ func TestExample15Revocation(t *testing.T) {
 			id, _ := address.Params.Value("id").(string)
 			worker := newHost(t, HostOptions{Address: &address, Principal: workerPrincipal(id), RevokedBy: revokedBy, OnError: errs.push})
 			must(t, worker.Connect(up, LinkOptions{Principal: serverPrincipal(), Trusted: true}, background))
-			go func() { _ = worker.Load([]HostFacet{{Name: "@example/notes", Facet: notesFacet}}, background) }()
+			go func() { _, _ = worker.Load([]HostFacet{{Name: "@example/notes", Facet: notesFacet}}, background) }()
 			workersMu.Lock()
 			workers = append(workers, worker)
 			workersMu.Unlock()
 			return ResolvedLink{Link: down, Principal: workerPrincipal(id), Trusted: true}, nil
 		},
 	}, background))
-	must(t, server.Load(nil, background))
+	mustLoad(t)(server.Load(nil, background))
 	// 2. Two tabs of guest grant g1 (one person, two windows) and the owner's tab, all on session S1.
 	one := exAccept(t, server, guestOf("g1", "S1"))
 	two := exAccept(t, server, guestOf("g1", "S1"))
@@ -2566,9 +2573,9 @@ func TestExample17LimitsAndCompression(t *testing.T) {
 	// accepts with limits; the tab's own link to the server has tabLimits.
 	setUp := func(compression link.Compression, limits, tabLimits link.PartLimits) (Host, Host, *exCountingLink) {
 		server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), Compression: compression, OnError: errs.push})
-		must(t, server.Load([]HostFacet{{Name: "@example/conversation", Facet: facet}}, background))
+		mustLoad(t)(server.Load([]HostFacet{{Name: "@example/conversation", Facet: facet}}, background))
 		tab := newHost(t, HostOptions{OnError: errs.push})
-		must(t, tab.Load(nil, background))
+		mustLoad(t)(tab.Load(nil, background))
 		a, b := link.MemoryLinkPair()
 		counted := &exCountingLink{Link: b}
 		must(t, server.Accept(a, LinkOptions{Principal: jsonObject("kind", "user"), Limits: limits}, background))
@@ -2634,9 +2641,9 @@ func TestExample17LimitsAndCompression(t *testing.T) {
 	// child, would refuse a compressed part. Its 100 KB argument arrives as JSON, within the server's default limits.
 	{
 		server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), Compression: nextnode.NodeCompression, OnError: errs.push})
-		must(t, server.Load([]HostFacet{{Name: "@example/conversation", Facet: facet}}, background))
+		mustLoad(t)(server.Load([]HostFacet{{Name: "@example/conversation", Facet: facet}}, background))
 		client := newHost(t, HostOptions{Compression: nextnode.NodeCompression, OnError: errs.push})
-		must(t, client.Load(nil, background))
+		mustLoad(t)(client.Load(nil, background))
 		a, b := link.MemoryLinkPair()
 		counted := &exCountingLink{Link: a}
 		must(t, server.Accept(counted, LinkOptions{Principal: jsonObject("kind", "user")}, background))
@@ -2686,7 +2693,7 @@ func TestExample18Routines(t *testing.T) {
 		on bool
 	}{on: true}
 	var ons exCollector
-	must(t, host.Load([]HostFacet{{Name: "@example/forwards", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@example/forwards", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		if err := h.Serve(catalog, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			doc := stateOf(self, sessions)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
@@ -3677,7 +3684,7 @@ func TestExample28PersistedJobs(t *testing.T) {
 		st := exFileStore(t, path)
 		closeTimeout := 100 * time.Millisecond
 		host := newHost(t, HostOptions{Store: st, CloseTimeout: &closeTimeout, OnError: func(err HostError) { logs.add("onError: " + string(err.Kind)) }})
-		must(t, host.Load([]HostFacet{{Name: "@example/notes", Facet: DefineFacet(facet)}}, background))
+		mustLoad(t)(host.Load([]HostFacet{{Name: "@example/notes", Facet: DefineFacet(facet)}}, background))
 		return st, host
 	}
 	path := t.TempDir() + "/session.sqlite"
@@ -3867,7 +3874,7 @@ func TestExample29Registries(t *testing.T) {
 		value, err := host.Registry(registries.Registry[any, any](http), background, GetOptions{})
 		earlyRead <- early{value, err}
 	}()
-	must(t, host.Load([]HostFacet{
+	mustLoad(t)(host.Load([]HostFacet{
 		{Name: "@example/http", Facet: httpPlugin}, {Name: "@example/notes", Facet: notesPlugin},
 		{Name: "@example/search", Facet: searchPlugin}, {Name: "@example/mounts", Facet: mountsPlugin},
 	}, background))
@@ -3967,7 +3974,7 @@ func TestExample30HostRoot(t *testing.T) {
 		}, background, RootOptions{})
 		earlyDone <- outcome{value, err}
 	}()
-	must(t, host.Load([]HostFacet{{Name: "@example/notes", Facet: facet}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@example/notes", Facet: facet}}, background))
 	early := <-earlyDone
 	must(t, early.err)
 	exEqual(t, "before load, read after it", early.value, exJSON(t, `[]`))
@@ -4067,7 +4074,7 @@ func TestExample31ParkedDependencies(t *testing.T) {
 	// startServer is a server with the given plugins, its link to the tab accepted.
 	startServer := func(plugins ...HostFacet) (Host, *link.MemoryLink, *link.MemoryLink) {
 		server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
-		must(t, server.Load(plugins, background))
+		mustLoad(t)(server.Load(plugins, background))
 		up, down := link.MemoryLinkPair()
 		must(t, server.Accept(up, LinkOptions{Principal: ownerPrincipal()}, background))
 		return server, down, up
@@ -4077,7 +4084,7 @@ func TestExample31ParkedDependencies(t *testing.T) {
 	var panelMu sync.Mutex
 	tabErrors := &hostErrors{}
 	tab := newHost(t, HostOptions{OnError: tabErrors.push})
-	must(t, tab.Load([]HostFacet{{Name: "@example/panel", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(t)(tab.Load([]HostFacet{{Name: "@example/panel", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		if err := h.Serve(panel, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			panelMu.Lock()
 			panels++
@@ -4189,7 +4196,7 @@ func TestExample32Startup(t *testing.T) {
 			}, ServeOptions{})
 		})
 		go func() {
-			_ = worker.Load([]HostFacet{{Name: "@example/agents", Facet: agents}}, background)
+			_, _ = worker.Load([]HostFacet{{Name: "@example/agents", Facet: agents}}, background)
 			close(workerLoaded)
 		}()
 		return started{worker, up}
@@ -4197,7 +4204,7 @@ func TestExample32Startup(t *testing.T) {
 	// No readyTimeout is needed to break anything: a long one shows nothing waits for it.
 	readyTimeout := 600 * time.Second
 	server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), ReadyTimeout: &readyTimeout, OnError: errs.push})
-	must(t, server.Route(Session, RouteOptions{
+	mustRoute(t)(server.Route(Session, RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 		Resolve: func(address contracts.Address, _ context.Context) (ResolvedLink, error) {
 			id, _ := address.Params.Value("id").(string)
@@ -4223,7 +4230,7 @@ func TestExample32Startup(t *testing.T) {
 	})
 	// 1. The server's load: publication (Catalog served), then Bootstrap starts and parks on the worker's Agent. A wait on
 	// another host is a first outcome, so `load` resolves without waiting for the worker.
-	must(t, server.Load([]HostFacet{{Name: "@example/core", Facet: core}}, background))
+	mustLoad(t)(server.Load([]HostFacet{{Name: "@example/core", Facet: core}}, background))
 	if got := exStateNow(t, exHold(t, server, bootstrap, jsonObject())); got != "loading" {
 		t.Fatalf("server loaded; Bootstrap is %s, want loading", got)
 	}
@@ -4241,4 +4248,362 @@ func TestExample32Startup(t *testing.T) {
 	if errs.Len() > 0 {
 		t.Fatalf("background errors: %v", errs.All())
 	}
+}
+
+// --- 33-reload.ts --------------------------------------------------------------------------------------------------
+
+func TestExample33Reload(t *testing.T) {
+	// The notes store: a list, its banner, and `add` (which can be told to wait, to show a call across a swap).
+	notes := exLocal("example.notes", contracts.Params{},
+		contracts.Mem("list", exArr(exStr())), contracts.Mem("banner", exStr()),
+		contracts.Mem("add", contracts.NewMethod(exObj(exProp("text", exStr())), exInt())))
+	// A search index over the notes, holding a native (an index file, say).
+	search := exLocal("example.search", contracts.Params{}, contracts.Mem("engine", exStr()), contracts.Mem("reindex", contracts.NewMethod()))
+	// A clock plugin, removed by the third reload.
+	clock := exLocal("example.clock", contracts.Params{}, contracts.Mem("zone", exStr()))
+	list := exStringListDoc("example.list")
+	var logs seenList[string]
+	var slowAdd, slowReindex atomic.Pointer[chan struct{}]
+	var addWaiting atomic.Int32
+	gate := func(slot *atomic.Pointer[chan struct{}], ctx context.Context) {
+		if open := slot.Load(); open != nil {
+			_, _ = chordctx.Receive(ctx, *open)
+		}
+	}
+	// The notes plugin, its banner and the text `add` prefixes differing per version: a pure object (no `self.open`).
+	notesPlugin := func(banner string) Facet {
+		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			return h.Serve(notes, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				doc := stateOf(self, list)
+				return exImpl(map[string]chord.Watchable[delta.JsonValue]{
+					"list": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
+						return values[0].(*delta.JsonObject).Value("list"), nil
+					}),
+					"banner": exConstant(banner),
+				}, map[string]contracts.MethodFunction{
+					"add": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
+						if slowAdd.Load() != nil {
+							addWaiting.Add(1)
+						}
+						gate(&slowAdd, ctx)
+						if err := doc.Change(func(draft *delta.Object) { exPush(draft, exParam(args, "text")+" ("+banner+")") }, ctx); err != nil {
+							return nil, err
+						}
+						return float64(len(doc.Value().Value("list").([]any))), nil
+					}),
+				}), nil
+			}, ServeOptions{})
+		})
+	}
+	// The search plugin: its engine is a native, so every reload of it restarts the object.
+	searchPlugin := func(engine string) Facet {
+		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			return h.Serve(search, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				index := self.Open(func(context.Context) (any, error) {
+					logs.add("search: " + engine + " opened")
+					return engine, nil
+				}, func(value any, reason NativeCloseReason, _ context.Context) error {
+					logs.add(fmt.Sprintf("search: %v closed (%s)", value, reason.Kind))
+					return nil
+				})
+				return exImpl(map[string]chord.Watchable[delta.JsonValue]{"engine": exConstant(engine)}, map[string]contracts.MethodFunction{
+					"reindex": exMethod(func(_ *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
+						value, _ := index.Value()
+						logs.add(fmt.Sprintf("search: reindex on %v started", value))
+						gate(&slowReindex, ctx)
+						logs.add(fmt.Sprintf("search: reindex on %v done", value))
+						return nil, nil
+					}),
+				}), nil
+			}, ServeOptions{})
+		})
+	}
+	clockPlugin := DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(clock, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"zone": exConstant("UTC")}, nil), nil
+		}, ServeOptions{})
+	})
+	// 1. A host with three plugins, loaded once. A reload passes the complete set; a facet passed as the very same object
+	// is an unchanged plugin (untouched), any other value for a loaded name a changed one.
+	errs := &hostErrors{}
+	host := newHost(t, HostOptions{OnError: errs.push})
+	searchV1 := searchPlugin("lucene")
+	notesV2 := notesPlugin("v2")
+	searchV2 := searchPlugin("tantivy")
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@example/notes", Facet: notesPlugin("v1")}, {Name: "@example/search", Facet: searchV1}, {Name: "@example/clock", Facet: clockPlugin}}, background))
+	ref := exGet(t, host, notes, jsonObject())
+	exCall(t, ref, "add", jsonObject("text", "first"))
+	exEqual(t, "1. list", exValue(t, ref, "list"), exJSON(t, `["first (v1)"]`))
+	exEqual(t, "1. banner", exValue(t, ref, "banner"), "v1")
+	// 2. A pure swap while a call runs: the running `add` finishes on the old code, the next call runs on the new one.
+	open := make(chan struct{})
+	slowAdd.Store(&open)
+	running := make(chan any, 1)
+	go func() {
+		result, err := ref.Call("add", jsonObject("text", "second"), background)
+		must(t, err)
+		running <- result
+	}()
+	scopeEventually(t, "the slow add running", func() bool { return addWaiting.Load() == 1 })
+	swap, err := host.Reload([]HostFacet{{Name: "@example/notes", Facet: notesV2}, {Name: "@example/search", Facet: searchV1}, {Name: "@example/clock", Facet: clockPlugin}}, background, ReloadOptions{})
+	must(t, err)
+	wantReloadPlugins(t, swap, nil, []string{"@example/notes"}, nil)
+	if want := []ReloadedObject{{Object: "example.notes", Kind: ReloadSwapped}}; !reflect.DeepEqual(swap.Objects, want) {
+		t.Fatalf("2. objects = %+v, want %+v", swap.Objects, want)
+	}
+	close(open)
+	slowAdd.Store(nil)
+	exEqual(t, "2. the old call returned", <-running, float64(2))
+	exEqual(t, "2. the new code adds", exCall(t, ref, "add", jsonObject("text", "third")), float64(3))
+	exEqual(t, "2. list", exValue(t, ref, "list"), exJSON(t, `["first (v1)","second (v1)","third (v2)"]`))
+	exEqual(t, "2. banner", exValue(t, ref, "banner"), "v2")
+	// 3. A restart: the search object holds a native. Its running call drains first, then the native closes (reload).
+	index := exGet(t, host, search, jsonObject())
+	reindexOpen := make(chan struct{})
+	slowReindex.Store(&reindexOpen)
+	reindexing := make(chan error, 1)
+	go func() {
+		_, err := index.Call("reindex", nil, background)
+		reindexing <- err
+	}()
+	scopeEventually(t, "the reindex started", func() bool { return slices.Contains(logs.all(), "search: reindex on lucene started") })
+	restart, err := host.Reload([]HostFacet{{Name: "@example/notes", Facet: notesV2}, {Name: "@example/search", Facet: searchV2}, {Name: "@example/clock", Facet: clockPlugin}}, background, ReloadOptions{})
+	must(t, err)
+	if want := []ReloadedObject{{Object: "example.search", Kind: ReloadRestarted}}; !reflect.DeepEqual(restart.Objects, want) {
+		t.Fatalf("3. objects = %+v, want %+v", restart.Objects, want)
+	}
+	close(reindexOpen)
+	slowReindex.Store(nil)
+	must(t, <-reindexing)
+	exWaitState(t, index, "live")
+	exEqual(t, "3. search now on", exValue(t, index, "engine"), "tantivy")
+	for _, want := range []string{"search: reindex on lucene done", "search: lucene closed (reload)", "search: tantivy opened"} {
+		if !slices.Contains(logs.all(), want) {
+			t.Fatalf("3. log %v lacks %q", logs.all(), want)
+		}
+	}
+	// 4. A removal: the clock plugin is gone. Its object ends; its holder's request is not ended, it waits `not_served`.
+	held := exHold(t, host, clock, jsonObject())
+	exWaitState(t, held, "live")
+	removal, err := host.Reload([]HostFacet{{Name: "@example/notes", Facet: notesV2}, {Name: "@example/search", Facet: searchV2}}, background, ReloadOptions{})
+	must(t, err)
+	wantReloadPlugins(t, removal, nil, nil, []string{"@example/clock"})
+	exWaitState(t, held, "failed, waiting, no automatic retry: example.clock is not served here")
+	exEqual(t, "4. its last value stays readable", exValue(t, held, "zone"), "UTC")
+	// 5. A later reload serves the clock again: the same holder binds again by itself.
+	_, err = host.Reload([]HostFacet{{Name: "@example/notes", Facet: notesV2}, {Name: "@example/search", Facet: searchV2}, {Name: "@example/clock", Facet: clockPlugin}}, background, ReloadOptions{})
+	must(t, err)
+	exWaitState(t, held, "live")
+	exEqual(t, "5. clock holder", exValue(t, held, "zone"), "UTC")
+	// 6. A staging error is reported in `failed` and changes nothing: the plugin keeps its old code.
+	broken := DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(notes, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{}, errors.New("a typo in the new factory")
+		}, ServeOptions{})
+	})
+	failed, err := host.Reload([]HostFacet{{Name: "@example/notes", Facet: broken}}, background, ReloadOptions{})
+	must(t, err)
+	if len(failed.Failed) != 1 || !strings.Contains(failed.Failed[0].Error.Error(), "a typo in the new factory") {
+		t.Fatalf("6. failed = %v", failedMessages(failed.Failed))
+	}
+	exEqual(t, "6. banner still", exValue(t, ref, "banner"), "v2")
+	held.Release()
+	index.Release()
+	ref.Release()
+	exCloseHost(t, host)
+	for _, err := range errs.All() {
+		t.Errorf("reported: %s", err.Kind)
+	}
+}
+
+// --- 34-versions.ts ------------------------------------------------------------------------------------------------
+
+func TestExample34Versions(t *testing.T) {
+	// The shared contract, as every plugin bundles it: v1, then v2 where a note gained a tag.
+	notesV1 := exRemote("example.notes", contracts.Params{}, exServerAddress, contracts.Var("editor", contracts.VariantDeclaration{
+		State:   []contracts.Property{exProp("notes", exArr(exStr()))},
+		Methods: []contracts.MethodEntry{contracts.Meth("add", contracts.NewMethod(exObj(exProp("text", exStr())), exInt()))},
+	}))
+	notesV2, err := contracts.Evolve(notesV1, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
+		return e.State("editor", "notes", exArr(exObj(exProp("text", exStr()), exProp("tag", exStr())))).
+			Method("add", exObj(exProp("text", exStr()), exProp("tag", exStr())), exObj(exProp("count", exInt())))
+	})
+	must(t, err)
+	list := exDefineState("example.list", documents.StateOptions{
+		Schema:  exObj(exProp("notes", exArr(exObj(exProp("text", exStr()), exProp("tag", exStr()))))),
+		Initial: func() *delta.JsonObject { return jsonObject("notes", []any{}) },
+	})
+	push := func(draft *delta.Object, text, tag any) {
+		_, _ = draft.Array("notes").Push(jsonObject("text", text, "tag", tag))
+	}
+	count := func(doc *singletonDoc) float64 { return float64(len(doc.Value().Value("notes").([]any))) }
+	// The server's notes plugin at v2: what a v1 consumer sees is the provider's `accepts[1]`.
+	serveV2 := func(h FacetHost, _ FacetSelf) error {
+		accepts := contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
+			VariantState: []contracts.Entry[[]contracts.Entry[contracts.StateMapping]]{{Name: "editor", Value: []contracts.Entry[contracts.StateMapping]{{Name: "notes", Value: contracts.StateMapping{
+				Func: func(current delta.JsonValue) (delta.JsonValue, error) {
+					texts := []any{}
+					for _, note := range current.([]any) {
+						texts = append(texts, note.(*delta.JsonObject).Value("text"))
+					}
+					return texts, nil
+				},
+			}}}}},
+			Methods: []contracts.Entry[contracts.MethodMapping]{{Name: "add", Value: contracts.MethodMapping{
+				Args: func(old delta.JsonValue) (delta.JsonValue, error) {
+					return jsonObject("text", old.(*delta.JsonObject).Value("text"), "tag", "untagged"), nil
+				},
+				Result: func(current delta.JsonValue) (delta.JsonValue, error) {
+					return current.(*delta.JsonObject).Value("count"), nil
+				},
+			}}},
+		}}}
+		return h.Serve(notesV2, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			doc := stateOf(self, list)
+			return exVariant("editor", map[string]chord.Watchable[delta.JsonValue]{
+				"notes": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
+					return values[0].(*delta.JsonObject).Value("notes"), nil
+				}),
+			}, map[string]contracts.MethodFunction{
+				"add": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
+					if err := doc.Change(func(draft *delta.Object) { push(draft, args.Value("text"), args.Value("tag")) }, ctx); err != nil {
+						return nil, err
+					}
+					return jsonObject("count", count(doc)), nil
+				}),
+			}), nil
+		}, ServeOptions{Accepts: accepts})
+	}
+	// The server's notes plugin at v1.
+	serveV1 := func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(notesV1, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+			doc := stateOf(self, list)
+			return exVariant("editor", map[string]chord.Watchable[delta.JsonValue]{
+				"notes": self.Derive([]any{doc.s}, func(values []any) (delta.JsonValue, error) {
+					texts := []any{}
+					for _, note := range values[0].(*delta.JsonObject).Value("notes").([]any) {
+						texts = append(texts, note.(*delta.JsonObject).Value("text"))
+					}
+					return texts, nil
+				}),
+			}, map[string]contracts.MethodFunction{
+				"add": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
+					if err := doc.Change(func(draft *delta.Object) { push(draft, args.Value("text"), "") }, ctx); err != nil {
+						return nil, err
+					}
+					return count(doc), nil
+				}),
+			}), nil
+		}, ServeOptions{})
+	}
+	// 1. A server on v1 and a tab built against v1, connected.
+	server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: noopOnError})
+	mustLoad(t)(server.Load([]HostFacet{{Name: "@example/notes", Facet: DefineFacet(serveV1)}}, background))
+	tab := newHost(t, HostOptions{OnError: noopOnError})
+	mustLoad(t)(tab.Load(nil, background))
+	up, down := link.MemoryLinkPair()
+	must(t, server.Accept(up, LinkOptions{Principal: ownerPrincipal()}, background))
+	must(t, tab.Connect(down, LinkOptions{Principal: serverPrincipal()}, background))
+	old := exGet(t, tab, notesV1, jsonObject())
+	exCall(t, old, "add", jsonObject("text", "milk"))
+	exEqual(t, "1. v1 everywhere", exValue(t, old, "notes"), exJSON(t, `["milk"]`))
+	// 2. The server reloads to v2 with `accepts[1]`: the old tab's hold is kept; its version is an older one now, so it is
+	// bound again through the mapping (one snapshot), and from then on gets the mapped diffs.
+	_, err = server.Reload([]HostFacet{{Name: "@example/notes", Facet: DefineFacet(serveV2)}}, background, ReloadOptions{})
+	must(t, err)
+	exWaitState(t, old, "live")
+	exEqual(t, "2. the old tab still reads", exValue(t, old, "notes"), exJSON(t, `["milk"]`))
+	// 3. The old tab calls v1's `add`: its args are mapped forwards, the v2 result mapped back to v1's count.
+	exEqual(t, "3. old add returned", exCall(t, old, "add", jsonObject("text", "eggs")), float64(2))
+	scopeEventually(t, "the old tab's mapped diff", func() bool {
+		return reflect.DeepEqual(exText(exValue(t, old, "notes")), `["milk","eggs"]`)
+	})
+	// A new tab (v2 code) on the same object sees the tags.
+	fresh := exGet(t, tab, notesV2, jsonObject())
+	scopeEventually(t, "a v2 consumer's read", func() bool {
+		return exText(exValue(t, fresh, "notes")) == `[{"text":"milk","tag":""},{"text":"eggs","tag":"untagged"}]`
+	})
+	// 4. Jobs: `Export` v2 maps a v1 run's args and result forwards; a v1 run still running finishes on its old code.
+	exportV1, err := DefineJob("example.export", JobOptions{Version: 1, Args: exObj(exProp("path", exStr())), Result: exStr()})
+	must(t, err)
+	exportV2, err := DefineJob("example.export", JobOptions{
+		Version: 2, Args: exObj(exProp("path", exStr()), exProp("format", exStr())), Result: exObj(exProp("file", exStr())),
+		Accepts: JobAccepts{1: JobAdapter{
+			Args: func(old any) (any, error) {
+				return jsonObject("path", old.(*delta.JsonObject).Value("path"), "format", "md"), nil
+			},
+			Result: func(old any) (any, error) { return jsonObject("file", old), nil },
+		}},
+	})
+	must(t, err)
+	exports := exLocal("example.exports", contracts.Params{},
+		contracts.Mem("start", contracts.NewMethod(exObj(exProp("path", exStr())), exStr())), contracts.Mem("running", exArr(exUnknown())))
+	var finishes seenList[string]
+	release := make(chan struct{})
+	// The exports plugin with `job` (v1 or v2): its `run` waits for `release` once, its `finish` records the outcome.
+	exportsPlugin := func(code string, job *JobDefinition) Facet {
+		return DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			return h.Serve(exports, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+				handle := self.Job(job, JobImplementation{
+					Run: func(args any, ctx JobCtx) (any, error) {
+						if _, err := chordctx.Receive(ctx, release); err != nil {
+							return nil, err
+						}
+						path := args.(*delta.JsonObject).Value("path").(string)
+						if job.Version == 1 {
+							return path + ".md", nil
+						}
+						return jsonObject("file", path+".out"), nil
+					},
+					Finish: func(outcome Outcome, _ documents.Tx) error {
+						finishes.add(fmt.Sprintf("finish on %s: %s %s", code, outcome.Kind, exText(outcome.Result)))
+						return nil
+					},
+				})
+				return exImpl(map[string]chord.Watchable[delta.JsonValue]{"running": Expose(handle.Running())}, map[string]contracts.MethodFunction{
+					"start": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
+						started := jsonObject("path", args.Value("path"))
+						if job.Version != 1 {
+							started = jsonObject("path", args.Value("path"), "format", "html")
+						}
+						run, err := handle.Start(started, ctx, StartOptions{})
+						if err != nil {
+							return nil, err
+						}
+						return run.ID(), nil
+					}),
+				}), nil
+			}, ServeOptions{})
+		})
+	}
+	worker := newHost(t, HostOptions{OnError: noopOnError})
+	mustLoad(t)(worker.Load([]HostFacet{{Name: "@example/exports", Facet: exportsPlugin("v1 code", exportV1)}}, background))
+	exportsRef := exGet(t, worker, exports, jsonObject())
+	exCall(t, exportsRef, "start", jsonObject("path", "notes"))
+	_, err = worker.Reload([]HostFacet{{Name: "@example/exports", Facet: exportsPlugin("v2 code", exportV2)}}, background, ReloadOptions{})
+	must(t, err)
+	scopeEventually(t, "running shows the v1 run mapped", func() bool {
+		running, _ := exValue(t, exportsRef, "running").([]any)
+		if len(running) != 1 {
+			t.Logf("running = %s", exText(running))
+			return false
+		}
+		entry, _ := running[0].(*delta.JsonObject)
+		t.Logf("running entry = %s", exText(entry))
+		return entry != nil && exText(entry.Value("args")) == `{"path":"notes","format":"md"}`
+	})
+	close(release)
+	scopeEventually(t, "running is empty again", func() bool {
+		t.Logf("running = %s, finishes = %v, state = %s", exText(exValue(t, exportsRef, "running")), finishes.all(), exStateNow(t, exportsRef))
+		return exText(exValue(t, exportsRef, "running")) == "[]"
+	})
+	scopeEventually(t, "the finish on the old code", func() bool {
+		return slices.Contains(finishes.all(), `finish on v1 code: done "notes.md"`) || slices.Contains(finishes.all(), `finish on v2 code: done {"file":"notes.md"}`)
+	})
+	fresh.Release()
+	old.Release()
+	exportsRef.Release()
+	exCloseHost(t, worker)
+	exCloseHost(t, tab)
+	exCloseHost(t, server)
 }

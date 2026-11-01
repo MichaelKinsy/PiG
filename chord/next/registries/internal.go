@@ -3,6 +3,7 @@ package registries
 import (
 	"errors"
 	"fmt"
+	"unsafe"
 )
 
 // Ports packages/chord/src/next/registries/internal.ts (what Chord's layers import: the record, the contribution and
@@ -25,4 +26,12 @@ func asError(recovered any) error {
 		return err
 	}
 	return errors.New(fmt.Sprint(recovered))
+}
+
+// sameFunc is whether a and b are the same function object: JavaScript's `===` on the adapters (a reload's provider
+// brings new ones). Go cannot compare functions, so it compares the closure objects the values point to (closures
+// made apart differ, whatever code they share).
+func sameFunc[F any](a, b F) bool {
+	//nolint:gosec // G103 (class a): the two words are read as pointers and only compared; a Go func value is a pointer to its closure object, and Go has no other way to ask whether two function values are the same one.
+	return *(*unsafe.Pointer)(unsafe.Pointer(&a)) == *(*unsafe.Pointer)(unsafe.Pointer(&b))
 }

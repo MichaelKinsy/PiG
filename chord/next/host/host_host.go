@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -86,10 +85,78 @@ type LinkOptions struct {
 	Limits    link.PartLimits
 }
 
-// HostFacet is a facet `Load` runs under its plugin name.
+// HostFacet is a plugin's facet as `Load` and `Reload` take it: its name (its `package.json` name) and its facet. Pi's
+// `PluginFacet`.
 type HostFacet struct {
 	Name  string
 	Facet Facet
+}
+
+// PluginFailure is a plugin left out at `Load`, or whose new code failed at a reload (it kept its old code, if it had
+// any), and why.
+type PluginFailure struct {
+	Plugin string
+	Error  error
+}
+
+// ReloadOptions is what `Reload` takes besides the plugin set: the plugins whose new code failed before it (a build, an
+// evaluation).
+type ReloadOptions struct {
+	Failed []PluginFailure
+}
+
+// LoadReport is what `Load` did (decision "Per plugin at startup and reload"): the plugins it left out.
+type LoadReport struct {
+	Failed []PluginFailure
+}
+
+// PluginChanges are a reload's plugin names by change.
+type PluginChanges struct {
+	Added   []string
+	Changed []string
+	Removed []string
+}
+
+// ReloadedObjectKind is one object's fate in a reload.
+type ReloadedObjectKind string
+
+const (
+	// ReloadSwapped: pure, swapped in place.
+	ReloadSwapped ReloadedObjectKind = "swapped"
+	// ReloadRestarted: natives, drained, closed with reason `reload`, activated again.
+	ReloadRestarted ReloadedObjectKind = "restarted"
+	// ReloadEnded: its type is gone.
+	ReloadEnded ReloadedObjectKind = "ended"
+	// ReloadParked: its new code waits for a dependency (Cause).
+	ReloadParked ReloadedObjectKind = "parked"
+	// ReloadRetried: it was failed, parked or activating: a new attempt runs on the new code.
+	ReloadRetried ReloadedObjectKind = "retried"
+)
+
+// ReloadedObject is one object's fate in a reload, by its label; Cause is set only for ReloadParked.
+type ReloadedObject struct {
+	Object string
+	Kind   ReloadedObjectKind
+	Cause  data.FailureCause
+}
+
+// ReloadReport is what a reload did (slice 7b section 1): its plugins by change (those applied), the plugins whose new
+// code failed, and what every affected object did (every live, activating, parked or failed object of a changed or removed
+// plugin, by its label).
+type ReloadReport struct {
+	Plugins PluginChanges
+	Failed  []PluginFailure
+	Objects []ReloadedObject
+}
+
+// CommittedReload is what a reload's commit applied, by plugin name: the `details.committed` of the `aborted` error of a
+// reload whose context aborted after its commit (the commit stands; only the wait for the report ended).
+type CommittedReload struct {
+	Added   []string
+	Changed []string
+	Removed []string
+	// Failed are the plugins whose new code failed: they kept their old code (an added one was left out).
+	Failed []string
 }
 
 // Host is a host.
@@ -98,8 +165,25 @@ type Host interface {
 	// registries composed once, the contributions); requests that waited for the publication are placed after that batch.
 	// Then activates every served type with empty params and returns when each has had its first outcome (the start
 	// barrier, decision (a)): live, failed by its own cause, parked with no blocker here still without its first outcome,
-	// or ended (failures go to `OnError`). A setup that fails returns its error and closes the host. Runs once.
-	Load(facets []HostFacet, ctx context.Context) error
+	// or ended (failures go to `OnError`). A plugin whose setup fails or is refused at declaration (its name, a type or
+	// registry another plugin serves, a remote type here without principal or address, `checkAccepts`) is left out and
+	// reported (LoadReport.Failed); it never closes the host. Runs once.
+	Load(facets []HostFacet, ctx context.Context) (LoadReport, error)
+	// Reload reloads this host's plugins (slice 7b): facets is its complete new plugin set; a plugin in it and not loaded
+	// is added, one loaded with another Facet value is changed (the same Facet value is unchanged: untouched; a Facet is
+	// compared by the identity of its Setup func), one loaded and not in it is removed. Staging runs every new setup and
+	// every affected object's new factory against a recording `self`, per plugin: a plugin whose new code fails there keeps
+	// its old code (an added one is left out), and so does a changed plugin whose recorded requests would not bind because
+	// of it (the closure rule); both are reported (ReloadReport.Failed); options.Failed names plugins the caller passes as
+	// their loaded facet because their new code failed before (a build, an evaluation): the same for the closure rule and
+	// the report. Then it commits in one batch (types, registries, contributions; a publication waking the requests for
+	// the names it serves) and every object of a changed or removed plugin takes its fate: swapped in place, restarted
+	// after its drain, retried, or ended (its type removed). Returns the report once every fate started (swaps and retries
+	// checked their dependencies; it does not wait for objects to go live). Reloads run one after another. It fails before
+	// `Load` returned; fails `released/closed` after `Close`; ctx's abort before the commit fails `aborted` and changes
+	// nothing, after it only ends the wait (`aborted`, its details.committed naming what the commit applied:
+	// CommittedReload).
+	Reload(facets []HostFacet, ctx context.Context, options ReloadOptions) (ReloadReport, error)
 	// Get is a reference once its object is live (and hydrated). It acts as the host's principal and goes where its type's
 	// host address puts it: here, over a route, or over the parent link (`destination`). It waits while the reference is
 	// `loading` (before the host's publication too), `failed { transient }` or `failed { waiting }` until its
@@ -119,9 +203,10 @@ type Host interface {
 	Connect(link link.Link, options LinkOptions, ctx context.Context) error
 	// Route is how this host reaches hosts of kind (called before `Load`, once per kind): Authorize admits every hold
 	// routed over it, Resolve makes the link of an address. Holds for an address wait while it resolves and again after
-	// its link drops (a backoff per address, 1 s doubling to 60 s), while they exist. ctx is the parent of the route's work,
-	// aborted for it when this host closes.
-	Route(kind *contracts.HostKind, options RouteOptions, ctx context.Context) error
+	// its link drops once; a rejected Resolve fails its holders `failed { waiting }` (they stay on its path), with no timer.
+	// ctx is the parent of the route's work, aborted for it when this host closes. It returns the RouteHandle: the app's
+	// controls of the route's addresses.
+	Route(kind *contracts.HostKind, options RouteOptions, ctx context.Context) (RouteHandle, error)
 	// Revoke revokes revocation (§4, R10, R11), synchronously: every remote object whose principal it revokes (`RevokedBy`)
 	// ends at once, whatever references remain (holders get `forbidden`, running calls are aborted, an activation is
 	// abandoned); every child link whose principal it revokes closes (never the parent, never this host's own principal);
@@ -174,9 +259,6 @@ func CreateHost(options HostOptions) (Host, error) {
 
 // noChain is no activation chain (Q5).
 var noChain []string
-
-// pluginName is an npm package name, scoped or not.
-var pluginName = regexp.MustCompile(`^(?:@[a-z0-9~-][a-z0-9._~-]*/)?[a-z0-9~-][a-z0-9._~-]*$`)
 
 const (
 	defaultCloseTimeout = 30 * time.Second
@@ -287,14 +369,17 @@ type chordHost struct {
 	// refs is the presence list of each type someone asked about (`references`), by type name.
 	refs    map[string]*references
 	onError func(err HostError)
-	types   map[string]*served
+	// types are the served types by name: the published plugin set's (a reload's commit replaces it).
+	types *namedMap[*served]
+	// plugins are the published plugins by name: their facet (an unchanged one is the same), staged setup and contributions.
+	plugins *namedMap[*loadedPlugin]
+	// reloading is the last reload's end, which the next one waits for (slice 7b section 1); nil before the first.
+	reloading *keyedPromise[struct{}]
 	// objects are by identity, in the order they went live (the others where they were created).
 	objects     map[string]*chordObject
 	objectOrder []string
 	// endings are teardowns still running, by identity: the next instance of an identity waits for its previous ones.
 	endings map[string]*keyedPromise[struct{}]
-	// typeOrder is the served types' names in the order they were served.
-	typeOrder []string
 	// unbound are the requests that cannot bind yet, by name: before the publication all of them, then those left unbound.
 	unbound *unboundIndex
 	// publication is closed at the host's first publication (`load`'s batch), or its close.
@@ -343,7 +428,8 @@ func createHost(options HostOptions) (*chordHost, error) {
 		incarnation:  uuidv7(),
 		compression:  options.Compression,
 		refs:         map[string]*references{},
-		types:        map[string]*served{},
+		types:        newNamedMap[*served](),
+		plugins:      newNamedMap[*loadedPlugin](),
 		objects:      map[string]*chordObject{},
 		endings:      map[string]*keyedPromise[struct{}]{},
 		unbound:      newUnboundIndex(),
@@ -370,8 +456,8 @@ func createHost(options HostOptions) (*chordHost, error) {
 		h.heartbeat.close = durationOr(options.Heartbeat.Close, defaultHeartbeat)
 	}
 	h.routing, h.routingCancel = chordctx.WithCancel(chordctx.Background())
-	h.parent = newPath(func() {})
-	h.unplaced = newPath(func() {})
+	h.parent = newPath(func(pathEvent) {})
+	h.unplaced = newPath(func(pathEvent) {})
 	h.destination = newDestination(h.address, h.routes, h.parent)
 	h.roots = newRootScopes(h)
 	if options.Store != nil {
@@ -413,9 +499,9 @@ func (h *chordHost) enter(work func()) {
 func (h *chordHost) Incarnation() string { return h.incarnation }
 
 // Load implements Host.
-func (h *chordHost) Load(facets []HostFacet, ctx context.Context) error {
+func (h *chordHost) Load(facets []HostFacet, ctx context.Context) (LoadReport, error) {
 	var failure error
-	var setupFailed bool
+	var report LoadReport
 	var outcomes []*keyedPromise[struct{}]
 	h.enter(func() {
 		if failure = h.batch.AssertOutside("load"); failure != nil {
@@ -429,45 +515,55 @@ func (h *chordHost) Load(facets []HostFacet, ctx context.Context) error {
 			return
 		}
 		h.state = hostLoading
-		contributions, err := h.setUpFacets(facets)
-		if err == nil {
-			// The publication: the facets' contributions and the first composition of every served registry, in one
-			// batch, before any object activates.
-			err = h.batch.Commit(func() error {
-				for _, contribution := range contributions {
-					contribution.Record.Add(contribution)
-				}
-				for _, name := range h.registryOrder {
-					if err := h.registries[name].ComposeServed(); err != nil {
-						return err
-					}
-				}
-				return nil
-			}, ctx)
+		table := emptyStaged()
+		loaded := newNamedMap[Facet]()
+		// A name given twice is refused the second time whether or not the first staged.
+		given := map[string]struct{}{}
+		// In the given order: of two plugins serving one name, the later is left out.
+		for _, plugin := range facets {
+			_, twice := given[plugin.Name]
+			given[plugin.Name] = struct{}{}
+			var err error
+			if twice {
+				err = loadedTwice(plugin.Name)
+			} else {
+				err = h.stageInto(table, plugin)
+			}
+			if err == nil {
+				loaded.set(plugin.Name, plugin.Facet)
+			} else {
+				report.Failed = append(report.Failed, PluginFailure{Plugin: plugin.Name, Error: err})
+			}
 		}
-		if err != nil {
-			// The host closes as `close` would: its links too. Nothing was activated, so no close can fail.
-			failure, setupFailed = err, true
+		h.types = table.types
+		// The publication: the types and registries served, the facets' contributions and the first composition of every
+		// served registry, in one batch, before any object activates.
+		if failure = h.batch.Commit(func() error {
+			if err := h.publishPlugins(table, loaded); err != nil {
+				return err
+			}
+			for _, name := range h.registryOrder {
+				if err := h.registries[name].ComposeServed(); err != nil {
+					return err
+				}
+			}
+			return nil
+		}, ctx); failure != nil {
 			return
 		}
 		// After the batch: what waited for the publication is placed (the gate lasted only for the setups).
 		h.published_ = true
 		h.publish()
 		h.unbound.wakeAll()
-		for _, name := range h.typeNames() {
-			entry := h.types[name]
+		for _, name := range h.types.keys() {
+			entry, _ := h.types.get(name)
 			if entry.contract.Kind == contracts.KindLocal && entry.hostLifetime {
 				outcomes = append(outcomes, h.objectFor(entry, emptyParams, nil, ctx, noChain, nil).firstOutcome())
 			}
 		}
 	})
-	if setupFailed {
-		var closing *closePromise
-		h.enter(func() { closing = h.closeOnce() })
-		<-closing.done
-	}
 	if failure != nil {
-		return failure
+		return LoadReport{}, failure
 	}
 	for _, outcome := range outcomes {
 		_, _ = outcome.await(ctx)
@@ -477,14 +573,63 @@ func (h *chordHost) Load(facets []HostFacet, ctx context.Context) error {
 			h.state = hostLoaded
 		}
 	})
-	return nil
+	return report, nil
 }
 
 // emptyParams are the params of a type with empty params, as checked: nothing, and the empty key.
 var emptyParams = checkedParams{params: delta.NewJsonObject(0), key: ""}
 
-// typeNames are the served types' names in the order they were served.
-func (h *chordHost) typeNames() []string { return slices.Clone(h.typeOrder) }
+// served is the type served under name, nil when none is.
+func (h *chordHost) served(name string) *served {
+	entry, _ := h.types.get(name)
+	return entry
+}
+
+// loadedPlugin is a published plugin: its facet (an unchanged reload passes the same one), what its setup staged (a reload
+// that keeps it uses it again, its setup not run) and its contributions in the registries' tables.
+type loadedPlugin struct {
+	facet         Facet
+	staged        *stagedPlugin
+	contributions []*registries.RegistryContribution
+}
+
+// loadedTwice is the error of a plugin name given twice: the second is refused.
+func loadedTwice(name string) error { return fmt.Errorf("plugin %q is loaded twice", name) }
+
+// stageInto stages plugin's new code into table: the error that refuses it (its setup, a declaration, a name served twice).
+func (h *chordHost) stageInto(table *staged, plugin HostFacet) error {
+	sp, err := stagePlugin(plugin, h)
+	if err != nil {
+		return err
+	}
+	return addStaged(table, sp)
+}
+
+// publishPlugins publishes the staged plugins of facets (by name), inside the publication's batch: the registries they
+// serve served, their facet contributions entered into the tables (the types are the staged table's, set by the caller).
+func (h *chordHost) publishPlugins(table *staged, facets *namedMap[Facet]) error {
+	for _, name := range facets.keys() {
+		facet, _ := facets.get(name)
+		plugin, _ := table.plugins.get(name)
+		for _, registryName := range plugin.registries.keys() {
+			entry, _ := plugin.registries.get(registryName)
+			h.registryRecord(registryName).Serve(entry.registry.Version, entry.provider)
+		}
+		contributions := make([]*registries.RegistryContribution, 0, len(plugin.contributions))
+		for _, each := range plugin.contributions {
+			contribution, err := contributionOf(h.registryRecord(each.registry.Name), registries.Contributor{Plugin: name}, each.registry.Version, each.value)
+			if err != nil {
+				return err
+			}
+			contributions = append(contributions, contribution)
+		}
+		for _, contribution := range contributions {
+			contribution.Record.Add(contribution)
+		}
+		h.plugins.set(name, &loadedPlugin{facet: facet, staged: plugin, contributions: contributions})
+	}
+	return nil
+}
 
 // Get implements Host.
 func (h *chordHost) Get(typ *contracts.Contract, params any, ctx context.Context, options GetOptions) (*Reference, error) {
@@ -545,8 +690,9 @@ func (h *chordHost) Connect(l link.Link, options LinkOptions, ctx context.Contex
 }
 
 // Route implements Host.
-func (h *chordHost) Route(kind *contracts.HostKind, options RouteOptions, ctx context.Context) error {
+func (h *chordHost) Route(kind *contracts.HostKind, options RouteOptions, ctx context.Context) (RouteHandle, error) {
 	var err error
+	var handle RouteHandle
 	h.enter(func() {
 		if err = h.assertOpen(); err != nil {
 			return
@@ -570,8 +716,16 @@ func (h *chordHost) Route(kind *contracts.HostKind, options RouteOptions, ctx co
 		}
 		h.routes[kind.Kind] = made
 		h.routeKinds = append(h.routeKinds, kind.Kind)
+		handle = RouteHandle{
+			Retry: func(address contracts.Address) bool {
+				started := false
+				h.enter(func() { started = made.retry(address.Key) })
+				return started
+			},
+			Suspend: func(address contracts.Address) { h.enter(func() { made.suspend(address.Key) }) },
+		}
 	})
-	return err
+	return handle, err
 }
 
 // Revoke implements Host.
@@ -903,7 +1057,7 @@ func (h *chordHost) bind(b *binding, typ *contracts.Contract, params checkedPara
 		b.bind(remote)
 		return remote, nil
 	}
-	entry := h.types[typ.Name]
+	entry := h.served(typ.Name)
 	unbound := unboundCause(entry, typ.Kind, typ.Name, typ.Version, typ.Fingerprint)
 	if unbound == nil {
 		unbound, err = h.misplacedServed(typ, entry, params.params)
@@ -914,6 +1068,11 @@ func (h *chordHost) bind(b *binding, typ *contracts.Contract, params checkedPara
 	if unbound != nil {
 		h.waitUnbound(b, typ.Name, unbound, func() { h.placeBinding(b, typ, params, ctx) })
 		return nil, nil
+	}
+	// An anonymous scope (an HTTP request nobody authenticated) is no principal a remote type's factory can serve (Opus's
+	// build review F5): refused, never bound as the host.
+	if entry.kind != servedLocal && from.principal == nil {
+		return nil, data.NewChordError(data.ChordErrorInit{Code: data.CodeForbidden, Message: typ.Name + ": an anonymous caller gets no remote object"}, nil)
 	}
 	// Checked above: served here at the caller's version.
 	object := h.objectFor(entry, params, from.principal, ctx, noChain, b.dependent())
@@ -935,7 +1094,7 @@ func (h *chordHost) place(request holdRequest, l *hostLink, from caller, ctx con
 // chain waits for (`invalid/cycle`, Q5). A new object keeps the hold's chain.
 func (h *chordHost) serving(request holdRequest, params any, principal data.Principal, ctx context.Context) (Serving, error) {
 	chain := request.Chain
-	entry := h.types[request.Type]
+	entry := h.served(request.Type)
 	if unbound := unboundCause(entry, contracts.KindRemote, request.Type, request.Version, request.Fingerprint); unbound != nil {
 		return Serving{Kind: ServingWaiting, Cause: *unbound}, nil
 	}
@@ -1021,7 +1180,7 @@ func (h *chordHost) routeLink(l link.Link, options routeLinkOptions, ctx context
 	return h.linkOf(l, linkRoleRoute, LinkOptions{Principal: options.principal, Trusted: options.trusted, Codec: options.codec, Limits: limits}, ctx)
 }
 
-// linkOpened: a link completed its handshake: a route's resets its address's backoff.
+// linkOpened: a link completed its handshake: a route's address resolves again once if it drops.
 func (h *chordHost) linkOpened(l *hostLink) {
 	if l.role != linkRoleRoute {
 		return
@@ -1338,9 +1497,6 @@ func (h *chordHost) runClose() *closePromise {
 	// Remote references end now: their parked calls reject `released`, no later link holds them.
 	// Code outside objects stops at its next use of Chord: an `fn` waiting in `sleep(ms, ctx)` ends.
 	h.roots.close(closed)
-	for _, kind := range h.routeKinds {
-		h.routes[kind].close()
-	}
 	for _, holder := range h.pathHolders() {
 		if remote, ok := holder.(*remoteObject); ok {
 			remote.lost(closed)
@@ -1370,8 +1526,9 @@ func (h *chordHost) runClose() *closePromise {
 			failures = append(failures, tearDown()...)
 		}
 		h.enter(func() {
-			clear(h.types)
-			h.typeOrder = nil
+			h.types = newNamedMap[*served]()
+			// Their facets keep their factories' closures (which may keep objects' handles).
+			h.plugins = newNamedMap[*loadedPlugin]()
 			for _, name := range h.registryOrder {
 				h.registries[name].Close()
 			}
@@ -1424,100 +1581,6 @@ func (h *chordHost) due(identity string) {
 	object.attempt()
 }
 
-// setUpFacets runs every facet's setup, checking the plugin names (npm names, each once), and serves what they declared;
-// returns their contributions, which enter the registries' tables once the setups ran.
-func (h *chordHost) setUpFacets(facets []HostFacet) ([]*registries.RegistryContribution, error) {
-	names := map[string]struct{}{}
-	var made []*registries.RegistryContribution
-	for _, named := range facets {
-		if !pluginName.MatchString(named.Name) {
-			return nil, fmt.Errorf("%q is not a valid plugin name", named.Name)
-		}
-		if _, ok := names[named.Name]; ok {
-			return nil, fmt.Errorf("plugin %q is loaded twice", named.Name)
-		}
-		names[named.Name] = struct{}{}
-		set, err := setUp(named.Name, named.Facet, h.References)
-		if err != nil {
-			return nil, err
-		}
-		for _, entry := range set.served {
-			if err := h.serveEntry(named.Name, entry); err != nil {
-				return nil, err
-			}
-		}
-		for _, each := range set.contributions {
-			contribution, err := h.contribution(named.Name, each)
-			if err != nil {
-				return nil, err
-			}
-			made = append(made, contribution)
-		}
-	}
-	return made, nil
-}
-
-// contribution is a facet's contribution, checked: in its registry's table while the host lives (its plugin stays loaded).
-func (h *chordHost) contribution(plugin string, each facetContribution) (*registries.RegistryContribution, error) {
-	// A facet contributes no registry's value (it reads none): no edges of its own.
-	record := h.registryRecord(each.registry.Name)
-	return contributionOf(record, registries.Contributor{Plugin: plugin}, each.registry.Version, each.value, nil)
-}
-
-func (h *chordHost) serveEntry(plugin string, entry servedEntry) error {
-	if entry.kind == servedRegistry {
-		return h.registryRecord(entry.registry.Name).Serve(entry.registry.Version, entry.provider)
-	}
-	contract := entry.contract
-	if _, ok := h.types[contract.Name]; ok {
-		return fmt.Errorf("%s is served twice", contract.Name)
-	}
-	// A client serves only local types (§3): a remote object is owned by a principal of the host serving it.
-	if contract.Kind == contracts.KindRemote && h.principal == nil {
-		return fmt.Errorf("%s: a host without a principal serves only local types", contract.Name)
-	}
-	// A remote object lives on the host its `hostAddress` names: only a host with an address can be that host.
-	if contract.Kind == contracts.KindRemote && h.address == nil {
-		return fmt.Errorf("%s: a host without an address serves only local types", contract.Name)
-	}
-	provider, err := data.BindProvider(contract, nil)
-	if err != nil {
-		return err
-	}
-	contractData, err := contracts.ContractDataOf(contract)
-	if err != nil {
-		return err
-	}
-	var local LocalFactory
-	var remote RemoteFactory
-	kind := servedLocal
-	if contract.Kind == contracts.KindLocal {
-		factory, ok := entry.factory.(LocalFactory)
-		if !ok {
-			return fmt.Errorf("%s: a local type is served with a LocalFactory, not %T", contract.Name, entry.factory)
-		}
-		local = factory
-	} else {
-		factory, ok := entry.factory.(RemoteFactory)
-		if !ok {
-			return fmt.Errorf("%s: a remote type is served with a RemoteFactory, not %T", contract.Name, entry.factory)
-		}
-		kind, remote = servedRemote, factory
-	}
-	h.types[contract.Name] = &served{
-		kind:         kind,
-		plugin:       plugin,
-		provider:     provider,
-		linger:       durationOr(entry.options.Linger, 0),
-		contract:     contract,
-		local:        local,
-		remote:       remote,
-		hostLifetime: contract.Kind == contracts.KindLocal && len(contractData.Params.Fields) == 0,
-	}
-	h.typeOrder = append(h.typeOrder, contract.Name)
-	return nil
-}
-
 func (h *chordHost) assertOpen() error {
 	if h.state == hostClosed {
 		return h.closedError()
@@ -1537,7 +1600,7 @@ func unboundCause(entry *served, kind contracts.Kind, name string, version int, 
 		return &data.FailureCause{Kind: data.FailureWaiting, Error: data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: name + " is not served here"}, nil)}
 	}
 	contract := entry.contract
-	if version == contract.Version && fingerprint == contract.Fingerprint {
+	if data.Binds(entry.provider, version, fingerprint) {
 		return nil
 	}
 	message := fmt.Sprintf("%s v%d does not match the served v%d", name, version, contract.Version)
@@ -1619,4 +1682,487 @@ func untilUsable(loop sectionLoop, value *registries.RegistryValueSource, usable
 			return context.Cause(ctx)
 		}
 	}
+}
+
+// reloadPlan is what a reload staged: the staged set, the facets of the plugins it applies, the plugins by change, those
+// that failed, and each affected object's fate.
+type reloadPlan struct {
+	staged  *staged
+	facets  *namedMap[Facet]
+	added   []string
+	changed []string
+	removed []string
+	failed  []PluginFailure
+	fates   []plannedFate
+}
+
+// recordedFactory is a recorded new factory of an object staging planned a fate for: whose new code it is, and what it
+// declared.
+type recordedFactory struct {
+	plugin   string
+	recorded Recorded
+}
+
+// stagingPass is one staging pass of a reload: its plan, or the plugins it found failing (staging runs again without their
+// new code).
+type stagingPass struct {
+	plan     *reloadPlan
+	recorded []recordedFactory
+	failed   *namedMap[error]
+}
+
+// plannedFate is an affected object's fate, as staging decided it: end (its type is gone), or kind.
+type plannedFate struct {
+	end    bool
+	kind   reloadFate
+	object *chordObject
+	served *served
+}
+
+// startedFate is a fate started by a reload's commit, for its report: a swap's or retry's new attempt is checked first
+// (checked; nil for an ended or restarted object).
+type startedFate struct {
+	object  string
+	kind    ReloadedObjectKind
+	checked *keyedPromise[*data.FailureCause]
+}
+
+// reloaded is what a started fate of a reload kind reports.
+var reloadedKinds = map[reloadFate]ReloadedObjectKind{reloadSwap: ReloadSwapped, reloadRestart: ReloadRestarted, reloadRetry: ReloadRetried}
+
+// reloadAborted is the `aborted` error of a reload whose context aborted before its commit: nothing changed.
+func reloadAborted() *data.ChordError {
+	return data.NewChordError(data.ChordErrorInit{Code: data.CodeAborted, Message: "reload: aborted"}, nil)
+}
+
+// Reload implements Host: one reload, after the previous one: staging, the commit, the fates, the report.
+func (h *chordHost) Reload(facets []HostFacet, ctx context.Context, options ReloadOptions) (ReloadReport, error) {
+	var failure error
+	var previous, mine *keyedPromise[struct{}]
+	h.enter(func() {
+		if failure = h.batch.AssertOutside("reload"); failure != nil {
+			return
+		}
+		if h.state == hostClosed {
+			failure = h.closedError()
+			return
+		}
+		if h.state != hostLoaded {
+			failure = errors.New("reload runs after load")
+			return
+		}
+		previous = h.reloading
+		mine = newKeyedPromise[struct{}](h.events)
+		h.reloading = mine
+	})
+	if failure != nil {
+		return ReloadReport{}, failure
+	}
+	// The tail settles to nothing: the next reload waits for this one's end, whatever it was.
+	defer h.enter(func() { mine.resolve(struct{}{}) })
+	if previous != nil {
+		parking.Park(ctx)
+		<-previous.done
+	}
+	var plan *reloadPlan
+	var started []startedFate
+	h.enter(func() {
+		if failure = h.assertOpen(); failure != nil {
+			return
+		}
+		if ctx.Err() != nil {
+			failure = reloadAborted()
+			return
+		}
+		plan = h.stageReload(facets, options.Failed, ctx)
+		// Aborted while it staged (a setup may abort it synchronously): nothing changed.
+		if ctx.Err() != nil {
+			failure = reloadAborted()
+			return
+		}
+		started, failure = h.commit(plan, ctx)
+	})
+	if failure != nil {
+		return ReloadReport{}, failure
+	}
+	plugins := PluginChanges{Added: plan.added, Changed: plan.changed, Removed: plan.removed}
+	committed := CommittedReload{Added: plan.added, Changed: plan.changed, Removed: plan.removed}
+	for _, each := range plan.failed {
+		committed.Failed = append(committed.Failed, each.Plugin)
+	}
+	objects, err := h.reloadReport(started, committed, ctx)
+	if err != nil {
+		return ReloadReport{}, err
+	}
+	return ReloadReport{Plugins: plugins, Failed: plan.failed, Objects: objects}, nil
+}
+
+// stageReload is staging (slice 7b §2), synchronous (no request or arriving hold meets it half done), per plugin (decision
+// "Per plugin at startup and reload"): a pass stages the new code (stagePass); a plugin whose new code fails there (or
+// failed `before`, passed as its loaded facet) keeps its old code (an added one is left out) and staging runs again
+// without it; then a changed plugin whose recorded requests would not bind because of such a plugin keeps its old code too
+// (closure), until nothing more fails. Bounded by the number of plugins with new code.
+func (h *chordHost) stageReload(facets []HostFacet, before []PluginFailure, ctx context.Context) *reloadPlan {
+	failed := newNamedMap[error]()
+	for _, each := range before {
+		failed.set(each.Plugin, each.Error)
+	}
+	given := newNamedMap[Facet]()
+	// A name given twice: the second is refused, the first staged.
+	var twice []PluginFailure
+	for _, plugin := range facets {
+		if given.has(plugin.Name) {
+			twice = append(twice, PluginFailure{Plugin: plugin.Name, Error: loadedTwice(plugin.Name)})
+		} else {
+			given.set(plugin.Name, plugin.Facet)
+		}
+	}
+	for {
+		pass := h.stagePass(given, failed, ctx)
+		if pass.failed != nil {
+			for _, name := range pass.failed.keys() {
+				err, _ := pass.failed.get(name)
+				failed.set(name, err)
+			}
+			continue
+		}
+		kept := h.closure(pass.plan, pass.recorded, failed)
+		if kept.len() > 0 {
+			for _, name := range kept.keys() {
+				err, _ := kept.get(name)
+				failed.set(name, err)
+			}
+			continue
+		}
+		failures := slices.Clone(twice)
+		for _, name := range failed.keys() {
+			err, _ := failed.get(name)
+			failures = append(failures, PluginFailure{Plugin: name, Error: err})
+		}
+		// A reload that failed nothing has no failures (Pi's empty array).
+		pass.plan.failed = failures
+		return pass.plan
+	}
+}
+
+// stagePass is one staging pass: the loaded entries of the plugins kept as they are (unchanged, or failed: their setups not
+// run again) first, then every other plugin's new code in the given order (one refused by a name the table has already
+// fails), then the new factory of every object of a changed or removed plugin whose type is still served (an error fails the
+// plugin serving it). Its plan, or the plugins that failed.
+func (h *chordHost) stagePass(given *namedMap[Facet], failed *namedMap[error], ctx context.Context) stagingPass {
+	table := emptyStaged()
+	failing := newNamedMap[error]()
+	var fresh []HostFacet
+	for _, name := range given.keys() {
+		facet, _ := given.get(name)
+		loaded, ok := h.plugins.get(name)
+		if ok && (loaded.facet.same(facet) || failed.has(name)) {
+			_ = addStaged(table, loaded.staged)
+		} else if !failed.has(name) {
+			fresh = append(fresh, HostFacet{Name: name, Facet: facet})
+		}
+	}
+	for _, plugin := range fresh {
+		if err := h.stageInto(table, plugin); err != nil {
+			failing.set(plugin.Name, err)
+		}
+	}
+	if failing.len() > 0 {
+		return stagingPass{failed: failing}
+	}
+	applied := map[string]struct{}{}
+	for _, plugin := range fresh {
+		applied[plugin.Name] = struct{}{}
+	}
+	var removed []string
+	for _, name := range h.plugins.keys() {
+		if !given.has(name) {
+			removed = append(removed, name)
+		}
+	}
+	reloaded := map[string]struct{}{}
+	for name := range applied {
+		reloaded[name] = struct{}{}
+	}
+	for _, name := range removed {
+		reloaded[name] = struct{}{}
+	}
+	var fates []plannedFate
+	var recorded []recordedFactory
+	for _, object := range h.objectList() {
+		if _, ok := reloaded[object.served.plugin]; !ok {
+			continue
+		}
+		entry, ok := table.types.get(object.served.contract.Name)
+		if !ok || entry.kind != object.served.kind {
+			fates = append(fates, plannedFate{end: true, object: object})
+			continue
+		}
+		declared, err := recordFactory(object, entry, ctx)
+		if err != nil {
+			if !failing.has(entry.plugin) {
+				failing.set(entry.plugin, err)
+			}
+			continue
+		}
+		recorded = append(recorded, recordedFactory{plugin: entry.plugin, recorded: declared})
+		fates = append(fates, plannedFate{kind: object.reloadFate(declared), object: object, served: entry})
+	}
+	if failing.len() > 0 {
+		return stagingPass{failed: failing}
+	}
+	facets := newNamedMap[Facet]()
+	var added, changed []string
+	for _, plugin := range fresh {
+		facets.set(plugin.Name, plugin.Facet)
+		if h.plugins.has(plugin.Name) {
+			changed = append(changed, plugin.Name)
+		} else {
+			added = append(added, plugin.Name)
+		}
+	}
+	return stagingPass{
+		plan:     &reloadPlan{staged: table, facets: facets, added: added, changed: changed, removed: removed, fates: fates},
+		recorded: recorded,
+	}
+}
+
+// closure is the closure rule: the changed plugins (new code applied) of plan with a recorded request that would not bind
+// in the staged table because of a plugin that failed in this reload: its name served there by such a plugin's old code, or
+// not served at all while some plugin failed (what a failed setup would have served is unknown). Requests to another host
+// are not checked (a rollout's rules). Each such plugin with the error it keeps its old code for.
+func (h *chordHost) closure(plan *reloadPlan, recorded []recordedFactory, failed *namedMap[error]) *namedMap[error] {
+	kept := newNamedMap[error]()
+	if failed.len() == 0 {
+		return kept
+	}
+	for _, each := range recorded {
+		if kept.has(each.plugin) || !plan.facets.has(each.plugin) {
+			continue
+		}
+		for _, request := range each.recorded.requests {
+			if unbound := h.unboundRequest(plan.staged, request, failed); unbound != "" {
+				kept.set(each.plugin, fmt.Errorf("plugin %q: %s", each.plugin, unbound))
+				break
+			}
+		}
+	}
+	return kept
+}
+
+// unboundRequest is why request (of a new factory) would not bind in table because of a plugin in failed; empty when it
+// binds, is placed on another host, or does not bind for another reason (it waits as any request does).
+func (h *chordHost) unboundRequest(table *staged, request request, failed *namedMap[error]) string {
+	if request.kind == requestType {
+		contract := request.contract
+		name := contract.Name
+		entry, _ := table.types.get(name)
+		provider := ""
+		if entry != nil {
+			provider = entry.plugin
+		}
+		if entry != nil && !failed.has(provider) {
+			return ""
+		}
+		// A remote type the object reaches on another host: placed by the rollout's rules, not this host's.
+		if !h.placedHere(contract, request.params) {
+			return ""
+		}
+		if entry != nil && h.wouldBind(entry, contract, request.params) {
+			return ""
+		}
+		if entry == nil {
+			return fmt.Sprintf("needs %s v%d, which no plugin serves now (a plugin failed)", name, contract.Version)
+		}
+		return fmt.Sprintf("needs %s v%d, which plugin %q serves on its old code", name, contract.Version, provider)
+	}
+	name := request.registry.Name
+	entry, ok := table.registries.get(name)
+	if ok && !failed.has(entry.plugin) {
+		return ""
+	}
+	if ok && registryServes(entry, request.registry.Version) {
+		return ""
+	}
+	if !ok {
+		return fmt.Sprintf("needs registry %s v%d, which no plugin serves now (a plugin failed)", name, request.registry.Version)
+	}
+	return fmt.Sprintf("needs registry %s v%d, which plugin %q serves on its old code", name, request.registry.Version, entry.plugin)
+}
+
+// registryServes reports whether registry provider entry serves readers of version: its own, or an older one its `accepts`
+// maps back.
+func registryServes(entry stagedRegistry, version int) bool {
+	provided := entry.registry.Version
+	if provided == version {
+		return true
+	}
+	if provided > version {
+		accept, ok := entry.provider.Accepts[version]
+		return ok && accept.Value != nil
+	}
+	return false
+}
+
+// wouldBind reports whether a request for typ with params binds to entry as a real bind checks it (`bind`): its kind,
+// version and fingerprint, and the provider's own host address; one whose `hostAddress` fails does not.
+func (h *chordHost) wouldBind(entry *served, typ *contracts.Contract, params *delta.JsonObject) bool {
+	if unboundCause(entry, typ.Kind, typ.Name, typ.Version, typ.Fingerprint) != nil {
+		return false
+	}
+	cause, err := h.misplacedServed(typ, entry, params)
+	return err == nil && cause == nil
+}
+
+// placedHere reports whether a request for typ with params goes here; a `hostAddress` that fails: not here (it fails at
+// bind).
+func (h *chordHost) placedHere(typ *contracts.Contract, params *delta.JsonObject) bool {
+	here, err := h.destination.placedHere(typ, params)
+	return err == nil && here
+}
+
+// commit is the commit (slice 7b §3), one batch: the served types become the staged ones (an unchanged plugin's stay as
+// they were), the removed plugins' registry providers go and the reloaded ones' are replaced, their facet contributions
+// replaced by plugin, every changed registry composed once; a removed type's presence list goes. Then each object takes its
+// fate, host-lifetime objects of new types start, and the publication wakes the requests waiting for the names the reload
+// serves.
+func (h *chordHost) commit(plan *reloadPlan, ctx context.Context) ([]startedFate, error) {
+	table := plan.staged
+	published := plan.facets
+	if err := h.batch.Commit(func() error {
+		for _, name := range slices.Concat(plan.changed, plan.removed) {
+			loaded, _ := h.plugins.get(name)
+			for _, registry := range loaded.staged.registries.keys() {
+				if owner, ok := table.registries.get(registry); !ok || owner.plugin != name {
+					h.registryRecord(registry).Unserve()
+				}
+			}
+			for _, contribution := range loaded.contributions {
+				contribution.Record.Remove(contribution)
+			}
+			h.plugins.delete(name)
+		}
+		h.types = table.types
+		if err := h.publishPlugins(table, published); err != nil {
+			return err
+		}
+		for _, name := range published.keys() {
+			plugin, _ := table.plugins.get(name)
+			for _, registry := range plugin.registries.keys() {
+				if err := h.registryRecord(registry).ComposeServed(); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}, ctx); err != nil {
+		return nil, err
+	}
+	for name := range h.refs {
+		if !table.types.has(name) {
+			delete(h.refs, name)
+		}
+	}
+	var names []string
+	for _, name := range table.types.keys() {
+		if entry, _ := table.types.get(name); published.has(entry.plugin) {
+			names = append(names, name)
+		}
+	}
+	for _, name := range table.registries.keys() {
+		if entry, _ := table.registries.get(name); published.has(entry.plugin) {
+			names = append(names, name)
+		}
+	}
+	started := make([]startedFate, 0, len(plan.fates))
+	for _, fate := range plan.fates {
+		started = append(started, h.startFate(fate))
+	}
+	for _, name := range table.types.keys() {
+		entry, _ := table.types.get(name)
+		if entry.kind == servedLocal && entry.hostLifetime {
+			h.objectFor(entry, emptyParams, nil, ctx, noChain, nil)
+		}
+	}
+	h.unbound.wake(names)
+	return started, nil
+}
+
+// startFate starts one object's fate after the commit (slice 7b §4): a removed type's object ends, its holders waiting
+// `not_served`; any other swaps, restarts or retries on its new served type.
+func (h *chordHost) startFate(fate plannedFate) startedFate {
+	object := fate.object
+	if fate.end {
+		err := data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: object.served.contract.Name + " is not served here"}, nil)
+		label := object.label()
+		object.remove(data.FailureCause{Kind: data.FailureWaiting, Error: err})
+		return startedFate{object: label, kind: ReloadEnded}
+	}
+	started := object.reload(fate.served, fate.kind)
+	kind := reloadedKinds[fate.kind]
+	if fate.kind == reloadRestart {
+		return startedFate{object: object.label(), kind: kind}
+	}
+	return startedFate{object: object.label(), kind: kind, checked: started.checked()}
+}
+
+// reloadReport is the report, once every swap and retry had its first dependency check (a parked one reports why);
+// restarts are reported at once (their check follows the drain). ctx's abort ends only this wait (`aborted`, its details
+// naming what the commit applied: `committed`).
+func (h *chordHost) reloadReport(started []startedFate, committed CommittedReload, ctx context.Context) ([]ReloadedObject, error) {
+	// `awaitWithContext(Promise.all(checks), context)`: an abort that came first ends the wait.
+	if ctx.Err() != nil {
+		return nil, committedAborted(committed)
+	}
+	parking.Park(ctx)
+	objects := make([]ReloadedObject, 0, len(started))
+	for _, fate := range started {
+		if fate.checked == nil {
+			objects = append(objects, ReloadedObject{Object: fate.object, Kind: fate.kind})
+			continue
+		}
+		select {
+		case <-fate.checked.done:
+		case <-ctx.Done():
+			return nil, committedAborted(committed)
+		}
+		cause := fate.checked.value
+		if cause == nil {
+			objects = append(objects, ReloadedObject{Object: fate.object, Kind: fate.kind})
+		} else {
+			objects = append(objects, ReloadedObject{Object: fate.object, Kind: ReloadParked, Cause: *cause})
+		}
+	}
+	// Pi's report completes at least three microtask ticks after a check settled (`await checked`, the async map's
+	// result, `Promise.all`), so what the same batch delivered first (a watcher of a reference that left `live` aborting
+	// the context from its callback) lands before the report: the batch's deliveries run, then the context is read.
+	h.enter(func() {})
+	h.scheduler.Wait()
+	h.enter(func() {})
+	if ctx.Err() != nil {
+		return nil, committedAborted(committed)
+	}
+	return objects, nil
+}
+
+// committedAborted is the `aborted` error of a reload whose context aborted after its commit.
+func committedAborted(committed CommittedReload) *data.ChordError {
+	names := func(values []string) []any {
+		list := make([]any, 0, len(values))
+		for _, value := range values {
+			list = append(list, value)
+		}
+		return list
+	}
+	details := delta.JsonObjectOf("committed", delta.JsonObjectOf(
+		"added", names(committed.Added), "changed", names(committed.Changed),
+		"removed", names(committed.Removed), "failed", names(committed.Failed),
+	))
+	return data.NewChordError(data.ChordErrorInit{Code: data.CodeAborted, Message: "reload: aborted after its commit", Details: details, HasDetails: true}, nil)
+}
+
+// rewait leaves binding, whose object left it (its type removed, its version no longer bound: slice 7b §6), waiting
+// unbound with cause under its type's name; a publication places it again (params checked as it was, under ctx).
+func (h *chordHost) rewait(b *binding, typ *contracts.Contract, params checkedParams, cause data.FailureCause, ctx context.Context) {
+	h.waitUnbound(b, typ.Name, &cause, func() { h.placeBinding(b, typ, params, ctx) })
 }

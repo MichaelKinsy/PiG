@@ -77,7 +77,7 @@ func benchServer(b *testing.B) (plain *httptest.Server, port int, file string) {
 			return FileResponse(file, FileResponseOptions{})
 		}),
 	}})
-	if err := h.Load([]host.HostFacet{{Name: "chord.http", Facet: component.Facet()}, {Name: "@bench/routes", Facet: routes}}, background); err != nil {
+	if _, err := h.Load([]host.HostFacet{{Name: "chord.http", Facet: component.Facet()}, {Name: "@bench/routes", Facet: routes}}, background); err != nil {
 		b.Fatal(err)
 	}
 	b.Cleanup(func() {

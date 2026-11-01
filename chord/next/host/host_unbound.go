@@ -6,7 +6,8 @@ import "github.com/MichaelKinsy/PiG/chord/next/data"
 // cannot bind yet, by the name they wait for. Before the host's first publication every request made here, and every hold
 // arriving on its links, waits here (`unpublished`); after it, those its check left unbound (`not_served`, `version`): a
 // reference made here, a hold that arrived over a link and was refused for a name. A publication wakes the requests of the
-// names it serves; a request leaves when it ends (released, settled, given up, its link or origin closed, revoked) or binds.
+// names it serves (`load`'s every one, a reload's those of its names); a request leaves when it ends (released, settled,
+// given up, its link or origin closed, revoked) or binds.
 
 // unboundRequest is a request in the index: a reference made here or a hold that arrived over a link. It must be
 // comparable (a pointer): the index tells requests apart.
@@ -126,6 +127,24 @@ func (i *unboundIndex) takeAll() []unboundRequest {
 // wakeAll is the host's publication: every request indexed (by any name) runs its check again, out of the index first.
 func (i *unboundIndex) wakeAll() {
 	for _, request := range i.takeAll() {
+		request.wake()
+	}
+}
+
+// wake is a reload's publication: the requests indexed under names (the types and registries it serves) run their check
+// again, out of the index first; the others stay (carry-over "Publications wake per name").
+func (i *unboundIndex) wake(names []string) {
+	var woken []unboundRequest
+	for _, name := range names {
+		requests := i.byName[name]
+		if requests == nil {
+			continue
+		}
+		delete(i.byName, name)
+		i.names.delete(name)
+		woken = append(woken, requests.items()...)
+	}
+	for _, request := range woken {
 		request.wake()
 	}
 }

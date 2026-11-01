@@ -301,8 +301,12 @@ func TestObjectALiveObjectFailingLetsACommitAdmittedBeforeTheFailureAdoptAndPubl
 	if !reflect.DeepEqual(stored, jsonObject("n", 1.0)) || double != 2.0 || ten != 20.0 {
 		t.Fatalf("counter %v, double %v, tens %v, want {n:1}, 2, 20", stored, double, ten)
 	}
-	if got := nexttest.ValuesOf(doubleFrames.Items()); !reflect.DeepEqual(got, []any{2.0}) {
-		t.Fatalf("double frames = %v, want [2]", got)
+	// The admitted commit publishes once; then the reference's member holds it (the failure once). A derive over it keeps its
+	// last value.
+	// Its references stop following once the admitted commits published (an owned task settles them): wait for the failure.
+	scopeEventually(t, "the failure reaches the double watch", func() bool { turn(host); return doubleFrames.Len() >= 2 })
+	if got := nexttest.ValuesOf(doubleFrames.Items()); !reflect.DeepEqual(got, []any{2.0, nexttest.FailedValue{Failed: "boom"}}) {
+		t.Fatalf("double frames = %v, want [2, {failed: boom}]", got)
 	}
 	if got := nexttest.ValuesOf(tenFrames.Items()); !reflect.DeepEqual(got, []any{20.0}) {
 		t.Fatalf("tens frames = %v, want [20]", got)

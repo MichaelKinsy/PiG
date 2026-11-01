@@ -12,14 +12,11 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// testAddress is an address whose value the test sets (upstream's `Address extends AddressSource`). No object's
-// documents: the test reads frames only.
+// testAddress is an address whose value the test sets (upstream's `Address extends AddressSource`).
 type testAddress struct {
 	AddressSource
 	current *JsonObject
 }
-
-func (address *testAddress) Owner() *Documents { return nil }
 
 func (address *testAddress) Value() (delta.JsonValue, error) { return address.current, nil }
 

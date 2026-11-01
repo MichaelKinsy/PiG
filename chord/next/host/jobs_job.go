@@ -98,10 +98,27 @@ type jobOwner struct {
 	// token is the attempt's seal token: its starts and finishes are transactions under it.
 	token     *documents.SealToken
 	documents *documents.Documents
-	// admit adds running work (an invocation and its finish, a deferred finish) to the attempt's drain: cleanup (its
-	// bookkeeping, may be nil) runs once, when the work settles (the returned settle is called with its error) or when
-	// the attempt ends with it still running.
+	// admit adds running work (a finish, a reservation) to the attempt's calls drain: cleanup (its bookkeeping, may be
+	// nil) runs once, when the work settles (the returned settle is called with its error) or when the attempt ends with
+	// it still running.
 	admit func(cleanup func()) (settle func(err error))
+	// admitRun adds a run's invocation to the attempt's drain at its end (a swap does not wait for it), as `admit`.
+	admitRun func(cleanup func()) (settle func(err error))
+}
+
+// cutReason is why a seal cuts a running in-memory run off: `restart` (its attempt ended while the object continues) or
+// `reload` (a native restart, slice 7b section 8); its outcome is `failed { aborted }` with that reason.
+type cutReason string
+
+const (
+	cutRestart cutReason = "restart"
+	cutReload  cutReason = "reload"
+)
+
+// sealedWith is a seal's error and cut reason.
+type sealedWith struct {
+	err    *data.ChordError
+	reason cutReason
 }
 
 // finishAttempts is the failed finishes in a row after which a run is blocked.
@@ -113,6 +130,9 @@ const (
 	// jobDeclared until the attempt is live (starts are refused).
 	jobDeclared jobState = iota
 	jobLive
+	// jobHanded once a reload's swap gave its records to the new attempt's job (starts refused, its invocations finish
+	// here).
+	jobHanded
 	// jobSealed once it is sealed.
 	jobSealed
 )
@@ -129,14 +149,16 @@ func (sections jobSections) Run(work func()) { sections.host.enter(work) }
 // job is a job as one attempt declares it: its implementation and the invocations and finishes running on the attempt.
 // Starts are taken while the attempt is live; the object's records keep the runs.
 type job struct {
-	records        *jobRecords
+	records *jobRecords
+	// definition is the one its attempt declared: its invocations get args in its version, whatever the records' is now.
+	definition     *JobDefinition
 	implementation JobImplementation
 	owner          jobOwner
 	state          jobState
 	// invocations are the runs whose `run` runs on this attempt.
 	invocations *runSet
-	// sealed is the seal's error, once sealed: a reservation committing after it cuts its run off with it.
-	sealed *data.ChordError
+	// sealed is the seal's error and cut reason, once sealed: a reservation committing after it cuts its run off with them.
+	sealed *sealedWith
 	// finishing are the runs whose finish runs on this attempt.
 	finishing *runSet
 }
@@ -147,7 +169,8 @@ var (
 )
 
 func newJob(records *jobRecords, implementation JobImplementation, owner jobOwner) *job {
-	return &job{records: records, implementation: implementation, owner: owner, invocations: newRunSet(), finishing: newRunSet()}
+	// Its attempt's declaration redefined the records just before (`chordObject.jobRecords`).
+	return &job{records: records, definition: records.definition, implementation: implementation, owner: owner, invocations: newRunSet(), finishing: newRunSet()}
 }
 
 // Running implements JobHandle: its value is the list of entries `jobRun.entryFor` builds.
@@ -202,7 +225,7 @@ func (handle *job) Stage(tx *documents.Transaction, args any, ctx context.Contex
 	if tx.Documents() != handle.owner.documents {
 		return nil, fmt.Errorf("%s: a transaction starts only its own object's jobs", handle.owner.documents.Label())
 	}
-	if handle.state == jobSealed {
+	if handle.state == jobSealed || handle.state == jobHanded {
 		return nil, data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonEnded, Message: handle.records.name() + ": its attempt ended"}, nil)
 	}
 	if handle.state == jobDeclared {
@@ -211,20 +234,37 @@ func (handle *job) Stage(tx *documents.Transaction, args any, ctx context.Contex
 	return handle.records.stage(tx, args, ctx, options)
 }
 
-// seal is: the attempt is sealed with err: starts are refused, running invocations are cut off (their signals fire, they
-// end `aborted` with reason `restart` and finish on the next live attempt), and the runs finishing here wait for it.
-func (handle *job) seal(err *data.ChordError) {
+// seal is: the attempt is sealed with err: starts are refused, running invocations are cut off (their signals fire, in
+// memory they end `aborted` with `reason` and finish on the next live attempt, persisted ones are stopped and resumed,
+// R3), and the runs finishing here wait for it.
+func (handle *job) seal(err *data.ChordError, reason cutReason) {
 	if handle.state == jobSealed {
 		return
 	}
+	handed := handle.state == jobHanded
 	handle.state = jobSealed
-	handle.sealed = err
+	handle.sealed = &sealedWith{err: err, reason: reason}
 	handle.records.detach(handle, handle.finishing.snapshot())
 	handle.finishing.clear()
-	for _, run := range handle.invocations.snapshot() {
-		handle.records.cut(run, err)
+	// A handed-over job's invocations finish on its code; their outcomes go to the new attempt's job.
+	if !handed {
+		for _, run := range handle.invocations.snapshot() {
+			handle.records.cut(run, err, reason)
+		}
 	}
 	handle.invocations.clear()
+}
+
+// handOver is: a reload swapped its attempt out (slice 7b section 8): starts are refused, the records go to the new
+// attempt's job once it is live, the runs it invokes finish on this code (their outcome is finished by the new code), a
+// finish running here completes here.
+func (handle *job) handOver() {
+	if handle.state != jobLive && handle.state != jobDeclared {
+		return
+	}
+	handle.state = jobHanded
+	// Runs needing a live attempt meanwhile wait for the new one.
+	handle.records.detach(handle, nil)
 }
 
 // invoke runs `run` for a committed run (with its signal aborted already after an early abort); a persisted run's
@@ -250,7 +290,7 @@ func (handle *job) invoke(run *jobRun) {
 			case err == nil && handle.state != jobSealed:
 				handle.start(run, current)
 			case err == nil:
-				records.cut(run, handle.sealed)
+				records.cut(run, handle.sealed.err, handle.sealed.reason)
 				// No `run` started: nothing else ends it, and an abort joined to it returns.
 				current.ended()
 			default:
@@ -276,10 +316,16 @@ func (handle *job) start(run *jobRun, current *invocation) {
 		jobID:       run.id,
 		state:       handle.stateOf(run, current),
 	}
-	settle := owner.admit(ctx.settle)
+	settle := owner.admitRun(ctx.settle)
 	handle.invocations.add(run)
+	// Its own version's args: a handed-over attempt's late start runs its own code (Sol, reservation).
+	args, argsErr := records.argsOf(run, handle.definition)
 	records.loop.Go(func() {
-		result, err := handle.implementation.Run(run.args, ctx)
+		var result any
+		err := argsErr
+		if err == nil {
+			result, err = handle.implementation.Run(args, ctx)
+		}
 		records.loop.Run(func() {
 			// The fence closes as `run` settles: a change made later is refused.
 			current.settle()
@@ -354,7 +400,7 @@ func (handle *job) finishRun(run *jobRun) {
 					return
 				}
 				each.finishing = run
-				outcome = *run.outcome
+				outcome, err = records.outcomeOf(run, owner.context)
 			})
 			if err != nil {
 				return nil, err

@@ -125,7 +125,7 @@ func TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLi
 		t.Fatal(err)
 	}
 	defer func() { _ = tab.Close(background) }()
-	if err := tab.Load(nil, background); err != nil {
+	if _, err := tab.Load(nil, background); err != nil {
 		t.Fatal(err)
 	}
 	// The link wraps the socket at once: the server's `hello` comes with the upgrade.
