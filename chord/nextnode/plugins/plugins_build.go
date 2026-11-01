@@ -87,25 +87,19 @@ type BuiltFacet struct {
 	Errors []string
 }
 
-// Builder builds a discovered plugin's facet. It is upstream's esbuild build, owned by the consumer.
-type Builder interface {
-	// Build builds plugin's facet of kind, whose file plugin.Facets[kind] exists: a script, or the errors that refuse it (an
-	// import the rules of §2 do not admit, a syntax error, `import.meta`, `__dirname`, `__filename`, a literal dynamic
-	// import, a top-level `await`), each naming its file and line, as a BuiltFacetFailed result. It returns an error only
-	// when ctx aborts: a failed build is a result, never an error.
-	Build(plugin Plugin, kind string, options BuildOptions, ctx context.Context) (BuiltFacet, error)
-}
-
-// BuildFacet builds plugin's facet of kind with builder: a plugin with no facet of kind is a failed result naming it,
-// without a build; an aborted ctx is its reason (context.Cause), as `throwIfAborted` throws it.
-func BuildFacet(builder Builder, plugin Plugin, kind string, options BuildOptions, ctx context.Context) (BuiltFacet, error) {
+// BuildFacet builds plugin's facet of kind (one esbuild build from cold): a script wrapped as `(function (require, module,
+// exports) { … })`, or the errors that refuse it (an import the rules of §2 do not admit, a syntax error, `import.meta`,
+// `__dirname`, `__filename`, a literal dynamic `import("x")`, a top-level `await`), each naming its file and line, as a
+// BuiltFacetFailed result: a failed build is a result, never an error. A plugin with no facet of kind is a failed result naming
+// it, without a build; an aborted ctx is its reason (context.Cause), as `throwIfAborted` throws it.
+func BuildFacet(plugin Plugin, kind string, options BuildOptions, ctx context.Context) (BuiltFacet, error) {
 	if _, ok := plugin.Facets[kind]; !ok {
 		return BuiltFacet{Kind: BuiltFacetFailed, Plugin: plugin.Name, Facet: kind, Errors: []string{`plugin "` + plugin.Name + `" has no ` + kind + ` facet`}}, nil
 	}
 	if err := ctx.Err(); err != nil {
 		return BuiltFacet{}, context.Cause(ctx)
 	}
-	return builder.Build(plugin, kind, options, ctx)
+	return esbuildFacet(plugin, kind, options, ctx)
 }
 
 // inside reports whether path lies inside directory dir (both absolute): not dir itself. Upstream's test is `relative(dir,

@@ -9,6 +9,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
@@ -23,7 +25,7 @@ import (
 // Execution model. The component's own state and its watcher are touched only in sections of a loop of its own (host.Loop:
 // the batch of its watcher runs on it, the file events enter it), as Pi's component runs on the one event loop; what blocks
 // (discovery, builds, installs, reloads of hosts) runs outside a section. Every method may be called from any goroutine;
-// two Reloads of one host run one after another, in the order they decided their sets. A Builder is called from several
+// two Reloads of one host run one after another, in the order they decided their sets. BuildFacet is called from several
 // goroutines at once (one build per facet of the plugins to build: Pi's Promise.all).
 
 // KindDefinition is one facet kind: Node or browser builds, and the host packages (by specifier) its builds keep external.
@@ -70,10 +72,8 @@ type PluginsOptions struct {
 	// OnError gets the watcher's failure to watch (reported once) and the marks' watch listeners that failed; it runs in a
 	// section of the component's loop and must not block.
 	OnError func(PluginsError)
-	// Builder builds a facet (upstream's esbuild build); it must be safe for concurrent use.
-	Builder Builder
-	// Evaluator evaluates a built script (upstream's `evaluateFacet`).
-	Evaluator Evaluator
+	// Node is how the Node subprocesses that host the plugins are started (docs/plan/chord-plugins-node-evaluator.md).
+	Node NodeOptions
 }
 
 // Built is a build of some plugins, plain data (a copy of it reloads the same): every facet of each, the plugins as its
@@ -145,70 +145,31 @@ type RolloutResult struct {
 	Stopped *StoppedStep
 }
 
-// PluginsLoad is what Plugins.Load takes besides the host.
+// PluginsLoad is what Plugins.Load takes.
 type PluginsLoad struct {
 	Kind string
 	// Core are the app's own facets.
-	Core []host.HostFacet
-	// Modules are the host packages, this process's instances, by specifier; kept for the host's reloads.
+	Core []CoreFacet
+	// Modules are the host packages the scripts' imports are answered with, by specifier; kept for the host's reloads.
 	Modules HostPackages
-}
-
-// Plugins is the plugins component.
-type Plugins interface {
-	// State is the marks, `{ dirty, install, set, base }`, a JSON watchable.
-	State() chord.Watchable[delta.JsonValue]
-	// Marks is the marks now.
-	Marks() PluginsState
-	// Discovery is the plugins of the last discovery.
-	Discovery() Discovery
-	// Build builds every facet of names (and of plugins discovered since the last build; discovery runs again first when
-	// the plugin set changed): plain data. It changes no current set: a rollout ships it.
-	Build(names []string, ctx context.Context) (*Built, error)
-	// Scripts is the complete current set of kind: every discovered plugin's facet of it (built on first use), as the last
-	// rollout or reload shipping kind left it; what a worker starts with.
-	Scripts(kind string, ctx context.Context) ([]PluginScript, error)
-	// Current is kind's current set now, without blocking (false before its first use): a rollout step reads it as the
-	// rollout applied its build, before another rollout can change it.
-	Current(kind string) ([]PluginScript, bool)
-	// Load loads h with options.Kind's current set, evaluated with options.Modules, and options.Core (the app's own facets):
-	// a plugin whose build or evaluation fails is left out and reported with the host's report.
-	Load(h host.Host, options PluginsLoad, ctx context.Context) (host.LoadReport, error)
-	// Reload applies built to the current set of h's kind (loaded by Load) and reloads h with that complete set, after its
-	// earlier reloads (PluginRuntime.Reload). The host's report.
-	Reload(h host.Host, built *Built, ctx context.Context) (host.ReloadReport, error)
-	// Step is an in-process rollout step named name: Reload(h, built), one host named name.
-	Step(name string, h host.Host) (RolloutStep, error)
-	// Rollout runs steps in order with built, applying it to the current set of each step's kinds right before that step,
-	// and stops at one that returns an error (Stopped); failed plugins and hosts do not stop it. It clears the dirty marks
-	// of the built plugins applied on every host of every step (not failed on any, every built kind of theirs shipped by a
-	// step) that did not change since the build; given a copy of a build (not the pointer Build returned), it clears none.
-	Rollout(steps []RolloutStep, built *Built, ctx context.Context) (RolloutResult, error)
-	// InstallDependencies installs plugin name's dependencies (InstallDependencies): its install mark clears, and it is
-	// dirty.
-	InstallDependencies(name string, ctx context.Context) error
-	// Forget drops what the component and its runtime keep of h (a host that was closed); Go has no weak table keyed by a
-	// host.
-	Forget(h host.Host)
-	// Close stops the watcher and waits for what it started.
-	Close()
+	// Parent, Address, Principal and Peer are the Go host the subprocess's host links to and how the two see each other
+	// (RuntimeLoad).
+	Parent    host.Host
+	Address   *contracts.Address
+	Principal data.Principal
+	Peer      data.Principal
 }
 
 // CreatePlugins creates the plugins component (and its plugin runtime) and starts the watcher. Discovery runs at first use.
-// It fails without a Builder or an Evaluator.
-func CreatePlugins(options PluginsOptions, ctx context.Context) (Plugins, error) {
-	if options.Builder == nil || options.Evaluator == nil {
-		return nil, errors.New("createPlugins: a Builder and an Evaluator are required")
-	}
-	c := &pluginsComponent{
+func CreatePlugins(options PluginsOptions, _ context.Context) *Plugins {
+	c := &Plugins{
 		options:   options,
 		kindNames: make([]string, len(options.Kinds)),
 		kinds:     make(map[string]KindDefinition, len(options.Kinds)),
-		runtime:   NewPluginRuntime(options.Evaluator),
+		runtime:   NewPluginRuntime(options.Node),
 		loop:      host.NewLoop(),
 		built:     map[string]BuiltFacet{},
 		current:   map[string]*scriptSet{},
-		hostKinds: map[host.Host]string{},
 	}
 	for i, kind := range options.Kinds {
 		c.kindNames[i] = kind.Name
@@ -225,7 +186,7 @@ func CreatePlugins(options PluginsOptions, ctx context.Context) (Plugins, error)
 		Roots: options.Roots, Base: options.Base, Kinds: c.kindNames,
 		Failed: func(err error) { report(PluginsWatchFailed, err) },
 	}, batch)
-	return c, nil
+	return c
 }
 
 // scriptSet is a kind's current set, Pi's `Map<string, PluginScript>` by plugin name: insertion order kept.
@@ -260,7 +221,8 @@ func (s *scriptSet) values() []PluginScript {
 	return out
 }
 
-type pluginsComponent struct {
+// Plugins is the plugins component.
+type Plugins struct {
 	options   PluginsOptions
 	kindNames []string
 	kinds     map[string]KindDefinition
@@ -275,17 +237,13 @@ type pluginsComponent struct {
 	built map[string]BuiltFacet
 	// current is the current set of each kind used so far.
 	current map[string]*scriptSet
-	// hostKinds is the kind each loaded host was loaded with, until Forget.
-	hostKinds map[host.Host]string
 }
 
-var _ Plugins = (*pluginsComponent)(nil)
-
 // section runs work as a section of the component's loop.
-func (c *pluginsComponent) section(work func()) { c.loop.Run(work) }
+func (c *Plugins) section(work func()) { c.loop.Run(work) }
 
 // stateView is `plugins.state`: the watcher as a watchable of its JSON value, read in the loop.
-type stateView struct{ c *pluginsComponent }
+type stateView struct{ c *Plugins }
 
 func (v stateView) Value() delta.JsonValue {
 	var value delta.JsonValue
@@ -300,21 +258,26 @@ func (v stateView) Watch(ctx context.Context) (chord.WatchHandle[delta.JsonValue
 	return watch, err
 }
 
-func (c *pluginsComponent) State() chord.Watchable[delta.JsonValue] { return stateView{c} }
+// State is the marks, `{ dirty, install, set, base }`, a JSON watchable.
+func (c *Plugins) State() chord.Watchable[delta.JsonValue] { return stateView{c} }
 
-func (c *pluginsComponent) Marks() PluginsState {
+// Marks is the marks now.
+func (c *Plugins) Marks() PluginsState {
 	var marks PluginsState
 	c.section(func() { marks = c.watcher.marks() })
 	return marks
 }
 
-func (c *pluginsComponent) Discovery() Discovery {
+// Discovery is the plugins of the last discovery.
+func (c *Plugins) Discovery() Discovery {
 	var discovery Discovery
 	c.section(func() { discovery = c.discovery })
 	return discovery
 }
 
-func (c *pluginsComponent) Build(names []string, ctx context.Context) (*Built, error) {
+// Build builds every facet of names (and of plugins discovered since the last build; discovery runs again first when the
+// plugin set changed): plain data. It changes no current set: a rollout ships it.
+func (c *Plugins) Build(names []string, ctx context.Context) (*Built, error) {
 	var before []string
 	var needs bool
 	c.section(func() {
@@ -371,7 +334,9 @@ func (c *pluginsComponent) Build(names []string, ctx context.Context) (*Built, e
 	return built, nil
 }
 
-func (c *pluginsComponent) Scripts(kind string, ctx context.Context) ([]PluginScript, error) {
+// Scripts is the complete current set of kind: every discovered plugin's facet of it (built on first use), as the last
+// rollout or reload shipping kind left it; what a worker starts with.
+func (c *Plugins) Scripts(kind string, ctx context.Context) ([]PluginScript, error) {
 	set, err := c.set(kind, ctx)
 	if err != nil {
 		return nil, err
@@ -381,7 +346,9 @@ func (c *pluginsComponent) Scripts(kind string, ctx context.Context) ([]PluginSc
 	return scripts, nil
 }
 
-func (c *pluginsComponent) Current(kind string) ([]PluginScript, bool) {
+// Current is kind's current set now, without blocking (false before its first use): a rollout step reads it as the rollout
+// applied its build, before another rollout can change it.
+func (c *Plugins) Current(kind string) ([]PluginScript, bool) {
 	var scripts []PluginScript
 	var ok bool
 	c.section(func() {
@@ -392,47 +359,62 @@ func (c *pluginsComponent) Current(kind string) ([]PluginScript, bool) {
 	return scripts, ok
 }
 
-func (c *pluginsComponent) Load(h host.Host, options PluginsLoad, ctx context.Context) (host.LoadReport, error) {
+// Load starts a Node subprocess that hosts options.Kind's current set, evaluated with options.Modules, and options.Core
+// (the app's own facets), linked to options.Parent: a plugin whose build or evaluation fails is left out and reported with
+// the host's report.
+func (c *Plugins) Load(options PluginsLoad, ctx context.Context) (*NodeHost, host.LoadReport, error) {
 	scripts, err := c.Scripts(options.Kind, ctx)
 	if err != nil {
-		return host.LoadReport{}, err
+		return nil, host.LoadReport{}, err
 	}
-	c.section(func() { c.hostKinds[h] = options.Kind })
-	return c.runtime.Load(h, RuntimeLoad{Kind: options.Kind, Core: options.Core, Scripts: scripts, Modules: options.Modules}, ctx)
+	h, report, err := c.runtime.Load(RuntimeLoad{
+		Kind: options.Kind, Core: options.Core, Scripts: scripts, Modules: options.Modules,
+		Parent: options.Parent, Address: options.Address, Principal: options.Principal, Peer: options.Peer,
+	}, ctx)
+	if err != nil {
+		return nil, host.LoadReport{}, err
+	}
+	h.owner = c
+	return h, report, nil
 }
 
-func (c *pluginsComponent) Reload(h host.Host, built *Built, ctx context.Context) (host.ReloadReport, error) {
-	var kind string
-	var known bool
-	c.section(func() { kind, known = c.hostKinds[h] })
-	if !known {
-		return host.ReloadReport{}, errors.New("plugins.reload: the host was not loaded by this component")
+// kindOf is the kind h was loaded with by this component.
+func (c *Plugins) kindOf(h *NodeHost, what string) (string, error) {
+	if h == nil || h.owner != c {
+		return "", errors.New("plugins." + what + ": the host was not loaded by this component")
+	}
+	return h.kind, nil
+}
+
+// Reload applies built to the current set of h's kind (loaded by Load) and reloads h with that complete set, after its
+// earlier reloads (PluginRuntime.Reload). The host's report.
+func (c *Plugins) Reload(h *NodeHost, built *Built, ctx context.Context) (host.ReloadReport, error) {
+	kind, err := c.kindOf(h, "reload")
+	if err != nil {
+		return host.ReloadReport{}, err
 	}
 	set, err := c.set(kind, ctx)
 	if err != nil {
 		return host.ReloadReport{}, err
 	}
-	// Applied, read and queued in one step: two reloads started together each pass the set their own build made, in the
-	// order they were queued.
-	var scripts []PluginScript
-	var turn *reloadTurn
+	// Applied, read and sent in one step: two reloads started together each pass the set their own build made, and reach the
+	// subprocess in the order they were decided.
+	var call *nodeCall
 	c.section(func() {
 		ship(set, kind, built)
-		scripts = set.values()
-		turn, err = c.runtime.queue(h)
+		call, err = h.reload(set.values())
 	})
 	if err != nil {
 		return host.ReloadReport{}, err
 	}
-	return c.runtime.run(turn, h, scripts, ctx)
+	return h.reloaded(call, ctx)
 }
 
-func (c *pluginsComponent) Step(name string, h host.Host) (RolloutStep, error) {
-	var kind string
-	var known bool
-	c.section(func() { kind, known = c.hostKinds[h] })
-	if !known {
-		return RolloutStep{}, errors.New("plugins.step: the host was not loaded by this component")
+// Step is a rollout step named name: Reload(h, built), one host named name.
+func (c *Plugins) Step(name string, h *NodeHost) (RolloutStep, error) {
+	kind, err := c.kindOf(h, "step")
+	if err != nil {
+		return RolloutStep{}, err
 	}
 	return RolloutStep{
 		Name:  name,
@@ -447,7 +429,11 @@ func (c *pluginsComponent) Step(name string, h host.Host) (RolloutStep, error) {
 	}, nil
 }
 
-func (c *pluginsComponent) Rollout(steps []RolloutStep, built *Built, ctx context.Context) (RolloutResult, error) {
+// Rollout runs steps in order with built, applying it to the current set of each step's kinds right before that step, and
+// stops at one that returns an error (Stopped); failed plugins and hosts do not stop it. It clears the dirty marks of the
+// built plugins applied on every host of every step (not failed on any, every built kind of theirs shipped by a step) that
+// did not change since the build; given a copy of a build (not the pointer Build returned), it clears none.
+func (c *Plugins) Rollout(steps []RolloutStep, built *Built, ctx context.Context) (RolloutResult, error) {
 	done := []RolloutStepResult{}
 	failed := map[string]struct{}{}
 	shipped := map[string]struct{}{}
@@ -494,7 +480,7 @@ func (c *pluginsComponent) Rollout(steps []RolloutStep, built *Built, ctx contex
 
 // rollStep applies built to the current set of step's kinds (all of them in one section, with no wait between the ship and
 // the step), then runs step with the sets it applied: an error from either stops the rollout.
-func (c *pluginsComponent) rollStep(step RolloutStep, built *Built, ctx context.Context) (StepResult, error) {
+func (c *Plugins) rollStep(step RolloutStep, built *Built, ctx context.Context) (StepResult, error) {
 	sets := make(map[string]*scriptSet, len(step.Kinds))
 	for _, kind := range step.Kinds {
 		set, err := c.set(kind, ctx)
@@ -513,7 +499,8 @@ func (c *pluginsComponent) rollStep(step RolloutStep, built *Built, ctx context.
 	return step.Reload(built, applied, ctx)
 }
 
-func (c *pluginsComponent) InstallDependencies(name string, ctx context.Context) error {
+// InstallDependencies installs plugin name's dependencies (InstallDependencies): its install mark clears, and it is dirty.
+func (c *Plugins) InstallDependencies(name string, ctx context.Context) error {
 	var discovered bool
 	c.section(func() { discovered = c.discovered })
 	if !discovered {
@@ -538,19 +525,15 @@ func (c *pluginsComponent) InstallDependencies(name string, ctx context.Context)
 	return nil
 }
 
-func (c *pluginsComponent) Forget(h host.Host) {
-	c.section(func() { delete(c.hostKinds, h) })
-	c.runtime.Forget(h)
-}
-
-func (c *pluginsComponent) Close() {
+// Close stops the watcher and waits for what it started. The hosts it loaded are their owners': it closes none.
+func (c *Plugins) Close() {
 	c.section(c.watcher.close)
 	c.watcher.join()
 	c.loop.Wait()
 }
 
 // discover discovers the plugins again; the changes of the plugin set and of `package.json`s seen until now clear.
-func (c *pluginsComponent) discover(ctx context.Context) error {
+func (c *Plugins) discover(ctx context.Context) error {
 	var seen DiscoverySnapshot
 	c.section(func() { seen = c.watcher.discoverySnapshot() })
 	discovery, err := DiscoverPlugins(c.options.Roots, DiscoveryOptions{Kinds: c.kindNames}, ctx)
@@ -566,7 +549,7 @@ func (c *pluginsComponent) discover(ctx context.Context) error {
 }
 
 // set is kind's current set, made at its first use from every discovered plugin's facet of it (built if needed).
-func (c *pluginsComponent) set(kind string, ctx context.Context) (*scriptSet, error) {
+func (c *Plugins) set(kind string, ctx context.Context) (*scriptSet, error) {
 	var set *scriptSet
 	var discovered bool
 	c.section(func() { set, discovered = c.current[kind], c.discovered })
@@ -633,7 +616,7 @@ func buildKey(plugin, kind string) string { return plugin + "\x00" + kind }
 
 // buildAll builds jobs concurrently (Promise.all), each with plugins as the discovered ones, and returns the results in the
 // order of jobs; the error of the first job that failed, once every build ended.
-func (c *pluginsComponent) buildAll(jobs []buildJob, plugins []Plugin, ctx context.Context) ([]BuiltFacet, error) {
+func (c *Plugins) buildAll(jobs []buildJob, plugins []Plugin, ctx context.Context) ([]BuiltFacet, error) {
 	results := make([]BuiltFacet, len(jobs))
 	errs := make([]error, len(jobs))
 	var group sync.WaitGroup
@@ -649,22 +632,15 @@ func (c *pluginsComponent) buildAll(jobs []buildJob, plugins []Plugin, ctx conte
 	return results, nil
 }
 
-// buildOne builds plugin's facet of kind and keeps it as the latest; the watcher learns what it read. Whatever the Builder
-// panics with is the build's failure, as a throw of esbuild's is.
-func (c *pluginsComponent) buildOne(plugin Plugin, kind string, plugins []Plugin, ctx context.Context) (BuiltFacet, error) {
+// buildOne builds plugin's facet of kind and keeps it as the latest; the watcher learns what it read. A build that fails is a
+// failed result; an error is the abort of ctx only.
+func (c *Plugins) buildOne(plugin Plugin, kind string, plugins []Plugin, ctx context.Context) (BuiltFacet, error) {
 	// Discovery finds facet files of the app's kinds only.
 	definition := c.kinds[kind]
 	options := BuildOptions{HostPackages: definition.HostPackages, Platform: definition.Platform, Plugins: plugins, PublicPath: c.options.PublicPath}
-	var built BuiltFacet
-	err := try(func() (err error) {
-		built, err = BuildFacet(c.options.Builder, plugin, kind, options, ctx)
-		return err
-	})
+	built, err := BuildFacet(plugin, kind, options, ctx)
 	if err != nil {
-		if ctx.Err() != nil {
-			return BuiltFacet{}, err
-		}
-		built = BuiltFacet{Kind: BuiltFacetFailed, Plugin: plugin.Name, Facet: kind, Errors: []string{err.Error()}}
+		return BuiltFacet{}, err
 	}
 	c.section(func() {
 		c.built[buildKey(plugin.Name, kind)] = built
