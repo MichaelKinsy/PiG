@@ -12,7 +12,6 @@ import (
 	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
-	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
@@ -149,38 +148,18 @@ func TestTheWorkersSideSendsFatalWithTheRedactedErrorAndExits1(t *testing.T) {
 	}
 }
 
-// The host's activity counts are written by the host's sections; the worker reads them through its watch of the activity, never
-// from its own goroutines (`host.Activity().Value()` is for the host's sections). Under -race, a read off the host's loop is a
-// data race with the counts of the calls running meanwhile.
-func TestTheWorkersIdleStateReadsTheHostsActivityOnlyThroughItsWatch(t *testing.T) {
-	address := fixtureSession.Address(jsonObject("id", "S1"))
-	h, err := host.CreateHost(host.HostOptions{Address: &address, Principal: delta.JsonObjectOf("kind", "worker"), OnError: func(host.HostError) {}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = h.Close(background) }()
-	if _, err := h.Load([]host.HostFacet{{Name: "@test/core", Facet: fixtureCore(h)}}, background); err != nil {
-		t.Fatal(err)
-	}
-	w := &worker{loaded: &loadedHost{host: h}}
+// The NodeHost's keep-alive counts arrive on the goroutine that reads its channel (NodeOptions.OnActivity) while the worker's
+// own sections read its idle state: both go through the worker's lock, never around it. Under -race, a read of the counts off
+// the lock is a data race with the reports arriving meanwhile.
+func TestTheWorkersIdleStateReadsTheNodeHostsActivityThroughItsReports(t *testing.T) {
+	w := &worker{}
 	w.context, w.abort = chordctx.WithCancel(chordctx.Background())
 	defer w.abort(errShuttingDown)
-	if err := w.follow(); err != nil {
-		t.Fatal(err)
-	}
-	echo, err := h.Get(fixtureEcho, delta.JsonObjectOf(), background, host.GetOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer echo.Release()
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
 		for index := range 300 {
-			if _, err := echo.Call("echo", float64(index), background); err != nil {
-				t.Error(err)
-				return
-			}
+			w.noteActivity(host.ActivityCounts{References: index % 2})
 		}
 	}()
 	for running := true; running; {
@@ -192,5 +171,11 @@ func TestTheWorkersIdleStateReadsTheHostsActivityOnlyThroughItsWatch(t *testing.
 		w.mu.Lock()
 		w.isIdleLocked()
 		w.mu.Unlock()
+	}
+	w.mu.Lock()
+	idle := w.isIdleLocked()
+	w.mu.Unlock()
+	if idle {
+		t.Fatalf("idle with a reference held (the last report: %+v)", w.activity)
 	}
 }

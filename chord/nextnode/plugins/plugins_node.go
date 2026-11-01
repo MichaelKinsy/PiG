@@ -86,6 +86,11 @@ type NodeOptions struct {
 	ReadyTimeout *time.Duration
 	// OnOutput gets what the process writes. Without it, the process's stdout and stderr go to this process's own.
 	OnOutput func(stream NodeStream, chunk []byte)
+	// OnActivity gets the keep-alive counts of the process's host (`host.activity`): its objects' references, calls, jobs and
+	// lingering objects, once at the start and at each change. It runs on the goroutine that reads the channel and must not
+	// block. A supervisor that stops idle workers reads them here: a Go host that routes to a NodeHost counts none of its
+	// objects' work.
+	OnActivity func(host.ActivityCounts)
 	// OnError gets what the process's host reports in the background (a failed activation, a protocol error, a close past its
 	// timeout, ...): upstream's `onError`, with every field of the kind (NodeHostError).
 	OnError func(NodeHostError)
@@ -524,6 +529,7 @@ type NodeHost struct {
 	closing  bool
 	exit     error
 	fatal    *NodeError
+	activity host.ActivityCounts
 	stderr   tailWriter
 	startOne sync.Once
 }
@@ -538,6 +544,13 @@ func (h *NodeHost) Exited() <-chan struct{} { return h.exited }
 // process's host closes a link silent for its heartbeat (30 s) and ends with it, so attach it in time. A closed link, from
 // either end, ends the process's channel and the process.
 func (h *NodeHost) Link() link.Link { return h.link }
+
+// Activity is the keep-alive counts of the process's host as last reported (NodeOptions.OnActivity gives each change).
+func (h *NodeHost) Activity() host.ActivityCounts {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.activity
+}
 
 // Err is why the process ended before Close asked it to (a *NodeExit), or nil.
 func (h *NodeHost) Err() error {
@@ -888,6 +901,25 @@ func (h *NodeHost) control(payload []byte) {
 	switch message.Event {
 	case "started":
 		h.startOne.Do(func() { close(h.started) })
+	case "activity":
+		var event struct {
+			Counts struct {
+				References int `json:"references"`
+				Calls      int `json:"calls"`
+				Jobs       int `json:"jobs"`
+				Lingering  int `json:"lingering"`
+			} `json:"counts"`
+		}
+		if err := json.Unmarshal(payload, &event); err != nil {
+			return
+		}
+		counts := host.ActivityCounts(event.Counts)
+		h.mu.Lock()
+		h.activity = counts
+		h.mu.Unlock()
+		if h.options.OnActivity != nil {
+			h.options.OnActivity(counts)
+		}
 	case "fatal":
 		h.mu.Lock()
 		h.fatal = message.Error.err()

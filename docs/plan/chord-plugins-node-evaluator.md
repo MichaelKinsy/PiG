@@ -23,7 +23,7 @@ One Node process per `NodeHost` (Pi: one worker per host). It runs, from one ext
 
 The host's plain-value options are the app's (`RuntimeLoad`): `heartbeat`, `closeTimeout`, `readyTimeout` and `compression` (`createHost({ compression: nodeCompression })`, Pi's `next-node/compression.ts` vendored; the Go host the link is attached to compresses its own parts when it is created with `host.HostOptions.Compression: nextnode.NodeCompression`, a compressor being a host's, not a link's). `telemetry`, `principalKey` and `revokedBy` are functions or adapters of the app and cannot cross.
 
-Host packages (Pi: `HostPackages`, this process's module instances) are modules imported in that process. `@earendil-works/chord/next` is always Pi's vendored `next/index.ts`. Any other specifier of `RuntimeLoad.Modules` names a file the app ships (`specifier -> absolute path`); the driver `import()`s it once and the plugins share that one instance. The `core` facets (the app's own) are files too (`CoreFacet{Name, Module}`, default export a facet).
+Host packages (Pi: `HostPackages`, this process's module instances) are modules imported in that process. `@earendil-works/chord/next` is always Pi's vendored `next/index.ts`. Any other specifier of `RuntimeLoad.Modules` names a file the app ships (`specifier -> absolute path`); the driver `import()`s it once and the plugins share that one instance. The `core` facets (the app's own) are files too (`CoreFacet{Name, Module}`, default export a facet). The driver answers `@earendil-works/chord/next` and `@earendil-works/chord/context` for every module it imports (`module.registerHooks`), so an app's modules import Pi's chord by its package name and share the host's instances.
 
 ## 3. Wire
 
@@ -47,7 +47,7 @@ Control (JSON, request ids chosen by Go, one reply per request, replies in any o
 | `abort {target}` | none: aborts the context of request `target` (Go's context cancel). |
 | `close` | none: `host.close`, which ends the link and with it the channel, then the process exits. `NodeHost.Close` waits for the exit. |
 
-Node to Go, unrequested: `started` (connected), `error {error}` (the host's `onError`: every field of the `HostError` of its kind, so `NodeHostError` carries them typed), `fatal {error}` (an uncaught exception or rejection; the process exits).
+Node to Go, unrequested: `started` (connected), `activity {counts}` (the host's keep-alive counts `host.activity`, once at load and at each change: `NodeOptions.OnActivity`, `NodeHost.Activity`; a Go host that only routes to the NodeHost counts none of its objects' work, so a supervisor that stops idle workers reads them here), `error {error}` (the host's `onError`: every field of the `HostError` of its kind, so `NodeHostError` carries them typed), `fatal {error}` (an uncaught exception or rejection; the process exits).
 
 `scripts` are `PluginScript`s as plain data (`{plugin, built}`: the `BuiltFacet` the Go build made, `source` and `digest` included), exactly what Pi ships to a worker. The digest rule of `runtime.ts` (same digest: same facet object) therefore holds across reloads of one process.
 

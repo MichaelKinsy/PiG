@@ -758,3 +758,73 @@ func TestNodeAPartOver16KiBCrossesTheLinkDeflatedWhenTheAppAsksForCompression(t 
 		t.Fatalf("compressed, the call carried %d bytes out and %d back, want each under %d", deflatedSent, deflatedReceived, size/10)
 	}
 }
+
+// The host's keep-alive counts reach the app (NodeOptions.OnActivity, NodeHost.Activity): a hold arriving over the link and
+// served there is a reference until it is released. A Go host that only routes to the NodeHost counts none of this.
+func TestNodeTheHostsKeepAliveCountsReachTheApp(t *testing.T) {
+	counts := make(chan host.ActivityCounts, 64)
+	_, node := probeNode(t, `echo: async (args) => args`, NodeOptions{OnActivity: func(c host.ActivityCounts) { counts <- c }}, nil)
+	waitFor := func(what string, ok func(host.ActivityCounts) bool) {
+		t.Helper()
+		for {
+			select {
+			case c := <-counts:
+				if ok(c) {
+					return
+				}
+			case <-time.After(30 * time.Second):
+				t.Fatalf("no counts with %s", what)
+			}
+		}
+	}
+	waitFor("no references at the start", func(c host.ActivityCounts) bool { return c.References == 0 })
+	server := serverFor(t, workerRoute(node))
+	held, err := server.Get(probeContract, delta.NewJsonObject(0), background, host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitFor("the probe held", func(c host.ActivityCounts) bool { return c.References == 1 })
+	if got := node.Activity(); got.References != 1 {
+		t.Fatalf("Activity = %+v, want one reference", got)
+	}
+	held.Release()
+	waitFor("the probe released", func(c host.ActivityCounts) bool { return c.References == 0 })
+}
+
+// An app's own core module imports Pi's chord by its package name: the host answers it with the copy it runs.
+func TestNodeACoreModuleImportsChordByItsPackageName(t *testing.T) {
+	cache := t.TempDir()
+	module := filepath.Join(t.TempDir(), "core.mjs")
+	source := `import { defineFacet, hostKind, method, remote, str } from "@earendil-works/chord/next";
+import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
+const Worker = hostKind("test.worker");
+const Hello = remote("test.hello", { version: 1, params: {}, hostAddress: () => Worker(), variants: { main: { state: {}, methods: { hi: method(str(), str()) } } } });
+export default defineFacet((host) => host.serve(Hello, () => ({ variant: "main", members: { hi: async (name) => "hi " + name + (BACKGROUND_CONTEXT === undefined ? "?" : "") } })));
+`
+	if err := os.WriteFile(module, []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	address := workerKind.Address(nil)
+	node, _, err := NewPluginRuntime(NodeOptions{CacheDir: cache}).Load(RuntimeLoad{
+		Kind: "worker", Core: []CoreFacet{{Name: "@test/hello", Module: module}}, Address: &address, Principal: workerPrincipal, Peer: serverPrincipal,
+	}, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = node.Close(background) })
+	hello := mustContract(contracts.Remote("test.hello", contracts.RemoteDeclaration{
+		Version: 1, Params: contracts.Params{},
+		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return workerKind.Address(nil), nil },
+		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
+			Methods: []contracts.MethodEntry{contracts.Meth("hi", contracts.NewMethod(contracts.Str(), contracts.Str()))},
+		})},
+	}))
+	ref, err := serverFor(t, workerRoute(node)).Get(hello, delta.NewJsonObject(0), background, host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(ref.Release)
+	if got, err := ref.Call("hi", "there", background); err != nil || got != "hi there" {
+		t.Fatalf("hi = %v, %v", got, err)
+	}
+}

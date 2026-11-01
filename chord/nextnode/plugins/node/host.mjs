@@ -7,7 +7,7 @@
 // it, so the Go host and this one speak the pinned link wire); kind 1 is one control message, a JSON object. Control
 // requests are `{ id, op, ... }` and are answered by one `{ id, ok: true, result }` or `{ id, ok: false, error }`; `abort`
 // and `close` have no answer (a closed host ends this process's channel, and the process exits). Unrequested:
-// `{ event: "started" }`, `{ event: "error", error }` (the host's onError) and `{ event: "fatal", error }` (an uncaught
+// `{ event: "started" }`, `{ event: "activity", counts }` (the host's keep-alive counts), `{ event: "error", error }` (the host's onError) and `{ event: "fatal", error }` (an uncaught
 // exception; the process exits).
 //
 // The host is the child of the Go side: `load` makes it, and it `connect`s the link as its parent link with the principal
@@ -15,11 +15,21 @@
 // route of the host's kind or `accept`. A link silent for the heartbeat (30 s) is closed by this host, and the process
 // exits with it.
 import { EventEmitter } from "node:events";
+import { registerHooks } from "node:module";
 import { connect } from "node:net";
 import { pathToFileURL } from "node:url";
 
 const tree = new URL("./pi/chord/src/", import.meta.url);
 const pi = (path) => import(new URL(path, tree).href);
+// The app's modules (core facets, host packages) import Pi's chord by its package name, as they do in Pi's own runtime: the
+// names are answered with the copies this process runs, so their instances are the host's.
+const CHORD = { "@earendil-works/chord/next": "next/index.ts", "@earendil-works/chord/context": "context/index.ts" };
+registerHooks({
+	resolve(specifier, context, nextResolve) {
+		const file = CHORD[specifier];
+		return file === undefined ? nextResolve(specifier, context) : { url: new URL(file, tree).href, shortCircuit: true };
+	},
+});
 const [chordNext, { ipcLink }, { createPluginRuntime }, { mapStack }, { BACKGROUND_CONTEXT, withAbortSignal }, { nodeCompression }] =
 	await Promise.all([
 		pi("next/index.ts"),
@@ -154,6 +164,13 @@ async function load(request, context) {
 	});
 	const runtime = createPluginRuntime();
 	hosted = { host, runtime };
+	// The host's keep-alive counts, for the app that supervises it (NodeOptions.OnActivity): now, and at each change.
+	port.control({ event: "activity", counts: host.activity.value });
+	void host.activity.watch(BACKGROUND_CONTEXT).then((watch) =>
+		watch.start(async (call) => {
+			if (call.kind === "value") port.control({ event: "activity", counts: call.value });
+		}),
+	);
 	// As a worker connects to its parent (next-node/workers/main.ts): the Go side attaches the other end of the link, as the
 	// server of a worker does, and `peer` is who the Go side is, as this host stamps it.
 	host.connect(link, { principal: request.peer, trusted: true }, context);

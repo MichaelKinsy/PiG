@@ -9,8 +9,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/fsnotify/fsnotify"
 )
 
 // Ports packages/chord/test/next-node/plugins/support.ts (FIXTURES, KINDS, tempRoot, writeFiles, writePlugin). The host
@@ -88,24 +86,24 @@ func eventually(t *testing.T, timeout time.Duration, what string, check func() b
 	}
 }
 
-// settler is the barrier of a component's watcher: a directory outside its roots, watched by its fsnotify watcher, where a
-// file is written to learn that the events of everything written before it were handled.
+// settler is the barrier of a component's watcher: a directory outside its roots that the watcher watches too, where a new
+// directory is made to learn that the events of everything written before it were handled.
 type settler struct {
-	dir     string
-	watcher *fsnotify.Watcher
-	seen    chan string
-	count   int
+	dir   string
+	count int
 }
 
 var settlers sync.Map
 
 // settle returns once the component's watcher handled the events of every file operation made before the call: a watch event
 // of an edit arrives on its own time, and one that arrives after a build that followed the first event of the edit would leave
-// the plugin dirty. A write in place is two events, a copied directory many. Nothing is waited for when the component does
-// not watch (no first use yet, or a watcher that failed).
+// the plugin dirty. A write in place is two events, a removed directory many. The events of one file system arrive in order,
+// and a directory made in a watched one is watched when its event was handled: the watcher's own state (`watched`, read in a
+// section of its loop) says the barrier's directory was reached, so everything before it was. Nothing is waited for when the
+// component does not watch (no first use yet, or a watcher that failed).
 func settle(t *testing.T, plugins *Plugins) {
 	t.Helper()
-	found, _ := settlers.LoadOrStore(plugins, &settler{dir: t.TempDir(), seen: make(chan string, 1024)})
+	found, _ := settlers.LoadOrStore(plugins, &settler{dir: t.TempDir()})
 	barrier := found.(*settler)
 	var watching bool
 	plugins.section(func() {
@@ -114,31 +112,20 @@ func settle(t *testing.T, plugins *Plugins) {
 			return
 		}
 		watching = true
-		if barrier.watcher != fs {
-			barrier.watcher = fs
-			if err := fs.Add(barrier.dir); err != nil {
-				t.Error(err)
-			}
-			plugins.watcher.observed = func(path string) { barrier.seen <- path }
-		}
+		// A discovery drops the trees that are no root's, base's or linked plugin's: the barrier's is put back each time.
+		plugins.watcher.watchTree(barrier.dir)
 	})
 	if !watching {
 		return
 	}
 	barrier.count++
 	sentinel := filepath.Join(barrier.dir, "sentinel-"+strconv.Itoa(barrier.count))
-	if err := os.WriteFile(sentinel, nil, 0o644); err != nil {
+	if err := os.Mkdir(sentinel, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	timeout := time.After(15 * time.Second)
-	for {
-		select {
-		case path := <-barrier.seen:
-			if path == sentinel {
-				return
-			}
-		case <-timeout:
-			t.Fatal("the watcher did not handle a file written after the edits")
-		}
-	}
+	eventually(t, 15*time.Second, "the watcher to handle a directory made after the edits", func() bool {
+		var reached bool
+		plugins.section(func() { _, reached = plugins.watcher.watched[sentinel] })
+		return reached
+	})
 }

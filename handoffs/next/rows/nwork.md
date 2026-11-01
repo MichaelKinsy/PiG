@@ -19,7 +19,7 @@ A worker is a **child process**. The observable contract (`workers.ts` header, s
 | the JS thread | a `host.Loop` of the component; every synchronous part of a Pi function is `loop.Run` | same as D5b (`DESIGN-go-layout.md` §3) |
 | a blocked event loop (busy loop) | the whole worker process stopped (`SIGSTOP`, resumed by a helper process) in the fixture | a Go worker has no single thread to block; stopping the process leaves nothing running (no heartbeat, no shutdown handler, no timer), the observable of Pi's busy loop |
 | `entry` module + `execArgv` | `Entry` executable + `ExecArgv` | a worker is a program |
-| esbuild, `vm.Script`, `createPluginRuntime` | KFold's `Builder`/`Evaluator` seams and `plugins.NewPluginRuntime(Evaluator)` (`WorkerMainOptions.Evaluator`, `HostPackages`) | designed out by N-PLUG (no JS in Go) |
+| esbuild, `vm.Script`, `createPluginRuntime` | the plugins component's Node subprocess (docs/plan/chord-plugins-node-evaluator.md): `WorkerMainOptions.Node` (`plugins.NodeOptions`) and `HostPackages` (module files); `WorkerPlugins.Load` starts the worker's `NodeHost`, routes the worker's address kind to its link on the worker's Go host (a relay without an address) and loads it; the NodeHost's exit is the worker's exit and its keep-alive counts the worker's idle state | ported on the real stack (real esbuild build, real Node host); the worker's core facets are JavaScript modules (plugnode-differences.md, 2) |
 
 Windows: the channel, process tree (job object), `lock` (named pipe) compile (`GOOS=windows go vet`); they have no runtime test here (no Windows host). The tests that stop a worker process (`freeze`, SIGTERM) are Unix-only.
 

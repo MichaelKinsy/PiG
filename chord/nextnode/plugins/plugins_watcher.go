@@ -76,8 +76,6 @@ type watcherOptions struct {
 	// Failed is called when the watcher cannot watch (the system's limit): reported once, after which the app builds on
 	// demand. It runs in a section of the host.
 	Failed func(error)
-	// newWatcher makes the fsnotify watcher (nil: fsnotify.NewWatcher); a test makes one fail.
-	newWatcher func() (*fsnotify.Watcher, error)
 }
 
 // ignored are the directories never watched, and changes under them never marked.
@@ -111,9 +109,6 @@ type pluginWatcher struct {
 	running sync.WaitGroup
 	// reported is set once a failure to watch was reported.
 	reported bool
-	// observed, when set, is called in the section of each event once it is handled (a test's barrier: the events of one file
-	// system arrive in order, so the event of a file written last tells every earlier one was handled).
-	observed func(path string)
 	// generation is the one the next change gets: every mark records a newer one than any before it.
 	generation int
 	// dirty is each dirty plugin's latest change, by generation.
@@ -403,11 +398,7 @@ func (w *pluginWatcher) watchDirs(dir string) {
 // addWatch puts a watch on dir, starting the watcher and the goroutine that reads its events with the first.
 func (w *pluginWatcher) addWatch(dir string) error {
 	if w.fs == nil {
-		newWatcher := w.options.newWatcher
-		if newWatcher == nil {
-			newWatcher = fsnotify.NewWatcher
-		}
-		watcher, err := newWatcher()
+		watcher, err := fsnotify.NewWatcher()
 		if err != nil {
 			return err
 		}
@@ -454,9 +445,6 @@ func (w *pluginWatcher) event(watcher *fsnotify.Watcher, event fsnotify.Event) {
 		}
 	}
 	w.changedIn(path)
-	if w.observed != nil {
-		w.observed(event.Name)
-	}
 }
 
 // changedIn handles an event for path in a watched directory: a new directory gets its watches, a removed one loses them;
