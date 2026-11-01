@@ -3578,7 +3578,7 @@ evidence = [
 path = "packages/tui/src/terminal-image.ts"
 start = "function detectCapabilitiesFromEnvironment(tmuxForwardsHyperlink: () => boolean): TerminalCapabilities {"
 end = "export function getCapabilities(): TerminalCapabilities {"
-sha256 = "3ce9ff97537885ceb8b1837abc2b22eaf45011c0fb0ec357f59de995af575a14"
+sha256 = "bc783ced6bbc5d452d144b55df1d9ec8a883f4dde21f92e285d257b3d18b0d85"
 keybindings = []
 
 [[contract]]
