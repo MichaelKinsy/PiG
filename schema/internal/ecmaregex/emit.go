@@ -95,6 +95,8 @@ func (e *emitter) assertion(n *node) {
 	}
 }
 
+// pig divergence (D219): a backreference that ignores case is compared by regexp2 with unicode.ToLower, where V8 compares by Canonicalize; the three Annex B
+// patterns and the one-byte-storage results of TestKnownGaps differ from V8 for the reasons D219 gives.
 // backref writes a reference to the group refs[0] or, when several groups share the name, to whichever of them holds a capture, and to nothing when none does. A reference that ignores case is read by regexp2's own case-insensitive comparison.
 func (e *emitter) backref(n *node) {
 	reference := func(group int) string {

@@ -6,6 +6,7 @@ import (
 	"unicode"
 )
 
+// pig divergence (D219): this table widens character sets by Canonicalize, but a backreference is compared by regexp2 (see emit.go).
 // Case-insensitive matching (the i flag, which only a modifier group can turn on here) compares characters through ECMA-262's Canonicalize: with the u flag the simple case folding of CaseFolding.txt, without it the upper case of the code unit unless that is more than one unit or turns a non-ASCII unit into an ASCII one. A character matches another when both have the same Canonicalize result, so a set of characters is widened to every character that shares a result with one of its members.
 
 // A foldTable holds every set of two or more characters that share a Canonicalize result, and the position of each member's set.
