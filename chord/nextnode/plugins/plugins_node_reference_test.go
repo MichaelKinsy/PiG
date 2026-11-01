@@ -435,8 +435,7 @@ func TestNodeGetWaitsForTheReadyTimeoutThenFailsUnavailable(t *testing.T) {
 	if !errors.As(err, &chordErr) || chordErr.Code != data.CodeUnavailable {
 		t.Fatalf("error = %v, want unavailable", err)
 	}
-	var nodeErr *NodeError
-	if !errors.As(err, &nodeErr) {
+	if _, ok := errors.AsType[*NodeError](err); !ok {
 		t.Fatalf("error = %T, want a *NodeError", err)
 	}
 	rfReferences(t, node, 0)
