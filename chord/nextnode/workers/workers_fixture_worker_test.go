@@ -282,7 +282,7 @@ func runWorkerFixture() {
 		}
 		if calls := behaviour.LocalCalls; calls != 0 {
 			time.AfterFunc(300*time.Millisecond, func() {
-				control, err := worker.Get(fixtureControl, delta.JsonObjectOf("id", id), chordctx.Background(), host.GetOptions{})
+				control, err := worker.Get(chordctx.Background(), fixtureControl, delta.JsonObjectOf("id", id), host.GetOptions{})
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err)
 					return
@@ -293,7 +293,7 @@ func runWorkerFixture() {
 				}
 			})
 		}
-		busy, err := worker.Get(fixtureBusyView, delta.JsonObjectOf("id", id), ctx, host.GetOptions{})
+		busy, err := worker.Get(ctx, fixtureBusyView, delta.JsonObjectOf("id", id), host.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
