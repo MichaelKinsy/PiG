@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"errors"
 	"net/url"
 	"path/filepath"
 	"reflect"
@@ -223,8 +224,8 @@ func evaluateFailure(t *testing.T, report host.LoadReport, plugin string) *NodeE
 	if len(report.Failed) != 1 || report.Failed[0].Plugin != plugin {
 		t.Fatalf("failed = %+v", report.Failed)
 	}
-	nodeErr, ok := report.Failed[0].Error.(*NodeError)
-	if !ok {
+	var nodeErr *NodeError
+	if !errors.As(report.Failed[0].Error, &nodeErr) {
 		t.Fatalf("error = %T %v, want a *NodeError", report.Failed[0].Error, report.Failed[0].Error)
 	}
 	return nodeErr
