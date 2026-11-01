@@ -155,7 +155,7 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 		request.Modules = map[string]string{}
 	}
 	for i, core := range options.Core {
-		request.Core[i] = coreWire{Name: core.Name, Module: core.Module}
+		request.Core[i] = coreWire(core)
 	}
 	if options.Address != nil {
 		request.Address = &addressWire{Kind: options.Address.Kind, Params: options.Address.Params, Key: options.Address.Key}
