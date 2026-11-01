@@ -6,14 +6,13 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"testing"
-	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
-	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
 // A method handler is an async function in Pi: one that throws rejects its call, and one that never resolves leaves the call
@@ -233,66 +232,55 @@ func TestLoopLendRunsAbandonedForAHandlerThatEndsItsGoroutine(t *testing.T) {
 	}
 }
 
-// The goroutine of a coroutine whose handler ended it is still ending when the loop drops the coroutine: stopping it lets it
-// finish, and iter.Pull reports that to whoever stops it as a Goexit. That must be a task of the loop's own, and never the
-// runtime's cleanup goroutine (which would end, and stop every later cleanup of the process), so the cleanup of a spent
-// coroutine is cancelled and nothing stops it twice. A loop's coroutines are dropped and collected between the handlers
-// that end their goroutines; afterwards the process's cleanups still run and no goroutine is left.
-func TestLoopLendStopsTheSpentCoroutineOfAHandlerThatEndedItsGoroutineOnATaskOfItsOwn(t *testing.T) {
-	for range 32 {
-		var done sync.WaitGroup
-		done.Go(func() { goroutineid.Current() })
-		done.Wait()
-	}
-	before := runtime.NumGoroutine()
-	survived := 0
-	for range 64 {
+// The goroutine of a coroutine whose handler ended it is still ending when the loop is done with the coroutine: stopping it
+// lets it finish, and iter.Pull reports that to whoever stops it as a Goexit. That is a task the loop owns (Loop.Wait joins
+// it), run once, and never the goroutine that drove the handler nor the runtime's cleanup goroutine. The coroutine's stop is
+// replaced by one that counts and records its return; the real one ends the goroutine that runs it, as it does in the loop.
+func TestLoopLendStopsTheSpentCoroutineOfAHandlerThatEndedItsGoroutineOnceOnATaskTheLoopJoins(t *testing.T) {
+	for _, parked := range []bool{false, true} {
 		loop := NewLoop()
+		spent := newCoroutine()
+		realStop := spent.stop
+		var stops atomic.Int32
+		var returned atomic.Bool
+		spent.stop = func() {
+			stops.Add(1)
+			defer returned.Store(true)
+			realStop()
+		}
+		loop.idle = append(loop.idle, spent)
+		survived := false
 		var done sync.WaitGroup
 		done.Go(func() {
 			loop.Run(func() {
 				signal := parking.New()
 				loop.Lend(signal, func(abandoned bool) {
 					if !abandoned {
+						if parked {
+							signal.Raise()
+						}
 						runtime.Goexit()
 					}
 				})
 			})
-			survived++
+			survived = true
 		})
 		done.Wait()
 		loop.Wait()
-		runtime.GC()
-	}
-	if survived != 64 {
-		t.Fatalf("%d of 64 goroutines that lent their section survived the handler's Goexit", survived)
-	}
-	// The runtime's cleanup goroutine is alive: a cleanup of an object dropped now runs.
-	fired := make(chan struct{})
-	func() {
-		sentinel := new([16]byte)
-		runtime.AddCleanup(sentinel, func(struct{}) { close(fired) }, struct{}{})
-	}()
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		runtime.GC()
-		select {
-		case <-fired:
-		default:
-			if time.Now().After(deadline) {
-				t.Fatal("a cleanup of a dropped object never ran: the runtime's cleanup goroutine ended")
-			}
-			time.Sleep(time.Millisecond)
-			continue
+		if !survived {
+			t.Fatalf("parked %v: the goroutine that lent its section ended with the handler's", parked)
 		}
-		break
-	}
-	for range 200 {
-		if runtime.NumGoroutine() <= before+2 {
-			return
+		if got := stops.Load(); got != 1 {
+			t.Fatalf("parked %v: the spent coroutine was stopped %d times, want once", parked, got)
 		}
-		runtime.GC()
-		time.Sleep(time.Millisecond)
+		if !returned.Load() {
+			t.Fatalf("parked %v: Loop.Wait returned before the stop of the spent coroutine did", parked)
+		}
+		loop.mu.Lock()
+		kept := len(loop.idle)
+		loop.mu.Unlock()
+		if kept != 0 {
+			t.Fatalf("parked %v: the loop kept %d idle coroutines, want the spent one dropped", parked, kept)
+		}
 	}
-	t.Fatalf("%d goroutines after the spent coroutines were stopped, %d before", runtime.NumGoroutine(), before)
 }

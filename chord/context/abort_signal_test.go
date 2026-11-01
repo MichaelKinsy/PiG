@@ -34,13 +34,8 @@ func TestWithAbortSignalOfAParentWithoutCancellationListensToNothingAndFollowsTh
 		t.Fatalf("listeners on the signal = %d, want none", got)
 	}
 
-	other := chordctx.NewKey[string]("test.signal-only")
-	signal, abort := chordctx.WithCancel(chordctx.WithValue(chordctx.Background(), other, "the signal's"))
+	signal, abort := chordctx.WithCancel(chordctx.Background())
 	derived := chordctx.WithAbortSignal(parent, signal)
-	// Only the cancellation is the signal's: Pi's context keeps its own values.
-	if value, ok := chordctx.Value(derived, other); ok {
-		t.Fatalf("a value only the signal carries reached the derived context: %q", value)
-	}
 	if value, ok := chordctx.Value(derived, key); !ok || value != "parent's" {
 		t.Fatalf("value = %q, %v, want the parent's", value, ok)
 	}

@@ -146,37 +146,18 @@ func WithAbortSignal(parent, signal context.Context) context.Context {
 	return &abortContext{Context: derived, parent: parent, signal: signal}
 }
 
-// signalContext is a context whose abort signal is another context's: the values are parent's (a parent with no
-// cancellation), the Done channel, the error, the deadline and the cause are signal's, as Pi's `withAbortSignal` with no
-// parent signal is `withContextValue(ABORT_SIGNAL_CONTEXT_KEY, signal, context)`. It listens to nothing.
+// signalContext is a context whose abort signal is another context's: the Done channel, the error, the deadline and the
+// cause are signal's, as Pi's `withAbortSignal` with no parent signal is `withContextValue(ABORT_SIGNAL_CONTEXT_KEY, signal,
+// context)`. Its values are parent's (a parent with no cancellation); a key parent does not know the signal answers, which is
+// how context.Cause reaches the signal's cancellation record. It listens to nothing.
 type signalContext struct {
 	// Context is the signal.
 	context.Context
 	parent context.Context
 }
 
-// cancelCtxKey is the key context.Cause asks a context for its cancellation record with, found once by asking a context
-// that is cancelled and writes the key down. Cause of a signalContext must read the signal's record, which is the one value the signalContext
-// takes from the signal rather than from its parent. It is nil if Cause stops asking that way; signalContext then lets the
-// signal answer every key its parent does not know.
-var cancelCtxKey = func() any {
-	var probe keyProbe
-	_ = context.Cause(&probe)
-	return probe.key
-}()
-
-type keyProbe struct{ key any }
-
-func (*keyProbe) Deadline() (time.Time, bool) { return time.Time{}, false }
-func (*keyProbe) Done() <-chan struct{}       { return nil }
-func (*keyProbe) Err() error                  { return context.Canceled }
-func (p *keyProbe) Value(key any) any         { p.key = key; return nil }
-
 func (c *signalContext) Value(key any) any {
-	if cancelCtxKey != nil && key == cancelCtxKey {
-		return c.Context.Value(key)
-	}
-	if value := c.parent.Value(key); value != nil || cancelCtxKey != nil {
+	if value := c.parent.Value(key); value != nil {
 		return value
 	}
 	return c.Context.Value(key)
