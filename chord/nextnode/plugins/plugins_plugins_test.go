@@ -184,10 +184,11 @@ func (c *pcComponent) reload(t *testing.T, h pcLoaded, built *Built) host.Reload
 	return report
 }
 
-// waitMarks is `vi.waitFor(() => expect(plugins.state.value).toMatchObject(...), { timeout: 5_000 })`.
+// waitMarks is `vi.waitFor(() => expect(plugins.state.value).toMatchObject(...), { timeout: 5_000 })`, with 30 s: the event of
+// a file took 17 s on a Windows runner running this package with the workers' (an idle one takes under a second).
 func (c *pcComponent) waitMarks(t *testing.T, what string, check func(PluginsState) bool) {
 	t.Helper()
-	eventually(t, 5*time.Second, what, func() bool { return check(c.Marks()) })
+	eventually(t, 30*time.Second, what, func() bool { return check(c.Marks()) })
 	settle(t, c.Plugins)
 }
 
