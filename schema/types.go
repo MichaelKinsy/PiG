@@ -33,7 +33,19 @@ type CompileOptions struct {
 	Formats map[string]FormatCheck
 	// Schemas holds schema documents by URI, for `$ref`s to other documents.
 	Schemas map[string]JsonSchema
+	// UnresolvedRefs is what a `$ref` that names nothing (a missing definition, a document not in Schemas) does: UnresolvedRefsThrow (default, also for "") makes Compile fail; UnresolvedRefsReject compiles it as `false`, so only values at that place fail, with the error "unresolved reference".
+	UnresolvedRefs UnresolvedRefs
 }
+
+// UnresolvedRefs selects what a `$ref` that names nothing does.
+type UnresolvedRefs string
+
+const (
+	// UnresolvedRefsThrow makes Compile fail.
+	UnresolvedRefsThrow UnresolvedRefs = "throw"
+	// UnresolvedRefsReject compiles the reference as `false`.
+	UnresolvedRefsReject UnresolvedRefs = "reject"
+)
 
 // ValidationError is one failure of a value: where it is (a JSON Pointer, "" for the value itself), the failing keyword and a message.
 type ValidationError struct {
