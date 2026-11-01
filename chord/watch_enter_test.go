@@ -54,7 +54,7 @@ func TestAwaitEnteredReturnsAfterTheSynchronousPartOfAListenerRan(t *testing.T) 
 		if err := scheduler.AwaitEntered(context.Background()); err != nil {
 			t.Fatal(err)
 		}
-		if !ran.Load() {
+		if !ran.Load() { // watch.ts:207 queues #drain as a microtask: the listener's synchronous part runs before the awaiting code resumes
 			t.Fatalf("round %d: AwaitEntered returned before the listener's synchronous part ran", round)
 		}
 		scheduler.Wait()

@@ -106,9 +106,9 @@ func startSpinningListener(t *testing.T) *spinningListener {
 
 // waitCall is one wait on its own goroutine.
 type waitCall struct {
-	returned        chan struct{}
-	err             error
-	givenAtReturn   int32
+	returned      chan struct{}
+	err           error
+	givenAtReturn int32
 }
 
 func (spinning *spinningListener) call(ctx context.Context, wait func(ctx context.Context, chat settledChat) error) *waitCall {
@@ -198,7 +198,7 @@ func TestAHarnessWaitDoesNotWaitForAListenerParkedInAWait(t *testing.T) {
 	stream.Start(onValue(func(_ context.Context, _ chord.WatchCall[ConversationView]) error {
 		once.Do(func() { close(entered) })
 		// A wait of the Session, as a listener awaiting the Harness makes: the delivery has entered.
-		chat.harness.(*harnessImpl).SessionImpl.Await(testContext, release)
+		chat.harness.(*harnessImpl).Await(testContext, release)
 		return nil
 	}))
 	chat.publishBatch(t)
