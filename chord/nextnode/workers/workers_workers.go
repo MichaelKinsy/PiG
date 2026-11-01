@@ -177,8 +177,9 @@ type child struct {
 	// started: the app's host listens on its link.
 	started *promise[struct{}]
 	// ready: its load report; rejected when it exits before.
-	ready *promise[CrossedReport]
-	// idleSince is since when it is idle (from `ready`); zero while busy or before `ready`.
+	ready *outcome[CrossedReport]
+	// idle: it is idle (from `ready`), since idleSince (unix milliseconds); not while busy or before `ready`.
+	idle      bool
 	idleSince int64
 	// idleStop: an idle stop is queued (checked again when it runs).
 	idleStop bool
@@ -597,7 +598,7 @@ func (c *Workers) control(record *routed, child *child, message FromWorker) {
 		child.started.resolve(struct{}{})
 	case FromWorkerReady:
 		child.status = WorkerRunning
-		child.idleSince = 0
+		child.idle = message.Idle
 		if message.Idle {
 			child.idleSince = c.clock.Now()
 		}
@@ -607,11 +608,11 @@ func (c *Workers) control(record *routed, child *child, message FromWorker) {
 		}
 	case FromWorkerIdle:
 		if message.Idle {
-			if child.idleSince == 0 {
-				child.idleSince = c.clock.Now()
+			if !child.idle {
+				child.idle, child.idleSince = true, c.clock.Now()
 			}
 		} else {
-			child.idleSince = 0
+			child.idle = false
 		}
 	case FromWorkerFatal:
 		// Redacted by the child's `Redact`: public as it is.
@@ -779,7 +780,7 @@ func (c *Workers) checkIdle() bool {
 		if child.idleStop || child.status != WorkerRunning {
 			continue
 		}
-		if child.idleSince == 0 || time.Duration(now-child.idleSince)*time.Millisecond < idleFor {
+		if !child.idle || time.Duration(now-child.idleSince)*time.Millisecond < idleFor {
 			continue
 		}
 		child.idleStop = true
@@ -793,7 +794,7 @@ func (c *Workers) idleStop(record *routed, child *child) error {
 	var skip bool
 	c.loop.Run(func() {
 		child.idleStop = false
-		if record.child != child || child.idleSince == 0 {
+		if record.child != child || !child.idle {
 			skip = true
 			return
 		}
