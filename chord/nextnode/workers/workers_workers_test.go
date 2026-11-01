@@ -452,6 +452,54 @@ func TestFixRound1CloseDuringAnAppsStartThatIgnoresItsSignalReturnsAtOnceNothing
 	notes.Release()
 }
 
+// `close` ends its wait with its context (`awaitWithContext(Promise.all(stops), context)`): a worker that ignores `shutdown`
+// is left running, and an app hook that ignores its context holds nothing.
+func TestCloseStopsWaitingWhenItsContextEndsAWorkerThatIgnoresShutdownKeepsRunning(t *testing.T) {
+	f := newFleet(t, fleetOptions{})
+	f.behaviours.set("S1", workerBehaviour{CloseMs: 60_000})
+	notes := f.get(fixtureNotes, "S1")
+	defer notes.Release()
+	var exited <-chan struct{}
+	f.workers.loop.Run(func() { exited = f.workers.addresses[session("S1").Key].child.process.Exited() })
+	ctx, cancel := context.WithTimeout(background, 100*time.Millisecond)
+	defer cancel()
+	err := f.workers.Close(ctx)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Close = %v, want its context's deadline", err)
+	}
+	select {
+	case <-exited:
+		t.Fatal("Close waited for the worker's exit after its context ended")
+	default:
+	}
+}
+
+func TestCloseStopsWaitingWhenItsContextEndsAnAppHookThatIgnoresItsContextKeepsRunning(t *testing.T) {
+	reached, release := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	f := newFleet(t, fleetOptions{principal: func() (data.Principal, error) {
+		once.Do(func() { close(reached) })
+		<-release
+		return nil, errors.New("released")
+	}})
+	defer close(release)
+	notes := f.hold(fixtureNotes, "S1")
+	defer notes.Release()
+	<-reached
+	ctx, cancel := context.WithTimeout(background, 100*time.Millisecond)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- f.workers.Close(ctx) }()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("Close = %v, want its context's deadline", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("Close ignores its context: it waits for an app hook that never returns")
+	}
+}
+
 func TestFixRound1AStopDuringTheWorkersStartupIsAStopItsClosersRunNothingFails(t *testing.T) {
 	dir := t.TempDir()
 	f := newFleet(t, fleetOptions{})
