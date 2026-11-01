@@ -560,10 +560,8 @@ func (c *HttpComponent) follow(router *Router) {
 		return
 	}
 	c.revoking = true
-	c.revokeTasks.Add(1)
 	//portlint:allow golifetime one revoking task at a time; it ends when no newer router is waiting and close joins it
-	go func() {
-		defer c.revokeTasks.Done()
+	c.revokeTasks.Go(func() {
 		for {
 			c.mu.Lock()
 			next := c.latest
@@ -579,7 +577,7 @@ func (c *HttpComponent) follow(router *Router) {
 			}
 			c.upgrades.revoke(next)
 		}
-	}()
+	})
 }
 
 // Upgrade is the upgrade adapter: the app's handler calls it for a request asking for an upgrade (the links endpoint and

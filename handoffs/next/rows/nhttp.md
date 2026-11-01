@@ -23,7 +23,7 @@ Every item below has a test in `review_test.go` (Go-only, no upstream file) that
 
 | id | fix |
 |---|---|
-| B1 | `Close` waits, after it sealed the running requests, for the answer it makes itself (503 for a request sealed before its route answered) to be written (`running.routeAnswered`); the listener's close that follows no longer cuts it. Test input restored: the route never returns (S1). |
+| B1 | `Close` waits, after it sealed the running requests, for the answer it makes itself (503 for a request sealed before its route answered) to be written (`running.routeAnswered`); the listener's close that follows no longer cuts it. `write` also flushes before it calls `Finished`: net/http buffers a small response until the handler returns, so a `close` that waited for `Finished` could still be followed by a connection that cut the unflushed 503 (the review's 3/30 EOF; the B1 test failed 10/30 without the flush). Test input restored: the route never returns (S1). |
 | B2 | `Upgrades.reserve`/`release` and `Close` are one critical section: an upgrade is kept before `Close` ran (and gets its 1001 and `CloseTimeout`) or refused 503; `Close` waits for reserved upgrades. |
 | S1 | `/stuck` blocks on a test gate that ignores the scope. |
 | S2 | `Location` and contributed CSP sources are set with `Set` (an error, not a panic): a reported 500; `DefaultHeaders.Of` returns the error; refusals fall back to the baseline. |

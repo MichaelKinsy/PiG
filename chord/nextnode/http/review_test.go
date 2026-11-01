@@ -402,7 +402,7 @@ func TestReviewASendRacingCloseNeverQueuesBehindTheCloseFrame(t *testing.T) {
 			socket.Start()
 			sockets <- socket
 		}))
-		client, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http"), nil)
+		client, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http"), nil) //nolint:bodyclose // the dialer documents its handshake response body as needing no close
 		if err != nil {
 			t.Fatal(err)
 		}

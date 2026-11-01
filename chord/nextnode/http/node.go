@@ -301,11 +301,12 @@ func write(r *nethttp.Request, w nethttp.ResponseWriter, served Served) {
 	w.WriteHeader(answer.Status)
 	if answer.Stream != nil {
 		pump(answer.Stream, w)
-		return
-	}
-	if answer.Text != "" {
+	} else if answer.Text != "" {
 		_, _ = io.WriteString(w, answer.Text)
 	}
+	// The response is on the wire when `Finished` runs (Pi: `res` is flushed): net/http buffers the head and a small body until
+	// the handler returns, and a `close` that waited for `Finished` must not be followed by a connection that cuts them.
+	_ = nethttp.NewResponseController(w).Flush()
 }
 
 // leftUnread is whether the body the route left unread (more than the drain limit declared, or chunked) closes the
