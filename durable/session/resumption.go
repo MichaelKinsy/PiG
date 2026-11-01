@@ -30,6 +30,8 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
+
+	"github.com/MichaelKinsy/PiG/chord"
 )
 
 type continuationKey struct{}
@@ -129,6 +131,8 @@ func (session *SessionImpl) Park(ctx context.Context, done <-chan struct{}) *Par
 	default:
 	}
 	continuationOf(ctx).Entered()
+	// A watch delivery that waits here has run the synchronous part of its listener.
+	chord.DeliveryEntered()
 	parked := &Parked{resumption: newResumption(continuationOf(ctx)), session: session, done: done}
 	// A wait stays registered until it is acknowledged, not only until it resumed: the acknowledgement of one that belongs to a
 	// Continuation is given when the continuation has entered, and a publication that looks for the waits it readied after the
@@ -153,6 +157,16 @@ func (parked *Parked) Resume() {
 		return
 	}
 	parked.resume()
+}
+
+// Abandon acknowledges a wait that ended without a publication having woken it (its context was cancelled, or a close rejected it): the
+// goroutine's continuation is not one a publication orders (Pi orders what a publication resolves, not a rejected wait), so a Continuation
+// does not hold the publications that follow. It is safe on nil, and again.
+func (parked *Parked) Abandon() {
+	if parked == nil {
+		return
+	}
+	parked.acknowledge()
 }
 
 // Await blocks until done is closed, as a wait of the Session: Park, the receive, Resume.

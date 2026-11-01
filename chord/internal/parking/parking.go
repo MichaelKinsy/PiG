@@ -17,6 +17,7 @@ import (
 	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/internal/goroutineid"
+	"github.com/MichaelKinsy/PiG/internal/watchentered"
 )
 
 // Key is the context key a handler's ctx answers with its call's *Signal. It is not a chord.Key: the ctx's String and its
@@ -99,6 +100,8 @@ func (s *Signal) Wait() { <-s.done }
 // or to continue after the section that admitted its handler. It must come right before the wait, after the caller's own
 // synchronous work, and the next thing the caller does after the wait must not touch the host's state outside a section.
 func Park(ctx context.Context) {
+	// A watch delivery that parks here has run the synchronous part of its listener.
+	watchentered.Entered()
 	if signal, _ := ctx.Value(Key).(*Signal); signal != nil {
 		signal.Raise()
 	}

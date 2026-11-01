@@ -225,3 +225,20 @@ func TestAWaitOfAContinuationStaysRegisteredUntilItEnters(t *testing.T) {
 	}
 	g.close()
 }
+
+// A wait that ended without a publication waking it (a cancelled context, a close) is acknowledged by Abandon at once, whatever
+// Continuation it belongs to: Pi orders what a publication resolves, not a rejected wait.
+func TestAnAbandonedWaitOfAContinuationIsAcknowledgedAtOnce(t *testing.T) {
+	g := openGC(t, 1)
+	continued, _ := session.WithContinuation(ctx)
+	never := make(chan struct{})
+	parked := g.session.Park(continued, never)
+	if waits := session.ParkedWaits(g.session); waits != 1 {
+		t.Fatalf("%d waits registered, want 1", waits)
+	}
+	parked.Abandon()
+	if waits := session.ParkedWaits(g.session); waits != 0 {
+		t.Fatalf("%d waits registered after the wait was abandoned, want none: the continuation never entered", waits)
+	}
+	g.close()
+}

@@ -2361,11 +2361,10 @@ func TestHostReloadAWatchListenerMayCallReloadItself(t *testing.T) {
 	}
 }
 
-// Own test (Pi's `#report`: the report awaits the deliveries' entry, not their end): a listener of the reloaded object's
-// reference is still running (busy, not waiting) when the reload reports. The guarantee of the delivery scheduler is that a
-// delivery started (a Go listener's waits are not known to it), so the report does not wait for the listener to return or
-// to reach a wait: it completes while the listener runs.
-func TestHostReloadDoesNotWaitForAListenerStillRunning(t *testing.T) {
+// Own test (Pi's `#report`: "`context`'s abort ends only this wait"): a listener of the reloaded object's reference is
+// still running (busy, not waiting) when the context aborts; the reload does not wait for it to return and rejects
+// `aborted` naming what the commit applied.
+func TestHostReloadAnAbortEndsTheReportsWaitForAListenerStillRunning(t *testing.T) {
 	host := newHost(t, HostOptions{OnError: noopOnError})
 	defer closeHosts(t, host)
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: infoFacet("a")}}, background))
@@ -2385,17 +2384,55 @@ func TestHostReloadDoesNotWaitForAListenerStillRunning(t *testing.T) {
 		}
 		return nil
 	})
+	aborting, cancel := chordctx.WithCancel(background)
 	done := make(chan error, 1)
 	go func() {
-		_, err := host.Reload([]HostFacet{{Name: "@app/info", Facet: infoFacet("b")}}, background, ReloadOptions{})
+		_, err := host.Reload([]HostFacet{{Name: "@app/info", Facet: infoFacet("b")}}, aborting, ReloadOptions{})
 		done <- err
 	}()
 	<-running
+	cancel(errors.New("stop"))
 	select {
 	case err := <-done:
-		must(t, err)
+		chordErr, ok := data.IsChordError(err)
+		if !ok || chordErr.Code != data.CodeAborted {
+			t.Fatalf("reload = %v, want aborted", err)
+		}
+		committed, _ := chordErr.Details.(*delta.JsonObject).Value("committed").(*delta.JsonObject)
+		if got, _ := committed.Value("changed").([]any); !reflect.DeepEqual(got, []any{"@app/info"}) {
+			t.Fatalf("committed.changed = %v, want [@app/info]", got)
+		}
 	case <-time.After(10 * time.Second):
-		t.Fatal("the reload's report waited for a running listener")
+		t.Fatal("the abort did not end the reload's wait for a running listener")
+	}
+}
+
+// Pi's report runs the listeners of the batch the reload committed to the end of their synchronous part before it reads the
+// context: a watcher of a reference that left `live` aborts the context from its callback, and the reload rejects `aborted`.
+func TestHostReloadAListenerThatAbortsTheContextFromItsCallbackEndsTheReportAborted(t *testing.T) {
+	// One processor: the listener yields while it works, so a report that did not wait for it would read the context first.
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: infoFacet("a")}}, background))
+	info := mustGet(t, host, hostInfo, jsonObject())
+	watch, err := info.Member("title").Watch(background)
+	must(t, err)
+	aborting, cancel := chordctx.WithCancel(background)
+	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
+		if call.Value == "b" {
+			// A slow synchronous part: a report that read the context before it ran would succeed.
+			for range 200 {
+				runtime.Gosched()
+			}
+			cancel(errors.New("stop"))
+		}
+		return nil
+	})
+	_, err = host.Reload([]HostFacet{{Name: "@app/info", Facet: infoFacet("b")}}, aborting, ReloadOptions{})
+	chordErr, ok := data.IsChordError(err)
+	if !ok || chordErr.Code != data.CodeAborted {
+		t.Fatalf("reload = %v, want aborted", err)
 	}
 }
 

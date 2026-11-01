@@ -10,10 +10,12 @@ package session_test
 // refusal" are ported with an error value in the cases below).
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
+	"runtime"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -756,6 +758,61 @@ func TestGroupCommitPublication(t *testing.T) {
 		}
 		g.close()
 	})
+}
+
+// Pi runs the synchronous part of every listener of one publication before the next commit of the call is published (watch.ts #drain
+// is a microtask, spec.md: two commits of one storage call are published a macrotask apart): a listener that works for a while sees
+// one call per part, and has seen the part before when the next is published.
+func TestGroupCommitTheHopWaitsForTheSynchronousPartOfAListener(t *testing.T) {
+	// One processor: a listener that yields while it works lets the Session's goroutine go on, as a hop that did not wait would.
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
+	g := openGC(t, 4)
+	a, b, c, d := g.ids[0], g.ids[1], g.ids[2], g.ids[3]
+	var ran, calls, published atomic.Int64
+	watch := session.NewSessionWatch(g.session, 0, func() {})
+	watch.Start(func(context.Context, durable.WatchCall[int]) error {
+		calls.Add(1)
+		for range 50 {
+			runtime.Gosched()
+		}
+		ran.Add(1)
+		return nil
+	})
+	// The watch follows the commits of the storage call that holds three parts; the part before it is a call of its own.
+	g.session.FollowCommits(func(callCtx context.Context, commit session.ObservedCommit) {
+		if published.Add(1) > 1 {
+			watch.Advance(callCtx, durable.WatchCall[int]{Kind: durable.WatchCallValue, Value: int(commit.Seq)})
+		}
+	})
+	var mu sync.Mutex
+	var finishedAtPublication []int64
+	g.session.FollowCommits(func(context.Context, session.ObservedCommit) {
+		mu.Lock()
+		finishedAtPublication = append(finishedAtPublication, ran.Load())
+		mu.Unlock()
+	})
+	held := g.storage.hold()
+	first := g.bump(a)
+	<-held.Entered()
+	second := g.bump(b)
+	third := g.bump(c)
+	fourth := g.bump(d)
+	g.awaitQueued(3)
+	held.Release()
+	for _, call := range []*call{first, second, third, fourth} {
+		mustBump(t, call)
+	}
+	g.session.WaitDeliveries()
+	mu.Lock()
+	defer mu.Unlock()
+	// Parts 2, 3 and 4 are one call: the listener's synchronous part for the part before has run when the next is published.
+	if want := []int64{0, 0, 1, 2}; !slices.Equal(finishedAtPublication, want) {
+		t.Fatalf("listener calls finished at the publications %v, want %v: the next part was published before the listener's synchronous part ran", finishedAtPublication, want)
+	}
+	if calls.Load() != 3 {
+		t.Fatalf("the listener was called %d times, want once per part of the call", calls.Load())
+	}
+	g.close()
 }
 
 // scopeBox is the publication scope a test sets on a scopedStorage after the Session opened; none runs the publication at once.

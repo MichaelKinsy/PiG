@@ -193,8 +193,8 @@ func (submissions *Submissions) Status(ctx context.Context, id durable.Submissio
 }
 
 // Wait returns the settled record of a submission; cancelling ctx cancels only this wait, including its wait for the
-// listeners of the batches committed before it to be entered, which it resumes its caller after as upstream's drain
-// microtask runs before the code that awaited the promise.
+// listeners of the batches committed before it to enter (their synchronous part ran, or they went on to a wait of the Session),
+// which it resumes its caller after as upstream's drain microtask runs before the code that awaited the promise.
 func (submissions *Submissions) Wait(ctx context.Context, id durable.SubmissionId) (durable.SettledSubmissionRecord, error) {
 	record, err := submissions.waitSettled(ctx, id)
 	if err != nil {

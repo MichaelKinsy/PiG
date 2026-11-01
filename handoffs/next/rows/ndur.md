@@ -485,14 +485,12 @@ The review's 5.3-7.7 ms for a one-task run was the dumps; next's 0.3-0.6 ms is w
 ### Remaining / for the integrator
 - NDurHarn registers its waits (item (1) above); until then a harness wait is not waited for by the hop. On this branch alone `go test -race -count=1 ./durable/harness/` (330 s) is green except twelve Pi-oracle tests (`TestResolveAgentMatchesPi`, `TestCompactionHelpersMatchPi`, ... `TestConversationViewsMatchPi`; `Pi oracle: exit status 1`), which need the `.upstream/current` oracle mirror that the container tree does not have, as in the review.
 - The watch-delivery half of the hop (item (2)) is chord's.
-||||||| 505ba90fcb
 
 ## Round 2 (stor)
 - B1: `durable/storage/testdata/memory_oracle.mjs` commits through Pi's `commitWrites` (`src/testing/commit-writes.ts`), as Go's `durabletest.CommitWrites`. Other storage oracle drivers (`sqlite/testdata/schema_oracle.mjs`) do not commit; the jsonl recovery oracle test uses the same driver. Run against a build of Pi 2c8d1feb (`PI_UPSTREAM_REF=2c8d1feb147f6b3d97e855da803bfe7b19f3c403 pin.py install-oracle`, `.upstream/current` -> the build's `src`, uncommitted): `TestJsonlStorageMatchesPiOnSeededPrograms`, `TestMemoryStorageMatchesPiOnSeededPrograms`, `TestSqliteStorageMatchesPiOnSeededPrograms`, `TestJsonlRecoveryMatchesPiOnDamagedDirectories`, `TestSqliteSchemaMatchesPiForEveryPrefix`, `TestSessionTransactionsMatchPiOnSeededPrograms` all PASS (-v). The rows text "migrated mechanically and unverified" is superseded.
 - S1: `JsonlStorage.Close` takes `commitMu` (waits for a commit in progress, as memory's Close does), so a commit never meets the closed memory between batches. Test `TestJsonlStorageBatches/Close waits for a commit...` fails without the lock (`Close returned <nil> while a commit was being appended`).
 - S6: the read-during-append tests start the read through `entered.Go`, await its park, assert it has not returned, then open the gate; results go through channels. Removing the read gate (`readable` returning the store at once) fails `TestJsonlStorageBatches` and `TestJsonlStoragePoisonsWhenAnAppendFailsAfterItsBatchesApplied`.
 - N1: testprune cite `storage.ts:324-325,346`; stale `(:827)` comment fixed. N4: id minted before the goroutine. N3 not done (needs a raw-text json column in chord's store). S5 deferred (integrator).
-||||||| 909a29ad20
 
 ## Round 2 (harn)
 

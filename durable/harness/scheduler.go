@@ -911,7 +911,8 @@ func (s *TaskScheduler) waitForTask(ctx context.Context, id durable.TaskId) (dur
 
 // WaitForIdle returns when ordinary traversal from the conversation, or from every ownerless conversation when
 // conversationId is nil, reaches no live non-background task. Like WaitForTask it resumes its caller after the listeners
-// of the batches committed before it have been entered, and cancelling ctx cancels that wait too.
+// of the batches committed before it have entered (their synchronous part ran, or they went on to a wait of the Session), and
+// cancelling ctx cancels that wait too.
 func (s *TaskScheduler) WaitForIdle(ctx context.Context, conversationId *durable.ConversationId) error {
 	if err := s.waitForIdle(ctx, conversationId); err != nil {
 		return err

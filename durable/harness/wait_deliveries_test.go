@@ -17,11 +17,12 @@ import (
 )
 
 // Pi packages/chord/src/watch.ts #schedule/#drain, harness/submissions.ts wait, harness/scheduler.ts waitForIdle and
-// waitForTask: a commit publishes a batch to a started watch whose callback is not running, and queueMicrotask(#drain) enters the
+// waitForTask: a commit publishes a batch to a started watch whose callback is not running, and queueMicrotask(#drain) runs the
 // listener, up to its first await, before the code that awaits a wait's promise resumes. A Go caller resumes on another goroutine, so
-// each wait awaits the deliveries scheduled before it (Session.AwaitDeliveriesEntered), until they started: Go cannot tell when a
-// listener reaches its first wait, and one that waits for a lock the caller holds would never be entered, so the guarantee is the start,
-// never the listener's return or its first wait.
+// each wait awaits the deliveries scheduled before it (Session.AwaitDeliveriesEntered), until each one's listener call returned or
+// went on to a wait of the Session (chord.DeliveryEntered), never until a listener finishes a wait of its own. A listener that blocks
+// on a plain lock or channel the Session cannot see has not entered until it returns: the one gap Go has that upstream, which has no
+// locks, does not.
 
 // settledChat is a chat whose one run finished, so every wait of it returns at once: nothing but the delivery decides when it does.
 type settledChat struct {
@@ -83,6 +84,7 @@ type spinningListener struct {
 	stream  ConversationWatch
 	release atomic.Bool
 	given   atomic.Int32
+	spins   atomic.Int32
 }
 
 func startSpinningListener(t *testing.T) *spinningListener {
@@ -92,6 +94,7 @@ func startSpinningListener(t *testing.T) *spinningListener {
 	spinning.stream = must(spinning.chat.root.Watch(testContext, nil))
 	spinning.stream.Start(onValue(func(_ context.Context, _ chord.WatchCall[ConversationView]) error {
 		for !spinning.release.Load() {
+			spinning.spins.Add(1)
 			runtime.Gosched()
 		}
 		spinning.given.Add(1)
@@ -118,35 +121,34 @@ func (spinning *spinningListener) call(ctx context.Context, wait func(ctx contex
 	return call
 }
 
-// settle returns once the wait returned: a wait that returns has nothing more to await, and one that does not return is stuck on the
-// listener, which the test then fails.
-func (call *waitCall) settle(t *testing.T) {
-	t.Helper()
-	select {
-	case <-call.returned:
-	case <-time.After(10 * time.Second):
-		t.Fatal("the wait did not return while the listener was running")
+// spunAtLeast waits until the listener spun n times: the wait has been in the Session's wait for the deliveries all that while, as a wait
+// that returned at once would have returned before.
+func (spinning *spinningListener) spunAtLeast(n int32) {
+	for spinning.spins.Load() < n {
+		runtime.Gosched()
 	}
 }
 
-// The guarantee of a Harness wait that resumes its caller is that the deliveries of the batches committed before it have started
-// (chord.DeliveryScheduler.AwaitEntered): a listener that is still at work, not at a wait, does not hold the wait.
-func TestAHarnessWaitResumesItsCallerOnceTheListenersOfEarlierBatchesStarted(t *testing.T) {
+// Pi: queueMicrotask(#drain) runs every listener's synchronous part to its end before the code that awaited a wait's promise
+// resumes, so the wait returns after the listeners of the batches committed before it ran. The listener here is at work (running, not at a
+// wait) until the test releases it: the wait must still be waiting after the listener spun for a while, and return only once it ended.
+func TestAHarnessWaitResumesItsCallerAfterTheListenersOfEarlierBatchesEntered(t *testing.T) {
 	for _, test := range waitKinds {
 		t.Run(test.name, func(t *testing.T) {
 			spinning := startSpinningListener(t)
 			call := spinning.call(testContext, test.wait)
-			call.settle(t)
+			spinning.spunAtLeast(2000)
+			if closedChannel(call.returned) {
+				t.Fatal("the wait returned while the listener of an earlier batch was still at work")
+			}
+			spinning.release.Store(true)
+			<-call.returned
 			if call.err != nil {
 				t.Fatal(call.err)
 			}
-			if given := call.givenAtReturn; given != 0 {
-				t.Fatalf("%d batches were given before the listener was released", given)
-			}
-			spinning.release.Store(true)
 			drained(spinning.chat.harness)
-			if total := spinning.given.Load(); total == 0 {
-				t.Fatal("the listener was never given the batch")
+			if total := spinning.given.Load(); total == 0 || call.givenAtReturn != total {
+				t.Fatalf("the wait returned after %d of the %d batches committed before it were given to the listener", call.givenAtReturn, total)
 			}
 			if _, err := spinning.stream.Stop(); err != nil {
 				t.Fatal(err)
@@ -155,15 +157,25 @@ func TestAHarnessWaitResumesItsCallerOnceTheListenersOfEarlierBatchesStarted(t *
 	}
 }
 
-func TestACancelledContextEndsAHarnessWaitForTheListeners(t *testing.T) {
+// ctx's cancellation ends only this wait, while the listener is still at work.
+func TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce(t *testing.T) {
 	for _, test := range waitKinds {
 		t.Run(test.name, func(t *testing.T) {
 			spinning := startSpinningListener(t)
 			ctx, cancel := context.WithCancelCause(testContext)
 			cause := errors.New("stop waiting")
-			cancel(cause)
 			call := spinning.call(ctx, test.wait)
-			call.settle(t)
+			spinning.spunAtLeast(2000)
+			if closedChannel(call.returned) {
+				t.Fatal("the wait returned while the listener was still at work")
+			}
+			// The listener is still at work: only the cancellation can end the wait.
+			cancel(cause)
+			select {
+			case <-call.returned:
+			case <-time.After(10 * time.Second):
+				t.Fatal("the cancellation did not end the wait")
+			}
 			if !errors.Is(call.err, cause) {
 				t.Fatalf("the wait returned %v, want the cancellation cause", call.err)
 			}
@@ -178,37 +190,6 @@ func TestACancelledContextEndsAHarnessWaitForTheListeners(t *testing.T) {
 	}
 }
 
-func TestAHarnessWaitDoesNotWaitForAListenerBlockedOnALockTheCallerHolds(t *testing.T) {
-	for _, test := range waitKinds {
-		t.Run(test.name, func(t *testing.T) {
-			chat := openSettledChat(t)
-			var held sync.Mutex
-			var given atomic.Int32
-			stream := must(chat.root.Watch(testContext, nil))
-			stream.Start(onValue(func(_ context.Context, _ chord.WatchCall[ConversationView]) error {
-				held.Lock()
-				defer held.Unlock()
-				given.Add(1)
-				return nil
-			}))
-			held.Lock()
-			chat.publishBatch(t)
-			// The caller holds the lock the listener needs: a wait for the listener to finish would never return.
-			if err := test.wait(testContext, chat); err != nil {
-				t.Fatal(err)
-			}
-			held.Unlock()
-			drained(chat.harness)
-			if given.Load() == 0 {
-				t.Fatal("the listener was not given the batch once the lock was free")
-			}
-			if _, err := stream.Stop(); err != nil {
-				t.Fatal(err)
-			}
-		})
-	}
-}
-
 func TestAHarnessWaitDoesNotWaitForAListenerParkedInAWait(t *testing.T) {
 	chat := openSettledChat(t)
 	release, entered := make(chan struct{}), make(chan struct{})
@@ -216,12 +197,13 @@ func TestAHarnessWaitDoesNotWaitForAListenerParkedInAWait(t *testing.T) {
 	stream := must(chat.root.Watch(testContext, nil))
 	stream.Start(onValue(func(_ context.Context, _ chord.WatchCall[ConversationView]) error {
 		once.Do(func() { close(entered) })
-		<-release
+		// A wait of the Session, as a listener awaiting the Harness makes: the delivery has entered.
+		chat.harness.(*harnessImpl).SessionImpl.Await(testContext, release)
 		return nil
 	}))
 	chat.publishBatch(t)
 	<-entered
-	// The listener is parked, as an upstream listener awaiting I/O is: its first part ran, and the wait returns.
+	// The listener is parked in a wait of the Session, as an upstream listener awaiting I/O is: its first part ran, and the wait returns.
 	if _, err := chat.first.Wait(testContext); err != nil {
 		t.Fatal(err)
 	}

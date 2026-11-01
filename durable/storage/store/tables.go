@@ -132,8 +132,8 @@ func EncodeIndexed(value string) string {
 	return string(encoded)
 }
 
-// recordCell is value as the `json(...)` cell a row holds: the record's JSON, as a tree the store's columns check and
-// serialize.
+// recordCell is value as the `json(...)` cell a row holds: the record's JSON text and the tree it parses to, which the store's
+// columns check and record.
 func recordCell(value any) (any, error) {
 	text, err := jsstring.MarshalJSON(value)
 	if err != nil {
@@ -143,7 +143,12 @@ func recordCell(value any) (any, error) {
 		}
 		return nil, err
 	}
-	return chordjson.DecodeUnquoting(text, unquoteJS)
+	tree, err := chordjson.DecodeUnquoting(text, unquoteJS)
+	if err != nil {
+		return nil, err
+	}
+	// The text is the cell: the store neither serializes the tree again nor parses the text back.
+	return chordstore.JsonText{Text: string(text), Value: tree}, nil
 }
 
 // unquoteJS decodes a JSON string with JavaScript string semantics: a lone surrogate escape becomes its WTF-8 form.

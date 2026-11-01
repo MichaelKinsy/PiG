@@ -37,8 +37,13 @@ func (waiter *Waiter[T]) Park() {
 // Wait blocks until the waiter settles, then acknowledges the wait to the Session: the goroutine runs again.
 func (waiter *Waiter[T]) Wait() (T, error) {
 	waiter.Park()
-	defer waiter.parked.Resume()
 	<-waiter.done
+	if waiter.err != nil {
+		// Rejected or cancelled, not woken by a publication: no continuation of it is ordered.
+		waiter.parked.Abandon()
+	} else {
+		waiter.parked.Resume()
+	}
 	return waiter.value, waiter.err
 }
 

@@ -277,6 +277,14 @@ type Cell struct {
 	Stored any
 }
 
+// JsonText is a value for a `json(...)` column whose JSON text the caller has already: Text is Value's serialization (as
+// jsstring.MarshalJSON writes it), Value the strict-JSON value it parses to. The store checks Value and stores Text as it is, instead
+// of serializing Value again (Go only: Pi passes the object once, and its one serialization is the cell's).
+type JsonText struct {
+	Text  string
+	Value any
+}
+
 // EncodeCell checks and encodes a value of column; a `json(...)` value is serialized, not walked (R9). Stored is a
 // strict JSON value: a string, a float64, a bool or the json value itself.
 func EncodeCell(column Column, value any, what string) (Cell, error) {
@@ -286,6 +294,13 @@ func EncodeCell(column Column, value any, what string) (Cell, error) {
 			return Cell{}, err
 		}
 		return Cell{Param: ToSqlite(stored), Stored: jsonScalar(stored)}, nil
+	}
+	if prepared, ok := value.(JsonText); ok {
+		// The caller serialized the value already: the text is stored as it is, the value is checked and recorded.
+		if err := chordjson.Validate(prepared.Value); err != nil {
+			return Cell{}, data.Invalid(data.ReasonArgs, fmt.Sprintf("%s: not JSON (%s)", what, err.Error()))
+		}
+		return Cell{Param: prepared.Text, Stored: prepared.Value}, nil
 	}
 	if err := chordjson.Validate(value); err != nil {
 		return Cell{}, data.Invalid(data.ReasonArgs, fmt.Sprintf("%s: not JSON (%s)", what, err.Error()))

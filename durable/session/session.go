@@ -386,7 +386,8 @@ func (host writerHost) Publishing(publish func(), ctx context.Context) <-chan st
 }
 
 // Hop is the macrotask between two publications of a call: it returns once the callers of the commits published so far have
-// been released in line order and have resumed, and the watch deliveries scheduled by the publications have entered.
+// been released in line order and have resumed, and the watch deliveries scheduled by the publications have run the synchronous
+// part of their listeners (entered, see AwaitDeliveriesEntered), so a listener sees one call per part as in Pi.
 func (host writerHost) Hop() {
 	session := host.session
 	session.awaitDeliveriesIdle()
@@ -505,12 +506,13 @@ func runFenced[T any](session *SessionImpl, s *slot, exempt bool, call lineCall,
 				panic(recovered)
 			}
 		}()
-		if s.previous != nil && call.continuation != nil {
+		if s.previous != nil {
 			select {
 			case <-s.previous:
 			default:
-				// Waiting for the line is a wait of the Session: a continuation that goes on to it has entered.
+				// Waiting for the line is a wait of the Session: a continuation, and a watch delivery, that goes on to it has entered.
 				call.continuation.Entered()
+				chord.DeliveryEntered()
 			}
 		}
 		result, err = onLine(session, s, func(index int) (ran[T], error) {
@@ -540,6 +542,7 @@ func runFenced[T any](session *SessionImpl, s *slot, exempt bool, call lineCall,
 		case <-delivery.released:
 		default:
 			call.continuation.Entered()
+			chord.DeliveryEntered()
 			<-delivery.released
 		}
 		delivery.resume()
@@ -917,8 +920,9 @@ func (session *SessionImpl) AwaitTouch(ctx context.Context, key string) error {
 	select {
 	case <-gate:
 	default:
-		// A continuation that goes on to wait for a gate has entered.
+		// A continuation, or a watch delivery, that goes on to wait for a gate has entered.
 		continuationOf(ctx).Entered()
+		chord.DeliveryEntered()
 		<-gate
 	}
 	return session.assertHealthy()
@@ -1723,11 +1727,13 @@ func (session *SessionImpl) UnloadDocuments() error {
 // WaitDeliveries blocks until every scheduled watch delivery has drained.
 func (session *SessionImpl) WaitDeliveries() { session.scheduler.Wait() }
 
-// AwaitDeliveriesEntered blocks until every watch delivery scheduled before the call has entered: its listener returned,
-// is parked in a wait, or is blocked behind a lock, which a Go listener does where an upstream one awaits and which the
-// caller may hold. A Harness wait that resumes its caller calls it, as upstream's drain microtask enters the listener
-// before the code awaiting the wait's promise resumes; the listener a caller's own goroutine runs is not waited for, so
-// a listener may itself wait for the Harness. It returns the cause of ctx when ctx ends the wait.
+// AwaitDeliveriesEntered blocks until every watch delivery scheduled before the call has entered: the synchronous part of its
+// listener ran (the call returned), or it went on to a wait of the Session (chord.DeliveryEntered). A Harness wait that resumes its
+// caller calls it, as upstream's drain microtask runs the listener up to its first await before the code awaiting the wait's
+// promise resumes. A call from inside a delivery (a listener that waits for the Harness) enters that delivery and does not
+// wait for it. A listener blocked on a plain lock or channel the Session cannot see has not entered until it returns: if the
+// caller holds that lock the wait does not return, the one gap Go has where upstream, with no locks, has none. It returns
+// the cause of ctx when ctx ends the wait.
 func (session *SessionImpl) AwaitDeliveriesEntered(ctx context.Context) error {
 	return session.scheduler.AwaitEntered(ctx)
 }
