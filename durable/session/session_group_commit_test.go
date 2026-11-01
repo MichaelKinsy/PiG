@@ -586,7 +586,7 @@ func TestGroupCommitFailuresPerPart(t *testing.T) {
 			t.Fatalf("%d commits published, want none", g.published.len())
 		}
 		end := g.closed()
-		if end.Kind != durable.SessionEndFailed || end.Error != first {
+		if end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, first) {
 			t.Fatalf("session ended %+v, want failed with the first error", end)
 		}
 	})
@@ -608,11 +608,11 @@ func TestGroupCommitFailuresPerPart(t *testing.T) {
 		held.Release()
 		mustBump(t, first)
 		for _, part := range parts {
-			if _, err := part.wait(); err != rejection {
+			if _, err := part.wait(); !errors.Is(err, rejection) {
 				t.Fatalf("part rejected with %v, want %v", err, rejection)
 			}
 		}
-		if end := g.closed(); end.Error != rejection {
+		if end := g.closed(); !errors.Is(end.Error, rejection) {
 			t.Fatalf("session ended %+v, want failed with %v", end, rejection)
 		}
 	})
