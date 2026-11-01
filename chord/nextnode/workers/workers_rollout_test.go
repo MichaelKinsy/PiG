@@ -6,9 +6,14 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 	"weak"
 
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
@@ -174,4 +179,69 @@ func TestFixRound1KeepsNoReloadReportOnceConsumedTheReloadQueueSettlesToNothing(
 		return weak.Make(&hosts[0])
 	}()
 	expectCollected(t, report)
+}
+
+// The component's loop and the server's loop are taken in one order only: the server's, then the component's (a worker's
+// link the host closes in its own section tells the component, which runs a section of its loop). A rollout that held the
+// component's loop while it called the route (`Retry` enters the server's loop) took them the other way round: with the
+// server's loop held by a section that closes a worker's link, neither could go on.
+func TestARolloutCallsTheRouteOutsideTheComponentLoopSoAServerSectionClosingAWorkersLinkCannotDeadlockIt(t *testing.T) {
+	var armed atomic.Bool
+	inServer, retrying := make(chan struct{}), make(chan struct{})
+	var closeLink func()
+	f := newFleet(t, fleetOptions{onAuthorize: func(address contracts.Address) {
+		if address.Key == session("S4").Key && armed.CompareAndSwap(true, false) {
+			// A hold the route authorizes: this runs in a section of the server's loop. It waits until the rollout is in the
+			// route, then the host closes a worker's link here, as its heartbeat does.
+			close(inServer)
+			<-retrying
+			closeLink()
+		}
+	}})
+	one := f.get(fixtureNotes, "S1")
+	control := f.get(fixtureControl, "S3")
+	failed := f.get(fixtureNotes, "S3")
+	if _, err := control.Call("crash", float64(1), background); err != nil {
+		t.Fatal(err)
+	}
+	until(t, func() bool { return f.stateOf("S3") != nil && f.stateOf("S3").Status == WorkerFailed })
+	f.label("v2")
+	f.untilDirty()
+	built := f.build(f.dirty())
+	f.workers.loop.Run(func() { closeLink = f.workers.addresses[session("S1").Key].child.process.Link.Close })
+	retry := f.workers.route.Retry
+	var once sync.Once
+	f.workers.route.Retry = func(address contracts.Address) bool {
+		once.Do(func() { close(retrying) })
+		return retry(address)
+	}
+	armed.Store(true)
+	held := make(chan *host.Reference, 1)
+	go func() {
+		reference, err := f.server.Hold(fixtureNotes, jsonObject("id", "S4"), background, host.GetOptions{})
+		if err != nil {
+			t.Error(err)
+		}
+		held <- reference
+	}()
+	<-inServer
+	rolled := make(chan error, 1)
+	go func() {
+		_, err := f.plugins.Rollout([]plugins.RolloutStep{f.workers.Step("workers")}, built, background)
+		rolled <- err
+	}()
+	select {
+	case err := <-rolled:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("deadlock: the rollout holds the component's loop for the route, and the server's section closing a worker's link waits for it")
+	}
+	if reference := <-held; reference != nil {
+		reference.Release()
+	}
+	for _, reference := range []interface{ Release() }{one, failed, control} {
+		reference.Release()
+	}
 }

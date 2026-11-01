@@ -38,6 +38,8 @@ type fleetOptions struct {
 	start     func(address contracts.Address, ctx context.Context) (delta.JsonValue, error)
 	principal func() (data.Principal, error)
 	authorize func() (bool, error)
+	// onAuthorize runs for every hold the route authorizes, inside the server's section (the route's `authorize` runs there).
+	onAuthorize func(address contracts.Address)
 }
 
 // collector collects values from callbacks on other goroutines.
@@ -121,7 +123,10 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 		Kind:  "worker",
 		Entry: fixtureEntry(t),
 		Env:   fixtureEnvironment("worker"),
-		Authorize: func(data.Principal, contracts.Address) (bool, error) {
+		Authorize: func(_ data.Principal, address contracts.Address) (bool, error) {
+			if options.onAuthorize != nil {
+				options.onAuthorize(address)
+			}
 			if options.authorize != nil {
 				return options.authorize()
 			}
