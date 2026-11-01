@@ -21,6 +21,8 @@ One Node process per `NodeHost` (Pi: one worker per host). It runs, from one ext
 - `node/host.mjs`: parses its one argument (the socket address), connects, makes `createHost`, `createPluginRuntime` and the two channels below, `connect`s the link to its parent as Pi's forked worker does (`next-node/workers/main.ts`), and serves the control requests.
 - Pi's `next/host` (the chord host), `next-node/plugins/runtime.ts` (per-host loaded facets, complete-set load and reload, the `adopt` rule after an aborted commit), `evaluate.ts` (`vm.Script` under `/chord-plugins/<plugin>/<file>?<digest>`, `require` for host packages, `pluginFile`, `chord.external` packages) and `stack.ts` (`mapStack`, source maps kept while a facet lives). Nothing of these is translated.
 
+The host's plain-value options are the app's (`RuntimeLoad`): `heartbeat`, `closeTimeout`, `readyTimeout` and `compression` (`createHost({ compression: nodeCompression })`, Pi's `next-node/compression.ts` vendored; the Go host the link is attached to compresses its own parts when it is created with `host.HostOptions.Compression: nextnode.NodeCompression`, a compressor being a host's, not a link's). `telemetry`, `principalKey` and `revokedBy` are functions or adapters of the app and cannot cross.
+
 Host packages (Pi: `HostPackages`, this process's module instances) are modules imported in that process. `@earendil-works/chord/next` is always Pi's vendored `next/index.ts`. Any other specifier of `RuntimeLoad.Modules` names a file the app ships (`specifier -> absolute path`); the driver `import()`s it once and the plugins share that one instance. The `core` facets (the app's own) are files too (`CoreFacet{Name, Module}`, default export a facet).
 
 ## 3. Wire
@@ -40,12 +42,12 @@ Control (JSON, request ids chosen by Go, one reply per request, replies in any o
 
 | request | reply |
 |---|---|
-| `load {kind, core, scripts, modules, address, principal, peer, heartbeat}` (once) | `{failed: [{plugin, error}]}`: runtime.ts `load`'s report. |
+| `load {kind, core, scripts, modules, address, principal, peer, heartbeat, closeTimeout, readyTimeout, compression}` (once) | `{failed: [{plugin, error}]}`: runtime.ts `load`'s report. |
 | `reload {scripts}` | `{plugins, failed, objects}`: the host's `ReloadReport`; or an error. |
 | `abort {target}` | none: aborts the context of request `target` (Go's context cancel). |
 | `close` | none: `host.close`, which ends the link and with it the channel, then the process exits. `NodeHost.Close` waits for the exit. |
 
-Node to Go, unrequested: `started` (connected), `fatal {error}` (an uncaught exception or rejection; the process exits).
+Node to Go, unrequested: `started` (connected), `error {error}` (the host's `onError`: every field of the `HostError` of its kind, so `NodeHostError` carries them typed), `fatal {error}` (an uncaught exception or rejection; the process exits).
 
 `scripts` are `PluginScript`s as plain data (`{plugin, built}`: the `BuiltFacet` the Go build made, `source` and `digest` included), exactly what Pi ships to a worker. The digest rule of `runtime.ts` (same digest: same facet object) therefore holds across reloads of one process.
 
@@ -60,7 +62,7 @@ Node to Go, unrequested: `started` (connected), `fatal {error}` (an uncaught exc
 
 ## 5. Errors
 
-A failure inside Node is data on the wire: `{name, message, stack, code?, details?}`. `stack` is `mapStack(error)` computed in Node while the script's map lives, so a plugin's import-time throw or a failed `setup` names `notes/helper.ts:3:8`, not `/chord-plugins/...`. `code` and `details` are a `ChordError`'s (`aborted` carries `details.committed`). Go returns `*NodeError` (its `Error()` is `message`; `Stack` is the mapped stack), or `*data.ChordError` when `code` is one of chord's. Only plugin errors are plugin failures: a Go panic anywhere (the client, the decoder) propagates, it is never turned into a `PluginFailure`.
+A failure inside Node is data on the wire: `{name, message, stack, chord?, cause?}`; `cause` is the error's `cause`, itself a wire error (a cause that is no Error is an error of its string, a cause already on the chain ends it). `stack` is `mapStack(error)` computed in Node while the script's map lives, so a plugin's import-time throw or a failed `setup` names `notes/helper.ts:3:8`, not `/chord-plugins/...`. `code` and `details` are a `ChordError`'s (`aborted` carries `details.committed`). Go returns `*NodeError` (its `Error()` is `message`; `Stack` is the mapped stack; `Cause` the cause's `*NodeError`; `Unwrap` gives the `*data.ChordError` when it is one and the cause, so `errors.As` finds a ChordError anywhere in the chain). Only plugin errors are plugin failures: a Go panic anywhere (the client, the decoder) propagates, it is never turned into a `PluginFailure`.
 
 ## 6. Node
 
@@ -71,7 +73,7 @@ Pi's `packages/chord` `engines.node` is `>=22.19.0`, the first release that stri
 `node/` is embedded (`go:embed all:node`) and extracted once per content hash under the user cache directory (`os.UserCacheDir()/pig/chord-plugins-node-<hash>`), published by an atomic rename; concurrent processes share it. A directory is trusted only when its `.complete` marker (written last, holding the hash) names this content and every file has its embedded size; a partial or older one is repaired in place, file by file (each a rename of a complete file), the marker last.
 
 - `node/host.mjs`: the driver, written here.
-- `node/pi/chord/src/**`: the import closure of `next/index.ts`, `next-node/plugins/{evaluate,stack,runtime}.ts` and `context/index.ts` at the pinned Pi commit, copied byte for byte, at Pi's own relative layout (so `../../next/host/index.ts` resolves).
+- `node/pi/chord/src/**`: the import closure of `next/index.ts`, `next-node/plugins/{evaluate,stack,runtime}.ts`, `next-node/compression.ts` and `context/index.ts` at the pinned Pi commit, copied byte for byte, at Pi's own relative layout (so `../../next/host/index.ts` resolves).
 - `node/pi/node_modules/{typebox,@earendil-works/pi-telemetry}`: Pi's runtime dependencies at Pi's pins (`typebox@1.3.27`, integrity-checked, as `vendor-typebox.sh`; pi-telemetry from the `extensions/sdk-ts` lock).
 - `node/manifest.json`: the Pi commit, the pin (`.upstream/pin`) it was made against, the sha256 of every vendored file, and, when the commit is not the pin's, `catchup` naming it. A Go test fails when a file differs from the manifest, when the pin moved since, and when the commit differs from the pin without being the named catch-up (the manifest is ahead of the pin during the 0.7.0 catch-up: `2c8d1feb`, the pin `e7a0df27`).
 

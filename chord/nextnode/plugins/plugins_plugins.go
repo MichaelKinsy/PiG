@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -158,6 +159,10 @@ type PluginsLoad struct {
 	Principal data.Principal
 	Peer      data.Principal
 	Heartbeat *host.HeartbeatOptions
+	// CloseTimeout, ReadyTimeout and Compression are the Node host's (RuntimeLoad).
+	CloseTimeout *time.Duration
+	ReadyTimeout *time.Duration
+	Compression  bool
 }
 
 // CreatePlugins creates the plugins component (and its plugin runtime) and starts the watcher. Discovery runs at first use.
@@ -370,6 +375,7 @@ func (c *Plugins) Load(options PluginsLoad, ctx context.Context) (*NodeHost, hos
 	h, report, err := c.runtime.Load(RuntimeLoad{
 		Kind: options.Kind, Core: options.Core, Scripts: scripts, Modules: options.Modules,
 		Address: options.Address, Principal: options.Principal, Peer: options.Peer, Heartbeat: options.Heartbeat,
+		CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout, Compression: options.Compression,
 	}, ctx)
 	if err != nil {
 		return nil, host.LoadReport{}, err

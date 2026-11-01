@@ -25,6 +25,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
@@ -85,38 +86,76 @@ type NodeOptions struct {
 	ReadyTimeout *time.Duration
 	// OnOutput gets what the process writes. Without it, the process's stdout and stderr go to this process's own.
 	OnOutput func(stream NodeStream, chunk []byte)
-	// OnError gets what the process's host reports in the background (a failed activation, a protocol error): upstream's
-	// `onError`.
+	// OnError gets what the process's host reports in the background (a failed activation, a protocol error, a close past its
+	// timeout, ...): upstream's `onError`, with every field of the kind (NodeHostError).
 	OnError func(NodeHostError)
 }
 
-// NodeHostError is what the host of a subprocess reported in the background: its kind (upstream's `HostError.kind`), the
-// object or address it names, and its error.
+// NodeHostError is what the host of a subprocess reported in the background (upstream's `HostError`, which Go's
+// host.HostError mirrors): the Kind and the fields that kind lists, as typed values; the others are zero. Err is the error
+// of the kinds that carry a plain one (a *NodeError, its Cause chain included), Failure the cause of the kinds that carry a
+// failure (activation_failed, object_failed). Kind is the host's: the kinds of host.HostError, of the batch
+// (listener_error, delivery_failed) and of the registries (registry_conflict, registry_failed, contribution_failed,
+// contribution_refused).
 type NodeHostError struct {
-	Kind    string
+	Kind string
+	// Object is the object's type, with its params key when it has params.
 	Object  string
-	Address string
+	Failure data.FailureCause
 	Err     error
+	// Native and Routine are where a reported part sits on its object (close_failed, close_timeout: Native;
+	// routine_failed: Routine).
+	Native  host.Position
+	Routine host.Position
+	// Address is a failed route's address (resolve_failed).
+	Address string
+	// Member is the exposed state member of a derive_failed, if it is one.
+	Member string
+	// Job and ID name a job's run (job_failed, job_finish_failed, job_interrupted, job_dropped); Restarts is a
+	// job_interrupted's count.
+	Job      string
+	ID       string
+	Restarts int
+	// WaitingFor, State and Since are a parked_long's: its first blocker, that blocker's state ("loading" or "failed") and
+	// since when (Date.now() time).
+	WaitingFor string
+	State      string
+	Since      int64
+	// Registry names the registry of a registry error; Message and Plugins are a registry_conflict's, Plugin, Type (empty
+	// for a facet) and Version a contribution's.
+	Registry string
+	Message  string
+	Plugins  []string
+	Plugin   string
+	Type     string
+	Version  int
 }
 
 // NodeError is an error thrown in a subprocess, as data: its message, its name, and its stack with the positions of plugin
-// scripts mapped through their source maps (`notes/helper.ts:3:8`), as `mapStack` gives it. Chord is set when it is a
-// ChordError (`aborted` after a reload's commit carries `details.committed`); Unwrap returns it.
+// scripts mapped through their source maps (`notes/helper.ts:3:8`), as `mapStack` gives it. Cause is its `cause` (the
+// chain goes on through the causes' own; a cause that is no Error is an error of its string). Chord is set when it is a
+// ChordError (`aborted` after a reload's commit carries `details.committed`). Unwrap gives both, so errors.As finds a
+// *data.ChordError anywhere in the chain.
 type NodeError struct {
 	Name    string
 	Message string
 	Stack   string
+	Cause   *NodeError
 	Chord   *data.ChordError
 }
 
 func (err *NodeError) Error() string { return err.Message }
 
-// Unwrap returns the ChordError the subprocess threw, if it threw one.
-func (err *NodeError) Unwrap() error {
-	if err.Chord == nil {
-		return nil
+// Unwrap returns the ChordError the subprocess threw, if it threw one, and the error's cause, if it has one.
+func (err *NodeError) Unwrap() []error {
+	var errs []error
+	if err.Chord != nil {
+		errs = append(errs, err.Chord)
 	}
-	return err.Chord
+	if err.Cause != nil {
+		errs = append(errs, err.Cause)
+	}
+	return errs
 }
 
 // NodeExit is why a subprocess ended before it was asked to: its exit, what it reported as fatal, and the last of its
@@ -858,22 +897,73 @@ func (h *NodeHost) control(payload []byte) {
 			return
 		}
 		var event struct {
-			Error struct {
-				Kind    string     `json:"kind"`
-				Object  string     `json:"object"`
-				Address string     `json:"address"`
-				Error   *wireError `json:"error"`
-			} `json:"error"`
+			Error hostErrorWire `json:"error"`
 		}
 		if err := json.Unmarshal(payload, &event); err != nil {
 			return
 		}
-		var err error
-		if event.Error.Error != nil {
-			err = event.Error.Error.err()
-		}
-		h.options.OnError(NodeHostError{Kind: event.Error.Kind, Object: event.Error.Object, Address: event.Error.Address, Err: err})
+		h.options.OnError(event.Error.decode())
 	}
+}
+
+// hostErrorWire is a HostError as host.mjs sends it: every field of the JavaScript value, the errors as wire errors.
+type hostErrorWire struct {
+	Kind    string `json:"kind"`
+	Object  string `json:"object"`
+	Failure *struct {
+		Kind  data.FailureKind `json:"kind"`
+		Error json.RawMessage  `json:"error"`
+	} `json:"failure"`
+	Error      *wireError    `json:"error"`
+	Native     *positionWire `json:"native"`
+	Routine    *positionWire `json:"routine"`
+	Address    string        `json:"address"`
+	Member     string        `json:"member"`
+	Job        string        `json:"job"`
+	ID         string        `json:"id"`
+	Restarts   int           `json:"restarts"`
+	WaitingFor string        `json:"waitingFor"`
+	State      string        `json:"state"`
+	Since      int64         `json:"since"`
+	Registry   string        `json:"registry"`
+	Message    string        `json:"message"`
+	Plugins    []string      `json:"plugins"`
+	Plugin     string        `json:"plugin"`
+	Type       string        `json:"type"`
+	Version    int           `json:"version"`
+}
+
+// positionWire is a host.Position as host.mjs sends it.
+type positionWire struct {
+	Kind     host.PositionKind `json:"kind"`
+	Position int               `json:"position"`
+}
+
+func (w positionWire) position() host.Position {
+	return host.Position{Kind: w.Kind, Position: w.Position}
+}
+
+func (w *hostErrorWire) decode() NodeHostError {
+	out := NodeHostError{
+		Kind: w.Kind, Object: w.Object, Address: w.Address, Member: w.Member, Job: w.Job, ID: w.ID, Restarts: w.Restarts,
+		WaitingFor: w.WaitingFor, State: w.State, Since: w.Since, Registry: w.Registry, Message: w.Message,
+		Plugins: w.Plugins, Plugin: w.Plugin, Type: w.Type, Version: w.Version,
+	}
+	if w.Error != nil {
+		out.Err = w.Error.err()
+	}
+	if w.Native != nil {
+		out.Native = w.Native.position()
+	}
+	if w.Routine != nil {
+		out.Routine = w.Routine.position()
+	}
+	if w.Failure != nil {
+		if chord, ok := chordErrorOf(w.Failure.Error); ok {
+			out.Failure = data.FailureCause{Kind: w.Failure.Kind, Error: chord}
+		}
+	}
+	return out
 }
 
 // Close asks the process to close its host and exit, and waits for it (killing it after the grace, or when ctx ends). It
@@ -905,12 +995,13 @@ func (h *NodeHost) Close(ctx context.Context) error {
 	return h.Err()
 }
 
-// wireError is an error as host.mjs sends it.
+// wireError is an error as host.mjs sends it: Cause is its `cause`, itself a wire error.
 type wireError struct {
 	Name    string          `json:"name"`
 	Message string          `json:"message"`
 	Stack   string          `json:"stack"`
 	Chord   json.RawMessage `json:"chord"`
+	Cause   *wireError      `json:"cause"`
 }
 
 // err is the *NodeError of w.
@@ -923,6 +1014,9 @@ func (w *wireError) err() *NodeError {
 		if chord, ok := chordErrorOf(w.Chord); ok {
 			out.Chord = chord
 		}
+	}
+	if w.Cause != nil {
+		out.Cause = w.Cause.err()
 	}
 	return out
 }

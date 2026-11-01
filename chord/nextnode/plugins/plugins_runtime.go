@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -59,6 +60,16 @@ type RuntimeLoad struct {
 	// Heartbeat is the subprocess host's heartbeat (`createHost`'s `heartbeat`): it closes a link silent for Close, 30 s by
 	// default, its handshake included, and the process with it, so the app attaches NodeHost.Link in time.
 	Heartbeat *host.HeartbeatOptions
+	// CloseTimeout and ReadyTimeout are the subprocess host's `closeTimeout` and `readyTimeout` (host.HostOptions'): how long
+	// a native's close and an ending object's running calls are waited for (30 s by default), and how long an activation
+	// attempt and a `get` may take until the object is live (60 s). Nil: the host's defaults.
+	CloseTimeout *time.Duration
+	ReadyTimeout *time.Duration
+	// Compression makes the subprocess host compress as Pi's Node hosts do (`createHost({ compression: nodeCompression })`):
+	// the JSON parts above 16 KiB it originates are deflated, and the deflated parts it owns inflated in place. The Go
+	// host the link is attached to compresses its own parts when it is created with host.HostOptions.Compression
+	// (nextnode.NodeCompression): a compressor is a host's, not a link's, and a host without one inflates what it gets.
+	Compression bool
 }
 
 // PluginRuntime starts the Node subprocesses that host plugins, and loads and reloads them with complete sets of shipped
@@ -81,6 +92,10 @@ type loadRequest struct {
 	Principal data.Principal    `json:"principal,omitempty"`
 	Peer      data.Principal    `json:"peer"`
 	Heartbeat *heartbeatWire    `json:"heartbeat,omitempty"`
+	// CloseTimeout and ReadyTimeout are milliseconds.
+	CloseTimeout *int64 `json:"closeTimeout,omitempty"`
+	ReadyTimeout *int64 `json:"readyTimeout,omitempty"`
+	Compression  bool   `json:"compression,omitempty"`
 }
 
 // heartbeatWire is a host.HeartbeatOptions in milliseconds, as `createHost`'s `heartbeat`.
@@ -184,6 +199,15 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 			closing := options.Heartbeat.Close.Milliseconds()
 			request.Heartbeat.Close = &closing
 		}
+	}
+	request.Compression = options.Compression
+	if options.CloseTimeout != nil {
+		closing := options.CloseTimeout.Milliseconds()
+		request.CloseTimeout = &closing
+	}
+	if options.ReadyTimeout != nil {
+		ready := options.ReadyTimeout.Milliseconds()
+		request.ReadyTimeout = &ready
 	}
 	h, err := startNode(r.node, ctx)
 	if err != nil {

@@ -20,13 +20,14 @@ import { pathToFileURL } from "node:url";
 
 const tree = new URL("./pi/chord/src/", import.meta.url);
 const pi = (path) => import(new URL(path, tree).href);
-const [chordNext, { ipcLink }, { createPluginRuntime }, { mapStack }, { BACKGROUND_CONTEXT, withAbortSignal }] =
+const [chordNext, { ipcLink }, { createPluginRuntime }, { mapStack }, { BACKGROUND_CONTEXT, withAbortSignal }, { nodeCompression }] =
 	await Promise.all([
 		pi("next/index.ts"),
 		pi("next/link/index.ts"),
 		pi("next-node/plugins/runtime.ts"),
 		pi("next-node/plugins/stack.ts"),
 		pi("context/index.ts"),
+		pi("next-node/compression.ts"),
 	]);
 const { createHost, isChordError } = chordNext;
 
@@ -88,12 +89,19 @@ class FramedPort extends EventEmitter {
 	}
 }
 
-/** An error as it crosses to the Go side: its message, and its stack mapped through the plugin scripts' source maps. */
-function wireError(error) {
+/**
+ * An error as it crosses to the Go side: its message, its stack mapped through the plugin scripts' source maps, and its
+ * `cause` chain (a cause that is no Error is an error of its string; a cause already on the chain ends it, so a cycle does).
+ */
+function wireError(error, seen = new Set()) {
+	seen.add(error);
 	const stack = mapStack(error);
-	if (isChordError(error)) return { name: "ChordError", message: error.message, stack, chord: error.toJSON() };
-	if (error instanceof Error) return { name: error.name, message: error.message, stack };
-	return { name: "Error", message: String(error), stack };
+	const cause = error?.cause;
+	const wired =
+		cause !== undefined && !seen.has(cause) ? { cause: wireError(cause, seen) } : {};
+	if (isChordError(error)) return { name: "ChordError", message: error.message, stack, chord: error.toJSON(), ...wired };
+	if (error instanceof Error) return { name: error.name, message: error.message, stack, ...wired };
+	return { name: "Error", message: String(error), stack, ...wired };
 }
 
 function wireCause(cause) {
@@ -139,6 +147,9 @@ async function load(request, context) {
 		...(request.address === undefined ? {} : { address: request.address }),
 		...(request.principal === undefined ? {} : { principal: request.principal }),
 		...(request.heartbeat === undefined ? {} : { heartbeat: request.heartbeat }),
+		...(request.closeTimeout === undefined ? {} : { closeTimeout: request.closeTimeout }),
+		...(request.readyTimeout === undefined ? {} : { readyTimeout: request.readyTimeout }),
+		...(request.compression === true ? { compression: nodeCompression } : {}),
 		onError: (error) => port.control({ event: "error", error: hostError(error) }),
 	});
 	const runtime = createPluginRuntime();
@@ -150,13 +161,17 @@ async function load(request, context) {
 	return { failed: report.failed.map(({ plugin, error }) => ({ plugin, error: wireError(error) })) };
 }
 
-/** What the host reports in the background, as data: its kind, what it names, and its error. */
+/**
+ * What the host reports in the background, as data: every field of its kind (host.ts's `HostError`, the batch's and the
+ * registries'), its errors as wire errors and its failure as its kind and ChordError.
+ */
 function hostError(error) {
-	const wired = { kind: error.kind };
-	if (typeof error.object === "string") wired.object = error.object;
-	if (typeof error.address === "string") wired.address = error.address;
-	const cause = error.error ?? error.failure?.error;
-	if (cause !== undefined) wired.error = wireError(cause);
+	const wired = {};
+	for (const [key, value] of Object.entries(error)) {
+		if (key === "error") wired.error = wireError(value);
+		else if (key === "failure") wired.failure = wireCause(value);
+		else wired[key] = value;
+	}
 	return wired;
 }
 

@@ -23,6 +23,7 @@ const ENTRIES = [
 	"next-node/plugins/evaluate.ts",
 	"next-node/plugins/stack.ts",
 	"next-node/plugins/runtime.ts",
+	"next-node/compression.ts",
 	"context/index.ts",
 ];
 /** The bare specifiers the closure may import: Pi's runtime dependencies that are copied below. */

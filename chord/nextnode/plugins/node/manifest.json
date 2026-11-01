@@ -34,6 +34,10 @@
 			"sha256": "d3a115dde2afa8e79c987b0fb188ec0bdba03939192859a20198a23b2892bb60"
 		},
 		{
+			"path": "pi/chord/src/next-node/compression.ts",
+			"sha256": "f41f610a26fd66dd320e1ea70fc0b267f9df63e9bf45cafad407f017d933e7b1"
+		},
+		{
 			"path": "pi/chord/src/next-node/plugins/evaluate.ts",
 			"sha256": "539017d262388d8b7052e71b52fefcb7bf9ec00563cd47070c2948a81b7820ce"
 		},

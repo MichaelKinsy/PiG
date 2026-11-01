@@ -119,11 +119,21 @@ type pcLoaded struct {
 // and ops) and core, closed when the test ends.
 func (c *pcComponent) loadWorker(t *testing.T, ops string, modules HostPackages, core ...CoreFacet) pcLoaded {
 	t.Helper()
+	return c.loadWorkerWith(t, ops, modules, nil, core...)
+}
+
+// loadWorkerWith is loadWorker with load changed by edit (the host's options: timeouts, compression, ...).
+func (c *pcComponent) loadWorkerWith(t *testing.T, ops string, modules HostPackages, edit func(load *PluginsLoad), core ...CoreFacet) pcLoaded {
+	t.Helper()
 	address := workerKind.Address(nil)
-	node, report, err := c.Load(PluginsLoad{
+	load := PluginsLoad{
 		Kind: "worker", Core: append([]CoreFacet{probeCore(t, c.cache, pcLabelOps+ops)}, core...), Modules: modules,
 		Address: &address, Principal: workerPrincipal, Peer: serverPrincipal,
-	}, background)
+	}
+	if edit != nil {
+		edit(&load)
+	}
+	node, report, err := c.Load(load, background)
 	if err != nil {
 		t.Fatal(err)
 	}

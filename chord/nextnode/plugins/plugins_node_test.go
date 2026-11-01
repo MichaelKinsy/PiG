@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -21,6 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	"github.com/MichaelKinsy/PiG/chord/nextnode"
 )
 
 // Not upstream's: the Node subprocess of the plugins component (docs/plan/chord-plugins-node-evaluator.md), exercised with
@@ -368,15 +370,23 @@ func TestNodeVendoredFilesAreExactlyTheManifests(t *testing.T) {
 // probeNode loads a Node host with only the probe core (ops), as the worker, with options.
 func probeNode(t *testing.T, ops string, options NodeOptions, heartbeat *host.HeartbeatOptions) (*PluginRuntime, *NodeHost) {
 	t.Helper()
+	return probeNodeWith(t, ops, options, func(load *RuntimeLoad) { load.Heartbeat = heartbeat })
+}
+
+// probeNodeWith is probeNode with the load changed by edit.
+func probeNodeWith(t *testing.T, ops string, options NodeOptions, edit func(load *RuntimeLoad)) (*PluginRuntime, *NodeHost) {
+	t.Helper()
 	if options.CacheDir == "" {
 		options.CacheDir = t.TempDir()
 	}
 	address := workerKind.Address(nil)
 	runtime := NewPluginRuntime(options)
-	node, _, err := runtime.Load(RuntimeLoad{
+	load := RuntimeLoad{
 		Kind: "worker", Core: []CoreFacet{probeCore(t, options.CacheDir, ops)}, Address: &address,
-		Principal: workerPrincipal, Peer: serverPrincipal, Heartbeat: heartbeat,
-	}, background)
+		Principal: workerPrincipal, Peer: serverPrincipal,
+	}
+	edit(&load)
+	node, _, err := runtime.Load(load, background)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -563,5 +573,188 @@ func TestNodeConcurrentExtractionsShareOneCompleteTree(t *testing.T) {
 	entries, err := os.ReadDir(cache)
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("cache = %v, %v (staging directories are left behind)", entries, err)
+	}
+}
+
+// The decoder of the host's reports: each kind of upstream's `HostError` (host.ts, the batch's and the registries'), as
+// host.mjs sends it (every field of the JS value, errors as wire errors, a failure as its kind and ChordError JSON).
+func TestNodeDecodesEveryKindOfHostErrorWithItsFields(t *testing.T) {
+	const wired = `{"name":"Error","message":"boom","stack":"Error: boom\n    at x"}`
+	const failure = `{"kind":"broken","error":{"code":"unavailable","message":"not here"}}`
+	cases := []struct {
+		name string
+		json string
+		want NodeHostError
+	}{
+		{"listener_error", `{"kind":"listener_error","error":` + wired + `}`, NodeHostError{Kind: "listener_error"}},
+		{"delivery_failed", `{"kind":"delivery_failed","error":` + wired + `}`, NodeHostError{Kind: "delivery_failed"}},
+		{"registry_conflict", `{"kind":"registry_conflict","registry":"r","message":"two","plugins":["@a/x","@b/y"]}`,
+			NodeHostError{Kind: "registry_conflict", Registry: "r", Message: "two", Plugins: []string{"@a/x", "@b/y"}}},
+		{"registry_failed", `{"kind":"registry_failed","registry":"r","error":` + wired + `}`, NodeHostError{Kind: "registry_failed", Registry: "r"}},
+		{"contribution_failed", `{"kind":"contribution_failed","registry":"r","plugin":"@a/x","type":"t","error":` + wired + `}`,
+			NodeHostError{Kind: "contribution_failed", Registry: "r", Plugin: "@a/x", Type: "t"}},
+		{"contribution_refused", `{"kind":"contribution_refused","registry":"r","plugin":"@a/x","version":3}`,
+			NodeHostError{Kind: "contribution_refused", Registry: "r", Plugin: "@a/x", Version: 3}},
+		{"activation_failed", `{"kind":"activation_failed","object":"test.a","failure":` + failure + `}`, NodeHostError{Kind: "activation_failed", Object: "test.a"}},
+		{"object_failed", `{"kind":"object_failed","object":"test.a","failure":` + failure + `}`, NodeHostError{Kind: "object_failed", Object: "test.a"}},
+		{"storage_failed", `{"kind":"storage_failed","error":` + wired + `}`, NodeHostError{Kind: "storage_failed"}},
+		{"close_failed", `{"kind":"close_failed","object":"test.a","native":{"kind":"native","position":2},"error":` + wired + `}`,
+			NodeHostError{Kind: "close_failed", Object: "test.a", Native: host.Position{Kind: host.PositionNative, Position: 2}}},
+		{"close_timeout", `{"kind":"close_timeout","object":"test.a","native":{"kind":"native","position":1}}`,
+			NodeHostError{Kind: "close_timeout", Object: "test.a", Native: host.Position{Kind: host.PositionNative, Position: 1}}},
+		{"drain_timeout", `{"kind":"drain_timeout","object":"test.a"}`, NodeHostError{Kind: "drain_timeout", Object: "test.a"}},
+		{"protocol_error", `{"kind":"protocol_error","error":` + wired + `}`, NodeHostError{Kind: "protocol_error"}},
+		{"resolve_failed", `{"kind":"resolve_failed","address":"test.worker","error":` + wired + `}`, NodeHostError{Kind: "resolve_failed", Address: "test.worker"}},
+		{"derive_failed", `{"kind":"derive_failed","object":"test.a","member":"n","error":` + wired + `}`, NodeHostError{Kind: "derive_failed", Object: "test.a", Member: "n"}},
+		{"routine_failed", `{"kind":"routine_failed","object":"test.a","routine":{"kind":"onLive","position":3},"error":` + wired + `}`,
+			NodeHostError{Kind: "routine_failed", Object: "test.a", Routine: host.Position{Kind: host.PositionOnLive, Position: 3}}},
+		{"job_failed", `{"kind":"job_failed","object":"test.a","job":"j","id":"i1","error":` + wired + `}`, NodeHostError{Kind: "job_failed", Object: "test.a", Job: "j", ID: "i1"}},
+		{"job_finish_failed", `{"kind":"job_finish_failed","object":"test.a","job":"j","id":"i1","error":` + wired + `}`, NodeHostError{Kind: "job_finish_failed", Object: "test.a", Job: "j", ID: "i1"}},
+		{"job_interrupted", `{"kind":"job_interrupted","object":"test.a","job":"j","id":"i1","restarts":5}`, NodeHostError{Kind: "job_interrupted", Object: "test.a", Job: "j", ID: "i1", Restarts: 5}},
+		{"job_dropped", `{"kind":"job_dropped","object":"test.a","job":"j","id":"i1"}`, NodeHostError{Kind: "job_dropped", Object: "test.a", Job: "j", ID: "i1"}},
+		{"parked_long", `{"kind":"parked_long","object":"test.a","waitingFor":"test.b","state":"failed","since":1700000000123}`,
+			NodeHostError{Kind: "parked_long", Object: "test.a", WaitingFor: "test.b", State: "failed", Since: 1700000000123}},
+	}
+	for _, each := range cases {
+		got := make(chan NodeHostError, 1)
+		h := &NodeHost{options: NodeOptions{OnError: func(err NodeHostError) { got <- err }}}
+		h.control([]byte(`{"event":"error","error":` + each.json + `}`))
+		select {
+		case err := <-got:
+			wantErr, wantFailure := strings.Contains(each.json, `"error":{"name"`), strings.Contains(each.json, `"failure":`)
+			if (err.Err != nil) != wantErr || (err.Failure.Error != nil) != wantFailure {
+				t.Errorf("%s: Err = %v, Failure = %+v", each.name, err.Err, err.Failure)
+			}
+			if wantErr && (err.Err == nil || err.Err.Error() != "boom") {
+				t.Errorf("%s: Err = %v", each.name, err.Err)
+			}
+			if wantFailure && (err.Failure.Error == nil || err.Failure.Kind != data.FailureBroken || err.Failure.Error.Message != "not here") {
+				t.Errorf("%s: Failure = %+v", each.name, err.Failure)
+			}
+			err.Err, err.Failure = nil, data.FailureCause{}
+			if !reflect.DeepEqual(err, each.want) {
+				t.Errorf("%s: got %+v, want %+v", each.name, err, each.want)
+			}
+		default:
+			t.Errorf("%s: no report", each.name)
+		}
+	}
+}
+
+// An error's `cause` chain crosses (a cause that is no Error as an error of its string), errors.As finds a ChordError
+// anywhere in it, and a cycle ends the chain.
+func TestNodeAnUncaughtExceptionKeepsItsCauseChain(t *testing.T) {
+	script := handmade(t, "@test/p", "worker", `(function (require, module, exports) {
+		const next = require("@earendil-works/chord/next");
+		module.exports = { default: next.defineFacet(() => { setTimeout(() => {
+			const provider = new next.ChordError({ code: "unavailable", message: "no provider" });
+			provider.cause = "not an error";
+			throw new Error("outer", { cause: new TypeError("middle", { cause: new Error("root", { cause: provider }) }) });
+		}, 0); }) };
+	})`)
+	node, _, _ := loadOn(t, script)
+	<-node.Exited()
+	exit, ok := errors.AsType[*NodeExit](node.Err())
+	if !ok || exit.Fatal == nil {
+		t.Fatalf("Err = %v, want a *NodeExit with a Fatal", node.Err())
+	}
+	var chain []string
+	for each := exit.Fatal; each != nil; each = each.Cause {
+		chain = append(chain, each.Name+": "+each.Message)
+	}
+	if want := []string{"Error: outer", "TypeError: middle", "Error: root", "ChordError: no provider", "Error: not an error"}; !reflect.DeepEqual(chain, want) {
+		t.Fatalf("chain = %q, want %q", chain, want)
+	}
+	if chord, ok := errors.AsType[*data.ChordError](exit.Fatal); !ok || chord.Code != data.CodeUnavailable {
+		t.Fatalf("errors.As finds %v, want the ChordError with code unavailable", chord)
+	}
+	if exit.Fatal.Unwrap()[0] != error(exit.Fatal.Cause) {
+		t.Fatalf("Unwrap = %v", exit.Fatal.Unwrap())
+	}
+}
+
+func TestNodeACauseThatIsItsOwnCauseEndsTheChain(t *testing.T) {
+	script := handmade(t, "@test/p", "worker", `(function (require, module, exports) {
+		module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => { setTimeout(() => {
+			const cycle = new Error("cycle");
+			cycle.cause = new Error("again", { cause: cycle });
+			throw cycle;
+		}, 0); }) };
+	})`)
+	node, _, _ := loadOn(t, script)
+	<-node.Exited()
+	exit, ok := errors.AsType[*NodeExit](node.Err())
+	if !ok || exit.Fatal == nil {
+		t.Fatalf("Err = %v", node.Err())
+	}
+	var chain []string
+	for each := exit.Fatal; each != nil; each = each.Cause {
+		chain = append(chain, each.Message)
+	}
+	if want := []string{"cycle", "again"}; !reflect.DeepEqual(chain, want) {
+		t.Fatalf("chain = %q, want %q", chain, want)
+	}
+}
+
+// countingLink counts the bytes of the messages of a link, by direction.
+type countingLink struct {
+	link.Link
+	sent, received atomic.Int64
+}
+
+func (c *countingLink) Send(message []byte) {
+	c.sent.Add(int64(len(message)))
+	c.Link.Send(message)
+}
+
+func (c *countingLink) OnMessage(listener func([]byte)) {
+	c.Link.OnMessage(func(message []byte) {
+		c.received.Add(int64(len(message)))
+		listener(message)
+	})
+}
+
+// A part above 16 KiB crosses deflated when the app asks for compression (RuntimeLoad.Compression on the Node host,
+// host.HostOptions.Compression on the Go host); without it the same call crosses whole.
+func TestNodeAPartOver16KiBCrossesTheLinkDeflatedWhenTheAppAsksForCompression(t *testing.T) {
+	const size = 256 << 10
+	cross := func(compressed bool) (sent, received int64) {
+		_, node := probeNodeWith(t, `echo: async (args) => args`, NodeOptions{}, func(load *RuntimeLoad) { load.Compression = compressed })
+		counted := &countingLink{Link: node.Link()}
+		var compression link.Compression
+		if compressed {
+			compression = nextnode.NodeCompression
+		}
+		h, err := host.CreateHost(host.HostOptions{Principal: serverPrincipal, Compression: compression, OnError: func(host.HostError) {}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = h.Close(background) })
+		if _, err := h.Route(workerKind, host.RouteOptions{
+			Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
+			Resolve: func(contracts.Address, context.Context) (host.ResolvedLink, error) {
+				return host.ResolvedLink{Link: counted, Principal: workerPrincipal, Trusted: true}, nil
+			},
+		}, background); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := h.Load(nil, background); err != nil {
+			t.Fatal(err)
+		}
+		p := probeOn(t, h)
+		before, beforeReceived := counted.sent.Load(), counted.received.Load()
+		payload := strings.Repeat("compressible ", size/13)
+		if got := p.must("echo", payload); got != payload {
+			t.Fatalf("the echo came back changed (%d bytes)", len(payload))
+		}
+		return counted.sent.Load() - before, counted.received.Load() - beforeReceived
+	}
+	plainSent, plainReceived := cross(false)
+	if plainSent < size || plainReceived < size {
+		t.Fatalf("uncompressed, the call carried %d bytes out and %d back, want each over %d", plainSent, plainReceived, size)
+	}
+	deflatedSent, deflatedReceived := cross(true)
+	if deflatedSent > size/10 || deflatedReceived > size/10 {
+		t.Fatalf("compressed, the call carried %d bytes out and %d back, want each under %d", deflatedSent, deflatedReceived, size/10)
 	}
 }

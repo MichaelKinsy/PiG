@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
@@ -244,13 +245,138 @@ func TestRuntimeAFacetWithAPersistedDocumentFailsToActivateTheHostHasNoStore(t *
 		select {
 		case err := <-failures:
 			if err.Kind == "activation_failed" && err.Object == "test.persisted" {
-				if !strings.Contains(err.Err.Error(), "persist needs a store") {
-					t.Fatalf("activation failed with %v, want persist needs a store", err.Err)
+				if err.Failure.Error == nil || !strings.Contains(err.Failure.Error.Error(), "persist needs a store") {
+					t.Fatalf("activation failed with %+v, want persist needs a store", err.Failure)
+				}
+				if err.Failure.Kind != data.FailureBroken && err.Failure.Kind != data.FailureTransient {
+					t.Fatalf("failure kind = %q", err.Failure.Kind)
 				}
 				return
 			}
 		case <-time.After(30 * time.Second):
 			t.Fatal("the host reported no failed activation")
 		}
+	}
+}
+
+// hostErrors collects what a Node host's host reports in the background.
+type hostErrors struct {
+	got     chan NodeHostError
+	backlog []NodeHostError
+}
+
+func newHostErrors() *hostErrors { return &hostErrors{got: make(chan NodeHostError, 64)} }
+
+// next waits for the report of kind that arrived first and was not taken yet: the host reports in the background, so the wait
+// is for the event.
+func (h *hostErrors) next(t *testing.T, kind string) NodeHostError {
+	t.Helper()
+	for {
+		for i, err := range h.backlog {
+			if err.Kind == kind {
+				h.backlog = append(h.backlog[:i], h.backlog[i+1:]...)
+				return err
+			}
+		}
+		select {
+		case err := <-h.got:
+			h.backlog = append(h.backlog, err)
+		case <-time.After(30 * time.Second):
+			t.Fatalf("the host reported no %s (reported: %+v)", kind, h.backlog)
+		}
+	}
+}
+
+// hostErrorPlugin serves the types whose failures the host reports (each with a param, so its object lives while it is
+// held): `test.leaky` (two natives whose closes fail and hang), `test.boom` (a routine that throws, and a derive that throws
+// once `bump` changed its document) and `test.parks` (an object that waits for a type nobody serves).
+const hostErrorPlugin = `import { constant, defineFacet, defineState, int, local, method, obj, str } from "@earendil-works/chord/next";
+const Leaky = local("test.leaky", { version: 1, params: { id: str() }, members: { n: int() } });
+const Boom = local("test.boom", { version: 1, params: { id: str() }, members: { n: int(), bump: method() } });
+const Parks = local("test.parks", { version: 1, params: { id: str() }, members: { n: int() } });
+const Nobody = local("test.nobody", { version: 1, params: {}, members: { n: int() } });
+const Count = defineState("count", { schema: obj({ n: int() }), version: 1, initial: () => ({ n: 0 }) });
+export default defineFacet((host) => {
+	host.serve(Leaky, (_params, self) => {
+		self.open(async () => "socket", () => { throw new Error("socket close failed"); });
+		self.open(async () => "worker", () => new Promise(() => {}));
+		return { n: constant(1) };
+	});
+	host.serve(Boom, (_params, self) => {
+		const doc = self.state(Count);
+		self.onLive(async () => { throw new Error("routine boom"); });
+		return {
+			n: self.derive([doc], ([value]) => { if (value.n > 0) throw new Error("derive boom"); return value.n; }),
+			bump: async (ctx) => { await doc.change((draft) => { draft.n += 1; }, ctx); return null; },
+		};
+	});
+	host.serve(Parks, (_params, self) => {
+		self.get(Nobody, {});
+		return { n: constant(1) };
+	});
+});
+`
+
+// hostErrorOps are the probe ops that bring those objects to life and let them go (a `get` is released when the call ends).
+const hostErrorOps = `leaky: async (_args, { ctx }) => {
+	const Type = next.local("test.leaky", { version: 1, params: { id: next.str() }, members: { n: next.int() } });
+	return (await ctx.get(Type, { id: "a" })).n.value;
+},
+boom: async (_args, { ctx }) => {
+	const Type = next.local("test.boom", { version: 1, params: { id: next.str() }, members: { n: next.int(), bump: next.method() } });
+	const ref = await ctx.get(Type, { id: "a" });
+	await ref.bump(ctx);
+	try { return ref.n.value; } catch (error) { return "threw " + error.message; }
+},
+parks: async (_args, { ctx }) => {
+	const Type = next.local("test.parks", { version: 1, params: { id: next.str() }, members: { n: next.int() } });
+	try { await ctx.get(Type, { id: "a" }, { readyTimeout: 1500 }); return "live"; } catch (error) { return "not live"; }
+},
+`
+
+// The host's background reports arrive with every field of their kind, typed (Pi's `HostError`): a position, a member, the
+// object. The host is started with a close timeout of its own (RuntimeLoad.CloseTimeout), so a hanging close is reported.
+func TestRuntimeTheHostsBackgroundErrorsCarryEveryFieldOfTheirKind(t *testing.T) {
+	root := tempRoot(t)
+	pcPluginSource(t, root, "errors", hostErrorPlugin)
+	errs := newHostErrors()
+	c := pcNew(t, root, pcOptions{hostError: func(err NodeHostError) { errs.got <- err }})
+	closing := 200 * time.Millisecond
+	h := c.loadWorkerWith(t, hostErrorOps, nil, func(load *PluginsLoad) { load.CloseTimeout = &closing })
+	h.probe.must("leaky", nil)
+	failed := errs.next(t, "close_failed")
+	if failed.Object != "test.leaky(a)" || failed.Native != (host.Position{Kind: host.PositionNative, Position: 1}) || failed.Err == nil || failed.Err.Error() != "socket close failed" {
+		t.Fatalf("close_failed = %+v", failed)
+	}
+	timedOut := errs.next(t, "close_timeout")
+	if timedOut.Object != "test.leaky(a)" || timedOut.Native != (host.Position{Kind: host.PositionNative, Position: 2}) {
+		t.Fatalf("close_timeout = %+v", timedOut)
+	}
+	if got := h.probe.must("boom", nil); got != "threw derive boom" {
+		t.Fatalf("boom = %v", got)
+	}
+	routine := errs.next(t, "routine_failed")
+	if routine.Object != "test.boom(a)" || routine.Routine != (host.Position{Kind: host.PositionOnLive, Position: 1}) || routine.Err == nil || routine.Err.Error() != "routine boom" {
+		t.Fatalf("routine_failed = %+v", routine)
+	}
+	derived := errs.next(t, "derive_failed")
+	if derived.Object != "test.boom(a)" || derived.Member != "n" || derived.Err == nil || derived.Err.Error() != "derive boom" {
+		t.Fatalf("derive_failed = %+v", derived)
+	}
+}
+
+// The host's `readyTimeout` is the one the app gave (RuntimeLoad.ReadyTimeout): an attempt parked longer than it is reported
+// as `parked_long`, with what it waits for.
+func TestRuntimeTheHostsReadyTimeoutIsTheAppsAndAParkedAttemptIsReportedWithWhatItWaitsFor(t *testing.T) {
+	root := tempRoot(t)
+	pcPluginSource(t, root, "errors", hostErrorPlugin)
+	errs := newHostErrors()
+	c := pcNew(t, root, pcOptions{hostError: func(err NodeHostError) { errs.got <- err }})
+	ready := 100 * time.Millisecond
+	h := c.loadWorkerWith(t, hostErrorOps, nil, func(load *PluginsLoad) { load.ReadyTimeout = &ready })
+	go func() { _, _ = h.probe.call("parks", nil) }()
+	parked := errs.next(t, "parked_long")
+	if parked.Object != "test.parks(a)" || !strings.Contains(parked.WaitingFor, "test.nobody") || (parked.State != "loading" && parked.State != "failed") || parked.Since <= 0 {
+		t.Fatalf("parked_long = %+v", parked)
 	}
 }
