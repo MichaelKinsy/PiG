@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -109,7 +110,7 @@ func TestRouteAdmissionRunsOneResolvePerAddressSharedByTheHoldsThatWaitForItRace
 		var wg sync.WaitGroup
 		for i := range refs {
 			wg.Go(func() {
-				ref, err := r.Tab.Get(PlacedNotes, routeS("S1"), background, GetOptions{})
+				ref, err := r.Tab.Get(background, PlacedNotes, routeS("S1"), GetOptions{})
 				must(t, err)
 				refs[i] = ref
 			})
@@ -123,7 +124,7 @@ func TestRouteAdmissionRunsOneResolvePerAddressSharedByTheHoldsThatWaitForItRace
 			must(t, err)
 			nexttest.RequireJSONEqual(t, value, []any{jsonObject("text", "a")})
 		}
-		_, err := r.Tab.Get(PlacedNotes, routeS("S2"), background, GetOptions{})
+		_, err := r.Tab.Get(background, PlacedNotes, routeS("S2"), GetOptions{})
 		must(t, err)
 		wantResolves(t, r, "session|S1", "session|S2")
 	})
@@ -138,16 +139,16 @@ func TestRouteAdmissionAuthorizesEveryHoldWithItsPrincipalARefusalIsBrokenForbid
 				principalKind(principal) == "guest" && address.Key == "session|"+principal.Value("session").(string)
 		}
 		guest := relay(t, relayedOptions{Tab: guestPrincipal("S1"), Authorize: authorize})
-		_, err := guest.Tab.Get(PlacedNotes, routeS("S2"), background, GetOptions{})
+		_, err := guest.Tab.Get(background, PlacedNotes, routeS("S2"), GetOptions{})
 		nexttest.RequireJSONEqual(t, rejection(t, err), map[string]any{"code": "forbidden", "message": "session|S2: not authorized"})
 		wantResolves(t, guest)
-		reader, err := guest.Tab.Get(PlacedNotes, routeS("S1"), background, GetOptions{})
+		reader, err := guest.Tab.Get(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		if variant, _, _ := reader.Variant(); variant != "reader" {
 			t.Fatalf("variant = %q, want reader", variant)
 		}
 		owner := relay(t, relayedOptions{Authorize: authorize})
-		editor, err := owner.Tab.Get(PlacedNotes, routeS("S2"), background, GetOptions{})
+		editor, err := owner.Tab.Get(background, PlacedNotes, routeS("S2"), GetOptions{})
 		must(t, err)
 		if variant, _, _ := editor.Variant(); variant != "editor" {
 			t.Fatalf("variant = %q, want editor", variant)
@@ -161,9 +162,9 @@ func TestRouteAdmissionRefRetryHoldsARefusedHoldAgainAuthorizeAdmittingItLaterOv
 	forEachCodec(t, func(t *testing.T) {
 		var admit atomic.Bool
 		r := relay(t, relayedOptions{Authorize: func(data.Principal, contracts.Address) bool { return admit.Load() }})
-		overLink, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		overLink, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
-		here, err := r.Server.Hold(PlacedNotes, routeS("S2"), background, GetOptions{})
+		here, err := r.Server.Hold(background, PlacedNotes, routeS("S2"), GetOptions{})
 		must(t, err)
 		r.Transported()
 		for _, ref := range []*Reference{overLink, here} {
@@ -184,7 +185,7 @@ func TestRouteAdmissionRefRetryOfAReferenceRefusedOnThisHostAfterHostCloseEndsIt
 	forEachCodec(t, func(t *testing.T) {
 		var admit atomic.Bool
 		r := relay(t, relayedOptions{Authorize: func(data.Principal, contracts.Address) bool { return admit.Load() }})
-		ref, err := r.Server.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		ref, err := r.Server.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		r.Transported()
 		if got := routeState(ref); got.Kind != RefStateFailed || got.Cause.Error.Code != data.CodeForbidden {
@@ -208,7 +209,7 @@ func TestRouteAdmissionFailsAHoldBrokenWithWhatAuthorizeThrows(t *testing.T) {
 		r := relay(t, relayedOptions{AuthorizeErr: func(data.Principal, contracts.Address) (bool, error) {
 			return false, errors.New("authorize threw")
 		}})
-		_, err := r.Tab.Get(PlacedNotes, routeS("S1"), background, GetOptions{})
+		_, err := r.Tab.Get(background, PlacedNotes, routeS("S1"), GetOptions{})
 		if err == nil || err.Error() != "app.placed-notes: authorize threw" {
 			t.Fatalf("get = %v, want app.placed-notes: authorize threw", err)
 		}
@@ -231,7 +232,7 @@ func TestRouteAdmissionFailsAHoldBrokenInvalidHostAddressForAnAddressWhoseParams
 			})},
 		}))
 		r := relay(t, relayedOptions{})
-		_, err := r.Tab.Get(misplaced, jsonObject("n", float64(1)), background, GetOptions{})
+		_, err := r.Tab.Get(background, misplaced, jsonObject("n", float64(1)), GetOptions{})
 		chordErr, ok := data.IsChordErrorCode(err, data.CodeInvalid)
 		if !ok || chordErr.Reason != data.ReasonHostAddress {
 			t.Fatalf("get = %v, want invalid/host_address", err)
@@ -256,9 +257,9 @@ func TestResolveFailuresAndReResolvesARejectedResolveFailsItsHoldersWaitingWithI
 			return resolved{}, errors.New("no worker")
 		}})
 		// One relayed from the tab, one the server's own.
-		notes, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		notes, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
-		own, err := r.Server.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		own, err := r.Server.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		r.Transported()
 		close(attached)
@@ -289,12 +290,12 @@ func TestResolveFailuresAndReResolvesANewHoldResolvesAFailedAddressAgainTheEarli
 			}
 			return worker(), nil
 		}})
-		first, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		first, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		r.Transported()
 		wantRouteFailed(t, first, data.FailureWaiting, data.CodeUnavailable)
 		fail.Store(false)
-		second, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		second, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		r.Transported()
 		wantResolves(t, r, "session|S1")
@@ -315,7 +316,7 @@ func TestResolveFailuresAndReResolvesRouteHandleRetryResolvesAFailedAddressNowAR
 			}
 			return worker(), nil
 		}})
-		notes, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		notes, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		r.Transported()
 		wantRouteFailed(t, notes, data.FailureWaiting, data.CodeUnavailable)
@@ -344,7 +345,7 @@ func TestResolveFailuresAndReResolvesAReturnedLinkClosedAlreadyFailsTheHolders(t
 			transported(a, b)
 			return resolved{Link: a, Principal: workerPrincipal(address.Params.Value("id").(string))}, nil
 		}})
-		notes, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		notes, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		r.Transported()
 		wantRouteWaiting(t, notes, "session|S1: the link closed before its handshake")
@@ -365,7 +366,7 @@ func TestResolveFailuresAndReResolvesALinkClosingBeforeItsHandshakeFailsItsHolde
 			made.Store(true)
 			return resolved{Link: a, Principal: workerPrincipal(address.Params.Value("id").(string))}, nil
 		}})
-		notes, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		notes, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		scopeEventually(t, "the link was made", made.Load)
 		routeElapse(r, timers, 10)
@@ -383,7 +384,7 @@ func TestResolveFailuresAndReResolvesADroppedLinkThatCompletedItsHandshakeResolv
 	forEachCodec(t, func(t *testing.T) {
 		timers := newScopeLoop()
 		r := relay(t, relayedOptions{Loop: timers})
-		notes, err := r.Tab.Get(PlacedNotes, routeS("S1"), background, GetOptions{})
+		notes, err := r.Tab.Get(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		first := r.Worker("session|S1")
 		r.RouteLinks()[0].Close()
@@ -412,7 +413,7 @@ func TestResolveFailuresAndReResolvesALinkWhosePeerNeverGreetsClosesAfter30sOfSi
 			a, _ := link.MemoryLinkPair()
 			return resolved{Link: a, Principal: workerPrincipal(address.Params.Value("id").(string))}, nil
 		}})
-		notes, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		notes, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		waitServerLinks(t, r, 2)
 		routeElapse(r, timers, 29_000)
@@ -432,7 +433,7 @@ func TestResolveFailuresAndReResolvesAnAddressWithoutHoldsIsNotResolvedAgainAfte
 	forEachCodec(t, func(t *testing.T) {
 		timers := newScopeLoop()
 		r := relay(t, relayedOptions{Loop: timers})
-		notes, err := r.Tab.Get(PlacedNotes, routeS("S1"), background, GetOptions{})
+		notes, err := r.Tab.Get(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		notes.Release()
 		r.Transported()
@@ -458,7 +459,7 @@ func TestResolveFailuresAndReResolvesAResolveWhoseHoldsWereAllReleasedMeanwhileF
 			made.Link = watching
 			return made, nil
 		}})
-		notes, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		notes, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		r.Transported()
 		notes.Release()
@@ -472,7 +473,7 @@ func TestResolveFailuresAndReResolvesAResolveWhoseHoldsWereAllReleasedMeanwhileF
 			t.Fatalf("the kept link closed")
 		}
 		// The kept link serves the next hold without a resolve.
-		_, err = r.Tab.Get(PlacedNotes, routeS("S1"), background, GetOptions{})
+		_, err = r.Tab.Get(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		wantResolves(t, r, "session|S1")
 		must(t, r.Server.Close(background))
@@ -499,7 +500,7 @@ func TestRouteResolveRunsItsSynchronousPartInsideTheSectionThatTriggeredIt(t *te
 			}
 			return worker(), nil
 		}})
-		notes, err := r.Server.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		notes, err := r.Server.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		if got := entered.Load(); got != 1 {
 			t.Fatalf("resolve entered %d times when host.hold returned, want 1", got)
@@ -525,14 +526,14 @@ func TestRouteHandleSuspendResolvesNothingWhileHeldTheHoldersFailWaitingSuspende
 	forEachCodec(t, func(t *testing.T) {
 		r := relay(t, relayedOptions{})
 		address := Session.Address(jsonObject("id", "S1"))
-		notes, err := r.Tab.Get(PlacedNotes, routeS("S1"), background, GetOptions{})
+		notes, err := r.Tab.Get(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		r.Route.Suspend(address)
 		wantRouteState(t, notes, RefStateLive)
 		r.RouteLinks()[0].Close()
 		r.Transported()
 		wantRouteWaiting(t, notes, "session|S1: suspended")
-		another, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		another, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		r.Transported()
 		wantRouteFailed(t, another, data.FailureWaiting, data.CodeUnavailable)
@@ -551,7 +552,7 @@ func TestRouteHandleSuspendGoesWithTheLastHolderALaterHoldResolvesOnDemandAnUnhe
 	forEachCodec(t, func(t *testing.T) {
 		r := relay(t, relayedOptions{})
 		address := Session.Address(jsonObject("id", "S1"))
-		notes, err := r.Tab.Get(PlacedNotes, routeS("S1"), background, GetOptions{})
+		notes, err := r.Tab.Get(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		r.Route.Suspend(address)
 		r.RouteLinks()[0].Close()
@@ -559,7 +560,7 @@ func TestRouteHandleSuspendGoesWithTheLastHolderALaterHoldResolvesOnDemandAnUnhe
 		notes.Release()
 		r.Transported()
 		r.Route.Suspend(address)
-		_, err = r.Tab.Get(PlacedNotes, routeS("S1"), background, GetOptions{})
+		_, err = r.Tab.Get(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		wantResolves(t, r, "session|S1", "session|S1")
 	})
@@ -581,7 +582,7 @@ func TestHostCloseDuringAResolveRace7AbortsTheResolvesContextAndClosesALinkRetur
 			made.Link = watching
 			return made, nil
 		}})
-		_, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		_, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		r.Transported()
 		scopeEventually(t, "the resolve ran", func() bool { return routing.Load() != nil })
@@ -677,7 +678,7 @@ func TestARoutesContextIsTheParentOfItsResolvesAndOfTheWorkArrivingOnItsLinks(t 
 				}}, nil
 			}, ServeOptions{})
 		})}}, background))
-		_, err := server.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+		_, err := server.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
 		// The worker is made by the resolve, on a task of the route.
 		for {
@@ -690,7 +691,7 @@ func TestARoutesContextIsTheParentOfItsResolvesAndOfTheWorkArrivingOnItsLinks(t 
 			deliveredOn(server)
 		}
 		// The worker's call reaches the server over the route link: its handler runs under the route's context.
-		held, err := worker.Get(who, jsonObject(), background, GetOptions{})
+		held, err := worker.Get(background, who, jsonObject(), GetOptions{})
 		must(t, err)
 		got, err := held.Call("app", nil, background)
 		must(t, err)
@@ -718,9 +719,9 @@ func TestRouteGCAFailedOrSuspendedAddressKeepsNoRouteStateOnceItsHoldersAreRelea
 			}
 			return worker(), nil
 		}})
-		failed, err := r.Tab.Hold(PlacedNotes, routeS("failed"), background, GetOptions{})
+		failed, err := r.Tab.Hold(background, PlacedNotes, routeS("failed"), GetOptions{})
 		must(t, err)
-		held, err := r.Tab.Get(PlacedNotes, routeS("held"), background, GetOptions{})
+		held, err := r.Tab.Get(background, PlacedNotes, routeS("held"), GetOptions{})
 		must(t, err)
 		r.Route.Suspend(Session.Address(jsonObject("id", "held")))
 		r.RouteLinks()[0].Close()
@@ -749,7 +750,7 @@ func TestRouteGCAClosedRouteLinkAndItsReleasedReferencesKeepNoRouteState(t *test
 		func() {
 			r := relay(t, relayedOptions{})
 			tab = r.Tab
-			notes, err := r.Tab.Get(PlacedNotes, routeS("S1"), background, GetOptions{})
+			notes, err := r.Tab.Get(background, PlacedNotes, routeS("S1"), GetOptions{})
 			must(t, err)
 			references = append(references, weak.Make(notes))
 			workers = append(workers, weak.Make(r.Worker("session|S1").(*chordHost)))
@@ -785,7 +786,7 @@ func TestRouteGCHoldsReleasedWhileTheirResolveNeverSettlesAreNotKept(t *testing.
 				return resolved{}, context.Cause(ctx)
 			}})
 			server = r.Server
-			notes, err := r.Tab.Hold(PlacedNotes, routeS("S1"), background, GetOptions{})
+			notes, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 			must(t, err)
 			r.Transported()
 			notes.Release()
@@ -795,6 +796,25 @@ func TestRouteGCHoldsReleasedWhileTheirResolveNeverSettlesAreNotKept(t *testing.
 		expectCollectedEventually(t, references...)
 		if server == nil {
 			t.Fatal("the server is gone")
+		}
+	})
+}
+
+// route.test.ts › resolve failures and re-resolves (no timer, slice 10 R2) › a rejected resolve fails its holders waiting
+// with its error: a `resolve` that ends its goroutine (runtime.Goexit, as testing.T.FailNow does) is the `resolve` that throws.
+func TestResolveFailuresAndReResolvesAResolveThatEndsItsGoroutineIsARejectedResolve(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		r := relay(t, relayedOptions{Resolve: func(contracts.Address, func() resolved, context.Context) (resolved, error) {
+			runtime.Goexit()
+			return resolved{}, nil
+		}})
+		notes, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
+		must(t, err)
+		r.Transported()
+		wantRouteWaiting(t, notes, "session|S1: "+errHandlerGoexit.Error())
+		scopeEventually(t, "the server reported the resolve failure", func() bool { return len(r.Errors.Server.All()) == 1 })
+		if errs := r.Errors.Server.All(); errs[0].Kind != ErrResolveFailed || errs[0].Address != "session|S1" {
+			t.Fatalf("error = %+v, want resolve_failed session|S1", errs[0])
 		}
 	})
 }

@@ -145,7 +145,7 @@ func (changes *TableChanges) Get(key any, ctx context.Context) (EvaluatedRow, er
 	var row EvaluatedRow
 	if start == 0 {
 		// A committed row is decoded by the table's columns: scalars and JSON, what the evaluator takes.
-		if row, err = changes.Handle.Get(encoded.Key, ctx); err != nil {
+		if row, err = changes.Handle.Get(ctx, encoded.Key); err != nil {
 			return nil, err
 		}
 	} else if from := writes[start-1]; from.kind == keyPut {

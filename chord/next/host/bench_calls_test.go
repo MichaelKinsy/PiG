@@ -58,7 +58,7 @@ func BenchmarkCalls(b *testing.B) {
 				Methods: map[string]contracts.MethodFunction{
 					"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil },
 					"set": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-						_, err := counter.Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", args) }, ctx)
+						_, err := counter.Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", args) })
 						return nil, err
 					},
 				},
@@ -77,7 +77,7 @@ func BenchmarkCalls(b *testing.B) {
 			}}, nil
 		}, ServeOptions{})
 	})}}, background))
-	store, err := host.Get(benchStore, jsonObject(), background, GetOptions{})
+	store, err := host.Get(background, benchStore, jsonObject(), GetOptions{})
 	must(b, err)
 	watch, err := store.Member("doubled").Watch(background)
 	must(b, err)
@@ -106,7 +106,7 @@ func BenchmarkCalls(b *testing.B) {
 	b.Run("activation churn (get, live, release)", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; b.Loop(); i++ {
-			item, err := host.Get(benchItem, jsonObject("id", float64(i)), background, GetOptions{})
+			item, err := host.Get(background, benchItem, jsonObject("id", float64(i)), GetOptions{})
 			if err != nil {
 				b.Fatal(err)
 			}

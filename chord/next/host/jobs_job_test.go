@@ -124,7 +124,7 @@ func TestJobStartCommitsNothingForAStartThatOnlyDedupes(t *testing.T) {
 	must(t, err)
 	frames := nexttest.FramesOf(watch)
 	records := recordsOf(job)
-	_, err = fixture.Self.Tx(func(tx *documents.Transaction) (any, error) {
+	_, err = fixture.Self.Tx(func(tx documents.Tx) (any, error) {
 		again, err := tx.Start(stageable(job), textArgs("a"), StartOptions{Key: new("k")})
 		if err != nil {
 			return nil, err
@@ -132,7 +132,7 @@ func TestJobStartCommitsNothingForAStartThatOnlyDedupes(t *testing.T) {
 		if again != run {
 			t.Error("a dedupe start returned another run")
 		}
-		if staged := tx.StagedOf(records); staged != nil {
+		if staged := tx.(*documents.Transaction).StagedOf(records); staged != nil {
 			t.Error("a dedupe start staged changes")
 		}
 		return nil, nil
@@ -149,7 +149,7 @@ func TestJobStartCommitsNothingForAStartThatOnlyDedupes(t *testing.T) {
 func TestJobStartReturnsTheSameRunForAKeyStartedTwiceInOneTransaction(t *testing.T) {
 	fixture := echoJob(t, JobImplementation{Run: echoRun()}, jobHostOptions{})
 	job := fixture.Job
-	runs, err := fixture.Self.Tx(func(tx *documents.Transaction) (any, error) {
+	runs, err := fixture.Self.Tx(func(tx documents.Tx) (any, error) {
 		one, err := tx.Start(stageable(job), textArgs("a"), StartOptions{Key: new("k")})
 		if err != nil {
 			return nil, err
@@ -214,7 +214,7 @@ func TestJobStartCountsRunsStartedEarlierInTheSameTransaction(t *testing.T) {
 		return JobImplementation{Run: func(any, JobCtx) (any, error) { return jsonObject("exit", float64(0)), nil }}
 	}, jobHostOptions{})
 	job := fixture.Job
-	_, err := fixture.Self.Tx(func(tx *documents.Transaction) (any, error) {
+	_, err := fixture.Self.Tx(func(tx documents.Tx) (any, error) {
 		if _, err := tx.Start(stageable(job), commandArgs("a")); err != nil {
 			return nil, err
 		}
@@ -321,10 +321,12 @@ func TestJobStartLetsFinishStartTheSameJobAgainWithTheSameKeyANewRunNotTheFinish
 }
 
 // job.test.ts › start › tx.start commits with the transaction's other writes, both or neither
+//
+// Pi: packages/chord/test/next/jobs/job.test.ts:261 (tx.start commits with the transaction's other writes, both or neither)
 func TestJobStartTxStartCommitsWithTheTransactionsOtherWritesBothOrNeither(t *testing.T) {
 	fixture := echoJob(t, JobImplementation{Run: echoRun()}, jobHostOptions{})
 	job, log := fixture.Job, fixture.Log
-	started, err := fixture.Self.Tx(func(tx *documents.Transaction) (any, error) {
+	started, err := fixture.Self.Tx(func(tx documents.Tx) (any, error) {
 		if err := appendLog(tx, log, "requested"); err != nil {
 			return nil, err
 		}
@@ -336,7 +338,7 @@ func TestJobStartTxStartCommitsWithTheTransactionsOtherWritesBothOrNeither(t *te
 		t.Fatalf("kind = %s", kind)
 	}
 	var discarded Run
-	_, err = fixture.Self.Tx(func(tx *documents.Transaction) (any, error) {
+	_, err = fixture.Self.Tx(func(tx documents.Tx) (any, error) {
 		if err := appendLog(tx, log, "lost"); err != nil {
 			return nil, err
 		}
@@ -371,6 +373,8 @@ func TestJobStartGivesAShortRunsHandleItsOutcomeHoweverLateTheCallerWaits(t *tes
 }
 
 // job.test.ts › start › waits by id for unsettled runs only: settled and unknown ids reject gone
+//
+// Pi: packages/chord/test/next/jobs/job.test.ts:297 (waits by id for unsettled runs only: settled and unknown ids reject gone)
 func TestJobStartWaitsByIDForUnsettledRunsOnlySettledAndUnknownIDsRejectGone(t *testing.T) {
 	g := newJobGate()
 	fixture := echoJob(t, JobImplementation{Run: gated(g)}, jobHostOptions{})
@@ -416,14 +420,14 @@ func TestJobStartStartsRunAfterTheCommitOutsideTheBatchOnceTheTransactionSettled
 		return JobImplementation{Run: func(args any, _ JobCtx) (any, error) {
 			note("run sees " + joinStrings(fixture.List()))
 			// Outside the batch and the line: a transaction of its own works.
-			_, err := self.Tx(func(tx *documents.Transaction) (any, error) {
+			_, err := self.Tx(func(tx documents.Tx) (any, error) {
 				return nil, appendLog(tx, log, "from run "+textOf(args))
 			}, background)
 			return textOf(args), err
 		}}
 	}, jobHostOptions{})
 	job, log := fixture.Job, fixture.Log
-	started, err := fixture.Self.Tx(func(tx *documents.Transaction) (any, error) {
+	started, err := fixture.Self.Tx(func(tx documents.Tx) (any, error) {
 		run, err := tx.Start(stageable(job), textArgs("a"))
 		if err != nil {
 			return nil, err
@@ -572,7 +576,7 @@ func TestJobStartRollsBackTheTransactionsOtherWritesWhenTheStatesInitialFailsNam
 		return JobImplementation{Run: echoRun()}
 	}, jobHostOptions{})
 	job, log := fixture.Job, fixture.Log
-	_, err := fixture.Self.Tx(func(tx *documents.Transaction) (any, error) {
+	_, err := fixture.Self.Tx(func(tx documents.Tx) (any, error) {
 		if err := appendLog(tx, log, "lost"); err != nil {
 			return nil, err
 		}
@@ -602,7 +606,7 @@ func TestJobStartIsRefusedBeforeItsObjectIsLiveAndOnceItEnded(t *testing.T) {
 			}}, nil
 		}, ServeOptions{})
 	}, jobHostOptions{})
-	item, err := host.Get(jobItemType, jsonObject("id", float64(1)), background, GetOptions{})
+	item, err := host.Get(background, jobItemType, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	expectChordError(t, early, data.CodeNotReady, "")
 	item.Release()

@@ -240,7 +240,7 @@ func TestHostAndPrincipalsAdmitsHostsAWritableContributionAddsAndRemovesAtRuntim
 	if got := status(); got != 403 {
 		t.Fatalf("status = %d, want 403", got)
 	}
-	handle, err := server.host.Get(tunnel, delta.JsonObjectOf(), background, host.GetOptions{})
+	handle, err := server.host.Get(background, tunnel, delta.JsonObjectOf(), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

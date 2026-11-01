@@ -40,10 +40,12 @@ func newParkedTestLoop() *parkedTestLoop {
 	return &parkedTestLoop{fakeLoop: newFakeLoop(), real: NewLoop()}
 }
 
-func (l *parkedTestLoop) Now() int64                             { return l.fakeLoop.Now() + l.skew.Load() }
-func (l *parkedTestLoop) Run(work func())                        { l.real.Run(work) }
-func (l *parkedTestLoop) Go(fn func())                           { l.real.Go(fn) }
-func (l *parkedTestLoop) Lend(signal *parking.Signal, fn func()) { l.real.Lend(signal, fn) }
+func (l *parkedTestLoop) Now() int64      { return l.fakeLoop.Now() + l.skew.Load() }
+func (l *parkedTestLoop) Run(work func()) { l.real.Run(work) }
+func (l *parkedTestLoop) Go(fn func())    { l.real.Go(fn) }
+func (l *parkedTestLoop) Lend(signal *parking.Signal, fn func(abandoned bool)) {
+	l.real.Lend(signal, fn)
+}
 
 // parkedHarness is the calls queued on a reference `app.gated(1)`.
 type parkedHarness struct {
@@ -512,7 +514,7 @@ func startLog(t testing.TB, ref *Reference, text string, ctx context.Context) *p
 func TestHostParkedCallsOnALoadingLocalReferenceAreQueuedAndSentInTheOrderTheyWereMade(t *testing.T) {
 	g := gatedLocal(t)
 	defer closeHosts(t, g.Host)
-	ref, err := g.Host.Hold(parkedGated, jsonObject("id", float64(1)), background, GetOptions{})
+	ref, err := g.Host.Hold(background, parkedGated, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	first := startLog(t, ref, "a", background)
 	second := startLog(t, ref, "b", background)
@@ -537,7 +539,7 @@ func TestHostParkedCallsOnALoadingLocalReferenceAreQueuedAndSentInTheOrderTheyWe
 func TestHostParkedCallsKeepTheirOrderWhenAHandlerCallsTheReferenceWhileTheyAreSent(t *testing.T) {
 	g := gatedLocal(t)
 	defer closeHosts(t, g.Host)
-	ref, err := g.Host.Hold(parkedGated, jsonObject("id", float64(1)), background, GetOptions{})
+	ref, err := g.Host.Hold(background, parkedGated, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	g.mu.Lock()
 	g.ref = ref
@@ -559,7 +561,7 @@ func TestHostParkedCallsKeepTheirOrderWhenAHandlerCallsTheReferenceWhileTheyAreS
 func TestHostParkedCallsStopBeingSentWhenOnesHandlerReleasesTheReference(t *testing.T) {
 	g := gatedLocal(t)
 	defer closeHosts(t, g.Host)
-	ref, err := g.Host.Hold(parkedGated, jsonObject("id", float64(1)), background, GetOptions{})
+	ref, err := g.Host.Hold(background, parkedGated, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	g.mu.Lock()
 	g.ref = ref
@@ -584,7 +586,7 @@ func TestHostParkedCallsAreCheckedAgainstTheirDeadlineWhenSent(t *testing.T) {
 	g := gatedLocal(t)
 	defer closeHosts(t, g.Host)
 	ready := 10 * time.Millisecond
-	ref, err := g.Host.Hold(parkedGated, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: &ready})
+	ref, err := g.Host.Hold(background, parkedGated, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: &ready})
 	must(t, err)
 	expired := startLog(t, ref, "a", background)
 	// The clock moves past the deadline without its timer having fired (`vi.setSystemTime`): the timer's job is pending.
@@ -605,7 +607,7 @@ func TestHostParkedCallsRejectAtTheReferencesReadyTimeoutMeasuredFromEachCall(t 
 	g := gatedLocal(t)
 	defer closeHosts(t, g.Host)
 	ready := 100 * time.Millisecond
-	ref, err := g.Host.Hold(parkedGated, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: &ready})
+	ref, err := g.Host.Hold(background, parkedGated, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: &ready})
 	must(t, err)
 	first := startLog(t, ref, "a", background)
 	g.Loop.AdvanceAsync(60)
@@ -626,7 +628,7 @@ func TestHostParkedCallsRejectAtTheReferencesReadyTimeoutMeasuredFromEachCall(t 
 func TestHostParkedCallsRejectAtOnceWhenTheirCallerCancelsTheOthersStayQueued(t *testing.T) {
 	g := gatedLocal(t)
 	defer closeHosts(t, g.Host)
-	ref, err := g.Host.Hold(parkedGated, jsonObject("id", float64(1)), background, GetOptions{})
+	ref, err := g.Host.Hold(background, parkedGated, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	cancellable, cancel := chordctx.WithCancel(background)
 	cancelled := startLog(t, ref, "a", cancellable)
@@ -648,7 +650,7 @@ func TestHostParkedCallsRejectAtOnceWhenTheirCallerCancelsTheOthersStayQueued(t 
 func TestHostParkedCallsRejectReleasedWhenTheReferenceIsReleasedNothingRuns(t *testing.T) {
 	g := gatedLocal(t)
 	defer closeHosts(t, g.Host)
-	ref, err := g.Host.Hold(parkedGated, jsonObject("id", float64(1)), background, GetOptions{})
+	ref, err := g.Host.Hold(background, parkedGated, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	call := startLog(t, ref, "a", background)
 	ref.Release()
@@ -665,7 +667,7 @@ func TestHostParkedCallsRejectReleasedWhenTheReferenceIsReleasedNothingRuns(t *t
 func TestHostParkedCallsRejectWithTheCauseWhenTheObjectFails(t *testing.T) {
 	g := gatedLocal(t)
 	defer closeHosts(t, g.Host)
-	ref, err := g.Host.Hold(parkedGated, jsonObject("id", float64(1)), background, GetOptions{})
+	ref, err := g.Host.Hold(background, parkedGated, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	call := startLog(t, ref, "a", background)
 	g.reject(errors.New("offline"))
@@ -680,7 +682,7 @@ func TestHostParkedCallsOnALoadingRemoteReferenceKeepOneDeadlineAcrossReconnects
 		p := rawProvider(t, rawLinkedOptions{Loop: loop})
 		defer closeHosts(t, p.Client)
 		ready := time.Second
-		notes, err := p.Client.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{ReadyTimeout: &ready})
+		notes, err := p.Client.Hold(background, Notes, jsonObject("session", "S1"), GetOptions{ReadyTimeout: &ready})
 		must(t, err)
 		call := startNotesCall(t, notes, "wait")
 		scopeEventually(t, "the hold reached the first peer", func() bool { return len(p.Peer.Kinds()) >= 1 })
@@ -726,7 +728,7 @@ func TestHostParkedCallsOnALoadingRemoteReferenceAreResolvedAgainstTheBindingThe
 	forEachCodec(t, func(t *testing.T) {
 		p := rawProvider(t, rawLinkedOptions{})
 		defer closeHosts(t, p.Client)
-		notes, err := p.Client.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
+		notes, err := p.Client.Hold(background, Notes, jsonObject("session", "S1"), GetOptions{})
 		must(t, err)
 		// Typed for the editor: before its first binding the reference may become either variant.
 		add := startCallWith(t, notes, "add", jsonObject("text", "a"))
@@ -781,9 +783,9 @@ func TestHostParkedCallsOnAReferenceReleasedWhileLoadingWithoutALinkNothingIsSen
 		client := newHost(t, HostOptions{OnError: func(HostError) {}})
 		defer closeHosts(t, client)
 		mustLoad(t)(client.Load(nil, background))
-		notes, err := client.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
+		notes, err := client.Hold(background, Notes, jsonObject("session", "S1"), GetOptions{})
 		must(t, err)
-		other, err := client.Hold(Notes, jsonObject("session", "S2"), background, GetOptions{})
+		other, err := client.Hold(background, Notes, jsonObject("session", "S2"), GetOptions{})
 		must(t, err)
 		call := startNotesCall(t, notes, "wait")
 		notes.Release()

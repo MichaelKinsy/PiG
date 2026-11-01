@@ -189,12 +189,12 @@ type Host interface {
 	// host address puts it: here, over a route, or over the parent link (`destination`). It waits while the reference is
 	// `loading` (before the host's publication too), `failed { transient }` or `failed { waiting }` until its
 	// `ReadyTimeout`, then returns the last cause and releases the reference; a broken failure returns at once.
-	Get(typ *contracts.Contract, params any, ctx context.Context, options GetOptions) (*Reference, error)
+	Get(ctx context.Context, typ *contracts.Contract, params any, options GetOptions) (*Reference, error)
 	// Hold is a reference at once, following its object until released: loading, live, failed (retried as its object is)
 	// and loading again while its link is down; it never fails. It returns an error at once only for invalid params (also
 	// before `Load`). A type not served where it goes is `loading` before the host's publication and `failed { waiting }`
 	// after it (bound when a publication serves it); a `hostAddress` or route that refuses fails it broken.
-	Hold(typ *contracts.Contract, params any, ctx context.Context, options GetOptions) (*Reference, error)
+	Hold(ctx context.Context, typ *contracts.Contract, params any, options GetOptions) (*Reference, error)
 	// Accept is a link from a child: this host serves its remote types over it, every hold and call arriving on it acting
 	// as options.Principal. ctx is the parent of the work arriving on it (its cancellation is dropped).
 	Accept(link link.Link, options LinkOptions, ctx context.Context) error
@@ -224,7 +224,7 @@ type Host interface {
 	// Registry is registry r's composed value as r's version sees it, for code outside objects, once it is usable: waits for
 	// the host's publication, then while it has no value (`unavailable/undeclared` without a provider, a first `compose`
 	// that failed, a version not served here: `contract_mismatch`) until its `ReadyTimeout`, then returns the last error.
-	Registry(r registries.Registry[any, any], ctx context.Context, options GetOptions) (*registries.RegistryValueSource, error)
+	Registry(ctx context.Context, r registries.Registry[any, any], options GetOptions) (*registries.RegistryValueSource, error)
 	// Root runs fn with a call context for code outside objects (a Durable tool, a CLI): the host's principal (or
 	// options.Principal), this host's incarnation, ctx's telemetry and signal, `ctx.Get`. When fn settles or ctx aborts, the
 	// context is sealed: its signal aborted, `ctx.Get` refused `released`, every reference it took released; an abort returns
@@ -633,7 +633,7 @@ func (h *chordHost) publishPlugins(table *staged, facets *namedMap[Facet]) error
 }
 
 // Get implements Host.
-func (h *chordHost) Get(typ *contracts.Contract, params any, ctx context.Context, options GetOptions) (*Reference, error) {
+func (h *chordHost) Get(ctx context.Context, typ *contracts.Contract, params any, options GetOptions) (*Reference, error) {
 	binding, err := h.acquire(typ, params, h.own(), ctx, ctx, options)
 	if err != nil {
 		return nil, err
@@ -643,7 +643,7 @@ func (h *chordHost) Get(typ *contracts.Contract, params any, ctx context.Context
 }
 
 // Hold implements Host.
-func (h *chordHost) Hold(typ *contracts.Contract, params any, ctx context.Context, options GetOptions) (*Reference, error) {
+func (h *chordHost) Hold(ctx context.Context, typ *contracts.Contract, params any, options GetOptions) (*Reference, error) {
 	var held *binding
 	var err error
 	h.enter(func() {
@@ -813,7 +813,7 @@ func (h *chordHost) References(typ *contracts.Contract) state.SourceHandle {
 }
 
 // Registry implements Host.
-func (h *chordHost) Registry(r registries.Registry[any, any], ctx context.Context, options GetOptions) (*registries.RegistryValueSource, error) {
+func (h *chordHost) Registry(ctx context.Context, r registries.Registry[any, any], options GetOptions) (*registries.RegistryValueSource, error) {
 	var (
 		err      error
 		waiting  linkedAbort

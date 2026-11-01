@@ -107,7 +107,7 @@ func commitsAfter(t *testing.T, store *ChordStore, seq int64) [][]string {
 // allRows is every row of handle, in key order.
 func allRows(t *testing.T, handle *TableHandle, definition *TableDefinition) []Row {
 	t.Helper()
-	iterator := handle.Rows(NewQuery(definition), background)
+	iterator := handle.Rows(background, NewQuery(definition))
 	defer iterator.Close()
 	var rows []Row
 	for {
@@ -283,7 +283,7 @@ func TestEagerMigrations(t *testing.T) {
 		if !ok || record.Version != 2 || record.State != StateReady {
 			t.Fatalf("second write = %#v, want the ready version 2 table write", commits[0].Writes[1])
 		}
-		row, err := v2.Get(Row{"id": "a"}, background)
+		row, err := v2.Get(background, Row{"id": "a"})
 		must(t, err)
 		qEqual(t, row["id"], "a")
 		qEqual(t, qJSON(t, row["meta"]), `{"a":1,"b":0}`)
@@ -310,7 +310,7 @@ func TestMigrationPatches(t *testing.T) {
 			t.Fatalf("Commit: %v", err)
 		}
 		v2 := prepared(t, store, cells2)
-		row, err := v2.Get(Row{"id": "a"}, background)
+		row, err := v2.Get(background, Row{"id": "a"})
 		must(t, err)
 		qEqual(t, row, Row{"id": "a", "data": nil, "more": nil})
 	})

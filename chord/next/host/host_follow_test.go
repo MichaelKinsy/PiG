@@ -197,7 +197,7 @@ func expectEqual(t *testing.T, what string, got, want any) {
 	}
 }
 
-// follow.test.ts › ends during activation and in one batch (review regressions) › an end before the attachment resolved
+// packages/chord/test/next/host/follow.test.ts:206 › ends during activation and in one batch (review regressions) › an end before the attachment resolved
 // keeps the attachment's value on the source
 func TestEndsDuringActivationAndInOneBatchAnEndBeforeTheAttachmentResolvedKeepsTheAttachmentsValueOnTheSource(t *testing.T) {
 	h := newMemberHarness(t)
@@ -215,7 +215,7 @@ func TestEndsDuringActivationAndInOneBatchAnEndBeforeTheAttachmentResolvedKeepsT
 	expectEqual(t, "value", h.read(t, source), delta.JsonValue(memberCount(7)))
 }
 
-// follow.test.ts › ends during activation and in one batch (review regressions) › a retirement and an end inside one
+// packages/chord/test/next/host/follow.test.ts:270 › ends during activation and in one batch (review regressions) › a retirement and an end inside one
 // batch: the watch gets the retirement, then ends
 func TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds(t *testing.T) {
 	h := newMemberHarness(t)
@@ -242,7 +242,7 @@ func TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWa
 	expectCalls(t, calls.Items(), []chord.WatchCall[delta.JsonValue]{valueCall(memberCount(7), true)})
 }
 
-// follow.test.ts › ends during activation and in one batch (review regressions) › a call and an end outside a batch with
+// packages/chord/test/next/host/follow.test.ts:292 › ends during activation and in one batch (review regressions) › a call and an end outside a batch with
 // nothing watching: a later watch opens at the value and ends
 func TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds(t *testing.T) {
 	h := newMemberHarness(t)
@@ -661,7 +661,7 @@ func followFinish(t *testing.T, s *followServed) {
 	t.Helper()
 	must(t, <-s.loaded)
 	var err error
-	s.View, err = s.Host.Get(followView, jsonObject(), background, GetOptions{})
+	s.View, err = s.Host.Get(background, followView, jsonObject(), GetOptions{})
 	must(t, err)
 }
 
@@ -669,7 +669,7 @@ func followBatch(s *followServed) *state.Batch { return s.Host.(*chordHost).batc
 
 func followCalls(calls []chord.WatchCall[delta.JsonValue]) []any { return msCalls(calls) }
 
-// follow.test.ts › calls › inside a running batch: one frame per commit, and a derive over two views computes once with
+// packages/chord/test/next/host/follow.test.ts:80 › calls › inside a running batch: one frame per commit, and a derive over two views computes once with
 // both.
 func TestHostFollowCallsInsideARunningBatchOneFramePerCommitAndADeriveOverTwoViewsComputesOnceWithBoth(t *testing.T) {
 	a, b, loop := followRuntimes()
@@ -696,7 +696,7 @@ func TestHostFollowCallsInsideARunningBatchOneFramePerCommitAndADeriveOverTwoVie
 	}
 }
 
-// follow.test.ts › calls › outside any batch: queued and applied in one batch on the next microtask.
+// packages/chord/test/next/host/follow.test.ts:106 › calls › outside any batch: queued and applied in one batch on the next microtask.
 func TestHostFollowCallsOutsideAnyBatchQueuedAndAppliedInOneBatchOnTheNextMicrotask(t *testing.T) {
 	a, b, loop := followRuntimes()
 	s := followServeOn(t, a, b, loop)
@@ -719,7 +719,7 @@ func TestHostFollowCallsOutsideAnyBatchQueuedAndAppliedInOneBatchOnTheNextMicrot
 	}
 }
 
-// follow.test.ts › calls › before the attachment resolved: applied in order on its value.
+// packages/chord/test/next/host/follow.test.ts:119 › calls › before the attachment resolved: applied in order on its value.
 func TestHostFollowCallsBeforeTheAttachmentResolvedAppliedInOrderOnItsValue(t *testing.T) {
 	a, b, loop := followRuntimes()
 	a.gate = make(chan struct{})
@@ -732,14 +732,14 @@ func TestHostFollowCallsBeforeTheAttachmentResolvedAppliedInOrderOnItsValue(t *t
 	nexttest.RequireJSONEqual(t, kmMember(t, s.View, "a"), kmN(6))
 }
 
-// follow.test.ts › activation › an absent address fails the activation transient; a failed activation detaches what
+// packages/chord/test/next/host/follow.test.ts:149 › activation › an absent address fails the activation transient; a failed activation detaches what
 // attached.
 func TestHostFollowActivationAnAbsentAddressFailsTheActivationTransientAFailedActivationDetachesWhatAttached(t *testing.T) {
 	a, b, loop := followRuntimes()
 	b.absent = true
 	s := followServeOn(t, a, b, loop)
 	<-s.loaded
-	_, err := s.Host.Get(followView, jsonObject(), background, GetOptions{ReadyTimeout: followMs(50)})
+	_, err := s.Host.Get(background, followView, jsonObject(), GetOptions{ReadyTimeout: followMs(50)})
 	if err == nil || !strings.Contains(err.Error(), "followed address is absent") {
 		t.Fatalf("get = %v, want it to fail with followed address is absent", err)
 	}
@@ -759,7 +759,7 @@ func TestHostFollowActivationAnAbsentAddressFailsTheActivationTransientAFailedAc
 	must(t, s.Host.Close(background))
 }
 
-// follow.test.ts › ends (R4) › failed: the live object fails transient once, reported, and its retry attaches again.
+// packages/chord/test/next/host/follow.test.ts:167 › ends (R4) › failed: the live object fails transient once, reported, and its retry attaches again.
 func TestHostFollowEndsFailedTheLiveObjectFailsTransientOnceReportedAndItsRetryAttachesAgain(t *testing.T) {
 	a, b, loop := followRuntimes()
 	s := followServeOn(t, a, b, loop)
@@ -793,7 +793,7 @@ func TestHostFollowEndsFailedTheLiveObjectFailsTransientOnceReportedAndItsRetryA
 	must(t, s.Host.Close(background))
 }
 
-// follow.test.ts › ends (R4) › ended: final; a queued retirement reaches the watch first, the value stays, a new watch ends
+// packages/chord/test/next/host/follow.test.ts:187 › ends (R4) › ended: final; a queued retirement reaches the watch first, the value stays, a new watch ends
 // at once.
 func TestHostFollowEndsEndedIsFinalAQueuedRetirementReachesTheWatchFirstTheValueStaysANewWatchEndsAtOnce(t *testing.T) {
 	a, b, loop := followRuntimes()
@@ -872,7 +872,7 @@ func TestHostFollowAnEndedOrFailedEndBeforeTheAttachmentResolvedFailsTheActivati
 	}
 }
 
-// follow.test.ts › ends during activation and in one batch (review regressions) › an end while the object activates (after
+// packages/chord/test/next/host/follow.test.ts:245 › ends during activation and in one batch (review regressions) › an end while the object activates (after
 // its sources attached) fails the activation transient.
 func TestHostFollowAnEndWhileTheObjectActivatesAfterItsSourcesAttachedFailsTheActivationTransient(t *testing.T) {
 	a, _, loop := followRuntimes()
@@ -895,7 +895,7 @@ func TestHostFollowAnEndWhileTheObjectActivatesAfterItsSourcesAttachedFailsTheAc
 			}}, nil
 		}, ServeOptions{})
 	})}}, background))
-	if _, err := host.Get(view, jsonObject(), background, GetOptions{ReadyTimeout: followMs(50)}); err == nil {
+	if _, err := host.Get(background, view, jsonObject(), GetOptions{ReadyTimeout: followMs(50)}); err == nil {
 		t.Fatalf("get succeeded, want a rejection")
 	}
 	if !ended.Load() {
@@ -913,7 +913,7 @@ func TestHostFollowAnEndWhileTheObjectActivatesAfterItsSourcesAttachedFailsTheAc
 	must(t, host.Close(background))
 }
 
-// follow.test.ts › ends during activation and in one batch (review regressions) › an end outside a batch after calls of two
+// packages/chord/test/next/host/follow.test.ts:312 › ends during activation and in one batch (review regressions) › an end outside a batch after calls of two
 // views: the views of one commit are delivered together.
 func TestHostFollowAnEndOutsideABatchAfterCallsOfTwoViewsTheViewsOfOneCommitAreDeliveredTogether(t *testing.T) {
 	a, b, loop := followRuntimes()
@@ -947,7 +947,7 @@ func followSourcesOf(runtimes ...*followRuntime) []weak.Pointer[followSource] {
 	return out
 }
 
-// follow.test.ts › GC › a source its runtime ended is still detached at the object's end, then collected.
+// packages/chord/test/next/host/follow.test.ts:327 › GC › a source its runtime ended is still detached at the object's end, then collected.
 func TestHostFollowGCASourceItsRuntimeEndedIsStillDetachedAtTheObjectsEndThenCollected(t *testing.T) {
 	var refs []weak.Pointer[followSource]
 	var a *followRuntime
@@ -971,7 +971,7 @@ func TestHostFollowGCASourceItsRuntimeEndedIsStillDetachedAtTheObjectsEndThenCol
 	expectCollectedEventually(t, refs...)
 }
 
-// follow.test.ts › GC › an ended object's followed sources are collected, and their observers detached.
+// packages/chord/test/next/host/follow.test.ts:338 › GC › an ended object's followed sources are collected, and their observers detached.
 func TestHostFollowGCAnEndedObjectsFollowedSourcesAreCollectedAndTheirObserversDetached(t *testing.T) {
 	var refs []weak.Pointer[followSource]
 	var a *followRuntime

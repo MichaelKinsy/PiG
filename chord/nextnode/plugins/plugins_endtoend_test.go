@@ -162,7 +162,7 @@ func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThen
 		}
 		return label
 	}
-	notes, err := server.Get(notesContract, delta.NewJsonObject(0), background, host.GetOptions{})
+	notes, err := server.Get(background, notesContract, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +293,7 @@ func TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost(t *testing.T) {
 	if _, err := server.Load(nil, background); err != nil {
 		t.Fatal(err)
 	}
-	notes, err := server.Get(notesContract, delta.NewJsonObject(0), background, host.GetOptions{})
+	notes, err := server.Get(background, notesContract, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -331,7 +331,7 @@ func TestEndToEndTheAppsGoHostCannotGetALocalTypeAPluginServes(t *testing.T) {
 		t.Fatalf("the probe reads %v, want v1", label)
 	}
 	short := 500 * time.Millisecond
-	ref, err := server.Get(pcIndexContract, delta.NewJsonObject(0), background, host.GetOptions{ReadyTimeout: &short})
+	ref, err := server.Get(background, pcIndexContract, delta.NewJsonObject(0), host.GetOptions{ReadyTimeout: &short})
 	if err == nil {
 		ref.Release()
 		t.Fatal("the app's Go host got a local type of its plugins")

@@ -121,7 +121,7 @@ func BenchmarkCompressionEndToEnd(b *testing.B) {
 		b.Run(each.label, func(b *testing.B) {
 			server, client, received := benchCompressionLinked(b, each.server, each.client)
 			get := func() *Reference {
-				ref, err := client.Get(benchCompressionView, jsonObject(), background, GetOptions{})
+				ref, err := client.Get(background, benchCompressionView, jsonObject(), GetOptions{})
 				must(b, err)
 				return ref
 			}

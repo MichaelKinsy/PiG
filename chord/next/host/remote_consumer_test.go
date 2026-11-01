@@ -31,7 +31,7 @@ type gotReference struct {
 func asyncGet(host Host, typ *contracts.Contract, params any, ctx context.Context, options GetOptions) <-chan gotReference {
 	result := make(chan gotReference, 1)
 	go func() {
-		ref, err := host.Get(typ, params, ctx, options)
+		ref, err := host.Get(ctx, typ, params, options)
 		result <- gotReference{ref, err}
 	}()
 	return result
@@ -103,7 +103,7 @@ func TestConsumerReferencesOverALink(t *testing.T) {
 		t.Run("are live and hydrated when got, with the variant of the link's principal", func(t *testing.T) {
 			l := linked(t, func(h FacetHost) error { _, err := serveNotes(h, nil); return err }, linkedOptions{Child: guestPrincipal("S1")})
 			addNote(t, l.Server, "S1", "a")
-			notes, err := l.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := l.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			if variant, _, _ := notes.Variant(); variant != "reader" {
 				t.Fatalf("variant = %q, want reader", variant)
@@ -151,7 +151,7 @@ func TestConsumerReferencesOverALink(t *testing.T) {
 					}}, nil
 				}, ServeOptions{})
 			})}}, background))
-			view, err := client.Get(View, jsonObject(), background, GetOptions{})
+			view, err := client.Get(background, View, jsonObject(), GetOptions{})
 			must(t, err)
 			watch, err := view.Member("pair").Watch(background)
 			must(t, err)
@@ -175,7 +175,7 @@ func TestConsumerReferencesOverALink(t *testing.T) {
 		// Ports "call methods: results, ChordErrors, PluginErrors and other throws".
 		t.Run("call methods: results, ChordErrors, PluginErrors and other throws", func(t *testing.T) {
 			l := linked(t, func(h FacetHost) error { _, err := serveNotes(h, nil); return err }, linkedOptions{})
-			notes, err := l.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := l.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			if variant, _, _ := notes.Variant(); variant != "editor" {
 				t.Fatalf("variant = %q, want the editor", variant)
@@ -204,7 +204,7 @@ func TestConsumerReferencesOverALink(t *testing.T) {
 		// Ports "carry bytes as raw segments both ways".
 		t.Run("carry bytes as raw segments both ways", func(t *testing.T) {
 			l := linked(t, func(h FacetHost) error { _, err := serveNotes(h, nil); return err }, linkedOptions{})
-			notes, err := l.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := l.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			echoed, err := notes.Call("echo", jsonObject("data", []byte{1, 2, 3}), background)
 			must(t, err)
@@ -222,7 +222,7 @@ func TestConsumerReferencesOverALink(t *testing.T) {
 				probe, err = serveNotes(h, nil)
 				return err
 			}, linkedOptions{})
-			notes, err := l.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := l.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			cancellable, cancel := chordctx.WithCancel(background)
 			call := startCall(t, notes, "wait", nil, cancellable)
@@ -243,7 +243,7 @@ func TestConsumerReferencesOverALink(t *testing.T) {
 				probe, err = serveNotes(h, nil)
 				return err
 			}, linkedOptions{})
-			notes, err := l.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := l.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			watch, err := notes.Member("notes").Watch(background)
 			must(t, err)
@@ -261,7 +261,7 @@ func TestConsumerReferencesOverALink(t *testing.T) {
 			settleLinked(l)
 			<-waited.Done()
 			// The object ended with its last reference: a new get runs the factory again.
-			_, err = l.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			_, err = l.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			requireStrings(t, probe.Factories(), []string{"S1 owner", "S1 owner"})
 		})
@@ -439,7 +439,7 @@ func TestConsumerProtocolErrors(t *testing.T) {
 		// Ports "close the link on a malformed error envelope".
 		t.Run("close the link on a malformed error envelope", func(t *testing.T) {
 			p := rawProvider(t, rawLinkedOptions{})
-			notes, err := p.Client.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := p.Client.Hold(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			hold := p.Peer.Next("hold").(*link.HoldMessage).Hold
 			p.Peer.Send(&link.FailedMessage{Hold: hold, Cause: link.WireCause{
@@ -511,7 +511,7 @@ func TestConsumerCostGuards(t *testing.T) {
 			must(t, l.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 			must(t, client.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, meter.Context))
 			addNote(t, l.Server, "S1", "a")
-			notes, err := client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			first := memberValue(t, notes, "notes").([]any)[0]
 			addNote(t, l.Server, "S1", "b")
@@ -609,7 +609,7 @@ func pairOf(t testing.TB) *pairHost {
 	bindNext(t, peer)
 	bindNext(t, peer)
 	must(t, <-loading)
-	view, err := client.Get(Pair, jsonObject(), background, GetOptions{})
+	view, err := client.Get(background, Pair, jsonObject(), GetOptions{})
 	must(t, err)
 	watch, err := view.Member("pair").Watch(background)
 	must(t, err)
@@ -679,7 +679,7 @@ func TestConsumerBytesOutsideMethodsWithBytes(t *testing.T) {
 					}}, nil
 				}, ServeOptions{})
 			}, linkedOptions{})
-			echo, err := l.Client.Get(Echo, jsonObject(), background, GetOptions{})
+			echo, err := l.Client.Get(background, Echo, jsonObject(), GetOptions{})
 			must(t, err)
 			echoed, err := echo.Call("echo", jsonObject("$bytes", 0.0), background)
 			must(t, err)
@@ -801,7 +801,7 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 		// Ports "limits per part at the consumer › rejects a call whose result is past the link's limits with too_large/part; the link stays".
 		t.Run("rejects a call whose result is past the link's limits with too_large/part; the link stays", func(t *testing.T) {
 			p := rawProvider(t, part50)
-			notes, err := p.Client.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := p.Client.Hold(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			bindNext(t, p.Peer)
 			settle(p.Peer)
@@ -820,9 +820,9 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 		// Ports "fails a hold whose snapshot is past the limits broken, releases it, and binds the message's others".
 		t.Run("fails a hold whose snapshot is past the limits broken, releases it, and binds the message's others", func(t *testing.T) {
 			p := rawProvider(t, part50)
-			big, err := p.Client.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			big, err := p.Client.Hold(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
-			small, err := p.Client.Hold(Notes, jsonObject("session", "S2"), background, GetOptions{})
+			small, err := p.Client.Hold(background, Notes, jsonObject("session", "S2"), GetOptions{})
 			must(t, err)
 			one, two := p.Peer.Next("hold").(*link.HoldMessage), p.Peer.Next("hold").(*link.HoldMessage)
 			p.Peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{
@@ -860,7 +860,7 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 		// Ports "acknowledges a message waiting for its asynchronous inflate only once applied, in order (race 14)".
 		t.Run("acknowledges a message waiting for its asynchronous inflate only once applied, in order (race 14)", func(t *testing.T) {
 			p := rawProvider(t, rawLinkedOptions{})
-			notes, err := p.Client.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := p.Client.Hold(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			hold := p.Peer.Next("hold").(*link.HoldMessage).Hold
 			p.Peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{
@@ -880,7 +880,7 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 		// Ports "drops a message whose asynchronous inflate is in flight when the link closes, and those behind it (race 13)".
 		t.Run("drops a message whose asynchronous inflate is in flight when the link closes, and those behind it (race 13)", func(t *testing.T) {
 			p := rawProvider(t, rawLinkedOptions{})
-			notes, err := p.Client.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := p.Client.Hold(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			hold := p.Peer.Next("hold").(*link.HoldMessage).Hold
 			p.Peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{
@@ -902,9 +902,9 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 		t.Run("inflates nothing it gave up (Q1): a corrupt deflated result of an unknown call, an entry of a released hold (both paths)", func(t *testing.T) {
 			for _, compression := range []link.Compression{nextnode.NodeCompression, nil} {
 				p := rawProvider(t, rawLinkedOptions{Compression: compression})
-				kept, err := p.Client.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
+				kept, err := p.Client.Hold(background, Notes, jsonObject("session", "S1"), GetOptions{})
 				must(t, err)
-				released, err := p.Client.Hold(Notes, jsonObject("session", "S2"), background, GetOptions{})
+				released, err := p.Client.Hold(background, Notes, jsonObject("session", "S2"), GetOptions{})
 				must(t, err)
 				a, b := bindNext(t, p.Peer), bindNext(t, p.Peer)
 				// The acks of the two bindings (Pi's next("ack") below meets the state's: its turn order does the same).
@@ -934,7 +934,7 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 		t.Run("checks a deflated part's wire size before inflating it: corrupt data past the limit only fails its hold", func(t *testing.T) {
 			for _, compression := range []link.Compression{nextnode.NodeCompression, nil} {
 				p := rawProvider(t, rawLinkedOptions{Compression: compression, Limits: link.PartLimits{Part: new(10.0)}})
-				notes, err := p.Client.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
+				notes, err := p.Client.Hold(background, Notes, jsonObject("session", "S1"), GetOptions{})
 				must(t, err)
 				hold := p.Peer.Next("hold").(*link.HoldMessage).Hold
 				corrupt := repeatBytes(255, 20)
@@ -957,7 +957,7 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 		// Ports "keeps a hold failed for a part past the limits off the next link until retry, offline retry included".
 		t.Run("keeps a hold failed for a part past the limits off the next link until retry, offline retry included", func(t *testing.T) {
 			p := rawProvider(t, part50)
-			notes, err := p.Client.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := p.Client.Hold(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			hold := p.Peer.Next("hold").(*link.HoldMessage).Hold
 			p.Peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{
@@ -994,7 +994,7 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 			var clientRef weak.Pointer[chordHost]
 			func() {
 				p := rawProvider(t, rawLinkedOptions{})
-				_, err := p.Client.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
+				_, err := p.Client.Hold(background, Notes, jsonObject("session", "S1"), GetOptions{})
 				must(t, err)
 				hold := p.Peer.Next("hold").(*link.HoldMessage).Hold
 				p.Peer.Send(&link.BoundMessage{Holds: []link.BoundEntry{{
@@ -1017,9 +1017,9 @@ func TestConsumerLimitsPerPart(t *testing.T) {
 		// Ports "fails only the hold of a state part past the limits (race 10); the others of the message apply".
 		t.Run("fails only the hold of a state part past the limits (race 10); the others of the message apply", func(t *testing.T) {
 			p := rawProvider(t, part50)
-			one, err := p.Client.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			one, err := p.Client.Hold(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
-			two, err := p.Client.Hold(Notes, jsonObject("session", "S2"), background, GetOptions{})
+			two, err := p.Client.Hold(background, Notes, jsonObject("session", "S2"), GetOptions{})
 			must(t, err)
 			a, b := bindNext(t, p.Peer), bindNext(t, p.Peer)
 			settle(p.Peer)

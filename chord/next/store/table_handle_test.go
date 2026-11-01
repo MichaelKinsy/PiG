@@ -63,15 +63,15 @@ func TestTableHandle(t *testing.T) {
 	t.Run("reads outside a transaction", func(t *testing.T) {
 		t.Run("get takes a key object and reads committed rows as stored", func(t *testing.T) {
 			_, edits, _ := filledHandle(t, 3)
-			row, err := edits.Get(Row{"id": "e001"}, background)
+			row, err := edits.Get(background, Row{"id": "e001"})
 			noError(t, err)
 			nexttest.RequireJSONEqual(t, row, nexttest.ParseJSON(t, `{"id":"e001","path":"p/1","at":1,"done":false,"meta":{"a":1}}`))
-			row, err = edits.Get(Row{"id": "nope"}, background)
+			row, err = edits.Get(background, Row{"id": "nope"})
 			noError(t, err)
 			if row != nil {
 				t.Fatalf("Get(nope) = %v, want absent", row)
 			}
-			_, err = edits.Get(Row{"id": "e001", "path": "x"}, background)
+			_, err = edits.Get(background, Row{"id": "e001", "path": "x"})
 			_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
 		})
 
@@ -85,7 +85,7 @@ func TestTableHandle(t *testing.T) {
 			var seen []string
 			options := PageOptions{}
 			for {
-				page, err := edits.Page(q, 3, background, options)
+				page, err := edits.Page(background, q, 3, options)
 				noError(t, err)
 				if len(page.Items) > 3 {
 					t.Fatalf("page has %d items", len(page.Items))
@@ -98,7 +98,7 @@ func TestTableHandle(t *testing.T) {
 				}
 				options = PageOptions{After: page.Next}
 			}
-			whole, err := edits.Page(q, 100, background, PageOptions{})
+			whole, err := edits.Page(background, q, 100, PageOptions{})
 			noError(t, err)
 			var all []string
 			for _, row := range whole.Items {
@@ -110,12 +110,12 @@ func TestTableHandle(t *testing.T) {
 			if want := []string{"p/2:e008", "p/2:e005", "p/2:e002", "p/1:e007"}; !equalStrings(all[:4], want) {
 				t.Fatalf("first four = %v, want %v", all[:4], want)
 			}
-			four, err := edits.Page(q, 4, background, PageOptions{})
+			four, err := edits.Page(background, q, 4, PageOptions{})
 			noError(t, err)
 			if four.Next == nil {
 				t.Fatalf("a page of 4 of 10 has no next")
 			}
-			everything, err := edits.Page(NewQuery(definition), 10, background, PageOptions{})
+			everything, err := edits.Page(background, NewQuery(definition), 10, PageOptions{})
 			noError(t, err)
 			if everything.Next != nil {
 				t.Fatalf("the last page has next %q", *everything.Next)
@@ -124,7 +124,7 @@ func TestTableHandle(t *testing.T) {
 
 		t.Run("rows reads every page; count counts", func(t *testing.T) {
 			_, edits, definition := filledHandle(t, 250)
-			rows := edits.Rows(NewQuery(definition).Where(func(e ColumnRefs) Condition { return Gte(e["at"], 10) }), background)
+			rows := edits.Rows(background, NewQuery(definition).Where(func(e ColumnRefs) Condition { return Gte(e["at"], 10) }))
 			defer rows.Close()
 			var ids []string
 			for {
@@ -138,12 +138,12 @@ func TestTableHandle(t *testing.T) {
 			if len(ids) != 240 || ids[0] != "e010" {
 				t.Fatalf("rows = %d first %q, want 240 first e010", len(ids), ids[0])
 			}
-			count, err := edits.Count(NewQuery(definition).Where(func(e ColumnRefs) Condition { return Eq(e["path"], "p/0") }), background)
+			count, err := edits.Count(background, NewQuery(definition).Where(func(e ColumnRefs) Condition { return Eq(e["path"], "p/0") }))
 			noError(t, err)
 			if count != 84 {
 				t.Fatalf("count(p/0) = %d, want 84", count)
 			}
-			count, err = edits.Count(NewQuery(definition).Where(func(e ColumnRefs) Condition { return IsNull(e["note"]) }), background)
+			count, err = edits.Count(background, NewQuery(definition).Where(func(e ColumnRefs) Condition { return IsNull(e["note"]) }))
 			noError(t, err)
 			if count != 250 {
 				t.Fatalf("count(note is null) = %d, want 250", count)
@@ -154,20 +154,22 @@ func TestTableHandle(t *testing.T) {
 			_, edits, definition := filledHandle(t, 1)
 			other, err := DefineTable("other", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Str())}, Key: []string{"id"}})
 			noError(t, err)
-			_, err = edits.Page(NewQuery(other), 1, background, PageOptions{})
+			_, err = edits.Page(background, NewQuery(other), 1, PageOptions{})
 			_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
-			_, err = edits.Page(NewQuery(definition), 0, background, PageOptions{})
+			_, err = edits.Page(background, NewQuery(definition), 0, PageOptions{})
 			_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
 			// Pi's `1.5` is no integer: Go's limit is an int64, so the check is the positive-integer one (designed out).
 			after := "x"
-			_, err = edits.Page(NewQuery(definition), 1, background, PageOptions{After: &after})
+			_, err = edits.Page(background, NewQuery(definition), 1, PageOptions{After: &after})
 			_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
 		})
 
 		t.Run("reads go through the store's guard: refused once the store closed", func(t *testing.T) {
 			store, edits, _ := filledHandle(t, 1)
-			noError(t, store.Close(background))
-			_, err := edits.Get(Row{"id": "e000"}, background)
+			// table-handle.test.ts:120: the close goes through the Store interface OpenStore returns.
+			var held Store = store
+			noError(t, held.Close(background))
+			_, err := edits.Get(background, Row{"id": "e000"})
 			_ = rejected(t, err, data.CodeReleased, "")
 		})
 	})
@@ -179,7 +181,7 @@ func TestTableHandle(t *testing.T) {
 			noError(t, store.Maintain(func(executor sqlite.SqliteExecutor) error {
 				return executor.Run(`UPDATE "app.store:edits" SET "meta$v" = 2`)
 			}))
-			_, err := edits.Get(Row{"id": "e000"}, background)
+			_, err := edits.Get(background, Row{"id": "e000"})
 			_ = rejected(t, err, data.CodeUnavailable, "")
 			if len(owner.failures) != 1 {
 				t.Fatalf("owner failures = %d, want 1", len(owner.failures))
@@ -202,9 +204,9 @@ func TestTableHandle(t *testing.T) {
 			v2, err := EvolveTable(definition, func(e *TableEditor) *TableEditor { return e.Rename("note", "comment") })
 			noError(t, err)
 			tableIn(t, store, v2)
-			_, err = old.Get(Row{"id": "e0"}, background)
+			_, err = old.Get(background, Row{"id": "e0"})
 			_ = rejected(t, err, data.CodeReleased, data.ReasonVersion)
-			_, err = old.Count(NewQuery(definition), background)
+			_, err = old.Count(background, NewQuery(definition))
 			_ = rejected(t, err, data.CodeReleased, data.ReasonVersion)
 			if err := old.AssertVersion(); err == nil || !strings.Contains(err.Error(), "the store has version 2") {
 				t.Fatalf("AssertVersion = %v, want the store has version 2", err)
@@ -230,7 +232,7 @@ func TestTableHandle(t *testing.T) {
 			// the migration, which this test would then wait for.
 			reading := make(chan error, 1)
 			go func() {
-				_, err := old.Get(Row{"id": "x"}, background)
+				_, err := old.Get(background, Row{"id": "x"})
 				reading <- err
 			}()
 			var refused error

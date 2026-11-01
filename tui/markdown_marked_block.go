@@ -8,9 +8,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
-
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -213,7 +210,7 @@ func markedDefCandidate(line string) bool {
 
 // markedLinkLabel is a definition tag or reference key as marked forms it: lower-cased (String.prototype.toLowerCase) with every whitespace run replaced by one space (rules.ts multipleSpaceGlobal).
 func markedLinkLabel(label string) string {
-	label = cases.Lower(language.Und).String(label)
+	label = jsstring.ToLower(label)
 	var out strings.Builder
 	space := false
 	for _, r := range label {

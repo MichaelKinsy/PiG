@@ -157,7 +157,7 @@ func TestHostLinkTwoSidedLinks(t *testing.T) {
 		// host-link.test.ts: two-sided links › carry the server's holds of a worker type and the worker's holds of a server type over one route link
 		t.Run("carry the server's holds of a worker type and the worker's holds of a server type over one route link", func(t *testing.T) {
 			rig := relay(t, relayedOptions{Server: rhServeWho, Worker: rhServeAsker})
-			asker, err := rig.Tab.Get(rhAsker, jsonObject("session", "S1"), background, GetOptions{})
+			asker, err := rig.Tab.Get(background, rhAsker, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			// The worker's factory held `ServerWho` over its parent link, the route link the server made.
 			if who := rhRefValue(t, asker, "who"); who != "worker" {
@@ -171,7 +171,7 @@ func TestHostLinkTwoSidedLinks(t *testing.T) {
 		// host-link.test.ts: two-sided links › carry calls both ways with equal ids: each side's ids are its own
 		t.Run("carry calls both ways with equal ids: each side's ids are its own", func(t *testing.T) {
 			rig := relay(t, relayedOptions{Server: rhServeWho, Worker: rhServeAsker})
-			asker, err := rig.Tab.Get(rhAsker, jsonObject("session", "S1"), background, GetOptions{})
+			asker, err := rig.Tab.Get(background, rhAsker, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			// Server to worker: call 0 on the route link; inside it, worker to server: call 0 the other way.
 			got, err := asker.Call("ask", "x", background)
@@ -189,7 +189,7 @@ func TestHostLinkTwoSidedLinks(t *testing.T) {
 		// host-link.test.ts: two-sided links › let a worker reach another worker through the server
 		t.Run("let a worker reach another worker through the server", func(t *testing.T) {
 			rig := relay(t, relayedOptions{Worker: rhServeAsker})
-			neighbour, err := rig.Tab.Get(rhNeighbour, jsonObject("session", "S1", "other", "S2"), background, GetOptions{})
+			neighbour, err := rig.Tab.Get(background, rhNeighbour, jsonObject("session", "S1", "other", "S2"), GetOptions{})
 			must(t, err)
 			if got := rig.Resolves(); len(got) != 2 || got[0] != "session|S1" || got[1] != "session|S2" {
 				t.Fatalf("resolves = %v, want [session|S1 session|S2]", got)
@@ -203,13 +203,13 @@ func TestHostLinkTwoSidedLinks(t *testing.T) {
 			workers := newRawWorkers(t, rawWorkerOptions{})
 			rig := relay(t, relayedOptions{Resolve: workers.Resolve})
 			own := rhGo(func() (*Reference, error) {
-				return rig.Server.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+				return rig.Server.Get(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 			})
 			worker := rhFirstPeer(t, workers)
 			first := worker.Next("hold").(*link.HoldMessage)
 			rhBindPlaced(t, worker, first)
 			relayedHold := rhGo(func() (*Reference, error) {
-				return rig.Tab.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+				return rig.Tab.Get(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 			})
 			second := worker.Next("hold").(*link.HoldMessage)
 			if first.Origin.Ok || !second.Origin.Ok || second.Origin.Value != 1 {
@@ -393,7 +393,7 @@ func TestHostLinkPrincipalsOnHolds(t *testing.T) {
 		t.Run("host.get through a route acts as the host: its principal and incarnation", func(t *testing.T) {
 			rig := rhPrincipalsRig(t, nil)
 			rhGo(func() (*Reference, error) {
-				return rig.Server.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+				return rig.Server.Get(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 			})
 			check(t, rig.nextHold(t, 0), "S1", serverPrincipal(), incarnationOf(rig.Server))
 		})
@@ -401,7 +401,7 @@ func TestHostLinkPrincipalsOnHolds(t *testing.T) {
 		// host-link.test.ts: principals on holds (section 4's table) › ctx.get in a guest's call acts as the guest, with the tab's incarnation (race 10)
 		t.Run("ctx.get in a guest's call acts as the guest, with the tab's incarnation (race 10)", func(t *testing.T) {
 			rig := rhPrincipalsRig(t, nil)
-			got := rhGo(func() (*Reference, error) { return rig.Tab.Get(rhGateway, jsonObject(), background, GetOptions{}) })
+			got := rhGo(func() (*Reference, error) { return rig.Tab.Get(background, rhGateway, jsonObject(), GetOptions{}) })
 			if info := rig.nextHold(t, 0); info.session != "own" {
 				t.Fatalf("session = %q, want own", info.session)
 			}
@@ -417,7 +417,7 @@ func TestHostLinkPrincipalsOnHolds(t *testing.T) {
 		// host-link.test.ts: principals on holds (section 4's table) › self.get in a remote object acts as that object's principal, with this host's incarnation
 		t.Run("self.get in a remote object acts as that object's principal, with this host's incarnation", func(t *testing.T) {
 			rig := rhPrincipalsRig(t, nil)
-			_, err := rig.Tab.Hold(rhGateway, jsonObject(), background, GetOptions{})
+			_, err := rig.Tab.Hold(background, rhGateway, jsonObject(), GetOptions{})
 			must(t, err)
 			check(t, rig.nextHold(t, 0), "own", guestPrincipal("S1"), incarnationOf(rig.Server))
 		})
@@ -426,7 +426,7 @@ func TestHostLinkPrincipalsOnHolds(t *testing.T) {
 		t.Run("self.get in a local object acts as the host", func(t *testing.T) {
 			rig := rhPrincipalsRig(t, nil)
 			rhGo(func() (*Reference, error) {
-				return rig.Server.Get(rhView, jsonObject("id", float64(1)), background, GetOptions{})
+				return rig.Server.Get(background, rhView, jsonObject("id", float64(1)), GetOptions{})
 			})
 			check(t, rig.nextHold(t, 0), "view", serverPrincipal(), incarnationOf(rig.Server))
 		})
@@ -440,11 +440,11 @@ func TestHostLinkPrincipalsOnHolds(t *testing.T) {
 			must(t, rig.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 			must(t, other.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
 			rhGo(func() (*Reference, error) {
-				return rig.Tab.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+				return rig.Tab.Get(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 			})
 			first := rig.nextHold(t, 0)
 			rhGo(func() (*Reference, error) {
-				return other.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+				return other.Get(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 			})
 			second := rig.nextHold(t, 0)
 			check(t, first, "S1", ownerPrincipal(), incarnationOf(rig.Tab))
@@ -454,7 +454,7 @@ func TestHostLinkPrincipalsOnHolds(t *testing.T) {
 		// host-link.test.ts: principals on holds (section 4's table) › upward is a boundary: a worker's hold of a server type acts as the worker, whoever it serves (race 11)
 		t.Run("upward is a boundary: a worker's hold of a server type acts as the worker, whoever it serves (race 11)", func(t *testing.T) {
 			rig := relay(t, relayedOptions{Tab: guestPrincipal("S1"), Server: rhServeWho, Worker: rhServeAsker})
-			asker, err := rig.Tab.Get(rhAsker, jsonObject("session", "S1"), background, GetOptions{})
+			asker, err := rig.Tab.Get(background, rhAsker, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			got, err := asker.Call("ask", "x", background)
 			must(t, err)
@@ -470,7 +470,7 @@ func TestHostLinkTrustedLinks(t *testing.T) {
 		// host-link.test.ts: trusted links › work as untrusted ones do
 		t.Run("work as untrusted ones do", func(t *testing.T) {
 			rig := relay(t, relayedOptions{Trusted: true})
-			notes, err := rig.Tab.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := rig.Tab.Get(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			variant, bound, err := notes.Variant()
 			must(t, err)
@@ -560,7 +560,7 @@ func TestHostLinkPartsCompressionAndLimits(t *testing.T) {
 			server, client := &rhCounting{}, &rhCounting{}
 			hosts := rhCompress(t, server, client, link.PartLimits{})
 			addNote(t, hosts.Server, "S1", rhLarge)
-			notes, err := hosts.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := hosts.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			if variant, _, _ := notes.Variant(); variant != "editor" {
 				t.Fatalf("an owner's notes are the editor's, got %q", variant)
@@ -590,7 +590,7 @@ func TestHostLinkPartsCompressionAndLimits(t *testing.T) {
 		t.Run("inflate asynchronously without a compressor: later messages of the link wait, in order", func(t *testing.T) {
 			hosts := rhCompress(t, nextnode.NodeCompression, nil, link.PartLimits{})
 			addNote(t, hosts.Server, "S1", rhLarge)
-			notes, err := hosts.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := hosts.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			if texts := rhNoteTexts(t, notes); len(texts) != 1 || texts[0] != rhLarge {
 				t.Fatalf("notes = %d texts", len(texts))
@@ -635,12 +635,12 @@ func TestHostLinkPartsCompressionAndLimits(t *testing.T) {
 				hosts := rhCompress(t, nextnode.NodeCompression, client, link.PartLimits{Decoded: &decoded})
 				addNote(t, hosts.Server, "S1", strings.Repeat("x", 200_000))
 				addNote(t, hosts.Server, "S2", "small")
-				_, err := hosts.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+				_, err := hosts.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 				chordErr, ok := data.IsChordErrorCode(err, data.CodeTooLarge)
 				if !ok || chordErr.Reason != data.ReasonPart {
 					t.Fatalf("get = %v, want too_large/part", err)
 				}
-				other, err := hosts.Client.Get(Notes, jsonObject("session", "S2"), background, GetOptions{})
+				other, err := hosts.Client.Get(background, Notes, jsonObject("session", "S2"), GetOptions{})
 				must(t, err)
 				if texts := rhNoteTexts(t, other); len(texts) != 1 || texts[0] != "small" {
 					t.Fatalf("notes = %v", texts)
@@ -651,7 +651,7 @@ func TestHostLinkPartsCompressionAndLimits(t *testing.T) {
 		// host-link.test.ts: parts: compression at the origin and limits › cost nothing for uncompressed messages at a host without a compressor: no inflate, no stream
 		t.Run("cost nothing for uncompressed messages at a host without a compressor: no inflate, no stream", func(t *testing.T) {
 			hosts := rhCompress(t, nextnode.NodeCompression, nil, link.PartLimits{})
-			notes, err := hosts.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := hosts.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			for range 5 {
 				addNote(t, hosts.Server, "S1", "small")
@@ -669,7 +669,7 @@ func TestHostLinkPartsCompressionAndLimits(t *testing.T) {
 		t.Run("send every part uncompressed from a host without a compressor", func(t *testing.T) {
 			server := &rhCounting{}
 			hosts := rhCompress(t, server, nil, link.PartLimits{})
-			notes, err := hosts.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := hosts.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			if variant, _, _ := notes.Variant(); variant != "editor" {
 				t.Fatalf("an owner's notes are the editor's, got %q", variant)
@@ -711,7 +711,7 @@ func TestOnOnARemoteMemberFailedSinceItsBindingNoValueYetWaitsForItsFirstValue(t
 			}}, nil
 		}, ServeOptions{})
 	})}}, background))
-	ref, err := server.Get(halves, jsonObject(), background, GetOptions{})
+	ref, err := server.Get(background, halves, jsonObject(), GetOptions{})
 	must(t, err)
 	_, err = ref.Call("set", float64(2), background)
 	must(t, err)
@@ -737,7 +737,7 @@ func TestOnOnARemoteMemberFailedSinceItsBindingNoValueYetWaitsForItsFirstValue(t
 	// The server's own principal: the client holds the object `halves` refers to.
 	must(t, server.Accept(a, LinkOptions{Principal: serverPrincipal()}, background))
 	must(t, client.Connect(b, LinkOptions{Principal: serverPrincipal()}, background))
-	_, err = client.Get(viewer, jsonObject("id", float64(1)), background, GetOptions{})
+	_, err = client.Get(background, viewer, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	rhSettleLinks(a, b)
 	client.(*chordHost).loop().Run(func() {})

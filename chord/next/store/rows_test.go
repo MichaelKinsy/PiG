@@ -146,7 +146,7 @@ func TestDecoding(t *testing.T) {
 	codec := rowsTable(t).Rows
 
 	t.Run("reads booleans, leaves NULL opt columns absent and parses json cells", func(t *testing.T) {
-		row, err := codec.Decode(sqlite.SqliteRow{"id": "a", "n": int64(1), "x": float64(2), "b": int64(0), "note": nil, "meta": `{"a":1}`, "meta$v": int64(2)}, background)
+		row, err := codec.Decode(background, sqlite.SqliteRow{"id": "a", "n": int64(1), "x": float64(2), "b": int64(0), "note": nil, "meta": `{"a":1}`, "meta$v": int64(2)})
 		if err != nil {
 			t.Fatalf("Decode: %v", err)
 		}
@@ -157,7 +157,7 @@ func TestDecoding(t *testing.T) {
 	})
 
 	t.Run("refuses a json cell of a newer version", func(t *testing.T) {
-		_, err := codec.Decode(sqlite.SqliteRow{"id": "a", "n": int64(1), "x": float64(2), "b": int64(0), "note": nil, "meta": "{}", "meta$v": int64(3)}, background)
+		_, err := codec.Decode(background, sqlite.SqliteRow{"id": "a", "n": int64(1), "x": float64(2), "b": int64(0), "note": nil, "meta": "{}", "meta$v": int64(3)})
 		if err == nil || !strings.Contains(err.Error(), "newer than 2") {
 			t.Fatalf("Decode error = %v, want newer than 2", err)
 		}

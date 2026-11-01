@@ -182,7 +182,7 @@ func TestImportRoundTrips(t *testing.T) {
 			t.Fatalf("PrepareTables(notes) error = %v, want crash", err)
 		}
 		edits := NewTableHandle(editsV2, "app.store:edits", store, tableOwner())
-		got, err := edits.Get(Row{"id": "e003"}, ctx)
+		got, err := edits.Get(ctx, Row{"id": "e003"})
 		if err != nil {
 			t.Fatalf("edits.get: %v", err)
 		}

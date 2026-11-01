@@ -52,8 +52,10 @@ func (s *Signal) Lend(owner *atomic.Uint64, section uint64) {
 
 // Bind makes Raise yield the handler's coroutine, which runs on goroutine gid, by calling yield. Only a Raise on gid counts:
 // the section's goroutine is blocked until the coroutine yields, so a goroutine the handler started cannot give the section
-// back, and its Park leaves the handler's synchronous part to the handler's own next one. It is called once, on gid, before
-// the handler can share s.
+// back, and its Park (a host primitive it waits with, Await, Receive, Suspend) is ignored: the handler's synchronous part
+// goes on to the handler's own next one, as an `await` inside async work that Pi's handler started and did not await does
+// not end the handler's, whatever that work awaits (`Suspend(ctx); <-ch` in such work is as legal as any other wait). It is
+// called once, on gid, before the handler can share s.
 func (s *Signal) Bind(gid uint64, yield func()) {
 	s.gid, s.yield = gid, yield
 }

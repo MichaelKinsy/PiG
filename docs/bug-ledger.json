@@ -6238,6 +6238,29 @@
       ]
     },
     {
+      "id": "BF-33efd9f",
+      "title": "`pi.exec` with a `maxBuffer` could keep a child's stderr bytes ahead of its stdout bytes under heavy CPU…",
+      "symptom": "`pi.exec` with a `maxBuffer` could keep a child's stderr bytes ahead of its stdout bytes under heavy CPU load, though the child wrote stdout first and Node hands the two pipes to the cap in that order (about one run in two thousand with the host oversubscribed four times over).",
+      "rootCause": "A reader of stderr decided whether it had to wait for stdout by reading stdout's reader flag and then peeking at the pipe. A stdout reader that claimed its turn and emptied the pipe between the two questions was seen by neither, and stderr was delivered first.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.exec` with a `maxBuffer` could keep a child's stderr bytes ahead of its stdout bytes under heavy CPU load, though the child wrote stdout first and Node hands the two pipes to the cap in that order (about one run in two thousand with the host oversubscribed four times over). The reader of stderr decided whether to wait for stdout from two answers taken one after the other, and a stdout reader that took its bytes between them was seen by neither; it now asks the pipe first and the reader second.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "33efd9f93f",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandCountsStdoutBeforeStderrWhenTheChildWroteItFirst",
+        "internal/childwait/pipe_unix_test.go::TestAwaitTurnWaitsForAnEarlierReaderThatTakesItsBytesWhileALaterReaderDecides"
+      ]
+    },
+    {
       "id": "BF-33fe10d",
       "title": "`ModelsError` appends the cause detail the way Pi does: an Error cause with an empty message contributes its…",
       "symptom": "`ModelsError` appends the cause detail the way Pi does: an Error cause with an empty message contributes its name (\"load failed: TypeError\") instead of nothing (`ai/auth_resolve.go` NewModelsError, models-error.ts withCauseDetail; live-Pi oracle `TestModelsErrorMessageMatchesPi`, 3,000 probes, 147 red before; three mutations red).",
@@ -16186,13 +16209,6 @@
         "coding/packagecontent/filter_members_test.go::TestMemberFiltersMatchPisCandidates",
         "coding/packagecontent/filter_members_test.go::TestMinimatchFilterPatternLength",
         "coding/packagecontent/filter_members_test.go::TestMinimatchFilterWindowsUNCRoots",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductKeepsOnlyReachableValues",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductPrunesBelowAFullyReachedLevel",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductWithNoResult",
-        "coding/packagecontent/glob_braces_npm_test.go::TestMinimatchFilterExpandsBracesAsPi",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandBoundsAllocation",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandFollowsBraceExpansion5",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandLimitsFollowBraceExpansion5",
         "coding/packagecontent/glob_filter_test.go::TestManifestOverridesFollowMinimatch",
         "coding/packagecontent/glob_filter_test.go::TestMinimatchFilterEdgeRowsMatchMinimatch",
         "coding/packagecontent/glob_filter_test.go::TestMinimatchFilterGlobstarSectionsMatchMinimatch",
@@ -16371,13 +16387,6 @@
         "coding/packagecontent/filter_members_test.go::TestMemberFiltersMatchPisCandidates",
         "coding/packagecontent/filter_members_test.go::TestMinimatchFilterPatternLength",
         "coding/packagecontent/filter_members_test.go::TestMinimatchFilterWindowsUNCRoots",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductKeepsOnlyReachableValues",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductPrunesBelowAFullyReachedLevel",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductWithNoResult",
-        "coding/packagecontent/glob_braces_npm_test.go::TestMinimatchFilterExpandsBracesAsPi",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandBoundsAllocation",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandFollowsBraceExpansion5",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandLimitsFollowBraceExpansion5",
         "coding/packagecontent/glob_filter_test.go::TestManifestOverridesFollowMinimatch",
         "coding/packagecontent/glob_filter_test.go::TestMinimatchFilterEdgeRowsMatchMinimatch",
         "coding/packagecontent/glob_filter_test.go::TestMinimatchFilterGlobstarSectionsMatchMinimatch",
@@ -21015,6 +21024,30 @@
       ]
     },
     {
+      "id": "BF-84b2fca",
+      "title": "Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the…",
+      "symptom": "Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the `mdCodeBlock` color in the Go, Rust, Python and Lisp extension SDKs when the host's highlighter fails or cannot be reached, and in the host for a theme that lacks a syntax color, where PiG panicked.",
+      "rootCause": "Pi makes getMarkdownTheme().highlightCode the same function as highlightCode, and that function returns the code in the mdCodeBlock color when the highlight throws. PiG's highlightCode left such code unstyled, in the Go tui and in the Go, Rust, Python and Lisp extension SDKs, which told the two functions apart with a markdown member of the highlight.code host call. The member is gone: both functions take the code-block color, and the tui treats the Unknown theme color error of a theme with no color for a syntax token as the failed highlight it is in Pi instead of panicking.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the `mdCodeBlock` color in the Go, Rust, Python and Lisp extension SDKs when the host's highlighter fails or cannot be reached, and in the host for a theme that lacks a syntax color, where PiG panicked. `getMarkdownTheme().highlightCode` is `highlightCode`, so the `highlight.code` host call no longer has a `markdown` member.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "84b2fcadd1",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/tui_theme_test.go::TestHighlightCodeThatFailsTakesTheCodeBlockColorAcrossSDKs",
+        "tui/highlight_failure_oracle_test.go::TestHighlightFailureMatchesPi",
+        "tui/highlight_test.go::TestHighlightCodeThatFailsTakesTheCodeBlockColor"
+      ]
+    },
+    {
       "id": "BF-852652e",
       "title": "PiG no longer names documentation that does not exist",
       "symptom": "They named `\u003cconfig root\u003e/docs` files that were never written.",
@@ -22652,6 +22685,31 @@
       ],
       "tests": [
         "coding/extension/exec_drain_test.go::TestExecCommandKeepsTheOutputOfAChildThatExitedBeforeItsReadersRan"
+      ]
+    },
+    {
+      "id": "BF-8fead2d",
+      "title": "fix(chord/nextnode/workers,chord/nextnode/plugins): the workers run on the plugins' Node host; no test hooks…",
+      "symptom": "fix(chord/nextnode/workers,chord/nextnode/plugins): the workers run on the plugins' Node host; no test hooks in the watcher",
+      "rootCause": "The merge brought the workers component written against the first port's Builder/Evaluator seams. A worker's plugins now run as the plugins component does: WorkerPlugins.Load starts the worker's NodeHost (WorkerMainOptions.Node, HostPackages as module files, core facets as JavaScript modules), routes the worker's address kind to its link on the worker's Go host (a relay without an address) and loads it; the NodeHost's exit is the worker's exit (its exit code, or `fatal` with the exception it died of), its close a closer, and the worker's idle state reads the NodeHost's keep-alive counts (new: NodeOptions.OnActivity, NodeHost.Activity), which a routing Go host does not count. The driver…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "8fead2d31c",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeACoreModuleImportsChordByItsPackageName",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeTheHostsKeepAliveCountsReachTheApp",
+        "chord/nextnode/plugins/plugins_watcher_test.go::TestTheWatcherAfterCloseOnlyAPluginLinkedFromOutsideGetsItsWatchAgain",
+        "chord/nextnode/plugins/plugins_watcher_unix_test.go::TestTheWatcherReportsAFailureToWatchOnceAndStopsWatching",
+        "chord/nextnode/workers/workers_main_test.go::TestTheWorkersIdleStateReadsTheNodeHostsActivityThroughItsReports"
       ]
     },
     {
@@ -27934,6 +27992,27 @@
       ]
     },
     {
+      "id": "BF-a8203b7",
+      "title": "fix(chord/nextnode/plugins): a request pending when the channel ends fails with how the process ended; go fix",
+      "symptom": "fix(chord/nextnode/plugins): a request pending when the channel ends fails with how the process ended; go fix",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a8203b7e39",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_examples_test.go::TestExample39BrowserBuild"
+      ]
+    },
+    {
       "id": "BF-a8a04f4",
       "title": "`PIG_DEBUG` writes its log with mode 0600 and refuses a symlink or a file owned by another user in the shared…",
       "symptom": "`PIG_DEBUG` writes its log with mode 0600 and refuses a symlink or a file owned by another user in the shared temporary directory; `PIG_DEBUG_KEYS` logs typed text and pastes only by length, so a key entered at a masked login prompt no longer reaches the log; `pig-render.log` is private (0600).",
@@ -28957,6 +29036,43 @@
         "coding/extension/host/subprocess/request_metadata_order_test.go::TestProviderOptionsWireKeepsRequestMetadataOrder",
         "coding/session_tree_wire_oracle_test.go::TestNavigateTreeEveryPointSendsValidToolFlow",
         "internal/codingagent/native_thinking_options_test.go::TestSubprocessRequestMetadataKeepsKeyOrder"
+      ]
+    },
+    {
+      "id": "BF-afb14da",
+      "title": "fix(chord/nextnode/plugins): the Node host is the child of the Go side, as Pi's forked worker is of its server",
+      "symptom": "fix(chord/nextnode/plugins): the Node host is the child of the Go side, as Pi's forked worker is of its server",
+      "rootCause": "The earlier route attempt timed out because the relaying Go host's hold reached a Node host that had accepted it as a child: \"hold: an origin on a child link\" (a child relays nothing), reported only to the Node host's onError.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "afb14da124",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildAnInputThatCannotBeReadIsNodesErrorText",
+        "chord/nextnode/plugins/plugins_endtoend_test.go::TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost",
+        "chord/nextnode/plugins/plugins_endtoend_test.go::TestEndToEndTheAppsGoHostCannotGetALocalTypeAPluginServes",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeAFatalReadAfterTheProcessWasWaitedForIsInTheExit",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeALinkAttachedAfterLoadAndOtherRequestsStillCarriesTheHost",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeALinkNotAttachedWithinTheHeartbeatEndsTheProcessAndTheLink",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeASendAfterTheChannelEndedReturnsTheProcessesExit",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeConcurrentExtractionsShareOneCompleteTree",
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeTreeIsRepairedWhenItIsPartialOrHasNoMarker",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestEsbuildBuildAForbiddenInputFailsTheBuildWithNodesText",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeAFailedStartRemovesItsSocketDirectory",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeAStartThatDoesNotConnectInTimeKillsTheProcess",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeAbortedStartWhileTheProcessRunsKillsItAndReturnsTheCause",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeOlderThanTheMinimumNamesTheRequirementAndTheVersionFound",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeThatFailsItsVersionNamesWhatItSaid",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeWhoseVersionIsNoVersionIsRefused",
+        "chord/nextnode/plugins/plugins_runtime_test.go::TestRuntimeAFacetWithAPersistedDocumentFailsToActivateTheHostHasNoStore"
       ]
     },
     {
@@ -30945,13 +31061,6 @@
         "coding/packagecontent/filter_members_test.go::TestMemberFiltersMatchPisCandidates",
         "coding/packagecontent/filter_members_test.go::TestMinimatchFilterPatternLength",
         "coding/packagecontent/filter_members_test.go::TestMinimatchFilterWindowsUNCRoots",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductKeepsOnlyReachableValues",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductPrunesBelowAFullyReachedLevel",
-        "coding/packagecontent/glob_braces_npm_test.go::TestBraceProductWithNoResult",
-        "coding/packagecontent/glob_braces_npm_test.go::TestMinimatchFilterExpandsBracesAsPi",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandBoundsAllocation",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandFollowsBraceExpansion5",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandLimitsFollowBraceExpansion5",
         "coding/packagecontent/glob_filter_test.go::TestManifestOverridesFollowMinimatch",
         "coding/packagecontent/glob_filter_test.go::TestMinimatchFilterEdgeRowsMatchMinimatch",
         "coding/packagecontent/glob_filter_test.go::TestMinimatchFilterGlobstarSectionsMatchMinimatch",
@@ -39707,6 +39816,34 @@
       ]
     },
     {
+      "id": "BF-edf1862",
+      "title": "Tool rows and streamed answers no longer highlight the same code again on every redraw",
+      "symptom": "Tool rows and streamed answers no longer highlight the same code again on every redraw.",
+      "rootCause": "A Markdown keeps the highlighted lines of the code blocks of its last render, keyed by language and code, until Invalidate, a theme change or a loaded grammar, so a streamed answer and a resize highlight each block once even with a highlighter tui does not know. A CodeHighlighter keeps a row's last highlighting; complete write rows and codemode rows use one, and the write row reuses its Text so SetText with unchanged text keeps the wrapped lines.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Tool rows and streamed answers no longer highlight the same code again on every redraw. A running codemode row highlighted its whole script on every progress update and timer tick, and a complete `write` row its whole file on every update and expand toggle. Rows now keep their last highlighting until the code, the theme or the loaded grammars change, a Markdown component keeps the highlighting of the code blocks it rendered until `Invalidate`, and `Text.SetText` with unchanged text keeps its wrapped lines (Pi #10971).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "edf18625cb",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/code_highlighter_rows_norace_test.go::TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
+        "internal/codingagent/code_highlighter_rows_norace_test.go::TestCompleteWriteRowReusesItsHighlightingAcrossRedraws",
+        "tui/assistant_message_reuse_upstream_test.go::TestUpstreamAssistantMessageReusesItsMarkdownAcrossStreamingAndItsEnd",
+        "tui/code_highlighter_test.go::TestCodeHighlighterReusesItsLastResultUntilTheCodeTheThemeOrTheGrammarsChange",
+        "tui/markdown_block_reuse_upstream_test.go::TestMarkdownReusedHighlightingEqualsAFreshRender",
+        "tui/markdown_block_reuse_upstream_test.go::TestUpstreamMarkdownBlockReuse",
+        "tui/text_set_text_upstream_test.go::TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
+      ]
+    },
+    {
       "id": "BF-ee96daf",
       "title": "Unsubscribing an extension's event-bus subscription is now constant time, as deleting from Pi's `Set` of…",
       "symptom": "The factory API also kept every subscription an extension had made, unsubscribed or not, until the extension reloaded; it now keeps only the live ones.",
@@ -43328,9 +43465,6 @@
         "coding/packagecontent/filter_members_test.go::TestMemberFiltersMatchPisCandidates",
         "coding/packagecontent/filter_members_test.go::TestMinimatchFilterPatternLength",
         "coding/packagecontent/filter_members_test.go::TestMinimatchFilterWindowsUNCRoots",
-        "coding/packagecontent/glob_braces_npm_test.go::TestMinimatchFilterExpandsBracesAsPi",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandFollowsBraceExpansion5",
-        "coding/packagecontent/glob_braces_npm_test.go::TestNpmBraceExpandLimitsFollowBraceExpansion5",
         "coding/packagecontent/glob_filter_test.go::TestManifestOverridesFollowMinimatch",
         "coding/packagecontent/glob_filter_test.go::TestMinimatchFilterEdgeRowsMatchMinimatch",
         "coding/packagecontent/glob_filter_test.go::TestMinimatchFilterGlobstarSectionsMatchMinimatch",
@@ -44096,7 +44230,7 @@
   "exemptCommits": {
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 1,
-    "Follow-up to unreleased work": 1,
+    "Follow-up to unreleased work": 2,
     "Repair of a merge between development branches": 9,
     "Review follow-up to unreleased work": 3,
     "test-only": 1

@@ -218,7 +218,7 @@ func TestARolloutCallsTheRouteOutsideTheComponentLoopSoAServerSectionClosingAWor
 	armed.Store(true)
 	held := make(chan *host.Reference, 1)
 	go func() {
-		reference, err := f.server.Hold(fixtureNotes, jsonObject("id", "S4"), background, host.GetOptions{})
+		reference, err := f.server.Hold(background, fixtureNotes, jsonObject("id", "S4"), host.GetOptions{})
 		if err != nil {
 			t.Error(err)
 		}

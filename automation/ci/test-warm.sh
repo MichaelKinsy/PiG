@@ -21,17 +21,19 @@ if ! command -v cargo >/dev/null 2>&1; then
   exit 0
 fi
 sdk="$ROOT/extensions/sdk-rs"
-# One target per package that builds Rust cells (runtimecell below); the names match the SharedCargoTargetDir calls in each package's TestMain.
-for pkg in subprocess cli conformance; do
+# A Rust cell depends on pig-sdk by absolute path, and Cargo keys a path dependency's unit on that path: the SDK built as the
+# root package of its own manifest is a different unit, so every cell would compile the SDK again (measured: cell tests took
+# 92-98 s against 103-118 s cold with that build, and 10-16 s with the cell's own unit). The dependencies are therefore built
+# through a cell crate rendered by runtimecell, the code that renders a real cell's manifest and lock copy.
+cell=$(mktemp -d)
+trap 'rm -rf "$cell"' EXIT
+go run ./automation/ci/cargocell "$sdk" "$cell"
+# One target per package that builds Rust cells; the names match the SharedCargoTargetDir calls in each package's TestMain.
+for pkg in subprocess runtimecell cli conformance; do
   target=$(go run ./automation/ci/cargotarget "$pkg" "$sdk")
-  echo "[test-warm] Rust SDK dependencies -> $target"
-  (cd "$sdk" && CARGO_TARGET_DIR="$target" cargo build --release --locked --quiet)
+  echo "[test-warm] Rust SDK cell dependencies -> $target"
+  (cd "$cell" && CARGO_TARGET_DIR="$target" cargo build --release --quiet)
 done
-
-# coding/extension/host/runtimecell builds its cell with pig-sdk as a path dependency of the generated crate, and no cargo build in the SDK directory seeds that unit: with the loop's build in place the test still took 85 s against 102 s cold (measured), nearly all of it pig-sdk at CARGO_BUILD_JOBS=1. So the test itself fills the target, here under its own 30-minute bound. Left to the fast pool of test-fast, with 12 packages sharing 4 CPUs, the same build ended at that pool's 10-minute package timeout (https://github.com/MichaelKinsy/PiG/actions/runs/40963676052).
-target=$(go run ./automation/ci/cargotarget runtimecell "$sdk")
-echo "[test-warm] Rust cell build -> $target"
-CARGO_TARGET_DIR="$target" go test -count=1 -timeout 30m -run '^TestBuildRustPackedCellBuildsCachedRunner$' ./coding/extension/host/runtimecell/
 
 daemon="$ROOT/.upstream/current/packages/env/daemon"
 if [[ -f "$daemon/Cargo.toml" ]]; then

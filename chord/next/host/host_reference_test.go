@@ -49,9 +49,9 @@ func refServeCounter(_ *delta.JsonObject, self Self) (contracts.Implementation, 
 	return contracts.Implementation{Members: contracts.VariantImplementation{
 		State: map[string]chord.Watchable[delta.JsonValue]{"doc": Expose(doc)},
 		Methods: map[string]contracts.MethodFunction{"bump": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-			_, err := doc.Change(func(draft *delta.Object) (any, error) {
+			_, err := doc.Change(ctx, func(draft *delta.Object) (any, error) {
 				return nil, draft.Set("n", draft.Get("n").(float64)+1)
-			}, ctx)
+			})
 			return nil, err
 		}},
 	}}, nil
@@ -65,7 +65,7 @@ func refLoadCounter(t *testing.T) Host {
 
 func refGet(t testing.TB, host Host, typ *contracts.Contract, params *delta.JsonObject) *Reference {
 	t.Helper()
-	ref, err := host.Get(typ, params, background, GetOptions{})
+	ref, err := host.Get(background, typ, params, GetOptions{})
 	must(t, err)
 	return ref
 }
@@ -201,7 +201,7 @@ func TestCyclesQ5FailATwoObjectCycleWithInvalidCycleAndKeepNothing(t *testing.T)
 		}
 		return h.Serve(b, refCycleFactory(a, &runs[1]), ServeOptions{})
 	}, loadedOptions{})
-	_, err := host.Get(a, jsonObject("n", float64(1)), background, GetOptions{})
+	_, err := host.Get(background, a, jsonObject("n", float64(1)), GetOptions{})
 	nexttest.RequireJSONEqual(t, rejection(t, err), map[string]any{
 		"code": "invalid", "reason": "cycle", "message": "dependency cycle: a(1) → b(1) → a(1)",
 	})
@@ -211,7 +211,7 @@ func TestCyclesQ5FailATwoObjectCycleWithInvalidCycleAndKeepNothing(t *testing.T)
 		host.(*chordHost).loop().Run(func() { ended = len(host.(*chordHost).objectList()) == 0 })
 		return ended
 	})
-	if _, err := host.Get(a, jsonObject("n", float64(1)), background, GetOptions{}); err == nil || !refContains(err.Error(), "dependency cycle") {
+	if _, err := host.Get(background, a, jsonObject("n", float64(1)), GetOptions{}); err == nil || !refContains(err.Error(), "dependency cycle") {
 		t.Fatalf("second get = %v, want a dependency cycle", err)
 	}
 	if got := [2]int32{runs[0].Load(), runs[1].Load()}; got != [2]int32{2, 2} {
@@ -253,7 +253,7 @@ func TestCyclesQ5FailAThreeObjectCycle(t *testing.T) {
 		}
 		return nil
 	}, loadedOptions{})
-	_, err := host.Get(a, jsonObject("n", float64(1)), background, GetOptions{})
+	_, err := host.Get(background, a, jsonObject("n", float64(1)), GetOptions{})
 	if err == nil || err.Error() != "dependency cycle: a(1) → b(1) → c(1) → a(1)" {
 		t.Fatalf("get = %v, want dependency cycle: a(1) → b(1) → c(1) → a(1)", err)
 	}
@@ -264,7 +264,7 @@ func TestCyclesQ5FailAnObjectThatGetsItself(t *testing.T) {
 	a, _, _ := refCycleTypes()
 	var runs atomic.Int32
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return h.Serve(a, refCycleFactory(a, &runs), ServeOptions{}) }, loadedOptions{})
-	_, err := host.Get(a, jsonObject("n", float64(1)), background, GetOptions{})
+	_, err := host.Get(background, a, jsonObject("n", float64(1)), GetOptions{})
 	if err == nil || err.Error() != "dependency cycle: a(1) → a(1)" {
 		t.Fatalf("get = %v, want dependency cycle: a(1) → a(1)", err)
 	}
@@ -396,7 +396,7 @@ func TestGCAReleasedReferenceWhoseStateWasReadAfterAFailureKeepsNeitherTheFailur
 			}, ServeOptions{})
 		}, loadedOptions{})
 		var err error
-		reference, err = host.Hold(refViewer, jsonObject("id", float64(1)), background, GetOptions{})
+		reference, err = host.Hold(background, refViewer, jsonObject("id", float64(1)), GetOptions{})
 		must(t, err)
 		scopeEventually(t, "the reference failed", func() bool { return refKind(reference) == RefStateFailed })
 		failure := reference.State().Value()
@@ -422,7 +422,7 @@ func TestGCAHoldReleasedBeforeLoadKeepsNothingTheReferenceAndItsContractGoWhileT
 			Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())},
 			Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
 		}))
-		reference, err := host.Hold(same, jsonObject("id", float64(1)), background, GetOptions{})
+		reference, err := host.Hold(background, same, jsonObject("id", float64(1)), GetOptions{})
 		must(t, err)
 		reference.Release()
 		references = append(references, weak.Make(reference))
@@ -457,9 +457,9 @@ func TestGCAReleasedHoldKeepsNeitherItsObjectNorItsStatesWatchesNorARemoteObject
 	var watches []weak.Pointer[chord.NativeWatch[*RefState]]
 	var remotes []weak.Pointer[remoteObject]
 	func() {
-		local, err := host.Hold(refViewer, jsonObject("id", float64(1)), background, GetOptions{})
+		local, err := host.Hold(background, refViewer, jsonObject("id", float64(1)), GetOptions{})
 		must(t, err)
-		remote, err := client.Hold(Notes, routeS("S1"), background, GetOptions{})
+		remote, err := client.Hold(background, Notes, routeS("S1"), GetOptions{})
 		must(t, err)
 		for _, ref := range []*Reference{local, remote} {
 			watch, err := ref.State().Watch(background)
@@ -647,7 +647,7 @@ func TestRemoteReferenceTypesAHeldReferencesVariantMayBeUndefinedBeforeItsFirstB
 	host := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: ownerPrincipal(), OnError: func(HostError) {}})
 	var held *Held
 	var err error
-	held, err = host.Hold(refTwo, jsonObject(), background, GetOptions{})
+	held, err = host.Hold(background, refTwo, jsonObject(), GetOptions{})
 	must(t, err)
 	if variant, bound, err := held.Variant(); err != nil || bound || variant != "" {
 		t.Fatalf("variant before the first binding = %q, %v, %v, want none", variant, bound, err)
@@ -704,13 +704,13 @@ func refStoreFactory(definition *documents.StateDefinition, memos func(*document
 			Methods: map[string]contracts.MethodFunction{
 				"write": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					object := args.(*delta.JsonObject)
-					_, err := notes.Change(object.Value("id").(string), func(draft *delta.Object) (any, error) {
+					_, err := notes.Change(ctx, object.Value("id").(string), func(draft *delta.Object) (any, error) {
 						return nil, draft.Set("title", object.Value("title"))
-					}, ctx)
+					})
 					return nil, err
 				},
 				"remove": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					return nil, notes.Retire(args.(string), ctx)
+					return nil, notes.Retire(ctx, args.(string))
 				},
 			},
 		}}, nil
@@ -1039,7 +1039,7 @@ func TestKeyedStateMembersAPinLoadThatFailsItsProviderParksTheConsumerFailedWait
 	st := refSeeded(t)
 	host, errs := refPersistedNotes(t, st, refPersistedMemo(2))
 	provider := refGet(t, host, refNoteStore, jsonObject())
-	view, err := host.Hold(refNoteView, jsonObject("id", "a", "copy", float64(1)), background, GetOptions{})
+	view, err := host.Hold(background, refNoteView, jsonObject("id", "a", "copy", float64(1)), GetOptions{})
 	must(t, err)
 	scopeEventually(t, "the view failed", func() bool { return refKind(view) == RefStateFailed })
 	got := view.State().Value()
@@ -1089,7 +1089,7 @@ func TestKeyedStateMembersAProviderReturningSomethingElseForAKeyedMemberFailsBro
 			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	_, err := host.Get(refNoteStore, jsonObject(), background, GetOptions{})
+	_, err := host.Get(background, refNoteStore, jsonObject(), GetOptions{})
 	if err == nil || !refContains(err.Error(), "notes: a keyed member is a keyed document handle") {
 		t.Fatalf("get = %v, want notes: a keyed member is a keyed document handle", err)
 	}

@@ -205,7 +205,7 @@ func (codec *RowCodec) Key(key any, what string) (*EncodedKey, error) {
 
 // Decode is a stored row as reads return it: booleans from 0 and 1, `opt(...)` columns absent when NULL,
 // `json(...)` cells parsed and migrated on access (a cell the code cannot read fails, see JsonColumn.Read).
-func (codec *RowCodec) Decode(stored sqlite.SqliteRow, ctx context.Context) (Row, error) {
+func (codec *RowCodec) Decode(ctx context.Context, stored sqlite.SqliteRow) (Row, error) {
 	row := Row{}
 	for _, column := range codec.columns {
 		value := stored[column.Name]

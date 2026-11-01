@@ -233,7 +233,7 @@ func rowsStep(step *DataStep, v int, ready []StagedWrite, target migrationTarget
 // columns of the version, values of their types) and stamped v through the internal form of `update`.
 func patchRow(step *DataStep, stored sqlite.SqliteRow, v int, sql *TableSql, table string, ctx context.Context) (StagedWrite, error) {
 	definition := step.Table
-	decoded, err := definition.Rows.Decode(stored, ctx)
+	decoded, err := definition.Rows.Decode(ctx, stored)
 	if err != nil {
 		return nil, err
 	}

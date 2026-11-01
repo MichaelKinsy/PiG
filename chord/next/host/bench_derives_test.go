@@ -71,7 +71,7 @@ func BenchmarkDerives(b *testing.B) {
 			}}, nil
 		}, ServeOptions{})
 	})}}, background))
-	reference, err := host.Get(benchDiamond, jsonObject(), background, GetOptions{})
+	reference, err := host.Get(background, benchDiamond, jsonObject(), GetOptions{})
 	must(b, err)
 	watch, err := reference.Member("bottom").Watch(background)
 	must(b, err)
@@ -84,7 +84,7 @@ func BenchmarkDerives(b *testing.B) {
 	b.Run("retire + recreate under a "+strconv.Itoa(1+3*benchDiamondLayers)+"-derive diamond", func(b *testing.B) {
 		b.ReportAllocs()
 		for step := 0; b.Loop(); step++ {
-			_, err := self.Tx(func(tx *documents.Transaction) (any, error) {
+			_, err := self.Tx(func(tx documents.Tx) (any, error) {
 				if err := tx.Retire(list); err != nil {
 					return nil, err
 				}

@@ -732,3 +732,57 @@ commit = "8b1f8a99600cb7c98b8872eb2e083f417ca1653d"
 class = "CITE"
 cite = "packages/chord/src/watch.ts:207-220"
 reason = "watch.ts:207-220 queues #drain as a microtask, so a listener's synchronous part runs before the code that awaited the commit resumes (spec.md:1891-1894); the test asserts that order (the flag a listener sets after yielding while it works is set when AwaitEntered returns). The red commit asserted only that the delivery had started, which is not Pi's order."
+
+[[entry]]
+path = "chord/next/host/host_host_test.go"
+commit = "a9c9939258e09cac35f06716f16d712eed3c6e16"
+class = "NOBEHAVIOR"
+reason = "Go language mechanic, no Pi behavior changed: context.Context moved from after the params to the first parameter of Host.Get, Hold and Registry (interface-ledger rule S1, Go convention). The changed lines are call arguments in a new order (background first); every expected value, error text and ordering the tests assert is as before."
+
+[[entry]]
+path = "chord/next/host/host_reference_test.go"
+commit = "a9c9939258e09cac35f06716f16d712eed3c6e16"
+class = "NOBEHAVIOR"
+reason = "Go language mechanic, no Pi behavior changed: context.Context moved from after the params to the first parameter of Host.Get, Hold and Registry (interface-ledger rule S1, Go convention). The changed lines are call arguments in a new order (background first); every expected value, error text and ordering the tests assert is as before."
+
+[[entry]]
+path = "internal/minimatch/minimatch_oracle_test.go"
+commit = "fffc16ae0a59ad1a839a70e260c6a8ecd6905dba"
+class = "CITE"
+cite = "packages/coding-agent/src/core/package-manager.ts:728"
+reason = "Pi b4c2e92a moves the coding agent's minimatch dependency from 10.2.6 to 11.0.3 (packages/coding-agent/package.json:59; package-manager.ts:728 matches with it). The oracle test compares internal/minimatch with the installed minimatch, so its expected values are the 11.0.3 results: an empty path portion matches only an empty pattern portion, case folds by Unicode simple case folding, and only a pattern over 65,536 units throws."
+
+[[entry]]
+path = "durable/core/driver/upgrade_in_place_core_test.go"
+commit = "caa5070223561fe78b68864daca314e726814a94"
+class = "CITE"
+cite = "packages/durable/src/storage/sqlite/migrations.ts:91"
+reason = "Pi 1.4.0 writes schema version 2 (migrations.ts:91, 'Version 2 adds the sleeping task status', the tasks table rebuilt in place), so an older store upgrades in place with no backup file. The test expects the upgraded store at SupportedSchemaVersion and no .schema-1.bak, where D188 made PiG refuse and back up."
+
+[[entry]]
+path = "extensions/sdk-py/bundle_test.go"
+commit = "e27a975dc1c7d51b2e985f36f20e0f400e5c47f4"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The SDK bundle layout is PiG-original packaging, which Pi does not have, so no Pi line governs it. The commit moves each gzip copy of a bundled SDK file under the bundle's hidden .gz directory (.gz/<name>.gz) so source-tree walks skip it; the staged files, their bytes and the staged-SDK digests are unchanged, and the test asserts only the new embedded name."
+
+[[entry]]
+path = "ai/catalog_options_upstream_test.go"
+commit = "e4f8e357736b7eae9f16439a3ebd49daa6add1bf"
+class = "CITE"
+cite = "packages/ai/scripts/model-data.ts:1"
+reason = "Pi 44f6851b (#9534: scripts/generate-models.ts and scripts/openrouter-catalog.ts) deletes packages/ai/test/openrouter-cache-control-models.test.ts:12 (the commit's Pi-Behavior-Change trailer) and sends the OpenRouter ~anthropic/claude-*-latest aliases through the Anthropic Messages API with adaptive thinking, like the versioned Claude models. The Go port of that test now pins the new behavior (TestOpenRouterAnthropicLatestAliasesUseMessages), recorded under D217."
+
+[[entry]]
+path = "cmd/gen-models/emit_shares_test.go"
+commit = "875a364a714c18b5bcb69e5509f0f61b2e829531"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The expected text is the layout of the Go catalog file cmd/gen-models emits (PiG-original): the header, thinking-level, sampling and prompt-cache maps are built from pair lists the linker lays out instead of one map literal per model. The generated rows of every model, and the catalog Pi's build produces, are unchanged: regenerating from the pinned Pi build reproduces the committed file."
+
+[[entry]]
+path = "internal/minimatch/braceexpansion_test.go"
+commit = "875a364a714c18b5bcb69e5509f0f61b2e829531"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The test moved with the brace-expansion port from coding/packagecontent (glob_braces_npm_test.go) to internal/minimatch, which now has the single port; the recorded rows of Pi's npm minimatch are the same and only the called function is renamed (npmBraceExpand to braceExpand)."
