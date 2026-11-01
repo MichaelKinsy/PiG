@@ -42,3 +42,9 @@ After that refresh these oracle tests turn green: TestSystemPromptSectionsMatchP
 - Node shims (pi-dist system-prompt.js, skills.js, tools/edit.js, sdk-bundle chunks) are the vendored pin release with sha manifest; not hand-edited. They refresh with the pin bump (vendor-pi-dist.sh). Until then the oracle tests compare against old Pi and differ: TestSystemPromptSectionsMatchPi, TestValidateMcpServerConfigMatchesPi (`auto` message), TestMcpCommandMatchesPi (add --help), tool-definition oracles. Not red lane bugs.
 - `make generate` (test/parity/normalization-inventory.json regenerates from the edited rpc scenarios 26/59/64: removed aliases "asks about pig itself", "pig packages", "pig topics", "Always read pig .md"; preamble alias now "running inside pig,").
 - coding/testdata/pi_tool_definitions.json hand-updated to T text; re-dump when the pin moves.
+
+## Generated files (this lane)
+- Committed: test/parity/normalization-inventory.json, test/parity/coverage.md, AGENTS.md (coverage table) from `make normalization-inventory` and `make coverage RESULTS=`; `coverage-drift` and `normalization-inventory-check` exit 0 on this branch.
+- Not committed (integrator/merger-owned): docs/parity/DIVERGENCES.md (D39 record), test/parity/interfaces/pig-go.json (new Go interface IDs: SelfUpdateRelease, ConfiguredSelfUpdateArgv, MakeConfiguredSelfUpdateCommand, RunConfiguredSelfUpdateCommand, IsClientMetadataDocumentCallback).
+- `make generate` still stops at `known-gaps` ("upstream test release gate blocked", findings in packages/chord and packages/durable test files, other lanes' rows); nothing from this lane is in the findings.
+- Pin-gated failures until the pin bump: configschema TestRenderedSchemasAreByteEqualToThePinnedPiPackage / ...UpstreamMirror (settings.schema.json now has selfUpdateCommand, byte-equal to Pi 6d4b7443), mcpext TestLoadMcpConfigMatchesPiOnRandomFiles (3 of 1500, the `auto` value).

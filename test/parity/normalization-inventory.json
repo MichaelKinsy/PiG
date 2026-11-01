@@ -516,6 +516,56 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/cli-utils/33-mcp-add-oauth-client-registration.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\bpig\\b",
+          "with": "pi",
+          "reason": "D2: PiG uses the pig executable name instead of pi."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": " in \\S+mcp\\.json",
+          "with": " in AGENT/mcp.json",
+          "reason": "The isolated agent directory differs by its random suffix; the file name and message stay compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/cli-utils/34-mcp-add-oauth-client-registration-invalid.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\bpig\\b",
+          "with": "pi",
+          "reason": "D2: PiG uses the pig executable name instead of pi."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/cli-utils/35-mcp-add-oauth-client-registration-cimd-conflict.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\bpig\\b",
+          "with": "pi",
+          "reason": "D2: PiG uses the pig executable name instead of pi."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/cli-utils/36-mcp-add-oauth-client-registration-stdio.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\\bpig\\b",
+          "with": "pi",
+          "reason": "D2: PiG uses the pig executable name instead of pi."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/clipboard-images/01-clipboard-read-deferred.toml",
       "transforms": [
         {
@@ -6468,8 +6518,8 @@
           "paths": [
             "/**/sections/preamble"
           ],
-          "pig": "operating inside pig,",
-          "pi": "operating inside pi,",
+          "pig": "running inside pig,",
+          "pi": "running inside pi,",
           "reason": "D2: only the host command identity differs in the preamble; retain the rest of the complete sentence."
         },
         {
@@ -6486,45 +6536,9 @@
           "paths": [
             "/**/sections/docs"
           ],
-          "pig": "asks about pig itself,",
-          "pi": "asks about pi itself,",
-          "reason": "D2: this exact heading clause names the host command; no other words in the read-only condition are aliased."
-        },
-        {
-          "kind": "literal",
-          "paths": [
-            "/**/sections/docs"
-          ],
           "pig": "When reading pig docs or examples,",
           "pi": "When reading pi docs or examples,",
           "reason": "D2/D22: the path-resolution instruction names its product; retain its complete resolution rule and relative paths."
-        },
-        {
-          "kind": "literal",
-          "paths": [
-            "/**/sections/docs"
-          ],
-          "pig": "pig packages (docs/packages.md)",
-          "pi": "pi packages (docs/packages.md)",
-          "reason": "D2: only the product name in the Package topic differs; the packages.md destination and every other topic remain literal."
-        },
-        {
-          "kind": "literal",
-          "paths": [
-            "/**/sections/docs"
-          ],
-          "pig": "When working on pig topics,",
-          "pi": "When working on pi topics,",
-          "reason": "D2: this exact instruction prefix names the host product; retain its complete-read and cross-reference requirements."
-        },
-        {
-          "kind": "literal",
-          "paths": [
-            "/**/sections/docs"
-          ],
-          "pig": "Always read pig .md files",
-          "pi": "Always read pi .md files",
-          "reason": "D2/D22: this exact instruction prefix names the product documentation; retain completely, link-following instructions, and the TUI example."
         },
         {
           "kind": "duration_ms",
@@ -7629,8 +7643,8 @@
           "paths": [
             "/**/sections/preamble"
           ],
-          "pig": "operating inside pig,",
-          "pi": "operating inside pi,",
+          "pig": "running inside pig,",
+          "pi": "running inside pi,",
           "reason": "D2: only the host command identity differs in the preamble; retain the rest of the complete sentence."
         },
         {
@@ -7647,45 +7661,9 @@
           "paths": [
             "/**/sections/docs"
           ],
-          "pig": "asks about pig itself,",
-          "pi": "asks about pi itself,",
-          "reason": "D2: this exact heading clause names the host command; no other words in the read-only condition are aliased."
-        },
-        {
-          "kind": "literal",
-          "paths": [
-            "/**/sections/docs"
-          ],
           "pig": "When reading pig docs or examples,",
           "pi": "When reading pi docs or examples,",
           "reason": "D2/D22: the path-resolution instruction names its product; retain its complete resolution rule and relative paths."
-        },
-        {
-          "kind": "literal",
-          "paths": [
-            "/**/sections/docs"
-          ],
-          "pig": "pig packages (docs/packages.md)",
-          "pi": "pi packages (docs/packages.md)",
-          "reason": "D2: only the product name in the Package topic differs; the packages.md destination and every other topic remain literal."
-        },
-        {
-          "kind": "literal",
-          "paths": [
-            "/**/sections/docs"
-          ],
-          "pig": "When working on pig topics,",
-          "pi": "When working on pi topics,",
-          "reason": "D2: this exact instruction prefix names the host product; retain its complete-read and cross-reference requirements."
-        },
-        {
-          "kind": "literal",
-          "paths": [
-            "/**/sections/docs"
-          ],
-          "pig": "Always read pig .md files",
-          "pi": "Always read pi .md files",
-          "reason": "D2/D22: this exact instruction prefix names the product documentation; retain completely, link-following instructions, and the TUI example."
         },
         {
           "kind": "duration_ms",
@@ -7868,8 +7846,8 @@
           "paths": [
             "/**/sections/preamble"
           ],
-          "pig": "operating inside pig,",
-          "pi": "operating inside pi,",
+          "pig": "running inside pig,",
+          "pi": "running inside pi,",
           "reason": "D2: only the host command identity differs in the preamble; retain the rest of the complete sentence."
         },
         {
@@ -7886,45 +7864,9 @@
           "paths": [
             "/**/sections/docs"
           ],
-          "pig": "asks about pig itself,",
-          "pi": "asks about pi itself,",
-          "reason": "D2: this exact heading clause names the host command; no other words in the read-only condition are aliased."
-        },
-        {
-          "kind": "literal",
-          "paths": [
-            "/**/sections/docs"
-          ],
           "pig": "When reading pig docs or examples,",
           "pi": "When reading pi docs or examples,",
           "reason": "D2/D22: the path-resolution instruction names its product; retain its complete resolution rule and relative paths."
-        },
-        {
-          "kind": "literal",
-          "paths": [
-            "/**/sections/docs"
-          ],
-          "pig": "pig packages (docs/packages.md)",
-          "pi": "pi packages (docs/packages.md)",
-          "reason": "D2: only the product name in the Package topic differs; the packages.md destination and every other topic remain literal."
-        },
-        {
-          "kind": "literal",
-          "paths": [
-            "/**/sections/docs"
-          ],
-          "pig": "When working on pig topics,",
-          "pi": "When working on pi topics,",
-          "reason": "D2: this exact instruction prefix names the host product; retain its complete-read and cross-reference requirements."
-        },
-        {
-          "kind": "literal",
-          "paths": [
-            "/**/sections/docs"
-          ],
-          "pig": "Always read pig .md files",
-          "pi": "Always read pi .md files",
-          "reason": "D2/D22: this exact instruction prefix names the product documentation; retain completely, link-following instructions, and the TUI example."
         }
       ]
     },
