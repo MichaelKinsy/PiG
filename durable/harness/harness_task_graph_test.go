@@ -17,7 +17,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
-	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
 )
 
 type graphParentState struct {
@@ -276,13 +275,7 @@ func TestTaskGraphView(t *testing.T) {
 				})
 			},
 		})
-		openSqlite := func() durable.Storage {
-			store, err := sqlitenode.OpenNodeSqliteStorage(path, sqlitenode.NodeSqliteStorageOptions{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			return store
-		}
+		openSqlite := func() durable.Storage { return openNodeSqliteStorage(t, path) }
 		firstHarness, _, _ := openTasks(t, openSqlite(), []durable.AnyTask{work.Erased()})
 		firstRoot := mustRoot(t, firstHarness, nil)
 		type created struct {

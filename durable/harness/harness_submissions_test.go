@@ -15,16 +15,11 @@ import (
 
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
-	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
 )
 
 func openSqlite(t *testing.T, path string) durable.Storage {
 	t.Helper()
-	storage, err := sqlitenode.OpenNodeSqliteStorage(path, sqlitenode.NodeSqliteStorageOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return storage
+	return openNodeSqliteStorage(t, path)
 }
 
 func liveOf(t *testing.T, harness Harness, id durable.ConversationId) *LiveState {
