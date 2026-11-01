@@ -19,10 +19,14 @@ import (
 // Earendil", "upstream pi install path") does not match.
 var piCommandInstruction = regexp.MustCompile("(?:^|[\"'`(]|\\b(?:[Rr]un|[Uu]se|using|[Tt]ry) )pi (?:config|install|remove|uninstall|update|list|login|logout|mcp|-ne|-e|-c|-r|-p|--[a-z][a-z-]*)\\b")
 
-// publishedPiSchemaText is the one production string allowed to name `pi update`: the selfUpdateCommand description of
-// schemas/settings.schema.json, which the schema tests require byte-equal to the file Pi publishes (TestRenderedSchemasAreByteEqualToThePinnedPiPackage).
-// A Pi-owned published artifact is not an instruction PiG prints; the help and the update messages say `pig update`.
-const publishedPiSchemaText = "Command `pi update` runs to update Pi itself, in argv form"
+// publishedPiSchemaFile and publishedPiSchemaText name the one production string allowed to say `pi update`: the selfUpdateCommand
+// description of schemas/settings.schema.json, which the schema tests require byte-equal to the file Pi publishes
+// (TestRenderedSchemasAreByteEqualToThePinnedPiPackage). A Pi-owned published artifact is not an instruction PiG prints; the help and
+// the update messages say `pig update`. The exemption is the whole literal in that file, nothing broader.
+const (
+	publishedPiSchemaFile = "internal/codingagent/configschema/settings.go"
+	publishedPiSchemaText = "Command `pi update` runs to update Pi itself, in argv form such as [\"mise\", \"use\", \"-g\", \"npm:{packageName}@{version}\"]. Placeholders: {packageName}, {version}, {installSpec}. PI_SELF_UPDATE_COMMAND takes precedence. Global setting only."
+)
 
 // D2: PiG's command is `pig`, so a message that tells the user to run a command never names `pi`. Pi's own texts say
 // `pi config` (resource-loader.ts omitReplacedExtensions) and `pi -ne` (main.ts EXTENSION_LOAD_FAILURE_HINT); a port that
@@ -61,11 +65,11 @@ func TestProductionStringsNeverInstructAPiCommand(t *testing.T) {
 			if err != nil {
 				text = literal.Value
 			}
-			if strings.Contains(text, publishedPiSchemaText) {
+			relative, _ := filepath.Rel(root, path)
+			if filepath.ToSlash(relative) == publishedPiSchemaFile && text == publishedPiSchemaText {
 				return true
 			}
 			if match := piCommandInstruction.FindString(text); match != "" {
-				relative, _ := filepath.Rel(root, path)
 				found = append(found, relative+":"+strconv.Itoa(fset.Position(literal.Pos()).Line)+": "+strings.TrimSpace(match))
 			}
 			return true
