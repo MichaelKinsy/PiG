@@ -1245,7 +1245,10 @@ func (o *chordObject) takeJobs(a *attempt) {
 		if !a.declaresJob(name) {
 			records.undeclare()
 		} else if reloaded {
-			o.host.loop().Go(func() { records.retryBlocked(o.ctx) })
+			// Pi filters synchronously inside the call, before its first await: the task gets the runs taken now.
+			if retried := records.blockedToRetry(); len(retried) != 0 {
+				o.host.loop().Go(func() { records.retryBlocked(retried, o.ctx) })
+			}
 		}
 	}
 }

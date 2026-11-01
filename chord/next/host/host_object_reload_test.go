@@ -807,7 +807,7 @@ func TestReloadGCCollectsARemovedTypesObjectsItsProviderItsRegistryEntriesAndThe
 	must(t, err)
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
 	defer closeHosts(t, host)
-	var facet weak.Pointer[facetIdentity]
+	var facet weak.Pointer[facetDefinition]
 	var removed weak.Pointer[chordObject]
 	// Loads the plugin; only the host keeps its facet.
 	func() {
@@ -828,7 +828,7 @@ func TestReloadGCCollectsARemovedTypesObjectsItsProviderItsRegistryEntriesAndThe
 			}
 			return self.Contribute(names, "x")
 		})
-		facet = weak.Make(made.identity)
+		facet = weak.Make(made.definition)
 		mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: made}}, background))
 	}()
 	func() {

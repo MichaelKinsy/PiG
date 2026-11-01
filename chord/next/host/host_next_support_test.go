@@ -1346,6 +1346,9 @@ type relayed struct {
 	Route RouteHandle
 	// Workers is the worker of each resolved session address, the latest one per key.
 	Workers sync.Map
+	// closing is set when the test's cleanup starts: a resolve after it (a re-resolve of a link the closing hosts dropped)
+	// makes no worker, as Pi's test ends before its hosts' close can start one.
+	closing atomic.Bool
 	mu      sync.Mutex
 	// routeLinks are the server's end of each resolved route link, in order.
 	routeLinks []*link.MemoryLink
@@ -1496,6 +1499,9 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 	result.Route = mustRoute(t)(server.Route(Session, RouteOptions{
 		Authorize: authorize,
 		Resolve: func(address contracts.Address, routing context.Context) (ResolvedLink, error) {
+			if result.closing.Load() {
+				return ResolvedLink{}, errors.New("the test is ending")
+			}
 			r, err := resolve(address, func() resolved { return worker(address) }, routing)
 			return r.link(), err
 		},
@@ -1526,6 +1532,8 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 	}
 	must(t, server.Accept(a, LinkOptions{Principal: principal, Codec: tabCodec, Limits: options.Limits}, ctx))
 	must(t, tab.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: tabCodec}, ctx))
+	// Registered last, so it runs first of the test's cleanups, before any host closes.
+	t.Cleanup(func() { result.closing.Store(true) })
 	return result
 }
 

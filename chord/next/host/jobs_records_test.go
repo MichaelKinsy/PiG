@@ -329,6 +329,19 @@ func (log *finishedLog) all() []jobFinished {
 	return append([]jobFinished(nil), log.list...)
 }
 
+// finishesAfterATurn waits for the first finish, lets one more turn of the host pass and returns every finish then: Pi's
+// `await flushed(); expect(finished).toEqual([one entry])`, where a second, spurious finish would fail the comparison.
+func finishesAfterATurn(t testing.TB, log *finishedLog) []jobFinished {
+	t.Helper()
+	eventually(t, "its finish to run on the new code", func() bool { return len(log.all()) >= 1 })
+	nexttest.Flushed()
+	got := log.all()
+	if len(got) != 1 {
+		t.Fatalf("finished = %+v, want exactly one finish", got)
+	}
+	return got
+}
+
 // runnerOptions are the options of `runner`: the gates its runs wait for (the next queued one each) and whether the object
 // opens a native (a reload restarts it).
 type runnerOptions struct {
@@ -463,8 +476,7 @@ func TestRecordsJobsAcrossAReloadAnOlderRunFinishesOnItsOldCodeAcrossASwapItsFin
 		})
 	})
 	g.Open()
-	eventually(t, "its finish to run on the new code", func() bool { return len(finished.all()) == 1 })
-	got := finished.all()
+	got := finishesAfterATurn(t, finished)
 	if got[0].code != "v2" || got[0].outcome.Kind != OutcomeDone ||
 		!nexttest.JSONEqual(got[0].outcome.Args, jsonObject("text", "a", "priority", float64(0))) ||
 		!nexttest.JSONEqual(got[0].outcome.Result, jsonObject("text", "a by v1")) {
@@ -497,8 +509,7 @@ func TestRecordsJobsAcrossAReloadARunWithoutAnAdapterIsBlockedVersionUntilAReloa
 		t.Fatalf("a blocked entry has only id, version, phase and reason: %v", entry)
 	}
 	jobsReloaded(t, host, "@test/app", runner("v1b", jobWork, finished, runnerOptions{}))
-	eventually(t, "its finish to run on the code that takes it", func() bool { return len(finished.all()) == 1 })
-	got := finished.all()
+	got := finishesAfterATurn(t, finished)
 	if got[0].code != "v1b" || !outcomeIs(got[0].outcome, OutcomeDone, "a by v1") {
 		t.Fatalf("finished = %+v", got)
 	}
@@ -517,8 +528,7 @@ func TestRecordsJobsAcrossAReloadANativeRestartAbortsRunningInMemoryRunsReloadTh
 	startedBy(t, jobs, "a")
 	nexttest.Flushed()
 	jobsReloaded(t, host, "@test/app", runner("v2", jobWork, finished, runnerOptions{native: true}))
-	eventually(t, "its finish to run on the new code", func() bool { return len(finished.all()) == 1 })
-	got := finished.all()
+	got := finishesAfterATurn(t, finished)
 	if got[0].code != "v2" || got[0].outcome.Kind != OutcomeFailed ||
 		got[0].outcome.Error.Kind != JobAborted || got[0].outcome.Error.Reason != AbortedByReload {
 		t.Fatalf("finished = %+v", got)
@@ -543,8 +553,7 @@ func TestRecordsJobsAcrossAReloadAJobTheNewCodeNoLongerDeclaresBlocksItsRunsVers
 		t.Fatalf("finished = %+v", finished.all())
 	}
 	jobsReloaded(t, host, "@test/app", runner("v3", jobWork, finished, runnerOptions{}))
-	eventually(t, "its finish to run on the new code", func() bool { return len(finished.all()) == 1 })
-	got := finished.all()
+	got := finishesAfterATurn(t, finished)
 	if got[0].code != "v3" || !outcomeIs(got[0].outcome, OutcomeDone, "a by v1") {
 		t.Fatalf("finished = %+v", got)
 	}

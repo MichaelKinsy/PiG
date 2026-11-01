@@ -578,10 +578,15 @@ func TestAHoldAfterItsObjectsLiveFailureFollowsAMemberReExposingAnotherObjectsSo
 	mu.Lock()
 	failing, writable := selfB, foreign
 	mu.Unlock()
-	failLive(failing, data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil))
+	// Pi's `failLive(...); foreign.set(...)` is one synchronous block: the failed object's stop of following (a task of
+	// the loop in Go) cannot land between the two, so they are one section.
+	var setErr error
+	failLiveThen(s.Server, failing, data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil), func() {
+		setErr = writable.Set(jsonObject("n", 1.0))
+	})
 	// A's change lands after B failed, in the window before B's admitted commits published: it shows (one more
 	// change), then the member holds with the failure.
-	must(t, rhSet(s.Server, writable, jsonObject("n", 1.0)))
+	must(t, setErr)
 	rhLinks(t, s)
 	rhEqual(t, "x", memberValue(t, ref, "x"), map[string]any{"n": 1})
 	items := calls.Items()

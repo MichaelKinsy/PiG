@@ -109,6 +109,18 @@ func exEqual(t testing.TB, what string, got, want any) {
 	}
 }
 
+// exReceive is a receive from ch that fails the test after the deadline of scopeEventually instead of hanging.
+func exReceive[T any](t testing.TB, what string, ch <-chan T) T {
+	t.Helper()
+	select {
+	case value := <-ch:
+		return value
+	case <-time.After(10 * time.Second):
+		t.Fatalf("never happened: %s", what)
+		panic("unreachable")
+	}
+}
+
 func exText(value any) string {
 	encoded, err := jsstring.MarshalJSON(value)
 	if err != nil {
@@ -4353,7 +4365,7 @@ func TestExample33Reload(t *testing.T) {
 	}
 	close(open)
 	slowAdd.Store(nil)
-	exEqual(t, "2. the old call returned", <-running, float64(2))
+	exEqual(t, "2. the old call returned", exReceive(t, "the old call's result", running), float64(2))
 	exEqual(t, "2. the new code adds", exCall(t, ref, "add", jsonObject("text", "third")), float64(3))
 	exEqual(t, "2. list", exValue(t, ref, "list"), exJSON(t, `["first (v1)","second (v1)","third (v2)"]`))
 	exEqual(t, "2. banner", exValue(t, ref, "banner"), "v2")
@@ -4372,15 +4384,21 @@ func TestExample33Reload(t *testing.T) {
 	if want := []ReloadedObject{{Object: "example.search", Kind: ReloadRestarted}}; !reflect.DeepEqual(restart.Objects, want) {
 		t.Fatalf("3. objects = %+v, want %+v", restart.Objects, want)
 	}
+	// "3. reload: ... - the reference shows": a restart drains first, and the reference shows `loading` meanwhile.
+	exEqual(t, "3. the reference shows", exStateNow(t, index), "loading")
 	close(reindexOpen)
 	slowReindex.Store(nil)
-	must(t, <-reindexing)
+	must(t, exReceive(t, "the reindex call's result", reindexing))
 	exWaitState(t, index, "live")
 	exEqual(t, "3. search now on", exValue(t, index, "engine"), "tantivy")
-	for _, want := range []string{"search: reindex on lucene done", "search: lucene closed (reload)", "search: tantivy opened"} {
-		if !slices.Contains(logs.all(), want) {
-			t.Fatalf("3. log %v lacks %q", logs.all(), want)
-		}
+	// The log's order is the example's output: the running call finishes on the old native, which closes (reload) before
+	// the new one opens.
+	wantLog := []string{
+		"search: lucene opened", "search: reindex on lucene started", "search: reindex on lucene done",
+		"search: lucene closed (reload)", "search: tantivy opened",
+	}
+	if got := logs.all(); !reflect.DeepEqual(got, wantLog) {
+		t.Fatalf("3. log = %q, want %q", got, wantLog)
 	}
 	// 4. A removal: the clock plugin is gone. Its object ends; its holder's request is not ended, it waits `not_served`.
 	held := exHold(t, host, clock, jsonObject())
@@ -4507,6 +4525,9 @@ func TestExample34Versions(t *testing.T) {
 	old := exGet(t, tab, notesV1, jsonObject())
 	exCall(t, old, "add", jsonObject("text", "milk"))
 	exEqual(t, "1. v1 everywhere", exValue(t, old, "notes"), exJSON(t, `["milk"]`))
+	tabWatch, err := old.Member("notes").Watch(background)
+	must(t, err)
+	tabFrames := nexttest.ChangesOf(tabWatch)
 	// 2. The server reloads to v2 with `accepts[1]`: the old tab's hold is kept; its version is an older one now, so it is
 	// bound again through the mapping (one snapshot), and from then on gets the mapped diffs.
 	_, err = server.Reload([]HostFacet{{Name: "@example/notes", Facet: DefineFacet(serveV2)}}, background, ReloadOptions{})
@@ -4518,6 +4539,28 @@ func TestExample34Versions(t *testing.T) {
 	scopeEventually(t, "the old tab's mapped diff", func() bool {
 		return reflect.DeepEqual(exText(exValue(t, old, "notes")), `["milk","eggs"]`)
 	})
+	// "tab frame:" of the example: the tab's watch gets the rebound snapshot, then the mapped diff, "diffs, never the
+	// whole list" (Pi prints exactly these two ops lists).
+	scopeEventually(t, "the tab's two frames", func() bool { return len(tabFrames.Items()) >= 2 })
+	turn(tab)
+	tabCalls := tabFrames.Items()
+	if len(tabCalls) != 2 {
+		t.Fatalf("tab calls = %+v, want two value calls", tabCalls)
+	}
+	tabOps := make([]nexttest.Frame[delta.JsonValue], len(tabCalls))
+	for i, call := range tabCalls {
+		if call.Kind != chord.WatchCallValue || call.Retired || call.Error != nil {
+			t.Fatalf("tab call %d = %+v, want a value call, not retired", i, call)
+		}
+		tabOps[i] = nexttest.Frame[delta.JsonValue]{Value: call.Value, Ops: call.Ops}
+	}
+	wantOps := []any{
+		[]any{[]any{"r", []any{"milk"}}},
+		[]any{[]any{"p", []any{}, 1.0, 0.0, []any{"eggs"}}},
+	}
+	if !nexttest.JSONEqual(opsOf(tabOps), wantOps) {
+		t.Fatalf("tab frame ops = %s, want %s", exText(opsOf(tabOps)), exText(wantOps))
+	}
 	// A new tab (v2 code) on the same object sees the tags.
 	fresh := exGet(t, tab, notesV2, jsonObject())
 	scopeEventually(t, "a v2 consumer's read", func() bool {
@@ -4556,7 +4599,7 @@ func TestExample34Versions(t *testing.T) {
 						return jsonObject("file", path+".out"), nil
 					},
 					Finish: func(outcome Outcome, _ documents.Tx) error {
-						finishes.add(fmt.Sprintf("finish on %s: %s %s", code, outcome.Kind, exText(outcome.Result)))
+						finishes.add(fmt.Sprintf("finish on %s: %s args %s result %s", code, outcome.Kind, exText(outcome.Args), exText(outcome.Result)))
 						return nil
 					},
 				})
@@ -4597,9 +4640,15 @@ func TestExample34Versions(t *testing.T) {
 		t.Logf("running = %s, finishes = %v, state = %s", exText(exValue(t, exportsRef, "running")), finishes.all(), exStateNow(t, exportsRef))
 		return exText(exValue(t, exportsRef, "running")) == "[]"
 	})
-	scopeEventually(t, "the finish on the old code", func() bool {
-		return slices.Contains(finishes.all(), `finish on v1 code: done "notes.md"`) || slices.Contains(finishes.all(), `finish on v2 code: done {"file":"notes.md"}`)
-	})
+	// A handed-over job's invocations finish on the new attempt's code, their outcome's result mapped forwards (Pi
+	// `jobs/job.ts`, "A handed-over job's invocations finish on its code; their outcomes go to the new attempt's job"; the
+	// example prints only the v2 line).
+	scopeEventually(t, "the finish on the new code", func() bool { return len(finishes.all()) >= 1 })
+	turn(worker)
+	wantFinish := []string{`finish on v2 code: done args {"path":"notes","format":"md"} result {"file":"notes.md"}`}
+	if got := finishes.all(); !reflect.DeepEqual(got, wantFinish) {
+		t.Fatalf("finishes = %q, want %q", got, wantFinish)
+	}
 	fresh.Release()
 	old.Release()
 	exportsRef.Release()

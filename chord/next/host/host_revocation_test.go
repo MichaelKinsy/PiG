@@ -914,7 +914,10 @@ func TestHostRevokeEndsAGuestsReferenceOverARouteLinkThatDroppedAndNothingHoldsI
 	mustLoad(t)(host.Load(nil, background))
 	states := make(chan string, 1)
 	ready := time.Minute
+	// The root's end is joined before the host closes: its own return is a section of a host that must still be open.
+	rootDone := make(chan struct{})
 	go func() {
+		defer close(rootDone)
 		_, err := host.Root(func(ctx Ctx) (any, error) {
 			if _, err := ctx.Get(remoteThere, jsonObject(), GetOptions{ReadyTimeout: &ready}); err != nil {
 				states <- err.Error()
@@ -954,6 +957,7 @@ func TestHostRevokeEndsAGuestsReferenceOverARouteLinkThatDroppedAndNothingHoldsI
 	if got := <-states; got != "app.remote: revoked" {
 		t.Fatalf("outcome = %q, want %q", got, "app.remote: revoked")
 	}
+	<-rootDone
 	mu.Lock()
 	defer mu.Unlock()
 	for i, peer := range routed {
