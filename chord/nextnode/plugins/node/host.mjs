@@ -198,6 +198,8 @@ async function load(request, context) {
 	// principalKey and revokedBy are synchronous in the host: they call the Go side on a connection of their own.
 	if (request.syncToken !== undefined) await callbacks.startSync(process.argv[2], request.syncToken);
 	const telemetry = request.telemetry === undefined ? undefined : createTelemetry({ emit: (event) => port.control({ event: "telemetry", ...event }), ...request.telemetry });
+	// The proxies of the Go host's own facets import it (bridge.mjs).
+	modules[GO_PACKAGE] = bridge.hostPackage;
 	const core = [];
 	for (const { name, module } of request.core) {
 		core.push({ name, facet: (await import(pathToFileURL(module).href)).default });
@@ -276,7 +278,8 @@ async function revoke(request, context) {
 }
 
 // The reference RPC and contracts as data (bridge.mjs, contracts.mjs): the control requests of `NodeHost.Get` and the Go host's `Bridged` facets.
-const bridge = (await import("./bridge.mjs")).createBridge({ port, wireError, host: () => hosted?.host });
+const { createBridge, GO_PACKAGE } = await import("./bridge.mjs");
+const bridge = createBridge({ port, wireError, host: () => hosted?.host });
 const operations = { load, reload, revoke, ...bridge.operations };
 
 port.on("message", (message) => {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -96,6 +97,11 @@ type RuntimeLoad struct {
 	// principal object it holds (as Pi's host does, and never memoized), when a revocation reaches it (NodeHost.Revoke, or a Go
 	// host's own `Revoke` over a route to this host). A returned error is Pi's throw. Nil: nothing revokes.
 	RevokedBy host.RevokedBy[delta.JsonValue]
+	// Bridged are the app's own facets that are loaded on a Go host and serve local types the plugins use: each is a facet
+	// of the plugins' closure on the subprocess host, a proxy that serves the same contracts and forwards to the Go host's
+	// own objects (BridgedFacet), so a plugin that needs such a type binds to it, and Pi's closure rule and reload rules
+	// treat the Go core facets as they treat any facet. NodeHost.SetBridged changes the set for the reloads.
+	Bridged []BridgedFacet
 }
 
 // PluginRuntime starts the Node subprocesses that host plugins, and loads and reloads them with complete sets of shipped
@@ -213,8 +219,15 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 	if err != nil {
 		return nil, host.LoadReport{}, err
 	}
+	if err := validBridged(options.Bridged); err != nil {
+		return nil, host.LoadReport{}, err
+	}
+	proxies, err := bridgedScripts(options.Kind, options.Bridged)
+	if err != nil {
+		return nil, host.LoadReport{}, err
+	}
 	request := &loadRequest{
-		Kind: options.Kind, Core: make([]coreWire, len(options.Core)), Scripts: scriptsWire(options.Scripts),
+		Kind: options.Kind, Core: make([]coreWire, len(options.Core)), Scripts: append(proxies, scriptsWire(options.Scripts)...),
 		Modules: map[string]string(options.Modules), Principal: options.Principal, Peer: options.Peer,
 	}
 	if request.Modules == nil {
@@ -257,6 +270,8 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 	}
 	h.kind = options.Kind
 	request.callbacksWire = h.enableCallbacks(options, packages)
+	// Set before `load` is sent: the Node host's proxies may ask for their Go objects as soon as they activate.
+	h.bridge.bridged = slices.Clone(options.Bridged)
 	call, err := h.send("load", request)
 	if err == nil {
 		var reply nodeReply
@@ -297,7 +312,11 @@ type reloadRequest struct {
 // reload sends a reload of h; the requests of two calls reach the subprocess in the order of the calls, which its runtime
 // runs one after another.
 func (h *NodeHost) reload(scripts []PluginScript) (*nodeCall, error) {
-	return h.send("reload", &reloadRequest{Scripts: scriptsWire(scripts)})
+	proxies, err := h.bridgedScripts()
+	if err != nil {
+		return nil, err
+	}
+	return h.send("reload", &reloadRequest{Scripts: append(proxies, scriptsWire(scripts)...)})
 }
 
 // reloaded waits for the report of a reload sent, and then for the frames it caused to be delivered to the Go host the link

@@ -7,7 +7,12 @@
 // unrequested and in the order they happen on the one channel: `frame` (one call of a watch's listener), `watchEnd` (the
 // watch ended, and why) and `state` (a reference's state changed).
 import { BACKGROUND_CONTEXT, withAbortSignal } from "@earendil-works/chord/context";
+import { ChordError } from "@earendil-works/chord/next";
 import { contractOf, operations as contractOperations } from "./contracts.mjs";
+import { createProxies } from "./proxy.mjs";
+
+/** The specifier the Go core facets' proxy scripts import their host package by (plugins_node_bridged.go's `bridgePackage`). */
+export const GO_PACKAGE = "@earendil-works/chord/next/go";
 
 /** A reference's state as data: its kind and the fields of that kind (the causes and errors as ChordError data). */
 function wireState(state) {
@@ -168,13 +173,76 @@ export function createBridge({ port, wireError, host }) {
 	}
 
 	const notifications = { unwatch, release };
+
+	/** The requests this side made of the Go host and the Go side has not answered, by id. */
+	const asked = new Map();
+	let nextAsk = 0;
+	/** The observers of the Go host's watches, by the id this side chose, which the frames of the Go side name. */
+	const observers = new Map();
+
+	/**
+	 * Requests `event` of the Go host (`{ event, id, ... }`, answered by `{ op: "answer", id, ok, result | error }`) with
+	 * `context`: its abort is sent as `{ event: "abort", target: id }`, which aborts the Go host's request.
+	 */
+	function ask(event, body, context) {
+		return new Promise((resolve, reject) => {
+			const id = ++nextAsk;
+			const signal = context.abortSignal;
+			const abort = () => port.control({ event: "abort", target: id });
+			asked.set(id, { resolve, reject, done: () => signal?.removeEventListener("abort", abort) });
+			port.control({ event, id, ...body });
+			if (signal?.aborted) abort();
+			else signal?.addEventListener("abort", abort, { once: true });
+		});
+	}
+
+	/** Tells the Go host `event` (`{ event, ... }`), which no answer follows. */
+	function tell(event, body) {
+		port.control({ event, ...body });
+	}
+
+	/** The answer of the Go side to request `message.id`. */
+	function answered(message) {
+		const request = asked.get(message.id);
+		if (request === undefined) return;
+		asked.delete(message.id);
+		request.done();
+		if (message.ok) request.resolve(message.result);
+		else request.reject(errorOf(message.error));
+	}
+
+	/** The error of the Go side as data: a ChordError keeps its code, anything else is an Error of its message. */
+	function errorOf(wire) {
+		return wire.chord === undefined ? new Error(wire.message) : new ChordError(wire.chord);
+	}
+
+	const wireCallOf = (call) => (call.kind === "failed" ? { kind: "failed", error: errorOf(call.error) } : call);
+
 	return {
 		operations: { ...contractOperations, get, value, watch, call },
+		/** The host package of the Go core facets' proxies (`GO_PACKAGE`), answered to the scripts that import it. */
+		hostPackage: createProxies({ ask, tell, watches: observers }),
 		/**
-		 * Handles a control message that is no request of `operations`: a notification of the Go side (no id, no reply), and
-		 * returns whether it was one.
+		 * Handles a control message that is no request of `operations`: a notification of the Go side (no id, no reply), or
+		 * what the Go side sends for a request it serves for this side (an answer, a frame or the end of a watch of the Go
+		 * host); returns whether it was one.
 		 */
 		handle(message) {
+			switch (message.op) {
+				case "answer":
+					answered(message);
+					return true;
+				case "frame":
+					observers.get(message.watch)?.advance(wireCallOf(message.call), BACKGROUND_CONTEXT);
+					return true;
+				case "watchEnd": {
+					const observer = observers.get(message.watch);
+					observers.delete(message.watch);
+					const { kind, error } = message.end;
+					observer?.end(error === undefined ? { kind } : { kind, error: errorOf(error) });
+					return true;
+				}
+			}
 			const notification = notifications[message.op];
 			if (notification === undefined) return false;
 			notification(message).catch((error) => port.control({ event: "fatal", error: wireError(error) }));

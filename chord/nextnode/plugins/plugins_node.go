@@ -937,7 +937,8 @@ func (h *NodeHost) control(payload []byte) {
 	if err := json.Unmarshal(payload, &message); err != nil {
 		return
 	}
-	if message.ID != nil {
+	// A reply has an id and no event; the requests the Node host's proxies make of the Go host are events with an id.
+	if message.ID != nil && message.Event == "" {
 		h.mu.Lock()
 		call := h.pending[*message.ID]
 		h.mu.Unlock()

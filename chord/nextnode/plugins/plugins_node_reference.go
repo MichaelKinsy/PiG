@@ -70,13 +70,16 @@ type callRequest struct {
 
 // nodeBridge is what a NodeHost keeps of the references it holds and their watches, by the ids this side chose (a handle for a
 // reference, an id for a watch): registered before the request that makes them is sent, so the events that follow its reply
-// find them.
+// find them; and, for the other direction, the Go core facets it ships as proxies and what it holds for them
+// (plugins_node_bridged.go).
 type nodeBridge struct {
 	mu         sync.Mutex
 	nextHandle int
 	references map[int]*NodeReference
 	nextWatch  int
 	watches    map[int]*nodeWatch
+	bridged    []BridgedFacet
+	served     *bridgedServing
 }
 
 // nodeWatch is a watch of a member the Node host serves: its frames wait until the reply of the `watch` request (the
@@ -618,8 +621,9 @@ func (h *NodeHost) stopWatch(id int) {
 }
 
 // bridgeEvent handles an event of the Node host that belongs to the reference RPC: a frame or the end of a watch, or the
-// change of a reference's state; any other event is not its. It runs on the goroutine that reads the channel, so the events
-// of one watch reach it in the order the Node host sent them. A message that does not decode is dropped, as `control` drops one.
+// change of a reference's state (the reference RPC, Go to Node), or a request or notification the Node host's proxies make
+// of the Go host (bridgedEvent). It runs on the goroutine that reads the channel, so the events of one watch reach it in the
+// order the Node host sent them. A message that does not decode is dropped, as `control` drops one.
 func (h *NodeHost) bridgeEvent(event string, payload []byte) {
 	switch event {
 	case "frame":
@@ -628,6 +632,8 @@ func (h *NodeHost) bridgeEvent(event string, payload []byte) {
 		h.watchEnded(payload)
 	case "state":
 		h.referenceState(payload)
+	default:
+		h.bridgedEvent(event, payload)
 	}
 }
 
