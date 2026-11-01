@@ -149,6 +149,8 @@ type Channel struct {
 	// held is the messages received while one is handled asynchronously, in order, and the index of the next to handle;
 	// nil while none waits.
 	held *heldMessages
+	// heldDone is closed when held is cleared (the held messages were handled, or the channel closed); set with held.
+	heldDone chan struct{}
 	// waiting is whether a message is being handled asynchronously: the held ones wait.
 	waiting bool
 }
@@ -329,6 +331,7 @@ func (c *Channel) hold(handling *Handling) {
 	c.mu.Lock()
 	if c.held == nil {
 		c.held = &heldMessages{}
+		c.heldDone = make(chan struct{})
 	}
 	c.waiting = true
 	c.mu.Unlock()
@@ -356,6 +359,7 @@ func (c *Channel) release() {
 		}
 		if held.next >= len(held.queue) {
 			c.held = nil
+			close(c.heldDone)
 			c.mu.Unlock()
 			return
 		}
@@ -376,6 +380,28 @@ func (c *Channel) release() {
 			return
 		}
 		c.mu.Unlock()
+	}
+}
+
+// Idle blocks until every message the channel received was handled: none waits behind a message that is handled
+// asynchronously (an inflate). A message the link hands over meanwhile is waited for too. It returns the cause of ctx when
+// ctx ends the wait; a channel that closes ends it (what it held is dropped).
+func (c *Channel) Idle(ctx context.Context) error {
+	for {
+		c.mu.Lock()
+		var done chan struct{}
+		if c.held != nil {
+			done = c.heldDone
+		}
+		c.mu.Unlock()
+		if done == nil {
+			return nil
+		}
+		select {
+		case <-done:
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		}
 	}
 }
 
@@ -430,6 +456,9 @@ func (c *Channel) linkClosed() {
 		return
 	}
 	c.state = channelClosed
+	if c.held != nil {
+		close(c.heldDone)
+	}
 	c.held = nil
 	c.queued = nil
 	c.mu.Unlock()

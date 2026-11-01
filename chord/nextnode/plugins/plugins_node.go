@@ -97,6 +97,9 @@ type NodeOptions struct {
 	// workers wait 3 s: workers.ts); 3 s by default. A process stalled in a loop cannot read its channel, so this is how long
 	// the Go side waits after it closed the link (a heartbeat that found the host silent, for one) before it kills it.
 	StopGrace *time.Duration
+	// KeepWarm makes the PluginRuntime start a spare process in the background each time a Load has taken its process, so
+	// the next Load finds one up (PluginRuntime.Warm). Close ends it.
+	KeepWarm bool
 }
 
 // NodeHostError is what the host of a subprocess reported in the background (upstream's `HostError`, which Go's
@@ -531,7 +534,7 @@ type NodeHost struct {
 	port    atomic.Pointer[framedPort]
 	// link is the link over port, made when the channel was: the messages the process's host sends queue in it until the app
 	// attaches it to a Go host.
-	link link.Link
+	link *nodeLink
 	// kind is the facet kind the host was loaded with; owner is the component that loaded it (nil for a PluginRuntime's).
 	kind  string
 	owner *Plugins

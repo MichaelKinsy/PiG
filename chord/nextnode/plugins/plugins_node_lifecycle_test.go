@@ -3,13 +3,17 @@ package plugins
 import (
 	"context"
 	"errors"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
@@ -217,5 +221,287 @@ func TestNodeAPluginsInfiniteLoopEndsWithTheGoHostsHeartbeatOnTheLink(t *testing
 	exit := exitOf(t, node)
 	if exit.Signal != "SIGKILL" || exit.Code != -1 || !strings.Contains(exit.Reason, "link") {
 		t.Fatalf("exit = %+v, want SIGKILL, code -1 and a reason that names the link", exit)
+	}
+}
+
+// Not Pi's: Pi's `await reload()` is followed by `transported()` and `delivered()` (event-loop hops) before a test reads what a
+// host's watchers saw. Here the process boundary has no shared loop, so Reload waits itself: when it returns, every frame
+// the reload caused has been handled by the Go host the link is attached to and its watch listener entered, with no waiting by
+// the caller. The frames carry a 40 KiB label deflated by the Node host (RuntimeLoad.Compression) to a Go host without a
+// compressor, which inflates asynchronously and holds the later messages of the link meanwhile: the case where the frames
+// are far behind the reply.
+func TestEndToEndTheFramesAReloadCausedAreDeliveredWhenReloadReturnsAlsoWhenTheirPartsInflateAsynchronously(t *testing.T) {
+	root := tempRoot(t, "contracts", "notes")
+	c := pcNew(t, root)
+	address := workerKind.Address(nil)
+	node, _, err := c.Load(PluginsLoad{Kind: "worker", Address: &address, Principal: workerPrincipal, Peer: serverPrincipal, Compression: true}, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = node.Close(background) })
+	server := serverFor(t, workerRoute(node))
+	notes, err := server.Get(notesContract, delta.NewJsonObject(0), background, host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(notes.Release)
+	watch, err := notes.Member("label").Watch(background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	frames := pcStartFrames(watch)
+	step, err := c.Step("worker", node)
+	if err != nil {
+		t.Fatal(err)
+	}
+	label := strings.Repeat("0123456789abcdef", 40<<6)
+	pcWrite(t, root, "notes", "label.ts", "export const label = \""+label+"\";\n")
+	c.waitMarks(t, "dirty notes", pcDirty("@test/notes"))
+	c.rollout(t, []RolloutStep{step}, c.build(t, c.Marks().Dirty...))
+	if got := frames.all(); !reflect.DeepEqual(got, []delta.JsonValue{label}) {
+		t.Fatalf("frames when Rollout returned = %d frames, want the one with the new label (%d bytes)", len(got), len(label))
+	}
+}
+
+// The Node subprocess keeps V8's code cache of the modules it imports (Pi's type-stripped closure) in the extracted tree, so a
+// start after the first begins from compiled code: BenchmarkNodeStart/warm/v8-cache against /no-v8-cache is the measure (about
+// 0.31 s to `started` against 0.63 s on the reference machine). The cache is written when the process ends.
+func TestNodeTheSubprocessKeepsV8sCompileCacheInTheExtractedTree(t *testing.T) {
+	cache := t.TempDir()
+	node, _, err := NewPluginRuntime(NodeOptions{CacheDir: cache}).Load(RuntimeLoad{Kind: "worker", Principal: workerPrincipal, Peer: serverPrincipal}, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := node.Close(background); err != nil {
+		t.Fatal(err)
+	}
+	tree, err := extractNode(cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(filepath.Join(tree, "v8"))
+	if err != nil || len(entries) == 0 {
+		t.Fatalf("the compile cache = %v, %v; want a directory with the cache of this Node", entries, err)
+	}
+}
+
+// warmRuntime is a runtime that closes with the test.
+func warmRuntime(t *testing.T, options NodeOptions) *PluginRuntime {
+	t.Helper()
+	if options.CacheDir == "" {
+		options.CacheDir = t.TempDir()
+	}
+	options.OnOutput = func(NodeStream, []byte) {}
+	runtime := NewPluginRuntime(options)
+	t.Cleanup(func() { _ = runtime.Close(background) })
+	return runtime
+}
+
+func spareOf(runtime *PluginRuntime) *NodeHost {
+	runtime.warm.mu.Lock()
+	defer runtime.warm.mu.Unlock()
+	if runtime.warm.spare == nil {
+		return nil
+	}
+	return runtime.warm.spare.node
+}
+
+func loadEmpty(t *testing.T, runtime *PluginRuntime) *NodeHost {
+	t.Helper()
+	node, _, err := runtime.Load(RuntimeLoad{Kind: "worker", Principal: workerPrincipal, Peer: serverPrincipal}, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = node.Close(background) })
+	return node
+}
+
+// Warm blocks until a spare process is up to `started`, at most one is kept (a second Warm waits for the first's and returns
+// nil), and the next Load takes it: the host it returns is that process, loaded, and the runtime has no spare left.
+func TestNodeWarmStartsOneSpareTheNextLoadTakes(t *testing.T) {
+	runtime := warmRuntime(t, NodeOptions{})
+	if err := runtime.Warm(background); err != nil {
+		t.Fatal(err)
+	}
+	spare := spareOf(runtime)
+	if spare == nil {
+		t.Fatal("Warm returned with no spare")
+	}
+	select {
+	case <-spare.started:
+	default:
+		t.Fatal("Warm returned before the spare started")
+	}
+	if err := runtime.Warm(background); err != nil || spareOf(runtime) != spare {
+		t.Fatalf("a second Warm = %v, spare %p, want nil and the same spare %p", err, spareOf(runtime), spare)
+	}
+	node := loadEmpty(t, runtime)
+	if node != spare {
+		t.Fatal("Load started a process of its own instead of taking the spare")
+	}
+	if spareOf(runtime) != nil {
+		t.Fatal("the runtime kept the spare a Load took")
+	}
+	// The taken process is the Load's: the runtime's Close leaves it running.
+	if err := runtime.Close(background); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-node.Exited():
+		t.Fatal("the runtime's Close ended the process of a host it had given away")
+	default:
+	}
+}
+
+// KeepWarm: after each Load has its process the runtime starts the next spare in the background, so the Load after finds one;
+// two hosts are two processes.
+func TestNodeKeepWarmStartsTheNextSpareAfterEachLoad(t *testing.T) {
+	runtime := warmRuntime(t, NodeOptions{KeepWarm: true})
+	first := loadEmpty(t, runtime)
+	// Warm waits for the spare the first Load started in the background.
+	if err := runtime.Warm(background); err != nil {
+		t.Fatal(err)
+	}
+	spare := spareOf(runtime)
+	if spare == nil || spare == first {
+		t.Fatalf("spare = %p after the first Load (%p), want another process", spare, first)
+	}
+	second := loadEmpty(t, runtime)
+	if second != spare {
+		t.Fatal("the second Load did not take the kept spare")
+	}
+	if err := runtime.Warm(background); err != nil || spareOf(runtime) == nil || spareOf(runtime) == second {
+		t.Fatalf("no next spare after the second Load: %v", err)
+	}
+}
+
+// Close closes the spare (its exit is a requested one) and ends the runtime: a Load or Warm after it is refused. A host a
+// Load returned before is the caller's and keeps running.
+func TestNodeRuntimeCloseClosesTheSpareAndRefusesLaterLoads(t *testing.T) {
+	runtime := warmRuntime(t, NodeOptions{KeepWarm: true})
+	kept := loadEmpty(t, runtime)
+	if err := runtime.Warm(background); err != nil {
+		t.Fatal(err)
+	}
+	spare := spareOf(runtime)
+	if err := runtime.Close(background); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-spare.Exited():
+	default:
+		t.Fatal("Close returned before the spare ended")
+	}
+	if spare.Err() != nil {
+		t.Fatalf("the spare's Err = %v after a requested close", spare.Err())
+	}
+	select {
+	case <-kept.Exited():
+		t.Fatal("Close ended a host a Load had returned")
+	default:
+	}
+	if _, _, err := runtime.Load(RuntimeLoad{Kind: "worker", Principal: workerPrincipal, Peer: serverPrincipal}, background); !errors.Is(err, errRuntimeClosed) {
+		t.Fatalf("Load after Close = %v, want errRuntimeClosed", err)
+	}
+	if err := runtime.Warm(background); !errors.Is(err, errRuntimeClosed) {
+		t.Fatalf("Warm after Close = %v, want errRuntimeClosed", err)
+	}
+	if err := runtime.Close(background); err != nil {
+		t.Fatalf("a second Close = %v", err)
+	}
+}
+
+// Close while the background spare is still starting cancels and joins that start: no process is left, nothing is reported.
+func TestNodeRuntimeCloseWhileTheKeptSpareIsStartingLeavesNoProcess(t *testing.T) {
+	reported := make(chan NodeHostError, 1)
+	runtime := warmRuntime(t, NodeOptions{KeepWarm: true, OnError: func(err NodeHostError) { reported <- err }})
+	loadEmpty(t, runtime)
+	if err := runtime.Close(background); err != nil {
+		t.Fatal(err)
+	}
+	if spareOf(runtime) != nil {
+		t.Fatal("a spare is left after Close")
+	}
+	select {
+	case err := <-reported:
+		t.Fatalf("Close reported %+v for the start it cancelled", err)
+	default:
+	}
+}
+
+// A spare whose process ended meanwhile is not handed out: the Load starts a process of its own.
+func TestNodeALoadDoesNotTakeASpareThatDied(t *testing.T) {
+	runtime := warmRuntime(t, NodeOptions{})
+	if err := runtime.Warm(background); err != nil {
+		t.Fatal(err)
+	}
+	spare := spareOf(runtime)
+	spare.kill()
+	<-spare.Exited()
+	node := loadEmpty(t, runtime)
+	if node == spare {
+		t.Fatal("Load took a spare that had died")
+	}
+	select {
+	case <-node.Exited():
+		t.Fatal("the Load's host is not alive")
+	default:
+	}
+}
+
+// A kept spare whose start fails is reported to OnError as `warm_failed`; the next Load starts its own process and has its own
+// result. (The spare is up before Node leaves PATH: the Load takes it, and the start that follows cannot find Node.)
+func TestNodeAFailedKeptSpareIsReportedAndTheNextLoadStartsItsOwn(t *testing.T) {
+	reported := make(chan NodeHostError, 1)
+	runtime := warmRuntime(t, NodeOptions{KeepWarm: true, OnError: func(err NodeHostError) { reported <- err }})
+	if err := runtime.Warm(background); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", t.TempDir())
+	loadEmpty(t, runtime)
+	select {
+	case err := <-reported:
+		if err.Kind != "warm_failed" || err.Err == nil || !strings.Contains(err.Err.Error(), "Node.js 22.19.0 or newer") {
+			t.Fatalf("reported %+v, want warm_failed naming the Node requirement", err)
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("the failed start was not reported")
+	}
+	if spareOf(runtime) != nil {
+		t.Fatal("a failed start left a spare")
+	}
+	_, _, err := runtime.Load(RuntimeLoad{Kind: "worker", Principal: workerPrincipal, Peer: serverPrincipal}, background)
+	if err == nil || !strings.Contains(err.Error(), "Node.js 22.19.0 or newer") {
+		t.Fatalf("Load = %v, want its own start's error", err)
+	}
+}
+
+// The plugins component warms and closes its runtime: Plugins.Warm starts the spare its Load takes; Close of a component
+// whose spare nothing took closes the spare.
+func TestPluginsWarmStartsTheSpareLoadTakesAndCloseClosesAnUntakenOne(t *testing.T) {
+	root := tempRoot(t, "contracts", "notes")
+	c := pcNew(t, root)
+	if err := c.Warm(background); err != nil {
+		t.Fatal(err)
+	}
+	spare := spareOf(c.runtime)
+	address := workerKind.Address(nil)
+	node, _, err := c.Load(PluginsLoad{Kind: "worker", Address: &address, Principal: workerPrincipal, Peer: serverPrincipal}, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = node.Close(background) })
+	if node != spare {
+		t.Fatal("Plugins.Load did not take the spare Plugins.Warm started")
+	}
+	if err := c.Warm(background); err != nil {
+		t.Fatal(err)
+	}
+	untaken := spareOf(c.runtime)
+	c.Close()
+	select {
+	case <-untaken.Exited():
+	default:
+		t.Fatal("Plugins.Close left the spare running")
 	}
 }

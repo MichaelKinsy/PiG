@@ -534,11 +534,18 @@ func (c *Plugins) InstallDependencies(name string, ctx context.Context) error {
 	return nil
 }
 
-// Close stops the watcher and waits for what it started. The hosts it loaded are their owners': it closes none.
+// Warm starts a spare Node process for the next Load (PluginRuntime.Warm).
+func (c *Plugins) Warm(ctx context.Context) error { return c.runtime.Warm(ctx) }
+
+// Close stops the watcher, closes the spare Node process of its runtime (PluginRuntime.Close) and waits for what it started.
+// The hosts it loaded are their owners': it closes none. The spare's close error is dropped: its process never loaded
+// anything, and Close, as Pi's `plugins.close()`, returns nothing.
 func (c *Plugins) Close() {
 	c.section(c.watcher.close)
 	c.watcher.join()
 	c.loop.Wait()
+	//portlint:allow ctxbackground Pi's plugins.close() takes no signal and returns nothing; the spare's close is bounded by the process's own stop grace
+	_ = c.runtime.Close(context.Background())
 }
 
 // discover discovers the plugins again; the changes of the plugin set and of `package.json`s seen until now clear.

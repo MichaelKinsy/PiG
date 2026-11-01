@@ -76,16 +76,14 @@ export default defineFacet((host) =>
 	return CoreFacet{Name: "@test/sprobe", Module: file}
 }
 
-// pcFrames collects what a watch delivers as Pi's `valuesOf` records it (a value as itself, a failure as {failed: message}),
-// and announces each.
+// pcFrames collects what a watch delivers as Pi's `valuesOf` records it (a value as itself, a failure as {failed: message}).
 type pcFrames struct {
 	mu     sync.Mutex
 	values []delta.JsonValue
-	got    chan struct{}
 }
 
 func pcStartFrames(watch chord.WatchHandle[delta.JsonValue]) *pcFrames {
-	frames := &pcFrames{got: make(chan struct{}, 64)}
+	frames := &pcFrames{}
 	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
 		frames.mu.Lock()
 		if call.Kind == chord.WatchCallValue {
@@ -94,7 +92,6 @@ func pcStartFrames(watch chord.WatchHandle[delta.JsonValue]) *pcFrames {
 			frames.values = append(frames.values, map[string]any{"failed": call.Error.Error()})
 		}
 		frames.mu.Unlock()
-		frames.got <- struct{}{}
 		return nil
 	})
 	return frames
@@ -106,28 +103,11 @@ func (f *pcFrames) all() []delta.JsonValue {
 	return append([]delta.JsonValue{}, f.values...)
 }
 
-// next waits for the next frame to arrive (an event, not a poll).
-func (f *pcFrames) next(t *testing.T) {
-	t.Helper()
-	select {
-	case <-f.got:
-	case <-time.After(30 * time.Second):
-		t.Fatal("no frame arrived")
-	}
-}
-
-// count waits until n frames arrived: the frame list Pi expects after its `transported()` and `delivered()`.
-func (f *pcFrames) count(t *testing.T, n int) {
-	t.Helper()
-	for len(f.all()) < n {
-		f.next(t)
-	}
-}
-
 // plugins.test.ts › end to end: a server and a worker › loads plugin directories, rolls an edit out (server, then worker),
-// and keeps a broken edit old on both. Pi's `transported()` and `delivered()` (event-loop hops) are the arrival of the frames:
-// the test waits for the frame list it expects. For the broken edit, where nothing may change, a call of `add` is the
-// barrier: every frame the worker's host sent before its reply has arrived by then (count 2 is that call's, not Pi's).
+// and keeps a broken edit old on both. Pi reads what the host's watchers saw after `transported()` and `delivered()`
+// (event-loop hops). Here Rollout waits itself (NodeHost's reload wait: the Go host's deliveries entered their listeners
+// when it returns), so the frame list, and what the broken edit did not change, are read right after Rollout, with no wait
+// and no call as a barrier.
 func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth(t *testing.T) {
 	root := tempRoot(t, "contracts", "notes")
 	c := pcNew(t, root)
@@ -216,7 +196,6 @@ func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThen
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("rolled = %+v, want %+v", got, want)
 	}
-	frames.count(t, 1)
 	if values := frames.all(); !reflect.DeepEqual(values, []delta.JsonValue{"v2"}) {
 		t.Fatalf("frames = %v, want [v2]", values)
 	}
@@ -236,10 +215,6 @@ func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThen
 	}
 	if want := [][2]any{{"server", []string{"@test/notes"}}, {"worker", []string{"@test/notes"}}}; !reflect.DeepEqual(brokenSteps, want) {
 		t.Fatalf("broken = %v, want %v", brokenSteps, want)
-	}
-	// The barrier: what the worker's host sent before this reply has arrived.
-	if _, err := notes.Call("add", nil, background); err != nil {
-		t.Fatal(err)
 	}
 	if got := []any{member("label"), indexLabel()}; !reflect.DeepEqual(got, []any{"v2", "v2"}) {
 		t.Fatalf("after the broken edit = %v, want [v2 v2]", got)

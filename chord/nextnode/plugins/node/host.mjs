@@ -16,11 +16,15 @@
 // link silent for the heartbeat (30 s) is closed by this host, and the process exits with it; the heartbeat starts with the
 // link, so a host nothing attaches has none.
 import { EventEmitter } from "node:events";
-import { registerHooks } from "node:module";
+import { enableCompileCache, registerHooks } from "node:module";
 import { connect } from "node:net";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { openHostStore } from "./store.mjs";
 import { inspect } from "node:util";
+
+// V8's code cache for the modules below (Pi's vendored closure, type-stripped on import), kept in the extracted tree: a
+// process after the first starts from compiled code.
+enableCompileCache(fileURLToPath(new URL("./v8/", import.meta.url)));
 
 const tree = new URL("./pi/chord/src/", import.meta.url);
 const pi = (path) => import(new URL(path, tree).href);

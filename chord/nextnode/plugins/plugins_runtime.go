@@ -79,10 +79,14 @@ type RuntimeLoad struct {
 // scripts. It is Pi's `createPluginRuntime()`.
 type PluginRuntime struct {
 	node NodeOptions
+	// warm is the spare process (Warm, NodeOptions.KeepWarm).
+	warm *warmState
 }
 
 // NewPluginRuntime is upstream's `createPluginRuntime()`: how its subprocesses are started.
-func NewPluginRuntime(node NodeOptions) *PluginRuntime { return &PluginRuntime{node: node} }
+func NewPluginRuntime(node NodeOptions) *PluginRuntime {
+	return &PluginRuntime{node: node, warm: newWarmState()}
+}
 
 // loadRequest is the `load` control request of host.mjs.
 type loadRequest struct {
@@ -219,7 +223,7 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 		return nil, host.LoadReport{}, err
 	}
 	request.Store = store
-	h, err := startNode(r.node, ctx)
+	h, err := r.start(ctx)
 	if err != nil {
 		return nil, host.LoadReport{}, err
 	}
@@ -230,6 +234,7 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 		if reply, err = h.await(call, ctx); err == nil {
 			var report host.LoadReport
 			if report, err = loadReport(reply.Result); err == nil {
+				h.link.delivered(ctx)
 				return h, report, nil
 			}
 		}
@@ -242,7 +247,7 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 // digest) as the same facets, new scripts evaluated, a plugin whose build or evaluation failed passed as its loaded facet (an
 // added one left out; both given to the host's closure rule), loaded plugins not in scripts left out. What the host committed
 // is the loaded set, also when the reload returns `aborted` after its commit (a *NodeError wrapping the ChordError, whose
-// details.committed says what the commit applied). It blocks until the report.
+// details.committed says what the commit applied). It blocks until the report, and then until the frames the reload caused have been delivered to the Go host the link is attached to (NodeHost.Link): the process wrote them before its reply, the reader handed each to the host before it decoded the reply, and the host's deliveries have entered their listeners when Reload returns, as a host's own Reload leaves its watchers' listeners entered. ctx ends that last wait, not the report.
 func (r *PluginRuntime) Reload(h *NodeHost, scripts []PluginScript, ctx context.Context) (host.ReloadReport, error) {
 	call, err := h.reload(scripts)
 	if err != nil {
@@ -263,9 +268,13 @@ func (h *NodeHost) reload(scripts []PluginScript) (*nodeCall, error) {
 	return h.send("reload", &reloadRequest{Scripts: scriptsWire(scripts)})
 }
 
-// reloaded waits for the report of a reload sent.
+// reloaded waits for the report of a reload sent, and then for the frames it caused to be delivered to the Go host the link
+// is attached to (nodeLink.delivered). A process that ended is no reply to wait after.
 func (h *NodeHost) reloaded(call *nodeCall, ctx context.Context) (host.ReloadReport, error) {
 	reply, err := h.await(call, ctx)
+	if _, ended := errors.AsType[*NodeExit](err); !ended {
+		h.link.delivered(ctx)
+	}
 	if err != nil {
 		return host.ReloadReport{}, err
 	}
