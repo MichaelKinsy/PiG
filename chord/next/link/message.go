@@ -10,7 +10,7 @@ import (
 )
 
 // Ports packages/chord/src/next/link/message.ts. Messages (§22, R1, R4, 2b): the one Message every link carries, a
-// sealed interface of one struct per kind in place of upstream's TypeBox tagged union, checked after every decode by
+// sealed interface of one struct per kind in place of upstream's schema-checked tagged union, checked after every decode by
 // CheckMessage (the schema's constraints, field by field), and the codecs that turn it into bytes.
 //
 // The schema's optional fields: an absent part is a nil Part, an absent segments list a nil slice, an absent

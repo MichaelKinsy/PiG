@@ -7,15 +7,18 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
-// Ports packages/chord/src/next/contracts/schema.ts (short constructors for TypeBox schemas, the bytes leaf, and
-// method declarations).
+// Ports packages/chord/src/next/contracts/schema.ts (Chord's short constructors over pi-schema's builders: plain JSON
+// Schema, and method and keyed member declarations). The helpers keep the shapes contracts were fingerprinted with:
+// literals carry their `type`, OneOf is a union of literals, Map a pattern-property record; Obj follows pi-schema's
+// builder order (type, properties, required, additionalProperties).
 //
-// Forced Go differences. Schema is TypeBox's schema as data: the node (an ordered *delta.JsonObject, or a bool) plus
-// the non-enumerable "~optional" marker, which is the Optional field. The generic Static<>, Defaulted<> and Bounds
-// types are type-level only and designed out; bounds and defaults are Option values (Min, Max, Pattern, Default),
-// and a constructor panics on an option that does not apply to it, where TypeScript rejects it at compile time.
-// withBytesCheck's `~refine` is designed out: a Go value carries no executable check, so the bytes marker is checked
-// natively by type (CheckBytes).
+// Forced Go differences. Schema is the schema as data: the node (an ordered *delta.JsonObject, or a bool) plus the
+// Optional flag, which stands for pi-schema's `Optional` wrapper of `opt(...)` (a value that is no schema: only an
+// object field takes it, and a snapshot refuses it anywhere else). The generic Static<>, Defaulted<> and Bounds
+// types and the typed scalar schemas (StringSchema, IntegerSchema, ..., LiteralsSchema, NullSchema) are type-level
+// only and designed out; bounds and defaults are Option values (Min, Max, Pattern, Default), and a constructor panics
+// on an option that does not apply to it, where TypeScript rejects it at compile time. withBytesCheck is deleted
+// upstream: a bytes leaf is plain data, checked natively by pi-schema's validator (a []byte is its Uint8Array).
 
 // Entry is one name and value of an object literal whose key order matters: Go has no ordered literal.
 type Entry[T any] struct {
@@ -32,11 +35,11 @@ func Prop(name string, schema Schema) Property { return Property{Name: name, Val
 // Params is a flat record of required fields, in identity order (see ReadParams).
 type Params []Property
 
-// Schema is a TypeBox schema: JSON Schema data. Node is an ordered *delta.JsonObject or a bool; the zero Schema
+// Schema is a pi-schema schema: JSON Schema data. Node is an ordered *delta.JsonObject or a bool; the zero Schema
 // (a nil Node) is no schema, upstream's `undefined`.
 type Schema struct {
 	Node delta.JsonValue
-	// Optional is TypeBox's non-enumerable "~optional": an object field made optional by Opt.
+	// Optional is pi-schema's `Optional` wrapper: an object field made optional by Opt.
 	Optional bool
 }
 
@@ -187,7 +190,7 @@ type Literal interface {
 	~string | ~bool | ~int | ~int64 | ~float64
 }
 
-// literalSchema is Type.Literal(value): its type keyword and const.
+// literalSchema is `{ type: typeof value, const: value }`: a literal with its JSON type.
 func literalSchema[V Literal](value V) Schema {
 	switch typed := any(value).(type) {
 	case string:
@@ -240,11 +243,10 @@ func Obj(properties ...Property) Schema {
 			required = append(required, property.Name)
 		}
 	}
-	node := delta.JsonObjectOf("type", "object")
+	node := delta.JsonObjectOf("type", "object", "properties", props)
 	if len(required) > 0 {
 		node.Set("required", required)
 	}
-	node.Set("properties", props)
 	node.Set("additionalProperties", false)
 	return Schema{Node: node}
 }
@@ -257,7 +259,7 @@ func Arr(items Schema, opts ...Option) Schema {
 	return Schema{Node: node}
 }
 
-// Map is a string-keyed record.
+// Map is a string-keyed record: one pattern property matching every key.
 func Map(value Schema) Schema {
 	return Schema{Node: delta.JsonObjectOf("type", "object", "patternProperties", delta.JsonObjectOf("^.*$", value.Node))}
 }
@@ -271,34 +273,13 @@ func Opt(schema Schema) Schema {
 // Unknown is any value.
 func Unknown() Schema { return Schema{Node: delta.NewJsonObject(0)} }
 
-// Bytes is a `Uint8Array` leaf, a []byte in Go, checked by CheckBytes and never enumerated. Its enumerable form is the
-// data marker `{ type: "bytes", minLength?, maxLength? }`.
+// Bytes is a `Uint8Array` leaf, a []byte in Go: `{ type: "bytes", minLength?, maxLength? }` (pi-schema's extension of
+// JSON Schema for values that never pass through JSON).
 func Bytes(opts ...Option) Schema {
 	o := read("Bytes", lengthOptions, nil, opts)
 	node := delta.JsonObjectOf("type", "bytes")
 	setLimits(node, o, "minLength", "maxLength")
 	return Schema{Node: node}
-}
-
-// CheckBytes is the check of a bytes schema: value is a []byte whose length is within the marker's bounds. A schema that
-// is not a bytes marker matches nothing.
-func CheckBytes(schema Schema, value any) bool {
-	node, ok := schema.Node.(*delta.JsonObject)
-	if !ok || node.Value("type") != "bytes" {
-		return false
-	}
-	data, ok := value.([]byte)
-	if !ok {
-		return false
-	}
-	lower, upper := 0.0, math.Inf(1)
-	if bound, ok := node.Value("minLength").(float64); ok {
-		lower = bound
-	}
-	if bound, ok := node.Value("maxLength").(float64); ok {
-		upper = bound
-	}
-	return float64(len(data)) >= lower && float64(len(data)) <= upper
 }
 
 // Method is a method declaration: its argument and result schemas; an omitted side is `null` on the wire.

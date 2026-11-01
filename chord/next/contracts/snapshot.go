@@ -14,8 +14,8 @@ import (
 // Ports packages/chord/src/next/contracts/snapshot.ts (schema snapshots: one schema-aware walk checks an app schema
 // against Chord's vocabulary and produces a Chord-owned copy and its normal form, the fingerprint input).
 //
-// Designed out: the refusal of TypeBox refinements, codecs and unsafe types, of symbol keys and of accessors (a Go
-// schema is JSON data and cannot carry them), and withBytesCheck (the bytes marker is checked by CheckBytes).
+// Designed out: the refusal of symbol keys, accessors and non-enumerable keys (a Go schema is JSON data: it has none of
+// them, and its `Optional` flag is no key), and withBytesCheck (deleted upstream: a bytes leaf is plain data).
 
 // Snapshot is a Chord-owned copy of an app schema, its normal form, and whether it has a `bytes()` leaf (values
 // crossing a link then carry raw byte segments); immutable by convention. Contract data holds snapshots by pointer.
@@ -39,6 +39,10 @@ func SnapshotArguments(source any, path string) (*Snapshot, error) {
 
 func snapshotOf(source any, path string, objects objectsPolicy) (*Snapshot, error) {
 	if schema, ok := source.(Schema); ok {
+		// `opt(...)` is no schema outside an object: only an object field takes it.
+		if schema.Optional {
+			return nil, fail("%s: expected a schema", path)
+		}
 		source = schema.Node
 	}
 	walked, err := walk(source, path, objects, map[uintptr]struct{}{})

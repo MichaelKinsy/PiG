@@ -17,8 +17,8 @@ import (
 // one JSON `TEXT` cell with its own version, typed when read, migrated on access (the result checked once, R8),
 // never walked on write (R9).
 //
-// Go forced differences: `json(...)` returns a ColumnSchema carrying the column (Pi's TypeBox `Unsafe` carrying a
-// `json` field); the type machinery (JsonColumnSchema<T>, Static) is designed out. Json panics where Pi throws
+// Go forced differences: `json(...)` returns a ColumnSchema carrying the column (Pi's `{ json: column }` schema, typed as the
+// cells' schema); the type machinery (JsonColumnSchema<T>, Static) is designed out. Json panics where Pi throws
 // (an invalid version, a schema outside Chord's vocabulary): a declaration error of the plugin's code, as the
 // constructors of chord/next/contracts do; NewJsonColumn returns the error.
 
