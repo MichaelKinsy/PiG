@@ -452,13 +452,27 @@ func newPlugins(t testing.TB, root string) plugins.Plugins {
 	return component
 }
 
-// writeLabel writes label into the copy's notes plugin (`label.ts`).
+// writeLabel writes label into the copy's notes plugin (`label.ts`). The file is renamed into place from outside the watched
+// tree: a plain write is a truncate event and a write event, which fsnotify delivers on another goroutine (Node's fs.watch
+// events of one writeFile arrive in one turn), so the second could land after a build began and mark the plugin dirty again.
 func writeLabel(root, label string) error {
 	text, err := json.Marshal(label)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(root, "notes", "label.ts"), []byte("export const label = "+string(text)+";\n"), 0o600)
+	staged, err := os.CreateTemp(filepath.Dir(root), "label-*.ts")
+	if err != nil {
+		return err
+	}
+	_, err = staged.WriteString("export const label = " + string(text) + ";\n")
+	if closeErr := staged.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		_ = os.Remove(staged.Name())
+		return err
+	}
+	return os.Rename(staged.Name(), filepath.Join(root, "notes", "label.ts"))
 }
 
 // label writes label into the copy's notes plugin.
