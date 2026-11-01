@@ -353,7 +353,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rustup toolchain install "$RUST_VERSION" --profile minimal
+          # rustfmt and clippy: make lint-rust (ci-sdk) checks every Rust crate with them.
+          rustup toolchain install "$RUST_VERSION" --profile minimal --component rustfmt --component clippy
           rustup default "$RUST_VERSION"
       # The pinned SBCL (automation/dev/toolchains.lock) builds and runs Lisp extension images; the conformance rows, make test-sdk-lisp and the portmap shards (portmap-check requires it through test-prereqs)
       # fail without it. install-sbcl.sh installs the checksummed official binary, and the cache keeps the prefix for the pin.

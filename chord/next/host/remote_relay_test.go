@@ -181,10 +181,11 @@ func TestRelayIDsAndOrigins(t *testing.T) {
 			if result.Call != 5 || result.Origin.Ok {
 				t.Fatalf("result = %+v, want call 5 without origin", result)
 			}
-			r.Raw.Send(&link.RetryMessage{Hold: 7})
+			r.Raw.Send(&link.RetryMessage{Hold: 7, Hops: 5})
+			// Forwarded with its budget as it is: a relay visits no object.
 			retry := worker.Next("retry").(*link.RetryMessage)
-			if retry.Origin != link.Some(1) || retry.Hold != 7 || retry.Operation != "" || retry.Through != nil {
-				t.Fatalf("forwarded retry = %+v, want a bare retry of hold 7 under 1", retry)
+			if retry.Origin != link.Some(1) || retry.Hold != 7 || retry.Hops != 5 {
+				t.Fatalf("forwarded retry = %+v, want a retry of hold 7 with 5 hops under 1", retry)
 			}
 		})
 
@@ -368,11 +369,14 @@ func reflectEqualPart(a, b link.Part) bool {
 // arrive in order. kinds lists what arrived, decoded with the test codec.
 type pausableLink struct {
 	link.Link
-	mu       sync.Mutex
-	paused   bool
-	held     [][]byte
-	kinds    []string
-	listener func(message []byte)
+	mu     sync.Mutex
+	paused bool
+	// delivering is set while a goroutine hands the held messages to the listener: what arrives meanwhile queues behind
+	// them (Pi's `resume` delivers the held ones in one synchronous step, so nothing arrives in between).
+	delivering bool
+	held       [][]byte
+	kinds      []string
+	listener   func(message []byte)
 }
 
 func newPausableLink(end link.Link) *pausableLink {
@@ -384,7 +388,7 @@ func newPausableLink(end link.Link) *pausableLink {
 		}
 		p.mu.Lock()
 		p.kinds = append(p.kinds, kind)
-		if p.paused || p.listener == nil {
+		if p.paused || p.delivering || p.listener == nil {
 			// Before the host listens, messages wait as a memory link's do.
 			p.held = append(p.held, message)
 			p.mu.Unlock()
@@ -400,14 +404,7 @@ func newPausableLink(end link.Link) *pausableLink {
 func (p *pausableLink) OnMessage(listener func(message []byte)) {
 	p.mu.Lock()
 	p.listener = listener
-	var early [][]byte
-	if !p.paused {
-		early, p.held = p.held, nil
-	}
-	p.mu.Unlock()
-	for _, message := range early {
-		listener(message)
-	}
+	p.deliverHeld()
 }
 
 func (p *pausableLink) pause() {
@@ -419,13 +416,26 @@ func (p *pausableLink) pause() {
 func (p *pausableLink) resume() {
 	p.mu.Lock()
 	p.paused = false
-	held := p.held
-	p.held = nil
-	listener := p.listener
-	p.mu.Unlock()
-	for _, message := range held {
-		listener(message)
+	p.deliverHeld()
+}
+
+// deliverHeld hands the held messages to the listener in order, those that arrive meanwhile after them. It runs with mu
+// locked and returns with it unlocked.
+func (p *pausableLink) deliverHeld() {
+	if p.delivering || p.listener == nil {
+		p.mu.Unlock()
+		return
 	}
+	p.delivering = true
+	for len(p.held) > 0 && !p.paused {
+		message, listener := p.held[0], p.listener
+		p.held = p.held[1:]
+		p.mu.Unlock()
+		listener(message)
+		p.mu.Lock()
+	}
+	p.delivering = false
+	p.mu.Unlock()
 }
 
 func (p *pausableLink) seen() []string {
@@ -522,7 +532,7 @@ func TestRelayWindow(t *testing.T) {
 			must(t, rel.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 			slow := newPausableLink(b)
 			must(t, tab.Connect(slow, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
-			must(t, tab.Load([]HostFacet{{Name: "@test/pair", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			mustLoad(t)(tab.Load([]HostFacet{{Name: "@test/pair", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 				return h.Serve(Pair, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 					one := self.Get(PlacedNotes, jsonObject("session", "S1"))
 					two := self.Get(PlacedNotes, jsonObject("session", "S1"))
@@ -542,15 +552,20 @@ func TestRelayWindow(t *testing.T) {
 			watch, err := view.Member("pair").Watch(background)
 			must(t, err)
 			watch.Start(func(context.Context, chord.WatchCall[delta.JsonValue]) error { return nil })
+			flush := func() {
+				flushOwn(rel)
+				transported(a, b)
+			}
+			// The tab's acks of the two `bound` messages have reached the worker (two hops, tab to server to worker) before its
+			// first commit: in Pi every hop is a microtask, which the awaits before the first `addNote` drain; here a hop is a
+			// goroutine, so each is flushed.
+			flush()
+			flush()
 			worker := rel.Worker(Session.Address(jsonObject("id", "S1")).Key)
 			slow.pause()
 			slow.forget()
 			for _, text := range []string{"a", "b", "c", "d", "e"} {
 				addNote(t, worker, "S1", text)
-			}
-			flush := func() {
-				flushOwn(rel)
-				transported(a, b)
 			}
 			flush()
 			// Two states in the tab origin's window at the worker, the other commits folded there.
@@ -598,7 +613,7 @@ func TestRelayUpstreamDrop(t *testing.T) {
 			if kind := refStateKind(notes); kind != RefStateLoading {
 				t.Fatalf("state = %s, want loading", kind)
 			}
-			loop.AdvanceAsync(1000)
+			// The link had completed its handshake: its address resolves again at once (no timer, slice 10 R2).
 			second := r.Workers.At(t, 1)
 			again := nextHeld(second)
 			if again.hold != held.hold || again.origin != held.origin {
@@ -620,18 +635,36 @@ func TestRelayUpstreamDrop(t *testing.T) {
 
 		// Ports "answers a call that crossed the loading notice unavailable (race 13)".
 		t.Run("answers a call that crossed the loading notice unavailable (race 13)", func(t *testing.T) {
-			r := rawRelay(t, rawRelayOptions{})
-			holdPlaced(t, r.Raw, 0)
-			worker := r.Workers.At(t, 0)
+			// The address's next resolve never settles: the relayed hold has no upstream link when the call arrives.
+			workers := newRawWorkers(t, rawWorkerOptions{})
+			never := make(chan struct{})
+			rel := relay(t, relayedOptions{
+				Resolve: func(address contracts.Address, made func() resolved, ctx context.Context) (resolved, error) {
+					if len(workers.Peers()) == 0 {
+						return workers.Resolve(address, made, ctx)
+					}
+					// Never settles, until the test ends.
+					chordctx.Suspend(ctx)
+					select {
+					case <-never:
+					case <-ctx.Done():
+					}
+					return resolved{}, context.Canceled
+				},
+			})
+			t.Cleanup(func() { close(never) })
+			raw := rawTab(t, rel.Server, nil, link.PartLimits{})
+			holdPlaced(t, raw, 0)
+			worker := workers.At(t, 0)
 			bindEditor(t, worker, nextHeld(worker))
-			r.Raw.Next("bound")
+			raw.Next("bound")
 			worker.Close()
-			settleRelay(r)
-			provCall(t, r.Raw, 0, 0, editor.Methods["wait"], nil)
-			if loading := r.Raw.Next("loading").(*link.LoadingMessage); loading.Hold != 0 || loading.Origin.Ok {
+			flushRelay(rel, workers, raw.link.(*link.MemoryLink))
+			provCall(t, raw, 0, 0, editor.Methods["wait"], nil)
+			if loading := raw.Next("loading").(*link.LoadingMessage); loading.Hold != 0 || loading.Origin.Ok {
 				t.Fatalf("loading = %+v, want hold 0 without origin", loading)
 			}
-			requireChordWire(t, r.Raw.Next("error").(*link.ErrorMessage).Error, "unavailable", "")
+			requireChordWire(t, raw.Next("error").(*link.ErrorMessage).Error, "unavailable", "")
 		})
 	})
 }
@@ -640,26 +673,64 @@ func TestRelayParentLinkThatIsDown(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		// Ports "a parent link that is down (audit) › holds a hold arriving meanwhile on the parent path: it waits loading and binds on the next parent link".
 		t.Run("holds a hold arriving meanwhile on the parent path: it waits loading and binds on the next parent link", func(t *testing.T) {
+			// The middle host relays its tab's holds to its parent, which reaches it over a route: origins arrive only on
+			// parent and route links (decision "Origins only from relays").
+			middle := newHost(t, HostOptions{
+				Address: new(Session.Address(jsonObject("id", "M"))), Principal: workerPrincipal("M"), OnError: func(HostError) {},
+			})
+			mustLoad(t)(middle.Load(nil, background))
 			server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
-			must(t, server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			type ends struct{ server, middle *link.MemoryLink }
+			var mu sync.Mutex
+			var made []ends
+			gate := make(chan struct{})
+			close(gate)
+			mustRoute(t)(server.Route(Session, RouteOptions{
+				Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
+				Resolve: func(_ contracts.Address, ctx context.Context) (ResolvedLink, error) {
+					mu.Lock()
+					waiting := gate
+					mu.Unlock()
+					chordctx.Suspend(ctx)
+					<-waiting
+					a, b := link.MemoryLinkPair()
+					must(t, middle.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
+					mu.Lock()
+					made = append(made, ends{server: a, middle: b})
+					mu.Unlock()
+					return ResolvedLink{Link: a, Principal: workerPrincipal("M"), Codec: testCodec()}, nil
+				},
+			}, background))
+			mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 				_, err := serveNotes(h, nil)
 				return err
 			})}}, background))
-			middle := newHost(t, HostOptions{Principal: serverPrincipal(), OnError: func(HostError) {}})
-			must(t, middle.Load(nil, background))
-			// up connects the middle host to the server over a new link; it returns both ends.
-			up := func() (*link.MemoryLink, *link.MemoryLink) {
-				a, b := link.MemoryLinkPair()
-				must(t, server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
-				must(t, middle.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
-				return a, b
+			endsAt := func(index int) ends {
+				rhWaitFor(t, func() bool {
+					mu.Lock()
+					defer mu.Unlock()
+					return len(made) > index
+				})
+				mu.Lock()
+				defer mu.Unlock()
+				return made[index]
 			}
-			first, firstEnd := up()
-			transported(first, firstEnd)
-			first.Close()
-			transported(first, firstEnd)
+			// The server holds something at the middle's address: its route link exists while it does.
+			anchor, err := server.Hold(PlacedNotes, jsonObject("session", "M"), background, GetOptions{})
+			must(t, err)
+			first := endsAt(0)
+			// The link completed its handshake: the middle refuses the hold (it serves nothing) over it.
+			rhWaitFor(t, func() bool { return rhRefState(anchor) == RefStateFailed })
+			transported(first.server, first.middle)
+			// The next resolve waits: the middle's parent path is down meanwhile.
+			admit := make(chan struct{})
+			mu.Lock()
+			gate = admit
+			mu.Unlock()
+			first.server.Close()
+			transported(first.server, first.middle)
 			tab := newHost(t, HostOptions{OnError: func(HostError) {}})
-			must(t, tab.Load(nil, background))
+			mustLoad(t)(tab.Load(nil, background))
 			a, b := link.MemoryLinkPair()
 			must(t, middle.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 			must(t, tab.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
@@ -669,8 +740,12 @@ func TestRelayParentLinkThatIsDown(t *testing.T) {
 			if kind := refStateKind(notes); kind != RefStateLoading {
 				t.Fatalf("state = %s, want loading", kind)
 			}
-			up()
+			close(admit)
+			second := endsAt(1)
+			transported(a, b, second.server, second.middle)
+			transported(a, b, second.server, second.middle)
 			awaitLive(t, notes)
+			anchor.Release()
 		})
 	})
 }
@@ -683,6 +758,7 @@ func TestRelayDownstreamRelease(t *testing.T) {
 			workers := newRawWorkers(t, rawWorkerOptions{})
 			rel := relay(t, relayedOptions{
 				Resolve: func(address contracts.Address, made func() resolved, ctx context.Context) (resolved, error) {
+					chordctx.Suspend(ctx)
 					<-finish
 					return workers.Resolve(address, made, ctx)
 				},
@@ -714,10 +790,17 @@ func TestRelayDownstreamRelease(t *testing.T) {
 			flushRelay(rel, workers)
 			settle(raw)
 			settle(worker)
-			// The relay no longer relays the hold: dropped there (Q1), each message acknowledged to the worker at once.
+			// The origin held nothing more: its record went and the worker was told `closed` (decision "Origins only from
+			// relays"); what crossed it is dropped (Q1).
 			requireStrings(t, raw.Kinds(), []string{"hello"})
-			if acks := countKind(worker, "ack"); acks != 2 {
-				t.Fatalf("worker acks = %d, want 2", acks)
+			var closed []link.Message
+			for _, message := range worker.Received() {
+				if message.Kind() == "closed" {
+					closed = append(closed, message)
+				}
+			}
+			if len(closed) != 1 || closed[0].(*link.ClosedMessage).Origin != sent.Origin.Value {
+				t.Fatalf("closed messages = %+v, want one for origin %+v", closed, sent.Origin)
 			}
 		})
 	})

@@ -432,27 +432,32 @@
           (push thread (extension-request-threads ext)))))))
 
 (defun read-ready (ext conn)
+  "Read frames until the host's ready and return it, and as a second value the events.dispatch requests that came first, in arrival order: a listener the host
+dispatches to while the extension registers is served once the extension is ready, as the other SDKs and the node runtime serve it."
   (declare (ignorable ext))
-  (loop
-    (let ((env (read-frame conn)))
-      (when (eq env :eof) (error "the host closed the connection before it answered the registration"))
-      (let ((type (jget env "type")))
-        (cond ((equal type "ready") (return env))
-              ((equal type "ping")
-               (send-frame conn (obj "type" "pong" "pong" (obj "nonce" (jget (or (jget env "ping") (obj)) "nonce" "")))))
-              (t nil))))))
+  (let ((early '()))
+    (loop
+      (let ((env (read-frame conn)))
+        (when (eq env :eof) (error "the host closed the connection before it answered the registration"))
+        (let ((type (jget env "type")))
+          (cond ((equal type "ready") (return (values env (nreverse early))))
+                ((equal type "ping")
+                 (send-frame conn (obj "type" "pong" "pong" (obj "nonce" (jget (or (jget env "ping") (obj)) "nonce" "")))))
+                ((and (equal type "request") (equal (jget (or (jget env "request") (obj)) "method") "events.dispatch"))
+                 (push env early))
+                (t nil)))))))
 
 (defun serve (ext conn)
   "Register EXT over CONN and serve the host until it shuts the extension down or closes the connection.
 True when every handler thread stopped in time."
   (setf (extension-conn ext) conn)
-  (let ((stopped t))
+  (let ((stopped t) (early '()))
     (unwind-protect
          (progn
            (let ((ready nil))
              (sb-thread:with-mutex ((extension-reg-lock ext))
                (send-frame conn (obj "type" "register" "register" (register-payload ext)))
-               (setf ready (read-ready ext conn))
+               (multiple-value-setq (ready early) (read-ready ext conn))
                (setf (extension-live ext) t))
              (let ((data (or (jget ready "ready") (obj))))
                (sb-thread:with-mutex ((extension-state-lock ext))
@@ -465,6 +470,7 @@ True when every handler thread stopped in time."
                    (apply-ui-state ext state)))
                (run-hooks '*ready-hooks* ext data)))
            (run-loaded-handlers ext)
+           (dolist (env early) (start-request ext env))
            (loop
              (let ((env (handler-case (read-frame conn) (error () :eof))))
                (when (eq env :eof) (return))

@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -38,7 +40,8 @@ type api struct {
 	pendingFlagOrder   []string
 	pendingChanges     []func()
 	loadingUnsubscribe []func()
-	subscriptions      []func()
+	subscriptions      map[int]func() // live event-bus subscriptions by creation order; an unsubscribe removes its own
+	nextSubscription   int
 	retired            string
 }
 
@@ -111,8 +114,8 @@ func (a *api) retire(message string) {
 	subscriptions := a.subscriptions
 	a.subscriptions = nil
 	a.mu.Unlock()
-	for _, unsubscribe := range subscriptions {
-		unsubscribe()
+	for _, id := range slices.Sorted(maps.Keys(subscriptions)) {
+		subscriptions[id]()
 	}
 }
 
@@ -536,10 +539,20 @@ func (e apiEvents) On(channel string, handler func(data any)) func() {
 	e.a.assertActive()
 	unsubscribe := e.a.runtime.TrackEventBusSubscription(e.a.bus.On(channel, handler))
 	e.a.mu.Lock()
-	e.a.subscriptions = append(e.a.subscriptions, unsubscribe)
+	e.a.nextSubscription++
+	id := e.a.nextSubscription
+	if e.a.subscriptions == nil {
+		e.a.subscriptions = map[int]func(){}
+	}
+	e.a.subscriptions[id] = unsubscribe
 	if e.a.state == stateLoading {
 		e.a.loadingUnsubscribe = append(e.a.loadingUnsubscribe, unsubscribe)
 	}
 	e.a.mu.Unlock()
-	return unsubscribe
+	return func() {
+		unsubscribe()
+		e.a.mu.Lock()
+		delete(e.a.subscriptions, id)
+		e.a.mu.Unlock()
+	}
 }

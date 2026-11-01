@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/output"
 	"github.com/MichaelKinsy/PiG/durable"
 	envnode "github.com/MichaelKinsy/PiG/durable/env/node"
@@ -40,14 +41,18 @@ func jsSliceLines(lines []string, start, end float64) []string {
 	return lines[from:to]
 }
 
+// Pi main 04414839 (#11015): the reference also returns the structured output, a text file's text or an image's block.
 // referenceRead is the read tool before bounded reads, kept as the reference: it decodes the whole file, splits it into
 // lines, and truncates the selection. The tool must give the same result while reading only a bounded part of the file.
 func referenceRead(data []byte, path string, offset, limit *float64) (durable.ToolExecutionResult, error) {
 	input := ReadToolInput{Path: path, Offset: offset, Limit: limit}
 	if mimeType := detectSupportedImageMimeType(data); mimeType != "" {
+		encoded := base64.StdEncoding.EncodeToString(data)
 		return durable.ToolExecutionResult{
-			Output:      []ai.ToolResultMessageContent{ai.ImageContent{Data: base64.StdEncoding.EncodeToString(data), MimeType: mimeType}},
-			Diagnostics: []durable.ToolDiagnostic{{Severity: durable.SeverityInfo, Code: "image", Message: fmt.Sprintf("Read image file [%s].", mimeType)}},
+			Output:              []ai.ToolResultMessageContent{ai.ImageContent{Data: encoded, MimeType: mimeType}},
+			StructuredOutput:    delta.JsonObjectOf("type", "image", "data", encoded, "mimeType", mimeType),
+			HasStructuredOutput: true,
+			Diagnostics:         []durable.ToolDiagnostic{{Severity: durable.SeverityInfo, Code: "image", Message: fmt.Sprintf("Read image file [%s].", mimeType)}},
 		}, nil
 	}
 
@@ -125,7 +130,7 @@ func referenceRead(data []byte, path string, offset, limit *float64) (durable.To
 		})
 	}
 
-	result := durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, Diagnostics: diagnostics}
+	result := durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, StructuredOutput: outputText, HasStructuredOutput: true, Diagnostics: diagnostics}
 	if outputText != "" {
 		result.Output = []ai.ToolResultMessageContent{ai.TextContent{Text: outputText}}
 	}

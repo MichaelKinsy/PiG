@@ -191,7 +191,11 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	}
 	projectTrusted := flags.ProjectTrustOverride != nil && *flags.ProjectTrustOverride
 	if flags.ProjectTrustOverride == nil && !hasTrustResources {
-		projectTrusted = true
+		saved, err := b.trustStore.Get(cwd)
+		if err != nil {
+			return nil, cliPigError("resolve project trust: %v", err)
+		}
+		projectTrusted = saved == nil || *saved
 	}
 	cached, hasCached := b.trustByCWD[cwd]
 	if flags.ProjectTrustOverride == nil && hasTrustResources && hasCached {

@@ -60,7 +60,7 @@ func benchRegistryOf(b *testing.B, contributors int) *benchRegistry {
 		}))
 	}
 	result.host = newHost(b, HostOptions{Telemetry: recorder, OnError: func(err HostError) { b.Errorf("onError %s", err.Kind) }})
-	must(b, result.host.Load([]HostFacet{{Name: "@bench/registries", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(b)(result.host.Load([]HostFacet{{Name: "@bench/registries", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		sum := registries.RegistryProvider[any, any]{Compose: func(table registries.RegistryTable[any], _ registries.ComposeContext) (any, error) {
 			total := 0.0
 			for _, entry := range table {

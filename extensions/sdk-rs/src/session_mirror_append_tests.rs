@@ -48,7 +48,10 @@ fn push(mirror: &mut SessionMirror, session: &str, entries: Vec<Value>, total: u
 }
 
 fn ids(branch: &[Arc<Value>]) -> Vec<String> {
-    branch.iter().map(|entry| entry["id"].as_str().unwrap_or("").to_string()).collect()
+    branch
+        .iter()
+        .map(|entry| entry["id"].as_str().unwrap_or("").to_string())
+        .collect()
 }
 
 // The root→leaf walk over the log, written without any cache.
@@ -73,7 +76,9 @@ fn incremental_branch_matches_an_uncached_walk_across_leaf_moves() {
     let mut mirror = mirror();
     let mut seed: u64 = 7;
     let mut rand = |n: usize| {
-        seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        seed = seed
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         ((seed >> 33) as usize) % n
     };
     let mut session = "s1".to_string();
@@ -84,7 +89,13 @@ fn incremental_branch_matches_an_uncached_walk_across_leaf_moves() {
         if op < 5 || log.is_empty() {
             let id = format!("{session}-e{}", log.len());
             let parent = (!leaf.is_empty()).then(|| leaf.clone());
-            push(&mut mirror, &session, vec![entry(&id, parent.as_deref())], log.len() + 1, &id);
+            push(
+                &mut mirror,
+                &session,
+                vec![entry(&id, parent.as_deref())],
+                log.len() + 1,
+                &id,
+            );
             log.push((id.clone(), parent));
             leaf = id;
         } else if op == 5 {
@@ -101,7 +112,13 @@ fn incremental_branch_matches_an_uncached_walk_across_leaf_moves() {
         } else if op < 8 {
             let parent = log[rand(log.len())].0.clone();
             let id = format!("{session}-e{}", log.len());
-            push(&mut mirror, &session, vec![entry(&id, Some(&parent))], log.len() + 1, &id);
+            push(
+                &mut mirror,
+                &session,
+                vec![entry(&id, Some(&parent))],
+                log.len() + 1,
+                &id,
+            );
             log.push((id.clone(), Some(parent)));
             leaf = id;
         } else if op < 9 {
@@ -118,8 +135,12 @@ fn incremental_branch_matches_an_uncached_walk_across_leaf_moves() {
             mirror.get_branch_entries();
         }
         let want = reference(&mirror, &log, &leaf);
-        assert_eq!(ids(&mirror.branch().to_vec()), want, "step {step}");
-        let decoded: Vec<String> = mirror.get_branch_entries().iter().map(|entry| entry.id.clone()).collect();
+        assert_eq!(ids(mirror.branch()), want, "step {step}");
+        let decoded: Vec<String> = mirror
+            .get_branch_entries()
+            .iter()
+            .map(|entry| entry.id.clone())
+            .collect();
         assert_eq!(decoded, want, "step {step}");
     }
 }
@@ -128,21 +149,38 @@ fn incremental_branch_matches_an_uncached_walk_across_leaf_moves() {
 #[test]
 fn incremental_branch_side_entry_and_repeated_id() {
     let mut mirror = mirror();
-    push(&mut mirror, "s", vec![entry("a", None), entry("b", Some("a"))], 2, "b");
+    push(
+        &mut mirror,
+        "s",
+        vec![entry("a", None), entry("b", Some("a"))],
+        2,
+        "b",
+    );
     let first = mirror.get_branch_entries();
     push(&mut mirror, "s", vec![entry("side", Some("a"))], 3, "b");
     let second = mirror.get_branch_entries();
     assert_eq!(second.len(), 2);
     assert!(Arc::ptr_eq(&first[0], &second[0]) && Arc::ptr_eq(&first[1], &second[1]));
     push(&mut mirror, "s", vec![entry("b", Some("side"))], 4, "b");
-    assert_eq!(ids(&mirror.branch().to_vec()), ["a", "side", "b"]);
-    let decoded: Vec<String> = mirror.get_branch_entries().iter().map(|entry| entry.id.clone()).collect();
+    assert_eq!(ids(mirror.branch()), ["a", "side", "b"]);
+    let decoded: Vec<String> = mirror
+        .get_branch_entries()
+        .iter()
+        .map(|entry| entry.id.clone())
+        .collect();
     assert_eq!(decoded, ["a", "side", "b"]);
 }
 
 fn append_and_read_allocations(n: usize) -> u64 {
     let mut mirror = mirror();
-    let log: Vec<Value> = (0..n).map(|i| entry(&format!("e{i}"), (i > 0).then(|| format!("e{}", i - 1)).as_deref())).collect();
+    let log: Vec<Value> = (0..n)
+        .map(|i| {
+            entry(
+                &format!("e{i}"),
+                (i > 0).then(|| format!("e{}", i - 1)).as_deref(),
+            )
+        })
+        .collect();
     push(&mut mirror, "s", log, n, &format!("e{}", n - 1));
     mirror.get_branch_entries();
     let mut best = u64::MAX;
@@ -164,6 +202,12 @@ fn append_and_read_allocations(n: usize) -> u64 {
 // Reading the branch after one append costs the new entry and not the branch.
 #[test]
 fn appending_then_reading_the_branch_allocates_the_same_at_any_length() {
-    let (small, large) = (append_and_read_allocations(2000), append_and_read_allocations(16000));
-    assert!(large <= small * 3 / 2 + 8, "allocations grew with the branch: {small} at n=2000, {large} at n=16000");
+    let (small, large) = (
+        append_and_read_allocations(2000),
+        append_and_read_allocations(16000),
+    );
+    assert!(
+        large <= small * 3 / 2 + 8,
+        "allocations grew with the branch: {small} at n=2000, {large} at n=16000"
+    );
 }

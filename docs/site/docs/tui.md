@@ -55,7 +55,7 @@ This is the header the [Login and header identity](#login-and-header-identity) s
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 → model          <provider/model> — Select model (opens selector UI)
   scoped-models  Enable/disable models for Ctrl+P cycling
-  import         Import and resume a session from a JSONL file
+  import         Import a JSONL session, preserving its ID and working directory
 ```
 
 Press Tab to complete the marked entry. Clear the line with Ctrl+C (the first press only clears; see step 6).

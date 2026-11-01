@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -486,11 +485,11 @@ func (l *DefaultResourceLoader) mergePaths(primary, additional []string) ([]stri
 		if err != nil {
 			return nil, err
 		}
-		canonical := icodingagent.CanonicalizePath(resolved)
-		if _, duplicate := seen[canonical]; duplicate {
+		pathKey := icodingagent.ResourcePathKey(resolved)
+		if _, duplicate := seen[pathKey]; duplicate {
 			continue
 		}
-		seen[canonical] = struct{}{}
+		seen[pathKey] = struct{}{}
 		merged = append(merged, resolved)
 	}
 	return merged, nil
@@ -529,11 +528,7 @@ func (i *pathMetadataIndex) sourceInfo(resourcePath string) (icodingagent.PiSour
 		return metadata.SourceInfo(resourcePath), true
 	}
 	for _, sourcePath := range i.paths {
-		source, err := filepath.Abs(sourcePath)
-		if err != nil {
-			source = sourcePath
-		}
-		if normalized == source || strings.HasPrefix(normalized, source+string(filepath.Separator)) {
+		if resolvepath.IsPathWithin(sourcePath, normalized) {
 			return i.metadata[sourcePath].SourceInfo(resourcePath), true
 		}
 	}

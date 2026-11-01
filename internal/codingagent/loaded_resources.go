@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -256,10 +257,10 @@ func (m *InteractiveMode) loadedResourceFor(path, kind string) loadedResource {
 // the home directory shows it as "~".
 func formatDisplayPath(path string) string {
 	home, err := os.UserHomeDir()
-	if err == nil && home != "" && strings.HasPrefix(path, home) {
-		return "~" + path[len(home):]
+	if err != nil {
+		return path
 	}
-	return path
+	return resolvepath.ShortenHomePath(path, home)
 }
 
 func formatDisplayPathItem(item loadedResource) string { return formatDisplayPath(item.path) }

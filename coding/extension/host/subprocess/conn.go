@@ -204,6 +204,8 @@ type Conn struct {
 
 	// Incoming messages that aren't responses go here for the host to process.
 	inCh chan *Envelope
+	// incoming is the Host's read loop of this connection (Host.goHandleIncoming); nil when no Host loop reads it.
+	incoming atomic.Pointer[incomingLoop]
 
 	// runSignal is the last run signal state the runtime was sent.
 	runSignal runSignalSync
@@ -1063,6 +1065,26 @@ func (c *Conn) failureError() error {
 // Done returns a channel that closes when all connection goroutines have exited.
 func (c *Conn) Done() <-chan struct{} {
 	return c.done
+}
+
+// incomingLoop is the Host's read loop of one connection. ended closes once the loop has seen the connection end and has scheduled the work that follows it (the drop of the extension's ownership of thinking runs, D214).
+type incomingLoop struct {
+	ended chan struct{}
+	once  sync.Once
+}
+
+// endIncoming closes the end signal of the connection's Host read loop, once. It does nothing for a connection no Host loop reads.
+func (c *Conn) endIncoming() {
+	if loop := c.incoming.Load(); loop != nil {
+		loop.once.Do(func() { close(loop.ended) })
+	}
+}
+
+// awaitIncomingEnded returns once the connection's Host read loop has seen the connection end and scheduled the work that follows it. It returns at once for a connection no Host loop reads. The connection must be closed, or the loop never ends.
+func (c *Conn) awaitIncomingEnded() {
+	if loop := c.incoming.Load(); loop != nil {
+		<-loop.ended
+	}
 }
 
 // Name returns the extension name this connection serves.

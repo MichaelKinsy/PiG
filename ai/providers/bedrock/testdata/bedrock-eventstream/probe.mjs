@@ -115,5 +115,4 @@ async function run(chunks) {
 
 const out = {node: process.version, cases: {}};
 for (const [name, chunks] of Object.entries(cases)) out.cases[name] = {chunks: chunks.map(c => c.toString('hex')), results: await run(chunks)};
-console.log(JSON.stringify(out, null, 1));
-process.exit(0);
+process.stdout.write(JSON.stringify(out, null, 1) + "\n", () => process.exit(0));

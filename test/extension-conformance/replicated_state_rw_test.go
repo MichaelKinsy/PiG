@@ -33,9 +33,10 @@ func newReplicatedStateSession(t *testing.T, h *harness) (*coding.Session, *ai.F
 	}
 	h.runner.AddErrorListener(func(err *extension.ExtensionError) { t.Logf("extension error: %s: %s", err.Event, err.Error) })
 	events := make(chan struct{})
+	eventsCh := session.Events()
 	go func() {
 		defer close(events)
-		for event := range session.Events() {
+		for event := range eventsCh {
 			coding.AcknowledgeEvent(event)
 		}
 	}()

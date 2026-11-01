@@ -28,6 +28,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { bar, compare, describe, flatten, irWrapper, perTurn, readIr, reported, summarize, toleranceOf } from "../lib/counts.mjs"
+import { exitAfterFlush } from "../lib/exit.mjs"
 import { resolveImpl } from "../lib/gate.mjs"
 import { LIVE_WINDOW, liveWindowCells, replayCells, valgrind } from "../lib/instr.mjs"
 import { benchRunner } from "../lib/robust.mjs"
@@ -47,13 +48,13 @@ if (!["run", "check", "update", "bar"].includes(cmd)) {
 }
 // bar: the Durable 0.5.0 bar's memory rules (lib/counts.mjs bar) over a fresh measurement, or over a counts file with --from
 // (the committed baseline must satisfy the bar too: `bar --from durable/contract/counts.json` measures nothing).
-const reportBar = cells => {
+const reportBar = async cells => {
 	const failures = bar(cells)
 	for (const f of failures) console.error(`FAIL bar: ${f.message}`)
 	console.log(failures.length ? `counts: the bar fails ${failures.length} rule(s)` : "counts: the memory bar holds")
-	process.exit(failures.length ? 1 : 0)
+	await exitAfterFlush(failures.length ? 1 : 0)
 }
-if (cmd === "bar" && opt("from")) reportBar(JSON.parse(readFileSync(opt("from"), "utf8")).cells)
+if (cmd === "bar" && opt("from")) await reportBar(JSON.parse(readFileSync(opt("from"), "utf8")).cells)
 const impls = opt("impls", "wasm-tinygo,wasm-go,native").split(",")
 const sizes = opt("sizes", "50,1000,3500").split(",").map(Number)
 const turns = Number(opt("turns", "6")), tools = Number(opt("tools", "8")), variant = opt("variant", "incr")
@@ -116,7 +117,7 @@ console.log(`counts: ${Object.keys(measured).length} of ${cells.length} cells in
 // A cell that did not run is reported before the replay starts: the replay would fail on the same fixture and hide why.
 if (errors.length) {
 	for (const e of errors) console.error(`FAIL ${e}`)
-	process.exit(1)
+	await exitAfterFlush(1)
 }
 // Replay counts: the same fixtures, recorded once and replayed through each build (lib/instr.mjs).
 if (!flag("no-replay") || cmd !== "run") {
@@ -150,9 +151,9 @@ const reportedOrdered = Object.fromEntries(Object.keys(ordered).filter(k => Obje
 for (const [k, v] of Object.entries(reportedOrdered)) console.log(`${k} reported: ${Object.entries(v).map(([m, x]) => `${m} ${x}`).join(", ")}`)
 if (opt("json")) writeFileSync(opt("json"), JSON.stringify({ ...opts, cells: ordered, perTurn: perTurnOrdered, reported: reportedOrdered }, null, 1) + "\n")
 for (const e of errors) console.error(`FAIL ${e}`)
-if (errors.length) process.exit(1)
+if (errors.length) await exitAfterFlush(1)
 
-if (cmd === "bar") reportBar(ordered)
+if (cmd === "bar") await reportBar(ordered)
 if (cmd === "update") {
 	const old = existsSync(baselineFile) ? JSON.parse(readFileSync(baselineFile, "utf8")) : { cells: {} }
 	const cellsOut = { ...old.cells, ...ordered }
@@ -166,5 +167,5 @@ if (cmd === "update") {
 	for (const f of failures) console.log(`${f.kind === "lower" ? "LOWER" : "FAIL "} ${describe(f)}`)
 	if (failures.some(f => f.kind === "lower")) console.log(`counts: a number fell below its baseline; keep the gain: node durable/contract/cli/counts.mjs update --impls ${impls.join(",")} --sizes ${sizes.join(",")} and commit ${baselineFile.replace(`${CONTRACT_DIR}/`, "durable/contract/")}`)
 	console.log(failures.length ? `counts: ${failures.length} difference(s) from the baseline` : "counts: every number matches its baseline")
-	process.exit(failures.length ? 1 : 0)
+	await exitAfterFlush(failures.length ? 1 : 0)
 }

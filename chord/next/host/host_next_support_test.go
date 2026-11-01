@@ -39,7 +39,7 @@ import (
 //     guestPrincipal(session), serverPrincipal, workerPrincipal(session) (Pi's `TestPrincipal` variants).
 //   - A blocking Promise is a returned `(value, error)`; every helper that awaits takes the test's `t` and fails it.
 //   - Milliseconds are `time.Duration`; an omitted option is nil (`*time.Duration`).
-//   - Assumed host API (HostCore): `CreateHost(HostOptions) Host`; `Host.Load([]HostFacet, ctx) error`,
+//   - Assumed host API (HostCore): `CreateHost(HostOptions) Host`; `Host.Load([]HostFacet, ctx) (LoadReport, error)`,
 //     `Get(Type, params, ctx, GetOptions) (Reference, error)`, `Hold`, `Accept(link, LinkOptions, ctx)`,
 //     `Connect(link, LinkOptions, ctx)`, `Route(kind, RouteOptions, ctx)`, `Close(ctx) error`; `HostFacet{Name, Facet}`;
 //     `HostOptions{Address *contracts.Address, Principal, Telemetry, OnError, CloseTimeout/ReadyTimeout
@@ -104,6 +104,30 @@ func must(t testing.TB, err error) {
 	t.Helper()
 	if err != nil {
 		t.Fatalf("%v", err)
+	}
+}
+
+// mustRoute is must for a `host.route` call, `mustRoute(t)(host.Route(...))`: it fails the test when err is not nil and
+// returns the route's handle.
+func mustRoute(t testing.TB) func(RouteHandle, error) RouteHandle {
+	return func(handle RouteHandle, err error) RouteHandle {
+		t.Helper()
+		must(t, err)
+		return handle
+	}
+}
+
+// mustLoad is must for a `host.load` call, `mustLoad(t)(host.Load(...))`: it fails the test when err is not nil or a plugin
+// was left out (the call sites that expect the host to load; a test of a refused plugin reads LoadReport.Failed itself), and
+// returns the report.
+func mustLoad(t testing.TB) func(LoadReport, error) LoadReport {
+	return func(report LoadReport, err error) LoadReport {
+		t.Helper()
+		must(t, err)
+		for _, failed := range report.Failed {
+			t.Fatalf("plugin %q was left out: %v", failed.Plugin, failed.Error)
+		}
+		return report
 	}
 }
 
@@ -262,6 +286,8 @@ func restartableOf(
 type hostErrors struct {
 	mu   sync.Mutex
 	list []HostError
+	// Failed is Pi's `failed`: the plugins `load` left out (what loaded and loadedPlugins return next to `errors`).
+	Failed []PluginFailure
 }
 
 func (e *hostErrors) push(err HostError) {
@@ -300,7 +326,9 @@ func loaded(t testing.TB, setup func(host FacetHost, self FacetSelf) error, opti
 	if ctx == nil {
 		ctx = background
 	}
-	must(t, host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(setup)}}, ctx))
+	report, err := host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(setup)}}, ctx)
+	must(t, err)
+	errs.Failed = report.Failed
 	return host, errs
 }
 
@@ -686,13 +714,13 @@ func linked(t testing.TB, setup func(host FacetHost) error, options linkedOption
 		OnError:      result.ServerErrors.push,
 		loop:         options.Loop,
 	})
-	must(t, result.Server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
+	mustLoad(t)(result.Server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
 		return setup(host)
 	})}}, ctx))
 	result.Client = newHost(t, HostOptions{
 		Telemetry: telemetryOf(options.Telemetry), ReadyTimeout: options.ReadyTimeout, OnError: result.ClientErrors.push, loop: options.Loop,
 	})
-	must(t, result.Client.Load(nil, ctx))
+	mustLoad(t)(result.Client.Load(nil, ctx))
 	makePair := options.Pair
 	if makePair == nil {
 		makePair = link.MemoryLinkPair
@@ -940,7 +968,7 @@ func rawLinked(t testing.TB, setup func(host FacetHost) error, options rawLinked
 		OnError:      errs.push,
 		loop:         options.Loop,
 	})
-	must(t, server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
+	mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(host FacetHost, _ FacetSelf) error {
 		return setup(host)
 	})}}, background))
 	a, b := link.MemoryLinkPair()
@@ -1209,7 +1237,7 @@ func rawProvider(t testing.TB, options rawLinkedOptions) *rawProviderHost {
 	t.Helper()
 	errs := &hostErrors{}
 	client := newHost(t, HostOptions{ReadyTimeout: options.ReadyTimeout, Compression: options.Compression, OnError: errs.push, loop: options.Loop})
-	must(t, client.Load(nil, background))
+	mustLoad(t)(client.Load(nil, background))
 	return &rawProviderHost{Client: client, Peer: rawParent(t, client, options.Limits), Errors: errs}
 }
 
@@ -1314,6 +1342,8 @@ type relayErrors struct{ Tab, Server, Worker *hostErrors }
 // relayed is what `relayed` builds: the hosts, the links the server holds, the resolves it ran and the errors per host.
 type relayed struct {
 	Tab, Server Host
+	// Route is the handle of the server's route of `Session`.
+	Route RouteHandle
 	// Workers is the worker of each resolved session address, the latest one per key.
 	Workers sync.Map
 	mu      sync.Mutex
@@ -1439,7 +1469,7 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 			return nil
 		})
 		// `void host.load(...)`: an unawaited promise.
-		go func() { _ = host.Load([]HostFacet{{Name: "@test/worker", Facet: facet}}, ctx) }()
+		go func() { _, _ = host.Load([]HostFacet{{Name: "@test/worker", Facet: facet}}, ctx) }()
 		result.Workers.Store(address.Key, host)
 		result.mu.Lock()
 		result.routeLinks = append(result.routeLinks, a)
@@ -1463,21 +1493,27 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 			return made(), nil
 		}
 	}
-	must(t, server.Route(Session, RouteOptions{
+	result.Route = mustRoute(t)(server.Route(Session, RouteOptions{
 		Authorize: authorize,
 		Resolve: func(address contracts.Address, routing context.Context) (ResolvedLink, error) {
+			// A resolve once the test ended (a re-resolve of a link the closing hosts dropped) makes no worker, as Pi's test ends
+			// before its hosts' close can start one. The test's context is canceled before its first cleanup runs, whichever
+			// host registered that cleanup: a worker's close (a cleanup registered after this helper's) cannot get ahead of it.
+			if t.Context().Err() != nil {
+				return ResolvedLink{}, errors.New("the test is ending")
+			}
 			r, err := resolve(address, func() resolved { return worker(address) }, routing)
 			return r.link(), err
 		},
 	}, ctx))
-	must(t, server.Load([]HostFacet{{Name: "@test/server", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(t)(server.Load([]HostFacet{{Name: "@test/server", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		if options.Server != nil {
 			return options.Server(h)
 		}
 		return nil
 	})}}, ctx))
 	tab := newHost(t, HostOptions{Compression: options.TabCompression, OnError: result.Errors.Tab.push, loop: options.Loop})
-	must(t, tab.Load(nil, ctx))
+	mustLoad(t)(tab.Load(nil, ctx))
 	a, b := link.MemoryLinkPair()
 	// A worker may be resolving already (a host object of the server started it during its load): its resolve appends to
 	// the same fields.
@@ -1509,13 +1545,12 @@ type rawWorkerOptions struct {
 
 // rawWorkers is a `resolve` for `relay` whose workers are raw peers playing the provider, collected in peers in order
 // (read it with its Peers method); their links trusted when Trusted. Pi's `peers.push` runs synchronously in the route's
-// call to `resolve`, so the peers are in the order of the calls; Resolve here runs on a task of its own, and takes its
-// peer's place from the call's place in the route's order of calls (`resolveOrder`).
+// call to `resolve`; so does Resolve here (the route lends its section to it), so the peers are in the order of the calls.
 type rawWorkers struct {
 	t       testing.TB
 	options rawWorkerOptions
 	mu      sync.Mutex
-	// peers are the raw peers by the place of the call that made them: nil until that call has.
+	// peers are the raw peers in the order of the calls that made them.
 	peers []*RawPeer
 	// made is closed (and replaced) whenever Resolve makes a peer.
 	made chan struct{}
@@ -1527,7 +1562,7 @@ func (w *rawWorkers) At(t testing.TB, index int) *RawPeer {
 	t.Helper()
 	for {
 		w.mu.Lock()
-		if index < len(w.peers) && w.peers[index] != nil {
+		if index < len(w.peers) {
 			peer := w.peers[index]
 			w.mu.Unlock()
 			return peer
@@ -1550,30 +1585,19 @@ func newRawWorkers(t testing.TB, options rawWorkerOptions) *rawWorkers {
 	return &rawWorkers{t: t, options: options}
 }
 
-// Peers is a copy of the raw peers made so far, in the order of the calls, up to the first call that has not made its peer.
+// Peers is a copy of the raw peers made so far, in the order of the calls.
 func (w *rawWorkers) Peers() []*RawPeer {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	made := 0
-	for made < len(w.peers) && w.peers[made] != nil {
-		made++
-	}
-	return append([]*RawPeer(nil), w.peers[:made]...)
+	return append([]*RawPeer(nil), w.peers...)
 }
 
 // Resolve is the `resolve` of relayedOptions: it makes a raw peer for the address.
-func (w *rawWorkers) Resolve(address contracts.Address, _ func() resolved, ctx context.Context) (resolved, error) {
-	order, ok := resolveOrder(ctx)
-	if !ok {
-		return resolved{}, errors.New("rawWorkers.Resolve: the context carries no place in the route's order of calls")
-	}
+func (w *rawWorkers) Resolve(address contracts.Address, _ func() resolved, _ context.Context) (resolved, error) {
 	a, b := link.MemoryLinkPair()
 	peer := newRawPeer(w.t, b, rawPeerOptions{Calls: w.options.Calls, NoAck: w.options.NoAck})
 	w.mu.Lock()
-	for len(w.peers) <= order {
-		w.peers = append(w.peers, nil)
-	}
-	w.peers[order] = peer
+	w.peers = append(w.peers, peer)
 	if w.made != nil {
 		close(w.made)
 		w.made = nil

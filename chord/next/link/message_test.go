@@ -74,11 +74,9 @@ func everyKind() []link.Message {
 		&link.FailedMessage{Hold: 0, Cause: link.WireCause{Kind: "broken", Error: pluginError("config", "m")}},
 		&link.GoneMessage{Hold: 1, Error: pluginError("config", "m", object("at", 1.0))},
 		&link.FailedMessage{Hold: 9, Cause: transientCause(), RetryIn: some(60_000)},
-		&link.RetryMessage{Hold: 300},
-		// The retry operation it belongs to: an object reached twice handles it once.
-		&link.RetryMessage{Hold: 300, Operation: incarnation},
-		// And the instance ids of the objects it passed through: a ring stops after one lap.
-		&link.RetryMessage{Hold: 300, Operation: incarnation, Through: []string{incarnation, incarnation}},
+		// With its hop budget (audit A5): the first host's, and the last one passed on.
+		&link.RetryMessage{Hold: 300, Hops: 16},
+		&link.RetryMessage{Hold: 300, Hops: 1},
 		&link.LoadingMessage{Hold: 300},
 		&link.ResultMessage{Call: 3, Value: link.Text(`{"n":1}`)},
 		&link.ResultMessage{Call: 3},
@@ -91,7 +89,7 @@ func everyKind() []link.Message {
 		&link.ReleaseMessage{Origin: some(2), Hold: 3},
 		&link.CallMessage{Origin: some(2), Call: 1, Hold: 3, Method: 0, Args: link.Text("[1]")},
 		&link.AbortMessage{Origin: some(2), Call: 1},
-		&link.RetryMessage{Origin: some(2), Hold: 3},
+		&link.RetryMessage{Origin: some(2), Hold: 3, Hops: 16},
 		&link.BoundMessage{Origin: some(2), Holds: []link.BoundEntry{{Hold: 3, Variant: 0}}},
 		&link.StateMessage{Origin: some(2)},
 		&link.FailedMessage{Origin: some(2), Hold: 3, Cause: link.WireCause{Kind: "broken", Error: chordError("unavailable", "m")}},
@@ -385,21 +383,10 @@ func TestTheBinaryCodec(t *testing.T) {
 		}
 	})
 
-	t.Run("writes retry as its kind, hold, flags, operation (16 raw bytes) and objects passed through, loading as its kind and hold, and failed's retryIn as one more than it (0: absent)", func(t *testing.T) {
-		if got := enc(&link.RetryMessage{Hold: 300}); !bytes.Equal(got, []byte{11, 0xac, 0x02, 0}) {
+	t.Run("writes retry as its kind, hold and hops, loading as its kind and hold, and failed's retryIn as one more than it (0: absent)", func(t *testing.T) {
+		if got := enc(&link.RetryMessage{Hold: 300, Hops: 16}); !bytes.Equal(got, []byte{11, 0xac, 0x02, 16}) {
 			t.Fatalf("retry = %v", got)
 		}
-		if got := len(enc(&link.RetryMessage{Hold: 300, Operation: incarnation})); got != 4+16 {
-			t.Fatalf("retry with operation = %d", got)
-		}
-		through := []string{incarnation, incarnation}
-		if got := len(enc(&link.RetryMessage{Hold: 300, Operation: incarnation, Through: through})); got != 4+16+1+32 {
-			t.Fatalf("retry with through = %d", got)
-		}
-		flagged := append([]byte{}, enc(&link.RetryMessage{Hold: 300})...)
-		flagged[3] = 4
-		_, err := binary.Decode(flagged)
-		requireErrorContains(t, err, "an unknown retry flag")
 		if got := enc(&link.LoadingMessage{Hold: 1}); !bytes.Equal(got, []byte{12, 1}) {
 			t.Fatalf("loading = %v", got)
 		}
@@ -426,7 +413,7 @@ func TestTheTextCodec(t *testing.T) {
 		check(&link.ReleaseMessage{Hold: 3}, `["R",3]`)
 		check(&link.CallMessage{Call: 1, Hold: 0, Method: 2}, `["c",1,0,2]`)
 		check(&link.BoundMessage{Holds: []link.BoundEntry{{Hold: 0, Variant: 1, Members: []link.BoundMember{{Member: 0, Value: link.Text("5")}}}}}, `["b",[[0,1,[[0,[0,5]]]]]]`)
-		check(&link.RetryMessage{Hold: 2}, `["T",2]`)
+		check(&link.RetryMessage{Hold: 2, Hops: 16}, `["T",2,16]`)
 		check(&link.LoadingMessage{Hold: 2}, `["l",2]`)
 		wire := `{"kind":"chord","error":{"code":"unavailable","message":"m"}}`
 		check(&link.FailedMessage{Hold: 2, Cause: transientCause()}, `["f",2,"t",`+wire+`]`)
@@ -524,6 +511,14 @@ func TestTheTextCodec(t *testing.T) {
 		noParams := &link.HoldMessage{Type: "t", Version: 1, Fingerprint: fingerprint, Address: server()}
 		_, err = link.CheckMessage(noParams, background)
 		requireErrorContains(t, err, "message schema")
+	})
+	t.Run("refuses a retry without its hop budget, or with one outside 1..16 (audit A5)", func(t *testing.T) {
+		_, err := decodeText(`["T",2]`)
+		requireErrorContains(t, err, `a "T" message with 1 fields`)
+		for _, hops := range []int{0, 17} {
+			_, err := link.CheckMessage(&link.RetryMessage{Hold: 2, Hops: hops}, background)
+			requireErrorContains(t, err, "message schema")
+		}
 	})
 }
 

@@ -83,10 +83,10 @@ These options apply to `pig [options] [prompt]`. Run `pig --help` for the full l
 | `--thinking <level>` | Set the thinking level: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. |
 | `--system-prompt <text>` | Replace the system prompt. |
 | `--append-system-prompt <text>` | Append text or a file's contents to the system prompt. Repeat it to append more. |
-| `--continue`, `-c` | Continue the previous session. |
-| `--resume`, `-r` | Select a session to resume. |
-| `--session <path\|id>` | Use a session file or a partial session UUID. |
-| `--fork <path\|id>` | Fork a session file or partial UUID into a new session. |
+| `--continue`, `-c` | Continue the most recent session for the current directory. |
+| `--resume`, `-r` | Pick a session to resume. |
+| `--session <path\|id>` | Open a session by file path or full/partial ID. |
+| `--fork <path\|id>` | Fork a session by file path or full/partial ID into the current directory. |
 | `--session-dir <dir>` | Directory for session storage and lookup. |
 | `--no-session` | Do not save the session. |
 | `--name`, `-n <name>` | Set the session display name. |
@@ -173,6 +173,18 @@ To keep the default set without one tool, exclude it:
 ```bash
 pig --exclude-tools bash
 ```
+
+## Custom update command
+
+When a wrapper or another package manager provides PiG, set `PI_SELF_UPDATE_COMMAND` (or `PIG_SELF_UPDATE_COMMAND`) so `pig update` runs its update command:
+
+```sh
+export PI_SELF_UPDATE_COMMAND="mise use -g npm:{packageName}@{version}"
+```
+
+`pig update` checks the signed release manifest first and runs the command only when the release is newer (or with `--force`), after printing the release note. `{packageName}`, `{version}` and `{installSpec}` (`{packageName}@{version}`) come from that release. The value is split on whitespace. For arguments with spaces, use the `selfUpdateCommand` setting in `~/.pig/agent/settings.json`, an argv array such as `["nix", "profile", "upgrade", "pig"]`. A project's settings file is never read for it.
+
+The configured command is your explicit choice of the one owner of the update. It replaces PiG's own tier selection (standalone replace, package manager, immutable Piglet Binary, container image) and never falls through to one of them. Without an update source there is no release to fill the placeholders from, so the command does not run. Exit code 0 does not prove an update: `pig update` prints `Updated pig from X to Y` when `pig --version` reports Y (from the replaced executable, else from `PATH`), and otherwise warns with the version it found.
 
 ## `pig docs`
 

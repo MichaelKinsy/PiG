@@ -45,15 +45,16 @@ const (
 	phaseBlocked   Phase = "blocked"
 )
 
-// BlockedReason is why a run is blocked: its `finish` failed five times in a row, or it was stored by another job
-// version (slice 7).
+// BlockedReason is why a run is blocked: its `finish` failed five times in a row, or its version is not the code's
+// (stored by another job version or fingerprint, of a newer version or an older one without an adapter, or of a job the
+// code no longer declares, slice 7b section 8).
 type BlockedReason string
 
 // The reasons a run is blocked.
 const (
 	// BlockedFinishFailed: `finish` failed five times in a row.
 	BlockedFinishFailed BlockedReason = "finish_failed"
-	// BlockedVersion: stored by another job version.
+	// BlockedVersion: its version is not the code's.
 	BlockedVersion BlockedReason = "version"
 )
 
@@ -66,11 +67,19 @@ type answer struct {
 // jobRun is one run: changed only by its job, inside its transactions' commit steps (records) and after them
 // (actions). Every member is used inside a section.
 type jobRun struct {
-	id      string
+	id string
+	// version is the job version it was started with: it keeps it across reloads (slice 7b section 8).
 	version int
-	key     *string
-	args    delta.JsonValue
-	handle  Run
+	// fingerprint is the fingerprint of its job version (a persisted run's record keeps it).
+	fingerprint string
+	key         *string
+	args        delta.JsonValue
+	handle      Run
+	// mapped is its args and outcome mapped forwards to the job's current version (once per run and version), when older.
+	mapped *mappedRun
+	// blockedPhase is a persisted run blocked for its version at its load: the phase its record had, resumed when
+	// unblocked.
+	blockedPhase *Phase
 	// invocation is its current invocation, from its reservation (or its start in memory) on; a later one replaces it.
 	invocation *invocation
 	phase      Phase
@@ -96,10 +105,17 @@ type jobRun struct {
 	loop    sectionLoop
 }
 
-func newJobRun(loop sectionLoop, id string, version int, key *string, args delta.JsonValue, phase Phase, trace map[string]string) *jobRun {
+// mappedRun is a run's args and outcome mapped forwards to one job version.
+type mappedRun struct {
+	version int
+	args    delta.JsonValue
+	outcome *AnyOutcome
+}
+
+func newJobRun(loop sectionLoop, id string, version int, fingerprint string, key *string, args delta.JsonValue, phase Phase, trace map[string]string) *jobRun {
 	waiting := &waiters{loop: loop, waiting: map[*waiter]struct{}{}}
 	return &jobRun{
-		id: id, version: version, key: key, args: args, phase: phase, trace: trace, waiters: waiting, loop: loop,
+		id: id, version: version, fingerprint: fingerprint, key: key, args: args, phase: phase, trace: trace, waiters: waiting, loop: loop,
 		handle: &runHandle{id: id, waiters: waiting},
 	}
 }
@@ -122,9 +138,10 @@ func (handle *runHandle) Outcome(ctx context.Context) (any, error) {
 	return outcome, nil
 }
 
-// entryFor is its `running` entry for its current record and `state` (the job's state document, nil without one): a
-// pending or stopped run shows as `running` (it runs, or will run again).
-func (run *jobRun) entryFor(state *delta.JsonObject) *delta.JsonObject {
+// entryFor is its `running` entry for its current record, `state` (the job's state document, nil without one) and
+// `args` (mapped forwards for an older version): a pending or stopped run shows as `running` (it runs, or will run
+// again).
+func (run *jobRun) entryFor(state *delta.JsonObject, args delta.JsonValue) *delta.JsonObject {
 	entry := delta.NewJsonObject(6)
 	entry.Set("id", run.id)
 	entry.Set("version", float64(run.version))
@@ -136,7 +153,7 @@ func (run *jobRun) entryFor(state *delta.JsonObject) *delta.JsonObject {
 	if run.key != nil {
 		entry.Set("key", *run.key)
 	}
-	entry.Set("args", run.args)
+	entry.Set("args", args)
 	if state != nil {
 		entry.Set("state", state)
 	}

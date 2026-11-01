@@ -8,6 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
@@ -126,4 +127,21 @@ func expectCollectedEventually[T any](t testing.TB, refs ...weak.Pointer[T]) {
 		}
 		return true
 	})
+}
+
+// failLiveThen is `failLive(self, error); then()` as one synchronous block of Pi's event loop: nothing of the host runs
+// between the two (a microtask such as the failed object's stop of following cannot land between them), so they are one
+// section of the host's loop.
+func failLiveThen(host Host, self Self, failure *data.ChordError, then func()) {
+	host.(*chordHost).loop().Run(func() {
+		failLive(self, failure)
+		then()
+	})
+}
+
+// awaitWatchCalls waits until calls has n items. The Go form of Pi's `await delivered()` after a failure: the failed object's stop
+// of following is a task of the loop that settles after the test's goroutine goes on (Pi's microtask lands first).
+func awaitWatchCalls[T any](t testing.TB, what string, calls *nexttest.Collector[T], n int) {
+	t.Helper()
+	scopeEventually(t, what, func() bool { return len(calls.Items()) >= n })
 }

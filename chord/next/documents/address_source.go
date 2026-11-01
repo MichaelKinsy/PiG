@@ -15,14 +15,11 @@ import (
 // created after a retirement in the same batch as one root replacement with the flag.
 //
 // Go form of the abstract class: AddressSource embeds state.Source and is embedded by the concrete source, whose Init
-// gives it itself as AddressImpl (`owner` and `value` are the embedder's).
+// gives it itself as AddressImpl (`value` is the embedder's).
 
-// AddressImpl is what an AddressSource needs of its embedder: the documents of the object whose document this is (a
-// member source asks whose source it follows) and the value (`initial()` while the document is absent).
+// AddressImpl is what an AddressSource needs of its embedder: the value (`initial()` while the document is absent).
 type AddressImpl interface {
 	state.SourceImpl
-	// Owner is the documents of the object whose document this is.
-	Owner() *Documents
 }
 
 // AddressSource is a source following one document address.

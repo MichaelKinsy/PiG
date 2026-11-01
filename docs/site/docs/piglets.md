@@ -562,7 +562,7 @@ In the interactive screen, `/piglet` prints the active Piglet and its source:
 
 Checked in the provider request.
 
-**The system prompt is replaced.** Without a Piglet, the system prompt starts `You are an expert coding assistant operating inside pig, a coding agent harness.` With this Piglet it starts with your text, followed by the working directory (`<cwd>/home/you/project</cwd>`). The Piglet's text is the prompt: it does not add to PiG's. Leave `systemPrompt` out to keep PiG's.
+**The system prompt is replaced.** Without a Piglet, the system prompt starts `You are a coding assistant running inside pig, a coding agent harness.` With this Piglet it starts with your text, followed by the working directory (`<cwd>/home/you/project</cwd>`). The Piglet's text is the prompt: it does not add to PiG's. Leave `systemPrompt` out to keep PiG's.
 
 **`tools` is a ceiling, not a list to turn on.** A Piglet's `tools` limits which built-in tools can be active. It does not activate any. The active set still starts from the default (`read`, `bash`, `edit`, `write`) or from your `defaultTools` setting or `--tools` option, and the Piglet removes everything outside its list. With `tools: [read, grep, find, ls]` the model received only `read`, because `bash`, `edit` and `write` are outside the ceiling and `grep`, `find` and `ls` are not in the default set:
 

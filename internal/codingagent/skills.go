@@ -144,7 +144,7 @@ func DeduplicateSkillsWithDiagnostics(defs []*SkillDef) ([]*SkillDef, []extensio
 	realPaths := make(map[string]bool, len(defs))
 	var diagnostics []extension.ResourceDiagnostic
 	for _, def := range defs {
-		realPath := canonicalizePath(def.FilePath)
+		realPath := ResourcePathKey(def.FilePath)
 		if def.FilePath != "" && realPaths[realPath] {
 			continue
 		}

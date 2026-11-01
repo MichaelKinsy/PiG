@@ -499,3 +499,58 @@ func TestRegistryValue(t *testing.T) {
 		}
 	})
 }
+
+func TestAReloadsNewValueAdapter(t *testing.T) {
+	t.Run("uses a new value adapter even when compose returns the same primitive (fix round 1)", func(t *testing.T) {
+		R := mustDefine[int, int](t, "astra.registry", 2)
+		Old := mustDefine[int, int](t, "astra.registry", 1)
+		provider := func(factor int) registries.RegistryProvider[int, int] {
+			return registries.RegistryProvider[int, int]{
+				Compose: func(registries.RegistryTable[int], registries.ComposeContext) (int, error) { return 7, nil },
+				Accepts: registries.RegistryAccepts[int, int]{1: {Value: func(n int) (any, error) { return n * factor, nil }}},
+			}
+		}
+		e := newEnv(t)
+		record := serve(e, R, provider(2))
+		old := record.Value(Old.Version)
+		if got := old.Value(); got != 14 {
+			t.Fatalf("old = %v, want 14", got)
+		}
+		e.change(func() { record.Serve(R.Version, provider(3).Erase()) })
+		if got := old.Value(); got != 21 {
+			t.Fatalf("old after the reload = %v, want 21", got)
+		}
+	})
+}
+
+func TestAReservedProviderMadeApartIsANewProvider(t *testing.T) {
+	// Pi compares the adapter objects of a provider (`===`): serving the same typed provider again erases it into a
+	// new provider with new adapters, so a cached mapping of the same composition maps again. Serving once is stable.
+	t.Run("an identical typed provider served again maps again; a read of the same provider does not", func(t *testing.T) {
+		R := mustDefine[int, int](t, "astra.registry", 2)
+		Old := mustDefine[int, int](t, "astra.registry", 1)
+		calls := 0
+		provider := registries.RegistryProvider[int, int]{
+			Compose: func(registries.RegistryTable[int], registries.ComposeContext) (int, error) { return 7, nil },
+			Accepts: registries.RegistryAccepts[int, int]{1: {Value: func(n int) (any, error) { calls++; return n, nil }}},
+		}
+		e := newEnv(t)
+		record := serve(e, R, provider)
+		old := record.Value(Old.Version)
+		for range 2 {
+			if got := old.Value(); got != 7 {
+				t.Fatalf("old = %v, want 7", got)
+			}
+		}
+		if calls != 1 {
+			t.Fatalf("adapter calls = %d after two reads of one provider, want 1", calls)
+		}
+		e.change(func() { record.Serve(R.Version, provider.Erase()) })
+		if got := old.Value(); got != 7 {
+			t.Fatalf("old after serving again = %v, want 7", got)
+		}
+		if calls != 2 {
+			t.Fatalf("adapter calls = %d after serving the same provider again, want 2", calls)
+		}
+	})
+}

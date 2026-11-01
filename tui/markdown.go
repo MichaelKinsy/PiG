@@ -96,6 +96,12 @@ func (m *Markdown) FinishStreaming() {
 	}
 }
 
+// finishedMarkdown is m for a text that never streams: a user, summary or skill message is whole when it is built.
+func finishedMarkdown(m *Markdown) *Markdown {
+	m.FinishStreaming()
+	return m
+}
+
 func (m *Markdown) dropStreamingMemos() {
 	m.wraps, m.nextWraps, m.inlines, m.nextInlines, m.resume = nil, nil, nil, nil, nil
 }

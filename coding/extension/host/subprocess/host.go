@@ -2499,7 +2499,7 @@ func (h *Host) TerminateProcesses() {
 	}
 }
 
-// Shutdown detaches all extension consumers before removing providers, then stops and reaps every managed process. Session owners emit and await session_shutdown before calling it.
+// Shutdown detaches all extension consumers before removing providers, then stops and reaps every managed process. When it returns, each extension it stopped has withdrawn its ownership of thinking runs and told the observers (D214). Session owners emit and await session_shutdown before calling it.
 func (h *Host) Shutdown(reason string) {
 	h.shuttingDown.Store(true)
 	h.mu.Lock()
@@ -2547,6 +2547,12 @@ func (h *Host) Shutdown(reason string) {
 		process.stopAndReap()
 	}
 	h.transitionMu.Unlock()
+	// pig additive (D214): each stopped connection's read loop schedules the drop of its extension's ownership of thinking runs once it has seen the connection end. Wait for that, or the loop could reach it after the drain tasks closed, and the drop would run after Shutdown returned.
+	for _, me := range exts {
+		if conn := me.connection(); conn != nil {
+			conn.awaitIncomingEnded()
+		}
+	}
 	h.drainTasksMu.Lock()
 	h.drainTasksClosed = true
 	h.drainTasksMu.Unlock()
@@ -3495,7 +3501,7 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 	}
 
 	// Reverse provider callbacks may call the host while registering.
-	go h.handleIncoming(me, conn)
+	h.goHandleIncoming(me, conn)
 	// On a crash restart the providers are already registered and their
 	// handlers resolve the current connection at call time, so re-registering would duplicate
 	// them. Same binary → same providers, so skip.
@@ -4641,6 +4647,16 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 	}
 }
 
+// goHandleIncoming starts handleIncoming for conn on its own goroutine and records the loop on the connection before it runs, so Shutdown can wait for it (Conn.awaitIncomingEnded).
+func (h *Host) goHandleIncoming(me *managedExt, conn *Conn) {
+	conn.incoming.Store(&incomingLoop{ended: make(chan struct{})})
+	//portlint:allow golifetime the loop ends with its connection, which the host closes before it stops the extension, and Shutdown waits for the loop through Conn.awaitIncomingEnded
+	go func() {
+		defer conn.endIncoming()
+		h.handleIncoming(me, conn)
+	}()
+}
+
 // handleIncoming processes extension→host messages (calls, widget pushes) from conn, one connection of me.
 // When the connection closes (extension crashed/exited), this goroutine
 // invokes the crash supervisor and optionally restarts.
@@ -4828,13 +4844,14 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 	}
 
 	// pig additive (D214): the extension no longer draws anything, so it owns no thinking runs. Its earlier calls apply first, or a late
-	// ownThinkingRuns(true) would restore what the exit withdrew; once Shutdown waits no call is left to apply.
+	// ownThinkingRuns(true) would restore what the exit withdrew; once Shutdown has joined this loop and waits for the drain tasks no call is left to apply.
 	if !h.goDrainTask(func() {
 		lanes.barrier()
 		h.dropOwnedThinkingRuns(me, conn)
 	}) {
 		h.dropOwnedThinkingRuns(me, conn)
 	}
+	conn.endIncoming()
 
 	if completed := h.noteRuntimeConnClosed(me, conn); len(completed) > 0 {
 		// The connection's earlier calls apply before the drain acts, as on the report path; a call's handler can wait, so this does not delay the close handling below. The connection owns the wait: its close cancels the host calls it applies, and Shutdown joins the task.

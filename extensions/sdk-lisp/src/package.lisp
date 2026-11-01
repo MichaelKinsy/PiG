@@ -326,7 +326,9 @@
    #:tool-render-context-args #:tool-render-context-tool-call-id #:tool-render-context-cwd #:tool-render-context-execution-started
    #:tool-render-context-args-complete #:tool-render-context-is-partial #:tool-render-context-expanded
    #:tool-render-context-show-images #:tool-render-context-is-error #:tool-render-context-output-pad
-   #:tool-render-context-duration-ms #:tool-render-context-state #:tool-render-context-invalidate #:login-definition
+   #:tool-render-context-duration-ms #:tool-render-context-state #:tool-render-context-invalidate
+   #:tool-render-context-key-text #:tool-render-context-key-hint #:message-render-options-key-text #:message-render-options-key-hint
+   #:entry-render-options-key-text #:entry-render-options-key-hint #:login-definition
    #:make-login-definition #:login-definition-p #:login-definition-brand #:login-definition-hero #:login-definition-mascot
    #:login-definition-palette #:login-definition-name #:login-definition-description #:login-definition-tagline
    #:sprite-definition #:make-sprite-definition #:sprite-definition-p #:sprite-definition-id #:sprite-definition-name

@@ -16,6 +16,7 @@ import (
 	"golang.org/x/text/language"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -1004,10 +1005,7 @@ func (s *SessionSelectorComponent) buildTreePrefix(node sessionDisplayNode) stri
 
 func shortenSessionPath(path string) string {
 	home, _ := os.UserHomeDir()
-	if home != "" && strings.HasPrefix(path, home) {
-		return "~" + strings.TrimPrefix(path, home)
-	}
-	return path
+	return resolvepath.ShortenHomePath(path, home)
 }
 
 // SetFocused propagates TUI focus to the session list's search input and to the rename input, which emit the hardware-cursor marker only while focused (upstream `set focused`, session-selector.ts:733-740).

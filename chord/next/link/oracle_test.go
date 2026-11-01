@@ -209,10 +209,7 @@ func buildMessage(t testing.TB, spec *delta.JsonObject) link.Message {
 	case "abort":
 		return &link.AbortMessage{Origin: origin, Call: specInt(spec, "call")}
 	case "retry":
-		message := &link.RetryMessage{Origin: origin, Hold: specInt(spec, "hold")}
-		message.Operation, _ = spec.Value("operation").(string)
-		message.Through = specStrings(spec.Value("through"))
-		return message
+		return &link.RetryMessage{Origin: origin, Hold: specInt(spec, "hold"), Hops: specInt(spec, "hops")}
 	case "bound":
 		message := &link.BoundMessage{Origin: origin}
 		for _, item := range spec.Value("holds").([]any) {

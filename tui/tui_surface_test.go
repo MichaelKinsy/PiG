@@ -115,7 +115,7 @@ func assertReplayIsFresh(t *testing.T, surface *TuiSurface, session *recordingSe
 	t.Helper()
 	fresh := newRecordingSession()
 	fresh.mainCols, fresh.dockCols = session.mainCols, session.dockCols
-	other := NewTuiSurfaceWithSize(fresh, surface.width, surface.height, func(err error) { t.Fatalf("apply: %v", err) })
+	other := NewTuiSurfaceWithSize(fresh, surface.Width(), surface.Height(), func(err error) { t.Fatalf("apply: %v", err) })
 	// The fresh surface draws once, on this goroutine: a scheduled render on a timer goroutine would write the tree this reads.
 	renderOnlyWhenAsked(other)
 	other.SetHooks(surface.hooks)

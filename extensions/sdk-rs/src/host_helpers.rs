@@ -39,13 +39,18 @@ static DIALLED: Mutex<Vec<(String, Arc<Connection>)>> = Mutex::new(Vec::new());
 static RUNNING: Mutex<Vec<(String, Weak<Connection>)>> = Mutex::new(Vec::new());
 
 fn locked<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
-    mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    mutex
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 /// Pi's `parseFrontmatter` (`utils/frontmatter.ts`, exported from `index.ts`), answered by the host's parser. A header the YAML parser refuses is the error Pi
 /// throws. It may be called before `run`: the first call connects to the host, and `run` reuses the connection.
 pub fn parse_frontmatter(content: &str) -> io::Result<ParsedFrontmatter> {
-    decode_frontmatter(helper_call(CALL_PARSE_FRONTMATTER, json!({"content": content}))?)
+    decode_frontmatter(helper_call(
+        CALL_PARSE_FRONTMATTER,
+        json!({"content": content}),
+    )?)
 }
 
 /// Pi's `stripFrontmatter`: the body of [`parse_frontmatter`].
@@ -68,7 +73,15 @@ pub fn parse_date(text: &str) -> io::Result<Option<f64>> {
 /// answers it, as V8 does.
 pub(crate) fn parse_iso_date(text: &str) -> Option<f64> {
     let bytes = text.as_bytes();
-    if bytes.len() != 24 || bytes[4] != b'-' || bytes[7] != b'-' || bytes[10] != b'T' || bytes[13] != b':' || bytes[16] != b':' || bytes[19] != b'.' || bytes[23] != b'Z' {
+    if bytes.len() != 24
+        || bytes[4] != b'-'
+        || bytes[7] != b'-'
+        || bytes[10] != b'T'
+        || bytes[13] != b':'
+        || bytes[16] != b':'
+        || bytes[19] != b'.'
+        || bytes[23] != b'Z'
+    {
         return None;
     }
     let digits = |from: usize, to: usize| -> Option<i64> {
@@ -82,7 +95,12 @@ pub(crate) fn parse_iso_date(text: &str) -> Option<f64> {
         Some(n)
     };
     let (year, month, day) = (digits(0, 4)?, digits(5, 7)?, digits(8, 10)?);
-    let (hour, minute, second, millisecond) = (digits(11, 13)?, digits(14, 16)?, digits(17, 19)?, digits(20, 23)?);
+    let (hour, minute, second, millisecond) = (
+        digits(11, 13)?,
+        digits(14, 16)?,
+        digits(17, 19)?,
+        digits(20, 23)?,
+    );
     let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
     let days_in_month = match month {
         2 if leap => 29,
@@ -90,7 +108,13 @@ pub(crate) fn parse_iso_date(text: &str) -> Option<f64> {
         4 | 6 | 9 | 11 => 30,
         _ => 31,
     };
-    if !(1..=12).contains(&month) || day < 1 || day > days_in_month || hour > 23 || minute > 59 || second > 59 {
+    if !(1..=12).contains(&month)
+        || day < 1
+        || day > days_in_month
+        || hour > 23
+        || minute > 59
+        || second > 59
+    {
         return None;
     }
     // The days from 1970-01-01 in the proleptic Gregorian calendar, which is what ECMA-262 time values count.
@@ -98,7 +122,8 @@ pub(crate) fn parse_iso_date(text: &str) -> Option<f64> {
     let era = shifted.div_euclid(400);
     let year_of_era = shifted - era * 400;
     let day_of_year = (153 * ((month + 9) % 12) + 2) / 5 + day - 1;
-    let days = era * 146097 + year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year - 719468;
+    let days = era * 146097 + year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year
+        - 719468;
     Some((((days * 24 + hour) * 60 + minute) * 60000 + second * 1000 + millisecond) as f64)
 }
 
@@ -110,7 +135,12 @@ pub(crate) fn running_connection() -> io::Result<Arc<Connection>> {
 
 /// The lines the host's highlight.js port makes of `code` in `lang`, drawn with `theme` (the palette of the theme `init_theme` installed) or, when `None`, with the host's
 /// active theme.
-pub(crate) fn highlight_code_lines(code: &str, lang: &str, markdown: bool, theme: Option<Value>) -> io::Result<Vec<String>> {
+pub(crate) fn highlight_code_lines(
+    code: &str,
+    lang: &str,
+    markdown: bool,
+    theme: Option<Value>,
+) -> io::Result<Vec<String>> {
     let mut args = json!({"code": code, "lang": lang});
     if markdown {
         args["markdown"] = Value::Bool(true);
@@ -120,8 +150,14 @@ pub(crate) fn highlight_code_lines(code: &str, lang: &str, markdown: bool, theme
     }
     let result = helper_call(CALL_HIGHLIGHT_CODE, args)?.unwrap_or(Value::Null);
     match result.get("lines").and_then(Value::as_array) {
-        Some(lines) => Ok(lines.iter().filter_map(|line| line.as_str().map(str::to_string)).collect()),
-        None => Err(io::Error::new(io::ErrorKind::InvalidData, "decode highlightCode: the host answered no lines")),
+        Some(lines) => Ok(lines
+            .iter()
+            .filter_map(|line| line.as_str().map(str::to_string))
+            .collect()),
+        None => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "decode highlightCode: the host answered no lines",
+        )),
     }
 }
 
@@ -130,7 +166,10 @@ pub(crate) fn load_theme(name: Option<&str>) -> io::Result<Value> {
     let result = helper_call(CALL_LOAD_THEME, json!({"name": name}))?.unwrap_or(Value::Null);
     match result.get("theme") {
         Some(theme) if theme.is_object() => Ok(theme.clone()),
-        _ => Err(io::Error::new(io::ErrorKind::InvalidData, "initTheme: the host answered a theme that is not a palette")),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "initTheme: the host answered a theme that is not a palette",
+        )),
     }
 }
 
@@ -144,7 +183,14 @@ pub(crate) fn date_args(text: &str) -> (&'static str, Value) {
 
 pub(crate) fn decode_frontmatter(result: Option<Value>) -> io::Result<ParsedFrontmatter> {
     let result = result.unwrap_or(Value::Null);
-    Ok(ParsedFrontmatter { frontmatter: result.get("frontmatter").cloned().unwrap_or(Value::Null), body: result.get("body").and_then(Value::as_str).unwrap_or("").to_string() })
+    Ok(ParsedFrontmatter {
+        frontmatter: result.get("frontmatter").cloned().unwrap_or(Value::Null),
+        body: result
+            .get("body")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string(),
+    })
 }
 
 pub(crate) fn decode_date(result: Option<Value>) -> io::Result<Option<f64>> {
@@ -182,7 +228,12 @@ fn diff_args(old_content: &str, new_content: &str, context_lines: Option<i64>) -
     args
 }
 
-fn patch_args(path: &str, old_content: &str, new_content: &str, context_lines: Option<i64>) -> Value {
+fn patch_args(
+    path: &str,
+    old_content: &str,
+    new_content: &str,
+    context_lines: Option<i64>,
+) -> Value {
     let mut args = diff_args(old_content, new_content, context_lines);
     args["path"] = json!(path);
     args
@@ -213,56 +264,121 @@ fn base64_encode(bytes: &[u8]) -> String {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
     for chunk in bytes.chunks(3) {
-        let n = (u32::from(chunk[0]) << 16) | (u32::from(*chunk.get(1).unwrap_or(&0)) << 8) | u32::from(*chunk.get(2).unwrap_or(&0));
+        let n = (u32::from(chunk[0]) << 16)
+            | (u32::from(*chunk.get(1).unwrap_or(&0)) << 8)
+            | u32::from(*chunk.get(2).unwrap_or(&0));
         out.push(ALPHABET[(n >> 18) as usize & 63] as char);
         out.push(ALPHABET[(n >> 12) as usize & 63] as char);
-        out.push(if chunk.len() > 1 { ALPHABET[(n >> 6) as usize & 63] as char } else { '=' });
-        out.push(if chunk.len() > 2 { ALPHABET[n as usize & 63] as char } else { '=' });
+        out.push(if chunk.len() > 1 {
+            ALPHABET[(n >> 6) as usize & 63] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            ALPHABET[n as usize & 63] as char
+        } else {
+            '='
+        });
     }
     out
 }
 
 pub(crate) fn decode_diff_string(result: Option<Value>) -> io::Result<DiffString> {
     let result = result.unwrap_or(Value::Null);
-    Ok(DiffString { diff: result.get("diff").and_then(Value::as_str).unwrap_or("").to_string(), first_changed_line: result.get("firstChangedLine").and_then(Value::as_i64) })
+    Ok(DiffString {
+        diff: result
+            .get("diff")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string(),
+        first_changed_line: result.get("firstChangedLine").and_then(Value::as_i64),
+    })
 }
 
 pub(crate) fn decode_patch(result: Option<Value>) -> io::Result<String> {
-    Ok(result.and_then(|result| result.get("patch").and_then(Value::as_str).map(String::from)).unwrap_or_default())
+    Ok(result
+        .and_then(|result| {
+            result
+                .get("patch")
+                .and_then(Value::as_str)
+                .map(String::from)
+        })
+        .unwrap_or_default())
 }
 
 pub(crate) fn decode_converted(result: Option<Value>) -> io::Result<Option<ConvertedImage>> {
     let result = result.unwrap_or(Value::Null);
-    Ok(result.get("image").filter(|image| image.is_object()).map(|image| ConvertedImage {
-        data: image.get("data").and_then(Value::as_str).unwrap_or("").to_string(),
-        mime_type: image.get("mimeType").and_then(Value::as_str).unwrap_or("").to_string(),
-    }))
+    Ok(result
+        .get("image")
+        .filter(|image| image.is_object())
+        .map(|image| ConvertedImage {
+            data: image
+                .get("data")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string(),
+            mime_type: image
+                .get("mimeType")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string(),
+        }))
 }
 
 pub(crate) fn decode_resized(result: Option<Value>) -> io::Result<Option<crate::ResizedImage>> {
     let result = result.unwrap_or(Value::Null);
-    let number = |image: &Value, key: &str| image.get(key).and_then(Value::as_f64).unwrap_or(f64::NAN);
-    Ok(result.get("image").filter(|image| image.is_object()).map(|image| crate::ResizedImage {
-        data: image.get("data").and_then(Value::as_str).unwrap_or("").to_string(),
-        mime_type: image.get("mimeType").and_then(Value::as_str).unwrap_or("").to_string(),
-        original_width: number(image, "originalWidth"),
-        original_height: number(image, "originalHeight"),
-        width: number(image, "width"),
-        height: number(image, "height"),
-        was_resized: image.get("wasResized").and_then(Value::as_bool).unwrap_or(false),
-    }))
+    let number =
+        |image: &Value, key: &str| image.get(key).and_then(Value::as_f64).unwrap_or(f64::NAN);
+    Ok(result
+        .get("image")
+        .filter(|image| image.is_object())
+        .map(|image| crate::ResizedImage {
+            data: image
+                .get("data")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string(),
+            mime_type: image
+                .get("mimeType")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string(),
+            original_width: number(image, "originalWidth"),
+            original_height: number(image, "originalHeight"),
+            width: number(image, "width"),
+            height: number(image, "height"),
+            was_resized: image
+                .get("wasResized")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        }))
 }
 
 /// Pi's `generateDiffString` (`core/tools/edit-diff.ts`, exported from `index.ts`): the line-numbered display diff of two texts, with the context around each change cut to
 /// `context_lines` (default 4) lines, and the first changed line of the new text. The host's byte-exact port answers. It may be called before `run`, like [`parse_frontmatter`].
-pub fn generate_diff_string(old_content: &str, new_content: &str, context_lines: Option<i64>) -> io::Result<DiffString> {
-    decode_diff_string(helper_call(CALL_GENERATE_DIFF_STRING, diff_args(old_content, new_content, context_lines))?)
+pub fn generate_diff_string(
+    old_content: &str,
+    new_content: &str,
+    context_lines: Option<i64>,
+) -> io::Result<DiffString> {
+    decode_diff_string(helper_call(
+        CALL_GENERATE_DIFF_STRING,
+        diff_args(old_content, new_content, context_lines),
+    )?)
 }
 
 /// Pi's `generateUnifiedPatch` (`core/tools/edit-diff.ts`, exported from `index.ts`): a standard unified patch of two texts for one path, with `context_lines` (default 4)
 /// lines of context around each change. The host's port of jsdiff answers. It may be called before `run`.
-pub fn generate_unified_patch(path: &str, old_content: &str, new_content: &str, context_lines: Option<i64>) -> io::Result<String> {
-    decode_patch(helper_call(CALL_GENERATE_UNIFIED_PATCH, patch_args(path, old_content, new_content, context_lines))?)
+pub fn generate_unified_patch(
+    path: &str,
+    old_content: &str,
+    new_content: &str,
+    context_lines: Option<i64>,
+) -> io::Result<String> {
+    decode_patch(helper_call(
+        CALL_GENERATE_UNIFIED_PATCH,
+        patch_args(path, old_content, new_content, context_lines),
+    )?)
 }
 
 /// Pi's `copyToClipboard` (`utils/clipboard.ts`, exported from `index.ts`): the host copies `text` with the strategy its own copy commands use, and a failed copy is the
@@ -274,22 +390,47 @@ pub fn copy_to_clipboard(text: &str) -> io::Result<()> {
 /// Pi's `convertToPng` (`utils/image-convert.ts`, exported from `index.ts`): base64 image data as base64 PNG data, which a PNG already is. It is `None`, as Pi returns null,
 /// when the data does not decode. It may be called before `run`.
 pub fn convert_to_png(base64_data: &str, mime_type: &str) -> io::Result<Option<ConvertedImage>> {
-    decode_converted(helper_call(CALL_CONVERT_TO_PNG, json!({"data": base64_data, "mimeType": mime_type}))?)
+    decode_converted(helper_call(
+        CALL_CONVERT_TO_PNG,
+        json!({"data": base64_data, "mimeType": mime_type}),
+    )?)
 }
 
 /// Pi's `resizeImage` (`utils/image-resize.ts`, exported from `index.ts`): the image fitted within the option limits (2000 pixels on a side, 4.5 MiB encoded unless
 /// `options` say otherwise), as the host's image code does it. It is `None`, as Pi returns null, when the image cannot be made to fit. An image already within every limit
 /// comes back as it was. It may be called before `run`.
-pub fn resize_image(input: &[u8], mime_type: &str, options: Option<&ImageResizeOptions>) -> io::Result<Option<crate::ResizedImage>> {
-    decode_resized(helper_call(CALL_RESIZE_IMAGE, resize_args(input, mime_type, options))?)
+pub fn resize_image(
+    input: &[u8],
+    mime_type: &str,
+    options: Option<&ImageResizeOptions>,
+) -> io::Result<Option<crate::ResizedImage>> {
+    decode_resized(helper_call(
+        CALL_RESIZE_IMAGE,
+        resize_args(input, mime_type, options),
+    )?)
 }
 
-pub(crate) fn generate_diff_string_args(old_content: &str, new_content: &str, context_lines: Option<i64>) -> (&'static str, Value) {
-    (CALL_GENERATE_DIFF_STRING, diff_args(old_content, new_content, context_lines))
+pub(crate) fn generate_diff_string_args(
+    old_content: &str,
+    new_content: &str,
+    context_lines: Option<i64>,
+) -> (&'static str, Value) {
+    (
+        CALL_GENERATE_DIFF_STRING,
+        diff_args(old_content, new_content, context_lines),
+    )
 }
 
-pub(crate) fn generate_unified_patch_args(path: &str, old_content: &str, new_content: &str, context_lines: Option<i64>) -> (&'static str, Value) {
-    (CALL_GENERATE_UNIFIED_PATCH, patch_args(path, old_content, new_content, context_lines))
+pub(crate) fn generate_unified_patch_args(
+    path: &str,
+    old_content: &str,
+    new_content: &str,
+    context_lines: Option<i64>,
+) -> (&'static str, Value) {
+    (
+        CALL_GENERATE_UNIFIED_PATCH,
+        patch_args(path, old_content, new_content, context_lines),
+    )
 }
 
 pub(crate) fn copy_to_clipboard_args(text: &str) -> (&'static str, Value) {
@@ -297,10 +438,17 @@ pub(crate) fn copy_to_clipboard_args(text: &str) -> (&'static str, Value) {
 }
 
 pub(crate) fn convert_to_png_args(base64_data: &str, mime_type: &str) -> (&'static str, Value) {
-    (CALL_CONVERT_TO_PNG, json!({"data": base64_data, "mimeType": mime_type}))
+    (
+        CALL_CONVERT_TO_PNG,
+        json!({"data": base64_data, "mimeType": mime_type}),
+    )
 }
 
-pub(crate) fn resize_image_args(input: &[u8], mime_type: &str, options: Option<&ImageResizeOptions>) -> (&'static str, Value) {
+pub(crate) fn resize_image_args(
+    input: &[u8],
+    mime_type: &str,
+    options: Option<&ImageResizeOptions>,
+) -> (&'static str, Value) {
     (CALL_RESIZE_IMAGE, resize_args(input, mime_type, options))
 }
 
@@ -321,10 +469,18 @@ pub(crate) fn helper_call(method: &str, args: Value) -> io::Result<Option<Value>
 pub(crate) fn dial_loading() -> io::Result<Arc<Connection>> {
     let path = match socket_path() {
         Some(path) if !path.is_empty() => path,
-        _ => return Err(io::Error::new(io::ErrorKind::NotConnected, "not connected to the host: PIG_EXT_SOCKET is not set, so this extension was not launched by pig")),
+        _ => {
+            return Err(io::Error::new(
+                io::ErrorKind::NotConnected,
+                "not connected to the host: PIG_EXT_SOCKET is not set, so this extension was not launched by pig",
+            ));
+        }
     };
     let mut dialled = locked(&DIALLED);
-    if let Some((_, conn)) = dialled.iter().find(|(dialled_path, _)| *dialled_path == path) {
+    if let Some((_, conn)) = dialled
+        .iter()
+        .find(|(dialled_path, _)| *dialled_path == path)
+    {
         return Ok(conn.clone());
     }
     let conn = Arc::new(Connection::new(UnixStream::connect(&path)?));
@@ -336,12 +492,22 @@ pub(crate) fn dial_loading() -> io::Result<Arc<Connection>> {
 /// The result of a host call over the first running extension's connection that answers; the last failure when none does. It never dials: it is for a call that
 /// must reach the host after the connection it started on has gone.
 pub(crate) fn helper_call_each_running(method: &str, args: Value) -> io::Result<Option<Value>> {
-    let connections: Vec<Arc<Connection>> = locked(&RUNNING).iter().filter_map(|(_, weak)| weak.upgrade()).collect();
-    first_answer(&connections, |conn| conn.begin_call_for(None, method, Some(args.clone())).and_then(|pending| conn.wait_call(pending)).and_then(finish))
+    let connections: Vec<Arc<Connection>> = locked(&RUNNING)
+        .iter()
+        .filter_map(|(_, weak)| weak.upgrade())
+        .collect();
+    first_answer(&connections, |conn| {
+        conn.begin_call_for(None, method, Some(args.clone()))
+            .and_then(|pending| conn.wait_call(pending))
+            .and_then(finish)
+    })
 }
 
 /// The first answer `call` gets from `connections`, tried in order; the last failure when none answers, `NotConnected` when there are none.
-fn first_answer<C>(connections: &[C], mut call: impl FnMut(&C) -> io::Result<Option<Value>>) -> io::Result<Option<Value>> {
+fn first_answer<C>(
+    connections: &[C],
+    mut call: impl FnMut(&C) -> io::Result<Option<Value>>,
+) -> io::Result<Option<Value>> {
     let mut failure = io::Error::new(io::ErrorKind::NotConnected, "no extension is running");
     for conn in connections {
         match call(conn) {
@@ -361,13 +527,17 @@ fn finish(result: crate::protocol::CallResultMsg) -> io::Result<Option<Value>> {
 
 /// The socket a helper dials: `PIG_EXT_SOCKET`, which a packed cell's runner sets to the member's socket while the member's factory runs.
 fn socket_path() -> Option<String> {
-    std::env::var("PIG_EXT_SOCKET").or_else(|_| std::env::var("GOPI_EXT_SOCKET")).ok()
+    std::env::var("PIG_EXT_SOCKET")
+        .or_else(|_| std::env::var("GOPI_EXT_SOCKET"))
+        .ok()
 }
 
 /// The connection a helper opened to `path`, for `run` to serve on.
 pub(crate) fn take_dialled(path: &str) -> Option<Arc<Connection>> {
     let mut dialled = locked(&DIALLED);
-    let at = dialled.iter().position(|(dialled_path, _)| dialled_path == path)?;
+    let at = dialled
+        .iter()
+        .position(|(dialled_path, _)| dialled_path == path)?;
     Some(dialled.remove(at).1)
 }
 
@@ -381,9 +551,15 @@ pub(crate) fn adopt(conn: &Arc<Connection>, path: &str) {
 /// extension that socket belongs to, so a helper called by one member's factory never rides another member's connection, which the host serves only after
 /// it has accepted this member's: that is the running extension on `path`, and none while this member has not connected (the helper dials it). With no
 /// socket named, the first extension that is still running answers.
-fn running_for(running: &[(String, Weak<Connection>)], path: Option<&str>) -> Option<Arc<Connection>> {
+fn running_for(
+    running: &[(String, Weak<Connection>)],
+    path: Option<&str>,
+) -> Option<Arc<Connection>> {
     match path.filter(|path| !path.is_empty()) {
-        Some(path) => running.iter().filter(|(served, _)| served == path).find_map(|(_, weak)| weak.upgrade()),
+        Some(path) => running
+            .iter()
+            .filter(|(served, _)| served == path)
+            .find_map(|(_, weak)| weak.upgrade()),
         None => running.iter().find_map(|(_, weak)| weak.upgrade()),
     }
 }
@@ -428,11 +604,23 @@ mod tests {
         let second = Arc::new(Connection::new(b));
         let mut running = Vec::new();
         add_running(&mut running, &second, "/s/e-1.sock");
-        assert!(running_for(&running, Some("/s/e-0.sock")).is_none(), "the first member has not connected: its helper dials its own socket");
-        assert!(Arc::ptr_eq(&running_for(&running, Some("/s/e-1.sock")).unwrap(), &second));
+        assert!(
+            running_for(&running, Some("/s/e-0.sock")).is_none(),
+            "the first member has not connected: its helper dials its own socket"
+        );
+        assert!(Arc::ptr_eq(
+            &running_for(&running, Some("/s/e-1.sock")).unwrap(),
+            &second
+        ));
         add_running(&mut running, &first, "/s/e-0.sock");
-        assert!(Arc::ptr_eq(&running_for(&running, Some("/s/e-0.sock")).unwrap(), &first));
-        assert!(Arc::ptr_eq(&running_for(&running, Some("")).unwrap(), &second), "an empty name is no name");
+        assert!(Arc::ptr_eq(
+            &running_for(&running, Some("/s/e-0.sock")).unwrap(),
+            &first
+        ));
+        assert!(
+            Arc::ptr_eq(&running_for(&running, Some("")).unwrap(), &second),
+            "an empty name is no name"
+        );
     }
 
     // The turn of the file mutation queue belongs to the process: an exit whose connection is stopping goes to the next running extension's.
@@ -441,13 +629,23 @@ mod tests {
         let tried = std::cell::RefCell::new(Vec::new());
         let answer = first_answer(&["stopped", "running", "never reached"], |name| {
             tried.borrow_mut().push(*name);
-            if *name == "stopped" { Err(io::Error::other("extension connection is closed")) } else { Ok(Some(json!({"from": name}))) }
+            if *name == "stopped" {
+                Err(io::Error::other("extension connection is closed"))
+            } else {
+                Ok(Some(json!({"from": name})))
+            }
         });
         assert_eq!(answer.unwrap(), Some(json!({"from": "running"})));
         assert_eq!(*tried.borrow(), vec!["stopped", "running"]);
         let none: [&str; 0] = [];
-        assert_eq!(first_answer(&none, |_| Ok(None)).unwrap_err().kind(), io::ErrorKind::NotConnected);
-        let failure = first_answer(&["a", "b"], |name| Err(io::Error::other(format!("{name} failed")))).unwrap_err();
+        assert_eq!(
+            first_answer(&none, |_| Ok(None)).unwrap_err().kind(),
+            io::ErrorKind::NotConnected
+        );
+        let failure = first_answer(&["a", "b"], |name| {
+            Err(io::Error::other(format!("{name} failed")))
+        })
+        .unwrap_err();
         assert_eq!(failure.to_string(), "b failed");
     }
 
@@ -473,11 +671,33 @@ mod tests {
     // Texts V8 reads that the local parser must leave to the host: another form of the same instant, a field the legacy parser accepts although it is out of range
     // (February 30 is March 2), and text that is not a date.
     const LEFT_TO_THE_HOST: [&str; 27] = [
-        "2026-01-02T03:04:05.678", "2026-01-02T03:04:05.678+00:00", "+012026-01-02T03:04:05.678Z", "-000001-01-01T00:00:00.000Z", "2026-01-02t03:04:05.678Z",
-        "2026-01-02T03:04:05.678z", "2026-02-30T00:00:00.000Z", "2026-13-01T00:00:00.000Z", "2026-01-02T24:00:00.000Z", "2026-01-02T03:04:60.000Z",
-        "2026-01-02T03:60:05.000Z", "2026-00-10T00:00:00.000Z", "2026-04-31T00:00:00.000Z", "2026-01-02 03:04:05.678Z", "2026-01-02T03:04:05.678Z\n",
-        "２０２６-01-02T03:04:05.678Z", "2026-01-02T03:04:05Z", "2026-01-02T03:04:05.67Z", "2026-01-02T03:04:05.678Zx", "", "2026", "2026-01-02T0x:04:05.678Z",
-        "2026-01-02T03:04:05.67:Z", "2026-01-02T03:04:0/.678Z", "202:-01-02T03:04:05.678Z", "2026-01-02T03:04:05.@78Z", "2026-01-00T00:00:00.000Z",
+        "2026-01-02T03:04:05.678",
+        "2026-01-02T03:04:05.678+00:00",
+        "+012026-01-02T03:04:05.678Z",
+        "-000001-01-01T00:00:00.000Z",
+        "2026-01-02t03:04:05.678Z",
+        "2026-01-02T03:04:05.678z",
+        "2026-02-30T00:00:00.000Z",
+        "2026-13-01T00:00:00.000Z",
+        "2026-01-02T24:00:00.000Z",
+        "2026-01-02T03:04:60.000Z",
+        "2026-01-02T03:60:05.000Z",
+        "2026-00-10T00:00:00.000Z",
+        "2026-04-31T00:00:00.000Z",
+        "2026-01-02 03:04:05.678Z",
+        "2026-01-02T03:04:05.678Z\n",
+        "２０２６-01-02T03:04:05.678Z",
+        "2026-01-02T03:04:05Z",
+        "2026-01-02T03:04:05.67Z",
+        "2026-01-02T03:04:05.678Zx",
+        "",
+        "2026",
+        "2026-01-02T0x:04:05.678Z",
+        "2026-01-02T03:04:05.67:Z",
+        "2026-01-02T03:04:0/.678Z",
+        "202:-01-02T03:04:05.678Z",
+        "2026-01-02T03:04:05.@78Z",
+        "2026-01-00T00:00:00.000Z",
     ];
 
     #[test]

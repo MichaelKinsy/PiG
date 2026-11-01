@@ -459,11 +459,11 @@ func OrderResolvedResources(packages, ambient []ResolvedResource) []ResolvedReso
 	ordered := make([]ResolvedResource, 0, len(accumulated))
 	seen := make(map[string]struct{}, len(accumulated))
 	for _, resource := range accumulated {
-		canonical := CanonicalizePath(resource.Path)
-		if _, duplicate := seen[canonical]; duplicate {
+		pathKey := ResourcePathKey(resource.Path)
+		if _, duplicate := seen[pathKey]; duplicate {
 			continue
 		}
-		seen[canonical] = struct{}{}
+		seen[pathKey] = struct{}{}
 		ordered = append(ordered, resource)
 	}
 	return ordered

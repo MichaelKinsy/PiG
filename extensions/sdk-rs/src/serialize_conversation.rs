@@ -32,13 +32,21 @@ impl Json {
             Value::Number(number) => Json::Number(number.as_f64().unwrap_or(f64::NAN)),
             Value::String(text) => Json::Str(text.encode_utf16().collect()),
             Value::Array(elements) => Json::Array(elements.iter().map(Json::from_value).collect()),
-            Value::Object(members) => Json::Object(members.iter().map(|(key, member)| (key.encode_utf16().collect(), Json::from_value(member))).collect()),
+            Value::Object(members) => Json::Object(
+                members
+                    .iter()
+                    .map(|(key, member)| (key.encode_utf16().collect(), Json::from_value(member)))
+                    .collect(),
+            ),
         }
     }
 
     fn get(&self, key: &str) -> Option<&Json> {
         match self {
-            Json::Object(members) => members.iter().find(|(name, _)| name.iter().copied().eq(key.encode_utf16())).map(|(_, member)| member),
+            Json::Object(members) => members
+                .iter()
+                .find(|(name, _)| name.iter().copied().eq(key.encode_utf16()))
+                .map(|(_, member)| member),
             _ => None,
         }
     }
@@ -69,7 +77,8 @@ pub fn serialize_conversation(messages: &[Value]) -> Result<String, String> {
 /// [`serialize_conversation`] over the JSON text of the messages (an array), for a conversation whose strings hold an unpaired surrogate, which
 /// `serde_json::Value` refuses. The text is a JavaScript string: the result keeps each unpaired unit, as Pi does.
 pub fn serialize_conversation_json(messages_json: &str) -> Result<JsString, String> {
-    let messages = crate::protocol::on_deep_stack(|| parse_json(messages_json)).map_err(|err| err.to_string())??;
+    let messages = crate::protocol::on_deep_stack(|| parse_json(messages_json))
+        .map_err(|err| err.to_string())??;
     let Json::Array(messages) = messages else {
         return Err("TypeError: messages is not iterable".to_string());
     };
@@ -78,7 +87,9 @@ pub fn serialize_conversation_json(messages_json: &str) -> Result<JsString, Stri
 
 /// `JSON.stringify(JSON.parse(text))`: the text re-written as a JavaScript object holds it, members in `Object.keys` order and numbers as JavaScript prints them. `None` when `text` is not JSON.
 pub(crate) fn js_stringify_text(text: &str) -> Option<String> {
-    let value = crate::protocol::on_deep_stack(|| parse_json(text)).ok()?.ok()?;
+    let value = crate::protocol::on_deep_stack(|| parse_json(text))
+        .ok()?
+        .ok()?;
     Some(String::from_utf16_lossy(&json_stringify(&value)))
 }
 
@@ -99,7 +110,13 @@ fn serialize(messages: &[Json]) -> Result<Vec<u16>, String> {
         } else if role.is_some_and(|role| role.is_str("toolResult")) {
             let content = content_text(message.get("content"), &[])?;
             if !content.is_empty() {
-                parts.push([units("[Tool result]: "), truncate_for_summary(&content, TOOL_RESULT_MAX_CHARS)].concat());
+                parts.push(
+                    [
+                        units("[Tool result]: "),
+                        truncate_for_summary(&content, TOOL_RESULT_MAX_CHARS),
+                    ]
+                    .concat(),
+                );
             }
         }
     }
@@ -128,16 +145,36 @@ fn serialize_assistant(message: &Json, parts: &mut Vec<Vec<u16>>) -> Result<(), 
         }
         let kind = block.get("type");
         if kind.is_some_and(|kind| kind.is_str("toolCall")) {
-            tool_calls.push([js_to_string(block.get("name")), units("("), entries_string(block.get("arguments"))?, units(")")].concat());
+            tool_calls.push(
+                [
+                    js_to_string(block.get("name")),
+                    units("("),
+                    entries_string(block.get("arguments"))?,
+                    units(")"),
+                ]
+                .concat(),
+            );
         } else if kind.is_some_and(|kind| kind.is_str("text")) {
             has_text = true;
         }
     }
     if has_text {
-        parts.push([units("[Assistant]: "), content_text(message.get("content"), &units("\n"))?].concat());
+        parts.push(
+            [
+                units("[Assistant]: "),
+                content_text(message.get("content"), &units("\n"))?,
+            ]
+            .concat(),
+        );
     }
     if !tool_calls.is_empty() {
-        parts.push([units("[Assistant tool calls]: "), join(&tool_calls, &units("; "))].concat());
+        parts.push(
+            [
+                units("[Assistant tool calls]: "),
+                join(&tool_calls, &units("; ")),
+            ]
+            .concat(),
+        );
     }
     Ok(())
 }
@@ -151,7 +188,16 @@ fn js_to_string(value: Option<&Json>) -> Vec<u16> {
         Some(Json::Bool(flag)) => units(if *flag { "true" } else { "false" }),
         Some(Json::Number(number)) => units(&js_number_to_string(*number)),
         Some(Json::Array(elements)) => {
-            let parts: Vec<Vec<u16>> = elements.iter().map(|element| if element.is_null() { Vec::new() } else { js_to_string(Some(element)) }).collect();
+            let parts: Vec<Vec<u16>> = elements
+                .iter()
+                .map(|element| {
+                    if element.is_null() {
+                        Vec::new()
+                    } else {
+                        js_to_string(Some(element))
+                    }
+                })
+                .collect();
             join(&parts, &units(","))
         }
         Some(Json::Object(_)) => units("[object Object]"),
@@ -170,10 +216,23 @@ fn string_or_empty(value: Option<&Json>) -> Vec<u16> {
 /// string or array as keys, and yields nothing for a number or boolean.
 fn entries_string(arguments: Option<&Json>) -> Result<Vec<u16>, String> {
     let entries: Vec<Vec<u16>> = match arguments {
-        None | Some(Json::Null) => return Err("TypeError: Cannot convert undefined or null to object".to_string()),
-        Some(Json::Object(members)) => ordered_members(members).into_iter().map(|(key, member)| [key.clone(), units("="), json_stringify(member)].concat()).collect(),
-        Some(Json::Array(elements)) => elements.iter().enumerate().map(|(i, element)| [units(&format!("{i}=")), json_stringify(element)].concat()).collect(),
-        Some(Json::Str(text)) => text.iter().enumerate().map(|(i, unit)| [units(&format!("{i}=")), unit_json(*unit)].concat()).collect(),
+        None | Some(Json::Null) => {
+            return Err("TypeError: Cannot convert undefined or null to object".to_string());
+        }
+        Some(Json::Object(members)) => ordered_members(members)
+            .into_iter()
+            .map(|(key, member)| [key.clone(), units("="), json_stringify(member)].concat())
+            .collect(),
+        Some(Json::Array(elements)) => elements
+            .iter()
+            .enumerate()
+            .map(|(i, element)| [units(&format!("{i}=")), json_stringify(element)].concat())
+            .collect(),
+        Some(Json::Str(text)) => text
+            .iter()
+            .enumerate()
+            .map(|(i, unit)| [units(&format!("{i}=")), unit_json(*unit)].concat())
+            .collect(),
         Some(_) => Vec::new(),
     };
     Ok(join(&entries, &units(", ")))
@@ -187,7 +246,9 @@ fn content_text(content: Option<&Json>, separator: &[u16]) -> Result<Vec<u16>, S
             let mut texts = Vec::new();
             for block in blocks {
                 if block.is_null() {
-                    return Err("TypeError: Cannot read properties of null (reading 'type')".to_string());
+                    return Err(
+                        "TypeError: Cannot read properties of null (reading 'type')".to_string()
+                    );
                 }
                 if block.get("type").is_some_and(|kind| kind.is_str("text")) {
                     texts.push(string_or_empty(block.get("text")));
@@ -204,22 +265,40 @@ fn truncate_for_summary(text: &[u16], max_chars: usize) -> Vec<u16> {
     if text.len() <= max_chars {
         return text.to_vec();
     }
-    [text[..max_chars].to_vec(), units(&format!("\n\n[... {} more characters truncated]", text.len() - max_chars))].concat()
+    [
+        text[..max_chars].to_vec(),
+        units(&format!(
+            "\n\n[... {} more characters truncated]",
+            text.len() - max_chars
+        )),
+    ]
+    .concat()
 }
 
 /// The members of an object in the order `Object.keys` and `JSON.stringify` use: the array-index keys ascending, then every other key in insertion order.
 fn ordered_members(members: &[(Vec<u16>, Json)]) -> Vec<(&Vec<u16>, &Json)> {
-    let (mut indexes, others): (Vec<_>, Vec<_>) = members.iter().map(|(key, member)| (key, member)).partition(|(key, _)| is_array_index(key));
+    let (mut indexes, others): (Vec<_>, Vec<_>) = members
+        .iter()
+        .map(|(key, member)| (key, member))
+        .partition(|(key, _)| is_array_index(key));
     indexes.sort_by(|a, b| a.0.len().cmp(&b.0.len()).then_with(|| a.0.cmp(b.0)));
     indexes.into_iter().chain(others).collect()
 }
 
 fn is_array_index(key: &[u16]) -> bool {
-    let digits = key.iter().all(|unit| (u16::from(b'0')..=u16::from(b'9')).contains(unit));
+    let digits = key
+        .iter()
+        .all(|unit| (u16::from(b'0')..=u16::from(b'9')).contains(unit));
     if key == [u16::from(b'0')] {
         return true;
     }
-    digits && !key.is_empty() && key.len() <= 10 && key[0] != u16::from(b'0') && String::from_utf16_lossy(key).parse::<u64>().is_ok_and(|n| n <= u64::from(u32::MAX) - 1)
+    digits
+        && !key.is_empty()
+        && key.len() <= 10
+        && key[0] != u16::from(b'0')
+        && String::from_utf16_lossy(key)
+            .parse::<u64>()
+            .is_ok_and(|n| n < u64::from(u32::MAX))
 }
 
 /// `JSON.stringify` for a decoded JSON value.
@@ -297,7 +376,10 @@ fn unit_json(unit: u16) -> Vec<u16> {
 
 /// `JSON.parse` of a text, with every string kept as UTF-16 units.
 fn parse_json(text: &str) -> Result<Json, String> {
-    let mut parser = Parser { bytes: text.as_bytes(), at: 0 };
+    let mut parser = Parser {
+        bytes: text.as_bytes(),
+        at: 0,
+    };
     let value = parser.value()?;
     parser.skip_space();
     if parser.at != parser.bytes.len() {
@@ -428,7 +510,12 @@ impl Parser<'_> {
             self.digits();
         }
         // The slice is ASCII digits, a sign, a point and an exponent: it parses, to an infinity when out of range, as JSON.parse reads it.
-        Ok(Json::Number(std::str::from_utf8(&self.bytes[start..self.at]).ok().and_then(|text| text.parse().ok()).unwrap_or(f64::NAN)))
+        Ok(Json::Number(
+            std::str::from_utf8(&self.bytes[start..self.at])
+                .ok()
+                .and_then(|text| text.parse().ok())
+                .unwrap_or(f64::NAN),
+        ))
     }
 
     fn digits(&mut self) {
@@ -463,8 +550,14 @@ impl Parser<'_> {
                         Some(b'r') => out.push(13),
                         Some(b't') => out.push(9),
                         Some(b'u') => {
-                            let digits = self.bytes.get(self.at..self.at + 4).and_then(|digits| std::str::from_utf8(digits).ok());
-                            let Some(unit) = digits.filter(|digits| digits.bytes().all(|b| b.is_ascii_hexdigit())).and_then(|digits| u16::from_str_radix(digits, 16).ok()) else {
+                            let digits = self
+                                .bytes
+                                .get(self.at..self.at + 4)
+                                .and_then(|digits| std::str::from_utf8(digits).ok());
+                            let Some(unit) = digits
+                                .filter(|digits| digits.bytes().all(|b| b.is_ascii_hexdigit()))
+                                .and_then(|digits| u16::from_str_radix(digits, 16).ok())
+                            else {
                                 return Err(self.error("Bad Unicode escape in JSON"));
                             };
                             out.push(unit);
@@ -473,11 +566,17 @@ impl Parser<'_> {
                         _ => return Err(self.error("Bad escaped character in JSON")),
                     }
                 }
-                0..=0x1f => return Err(self.error("Bad control character in string literal in JSON")),
+                0..=0x1f => {
+                    return Err(self.error("Bad control character in string literal in JSON"));
+                }
                 _ => {
                     // A run of literal characters: the source is a &str, so the run is valid UTF-8.
                     let start = self.at;
-                    while self.bytes.get(self.at).is_some_and(|b| *b != b'"' && *b != b'\\' && *b >= 0x20) {
+                    while self
+                        .bytes
+                        .get(self.at)
+                        .is_some_and(|b| *b != b'"' && *b != b'\\' && *b >= 0x20)
+                    {
                         self.at += 1;
                     }
                     out.extend(String::from_utf8_lossy(&self.bytes[start..self.at]).encode_utf16());
@@ -498,7 +597,8 @@ mod tests {
     // Pi's JavaScript strings keep an unpaired surrogate; JSON.stringify writes one as its lowercase escape and a slice may cut a pair.
     #[test]
     fn an_unpaired_surrogate_in_a_message_keeps_its_unit() {
-        let text = serialize_conversation_json(r#"[{"role":"user","content":"a\ud800b\udc00c"}]"#).unwrap();
+        let text = serialize_conversation_json(r#"[{"role":"user","content":"a\ud800b\udc00c"}]"#)
+            .unwrap();
         let mut want = units("[User]: a");
         want.push(0xD800);
         want.extend(units("b"));
@@ -509,7 +609,8 @@ mod tests {
 
     #[test]
     fn a_reversed_pair_is_two_unpaired_units() {
-        let text = serialize_conversation_json(r#"[{"role":"user","content":"\ude00\ud83d"}]"#).unwrap();
+        let text =
+            serialize_conversation_json(r#"[{"role":"user","content":"\ude00\ud83d"}]"#).unwrap();
         assert_eq!(units_of(&text)[8..], [0xDE00, 0xD83D]);
     }
 
@@ -524,19 +625,32 @@ mod tests {
 
     #[test]
     fn the_cut_of_a_pair_leaves_its_high_surrogate() {
-        let json = format!(r#"[{{"role":"toolResult","content":"{}😀😀"}}]"#, "a".repeat(1999));
+        let json = format!(
+            r#"[{{"role":"toolResult","content":"{}😀😀"}}]"#,
+            "a".repeat(1999)
+        );
         let units = units_of(&serialize_conversation_json(&json).unwrap());
         let body = &units["[Tool result]: ".len()..];
         assert_eq!(body[1999], 0xD83D);
-        assert_eq!(&body[2000..], super::units("\n\n[... 3 more characters truncated]").as_slice());
+        assert_eq!(
+            &body[2000..],
+            super::units("\n\n[... 3 more characters truncated]").as_slice()
+        );
     }
 
     #[test]
     fn the_value_path_and_the_text_path_agree() {
         let json = r#"[{"role":"assistant","content":[{"type":"text","text":"hi"},{"type":"toolCall","name":"t","arguments":{"b":1,"2":[1.5,null],"1":"x\n","a":{"9":3,"10":2,"z":1}}}]},{"role":"toolResult","content":[{"type":"text","text":"ok"}]}]"#;
         let values: Vec<Value> = serde_json::from_str(json).unwrap();
-        assert_eq!(serialize_conversation(&values).unwrap(), serialize_conversation_json(json).unwrap().to_string_lossy());
-        assert!(serialize_conversation(&values).unwrap().contains(r#"t(1="x\n", 2=[1.5,null], b=1, a={"9":3,"10":2,"z":1})"#));
+        assert_eq!(
+            serialize_conversation(&values).unwrap(),
+            serialize_conversation_json(json).unwrap().to_string_lossy()
+        );
+        assert!(
+            serialize_conversation(&values)
+                .unwrap()
+                .contains(r#"t(1="x\n", 2=[1.5,null], b=1, a={"9":3,"10":2,"z":1})"#)
+        );
     }
 
     #[test]

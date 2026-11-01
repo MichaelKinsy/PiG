@@ -327,3 +327,38 @@ func TestAcceptsVersions(t *testing.T) {
 		wantError(t, err, "info accepts[1].variantState: a local table has no variants (State)")
 	})
 }
+
+func TestAcceptsKeyedMappings(t *testing.T) {
+	note := func() contracts.TSchema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
+	noteV2 := func() contracts.TSchema {
+		return contracts.Obj(contracts.Prop("text", contracts.Str()), contracts.Prop("tag", contracts.Str()))
+	}
+	store := local(t, "store", 1, noParams(), contracts.Mem("notes", contracts.Keyed(note())), contracts.Mem("drafts", contracts.Keyed(note())))
+	v2 := must(evolveLocal(store, func(e *contracts.LocalEditor) *contracts.LocalEditor {
+		return e.Keyed("notes", noteV2()).RemoveKeyed("drafts")
+	}))
+	keyed := func(entries ...contracts.Entry[contracts.KeyedMapping]) contracts.AcceptsTable {
+		return table(version("1", contracts.VersionMappings{Keyed: entries}))
+	}
+	entry := func(member string, mapping contracts.KeyedMapping) contracts.Entry[contracts.KeyedMapping] {
+		return contracts.Entry[contracts.KeyedMapping]{Name: member, Value: mapping}
+	}
+	refuse := contracts.KeyedMapping{Refuse: true}
+
+	t.Run("needs a function or refuse for a changed keyed member, refuse for a removed one", func(t *testing.T) {
+		checked := must(contracts.CheckAccepts(v2, keyed(entry("notes", contracts.KeyedMapping{Func: fn}), entry("drafts", refuse))))
+		if len(checked.Versions) != 1 {
+			t.Fatalf("versions = %+v", checked.Versions)
+		}
+		checked = must(contracts.CheckAccepts(v2, keyed(entry("notes", refuse), entry("drafts", refuse))))
+		if len(checked.Versions) != 1 {
+			t.Fatalf("versions = %+v", checked.Versions)
+		}
+		_, err := contracts.CheckAccepts(v2, keyed(entry("notes", contracts.KeyedMapping{Func: fn})))
+		wantError(t, err, "store accepts[1].keyed.drafts: missing mapping")
+		_, err = contracts.CheckAccepts(v2, keyed(entry("notes", contracts.KeyedMapping{Func: fn}), entry("drafts", contracts.KeyedMapping{Func: fn})))
+		wantError(t, err, `store accepts[1].keyed.drafts: expected "refuse"`)
+		_, err = contracts.CheckAccepts(store, nil)
+		wantNoError(t, err)
+	})
+}

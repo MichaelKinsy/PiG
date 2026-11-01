@@ -7,7 +7,7 @@ import { createRequire } from "node:module";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { CONFIG_DIR_NAME, getAgentDir, isBunBinary, isBundledNode } from "../../config.js";
-import { resolvePath } from "../../utils/paths.js";
+import { pathsEqual, resolvePath } from "../../utils/paths.js";
 import { createEventBus } from "../event-bus.js";
 import { execCommand } from "../exec.js";
 import { McpServerRegistry, mcpNamespace, validateMcpServerConfig } from "../mcp-servers.js";
@@ -96,7 +96,7 @@ export function clearExtensionCache() {
 }
 function useExtensionCacheCwd(cwd) {
     const resolvedCwd = resolvePath(cwd);
-    if (extensionCacheCwd !== undefined && extensionCacheCwd !== resolvedCwd) {
+    if (extensionCacheCwd !== undefined && !pathsEqual(extensionCacheCwd, resolvedCwd)) {
         clearExtensionCache();
     }
     extensionCacheCwd = resolvedCwd;

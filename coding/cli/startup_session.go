@@ -369,11 +369,15 @@ func resolveSessionArgument(manager *codingagent.SessionManager, launchCWD, arg 
 		}
 		return resolvedSessionArgument{}, nil
 	}
-	resolved, err := findSession(func() ([]codingagent.SessionInfo, error) { return listStartupSessions(manager) }, arg)
+	// Pi main.ts resolveSessionPath: an exact ID needs only the session headers, so the full metadata listing is left to prefix matches.
+	if path := manager.FindByID(arg); path != "" {
+		return resolvedSessionArgument{path: path}, nil
+	}
+	resolved, err := findSession(func() ([]codingagent.SessionInfo, error) { return listStartupSessions(manager) }, arg, false)
 	if err != nil || resolved.path != "" {
 		return resolved, err
 	}
-	resolved, err = findSession(func() ([]codingagent.SessionInfo, error) { return manager.ListAllSessions() }, arg)
+	resolved, err = findSession(func() ([]codingagent.SessionInfo, error) { return manager.ListAllSessions() }, arg, true)
 	if err != nil {
 		return resolvedSessionArgument{}, err
 	}
@@ -384,14 +388,17 @@ func resolveSessionArgument(manager *codingagent.SessionManager, launchCWD, arg 
 	return resolved, nil
 }
 
-func findSession(loader func() ([]codingagent.SessionInfo, error), id string) (resolvedSessionArgument, error) {
+// findSession is the first session whose ID is id (when exactFirst) or starts with id, in listing order.
+func findSession(loader func() ([]codingagent.SessionInfo, error), id string, exactFirst bool) (resolvedSessionArgument, error) {
 	infos, err := loader()
 	if err != nil {
 		return resolvedSessionArgument{}, err
 	}
-	for _, info := range infos {
-		if info.ID == id {
-			return resolvedSessionArgument{path: info.Path, cwd: info.CWD}, nil
+	if exactFirst {
+		for _, info := range infos {
+			if info.ID == id {
+				return resolvedSessionArgument{path: info.Path, cwd: info.CWD}, nil
+			}
 		}
 	}
 	for _, info := range infos {

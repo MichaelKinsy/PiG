@@ -46,6 +46,11 @@
       "root": "packages/mcp"
     },
     {
+      "key": "schema",
+      "name": "@earendil-works/pi-schema",
+      "root": "packages/schema"
+    },
+    {
       "key": "telemetry",
       "name": "@earendil-works/pi-telemetry",
       "root": "packages/telemetry"

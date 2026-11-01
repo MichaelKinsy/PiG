@@ -82,9 +82,10 @@ func TestPrepareLoadoutRunsBeforeEveryTurnAcrossSDKs(t *testing.T) {
 					t.Fatal(err)
 				}
 				events := make(chan struct{})
+				eventsCh := session.Events()
 				go func() {
 					defer close(events)
-					for event := range session.Events() {
+					for event := range eventsCh {
 						coding.AcknowledgeEvent(event)
 					}
 				}()

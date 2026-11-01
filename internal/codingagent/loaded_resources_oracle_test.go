@@ -38,11 +38,12 @@ func TestLoadedResourcesFormattingMatchesPi(t *testing.T) {
 	sources := []string{"local", "cli", "npm:foo", "npm:@scope/pkg", "git:github.com/user/repo", "auto", "npm:@a/b@1.2.3"}
 	scopes := []string{"user", "project", "temporary", "other"}
 	bases := []string{"", home + "/.pi/agent/npm/node_modules/foo", "/opt/node_modules/@scope/pkg", home + "/.pi/agent/git/github.com/user/repo", "/srv/base", `C:\\work\\base`}
+	// The corpus leaves out home + "x/not-home"; TestHomeShorteningAnchorsAtAPathSegment pins that the home directory is anchored at a path segment (Pi 1be312b4, #10488).
 	paths := []string{
 		home + "/.pi/agent/npm/node_modules/foo/extensions/index.ts", "/opt/node_modules/@scope/pkg/skills/a/SKILL.md", "/opt/node_modules/@scope/pkg",
 		home + "/.pi/agent/git/github.com/user/repo/prompts/p.md", home + "/.pi/agent/skills/x/SKILL.md", home + "/project/.pi/extensions/e.ts",
 		"/srv/base/lib/a.js", "/srv/base", "/srv/other/a.js", "/srv/base/../elsewhere/z", `C:\\work\\base\\sub\\f.ts`, "relative/path/a.ts", "/",
-		home, home + "x/not-home", "/node_modules/pkg/inner/file", "/x/git/a/b/c/d.md", "/srv/base/", "/opt/node_modules-extra/@scope/pkg/a.md", "/srv/basement/x",
+		home, "/node_modules/pkg/inner/file", "/x/git/a/b/c/d.md", "/srv/base/", "/opt/node_modules-extra/@scope/pkg/a.md", "/srv/basement/x",
 	}
 	rng := rand.New(rand.NewSource(11))
 	pick := func(list []string) string { return list[rng.Intn(len(list))] }

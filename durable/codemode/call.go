@@ -1604,12 +1604,11 @@ func (c *call) discover(hostCall cm.HostCall) (json.RawMessage, error) {
 		if restricted && (own == nil || !matchesNamespace(own, wanted)) {
 			continue
 		}
-		ownName, ownDescription := "", ""
+		namespaceText := ""
 		if own != nil {
-			ownName, ownDescription = own.Name, own.Description
+			namespaceText = strings.Join([]string{own.Name, own.Description, own.Instructions}, " ")
 		}
-		text := strings.Join([]string{tool.Name, strings.ReplaceAll(tool.Name, "_", " "), tool.Description, ownName, ownDescription}, " ")
-		documents = append(documents, search.Document{Name: tool.Name, Text: text})
+		documents = append(documents, search.Document{Name: tool.Name, Text: tool.Description, NamespaceText: namespaceText})
 	}
 	type found struct {
 		Name        string `json:"name"`

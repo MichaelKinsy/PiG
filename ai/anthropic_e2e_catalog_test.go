@@ -38,7 +38,9 @@ func assertAnthropicCatalogDenominator(t *testing.T, cases anthropicAcceptanceCa
 		}
 	}
 	slices.Sort(expected)
-	if !slices.Equal(cases.All, expected) {
+	all := slices.Clone(cases.All)
+	slices.Sort(all)
+	if !slices.Equal(all, expected) {
 		t.Fatal("Anthropic model denominator differs from the Pi 1.2.0 fixture; see testdata/port-wave-13/README.md")
 	}
 }

@@ -68,7 +68,7 @@ func Extension() *sdk.Extension { return sdk.New("ui-peer") }
 		write(filepath.Join(source, "src", "lib.rs"), body)
 		write(filepath.Join(peer, "src", "lib.rs"), "pub fn new_extension() -> pig_sdk::Extension { pig_sdk::Extension::new(\"ui-peer\") }\n")
 		for _, path := range []string{source, peer} {
-			write(filepath.Join(path, "Cargo.toml"), fmt.Sprintf("[package]\nname = %q\nversion = \"0.1.0\"\nedition = \"2021\"\n[dependencies]\npig-sdk = {path = %q}\nserde_json = \"1\"\n", filepath.Base(path), filepath.ToSlash(filepath.Join(root, "extensions", "sdk-rs"))))
+			write(filepath.Join(path, "Cargo.toml"), fmt.Sprintf("[package]\nname = %q\nversion = \"0.1.0\"\nedition = \"2024\"\n[dependencies]\npig-sdk = {path = %q}\nserde_json = \"1\"\n", filepath.Base(path), filepath.ToSlash(filepath.Join(root, "extensions", "sdk-rs"))))
 		}
 	}
 	for path, text := range files {

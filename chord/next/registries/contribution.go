@@ -47,10 +47,12 @@ const (
 	outRefused
 )
 
-// adaptation is the last adaptation of an older contribution: the value it was made from and its result.
+// adaptation is the last adaptation of an older contribution: the value and provider (whose adapter) it was made from, and its result.
 type adaptation struct {
-	from  any
-	value any
+	from any
+	// provider is the one the adapter belongs to: a provider served apart brings other adapters, which adapt again.
+	provider *provided
+	value    any
 }
 
 // RegistryContribution is one contributor's contribution to a registry: a plain value, or a Chord source it follows
@@ -96,18 +98,6 @@ func (c *RegistryContribution) Unfollow() {
 	}
 }
 
-// Reads is the registry whose value it is, when it is one (its edge in the cycle check, while it is in the table);
-// nil otherwise.
-func (c *RegistryContribution) Reads() *RegistryRecord {
-	if c.content.Kind != ContributionNative {
-		return nil
-	}
-	if value, ok := c.content.Native.(*RegistryValueSource); ok {
-		return value.Record()
-	}
-	return nil
-}
-
 // followed is the dependents of its source when it changes (a constant never does); nil when there is none.
 func (c *RegistryContribution) followed() *state.DependentSet {
 	switch c.content.Kind {
@@ -123,12 +113,13 @@ func (c *RegistryContribution) followed() *state.DependentSet {
 	return nil
 }
 
-// Entry is its entry in a table of the provider at version: the same object while its value is the same; nil when left
+// entryFor is its entry in a table of the served provider: the same object while its value is the same; nil when left
 // out (a refused version, a failing source, a failing adapter).
-func (c *RegistryContribution) Entry(version int, provider RegistryProvider[any, any]) *RegistryEntry[any] {
+func (c *RegistryContribution) entryFor(served *provided) *RegistryEntry[any] {
+	version := served.version
 	var adapter func(old any) (any, error)
 	if c.Version < version {
-		adapter = provider.Accepts[c.Version].Contribution
+		adapter = served.provider.Accepts[c.Version].Contribution
 	}
 	if c.Version > version || (c.Version < version && adapter == nil) {
 		if c.out != outRefused {
@@ -136,7 +127,7 @@ func (c *RegistryContribution) Entry(version int, provider RegistryProvider[any,
 		}
 		return nil
 	}
-	value, err := c.value(adapter)
+	value, err := c.value(adapter, served)
 	if err != nil {
 		if c.out != outFailed {
 			c.failed(err)
@@ -153,12 +144,12 @@ func (c *RegistryContribution) Entry(version int, provider RegistryProvider[any,
 }
 
 // value is the contributed value now, adapted when adapter is not nil.
-func (c *RegistryContribution) value(adapter func(old any) (any, error)) (any, error) {
+func (c *RegistryContribution) value(adapter func(old any) (any, error), served *provided) (any, error) {
 	raw, err := c.raw()
 	if err != nil || adapter == nil {
 		return raw, err
 	}
-	return c.adapt(raw, adapter)
+	return c.adapt(raw, adapter, served)
 }
 
 // raw is the contributed value now: a JSON source's value fails while it is failed or ended; a native source that
@@ -173,15 +164,15 @@ func (c *RegistryContribution) raw() (any, error) {
 	return c.content.Value, nil
 }
 
-func (c *RegistryContribution) adapt(raw any, adapter func(old any) (any, error)) (any, error) {
-	if adapted := c.adapted; adapted != nil && state.Identical(adapted.from, raw) {
+func (c *RegistryContribution) adapt(raw any, adapter func(old any) (any, error), served *provided) (any, error) {
+	if adapted := c.adapted; adapted != nil && state.Identical(adapted.from, raw) && adapted.provider == served {
 		return adapted.value, nil
 	}
 	value, err := c.Record.Adapt(func() (any, error) { return adapter(raw) })
 	if err != nil {
 		return nil, err
 	}
-	c.adapted = &adaptation{from: raw, value: value}
+	c.adapted = &adaptation{from: raw, provider: served, value: value}
 	return value, nil
 }
 

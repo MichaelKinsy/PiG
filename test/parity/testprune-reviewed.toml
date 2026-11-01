@@ -656,3 +656,30 @@ commit = "4a3ad8b882c4a0d114ebb399e665d94e82244326"
 class = "CITE"
 cite = "packages/durable/src/session/session.ts:205-206"
 reason = "session.ts:205-206 publishes the commits of one storage call one by one, in line order, a macrotask apart (spec.md:1892-1894: the host listeners of the first and the continuations of the waits it resolves run before the second is published). The four changed expectations are the order and the publication hop of the Go port, now enforced by the explicit handshake (resumption.go: waits register before they block and acknowledge as they resume) instead of the goroutine-dump ordering the red values were measured with; the values are Pi's contract."
+
+[[entry]]
+path = "schema/internal/ecmaregex/golden_test.go"
+commit = "14c930470b86a72372bb7af9ae24d577aa603629"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "ecmaregex is the ECMAScript regular-expression engine PiG needs under packages/schema/src/shared.ts and formats/typebox/regex.ts; V8 is the oracle and no Pi test line governs it. The commit extends the golden replay, not any Pi behavior: it also compares V8's SyntaxError message of every invalid row, reads the golden's match results from a packed bit string, decodes lone surrogates as WTF-8, skips the pinned known gaps, and names the Go and Unicode versions in every failure. The expected values that changed are the golden's row format and counts, regenerated under Node 24.22.1."
+
+[[entry]]
+path = "schema/formats/oracle_test.go"
+commit = "1de91268b66ee9f62f8e82f3b2edf178e89bcb17"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The test replays rows of Pi's own formats (packages/schema/src/formats/index.ts) generated under Node 24. The commit moves the generator out of the test comment into testdata/gen, adds rows with lone surrogates (decoded as WTF-8 instead of U+FFFD, the repo's JS-string convention), and raises the row-count floor from the corpus it now replays; no Pi behavior changes, the new rows' expectations are Pi's results."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_fleet_test.go"
+commit = "f59f4016039310a105a789060419985ed07c795a"
+class = "CITE"
+cite = "packages/chord/test/next-node/workers/support.ts:138"
+reason = "Pi's fixture plugin writes `label.ts` (`export const label = <JSON>;`) into the copy's notes plugin (support.ts:138); the Go fleet's fixture plugin did write a file named `label`. The commit gives it Pi's file name, content and package files; the one expected value it changes is that file name, now Pi's."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_workers_test.go"
+commit = "f59f4016039310a105a789060419985ed07c795a"
+class = "NOBEHAVIOR"
+reason = "Go only: the expected value is Pi's (workers.test.ts:35 expects `starting` after the hold). A Go worker may be running before a poll of the state sees it, so the test reads the first status from the state's own frames instead of polling."

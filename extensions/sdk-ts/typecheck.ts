@@ -6,7 +6,10 @@ import type {
   ExtensionVirtualModel,
   InlineExtension,
   McpServerConfig,
+  EntryRenderOptions,
+  KeybindingHints,
   McpServersChangeEvent,
+  MessageRenderOptions,
   ModelRegistry,
   ProviderConfig,
   ProviderStreamEvent,
@@ -17,6 +20,7 @@ import type {
   ToolLoadout,
   ToolLoadoutChanges,
   ToolNamespace,
+  ToolRenderContext,
 } from "@earendil-works/pi-coding-agent";
 import { clampThinkingLevel } from "@earendil-works/pi-ai/models";
 import type { Component, Container } from "@earendil-works/pi-tui";
@@ -118,7 +122,29 @@ export function toolDefinitionFields(): ToolDefinition {
   };
 }
 
+export function keybindingHints(pi: ExtensionAPI): void {
+  const hints = (hint: KeybindingHints): string => `${hint.keyText("app.tools.expand")} ${hint.keyHint("app.tools.expand", "to expand")}`;
+  pi.registerMessageRenderer("hints", (_message, options: MessageRenderOptions) => {
+    void hints(options);
+    return undefined;
+  });
+  pi.registerEntryRenderer("hints", (_entry, options: EntryRenderOptions) => {
+    void hints(options);
+    return undefined;
+  });
+  const renderCall = (_args: unknown, _theme: unknown, context: ToolRenderContext): undefined => {
+    void hints(context);
+    return undefined;
+  };
+  void renderCall;
+}
+
 export function apiAdditions(pi: ExtensionAPI): void {
+  void pi.exec("git", ["log"], { maxBuffer: 1024 * 1024 }).then((result) => {
+    const truncated: boolean = result.truncated;
+    const killed: boolean = result.killed;
+    void [truncated, killed];
+  });
   pi.ownThinkingRuns();
   pi.ownThinkingRuns(false);
   const config: McpServerConfig = { url: "https://mcp.example.com/jira" };

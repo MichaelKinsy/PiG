@@ -14,7 +14,10 @@ pub struct FuzzyMatch {
 
 fn lower_of(c: char) -> Option<&'static str> {
     let cp = c as u32;
-    JS_LOWER.binary_search_by_key(&cp, |e| e.0).ok().map(|i| JS_LOWER[i].1)
+    JS_LOWER
+        .binary_search_by_key(&cp, |e| e.0)
+        .ok()
+        .map(|i| JS_LOWER[i].1)
 }
 
 /// `String.prototype.toLowerCase`: the Unicode of Node's ICU for every code point, Final_Sigma by the standard library's own rule.
@@ -26,7 +29,18 @@ pub fn js_lower(text: &str) -> String {
     let sigma_lower: Vec<char> = if text.contains(sigma) {
         // Final_Sigma needs the cased/case-ignorable context; the standard library implements it, so lowercase a copy whose other
         // characters are 1:1.
-        text.chars().map(|c| if c != sigma && lower_of(c).is_some() { 'A' } else { c }).collect::<String>().to_lowercase().chars().collect()
+        text.chars()
+            .map(|c| {
+                if c != sigma && lower_of(c).is_some() {
+                    'A'
+                } else {
+                    c
+                }
+            })
+            .collect::<String>()
+            .to_lowercase()
+            .chars()
+            .collect()
     } else {
         Vec::new()
     };
@@ -60,7 +74,11 @@ struct Alignment {
 
 impl Alignment {
     fn new() -> Self {
-        Alignment { score: 0.0, last: -1, consecutive: 0 }
+        Alignment {
+            score: 0.0,
+            last: -1,
+            consecutive: 0,
+        }
     }
 
     fn add(&mut self, text: &[u16], i: usize) {
@@ -90,22 +108,34 @@ fn index_units(text: &[u16], query: &[u16], from: usize) -> Option<usize> {
     if from + query.len() > text.len() {
         return None;
     }
-    text[from..].windows(query.len()).position(|w| w == query).map(|p| from + p)
+    text[from..]
+        .windows(query.len())
+        .position(|w| w == query)
+        .map(|p| from + p)
 }
 
 fn match_query(query: &[u16], text: &[u16]) -> FuzzyMatch {
     if query.is_empty() {
-        return FuzzyMatch { matches: true, score: 0.0 };
+        return FuzzyMatch {
+            matches: true,
+            score: 0.0,
+        };
     }
     if query.len() > text.len() {
-        return FuzzyMatch { matches: false, score: 0.0 };
+        return FuzzyMatch {
+            matches: false,
+            score: 0.0,
+        };
     }
     // Greedy alignment: each query character at its first occurrence after the previous one.
     let mut greedy = Alignment::new();
     let mut from = 0;
     for &unit in query {
         let Some(found) = text[from..].iter().position(|&u| u == unit) else {
-            return FuzzyMatch { matches: false, score: 0.0 };
+            return FuzzyMatch {
+                matches: false,
+                score: 0.0,
+            };
         };
         let i = from + found;
         greedy.add(text, i);
@@ -127,7 +157,10 @@ fn match_query(query: &[u16], text: &[u16]) -> FuzzyMatch {
     if query == text {
         score -= 100.0;
     }
-    FuzzyMatch { matches: true, score }
+    FuzzyMatch {
+        matches: true,
+        score,
+    }
 }
 
 fn units(s: &str) -> Vec<u16> {
@@ -144,9 +177,15 @@ pub fn fuzzy_match(query: &str, text: &str) -> FuzzyMatch {
     }
     let b = query_lower.as_bytes();
     let letters = b.iter().take_while(|c| c.is_ascii_lowercase()).count();
-    let digits_after = b[letters..].iter().take_while(|c| c.is_ascii_digit()).count();
+    let digits_after = b[letters..]
+        .iter()
+        .take_while(|c| c.is_ascii_digit())
+        .count();
     let digits = b.iter().take_while(|c| c.is_ascii_digit()).count();
-    let letters_after = b[digits..].iter().take_while(|c| c.is_ascii_lowercase()).count();
+    let letters_after = b[digits..]
+        .iter()
+        .take_while(|c| c.is_ascii_lowercase())
+        .count();
     let swapped = if letters > 0 && digits_after > 0 && letters + digits_after == b.len() {
         format!("{}{}", &query_lower[letters..], &query_lower[..letters])
     } else if digits > 0 && letters_after > 0 && digits + letters_after == b.len() {
@@ -158,17 +197,27 @@ pub fn fuzzy_match(query: &str, text: &str) -> FuzzyMatch {
     if !swapped_match.matches {
         return primary;
     }
-    FuzzyMatch { matches: true, score: swapped_match.score + 5.0 }
+    FuzzyMatch {
+        matches: true,
+        score: swapped_match.score + 5.0,
+    }
 }
 
 /// The items whose text matches every whitespace- or slash-separated token of `query`, best first (pi-tui's `fuzzyFilter`). A blank
 /// query returns the items unchanged.
-pub fn fuzzy_filter<'a, T>(items: &'a [T], query: &str, get_text: impl Fn(&T) -> String) -> Vec<&'a T> {
+pub fn fuzzy_filter<'a, T>(
+    items: &'a [T],
+    query: &str,
+    get_text: impl Fn(&T) -> String,
+) -> Vec<&'a T> {
     let trimmed = query.trim_matches(is_js_space);
     if trimmed.is_empty() {
         return items.iter().collect();
     }
-    let tokens: Vec<&str> = trimmed.split(|c: char| c == '/' || is_js_space(c)).filter(|t| !t.is_empty()).collect();
+    let tokens: Vec<&str> = trimmed
+        .split(|c: char| c == '/' || is_js_space(c))
+        .filter(|t| !t.is_empty())
+        .collect();
     if tokens.is_empty() {
         return items.iter().collect();
     }

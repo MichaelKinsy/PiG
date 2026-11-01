@@ -44,6 +44,11 @@ func TestMain(m *testing.M) {
 	if log := os.Getenv(managerLogEnv); log != "" {
 		os.Exit(runLoggingManager(log))
 	}
+	if record := os.Getenv(selfUpdateFixtureEnv); record != "" {
+		if code, ok := runSelfUpdateFixture(record); ok {
+			os.Exit(code)
+		}
+	}
 	if root := os.Getenv(npmUpdateFixtureRootEnv); root != "" {
 		if code, ok := runNpmUpdateFixture(root); ok {
 			os.Exit(code)

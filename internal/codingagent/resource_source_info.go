@@ -3,6 +3,8 @@ package codingagent
 import (
 	"path/filepath"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
 // ResourceSourceInfo tracks where a loaded resource came from.
@@ -57,6 +59,14 @@ func SyntheticPathSource(path string) string {
 		return "temporary"
 	}
 	return ""
+}
+
+// ResourcePathKey is Pi's getResourcePathKey, the key that deduplicates resource paths: a synthetic path (`builtin:<name>`, `<inline:...>`) as it is, because it names no file and its lookup is case-sensitive, and a file path by its real path in the platform's casing (resolvepath.ComparisonKey).
+func ResourcePathKey(path string) string {
+	if IsSyntheticPath(path) {
+		return path
+	}
+	return resolvepath.ComparisonKey(CanonicalizePath(path))
 }
 
 // IsSyntheticPath reports whether path names no file: `builtin:<name>` or an angle-bracket path.

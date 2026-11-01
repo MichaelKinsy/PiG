@@ -2820,10 +2820,10 @@ func matchesAnyPattern(filePath string, patterns *filterPatterns, baseDir string
 		if err != nil {
 			return false, err
 		}
-		if m.match(relative) || m.match(name) || m.match(absolute) {
+		if m.Match(relative) || m.Match(name) || m.Match(absolute) {
 			return true, nil
 		}
-		if isSkill && (m.match(parentRelative) || m.match(parentName) || m.match(parentAbsolute)) {
+		if isSkill && (m.Match(parentRelative) || m.Match(parentName) || m.Match(parentAbsolute)) {
 			return true, nil
 		}
 	}

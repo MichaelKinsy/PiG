@@ -12,7 +12,7 @@ into generated runner subprocesses.
 
 ## Breaking changes in 0.3.0
 
-Host-backed `Context` getters raise `HostCallError` on a host failure or a reply that lacks its field, and never return an empty value. `get_session_name`, `get_session_file` and `get_leaf_id` return `None` when absent, and `get_branch` and `get_entries` raise a failed session-log subscription. `timeout` options accept a float. See the migration tables in `docs/site/docs/extensions.md`.
+Host-backed `Context` getters raise `HostCallError` on a host failure or a reply that lacks its field, and never return an empty value. `get_session_name`, `get_session_file` and `get_leaf_id` return `None` when absent, and `get_branch` and `get_entries` raise a failed session-log subscription. `timeout` options accept a float. `Context.exec(..., max_buffer=...)` caps stdout and stderr together; past it the command is terminated and `ExecResult.truncated` is true, and a command that ignores SIGTERM is killed five seconds later. See the migration tables in `docs/site/docs/extensions.md`.
 
 ## Status
 

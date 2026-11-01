@@ -52,6 +52,7 @@ func TestSessionDefaultSectionsReachEventsProviderAndPersistenceOnce(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
+	_ = sess.Events()
 	defer func() {
 		if err := sess.Close(); err != nil {
 			t.Error(err)

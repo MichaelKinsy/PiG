@@ -170,16 +170,16 @@
   "mutation": "chord/next/host/host_follow.go: `if call.Kind == chord.WatchCallValue {` -> `if false {` (TestFollowCallsBeforeTheAttachmentResolvedMoveTheAttachmentsOlderValueOn FAILS)"
  },
  {
-  "upstream": "packages/chord/src/next/host/member-source.ts",
+  "upstream": "packages/chord/src/next/host/reference-source.ts",
   "package": "./chord/next/host",
   "tests": [
-   "TestMemberSourceRebindingSendsOneFrameFromTheLastValueWhenTheNewAttemptsMemberDiffers",
-   "TestMemberSourceRebindingRecoversAConsumersDeriveThatFailedOnTheProvidersEarlierErrorAndTheDerivesDownstream",
-   "TestMemberSourceSubscribersDirectlyAreFedTheMembersCallsAFailureThenItsRecoveryAtTheRebindAsARootReplacement",
-   "TestMemberSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFailureCallAndStaysOpenAndALaterAttemptBringsItBack"
+   "TestReferenceSourceRebindingSendsOneFrameFromTheLastValueWhenTheNewAttemptsMemberDiffers",
+   "TestReferenceSourceRebindingRecoversAConsumersDeriveThatFailedOnTheProvidersEarlierErrorAndTheDerivesDownstream",
+   "TestReferenceSourceSubscribersDirectlyAreFedTheMembersCallsAFailureThenItsRecoveryAtTheRebindAsARootReplacement",
+   "TestReferenceSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFailureCallAndStaysOpenAndALaterAttemptBringsItBack"
   ],
-  "upstream_reference": "packages/chord/test/next/host/member-source.test.ts",
-  "mutation": "chord/next/host/host_member_source.go: `m.changed()` (the last statement of bind, after `// Marks the derives downstream: a failed one recomputes too (self-healing).`) -> removed (TestMemberSourceRebindingSendsOneFrameFromTheLastValueWhenTheNewAttemptsMemberDiffers FAILS)"
+  "upstream_reference": "packages/chord/test/next/host/reference-source.test.ts",
+  "mutation": "chord/next/host/host_reference_source.go (bind): `s.Changed()` (the last statement of bind, after `// Marks the derives downstream: a failed one recomputes too (self-healing).`) -> removed (TestReferenceSourceRebindingSendsOneFrameFromTheLastValueWhenTheNewAttemptsMemberDiffers FAILS: host_reference_source_test.go:277: calls = [], want one value call)"
  },
  {
   "upstream": "packages/chord/src/next/host/members.ts",
@@ -190,7 +190,7 @@
    "TestCheckImplementationChecksALocalContractsMembersAsGiven",
    "TestCheckImplementationChecksARemoteContractsVariant",
    "TestAttachDerivesReportsUnderTheExposingMemberAcceptsNativeSourcesAndPropagatesAThrowingGetter",
-   "TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndRefusesACycle"
+   "TestContributionOfFollowsWatchablesAndNativesLeavesOtherValuesPlainAndFollowsAnotherRegistrysValue"
   ],
   "upstream_reference": "packages/chord/test/next/host/members.test.ts",
   "mutation": "chord/next/host/host_members.go: `fmt.Sprintf(\"derive #%d\", position+1)` -> `fmt.Sprintf(\"derive #%d\", position)` (TestMemberCheckNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition FAILS)"
@@ -242,12 +242,12 @@
   "upstream": "packages/chord/src/next/host/route.ts",
   "package": "./chord/next/host",
   "tests": [
-   "TestResolveFailuresAndReResolvesARejectedResolveLeavesTheHoldsLoadingIsReportedAndResolvesAgainAfterTheAddressesBackoffRace2",
-   "TestResolveFailuresAndReResolvesOnlyALinkThatCompletedItsHandshakeResetsTheBackoff",
+   "TestResolveFailuresAndReResolvesARejectedResolveFailsItsHoldersWaitingWithItsErrorIsReportedAndRunsNoTimerRace2",
+   "TestResolveFailuresAndReResolvesADroppedLinkThatCompletedItsHandshakeResolvesAgainAtOnceOnceRace6",
    "TestRouteAdmissionRunsOneResolvePerAddressSharedByTheHoldsThatWaitForItRace1"
   ],
   "upstream_reference": "packages/chord/test/next/host/route.test.ts (own tests: every upstream case builds hosts and links)",
-  "mutation": "chord/next/host/host_route.go: `if !r.backoff.waiting(address.Key) {` -> `if true {` (TestResolveFailuresAndReResolvesARejectedResolveLeavesTheHoldsLoadingIsReportedAndResolvesAgainAfterTheAddressesBackoffRace2 FAILS: the path has a link after a failed resolve)"
+  "mutation": "chord/next/host/host_route.go (changed): the `default:` branch of `case pathDropped:` `r.resolve(routed)` -> removed (TestResolveFailuresAndReResolvesADroppedLinkThatCompletedItsHandshakeResolvesAgainAtOnceOnceRace6 FAILS: host_route_test.go:391: never happened: resolves are [session|S1 session|S1] (now [session|S1]))"
  },
  {
   "upstream": "packages/chord/src/next/host/destination.ts",

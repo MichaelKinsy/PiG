@@ -100,36 +100,69 @@ func (r *ExtensionRuntime) Invalidate(message ...string) {
 	if len(message) != 0 && message[0] != "" {
 		r.staleMessage = message[0]
 	}
-	tracked := r.eventBusUnsubscribers
-	r.eventBusUnsubscribers = nil
+	var tracked []*eventBusSubscription
+	for entry := r.eventBusHead; entry != nil; entry = entry.next {
+		entry.linked = false
+		tracked = append(tracked, entry)
+	}
+	r.eventBusHead, r.eventBusTail, r.eventBusRetained = nil, nil, 0
 	r.mu.Unlock()
 	for _, entry := range tracked {
 		entry.run()
 	}
 }
 
-// eventBusSubscription is one retained event-bus subscription; run is idempotent.
+// eventBusSubscription is one retained event-bus subscription, a node of the runtime's insertion-ordered list (Pi's Set of trackedUnsubscribe closures: each
+// subscription is its own member, even for the same handler, and unsubscribing deletes it in constant time). run is idempotent. prev, next and linked are
+// guarded by runtime.mu.
 type eventBusSubscription struct {
 	once        sync.Once
 	unsubscribe func()
 	runtime     *ExtensionRuntime
+	prev, next  *eventBusSubscription
+	linked      bool
 }
 
 func (e *eventBusSubscription) run() {
 	e.once.Do(func() {
 		e.runtime.mu.Lock()
-		e.runtime.eventBusUnsubscribers = slices.DeleteFunc(e.runtime.eventBusUnsubscribers, func(other *eventBusSubscription) bool { return other == e })
+		e.runtime.unlinkEventBusLocked(e)
 		e.runtime.mu.Unlock()
 		e.unsubscribe()
 	})
 }
 
+func (r *ExtensionRuntime) unlinkEventBusLocked(e *eventBusSubscription) {
+	if !e.linked {
+		return
+	}
+	if e.prev != nil {
+		e.prev.next = e.next
+	} else {
+		r.eventBusHead = e.next
+	}
+	if e.next != nil {
+		e.next.prev = e.prev
+	} else {
+		r.eventBusTail = e.prev
+	}
+	e.prev, e.next, e.linked = nil, nil, false
+	r.eventBusRetained--
+}
+
 // TrackEventBusSubscription retains an event-bus subscription until the runtime is invalidated: Invalidate runs every retained unsubscribe, in subscription order. It returns the unsubscribe function that runs the original once and forgets it.
 // upstream: loader.ts:201-210 trackEventBusSubscription, :198-199 invalidate
 func (r *ExtensionRuntime) TrackEventBusSubscription(unsubscribe func()) func() {
-	entry := &eventBusSubscription{unsubscribe: unsubscribe, runtime: r}
+	entry := &eventBusSubscription{unsubscribe: unsubscribe, runtime: r, linked: true}
 	r.mu.Lock()
-	r.eventBusUnsubscribers = append(r.eventBusUnsubscribers, entry)
+	entry.prev = r.eventBusTail
+	if r.eventBusTail != nil {
+		r.eventBusTail.next = entry
+	} else {
+		r.eventBusHead = entry
+	}
+	r.eventBusTail = entry
+	r.eventBusRetained++
 	r.mu.Unlock()
 	return entry.run
 }

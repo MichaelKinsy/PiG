@@ -27,11 +27,11 @@ import { gt, maxSatisfying, rcompare, satisfies, valid, validRange } from "../..
 import { CONFIG_DIR_NAME } from "../config.js";
 import { spawnProcess, spawnProcessSync } from "../utils/child-process.js";
 import { parseGitUrl } from "../utils/git.js";
-import { canonicalizePath, isLocalPath, markPathIgnoredByCloudSync, normalizePath, resolvePath, } from "../utils/paths.js";
+import { canonicalizePath, getPathComparisonKey, isLocalPath, markPathIgnoredByCloudSync, normalizePath, pathsEqual, resolvePath, } from "../utils/paths.js";
 import { stripBom } from "../utils/text.js";
 import { isStdoutTakenOver } from "./output-guard.js";
 import { readPiManifest } from "./pi-manifest.js";
-import { BUILTIN_PATH_PREFIX } from "./source-info.js";
+import { BUILTIN_PATH_PREFIX, getResourcePathKey } from "./source-info.js";
 const NETWORK_TIMEOUT_MS = 10000;
 const UPDATE_CHECK_CONCURRENCY = 4;
 const GIT_UPDATE_CONCURRENCY = 4;
@@ -1093,6 +1093,21 @@ export class DefaultPackageManager {
             if (parsed.type === "npm") {
                 let installedPath = this.getNpmInstallPath(parsed, resolvedScope);
                 const needsInstall = !existsSync(installedPath) || !(await this.installedNpmMatchesConfiguredVersion(parsed, installedPath));
+                if (!needsInstall &&
+                    resolvedScope === "temporary" &&
+                    !parsed.pinned &&
+                    (await this.npmHasAvailableUpdate(parsed, installedPath))) {
+                    // Temporary (-e) sources have no `pi update` path, so refresh unpinned ones on load like
+                    // temporary git sources. Like `pi update`, install `name@latest` for unversioned specs because a bare
+                    // `npm install name` keeps the range already saved in the temporary package.json.
+                    const spec = parsed.version ? parsed.spec : `${parsed.name}@latest`;
+                    try {
+                        await this.installNpm({ ...parsed, spec }, resolvedScope, true);
+                    }
+                    catch {
+                        // Keep the cached install if the refresh fails.
+                    }
+                }
                 if (needsInstall) {
                     const installed = await installMissing();
                     if (!installed)
@@ -1111,8 +1126,8 @@ export class DefaultPackageManager {
                     if (!installed)
                         continue;
                 }
-                else if (resolvedScope === "temporary" && !parsed.pinned && !isOfflineModeEnabled()) {
-                    await this.refreshTemporaryGitSource(parsed, resolvedSource);
+                else if (resolvedScope === "temporary" && !isOfflineModeEnabled()) {
+                    await this.refreshTemporaryGitSource(parsed, resolvedSource, installedPath);
                 }
                 metadata.baseDir = installedPath;
                 metadata.packageRoot = installedPath;
@@ -1175,7 +1190,7 @@ export class DefaultPackageManager {
         if (parsed.type === "git") {
             return `git:${parsed.host}/${parsed.path}`;
         }
-        return `local:${this.resolvePath(parsed.path)}`;
+        return `local:${getPathComparisonKey(this.resolvePath(parsed.path))}`;
     }
     getSourceMatchKeyForSettings(source, scope) {
         const parsed = this.parseSource(source);
@@ -1186,7 +1201,7 @@ export class DefaultPackageManager {
             return `git:${parsed.host}/${parsed.path}`;
         }
         const baseDir = this.getBaseDirForScope(scope);
-        return `local:${this.resolvePathFromBase(parsed.path, baseDir)}`;
+        return `local:${getPathComparisonKey(this.resolvePathFromBase(parsed.path, baseDir))}`;
     }
     buildNoMatchingPackageMessage(source, configuredPackages) {
         const suggestion = this.findSuggestedConfiguredSource(source, configuredPackages);
@@ -1465,9 +1480,9 @@ export class DefaultPackageManager {
         }
         if (scope) {
             const baseDir = this.getBaseDirForScope(scope);
-            return `local:${this.resolvePathFromBase(parsed.path, baseDir)}`;
+            return `local:${getPathComparisonKey(this.resolvePathFromBase(parsed.path, baseDir))}`;
         }
-        return `local:${this.resolvePath(parsed.path)}`;
+        return `local:${getPathComparisonKey(this.resolvePath(parsed.path))}`;
     }
     /**
      * Dedupe packages: if same package identity appears in both global and project,
@@ -1693,20 +1708,31 @@ export class DefaultPackageManager {
         return join(dirname(targetDir), `.${basename(targetDir)}.pi-update-incomplete`);
     }
     async cleanAndInstallGitDependencies(targetDir, markerPath) {
-        // Clean untracked files (extensions should be pristine). If this fails after
-        // deleting dependencies, repair them so the existing extension still loads.
+        // Clean untracked files (extensions should be pristine). On Windows, files loaded by
+        // another process (e.g. a native module of this extension in another pi session) cannot
+        // be deleted, so git clean fails. Still install dependencies for the new commit, but keep
+        // the marker so the next update retries the clean.
+        let cleaned = true;
         try {
             await this.runCommand("git", ["clean", "-fdx"], { cwd: targetDir });
         }
         catch (error) {
-            await this.repairMissingGitDependencies(targetDir).catch(() => { });
-            throw error;
+            cleaned = false;
+            const reason = error instanceof Error ? error.message : String(error);
+            this.emitProgress({
+                type: "progress",
+                action: "update",
+                source: targetDir,
+                message: `Could not remove all untracked files in ${targetDir} (${reason}). Files may be in use by another pi session; close it and run the update again.`,
+            });
         }
         const packageJsonPath = join(targetDir, "package.json");
         if (existsSync(packageJsonPath)) {
             await this.runNpmCommand(this.getGitDependencyInstallArgs(), { cwd: targetDir });
         }
-        rmSync(markerPath, { force: true });
+        if (cleaned) {
+            rmSync(markerPath, { force: true });
+        }
     }
     async ensureGitRef(targetDir, fetchArgs, ref) {
         // Fetch only the ref we will reset to, avoiding unrelated branch/tag noise.
@@ -1734,11 +1760,22 @@ export class DefaultPackageManager {
         await this.runCommand("git", ["reset", "--hard", commitRef], { cwd: targetDir });
         await this.cleanAndInstallGitDependencies(targetDir, markerPath);
     }
-    async refreshTemporaryGitSource(source, sourceStr) {
+    async refreshTemporaryGitSource(source, sourceStr, installedPath) {
         if (isOfflineModeEnabled()) {
             return;
         }
         try {
+            // A ref can name a moving branch, so refresh refs too. Skip the network call only when the
+            // ref is a commit hash that is already checked out.
+            if (source.ref && /^[0-9a-f]{7,64}$/i.test(source.ref)) {
+                const head = await this.runCommandCapture("git", ["rev-parse", "HEAD"], {
+                    cwd: installedPath,
+                    timeoutMs: NETWORK_TIMEOUT_MS,
+                });
+                if (head.trim().toLowerCase().startsWith(source.ref.toLowerCase())) {
+                    return;
+                }
+            }
             await this.withProgress("pull", sourceStr, `Refreshing ${sourceStr}...`, async () => {
                 await this.updateGit(source, "temporary");
             });
@@ -2100,7 +2137,7 @@ export class DefaultPackageManager {
         const userAgentsSkillsDir = join(getHomeDir(), ".agents", "skills");
         const projectTrusted = this.settingsManager.isProjectTrusted();
         const projectAgentsSkillDirs = projectTrusted
-            ? collectAncestorAgentsSkillDirs(this.cwd).filter((dir) => resolve(dir) !== resolve(userAgentsSkillsDir))
+            ? collectAncestorAgentsSkillDirs(this.cwd).filter((dir) => !pathsEqual(dir, userAgentsSkillsDir))
             : [];
         const addResources = (resourceType, paths, metadata, overrides, baseDir) => {
             const target = this.getTargetMap(accumulator, resourceType);
@@ -2201,10 +2238,10 @@ export class DefaultPackageManager {
             resolved.sort((a, b) => resourcePrecedenceRank(a.metadata) - resourcePrecedenceRank(b.metadata));
             const seen = new Set();
             return resolved.filter((entry) => {
-                const canonicalPath = canonicalizePath(entry.path);
-                if (seen.has(canonicalPath))
+                const pathKey = getResourcePathKey(entry.path);
+                if (seen.has(pathKey))
                     return false;
-                seen.add(canonicalPath);
+                seen.add(pathKey);
                 return true;
             });
         };

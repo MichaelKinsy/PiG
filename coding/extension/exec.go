@@ -216,8 +216,10 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 		}
 		if remaining := maxBuffer - outputBytes; int64(len(chunk)) > remaining {
 			truncated = true
-			// Node's destroy() closes the pipes on a later tick, so SIGTERM reaches the child first; closing them first would let a writer die of SIGPIPE
-			// and a shell report that status instead of the signal's.
+			// exec.ts destroys the pipes first (Node closes the descriptors at once) and signals the child a few microseconds later, so there a
+			// writer can die of SIGPIPE and a shell that forked it can exit with that status, 141, before SIGTERM lands: a scheduling race that
+			// Pi's runs show on a busy host. Here SIGTERM goes first, so the child ends by the signal (code 0, 1 once truncated), the outcome
+			// Pi reaches in most runs, and the result does not depend on that race.
 			killProcess()
 			_ = stdoutRead.Close()
 			_ = stderrRead.Close()

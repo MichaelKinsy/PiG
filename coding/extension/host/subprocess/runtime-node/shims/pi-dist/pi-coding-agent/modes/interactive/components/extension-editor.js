@@ -14,6 +14,8 @@ export class ExtensionEditorComponent extends Container {
     tui;
     keybindings;
     externalEditorCommand;
+    /** Shows external editor failures; renders nothing while empty. */
+    externalEditorStatus = new Text("", 1, 0);
     _focused = false;
     get focused() {
         return this._focused;
@@ -54,6 +56,7 @@ export class ExtensionEditorComponent extends Container {
             this.onSubmitCallback(text);
         };
         this.addChild(this.editor);
+        this.addChild(this.externalEditorStatus);
         this.addChild(new Spacer(1));
         // Add hint
         const hint = keyHint("tui.select.confirm", "submit") +
@@ -90,6 +93,7 @@ export class ExtensionEditorComponent extends Container {
                 command: this.externalEditorCommand,
                 content,
             });
+            this.externalEditorStatus.setText(result.status === "failed" ? theme.fg("warning", result.message) : "");
             if (result.status === "complete") {
                 this.editor.setText(result.content);
             }

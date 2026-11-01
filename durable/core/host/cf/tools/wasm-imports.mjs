@@ -19,4 +19,4 @@ for (const file of process.argv.slice(2)) {
   if (outside.length) { bad++; console.log(`  outside the ABI table: ${outside.join(", ")}`) }
   if (missing.length) { bad++; console.log(`  missing exports: ${missing.join(", ")}`) }
 }
-process.exit(bad ? 1 : 0)
+process.exitCode = bad ? 1 : 0

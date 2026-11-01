@@ -35,11 +35,17 @@ func runSelfUpdate(force bool) int {
 	if pigstrip.Has(pigstrip.ListFeatures, pigstrip.SelfUpdate) {
 		return reportStrippedFeature("self-update", pigstrip.SelfUpdate, selfUpdateStrippedHint)
 	}
+	cwd, _ := os.Getwd()
+	settings := codingagent.NewSettingsManager(cwd, codingagent.AgentDir())
+	// pig divergence (D39): a configured command is the user's explicit choice of the one owner. It replaces tier
+	// resolution as it replaces Pi's install-method detection, and a started command never falls through to a tier.
+	// Only the global settings are read, so a project cannot inject a command.
+	if argv := codingagent.ConfiguredSelfUpdateArgv(settings.GetGlobalSettings().SelfUpdateCommand); argv != nil {
+		return runConfiguredSelfUpdate(argv, force)
+	}
 	if code, done := checkSelfUpdateVersion(force); done {
 		return code
 	}
-	cwd, _ := os.Getwd()
-	settings := codingagent.NewSettingsManager(cwd, codingagent.AgentDir())
 	npmCommand := settings.GetGlobalSettings().NpmCommand
 	result := codingagent.ApplySelfUpdateTier(
 		func(exePath string) error { return applyStandaloneUpdate(exePath, force) },

@@ -7307,9 +7307,14 @@ function refreshTerminalDimensions() {
   }
 }
 __name(refreshTerminalDimensions, "refreshTerminalDimensions");
+function isNativeShiftEnterCandidate(data) {
+  return data === "\r" || data === "\x1B\r";
+}
+__name(isNativeShiftEnterCandidate, "isNativeShiftEnterCandidate");
 function normalizeNativeShiftEnterInput(data, shouldDetectNativeShiftEnter, isShiftPressed) {
-  if (shouldDetectNativeShiftEnter && data === "\r" && isShiftPressed)
+  if (shouldDetectNativeShiftEnter && isNativeShiftEnterCandidate(data) && isShiftPressed) {
     return NATIVE_SHIFT_ENTER_SEQUENCE;
+  }
   return data;
 }
 __name(normalizeNativeShiftEnterInput, "normalizeNativeShiftEnterInput");
@@ -7533,7 +7538,7 @@ var ProcessTerminal = class {
   forwardInputSequence(sequence) {
     if (!this.inputHandler)
       return;
-    const shouldDetectNativeShiftEnter = sequence === "\r" && (isAppleTerminalSession() || process.platform === "win32");
+    const shouldDetectNativeShiftEnter = isNativeShiftEnterCandidate(sequence) && (isAppleTerminalSession() || process.platform === "win32");
     const input = normalizeNativeShiftEnterInput(sequence, shouldDetectNativeShiftEnter, shouldDetectNativeShiftEnter && isNativeModifierPressed("shift"));
     this.inputHandler(input);
   }

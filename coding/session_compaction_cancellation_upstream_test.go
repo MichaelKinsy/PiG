@@ -50,6 +50,7 @@ func TestAutomaticCompactionCancellationUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/9340-9777-auto-compaction-cancellation.test.ts:47
 	t.Run("does not start post-run auto-compaction after abort", func(t *testing.T) {
 		s := newTreeTestSessionWithSettings(t, `{"compaction":{"enabled":true,"reserveTokens":50,"keepRecentTokens":1},"retry":{"enabled":false}}`)
+		_ = s.Events()
 		p := &scriptedProvider{responses: []scriptedResponse{fauxError("Synthetic network failure")}}
 		installCompactionModel(s, p, 200, 50)
 		withTreeHandlers(s, t, map[string][]extension.HandlerFn{"session_before_compact": {func(...any) (any, error) { return extension.SessionBeforeCompactResult{Cancel: true}, nil }}})

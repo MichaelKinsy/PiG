@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Rows recorded from braceExpand of Pi's npm minimatch 10.2.6 (brace-expansion 5.0.12) under Node 24.19. Node's bundled copy, which braceExpand ports, gives fewer results for each: after a "{a},b}" rewrite it drops every empty or literal value of a set that is not first, where 5.0.12 drops only empty results of a first comma set. 95 of 200,000 random brace patterns differ this way.
+// Rows recorded from braceExpand of Pi's npm minimatch (10.2.6, and 11.0.3 whose braceExpand is the same) (brace-expansion 5.0.12) under Node 24.19. Node's bundled copy, which braceExpand ports, gives fewer results for each: after a "{a},b}" rewrite it drops every empty or literal value of a set that is not first, where 5.0.12 drops only empty results of a first comma set. 95 of 200,000 random brace patterns differ this way.
 func TestNpmBraceExpandFollowsBraceExpansion5(t *testing.T) {
 	for _, tc := range []struct {
 		pattern string
@@ -125,7 +125,7 @@ func TestMinimatchFilterExpandsBracesAsPi(t *testing.T) {
 		if err != nil {
 			t.Fatalf("newMinimatchFilter(%q): %v", tc.pattern, err)
 		}
-		if got := m.match(tc.path); got != tc.want {
+		if got := m.Match(tc.path); got != tc.want {
 			t.Errorf("minimatch(%q, %q) = %t, want %t", tc.path, tc.pattern, got, tc.want)
 		}
 	}

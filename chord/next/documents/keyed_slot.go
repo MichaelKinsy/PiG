@@ -659,9 +659,6 @@ func newKeySource(slot *KeyedSlot, key string, initial *JsonObject, ready bool) 
 	return source
 }
 
-// Owner is the object's documents.
-func (source *KeySource) Owner() *Documents { return source.slot.owner }
-
 // Pins is how many pins hold the key (the slot forgets it at 0): the count a host's tests read where Pi's reach `pins`.
 func (source *KeySource) Pins() int { return source.pins }
 

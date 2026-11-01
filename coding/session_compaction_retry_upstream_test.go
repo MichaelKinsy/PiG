@@ -62,6 +62,7 @@ func TestCompactionRetriesTransientStreamDropUpstream(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s, p := retryCompactionSession(t, tc.enabled, tc.max, 0, tc.script)
+			_ = s.Events()
 			result, err := s.Compact(t.Context(), "")
 			if tc.failure != "" {
 				if err == nil || !strings.Contains(err.Error(), tc.failure) {
@@ -98,6 +99,7 @@ func TestCompactionRetriesTransientStreamDropUpstream(t *testing.T) {
 	// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/6647-compaction-retries-transient-stream-drop.test.ts:169
 	t.Run("aborts an in-flight retry backoff via abortCompaction", func(t *testing.T) {
 		s, p := retryCompactionSession(t, true, 5, 30000, []string{"terminated", "terminated", "terminated"})
+		_ = s.Events()
 		started := make(chan struct{}, 1)
 		s.Subscribe(func(event agent.AgentEvent) {
 			if _, ok := event.(agent.SummarizationRetryScheduledEvent); ok {

@@ -213,14 +213,14 @@ type notesServerRaw struct {
 	Probe *notesProbe
 }
 
-func notesServer(t testing.TB, child data.Principal) *notesServerRaw {
+func notesServer(t testing.TB, child data.Principal, parent ...bool) *notesServerRaw {
 	t.Helper()
 	var probe *notesProbe
 	linkedHost := rawLinked(t, func(host FacetHost) error {
 		var err error
 		probe, err = serveNotes(host, nil)
 		return err
-	}, rawLinkedOptions{Child: child})
+	}, rawLinkedOptions{Child: child, Parent: len(parent) > 0 && parent[0]})
 	return &notesServerRaw{rawLinkedHost: linkedHost, Probe: probe}
 }
 
@@ -296,7 +296,7 @@ func TestProviderHoldsArrivingOnALink(t *testing.T) {
 			provHold(t, peer, 0, specOf(Notes), jsonObject("session", "S1"))
 			settle(peer)
 			requireStrings(t, peer.Kinds(), []string{"hello"})
-			must(t, server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 				_, err := serveNotes(h, nil)
 				return err
 			})}}, background))
@@ -596,7 +596,7 @@ func TestProviderRaces(t *testing.T) {
 			settle(peer)
 			peer.Send(&link.ReleaseMessage{Hold: 0})
 			settle(peer)
-			must(t, server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 				return serveKept(h, events)
 			})}}, background))
 			settle(peer)
@@ -845,18 +845,23 @@ type slowConsumerHost struct {
 	Meter  *nexttest.Meter
 }
 
-func slowConsumer(t testing.TB) *slowConsumerHost {
+func slowConsumer(t testing.TB, parent ...bool) *slowConsumerHost {
 	t.Helper()
 	meter := nexttest.Metered(t)
 	server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
-	must(t, server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		if _, err := serveNotes(h, nil); err != nil {
 			return err
 		}
 		return serveGrid(h)
 	})}}, background))
 	a, b := link.MemoryLinkPair()
-	must(t, server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, meter.Context))
+	options := LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}
+	if len(parent) > 0 && parent[0] {
+		must(t, server.Connect(a, options, meter.Context))
+	} else {
+		must(t, server.Accept(a, options, meter.Context))
+	}
 	peer := newRawPeer(t, b, rawPeerOptions{NoAck: true})
 	settle(peer)
 	return &slowConsumerHost{Server: server, Peer: peer, Meter: meter}
@@ -974,7 +979,7 @@ func TestProviderOrigins(t *testing.T) {
 
 		// Ports "origins at the provider › key holds and calls by (origin, id): the same ids on two origins are two holds; answers carry the origin".
 		t.Run("key holds and calls by (origin, id): the same ids on two origins are two holds; answers carry the origin", func(t *testing.T) {
-			s := slowConsumer(t)
+			s := slowConsumer(t, true)
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"))
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S2"), 3)
 			own, relayed := s.Peer.Next("bound").(*link.BoundMessage), s.Peer.Next("bound").(*link.BoundMessage)
@@ -998,7 +1003,7 @@ func TestProviderOrigins(t *testing.T) {
 
 		// Ports "keep a window per origin: a stalled origin folds its commits, another keeps receiving each".
 		t.Run("keep a window per origin: a stalled origin folds its commits, another keeps receiving each", func(t *testing.T) {
-			s := slowConsumer(t)
+			s := slowConsumer(t, true)
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"))
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"), 1)
 			s.Peer.Next("bound")
@@ -1041,7 +1046,7 @@ func TestProviderOrigins(t *testing.T) {
 
 		// Ports "count calls per origin against N: 256 on each of two origins run, one more on one closes the link".
 		t.Run("count calls per origin against N: 256 on each of two origins run, one more on one closes the link", func(t *testing.T) {
-			s := notesServer(t, nil)
+			s := notesServer(t, nil, true)
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"))
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"), 1)
 			s.Peer.Next("bound")
@@ -1064,7 +1069,7 @@ func TestProviderOrigins(t *testing.T) {
 
 		// Ports "ignore a call on a hold they do not know before counting it (Q1)".
 		t.Run("ignore a call on a hold they do not know before counting it (Q1)", func(t *testing.T) {
-			s := notesServer(t, nil)
+			s := notesServer(t, nil, true)
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"))
 			s.Peer.Next("bound")
 			for id := range 256 {
@@ -1083,7 +1088,7 @@ func TestProviderOrigins(t *testing.T) {
 
 		// Ports "closed releases the origin's holds and aborts its calls; another origin keeps its own".
 		t.Run("closed releases the origin's holds and aborts its calls; another origin keeps its own", func(t *testing.T) {
-			s := notesServer(t, nil)
+			s := notesServer(t, nil, true)
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"))
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S2"), 2)
 			s.Peer.Next("bound")
@@ -1433,7 +1438,7 @@ func servedHoldsOf(host Host, origin int) []weak.Pointer[hold] {
 // queues (and the ops in them) are watched instead: a closed origin must leave nothing of them.
 func TestProviderGCOfTheWindowAClosedOriginDropsItsPendingQueuesOps(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
-		s := slowConsumer(t)
+		s := slowConsumer(t, true)
 		provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"), 1)
 		s.Peer.Next("bound")
 		for _, text := range []string{"a", "b", "c"} {

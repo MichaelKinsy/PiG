@@ -292,9 +292,11 @@ func (m *InteractiveMode) showNewVersionNotification(release LatestPiRelease) {
 	blocks := []tui.Component{tui.NewThemedText(func() string { return binaryUpdateNoticeBody(tui.ActiveTheme(), release.Version, AppName+" update") }, 1, 0)}
 	if note != "" {
 		muted := func(text string) string { return noticeFg(t.Muted, text) }
+		noteBody := tui.NewMarkdownWithOptions(note, 1, 0, m.markdownThemeWithSettings(), &tui.DefaultTextStyle{Color: muted}, nil)
+		noteBody.FinishStreaming()
 		blocks = append(blocks,
 			tui.NewSpacer(1),
-			tui.NewMarkdownWithOptions(note, 1, 0, m.markdownThemeWithSettings(), &tui.DefaultTextStyle{Color: muted}, nil),
+			noteBody,
 			tui.NewSpacer(1),
 		)
 	}

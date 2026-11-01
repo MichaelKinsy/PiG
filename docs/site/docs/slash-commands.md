@@ -13,7 +13,7 @@ PiG has the built-in slash commands of Pi 1.4.0 ([Pi's slash command reference](
 | `/login` | Configure provider authentication. |
 | `/logout` | Remove provider authentication. |
 | `/new` | Start a new session in the same cwd. |
-| `/resume` | Resume a different session. |
+| `/resume` | Resume another session. |
 | `/fork` | Fork from a previous user message. |
 | `/clone` | Duplicate session at the current position. |
 | `/tree` | Navigate session tree. |

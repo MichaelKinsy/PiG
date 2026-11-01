@@ -108,8 +108,8 @@ type Session struct {
 	queued atomic.Int64
 	// executorEnded is set under execMu once the executor stopped and closed events.
 	executorEnded bool
-	// discardEvents is set by DiscardEvents: no Events consumer exists, so nothing is sent on events and barriers are acknowledged when they execute.
-	discardEvents       atomic.Bool
+	// eventsSubscribed is set by Events: a consumer exists, so events are sent on events. Until then, as for a Pi session with no listener, an event reaches nobody and a barrier is acknowledged when it executes. DiscardEvents clears it.
+	eventsSubscribed    atomic.Bool
 	modelChangeMu       sync.Mutex
 	detachModelObserver func()
 	detachAgentEvents   func()
@@ -771,9 +771,9 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 	// The Session passes a tool_execution_update on to its listeners, its Events consumer and the extensions' tool_execution_update handlers; with none of them, nothing sees it.
 	// A message_update likewise reaches only its listeners, its Events consumer and the extensions' message_update handlers; and while a termination signal holds the Agent at its next event (HoldAgentEvents), every event must stop there.
 	sess.detachAgentEvents = agent.SubscribeObservingUpdates(sess.handleAgentEvent, func() bool {
-		return sess.hasListeners() || !sess.discardEvents.Load() || sess.HasExtensionHandlers(icodingagent.EventToolExecutionUpdate)
+		return sess.hasListeners() || sess.eventsSubscribed.Load() || sess.HasExtensionHandlers(icodingagent.EventToolExecutionUpdate)
 	}, func() bool {
-		return sess.hasListeners() || !sess.discardEvents.Load() || sess.agentEventHold.held() || sess.HasExtensionHandlers(icodingagent.EventMessageUpdate)
+		return sess.hasListeners() || sess.eventsSubscribed.Load() || sess.agentEventHold.held() || sess.HasExtensionHandlers(icodingagent.EventMessageUpdate)
 	})
 	sess.installAgentBoundaryHooks()
 	sess.installExtensionHooks(opts.Agent != nil)
@@ -939,11 +939,19 @@ func BuildUserContent(text string, images []ai.ImageContent) ai.UserContentBlock
 // Send appends a text prompt to the session, runs the agent loop until the LLM
 // stops calling tools or until ctx cancels, and returns the full message slice
 // produced this turn.
+//
+// Like Pi's prompt(), a failed model call is not returned as an error: Send
+// returns nil and the last assistant message has StopReason ai.StopReasonError
+// (ai.StopReasonAborted after Abort) with its ErrorMessage set.
+// Agent().ErrorMessage() reports the same text until the next run, and the
+// failure is also visible in the message_end and auto_retry_end events. Send
+// returns an error for preflight failures, and ctx.Err() when the caller
+// cancels ctx before the provider ends its stream.
 func (s *Session) Send(ctx context.Context, prompt string) ([]agent.AgentMessage, error) {
 	return s.SendContent(ctx, BuildUserContent(prompt, nil))
 }
 
-// SendContent dispatches extension commands before ordinary structured-content turns. Modes that already process commands and input use SendContentWithPreflight instead.
+// SendContent dispatches extension commands before ordinary structured-content turns. Modes that already process commands and input use SendContentWithPreflight instead. Model failures are reported as for Send.
 func (s *Session) SendContent(ctx context.Context, content []ai.UserContentBlock) ([]agent.AgentMessage, error) {
 	if len(content) > 0 {
 		if text, ok := content[0].(ai.TextContent); ok && strings.HasPrefix(text.Text, "/") {
@@ -1109,27 +1117,23 @@ func (s *Session) RunAgentPrompt(ctx context.Context, start func(context.Context
 	return messages, runErr
 }
 
-// Events returns the channel of streaming agent events (text deltas,
-// tool calls, tool results, etc.) emitted during Send. Buffered;
-// consumers that fall behind will see send blocking inside the agent
-// loop until they catch up. Unbuffered consumers should drain in a
-// dedicated goroutine.
+// Events returns the channel of streaming agent events (text deltas, tool calls, tool results, etc.) emitted during Send, and starts delivering to it.
 //
-// The channel is closed when the Session is Closed. A caller with no Events
-// consumer calls DiscardEvents instead of draining it.
-func (s *Session) Events() <-chan agent.AgentEvent { return s.events }
+// Delivery begins with the first call, as a Pi session notifies only the listeners it has when an event happens (agent-session.ts _emit, subscribe): an event emitted before the first call is not buffered or replayed, and a Session whose Events is never called never waits on it. Call Events before Send to see every event of a turn; Subscribe listeners are unaffected.
+//
+// Once called, the channel is buffered and a consumer that falls behind makes the agent loop block until it catches up, as a slow synchronous Pi listener does; drain it in a dedicated goroutine, passing each event to AcknowledgeEvent first so the end-of-turn FlushEvents inside Send is answered. It carries every event in order. Every call returns the same channel and keeps delivery on.
+//
+// The channel is closed when the Session is Closed. A consumer that stops reading calls DiscardEvents. A Session returned by Clone has its own channel, delivering nothing until its own Events call.
+func (s *Session) Events() <-chan agent.AgentEvent {
+	s.eventsSubscribed.Store(true)
+	return s.events
+}
 
-// DiscardEvents declares that nothing reads Events: Subscribe listeners are the
-// only sinks, as in print mode. The Session then sends nothing on Events, so a
-// publication never waits for or wakes a consumer, and FlushEvents returns once
-// every preceding event has executed, without a consumer acknowledgement. Call it
-// before the first run; markers already buffered on Events are acknowledged.
+// DiscardEvents stops delivery to Events for a consumer that no longer reads it: Subscribe listeners are then the only sinks. The Session sends nothing on Events, so a publication never waits for or wakes a consumer, and FlushEvents returns once every preceding event has executed, without a consumer acknowledgement. Call it from the goroutine that stops reading, before the next run; events and markers already buffered on Events are dropped and acknowledged. A later Events call resumes delivery.
 //
-// With or without it, a producer whose event has nothing queued ahead executes
-// that event on its own goroutine, listeners included, as Pi's synchronous _emit
-// does; the executor goroutine runs only events queued behind others.
+// With or without it, a producer whose event has nothing queued ahead executes that event on its own goroutine, listeners included, as Pi's synchronous _emit does; the executor goroutine runs only events queued behind others.
 func (s *Session) DiscardEvents() {
-	s.discardEvents.Store(true)
+	s.eventsSubscribed.Store(false)
 	for {
 		select {
 		case event, ok := <-s.events:
@@ -2389,7 +2393,7 @@ func (s *Session) emitPublishedEvent(ev agent.AgentEvent) {
 	// TryLock: the producer may hold the stream turn the executor's current callback waits for, so it must not wait for execMu here.
 	if s.execMu.TryLock() {
 		// A publication sends at most two events (the event, then auto_retry_end).
-		if s.inlineReadyLocked() && (s.discardEvents.Load() || cap(s.events)-len(s.events) >= 2) {
+		if s.inlineReadyLocked() && (!s.eventsSubscribed.Load() || cap(s.events)-len(s.events) >= 2) {
 			s.forwardAgentEvent(published, ai.StreamOwner{})
 			s.execMu.Unlock()
 			return
@@ -2748,8 +2752,8 @@ func emitExtensionError(runner *inproc.Runner, err *extension.ExtensionError) (f
 // sendEvent forwards ev to the session's event channel, reporting false once
 // the event executor has ended.
 func (s *Session) sendEvent(ev agent.AgentEvent) bool {
-	if s.discardEvents.Load() {
-		// No consumer reads Events; a barrier is acknowledged once everything before it executed.
+	if !s.eventsSubscribed.Load() {
+		// No consumer called Events; a barrier is acknowledged once everything before it executed.
 		AcknowledgeEvent(ev)
 		select {
 		case <-s.eventsDone:
