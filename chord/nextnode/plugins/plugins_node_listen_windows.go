@@ -9,6 +9,8 @@ import (
 
 	"github.com/Microsoft/go-winio"
 	"golang.org/x/sys/windows"
+
+	"github.com/MichaelKinsy/PiG/internal/chord/winpipe"
 )
 
 // pipeBuffer is the size of the buffer of each direction of the pipe.
@@ -26,7 +28,7 @@ func listenNode() (listener net.Listener, address string, cleanup func(), err er
 		return nil, "", nil, fmt.Errorf("read the current user: %w", err)
 	}
 	address = `\\.\pipe\chord-plugins-` + rand.Text()
-	listener, err = winio.ListenPipe(address, &winio.PipeConfig{
+	listener, err = winpipe.Listen(address, &winio.PipeConfig{
 		SecurityDescriptor: "D:P(A;;GA;;;" + user.User.Sid.String() + ")",
 		InputBufferSize:    pipeBuffer,
 		OutputBufferSize:   pipeBuffer,
