@@ -27,7 +27,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
-	"github.com/MichaelKinsy/PiG/internal/linkerexec"
 )
 
 // The Node subprocess of the plugins component (docs/plan/chord-plugins-node-evaluator.md). Pi evaluates a built script on
@@ -93,6 +92,10 @@ type NodeOptions struct {
 	// OnError gets what the process's host reports in the background (a failed activation, a protocol error, a close past its
 	// timeout, ...): upstream's `onError`, with every field of the kind (NodeHostError).
 	OnError func(NodeHostError)
+	// Command makes the command that starts a program (Node, to find its version and to run the subprocess): os/exec's
+	// CommandContext by default. A platform that cannot execute a file in the app's data directory starts it through its own
+	// loader here; the chord packages know no platform.
+	Command func(ctx context.Context, name string, args ...string) *exec.Cmd
 	// StopGrace is how long a process whose channel ended, or that was told to close, gets to exit before it is killed (Pi's
 	// workers wait 3 s: workers.ts); 3 s by default. A process stalled in a loop cannot read its channel, so this is how long
 	// the Go side waits after it closed the link (a heartbeat that found the host silent, for one) before it kills it.
@@ -219,13 +222,16 @@ func (exit *NodeExit) Unwrap() []error {
 }
 
 // discoverNode finds Node as extension runtimes do: `node` on PATH, at least minimumNode.
-func discoverNode(ctx context.Context) (string, error) {
+func discoverNode(ctx context.Context, command func(context.Context, string, ...string) *exec.Cmd) (string, error) {
+	if command == nil {
+		command = exec.CommandContext
+	}
 	requirement := fmt.Sprintf("evaluating plugins needs Node.js %s or newer", strings.TrimPrefix(minimumNode, "v"))
 	path, err := exec.LookPath("node")
 	if err != nil {
 		return "", fmt.Errorf("%s; node was not found on PATH", requirement)
 	}
-	output, err := linkerexec.CommandContext(ctx, path, "--version").CombinedOutput()
+	output, err := command(ctx, path, "--version").CombinedOutput()
 	if err != nil {
 		if ctx.Err() != nil {
 			return "", context.Cause(ctx)
@@ -627,7 +633,7 @@ func (f forwardWriter) Write(chunk []byte) (int, error) {
 
 // startNode starts the subprocess and returns once it is connected and said it started.
 func startNode(options NodeOptions, ctx context.Context) (*NodeHost, error) {
-	nodePath, err := discoverNode(ctx)
+	nodePath, err := discoverNode(ctx, options.Command)
 	if err != nil {
 		return nil, err
 	}
@@ -663,7 +669,11 @@ func startNode(options NodeOptions, ctx context.Context) (*NodeHost, error) {
 	args := append([]string{"--disable-warning=ExperimentalWarning"}, options.ExecArgv...)
 	args = append(args, filepath.Join(dir, "host.mjs"), address)
 	// The process outlives the context that started it: it is stopped by Close, or killed when starting fails.
-	h.cmd = linkerexec.CommandContext(context.WithoutCancel(ctx), nodePath, args...)
+	command := options.Command
+	if command == nil {
+		command = exec.CommandContext
+	}
+	h.cmd = command(context.WithoutCancel(ctx), nodePath, args...)
 	h.cmd.Stdout = forwardWriter(func(chunk []byte) { output(NodeStdout, chunk) })
 	h.stderr.forward = func(chunk []byte) { output(NodeStderr, chunk) }
 	h.cmd.Stderr = &h.stderr

@@ -92,7 +92,7 @@ func BenchmarkNodeStart(b *testing.B) {
 	})
 	b.Run("discover", func(b *testing.B) {
 		for b.Loop() {
-			if _, err := discoverNode(context.Background()); err != nil {
+			if _, err := discoverNode(context.Background(), nil); err != nil {
 				b.Fatal(err)
 			}
 		}

@@ -130,7 +130,7 @@ func TestNodeAThrownStringIsPrintedAsNodePrintsIt(t *testing.T) {
 // nodeVersionOf is the version of the node the tests run (`node --version`).
 func nodeVersionOf(t *testing.T) string {
 	t.Helper()
-	path, err := discoverNode(background)
+	path, err := discoverNode(background, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

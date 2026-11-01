@@ -156,7 +156,7 @@ func TestListenNodeAcceptsASecondConnectionToTheSameAddress(t *testing.T) {
 
 // Node's `net.connect(address)` reaches the pipe at the address: the form the driver is handed.
 func TestListenNodeAddressIsOneNodesNetConnectReaches(t *testing.T) {
-	node, err := discoverNode(background)
+	node, err := discoverNode(background, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
