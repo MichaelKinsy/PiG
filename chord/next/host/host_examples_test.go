@@ -335,6 +335,19 @@ func exStringListDoc(name string) *documents.StateDefinition {
 // exPush is `draft.list.push(item)`.
 func exPush(draft *delta.Object, item any) { _, _ = draft.Array("list").Push(item) }
 
+// exAdd is `await doc.change((draft) => void draft.list.push(item), ctx); return doc.value.list.length`. Pi reads
+// `doc.value` in the continuation of the await, on the event loop, where the change it awaited is the last one adopted.
+// A Go handler resumes on a goroutine of its own, outside a section (a document's value is read from a section), where
+// a concurrent call's commit may be adopted first. The length the change left is what its `push` returns, read in the
+// change's own step on the line.
+func exAdd(doc *singletonDoc, item any, ctx context.Context) (delta.JsonValue, error) {
+	var length int
+	if err := doc.Change(func(draft *delta.Object) { length, _ = draft.Array("list").Push(item) }, ctx); err != nil {
+		return nil, err
+	}
+	return float64(length), nil
+}
+
 // exCloseHost is `await host.close(context)`.
 func exCloseHost(t testing.TB, host Host) {
 	t.Helper()
@@ -1372,10 +1385,7 @@ func TestExample10Drops(t *testing.T) {
 				}),
 			}, map[string]contracts.MethodFunction{
 				"add": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
-					if err := notesDoc.Change(func(draft *delta.Object) { exPush(draft, args.Value("text")) }, ctx); err != nil {
-						return nil, err
-					}
-					return float64(len(notesDoc.Value().Value("list").([]any))), nil
+					return exAdd(notesDoc, args.Value("text"), ctx)
 				}),
 				"slow": exBlocked(nil),
 			}), nil
@@ -1610,10 +1620,7 @@ func TestExample12Routes(t *testing.T) {
 				}),
 			}, map[string]contracts.MethodFunction{
 				"add": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
-					if err := notesDoc.Change(func(draft *delta.Object) { exPush(draft, args.Value("text")) }, ctx); err != nil {
-						return nil, err
-					}
-					return float64(len(notesDoc.Value().Value("list").([]any))), nil
+					return exAdd(notesDoc, args.Value("text"), ctx)
 				}),
 			}), nil
 		}, ServeOptions{}); err != nil {
@@ -1960,10 +1967,7 @@ func exRelayWorker(id string) {
 				}),
 			}, map[string]contracts.MethodFunction{
 				"add": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
-					if err := notesDoc.Change(func(draft *delta.Object) { exPush(draft, args.Value("text")) }, ctx); err != nil {
-						return nil, err
-					}
-					return float64(len(notesDoc.Value().Value("list").([]any))), nil
+					return exAdd(notesDoc, args.Value("text"), ctx)
 				}),
 			}), nil
 		}, ServeOptions{})
@@ -4306,10 +4310,7 @@ func TestExample33Reload(t *testing.T) {
 							addWaiting.Add(1)
 						}
 						gate(&slowAdd, ctx)
-						if err := doc.Change(func(draft *delta.Object) { exPush(draft, exParam(args, "text")+" ("+banner+")") }, ctx); err != nil {
-							return nil, err
-						}
-						return float64(len(doc.Value().Value("list").([]any))), nil
+						return exAdd(doc, exParam(args, "text")+" ("+banner+")", ctx)
 					}),
 				}), nil
 			}, ServeOptions{})
