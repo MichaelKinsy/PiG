@@ -72,7 +72,9 @@ func TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws(t *testing.T) {
 	}
 	context := extension.ToolRenderContext{State: map[string]any{}, Cwd: "/work", ArgsComplete: true, ExecutionStarted: true}
 	first := strings.Join(codemodeRenderCall(args, nil, context).Render(120), "\n")
-	if perRedraw := redrawBytes(func() { codemodeRenderCall(args, nil, context).Render(120) }); perRedraw > 8*uint64(len(args)) {
+	// The redraw still joins the highlighted lines and previews them, as renderer.ts does (about 11 times the script);
+	// highlighting the script again costs about 650 times.
+	if perRedraw := redrawBytes(func() { codemodeRenderCall(args, nil, context).Render(120) }); perRedraw > 30*uint64(len(args)) {
 		t.Fatalf("a redraw of a codemode script of %d bytes allocated %d bytes: the row highlighted its script again", len(args), perRedraw)
 	}
 	if again := strings.Join(codemodeRenderCall(args, nil, context).Render(120), "\n"); again != first {

@@ -455,6 +455,31 @@ func CurrentHighlightEpoch() HighlightEpoch {
 	return HighlightEpoch{theme: theme, generation: hlGeneration}
 }
 
+// CodeHighlighter highlights code for one owner, such as a tool row, and reuses its last result while the code, the
+// language and the HighlightEpoch stay the same (theme.ts CodeHighlighter). A row redraws on every progress update, timer
+// tick and expand toggle and cannot tell a theme change from any other redraw, so the highlighter checks what its result
+// depends on. Each owner keeps its own, so a result lives as long as the code it shows: the process-wide memo of
+// HighlightCode is bounded and drops an entry larger than its budget, which a row's whole file can be. The zero value is
+// ready; a CodeHighlighter is not safe for concurrent use.
+//
+// Ports packages/coding-agent/src/modes/interactive/theme/theme.ts (CodeHighlighter).
+type CodeHighlighter struct {
+	code, lang string
+	epoch      HighlightEpoch
+	lines      []string
+}
+
+// Highlight is HighlightCode, and the result is shared with later calls, so the caller must not modify it.
+func (h *CodeHighlighter) Highlight(code, lang string) []string {
+	// The epoch is read before highlighting: a grammar that loads meanwhile makes the next call highlight again.
+	epoch := CurrentHighlightEpoch()
+	if h.lines != nil && h.code == code && h.lang == lang && h.epoch == epoch {
+		return h.lines
+	}
+	h.code, h.lang, h.epoch, h.lines = code, lang, epoch, HighlightCode(code, lang)
+	return h.lines
+}
+
 // highlightMarkdownCode is getMarkdownTheme().highlightCode, which styles a failed highlight with the mdCodeBlock color too.
 func highlightMarkdownCode(code, lang string) []string {
 	return highlightCodeLines(code, lang, true)
@@ -523,7 +548,7 @@ type hlKey struct {
 	codeBlockOnError bool
 }
 
-// pig additive (D112): Pi keeps no highlight memo: its Markdown component reuses its rendered lines only while its text and width are unchanged, and highlights every code block again on any change (markdown.ts render). The memo and its bounds are a Go CPU choice, and a miss, an eviction or a reset returns the same lines as a hit.
+// pig additive (D112): Pi keeps no process-wide highlight memo. Its Markdown component keeps the highlighting of each code block it rendered until invalidate(), and a CodeHighlighter keeps a row's last result (markdown.ts render, theme.ts CodeHighlighter; Markdown.highlights and CodeHighlighter here), so a streamed answer and a redrawn row highlight the same code once. The memo also serves a new component and a code block that was streamed through a longer prefix (the resume state). Its bounds are a Go CPU choice, and a miss, an eviction or a reset returns the same lines as a hit.
 // hlCacheMax bounds the memo so a long session cannot grow it without limit; clearing on overflow keeps memory bounded at the cost of an occasional cold re-highlight.
 const hlCacheMax = 1024
 

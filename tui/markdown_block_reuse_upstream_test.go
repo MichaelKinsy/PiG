@@ -109,3 +109,22 @@ func TestUpstreamMarkdownBlockReuse(t *testing.T) {
 		}
 	})
 }
+
+// A Markdown that reuses the highlighting of its earlier renders renders every prefix of a document, at a width that
+// changes during the stream, exactly as a new component given that prefix does, for a highlighter tui does not know.
+func TestMarkdownReusedHighlightingEqualsAFreshRender(t *testing.T) {
+	mdCaseSetup(t)
+	document := "Intro **text**.\n\n```go\nfunc a() {}\n```\n\n- item\n\n  ```ts\n  const x = 1\n  ```\n\n> ```py\n> y = 2\n> ```\n\n```go\nfunc a() {}\n```\n\nEnd.\n"
+	var calls []string
+	streamed := NewMarkdownWithOptions("", 1, 0, countingMarkdownTheme(&calls), nil, nil)
+	for end := 0; end <= len(document); end++ {
+		width := 20 + end%40
+		prefix := document[:end]
+		streamed.SetText(prefix)
+		var ignored []string
+		want := NewMarkdownWithOptions(prefix, 1, 0, countingMarkdownTheme(&ignored), nil, nil).Render(width)
+		if got := streamed.Render(width); !slices.Equal(got, want) {
+			t.Fatalf("prefix of %d bytes at width %d: %q\n got %q\nwant %q", end, width, prefix, got, want)
+		}
+	}
+}
