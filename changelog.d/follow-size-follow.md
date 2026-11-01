@@ -5,4 +5,4 @@
 
 ### Changed
 
-- The embedded Node runtime archive no longer carries the README.md of each vendored npm package (undici, quickjs-wasi, semver, minimatch, lru-cache, chalk and others), which no code opens: `runtime-node.pack` shrinks from 4,719,013 to 4,649,723 bytes, under the 4,700,000-byte budget, which is unchanged. Pi's own READMEs under `shims/pi-dist` stay.
+- The embedded Node runtime archive no longer carries any README.md outside `shims/pi-dist` (the package READMEs of undici, quickjs-wasi, semver, minimatch, lru-cache, chalk and others, and nested ones such as undici's `types/README.md`), which no code opens: `runtime-node.pack` shrinks from 4,719,013 to 4,649,723 bytes, under the 4,700,000-byte budget, which is unchanged. Pi's own READMEs under `shims/pi-dist` stay.

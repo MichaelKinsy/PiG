@@ -13,10 +13,15 @@ type generatedMapRef struct{ row, element uint16 }
 // linker; a map literal is not, and costs code for every entry.
 func generatedBuildMaps[K comparable, V any](maps []map[K]V, tables [][]generatedPair[K, V]) {
 	for i, pairs := range tables {
-		m := make(map[K]V, len(pairs))
-		for _, pair := range pairs {
-			m[pair.key] = pair.value
-		}
-		maps[i] = m
+		maps[i] = generatedMap(pairs)
 	}
+}
+
+// generatedMap builds the map of pairs.
+func generatedMap[K comparable, V any](pairs []generatedPair[K, V]) map[K]V {
+	m := make(map[K]V, len(pairs))
+	for _, pair := range pairs {
+		m[pair.key] = pair.value
+	}
+	return m
 }

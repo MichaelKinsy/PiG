@@ -180,6 +180,8 @@ func TestUnreadAtRuntimeLeavesVendoredReadmes(t *testing.T) {
 		"shims/undici/README.md":                                 true,
 		"shims/chalk/readme.md":                                  true,
 		"shims/hosted-git-info/node_modules/lru-cache/README.md": true,
+		"shims/undici/types/README.md":                           true,
+		"shims/undici/lib/web/subresource-integrity/Readme.md":   true,
 		"shims/undici/LICENSE":                                   false,
 		"shims/photon-node/LICENSE.md":                           false,
 		"shims/pi-dist/pi-coding-agent/README.md":                false,
