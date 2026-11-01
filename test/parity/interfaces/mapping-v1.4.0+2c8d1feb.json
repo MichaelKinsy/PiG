@@ -124161,7 +124161,7 @@
         "public-api:chord/next/host/host_attempt.go#Self.State"
       ],
       "evidence": [
-        "test:chord/next/host/remote_provider_test.go#TestProviderOrigins"
+        "test:chord/next/host/host_reference_source_test.go#TestHostReferenceSourceAFailedAttemptIsCollectedAfterARetryWhileTheObjectItsMemberSourceAndARetainedWatchLive"
       ]
     },
     {
@@ -124181,7 +124181,7 @@
         "public-api:chord/next/host/host_attempt.go#Self.State"
       ],
       "evidence": [
-        "test:chord/next/host/remote_provider_test.go#TestProviderOrigins"
+        "test:chord/next/host/host_reference_source_test.go#TestHostReferenceSourceAFailedAttemptIsCollectedAfterARetryWhileTheObjectItsMemberSourceAndARetainedWatchLive"
       ]
     },
     {
@@ -125916,7 +125916,7 @@
         "public-api:chord/next/host/host_attempt.go#Self.State"
       ],
       "evidence": [
-        "test:chord/next/host/remote_provider_test.go#TestProviderOrigins"
+        "test:chord/next/host/host_reference_source_test.go#TestHostReferenceSourceAFailedAttemptIsCollectedAfterARetryWhileTheObjectItsMemberSourceAndARetainedWatchLive"
       ]
     },
     {
@@ -125936,7 +125936,7 @@
         "public-api:chord/next/host/host_attempt.go#Self.State"
       ],
       "evidence": [
-        "test:chord/next/host/remote_provider_test.go#TestProviderOrigins"
+        "test:chord/next/host/host_reference_source_test.go#TestHostReferenceSourceAFailedAttemptIsCollectedAfterARetryWhileTheObjectItsMemberSourceAndARetainedWatchLive"
       ]
     },
     {

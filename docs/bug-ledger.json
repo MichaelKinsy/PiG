@@ -261,6 +261,25 @@
       ]
     },
     {
+      "id": "BF-031b259",
+      "title": "fix(chord/nextnode/workers): a start releases the registrations of its context when it returns",
+      "symptom": "fix(chord/nextnode/workers): a start releases the registrations of its context when it returns",
+      "rootCause": "start derives its context from a cancelable child of the route's and cancels it on every return path, so the registrations on the route's context and on the component's closing context do not accumulate one pair per start.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "031b259281",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-03675ab",
       "title": "fix(chord/next/store): report the recovered panic, bytes.Equal, allow jsonparse in the chord boundary",
       "symptom": "fix(chord/next/store): report the recovered panic, bytes.Equal, allow jsonparse in the chord boundary",
@@ -1039,6 +1058,25 @@
       "tests": [
         "coding/cli/print_signal_exit_test.go::TestPrintModeSignalDisposalRunsLikePisEventLoop"
       ]
+    },
+    {
+      "id": "BF-0a51e9d",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0a51e9d815",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-0aa31c4",
@@ -1901,6 +1939,25 @@
       ]
     },
     {
+      "id": "BF-11d48a2",
+      "title": "fix(chord/nextnode/workers): Close(ctx) stops waiting when ctx ends, as Pi's close does on abort",
+      "symptom": "fix(chord/nextnode/workers): Close(ctx) stops waiting when ctx ends, as Pi's close does on abort",
+      "rootCause": "taskGroup.wait takes a context and returns its cause when it ends first; Close returns close's error without joining, and joins the component's goroutines only as far as ctx lets it. The goroutines go on (a worker is killed at its grace, a hook that never returns is the app's).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "11d48a2287",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-121ba35",
       "title": "fix(durable/core): observers of one conversation view share its mount, and a bad window is a RangeError (Pi)",
       "symptom": "fix(durable/core): observers of one conversation view share its mount, and a bad window is a RangeError (Pi)",
@@ -2083,6 +2140,37 @@
       ],
       "tests": [
         "durable/harness/harness_tasks_scheduling_test.go::TestTaskScheduling"
+      ]
+    },
+    {
+      "id": "BF-14c9304",
+      "title": "fix(schema/internal/ecmaregex): modifier groups, V8's mid-pair and repeated-name rules, lone surrogates, V8…",
+      "symptom": "fix(schema/internal/ecmaregex): modifier groups, V8's mid-pair and repeated-name rules, lone surrogates, V8 error text, no per-match allocation, lazy tables",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "14c930470b",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "schema/internal/ecmaregex/golden_test.go::TestGoldenCaseClasses",
+        "schema/internal/ecmaregex/golden_test.go::TestGoldenPropertyRanges",
+        "schema/internal/ecmaregex/golden_test.go::TestGoldenRegex",
+        "schema/internal/ecmaregex/golden_test.go::TestKnownGaps",
+        "schema/internal/ecmaregex/surrogate_test.go::TestAppendUnits",
+        "schema/internal/ecmaregex/surrogate_test.go::TestDistinctSurrogateSets",
+        "schema/internal/ecmaregex/surrogate_test.go::TestErrorText",
+        "schema/internal/ecmaregex/surrogate_test.go::TestLoneSurrogatePatterns",
+        "schema/internal/ecmaregex/surrogate_test.go::TestLoneSurrogateSubjects",
+        "schema/internal/ecmaregex/surrogate_test.go::TestModifierGroups",
+        "schema/internal/ecmaregex/surrogate_test.go::TestNoPackageInitTables"
       ]
     },
     {
@@ -3310,6 +3398,29 @@
       ]
     },
     {
+      "id": "BF-1de9126",
+      "title": "fix(schema/formats): keep lone surrogates, drop unused idna helpers, check the generators in",
+      "symptom": "fix(schema/formats): keep lone surrogates, drop unused idna helpers, check the generators in",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "1de91268b6",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "schema/formats/conformance_test.go::TestConformance",
+        "schema/formats/formats_test.go::TestSplitSurrogatePairs",
+        "schema/formats/oracle_test.go::TestOracleCorpus"
+      ]
+    },
+    {
       "id": "BF-1ed43b3",
       "title": "fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture…",
       "symptom": "fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture modules to the root SDK version",
@@ -3550,7 +3661,6 @@
         "durable/core/history/js_space_agreement_test.go::TestIsJSSpaceAgreesWithJsstringIsSpace",
         "internal/chord/chordjson/own_keys_index_bound_test.go::TestOwnKeysArrayIndexStopsBelowTwoToTheThirtyTwoMinusOne",
         "internal/jsstring/upper_oracle_test.go::TestToUpperMatchesNode",
-        "internal/minimatch/canonicalize_upper_test.go::TestCanonicalizeUsesJavaScriptUpperCase",
         "tui/select_page_keys_test.go::TestSelectListFilterLowercasesAsJavaScriptDoes",
         "tui/widthx/js_space_agreement_test.go::TestIsJSSpaceAgreesWithJsstringIsSpace"
       ]
@@ -4013,6 +4123,27 @@
       "tests": [
         "coding/codemode_output_summary_test.go::TestCodemodeSummarizesUnionAndMultiLineOutputTypesInsteadOfInliningThem",
         "coding/extension/builtin/codemode/reach_describe_test.go::TestDescribeOutputDescribesTheFieldsOfObjectFieldsOneLevelDeep"
+      ]
+    },
+    {
+      "id": "BF-23ee6e1",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "23ee6e15be",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_process_test.go::TestAChannelRefusesARecordOverTheLimitAndStaysUsable"
       ]
     },
     {
@@ -5282,6 +5413,28 @@
         "internal/codingagent/startup_query_order_pty_test.go::TestStartupWritesTheTerminalColorQueryBeforeTheFirstFrameChild",
         "internal/codingagent/startup_submit_test.go::TestColorReplyCompletesTheStartupWaitBeforeTheNextInput",
         "internal/codingagent/startup_submit_test.go::TestPromptAfterTheColorReplyReachesTheSubmitHandler"
+      ]
+    },
+    {
+      "id": "BF-2deefc0",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "Pi-Behavior-Change: packages/coding-agent/src/package-manager-cli.ts:760 Signed-off-by: Michael Kinsy \u003c54590707+MichaelKinsy@users.noreply.github.com\u003e",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "2deefc0db2",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/config_upstream_test.go::TestConfiguredSelfUpdateParityProbe",
+        "internal/codingagent/prompts/system_prompt_upstream_test.go::TestUpstreamSystemPrompt"
       ]
     },
     {
@@ -9044,6 +9197,25 @@
       "tests": []
     },
     {
+      "id": "BF-47590f3",
+      "title": "fix(chord/nextnode/workers): Windows reports a worker the component killed as SIGKILL",
+      "symptom": "fix(chord/nextnode/workers): Windows reports a worker the component killed as SIGKILL",
+      "rootCause": "libuv records the signal it sent a child it kills, so Pi's public error reads `worker exited (SIGKILL)`; TerminateJobObject gave Go an exit code. Kill records that it ended the process and the Windows exit is {signal: SIGKILL} then. [Not exercised: no Windows host.]",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "47590f321e",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-4789fa5",
       "title": "`thinking_level_select` and `turn_start` handlers are covered through the production Session: a handler sees…",
       "symptom": "`thinking_level_select` and `turn_start` handlers are covered through the production Session: a handler sees the clamped effective level only when it changes, and `turn_start` carries the per-run turn index and the time of the turn.",
@@ -12009,6 +12181,25 @@
       "tests": [
         "internal/codingagent/ext_ui_theme_palette_test.go::TestActiveExtensionThemeWireHoldsTheColorsMapItIsKeyedOn"
       ]
+    },
+    {
+      "id": "BF-5c72c65",
+      "title": "fix(chord/nextnode/workers): the worker removes its channel variable from its environment",
+      "symptom": "fix(chord/nextnode/workers): the worker removes its channel variable from its environment",
+      "rootCause": "Node deletes NODE_CHANNEL_FD once it opened the channel; CHORD_WORKERS_CHANNEL stayed, so a program the worker spawned (or a nested WorkerMain) would take descriptor 3 for its own channel.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "5c72c655f4",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-5c76bc0",
@@ -16652,6 +16843,27 @@
       ]
     },
     {
+      "id": "BF-69297a1",
+      "title": "fix(chord/nextnode/http): a response is flushed before its request finishes",
+      "symptom": "fix(chord/nextnode/http): a response is flushed before its request finishes",
+      "rootCause": "net/http buffers the head and a small body until the handler returns, so a close that waited for the request's end could still be followed by a server close that cut the 503. write flushes before Finished, as Pi's res is flushed when its scope ends. Also WaitGroup.Go for the revoking task and the dialer's bodyclose note.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "69297a12b2",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/http/review_test.go::TestReviewASendRacingCloseNeverQueuesBehindTheCloseFrame"
+      ]
+    },
+    {
       "id": "BF-692bdf7",
       "title": "Durable with telemetry off (no telemetry or the no-op span) no longer builds span attributes, events or…",
       "symptom": "Durable with telemetry off (no telemetry or the no-op span) no longer builds span attributes, events or metric attribute bags, and `ai.Models.Stream` without a parent span captures nothing for the telemetry observer, so both allocate as before the telemetry integration; Durable's reflective restore also caches each struct type's field list.",
@@ -20514,6 +20726,25 @@
       ]
     },
     {
+      "id": "BF-82253c8",
+      "title": "fix(chord/nextnode/workers): a process's exit joins its output readers and ends its channel",
+      "symptom": "fix(chord/nextnode/workers): a process's exit joins its output readers and ends its channel",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "82253c81c3",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-8241433",
       "title": "A Mistral stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of…",
       "symptom": "A Mistral stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of ending the turn with a JSON decode error: a finish reason that is not a string ends the turn with `Provider stopped with: \u003cits string form\u003e`, a content item's non-string text ends it with Pi's `text.replace is not a function`, a content item that is not an object is skipped, a `tool_calls` value that is not an array ends it with `toolCalls is not iterable` (a string with Pi's error for its first character), a usage that is not an object reads as zeros, a prompt count sent as a string counts as its number, and a cached-token count that is not a number reads as 0.",
@@ -20723,6 +20954,25 @@
       "tests": [
         "ai/streaming_json_oracle_test.go::TestStreamingJSONMatchesPiOnSeededInput"
       ]
+    },
+    {
+      "id": "BF-8476760",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "Close writes a sealed request's 503 before the server shuts down and keeps its upgrades in one critical section with its snapshot; redirect targets and CSP sources are errors, not panics; URLSearchParams semantics; GET and HEAD have no body on the listener; Pi's disconnect reason; the router follower stops and is joined at close; plugin sockets are read while their handler runs, with typed listeners; closed SameSite; HttpComponent is a struct; Node's extname, status phrases, ASCII host folding, origin checks and conflict messages; a send never queues behind a close frame.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "847676064a",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-848836a",
@@ -22264,6 +22514,27 @@
         "tui/editor_autocomplete_hold_test.go::TestExtensionChainAwaitingIOReleasesTheHold",
         "tui/editor_autocomplete_hold_test.go::TestExtensionChainBehindAnUnfinishedRequestDoesNotHold",
         "tui/editor_autocomplete_hold_test.go::TestFlushAutocompleteStartsTheExtensionChainOncePerRead"
+      ]
+    },
+    {
+      "id": "BF-8e70eff",
+      "title": "fix(chord/nextnode/workers): the channel refuses a record over the limit",
+      "symptom": "fix(chord/nextnode/workers): the channel refuses a record over the limit",
+      "rootCause": "A payload over 1 GiB made the peer disconnect and one over 4 GiB corrupted the framing (uint32). enqueue returns false and tells the callback.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "8e70effabd",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_process_test.go::TestAChannelRefusesARecordOverTheLimitAndStaysUsable"
       ]
     },
     {
@@ -24825,6 +25096,25 @@
       ]
     },
     {
+      "id": "BF-959a66e",
+      "title": "fix(chord/nextnode/workers): shutdown takes effect before the next message; one signal channel each; no…",
+      "symptom": "fix(chord/nextnode/workers): shutdown takes effect before the next message; one signal channel each; no unjoined WaitGroup",
+      "rootCause": "Pi's #shutdown sets stopping and aborts the controller synchronously, before the next message is handled: a reload read right after `shutdown` is dropped, and an fn error that races it is not a `fatal`. shutdown now does both under the worker's lock in the message, disconnect or signal handler and runs the closers and the exit on a goroutine of its own (the handler may be the channel's reader, which the closers' own traffic needs). SIGTERM and SIGINT each have a channel, stopped once it fired, as process.once per signal. worker.tasks was a WaitGroup nothing waited for: removed, the reload loop is a goroutine the exit ends.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "959a66eb4e",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-95a5f79",
       "title": "RPC mode starts the `--tools` list active in its own order when it names extension tools, as Pi does",
       "symptom": "RPC mode starts the `--tools` list active in its own order when it names extension tools, as Pi does.",
@@ -26684,6 +26974,27 @@
       ]
     },
     {
+      "id": "BF-a18da32",
+      "title": "fix(schema): resolve relative references against file and custom-scheme bases as a URL parser does",
+      "symptom": "fix(schema): resolve relative references against file and custom-scheme bases as a URL parser does",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a18da32c47",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "schema/errors_golden_test.go::TestHandWrittenCaseErrorsMatchPi"
+      ]
+    },
+    {
       "id": "BF-a1da44d",
       "title": "The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands…",
       "symptom": "The durable turn classifier retries on a status code (429, 500, 502, 503, 504, 520, 524) only when it stands alone, not inside a request id or another number, and on `stream disconnected before completion`; a ChatGPT Business workspace usage-limit error is not retried.",
@@ -26699,6 +27010,25 @@
         {
           "hash": "a1da44daec",
           "date": "2026-10-21"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-a1ec891",
+      "title": "fix(schema): no panic leaves the API, strings keep lone surrogates, references resolve as new URL does",
+      "symptom": "fix(schema): no panic leaves the API, strings keep lone surrogates, references resolve as new URL does",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a1ec891e6a",
+          "date": "2026-10-31"
         }
       ],
       "tests": []
@@ -29669,6 +29999,25 @@
       ]
     },
     {
+      "id": "BF-b8b83db",
+      "title": "fix(chord/nextnode/workers): the worker reads the host's activity through its watch, not off the host's loop",
+      "symptom": "fix(chord/nextnode/workers): the worker reads the host's activity through its watch, not off the host's loop",
+      "rootCause": "host.Activity is used inside the host's sections: Value lazily writes the cached object and count writes the counts. isIdleLocked read it from the worker's own goroutines. The worker now keeps the watch of the activity and reads the counts as the last delivered frame gave them (watch values are guarded by the watch). Every change of the counts is a frame, which flips the idle state, so the state the server sees converges to the host's.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "b8b83db5e7",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-b8c5de6",
       "title": "Interactive startup no longer reads terminal input while it checks for fd and rg unless one of them is being…",
       "symptom": "Interactive startup no longer reads terminal input while it checks for fd and rg unless one of them is being downloaded, as in Pi.",
@@ -29785,6 +30134,25 @@
         "tui/alt_screen_frame_allocs_norace_test.go::TestAltScreenStreamingFrameAllocationCeiling",
         "tui/terminal_split_reply_test.go::TestTerminalInputConsumesAnOwedReplySplitAcrossSlowReads"
       ]
+    },
+    {
+      "id": "BF-b96952c",
+      "title": "fix(chord/nextnode/workers): Kill never uses a closed job handle; a worker that cannot be placed in a job…",
+      "symptom": "fix(chord/nextnode/workers): Kill never uses a closed job handle; a worker that cannot be placed in a job fails its start",
+      "rootCause": "Windows: Kill (the grace, the start timer, fatal) read the job handle while the waiter's exit closed and zeroed it, so a Kill that lost the race used a closed handle value, which Windows may give to another object. The handle is guarded by a mutex, and Kill does nothing once the process ended. A treeOf error is no longer swallowed: the worker is killed (its tree could not be killed later) and the error goes to its stderr tail, so the start fails as a crash before ready. The pump's dead io.EOF branch is gone.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "b96952c45d",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-b99457f",
@@ -32674,6 +33042,25 @@
       ]
     },
     {
+      "id": "BF-d03cd05",
+      "title": "fix(chord/next/host,chord/nextnode/plugins): route resolve is lent the section that triggers it as Pi's…",
+      "symptom": "fix(chord/next/host,chord/nextnode/plugins): route resolve is lent the section that triggers it as Pi's synchronous call, RouteHandle.Retry reports a started resolve, rollout steps are handed the sets their rollout applied",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "d03cd05f3e",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-d0c2727",
       "title": "fix(codingagent): decode a Node request's client identity from its fields; regenerate the normalization…",
       "symptom": "fix(codingagent): decode a Node request's client identity from its fields; regenerate the normalization inventory",
@@ -34938,6 +35325,25 @@
         "agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses",
         "coding/session_tree_wire_oracle_test.go::TestNavigateTreeEveryPointSendsValidToolFlow"
       ]
+    },
+    {
+      "id": "BF-db5d71f",
+      "title": "fix(chord/nextnode/workers): a lock holder reads its waiters' connections and forgets one that closed",
+      "symptom": "fix(chord/nextnode/workers): a lock holder reads its waiters' connections and forgets one that closed",
+      "rootCause": "Each accepted connection gets a reader that ends when the connection closes and then drops the waiter, as lock.ts does on the socket's close. Release closes the remaining connections and joins the readers.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "db5d71fd2d",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-db7007d",
@@ -37761,6 +38167,25 @@
       ]
     },
     {
+      "id": "BF-e44a3a9",
+      "title": "fix(chord/nextnode/workers): a child is idle by a flag, not by a zero time",
+      "symptom": "fix(chord/nextnode/workers): a child is idle by a flag, not by a zero time",
+      "rootCause": "idleSince == 0 stood for Pi's undefined, so a clock at 0 (a fake one) read a worker as busy. child.idle says whether it is idle; idleSince is when.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e44a3a919d",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-e48a02f",
       "title": "fix(tui): filterable list drops the label when no cell remains (Pi select-list)",
       "symptom": "fix(tui): filterable list drops the label when no cell remains (Pi select-list)",
@@ -38263,6 +38688,25 @@
         "ai/request_body_escaping_internal_test.go::TestPiMessagesRequestWritesCharactersAsJSONStringifyDoes",
         "ai/request_body_escaping_test.go::TestProviderRequestBodiesWriteCharactersAsJSONStringifyDoes"
       ]
+    },
+    {
+      "id": "BF-e7b494a",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e7b494ac64",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-e8489d4",
@@ -43265,6 +43709,38 @@
         "internal/codingagent/session_retained_growth_norace_test.go::TestSessionKeepsNoSearchTextForEntriesNobodySearched",
         "internal/codingagent/session_retained_growth_norace_test.go::TestSessionLiveHeapPerExchange"
       ]
+    },
+    {
+      "id": "BF-fffc16a",
+      "title": "fix: follow minimatch 11.0.3 (Pi)",
+      "symptom": "fix: follow minimatch 11.0.3 (Pi)",
+      "rootCause": "Pi's coding-agent moved minimatch 10.2.6 -\u003e 11.0.3, which replaces the regular-expression AST with @isaacs/nonrecursive-glob-match.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "fffc16ae0a",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "automation/ci/divguard/dependency_sources_test.go::TestDependencyLiteralProofAcceptsANodeRuntimeSource",
+        "internal/minimatch/minimatch_upstream_test.go::TestUpstreamChangedCases",
+        "internal/minimatch/minimatch_upstream_test.go::TestUpstreamChangedPatterns",
+        "internal/minimatch/minimatch_upstream_test.go::TestUpstreamDriveLetterMatchLeavesPattern",
+        "internal/minimatch/minimatch_upstream_test.go::TestUpstreamEndCheck",
+        "internal/minimatch/minimatch_upstream_test.go::TestUpstreamLongUNCRoots",
+        "internal/minimatch/minimatch_upstream_test.go::TestUpstreamMatchRows",
+        "internal/minimatch/minimatch_upstream_test.go::TestUpstreamMergeRows",
+        "internal/minimatch/minimatch_upstream_test.go::TestUpstreamNonAdjacentGlobstars",
+        "internal/minimatch/minimatch_upstream_test.go::TestUpstreamSplitCache",
+        "internal/minimatch/minimatch_upstream_test.go::TestUpstreamUNC",
+        "internal/minimatch/minimatch_upstream_test.go::TestUpstreamWindowsRootDotDot"
+      ]
     }
   ],
   "divergences": [
@@ -43571,8 +44047,12 @@
       "entry": "BF-7e16053"
     },
     {
-      "id": "D217",
-      "title": "Pi bug fixes after the pin that next carries (Pi e7a0df27..e3da248e)"
+      "id": "D218",
+      "title": "Chord's HTTP listener runs on Go's net/http, which answers some malformed requests before the component does"
+    },
+    {
+      "id": "D219",
+      "title": "pi-schema regular expressions differ from V8 in four contrived cases"
     }
   ],
   "exemptCommits": {
