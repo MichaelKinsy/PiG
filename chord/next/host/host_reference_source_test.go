@@ -498,10 +498,10 @@ func msPush(list *documents.Singleton, field string) contracts.MethodFunction {
 		if object, ok := args.(*delta.JsonObject); ok {
 			text = object.Value(field)
 		}
-		_, err := list.Change(func(draft *delta.Object) (any, error) {
+		_, err := list.Change(ctx, func(draft *delta.Object) (any, error) {
 			_, err := draft.Array("items").Push(text)
 			return nil, err
-		}, ctx)
+		})
 		return nil, err
 	}
 }
@@ -562,7 +562,7 @@ func msServe(t *testing.T, options loadedOptions) *msServed {
 		}, ServeOptions{})
 	}, options)
 	var err error
-	s.Store, err = s.Host.Get(msStore, jsonObject(), background, GetOptions{})
+	s.Store, err = s.Host.Get(background, msStore, jsonObject(), GetOptions{})
 	must(t, err)
 	return s
 }
@@ -611,7 +611,7 @@ func msCalls(calls []chord.WatchCall[delta.JsonValue]) []any {
 func msFailRetry(t testing.TB, host Host, self Self, failure *data.ChordError, ref *Reference, typ *contracts.Contract, params *delta.JsonObject) {
 	t.Helper()
 	failLiveThen(host, self, failure, ref.Retry)
-	again, err := host.Get(typ, params, background, GetOptions{})
+	again, err := host.Get(background, typ, params, GetOptions{})
 	must(t, err)
 	again.Release()
 }
@@ -683,7 +683,7 @@ func TestHostReferenceSourceAFailedObjectsMembersKeepTheirLastValuesAndGetTheFai
 	must(t, err)
 	nexttest.RequireJSONEqual(t, value, jsonObject("items", []any{"a"}))
 	s.Store.Retry()
-	again, err := s.Host.Get(msStore, jsonObject(), background, GetOptions{})
+	again, err := s.Host.Get(background, msStore, jsonObject(), GetOptions{})
 	must(t, err)
 	msAdd(t, again, "b")
 	deliveredOn(s.Host)
@@ -731,9 +731,9 @@ func TestHostReferenceSourceReExposedFromAnotherObjectHoldWithTheReExposingObjec
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": n},
 				Keyed: kmKeyed(memos),
 				Methods: map[string]contracts.MethodFunction{"set": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					_, err := memos.Change("a", func(draft *delta.Object) (any, error) {
+					_, err := memos.Change(ctx, "a", func(draft *delta.Object) (any, error) {
 						return nil, draft.Set("title", strings.Repeat("x", int(args.(float64))))
-					}, ctx)
+					})
 					return nil, err
 				}},
 			}}, nil
@@ -750,9 +750,9 @@ func TestHostReferenceSourceReExposedFromAnotherObjectHoldWithTheReExposingObjec
 			}}, err
 		}, ServeOptions{})
 	}, loadedOptions{})
-	providerRef, err := host.Get(provider, jsonObject(), background, GetOptions{})
+	providerRef, err := host.Get(background, provider, jsonObject(), GetOptions{})
 	must(t, err)
-	exposed, err := host.Get(exposerType, jsonObject(), background, GetOptions{})
+	exposed, err := host.Get(background, exposerType, jsonObject(), GetOptions{})
 	must(t, err)
 	_, err = providerRef.Call("set", float64(1), background)
 	must(t, err)
@@ -801,7 +801,7 @@ func TestHostReferenceSourceTheWindowOfALiveFailureEveryMemberFollowsOnWhileAnAd
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": n},
 				Methods: map[string]contracts.MethodFunction{"set": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					_, err := doc.Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", args) }, ctx)
+					_, err := doc.Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", args) })
 					return nil, err
 				}},
 			}}, nil
@@ -817,9 +817,9 @@ func TestHostReferenceSourceTheWindowOfALiveFailureEveryMemberFollowsOnWhileAnAd
 			}}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{Store: st})
-	providerRef, err := host.Get(provider, jsonObject(), background, GetOptions{})
+	providerRef, err := host.Get(background, provider, jsonObject(), GetOptions{})
 	must(t, err)
-	exposed, err := host.Get(exposerType, jsonObject(), background, GetOptions{})
+	exposed, err := host.Get(background, exposerType, jsonObject(), GetOptions{})
 	must(t, err)
 	_, err = providerRef.Call("set", float64(1), background)
 	must(t, err)
@@ -828,7 +828,7 @@ func TestHostReferenceSourceTheWindowOfALiveFailureEveryMemberFollowsOnWhileAnAd
 	held := holdNextCommit()
 	changed := make(chan error, 1)
 	go func() {
-		_, err := own.Load().Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(5)) }, background)
+		_, err := own.Load().Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(5)) })
 		changed <- err
 	}()
 	<-held.Entered()
@@ -889,9 +889,9 @@ func TestHostReferenceSourceRebindingRecoversAConsumersDeriveThatFailedOnTheProv
 			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	countedRef, err := host.Get(counted, jsonObject(), background, GetOptions{})
+	countedRef, err := host.Get(background, counted, jsonObject(), GetOptions{})
 	must(t, err)
-	tens, err := host.Get(tensType, jsonObject(), background, GetOptions{})
+	tens, err := host.Get(background, tensType, jsonObject(), GetOptions{})
 	must(t, err)
 	_, err = countedRef.Call("add", "a", background)
 	must(t, err)
@@ -914,7 +914,7 @@ func TestHostReferenceSourceRebindingRecoversAConsumersDeriveThatFailedOnTheProv
 // derive member, and its watches get frames again.
 func TestHostReferenceSourceRebindingReBindsAConsumersDeriveOverARetriedProvidersDeriveMemberAndItsWatchesGetFramesAgain(t *testing.T) {
 	s := msServe(t, loadedOptions{})
-	viewer, err := s.Host.Get(msViewer, jsonObject(), background, GetOptions{})
+	viewer, err := s.Host.Get(background, msViewer, jsonObject(), GetOptions{})
 	must(t, err)
 	tens := kmWatch(t, viewer.Member("tens"))
 	counted := kmWatch(t, s.Store.Member("count"))
@@ -925,7 +925,7 @@ func TestHostReferenceSourceRebindingReBindsAConsumersDeriveOverARetriedProvider
 	deliveredOn(s.Host)
 	nexttest.RequireJSONEqual(t, []any{kmMember(t, s.Store, "count"), kmMember(t, viewer, "tens")}, []any{float64(1), float64(10)})
 	s.Store.Retry()
-	again, err := s.Host.Get(msStore, jsonObject(), background, GetOptions{})
+	again, err := s.Host.Get(background, msStore, jsonObject(), GetOptions{})
 	must(t, err)
 	msAdd(t, again, "b")
 	deliveredOn(s.Host)
@@ -958,7 +958,7 @@ func TestHostReferenceSourceRebindingSendsOneFrameFromTheLastValueWhenTheNewAtte
 			}}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	ref, err := host.Get(shown, jsonObject(), background, GetOptions{})
+	ref, err := host.Get(background, shown, jsonObject(), GetOptions{})
 	must(t, err)
 	frames := kmWatch(t, ref.Member("label"))
 	msFailRetry(t, host, attempts.at(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil), ref, shown, jsonObject())
@@ -995,9 +995,9 @@ func TestHostReferenceSourceSubscribersAHoldOverALinkOnARemoteObjectReExposingAL
 				return contracts.Implementation{Members: contracts.VariantImplementation{
 					State: map[string]chord.Watchable[delta.JsonValue]{"n": n},
 					Methods: map[string]contracts.MethodFunction{"add": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-						_, err := doc.Change(func(draft *delta.Object) (any, error) {
+						_, err := doc.Change(ctx, func(draft *delta.Object) (any, error) {
 							return nil, draft.Set("n", draft.Get("n").(float64)+1)
-						}, ctx)
+						})
 						return nil, err
 					}},
 				}}, nil
@@ -1011,9 +1011,9 @@ func TestHostReferenceSourceSubscribersAHoldOverALinkOnARemoteObjectReExposingAL
 			}, ServeOptions{})
 		}, linkedOptions{})
 		server, client := hosts.Server, hosts.Client
-		countRef, err := server.Get(count, jsonObject(), background, GetOptions{})
+		countRef, err := server.Get(background, count, jsonObject(), GetOptions{})
 		must(t, err)
-		viewRef, err := client.Get(view, jsonObject(), background, GetOptions{})
+		viewRef, err := client.Get(background, view, jsonObject(), GetOptions{})
 		must(t, err)
 		if variant, _, _ := viewRef.Variant(); variant != "v" {
 			t.Fatalf("variant = %q, want v", variant)
@@ -1027,7 +1027,7 @@ func TestHostReferenceSourceSubscribersAHoldOverALinkOnARemoteObjectReExposingAL
 			return err == nil && nexttest.JSONEqual(value, kmN(10))
 		})
 		failLiveThen(server, attempts.at(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil), countRef.Retry)
-		again, err := server.Get(count, jsonObject(), background, GetOptions{})
+		again, err := server.Get(background, count, jsonObject(), GetOptions{})
 		must(t, err)
 		_, err = again.Call("add", nil, background)
 		must(t, err)
@@ -1096,7 +1096,7 @@ func TestHostReferenceSourceSubscribersDirectlyAreFedTheMembersCallsAFailureThen
 			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	ref, err := host.Get(counted, jsonObject(), background, GetOptions{})
+	ref, err := host.Get(background, counted, jsonObject(), GetOptions{})
 	must(t, err)
 	resolved, err := ref.Member("count").source()
 	must(t, err)
@@ -1113,7 +1113,7 @@ func TestHostReferenceSourceSubscribersDirectlyAreFedTheMembersCallsAFailureThen
 		must(t, err)
 	}
 	failLiveThen(host, attempts.at(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil), ref.Retry)
-	again, err := host.Get(counted, jsonObject(), background, GetOptions{})
+	again, err := host.Get(background, counted, jsonObject(), GetOptions{})
 	must(t, err)
 	_, err = again.Call("add", "c", background)
 	must(t, err)
@@ -1153,7 +1153,7 @@ func TestHostReferenceSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOn
 			}}, nil
 		}, ServeOptions{})
 	})}}, background))
-	ref, err := host.Get(two, jsonObject(), background, GetOptions{})
+	ref, err := host.Get(background, two, jsonObject(), GetOptions{})
 	must(t, err)
 	if variant, _, _ := ref.Variant(); variant != "full" {
 		t.Fatalf("variant = %q, want full", variant)
@@ -1214,7 +1214,7 @@ func TestHostReferenceSourceAnEndedObjectsMembersMarkTheDerivesOverThemAConsumer
 			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	reader, err := host.Get(readerType, jsonObject(), background, GetOptions{})
+	reader, err := host.Get(background, readerType, jsonObject(), GetOptions{})
 	must(t, err)
 	nexttest.RequireJSONEqual(t, kmMember(t, reader, "twice"), float64(8))
 	h := host.(*chordHost)
@@ -1374,7 +1374,7 @@ func TestHostReferenceSourceWhatAReferenceKeepsNeverTakesValuesFromAnInstanceItN
 	s.fail()
 	awaitWatchCalls(t, "the failure reaches the count watch", counted, 1)
 	deliveredOn(s.Host)
-	late, err := s.Host.Hold(msStore, jsonObject(), background, GetOptions{})
+	late, err := s.Host.Hold(background, msStore, jsonObject(), GetOptions{})
 	must(t, err)
 	nexttest.RequireJSONEqual(t, kmMember(t, s.Store, "count"), float64(1))
 	if _, err := late.Member("count").Value(); err == nil || !strings.Contains(err.Error(), "boom") {
@@ -1389,7 +1389,7 @@ func TestHostReferenceSourceWhatAReferenceKeepsNeverTakesValuesFromAnInstanceItN
 func TestHostReferenceSourceWhatAReferenceKeepsComputesAConsumersDeriveOverAWatchedReferenceMemberOncePerCommitCostGuard(t *testing.T) {
 	meter := nexttest.Metered(t)
 	s := msServe(t, loadedOptions{Telemetry: meter.Telemetry})
-	viewer, err := s.Host.Get(msViewer, jsonObject(), background, GetOptions{})
+	viewer, err := s.Host.Get(background, msViewer, jsonObject(), GetOptions{})
 	must(t, err)
 	counted := kmWatch(t, s.Store.Member("count"))
 	tens := kmWatch(t, viewer.Member("tens"))

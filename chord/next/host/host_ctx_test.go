@@ -142,7 +142,7 @@ func desk(t *testing.T) (Host, *deskSeen, *Reference) {
 			}}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	ref, err := host.Get(ctxDesk, jsonObject(), background, GetOptions{})
+	ref, err := host.Get(background, ctxDesk, jsonObject(), GetOptions{})
 	must(t, err)
 	return host, seen, ref
 }
@@ -223,7 +223,7 @@ func TestCtxGetOfAHandlerWhoseCallWasAbortedChecksTheSignalFirstNothingIsCreated
 		}, ServeOptions{})
 	}, loadedOptions{})
 	defer closeHosts(t, host)
-	ref, err := host.Get(ctxDesk, jsonObject(), background, GetOptions{})
+	ref, err := host.Get(background, ctxDesk, jsonObject(), GetOptions{})
 	must(t, err)
 	callerCtx, abortCaller := chordctx.WithCancel(background)
 	done := make(chan struct{})
@@ -301,7 +301,7 @@ func TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAt
 	}, loadedOptions{})
 	defer closeHosts(t, host)
 	parent = rawParent(t, host, link.PartLimits{})
-	ref, err := host.Get(starter, jsonObject(), background, GetOptions{})
+	ref, err := host.Get(background, starter, jsonObject(), GetOptions{})
 	must(t, err)
 	if _, err := ref.Call("start", nil, background); err != nil {
 		t.Fatal(err)
@@ -360,7 +360,7 @@ func TestLocalHandlersActAsTheHostALocalObjectCalledFromARemoteHandlersCtxGetRun
 		}, ServeOptions{})
 	}, linkedOptions{})
 	defer closeHosts(t, l.Client, l.Server)
-	ref, err := l.Client.Get(gate, jsonObject(), background, GetOptions{})
+	ref, err := l.Client.Get(background, gate, jsonObject(), GetOptions{})
 	must(t, err)
 	// The remote handler acts as its caller; the local object it reaches acts as this host, both halves.
 	who, err := ref.Call("who", nil, background)

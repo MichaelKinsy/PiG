@@ -779,7 +779,7 @@ func TestNodeTheHostsKeepAliveCountsReachTheApp(t *testing.T) {
 	}
 	waitFor("no references at the start", func(c host.ActivityCounts) bool { return c.References == 0 })
 	server := serverFor(t, workerRoute(node))
-	held, err := server.Get(probeContract, delta.NewJsonObject(0), background, host.GetOptions{})
+	held, err := server.Get(background, probeContract, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -819,7 +819,7 @@ export default defineFacet((host) => host.serve(Hello, () => ({ variant: "main",
 			Methods: []contracts.MethodEntry{contracts.Meth("hi", contracts.NewMethod(contracts.Str(), contracts.Str()))},
 		})},
 	}))
-	ref, err := serverFor(t, workerRoute(node)).Get(hello, delta.NewJsonObject(0), background, host.GetOptions{})
+	ref, err := serverFor(t, workerRoute(node)).Get(background, hello, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

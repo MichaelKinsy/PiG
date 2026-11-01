@@ -37,30 +37,35 @@ func TestKeyedHandlesListKeysInCodePointOrderNotUTF16Order(t *testing.T) {
 	activated(t, objectOptions{}, func(a *attempt) { notes = a.Keyed(notesDefinition) })
 	// U+FF5E sorts before U+1F600 by code point; as UTF-16 its unit 0xFF5E sorts after the surrogate 0xD83D.
 	for _, key := range []string{"\U0001F600", "\uFF5E", "b", "a"} {
-		if _, err := notes.Change(key, handlesSetText(key), background); err != nil {
+		if _, err := notes.Change(background, key, handlesSetText(key)); err != nil {
 			t.Fatal(err)
 		}
 	}
 	nexttest.RequireJSONEqual(t, slotKeysOf(t, notes), []any{"a", "b", "\uFF5E", "\U0001F600"})
-	got, err := notes.Get("\uFF5E", background)
+	got, err := notes.Get(background, "\uFF5E")
 	if err != nil {
 		t.Fatal(err)
 	}
 	nexttest.RequireJSONEqual(t, got, obj("text", "\uFF5E"))
 }
 
+// TestSealedHandlesStillReadSynchronouslyAndFromMemoryChangesAndRetirementsAreRefusedReleased runs `it("still read
+// synchronously and from memory; changes and retirements are refused released")` of
+// packages/chord/test/next/documents/handles.test.ts:48. The handles are held as what `self.state` hands out, the
+// SingletonHandle and KeyedHandle interfaces: `body.change` and `body.retire` (handles.test.ts:70-71) are
+// SingletonHandle.Change and Retire, `notes.change` and `notes.retire` (handles.test.ts:72-73) KeyedHandle.Change and Retire.
 func TestSealedHandlesStillReadSynchronouslyAndFromMemoryChangesAndRetirementsAreRefusedReleased(t *testing.T) {
 	bodyDefinition, notesDefinition := handlesDefinitions(t)
-	var body *Singleton
-	var notes *Keyed
+	var body SingletonHandle
+	var notes KeyedHandle
 	o, first := activated(t, objectOptions{label: "app.restartable(1)"}, func(a *attempt) {
 		body = a.Singleton(bodyDefinition)
 		notes = a.Keyed(notesDefinition)
 	})
-	if _, err := body.Change(handlesSetText("x"), background); err != nil {
+	if _, err := body.Change(background, handlesSetText("x")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := notes.Change("k", handlesSetText("y"), background); err != nil {
+	if _, err := notes.Change(background, "k", handlesSetText("y")); err != nil {
 		t.Fatal(err)
 	}
 	first.Fail()
@@ -69,7 +74,7 @@ func TestSealedHandlesStillReadSynchronouslyAndFromMemoryChangesAndRetirementsAr
 		t.Fatal(err)
 	}
 	nexttest.RequireJSONEqual(t, value, obj("text", "x"))
-	got, err := notes.Get("k", background)
+	got, err := notes.Get(background, "k")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,10 +82,10 @@ func TestSealedHandlesStillReadSynchronouslyAndFromMemoryChangesAndRetirementsAr
 	nexttest.RequireJSONEqual(t, slotKeysOf(t, notes), []any{"k"})
 	released := obj("code", "released", "reason", "ended", "message", "app.restartable(1): ended")
 	noop := func(*delta.Object) (any, error) { return nil, nil }
-	_, err = body.Change(noop, background)
+	_, err = body.Change(background, noop)
 	nexttest.RequireJSONEqual(t, rejection(t, err), released)
 	nexttest.RequireJSONEqual(t, rejection(t, body.Retire(background)), released)
-	_, err = notes.Change("k", noop, background)
+	_, err = notes.Change(background, "k", noop)
 	nexttest.RequireJSONEqual(t, rejection(t, err), released)
-	nexttest.RequireJSONEqual(t, rejection(t, notes.Retire("k", background)), released)
+	nexttest.RequireJSONEqual(t, rejection(t, notes.Retire(background, "k")), released)
 }

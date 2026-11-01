@@ -297,7 +297,7 @@ func TestHostLoadLeavesOutAndReportsInvalidAndDuplicatePluginNamesAndDoubleServe
 	if got, want := failedMessages(report.Failed), [][2]string{{"a", `plugin "a": first failed`}, {"a", `plugin "a" is loaded twice`}}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("failed = %v, want %v", got, want)
 	}
-	held, err := failing.Hold(hostInfo, jsonObject(), background, GetOptions{})
+	held, err := failing.Hold(background, hostInfo, jsonObject(), GetOptions{})
 	must(t, err)
 	if kind := refStateOf(held).Kind; kind != RefStateFailed {
 		t.Fatalf("hold state = %v, want failed", kind)
@@ -320,7 +320,7 @@ func TestHostLoadMakesAGetBeforeItResolvesWaitForIt(t *testing.T) {
 	defer closeHosts(t, host)
 	got := make(chan *Reference, 1)
 	go func() {
-		ref, err := host.Get(hostInfo, jsonObject(), background, GetOptions{})
+		ref, err := host.Get(background, hostInfo, jsonObject(), GetOptions{})
 		must(t, err)
 		got <- ref
 	}()
@@ -358,7 +358,7 @@ func TestHostStartBarrierResolvesOnceEveryHostLifetimeObjectHadItsFirstOutcome(t
 	}
 	got := make(chan *Reference, 1)
 	go func() {
-		ref, err := host.Get(hostCounter, jsonObject(), background, GetOptions{})
+		ref, err := host.Get(background, hostCounter, jsonObject(), GetOptions{})
 		must(t, err)
 		got <- ref
 	}()
@@ -416,7 +416,7 @@ func TestHostStartBarrierWaitsForALocalBlockersFirstOutcome(t *testing.T) {
 	notDone(t, host, done)
 	close(opened)
 	must(t, <-done)
-	ref, err := host.Hold(hostCodeMode, jsonObject(), background, GetOptions{})
+	ref, err := host.Hold(background, hostCodeMode, jsonObject(), GetOptions{})
 	must(t, err)
 	awaitRefState(t, "live", ref, func(s *RefState) bool { return s.Kind == RefStateLive })
 }
@@ -438,7 +438,7 @@ func TestHostStartBarrierEndsItsPassAtALocalBlockersOwnFailure(t *testing.T) {
 	if got := failures(errs.All()); !reflect.DeepEqual(got, []string{"app.harness: transient"}) {
 		t.Fatalf("failures = %v, want [app.harness: transient]", got)
 	}
-	ref, err := host.Hold(hostCodeMode, jsonObject(), background, GetOptions{})
+	ref, err := host.Hold(background, hostCodeMode, jsonObject(), GetOptions{})
 	must(t, err)
 	state := awaitRefState(t, "failed", ref, func(s *RefState) bool { return s.Kind == RefStateFailed })
 	if state.Cause.Kind != data.FailureWaiting || state.Cause.Error.Message != "waiting for app.harness: app.harness: offline" {
@@ -460,7 +460,7 @@ func TestHostStartBarrierEndsItsPassAtARemoteBlocker(t *testing.T) {
 	if held := parent.Next("hold").(*link.HoldMessage); held.Type != Notes.Name {
 		t.Fatalf("hold type = %s, want %s", held.Type, Notes.Name)
 	}
-	ref, err := host.Hold(hostCodeMode, jsonObject(), background, GetOptions{})
+	ref, err := host.Hold(background, hostCodeMode, jsonObject(), GetOptions{})
 	must(t, err)
 	if kind := refStateOf(ref).Kind; kind != RefStateLoading {
 		t.Fatalf("state = %s, want loading", kind)
@@ -516,7 +516,7 @@ func TestHostStartBarrierWaitsForALocalBlockerParkedWaitingOnOneStillInItsFirstA
 	})
 	done := startLoad(host, HostFacet{Name: "@app/core", Facet: facet})
 	notDone(t, host, done)
-	middle, err := host.Hold(hostMiddle, jsonObject("id", float64(1)), background, GetOptions{})
+	middle, err := host.Hold(background, hostMiddle, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	awaitRefState(t, "middle waiting", middle, func(s *RefState) bool { return s.Kind == RefStateFailed && s.Cause.Kind == data.FailureWaiting })
 	notDone(t, host, done)
@@ -613,7 +613,7 @@ func TestHostStartupAcrossHostsStartsTwoHostsThatWouldHaveDeadlocked(t *testing.
 	defer closeHosts(t, r.Tab, r.Server)
 	r.Transported()
 	r.Transported()
-	bootstrap, err := r.Server.Hold(hostBootstrap, jsonObject(), background, GetOptions{})
+	bootstrap, err := r.Server.Hold(background, hostBootstrap, jsonObject(), GetOptions{})
 	must(t, err)
 	awaitRefState(t, "bootstrap live", bootstrap, func(s *RefState) bool { return s.Kind == RefStateLive })
 	if n := memberOf(t, bootstrap, "n"); n != float64(7) {
@@ -641,7 +641,7 @@ func TestHostStartupAcrossHostsPlacesAHoldArrivingBeforeThePublicationHereNotOve
 		Hold: 0, Type: PlacedNotes.Name, Version: PlacedNotes.Version, Fingerprint: PlacedNotes.Fingerprint, Params: params,
 		Address: link.WireAddress{Kind: "session", Params: jsonObject("id", "S1")},
 	})
-	mine, err := worker.Hold(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+	mine, err := worker.Hold(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 	must(t, err)
 	transported(a, b, c, d)
 	if kind := refStateOf(mine).Kind; kind != RefStateLoading {
@@ -696,7 +696,7 @@ func TestHostStartupAcrossHostsWakesAParkedChainOverThreeHostsInOrder(t *testing
 		},
 	})
 	defer closeHosts(t, r.Tab, r.Server)
-	view, err := r.Tab.Hold(chat, jsonObject("session", "S1"), background, GetOptions{})
+	view, err := r.Tab.Hold(background, chat, jsonObject("session", "S1"), GetOptions{})
 	must(t, err)
 	for range 5 {
 		r.Transported()
@@ -724,16 +724,16 @@ func TestHostGetWaitsForAnUnservedTypeAndAContractMismatchUntilItsReadyTimeout(t
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return serveInfoFactory(h, nil) }, loadedOptions{})
 	defer closeHosts(t, host)
 	quick := GetOptions{ReadyTimeout: new(5 * time.Millisecond)}
-	_, err := host.Get(hostPage, jsonObject("id", float64(1)), background, quick)
+	_, err := host.Get(background, hostPage, jsonObject("id", float64(1)), quick)
 	wantChordError(t, err, data.CodeUnavailable, "", "app.page is not served here")
 	infoV2 := mustContract(declareLocal("app.info", contracts.LocalDeclaration{Params: contracts.Params{}, Version: 2, Members: []contracts.LocalEntry{contracts.Mem("title", contracts.Str())}}))
 	changed := mustContract(declareLocal("app.info", contracts.LocalDeclaration{Params: contracts.Params{}, Version: 1, Members: []contracts.LocalEntry{contracts.Mem("title", contracts.Int())}}))
 	for _, typ := range []*contracts.Contract{infoV2, changed} {
-		_, err := host.Get(typ, jsonObject(), background, quick)
+		_, err := host.Get(background, typ, jsonObject(), quick)
 		wantChordError(t, err, data.CodeContractMismatch, "", "")
 	}
 	same := mustContract(declareLocal("app.info", contracts.LocalDeclaration{Params: contracts.Params{}, Version: 1, Members: []contracts.LocalEntry{contracts.Mem("title", contracts.Str())}}))
-	ref, err := host.Get(same, jsonObject(), background, GetOptions{})
+	ref, err := host.Get(background, same, jsonObject(), GetOptions{})
 	must(t, err)
 	if title := memberOf(t, ref, "title"); title != "t" {
 		t.Fatalf("title = %v, want t", title)
@@ -745,7 +745,7 @@ func TestHostGetChecksParamsWithL1(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return servePage(h, nil) }, loadedOptions{})
 	defer closeHosts(t, host)
 	// A string is not an int.
-	_, err := host.Get(hostPage, jsonObject("id", "x"), background, GetOptions{})
+	_, err := host.Get(background, hostPage, jsonObject("id", "x"), GetOptions{})
 	wantChordError(t, err, data.CodeInvalid, data.ReasonParams, "")
 }
 
@@ -758,7 +758,7 @@ func TestHostDeadlinesOfGetsRejectWithUnavailableWhileNoAttemptHasFailed(t *test
 	defer closeHosts(t, host)
 	waiting := make(chan error, 1)
 	go func() {
-		_, err := host.Get(hostSvc, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: new(500 * time.Millisecond)})
+		_, err := host.Get(background, hostSvc, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: new(500 * time.Millisecond)})
 		waiting <- err
 	}()
 	awaitUnboundOrObject(t, host)
@@ -792,7 +792,7 @@ func TestHostDeadlinesOfGetsIncludeTheWaitForLoad(t *testing.T) {
 	defer closeHosts(t, host)
 	waiting := make(chan error, 1)
 	go func() {
-		_, err := host.Get(hostInfo, jsonObject(), background, GetOptions{ReadyTimeout: new(100 * time.Millisecond)})
+		_, err := host.Get(background, hostInfo, jsonObject(), GetOptions{ReadyTimeout: new(100 * time.Millisecond)})
 		waiting <- err
 	}()
 	awaitUnbound(t, host)
@@ -810,11 +810,11 @@ func TestHostDeadlinesOfGetsArePerGetter(t *testing.T) {
 	early := make(chan error, 1)
 	late := make(chan *Reference, 1)
 	go func() {
-		_, err := host.Get(hostSvc, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: new(100 * time.Millisecond)})
+		_, err := host.Get(background, hostSvc, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: new(100 * time.Millisecond)})
 		early <- err
 	}()
 	go func() {
-		ref, err := host.Get(hostSvc, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: new(time.Second)})
+		ref, err := host.Get(background, hostSvc, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: new(time.Second)})
 		must(t, err)
 		late <- ref
 	}()
@@ -853,6 +853,8 @@ func countBindings(host Host) int {
 var hostOuter = mustContract(declareLocal("app.outer", contracts.LocalDeclaration{Params: contracts.Params{}, Version: 1, Members: []contracts.LocalEntry{contracts.Mem("title", contracts.Str())}}))
 
 // Mirrors "close › ends every object, the last to go live first, and rejects new calls".
+//
+// Pi: packages/chord/test/next/host/host.test.ts:520 (ends every object, the last to go live first, and rejects new calls)
 func TestHostCloseEndsEveryObjectTheLastToGoLiveFirstAndRejectsNewCalls(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		if err := serveInfoFactory(h, nil); err != nil {
@@ -862,9 +864,9 @@ func TestHostCloseEndsEveryObjectTheLastToGoLiveFirstAndRejectsNewCalls(t *testi
 			return readsAs(self, hostInfo, jsonObject(), "title", "title"), nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	outer, err := host.Get(hostOuter, jsonObject(), background, GetOptions{})
+	outer, err := host.Get(background, hostOuter, jsonObject(), GetOptions{})
 	must(t, err)
-	info, err := host.Get(hostInfo, jsonObject(), background, GetOptions{})
+	info, err := host.Get(background, hostInfo, jsonObject(), GetOptions{})
 	must(t, err)
 	outerWatch, err := outer.Member("title").Watch(background)
 	must(t, err)
@@ -894,7 +896,7 @@ func TestHostCloseEndsEveryObjectTheLastToGoLiveFirstAndRejectsNewCalls(t *testi
 	if !<-outerEndedFirst {
 		t.Fatal("info's watch ended before outer's: the last to go live must end first")
 	}
-	_, err = host.Get(hostInfo, jsonObject(), background, GetOptions{})
+	_, err = host.Get(background, hostInfo, jsonObject(), GetOptions{})
 	wantChordError(t, err, data.CodeReleased, data.ReasonClosed, "the host is closed")
 	if _, err := info.Member("title").Value(); err == nil || err.Error() != "app.info: ended" {
 		t.Fatalf("a read after the close = %v, want app.info: ended", err)
@@ -905,13 +907,15 @@ func TestHostCloseEndsEveryObjectTheLastToGoLiveFirstAndRejectsNewCalls(t *testi
 func TestHostCloseFailsAGetWaitingForLoad(t *testing.T) {
 	host := newHost(t, HostOptions{OnError: noopOnError})
 	got := make(chan error, 1)
-	go func() { _, err := host.Get(hostInfo, jsonObject(), background, GetOptions{}); got <- err }()
+	go func() { _, err := host.Get(background, hostInfo, jsonObject(), GetOptions{}); got <- err }()
 	awaitUnbound(t, host)
 	must(t, host.Close(background))
 	wantChordError(t, <-got, data.CodeReleased, data.ReasonClosed, "the host is closed")
 }
 
 // Mirrors "close › ends every object at once: calls fail released before any close ran".
+//
+// Pi: packages/chord/test/next/host/host.test.ts:548 (ends every object at once: calls fail released before any close ran)
 func TestHostCloseEndsEveryObjectAtOnceCallsFailReleasedBeforeAnyCloseRan(t *testing.T) {
 	closing := make(chan struct{})
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -923,7 +927,7 @@ func TestHostCloseEndsEveryObjectAtOnceCallsFailReleasedBeforeAnyCloseRan(t *tes
 			return implementation, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	counter, err := host.Get(hostCounter, jsonObject(), background, GetOptions{})
+	counter, err := host.Get(background, hostCounter, jsonObject(), GetOptions{})
 	must(t, err)
 	closed := make(chan error, 1)
 	go func() { closed <- host.Close(background) }()
@@ -941,7 +945,7 @@ func TestHostCloseAbortsAPendingOpenAndDoesNotWaitForItItsLateValueIsClosedWithC
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return gatedSvc(h, gate, &closes, &opens) }, loadedOptions{})
 	got := make(chan error, 1)
 	go func() {
-		_, err := host.Get(hostSvc, jsonObject("id", float64(1)), background, GetOptions{})
+		_, err := host.Get(background, hostSvc, jsonObject("id", float64(1)), GetOptions{})
 		got <- err
 	}()
 	awaitUnboundOrObject(t, host)
@@ -968,7 +972,7 @@ func TestHostCloseJoinsAnEndingRunningInTheBackground(t *testing.T) {
 			return impl("n", constant(params.Value("id"))), nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	ref, err := host.Get(hostSvc, jsonObject("id", float64(1)), background, GetOptions{})
+	ref, err := host.Get(background, hostSvc, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	ref.Release()
 	closed := make(chan error, 1)
@@ -984,6 +988,8 @@ func TestHostCloseJoinsAnEndingRunningInTheBackground(t *testing.T) {
 }
 
 // Mirrors "close › closes object by object, a dependent before its dependencies".
+//
+// Pi: packages/chord/test/next/host/host.test.ts:605 (closes object by object, a dependent before its dependencies)
 func TestHostCloseClosesObjectByObjectADependentBeforeItsDependencies(t *testing.T) {
 	view := mustContract(declareLocal("app.view", contracts.LocalDeclaration{
 		Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())},
@@ -1013,7 +1019,7 @@ func TestHostCloseClosesObjectByObjectADependentBeforeItsDependencies(t *testing
 		}, ServeOptions{})
 	}, loadedOptions{})
 	for _, id := range []float64{1, 2} {
-		_, err := host.Get(view, jsonObject("id", id), background, GetOptions{})
+		_, err := host.Get(background, view, jsonObject("id", id), GetOptions{})
 		must(t, err)
 	}
 	must(t, host.Close(background))
@@ -1024,6 +1030,8 @@ func TestHostCloseClosesObjectByObjectADependentBeforeItsDependencies(t *testing
 }
 
 // Mirrors "close, its order and its races › returns one closing to every caller: a second close waits for the first".
+//
+// Pi: packages/chord/test/next/host/host.test.ts:646 (returns one closing to every caller: a second close waits for the first)
 func TestHostCloseReturnsOneClosingToEveryCaller(t *testing.T) {
 	closing := make(chan struct{})
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -1081,9 +1089,9 @@ func TestHostCloseTearsDownWhatAFailedDependentHoldsWithCloseAndWaitsForIt(t *te
 		}, ServeOptions{})
 	}, loadedOptions{})
 	// The pair fails on the core (R18) and keeps its references: svc(1), live before the pair, held by it alone.
-	svc, err := host.Get(hostSvc, jsonObject("id", float64(1)), background, GetOptions{})
+	svc, err := host.Get(background, hostSvc, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
-	go func() { _, _ = host.Get(pair, jsonObject("id", float64(1)), background, GetOptions{}) }()
+	go func() { _, _ = host.Get(background, pair, jsonObject("id", float64(1)), GetOptions{}) }()
 	scopeEventually(t, "the pair's object exists", func() bool {
 		h := host.(*chordHost)
 		var n int
@@ -1125,15 +1133,15 @@ func TestHostCloseGoesOnWhenOnErrorThrows(t *testing.T) {
 	})
 	mustLoad(t)(host.Load([]HostFacet{{Name: "a", Facet: facet}}, background))
 	// The background end reports its throwing close; the next instance waits for that teardown.
-	first, err := host.Get(hostSvc, jsonObject("id", float64(1)), background, GetOptions{})
+	first, err := host.Get(background, hostSvc, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	first.Release()
-	again, err := host.Get(hostSvc, jsonObject("id", float64(1)), background, GetOptions{})
+	again, err := host.Get(background, hostSvc, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	if n := memberOf(t, again, "n"); n != float64(1) {
 		t.Fatalf("n = %v, want 1", n)
 	}
-	_, err = host.Get(hostSvc, jsonObject("id", float64(2)), background, GetOptions{})
+	_, err = host.Get(background, hostSvc, jsonObject("id", float64(2)), GetOptions{})
 	wantChordError(t, err, data.CodeUnavailable, "", "app.svc(2): no config")
 }
 
@@ -1148,7 +1156,7 @@ func TestHostCloseWithABackoffWindowRunningEndsAnObjectWaitingForItsWindowAndCle
 	}, loadedOptions{Loop: loop})
 	first := make(chan error, 1)
 	go func() {
-		_, err := host.Get(hostSvc, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: new(100 * time.Millisecond)})
+		_, err := host.Get(background, hostSvc, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: new(100 * time.Millisecond)})
 		first <- err
 	}()
 	awaitUnboundOrObject(t, host)
@@ -1157,7 +1165,7 @@ func TestHostCloseWithABackoffWindowRunningEndsAnObjectWaitingForItsWindowAndCle
 	<-first
 	waiting := make(chan error, 1)
 	go func() {
-		_, err := host.Get(hostSvc, jsonObject("id", float64(1)), background, GetOptions{})
+		_, err := host.Get(background, hostSvc, jsonObject("id", float64(1)), GetOptions{})
 		waiting <- err
 	}()
 	scopeEventually(t, "a getter waits", func() bool { return countBindings(host) >= 1 })
@@ -1191,7 +1199,7 @@ func TestHostGettersOneCancelledWhileAnotherWaitsForTheSameObjectTheOtherGetsIt(
 	for i, ctx := range []context.Context{cancellable, background} {
 		results[i] = make(chan outcome, 1)
 		go func() {
-			ref, err := host.Get(hostPage, jsonObject("id", float64(1)), ctx, GetOptions{})
+			ref, err := host.Get(ctx, hostPage, jsonObject("id", float64(1)), GetOptions{})
 			results[i] <- outcome{ref, err}
 		}()
 		scopeEventually(t, "the getter waits", func() bool { return countBindings(host) >= i+1 })
@@ -1206,7 +1214,7 @@ func TestHostGettersOneCancelledWhileAnotherWaitsForTheSameObjectTheOtherGetsIt(
 	if id := memberOf(t, kept.ref, "id"); id != float64(1) {
 		t.Fatalf("id = %v, want 1", id)
 	}
-	_, err := host.Get(hostPage, jsonObject("id", float64(1)), background, GetOptions{})
+	_, err := host.Get(background, hostPage, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	if got := factories.Load(); got != 1 {
 		t.Fatalf("factory runs = %d, want 1", got)
@@ -1296,7 +1304,7 @@ func TestHostPrincipalsHostGetActsAsTheHostsPrincipalAHostWithoutOneServesNoRemo
 		var factories seenList[string]
 		l := linked(t, serveAll(&factories), linkedOptions{})
 		defer closeHosts(t, l.Client, l.Server)
-		ref, err := l.Server.Get(principalWho, jsonObject("id", float64(1)), background, GetOptions{})
+		ref, err := l.Server.Get(background, principalWho, jsonObject("id", float64(1)), GetOptions{})
 		must(t, err)
 		if who := memberOf(t, ref, "who"); who != "server" {
 			t.Fatalf("who = %v, want server", who)
@@ -1329,12 +1337,12 @@ func TestHostPrincipalsCtxGetActsAsCtxPrincipal(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		l := linked(t, serveAll(&seenList[string]{}), linkedOptions{Child: guestPrincipal("S1")})
 		defer closeHosts(t, l.Client, l.Server)
-		gate, err := l.Client.Get(principalGate, jsonObject(), background, GetOptions{})
+		gate, err := l.Client.Get(background, principalGate, jsonObject(), GetOptions{})
 		must(t, err)
 		if who, err := gate.Call("who", nil, background); err != nil || who != "guest" {
 			t.Fatalf("gate.who = %v, %v; want guest", who, err)
 		}
-		desk, err := l.Server.Get(principalDesk, jsonObject(), background, GetOptions{})
+		desk, err := l.Server.Get(background, principalDesk, jsonObject(), GetOptions{})
 		must(t, err)
 		if who, err := desk.Call("who", nil, background); err != nil || who != "server" {
 			t.Fatalf("desk.who = %v, %v; want server", who, err)
@@ -1347,12 +1355,12 @@ func TestHostPrincipalsSelfGetActsAsARemoteObjectsPrincipalALocalObjectsAsTheHos
 	forEachCodec(t, func(t *testing.T) {
 		l := linked(t, serveAll(&seenList[string]{}), linkedOptions{Child: guestPrincipal("S1")})
 		defer closeHosts(t, l.Client, l.Server)
-		outer, err := l.Client.Get(principalOuter, jsonObject(), background, GetOptions{})
+		outer, err := l.Client.Get(background, principalOuter, jsonObject(), GetOptions{})
 		must(t, err)
 		if who := memberOf(t, outer, "who"); who != "guest" {
 			t.Fatalf("outer.who = %v, want guest", who)
 		}
-		inner, err := l.Server.Get(principalInner, jsonObject("id", float64(4)), background, GetOptions{})
+		inner, err := l.Server.Get(background, principalInner, jsonObject("id", float64(4)), GetOptions{})
 		must(t, err)
 		if who := memberOf(t, inner, "who"); who != "server" {
 			t.Fatalf("inner.who = %v, want server", who)
@@ -1374,7 +1382,7 @@ func TestHostPrincipalsIdentityIncludesThePrincipalKeyEqualKeysShareOneObject(t 
 		a, b := link.MemoryLinkPair()
 		must(t, host.Accept(a, LinkOptions{Principal: guestPrincipal("S2"), Codec: testCodec()}, background))
 		peer := newRawPeer(t, b, rawPeerOptions{})
-		_, err := host.Get(principalWho, jsonObject("id", float64(1)), background, GetOptions{})
+		_, err := host.Get(background, principalWho, jsonObject("id", float64(1)), GetOptions{})
 		must(t, err)
 		params, err := link.JsonPart(jsonObject("id", float64(1)))
 		must(t, err)
@@ -1414,11 +1422,11 @@ func TestHostPrincipalsRemoteObjectsWithEmptyParamsAreNotActivatedByLoadTheyLive
 		if got := factories.all(); len(got) != 0 {
 			t.Fatalf("factories after load = %v, want none", got)
 		}
-		first, err := l.Server.Get(empty, jsonObject(), background, GetOptions{})
+		first, err := l.Server.Get(background, empty, jsonObject(), GetOptions{})
 		must(t, err)
 		first.Release()
 		turn(l.Server)
-		_, err = l.Server.Get(empty, jsonObject(), background, GetOptions{})
+		_, err = l.Server.Get(background, empty, jsonObject(), GetOptions{})
 		must(t, err)
 		if got := factories.all(); !reflect.DeepEqual(got, []string{"server", "server"}) {
 			t.Fatalf("factories = %v, want [server server]", got)
@@ -1431,22 +1439,22 @@ func TestHostPrincipalsALocalTypeNeverCrossesALinkARemoteTypeWithoutAParentLinkW
 	forEachCodec(t, func(t *testing.T) {
 		l := linked(t, func(FacetHost) error { return nil }, linkedOptions{})
 		defer closeHosts(t, l.Client, l.Server)
-		inner, err := l.Client.Hold(principalInner, jsonObject("id", float64(1)), background, GetOptions{})
+		inner, err := l.Client.Hold(background, principalInner, jsonObject("id", float64(1)), GetOptions{})
 		must(t, err)
 		if state := refStateOf(inner); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
 			t.Fatalf("state = %+v, want failed waiting", state)
 		}
-		_, err = l.Client.Get(principalInner, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: new(5 * time.Millisecond)})
+		_, err = l.Client.Get(background, principalInner, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: new(5 * time.Millisecond)})
 		wantChordError(t, err, data.CodeUnavailable, "", "app.inner is not served here")
 		alone := newHost(t, HostOptions{OnError: noopOnError})
 		defer closeHosts(t, alone)
 		mustLoad(t)(alone.Load(nil, background))
-		held, err := alone.Hold(principalWho, jsonObject("id", float64(1)), background, GetOptions{})
+		held, err := alone.Hold(background, principalWho, jsonObject("id", float64(1)), GetOptions{})
 		must(t, err)
 		if kind := refStateOf(held).Kind; kind != RefStateLoading {
 			t.Fatalf("state = %s, want loading", kind)
 		}
-		_, err = alone.Get(principalWho, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: new(10 * time.Millisecond)})
+		_, err = alone.Get(background, principalWho, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: new(10 * time.Millisecond)})
 		wantChordError(t, err, data.CodeUnavailable, "", "app.who(1): did not become live within 10 ms")
 	})
 }
@@ -1469,7 +1477,7 @@ func TestHostPrincipalsCloseClosesTheLinksFirstTheConsumerSeesTheLinkDropNoGone(
 	forEachCodec(t, func(t *testing.T) {
 		l := linked(t, serveAll(&seenList[string]{}), linkedOptions{})
 		defer closeHosts(t, l.Client)
-		who, err := l.Client.Get(principalWho, jsonObject("id", float64(1)), background, GetOptions{})
+		who, err := l.Client.Get(background, principalWho, jsonObject("id", float64(1)), GetOptions{})
 		must(t, err)
 		watch, err := who.Member("who").Watch(background)
 		must(t, err)
@@ -1499,7 +1507,7 @@ func TestHostRegistryEndsAWaitingHostRegistryAtTheCloseWithReleasedClosed(t *tes
 	mustLoad(t)(host.Load(nil, background))
 	outcome := make(chan error, 1)
 	go func() {
-		_, err := host.Registry(absentRegistry, background, GetOptions{ReadyTimeout: new(time.Minute)})
+		_, err := host.Registry(background, absentRegistry, GetOptions{ReadyTimeout: new(time.Minute)})
 		outcome <- err
 	}()
 	scopeEventually(t, "the registry wait started", func() bool { return loop.TimerCount() > 0 })
@@ -1515,7 +1523,7 @@ func TestHostRegistryEndsOneStillWaitingForThePublicationAtTheClose(t *testing.T
 	host := newHost(t, HostOptions{OnError: noopOnError})
 	waiting := make(chan error, 1)
 	go func() {
-		_, err := host.Registry(absentRegistry, background, GetOptions{ReadyTimeout: new(time.Minute)})
+		_, err := host.Registry(background, absentRegistry, GetOptions{ReadyTimeout: new(time.Minute)})
 		waiting <- err
 	}()
 	turn(host)
@@ -1549,7 +1557,7 @@ func TestHostProviderChecksWaitsASameHostRemoteRequestTheProvidersCodePlacesElse
 	defer closeHosts(t, host)
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error { return h.Serve(provider, viewImplementer, ServeOptions{}) })
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/provider", Facet: facet}}, background))
-	ref, err := host.Hold(consumer, jsonObject(), background, GetOptions{})
+	ref, err := host.Hold(background, consumer, jsonObject(), GetOptions{})
 	must(t, err)
 	state := awaitRefState(t, "waiting", ref, func(s *RefState) bool { return s.Kind == RefStateFailed })
 	if state.Cause.Kind != data.FailureWaiting || state.Cause.Error.Code != data.CodeInvalid || state.Cause.Error.Reason != data.ReasonHostAddress {
@@ -1580,7 +1588,7 @@ func TestHostProviderChecksFailsBrokenWhenTheProvidersHostAddressThrows(t *testi
 	down, up := link.MemoryLinkPair()
 	must(t, server.Accept(down, LinkOptions{Principal: serverPrincipal()}, background))
 	must(t, client.Connect(up, LinkOptions{Principal: serverPrincipal()}, background))
-	held, err := client.Hold(consumer, jsonObject(), background, GetOptions{})
+	held, err := client.Hold(background, consumer, jsonObject(), GetOptions{})
 	must(t, err)
 	transported(down, up)
 	state := awaitRefState(t, "broken", held, func(s *RefState) bool { return s.Kind == RefStateFailed })
@@ -1588,7 +1596,7 @@ func TestHostProviderChecksFailsBrokenWhenTheProvidersHostAddressThrows(t *testi
 		t.Fatalf("state = %+v, want failed broken app.remote: provider address bug", state)
 	}
 	// The same throw for a request made on the provider's host fails it broken too.
-	here, err := server.Hold(consumer, jsonObject(), background, GetOptions{})
+	here, err := server.Hold(background, consumer, jsonObject(), GetOptions{})
 	must(t, err)
 	if state := refStateOf(here); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureBroken {
 		t.Fatalf("state = %+v, want failed broken", state)
@@ -1618,13 +1626,13 @@ func TestHostALoadWhoseSetupThrowsLeavesThatPluginOutAndReportsItTheOthersPublis
 		if got := []bool{child.Closed(), parent.Closed()}; !reflect.DeepEqual(got, []bool{false, false}) {
 			t.Fatalf("closed = %v, want [false false]", got)
 		}
-		info, err := host.Get(hostInfo, jsonObject(), background, GetOptions{})
+		info, err := host.Get(background, hostInfo, jsonObject(), GetOptions{})
 		must(t, err)
 		if title := memberOf(t, info, "title"); title != "t" {
 			t.Fatalf("title = %v, want t", title)
 		}
 		// What the left-out plugin would have served waits as any missing type does.
-		page, err := host.Hold(hostPage, jsonObject("id", float64(1)), background, GetOptions{})
+		page, err := host.Hold(background, hostPage, jsonObject("id", float64(1)), GetOptions{})
 		must(t, err)
 		if state := refStateOf(page); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
 			t.Fatalf("hold state = %+v, want failed waiting", state)
@@ -1656,12 +1664,12 @@ func TestHostAcquiringInvalidParamsAtOnceALocalTypeNotServedHereHoldWaitsGetReje
 	host := newHost(t, HostOptions{Address: &address, Principal: serverPrincipal(), OnError: noopOnError, loop: loop})
 	defer closeHosts(t, host)
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { _, err := serveNotes(h, nil); return err })}}, background))
-	if _, err := host.Hold(Notes, jsonObject("session", float64(1)), background, GetOptions{}); err == nil || !strings.Contains(err.Error(), "params") {
+	if _, err := host.Hold(background, Notes, jsonObject("session", float64(1)), GetOptions{}); err == nil || !strings.Contains(err.Error(), "params") {
 		t.Fatalf("hold = %v, want an error naming params", err)
 	}
-	_, err := host.Get(Notes, jsonObject("session", float64(1)), background, GetOptions{})
+	_, err := host.Get(background, Notes, jsonObject("session", float64(1)), GetOptions{})
 	wantChordError(t, err, data.CodeInvalid, data.ReasonParams, "")
-	held, err := host.Hold(hostInfo, jsonObject(), background, GetOptions{})
+	held, err := host.Hold(background, hostInfo, jsonObject(), GetOptions{})
 	must(t, err)
 	state := refStateOf(held)
 	if state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting || state.Cause.Error.Message != "app.info is not served here" || state.RetryAt != nil {
@@ -1669,7 +1677,7 @@ func TestHostAcquiringInvalidParamsAtOnceALocalTypeNotServedHereHoldWaitsGetReje
 	}
 	got := make(chan error, 1)
 	go func() {
-		_, err := host.Get(hostInfo, jsonObject(), background, GetOptions{ReadyTimeout: new(5 * time.Millisecond)})
+		_, err := host.Get(background, hostInfo, jsonObject(), GetOptions{ReadyTimeout: new(5 * time.Millisecond)})
 		got <- err
 	}()
 	// The getter's deadline timer is set in the section that made its reference.
@@ -1683,19 +1691,19 @@ func TestHostAcquiringBeforeLoadResolvedHoldIsLoadingGetWaits(t *testing.T) {
 	loop := newScopeLoop()
 	host := newHost(t, HostOptions{OnError: noopOnError, loop: loop})
 	defer closeHosts(t, host)
-	held, err := host.Hold(hostInfo, jsonObject(), background, GetOptions{})
+	held, err := host.Hold(background, hostInfo, jsonObject(), GetOptions{})
 	must(t, err)
-	unserved, err := host.Hold(hostPage, jsonObject("id", float64(1)), background, GetOptions{})
+	unserved, err := host.Hold(background, hostPage, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	got := make(chan *Reference, 1)
 	go func() {
-		ref, err := host.Get(hostInfo, jsonObject(), background, GetOptions{})
+		ref, err := host.Get(background, hostInfo, jsonObject(), GetOptions{})
 		must(t, err)
 		got <- ref
 	}()
 	refused := make(chan error, 1)
 	go func() {
-		_, err := host.Get(hostPage, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: new(50 * time.Millisecond)})
+		_, err := host.Get(background, hostPage, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: new(50 * time.Millisecond)})
 		refused <- err
 	}()
 	scopeEventually(t, "both getters wait", func() bool { return len(indexedBindings(host)) >= 4 })
@@ -1721,10 +1729,10 @@ func TestHostAcquiringBeforeLoadResolvedHoldIsLoadingGetWaits(t *testing.T) {
 // Mirrors "acquiring › invalid params before load resolved: hold throws and get rejects invalid/params at once (audit, 7a)".
 func TestHostAcquiringInvalidParamsBeforeLoadResolvedHoldThrowsAndGetRejectsInvalidParamsAtOnce(t *testing.T) {
 	host := newHost(t, HostOptions{OnError: noopOnError})
-	if _, err := host.Hold(hostPage, jsonObject("id", "x"), background, GetOptions{}); err == nil || !strings.Contains(err.Error(), "params") {
+	if _, err := host.Hold(background, hostPage, jsonObject("id", "x"), GetOptions{}); err == nil || !strings.Contains(err.Error(), "params") {
 		t.Fatalf("hold = %v, want an error naming params", err)
 	}
-	_, err := host.Get(hostPage, jsonObject("id", "x"), background, GetOptions{})
+	_, err := host.Get(background, hostPage, jsonObject("id", "x"), GetOptions{})
 	wantChordError(t, err, data.CodeInvalid, data.ReasonParams, "")
 	mustLoad(t)(host.Load(nil, background))
 	closeHosts(t, host)
@@ -1734,7 +1742,7 @@ func TestHostAcquiringInvalidParamsBeforeLoadResolvedHoldThrowsAndGetRejectsInva
 func TestHostAcquiringAHoldReleasedBeforeLoadResolvedMakesNothingOnceItDid(t *testing.T) {
 	var factories atomic.Int32
 	host := newHost(t, HostOptions{OnError: noopOnError})
-	ref, err := host.Hold(hostPage, jsonObject("id", float64(1)), background, GetOptions{})
+	ref, err := host.Hold(background, hostPage, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	ref.Release()
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return servePage(h, func() { factories.Add(1) }) })}}, background))
@@ -1752,11 +1760,11 @@ func TestHostAcquiringThroughTransientFailuresHoldIsFailedWithRetryAtThenLoading
 	left.Store(5)
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return flakySvc(h, &left, false) }, loadedOptions{Loop: loop})
 	defer closeHosts(t, host)
-	held, err := host.Hold(hostSvc, jsonObject("id", float64(1)), background, GetOptions{})
+	held, err := host.Hold(background, hostSvc, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	got := make(chan error, 1)
 	go func() {
-		_, err := host.Get(hostSvc, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: new(1500 * time.Millisecond)})
+		_, err := host.Get(background, hostSvc, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: new(1500 * time.Millisecond)})
 		got <- err
 	}()
 	scopeEventually(t, "both references wait", func() bool { return countBindings(host) >= 2 })
@@ -1779,9 +1787,9 @@ func TestHostAcquiringABrokenFailureHoldIsFailedWithoutRetryAtGetRejectsAtOnce(t
 	left.Store(1)
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return flakySvc(h, &left, true) }, loadedOptions{})
 	defer closeHosts(t, host)
-	held, err := host.Hold(hostSvc, jsonObject("id", float64(1)), background, GetOptions{})
+	held, err := host.Hold(background, hostSvc, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
-	_, err = host.Get(hostSvc, jsonObject("id", float64(1)), background, GetOptions{})
+	_, err = host.Get(background, hostSvc, jsonObject("id", float64(1)), GetOptions{})
 	wantChordError(t, err, data.CodeUnavailable, "", "app.svc(1): offline")
 	state := refStateOf(held)
 	if state.Kind != RefStateFailed || state.Cause.Kind != data.FailureBroken || state.RetryAt != nil {
@@ -1796,11 +1804,11 @@ func TestHostAcquiringACancelledContextNoEffectOnAHoldAGetReleasesItsReferenceAn
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return gatedSvc(h, gate, &closes, &opens) }, loadedOptions{})
 	defer closeHosts(t, host)
 	cancellable, cancel := chordctx.WithCancel(background)
-	held, err := host.Hold(hostSvc, jsonObject("id", float64(1)), cancellable, GetOptions{})
+	held, err := host.Hold(cancellable, hostSvc, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	got := make(chan error, 1)
 	go func() {
-		_, err := host.Get(hostSvc, jsonObject("id", float64(2)), cancellable, GetOptions{})
+		_, err := host.Get(cancellable, hostSvc, jsonObject("id", float64(2)), GetOptions{})
 		got <- err
 	}()
 	scopeEventually(t, "the getter waits", func() bool { return countBindings(host) >= 2 })
@@ -1825,11 +1833,11 @@ func TestHostAcquiringHostCloseQueuedCallsRejectReleasedReferencesGoReleasedThei
 	gate := make(chan struct{})
 	defer close(gate)
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return gatedSvc(h, gate, &seenList[string]{}) }, loadedOptions{})
-	local, err := host.Hold(hostSvc, jsonObject("id", float64(1)), background, GetOptions{})
+	local, err := host.Hold(background, hostSvc, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	remoteHost := newHost(t, HostOptions{OnError: noopOnError})
 	mustLoad(t)(remoteHost.Load(nil, background))
-	remote, err := remoteHost.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
+	remote, err := remoteHost.Hold(background, Notes, jsonObject("session", "S1"), GetOptions{})
 	must(t, err)
 	call := startNotesCall(t, remote, "wait")
 	localWatch, err := inSection(host, func() (chord.NativeWatchHandle[*RefState], error) { return local.State().Watch(background) })
@@ -1859,7 +1867,7 @@ func TestHostConnectAfterADropThrowsWhileThePreviousParentLinkIsOpenOrStillClosi
 		queue := newHeldQueue()
 		l := linked(t, func(h FacetHost) error { _, err := serveNotes(h, nil); return err }, linkedOptions{Pair: queue.pair})
 		defer closeHosts(t, l.Client, l.Server)
-		notes, err := l.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+		notes, err := l.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 		must(t, err)
 		next := func() error {
 			end, _ := link.MemoryLinkPair()
@@ -1982,7 +1990,7 @@ func TestHostWhereAHoldGoesSendsAReferenceMadeHereWhoseHostAddressIsAnotherHostO
 	forEachCodec(t, func(t *testing.T) {
 		w := newPlacedWorker(t, true)
 		defer closeHosts(t, w.Host)
-		elsewhere, err := w.Host.Hold(PlacedNotes, jsonObject("session", "S2"), background, GetOptions{})
+		elsewhere, err := w.Host.Hold(background, PlacedNotes, jsonObject("session", "S2"), GetOptions{})
 		must(t, err)
 		hold := w.Parent.Next("hold").(*link.HoldMessage)
 		if hold.Type != PlacedNotes.Name || hold.Address.Kind != "session" || !reflect.DeepEqual(hold.Address.Params, jsonObject("id", "S2")) {
@@ -1991,7 +1999,7 @@ func TestHostWhereAHoldGoesSendsAReferenceMadeHereWhoseHostAddressIsAnotherHostO
 		if kind := refStateOf(elsewhere).Kind; kind != RefStateLoading {
 			t.Fatalf("state = %s, want loading", kind)
 		}
-		own, err := w.Host.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+		own, err := w.Host.Get(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 		must(t, err)
 		if variant, bound, err := own.Variant(); err != nil || !bound || variant != "editor" {
 			t.Fatalf("variant = %q, %v, %v; want editor", variant, bound, err)
@@ -2056,9 +2064,9 @@ func TestHostWhereAHoldGoesFailsAReferenceBrokenWithWhatItsHostAddressThrows(t *
 		client := newHost(t, HostOptions{OnError: noopOnError})
 		defer closeHosts(t, client)
 		mustLoad(t)(client.Load(nil, background))
-		_, err := client.Get(throwing, jsonObject(), background, GetOptions{})
+		_, err := client.Get(background, throwing, jsonObject(), GetOptions{})
 		wantChordError(t, err, data.CodeUnavailable, "", "app.throwing: hostAddress threw")
-		held, err := client.Hold(throwing, jsonObject(), background, GetOptions{})
+		held, err := client.Hold(background, throwing, jsonObject(), GetOptions{})
 		must(t, err)
 		if kind := refStateOf(held).Kind; kind != RefStateFailed {
 			t.Fatalf("state = %s, want failed", kind)
@@ -2518,7 +2526,7 @@ func TestHostReloadTheCommitReplacesAReloadedRegistrysProviderAndItsPluginsContr
 	host := newHost(t, HostOptions{OnError: noopOnError})
 	defer closeHosts(t, host)
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/names", Facet: namesProvider(names, ",")}, {Name: "@app/x", Facet: contributorFacet(names, "x")}}, background))
-	value, err := host.Registry(registries.Registry[any, any](names), background, GetOptions{})
+	value, err := host.Registry(background, registries.Registry[any, any](names), GetOptions{})
 	must(t, err)
 	current := func() (any, error) {
 		var got any
@@ -2575,7 +2583,7 @@ func TestHostReloadRegistriesOlderReadersAReaderOfAnOlderVersionFollowsTheNewPro
 	host := newHost(t, HostOptions{OnError: noopOnError})
 	defer closeHosts(t, host)
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/names", Facet: provider(func(names []string) string { return strings.Join(names, ",") })}}, background))
-	old, err := host.Registry(registries.Registry[any, any](namesV1), background, GetOptions{})
+	old, err := host.Registry(background, registries.Registry[any, any](namesV1), GetOptions{})
 	must(t, err)
 	current := func() (any, error) {
 		var got any

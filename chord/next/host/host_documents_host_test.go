@@ -54,7 +54,7 @@ func reportKinds(errs []HostError) []HostErrorKind {
 func restartableGet(t testing.TB, run *restartableRunner) error {
 	t.Helper()
 	run.Reference.Retry()
-	_, err := run.Host.Get(Restartable, jsonObject("id", 1.0), background, GetOptions{})
+	_, err := run.Host.Get(background, Restartable, jsonObject("id", 1.0), GetOptions{})
 	return err
 }
 
@@ -175,7 +175,7 @@ func TestSlotPersistedSingletonsFailTheActivationBrokenForANewerStoredVersionOrA
 		{edited, "prefs: stored with another schema at version 2 (a schema changed without a bump)"},
 	} {
 		host, errs := loaded(t, serve(each.definition, nil), loadedOptions{Store: chordStore})
-		if _, err := host.Get(StoreRestartable, jsonObject(), background, GetOptions{}); err == nil {
+		if _, err := host.Get(background, StoreRestartable, jsonObject(), GetOptions{}); err == nil {
 			t.Fatalf("get with %q did not fail", each.message)
 		}
 		if got := lastActivationFailure(errs.All()); got != "app.store: "+each.message {
@@ -199,7 +199,7 @@ func TestSlotPersistedSingletonsRefusePersistingWithoutAStableIdentityOrAStoreAn
 			return contracts.Implementation{}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	if _, err := host.Get(Restartable, jsonObject("id", 1.0), background, GetOptions{}); err == nil || !hasText(err.Error(), "persist needs a stable identity") {
+	if _, err := host.Get(background, Restartable, jsonObject("id", 1.0), GetOptions{}); err == nil || !hasText(err.Error(), "persist needs a stable identity") {
 		t.Fatalf("keyed get = %v, want persist needs a stable identity", err)
 	}
 	storeless, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -208,7 +208,7 @@ func TestSlotPersistedSingletonsRefusePersistingWithoutAStableIdentityOrAStoreAn
 			return contracts.Implementation{}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	if _, err := storeless.Get(StoreRestartable, jsonObject(), background, GetOptions{}); err == nil || !hasText(err.Error(), "persist needs a store") {
+	if _, err := storeless.Get(background, StoreRestartable, jsonObject(), GetOptions{}); err == nil || !hasText(err.Error(), "persist needs a store") {
 		t.Fatalf("storeless get = %v, want persist needs a store", err)
 	}
 	chordStore := memoryStore(t)
@@ -221,7 +221,7 @@ func TestSlotPersistedSingletonsRefusePersistingWithoutAStableIdentityOrAStoreAn
 	}, loadedOptions{Store: chordStore})
 	run.Fail()
 	run.Reference.Retry()
-	if _, err := run.Host.Get(StoreRestartable, jsonObject(), background, GetOptions{}); err == nil {
+	if _, err := run.Host.Get(background, StoreRestartable, jsonObject(), GetOptions{}); err == nil {
 		t.Fatal("the flipped persist did not fail")
 	}
 	if got := lastActivationFailure(run.Errors.All()); got != "app.store: prefs: declared in memory, its documents are not" {

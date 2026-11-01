@@ -175,7 +175,7 @@ func TestTableWrites(t *testing.T) {
 			commitChanges(t, store, handle, func(changes *TableChanges) {
 				noError(t, changes.Put(Row{"id": "a", "path": "y"}))
 			})
-			row, err := handle.Get(Row{"id": "a"}, background)
+			row, err := handle.Get(background, Row{"id": "a"})
 			noError(t, err)
 			nexttest.RequireJSONEqual(t, row, wantJSON(t, `{"id":"a","path":"y","hits":0}`))
 		})
@@ -214,7 +214,7 @@ func TestTableWrites(t *testing.T) {
 				{"kind":"deleteWhere","table":"app.store:edits","where":{"eq":["path","b/4"]},"count":1}
 			]`
 			nexttest.RequireJSONEqual(t, writesJSON(t, commits[2].Writes), wantJSON(t, want))
-			page, err := handle.Page(NewQuery(writesEditsDef(t, handle)), 10, background, PageOptions{})
+			page, err := handle.Page(background, NewQuery(writesEditsDef(t, handle)), 10, PageOptions{})
 			noError(t, err)
 			var paths []string
 			for _, row := range page.Items {

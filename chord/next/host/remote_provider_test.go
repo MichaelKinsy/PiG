@@ -463,7 +463,7 @@ func TestProviderOneMessagePerLinkPerCommit(t *testing.T) {
 				s.Peer.Next("bound")
 			}
 			meter := nexttest.Metered(t)
-			store, err := s.Server.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			store, err := s.Server.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			_, err = store.Call("add", jsonObject("text", "a"), meter.Context)
 			must(t, err)
@@ -674,7 +674,7 @@ func TestProviderRaces(t *testing.T) {
 			provHold(t, s.Peer, 0, specOf(Notes), jsonObject("session", "S1"))
 			adding := make(chan error, 1)
 			go func() {
-				store, err := s.Server.Get(NoteStore, jsonObject("session", "S1"), background, GetOptions{})
+				store, err := s.Server.Get(background, NoteStore, jsonObject("session", "S1"), GetOptions{})
 				if err == nil {
 					_, err = store.Call("add", jsonObject("text", "a"), background)
 				}
@@ -741,9 +741,9 @@ func TestProviderRaces(t *testing.T) {
 						},
 						Methods: map[string]contracts.MethodFunction{
 							"bump": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-								_, err := n.Change(func(draft *delta.Object) (any, error) {
+								_, err := n.Change(ctx, func(draft *delta.Object) (any, error) {
 									return nil, draft.Set("n", draft.Get("n").(float64)+1)
-								}, ctx)
+								})
 								return nil, err
 							},
 						},
@@ -822,7 +822,7 @@ func serveGrid(host FacetHost) error {
 				"fill": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					fill := args.(*delta.JsonObject)
 					count, value := int(fill.Value("n").(float64)), fill.Value("value")
-					_, err := grid.Change(func(draft *delta.Object) (any, error) {
+					_, err := grid.Change(ctx, func(draft *delta.Object) (any, error) {
 						cells := draft.Object("cells")
 						for cell := range count {
 							if err := cells.Set("c"+strconv.Itoa(cell), value); err != nil {
@@ -830,7 +830,7 @@ func serveGrid(host FacetHost) error {
 							}
 						}
 						return nil, nil
-					}, ctx)
+					})
 					return nil, err
 				},
 			},
@@ -1143,7 +1143,7 @@ func TestProviderOrigins(t *testing.T) {
 						},
 						Methods: map[string]contracts.MethodFunction{
 							"set": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-								_, err := n.Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", args) }, ctx)
+								_, err := n.Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", args) })
 								return nil, err
 							},
 						},

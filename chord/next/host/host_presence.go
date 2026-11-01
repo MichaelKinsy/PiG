@@ -28,6 +28,17 @@ type Presence struct {
 	Incarnation string
 }
 
+// entry is the JSON object the list publishes for p: {params, principal?, incarnation}, the principal only when there is one.
+func (p Presence) entry() *delta.JsonObject {
+	entry := delta.NewJsonObject(3)
+	entry.Set("params", p.Params)
+	if p.Principal != nil {
+		entry.Set("principal", p.Principal)
+	}
+	entry.Set("incarnation", p.Incarnation)
+	return entry
+}
+
 // holderEntry is one entry of a references' map: the holder's entry in the order the holders were first recorded.
 type holderEntry struct {
 	holder     holder
@@ -111,12 +122,11 @@ func (r *references) remove(holders []holder, ctx context.Context) {
 // record records holder without a batch (the list being made) and returns its entry.
 func (r *references) record(object *chordObject, holder holder) *delta.JsonObject {
 	from := holder.caller()
-	entry := delta.NewJsonObject(3)
-	entry.Set("params", object.params)
-	if object.served.contract.Kind == contracts.KindRemote && from.principal != nil {
-		entry.Set("principal", from.principal)
+	presence := Presence{Params: object.params, Incarnation: from.incarnation}
+	if object.served.contract.Kind == contracts.KindRemote {
+		presence.Principal = from.principal
 	}
-	entry.Set("incarnation", from.incarnation)
+	entry := presence.entry()
 	if node := r.byHolder[holder]; node != nil {
 		// Map.set of a key already there keeps its place.
 		node.entry = entry

@@ -29,7 +29,8 @@
 //   - TypeScript type-level machinery (StateDefinition's `T`, `K` and `P` parameters, HandleOf, Draft<T>, the overloads
 //     of `draft`/`retire`, the table type parameters of Tx) is designed out: a definition's documents are
 //     *JsonObject, a draft is *delta.Object, and the Go form of an overload is an optional key argument.
-//   - A callback that throws returns an error; Tx callbacks are func(*Transaction) (any, error).
+//   - A callback that throws returns an error; an object's `self.tx` callbacks are func(Tx) (any, error)
+//     (Tx the interface), the object's runtime Documents.Tx runs func(*Transaction) (any, error).
 //   - The types `tx.start` takes from `jobs/` (JobHandle, Run, StartOptions) are interfaces owned by this package, which
 //     the jobs satisfy structurally, so documents imports nothing of them.
 package documents

@@ -132,3 +132,28 @@ func TestBuildersAreDeterministicForTagUnions(t *testing.T) {
 		{Path: "/kind", Keyword: "anyOf", Message: `expected one of ["text","image"]`},
 	})
 }
+
+// Obj follows JavaScript's own-key order, as Pi's obj() does when it reads Object.entries(properties): array-index names first in ascending order, then the others as declared; a name declared twice keeps its first position and its last declaration.
+func TestObjUsesOwnKeyOrder(t *testing.T) {
+	s := schema.Obj(schema.Properties{
+		schema.Prop("b", schema.Str()),
+		schema.Prop("10", schema.Int()),
+		schema.Opt("a", schema.Str()),
+		schema.Prop("2", schema.Int()),
+	})
+	text, err := chordjson.Marshal(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = `{"type":"object","properties":{"2":{"type":"integer"},"10":{"type":"integer"},"b":{"type":"string"},"a":{"type":"string"}},"required":["2","10","b"],"additionalProperties":false}`
+	if string(text) != want {
+		t.Fatalf("got %s\nwant %s", text, want)
+	}
+	text, err = chordjson.Marshal(schema.Obj(schema.Properties{schema.Prop("a", schema.Str()), schema.Prop("b", schema.Str()), schema.Opt("a", schema.Int())}, schema.Open(), schema.Description("d")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(text) != `{"type":"object","properties":{"a":{"type":"integer"},"b":{"type":"string"}},"required":["b"],"description":"d"}` {
+		t.Fatalf("duplicate name: %s", text)
+	}
+}

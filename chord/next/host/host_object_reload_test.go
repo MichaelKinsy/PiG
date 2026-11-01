@@ -691,7 +691,7 @@ func TestReloadThePureSwapStartsAWritableAtItsNewInitialValueAndReplacesTheContr
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
 	defer closeHosts(t, host)
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: app("a")}, {Name: "@test/tools", Facet: registry}}, background))
-	value, err := host.Registry(registries.Registry[any, any](tools), background, GetOptions{})
+	value, err := host.Registry(background, registries.Registry[any, any](tools), GetOptions{})
 	must(t, err)
 	read := func() any {
 		var current any
@@ -732,7 +732,7 @@ func TestReloadAStuckRoutineCallPastTheHandoverAnOldRoutineCallStuckPastTheHando
 				}
 				return Awaiting(ctx.(*callContext).host.loop(), func() error {
 					<-stuck
-					_, err := self.Tx(func(tx *documents.Transaction) (any, error) {
+					_, err := self.Tx(func(tx documents.Tx) (any, error) {
 						draft, err := tx.Draft(doc.s)
 						if err != nil {
 							return nil, err

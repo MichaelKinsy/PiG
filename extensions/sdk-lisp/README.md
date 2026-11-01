@@ -36,7 +36,7 @@ class: `session-` / `sm-` SessionManager, `settings-` SettingsManager, `registry
 
 | Area | Files |
 |---|---|
-| registration, events, tool results, tool options (exposure, loadout, prepare/refine arguments, constrained sampling, renderers), commands, flags | `extension`, `context`, `context-extra`, `dispatch`, `tool-schema`, `tool-order` |
+| registration, events, tool results, tool options (exposure, loadout, prepare arguments, constrained sampling, renderers), commands, flags | `extension`, `context`, `context-extra`, `dispatch`, `tool-schema`, `tool-order` |
 | the context: UI dialogs, status, widgets, footer/header, theme, working indicator, exec (with a signal and a `:max-buffer` that sets `exec-result-truncated`), compact, session and model controls, nested tool calls | `context`, `context-extra`, `widgets`, `theme` |
 | component kit, `ui.custom`, overlays, mouse (`make-custom-component` takes `:captures-viewport-input`, a boolean or a function of no arguments read at each frame) | `kit`, `ui-custom`, `overlay` |
 | editor components (`make-editor-component` takes `:captures-viewport-input`), autocomplete providers, terminal input | `editor-component`, `autocomplete`, `terminal-input` |

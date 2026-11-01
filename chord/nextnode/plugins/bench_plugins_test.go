@@ -243,7 +243,7 @@ func benchStart(b *testing.B, cache string, start func(core CoreFacet, address *
 	}
 	b.Cleanup(func() { _ = node.Close(background) })
 	parent := serverFor(b, workerRoute(node))
-	ref, err := parent.Get(probeContract, delta.NewJsonObject(0), background, host.GetOptions{})
+	ref, err := parent.Get(background, probeContract, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		b.Fatal(err)
 	}

@@ -65,7 +65,7 @@ func benchReloadFacet(index, code int, native bool) Facet {
 			}), "label", constant(float64(code)))
 			implementation.Members.Methods = map[string]contracts.MethodFunction{
 				"bump": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					return counter.Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", 1.0) }, ctx)
+					return counter.Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", 1.0) })
 				},
 			}
 			return implementation, nil

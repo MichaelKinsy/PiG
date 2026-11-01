@@ -93,7 +93,7 @@ type txResult struct {
 }
 
 // goTx starts a transaction of attempt a on its own goroutine, as Pi starts a promise it awaits later.
-func goTx(a *attempt, fn func(tx *Transaction) (any, error), ctx context.Context) <-chan txResult {
+func goTx(a *attempt, fn func(tx Tx) (any, error), ctx context.Context) <-chan txResult {
 	done := make(chan txResult, 1)
 	go func() {
 		value, err := a.Tx(fn, ctx)
@@ -135,9 +135,9 @@ func commitQueued(o *object) bool {
 	return queued
 }
 
-func pendingOf(o *object, tx *Transaction) int {
+func pendingOf(o *object, tx Tx) int {
 	var pending int
-	o.Do(func() { pending = tx.pending })
+	o.Do(func() { pending = tx.(*Transaction).pending })
 	return pending
 }
 
@@ -323,7 +323,7 @@ func TestTransactionsRunOneAtATimePerObjectAndReturnWhatTheirCallbackReturns(t *
 	push := func(text string) { mu.Lock(); order = append(order, text); mu.Unlock() }
 	gate := make(chan struct{})
 	entered := make(chan struct{})
-	first := goTx(one.attempt, func(tx *Transaction) (any, error) {
+	first := goTx(one.attempt, func(tx Tx) (any, error) {
 		push("first")
 		close(entered)
 		<-gate
@@ -336,7 +336,7 @@ func TestTransactionsRunOneAtATimePerObjectAndReturnWhatTheirCallbackReturns(t *
 		return "one", nil
 	}, background)
 	<-entered
-	second := goTx(one.attempt, func(tx *Transaction) (any, error) {
+	second := goTx(one.attempt, func(tx Tx) (any, error) {
 		push(fmt.Sprintf("second sees %v", valueOf(t, one.o, one.a).Value("n")))
 		draft, err := tx.Draft(one.a)
 		if err != nil {
@@ -361,7 +361,7 @@ func TestTransactionsRunOneAtATimePerObjectAndReturnWhatTheirCallbackReturns(t *
 
 func TestTransactionsGiveTheSameDraftForTheSameDocument(t *testing.T) {
 	one, _ := objects(t, nil)
-	_, err := one.attempt.Tx(func(tx *Transaction) (any, error) {
+	_, err := one.attempt.Tx(func(tx Tx) (any, error) {
 		first, err := tx.Draft(one.a)
 		if err != nil {
 			return nil, err
@@ -383,7 +383,7 @@ func TestTransactionsGiveTheSameDraftForTheSameDocument(t *testing.T) {
 // committed.
 func TestTransactionsSettleAWarmDraftAtOnce(t *testing.T) {
 	one, _ := objects(t, nil)
-	_, err := one.attempt.Tx(func(tx *Transaction) (any, error) {
+	_, err := one.attempt.Tx(func(tx Tx) (any, error) {
 		draft, err := tx.Draft(one.a)
 		if err != nil {
 			return nil, err
@@ -400,7 +400,7 @@ func TestTransactionsSettleAWarmDraftAtOnce(t *testing.T) {
 
 func TestTransactionsRejectADraftOfAHandleATransactionCannotUseInsteadOfThrowing(t *testing.T) {
 	one, two := objects(t, nil)
-	_, err := one.attempt.Tx(func(tx *Transaction) (any, error) {
+	_, err := one.attempt.Tx(func(tx Tx) (any, error) {
 		draft, err := tx.Draft(two.a)
 		if draft != nil {
 			t.Fatal("a draft of another object's document")
@@ -417,7 +417,7 @@ func TestTransactionsCommitNothingWhenNothingChanged(t *testing.T) {
 	frames := one.watchSum(t)
 	value := valueOf(t, one.o, one.a)
 	computes := meter.Counts()["chord.derive.computes"]
-	_, err := one.attempt.Tx(func(tx *Transaction) (any, error) {
+	_, err := one.attempt.Tx(func(tx Tx) (any, error) {
 		draft, err := tx.Draft(one.a)
 		if err != nil {
 			return nil, err
@@ -440,18 +440,18 @@ func TestTransactionsCommitNothingWhenNothingChanged(t *testing.T) {
 
 func TestTransactionsDiscardEverythingOnAThrowAndOnAnAbortedContext(t *testing.T) {
 	one, _ := objects(t, nil)
-	change := func(tx *Transaction) {
+	change := func(tx Tx) {
 		draft, err := tx.Draft(one.a)
 		requireNoError(t, err)
 		txSetN(t, draft, 5)
 	}
-	_, err := one.attempt.Tx(func(tx *Transaction) (any, error) {
+	_, err := one.attempt.Tx(func(tx Tx) (any, error) {
 		change(tx)
 		return nil, errors.New("no")
 	}, background)
 	requireErrorText(t, err, "no")
 	cancelled, cancel := chordctx.WithCancel(background)
-	_, err = one.attempt.Tx(func(tx *Transaction) (any, error) {
+	_, err = one.attempt.Tx(func(tx Tx) (any, error) {
 		change(tx)
 		cancel(errors.New("cancelled"))
 		return nil, nil
@@ -463,7 +463,7 @@ func TestTransactionsDiscardEverythingOnAThrowAndOnAnAbortedContext(t *testing.T
 func TestTransactionsRevokeTheirDraftsWhenTheySettle(t *testing.T) {
 	one, _ := objects(t, nil)
 	var kept *delta.Object
-	_, err := one.attempt.Tx(func(tx *Transaction) (any, error) {
+	_, err := one.attempt.Tx(func(tx Tx) (any, error) {
 		draft, err := tx.Draft(one.a)
 		if err != nil {
 			return nil, err
@@ -474,7 +474,7 @@ func TestTransactionsRevokeTheirDraftsWhenTheySettle(t *testing.T) {
 	}, background)
 	requireNoError(t, err)
 	requirePanicRevoked(t, func() { kept.Get("n") })
-	settled, err := one.attempt.Tx(func(tx *Transaction) (any, error) { return tx, nil }, background)
+	settled, err := one.attempt.Tx(func(tx Tx) (any, error) { return tx, nil }, background)
 	requireNoError(t, err)
 	_, err = settled.(*Transaction).Draft(one.a)
 	requireErrorText(t, err, "app.owner(1): the transaction has settled")
@@ -482,7 +482,7 @@ func TestTransactionsRevokeTheirDraftsWhenTheySettle(t *testing.T) {
 
 func TestTransactionsRefuseAnotherObjectsDocuments(t *testing.T) {
 	one, two := objects(t, nil)
-	_, err := one.attempt.Tx(func(tx *Transaction) (any, error) { return tx.Draft(two.a) }, background)
+	_, err := one.attempt.Tx(func(tx Tx) (any, error) { return tx.Draft(two.a) }, background)
 	requireErrorText(t, err, "app.owner(1): a transaction drafts only its own object's documents")
 }
 
@@ -491,7 +491,7 @@ func TestTransactionsCommitTheObjectsDocumentsInOneBatchOneComputeOneFrame(t *te
 	one, _ := objects(t, meter)
 	frames := one.watchSum(t)
 	computes := meter.Counts()["chord.derive.computes"]
-	_, err := one.attempt.Tx(func(tx *Transaction) (any, error) {
+	_, err := one.attempt.Tx(func(tx Tx) (any, error) {
 		a, err := tx.Draft(one.a)
 		if err != nil {
 			return nil, err
@@ -516,9 +516,12 @@ func TestTransactionsCommitTheObjectsDocumentsInOneBatchOneComputeOneFrame(t *te
 	}
 }
 
+// TestTransactionsCommitTheirOtherChangesWhenTheyRetireAnAbsentDocument runs `it("commit their other changes when
+// they retire an absent document (R13)")` of packages/chord/test/next/documents/transaction.test.ts:177;
+// `tx.retire(one.b)` is packages/chord/test/next/documents/transaction.test.ts:180, Tx.Retire.
 func TestTransactionsCommitTheirOtherChangesWhenTheyRetireAnAbsentDocument(t *testing.T) {
 	one, _ := objects(t, nil)
-	_, err := one.attempt.Tx(func(tx *Transaction) (any, error) {
+	_, err := one.attempt.Tx(func(tx Tx) (any, error) {
 		if err := tx.Retire(one.b); err != nil {
 			return nil, err
 		}
@@ -534,12 +537,15 @@ func TestTransactionsCommitTheirOtherChangesWhenTheyRetireAnAbsentDocument(t *te
 	txRequireValue(t, one.o, one.b, obj("s", ""))
 }
 
+// TestTransactionsDraftARetiredDocumentAnewWatchesGetARootReplacement runs `it("draft a retired document anew:
+// watches get a root replacement")` of packages/chord/test/next/documents/transaction.test.ts:186; `tx.retire(one.a)`
+// is packages/chord/test/next/documents/transaction.test.ts:193, Tx.Retire.
 func TestTransactionsDraftARetiredDocumentAnewWatchesGetARootReplacement(t *testing.T) {
 	one, _ := objects(t, nil)
-	_, err := one.a.Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(3)) }, background)
+	_, err := one.a.Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(3)) })
 	requireNoError(t, err)
 	frames := nexttest.FramesOf(watchOf(t, one.o, one.a))
-	_, err = one.attempt.Tx(func(tx *Transaction) (any, error) {
+	_, err = one.attempt.Tx(func(tx Tx) (any, error) {
 		if err := tx.Retire(one.a); err != nil {
 			return nil, err
 		}
@@ -564,7 +570,7 @@ func TestTheInMemoryChangesCostSettlesWithinFiveHops(t *testing.T) {
 	one := ownedObject(t, 1, nil, &micro)
 	for range 3 {
 		before := micro.Load()
-		_, err := one.a.Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", nOf(draft)+1) }, background)
+		_, err := one.a.Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", nOf(draft)+1) })
 		requireNoError(t, err)
 		if hops := micro.Load() - before; hops > 5 {
 			t.Fatalf("an in-memory change took %d hops, want at most 5", hops)
@@ -598,11 +604,11 @@ func (r *recorder) Adopt() error {
 func (r *recorder) Committed() { r.log("committed") }
 func (r *recorder) Discarded() { r.log("discarded") }
 
-func stage(t *testing.T, o *object, tx *Transaction, owner any, make func() Staged) Staged {
+func stage(t *testing.T, o *object, tx Tx, owner any, make func() Staged) Staged {
 	t.Helper()
 	var staged Staged
 	var err error
-	o.Do(func() { staged, err = tx.Stage(owner, make) })
+	o.Do(func() { staged, err = tx.(*Transaction).Stage(owner, make) })
 	requireNoError(t, err)
 	return staged
 }
@@ -612,7 +618,7 @@ func TestStagedChangesAdoptInTheCommitStepWithTheDocumentsThenHearOfTheCommitOnc
 	var mu sync.Mutex
 	var events []string
 	owner := new(int)
-	_, err := one.attempt.Tx(func(tx *Transaction) (any, error) {
+	_, err := one.attempt.Tx(func(tx Tx) (any, error) {
 		draft, err := tx.Draft(one.a)
 		if err != nil {
 			return nil, err
@@ -637,12 +643,12 @@ func TestStagedChangesAdoptWithoutAnyDocumentChangeAndHearOfADiscardInsteadWhenT
 	var mu sync.Mutex
 	var events []string
 	make := func() Staged { return &recorder{&mu, &events, one.o, one.a} }
-	_, err := one.attempt.Tx(func(tx *Transaction) (any, error) {
+	_, err := one.attempt.Tx(func(tx Tx) (any, error) {
 		stage(t, one.o, tx, new(int), make)
 		return nil, nil
 	}, background)
 	requireNoError(t, err)
-	_, err = one.attempt.Tx(func(tx *Transaction) (any, error) {
+	_, err = one.attempt.Tx(func(tx Tx) (any, error) {
 		stage(t, one.o, tx, new(int), make)
 		return nil, errors.New("no")
 	}, background)
@@ -669,7 +675,7 @@ func TestStagedChangesHearOfTheCommitInTheSectionThatReleasesTheLineBeforeAQueue
 	entered := make(chan holding, 1)
 	proceed := make(chan struct{})
 	first := ksGo(func() (*JsonObject, error) {
-		_, err := one.attempt.Tx(func(tx *Transaction) (any, error) {
+		_, err := one.attempt.Tx(func(tx Tx) (any, error) {
 			line := one.o.documents.Line()
 			line.mu.Lock()
 			released := line.tail
@@ -693,7 +699,7 @@ func TestStagedChangesHearOfTheCommitInTheSectionThatReleasesTheLineBeforeAQueue
 	}}
 	one.o.loop.stall.Store(stall)
 	second := ksGo(func() (*JsonObject, error) {
-		_, err := one.attempt.Tx(func(*Transaction) (any, error) {
+		_, err := one.attempt.Tx(func(Tx) (any, error) {
 			log.log("second transaction")
 			return nil, nil
 		}, background)
@@ -751,13 +757,13 @@ func TestTheSealFenceDiscardsTheTransactionHoldingTheLineAtTheSealTheLineIsFreeI
 	gate := make(chan struct{})
 	entered := make(chan struct{})
 	var held *Transaction
-	first := goTx(s.attempts[0], func(tx *Transaction) (any, error) {
+	first := goTx(s.attempts[0], func(tx Tx) (any, error) {
 		draft, err := tx.Draft(s.handles[0])
 		if err != nil {
 			return nil, err
 		}
 		txSetN(t, draft, 1)
-		held = tx
+		held = tx.(*Transaction)
 		close(entered)
 		<-gate
 		return "late", nil
@@ -765,7 +771,7 @@ func TestTheSealFenceDiscardsTheTransactionHoldingTheLineAtTheSealTheLineIsFreeI
 	<-entered
 	s.restart(t)
 	// The next attempt's transaction runs while the cut one's callback still waits.
-	_, err := s.handles[1].Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(2)) }, background)
+	_, err := s.handles[1].Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(2)) })
 	requireNoError(t, err)
 	close(gate)
 	requireReleased(t, awaitTx(t, first).err, "")
@@ -778,7 +784,7 @@ func TestTheSealFenceRefusesASealedAttemptsTransactionsWaitingForTheLineAndEvery
 	s := newSealable(t)
 	gate := make(chan struct{})
 	entered := make(chan struct{})
-	first := goTx(s.attempts[0], func(tx *Transaction) (any, error) {
+	first := goTx(s.attempts[0], func(tx Tx) (any, error) {
 		close(entered)
 		<-gate
 		return nil, nil
@@ -786,13 +792,13 @@ func TestTheSealFenceRefusesASealedAttemptsTransactionsWaitingForTheLineAndEvery
 	<-entered
 	queued := make(chan txResult, 1)
 	go func() {
-		value, err := s.handles[0].Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(1)) }, background)
+		value, err := s.handles[0].Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(1)) })
 		queued <- txResult{value, err}
 	}()
 	waitFor(t, "the change queued on the line", func() bool { return waitingOnLine(s.o) == 1 })
 	s.fail()
 	requireReleased(t, awaitTx(t, queued).err, "")
-	_, err := s.handles[0].Change(func(*delta.Object) (any, error) { return nil, nil }, background)
+	_, err := s.handles[0].Change(background, func(*delta.Object) (any, error) { return nil, nil })
 	requireReleased(t, err, "")
 	txRequireValue(t, s.o, s.handles[0], obj("n", float64(0)))
 	close(gate)
@@ -876,7 +882,7 @@ func rowOf(id string, at int64) store.Row { return store.Row{"id": id, "at": at}
 
 func (s *storedObject) tableRow(t *testing.T, handle *store.TableHandle, id string) store.Row {
 	t.Helper()
-	row, err := handle.Get(store.Row{"id": id}, background)
+	row, err := handle.Get(background, store.Row{"id": id})
 	requireNoError(t, err)
 	return row
 }
@@ -928,6 +934,10 @@ func holdBackend(t *testing.T, st *store.ChordStore) (release func()) {
 	}
 }
 
+// TestTablesInATransactionCommitRowsAndDocumentsInOneStepTheDocumentsAdoptInsideItOneSeq runs `it("commit rows and
+// documents in one step: the documents adopt inside it, one seq")` of
+// packages/chord/test/next/documents/transaction.test.ts:336; `tx.put(edits, ...)` is
+// packages/chord/test/next/documents/transaction.test.ts:346, Tx.Put.
 func TestTablesInATransactionCommitRowsAndDocumentsInOneStepTheDocumentsAdoptInsideItOneSeq(t *testing.T) {
 	s := storedOn(t, nil, false, nil)
 	watch := watchOf(t, s.o, s.n[0])
@@ -938,7 +948,7 @@ func TestTablesInATransactionCommitRowsAndDocumentsInOneStepTheDocumentsAdoptIns
 	})
 	s.o.delivered()
 	before := s.store.LastSeq()
-	_, err := s.self().Tx(func(tx *Transaction) (any, error) {
+	_, err := s.self().Tx(func(tx Tx) (any, error) {
 		if err := tx.Put(s.edits[0], rowOf("e1", 1)); err != nil {
 			return nil, err
 		}
@@ -970,7 +980,7 @@ func TestTablesInATransactionInMemoryOnlyCommitsTakeNoStepAndNoSeq(t *testing.T)
 	s := storedOn(t, nil, false, nil)
 	commits := meter.Counts()["chord.store.commits"]
 	seq := s.store.LastSeq()
-	_, err := s.self().Tx(func(tx *Transaction) (any, error) {
+	_, err := s.self().Tx(func(tx Tx) (any, error) {
 		draft, err := tx.Draft(s.n[0])
 		if err != nil {
 			return nil, err
@@ -987,12 +997,19 @@ func TestTablesInATransactionInMemoryOnlyCommitsTakeNoStepAndNoSeq(t *testing.T)
 	}
 }
 
+// TestTablesInATransactionReadCommittedRowsWithPageAndRowsOverlayOwnWritesWithGet runs `it("read committed rows with
+// tx.page and tx.rows, overlay own writes with tx.get")` of
+// packages/chord/test/next/documents/transaction.test.ts:373: `tx.put`
+// (packages/chord/test/next/documents/transaction.test.ts:377), `tx.page`
+// (packages/chord/test/next/documents/transaction.test.ts:378), `tx.rows`
+// (packages/chord/test/next/documents/transaction.test.ts:380) and `tx.get`
+// (packages/chord/test/next/documents/transaction.test.ts:382), Tx.Put, Page, Rows and Get.
 func TestTablesInATransactionReadCommittedRowsWithPageAndRowsOverlayOwnWritesWithGet(t *testing.T) {
 	s := storedOn(t, nil, false, nil)
 	edits := s.edits[0]
-	_, err := s.self().Tx(func(tx *Transaction) (any, error) { return nil, tx.Put(edits, rowOf("e1", 1)) }, background)
+	_, err := s.self().Tx(func(tx Tx) (any, error) { return nil, tx.Put(edits, rowOf("e1", 1)) }, background)
 	requireNoError(t, err)
-	_, err = s.self().Tx(func(tx *Transaction) (any, error) {
+	_, err = s.self().Tx(func(tx Tx) (any, error) {
 		requireNoError(t, tx.Put(edits, rowOf("e2", 2)))
 		page, err := tx.Page(edits, store.NewQuery(txEdits), 10)
 		requireNoError(t, err)
@@ -1024,7 +1041,7 @@ func TestTablesInATransactionReadCommittedRowsWithPageAndRowsOverlayOwnWritesWit
 		return nil, nil
 	}, background)
 	requireNoError(t, err)
-	count, err := edits.Count(store.NewQuery(txEdits), background)
+	count, err := edits.Count(background, store.NewQuery(txEdits))
 	requireNoError(t, err)
 	if count != 2 {
 		t.Fatalf("count = %d, want 2", count)
@@ -1035,13 +1052,13 @@ func TestTablesInATransactionWriteNothingOnAThrowOrAnAbortAndRefuseACallbackThat
 	s := storedOn(t, nil, false, nil)
 	edits := s.edits[0]
 	seq := s.store.LastSeq()
-	_, err := s.self().Tx(func(tx *Transaction) (any, error) {
+	_, err := s.self().Tx(func(tx Tx) (any, error) {
 		requireNoError(t, tx.Put(edits, rowOf("e1", 1)))
 		return nil, errors.New("no")
 	}, background)
 	requireErrorText(t, err, "no")
 	cancelled, cancel := chordctx.WithCancel(background)
-	_, err = s.self().Tx(func(tx *Transaction) (any, error) {
+	_, err = s.self().Tx(func(tx Tx) (any, error) {
 		requireNoError(t, tx.Put(edits, rowOf("e1", 1)))
 		cancel(nil)
 		return nil, nil
@@ -1052,7 +1069,7 @@ func TestTablesInATransactionWriteNothingOnAThrowOrAnAbortAndRefuseACallbackThat
 	// A read the callback did not await: the backend is held, so the read is underway when the callback returns.
 	release := holdBackend(t, s.store)
 	var read sync.WaitGroup
-	_, err = s.self().Tx(func(tx *Transaction) (any, error) {
+	_, err = s.self().Tx(func(tx Tx) (any, error) {
 		read.Go(func() {
 			_, _ = tx.Get(edits, store.Row{"id": "e1"})
 		})
@@ -1065,17 +1082,20 @@ func TestTablesInATransactionWriteNothingOnAThrowOrAnAbortAndRefuseACallbackThat
 	if got := s.store.LastSeq(); got != seq {
 		t.Fatalf("lastSeq = %d, want %d", got, seq)
 	}
-	count, err := edits.Count(store.NewQuery(txEdits), background)
+	count, err := edits.Count(background, store.NewQuery(txEdits))
 	requireNoError(t, err)
 	if count != 0 {
 		t.Fatalf("count = %d, want 0", count)
 	}
 }
 
+// TestTablesInATransactionRefuseAnotherObjectsTable runs `it("refuse another object's table")` of
+// packages/chord/test/next/documents/transaction.test.ts:416; `tx.put(other.edits, ...)` is
+// packages/chord/test/next/documents/transaction.test.ts:419, Tx.Put.
 func TestTablesInATransactionRefuseAnotherObjectsTable(t *testing.T) {
 	s := storedOn(t, nil, false, nil)
 	other := storedOn(t, nil, false, nil)
-	_, err := s.self().Tx(func(tx *Transaction) (any, error) { return nil, tx.Put(other.edits[0], rowOf("e1", 1)) }, background)
+	_, err := s.self().Tx(func(tx Tx) (any, error) { return nil, tx.Put(other.edits[0], rowOf("e1", 1)) }, background)
 	requireErrorContains(t, err, "writes only its own object's tables")
 }
 
@@ -1089,7 +1109,7 @@ func TestTablesInATransactionACommitQueuedBehindAnotherOwnersStepIsRefusedAtTheS
 		holding <- err
 	}()
 	<-held.entered
-	queued := goTx(s.attempts[0], func(tx *Transaction) (any, error) {
+	queued := goTx(s.attempts[0], func(tx Tx) (any, error) {
 		if err := tx.Put(s.edits[0], rowOf("e1", 1)); err != nil {
 			return nil, err
 		}
@@ -1112,7 +1132,7 @@ func TestTablesInATransactionACommitQueuedBehindAnotherOwnersStepIsRefusedAtTheS
 	}
 	// Admitted, then sealed while in the step: durable, adopted into the object's slots, `self.tx` resolves. The step
 	// seals the attempt from a write it applies (Pi wraps the fence's admit to fail right after the admission).
-	admitted, err := s.attempts[1].Tx(func(tx *Transaction) (any, error) {
+	admitted, err := s.attempts[1].Tx(func(tx Tx) (any, error) {
 		if err := tx.Put(s.edits[1], rowOf("e2", 2)); err != nil {
 			return nil, err
 		}
@@ -1124,7 +1144,7 @@ func TestTablesInATransactionACommitQueuedBehindAnotherOwnersStepIsRefusedAtTheS
 		sealing := newHeldWrite()
 		sealing.apply = s.fail
 		s.o.Do(func() {
-			writes := tx.StageStore(s.store)
+			writes := tx.(*Transaction).StageStore(s.store)
 			*writes = append(*writes, sealing)
 		})
 		return "done", nil
@@ -1146,7 +1166,7 @@ func TestPersistedDocumentsInATransactionCommitPersistedAndInMemoryDocumentsInOn
 	meter := nexttest.Metered(t)
 	s := storedOn(t, nil, true, nil)
 	n, p := s.n[0], s.p[0]
-	_, err := s.self().Tx(func(tx *Transaction) (any, error) {
+	_, err := s.self().Tx(func(tx Tx) (any, error) {
 		a, err := tx.Draft(n)
 		if err != nil {
 			return nil, err
@@ -1164,7 +1184,7 @@ func TestPersistedDocumentsInATransactionCommitPersistedAndInMemoryDocumentsInOn
 		t.Fatalf("lastSeq = %d, want 1", got)
 	}
 	before := meter.Counts()
-	_, err = s.self().Tx(func(tx *Transaction) (any, error) {
+	_, err = s.self().Tx(func(tx Tx) (any, error) {
 		draft, err := tx.Draft(p)
 		if err != nil {
 			return nil, err
@@ -1185,11 +1205,15 @@ func TestPersistedDocumentsInATransactionCommitPersistedAndInMemoryDocumentsInOn
 	txRequireValue(t, s.o, p, obj("n", float64(2)))
 }
 
+// TestPersistedDocumentsInATransactionAKeyedRetirementTakes6asStatementsTheCountedDeleteTheRevisionsLastSeq runs
+// `it("a keyed retirement takes 6a's statements: the counted DELETE, the revisions, lastSeq (cost guard)")` of
+// packages/chord/test/next/documents/transaction.test.ts:536; `tx.retire(k, "a")` is
+// packages/chord/test/next/documents/transaction.test.ts:544, Tx.Retire.
 func TestPersistedDocumentsInATransactionAKeyedRetirementTakes6asStatementsTheCountedDeleteTheRevisionsLastSeq(t *testing.T) {
 	meter := nexttest.Metered(t)
 	s := storedOn(t, nil, true, nil)
 	k := s.k[0]
-	_, err := s.self().Tx(func(tx *Transaction) (any, error) {
+	_, err := s.self().Tx(func(tx Tx) (any, error) {
 		draft, err := tx.Draft(k, "a")
 		if err != nil {
 			return nil, err
@@ -1199,7 +1223,7 @@ func TestPersistedDocumentsInATransactionAKeyedRetirementTakes6asStatementsTheCo
 	}, meter.Context)
 	requireNoError(t, err)
 	before := meter.Counts()
-	_, err = s.self().Tx(func(tx *Transaction) (any, error) { return nil, tx.Retire(k, "a") }, meter.Context)
+	_, err = s.self().Tx(func(tx Tx) (any, error) { return nil, tx.Retire(k, "a") }, meter.Context)
 	requireNoError(t, err)
 	// No read of the record first, no second DELETE of its row; plus the outbox commit.
 	if got := meter.Counts()["chord.store.statements"] - before["chord.store.statements"]; got != 4 {
@@ -1207,10 +1231,14 @@ func TestPersistedDocumentsInATransactionAKeyedRetirementTakes6asStatementsTheCo
 	}
 }
 
+// TestPersistedDocumentsInATransactionAssignTheCreatedDocumentsIdsByTheirOrderInTheCommitRetireAndRecreateInOneCommit
+// runs `it("assign the created documents' ids by their order in the commit; retire and recreate in one commit")` of
+// packages/chord/test/next/documents/transaction.test.ts:552; `tx.retire(k, "b")` is
+// packages/chord/test/next/documents/transaction.test.ts:559, Tx.Retire.
 func TestPersistedDocumentsInATransactionAssignTheCreatedDocumentsIdsByTheirOrderInTheCommitRetireAndRecreateInOneCommit(t *testing.T) {
 	s := storedOn(t, nil, true, nil)
 	k := s.k[0]
-	_, err := s.self().Tx(func(tx *Transaction) (any, error) {
+	_, err := s.self().Tx(func(tx Tx) (any, error) {
 		for _, step := range []struct {
 			key string
 			n   float64
@@ -1224,7 +1252,7 @@ func TestPersistedDocumentsInATransactionAssignTheCreatedDocumentsIdsByTheirOrde
 		return nil, nil
 	}, background)
 	requireNoError(t, err)
-	_, err = s.self().Tx(func(tx *Transaction) (any, error) {
+	_, err = s.self().Tx(func(tx Tx) (any, error) {
 		if err := tx.Retire(k, "b"); err != nil {
 			return nil, err
 		}
@@ -1265,7 +1293,7 @@ func TestPersistedDocumentsInATransactionAssignTheCreatedDocumentsIdsByTheirOrde
 		t.Fatalf("kinds = %v, want %v", kinds, want)
 	}
 	// What is stored of `b` is the new record's: the next change is a delta on it.
-	_, err = k.Change("b", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(4)) }, background)
+	_, err = k.Change(background, "b", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(4)) })
 	requireNoError(t, err)
 	next, err := s.store.Outbox().Read(2, 10, background)
 	requireNoError(t, err)
@@ -1280,12 +1308,12 @@ func TestPersistedDocumentsInATransactionAssignTheCreatedDocumentsIdsByTheirOrde
 
 func TestPersistedDocumentsInATransactionDraftAColdKeyedDocumentByLoadingItInsideTheTransactionRefuseACallbackWithAPendingLoad(t *testing.T) {
 	first := storedOn(t, nil, true, nil)
-	_, err := first.k[0].Change("a", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(1)) }, background)
+	_, err := first.k[0].Change(background, "a", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(1)) })
 	requireNoError(t, err)
 	first.o.End()
 	s := storedOn(t, first.store, true, nil)
 	k := s.k[0]
-	_, err = s.self().Tx(func(tx *Transaction) (any, error) {
+	_, err = s.self().Tx(func(tx Tx) (any, error) {
 		draft, err := tx.Draft(k, "a")
 		if err != nil {
 			return nil, err
@@ -1294,13 +1322,13 @@ func TestPersistedDocumentsInATransactionDraftAColdKeyedDocumentByLoadingItInsid
 		return nil, nil
 	}, background)
 	requireNoError(t, err)
-	got, err := k.Get("a", background)
+	got, err := k.Get(background, "a")
 	requireNoError(t, err)
 	requireJSON(t, "a", got, obj("n", float64(2)))
 	// Not awaited: the draft is still loading when the callback returns (the backend is held, so it is underway).
 	release := holdBackend(t, s.store)
 	var loading sync.WaitGroup
-	_, err = s.self().Tx(func(tx *Transaction) (any, error) {
+	_, err = s.self().Tx(func(tx Tx) (any, error) {
 		loading.Go(func() {
 			_, _ = tx.Draft(k, "b")
 		})
@@ -1317,7 +1345,7 @@ func TestPersistedDocumentsInATransactionDraftAColdKeyedDocumentByLoadingItInsid
 func TestPersistedDocumentsInATransactionSettleAWarmKeyedDraftAtOnce(t *testing.T) {
 	s := storedOn(t, nil, true, nil)
 	k := s.k[0]
-	_, err := s.self().Tx(func(tx *Transaction) (any, error) {
+	_, err := s.self().Tx(func(tx Tx) (any, error) {
 		draft, err := tx.Draft(k, "a")
 		if err != nil {
 			return nil, err
@@ -1326,7 +1354,7 @@ func TestPersistedDocumentsInATransactionSettleAWarmKeyedDraftAtOnce(t *testing.
 		return nil, nil
 	}, background)
 	requireNoError(t, err)
-	_, err = s.self().Tx(func(tx *Transaction) (any, error) {
+	_, err = s.self().Tx(func(tx Tx) (any, error) {
 		draft, err := tx.Draft(k, "a")
 		if err != nil {
 			return nil, err
@@ -1338,7 +1366,7 @@ func TestPersistedDocumentsInATransactionSettleAWarmKeyedDraftAtOnce(t *testing.
 		return nil, nil
 	}, background)
 	requireNoError(t, err)
-	got, err := k.Get("a", background)
+	got, err := k.Get(background, "a")
 	requireNoError(t, err)
 	requireJSON(t, "a", got, obj("n", float64(7)))
 }
@@ -1353,7 +1381,7 @@ func TestPersistedDocumentsInATransactionACommitCutAtTheSealWhileItWaitsInTheSto
 	}
 	change := make(chan txResult, 1)
 	go func() {
-		value, err := p.Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(5)) }, background)
+		value, err := p.Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(5)) })
 		change <- txResult{value, err}
 	}()
 	waitFor(t, "the commit queued in the store", func() bool { return commitQueued(s.o) })
@@ -1365,7 +1393,7 @@ func TestPersistedDocumentsInATransactionACommitCutAtTheSealWhileItWaitsInTheSto
 	}
 	next := storedOn(t, s.store, true, nil)
 	txRequireValue(t, next.o, next.p[0], obj("n", float64(0)))
-	_, err := next.p[0].Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(6)) }, background)
+	_, err := next.p[0].Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(6)) })
 	requireNoError(t, err)
 	if got := s.store.LastSeq(); got != 1 {
 		t.Fatalf("lastSeq = %d, want 1", got)
@@ -1379,13 +1407,13 @@ func TestPersistedDocumentsInATransactionAHostClosingWhileAnAdmittedCommitIsInTh
 	held := newHeldWrite()
 	change := make(chan txResult, 1)
 	go func() {
-		value, err := p.Change(func(draft *delta.Object) (any, error) {
+		value, err := p.Change(background, func(draft *delta.Object) (any, error) {
 			s.o.Do(func() {
 				writes := s.o.documents.holder.StageStore(s.store)
 				*writes = append(*writes, held)
 			})
 			return nil, draft.Set("n", float64(5))
-		}, background)
+		})
 		change <- txResult{value, err}
 	}()
 	<-held.entered
@@ -1408,7 +1436,7 @@ func TestPersistedDocumentsInATransactionAHostClosingWhileAnAdmittedCommitIsInTh
 	}
 	next := storedOn(t, s.store, true, nil)
 	txRequireValue(t, next.o, next.p[0], obj("n", float64(5)))
-	_, err := next.p[0].Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(6)) }, background)
+	_, err := next.p[0].Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(6)) })
 	requireNoError(t, err)
 	if got := s.store.LastSeq(); got != 2 {
 		t.Fatalf("lastSeq = %d, want 2", got)

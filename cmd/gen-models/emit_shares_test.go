@@ -27,19 +27,19 @@ func TestEmitSharesEqualCatalogMaps(t *testing.T) {
 	}
 	src := string(raw)
 	for _, want := range []string{
-		"Headers:              generatedHeaders[0],", "Headers:              generatedHeaders[1],",
-		"ThinkingLevelMap:     generatedThinkingLevelMaps[0],", "ThinkingLevelMap:     generatedThinkingLevelMaps[1],",
-		"var generatedHeaders = [...]map[string]string{\n\t{\"A\": \"1\", \"B\": \"2\"},\n\t{\"A\": \"1\"},\n}\n",
-		"var generatedThinkingLevelMaps = [...]map[ModelThinkingLevel]*string{\n\t{ModelThinkingLevel(\"high\"): &generatedStrings[0], ModelThinkingLevel(\"off\"): nil},\n\t{ModelThinkingLevel(\"max\"): &generatedStrings[1]},\n}\n",
+		"var generatedHeaders [2]map[string]string\n",
+		"var generatedHeadersPairs = [...][]generatedPair[string, string]{\n\t{{\"A\", \"1\"}, {\"B\", \"2\"}},\n\t{{\"A\", \"1\"}},\n}\n",
+		"var generatedHeadersRefs = [...]generatedMapRef{{0, 0}, {1, 1}, {2, 0}}\n",
+		"var generatedThinkingLevelMaps [2]map[ModelThinkingLevel]*string\n",
+		"var generatedThinkingLevelMapsPairs = [...][]generatedPair[ModelThinkingLevel, *string]{\n\t{{\"high\", &generatedStrings[0]}, {\"off\", nil}},\n\t{{\"max\", &generatedStrings[1]}},\n}\n",
+		"var generatedThinkingLevelMapsRefs = [...]generatedMapRef{{0, 0}, {1, 1}, {2, 0}}\n",
+		"generatedBuildMaps(generatedHeaders[:], generatedHeadersPairs[:])\n\tfor _, ref := range generatedHeadersRefs {\n\t\tgeneratedRows[ref.row].Headers = generatedHeaders[ref.element]\n\t}\n",
 	} {
 		if !strings.Contains(src, want) {
 			t.Fatalf("generated catalog lacks %q:\n%s", want, src)
 		}
 	}
-	if got := strings.Count(src, "generatedHeaders[0]"); got != 2 {
-		t.Fatalf("models with equal headers refer to generatedHeaders[0] %d times, want 2:\n%s", got, src)
-	}
-	if got := strings.Count(src, "generatedThinkingLevelMaps[0]"); got != 2 {
-		t.Fatalf("models with equal thinking level maps refer to generatedThinkingLevelMaps[0] %d times, want 2:\n%s", got, src)
+	if strings.Contains(src, "Headers:") || strings.Contains(src, "ThinkingLevelMap:") {
+		t.Fatalf("a row sets a map the linker cannot lay out:\n%s", src)
 	}
 }

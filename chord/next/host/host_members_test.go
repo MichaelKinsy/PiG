@@ -32,7 +32,7 @@ var membersGone = mustContract(contracts.Local("app.gone", contracts.LocalDeclar
 func membersHeld(t *testing.T) *Reference {
 	t.Helper()
 	host, _ := loaded(t, func(FacetHost, FacetSelf) error { return nil }, loadedOptions{})
-	held, err := host.Hold(membersGone, jsonObject(), background, GetOptions{})
+	held, err := host.Hold(background, membersGone, jsonObject(), GetOptions{})
 	must(t, err)
 	t.Cleanup(held.Release)
 	return held
@@ -325,7 +325,7 @@ func TestHostGetRefusesAnInheritedPropertyForAMember(t *testing.T) {
 			return contracts.Implementation{}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	_, err := host.Get(named, jsonObject("id", float64(1)), background, GetOptions{})
+	_, err := host.Get(background, named, jsonObject("id", float64(1)), GetOptions{})
 	if err == nil || !strings.Contains(err.Error(), "app.named(1): toString: a method is a function") {
 		t.Fatalf("get = %v, want it to fail with app.named(1): toString: a method is a function", err)
 	}
@@ -365,7 +365,7 @@ func TestHostGetNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition(t *t
 		{1, "app.named(1): label: source 1 is not a Chord watchable"},
 		{2, "app.named(2): derive #1: source 0 is not a Chord watchable"},
 	} {
-		_, err := host.Get(named, jsonObject("n", tc.n), background, GetOptions{})
+		_, err := host.Get(background, named, jsonObject("n", tc.n), GetOptions{})
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Fatalf("get n=%v = %v, want it to fail with %q", tc.n, err, tc.want)
 		}
