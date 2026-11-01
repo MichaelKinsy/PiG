@@ -112,7 +112,9 @@ func declareSchemaSwitch() *ssDeclarations {
 	serverKind := ssMust(contracts.NewHostKind("fixture.switch.server", c("region", str())))
 	// A remote contract with variants and a host address.
 	d.Account = exRemote("fixture.switch.account", contracts.Params{c("user", str(contracts.Min(1)))},
-		func(*delta.JsonObject) (contracts.Address, error) { return serverKind.Address(jsonObject("region", "eu")), nil },
+		func(*delta.JsonObject) (contracts.Address, error) {
+			return serverKind.Address(jsonObject("region", "eu")), nil
+		},
 		contracts.Var("owner", contracts.VariantDeclaration{
 			State:   []contracts.Property{c("balance", num())},
 			Methods: []contracts.MethodEntry{contracts.Meth("pay", contracts.NewMethod(contracts.Obj(c("amount", num(contracts.Min(0)))), boolS()))},
@@ -387,8 +389,7 @@ func ssOwnerHost(t *testing.T, d *ssDeclarations, path string, edits *store.Tabl
 	t.Helper()
 	st := exFileStore(t, path)
 	closeTimeout := 100 * time.Millisecond
-	var host Host
-	host = newHost(t, HostOptions{Store: st, OnError: func(HostError) {}, CloseTimeout: &closeTimeout})
+	host := newHost(t, HostOptions{Store: st, OnError: func(HostError) {}, CloseTimeout: &closeTimeout})
 	facet := DefineFacet(ssOwnerFacet(t, d, edits, behaviour, finished, func() Host { return host }))
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@fixture/owner", Facet: facet}}, background))
 	return st, host
@@ -516,7 +517,7 @@ func ssChecksum(t testing.TB, path string) string {
 
 func TestSchemaSwitchFixturesAreThoseOfPi(t *testing.T) {
 	for path, want := range map[string]string{
-		filepath.Join("testdata", "schema-switch", "stored", "store.db"):       ssStoreSHA256,
+		filepath.Join("testdata", "schema-switch", "stored", "store.db"):      ssStoreSHA256,
 		filepath.Join("testdata", "schema-switch", "stored", "archive.jsonl"): ssArchiveSHA256,
 		filepath.Join("testdata", "schema-switch", "recorded.json"):           ssRecordedSHA256,
 	} {
