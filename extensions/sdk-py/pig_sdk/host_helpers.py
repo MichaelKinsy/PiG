@@ -203,12 +203,10 @@ def resize_image(input_bytes: bytes, mime_type: str, options: Optional[ImageResi
     ``options`` say otherwise), as the host's image code does it. None, as Pi's null, when the image cannot be made to fit. An image already within every limit comes back
     as it was. It may be called before ``run``."""
     return _decode_resized(_helper_call(_CALL_RESIZE_IMAGE, _resize_args(input_bytes, mime_type, options)))
-def highlight_code_lines(code: str, lang: str, markdown: bool, theme: Optional[dict]) -> list:
+def highlight_code_lines(code: str, lang: str, theme: Optional[dict]) -> list:
     """The lines the host's highlight.js port makes of ``code`` in ``lang``, drawn with ``theme`` (the palette of the theme ``init_theme`` installed) or, when
     None, with the host's active theme."""
     args: dict = {"code": code, "lang": lang}
-    if markdown:
-        args["markdown"] = True
     if theme is not None:
         args["theme"] = theme
     lines = _helper_call(_CALL_HIGHLIGHT_CODE, args).get("lines")

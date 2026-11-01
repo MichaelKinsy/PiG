@@ -47,7 +47,7 @@ func GetMarkdownTheme() MarkdownTheme {
 		Italic:          markdownItalic,
 		Strikethrough:   markdownStrikethrough,
 		Underline:       func(s string) string { return markdownDecoration("\x1b[4m", SGRUnderlineReset, s) },
-		HighlightCode:   highlightMarkdownCode,
+		HighlightCode:   HighlightCode,
 	}
 }
 
