@@ -126,7 +126,7 @@ func TestKeyedSlotMigrationOnAccessANewerVersionMigratesEachInMemoryKeyWhenItIsR
 	if got := migrated.all(); !reflect.DeepEqual(got, []string{"a"}) {
 		t.Fatalf("migrated = %v, want [a]", got)
 	}
-	_, err = run.Attempts.at(1).Tx(func(tx *documents.Transaction) (any, error) {
+	_, err = run.Attempts.at(1).Tx(func(tx documents.Tx) (any, error) {
 		draft, err := tx.Draft(memos.at(1), "b")
 		if err != nil {
 			return nil, err

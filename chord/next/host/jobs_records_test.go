@@ -235,7 +235,7 @@ func TestRecordsTheObjectsEndDuringAnAdmittedCommitARunStartedInACommitHeldInThe
 	}
 	startedRun := make(chan started, 1)
 	go func() {
-		got, err := runner.Attempts.at(0).Tx(func(tx *documents.Transaction) (any, error) {
+		got, err := runner.Attempts.at(0).Tx(func(tx documents.Tx) (any, error) {
 			draft, err := tx.Draft(doc.s)
 			if err != nil {
 				return nil, err

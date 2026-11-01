@@ -386,7 +386,7 @@ func TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbo
 				Methods: map[string]contracts.MethodFunction{"slow": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					started.fire()
 					proceed.await(t, ctx)
-					_, err := self.Tx(func(tx *documents.Transaction) (any, error) { return tx.Draft(list) }, background)
+					_, err := self.Tx(func(tx documents.Tx) (any, error) { return tx.Draft(list) }, background)
 					finished <- outcome{aborted: ctx.Err() != nil, err: err}
 					return nil, nil
 				}},

@@ -84,7 +84,7 @@ func BenchmarkDerives(b *testing.B) {
 	b.Run("retire + recreate under a "+strconv.Itoa(1+3*benchDiamondLayers)+"-derive diamond", func(b *testing.B) {
 		b.ReportAllocs()
 		for step := 0; b.Loop(); step++ {
-			_, err := self.Tx(func(tx *documents.Transaction) (any, error) {
+			_, err := self.Tx(func(tx documents.Tx) (any, error) {
 				if err := tx.Retire(list); err != nil {
 					return nil, err
 				}

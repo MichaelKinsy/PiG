@@ -513,7 +513,7 @@ func TestKeyedSlotANewerVersionMigratesEachInMemoryKeyWhenItIsReadAKeyWhoseMigra
 	}
 	ksRequireDoc(t, ksGet(t, second, "a"), "a!")
 	ksRequireStrings(t, migrated, []string{"a"})
-	_, err = secondAttempt.Tx(func(tx *Transaction) (any, error) {
+	_, err = secondAttempt.Tx(func(tx Tx) (any, error) {
 		draft, err := tx.Draft(second, "b")
 		if err != nil {
 			return nil, err
@@ -553,7 +553,7 @@ func TestKeyedSlotALoneSurrogateInAKeyIsUFFFDAtEveryEntryPointInMemoryAndInTheSt
 	ksRequireStrings(t, ksKeysOf(t, notes), []string{"x\uFFFD"})
 	// One key: the change through either spelling reaches the same document and record.
 	ksChange(t, notes, "x\uFFFD", "two")
-	_, err := p.attempts[0].Tx(func(tx *Transaction) (any, error) {
+	_, err := p.attempts[0].Tx(func(tx Tx) (any, error) {
 		draft, err := tx.Draft(notes, lone)
 		if err != nil {
 			return nil, err
@@ -649,7 +649,7 @@ func TestKeyedSlotWatchKeyIsUndefinedWhenAbsentItFollowsTheAddressThroughARetire
 	o.delivered()
 	ksChange(t, memos, "a", "z")
 	o.delivered()
-	_, err = first.Tx(func(tx *Transaction) (any, error) {
+	_, err = first.Tx(func(tx Tx) (any, error) {
 		if err := tx.Retire(memos, "a"); err != nil {
 			return nil, err
 		}
@@ -867,7 +867,7 @@ func TestKeyedSlotTwoReadersShareOneLoadACancelledWaiterRejectsAlone(t *testing.
 	entered := make(chan struct{})
 	holding := make(chan struct{})
 	txDone := ksGo(func() (*JsonObject, error) {
-		_, err := p.attempts[0].Tx(func(*Transaction) (any, error) {
+		_, err := p.attempts[0].Tx(func(Tx) (any, error) {
 			close(entered)
 			<-holding
 			return nil, nil
@@ -910,7 +910,7 @@ func TestKeyedSlotAColdGetRacingADraftOfTheSameKeyTheLoadInstallsOnlyWhileTheKey
 	p := ksPersistedOver(t, chordStore, nil)
 	notes := p.notes()
 	var get <-chan ksResult
-	_, err := p.attempts[0].Tx(func(tx *Transaction) (any, error) {
+	_, err := p.attempts[0].Tx(func(tx Tx) (any, error) {
 		get = ksGo(func() (*JsonObject, error) { return notes.Get(background, "a") })
 		// The get's load takes its place behind this transaction on the line.
 		ksWaiting(t, p.o, 1)
@@ -1219,7 +1219,7 @@ func TestKeyedSlotALoadCutByTheSealNeverInstallsASuccessorsRetirementStands(t *t
 	old := p.notes()
 	first := p.attempts[0]
 	cut := ksGo(func() (*JsonObject, error) {
-		_, err := first.Tx(func(tx *Transaction) (any, error) {
+		_, err := first.Tx(func(tx Tx) (any, error) {
 			draft, err := tx.Draft(old, "a")
 			if err != nil {
 				return nil, err

@@ -125,9 +125,12 @@ func slotErrorCode(err error) data.ChordErrorCode {
 	return ""
 }
 
+// TestRetirementReachesWatchesAsInitialWithRetiredTrue runs `it("reaches watches as initial() with retired: true")` of
+// packages/chord/test/next/documents/slot.test.ts:34 (`list.watch`, `list.change`, `list.retire` at slot.test.ts:40-42),
+// on the list held as the SingletonHandle interface `self.state` hands out: Watch, Change and Retire.
 func TestRetirementReachesWatchesAsInitialWithRetiredTrue(t *testing.T) {
 	ListV1 := slotListV1(t)
-	var list *Singleton
+	var list SingletonHandle
 	o, _ := activated(t, objectOptions{}, func(a *attempt) { list = a.Singleton(ListV1) })
 	initial, err := slotValue(o, list)
 	if err != nil {
@@ -164,7 +167,7 @@ func TestARetireAndARecreateOfAPresentDocumentInOneTransactionOneFrameRetiredThe
 		t.Fatal(err)
 	}
 	changes := nexttest.ChangesOf(watch)
-	_, err = first.Tx(func(tx *Transaction) (any, error) {
+	_, err = first.Tx(func(tx Tx) (any, error) {
 		if err := tx.Retire(list); err != nil {
 			return nil, err
 		}

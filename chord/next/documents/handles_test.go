@@ -49,10 +49,15 @@ func TestKeyedHandlesListKeysInCodePointOrderNotUTF16Order(t *testing.T) {
 	nexttest.RequireJSONEqual(t, got, obj("text", "\uFF5E"))
 }
 
+// TestSealedHandlesStillReadSynchronouslyAndFromMemoryChangesAndRetirementsAreRefusedReleased runs `it("still read
+// synchronously and from memory; changes and retirements are refused released")` of
+// packages/chord/test/next/documents/handles.test.ts:48. The handles are held as what `self.state` hands out, the
+// SingletonHandle and KeyedHandle interfaces: `body.change` and `body.retire` (handles.test.ts:70-71) are
+// SingletonHandle.Change and Retire, `notes.change` and `notes.retire` (handles.test.ts:72-73) KeyedHandle.Change and Retire.
 func TestSealedHandlesStillReadSynchronouslyAndFromMemoryChangesAndRetirementsAreRefusedReleased(t *testing.T) {
 	bodyDefinition, notesDefinition := handlesDefinitions(t)
-	var body *Singleton
-	var notes *Keyed
+	var body SingletonHandle
+	var notes KeyedHandle
 	o, first := activated(t, objectOptions{label: "app.restartable(1)"}, func(a *attempt) {
 		body = a.Singleton(bodyDefinition)
 		notes = a.Keyed(notesDefinition)

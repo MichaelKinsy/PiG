@@ -732,7 +732,7 @@ func TestReloadAStuckRoutineCallPastTheHandoverAnOldRoutineCallStuckPastTheHando
 				}
 				return Awaiting(ctx.(*callContext).host.loop(), func() error {
 					<-stuck
-					_, err := self.Tx(func(tx *documents.Transaction) (any, error) {
+					_, err := self.Tx(func(tx documents.Tx) (any, error) {
 						draft, err := tx.Draft(doc.s)
 						if err != nil {
 							return nil, err

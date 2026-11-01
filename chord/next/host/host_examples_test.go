@@ -434,7 +434,7 @@ func TestExample02Documents(t *testing.T) {
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"todos": todos.Member()}, map[string]contracts.MethodFunction{
 				"add": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
 					// One transaction over two documents: both change together, or neither does.
-					id, err := self.Tx(func(tx *documents.Transaction) (any, error) {
+					id, err := self.Tx(func(tx documents.Tx) (any, error) {
 						draft, err := tx.Draft(todos.s)
 						if err != nil {
 							return nil, err
@@ -3116,19 +3116,19 @@ func TestExample20Tables(t *testing.T) {
 				"record": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
 					// Writes are staged synchronously (a bad row fails here) and commit together in one step.
 					row := store.Row{"id": args.Value("id"), "path": args.Value("path"), "at": int64(args.Value("at").(float64))}
-					_, err := self.Tx(func(tx *documents.Transaction) (any, error) { return nil, tx.Put(table, row) }, ctx)
+					_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, tx.Put(table, row) }, ctx)
 					return nil, err
 				}),
 				"hit": func(id delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					// A set is values or an expression over the row's columns, computed by the store.
-					_, err := self.Tx(func(tx *documents.Transaction) (any, error) {
+					_, err := self.Tx(func(tx documents.Tx) (any, error) {
 						return nil, tx.Update(table, store.Row{"id": id}, store.Row{"hits": store.Add(column("hits"), 1)})
 					}, ctx)
 					return nil, err
 				},
 				"finish": func(path delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					// One statement for every matching row; its count is recorded with the write.
-					_, err := self.Tx(func(tx *documents.Transaction) (any, error) {
+					_, err := self.Tx(func(tx documents.Tx) (any, error) {
 						return nil, tx.UpdateWhere(table, store.Prefix(column("path"), path.(string)), store.Row{"done": true})
 					}, ctx)
 					return nil, err
@@ -3224,7 +3224,7 @@ func TestExample21PersistedDocuments(t *testing.T) {
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"tags": tagsDoc.Member()}, map[string]contracts.MethodFunction{
 				"write": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
 					// Both documents commit in one store step, or neither does.
-					_, err := self.Tx(func(tx *documents.Transaction) (any, error) {
+					_, err := self.Tx(func(tx documents.Tx) (any, error) {
 						draft, err := tx.Draft(notesDoc, exParam(args, "id"))
 						if err != nil {
 							return nil, err
@@ -3308,7 +3308,7 @@ func TestExample22Migrations(t *testing.T) {
 				edits := self.(StoreSelf).Table(definition)
 				return exImpl(nil, map[string]contracts.MethodFunction{
 					"record": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
-						_, err := self.Tx(func(tx *documents.Transaction) (any, error) {
+						_, err := self.Tx(func(tx documents.Tx) (any, error) {
 							return nil, tx.Put(edits, row(exParam(args, "id"), int64(args.Value("at").(float64))))
 						}, ctx)
 						return nil, err
@@ -3556,7 +3556,7 @@ func TestExample25ExportImport(t *testing.T) {
 			titleDoc := stateOf(self, title)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"title": titleDoc.Member()}, map[string]contracts.MethodFunction{
 				"visit": func(page delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					count, err := self.Tx(func(tx *documents.Transaction) (any, error) {
+					count, err := self.Tx(func(tx documents.Tx) (any, error) {
 						row, err := tx.Get(table, store.Row{"page": page})
 						if err != nil {
 							return nil, err

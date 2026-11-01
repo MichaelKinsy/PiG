@@ -235,7 +235,7 @@ func TestRunCommitsAChangeStillWaitingForTheLineWhenRunSettlesBeforeTheOutcomeIs
 	run := jobStart(t, job, commandArgs("a"), background)
 	holding := make(chan error, 1)
 	go func() {
-		_, err := fixture.Self.Tx(func(*documents.Transaction) (any, error) {
+		_, err := fixture.Self.Tx(func(documents.Tx) (any, error) {
 			entered.Open()
 			line.Wait()
 			return nil, nil
@@ -670,7 +670,7 @@ func TestFinishDoesNotRunWhenItsObjectEndsWhileTheOutcomeAndFinishWaitForTheLine
 	go func() { waiting <- runOutcomeErr(t, run, background) }()
 	holding := make(chan error, 1)
 	go func() {
-		_, err := fixture.Self.Tx(func(*documents.Transaction) (any, error) {
+		_, err := fixture.Self.Tx(func(documents.Tx) (any, error) {
 			entered.Open()
 			line.Wait()
 			return nil, nil
