@@ -1720,8 +1720,8 @@ rationale = "ported (the ws-server GC case is TestGCKeepsNoUpgradeOnceItsLinkSoc
 path = "packages/chord/src/next-node/plugins/build.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:chord/nextnode/plugins/plugins_build_test.go#TestBuildingAFacetReturnsASyntaxErrorAndAMissingFacetAsFailedResultsNeverAThrow"]
-rationale = "the esbuild build, `ImportRules`, `freeGlobals`, `describe` are the `Builder` seam (Go cannot run esbuild in process). Ported: `BuildOptions`, `BuildInput`, `BuiltFacet` (plain data), `BuildFacet` (missing-facet failed result, abort, delegate), `inside`. PiG: chord/nextnode/plugins/plugins_build.go (lane kfold)."
+evidence = ["test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildInlinesOwnFilesAndAnotherPluginsFileKeepsHostPackagesExternal"]
+rationale = "`BuildFacet` on esbuild's Go API with every option Pi passes; `ImportRules` is an `api.Plugin`; `freeGlobals` reads the inline source map (VLQ, Node `findEntry` semantics); columns converted from bytes to UTF-16 units as the JS API reports them. PiG: plugins_build.go, plugins_sourcemap.go (lane plugnode)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/discover.ts"
@@ -1734,8 +1734,8 @@ rationale = "`DiscoverPlugins`, `Plugin`, `Discovery`, `DiscoveryProblem`, `Disc
 path = "packages/chord/src/next-node/plugins/evaluate.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:chord/nextnode/plugins/plugins_evaluate_test.go#TestEvaluatingAFacetRunsAScriptUnderAStableFilenamePerPluginKindAndDigest"]
-rationale = "`require`, `interop`, `registerScript`, `evaluateFacet` are the `Evaluator` seam (the default-export-is-a-facet check is the evaluator's error). Ported: `HostPackages`, `EvaluateOptions`, `ScriptFilename` (stable filename per plugin/kind/digest), `PluginFile` (= `fileOf`: path in the plugin's directory, `..` out refused). `PLUGINS_SPECIFIER`, `packageName`, the exported throwing `pluginFile` stub are JS-evaluation/esbuild internals: designed-out (no Go caller). PiG: chord/nextnode/plugins/plugins_evaluate.go (lane kfold)."
+evidence = ["test:chord/nextnode/plugins/plugins_evaluate_test.go#TestEvaluateThrowsAnImportTimeThrowANonFacetExportAndARefusedRequireNamingTheFacet"]
+rationale = "Go has no `vm`; Pi's file runs in the Node subprocess (AGENTS.md: subprocess-only runtimes). Go sees reports and `*NodeError`. PiG: node/pi/chord/src/next-node/plugins/evaluate.ts, node/pi/chord/src/next-node/compression.ts (nodeCompression, vendored), node/host.mjs, plugins_runtime.go (lane plugnode)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/index.ts"
@@ -1755,22 +1755,22 @@ rationale = "`InstallDependencies`, `InstallOptions`. PiG: chord/nextnode/plugin
 path = "packages/chord/src/next-node/plugins/plugins.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go", "test:chord/nextnode/plugins/plugins_endtoend_test.go", "test:chord/nextnode/plugins/plugins_examples_test.go"]
-rationale = "`CreatePlugins`, `Plugins`, `PluginsOptions`, `KindDefinition`, `Built`, `RolloutStep/Host/Result`, `PluginsError`; state/watcher touched only in sections of the component's own `host.Loop`. PiG: chord/nextnode/plugins/plugins_plugins.go (lane kfold)."
+evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothChanges"]
+rationale = "`CreatePlugins` returns the concrete `*Plugins`; `Load`/`Reload`/`Step` take a `*NodeHost`; a Go panic propagates (no recover into a plugin failure). PiG: plugins_plugins.go (lane plugnode)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/runtime.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:chord/nextnode/plugins/plugins_runtime_test.go#TestLoadingAndReloadingWithCompleteSetsReloadsACompleteSetSameDigestsUnchangedAChangedOneAppliedALoadedOneNotShippedRemoved"]
-rationale = "`NewPluginRuntime(evaluator)`, `PluginRuntime.Load/Reload`, `PluginScript`, `RuntimeLoad`; V8 compilation-cache switch designed out; per-host reload queue in call order (`queue`/`run`); `Forget(host)` replaces the WeakMap. PiG: chord/nextnode/plugins/plugins_runtime.go (lane kfold)."
+evidence = ["test:chord/nextnode/plugins/plugins_runtime_test.go#TestRuntimeReloadsACompleteSetSameDigestsUnchangedAChangedOneAppliedALoadedOneNotShippedRemoved"]
+rationale = "per-host loaded facets, `adopt`, reload queue are Pi's, in the subprocess; the V8 compilation-cache flag runs there too. PiG: plugins_runtime.go (PluginRuntime, NodeOptions.OnActivity, NodeHost.Activity, RuntimeLoad (no Parent; CloseTimeout, ReadyTimeout, Compression, Heartbeat), PluginScript), plugins_node.go (NodeHost, NodeOptions, NodeError, NodeExit) (lane plugnode)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/stack.ts"
 change = "added"
-disposition = "designed-out"
-evidence = []
-rationale = "`mapStack`/`registerScript`/`inlineSourceMap` map V8 stack positions through esbuild's inline source maps of `vm.Script` scripts; there is no JS script in Go (lane kfold)."
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_stack_test.go#TestStackMapsAPluginScriptsPositionsToThePluginsFilesAndLines"]
+rationale = "`mapStack` runs in the subprocess; a `*NodeError.Stack` is its output. PiG: node/pi/chord/src/next-node/plugins/stack.ts (lane plugnode)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/watcher.ts"

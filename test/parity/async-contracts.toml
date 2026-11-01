@@ -641,8 +641,8 @@ rationale = "`socket` (`void host.root(...)`): an owned background task ending w
 path = "packages/chord/src/next-node/plugins/build.ts"
 disposition = "translated"
 contracts = ["awaited", "cancellable"]
-evidence = ["test:chord/nextnode/plugins/plugins_build_test.go#TestBuildingAFacetReturnsASyntaxErrorAndAMissingFacetAsFailedResultsNeverAThrow", "test:chord/nextnode/plugins/plugins_build_test.go#TestBuildingAFacetThrowsOnlyWhenItsContextAborts"]
-rationale = "`buildFacet`: blocking `BuildFacet`; a missing facet is a failed result without an abort check (upstream order), then the abort check, then the Builder; failed builds are results, errors only for abort (lane kfold)."
+evidence = ["test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildReturnsASyntaxErrorAndAMissingFacetAsFailedResultsNeverAThrow", "test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildAnAbortedContextIsItsCause"]
+rationale = "`buildFacet`: blocking `BuildFacet` on esbuild's Go API; a missing facet and a failed build are results, an error only for an aborted ctx (`context.Cause`) (lane plugnode)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/discover.ts"
@@ -662,15 +662,15 @@ rationale = "`installDependencies` (spawn with the context's signal): blocking `
 path = "packages/chord/src/next-node/plugins/plugins.ts"
 disposition = "translated"
 contracts = ["awaited", "concurrent-joined", "microtask-ordering", "cancellable"]
-evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothChangesAstraSolOpusS1", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestRolloutCountsAHostsErrorAsTheStepsBuiltPluginsFailingThereAHostStoppedCleanlyDirtiesNothingD12", "test:chord/nextnode/plugins/plugins_watcher_test.go#TestTheWatchersMarksFromRealFileEventsPublishingTheMarksToAWatch"]
+evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothChanges", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsRolloutCountsAHostsErrorAsTheStepsBuiltPluginsFailingThereAHostStoppedCleanlyDirtiesNothing", "test:chord/nextnode/plugins/plugins_watcher_test.go#TestTheWatchersMarksFromRealFileEventsPublishingTheMarksToAWatch"]
 rationale = "`build` Promise.all is `buildAll` (one goroutine per facet in a WaitGroup, results by index); reloads of one host are serialized by a ticket taken in the section that applies the build; `rollout` runs the steps in order, a step's error stops it as a result; the watcher's microtask publication is `Batch.Soon` and fs events run as host sections (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/runtime.ts"
 disposition = "translated"
-contracts = ["awaited", "microtask-ordering"]
-evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothChangesAstraSolOpusS1", "test:chord/nextnode/plugins/plugins_runtime_test.go#TestRuntimeAdoptsWhatAReloadCommittedWhenItsWaitAbortsAfterTheCommitALaterReloadKeepsIt"]
-rationale = "`PluginRuntime.reload` queue (`state.reloading.then`): blocking `Reload` queued in call order per host by a ticket; a rejected reload does not break the chain; `committed` after an aborted reload is adopted from the host's `aborted` error (lane kfold)."
+contracts = ["awaited", "microtask-ordering", "cancellable"]
+evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothChanges", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1AdoptsWhatAReloadCommittedWhenItsWaitAbortsAfterTheCommitALaterReloadKeepsIt"]
+rationale = "`evaluateFacet` and `createPluginRuntime().load/reload` run in the Node subprocess; `PluginRuntime.Load/Reload` block over the control channel: ctx abort sends `abort`, the wait goes on until the subprocess answers (`aborted`, with `details.committed` after a commit) or ends; requests reach the subprocess in call order and Pi's runtime queues one reload after another per host; a NodeHost is never restarted, a process exit fails pending requests with `*NodeExit` (lane plugnode)."
 
 [[files]]
 path = "packages/chord/src/next-node/workers/lock.ts"

@@ -2395,21 +2395,10 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:65bf46154abb890ae41ec0086e608e0f201d6c96b745d93f1c110f2be57b26af",
       "evidence": [
-        "chord/nextnode/plugins/plugins_build_test.go"
+        "chord/nextnode/plugins/plugins_build_test.go",
+        "chord/nextnode/plugins/plugins_sourcemap_test.go"
       ],
-      "rationale": "1 of 11 upstream cases is ported (lane kfold); the 10 designed-out cases check esbuild's import table, source maps, CSS and asset output: Go cannot run esbuild in process (AGENTS.md forbids an embedded JS runtime), the build is the consumer-owned Builder seam, and the seam's data flow (BuildFacet) is the ported case. Owner approval of the designed-out cases is pending.",
-      "designedOutCases": [
-        "building a facet: the import table › inlines the plugin's own files and another plugin's file (copied); keeps host packages external",
-        "building a facet: the import table › hashes each input as esbuild read it; the digest is the source's hash",
-        "building a facet: the import table › gives the same script and digest from two checkout paths (relative source maps)",
-        "building a facet: the import table › inlines a package of its dependencies; keeps chord.external packages and Node builtins external on Node",
-        "building a facet: the import table › refuses a chord.external package and a Node builtin in a browser build",
-        "building a facet: the import table › collects a browser build's CSS into one stylesheet and its assets into content-hashed files",
-        "building a facet: the import table › refuses CSS and assets in a Node build",
-        "building a facet: the import table › refuses import.meta.url, __dirname, __filename, a dynamic import() and top-level await, pointing to pluginFile",
-        "building a facet: the import table › refuses a path outside the plugin, a package not in its dependencies, and a package in a copied file",
-        "building a facet: the import table › imports another plugin's file by name from any root; refuses relative paths into it, names a missing plugin"
-      ]
+      "rationale": "All 11 upstream cases run in the evidence files (lane plugnode), against the real esbuild Go API and the real Node subprocess running Pi's own build.ts; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/next-node/plugins/discover.test.ts",
@@ -2427,15 +2416,7 @@
       "evidence": [
         "chord/nextnode/plugins/plugins_evaluate_test.go"
       ],
-      "rationale": "2 of 8 upstream cases are ported at the seam (lane kfold: the stable script filename and PluginFile); the 6 designed-out cases check `vm.Script` evaluation: host package instances, ESM/CommonJS interop, Node require, import-time throws, computed import() and ESM namespace wrappers; Go has no JavaScript evaluation (the consumer-owned Evaluator seam). Owner approval of the designed-out cases is pending.",
-      "designedOutCases": [
-        "evaluating a facet › gives host packages as the host's instances: a ChordError crosses the plugin as one",
-        "evaluating a facet › answers default and named imports of an ESM and a CommonJS host package",
-        "evaluating a facet › loads chord.external packages and Node builtins from the plugin's directory",
-        "evaluating a facet › throws an import-time throw, a non-facet export and a refused require, naming the facet",
-        "evaluating a facet › runs a computed import() through the facet's require: an unknown one names the facet (Astra)",
-        "ESM host packages' wrappers › wraps a namespace once, and keeps no namespace nobody else holds"
-      ]
+      "rationale": "All 8 upstream cases run in the evidence files (lane plugnode), against the real esbuild Go API and the real Node subprocess running Pi's own evaluate.ts; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/next-node/plugins/install.test.ts",
@@ -2464,19 +2445,16 @@
       "evidence": [
         "chord/nextnode/plugins/plugins_runtime_test.go"
       ],
-      "rationale": "3 of 4 upstream cases are ported (lane kfold); the designed-out case asserts that a Node worker never imports esbuild (an import hook in a Node process); a PluginRuntime takes an Evaluator and has no Builder. Owner approval of the designed-out case is pending.",
-      "designedOutCases": [
-        "the runtime's imports › loads no esbuild: a worker that only evaluates never imports it"
-      ]
+      "rationale": "All 4 upstream cases run in the evidence files (lane plugnode), against the real esbuild Go API and the real Node subprocess running Pi's own runtime.ts; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/next-node/plugins/stack.test.ts",
-      "disposition": "designed-out",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:aab37113054ab33b852b7c401a5e7c6a70bbb204eff6476548837042254aed9a",
       "evidence": [
-        "chord/nextnode/plugins/plugins_seam_test.go"
+        "chord/nextnode/plugins/plugins_stack_test.go"
       ],
-      "rationale": "stack.ts maps V8 stack positions of `vm.Script` scripts through esbuild inline source maps; Chord on Go has no JavaScript script to map (AGENTS.md forbids an embedded JS runtime), plugins are evaluated by the consumer-owned Evaluator seam, so every case (mapStack, the registered map and its lifetime) has no Go counterpart (lane kfold)."
+      "rationale": "All 5 upstream cases run in the evidence files (lane plugnode), against the real esbuild Go API and the real Node subprocess running Pi's own stack.ts; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/next-node/plugins/watcher.test.ts",

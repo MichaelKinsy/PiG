@@ -2449,19 +2449,7 @@
       "upstreamTestHash": "sha256:65bf46154abb890ae41ec0086e608e0f201d6c96b745d93f1c110f2be57b26af",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
-      "designedOutCases": [
-        "building a facet: the import table \u203a inlines the plugin's own files and another plugin's file (copied); keeps host packages external",
-        "building a facet: the import table \u203a hashes each input as esbuild read it; the digest is the source's hash",
-        "building a facet: the import table \u203a gives the same script and digest from two checkout paths (relative source maps)",
-        "building a facet: the import table \u203a inlines a package of its dependencies; keeps chord.external packages and Node builtins external on Node",
-        "building a facet: the import table \u203a refuses a chord.external package and a Node builtin in a browser build",
-        "building a facet: the import table \u203a collects a browser build's CSS into one stylesheet and its assets into content-hashed files",
-        "building a facet: the import table \u203a refuses CSS and assets in a Node build",
-        "building a facet: the import table \u203a refuses import.meta.url, __dirname, __filename, a dynamic import() and top-level await, pointing to pluginFile",
-        "building a facet: the import table \u203a refuses a path outside the plugin, a package not in its dependencies, and a package in a copied file",
-        "building a facet: the import table \u203a imports another plugin's file by name from any root; refuses relative paths into it, names a missing plugin"
-      ]
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/next-node/plugins/discover.test.ts",
@@ -2475,15 +2463,7 @@
       "upstreamTestHash": "sha256:7640e7b4c26712613d90fe6a9f1140891ae5d0b284a7314512d9bf3c03fc6260",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
-      "designedOutCases": [
-        "evaluating a facet \u203a gives host packages as the host's instances: a ChordError crosses the plugin as one",
-        "evaluating a facet \u203a answers default and named imports of an ESM and a CommonJS host package",
-        "evaluating a facet \u203a loads chord.external packages and Node builtins from the plugin's directory",
-        "evaluating a facet \u203a throws an import-time throw, a non-facet export and a refused require, naming the facet",
-        "evaluating a facet \u203a runs a computed import() through the facet's require: an unknown one names the facet (Astra)",
-        "ESM host packages' wrappers \u203a wraps a namespace once, and keeps no namespace nobody else holds"
-      ]
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/next-node/plugins/install.test.ts",
@@ -2504,10 +2484,7 @@
       "upstreamTestHash": "sha256:45fbb43317d921cd972f169ed4182f3474812055a68913fa0559049168ad781c",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
-      "designedOutCases": [
-        "the runtime's imports \u203a loads no esbuild: a worker that only evaluates never imports it"
-      ]
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/next-node/plugins/stack.test.ts",

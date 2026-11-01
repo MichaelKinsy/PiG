@@ -936,14 +936,14 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next-node/http/response.ts` | `chord/nextnode/http/response.go, chord/nextnode/http/statuscodes.go` | ✅ |
 | `packages/chord/src/next-node/http/router.ts` | `chord/nextnode/http/router.go` | ✅ |
 | `packages/chord/src/next-node/http/upgrades.ts` | `chord/nextnode/http/upgrades.go, chord/nextnode/http/websocket.go` | ✅ |
-| `packages/chord/src/next-node/plugins/build.ts` | `chord/nextnode/plugins/plugins_build.go` | ✅ |
+| `packages/chord/src/next-node/plugins/build.ts` | `chord/nextnode/plugins/plugins_build.go, chord/nextnode/plugins/plugins_sourcemap.go` | ✅ |
 | `packages/chord/src/next-node/plugins/discover.ts` | `chord/nextnode/plugins/plugins_discover.go` | ✅ |
-| `packages/chord/src/next-node/plugins/evaluate.ts` | `chord/nextnode/plugins/plugins_evaluate.go` | ✅ |
+| `packages/chord/src/next-node/plugins/evaluate.ts` | `chord/nextnode/plugins/plugins_runtime.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/evaluate.ts, node/host.mjs` | ✅ |
 | `packages/chord/src/next-node/plugins/index.ts` | `(barrel: Go imports the package)` | n/a |
 | `packages/chord/src/next-node/plugins/install.ts` | `chord/nextnode/plugins/plugins_install.go` | ✅ |
 | `packages/chord/src/next-node/plugins/plugins.ts` | `chord/nextnode/plugins/plugins_plugins.go` | ✅ |
-| `packages/chord/src/next-node/plugins/runtime.ts` | `chord/nextnode/plugins/plugins_runtime.go` | ✅ |
-| `packages/chord/src/next-node/plugins/stack.ts` | `(mapStack/registerScript/inlineSourceMap map V8 stack positions through esbuild's inline source maps of vm.Script scripts; there is no JS script in Go)` | n/a |
+| `packages/chord/src/next-node/plugins/runtime.ts` | `chord/nextnode/plugins/plugins_runtime.go, chord/nextnode/plugins/plugins_node.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/runtime.ts` | ✅ |
+| `packages/chord/src/next-node/plugins/stack.ts` | `Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/stack.ts; Go sees *NodeError.Stack (chord/nextnode/plugins/plugins_node.go)` | ✅ |
 | `packages/chord/src/next-node/plugins/watcher.ts` | `chord/nextnode/plugins/plugins_watcher.go` | ✅ |
 | `packages/chord/src/next/host/adapted.ts` | `chord/next/host/host_adapted.go` | ✅ |
 | `packages/chord/src/next/host/reference-keys.ts` | `chord/next/host/host_reference_keys.go` | ✅ |
