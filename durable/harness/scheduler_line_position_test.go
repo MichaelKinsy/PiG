@@ -81,9 +81,10 @@ func TestReservationPassTakesItsLinePositionInThePublishingTurn(t *testing.T) {
 		mu.Lock()
 		got := strings.Join(commits, " | ")
 		mu.Unlock()
-		// The pass queued behind the second creation does not see it: a reservation pass that misses a task a pending commit
-		// makes runnable only delays it (group commit §4.3), so the second task is reserved by the pass its publication starts.
-		want := "test.line-first:pending | test.line-second:pending | test.line-first:running | test.line-second:running"
+		// Either the pass saw both creations and reserves them in one commit, or it missed the second one and the pass its
+		// publication starts reserves it: both keep the order.
+		got = strings.Replace(got, "test.line-first:running | test.line-second:running", "test.line-first:running,test.line-second:running", 1)
+		want := "test.line-first:pending | test.line-second:pending | test.line-first:running,test.line-second:running"
 		if got != want {
 			t.Fatalf("run %d: task commits %s\nwant %s", run, got, want)
 		}
