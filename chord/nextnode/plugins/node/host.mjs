@@ -22,9 +22,10 @@
 // link silent for the heartbeat (30 s) is closed by this host, and the process exits with it; the heartbeat starts with the
 // link, so a host nothing attaches has none.
 import { EventEmitter } from "node:events";
-import { enableCompileCache, registerHooks } from "node:module";
+import { enableCompileCache } from "node:module";
 import { connect } from "node:net";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import "./resolve.mjs";
 import * as callbacks from "./callbacks.mjs";
 import { importGoPackage } from "./gopackage.mjs";
 import { openHostStore } from "./store.mjs";
@@ -37,15 +38,6 @@ enableCompileCache(fileURLToPath(new URL("./v8/", import.meta.url)));
 
 const tree = new URL("./pi/chord/src/", import.meta.url);
 const pi = (path) => import(new URL(path, tree).href);
-// The app's modules (core facets, host packages) import Pi's chord by its package name, as they do in Pi's own runtime: the
-// names are answered with the copies this process runs, so their instances are the host's.
-const CHORD = { "@earendil-works/chord/next": "next/index.ts", "@earendil-works/chord/context": "context/index.ts" };
-registerHooks({
-	resolve(specifier, context, nextResolve) {
-		const file = CHORD[specifier];
-		return file === undefined ? nextResolve(specifier, context) : { url: new URL(file, tree).href, shortCircuit: true };
-	},
-});
 const [chordNext, { ipcLink }, { createPluginRuntime }, { mapStack }, { BACKGROUND_CONTEXT, withAbortSignal, withTelemetry }, { nodeCompression }, { canonicalJson }] =
 	await Promise.all([
 		pi("next/index.ts"),

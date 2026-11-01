@@ -205,6 +205,8 @@ func TestRuntimeLoadsNoEsbuildAWorkerThatOnlyEvaluatesNeverImportsIt(t *testing.
 		`import { registerHooks } from "node:module";`,
 		"registerHooks({ resolve(specifier, context, next) {",
 		`  if (specifier === "esbuild") throw new Error("esbuild imported");`,
+		// Pi's chord imports its pi-schema package by name; the extracted copy is TypeScript outside node_modules (host.mjs).
+		fmt.Sprintf("  if (specifier === \"@earendil-works/pi-schema\") return { url: %s, shortCircuit: true };", pcJSON(t, "file://"+filepath.ToSlash(filepath.Join(tree, "pi", "schema", "src", "index.ts")))),
 		"  return next(specifier, context);",
 		"} });",
 		fmt.Sprintf("const { createPluginRuntime } = await import(%s);", pcJSON(t, runtime)),

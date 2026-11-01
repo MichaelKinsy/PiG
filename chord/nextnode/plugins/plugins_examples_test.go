@@ -732,7 +732,7 @@ func TestExample37PluginImports(t *testing.T) {
 		},
 		"@example/ruler": {
 			`plugin "@example/ruler": its server facet failed to build:`,
-			`../shapes/units.ts:4:22: "typebox": a file copied from plugin "@example/shapes" may import only host packages and files of its own plugin`,
+			`../shapes/units.ts:4:21: "@earendil-works/pi-schema": a file copied from plugin "@example/shapes" may import only host packages and files of its own plugin`,
 		},
 	}
 	if !reflect.DeepEqual(left, wantLeft) {
