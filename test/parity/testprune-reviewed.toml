@@ -693,8 +693,8 @@ reason = "Go only, no Pi line changed: the fleet's plugins component builds Pi's
 path = "internal/minimatch/minimatch_oracle_test.go"
 commit = "fffc16ae0a59ad1a839a70e260c6a8ecd6905dba"
 class = "CITE"
-cite = "packages/coding-agent/package.json:59"
-reason = "Pi b4c2e92a moves the coding agent's minimatch dependency from 10.2.6 to 11.0.3 (package.json:59, \"minimatch\": \"11.0.3\"). The oracle test compares internal/minimatch with the installed minimatch, so its expected values are the 11.0.3 results: an empty path portion matches only an empty pattern portion, case folds by Unicode simple case folding, and only a pattern over 65,536 units throws."
+cite = "packages/coding-agent/src/core/package-manager.ts:728"
+reason = "Pi b4c2e92a moves the coding agent's minimatch dependency from 10.2.6 to 11.0.3 (packages/coding-agent/package.json:59; package-manager.ts:728 matches with it). The oracle test compares internal/minimatch with the installed minimatch, so its expected values are the 11.0.3 results: an empty path portion matches only an empty pattern portion, case folds by Unicode simple case folding, and only a pattern over 65,536 units throws."
 
 [[entry]]
 path = "durable/core/driver/upgrade_in_place_core_test.go"
@@ -714,5 +714,5 @@ reason = "The SDK bundle layout is PiG-original packaging, which Pi does not hav
 path = "ai/catalog_options_upstream_test.go"
 commit = "e4f8e357736b7eae9f16439a3ebd49daa6add1bf"
 class = "CITE"
-cite = "packages/ai/test/openrouter-cache-control-models.test.ts:12"
+cite = "packages/ai/scripts/openrouter-catalog.ts:1"
 reason = "Pi 44f6851b (#9534) deletes packages/ai/test/openrouter-cache-control-models.test.ts (the commit's Pi-Behavior-Change trailer) and sends the OpenRouter ~anthropic/claude-*-latest aliases through the Anthropic Messages API with adaptive thinking, like the versioned Claude models. The Go port of that test now pins the new behavior (TestOpenRouterAnthropicLatestAliasesUseMessages), recorded under D217."
