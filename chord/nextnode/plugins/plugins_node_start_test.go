@@ -67,17 +67,24 @@ func TestNodeAbortedStartWhileTheProcessRunsKillsItAndReturnsTheCause(t *testing
 	}
 }
 
-// A start whose process does not connect within ReadyTimeout kills it and says what it was waiting for.
+// A start whose process does not connect within ReadyTimeout kills it and says what it was waiting for. The timeout is long
+// enough for the process to reach the script that prints its pid before it blocks (a process of a slow machine takes more than
+// a few hundred milliseconds to start, and one killed before it printed has no pid to look for).
 func TestNodeAStartThatDoesNotConnectInTimeKillsTheProcess(t *testing.T) {
 	options, pids := blockedStart(t)
-	timeout := 200 * time.Millisecond
+	timeout := 5 * time.Second
 	options.ReadyTimeout = &timeout
 	_, _, err := NewPluginRuntime(options).Load(RuntimeLoad{Kind: "worker", Principal: workerPrincipal, Peer: serverPrincipal}, background)
-	if err == nil || !strings.Contains(err.Error(), "did not connect within 200ms") {
+	if err == nil || !strings.Contains(err.Error(), "did not connect within 5s") {
 		t.Fatalf("error = %v", err)
 	}
-	if pid := <-pids; !processGone(pid) {
-		t.Fatalf("process %d is running after the failed start returned", pid)
+	select {
+	case pid := <-pids:
+		if !processGone(pid) {
+			t.Fatalf("process %d is running after the failed start returned", pid)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the process never printed its pid")
 	}
 }
 
