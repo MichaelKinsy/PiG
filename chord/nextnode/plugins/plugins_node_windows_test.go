@@ -103,9 +103,16 @@ func TestListenNodeIsANamedPipeOnlyTheCurrentUserCanOpen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The one entry allows the current user: `D:P(A;;<rights>;;;<sid>)`.
-	if sddl := descriptor.String(); !strings.Contains(sddl, "D:P(A;;") || !strings.HasSuffix(sddl, ";;;"+user.User.Sid.String()+")") {
-		t.Errorf("DACL = %s, want one entry allowing %v", sddl, user.User.Sid)
+	// The one entry allows the current user. Both descriptors are written by the system, which names a well-known SID by its
+	// alias (the runner's administrator is `LA`) and maps the rights it was given (`GA` is `FA` on a pipe): the trustee, the
+	// last field, is compared.
+	wanted, err := windows.SecurityDescriptorFromString("D:P(A;;GA;;;" + user.User.Sid.String() + ")")
+	if err != nil {
+		t.Fatal(err)
+	}
+	trustee := func(sddl string) string { return strings.TrimSuffix(sddl[strings.LastIndex(sddl, ";")+1:], ")") }
+	if got, want := trustee(descriptor.String()), trustee(wanted.String()); got != want {
+		t.Errorf("DACL = %s, want one entry allowing %s (%s)", descriptor, want, user.User.Sid)
 	}
 	if err := <-accepted; err != nil {
 		t.Fatal(err)
