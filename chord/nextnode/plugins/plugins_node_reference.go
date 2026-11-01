@@ -197,7 +197,7 @@ type NodeReference struct {
 // *NodeError wrapping the ChordError (`unavailable`, `aborted`, ...); a broken failure fails at once. It blocks, and
 // aborting ctx aborts the request there. Only a local contract is held this way: a remote one is held through a Go host
 // that routes its kind to the node (NodeHost.Link). params is the type's params object (a *delta.JsonObject).
-func (h *NodeHost) Get(contract *contracts.Contract, params any, ctx context.Context, options host.GetOptions) (*NodeReference, error) {
+func (h *NodeHost) Get(ctx context.Context, contract *contracts.Contract, params any, options host.GetOptions) (*NodeReference, error) {
 	declared, err := contracts.ContractDataOf(contract)
 	if err != nil {
 		return nil, err

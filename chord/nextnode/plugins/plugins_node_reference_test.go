@@ -146,7 +146,7 @@ func rfParams(id string) *delta.JsonObject { return delta.JsonObjectOf("id", id)
 
 func rfGet(t *testing.T, node *NodeHost) *NodeReference {
 	t.Helper()
-	ref, err := node.Get(rfThing, rfParams("a"), background, host.GetOptions{})
+	ref, err := node.Get(background, rfThing, rfParams("a"), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func rfRead(t *testing.T, ref *NodeReference, member string) delta.JsonValue {
 // reference RPC's included).
 func rfReferences(t *testing.T, node *NodeHost, n int) {
 	t.Helper()
-	audit, err := node.Get(rfAudit, delta.NewJsonObject(0), background, host.GetOptions{})
+	audit, err := node.Get(background, rfAudit, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -361,11 +361,11 @@ func TestNodeGetReadsAndWatchesAKeyedMember(t *testing.T) {
 func TestNodeGetReleaseIsExact(t *testing.T) {
 	node := rfNode(t)
 	rfReferences(t, node, 0)
-	first, err := node.Get(rfThing, rfParams("a"), background, host.GetOptions{})
+	first, err := node.Get(background, rfThing, rfParams("a"), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := node.Get(rfThing, rfParams("a"), background, host.GetOptions{})
+	second, err := node.Get(background, rfThing, rfParams("a"), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -423,7 +423,7 @@ func TestNodeGetWaitsForTheReadyTimeoutThenFailsUnavailable(t *testing.T) {
 	node := rfNode(t)
 	short := 400 * time.Millisecond
 	start := time.Now()
-	ref, err := node.Get(rfMissing, delta.NewJsonObject(0), background, host.GetOptions{ReadyTimeout: &short})
+	ref, err := node.Get(background, rfMissing, delta.NewJsonObject(0), host.GetOptions{ReadyTimeout: &short})
 	if err == nil {
 		ref.Release()
 		t.Fatal("a type nothing serves was got")
@@ -448,7 +448,7 @@ func TestNodeGetAbortsWhenItsContextDoes(t *testing.T) {
 	ctx, cancel := context.WithCancel(background)
 	result := make(chan error, 1)
 	go func() {
-		ref, err := node.Get(rfMissing, delta.NewJsonObject(0), ctx, host.GetOptions{ReadyTimeout: &long})
+		ref, err := node.Get(ctx, rfMissing, delta.NewJsonObject(0), host.GetOptions{ReadyTimeout: &long})
 		if err == nil {
 			ref.Release()
 		}
@@ -498,7 +498,7 @@ func TestNodeGetRefusesAContractThePluginsDoNotServeAndARemoteOne(t *testing.T) 
 		Members: []contracts.LocalEntry{contracts.Mem("label", contracts.Int())},
 	}))
 	short := 300 * time.Millisecond
-	ref, err := node.Get(other, rfParams("a"), background, host.GetOptions{ReadyTimeout: &short})
+	ref, err := node.Get(background, other, rfParams("a"), host.GetOptions{ReadyTimeout: &short})
 	if err == nil {
 		ref.Release()
 		t.Fatal("a contract of another fingerprint was got")
@@ -507,10 +507,10 @@ func TestNodeGetRefusesAContractThePluginsDoNotServeAndARemoteOne(t *testing.T) 
 	if !errors.As(err, &chordErr) || chordErr.Code != data.CodeContractMismatch {
 		t.Fatalf("error = %v, want contract_mismatch", err)
 	}
-	if _, err := node.Get(notesContract, delta.NewJsonObject(0), background, host.GetOptions{}); err == nil {
+	if _, err := node.Get(background, notesContract, delta.NewJsonObject(0), host.GetOptions{}); err == nil {
 		t.Fatal("a remote contract was got through the control channel")
 	}
-	if _, err := node.Get(rfThing, delta.JsonObjectOf("id", float64(1)), background, host.GetOptions{}); err == nil {
+	if _, err := node.Get(background, rfThing, delta.JsonObjectOf("id", float64(1)), host.GetOptions{}); err == nil {
 		t.Fatal("params that do not match the contract were accepted")
 	}
 }
@@ -585,7 +585,7 @@ func TestNodeGetAProcessThatEndsLeavesTheReferenceLoading(t *testing.T) {
 	if _, err := ref.Member("count").Value(); !errors.As(err, &exit) {
 		t.Fatalf("a read after the process ended = %v, want its *NodeExit", err)
 	}
-	if _, err := node.Get(rfThing, rfParams("b"), background, host.GetOptions{}); !errors.As(err, &exit) {
+	if _, err := node.Get(background, rfThing, rfParams("b"), host.GetOptions{}); !errors.As(err, &exit) {
 		t.Fatalf("a get after the process ended = %v, want its *NodeExit", err)
 	}
 	ref.Release()

@@ -152,7 +152,7 @@ func TestBridgedAPluginNeedingAGoCoreTypeBindsReadsCallsAndWatchesIt(t *testing.
 	bgClosed.Store(0)
 	goHost := bgGoHost(t, host.HostFacet{Name: "@app/core", Facet: bgFacet(bgCore)})
 	node := bgNode(t, []BridgedFacet{{Name: "@app/core", Host: goHost, Contracts: []*contracts.Contract{bgCore}}}, bgPlugin(t, 1, "p1"))
-	out, err := node.Get(bgOut, delta.JsonObjectOf("id", "a"), background, host.GetOptions{})
+	out, err := node.Get(background, bgOut, delta.JsonObjectOf("id", "a"), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +181,7 @@ func TestBridgedAPluginNeedingAGoCoreTypeBindsReadsCallsAndWatchesIt(t *testing.
 		}
 	}
 	// The Go host's own object has the count the plugin changed through the proxy, and a change made on the Go side reaches the plugin.
-	goRef, err := goHost.Get(bgCore, delta.JsonObjectOf("id", "a"), background, host.GetOptions{})
+	goRef, err := goHost.Get(background, bgCore, delta.JsonObjectOf("id", "a"), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +223,7 @@ func TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload(t *testing.
 		goHost := bgGoHost(t, host.HostFacet{Name: "@app/core", Facet: bgFacet(bgCore)})
 		node := bgNode(t, []BridgedFacet{{Name: "@app/core", Host: goHost, Contracts: []*contracts.Contract{bgCore}}}, bgPlugin(t, 1, "p1"))
 		// The plugin's object is live while it reloads: its factory's recorded requests are what the closure rule reads.
-		out, err := node.Get(bgOut, delta.JsonObjectOf("id", "a"), background, host.GetOptions{})
+		out, err := node.Get(background, bgOut, delta.JsonObjectOf("id", "a"), host.GetOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -351,7 +351,7 @@ export default defineFacet((host) => host.serve(Idx, () => ({ label: constant(la
 		return goReport, goHost
 	}
 	tagOf := func(t *testing.T, h host.Host) delta.JsonValue {
-		ref, err := h.Get(bgNeeds, delta.NewJsonObject(0), background, host.GetOptions{})
+		ref, err := h.Get(background, bgNeeds, delta.NewJsonObject(0), host.GetOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -417,7 +417,7 @@ module.exports = { default: defineFacet((host) => host.serve(Out, (_params, self
 		t.Fatalf("failed = %+v", report.Failed)
 	}
 	acceptorOf(t, node, serverPrincipal)
-	out, err := node.Get(bgOut, delta.JsonObjectOf("id", "a"), background, host.GetOptions{})
+	out, err := node.Get(background, bgOut, delta.JsonObjectOf("id", "a"), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

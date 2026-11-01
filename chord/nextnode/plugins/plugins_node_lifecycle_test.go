@@ -240,7 +240,7 @@ func TestEndToEndTheFramesAReloadCausedAreDeliveredWhenReloadReturnsAlsoWhenThei
 	}
 	t.Cleanup(func() { _ = node.Close(background) })
 	server := serverFor(t, workerRoute(node))
-	notes, err := server.Get(notesContract, delta.NewJsonObject(0), background, host.GetOptions{})
+	notes, err := server.Get(background, notesContract, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

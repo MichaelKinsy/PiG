@@ -465,7 +465,7 @@ export default defineFacet((host) =>
 		b.Fatal(err)
 	}
 	b.Cleanup(func() { _ = node.Close(background) })
-	ref, err := serverFor(b, workerRoute(node)).Get(probeContract, delta.NewJsonObject(0), background, host.GetOptions{})
+	ref, err := serverFor(b, workerRoute(node)).Get(background, probeContract, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		b.Fatal(err)
 	}

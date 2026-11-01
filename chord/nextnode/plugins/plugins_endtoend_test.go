@@ -110,7 +110,7 @@ func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThen
 		t.Fatal(err)
 	}
 	t.Cleanup(notes.Release)
-	index, err := serverNode.Get(pcIndexContract, delta.NewJsonObject(0), background, host.GetOptions{})
+	index, err := serverNode.Get(background, pcIndexContract, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
