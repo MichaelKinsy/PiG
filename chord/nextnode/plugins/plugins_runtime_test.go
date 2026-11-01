@@ -3,6 +3,7 @@ package plugins
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -193,6 +194,15 @@ func TestRuntimeKeepsTheLoadedFacetOfAPluginWhoseNewBuildOrEvaluationFailedAnAdd
 	}
 }
 
+// fileURL is the file: URL of the absolute path (Node's `pathToFileURL(path).href`), the form `import()` takes on every platform.
+func fileURL(path string) string {
+	slashed := filepath.ToSlash(path)
+	if !strings.HasPrefix(slashed, "/") {
+		slashed = "/" + slashed
+	}
+	return (&url.URL{Scheme: "file", Path: slashed}).String()
+}
+
 // runtime.test.ts › the runtime's imports › loads no esbuild: a worker that only evaluates never imports it. Pi's script,
 // run on Node as Pi's test runs it, against the runtime.ts of the extracted tree (the file the subprocess runs).
 func TestRuntimeLoadsNoEsbuildAWorkerThatOnlyEvaluatesNeverImportsIt(t *testing.T) {
@@ -209,7 +219,7 @@ func TestRuntimeLoadsNoEsbuildAWorkerThatOnlyEvaluatesNeverImportsIt(t *testing.
 		fmt.Sprintf("  if (specifier === \"@earendil-works/pi-schema\") return { url: %s, shortCircuit: true };", pcJSON(t, "file://"+filepath.ToSlash(filepath.Join(tree, "pi", "schema", "src", "index.ts")))),
 		"  return next(specifier, context);",
 		"} });",
-		fmt.Sprintf("const { createPluginRuntime } = await import(%s);", pcJSON(t, runtime)),
+		fmt.Sprintf("const { createPluginRuntime } = await import(%s);", pcJSON(t, fileURL(runtime))),
 		"createPluginRuntime();",
 		`console.log("ok");`,
 	}, "\n")
