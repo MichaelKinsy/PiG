@@ -632,8 +632,9 @@ SOFTWARE.
 | chalk | 6.0.0 | MIT | `chalk/license` |
 | undici | 8.10.2 | MIT | `undici/LICENSE` |
 | semver | 7.8.5 | ISC | `semver/LICENSE` |
-| minimatch | 10.2.6 | BlueOak-1.0.0 | `minimatch/LICENSE.md` |
-| brace-expansion | 5.0.9 | MIT | `minimatch/node_modules/brace-expansion/LICENSE` |
+| minimatch | 11.0.3 | BlueOak-1.0.0 | `minimatch/LICENSE.md` |
+| @isaacs/nonrecursive-glob-match | 1.0.3 | BlueOak-1.0.0 | `minimatch/node_modules/@isaacs/nonrecursive-glob-match/LICENSE.md` |
+| brace-expansion | 5.0.12 | MIT | `minimatch/node_modules/brace-expansion/LICENSE` |
 | balanced-match | 4.0.4 | MIT | `minimatch/node_modules/brace-expansion/node_modules/balanced-match/LICENSE.md` |
 | hosted-git-info | 9.0.3 | ISC | `hosted-git-info/LICENSE` |
 | lru-cache | 11.4.0 | BlueOak-1.0.0 | `hosted-git-info/node_modules/lru-cache/LICENSE.md` |

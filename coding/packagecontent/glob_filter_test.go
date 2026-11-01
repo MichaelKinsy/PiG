@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"math/rand/v2"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
@@ -12,35 +11,44 @@ import (
 	"testing"
 )
 
-// minimatchOracle runs minimatch(path, pattern) with minimatch's default options in Node for each pair and returns the result, or the message of the error it throws. Node's bundled minimatch, reachable only with --expose-internals (the test skips without it), equals Pi's npm minimatch 10.2.6 except in brace expansion, where it bundles an older brace-expansion. The pairs here expand alike in both; glob_braces_npm_test.go records the patterns that do not, from Pi's copy.
+// minimatchOracle runs minimatch(path, pattern) with minimatch's default options in Pi's installed minimatch (11.0.3, the copy Pi's own minimatch() calls run, not the one Node bundles) for each pair and returns the result, or "threw" where it throws.
 func minimatchOracle(t *testing.T, pairs any) []any {
 	t.Helper()
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Skip("node is not installed")
 	}
-	input, err := json.Marshal(pairs)
+	raw, err := json.Marshal(pairs)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command(node, "--expose-internals", "--eval", `
-let mm;
-try { mm = require("internal/deps/minimatch/index"); } catch { process.stdout.write("null"); process.exit(0); }
-const pairs = JSON.parse(require("fs").readFileSync(0, "utf8"));
-process.stdout.write(JSON.stringify(pairs.map((p) => { try { return mm.minimatch(p.Path, p.Pattern); } catch (e) { return String(e.message); } })));
-`)
+	var in []struct{ Path, Pattern string }
+	if err := json.Unmarshal(raw, &in); err != nil {
+		t.Fatal(err)
+	}
+	type probe struct {
+		Name    string `json:"name"`
+		Pattern string `json:"pattern"`
+	}
+	probes := make([]probe, len(in))
+	for i, p := range in {
+		probes[i] = probe{p.Path, p.Pattern}
+	}
+	input, err := json.Marshal(probes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(node, filepath.Join("..", "..", "internal", "minimatch", "testdata", "minimatch.mjs"), "11.0.3")
 	cmd.Stdin = bytes.NewReader(input)
-	cmd.Env = append(os.Environ(), "NODE_NO_WARNINGS=1")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	output, err := cmd.Output()
 	if err != nil {
-		t.Fatalf("node: %v", err)
+		t.Fatalf("minimatch oracle: %v\n%s", err, &stderr)
 	}
 	var want []any
 	if err := json.Unmarshal(output, &want); err != nil {
-		t.Fatalf("node output %q: %v", output, err)
-	}
-	if want == nil {
-		t.Skip("node's bundled minimatch is not reachable")
+		t.Fatalf("minimatch oracle output %q: %v", output, err)
 	}
 	return want
 }
@@ -49,9 +57,9 @@ process.stdout.write(JSON.stringify(pairs.map((p) => { try { return mm.minimatch
 func minimatchMatch(path, pattern string) any {
 	m, err := newMinimatchFilter(pattern)
 	if err != nil {
-		return err.Error()
+		return "threw"
 	}
-	return m.match(path)
+	return m.Match(path)
 }
 
 // Pi's filters call minimatch(path, pattern) with its default options (package-manager.ts:661-685): globstars that do not cross dot parts, braces, extglobs, classes and POSIX classes, "#" comments, "!" negation, ".." folding, trailing slashes, and on Windows backslash paths, drives and "//?/" UNC roots. Random patterns and paths against Node's bundled minimatch, errors compared by message.
