@@ -299,6 +299,99 @@ func TestOwnedConversationsFromTools(t *testing.T) {
 		mustClose(t, harness)
 	})
 
+	// session.ts commit: `context.abortSignal?.throwIfAborted()` as the job starts (Pi e5c6182b, harness.ts submit).
+	t.Run("rejects a handle submit whose invocation was aborted while it was queued behind a line job, and stores nothing", func(t *testing.T) {
+		setup := chatSetup(t)
+		type ready struct {
+			child  durable.ConversationId
+			taskId durable.TaskId
+			ctx    context.Context
+			bound  durable.ConversationHandle
+		}
+		readyValue := &syncValue[ready]{}
+		addTool(t, setup.Registry, ownTool("delegate", "Delegates late", emptyObjectSchema(), func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
+			child, err := ownCreateChild(ctx, api)
+			if err != nil {
+				return durable.ToolExecutionResult{}, err
+			}
+			bound, err := api.Conversation(ctx, child)
+			if err != nil || bound == nil {
+				return durable.ToolExecutionResult{}, errors.New("child conversation is missing")
+			}
+			readyValue.put(ready{child: child, taskId: api.TaskId(), ctx: ctx, bound: bound})
+			return durable.ToolExecutionResult{}, abortedBy(ctx)
+		}))
+		setup.Faux.SetResponses([]ai.FauxResponseStep{ownCall("delegate", map[string]any{}, "c1")})
+		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
+		ownSubmit(t, root, ownInput("go"))
+		eventually(t, readyValue.isSet)
+		info, _ := readyValue.get()
+		// The line holds two jobs that outlast the abort mark's publication: the first, the mark behind it, then the second,
+		// with the handle's submit behind that. The mark publishes while the second job holds the line.
+		hold := func(entered, release *deferredGate) *future[struct{}] {
+			var holding *future[struct{}]
+			queueOnLineAdmitted(t, func(admitted context.Context) <-chan struct{} {
+				holding = asyncErr(func() error {
+					_, err := root.Commit(admitted, func(durable.Tx) (any, error) {
+						entered.resolve()
+						return nil, release.wait(testContext)
+					})
+					return err
+				})
+				return holding.done
+			})
+			return holding
+		}
+		firstEntered, firstRelease := deferred(), deferred()
+		secondEntered, secondRelease := deferred(), deferred()
+		first := hold(firstEntered, firstRelease)
+		if err := firstEntered.wait(testContext); err != nil {
+			t.Fatal(err)
+		}
+		var aborting *future[struct{}]
+		queueOnLineAdmitted(t, func(admitted context.Context) <-chan struct{} {
+			aborting = asyncErr(func() error {
+				_, err := harness.AbortTask(admitted, info.taskId)
+				return err
+			})
+			return aborting.done
+		})
+		second := hold(secondEntered, secondRelease)
+		var submitting *future[durable.Submission]
+		queueOnLineAdmitted(t, func(admitted context.Context) <-chan struct{} {
+			submitting = async(func() (durable.Submission, error) { return info.bound.Submit(admitted, ownInput("late")) })
+			return submitting.done
+		})
+		firstRelease.resolve()
+		if err := secondEntered.wait(testContext); err != nil {
+			t.Fatal(err)
+		}
+		// The mark was published while the second job runs: the invocation is aborted before the submit's job starts.
+		<-info.ctx.Done()
+		secondRelease.resolve()
+		for _, done := range []*future[struct{}]{first, aborting, second} {
+			if _, err := done.wait(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if submission, err := submitting.wait(); err == nil {
+			t.Fatalf("the submit queued before the invocation was aborted was admitted as %v, want it rejected when its job started", submission.Id())
+		}
+		if users := ownCountKind(ownChildEntries(t, harness, info.child), "pi.user"); users != 0 {
+			t.Fatalf("%d user entries in the child, want 0", users)
+		}
+		inspection, err := harness.Inspect(testContext)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, record := range inspection.Submissions {
+			if record.ConversationId == info.child {
+				t.Fatalf("submission %+v stored in the child", record)
+			}
+		}
+		mustClose(t, harness)
+	})
+
 	t.Run("aborts a subagent run with its parent's conversation, rejecting the waiting tool", func(t *testing.T) {
 		setup := chatSetup(t)
 		child := &syncValue[durable.ConversationId]{}
