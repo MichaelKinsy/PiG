@@ -70,6 +70,8 @@ type RuntimeLoad struct {
 	// host the link is attached to compresses its own parts when it is created with host.HostOptions.Compression
 	// (nextnode.NodeCompression): a compressor is a host's, not a link's, and a host without one inflates what it gets.
 	Compression bool
+	// Store is the subprocess host's store (`createHost`'s `store`); nil: none (StoreOptions).
+	Store *StoreOptions
 }
 
 // PluginRuntime starts the Node subprocesses that host plugins, and loads and reloads them with complete sets of shipped
@@ -93,9 +95,10 @@ type loadRequest struct {
 	Peer      data.Principal    `json:"peer"`
 	Heartbeat *heartbeatWire    `json:"heartbeat,omitempty"`
 	// CloseTimeout and ReadyTimeout are milliseconds.
-	CloseTimeout *int64 `json:"closeTimeout,omitempty"`
-	ReadyTimeout *int64 `json:"readyTimeout,omitempty"`
-	Compression  bool   `json:"compression,omitempty"`
+	CloseTimeout *int64     `json:"closeTimeout,omitempty"`
+	ReadyTimeout *int64     `json:"readyTimeout,omitempty"`
+	Compression  bool       `json:"compression,omitempty"`
+	Store        *storeWire `json:"store,omitempty"`
 }
 
 // heartbeatWire is a host.HeartbeatOptions in milliseconds, as `createHost`'s `heartbeat`.
@@ -209,6 +212,11 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 		ready := options.ReadyTimeout.Milliseconds()
 		request.ReadyTimeout = &ready
 	}
+	store, err := storeToWire(options.Store)
+	if err != nil {
+		return nil, host.LoadReport{}, err
+	}
+	request.Store = store
 	h, err := startNode(r.node, ctx)
 	if err != nil {
 		return nil, host.LoadReport{}, err

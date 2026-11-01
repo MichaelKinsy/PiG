@@ -18,6 +18,7 @@ import { EventEmitter } from "node:events";
 import { registerHooks } from "node:module";
 import { connect } from "node:net";
 import { pathToFileURL } from "node:url";
+import { openHostStore } from "./store.mjs";
 
 const tree = new URL("./pi/chord/src/", import.meta.url);
 const pi = (path) => import(new URL(path, tree).href);
@@ -153,7 +154,9 @@ async function load(request, context) {
 	for (const { name, module } of request.core) {
 		core.push({ name, facet: (await import(pathToFileURL(module).href)).default });
 	}
+	const store = request.store === undefined ? undefined : await openHostStore(request.store.path, context);
 	const host = createHost({
+		...(store === undefined ? {} : { store }),
 		...(request.address === undefined ? {} : { address: request.address }),
 		...(request.principal === undefined ? {} : { principal: request.principal }),
 		...(request.heartbeat === undefined ? {} : { heartbeat: request.heartbeat }),
@@ -163,7 +166,7 @@ async function load(request, context) {
 		onError: (error) => port.control({ event: "error", error: hostError(error) }),
 	});
 	const runtime = createPluginRuntime();
-	hosted = { host, runtime };
+	hosted = { host, runtime, store };
 	// The host's keep-alive counts, for the app that supervises it (NodeOptions.OnActivity): now, and at each change.
 	port.control({ event: "activity", counts: host.activity.value });
 	void host.activity.watch(BACKGROUND_CONTEXT).then((watch) =>
@@ -211,8 +214,11 @@ port.on("message", (message) => {
 		return;
 	}
 	if (message.op === "close") {
-		// The host's close ends its links, this process's channel with them; the process ends once it is closed.
-		(hosted?.host.close(BACKGROUND_CONTEXT) ?? Promise.resolve()).finally(() => process.exit(0));
+		// The host's close ends its links, this process's channel with them; the app's store is closed after the host, as
+		// Pi's apps do (a host that failed to close still lets the store close); the process ends once both are closed.
+		(hosted?.host.close(BACKGROUND_CONTEXT) ?? Promise.resolve())
+			.finally(() => hosted?.store?.close(BACKGROUND_CONTEXT))
+			.finally(() => process.exit(0));
 		return;
 	}
 	const operation = operations[message.op];

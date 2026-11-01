@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
@@ -222,40 +221,6 @@ func TestRuntimeLoadsNoEsbuildAWorkerThatOnlyEvaluatesNeverImportsIt(t *testing.
 	}
 	if got := strings.TrimSpace(string(output)); got != "ok" {
 		t.Fatalf("output = %q, want ok", got)
-	}
-}
-
-// Not upstream's (docs/plan/chord-plugins-node-evaluator.md section 8, plugnode-differences.md): the Node host has no store, so
-// a type that declares a persisted document fails to activate, as it does on a Pi host created without one.
-func TestRuntimeAFacetWithAPersistedDocumentFailsToActivateTheHostHasNoStore(t *testing.T) {
-	root := tempRoot(t)
-	pcPluginSource(t, root, "persisted", strings.Join([]string{
-		`import { defineFacet, defineState, int, local, obj } from "@earendil-works/chord/next";`,
-		`const Item = local("test.persisted", { version: 1, params: {}, members: { n: int() } });`,
-		`const Count = defineState("count", { schema: obj({ n: int() }), version: 1, initial: () => ({ n: 0 }), persist: true, checkpointWhen: () => false });`,
-		`export default defineFacet((host) => host.serve(Item, (_params, self) => ({ n: self.derive([self.state(Count)], ([value]) => value.n) })));`,
-	}, "\n"))
-	failures := make(chan NodeHostError, 8)
-	c := pcNew(t, root, pcOptions{hostError: func(err NodeHostError) { failures <- err }})
-	c.loadWorker(t, `touch: async (_args, { ctx }) => {
-	const Item = next.local("test.persisted", { version: 1, params: {}, members: { n: next.int() } });
-	try { await ctx.get(Item, {}, { readyTimeout: 1 }); return "live"; } catch (error) { return "not live"; }
-},`, nil).probe.must("touch", nil)
-	for {
-		select {
-		case err := <-failures:
-			if err.Kind == "activation_failed" && err.Object == "test.persisted" {
-				if err.Failure.Error == nil || !strings.Contains(err.Failure.Error.Error(), "persist needs a store") {
-					t.Fatalf("activation failed with %+v, want persist needs a store", err.Failure)
-				}
-				if err.Failure.Kind != data.FailureBroken && err.Failure.Kind != data.FailureTransient {
-					t.Fatalf("failure kind = %q", err.Failure.Kind)
-				}
-				return
-			}
-		case <-time.After(30 * time.Second):
-			t.Fatal("the host reported no failed activation")
-		}
 	}
 }
 

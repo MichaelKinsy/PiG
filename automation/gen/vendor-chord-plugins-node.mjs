@@ -25,6 +25,10 @@ const ENTRIES = [
 	"next-node/plugins/runtime.ts",
 	"next-node/compression.ts",
 	"context/index.ts",
+	// The Node host's store (node/store.mjs): the SQLite backend over node:sqlite. database.ts is the interface node.ts
+	// imports as a type only, so Node's stripping leaves it out of the closure; it is copied as Pi's own file beside it.
+	"sqlite/node.ts",
+	"sqlite/database.ts",
 ];
 /** The bare specifiers the closure may import: Pi's runtime dependencies that are copied below. */
 const PACKAGES = new Set(["typebox", "typebox/compile", "typebox/error", "typebox/schema", "typebox/value", "@earendil-works/pi-telemetry"]);

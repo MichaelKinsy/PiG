@@ -625,12 +625,20 @@
 			"sha256": "1549b41f3974919ba25440a542eff1973d03cecb9d45d95e0506a8ed214e1638"
 		},
 		{
+			"path": "pi/chord/src/sqlite/database.ts",
+			"sha256": "1d92fd7d8cb92891ddf6c46070c48ff18659e7dedfa81fc654e3ce8b2cae0b5e"
+		},
+		{
 			"path": "pi/chord/src/sqlite/index.ts",
 			"sha256": "be968d2152471d455323bbfd06802ea73d1470b03b2123e2a4e1f680da38b0e8"
 		},
 		{
 			"path": "pi/chord/src/sqlite/migrations.ts",
 			"sha256": "bd21356d008b67c1c9c2da00bb49fcf439822d0fe8c2afaa17fac075474bbc40"
+		},
+		{
+			"path": "pi/chord/src/sqlite/node.ts",
+			"sha256": "83b24baaa127f8b24adba495491a70eaff9b70cc3ad73f99055905395b12e986"
 		},
 		{
 			"path": "pi/chord/src/sqlite/schema.ts",
