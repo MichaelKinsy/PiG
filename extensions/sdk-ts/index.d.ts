@@ -122,21 +122,6 @@ declare module "@earendil-works/pi-coding-agent" {
     /** Output exceeded `maxBuffer`; stdout and stderr are incomplete and `code` is nonzero. */
     truncated: boolean;
   }
-  // Pi 9376c8d1 (#4748) adds KeybindingHints to the tool render context and the message and entry renderer options. PiG's host passes them and this
-  // augmentation declares them.
-  /**
-   * Formats the host's configured keybindings for display.
-   * Use these instead of importing `keyText`/`keyHint`: an import may resolve to another copy of the package, which does not see the host's keybindings.
-   */
-  interface KeybindingHints {
-    /** Configured keys for a keybinding id, for example `"ctrl+o"`. Empty when the id has no keys. */
-    keyText(keybinding: import("@earendil-works/pi-tui").Keybinding): string;
-    /** Configured keys followed by a description, styled as a hint, for example `"ctrl+o to expand"`. */
-    keyHint(keybinding: import("@earendil-works/pi-tui").Keybinding, description: string): string;
-  }
-  interface ToolRenderContext<TState = any, TArgs = any> extends KeybindingHints {}
-  interface MessageRenderOptions extends KeybindingHints {}
-  interface EntryRenderOptions extends KeybindingHints {}
   interface ExtensionUIContext {
     /** Subscribe to changes of the host's theme; the handler receives `ui.theme` after it took the new palette. Returns the unsubscribe function. */
     onThemeChange(handler: (theme: Theme) => void): () => void;
