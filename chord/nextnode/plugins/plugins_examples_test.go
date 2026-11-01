@@ -266,6 +266,16 @@ func withoutDirectoryStamps(got, want PluginsState) PluginsState {
 	return got
 }
 
+// exDirtyOf is the plugins the marks say to build, as the case expects them (want): on Windows the plugins whose directory
+// saw an entry come or go are dirty too (see withoutDirectoryStamps), and are not built here.
+func exDirtyOf(plugins *Plugins, want ...string) []string {
+	dirty := plugins.Marks().Dirty
+	if runtime.GOOS == "windows" {
+		dirty = slices.DeleteFunc(slices.Clone(dirty), func(name string) bool { return !slices.Contains(want, name) })
+	}
+	return dirty
+}
+
 func exBuild(t *testing.T, plugins *Plugins, names []string) *Built {
 	t.Helper()
 	built, err := plugins.Build(names, background)
@@ -439,7 +449,7 @@ func TestExample35PluginsLoadEditMarkBuildRollOut(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	built := exBuild(t, plugins, plugins.Marks().Dirty)
+	built := exBuild(t, plugins, exDirtyOf(plugins, "@example/notes"))
 	var builtLines []string
 	for _, facet := range built.Facets {
 		builtLines = append(builtLines, facet.Plugin+"/"+facet.Facet+": "+string(facet.Kind))
