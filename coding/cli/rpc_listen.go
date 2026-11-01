@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"os/signal"
 	"sync"
 	"syscall"
 	"time"
@@ -78,6 +79,46 @@ func (c *listenControls) each(stop bool, fn func(rpcSessionControls)) {
 	wg.Wait()
 }
 
+// listenHosts is the set of extension Hosts of live connections. pig additive (D201).
+type listenHosts struct {
+	mu sync.Mutex
+	m  map[*subprocess.Host]struct{}
+}
+
+// add tracks the build's Host and returns the function that forgets it.
+func (h *listenHosts) add(build *cliBuild) (remove func()) {
+	if build == nil || build.Host == nil {
+		return func() {}
+	}
+	host := build.Host
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.m == nil {
+		h.m = map[*subprocess.Host]struct{}{}
+	}
+	h.m[host] = struct{}{}
+	return func() {
+		h.mu.Lock()
+		defer h.mu.Unlock()
+		delete(h.m, host)
+	}
+}
+
+func (h *listenHosts) len() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return len(h.m)
+}
+
+// terminate kills the extension processes of every live Host.
+func (h *listenHosts) terminate() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for host := range h.m {
+		host.TerminateProcesses()
+	}
+}
+
 // runRPCListen serves one RPC session per connection accepted on the Unix socket at flags.Listen until a termination signal, and returns the process exit code. pig additive (D201).
 func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, resources rpcModeResources) (exitCode int) {
 	path := flags.Listen
@@ -105,23 +146,31 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 	ctx, stop := context.WithCancel(ctx)
 	defer stop()
 	controls := &listenControls{}
-	var hostsMu sync.Mutex
-	var hosts []*subprocess.Host
-	trackHost := func(build *cliBuild) {
-		if build != nil && build.Host != nil {
-			hostsMu.Lock()
-			hosts = append(hosts, build.Host)
-			hostsMu.Unlock()
-		}
-	}
-	trackHost(resources.Build)
+	hosts := &listenHosts{}
+	// forced carries the termination signal that arrives while the first signal's fan-out is still running.
+	forced := make(chan syscall.Signal, 1)
+	// The startup build's Host stays tracked until the first connection's session ends, or until exit if none connects.
+	hosts.add(resources.Build)
 
 	// Both hooks fan out to every live session at once, and the shutdown one stops accepting first.
 	setTerminationPrelude(func() { controls.each(false, func(c rpcSessionControls) { c.prelude() }) })
 	setTerminationShutdownHook(func() {
 		_ = listener.Close()
 		sig := syscall.Signal(receivedTerminationSignal.Load())
-		controls.each(true, func(c rpcSessionControls) { c.shutdown(sig) })
+		// pig additive (D201): as in process mode, a further termination signal ends the wait for a session whose dispose hangs.
+		second := make(chan os.Signal, 1)
+		signal.Notify(second, terminationSignals()...)
+		defer signal.Stop(second)
+		fanout := make(chan struct{})
+		go func() {
+			defer close(fanout)
+			controls.each(true, func(c rpcSessionControls) { c.shutdown(sig) })
+		}()
+		select {
+		case <-fanout:
+		case s := <-second:
+			forced <- s.(syscall.Signal)
+		}
 	})
 	defer setTerminationPrelude(nil)
 	defer setTerminationShutdownHook(nil)
@@ -142,6 +191,9 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 			if err != nil {
 				if ctx.Err() == nil && !errors.Is(err, net.ErrClosed) {
 					acceptFailed = err
+					// pig additive (D201): a failed accept ends the server, and its sessions shut down first.
+					fmt.Fprintf(os.Stderr, "pig --listen: accept: %v\n", err)
+					controls.each(true, func(c rpcSessionControls) { c.shutdown(syscall.SIGTERM) })
 					stop()
 				}
 				return
@@ -168,7 +220,8 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 					fmt.Fprintf(os.Stderr, "pig --listen: build: %v\n", buildErr)
 					return
 				}
-				trackHost(build)
+				remove := hosts.add(build)
+				defer remove()
 				if ctx.Err() != nil {
 					_ = builder.discardBuild(build, "quit", nil)
 					return
@@ -185,22 +238,33 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 		}
 	})
 
-	<-ctx.Done()
-	_ = listener.Close()
-	if acceptFailed != nil {
-		fmt.Fprintf(os.Stderr, "pig --listen: accept: %v\n", acceptFailed)
-		controls.each(true, func(c rpcSessionControls) { c.shutdown(syscall.SIGTERM) })
+	var forcedSig syscall.Signal
+	select {
+	case <-ctx.Done():
+	case forcedSig = <-forced:
 	}
-	conns.Wait()
+	_ = listener.Close()
+	if forcedSig == 0 {
+		allDone := make(chan struct{})
+		go func() { conns.Wait(); close(allDone) }()
+		select {
+		case <-allDone:
+		case forcedSig = <-forced:
+		}
+	}
+	if forcedSig != 0 {
+		// pig additive (D201): a second termination signal abandons sessions whose dispose hangs.
+		if builder.cellRegistry != nil {
+			builder.cellRegistry.Close()
+		}
+		hosts.terminate()
+		return 128 + int(forcedSig)
+	}
 	// Shared cells end with the server, then any process a Host still holds is terminated, as exitRPC does at the end of a process-owned session.
 	if builder.cellRegistry != nil {
 		builder.cellRegistry.Close()
 	}
-	hostsMu.Lock()
-	for _, host := range hosts {
-		host.TerminateProcesses()
-	}
-	hostsMu.Unlock()
+	hosts.terminate()
 	if acceptFailed != nil {
 		return 1
 	}
