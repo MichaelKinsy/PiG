@@ -21024,6 +21024,30 @@
       ]
     },
     {
+      "id": "BF-84b2fca",
+      "title": "Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the…",
+      "symptom": "Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the `mdCodeBlock` color in the Go, Rust, Python and Lisp extension SDKs when the host's highlighter fails or cannot be reached, and in the host for a theme that lacks a syntax color, where PiG panicked.",
+      "rootCause": "Pi makes getMarkdownTheme().highlightCode the same function as highlightCode, and that function returns the code in the mdCodeBlock color when the highlight throws. PiG's highlightCode left such code unstyled, in the Go tui and in the Go, Rust, Python and Lisp extension SDKs, which told the two functions apart with a markdown member of the highlight.code host call. The member is gone: both functions take the code-block color, and the tui treats the Unknown theme color error of a theme with no color for a syntax token as the failed highlight it is in Pi instead of panicking.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the `mdCodeBlock` color in the Go, Rust, Python and Lisp extension SDKs when the host's highlighter fails or cannot be reached, and in the host for a theme that lacks a syntax color, where PiG panicked. `getMarkdownTheme().highlightCode` is `highlightCode`, so the `highlight.code` host call no longer has a `markdown` member.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "84b2fcadd1",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/tui_theme_test.go::TestHighlightCodeThatFailsTakesTheCodeBlockColorAcrossSDKs",
+        "tui/highlight_failure_oracle_test.go::TestHighlightFailureMatchesPi",
+        "tui/highlight_test.go::TestHighlightCodeThatFailsTakesTheCodeBlockColor"
+      ]
+    },
+    {
       "id": "BF-852652e",
       "title": "PiG no longer names documentation that does not exist",
       "symptom": "They named `\u003cconfig root\u003e/docs` files that were never written.",
