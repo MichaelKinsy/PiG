@@ -215,6 +215,7 @@ func (submissions *Submissions) waitSettled(ctx context.Context, id durable.Subm
 		record *durable.SubmissionRecord
 		waiter *Waiter[durable.SettledSubmissionRecord]
 	}
+	var registered *Waiter[durable.SettledSubmissionRecord]
 	result, err := readOnLine(ctx, submissions.line, func(storage durable.Storage) (found, error) {
 		record, err := storage.Submission(ctx, id)
 		if err != nil {
@@ -232,9 +233,12 @@ func (submissions *Submissions) waitSettled(ctx context.Context, id durable.Subm
 		if submissions.closed {
 			return found{}, closedError(submissions.line)
 		}
-		return found{waiter: submissions.waiters.Add(ctx, id)}, nil
+		registered = submissions.waiters.Add(ctx, submissions.line, id)
+		return found{waiter: registered}, nil
 	})
 	if err != nil {
+		// The job registered the wait and the line failed it after: nothing will block in it.
+		registered.Abandon()
 		return durable.SubmissionRecord{}, err
 	}
 	if result.record != nil {

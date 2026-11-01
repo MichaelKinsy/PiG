@@ -225,7 +225,8 @@ func TestSubmissions(t *testing.T) {
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAfter(release, "answer")})
 		harness, root := openChat(t, newControlledStorage(), setup)
 		submission := must(root.Submit(testContext, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("hi")}))
-		sealed := harness.(*harnessImpl).submissions.waiters.Add(testContext, 999_999)
+		sealed := harness.(*harnessImpl).submissions.waiters.Add(testContext, harness.(*harnessImpl).SessionImpl, 999_999)
+		go func() { _, _ = sealed.Wait() }()
 		closing := make(chan struct{})
 		var once sync.Once
 		observeStored(harness, func(_ context.Context, publication durable.CommitPublication) {

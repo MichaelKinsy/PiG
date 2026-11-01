@@ -1126,7 +1126,8 @@ func TestPublicationAtAdoption(t *testing.T) {
 		gated := tkGated("test.seal-in-listener", gate)
 		opened := tkOpenRoot(t, []durable.AnyTask{gated.Erased()})
 		id := tkStart(t, opened.root, gated.Erased())
-		sealed := opened.harness.(*harnessImpl).tasks.idleHarness.Add(testContext, false)
+		sealed := opened.harness.(*harnessImpl).tasks.idleHarness.Add(testContext, opened.harness.(*harnessImpl).SessionImpl, false)
+		go func() { _, _ = sealed.Wait() }()
 		closing := make(chan struct{})
 		var once sync.Once
 		observeStored(opened.harness, func(_ context.Context, publication durable.CommitPublication) {
@@ -1164,8 +1165,8 @@ func TestPublicationAtAdoption(t *testing.T) {
 		opened := tkOpenRoot(t, []durable.AnyTask{gated.Erased()})
 		id := tkStart(t, opened.root, gated.Erased())
 		tasks := opened.harness.(*harnessImpl).tasks
-		conversationWait := tasks.idleWaiters.Add(testContext, opened.root.Id())
-		harnessWait := tasks.idleHarness.Add(testContext, true)
+		conversationWait := tasks.idleWaiters.Add(testContext, tasks.options.Session, opened.root.Id())
+		harnessWait := tasks.idleHarness.Add(testContext, tasks.options.Session, true)
 		awake := make(chan int, 1)
 		observeStored(opened.harness, func(_ context.Context, publication durable.CommitPublication) {
 			if publicationTerminal(publication, id) {
@@ -1203,7 +1204,8 @@ func TestPublicationAtAdoption(t *testing.T) {
 		gated := tkGated("test.seal-idle-in-listener", gate)
 		opened := tkOpenRoot(t, []durable.AnyTask{gated.Erased()})
 		id := tkStart(t, opened.root, gated.Erased())
-		sealed := opened.harness.(*harnessImpl).tasks.idleHarness.Add(testContext, false)
+		sealed := opened.harness.(*harnessImpl).tasks.idleHarness.Add(testContext, opened.harness.(*harnessImpl).SessionImpl, false)
+		go func() { _, _ = sealed.Wait() }()
 		closing := make(chan struct{})
 		var once sync.Once
 		observeStored(opened.harness, func(_ context.Context, publication durable.CommitPublication) {
