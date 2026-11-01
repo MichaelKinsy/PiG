@@ -47,50 +47,22 @@ pkg:ai/providers/model-schema#ModelPromptCache	ai	undecidable	ai/types.go#ModelP
 pkg:ai/providers/model-schema#ModelThinkingLevel	ai	undecidable	ai/types.go#ModelThinkingLevel
 pkg:ai/providers/model-schema#ThinkingLevel	ai	undecidable	ai/types.go#ThinkingLevel
 pkg:ai/providers/model-schema#ThinkingLevelMap	ai	undecidable	ai/types.go#ThinkingLevelMap
-pkg:ai/providers/schema-builders#openObject	ai	no-go-symbol	
-pkg:ai/providers/schema-builders#openObject::call:0	ai	child-gap	
-pkg:ai/providers/schema-builders#stringLiteral	ai	no-go-symbol	
-pkg:ai/providers/schema-builders#stringLiteral::call:0	ai	child-gap	
-pkg:ai/providers/schema-builders#stringRecord	ai	no-go-symbol	
-pkg:ai/providers/schema-builders#stringRecord::call:0	ai	child-gap	
+pkg:ai/providers/schema-builders#openObject	ai	child-gap	internal/codingagent/configschema/pischema.go#OpenObject
+pkg:ai/providers/schema-builders#openObject::call:0	ai	signature-mismatch	internal/codingagent/configschema/pischema.go#OpenObject
+pkg:ai/providers/schema-builders#stringLiteral	ai	child-gap	internal/codingagent/configschema/pischema.go#StringLiteral
+pkg:ai/providers/schema-builders#stringLiteral::call:0	ai	signature-mismatch	internal/codingagent/configschema/pischema.go#StringLiteral
+pkg:ai/providers/schema-builders#stringRecord	ai	child-gap	internal/codingagent/configschema/pischema.go#StringRecord
+pkg:ai/providers/schema-builders#stringRecord::call:0	ai	signature-mismatch	internal/codingagent/configschema/pischema.go#StringRecord
 pkg:chord/.#Description	chord	undecidable	chord/host/contract.go#Description
 pkg:chord/next#BooleanSchema	chord	no-go-symbol	
 pkg:chord/next#BooleanSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
 pkg:chord/next#BooleanSchema::property:type	chord	child-gap	
-pkg:chord/next#Host	chord	child-gap	chord/next/host/host_host.go#Host
-pkg:chord/next#Host::property:close	chord	not-exercised	chord/next/host/host_host.go#Host.Close
-pkg:chord/next#Host::property:close::call:0	chord	not-exercised	chord/next/host/host_host.go#Host.Close
-pkg:chord/next#Host::property:get	chord	child-gap	chord/next/host/host_host.go#Host.Get
-pkg:chord/next#Host::property:get::call:0	chord	signature-mismatch	chord/next/host/host_host.go#Host.Get
-pkg:chord/next#Host::property:hold	chord	child-gap	chord/next/host/host_host.go#Host.Hold
-pkg:chord/next#Host::property:hold::call:0	chord	signature-mismatch	chord/next/host/host_host.go#Host.Hold
-pkg:chord/next#Host::property:registry	chord	child-gap	chord/next/host/host_host.go#Host.Registry
-pkg:chord/next#Host::property:registry::call:0	chord	signature-mismatch	chord/next/host/host_host.go#Host.Registry
-pkg:chord/next#Host::property:reload	chord	not-exercised	chord/next/host/host_host.go#Host.Reload
-pkg:chord/next#Host::property:reload::call:0	chord	not-exercised	chord/next/host/host_host.go#Host.Reload
 pkg:chord/next#IntegerSchema	chord	no-go-symbol	
 pkg:chord/next#IntegerSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
 pkg:chord/next#IntegerSchema::property:type	chord	child-gap	
-pkg:chord/next#JobHandle	chord	child-gap	chord/next/host/jobs_job.go#JobHandle
-pkg:chord/next#JobHandle::property:outcome	chord	not-exercised	chord/next/host/jobs_job.go#JobHandle.Outcome
-pkg:chord/next#JobHandle::property:outcome::call:0	chord	not-exercised	chord/next/host/jobs_job.go#JobHandle.Outcome
 pkg:chord/next#JsonColumnSchema	chord	no-go-symbol	
 pkg:chord/next#JsonColumnSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
 pkg:chord/next#JsonColumnSchema::property:json	chord	child-gap	
-pkg:chord/next#KeyedHandle	chord	child-gap	chord/next/documents/handles.go#KeyedHandle
-pkg:chord/next#KeyedHandle::property:change	chord	not-exercised	chord/next/documents/handles.go#KeyedHandle.Change
-pkg:chord/next#KeyedHandle::property:change::call:0	chord	signature-mismatch	chord/next/documents/handles.go#KeyedHandle.Change
-pkg:chord/next#KeyedHandle::property:retire	chord	not-exercised	chord/next/documents/handles.go#KeyedHandle.Retire
-pkg:chord/next#KeyedHandle::property:retire::call:0	chord	not-exercised	chord/next/documents/handles.go#KeyedHandle.Retire
-pkg:chord/next#KeyedWatchable	chord	child-gap	chord/next/contracts/contract.go#KeyedWatchable
-pkg:chord/next#KeyedWatchable::property:at	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable.At
-pkg:chord/next#KeyedWatchable::property:at::call:0	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable.At
-pkg:chord/next#KeyedWatchable::property:get	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable.Get
-pkg:chord/next#KeyedWatchable::property:get::call:0	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable.Get
-pkg:chord/next#KeyedWatchable::property:watch	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable.Watch
-pkg:chord/next#KeyedWatchable::property:watch::call:0	chord	not-exercised	chord/next/contracts/contract.go#KeyedWatchable.Watch
-pkg:chord/next#Native	chord	child-gap	chord/next/host/host_native.go#Native
-pkg:chord/next#Native::property:value	chord	not-exercised	chord/next/host/host_native.go#Native.Value
 pkg:chord/next#NullSchema	chord	no-go-symbol	
 pkg:chord/next#NullSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
 pkg:chord/next#NullSchema::property:type	chord	child-gap	
@@ -100,67 +72,14 @@ pkg:chord/next#NumberSchema::property:type	chord	child-gap
 pkg:chord/next#Optional	chord	child-gap	chord/next/link/message.go#Optional
 pkg:chord/next#Optional::construct:0	chord	no-go-symbol	chord/next/link/message.go#Optional
 pkg:chord/next#Optional::property:schema	chord	member-missing	chord/next/link/message.go#Optional
-pkg:chord/next#OwnerTable	chord	child-gap	chord/next/store/adapter.go#OwnerTable
-pkg:chord/next#OwnerTable::property:get	chord	child-gap	chord/next/store/adapter.go#OwnerTable.Get
-pkg:chord/next#OwnerTable::property:get::call:0	chord	signature-mismatch	chord/next/store/adapter.go#OwnerTable.Get
-pkg:chord/next#OwnerTable::property:select	chord	child-gap	chord/next/store/adapter.go#OwnerTable.Select
-pkg:chord/next#OwnerTable::property:select::call:0	chord	signature-mismatch	chord/next/store/adapter.go#OwnerTable.Select
-pkg:chord/next#Presence	chord	not-exercised	chord/next/host/host_presence.go#Presence
-pkg:chord/next#RunState	chord	child-gap	chord/next/host/jobs_job.go#RunState
-pkg:chord/next#RunState::property:change	chord	child-gap	chord/next/host/jobs_job.go#RunState.Change
-pkg:chord/next#RunState::property:change::call:0	chord	signature-mismatch	chord/next/host/jobs_job.go#RunState.Change
 pkg:chord/next#Schema	chord	type-mismatch	chord/host/schema.go#Schema
-pkg:chord/next#Self	chord	child-gap	chord/next/host/host_attempt.go#Self
-pkg:chord/next#Self::property:follow	chord	not-exercised	chord/next/host/host_attempt.go#Self.Follow
-pkg:chord/next#Self::property:follow::call:0	chord	not-exercised	chord/next/host/host_attempt.go#Self.Follow
-pkg:chord/next#SingletonHandle	chord	child-gap	chord/next/documents/handles.go#SingletonHandle
-pkg:chord/next#SingletonHandle::property:change	chord	not-exercised	chord/next/documents/handles.go#SingletonHandle.Change
-pkg:chord/next#SingletonHandle::property:change::call:0	chord	signature-mismatch	chord/next/documents/handles.go#SingletonHandle.Change
-pkg:chord/next#SingletonHandle::property:retire	chord	not-exercised	chord/next/documents/handles.go#SingletonHandle.Retire
-pkg:chord/next#SingletonHandle::property:retire::call:0	chord	not-exercised	chord/next/documents/handles.go#SingletonHandle.Retire
-pkg:chord/next#SingletonHandle::property:watch	chord	not-exercised	chord/next/documents/handles.go#SingletonHandle.Watch
-pkg:chord/next#SingletonHandle::property:watch::call:0	chord	not-exercised	chord/next/documents/handles.go#SingletonHandle.Watch
 pkg:chord/next#StateDefinition	chord	child-gap	chord/next/documents/definition.go#StateDefinition
 pkg:chord/next#StateDefinition::construct:0	chord	no-go-symbol	chord/next/documents/definition.go#StateDefinition
 pkg:chord/next#StateDefinition::property:schema	chord	type-mismatch	chord/next/documents/definition.go#StateDefinition.Schema
 pkg:chord/next#Static	chord	no-go-symbol	
-pkg:chord/next#Store	chord	child-gap	chord/next/store/store.go#Store
-pkg:chord/next#Store::property:close	chord	not-exercised	chord/next/store/store.go#Store.Close
-pkg:chord/next#Store::property:close::call:0	chord	not-exercised	chord/next/store/store.go#Store.Close
-pkg:chord/next#Store::property:lastSeq	chord	not-exercised	chord/next/store/store.go#Store.LastSeq
-pkg:chord/next#Store::property:outbox	chord	not-exercised	chord/next/store/store.go#Store.Outbox
-pkg:chord/next#StoreSelf	chord	child-gap	chord/next/host/host_attempt.go#StoreSelf
-pkg:chord/next#StoreSelf::property:follow	chord	not-exercised	chord/next/host/host_attempt.go#Self.Follow
-pkg:chord/next#StoreSelf::property:follow::call:0	chord	not-exercised	chord/next/host/host_attempt.go#Self.Follow
-pkg:chord/next#StoreSelf::property:table	chord	not-exercised	chord/next/host/host_attempt.go#StoreSelf.Table
-pkg:chord/next#StoreSelf::property:table::call:0	chord	not-exercised	chord/next/host/host_attempt.go#StoreSelf.Table
 pkg:chord/next#StringSchema	chord	no-go-symbol	
 pkg:chord/next#StringSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
 pkg:chord/next#StringSchema::property:type	chord	child-gap	
-pkg:chord/next#Table	chord	child-gap	chord/next/store/table_handle.go#TableHandle
-pkg:chord/next#Table::property:get	chord	child-gap	chord/next/store/table_handle.go#TableHandle.Get
-pkg:chord/next#Table::property:get::call:0	chord	signature-mismatch	chord/next/store/table_handle.go#TableHandle.Get
-pkg:chord/next#Table::property:rows	chord	child-gap	chord/next/store/table_handle.go#TableHandle.Rows
-pkg:chord/next#Table::property:rows::call:0	chord	signature-mismatch	chord/next/store/table_handle.go#TableHandle.Rows
-pkg:chord/next#Tx	chord	child-gap	chord/next/documents/transaction.go#Tx
-pkg:chord/next#Tx::property:delete	chord	not-exercised	chord/next/documents/transaction.go#Tx.Delete
-pkg:chord/next#Tx::property:delete::call:0	chord	not-exercised	chord/next/documents/transaction.go#Tx.Delete
-pkg:chord/next#Tx::property:deleteWhere	chord	not-exercised	chord/next/documents/transaction.go#Tx.DeleteWhere
-pkg:chord/next#Tx::property:deleteWhere::call:0	chord	not-exercised	chord/next/documents/transaction.go#Tx.DeleteWhere
-pkg:chord/next#Tx::property:get	chord	not-exercised	chord/next/documents/transaction.go#Tx.Get
-pkg:chord/next#Tx::property:get::call:0	chord	not-exercised	chord/next/documents/transaction.go#Tx.Get
-pkg:chord/next#Tx::property:page	chord	not-exercised	chord/next/documents/transaction.go#Tx.Page
-pkg:chord/next#Tx::property:page::call:0	chord	not-exercised	chord/next/documents/transaction.go#Tx.Page
-pkg:chord/next#Tx::property:put	chord	not-exercised	chord/next/documents/transaction.go#Tx.Put
-pkg:chord/next#Tx::property:put::call:0	chord	not-exercised	chord/next/documents/transaction.go#Tx.Put
-pkg:chord/next#Tx::property:retire	chord	not-exercised	chord/next/documents/transaction.go#Tx.Retire
-pkg:chord/next#Tx::property:retire::call:0	chord	not-exercised	chord/next/documents/transaction.go#Tx.Retire
-pkg:chord/next#Tx::property:rows	chord	not-exercised	chord/next/documents/transaction.go#Tx.Rows
-pkg:chord/next#Tx::property:rows::call:0	chord	not-exercised	chord/next/documents/transaction.go#Tx.Rows
-pkg:chord/next#Tx::property:update	chord	not-exercised	chord/next/documents/transaction.go#Tx.Update
-pkg:chord/next#Tx::property:update::call:0	chord	not-exercised	chord/next/documents/transaction.go#Tx.Update
-pkg:chord/next#Tx::property:updateWhere	chord	not-exercised	chord/next/documents/transaction.go#Tx.UpdateWhere
-pkg:chord/next#Tx::property:updateWhere::call:0	chord	not-exercised	chord/next/documents/transaction.go#Tx.UpdateWhere
 pkg:chord/next#WebSocketLike	chord	child-gap	chord/next/link/websocket.go#WebSocketLike
 pkg:chord/next#WebSocketLike::property:addEventListener	chord	child-gap	chord/next/link/websocket.go#WebSocketLike.AddEventListener
 pkg:chord/next#WebSocketLike::property:addEventListener::call:0	chord	signature-mismatch	chord/next/link/websocket.go#WebSocketLike.AddEventListener
@@ -289,31 +208,3 @@ pkg:durable/tools#EditToolInput	durable	undecidable	durable/tools/edit.go#EditTo
 pkg:durable/tools#PowerShellToolInput	durable	undecidable	durable/tools/bash.go#PowerShellToolInput
 pkg:durable/tools#ReadToolInput	durable	undecidable	durable/tools/read.go#ReadToolInput
 pkg:durable/tools#WriteToolInput	durable	undecidable	durable/tools/write.go#WriteToolInput
-pkg:schema/.#CoercingValidator	schema	no-go-symbol	
-pkg:schema/.#CoercingValidator::construct:0	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:check	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:check::call:0	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:coerce	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:coerce::call:0	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:errors	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:errors::call:0	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:parse	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:parse::call:0	schema	child-gap	
-pkg:schema/.#CompileOptions	schema	child-gap	schema/types.go#CompileOptions
-pkg:schema/.#CompileOptions::property:coerce	schema	member-missing	schema/types.go#CompileOptions
-pkg:schema/.#CompileOptions::property:unresolvedRefs	schema	member-missing	schema/types.go#CompileOptions
-pkg:schema/.#ParseResult	schema	no-go-symbol	
-pkg:schema/.#arr	schema	child-gap	schema/builders.go#Arr
-pkg:schema/.#arr::call:0	schema	signature-mismatch	schema/builders.go#Arr
-pkg:schema/.#bytes	schema	child-gap	schema/builders.go#Bytes
-pkg:schema/.#bytes::call:0	schema	signature-mismatch	schema/builders.go#Bytes
-pkg:schema/.#compile	schema	child-gap	schema/validator.go#Compile
-pkg:schema/.#compile::call:0	schema	signature-mismatch	schema/validator.go#Compile
-pkg:schema/.#int	schema	child-gap	schema/builders.go#Int
-pkg:schema/.#int::call:0	schema	signature-mismatch	schema/builders.go#Int
-pkg:schema/.#num	schema	child-gap	schema/builders.go#Num
-pkg:schema/.#num::call:0	schema	signature-mismatch	schema/builders.go#Num
-pkg:schema/.#obj	schema	child-gap	schema/builders.go#Obj
-pkg:schema/.#obj::call:0	schema	signature-mismatch	schema/builders.go#Obj
-pkg:schema/.#str	schema	child-gap	schema/builders.go#Str
-pkg:schema/.#str::call:0	schema	signature-mismatch	schema/builders.go#Str

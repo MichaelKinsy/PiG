@@ -536,8 +536,16 @@
     },
     {
       "path": "packages/ai/test/compat-schema.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ba2d5e9d5a4555d29b518cc8cbd3a5a9ce126ce7341a90eb17f945ca283cc615"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ba2d5e9d5a4555d29b518cc8cbd3a5a9ce126ce7341a90eb17f945ca283cc615",
+      "evidence": [
+        "internal/codingagent/configschema/compat_schema_upstream_test.go#TestCompatSchemasPreserveAPISpecificDefaults",
+        "internal/codingagent/configschema/compat_schema_upstream_test.go#TestProviderCompatSchemaAssignsNoAPISpecificDefaults"
+      ],
+      "rationale": "The two default cases are ported over the Go compat schema trees (Pi's defaults() helper reads each property's default annotation, which is the default keyword of the Go tree). The type-level case is designed out: SCRUTINIZED:approved by the lead ruling LEAD-RULINGS 13:05Z 2026-10-09 (compat-schema: only the type-level cases are designed out): the case asserts TypeScript Static\u003c\u003e property types with expectTypeOf, which has no runtime behavior; the Go compat structs are typed and the compiler checks their property types.",
+      "designedOutCases": [
+        "compatibility schemas \u203a preserves property types in the provider superset"
+      ]
     },
     {
       "path": "packages/ai/test/constrained-sampling.test.ts",
