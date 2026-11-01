@@ -1,6 +1,7 @@
 package extensionconformance
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -151,40 +152,45 @@ func recordSDKLiveness(t *testing.T, fixture livenessFixture) livenessRecording 
 	return recording
 }
 
-// startLivenessSubprocess listens the way the extension host does, so the
-// fixture connects over the transport production gives it (a named pipe for
-// Node on Windows), and fails at once if the fixture exits before connecting.
+// startLivenessSubprocess is startSDKProcess for a caller that does not read how the process ended.
 func startLivenessSubprocess(t *testing.T, command func(string) *exec.Cmd, node bool) net.Conn {
 	t.Helper()
-	parent := "/tmp"
-	if runtime.GOOS == "windows" {
-		parent = os.TempDir()
+	peer, _ := startSDKProcess(t, command, node)
+	return peer
+}
+
+// sdkProcess is an extension process with one listener for each connection it makes to the host.
+type sdkProcess struct {
+	listeners []net.Listener
+	done      chan struct{}
+	err       error
+	stderr    bytes.Buffer
+}
+
+// processEnd is how an extension process ended: err is nil for exit status 0, and stderr is what it wrote.
+type processEnd struct {
+	err    error
+	stderr string
+}
+
+// end waits for the process to exit. A process that outlives the wait fails the test.
+func (p *sdkProcess) end(t *testing.T) processEnd {
+	t.Helper()
+	select {
+	case <-p.done:
+	case <-time.After(testbudget.Wait(t)):
+		t.Fatalf("the extension process did not exit within %s", testbudget.Wait(t))
 	}
-	socketDir, err := os.MkdirTemp(parent, "pig-sdk-live-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(socketDir) })
-	listener, address, err := subprocess.ListenExtension(filepath.Join(socketDir, "extension.sock"), node)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = listener.Close() })
-	cmd := command(address)
-	cmd.Env = append(append(os.Environ(), cmd.Env...), "PIG_EXT_SOCKET="+address, "PIG_EXT_NAME=liveness-conformance")
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-	exited := make(chan error, 1)
-	go func() { exited <- cmd.Wait() }()
-	t.Cleanup(func() {
-		_ = cmd.Process.Kill()
-		<-exited
-	})
+	return processEnd{err: p.err, stderr: p.stderr.String()}
+}
+
+// accept returns the connection the process makes to its i'th listener, and fails the test at once if the process exits first.
+func (p *sdkProcess) accept(t *testing.T, i int) net.Conn {
+	t.Helper()
 	accepted := make(chan net.Conn, 1)
 	acceptErr := make(chan error, 1)
 	go func() {
-		conn, err := listener.Accept()
+		conn, err := p.listeners[i].Accept()
 		if err != nil {
 			acceptErr <- err
 			return
@@ -197,13 +203,65 @@ func startLivenessSubprocess(t *testing.T, command func(string) *exec.Cmd, node 
 		return peer
 	case err := <-acceptErr:
 		t.Fatal(err)
-	case err := <-exited:
-		exited <- err
-		t.Fatalf("SDK fixture exited before connecting: %v", err)
+	case <-p.done:
+		t.Fatalf("SDK fixture exited before connecting: %v", p.err)
 	case <-time.After(testbudget.Wait(t)):
 		t.Fatalf("SDK fixture did not connect within %s", testbudget.Wait(t))
 	}
 	return nil
+}
+
+// startSDKProcess listens the way the extension host does, so the
+// fixture connects over the transport production gives it (a named pipe for
+// Node on Windows), and fails at once if the fixture exits before connecting.
+// The process's stderr is captured, and the returned sdkProcess reports how it ended.
+func startSDKProcess(t *testing.T, command func(string) *exec.Cmd, node bool) (net.Conn, *sdkProcess) {
+	t.Helper()
+	process := startSDKProcessListening(t, 1, func(addresses []string) *exec.Cmd {
+		cmd := command(addresses[0])
+		cmd.Env = append(append(os.Environ(), cmd.Env...), "PIG_EXT_SOCKET="+addresses[0], "PIG_EXT_NAME=liveness-conformance")
+		return cmd
+	}, node)
+	return process.accept(t, 0), process
+}
+
+// startSDKProcessListening starts the process command builds once it listens on count sockets, whose addresses command receives. The caller accepts each connection with accept.
+func startSDKProcessListening(t *testing.T, count int, command func(addresses []string) *exec.Cmd, node bool) *sdkProcess {
+	t.Helper()
+	parent := "/tmp"
+	if runtime.GOOS == "windows" {
+		parent = os.TempDir()
+	}
+	socketDir, err := os.MkdirTemp(parent, "pig-sdk-live-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(socketDir) })
+	process := &sdkProcess{done: make(chan struct{})}
+	addresses := make([]string, count)
+	for i := range count {
+		listener, address, err := subprocess.ListenExtension(filepath.Join(socketDir, fmt.Sprintf("extension-%d.sock", i)), node)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = listener.Close() })
+		process.listeners = append(process.listeners, listener)
+		addresses[i] = address
+	}
+	cmd := command(addresses)
+	cmd.Stderr = &process.stderr
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	go func() {
+		process.err = cmd.Wait()
+		close(process.done)
+	}()
+	t.Cleanup(func() {
+		_ = cmd.Process.Kill()
+		<-process.done
+	})
+	return process
 }
 
 func recordHostCall(t *testing.T, peer net.Conn, id, command, method string, result json.RawMessage, ping bool) ([]string, bool) {

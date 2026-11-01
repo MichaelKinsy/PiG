@@ -10,5 +10,8 @@ fn main() {
                 .map_err(|err| err.to_string())
         })
         .unwrap();
+    if std::env::var("PIG_TEST_FACTORY_EMIT").is_ok() {
+        ext.events().emit("early:factory", serde_json::json!(1)).unwrap();
+    }
     ext.run().unwrap();
 }

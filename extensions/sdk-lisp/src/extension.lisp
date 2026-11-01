@@ -91,6 +91,7 @@
   (conn nil)
   (state-lock (sb-thread:make-mutex :name "pig state"))
   (call-counter 0)
+  (early-dispatches '()) ; events.dispatch requests read while a pre-register call waited, newest first
   (pending (make-hash-table :test 'equal))
   (active (make-hash-table :test 'equal))
   (request-threads '())

@@ -27,6 +27,13 @@
       (push (cons conn path) *helper-taken*)
       conn)))
 
+(defun helper-take-shutdown (conn)
+  "True when a factory-time call read the host's shutdown frame on CONN."
+  (sb-thread:with-recursive-lock (*helper-lock*)
+    (when (member conn *helper-shutdown*)
+      (setf *helper-shutdown* (remove conn *helper-shutdown*))
+      t)))
+
 (defun helper-drop-conn (path)
   "Close the connection dialled to PATH; true when there was one."
   (sb-thread:with-recursive-lock (*helper-lock*)
@@ -73,6 +80,7 @@ and the events.dispatch requests of OWNER's listeners; the wait is re-entrant, s
                      ((equal type "call_result") (setf (gethash (jget env "id") *helper-results*) (or (jget env "call_result") (obj))))
                      ((equal type "ping")
                       (send-frame conn (obj "type" "pong" "pong" (obj "nonce" (jget (or (jget env "ping") (obj)) "nonce" "")))))
+                     ((equal type "shutdown") (pushnew conn *helper-shutdown*))
                      ((equal type "request")
                       (send-frame conn (obj "type" "response" "id" (jget env "id")
                                             "response" (helper-answer-request (cdr (assoc path *helper-owners* :test #'string=)) env))))

@@ -1703,6 +1703,8 @@ impl Extension {
         let mut early_dispatches: std::collections::VecDeque<
             crate::protocol::Envelope<Box<serde_json::value::RawValue>>,
         > = std::collections::VecDeque::new();
+        // A shutdown read while a subscription's result is awaited is acted on once the run has registered.
+        let mut shutdown_during_subscriptions = false;
         for crate::event_bus::LiveOp {
             handler_id,
             channel,
@@ -1739,6 +1741,7 @@ impl Extension {
                     {
                         bus.release(env.notify.as_ref().and_then(|notify| notify.args.as_ref()))
                     }
+                    "shutdown" => shutdown_during_subscriptions = true,
                     other => {
                         return Err(io::Error::new(
                             io::ErrorKind::InvalidData,
@@ -1788,8 +1791,10 @@ impl Extension {
         })?;
 
         // Wait for ready. A listener the Host dispatches to while the extension loads runs once the extension is ready, in dispatch order. The release of a listener (the Host's events.release notify, sent once an unsubscribed listener's last dispatch ended) is served at once.
-        let mut env = conn.read_envelope()?;
-        loop {
+        let mut shutdown_before_ready = shutdown_during_subscriptions || conn.shutdown_read();
+        let mut answer = None;
+        while !shutdown_before_ready {
+            let env = conn.read_envelope()?;
             match env.msg_type.as_str() {
                 "ping" => Self::pong(&conn, env)?,
                 "request"
@@ -1808,19 +1813,26 @@ impl Extension {
                 {
                     bus.release(env.notify.as_ref().and_then(|notify| notify.args.as_ref()))
                 }
-                _ => break,
+                "shutdown" => shutdown_before_ready = true,
+                _ => {
+                    answer = Some(env);
+                    break;
+                }
             }
-            env = conn.read_envelope()?;
         }
-        if env.msg_type != "ready" {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("expected ready, got {}", env.msg_type),
-            ));
-        }
-        let ready = env.ready.ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidData, "ready message has no payload")
-        })?;
+        // A shutdown before ready ends the run as one after ready does: no error, because Pi's session shutdown never fails an extension (runner.ts emitSessionShutdownEvent) and the Node runtime returns. The register frame is sent, and the dispatches read before the shutdown run with an empty context and are answered before the run ends.
+        let ready = match answer {
+            Some(env) if env.msg_type == "ready" => env.ready.ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidData, "ready message has no payload")
+            })?,
+            Some(env) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("expected ready, got {}", env.msg_type),
+                ));
+            }
+            None => serde_json::from_value(serde_json::json!({})).map_err(io::Error::other)?,
+        };
 
         // Build base context.
         let shared_width = Arc::new(AtomicU32::new(ready.width));
@@ -1904,10 +1916,9 @@ impl Extension {
             Arc::new(Mutex::new(HashMap::new()));
         let request_threads = ext.provider_objects.workers.clone();
         let width_deliveries = Arc::new(WidthDeliveries::default());
-        let loaded_gate = Arc::new(crate::host_subscriptions::LoadedGate::new(
-            ext.loaded_fns.is_empty(),
-        ));
-        if !ext.loaded_fns.is_empty() {
+        let run_loaded = !shutdown_before_ready && !ext.loaded_fns.is_empty();
+        let loaded_gate = Arc::new(crate::host_subscriptions::LoadedGate::new(!run_loaded));
+        if run_loaded {
             request_threads.start();
             let (loaded_ext, loaded_ctx, opening_gate, loaded_threads) = (
                 ext.clone(),
@@ -1972,6 +1983,7 @@ impl Extension {
         loop {
             let env = match early_dispatches.pop_front() {
                 Some(env) => env,
+                None if shutdown_before_ready => return stop_requests("shutdown"),
                 None => match conn.read_envelope() {
                     Ok(e) => e,
                     Err(_) => return stop_requests("connection closed"),

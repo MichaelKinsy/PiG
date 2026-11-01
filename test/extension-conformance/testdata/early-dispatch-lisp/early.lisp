@@ -11,4 +11,6 @@
 (let ((ext (pig:make-extension "early-dispatch")))
   (pig:events-on (pig:extension-events ext) "early:ch"
                  (lambda (ctx data) (pig:events-emit (pig:ctx-events ctx) "early:echo" data)))
+  (when (sb-posix:getenv "PIG_TEST_FACTORY_EMIT")
+    (pig:events-emit (pig:extension-events ext) "early:factory" 1))
   (pig:run-extension ext))
