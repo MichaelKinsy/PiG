@@ -222,11 +222,12 @@ func loadFinalSubprocessExtensions(ctx context.Context, cwd string, mode extensi
 
 	var host *subprocess.Host
 	var bridge *subprocess.UIBridge
+	var cells *subprocess.CellRegistry
 	if preloaded != nil {
-		host, bridge = preloaded.host, preloaded.bridge
+		host, bridge, cells = preloaded.host, preloaded.bridge, preloaded.cells
 	}
 	if host == nil {
-		host, bridge = newSubprocessExtensionHost(cwd, mode, registry, nil)
+		host, bridge = newSubprocessExtensionHost(cwd, mode, registry, cells)
 	}
 	setExtensionConfigLoader(host, configs, reloadConfigs)
 
@@ -262,6 +263,8 @@ type startupExtensionSet struct {
 	host    *subprocess.Host
 	bridge  *subprocess.UIBridge
 	configs []subprocess.ExtConfig
+	// cells is the registry the host this set creates shares cell processes through; a --listen server sets it (pig additive (D201)).
+	cells *subprocess.CellRegistry
 }
 
 func (s *startupExtensionSet) close() {

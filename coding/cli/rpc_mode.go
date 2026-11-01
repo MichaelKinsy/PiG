@@ -494,7 +494,8 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			host.detached.Store(true)
 		},
 		func() {
-			if extensionHost, _ := rpcExtensionHost(sess()); extensionHost != nil {
+			// pig additive (D201): a connection's session retires its own extension Host through the normal release; only a process about to exit holds its retirements for TerminateProcesses.
+			if extensionHost, _ := rpcExtensionHost(sess()); extensionHost != nil && transport.processOwned {
 				extensionHost.HoldRetirements()
 			}
 			rt.EmitQuitShutdownContext(shutdownContext)

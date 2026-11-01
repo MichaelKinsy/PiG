@@ -227,6 +227,8 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	if startupExtensions == nil {
 		startupExtensions = &startupExtensionSet{}
 	}
+	// pig additive (D201): every build of a --listen server creates its extension Host on the server's cell registry.
+	startupExtensions.cells = b.cellRegistry
 	build.SourceResolver = newStartupExtensionSourceResolver(nil)
 	resolver := build.SourceResolver
 	failed := true
@@ -272,7 +274,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 		if extensionset.HasInline(b.extensionFactories) {
 			if startupExtensions.host == nil {
 				// The inline extensions register against the runtime of the host the final pass adopts.
-				startupExtensions.host, startupExtensions.bridge = newSubprocessExtensionHost(cwd, b.mode.extensionMode(), services.Registry().ModelRegistry, b.cellRegistry)
+				startupExtensions.host, startupExtensions.bridge = newSubprocessExtensionHost(cwd, b.mode.extensionMode(), services.Registry().ModelRegistry, startupExtensions.cells)
 			}
 			preTrustInline, inlineErrs = (&extensionSetLoader{CWD: cwd, Settings: services.SettingsManager(), Flags: resourceFlags, Inline: b.extensionFactories, Runtime: startupExtensions.host.Runtime(), EventBus: inlineBus}).loadInlineExtensions()
 			// Non-nil even when every factory failed: the final pass runs no factory again (resource-loader.ts:772-773).
