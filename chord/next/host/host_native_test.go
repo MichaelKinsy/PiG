@@ -526,6 +526,8 @@ func (r *seenList[T]) all() []T {
 func (r *seenList[T]) len() int { return len(r.all()) }
 
 // Mirrors native.test.ts "opening › opens one after another in declaration order; a later opener reads an earlier handle".
+//
+// Pi: packages/chord/test/next/host/native.test.ts:12 (opens one after another in declaration order; a later opener reads an earlier handle)
 func TestHostNativesOpenOneAfterAnotherInDeclarationOrderALaterOpenerReadsAnEarlierHandle(t *testing.T) {
 	var events seenList[string]
 	first := make(chan string)
@@ -582,6 +584,8 @@ func TestHostNativesOpenNothingForAnObjectEndedBeforeItsFirstOpenStarted(t *test
 }
 
 // Mirrors "opening › throws not_ready before its open resolved and released once its close started".
+//
+// Pi: packages/chord/test/next/host/native.test.ts:55 (throws not_ready before its open resolved and released once its close started)
 func TestHostNativesThrowNotReadyBeforeTheirOpenResolvedAndReleasedOnceTheirCloseStarted(t *testing.T) {
 	var reads seenList[any]
 	read := func(native Native[any]) {

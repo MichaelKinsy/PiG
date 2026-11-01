@@ -343,6 +343,8 @@ func TestReloadAdaptedMembersFollowTheProvidersTopologyRebuildsAnExistingAdapted
 }
 
 // Mirrors "reload: adapted members publish one coherent frame (fix round 1) › does not publish the new mapping applied to the old attempt's state".
+//
+// Pi: packages/chord/test/next/host/adapted.test.ts:282 (does not publish the new mapping applied to the old attempt's state)
 func TestReloadAdaptedMembersPublishOneCoherentFrameDoesNotPublishTheNewMappingAppliedToTheOldAttemptsState(t *testing.T) {
 	v1 := adaptedLocal("astra.atomic", contracts.Mem("n", contracts.Int()))
 	v2 := adaptedEvolve(v1, func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.State("n", contracts.Int()) })
@@ -366,6 +368,8 @@ func TestReloadAdaptedMembersPublishOneCoherentFrameDoesNotPublishTheNewMappingA
 }
 
 // Mirrors "› never computes a new accepted-version mapping over the old provider shape".
+//
+// Pi: packages/chord/test/next/host/adapted.test.ts:306 (never computes a new accepted-version mapping over the old provider shape)
 func TestReloadAdaptedMembersPublishOneCoherentFrameNeverComputesANewAcceptedVersionMappingOverTheOldProviderShape(t *testing.T) {
 	v1 := adaptedLocal("sol.mapping-publication", contracts.Mem("x", contracts.Int()))
 	v2 := adaptedEvolve(v1, func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.State("x", adaptedObjOf("n")) })
