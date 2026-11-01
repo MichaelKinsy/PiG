@@ -1133,6 +1133,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c6c2cf3](#bf-c6c2cf3) | An `env` request whose context is already cancelled is now always sent to the daemon and then cancelled, as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c6cad39](#bf-c6cad39) | fix(session): fork writes the header and entries through one file (Pi,) | PiG's own defect | All platforms | Unreleased |
 | [BF-c6f6953](#bf-c6f6953) | Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-c723782](#bf-c723782) | In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., {… | PiG's own defect | All platforms | Unreleased |
 | [BF-c7ebb23](#bf-c7ebb23) | A cancelled prompt in a `config.oauth` login now rejects with Pi's `Login cancelled` in every SDK (it was… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c7ebb23-2](#bf-c7ebb23-2) | A `config.oauth` login's `onManualCodeInput` asks "Paste the authorization code", as Pi does, and a provider… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c8a90a6](#bf-c8a90a6) | Pressing the login dialog's cancel key again cancels again, and Enter after a cancelled prompt leaves the… | PiG's own defect | All platforms | 0.5.0 |
@@ -16900,6 +16901,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `c6f6953367` (2026-10-30, #10925)
 - **Tests:** `tui/markdown_wrap_boundary_test.go::TestMarkdownStyledWordsAtTheWrapBoundaryPiCase`, `tui/widthx/wrap_boundary_test.go::TestLineEndResetClosesStrikethrough`, `tui/widthx/wrap_boundary_test.go::TestWrapTextWithAnsiStyledWordsAtTheWrapBoundaryPiCases`
 - **Release note:** Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width, and strikethrough no longer runs into the right padding of a wrapped line: the wrap closes `\x1b[29m` at line end like underline and opens it again on the next line. The text-wrapping helpers in the Go, Rust, Python and Lisp extension SDKs wrap the same way. Carried forward from Pi 2ce9d527 (earendil-works/pi#10925), past the 1.4.0+b3a29f11 pin.
+
+### BF-c723782
+
+**In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., {…**
+
+- **Source:** PiG's own defect
+- **Symptom:** In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi, where the started run cannot end before the handler awaits; a run that settled while the read was in flight made print mode report an idle session.
+- **Root cause:** TestExtensionSendMessageTriggerTurnStartsTheRunAsPi failed under load with stderr "idle=true\n", want "idle=false\n": 6 to 9 runs in 384 with 48 concurrent loops (the first stress run: 1 in 144), none alone (5 and 40 runs green). A debug stack at every runState.active=false and at the host's isIdle answer showed, for a failing process, publishAgentSettled (the triggered run ended) 81 ms before the handler's isIdle read was answered, true.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c7237820c1` (2026-11-01)
+- **Tests:** `coding/cli/extension_send_message_binary_test.go::TestExtensionSendMessageTriggerTurnStartsTheRunAsPi`, `coding/extension/host/subprocess/runtime_node_send_idle_test.go::TestNodeIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSendMessage`
+- **Release note:** In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi, where the started run cannot end before the handler awaits; a run that settled while the read was in flight made print mode report an idle session.
 
 ### BF-c7ebb23
 
