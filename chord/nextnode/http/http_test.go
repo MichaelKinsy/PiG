@@ -514,6 +514,10 @@ func TestRoutesAndWrapsFailingRunsWrapsOutermostFirstAroundTheRouteInItsRequests
 
 func TestReloadsAndCloseRefusesNewRequests503WaitsForRunningOnesUpToCloseTimeoutThenSealsThem503(t *testing.T) {
 	sealed := &collector[host.Ctx]{}
+	// Pi's `/stuck` route never settles (`new Promise(() => {})`): its 503 is the component's own, for a scope sealed before the
+	// route answered. The Go route blocks on a gate of the test that ignores the scope.
+	stuckGate := newGate()
+	t.Cleanup(stuckGate.resolve)
 	server := serving(t, []plugin{{"@app/slow", contributing(HttpContribution{Routes: []HttpRouteEntry{
 		RouteFunc("GET /quick", func(HttpRequest, host.Ctx) (HttpResponse, error) {
 			time.Sleep(30 * time.Millisecond)
@@ -521,8 +525,8 @@ func TestReloadsAndCloseRefusesNewRequests503WaitsForRunningOnesUpToCloseTimeout
 		}),
 		RouteFunc("GET /stuck", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
 			sealed.add(ctx)
-			<-ctx.Done()
-			return HttpResponse{Kind: KindError, Status: 503}, nil
+			<-stuckGate.done()
+			return HttpResponse{}, nil
 		}),
 	}})}}, servedOptions{closeTimeout: 100 * time.Millisecond})
 	type sent struct {
@@ -543,7 +547,7 @@ func TestReloadsAndCloseRefusesNewRequests503WaitsForRunningOnesUpToCloseTimeout
 		return struct{}{}
 	})
 	// Pi's `close` refuses synchronously before it returns its promise; Close blocks, so the test waits for it to have started.
-	eventually(t, "close refuses", server.component.isClosing)
+	eventually(t, "close refuses", server.http.isClosing)
 	late := httpFetch(server, "/quick")
 	if late.StatusCode != 503 {
 		t.Fatalf("a request while closing: %d, want 503", late.StatusCode)

@@ -43,7 +43,7 @@ func TestRequestHasItsMethodPathParamsQueryHeadersOriginProvenanceAndNonce(t *te
 	if seen.Provenance() != (Provenance{Kind: ProvenanceLocal}) {
 		t.Fatalf("provenance = %+v", seen.Provenance())
 	}
-	if got := seen.Query()["x"]; len(got) != 2 || got[0] != "1" || got[1] != "2" {
+	if got := seen.Query().GetAll("x"); len(got) != 2 || got[0] != "1" || got[1] != "2" {
 		t.Fatalf("query x = %v", got)
 	}
 	if thing, _ := HeaderGet(seen.Headers(), "x-thing"); thing != "t" {

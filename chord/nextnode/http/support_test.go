@@ -20,7 +20,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
-	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 )
 
@@ -75,8 +74,7 @@ type plugin struct {
 type testServer struct {
 	t          *testing.T
 	host       host.Host
-	http       HttpComponent
-	component  *component
+	http       *HttpComponent
 	port       int
 	errors     *collector[HttpError]
 	hostErrors *collector[host.HostError]
@@ -133,6 +131,8 @@ type servedOptions struct {
 	readyTimeout time.Duration
 	address      *contracts.Address
 	after        afterFunc
+	// revokeHook sees each router the follower revokes connections against.
+	revokeHook func(*Router)
 }
 
 // serving builds the component on a new server host (listening on loopback, a free port), then loads it with the app's
@@ -160,6 +160,7 @@ func serving(t *testing.T, plugins []plugin, options servedOptions) *testServer 
 		after = realAfter
 	}
 	component := newComponent(counting, httpOptions, background, after)
+	component.revokeHook = options.revokeHook
 	authenticate := options.authenticate
 	if authenticate == nil {
 		authenticate = func(request HttpRequest, _ context.Context) (data.Principal, error) {
@@ -167,7 +168,7 @@ func serving(t *testing.T, plugins []plugin, options servedOptions) *testServer 
 		}
 	}
 	server := &testServer{
-		t: t, host: inner, http: component, component: component, errors: errs, hostErrors: hostErrs, plugins: plugins,
+		t: t, host: inner, http: component, errors: errs, hostErrors: hostErrs, plugins: plugins,
 		listen: !options.noListen, registryCalls: counting,
 		core: []host.HostFacet{
 			{Name: "chord.http", Facet: component.Facet()},
@@ -330,10 +331,10 @@ func dialSocket(port int, path string, headers map[string]string, maxPayload int
 		conn.SetReadLimit(int64(maxPayload))
 	}
 	socket := &clientSocket{WebSocket: newWebSocket(conn), inbox: make(chan string, 1024), closed: make(chan CloseEvent, 1)}
-	socket.Once(link.WebSocketClose, func(data any) { socket.closed <- data.(CloseEvent) })
-	socket.On(link.WebSocketMessage, func(data any) {
-		if text, ok := data.(string); ok {
-			socket.inbox <- text
+	socket.OnceClose(func(event CloseEvent) { socket.closed <- event })
+	socket.OnMessage(func(message Message) {
+		if !message.Binary {
+			socket.inbox <- message.Text()
 		}
 	})
 	return socket, nil

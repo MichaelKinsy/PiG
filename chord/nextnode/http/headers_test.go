@@ -49,7 +49,7 @@ func headersPolicy(t *testing.T, headers *AnswerHeaders) string {
 
 func TestDefaultHeaders(t *testing.T) {
 	t.Run("refuse caching, sniffing, referrers and framing; the CSP allows scripts by nonce and the WebSocket origin", func(t *testing.T) {
-		headers := headersDefaults.Of(headersLocal(), headersRouterOf(t, HttpContribution{}), "N")
+		headers := headersOf(t, headersDefaults, headersLocal(), headersRouterOf(t, HttpContribution{}), "N")
 		want := []HeaderLine{
 			{"Cache-Control", "no-store"},
 			{"X-Content-Type-Options", "nosniff"},
@@ -73,7 +73,7 @@ func TestDefaultHeaders(t *testing.T) {
 		relayed := headersLocal()
 		relayed.Origin = "https://me.relay.example"
 		relayed.Framer = "https://relay.example"
-		headers := headersDefaults.Of(relayed, router, "N")
+		headers := headersOf(t, headersDefaults, relayed, router, "N")
 		if headers.Has("x-frame-options") {
 			t.Fatal("X-Frame-Options is set")
 		}
@@ -84,7 +84,7 @@ func TestDefaultHeaders(t *testing.T) {
 	})
 
 	t.Run("before admission: no WebSocket origin; a nonce is 16 fresh random bytes each time", func(t *testing.T) {
-		if got := headersPolicy(t, headersDefaults.Of(nil, nil, "N")); !strings.Contains(got, "connect-src 'self';") {
+		if got := headersPolicy(t, headersOf(t, headersDefaults, nil, nil, "N")); !strings.Contains(got, "connect-src 'self';") {
 			t.Fatalf("CSP = %q, want connect-src 'self';", got)
 		}
 		nonces := NewNonces()
@@ -105,14 +105,14 @@ func TestDefaultHeaders(t *testing.T) {
 
 	t.Run("keep the CSP of local and allowed-host requests per router; a relayed one's never", func(t *testing.T) {
 		router := headersRouterOf(t, HttpContribution{})
-		first := headersPolicy(t, headersDefaults.Of(headersLocal(), router, "A"))
-		if got, want := headersPolicy(t, headersDefaults.Of(headersLocal(), router, "B")), strings.Replace(first, "'nonce-A'", "'nonce-B'", 1); got != want {
+		first := headersPolicy(t, headersOf(t, headersDefaults, headersLocal(), router, "A"))
+		if got, want := headersPolicy(t, headersOf(t, headersDefaults, headersLocal(), router, "B")), strings.Replace(first, "'nonce-A'", "'nonce-B'", 1); got != want {
 			t.Fatalf("CSP = %q, want %q", got, want)
 		}
 		relayed := headersLocal()
 		relayed.Origin = "https://u1.relay.example"
 		relayed.Relay = &HttpRelay{Name: "r", Verify: func(*http.Request) (*RelayVerified, error) { return nil, nil }}
-		if got := headersPolicy(t, headersDefaults.Of(relayed, router, "C")); !strings.Contains(got, "wss://u1.relay.example") {
+		if got := headersPolicy(t, headersOf(t, headersDefaults, relayed, router, "C")); !strings.Contains(got, "wss://u1.relay.example") {
 			t.Fatalf("CSP = %q, want wss://u1.relay.example", got)
 		}
 	})
@@ -161,7 +161,7 @@ func TestDefaultHeaders(t *testing.T) {
 // stays in the caller's frame.
 func headersKeepAPolicy(t *testing.T, own *DefaultHeaders) weak.Pointer[Router] {
 	router := headersRouterOf(t, HttpContribution{Framers: []string{"https://a.example"}})
-	own.Of(headersLocal(), router, "N")
+	headersOf(t, own, headersLocal(), router, "N")
 	return weak.Make(router)
 }
 
@@ -191,4 +191,14 @@ func TestDefaultHeadersGC(t *testing.T) {
 			time.Sleep(10 * time.Millisecond)
 		}
 	})
+}
+
+// headersOf is d.Of for headers that must be valid.
+func headersOf(t *testing.T, d *DefaultHeaders, admitted *Admitted, router *Router, nonce string) *AnswerHeaders {
+	t.Helper()
+	headers, err := d.Of(admitted, router, nonce)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return headers
 }

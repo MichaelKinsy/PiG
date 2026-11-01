@@ -74,21 +74,10 @@ func kindOf(principal data.Principal) string {
 	return kind
 }
 
-// textOf is `String(data)` of a message.
-func textOf(data any) string {
-	switch value := data.(type) {
-	case string:
-		return value
-	case []byte:
-		return string(value)
-	}
-	return ""
-}
-
 // echoSocket is a plugin socket that echoes text, with its handler's request params and principal sent first.
 var echoSocket = &HttpSocket{Handle: func(socket *WebSocketHandle, request HttpRequest, ctx host.Ctx) error {
 	socket.Send([]byte(request.Params()["room"]+" as "+kindOf(ctx.Principal())), false, nil)
-	socket.On(link.WebSocketMessage, func(data any) { socket.Send([]byte(textOf(data)), false, nil) })
+	socket.OnMessage(func(message Message) { socket.Send(message.Data, false, nil) })
 	return nil
 }}
 
@@ -224,7 +213,7 @@ func (f *fakeSocket) Terminate() {
 	f.mu.Unlock()
 }
 func (f *fakeSocket) Close(int, string)                        {}
-func (f *fakeSocket) On(link.WebSocketEvent, func(any)) func() { return func() {} }
+func (f *fakeSocket) on(link.WebSocketEvent, func(any)) func() { return func() {} }
 
 func TestTheLinksEndpointCutsOffAClientThatStoppedReadingPast4MiBUnsentBeyondTheFrameBeingSent(t *testing.T) {
 	fake := &fakeSocket{}
@@ -454,7 +443,7 @@ func frame(text string) []byte {
 func TestRevocationARawPeerWhoseHostOrContributionLeftCanSendNothingMoreToTheHandlerViaAWritable(t *testing.T) {
 	var calls collector[string]
 	handler := &HttpSocket{Handle: func(socket *WebSocketHandle, _ HttpRequest, _ host.Ctx) error {
-		socket.On(link.WebSocketMessage, func(data any) { calls.add(textOf(data)) })
+		socket.OnMessage(func(message Message) { calls.add(message.Text()) })
 		return nil
 	}}
 	sockets := newTunnel("app.sockets", []string{"on"}, func(args []string) HttpContribution {
@@ -551,7 +540,7 @@ func TestHeartbeatPingsAPluginSocketAfter15sOfSilenceAndTerminatesIt15sLaterWith
 	clock := newFakeClock()
 	server := serving(t, []plugin{{"@app/quiet", contributing(HttpContribution{Sockets: []HttpSocketEntry{{
 		Pattern: "/quiet", Handler: &HttpSocket{Handle: func(socket *WebSocketHandle, _ HttpRequest, _ host.Ctx) error {
-			socket.On(link.WebSocketMessage, func(data any) { socket.Send([]byte(textOf(data)), false, nil) })
+			socket.OnMessage(func(message Message) { socket.Send(message.Data, false, nil) })
 			return nil
 		}},
 	}}})}}, servedOptions{after: clock.afterFunc})
@@ -561,7 +550,7 @@ func TestHeartbeatPingsAPluginSocketAfter15sOfSilenceAndTerminatesIt15sLaterWith
 		t.Fatal(err)
 	}
 	silent.conn.SetPingHandler(func(payload string) error {
-		silent.emit(WebSocketPing, []byte(payload))
+		silent.emit(webSocketPing, []byte(payload))
 		return nil
 	})
 	answering, err := dialSocket(server.port, "/quiet", owner, 0)
@@ -569,10 +558,10 @@ func TestHeartbeatPingsAPluginSocketAfter15sOfSilenceAndTerminatesIt15sLaterWith
 		t.Fatal(err)
 	}
 	pings := make(chan string, 2)
-	silent.Once(WebSocketPing, func(any) { pings <- "silent" })
-	answering.Once(WebSocketPing, func(any) { pings <- "answering" })
+	silent.OncePing(func([]byte) { pings <- "silent" })
+	answering.OncePing(func([]byte) { pings <- "answering" })
 	echoed := make(chan string, 1)
-	answering.On(link.WebSocketMessage, func(data any) { echoed <- textOf(data) })
+	answering.OnMessage(func(message Message) { echoed <- message.Text() })
 	silent.Start()
 	answering.Start()
 	// Both upgrades are done (their heartbeat timers are set) once the sockets are open on the server's side too.

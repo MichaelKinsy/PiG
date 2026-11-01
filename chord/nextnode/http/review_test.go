@@ -1,0 +1,515 @@
+package http
+
+import (
+	"context"
+	"errors"
+	"net"
+	nethttp "net/http"
+	"net/http/httptest"
+	"strconv"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/gorilla/websocket"
+
+	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
+)
+
+// Go-only regression tests of the lane review (handoffs/next/rows/nhttp.md, "Review round"): each fails on the code before its
+// fix. They have no upstream test file.
+
+// delayedHandler is a listener's handler whose answers are written a little late: the window between a request's answer and its
+// bytes on the wire that `close` must not cut.
+type delayedHandler struct {
+	inner Handler
+	delay time.Duration
+}
+
+func (d delayedHandler) Serve(incoming Incoming, connection Connection) Served {
+	served := d.inner.Serve(incoming, connection)
+	time.Sleep(d.delay)
+	return served
+}
+
+func (d delayedHandler) Refusal(status int) Answer { return d.inner.Refusal(status) }
+
+func (d delayedHandler) Upgrade(w nethttp.ResponseWriter, request *nethttp.Request) {
+	d.inner.Upgrade(w, request)
+}
+
+// Review B1: close sealed a request whose route never answered, and the listener's close that follows cut the 503 before it was
+// written (the client saw EOF).
+func TestReviewCloseWritesTheAnswerOfASealedRequestBeforeTheListenerCloses(t *testing.T) {
+	stuck := newGate()
+	t.Cleanup(stuck.resolve)
+	entered := newGate()
+	server := serving(t, []plugin{{"@app/stuck", contributing(HttpContribution{Routes: []HttpRouteEntry{
+		RouteFunc("GET /stuck", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+			entered.resolve()
+			<-stuck.done()
+			return HttpResponse{}, nil
+		}),
+	}})}}, servedOptions{noListen: true, closeTimeout: 50 * time.Millisecond})
+	listener, err := ListenNode(delayedHandler{inner: server.http, delay: 150 * time.Millisecond}, ListenAddress{Host: "127.0.0.1"}, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(listener.Closed)
+	type sent struct {
+		answer answer
+		err    error
+	}
+	answered := httpAsync(func() sent {
+		got, err := send(t, listener.Address.Port, "GET", "/stuck", sendOptions{})
+		return sent{got, err}
+	})
+	receive(t, entered.done(), "the route")
+	server.http.Close(background)
+	// The listener's close, as the native's runs it after the component's.
+	listener.Closed()
+	if got := receive(t, answered, "the answer"); got.err != nil || got.answer.status != 503 {
+		t.Fatalf("the sealed request's answer = %d, %v, want 503", got.answer.status, got.err)
+	}
+}
+
+// Review B2: an upgrade past its last closing check when close took its snapshot was kept after it: no 1001, no termination at
+// the timeout.
+func TestReviewCloseClosesOrRefusesAnUpgradeThatWasPastTheLastCheck(t *testing.T) {
+	entered := newGate()
+	release := newGate()
+	t.Cleanup(release.resolve)
+	server := serving(t, nil, servedOptions{
+		closeTimeout: 3 * time.Second,
+		links: &LinksOptions{Path: "/chord", OptionsFunc: func(HttpRequest, data.Principal) (LinkOptions, error) {
+			// After the checks and the authenticators, before the socket is kept.
+			entered.resolve()
+			<-release.done()
+			return LinkOptions{}, nil
+		}},
+	})
+	type dialed struct {
+		socket *clientSocket
+		err    error
+	}
+	opening := httpAsync(func() dialed {
+		socket, err := socketTo(server.port, "/chord", owner, 0)
+		return dialed{socket, err}
+	})
+	receive(t, entered.done(), "the links options hook")
+	closing := httpAsync(func() struct{} {
+		server.http.Close(background)
+		return struct{}{}
+	})
+	eventually(t, "close refuses", server.http.isClosing)
+	// Close has taken its snapshot of the open sockets by now.
+	time.Sleep(150 * time.Millisecond)
+	release.resolve()
+	got := receive(t, opening, "the upgrade")
+	receive(t, closing, "close")
+	if got.err != nil {
+		if got.err.Error() != "refused 503" {
+			t.Fatalf("the upgrade failed with %v, want refused 503", got.err)
+		}
+		return
+	}
+	// Kept before close ran: it was closed 1001 with the others.
+	select {
+	case event := <-got.socket.closed:
+		if event.Code != 1001 && event.Code != 1006 {
+			t.Fatalf("close code = %d, want 1001", event.Code)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("an upgrade handed out while close ran outlived it")
+	}
+}
+
+// Review S2: a redirect target with a CR or LF (or a character above U+00FF) answered 503 unreported; Pi answers 500 and
+// reports `response_failed`.
+func TestReviewAnInvalidRedirectTargetIsA500ReportedResponseFailed(t *testing.T) {
+	for _, target := range []string{"/a\r\nSet-Cookie: x=1", "/\u20ac"} {
+		server := answering(t, HttpResponse{Kind: KindRedirect, To: target})
+		got := mustSend(t, server.port, "GET", "/r", sendOptions{})
+		if got.status != 500 || len(got.headers.Values("Set-Cookie")) != 0 || got.header("x-content-type-options") != "nosniff" {
+			t.Fatalf("%q: %d %v", target, got.status, got.headers)
+		}
+		errs := server.errors.all()
+		if len(errs) != 1 || errs[0].Kind != ErrResponseFailed || errs[0].Pattern != "GET /r" {
+			t.Fatalf("%q: errors = %+v", target, errs)
+		}
+		server.close()
+	}
+}
+
+// Review S2: a contributed CSP source that is no header value reached `mustSet` (a panic recovered as a 503) from the default
+// headers; the route's answer is a reported 500 and a refusal keeps the baseline.
+func TestReviewAContributedCSPSourceThatIsNoHeaderValueIsAReported500AndRefusalsKeepTheBaseline(t *testing.T) {
+	server := serving(t, []plugin{{"@app/a", contributing(HttpContribution{
+		Routes: []HttpRouteEntry{RouteFunc("GET /r", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("x"), nil })},
+		Csp:    []CspEntry{{Directive: "img-src", Sources: []string{"a\r\nSet-Cookie: x=1"}}},
+	})}}, servedOptions{})
+	got := mustSend(t, server.port, "GET", "/r", sendOptions{})
+	if got.status != 500 || len(got.headers.Values("Set-Cookie")) != 0 || !strings.HasPrefix(got.header("content-security-policy"), "default-src 'none'") {
+		t.Fatalf("route: %d %v", got.status, got.headers)
+	}
+	missing := mustSend(t, server.port, "GET", "/nope", sendOptions{})
+	if missing.status != 404 || missing.header("x-content-type-options") != "nosniff" || strings.Contains(missing.header("content-security-policy"), "img-src") {
+		t.Fatalf("refusal: %d %v", missing.status, missing.headers)
+	}
+	if errs := server.errors.all(); len(errs) != 1 || errs[0].Kind != ErrResponseFailed {
+		t.Fatalf("errors = %+v", errs)
+	}
+}
+
+// Review S3: `URLSearchParams` keeps a pair with a `;` or a bad escape, and its order; url.ParseQuery drops them.
+func TestReviewQueryParsesAsURLSearchParams(t *testing.T) {
+	query := ParseURLSearchParams("a=1;b=2&q=100%&x=%E0%A4%A&k&&+p+=a+b&a=2&e=%e2%82%ac&bad=%FF")
+	want := []QueryPair{
+		{"a", "1;b=2"}, {"q", "100%"}, {"x", "\ufffd%A"}, {"k", ""}, {" p ", "a b"}, {"a", "2"}, {"e", "\u20ac"}, {"bad", "\ufffd"},
+	}
+	got := query.Pairs()
+	if len(got) != len(want) {
+		t.Fatalf("pairs = %q, want %q", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("pair %d = %q, want %q (all: %q)", i, got[i], want[i], got)
+		}
+	}
+	if values := query.GetAll("a"); len(values) != 2 || values[0] != "1;b=2" || values[1] != "2" {
+		t.Fatalf("a = %q", values)
+	}
+	if first, ok := query.Get("q"); !ok || first != "100%" || query.Has("nope") {
+		t.Fatalf("q = %q, %v", first, ok)
+	}
+	server := serving(t, []plugin{{"@app/a", contributing(HttpContribution{Routes: []HttpRouteEntry{
+		RouteFunc("GET /q", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
+			value, _ := request.Query().Get("a")
+			return htmlOf(value), nil
+		}),
+	}})}}, servedOptions{})
+	if got := mustSend(t, server.port, "GET", "/q?a=1;b=2", sendOptions{}).text(); got != "1;b=2" {
+		t.Fatalf("a = %q, want 1;b=2", got)
+	}
+}
+
+// Review S4: Chord's listener gives a GET or HEAD no body (Pi's Web `Request` has none), so `json()` of one is a 400.
+func TestReviewAGETBodyIsNoBodyOnTheListenerAndOnMountedRequests(t *testing.T) {
+	server := serving(t, []plugin{{"@app/a", contributing(HttpContribution{Routes: []HttpRouteEntry{
+		RouteFunc("GET /json", func(request HttpRequest, _ host.Ctx) (HttpResponse, error) {
+			value, err := request.JSON()
+			if err != nil {
+				return HttpResponse{}, err
+			}
+			return jsonOf(value), nil
+		}),
+	}})}}, servedOptions{})
+	if got := mustSend(t, server.port, "GET", "/json", sendOptions{body: "{}"}).status; got != 400 {
+		t.Fatalf("a GET with a body: %d, want 400", got)
+	}
+	mounted := httptest.NewRequest("GET", "/json", strings.NewReader("{}"))
+	mounted.Host = "127.0.0.1:1"
+	converted := NodeRequestOf(mounted)
+	if converted.Refused != nil || converted.Request.Body != nethttp.NoBody {
+		t.Fatalf("converted = %+v, want a request without a body", converted)
+	}
+	post := httptest.NewRequest("POST", "/json", strings.NewReader("{}"))
+	post.Host = "127.0.0.1:1"
+	if converted := NodeRequestOf(post); converted.Refused != nil || converted.Request.Body == nethttp.NoBody {
+		t.Fatalf("a POST's body is kept: %+v", converted)
+	}
+}
+
+// Review S5 (a): the scope of a request whose client went away aborts with Pi's reason.
+func TestReviewAClientThatDisconnectsAbortsTheScopeWithPisReason(t *testing.T) {
+	entered := make(chan host.Ctx, 1)
+	server := serving(t, []plugin{{"@app/slow", contributing(HttpContribution{Routes: []HttpRouteEntry{
+		RouteFunc("GET /slow", func(_ HttpRequest, ctx host.Ctx) (HttpResponse, error) {
+			entered <- ctx
+			<-ctx.Done()
+			return HttpResponse{Kind: KindError, Status: 503}, nil
+		}),
+	}})}}, servedOptions{})
+	conn, err := net.Dial("tcp", "127.0.0.1:"+strconv.Itoa(server.port))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = conn.Write([]byte("GET /slow HTTP/1.1\r\nHost: 127.0.0.1:" + strconv.Itoa(server.port) + "\r\n\r\n"))
+	ctx := receive(t, entered, "the route")
+	_ = conn.Close()
+	receive(t, ctx.Done(), "the abort")
+	if cause := context.Cause(ctx); cause == nil || cause.Error() != "http: the client disconnected" {
+		t.Fatalf("cause = %v, want http: the client disconnected", cause)
+	}
+}
+
+// Review S5 (b): net/http cancels a request's context when its handler returns; that is no disconnect once the response was
+// written.
+func TestReviewTheRequestContextEndingAfterTheResponseIsNoDisconnect(t *testing.T) {
+	for _, finished := range []bool{false, true} {
+		request := httptest.NewRequest("GET", "/who", nil)
+		request.Host = "127.0.0.1:1"
+		ctx, cancel := context.WithCancel(context.Background())
+		incoming, refusal := nodeIncomingOf(request.WithContext(ctx))
+		if refusal != nil {
+			t.Fatal(refusal)
+		}
+		var mu sync.Mutex
+		var reasons []error
+		aborted := make(chan struct{}, 1)
+		incoming.Cancelled(func(reason error) {
+			mu.Lock()
+			reasons = append(reasons, reason)
+			mu.Unlock()
+			aborted <- struct{}{}
+		})
+		incoming.finished.Store(finished)
+		cancel()
+		if finished {
+			time.Sleep(50 * time.Millisecond)
+			mu.Lock()
+			if len(reasons) != 0 {
+				t.Fatalf("a finished request aborted with %v", reasons)
+			}
+			mu.Unlock()
+			continue
+		}
+		receive(t, aborted, "the abort")
+		mu.Lock()
+		if len(reasons) != 1 || reasons[0].Error() != "http: the client disconnected" {
+			t.Fatalf("reasons = %v", reasons)
+		}
+		mu.Unlock()
+	}
+}
+
+// Review S7: nothing follows the router once close ran.
+func TestReviewTheFollowerRevokesNothingAfterClose(t *testing.T) {
+	var mu sync.Mutex
+	revoked := 0
+	tn := hostsTunnel("app.tunnel", nil)
+	server := serving(t, []plugin{{"@app/tunnel", tn.facet}}, servedOptions{
+		noListen:   true,
+		revokeHook: func(*Router) { mu.Lock(); revoked++; mu.Unlock() },
+	})
+	// A first resolution and a change while open: the follower runs.
+	if status := httpStatus(server, "/x", httpLoopback); status != 404 {
+		t.Fatalf("status = %d", status)
+	}
+	tn.name(t, server, "a.example.com")
+	eventually(t, "the follower ran for the change", func() bool { mu.Lock(); defer mu.Unlock(); return revoked > 0 })
+	server.http.Close(background)
+	mu.Lock()
+	before := revoked
+	mu.Unlock()
+	tn.name(t, server, "b.example.com")
+	time.Sleep(150 * time.Millisecond)
+	mu.Lock()
+	defer mu.Unlock()
+	if revoked != before {
+		t.Fatalf("the follower revoked %d times after close", revoked-before)
+	}
+}
+
+// httpLoopback makes a request a loopback one for Fetch (its Host is set already by loopback).
+func httpLoopback(*nethttp.Request) {}
+
+// Review S8: a plugin socket's frames are read while its handler runs: its pongs keep the heartbeat from terminating it, and the
+// messages that arrive meanwhile are delivered when the handler returned.
+func TestReviewAPluginSocketIsReadWhileItsHandlerRuns(t *testing.T) {
+	clock := newFakeClock()
+	blocked := newGate()
+	release := newGate()
+	t.Cleanup(release.resolve)
+	received := make(chan string, 4)
+	server := serving(t, []plugin{{"@app/slow", contributing(HttpContribution{Sockets: []HttpSocketEntry{{
+		Pattern: "/slow", Handler: &HttpSocket{Handle: func(socket *WebSocketHandle, _ HttpRequest, _ host.Ctx) error {
+			socket.OnMessage(func(message Message) { received <- message.Text() })
+			blocked.resolve()
+			<-release.done()
+			return nil
+		}},
+	}}})}}, servedOptions{after: clock.afterFunc})
+	client, err := dialSocket(server.port, "/slow", owner, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pings := make(chan struct{}, 4)
+	client.OnPing(func([]byte) { pings <- struct{}{} })
+	client.Start()
+	receive(t, blocked.done(), "the handler")
+	eventually(t, "the heartbeat timer", func() bool {
+		clock.mu.Lock()
+		defer clock.mu.Unlock()
+		return len(clock.timers) == 1
+	})
+	client.Send([]byte("while the handler runs"), false, nil)
+	clock.advance(15 * time.Second)
+	receive(t, pings, "the first ping")
+	// The pong travels for real: the server reads it while its handler still runs, so the second deadline only pings again.
+	time.Sleep(100 * time.Millisecond)
+	clock.advance(15 * time.Second)
+	receive(t, pings, "the second ping")
+	if client.ReadyState() != WebSocketOpenState {
+		t.Fatalf("the socket is %d: a handler that runs longer than the heartbeat lost its socket", client.ReadyState())
+	}
+	select {
+	case message := <-received:
+		t.Fatalf("a message reached the handler's listener before it returned: %q", message)
+	default:
+	}
+	release.resolve()
+	if got := receive(t, received, "the held message"); got != "while the handler runs" {
+		t.Fatalf("message = %q", got)
+	}
+	client.Close(0, "")
+}
+
+// Review S9: a plugin's listeners get typed data.
+func TestReviewAPluginSocketsListenersGetTypedMessages(t *testing.T) {
+	got := make(chan Message, 2)
+	server := serving(t, []plugin{{"@app/typed", contributing(HttpContribution{Sockets: []HttpSocketEntry{{
+		Pattern: "/typed", Handler: &HttpSocket{Handle: func(socket *WebSocketHandle, _ HttpRequest, _ host.Ctx) error {
+			socket.OnMessage(func(message Message) { got <- message })
+			return nil
+		}},
+	}}})}}, servedOptions{})
+	client := mustSocketTo(t, server.port, "/typed", owner)
+	client.Send([]byte("text"), false, nil)
+	client.Send([]byte{1, 2}, true, nil)
+	if first := receive(t, got, "the text message"); first.Binary || first.Text() != "text" {
+		t.Fatalf("first = %+v", first)
+	}
+	if second := receive(t, got, "the binary message"); !second.Binary || len(second.Data) != 2 {
+		t.Fatalf("second = %+v", second)
+	}
+	client.Close(0, "")
+}
+
+// Review S17: a send never queues behind the close frame.
+func TestReviewASendRacingCloseNeverQueuesBehindTheCloseFrame(t *testing.T) {
+	upgrader := websocket.Upgrader{CheckOrigin: func(*nethttp.Request) bool { return true }}
+	for range 200 {
+		sockets := make(chan *WebSocket, 1)
+		server := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
+			conn, err := upgrader.Upgrade(w, r, nil)
+			if err != nil {
+				return
+			}
+			socket := newWebSocket(conn)
+			socket.Start()
+			sockets <- socket
+		}))
+		client, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http"), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		go func() {
+			for {
+				if _, _, err := client.ReadMessage(); err != nil {
+					return
+				}
+			}
+		}()
+		socket := receive(t, sockets, "the socket")
+		var wg sync.WaitGroup
+		var mu sync.Mutex
+		var afterClose int
+		for range 4 {
+			wg.Go(func() {
+				for range 20 {
+					socket.Send([]byte("x"), false, func(err error) {
+						if errors.Is(err, websocket.ErrCloseSent) {
+							mu.Lock()
+							afterClose++
+							mu.Unlock()
+						}
+					})
+				}
+			})
+		}
+		wg.Go(func() { socket.Close(1000, "") })
+		wg.Wait()
+		eventually(t, "the socket closed", func() bool { return socket.ReadyState() == WebSocketClosedState || socket.BufferedAmount() == 0 })
+		socket.Terminate()
+		_ = client.Close()
+		server.Close()
+		mu.Lock()
+		if afterClose != 0 {
+			mu.Unlock()
+			t.Fatalf("%d sends were queued behind the close frame", afterClose)
+		}
+		mu.Unlock()
+	}
+}
+
+// Review S11: SameSite is a closed set; no value injects an attribute.
+func TestReviewSameSiteIsAClosedSet(t *testing.T) {
+	for _, each := range []struct {
+		value SameSite
+		want  string
+	}{{SameSiteStrict, "Strict"}, {SameSiteLax, "Lax"}, {SameSite(200), "Strict"}} {
+		if got := each.value.String(); got != each.want {
+			t.Fatalf("SameSite(%d) = %q, want %q", each.value, got, each.want)
+		}
+	}
+}
+
+// Review: the statuses where Node's reason phrase is not Go's.
+func TestReviewStatusTextIsNodes(t *testing.T) {
+	for status, want := range map[int]string{
+		200: "OK", 404: "Not Found", 413: "Payload Too Large", 414: "URI Too Long", 416: "Range Not Satisfiable",
+		418: "I'm a Teapot", 422: "Unprocessable Entity", 500: "Internal Server Error", 509: "Bandwidth Limit Exceeded", 599: "",
+	} {
+		if got := statusText(status); got != want {
+			t.Fatalf("statusText(%d) = %q, want %q", status, got, want)
+		}
+	}
+}
+
+// Review S10: Node's `extname` of a name that is only a dot and a word is "".
+func TestReviewAFileNamedByItsExtensionHasNoExtension(t *testing.T) {
+	for path, want := range map[string]string{
+		"/x/.png": "application/octet-stream", "/x/a.PNG": "image/png", "/x/a.": "application/octet-stream",
+		"/x/..": "application/octet-stream", "/x/a.b.mp3": "audio/mpeg", ".md": "application/octet-stream",
+	} {
+		if got := mimeOf(path); got != want {
+			t.Fatalf("mimeOf(%q) = %q, want %q", path, got, want)
+		}
+	}
+}
+
+// Review S12: conflict messages quote the key as written, not as JSON.
+func TestReviewConflictMessagesQuoteKeysAsWritten(t *testing.T) {
+	handler := func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("x"), nil }
+	_, conflicts := routerCompose(t,
+		routerEntry{"@app/a", HttpContribution{Routes: []HttpRouteEntry{RouteFunc(`GET /a"b\c`, handler)}}},
+		routerEntry{"@app/b", HttpContribution{Routes: []HttpRouteEntry{RouteFunc(`GET /a"b\c`, handler)}}},
+	)
+	if len(conflicts) != 1 || conflicts[0].Message != `route "GET /a"b\c" is contributed twice` {
+		t.Fatalf("conflicts = %+v", conflicts)
+	}
+}
+
+// Review S13: the host is lowercased as ASCII only.
+func TestReviewHostsAreLowercasedAsASCIIOnly(t *testing.T) {
+	hosts := NewStringSet("notei.example")
+	request := admissionRequest([]admissionHeader{{"host", "note\u0130.example"}})
+	if _, ok := isRefused(admit(request, Connection{}, hosts, nil)); !ok {
+		t.Fatal("Host: noteİ.example was admitted as notei.example")
+	}
+}
+
+// Review S14 and S15: what the URL parser serializes as an origin.
+func TestReviewOriginsAreWhatTheURLParserSerializes(t *testing.T) {
+	for text, want := range map[string]bool{
+		"https://[fe80::1%25eth0]": false, "https://[fe80::1%eth0]": false, "https://[::1]:8443": true,
+		"https://a.0xbar": true, "https://a.0x1": false, "https://a.0x": false, "https://127.0.0.1": true,
+	} {
+		if got := isOrigin(text); got != want {
+			t.Fatalf("isOrigin(%q) = %v, want %v", text, got, want)
+		}
+	}
+}

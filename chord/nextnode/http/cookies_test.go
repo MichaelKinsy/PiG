@@ -51,7 +51,7 @@ func TestCookiesAreHttpOnlyPathSameSiteStrictByDefaultSecureOnARemoteOriginLaxAn
 	}
 	remote := cookiesRequestFrom("", Provenance{Kind: ProvenanceRemote, Host: "notes.example.com"})
 	maxAge := 60.5
-	got = Cookie("session", "x", CookieOptions{Secret: "s", Request: remote, SameSite: "Lax", MaxAge: &maxAge})
+	got = Cookie("session", "x", CookieOptions{Secret: "s", Request: remote, SameSite: SameSiteLax, MaxAge: &maxAge})
 	if !regexp.MustCompile(`; HttpOnly; Path=/; SameSite=Lax; Secure; Max-Age=60$`).MatchString(got) {
 		t.Fatalf("cookie = %q", got)
 	}
