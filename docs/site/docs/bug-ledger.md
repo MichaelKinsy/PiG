@@ -231,6 +231,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-33558f6](#bf-33558f6) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-33dc8a0](#bf-33dc8a0) | fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does | PiG's own defect | All platforms | Unreleased |
 | [BF-33ea9e4](#bf-33ea9e4) | fix(sdk): name the Go ModelRegistry.Find change in the upgrade rules; Node adoption survives an unbound leaf… | PiG's own defect | All platforms | Unreleased |
+| [BF-33efd9f](#bf-33efd9f) | `pi.exec` with a `maxBuffer` could keep a child's stderr bytes ahead of its stdout bytes under heavy CPU… | PiG's own defect | All platforms | Unreleased |
 | [BF-33fe10d](#bf-33fe10d) | `ModelsError` appends the cause detail the way Pi does: an Error cause with an empty message contributes its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-33fe10d-2](#bf-33fe10d-2) | Live-Pi oracles `TestExtensionSelectorMatchesPi` (4,320 probes) and `TestExtensionInputMatchesPi` (1,144… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3452432](#bf-3452432) | Escape cancels a running `!` or `!!` command again, as in Pi: the command stops and its block ends with… | PiG's own defect | All platforms | 0.5.0 |
@@ -4411,6 +4412,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `33ea9e4573` (2026-10-20)
 - **Tests:** `extensions/sdk/upgrade/rules_test.go::TestModelRegistryFindChangeIsNamed`
+
+### BF-33efd9f
+
+**`pi.exec` with a `maxBuffer` could keep a child's stderr bytes ahead of its stdout bytes under heavy CPU…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pi.exec` with a `maxBuffer` could keep a child's stderr bytes ahead of its stdout bytes under heavy CPU load, though the child wrote stdout first and Node hands the two pipes to the cap in that order (about one run in two thousand with the host oversubscribed four times over).
+- **Root cause:** A reader of stderr decided whether it had to wait for stdout by reading stdout's reader flag and then peeking at the pipe. A stdout reader that claimed its turn and emptied the pipe between the two questions was seen by neither, and stderr was delivered first.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `33efd9f93f` (2026-11-01)
+- **Tests:** `coding/extension/exec_max_buffer_test.go::TestExecCommandCountsStdoutBeforeStderrWhenTheChildWroteItFirst`, `internal/childwait/pipe_unix_test.go::TestAwaitTurnWaitsForAnEarlierReaderThatTakesItsBytesWhileALaterReaderDecides`
+- **Release note:** `pi.exec` with a `maxBuffer` could keep a child's stderr bytes ahead of its stdout bytes under heavy CPU load, though the child wrote stdout first and Node hands the two pipes to the cap in that order (about one run in two thousand with the host oversubscribed four times over). The reader of stderr decided whether to wait for stdout from two answers taken one after the other, and a stdout reader that took its bytes between them was seen by neither; it now asks the pipe first and the reader second.
 
 ### BF-33fe10d
 

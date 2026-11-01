@@ -6238,6 +6238,29 @@
       ]
     },
     {
+      "id": "BF-33efd9f",
+      "title": "`pi.exec` with a `maxBuffer` could keep a child's stderr bytes ahead of its stdout bytes under heavy CPU…",
+      "symptom": "`pi.exec` with a `maxBuffer` could keep a child's stderr bytes ahead of its stdout bytes under heavy CPU load, though the child wrote stdout first and Node hands the two pipes to the cap in that order (about one run in two thousand with the host oversubscribed four times over).",
+      "rootCause": "A reader of stderr decided whether it had to wait for stdout by reading stdout's reader flag and then peeking at the pipe. A stdout reader that claimed its turn and emptied the pipe between the two questions was seen by neither, and stderr was delivered first.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pi.exec` with a `maxBuffer` could keep a child's stderr bytes ahead of its stdout bytes under heavy CPU load, though the child wrote stdout first and Node hands the two pipes to the cap in that order (about one run in two thousand with the host oversubscribed four times over). The reader of stderr decided whether to wait for stdout from two answers taken one after the other, and a stdout reader that took its bytes between them was seen by neither; it now asks the pipe first and the reader second.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "33efd9f93f",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "coding/extension/exec_max_buffer_test.go::TestExecCommandCountsStdoutBeforeStderrWhenTheChildWroteItFirst",
+        "internal/childwait/pipe_unix_test.go::TestAwaitTurnWaitsForAnEarlierReaderThatTakesItsBytesWhileALaterReaderDecides"
+      ]
+    },
+    {
       "id": "BF-33fe10d",
       "title": "`ModelsError` appends the cause detail the way Pi does: an Error cause with an empty message contributes its…",
       "symptom": "`ModelsError` appends the cause detail the way Pi does: an Error cause with an empty message contributes its name (\"load failed: TypeError\") instead of nothing (`ai/auth_resolve.go` NewModelsError, models-error.ts withCauseDetail; live-Pi oracle `TestModelsErrorMessageMatchesPi`, 3,000 probes, 147 red before; three mutations red).",
