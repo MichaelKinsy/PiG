@@ -621,3 +621,16 @@ commit = "1de91268b66ee9f62f8e82f3b2edf178e89bcb17"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The test replays rows of Pi's own formats (packages/schema/src/formats/index.ts) generated under Node 24. The commit moves the generator out of the test comment into testdata/gen, adds rows with lone surrogates (decoded as WTF-8 instead of U+FFFD, the repo's JS-string convention), and raises the row-count floor from the corpus it now replays; no Pi behavior changes, the new rows' expectations are Pi's results."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_fleet_test.go"
+commit = "f59f4016039310a105a789060419985ed07c795a"
+class = "CITE"
+cite = "packages/chord/test/next-node/workers/support.ts:138"
+reason = "Pi's fixture plugin writes `label.ts` (`export const label = <JSON>;`) into the copy's notes plugin (support.ts:138); the Go fleet's fixture plugin did write a file named `label`. The commit gives it Pi's file name, content and package files; the one expected value it changes is that file name, now Pi's."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_workers_test.go"
+commit = "f59f4016039310a105a789060419985ed07c795a"
+class = "NOBEHAVIOR"
+reason = "Go only: the expected value is Pi's (workers.test.ts:35 expects `starting` after the hold). A Go worker may be running before a poll of the state sees it, so the test reads the first status from the state's own frames instead of polling."
