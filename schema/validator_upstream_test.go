@@ -37,13 +37,17 @@ const blockSchema = `{
 	]
 }`
 
-func mustCompile(t *testing.T, s any, options ...schema.CompileOptions) *schema.Validator {
+func mustCompile(t *testing.T, s any, options ...schema.CompileOptions) checked {
 	t.Helper()
-	v, err := schema.Compile(s, options...)
+	var opts schema.CompileOptions
+	if len(options) > 0 {
+		opts = options[0]
+	}
+	v, err := schema.Compile(s, opts)
 	if err != nil {
 		t.Fatalf("Compile: %v", err)
 	}
-	return v
+	return checked{v, t}
 }
 
 func wantErrors(t *testing.T, got, want []schema.ValidationError) {
@@ -224,7 +228,7 @@ func TestOptions(t *testing.T) {
 	t.Run("throws for a $ref that names nothing", func(t *testing.T) {
 		unresolved := regexp.MustCompile(`Unresolved \$ref`)
 		for _, text := range []string{`{"$ref":"https://example.com/missing.json"}`, `{"$ref":"#/$defs/missing"}`} {
-			_, err := schema.Compile(mustDecode(t, text))
+			_, err := schema.Compile(mustDecode(t, text), schema.CompileOptions{})
 			if err == nil || !unresolved.MatchString(err.Error()) {
 				t.Fatalf("Compile(%s) error = %v, want Unresolved $ref", text, err)
 			}
@@ -293,7 +297,7 @@ func TestSchemas(t *testing.T) {
 	})
 
 	t.Run("throws for a malformed schema", func(t *testing.T) {
-		_, err := schema.Compile(mustDecode(t, `{"properties":{"a":1}}`))
+		_, err := schema.Compile(mustDecode(t, `{"properties":{"a":1}}`), schema.CompileOptions{})
 		if err == nil || !regexp.MustCompile(`must be an object or a boolean`).MatchString(err.Error()) {
 			t.Fatalf("error = %v", err)
 		}

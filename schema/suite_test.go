@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/schema"
 )
 
@@ -35,10 +36,13 @@ type suiteTest struct {
 
 const fixtureRoot = "testdata"
 
+// unquoteJS reads a string as JSON.parse does: the escape of a lone surrogate is that unit (WTF-8 in a Go string), not U+FFFD.
+func unquoteJS(raw []byte, text *string) error { return jsstring.UnmarshalKeepingSurrogates(raw, text) }
+
 // mustDecode parses JSON text as JSON.parse does, with objects in document order.
 func mustDecode(t testing.TB, text string) any {
 	t.Helper()
-	value, err := chordjson.Decode([]byte(text))
+	value, err := chordjson.DecodeUnquoting([]byte(text), unquoteJS)
 	if err != nil {
 		t.Fatalf("decode %q: %v", text, err)
 	}
@@ -127,4 +131,26 @@ func suiteSchemas(t testing.TB) map[string]schema.JsonSchema {
 		schemas["https://json-schema.org/draft/2020-12/meta/"+vocabulary] = readJSON(t, filepath.Join(meta, "draft2020-12-meta-"+vocabulary+".json"))
 	}
 	return schemas
+}
+
+// checked adapts a Validator to the tests: a check or an explanation that returns an error fails the test.
+type checked struct {
+	*schema.Validator
+	t testing.TB
+}
+
+func (c checked) Check(value any) bool {
+	ok, err := c.Validator.Check(value)
+	if err != nil {
+		c.t.Errorf("Check: %v", err)
+	}
+	return ok
+}
+
+func (c checked) Errors(value any) []schema.ValidationError {
+	errs, err := c.Validator.Errors(value)
+	if err != nil {
+		c.t.Errorf("Errors: %v", err)
+	}
+	return errs
 }

@@ -27,7 +27,7 @@ func collectUntil(t *testing.T, done func() bool) {
 
 func mustCompileMap(t *testing.T, s map[string]any) *Validator {
 	t.Helper()
-	v, err := Compile(s)
+	v, err := Compile(s, CompileOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestSharedChecks(t *testing.T) {
 		if got := sharedRegexCount(); got != before+50 {
 			t.Fatalf("cached patterns = %d, want %d", got, before+50)
 		}
-		if !again.Check("unique-0") {
+		if ok, err := again.Check("unique-0"); err != nil || !ok {
 			t.Fatal("again rejects unique-0")
 		}
 		check := weak.Make(validators[0])

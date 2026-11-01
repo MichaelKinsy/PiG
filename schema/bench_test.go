@@ -40,12 +40,12 @@ func TestCorpusMatchesPi(t *testing.T) {
 
 func TestCorpusValuesAreValid(t *testing.T) {
 	for i, item := range corpus(300, 5) {
-		validator, err := schema.Compile(item.schema)
+		validator, err := schema.Compile(item.schema, schema.CompileOptions{})
 		if err != nil {
 			t.Fatalf("item %d: %v", i, err)
 		}
-		if !validator.Check(item.value) {
-			t.Fatalf("item %d: %v rejects its value: %v", i, jsonText(t, item.schema), validator.Errors(item.value))
+		if !(checked{validator, t}).Check(item.value) {
+			t.Fatalf("item %d: %v rejects its value: %v", i, jsonText(t, item.schema), checked{validator, t}.Errors(item.value))
 		}
 	}
 }
@@ -64,13 +64,13 @@ func BenchmarkCheck(b *testing.B) {
 			valid       bool
 		}{{"valid", "validValue", true}, {"invalid", "invalidValue", false}} {
 			value := row.Value(input.value)
-			if validator.Check(value) != input.valid {
+			if (checked{validator, b}).Check(value) != input.valid {
 				b.Fatalf("%s (%s) is wrong", row.Value("name"), input.name)
 			}
 			b.Run(row.Value("name").(string)+"/"+input.name, func(b *testing.B) {
 				b.ReportAllocs()
 				for range b.N {
-					validator.Check(value)
+					_, _ = validator.Check(value)
 				}
 			})
 		}
@@ -80,19 +80,19 @@ func BenchmarkCheck(b *testing.B) {
 // BenchmarkSetup is the setup benchmark: compile a schema not seen before, then its first check.
 func BenchmarkSetup(b *testing.B) {
 	for _, item := range corpus(200, 7) {
-		validator, err := schema.Compile(item.schema)
+		validator, err := schema.Compile(item.schema, schema.CompileOptions{})
 		if err != nil {
 			b.Fatal(err)
 		}
 		for range 10 {
-			validator.Check(item.value)
+			_, _ = validator.Check(item.value)
 		}
 	}
 	items := corpus(1000, 99)
 	b.Run("compile", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := range b.N {
-			if _, err := schema.Compile(items[i%len(items)].schema); err != nil {
+			if _, err := schema.Compile(items[i%len(items)].schema, schema.CompileOptions{}); err != nil {
 				b.Fatal(err)
 			}
 		}
@@ -101,11 +101,11 @@ func BenchmarkSetup(b *testing.B) {
 		b.ReportAllocs()
 		for i := range b.N {
 			item := items[i%len(items)]
-			validator, err := schema.Compile(item.schema)
+			validator, err := schema.Compile(item.schema, schema.CompileOptions{})
 			if err != nil {
 				b.Fatal(err)
 			}
-			validator.Check(item.value)
+			_, _ = validator.Check(item.value)
 		}
 	})
 }
@@ -121,12 +121,22 @@ func BenchmarkMemory(b *testing.B) {
 		runtime.ReadMemStats(&stats)
 		return stats.HeapAlloc
 	}
+	// Warm the library's own code on another corpus, so its one-time tables and caches are not counted.
+	for _, item := range corpus(100, 7) {
+		validator, err := schema.Compile(item.schema, schema.CompileOptions{})
+		if err != nil {
+			b.Fatal(err)
+		}
+		for range 4 {
+			_, _ = validator.Check(item.value)
+		}
+	}
 	for range b.N {
 		items := corpus(count, 42)
 		base := heap()
 		prepared := make([]*schema.Validator, len(items))
 		for i, item := range items {
-			validator, err := schema.Compile(item.schema)
+			validator, err := schema.Compile(item.schema, schema.CompileOptions{})
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -135,7 +145,7 @@ func BenchmarkMemory(b *testing.B) {
 		compiled := heap()
 		for i, item := range items {
 			for range 3 {
-				prepared[i].Check(item.value)
+				_, _ = prepared[i].Check(item.value)
 			}
 		}
 		checked := heap()

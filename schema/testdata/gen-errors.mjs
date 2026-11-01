@@ -92,6 +92,20 @@ const extras = [
 	{ schema: { $id: "urn:example:root", $defs: { a: { $anchor: "x", type: "string" } }, $ref: "#x" }, values: [1, "a"] },
 	{ schema: { $id: "http://example.com/a/b/c.json", $ref: "../../d.json" }, values: [1] },
 	{ schema: { $id: "HTTP://Example.COM:80/a/./b/../c.json", $ref: "d.json" }, values: [1] },
+	{ schema: { if: 5, minimum: 3 }, values: [1, 5] },
+	{ schema: { $id: "https://ex/root", $ref: "list", $defs: { bad: { $dynamicAnchor: "items", $ref: "#/nope" }, list: { $id: "list", type: "array", items: { $dynamicRef: "#items" }, $defs: { items: { $dynamicAnchor: "items" } } } } }, values: [["a"], 5, []] },
+	{ schema: { $id: "file:///C:/a/b.json", $ref: "../../x.json" }, values: [1] },
+	{ schema: { $id: "file:///C:/a/b.json", $ref: "/x.json" }, values: [1] },
+	{ schema: { $id: "file:///a/b.json", $ref: "c\\d.json" }, values: [1] },
+	{ schema: { $id: "file://localhost/a/b.json", $ref: "x.json" }, values: [1] },
+	{ schema: { $id: "custom:/a/b", $ref: "?q" }, values: [1] },
+	{ schema: { $id: "urn:a:b", $ref: "#/$defs/x", $defs: { x: { type: "string" } } }, values: [1, "a"] },
+	{ schema: { type: "string", minLength: 1, maxLength: 1 }, values: ["\ud800", "\ud800\ud800", "\ud83d\udc32", "\udc32\ud83d", "a"] },
+	{ schema: { type: "string", minLength: 2 }, values: ["\ud800", "\ud800\ud800", "\ud83d\udc32"] },
+	{ schema: { pattern: "^.$" }, values: ["\ud800", "\ud83d\udc32", "\ud800a", "\udc32\ud83d"] },
+	{ schema: { enum: ["\ud800", "a"] }, values: ["\ud801", "a", "\ud800"] },
+	{ schema: { const: "\ud800" }, values: ["\ud800", "\ufffd"] },
+	{ schema: { type: "object", properties: { "\ud800": { type: "integer" } }, additionalProperties: false }, values: [{ "\ud800": "x" }, { "\udc00": 1 }] },
 	{ schema: { minLength: 2, minimum: 3, minItems: 1, minProperties: 1, required: ["x"] }, values: ["a", 1, [], {}, null] },
 ];
 const formatsOnly = { ...formats };
@@ -100,7 +114,21 @@ for (const x of extras) {
 	const row = { schema: x.schema, draft: options.draft, formats: x.formats === true, values: x.values };
 	try {
 		const validator = compile(x.schema, options);
-		row.results = x.values.map((v) => ({ check: validator.check(v), errors: validator.errors(v) }));
+		row.results = x.values.map((v) => {
+			const result = {};
+			try {
+				result.check = validator.check(v);
+			} catch (e) {
+				result.checkThrows = String(e.message);
+				return result;
+			}
+			try {
+				result.errors = validator.errors(v);
+			} catch (e) {
+				result.errorsThrows = String(e.message);
+			}
+			return result;
+		});
 	} catch (e) {
 		row.compileError = String(e.message);
 	}

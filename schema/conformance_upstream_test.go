@@ -47,7 +47,7 @@ func TestConformanceSuite(t *testing.T) {
 							// A listed test fails when compiling fails or the check disagrees with the suite.
 							failed := false
 							validator, err := schema.Compile(group.schema, options)
-							if err != nil || validator.Check(test.data) != test.valid {
+							if err != nil || (checked{validator, t}).Check(test.data) != test.valid {
 								failed = true
 							}
 							if known && !failed {
@@ -65,8 +65,8 @@ func TestConformanceSuite(t *testing.T) {
 							if err != nil {
 								t.Fatalf("compile: %v", err)
 							}
-							errs := validator.Errors(test.data)
-							if (len(errs) == 0) != validator.Check(test.data) {
+							errs := checked{validator, t}.Errors(test.data)
+							if (len(errs) == 0) != (checked{validator, t}).Check(test.data) {
 								t.Fatalf("errors %v disagree with check", errs)
 							}
 						})
