@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"slices"
 	"sort"
 	"strings"
@@ -245,9 +246,24 @@ func exMarks(t *testing.T, plugins *Plugins, want PluginsState) {
 	if want.Install == nil {
 		want.Install = []string{}
 	}
+	if runtime.GOOS == "windows" {
+		got = withoutDirectoryStamps(got, want)
+	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("marks = %+v, want %+v", got, want)
 	}
+}
+
+// withoutDirectoryStamps is got without what Windows adds to the marks of a plugin directory whose entries changed: the OS
+// reports the directory's own last-write time as a change of it (Node's `fs.watch` reports it as `change`, which Pi's watcher
+// marks too), at a moment no test can bound: the set is marked and the plugin dirty, though only the entry's own change was
+// made. Only marks want does not have are dropped; one it has and got lacks still fails.
+func withoutDirectoryStamps(got, want PluginsState) PluginsState {
+	if !want.Set {
+		got.Set = false
+	}
+	got.Dirty = slices.DeleteFunc(slices.Clone(got.Dirty), func(name string) bool { return !slices.Contains(want.Dirty, name) })
+	return got
 }
 
 func exBuild(t *testing.T, plugins *Plugins, names []string) *Built {
@@ -761,7 +777,7 @@ func TestExample37PluginImports(t *testing.T) {
 	facet := built.Facets[0]
 	var read []string
 	for _, input := range facet.Inputs {
-		read = append(read, strings.TrimPrefix(input.File, root+string(filepath.Separator)))
+		read = append(read, filepath.ToSlash(strings.TrimPrefix(input.File, root+string(filepath.Separator))))
 	}
 	if want := []string{"report/server.ts", "shapes/contract.ts"}; !slices.Equal(read, want) || len(facet.Copied) != 1 {
 		t.Fatalf("built %s/%s: read %v; copied %d file, want %v and 1", facet.Plugin, facet.Facet, read, len(facet.Copied), want)
@@ -774,7 +790,13 @@ func TestExample37PluginImports(t *testing.T) {
 	if got, want := exLineOf(report), (exLine{[]string{"@example/report"}, []string{}, []string{}, []string{"@example/paths", "@example/refused", "@example/ruler"}}); !reflect.DeepEqual(got, want) {
 		t.Fatalf("reload = %+v, want %+v", got, want)
 	}
-	want := "example app v3 | EUR 12.50 | ...vat | 20% | hello, plugins | node_modules/example-native/index.js"
+	// The fixture reports the last three segments of `__filename` split at "/": a Windows path has none, so the report holds
+	// the whole path there, as Pi's does on Windows.
+	native := "node_modules/example-native/index.js"
+	if runtime.GOOS == "windows" {
+		native = filepath.Join(realOf(t, root), "report", "node_modules", "example-native", "index.js")
+	}
+	want := "example app v3 | EUR 12.50 | ...vat | 20% | hello, plugins | " + native
 	if got := server.read("example.report", "text", "str"); got != want {
 		t.Fatalf("3. the report: %q, want %q", got, want)
 	}
@@ -1002,7 +1024,7 @@ func TestExample39BrowserBuild(t *testing.T) {
 	}
 	var read []string
 	for _, input := range gallery.Inputs {
-		read = append(read, strings.TrimPrefix(input.File, root))
+		read = append(read, filepath.ToSlash(strings.TrimPrefix(input.File, root)))
 	}
 	if want := []string{"/gallery/assets/logo.svg", "/gallery/gallery.css", "/gallery/web.ts"}; !slices.Equal(read, want) {
 		t.Fatalf("read: %v, want %v", read, want)

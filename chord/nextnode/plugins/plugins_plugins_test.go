@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -954,7 +955,9 @@ func TestPluginsFixRound1ReadsAChangedPackageJSONAgainAtTheNextBuildANewDependen
 	if err := c.InstallDependencies("@test/a", background); err != nil {
 		t.Fatal(err)
 	}
-	if marks := c.Marks(); marks.Set {
+	// Windows marks the set for the plugin directory's own last-write time, which the new node_modules changed (see
+	// withoutDirectoryStamps).
+	if marks := c.Marks(); marks.Set && runtime.GOOS != "windows" {
 		t.Fatalf("marks = %+v, want set false", marks)
 	}
 	built := c.build(t, "@test/a")
