@@ -42,11 +42,3 @@ func TestRuneSetOperations(t *testing.T) {
 		}
 	}
 }
-
-func TestUTF16Units(t *testing.T) {
-	got := utf16Units("a😀é\U0010ffff")
-	want := []rune{'a', 0xD83D, 0xDE00, 'é', 0xDBFF, 0xDFFF}
-	if !slices.Equal(got, want) {
-		t.Fatalf("utf16Units = %x, want %x", got, want)
-	}
-}

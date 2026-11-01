@@ -87,6 +87,18 @@ func (s runeSet) minus(others ...runeSet) runeSet {
 	return out
 }
 
+// limit drops the code points above max.
+func (s runeSet) limit(last rune) runeSet {
+	out := make(runeSet, 0, len(s))
+	for _, r := range s {
+		if r.lo > last {
+			break
+		}
+		out = append(out, runeRange{r.lo, min(r.hi, last)})
+	}
+	return out
+}
+
 func (s runeSet) contains(c rune) bool {
 	_, found := slices.BinarySearchFunc(s, c, func(r runeRange, c rune) int {
 		switch {

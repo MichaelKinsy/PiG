@@ -3,10 +3,22 @@ package ecmaregex
 import (
 	"strings"
 	"sync"
+	"sync/atomic"
 	"unicode"
 )
 
 // Data source: Go's unicode tables (unicode.Version) supply General_Category, Script and every binary property that is a table or a derivation of tables there. Script_Extensions and the binary properties Go has no data for (Bidi_Mirrored, Case_Ignorable, Changes_When_*, Emoji*, Extended_Pictographic, XID_*) come from property_data.go, which gen/property_data.mjs generates from the Unicode tables of the Node release the golden files use (Unicode 17.0). Where the Go toolchain is on an older Unicode version, sets built from Go's tables lag the generated ones by the characters assigned in between.
+
+// tablesBuilt counts the lookup tables built so far. A table is built the first time a pattern needs it, so that importing the package builds none.
+var tablesBuilt atomic.Int32
+
+// lazyTable returns a function that builds the table with build on its first call and returns the same table every time.
+func lazyTable[T any](build func() T) func() T {
+	return sync.OnceValue(func() T {
+		tablesBuilt.Add(1)
+		return build()
+	})
+}
 
 // propertyRanges resolves the text between the braces of \p{...}: General_Category=Lu, Script=Latin, a binary property name, or a lone General_Category value. It reports false for a name or value ECMA-262 does not define.
 func propertyRanges(expr string) (runeSet, bool) {
@@ -73,17 +85,19 @@ var (
 var minorCategories = []string{"Lu", "Ll", "Lt", "Lm", "Lo", "Mn", "Mc", "Me", "Nd", "Nl", "No", "Pc", "Pd", "Ps", "Pe", "Pi", "Pf", "Po", "Sm", "Sc", "Sk", "So", "Zs", "Zl", "Zp", "Cc", "Cf", "Co", "Cs"}
 
 // categoryNames maps every General_Category name of ECMA-262 (PropertyValueAliases.txt) to its short name.
-var categoryNames = map[string]string{
-	"Other": "C", "Control": "Cc", "cntrl": "Cc", "Format": "Cf", "Unassigned": "Cn", "Private_Use": "Co", "Surrogate": "Cs",
-	"Letter": "L", "Cased_Letter": "LC", "Lowercase_Letter": "Ll", "Modifier_Letter": "Lm", "Other_Letter": "Lo",
-	"Titlecase_Letter": "Lt", "Uppercase_Letter": "Lu", "Mark": "M", "Combining_Mark": "M", "Spacing_Mark": "Mc",
-	"Enclosing_Mark": "Me", "Nonspacing_Mark": "Mn", "Number": "N", "Decimal_Number": "Nd", "digit": "Nd",
-	"Letter_Number": "Nl", "Other_Number": "No", "Punctuation": "P", "punct": "P", "Connector_Punctuation": "Pc",
-	"Dash_Punctuation": "Pd", "Close_Punctuation": "Pe", "Final_Punctuation": "Pf", "Initial_Punctuation": "Pi",
-	"Other_Punctuation": "Po", "Open_Punctuation": "Ps", "Symbol": "S", "Currency_Symbol": "Sc", "Modifier_Symbol": "Sk",
-	"Math_Symbol": "Sm", "Other_Symbol": "So", "Separator": "Z", "Line_Separator": "Zl", "Paragraph_Separator": "Zp",
-	"Space_Separator": "Zs",
-}
+var categoryNames = lazyTable(func() map[string]string {
+	return map[string]string{
+		"Other": "C", "Control": "Cc", "cntrl": "Cc", "Format": "Cf", "Unassigned": "Cn", "Private_Use": "Co", "Surrogate": "Cs",
+		"Letter": "L", "Cased_Letter": "LC", "Lowercase_Letter": "Ll", "Modifier_Letter": "Lm", "Other_Letter": "Lo",
+		"Titlecase_Letter": "Lt", "Uppercase_Letter": "Lu", "Mark": "M", "Combining_Mark": "M", "Spacing_Mark": "Mc",
+		"Enclosing_Mark": "Me", "Nonspacing_Mark": "Mn", "Number": "N", "Decimal_Number": "Nd", "digit": "Nd",
+		"Letter_Number": "Nl", "Other_Number": "No", "Punctuation": "P", "punct": "P", "Connector_Punctuation": "Pc",
+		"Dash_Punctuation": "Pd", "Close_Punctuation": "Pe", "Final_Punctuation": "Pf", "Initial_Punctuation": "Pi",
+		"Other_Punctuation": "Po", "Open_Punctuation": "Ps", "Symbol": "S", "Currency_Symbol": "Sc", "Modifier_Symbol": "Sk",
+		"Math_Symbol": "Sm", "Other_Symbol": "So", "Separator": "Z", "Line_Separator": "Zl", "Paragraph_Separator": "Zp",
+		"Space_Separator": "Zs",
+	}
+})
 
 func buildCategories() {
 	categorySets = map[string]runeSet{}
@@ -111,7 +125,7 @@ func generalCategory(name string) (runeSet, bool) {
 	if set, ok := categorySets[name]; ok {
 		return set, true
 	}
-	if short, ok := categoryNames[name]; ok {
+	if short, ok := categoryNames()[name]; ok {
 		return categorySets[short], true
 	}
 	return nil, false
@@ -138,7 +152,7 @@ func scriptName(value string) string {
 	if _, ok := scriptSets[value]; ok {
 		return value
 	}
-	if long, ok := scriptAliases[value]; ok {
+	if long, ok := scriptAliases()[value]; ok {
 		return long
 	}
 	return ""
@@ -158,51 +172,53 @@ func scriptExtensions(value string) (runeSet, bool) {
 		return nil, false
 	}
 	set := scriptSets[name]
-	if removed, ok := scriptExtensionsRemoved[name]; ok {
+	if removed, ok := scriptExtensionsRemoved()[name]; ok {
 		set = set.minus(parseRangeList(removed))
 	}
-	if added, ok := scriptExtensionsAdded[name]; ok {
+	if added, ok := scriptExtensionsAdded()[name]; ok {
 		set = set.union(parseRangeList(added))
 	}
 	return set, true
 }
 
 // binaryPropertyNames maps every binary property name and alias of ECMA-262 to the long name.
-var binaryPropertyNames = map[string]string{
-	"ASCII": "ASCII", "ASCII_Hex_Digit": "ASCII_Hex_Digit", "AHex": "ASCII_Hex_Digit", "Alphabetic": "Alphabetic",
-	"Alpha": "Alphabetic", "Any": "Any", "Assigned": "Assigned", "Bidi_Control": "Bidi_Control", "Bidi_C": "Bidi_Control",
-	"Bidi_Mirrored": "Bidi_Mirrored", "Bidi_M": "Bidi_Mirrored", "Case_Ignorable": "Case_Ignorable", "CI": "Case_Ignorable",
-	"Cased": "Cased", "Changes_When_Casefolded": "Changes_When_Casefolded", "CWCF": "Changes_When_Casefolded",
-	"Changes_When_Casemapped": "Changes_When_Casemapped", "CWCM": "Changes_When_Casemapped",
-	"Changes_When_Lowercased": "Changes_When_Lowercased", "CWL": "Changes_When_Lowercased",
-	"Changes_When_NFKC_Casefolded": "Changes_When_NFKC_Casefolded", "CWKCF": "Changes_When_NFKC_Casefolded",
-	"Changes_When_Titlecased": "Changes_When_Titlecased", "CWT": "Changes_When_Titlecased",
-	"Changes_When_Uppercased": "Changes_When_Uppercased", "CWU": "Changes_When_Uppercased", "Dash": "Dash",
-	"Default_Ignorable_Code_Point": "Default_Ignorable_Code_Point", "DI": "Default_Ignorable_Code_Point",
-	"Deprecated": "Deprecated", "Dep": "Deprecated", "Diacritic": "Diacritic", "Dia": "Diacritic", "Emoji": "Emoji",
-	"Emoji_Component": "Emoji_Component", "EComp": "Emoji_Component", "Emoji_Modifier": "Emoji_Modifier",
-	"EMod": "Emoji_Modifier", "Emoji_Modifier_Base": "Emoji_Modifier_Base", "EBase": "Emoji_Modifier_Base",
-	"Emoji_Presentation": "Emoji_Presentation", "EPres": "Emoji_Presentation", "Extended_Pictographic": "Extended_Pictographic",
-	"ExtPict": "Extended_Pictographic", "Extender": "Extender", "Ext": "Extender", "Grapheme_Base": "Grapheme_Base",
-	"Gr_Base": "Grapheme_Base", "Grapheme_Extend": "Grapheme_Extend", "Gr_Ext": "Grapheme_Extend", "Hex_Digit": "Hex_Digit",
-	"Hex": "Hex_Digit", "IDS_Binary_Operator": "IDS_Binary_Operator", "IDSB": "IDS_Binary_Operator",
-	"IDS_Trinary_Operator": "IDS_Trinary_Operator", "IDST": "IDS_Trinary_Operator", "ID_Continue": "ID_Continue",
-	"IDC": "ID_Continue", "ID_Start": "ID_Start", "IDS": "ID_Start", "Ideographic": "Ideographic", "Ideo": "Ideographic",
-	"Join_Control": "Join_Control", "Join_C": "Join_Control", "Logical_Order_Exception": "Logical_Order_Exception",
-	"LOE": "Logical_Order_Exception", "Lowercase": "Lowercase", "Lower": "Lowercase", "Math": "Math",
-	"Noncharacter_Code_Point": "Noncharacter_Code_Point", "NChar": "Noncharacter_Code_Point",
-	"Pattern_Syntax": "Pattern_Syntax", "Pat_Syn": "Pattern_Syntax", "Pattern_White_Space": "Pattern_White_Space",
-	"Pat_WS": "Pattern_White_Space", "Quotation_Mark": "Quotation_Mark", "QMark": "Quotation_Mark", "Radical": "Radical",
-	"Regional_Indicator": "Regional_Indicator", "RI": "Regional_Indicator", "Sentence_Terminal": "Sentence_Terminal",
-	"STerm": "Sentence_Terminal", "Soft_Dotted": "Soft_Dotted", "SD": "Soft_Dotted", "Terminal_Punctuation": "Terminal_Punctuation",
-	"Term": "Terminal_Punctuation", "Unified_Ideograph": "Unified_Ideograph", "UIdeo": "Unified_Ideograph",
-	"Uppercase": "Uppercase", "Upper": "Uppercase", "Variation_Selector": "Variation_Selector", "VS": "Variation_Selector",
-	"White_Space": "White_Space", "space": "White_Space", "XID_Continue": "XID_Continue", "XIDC": "XID_Continue",
-	"XID_Start": "XID_Start", "XIDS": "XID_Start",
-}
+var binaryPropertyNames = lazyTable(func() map[string]string {
+	return map[string]string{
+		"ASCII": "ASCII", "ASCII_Hex_Digit": "ASCII_Hex_Digit", "AHex": "ASCII_Hex_Digit", "Alphabetic": "Alphabetic",
+		"Alpha": "Alphabetic", "Any": "Any", "Assigned": "Assigned", "Bidi_Control": "Bidi_Control", "Bidi_C": "Bidi_Control",
+		"Bidi_Mirrored": "Bidi_Mirrored", "Bidi_M": "Bidi_Mirrored", "Case_Ignorable": "Case_Ignorable", "CI": "Case_Ignorable",
+		"Cased": "Cased", "Changes_When_Casefolded": "Changes_When_Casefolded", "CWCF": "Changes_When_Casefolded",
+		"Changes_When_Casemapped": "Changes_When_Casemapped", "CWCM": "Changes_When_Casemapped",
+		"Changes_When_Lowercased": "Changes_When_Lowercased", "CWL": "Changes_When_Lowercased",
+		"Changes_When_NFKC_Casefolded": "Changes_When_NFKC_Casefolded", "CWKCF": "Changes_When_NFKC_Casefolded",
+		"Changes_When_Titlecased": "Changes_When_Titlecased", "CWT": "Changes_When_Titlecased",
+		"Changes_When_Uppercased": "Changes_When_Uppercased", "CWU": "Changes_When_Uppercased", "Dash": "Dash",
+		"Default_Ignorable_Code_Point": "Default_Ignorable_Code_Point", "DI": "Default_Ignorable_Code_Point",
+		"Deprecated": "Deprecated", "Dep": "Deprecated", "Diacritic": "Diacritic", "Dia": "Diacritic", "Emoji": "Emoji",
+		"Emoji_Component": "Emoji_Component", "EComp": "Emoji_Component", "Emoji_Modifier": "Emoji_Modifier",
+		"EMod": "Emoji_Modifier", "Emoji_Modifier_Base": "Emoji_Modifier_Base", "EBase": "Emoji_Modifier_Base",
+		"Emoji_Presentation": "Emoji_Presentation", "EPres": "Emoji_Presentation", "Extended_Pictographic": "Extended_Pictographic",
+		"ExtPict": "Extended_Pictographic", "Extender": "Extender", "Ext": "Extender", "Grapheme_Base": "Grapheme_Base",
+		"Gr_Base": "Grapheme_Base", "Grapheme_Extend": "Grapheme_Extend", "Gr_Ext": "Grapheme_Extend", "Hex_Digit": "Hex_Digit",
+		"Hex": "Hex_Digit", "IDS_Binary_Operator": "IDS_Binary_Operator", "IDSB": "IDS_Binary_Operator",
+		"IDS_Trinary_Operator": "IDS_Trinary_Operator", "IDST": "IDS_Trinary_Operator", "ID_Continue": "ID_Continue",
+		"IDC": "ID_Continue", "ID_Start": "ID_Start", "IDS": "ID_Start", "Ideographic": "Ideographic", "Ideo": "Ideographic",
+		"Join_Control": "Join_Control", "Join_C": "Join_Control", "Logical_Order_Exception": "Logical_Order_Exception",
+		"LOE": "Logical_Order_Exception", "Lowercase": "Lowercase", "Lower": "Lowercase", "Math": "Math",
+		"Noncharacter_Code_Point": "Noncharacter_Code_Point", "NChar": "Noncharacter_Code_Point",
+		"Pattern_Syntax": "Pattern_Syntax", "Pat_Syn": "Pattern_Syntax", "Pattern_White_Space": "Pattern_White_Space",
+		"Pat_WS": "Pattern_White_Space", "Quotation_Mark": "Quotation_Mark", "QMark": "Quotation_Mark", "Radical": "Radical",
+		"Regional_Indicator": "Regional_Indicator", "RI": "Regional_Indicator", "Sentence_Terminal": "Sentence_Terminal",
+		"STerm": "Sentence_Terminal", "Soft_Dotted": "Soft_Dotted", "SD": "Soft_Dotted", "Terminal_Punctuation": "Terminal_Punctuation",
+		"Term": "Terminal_Punctuation", "Unified_Ideograph": "Unified_Ideograph", "UIdeo": "Unified_Ideograph",
+		"Uppercase": "Uppercase", "Upper": "Uppercase", "Variation_Selector": "Variation_Selector", "VS": "Variation_Selector",
+		"White_Space": "White_Space", "space": "White_Space", "XID_Continue": "XID_Continue", "XIDC": "XID_Continue",
+		"XID_Start": "XID_Start", "XIDS": "XID_Start",
+	}
+})
 
 func binaryProperty(name string) (runeSet, bool) {
-	long, ok := binaryPropertyNames[name]
+	long, ok := binaryPropertyNames()[name]
 	if !ok {
 		return nil, false
 	}
@@ -260,7 +276,7 @@ func longBinaryProperty(name string) runeSet {
 	case "ID_Continue":
 		return idContinueSet()
 	}
-	return parseRangeList(generatedProperties[name])
+	return parseRangeList(generatedProperties()[name])
 }
 
 func idStartSet() runeSet {

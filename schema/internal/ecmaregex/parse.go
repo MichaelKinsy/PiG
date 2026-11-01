@@ -2,7 +2,6 @@ package ecmaregex
 
 import (
 	"math"
-	"slices"
 	"strings"
 	"sync"
 )
@@ -31,8 +30,11 @@ type node struct {
 	set runeSet
 	// children are the terms of a kindSeq, the alternatives of a kindAlt, or the single body or operand of the other kinds that have one.
 	children []*node
-	// assertion is '^', '$', 'b' or 'B' for a kindAssert.
+	// assertion is '^', '$', 'b' or 'B' for a kindAssert; multiline is set on "^" and "$" that also match at line terminators.
 	assertion rune
+	multiline bool
+	// fold is set on a backreference that compares without regard to case, and on "\b" and "\B" that count the characters which fold onto ASCII word characters as word characters.
+	fold bool
 	// ahead and negated describe a kindLook.
 	ahead, negated bool
 	// index is the number of a kindCapture.
@@ -45,19 +47,29 @@ type node struct {
 	greedy   bool
 }
 
-// A syntaxError is a pattern V8 rejects with a SyntaxError.
-type syntaxError struct{ reason string }
+// A syntaxError is a pattern V8 rejects with a SyntaxError. Its text is the message of that error: parse knows the reason, and compile adds the source and the flags.
+type syntaxError struct{ source, flags, reason string }
 
-func (e *syntaxError) Error() string { return "invalid regular expression: " + e.reason }
-
-// A nameScope tracks the alternatives of one open group, or of the whole pattern, for the check of repeated group names: openCount is the number of capturing groups started when the scope opened (the group's own number included), altStart the number started when its current alternative began, and alt the number of "|" it has passed.
-type nameScope struct {
-	openCount, altStart, alt int
+func (e *syntaxError) Error() string {
+	return "Invalid regular expression: /" + e.source + "/" + e.flags + ": " + e.reason
 }
 
+// A nameScope is the state V8 keeps per open group, and for the whole pattern, to tell which groups of one name can both take part in a match. index is the number of the group (for a group that does not capture, the number of the last group started when it opened), and groups numbered first to second, both included, lie in an earlier alternative of the enclosing groups. The interval is empty (0, 0) until a "|" has been read; a group starts with its parent's interval, and each "|" in it sets second to the number of groups started so far, or, when the interval was empty, first to index too.
+type nameScope struct {
+	index, first, second int
+}
+
+// modifiers are the flags that a modifier group can change: i (ignore case), m (multiline) and s (dot matches line terminators). They are off for a whole pattern.
+type modifiers struct{ ignoreCase, multiline, dotAll bool }
+
 type parser struct {
-	src []rune
-	pos int
+	// oneByte makes the parser read the pattern as V8 compiles it for a subject string that holds only code units up to U+00FF (which V8 stores with one byte per unit). There V8 drops a literal character above U+00FF from a case-insensitive scope before it looks up the characters that match it case-insensitively, so (?i:Ÿ) cannot match "ÿ" in such a string though it matches "ÿ" in a wider one; without the u flag a class whose members are all above U+00FF does the same. latin1Matters is set when the pattern holds such a literal or class, which tells that the pattern has a second form.
+	oneByte, latin1Matters bool
+	flags                  modifiers
+	// leakIgnoreCase is the i flag of the group that was opened last, which V8's parser keeps in force after that group closes: \w and \W, wherever they stand, take the two characters that fold onto the ASCII word characters into account when it is set, though the term itself ignores case only inside a modifier group.
+	leakIgnoreCase bool
+	src            []rune
+	pos            int
 	// unicode is the u flag: src holds code points and the strict grammar applies. Without it src holds UTF-16 code units and the Annex B grammar applies.
 	unicode bool
 	// universe is the last character of the strings the pattern runs against.
@@ -75,8 +87,8 @@ type parser struct {
 }
 
 // parse reads a whole pattern. src is a slice of code points when unicode is set and of UTF-16 code units otherwise.
-func parse(src []rune, unicode bool) (root *node, err error) {
-	p := &parser{src: src, unicode: unicode, universe: maxUnit, names: map[string][]int{}, scopes: []nameScope{{}}}
+func parse(src []rune, unicode, oneByte bool) (root *node, latin1Matters bool, err error) {
+	p := &parser{src: src, unicode: unicode, oneByte: oneByte, universe: maxUnit, names: map[string][]int{}, scopes: []nameScope{{}}}
 	if unicode {
 		p.universe = maxCodePoint
 	}
@@ -86,25 +98,33 @@ func parse(src []rune, unicode bool) (root *node, err error) {
 			if !ok {
 				panic(r)
 			}
-			root, err = nil, e
+			root, latin1Matters, err = nil, false, e
 		}
 	}()
 	p.scanCaptures()
 	root = p.disjunction()
 	if p.pos < len(p.src) {
-		p.fail("unmatched ')'")
+		p.fail("Unmatched ')'")
 	}
 	for _, ref := range p.namedRefs {
 		groups, ok := p.names[ref.name]
 		if !ok {
-			p.fail("invalid named capture referenced")
+			p.fail("Invalid named capture referenced")
 		}
 		ref.refs = groups
 	}
-	return root, nil
+	return root, p.latin1Matters, nil
 }
 
-func (p *parser) fail(reason string) { panic(&syntaxError{reason}) }
+// failProperty reports an unknown or malformed \p{...}.
+func (p *parser) failProperty(inClass bool) {
+	if inClass {
+		p.fail("Invalid property name in character class")
+	}
+	p.fail("Invalid property name")
+}
+
+func (p *parser) fail(reason string) { panic(&syntaxError{reason: reason}) }
 
 func (p *parser) done() bool { return p.pos >= len(p.src) }
 
@@ -156,8 +176,10 @@ func (p *parser) disjunction() *node {
 	alternatives := []*node{p.alternative()}
 	for p.eat('|') {
 		scope := &p.scopes[len(p.scopes)-1]
-		scope.alt++
-		scope.altStart = p.groups
+		if scope.second == 0 {
+			scope.first = scope.index
+		}
+		scope.second = p.groups
 		alternatives = append(alternatives, p.alternative())
 	}
 	if len(alternatives) == 1 {
@@ -187,27 +209,31 @@ func (p *parser) term() *node {
 	switch c {
 	case '^', '$':
 		p.pos++
-		return &node{kind: kindAssert, assertion: c}
+		return &node{kind: kindAssert, assertion: c, multiline: p.flags.multiline}
 	case '*', '+', '?':
-		p.fail("nothing to repeat")
+		p.fail("Nothing to repeat")
 	case '{':
 		if _, _, _, ok := p.interval(); ok {
-			p.fail("nothing to repeat")
+			p.fail("Nothing to repeat")
 		}
 		if p.unicode {
-			p.fail("lone quantifier brackets")
+			p.fail("Lone quantifier brackets")
 		}
 		p.pos++
-		atom = charNode(c)
+		atom = p.charNode(c)
 	case '}', ']':
 		if p.unicode {
-			p.fail("lone quantifier brackets")
+			p.fail("Lone quantifier brackets")
 		}
 		p.pos++
-		atom = charNode(c)
+		atom = p.charNode(c)
 	case '.':
 		p.pos++
-		atom = &node{kind: kindSet, set: lineTerminators.complement(p.universe)}
+		if p.flags.dotAll {
+			atom = &node{kind: kindSet, set: runeSet{{0, p.universe}}}
+		} else {
+			atom = &node{kind: kindSet, set: lineTerminators.complement(p.universe)}
+		}
 	case '(':
 		atom = p.group()
 	case '[':
@@ -220,12 +246,29 @@ func (p *parser) term() *node {
 		}
 	default:
 		p.pos++
-		atom = charNode(c)
+		atom = p.charNode(c)
 	}
 	return p.quantified(atom)
 }
 
-func charNode(c rune) *node { return &node{kind: kindSet, set: singleRune(c)} }
+// charNode is the term for the character c: only c, or with the i flag every character that matches it.
+func (p *parser) charNode(c rune) *node {
+	if p.flags.ignoreCase && c > 0xFF {
+		p.latin1Matters = true
+		if p.oneByte {
+			return &node{kind: kindSet}
+		}
+	}
+	return p.setNode(singleRune(c))
+}
+
+// setNode is the term for a set of characters, widened with the i flag.
+func (p *parser) setNode(set runeSet) *node {
+	if p.flags.ignoreCase {
+		set = fold(set, p.unicode)
+	}
+	return &node{kind: kindSet, set: set}
+}
 
 // quantified reads the quantifier after atom, if there is one.
 func (p *parser) quantified(atom *node) *node {
@@ -246,7 +289,7 @@ func (p *parser) quantified(atom *node) *node {
 		lo, hi, length, ok = p.interval()
 		if !ok {
 			if p.unicode {
-				p.fail("incomplete quantifier")
+				p.fail("Incomplete quantifier")
 			}
 			return atom
 		}
@@ -261,7 +304,7 @@ func (p *parser) quantified(atom *node) *node {
 	if atom.kind == kindLook {
 		// Lookbehinds and, with the u flag, lookaheads take no quantifier. A lookahead of Annex B repeats as often as its quantifier demands, but a repeat of it never matches more than once.
 		if p.unicode || !atom.ahead {
-			p.fail("invalid quantifier")
+			p.fail("Invalid quantifier")
 		}
 		if lo > 0 {
 			return atom
@@ -315,6 +358,12 @@ func (p *parser) group() *node {
 	switch {
 	case p.eat(':'):
 		return &node{kind: kindGroup, children: []*node{p.groupBody("", 0)}}
+	case p.peek(0) == 'i' || p.peek(0) == 'm' || p.peek(0) == 's' || p.peek(0) == '-':
+		saved := p.flags
+		p.flags = p.modifierFlags()
+		body := p.groupBody("", 0)
+		p.flags = saved
+		return &node{kind: kindGroup, children: []*node{body}}
 	case p.eat('='):
 		return &node{kind: kindLook, ahead: true, children: []*node{p.groupBody("", 0)}}
 	case p.eat('!'):
@@ -332,45 +381,92 @@ func (p *parser) group() *node {
 		index := p.groups
 		return &node{kind: kindCapture, index: index, children: []*node{p.groupBody(name, index)}}
 	}
-	p.fail("invalid group")
+	p.fail("Invalid group")
 	return nil
+}
+
+// modifierFlags reads the flags of a modifier group after "(?" up to and including the ":" and returns the flags that hold inside the group. V8 takes any of i, m and s before an optional "-" and any after it, no flag twice and none on both sides, and wants a flag on at least one side of a "-".
+func (p *parser) modifierFlags() modifiers {
+	flags := p.flags
+	var added, removed modifiers
+	dash := false
+	for {
+		c := p.peek(0)
+		p.pos++
+		var target, other *modifiers
+		if dash {
+			target, other = &removed, &added
+		} else {
+			target, other = &added, &removed
+		}
+		var flag, otherFlag *bool
+		switch c {
+		case 'i':
+			flag, otherFlag = &target.ignoreCase, &other.ignoreCase
+		case 'm':
+			flag, otherFlag = &target.multiline, &other.multiline
+		case 's':
+			flag, otherFlag = &target.dotAll, &other.dotAll
+		case '-':
+			if dash {
+				p.fail("Multiple dashes in flag group")
+			}
+			dash = true
+			continue
+		case ':':
+			if dash && added == (modifiers{}) && removed == (modifiers{}) {
+				p.fail("Invalid flag group")
+			}
+			if added.ignoreCase {
+				flags.ignoreCase = true
+			}
+			if added.multiline {
+				flags.multiline = true
+			}
+			if added.dotAll {
+				flags.dotAll = true
+			}
+			if removed.ignoreCase {
+				flags.ignoreCase = false
+			}
+			if removed.multiline {
+				flags.multiline = false
+			}
+			if removed.dotAll {
+				flags.dotAll = false
+			}
+			return flags
+		default:
+			p.fail("Invalid group")
+		}
+		if *flag || *otherFlag {
+			p.fail("Repeated flag in flag group")
+		}
+		*flag = true
+	}
 }
 
 // groupBody reads the disjunction of a group up to and including its ")". name is the name of the group, "" for an unnamed one, and index its number.
 func (p *parser) groupBody(name string, index int) *node {
-	p.scopes = append(p.scopes, nameScope{openCount: p.groups, altStart: p.groups})
+	p.leakIgnoreCase = p.flags.ignoreCase
+	parent := p.scopes[len(p.scopes)-1]
+	p.scopes = append(p.scopes, nameScope{index: p.groups, first: parent.first, second: parent.second})
 	body := p.disjunction()
 	scope := p.scopes[len(p.scopes)-1]
 	p.scopes = p.scopes[:len(p.scopes)-1]
 	if !p.eat(')') {
-		p.fail("unterminated group")
+		p.fail("Unterminated group")
 	}
 	if name != "" {
+		// V8 accepts a repeated name only for groups that its interval of earlier alternatives holds, however the groups nest.
 		for _, earlier := range p.names[name] {
-			if p.conflicts(earlier, index, scope) {
-				p.fail("duplicate capture group name")
+			if earlier < scope.first || earlier > scope.second {
+				p.fail("Duplicate capture group name")
 			}
 		}
 		p.names[name] = append(p.names[name], index)
 	}
 	return body
-}
-
-// conflicts reports whether the earlier group of the same name may not coexist with the group number index that has just closed with the scope body. V8 accepts a repeated name only when the groups lie in different alternatives, and it decides that from the numbers of the groups started when each alternative began, not from the structure of the pattern, so this follows those numbers. An earlier group nested in the closed group conflicts when it began in the last alternative of the body. A group before the closed group conflicts when it began in the current alternative of an enclosing scope; it does not when the innermost enclosing scope that has passed a "|" opened at or before the earlier group, which includes the last group started before that scope. This agrees with V8 on every nesting of groups that real patterns use and on 97% of random nestings of repeated names; the others differ only in which contrived pattern is a SyntaxError.
-func (p *parser) conflicts(earlier, index int, body nameScope) bool {
-	if earlier > index {
-		return earlier > body.altStart
-	}
-	for _, scope := range slices.Backward(p.scopes) {
-
-		if earlier > scope.altStart {
-			return true
-		}
-		if scope.alt > 0 && earlier >= scope.openCount {
-			return false
-		}
-	}
-	return true
 }
 
 var (
@@ -384,19 +480,19 @@ func (p *parser) groupName() string {
 	var name strings.Builder
 	for first := true; ; first = false {
 		if p.done() {
-			p.fail("invalid capture group name")
+			p.fail("Invalid capture group name")
 		}
 		c := p.src[p.pos]
 		p.pos++
 		switch {
 		case c == '>':
 			if first {
-				p.fail("invalid capture group name")
+				p.fail("Invalid capture group name")
 			}
 			return name.String()
 		case c == '\\':
 			if !p.eat('u') {
-				p.fail("invalid capture group name")
+				p.fail("Invalid capture group name")
 			}
 			c = p.unicodeEscape()
 		case isLeadSurrogate(c) && isTrailSurrogate(p.peek(0)):
@@ -407,7 +503,7 @@ func (p *parser) groupName() string {
 		case c == '$' || c == '_' || identifierStart.contains(c):
 		case !first && (c == 0x200C || c == 0x200D || idPart.contains(c)):
 		default:
-			p.fail("invalid capture group name")
+			p.fail("Invalid capture group name")
 		}
 		name.WriteRune(c)
 	}
@@ -427,19 +523,19 @@ func (p *parser) unicodeEscape() rune {
 			}
 			value = value*16 + d
 			if value > maxCodePoint {
-				p.fail("invalid unicode escape")
+				p.fail("Invalid Unicode escape")
 			}
 			digits++
 			p.pos++
 		}
 		if digits == 0 || !p.eat('}') {
-			p.fail("invalid unicode escape")
+			p.fail("Invalid Unicode escape")
 		}
 		return value
 	}
 	lead, ok := p.hexDigits(4)
 	if !ok {
-		p.fail("invalid unicode escape")
+		p.fail("Invalid Unicode escape")
 	}
 	if isLeadSurrogate(lead) && p.peek(0) == '\\' && p.peek(1) == 'u' {
 		save := p.pos
@@ -497,24 +593,24 @@ func (p *parser) atomEscape() (n *node, assertion bool) {
 	switch {
 	case c == 'b' || c == 'B':
 		p.pos++
-		return &node{kind: kindAssert, assertion: c}, true
+		return &node{kind: kindAssert, assertion: c, fold: p.unicode && p.flags.ignoreCase}, true
 	case c >= '1' && c <= '9':
 		if index, ok := p.backReferenceIndex(); ok {
-			return &node{kind: kindBackref, refs: []int{index}}, false
+			return &node{kind: kindBackref, refs: []int{index}, fold: p.flags.ignoreCase}, false
 		}
 	case c == 'k' && (p.unicode || p.hasNamed):
 		p.pos++
 		if !p.eat('<') {
-			p.fail("invalid named reference")
+			p.fail("Invalid named reference")
 		}
-		ref := &node{kind: kindBackref, name: p.groupName()}
+		ref := &node{kind: kindBackref, name: p.groupName(), fold: p.flags.ignoreCase}
 		p.namedRefs = append(p.namedRefs, ref)
 		return ref, false
 	}
-	if set, ok := p.classEscape(); ok {
-		return &node{kind: kindSet, set: set}, false
+	if set, ok := p.classEscape(false); ok {
+		return p.setNode(set), false
 	}
-	return charNode(p.characterEscape(false)), false
+	return p.charNode(p.characterEscape(false)), false
 }
 
 // backReferenceIndex reads the decimal number of \N when it names a capturing group of the pattern.
@@ -532,14 +628,14 @@ func (p *parser) backReferenceIndex() (int, bool) {
 }
 
 // classEscape reads \d \D \w \W \s \S and, with the u flag, \p{...} and \P{...}, when one starts at the current position (after the backslash).
-func (p *parser) classEscape() (runeSet, bool) {
+func (p *parser) classEscape(inClass bool) (runeSet, bool) {
 	var set runeSet
 	c := p.peek(0)
 	switch c {
 	case 'd', 'D':
 		set = digitSet
 	case 'w', 'W':
-		set = wordSet
+		set = p.wordChars()
 	case 's', 'S':
 		set = spaceSet
 	case 'p', 'P':
@@ -547,7 +643,7 @@ func (p *parser) classEscape() (runeSet, bool) {
 			return nil, false
 		}
 		p.pos++
-		set = p.property()
+		set = p.property(inClass)
 		if c == 'P' {
 			set = set.complement(p.universe)
 		}
@@ -562,23 +658,31 @@ func (p *parser) classEscape() (runeSet, bool) {
 	return set, true
 }
 
+// wordChars are the characters of \w: the ASCII word characters and, with the u and i flags, the two others that fold onto them (U+017F and U+212A).
+func (p *parser) wordChars() runeSet {
+	if p.unicode && p.leakIgnoreCase {
+		return wordSet.union(runeSet{{0x17F, 0x17F}, {0x212A, 0x212A}})
+	}
+	return wordSet
+}
+
 // property reads {name} or {name=value} after \p or \P.
-func (p *parser) property() runeSet {
+func (p *parser) property(inClass bool) runeSet {
 	if !p.eat('{') {
-		p.fail("invalid property name")
+		p.failProperty(inClass)
 	}
 	start := p.pos
 	for !p.done() && p.src[p.pos] != '}' {
 		p.pos++
 	}
 	if p.done() {
-		p.fail("invalid property name")
+		p.failProperty(inClass)
 	}
 	expr := string(p.src[start:p.pos])
 	p.pos++
 	set, ok := propertyRanges(expr)
 	if !ok {
-		p.fail("invalid property name")
+		p.failProperty(inClass)
 	}
 	return set
 }
@@ -608,7 +712,7 @@ func (p *parser) characterEscape(inClass bool) rune {
 			return letter % 32
 		}
 		if p.unicode {
-			p.fail("invalid unicode escape")
+			p.fail("Invalid Unicode escape")
 		}
 		if inClass && ((letter >= '0' && letter <= '9') || letter == '_') {
 			p.pos++
@@ -624,7 +728,10 @@ func (p *parser) characterEscape(inClass bool) rune {
 		fallthrough
 	case '1', '2', '3', '4', '5', '6', '7':
 		if p.unicode {
-			p.fail("invalid decimal escape")
+			if c != '0' && !inClass {
+				p.fail("Invalid escape")
+			}
+			p.fail("Invalid decimal escape")
 		}
 		p.pos--
 		return p.legacyOctal()
@@ -633,7 +740,7 @@ func (p *parser) characterEscape(inClass bool) rune {
 			return value
 		}
 		if p.unicode {
-			p.fail("invalid escape")
+			p.fail("Invalid escape")
 		}
 		return 'x'
 	case 'u':
@@ -649,10 +756,10 @@ func (p *parser) characterEscape(inClass bool) rune {
 		if strings.ContainsRune(`^$\.*+?()[]{}|/`, c) {
 			return c
 		}
-		p.fail("invalid escape")
+		p.fail("Invalid escape")
 	}
 	if c == 'k' && p.hasNamed {
-		p.fail("invalid escape")
+		p.fail("Invalid escape")
 	}
 	return c
 }
@@ -685,7 +792,7 @@ func (p *parser) class() *node {
 	var members []runeRange
 	for {
 		if p.done() {
-			p.fail("unterminated character class")
+			p.fail("Unterminated character class")
 		}
 		if p.eat(']') {
 			break
@@ -697,7 +804,7 @@ func (p *parser) class() *node {
 		}
 		p.pos++
 		if p.done() {
-			p.fail("unterminated character class")
+			p.fail("Unterminated character class")
 		}
 		if p.peek(0) == ']' {
 			members = appendAtom(members, first)
@@ -707,7 +814,7 @@ func (p *parser) class() *node {
 		last := p.classAtom()
 		if first.isSet || last.isSet {
 			if p.unicode {
-				p.fail("invalid character class")
+				p.fail("Invalid character class")
 			}
 			members = appendAtom(members, first)
 			members = append(members, runeRange{'-', '-'})
@@ -715,11 +822,20 @@ func (p *parser) class() *node {
 			continue
 		}
 		if first.char > last.char {
-			p.fail("range out of order in character class")
+			p.fail("Range out of order in character class")
 		}
 		members = append(members, runeRange{first.char, last.char})
 	}
 	set := newRuneSet(members)
+	if p.flags.ignoreCase {
+		if !p.unicode && !negated && len(set) > 0 && set[0].lo > 0xFF {
+			p.latin1Matters = true
+			if p.oneByte {
+				set = nil
+			}
+		}
+		set = fold(set, p.unicode)
+	}
 	if negated {
 		set = set.complement(p.universe)
 	}
@@ -748,7 +864,7 @@ func (p *parser) classAtom() classAtom {
 		return classAtom{char: '\b'}
 	case 'B':
 		if p.unicode {
-			p.fail("invalid escape")
+			p.fail("Invalid escape")
 		}
 	case '-':
 		if p.unicode {
@@ -756,7 +872,7 @@ func (p *parser) classAtom() classAtom {
 			return classAtom{char: '-'}
 		}
 	}
-	if set, ok := p.classEscape(); ok {
+	if set, ok := p.classEscape(true); ok {
 		return classAtom{set: set, isSet: true}
 	}
 	return classAtom{char: p.characterEscape(true)}
