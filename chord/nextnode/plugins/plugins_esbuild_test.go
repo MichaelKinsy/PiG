@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -489,7 +490,7 @@ func TestEsbuildBuildAnAbortedContextIsItsCause(t *testing.T) {
 	cause := os.ErrDeadlineExceeded
 	cancel(cause)
 	built, err := esbuildFacet(plugin, "worker", options, ctx)
-	if err != cause || !reflect.DeepEqual(built, BuiltFacet{}) {
+	if !errors.Is(err, cause) || !reflect.DeepEqual(built, BuiltFacet{}) {
 		t.Fatalf("built = %+v, err = %v, want the cause %v", built, err, cause)
 	}
 }
