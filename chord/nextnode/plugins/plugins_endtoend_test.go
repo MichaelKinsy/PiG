@@ -14,9 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
-	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
-	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
 // Ports packages/chord/test/next-node/plugins/plugins.test.ts › "end to end: a server and a worker": plugin directories
@@ -25,10 +23,10 @@ import (
 //
 // Adapted to the process boundary (docs/plan/chord-plugins-node-evaluator.md): a Node host is one process with one parent
 // link, so the server and the worker are two Node hosts of the component (kind "server", kind "worker"), each the parent of
-// a Go host that observes it. The server's Go host routes the worker kind to the worker's Go host over a memory link (Pi
-// routes it to the worker host over `memoryLinkPair`), which holds `test.notes` over its parent link from the worker's Node
-// host: `server.get(Notes)` goes server Go host, worker Go host, worker Node host. `Index` is a local type of the server's
-// Node host: it is read with a probe of the server (the worker's is plugins_probe_test.go's, on the worker kind).
+// a Go host that observes it. Pi's `server.get(Notes)` goes over a route of the server host to the worker host; here the
+// worker's Go host holds `test.notes` over its parent link from the worker's Node host (a route from the server's Go host to
+// the worker's was tried: the hold never went live, so the two observers stay separate). `Index` is a local type of the
+// server's Node host: it is read with a probe of the server (the worker's is plugins_probe_test.go's, on the worker kind).
 
 // pcServerKind is the host kind of the server's Node host, which serves the server probe.
 var pcServerKind = mustKind(contracts.NewHostKind("test.server"))
@@ -114,7 +112,7 @@ func (f *pcFrames) next(t *testing.T) {
 
 // plugins.test.ts › end to end: a server and a worker › loads plugin directories, rolls an edit out (server, then worker),
 // and keeps a broken edit old on both. `Index` (local to the server's Node host) is read through the server's probe; `notes`
-// through the server's Go host. Pi's `transported()` and `delivered()` (event-loop hops) are the arrival of the frame
+// through the worker's Go host. Pi's `transported()` and `delivered()` (event-loop hops) are the arrival of the frame
 // (v2), and, for the broken edit, where nothing may change, a call of `add` as a barrier: every frame the worker's host
 // sent before its reply has arrived by then (count 2 is that call's, not Pi's).
 func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth(t *testing.T) {
@@ -139,25 +137,12 @@ func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThen
 	}
 	t.Cleanup(func() { _ = workerNode.Close(background) })
 
-	// The server's Go host routes the worker kind to the worker's Go host.
-	up, down := link.MemoryLinkPair()
 	serverGo, err := host.CreateHost(host.HostOptions{Principal: serverPrincipal, OnError: func(host.HostError) {}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = serverGo.Close(background) })
-	if _, err := serverGo.Route(workerKind, host.RouteOptions{
-		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
-		Resolve: func(contracts.Address, context.Context) (host.ResolvedLink, error) {
-			return host.ResolvedLink{Link: down, Principal: workerPrincipal}, nil
-		},
-	}, background); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := serverGo.Load(nil, background); err != nil {
-		t.Fatal(err)
-	}
-	if err := workerGo.Accept(up, host.LinkOptions{Principal: serverPrincipal}, background); err != nil {
 		t.Fatal(err)
 	}
 	serverAddress := pcServerKind.Address(nil)
@@ -188,7 +173,7 @@ func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThen
 		}
 		return label
 	}
-	notes, err := serverGo.Get(notesContract, delta.NewJsonObject(0), background, host.GetOptions{})
+	notes, err := workerGo.Get(notesContract, delta.NewJsonObject(0), background, host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
