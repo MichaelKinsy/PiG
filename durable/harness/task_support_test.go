@@ -255,16 +255,3 @@ func goroutinesMatching(match func(stack string) bool) int {
 	}
 	return count
 }
-
-// holdLine holds the Session line with a commit whose callback waits (harness-tasks.test.ts holdLine): the jobs queued after
-// it start once it is released. entered resolves once the callback runs; release lets it return.
-func holdLine(harness Harness) gate {
-	held := gate{entered: deferred(), held: deferred()}
-	go func() {
-		_, _ = durable.Commit(testContext, harness, func(durable.Tx) (struct{}, error) {
-			held.entered.resolve()
-			return struct{}{}, held.held.wait(crashedProcesses)
-		})
-	}()
-	return held
-}

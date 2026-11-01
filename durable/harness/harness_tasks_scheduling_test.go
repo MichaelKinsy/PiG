@@ -304,13 +304,12 @@ func TestTaskRuntime(t *testing.T) {
 		opened := tkOpenRoot(t, []durable.AnyTask{detached.Erased()}, tkOptions{storage: store})
 		harnessRef.Store(&opened.harness)
 		id := tkStart(t, opened.root, detached.Erased())
-		impl := opened.harness.(*harnessImpl)
 		opened.harness.Resume()
 		eventually(t, func() bool { return heldGate.isSet() })
-		jobs := impl.LineJobs()
 		handlerReturns.resolve()
-		// The step queues behind the commit queued before it; the commit below, started after the handler returned, queues behind the step.
-		eventually(t, func() bool { return impl.LineJobs() > jobs })
+		// The step queues behind the commit queued before it; the commit below, started after the handler returned (a macrotask
+		// later, as upstream's setTimeout 0), queues behind the step.
+		flush()
 		runtime, _ := runtimeValue.get()
 		queueOnLineAdmitted(t, func(ctx context.Context) <-chan struct{} {
 			done := make(chan struct{})
