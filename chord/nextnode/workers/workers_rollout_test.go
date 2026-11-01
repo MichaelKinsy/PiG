@@ -137,13 +137,12 @@ func TestFixRound1TwoRolloutsStartedTogetherEachShipTheirOwnBuildTheLaterOneStay
 	v2 := f.build([]string{"@test/notes"})
 	f.label("v3")
 	v3 := f.build([]string{"@test/notes"})
+	// Pi's `Promise.all([rollout(v2), rollout(v3)])` runs the first rollout up to its first await before the second starts:
+	// the first rollout's reload is out before the second's, so the later build is the one that stays.
 	results := make(chan []plugins.RolloutHost, 2)
-	for _, each := range []struct {
-		name  string
-		built *plugins.Built
-	}{{"v2", v2}, {"v3", v3}} {
+	run := func(name string, built *plugins.Built) {
 		go func() {
-			result, err := f.plugins.Rollout([]plugins.RolloutStep{f.workers.Step(each.name)}, each.built, background)
+			result, err := f.plugins.Rollout([]plugins.RolloutStep{f.workers.Step(name)}, built, background)
 			if err != nil {
 				t.Error(err)
 				results <- nil
@@ -152,6 +151,9 @@ func TestFixRound1TwoRolloutsStartedTogetherEachShipTheirOwnBuildTheLaterOneStay
 			results <- result.Steps[0].Hosts
 		}()
 	}
+	run("v2", v2)
+	until(t, func() bool { return f.reloadOutstanding("S1") || len(results) > 0 })
+	run("v3", v3)
 	for range 2 {
 		requireListed(t, listed(<-results), "session|S1 "+changedNotes)
 	}

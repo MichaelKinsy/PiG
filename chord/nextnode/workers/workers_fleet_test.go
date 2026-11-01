@@ -506,3 +506,15 @@ func (f *fleet) watchStatuses(id string) *collector[WorkerStatus] {
 	f.t.Cleanup(func() { _, _ = watch.Stop() })
 	return statuses
 }
+
+// reloadOutstanding reports whether a reload of session `id`'s child is out and unanswered (a look into the component).
+func (f *fleet) reloadOutstanding(id string) bool {
+	component := f.workers.(*workersComponent)
+	var outstanding bool
+	component.loop.Run(func() {
+		if record := component.addresses["session|"+id]; record != nil && record.child != nil {
+			outstanding = record.child.reloaded != nil
+		}
+	})
+	return outstanding
+}
