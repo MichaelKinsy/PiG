@@ -6,9 +6,9 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/minimatch"
 )
 
-// newMinimatchFilter is new Minimatch(pattern) of Pi's minimatch 11.0.3 with its default options, as Pi's matchesAnyPattern builds one for each minimatch(path, pattern) call (package-manager.ts:661-685): case is not ignored, "#" starts a comment, leading "!"s negate, and the parts go through the first optimization level only. Its braces expand as Pi's brace-expansion 5.0.12 expands them (npmBraceExpand), which bounds what the expansion keeps. It fails where the constructor throws: for a pattern over MAX_PATTERN_LENGTH.
+// newMinimatchFilter is new Minimatch(pattern) of Pi's minimatch 11.0.3 with its default options, as Pi's matchesAnyPattern builds one for each minimatch(path, pattern) call (package-manager.ts:661-685): case is not ignored, "#" starts a comment, leading "!"s negate, and the parts go through the first optimization level only. It fails where the constructor throws: for a pattern over MAX_PATTERN_LENGTH.
 func newMinimatchFilter(pattern string) (*minimatch.Minimatch, error) {
-	m, err := minimatch.New(pattern, minimatch.Options{BraceExpand: npmBraceExpand})
+	m, err := minimatch.New(pattern, minimatch.Options{})
 	if errors.Is(err, minimatch.ErrPatternTooLong) {
 		return nil, errGlobPatternTooLong
 	}

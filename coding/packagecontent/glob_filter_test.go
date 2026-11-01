@@ -241,3 +241,25 @@ func TestMinimatchFilterGlobstarSectionsMatchMinimatch(t *testing.T) {
 	}
 	t.Logf("%d pairs: %d match", len(pairs), matched)
 }
+
+// Pi's minimatch builds its set from brace-expansion 5.0.12, so a filter whose sequence Node's bundled copy cannot hold still compiles and matches. Probed with Pi 1.1.0 (r25): {"prompts":["!x{1..134217729}"]} starts and lists the prompt, and minimatch("x5", "x{1..134217729}") is true.
+func TestMinimatchFilterExpandsBracesAsPi(t *testing.T) {
+	for _, tc := range []struct {
+		pattern, path string
+		want          bool
+	}{
+		{"x{1..134217729}", "x5", true},
+		{"x{1..134217729}", "x100001", false},
+		{"{a.md,}{},,}", "a.md", true},
+		{"{a.md,}{},,}", "a.md}", true},
+		{"x{9007199254740993..9007199254740995}", "x9007199254740992", true},
+	} {
+		m, err := newMinimatchFilter(tc.pattern)
+		if err != nil {
+			t.Fatalf("newMinimatchFilter(%q): %v", tc.pattern, err)
+		}
+		if got := m.Match(tc.path); got != tc.want {
+			t.Errorf("minimatch(%q, %q) = %t, want %t", tc.path, tc.pattern, got, tc.want)
+		}
+	}
+}
