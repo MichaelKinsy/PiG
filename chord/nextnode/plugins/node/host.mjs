@@ -8,7 +8,7 @@
 // requests are `{ id, op, ... }` and are answered by one `{ id, ok: true, result }` or `{ id, ok: false, error }`; `attach`,
 // `abort` and `close` have no answer (a closed host ends this process's channel, and the process exits). Unrequested:
 // `{ event: "started" }`, `{ event: "activity", counts }` (the host's keep-alive counts), `{ event: "error", error }` (the host's onError) and `{ event: "fatal", error }` (an uncaught
-// exception; the process exits).
+// exception or rejection; the process exits with code 1, after the exception was printed on stderr as Node prints it).
 //
 // The host is the child of the Go side: `load` makes it. It `connect`s the link as its parent link with the principal `peer`
 // (trusted), as Pi's forked worker does, when the Go side first uses the other end (`NodeHost.Link`, which the Go side
@@ -20,6 +20,7 @@ import { registerHooks } from "node:module";
 import { connect } from "node:net";
 import { pathToFileURL } from "node:url";
 import { openHostStore } from "./store.mjs";
+import { inspect } from "node:util";
 
 const tree = new URL("./pi/chord/src/", import.meta.url);
 const pi = (path) => import(new URL(path, tree).href);
@@ -143,8 +144,34 @@ port.on("disconnect", () => {
 	process.exit(0);
 });
 
+/**
+ * What Node prints on stderr for an uncaught exception: the error as `util.inspect` shows it (its stack, own properties and
+ * `[cause]`), a blank line and the Node version; a thrown value that is no Error is its text, with the hint Node gives for a
+ * primitive. The positions in plugin scripts are mapped through their source maps (`mapStack`), as the app's own reporters
+ * map them. The excerpt of the source line Node prints above the error is not printed.
+ */
+function uncaughtText(error) {
+	let body;
+	if (error instanceof Error) body = mapStack(Object.assign(new Error(), { stack: inspect(error) }));
+	else {
+		body = typeof error === "string" ? error : inspect(error);
+		if (error === null || (typeof error !== "object" && typeof error !== "function")) {
+			body += "\n(Use `node --trace-uncaught ...` to show where the exception was thrown)";
+		}
+	}
+	return `${body}\n\nNode.js ${process.version}\n`;
+}
+
+// Node's own handling of an uncaught exception, which this handler replaces: it prints the error, and the process ends with
+// code 1. The `fatal` follows the print, so the app has the text when it has the event. An unhandled rejection is raised as an
+// uncaught exception (Node's default `--unhandled-rejections=throw`), so it comes here too.
 process.on("uncaughtException", (error) => {
-	port.control({ event: "fatal", error: wireError(error) }, () => process.exit(1));
+	const fatal = () => port.control({ event: "fatal", error: wireError(error) }, () => process.exit(1));
+	try {
+		process.stderr.write(uncaughtText(error), fatal);
+	} catch {
+		fatal();
+	}
 });
 
 async function load(request, context) {

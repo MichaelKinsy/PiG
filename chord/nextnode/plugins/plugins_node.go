@@ -49,9 +49,8 @@ const minimumNode = "v22.19.0"
 // defaultReadyTimeout is how long Load waits for the process to start and connect (chord/host's loader waits as long).
 const defaultReadyTimeout = 30 * time.Second
 
-// stopGrace is how long a process that was told to close, or whose channel ended, gets to exit before it is killed (Pi's
-// workers wait as long: workers.ts).
-const stopGrace = 3 * time.Second
+// defaultStopGrace is NodeOptions.StopGrace's default.
+const defaultStopGrace = 3 * time.Second
 
 // stderrTail is how much of the last of the process's stderr an error keeps.
 const stderrTail = 8 << 10
@@ -94,6 +93,10 @@ type NodeOptions struct {
 	// OnError gets what the process's host reports in the background (a failed activation, a protocol error, a close past its
 	// timeout, ...): upstream's `onError`, with every field of the kind (NodeHostError).
 	OnError func(NodeHostError)
+	// StopGrace is how long a process whose channel ended, or that was told to close, gets to exit before it is killed (Pi's
+	// workers wait 3 s: workers.ts); 3 s by default. A process stalled in a loop cannot read its channel, so this is how long
+	// the Go side waits after it closed the link (a heartbeat that found the host silent, for one) before it kills it.
+	StopGrace *time.Duration
 }
 
 // NodeHostError is what the host of a subprocess reported in the background (upstream's `HostError`, which Go's
@@ -164,11 +167,23 @@ func (err *NodeError) Unwrap() []error {
 }
 
 // NodeExit is why a subprocess ended before it was asked to: its exit, what it reported as fatal, and the last of its
-// stderr.
+// stderr. Pi's plugins run in the app's process, where an uncaught exception ends the app with code 1, `process.exit(n)` with
+// n and a loop stalls it; here they end or stall only the subprocess, and the NodeExit is what Node's `exit` event
+// (`code`, `signal`) gives for it.
 type NodeExit struct {
-	Err    error
-	Fatal  *NodeError
+	// Err is the process's exit error (an *exec.ExitError), nil for an exit with code 0.
+	Err error
+	// Fatal is the uncaught exception or rejection the process reported before it ended, nil if it reported none.
+	Fatal *NodeError
+	// Stderr is the last of the process's stderr, which includes what it printed for a Fatal.
 	Stderr string
+	// Code is the process's exit code: 1 after an uncaught exception, n after `process.exit(n)`, -1 when a signal ended it.
+	Code int
+	// Signal is Node's name of the signal that ended the process (`SIGKILL`), empty when it exited.
+	Signal string
+	// Reason is why the Go side ended the process, when it did: its link closed (a heartbeat that found the host silent, a
+	// closed link) and it did not exit within the stop grace. Empty when the process ended by itself.
+	Reason string
 }
 
 func (exit *NodeExit) Error() string {
@@ -178,6 +193,9 @@ func (exit *NodeExit) Error() string {
 	}
 	if exit.Fatal != nil {
 		text += ": " + exit.Fatal.Message
+	}
+	if exit.Reason != "" {
+		text += ": " + exit.Reason
 	}
 	if tail := strings.TrimSpace(exit.Stderr); tail != "" {
 		text += "\n" + tail
@@ -530,8 +548,10 @@ type NodeHost struct {
 	exit     error
 	fatal    *NodeError
 	activity host.ActivityCounts
-	stderr   tailWriter
-	startOne sync.Once
+	// killReason is why the Go side killed the process, if it did (NodeExit.Reason).
+	killReason string
+	stderr     tailWriter
+	startOne   sync.Once
 }
 
 // Exited is closed when the process ended.
@@ -702,13 +722,13 @@ func (h *NodeHost) startFailure(what string) error {
 }
 
 // wait is the goroutine that waits for the process: it records how it ended, closes Exited and fails every pending
-// request. The channel is read to its end first (the process closed it when it ended; bounded by stopGrace), so a `fatal`
+// request. The channel is read to its end first (the process closed it when it ended; bounded by the stop grace), so a `fatal`
 // the process sent before it exited is in the NodeExit.
 func (h *NodeHost) wait() {
 	err := h.cmd.Wait()
 	close(h.reaped)
 	if port := h.port.Load(); port != nil {
-		timer := time.NewTimer(stopGrace)
+		timer := time.NewTimer(h.stopGrace())
 		select {
 		case <-port.done:
 		case <-timer.C:
@@ -717,7 +737,8 @@ func (h *NodeHost) wait() {
 	}
 	h.mu.Lock()
 	if !h.closing || err != nil {
-		h.exit = &NodeExit{Err: err, Fatal: h.fatal, Stderr: h.stderr.text()}
+		code, signal := processExit(h.cmd.ProcessState)
+		h.exit = &NodeExit{Err: err, Fatal: h.fatal, Stderr: h.stderr.text(), Code: code, Signal: signal, Reason: h.killReason}
 	}
 	exit := h.exit
 	pending := h.pending
@@ -739,13 +760,24 @@ func (h *NodeHost) wait() {
 // channelEnded is the reader's end: the channel is gone, so the process has nothing to serve; it exits by itself, or is
 // killed after the grace. Its exit settles the pending requests (wait), so they fail with how it ended.
 func (h *NodeHost) channelEnded() {
-	timer := time.NewTimer(stopGrace)
+	timer := time.NewTimer(h.stopGrace())
 	defer timer.Stop()
 	select {
 	case <-h.exited:
 	case <-timer.C:
+		h.mu.Lock()
+		h.killReason = fmt.Sprintf("its link closed and it did not exit within %s", h.stopGrace())
+		h.mu.Unlock()
 		h.kill()
 	}
+}
+
+// stopGrace is how long the process gets to exit after its channel ended or it was told to close.
+func (h *NodeHost) stopGrace() time.Duration {
+	if h.options.StopGrace != nil {
+		return *h.options.StopGrace
+	}
+	return defaultStopGrace
 }
 
 func (h *NodeHost) kill() {
@@ -754,11 +786,11 @@ func (h *NodeHost) kill() {
 	}
 }
 
-// stop kills the process and waits until it ended (a process that was killed ends at once; stopGrace bounds the wait for what
+// stop kills the process and waits until it ended (a process that was killed ends at once; the stop grace bounds the wait for what
 // holds its pipes).
 func (h *NodeHost) stop() {
 	h.kill()
-	timer := time.NewTimer(stopGrace)
+	timer := time.NewTimer(h.stopGrace())
 	defer timer.Stop()
 	select {
 	case <-h.exited:
@@ -780,7 +812,7 @@ func (h *NodeHost) exitError() error {
 // afterChannelEnded is the error of a send that found the channel ended (cause): the process's exit once it is known (it
 // exits by itself, or channelEnded kills it after the grace), else cause.
 func (h *NodeHost) afterChannelEnded(cause error) error {
-	timer := time.NewTimer(2 * stopGrace)
+	timer := time.NewTimer(2 * h.stopGrace())
 	defer timer.Stop()
 	select {
 	case <-h.exited:
@@ -1014,7 +1046,7 @@ func (h *NodeHost) Close(ctx context.Context) error {
 	h.closing = true
 	h.mu.Unlock()
 	_ = h.port.Load().control(map[string]any{"op": "close"})
-	timer := time.NewTimer(stopGrace)
+	timer := time.NewTimer(h.stopGrace())
 	defer timer.Stop()
 	select {
 	case <-h.exited:
