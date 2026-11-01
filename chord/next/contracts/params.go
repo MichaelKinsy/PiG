@@ -16,7 +16,7 @@ type ParamsData struct {
 	// Fields are the field names in identity order.
 	Fields []string
 	// Schema is the closed object schema of all fields.
-	Schema TSchema
+	Schema Schema
 	// Normal is the `[field, normal form]` pairs in identity order.
 	Normal delta.JsonValue
 }
@@ -47,7 +47,7 @@ func ReadParams(declared []Property, path string) (*ParamsData, error) {
 		normal[i] = []any{field.Name, snapshots[i].Normal}
 	}
 	schema := delta.JsonObjectOf("type", "object", "properties", properties, "required", required, "additionalProperties", false)
-	return &ParamsData{Fields: fields, Schema: TSchema{Node: schema}, Normal: normal}, nil
+	return &ParamsData{Fields: fields, Schema: Schema{Node: schema}, Normal: normal}, nil
 }
 
 // JoinKey joins key parts with `|`, each escaped (`\` and `|`), so two different part lists never join to one key.

@@ -38,7 +38,7 @@ var reloadPure = mustContract(declareLocal("app.pure", contracts.LocalDeclaratio
 	Version: 1, Params: contracts.Params{},
 	Members: []contracts.LocalEntry{
 		contracts.Mem("n", contracts.Int()), contracts.Mem("label", contracts.Str()),
-		contracts.Mem("bump", contracts.NewMethod(contracts.TSchema{}, contracts.Int())),
+		contracts.Mem("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
 	},
 }))
 

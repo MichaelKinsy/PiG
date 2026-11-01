@@ -44,7 +44,7 @@ var benchReloadTypes = func() []*contracts.Contract {
 			Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Int())},
 			Members: []contracts.LocalEntry{
 				contracts.Mem("n", contracts.Int()), contracts.Mem("label", contracts.Int()),
-				contracts.Mem("bump", contracts.NewMethod(contracts.TSchema{}, contracts.Int())),
+				contracts.Mem("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
 			},
 		}))
 	}

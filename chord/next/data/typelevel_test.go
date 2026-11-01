@@ -51,7 +51,7 @@ func TestValidatorCompileLeavesNoBuildState(t *testing.T) {
 		owner     weak.Pointer[contracts.Snapshot]
 		validator weak.Pointer[data.Validator]
 	}
-	compileOne := func(schema contracts.TSchema) refs {
+	compileOne := func(schema contracts.Schema) refs {
 		owner := argumentsSnapshot(t, schema, "m")
 		validator, err := data.ValidatorFor(owner, chordctx.Background())
 		if err != nil {

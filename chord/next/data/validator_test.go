@@ -20,7 +20,7 @@ import (
 // and keeps no module-level build state, so there is nothing to reset; "are collected with their schema owner" below
 // covers the observable half (nothing retains the owner or its validator).
 
-func argumentsSnapshot(t testing.TB, schema contracts.TSchema, path string) *contracts.Snapshot {
+func argumentsSnapshot(t testing.TB, schema contracts.Schema, path string) *contracts.Snapshot {
 	t.Helper()
 	snapshot, err := contracts.SnapshotArguments(schema, path)
 	if err != nil {

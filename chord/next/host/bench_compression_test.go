@@ -54,7 +54,7 @@ var (
 	// benchCompressionView is a tab's view of the 500 KB document, and a method returning 1 MiB.
 	benchCompressionView = remoteOneVariantNamed("bench.view", "owner", contracts.Params{}, contracts.VariantDeclaration{
 		State:   []contracts.Property{contracts.Prop("doc", benchCompressionShape)},
-		Methods: []contracts.MethodEntry{contracts.Meth("export", contracts.NewMethod(contracts.TSchema{}, contracts.Str()))},
+		Methods: []contracts.MethodEntry{contracts.Meth("export", contracts.NewMethod(contracts.Schema{}, contracts.Str()))},
 	})
 	benchCompressionResult = benchProse(1, 1024*1024)
 	benchCompressionDoc    = func() *documents.StateDefinition {

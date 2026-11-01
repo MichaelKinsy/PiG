@@ -48,9 +48,9 @@ func js(t testing.TB, text string) delta.JsonValue {
 }
 
 // raw is a schema built from JSON text, as a JavaScript caller's plain object schema.
-func raw(t testing.TB, text string) contracts.TSchema {
+func raw(t testing.TB, text string) contracts.Schema {
 	t.Helper()
-	return contracts.TSchema{Node: js(t, text)}
+	return contracts.Schema{Node: js(t, text)}
 }
 
 // stringify is JSON.stringify.
@@ -81,7 +81,7 @@ func sorted(value any) any {
 			out[i] = sorted(item)
 		}
 		return out
-	case contracts.TSchema:
+	case contracts.Schema:
 		return sorted(typed.Node)
 	}
 	return value
@@ -106,7 +106,7 @@ func sameJSON(t testing.TB, got any, want string) {
 }
 
 // tbObject is Type.Object(properties): TypeBox's open object, `required` left out when empty.
-func tbObject(properties ...contracts.Property) contracts.TSchema {
+func tbObject(properties ...contracts.Property) contracts.Schema {
 	props := delta.NewJsonObject(len(properties))
 	var required []any
 	for _, property := range properties {
@@ -120,11 +120,11 @@ func tbObject(properties ...contracts.Property) contracts.TSchema {
 		node.Set("required", required)
 	}
 	node.Set("properties", props)
-	return contracts.TSchema{Node: node}
+	return contracts.Schema{Node: node}
 }
 
 // tbClosedObject is Type.Object(properties, { additionalProperties: false }), which obj() makes.
-func tbClosedObject(properties ...contracts.Property) contracts.TSchema {
+func tbClosedObject(properties ...contracts.Property) contracts.Schema {
 	schema := tbObject(properties...)
 	schema.Node.(*delta.JsonObject).Set("additionalProperties", false)
 	return schema

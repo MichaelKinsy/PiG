@@ -17,7 +17,7 @@ import (
 // Forced Go differences. `JobOptions<A, R, D>`, `Static<A>`, `StateOf<D>` and the `~types` member are type-level only
 // (owner class a: TypeScript type-level checks): args, results and states are JSON values (`any`), and a job's state
 // definition is a *documents.StateDefinition. `checkKeys` (unknown keys of a JavaScript options object) is designed out
-// because a Go struct has no unknown keys. A JSON schema is a `contracts.TSchema` or any value `contracts.SnapshotSchema`
+// because a Go struct has no unknown keys. A JSON schema is a `contracts.Schema` or any value `contracts.SnapshotSchema`
 // takes. The accepts table is a map by older version; its keys are checked in ascending order, as an object's integer
 // keys iterate.
 

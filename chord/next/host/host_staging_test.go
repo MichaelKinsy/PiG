@@ -23,7 +23,7 @@ import (
 
 var stagingStore = mustContract(declareLocal("app.store", contracts.LocalDeclaration{
 	Version: 1, Params: contracts.Params{},
-	Members: []contracts.LocalEntry{contracts.Mem("label", contracts.Str()), contracts.Mem("bump", contracts.NewMethod(contracts.TSchema{}, contracts.Int()))},
+	Members: []contracts.LocalEntry{contracts.Mem("label", contracts.Str()), contracts.Mem("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
 }))
 
 // stagingStoreImpl is `{ label: constant(label), bump: async () => 0 }`.

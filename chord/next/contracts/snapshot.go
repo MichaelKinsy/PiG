@@ -20,12 +20,12 @@ import (
 // Snapshot is a Chord-owned copy of an app schema, its normal form, and whether it has a `bytes()` leaf (values
 // crossing a link then carry raw byte segments); immutable by convention. Contract data holds snapshots by pointer.
 type Snapshot struct {
-	Schema TSchema
+	Schema Schema
 	Normal delta.JsonValue
 	Bytes  bool
 }
 
-// SnapshotSchema is the snapshot of a state, result or params schema. source is a TSchema, an ordered
+// SnapshotSchema is the snapshot of a state, result or params schema. source is a Schema, an ordered
 // *delta.JsonObject, a map[string]any or a bool; the error names path for anything outside the vocabulary.
 func SnapshotSchema(source any, path string) (*Snapshot, error) {
 	return snapshotOf(source, path, objectsOpen)
@@ -38,14 +38,14 @@ func SnapshotArguments(source any, path string) (*Snapshot, error) {
 }
 
 func snapshotOf(source any, path string, objects objectsPolicy) (*Snapshot, error) {
-	if schema, ok := source.(TSchema); ok {
+	if schema, ok := source.(Schema); ok {
 		source = schema.Node
 	}
 	walked, err := walk(source, path, objects, map[uintptr]struct{}{})
 	if err != nil {
 		return nil, err
 	}
-	return &Snapshot{Schema: TSchema{Node: walked.schema}, Normal: walked.normal, Bytes: walked.bytes}, nil
+	return &Snapshot{Schema: Schema{Node: walked.schema}, Normal: walked.normal, Bytes: walked.bytes}, nil
 }
 
 // objectsPolicy says whether object schemas must set `additionalProperties: false`.

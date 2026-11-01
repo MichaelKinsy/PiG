@@ -75,7 +75,7 @@ func ValidatorFor[O SchemaOwner](owner O, ctx context.Context) (*Validator, erro
 	panic("unreachable: SchemaOwner has two types")
 }
 
-func validatorFor[T any](owner *T, schema contracts.TSchema, ctx context.Context) (*Validator, error) {
+func validatorFor[T any](owner *T, schema contracts.Schema, ctx context.Context) (*Validator, error) {
 	key := weak.Make(owner)
 	validators.Lock()
 	defer validators.Unlock()

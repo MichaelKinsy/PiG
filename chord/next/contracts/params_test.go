@@ -7,7 +7,7 @@ import (
 )
 
 // Ports packages/chord/test/next/contracts/params.test.ts. The type-level half of each case ("in the types") is
-// designed out: the Go declaration takes TSchema values, so the policy is the runtime check alone.
+// designed out: the Go declaration takes Schema values, so the policy is the runtime check alone.
 
 func paramsVariants() contracts.VariantEntry {
 	return variant("a", state(contracts.Prop("s", contracts.Str())))
@@ -31,7 +31,7 @@ func TestParamsPolicy(t *testing.T) {
 
 	for _, tc := range []struct {
 		name   string
-		schema contracts.TSchema
+		schema contracts.Schema
 	}{
 		{"a number", contracts.Num()},
 		{"nested objects", contracts.Obj(contracts.Prop("a", contracts.Str()))},

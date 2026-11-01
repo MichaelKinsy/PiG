@@ -108,7 +108,7 @@ func slotDefine(t *testing.T, name string, options StateOptions) *StateDefinitio
 	return definition
 }
 
-func slotListSchema() contracts.TSchema {
+func slotListSchema() contracts.Schema {
 	return contracts.Obj(contracts.Prop("items", contracts.Arr(contracts.Str())))
 }
 

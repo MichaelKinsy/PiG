@@ -24,7 +24,7 @@ func TestSchemaHelpers(t *testing.T) {
 		sameJSON(t, contracts.Nul(), `{"type":"null"}`)
 		sameJSON(t, contracts.Lit(3), `{"type":"number","const":3}`)
 		sameAs(t, contracts.OneOf("a", "b"), delta.JsonObjectOf("anyOf", []any{contracts.Lit("a").Node, contracts.Lit("b").Node}))
-		sameJSON(t, contracts.Union([]contracts.TSchema{contracts.Str(), contracts.Nul()}),
+		sameJSON(t, contracts.Union([]contracts.Schema{contracts.Str(), contracts.Nul()}),
 			`{"anyOf":[{"type":"string"},{"type":"null"}]}`)
 		sameJSON(t, contracts.Map(contracts.Int()), `{"type":"object","patternProperties":{"^.*$":{"type":"integer"}}}`)
 		sameJSON(t, contracts.Unknown(), `{}`)
@@ -133,7 +133,7 @@ func TestSchemaMethod(t *testing.T) {
 		}
 		same(contracts.NewMethod(), &contracts.Method{Args: contracts.Nul(), Result: contracts.Nul()})
 		same(contracts.NewMethod(contracts.Str()), &contracts.Method{Args: contracts.Str(), Result: contracts.Nul()})
-		same(contracts.NewMethod(contracts.TSchema{}, contracts.Int()), &contracts.Method{Args: contracts.Nul(), Result: contracts.Int()})
+		same(contracts.NewMethod(contracts.Schema{}, contracts.Int()), &contracts.Method{Args: contracts.Nul(), Result: contracts.Int()})
 		same(contracts.NewMethod(contracts.Str(), contracts.Int()), &contracts.Method{Args: contracts.Str(), Result: contracts.Int()})
 	})
 

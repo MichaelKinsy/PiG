@@ -21,7 +21,7 @@ import (
 // the held-commit cases of object.test.ts's `a live object failing`. They run on a real host through the restartable and
 // storeRestartable helpers or `loaded`.
 
-func listDefinition(t testing.TB, version int, keyed bool, schema contracts.TSchema, migrate func(*delta.JsonObject, int) (*delta.JsonObject, error)) *documents.StateDefinition {
+func listDefinition(t testing.TB, version int, keyed bool, schema contracts.Schema, migrate func(*delta.JsonObject, int) (*delta.JsonObject, error)) *documents.StateDefinition {
 	t.Helper()
 	definition, err := documents.DefineState("list", documents.StateOptions{
 		Schema: schema, Version: version, Keyed: keyed, Migrate: migrate,
@@ -130,7 +130,7 @@ func TestSlotAcrossAttemptsFailTheAttemptBrokenForAFlippedKeyedAnOlderVersionOrA
 	}
 }
 
-func prefsDefinition(t testing.TB, version int, schema contracts.TSchema, persist bool, initial func() *delta.JsonObject) *documents.StateDefinition {
+func prefsDefinition(t testing.TB, version int, schema contracts.Schema, persist bool, initial func() *delta.JsonObject) *documents.StateDefinition {
 	t.Helper()
 	definition, err := documents.DefineState("prefs", documents.StateOptions{
 		Schema: schema, Version: version, Persist: persist, Initial: initial,

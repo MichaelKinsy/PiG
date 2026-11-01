@@ -3,7 +3,7 @@
 // versions a provider still serves (CheckAccepts), names its hosts by kind and address (NewHostKind, Address), and
 // describes state, arguments and results with schema constructors (Str, Obj, NewMethod, ...).
 //
-// Schemas are JSON Schema data, as TypeBox builds them: a TSchema holds the schema node (an ordered
+// Schemas are JSON Schema data, as TypeBox builds them: a Schema holds the schema node (an ordered
 // *delta.JsonObject, or a boolean) and TypeBox's non-enumerable "~optional" marker. Every schema an app hands to a
 // contract is checked against Chord's vocabulary and copied once into a Snapshot, which carries the normal form that
 // fingerprints are computed from. Snapshots, params data and contract data are Chord-owned and held by pointer, so a

@@ -18,7 +18,7 @@ import (
 
 func TestSnapshotVocabulary(t *testing.T) {
 	t.Run("accepts primitives, arrays, tuples, objects, records, unions, intersections, $defs/$ref, constraints", func(t *testing.T) {
-		schemas := map[string]contracts.TSchema{
+		schemas := map[string]contracts.Schema{
 			"tuple":     raw(t, `{"type":"array","additionalItems":false,"items":[{"type":"string"},{"type":"integer"}],"minItems":2}`),
 			"intersect": raw(t, `{"allOf":[{"type":"object","required":["a"],"properties":{"a":{"type":"string"}}},{"type":"object","required":["b"],"properties":{"b":{"type":"string"}}}]}`),
 			"enum":      raw(t, `{"enum":["a","b"]}`),
@@ -92,7 +92,7 @@ func text(source string) func(t *testing.T) any {
 
 func TestSnapshotClosedArguments(t *testing.T) {
 	object := tbObject
-	str := func() contracts.TSchema { return contracts.Str() }
+	str := func() contracts.Schema { return contracts.Str() }
 
 	t.Run("requires every object, nested ones included, to be closed", func(t *testing.T) {
 		_, err := contracts.SnapshotArguments(contracts.Obj(contracts.Prop("a", contracts.Obj(contracts.Prop("b", str())))), "m.args")
@@ -116,9 +116,9 @@ func TestSnapshotClosedArguments(t *testing.T) {
 
 	t.Run("checks objects inside $defs, unions and tuples", func(t *testing.T) {
 		open := object(contracts.Prop("a", str()))
-		_, err := contracts.SnapshotArguments(contracts.Union([]contracts.TSchema{open, str()}), "m")
+		_, err := contracts.SnapshotArguments(contracts.Union([]contracts.Schema{open, str()}), "m")
 		wantError(t, err, "m.anyOf[0]: argument objects")
-		tuple := contracts.TSchema{Node: delta.JsonObjectOf("type", "array", "additionalItems", false, "items", []any{open.Node}, "minItems", 1.0)}
+		tuple := contracts.Schema{Node: delta.JsonObjectOf("type", "array", "additionalItems", false, "items", []any{open.Node}, "minItems", 1.0)}
 		_, err = contracts.SnapshotArguments(tuple, "m")
 		wantError(t, err, "m.items[0]: argument objects")
 		_, err = contracts.SnapshotArguments(delta.JsonObjectOf("$defs", delta.JsonObjectOf("A", open.Node), "$ref", "A"), "m")
@@ -191,7 +191,7 @@ func TestSnapshots(t *testing.T) {
 	})
 
 	t.Run("normal form keeps union and tuple order", func(t *testing.T) {
-		union := func(schemas ...contracts.TSchema) string {
+		union := func(schemas ...contracts.Schema) string {
 			return stringify(t, must(contracts.SnapshotSchema(contracts.Union(schemas), "s")).Normal)
 		}
 		if union(contracts.Str(), contracts.Int()) == union(contracts.Int(), contracts.Str()) {
@@ -216,7 +216,7 @@ func TestSnapshotBytes(t *testing.T) {
 		if !bytesOf(contracts.Obj(contracts.Prop("a", contracts.Arr(contracts.Obj(contracts.Prop("b", contracts.Bytes())))))) {
 			t.Error("a nested bytes leaf is missed")
 		}
-		if !bytesOf(contracts.Union([]contracts.TSchema{contracts.Str(), contracts.Bytes()})) {
+		if !bytesOf(contracts.Union([]contracts.Schema{contracts.Str(), contracts.Bytes()})) {
 			t.Error("a bytes leaf in a union is missed")
 		}
 		if bytesOf(raw(t, `{"type":"object","properties":{"a":{"type":"string"}},"default":{"type":"bytes"}}`)) {

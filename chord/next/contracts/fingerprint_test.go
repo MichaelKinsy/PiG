@@ -9,7 +9,7 @@ import (
 // Ports packages/chord/test/next/contracts/fingerprint.test.ts.
 
 // fingerprintOf is the fingerprint of a one-variant remote contract with state `s` and params `params`.
-func fingerprintOf(t *testing.T, state contracts.TSchema, params contracts.Params) string {
+func fingerprintOf(t *testing.T, state contracts.Schema, params contracts.Params) string {
 	t.Helper()
 	return remote(t, "n", 1, params, variant("a", []contracts.Property{contracts.Prop("s", state)})).Fingerprint
 }
@@ -19,7 +19,7 @@ func TestFingerprints(t *testing.T) {
 		if contracts.NormalFormVersion != 2 {
 			t.Fatalf("NormalFormVersion = %d", contracts.NormalFormVersion)
 		}
-		note := func() contracts.TSchema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
+		note := func() contracts.Schema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
 		notes := remote(t, "notes", 1, props(contracts.Prop("session", contracts.Str())),
 			variant("editor", state(contracts.Prop("notes", note())),
 				contracts.Meth("add", contracts.NewMethod(note(), contracts.Str()))),
@@ -49,12 +49,12 @@ func TestFingerprints(t *testing.T) {
 
 	for _, tc := range []struct {
 		name string
-		a, b contracts.TSchema
+		a, b contracts.Schema
 	}{
 		{"defaults", contracts.Str(), contracts.Str(contracts.Default("x"))},
 		{"bounds", contracts.Str(), contracts.Str(contracts.Max(3))},
 		{"formats", contracts.Str(), raw(t, `{"type":"string","format":"email"}`)},
-		{"union order", contracts.Union([]contracts.TSchema{contracts.Str(), contracts.Int()}), contracts.Union([]contracts.TSchema{contracts.Int(), contracts.Str()})},
+		{"union order", contracts.Union([]contracts.Schema{contracts.Str(), contracts.Int()}), contracts.Union([]contracts.Schema{contracts.Int(), contracts.Str()})},
 		{"additionalProperties", tbObject(), tbClosedObject()},
 		{"readOnly", contracts.Str(), raw(t, `{"type":"string","readOnly":true}`)},
 	} {

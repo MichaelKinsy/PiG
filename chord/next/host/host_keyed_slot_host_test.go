@@ -24,7 +24,7 @@ import (
 var keyedTitleSchema = contracts.Obj(contracts.Prop("title", contracts.Str()))
 
 // keyedDefinition is the keyed `notes.note` (or `notes.memo`) of the upstream file at version.
-func keyedDefinition(t testing.TB, name string, version int, persist bool, schema contracts.TSchema, migrate func(*delta.JsonObject, int) (*delta.JsonObject, error), initials ...func() *delta.JsonObject) *documents.StateDefinition {
+func keyedDefinition(t testing.TB, name string, version int, persist bool, schema contracts.Schema, migrate func(*delta.JsonObject, int) (*delta.JsonObject, error), initials ...func() *delta.JsonObject) *documents.StateDefinition {
 	t.Helper()
 	initial := func() *delta.JsonObject { return jsonObject("title", "") }
 	if len(initials) > 0 {

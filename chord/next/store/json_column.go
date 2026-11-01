@@ -33,7 +33,7 @@ type JsonColumnOptions struct {
 
 // Json is a column holding one JSON value of schema per row, at options.Version; wrap it in Opt to make it
 // nullable. It panics with NewJsonColumn's error.
-func Json(schema contracts.TSchema, options JsonColumnOptions) ColumnSchema {
+func Json(schema contracts.Schema, options JsonColumnOptions) ColumnSchema {
 	column, err := NewJsonColumn(schema, options.Version, options.Migrate)
 	if err != nil {
 		panic(err)
@@ -44,7 +44,7 @@ func Json(schema contracts.TSchema, options JsonColumnOptions) ColumnSchema {
 // JsonColumn is a `json(...)` column's definition: its schema snapshot, version and fingerprint, and the read of a
 // stored cell.
 type JsonColumn struct {
-	Schema  contracts.TSchema
+	Schema  contracts.Schema
 	Version int
 	// Fingerprint is the fingerprint of the schema's normal form, recorded with the table: the same version with
 	// another is `broken`.
@@ -54,7 +54,7 @@ type JsonColumn struct {
 }
 
 // NewJsonColumn is the column of schema at version. Declaration policy: JavaScript callers reach the version check.
-func NewJsonColumn(schema contracts.TSchema, version int, migrate func(old delta.JsonValue, from int) (any, error)) (*JsonColumn, error) {
+func NewJsonColumn(schema contracts.Schema, version int, migrate func(old delta.JsonValue, from int) (any, error)) (*JsonColumn, error) {
 	if version < 1 || int64(version) > MaxSafeInteger {
 		return nil, fmt.Errorf("json(...): version %d is not a positive integer", version)
 	}
