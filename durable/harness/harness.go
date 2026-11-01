@@ -111,7 +111,7 @@ func (conversation *conversationImpl) Context(ctx context.Context, options *dura
 
 func (conversation *conversationImpl) Entries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
 	bounded := conversationEntries(conversation.id, query)
-	page, err := conversation.host.harness.ReadOnLine(func(storage durable.Storage) (any, error) {
+	page, err := conversation.host.harness.ReadOnLineCtx(ctx, func(storage durable.Storage) (any, error) {
 		return storage.ScanEntries(ctx, bounded, limit, cursor)
 	})
 	if err != nil {
@@ -232,7 +232,7 @@ func (harness *harnessImpl) Wake() Wake {
 }
 
 func (harness *harnessImpl) GetTask(ctx context.Context, id durable.TaskId) (*durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], error) {
-	record, err := harness.ReadOnLine(func(storage durable.Storage) (any, error) { return storage.Task(ctx, id) })
+	record, err := harness.ReadOnLineCtx(ctx, func(storage durable.Storage) (any, error) { return storage.Task(ctx, id) })
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +240,7 @@ func (harness *harnessImpl) GetTask(ctx context.Context, id durable.TaskId) (*du
 }
 
 func (harness *harnessImpl) Inspect(ctx context.Context) (HarnessInspection, error) {
-	result, err := harness.ReadOnLine(func(storage durable.Storage) (any, error) {
+	result, err := harness.ReadOnLineCtx(ctx, func(storage durable.Storage) (any, error) {
 		scheduling, tasks, err := harness.tasks.Inspect(harness.options.Registry.Snapshot())
 		if err != nil {
 			return nil, err
@@ -299,7 +299,7 @@ func (harness *harnessImpl) WaitForIdle(ctx context.Context) error {
 
 // Usage sums every conversation's committed pi.usage. Each document is read at its own point; totals only grow.
 func (harness *harnessImpl) Usage(ctx context.Context) (UsageState, error) {
-	listed, err := harness.ReadOnLine(func(storage durable.Storage) (any, error) {
+	listed, err := harness.ReadOnLineCtx(ctx, func(storage durable.Storage) (any, error) {
 		return ScanAll(func(cursor durable.Cursor) (durable.Page[durable.ConversationRecord, durable.Cursor], error) {
 			return storage.ScanConversations(ctx, durable.ConversationQuery{}, harnessScanPageSize, cursor)
 		})
@@ -350,7 +350,7 @@ func (harness *harnessImpl) Conversation(ctx context.Context, id durable.Convers
 	if err := harness.checkOpen(); err != nil {
 		return nil, err
 	}
-	record, err := harness.ReadOnLine(func(storage durable.Storage) (any, error) { return storage.Conversation(ctx, id) })
+	record, err := harness.ReadOnLineCtx(ctx, func(storage durable.Storage) (any, error) { return storage.Conversation(ctx, id) })
 	if err != nil {
 		return nil, err
 	}
@@ -671,7 +671,7 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 		SettleOutcome:  SettleSchedulerOutcome,
 		WithdrawInputs: WithdrawQueuedInputs,
 		Conversation: func(callCtx context.Context, id durable.ConversationId, binding InvocationBinding) (durable.ConversationHandle, error) {
-			record, err := harness.ReadOnLine(func(line durable.Storage) (any, error) { return line.Conversation(callCtx, id) })
+			record, err := harness.ReadOnLineCtx(callCtx, func(line durable.Storage) (any, error) { return line.Conversation(callCtx, id) })
 			if err != nil {
 				return nil, err
 			}
@@ -702,6 +702,6 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 // sessionLine adapts the Session kernel to the context-taking line reader ReadContext declares.
 type sessionLine struct{ *session.SessionImpl }
 
-func (line sessionLine) ReadOnLine(_ context.Context, read func(storage durable.Storage) (any, error)) (any, error) {
-	return line.SessionImpl.ReadOnLine(read)
+func (line sessionLine) ReadOnLine(ctx context.Context, read func(storage durable.Storage) (any, error)) (any, error) {
+	return line.SessionImpl.ReadOnLineCtx(ctx, read)
 }

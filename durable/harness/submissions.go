@@ -38,9 +38,9 @@ func commitInternal[T any](ctx context.Context, line *session.SessionImpl, chang
 }
 
 // readOnLine runs read on the Session line, with the line's gated Storage, and returns its typed result.
-func readOnLine[T any](line *session.SessionImpl, read func(storage durable.Storage) (T, error)) (T, error) {
+func readOnLine[T any](ctx context.Context, line *session.SessionImpl, read func(storage durable.Storage) (T, error)) (T, error) {
 	var zero T
-	value, err := line.ReadOnLine(func(storage durable.Storage) (any, error) { return read(storage) })
+	value, err := line.ReadOnLineCtx(ctx, func(storage durable.Storage) (any, error) { return read(storage) })
 	if err != nil {
 		return zero, err
 	}
@@ -169,7 +169,7 @@ func (submissions *Submissions) traced(ctx context.Context, conversationId durab
 
 // Get returns a handle for an existing submission; nil when absent.
 func (submissions *Submissions) Get(ctx context.Context, id durable.SubmissionId) (durable.Submission, error) {
-	record, err := readOnLine(submissions.line, func(storage durable.Storage) (*durable.SubmissionRecord, error) {
+	record, err := readOnLine(ctx, submissions.line, func(storage durable.Storage) (*durable.SubmissionRecord, error) {
 		return storage.Submission(ctx, id)
 	})
 	if err != nil || record == nil {
@@ -180,7 +180,7 @@ func (submissions *Submissions) Get(ctx context.Context, id durable.SubmissionId
 
 // Status returns the committed record of a submission.
 func (submissions *Submissions) Status(ctx context.Context, id durable.SubmissionId) (durable.SubmissionRecord, error) {
-	record, err := readOnLine(submissions.line, func(storage durable.Storage) (*durable.SubmissionRecord, error) {
+	record, err := readOnLine(ctx, submissions.line, func(storage durable.Storage) (*durable.SubmissionRecord, error) {
 		return storage.Submission(ctx, id)
 	})
 	if err != nil {
@@ -215,7 +215,7 @@ func (submissions *Submissions) waitSettled(ctx context.Context, id durable.Subm
 		record *durable.SubmissionRecord
 		waiter *Waiter[durable.SettledSubmissionRecord]
 	}
-	result, err := readOnLine(submissions.line, func(storage durable.Storage) (found, error) {
+	result, err := readOnLine(ctx, submissions.line, func(storage durable.Storage) (found, error) {
 		record, err := storage.Submission(ctx, id)
 		if err != nil {
 			return found{}, err

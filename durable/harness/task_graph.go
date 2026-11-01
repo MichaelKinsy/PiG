@@ -200,7 +200,7 @@ func (view *TaskGraphView) Watch(ctx context.Context) (TaskGraphWatch, error) {
 
 // attach registers an observer created from the current revision, atomically on the Session line.
 func (view *TaskGraphView) attach(ctx context.Context, create func(value TaskGraph, release func()) taskGraphObserver) (func(), error) {
-	result, err := view.session.ReadOnLine(func(storage durable.Storage) (any, error) {
+	result, err := view.session.ReadOnLineCtx(ctx, func(storage durable.Storage) (any, error) {
 		view.mu.Lock()
 		mount := view.mount
 		view.mu.Unlock()

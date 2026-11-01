@@ -538,9 +538,9 @@ func TestConversationView(t *testing.T) {
 		release, blocking := hold()
 		cancelled, cancel := cancelledContext(errors.New("cancelled"))
 		var acquiring *future[struct{}]
-		queueOnLine(t, harness, func() <-chan struct{} {
+		queueOnLineAdmittedFrom(t, cancelled, func(ctx context.Context) <-chan struct{} {
 			acquiring = asyncErr(func() error {
-				_, err := root.Watch(cancelled, nil)
+				_, err := root.Watch(ctx, nil)
 				return err
 			})
 			return acquiring.done
@@ -555,9 +555,9 @@ func TestConversationView(t *testing.T) {
 
 		release, blocking = hold()
 		var closedWhileQueued *future[struct{}]
-		queueOnLine(t, harness, func() <-chan struct{} {
+		queueOnLineAdmitted(t, func(ctx context.Context) <-chan struct{} {
 			closedWhileQueued = asyncErr(func() error {
-				_, err := root.Watch(testContext, nil)
+				_, err := root.Watch(ctx, nil)
 				return err
 			})
 			return closedWhileQueued.done

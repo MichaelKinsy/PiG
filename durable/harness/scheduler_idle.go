@@ -156,7 +156,11 @@ func (s *TaskScheduler) idleScopesLocked(dirty map[durable.ConversationId]struct
 // expireContextsLocked drops the kept contexts idle for at least retention, oldest first, with the retention setting of
 // now; with no retention, every idle one, also those whose idle period a clock that went back makes start after now.
 func (s *TaskScheduler) expireContextsLocked(now, retention float64) {
-	for _, conversationId := range s.idleOrder.Values() {
+	for {
+		conversationId, ok := s.idleOrder.First()
+		if !ok {
+			return
+		}
 		kept := s.contexts[conversationId]
 		if retention > 0 && kept != nil && kept.idleSince != nil && now-*kept.idleSince < retention {
 			return
