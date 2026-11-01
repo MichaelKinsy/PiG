@@ -168,10 +168,12 @@ type SessionImpl struct {
 	current *lineJob
 
 	// parkMu guards parks, the waits of the Session registered before they block (Park), which a publication waits for once it
-	// readied them. awaiting is the number of acknowledgements the writer or the delivery goroutine waits for now.
-	parkMu   sync.Mutex
-	parks    map[*Parked]struct{}
-	awaiting atomic.Int32
+	// readied them. awaitingWakes is the number of those the writer waits for now, awaitingCallers the number of released commit
+	// callers the delivery goroutine waits for.
+	parkMu          sync.Mutex
+	parks           map[*Parked]struct{}
+	awaitingWakes   atomic.Int32
+	awaitingCallers atomic.Int32
 
 	// fenceMu guards the fence: the queue of deliveries in line order, the delivery goroutine's state, the backpressure
 	// counters, and the failure's boundary.
@@ -619,7 +621,7 @@ func (session *SessionImpl) deliverLoop() {
 		close(next.released)
 		// The caller acknowledges as the first thing it does after its wait returned, holding nothing: the continuation of
 		// this outcome started before the next is released.
-		session.awaitResumed(&next.resumption)
+		session.awaitResumed(&next.resumption, &session.awaitingCallers)
 	}
 }
 

@@ -252,13 +252,22 @@ func (g *gc) awaitQueued(n int) {
 	}
 }
 
-// awaitHop returns once the writer has published n commits and waits for the continuation of the one it published last, which
-// the test holds, or, if it does not wait for it, once it published more: then the next part was published ahead of a
-// continuation that Pi runs before it. The test releases the continuation after it.
+// awaitHop returns once the writer has published n commits and the Session waits for the caller of the commit it published
+// last, to run its continuation, which the test holds, or, if it does not wait for it, once it published more: then the next
+// part was published ahead of a continuation that Pi runs before it. The test releases the continuation after it.
 func (g *gc) awaitHop(n int) {
+	g.awaitHopAt(n, session.AwaitingCallers)
+}
+
+// awaitWakeHop is awaitHop for a wait that the publication of the nth commit woke, and the Session waits for it to have resumed.
+func (g *gc) awaitWakeHop(n int) {
+	g.awaitHopAt(n, session.AwaitingWakes)
+}
+
+func (g *gc) awaitHopAt(n int, awaiting func(*session.SessionImpl) int) {
 	for {
 		published := g.published.len()
-		if published > n || published == n && session.AwaitingResumptions(g.session) > 0 {
+		if published > n || published == n && awaiting(g.session) > 0 {
 			return
 		}
 		runtime.Gosched()
@@ -268,7 +277,7 @@ func (g *gc) awaitHop(n int) {
 // awaitHopOrdered is awaitHop for the callers that record in log, one of which the test holds: it returns once the Session waits
 // for it, or, if it does not wait, once the caller of a later commit recorded before it.
 func (g *gc) awaitHopOrdered(log *order) {
-	for len(log.snapshot()) == 0 && session.AwaitingResumptions(g.session) == 0 {
+	for len(log.snapshot()) == 0 && session.AwaitingCallers(g.session) == 0 {
 		runtime.Gosched()
 	}
 }

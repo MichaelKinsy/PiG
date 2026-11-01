@@ -226,7 +226,7 @@ func TestAWakeADeferredPublicationRunsIsEnteredBeforeTheNextPartIsPublished(t *t
 	quiesce(second, third)
 	g.awaitQueued(2)
 	held.Release()
-	g.awaitHop(2)
+	g.awaitWakeHop(2)
 	close(start)
 	for _, started := range []*call{first, second, third} {
 		if _, err := started.wait(); err != nil {

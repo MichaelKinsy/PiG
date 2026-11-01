@@ -29,6 +29,7 @@ package session
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 )
 
 type continuationKey struct{}
@@ -161,18 +162,18 @@ func (session *SessionImpl) awaitReadied() {
 	}
 	session.parkMu.Unlock()
 	for _, parked := range readied {
-		session.awaitResumed(&parked.resumption)
+		session.awaitResumed(&parked.resumption, &session.awaitingWakes)
 	}
 }
 
-// awaitResumed blocks until r is acknowledged.
-func (session *SessionImpl) awaitResumed(r *resumption) {
+// awaitResumed blocks until r is acknowledged; waiting counts it while it waits.
+func (session *SessionImpl) awaitResumed(r *resumption, waiting *atomic.Int32) {
 	select {
 	case <-r.resumed:
 		return
 	default:
 	}
-	session.awaiting.Add(1)
+	waiting.Add(1)
 	<-r.resumed
-	session.awaiting.Add(-1)
+	waiting.Add(-1)
 }

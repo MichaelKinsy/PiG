@@ -24,9 +24,11 @@ func CloseSubscriptions(session *SessionImpl) int {
 // QueuedParts is the number of parts admitted behind the call in flight, not yet sent.
 func QueuedParts(session *SessionImpl) int { return session.writer.Queued() }
 
-// AwaitingResumptions is the number of acknowledgements the writer or the delivery goroutine waits for now: callers released
-// and waits readied that have not resumed yet.
-func AwaitingResumptions(session *SessionImpl) int { return int(session.awaiting.Load()) }
+// AwaitingCallers is the number of released commit callers the delivery goroutine waits for now, to have resumed.
+func AwaitingCallers(session *SessionImpl) int { return int(session.awaitingCallers.Load()) }
+
+// AwaitingWakes is the number of registered waits readied by a publication's wakes that the writer waits for now, to have resumed.
+func AwaitingWakes(session *SessionImpl) int { return int(session.awaitingWakes.Load()) }
 
 // ParkedWaits is the number of waits registered (Park) that have not resumed.
 func ParkedWaits(session *SessionImpl) int {
