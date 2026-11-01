@@ -554,7 +554,13 @@ func TestExample36PluginFailures(t *testing.T) {
 	for _, object := range report.Objects {
 		objects[object.Object] = object.Kind
 	}
-	t.Logf("3. objects: %v", objects)
+	wantObjects := map[string]host.ReloadedObjectKind{
+		"example.boot": host.ReloadSwapped, "example.counter": host.ReloadSwapped, "example.greeting": host.ReloadSwapped,
+		"example.price": host.ReloadSwapped, "example.summary": host.ReloadParked,
+	}
+	if !reflect.DeepEqual(objects, wantObjects) {
+		t.Fatalf("3. objects: %v, want %v", objects, wantObjects)
+	}
 	// The summary's new code waited for the new `Price` object (parked at the report): it runs once that one is live.
 	eventually(t, 15*time.Second, "the summary on price v2", func() bool {
 		text, _ := server.read("example.summary", "text", "str").(string)
@@ -565,8 +571,11 @@ func TestExample36PluginFailures(t *testing.T) {
 	}
 
 	// 4. A reload whose context aborts after its commit, while it waits for its report: the app shuts down the moment it sees
-	// the status object leave `live`. A reload that returns `aborted` names what its commit applied (`details.committed`); the
-	// commit stands either way, and the component's loaded set is what was committed.
+	// the status object leave `live`. Pi's window for the abort is a few microtasks between the commit and the report, inside
+	// one process; here the app learns of the status leaving `live` through a call to the subprocess and cancels over the
+	// control channel, so which of the two reaches the subprocess first cannot be ordered, and the example's "rejected:
+	// aborted" is one of two outcomes (the other: the report). A reload that returns `aborted` names what its commit applied
+	// (`details.committed`); the commit stands either way, and the component's loaded set is what was committed.
 	if got := server.read("example.status", "text", "str"); got != "cache v1" {
 		t.Fatalf("4. status: %v", got)
 	}
@@ -932,7 +941,7 @@ func TestExample39BrowserBuild(t *testing.T) {
 	if want := []string{"/gallery/assets/logo.svg", "/gallery/gallery.css", "/gallery/web.ts"}; !slices.Equal(read, want) {
 		t.Fatalf("read: %v, want %v", read, want)
 	}
-	if got, want := strings.Join(bad.Errors, "; "), `web.ts:4:22: "node:path": a Node builtin in a browser build`; got != want {
+	if got, want := strings.Join(bad.Errors, "; "), `web.ts:3:22: "node:path": a Node builtin in a browser build`; got != want {
 		t.Fatalf("2. @example/bad-web/web: %q, want %q", got, want)
 	}
 
