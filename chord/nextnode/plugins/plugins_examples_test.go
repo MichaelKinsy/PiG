@@ -934,7 +934,7 @@ func TestExample39BrowserBuild(t *testing.T) {
 	if gallery.CSS == nil {
 		t.Fatal("no stylesheet")
 	}
-	if first := strings.SplitN(gallery.CSS.Text, "\n", 2)[0]; gallery.CSS.Name != "web-PDJFG4AT.css" || first != ".gallery{display:grid;gap:8px}.gallery img{width:64px}" {
+	if first, _, _ := strings.Cut(gallery.CSS.Text, "\n"); gallery.CSS.Name != "web-PDJFG4AT.css" || first != ".gallery{display:grid;gap:8px}.gallery img{width:64px}" {
 		t.Fatalf("stylesheet: %s %q", gallery.CSS.Name, first)
 	}
 	svg, err := os.ReadFile(filepath.Join(root, "gallery", "assets", "logo.svg"))

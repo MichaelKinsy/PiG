@@ -557,15 +557,8 @@ func (h *NodeHost) wait() {
 }
 
 // channelEnded is the reader's end: the channel is gone, so the process has nothing to serve; it exits by itself, or is
-// killed after the grace.
+// killed after the grace. Its exit settles the pending requests (wait), so they fail with how it ended.
 func (h *NodeHost) channelEnded() {
-	h.mu.Lock()
-	pending := h.pending
-	h.pending = map[int]*nodeCall{}
-	h.mu.Unlock()
-	for _, call := range pending {
-		call.settle(nodeReply{}, errors.New("the channel to the node subprocess closed"))
-	}
 	timer := time.NewTimer(stopGrace)
 	defer timer.Stop()
 	select {

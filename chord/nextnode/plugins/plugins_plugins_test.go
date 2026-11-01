@@ -719,11 +719,9 @@ func TestPluginsFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothCha
 	errs := make([]error, 2)
 	var wg sync.WaitGroup
 	for i, built := range []*Built{builtA, builtB} {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			reports[i], errs[i] = c.Reload(h.node, built, background)
-		}()
+		})
 	}
 	wg.Wait()
 	for _, err := range errs {
