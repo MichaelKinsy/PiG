@@ -529,10 +529,10 @@ func (c *HttpComponent) registriesNow() (*registrySet, error) {
 }
 
 func (c *HttpComponent) resolve(current *resolution) {
-	router, err := c.host.Registry(registries.Registry[any, any](Http), c.ctx, host.GetOptions{})
+	router, err := c.host.Registry(c.ctx, registries.Registry[any, any](Http), host.GetOptions{})
 	var authenticators *registries.RegistryValueSource
 	if err == nil {
-		authenticators, err = c.host.Registry(registries.Registry[any, any](Authenticators), c.ctx, host.GetOptions{})
+		authenticators, err = c.host.Registry(c.ctx, registries.Registry[any, any](Authenticators), host.GetOptions{})
 	}
 	c.mu.Lock()
 	if err != nil {

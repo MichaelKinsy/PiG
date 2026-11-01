@@ -24,7 +24,7 @@ import (
 func exitResult(code int) *delta.JsonObject { return jsonObject("exit", float64(code)) }
 
 func setOutput(ctx JobCtx, output string, options ChangeOptions) error {
-	_, err := ctx.State().Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("output", output) }, ctx, options)
+	_, err := ctx.State().Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("output", output) }, options)
 	return err
 }
 
@@ -40,7 +40,7 @@ func TestSelfJobIsDeclaredOncePerJobNameOnlyWhileTheFactoryRuns(t *testing.T) {
 			return contracts.Implementation{}, nil
 		}, ServeOptions{})
 	}, jobHostOptions{})
-	_, err := host.Get(jobItemType, jsonObject("id", float64(1)), background, GetOptions{})
+	_, err := host.Get(background, jobItemType, jsonObject("id", float64(1)), GetOptions{})
 	if err == nil || !strings.Contains(err.Error(), `job "app.echo" is declared twice`) {
 		t.Fatalf("Get = %v, want the declared-twice error", err)
 	}
@@ -188,7 +188,7 @@ func TestRunRefusesStateChangesOnceRunSettledReleasedAndNeverRecreatesTheRetired
 			},
 			// After run returned, before finish committed: refused; the outcome's state is the state at run's settle.
 			Finish: func(outcome Outcome, _ documents.Tx) error {
-				_, err := captured.State().Change(func(*delta.Object) (any, error) { return nil, nil }, background, ChangeOptions{})
+				_, err := captured.State().Change(background, func(*delta.Object) (any, error) { return nil, nil }, ChangeOptions{})
 				mu.Lock()
 				inFinish.state, inFinish.err = outcome.State, err
 				mu.Unlock()
@@ -203,7 +203,7 @@ func TestRunRefusesStateChangesOnceRunSettledReleasedAndNeverRecreatesTheRetired
 	expectChordError(t, inFinish.err, data.CodeReleased, "")
 	ctx := captured
 	mu.Unlock()
-	_, err := ctx.State().Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("output", "late") }, background, ChangeOptions{})
+	_, err := ctx.State().Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("output", "late") }, ChangeOptions{})
 	expectChordError(t, err, data.CodeReleased, "")
 	_, err = ctx.State().Value()
 	if _, ok := data.IsChordError(err); !ok {
@@ -911,7 +911,7 @@ func TestKeepAliveKeepsAnObjectWithoutHoldersWhileRunsRunAndEndsItAfterTheLastOn
 			}}, nil
 		}, ServeOptions{Linger: new(20 * time.Millisecond)})
 	}, jobHostOptions{})
-	item, err := host.Get(jobItemType, jsonObject("id", float64(1)), background, GetOptions{})
+	item, err := host.Get(background, jobItemType, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	jobStart(t, job, textArgs("a"), background)
 	if jobs := activityCount(t, host, "jobs"); jobs != 1 {
@@ -986,7 +986,7 @@ func TestKeepAliveKeepsAnObjectWhoseLastRunsFinishChainsAnotherJobTheChainedRunR
 			}}, nil
 		}, ServeOptions{})
 	}, jobHostOptions{})
-	item, err := host.Get(jobItemType, jsonObject("id", float64(1)), background, GetOptions{})
+	item, err := host.Get(background, jobItemType, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	jobStart(t, handleA, textArgs("x"), background)
 	item.Release()
@@ -1028,7 +1028,7 @@ func TestKeepAliveDropsBlockedRunsReportedWhenTheObjectEndsAfterItsLastRun(t *te
 			}}, nil
 		}, ServeOptions{})
 	}, jobHostOptions{Loop: loop})
-	item, err := host.Get(jobItemType, jsonObject("id", float64(1)), background, GetOptions{})
+	item, err := host.Get(background, jobItemType, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	run := jobStart(t, job, textArgs("a"), background)
 	item.Release()
@@ -1059,7 +1059,7 @@ func TestKeepAliveKeepsALingeringObjectWhenARunStartsDuringItsLinger(t *testing.
 			}}, nil
 		}, ServeOptions{Linger: new(20 * time.Millisecond)})
 	}, jobHostOptions{})
-	item, err := host.Get(jobItemType, jsonObject("id", float64(1)), background, GetOptions{})
+	item, err := host.Get(background, jobItemType, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	item.Release()
 	if lingering := activityCount(t, host, "lingering"); lingering != 1 {

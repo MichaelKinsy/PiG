@@ -206,14 +206,14 @@ func ksTitle(value string) func(*delta.Object) (any, error) {
 
 func ksChange(t testing.TB, handle *Keyed, key, title string) {
 	t.Helper()
-	if _, err := handle.Change(key, ksTitle(title), background); err != nil {
+	if _, err := handle.Change(background, key, ksTitle(title)); err != nil {
 		t.Fatalf("change(%q): %v", key, err)
 	}
 }
 
 func ksGet(t testing.TB, handle *Keyed, key string) *JsonObject {
 	t.Helper()
-	value, err := handle.Get(key, background)
+	value, err := handle.Get(background, key)
 	if err != nil {
 		t.Fatalf("get(%q): %v", key, err)
 	}
@@ -525,7 +525,7 @@ func TestKeyedSlotANewerVersionMigratesEachInMemoryKeyWhenItIsReadAKeyWhoseMigra
 		t.Fatalf("tx: %v", err)
 	}
 	ksRequireStrings(t, migrated, []string{"a", "b"})
-	_, err = second.Get("c", background)
+	_, err = second.Get(background, "c")
 	ksRequireMessage(t, err, "cannot migrate")
 	// The owner failed once, broken (the host's `object_failed` for the induced restart and the failed state of its
 	// reference are the host's: PENDING(host)).
@@ -564,23 +564,23 @@ func TestKeyedSlotALoneSurrogateInAKeyIsUFFFDAtEveryEntryPointInMemoryAndInTheSt
 		t.Fatalf("tx: %v", err)
 	}
 	ksRequireDoc(t, ksGet(t, notes, lone), "two!")
-	watch, err := notes.Watch(lone, background)
+	watch, err := notes.Watch(background, lone)
 	if err != nil || watch == nil {
 		t.Fatalf("watch = %v, %v", watch, err)
 	}
 	nexttest.RequireJSONEqual(t, watch.Value(), obj("title", "two!"))
 	nul := "a\x00b"
-	_, changeErr := notes.Change(nul, ksTitle("nul"), background)
-	_, getErr := notes.Get(nul, background)
-	_, watchErr := notes.Watch(nul, background)
-	retireErr := notes.Retire(nul, background)
+	_, changeErr := notes.Change(background, nul, ksTitle("nul"))
+	_, getErr := notes.Get(background, nul)
+	_, watchErr := notes.Watch(background, nul)
+	retireErr := notes.Retire(background, nul)
 	for _, use := range []error{changeErr, getErr, watchErr, retireErr} {
 		chordErr := ksRequireCode(t, use, data.CodeInvalid)
 		if chordErr.Reason != data.ReasonArgs {
 			t.Fatalf("reason = %q, want args", chordErr.Reason)
 		}
 	}
-	if err := notes.Retire(lone, background); err != nil {
+	if err := notes.Retire(background, lone); err != nil {
 		t.Fatalf("retire: %v", err)
 	}
 	ksRequireStrings(t, ksKeysOf(t, notes), []string{})
@@ -597,7 +597,7 @@ func TestKeyedSlotInMemoryTooOneKeyPerSpellingNULRefused(t *testing.T) {
 	ksChange(t, memos, jsstring.FromUTF16([]uint16{'x', 0xDC00}), "one")
 	ksRequireDoc(t, ksGet(t, memos, "x\uFFFD"), "one")
 	ksRequireStrings(t, ksKeysOf(t, memos), []string{"x\uFFFD"})
-	_, err := memos.Change("\x00", ksTitle("nul"), background)
+	_, err := memos.Change(background, "\x00", ksTitle("nul"))
 	_ = ksRequireCode(t, err, data.CodeInvalid)
 	o.End()
 }
@@ -630,12 +630,12 @@ func ksPad3(i int) string {
 func TestKeyedSlotWatchKeyIsUndefinedWhenAbsentItFollowsTheAddressThroughARetirementAndARecreation(t *testing.T) {
 	var memos *Keyed
 	o, first := activated(t, objectOptions{}, func(a *attempt) { memos = a.Keyed(ksMemo(t)) })
-	absent, err := memos.Watch("a", background)
+	absent, err := memos.Watch(background, "a")
 	if err != nil || absent != nil {
 		t.Fatalf("watch of an absent key = %v, %v, want none", absent, err)
 	}
 	ksChange(t, memos, "a", "x")
-	watch, err := memos.Watch("a", background)
+	watch, err := memos.Watch(background, "a")
 	if err != nil || watch == nil {
 		t.Fatalf("watch = %v, %v", watch, err)
 	}
@@ -643,7 +643,7 @@ func TestKeyedSlotWatchKeyIsUndefinedWhenAbsentItFollowsTheAddressThroughARetire
 	changes := nexttest.ChangesOf(watch)
 	ksChange(t, memos, "a", "y")
 	o.delivered()
-	if err := memos.Retire("a", background); err != nil {
+	if err := memos.Retire(background, "a"); err != nil {
 		t.Fatalf("retire: %v", err)
 	}
 	o.delivered()
@@ -682,7 +682,7 @@ func TestKeyedSlotAStoppedWatchUnpinsItsKeyItsSourceIsCollected(t *testing.T) {
 	ksChange(t, memos, "a", "x")
 	// The watch's source: the slot's per-key source while pinned.
 	source := func() weak.Pointer[KeySource] {
-		watch, err := memos.Watch("a", background)
+		watch, err := memos.Watch(background, "a")
 		if err != nil || watch == nil {
 			t.Fatalf("watch = %v, %v", watch, err)
 		}
@@ -764,7 +764,7 @@ func TestKeyedSlotAtKeyIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetireme
 	ksChange(t, memos, "a", "x")
 	o.delivered()
 	nexttest.RequireJSONEqual(t, read(), obj("title", "x"))
-	if err := memos.Retire("a", background); err != nil {
+	if err := memos.Retire(background, "a"); err != nil {
 		t.Fatalf("retire: %v", err)
 	}
 	o.delivered()
@@ -879,8 +879,8 @@ func TestKeyedSlotTwoReadersShareOneLoadACancelledWaiterRejectsAlone(t *testing.
 	firstCtx := newKsProbeCtx(cancelCtx)
 	secondCtx := newKsProbeCtx(background)
 	notes := p.notes()
-	first := ksGo(func() (*JsonObject, error) { return notes.Get("a", firstCtx) })
-	second := ksGo(func() (*JsonObject, error) { return notes.Get("a", secondCtx) })
+	first := ksGo(func() (*JsonObject, error) { return notes.Get(firstCtx, "a") })
+	second := ksGo(func() (*JsonObject, error) { return notes.Get(secondCtx, "a") })
 	// Both callers wait on the load behind the line.
 	ksWaitClosed(t, firstCtx.reached)
 	ksWaitClosed(t, secondCtx.reached)
@@ -911,7 +911,7 @@ func TestKeyedSlotAColdGetRacingADraftOfTheSameKeyTheLoadInstallsOnlyWhileTheKey
 	notes := p.notes()
 	var get <-chan ksResult
 	_, err := p.attempts[0].Tx(func(tx *Transaction) (any, error) {
-		get = ksGo(func() (*JsonObject, error) { return notes.Get("a", background) })
+		get = ksGo(func() (*JsonObject, error) { return notes.Get(background, "a") })
 		// The get's load takes its place behind this transaction on the line.
 		ksWaiting(t, p.o, 1)
 		draft, err := tx.Draft(notes, "a")
@@ -957,13 +957,13 @@ func TestKeyedSlotTxRetireOfAColdKeyFindsItWithoutLoadingItAnAbsentKeyRetiresNot
 	ksSeed(t, chordStore, ksEntry{"a", "x"})
 	p := ksPersistedOver(t, chordStore, nil)
 	seq := chordStore.LastSeq()
-	if err := p.notes().Retire("z", background); err != nil {
+	if err := p.notes().Retire(background, "z"); err != nil {
 		t.Fatalf("retire z: %v", err)
 	}
 	if chordStore.LastSeq() != seq {
 		t.Fatalf("lastSeq = %d, want %d", chordStore.LastSeq(), seq)
 	}
-	if err := p.notes().Retire("a", background); err != nil {
+	if err := p.notes().Retire(background, "a"); err != nil {
 		t.Fatalf("retire a: %v", err)
 	}
 	if chordStore.LastSeq() != seq+1 {
@@ -992,18 +992,18 @@ func TestKeyedSlotTxRetireOfAColdKeyStoredAtANewerVersionOrAnotherFingerprintFai
 			})
 			writer, _ := activated(t, objectOptions{store: chordStore}, func(a *attempt) {
 				notes := a.Keyed(other)
-				if _, err := notes.Change("a", func(draft *delta.Object) (any, error) {
+				if _, err := notes.Change(background, "a", func(draft *delta.Object) (any, error) {
 					if err := draft.Set("title", "kept"); err != nil {
 						return nil, err
 					}
 					return nil, draft.Set("n", "1")
-				}, background); err != nil {
+				}); err != nil {
 					t.Fatalf("write: %v", err)
 				}
 			})
 			writer.End()
 			p := ksPersistedOver(t, chordStore, nil)
-			err := p.notes().Retire("a", background)
+			err := p.notes().Retire(background, "a")
 			ksRequireMessage(t, err, c.message)
 			// Failed once, broken (the host's `object_failed` report and the reference's failed state: PENDING(host)).
 			if failures := p.o.Failures(); len(failures) != 1 || !strings.Contains(failures[0].Message, c.message) {
@@ -1036,7 +1036,7 @@ func TestKeyedSlotARetirementCutByItsAttemptsSealWhileItFindsTheDocumentFailsNoS
 	// The find's read is held past the seal: the retirement resumes on a cut transaction.
 	gate := db.holdNextRead()
 	notes := p.notes()
-	retired := ksGo(func() (*JsonObject, error) { return nil, notes.Retire("a", background) })
+	retired := ksGo(func() (*JsonObject, error) { return nil, notes.Retire(background, "a") })
 	ksWaitClosed(t, gate.entered)
 	p.current().Fail()
 	if err := p.start(); err != nil {
@@ -1064,7 +1064,7 @@ func TestKeyedSlotASealedHandleReadsCachedDocumentsAColdReadIsRefusedReleased(t 
 		t.Fatalf("restart: %v", err)
 	}
 	ksRequireDoc(t, ksGet(t, old, "a"), "x")
-	_, err := old.Get("b", background)
+	_, err := old.Get(background, "b")
 	_ = ksRequireCode(t, err, data.CodeReleased)
 	p.close()
 }
@@ -1075,12 +1075,12 @@ func TestKeyedSlotASealedHandleJoiningAColdLoadInFlightIsRefusedReleasedRule4(t 
 	p := ksPersistedOver(t, chordStore, nil)
 	gate := db.holdNextLoad()
 	old := p.notes()
-	first := ksGo(func() (*JsonObject, error) { return old.Get("b", background) })
+	first := ksGo(func() (*JsonObject, error) { return old.Get(background, "b") })
 	ksWaitClosed(t, gate.entered)
 	// restart(): the attempt fails (its token is sealed), the next one activates behind the load on the line.
 	p.current().Fail()
 	restarting := ksGo(func() (*JsonObject, error) { return nil, p.start() })
-	_, err := old.Get("b", background)
+	_, err := old.Get(background, "b")
 	_ = ksRequireCode(t, err, data.CodeReleased)
 	gate.open()
 	res := ksRecv(t, first)
@@ -1103,16 +1103,16 @@ func TestKeyedSlotColdReadsQueuedOnTheLineBeforeTheObjectsEndAreRefusedReleasedW
 	firstGoroutine := make(chan uint64, 1)
 	first := ksGo(func() (*JsonObject, error) {
 		firstGoroutine <- goroutineID()
-		return notes.Get("a", background)
+		return notes.Get(background, "a")
 	})
 	ksWaitClosed(t, gate.entered)
 	// The first read resumes only after the object's end ran: Pi's microtask order puts its continuation before the
 	// end's, so the document it loaded must reach it whatever order the goroutines take.
 	resume := &loopStall{id: <-firstGoroutine, release: make(chan struct{})}
 	p.o.loop.stall.Store(resume)
-	get := ksGo(func() (*JsonObject, error) { return notes.Get("b", background) })
+	get := ksGo(func() (*JsonObject, error) { return notes.Get(background, "b") })
 	watch := ksGo(func() (*JsonObject, error) {
-		w, err := notes.Watch("c", background)
+		w, err := notes.Watch(background, "c")
 		if w != nil {
 			t.Error("a watch was opened")
 		}
@@ -1144,16 +1144,16 @@ func TestKeyedSlotColdReadsQueuedBehindAnAdmittedStepAreRefusedReleasedWhenTheir
 	p := ksPersistedOver(t, chordStore, func(_ int, a *attempt, _ *Keyed) { single = a.Singleton(pDefinition) })
 	held := db.holdNextCommit()
 	change := ksGo(func() (*JsonObject, error) {
-		_, err := single.Change(ksTitle("p"), background)
+		_, err := single.Change(background, ksTitle("p"))
 		return nil, err
 	})
 	ksWaitClosed(t, held.entered)
 	notes := p.notes()
 	getCtx := newKsProbeCtx(background)
 	watchCtx := newKsProbeCtx(background)
-	get := ksGo(func() (*JsonObject, error) { return notes.Get("a", getCtx) })
+	get := ksGo(func() (*JsonObject, error) { return notes.Get(getCtx, "a") })
 	watch := ksGo(func() (*JsonObject, error) {
-		w, err := notes.Watch("a", watchCtx)
+		w, err := notes.Watch(watchCtx, "a")
 		if w != nil {
 			t.Error("a watch was opened")
 		}
@@ -1185,16 +1185,16 @@ func TestKeyedSlotAStillValidWaiterSharingThatLoadGetsTheDocumentOnlyTheSealedHa
 	consumer := NewKeyed(notes.Slot, o.documents.Own(), notes.Version, nil)
 	held := db.holdNextCommit()
 	change := ksGo(func() (*JsonObject, error) {
-		_, err := notes.Change("b", ksTitle("y"), background)
+		_, err := notes.Change(background, "b", ksTitle("y"))
 		return nil, err
 	})
 	ksWaitClosed(t, held.entered)
 	sealedCtx := newKsProbeCtx(background)
 	sharedCtx := newKsProbeCtx(background)
-	sealed := ksGo(func() (*JsonObject, error) { return notes.Get("a", sealedCtx) })
+	sealed := ksGo(func() (*JsonObject, error) { return notes.Get(sealedCtx, "a") })
 	// A consumer joins the same load.
 	ksWaitClosed(t, sealedCtx.reached)
-	shared := ksGo(func() (*JsonObject, error) { return consumer.Get("a", sharedCtx) })
+	shared := ksGo(func() (*JsonObject, error) { return consumer.Get(sharedCtx, "a") })
 	ksWaitClosed(t, sharedCtx.reached)
 	nexttest.Flushed()
 	a.Fail()
@@ -1233,7 +1233,7 @@ func TestKeyedSlotALoadCutByTheSealNeverInstallsASuccessorsRetirementStands(t *t
 	if err := p.restart(); err != nil {
 		t.Fatalf("restart: %v", err)
 	}
-	if err := p.notes().Retire("a", background); err != nil {
+	if err := p.notes().Retire(background, "a"); err != nil {
 		t.Fatalf("retire: %v", err)
 	}
 	gate.open()
@@ -1253,7 +1253,7 @@ func TestKeyedSlotAPluginMigrateThrowingAChordErrorFailsItsOwnerLikeAnyOtherErro
 	})
 	var notes *Keyed
 	o, _ := activated(t, objectOptions{store: chordStore}, func(a *attempt) { notes = a.Keyed(v2) })
-	_, err := notes.Get("a", background)
+	_, err := notes.Get(background, "a")
 	if chordErr := ksChordError(t, err); chordErr.Message != "plugin says no" {
 		t.Fatalf("message = %q, want plugin says no", chordErr.Message)
 	}
@@ -1273,7 +1273,7 @@ func TestKeyedSlotAKeyWhoseMigrateFailsFailsItsOwnerBrokenTheGetRejectsWithTheCa
 	})
 	var notes *Keyed
 	o, _ := activated(t, objectOptions{store: chordStore}, func(a *attempt) { notes = a.Keyed(v2) })
-	_, err := notes.Get("a", background)
+	_, err := notes.Get(background, "a")
 	_ = ksRequireCode(t, err, data.CodeUnavailable)
 	ksRequireMessage(t, err, "cannot migrate")
 	// Failed once, broken (the host's `object_failed` report and the reference's failed state: PENDING(host)).
@@ -1293,7 +1293,7 @@ func TestKeyedSlotAnUnpinnedKeyIdleForTheRetentionLeavesMemoryAPinnedOneStays(t 
 	base := db.findCount()
 	reads := func() int { return db.findCount() - base }
 	ksGet(t, p.notes(), "a")
-	watch, err := p.notes().Watch("b", background)
+	watch, err := p.notes().Watch(background, "b")
 	if err != nil || watch == nil {
 		t.Fatalf("watch = %v, %v", watch, err)
 	}

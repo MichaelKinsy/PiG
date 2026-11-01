@@ -118,7 +118,7 @@ func TestRecordsRefusesTheCutRunsChangesMadeWhileItStopsItsSettlingRecordsNothin
 			started.Open()
 			untilDone(ctx)
 			// Accepted after an abort (§15), refused once the attempt's seal cut the run off.
-			_, err := ctx.State().Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("output", "late") }, background, ChangeOptions{})
+			_, err := ctx.State().Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("output", "late") }, ChangeOptions{})
 			select {
 			case late <- err:
 			default:
@@ -463,7 +463,7 @@ func TestRecordsJobsAcrossAReloadAnOlderRunFinishesOnItsOldCodeAcrossASwapItsFin
 	g := newJobGate()
 	host := newJobHost(t, HostOptions{OnError: func(HostError) {}})
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: runner("v1", jobWork, finished, runnerOptions{gates: []*jobGate{g}})}}, background))
-	jobs, err := host.Get(jobsRunner, jsonObject(), background, GetOptions{})
+	jobs, err := host.Get(background, jobsRunner, jsonObject(), GetOptions{})
 	must(t, err)
 	startedBy(t, jobs, "a")
 	nexttest.Flushed()
@@ -491,7 +491,7 @@ func TestRecordsJobsAcrossAReloadARunWithoutAnAdapterIsBlockedVersionUntilAReloa
 	g := newJobGate()
 	host := newJobHost(t, HostOptions{OnError: func(HostError) {}})
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: runner("v1", jobWork, finished, runnerOptions{gates: []*jobGate{g}})}}, background))
-	jobs, err := host.Get(jobsRunner, jsonObject(), background, GetOptions{})
+	jobs, err := host.Get(background, jobsRunner, jsonObject(), GetOptions{})
 	must(t, err)
 	id := startedBy(t, jobs, "a")
 	nexttest.Flushed()
@@ -523,7 +523,7 @@ func TestRecordsJobsAcrossAReloadANativeRestartAbortsRunningInMemoryRunsReloadTh
 	host := newJobHost(t, HostOptions{OnError: func(HostError) {}})
 	g := newJobGate()
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: runner("v1", jobWork, finished, runnerOptions{gates: []*jobGate{g}, native: true})}}, background))
-	jobs, err := host.Get(jobsRunner, jsonObject(), background, GetOptions{})
+	jobs, err := host.Get(background, jobsRunner, jsonObject(), GetOptions{})
 	must(t, err)
 	startedBy(t, jobs, "a")
 	nexttest.Flushed()
@@ -542,7 +542,7 @@ func TestRecordsJobsAcrossAReloadAJobTheNewCodeNoLongerDeclaresBlocksItsRunsVers
 	g := newJobGate()
 	host := newJobHost(t, HostOptions{OnError: func(HostError) {}})
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: runner("v1", jobWork, finished, runnerOptions{gates: []*jobGate{g}})}}, background))
-	jobs, err := host.Get(jobsRunner, jsonObject(), background, GetOptions{})
+	jobs, err := host.Get(background, jobsRunner, jsonObject(), GetOptions{})
 	must(t, err)
 	startedBy(t, jobs, "a")
 	nexttest.Flushed()
@@ -634,7 +634,7 @@ func TestRecordsAReservationReleasedAfterASwapStartsTheOldCodesRunWithItsOwnArgs
 		}, ServeOptions{})
 	})}}, background))
 	// The object is live: Pi's `load` resolves with it served; hold a reference so it is.
-	reference, err := host.Get(owner, jsonObject(), background, GetOptions{})
+	reference, err := host.Get(background, owner, jsonObject(), GetOptions{})
 	must(t, err)
 	defer reference.Release()
 	// The run's reservation (the second commit after the start) waits on `gate` until the swap to V2 happened.

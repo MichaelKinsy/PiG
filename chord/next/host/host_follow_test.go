@@ -661,7 +661,7 @@ func followFinish(t *testing.T, s *followServed) {
 	t.Helper()
 	must(t, <-s.loaded)
 	var err error
-	s.View, err = s.Host.Get(followView, jsonObject(), background, GetOptions{})
+	s.View, err = s.Host.Get(background, followView, jsonObject(), GetOptions{})
 	must(t, err)
 }
 
@@ -739,7 +739,7 @@ func TestHostFollowActivationAnAbsentAddressFailsTheActivationTransientAFailedAc
 	b.absent = true
 	s := followServeOn(t, a, b, loop)
 	<-s.loaded
-	_, err := s.Host.Get(followView, jsonObject(), background, GetOptions{ReadyTimeout: followMs(50)})
+	_, err := s.Host.Get(background, followView, jsonObject(), GetOptions{ReadyTimeout: followMs(50)})
 	if err == nil || !strings.Contains(err.Error(), "followed address is absent") {
 		t.Fatalf("get = %v, want it to fail with followed address is absent", err)
 	}
@@ -895,7 +895,7 @@ func TestHostFollowAnEndWhileTheObjectActivatesAfterItsSourcesAttachedFailsTheAc
 			}}, nil
 		}, ServeOptions{})
 	})}}, background))
-	if _, err := host.Get(view, jsonObject(), background, GetOptions{ReadyTimeout: followMs(50)}); err == nil {
+	if _, err := host.Get(background, view, jsonObject(), GetOptions{ReadyTimeout: followMs(50)}); err == nil {
 		t.Fatalf("get succeeded, want a rejection")
 	}
 	if !ended.Load() {

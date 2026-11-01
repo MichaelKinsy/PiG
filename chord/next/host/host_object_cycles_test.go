@@ -129,7 +129,7 @@ func failureSet(errs ...*hostErrors) []string {
 
 func TestObjectCyclesAcrossHostsRefuseAHoldWhoseChainNamesTheActivationItWouldBindServerWorkerServer(t *testing.T) {
 	r := cyclic(t, "near")
-	_, err := r.Tab.Get(cycNear, jsonObject("session", "S1"), background, GetOptions{})
+	_, err := r.Tab.Get(background, cycNear, jsonObject("session", "S1"), GetOptions{})
 	// The worker's hold back acts as the worker (upward boundary): it meets the cycle one turn later, at that principal's `Near`.
 	wantChordError(t, err, data.CodeInvalid, data.ReasonCycle, "dependency cycle: app.near(S1) → … → app.near(S1)")
 	// Every object on the cycle fails broken with the same error, none transient (nothing retries it).
@@ -140,13 +140,13 @@ func TestObjectCyclesAcrossHostsRefuseAHoldWhoseChainNamesTheActivationItWouldBi
 
 func TestObjectCyclesAcrossHostsFindACycleClosedOnOneHostThroughAnotherServerWorkerServerThenALocalGet(t *testing.T) {
 	r := cyclic(t, "middle")
-	_, err := r.Server.Get(cycHub, jsonObject("session", "S1"), background, GetOptions{})
+	_, err := r.Server.Get(background, cycHub, jsonObject("session", "S1"), GetOptions{})
 	wantChordError(t, err, data.CodeInvalid, data.ReasonCycle, "dependency cycle: app.hub(S1) → … → app.middle(S1) → app.hub(S1)")
 }
 
 func TestObjectCyclesAcrossHostsCarryTheChainThroughARelayRace7WorkerServerWorkerServerWorker(t *testing.T) {
 	r := cyclic(t, "near")
-	_, err := r.Tab.Get(cycLoop, jsonObject("here", "S1", "there", "S2"), background, GetOptions{})
+	_, err := r.Tab.Get(background, cycLoop, jsonObject("here", "S1", "there", "S2"), GetOptions{})
 	wantChordError(t, err, data.CodeInvalid, data.ReasonCycle, "")
 	if got := failureSet(r.Errors.Worker); !reflect.DeepEqual(got, []string{"app.loop(S1|S2): broken", "app.loop(S2|S1): broken"}) {
 		t.Fatalf("worker failures = %v", got)
@@ -249,7 +249,7 @@ func TestObjectCyclesAcrossHostsMissACycleEnteringAnActivationThatStartedAlready
 	ms := 100 * time.Millisecond
 	getting := make(chan error, 1)
 	go func() {
-		_, err := r.Tab.Get(cycNear, jsonObject("session", "S1"), background, GetOptions{ReadyTimeout: &ms})
+		_, err := r.Tab.Get(background, cycNear, jsonObject("session", "S1"), GetOptions{ReadyTimeout: &ms})
 		getting <- err
 	}()
 	chain := worker.Next("hold").(*link.HoldMessage).Chain
@@ -279,7 +279,7 @@ func TestObjectCyclesAcrossHostsKeepNoObjectAndSoNoChainOnceReleasedGC(t *testin
 			seen[weak.Make(self.(*attempt).object)] = struct{}{}
 			mu.Unlock()
 		})
-		_, err := r.Tab.Get(cycNear, jsonObject("session", "S1"), background, GetOptions{})
+		_, err := r.Tab.Get(background, cycNear, jsonObject("session", "S1"), GetOptions{})
 		if err == nil {
 			t.Fatal("the cycle was not refused")
 		}

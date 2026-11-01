@@ -89,7 +89,7 @@ func shipped(t *testing.T, root string) []PluginScript {
 // labelOf is the label `test.<dir>` shows on h.
 func labelOf(t *testing.T, h host.Host, dir string) string {
 	t.Helper()
-	ref, err := h.Get(itemContract("test."+dir, 1), delta.NewJsonObject(0), background, host.GetOptions{})
+	ref, err := h.Get(background, itemContract("test."+dir, 1), delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

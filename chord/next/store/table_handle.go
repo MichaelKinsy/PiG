@@ -76,7 +76,7 @@ func NewTableHandle(definition *TableDefinition, sqlName string, store *ChordSto
 }
 
 // Page is up to limit rows of q (after options.After), and the cursor of the next page when there is one.
-func (handle *TableHandle) Page(q *Query, limit int64, ctx context.Context, options PageOptions) (Page, error) {
+func (handle *TableHandle) Page(ctx context.Context, q *Query, limit int64, options PageOptions) (Page, error) {
 	if err := q.Err(); err != nil {
 		return Page{}, err
 	}
@@ -114,7 +114,7 @@ func (handle *TableHandle) Page(q *Query, limit int64, ctx context.Context, opti
 	}
 	items := make([]Row, len(stored))
 	for index, row := range stored {
-		if items[index], err = handle.Decode(row, ctx); err != nil {
+		if items[index], err = handle.Decode(ctx, row); err != nil {
 			return Page{}, err
 		}
 	}
@@ -141,7 +141,7 @@ type RowsIterator struct {
 }
 
 // Rows is every row of q, read a page of 100 at a time; the first page is read at the first Next.
-func (handle *TableHandle) Rows(q *Query, ctx context.Context) *RowsIterator {
+func (handle *TableHandle) Rows(ctx context.Context, q *Query) *RowsIterator {
 	return &RowsIterator{handle: handle, q: q, ctx: ctx}
 }
 
@@ -155,7 +155,7 @@ func (rows *RowsIterator) Next(ctx context.Context) (Row, bool, error) {
 			return nil, false, nil
 		}
 		options := PageOptions{After: rows.after}
-		page, err := rows.handle.Page(rows.q, RowsPage, rows.ctx, options)
+		page, err := rows.handle.Page(rows.ctx, rows.q, RowsPage, options)
 		if err != nil {
 			rows.finished = true
 			return nil, false, err
@@ -175,7 +175,7 @@ func (rows *RowsIterator) Close() {
 }
 
 // Get is the row with key; nil when absent.
-func (handle *TableHandle) Get(key any, ctx context.Context) (Row, error) {
+func (handle *TableHandle) Get(ctx context.Context, key any) (Row, error) {
 	if err := handle.Owner.AssertLive(); err != nil {
 		return nil, err
 	}
@@ -192,11 +192,11 @@ func (handle *TableHandle) Get(key any, ctx context.Context) (Row, error) {
 	if err != nil || stored == nil {
 		return nil, err
 	}
-	return handle.Decode(stored, ctx)
+	return handle.Decode(ctx, stored)
 }
 
 // Count is the number of rows of q.
-func (handle *TableHandle) Count(q *Query, ctx context.Context) (int64, error) {
+func (handle *TableHandle) Count(ctx context.Context, q *Query) (int64, error) {
 	if err := q.Err(); err != nil {
 		return 0, err
 	}
@@ -233,8 +233,8 @@ func (handle *TableHandle) AssertVersion() error {
 }
 
 // Decode is a stored row as reads return it; one the code cannot read fails the owner and returns the failure.
-func (handle *TableHandle) Decode(stored sqlite.SqliteRow, ctx context.Context) (Row, error) {
-	row, err := handle.Definition.Rows.Decode(stored, ctx)
+func (handle *TableHandle) Decode(ctx context.Context, stored sqlite.SqliteRow) (Row, error) {
+	row, err := handle.Definition.Rows.Decode(ctx, stored)
 	if err == nil {
 		return row, nil
 	}

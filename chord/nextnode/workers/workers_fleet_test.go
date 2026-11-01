@@ -187,7 +187,7 @@ func trimSpace(chunk []byte) []byte {
 
 func (f *fleet) hold(typ *contracts.Contract, id string) *host.Reference {
 	f.t.Helper()
-	reference, err := f.server.Hold(typ, delta.JsonObjectOf("id", id), background, host.GetOptions{})
+	reference, err := f.server.Hold(background, typ, delta.JsonObjectOf("id", id), host.GetOptions{})
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -196,7 +196,7 @@ func (f *fleet) hold(typ *contracts.Contract, id string) *host.Reference {
 
 func (f *fleet) get(typ *contracts.Contract, id string) *host.Reference {
 	f.t.Helper()
-	reference, err := f.server.Get(typ, delta.JsonObjectOf("id", id), background, host.GetOptions{})
+	reference, err := f.server.Get(background, typ, delta.JsonObjectOf("id", id), host.GetOptions{})
 	if err != nil {
 		f.t.Fatalf("get %s %s: %v", typ.Name, id, err)
 	}

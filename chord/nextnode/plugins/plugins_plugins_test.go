@@ -233,7 +233,7 @@ func TestPerPluginAtReloadKeepsAConsumerEditedTogetherWithAProviderWhoseNewBuild
 	plugins := component(t, root)
 	h := newTestHost(t)
 	loadWorker(t, plugins, h)
-	shown, err := h.Get(itemContract("test.consumer", 1), delta.NewJsonObject(0), background, host.GetOptions{})
+	shown, err := h.Get(background, itemContract("test.consumer", 1), delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -649,7 +649,7 @@ func TestFixRound1ReloadsACopyOfABuildAsTheBuildItselfItIsPlainDataAstra(t *test
 	plugins := component(t, root)
 	h := newTestHost(t)
 	loadWorker(t, plugins, h)
-	item, err := h.Get(itemContract("test.a", 1), delta.NewJsonObject(0), background, host.GetOptions{})
+	item, err := h.Get(background, itemContract("test.a", 1), delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -543,7 +543,7 @@ func TestHostNativesOpenOneAfterAnotherInDeclarationOrderALaterOpenerReadsAnEarl
 	defer closeHosts(t, host)
 	got := make(chan error, 1)
 	go func() {
-		_, err := host.Get(nativeRes, jsonObject("id", float64(1)), background, GetOptions{})
+		_, err := host.Get(background, nativeRes, jsonObject("id", float64(1)), GetOptions{})
 		got <- err
 	}()
 	scopeEventually(t, "open a", func() bool { return events.len() == 1 })
@@ -568,7 +568,7 @@ func TestHostNativesOpenNothingForAnObjectEndedBeforeItsFirstOpenStarted(t *test
 	var err error
 	h.enter(func() {
 		var ref *Reference
-		ref, err = host.Hold(nativeRes, jsonObject("id", float64(1)), background, GetOptions{})
+		ref, err = host.Hold(background, nativeRes, jsonObject("id", float64(1)), GetOptions{})
 		if err == nil {
 			ref.Release()
 		}
@@ -603,7 +603,7 @@ func TestHostNativesThrowNotReadyBeforeTheirOpenResolvedAndReleasedOnceTheirClos
 		read(a)
 	}), loadedOptions{})
 	defer closeHosts(t, host)
-	ref, err := host.Get(nativeRes, jsonObject("id", float64(1)), background, GetOptions{})
+	ref, err := host.Get(background, nativeRes, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	ref.Release()
 	scopeEventually(t, "both closes ran", func() bool { return reads.len() == 4 })
@@ -633,7 +633,7 @@ func TestHostNativesAPartlyFailedAttemptClosesWhatItOpenedWithReasonEnd(t *testi
 	}), loadedOptions{})
 	defer closeHosts(t, host)
 	ready := 10 * time.Millisecond
-	_, err := host.Get(nativeRes, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: &ready})
+	_, err := host.Get(background, nativeRes, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: &ready})
 	wantScopeError(t, err, data.CodeUnavailable, "", "app.res(1): offline")
 	scopeEventually(t, "a closed", func() bool { return closes.len() >= 1 })
 	if !reflect.DeepEqual(closes.all(), []string{"a end"}) {
@@ -662,7 +662,7 @@ func TestHostNativesAbortTheOpenersContextWhenTheObjectEndsWhileOpeningALateValu
 			cancellable, cancel := chordctx.WithCancel(background)
 			got := make(chan error, 1)
 			go func() {
-				_, err := host.Get(nativeRes, jsonObject("id", float64(1)), cancellable, GetOptions{})
+				_, err := host.Get(cancellable, nativeRes, jsonObject("id", float64(1)), GetOptions{})
 				got <- err
 			}()
 			openContext := <-opener
@@ -702,9 +702,9 @@ func TestHostNativesCloseInReverseWithReasonEndWhenTheObjectEndsAndCloseWhenTheH
 				})
 		}
 	}), loadedOptions{})
-	one, err := host.Get(nativeRes, jsonObject("id", float64(1)), background, GetOptions{})
+	one, err := host.Get(background, nativeRes, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
-	_, err = host.Get(nativeRes, jsonObject("id", float64(2)), background, GetOptions{})
+	_, err = host.Get(background, nativeRes, jsonObject("id", float64(2)), GetOptions{})
 	must(t, err)
 	one.Release()
 	scopeEventually(t, "object 1 closed", func() bool { return closes.len() == 2 })
@@ -724,9 +724,9 @@ func TestHostNativesCollectEveryThrowingCloseInHostCloseAnObjectEndingInTheBackg
 				func(any, NativeCloseReason, context.Context) error { return thrown(label) })
 		}
 	}), loadedOptions{})
-	one, err := host.Get(nativeRes, jsonObject("id", float64(1)), background, GetOptions{})
+	one, err := host.Get(background, nativeRes, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
-	_, err = host.Get(nativeRes, jsonObject("id", float64(2)), background, GetOptions{})
+	_, err = host.Get(background, nativeRes, jsonObject("id", float64(2)), GetOptions{})
 	must(t, err)
 	one.Release()
 	scopeEventually(t, "both closes reported", func() bool { return errs.Len() == 2 })
@@ -772,7 +772,7 @@ func TestHostNativesReportACloseStillRunningAfterItsCloseTimeoutAbortItsContextA
 			NativeOptions{CloseTimeout: &own})
 	}), loadedOptions{CloseTimeout: &closeTimeout, Loop: loop})
 	defer closeHosts(t, host)
-	ref, err := host.Get(nativeRes, jsonObject("id", float64(1)), background, GetOptions{})
+	ref, err := host.Get(background, nativeRes, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	ref.Release()
 	scopeEventually(t, "the slow close started", func() bool { return slow.len() == 1 })

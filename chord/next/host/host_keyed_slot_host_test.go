@@ -68,7 +68,7 @@ func seedKeyed(t testing.TB, chordStore *store.ChordStore, note *documents.State
 	var made handles
 	run := storeRestartable(t, func(_ int, self StoreSelf) { made.add(self.State(note).(*documents.Keyed)) }, loadedOptions{Store: chordStore})
 	for _, entry := range entries {
-		_, err := made.at(0).Change(entry[0], setTitle(entry[1]), background)
+		_, err := made.at(0).Change(background, entry[0], setTitle(entry[1]))
 		must(t, err)
 	}
 	closeHosts(t, run.Host)
@@ -112,7 +112,7 @@ func TestKeyedSlotMigrationOnAccessANewerVersionMigratesEachInMemoryKeyWhenItIsR
 		if key == "c" {
 			title = "bad"
 		}
-		_, err := memos.at(0).Change(key, setTitle(title), background)
+		_, err := memos.at(0).Change(background, key, setTitle(title))
 		must(t, err)
 	}
 	run.Restart()
@@ -120,7 +120,7 @@ func TestKeyedSlotMigrationOnAccessANewerVersionMigratesEachInMemoryKeyWhenItIsR
 	if got := migrated.all(); len(got) != 0 {
 		t.Fatalf("migrated = %v, want none", got)
 	}
-	got, err := memos.at(1).Get("a", background)
+	got, err := memos.at(1).Get(background, "a")
 	must(t, err)
 	nexttest.RequireJSONEqual(t, got, jsonObject("title", "a!"))
 	if got := migrated.all(); !reflect.DeepEqual(got, []string{"a"}) {
@@ -138,7 +138,7 @@ func TestKeyedSlotMigrationOnAccessANewerVersionMigratesEachInMemoryKeyWhenItIsR
 	if got := migrated.all(); !reflect.DeepEqual(got, []string{"a", "b"}) {
 		t.Fatalf("migrated = %v, want [a b]", got)
 	}
-	_, err = memos.at(1).Get("c", background)
+	_, err = memos.at(1).Get(background, "c")
 	if err == nil || !hasText(err.Error(), "cannot migrate") {
 		t.Fatalf("get c = %v, want cannot migrate", err)
 	}
@@ -190,17 +190,17 @@ func TestKeyedSlotColdKeyedLoadsTxRetireOfAColdKeyStoredAtANewerVersionOrAnother
 			other := keyedDefinition(t, "notes.note", each.version, true, otherSchema, nil, func() *delta.JsonObject { return jsonObject("title", "", "n", "") })
 			var written handles
 			writer := storeRestartable(t, func(_ int, self StoreSelf) { written.add(self.State(other).(*documents.Keyed)) }, loadedOptions{Store: chordStore})
-			_, err := written.at(0).Change("a", func(draft *delta.Object) (any, error) {
+			_, err := written.at(0).Change(background, "a", func(draft *delta.Object) (any, error) {
 				if err := draft.Set("title", "kept"); err != nil {
 					return nil, err
 				}
 				return nil, draft.Set("n", "1")
-			}, background)
+			})
 			must(t, err)
 			closeHosts(t, writer.Host)
 			var notes handles
 			run := persistedOver(t, chordStore, note, &notes)
-			err = notes.at(0).Retire("a", background)
+			err = notes.at(0).Retire(background, "a")
 			if err == nil || !hasText(err.Error(), each.message) {
 				t.Fatalf("retire = %v, want %q", err, each.message)
 			}
@@ -270,7 +270,7 @@ func TestKeyedSlotColdKeyedLoadsARetirementCutByItsAttemptsSealWhileItFindsTheDo
 	entered, release := db.hold()
 	defer release()
 	retired := make(chan error, 1)
-	go func() { retired <- notes.at(0).Retire("a", background) }()
+	go func() { retired <- notes.at(0).Retire(background, "a") }()
 	receive(t, entered)
 	run.Fail()
 	run.Retry()
@@ -305,7 +305,7 @@ func TestKeyedSlotColdKeyedLoadsAPluginMigrateThrowingAChordErrorFailsItsOwnerLi
 	})
 	var notes handles
 	run := persistedOver(t, chordStore, v2, &notes)
-	_, err := notes.at(0).Get("a", background)
+	_, err := notes.at(0).Get(background, "a")
 	if err == nil || !hasText(err.Error(), "plugin says no") {
 		t.Fatalf("get = %v, want plugin says no", err)
 	}
@@ -323,7 +323,7 @@ func TestKeyedSlotColdKeyedLoadsAKeyWhoseMigrateFailsFailsItsOwnerBrokenTheGetRe
 	})
 	var notes handles
 	run := persistedOver(t, chordStore, v2, &notes)
-	_, err := notes.at(0).Get("a", background)
+	_, err := notes.at(0).Get(background, "a")
 	if _, ok := data.IsChordErrorCode(err, data.CodeUnavailable); !ok || !hasText(err.Error(), "cannot migrate") {
 		t.Fatalf("get = %v, want an unavailable rejection containing cannot migrate", err)
 	}

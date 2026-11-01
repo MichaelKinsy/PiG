@@ -165,7 +165,7 @@ func exParam(params *delta.JsonObject, name string) string {
 // exGet is `await host.get(Type, params, context)`.
 func exGet(t testing.TB, host Host, typ *contracts.Contract, params *delta.JsonObject) *Reference {
 	t.Helper()
-	reference, err := host.Get(typ, params, background, GetOptions{})
+	reference, err := host.Get(background, typ, params, GetOptions{})
 	must(t, err)
 	return reference
 }
@@ -173,7 +173,7 @@ func exGet(t testing.TB, host Host, typ *contracts.Contract, params *delta.JsonO
 // exHold is `host.hold(Type, params, context)`.
 func exHold(t testing.TB, host Host, typ *contracts.Contract, params *delta.JsonObject) *Reference {
 	t.Helper()
-	reference, err := host.Hold(typ, params, background, GetOptions{})
+	reference, err := host.Hold(background, typ, params, GetOptions{})
 	must(t, err)
 	return reference
 }
@@ -454,7 +454,7 @@ func TestExample02Documents(t *testing.T) {
 					return id, err
 				}),
 				"note": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
-					body, err := notes.Get(fmt.Sprint(int(args.Value("id").(float64))), ctx)
+					body, err := notes.Get(ctx, fmt.Sprint(int(args.Value("id").(float64))))
 					if err != nil || body == nil {
 						return "(none)", err
 					}
@@ -474,7 +474,7 @@ func TestExample02Documents(t *testing.T) {
 						if !ok {
 							return nil, nil
 						}
-						if err := notes.Retire(key, ctx); err != nil {
+						if err := notes.Retire(ctx, key); err != nil {
 							return nil, err
 						}
 					}
@@ -755,7 +755,7 @@ func TestExample05Errors(t *testing.T) {
 	if got := reported.all(); len(got) == 0 || got[0] != "reported: example.ping failed broken" && got[0] != "reported: example.pong failed broken" {
 		t.Fatalf("cycle reports = %v", got)
 	}
-	_, err := host.Get(ping, jsonObject(), background, GetOptions{})
+	_, err := host.Get(background, ping, jsonObject(), GetOptions{})
 	_ = exCode(t, err, data.CodeInvalid, data.ReasonCycle)
 	echoRef := exGet(t, host, echo, jsonObject("id", float64(1)))
 	// Arguments are checked against the contract at the object: wrong types and unknown fields are invalid/args.
@@ -764,10 +764,10 @@ func TestExample05Errors(t *testing.T) {
 	_, err = echoRef.Call("echo", jsonObject("text", "hi", "extra", true), background)
 	_ = exCode(t, err, data.CodeInvalid, data.ReasonArgs)
 	// Params select the object and are checked on every get: invalid/params.
-	_, err = host.Get(echo, jsonObject("id", "one"), background, GetOptions{})
+	_, err = host.Get(background, echo, jsonObject("id", "one"), GetOptions{})
 	_ = exCode(t, err, data.CodeInvalid, data.ReasonParams)
 	// An implementation with a member its contract does not declare fails activation.
-	_, err = host.Get(sloppy, jsonObject("id", float64(1)), background, GetOptions{})
+	_, err = host.Get(background, sloppy, jsonObject("id", float64(1)), GetOptions{})
 	if err == nil {
 		t.Fatal("unknown member: ok")
 	}
@@ -776,10 +776,10 @@ func TestExample05Errors(t *testing.T) {
 		Version: 2, Params: contracts.Params{exProp("id", exInt())}, Members: []contracts.LocalEntry{contracts.Mem("id", exInt())},
 	}))
 	readyTimeout := 100 * time.Millisecond
-	_, err = host.Get(echoV2, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: &readyTimeout})
+	_, err = host.Get(background, echoV2, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: &readyTimeout})
 	_ = exCode(t, err, data.CodeContractMismatch, "")
 	// A factory that throws fails broken: the get rejects at once with its error, and no object is left behind.
-	_, err = host.Get(broken, jsonObject("id", float64(1)), background, GetOptions{})
+	_, err = host.Get(background, broken, jsonObject("id", float64(1)), GetOptions{})
 	if err == nil || !strings.Contains(err.Error(), "broken: missing configuration") {
 		t.Fatalf("throwing factory: %v", err)
 	}
@@ -788,7 +788,7 @@ func TestExample05Errors(t *testing.T) {
 	_, err = echoRef.Call("echo", jsonObject("text", "hi"), background)
 	_ = exCode(t, err, data.CodeReleased, "")
 	exCloseHost(t, host)
-	_, err = host.Get(echo, jsonObject("id", float64(1)), background, GetOptions{})
+	_, err = host.Get(background, echo, jsonObject("id", float64(1)), GetOptions{})
 	_ = exCode(t, err, data.CodeReleased, "")
 }
 
@@ -1040,19 +1040,19 @@ func TestExample07Failures(t *testing.T) {
 		}, ServeOptions{})
 	})}}, background))
 	// The mirror: a broken open rejects the get at once.
-	_, err := host.Get(mirror, jsonObject("id", float64(1)), background, GetOptions{})
+	_, err := host.Get(background, mirror, jsonObject("id", float64(1)), GetOptions{})
 	if err == nil || !strings.Contains(err.Error(), "no mirror configured") {
 		t.Fatalf("mirror: %v", err)
 	}
 	// The stuck native never opens: the attempt times out at readyTimeout; the get (700 ms) rejects with the cause.
 	stuckTimeout := 700 * time.Millisecond
-	_, err = host.Get(stuck, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: &stuckTimeout})
+	_, err = host.Get(background, stuck, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: &stuckTimeout})
 	if err == nil {
 		t.Fatal("stuck: ok")
 	}
 	// The inbox waits through the remote's transient failures (1 s, then 2 s) and goes live: a getter's deadline of 10 s.
 	inboxTimeout := 10 * time.Second
-	reference, err := host.Get(inbox, jsonObject("user", "mario"), background, GetOptions{ReadyTimeout: &inboxTimeout})
+	reference, err := host.Get(background, inbox, jsonObject("user", "mario"), GetOptions{ReadyTimeout: &inboxTimeout})
 	must(t, err)
 	exEqual(t, "inbox status", exValue(t, reference, "status"), "mario: connected")
 	if attempts != 3 {
@@ -1707,7 +1707,7 @@ func TestExample12Routes(t *testing.T) {
 	}
 	exEqual(t, "guest notes", exValue(t, read, "notes"), exJSON(t, `["milk"]`))
 	exEqual(t, "guest acts as", exCall(t, read, "whoami", nil), `{"kind":"guest","session":"S1"}`)
-	_, err := guest.Host.Get(notes, jsonObject("session", "S2"), background, GetOptions{})
+	_, err := guest.Host.Get(background, notes, jsonObject("session", "S2"), GetOptions{})
 	_ = exCode(t, err, data.CodeForbidden, "")
 	if resolveCount() != 1 {
 		t.Fatalf("resolves after the refused guest = %d", resolveCount())
@@ -2652,7 +2652,7 @@ func TestExample17LimitsAndCompression(t *testing.T) {
 			exCall(t, bomb, "append", jsonObject("id", fmt.Sprintf("z%d", i), "text", strings.Repeat("0", 1_000_000)))
 		}
 		fill(server, "fine")
-		_, err := tab.Get(conversation, jsonObject("id", "bomb"), background, GetOptions{})
+		_, err := tab.Get(background, conversation, jsonObject("id", "bomb"), GetOptions{})
 		_ = exCode(t, err, data.CodeTooLarge, data.ReasonPart)
 		fine := exGet(t, tab, conversation, jsonObject("id", "fine"))
 		if got := len(exValue(t, fine, "entries").([]any)); got != 500 {
@@ -2893,9 +2893,9 @@ func TestExample19Jobs(t *testing.T) {
 						outMu.Lock()
 						text := out.Snapshot().Text
 						outMu.Unlock()
-						_, err := ctx.State().Change(func(draft *delta.Object) (any, error) {
+						_, err := ctx.State().Change(ctx, func(draft *delta.Object) (any, error) {
 							return nil, draft.Set("output", text)
-						}, ctx, ChangeOptions{})
+						}, ChangeOptions{})
 						return len(text), err
 					}
 					progress := output.NewProgress(write, func(err error) { errs.push(HostError{Kind: "progress_failed", Error: err}) }, 50)
@@ -3131,7 +3131,7 @@ func TestExample20Tables(t *testing.T) {
 					return nil, err
 				},
 				"hits": func(id delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					row, err := table.Get(store.Row{"id": id}, ctx)
+					row, err := table.Get(ctx, store.Row{"id": id})
 					if err != nil || row == nil {
 						return float64(0), err
 					}
@@ -3143,7 +3143,7 @@ func TestExample20Tables(t *testing.T) {
 						cursor := after.(string)
 						options.After = &cursor
 					}
-					page, err := table.Page(open, 1, ctx, options)
+					page, err := table.Page(ctx, open, 1, options)
 					if err != nil {
 						return nil, err
 					}
@@ -3158,7 +3158,7 @@ func TestExample20Tables(t *testing.T) {
 					return result, nil
 				}),
 				"finished": exMethod(func(_ *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
-					count, err := table.Count(store.NewQuery(edits).Where(func(row store.ColumnRefs) store.Condition { return store.Eq(row["done"], true) }), ctx)
+					count, err := table.Count(ctx, store.NewQuery(edits).Where(func(row store.ColumnRefs) store.Condition { return store.Eq(row["done"], true) }))
 					return float64(count), err
 				}),
 			}), nil
@@ -3244,7 +3244,7 @@ func TestExample21PersistedDocuments(t *testing.T) {
 					return nil, err
 				}),
 				"read": func(id delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					body, err := notesDoc.Get(id.(string), ctx)
+					body, err := notesDoc.Get(ctx, id.(string))
 					if err != nil || body == nil {
 						return "(none)", err
 					}
@@ -3312,7 +3312,7 @@ func TestExample22Migrations(t *testing.T) {
 					}),
 					"dump": exMethod(func(_ *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
 						lines := []any{}
-						rows := edits.Rows(store.NewQuery(definition), ctx)
+						rows := edits.Rows(ctx, store.NewQuery(definition))
 						for {
 							entry, ok, err := rows.Next(ctx)
 							if err != nil {
@@ -3388,13 +3388,13 @@ func TestExample23KeyedWatches(t *testing.T) {
 			// Pinned while this attempt lives, and loaded before the object goes live.
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"pinned": Expose(pinned)}, map[string]contracts.MethodFunction{
 				"write": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
-					_, err := handle.Change(exParam(args, "id"), func(draft *delta.Object) (any, error) {
+					_, err := handle.Change(ctx, exParam(args, "id"), func(draft *delta.Object) (any, error) {
 						return nil, draft.Set("body", args.Value("body"))
-					}, ctx)
+					})
 					return nil, err
 				}),
 				"remove": func(id delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					return nil, handle.Retire(id.(string), ctx)
+					return nil, handle.Retire(ctx, id.(string))
 				},
 			}), nil
 		}, ServeOptions{})
@@ -3404,13 +3404,13 @@ func TestExample23KeyedWatches(t *testing.T) {
 	_, pinnedFrames := exWatch(t, background, ref.Member("pinned"))
 	exCall(t, ref, "write", jsonObject("id", "pinned", "body", "buy milk"))
 	// A watch of one key; an absent key gives `undefined` (watch it once it exists, or pin it with `at`).
-	absent, err := notes.Watch("later", background)
+	absent, err := notes.Watch(background, "later")
 	must(t, err)
 	if absent != nil {
 		t.Fatalf("watch of an absent key = %v, want none", absent)
 	}
 	exCall(t, ref, "write", jsonObject("id", "later", "body", "call Anna"))
-	laterWatch, err := notes.Watch("later", background)
+	laterWatch, err := notes.Watch(background, "later")
 	must(t, err)
 	if laterWatch == nil {
 		t.Fatal("watch of a present key: none")
@@ -3462,12 +3462,12 @@ func TestExample24KeyedMembers(t *testing.T) {
 				Keyed: map[string]contracts.KeyedWatchable[delta.JsonValue]{"profiles": ExposeKeyed(handle)},
 				Methods: map[string]contracts.MethodFunction{
 					"set": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
-						_, err := handle.Change(exParam(args, "user"), func(draft *delta.Object) (any, error) {
+						_, err := handle.Change(ctx, exParam(args, "user"), func(draft *delta.Object) (any, error) {
 							if err := draft.Set("name", args.Value("name")); err != nil {
 								return nil, err
 							}
 							return nil, draft.Set("status", args.Value("status"))
-						}, ctx)
+						})
 						return nil, err
 					}),
 				},
@@ -3662,9 +3662,9 @@ func TestExample28PersistedJobs(t *testing.T) {
 					logs.add(fmt.Sprintf("run %s: from done = %v", exParam(args.(*delta.JsonObject), "path"), mustState(ctx).Value("done")))
 					// Progress, deferred: published at once, stored within 100 ms (or with the next immediate change).
 					deferred := documents.CommitPersistence{Kind: documents.CommitDeferred, WithinMs: new(100.0)}
-					if _, err := ctx.State().Change(func(draft *delta.Object) (any, error) {
+					if _, err := ctx.State().Change(ctx, func(draft *delta.Object) (any, error) {
 						return nil, draft.Set("done", draft.Get("done").(float64)+1)
-					}, ctx, ChangeOptions{Persistence: &deferred}); err != nil {
+					}, ChangeOptions{Persistence: &deferred}); err != nil {
 						return nil, err
 					}
 					behaviour.Lock()
@@ -3895,7 +3895,7 @@ func TestExample29Registries(t *testing.T) {
 	}
 	earlyRead := make(chan early, 1)
 	go func() {
-		value, err := host.Registry(registries.Registry[any, any](http), background, GetOptions{})
+		value, err := host.Registry(background, registries.Registry[any, any](http), GetOptions{})
 		earlyRead <- early{value, err}
 	}()
 	mustLoad(t)(host.Load([]HostFacet{
@@ -4137,7 +4137,7 @@ func TestExample31ParkedDependencies(t *testing.T) {
 	scopeEventually(t, "header parked waiting", func() bool { return strings.HasPrefix(exStateNow(t, headerRef), "failed, waiting") })
 	// 3. A getter waits through `waiting` up to its readyTimeout, then rejects with the cause (a hold just shows it).
 	timeout := 200 * time.Millisecond
-	if _, err := tab.Get(panel, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: &timeout}); err == nil {
+	if _, err := tab.Get(background, panel, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: &timeout}); err == nil {
 		t.Fatal("get gave up: resolved")
 	}
 	// 4. Time passes: no timer runs for the parked panel, its factory is not run again.

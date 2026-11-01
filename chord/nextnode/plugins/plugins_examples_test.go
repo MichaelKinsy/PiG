@@ -133,11 +133,11 @@ func TestExample35PluginsLoadEditMarkBuildRollOut(t *testing.T) {
 		var err error
 		switch contract {
 		case "example.notes":
-			ref, err = server.Get(notesContractOf("example"), delta.NewJsonObject(0), background, host.GetOptions{})
+			ref, err = server.Get(background, notesContractOf("example"), delta.NewJsonObject(0), host.GetOptions{})
 		case "example.clock":
-			ref, err = server.Get(clockContract(contract), delta.NewJsonObject(0), background, host.GetOptions{})
+			ref, err = server.Get(background, clockContract(contract), delta.NewJsonObject(0), host.GetOptions{})
 		default:
-			ref, err = server.Get(itemContract(contract, version), delta.NewJsonObject(0), background, host.GetOptions{})
+			ref, err = server.Get(background, itemContract(contract, version), delta.NewJsonObject(0), host.GetOptions{})
 		}
 		if err != nil {
 			t.Fatal(err)
@@ -411,7 +411,7 @@ func TestExample38WatchAndRollout(t *testing.T) {
 // refOf is a reference to the local contract on h.
 func refOf(t *testing.T, h host.Host, contract *contracts.Contract) *host.Reference {
 	t.Helper()
-	ref, err := h.Get(contract, delta.NewJsonObject(0), background, host.GetOptions{})
+	ref, err := h.Get(background, contract, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -479,11 +479,11 @@ func TestExample36PluginFailures(t *testing.T) {
 	if len(loaded.Failed) != 1 || loaded.Failed[0].Plugin != "@example/weather" || loaded.Failed[0].Error.Error() != `plugin "@example/weather": weather: no API key configured` {
 		t.Fatalf("1. left out: %+v", loaded.Failed)
 	}
-	weather, err := h.Hold(oneMemberContract("example.weather", 1, "celsius", "int"), delta.NewJsonObject(0), background, host.GetOptions{})
+	weather, err := h.Hold(background, oneMemberContract("example.weather", 1, "celsius", "int"), delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	forecast, err := h.Hold(textContract("example.forecast"), delta.NewJsonObject(0), background, host.GetOptions{})
+	forecast, err := h.Hold(background, textContract("example.forecast"), delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

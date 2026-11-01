@@ -283,7 +283,7 @@ func runWorkerFixture() {
 		}
 		if calls := behaviour.LocalCalls; calls != 0 {
 			time.AfterFunc(300*time.Millisecond, func() {
-				echo, err := worker.Get(fixtureEcho, delta.JsonObjectOf(), chordctx.Background(), host.GetOptions{})
+				echo, err := worker.Get(chordctx.Background(), fixtureEcho, delta.JsonObjectOf(), host.GetOptions{})
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err)
 					return
@@ -299,7 +299,7 @@ func runWorkerFixture() {
 				echo.Release()
 			})
 		}
-		busy, err := worker.Get(fixtureBusy, delta.JsonObjectOf(), ctx, host.GetOptions{})
+		busy, err := worker.Get(ctx, fixtureBusy, delta.JsonObjectOf(), host.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -329,7 +329,7 @@ func fixtureCore(worker host.Host) host.Facet {
 				},
 				Methods: map[string]contracts.MethodFunction{
 					"set": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-						_, err := counts.Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("tasks", args) }, ctx)
+						_, err := counts.Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("tasks", args) })
 						return nil, err
 					},
 				},
@@ -358,7 +358,7 @@ func fixtureCore(worker host.Host) host.Facet {
 					}
 					// After the call settled (its ctx sealed, maybe this object ended): through the host.
 					time.AfterFunc(time.Duration(ms.(float64))*time.Millisecond, func() {
-						counts, err := worker.Get(fixtureBusy, delta.JsonObjectOf(), chordctx.Background(), host.GetOptions{})
+						counts, err := worker.Get(chordctx.Background(), fixtureBusy, delta.JsonObjectOf(), host.GetOptions{})
 						if err != nil {
 							return
 						}

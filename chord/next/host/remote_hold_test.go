@@ -1261,7 +1261,7 @@ func TestHoldRetriesAcrossLinksQuiesceAtTheirBudget(t *testing.T) {
 				must(t, worker.Close(background))
 			}()
 			rhSettleLinks(down, up)
-			a, err := server.Hold(localA, jsonObject(), background, GetOptions{})
+			a, err := server.Hold(background, localA, jsonObject(), GetOptions{})
 			must(t, err)
 			rhWaitFor(t, func() bool { return rhRefState(a) == RefStateFailed })
 			if state := rhState(a); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {

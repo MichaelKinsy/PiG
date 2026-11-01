@@ -1899,7 +1899,7 @@ func (e *exposedKeyed) keyed() documents.KeyedHandle {
 
 // Get is the document at key; found is false when absent.
 func (e *exposedKeyed) Get(ctx context.Context, key string) (delta.JsonValue, bool, error) {
-	value, err := e.keyed().Get(key, ctx)
+	value, err := e.keyed().Get(ctx, key)
 	if err != nil || value == nil {
 		return nil, false, err
 	}
@@ -1908,7 +1908,7 @@ func (e *exposedKeyed) Get(ctx context.Context, key string) (delta.JsonValue, bo
 
 // Watch is a watch of the document at key that follows its address.
 func (e *exposedKeyed) Watch(ctx context.Context, key string) (chord.WatchHandle[delta.JsonValue], error) {
-	return e.keyed().Watch(key, ctx)
+	return e.keyed().Watch(ctx, key)
 }
 
 // At is, in a factory only, the document at key as a watchable.

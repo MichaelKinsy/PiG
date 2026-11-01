@@ -155,7 +155,7 @@ func kmServeProviders(h FacetHost, registry *kmRegistry) error {
 // kmSet sets the n of key `key` of notes.
 func kmSet(t testing.TB, notes *documents.Keyed, key string, n float64) {
 	t.Helper()
-	_, err := notes.Change(key, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", n) }, background)
+	_, err := notes.Change(background, key, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", n) })
 	must(t, err)
 }
 
@@ -195,15 +195,15 @@ func kmServe(t *testing.T, which string) *kmServed {
 	}, loadedOptions{})
 	served := &kmServed{Host: host, Registry: registry}
 	var err error
-	served.A, err = host.Get(kmProvider, jsonObject("id", "a"), background, GetOptions{})
+	served.A, err = host.Get(background, kmProvider, jsonObject("id", "a"), GetOptions{})
 	must(t, err)
-	served.B, err = host.Get(kmProvider, jsonObject("id", "b"), background, GetOptions{})
+	served.B, err = host.Get(background, kmProvider, jsonObject("id", "b"), GetOptions{})
 	must(t, err)
 	kmSet(t, registry.provider("a"), "k", 1)
 	kmSet(t, registry.provider("b"), "k", 2)
-	served.Exposer, err = host.Get(kmExposer, jsonObject(), background, GetOptions{})
+	served.Exposer, err = host.Get(background, kmExposer, jsonObject(), GetOptions{})
 	must(t, err)
-	served.Viewer, err = host.Get(kmViewer, jsonObject("id", float64(1)), background, GetOptions{})
+	served.Viewer, err = host.Get(background, kmViewer, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	return served
 }
@@ -239,7 +239,7 @@ func kmN(n float64) *delta.JsonObject { return jsonObject("n", n) }
 func kmRetry(t testing.TB, host Host, exposer *Reference) {
 	t.Helper()
 	exposer.Retry()
-	again, err := host.Get(kmExposer, jsonObject(), background, GetOptions{})
+	again, err := host.Get(background, kmExposer, jsonObject(), GetOptions{})
 	must(t, err)
 	again.Release()
 }
@@ -324,7 +324,7 @@ func TestReferenceKeysRebindingLoadsAColdPersistedKeyOfTheNewMemberOnceTheNewIns
 		}, ServeOptions{})
 	}
 	seed, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return serveDurable(h) }, loadedOptions{Store: st})
-	_, err := seed.Get(durable, jsonObject(), background, GetOptions{})
+	_, err := seed.Get(background, durable, jsonObject(), GetOptions{})
 	must(t, err)
 	kmSet(t, memos.Load(), "k", 10)
 	must(t, seed.Close(background))
@@ -355,12 +355,12 @@ func TestReferenceKeysRebindingLoadsAColdPersistedKeyOfTheNewMemberOnceTheNewIns
 		}
 		return h.Serve(kmViewer, kmViewerFactory, ServeOptions{})
 	}, loadedOptions{Store: st})
-	exposer, err := host.Get(kmExposer, jsonObject(), background, GetOptions{})
+	exposer, err := host.Get(background, kmExposer, jsonObject(), GetOptions{})
 	must(t, err)
-	viewer, err := host.Get(kmViewer, jsonObject("id", float64(1)), background, GetOptions{})
+	viewer, err := host.Get(background, kmViewer, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	failLiveThen(host, registry.exposer(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil), exposer.Retry)
-	again, err := host.Get(kmExposer, jsonObject(), background, GetOptions{})
+	again, err := host.Get(background, kmExposer, jsonObject(), GetOptions{})
 	must(t, err)
 	again.Release()
 	// The key loads from the store after the new instance went live: one frame then.
@@ -470,7 +470,7 @@ func kmColdServe(t *testing.T, which string) *kmCold {
 			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{Store: st})
-	_, err := seed.Get(kmColdProvider, jsonObject(), background, GetOptions{})
+	_, err := seed.Get(background, kmColdProvider, jsonObject(), GetOptions{})
 	must(t, err)
 	kmSet(t, seeded.Load(), "k", 1)
 	must(t, seed.Close(background))
@@ -506,12 +506,12 @@ func kmColdServe(t *testing.T, which string) *kmCold {
 		}
 		return h.Serve(kmViewer, kmViewerFactory, ServeOptions{})
 	}, loadedOptions{Store: st})
-	_, err = host.Get(kmColdProvider, jsonObject(), background, GetOptions{})
+	_, err = host.Get(background, kmColdProvider, jsonObject(), GetOptions{})
 	must(t, err)
-	_, err = host.Get(kmProvider, jsonObject("id", "b"), background, GetOptions{})
+	_, err = host.Get(background, kmProvider, jsonObject("id", "b"), GetOptions{})
 	must(t, err)
 	kmSet(t, registry.provider("b"), "k", 2)
-	exposer, err := host.Get(kmExposer, jsonObject(), background, GetOptions{})
+	exposer, err := host.Get(background, kmExposer, jsonObject(), GetOptions{})
 	must(t, err)
 	return &kmCold{Host: host, Errors: errs, Registry: registry, Exposer: exposer, Gate: gate, Store: st}
 }
@@ -525,7 +525,7 @@ type kmGot struct {
 func kmGetViewer(host Host, ctx context.Context) <-chan kmGot {
 	done := make(chan kmGot, 1)
 	go func() {
-		ref, err := host.Get(kmViewer, jsonObject("id", float64(1)), ctx, GetOptions{})
+		ref, err := host.Get(ctx, kmViewer, jsonObject("id", float64(1)), GetOptions{})
 		done <- kmGot{ref: ref, err: err}
 	}()
 	return done
@@ -568,7 +568,7 @@ func TestReferenceKeysAKeyWhoseFirstPinStillLoadsTheObjectFailsAndStaysFailedThe
 	c := kmColdServe(t, "a")
 	c.hold()
 	abort, cancel := chordctx.WithCancel(background)
-	viewer, err := c.Host.Hold(kmViewer, jsonObject("id", float64(1)), background, GetOptions{})
+	viewer, err := c.Host.Hold(background, kmViewer, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	loading := kmGetViewer(c.Host, abort)
 	<-c.Gate.entered
@@ -631,7 +631,7 @@ func TestReferenceKeysAKeyedWatchWhoseObjectClosesWhileItIsSetUpRejectsWithTheOb
 				return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(handle)}}, nil
 			}, ServeOptions{})
 		}, loadedOptions{})
-		exposer, err := host.Get(kmExposer, jsonObject(), background, GetOptions{})
+		exposer, err := host.Get(background, kmExposer, jsonObject(), GetOptions{})
 		must(t, err)
 		kmSet(t, notes.Load(), "a", 1)
 		outcome := make(chan string, 1)
@@ -686,7 +686,7 @@ func TestReferenceKeysChainsAndReleasesAKeyReexposedThroughTwoObjectsHoldsWithTh
 		}, ServeOptions{})
 	}, loadedOptions{})
 	for _, id := range []string{"a", "b"} {
-		_, err := host.Get(kmProvider, jsonObject("id", id), background, GetOptions{})
+		_, err := host.Get(background, kmProvider, jsonObject("id", id), GetOptions{})
 		must(t, err)
 		n := float64(2)
 		if id == "a" {
@@ -694,9 +694,9 @@ func TestReferenceKeysChainsAndReleasesAKeyReexposedThroughTwoObjectsHoldsWithTh
 		}
 		kmSet(t, registry.provider(id), "k", n)
 	}
-	middle, err := host.Get(kmExposer, jsonObject(), background, GetOptions{})
+	middle, err := host.Get(background, kmExposer, jsonObject(), GetOptions{})
 	must(t, err)
-	viewer, err := host.Get(outerViewer, jsonObject(), background, GetOptions{})
+	viewer, err := host.Get(background, outerViewer, jsonObject(), GetOptions{})
 	must(t, err)
 	values := kmWatch(t, viewer.Member("value"))
 	failLive(registry.exposer(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil))
@@ -725,7 +725,7 @@ func TestReferenceKeysAConsumerReleasedWhileTheObjectReactivatesLeavesNoHoldBehi
 		s.Registry.setWhich("b")
 		s.Exposer.Retry()
 		s.Viewer.Release()
-		again, err := s.Host.Get(kmExposer, jsonObject(), background, GetOptions{})
+		again, err := s.Host.Get(background, kmExposer, jsonObject(), GetOptions{})
 		must(t, err)
 		again.Release()
 		// The viewer's teardown releases its references.
@@ -776,7 +776,7 @@ func TestReferenceKeysAKeyWhoseFirstPinStillLoadsAtStartupScenario20AstraKeepsTh
 		}, ServeOptions{})
 	}
 	seed, _ := loaded(t, facet, loadedOptions{Store: st})
-	_, err := seed.Get(pinStore, jsonObject(), background, GetOptions{})
+	_, err := seed.Get(background, pinStore, jsonObject(), GetOptions{})
 	must(t, err)
 	kmSet(t, memos.Load(), "k", 4)
 	must(t, seed.Close(background))
@@ -795,7 +795,7 @@ func TestReferenceKeysAKeyWhoseFirstPinStillLoadsAtStartupScenario20AstraKeepsTh
 	}
 	gate.Release()
 	must(t, <-loading)
-	ref, err := host.Get(reader, jsonObject(), background, GetOptions{})
+	ref, err := host.Get(background, reader, jsonObject(), GetOptions{})
 	must(t, err)
 	nexttest.RequireJSONEqual(t, kmMember(t, ref, "value"), kmN(4))
 	must(t, host.Close(background))
@@ -934,7 +934,7 @@ func TestReferenceKeysAReleasedKeyLeavesItsDocumentFinalReviewCollectsAReference
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				Keyed: map[string]contracts.KeyedWatchable[delta.JsonValue]{"rows": ExposeKeyed(handle)},
 				Methods: map[string]contracts.MethodFunction{"set": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					_, err := handle.Change("a", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(2)) }, ctx)
+					_, err := handle.Change(ctx, "a", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(2)) })
 					return nil, err
 				}},
 			}}, nil
@@ -1016,7 +1016,7 @@ func TestReferenceKeysKeysAcrossARestartAndAFailedRePinACommitAdmittedToAWatched
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: kmServeKeys(handles, func(context.Context) error { return nil })}}, background))
 	keys := refGet(t, host, kmKeys, jsonObject())
 	change := func(n float64) error {
-		_, err := handles.at(-1).Change("k", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", n) }, background)
+		_, err := handles.at(-1).Change(background, "k", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", n) })
 		return err
 	}
 	must(t, change(1))

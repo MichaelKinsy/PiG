@@ -138,7 +138,7 @@ func TestRetirementReachesWatchesAsInitialWithRetiredTrue(t *testing.T) {
 		t.Fatal(err)
 	}
 	changes := nexttest.ChangesOf(watch)
-	if _, err := list.Change(slotPush("a"), background); err != nil {
+	if _, err := list.Change(background, slotPush("a")); err != nil {
 		t.Fatal(err)
 	}
 	if err := list.Retire(background); err != nil {
@@ -156,7 +156,7 @@ func TestARetireAndARecreateOfAPresentDocumentInOneTransactionOneFrameRetiredThe
 	ListV1 := slotListV1(t)
 	var list *Singleton
 	o, first := activated(t, objectOptions{}, func(a *attempt) { list = a.Singleton(ListV1) })
-	if _, err := list.Change(slotPush("a"), background); err != nil {
+	if _, err := list.Change(background, slotPush("a")); err != nil {
 		t.Fatal(err)
 	}
 	watch, err := list.Watch(background)
@@ -198,7 +198,7 @@ func TestAcrossAttemptsKeepInMemoryDocumentsAcrossAFailureAndRetryInitialIsTaken
 		t.Fatal(err)
 	}
 	changes := nexttest.ChangesOf(watch)
-	if _, err := handles[0].Change(slotPush("a"), background); err != nil {
+	if _, err := handles[0].Change(background, slotPush("a")); err != nil {
 		t.Fatal(err)
 	}
 	slotRestart(t, o, first, func(a *attempt) { handles = append(handles, a.Singleton(List)) })
@@ -207,7 +207,7 @@ func TestAcrossAttemptsKeepInMemoryDocumentsAcrossAFailureAndRetryInitialIsTaken
 		t.Fatal(err)
 	}
 	nexttest.RequireJSONEqual(t, value, obj("items", []any{"a"}))
-	if _, err := handles[1].Change(slotPush("b"), background); err != nil {
+	if _, err := handles[1].Change(background, slotPush("b")); err != nil {
 		t.Fatal(err)
 	}
 	o.delivered()
@@ -222,7 +222,7 @@ func TestAcrossAttemptsDropTheInMemoryDocumentsALaterFactoryNoLongerDeclaresThei
 	ListV1 := slotListV1(t)
 	var list *Singleton
 	o, first := activated(t, objectOptions{}, func(a *attempt) { list = a.Singleton(ListV1) })
-	if _, err := list.Change(slotPush("a"), background); err != nil {
+	if _, err := list.Change(background, slotPush("a")); err != nil {
 		t.Fatal(err)
 	}
 	watch, err := list.Watch(background)
@@ -241,7 +241,7 @@ func TestAcrossAttemptsKeepThemAcrossAThrowingFactoryOnlyAFactoryThatReturnsDrop
 	ListV1 := slotListV1(t)
 	var handles []*Singleton
 	o, first := activated(t, objectOptions{}, func(a *attempt) { handles = append(handles, a.Singleton(ListV1)) })
-	if _, err := handles[0].Change(slotPush("a"), background); err != nil {
+	if _, err := handles[0].Change(background, slotPush("a")); err != nil {
 		t.Fatal(err)
 	}
 	first.Fail()
@@ -317,10 +317,10 @@ func TestAcrossAttemptsMigrateInMemoryWhenALaterAttemptDeclaresANewerVersionTheO
 		_, err := draft.Array("items").Push("a")
 		return nil, err
 	}
-	if _, err := lists[0].Change(push, background); err != nil {
+	if _, err := lists[0].Change(background, push); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := notes[0].Change("k", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", 5.0) }, background); err != nil {
+	if _, err := notes[0].Change(background, "k", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", 5.0) }); err != nil {
 		t.Fatal(err)
 	}
 	watch, err := lists[0].Watch(background)
@@ -334,7 +334,7 @@ func TestAcrossAttemptsMigrateInMemoryWhenALaterAttemptDeclaresANewerVersionTheO
 		t.Fatal(err)
 	}
 	nexttest.RequireJSONEqual(t, value, obj("entries", []any{obj("text", "a")}))
-	got, err := notes[1].Get("k", background)
+	got, err := notes[1].Get(background, "k")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,7 +343,7 @@ func TestAcrossAttemptsMigrateInMemoryWhenALaterAttemptDeclaresANewerVersionTheO
 	if err == nil || err.Error() != "list: a handle of version 1; the documents are at version 2" {
 		t.Fatalf("stale list.Value() = %v", err)
 	}
-	_, err = notes[0].Get("k", background)
+	_, err = notes[0].Get(background, "k")
 	if slotErrorCode(err) != data.CodeReleased {
 		t.Fatalf("stale notes.Get = %v, want released", err)
 	}
@@ -464,10 +464,10 @@ func TestPersistedSingletonsLoadOncePerObjectAtActivationNotAgainOnARetryAndSurv
 	Prefs := slotPrefs(t)
 	first := slotPrefsIn(t, chordStore, Prefs, background)
 	nexttest.RequireJSONEqual(t, first.value(t), obj("theme", "light", "n", 0.0))
-	if _, err := first.prefs.Change(slotChange("theme", "dark"), background); err != nil {
+	if _, err := first.prefs.Change(background, slotChange("theme", "dark")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := first.prefs.Change(slotChange("n", 1.0), background); err != nil {
+	if _, err := first.prefs.Change(background, slotChange("n", 1.0)); err != nil {
 		t.Fatal(err)
 	}
 	first.object.End()
@@ -493,7 +493,7 @@ func TestPersistedSingletonsLoadOncePerObjectAtActivationNotAgainOnARetryAndSurv
 func TestPersistedSingletonsMigrateAStoredOlderVersionAtLoadTheNextChangeWritesTheMigratedBaseBack(t *testing.T) {
 	chordStore := memoryStore(t, true)
 	old := slotPrefsIn(t, chordStore, slotPrefs(t), background)
-	if _, err := old.prefs.Change(slotChange("n", 1.0), background); err != nil {
+	if _, err := old.prefs.Change(background, slotChange("n", 1.0)); err != nil {
 		t.Fatal(err)
 	}
 	old.object.End()
@@ -507,7 +507,7 @@ func TestPersistedSingletonsMigrateAStoredOlderVersionAtLoadTheNextChangeWritesT
 	})
 	host := slotPrefsIn(t, chordStore, V2, background)
 	nexttest.RequireJSONEqual(t, host.value(t), obj("theme", "migrated", "n", 1.0))
-	if _, err := host.prefs.Change(slotChange("n", 2.0), background); err != nil {
+	if _, err := host.prefs.Change(background, slotChange("n", 2.0)); err != nil {
 		t.Fatal(err)
 	}
 	kinds := slotOutboxKinds(t, chordStore)
@@ -530,7 +530,7 @@ func TestPersistedSingletonsFailTheActivationBrokenForANewerStoredVersionOrAnoth
 		CheckpointWhen: func(*JsonObject, []delta.Op, CheckpointInfo) bool { return false },
 	})
 	writer := slotPrefsIn(t, chordStore, V2, background)
-	if _, err := writer.prefs.Change(slotChange("n", 1.0), background); err != nil {
+	if _, err := writer.prefs.Change(background, slotChange("n", 1.0)); err != nil {
 		t.Fatal(err)
 	}
 	writer.object.End()

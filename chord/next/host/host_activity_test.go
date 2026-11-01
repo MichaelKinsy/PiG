@@ -272,9 +272,9 @@ func TestHostActivityCountsHoldsArrivingOverLinksAndServedHereNotItsOwnReference
 	if got := activityOf(l.Server); got != (ActivityCounts{}) {
 		t.Fatalf("activity = %+v, want zero", got)
 	}
-	notes, err := l.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+	notes, err := l.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 	must(t, err)
-	own, err := l.Server.Get(Notes, jsonObject("session", "S2"), background, GetOptions{})
+	own, err := l.Server.Get(background, Notes, jsonObject("session", "S2"), GetOptions{})
 	must(t, err)
 	defer own.Release()
 	if got := activityOf(l.Server).References; got != 1 {
@@ -291,7 +291,7 @@ func TestHostActivityCountsHoldsArrivingOverLinksAndServedHereNotItsOwnReference
 func TestHostActivityCountsAHoldPlacedHereFromItsArrivalBoundOrNot(t *testing.T) {
 	l := linked(t, func(FacetHost) error { return nil }, linkedOptions{})
 	defer closeHosts(t, l.Client, l.Server)
-	missing, err := l.Client.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
+	missing, err := l.Client.Hold(background, Notes, jsonObject("session", "S1"), GetOptions{})
 	must(t, err)
 	transported(l.Links[0], l.Links[1])
 	if state := refStateOf(missing); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
@@ -315,9 +315,9 @@ func TestHostActivityCountsAHoldPlacedHereFromItsArrivalBoundOrNot(t *testing.T)
 func TestHostActivityCountsMethodCallsRunningOnThisHostUntilTheySettle(t *testing.T) {
 	l := linked(t, func(h FacetHost) error { _, err := serveNotes(h, nil); return err }, linkedOptions{})
 	defer closeHosts(t, l.Client, l.Server)
-	remoteRef, err := l.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+	remoteRef, err := l.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 	must(t, err)
-	localRef, err := l.Server.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+	localRef, err := l.Server.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 	must(t, err)
 	calls := make(chan error, 2)
 	for _, ref := range []*Reference{remoteRef, localRef} {
@@ -365,7 +365,7 @@ func TestHostActivityPublishesOncePerMicrotaskTurnWithChanges(t *testing.T) {
 		return h.Serve(activityCounter, func(*delta.JsonObject, Self) (contracts.Implementation, error) { return bumpImplementation() }, ServeOptions{})
 	}, loadedOptions{})
 	defer closeHosts(t, host)
-	counter, err := host.Get(activityCounter, jsonObject(), background, GetOptions{})
+	counter, err := host.Get(background, activityCounter, jsonObject(), GetOptions{})
 	must(t, err)
 	watch, err := inSection(host, func() (chord.WatchHandle[delta.JsonValue], error) { return host.Activity().Watch(background) })
 	must(t, err)
@@ -399,7 +399,7 @@ func TestHostActivityGivesASlowWatcherTheNewestCountsOnceItIsFree(t *testing.T) 
 		return h.Serve(activityCounter, func(*delta.JsonObject, Self) (contracts.Implementation, error) { return bumpImplementation() }, ServeOptions{})
 	}, loadedOptions{})
 	defer closeHosts(t, host)
-	counter, err := host.Get(activityCounter, jsonObject(), background, GetOptions{})
+	counter, err := host.Get(background, activityCounter, jsonObject(), GetOptions{})
 	must(t, err)
 	watch, err := inSection(host, func() (chord.WatchHandle[delta.JsonValue], error) { return host.Activity().Watch(background) })
 	must(t, err)
@@ -451,7 +451,7 @@ func TestHostActivitySchedulesNothingWhileNobodyWatchesOrDerivesFromIt(t *testin
 	}, loadedOptions{})
 	defer closeHosts(t, host)
 	defer release()
-	ref, err := host.Get(counter, jsonObject(), background, GetOptions{})
+	ref, err := host.Get(background, counter, jsonObject(), GetOptions{})
 	must(t, err)
 	_, err = ref.Call("bump", nil, background)
 	must(t, err)
@@ -504,7 +504,7 @@ func TestHostActivityFeedsDerivesWhichRecomputeInThePublishingBatch(t *testing.T
 		}, ServeOptions{})
 	})
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/core", Facet: facet}}, background))
-	ref, err := host.Get(busy, jsonObject(), background, GetOptions{})
+	ref, err := host.Get(background, busy, jsonObject(), GetOptions{})
 	must(t, err)
 	member := ref.Member("busy")
 	watch, err := member.Watch(background)
@@ -537,7 +537,7 @@ func TestHostActivityLingeringCountsLiveObjectsKeptByTheirTypesLinger(t *testing
 		}, ServeOptions{Linger: &linger})
 	}, linkedOptions{Loop: loop})
 	defer closeHosts(t, l.Client, l.Server)
-	kept, err := l.Client.Get(Kept, jsonObject(), background, GetOptions{})
+	kept, err := l.Client.Get(background, Kept, jsonObject(), GetOptions{})
 	must(t, err)
 	kept.Release()
 	transported(l.Links[0], l.Links[1])
@@ -545,7 +545,7 @@ func TestHostActivityLingeringCountsLiveObjectsKeptByTheirTypesLinger(t *testing
 		t.Fatalf("activity = %+v, want references 0 lingering 1", got)
 	}
 	// A new reference within the linger takes it back.
-	again, err := l.Client.Get(Kept, jsonObject(), background, GetOptions{})
+	again, err := l.Client.Get(background, Kept, jsonObject(), GetOptions{})
 	must(t, err)
 	if got := activityOf(l.Server); got.References != 1 || got.Lingering != 0 {
 		t.Fatalf("activity = %+v, want references 1 lingering 0", got)

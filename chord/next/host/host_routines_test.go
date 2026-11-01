@@ -1744,7 +1744,7 @@ func TestRoutinesActAsTheOwnersCallerPrincipal(t *testing.T) {
 			return contracts.Implementation{Variant: "v"}, nil
 		}, ServeOptions{})
 	}, linkedOptions{Child: guestPrincipal("S1")})
-	_, err := l.Client.Get(watcher, jsonObject(), background, GetOptions{})
+	_, err := l.Client.Get(background, watcher, jsonObject(), GetOptions{})
 	must(t, err)
 	if got := receive(t, seen); !reflect.DeepEqual(got, any(guestPrincipal("S1"))) {
 		t.Fatalf("principal = %v, want guest S1", got)

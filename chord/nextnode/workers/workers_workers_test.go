@@ -395,7 +395,7 @@ func TestFixRound2AThrowingAuthorizeRefusesTheHoldForbiddenTheErrorStaysPrivateR
 		t.Fatal(err)
 	}
 	loadHost(t, remote)
-	notes, err := remote.Hold(fixtureNotes, delta.JsonObjectOf("id", "S1"), background, host.GetOptions{})
+	notes, err := remote.Hold(background, fixtureNotes, delta.JsonObjectOf("id", "S1"), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -573,7 +573,7 @@ func TestGC100AddressesStartedAndStoppedLeaveNoStateNoRecordNoSuspension(t *test
 		for index := range 20 {
 			group.Go(func() {
 				id := fmt.Sprintf("R%d", batch*20+index)
-				notes, err := f.server.Get(fixtureNotes, delta.JsonObjectOf("id", id), background, host.GetOptions{})
+				notes, err := f.server.Get(background, fixtureNotes, delta.JsonObjectOf("id", id), host.GetOptions{})
 				if err != nil {
 					t.Error(err)
 					return

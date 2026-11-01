@@ -85,10 +85,10 @@ func serveAdaptedV2(h FacetHost, refuse bool) error {
 				if err := items.Change(func(draft *delta.Object) { _, _ = draft.Array("items").Push(jsonObject("text", text, "tag", tag)) }, ctx); err != nil {
 					return nil, err
 				}
-				if _, err := notes.Change(text.(string), func(draft *delta.Object) (any, error) {
+				if _, err := notes.Change(ctx, text.(string), func(draft *delta.Object) (any, error) {
 					_ = draft.Set("title", text)
 					return nil, draft.Set("body", tag)
-				}, ctx); err != nil {
+				}); err != nil {
 					return nil, err
 				}
 				return jsonObject("count", float64(len(items.Value().Value("items").([]any)))), nil
@@ -447,7 +447,7 @@ func adaptedKeyedFacet(contract *contracts.Contract, member, key string, extra b
 			implementation := contracts.Implementation{Members: contracts.VariantImplementation{
 				Keyed: map[string]contracts.KeyedWatchable[delta.JsonValue]{member: ExposeKeyed(docs)},
 				Methods: map[string]contracts.MethodFunction{"set": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					_, err := docs.Change(key, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", args) }, ctx)
+					_, err := docs.Change(ctx, key, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", args) })
 					return nil, err
 				}},
 			}}
@@ -1480,7 +1480,7 @@ func TestKeyedMappingsPerMemberMapsOneDocumentExposedAsTwoKeyedMembersThroughEac
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				Keyed: map[string]contracts.KeyedWatchable[delta.JsonValue]{"first": ExposeKeyed(rows), "second": ExposeKeyed(rows)},
 				Methods: map[string]contracts.MethodFunction{"set": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					_, err := rows.Change("a", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", args) }, ctx)
+					_, err := rows.Change(ctx, "a", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", args) })
 					return nil, err
 				}},
 			}}, nil

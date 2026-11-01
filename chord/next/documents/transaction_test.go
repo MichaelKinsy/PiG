@@ -536,7 +536,7 @@ func TestTransactionsCommitTheirOtherChangesWhenTheyRetireAnAbsentDocument(t *te
 
 func TestTransactionsDraftARetiredDocumentAnewWatchesGetARootReplacement(t *testing.T) {
 	one, _ := objects(t, nil)
-	_, err := one.a.Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(3)) }, background)
+	_, err := one.a.Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(3)) })
 	requireNoError(t, err)
 	frames := nexttest.FramesOf(watchOf(t, one.o, one.a))
 	_, err = one.attempt.Tx(func(tx *Transaction) (any, error) {
@@ -564,7 +564,7 @@ func TestTheInMemoryChangesCostSettlesWithinFiveHops(t *testing.T) {
 	one := ownedObject(t, 1, nil, &micro)
 	for range 3 {
 		before := micro.Load()
-		_, err := one.a.Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", nOf(draft)+1) }, background)
+		_, err := one.a.Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", nOf(draft)+1) })
 		requireNoError(t, err)
 		if hops := micro.Load() - before; hops > 5 {
 			t.Fatalf("an in-memory change took %d hops, want at most 5", hops)
@@ -765,7 +765,7 @@ func TestTheSealFenceDiscardsTheTransactionHoldingTheLineAtTheSealTheLineIsFreeI
 	<-entered
 	s.restart(t)
 	// The next attempt's transaction runs while the cut one's callback still waits.
-	_, err := s.handles[1].Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(2)) }, background)
+	_, err := s.handles[1].Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(2)) })
 	requireNoError(t, err)
 	close(gate)
 	requireReleased(t, awaitTx(t, first).err, "")
@@ -786,13 +786,13 @@ func TestTheSealFenceRefusesASealedAttemptsTransactionsWaitingForTheLineAndEvery
 	<-entered
 	queued := make(chan txResult, 1)
 	go func() {
-		value, err := s.handles[0].Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(1)) }, background)
+		value, err := s.handles[0].Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(1)) })
 		queued <- txResult{value, err}
 	}()
 	waitFor(t, "the change queued on the line", func() bool { return waitingOnLine(s.o) == 1 })
 	s.fail()
 	requireReleased(t, awaitTx(t, queued).err, "")
-	_, err := s.handles[0].Change(func(*delta.Object) (any, error) { return nil, nil }, background)
+	_, err := s.handles[0].Change(background, func(*delta.Object) (any, error) { return nil, nil })
 	requireReleased(t, err, "")
 	txRequireValue(t, s.o, s.handles[0], obj("n", float64(0)))
 	close(gate)
@@ -876,7 +876,7 @@ func rowOf(id string, at int64) store.Row { return store.Row{"id": id, "at": at}
 
 func (s *storedObject) tableRow(t *testing.T, handle *store.TableHandle, id string) store.Row {
 	t.Helper()
-	row, err := handle.Get(store.Row{"id": id}, background)
+	row, err := handle.Get(background, store.Row{"id": id})
 	requireNoError(t, err)
 	return row
 }
@@ -1024,7 +1024,7 @@ func TestTablesInATransactionReadCommittedRowsWithPageAndRowsOverlayOwnWritesWit
 		return nil, nil
 	}, background)
 	requireNoError(t, err)
-	count, err := edits.Count(store.NewQuery(txEdits), background)
+	count, err := edits.Count(background, store.NewQuery(txEdits))
 	requireNoError(t, err)
 	if count != 2 {
 		t.Fatalf("count = %d, want 2", count)
@@ -1065,7 +1065,7 @@ func TestTablesInATransactionWriteNothingOnAThrowOrAnAbortAndRefuseACallbackThat
 	if got := s.store.LastSeq(); got != seq {
 		t.Fatalf("lastSeq = %d, want %d", got, seq)
 	}
-	count, err := edits.Count(store.NewQuery(txEdits), background)
+	count, err := edits.Count(background, store.NewQuery(txEdits))
 	requireNoError(t, err)
 	if count != 0 {
 		t.Fatalf("count = %d, want 0", count)
@@ -1265,7 +1265,7 @@ func TestPersistedDocumentsInATransactionAssignTheCreatedDocumentsIdsByTheirOrde
 		t.Fatalf("kinds = %v, want %v", kinds, want)
 	}
 	// What is stored of `b` is the new record's: the next change is a delta on it.
-	_, err = k.Change("b", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(4)) }, background)
+	_, err = k.Change(background, "b", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(4)) })
 	requireNoError(t, err)
 	next, err := s.store.Outbox().Read(2, 10, background)
 	requireNoError(t, err)
@@ -1280,7 +1280,7 @@ func TestPersistedDocumentsInATransactionAssignTheCreatedDocumentsIdsByTheirOrde
 
 func TestPersistedDocumentsInATransactionDraftAColdKeyedDocumentByLoadingItInsideTheTransactionRefuseACallbackWithAPendingLoad(t *testing.T) {
 	first := storedOn(t, nil, true, nil)
-	_, err := first.k[0].Change("a", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(1)) }, background)
+	_, err := first.k[0].Change(background, "a", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(1)) })
 	requireNoError(t, err)
 	first.o.End()
 	s := storedOn(t, first.store, true, nil)
@@ -1294,7 +1294,7 @@ func TestPersistedDocumentsInATransactionDraftAColdKeyedDocumentByLoadingItInsid
 		return nil, nil
 	}, background)
 	requireNoError(t, err)
-	got, err := k.Get("a", background)
+	got, err := k.Get(background, "a")
 	requireNoError(t, err)
 	requireJSON(t, "a", got, obj("n", float64(2)))
 	// Not awaited: the draft is still loading when the callback returns (the backend is held, so it is underway).
@@ -1338,7 +1338,7 @@ func TestPersistedDocumentsInATransactionSettleAWarmKeyedDraftAtOnce(t *testing.
 		return nil, nil
 	}, background)
 	requireNoError(t, err)
-	got, err := k.Get("a", background)
+	got, err := k.Get(background, "a")
 	requireNoError(t, err)
 	requireJSON(t, "a", got, obj("n", float64(7)))
 }
@@ -1353,7 +1353,7 @@ func TestPersistedDocumentsInATransactionACommitCutAtTheSealWhileItWaitsInTheSto
 	}
 	change := make(chan txResult, 1)
 	go func() {
-		value, err := p.Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(5)) }, background)
+		value, err := p.Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(5)) })
 		change <- txResult{value, err}
 	}()
 	waitFor(t, "the commit queued in the store", func() bool { return commitQueued(s.o) })
@@ -1365,7 +1365,7 @@ func TestPersistedDocumentsInATransactionACommitCutAtTheSealWhileItWaitsInTheSto
 	}
 	next := storedOn(t, s.store, true, nil)
 	txRequireValue(t, next.o, next.p[0], obj("n", float64(0)))
-	_, err := next.p[0].Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(6)) }, background)
+	_, err := next.p[0].Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(6)) })
 	requireNoError(t, err)
 	if got := s.store.LastSeq(); got != 1 {
 		t.Fatalf("lastSeq = %d, want 1", got)
@@ -1379,13 +1379,13 @@ func TestPersistedDocumentsInATransactionAHostClosingWhileAnAdmittedCommitIsInTh
 	held := newHeldWrite()
 	change := make(chan txResult, 1)
 	go func() {
-		value, err := p.Change(func(draft *delta.Object) (any, error) {
+		value, err := p.Change(background, func(draft *delta.Object) (any, error) {
 			s.o.Do(func() {
 				writes := s.o.documents.holder.StageStore(s.store)
 				*writes = append(*writes, held)
 			})
 			return nil, draft.Set("n", float64(5))
-		}, background)
+		})
 		change <- txResult{value, err}
 	}()
 	<-held.entered
@@ -1408,7 +1408,7 @@ func TestPersistedDocumentsInATransactionAHostClosingWhileAnAdmittedCommitIsInTh
 	}
 	next := storedOn(t, s.store, true, nil)
 	txRequireValue(t, next.o, next.p[0], obj("n", float64(5)))
-	_, err := next.p[0].Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(6)) }, background)
+	_, err := next.p[0].Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(6)) })
 	requireNoError(t, err)
 	if got := s.store.LastSeq(); got != 2 {
 		t.Fatalf("lastSeq = %d, want 2", got)

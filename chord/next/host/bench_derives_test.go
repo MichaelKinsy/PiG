@@ -71,7 +71,7 @@ func BenchmarkDerives(b *testing.B) {
 			}}, nil
 		}, ServeOptions{})
 	})}}, background))
-	reference, err := host.Get(benchDiamond, jsonObject(), background, GetOptions{})
+	reference, err := host.Get(background, benchDiamond, jsonObject(), GetOptions{})
 	must(b, err)
 	watch, err := reference.Member("bottom").Watch(background)
 	must(b, err)

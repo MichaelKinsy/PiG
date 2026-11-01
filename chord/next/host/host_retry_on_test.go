@@ -442,7 +442,7 @@ func TestRetryOnRefusesSourcesThatEndWithAnAttemptAReferencesMemberItsOwnWritabl
 		}, ServeOptions{})
 	}, loadedOptions{})
 	for _, which := range []float64{0, 1, 2} {
-		_, err := host.Get(picky, jsonObject("which", which), background, GetOptions{})
+		_, err := host.Get(background, picky, jsonObject("which", which), GetOptions{})
 		want := "app.picky(" + strconv.Itoa(int(which)) + "): self.retryOn takes registry values and constants (sources that outlive the attempt)"
 		if err == nil || !hasText(err.Error(), want) {
 			t.Fatalf("get(which %v) error = %v, want %q", which, err, want)
@@ -499,7 +499,7 @@ func TestRetryOnDoesNotWakeAnObjectByItsOwnContributionsLeavingItFailedLiveNoRet
 			return contracts.Implementation{}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	models, err := host.Registry(retryModels, background, GetOptions{})
+	models, err := host.Registry(background, retryModels, GetOptions{})
 	must(t, err)
 	var watched nexttest.Collector[any]
 	watch, err := models.Watch(background)

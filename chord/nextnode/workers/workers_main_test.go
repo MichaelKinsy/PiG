@@ -168,7 +168,7 @@ func TestTheWorkersIdleStateReadsTheHostsActivityOnlyThroughItsWatch(t *testing.
 	if err := w.follow(); err != nil {
 		t.Fatal(err)
 	}
-	echo, err := h.Get(fixtureEcho, delta.JsonObjectOf(), background, host.GetOptions{})
+	echo, err := h.Get(background, fixtureEcho, delta.JsonObjectOf(), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

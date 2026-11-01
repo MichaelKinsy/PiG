@@ -85,10 +85,10 @@ func notesFactory(label string) func(*delta.JsonObject, data.Principal, host.Sel
 			State: map[string]chordWatchable{"label": host.Expose(state.NewConstant(label)), "count": count},
 			Methods: map[string]contracts.MethodFunction{
 				"add": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					if _, err := doc.Change(func(draft *delta.Object) (any, error) {
+					if _, err := doc.Change(ctx, func(draft *delta.Object) (any, error) {
 						n, _ := draft.Get("n").(float64)
 						return nil, draft.Set("n", n+1)
-					}, ctx); err != nil {
+					}); err != nil {
 						return nil, err
 					}
 					value, err := doc.Value()
@@ -174,11 +174,11 @@ func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThen
 	server, worker := linkedHosts(t, "test")
 	mustLoad(t)(plugins.Load(worker, PluginsLoad{Kind: "worker", Modules: HostPackages{}}, background))
 	mustLoad(t)(plugins.Load(server, PluginsLoad{Kind: "server", Modules: HostPackages{}}, background))
-	notes, err := server.Get(notesContract, delta.NewJsonObject(0), background, host.GetOptions{})
+	notes, err := server.Get(background, notesContract, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	index, err := server.Get(itemContract("test.index", 1), delta.NewJsonObject(0), background, host.GetOptions{})
+	index, err := server.Get(background, itemContract("test.index", 1), delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -137,7 +137,7 @@ func TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLi
 		t.Fatal(err)
 	}
 	socket.Start()
-	reference, err := tab.Get(who, delta.JsonObjectOf(), background, host.GetOptions{})
+	reference, err := tab.Get(background, who, delta.JsonObjectOf(), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -309,7 +309,7 @@ func set(writable state.Writable[any], value HttpContribution) error { return wr
 // name calls the tunnel's `name` with args.
 func (tn tunnel) name(t *testing.T, server *testServer, args ...string) {
 	t.Helper()
-	reference, err := server.host.Get(tn.contract, delta.JsonObjectOf(), background, host.GetOptions{})
+	reference, err := server.host.Get(background, tn.contract, delta.JsonObjectOf(), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

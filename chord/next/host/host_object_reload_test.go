@@ -691,7 +691,7 @@ func TestReloadThePureSwapStartsAWritableAtItsNewInitialValueAndReplacesTheContr
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
 	defer closeHosts(t, host)
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: app("a")}, {Name: "@test/tools", Facet: registry}}, background))
-	value, err := host.Registry(registries.Registry[any, any](tools), background, GetOptions{})
+	value, err := host.Registry(background, registries.Registry[any, any](tools), GetOptions{})
 	must(t, err)
 	read := func() any {
 		var current any

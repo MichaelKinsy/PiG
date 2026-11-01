@@ -197,7 +197,7 @@ func TestEvaluatorAgreesWithSQLite(t *testing.T) {
 			stored, err := db.All(`SELECT * FROM t ORDER BY id`)
 			must(t, err)
 			for index, each := range stored {
-				read, err := T.Rows.Decode(each, background)
+				read, err := T.Rows.Decode(background, each)
 				must(t, err)
 				want, err := ApplySet(set, evaluatorRows[index], "t")
 				must(t, err)
@@ -243,7 +243,7 @@ func TestEvaluatorAgreesWithSQLite(t *testing.T) {
 			stored, err := db.All(`SELECT * FROM t ORDER BY id`)
 			must(t, err)
 			for index, row := range stored {
-				read, err := T.Rows.Decode(row, background)
+				read, err := T.Rows.Decode(background, row)
 				must(t, err)
 				want, err := ApplySet(set, evaluatorRows[index], "t")
 				must(t, err)

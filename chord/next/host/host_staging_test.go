@@ -195,15 +195,15 @@ func TestStagingAFactoryThatUsesTheHandlesItDeclaresIsInertNotAFailure(t *testin
 			return
 		}
 		_, _ = singleHandle.Watch(background)
-		_, _ = singleHandle.Change(func(draft *delta.Object) (any, error) { return nil, nil }, background)
+		_, _ = singleHandle.Change(background, func(draft *delta.Object) (any, error) { return nil, nil })
 		_ = singleHandle.Retire(background)
-		_, _ = keyedHandle.Get("a", background)
+		_, _ = keyedHandle.Get(background, "a")
 		_, _ = keyedHandle.At("a")
 		_, _, _ = keyedHandle.Keys(background).Next(background)
-		_, _ = keyedHandle.Change("a", func(draft *delta.Object) (any, error) { return nil, nil }, background)
-		_ = keyedHandle.Retire("a", background)
-		_, _ = table.Get("a", background)
-		_, _ = table.Count(store.NewQuery(items), background)
+		_, _ = keyedHandle.Change(background, "a", func(draft *delta.Object) (any, error) { return nil, nil })
+		_ = keyedHandle.Retire(background, "a")
+		_, _ = table.Get(background, "a")
+		_, _ = table.Count(background, store.NewQuery(items))
 		_ = table.AssertVersion()
 	}
 	host := newHost(t, HostOptions{Store: chordStore, OnError: noopOnError})

@@ -602,7 +602,7 @@ func TestJobStartIsRefusedBeforeItsObjectIsLiveAndOnceItEnded(t *testing.T) {
 			}}, nil
 		}, ServeOptions{})
 	}, jobHostOptions{})
-	item, err := host.Get(jobItemType, jsonObject("id", float64(1)), background, GetOptions{})
+	item, err := host.Get(background, jobItemType, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	expectChordError(t, early, data.CodeNotReady, "")
 	item.Release()
