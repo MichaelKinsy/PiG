@@ -116,7 +116,7 @@ func TestStore(t *testing.T) {
 			// Ports packages/chord/test/next/store/store.test.ts:64 (the it() through :77). LastSeq, Outbox and Close go
 			// through the Store OpenStore returned, as store.test.ts:68 (lastSeq, outbox), :70 (close) and :72 (lastSeq of
 			// the reopened store) read them; Commit is ChordStore's.
-			var store Store = openStoreValueAt(t, path)
+			store := openStoreValueAt(t, path)
 			if store.LastSeq() != 0 || store.Outbox() != nil {
 				t.Fatalf("[lastSeq, outbox] = [%d, %v]", store.LastSeq(), store.Outbox())
 			}
@@ -124,7 +124,7 @@ func TestStore(t *testing.T) {
 				t.Fatalf("first id = %d, want 2", id)
 			}
 			noError(t, store.Close(background))
-			var reopenedValue Store = openStoreValueAt(t, path)
+			reopenedValue := openStoreValueAt(t, path)
 			if reopenedValue.LastSeq() != 1 {
 				t.Fatalf("reopened lastSeq = %d, want 1", reopenedValue.LastSeq())
 			}

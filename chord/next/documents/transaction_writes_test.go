@@ -99,7 +99,9 @@ func TestTablesInATransactionReplayOwnPutUpdateAndDeleteOverTheCommittedRowWithG
 	edits := changeTables(t, s, 1)[0]
 	seedE1(t, s, edits)
 	addHits := func(by int64) func(store.ColumnRefs) store.SetOf {
-		return func(e store.ColumnRefs) store.SetOf { return store.SetOf{store.Assign("hits", store.Add(e["hits"], by))} }
+		return func(e store.ColumnRefs) store.SetOf {
+			return store.SetOf{store.Assign("hits", store.Add(e["hits"], by))}
+		}
 	}
 	_, err := s.self().Tx(func(tx Tx) (any, error) {
 		key := store.Row{"id": "e1"}

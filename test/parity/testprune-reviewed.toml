@@ -634,3 +634,15 @@ path = "chord/nextnode/workers/workers_workers_test.go"
 commit = "f59f4016039310a105a789060419985ed07c795a"
 class = "NOBEHAVIOR"
 reason = "Go only: the expected value is Pi's (workers.test.ts:35 expects `starting` after the hold). A Go worker may be running before a poll of the state sees it, so the test reads the first status from the state's own frames instead of polling."
+
+[[entry]]
+path = "chord/next/host/host_host_test.go"
+commit = "a9c9939258e09cac35f06716f16d712eed3c6e16"
+class = "NOBEHAVIOR"
+reason = "Go language mechanic, no Pi behavior changed: context.Context moved from after the params to the first parameter of Host.Get, Hold and Registry (interface-ledger rule S1, Go convention). The changed lines are call arguments in a new order (background first); every expected value, error text and ordering the tests assert is as before."
+
+[[entry]]
+path = "chord/next/host/host_reference_test.go"
+commit = "a9c9939258e09cac35f06716f16d712eed3c6e16"
+class = "NOBEHAVIOR"
+reason = "Go language mechanic, no Pi behavior changed: context.Context moved from after the params to the first parameter of Host.Get, Hold and Registry (interface-ledger rule S1, Go convention). The changed lines are call arguments in a new order (background first); every expected value, error text and ordering the tests assert is as before."
