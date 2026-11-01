@@ -126,6 +126,8 @@ type Args struct {
 	// NoStdin skips the startup read of piped stdin, so a stdin pipe whose writer never closes does not block startup.
 	// pig divergence (D150): Pi has no such flag.
 	NoStdin bool
+	// Listen is the Unix socket path --listen serves one RPC session per connection on; pig additive (D201).
+	Listen string
 	// ProjectTrustOverride controls project-local resource loading for this run.
 	// nil uses saved/default trust; true is --approve; false is --no-approve.
 	ProjectTrustOverride *bool
@@ -353,6 +355,14 @@ func parseArgs(args []string) Args {
 		case arg == "--no-stdin":
 			// pig divergence (D150): Pi reads stdin until EOF with no opt-out (main.ts:80-97).
 			flags.NoStdin = true
+		case arg == "--listen":
+			// pig additive (D201): --listen path for the multi-session RPC server.
+			if i+1 >= len(args) || strings.HasPrefix(args[i+1], "-") {
+				flags.Diagnostics = append(flags.Diagnostics, argDiagnostic{Type: "error", Message: "--listen requires a socket path"})
+			} else {
+				i++
+				flags.Listen = args[i]
+			}
 		case arg == "--approve" || arg == "-a":
 			flags.ProjectTrustOverride = new(true)
 		case arg == "--no-approve" || arg == "-na":
@@ -408,6 +418,15 @@ func parseArgs(args []string) Args {
 		}
 		i++
 	}
+	if flags.Listen != "" {
+		// pig additive (D201): --listen is valid only for a fresh rpc session per connection.
+		if flags.Mode != "rpc" {
+			flags.Diagnostics = append(flags.Diagnostics, argDiagnostic{Type: "error", Message: "--listen requires --mode rpc"})
+		}
+		if flags.Continue || flags.Resume || flags.Session != "" || flags.SessionID != "" || flags.Fork != "" {
+			flags.Diagnostics = append(flags.Diagnostics, argDiagnostic{Type: "error", Message: "--listen cannot be combined with --continue, --resume, --session, --session-id or --fork"})
+		}
+	}
 	return flags
 }
 
@@ -435,6 +454,7 @@ PiG Options:
   --piglet <name|path>           Run the named Piglet, or the Piglet file at path; a Piglet Binary
                                  built with build.allowOverlays lays it over its own Piglet
   --no-stdin                     Ignore piped stdin (for a stdin pipe that never closes)
+  --listen <path>                Serve one RPC session per connection on the Unix socket at path (with --mode rpc)
 
 PiG keeps its configuration in ~/.pig and never reads or writes ~/.pi.
 
