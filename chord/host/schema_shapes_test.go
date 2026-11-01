@@ -53,9 +53,6 @@ func tNull() Schema                     { return kw("type", "null") }
 func tVoid() Schema                     { return kw("type", "void") }
 func tUnknown() Schema                  { return kw() }
 
-// tLiteral is pi-schema's `lit(value)`: no type.
-func tLiteral(value any) Schema { return kw("const", value) }
-
 // tTypedLiteral is fixtures/schemas.ts `typedLit(value)`: the literal with its JSON type, as TypeBox's `Type.Literal`.
 func tTypedLiteral(value any) Schema {
 	switch value.(type) {

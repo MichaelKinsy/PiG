@@ -9,6 +9,7 @@ package host
 // whose compilation fails makes the functions return the compile error where upstream's `compile` throws.
 
 import (
+	"maps"
 	"math"
 	"reflect"
 	"slices"
@@ -58,11 +59,7 @@ func asSchema(schema any) any {
 func schemaMapOf(schema any) schemaMap {
 	switch typed := asSchema(schema).(type) {
 	case *chordjson.Object:
-		out := make(schemaMap, typed.Len())
-		for key, value := range typed.All() {
-			out[key] = value
-		}
-		return out
+		return maps.Collect(typed.All())
 	case map[string]any:
 		return typed
 	}
@@ -170,7 +167,7 @@ func objectEntries(value any) (keys []string, get func(string) any, ok bool) {
 	if !ok {
 		return nil, nil, false
 	}
-	return object.keys(), func(key string) any { return object.value(key) }, true
+	return object.keys(), object.value, true
 }
 
 func quoteJSON(text string) string { return string(jsstring.AppendString(nil, text)) }
@@ -717,7 +714,7 @@ func (c *cleaner) defaults(schema, value any) any {
 	}
 	for _, key := range object.keys() {
 		known := named && properties.has(key)
-		if !known && !(isRecord && match(key)) {
+		if !known && (!isRecord || !match(key)) {
 			object.set(key, c.defaults(additional, object.value(key)))
 		}
 	}
