@@ -1739,7 +1739,9 @@ func TestExample12Routes(t *testing.T) {
 
 // exFramedPort is an IpcPort over a byte stream pair (a child's stdin and stdout): Pi's Node IPC channel with
 // `serialization: "advanced"`. A frame is a 4-byte length and a leading 0x00 for a link message; anything else is the
-// app's own message.
+// app's own message. Node emits a channel's messages from its event loop, after the synchronous section that made the
+// link (`ipcLink(process)`, `ipcLink(child)`) and so registered its listeners: no message arrives before them. The port
+// reads nothing until start, which the code that made the link calls once it has.
 type exFramedPort struct {
 	reader io.Reader
 	writer io.WriteCloser
@@ -1751,10 +1753,12 @@ type exFramedPort struct {
 }
 
 func newExFramedPort(reader io.Reader, writer io.WriteCloser) *exFramedPort {
-	port := &exFramedPort{reader: reader, writer: writer, connected: true}
-	go port.read()
-	return port
+	return &exFramedPort{reader: reader, writer: writer, connected: true}
 }
+
+// start begins the delivery of the stream's frames to the registered listeners: the event loop's first turn after the
+// section that registered them.
+func (p *exFramedPort) start() { go p.read() }
 
 func (p *exFramedPort) read() {
 	for {
@@ -1924,6 +1928,7 @@ func exRelayWorker(id string) {
 	sessionInfo, notes := exRelayContracts()
 	port := newExFramedPort(os.Stdin, os.Stdout)
 	workerLink := link.IpcLink(port)
+	port.start()
 	address := Session.Address(jsonObject("id", id))
 	worker, err := CreateHost(HostOptions{Address: &address, Principal: workerPrincipal(id), OnError: func(err HostError) {
 		fmt.Fprintln(os.Stderr, "worker error:", err.Kind, err.Error)
@@ -2007,7 +2012,10 @@ func TestExample13Relay(t *testing.T) {
 			childrenMu.Lock()
 			children = append(children, child)
 			childrenMu.Unlock()
-			return ResolvedLink{Link: link.IpcLink(newExFramedPort(stdout, stdin)), Principal: workerPrincipal(id), Trusted: true}, nil
+			port := newExFramedPort(stdout, stdin)
+			made := link.IpcLink(port)
+			port.start()
+			return ResolvedLink{Link: made, Principal: workerPrincipal(id), Trusted: true}, nil
 		},
 	}, background))
 	mustLoad(t)(server.Load(nil, background))
