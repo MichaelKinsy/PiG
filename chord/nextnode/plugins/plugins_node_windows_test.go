@@ -13,7 +13,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unsafe"
 
 	"github.com/Microsoft/go-winio"
 	"golang.org/x/sys/windows"
@@ -100,16 +99,13 @@ func TestListenNodeIsANamedPipeOnlyTheCurrentUserCanOpen(t *testing.T) {
 	if dacl == nil || dacl.AceCount != 1 {
 		t.Fatalf("DACL = %v, want one entry", descriptor)
 	}
-	var ace *windows.ACCESS_ALLOWED_ACE
-	if err := windows.GetAce(dacl, 0, &ace); err != nil {
-		t.Fatal(err)
-	}
 	user, err := windows.GetCurrentProcessToken().GetTokenUser()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE || !windows.EqualSid((*windows.SID)(unsafe.Pointer(&ace.SidStart)), user.User.Sid) {
-		t.Errorf("DACL = %v, want one allowing %v", descriptor, user.User.Sid)
+	// The one entry allows the current user: `D:P(A;;<rights>;;;<sid>)`.
+	if sddl := descriptor.String(); !strings.Contains(sddl, "D:P(A;;") || !strings.HasSuffix(sddl, ";;;"+user.User.Sid.String()+")") {
+		t.Errorf("DACL = %s, want one entry allowing %v", sddl, user.User.Sid)
 	}
 	if err := <-accepted; err != nil {
 		t.Fatal(err)
