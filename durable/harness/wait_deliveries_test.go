@@ -7,6 +7,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
 
@@ -18,9 +19,9 @@ import (
 // Pi packages/chord/src/watch.ts #schedule/#drain, harness/submissions.ts wait, harness/scheduler.ts waitForIdle and
 // waitForTask: a commit publishes a batch to a started watch whose callback is not running, and queueMicrotask(#drain) enters the
 // listener, up to its first await, before the code that awaits a wait's promise resumes. A Go caller resumes on another goroutine, so
-// each wait awaits the deliveries scheduled before it (Session.AwaitDeliveriesEntered), until their listeners returned, are parked in a
-// wait or are blocked behind a lock (internal/entered.AwaitBlocked: in Pi the synchronous part of a listener always completes, and a Go
-// listener that waits for a lock is where an upstream one awaits), never until a listener finishes a wait of its own.
+// each wait awaits the deliveries scheduled before it (Session.AwaitDeliveriesEntered), until they started: Go cannot tell when a
+// listener reaches its first wait, and one that waits for a lock the caller holds would never be entered, so the guarantee is the start,
+// never the listener's return or its first wait.
 
 // settledChat is a chat whose one run finished, so every wait of it returns at once: nothing but the delivery decides when it does.
 type settledChat struct {
