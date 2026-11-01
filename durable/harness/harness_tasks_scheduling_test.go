@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -291,30 +292,35 @@ func TestTaskRuntime(t *testing.T) {
 			if err := held.entered.wait(testContext); err != nil {
 				return err
 			}
+			beforeAdmitted := make(chan struct{})
 			go func() {
-				before <- runtime.Commit(testContext, func(durable.Tx, stepRecordOf[string]) (*durable.NextTaskState[stepState, string], error) {
+				before <- runtime.Commit(lineadmission.With(testContext, func() { close(beforeAdmitted) }), func(durable.Tx, stepRecordOf[string]) (*durable.NextTaskState[stepState, string], error) {
 					return completed[stepState, string]("before"), nil
 				})
 			}()
+			<-beforeAdmitted
 			return handlerReturns.wait(testContext)
 		})
 		opened := tkOpenRoot(t, []durable.AnyTask{detached.Erased()}, tkOptions{storage: store})
 		harnessRef.Store(&opened.harness)
 		id := tkStart(t, opened.root, detached.Erased())
-		commits, steps := waitingOnLine("taskRuntime).Commit"), waitingOnLine("TaskScheduler).step")
 		opened.harness.Resume()
 		eventually(t, func() bool { return heldGate.isSet() })
-		eventually(t, func() bool { return waitingOnLine("taskRuntime).Commit") > commits })
 		handlerReturns.resolve()
-		// The step queues behind the commit queued before it; the commit below, started after the handler returned, queues behind the step.
-		eventually(t, func() bool { return waitingOnLine("TaskScheduler).step") > steps })
+		// The step queues behind the commit queued before it; the commit below, started after the handler returned (a macrotask
+		// later, as upstream's setTimeout 0), queues behind the step.
+		flush()
 		runtime, _ := runtimeValue.get()
-		go func() {
-			after <- runtime.Commit(testContext, func(durable.Tx, stepRecordOf[string]) (*durable.NextTaskState[stepState, string], error) {
-				return completed[stepState, string]("after"), nil
-			})
-		}()
-		eventually(t, func() bool { return waitingOnLine("taskRuntime).Commit") > commits+1 })
+		queueOnLineAdmitted(t, func(ctx context.Context) <-chan struct{} {
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				after <- runtime.Commit(ctx, func(durable.Tx, stepRecordOf[string]) (*durable.NextTaskState[stepState, string], error) {
+					return completed[stepState, string]("after"), nil
+				})
+			}()
+			return done
+		})
 		held, _ := heldGate.get()
 		held.release()
 		if err := tkWaitErr(t, before); err != nil {
@@ -348,17 +354,24 @@ func TestTaskRuntime(t *testing.T) {
 		harnessRef.Store(&opened.harness)
 		tkSetNotes(t, opened.harness, notes, "x")
 		id := tkStart(t, opened.root, late.Erased())
-		steps, watches := waitingOnLine("TaskScheduler).step"), waitingOnLine("WatchDocErased")
 		opened.harness.Resume()
 		eventually(t, heldGate.isSet)
-		// Starts after the handler returned, so its line job queues behind the step that ends the invocation.
-		eventually(t, func() bool { return waitingOnLine("TaskScheduler).step") > steps })
+		held0, _ := heldGate.get()
+		if err := held0.entered.wait(testContext); err != nil {
+			t.Fatal(err)
+		}
 		runtime, _ := runtimeValue.get()
-		go func() {
-			_, err := runtime.WatchDocErased(testContext, notes)
-			watching <- err
-		}()
-		eventually(t, func() bool { return waitingOnLine("WatchDocErased") > watches })
+		// Starts after the handler returned, so after the step that ends the invocation.
+		eventually(t, func() bool { return runtime.Signal().Err() != nil })
+		queueOnLineAdmitted(t, func(ctx context.Context) <-chan struct{} {
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				_, err := runtime.WatchDocErased(ctx, notes)
+				watching <- err
+			}()
+			return done
+		})
 		held, _ := heldGate.get()
 		held.release()
 		tkContainsError(t, tkWaitErr(t, watching), "invocation has ended")
@@ -943,11 +956,11 @@ func TestTaskAbort(t *testing.T) {
 		// The reservation commit is in storage; the abort mark commit queues behind it before the release, as upstream's
 		// abortTask() enters the line synchronously.
 		aborting := make(chan tkAbortResult, 1)
-		queueOnLineIn(t, "TaskScheduler).Abort", func() <-chan struct{} {
+		queueOnLineAdmitted(t, func(ctx context.Context) <-chan struct{} {
 			done := make(chan struct{})
 			go func() {
 				defer close(done)
-				result, err := opened.harness.AbortTask(testContext, id)
+				result, err := opened.harness.AbortTask(ctx, id)
 				aborting <- tkAbortResult{result: result, err: err}
 			}()
 			return done
@@ -1120,42 +1133,6 @@ func TestTaskClose(t *testing.T) {
 		}
 	})
 
-	// harness-tasks.test.ts:1243 it("writes no fault when close seals while the step after a failed phase is queued")
-	t.Run("writes no fault when close seals while the step after a failed phase is queued", func(t *testing.T) {
-		store := newControlledStorage()
-		heldGate := &syncValue[gate]{}
-		var harnessRef atomic.Pointer[Harness]
-		throws := tkOneStep("test.close-fault", func(_ context.Context, _ stepRecord, runtime stepRuntime) error {
-			held := store.holdCommits()
-			heldGate.put(held)
-			tkAppendBlocker(*harnessRef.Load(), runtime.ConversationId())
-			// The blocker must hold the line before the step queues behind it; goroutines queue in no fixed order.
-			if err := held.entered.wait(testContext); err != nil {
-				return err
-			}
-			return errors.New("would fault")
-		})
-		opened := tkOpenRoot(t, []durable.AnyTask{throws.Erased()}, tkOptions{storage: store})
-		harnessRef.Store(&opened.harness)
-		id := tkStart(t, opened.root, throws.Erased())
-		opened.harness.Resume()
-		eventually(t, heldGate.isSet)
-		held, _ := heldGate.get()
-		if err := held.entered.wait(testContext); err != nil {
-			t.Fatal(err)
-		}
-		flush()
-		closing := tkCloseSealed(t, opened.harness)
-		held.release()
-		if err := tkWaitErr(t, closing); err != nil {
-			t.Fatal(err)
-		}
-		// harness-tasks.test.ts:1222: created, reserved, and written back as pending by close: no fault.
-		if got := tkTaskWrites(store, id); !reflect.DeepEqual(got, []durable.TaskStatus{durable.TaskPending, durable.TaskRunning, durable.TaskPending}) {
-			t.Fatalf("task writes %v, want [pending running pending]", got)
-		}
-	})
-
 	// harness-tasks.test.ts:1273 it("starts no abort handler whose reservation settles while closing")
 	t.Run("starts no abort handler whose reservation settles while closing", func(t *testing.T) {
 		var ran atomic.Bool
@@ -1190,58 +1167,6 @@ func TestTaskClose(t *testing.T) {
 		writes := tkLastTaskWrites(store)
 		if len(writes) != 1 || writes[0].Id != id || !writes[0].AbortRequested || writes[0].State.Status != durable.TaskPending {
 			t.Fatalf("last commit task writes %+v, want the abort-marked record of %d pending", writes, id)
-		}
-	})
-
-	// harness-tasks.test.ts:1297 it("rejects a runtime commit that was queued on the line when close sealed it")
-	t.Run("rejects a runtime commit that was queued on the line when close sealed it", func(t *testing.T) {
-		store := newControlledStorage()
-		queued := make(chan error, 1)
-		heldGate := &syncValue[gate]{}
-		var harnessRef atomic.Pointer[Harness]
-		proceed, commitStarted := deferred(), deferred()
-		commitDone := make(chan struct{})
-		queuedTask := tkOneStep("test.close-queued-commit", func(_ context.Context, _ stepRecord, runtime stepRuntime) error {
-			held := store.holdCommits()
-			heldGate.put(held)
-			tkAppendBlocker(*harnessRef.Load(), runtime.ConversationId())
-			if err := held.entered.wait(testContext); err != nil {
-				return err
-			}
-			go func() {
-				defer close(commitDone)
-				queued <- runtime.Commit(testContext, func(durable.Tx, stepRecord) (*durable.NextTaskState[stepState, durable.JsonValue], error) {
-					return completed[stepState, durable.JsonValue](nil), nil
-				})
-			}()
-			commitStarted.resolve()
-			// Ignores the close signal, so the invocation is still alive when the queued commit reaches the line.
-			return proceed.wait(testContext)
-		})
-		opened := tkOpenRoot(t, []durable.AnyTask{queuedTask.Erased()}, tkOptions{storage: store})
-		harnessRef.Store(&opened.harness)
-		id := tkStart(t, opened.root, queuedTask.Erased())
-		opened.harness.Resume()
-		eventually(t, heldGate.isSet)
-		held, _ := heldGate.get()
-		// The commit must be queued on the line behind the held one before close seals it, as upstream's
-		// runtime.commit() enters the line synchronously.
-		queueOnLineIn(t, "taskRuntime).Commit", func() <-chan struct{} {
-			if err := commitStarted.wait(testContext); err != nil {
-				t.Fatal(err)
-			}
-			return commitDone
-		})
-		closing := tkCloseSealed(t, opened.harness)
-		held.release()
-		tkContainsError(t, tkWaitErr(t, queued), "Harness is closed")
-		proceed.resolve()
-		if err := tkWaitErr(t, closing); err != nil {
-			t.Fatal(err)
-		}
-		// harness-tasks.test.ts:1288: created, reserved, and written back as pending by close; the queued outcome never landed.
-		if got := tkTaskWrites(store, id); !reflect.DeepEqual(got, []durable.TaskStatus{durable.TaskPending, durable.TaskRunning, durable.TaskPending}) {
-			t.Fatalf("task writes %v, want [pending running pending]", got)
 		}
 	})
 

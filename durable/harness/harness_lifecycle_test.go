@@ -557,7 +557,7 @@ func TestHarnessClose(t *testing.T) {
 		})
 		_ = held.entered.wait(testContext)
 		var queuedInspect *future[HarnessInspection]
-		queueOnLineIn(t, "harnessImpl).Inspect", func() <-chan struct{} {
+		queueOnLine(t, harness, func() <-chan struct{} {
 			queuedInspect = async(func() (HarnessInspection, error) { return harness.Inspect(testContext) })
 			return queuedInspect.done
 		})

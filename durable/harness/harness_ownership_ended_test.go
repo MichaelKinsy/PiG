@@ -7,11 +7,11 @@ package harness
 // pi: packages/durable/src/harness/scheduler.ts
 
 import (
-	"slices"
 	"context"
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"sync"
 	"testing"
 	"time"

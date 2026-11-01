@@ -275,4 +275,6 @@ func (line inlineLine) LatestHeadMarker(ctx context.Context, conversationId dura
 	return line.storage.FindLatestHeadMarker(ctx, conversationId, atOrBefore)
 }
 
-func (inlineLine) KnownLatestEntryId(durable.ConversationId) (*durable.EntryId, bool) { return nil, false }
+func (inlineLine) KnownLatestEntryId(durable.ConversationId) (*durable.EntryId, bool) {
+	return nil, false
+}

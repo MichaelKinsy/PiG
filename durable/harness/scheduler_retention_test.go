@@ -453,4 +453,3 @@ func (store *scanCounting) ScanSubmissions(ctx context.Context, query durable.Su
 	}
 	return store.Storage.ScanSubmissions(ctx, query, limit, cursor)
 }
-
