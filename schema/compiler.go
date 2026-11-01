@@ -2,9 +2,7 @@ package schema
 
 // Ports packages/schema/src/compiler.ts
 //
-// The compiler: a schema to one check closure, built once. Keywords group by the type they constrain, so a value is classified once per schema, and the common shapes (closed objects, arrays of one item schema, tagged unions, leaf schemas) get one specialized closure each.
-//
-// The upstream compiler builds closures without code generation, and so does this one. Leaf-code inlining and the `INHERITED` flag exist upstream for V8 and the Object.prototype chain; neither has a Go counterpart, because Go calls a closure directly and a map has no inherited members.
+// The compiler: a schema to one check closure, built once. Keywords group by the type they constrain, so a value is classified once per schema, and the common shapes (declared-property objects, arrays of one item schema, tagged unions, bare types) get one specialized closure each.
 
 import (
 	"math"
@@ -41,6 +39,13 @@ func newCompiler(schema JsonSchema, options CompileOptions, dynamic bool) *compi
 		cache:           map[nodeKey]Check{},
 		annotatingCache: map[nodeKey]annotatingCheck{},
 	}
+}
+
+// reset forgets the compile state a failed lazy compile left behind: its caches hold indirections that were never filled, and the dynamic scope still holds the schemas that were being checked.
+func (c *compiler) reset() {
+	c.scope.uris = c.scope.uris[:0]
+	clear(c.cache)
+	clear(c.annotatingCache)
 }
 
 // root is the check of the root schema.

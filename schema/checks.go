@@ -137,28 +137,28 @@ func typeCheck(types []any) Check {
 }
 
 // bytesCheck is a []byte within the length bounds.
-func bytesCheck(min, max float64) Check {
+func bytesCheck(lo, hi float64) Check {
 	return func(v any) bool {
 		b, ok := v.([]byte)
-		return ok && float64(len(b)) >= min && float64(len(b)) <= max
+		return ok && float64(len(b)) >= lo && float64(len(b)) <= hi
 	}
 }
 
-// lengthOk compares the code point count of s with the bounds. UTF-16 units bound code points from both sides (units / 2 <= points <= units), so most strings need no count.
-func lengthOk(s string, min, max float64) bool {
-	units := float64(utf16Len(s))
-	if units < min {
+// lengthOk compares the code point count of s with the bounds. A string of at most max bytes has at most max code points, so a string within a bound and a zero minimum needs no count.
+func lengthOk(s string, lo, hi float64) bool {
+	if lo <= 0 && float64(len(s)) <= hi {
+		return true
+	}
+	n := float64(codePoints(s))
+	if n < lo {
 		return false
 	}
-	if units < 2*min && float64(codePoints(s)) < min {
-		return false
-	}
-	return units <= max || float64(codePoints(s)) <= max
+	return n <= hi
 }
 
 // stringCheck is the string keywords: length bounds, pattern and format.
-func stringCheck(strict bool, min, max float64, re *ecmaregex.Regexp, format FormatCheck) Check {
-	if re != nil && min == 0 && math.IsInf(max, 1) && format == nil {
+func stringCheck(strict bool, lo, hi float64, re *ecmaregex.Regexp, format FormatCheck) Check {
+	if re != nil && lo == 0 && math.IsInf(hi, 1) && format == nil {
 		if strict {
 			return func(v any) bool { s, ok := v.(string); return ok && re.MatchString(s) }
 		}
@@ -166,21 +166,21 @@ func stringCheck(strict bool, min, max float64, re *ecmaregex.Regexp, format For
 	}
 	if re == nil && format == nil {
 		if strict {
-			return func(v any) bool { s, ok := v.(string); return ok && lengthOk(s, min, max) }
+			return func(v any) bool { s, ok := v.(string); return ok && lengthOk(s, lo, hi) }
 		}
-		return func(v any) bool { s, ok := v.(string); return !ok || lengthOk(s, min, max) }
+		return func(v any) bool { s, ok := v.(string); return !ok || lengthOk(s, lo, hi) }
 	}
 	return func(v any) bool {
 		s, ok := v.(string)
 		if !ok {
 			return !strict
 		}
-		return lengthOk(s, min, max) && (re == nil || re.MatchString(s)) && (format == nil || format(s))
+		return lengthOk(s, lo, hi) && (re == nil || re.MatchString(s)) && (format == nil || format(s))
 	}
 }
 
 // numberCheck is the number keywords. mode 0 passes other types, 1 requires a number, 2 an integer.
-func numberCheck(mode int, min, max, xmin, xmax float64, multipleOf *float64) Check {
+func numberCheck(mode int, lo, hi, xmin, xmax float64, multipleOf *float64) Check {
 	return func(v any) bool {
 		n, ok := asNumber(v)
 		if !ok {
@@ -189,7 +189,7 @@ func numberCheck(mode int, min, max, xmin, xmax float64, multipleOf *float64) Ch
 		if mode == 2 && !isInteger(n) {
 			return false
 		}
-		return n >= min && n <= max && n > xmin && n < xmax && (multipleOf == nil || isMultiple(n, *multipleOf))
+		return n >= lo && n <= hi && n > xmin && n < xmax && (multipleOf == nil || isMultiple(n, *multipleOf))
 	}
 }
 
@@ -354,11 +354,11 @@ func propertyNamesCheck(check Check) Check {
 }
 
 // propertyCountCheck is `minProperties` and `maxProperties` (v is an object).
-func propertyCountCheck(min, max float64) Check {
+func propertyCountCheck(lo, hi float64) Check {
 	return func(v any) bool {
 		o, _ := asObject(v)
 		n := float64(o.len())
-		return n >= min && n <= max
+		return n >= lo && n <= hi
 	}
 }
 
@@ -414,7 +414,7 @@ func dependentSchemasCheck(entries []dependentCheck) Check {
 }
 
 // listCheck is the common array: guard, length bounds, prefix items and the items after them, in one closure.
-func listCheck(g guard, min, max float64, prefix []Check, rest Check) Check {
+func listCheck(g guard, lo, hi float64, prefix []Check, rest Check) Check {
 	n := len(prefix)
 	return func(v any) bool {
 		list, ok := v.([]any)
@@ -422,10 +422,10 @@ func listCheck(g guard, min, max float64, prefix []Check, rest Check) Check {
 			return g == guardLoose
 		}
 		length := len(list)
-		if float64(length) < min || float64(length) > max {
+		if float64(length) < lo || float64(length) > hi {
 			return false
 		}
-		m := min2(length, n)
+		m := min(length, n)
 		for i := range m {
 			if !prefix[i](list[i]) {
 				return false
@@ -443,41 +443,34 @@ func listCheck(g guard, min, max float64, prefix []Check, rest Check) Check {
 	}
 }
 
-func min2(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // itemsCheck is the prefix items and the items after them (v is an array).
 func itemsCheck(prefix []Check, rest Check) Check {
 	return listCheck(guardNone, 0, math.Inf(1), prefix, rest)
 }
 
 // lengthCheck is `minItems` and `maxItems` (v is an array).
-func lengthCheck(min, max float64) Check {
+func lengthCheck(lo, hi float64) Check {
 	return func(v any) bool {
 		list, _ := v.([]any)
 		n := float64(len(list))
-		return n >= min && n <= max
+		return n >= lo && n <= hi
 	}
 }
 
 // containsCheck is `contains` with its bounds (v is an array).
-func containsCheck(check Check, min, max float64) Check {
+func containsCheck(check Check, lo, hi float64) Check {
 	return func(v any) bool {
 		list, _ := v.([]any)
 		n := 0.0
 		for _, item := range list {
 			if check(item) {
 				n++
-				if n > max {
+				if n > hi {
 					return false
 				}
 			}
 		}
-		return n >= min
+		return n >= lo
 	}
 }
 

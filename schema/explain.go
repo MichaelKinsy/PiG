@@ -26,16 +26,22 @@ func newExplainer(c *compiler, schema any) *explainer {
 	return &explainer{c: c, schema: schema, rests: map[nodeKey]*Object{}}
 }
 
-// errors returns the errors of value, at least one (value failed the check).
-func (e *explainer) errors(value any) []ValidationError {
+// errors returns the errors of value, at least one (value failed the check), or the error a part of the schema that was never compiled raises.
+func (e *explainer) errors(value any) (result []ValidationError, err error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	defer func() {
+		if r := recover(); r != nil {
+			e.c.reset()
+			result, err = nil, compileFailure(r)
+		}
+	}()
 	var out []ValidationError
 	e.walk(e.schema, e.c.r.rootBase, value, "", &out)
 	if len(out) == 0 {
 		out = append(out, ValidationError{Path: "", Keyword: "schema", Message: "invalid"})
 	}
-	return out
+	return out, nil
 }
 
 func (e *explainer) ok(node any, base string, v any) bool { return e.c.check(node, base)(v) }

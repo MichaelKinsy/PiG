@@ -2,9 +2,7 @@ package schema
 
 // Ports packages/schema/src/builders.ts
 //
-// Schema builders: short functions that return plain JSON Schema objects. The objects are ordinary data: they serialize as JSON and compile with Compile like any other schema.
-//
-// Pi's builders are generic over the TypeScript type of the values they accept (`Schema<T>`, `Static<S>`, `StaticObject<P>`, `Annotations<T>`, `LengthBounds`, `NumberBounds`, `Optional`); those are compile-time types with no Go form. An option object that TypeScript spreads into the schema becomes Option values applied in call order, so members appear in the order the caller wrote them, as the spread produces them.
+// Schema builders: short functions that return plain JSON Schema objects. The objects are ordinary data: they serialize as JSON and compile with Compile like any other schema. An Option is applied in call order, so members appear in the order the caller wrote them. An Option sets its keyword on whatever schema it is given; a keyword that does not apply to the schema's type (`MinItems` on `Str`) is written and has no effect on a value of another type.
 
 import "github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 
@@ -89,8 +87,17 @@ func MaxItems(n int) Option { return keyword("maxItems", float64(n)) }
 // UniqueItems sets `uniqueItems` of an array.
 func UniqueItems(unique bool) Option { return keyword("uniqueItems", unique) }
 
+// ObjOption is an option of Obj: any Option, or Open.
+type ObjOption interface{ applyObject(*optionSet) }
+
+func (o Option) applyObject(s *optionSet) { o(s) }
+
+type openOption struct{}
+
+func (openOption) applyObject(s *optionSet) { s.open = true }
+
 // Open lets an Obj schema allow properties it does not declare, as tool schemas from other systems often do.
-func Open() Option { return func(s *optionSet) { s.open = true } }
+func Open() ObjOption { return openOption{} }
 
 func build(object *Object, options []Option) *Object {
 	set := optionSet{object: object}
@@ -202,7 +209,7 @@ func Opt(name string, schema Schema) Property {
 }
 
 // Obj is a closed object: the given properties (required unless Opt) and no others. The Open option allows other properties, as tool schemas from other systems often do.
-func Obj(properties Properties, options ...Option) Schema {
+func Obj(properties Properties, options ...ObjOption) Schema {
 	props := &Object{}
 	var required []any
 	for _, p := range properties {
@@ -214,7 +221,7 @@ func Obj(properties Properties, options ...Option) Schema {
 	annotations := &Object{}
 	set := optionSet{object: annotations}
 	for _, option := range options {
-		option(&set)
+		option.applyObject(&set)
 	}
 	object := chordjson.ObjectOf("type", "object", "properties", props)
 	if len(required) > 0 {

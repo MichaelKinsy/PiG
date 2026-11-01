@@ -5,7 +5,6 @@ package schema
 // Reference resolution of one compile: schema resources, anchors and JSON Pointers over the root schema and the registered documents. A resolver lives only while a schema compiles (or while its errors are explained).
 
 import (
-	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -271,39 +270,15 @@ func ownMember(node any, key string) (any, bool) {
 	return nil, false
 }
 
-// resolveUri resolves ref against base as `new URL(ref, base).href` does. URNs and other bases a URL parser rejects take fragment-only references.
+// resolveUri resolves ref against base as `new URL(ref, base).href` does. A base or reference the URL parser rejects (a relative reference against a URN, say) takes fragment-only references.
 func resolveUri(ref, base string) string {
-	if u, err := nodeurl.ResolveURL(ref, base); err == nil {
+	if u, err := nodeurl.ResolveReference(ref, base); err == nil {
 		return u.Href()
-	}
-	if u, err := nodeurl.ParseURL(ref); err == nil {
-		return u.Href()
-	}
-	if resolved, ok := resolveHierarchical(ref, base); ok {
-		return resolved
 	}
 	if strings.HasPrefix(ref, "#") {
 		return documentOf(base) + ref
 	}
 	return ref
-}
-
-// resolveHierarchical resolves a relative ref against a base with a hierarchical path (an authority or a leading slash) of a scheme that is not special, such as file or a custom scheme, by RFC 3986.
-func resolveHierarchical(ref, base string) (string, bool) {
-	baseURL, err := url.Parse(base)
-	if err != nil || baseURL.Scheme == "" || baseURL.Opaque != "" {
-		return "", false
-	}
-	refURL, err := url.Parse(ref)
-	if err != nil {
-		return "", false
-	}
-	resolved := baseURL.ResolveReference(refURL)
-	if refURL.Fragment == "" && !strings.Contains(ref, "#") {
-		resolved.Fragment = ""
-		resolved.RawFragment = ""
-	}
-	return resolved.String(), true
 }
 
 // documentOf is uri without its fragment.

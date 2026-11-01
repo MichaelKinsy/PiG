@@ -1,8 +1,6 @@
 package schema
 
 // Ports packages/schema/src/validator.ts
-//
-// Compile: a schema to a Validator, whose Check is the fast boolean path and whose Errors explains failures.
 
 import (
 	"errors"
@@ -10,15 +8,14 @@ import (
 )
 
 // Compile compiles schema into a Validator. It fails if the schema is malformed or a `$ref` names nothing (register other documents with options.Schemas). The schema is read, never modified.
-func Compile(schema JsonSchema, options ...CompileOptions) (*Validator, error) {
-	var opts CompileOptions
-	if len(options) > 0 {
-		opts = options[0]
-	}
+func Compile(schema JsonSchema, options CompileOptions) (*Validator, error) {
 	var v *Validator
 	err := recoverCompile(func() {
-		c := compile(schema, opts)
-		v = &Validator{check: c.root(), schema: schema, options: opts, serial: c.dynamic}
+		c := compile(schema, options)
+		v = &Validator{check: c.root(), schema: schema, options: options}
+		if c.dynamic {
+			v.serial, v.dynamicCompiler = true, c
+		}
 	})
 	if err != nil {
 		return nil, err
@@ -26,34 +23,48 @@ func Compile(schema JsonSchema, options ...CompileOptions) (*Validator, error) {
 	return v, nil
 }
 
-// Validator is a compiled schema.
+// Validator is a compiled schema. It is safe for concurrent use.
 //
-// A validator whose schema has a bookended `$dynamicRef` tracks the dynamic scope in state that a check mutates, so its checks run one at a time; every other validator checks concurrently.
+// A validator whose schema has a bookended `$dynamicRef` tracks the dynamic scope in state that a check mutates, and compiles the dynamic targets on first use, so its checks run one at a time.
 type Validator struct {
 	check   Check
 	schema  JsonSchema
 	options CompileOptions
-	serial  bool
-	mu      sync.Mutex
+
+	serial          bool
+	mu              sync.Mutex
+	dynamicCompiler *compiler
 
 	explainerOnce sync.Once
 	explainer     *explainer
 	explainerErr  error
 }
 
-// Check reports whether value is valid. It is a method value that may be passed around without the validator: the function keeps the validator alive.
-func (v *Validator) Check(value any) bool {
-	if v.serial {
-		v.mu.Lock()
-		defer v.mu.Unlock()
+// Check reports whether value is valid. The error is the one a `$dynamicRef` target that is malformed or names nothing raises when a check first reaches it, as that compile error does upstream; every other validator never fails.
+func (v *Validator) Check(value any) (bool, error) {
+	if !v.serial {
+		return v.check(value), nil
 	}
-	return v.check(value)
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	return v.checkSerial(value)
 }
 
-// Errors explains why value is invalid: one error per failing keyword, none when it is valid. The explanation is built on the first failure and kept, so a validator whose values always pass never pays for it.
-func (v *Validator) Errors(value any) []ValidationError {
-	if v.Check(value) {
-		return nil
+func (v *Validator) checkSerial(value any) (valid bool, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			v.dynamicCompiler.reset()
+			err = compileFailure(r)
+		}
+	}()
+	return v.check(value), nil
+}
+
+// Errors explains why value is invalid: one error per failing keyword, none when it is valid. The explanation is built on the first failure and kept, so a validator whose values always pass never pays for it. The error is the one the explanation raises where Pi's `errors` throws: a subschema that is neither an object nor a boolean, or a reference that names nothing, in a part of the schema the check never compiled.
+func (v *Validator) Errors(value any) ([]ValidationError, error) {
+	valid, err := v.Check(value)
+	if err != nil || valid {
+		return nil, err
 	}
 	v.explainerOnce.Do(func() {
 		v.explainerErr = recoverCompile(func() {
@@ -61,20 +72,25 @@ func (v *Validator) Errors(value any) []ValidationError {
 		})
 	})
 	if v.explainerErr != nil {
-		panic(v.explainerErr)
+		return nil, v.explainerErr
 	}
 	return v.explainer.errors(value)
+}
+
+// compileFailure is the error of a recovered compile failure; any other panic continues.
+func compileFailure(r any) error {
+	failure, ok := r.(compileError)
+	if !ok {
+		panic(r)
+	}
+	return errors.New(failure.message)
 }
 
 // recoverCompile runs build and returns the error of a compile that failed.
 func recoverCompile(build func()) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			failure, ok := r.(compileError)
-			if !ok {
-				panic(r)
-			}
-			err = errors.New(failure.message)
+			err = compileFailure(r)
 		}
 	}()
 	build()
@@ -85,7 +101,9 @@ func recoverCompile(build func()) (err error) {
 func compile(schema JsonSchema, options CompileOptions) *compiler {
 	plain := newCompiler(schema, options, false)
 	if restarted(func() { plain.root() }) {
-		return newCompiler(schema, options, true)
+		dynamic := newCompiler(schema, options, true)
+		dynamic.root()
+		return dynamic
 	}
 	return plain
 }

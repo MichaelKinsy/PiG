@@ -7,11 +7,11 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 	"unsafe"
 
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // jsonObject views an object value, an *Object or a map[string]any, without allocating.
@@ -171,10 +171,12 @@ func (o jsonObject) objectMember(key string) (jsonObject, bool) {
 	return asObject(value)
 }
 
-// utf16Len is the length of s in UTF-16 code units, JavaScript's string length.
+// utf16Len is the length of s in UTF-16 code units, JavaScript's string length. A lone surrogate is held as WTF-8 (see internal/jsstring).
 func utf16Len(s string) int {
 	n := 0
-	for _, r := range s {
+	for i := 0; i < len(s); {
+		r, size := jsstring.DecodeRuneInString(s[i:])
+		i += size
 		n++
 		if r >= 0x10000 {
 			n++
@@ -183,8 +185,31 @@ func utf16Len(s string) int {
 	return n
 }
 
-// codePoints is the number of Unicode code points of s: JSON Schema string lengths count code points, not UTF-16 units.
-func codePoints(s string) int { return utf8.RuneCountInString(s) }
+// codePoints is the number of Unicode code points of s: JSON Schema string lengths count code points, not UTF-16 units. Like the upstream count, it reads UTF-16 units and treats any high surrogate unit as the first half of a pair: the unit after it is not counted, whatever it is, so "\uD800a" counts 1.
+func codePoints(s string) int {
+	n := 0
+	skip := false
+	unit := func(u rune) {
+		if skip {
+			skip = false
+			return
+		}
+		n++
+		skip = u >= 0xd800 && u <= 0xdbff
+	}
+	for i := 0; i < len(s); {
+		r, size := jsstring.DecodeRuneInString(s[i:])
+		i += size
+		if r >= 0x10000 {
+			r -= 0x10000
+			unit(0xd800 + r>>10)
+			unit(0xdc00 + r&0x3ff)
+		} else {
+			unit(r)
+		}
+	}
+	return n
+}
 
 // strictEquals is `a === b` for primitives; containers are never strictly equal here.
 func strictEquals(a, b any) bool {
@@ -267,11 +292,13 @@ func writeJSON(b *strings.Builder, v any) {
 	}
 }
 
-// writeJSONString quotes s as JSON.stringify does: no escaping of <, >, & or U+2028.
+// writeJSONString quotes s as JSON.stringify does: no escaping of <, >, & or U+2028, and a lone surrogate (WTF-8 in s) as its lowercase \u escape.
 func writeJSONString(b *strings.Builder, s string) {
 	const hex = "0123456789abcdef"
 	b.WriteByte('"')
-	for _, r := range s {
+	for i := 0; i < len(s); {
+		r, size := jsstring.DecodeRuneInString(s[i:])
+		i += size
 		switch {
 		case r == '"':
 			b.WriteString(`\"`)
@@ -287,9 +314,11 @@ func writeJSONString(b *strings.Builder, s string) {
 			b.WriteString(`\r`)
 		case r == '\t':
 			b.WriteString(`\t`)
-		case r < 0x20:
-			b.WriteString(`\u00`)
-			b.WriteByte(hex[r>>4])
+		case r < 0x20 || (r >= 0xd800 && r <= 0xdfff):
+			b.WriteString(`\u`)
+			b.WriteByte(hex[r>>12&15])
+			b.WriteByte(hex[r>>8&15])
+			b.WriteByte(hex[r>>4&15])
 			b.WriteByte(hex[r&15])
 		default:
 			b.WriteRune(r)

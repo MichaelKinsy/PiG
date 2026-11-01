@@ -163,7 +163,7 @@ func annotateArray(prefix []Check, rest, contains Check, minContains, maxContain
 		if !ok {
 			return true
 		}
-		m := min2(len(list), len(prefix))
+		m := min(len(list), len(prefix))
 		for i := range m {
 			if !prefix[i](list[i]) {
 				return false
