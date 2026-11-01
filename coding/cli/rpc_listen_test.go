@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/coding/rpcclient"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
@@ -275,23 +276,46 @@ func TestListenSessionsRunConcurrently(t *testing.T) {
 	for i, prompt := range prompts {
 		p := conns[i]
 		ends := 0
-		p.await("agent_end of "+prompt, func(r rpcRecord) bool {
+		count := func(r rpcRecord) {
 			if r["type"] == "agent_end" {
 				ends++
+			}
+		}
+		p.await("agent_end of "+prompt, func(r rpcRecord) bool { count(r); return r["type"] == "agent_end" })
+		p.sendJSON(map[string]any{"id": "messages", "type": "get_messages"})
+		var messages rpcRecord
+		p.await("get_messages of "+prompt, func(r rpcRecord) bool {
+			count(r)
+			if r["type"] == "response" && r["id"] == "messages" {
+				messages = r
 				return true
 			}
 			return false
 		})
-		messages := requestResponse(p, "messages", "get_messages")
 		encoded, _ := json.Marshal(messages["data"])
 		for _, other := range prompts {
-			if has := strings.Contains(string(encoded), `"`+other+`"`) || strings.Contains(string(encoded), `"text":"`+other); has != (other == prompt) {
+			if has := strings.Contains(string(encoded), `"text":"`+other+`"`); has != (other == prompt) {
 				t.Fatalf("connection %q: messages mention %q = %v: %s", prompt, other, has, encoded)
 			}
 		}
 		if ends != 1 {
 			t.Fatalf("connection %q saw %d agent_end records, want 1", prompt, ends)
 		}
+	}
+	// Overlap: connection 0 runs a three-second bash command; the others must answer while it runs.
+	start := time.Now()
+	conns[0].sendJSON(map[string]any{"id": "slow", "type": "bash", "command": "sleep 3"})
+	for i, p := range conns[1:] {
+		if state := requestResponse(p, "during", "get_state"); state["success"] != true {
+			t.Fatalf("connection %d during the first one's bash: %v", i+1, state)
+		}
+	}
+	if took := time.Since(start); took >= 3*time.Second {
+		t.Fatalf("the other connections answered after %s, not while connection 0's bash ran", took)
+	}
+	conns[0].await("bash response", func(r rpcRecord) bool { return r["type"] == "response" && r["id"] == "slow" })
+	if took := time.Since(start); took < 3*time.Second {
+		t.Fatalf("bash finished after %s, before its sleep", took)
 	}
 	conns[0].closeInput()
 	conns[0].waitForEOF()
@@ -302,6 +326,65 @@ func TestListenSessionsRunConcurrently(t *testing.T) {
 	}
 	server.signal(syscall.SIGTERM)
 	server.waitForExit()
+}
+
+func TestListenHostsForgetsAClosedConnectionsHost(t *testing.T) {
+	hosts := &listenHosts{}
+	a, b := &cliBuild{Host: &subprocess.Host{}}, &cliBuild{Host: &subprocess.Host{}}
+	removeA := hosts.add(a)
+	hosts.add(b)
+	hosts.add(&cliBuild{})
+	if got := hosts.len(); got != 2 {
+		t.Fatalf("live hosts = %d, want 2", got)
+	}
+	removeA()
+	if got := hosts.len(); got != 1 {
+		t.Fatalf("live hosts after a connection ended = %d, want 1", got)
+	}
+	if _, held := hosts.m[a.Host]; held {
+		t.Fatal("the ended connection's Host is still held")
+	}
+}
+
+func TestListenASecondSIGTERMEndsAServerWhoseSessionDisposeHangs(t *testing.T) {
+	dir := shortTempDir(t)
+	report := filepath.Join(dir, "report")
+	fixture, err := filepath.Abs(filepath.Join("testdata", "listen-hang-shutdown.mjs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "pig.sock")
+	server := startListenServer(t, append(listenEnv(t, dir), "LISTEN_SHUTDOWN_REPORT="+report),
+		"--mode", "rpc", "--listen", path, "--model", "test-faux/echo", "--no-session", "-e", fixture)
+	server.path = path
+	conn := server.dial()
+	requestResponse(conn, "ready", "get_state")
+	server.signal(syscall.SIGTERM)
+	// The handler's report proves the first signal's dispose is the one hanging.
+	deadline := time.Now().Add(server.budget)
+	for {
+		if data, _ := os.ReadFile(report); strings.Contains(string(data), "session_shutdown") {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("session_shutdown never reached the handler\n%s", server.stderr())
+		}
+		select {
+		case <-server.exited:
+			t.Fatalf("the server exited before the second signal: %d\n%s", server.code, server.stderr())
+		case <-time.After(20 * time.Millisecond):
+		}
+	}
+	select {
+	case <-server.exited:
+		t.Fatalf("the server exited with a hung dispose and one signal: %d", server.code)
+	default:
+	}
+	server.signal(syscall.SIGTERM)
+	if code := server.waitForExit(); code != 128+int(syscall.SIGTERM) {
+		t.Fatalf("exit %d, want %d\n%s", code, 128+int(syscall.SIGTERM), server.stderr())
+	}
+	server.requireSocketGone()
 }
 
 // waitForEOF consumes records until the server closes the connection.
