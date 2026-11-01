@@ -121512,6 +121512,17 @@
       "shapeHash": "sha256:33cc3cc53e82a37ce13a88a83910be45d04a31a4d6580336ca6785b690c924c8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#WriteRustWarmCell",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "WriteRustWarmCell",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(dir string, sdkRoot string) error"
+      },
+      "shapeHash": "sha256:ba51e0a3e8cf1280e94db3672bcf6eda20fd419472cf719bfe6c37c992869ba1"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#aliasGoSDKImports",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "aliasGoSDKImports",
