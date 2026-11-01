@@ -924,6 +924,19 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/test/next/examples/31-parked-dependencies.ts` | `chord/next/host/host_examples_test.go` | ✅ |
 | `packages/chord/test/next/examples/32-startup.ts` | `chord/next/host/host_examples_test.go` | ✅ |
 | `packages/chord/test/next/support.ts` | `chord/next/host/host_next_support_test.go` | ✅ |
+| `packages/chord/src/next-node/http/admission.ts` | `chord/nextnode/http/admission.go` | ✅ |
+| `packages/chord/src/next-node/http/authenticate.ts` | `chord/nextnode/http/authenticate.go` | ✅ |
+| `packages/chord/src/next-node/http/cookies.ts` | `chord/nextnode/http/cookies.go` | ✅ |
+| `packages/chord/src/next-node/http/file.ts` | `chord/nextnode/http/file.go` | ✅ |
+| `packages/chord/src/next-node/http/headers.ts` | `chord/nextnode/http/headers.go` | ✅ |
+| `packages/chord/src/next-node/http/http.ts` | `chord/nextnode/http/http.go` | ✅ |
+| `packages/chord/src/next-node/http/incoming.ts` | `chord/nextnode/http/incoming.go` | ✅ |
+| `packages/chord/src/next-node/http/index.ts` | `(barrel: Go imports the package; exported names are those of Pi's index.ts, the rest is unexported)` | n/a |
+| `packages/chord/src/next-node/http/node.ts` | `chord/nextnode/http/node.go, chord/nextnode/http/url.go` | ✅ |
+| `packages/chord/src/next-node/http/request.ts` | `chord/nextnode/http/request.go` | ✅ |
+| `packages/chord/src/next-node/http/response.ts` | `chord/nextnode/http/response.go, chord/nextnode/http/statuscodes.go` | ✅ |
+| `packages/chord/src/next-node/http/router.ts` | `chord/nextnode/http/router.go` | ✅ |
+| `packages/chord/src/next-node/http/upgrades.ts` | `chord/nextnode/http/upgrades.go, chord/nextnode/http/websocket.go` | ✅ |
 
 ## `packages/protocol/src/`
 

@@ -1621,93 +1621,93 @@ rationale = "`NodeCompression` (compress/flate level 1, inflate reads at most `l
 [[files]]
 path = "packages/chord/src/next-node/http/admission.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/admission_test.go#TestAdmissionProvenance"]
+rationale = "`admit` returns `Admission` (`*Admitted` or `*Refused`); optional strings are \"\" and an absent port 0; `isOrigin` is the URL parser's serialization check written out. PiG: chord/nextnode/http/admission.go (lane nhttp)."
 
 [[files]]
 path = "packages/chord/src/next-node/http/authenticate.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/authenticate_test.go#TestAuthenticatorsAreAskedInContributorOrderTheFirstPrincipalWinsAThrowingOneIsReportedAndSkipped"]
+rationale = "blocking authenticators; nil principal is `undefined`. PiG: chord/nextnode/http/authenticate.go (lane nhttp)."
 
 [[files]]
 path = "packages/chord/src/next-node/http/cookies.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/cookies_test.go#TestCookiesAreHttpOnlyPathSameSiteStrictByDefaultSecureOnARemoteOriginLaxAndMaxAgeWhenAsked"]
+rationale = "`Date.now()` is the package clock `now`; `encodeURIComponent` written out. PiG: chord/nextnode/http/cookies.go (lane nhttp)."
 
 [[files]]
 path = "packages/chord/src/next-node/http/file.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/file_test.go#TestFileResponseAnswersAMissingFile404WithOrWithoutRoot"]
+rationale = "handle opened by the first read once, closed by the scope's Done; the descriptor test is Linux-only as in Pi. PiG: chord/nextnode/http/file.go (lane nhttp)."
 
 [[files]]
 path = "packages/chord/src/next-node/http/headers.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/headers_test.go#TestDefaultHeaders"]
+rationale = "`WeakMap<Router,...>` is a `weak.Pointer` map with a cleanup; values are Latin-1 text (written as Latin-1 bytes). PiG: chord/nextnode/http/headers.go (lane nhttp)."
 
 [[files]]
 path = "packages/chord/src/next-node/http/http.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/http_test.go#TestStartupFetchWaitsForThePublicationThenServesTheRegistriesAreResolvedOnce"]
+rationale = "ported; design notes 2-4 apply. PiG: chord/nextnode/http/http.go (lane nhttp)."
 
 [[files]]
 path = "packages/chord/src/next-node/http/incoming.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/admission_test.go#TestAdmissionForeignRequestsAndOrigin"]
+rationale = "one request shape for `Fetch` and the listener. PiG: chord/nextnode/http/incoming.go (lane nhttp)."
 
 [[files]]
 path = "packages/chord/src/next-node/http/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "barrel: Go imports the package; exported names are those of Pi's `index.ts`, the rest is unexported (lane nhttp)."
 
 [[files]]
 path = "packages/chord/src/next-node/http/node.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/node_test.go#TestTargetsAnswerAMalformedOrDoubleSlashPathWithoutCrashingOrReroutingIt"]
+rationale = "design note 1 (net/http as Node's http); one upstream test designed out (lazy Web Request). PiG: chord/nextnode/http/node.go, chord/nextnode/http/url.go (lane nhttp)."
 
 [[files]]
 path = "packages/chord/src/next-node/http/request.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/request_test.go#TestRequestHasItsMethodPathParamsQueryHeadersOriginProvenanceAndNonce"]
+rationale = "`body` is an `iter.Seq2` of chunks. PiG: chord/nextnode/http/request.go (lane nhttp)."
 
 [[files]]
 path = "packages/chord/src/next-node/http/response.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/response_test.go#TestDescriptionsWriteJSONHTMLRedirectAndErrorTheDefaultHeadersFirstTheResponsesReplacingSameNamedOnes"]
+rationale = "the pulled `ReadableStream` is `*PulledBody` (an `io.ReadCloser` pulling one piece per Read, ended by the scope's seal). PiG: chord/nextnode/http/response.go, chord/nextnode/http/statuscodes.go (lane nhttp)."
 
 [[files]]
 path = "packages/chord/src/next-node/http/router.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/router_test.go#TestRouterPatternsAndPrecedence"]
+rationale = "design note 6. PiG: chord/nextnode/http/router.go (lane nhttp)."
 
 [[files]]
 path = "packages/chord/src/next-node/http/upgrades.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLinksOptionsGaveThatSocket"]
+rationale = "ported; one test designed out. Design note 5. PiG: chord/nextnode/http/upgrades.go, chord/nextnode/http/websocket.go (lane nhttp)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/build.ts"
@@ -2650,9 +2650,9 @@ rationale = "`WriteCatalog` writes in name order (Go maps unordered). PiG: catal
 [[files]]
 path = "packages/chord/src/next/store/claims.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/claims_test.go#TestClaims/assert_what_a_claim_would_refuse"]
+rationale = "`assertTable`/`assertDocuments` -> `AssertTable`/`AssertDocuments`; `#claim`/`#assert` -> `claim`/`assert` over one `refusal(key, claimant)` (locked first, then another holder). No upstream test exercises them in the store directory (the host's staging, `staging.ts`, calls them), so the evidence is a Go-only case. PiG: chord/next/store/claims.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/store/columns.ts"
@@ -2769,9 +2769,9 @@ rationale = "Step.Run/RunCounted/Get/All in call order within the step's transac
 [[files]]
 path = "packages/chord/src/next/store/store.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/store_test.go#TestStore/a_commit_series", "test:chord/next/store/table_handle_test.go#TestTableHandle/the_version_fence_against_a_migration_in_flight_(fix_round_1"]
+rationale = "`commitSeries` -> `CommitSeries` (+ `SeriesCommit`, `SeriesResult`, private `series`, `seriesProgress`, `watchedExecutor`); `commitInBatch` removed (no Go caller; clean cutover); `tableVersion`/`announceTable` -> `TableVersion`/`AnnounceTable`; `#write` split into `write` (writes, catalog, outbox) and `writeMeta`, which `step` and the series call; doc wording \"adopt\" -> \"publish\" for `Attachment`/`Batch()` (Pi's `store.batch`, here the existing `Batch()`). PiG: chord/next/store/store.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/store/table-changes.ts"
@@ -2790,9 +2790,9 @@ rationale = "`EvolveTable` with one concrete `*TableEditor` (editor types design
 [[files]]
 path = "packages/chord/src/next/store/table-handle.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_handle_test.go#TestTableHandle/the_version_fence_of_old_handles_(R15"]
+rationale = "`assertVersion` -> `AssertVersion() error`, called by `Page`, `Get`, `Count` after the liveness check (`Rows` reads through `Page`). PiG: chord/next/store/table_handle.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/store/table-history.ts"
@@ -2804,9 +2804,9 @@ rationale = "unions (`TableEdit`, `DataStep`, `TablePlan`) are Kind-tagged struc
 [[files]]
 path = "packages/chord/src/next/store/table-migration.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_handle_test.go#TestTableHandle/the_version_fence_against_a_migration_in_flight_(fix_round_1"]
+rationale = "`migrateVersion` announces the version before its first commit and withdraws it after its last (`defer`); the commits moved to `migrateSteps`. The `macrotask` change (`setImmediate` read once and checked with `typeof`) is a JS runtime feature check: Go yields with `runtime.Gosched()` (existing designed-out note, extended in the file header). PiG: chord/next/store/table_migration.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/store/table-writes.ts"
@@ -2853,9 +2853,9 @@ rationale = "aa9cf15b (principals, placement checks, state init) and b45e0ebc: a
 [[files]]
 path = "packages/chord/src/output.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/output/output_test.go#TestToolOutputBounds/removes_whole_ANSI_escape_sequences", "test:chord/output/output_sanitize_golden_test.go#TestSanitizeOutputEscapeSequencesMatchPi"]
+rationale = "`ESCAPE_SEQUENCE` is the same regex in Go RE2 (leftmost-first alternation, same matches as JS); `SanitizeOutput` removes escape sequences first, then the control characters; a string with no ESC byte skips the regex. `OutputBuffer` sanitizes at `Snapshot` on the retained text, so sequences split across pushes are removed whole, as upstream's test requires. PiG: chord/output/output.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/publish.ts"
