@@ -366,7 +366,7 @@ func (h *NodeHost) bridgedGet(ctx context.Context, facet, name string, params js
 	if err != nil {
 		return nil, err
 	}
-	reference, err := goHost.Get(contract, decoded, ctx, host.GetOptions{})
+	reference, err := goHost.Get(ctx, contract, decoded, host.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
