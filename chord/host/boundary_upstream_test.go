@@ -32,12 +32,9 @@ var chordHelpers = []string{
 	"internal/lazyregexp",
 	"internal/nodepath",
 	"internal/nodeurl",
-	"internal/typebox",
 	"schema",                    // pi-schema, the schema builders and validators of contracts and frames
 	"schema/internal/ecmaregex", // pi-schema's ECMAScript regular expressions
 	"telemetry",                 // pi-telemetry, the dependency of Context.telemetry (chord/context)
-	"third_party/jsonschema",
-	"third_party/jsonschema/kind",
 }
 
 func TestPackageBoundaryDoesNotDependOnPiPackagesOrFilesOutsideChord(t *testing.T) {
