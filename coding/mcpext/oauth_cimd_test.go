@@ -74,7 +74,7 @@ func TestMCPOAuthCIMDRegistersDynamicallyWithDcrEvenWhenTheServerSupportsDocumen
 }
 
 // #11426
-func TestMCPOAuthCIMDUsesPisDocumentByDefaultWhenAuthorizationResponsesNameTheirIssuer(t *testing.T) {
+func TestMCPOAuthCIMDUsesPisDocumentWhenAuthorizationResponsesNameTheirIssuer(t *testing.T) {
 	h := startCimdServer(t, oauthMcpServerOptions{Cimd: true, IssParameter: true})
 	if err := h.signIn(t, mcpext.McpOAuthSettings{}, nil); err != nil {
 		t.Fatal(err)
@@ -143,7 +143,7 @@ func TestMCPOAuthCIMDRegistersDynamicallyByDefaultWithAClientName(t *testing.T) 
 
 // pig divergence (D2): inherited from Pi (oauth.ts offersClientMetadataDocument): a build whose application is not pi
 // would show up as pi, so `auto` registers instead, and only `cimd` identifies with pi's document.
-func TestMCPOAuthCIMDRegistersDynamicallyByDefaultAsAnotherApplication(t *testing.T) {
+func TestMCPOAuthCIMDRegistersDynamicallyByDefaultEvenWhenTheServerSupportsDocuments(t *testing.T) {
 	h := startCimdServer(t, oauthMcpServerOptions{Cimd: true, IssParameter: true})
 	h.appName = "pig"
 	if err := h.signIn(t, mcpext.McpOAuthSettings{}, nil); err != nil {

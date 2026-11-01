@@ -23,7 +23,7 @@ path | disposition | PiG files | evidence | rationale
 - UnsupportedRemediation hint omits the literal `pig update` (existing non-looping test).
 
 ## (c) tests
-- Renamed Go tests (integrator: update test-mapping/unit-evidence refs): TestMCPOAuthCIMDRegistersDynamicallyByDefaultEvenWhenTheServerSupportsDocuments -> ...RegistersDynamicallyWithDcrEvenWhenTheServerSupportsDocuments; TestMCPOAuthCIMDUsesPisDocumentWhenAuthorizationResponsesNameTheirIssuer -> ...UsesPisDocumentByDefaultWhenAuthorizationResponsesNameTheirIssuer.
+- No Go test was renamed. TestMCPOAuthCIMDRegistersDynamicallyByDefaultEvenWhenTheServerSupportsDocuments now runs as the application `pig` (Pi's `auto` rule), the Pi default-document case keeps TestMCPOAuthCIMDUsesPisDocumentWhenAuthorizationResponsesNameTheirIssuer with AppName `pi` and default settings, and the new dcr case is TestMCPOAuthCIMDRegistersDynamicallyWithDcrEvenWhenTheServerSupportsDocuments.
 - config.test.ts 3 cases, package-command-paths 4 cases (+1 PiG no-source case), mcp-command, mcp-extension, mcp-oauth-refresh (4 new cases), system-prompt.test.ts: ported.
 
 ## Integrator: Node shims and sdk-bundle refresh (do at the pin bump)
