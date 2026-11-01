@@ -59,9 +59,7 @@
    "fix round 1 › close during an app's start that ignores its signal returns at once; nothing forks after it (Sol)",
    "fix round 1 › a stop during the worker's startup is a stop: its closers run, nothing fails (Astra)",
    "fix round 1 › reaps a worker that closed its own IPC channel and lives on: killed after the grace, failed (Sol)",
-   "fix round 1 › keeps a worker's stderr out of the public state: only worker_failed carries its tail (Astra)"
-  ],
-  "missing": [
+   "fix round 1 › keeps a worker's stderr out of the public state: only worker_failed carries its tail (Astra)",
    "the rollout step (§4) › ships the current set to running workers, retries held failed ones, lists each",
    "the rollout step (§4) › lists a worker stopped cleanly during it as stopped and one that crashed with its error (it stays dirty)",
    "the rollout step (§4) › a worker starting during it gets the new set: a start after the rollout loads it",
@@ -71,6 +69,7 @@
    "fix round 1 › two rollouts started together each ship their own build; the later one stays (Astra)",
    "fix round 1 › keeps no reload report once consumed: the reload queue settles to nothing (Sol)"
   ],
+  "missing": [],
   "designedOut": []
  }
 }
