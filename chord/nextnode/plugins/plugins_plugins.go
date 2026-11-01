@@ -150,7 +150,7 @@ type RolloutResult struct {
 // PluginsLoad is what Plugins.Load takes.
 type PluginsLoad struct {
 	Kind string
-	// Core are the app's own facets.
+	// Core are the app's own facets that are JavaScript (RuntimeLoad.Core); Go facets are Bridged.
 	Core []CoreFacet
 	// Modules are the host packages the scripts' imports are answered with, by specifier; kept for the host's reloads.
 	Modules HostPackages

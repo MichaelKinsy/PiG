@@ -34,7 +34,7 @@ type PluginScript struct {
 // Pi's own, the subprocess's; naming it here replaces nothing.
 type HostPackages map[string]string
 
-// CoreFacet is one of the app's own facets: its name (a plugin name) and the module whose default export is the facet,
+// CoreFacet is one of the app's own facets that is JavaScript: its name (a plugin name) and the module whose default export is the facet,
 // a file the subprocess imports.
 type CoreFacet struct {
 	Name   string
@@ -44,7 +44,8 @@ type CoreFacet struct {
 // RuntimeLoad is what PluginRuntime.Load takes.
 type RuntimeLoad struct {
 	Kind string
-	// Core are the app's own facets, loaded before the plugins.
+	// Core are the app's own facets that are JavaScript, loaded into the subprocess host before the plugins. An app's Go facet is
+	// loaded on a Go host, and its local types reach the plugins through Bridged.
 	Core []CoreFacet
 	// Scripts is the complete set of Kind.
 	Scripts []PluginScript
