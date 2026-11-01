@@ -84,3 +84,7 @@ func exitOf(state *os.ProcessState) Exit {
 	}
 	return Exit{Code: new(state.ExitCode())}
 }
+
+// killedExit is the exit of a process Kill ended: TerminateJobObject gives it an exit code, where libuv reports the signal
+// it sent a child it killed, so Pi's public error reads `worker exited (SIGKILL)`.
+func killedExit(Exit) Exit { return Exit{Signal: new("SIGKILL")} }

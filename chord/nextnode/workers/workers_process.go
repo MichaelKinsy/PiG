@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode/utf16"
 
@@ -65,6 +66,8 @@ type WorkerProcess struct {
 	tree    *processTree
 	done    chan struct{}
 	exit    Exit
+	// killed: Kill ended the process (its exit is reported by killedExit).
+	killed atomic.Bool
 
 	// pumps are the goroutines reading its output; ended joins them.
 	pumps sync.WaitGroup
@@ -201,6 +204,9 @@ func (p *WorkerProcess) keepStderr(chunk []byte) {
 // ended is the process's end, however the leader ended: nothing it spawned outlives it, the handler is told, and then
 // those waiting for the exit resume.
 func (p *WorkerProcess) ended(exit Exit, events ProcessEvents) {
+	if p.killed.Load() {
+		exit = killedExit(exit)
+	}
 	p.tree.kill()
 	// Everything it wrote is told before its exit, and nothing of it is left running: its output streams end with the last
 	// process holding them (the tree is gone), and its channel with it.
@@ -246,6 +252,7 @@ func (p *WorkerProcess) Kill() {
 		return
 	default:
 	}
+	p.killed.Store(true)
 	if p.tree.kill() || p.cmd.Process == nil {
 		return
 	}

@@ -42,3 +42,6 @@ func exitOf(state *os.ProcessState) Exit {
 	}
 	return Exit{Code: new(state.ExitCode())}
 }
+
+// killedExit is the exit of a process Kill ended: the kernel reported its signal already.
+func killedExit(exit Exit) Exit { return exit }
