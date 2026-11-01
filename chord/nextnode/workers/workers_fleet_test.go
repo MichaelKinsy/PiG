@@ -100,7 +100,7 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 	root := t.TempDir()
 	f := &fleet{
 		t: t, root: root, errors: &collector[WorkersError]{}, hostErrors: &collector[host.HostError]{}, starts: &collector[string]{},
-		output: &collector[string]{}, behaviours: &behaviours{byID: map[string]workerBehaviour{}}, clock: &switchClock{},
+		output: &collector[string]{}, behaviours: &behaviours{byID: map[string]workerBehaviour{}}, clock: newSwitchClock(),
 	}
 	f.plugins = newPlugins(t, root)
 	serverAddress := fixtureServer.Address(nil)
@@ -350,9 +350,15 @@ func (c *fakeClock) advance(d time.Duration) {
 type switchClock struct {
 	mu   sync.Mutex
 	fake *fakeClock
+	// real is the host's own loop: its timers drop their job when stopped. A stopped time.Timer stays in the runtime's timer
+	// heap until the heap is cleaned, and its callback would keep what the job captured (an address, a child) reachable until
+	// then: the cause of the intermittent "referent was not collected" of the 100-address test.
+	real *host.Loop
 }
 
-func (c *switchClock) Now() int64 { return time.Now().UnixMilli() }
+func newSwitchClock() *switchClock { return &switchClock{real: host.NewLoop()} }
+
+func (c *switchClock) Now() int64 { return c.real.Now() }
 
 func (c *switchClock) AfterFunc(d time.Duration, job func()) host.Timer {
 	c.mu.Lock()
@@ -361,7 +367,7 @@ func (c *switchClock) AfterFunc(d time.Duration, job func()) host.Timer {
 	if fake != nil {
 		return fake.afterFunc(d, job)
 	}
-	return time.AfterFunc(d, job)
+	return c.real.AfterFunc(d, job)
 }
 
 // useFakeTimers is `vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })`; the returned func restores the real ones.
