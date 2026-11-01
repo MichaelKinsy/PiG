@@ -9,7 +9,6 @@ import { dispatchProviderObjectSync, dispatchProviderObjectCallback, remoteProvi
 import { isWaiting, ProviderSocket, setProviderSocketsRef, shareDecodedFrames } from "./provider-socket.mjs";
 import { constants as bufferConstants } from "node:buffer";
 import { MessageChannel } from "node:worker_threads";
-import { constants as bufferConstants } from "node:buffer";
 import net from "node:net";
 import { closeSync, openSync, readSync } from "node:fs";
 import { basename } from "node:path";

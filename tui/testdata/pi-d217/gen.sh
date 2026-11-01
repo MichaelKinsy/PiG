@@ -14,9 +14,7 @@ agent="$root/extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent"
 tsc="$mirror/node_modules/.bin/tsc"
 dist="$root/coding/extension/host/subprocess/runtime-node/shims/pi-dist"
 built_tui="$agent/node_modules/@earendil-works/pi-tui/dist/utils.js"
-built_img="$agent/dist/utils/image-resize-core.js"
 vendored_tui="$dist/pi-tui/utils.js"
-vendored_img="$dist/pi-coding-agent/utils/image-resize-core.js"
 # The vendored pi-tui utils.js is the built one with PiG's rewrites (vendor-pi-dist.sh: the get-east-asian-width import; then
 # vendor-pi-startup-seams.mjs: the lazy segmenters and emoji regex). The vendored coding-agent module is the built one verbatim. For the
 # patched pi-tui module the rewrites are applied as the diff from the built file to the vendored one; patch(1) must apply every hunk.
@@ -27,7 +25,7 @@ vendor_tui() { # vendor_tui <patched built utils.js>: print it with the vendorin
 	cat "$out"
 }
 
-for f in "$built_tui" "$built_img" "$vendored_tui" "$vendored_img"; do
+for f in "$built_tui" "$vendored_tui"; do
 	[ -f "$f" ] || { echo "pi-d217: missing $f (make upstream-mirror parity-deps)" >&2; exit 1; }
 done
 [ -x "$tsc" ] || { echo "pi-d217: no TypeScript at $tsc (make upstream-mirror)" >&2; exit 1; }
@@ -59,21 +57,15 @@ diff -u "$built_tui" "$vendored_tui" >"$work/vendoring.diff" || true
 [ -s "$work/vendoring.diff" ] || { echo "pi-d217: the vendored pi-tui utils.js equals the built one; the vendoring is not what this script expects" >&2; exit 1; }
 vendor_tui "$built_tui" >"$work/vendored-pinned.js"
 same "the vendored pi-tui utils.js against the vendoring rewrites applied to the built one" "$work/vendored-pinned.js" "$vendored_tui"
-img_pinned="$(compile img-pinned coding-agent)"
-same "pinned image-resize-core.js compiled here against the built oracle" "$img_pinned/utils/image-resize-core.js" "$built_img"
-same "the vendored image-resize-core.js against the built one" "$built_img" "$vendored_img"
 
 tui_patched="$(compile tui-patched tui "$here/utils.ts-2ce9d527.patch")"
-img_patched="$(compile img-patched coding-agent "$here/image-resize-core.ts-e7a0df27.patch")"
 cp "$tui_patched/utils.js" "$here/utils.js"
 vendor_tui "$tui_patched/utils.js" >"$here/utils.vendored.js"
-cp "$img_patched/utils/image-resize-core.js" "$here/image-resize-core.js"
 sha() { sha256sum "$1" | cut -d' ' -f1; }
 cat >"$here/manifest.json" <<JSON
 [
   { "suffix": "/@earendil-works/pi-tui/dist/utils.js", "pinnedSha256": "$(sha "$built_tui")", "file": "utils.js" },
-  { "suffix": "/pi-dist/pi-tui/utils.js", "pinnedSha256": "$(sha "$vendored_tui")", "file": "utils.vendored.js" },
-  { "suffix": "/pi-dist/pi-coding-agent/utils/image-resize-core.js", "pinnedSha256": "$(sha "$vendored_img")", "file": "image-resize-core.js" }
+  { "suffix": "/pi-dist/pi-tui/utils.js", "pinnedSha256": "$(sha "$vendored_tui")", "file": "utils.vendored.js" }
 ]
 JSON
 echo "pi-d217: modules and manifest.json written"

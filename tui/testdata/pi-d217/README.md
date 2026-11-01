@@ -14,13 +14,12 @@ directory; the comparators stay exact and no probe is skipped. Three load paths 
   environment: `NODE_OPTIONS` would reach every Node process the script starts, and an oracle that reads a child's output through a pipe
   (`test/parity/testdata/codemode-declarations-pi.mjs`) then loses its tail.
 - `internal/pioracle.Run` passes `--import register.mjs` while this directory exists; the vendored `shims/pi-dist` it loads has pi-tui's
-  `utils.js` (external to the pi-tui bundle) and `image-resize-core.js` as separate modules.
+  `utils.js` (external to the pi-tui bundle) as a separate module.
 
 | file | replaces (URL suffix) | carried |
 |---|---|---|
 | `utils.js` | `/@earendil-works/pi-tui/dist/utils.js` (the built oracle, the real pi's and the scripts') | `2ce9d527` (earendil-works/pi#10925) |
 | `utils.vendored.js` | `/pi-dist/pi-tui/utils.js` (vendored), the same file with vendor-pi-dist.sh's one import rewrite | `2ce9d527` |
-| `image-resize-core.js` | `/pi-dist/pi-coding-agent/utils/image-resize-core.js` (vendored) | `e7a0df27` (earendil-works/pi#11551) |
 
 - `*.patch`: `git diff <sha>^ <sha> -- <file>` of Pi, unchanged.
 - `gen.sh`: applies the patches to the pin's sources (mirror `.upstream/current`) and compiles with the pin build's TypeScript and

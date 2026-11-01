@@ -21,7 +21,7 @@ func Root(t testing.TB) string {
 }
 
 // d217Register is the file URL of the D217 hook of tui/testdata/pi-d217, or "" once that directory is gone. The hook swaps the vendored
-// pi-tui utils.js and image-resize-core.js for the pin's sources with the Pi fixes 0.6.0 carries (D217), after checking that the module
+// pi-tui utils.js for the pin's sources with the Pi fixes 0.6.0 carries (D217), after checking that the module
 // it replaces is the pinned one, so an oracle compares what PiG ships. Delete this with the directory when the pin passes c2760d32.
 func d217Register(t testing.TB) string {
 	t.Helper()
