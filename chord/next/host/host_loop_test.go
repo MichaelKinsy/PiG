@@ -169,7 +169,7 @@ func TestLoopLendRunsAHandlersFirstPartInsideTheSectionAndGivesItBackWhenItParks
 				log.add("handler resumed")
 				close(resumed)
 			})
-		})
+		}, nil)
 		log.add("rest of the section")
 	})
 	<-resumed
@@ -192,7 +192,7 @@ func TestLoopLendGivesTheSectionBackWhenTheHandlerReturns(t *testing.T) {
 		loop.Lend(signal, func() {
 			log.add("handler")
 			signal.Raise()
-		})
+		}, nil)
 		log.add("rest of the section")
 		if !loop.onLoop() {
 			t.Error("the section is not the loop's owner after the handler returned")
@@ -213,7 +213,7 @@ func TestLoopLendOutsideASectionLendsNothing(t *testing.T) {
 	loop.Lend(signal, func() {
 		loop.Run(func() { log.add("handler's section") })
 		signal.Raise()
-	})
+	}, nil)
 	if got, want := log.all(), []string{"handler's section"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("order = %v, want %v", got, want)
 	}
@@ -236,7 +236,7 @@ func TestLoopLendSettlesAHandlerThatReturnedBeforeTheSectionsRunReturns(t *testi
 			loop.Queue(func() { log.add("microtask") })
 			signal.Return()
 			log.add("settled")
-		})
+		}, nil)
 		log.add("rest of the section")
 	})
 	want := []string{"section", "handler", "rest of the section", "microtask", "settled"}
@@ -261,7 +261,7 @@ func TestLoopLendDoesNotHoldTheSectionsGoroutineForAHandlerThatParked(t *testing
 				signal.Raise()
 				<-release
 				close(resumed)
-			})
+			}, nil)
 		})
 	}()
 	select {
@@ -292,7 +292,7 @@ func TestLoopLendReusesTheGoroutineOfAFinishedHandler(t *testing.T) {
 			loop.Lend(signal, func() {
 				ids = append(ids, goroutineid.Current())
 				signal.Return()
-			})
+			}, nil)
 		})
 	}
 	if len(ids) != 3 || ids[0] != ids[1] || ids[1] != ids[2] {
@@ -313,7 +313,7 @@ func TestLoopLendStopsTheIdleGoroutinesOfALoopThatIsGone(t *testing.T) {
 		loop := NewLoop()
 		loop.Run(func() {
 			signal := parking.New()
-			loop.Lend(signal, func() { signal.Return() })
+			loop.Lend(signal, func() { signal.Return() }, nil)
 		})
 		loop.Wait()
 	}

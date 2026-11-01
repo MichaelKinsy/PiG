@@ -14,6 +14,7 @@ package parking
 
 import (
 	"context"
+	"errors"
 	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/internal/goroutineid"
@@ -51,7 +52,9 @@ func (s *Signal) Lend(owner *atomic.Uint64, section uint64) {
 
 // Bind makes Raise yield the handler's coroutine, which runs on goroutine gid, by calling yield. Only a Raise on gid counts:
 // the section's goroutine is blocked until the coroutine yields, so a goroutine the handler started cannot give the section
-// back, and its Park leaves the handler's synchronous part to the handler's own next one. It is called once, on gid, before
+// back. A host primitive it waits with (Park) leaves the handler's synchronous part to the handler's own next one, as an
+// `await` inside async work that Pi's handler started and did not await does: that work's first await returns to the
+// handler, which goes on. Suspend, which has no Pi counterpart, refuses such a goroutine. It is called once, on gid, before
 // the handler can share s.
 func (s *Signal) Bind(gid uint64, yield func()) {
 	s.gid, s.yield = gid, yield
@@ -94,6 +97,30 @@ func (s *Signal) Returned() bool { return s.returned.Load() }
 
 // Wait blocks until Raise.
 func (s *Signal) Wait() { <-s.done }
+
+// ErrForeignSuspend is the panic of Suspend on a goroutine the handler started.
+var ErrForeignSuspend = errors.New("chord: chordctx.Suspend was called on a goroutine the handler started: only the handler's own goroutine can give back the section it was lent (the section waits for the handler's goroutine, not for this one), so this call would have ended nothing; call it on the handler's goroutine before it waits, or wait with chordctx.Await or chordctx.Receive")
+
+// foreign reports whether the calling goroutine is not the one the handler's coroutine runs on. Only a signal bound to a
+// coroutine has one.
+func (s *Signal) foreign() bool { return s.yield != nil && goroutineid.Current() != s.gid }
+
+// Suspend is Park for the explicit call a handler makes right before it waits for something that is not a section of the
+// host (chordctx.Suspend). It gives the section back as Park does, from the handler's goroutine. Pi has no such call: an
+// async function's `await` ends its synchronous part where it stands, and an `await` of work the handler started and did not
+// await (a goroutine's host waits, which Park ignores there) never ends the handler's. A Suspend from a goroutine the handler
+// started could only be that call made from where it ends nothing, a handler that goes on holding the section while its
+// author believes it gave it back: it panics with ErrForeignSuspend, whatever the handler did meanwhile.
+func Suspend(ctx context.Context) {
+	signal, _ := ctx.Value(Key).(*Signal)
+	if signal == nil {
+		return
+	}
+	if signal.foreign() {
+		panic(ErrForeignSuspend)
+	}
+	signal.Raise()
+}
 
 // Park raises the Signal ctx carries, if any: the caller is about to wait for something the host's section cannot give it,
 // or to continue after the section that admitted its handler. It must come right before the wait, after the caller's own

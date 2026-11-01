@@ -40,10 +40,12 @@ func newParkedTestLoop() *parkedTestLoop {
 	return &parkedTestLoop{fakeLoop: newFakeLoop(), real: NewLoop()}
 }
 
-func (l *parkedTestLoop) Now() int64                             { return l.fakeLoop.Now() + l.skew.Load() }
-func (l *parkedTestLoop) Run(work func())                        { l.real.Run(work) }
-func (l *parkedTestLoop) Go(fn func())                           { l.real.Go(fn) }
-func (l *parkedTestLoop) Lend(signal *parking.Signal, fn func()) { l.real.Lend(signal, fn) }
+func (l *parkedTestLoop) Now() int64      { return l.fakeLoop.Now() + l.skew.Load() }
+func (l *parkedTestLoop) Run(work func()) { l.real.Run(work) }
+func (l *parkedTestLoop) Go(fn func())    { l.real.Go(fn) }
+func (l *parkedTestLoop) Lend(signal *parking.Signal, fn func(), abandoned func()) {
+	l.real.Lend(signal, fn, abandoned)
+}
 
 // parkedHarness is the calls queued on a reference `app.gated(1)`.
 type parkedHarness struct {

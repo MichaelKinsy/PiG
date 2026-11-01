@@ -269,6 +269,14 @@ func (r *route) resolve(routed *routed) {
 		resolved, err := resolvePlugin(r.options.Resolve, routed.address, ctx)
 		signal.Return()
 		loop.Run(func() { r.resolved(routed, resolved, err) })
+	}, func() {
+		// `resolve` ended its goroutine (runtime.Goexit) without returning: Pi's `resolve` that throws, the address's holders
+		// fail with it. Handled once: a Goexit after the result was handled leaves nothing to do.
+		loop.Run(func() {
+			if routed.resolving {
+				r.resolved(routed, ResolvedLink{}, errHandlerGoexit)
+			}
+		})
 	})
 }
 

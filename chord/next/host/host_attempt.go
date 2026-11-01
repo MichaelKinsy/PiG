@@ -907,9 +907,9 @@ func (a *attempt) call(method string, args any, ctx context.Context, from caller
 	// returns or parks (Park of its ctx, at the first wait for something that is not a section of the host).
 	signal := parking.New()
 	handlerCtx.signal = signal
-	loop.Lend(signal, func() {
-		// Plugin code, not type-checked: a panic becomes the rejection.
-		value, err := tryPlugin(func() (any, error) { return handler(checked.Args, handlerCtx) })
+	// finish is the handler's settlement: what Pi's async function does once its body returned or threw. Settling twice is
+	// harmless (a Promise settles once), which is what lets abandoned run it for a handler that left mid-settlement.
+	finish := func(value any, err error) {
 		signal.Return()
 		loop.Run(func() {
 			stopWait()
@@ -927,6 +927,13 @@ func (a *attempt) call(method string, args any, ctx context.Context, from caller
 			}
 			result.settle(value, err)
 		})
+	}
+	loop.Lend(signal, func() {
+		// Plugin code, not type-checked: a panic becomes the rejection.
+		finish(tryPlugin(func() (any, error) { return handler(checked.Args, handlerCtx) }))
+	}, func() {
+		// The handler ended its goroutine (runtime.Goexit) without returning: Pi's handler that throws, the call rejected.
+		finish(nil, errHandlerGoexit)
 	})
 	return result
 }

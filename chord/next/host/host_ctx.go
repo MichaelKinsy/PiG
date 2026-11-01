@@ -29,8 +29,9 @@ type sectionLoop interface {
 	Run(work func())
 	// Go runs fn as an owned background task (Loop.Go).
 	Go(fn func())
-	// Lend runs fn as the synchronous part of an async function inside the running section (Loop.Lend).
-	Lend(signal *parking.Signal, fn func())
+	// Lend runs fn as the synchronous part of an async function inside the running section (Loop.Lend); abandoned settles
+	// the call of an fn that ended its goroutine without returning.
+	Lend(signal *parking.Signal, fn func(), abandoned func())
 }
 
 // Ctx is a handler's context.
