@@ -154,7 +154,7 @@ func TestLoopLendRunsAHandlersFirstPartInsideTheSectionAndGivesItBackWhenItParks
 	loop.Run(func() {
 		log.add("section")
 		signal := parking.New()
-		loop.Lend(signal, func() {
+		loop.Lend(signal, func(bool) {
 			log.add("handler")
 			var during bool
 			loop.Run(func() {
@@ -189,7 +189,7 @@ func TestLoopLendGivesTheSectionBackWhenTheHandlerReturns(t *testing.T) {
 	var log lendLog
 	loop.Run(func() {
 		signal := parking.New()
-		loop.Lend(signal, func() {
+		loop.Lend(signal, func(bool) {
 			log.add("handler")
 			signal.Raise()
 		})
@@ -210,7 +210,7 @@ func TestLoopLendOutsideASectionLendsNothing(t *testing.T) {
 	loop := NewLoop()
 	var log lendLog
 	signal := parking.New()
-	loop.Lend(signal, func() {
+	loop.Lend(signal, func(bool) {
 		loop.Run(func() { log.add("handler's section") })
 		signal.Raise()
 	})
@@ -231,7 +231,7 @@ func TestLoopLendSettlesAHandlerThatReturnedBeforeTheSectionsRunReturns(t *testi
 	loop.Run(func() {
 		log.add("section")
 		signal := parking.New()
-		loop.Lend(signal, func() {
+		loop.Lend(signal, func(bool) {
 			log.add("handler")
 			loop.Queue(func() { log.add("microtask") })
 			signal.Return()
@@ -257,7 +257,7 @@ func TestLoopLendDoesNotHoldTheSectionsGoroutineForAHandlerThatParked(t *testing
 		defer close(ended)
 		loop.Run(func() {
 			signal := parking.New()
-			loop.Lend(signal, func() {
+			loop.Lend(signal, func(bool) {
 				signal.Raise()
 				<-release
 				close(resumed)
@@ -289,7 +289,7 @@ func TestLoopLendReusesTheGoroutineOfAFinishedHandler(t *testing.T) {
 	for range 3 {
 		loop.Run(func() {
 			signal := parking.New()
-			loop.Lend(signal, func() {
+			loop.Lend(signal, func(bool) {
 				ids = append(ids, goroutineid.Current())
 				signal.Return()
 			})
@@ -313,7 +313,7 @@ func TestLoopLendStopsTheIdleGoroutinesOfALoopThatIsGone(t *testing.T) {
 		loop := NewLoop()
 		loop.Run(func() {
 			signal := parking.New()
-			loop.Lend(signal, func() { signal.Return() })
+			loop.Lend(signal, func(bool) { signal.Return() })
 		})
 		loop.Wait()
 	}

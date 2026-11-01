@@ -7746,7 +7746,10 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation."
+      "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation. SCRUTINIZED:approved by the owner (2026-11-01): Go's collector can clear a weak pointer between two streaming deltas, so PiG holds the memo strongly for one render and releases it on FinishStreaming, Invalidate and a theme or grammar change; reviewed, no lifetime bug.",
+      "designedOutCases": [
+        "Markdown component \u203a Block reuse \u203a holds rendered blocks weakly, so a full garbage collection releases them"
+      ]
     },
     {
       "path": "packages/tui/test/mouse-components.test.ts",

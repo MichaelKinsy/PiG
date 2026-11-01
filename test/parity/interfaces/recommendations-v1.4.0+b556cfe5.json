@@ -296789,7 +296789,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "4 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -296800,7 +296800,6 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#HighlightCode",
-        "go:github.com/MichaelKinsy/PiG/extensions/sdk#highlightCode",
         "go:github.com/MichaelKinsy/PiG/tui#HighlightCode",
         "go:github.com/MichaelKinsy/PiG/tui#Markdown.highlightCode"
       ],
