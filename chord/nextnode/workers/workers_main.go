@@ -122,6 +122,8 @@ type worker struct {
 	ready     bool
 	reloading bool
 	busy      BusyWatchable
+	// activity is the watch of the host's activity: its value is the counts as the last delivered frame gave them.
+	activity chord.WatchHandle[delta.JsonValue]
 	// idle is the last idle state sent; sent says whether one was.
 	idle     bool
 	idleSent bool
@@ -283,28 +285,38 @@ func (p *WorkerPlugins) Load(h host.Host, options WorkerLoad, ctx context.Contex
 	return report, nil
 }
 
-// follow follows the host's activity and the app's busy: each idle flip is reported.
+// follow follows the host's activity and the app's busy: each idle flip is reported. The host's activity is read through its
+// watch, which holds the counts as the last frame gave them: the counts themselves belong to the host's sections.
 func (w *worker) follow() error {
-	var sources []BusyWatchable
 	w.mu.Lock()
-	if w.loaded != nil {
-		sources = append(sources, w.loaded.host.Activity())
-	}
-	if w.busy != nil {
-		sources = append(sources, w.busy)
-	}
+	loaded, busy := w.loaded, w.busy
 	w.mu.Unlock()
-	for _, source := range sources {
-		watch, err := source.Watch(w.context)
+	if loaded != nil {
+		watch, err := loaded.host.Activity().Watch(w.context)
 		if err != nil {
 			return err
 		}
-		watch.Start(func(_ context.Context, _ chord.WatchCall[delta.JsonValue]) error {
-			w.flip()
-			return nil
-		})
+		w.mu.Lock()
+		w.activity = watch
+		w.mu.Unlock()
+		w.flipOn(watch)
+	}
+	if busy != nil {
+		watch, err := busy.Watch(w.context)
+		if err != nil {
+			return err
+		}
+		w.flipOn(watch)
 	}
 	return nil
+}
+
+// flipOn reports the idle state each time watch delivers a frame.
+func (w *worker) flipOn(watch chord.WatchHandle[delta.JsonValue]) {
+	watch.Start(func(_ context.Context, _ chord.WatchCall[delta.JsonValue]) error {
+		w.flip()
+		return nil
+	})
 }
 
 // isIdleLocked reports whether every count is zero: the host's references, jobs and lingering objects, the app's busy, no
@@ -313,12 +325,10 @@ func (w *worker) isIdleLocked() bool {
 	if w.reloading {
 		return false
 	}
-	if w.loaded != nil {
-		if value, err := w.loaded.host.Activity().Value(); err == nil {
-			if activity, ok := value.(*delta.JsonObject); ok {
-				if number(activity.Value("references"))+number(activity.Value("jobs"))+number(activity.Value("lingering")) > 0 {
-					return false
-				}
+	if w.activity != nil {
+		if activity, ok := w.activity.Value().(*delta.JsonObject); ok {
+			if number(activity.Value("references"))+number(activity.Value("jobs"))+number(activity.Value("lingering")) > 0 {
+				return false
 			}
 		}
 	}
