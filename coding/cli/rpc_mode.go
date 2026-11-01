@@ -439,6 +439,12 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	}
 	forceSignal := func(sig os.Signal) {
 		if !transport.processOwned {
+			// pig additive (D201): a connection session ends by closing its connection with the signal's exit code; the process keeps running.
+			code := 1
+			if number, ok := sig.(syscall.Signal); ok {
+				code = 128 + int(number)
+			}
+			transport.exit(code)
 			return
 		}
 		terminateProcesses()
