@@ -2110,7 +2110,7 @@ evidence = [
 path = "packages/tui/src/utils.ts"
 start = "function wrapSingleLine("
 end = "\nexport function isWhitespaceChar("
-sha256 = "bb268950513da38d0c4941d0137ad3729478e8c016730a5443fc3d070b9c6fcc"
+sha256 = "3d2155a13f8b25033ab250c8a9e11b7b7fcf33de950043ef3823323ad54ee9e4"
 keybindings = []
 
 [[contract]]

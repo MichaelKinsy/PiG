@@ -14,4 +14,3 @@
 ### Upgrading
 
 - The `retry` message of the Chord v2 link protocol (`chord/next/link`) has `hops` in place of `operation` and `through`; both ends of a link must be built from the same revision (the protocol is experimental and has no version negotiation).
-<!-- feat: chord-v2-reload-7b -->
