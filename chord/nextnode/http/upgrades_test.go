@@ -36,8 +36,6 @@ import (
 // (design note 2, rows/nhttp.md), where Pi's watch listener runs before `reload` resolves: after a reload the tests wait for
 // what Pi's checks at once (a scope's seal, a connection ended by the server) before they check or write.
 //
-// Designed out: "keeps no ws server once its socket closed" spies on `WebSocketServer.prototype.handleUpgrade` to see that `ws`
-// servers are dropped; Go's gorilla Upgrader is a stack value made per upgrade (upgrade in upgrades.go) and nothing keeps it.
 
 var serverKind = must(contracts.NewHostKind("server"))
 
@@ -585,6 +583,60 @@ func TestCloseTerminatesASocketThatNeverAcknowledgesItsCloseAtCloseTimeout(t *te
 	if took := time.Since(started); took >= 500*time.Millisecond {
 		t.Fatalf("close took %v", took)
 	}
+}
+
+// TestGCKeepsNoUpgradeOnceItsLinkSocketClosed ports "keeps no ws server once its socket closed": Pi spies on the `ws` server each
+// upgrade makes (one per frame size) and expects them all collectable once their sockets closed. Here each upgrade makes a
+// gorilla Upgrader, a WebSocket and an upgraded record; weak pointers to the last two must clear after the links close.
+func TestGCKeepsNoUpgradeOnceItsLinkSocketClosed(t *testing.T) {
+	var mu sync.Mutex
+	maxPayload := 1024
+	server := serving(t, nil, servedOptions{links: &LinksOptions{Path: "/chord", OptionsFunc: func(HttpRequest, data.Principal) (LinkOptions, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		maxPayload++
+		return LinkOptions{MaxPayload: maxPayload}, nil
+	}}})
+	var refs []weak.Pointer[upgraded]
+	var sockets []weak.Pointer[WebSocket]
+	for range 8 {
+		socket := mustSocketTo(t, server.port, "/chord", owner)
+		var open []*upgraded
+		eventually(t, "the upgrade is kept", func() bool {
+			open = server.http.upgrades.snapshot()
+			return len(open) == 1
+		})
+		refs = append(refs, weak.Make(open[0]))
+		sockets = append(sockets, weak.Make(open[0].socket))
+		open = nil
+		socket.Close(0, "")
+		receive(t, socket.closed, "the close")
+		eventually(t, "the upgrade is dropped", func() bool { return len(server.http.upgrades.snapshot()) == 0 })
+	}
+	// The closed connections wind down on goroutines of their own: collect for a bounded number of cycles, yielding between.
+	const cycles = 2000
+	alive := func() int {
+		n := 0
+		for _, ref := range refs {
+			if ref.Value() != nil {
+				n++
+			}
+		}
+		for _, ref := range sockets {
+			if ref.Value() != nil {
+				n++
+			}
+		}
+		return n
+	}
+	for range cycles {
+		runtime.GC()
+		if alive() == 0 {
+			return
+		}
+		runtime.Gosched()
+	}
+	t.Fatalf("%d of %d upgrade records and sockets are still reachable after %d GC cycles: a closed link socket is kept", alive(), len(refs)+len(sockets), cycles)
 }
 
 // weakOf is a weak pointer to whatever pointer v holds, for objects seen only through an interface.

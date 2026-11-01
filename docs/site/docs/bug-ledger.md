@@ -1417,6 +1417,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f7d701e](#bf-f7d701e) | Tool argument validation asserts the `format` keyword for the formats TypeBox checks (date, time, date-time… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f821434](#bf-f821434) | fix(ai): lint and go fix findings of the catalog generator | PiG's own defect | All platforms | Unreleased |
 | [BF-f8673e6](#bf-f8673e6) | Tool argument conversion for TypeBox schemas lower-cases with JavaScript rules (an `İ` in `UNDEFİNED` no… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f89c404](#bf-f89c404) | fix(durable/core/turn): the pattern generator reads Pi's single-quoted pattern strings, so the Zhipu 1308… | PiG's own defect | All platforms | Unreleased |
 | [BF-f8d96b7](#bf-f8d96b7) | The Node SQLite driver keeps the 256 most recently used prepared statements per connection instead of every… | PiG's own defect | All platforms | Unreleased |
 | [BF-f9648c6](#bf-f9648c6) | On Windows, stopping a terminal reader whose input is a pipe no longer hangs | PiG's own defect | Windows | Unreleased |
 | [BF-f98d129](#bf-f98d129) | Clearing the queued messages (RPC `clear_queue`, the SDK, the interactive restore-to-editor key) no longer… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -20834,6 +20835,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6f4a82fd86` (2026-10-09), `a1fa6d1a33` (2026-10-09), `d490a8b161` (2026-10-09), `f7d701e67d` (2026-10-09), `f8673e6c49` (2026-10-09)
 - **Tests:** `ai/node_http_proxy_oracle_test.go::TestResolveHTTPProxyURLForTargetMatchesPiOracle`, `ai/overflow_oracle_test.go::TestContextOverflowMatchesPiOnSeededMessages`, `ai/validate_formats_oracle_test.go::TestTypeboxFormatsMatchPiOnSeededStrings`, `ai/validate_tool_args_oracle_test.go::TestValidateToolArgumentsMatchesPiOnSeededSchemas`, `internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes`
 - **Release note:** Tool argument conversion for TypeBox schemas lower-cases with JavaScript rules (an `İ` in `UNDEFİNED` no longer converts to null) and matches Record `patternProperties` keys as the anchored expression `^pattern$`, as TypeBox does.
+
+### BF-f89c404
+
+**fix(durable/core/turn): the pattern generator reads Pi's single-quoted pattern strings, so the Zhipu 1308…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(durable/core/turn): the pattern generator reads Pi's single-quoted pattern strings, so the Zhipu 1308 pattern stays after D217 retires
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f89c404fd3` (2026-10-31)
+- **Tests:** None recorded.
 
 ### BF-f8d96b7
 

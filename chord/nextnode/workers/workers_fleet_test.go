@@ -2,8 +2,6 @@ package workers
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -65,7 +63,7 @@ type fleet struct {
 	t       testing.TB
 	server  host.Host
 	workers *Workers
-	plugins plugins.Plugins
+	plugins *plugins.Plugins
 	// root is the copy of the fixture plugins.
 	root       string
 	errors     *collector[WorkersError]
@@ -388,66 +386,19 @@ func (c *switchClock) useFakeTimers() (*fakeClock, func()) {
 	}
 }
 
-// fixtureBuilder is the plugins component's Builder of the fleet (esbuild's bundle of `worker.ts` and the `label.ts` it
-// imports): a script whose source is `label.ts`, digested with the facet file, whose inputs are both files.
-type fixtureBuilder struct{}
-
-var _ plugins.Builder = fixtureBuilder{}
-
-func (fixtureBuilder) Build(plugin plugins.Plugin, kind string, _ plugins.BuildOptions, _ context.Context) (plugins.BuiltFacet, error) {
-	entry := plugin.Facets[kind]
-	label := filepath.Join(plugin.Dir, "label.ts")
-	facet, err := os.ReadFile(entry)
-	if err != nil {
-		return plugins.BuiltFacet{}, err
-	}
-	source, err := os.ReadFile(label)
-	if err != nil {
-		return plugins.BuiltFacet{}, err
-	}
-	hash := func(bytes []byte) string {
-		sum := sha256.Sum256(bytes)
-		return hex.EncodeToString(sum[:])
-	}
-	return plugins.BuiltFacet{
-		Kind: plugins.BuiltFacetScript, Plugin: plugin.Name, Facet: kind,
-		Source: string(source), Digest: hash(append(append([]byte{}, facet...), source...)),
-		Inputs: []plugins.BuildInput{{File: entry, Hash: hash(facet)}, {File: label, Hash: hash(source)}},
-		Copied: []string{}, Assets: []plugins.Asset{},
-	}, nil
-}
-
-// newPlugins makes the fleet's plugins component over a copy of the fixture plugin in root.
-func newPlugins(t testing.TB, root string) plugins.Plugins {
+// newPlugins makes the fleet's plugins component over a copy of the fixture plugin in root: Pi's own plugin of the workers
+// tests (testdata/plugins/notes: its package, its worker facet serving `Notes` at the worker's address, and the label file the
+// rollout tests edit), built for real; the workers evaluate it in their Node hosts.
+func newPlugins(t testing.TB, root string) *plugins.Plugins {
 	t.Helper()
-	dir := filepath.Join(root, "notes")
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	if err := os.CopyFS(filepath.Join(root, "notes"), os.DirFS(filepath.Join("testdata", "plugins", "notes"))); err != nil {
 		t.Fatal(err)
 	}
-	// The fixture plugin (test/next-node/fixtures/workers/plugins/notes): its package, its worker facet (a stand-in: the
-	// label is what the fixture evaluator serves) and the label file the rollout tests edit.
-	files := map[string]string{
-		"package.json": `{"name": "@test/notes", "private": true, "type": "module"}` + "\n",
-		"worker.ts":    "// Fixture plugin (slice 10): the worker facet, serving `Notes` at the worker's address with the label of `label.ts`.\n",
-	}
-	for name, text := range files {
-		if err := os.WriteFile(filepath.Join(dir, name), []byte(text), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := writeLabel(root, "v1"); err != nil {
-		t.Fatal(err)
-	}
-	component, err := plugins.CreatePlugins(plugins.PluginsOptions{
-		Roots:     []string{root},
-		Kinds:     []plugins.KindDefinition{{Name: "worker", Platform: plugins.PlatformNode}},
-		OnError:   func(plugins.PluginsError) {},
-		Builder:   fixtureBuilder{},
-		Evaluator: fixtureEvaluator{},
+	component := plugins.CreatePlugins(plugins.PluginsOptions{
+		Roots:   []string{root},
+		Kinds:   []plugins.KindDefinition{{Name: "worker", Platform: plugins.PlatformNode, HostPackages: []string{"@earendil-works/chord/next"}}},
+		OnError: func(plugins.PluginsError) {},
 	}, background)
-	if err != nil {
-		t.Fatal(err)
-	}
 	t.Cleanup(component.Close)
 	return component
 }

@@ -149,7 +149,8 @@ export default function(pi){
 	}
 	var guidelines map[string][]string
 	_ = json.Unmarshal(got.Event["toolGuidelines"], &guidelines)
-	if len(guidelines["edit"]) != 4 {
+	// Pi's editToolSystemPromptContribution (core/tools/edit.ts) has two guidelines since 705d047c.
+	if len(guidelines["edit"]) != 2 {
 		t.Errorf("toolGuidelines = %s", got.Event["toolGuidelines"])
 	}
 	if _, present := got.Event["customPrompt"]; present {

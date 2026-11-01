@@ -2,37 +2,41 @@ package workers
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 	"sync/atomic"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
-	"github.com/MichaelKinsy/PiG/chord/next/data"
-	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
-	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
 // Ports packages/chord/test/next-node/fixtures/workers/{control,worker}.ts: the fixture contracts (the session kind the
 // workers serve, the fixture worker's `Control`, the plugin's `Notes`), the worker's start data (how it behaves), and the
-// fixture worker itself: `WorkerMain` with a host at its address, the shipped plugins, and a core facet serving `Control`
-// (crash, block, busy, local calls) and `Busy` (the app's keep-alive counts). Its start data picks a behaviour for the tests:
-// exit or fail before connecting, never connect, a slow or endless load, slow closers that log their order to a file.
+// fixture worker itself: `WorkerMain`, the shipped plugins, and a core facet serving `Control` (crash, busy, local calls) and
+// `Busy` (the app's keep-alive counts). Its start data picks a behaviour for the tests: exit or fail before connecting, never
+// connect, a slow or endless load, slow closers that log their order to a file.
+//
+// The plugins component evaluates in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md), so the host that serves the
+// worker's address, the core facet (a module: testdata/core.mjs, Pi's `core` as JavaScript) and the real plugin built from
+// testdata/plugins/notes is the worker's NodeHost, the child of the worker's Go host; the Go host is a relay without an
+// address that `WorkerPlugins.Load` routes to the NodeHost's link. A local type of the NodeHost cannot be read from Go, so the
+// app's keep-alive counts (`Busy`) are read through `BusyView`, a remote type at the address.
 //
 // Forced Go differences. A worker is the test binary run again (TestMain, fixtureEnv "worker"). `process.exit` is
-// exitProcess; an error `fn` returns is Pi's throw. `Control.block` and `blockThenCrash` (a busy loop that blocks the event
-// loop) are not ported: a Go worker has no single thread to block, and the tests that need an unresponsive worker stop its
-// process from outside (freezeWorker, SIGSTOP). `Control.fatal` is not ported: a throw from a timer is a panic in a goroutine of the
-// app, which ends a Go process with its own exit status (workers_main.go), and no test calls it. Every message the worker
-// sends (frame or control) is counted by wrapping its port.
+// exitProcess in Go code and the NodeHost's own in `Control.crash` (the worker exits with its code). `Control.block` and
+// `blockThenCrash` (a busy loop that blocks the event loop) are not ported: a Go worker has no single thread to block, and the
+// tests that need an unresponsive worker stop its process from outside (freezeWorker, SIGSTOP). `Control.fatal` is not ported:
+// no test calls it. Every message the worker sends to the server (frame or control) is counted by wrapping its port;
+// `Control.localCalls` is called by the worker itself, whose Go code reports how many messages it sent to the server between
+// the calls' two lines.
 
 var (
 	fixtureSession = mustFixture(contracts.NewHostKind("session", contracts.Prop("id", contracts.Str())))
@@ -62,13 +66,16 @@ var (
 		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("label", contracts.Str())}})},
 	}))
 
-	fixtureBusy = mustFixture(contracts.Local("test.busy", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("counts", contracts.Map(contracts.Int())), contracts.Mem("set", contracts.NewMethod(contracts.Int()))}}))
-	fixtureEcho = mustFixture(contracts.Local("test.echo", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("echo", contracts.NewMethod(contracts.Int(), contracts.Int()))}}))
-
-	fixtureCounts = mustFixture(documents.DefineState("counts", documents.StateOptions{
-		Schema:  contracts.Map(contracts.Int()),
+	// fixtureBusyView is the fixture core's `BusyView`: the counts of its `Busy` (the app's keep-alive counts), a remote type
+	// at the worker's address, which the worker's Go code reads through its route to its Node host.
+	fixtureBusyView = mustFixture(contracts.Remote("test.busyview", contracts.RemoteDeclaration{
 		Version: 1,
-		Initial: func() *delta.JsonObject { return delta.JsonObjectOf("tasks", float64(0)) },
+		Params:  contracts.Params{contracts.Prop("id", contracts.Str())},
+		HostAddress: func(params *delta.JsonObject) (contracts.Address, error) {
+			id, _ := params.Value("id").(string)
+			return fixtureSession.Address(delta.JsonObjectOf("id", id)), nil
+		},
+		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("counts", contracts.Map(contracts.Int()))}})},
 	}))
 )
 
@@ -183,50 +190,38 @@ func (p *countingPort) sendControlThen(payload []byte, then func()) {
 	p.processPort.sendControlThen(payload, then)
 }
 
-// fixtureEvaluator is the plugin runtime's evaluation seam of the fixture worker: the `@test/notes` plugin's worker facet
-// (test/next-node/fixtures/workers/plugins/notes/worker.ts), serving `Notes` at the worker's address with the label its
-// source carries. A source that begins `throw` is a script whose evaluation fails.
-type fixtureEvaluator struct{}
-
-var (
-	throwing   = regexp.MustCompile(`^throw `)
-	labelConst = regexp.MustCompile(`export const label = ("(?:[^"\\]|\\.)*");`)
-)
-
-// labelOfSource is the label the fixture plugin's `label.ts` declares.
-func labelOfSource(source string) (string, error) {
-	match := labelConst.FindStringSubmatch(source)
-	if match == nil {
-		return "", errors.New("evaluation failed: no label")
+// fixtureCoreModule is the fixture worker's core facet (testdata/core.mjs): `Control`, `Busy`, `Echo` and `BusyView`, a module
+// the worker's Node host imports.
+func fixtureCoreModule() plugins.CoreFacet {
+	path, err := filepath.Abs(filepath.Join("testdata", "core.mjs"))
+	if err != nil {
+		panic(err)
 	}
-	var label string
-	if err := json.Unmarshal([]byte(match[1]), &label); err != nil {
-		return "", err
-	}
-	return label, nil
+	return plugins.CoreFacet{Name: "@test/core", Module: path}
 }
 
-func (fixtureEvaluator) EvaluateFacet(built plugins.BuiltFacet, options plugins.EvaluateOptions) (host.Facet, error) {
-	if throwing.MatchString(built.Source) {
-		return host.Facet{}, errors.New("evaluation failed")
+// fixtureOutput forwards the worker's Node host's output as a worker's own, and turns the two lines of `Control.localCalls`
+// into the line the test reads: the messages this process sent to the server between them (a local call sends none).
+func fixtureOutput(port *countingPort) func(stream plugins.NodeStream, chunk []byte) {
+	var begun atomic.Int64
+	return func(stream plugins.NodeStream, chunk []byte) {
+		out := os.Stdout
+		if stream == plugins.NodeStderr {
+			out = os.Stderr
+		}
+		switch strings.TrimSpace(string(chunk)) {
+		case "local calls begin":
+			begun.Store(port.sent.Load())
+		case "local calls end":
+			_, _ = fmt.Fprintf(os.Stdout, "local calls sent %d\n", port.sent.Load()-begun.Load())
+		default:
+			_, _ = out.Write(chunk)
+		}
 	}
-	label, err := labelOfSource(built.Source)
-	if err != nil {
-		return host.Facet{}, err
-	}
-	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		return h.Serve(fixtureNotes, func(params *delta.JsonObject, _ data.Principal, _ host.Self) (contracts.Implementation, error) {
-			id, _ := params.Value("id").(string)
-			return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
-				"label": host.Expose(state.NewConstant(id + " " + label)),
-			}}}, nil
-		}, host.ServeOptions{})
-	}), nil
 }
 
 func runWorkerFixture() {
 	port := &countingPort{processPort: openProcessChannel()}
-	fixturePort = port
 	var worker host.Host
 	serve(port, func(start WorkerStart, ctx context.Context) (*WorkerResult, error) {
 		behaviour := behaviourOf(start.Start)
@@ -236,8 +231,8 @@ func runWorkerFixture() {
 		if behaviour.Fatal != "" {
 			return nil, errors.New(behaviour.Fatal)
 		}
-		address := start.Address
-		created, err := host.CreateHost(host.HostOptions{Address: &address, Principal: delta.JsonObjectOf("kind", "worker"), OnError: func(host.HostError) {}})
+		// The worker's host is a relay: the NodeHost serves the address (WorkerPlugins.Load routes it), so it has none.
+		created, err := host.CreateHost(host.HostOptions{Principal: delta.JsonObjectOf("kind", "worker"), OnError: func(host.HostError) {}})
 		if err != nil {
 			return nil, err
 		}
@@ -271,9 +266,13 @@ func runWorkerFixture() {
 		if behaviour.Hang {
 			return nil, sleep(ctx, 1_000_000_000*time.Millisecond)
 		}
-		if _, err := start.Plugins.Load(worker, WorkerLoad{Kind: "worker", Core: []host.HostFacet{{Name: "@test/core", Facet: fixtureCore(worker)}}}, ctx); err != nil {
+		if _, err := start.Plugins.Load(worker, WorkerLoad{
+			Kind: "worker", Core: []plugins.CoreFacet{fixtureCoreModule()}, HostKind: fixtureSession,
+			Principal: delta.JsonObjectOf("kind", "worker"), Peer: delta.JsonObjectOf("kind", "server"),
+		}, ctx); err != nil {
 			return nil, err
 		}
+		id, _ := start.Address.Params.Value("id").(string)
 		if behaviour.DisconnectAndBlock {
 			time.AfterFunc(300*time.Millisecond, func() {
 				// Blocks before `serve`'s own disconnect listener runs: the child lives on without its channel.
@@ -283,29 +282,24 @@ func runWorkerFixture() {
 		}
 		if calls := behaviour.LocalCalls; calls != 0 {
 			time.AfterFunc(300*time.Millisecond, func() {
-				echo, err := worker.Get(fixtureEcho, delta.JsonObjectOf(), chordctx.Background(), host.GetOptions{})
+				control, err := worker.Get(fixtureControl, delta.JsonObjectOf("id", id), chordctx.Background(), host.GetOptions{})
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err)
 					return
 				}
-				before := port.sent.Load()
-				for index := range calls {
-					if _, err := echo.Call("echo", float64(index), chordctx.Background()); err != nil {
-						fmt.Fprintln(os.Stderr, err)
-						return
-					}
+				defer control.Release()
+				if _, err := control.Call("localCalls", float64(calls), chordctx.Background()); err != nil {
+					fmt.Fprintln(os.Stderr, err)
 				}
-				_, _ = fmt.Fprintf(os.Stdout, "local calls sent %d\n", port.sent.Load()-before)
-				echo.Release()
 			})
 		}
-		busy, err := worker.Get(fixtureBusy, delta.JsonObjectOf(), ctx, host.GetOptions{})
+		busy, err := worker.Get(fixtureBusyView, delta.JsonObjectOf("id", id), ctx, host.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
-		return &WorkerResult{Busy: busy.Member("counts")}, nil
+		return &WorkerResult{Busy: busy.Member("counts"), Held: 1}, nil
 	}, WorkerMainOptions{
-		Evaluator: fixtureEvaluator{},
+		Node: plugins.NodeOptions{OnOutput: fixtureOutput(port)},
 		Redact: func(err any) CrossedError {
 			message := fmt.Sprint(err)
 			if typed, ok := err.(error); ok {
@@ -317,72 +311,6 @@ func runWorkerFixture() {
 		OnError: func(err any) { fmt.Fprintln(os.Stderr, err) },
 	})
 }
-
-// fixtureCore is worker.ts's core facet: `Busy`, `Echo` and `Control`.
-func fixtureCore(worker host.Host) host.Facet {
-	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
-		if err := h.Serve(fixtureBusy, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
-			counts := self.State(fixtureCounts).(*documents.Singleton)
-			return contracts.Implementation{Members: contracts.VariantImplementation{
-				State: map[string]chord.Watchable[delta.JsonValue]{
-					"counts": self.Derive([]any{counts}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
-				},
-				Methods: map[string]contracts.MethodFunction{
-					"set": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-						_, err := counts.Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("tasks", args) }, ctx)
-						return nil, err
-					},
-				},
-			}}, nil
-		}, host.ServeOptions{}); err != nil {
-			return err
-		}
-		if err := h.Serve(fixtureEcho, func(*delta.JsonObject, host.Self) (contracts.Implementation, error) {
-			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
-				"echo": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) { return args, nil },
-			}}}, nil
-		}, host.ServeOptions{}); err != nil {
-			return err
-		}
-		return h.Serve(fixtureControl, func(_ *delta.JsonObject, _ data.Principal, self host.Self) (contracts.Implementation, error) {
-			busy := self.Get(fixtureBusy, delta.JsonObjectOf())
-			echo := self.Get(fixtureEcho, delta.JsonObjectOf())
-			return contracts.Implementation{Variant: "main", Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
-				"crash": func(code delta.JsonValue, _ context.Context) (delta.JsonValue, error) {
-					time.AfterFunc(10*time.Millisecond, func() { os.Exit(int(code.(float64))) })
-					return nil, nil
-				},
-				"busy": func(ms delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					if _, err := busy.Call("set", float64(1), ctx); err != nil {
-						return nil, err
-					}
-					// After the call settled (its ctx sealed, maybe this object ended): through the host.
-					time.AfterFunc(time.Duration(ms.(float64))*time.Millisecond, func() {
-						counts, err := worker.Get(fixtureBusy, delta.JsonObjectOf(), chordctx.Background(), host.GetOptions{})
-						if err != nil {
-							return
-						}
-						_, _ = counts.Call("set", float64(0), chordctx.Background())
-						counts.Release()
-					})
-					return nil, nil
-				},
-				"localCalls": func(n delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					before := fixturePort.sent.Load()
-					for index := range int(n.(float64)) {
-						if _, err := echo.Call("echo", float64(index), ctx); err != nil {
-							return nil, err
-						}
-					}
-					return float64(fixturePort.sent.Load() - before), nil
-				},
-			}}}, nil
-		}, host.ServeOptions{})
-	})
-}
-
-// fixturePort is the fixture worker's counting port, for `Control.localCalls`.
-var fixturePort *countingPort
 
 func appendLog(path, text string) {
 	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)

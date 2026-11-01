@@ -41833,6 +41833,25 @@
       ]
     },
     {
+      "id": "BF-f89c404",
+      "title": "fix(durable/core/turn): the pattern generator reads Pi's single-quoted pattern strings, so the Zhipu 1308…",
+      "symptom": "fix(durable/core/turn): the pattern generator reads Pi's single-quoted pattern strings, so the Zhipu 1308 pattern stays after D217 retires",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f89c404fd3",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-f8d96b7",
       "title": "The Node SQLite driver keeps the 256 most recently used prepared statements per connection instead of every…",
       "symptom": "The Node SQLite driver keeps the 256 most recently used prepared statements per connection instead of every statement it ever prepared, closing the evicted ones, so callers that generate SQL of unbounded shapes no longer grow it without bound.",
