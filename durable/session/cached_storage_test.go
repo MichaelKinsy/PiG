@@ -234,13 +234,11 @@ func TestCachedStorageDropsReadOverlappedByPublicationAndKeepsVersionsOnlyForRea
 	release, entered := backend.holdReads()
 	var wg sync.WaitGroup
 	for _, id := range []durable.TaskId{2, 3} {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			if _, err := storage.Task(ctx, id); err != nil {
 				t.Error(err)
 			}
-		}()
+		})
 	}
 	<-entered
 	<-entered
@@ -353,20 +351,18 @@ func TestCachedStorageReadFromSeveralGoroutinesWhileCommitsPublish(t *testing.T)
 	}
 	storage := session.NewCachedStorage(backend)
 	var wg sync.WaitGroup
-	for reader := 0; reader < 4; reader++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for round := 0; round < 50; round++ {
+	for range 4 {
+		wg.Go(func() {
+			for range 50 {
 				for id := int64(2); id < 40; id++ {
 					if _, err := storage.Task(ctx, durable.TaskId(id)); err != nil {
 						t.Error(err)
 					}
 				}
 			}
-		}()
+		})
 	}
-	for round := 0; round < 50; round++ {
+	for range 50 {
 		for id := int64(2); id < 40; id++ {
 			storage.Published([]durable.StorageWrite{taskWrite(taskRecord(id, durable.TaskRunning))})
 		}

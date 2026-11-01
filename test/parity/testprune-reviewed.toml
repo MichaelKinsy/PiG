@@ -642,3 +642,10 @@ path = "chord/internal/parking/stall_test.go"
 commit = "73a0b7e6f90076013d5a254c7e196f20d38f46ce"
 class = "NOBEHAVIOR"
 reason = "Go only, no Pi counterpart: the stall report of a section that waits for its handler. The test now guards a goroutine that waits on a Signal with Guard, so the report's stacks name the waiter as parking.(*Signal).Wait (the wait it calls, no longer the report's own); its other expected values are unchanged."
+
+[[entry]]
+path = "durable/storage/jsonl/reclamation_planning_test.go"
+commit = "875c5c04b3d8e01148a41e386302650de0fec11a"
+class = "CITE"
+cite = "packages/durable/src/storage/jsonl/storage.ts:322"
+reason = "Pi e5c6182b makes JsonlStorage.commit store several batches (storage.ts:285-325): memory runs ahead of the file once a batch applied, so any failure after that (a sidecar path join failing included) poisons the storage with that failure as the cause instead of leaving it usable; a reopened storage has no record of the batch. The path-join test expects the poisoned error and the absent document."

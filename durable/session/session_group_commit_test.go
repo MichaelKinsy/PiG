@@ -567,18 +567,18 @@ func TestGroupCommitFailuresPerPart(t *testing.T) {
 		g.storage.mu.Unlock()
 		reading := g.commitAsync(func(tx durable.Tx) (any, error) { return tx.Task(999) })
 		quiesce(reading)
-		if failure := g.session.Failure(); failure != first {
+		if failure := g.session.Failure(); !errors.Is(failure, first) {
 			t.Fatalf("session failure %v, want %v", failure, first)
 		}
 		g.storage.setRejectCall(g.storage.callCount() - 1)
 		held.Release()
 		_, err := reading.wait()
-		if err != first {
+		if !errors.Is(err, first) {
 			t.Fatalf("the failing read got %v, want its own error", err)
 		}
 		_, err = inFlight.wait()
 		cause, failed := isSessionFailed(err)
-		if !failed || cause != first {
+		if !failed || !errors.Is(cause, first) {
 			t.Fatalf("the call in flight got %v, want SessionFailed caused by the first failure", err)
 		}
 		// Nothing of the call is published once the Session failed.
