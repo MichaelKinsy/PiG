@@ -24,7 +24,7 @@ func TestProcessLockMakesASecondTakerWaitUntilTheHolderReleasesThenTakesIt(t *te
 		t.Fatal(err)
 	}
 	var taken atomic.Bool
-	secondResult := make(chan ProcessLockHandle, 1)
+	secondResult := make(chan *ProcessLockHandle, 1)
 	go func() {
 		lock, err := ProcessLock(name, chordctx.Background())
 		if err != nil {
@@ -111,7 +111,7 @@ func TestSocketFileLocksAreTakenWaitedForAndReleasedLikeTheOthers(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondResult := make(chan ProcessLockHandle, 1)
+	secondResult := make(chan *ProcessLockHandle, 1)
 	go func() {
 		lock, err := lockAt(lockLocation{kind: lockFile, address: address}, chordctx.Background())
 		if err != nil {

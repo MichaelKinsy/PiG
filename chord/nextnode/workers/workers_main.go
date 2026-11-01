@@ -41,7 +41,7 @@ type WorkerStart struct {
 	Start delta.JsonValue
 	// Parent is the link to the server: connect it before anything slow (`started` goes out then).
 	Parent  link.Link
-	Plugins WorkerPlugins
+	Plugins *WorkerPlugins
 	// OnClose registers a closer: closers run in reverse order at shutdown.
 	OnClose func(closer func(ctx context.Context) error)
 }
@@ -51,13 +51,6 @@ type WorkerLoad struct {
 	Kind string
 	// Core is the app's own facets.
 	Core []host.HostFacet
-}
-
-// WorkerPlugins is the worker's plugins: the shipped scripts of its kind, loaded on its host; the server's reloads applied
-// to it.
-type WorkerPlugins interface {
-	// Load loads h with the start message's scripts of Kind and Core.
-	Load(h host.Host, options WorkerLoad, ctx context.Context) (host.LoadReport, error)
 }
 
 // BusyWatchable is a JSON watchable of numbers: a reference's member, or a source.
@@ -122,7 +115,7 @@ type worker struct {
 
 	mu      sync.Mutex
 	closers []func(ctx context.Context) error
-	lock    ProcessLockHandle
+	lock    *ProcessLockHandle
 	// reloads arrived, applied one after another once fn returned.
 	reloads   [][]plugins.PluginScript
 	loaded    *loadedHost
@@ -218,7 +211,7 @@ func (w *worker) runStart(fn func(start WorkerStart, ctx context.Context) (*Work
 	parent := &parentLink{inner: link.IpcLink(w.port), started: func() { w.send(FromWorker{Kind: FromWorkerStarted}) }}
 	runtime := plugins.NewPluginRuntime(w.options.Evaluator)
 	var report host.LoadReport
-	loading := loadingPlugins{worker: w, message: message, runtime: runtime, report: &report}
+	loading := &WorkerPlugins{worker: w, message: message, runtime: runtime, report: &report}
 	start := WorkerStart{
 		Address: message.Address,
 		Start:   message.Start,
@@ -268,15 +261,17 @@ func (w *worker) runStart(fn func(start WorkerStart, ctx context.Context) (*Work
 	return nil
 }
 
-// loadingPlugins is the plugins the app's function gets: it records the host and the load report.
-type loadingPlugins struct {
+// WorkerPlugins is the worker's plugins: the shipped scripts of its kind, loaded on its host; the server's reloads applied
+// to it.
+type WorkerPlugins struct {
 	worker  *worker
 	message ToWorker
 	runtime *plugins.PluginRuntime
 	report  *host.LoadReport
 }
 
-func (p loadingPlugins) Load(h host.Host, options WorkerLoad, ctx context.Context) (host.LoadReport, error) {
+// Load loads h with the start message's scripts of Kind and Core.
+func (p *WorkerPlugins) Load(h host.Host, options WorkerLoad, ctx context.Context) (host.LoadReport, error) {
 	p.worker.mu.Lock()
 	p.worker.loaded = &loadedHost{host: h, runtime: p.runtime}
 	p.worker.mu.Unlock()

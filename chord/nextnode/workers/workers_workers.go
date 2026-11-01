@@ -123,23 +123,9 @@ func (AuthorizeFailedError) workersError() {}
 func (WorkerExitedError) workersError()    {}
 func (BatchWorkersError) workersError()    {}
 
-// Workers is the workers component.
-type Workers interface {
-	// State is per address key its WorkerState; no entry when stopped or never started. A JSON watchable.
-	State() state.SourceHandle
-	// Stop suspends address while it has holders (`RouteHandle.Suspend`), then stops its worker.
-	Stop(address contracts.Address, ctx context.Context) error
-	// Retry clears address's failure and suspension: it starts again now if held (`RouteHandle.Retry`).
-	Retry(address contracts.Address, ctx context.Context) error
-	// Step is a rollout step shipping the kind's current set to every worker, one result per worker (§4).
-	Step(name string) plugins.RolloutStep
-	// Close cancels starts, stops every worker; new starts reject `released/closed`.
-	Close(ctx context.Context) error
-}
-
 // CreateWorkers creates the workers component on h: it routes kind itself (`host.Route`, before `Load`).
-func CreateWorkers(h host.Host, kind *contracts.HostKind, options WorkersOptions, ctx context.Context) (Workers, error) {
-	component := newWorkersComponent(options, ctx)
+func CreateWorkers(h host.Host, kind *contracts.HostKind, options WorkersOptions, ctx context.Context) (*Workers, error) {
+	component := newWorkers(options, ctx)
 	route, err := h.Route(kind, host.RouteOptions{
 		Authorize: func(principal data.Principal, address contracts.Address) (bool, error) {
 			// An error would reach the holder as the hold's failure: the app's error stays private.
@@ -234,7 +220,8 @@ const (
 // startFailed is the public error of a start that failed.
 var startFailed = CrossedError{Message: "worker failed to start", Code: "unavailable"}
 
-type workersComponent struct {
+// Workers is the workers component.
+type Workers struct {
 	// route is set by CreateWorkers once the route exists.
 	route   host.RouteHandle
 	state   *workersState
@@ -254,8 +241,8 @@ type workersComponent struct {
 	tasks     taskGroup
 }
 
-func newWorkersComponent(options WorkersOptions, ctx context.Context) *workersComponent {
-	c := &workersComponent{options: options, loop: host.NewLoop(), addresses: map[string]*routed{}}
+func newWorkers(options WorkersOptions, ctx context.Context) *Workers {
+	c := &Workers{options: options, loop: host.NewLoop(), addresses: map[string]*routed{}}
 	c.clock = options.clock
 	if c.clock == nil {
 		c.clock = c.loop
@@ -268,18 +255,19 @@ func newWorkersComponent(options WorkersOptions, ctx context.Context) *workersCo
 	return c
 }
 
-func (c *workersComponent) State() state.SourceHandle { return c.state }
+// State is per address key its WorkerState; no entry when stopped or never started. A JSON watchable.
+func (c *Workers) State() state.SourceHandle { return c.state }
 
 // isClosing reports whether `Close` was called.
-func (c *workersComponent) isClosing() bool { return c.closingCtx.Err() != nil }
+func (c *Workers) isClosing() bool { return c.closingCtx.Err() != nil }
 
 // timer is `setTimeout`: job runs as a section of the component's loop.
-func (c *workersComponent) timer(d time.Duration, job func()) host.Timer {
+func (c *Workers) timer(d time.Duration, job func()) host.Timer {
 	return c.clock.AfterFunc(d, func() { c.loop.Run(job) })
 }
 
 // task runs fn as a goroutine the component owns; Close joins it.
-func (c *workersComponent) task(fn func()) {
+func (c *Workers) task(fn func()) {
 	c.tasks.add()
 	//portlint:allow golifetime the component's own tasks end with their work and Close joins them
 	go func() {
@@ -290,7 +278,7 @@ func (c *workersComponent) task(fn func()) {
 
 // resolve is the route's `resolve`: a failed address returns at once its (public) failure, nothing forks; otherwise a
 // start, after the previous child's exit.
-func (c *workersComponent) resolve(address contracts.Address, routing context.Context) (host.ResolvedLink, error) {
+func (c *Workers) resolve(address contracts.Address, routing context.Context) (host.ResolvedLink, error) {
 	var started *promise[host.ResolvedLink]
 	var record *routed
 	var immediate error
@@ -320,7 +308,8 @@ func (c *workersComponent) resolve(address contracts.Address, routing context.Co
 	return started.wait()
 }
 
-func (c *workersComponent) Stop(address contracts.Address, ctx context.Context) error {
+// Stop suspends address while it has holders (`RouteHandle.Suspend`), then stops its worker.
+func (c *Workers) Stop(address contracts.Address, ctx context.Context) error {
 	c.route.Suspend(address)
 	var stopped *promise[struct{}]
 	c.loop.Run(func() {
@@ -337,7 +326,8 @@ func (c *workersComponent) Stop(address contracts.Address, ctx context.Context) 
 	return err
 }
 
-func (c *workersComponent) Retry(address contracts.Address, _ context.Context) error {
+// Retry clears address's failure and suspension: it starts again now if held (`RouteHandle.Retry`).
+func (c *Workers) Retry(address contracts.Address, _ context.Context) error {
 	c.loop.Run(func() {
 		if record := c.addresses[address.Key]; record != nil {
 			record.failure = nil
@@ -349,21 +339,23 @@ func (c *workersComponent) Retry(address contracts.Address, _ context.Context) e
 	return nil
 }
 
-func (c *workersComponent) Step(name string) plugins.RolloutStep {
+// Step is a rollout step shipping the kind's current set to every worker, one result per worker (§4).
+func (c *Workers) Step(name string) plugins.RolloutStep {
 	return plugins.RolloutStep{Name: name, Kinds: []string{c.options.Kind}, Reload: func(_ *plugins.Built, applied map[string][]plugins.PluginScript, ctx context.Context) (plugins.StepResult, error) {
 		hosts, err := c.rollout(applied[c.options.Kind], ctx)
 		return plugins.StepResult{Hosts: hosts}, err
 	}}
 }
 
-func (c *workersComponent) Close(ctx context.Context) error {
+// Close cancels starts, stops every worker; new starts reject `released/closed`.
+func (c *Workers) Close(ctx context.Context) error {
 	err := c.close(ctx)
 	// Shutdown draining: the component's own goroutines end with their work.
 	c.tasks.wait()
 	return err
 }
 
-func (c *workersComponent) close(ctx context.Context) error {
+func (c *Workers) close(ctx context.Context) error {
 	var stops []*promise[struct{}]
 	c.loop.Run(func() {
 		if !c.isClosing() {
@@ -387,7 +379,7 @@ func (c *workersComponent) close(ctx context.Context) error {
 }
 
 // closeWith: ctx's abort closes the component (the route's is aborted when the host closes).
-func (c *workersComponent) closeWith(ctx context.Context) {
+func (c *Workers) closeWith(ctx context.Context) {
 	if ctx.Err() != nil {
 		return
 	}
@@ -397,7 +389,7 @@ func (c *workersComponent) closeWith(ctx context.Context) {
 }
 
 // routedOf is the record of address, made by its first use.
-func (c *workersComponent) routedOf(address contracts.Address) *routed {
+func (c *Workers) routedOf(address contracts.Address) *routed {
 	record := c.addresses[address.Key]
 	if record == nil {
 		queue := make(chan struct{})
@@ -410,11 +402,11 @@ func (c *workersComponent) routedOf(address contracts.Address) *routed {
 }
 
 // enqueue runs operation after the address's earlier ones. Call it in a section.
-func (c *workersComponent) enqueue(record *routed, operation func() (struct{}, error)) *promise[struct{}] {
+func (c *Workers) enqueue(record *routed, operation func() (struct{}, error)) *promise[struct{}] {
 	return enqueue(c, record, operation)
 }
 
-func enqueue[T any](c *workersComponent, record *routed, operation func() (T, error)) *promise[T] {
+func enqueue[T any](c *Workers, record *routed, operation func() (T, error)) *promise[T] {
 	record.pending++
 	previous := record.queue
 	next := make(chan struct{})
@@ -432,20 +424,20 @@ func enqueue[T any](c *workersComponent, record *routed, operation func() (T, er
 }
 
 // done: an operation ended.
-func (c *workersComponent) done(record *routed) {
+func (c *Workers) done(record *routed) {
 	record.pending--
 	c.forget(record)
 }
 
 // settled: a start settled: no longer starting.
-func (c *workersComponent) settled(record *routed, started *promise[host.ResolvedLink]) {
+func (c *Workers) settled(record *routed, started *promise[host.ResolvedLink]) {
 	if record.starting == started {
 		record.starting = nil
 	}
 }
 
 // forget forgets an address with no operation, no child and no failure.
-func (c *workersComponent) forget(record *routed) {
+func (c *Workers) forget(record *routed) {
 	if record.pending == 0 && record.child == nil && record.failure == nil {
 		delete(c.addresses, record.address.Key)
 		c.order = slices.DeleteFunc(c.order, func(key string) bool { return key == record.address.Key })
@@ -455,7 +447,7 @@ func (c *workersComponent) forget(record *routed) {
 // start is a start: the app's start data, the fork, the start message with the kind's current set, then `started` within
 // the start timer (fork, lock and connect only). Its failure fails the address; `Close` ends it at any of its waits (an
 // app's `Start` that ignores its context too), a forked child is stopped.
-func (c *workersComponent) start(record *routed, routing context.Context) (host.ResolvedLink, error) {
+func (c *Workers) start(record *routed, routing context.Context) (host.ResolvedLink, error) {
 	address := record.address
 	// After the previous child's exit (its link may close first): a crash recorded meanwhile fails this start.
 	var exited <-chan struct{}
@@ -538,7 +530,7 @@ func (c *workersComponent) start(record *routed, routing context.Context) (host.
 
 // startChild is the app hooks and the waits of a start after the fork: the shipped scripts, the lock, the start message,
 // `started`, the principal.
-func (c *workersComponent) startChild(record *routed, spawned *child, data delta.JsonValue, ctx context.Context) (host.ResolvedLink, error) {
+func (c *Workers) startChild(record *routed, spawned *child, data delta.JsonValue, ctx context.Context) (host.ResolvedLink, error) {
 	address := record.address
 	scripts, err := c.options.Plugins.Scripts(c.options.Kind, ctx)
 	if err != nil {
@@ -563,7 +555,7 @@ func (c *workersComponent) startChild(record *routed, spawned *child, data delta
 }
 
 // fork forks the address's worker and records its events on it as they happen. It runs in a section.
-func (c *workersComponent) fork(record *routed) (*child, error) {
+func (c *Workers) fork(record *routed) (*child, error) {
 	address := record.address
 	var spawned *child
 	options := ForkOptions{Entry: c.options.Entry, ExecArgv: c.options.ExecArgv, Env: c.options.Env}
@@ -595,7 +587,7 @@ func (c *workersComponent) fork(record *routed) (*child, error) {
 }
 
 // control is a control message of child.
-func (c *workersComponent) control(record *routed, child *child, message FromWorker) {
+func (c *Workers) control(record *routed, child *child, message FromWorker) {
 	switch message.Kind {
 	case FromWorkerStarted:
 		child.started.resolve(struct{}{})
@@ -633,7 +625,7 @@ func (c *workersComponent) control(record *routed, child *child, message FromWor
 }
 
 // linkLost: this side closed child's link (the heartbeat, a protocol error): its child is stopped, its exit a crash.
-func (c *workersComponent) linkLost(child *child) {
+func (c *Workers) linkLost(child *child) {
 	c.ended(child)
 	if child.stopping {
 		return
@@ -647,7 +639,7 @@ func (c *workersComponent) linkLost(child *child) {
 
 // linkClosed: the child's side closed its link (it is exiting, or it closed its IPC and lives on): its reloads end; one
 // that does not exit within the grace is killed, its exit a crash (link lost).
-func (c *workersComponent) linkClosed(child *child) {
+func (c *Workers) linkClosed(child *child) {
 	c.ended(child)
 	if child.stopping || child.grace != nil {
 		return
@@ -662,7 +654,7 @@ func (c *workersComponent) linkClosed(child *child) {
 
 // exited: child exited: a stop's exit forgets it; any other is a crash that fails the address (`worker_exited` and
 // `worker_failed` once, the full error and stderr tail for the app's logs only), except once the component closes.
-func (c *workersComponent) exited(record *routed, child *child, exit Exit) {
+func (c *Workers) exited(record *routed, child *child, exit Exit) {
 	if child.grace != nil {
 		child.grace.Stop()
 	}
@@ -695,7 +687,7 @@ func (c *workersComponent) exited(record *routed, child *child, exit Exit) {
 
 // ended: child's link is gone or it exited (the first of these): its outstanding reload and every one queued behind it
 // settle, `stopped` when a stop asked for it, else failed.
-func (c *workersComponent) ended(child *child) {
+func (c *Workers) ended(child *child) {
 	if child.ended != nil {
 		return
 	}
@@ -710,20 +702,20 @@ func (c *workersComponent) ended(child *child) {
 }
 
 // fail fails record with why (`worker_failed` once, with the full error and stderrTail). It runs in a section.
-func (c *workersComponent) fail(record *routed, why cause, stderrTail string) {
+func (c *Workers) fail(record *routed, why cause, stderrTail string) {
 	record.failure = &failure{err: *why.public, at: c.clock.Now()}
 	c.options.OnError(WorkerFailedError{Address: record.address.Key, Error: why.err, StderrTail: stderrTail})
 	c.state.refresh()
 }
 
 // failLocked is fail from outside a section; it returns the public error a start fails with.
-func (c *workersComponent) failLocked(record *routed, why cause, stderrTail string) error {
+func (c *Workers) failLocked(record *routed, why cause, stderrTail string) error {
 	c.loop.Run(func() { c.fail(record, why, stderrTail) })
 	return uncrossed(*why.public)
 }
 
 // stop is a stop: `shutdown`, the grace, then the tree killed; it returns at its exit.
-func (c *workersComponent) stop(record *routed) error {
+func (c *Workers) stop(record *routed) error {
 	var exited <-chan struct{}
 	c.loop.Run(func() {
 		child := record.child
@@ -742,7 +734,7 @@ func (c *workersComponent) stop(record *routed) error {
 }
 
 // shutdown asks child to shut down and kills its tree after the grace.
-func (c *workersComponent) shutdown(child *child) {
+func (c *Workers) shutdown(child *child) {
 	child.status = WorkerStopping
 	child.process.Send(ToWorker{Kind: ToWorkerShutdown})
 	if child.grace != nil {
@@ -752,7 +744,7 @@ func (c *workersComponent) shutdown(child *child) {
 }
 
 // watchIdle starts the idle check (every second) while any worker exists. It runs in a section.
-func (c *workersComponent) watchIdle() {
+func (c *Workers) watchIdle() {
 	if c.idleTimer != nil {
 		return
 	}
@@ -769,7 +761,7 @@ func (c *workersComponent) watchIdle() {
 }
 
 // checkIdle queues a stop for every worker idle since `IdleMs`; it reports whether any worker is left.
-func (c *workersComponent) checkIdle() bool {
+func (c *Workers) checkIdle() bool {
 	idleFor := c.idleFor()
 	now := c.clock.Now()
 	workers := 0
@@ -793,7 +785,7 @@ func (c *workersComponent) checkIdle() bool {
 }
 
 // idleStop is an idle stop when it runs: only if child is still the address's and still idle (a hold may have come since).
-func (c *workersComponent) idleStop(record *routed, child *child) error {
+func (c *Workers) idleStop(record *routed, child *child) error {
 	var skip bool
 	c.loop.Run(func() {
 		child.idleStop = false
@@ -812,7 +804,7 @@ func (c *workersComponent) idleStop(record *routed, child *child) error {
 }
 
 // idleFor is how long a worker idles before it is stopped.
-func (c *workersComponent) idleFor() time.Duration {
+func (c *Workers) idleFor() time.Duration {
 	if c.options.IdleMs != nil {
 		return c.options.IdleMs()
 	}
@@ -824,7 +816,7 @@ func (c *workersComponent) idleFor() time.Duration {
 // failures recorded before it cleared and the held ones retried (listed once ready or failed); the set shipped to every
 // worker whose last applied set differs, in parallel. ctx's abort ends only this wait: the entries still waiting are listed
 // with its error.
-func (c *workersComponent) rollout(scripts []plugins.PluginScript, ctx context.Context) ([]plugins.RolloutHost, error) {
+func (c *Workers) rollout(scripts []plugins.PluginScript, ctx context.Context) ([]plugins.RolloutHost, error) {
 	key := keyOf(scripts)
 	type entry struct {
 		host    string
@@ -874,7 +866,7 @@ func (c *workersComponent) rollout(scripts []plugins.PluginScript, ctx context.C
 }
 
 // retried is a retried address's entry: its start's load report once ready, or its error.
-func (c *workersComponent) retried(record *routed, started *promise[host.ResolvedLink]) *promise[plugins.RolloutHost] {
+func (c *Workers) retried(record *routed, started *promise[host.ResolvedLink]) *promise[plugins.RolloutHost] {
 	entry := newPromise[plugins.RolloutHost]()
 	hostName := record.address.Key
 	c.task(func() {
@@ -905,7 +897,7 @@ func (c *workersComponent) retried(record *routed, started *promise[host.Resolve
 // reload ships scripts to child after its outstanding reload; it settles on `reloaded`, its link's loss or its exit. Only a
 // reload that applied without failures marks the set shipped (a failed plugin is shipped again next time). It runs in a
 // section.
-func (c *workersComponent) reload(hostName string, child *child, scripts []plugins.PluginScript, key string) *promise[plugins.RolloutHost] {
+func (c *Workers) reload(hostName string, child *child, scripts []plugins.PluginScript, key string) *promise[plugins.RolloutHost] {
 	reload := newPromise[plugins.RolloutHost]()
 	previous := child.reloading
 	next := make(chan struct{})
@@ -1006,14 +998,14 @@ func bounded(hostName string, entry *promise[plugins.RolloutHost], ctx context.C
 // workersState is the workers' state: a JSON watchable of every address's WorkerState, published once per microtask turn.
 type workersState struct {
 	state.Source
-	component *workersComponent
+	component *Workers
 	value     delta.JsonValue
 	scheduled bool
 }
 
 var _ state.SourceImpl = (*workersState)(nil)
 
-func newWorkersState(component *workersComponent, batch *state.Batch) *workersState {
+func newWorkersState(component *Workers, batch *state.Batch) *workersState {
 	s := &workersState{component: component}
 	s.Init(batch, s)
 	return s
@@ -1056,7 +1048,7 @@ func (s *workersState) refresh() {
 }
 
 // stateOf is every address's state: its child's, or its failure; none for an address with neither.
-func stateOf(component *workersComponent) delta.JsonValue {
+func stateOf(component *Workers) delta.JsonValue {
 	result := delta.NewJsonObject(len(component.order))
 	for _, key := range component.order {
 		record := component.addresses[key]

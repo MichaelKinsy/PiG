@@ -62,7 +62,7 @@ func (c *collector[T]) all() []T {
 type fleet struct {
 	t       testing.TB
 	server  host.Host
-	workers Workers
+	workers *Workers
 	plugins plugins.Plugins
 	// root is the copy of the fixture plugins.
 	root       string
@@ -479,7 +479,7 @@ func (f *fleet) build(names []string) *plugins.Built {
 
 // childStarted reports whether the child of session `id` has told `started` (a look into the component, under its loop).
 func (f *fleet) childStarted(id string) bool {
-	component := f.workers.(*workersComponent)
+	component := f.workers
 	var started bool
 	component.loop.Run(func() {
 		if record := component.addresses["session|"+id]; record != nil && record.child != nil {
@@ -515,7 +515,7 @@ func (f *fleet) watchStatuses(id string) *collector[WorkerStatus] {
 
 // reloadOutstanding reports whether a reload of session `id`'s child is out and unanswered (a look into the component).
 func (f *fleet) reloadOutstanding(id string) bool {
-	component := f.workers.(*workersComponent)
+	component := f.workers
 	var outstanding bool
 	component.loop.Run(func() {
 		if record := component.addresses["session|"+id]; record != nil && record.child != nil {

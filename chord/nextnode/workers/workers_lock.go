@@ -23,11 +23,6 @@ import (
 // event, so a worker's own exit path runs it. A held lock's accepted connections are owned by one goroutine that Release
 // joins, never detached.
 
-// ProcessLockHandle is a held lock: Release frees it (the process's exit does too).
-type ProcessLockHandle interface {
-	Release() error
-}
-
 // lockKind is where a lock lives: an abstract socket (Linux, Android), a named pipe (Windows) or a socket file (elsewhere).
 type lockKind string
 
@@ -45,7 +40,7 @@ type lockLocation struct {
 
 // ProcessLock takes the lock name, waiting while another process holds it (until ctx aborts: it returns its cause). It
 // returns what listening returns besides "in use", and for a stale socket file (macOS, the BSDs) an error naming it.
-func ProcessLock(name string, ctx context.Context) (ProcessLockHandle, error) {
+func ProcessLock(name string, ctx context.Context) (*ProcessLockHandle, error) {
 	sum := sha256.Sum256([]byte(name))
 	key := hex.EncodeToString(sum[:])[:32]
 	location, err := platformLockLocation(key)
@@ -57,7 +52,7 @@ func ProcessLock(name string, ctx context.Context) (ProcessLockHandle, error) {
 
 // lockAt takes the lock at location, waiting while it is held. A socket file nobody accepts on (a crashed holder's) fails
 // closed: taking it over races another taker (two could both unlink and listen), so the error names the file to remove.
-func lockAt(location lockLocation, ctx context.Context) (ProcessLockHandle, error) {
+func lockAt(location lockLocation, ctx context.Context) (*ProcessLockHandle, error) {
 	address := location.address
 	file := location.kind == lockFile
 	var listener net.Listener
@@ -81,7 +76,7 @@ func lockAt(location lockLocation, ctx context.Context) (ProcessLockHandle, erro
 			return nil, fmt.Errorf("lock: %s is a stale lock file (no process holds it); remove it if no worker runs", address)
 		}
 	}
-	lock := &heldLock{listener: listener, waiters: map[net.Conn]struct{}{}, accepting: make(chan struct{})}
+	lock := &ProcessLockHandle{listener: listener, waiters: map[net.Conn]struct{}{}, accepting: make(chan struct{})}
 	if file {
 		lock.removeExitHook = atExit(func() {
 			// Gone already.
@@ -93,8 +88,9 @@ func lockAt(location lockLocation, ctx context.Context) (ProcessLockHandle, erro
 	return lock, nil
 }
 
-// heldLock is a lock taken: its listening socket and the connections of the waiters, kept open and never answered.
-type heldLock struct {
+// ProcessLockHandle is a held lock: its listening socket and the connections of the waiters, kept open and never answered.
+// Release frees it (the process's exit does too).
+type ProcessLockHandle struct {
 	listener       net.Listener
 	removeExitHook func()
 	accepting      chan struct{}
@@ -106,7 +102,7 @@ type heldLock struct {
 }
 
 // accept keeps every waiter's connection open: a waiter learns of the release when its connection closes.
-func (lock *heldLock) accept() {
+func (lock *ProcessLockHandle) accept() {
 	defer close(lock.accepting)
 	for {
 		conn, err := lock.listener.Accept()
@@ -126,7 +122,7 @@ func (lock *heldLock) accept() {
 
 // Release closes the lock's socket and its waiters' connections (they see them close) once it is gone; releasing again
 // returns the first result.
-func (lock *heldLock) Release() error {
+func (lock *ProcessLockHandle) Release() error {
 	lock.mu.Lock()
 	if lock.released {
 		defer lock.mu.Unlock()
