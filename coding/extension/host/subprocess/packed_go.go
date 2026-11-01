@@ -273,6 +273,8 @@ type factoryAdmission struct {
 	Socket     string
 	Cwd        string
 	ReloadPass uint64
+	// Group is the admitting Host's ready.group; a Node runtime scopes its per-process bookkeeping by it before the factory runs. pig additive (D201).
+	Group string
 }
 
 func (a factoryAdmission) line() (string, error) {
@@ -285,6 +287,10 @@ func (a factoryAdmission) line() (string, error) {
 		return "", fmt.Errorf("control field %q contains a tab or line break", op)
 	}
 	fields := []string{op, encodeAdmissionField(a.Name), encodeAdmissionField(a.Socket), encodeAdmissionField(a.Entry), encodeAdmissionField(a.Cwd), strconv.FormatUint(a.ReloadPass, 10)}
+	// pig additive (D201): the group travels as a trailing field only for a Host that shares cells, so every other line is unchanged.
+	if a.Group != "" {
+		fields = append(fields, encodeAdmissionField(a.Group))
+	}
 	return strings.Join(fields, "\t") + "\n", nil
 }
 
@@ -549,13 +555,13 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 			}
 			if err == nil {
 				processState.factoryOwner.Store(&me.config.Name)
-				if sendErr := processState.share.send(factoryAdmission{Name: me.config.Name, Entry: me.nodeEntry, Socket: pendingExts[i].address, ReloadPass: reloadPass(ctx), Cwd: h.cwd}); sendErr != nil {
+				if sendErr := processState.share.send(factoryAdmission{Name: me.config.Name, Entry: me.nodeEntry, Socket: pendingExts[i].address, ReloadPass: reloadPass(ctx), Cwd: h.cwd, Group: h.Group()}); sendErr != nil {
 					err = &admissionWriteError{err: sendErr}
 				}
 			}
 		} else if retained != nil {
 			// Pi runs one factory at a time, and a factory may call the host before it returns (a subscription on the event bus). The host serves that call only on the connection it is accepting, so the runner is told of a member once the members before it have registered: its factories run in separate goroutines and the one that takes the runner's factory turn first would otherwise be a later member, while the host waits for an earlier one. The reload pass tells the Python runner when to re-import an edited extension.
-			if sendErr := processState.share.send(factoryAdmission{Name: me.config.Name, Socket: pendingExts[i].address, ReloadPass: reloadPass(ctx)}); sendErr != nil {
+			if sendErr := processState.share.send(factoryAdmission{Name: me.config.Name, Socket: pendingExts[i].address, ReloadPass: reloadPass(ctx), Group: h.Group()}); sendErr != nil {
 				err = newLoadError(cell.Key, "spawn", "admit_failed", fmt.Errorf("admit %s to the running packed process: %w", me.config.Name, sendErr))
 				if i == 0 {
 					// No member's factory has run: the cell fails whole.
