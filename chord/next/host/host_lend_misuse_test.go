@@ -3,27 +3,31 @@ package host
 import (
 	"context"
 	"errors"
+	"fmt"
 	"runtime"
+	"sync"
 	"testing"
+	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
 // A method handler is an async function in Pi: one that throws rejects its call, and one that never resolves leaves the call
 // pending until it aborts, with the host going on in both. A Go handler is a coroutine of the section that admits its call
-// (Loop.Lend), so the two ways it can leave that Pi has no spelling of are tested here: ending its goroutine (runtime.Goexit,
-// which testing.T.FailNow does) is a throw, and a Suspend from a goroutine it started, which could never give the section
-// back, is refused rather than ignored.
+// (Loop.Lend), so the way it can leave that Pi has no spelling of is tested here: ending its goroutine (runtime.Goexit, which
+// testing.T.FailNow does) is a throw. What a goroutine it started waits for is not part of its synchronous part, as an
+// `await` in Pi's unawaited async work is not.
 
 var lendDesk = mustContract(declareLocal("app.lend-desk", contracts.LocalDeclaration{Params: contracts.Params{},
 	Version: 1,
 	Members: []contracts.LocalEntry{
 		contracts.Mem("exit", contracts.NewMethod()),
 		contracts.Mem("exitParked", contracts.NewMethod()),
-		contracts.Mem("foreignSuspend", contracts.NewMethod(contracts.TSchema{}, contracts.Str())),
+		contracts.Mem("startedSuspend", contracts.NewMethod(contracts.TSchema{}, contracts.Str())),
 		contracts.Mem("who", contracts.NewMethod(contracts.TSchema{}, contracts.Str())),
 	},
 }))
@@ -45,21 +49,18 @@ func lendDeskRef(t *testing.T) *Reference {
 					runtime.Goexit()
 					return nil, nil
 				},
-				// One that suspends from a goroutine it started, and learns what that did.
-				"foreignSuspend": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+				// One whose goroutine suspends: the handler reads, before its own first wait, whether that ended its synchronous
+				// part, and what the goroutine's Suspend did.
+				"startedSuspend": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					outcome := make(chan any, 1)
 					go func() {
 						defer func() { outcome <- recover() }()
 						chordctx.Suspend(ctx)
 					}()
-					got, err := chordctx.Receive(ctx, outcome)
-					if err != nil {
-						return nil, err
-					}
-					if failure, _ := got.(error); errors.Is(failure, parking.ErrForeignSuspend) {
-						return "refused", nil
-					}
-					return "ignored", nil
+					// A raw receive: the goroutine needs nothing of the host, and the section is still the handler's.
+					panicked := <-outcome
+					raised := ctx.Value(parking.Key).(*parking.Signal).Raised()
+					return fmt.Sprintf("raised %v, panic %v", raised, panicked), nil
 				},
 				"who": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return whoIs(ctx), nil },
 			}}}, nil
@@ -165,50 +166,22 @@ func errString(err error) string {
 	return err.Error()
 }
 
-// Pi has no `suspend`: an `await` ends an async function's synchronous part where it stands, and an `await` in work the
-// handler started and did not await does not end the handler's. A Suspend a Go handler's goroutine makes is that second one,
-// which would end nothing, so it is refused (whenever it runs: the handler's own next wait does not make it legitimate).
-func TestChordctxSuspendOnAGoroutineTheHandlerStartedIsRefused(t *testing.T) {
+// An `await` inside async work that Pi's handler started and did not await does not end the handler's synchronous part: the
+// handler goes on to its own next wait. A Suspend, as any wait, on a goroutine the handler started is that await: it neither
+// ends the handler's synchronous part nor fails.
+func TestChordctxSuspendOnAGoroutineTheHandlerStartedLeavesTheHandlersSynchronousPartAlone(t *testing.T) {
 	ref := lendDeskRef(t)
-	got, err := ref.Call("foreignSuspend", nil, background)
+	got, err := ref.Call("startedSuspend", nil, background)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != "refused" {
-		t.Fatalf("a Suspend from a goroutine the handler started was %v, want refused with parking.ErrForeignSuspend", got)
+	if got != "raised false, panic <nil>" {
+		t.Fatalf("a Suspend from a goroutine the handler started: %v, want its synchronous part not ended and no panic", got)
 	}
-}
-
-// The handler's own goroutine is the only one that suspends it: another goroutine's Suspend of a context that carries no
-// handler, or of a signal bound to no coroutine, is not refused.
-func TestParkingSuspendOfAContextWithoutAHandlerOrOfAnUnboundSignalDoesNothing(t *testing.T) {
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		chordctx.Suspend(background)
-		signal := parking.New()
-		chordctx.Suspend(parkingCarrier{Context: background, signal: signal})
-		if !signal.Raised() {
-			t.Error("a Suspend of an unbound signal from another goroutine did not raise it")
-		}
-	}()
-	<-done
-}
-
-type parkingCarrier struct {
-	context.Context
-	signal *parking.Signal
-}
-
-func (c parkingCarrier) Value(key any) any {
-	if key == parking.Key {
-		return c.signal
-	}
-	return c.Context.Value(key)
 }
 
 // Lend: what ends its goroutine inside a section, parked or not, leaves the section's goroutine and the loop as they were,
-// and abandoned runs once, on the handler's goroutine.
+// and fn is called once more with abandoned true, on the handler's goroutine.
 func TestLoopLendRunsAbandonedForAHandlerThatEndsItsGoroutine(t *testing.T) {
 	for _, parked := range []bool{false, true} {
 		for _, inSection := range []bool{true, false} {
@@ -217,12 +190,16 @@ func TestLoopLendRunsAbandonedForAHandlerThatEndsItsGoroutine(t *testing.T) {
 			survived := false
 			run := func() {
 				signal := parking.New()
-				loop.Lend(signal, func() {
+				loop.Lend(signal, func(abandoned bool) {
+					if abandoned {
+						abandonedRuns++
+						return
+					}
 					if parked {
 						signal.Raise()
 					}
 					runtime.Goexit()
-				}, func() { abandonedRuns++ })
+				})
 				survived = true
 			}
 			ended := make(chan struct{})
@@ -246,7 +223,7 @@ func TestLoopLendRunsAbandonedForAHandlerThatEndsItsGoroutine(t *testing.T) {
 			loop.Run(func() {
 				signal := parking.New()
 				ran := false
-				loop.Lend(signal, func() { ran = true; signal.Return() }, nil)
+				loop.Lend(signal, func(bool) { ran = true; signal.Return() })
 				if !ran {
 					t.Error("a handler lent after the Goexit did not run")
 				}
@@ -254,4 +231,68 @@ func TestLoopLendRunsAbandonedForAHandlerThatEndsItsGoroutine(t *testing.T) {
 			loop.Wait()
 		}
 	}
+}
+
+// The goroutine of a coroutine whose handler ended it is still ending when the loop drops the coroutine: stopping it lets it
+// finish, and iter.Pull reports that to whoever stops it as a Goexit. That must be a task of the loop's own, and never the
+// runtime's cleanup goroutine (which would end, and stop every later cleanup of the process), so the cleanup of a spent
+// coroutine is cancelled and nothing stops it twice. A loop's coroutines are dropped and collected between the handlers
+// that end their goroutines; afterwards the process's cleanups still run and no goroutine is left.
+func TestLoopLendStopsTheSpentCoroutineOfAHandlerThatEndedItsGoroutineOnATaskOfItsOwn(t *testing.T) {
+	for range 32 {
+		var done sync.WaitGroup
+		done.Go(func() { goroutineid.Current() })
+		done.Wait()
+	}
+	before := runtime.NumGoroutine()
+	survived := 0
+	for range 64 {
+		loop := NewLoop()
+		var done sync.WaitGroup
+		done.Go(func() {
+			loop.Run(func() {
+				signal := parking.New()
+				loop.Lend(signal, func(abandoned bool) {
+					if !abandoned {
+						runtime.Goexit()
+					}
+				})
+			})
+			survived++
+		})
+		done.Wait()
+		loop.Wait()
+		runtime.GC()
+	}
+	if survived != 64 {
+		t.Fatalf("%d of 64 goroutines that lent their section survived the handler's Goexit", survived)
+	}
+	// The runtime's cleanup goroutine is alive: a cleanup of an object dropped now runs.
+	fired := make(chan struct{})
+	func() {
+		sentinel := new([16]byte)
+		runtime.AddCleanup(sentinel, func(struct{}) { close(fired) }, struct{}{})
+	}()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		runtime.GC()
+		select {
+		case <-fired:
+		default:
+			if time.Now().After(deadline) {
+				t.Fatal("a cleanup of a dropped object never ran: the runtime's cleanup goroutine ended")
+			}
+			time.Sleep(time.Millisecond)
+			continue
+		}
+		break
+	}
+	for range 200 {
+		if runtime.NumGoroutine() <= before+2 {
+			return
+		}
+		runtime.GC()
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatalf("%d goroutines after the spent coroutines were stopped, %d before", runtime.NumGoroutine(), before)
 }

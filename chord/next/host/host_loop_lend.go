@@ -18,10 +18,7 @@ import (
 type lendRun struct {
 	loop   *Loop
 	signal *parking.Signal
-	fn     func()
-	// abandoned settles the call of a fn that ended its goroutine (runtime.Goexit) before it returned; nil when there is
-	// nothing to settle.
-	abandoned func()
+	fn     func(abandoned bool)
 	// goexited is set once fn ended its goroutine: the coroutine is spent, and its goroutine is left to finish ending.
 	goexited bool
 	// lent is whether the section was lent: the handler's goroutine owns the loop until it returns or parks.
@@ -36,7 +33,7 @@ type lendRun struct {
 func (r *lendRun) exec() {
 	loop := r.loop
 	signal := r.signal
-	abandoned := r.abandoned
+	fn := r.fn
 	done := false
 	defer func() {
 		if !done {
@@ -52,9 +49,7 @@ func (r *lendRun) exec() {
 			// The loop's owner goes back to the section and the section goes on, as at the handler's park: what is left of the
 			// handler is its rejection, which runs after the section as the settlement of a handler that returned does.
 			signal.Return()
-			if abandoned != nil {
-				abandoned()
-			}
+			fn(true)
 			r.finish()
 			// The goroutine is still ending: it stops here until stop lets it finish, and the goroutine that drives the
 			// coroutine takes it as the end of the call (finish of the loop).
@@ -68,14 +63,14 @@ func (r *lendRun) exec() {
 	if r.lent {
 		loop.owner.Store(id)
 	}
-	r.fn()
+	fn(false)
 	done = true
 }
 
 // finish is the end of a call: an idle coroutine holds nothing of the call it served.
 func (r *lendRun) finish() {
 	loop := r.loop
-	r.fn, r.signal, r.loop, r.abandoned = nil, nil, nil, nil
+	r.fn, r.signal, r.loop = nil, nil, nil
 	r.busy = false
 	loop.tasks.Done()
 }
@@ -86,6 +81,8 @@ type coroutine struct {
 	run  *lendRun
 	next func() (struct{}, bool)
 	stop func()
+	// cleanup stops the goroutine of a coroutine the loop dropped.
+	cleanup runtime.Cleanup
 }
 
 func newCoroutine() *coroutine {
@@ -100,7 +97,7 @@ func newCoroutine() *coroutine {
 		}
 	})
 	c := &coroutine{run: run, next: next, stop: stop}
-	runtime.AddCleanup(c, func(stop func()) { stop() }, stop)
+	c.cleanup = runtime.AddCleanup(c, func(stop func()) { stop() }, stop)
 	return c
 }
 
@@ -155,9 +152,9 @@ func (l *Loop) recycle(c *coroutine) {
 // fn that ends its goroutine (runtime.Goexit, as testing.T.FailNow does) before it returns is a throw that nobody catches:
 // Pi's awaited handler that throws rejects its call and leaves everything else as it was. iter.Pull would carry the Goexit
 // to the goroutine that drives the coroutine, ending the caller's goroutine, and the call would never settle, with the loop
-// owned by a goroutine that is gone. Instead Lend hands the section back as at a return, runs abandoned (the rejection fn
-// would have settled the call with; nil when there is none) on the handler's goroutine, and lets only that goroutine end.
-func (l *Loop) Lend(signal *parking.Signal, fn func(), abandoned func()) {
+// owned by a goroutine that is gone. Instead Lend hands the section back as at a return, calls fn again with abandoned true
+// (the rejection fn would have settled the call with) on the handler's goroutine, and lets only that goroutine end.
+func (l *Loop) Lend(signal *parking.Signal, fn func(abandoned bool)) {
 	section := goroutineid.Current()
 	lent := l.owner.Load() == section
 	if lent {
@@ -165,7 +162,7 @@ func (l *Loop) Lend(signal *parking.Signal, fn func(), abandoned func()) {
 	}
 	c := l.coroutine()
 	run := c.run
-	run.loop, run.signal, run.fn, run.abandoned, run.lent, run.busy = l, signal, fn, abandoned, lent, true
+	run.loop, run.signal, run.fn, run.lent, run.busy = l, signal, fn, lent, true
 	l.tasks.Add(1)
 	l.switchTo(c)
 	if !run.busy {
@@ -189,13 +186,16 @@ func (l *Loop) switchTo(c *coroutine) {
 	c.next()
 }
 
-// finish runs what is left of a handler that parked, then keeps its coroutine: one whose handler ended its goroutine is not
-// kept, and its goroutine is let finish ending on one of its own, where the Goexit that iter.Pull carries to whoever stops
-// the coroutine ends nothing else.
+// finish runs what is left of a handler that parked, then keeps its coroutine. One whose handler ended its goroutine is spent:
+// its goroutine is still ending, and stop lets it finish, which iter.Pull reports to whoever stops the coroutine as the
+// Goexit, so it is stopped by a task of the loop of its own, where the Goexit ends nothing else. The coroutine's cleanup is
+// cancelled first (it holds the coroutine, so it has not run): the runtime's cleanup goroutine must not stop it as well, with
+// the Goexit landing there and two stops of one iter.Pull at once.
 func (l *Loop) finish(c *coroutine) {
 	c.next()
 	if c.run.goexited {
-		go c.stop()
+		c.cleanup.Stop()
+		l.Go(func() { c.stop() })
 		return
 	}
 	l.recycle(c)

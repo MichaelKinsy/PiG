@@ -67,11 +67,9 @@ func (l *scopeLoop) Go(fn func()) {
 	})
 }
 
-func (l *scopeLoop) Queue(job func()) { l.real.Queue(job) }
-func (l *scopeLoop) Lend(signal *parking.Signal, fn func(), abandoned func()) {
-	l.real.Lend(signal, fn, abandoned)
-}
-func (l *scopeLoop) barrier() { l.real.Run(func() {}) }
+func (l *scopeLoop) Queue(job func())                                     { l.real.Queue(job) }
+func (l *scopeLoop) Lend(signal *parking.Signal, fn func(abandoned bool)) { l.real.Lend(signal, fn) }
+func (l *scopeLoop) barrier()                                             { l.real.Run(func() {}) }
 
 // fakeIntervals makes the loop fake `setInterval` as well (`toFake: [..., "setInterval", "clearInterval"]`).
 func (l *scopeLoop) fakeIntervals() *scopeLoop { l.intervals = true; return l }

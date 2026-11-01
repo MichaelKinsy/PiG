@@ -434,24 +434,21 @@ func TestLinkedAbortSignalsIsTheCallsOwnSignalWithoutACallers(t *testing.T) {
 	linked.release()
 }
 
-// Mirrors ctx.test.ts's linked abort signals: a call's signal listener lives as long as the call (`withLinkedAbortSignal`,
-// whose `release` the call runs when it settles). Pi's listener is removed by `release`; the Go listener of a call without
-// a caller's signal is a context.AfterFunc on the call's signal, which is the attempt's for every call it runs: one left
-// behind per call would accumulate until the attempt ends.
-func TestLinkedAbortSignalsWithoutACallersLeaveNoListenerOnTheCallsSignalOnceReleased(t *testing.T) {
+// Mirrors ctx.test.ts's linked abort signals: without a caller's signal the call's context is the call's signal itself (Pi's
+// `withAbortSignal(signal, context)`, whose signal is `signal` and which has no listener), and its `release` does nothing.
+// The call's signal is the attempt's for every call it runs, so a listener per call, released or not, would accumulate until
+// the attempt ends.
+func TestLinkedAbortSignalsWithoutACallersListenToNothingOnTheCallsSignal(t *testing.T) {
 	callCtx, abortCall := newScopeCounting()
 	const calls = 1000
 	for range calls {
 		linked := withLinkedAbortSignal(callCtx, chordctx.Background())
+		if got := callCtx.count(); got != 0 {
+			t.Fatalf("listeners on the call's signal while a call runs = %d, want none", got)
+		}
 		linked.release()
 	}
-	if got := callCtx.count(); got != 0 {
-		t.Fatalf("listeners on the call's signal after %d released calls = %d, want none", calls, got)
-	}
 	running := withLinkedAbortSignal(callCtx, chordctx.Background())
-	if got := callCtx.count(); got != 1 {
-		t.Fatalf("listeners while the call runs = %d, want its one", got)
-	}
 	abortCall(scopeReason("late"))
 	<-running.context.Done()
 	if got := context.Cause(running.context); got == nil || got.Error() != "late" {

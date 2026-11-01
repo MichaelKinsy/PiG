@@ -265,16 +265,21 @@ func (r *route) resolve(routed *routed) {
 	loop := r.host.loop()
 	signal := parking.New()
 	ctx := context.WithValue(r.context, parking.Key, signal)
-	loop.Lend(signal, func() {
-		resolved, err := resolvePlugin(r.options.Resolve, routed.address, ctx)
+	loop.Lend(signal, func(abandoned bool) {
+		var resolved ResolvedLink
+		var err error
+		if abandoned {
+			// `resolve` ended its goroutine (runtime.Goexit) without returning: Pi's `resolve` that throws, the address's
+			// holders fail with it.
+			err = errHandlerGoexit
+		} else {
+			resolved, err = resolvePlugin(r.options.Resolve, routed.address, ctx)
+		}
 		signal.Return()
-		loop.Run(func() { r.resolved(routed, resolved, err) })
-	}, func() {
-		// `resolve` ended its goroutine (runtime.Goexit) without returning: Pi's `resolve` that throws, the address's holders
-		// fail with it. Handled once: a Goexit after the result was handled leaves nothing to do.
 		loop.Run(func() {
-			if routed.resolving {
-				r.resolved(routed, ResolvedLink{}, errHandlerGoexit)
+			// A Goexit after the result was handled leaves nothing to do.
+			if !abandoned || routed.resolving {
+				r.resolved(routed, resolved, err)
 			}
 		})
 	})
