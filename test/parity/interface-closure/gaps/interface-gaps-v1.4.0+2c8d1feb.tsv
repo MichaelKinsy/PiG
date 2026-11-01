@@ -146,7 +146,3 @@ pkg:durable/storage/store#StoreStorage::property:task	durable	child-gap
 pkg:durable/storage/store#StoreStorage::property:task::call:0	durable	child-gap	
 pkg:durable/testing#commitWrites	durable	no-go-symbol	
 pkg:durable/testing#commitWrites::call:0	durable	child-gap	
-pkg:schema/.#Check	schema	not-exercised	schema/types.go#Check
-pkg:schema/.#Check::call:0	schema	not-exercised	schema/types.go#Check
-pkg:schema/.#FormatCheck	schema	not-exercised	schema/types.go#FormatCheck
-pkg:schema/.#FormatCheck::call:0	schema	not-exercised	schema/types.go#FormatCheck

@@ -3999,7 +3999,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
 start = "\trender(width: number): string[] {\n\t\tconst lines: string[] = [];\n\n\t\t// Render search input"
 end = "\tprivate buildTreePrefix("
-sha256 = "5aa743e71f06fe6c27b6de5ccada654d124827e08c05f6c2e91dc46e24c4abef"
+sha256 = "47399d2abfd865df759c097d8487fd22807725801a2303db97fdb6cb172e2175"
 keybindings = []
 
 [[contract]]

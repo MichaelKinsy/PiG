@@ -25,11 +25,11 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 485 | 27 | 17 |
+| Node runtime | 491 | 27 | 11 |
 | Go | 493 | 26 | 10 |
-| Rust | 487 | 26 | 16 |
-| Python | 491 | 26 | 12 |
-| Lisp | 496 | 19 | 14 |
+| Rust | 493 | 26 | 10 |
+| Python | 493 | 26 | 10 |
+| Lisp | 500 | 19 | 10 |
 
 31 PiG-only surfaces:
 
@@ -1316,8 +1316,8 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `tool render context.isError` | `ToolRenderContext.isError` | implemented `read:payload.context` | implemented `ToolRenderContext.IsError` | implemented `ToolRenderContext.is_error` | implemented `ToolRenderContext.is_error` | implemented `pig:tool-render-context-is-error` |
 | `tool render context.durationMs` | `ToolRenderContext.durationMs` | missing [exception](#exceptions) | implemented `ToolRenderContext.DurationMs` | implemented `ToolRenderContext.duration_ms` | implemented `ToolRenderContext.duration_ms` | implemented `pig:tool-render-context-duration-ms` |
 | `tool render context.outputPad` | `ToolRenderContext.outputPad` | implemented `read:payload.context` | implemented `ToolRenderContext.OutputPad` | implemented `ToolRenderContext.output_pad` | implemented `ToolRenderContext.output_pad` | implemented `pig:tool-render-context-output-pad` |
-| `tool render context.keyText` | `ToolRenderContext.keyText` | missing | implemented `ToolRenderContext.KeyText` | missing | implemented `ToolRenderContext.key_text` | implemented `pig:tool-render-context-key-text` |
-| `tool render context.keyHint` | `ToolRenderContext.keyHint` | missing | implemented `ToolRenderContext.KeyHint` | missing | implemented `ToolRenderContext.key_hint` | implemented `pig:tool-render-context-key-hint` |
+| `tool render context.keyText` | `ToolRenderContext.keyText` | implemented `read:payload.context` | implemented `ToolRenderContext.KeyText` | implemented `ToolRenderContext::key_text` | implemented `ToolRenderContext.key_text` | implemented `pig:tool-render-context-key-text` |
+| `tool render context.keyHint` | `ToolRenderContext.keyHint` | implemented `read:payload.context` | implemented `ToolRenderContext.KeyHint` | implemented `ToolRenderContext::key_hint` | implemented `ToolRenderContext.key_hint` | implemented `pig:tool-render-context-key-hint` |
 | `tool renderResult options.expanded` | `ToolRenderResultOptions.expanded` | implemented `read:payload.options` | implemented `ToolRenderResultOptions.Expanded` | implemented `ToolRenderResultOptions.expanded` | implemented `Extension.tool_renderers(render_result)` | implemented `pig:tool-renderers(render-result)` |
 | `tool renderResult options.isPartial` | `ToolRenderResultOptions.isPartial` | implemented `read:payload.options` | implemented `ToolRenderResultOptions.IsPartial` | implemented `ToolRenderResultOptions.is_partial` | implemented `Extension.tool_renderers(render_result)` | implemented `pig:tool-renderers(render-result)` |
 
@@ -1376,11 +1376,11 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 |---|---|---|---|---|---|---|
 | `message renderer options.expanded` | `MessageRenderOptions.expanded` | implemented `read:payload.options` | implemented `MessageRenderOptions.Expanded` | implemented `MessageRenderOptions.expanded` | implemented `Extension.message_renderer` | implemented `pig:message-renderer` |
 | `message renderer options.outputPad` | `MessageRenderOptions.outputPad` | implemented `read:payload.options` | implemented `MessageRenderOptions.OutputPad` | implemented `MessageRenderOptions.output_pad` | implemented `Extension.message_renderer` | implemented `pig:message-renderer` |
-| `message renderer options.keyText` | `MessageRenderOptions.keyText` | missing | implemented `MessageRenderOptions.KeyText` | missing | implemented `MessageRenderOptions.key_text` | missing |
-| `message renderer options.keyHint` | `MessageRenderOptions.keyHint` | missing | implemented `MessageRenderOptions.KeyHint` | missing | implemented `MessageRenderOptions.key_hint` | missing |
+| `message renderer options.keyText` | `MessageRenderOptions.keyText` | implemented `read:payload.options` | implemented `MessageRenderOptions.KeyText` | implemented `MessageRenderOptions::key_text` | implemented `MessageRenderOptions.key_text` | implemented `pig:message-render-options-key-text` |
+| `message renderer options.keyHint` | `MessageRenderOptions.keyHint` | implemented `read:payload.options` | implemented `MessageRenderOptions.KeyHint` | implemented `MessageRenderOptions::key_hint` | implemented `MessageRenderOptions.key_hint` | implemented `pig:message-render-options-key-hint` |
 | `entry renderer options.expanded` | `EntryRenderOptions.expanded` | implemented `read:payload.options` | implemented `EntryRenderOptions.Expanded` | implemented `EntryRenderOptions.expanded` | implemented `Extension.entry_renderer` | implemented `pig:entry-renderer` |
-| `entry renderer options.keyText` | `EntryRenderOptions.keyText` | missing | implemented `EntryRenderOptions.KeyText` | missing | missing | missing |
-| `entry renderer options.keyHint` | `EntryRenderOptions.keyHint` | missing | implemented `EntryRenderOptions.KeyHint` | missing | missing | missing |
+| `entry renderer options.keyText` | `EntryRenderOptions.keyText` | implemented `read:payload.options` | implemented `EntryRenderOptions.KeyText` | implemented `EntryRenderOptions::key_text` | implemented `MessageRenderOptions.key_text` | implemented `pig:entry-render-options-key-text` |
+| `entry renderer options.keyHint` | `EntryRenderOptions.keyHint` | implemented `read:payload.options` | implemented `EntryRenderOptions.KeyHint` | implemented `EntryRenderOptions::key_hint` | implemented `MessageRenderOptions.key_hint` | implemented `pig:entry-render-options-key-hint` |
 | `markdown transform context.messageType` | `MarkdownTransformContext.messageType` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.MessageType` | implemented `MarkdownTransformContext.message_type` | implemented `Extension.markdown_transformer` | implemented `pig:markdown-transformer` |
 | `markdown transform context.isStreaming` | `MarkdownTransformContext.isStreaming` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.IsStreaming` | implemented `MarkdownTransformContext.is_streaming` | implemented `Extension.markdown_transformer` | implemented `pig:markdown-transformer` |
 | `markdown transform context.availableWidth` | `MarkdownTransformContext.availableWidth` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.AvailableWidth` | implemented `MarkdownTransformContext.available_width` | implemented `Extension.markdown_transformer` | implemented `pig:markdown-transformer` |

@@ -160,6 +160,25 @@
       ]
     },
     {
+      "id": "BF-0225926",
+      "title": "fix: symlink callers, changelog fragment name, behavior contract hash at the new pin, interface extractor…",
+      "symptom": "fix: symlink callers, changelog fragment name, behavior contract hash at the new pin, interface extractor cache keyed by the package list, generated patterns",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0225926a0a",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-0225a43",
       "title": "A device-attributes reply delivered in slow reads no longer reaches the editor as input: an `ESC[?` prefix…",
       "symptom": "A device-attributes reply delivered in slow reads no longer reaches the editor as input: an `ESC[?` prefix waits for its final byte (D143, Pi #10657).",
@@ -15934,7 +15953,7 @@
       "platform": "All platforms",
       "class": "pi-port",
       "fixedIn": "Unreleased",
-      "releaseNote": "A renderer that imported `keyText` or `keyHint` from its own copy of the extension package rendered hints without the key, because that copy did not see the host's keybindings. The hints on the render context and options read the host's keybindings. Carried forward from Pi 9376c8d1 (earendil-works/pi#4748), past the 1.4.0+b3a29f11 pin.",
+      "releaseNote": "A renderer that imported `keyText` or `keyHint` from its own copy of the extension package rendered hints without the key, because that copy did not see the host's keybindings. The hints on the render context and options read the host's keybindings. From Pi 9376c8d1 (earendil-works/pi#4748).",
       "origin": "release note",
       "commits": [
         {

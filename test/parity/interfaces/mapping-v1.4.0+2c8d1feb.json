@@ -271771,13 +271771,43 @@
     },
     {
       "id": "pkg:schema/.#Check",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:778de1c9b829b07ff52e4dba47655b3d1a25ae6b1d4d0d4fdee4c5d7282d585a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:778de1c9b829b07ff52e4dba47655b3d1a25ae6b1d4d0d4fdee4c5d7282d585a",
+      "rationale": "Derived by the interface gap detector: Check is Go schema/types.go#Check (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/types.go#Check"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/types.go#Check"
+      ],
+      "evidence": [
+        "test:schema/types_upstream_test.go#TestCheckIsABooleanFunctionOfAValue"
+      ]
     },
     {
       "id": "pkg:schema/.#Check::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b1db74ef5cfcde9ed82dfec39d1b8832807652341d3bcb5ed7fcb14dc2af9011"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b1db74ef5cfcde9ed82dfec39d1b8832807652341d3bcb5ed7fcb14dc2af9011",
+      "rationale": "Derived by the interface gap detector: Check::call:0 is Go schema/types.go#Check (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/types.go#Check"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/types.go#Check"
+      ],
+      "evidence": [
+        "test:schema/types_upstream_test.go#TestCheckIsABooleanFunctionOfAValue"
+      ]
     },
     {
       "id": "pkg:schema/.#compile",
@@ -271841,8 +271871,8 @@
       ],
       "evidence": [
         "test:schema/conformance_upstream_test.go#TestConformanceSuite",
-        "test:schema/validator_upstream_test.go#TestOptions",
-        "test:schema/validator_upstream_test.go#TestSchemas"
+        "test:schema/types_upstream_test.go#TestFormatCheckIsTheCheckOfAFormatName",
+        "test:schema/validator_upstream_test.go#TestOptions"
       ]
     },
     {
@@ -271882,7 +271912,7 @@
         "public-api:schema/types.go#CompileOptions.Formats"
       ],
       "evidence": [
-        "test:schema/validator_upstream_test.go#TestOptions"
+        "test:schema/types_upstream_test.go#TestFormatCheckIsTheCheckOfAFormatName"
       ]
     },
     {
@@ -271907,13 +271937,43 @@
     },
     {
       "id": "pkg:schema/.#FormatCheck",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7dfb08db8279872c10af15ac9652f145847e80f7cc4dd6e4de35551e80073fd8"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7dfb08db8279872c10af15ac9652f145847e80f7cc4dd6e4de35551e80073fd8",
+      "rationale": "Derived by the interface gap detector: FormatCheck is Go schema/types.go#FormatCheck (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/types.go#FormatCheck"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/types.go#FormatCheck"
+      ],
+      "evidence": [
+        "test:schema/types_upstream_test.go#TestFormatCheckIsTheCheckOfAFormatName"
+      ]
     },
     {
       "id": "pkg:schema/.#FormatCheck::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:aac456e59991e1844564f99629b2f72452de5cbf26ba7b7ba9eaa689e79482d0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:aac456e59991e1844564f99629b2f72452de5cbf26ba7b7ba9eaa689e79482d0",
+      "rationale": "Derived by the interface gap detector: FormatCheck::call:0 is Go schema/types.go#FormatCheck (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/types.go#FormatCheck"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/types.go#FormatCheck"
+      ],
+      "evidence": [
+        "test:schema/types_upstream_test.go#TestFormatCheckIsTheCheckOfAFormatName"
+      ]
     },
     {
       "id": "pkg:schema/.#int",
