@@ -273,7 +273,9 @@ async function revoke(request, context) {
 	return {};
 }
 
-const operations = { load, reload, revoke };
+// The reference RPC and contracts as data (bridge.mjs, contracts.mjs): the control requests of `NodeHost.Get` and the Go host's `Bridged` facets.
+const bridge = (await import("./bridge.mjs")).createBridge({ port, wireError, host: () => hosted?.host });
+const operations = { load, reload, revoke, ...bridge.operations };
 
 port.on("message", (message) => {
 	if (message instanceof Uint8Array) return;
