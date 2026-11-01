@@ -88,9 +88,9 @@ func TestHostReferencesListsEveryReferenceWithTheObjectsParamsItsPrincipalAndIts
 	server, client := hosts.Server, hosts.Client
 	notes := server.References(Notes)
 	nexttest.RequireJSONEqual(t, presenceList(t, server, Notes), []any{})
-	_, err := client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+	_, err := client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 	must(t, err)
-	own, err := server.Get(Notes, jsonObject("session", "S2"), background, GetOptions{})
+	own, err := server.Get(background, Notes, jsonObject("session", "S2"), GetOptions{})
 	must(t, err)
 	nexttest.RequireJSONEqual(t, presenceList(t, server, Notes), []any{
 		presenceEntry("S1", guestPrincipal("S1"), incarnationOf(client)),
@@ -111,7 +111,7 @@ func TestHostReferencesListsEveryReferenceWithTheObjectsParamsItsPrincipalAndIts
 // presence.test.ts › host.references › is made for the first ask with the references that exist then, and kept.
 func TestHostReferencesIsMadeForTheFirstAskWithTheReferencesThatExistThenAndKept(t *testing.T) {
 	hosts := linked(t, presenceServe, linkedOptions{})
-	_, err := hosts.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+	_, err := hosts.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 	must(t, err)
 	notes := hosts.Server.References(Notes)
 	if got := presenceList(t, hosts.Server, Notes); len(got) != 1 {
@@ -131,10 +131,10 @@ func TestHostReferencesChangesInTheBatchWhereAReferenceBindsOrEndsAWatchGetsOneS
 	frames := nexttest.FramesOf(watch)
 	// Pi's `await` of each `get` lets the watch deliver its frame before the next change (a listener that keeps up gets one
 	// call per batch); here the scheduler delivers on goroutines, so wait for the deliveries between the steps.
-	one, err := client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+	one, err := client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 	must(t, err)
 	deliveredOn(server, client)
-	_, err = client.Get(Notes, jsonObject("session", "S2"), background, GetOptions{})
+	_, err = client.Get(background, Notes, jsonObject("session", "S2"), GetOptions{})
 	must(t, err)
 	deliveredOn(server, client)
 	one.Release()
@@ -192,7 +192,7 @@ func TestHostReferencesFeedsDerivesInFactoriesViewersPerSessionALinkDropADepartu
 			}}, nil
 		}, ServeOptions{})
 	}, HostOptions{})
-	view, err := server.Get(viewers, jsonObject("session", "S1"), background, GetOptions{})
+	view, err := server.Get(background, viewers, jsonObject("session", "S1"), GetOptions{})
 	must(t, err)
 	watch, err := view.Member("count").Watch(background)
 	must(t, err)
@@ -203,10 +203,10 @@ func TestHostReferencesFeedsDerivesInFactoriesViewersPerSessionALinkDropADepartu
 		tabs[i], links[i] = presenceTab(t, server)
 	}
 	for _, tab := range tabs {
-		_, err := tab.Get(shown, jsonObject("session", "S1"), background, GetOptions{})
+		_, err := tab.Get(background, shown, jsonObject("session", "S1"), GetOptions{})
 		must(t, err)
 	}
-	_, err = tabs[0].Get(shown, jsonObject("session", "S2"), background, GetOptions{})
+	_, err = tabs[0].Get(background, shown, jsonObject("session", "S2"), GetOptions{})
 	must(t, err)
 	count := func() any {
 		value, err := view.Member("count").Value()
@@ -416,9 +416,9 @@ func TestHostReferencesCountsTwoTabsThroughARelayAsTwoIncarnationsOnTheWorker(t 
 	a, b := link.MemoryLinkPair()
 	must(t, relayed.Server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 	must(t, second.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
-	_, err := relayed.Tab.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+	_, err := relayed.Tab.Get(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 	must(t, err)
-	_, err = second.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+	_, err = second.Get(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 	must(t, err)
 	worker := relayed.Worker("session|S1")
 	var incarnations []any
@@ -446,7 +446,7 @@ func TestHostReferencesHasNoEntriesForLingeringObjects(t *testing.T) {
 			}}, nil
 		}, ServeOptions{Linger: &linger})
 	}, linkedOptions{})
-	held, err := hosts.Client.Get(kept, jsonObject(), background, GetOptions{})
+	held, err := hosts.Client.Get(background, kept, jsonObject(), GetOptions{})
 	must(t, err)
 	if got := presenceList(t, hosts.Server, kept); len(got) != 1 {
 		t.Fatalf("references = %d, want 1", len(got))
@@ -465,7 +465,7 @@ func TestHostReferencesKeepsNoReleasedReferenceGC(t *testing.T) {
 	hosts := linked(t, presenceServe, linkedOptions{})
 	server := hosts.Server
 	server.References(Notes)
-	notes, err := hosts.Client.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+	notes, err := hosts.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 	must(t, err)
 	if got := presenceList(t, server, Notes); len(got) != 1 {
 		t.Fatalf("references = %d, want 1", len(got))

@@ -60,10 +60,10 @@ func serveStore(self Self) contracts.Implementation {
 		Methods: map[string]contracts.MethodFunction{
 			"add": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 				text := args.(*delta.JsonObject).Value("text")
-				_, err := list.Change(func(draft *delta.Object) (any, error) {
+				_, err := list.Change(ctx, func(draft *delta.Object) (any, error) {
 					_, err := draft.Array("items").Push(text)
 					return nil, err
-				}, ctx)
+				})
 				return nil, err
 			},
 			"clear": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, list.Retire(ctx) },
@@ -215,7 +215,7 @@ func TestObjectRetriesRetryATransientFailureAfter1sDoublingUpTo60sAndStartOverAf
 	ready := 1_000_000 * time.Millisecond
 	got := make(chan *Reference, 1)
 	go func() {
-		ref, err := host.Get(objSvc, jsonObject("id", 1.0), background, GetOptions{ReadyTimeout: &ready})
+		ref, err := host.Get(background, objSvc, jsonObject("id", 1.0), GetOptions{ReadyTimeout: &ready})
 		must(t, err)
 		got <- ref
 	}()
@@ -269,16 +269,16 @@ func TestObjectRetriesNeverRetryABrokenFailureANewObjectAfterItsEndTriesAtOnce(t
 		}
 		return h.Serve(objCore, failing, ServeOptions{})
 	}, loadedOptions{Loop: loop})
-	_, err := host.Get(objSvc, jsonObject("id", 1.0), background, GetOptions{})
+	_, err := host.Get(background, objSvc, jsonObject("id", 1.0), GetOptions{})
 	wantChordError(t, err, data.CodeUnavailable, "", "app.svc(1): bug")
 	advanceSettled(loop, host, 120_000)
 	if got := bug.Load(); got != 2 {
 		// The core's own activation at load is the second.
 		t.Fatalf("factory calls = %d, want 2", got)
 	}
-	_, err = host.Get(objCore, jsonObject(), background, GetOptions{})
+	_, err = host.Get(background, objCore, jsonObject(), GetOptions{})
 	wantChordError(t, err, data.CodeUnavailable, "", "app.core: bug")
-	if _, err = host.Get(objSvc, jsonObject("id", 1.0), background, GetOptions{}); err == nil || err.Error() != "app.svc(1): bug" {
+	if _, err = host.Get(background, objSvc, jsonObject("id", 1.0), GetOptions{}); err == nil || err.Error() != "app.svc(1): bug" {
 		t.Fatalf("third get = %v", err)
 	}
 	if got := bug.Load(); got != 3 {
@@ -295,7 +295,7 @@ func TestObjectRetriesEndAFailedObjectWithItsLastReferenceItsBackoffEntryExpires
 	get := func(ms time.Duration) chan error {
 		out := make(chan error, 1)
 		go func() {
-			_, err := host.Get(objSvc, jsonObject("id", 1.0), background, GetOptions{ReadyTimeout: &ms})
+			_, err := host.Get(background, objSvc, jsonObject("id", 1.0), GetOptions{ReadyTimeout: &ms})
 			out <- err
 		}()
 		return out
@@ -327,7 +327,7 @@ func TestObjectRetriesMakeAGetRightAfterAFailureWaitForTheScheduledRetry(t *test
 	ms := 500 * time.Millisecond
 	first := make(chan error, 1)
 	go func() {
-		_, err := host.Get(objSvc, jsonObject("id", 1.0), background, GetOptions{ReadyTimeout: &ms})
+		_, err := host.Get(background, objSvc, jsonObject("id", 1.0), GetOptions{ReadyTimeout: &ms})
 		first <- err
 	}()
 	until(t, "the first attempt", func() bool { return len(flaky.all()) == 1 })
@@ -437,7 +437,7 @@ func TestObjectParkedKeepsItsReferencesWhileParkedAGetterRejectsWithTheWaitingCa
 	ms := 1500 * time.Millisecond
 	got := make(chan error, 1)
 	go func() {
-		_, err := host.Get(objView, jsonObject("id", 1.0), background, GetOptions{ReadyTimeout: &ms})
+		_, err := host.Get(background, objView, jsonObject("id", 1.0), GetOptions{ReadyTimeout: &ms})
 		got <- err
 	}()
 	until(t, "the dependency's first attempt", func() bool { return len(svc.all()) == 1 })
@@ -565,7 +565,7 @@ func TestObjectParkedFailsEveryObjectOfACycleBrokenNoneIsRetried(t *testing.T) {
 	if pings.Load() != 1 || pongs.Load() != 1 {
 		t.Fatalf("factories = %d, %d, want 1, 1", pings.Load(), pongs.Load())
 	}
-	_, err := host.Get(pong, jsonObject(), background, GetOptions{})
+	_, err := host.Get(background, pong, jsonObject(), GetOptions{})
 	wantChordError(t, err, data.CodeInvalid, data.ReasonCycle, "dependency cycle: app.ping → app.pong → app.ping")
 }
 
@@ -592,7 +592,7 @@ func TestObjectCycleChecksStayLinearOnSharedDependenciesALayeredGraphEveryObject
 		}, ServeOptions{})
 	}, loadedOptions{})
 	meter := nexttest.Metered(t)
-	top, err := host.Get(layer, jsonObject("layer", 0.0, "index", 0.0), meter.Context, GetOptions{})
+	top, err := host.Get(meter.Context, layer, jsonObject("layer", 0.0, "index", 0.0), GetOptions{})
 	must(t, err)
 	if v, _ := top.Member("depth").Value(); v != float64(layers) {
 		t.Fatalf("depth = %v, want %d", v, layers)
@@ -666,7 +666,7 @@ func TestObjectGCOfFailedObjectsCollectsOneAfterItsLastReferenceWhileItsBackoffE
 	ms := 100 * time.Millisecond
 	got := make(chan error, 1)
 	go func() {
-		_, err := host.Get(attemptPage, jsonObject("id", 1.0), background, GetOptions{ReadyTimeout: &ms})
+		_, err := host.Get(background, attemptPage, jsonObject("id", 1.0), GetOptions{ReadyTimeout: &ms})
 		got <- err
 	}()
 	until(t, "the attempt", func() bool { mu.Lock(); defer mu.Unlock(); return len(attempts) == 1 })
@@ -1040,7 +1040,7 @@ func TestObjectAFailedActivationsCleanupClosesTheNativesThatOpenedBeforeItReleas
 			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": Expose(core.Member("n"))}}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	_, err := host.Get(dependent, jsonObject("id", 1.0), background, GetOptions{})
+	_, err := host.Get(background, dependent, jsonObject("id", 1.0), GetOptions{})
 	if err == nil || !hasText(err.Error(), "open failed") {
 		t.Fatalf("get = %v, want open failed", err)
 	}
@@ -1116,10 +1116,10 @@ func TestObjectALiveObjectFailingIsRecoveredByRefRetryANewAttemptTheDocumentsAsT
 	mu.Lock()
 	first := lists[0]
 	mu.Unlock()
-	_, err := first.Change(func(draft *delta.Object) (any, error) {
+	_, err := first.Change(background, func(draft *delta.Object) (any, error) {
 		_, err := draft.Array("items").Push("a")
 		return nil, err
-	}, background)
+	})
 	must(t, err)
 	run.Restart()
 	mu.Lock()

@@ -49,7 +49,7 @@ func rhState(ref *Reference) *RefState {
 
 func rhHoldRef(t testing.TB, host Host, typ *contracts.Contract, params *delta.JsonObject) *Reference {
 	t.Helper()
-	ref, err := host.Hold(typ, params, background, GetOptions{})
+	ref, err := host.Hold(background, typ, params, GetOptions{})
 	must(t, err)
 	return ref
 }
@@ -83,7 +83,7 @@ func TestRemoteObjectHoldOverTheParentLink(t *testing.T) {
 				}, ServeOptions{})
 			}, linkedOptions{})
 			timeout := 5 * time.Second
-			_, err := hosts.Client.Get(broken, jsonObject(), background, GetOptions{ReadyTimeout: &timeout})
+			_, err := hosts.Client.Get(background, broken, jsonObject(), GetOptions{ReadyTimeout: &timeout})
 			if got, want := rhJSON(t, rejection(t, err)), `{"code":"unavailable","message":"app.broken: factory threw"}`; got != want {
 				t.Fatalf("rejection = %s, want %s", got, want)
 			}
@@ -93,7 +93,7 @@ func TestRemoteObjectHoldOverTheParentLink(t *testing.T) {
 		t.Run("gone: the reference ends, its pending calls reject with the error", func(t *testing.T) {
 			rig := rhProvider(t)
 			got := rhGo(func() (*Reference, error) {
-				return rig.Client.Get(Notes, rhNotes("S1"), background, GetOptions{})
+				return rig.Client.Get(background, Notes, rhNotes("S1"), GetOptions{})
 			})
 			hold := bindNext(t, rig.Peer)
 			notes := got.must(t)
@@ -119,11 +119,11 @@ func TestRemoteObjectHoldOverTheParentLink(t *testing.T) {
 		// remote-object.test.ts: a hold over the parent link › two references from one host are two holds
 		t.Run("two references from one host are two holds", func(t *testing.T) {
 			rig := rhProvider(t)
-			first := rhGo(func() (*Reference, error) { return rig.Client.Get(Notes, rhNotes("S1"), background, GetOptions{}) })
+			first := rhGo(func() (*Reference, error) { return rig.Client.Get(background, Notes, rhNotes("S1"), GetOptions{}) })
 			if id := bindNext(t, rig.Peer); id != 0 {
 				t.Fatalf("first hold = %d, want 0", id)
 			}
-			second := rhGo(func() (*Reference, error) { return rig.Client.Get(Notes, rhNotes("S1"), background, GetOptions{}) })
+			second := rhGo(func() (*Reference, error) { return rig.Client.Get(background, Notes, rhNotes("S1"), GetOptions{}) })
 			if id := bindNext(t, rig.Peer); id != 1 {
 				t.Fatalf("second hold = %d, want 1", id)
 			}
@@ -134,7 +134,7 @@ func TestRemoteObjectHoldOverTheParentLink(t *testing.T) {
 		// remote-object.test.ts: a hold over the parent link › a member failure fails only that replica: reads throw it, its watch gets a failure call and stays open; the others update
 		t.Run("a member failure fails only that replica: reads throw it, its watch gets a failure call and stays open; the others update", func(t *testing.T) {
 			rig := rhProvider(t)
-			got := rhGo(func() (*Reference, error) { return rig.Client.Get(Notes, rhNotes("S1"), background, GetOptions{}) })
+			got := rhGo(func() (*Reference, error) { return rig.Client.Get(background, Notes, rhNotes("S1"), GetOptions{}) })
 			hold := bindNext(t, rig.Peer)
 			notes := got.must(t)
 			editor := editorWire(t)
@@ -170,7 +170,7 @@ func TestRemoteObjectRetiredMembers(t *testing.T) {
 		// remote-object.test.ts: retired members › reach the replicas' watches with the flag: with the member's ops, or alone
 		t.Run("reach the replicas' watches with the flag: with the member's ops, or alone", func(t *testing.T) {
 			rig := rhProvider(t)
-			got := rhGo(func() (*Reference, error) { return rig.Client.Get(Notes, rhNotes("S1"), background, GetOptions{}) })
+			got := rhGo(func() (*Reference, error) { return rig.Client.Get(background, Notes, rhNotes("S1"), GetOptions{}) })
 			hold := bindNext(t, rig.Peer, jsonObject("text", "a"))
 			notes := got.must(t)
 			editor := editorWire(t)
@@ -189,7 +189,7 @@ func TestRemoteObjectRetiredMembers(t *testing.T) {
 		// remote-object.test.ts: retired members › of a failed member wait for its next value: never read from the failed replica; the link stays open
 		t.Run("of a failed member wait for its next value: never read from the failed replica; the link stays open", func(t *testing.T) {
 			rig := rhProvider(t)
-			got := rhGo(func() (*Reference, error) { return rig.Client.Get(Notes, rhNotes("S1"), background, GetOptions{}) })
+			got := rhGo(func() (*Reference, error) { return rig.Client.Get(background, Notes, rhNotes("S1"), GetOptions{}) })
 			hold := bindNext(t, rig.Peer, jsonObject("text", "a"))
 			notes := got.must(t)
 			editor := editorWire(t)
@@ -220,7 +220,7 @@ func TestRemoteObjectRetiredMembers(t *testing.T) {
 		} {
 			t.Run("that "+name+" closes the link", func(t *testing.T) {
 				rig := rhProvider(t)
-				got := rhGo(func() (*Reference, error) { return rig.Client.Get(Notes, rhNotes("S1"), background, GetOptions{}) })
+				got := rhGo(func() (*Reference, error) { return rig.Client.Get(background, Notes, rhNotes("S1"), GetOptions{}) })
 				hold := bindNext(t, rig.Peer)
 				got.must(t)
 				rig.Peer.Send(rhStateEntry(hold, nil, nil, retired(editorWire(t))))
@@ -334,7 +334,7 @@ func TestRemoteObjectTransientFailuresOverALink(t *testing.T) {
 			must(t, client.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
 			timeout := 1500 * time.Millisecond
 			got := rhGo(func() (*Reference, error) {
-				return client.Get(flaky, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: &timeout})
+				return client.Get(background, flaky, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: &timeout})
 			})
 			// The first attempt failed and its backoff window (1 s) runs on the virtual clock.
 			rhWaitFor(t, func() bool {
@@ -385,7 +385,7 @@ func TestRemoteObjectGCOfAReleasedReference(t *testing.T) {
 		// remote-object.test.ts: GC of a released remote reference › a released reference retained by the test keeps no hold, replica or object
 		t.Run("a released reference retained by the test keeps no hold, replica or object", func(t *testing.T) {
 			hosts := linked(t, func(host FacetHost) error { _, err := serveNotes(host, nil); return err }, linkedOptions{})
-			notes, err := hosts.Client.Get(Notes, rhNotes("S1"), background, GetOptions{})
+			notes, err := hosts.Client.Get(background, Notes, rhNotes("S1"), GetOptions{})
 			must(t, err)
 			replicaRef := weak.Make(rhReplicaOf(t, notes, "notes"))
 			objectRef := weak.Make(rhRemoteObjectOf(notes))
@@ -424,7 +424,7 @@ func TestRemoteObjectGCOfAReleasedReference(t *testing.T) {
 			}, linkedOptions{})
 			var kept []error
 			var mu sync.Mutex
-			ref, err := hosts.Client.Get(halves, jsonObject(), background, GetOptions{})
+			ref, err := hosts.Client.Get(background, halves, jsonObject(), GetOptions{})
 			must(t, err)
 			replicaRef := weak.Make(rhReplicaOf(t, ref, "half"))
 			objectRef := weak.Make(rhRemoteObjectOf(ref))
@@ -537,7 +537,7 @@ func TestRemoteObjectSelfGetThroughARelayWhoseUpstreamDropped(t *testing.T) {
 			if errs.Len() != 0 {
 				t.Fatalf("errors = %v", errs.All())
 			}
-			view, err := client.Get(rhViewOfNotes, jsonObject(), background, GetOptions{})
+			view, err := client.Get(background, rhViewOfNotes, jsonObject(), GetOptions{})
 			must(t, err)
 			rhEqual(t, "count", rhRefValue(t, view, "count"), 1)
 		})
@@ -563,7 +563,7 @@ func TestRemoteObjectDependentOfAnObjectFailedTransientlyOverTheLink(t *testing.
 			must(t, server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 			must(t, first.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
 			// The first client's get makes the object fail; it stays failed for its backoff window.
-			failing := rhGo(func() (*Reference, error) { return first.Get(rhFlaky, jsonObject(), background, GetOptions{}) })
+			failing := rhGo(func() (*Reference, error) { return first.Get(background, rhFlaky, jsonObject(), GetOptions{}) })
 			rhSettleLinks(a, b)
 			errs := &hostErrors{}
 			second := rhCreate(t, HostOptions{OnError: errs.push, loop: virtual.loop})
@@ -673,7 +673,7 @@ func rhShiftingClient(t testing.TB) *rhShiftingRig {
 		Members: []link.BoundMember{{Member: a.State["x"], Value: link.Text("1")}, {Member: a.State["y"], Value: link.Text("2")}},
 	}}})
 	loading.must(t)
-	viewRef, err := client.Get(view, jsonObject(), background, GetOptions{})
+	viewRef, err := client.Get(background, view, jsonObject(), GetOptions{})
 	must(t, err)
 	return &rhShiftingRig{Client: client, Peer: peer, View: viewRef, Ref: held, Errors: errs}
 }
@@ -890,7 +890,7 @@ func TestRemoteObjectReHoldsAfterADrop(t *testing.T) {
 					}}, nil
 				}, ServeOptions{})
 			})}}, background))
-			notes, err := hosts.Client.Get(Notes, rhNotes("S1"), background, GetOptions{})
+			notes, err := hosts.Client.Get(background, Notes, rhNotes("S1"), GetOptions{})
 			must(t, err)
 			// relink drops the client's link and connects it to `to`.
 			relink := func(to Host, from *link.MemoryLink) *link.MemoryLink {
@@ -1094,12 +1094,12 @@ func TestRemoteObjectAGetAcrossADrop(t *testing.T) {
 			peer := rhNextParent(t, client)
 			timeout := time.Second
 			got := rhGo(func() (*Reference, error) {
-				return client.Get(Notes, rhNotes("S1"), background, GetOptions{ReadyTimeout: &timeout})
+				return client.Get(background, Notes, rhNotes("S1"), GetOptions{ReadyTimeout: &timeout})
 			})
 			// S1's hold first, as the order the Gets started in.
 			peer.Next("hold")
 			late := rhGo(func() (*Reference, error) {
-				return client.Get(Notes, rhNotes("S2"), background, GetOptions{ReadyTimeout: &timeout})
+				return client.Get(background, Notes, rhNotes("S2"), GetOptions{ReadyTimeout: &timeout})
 			})
 			peer.Next("hold")
 			// Pi's `get` sets its deadline in the same turn as its hold; the Go hold's message may reach the peer while that
@@ -1203,7 +1203,7 @@ func TestRemoteObjectActivatingDependentWhoseLinkDrops(t *testing.T) {
 				t.Fatalf("hold = %d, want 0", hold)
 			}
 			one := time.Millisecond
-			view, err := client.Get(rhViewOfNotes, jsonObject(), background, GetOptions{ReadyTimeout: &one})
+			view, err := client.Get(background, rhViewOfNotes, jsonObject(), GetOptions{ReadyTimeout: &one})
 			must(t, err)
 			rhEqual(t, "count", rhRefValue(t, view, "count"), 1)
 			rhSync(t, next)

@@ -100,7 +100,7 @@ func TestTheDependencyCheckBreaksADependentOffACycleWithTheCyclesError(t *testin
 		return nil
 	}, loadedOptions{})
 	defer closeHosts(t, host)
-	view, err := host.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
+	view, err := host.Hold(background, depView, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	state := awaitRefState(t, "view failed broken", view, func(s *RefState) bool { return s.Kind == RefStateFailed })
 	wantBroken(t, state, data.CodeInvalid, data.ReasonCycle)
@@ -130,7 +130,7 @@ func depClient(t *testing.T, options HostOptions) (Host, *hostErrors, *RawPeer, 
 func TestTheDependencyCheckBreaksADependentWhoseDependencyEndedGone(t *testing.T) {
 	client, errs, peer, ends := depClient(t, HostOptions{})
 	defer closeHosts(t, client)
-	view, err := client.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
+	view, err := client.Hold(background, depView, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	hold := peer.Next("hold").(*link.HoldMessage).Hold
 	peer.Send(&link.GoneMessage{Hold: hold, Error: revokedWire("revoked")})
@@ -160,7 +160,7 @@ func TestTheDependencyCheckGoesLiveOnceEveryDependencyIs(t *testing.T) {
 		}, ServeOptions{})
 	})
 	mustLoad(t)(client.Load([]HostFacet{{Name: "@test/view", Facet: facet}}, background))
-	view, err := client.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
+	view, err := client.Hold(background, depView, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	first := peer.Next("hold").(*link.HoldMessage)
 	second := peer.Next("hold").(*link.HoldMessage)
@@ -184,7 +184,7 @@ func TestTheDependencyCheckGoesLiveOnceEveryDependencyIs(t *testing.T) {
 func TestTheDependencyCheckBreaksADependentWhoseDependencyARelaysAuthorizeRefused(t *testing.T) {
 	client, errs, peer, ends := depClient(t, HostOptions{})
 	defer closeHosts(t, client)
-	view, err := client.Hold(depView, jsonObject("id", float64(1)), background, GetOptions{})
+	view, err := client.Hold(background, depView, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	hold := peer.Next("hold").(*link.HoldMessage).Hold
 	peer.Send(&link.FailedMessage{Hold: hold, Cause: link.WireCause{Kind: "broken", Error: jsonObject(
@@ -255,7 +255,7 @@ func TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound(t *testin
 	scopeEventually(t, "the server's host object started the worker", func() bool { return r.Worker("session|S1") != nil })
 	r.Transported()
 	worker := r.Worker("session|S1")
-	held, err := worker.Hold(b, jsonObject(), background, GetOptions{})
+	held, err := worker.Hold(background, b, jsonObject(), GetOptions{})
 	must(t, err)
 	for range 50 {
 		r.Transported()
@@ -519,7 +519,7 @@ func TestAGetterOfAParkedObjectRejectsWithTheLastParkedCauseAfterItsDependencyFe
 	ready := 80 * time.Millisecond
 	pending := make(chan error, 1)
 	go func() {
-		_, err := host.Get(depView, jsonObject("id", float64(1)), background, GetOptions{ReadyTimeout: &ready})
+		_, err := host.Get(background, depView, jsonObject("id", float64(1)), GetOptions{ReadyTimeout: &ready})
 		pending <- err
 	}()
 	hold := peer.Next("hold").(*link.HoldMessage).Hold

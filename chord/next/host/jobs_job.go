@@ -83,7 +83,7 @@ type RunState interface {
 	// admitted while `run` runs (also after an abort, with the run's own ctx), refused `released` once it settled. A
 	// persisted job's change may be `deferred` (D8): adopted and published at once, stored within `WithinMs` (1,000 ms by
 	// default) or earlier; a crash loses it. In memory the option changes nothing. It blocks.
-	Change(fn func(draft *delta.Object) (any, error), ctx context.Context, options ChangeOptions) (any, error)
+	Change(ctx context.Context, fn func(draft *delta.Object) (any, error), options ChangeOptions) (any, error)
 }
 
 // jobOwner is where a job's handle runs its work: its attempt, as the job sees it.
@@ -475,7 +475,7 @@ func (view *runState) Value() (*delta.JsonObject, error) {
 }
 
 // Change implements RunState.
-func (view *runState) Change(fn func(draft *delta.Object) (any, error), ctx context.Context, options ChangeOptions) (any, error) {
+func (view *runState) Change(ctx context.Context, fn func(draft *delta.Object) (any, error), options ChangeOptions) (any, error) {
 	handle, run, current := view.handle, view.run, view.current
 	records, owner := handle.records, handle.owner
 	var refused bool

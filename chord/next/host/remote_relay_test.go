@@ -547,7 +547,7 @@ func TestRelayWindow(t *testing.T) {
 					}}, nil
 				}, ServeOptions{})
 			})}}, background))
-			view, err := tab.Get(Pair, jsonObject(), background, GetOptions{})
+			view, err := tab.Get(background, Pair, jsonObject(), GetOptions{})
 			must(t, err)
 			watch, err := view.Member("pair").Watch(background)
 			must(t, err)
@@ -716,7 +716,7 @@ func TestRelayParentLinkThatIsDown(t *testing.T) {
 				return made[index]
 			}
 			// The server holds something at the middle's address: its route link exists while it does.
-			anchor, err := server.Hold(PlacedNotes, jsonObject("session", "M"), background, GetOptions{})
+			anchor, err := server.Hold(background, PlacedNotes, jsonObject("session", "M"), GetOptions{})
 			must(t, err)
 			first := endsAt(0)
 			// The link completed its handshake: the middle refuses the hold (it serves nothing) over it.
@@ -734,7 +734,7 @@ func TestRelayParentLinkThatIsDown(t *testing.T) {
 			a, b := link.MemoryLinkPair()
 			must(t, middle.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
 			must(t, tab.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
-			notes, err := tab.Hold(Notes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := tab.Hold(background, Notes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			transported(a, b)
 			if kind := refStateKind(notes); kind != RefStateLoading {
@@ -976,7 +976,7 @@ func TestRelayMixedCodecs(t *testing.T) {
 	// Ports "mixed codecs › relay between a binary tab link and a text route link".
 	t.Run("relay between a binary tab link and a text route link", func(t *testing.T) {
 		rel := relay(t, relayedOptions{TabCodec: link.BinaryCodec, RouteCodec: link.TextCodec})
-		notes, err := rel.Tab.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+		notes, err := rel.Tab.Get(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 		must(t, err)
 		addNote(t, rel.Worker(Session.Address(jsonObject("id", "S1")).Key), "S1", "é")
 		flushOwn(rel)
@@ -1075,7 +1075,7 @@ func TestRelayLimitsAndCompression(t *testing.T) {
 		// Ports "enforce the stamped limit where the part is decoded: the worker refuses the tab's large argument".
 		t.Run("enforce the stamped limit where the part is decoded: the worker refuses the tab's large argument", func(t *testing.T) {
 			rel := relay(t, relayedOptions{Trusted: true, Limits: link.PartLimits{Decoded: new(1000.0)}})
-			notes, err := rel.Tab.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := rel.Tab.Get(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			// Within the tab link's wire limit, past its decoded limit, which the trusted worker link does not have.
 			_, err = notes.Call("add", jsonObject("text", string(repeatBytes('x', 2000))), background)
@@ -1089,7 +1089,7 @@ func TestRelayLimitsAndCompression(t *testing.T) {
 		t.Run("forward deflated parts as they came: the relay inflates nothing (a counter)", func(t *testing.T) {
 			server, tab := &countingInflates{}, &countingInflates{}
 			rel := relay(t, relayedOptions{ServerCompression: server, WorkerCompression: nextnode.NodeCompression, TabCompression: tab})
-			notes, err := rel.Tab.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := rel.Tab.Get(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			text := loremText()
 			_, err = notes.Call("add", jsonObject("text", text), background)
@@ -1110,7 +1110,7 @@ func TestRelayLimitsAndCompression(t *testing.T) {
 			meter := nexttest.Metered(t)
 			tab := &countingInflates{}
 			rel := relay(t, relayedOptions{WorkerCompression: nextnode.NodeCompression, TabCompression: tab, Context: meter.Context})
-			notes, err := rel.Tab.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := rel.Tab.Get(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			_, err = notes.Call("add", jsonObject("text", loremText()), background)
 			must(t, err)
@@ -1159,7 +1159,7 @@ func TestRelayLimitsAndCompression(t *testing.T) {
 			t.Run("detach a reference failed too_large from its route; retry "+formatNumber(float64(wait))+" ms after the drop places it anew, a new hold", func(t *testing.T) {
 				workers := newRawWorkers(t, rawWorkerOptions{Limits: link.PartLimits{Part: new(50.0)}})
 				rel := relay(t, relayedOptions{Resolve: workers.Resolve})
-				notes, err := rel.Server.Hold(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+				notes, err := rel.Server.Hold(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 				must(t, err)
 				first := workers.At(t, 0)
 				held := nextHeld(first)
@@ -1201,7 +1201,7 @@ func TestRelayLimitsAndCompression(t *testing.T) {
 		// Ports "let a tab without a compressor inflate the worker's deflated parts asynchronously, in order".
 		t.Run("let a tab without a compressor inflate the worker's deflated parts asynchronously, in order", func(t *testing.T) {
 			rel := relay(t, relayedOptions{WorkerCompression: nextnode.NodeCompression, ServerCompression: nextnode.NodeCompression})
-			notes, err := rel.Tab.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+			notes, err := rel.Tab.Get(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 			must(t, err)
 			text := loremText()
 			for range 3 {

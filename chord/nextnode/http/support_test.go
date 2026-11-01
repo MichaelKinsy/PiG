@@ -92,11 +92,11 @@ type countingHost struct {
 	calls int
 }
 
-func (h *countingHost) Registry(r registries.Registry[any, any], ctx context.Context, options host.GetOptions) (*registries.RegistryValueSource, error) {
+func (h *countingHost) Registry(ctx context.Context, r registries.Registry[any, any], options host.GetOptions) (*registries.RegistryValueSource, error) {
 	h.mu.Lock()
 	h.calls++
 	h.mu.Unlock()
-	return h.Host.Registry(r, ctx, options)
+	return h.Host.Registry(ctx, r, options)
 }
 
 func (h *countingHost) count() int {

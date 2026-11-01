@@ -109,11 +109,11 @@ func relayWorkerFacet(start relayStart) func(host FacetHost, _ FacetSelf) error 
 				State: map[string]chord.Watchable[delta.JsonValue]{"doc": Expose(state)},
 				Methods: map[string]contracts.MethodFunction{
 					"stream": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-						_, err := state.Change(func(draft *delta.Object) (any, error) {
+						_, err := state.Change(ctx, func(draft *delta.Object) (any, error) {
 							entries := draft.Array("entries")
 							last := entries.Object(entries.Len() - 1)
 							return nil, last.Set("text", last.Get("text").(string)+args.(string))
-						}, ctx)
+						})
 						return nil, err
 					},
 				},
@@ -505,7 +505,7 @@ func (d *benchRelayDirect) close(b testing.TB) {
 // link (received from the worker).
 func relayCommits(b *testing.B, holder Host, session string, tabLink *countedLink, workerLinks func() []*countedLink) {
 	b.Helper()
-	view, err := holder.Get(benchRelayView, jsonObject("session", session), background, GetOptions{})
+	view, err := holder.Get(background, benchRelayView, jsonObject("session", session), GetOptions{})
 	must(b, err)
 	// Made by the route's `resolve` for the first hold (none without a relay).
 	var workerLink *countedLink
@@ -579,7 +579,7 @@ func BenchmarkRelayCommits(b *testing.B) {
 			server := benchRelayServerOf(b, relayIPC, "notes")
 			tab, _, _ := benchRelayMemoryTab(b, server)
 			b.StartTimer()
-			view, err := tab.Get(benchRelayView, jsonObject("session", "C"+strconv.Itoa(i)), background, GetOptions{})
+			view, err := tab.Get(background, benchRelayView, jsonObject("session", "C"+strconv.Itoa(i)), GetOptions{})
 			b.StopTimer()
 			must(b, err)
 			view.Release()
@@ -618,7 +618,7 @@ func BenchmarkRelayHolds(b *testing.B) {
 		tab, _, _ := benchRelayMemoryTab(b, server)
 		b.ReportAllocs()
 		for i := 0; b.Loop(); i++ {
-			if _, err := tab.Get(benchRelayView, jsonObject("session", "H"+strconv.Itoa(i)), background, GetOptions{}); err != nil {
+			if _, err := tab.Get(background, benchRelayView, jsonObject("session", "H"+strconv.Itoa(i)), GetOptions{}); err != nil {
 				b.Fatal(err)
 			}
 		}
@@ -629,11 +629,11 @@ func BenchmarkRelayHolds(b *testing.B) {
 	b.Run("hold of a resolved session through the relay (four hops)", func(b *testing.B) {
 		server := benchRelayServerOf(b, relayMemory, "notes")
 		tab, _, _ := benchRelayMemoryTab(b, server)
-		_, err := tab.Get(benchRelayView, jsonObject("session", "H0"), background, GetOptions{})
+		_, err := tab.Get(background, benchRelayView, jsonObject("session", "H0"), GetOptions{})
 		must(b, err)
 		b.ReportAllocs()
 		for b.Loop() {
-			view, err := tab.Get(benchRelayView, jsonObject("session", "H0"), background, GetOptions{})
+			view, err := tab.Get(background, benchRelayView, jsonObject("session", "H0"), GetOptions{})
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -645,11 +645,11 @@ func BenchmarkRelayHolds(b *testing.B) {
 	})
 	b.Run("no relay: hold on the worker (two hops, baseline)", func(b *testing.B) {
 		direct := benchRelayDirectOf(b, "notes", nil)
-		_, err := direct.tab.Get(benchRelayView, jsonObject("session", "D"), background, GetOptions{})
+		_, err := direct.tab.Get(background, benchRelayView, jsonObject("session", "D"), GetOptions{})
 		must(b, err)
 		b.ReportAllocs()
 		for b.Loop() {
-			view, err := direct.tab.Get(benchRelayView, jsonObject("session", "D"), background, GetOptions{})
+			view, err := direct.tab.Get(background, benchRelayView, jsonObject("session", "D"), GetOptions{})
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -808,7 +808,7 @@ func runThrottled(b *testing.B, relayed bool, pause relayPause, throttle *thrott
 		}
 	}
 	worker, providerEnd := producerOf()
-	store, err := worker.Get(benchRelayStore, jsonObject(), background, GetOptions{})
+	store, err := worker.Get(background, benchRelayStore, jsonObject(), GetOptions{})
 	must(b, err)
 	last := func(ref *Reference) int {
 		value, err := ref.Member("doc").Value()
@@ -899,9 +899,9 @@ func BenchmarkRelayCalls(b *testing.B) {
 	server := benchRelayServerOf(b, relayMemory, "notes")
 	aTab, _, _ := benchRelayMemoryTab(b, server)
 	bTab, _, _ := benchRelayMemoryTab(b, server)
-	viewA, err := aTab.Get(benchRelayView, jsonObject("session", "K"), background, GetOptions{})
+	viewA, err := aTab.Get(background, benchRelayView, jsonObject("session", "K"), GetOptions{})
 	must(b, err)
-	viewB, err := bTab.Get(benchRelayView, jsonObject("session", "K"), background, GetOptions{})
+	viewB, err := bTab.Get(background, benchRelayView, jsonObject("session", "K"), GetOptions{})
 	must(b, err)
 	b.Cleanup(func() {
 		must(b, aTab.Close(background))

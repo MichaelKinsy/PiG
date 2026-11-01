@@ -89,7 +89,7 @@ func benchRegistryOf(b *testing.B, contributors int) *benchRegistry {
 		}
 		return nil
 	})}}, background))
-	value, err := result.host.Registry(benchSum, background, GetOptions{})
+	value, err := result.host.Registry(background, benchSum, GetOptions{})
 	must(b, err)
 	result.watch, err = value.Watch(background)
 	must(b, err)

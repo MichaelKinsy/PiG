@@ -24,3 +24,4 @@ bfc03c667c see b1cea06458
 f3fd868442 see ab1d07097c
 33c8d77650 Follow-up to unreleased work: regenerates the embedded SDK copies of the unreleased ownThinkingRuns feature (D214) and extends the failed-factory probe, no product behaviour
 286c78da6d Repair of a merge between development branches: gofmt of a one-line accessor and a changelog sentence after a merge, no product behaviour
+ee03bf520b Follow-up to unreleased work: commits the vendored node_modules of the Chord plugins Node evaluator that the .gitignore hid (701 generated files), no product behaviour

@@ -491,7 +491,7 @@ func (r *recordingSelf) Open(
 }
 
 // Tx implements Self.
-func (r *recordingSelf) Tx(func(tx *documents.Transaction) (any, error), context.Context) (any, error) {
+func (r *recordingSelf) Tx(func(tx documents.Tx) (any, error), context.Context) (any, error) {
 	panic(declarationError("%s: self.tx runs in calls, not in a factory", r.object.text))
 }
 

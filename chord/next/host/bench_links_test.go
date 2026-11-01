@@ -109,7 +109,7 @@ func (p *benchPings) all() []float64 {
 func benchLinksFacet(pings *benchPings) func(host FacetHost, _ FacetSelf) error {
 	return func(h FacetHost, _ FacetSelf) error {
 		change := func(doc *documents.Singleton, fn func(entries *delta.Array) error, ctx context.Context) (delta.JsonValue, error) {
-			_, err := doc.Change(func(draft *delta.Object) (any, error) { return nil, fn(draft.Array("entries")) }, ctx)
+			_, err := doc.Change(ctx, func(draft *delta.Object) (any, error) { return nil, fn(draft.Array("entries")) })
 			return nil, err
 		}
 		if err := h.Serve(benchLinksStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
@@ -277,7 +277,7 @@ func benchLinksSetup(b *testing.B, name string, entries []*delta.JsonObject, cod
 	result.server = newHost(b, options)
 	mustLoad(b)(result.server.Load([]HostFacet{{Name: "@bench/app", Facet: DefineFacet(benchLinksFacet(result.pings))}}, result.ctx))
 	var err error
-	result.store, err = result.server.Get(benchLinksStore, jsonObject("name", name), result.ctx, GetOptions{})
+	result.store, err = result.server.Get(result.ctx, benchLinksStore, jsonObject("name", name), GetOptions{})
 	must(b, err)
 	for _, entry := range entries {
 		_, err := result.store.Call("append", entry, result.ctx)
@@ -341,11 +341,11 @@ func benchLinksRows(b *testing.B, codec link.Codec) {
 			l := benchLinksSetup(b, each.label, each.entries(), codec, true)
 			defer l.close(b)
 			// The first hold also activates the view; it stays held, so later holds measure the snapshot path alone.
-			_, err := l.client.Get(benchLinksView, jsonObject("name", each.label), l.ctx, GetOptions{})
+			_, err := l.client.Get(l.ctx, benchLinksView, jsonObject("name", each.label), GetOptions{})
 			must(b, err)
 			b.ReportAllocs()
 			for b.Loop() {
-				ref, err := l.client.Get(benchLinksView, jsonObject("name", each.label), l.ctx, GetOptions{})
+				ref, err := l.client.Get(l.ctx, benchLinksView, jsonObject("name", each.label), GetOptions{})
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -359,7 +359,7 @@ func benchLinksRows(b *testing.B, codec link.Codec) {
 			b.StopTimer()
 			l := benchLinksSetup(b, "first hold", benchLinkNotes(), codec, true)
 			b.StartTimer()
-			ref, err := l.client.Get(benchLinksView, jsonObject("name", "first hold"), l.ctx, GetOptions{})
+			ref, err := l.client.Get(l.ctx, benchLinksView, jsonObject("name", "first hold"), GetOptions{})
 			b.StopTimer()
 			must(b, err)
 			ref.Release()
@@ -392,7 +392,7 @@ func benchLinksRows(b *testing.B, codec link.Codec) {
 		b.Run(each.label+": commit to frame (mean, median, p90)", func(b *testing.B) {
 			l := benchLinksSetup(b, each.label, benchLinkNotesOf(1_000+each.extra), codec, true)
 			defer l.close(b)
-			view, err := l.client.Get(benchLinksView, jsonObject("name", each.label), l.ctx, GetOptions{})
+			view, err := l.client.Get(l.ctx, benchLinksView, jsonObject("name", each.label), GetOptions{})
 			must(b, err)
 			arrived, stop := benchFrames(b, view)
 			defer stop()
@@ -429,7 +429,7 @@ func benchLinksRows(b *testing.B, codec link.Codec) {
 	b.Run("streamed reply: time per append", func(b *testing.B) {
 		l := benchLinksSetup(b, "stream", []*delta.JsonObject{benchLinkEntry(0, 0)}, codec, true)
 		defer l.close(b)
-		view, err := l.client.Get(benchLinksView, jsonObject("name", "stream"), l.ctx, GetOptions{})
+		view, err := l.client.Get(l.ctx, benchLinksView, jsonObject("name", "stream"), GetOptions{})
 		must(b, err)
 		arrived, stop := benchFrames(b, view)
 		defer stop()
@@ -458,7 +458,7 @@ func benchLinksRows(b *testing.B, codec link.Codec) {
 				before := benchSettledHeap()
 				views := make([]*Reference, 0, holds)
 				for range holds {
-					view, err := l.client.Get(benchLinksView, jsonObject("name", name), background, GetOptions{})
+					view, err := l.client.Get(background, benchLinksView, jsonObject("name", name), GetOptions{})
 					must(b, err)
 					views = append(views, view)
 				}
@@ -485,7 +485,7 @@ func benchLinksRows(b *testing.B, codec link.Codec) {
 	b.Run("call, small argument: round trip", func(b *testing.B) {
 		l := benchLinksSetup(b, "calls", nil, codec, true)
 		defer l.close(b)
-		files, err := l.client.Get(benchLinksFiles, jsonObject(), l.ctx, GetOptions{})
+		files, err := l.client.Get(l.ctx, benchLinksFiles, jsonObject(), GetOptions{})
 		must(b, err)
 		b.ReportAllocs()
 		for i := 0; b.Loop(); i++ {
@@ -500,7 +500,7 @@ func benchLinksRows(b *testing.B, codec link.Codec) {
 	b.Run("call, 1 MiB bytes argument: round trip (median, p90)", func(b *testing.B) {
 		l := benchLinksSetup(b, "calls", nil, codec, true)
 		defer l.close(b)
-		files, err := l.client.Get(benchLinksFiles, jsonObject(), l.ctx, GetOptions{})
+		files, err := l.client.Get(l.ctx, benchLinksFiles, jsonObject(), GetOptions{})
 		must(b, err)
 		payload := make([]byte, 1024*1024)
 		b.ReportAllocs()
@@ -530,7 +530,7 @@ func benchLinksRows(b *testing.B, codec link.Codec) {
 			defer l.close(b)
 			views := make([]*Reference, references)
 			for i := range views {
-				view, err := l.client.Get(benchLinksView, jsonObject("name", name), background, GetOptions{})
+				view, err := l.client.Get(background, benchLinksView, jsonObject("name", name), GetOptions{})
 				must(b, err)
 				views[i] = view
 			}
@@ -560,7 +560,7 @@ func benchLinksRows(b *testing.B, codec link.Codec) {
 	b.Run("1,000 calls parked while down, flushed on reconnect: time to the last result", func(b *testing.B) {
 		l := benchLinksSetup(b, "parked", nil, codec, false)
 		defer l.close(b)
-		files, err := l.client.Get(benchLinksFiles, jsonObject(), background, GetOptions{})
+		files, err := l.client.Get(background, benchLinksFiles, jsonObject(), GetOptions{})
 		must(b, err)
 		down := l.down
 		ordered := true

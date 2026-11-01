@@ -58,7 +58,7 @@ func TestSingletonDocumentsReadInitialUntilWrittenAndAgainAfterARetireWhoseFrame
 		t.Fatal(err)
 	}
 	frames := nexttest.FramesOf(watch)
-	if _, err := list.Change(slotPush("a"), background); err != nil {
+	if _, err := list.Change(background, slotPush("a")); err != nil {
 		t.Fatal(err)
 	}
 	value, err := slotValue(o, list)
@@ -103,31 +103,31 @@ func TestKeyedDocumentsAreAbsentUntilWrittenGetKeysAndRetireByKey(t *testing.T) 
 	_, draftsDefinition := documentsDefinitions(t)
 	var drafts *Keyed
 	activated(t, objectOptions{}, func(a *attempt) { drafts = a.Keyed(draftsDefinition) })
-	got, err := drafts.Get("a", background)
+	got, err := drafts.Get(background, "a")
 	if err != nil || got != nil {
 		t.Fatalf("Get(a) before a write = %v, %v, want absent", got, err)
 	}
 	for _, write := range []struct{ key, body string }{{"a", "x"}, {"b", "y"}} {
-		if _, err := drafts.Change(write.key, documentsSetBody(write.body), background); err != nil {
+		if _, err := drafts.Change(background, write.key, documentsSetBody(write.body)); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := drafts.Change("c", func(*delta.Object) (any, error) { return nil, nil }, background); err != nil {
+	if _, err := drafts.Change(background, "c", func(*delta.Object) (any, error) { return nil, nil }); err != nil {
 		t.Fatal(err)
 	}
-	got, err = drafts.Get("a", background)
+	got, err = drafts.Get(background, "a")
 	if err != nil {
 		t.Fatal(err)
 	}
 	nexttest.RequireJSONEqual(t, got, obj("body", "x"))
 	nexttest.RequireJSONEqual(t, slotKeysOf(t, drafts), []any{"a", "b"})
-	if err := drafts.Retire("a", background); err != nil {
+	if err := drafts.Retire(background, "a"); err != nil {
 		t.Fatal(err)
 	}
-	if err := drafts.Retire("missing", background); err != nil {
+	if err := drafts.Retire(background, "missing"); err != nil {
 		t.Fatal(err)
 	}
-	got, err = drafts.Get("a", background)
+	got, err = drafts.Get(background, "a")
 	if err != nil || got != nil {
 		t.Fatalf("Get(a) after the retire = %v, %v, want absent", got, err)
 	}
@@ -155,12 +155,12 @@ func TestWhenTheOwnerEndsDocumentsAreDroppedEveryUseThrowsReleasedAndWatchesEnd(
 	if err == nil || err.Error() != "app.owner(1): ended" {
 		t.Fatalf("list.Value() = %v, want app.owner(1): ended", err)
 	}
-	_, err = drafts.Get("a", background)
+	_, err = drafts.Get(background, "a")
 	nexttest.RequireJSONEqual(t, rejection(t, err), released)
 	iterator := drafts.Keys(background)
 	_, _, err = iterator.Next(background)
 	nexttest.RequireJSONEqual(t, rejection(t, err), released)
-	_, err = list.Change(func(*delta.Object) (any, error) { return nil, nil }, background)
+	_, err = list.Change(background, func(*delta.Object) (any, error) { return nil, nil })
 	nexttest.RequireJSONEqual(t, rejection(t, err), released)
 }
 

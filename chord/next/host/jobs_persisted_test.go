@@ -248,7 +248,7 @@ func openedWith(
 // Retry is `ref.retry()` of the store object: it returns at once, the next attempt coming up behind it.
 func (o *jobsOpened) Retry() {
 	o.t.Helper()
-	reference, err := o.Host.Hold(jobNotesStore, jsonObject(), background, GetOptions{})
+	reference, err := o.Host.Hold(background, jobNotesStore, jsonObject(), GetOptions{})
 	must(o.t, err)
 	reference.Retry()
 	o.held = append(o.held, reference)
@@ -257,7 +257,7 @@ func (o *jobsOpened) Retry() {
 // Live waits for the store object to be live again.
 func (o *jobsOpened) Live() {
 	o.t.Helper()
-	reference, err := o.Host.Get(jobNotesStore, jsonObject(), background, GetOptions{})
+	reference, err := o.Host.Get(background, jobNotesStore, jsonObject(), GetOptions{})
 	must(o.t, err)
 	reference.Release()
 }
@@ -382,7 +382,7 @@ func TestPersistedRecordsARunsRecordAndStateLiveInTheStoreWhileItIsUnsettledFini
 	open := storeFile(t)
 	g, changed := newJobGate(), newJobGate()
 	jobs := opened(t, open(), func(_ any, ctx JobCtx) (any, error) {
-		_, err := ctx.State().Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("done", float64(3)) }, ctx, ChangeOptions{})
+		_, err := ctx.State().Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("done", float64(3)) }, ChangeOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -453,7 +453,7 @@ func TestPersistedCrashesAStateChangeResetsTheRestartCountStoredAtOnce(t *testin
 	jobs.Crash()
 	reset := newJobGate()
 	jobs = opened(t, open(), func(_ any, ctx JobCtx) (any, error) {
-		_, err := ctx.State().Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("done", float64(1)) }, ctx,
+		_, err := ctx.State().Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("done", float64(1)) },
 			ChangeOptions{Persistence: &documents.CommitPersistence{Kind: documents.CommitDeferred}})
 		if err != nil {
 			return nil, err
@@ -809,7 +809,7 @@ func sealedInvocations(t *testing.T, next func(ctx JobCtx) (any, error), declare
 		}
 		started.Open()
 		s.Old.Wait()
-		_, err := ctx.State().Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("done", float64(99)) }, ctx, ChangeOptions{})
+		_, err := ctx.State().Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("done", float64(99)) }, ChangeOptions{})
 		if err == nil {
 			return countResult(-2), nil
 		}
@@ -1149,7 +1149,7 @@ func TestPersistedPinningAnUnsettledRunsStateNeverIdlesPastTheResidencyRetention
 	mustLoad(t)(host.Load([]HostFacet{{Name: "notes", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(jobNotesStore, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			imports = self.Job(jobImport, JobImplementation{Run: func(_ any, ctx JobCtx) (any, error) {
-				if _, err := ctx.State().Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("done", float64(3)) }, ctx, ChangeOptions{}); err != nil {
+				if _, err := ctx.State().Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("done", float64(3)) }, ChangeOptions{}); err != nil {
 					return nil, err
 				}
 				changed.Open()
@@ -1192,7 +1192,7 @@ func TestPersistedPinningAnUnsettledRunsStateNeverIdlesPastTheResidencyRetention
 }
 
 func setDone(ctx JobCtx, done float64, options ChangeOptions) error {
-	_, err := ctx.State().Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("done", done) }, ctx, options)
+	_, err := ctx.State().Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("done", done) }, options)
 	return err
 }
 
@@ -1331,7 +1331,7 @@ func TestPersistedDeferredStateAnOverflowOfHeldOpsStoresTheNextChangeAsABase(t *
 	jobs := opened(t, st, func(_ any, ctx JobCtx) (any, error) {
 		// One leaf each: nothing folds, and the queue passes its bound.
 		for n := 0; n <= delta.MaxPendingOps; n++ {
-			_, err := ctx.State().Change(func(draft *delta.Object) (any, error) { return nil, draft.Array("items").Set(n, float64(1)) }, ctx, deferredWithin(infinity))
+			_, err := ctx.State().Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Array("items").Set(n, float64(1)) }, deferredWithin(infinity))
 			if err != nil {
 				return nil, err
 			}
@@ -1430,7 +1430,7 @@ func TestPersistedDeferredStateRefusesANegativeWithinMs(t *testing.T) {
 	open := storeFile(t)
 	refused := make(chan error, 1)
 	jobs := opened(t, open(), func(_ any, ctx JobCtx) (any, error) {
-		_, err := ctx.State().Change(func(*delta.Object) (any, error) { return nil, nil }, ctx, deferredWithin(-1))
+		_, err := ctx.State().Change(ctx, func(*delta.Object) (any, error) { return nil, nil }, deferredWithin(-1))
 		refused <- err
 		return countResult(0), nil
 	}, nil)

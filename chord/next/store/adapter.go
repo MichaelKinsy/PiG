@@ -111,12 +111,12 @@ func (table *OwnerTable) Put(step *Step, encoded *EncodedRow, stamp string) (Sto
 }
 
 // Get is the row with the key params (in key order), decoded; nil when absent.
-func (table *OwnerTable) Get(executor rowGetter, params []sqlite.SqliteValue, ctx context.Context) (DecodedRow, error) {
+func (table *OwnerTable) Get(ctx context.Context, executor rowGetter, params []sqlite.SqliteValue) (DecodedRow, error) {
 	stored, err := executor.Get(table.Sql.Get, params...)
 	if err != nil || stored == nil {
 		return nil, err
 	}
-	return table.Definition.Rows.Decode(stored, ctx)
+	return table.Definition.Rows.Decode(ctx, stored)
 }
 
 // Prepare is a read compiled once (the store's query vocabulary rendered to SQL): columns of the rows where matches
@@ -177,7 +177,7 @@ func (table *OwnerTable) notJson(column string) error {
 }
 
 // Select is up to limit rows matching where (nil: all) in order, decoded.
-func (table *OwnerTable) Select(executor rowLister, where *WhereNode, order Order, limit int64, ctx context.Context) ([]DecodedRow, error) {
+func (table *OwnerTable) Select(ctx context.Context, executor rowLister, where *WhereNode, order Order, limit int64) ([]DecodedRow, error) {
 	statement := table.Sql.Select(where, order, nil, limit, nil)
 	stored, err := executor.All(statement.SQL, statement.Params...)
 	if err != nil {
@@ -185,7 +185,7 @@ func (table *OwnerTable) Select(executor rowLister, where *WhereNode, order Orde
 	}
 	rows := make([]DecodedRow, len(stored))
 	for index, row := range stored {
-		if rows[index], err = table.Definition.Rows.Decode(row, ctx); err != nil {
+		if rows[index], err = table.Definition.Rows.Decode(ctx, row); err != nil {
 			return nil, err
 		}
 	}

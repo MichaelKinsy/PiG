@@ -116,7 +116,7 @@ func TestOwnerTablePutStampsTheStepsSeqAndReadsDecode(t *testing.T) {
 	// An unstamped put keeps the row's own value.
 	storeBCommit(t, store, table, "", Row{"id": "c", "seq": int64(7)})
 	rows, err := Read(store, func(executor sqlite.SqliteExecutor) ([]DecodedRow, error) {
-		return table.Select(executor, nil, Order{Columns: []string{"id"}, Direction: "asc"}, 10, background)
+		return table.Select(background, executor, nil, Order{Columns: []string{"id"}, Direction: "asc"}, 10)
 	}, background)
 	must(t, err)
 	qEqual(t, rows, []DecodedRow{
@@ -126,12 +126,12 @@ func TestOwnerTablePutStampsTheStepsSeqAndReadsDecode(t *testing.T) {
 	})
 	// Get is by key params, in key order; an absent row is nil.
 	row, err := Read(store, func(executor sqlite.SqliteExecutor) (DecodedRow, error) {
-		return table.Get(executor, []sqlite.SqliteValue{"c"}, background)
+		return table.Get(background, executor, []sqlite.SqliteValue{"c"})
 	}, background)
 	must(t, err)
 	qEqual(t, row, DecodedRow{"id": "c", "seq": int64(7)})
 	row, err = Read(store, func(executor sqlite.SqliteExecutor) (DecodedRow, error) {
-		return table.Get(executor, []sqlite.SqliteValue{"zz"}, background)
+		return table.Get(background, executor, []sqlite.SqliteValue{"zz"})
 	}, background)
 	must(t, err)
 	if row != nil {
@@ -140,7 +140,7 @@ func TestOwnerTablePutStampsTheStepsSeqAndReadsDecode(t *testing.T) {
 	// Select honours where, order and limit.
 	where := WhereNode{Op: WhereGte, Column: "id", Value: "b"}
 	rows, err = Read(store, func(executor sqlite.SqliteExecutor) ([]DecodedRow, error) {
-		return table.Select(executor, &where, Order{Columns: []string{"id"}, Direction: "desc"}, 1, background)
+		return table.Select(background, executor, &where, Order{Columns: []string{"id"}, Direction: "desc"}, 1)
 	}, background)
 	must(t, err)
 	qEqual(t, len(rows), 1)
