@@ -4,6 +4,7 @@ package ai_test
 //
 // Corpus (c): the plain JSON Schemas MCP servers declare (no builder, no TypeBox): dangling and external $ref, definitions of drafts 7 and 2020-12, enums, formats (url, json-pointer-uri-fragment and the
 // rest), oneOf/anyOf unions, patternProperties, nullable, tuples and recursion, each against the arguments models send for them. Pig must answer as Pi's validateToolArguments does.
+// Every schema is an object: Pi's validator cache is a WeakMap keyed by tool.parameters, which throws "Invalid value used as weak map key" for a boolean, and a Go tool's parameters are an object.
 
 import (
 	"strconv"
@@ -35,7 +36,7 @@ func mcpSchemas() []string {
 		object(`"s":{"type":"string","enum":["a","b","c"]}`, `,"required":["s"]`),
 		object(`"n":{"enum":[1,2,3]}`, `,"required":["n"]`),
 		object(`"m":{"enum":["a",1,true,null,{"x":1},[1,2]]}`),
-		object(`"e":{"type":"string","enum":`+enum(30)+`}`),
+		object(`"e":{"type":"string","enum":` + enum(30) + `}`),
 		object(`"v":{"oneOf":[{"type":"string"},{"type":"number"}]}`, `,"required":["v"]`),
 		object(`"v":{"oneOf":[{"type":"integer"},{"type":"string","maxLength":2}]}`),
 		object(`"v":{"anyOf":[{"type":"number"},{"type":"boolean"},{"type":"null"}]}`),
@@ -68,7 +69,6 @@ func mcpSchemas() []string {
 		`{"type":"object","properties":{"s":{"type":"string","pattern":"(?<!x)y"}}}`,
 		`{"type":"object","properties":{"s":{"type":"string","pattern":"["}}}`,
 		`{}`,
-		`true`,
 		`{"type":"string"}`,
 		`{"type":"array","items":{"type":"integer"}}`,
 	}

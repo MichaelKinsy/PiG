@@ -257,7 +257,6 @@ func validateProbes() []validateProbe {
 	}...)
 }
 
-
 // Pi's validateToolArguments over seeded schemas of the keywords tool definitions use, and the near-miss arguments models send.
 func TestValidateToolArgumentsMatchesPiOnSeededSchemas(t *testing.T) {
 	probes := named(validateProbes())

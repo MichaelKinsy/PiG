@@ -105,7 +105,7 @@ func builtinProbes(t testing.TB, tool builtinTool) []piProbe {
 		return `{` + strings.Join(members, ",") + `}`
 	}
 	var args []string
-	args = append(args, valid, `{}`, `null`, `[]`, `"x"`, `7`, `true`, `[` + valid + `]`)
+	args = append(args, valid, `{}`, `null`, `[]`, `"x"`, `7`, `true`, `[`+valid+`]`)
 	args = append(args, `{"extra":{"untouched":"10"},`+strings.TrimPrefix(valid, `{`), `{"é":1,"\ud800":"\ud83d","`+"\u2028"+`":null,`+strings.TrimPrefix(valid, `{`))
 	for key, property := range properties.All() {
 		args = append(args, with(key, ``))

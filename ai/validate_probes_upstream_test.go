@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
 //go:embed testdata/validation-probes.json
@@ -91,5 +93,26 @@ func TestPiAnswersItsRecordedProbeOutcomes(t *testing.T) {
 	}
 	if differing != 0 {
 		t.Errorf("%d of %d probes differ", differing, len(rows))
+	}
+}
+
+// The Go form of the identity-cache probe: a tool's schema is validated by its content, so a schema changed after its first validation is the changed schema. (Pi keeps the validator of the first, as its WeakMap
+// is keyed by the schema object; the probe records that as "as before".) The answer for the changed schema is Pi's validation of the same JSON.
+func TestValidateToolArgumentsValidatesTheSchemaItIsGiven(t *testing.T) {
+	number := map[string]any{"type": "number", "minimum": float64(0)}
+	tool := ai.ToolSchema{Name: "late", Parameters: map[string]any{"type": "object", "properties": map[string]any{"n": number}, "required": []any{"n"}}}
+	call := ai.ToolCall{Name: "late", Arguments: ai.JsonObject{"n": "4"}}
+	got, err := ai.ValidateToolArguments(tool, call)
+	if err != nil || got["n"] != float64(4) {
+		t.Fatalf("before the change: %v, %v", got, err)
+	}
+	number["minimum"] = float64(10)
+	_, err = ai.ValidateToolArguments(tool, call)
+	if err == nil {
+		t.Fatal("the changed schema was not applied")
+	}
+	changed := piProbe{"late", `{"type":"object","properties":{"n":{"type":"number","minimum":10}},"required":["n"]}`, `{"n":"4"}`}
+	if want := piValidate(t, []piProbe{changed})[0]; want.Err == nil || err.Error() != *want.Err {
+		t.Fatalf("error = %v, want Pi's %s", err, want)
 	}
 }
