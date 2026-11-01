@@ -233,6 +233,13 @@ export default function (pi) {
     parameters: { type: "object", required: ["text"], properties: { text: { type: "string", description: "Text to echo" }, offset: { type: "number" } } },
     async execute(_id, params) { return { content: [{ type: "text", text: `echo: ${params.text ?? ""}` }] }; },
   });
+  // D201 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
+  let sharedCalls = 0;
+  const sharedHeard = [];
+  pi.events.on("shared-cells", (data) => sharedHeard.push(data.from));
+  pi.registerTool({ name: "counter", description: "This instance's call count", parameters: { type: "object", properties: {} }, async execute() { return { content: [{ type: "text", text: String(++sharedCalls) }] }; } });
+  pi.registerTool({ name: "ping", description: "Emit on the shared-cells channel", parameters: { type: "object", required: ["name"], properties: { name: { type: "string" } } }, async execute(_id, params) { pi.events.emit("shared-cells", { from: params.name }); return { content: [{ type: "text", text: "pinged" }] }; } });
+  pi.registerTool({ name: "received", description: "What this instance heard on shared-cells", parameters: { type: "object", properties: {} }, async execute() { return { content: [{ type: "text", text: "received=" + sharedHeard.join(",") }] }; } });
   let abortObserved = false;
   pi.registerTool({
     name: "update_tool",

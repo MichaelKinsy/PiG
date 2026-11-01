@@ -615,6 +615,38 @@ func Extension() *sdk.Extension {
 		return map[string]string{"content": "echo: " + text}, nil
 	})
 
+	// D201 shared-cells rows: instance-local state, the process's event bus, and what this instance heard (the same three tools in every SDK fixture).
+	var sharedMu sync.Mutex
+	sharedCalls := 0
+	var sharedHeard []string
+	if _, err := ext.Events().On("shared-cells", func(_ sdk.Context, data any) error {
+		from, _ := data.(map[string]any)["from"].(string)
+		sharedMu.Lock()
+		sharedHeard = append(sharedHeard, from)
+		sharedMu.Unlock()
+		return nil
+	}); err != nil {
+		panic(err)
+	}
+	ext.Tool("counter", "This instance's call count", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(sdk.Context, map[string]any) (any, error) {
+		sharedMu.Lock()
+		defer sharedMu.Unlock()
+		sharedCalls++
+		return map[string]string{"content": strconv.Itoa(sharedCalls)}, nil
+	})
+	ext.Tool("ping", "Emit on the shared-cells channel", sdk.Schema{"type": "object", "required": []string{"name"}, "properties": map[string]any{"name": map[string]any{"type": "string"}}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		name, _ := params["name"].(string)
+		if err := ctx.Events().Emit("shared-cells", map[string]any{"from": name}); err != nil {
+			return nil, err
+		}
+		return map[string]string{"content": "pinged"}, nil
+	})
+	ext.Tool("received", "What this instance heard on shared-cells", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(sdk.Context, map[string]any) (any, error) {
+		sharedMu.Lock()
+		defer sharedMu.Unlock()
+		return map[string]string{"content": "received=" + strings.Join(sharedHeard, ",")}, nil
+	})
+
 	ext.Tool("update_tool", "Stream two partial results", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
 		if err := ctx.OnUpdate("step 1"); err != nil {
 			return nil, err
