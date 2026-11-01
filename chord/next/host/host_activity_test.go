@@ -120,20 +120,22 @@ func TestActivityGivesASlowWatcherTheNewestCountsOnceItIsFree(t *testing.T) {
 	watch := h.watch()
 	gate := make(chan struct{})
 	var seen nexttest.Collector[string]
+	busy := make(chan struct{})
 	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
 		if call.Kind != chord.WatchCallValue {
 			return nil
 		}
 		if seen.Append(nexttest.JSONText(t, call.Value)) == 1 {
+			close(busy)
 			<-gate
 		}
 		return nil
 	})
 	h.activity.count(activityCalls, 1)
 	h.loop.Flush()
-	if err := h.scheduler.AwaitEntered(chordctx.Background()); err != nil {
-		t.Fatalf("AwaitEntered: %v", err)
-	}
+	// The listener is busy with its first call: the guarantee of AwaitEntered is that a delivery started, so the test waits for
+	// the listener to say it is at its wait.
+	<-busy
 	// More publications while the watcher is busy with the first: the bumps settle and two more run, ending at 0.
 	h.activity.count(activityCalls, -1)
 	h.loop.Flush()

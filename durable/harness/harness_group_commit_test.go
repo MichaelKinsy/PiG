@@ -844,22 +844,47 @@ func TestGroupCommitOutcomesAndPublicationThroughTheHarness(t *testing.T) {
 			return gcStatus(t, harness, one) == "running" && gcStatus(t, harness, two) == "running"
 		})
 		ended := gcFollowStoredTasks(harness, func(record anyTaskRecord) bool { return record.State.Status == durable.TaskTerminal })
+		// The continuation of the wait for one is a whole turn: the Session waits for it, up to the point the test says it is done,
+		// before it publishes the next commit of the call (WithContinuation). The turn here ends when the test lets it, once it
+		// checked that two's end is still unpublished.
+		continuation, turn := session.WithContinuation(testContext)
+		finish := deferred()
+		var seen syncValue[bool]
+		waited := gcGo(func() (struct{}, error) {
+			_, err := harness.WaitForTask(continuation, one)
+			if holdErr := finish.wait(testContext); err == nil {
+				err = holdErr
+			}
+			seen.put(ended.has(two))
+			turn.Entered()
+			return struct{}{}, err
+		})
+		// The wait is registered, and the steps of the call before its wait have entered, before the commits are held: only what
+		// follows the wake of the wait is held.
+		tasks := harness.(*harnessImpl).tasks
+		eventually(t, func() bool {
+			turn.Entered()
+			return len(tasks.taskWaiters.Keys()) > 0
+		})
+		gcFlush(t)
+		turn.Entered()
 		// Both end in one call, behind a commit in flight.
 		held := store.holdCommits()
 		blocker := gcGo(gcAppendNote(root))
 		gcEntered(t, held)
-		var seen syncValue[bool]
-		waited := gcGo(func() (struct{}, error) {
-			_, err := harness.WaitForTask(testContext, one)
-			seen.put(ended.has(two))
-			return struct{}{}, err
-		})
 		fixtures.gate("one").resolve()
 		gcFlush(t)
 		fixtures.gate("two").resolve()
 		gcFlush(t)
 		held.release()
 		blocker.wait(t)
+		// Everything that can run has run: the publication of one's end woke the wait, whose continuation is held, so two's end,
+		// stored in the same call, is not published yet.
+		gcFlush(t)
+		if ended.has(two) {
+			t.Fatal("the end of two was published before the continuation of the wait for one finished")
+		}
+		finish.resolve()
 		waited.wait(t)
 		tkWaitOutcome(t, harness, two)
 		if endedTwo, ok := seen.get(); !ok || endedTwo {

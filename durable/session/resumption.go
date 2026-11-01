@@ -82,6 +82,8 @@ type resumption struct {
 	once    sync.Once
 	// continuation, when set, holds the acknowledgement until it has entered.
 	continuation *Continuation
+	// onAcknowledged, when set, runs once, as the acknowledgement is given.
+	onAcknowledged func()
 }
 
 func newResumption(continuation *Continuation) resumption {
@@ -100,7 +102,14 @@ func (r *resumption) resume() {
 }
 
 // acknowledge closes resumed; it is idempotent.
-func (r *resumption) acknowledge() { r.once.Do(func() { close(r.resumed) }) }
+func (r *resumption) acknowledge() {
+	r.once.Do(func() {
+		if r.onAcknowledged != nil {
+			r.onAcknowledged()
+		}
+		close(r.resumed)
+	})
+}
 
 // Parked is a wait of the Session registered before it blocks: a publication that readies it waits for it to resume.
 type Parked struct {
@@ -121,6 +130,14 @@ func (session *SessionImpl) Park(ctx context.Context, done <-chan struct{}) *Par
 	}
 	continuationOf(ctx).Entered()
 	parked := &Parked{resumption: newResumption(continuationOf(ctx)), session: session, done: done}
+	// A wait stays registered until it is acknowledged, not only until it resumed: the acknowledgement of one that belongs to a
+	// Continuation is given when the continuation has entered, and a publication that looks for the waits it readied after the
+	// goroutine resumed must still find it.
+	parked.onAcknowledged = func() {
+		session.parkMu.Lock()
+		delete(session.parks, parked)
+		session.parkMu.Unlock()
+	}
 	session.parkMu.Lock()
 	if session.parks == nil {
 		session.parks = map[*Parked]struct{}{}
@@ -135,9 +152,6 @@ func (parked *Parked) Resume() {
 	if parked == nil {
 		return
 	}
-	parked.session.parkMu.Lock()
-	delete(parked.session.parks, parked)
-	parked.session.parkMu.Unlock()
 	parked.resume()
 }
 

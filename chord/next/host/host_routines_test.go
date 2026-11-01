@@ -227,8 +227,8 @@ func (e *routinesEnv) awaiting(self Self, fn func() error) *Handled {
 	loop.Go(func() {
 		err := fn()
 		// Pi's drain microtask enters a watch's listener before the code that awaited a commit resumes: the resumption
-		// awaits the deliveries the handler's changes scheduled.
-		_ = host.scheduler.AwaitEntered(context.Background())
+		// awaits the deliveries the handler's changes scheduled. A handler returns at once here, so entered is finished.
+		host.scheduler.Wait()
 		loop.Run(func() {
 			if err != nil {
 				handled.Reject(err)
