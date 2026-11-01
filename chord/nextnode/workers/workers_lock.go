@@ -95,13 +95,17 @@ type ProcessLockHandle struct {
 	removeExitHook func()
 	accepting      chan struct{}
 
+	// waiting joins the goroutines that read the waiters' connections: Release closes the connections, so they end.
+	waiting sync.WaitGroup
+
 	mu       sync.Mutex
 	waiters  map[net.Conn]struct{}
 	released bool
 	result   error
 }
 
-// accept keeps every waiter's connection open: a waiter learns of the release when its connection closes.
+// accept keeps every waiter's connection open: a waiter learns of the release when its connection closes, and the holder
+// learns of a waiter that closed its own (it gave up, or died) and forgets it.
 func (lock *ProcessLockHandle) accept() {
 	defer close(lock.accepting)
 	for {
@@ -116,8 +120,26 @@ func (lock *ProcessLockHandle) accept() {
 			continue
 		}
 		lock.waiters[conn] = struct{}{}
+		lock.waiting.Add(1)
 		lock.mu.Unlock()
+		//portlint:allow golifetime the reader ends with its connection, which its waiter or Release closes, and Release joins it
+		go lock.watch(conn)
 	}
+}
+
+// watch reads conn, which is never answered, until it closes, then forgets it (`socket.once("close", ...)`).
+func (lock *ProcessLockHandle) watch(conn net.Conn) {
+	defer lock.waiting.Done()
+	var sink [1]byte
+	for {
+		if _, err := conn.Read(sink[:]); err != nil {
+			break
+		}
+	}
+	lock.mu.Lock()
+	delete(lock.waiters, conn)
+	lock.mu.Unlock()
+	_ = conn.Close()
 }
 
 // Release closes the lock's socket and its waiters' connections (they see them close) once it is gone; releasing again
@@ -140,6 +162,9 @@ func (lock *ProcessLockHandle) Release() error {
 		_ = conn.Close()
 	}
 	clear(lock.waiters)
+	lock.mu.Unlock()
+	lock.waiting.Wait()
+	lock.mu.Lock()
 	lock.result = err
 	lock.mu.Unlock()
 	return err
