@@ -183,7 +183,15 @@ func (h *Host) stageIsolated(ctx context.Context, cfg ExtConfig, oldByName map[s
 	old := oldByName[resolved.Name]
 	var retained *processShare
 	if entry, ok := nodeLauncherEntry(resolved.Path); ok {
-		retained = h.dropStaleTier(ctx, h.retention().claim("node-extension:"+resolved.Name+"\x00"+entry), resolved.Path, resolved.Name)
+		isolatedKey := "node-extension:" + resolved.Name + "\x00" + entry
+		share := h.retention().claim(isolatedKey)
+		if share == nil && h.cells != nil {
+			// pig additive (D201): without a parked process of its own, a Host that joined a CellRegistry admits into the live process another Host runs for this extension; it holds the key's start lock until the process it spawns is registered.
+			key := h.cellRegistryKey(isolatedKey)
+			defer h.cells.startLock(key)()
+			share = h.cells.lookup(key)
+		}
+		retained = h.dropStaleTier(ctx, share, resolved.Path, resolved.Name)
 	}
 	me, _, err := h.startManagedIn(ctx, resolved, retained)
 	if err != nil {

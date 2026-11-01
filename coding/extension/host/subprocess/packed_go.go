@@ -424,7 +424,15 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 	defer closePendingListeners(pendingExts)
 
 	var retained *packedProcessState
-	if share := h.claimRetainedProcess(ctx, cell.BinaryPath, nodeRuntime); share != nil {
+	share := h.claimRetainedProcess(ctx, cell.BinaryPath, nodeRuntime)
+	if share == nil && h.cells != nil {
+		// pig additive (D201): without a parked process of its own, a Host that joined a CellRegistry admits into the live process another Host runs for this cell; it holds the key's start lock until the cell it spawns is registered.
+		if key := h.cellRegistryKey(h.retentionKey(ctx, cell.BinaryPath, nodeRuntime)); key != "" {
+			defer h.cells.startLock(key)()
+			share = h.cells.lookup(key)
+		}
+	}
+	if share != nil {
 		if share.tier != "" && share.tier != tsSelection.Executable {
 			// pig additive (D19): the compiled host the retained process runs no longer matches the cell's runtime: /reload starts the cell on the runtime its set resolves to now.
 			share.release()
@@ -684,6 +692,10 @@ func (h *Host) spawnPackedProcess(ctx, extCtx context.Context, cancel context.Ca
 	processState.share.node = nodeRuntime
 	processState.share.tier = tierOf(tsSelection)
 	h.retention().register(processState.share)
+	// pig additive (D201): a Host that joined a CellRegistry offers this process to the other Hosts of the registry.
+	if h.cells != nil {
+		h.cells.register(h.cellRegistryKey(processState.share.key), processState.share)
+	}
 	return nil
 }
 
@@ -912,7 +924,7 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 	me.flagDefaults = reg.flagDefaults
 	h.joinRoutedBus(ctx, me)
 	// sendReady, or activateNode for a deferred Node payload, fills the geometry.
-	readyPayload := &ReadyPayload{Cwd: h.cwd, Mode: h.mode, SourceInfo: h.readySourceInfo(me)}
+	readyPayload := &ReadyPayload{Group: h.Group(), Cwd: h.cwd, Mode: h.mode, SourceInfo: h.readySourceInfo(me)}
 	if h.uiBridge != nil {
 		// Same contract as the isolated path: a registering extension gets the
 		// whole log once, then only what is new.

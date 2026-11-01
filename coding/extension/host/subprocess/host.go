@@ -274,6 +274,9 @@ func extConfigOrigin(config ExtConfig) string {
 //
 // pig-specific: no upstream equivalent.
 type Host struct {
+	// cells is the registry of cell processes shared with other Hosts, and group this Host's ready.group in it; both are unset for a Host that shares no cells. pig additive (D201): Host.ShareCells.
+	cells *CellRegistry
+	group string
 	// slotCalls keeps UI replacements in the order the extensions sent them (runSlotCall).
 	slotCalls          pendingSlotCalls
 	toolRegistrationMu sync.Mutex
@@ -3296,6 +3299,10 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		me.share.node = true
 		me.share.tier = tierOf(tsSelection)
 		h.retention().register(me.share)
+		// pig additive (D201): a Host that joined a CellRegistry offers this process to the other Hosts of the registry.
+		if h.cells != nil {
+			h.cells.register(h.cellRegistryKey(me.share.key), me.share)
+		}
 	}
 
 	return h.acceptExtConn(ctx, cancel, me, listener)
@@ -3432,6 +3439,7 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 
 	// Send ready. sendReady fills the geometry.
 	readyPayload := &ReadyPayload{
+		Group:      h.Group(),
 		Cwd:        h.cwd,
 		Mode:       h.mode,
 		SourceInfo: h.readySourceInfo(me),
