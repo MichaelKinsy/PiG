@@ -177,19 +177,6 @@ func (r *remoteObject) call(method string, args any, ctx context.Context, _ call
 	return result
 }
 
-// member is the replica of member; `not_ready` before the first binding, `invalid/member` for a member no binding had (one
-// a later variant lacks reads its `invalid/member` failure).
-func (r *remoteObject) member(member string) (state.DeriveSource, error) {
-	if r.bound == nil {
-		return nil, data.NewChordError(data.ChordErrorInit{Code: data.CodeNotReady, Message: r.name + ": not bound yet"}, nil)
-	}
-	found, ok := r.bound.replicas.byName[member]
-	if !ok {
-		return nil, memberInvalid(fmt.Sprintf("%s (variant %s) has no state member %q", r.name, r.bound.variant, member))
-	}
-	return found, nil
-}
-
 // followed is what its reference follows of member (a consumer over a link binds at its own version, mapped at the
 // provider): the replica while live, a member the bound variant lacks (`invalid/member`); while loading or failed
 // nothing, the replica (kept until the next binding) giving its last value (rule 5).

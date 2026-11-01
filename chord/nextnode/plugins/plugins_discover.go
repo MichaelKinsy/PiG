@@ -108,7 +108,8 @@ func directoriesOf(root string) ([]string, error) {
 		return nil, err
 	}
 	names, err := listing.Readdirnames(-1)
-	listing.Close()
+	// A directory opened for reading: its close cannot lose data.
+	_ = listing.Close()
 	if err != nil {
 		return nil, err
 	}

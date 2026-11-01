@@ -524,11 +524,6 @@ func (o *chordObject) swapsInPlace() bool {
 	return st.kind == objectActivating && st.swap != nil && !st.swap.parked
 }
 
-// binds is whether a consumer of contract's version and fingerprint binds to this object's provider now (R6, Q10).
-func (o *chordObject) binds(contract *contracts.Contract) bool {
-	return data.Binds(o.served.provider, contract.Version, contract.Fingerprint)
-}
-
 // checkedParams are its params as checked, with their identity key.
 func (o *chordObject) checkedParams() checkedParams {
 	return checkedParams{params: o.params, key: o.key}

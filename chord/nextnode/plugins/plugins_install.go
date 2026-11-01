@@ -39,6 +39,7 @@ func InstallDependencies(plugin Plugin, ctx context.Context, options InstallOpti
 	if err := ctx.Err(); err != nil {
 		return context.Cause(ctx)
 	}
+	//nolint:gosec // G204 (class c): the command is the app's npmCommand option (default npm), installed by Pi's installDependencies the same way; its arguments are the fixed install flags.
 	child := exec.CommandContext(ctx, command[0], append(append([]string{}, command[1:]...), installArgs...)...)
 	child.Dir = plugin.Dir
 	child.Cancel = func() error {

@@ -422,9 +422,6 @@ func (b *binding) lastFailure() *data.ChordError {
 	return nil
 }
 
-// consumerContract is the consumer's contract: its version is the binding's. Only an unreleased binding is asked.
-func (b *binding) consumerContract() *contracts.Contract { return b.consumer }
-
 // contract is the consumer's contract version and fingerprint (`holder`).
 func (b *binding) contract() contractRef {
 	return contractRef{version: b.consumer.Version, fingerprint: b.consumer.Fingerprint}
@@ -706,7 +703,7 @@ func (k bindingKeys) keysBatch() *state.Batch                 { return k.batch }
 func (k bindingKeys) keysScheduler() *chord.DeliveryScheduler { return k.scheduler }
 func (k bindingKeys) keysLoop() sectionLoop                   { return k.loop }
 func (k bindingKeys) keysVersion() int                        { return k.version }
-func (k bindingKeys) keysTarget() target                      { return k.binding.target() }
+func (k bindingKeys) keysTarget() target                      { return k.target() }
 
 // pinKey holds key of keyed member (a key watch, a factory's `at(key)`, an object re-exposing this member): its
 // source, pinned on the live instance and following its object's instances (`referenceKeys`); release once. It blocks,

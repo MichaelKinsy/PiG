@@ -412,10 +412,10 @@ func (h *hold) call(method string, args any, ctx context.Context) *parkedCallRes
 func (h *hold) method(index int) (name string, resultBytes bool, err error) {
 	// Binding afresh after a swap: by the names the consumer still has (the new instance answers by name).
 	var names *boundNames
-	switch {
-	case h.state.kind == holdBound:
+	switch h.state.kind {
+	case holdBound:
 		names = &boundNames{variant: h.state.variant, names: h.state.names}
-	case h.state.kind == holdBinding:
+	case holdBinding:
 		names = h.state.previous
 	}
 	if names != nil && index >= 0 && index < len(names.names.Methods) {

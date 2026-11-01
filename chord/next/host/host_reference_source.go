@@ -251,8 +251,8 @@ func (s *referenceSource) hold() {
 // fail: its target failed (err: its cause's, a refused version's, a removed type's), inside a batch: it keeps its last
 // value, its watches and subscribers get one failure call (once per failure) and stay open.
 func (s *referenceSource) fail(err *data.ChordError, ctx context.Context) {
-	// Kept: its stack made text now, so it keeps none of the failed instance's frames.
-	state.HandedOut(err)
+	// Pi makes the error's stack text now (`handedOut`), so it keeps none of the failed instance's frames: a Go error keeps
+	// no frames.
 	switch s.state.kind {
 	case sourceHeld:
 		if s.state.failure != nil {
