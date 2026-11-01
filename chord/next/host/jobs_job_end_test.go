@@ -67,7 +67,7 @@ func jobServer(t *testing.T, serve func(host FacetHost) error) Host {
 	server := newJobHost(t, HostOptions{
 		Address: new(Server.Address(nil)), Principal: serverPrincipal(), RevokedBy: guestRevokedBy, OnError: func(err HostError) { t.Logf("server error: %+v", err) },
 	})
-	must(t, server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serve(h) })}}, background))
+	mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serve(h) })}}, background))
 	return server
 }
 
@@ -75,7 +75,7 @@ func jobServer(t *testing.T, serve func(host FacetHost) error) Host {
 func jobClient(t *testing.T) Host {
 	t.Helper()
 	client := newJobHost(t, HostOptions{OnError: func(err HostError) { t.Logf("client error: %+v", err) }})
-	must(t, client.Load(nil, background))
+	mustLoad(t)(client.Load(nil, background))
 	return client
 }
 
@@ -122,7 +122,7 @@ func TestObjectEndRevocationR11RunsSignalsFireWithTheEndsErrorTheDrainWaitsForTh
 	var mu sync.Mutex
 	var finished []string
 	var reason error
-	started := newGate()
+	started := newJobGate()
 	var server Host
 	server = jobServer(t, func(h FacetHost) error {
 		return h.Serve(jobsType, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
@@ -188,7 +188,7 @@ func TestObjectEndRevocationR11RunsSignalsFireWithTheEndsErrorTheDrainWaitsForTh
 // job.test.ts › object end › drains a run that ends its own object before its first await: its natives stay open until it stops
 func TestObjectEndDrainsARunThatEndsItsOwnObjectBeforeItsFirstAwaitItsNativesStayOpenUntilItStops(t *testing.T) {
 	var job JobHandle
-	g := newGate()
+	g := newJobGate()
 	var mu sync.Mutex
 	var events []string
 	note := func(event string) {
@@ -247,7 +247,7 @@ func TestObjectEndDrainsARunThatEndsItsOwnObjectBeforeItsFirstAwaitItsNativesSta
 func TestObjectEndHostCloseSignalsFireCloseWaitsForTheRunDrainNoFinishWaitersRejectedReleased(t *testing.T) {
 	var mu sync.Mutex
 	var finished []string
-	started := newGate()
+	started := newJobGate()
 	var fixture *jobFixture
 	fixture = echoJob(t, JobImplementation{
 		Run: func(args any, ctx JobCtx) (any, error) {
@@ -341,7 +341,7 @@ func TestGCOfDroppedRunsADroppedBlockedRunLeavesNothingOnItsObject(t *testing.T)
 // Pi checks the aborted signals of the cancelled waits are collected; the registration of a wait is what would keep one
 // in Go, so the test checks the run's waiters hold none once the waits were cancelled.
 func TestGCKeepsNothingOfACancelledWaitWhileItsRunStillRuns(t *testing.T) {
-	g := newGate()
+	g := newJobGate()
 	fixture := echoJob(t, JobImplementation{Run: gated(g)}, jobHostOptions{})
 	job := fixture.Job
 	run := jobStart(t, job, textArgs("a"), background)
@@ -375,7 +375,7 @@ func TestGCKeepsNothingOfACancelledWaitWhileItsRunStillRuns(t *testing.T) {
 func TestGCKeepsNoEndedRunsArgsOrStateInAJobHandleKeptAfterItsObjectEnded(t *testing.T) {
 	var mu sync.Mutex
 	var args, states []weak.Pointer[delta.JsonObject]
-	started := newGate()
+	started := newJobGate()
 	fixture := declaredJob(t, jobShell, func(Self, *singletonDoc) JobImplementation {
 		return JobImplementation{Run: func(a any, ctx JobCtx) (any, error) {
 			state, err := ctx.State().Value()
@@ -412,7 +412,7 @@ func TestGCAnEndedObjectReleasesItsRunsTheirDocumentsAndWaiters(t *testing.T) {
 	var args, states []weak.Pointer[delta.JsonObject]
 	var ctxs []weak.Pointer[jobContext]
 	var handles []weak.Pointer[job]
-	started := newGate()
+	started := newJobGate()
 	var held JobHandle
 	host, _ := jobsLoaded(t, func(h FacetHost) error {
 		return h.Serve(jobItemType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {

@@ -25,7 +25,9 @@ import (
 // Ports packages/chord/src/next/host/attempt.ts. Attempts (§6, §13, §14, §15): one activation of an object, a fresh
 // instance each time. It is the `self` its factory declares with (handles to the object's documents and jobs, under its
 // seal token); it runs the activation steps, each failing with its own kind; it takes the live object's calls and starts
-// its routines and jobs; and it ends with its seal (slice 6a §1.3), the drain and the closes of its natives.
+// its routines and jobs; and it ends with its seal (slice 6a §1.3), the drain and the closes of its natives. A reload's
+// swap hands it over (slice 7b §5): its routines stop and hand over to the new attempt's, its jobs to the new attempt's,
+// and it is sealed once its calls settled.
 //
 // Async contract. `activate` returns a promise (a keyedPromise settled in a section): the steps Pi awaits are
 // continuations on the host's Loop in Pi's microtask order (`await undefined` is a `Queue`, an awaited Promise a `then`),
@@ -33,6 +35,10 @@ import (
 // `job.load`, `native.open`, `follow.attach`) is an owned task of the loop (`awaitTask`) that settles its promise in a
 // section. `call` admits the call in the caller's section and runs the handler (a blocking Go function) on an owned task;
 // its result settles later. `close` blocks (the drain, the natives' closes, the job writes) and is called outside a section.
+//
+// `drainCalls` and `handOverRoutines` (the async methods a reload awaits) are called in a section: each takes the list of
+// work to wait for then, as Pi does at the call, and returns a promise that an owned task settles in a section. `checked`
+// is the promise of the first dependency check. `pinKey` blocks, outside a section.
 //
 // Forced Go differences.
 //   - `Self`'s declarations throw in Pi outside the factory, on a repeated name, a refused claim and so on: they panic with
@@ -49,6 +55,8 @@ import (
 //   - Pi's `Context` aborts through an AbortController's signal: the attempt's `abort` is the cancel function of its
 //     `opening` context, called at once by `abandon`; contexts derived from it abort on a goroutine of their own.
 //   - The attempt's running work is a slice of nativeWork (insertion order), the drain waits on them.
+//   - Pi's `Work` maps (calls, routine calls, job invocations) are workSets: insertion-ordered lists of nativeWork with
+//     the bookkeeping each runs once; one seal token per attempt is `token`.
 
 // LocalFactory is a local type's factory: synchronous and declarative, run once per attempt. It returns the members of its
 // contract as an Implementation (Variant empty). The type of `self` for a type with empty params is StoreSelf: assert it.
@@ -149,8 +157,6 @@ type activation struct {
 
 // registryDeclarations are an attempt's registry reads, contributions and wake signals, and its writables (slice 8).
 type registryDeclarations struct {
-	// registries are the registry values it declared (`self.registry`): dependencies, as its references are.
-	registries []*registries.RegistryValueSource
 	// reads release its registry reads (with its references): a read keeps an older version's mapping.
 	reads []func()
 	// retrySources are its wake signals (`self.retryOn`), handed to its object right after the factory.
@@ -187,6 +193,64 @@ type runningWork struct {
 	cleanup func()
 }
 
+// workSet is running work of one kind (calls, routine calls, job invocations), in the order it was admitted, with the
+// bookkeeping each runs once (Pi's `Work`).
+type workSet struct{ list []*runningWork }
+
+// works are the pieces of work in the set, as the drain waits on them.
+func (w *workSet) works() []*nativeWork {
+	if w == nil {
+		return nil
+	}
+	works := make([]*nativeWork, 0, len(w.list))
+	for _, each := range w.list {
+		works = append(works, each.work)
+	}
+	return works
+}
+
+// cleanUp runs the bookkeeping of the work still in w (stuck past the drain) and forgets it.
+func cleanUp(w *workSet) {
+	if w == nil {
+		return
+	}
+	stuck := w.list
+	w.list = nil
+	for _, each := range stuck {
+		if each.cleanup != nil {
+			each.cleanup()
+		}
+	}
+}
+
+// routineRun is its routines once started: aborted when they stop (its seal, a reload's handover or restart), and their
+// running calls.
+type routineRun struct {
+	ctx   context.Context
+	abort func(cause error)
+	calls *workSet
+}
+
+// reloaded is what a reload did to an attempt: `started` (a reload started it), `handedOver` (a swap: its jobs are the new
+// attempt's, its invocations finish on their own), `callsDrained` (a swap or restart waited for its calls: its end's drain
+// does not again), `routinesStopped` (its routines stopped, and do not start late after a handover).
+type reloaded struct{ started, handedOver, callsDrained, routinesStopped bool }
+
+// firstCheck is its first dependency check, for a reload (its report, a swap's handover): waited for by someone (waiting),
+// or done (done) with why it parked (cause; nil: it did not). Made by the first who asks or by the check.
+type firstCheck struct {
+	done    bool
+	waiting *keyedPromise[*data.FailureCause]
+	cause   *data.FailureCause
+}
+
+// pinnedKey is a key of a keyed member pinned on one instance, loaded: its source (mapped when older), and the release
+// (once).
+type pinnedKey struct {
+	source  state.DeriveSource
+	release func()
+}
+
 // attempt is one attempt of an object. Activation: factory, documents hydrated (the object's slots), references bound, then
 // parked until every dependency is live (no timer: the deadline paused), then its own steps: natives opened one after
 // another, followed sources attached, members checked, derives computed; bounded by the host's `readyTimeout`. Ending:
@@ -195,6 +259,10 @@ type runningWork struct {
 // stay on the object.
 type attempt struct {
 	object *chordObject
+	// served is the type its object was served as when it was made: its provider's `accepts` map its older consumers.
+	served *served
+	// adapted are its shared mappings for the consumers of older versions (Q10), by version, in the order they were made.
+	adapted []*adaptedMembers
 	// ctx is the object's context: the natives' closes run under it.
 	ctx context.Context
 	// abort aborts opening when the attempt is abandoned or ends: openers, activation's waits and calls run under it.
@@ -203,6 +271,8 @@ type attempt struct {
 	opening context.Context
 	// token is the seal token its handles and transactions carry (the seal fence).
 	token *documents.SealToken
+	// routineRun is its routines once they started (most attempts have none); nil is Pi's undefined.
+	routineRun *routineRun
 	// declared are the documents it declared, in declaration order ("declared twice" is per attempt).
 	declared      []documents.AnyDefinition
 	declaredNames map[string]struct{}
@@ -225,11 +295,18 @@ type attempt struct {
 	tableNames map[string]struct{}
 	// references are those this attempt declared with `self.get`.
 	references []declaredReference
-	natives    []nativeSlot
+	// dependencies are its dependencies (`self.get` references and `self.registry` values) in declaration order: the parked
+	// cause and `parked_long` name the first that blocks. Made by the first; let go after the dependency check (a live
+	// attempt keeps none).
+	dependencies []dependency
+	natives      []nativeSlot
 	// running are running calls' handlers, routine calls and job runs, each with its bookkeeping (call counts, `ctx.get`
 	// references): an ending attempt waits for them (the drain); the bookkeeping runs once, when its work settles or at
-	// teardown for work stuck past the drain (decision "The seal fence" (4)).
-	running []*runningWork
+	// teardown for work stuck past the drain (decision "The seal fence" (4)). One list and one reaction per piece of work.
+	running workSet
+	// runs are its running job invocations, as running: the drain at its end waits for them; a swap does not (they finish
+	// on their old code, slice 7b §8). Made by the first.
+	runs *workSet
 	// abandoned is what activation returns once the attempt was abandoned: a timeout, a cycle through its object, or its
 	// end; nil is Pi's undefined.
 	abandoned *activation
@@ -245,6 +322,10 @@ type attempt struct {
 	endedEarly *data.ChordError
 	// registry are its registry reads, contributions, wake signals and writables, made by the first: most attempts have none.
 	registry *registryDeclarations
+	// check is its first dependency check; nil is Pi's undefined.
+	check *firstCheck
+	// reloaded is what a reload did to it, made by the first such step (most attempts never meet one).
+	reloaded *reloaded
 }
 
 var (
@@ -258,7 +339,7 @@ var (
 func newAttempt(object *chordObject, ctx context.Context) *attempt {
 	opening, abort := chordctx.WithCancel(ctx)
 	return &attempt{
-		object: object, ctx: ctx, abort: abort, opening: opening, token: documents.NewSealToken(),
+		object: object, served: object.served, ctx: ctx, abort: abort, opening: opening, token: documents.NewSealToken(),
 		declaredNames: map[string]struct{}{}, jobNames: map[string]struct{}{}, tableNames: map[string]struct{}{},
 	}
 }
@@ -357,6 +438,7 @@ func (a *attempt) Get(typ *contracts.Contract, params *delta.JsonObject) *Refere
 		panic(err)
 	}
 	a.references = append(a.references, declaredReference{binding: bound, contract: typ, params: checked})
+	a.dependencies = append(a.dependencies, dependency{kind: dependencyReference, binding: bound})
 	return bound.reference
 }
 
@@ -364,8 +446,7 @@ func (a *attempt) Get(typ *contracts.Contract, params *delta.JsonObject) *Refere
 func (a *attempt) Registry(registry registries.Registry[any, any]) *registries.RegistryValueSource {
 	a.assertDeclaring("registry")
 	value := a.object.host.registryRecord(registry.Name).Value(registry.Version)
-	declarations := a.declarations()
-	declarations.registries = append(declarations.registries, value)
+	a.dependencies = append(a.dependencies, dependency{kind: dependencyRegistry, value: value})
 	return value
 }
 
@@ -418,13 +499,6 @@ func (a *attempt) Contribute(registry registries.Registry[any, any], value any) 
 		}
 	}
 	value = unwrapMember(value)
-	// Refused at `contribute` (declaration policy), also a cycle within this factory's own declarations; the edges live
-	// with the contributions in the tables, from live on.
-	if source, ok := value.(*registries.RegistryValueSource); ok {
-		if err := object.host.registryRecord(registry.Name).AssertNoCycle(source, a.pendingEdges()); err != nil {
-			panic(err)
-		}
-	}
 	declarations.declared = append(declarations.declared, declaredContribution{registry: registry, value: value})
 }
 
@@ -495,7 +569,7 @@ func (a *attempt) Job(definition *JobDefinition, implementation JobImplementatio
 	}
 	owner := jobOwner{
 		host: object.host, caller: a.caller(), context: a.ctx, signal: a.opening, token: a.token,
-		documents: object.documents, admit: a.admit,
+		documents: object.documents, admit: a.admit, admitRun: a.admitRun,
 	}
 	records, err := object.jobRecords(definition)
 	if err != nil {
@@ -521,6 +595,8 @@ func (a *attempt) activate(ending *keyedPromise[struct{}]) *keyedPromise[activat
 	})
 	finish := func(outcome activation) {
 		dl.clear()
+		// Ended before its first dependency check (its factory threw, it was abandoned): nothing parked.
+		a.settleCheck(nil)
 		result.resolve(outcome)
 	}
 	if ending == nil {
@@ -544,11 +620,14 @@ func (a *attempt) abandon(outcome activation) {
 		return
 	}
 	a.abandoned = &outcome
+	var reason error
 	if outcome.kind == activationEnded {
-		a.abort(outcome.err)
-		return
+		reason = outcome.err
+	} else {
+		reason = outcome.cause.Error
 	}
-	a.abort(outcome.cause.Error)
+	a.abort(reason)
+	a.stopRoutinesWith(reason)
 }
 
 // followEnded: a followed runtime ended its observer (R4): `failed` fails this attempt `transient`, live or activating;
@@ -575,8 +654,10 @@ func (a *attempt) followEnded(end chord.WatchEnd) {
 	a.abandon(activation{kind: activationFailed, cause: data.FailureCause{Kind: data.FailureTransient, Error: err}})
 }
 
-// live: the object went live: its jobs take starts and its routines start, in this turn; both stop when it is sealed.
-func (a *attempt) live() {
+// live: the object went live: its jobs take starts and its routines start, in this turn; both stop when it is sealed. After
+// a swap (previous, the attempt it replaced; nil otherwise) its routines start once the previous attempt's routine calls
+// finished (the handover per object, §14), calls never wait for it.
+func (a *attempt) live(previous *attempt) {
 	a.isLive = true
 	if early := a.endedEarly; early != nil {
 		a.object.failLive(a, liveFailure{kind: data.FailureTransient, err: early})
@@ -585,10 +666,156 @@ func (a *attempt) live() {
 	for _, each := range a.jobs {
 		each.live()
 	}
+	if a.routines.empty() {
+		return
+	}
+	if previous == nil {
+		a.startRoutines()
+		return
+	}
+	previous.handOverRoutines().then(func(struct{}, error) { a.startRoutines() })
+}
+
+// startRoutines starts its routines, unless it was sealed meanwhile.
+func (a *attempt) startRoutines() {
+	if a.abandoned != nil || (a.reloaded != nil && a.reloaded.routinesStopped) {
+		return
+	}
 	object := a.object
+	run := &routineRun{calls: &workSet{}}
+	run.ctx, run.abort = chordctx.WithCancel(a.ctx)
+	a.routineRun = run
 	a.routines.start(routineOwner{
-		label: object.text, host: object.host, caller: a.caller(), context: a.opening, admit: a.admit,
+		label: object.text, host: object.host, caller: a.caller(), context: run.ctx,
+		admit: func(cleanup func()) func(err error) { return a.admitTo(run.calls, cleanup) },
 	})
+}
+
+// stopRoutinesWith stops its routines with reason (or they may not start any more: startRoutines asks the abandonment too).
+func (a *attempt) stopRoutinesWith(reason error) {
+	if a.routineRun != nil {
+		a.routineRun.abort(reason)
+	}
+}
+
+// handOver: a reload swaps this live attempt out (slice 7b §5): its routines stop, its jobs are handed over (their running
+// invocations finish on this code), it takes no new starts; its calls run on until drainCalls settled.
+func (a *attempt) handOver() {
+	a.reload().handedOver = true
+	a.stopRoutines()
+	for _, each := range a.jobs {
+		each.handOver()
+	}
+}
+
+// stopRoutines: its routines stop (their ctx aborted); their running calls are waited for by the drain or the handover.
+func (a *attempt) stopRoutines() {
+	a.reload().routinesStopped = true
+	a.stopRoutinesWith(data.NewChordError(data.ChordErrorInit{
+		Code: data.CodeReleased, Reason: data.ReasonEnded, Message: a.object.text + ": reloaded",
+	}, nil))
+}
+
+// handOverRoutines: the new attempt's routines may start: once this attempt's routine calls finished, bounded by
+// `closeTimeout` (a stuck one is reported `drain_timeout`; the whole attempt is sealed by then: the swap's retirement drains
+// its calls and routine calls on the same bound from the swap's start, then seals it, so a stuck call's later commit is
+// refused `released`). The list of calls is the one now.
+func (a *attempt) handOverRoutines() *keyedPromise[struct{}] {
+	var calls []*nativeWork
+	if a.routineRun != nil {
+		calls = a.routineRun.calls.works()
+	}
+	return a.drainReported(calls)
+}
+
+// drainCalls waits for its running calls and routine calls (not its job invocations), bounded by `closeTimeout`
+// (`drain_timeout` reported): a reload's swap or restart lets them finish before the seal. Its end's drain then waits for
+// them no more. The list of calls is the one now.
+func (a *attempt) drainCalls() *keyedPromise[struct{}] {
+	calls := a.running.works()
+	if a.routineRun != nil {
+		calls = append(calls, a.routineRun.calls.works()...)
+	}
+	a.reload().callsDrained = true
+	return a.drainReported(calls)
+}
+
+// drainReported is `drained(calls, size, closeTimeout)` and, on a timeout, the `drain_timeout` report: the promise settles in
+// a section.
+func (a *attempt) drainReported(calls []*nativeWork) *keyedPromise[struct{}] {
+	host := a.object.host
+	result := newKeyedPromise[struct{}](host.loop())
+	a.drained(calls).then(func(outcome withinResult, _ error) {
+		if outcome == withinTimeout {
+			host.report(HostError{Kind: ErrDrainTimeout, Object: a.object.text})
+		}
+		result.resolve(struct{}{})
+	})
+	return result
+}
+
+// drained is `drained` of the work in calls, bounded by `closeTimeout`: the promise settles in a section (at once when there
+// is no work).
+func (a *attempt) drained(calls []*nativeWork) *keyedPromise[withinResult] {
+	host := a.object.host
+	if len(calls) == 0 {
+		settled := newKeyedPromise[withinResult](host.loop())
+		settled.resolve(withinSettled)
+		return settled
+	}
+	return awaitTask(host, func() (withinResult, error) { return drained(host.loop(), calls, host.timeouts.close), nil })
+}
+
+// startedByReload: a reload started it: once live, its object retries its blocked job runs (slice 7b §8).
+func (a *attempt) startedByReload() { a.reload().started = true }
+
+// reloadStarted is whether a reload started it.
+func (a *attempt) reloadStarted() bool { return a.reloaded != nil && a.reloaded.started }
+
+// reload is what a reload did to it, made by the first such step.
+func (a *attempt) reload() *reloaded {
+	if a.reloaded == nil {
+		a.reloaded = &reloaded{}
+	}
+	return a.reloaded
+}
+
+// declaresJob is whether its factory declared job name.
+func (a *attempt) declaresJob(name string) bool {
+	_, declared := a.jobNames[name]
+	return declared
+}
+
+// opensNatives is whether its factory opens natives (`self.open`): a reload restarts it instead of swapping it.
+func (a *attempt) opensNatives() bool { return len(a.natives) > 0 }
+
+// checked is its first dependency check: why it parked (`parkedCause`), nil when it went on (its dependencies live) or its
+// activation ended before (a reload's report and a swap's handover wait for it).
+func (a *attempt) checked() *keyedPromise[*data.FailureCause] {
+	check := a.check
+	if check != nil && check.done {
+		done := newKeyedPromise[*data.FailureCause](a.loop())
+		done.resolve(check.cause)
+		return done
+	}
+	if check != nil {
+		return check.waiting
+	}
+	waiting := newKeyedPromise[*data.FailureCause](a.loop())
+	a.check = &firstCheck{waiting: waiting}
+	return waiting
+}
+
+// settleCheck: its first dependency check is done: parked for cause, or not (nil); once.
+func (a *attempt) settleCheck(cause *data.FailureCause) {
+	check := a.check
+	if check != nil && check.done {
+		return
+	}
+	a.check = &firstCheck{done: true, cause: cause}
+	if check != nil {
+		check.waiting.resolve(cause)
+	}
 }
 
 // isParked is whether it is parked on its dependencies (the dependency check runs).
@@ -619,11 +846,14 @@ func (a *attempt) stateMembers() []stateMember {
 	return listed
 }
 
-// call calls a method for from: a method outside the variant fails `invalid/member` first, then the arguments are checked
-// against the current version (L1); the handler runs under a ctx aborted by the caller and by this attempt's end. Either
-// rejects the caller at once; the handler runs on, its transactions refused, and the drain waits for it. Its `ctx.get`
-// references are released when it settles. The admission is this section's; the result settles later.
-func (a *attempt) call(method string, args any, ctx context.Context, from caller) *parkedCallResult {
+// call calls a method for from, bound at version: a method outside the variant fails `invalid/member` first (for an older
+// version after its table's checks), then the arguments are checked against that version (L1) and, for an older one (Q10),
+// mapped forwards, the handler's result mapped back, or the provider's replacement of a removed method run instead; a
+// refused method fails `contract_mismatch`. The handler runs under a ctx aborted by the caller and by this attempt's end,
+// admitted to the drain before it runs. Either rejects the caller at once; the handler runs on, its transactions refused,
+// and the drain waits for it. Its `ctx.get` references are released when it settles. The admission is this section's; the
+// result settles later.
+func (a *attempt) call(method string, args any, ctx context.Context, from caller, version int) *parkedCallResult {
 	result := newParkedCallResult()
 	if ctx.Err() != nil {
 		result.settle(nil, context.Cause(ctx))
@@ -631,14 +861,25 @@ func (a *attempt) call(method string, args any, ctx context.Context, from caller
 	}
 	object := a.object
 	host := object.host
-	handler, found := a.members.methods.Get(method)
-	if !found {
-		result.settle(nil, data.Invalid(data.ReasonMember, object.text+a.inVariant()+` has no method "`+method+`"`))
+	entry := object.served
+	own, hasOwn := a.members.methods.Get(method)
+	if !hasOwn && version == entry.contract.Version {
+		result.settle(nil, a.noMethod(method))
 		return result
 	}
-	checked, err := data.CheckArgs(object.served.provider, method, args, object.served.contract.Version, ctx)
+	checked, err := data.CheckArgs(entry.provider, method, args, version, ctx)
 	if err != nil {
 		result.settle(nil, err)
+		return result
+	}
+	handler := own
+	if checked.Kind == data.CheckedCall {
+		call := checked.Call
+		handler = func(callArgs delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+			return call(callArgs, ctx)
+		}
+	} else if !hasOwn {
+		result.settle(nil, a.noMethod(method))
 		return result
 	}
 	linked := withLinkedAbortSignal(a.opening, ctx)
@@ -646,7 +887,7 @@ func (a *attempt) call(method string, args any, ctx context.Context, from caller
 	// A local object's handlers act as the host, its principal and its incarnation (§4); a remote one's as their caller.
 	// The caller stays the reference's (presence, §19).
 	acting := caller{principal: host.principal, incarnation: host.incarnation}
-	if object.served.kind == servedRemote {
+	if entry.kind == servedRemote {
 		acting = from
 	}
 	handlerCtx := newCallContext(callContext, acting, host)
@@ -677,10 +918,20 @@ func (a *attempt) call(method string, args any, ctx context.Context, from caller
 				result.settle(nil, context.Cause(callContext))
 				return
 			}
+			// The handler's result is the current version's: its mapping back is the provider's (results are not validated).
+			if err == nil && checked.Kind == data.CheckedMethod && checked.Result != nil {
+				back := checked.Result
+				value, err = tryPlugin(func() (any, error) { return back(value) })
+			}
 			result.settle(value, err)
 		})
 	})
 	return result
+}
+
+// noMethod is the `invalid/member` error of a method outside the variant.
+func (a *attempt) noMethod(method string) *data.ChordError {
+	return data.Invalid(data.ReasonMember, a.object.text+a.inVariant()+` has no method "`+method+`"`)
 }
 
 // keyedMember is the keyed member `member`'s ultimate slot (slice 6a §12, rule 22: through re-exposures); an unknown one
@@ -696,19 +947,121 @@ func (a *attempt) keyedMember(member string) (*documents.KeyedSlot, error) {
 	return keyed.binding.keyedSlot(keyed.member)
 }
 
-// keyedMembers are the keyed members as checked: what each is (keyedBinding), for the keys its object holds across attempts.
-func (a *attempt) keyedMembers() *contracts.NamedMap[*keyedBinding] { return a.members.keyed }
+// memberAt is state member `member` as a consumer of version follows it: its own member at its version, else its shared
+// mapping for that version (`adaptedMembers`); `invalid/member` outside the variant, `contract_mismatch` for a version or
+// member its provider refuses.
+func (a *attempt) memberAt(member string, version int) (state.DeriveSource, error) {
+	if version == a.served.contract.Version {
+		return a.member(member)
+	}
+	return a.adaptedAt(version).member(member)
+}
 
-// owns is whether source (a state member) changes only through this object's own commits: one of this attempt's derives, or
-// one of the object's documents. Another object's member source or document is foreign.
-func (a *attempt) owns(source state.DeriveSource) bool {
-	if derive, ok := source.(*state.Derive); ok {
-		return slices.Contains(a.derives, derive)
+// keyMapping is how a consumer of version reads keyed member `member`'s documents: mapped when older (nil: as they are).
+func (a *attempt) keyMapping(member string, version int) (contracts.Mapping, error) {
+	if version == a.served.contract.Version {
+		return nil, nil
 	}
-	if owned, ok := source.(interface{ Owner() *documents.Documents }); ok {
-		return owned.Owner() == a.object.documents
+	return a.adaptedAt(version).keyed(member)
+}
+
+// pinKey pins key of keyed member `member` on this instance, loaded (its own slot's document, or the re-exposed reference's
+// key), as a consumer of version reads it (mapped when older); release lets it go. It blocks, outside a section.
+func (a *attempt) pinKey(member, key string, version int, ctx context.Context) (pinnedKey, error) {
+	host := a.object.host
+	var keyed *keyedBinding
+	var found bool
+	host.enter(func() { keyed, found = a.members.keyed.Get(member) })
+	if !found {
+		return pinnedKey{}, data.Invalid(data.ReasonMember, a.object.text+` has no keyed member "`+member+`"`)
 	}
-	return false
+	var raw pinnedKey
+	var err error
+	if keyed.kind == keyedOwn {
+		raw, err = pinOwn(host, keyed.slot, key, ctx)
+	} else {
+		raw, err = keyed.binding.pinKey(keyed.member, key, ctx)
+	}
+	if err != nil {
+		return pinnedKey{}, err
+	}
+	if version == a.served.contract.Version {
+		return raw, nil
+	}
+	var mapped pinnedKey
+	host.enter(func() {
+		if mapped, err = a.adaptedAt(version).key(member, raw.source); err != nil {
+			raw.release()
+		}
+	})
+	if err != nil {
+		return pinnedKey{}, err
+	}
+	return pinnedKey{source: mapped.source, release: func() {
+		mapped.release()
+		raw.release()
+	}}, nil
+}
+
+// pinOwn pins key on slot and loads it when it is not in memory; a failed load releases the pin. It blocks, outside a
+// section.
+func pinOwn(host *chordHost, slot *documents.KeyedSlot, key string, ctx context.Context) (pinnedKey, error) {
+	var release func()
+	var err error
+	host.enter(func() { release, err = slot.Pin(key, ctx) })
+	if err != nil {
+		return pinnedKey{}, err
+	}
+	if err = slot.Ensure(key, ctx); err != nil {
+		host.enter(release)
+		return pinnedKey{}, err
+	}
+	var source state.DeriveSource
+	host.enter(func() { source = slot.Source(key) })
+	// The slot dropped its sources while the key loaded (its object ended): no key is pinned any more, as Pi's `ensure`
+	// would find it ended.
+	if source == nil {
+		host.enter(release)
+		return pinnedKey{}, slot.Owner().Released()
+	}
+	return pinnedKey{source: source, release: release}, nil
+}
+
+// dropVersion: no consumer of version is left: its shared mapping goes.
+func (a *attempt) dropVersion(version int) {
+	for at, each := range a.adapted {
+		if each.version == version {
+			a.adapted = slices.Delete(a.adapted, at, at+1)
+			each.detach(a.object.ended())
+			return
+		}
+	}
+}
+
+// adaptedAt is its mapping for version, made by the first use, reading this instance's own members and provider.
+func (a *attempt) adaptedAt(version int) *adaptedMembers {
+	for _, each := range a.adapted {
+		if each.version == version {
+			return each
+		}
+	}
+	host, label := a.object.host, a.object.text
+	made := newAdaptedMembers(adaptedInstance{
+		served: a.served, variant: a.variant, label: label, batch: host.batch, member: a.member,
+		report: func(member string, err error) {
+			host.report(HostError{Kind: ErrDeriveFailed, Object: label, Member: member, Error: err})
+		},
+	}, version)
+	a.adapted = append(a.adapted, made)
+	return made
+}
+
+// attachedVariant is the variant of the instance a reference attaches to ("" for a local object: Pi's undefined).
+func (a *attempt) attachedVariant() string {
+	if a.variant == nil {
+		return ""
+	}
+	return *a.variant
 }
 
 // member is the state member `member`, as Chord follows it; one outside the variant fails `invalid/member`.
@@ -721,13 +1074,13 @@ func (a *attempt) member(member string) (state.DeriveSource, error) {
 }
 
 // seal ends the attempt at once (the seal fence): calls, openers and routines aborted with err (their callers rejected with
-// it), its transactions refused and the one holding the line discarded, its job invocations cut off; documents stay
-// readable.
-func (a *attempt) seal(err *data.ChordError) {
+// it), its transactions refused and the one holding the line discarded, its job invocations cut off (an in-memory run ends
+// `aborted` with runs as its reason: `reload` for a native restart, slice 7b §8); documents stay readable.
+func (a *attempt) seal(err *data.ChordError, runs cutReason) {
 	a.abandon(activation{kind: activationEnded, err: err})
 	a.object.documents.Fence(a.token)
 	for _, each := range a.jobs {
-		each.seal(err)
+		each.seal(err, runs)
 	}
 }
 
@@ -737,26 +1090,29 @@ func (a *attempt) seal(err *data.ChordError) {
 func (a *attempt) close(reason NativeCloseReason) []*closeFailed {
 	host := a.object.host
 	var drain []*nativeWork
+	var handedOver bool
 	host.enter(func() {
-		for _, each := range a.running {
-			drain = append(drain, each.work)
-		}
+		drain = a.drainList()
+		handedOver = a.reloaded != nil && a.reloaded.handedOver
 	})
 	if drained(host.loop(), drain, host.timeouts.close) == withinTimeout {
 		host.enter(func() { host.report(HostError{Kind: ErrDrainTimeout, Object: a.object.text}) })
 	}
-	// The close writer: the persisted runs the seal stopped, and the held state changes (slice 6b §4.2).
-	for _, each := range a.jobs {
-		each.writeAtClose(a.ctx)
+	// The close writer: the persisted runs the seal stopped, and the held state changes (slice 6b §4.2). A swap handed its
+	// jobs over: their records are the new attempt's.
+	if !handedOver {
+		for _, each := range a.jobs {
+			each.writeAtClose(a.ctx)
+		}
 	}
 	// Work stuck past the drain keeps running, but no longer counts as a call or holds its `ctx.get` references.
 	host.enter(func() {
-		stuck := a.running
-		a.running = nil
-		for _, each := range stuck {
-			if each.cleanup != nil {
-				each.cleanup()
-			}
+		cleanUp(&a.running)
+		if a.routineRun != nil {
+			cleanUp(a.routineRun.calls)
+		}
+		if !handedOver {
+			cleanUp(a.runs)
 		}
 	})
 	var failures []*closeFailed
@@ -768,10 +1124,32 @@ func (a *attempt) close(reason NativeCloseReason) []*closeFailed {
 	return failures
 }
 
+// drainList is the drain at its end, bounded by `closeTimeout`: its running calls (unless a reload's drainCalls waited for
+// them already), routine calls and job invocations (unless a swap handed its jobs over: they finish on their own). In a
+// section.
+func (a *attempt) drainList() []*nativeWork {
+	var list []*nativeWork
+	if a.reloaded == nil || !a.reloaded.callsDrained {
+		list = a.running.works()
+	}
+	if a.routineRun != nil {
+		list = append(list, a.routineRun.calls.works()...)
+	}
+	if a.reloaded == nil || !a.reloaded.handedOver {
+		list = append(list, a.runs.works()...)
+	}
+	return list
+}
+
 // detach detaches its derives (once their object no longer needs them: reads fail `released`, their watches end), its
-// followed sources (their observers detached, their watches ended) and its writables (their watches ended).
+// mappings for older versions, its followed sources (their observers detached, their watches ended) and its writables
+// (their watches ended).
 func (a *attempt) detach() {
 	ended := a.object.ended()
+	for _, each := range a.adapted {
+		each.detach(ended)
+	}
+	a.adapted = nil
 	for _, derive := range a.derives {
 		derive.Detach(ended)
 	}
@@ -836,23 +1214,22 @@ func (a *attempt) activateSteps(dl *deadline, finish func(activation)) {
 			if _, err := host.bind(each.binding, each.contract, each.params, a.opening); err != nil {
 				return err
 			}
-			dependencies = append(dependencies, dependency{kind: dependencyReference, binding: each.binding})
 		}
-		for _, each := range dependencies {
-			if each.kind != dependencyReference {
-				continue
-			}
+		for _, each := range a.references {
 			if goal := each.binding.target(); goal != nil {
 				if err := object.assertNoCycle(goal, a.opening); err != nil {
 					return err
 				}
 			}
 		}
-		if a.registry != nil {
-			for _, value := range a.registry.registries {
-				// Read from here until its references are released: an older version's mapping is kept meanwhile.
-				a.registry.reads = append(a.registry.reads, value.Read())
-				dependencies = append(dependencies, dependency{kind: dependencyRegistry, value: value})
+		// Needed only up to the dependency check: a live attempt keeps none.
+		dependencies = a.dependencies
+		a.dependencies = nil
+		for _, each := range dependencies {
+			// Read from here until its references are released: an older version's mapping is kept meanwhile.
+			if each.kind == dependencyRegistry {
+				declarations := a.declarations()
+				declarations.reads = append(declarations.reads, each.value.Read())
 			}
 		}
 		return nil
@@ -870,6 +1247,7 @@ func (a *attempt) activateSteps(dl *deadline, finish func(activation)) {
 			})
 			return
 		}
+		a.settleCheck(nil)
 		// Its own steps start in a later turn: an object ended in the turn it was made opens nothing.
 		a.loop().Queue(ownSteps)
 	}
@@ -989,6 +1367,9 @@ func (a *attempt) park(dependencies []dependency, dl *deadline, done func(*activ
 	iterate = func() {
 		a.moved = false
 		check := checkDependencies(dependencies)
+		if check.kind != checkParked {
+			a.settleCheck(nil)
+		}
 		switch check.kind {
 		case checkBroken:
 			if a.abandoned != nil {
@@ -997,7 +1378,7 @@ func (a *attempt) park(dependencies []dependency, dl *deadline, done func(*activ
 			}
 			finished(&activation{kind: activationFailed, cause: data.FailureCause{Kind: data.FailureBroken, Error: check.err}})
 		case checkLive:
-			a.pinKeys().then(func(pinned *failed, _ error) {
+			a.pinKeys(long).then(func(pinned *failed, _ error) {
 				if a.abandoned != nil {
 					finished(a.abandoned)
 					return
@@ -1012,12 +1393,13 @@ func (a *attempt) park(dependencies []dependency, dl *deadline, done func(*activ
 				if pinned != nil {
 					object.parked(a, pinned, true)
 				}
-				long.stop()
 				waitForChange()
 			})
 		default:
 			object.parked(a, check.shown, check.firstPass)
-			long.waitingOn(check.remoteLoading)
+			cause := parkedCause(check)
+			a.settleCheck(&cause)
+			long.blockedBy(check.blocker)
 			waitForChange()
 		}
 	}
@@ -1041,9 +1423,10 @@ func (a *attempt) nextChange(done func(ok bool)) {
 	})
 }
 
-// pinKeys loads the keys the factory pinned on its dependencies' keyed members (`at(key)`); it resolves nil once all are,
-// else what the parked attempt shows for the first that failed to load (`waiting` on its reference).
-func (a *attempt) pinKeys() *keyedPromise[*failed] {
+// pinKeys loads the keys the factory pinned on its dependencies' keyed members (`at(key)`), each reference's named to long
+// as the blocker while they load (`failed` when they failed); it resolves nil once all are, else what the parked attempt
+// shows for the first that failed to load (`waiting` on its reference).
+func (a *attempt) pinKeys(long *parkedLong) *keyedPromise[*failed] {
 	result := newKeyedPromise[*failed](a.loop())
 	var next func(index int)
 	next = func(index int) {
@@ -1052,14 +1435,17 @@ func (a *attempt) pinKeys() *keyedPromise[*failed] {
 			return
 		}
 		bound := a.references[index].binding
+		label := bound.label()
 		pinning := bound.pinKeys(a.opening)
 		if pinning == nil {
 			next(index + 1)
 			return
 		}
+		long.blockedBy(blocker{label: label, state: blockerLoading})
 		pinning.then(func(_ struct{}, err error) {
 			if err != nil {
-				result.resolve(waitingOn(bound.label(), data.AsChordError(err, bound.label())))
+				long.blockedBy(blocker{label: label, state: blockerFailed})
+				result.resolve(waitingOn(label, data.AsChordError(err, label)))
 				return
 			}
 			next(index + 1)
@@ -1106,19 +1492,19 @@ func (a *attempt) pinsKeys() bool {
 }
 
 // retryDependencies is `ref.retry()` on its parked object (`failed { waiting }`): passed on to every failed dependency (a
-// broken or transient one retries, a parked one passes it on, a request waiting in an index is left alone), as operation;
-// then it checks again (a key that failed to load is loaded again).
-func (a *attempt) retryDependencies(operation *retryOperation) {
+// broken or transient one retries, a parked one passes it on, a request waiting in an index is left alone), as a step of
+// walk; then it checks again (a key that failed to load is loaded again).
+func (a *attempt) retryDependencies(walk *retryWalk) {
 	for _, each := range a.parked {
 		if each.kind == dependencyReference && each.binding.refState().Kind == RefStateFailed {
-			each.binding.retry(operation)
+			each.binding.retry(walk)
 		}
 	}
 	a.dependencyMoved()
 }
 
-// ownSteps are the steps after the dependency check (its own: natives, followed sources, the member check, derives, the
-// keys references pin on its keyed members), under the deadline. A dependency that leaves `live` meanwhile changes nothing
+// ownSteps are the steps after the dependency check (its own: natives, followed sources, the member check, derives), under
+// the deadline. A dependency that leaves `live` meanwhile changes nothing
 // (R18 after live).
 func (a *attempt) ownSteps(implementation factoryResult, finish func(activation)) {
 	host := a.object.host
@@ -1130,31 +1516,15 @@ func (a *attempt) ownSteps(implementation factoryResult, finish func(activation)
 		finish(activation{kind: activationFailed, cause: cause})
 	}
 	afterFollows := func() {
-		checked, err := a.checkOwn(implementation)
-		if err != nil {
+		if _, err := a.checkOwn(implementation); err != nil {
 			finish(a.broken(err))
 			return
 		}
-		// The keys references pin on the object's keyed members, loaded on this attempt's before it goes live.
-		preparing := a.object.prepareKeys(checked.keyed, a.opening)
-		complete := func() {
-			if a.abandoned != nil {
-				finish(*a.abandoned)
-				return
-			}
-			finish(activation{kind: activationLive})
-		}
-		if preparing == nil {
-			complete()
+		if a.abandoned != nil {
+			finish(*a.abandoned)
 			return
 		}
-		preparing.then(func(_ struct{}, err error) {
-			if err != nil {
-				failedWith(data.FailureCause{Kind: data.FailureTransient, Error: data.AsChordError(err, a.object.text)})
-				return
-			}
-			complete()
-		})
+		finish(activation{kind: activationLive})
 	}
 	var attachFrom func(index int)
 	attachFrom = func(index int) {
@@ -1250,11 +1620,10 @@ func (a *attempt) checkOwn(implementation factoryResult) (*members, error) {
 func (a *attempt) resolveContributions(declarations *registryDeclarations) ([]*registries.RegistryContribution, error) {
 	object := a.object
 	contributor := registries.Contributor{Plugin: object.served.plugin, Type: object.served.contract.Name}
-	pending := a.pendingEdges()
 	resolved := make([]*registries.RegistryContribution, 0, len(declarations.declared))
 	for _, each := range declarations.declared {
 		record := object.host.registryRecord(each.registry.Name)
-		contribution, err := contributionOf(record, contributor, each.registry.Version, each.value, pending)
+		contribution, err := contributionOf(record, contributor, each.registry.Version, each.value)
 		if err != nil {
 			return nil, err
 		}
@@ -1370,17 +1739,32 @@ func (a *attempt) mustClaim(err error) {
 	}
 }
 
-// admit adds running work to the drain, with cleanup run once: when it settles (a microtask after settle was called), or at
-// teardown if it never does. cleanup may be nil.
+// admit adds running work (a call, a finish, a reservation) to the drain, with cleanup run once: when it settles (a microtask
+// after settle was called), or at teardown if it never does. cleanup may be nil.
 func (a *attempt) admit(cleanup func()) (settle func(err error)) {
+	return a.admitTo(&a.running, cleanup)
+}
+
+// admitRun adds a job run's invocation to the drain at its end (a swap does not wait for it: they finish on their old code,
+// slice 7b §8), as admit.
+func (a *attempt) admitRun(cleanup func()) (settle func(err error)) {
+	if a.runs == nil {
+		a.runs = &workSet{}
+	}
+	return a.admitTo(a.runs, cleanup)
+}
+
+// admitTo adds running work to the set of its kind (its calls, routine calls or job invocations: the drain), with cleanup
+// run once: when it settles (a microtask after settle was called), or at teardown if it never does.
+func (a *attempt) admitTo(set *workSet, cleanup func()) (settle func(err error)) {
 	work := &runningWork{work: newNativeWork(), cleanup: cleanup}
-	a.running = append(a.running, work)
+	set.list = append(set.list, work)
 	return func(err error) {
 		work.work.settle(err)
 		// `running.then(settled, settled)`: out of the list already means the teardown ran the cleanup.
 		a.loop().Queue(func() {
-			if at := slices.Index(a.running, work); at >= 0 {
-				a.running = slices.Delete(a.running, at, at+1)
+			if at := slices.Index(set.list, work); at >= 0 {
+				set.list = slices.Delete(set.list, at, at+1)
 				if work.cleanup != nil {
 					work.cleanup()
 				}
@@ -1412,21 +1796,6 @@ func (a *attempt) broken(err error) activation {
 		return *a.abandoned
 	}
 	return activation{kind: activationFailed, cause: data.FailureCause{Kind: data.FailureBroken, Error: data.AsChordError(err, a.object.text)}}
-}
-
-// pendingEdges are the registry edges its declared contributions would add (another registry's value contributed).
-func (a *attempt) pendingEdges() []registries.RegistryEdge {
-	var edges []registries.RegistryEdge
-	if a.registry == nil {
-		return edges
-	}
-	host := a.object.host
-	for _, each := range a.registry.declared {
-		if source, ok := each.value.(*registries.RegistryValueSource); ok && source.Record() != nil {
-			edges = append(edges, registries.RegistryEdge{From: host.registryRecord(each.registry.Name), To: source.Record()})
-		}
-	}
-	return edges
 }
 
 func (a *attempt) declarations() *registryDeclarations {

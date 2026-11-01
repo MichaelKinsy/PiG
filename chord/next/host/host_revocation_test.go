@@ -181,7 +181,7 @@ func revocationWorker(t *testing.T, setup func(host FacetHost) error) (Host, *Ra
 			return err
 		}
 	}
-	must(t, host.Load([]HostFacet{{Name: "@test/worker", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return setup(h) })}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/worker", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return setup(h) })}}, background))
 	parent, ends := rawParentLinks(t, host)
 	return host, parent, ends, probe
 }
@@ -231,7 +231,7 @@ func TestHostRevocationKeysAreComputedOncePerPrincipalObjectComparedAsCanonicalJ
 		OnError: func(HostError) {},
 	})
 	defer closeHosts(t, host)
-	must(t, host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { _, err := serveNotes(h, nil); return err })}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { _, err := serveNotes(h, nil); return err })}}, background))
 	peer, ends := rawParentLinks(t, host)
 	holdAs(t, peer, 0, revocationS1, Notes)
 	holdAs(t, peer, 1, guestPrincipal("S2"), Notes)
@@ -271,7 +271,7 @@ func TestHostRevocationKeysKeepNoPrincipalAlive(t *testing.T) {
 		OnError: func(HostError) {},
 	})
 	defer closeHosts(t, host)
-	must(t, host.Load([]HostFacet{{Name: "@test/worker", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { _, err := serveNotes(h, nil); return err })}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/worker", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { _, err := serveNotes(h, nil); return err })}}, background))
 	parent, ends := rawParentLinks(t, host)
 	holdAs(t, parent, 0, guestPrincipal("S9"), Notes)
 	parent.Next("bound")
@@ -456,7 +456,10 @@ func TestHostRevokeEndsAHoldTheParentSentBeforeItsRevokeWhileItStillWaitsForLoad
 					return nil
 				})
 				loading := make(chan error, 1)
-				go func() { loading <- host.Load([]HostFacet{{Name: "@test/worker", Facet: facet}}, background) }()
+				go func() {
+					_, err := host.Load([]HostFacet{{Name: "@test/worker", Facet: facet}}, background)
+					loading <- err
+				}()
 				// Pi's peer sends both in one turn, over a memory link on the one microtask queue: the hold is delivered, its
 				// `bound` flush is queued behind the revoke's delivery, and the revoke ends the hold before any `bound` leaves.
 				loop.Run(func() {
@@ -491,9 +494,10 @@ func TestHostRevokeEndsARelayedHoldStillWaitingForItsRoutesLink(t *testing.T) {
 		resolving := make(chan struct{})
 		var mu sync.Mutex
 		var routed []*RawPeer
-		must(t, host.Route(Session, RouteOptions{
+		mustRoute(t)(host.Route(Session, RouteOptions{
 			Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
-			Resolve: func(contracts.Address, context.Context) (ResolvedLink, error) {
+			Resolve: func(_ contracts.Address, ctx context.Context) (ResolvedLink, error) {
+				chordctx.Suspend(ctx)
 				<-resolving
 				a, b := link.MemoryLinkPair()
 				mu.Lock()
@@ -502,7 +506,7 @@ func TestHostRevokeEndsARelayedHoldStillWaitingForItsRoutesLink(t *testing.T) {
 				return ResolvedLink{Link: a, Principal: workerPrincipal("S1"), Codec: testCodec()}, nil
 			},
 		}, background))
-		must(t, host.Load(nil, background))
+		mustLoad(t)(host.Load(nil, background))
 		parent, ends := rawParentLinks(t, host)
 		params, err := link.JsonPart(jsonObject("session", "S1"))
 		must(t, err)
@@ -584,7 +588,7 @@ func TestHostRevokeClosesTheChildLinksWhosePrincipalItRevokesNeverTheParentLink(
 		address := serverAddress()
 		host := newHost(t, HostOptions{Address: &address, Principal: serverPrincipal(), RevokedBy: revokedByApp, OnError: func(HostError) {}})
 		defer closeHosts(t, host)
-		must(t, host.Load(nil, background))
+		mustLoad(t)(host.Load(nil, background))
 		var peers []*RawPeer
 		var ends []*link.MemoryLink
 		for _, principal := range []data.Principal{revocationS1, guestPrincipal("S2"), revocationS1} {
@@ -619,7 +623,7 @@ func TestHostIgnoresARevokeFromAChildLink(t *testing.T) {
 		address := serverAddress()
 		host := newHost(t, HostOptions{Address: &address, Principal: serverPrincipal(), RevokedBy: revokedByApp, OnError: func(HostError) {}})
 		defer closeHosts(t, host)
-		must(t, host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { _, err := serveNotes(h, nil); return err })}}, background))
+		mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { _, err := serveNotes(h, nil); return err })}}, background))
 		a, b := link.MemoryLinkPair()
 		must(t, host.Accept(a, LinkOptions{Principal: revocationS1, Codec: testCodec()}, background))
 		child := newRawPeer(t, b, rawPeerOptions{})
@@ -786,14 +790,15 @@ func TestHostRevokeEndsAGuestsCtxGetWaitingForItsRouteBeforeAnyLinkExists(t *tes
 	host := newHost(t, HostOptions{Principal: jsonObject("kind", "owner"), RevokedBy: grantRevokedBy, OnError: func(HostError) {}})
 	stuck := make(chan struct{})
 	defer close(stuck)
-	must(t, host.Route(thereKind, RouteOptions{
+	mustRoute(t)(host.Route(thereKind, RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
 		Resolve: func(_ contracts.Address, ctx context.Context) (ResolvedLink, error) {
+			chordctx.Suspend(ctx)
 			<-stuck
 			return ResolvedLink{}, context.Cause(ctx)
 		},
 	}, background))
-	must(t, host.Load(nil, background))
+	mustLoad(t)(host.Load(nil, background))
 	outcome := make(chan error, 1)
 	ready := time.Minute
 	go func() {
@@ -835,11 +840,14 @@ func awaitUnbound(t testing.TB, host Host) {
 func TestHostRevokeNeverLetsTheRevokedRequestBindOnTheRoutesLaterLink(t *testing.T) {
 	host := newHost(t, HostOptions{Principal: jsonObject("kind", "owner"), RevokedBy: grantRevokedBy, OnError: func(HostError) {}})
 	gate := make(chan ResolvedLink)
-	must(t, host.Route(thereKind, RouteOptions{
+	mustRoute(t)(host.Route(thereKind, RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
-		Resolve:   func(contracts.Address, context.Context) (ResolvedLink, error) { return <-gate, nil },
+		Resolve: func(_ contracts.Address, ctx context.Context) (ResolvedLink, error) {
+			chordctx.Suspend(ctx)
+			return <-gate, nil
+		},
 	}, background))
-	must(t, host.Load(nil, background))
+	mustLoad(t)(host.Load(nil, background))
 	pending := make(chan error, 1)
 	ready := 500 * time.Millisecond
 	go func() {
@@ -862,7 +870,7 @@ func TestHostRevokeNeverLetsTheRevokedRequestBindOnTheRoutesLaterLink(t *testing
 			return contracts.Implementation{Variant: "view"}, nil
 		}, ServeOptions{})
 	})
-	must(t, worker.Load([]HostFacet{{Name: "@test/late", Facet: facet}}, background))
+	mustLoad(t)(worker.Load([]HostFacet{{Name: "@test/late", Facet: facet}}, background))
 	gate <- ResolvedLink{Link: down, Principal: jsonObject("kind", "owner"), Trusted: true}
 	err := <-pending
 	if chordErr, ok := data.IsChordError(err); !ok || chordErr.Code != data.CodeForbidden || chordErr.Reason != data.ReasonRevoked {
@@ -880,10 +888,21 @@ func TestHostRevokeEndsAGuestsReferenceOverARouteLinkThatDroppedAndNothingHoldsI
 	var mu sync.Mutex
 	var routed []*RawPeer
 	var ends []*link.MemoryLink
+	// The drop resolves again at once (slice 10 R2); the next link comes only after the revocation.
+	revoked := make(chan struct{})
+	var next sync.Once
+	t.Cleanup(func() { next.Do(func() { close(revoked) }) })
 	host := newHost(t, HostOptions{Principal: jsonObject("kind", "owner"), RevokedBy: grantRevokedBy, OnError: func(HostError) {}})
-	must(t, host.Route(thereKind, RouteOptions{
+	mustRoute(t)(host.Route(thereKind, RouteOptions{
 		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
-		Resolve: func(contracts.Address, context.Context) (ResolvedLink, error) {
+		Resolve: func(_ contracts.Address, ctx context.Context) (ResolvedLink, error) {
+			mu.Lock()
+			made := len(routed)
+			mu.Unlock()
+			if made > 0 {
+				chordctx.Suspend(ctx)
+				<-revoked
+			}
 			a, b := link.MemoryLinkPair()
 			mu.Lock()
 			routed = append(routed, newRawPeer(t, b, rawPeerOptions{}))
@@ -892,10 +911,13 @@ func TestHostRevokeEndsAGuestsReferenceOverARouteLinkThatDroppedAndNothingHoldsI
 			return ResolvedLink{Link: a, Principal: jsonObject("kind", "owner"), Codec: testCodec()}, nil
 		},
 	}, background))
-	must(t, host.Load(nil, background))
+	mustLoad(t)(host.Load(nil, background))
 	states := make(chan string, 1)
 	ready := time.Minute
+	// The root's end is joined before the host closes: its own return is a section of a host that must still be open.
+	rootDone := make(chan struct{})
 	go func() {
+		defer close(rootDone)
 		_, err := host.Root(func(ctx Ctx) (any, error) {
 			if _, err := ctx.Get(remoteThere, jsonObject(), GetOptions{ReadyTimeout: &ready}); err != nil {
 				states <- err.Error()
@@ -927,9 +949,15 @@ func TestHostRevokeEndsAGuestsReferenceOverARouteLinkThatDroppedAndNothingHoldsI
 	mu.Unlock()
 	transported(all...)
 	must(t, host.Revoke("g", background))
+	next.Do(func() { close(revoked) })
+	mu.Lock()
+	all = append([]*link.MemoryLink(nil), ends...)
+	mu.Unlock()
+	transported(all...)
 	if got := <-states; got != "app.remote: revoked" {
 		t.Fatalf("outcome = %q, want %q", got, "app.remote: revoked")
 	}
+	<-rootDone
 	mu.Lock()
 	defer mu.Unlock()
 	for i, peer := range routed {

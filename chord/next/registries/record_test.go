@@ -1,6 +1,7 @@
 package registries_test
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"strconv"
@@ -115,23 +116,6 @@ func TestTheTable(t *testing.T) {
 }
 
 func TestProviderServing(t *testing.T) {
-	t.Run("one per record: a second serve is refused", func(t *testing.T) {
-		e := newEnv(t)
-		record := serve(e, Names, namesProvider())
-		err := record.Serve(1, namesProvider().Erase())
-		if err == nil || err.Error() != "registry app.names is served twice" {
-			t.Fatalf("second serve error = %v", err)
-		}
-	})
-
-	t.Run("a provider without compose is refused (plugin code is not type-checked)", func(t *testing.T) {
-		e := newEnv(t)
-		err := e.record("app.names").Serve(1, registries.RegistryProvider[any, any]{})
-		if err == nil || err.Error() != "registry app.names: compose is a function" {
-			t.Fatalf("serve error = %v", err)
-		}
-	})
-
 	t.Run("a registry nobody serves has no value: unavailable/undeclared; its contributions wait in the table", func(t *testing.T) {
 		e := newEnv(t)
 		contribute(e, Names, "@app/a", "", plain("waiting"))
@@ -406,35 +390,83 @@ func TestContributions(t *testing.T) {
 		}
 	})
 
-	t.Run("refuses a contribution closing a cycle with the registries' tables, and one through earlier declarations", func(t *testing.T) {
-		A := mustDefine[any, any](t, "app.a", 1)
-		B := mustDefine[any, any](t, "app.b", 1)
+	t.Run("catches a ring of registries at its first composition: the contributors go live, the rest works (audit A2)", func(t *testing.T) {
+		A := mustDefine[any, int](t, "app.ring-a", 1)
+		B := mustDefine[any, int](t, "app.ring-b", 1)
 		e := newEnv(t)
-		a := serve(e, A, registries.RegistryProvider[any, any]{Compose: func(table registries.RegistryTable[any], _ registries.ComposeContext) (any, error) {
+		count := registries.RegistryProvider[any, int]{Compose: func(table registries.RegistryTable[any], _ registries.ComposeContext) (int, error) {
 			return len(table), nil
-		}})
-		b := serve(e, B, registries.RegistryProvider[any, any]{Compose: func(table registries.RegistryTable[any], _ registries.ComposeContext) (any, error) {
-			return len(table), nil
-		}})
-		if err := a.AssertNoCycle(b.Value(1), nil); err != nil {
-			t.Fatalf("A reading B: %v", err)
+		}}
+		a := serve(e, A, count)
+		b := serve(e, B, count)
+		// ToA contributes B's value to A, ToB A's value to B (objects going live), and the plugin itself a plain value to each.
+		contribute(e, A, "@app/ring", "app.to-a", registries.ContributionContent{Kind: registries.ContributionNative, Native: b.Value(1)})
+		contribute(e, B, "@app/ring", "app.to-b", registries.ContributionContent{Kind: registries.ContributionNative, Native: a.Value(1)})
+		contribute(e, A, "@app/ring", "", plain("plain"))
+		contribute(e, B, "@app/ring", "", plain("plain"))
+		// A composes first: B composes for it and its contribution of A, read while A composes, is left out. A has its
+		// plain entry and B's value, B its plain entry.
+		if got := []any{composed(t, a), composed(t, b)}; !reflect.DeepEqual(got, []any{2, 1}) {
+			t.Fatalf("values = %v, want [2 1]", got)
 		}
-		// Declared in one factory: B's value into A, then A's into B.
-		pending := []registries.RegistryEdge{{From: a, To: b}}
-		err := b.AssertNoCycle(a.Value(1), pending)
-		if chordErr, ok := data.IsChordError(err); !ok || chordErr.Code != data.CodeInvalid || chordErr.Reason != data.ReasonCycle {
-			t.Fatalf("pending edge error = %v", err)
+		if len(e.errors) != 1 {
+			t.Fatalf("errors = %#v", e.errors)
 		}
-		// Live: A's table holds B's value.
-		reads := contribute(e, A, "@app/direct", "app.direct", registries.ContributionContent{Kind: registries.ContributionNative, Native: b.Value(1)})
-		err = b.AssertNoCycle(a.Value(1), nil)
-		if chordErr, ok := data.IsChordError(err); !ok || chordErr.Reason != data.ReasonCycle || chordErr.Message != "registries app.b and app.a read each other" {
-			t.Fatalf("table edge error = %v", err)
+		cut := e.errors[0]
+		chordErr, ok := data.IsChordError(cut.Error)
+		if cut.Kind != "contribution_failed" || cut.Registry != "app.ring-b" || cut.Plugin != "@app/ring" || cut.Type != "app.to-b" || !ok || chordErr.Code != data.CodeInvalid || chordErr.Reason != data.ReasonCycle {
+			t.Fatalf("error = %#v", cut)
 		}
-		// An edge lives as long as its contribution is in the table.
-		e.change(func() { a.Remove(reads) })
-		if err := b.AssertNoCycle(a.Value(1), nil); err != nil {
-			t.Fatalf("after remove: %v", err)
+	})
+
+	t.Run("keeps a ring's later recompositions bounded: a change composes each registry once, then nothing (audit A2)", func(t *testing.T) {
+		A := mustDefine[any, int](t, "app.later-a", 1)
+		B := mustDefine[any, int](t, "app.later-b", 1)
+		e := newEnv(t)
+		composes := 0
+		sum := func(table registries.RegistryTable[any], _ registries.ComposeContext) (int, error) {
+			composes++
+			total := 0
+			for _, entry := range table {
+				if n, ok := entry.Value.(int); ok {
+					total += n
+				}
+			}
+			return total, nil
+		}
+		a := serve(e, A, registries.RegistryProvider[any, int]{Compose: sum})
+		b := serve(e, B, registries.RegistryProvider[any, int]{Compose: sum})
+		extra := newCell(1)
+		contribute(e, A, "@app/later", "app.later-ring", registries.ContributionContent{Kind: registries.ContributionNative, Native: b.Value(1)})
+		contribute(e, B, "@app/later", "app.later-back", registries.ContributionContent{Kind: registries.ContributionNative, Native: a.Value(1)})
+		contribute(e, B, "@app/later", "app.later-extra", extra.native())
+		observers := []*observed{{}, {}}
+		for i, value := range []*registries.RegistryValueSource{a.Value(1), b.Value(1)} {
+			if _, err := value.Observe(observers[i], context.Background()); err != nil {
+				t.Fatal(err)
+			}
+		}
+		before := composes
+		extra.set(e, 5, nil)
+		// B changed and composes first now: it reads A, whose contribution of B, read while B composes, is cut instead.
+		if composes-before != 2 {
+			t.Fatalf("composes = %d, want 2", composes-before)
+		}
+		if got := []any{composed(t, a), composed(t, b)}; !reflect.DeepEqual(got, []any{0, 5}) {
+			t.Fatalf("values = %v, want [0 5]", got)
+		}
+		var cut []string
+		for _, err := range e.errors {
+			cut = append(cut, err.Registry)
+		}
+		if want := []string{"app.later-b", "app.later-a"}; !reflect.DeepEqual(cut, want) {
+			t.Fatalf("reports = %v, want %v", cut, want)
+		}
+		// Nothing composes on by itself.
+		composed(t, a)
+		composed(t, b)
+		if composes-before != 2 {
+			t.Fatalf("composes = %d after reading, want 2", composes-before)
 		}
 	})
 
@@ -636,6 +668,68 @@ func TestTheTablesMemory(t *testing.T) {
 		}
 		if record.Value(1) == value {
 			t.Fatal("a closed record handed out its old value")
+		}
+	})
+}
+
+func TestAReloadsNewContributionAdapter(t *testing.T) {
+	t.Run("remaps an unchanged contributor with the new provider's adapter (fix round 1)", func(t *testing.T) {
+		R := mustDefine[int, int](t, "astra.contrib", 2)
+		Old := mustDefine[int, int](t, "astra.contrib", 1)
+		provider := func(factor int) registries.RegistryProvider[int, int] {
+			return registries.RegistryProvider[int, int]{
+				Compose: func(table registries.RegistryTable[int], _ registries.ComposeContext) (int, error) {
+					total := 0
+					for _, entry := range table {
+						total += entry.Value
+					}
+					return total, nil
+				},
+				Accepts: registries.RegistryAccepts[int, int]{1: {
+					Contribution: func(n any) (int, error) { return n.(int) * factor, nil },
+					Value:        func(n int) (any, error) { return n, nil },
+				}},
+			}
+		}
+		e := newEnv(t)
+		record := serve(e, R, provider(2))
+		contribute(e, Old, "@astra/contribution", "", plain(7))
+		if got := composed(t, record); got != 14 {
+			t.Fatalf("composition = %v, want 14", got)
+		}
+		e.change(func() { record.Serve(R.Version, provider(3).Erase()) })
+		if got := composed(t, record); got != 21 {
+			t.Fatalf("composition after the reload = %v, want 21", got)
+		}
+	})
+}
+
+func TestProviderCheck(t *testing.T) {
+	t.Run("a provider without compose is refused (plugin code is not type-checked)", func(t *testing.T) {
+		err := registries.CheckProvider("app.names", registries.RegistryProvider[any, any]{})
+		if err == nil || err.Error() != "registry app.names: compose is a function" {
+			t.Fatalf("error = %v", err)
+		}
+		if err := registries.CheckProvider("app.names", namesProvider().Erase()); err != nil {
+			t.Fatalf("a provider with compose: %v", err)
+		}
+	})
+
+	t.Run("a reload replaces the provider, or removes it: the value fails unavailable/undeclared, its contributions stay", func(t *testing.T) {
+		e := newEnv(t)
+		record := serve(e, Names, namesProvider())
+		contribute(e, Names, "@app/a", "", plain("a"))
+		if got, want := composed(t, record), []string{"@app/a:=a"}; !reflect.DeepEqual(got, want) {
+			t.Fatalf("composition = %v", got)
+		}
+		e.change(func() { record.Unserve() })
+		start := startOf(t, record)
+		if chordErr, ok := data.IsChordError(start.Error); start.Kind != state.StartFailed || !ok || chordErr.Code != data.CodeUnavailable || chordErr.Reason != data.ReasonUndeclared {
+			t.Fatalf("start = %#v", start)
+		}
+		e.change(func() { record.Serve(Names.Version, namesProvider().Erase()) })
+		if got, want := composed(t, record), []string{"@app/a:=a"}; !reflect.DeepEqual(got, want) {
+			t.Fatalf("composition after serving again = %v", got)
 		}
 	})
 }

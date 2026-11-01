@@ -63,11 +63,13 @@ type storedFields struct {
 	finishFailures *int
 	abortMarked    bool
 	blocked        *BlockedReason
-	outcome        *AnyOutcome
+	// clearBlocked clears the stored `blocked` (an unblocked run).
+	clearBlocked bool
+	outcome      *AnyOutcome
 }
 
-// storedRun is run's record as stored with fields changed, with the job's fingerprint.
-func storedRun(run *jobRun, fingerprint string, fields storedFields) *delta.JsonObject {
+// storedRun is run's record as stored with fields changed (its own version and fingerprint).
+func storedRun(run *jobRun, fields storedFields) *delta.JsonObject {
 	phase, restarts, finishFailures := run.phase, run.restarts, run.finishFailures
 	abortMarked, blocked, outcome := run.abortMarked, run.blocked, run.outcome
 	if fields.phase != nil {
@@ -85,12 +87,15 @@ func storedRun(run *jobRun, fingerprint string, fields storedFields) *delta.Json
 	if fields.blocked != nil {
 		blocked = fields.blocked
 	}
+	if fields.clearBlocked {
+		blocked = nil
+	}
 	if fields.outcome != nil {
 		outcome = fields.outcome
 	}
 	record := delta.NewJsonObject(11)
 	record.Set("version", float64(run.version))
-	record.Set("fingerprint", fingerprint)
+	record.Set("fingerprint", run.fingerprint)
 	record.Set("args", run.args)
 	if run.key != nil {
 		record.Set("key", *run.key)

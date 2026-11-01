@@ -1907,7 +1907,7 @@ func TestOnOnARemoteMemberWithNoValueYetAFirstValueFollowedAtOnceByAFailureCalls
 		var mu sync.Mutex
 		var calls []any
 		client := newHost(t, HostOptions{OnError: func(HostError) {}})
-		must(t, client.Load([]HostFacet{{Name: "@test/client", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		mustLoad(t)(client.Load([]HostFacet{{Name: "@test/client", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 			return h.Serve(routinesViewerOnly, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 				self.On(self.Get(Notes, jsonObject("session", "S1")).Member("count"), func(call chord.WatchCall[delta.JsonValue], _ Ctx) *Handled {
 					mu.Lock()
@@ -1963,13 +1963,13 @@ func TestOnFollowsRefStateAReferenceOverALinkGoingLoadingAndLiveAgain(t *testing
 	forEachCodec(t, func(t *testing.T) {
 		address := Server.Address(nil)
 		server := newHost(t, HostOptions{Address: &address, Principal: serverPrincipal(), OnError: func(HostError) {}})
-		must(t, server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 			_, err := serveNotes(h, nil)
 			return err
 		})}}, background))
 		var states strs
 		client := newHost(t, HostOptions{OnError: func(HostError) {}})
-		must(t, client.Load([]HostFacet{{Name: "@test/client", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		mustLoad(t)(client.Load([]HostFacet{{Name: "@test/client", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 			return h.Serve(routinesViewerOnly, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 				notes := self.Get(Notes, jsonObject("session", "S1"))
 				self.OnNative(refStateSource{notes.State()}, func(call chord.NativeWatchCall[any], _ Ctx) *Handled {

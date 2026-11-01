@@ -61,6 +61,28 @@ func TestTheIndexWakesEveryRequestAtThePublicationOutOfTheIndexFirstADeletedOneI
 	}
 }
 
+func TestTheIndexWakesTheRequestsOfTheNamesAReloadServesOnlyCarryOverPublicationsWakePerName(t *testing.T) {
+	index := newUnboundIndex()
+	a, b, c := unboundRequestOf(nil), unboundRequestOf(nil), unboundRequestOf(nil)
+	index.add("app.a", a)
+	index.add("app.b", b)
+	index.add("app.c", c)
+	index.wake([]string{"app.a", "app.c", "app.unknown"})
+	if got, want := unboundLogsOf(a, b, c), [][]string{{"wake"}, nil, {"wake"}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("logs = %v, want %v", got, want)
+	}
+	// The others stay indexed until their own names are served.
+	index.wake([]string{"app.b"})
+	if !reflect.DeepEqual(b.log, []string{"wake"}) {
+		t.Fatalf("b.log = %v, want [wake]", b.log)
+	}
+	// Woken out of the index: a later publication wakes none of them again.
+	index.wakeAll()
+	if got, want := unboundLogsOf(a, b, c), [][]string{{"wake"}, {"wake"}, {"wake"}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("logs = %v, want %v", got, want)
+	}
+}
+
 func TestTheIndexEndsTheRequestsOfARevokedPrincipalOnlyAndEveryRequestAtTheHostsClose(t *testing.T) {
 	index := newUnboundIndex()
 	guest := unboundRequestOf(unboundGuest("guest"))
@@ -208,7 +230,7 @@ func TestHostReferencesWaitingInTheIndexBeforeThePublicationAreLoadingPlacedByIt
 			t.Fatalf("state before the publication = %s, want loading", kind)
 		}
 	}
-	must(t, host.Load([]HostFacet{{Name: "@test/a", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfo(h) })}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/a", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return serveInfo(h) })}}, background))
 	turn(host)
 	if kind := refStateOf(info).Kind; kind != RefStateLive {
 		t.Fatalf("info state = %s, want live", kind)
@@ -239,7 +261,7 @@ func TestHostReferencesWaitingInTheIndexLeaveNothingBehindOnceReleased(t *testin
 		must(t, err)
 		weaks = append(weaks, weak.Make(first.binding))
 		first.Release()
-		must(t, host.Load(nil, background))
+		mustLoad(t)(host.Load(nil, background))
 		second, err := host.Hold(unboundMissing, jsonObject("id", float64(2)), background, GetOptions{})
 		must(t, err)
 		weaks = append(weaks, weak.Make(second.binding))
@@ -287,7 +309,7 @@ func TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose(t *testing.
 			}}, nil
 		}, ServeOptions{})
 	})
-	must(t, host.Load([]HostFacet{{Name: "@test/a", Facet: facet}}, background))
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/a", Facet: facet}}, background))
 	outcome := make(chan error, 1)
 	go func() {
 		_, err := host.Get(unboundMissing, jsonObject("id", float64(1)), background, GetOptions{})
@@ -335,7 +357,7 @@ func TestHostHoldsWaitingInTheIndexWaitForThePublicationWithoutAWordThenAreRefus
 	if kinds := peer.Kinds(); !reflect.DeepEqual(kinds, []string{"hello"}) {
 		t.Fatalf("kinds = %v, want [hello]", kinds)
 	}
-	must(t, host.Load(nil, background))
+	mustLoad(t)(host.Load(nil, background))
 	failed := peer.Next("failed").(*link.FailedMessage)
 	if failed.Hold != 0 || failed.Cause.Kind != "waiting" {
 		t.Fatalf("failed = %+v, want hold 0 waiting", failed)
@@ -353,10 +375,10 @@ func TestHostHoldsWaitingInTheIndexLeaveNothingBehindOnceTheirLinkClosed(t *test
 	weaks = append(weaks, indexedHolds(before)...)
 	beforeLink.Close()
 	transported(beforeLink, beforePeer)
-	must(t, before.Load(nil, background))
+	mustLoad(t)(before.Load(nil, background))
 	after, afterPeer, afterLink, afterEnd := early(t)
 	weaks = append(weaks, indexedHolds(after)...)
-	must(t, after.Load(nil, background))
+	mustLoad(t)(after.Load(nil, background))
 	afterPeer.Next("failed")
 	afterLink.Close()
 	transported(afterLink, afterEnd)

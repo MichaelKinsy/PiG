@@ -57,6 +57,15 @@ func (claims *Claims) Table(table string, claimant Claimant) error {
 	return claims.claim("table "+string(text), claimant)
 }
 
+// AssertTable fails as Table would for claimant, claiming nothing (a reload's staging checks its declarations).
+func (claims *Claims) AssertTable(table string, claimant Claimant) error {
+	text, err := jsstring.MarshalJSON(table)
+	if err != nil {
+		return err
+	}
+	return claims.assert("table "+string(text), claimant)
+}
+
 // Documents claims the documents of owner in namespace for claimant; held by another: invalid/args.
 func (claims *Claims) Documents(owner, namespace string, claimant Claimant) error {
 	text, err := jsstring.MarshalJSON([]string{owner, namespace})
@@ -64,6 +73,15 @@ func (claims *Claims) Documents(owner, namespace string, claimant Claimant) erro
 		return err
 	}
 	return claims.claim("documents "+string(text), claimant)
+}
+
+// AssertDocuments fails as Documents would for claimant, claiming nothing.
+func (claims *Claims) AssertDocuments(owner, namespace string, claimant Claimant) error {
+	text, err := jsstring.MarshalJSON([]string{owner, namespace})
+	if err != nil {
+		return err
+	}
+	return claims.assert("documents "+string(text), claimant)
 }
 
 // Lock refuses every claim (invalid/args) until the returned unlock: a batch applies meanwhile.
@@ -91,17 +109,32 @@ func (claims *Claims) Release(claimant Claimant) {
 func (claims *Claims) claim(key string, claimant Claimant) error {
 	claims.mu.Lock()
 	defer claims.mu.Unlock()
-	if claims.locked {
-		return data.Invalid(data.ReasonArgs, "store: "+key+" cannot be claimed while a batch applies")
+	if err := claims.refusal(key, claimant); err != nil {
+		return err
 	}
-	holder, held := claims.holders[key]
-	if held && holder == claimant {
+	if claims.holders[key] == claimant {
 		return nil
-	}
-	if held {
-		return data.Invalid(data.ReasonArgs, "store: "+key+" is claimed by "+holder.ClaimLabel())
 	}
 	claims.holders[key] = claimant
 	claims.keys[claimant] = append(claims.keys[claimant], key)
+	return nil
+}
+
+// assert refuses key to claimant as claim does, taking nothing.
+func (claims *Claims) assert(key string, claimant Claimant) error {
+	claims.mu.Lock()
+	defer claims.mu.Unlock()
+	return claims.refusal(key, claimant)
+}
+
+// refusal is why key is refused to claimant while a batch applies or another claimant holds it; nil when it is not. The
+// caller holds mu.
+func (claims *Claims) refusal(key string, claimant Claimant) error {
+	if claims.locked {
+		return data.Invalid(data.ReasonArgs, "store: "+key+" cannot be claimed while a batch applies")
+	}
+	if holder, held := claims.holders[key]; held && holder != claimant {
+		return data.Invalid(data.ReasonArgs, "store: "+key+" is claimed by "+holder.ClaimLabel())
+	}
 	return nil
 }

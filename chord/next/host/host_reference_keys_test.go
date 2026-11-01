@@ -15,13 +15,15 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
+	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
-// Ports packages/chord/test/next/host/keyed-members.test.ts: keyed members across attempts (slice 6a §1.2, §1.4, §12):
-// the keys references hold on an object's keyed members, frozen while it is failed, re-bound by name (loaded first)
-// when its next attempt goes live, released once. Every case serves objects through a whole host.
+// Ports packages/chord/test/next/host/reference-keys.test.ts: the keys a reference holds (slice 6a §12; decision
+// "References are the only indirection" (4)): its key watches and factory pins of an object's keyed members, holding
+// their last values while it is failed (one `failed` call), pinned again on its next instance once that is live (one
+// frame), released once. Every case serves objects through a whole host.
 
 var kmSchema = contracts.Obj(contracts.Prop("n", contracts.Int()))
 
@@ -242,9 +244,9 @@ func kmRetry(t testing.TB, host Host, exposer *Reference) {
 	again.Release()
 }
 
-// keyed-members.test.ts › a failed object's held keys › keep their last values and get no frames (at, watch, a derive over
-// at); the provider goes on.
-func TestKeyedMembersAFailedObjectsHeldKeysKeepTheirLastValuesAndGetNoFramesAtWatchADeriveOverAtTheProviderGoesOn(t *testing.T) {
+// reference-keys.test.ts › a failed object's held keys › keep their last values and get the failure once (at, watch, a
+// derive over at); the provider goes on.
+func TestReferenceKeysAFailedObjectsHeldKeysKeepTheirLastValuesAndGetTheFailureOnceAtWatchADeriveOverAtTheProviderGoesOn(t *testing.T) {
 	s := kmServe(t, "a")
 	values := kmWatch(t, s.Viewer.Member("value"))
 	keyWatch := kmKeyWatch(t, s.Exposer.Keyed("notes"))
@@ -253,6 +255,8 @@ func TestKeyedMembersAFailedObjectsHeldKeysKeepTheirLastValuesAndGetNoFramesAtWa
 	must(t, err)
 	directCalls := nexttest.ChangesOf(direct)
 	s.fail()
+	awaitWatchCalls(t, "the failure reaches the viewer's key", values, 1)
+	awaitWatchCalls(t, "the failure reaches the key watch", keyed, 1)
 	kmSet(t, s.Registry.provider("a"), "k", 3)
 	deliveredOn(s.Host)
 	if kind := s.Exposer.State().Value().Kind; kind != RefStateFailed {
@@ -260,14 +264,14 @@ func TestKeyedMembersAFailedObjectsHeldKeysKeepTheirLastValuesAndGetNoFramesAtWa
 	}
 	nexttest.RequireJSONEqual(t, []any{kmMember(t, s.Viewer, "value"), kmMember(t, s.Viewer, "double"), keyWatch.Value()},
 		[]any{kmN(1), float64(2), kmN(1)})
-	nexttest.RequireJSONEqual(t, []any{msCalls(values.Items()), msCalls(keyed.Items())}, []any{[]any{}, []any{}})
+	nexttest.RequireJSONEqual(t, []any{msKinds(values.Items()), msKinds(keyed.Items())}, []any{[]any{"failed"}, []any{"failed"}})
 	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(directCalls.Items()), []any{kmN(3)})
 	must(t, s.Host.Close(background))
 }
 
-// keyed-members.test.ts › re-binding when a new attempt goes live › follows the new attempt's member of the same name (one
-// frame); the old provider's pin is released.
-func TestKeyedMembersRebindingFollowsTheNewAttemptsMemberOfTheSameNameOneFrameTheOldProvidersPinIsReleased(t *testing.T) {
+// reference-keys.test.ts › re-binding when a new attempt goes live › pins again on the new instance's member of the same name
+// (one frame); the old provider's pin is released.
+func TestReferenceKeysRebindingPinsAgainOnTheNewInstancesMemberOfTheSameNameOneFrameTheOldProvidersPinIsReleased(t *testing.T) {
 	s := kmServe(t, "a")
 	values := kmWatch(t, s.Viewer.Member("value"))
 	doubles := kmWatch(t, s.Viewer.Member("double"))
@@ -278,26 +282,34 @@ func TestKeyedMembersRebindingFollowsTheNewAttemptsMemberOfTheSameNameOneFrameTh
 		t.Fatalf("pins(a) = %d, want 1", got)
 	}
 	s.fail()
+	// Its keys follow the failed instance until its admitted commits published (audit A10), then show the failure.
+	awaitWatchCalls(t, "the failure reaches the viewer's key", values, 1)
+	deliveredOn(s.Host)
 	s.Registry.setWhich("b")
 	kmRetry(t, s.Host, s.Exposer)
+	// The keys pin again on the new instance: its pins land on tasks of the loop (Pi's promise reactions).
+	scopeEventually(t, "the keys pinned again on provider b", func() bool {
+		return nexttest.JSONEqual(kmMember(t, s.Viewer, "value"), kmN(2)) && nexttest.JSONEqual(keyWatch.Value(), kmN(2)) &&
+			pins("a") == -1 && pins("b") == 1
+	})
 	deliveredOn(s.Host)
 	nexttest.RequireJSONEqual(t, []any{kmMember(t, s.Viewer, "value"), kmMember(t, s.Viewer, "double"), keyWatch.Value()},
 		[]any{kmN(2), float64(4), kmN(2)})
-	if a, b := pins("a"), pins("b"); a != -1 || b != 1 {
-		t.Fatalf("pins = %d, %d, want none and 1", a, b)
-	}
 	kmSet(t, s.Registry.provider("b"), "k", 4)
 	kmSet(t, s.Registry.provider("a"), "k", 5)
 	deliveredOn(s.Host)
-	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(values.Items()), []any{kmN(2), kmN(4)})
-	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(keyed.Items()), []any{kmN(2), kmN(4)})
+	// The failure once, then whole values (the first after a failure is `[["r", value]]`).
+	boom := nexttest.FailedValue{Failed: "boom"}
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(values.Items()), []any{boom, kmN(2), kmN(4)})
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(keyed.Items()), []any{boom, kmN(2), kmN(4)})
+	// A derive over the key reads its last value meanwhile: it does not fail.
 	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(doubles.Items()), []any{float64(4), float64(8)})
 	must(t, s.Host.Close(background))
 }
 
-// keyed-members.test.ts › re-binding when a new attempt goes live › loads a cold persisted key of the new member before the
-// new attempt goes live.
-func TestKeyedMembersRebindingLoadsAColdPersistedKeyOfTheNewMemberBeforeTheNewAttemptGoesLive(t *testing.T) {
+// reference-keys.test.ts › re-binding when a new attempt goes live › loads a cold persisted key of the new member once the new
+// instance is live (the last value meanwhile).
+func TestReferenceKeysRebindingLoadsAColdPersistedKeyOfTheNewMemberOnceTheNewInstanceIsLiveTheLastValueMeanwhile(t *testing.T) {
 	durable := mustContract(contracts.Local("app.durable", contracts.LocalDeclaration{
 		Params:  contracts.Params{},
 		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("notes", contracts.Keyed(kmSchema))},
@@ -347,9 +359,16 @@ func TestKeyedMembersRebindingLoadsAColdPersistedKeyOfTheNewMemberBeforeTheNewAt
 	must(t, err)
 	viewer, err := host.Get(kmViewer, jsonObject("id", float64(1)), background, GetOptions{})
 	must(t, err)
-	failLive(registry.exposer(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil))
-	kmRetry(t, host, exposer)
-	nexttest.RequireJSONEqual(t, []any{kmMember(t, viewer, "value"), kmMember(t, viewer, "double")}, []any{kmN(10), float64(20)})
+	failLiveThen(host, registry.exposer(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil), exposer.Retry)
+	again, err := host.Get(kmExposer, jsonObject(), background, GetOptions{})
+	must(t, err)
+	again.Release()
+	// The key loads from the store after the new instance went live: one frame then.
+	scopeEventually(t, "the viewer shows the stored key", func() bool {
+		value, err := viewer.Member("value").Value()
+		double, derr := viewer.Member("double").Value()
+		return err == nil && derr == nil && nexttest.JSONEqual(value, kmN(10)) && nexttest.JSONEqual(double, float64(20))
+	})
 	must(t, host.Close(background))
 }
 
@@ -512,9 +531,9 @@ func kmGetViewer(host Host, ctx context.Context) <-chan kmGot {
 	return done
 }
 
-// keyed-members.test.ts › a key whose first pin still loads › the object fails and re-binds meanwhile: the consumer retries
+// reference-keys.test.ts › a key whose first pin still loads › the object fails and re-binds meanwhile: the consumer retries
 // on the new member, the late pin is released.
-func TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectFailsAndRebindsMeanwhileTheConsumerRetriesOnTheNewMemberTheLatePinIsReleased(t *testing.T) {
+func TestReferenceKeysAKeyWhoseFirstPinStillLoadsTheObjectFailsAndRebindsMeanwhileTheConsumerRetriesOnTheNewMemberTheLatePinIsReleased(t *testing.T) {
 	c := kmColdServe(t, "a")
 	c.hold()
 	loading := kmGetViewer(c.Host, background)
@@ -543,9 +562,9 @@ func TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectFailsAndRebindsMeanwhil
 	must(t, c.Host.Close(background))
 }
 
-// keyed-members.test.ts › a key whose first pin still loads › the object fails and stays failed: the consumer parks failed {
+// reference-keys.test.ts › a key whose first pin still loads › the object fails and stays failed: the consumer parks failed {
 // waiting } on it, never live on it.
-func TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectFailsAndStaysFailedTheConsumerParksFailedWaitingOnItNeverLiveOnIt(t *testing.T) {
+func TestReferenceKeysAKeyWhoseFirstPinStillLoadsTheObjectFailsAndStaysFailedTheConsumerParksFailedWaitingOnItNeverLiveOnIt(t *testing.T) {
 	c := kmColdServe(t, "a")
 	c.hold()
 	abort, cancel := chordctx.WithCancel(background)
@@ -572,9 +591,9 @@ func TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectFailsAndStaysFailedTheC
 	must(t, c.Host.Close(background))
 }
 
-// keyed-members.test.ts › a key whose first pin still loads › the object ends meanwhile: the consumer's wait rejects, the
+// reference-keys.test.ts › a key whose first pin still loads › the object ends meanwhile: the consumer's wait rejects, the
 // late pin is released.
-func TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectEndsMeanwhileTheConsumersWaitRejectsTheLatePinIsReleased(t *testing.T) {
+func TestReferenceKeysAKeyWhoseFirstPinStillLoadsTheObjectEndsMeanwhileTheConsumersWaitRejectsTheLatePinIsReleased(t *testing.T) {
 	c := kmColdServe(t, "a")
 	c.hold()
 	loading := kmGetViewer(c.Host, background)
@@ -599,10 +618,10 @@ func TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectEndsMeanwhileTheConsume
 	}
 }
 
-// keyed-members.test.ts › a keyed watch whose object closes while it is set up › rejects with the object's end error,
+// reference-keys.test.ts › a keyed watch whose object closes while it is set up › rejects with the object's end error,
 // whichever microtask the close lands in. Pi's gap counts the microtasks before the close; Go's close races the watch's
 // task, started first, over the same number of turns (`runtime.Gosched` each).
-func TestKeyedMembersAKeyedWatchWhoseObjectClosesWhileItIsSetUpRejectsWithTheObjectsEndErrorWhicheverMicrotaskTheCloseLandsIn(t *testing.T) {
+func TestReferenceKeysAKeyedWatchWhoseObjectClosesWhileItIsSetUpRejectsWithTheObjectsEndErrorWhicheverMicrotaskTheCloseLandsIn(t *testing.T) {
 	for gap := range 40 {
 		var notes atomic.Pointer[documents.Keyed]
 		host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
@@ -636,9 +655,9 @@ func TestKeyedMembersAKeyedWatchWhoseObjectClosesWhileItIsSetUpRejectsWithTheObj
 	}
 }
 
-// keyed-members.test.ts › chains and releases › a key re-exposed through two objects freezes with the middle one and
-// follows its next attempt.
-func TestKeyedMembersAKeyReexposedThroughTwoObjectsFreezesWithTheMiddleOneAndFollowsItsNextAttempt(t *testing.T) {
+// reference-keys.test.ts › chains and releases › a key re-exposed through two objects holds with the middle one (the failure
+// once) and follows its next instance.
+func TestReferenceKeysChainsAndReleasesAKeyReexposedThroughTwoObjectsHoldsWithTheMiddleOneTheFailureOnceAndFollowsItsNextInstance(t *testing.T) {
 	outer := mustContract(contracts.Local("app.outer", contracts.LocalDeclaration{
 		Params:  contracts.Params{},
 		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("notes", contracts.Keyed(kmSchema))},
@@ -681,20 +700,22 @@ func TestKeyedMembersAKeyReexposedThroughTwoObjectsFreezesWithTheMiddleOneAndFol
 	must(t, err)
 	values := kmWatch(t, viewer.Member("value"))
 	failLive(registry.exposer(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "boom"}, nil))
+	awaitWatchCalls(t, "the failure reaches the viewer", values, 1)
 	kmSet(t, registry.provider("a"), "k", 3)
 	deliveredOn(host)
-	nexttest.RequireJSONEqual(t, []any{kmMember(t, viewer, "value"), msCalls(values.Items())}, []any{kmN(1), []any{}})
+	nexttest.RequireJSONEqual(t, []any{kmMember(t, viewer, "value"), msKinds(values.Items())}, []any{kmN(1), []any{"failed"}})
 	registry.setWhich("b")
 	kmRetry(t, host, middle)
+	scopeEventually(t, "the viewer follows the next instance", func() bool { return nexttest.JSONEqual(kmMember(t, viewer, "value"), kmN(2)) })
 	deliveredOn(host)
 	nexttest.RequireJSONEqual(t, kmMember(t, viewer, "value"), kmN(2))
-	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(values.Items()), []any{kmN(2)})
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(values.Items()), []any{nexttest.FailedValue{Failed: "boom"}, kmN(2)})
 	must(t, host.Close(background))
 }
 
-// keyed-members.test.ts › chains and releases › a consumer released while the object re-activates leaves no hold behind;
+// reference-keys.test.ts › chains and releases › a consumer released while the object re-activates leaves no hold behind;
 // nothing is kept for it.
-func TestKeyedMembersAConsumerReleasedWhileTheObjectReactivatesLeavesNoHoldBehindNothingIsKeptForIt(t *testing.T) {
+func TestReferenceKeysAConsumerReleasedWhileTheObjectReactivatesLeavesNoHoldBehindNothingIsKeptForIt(t *testing.T) {
 	var refs []weak.Pointer[Reference]
 	var providerA []weak.Pointer[documents.Keyed]
 	func() {
@@ -717,10 +738,10 @@ func TestKeyedMembersAConsumerReleasedWhileTheObjectReactivatesLeavesNoHoldBehin
 	expectCollectedEventually(t, providerA...)
 }
 
-// keyed-members.test.ts › a key whose first pin still loads at startup (scenario 20, Astra) › keeps the first pass pending
+// reference-keys.test.ts › a key whose first pin still loads at startup (scenario 20, Astra) › keeps the first pass pending
 // during an otherwise-ready dependency's delayed keyed pin. Pi delays `ChordObject.prototype.pinKey` with a spy; Go has
 // no such hook, so the pin is delayed where it waits for real: the persisted key's cold load, held at the store.
-func TestKeyedMembersAKeyWhoseFirstPinStillLoadsAtStartupScenario20AstraKeepsTheFirstPassPendingDuringAnOtherwiseReadyDependencysDelayedKeyedPin(t *testing.T) {
+func TestReferenceKeysAKeyWhoseFirstPinStillLoadsAtStartupScenario20AstraKeepsTheFirstPassPendingDuringAnOtherwiseReadyDependencysDelayedKeyedPin(t *testing.T) {
 	pinStore := mustContract(contracts.Local("app.pin-store", contracts.LocalDeclaration{
 		Params:  contracts.Params{},
 		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("notes", contracts.Keyed(kmSchema))},
@@ -763,7 +784,8 @@ func TestKeyedMembersAKeyWhoseFirstPinStillLoadsAtStartupScenario20AstraKeepsThe
 	host := newHost(t, HostOptions{OnError: func(HostError) {}, Store: st})
 	loading := make(chan error, 1)
 	go func() {
-		loading <- host.Load([]HostFacet{{Name: "@test/pin", Facet: DefineFacet(facet)}}, background)
+		_, err := host.Load([]HostFacet{{Name: "@test/pin", Facet: DefineFacet(facet)}}, background)
+		loading <- err
 	}()
 	<-gate.entered
 	select {
@@ -890,4 +912,246 @@ func TestKeyedMapIteratesLiveInInsertionOrder(t *testing.T) {
 		t.Fatalf("removed entries are kept: %d nodes for %d entries", len(m.nodes), m.len())
 	}
 	expectEqual(t, "survivor", m.values(), []int{5})
+}
+
+// reference-keys.test.ts › a released key leaves its document (final review) › collects a reference whose key watch stopped
+// while another reference pins the same key (Astra).
+func TestReferenceKeysAReleasedKeyLeavesItsDocumentFinalReviewCollectsAReferenceWhoseKeyWatchStoppedWhileAnotherReferencePinsTheSameKeyAstra(t *testing.T) {
+	rows := func() *documents.StateDefinition {
+		definition, err := documents.DefineState("rows", documents.StateOptions{
+			Schema: kmSchema, Version: 1, Keyed: true, Initial: func() *delta.JsonObject { return jsonObject("n", float64(1)) },
+		})
+		must(t, err)
+		return definition
+	}()
+	typ := mustContract(contracts.Local("app.key-gc", contracts.LocalDeclaration{
+		Params: contracts.Params{}, Version: 1,
+		Members: []contracts.LocalEntry{contracts.Mem("rows", contracts.Keyed(kmSchema)), contracts.Mem("set", contracts.NewMethod())},
+	}))
+	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(typ, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			handle := self.State(rows).(*documents.Keyed)
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				Keyed: map[string]contracts.KeyedWatchable[delta.JsonValue]{"rows": ExposeKeyed(handle)},
+				Methods: map[string]contracts.MethodFunction{"set": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					_, err := handle.Change("a", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", float64(2)) }, ctx)
+					return nil, err
+				}},
+			}}, nil
+		}, ServeOptions{})
+	})
+	host := newHost(t, HostOptions{OnError: func(HostError) {}})
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/key-gc", Facet: facet}}, background))
+	keeper := refGet(t, host, typ, jsonObject())
+	_, err := keeper.Call("set", nil, background)
+	must(t, err)
+	kept, err := keeper.Keyed("rows").Watch(background, "a")
+	must(t, err)
+	if kept == nil {
+		t.Fatalf("the key is absent")
+	}
+	nexttest.ChangesOf(kept)
+	released := func() weak.Pointer[Reference] {
+		ref := refGet(t, host, typ, jsonObject())
+		watch, err := ref.Keyed("rows").Watch(background, "a")
+		must(t, err)
+		nexttest.ChangesOf(watch)
+		_, err = watch.Stop()
+		must(t, err)
+		ref.Release()
+		return weak.Make(ref)
+	}()
+	nexttest.Flushed()
+	expectCollectedEventually(t, released)
+	_, err = kept.Stop()
+	must(t, err)
+	keeper.Release()
+	must(t, host.Close(background))
+}
+
+var kmKeys = mustContract(contracts.Local("app.keys", contracts.LocalDeclaration{
+	Params: contracts.Params{}, Version: 1, Members: []contracts.LocalEntry{contracts.Mem("notes", contracts.Keyed(kmSchema))},
+}))
+
+// kmKeysHandles are the notes handles of every attempt of `Keys`, as a case's factories write them.
+type kmKeysHandles struct {
+	mu      sync.Mutex
+	handles []*documents.Keyed
+}
+
+func (k *kmKeysHandles) add(notes *documents.Keyed) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.handles = append(k.handles, notes)
+}
+
+func (k *kmKeysHandles) at(index int) *documents.Keyed {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	if index < 0 {
+		index += len(k.handles)
+	}
+	return k.handles[index]
+}
+
+// kmServeKeys serves `Keys` over the persisted kmStored (its handle kept in handles), with a native opened by open.
+func kmServeKeys(handles *kmKeysHandles, open func(ctx context.Context) error) Facet {
+	return DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(kmKeys, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			self.Open(func(ctx context.Context) (any, error) { return nil, open(ctx) },
+				func(any, NativeCloseReason, context.Context) error { return nil })
+			notes := self.State(kmStored).(*documents.Keyed)
+			handles.add(notes)
+			return contracts.Implementation{Members: contracts.VariantImplementation{Keyed: kmKeyed(notes)}}, nil
+		}, ServeOptions{})
+	})
+}
+
+// reference-keys.test.ts › keys across a restart and a failed re-pin (Astra's coverage note) › a commit admitted to a watched
+// key, landing after a restart's drain, is in the key's last value.
+func TestReferenceKeysKeysAcrossARestartAndAFailedRePinACommitAdmittedToAWatchedKeyLandingAfterARestartsDrainIsInTheKeysLastValue(t *testing.T) {
+	st, _, holdNextCommit := faultyStore(t)
+	handles := &kmKeysHandles{}
+	host := newHost(t, HostOptions{Store: st, OnError: func(HostError) {}})
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: kmServeKeys(handles, func(context.Context) error { return nil })}}, background))
+	keys := refGet(t, host, kmKeys, jsonObject())
+	change := func(n float64) error {
+		_, err := handles.at(-1).Change("k", func(draft *delta.Object) (any, error) { return nil, draft.Set("n", n) }, background)
+		return err
+	}
+	must(t, change(1))
+	watch, err := keys.Keyed("notes").Watch(background, "k")
+	must(t, err)
+	calls := nexttest.ChangesOf(watch)
+	held := holdNextCommit()
+	admitted := make(chan error, 1)
+	go func() { admitted <- change(5) }()
+	<-held.Entered()
+	// The new code's native stays opening: the new instance is not live while the key holds its last value.
+	opening := make(chan struct{})
+	reloaded := make(chan error, 1)
+	go func() {
+		_, err := host.Reload([]HostFacet{{Name: "@test/app", Facet: kmServeKeys(handles, func(ctx context.Context) error {
+			select {
+			case <-opening:
+			case <-ctx.Done():
+			}
+			return nil
+		})}}, background, ReloadOptions{})
+		reloaded <- err
+	}()
+	deliveredOn(host)
+	held.Release()
+	must(t, <-admitted)
+	must(t, <-reloaded)
+	deliveredOn(host)
+	nexttest.RequireJSONEqual(t, []any{watch.Value(), nexttest.ValuesOf(calls.Items())}, []any{kmN(5), []any{kmN(5)}})
+	close(opening)
+	scopeEventually(t, "the keys object is live", func() bool { return keys.State().Value().Kind == RefStateLive })
+	nexttest.RequireJSONEqual(t, watch.Value(), kmN(5))
+	must(t, host.Close(background))
+}
+
+// fakeInstance is an instance of a fake object: its notes key's source, and the attachable the references attach to.
+type fakeInstance struct {
+	source state.DeriveSource
+}
+
+func (*fakeInstance) attachedVariant() string { return "" }
+
+// fakeKeysTarget is the object a reference's keys pin on: one live instance at a time, whose `pinKey` fails once when
+// asked (Pi replaces the key slot's `persistence.read` once).
+type fakeKeysTarget struct {
+	target
+	mu       sync.Mutex
+	live     *fakeInstance
+	failNext bool
+	released atomic.Int32
+}
+
+func (f *fakeKeysTarget) instance() any {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.live == nil {
+		return nil
+	}
+	return f.live
+}
+
+func (f *fakeKeysTarget) attachable() attachable {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.live == nil {
+		return nil
+	}
+	return f.live
+}
+
+func (f *fakeKeysTarget) state() *RefState { return refLive }
+func (f *fakeKeysTarget) label() string    { return "app.keys" }
+
+func (f *fakeKeysTarget) pinKey(_, _ string, _ int, _ context.Context) (pinnedKey, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.failNext {
+		f.failNext = false
+		return pinnedKey{}, errors.New("disk")
+	}
+	return pinnedKey{source: f.live.source, release: func() { f.released.Add(1) }}, nil
+}
+
+func (f *fakeKeysTarget) become(instance *fakeInstance, failNext bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.live, f.failNext = instance, failNext
+}
+
+// fakeKeysHolder is the reference whose keys these are.
+type fakeKeysHolder struct {
+	h      *memberHarness
+	object *fakeKeysTarget
+}
+
+func (f *fakeKeysHolder) none() error                             { return notReady("test: not live yet") }
+func (f *fakeKeysHolder) keysBatch() *state.Batch                 { return f.h.batch }
+func (f *fakeKeysHolder) keysScheduler() *chord.DeliveryScheduler { return f.h.scheduler }
+func (f *fakeKeysHolder) keysLoop() sectionLoop                   { return f.h.loop }
+func (f *fakeKeysHolder) keysVersion() int                        { return 1 }
+func (f *fakeKeysHolder) keysTarget() target                      { return f.object }
+
+// reference-keys.test.ts › keys across a restart and a failed re-pin (Astra's coverage note) › a key's re-pin on a new
+// instance that fails to load keeps its last value, one failed call; the next pin heals it. Forced difference: Pi
+// replaces the key slot's `persistence.read` to throw "disk" once while a reload swaps the exposer; a Go `Persistence` is a
+// concrete type over the store, whose guarded reads stop the whole store (closing the host) on a backend error, and a
+// stored version a read returns newer than the code's breaks the owner object. The re-pin's failure is injected where the
+// reference's keys take it, in the object's `pinKey`, and the instances are the object's successive live instances.
+func TestReferenceKeysKeysAcrossARestartAndAFailedRePinAKeysRePinOnANewInstanceThatFailsToLoadKeepsItsLastValueOneFailedCallTheNextPinHealsIt(t *testing.T) {
+	h := newMemberHarness(t)
+	first := &fakeInstance{source: newMemberDoc(h.batch, kmN(2))}
+	object := &fakeKeysTarget{live: first}
+	keys := newReferenceKeys(&fakeKeysHolder{h: h, object: object})
+	held, err := keys.hold("notes", "k", background)
+	must(t, err)
+	watch := h.watch(t, held.source.(state.SourceHandle))
+	calls := nexttest.ChangesOf(watch)
+	// A swap in place: the new instance shows the key; its pin fails to load.
+	next := &fakeInstance{source: newMemberDoc(h.batch, kmN(1))}
+	object.become(next, true)
+	h.within(t, func() { keys.follow(background) })
+	scopeEventually(t, "the failed re-pin shows on the key", func() bool { return len(calls.Items()) == 1 })
+	nexttest.RequireJSONEqual(t, []any{watch.Value(), nexttest.ValuesOf(calls.Items())}, []any{kmN(2), []any{nexttest.FailedValue{Failed: "app.keys: disk"}}})
+	if released := object.released.Load(); released != 0 {
+		t.Fatalf("pins released = %d, want none yet (the first pin is released with the key or when a pin replaces it)", released)
+	}
+	// The next instance pins it again, loaded this time: one frame heals it.
+	healed := &fakeInstance{source: newMemberDoc(h.batch, kmN(1))}
+	object.become(healed, false)
+	h.within(t, func() { keys.follow(background) })
+	scopeEventually(t, "the key heals", func() bool { return nexttest.JSONEqual(watch.Value(), kmN(1)) })
+	h.delivered()
+	nexttest.RequireJSONEqual(t, nexttest.ValuesOf(calls.Items()), []any{nexttest.FailedValue{Failed: "app.keys: disk"}, kmN(1)})
+	h.loop.Run(held.release)
+	if released := object.released.Load(); released != 2 {
+		t.Fatalf("pins released = %d, want the replaced pin and the last", released)
+	}
 }

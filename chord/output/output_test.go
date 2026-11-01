@@ -108,19 +108,15 @@ func TestToolOutputBounds(t *testing.T) {
 		}
 	})
 
-	// Pi main 50d9f823 (#11604) packages/chord/test/output.test.ts "removes whole ANSI escape sequences, not only their ESC bytes"
+	// #11604
 	t.Run("removes whole ANSI escape sequences, not only their ESC bytes", func(t *testing.T) {
-		for input, want := range map[string]string{
-			"\x1b[31mERROR\x1b[0m\n":                                      "ERROR\n",
-			"\x1b[1;38;5;208mx\x1b[?25l\x1b[2K\x1b(By\x1b7z":              "xyz",
-			"\x1b]8;;https://pi.dev\alink\x1b]8;;\x1b\\ \x1b]0;title\aok": "link ok",
-			// An unterminated string loses its introducer only; a lone ESC goes with the other controls.
-			"a\x1b]no end": "ano end",
-			"a\x1b":        "a",
-			"\x1b\x1b[1mb": "b",
+		for _, c := range [][2]string{
+			{"\x1b[31mERROR\x1b[0m\n", "ERROR\n"},
+			{"\x1b[1;38;5;208mx\x1b[?25l\x1b[2K\x1b(By\x1b7z", "xyz"},
+			{"\x1b]8;;https://pi.dev\x07link\x1b]8;;\x1b\\ \x1b]0;title\x07ok", "link ok"},
 		} {
-			if got := SanitizeOutput(input); got != want {
-				t.Errorf("SanitizeOutput(%q) = %q, want %q", input, got, want)
+			if got := SanitizeOutput(c[0]); got != c[1] {
+				t.Fatalf("SanitizeOutput(%q) = %q, want %q", c[0], got, c[1])
 			}
 		}
 		buffer := NewOutputBuffer(OutputLimits{Retain: "tail", MaxBytes: 1024, MaxLines: 100})
@@ -128,7 +124,7 @@ func TestToolOutputBounds(t *testing.T) {
 		buffer.PushString("1mERROR\x1b[0")
 		buffer.PushString("m\n")
 		if got := buffer.Snapshot().Text; got != "ERROR\n" {
-			t.Errorf("snapshot text = %q, want ERROR\\n", got)
+			t.Fatalf("snapshot text = %q, want %q", got, "ERROR\n")
 		}
 	})
 

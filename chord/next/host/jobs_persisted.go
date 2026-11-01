@@ -101,6 +101,13 @@ func (runs *persistedRuns) findBlockedState(id string, ctx context.Context) erro
 	return nil
 }
 
+// forgetBlockedState is: a run of another job version that a reload's code now takes (`retryBlocked`): its state
+// document is the job's again (read, decoded and retired with its record as any run's), no longer one to retire
+// undecoded. Used inside a section.
+func (runs *persistedRuns) forgetBlockedState(id string) {
+	delete(runs.blockedStates, id)
+}
+
 // load is every stored record of the job, in run id order, page by page with plain reads (activation holds the line).
 func (runs *persistedRuns) load(ctx context.Context) ([]loadedRecord, error) {
 	var loaded []loadedRecord

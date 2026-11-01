@@ -12,7 +12,7 @@ import (
 //
 // Table handles (slice 6a §6; decision "Query runner"): what `self.table(Def)` returns, one per attempt and table:
 // reads of committed rows (`Page`, `Rows`, `Get`, `Count`) through the store's guarded reads, and what a transaction's
-// writes to the table are staged with.
+// writes to the table are staged with; a handle of an older version than the stored table is refused (R15, slice 7b).
 //
 // Go forced differences:
 //   - Pi's `Table<C, K>` type-level interface is designed out; TableHandle's methods are it. `get` of an absent row
@@ -81,6 +81,9 @@ func (handle *TableHandle) Page(q *Query, limit int64, ctx context.Context, opti
 		return Page{}, err
 	}
 	if err := handle.Owner.AssertLive(); err != nil {
+		return Page{}, err
+	}
+	if err := handle.AssertVersion(); err != nil {
 		return Page{}, err
 	}
 	if err := handle.assertQuery(q); err != nil {
@@ -176,6 +179,9 @@ func (handle *TableHandle) Get(key any, ctx context.Context) (Row, error) {
 	if err := handle.Owner.AssertLive(); err != nil {
 		return nil, err
 	}
+	if err := handle.AssertVersion(); err != nil {
+		return nil, err
+	}
 	encoded, err := handle.Definition.Rows.Key(key, "get")
 	if err != nil {
 		return nil, err
@@ -197,6 +203,9 @@ func (handle *TableHandle) Count(q *Query, ctx context.Context) (int64, error) {
 	if err := handle.Owner.AssertLive(); err != nil {
 		return 0, err
 	}
+	if err := handle.AssertVersion(); err != nil {
+		return 0, err
+	}
 	if err := handle.assertQuery(q); err != nil {
 		return 0, err
 	}
@@ -208,6 +217,19 @@ func (handle *TableHandle) Count(q *Query, ctx context.Context) (int64, error) {
 		return 0, err
 	}
 	return sqlite.RowInt(row, "count")
+}
+
+// AssertVersion is the version fence of old table handles (R15, slice 7b §5): once the store's table is at a newer
+// version than this handle's definition (a reload's new code migrated it), old code reads and writes it no more
+// (`released/version`), so it never issues SQL for a dropped column.
+func (handle *TableHandle) AssertVersion() error {
+	stored, ok := handle.Store.TableVersion(handle.Sql.Table)
+	if !ok || stored <= handle.Definition.Version {
+		return nil
+	}
+	name, version := handle.Definition.Name, handle.Definition.Version
+	message := fmt.Sprintf("%s: table \"%s\" of version %d; the store has version %d", handle.Owner.Label(), name, version, stored)
+	return data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonVersion, Message: message}, nil)
 }
 
 // Decode is a stored row as reads return it; one the code cannot read fails the owner and returns the failure.

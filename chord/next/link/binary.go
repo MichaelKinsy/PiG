@@ -47,9 +47,6 @@ const (
 	// payloadPresent and payloadSegments are a payload's flags: present, and carrying byte segments.
 	payloadPresent  = 1
 	payloadSegments = 2
-	// A retry's optional fields, one bit each: its operation (16 raw bytes), then the ids it passed through (a list).
-	retryOperation = 1
-	retryThrough   = 2
 	// A hold's optional fields, one bit each.
 	holdPrincipal   = 1
 	holdIncarnation = 2
@@ -246,20 +243,7 @@ func encodeFields(message Message, writer *writer) {
 		writer.varint(typed.Hold)
 	case *RetryMessage:
 		writer.varint(typed.Hold)
-		var flags int
-		if typed.Operation != "" {
-			flags |= retryOperation
-		}
-		if typed.Through != nil {
-			flags |= retryThrough
-		}
-		writer.byte(flags)
-		if typed.Operation != "" {
-			writer.raw(hex(stripDashes(typed.Operation), 16))
-		}
-		if typed.Through != nil {
-			writer.ids(typed.Through)
-		}
+		writer.varint(typed.Hops)
 	case *CallMessage:
 		writer.varint(typed.Call)
 		writer.varint(typed.Hold)
@@ -371,18 +355,8 @@ func decodeFields(kind int, reader *reader) Message {
 	case kindLoading:
 		return &LoadingMessage{Hold: reader.varint()}
 	case kindRetry:
-		message := &RetryMessage{Hold: reader.varint()}
-		flags := reader.byte()
-		if flags > retryOperation|retryThrough {
-			fail("binary: an unknown retry flag")
-		}
-		if flags&retryOperation != 0 {
-			message.Operation = uuid(reader.raw(16))
-		}
-		if flags&retryThrough != 0 {
-			message.Through = reader.ids()
-		}
-		return message
+		hold := reader.varint()
+		return &RetryMessage{Hold: hold, Hops: reader.varint()}
 	case kindCall:
 		message := &CallMessage{Call: reader.varint()}
 		message.Hold = reader.varint()

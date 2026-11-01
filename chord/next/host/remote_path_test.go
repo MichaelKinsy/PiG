@@ -22,6 +22,9 @@ func (h *recordingHolder) attach(l *hostLink) {
 	*h.log = append(*h.log, h.name+"@"+h.names[l])
 }
 func (h *recordingHolder) dropped(*data.ChordError) { *h.log = append(*h.log, h.name+" dropped") }
+func (h *recordingHolder) unreachable(err *data.ChordError) {
+	*h.log = append(*h.log, h.name+" unreachable: "+err.Message)
+}
 
 // pathRig names the links its holders are held on: the path only passes a link on.
 type pathRig struct {
@@ -52,7 +55,7 @@ func expectLog(t *testing.T, got []string, want ...string) {
 func TestPathAsksForALinkAndHoldsEveryHolderOnEachLink(t *testing.T) {
 	rig := newPathRig()
 	changes := 0
-	p := newPath(func() { changes++ })
+	p := newPath(func(pathEvent) { changes++ })
 	p.attach(rig.holder("a"))
 	p.attach(rig.holder("b"))
 	if changes != 2 {
@@ -74,7 +77,7 @@ func TestPathAsksForALinkAndHoldsEveryHolderOnEachLink(t *testing.T) {
 func TestPathTellsHoldersWhenItsLinkDrops(t *testing.T) {
 	rig := newPathRig()
 	changes := 0
-	p := newPath(func() { changes++ })
+	p := newPath(func(pathEvent) { changes++ })
 	first, second := rig.linkOf("1"), rig.linkOf("2")
 	p.connected(first)
 	p.attach(rig.holder("a"))
@@ -101,7 +104,7 @@ func TestPathTellsHoldersWhenItsLinkDrops(t *testing.T) {
 func TestPathReportsItsLastHoldersDetach(t *testing.T) {
 	rig := newPathRig()
 	changes := 0
-	p := newPath(func() { changes++ })
+	p := newPath(func(pathEvent) { changes++ })
 	a, b := rig.holder("a"), rig.holder("b")
 	p.connected(rig.linkOf("1"))
 	p.attach(a)
@@ -119,4 +122,22 @@ func TestPathReportsItsLastHoldersDetach(t *testing.T) {
 	}
 	p.connected(rig.linkOf("2"))
 	expectLog(t, rig.log, "a@1", "b@1")
+}
+
+// path.test.ts: a path › says what changed: a holder attached without a link, a drop, the last release; fails its holders waiting
+func TestPathSaysWhatChangedAHolderAttachedWithoutALinkADropTheLastReleaseFailsItsHoldersWaiting(t *testing.T) {
+	rig := newPathRig()
+	var events []pathEventKind
+	p := newPath(func(event pathEvent) { events = append(events, event.kind) })
+	a := rig.holder("a")
+	p.attach(a)
+	p.unreachable(data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "no worker"}, nil))
+	first := rig.linkOf("1")
+	p.connected(first)
+	p.disconnected(first)
+	p.detach(a)
+	if !slices.Equal(events, []pathEventKind{pathAttached, pathDropped, pathReleased}) {
+		t.Fatalf("events = %v, want attached, dropped, released", events)
+	}
+	expectLog(t, rig.log, "a unreachable: no worker", "a@1", "a dropped")
 }

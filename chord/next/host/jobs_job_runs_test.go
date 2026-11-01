@@ -64,7 +64,7 @@ func TestRunGetsACtxWithTheRunsIDTheHostsPrincipalForALocalObjectAndNoStateWitho
 	got := make(chan seen, 1)
 	var job JobHandle
 	host := newJobHost(t, HostOptions{Principal: serverPrincipal(), OnError: func(HostError) {}})
-	must(t, host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(jobStoreType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			log := stateOf(self, jobLogState)
 			job = self.Job(jobEcho, JobImplementation{Run: func(args any, ctx JobCtx) (any, error) {
@@ -87,10 +87,10 @@ func TestRunGetsACtxWithTheRunsIDTheHostsPrincipalForALocalObjectAndNoStateWitho
 
 // job.test.ts › run › reads and changes its state document; `running` carries it
 func TestRunReadsAndChangesItsStateDocumentRunningCarriesIt(t *testing.T) {
-	g := newGate()
+	g := newJobGate()
 	var mu sync.Mutex
 	var values []string
-	changed := newGate()
+	changed := newJobGate()
 	fixture := declaredJob(t, jobShell, func(Self, *singletonDoc) JobImplementation {
 		return JobImplementation{Run: func(_ any, ctx JobCtx) (any, error) {
 			read := func() string {
@@ -134,7 +134,7 @@ var jobMany = mustDefineJob(DefineJob("app.many", JobOptions{
 
 // job.test.ts › run › keeps its state documents apart from the object's own documents of the same definition
 func TestRunKeepsItsStateDocumentsApartFromTheObjectsOwnDocumentsOfTheSameDefinition(t *testing.T) {
-	g := newGate()
+	g := newJobGate()
 	var started sync.WaitGroup
 	started.Add(2)
 	var mine *singletonDoc
@@ -216,7 +216,7 @@ func TestRunRefusesStateChangesOnceRunSettledReleasedAndNeverRecreatesTheRetired
 
 // job.test.ts › run › commits a change still waiting for the line when run settles, before the outcome is recorded
 func TestRunCommitsAChangeStillWaitingForTheLineWhenRunSettlesBeforeTheOutcomeIsRecorded(t *testing.T) {
-	goRun, line, entered := newGate(), newGate(), newGate()
+	goRun, line, entered := newJobGate(), newJobGate(), newJobGate()
 	returned := make(chan struct{})
 	var fixture *jobFixture
 	fixture = declaredJob(t, jobShell, func(Self, *singletonDoc) JobImplementation {
@@ -259,7 +259,7 @@ func TestRunCommitsAChangeStillWaitingForTheLineWhenRunSettlesBeforeTheOutcomeIs
 
 // job.test.ts › run › commits changes made after an abort while run stops; a throw then ends aborted, not threw
 func TestRunCommitsChangesMadeAfterAnAbortWhileRunStopsAThrowThenEndsAbortedNotThrew(t *testing.T) {
-	started := newGate()
+	started := newJobGate()
 	fixture := declaredJob(t, jobShell, func(Self, *singletonDoc) JobImplementation {
 		return JobImplementation{Run: func(_ any, ctx JobCtx) (any, error) {
 			started.Open()
@@ -286,7 +286,7 @@ func TestRunCommitsChangesMadeAfterAnAbortWhileRunStopsAThrowThenEndsAbortedNotT
 
 // job.test.ts › run › keeps a result returned after an abort
 func TestRunKeepsAResultReturnedAfterAnAbort(t *testing.T) {
-	started := newGate()
+	started := newJobGate()
 	fixture := echoJob(t, JobImplementation{Run: func(args any, ctx JobCtx) (any, error) {
 		started.Open()
 		untilDone(ctx)
@@ -374,9 +374,9 @@ func TestRunReleasesItsCtxGetReferencesWhenItSettles(t *testing.T) {
 
 // job.test.ts › run › that ignores its signal at the object's end is drained up to closeTimeout; its later changes are refused
 func TestRunThatIgnoresItsSignalAtTheObjectsEndIsDrainedUpToCloseTimeoutItsLaterChangesAreRefused(t *testing.T) {
-	g := newGate()
+	g := newJobGate()
 	late := make(chan error, 1)
-	started := newGate()
+	started := newJobGate()
 	fixture := declaredJob(t, jobShell, func(Self, *singletonDoc) JobImplementation {
 		return JobImplementation{Run: func(_ any, ctx JobCtx) (any, error) {
 			started.Open()
@@ -633,7 +633,7 @@ func TestFinishBackingOffLeavesNoTimerBehindWhenItsObjectEndsDuringTheBackoff(t 
 
 // job.test.ts › finish › ignores an abort while it runs
 func TestFinishIgnoresAnAbortWhileItRuns(t *testing.T) {
-	g, entered := newGate(), newGate()
+	g, entered := newJobGate(), newJobGate()
 	fixture := echoJob(t, JobImplementation{Run: echoRun(), Finish: func(Outcome, documents.Tx) error {
 		entered.Open()
 		g.Wait()
@@ -650,7 +650,7 @@ func TestFinishIgnoresAnAbortWhileItRuns(t *testing.T) {
 
 // job.test.ts › finish › does not run when its object ends while the outcome and finish wait for the line: no call, no report
 func TestFinishDoesNotRunWhenItsObjectEndsWhileTheOutcomeAndFinishWaitForTheLineNoCallNoReport(t *testing.T) {
-	goRun, line, entered := newGate(), newGate(), newGate()
+	goRun, line, entered := newJobGate(), newJobGate(), newJobGate()
 	var mu sync.Mutex
 	var finished []string
 	fixture := echoJob(t, JobImplementation{
@@ -706,7 +706,7 @@ func TestFinishDoesNotRunWhenItsObjectEndsWhileTheOutcomeAndFinishWaitForTheLine
 
 // job.test.ts › finish › is drained at the object's end when it runs: its commit is refused, nothing is reported
 func TestFinishIsDrainedAtTheObjectsEndWhenItRunsItsCommitIsRefusedNothingIsReported(t *testing.T) {
-	g, entered := newGate(), newGate()
+	g, entered := newJobGate(), newJobGate()
 	var mu sync.Mutex
 	var events []string
 	note := func(event string) {
@@ -748,8 +748,8 @@ func TestFinishIsDrainedAtTheObjectsEndWhenItRunsItsCommitIsRefusedNothingIsRepo
 
 // job.test.ts › running › has one entry per unsettled run, in start order, tagged by phase; a key when given
 func TestRunningHasOneEntryPerUnsettledRunInStartOrderTaggedByPhaseAKeyWhenGiven(t *testing.T) {
-	gates := []*gate{newGate(), newGate()}
-	finishing := newGate()
+	gates := []*jobGate{newJobGate(), newJobGate()}
+	finishing := newJobGate()
 	fixture := echoJob(t, JobImplementation{
 		Run: func(args any, _ JobCtx) (any, error) {
 			gates[int(textOf(args)[0]-'0')].Wait()
@@ -778,7 +778,7 @@ func TestRunningHasOneEntryPerUnsettledRunInStartOrderTaggedByPhaseAKeyWhenGiven
 
 // job.test.ts › running › replaces only the entry whose state changed, with ops under its entry (cost guard: no walk of other runs)
 func TestRunningReplacesOnlyTheEntryWhoseStateChangedWithOpsUnderItsEntry(t *testing.T) {
-	g := newGate()
+	g := newJobGate()
 	var mu sync.Mutex
 	contexts := map[int]JobCtx{}
 	fixture := declaredJob(t, jobMany, func(Self, *singletonDoc) JobImplementation {
@@ -830,7 +830,7 @@ func TestRunningReplacesOnlyTheEntryWhoseStateChangedWithOpsUnderItsEntry(t *tes
 // job.test.ts › running › does no validation, walk or compilation for a state change (cost guard)
 func TestRunningDoesNoValidationWalkOrCompilationForAStateChange(t *testing.T) {
 	telemetry, counting, counts := meteredHost(t)
-	g := newGate()
+	g := newJobGate()
 	ctxs := make(chan JobCtx, 1)
 	fixture := declaredJob(t, jobShell, func(Self, *singletonDoc) JobImplementation {
 		return JobImplementation{Run: func(_ any, ctx JobCtx) (any, error) {
@@ -866,7 +866,7 @@ func TestRunningDoesNoValidationWalkOrCompilationForAStateChange(t *testing.T) {
 
 // job.test.ts › running › frames record changes as splices and sets of the list
 func TestRunningFramesRecordChangesAsSplicesAndSetsOfTheList(t *testing.T) {
-	g := newGate()
+	g := newJobGate()
 	fixture := echoJob(t, JobImplementation{Run: gated(g)}, jobHostOptions{})
 	job := fixture.Job
 	watch, err := job.Running().Watch(background)
@@ -891,7 +891,7 @@ func TestRunningFramesRecordChangesAsSplicesAndSetsOfTheList(t *testing.T) {
 
 // job.test.ts › keep-alive › keeps an object without holders while runs run, and ends it after the last one and its linger
 func TestKeepAliveKeepsAnObjectWithoutHoldersWhileRunsRunAndEndsItAfterTheLastOneAndItsLinger(t *testing.T) {
-	g := newGate()
+	g := newJobGate()
 	var job JobHandle
 	ended := make(chan struct{})
 	var host Host
@@ -1048,7 +1048,7 @@ func TestKeepAliveDropsBlockedRunsReportedWhenTheObjectEndsAfterItsLastRun(t *te
 
 // job.test.ts › keep-alive › keeps a lingering object when a run starts during its linger
 func TestKeepAliveKeepsALingeringObjectWhenARunStartsDuringItsLinger(t *testing.T) {
-	g := newGate()
+	g := newJobGate()
 	var job JobHandle
 	host, _ := jobsLoaded(t, func(h FacetHost) error {
 		return h.Serve(jobItemType, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {

@@ -142,13 +142,9 @@ func (c *consumerSide) release(hold int, err *data.ChordError) {
 	c.forget(hold, err)
 }
 
-// retry is `ref.retry()` on a failed hold, as retry operation: the provider is asked for an attempt now.
-func (c *consumerSide) retry(hold int, operation *retryOperation) {
-	message := &link.RetryMessage{Hold: hold, Operation: operation.id}
-	if len(operation.through) != 0 {
-		message.Through = operation.through
-	}
-	c.link.send(message)
+// retry is `ref.retry()` on a failed hold, with hops left of its budget: the provider is asked for an attempt now.
+func (c *consumerSide) retry(hold int, hops int) {
+	c.link.send(&link.RetryMessage{Hold: hold, Hops: hops})
 }
 
 // forget drops hold from the tables; its calls, in flight and waiting, fail with err and free their slots.
@@ -181,9 +177,7 @@ func (c *consumerSide) message(message link.Message) (*link.Handling, error) {
 		}
 		return nil, c.state(typed.Holds)
 	case *link.FailedMessage:
-		if holder, found := c.entries.get(typed.Hold); found {
-			return nil, holder.failed(typed)
-		}
+		return nil, c.failed(typed)
 	case *link.LoadingMessage:
 		c.loading(typed.Hold)
 	case *link.ResultMessage:
@@ -352,6 +346,24 @@ func (c *consumerSide) adopt(adoptions []func()) error {
 		}
 		return nil
 	}, c.link.context)
+}
+
+// failed: its holder fails; its calls still waiting for a slot reject with the cause (a bound hold is unbound by it,
+// slice 7b; its calls in flight are rejected by the provider).
+func (c *consumerSide) failed(message *link.FailedMessage) error {
+	holder, found := c.entries.get(message.Hold)
+	if !found {
+		return nil
+	}
+	received, err := link.ErrorFromWire(message.Cause.Error)
+	if err != nil {
+		return err
+	}
+	cause := data.AsChordError(received, fmt.Sprintf("hold %d", message.Hold))
+	for _, call := range c.window.removeHold(message.Hold) {
+		call.reject(cause)
+	}
+	return holder.failed(message)
 }
 
 // loading: the hold's object, or its relay's upstream, starts over; its calls still waiting for a slot reject
