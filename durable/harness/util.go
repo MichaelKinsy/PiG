@@ -18,23 +18,28 @@ type Waiter[T any] struct {
 	done  chan struct{}
 	value T
 	err   error
+	line  *session.SessionImpl
+	ctx   context.Context
 	// parked is the wait registered with the Session before it blocks, so the publication that settles it waits for the
-	// goroutine to run again (Session.Park); nil when the waiter was settled at once.
+	// goroutine to run again (Session.Park); nil until Park, or when the waiter was settled at once.
 	parked *session.Parked
+}
+
+// Park registers the wait with the Session. Wait does it when it was not done; a caller that must be registered before it
+// releases a lock the settle needs calls it first. It must not be called inside a Session line job: that job's outcome is
+// delivered after the publication that waits for the registered wait to resume.
+func (waiter *Waiter[T]) Park() {
+	if waiter.parked == nil {
+		waiter.parked = waiter.line.Park(waiter.ctx, waiter.done)
+	}
 }
 
 // Wait blocks until the waiter settles, then acknowledges the wait to the Session: the goroutine runs again.
 func (waiter *Waiter[T]) Wait() (T, error) {
+	waiter.Park()
 	defer waiter.parked.Resume()
 	<-waiter.done
 	return waiter.value, waiter.err
-}
-
-// Abandon acknowledges a wait its caller will not block in, as when the line job that registered it failed after; it is safe on nil.
-func (waiter *Waiter[T]) Abandon() {
-	if waiter != nil {
-		waiter.parked.Resume()
-	}
 }
 
 // Done is closed once the waiter settles.
@@ -50,13 +55,12 @@ type Waiters[K comparable, T any] struct {
 // Add registers a wait for key, which the caller then blocks in through Wait; line is the Session whose publications resume it
 // in order. A cancelled ctx fails it with the cancellation cause, at once when ctx is already done.
 func (waiters *Waiters[K, T]) Add(ctx context.Context, line *session.SessionImpl, key K) *Waiter[T] {
-	waiter := &Waiter[T]{done: make(chan struct{})}
+	waiter := &Waiter[T]{done: make(chan struct{}), line: line, ctx: ctx}
 	if ctx.Err() != nil {
 		waiter.err = context.Cause(ctx)
 		close(waiter.done)
 		return waiter
 	}
-	waiter.parked = line.Park(ctx, waiter.done)
 	waiters.mu.Lock()
 	if waiters.sets == nil {
 		waiters.sets = map[K][]*Waiter[T]{}

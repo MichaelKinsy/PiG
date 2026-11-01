@@ -562,7 +562,11 @@ func TestConversationView(t *testing.T) {
 			})
 			return closedWhileQueued.done
 		})
+		// The queued acquisition must start after the seal: release only once close began.
+		closeBegan := deferred()
+		harness.SubscribeClose(closeBegan.resolve)
 		closing := asyncErr(func() error { return harness.Close(testContext) })
+		_ = closeBegan.wait(testContext)
 		release()
 		if err := <-blocking; err != nil {
 			t.Fatal(err)

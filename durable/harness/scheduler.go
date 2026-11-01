@@ -869,7 +869,6 @@ func (s *TaskScheduler) waitForTask(ctx context.Context, id durable.TaskId) (dur
 		record *anyTaskRecord
 		waiter *Waiter[durable.SettledTask[durable.JsonValue]]
 	}
-	var registered *Waiter[durable.SettledTask[durable.JsonValue]]
 	result, err := readOnLine(ctx, s.options.Session, func(storage durable.Storage) (found, error) {
 		s.mu.Lock()
 		if s.sealing.Load() {
@@ -881,7 +880,6 @@ func (s *TaskScheduler) waitForTask(ctx context.Context, id durable.TaskId) (dur
 		closing := s.sealing.Load()
 		if err == nil && !closing && live {
 			waiter = s.taskWaiters.Add(ctx, s.options.Session, id)
-			registered = waiter
 		}
 		s.mu.Unlock()
 		if err != nil {
@@ -903,8 +901,6 @@ func (s *TaskScheduler) waitForTask(ctx context.Context, id durable.TaskId) (dur
 		return found{record: record}, nil
 	})
 	if err != nil {
-		// The job registered the wait and the line failed it after: nothing will block in it.
-		registered.Abandon()
 		return anyTaskRecord{}, err
 	}
 	if result.record != nil {
@@ -940,6 +936,8 @@ func (s *TaskScheduler) waitForIdle(ctx context.Context, conversationId *durable
 	} else {
 		waiter = s.idleWaiters.Add(ctx, s.options.Session, *conversationId)
 	}
+	// Registered before the lock the settle needs is released.
+	waiter.Park()
 	s.mu.Unlock()
 	_, err := waiter.Wait()
 	return err
