@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -300,5 +301,77 @@ func TestReadyCarriesTheHostGroup(t *testing.T) {
 				t.Errorf("with_session ready group = %q, want %q", r.Group, h.Group())
 			}
 		})
+	}
+}
+
+func TestSharedCellsOutliveTheSpawnersLoadContext(t *testing.T) {
+	skipWithoutNodeExtensions(t)
+	nodeCellRequireNode(t)
+	nodePacked, nodeIsolated, goPacked := sharedFixtures(t)
+	configs := []ExtConfig{nodePacked, nodeIsolated, goPacked}
+	cwd := t.TempDir()
+	registry := NewCellRegistry()
+	t.Cleanup(registry.Close)
+	a, b := NewHost(cwd), NewHost(cwd)
+	a.ShareCells(registry)
+	b.ShareCells(registry)
+	t.Cleanup(func() { a.Shutdown("test done"); b.Shutdown("test done") })
+	ctxA, cancelA := context.WithCancel(t.Context())
+	defer cancelA()
+	a.SetConfigLoader(func() ([]ExtConfig, error) { return configs, nil })
+	if _, errs := a.LoadAll(ctxA, slices.Clone(configs)); len(errs) > 0 {
+		t.Fatal(errs)
+	}
+	loadShared(t, b, slices.Clone(configs))
+	pids := map[string]int{}
+	shares := map[string]*processShare{}
+	for _, cfg := range configs {
+		pids[cfg.Name] = retainedProbeOf(t, b, cfg.Name).Pid
+		shares[cfg.Name] = memberShare(t, b, cfg.Name)
+	}
+	cancelA()
+	a.Shutdown("host A closed")
+	time.Sleep(500 * time.Millisecond) // a wrongly cancelled process needs a moment to die
+	for _, cfg := range configs {
+		if got := retainedProbeOf(t, b, cfg.Name).Pid; got != pids[cfg.Name] {
+			t.Errorf("%s: pid %d after the spawner's context ended, want %d", cfg.Name, got, pids[cfg.Name])
+		}
+	}
+	b.Shutdown("host B closed")
+	for _, cfg := range configs {
+		select {
+		case <-shares[cfg.Name].exitedChan():
+		case <-time.After(30 * time.Second):
+			t.Errorf("%s: process still running after the last Host closed", cfg.Name)
+		}
+	}
+}
+
+func TestSharedCellsNeverShareAQuarantinedCell(t *testing.T) {
+	skipWithoutNodeExtensions(t)
+	nodeCellRequireNode(t)
+	cfg, _ := retainedNodeExtension(t, t.TempDir(), "shared-quarantined.mjs", false)
+	isolated := cfg
+	isolated.Isolation = "isolated"
+	cwd := t.TempDir()
+	registry := NewCellRegistry()
+	t.Cleanup(registry.Close)
+	b, a := NewHost(cwd), NewHost(cwd)
+	for _, h := range []*Host{a, b} {
+		h.ShareCells(registry)
+		t.Cleanup(func() { h.Shutdown("test done") })
+	}
+	// Host B runs the extension isolated, which registers its process under the isolated Node key; Host A's quarantined cell starts isolated under that same key.
+	loadShared(t, b, []ExtConfig{isolated})
+	hashed := cfg
+	fillContentHash(&hashed) // LoadAll plans the config with its content hash
+	cells := a.planCells([]ExtConfig{hashed})
+	if len(cells) != 1 || cells[0].Strategy != CellStrategyPackedNode {
+		t.Fatalf("plan = %+v, want one packed Node cell", cells)
+	}
+	a.quarantinedCells = map[string]string{cells[0].Key: "crashed"}
+	loadShared(t, a, []ExtConfig{cfg})
+	if pa, pb := retainedProbeOf(t, a, cfg.Name), retainedProbeOf(t, b, cfg.Name); pa.Pid == pb.Pid {
+		t.Fatalf("a quarantined cell joined another Host's process (pid %d)", pa.Pid)
 	}
 }

@@ -425,7 +425,7 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 
 	var retained *packedProcessState
 	share := h.claimRetainedProcess(ctx, cell.BinaryPath, nodeRuntime)
-	if share == nil && h.cells != nil {
+	if share == nil && h.sharesCells(ctx) {
 		// pig additive (D201): without a parked process of its own, a Host that joined a CellRegistry admits into the live process another Host runs for this cell; it holds the key's start lock until the cell it spawns is registered.
 		if key := h.cellRegistryKey(h.retentionKey(ctx, cell.BinaryPath, nodeRuntime)); key != "" {
 			defer h.cells.startLock(key)()
@@ -440,7 +440,7 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 			retained, _ = share.origin.(*packedProcessState)
 		}
 	}
-	extCtx, cancel := context.WithCancel(runtimeParent(ctx))
+	extCtx, cancel := context.WithCancel(h.processParent(ctx))
 	var lease *runtimecell.UsageLease
 	if retained == nil {
 		var err error
@@ -454,7 +454,7 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 			installchange.TrackFile(cell.BinaryPath)
 		}
 	}
-	processState := &packedProcessState{key: cell.Key, parent: runtimeParent(ctx), cancel: cancel, lease: lease, generation: cell.Generation, node: nodeRuntime, originalOwner: runtimeParent(ctx), configs: recoveryConfigs}
+	processState := &packedProcessState{key: cell.Key, parent: h.processParent(ctx), cancel: cancel, lease: lease, generation: cell.Generation, node: nodeRuntime, originalOwner: runtimeParent(ctx), configs: recoveryConfigs}
 	if retained != nil {
 		// pig additive (D20): the process that already holds this cell's modules re-invokes the factories, as Pi's loader does inside one runtime.
 		processState.adopt(retained)
@@ -693,7 +693,7 @@ func (h *Host) spawnPackedProcess(ctx, extCtx context.Context, cancel context.Ca
 	processState.share.tier = tierOf(tsSelection)
 	h.retention().register(processState.share)
 	// pig additive (D201): a Host that joined a CellRegistry offers this process to the other Hosts of the registry.
-	if h.cells != nil {
+	if h.sharesCells(ctx) {
 		h.cells.register(h.cellRegistryKey(processState.share.key), processState.share)
 	}
 	return nil

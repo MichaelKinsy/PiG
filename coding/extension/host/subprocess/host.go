@@ -3051,7 +3051,11 @@ func (h *Host) startExtOnce(ctx context.Context, me *managedExt, isRestart bool)
 			return nil, newLoadError(me.config.Name, "spawn", "admit_failed", err)
 		}
 	}
-	extCtx, cancel := context.WithCancel(runtimeParent(ctx))
+	parent := runtimeParent(ctx)
+	if retainedFrom == nil {
+		parent = h.processParent(ctx)
+	}
+	extCtx, cancel := context.WithCancel(parent)
 	me.cancel = cancel
 	me.parentCtx = runtimeParent(ctx)
 	defer func() {
@@ -3300,7 +3304,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 		me.share.tier = tierOf(tsSelection)
 		h.retention().register(me.share)
 		// pig additive (D201): a Host that joined a CellRegistry offers this process to the other Hosts of the registry.
-		if h.cells != nil {
+		if h.sharesCells(ctx) {
 			h.cells.register(h.cellRegistryKey(me.share.key), me.share)
 		}
 	}

@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"context"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -15,11 +16,33 @@ type CellRegistry struct {
 	// starting holds one lock per key, so two Hosts that start the same cell together spawn one process.
 	starting map[string]*sync.Mutex
 	seq      atomic.Uint64
+	// ctx is the lifetime of every process the registry's Hosts spawn; Close cancels it.
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // NewCellRegistry returns an empty registry.
 func NewCellRegistry() *CellRegistry {
-	return &CellRegistry{procs: map[string]*processShare{}, starting: map[string]*sync.Mutex{}}
+	ctx, cancel := context.WithCancel(context.Background())
+	return &CellRegistry{procs: map[string]*processShare{}, starting: map[string]*sync.Mutex{}, ctx: ctx, cancel: cancel}
+}
+
+// Close ends the lifetime of the processes the registry's Hosts spawned; the server calls it at exit. pig additive (D201).
+func (r *CellRegistry) Close() { r.cancel() }
+
+type unsharedCellKey struct{}
+
+// sharesCells reports whether the cell ctx starts takes part in the registry; a quarantined cell starts isolated and is never shared. pig additive (D201).
+func (h *Host) sharesCells(ctx context.Context) bool {
+	return h.cells != nil && ctx.Value(unsharedCellKey{}) == nil
+}
+
+// processParent is the context a spawned cell process lives under: the registry's for a shared cell, so the Host that spawned it ending its load does not kill it under the Hosts that joined, and the spawner's otherwise. pig additive (D201).
+func (h *Host) processParent(ctx context.Context) context.Context {
+	if h.sharesCells(ctx) {
+		return h.cells.ctx
+	}
+	return runtimeParent(ctx)
 }
 
 // lookup returns a live, unparked, undead process registered under key, one reference held for the caller, or nil. It probes with the
