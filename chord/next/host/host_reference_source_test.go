@@ -616,15 +616,6 @@ func msFailRetry(t testing.TB, host Host, self Self, failure *data.ChordError, r
 	again.Release()
 }
 
-// msRetry is `ref.retry(); (await host.get(Type, params)).release()`: the next attempt, live.
-func msRetry(t testing.TB, host Host, ref *Reference, typ *contracts.Contract, params *delta.JsonObject) {
-	t.Helper()
-	ref.Retry()
-	again, err := host.Get(typ, params, background, GetOptions{})
-	must(t, err)
-	again.Release()
-}
-
 // reference-source.test.ts › following the live attempt › passes the member's frames on as they are, and keeps a derive member
 // lazy while nothing watches it.
 func TestHostReferenceSourceFollowingTheLiveAttemptPassesTheMembersFramesOnAsTheyAreAndKeepsADeriveMemberLazyWhileNothingWatchesIt(t *testing.T) {

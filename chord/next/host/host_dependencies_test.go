@@ -293,16 +293,6 @@ func serveViewOfMissing(h FacetHost, _ FacetSelf) error {
 	}, ServeOptions{})
 }
 
-// parkedClient is a client host on a fake clock with readyTimeout 1000 ms and View loaded.
-func parkedClient(t *testing.T, loop *scopeLoop) (Host, *hostErrors) {
-	t.Helper()
-	errs := &hostErrors{}
-	ready := time.Second
-	host := newHost(t, HostOptions{ReadyTimeout: &ready, OnError: errs.push, loop: loop})
-	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/view", Facet: DefineFacet(serveViewOfNotes)}}, background))
-	return host, errs
-}
-
 // Mirrors "parked_long (dependency model §7, audit A11) › is reported once after readyTimeout whatever the blocker: a missing local provider; nothing fails".
 func TestParkedLongIsReportedOnceAfterReadyTimeoutWhateverTheBlockerAMissingLocalProviderNothingFails(t *testing.T) {
 	loop := newScopeLoop()

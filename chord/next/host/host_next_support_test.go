@@ -332,33 +332,6 @@ func loaded(t testing.TB, setup func(host FacetHost, self FacetSelf) error, opti
 	return host, errs
 }
 
-// pluginSetup is one entry of Pi's `loadedPlugins(setups)` record: a plugin's name and its facet's setup.
-type pluginSetup struct {
-	Name  string
-	Setup func(host FacetHost, self FacetSelf) error
-}
-
-// loadedPlugins is a host with background errors collected, loaded with one facet per setup, in the order given (Pi's
-// `loadedPlugins`); the plugins it left out are in the errors' Failed.
-func loadedPlugins(t testing.TB, options loadedOptions, setups ...pluginSetup) (Host, *hostErrors) {
-	t.Helper()
-	errs := &hostErrors{}
-	host := newHost(t, HostOptions{
-		Telemetry:    telemetryOf(options.Telemetry),
-		ReadyTimeout: options.ReadyTimeout,
-		OnError:      errs.push,
-		loop:         options.Loop,
-	})
-	facets := make([]HostFacet, 0, len(setups))
-	for _, each := range setups {
-		facets = append(facets, HostFacet{Name: each.Name, Facet: DefineFacet(each.Setup)})
-	}
-	report, err := host.Load(facets, background)
-	must(t, err)
-	errs.Failed = report.Failed
-	return host, errs
-}
-
 // failures is the kinds and objects of the reported `activation_failed` errors, with their causes' kinds.
 func failures(errs []HostError) []string {
 	var out []string

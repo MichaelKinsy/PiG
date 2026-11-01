@@ -43,7 +43,6 @@ func notesContractOf(prefix string) *contracts.Contract {
 }
 
 var (
-	workerKind    = workerKindOf("test")
 	notesContract = notesContractOf("test")
 	// countDocument is the worker facet's `defineState("count", { schema: obj({ n: int() }), version: 1, initial: ... })`.
 	countDocument = mustState(documents.DefineState("count", documents.StateOptions{

@@ -617,7 +617,7 @@ func TestStore(t *testing.T) {
 				return nil
 			}, background)
 			noError(t, err)
-			if result.Stored != 1 || result.Refused != refusal {
+			if result.Stored != 1 || !errors.Is(result.Refused, refusal) {
 				t.Fatalf("result = %+v, want {Stored: 1, Refused: refused}", result)
 			}
 			if !reflect.DeepEqual(receipts, []int{0}) {
@@ -657,7 +657,7 @@ func TestStore(t *testing.T) {
 					return own
 				}},
 			}, noReceipt, background)
-			if err != own {
+			if !errors.Is(err, own) {
 				t.Fatalf("CommitSeries = %v, want the check's own error", err)
 			}
 			if store.LastSeq() != 0 {
