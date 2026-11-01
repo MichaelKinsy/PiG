@@ -75,9 +75,9 @@ func TestFacetsOnlyDeclareASetupTakesTheHostAndASelfThatOnlyContributes(t *testi
 // the same as itself; every copy of a DefineFacet's value is the same facet, another DefineFacet's (the same setup) is not.
 func TestAFacetHasNoExportedFieldAndEveryCopyOfItIsTheSameFacet(t *testing.T) {
 	facetType := reflect.TypeFor[Facet]()
-	for i := range facetType.NumField() {
-		if facetType.Field(i).IsExported() {
-			t.Errorf("Facet has the exported field %s: a literal of it would carry no identity", facetType.Field(i).Name)
+	for field := range facetType.Fields() {
+		if field.IsExported() {
+			t.Errorf("Facet has the exported field %s: a literal of it would carry no identity", field.Name)
 		}
 	}
 	setup := func(FacetHost, FacetSelf) error { return nil }
