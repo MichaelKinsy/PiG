@@ -16,6 +16,7 @@ var nonRetryablePatterns = []string{
 	`billing`,
 	`subscription_sharing_usage_limit_exceeded`,
 	`subscription_sharing_workplace_individual_usage_limit_exceeded`,
+	`"code"\s*:\s*"?1308(?![0-9])`,
 }
 
 // Read-only: assigned once at initialization.

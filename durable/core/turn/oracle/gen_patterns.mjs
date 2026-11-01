@@ -5,7 +5,8 @@ const retry = readFileSync(`${PI}/packages/ai/src/utils/retry.ts`, "utf8");
 const overflow = readFileSync(`${PI}/packages/ai/src/utils/overflow.ts`, "utf8");
 const list = (src, name) => {
 	const m = new RegExp(`const ${name} = buildProviderErrorPattern\\(\\[([\\s\\S]*?)\\]\\);`).exec(src);
-	return [...m[1].matchAll(/^\s*"((?:[^"\\]|\\.)*)",/gm)].map((x) => JSON.parse(`"${x[1]}"`));
+	// A string literal in either quote style; the single-quoted form holds a double quote unescaped (Pi writes the 1308 pattern that way).
+	return [...m[1].matchAll(/^\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'),/gm)].map((x) => (x[1] !== undefined ? JSON.parse(`"${x[1]}"`) : JSON.parse(`"${x[2].replaceAll('"', '\\"')}"`)));
 };
 const regexes = (src, name) => {
 	const m = new RegExp(`const ${name} = \\[([\\s\\S]*?)\\n\\];`).exec(src);
