@@ -280,7 +280,7 @@ func TestGroupCommitFailsTheSessionForADeferredCommitMemoryCannotAdopt(t *testin
 			}
 			publishedMu.Unlock()
 			<-kernel.Closed()
-			if end := kernel.End(); end.Kind != durable.SessionEndFailed || end.Error != err {
+			if end := kernel.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, err) {
 				t.Fatalf("session ended %+v, want failed with %v", end, err)
 			}
 			if err := kernel.Close(context.Background()); err != nil && !errors.Is(err, err) {
@@ -405,11 +405,11 @@ func TestWriterFailsTheSessionForAThrowInTheReadCachesWriteThrough(t *testing.T)
 	if err := parts[0].Wait(); err != nil {
 		t.Fatal(err)
 	}
-	if err := parts[1].Wait(); err != failure {
+	if err := parts[1].Wait(); !errors.Is(err, failure) {
 		t.Fatalf("the part whose cache write threw got %v, want %v", err, failure)
 	}
 	err := parts[2].Wait()
-	if cause, ok := isFailed(err); !ok || cause != failure {
+	if cause, ok := isFailed(err); !ok || !errors.Is(cause, failure) {
 		t.Fatalf("the part after it got %v, want SessionFailed caused by %v", err, failure)
 	}
 	publishedMu.Lock()
