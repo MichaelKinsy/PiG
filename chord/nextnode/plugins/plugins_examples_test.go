@@ -84,7 +84,7 @@ var (
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return exWorkerKind.Address(nil), nil },
 		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
 			State:   []contracts.Property{contracts.Prop("label", contracts.Str()), contracts.Prop("count", contracts.Int())},
-			Methods: []contracts.MethodEntry{contracts.Meth("add", contracts.NewMethod(contracts.TSchema{}, contracts.Int()))},
+			Methods: []contracts.MethodEntry{contracts.Meth("add", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
 		})},
 	}))
 )

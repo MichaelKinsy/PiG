@@ -243,9 +243,9 @@ func ssOwnerFacet(t testing.TB, d *ssDeclarations, edits *store.TableDefinition,
 			imports := self.Job(d.ImportJob, JobImplementation{
 				Run: func(args any, ctx JobCtx) (any, error) {
 					path := exParam(args.(*delta.JsonObject), "path")
-					if _, err := ctx.State().Change(func(draft *delta.Object) (any, error) {
+					if _, err := ctx.State().Change(ctx, func(draft *delta.Object) (any, error) {
 						return nil, draft.Set("done", draft.Get("done").(float64)+float64(len(path)))
-					}, ctx, ChangeOptions{}); err != nil {
+					}, ChangeOptions{}); err != nil {
 						return nil, err
 					}
 					if behaviour == ssWait {
@@ -266,7 +266,7 @@ func ssOwnerFacet(t testing.TB, d *ssDeclarations, edits *store.TableDefinition,
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"profile": profile.Member()}, map[string]contracts.MethodFunction{
 				"write": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
 					id, body := exParam(args, "id"), exParam(args, "body")
-					if _, err := self.Tx(func(tx *documents.Transaction) (any, error) {
+					if _, err := self.Tx(func(tx documents.Tx) (any, error) {
 						note, err := tx.Draft(notes, id)
 						if err != nil {
 							return nil, err
@@ -309,7 +309,7 @@ func ssOwnerFacet(t testing.TB, d *ssDeclarations, edits *store.TableDefinition,
 					return nil, err
 				}),
 				"read": func(id delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					note, err := notes.Get(id.(string), ctx)
+					note, err := notes.Get(ctx, id.(string))
 					if err != nil || note == nil {
 						return "", err
 					}
@@ -317,7 +317,7 @@ func ssOwnerFacet(t testing.TB, d *ssDeclarations, edits *store.TableDefinition,
 				},
 				"dump": exMethod(func(_ *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
 					noteOrNull := func(id string) (any, error) {
-						note, err := notes.Get(id, ctx)
+						note, err := notes.Get(ctx, id)
 						if err != nil || note == nil {
 							return nil, err
 						}
@@ -356,7 +356,7 @@ func ssOwnerFacet(t testing.TB, d *ssDeclarations, edits *store.TableDefinition,
 // ssPage is `(await table.page(query(definition), 10, ctx)).items` as JSON: each row's keys in column order, an absent
 // optional column left out as JSON.stringify leaves out `undefined`.
 func ssPage(table *store.TableHandle, definition *store.TableDefinition, ctx context.Context) ([]any, error) {
-	page, err := table.Page(store.NewQuery(definition), 10, ctx, store.PageOptions{})
+	page, err := table.Page(ctx, store.NewQuery(definition), 10, store.PageOptions{})
 	if err != nil {
 		return nil, err
 	}

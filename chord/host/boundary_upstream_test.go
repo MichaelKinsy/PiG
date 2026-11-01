@@ -30,6 +30,7 @@ var chordHelpers = []string{
 	"internal/jsparity",
 	"internal/jsstring",
 	"internal/lazyregexp",
+	"internal/linkerexec", // starts Node for the plugins worker and checks its version (chord/nextnode/plugins)
 	"internal/nodepath",
 	"internal/nodeurl",
 	"schema",                    // pi-schema, the schema builders and validators of contracts and frames
