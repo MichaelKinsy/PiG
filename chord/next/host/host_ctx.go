@@ -183,7 +183,10 @@ type linkedAbort struct {
 
 // withLinkedAbortSignal is a child of ctx aborted by signal and by the caller's signal (the caller's reason first) until
 // release(), which the call runs when it settles. Without a caller's signal (ctx has no Done channel) the child is
-// aborted by signal itself and release does nothing. Pi avoids AbortSignal.any because it keeps cleanup entries per call
+// aborted by signal alone, until release() as well: Pi's child there is the signal itself and has no listener, but a Go
+// child of its own is how the signal's reason reaches it, so its one context.AfterFunc registration on signal is removed
+// by release, as Pi removes its listeners. signal outlives its calls (an attempt's, a reference's), so a registration a
+// call left would accumulate until the signal ends. Pi avoids AbortSignal.any because it keeps cleanup entries per call
 // for as long as its sources live; the Go form of the two listeners is two context.AfterFunc registrations, each removed
 // by its stop function, never context.WithCancel's parent registration (which stays until the parent ends).
 func withLinkedAbortSignal(signal context.Context, ctx context.Context) linkedAbort {
@@ -191,11 +194,10 @@ func withLinkedAbortSignal(signal context.Context, ctx context.Context) linkedAb
 		child, abort := chordctx.WithCancel(ctx)
 		if signal.Err() != nil {
 			abort(context.Cause(signal))
-		} else {
-			stop := context.AfterFunc(signal, func() { abort(context.Cause(signal)) })
-			context.AfterFunc(child, func() { stop() })
+			return linkedAbort{context: child, release: func() {}, abort: abort}
 		}
-		return linkedAbort{context: child, release: func() {}, abort: abort}
+		stop := context.AfterFunc(signal, func() { abort(context.Cause(signal)) })
+		return linkedAbort{context: child, release: func() { stop() }, abort: abort}
 	}
 	linked, abort := chordctx.WithCancel(chordctx.WithoutAbortSignal(ctx))
 	// The sources in Pi's order: the caller's first, so its reason wins a tie.

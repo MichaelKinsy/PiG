@@ -3,8 +3,10 @@ package host
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sync"
 	"testing"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -430,4 +432,51 @@ func TestLinkedAbortSignalsIsTheCallsOwnSignalWithoutACallers(t *testing.T) {
 		t.Fatalf("reason = %v, want the call's", got)
 	}
 	linked.release()
+}
+
+// Mirrors ctx.test.ts's linked abort signals: a call's signal listener lives as long as the call (`withLinkedAbortSignal`,
+// whose `release` the call runs when it settles). Pi's listener is removed by `release`; the Go listener of a call without
+// a caller's signal is a context.AfterFunc on the call's signal, which is the attempt's for every call it runs: one left
+// behind per call would accumulate until the attempt ends.
+func TestLinkedAbortSignalsWithoutACallersLeaveNoListenerOnTheCallsSignalOnceReleased(t *testing.T) {
+	callCtx, abortCall := newScopeCounting()
+	const calls = 1000
+	for range calls {
+		linked := withLinkedAbortSignal(callCtx, chordctx.Background())
+		linked.release()
+	}
+	if got := callCtx.count(); got != 0 {
+		t.Fatalf("listeners on the call's signal after %d released calls = %d, want none", calls, got)
+	}
+	running := withLinkedAbortSignal(callCtx, chordctx.Background())
+	if got := callCtx.count(); got != 1 {
+		t.Fatalf("listeners while the call runs = %d, want its one", got)
+	}
+	abortCall(scopeReason("late"))
+	<-running.context.Done()
+	if got := context.Cause(running.context); got == nil || got.Error() != "late" {
+		t.Fatalf("reason = %v, want the call's", got)
+	}
+}
+
+// noSignalContext is a caller's context without a Done channel (as context.Background()), a distinct object per call so
+// that its collection tells whether anything of the call still holds it.
+type noSignalContext struct{ context.Context }
+
+func TestMethodCallsOfACallerWithoutASignalLeaveNothingOnTheAttemptWhenTheyEnd(t *testing.T) {
+	host, _, ref := desk(t)
+	const calls = 200
+	probes := make([]weak.Pointer[noSignalContext], 0, calls)
+	for range calls {
+		probe := &noSignalContext{Context: background}
+		probes = append(probes, weak.Make(probe))
+		if _, err := ref.Call("who", nil, probe); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The attempt's opening context and the reference's calls context are the signals of each call: a listener a call left
+	// on one keeps its caller's context, for as long as the host lives.
+	expectCollected(t, probes...)
+	runtime.KeepAlive(host)
+	runtime.KeepAlive(ref)
 }
