@@ -1745,22 +1745,18 @@ func (session *SessionImpl) runCommit(ctx context.Context, change func(tx *Trans
 		writes, taken = tx.takeHeld(writes, session.heldOf)
 	}
 	keys := append(tx.WriteKeys(), membership...)
-	var documents adoptedDocuments
 	part := session.writer.Admit(PartSpec{
 		Index:  index,
 		Writes: writes,
 		Keys:   keys,
 		Ctx:    ctx,
 		Publish: func(seq durable.Seq) *PublishFailure {
-			adopted, failure := session.adopt(tx, writes, taken, seq, ctx)
-			documents = adopted
-			return failure
+			return session.adopt(tx, writes, taken, seq, ctx)
 		},
-		// Once its keys left: the held documents it stored unpin, and the documents it changed are used, which may schedule an
-		// eviction that has to see the keys gone.
+		// Once its keys left: the held documents it stored unpin, and an eviction is scheduled that has to see the keys gone.
 		Published: func() {
 			session.finishRelease(taken)
-			session.touchChanged(documents.stored)
+			session.scheduleSweepNow()
 		},
 		Discard: tx.discard,
 	})
@@ -1769,20 +1765,21 @@ func (session *SessionImpl) runCommit(ctx context.Context, change func(tx *Trans
 }
 
 // adopt publishes a stored commit (Writer), after the read caches took its writes: it adopts the commit in memory and runs its
-// publication, and returns the documents it adopted. A failure of the adoption leaves memory behind durable state; the writer
-// fails the Session with it.
-func (session *SessionImpl) adopt(tx *Transaction, writes []durable.StorageWrite, taken []*heldDocument, seq durable.Seq, ctx context.Context) (adoptedDocuments, *PublishFailure) {
+// publication. A failure of the adoption leaves memory behind durable state; the writer fails the Session with it.
+func (session *SessionImpl) adopt(tx *Transaction, writes []durable.StorageWrite, taken []*heldDocument, seq durable.Seq, ctx context.Context) *PublishFailure {
 	documents, err := tx.adopt(seq)
 	if err != nil {
-		return documents, &PublishFailure{Kind: PublishAdoption, Err: err}
+		return &PublishFailure{Kind: PublishAdoption, Err: err}
 	}
 	session.indexTaskDocuments(tx, writes, documents, seq)
 	failure := session.publish(ctx, seq, writes, documents)
 	session.forget(taken)
+	// The documents it changed are used, while its keys are still unpublished: no sweep runs between the keys' removal and this.
+	session.refreshChanged(documents.stored)
 	if failure != nil {
-		return documents, &PublishFailure{Kind: PublishListener, Err: failure}
+		return &PublishFailure{Kind: PublishListener, Err: failure}
 	}
-	return documents, nil
+	return nil
 }
 
 // indexTaskDocuments keeps taskDocuments in step with a stored commit at its publication: the tasks it creates start with no
