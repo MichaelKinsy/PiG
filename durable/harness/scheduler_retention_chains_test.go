@@ -99,7 +99,7 @@ type forgottenTree struct {
 	conversation durable.ConversationId
 }
 
-func retentionForgotten(t *testing.T, fixtures *ownFixtures, opened ownOpened, twoLevels bool) forgottenTree {
+func retentionForgotten(t *testing.T, fixtures *ownFixtures, opened ownOpened, twoLevels bool, slowKeep ...bool) forgottenTree {
 	t.Helper()
 	tree, err := durable.Commit(testContext, opened.root, func(tx durable.Tx) (forgottenTree, error) {
 		var tree forgottenTree
@@ -121,7 +121,7 @@ func retentionForgotten(t *testing.T, fixtures *ownFixtures, opened ownOpened, t
 			return tree, err
 		}
 		tree.conversation = conversation.Id
-		tree.keep, err = durable.CreateTask(tx, fixtures.hold, holdInput{Name: "keep"}, durable.TaskOptions{Ownership: scaleOwnedBy(tree.p)})
+		tree.keep, err = durable.CreateTask(tx, fixtures.hold, holdInput{Name: "keep", SlowAbort: len(slowKeep) > 0 && slowKeep[0]}, durable.TaskOptions{Ownership: scaleOwnedBy(tree.p)})
 		return tree, err
 	})
 	if err != nil {
@@ -205,7 +205,9 @@ func TestSchedulerRetentionBelowAForgottenConversation(t *testing.T) {
 	t.Run("aborts work created in a forgotten conversation below an abort-marked owner before it runs", func(t *testing.T) {
 		fixtures := newOwnFixtures()
 		opened := ownOpenHarness(t, fixtures)
-		tree := retentionForgotten(t, fixtures, opened, false)
+		// keep's abort waits for its gate, so P holds while the work is created below it: goroutines, unlike upstream's
+		// microtasks, can finish keep's abort and P's before the creation otherwise.
+		tree := retentionForgotten(t, fixtures, opened, false, true)
 		// P cancels; its live child keeps it holding.
 		retentionRawTask(t, opened.root, tree.p, func(record *durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]) {
 			record.AbortRequested = true
