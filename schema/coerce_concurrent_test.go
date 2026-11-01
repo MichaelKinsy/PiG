@@ -60,9 +60,7 @@ func TestCoercingValidatorIsSafeForConcurrentUse(t *testing.T) {
 			fresh := coercing(t, mustDecode(t, text), schema.CompileOptions{})
 			var wg sync.WaitGroup
 			for g := range 16 {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
+				wg.Go(func() {
 					for round := range 50 {
 						i := (g + round) % len(inputs[name])
 						input := mustDecode(t, inputs[name][i])
@@ -81,7 +79,7 @@ func TestCoercingValidatorIsSafeForConcurrentUse(t *testing.T) {
 							return
 						}
 					}
-				}()
+				})
 			}
 			wg.Wait()
 		})

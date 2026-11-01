@@ -24,7 +24,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"unsafe"
 
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
@@ -346,8 +345,16 @@ type valueKey struct {
 	kind uint8
 	n    int
 	bits uint64
-	ptr  unsafe.Pointer
+	ptr  nodeKey
 	s    string
+}
+
+// arrayPointer is the identity of an array: where its first member is (none for an empty array).
+func arrayPointer(list []any) nodeKey {
+	if len(list) == 0 {
+		return nil
+	}
+	return nodeKey(&list[0])
 }
 
 const (
@@ -373,11 +380,11 @@ func identityOf(value any, mergeZeros bool) valueKey {
 	case string:
 		return valueKey{kind: kindString, s: x}
 	case *Object:
-		return valueKey{kind: kindObject, ptr: unsafe.Pointer(x)}
+		return valueKey{kind: kindObject, ptr: nodeKey(x)}
 	case map[string]any:
 		return valueKey{kind: kindObject, ptr: reflect.ValueOf(x).UnsafePointer()}
 	case []any:
-		return valueKey{kind: kindArray, n: len(x), ptr: unsafe.Pointer(unsafe.SliceData(x))}
+		return valueKey{kind: kindArray, n: len(x), ptr: arrayPointer(x)}
 	}
 	if n, ok := asNumber(value); ok {
 		switch {
@@ -434,9 +441,8 @@ const (
 
 // passes reports whether value passes the schema node; passUndefined when node cannot be compiled.
 func (r *run) passes(node any, base string, value any) tri {
-	switch x := node.(type) {
-	case bool:
-		if x {
+	if b, ok := node.(bool); ok {
+		if b {
 			return passTrue
 		}
 		return passFalse
@@ -638,10 +644,10 @@ func identical(a, b any) bool {
 		return ok && reflect.ValueOf(x).UnsafePointer() == reflect.ValueOf(y).UnsafePointer()
 	case []any:
 		y, ok := b.([]any)
-		return ok && len(x) == len(y) && unsafe.SliceData(x) == unsafe.SliceData(y)
+		return ok && len(x) == len(y) && (len(x) == 0 || &x[0] == &y[0])
 	case []byte:
 		y, ok := b.([]byte)
-		return ok && len(x) == len(y) && unsafe.SliceData(x) == unsafe.SliceData(y)
+		return ok && len(x) == len(y) && (len(x) == 0 || &x[0] == &y[0])
 	}
 	if x, ok := asNumber(a); ok {
 		y, ok := asNumber(b)
@@ -959,7 +965,7 @@ func (r *run) coerceTypes(value any, schema any, base string) any {
 		next = r.coerceUnion(next, info.oneOf, b)
 	}
 	types := info.typesOfSchema
-	if len(types) > 0 && !(len(types) > 1 && matchesAnyType(next, types)) {
+	if len(types) > 0 && (len(types) == 1 || !matchesAnyType(next, types)) {
 		for _, name := range types {
 			if candidate := coercePrimitive(next, name); !identical(candidate, next) {
 				next = candidate
