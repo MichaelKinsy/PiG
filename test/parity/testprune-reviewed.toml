@@ -642,3 +642,17 @@ path = "chord/internal/parking/stall_test.go"
 commit = "73a0b7e6f90076013d5a254c7e196f20d38f46ce"
 class = "NOBEHAVIOR"
 reason = "Go only, no Pi counterpart: the stall report of a section that waits for its handler. The test now guards a goroutine that waits on a Signal with Guard, so the report's stacks name the waiter as parking.(*Signal).Wait (the wait it calls, no longer the report's own); its other expected values are unchanged."
+
+[[entry]]
+path = "schema/internal/ecmaregex/golden_test.go"
+commit = "14c930470b86a72372bb7af9ae24d577aa603629"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "ecmaregex is the ECMAScript regular-expression engine PiG needs under packages/schema/src/shared.ts and formats/typebox/regex.ts; V8 is the oracle and no Pi test line governs it. The commit extends the golden replay, not any Pi behavior: it also compares V8's SyntaxError message of every invalid row, reads the golden's match results from a packed bit string, decodes lone surrogates as WTF-8, skips the pinned known gaps, and names the Go and Unicode versions in every failure. The expected values that changed are the golden's row format and counts, regenerated under Node 24.22.1."
+
+[[entry]]
+path = "schema/formats/oracle_test.go"
+commit = "1de91268b66ee9f62f8e82f3b2edf178e89bcb17"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The test replays rows of Pi's own formats (packages/schema/src/formats/index.ts) generated under Node 24. The commit moves the generator out of the test comment into testdata/gen, adds rows with lone surrogates (decoded as WTF-8 instead of U+FFFD, the repo's JS-string convention), and raises the row-count floor from the corpus it now replays; no Pi behavior changes, the new rows' expectations are Pi's results."
