@@ -15,8 +15,8 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/session"
 )
 
-// awaitWake blocks until done is closed: the wait a woken goroutine is parked in.
-func awaitWake(_ *session.SessionImpl, done <-chan struct{}) { <-done }
+// awaitWake blocks until done is closed: the wait a woken goroutine is parked in, which the publication that wakes it waits for.
+func awaitWake(kernel *session.SessionImpl, done <-chan struct{}) { kernel.Await(ctx, done) }
 
 // parkGoroutines starts n goroutines that stay parked until the test ends.
 func parkGoroutines(tb testing.TB, n int) {

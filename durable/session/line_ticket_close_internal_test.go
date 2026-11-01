@@ -36,7 +36,7 @@ func TestAdmissionWaitingForCloseListenersDoesNotHoldTheLine(t *testing.T) {
 	// A commit that passed Commit's own check before close began reaches the line's admission while the listeners run.
 	admitted := make(chan error, 1)
 	go func() {
-		_, err := enqueue(session, true, nil, func() (struct{}, error) { return struct{}{}, nil })
+		_, err := enqueue(session, true, lineCall{}, func() (struct{}, error) { return struct{}{}, nil })
 		admitted <- err
 	}()
 	// Wait until the admission is waiting; with the defect it holds the line mutex here.
