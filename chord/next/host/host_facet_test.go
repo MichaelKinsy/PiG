@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
@@ -62,11 +63,55 @@ func TestFacetsOnlyDeclareASetupTakesTheHostAndASelfThatOnlyContributes(t *testi
 	if got := names(reflect.TypeFor[FacetHost]()); !reflect.DeepEqual(got, []string{"References", "Serve"}) {
 		t.Fatalf("FacetHost members = %v, want References and Serve (no state, on or onLive)", got)
 	}
-	setup, ok := reflect.TypeFor[Facet]().FieldByName("Setup")
-	// Its other field is the unexported identity a reload compares facets by (Pi's `facet === other`).
-	if !ok || reflect.TypeFor[Facet]().NumField() != 2 || reflect.TypeFor[Facet]().Field(1).IsExported() ||
+	setup, ok := reflect.TypeFor[facetDefinition]().FieldByName("setup")
+	if !ok || reflect.TypeFor[facetDefinition]().NumField() != 1 ||
 		setup.Type != reflect.TypeFor[func(FacetHost, FacetSelf) error]() {
-		t.Fatalf("Facet is not exactly its setup(host FacetHost, self FacetSelf): %v", reflect.TypeFor[Facet]())
+		t.Fatalf("a facet is not exactly its setup(host FacetHost, self FacetSelf): %v", reflect.TypeFor[facetDefinition]())
+	}
+}
+
+// Pi's facet is the object `defineFacet` returns and a reload compares it with `===` (`host.ts:653`): whoever built the
+// facet, passing the same one again is unchanged. A Facet has no exported field, so no literal can be a facet that is not
+// the same as itself; every copy of a DefineFacet's value is the same facet, another DefineFacet's (the same setup) is not.
+func TestAFacetHasNoExportedFieldAndEveryCopyOfItIsTheSameFacet(t *testing.T) {
+	facetType := reflect.TypeFor[Facet]()
+	for i := range facetType.NumField() {
+		if facetType.Field(i).IsExported() {
+			t.Errorf("Facet has the exported field %s: a literal of it would carry no identity", facetType.Field(i).Name)
+		}
+	}
+	setup := func(FacetHost, FacetSelf) error { return nil }
+	facet := DefineFacet(setup)
+	copied := facet
+	if !facet.same(copied) || !copied.same(facet) {
+		t.Fatal("a copy of a facet is not the same facet")
+	}
+	if facet.same(DefineFacet(setup)) {
+		t.Fatal("another DefineFacet of the same setup is the same facet")
+	}
+	if (Facet{}).same(Facet{}) || (Facet{}).hasSetup() {
+		t.Fatal("the zero Facet is a facet")
+	}
+}
+
+// A facet passed to a reload again, as a copy, is unchanged (nothing of it runs again): a literal-built one (a copy of
+// the zero value) could not be.
+func TestAReloadWithACopyOfTheLoadedFacetChangesNothing(t *testing.T) {
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	defer closeHosts(t, host)
+	var runs int
+	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		runs++
+		return h.Serve(hostInfo, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			return impl("title", constant("a")), nil
+		}, ServeOptions{})
+	})
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: facet}}, background))
+	again := facet
+	report, err := host.Reload([]HostFacet{{Name: "@app/info", Facet: again}}, background, ReloadOptions{})
+	must(t, err)
+	if len(report.Plugins.Changed) != 0 || len(report.Plugins.Added) != 0 || len(report.Plugins.Removed) != 0 || runs != 1 {
+		t.Fatalf("report = %+v, setup runs %d, want nothing changed and one run", report.Plugins, runs)
 	}
 }
 
@@ -209,7 +254,7 @@ func TestFacetsCannotOpenNativesFacetHostDeclaresNoOpenMember(t *testing.T) {
 		t.Error("Self has no Open: an object's factory could not open natives either")
 	}
 	// The setup the facet is given is typed by those two interfaces alone: it cannot reach Self's members.
-	setup, _ := reflect.TypeFor[Facet]().FieldByName("Setup")
+	setup, _ := reflect.TypeFor[facetDefinition]().FieldByName("setup")
 	if setup.Type != reflect.TypeFor[func(FacetHost, FacetSelf) error]() {
 		t.Fatalf("a facet's setup is %v, want func(FacetHost, FacetSelf) error", setup.Type)
 	}

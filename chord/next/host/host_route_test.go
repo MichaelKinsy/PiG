@@ -706,6 +706,10 @@ func TestARoutesContextIsTheParentOfItsResolvesAndOfTheWorkArrivingOnItsLinks(t 
 }
 
 // route.test.ts › GC › a failed or suspended address keeps no route state once its holders are released.
+//
+// Forced difference: Pi collects the `Address` objects `authorize` saw (`WeakRef`s). A Go Address is a value (its key and
+// params), so nothing identifies it to a weak pointer; what the route keeps of an address is its entries in the route's
+// `addresses`, `keys` and `links`, and the case asserts that these are empty.
 func TestRouteGCAFailedOrSuspendedAddressKeepsNoRouteStateOnceItsHoldersAreReleased(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		r := relay(t, relayedOptions{Resolve: func(address contracts.Address, worker func() resolved, _ context.Context) (resolved, error) {

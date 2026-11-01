@@ -169,6 +169,63 @@ func TestStagingRecordsWithoutActivatingNoNativeOpensNoReferenceBindsNoDocumentI
 	}
 }
 
+// Own test (Pi's `INERT`, `staging.ts`: every property and call of a handle of a recording `self` gives the proxy again, so
+// `self.state(D).value` inside a factory is harmless while staging): a factory that reads and changes the handles it
+// declares is not a staging failure; the plugin swaps.
+func TestStagingAFactoryThatUsesTheHandlesItDeclaresIsInertNotAFailure(t *testing.T) {
+	chordStore := memoryStore(t)
+	items, err := store.DefineTable("items", store.TableOptions{Version: 1, Columns: []store.ColumnProp{store.Col("id", store.Str()), store.Col("name", store.Str())}, Key: []string{"id"}})
+	must(t, err)
+	single := stagingDoc(t, "single", 1, nil)
+	keyed, err := documents.DefineState("keyed", documents.StateOptions{
+		Schema: contracts.Obj(contracts.Prop("n", contracts.Int())), Version: 1, Keyed: true,
+		Initial: func() *delta.JsonObject { return jsonObject("n", float64(0)) },
+	})
+	must(t, err)
+	var runs atomic.Int32
+	uses := func(self StoreSelf) {
+		runs.Add(1)
+		// A real attempt's calls would run its transactions and queries: only the recording's are made.
+		_, recording := self.(*recordingSelf)
+		singleHandle := self.State(single).(*documents.Singleton)
+		_, _ = singleHandle.Value()
+		keyedHandle := self.State(keyed).(*documents.Keyed)
+		table := self.Table(items)
+		if !recording {
+			return
+		}
+		_, _ = singleHandle.Watch(background)
+		_, _ = singleHandle.Change(func(draft *delta.Object) (any, error) { return nil, nil }, background)
+		_ = singleHandle.Retire(background)
+		_, _ = keyedHandle.Get("a", background)
+		_, _ = keyedHandle.At("a")
+		_, _, _ = keyedHandle.Keys(background).Next(background)
+		_, _ = keyedHandle.Change("a", func(draft *delta.Object) (any, error) { return nil, nil }, background)
+		_ = keyedHandle.Retire("a", background)
+		_, _ = table.Get("a", background)
+		_, _ = table.Count(store.NewQuery(items), background)
+		_ = table.AssertVersion()
+	}
+	host := newHost(t, HostOptions{Store: chordStore, OnError: noopOnError})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/app", Facet: stagingServeStore("v1", uses)}}, background))
+	ref := mustGet(t, host, stagingStore, jsonObject())
+	report, err := host.Reload([]HostFacet{{Name: "@test/app", Facet: stagingServeStore("v2", uses)}}, background, ReloadOptions{})
+	must(t, err)
+	if len(report.Failed) != 0 {
+		t.Fatalf("failed = %v, want none: a recorded factory's handles are inert", failedMessages(report.Failed))
+	}
+	if want := []ReloadedObject{{Object: "app.store", Kind: ReloadSwapped}}; !reflect.DeepEqual(report.Objects, want) {
+		t.Fatalf("objects = %+v, want %+v", report.Objects, want)
+	}
+	if label := memberOf(t, ref, "label"); label != "v2" {
+		t.Fatalf("label = %v, want v2", label)
+	}
+	if runs.Load() != 3 {
+		t.Fatalf("the factory ran %d times, want 3 (the first attempt, staging, the swapped attempt)", runs.Load())
+	}
+}
+
 // Mirrors "staging: recorded declarations decide the fate › a table of the new factory at a newer version than the store's restarts the object (its eager migration)".
 func TestStagingATableOfTheNewFactoryAtANewerVersionThanTheStoresRestartsTheObject(t *testing.T) {
 	chordStore := memoryStore(t)
