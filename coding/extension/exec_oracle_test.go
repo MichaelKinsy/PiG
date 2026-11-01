@@ -66,9 +66,14 @@ func execScenarios(dir string) []execScenario {
 		{Command: "sh", Args: []string{"-c", "exit 7"}, CWD: dir},
 	}...)
 	// maxBuffer: caps below, at and above the output, caps that split a character (e2 82 ac, f0 9f 99 82), a flood that only the cap ends, a zero cap, and values execCommand rejects.
-	for _, script := range []string{"printf 'a€🙂'", "printf 'a€🙂' >&2", "printf 'ab' ; printf 'cd' >&2", "printf '\\342'; printf '\\360' >&2", "printf '\\342\\202'", "yes", "yes >&2", "yes; echo done", "printf x"} {
+	// An endless writer that is a child of sh (`yes`, `yes >&2` under dash) has no fixed result in Pi: exec.ts closes the pipes
+	// (Node's destroy() closes the descriptor at once) and signals the child a few microseconds later, so on a busy host the writer
+	// can die of SIGPIPE and sh can exit with that status, 141, before SIGTERM lands; Pi's own runs show both 1 and 141. `exec yes` makes sh the
+	// writer, which ends by a signal or by EPIPE and so resolves as 1 whichever comes first, and `yes; echo done` leaves sh to die of
+	// the SIGPIPE its own write meets, so neither depends on that race.
+	for _, script := range []string{"printf 'a€🙂'", "printf 'a€🙂' >&2", "printf 'ab' ; printf 'cd' >&2", "printf '\\342'; printf '\\360' >&2", "printf '\\342\\202'", "exec yes", "exec yes >&2", "yes; echo done", "printf x"} {
 		limits := []float64{0, 1, 2, 3, 4, 5, 8, 9, 1000, 536870888}
-		if strings.HasPrefix(script, "yes") {
+		if strings.Contains(script, "yes") {
 			// The cap alone ends an endless writer.
 			limits = limits[:len(limits)-1]
 		}
