@@ -367,6 +367,8 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 The Node extension runtime serves TypeBox for the `typebox`, `typebox/value`, `typebox/compile`, and `@sinclair/typebox*` specifiers, as Pi does. `coding/extension/host/subprocess/runtime-node/shims/typebox*.mjs` are an esbuild bundle of the npm package `typebox@1.3.27` (integrity `sha512-zu+jc1pcy4UiNThxikUr36f0Rybk9PEeCg/NE6adeWr/SKsdNO4EzZHYRDlv2YCVAfj3Odq3dESSo/jNyoBXzA==`), produced by `automation/gen/vendor-typebox.sh`. The format checks of `schema/formats` (`schema/formats/typebox_*.go` and `schema/formats/internal/idna`) are Go translations of the format checks Pi's `packages/schema` adapted from TypeBox 1.3.27.
 
+The plugins component's Node subprocess (`chord/nextnode/plugins/node/pi/node_modules/typebox`) carries the same npm package, unbundled (its 691 `.mjs` modules, `package.json` and `license`), with the integrity checked by `automation/gen/vendor-chord-plugins-node.sh`. It does not reuse the bundle above: the bundle is served by the extension runtime's own loader hook, which aliases `typebox`, `typebox/value` and `typebox/compile` only, while Pi's chord sources (vendored there byte for byte) also import `typebox/error` and `typebox/schema` and resolve `typebox` as a package next to them, as Pi lays them out.
+
 ```text
 The MIT License (MIT)
 
@@ -389,6 +391,36 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+```
+
+## @earendil-works/pi-telemetry 1.4.0
+
+The plugins component's Node subprocess runs Pi's chord host, which imports Pi's telemetry contracts. `chord/nextnode/plugins/node/pi/node_modules/@earendil-works/pi-telemetry` is the npm package `@earendil-works/pi-telemetry@1.4.0` (the version Pi's `packages/chord/package.json` depends on, checked by `automation/gen/vendor-chord-plugins-node.sh`): its `package.json` and its compiled `dist/*.js` modules except `dist/testing/`, unmodified.
+
+The package declares `"license": "MIT"` (author Mario Zechner, repository `earendil-works/pi`, directory `packages/telemetry`) and its README's License section says `MIT`; the npm tarball ships no license file. The license text is the `LICENSE` of the repository it is published from, `earendil-works/pi`:
+
+```text
+MIT License
+
+Copyright (c) 2025 Mario Zechner
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
 ## JSON-Schema-Test-Suite
@@ -749,3 +781,12 @@ Distributed files: `third_party/semver/`, a package of the root module. The dire
 
 - Copyright (C) 2014-2019 Matt Butcher and Matt Farina.
 - License: MIT, in `third_party/semver/LICENSE.txt` and `LICENSES/MIT.txt`.
+
+## evanw/esbuild v0.28.2 (plugin builds)
+
+Source: <https://github.com/evanw/esbuild/tree/v0.28.2>
+
+Linked as the Go module `github.com/evanw/esbuild` (its `pkg/api`) by `chord/nextnode/plugins`, which builds a plugin facet as Pi's `build.ts` does with esbuild 0.28.2.
+
+- Copyright (c) 2020 Evan Wallace.
+- License: MIT, in `LICENSES/MIT.txt`.
