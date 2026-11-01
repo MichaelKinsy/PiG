@@ -6,15 +6,27 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
-	"github.com/MichaelKinsy/PiG/internal/typebox"
+	"github.com/MichaelKinsy/PiG/schema"
 )
 
 // Ports packages/chord/test/next/contracts/schema.test.ts. The Static<> checks and expectTypeOf are type-level only
-// (designed out: a Go schema is data, values are JSON). TypeBox's compiler is typebox.Check over the schema node;
-// the bytes leaf is checked natively by contracts.CheckBytes.
+// (designed out: a Go schema is data, values are JSON). pi-schema's `compile(schema).check(value)` is
+// schema.Compile(node, ...).Check(value); the bytes leaf is checked natively, as pi-schema checks a Uint8Array.
+
+// compiled is pi-schema's `compile(schema)` over a schema's node.
+func compiled(t testing.TB, value contracts.Schema) *schema.Validator {
+	t.Helper()
+	return must(schema.Compile(value.Node, schema.CompileOptions{}))
+}
+
+// passes is `compile(schema).check(value)`.
+func passes(t testing.TB, value contracts.Schema, data any) bool {
+	t.Helper()
+	return must(compiled(t, value).Check(data))
+}
 
 func TestSchemaHelpers(t *testing.T) {
-	t.Run("produce ordinary TypeBox schemas with bounds under their JSON Schema names", func(t *testing.T) {
+	t.Run("produce plain JSON Schema with bounds under their JSON Schema names", func(t *testing.T) {
 		sameJSON(t, contracts.Str(contracts.Min(1), contracts.Max(3), contracts.Pattern("^a")),
 			`{"type":"string","minLength":1,"maxLength":3,"pattern":"^a"}`)
 		sameJSON(t, contracts.Num(contracts.Min(0)), `{"type":"number","minimum":0}`)
@@ -49,11 +61,14 @@ func TestSchemaHelpers(t *testing.T) {
 
 	t.Run("obj() is always closed and opt() makes a field optional", func(t *testing.T) {
 		schema := contracts.Obj(contracts.Prop("a", contracts.Str()), contracts.Prop("b", contracts.Opt(contracts.Int())))
-		sameJSON(t, schema, `{"type":"object","required":["a"],"properties":{"a":{"type":"string"},"b":{"type":"integer"}},"additionalProperties":false}`)
-		if !typebox.Check(schema.Node, delta.JsonObjectOf("a", "x")) {
+		sameJSON(t, schema, `{"type":"object","properties":{"a":{"type":"string"},"b":{"type":"integer"}},"required":["a"],"additionalProperties":false}`)
+		if got := schemaKeys(schema); !reflect.DeepEqual(got, []string{"type", "properties", "required", "additionalProperties"}) {
+			t.Fatalf("keys = %v, want pi-schema's builder order", got)
+		}
+		if !passes(t, schema, delta.JsonObjectOf("a", "x")) {
 			t.Fatal("{a} should pass")
 		}
-		if typebox.Check(schema.Node, delta.JsonObjectOf("a", "x", "c", 1.0)) {
+		if passes(t, schema, delta.JsonObjectOf("a", "x", "c", 1.0)) {
 			t.Fatal("{a, c} should fail")
 		}
 	})
@@ -67,36 +82,35 @@ func TestSchemaHelpers(t *testing.T) {
 		sameJSON(t, optional, `{"type":"integer"}`)
 	})
 
-	t.Run("TypeBox's checker works unchanged", func(t *testing.T) {
+	t.Run("Static gives the values' type; pi-schema's compiler checks them", func(t *testing.T) {
 		schema := contracts.Obj(
 			contracts.Prop("kind", contracts.OneOf("chat", "agent")),
 			contracts.Prop("n", contracts.Opt(contracts.Int())),
 			contracts.Prop("tags", contracts.Arr(contracts.Str())),
+			contracts.Prop("data", contracts.Bytes()),
 		)
-		if !typebox.Check(schema.Node, delta.JsonObjectOf("kind", "chat", "tags", []any{})) {
+		if !passes(t, schema, delta.JsonObjectOf("kind", "chat", "tags", []any{}, "data", make([]byte, 1))) {
 			t.Fatal("value should pass")
 		}
-		if typebox.Check(schema.Node, delta.JsonObjectOf("kind", "other", "tags", []any{})) {
+		if passes(t, schema, delta.JsonObjectOf("kind", "other", "tags", []any{}, "data", make([]byte, 1))) {
 			t.Fatal("kind outside the union should fail")
 		}
 	})
 }
 
 func TestSchemaBytes(t *testing.T) {
-	t.Run("is the data marker", func(t *testing.T) {
-		schema := contracts.Bytes(contracts.Min(1), contracts.Max(2))
-		if got := stringify(t, schema.Node); got != `{"type":"bytes","minLength":1,"maxLength":2}` {
+	t.Run("is plain data: the marker and nothing else", func(t *testing.T) {
+		marker := contracts.Bytes(contracts.Min(1), contracts.Max(2))
+		if got := stringify(t, marker.Node); got != `{"type":"bytes","minLength":1,"maxLength":2}` {
 			t.Fatalf("marker = %s", got)
 		}
-		if got := schema.Node.(*delta.JsonObject).Keys(); !reflect.DeepEqual(got, []string{"type", "minLength", "maxLength"}) {
+		if got := schemaKeys(marker); !reflect.DeepEqual(got, []string{"type", "minLength", "maxLength"}) {
 			t.Fatalf("keys = %v", got)
 		}
-		// Upstream attaches the check as a non-enumerable `~refine`; a Go schema holds data only and
-		// contracts.CheckBytes reads the marker (designed out: no executable feature).
 	})
 
 	t.Run("checks Uint8Array (a []byte) and the length bounds", func(t *testing.T) {
-		schema := contracts.Bytes(contracts.Min(1), contracts.Max(2))
+		validator := compiled(t, contracts.Bytes(contracts.Min(1), contracts.Max(2)))
 		for _, tc := range []struct {
 			name  string
 			value any
@@ -110,18 +124,31 @@ func TestSchemaBytes(t *testing.T) {
 			{"a string", "ab", false},
 			{"nil", nil, false},
 		} {
-			if got := contracts.CheckBytes(schema, tc.value); got != tc.want {
-				t.Errorf("%s: CheckBytes = %v, want %v", tc.name, got, tc.want)
+			if got := must(validator.Check(tc.value)); got != tc.want {
+				t.Errorf("%s: Check = %v, want %v", tc.name, got, tc.want)
 			}
 		}
-		if !contracts.CheckBytes(contracts.Bytes(), []byte{}) {
+		if !passes(t, contracts.Bytes(), []byte{}) {
 			t.Error("an unbounded bytes accepts the empty value")
 		}
-		if contracts.CheckBytes(contracts.Str(), []byte{1}) {
+		if passes(t, contracts.Str(), []byte{1}) {
 			t.Error("a string schema is no bytes schema")
 		}
 	})
+
+	t.Run("checks inside a record (slices.md L1 carry-over)", func(t *testing.T) {
+		validator := compiled(t, contracts.Map(contracts.Bytes(contracts.Max(1))))
+		if !must(validator.Check(delta.JsonObjectOf("a", make([]byte, 1)))) {
+			t.Error("a one-byte value fails")
+		}
+		if must(validator.Check(delta.JsonObjectOf("a", make([]byte, 2)))) {
+			t.Error("a two-byte value passes")
+		}
+	})
 }
+
+// schemaKeys are the keywords of a schema's node, in order.
+func schemaKeys(value contracts.Schema) []string { return value.Node.(*delta.JsonObject).Keys() }
 
 func TestSchemaMethod(t *testing.T) {
 	t.Run("an omitted side is null", func(t *testing.T) {

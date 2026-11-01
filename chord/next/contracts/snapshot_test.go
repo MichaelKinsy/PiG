@@ -6,15 +6,14 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
-	"github.com/MichaelKinsy/PiG/internal/typebox"
+	"github.com/MichaelKinsy/PiG/schema"
 )
 
 // Ports packages/chord/test/next/contracts/snapshot.test.ts.
 //
-// Designed out (no Go input): TypeBox refinements, codecs and unsafe types (executable features a Go schema, which is
-// JSON data, cannot carry: "refinement", "codec", "Unsafe"); symbol keys and accessor properties; a `maximum:
-// undefined` datum (Go has no undefined; the NaN case covers a non-JSON datum); the non-enumerable `~refine` of a
-// bytes schema (the bytes check is contracts.CheckBytes, read from the marker).
+// Designed out (no Go input): the refusal of a non-enumerable key ("non-enumerable key (a TypeBox refinement)": Go has no
+// non-enumerable property, a Schema holds its keys as data and its `Optional` flag is no key); symbol keys and
+// accessor properties; a `maximum: undefined` datum (Go has no undefined; the NaN case covers a non-JSON datum).
 
 func TestSnapshotVocabulary(t *testing.T) {
 	t.Run("accepts primitives, arrays, tuples, objects, records, unions, intersections, $defs/$ref, constraints", func(t *testing.T) {
@@ -30,6 +29,7 @@ func TestSnapshotVocabulary(t *testing.T) {
 			"object":    raw(t, `{"type":"object","properties":{},"minProperties":1,"maxProperties":2,"$comment":"c","deprecated":true,"examples":[{}]}`),
 			"record":    contracts.Map(contracts.Int()),
 			"bytes":     contracts.Bytes(contracts.Max(4)),
+			"bytes map": contracts.Map(contracts.Bytes()),
 		}
 		for name, schema := range schemas {
 			if _, err := contracts.SnapshotSchema(schema, "s"); err != nil {
@@ -58,6 +58,7 @@ func TestSnapshotVocabulary(t *testing.T) {
 		{"non-JSON type", text(`{"type":"bigint"}`), `unsupported type "bigint"`},
 		{"undefined", text(`{"type":"undefined"}`), `unsupported type "undefined"`},
 		{"function", text(`{"type":"function","parameters":[],"returnType":{"type":"null"}}`), "s: unsupported"},
+		{"opt(...) outside an object", func(*testing.T) any { return contracts.Opt(contracts.Str()) }, "s: expected a schema"},
 		{"non-JSON data", func(*testing.T) any { return delta.JsonObjectOf("type", "number", "default", math.NaN()) }, "s.default: expected JSON data"},
 		{"foreign prototype", func(*testing.T) any { return struct{}{} }, "s: expected a schema"},
 		{"array as schema", func(*testing.T) any { return []any{} }, "s: expected a schema"},
@@ -108,7 +109,7 @@ func TestSnapshotClosedArguments(t *testing.T) {
 	})
 
 	t.Run("accepts a raw closed object and records", func(t *testing.T) {
-		_, err := contracts.SnapshotArguments(tbClosedObject(contracts.Prop("a", str())), "m")
+		_, err := contracts.SnapshotArguments(contracts.Obj(contracts.Prop("a", str())), "m")
 		wantNoError(t, err)
 		_, err = contracts.SnapshotArguments(contracts.Obj(contracts.Prop("tags", contracts.Map(str()))), "m")
 		wantNoError(t, err)
@@ -142,7 +143,7 @@ func TestSnapshots(t *testing.T) {
 		if snapshot.Schema.Node == app.Node {
 			t.Fatal("the snapshot shares the app's schema object")
 		}
-		if !typebox.Check(snapshot.Schema.Node, delta.JsonObjectOf("text", "", "tags", []any{})) {
+		if !must(must(schema.Compile(snapshot.Schema.Node, schema.CompileOptions{})).Check(delta.JsonObjectOf("text", "", "tags", []any{}))) {
 			t.Fatal("the snapshot followed the app's later changes")
 		}
 	})
@@ -158,15 +159,16 @@ func TestSnapshots(t *testing.T) {
 		sameAs(t, copied, js(t, `{"a":[1]}`))
 	})
 
-	t.Run("keep the bytes check in the marker; no app callback exists", func(t *testing.T) {
+	t.Run("copy a bytes leaf as data: the compiled check comes from its keywords", func(t *testing.T) {
 		snapshot := must(contracts.SnapshotSchema(contracts.Bytes(contracts.Max(2)), "s"))
-		if !contracts.CheckBytes(snapshot.Schema, make([]byte, 2)) || contracts.CheckBytes(snapshot.Schema, make([]byte, 3)) {
+		sameAs(t, snapshot.Schema.Node, js(t, `{"type":"bytes","maxLength":2}`))
+		if !passes(t, snapshot.Schema, make([]byte, 2)) || passes(t, snapshot.Schema, make([]byte, 3)) {
 			t.Fatal("the snapshot's bytes bounds are wrong")
 		}
-		// A hand-written marker works too: the check comes from the marker.
-		marker := must(contracts.SnapshotSchema(raw(t, `{"type":"bytes","minLength":1}`), "s")).Schema
-		if contracts.CheckBytes(marker, make([]byte, 0)) || !contracts.CheckBytes(marker, make([]byte, 1)) {
-			t.Fatal("the hand-written marker's bounds are wrong")
+		// A record of bytes (slices.md L1 carry-over: refused while bytes carried a TypeBox refinement).
+		record := must(contracts.SnapshotSchema(contracts.Map(contracts.Bytes(contracts.Min(1))), "s")).Schema
+		if !passes(t, record, delta.JsonObjectOf("a", make([]byte, 1))) || passes(t, record, delta.JsonObjectOf("a", make([]byte, 0))) {
+			t.Fatal("the record's bytes bounds are wrong")
 		}
 	})
 
@@ -196,13 +198,6 @@ func TestSnapshots(t *testing.T) {
 		}
 		if union(contracts.Str(), contracts.Int()) == union(contracts.Int(), contracts.Str()) {
 			t.Fatal("union order is part of the normal form")
-		}
-		sameAs(t, must(contracts.SnapshotSchema(contracts.Opt(contracts.Str()), "s")).Normal, js(t, `{"type":"string"}`))
-	})
-
-	t.Run("a snapshot's schema is no longer optional", func(t *testing.T) {
-		if must(contracts.SnapshotSchema(contracts.Opt(contracts.Str()), "s")).Schema.Optional {
-			t.Fatal("the snapshot kept the optional marker")
 		}
 	})
 }

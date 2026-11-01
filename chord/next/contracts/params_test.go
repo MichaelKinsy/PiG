@@ -38,7 +38,7 @@ func TestParamsPolicy(t *testing.T) {
 		{"arrays", contracts.Arr(contracts.Str())},
 		{"bytes", contracts.Bytes()},
 		{"numeric literals", contracts.OneOf(1, 2)},
-		{"defaults", raw(t, `{"type":"string","default":"x"}`)},
+		{"defaults", contracts.Str(contracts.Default("x"))},
 	} {
 		t.Run("refuses "+tc.name+" at declaration", func(t *testing.T) {
 			_, err := declareRemote("n", 1, props(contracts.Prop("p", tc.schema)), paramsVariants())
