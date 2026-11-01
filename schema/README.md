@@ -7,7 +7,7 @@ JSON Schema builders and validation without code generation, a Go port of Pi's `
 - Errors are JSON Pointer paths. A missing or unknown field is reported at the field. The errors, their order and their messages equal Pi's (`TestErrorsMatchPi`).
 - A schema is read, never modified.
 - `Check` is the fast path: a boolean, no allocation for a schema without `pattern` or `format`. `Errors` explains a failure and returns nothing for a valid value. It is built on the first failure and kept.
-- Format checks are an optional import (`schema/formats`); without them `format` is an annotation, as 2020-12 specifies.
+- Format checks are an optional import (`schema/formats`; every format 2020-12 defines, plus `url` and `json-pointer-uri-fragment`, which TypeBox and ajv-formats also check); without them `format` is an annotation, as 2020-12 specifies.
 
 ## Usage
 
@@ -27,7 +27,7 @@ ok, err := read.Check(value)    // bool
 errs, err := read.Errors(value) // []ValidationError{{Path: "/path", Keyword: "required", Message: "missing"}, ...}
 ```
 
-`Compile` takes any JSON Schema (a `bool`, an `*Object` or a `map[string]any`), built with the builders or not, and returns an error for a malformed schema or a `$ref` that names nothing.
+`Compile` takes any JSON Schema (a `bool`, an `*Object` or a `map[string]any`), built with the builders or not, and returns an error for a malformed schema or a `$ref` that names nothing. With `CompileOptions{UnresolvedRefs: schema.UnresolvedRefsReject}` such a `$ref` compiles as `false` instead: only values at that place fail, with the error `unresolved reference <ref>`, and the rest of the schema works. Use it for schemas from other systems, such as MCP servers, whose references may dangle.
 
 `Check` and `Errors` return an error only where Pi's `check` and `errors` throw: a part of the schema that `Compile` never compiled and that is malformed or names nothing (a `$dynamicRef` target compiled on first use; an `if` that is neither an object nor a boolean, read by the explanation). No panic leaves the package for a schema `Compile` accepted.
 
@@ -41,7 +41,18 @@ Strings are UTF-8; a lone UTF-16 surrogate is held as WTF-8, as `internal/jsstri
 
 ### Builders
 
-`Str`, `Num`, `Int`, `Bool`, `Nul`, `Unknown`, `Lit`, `OneOf`, `Obj` (with `Prop`, `Opt`, `Open`), `Arr`, `Tuple`, `Map`, `Union`, `Nullable` and `Bytes` return the same JSON Schema as Pi's builders. Options (`Title`, `Description`, `Examples`, `Deprecated`, `Default`, `MinLength`, `MaxLength`, `Pattern`, `Format`, `Minimum`, `Maximum`, `ExclusiveMinimum`, `ExclusiveMaximum`, `MultipleOf`, `MinItems`, `MaxItems`, `UniqueItems`) are applied in call order. A `Default` is an annotation; validation never inserts it.
+`Str`, `Num`, `Int`, `Bool`, `Nul`, `Unknown`, `Lit`, `OneOf`, `Obj` (with `Prop`, `Opt`, `Open`), `Arr`, `Tuple`, `Map`, `Union`, `Nullable` and `Bytes` return the same JSON Schema as Pi's builders, member order included. Options are applied in call order, as the members of the options object Pi's builders spread are, so `Str(Description("d"), MinLength(1))` and `Str(MinLength(1), Description("d"))` write their members in that order. Each builder takes the options that fit its type, and a misplaced option does not compile (`Str(MinItems(1))`, `Num(Open())`):
+
+| option | builders |
+|---|---|
+| `Title`, `Description`, `Examples`, `Deprecated`, `Default` | every builder |
+| `MinLength`, `MaxLength` | `Str`, `Bytes` |
+| `Pattern`, `Format` | `Str` |
+| `Minimum`, `Maximum`, `ExclusiveMinimum`, `ExclusiveMaximum`, `MultipleOf` | `Num`, `Int` |
+| `MinItems`, `MaxItems`, `UniqueItems` | `Arr` |
+| `Open` | `Obj` |
+
+A `Default` is an annotation; validation never inserts it. `Obj` takes its properties as a `Properties` slice in declaration order; its `properties` and `required` follow JavaScript's own-key order (array-index names first), as Pi's `obj()` reads `Object.entries`.
 
 The static types of Pi's builders (`Static<S>`) are TypeScript compile-time types and have no Go form.
 

@@ -2,25 +2,119 @@ package schema
 
 // Ports packages/schema/src/builders.ts
 //
-// Schema builders: short functions that return plain JSON Schema objects. The objects are ordinary data: they serialize as JSON and compile with Compile like any other schema. An Option is applied in call order, so members appear in the order the caller wrote them. An Option sets its keyword on whatever schema it is given; a keyword that does not apply to the schema's type (`MinItems` on `Str`) is written and has no effect on a value of another type.
+// Schema builders: short functions that return plain JSON Schema objects. The objects are ordinary data: they serialize as JSON and compile with Compile like any other schema.
+//
+// Options are applied in call order, so the members of a schema appear in the order the caller wrote them, as the members of the options object Pi's builders spread do. Each builder takes the options that apply to its type: the annotations (Title, Description, Examples, Deprecated, Default) fit every builder, MinLength and MaxLength fit Str and Bytes, Pattern and Format fit Str, the number bounds fit Num and Int, the item bounds fit Arr and Open fits Obj. A misplaced option is a compile error, as an excess property of Pi's option types is.
 
 import "github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 
 // Schema is a JSON Schema object returned by a builder.
 type Schema = *Object
 
-// optionSet is what an Option writes to: the schema under construction and the builder flags.
-type optionSet struct {
-	object *Object
-	open   bool
+// keywordOption is an option that writes one member of a builder's schema.
+type keywordOption interface {
+	keyword() (name string, value any)
 }
 
-// Option sets one keyword or builder flag of a builder's schema. Annotation options (Title, Description, Examples, Deprecated, Default) describe the schema and never change what it accepts; a `Default` is an annotation for tools and forms, validation never inserts it.
-type Option func(*optionSet)
-
-func keyword(name string, value any) Option {
-	return func(s *optionSet) { s.object.Set(name, value) }
+// AnnotationOption is an option every builder accepts: it describes the schema and never changes what it accepts. It satisfies every builder's option type.
+type AnnotationOption interface {
+	StrOption
+	NumberOption
+	ArrayOption
+	BytesOption
+	ObjectOption
+	annotation()
 }
+
+// LengthOption is an option of Str and Bytes.
+type LengthOption interface {
+	StrOption
+	BytesOption
+}
+
+// StrOption is an option of Str.
+type StrOption interface {
+	keywordOption
+	forStr()
+}
+
+// NumberOption is an option of Num and Int.
+type NumberOption interface {
+	keywordOption
+	forNumber()
+}
+
+// ArrayOption is an option of Arr.
+type ArrayOption interface {
+	keywordOption
+	forArray()
+}
+
+// BytesOption is an option of Bytes.
+type BytesOption interface {
+	keywordOption
+	forBytes()
+}
+
+// ObjectOption is an option of Obj.
+type ObjectOption interface {
+	keywordOption
+	forObject()
+}
+
+// annotation is a member that fits every builder.
+type annotation struct {
+	name  string
+	value any
+}
+
+func (a annotation) keyword() (string, any) { return a.name, a.value }
+func (annotation) annotation()              {}
+func (annotation) forStr()                  {}
+func (annotation) forNumber()               {}
+func (annotation) forArray()                {}
+func (annotation) forBytes()                {}
+func (annotation) forObject()               {}
+
+// lengthBound is a length bound of a string or of bytes.
+type lengthBound struct {
+	name  string
+	value float64
+}
+
+func (b lengthBound) keyword() (string, any) { return b.name, b.value }
+func (lengthBound) forStr()                  {}
+func (lengthBound) forBytes()                {}
+
+// stringKeyword is a member only a string has.
+type stringKeyword struct{ name, value string }
+
+func (k stringKeyword) keyword() (string, any) { return k.name, k.value }
+func (stringKeyword) forStr()                  {}
+
+// numberBound is a bound of a number or an integer.
+type numberBound struct {
+	name  string
+	value float64
+}
+
+func (b numberBound) keyword() (string, any) { return b.name, b.value }
+func (numberBound) forNumber()               {}
+
+// itemKeyword is a bound of an array.
+type itemKeyword struct {
+	name  string
+	value any
+}
+
+func (k itemKeyword) keyword() (string, any) { return k.name, k.value }
+func (itemKeyword) forArray()                {}
+
+// openOption lets an Obj schema allow other properties; it writes no member.
+type openOption struct{}
+
+func (openOption) keyword() (string, any) { return "", nil }
+func (openOption) forObject()             {}
 
 // scalar reads a Go number as the float64 JSON holds.
 func scalar(v any) any {
@@ -31,122 +125,112 @@ func scalar(v any) any {
 }
 
 // Title sets `title`.
-func Title(text string) Option { return keyword("title", text) }
+func Title(text string) AnnotationOption { return annotation{"title", text} }
 
 // Description sets `description`.
-func Description(text string) Option { return keyword("description", text) }
+func Description(text string) AnnotationOption { return annotation{"description", text} }
 
 // Examples sets `examples`.
-func Examples(values ...any) Option {
+func Examples(values ...any) AnnotationOption {
 	list := make([]any, len(values))
 	for i, v := range values {
 		list[i] = scalar(v)
 	}
-	return keyword("examples", list)
+	return annotation{"examples", list}
 }
 
 // Deprecated sets `deprecated`.
-func Deprecated(deprecated bool) Option { return keyword("deprecated", deprecated) }
+func Deprecated(deprecated bool) AnnotationOption { return annotation{"deprecated", deprecated} }
 
-// Default sets `default`.
-func Default(value any) Option { return keyword("default", scalar(value)) }
+// Default sets `default`, an annotation for tools and forms: validation never inserts it.
+func Default(value any) AnnotationOption { return annotation{"default", scalar(value)} }
 
-// MinLength sets `minLength` of a string or bytes, in code points (bytes: in bytes).
-func MinLength(n int) Option { return keyword("minLength", float64(n)) }
-
-// MaxLength sets `maxLength` of a string or bytes.
-func MaxLength(n int) Option { return keyword("maxLength", float64(n)) }
-
-// Pattern sets `pattern` of a string.
-func Pattern(source string) Option { return keyword("pattern", source) }
-
-// Format sets `format` of a string.
-func Format(name string) Option { return keyword("format", name) }
-
-// Minimum sets `minimum` of a number.
-func Minimum(n float64) Option { return keyword("minimum", n) }
-
-// Maximum sets `maximum` of a number.
-func Maximum(n float64) Option { return keyword("maximum", n) }
-
-// ExclusiveMinimum sets `exclusiveMinimum` of a number.
-func ExclusiveMinimum(n float64) Option { return keyword("exclusiveMinimum", n) }
-
-// ExclusiveMaximum sets `exclusiveMaximum` of a number.
-func ExclusiveMaximum(n float64) Option { return keyword("exclusiveMaximum", n) }
-
-// MultipleOf sets `multipleOf` of a number.
-func MultipleOf(n float64) Option { return keyword("multipleOf", n) }
-
-// MinItems sets `minItems` of an array.
-func MinItems(n int) Option { return keyword("minItems", float64(n)) }
-
-// MaxItems sets `maxItems` of an array.
-func MaxItems(n int) Option { return keyword("maxItems", float64(n)) }
-
-// UniqueItems sets `uniqueItems` of an array.
-func UniqueItems(unique bool) Option { return keyword("uniqueItems", unique) }
-
-// ObjOption is an option of Obj: any Option, or Open.
-type ObjOption interface{ applyObject(*optionSet) }
-
-func (o Option) applyObject(s *optionSet) { o(s) }
-
-type openOption struct{}
-
-func (openOption) applyObject(s *optionSet) { s.open = true }
-
-// Open lets an Obj schema allow properties it does not declare, as tool schemas from other systems often do.
-func Open() ObjOption { return openOption{} }
-
-func build(object *Object, options []Option) *Object {
-	set := optionSet{object: object}
-	for _, option := range options {
-		option(&set)
-	}
-	return object
+// MinLength sets `minLength` of a string, in code points, or of bytes, in bytes.
+func MinLength(n int) LengthOption {
+	return lengthBound{"minLength", float64(n)}
 }
 
-func typed(name string, options []Option) Schema {
-	object := build(chordjson.ObjectOf("type", name), options)
+// MaxLength sets `maxLength` of a string, in code points, or of bytes, in bytes.
+func MaxLength(n int) LengthOption {
+	return lengthBound{"maxLength", float64(n)}
+}
+
+// Pattern sets `pattern` of a string.
+func Pattern(source string) StrOption { return stringKeyword{"pattern", source} }
+
+// Format sets `format` of a string.
+func Format(name string) StrOption { return stringKeyword{"format", name} }
+
+// Minimum sets `minimum` of a number.
+func Minimum(n float64) NumberOption { return numberBound{"minimum", n} }
+
+// Maximum sets `maximum` of a number.
+func Maximum(n float64) NumberOption { return numberBound{"maximum", n} }
+
+// ExclusiveMinimum sets `exclusiveMinimum` of a number.
+func ExclusiveMinimum(n float64) NumberOption { return numberBound{"exclusiveMinimum", n} }
+
+// ExclusiveMaximum sets `exclusiveMaximum` of a number.
+func ExclusiveMaximum(n float64) NumberOption { return numberBound{"exclusiveMaximum", n} }
+
+// MultipleOf sets `multipleOf` of a number.
+func MultipleOf(n float64) NumberOption { return numberBound{"multipleOf", n} }
+
+// MinItems sets `minItems` of an array.
+func MinItems(n int) ArrayOption { return itemKeyword{"minItems", float64(n)} }
+
+// MaxItems sets `maxItems` of an array.
+func MaxItems(n int) ArrayOption { return itemKeyword{"maxItems", float64(n)} }
+
+// UniqueItems sets `uniqueItems` of an array.
+func UniqueItems(unique bool) ArrayOption { return itemKeyword{"uniqueItems", unique} }
+
+// Open lets an Obj schema allow properties it does not declare, as tool schemas from other systems often do.
+func Open() ObjectOption { return openOption{} }
+
+// with appends the members of options to object in call order.
+func with[O keywordOption](object *Object, options []O) *Object {
+	for _, option := range options {
+		name, value := option.keyword()
+		object.Set(name, value)
+	}
 	return object
 }
 
 // Str is a string, with optional length bounds (in code points), pattern and format.
-func Str(options ...Option) Schema { return typed("string", options) }
+func Str(options ...StrOption) Schema { return with(chordjson.ObjectOf("type", "string"), options) }
 
 // Num is a number within optional bounds.
-func Num(options ...Option) Schema { return typed("number", options) }
+func Num(options ...NumberOption) Schema { return with(chordjson.ObjectOf("type", "number"), options) }
 
 // Int is an integer within optional bounds.
-func Int(options ...Option) Schema { return typed("integer", options) }
+func Int(options ...NumberOption) Schema { return with(chordjson.ObjectOf("type", "integer"), options) }
 
 // Bool is a boolean.
-func Bool(options ...Option) Schema { return typed("boolean", options) }
-
-// Nul is `null`.
-func Nul(options ...Option) Schema { return typed("null", options) }
-
-// Unknown is any value.
-func Unknown(options ...Option) Schema {
-	object := build(&Object{}, options)
-	return object
+func Bool(options ...AnnotationOption) Schema {
+	return with(chordjson.ObjectOf("type", "boolean"), options)
 }
 
+// Nul is `null`.
+func Nul(options ...AnnotationOption) Schema {
+	return with(chordjson.ObjectOf("type", "null"), options)
+}
+
+// Unknown is any value.
+func Unknown(options ...AnnotationOption) Schema { return with(&Object{}, options) }
+
 // Lit is exactly value (a string, number, boolean or nil).
-func Lit(value any, options ...Option) Schema {
-	object := build(chordjson.ObjectOf("const", scalar(value)), options)
-	return object
+func Lit(value any, options ...AnnotationOption) Schema {
+	return with(chordjson.ObjectOf("const", scalar(value)), options)
 }
 
 // OneOf is one of the given values.
-func OneOf(values []any, options ...Option) Schema {
+func OneOf(values []any, options ...AnnotationOption) Schema {
 	list := make([]any, len(values))
 	for i, v := range values {
 		list[i] = scalar(v)
 	}
-	object := build(chordjson.ObjectOf("enum", list), options)
-	return object
+	return with(chordjson.ObjectOf("enum", list), options)
 }
 
 func schemaList(schemas []Schema) []any {
@@ -158,46 +242,41 @@ func schemaList(schemas []Schema) []any {
 }
 
 // Union is any of the given schemas. A union of objects tagged by a Lit property (`{ kind: Lit("text"), ... }`) is checked by the tag: only the branch it selects runs, and its errors are the ones reported.
-func Union(schemas []Schema, options ...Option) Schema {
-	object := build(chordjson.ObjectOf("anyOf", schemaList(schemas)), options)
-	return object
+func Union(schemas []Schema, options ...AnnotationOption) Schema {
+	return with(chordjson.ObjectOf("anyOf", schemaList(schemas)), options)
 }
 
 // Nullable is schema or null.
-func Nullable(schema Schema, options ...Option) Schema {
-	object := build(chordjson.ObjectOf("anyOf", []any{schema, chordjson.ObjectOf("type", "null")}), options)
-	return object
+func Nullable(schema Schema, options ...AnnotationOption) Schema {
+	return with(chordjson.ObjectOf("anyOf", []any{schema, chordjson.ObjectOf("type", "null")}), options)
 }
 
 // Arr is an array of items, with optional length bounds and unique items.
-func Arr(items Schema, options ...Option) Schema {
-	object := build(chordjson.ObjectOf("type", "array", "items", items), options)
-	return object
+func Arr(items Schema, options ...ArrayOption) Schema {
+	return with(chordjson.ObjectOf("type", "array", "items", items), options)
 }
 
 // Tuple is a fixed-length array whose items match items in order.
-func Tuple(items []Schema, options ...Option) Schema {
-	object := build(chordjson.ObjectOf("type", "array", "prefixItems", schemaList(items), "items", false, "minItems", float64(len(items))), options)
-	return object
+func Tuple(items []Schema, options ...AnnotationOption) Schema {
+	return with(chordjson.ObjectOf("type", "array", "prefixItems", schemaList(items), "items", false, "minItems", float64(len(items))), options)
 }
 
 // Map is an object with string keys and values of value (a record).
-func Map(value Schema, options ...Option) Schema {
-	object := build(chordjson.ObjectOf("type", "object", "additionalProperties", value), options)
-	return object
+func Map(value Schema, options ...AnnotationOption) Schema {
+	return with(chordjson.ObjectOf("type", "object", "additionalProperties", value), options)
 }
 
 // Bytes is a []byte with optional length bounds (an extension of JSON Schema for values that never pass through JSON).
-func Bytes(options ...Option) Schema { return typed("bytes", options) }
+func Bytes(options ...BytesOption) Schema { return with(chordjson.ObjectOf("type", "bytes"), options) }
 
-// Property is a property of Obj, in declaration order.
+// Property is a property of Obj.
 type Property struct {
 	Name     string
 	Schema   Schema
 	Optional bool
 }
 
-// Properties are the properties of Obj in declaration order, which is the order of its `properties` and `required` and of the errors it reports.
+// Properties are the properties of Obj in declaration order. The `properties` and `required` of the schema, and so the order of its errors, follow JavaScript's own-key order: array-index names first in ascending order, then the others in declaration order. A name declared twice keeps its first position and its last declaration.
 type Properties []Property
 
 // Prop is a required property of Obj.
@@ -209,29 +288,38 @@ func Opt(name string, schema Schema) Property {
 }
 
 // Obj is a closed object: the given properties (required unless Opt) and no others. The Open option allows other properties, as tool schemas from other systems often do.
-func Obj(properties Properties, options ...ObjOption) Schema {
-	props := &Object{}
-	var required []any
+func Obj(properties Properties, options ...ObjectOption) Schema {
+	props := chordjson.NewObject(len(properties))
+	optional := make(map[string]bool, len(properties))
 	for _, p := range properties {
 		props.Set(p.Name, p.Schema)
-		if !p.Optional {
-			required = append(required, p.Name)
+		optional[p.Name] = p.Optional
+	}
+	var required []any
+	for _, name := range props.Keys() {
+		if !optional[name] {
+			required = append(required, name)
 		}
 	}
+	open := false
 	annotations := &Object{}
-	set := optionSet{object: annotations}
 	for _, option := range options {
-		option.applyObject(&set)
+		if _, ok := option.(openOption); ok {
+			open = true
+			continue
+		}
+		name, value := option.keyword()
+		annotations.Set(name, value)
 	}
 	object := chordjson.ObjectOf("type", "object", "properties", props)
 	if len(required) > 0 {
 		object.Set("required", required)
 	}
-	if !set.open {
+	if !open {
 		object.Set("additionalProperties", false)
 	}
-	for k, v := range annotations.All() {
-		object.Set(k, v)
+	for name, value := range annotations.All() {
+		object.Set(name, value)
 	}
 	return object
 }

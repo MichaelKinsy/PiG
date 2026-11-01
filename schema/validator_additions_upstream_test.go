@@ -120,10 +120,10 @@ func TestErrorMessages(t *testing.T) {
 			return errs[0].Message
 		}
 		for text, want := range map[string]string{
-			`{"type":"array","contains":{"type":"number"}}`:                                         "expected at least 1 matching item",
-			`{"type":"array","contains":{"type":"number"},"minContains":2}`:                         "expected at least 2 matching items",
-			`{"type":"array","contains":{"type":"string"},"maxContains":0,"minContains":0}`:         "expected at most 0 matching items",
-			`{"type":"array","contains":{"type":"number"},"minContains":1,"maxContains":3}`:         "expected between 1 and 3 matching items",
+			`{"type":"array","contains":{"type":"number"}}`:                                 "expected at least 1 matching item",
+			`{"type":"array","contains":{"type":"number"},"minContains":2}`:                 "expected at least 2 matching items",
+			`{"type":"array","contains":{"type":"string"},"maxContains":0,"minContains":0}`: "expected at most 0 matching items",
+			`{"type":"array","contains":{"type":"number"},"minContains":1,"maxContains":3}`: "expected between 1 and 3 matching items",
 		} {
 			if got := at(text); got != want {
 				t.Errorf("%s: message %q, want %q", text, got, want)
