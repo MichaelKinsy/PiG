@@ -148,6 +148,33 @@ func TestAContinuationThatWaitsForTheLineHasEntered(t *testing.T) {
 	g.close()
 }
 
+// A caller whose callback panicked never waits for its release, so it has resumed as far as the delivery goroutine can tell: the
+// outcomes after it are still delivered.
+func TestAPanickingCallbackDoesNotHoldTheOutcomesAfterIt(t *testing.T) {
+	g := openGC(t, 1)
+	id := g.ids[0]
+	panicked := make(chan any, 1)
+	go func() {
+		defer func() { panicked <- recover() }()
+		_, _ = g.session.CommitWith(ctx, func(*session.Transaction) (any, error) { panic("callback bug") }, session.TransactionScope{})
+	}()
+	if got := <-panicked; got != "callback bug" {
+		t.Fatalf("the caller recovered %v, want its callback's panic", got)
+	}
+	later := make(chan error, 1)
+	go func() {
+		_, err := g.session.Commit(ctx, func(tx durable.Tx) (any, error) { return bumpChange(id)(tx) })
+		later <- err
+	}()
+	select {
+	case err := <-later:
+		must(t, err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("a commit after one whose callback panicked never got its outcome")
+	}
+	g.close()
+}
+
 // Pi's guarantee does not depend on how many goroutines a process has, and neither does the Session's: every ordering case
 // again, in a process with more than a hundred and twenty-eight live goroutines, above which the previous mechanism, which read
 // the state of every goroutine, gave the order up.

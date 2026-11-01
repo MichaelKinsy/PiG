@@ -113,8 +113,8 @@ func (cached *CachedStorage) Commit(ctx context.Context, batches [][]durable.Sto
 }
 
 // Published applies a batch Commit stored, when the Session publishes it. Its records are kept as they are, no deep
-// copies: the Session's components that follow the publication, such as the scheduler's live tasks, hold the same
-// records, so a live task's record is in memory once.
+// copies: the cache keeps a copy of each record's struct (a write carries it by value), and what the record references, such
+// as its state and memos, is the write's own, shared and not duplicated.
 func (cached *CachedStorage) Published(writes []durable.StorageWrite) {
 	cached.mu.Lock()
 	defer cached.mu.Unlock()

@@ -131,6 +131,11 @@ func openInternal(t *testing.T, conversations int) (*SessionImpl, *scopedMemory,
 	return kernel, memory, value.([]durable.ConversationId)
 }
 
+// sameError is Pi's `toBe`: the one error value, not one that wraps or equals it.
+func sameError(got, want error) bool {
+	return got == want //nolint:errorlint // identity is what Pi pins: `rejects.toBe(failure)`
+}
+
 func isFailed(err error) (error, bool) {
 	failed, ok := errors.AsType[*durable.SessionFailed](err)
 	if !ok {
@@ -192,7 +197,7 @@ func TestGroupCommitLeavesThePartsAfterOneWhoseAdoptionFailsUnpublished(t *testi
 	// Pi pins the identity of the failure (`rejects.toBe(failure)`): the one error is what the commit rejects with, what fails
 	// the part after it, and what the Session failed and ended with.
 	_, afterErr := after.wait()
-	if cause, ok := isFailed(afterErr); !ok || cause != err {
+	if cause, ok := isFailed(afterErr); !ok || !sameError(cause, err) {
 		t.Fatalf("the part after it got %v, want SessionFailed caused by %v itself", afterErr, err)
 	}
 	publishedMu.Lock()
@@ -201,10 +206,10 @@ func TestGroupCommitLeavesThePartsAfterOneWhoseAdoptionFailsUnpublished(t *testi
 	}
 	publishedMu.Unlock()
 	<-kernel.Closed()
-	if end := kernel.End(); end.Kind != durable.SessionEndFailed || end.Error != err {
+	if end := kernel.End(); end.Kind != durable.SessionEndFailed || !sameError(end.Error, err) {
 		t.Fatalf("session ended %+v, want failed with %v itself", end, err)
 	}
-	if failure := kernel.Failure(); failure != err {
+	if failure := kernel.Failure(); !sameError(failure, err) {
 		t.Fatalf("session failure %v, want %v itself", failure, err)
 	}
 	// All four are durable: reopening recovers the unpublished one.
@@ -251,10 +256,10 @@ func abortStagedAtPublication(memory *scopedMemory, staged **Transaction) {
 func requireFailedWith(t *testing.T, kernel *SessionImpl, err error) {
 	t.Helper()
 	<-kernel.Closed()
-	if end := kernel.End(); end.Kind != durable.SessionEndFailed || end.Error != err {
+	if end := kernel.End(); end.Kind != durable.SessionEndFailed || !sameError(end.Error, err) {
 		t.Fatalf("session ended %+v, want failed with %v itself", end, err)
 	}
-	if failure := kernel.Failure(); failure != err {
+	if failure := kernel.Failure(); !sameError(failure, err) {
 		t.Fatalf("session failure %v, want %v itself", failure, err)
 	}
 }
@@ -290,7 +295,7 @@ func TestGroupCommitFailsTheSessionForADeferredCommitMemoryCannotAdopt(t *testin
 	// Pi pins the identity of the failure: the commit rejects with it, and the part after it fails with it as its cause.
 	if _, afterErr := after.wait(); afterErr == nil {
 		t.Fatal("the commit after the failed one resolved")
-	} else if cause, ok := isFailed(afterErr); !ok || cause != err {
+	} else if cause, ok := isFailed(afterErr); !ok || !sameError(cause, err) {
 		t.Fatalf("the commit after it got %v, want SessionFailed caused by %v itself", afterErr, err)
 	}
 	publishedMu.Lock()
@@ -331,7 +336,7 @@ func TestGroupCommitSettlesADeferredCommitWhoseAdoptionFailsAlone(t *testing.T) 
 	if _, isSessionFailed := isFailed(err); isSessionFailed {
 		t.Fatalf("the deferred commit got SessionFailed %v, want its adoption error", err)
 	}
-	if failure := kernel.Failure(); failure != err {
+	if failure := kernel.Failure(); !sameError(failure, err) {
 		t.Fatalf("session failure %v, want %v itself", failure, err)
 	}
 	if closeErr := kernel.Close(context.Background()); closeErr != nil {

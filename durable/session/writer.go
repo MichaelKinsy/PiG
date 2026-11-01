@@ -9,8 +9,9 @@
 //     writer's goroutine at the moment the outcome settles: the Session's outcome fences are ordered by it, not by a caller's
 //     wake-up). A part's `gate` promise is Gate, a channel closed once it is published or never will be.
 //   - Upstream's macrotask hop between two parts is WriterHost.Hop: the Session returns from it once the goroutines the earlier
-//     publication woke (the callers of the commits it resolved, the waiters its observers woke) have entered, which is the Go
-//     form of "the continuations of what one part resolves start before the next is published" (see the Session header).
+//     publication woke (the callers of the commits it resolved, the registered waits its observers woke) have resumed, which is
+//     the Go form of "the continuations of what one part resolves start before the next is published" (see the Session header
+//     and resumption.go).
 //   - Upstream's `Storage.publishing` scope and the microtask dispatch after it are WriterHost.Publishing: it returns once the
 //     publication ran inside the storage's scope and the host dispatch and the wakes it queued ran after it. A nil channel means
 //     it ran at once.
@@ -142,7 +143,7 @@ type WriterHost interface {
 	// publication ran at once, else a channel closed once it ran. Whatever the publication queued for after its scope (the
 	// dispatch to the host's observers, the waits it woke) has run when the channel is closed or it returned nil.
 	Publishing(publish func(), ctx context.Context) <-chan struct{}
-	// Hop returns once what the previous part's publication woke has entered: the macrotask between two publications.
+	// Hop returns once what the previous part's publication woke has resumed: the macrotask between two publications.
 	Hop()
 	// Failure is the Session's failure, nil when it has not failed.
 	Failure() error

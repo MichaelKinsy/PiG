@@ -4,8 +4,8 @@
 //
 // Go mapping decisions:
 //   - Upstream's `touch` returns `Promise<void> | undefined`: a gate to wait on, or nothing. Here it is a blocking
-//     call that returns when the key has no unpublished writer (at once when it never had one), or the error that
-//     ended the wait, such as the context's cancellation.
+//     call that returns when the key has no unpublished writer (at once when it never had one). The wait is not
+//     cancellable, as upstream's: a gate always opens, by a publication or by the Session's failure (Session.AwaitTouch).
 //   - `Storage.entry`'s two overloads are Entry and VisibleEntry, as the Go Storage names them.
 //   - Upstream's `#after` chains the read on the gate's promise; here the read runs after the blocking touch.
 package session
