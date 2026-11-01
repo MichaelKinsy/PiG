@@ -67,6 +67,9 @@ type WorkerProcess struct {
 	done    chan struct{}
 	exit    Exit
 
+	// pumps are the goroutines reading its output; ended joins them.
+	pumps sync.WaitGroup
+
 	mu     sync.Mutex
 	stderr string
 }
@@ -149,8 +152,10 @@ func environment(env map[string]string) []string {
 // pump reads one of the child's output streams: the stderr tail is kept, and each chunk goes to onOutput, or to this
 // process's own stream. It ends with the stream: when every process holding its write end is gone.
 func (p *WorkerProcess) pump(reader *os.File, stream string, onOutput func(stream string, chunk []byte)) {
-	//portlint:allow golifetime the reader returns at the stream's end, once every holder of its write end is gone
+	p.pumps.Add(1)
+	//portlint:allow golifetime the reader returns at the stream's end, once every holder of its write end is gone; ended joins it
 	go func() {
+		defer p.pumps.Done()
 		defer func() { _ = reader.Close() }()
 		buffer := make([]byte, 32*1024)
 		for {
@@ -197,6 +202,10 @@ func (p *WorkerProcess) keepStderr(chunk []byte) {
 // those waiting for the exit resume.
 func (p *WorkerProcess) ended(exit Exit, events ProcessEvents) {
 	p.tree.kill()
+	// Everything it wrote is told before its exit, and nothing of it is left running: its output streams end with the last
+	// process holding them (the tree is gone), and its channel with it.
+	p.pumps.Wait()
+	p.channel.finish()
 	if events.Exited != nil {
 		events.Exited(exit)
 	}
