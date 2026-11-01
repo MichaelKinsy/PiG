@@ -210,8 +210,17 @@ func (c *channel) finish() {
 	}
 }
 
-// enqueue queues a record for the writer; it reports whether the channel took it.
+// errRecordTooLarge is what a send's callback gets for a record over maxRecord, which the peer would refuse.
+var errRecordTooLarge = errors.New("workers: record too large")
+
+// enqueue queues a record for the writer; it reports whether the channel took it (not when it is over maxRecord).
 func (c *channel) enqueue(kind byte, payload []byte, callback func(error)) bool {
+	if len(payload) > maxRecord {
+		if callback != nil {
+			callback(errRecordTooLarge)
+		}
+		return false
+	}
 	c.mu.Lock()
 	if c.finished {
 		c.mu.Unlock()

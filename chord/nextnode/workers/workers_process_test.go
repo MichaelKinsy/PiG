@@ -1,6 +1,8 @@
 package workers
 
 import (
+	"errors"
+	"net"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -72,4 +74,23 @@ func TestAWorkerProcessPipesItsOutputKeepsItsStderrTailQueuesAnEarlyFrameOnItsLi
 		t.Fatalf("exit = %+v, want {code: null, signal: SIGKILL}", exit)
 	}
 	until(t, func() bool { return !alive(grandchild) }, 2_000)
+}
+
+// A record over maxRecord would make the peer disconnect (and over 4 GiB corrupt the framing): the channel refuses it and
+// tells the send's callback, and stays usable.
+func TestAChannelRefusesARecordOverTheLimitAndStaysUsable(t *testing.T) {
+	near, far := net.Pipe()
+	defer far.Close()
+	c := newChannel(near)
+	defer c.finish()
+	var told error
+	if taken, _ := c.Send(make([]byte, maxRecord+1), func(err error) { told = err }); taken {
+		t.Fatal("the channel took a record over the limit")
+	}
+	if !errors.Is(told, errRecordTooLarge) {
+		t.Fatalf("callback = %v, want errRecordTooLarge", told)
+	}
+	if !c.Connected() {
+		t.Fatal("the channel closed over a refused send")
+	}
 }
