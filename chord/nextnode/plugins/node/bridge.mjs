@@ -1,7 +1,7 @@
 // The control requests that carry contracts as data and references across the boundary (docs/plan/chord-plugins-node-evaluator.md
 // 10.1 to 10.4).
 //
-// Go to Node: `get`, `value`, `watch` and `call` serve `NodeHost.Get` over Pi's own `host.get`: the Go side holds an object of
+// Go to Node: `get`, `value`, `watch` and `call` (requests of `NodeHost`; the proxies' own requests to Go are `get`, `value`, `watch` and `bridgeCall`, answered by `bridgeAnswer`, because `call` and `answer` belong to host.mjs's callbacks) serve `NodeHost.Get` over Pi's own `host.get`: the Go side holds an object of
 // a local type that the plugins serve. Each is answered with one reply, as every control request is, and runs with the
 // request's context (the Go side's abort aborts it). `unwatch` and `release` are notifications (no reply). Node to Go,
 // unrequested and in the order they happen on the one channel: `frame` (one call of a watch's listener), `watchEnd` (the
@@ -219,7 +219,7 @@ export function createBridge({ port, wireError, host }) {
 	const observers = new Map();
 
 	/**
-	 * Requests `event` of the Go host (`{ event, id, ... }`, answered by `{ op: "answer", id, ok, result | error }`) with
+	 * Requests `event` of the Go host (`{ event, id, ... }`, answered by `{ op: "bridgeAnswer", id, ok, result | error }`) with
 	 * `context`: its abort is sent as `{ event: "abort", target: id }`, which aborts the Go host's request.
 	 */
 	function ask(event, body, context) {
@@ -268,7 +268,7 @@ export function createBridge({ port, wireError, host }) {
 		 */
 		handle(message) {
 			switch (message.op) {
-				case "answer":
+				case "bridgeAnswer":
 					answered(message);
 					return true;
 				case "frame":

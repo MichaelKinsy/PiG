@@ -54,7 +54,7 @@ export function createProxies({ ask, tell, watches }) {
 				members[name] = self.follow((observer, context) => follow(held.value, name, observer, context));
 			} else {
 				const noArgs = node.args.type === "null" && Object.keys(node.args).length === 1;
-				const call = (args, context) => ask("call", { handle: held.value, method: name, args: encodeValue(args) }, context).then(({ result }) => decodeValue(result));
+				const call = (args, context) => ask("bridgeCall", { handle: held.value, method: name, args: encodeValue(args) }, context).then(({ result }) => decodeValue(result));
 				members[name] = noArgs ? (context) => call(null, context) : call;
 			}
 		}

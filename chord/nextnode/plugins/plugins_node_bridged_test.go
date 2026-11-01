@@ -375,3 +375,54 @@ export default defineFacet((host) => host.serve(Idx, () => ({ label: constant(la
 	}
 	_ = data.CodeAborted
 }
+
+// The proxies' requests to the Go host and a plugin's calls of a GoPackage function share the control channel, each with ids of
+// its own that start at 1: a plugin whose method awaits a Go function and a proxied method of a Go core facet at once has a
+// callback call and a proxy request in flight with the same id. Each must reach its own side (the callbacks' `call`/`answer`
+// and the bridge's `bridgeCall`/`bridgeAnswer`); with one name for both, the callbacks took the bridge's answers and the
+// proxy's `get` never completed ("did not become live").
+func TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer(t *testing.T) {
+	bgClosed.Store(0)
+	goHost := bgGoHost(t, host.HostFacet{Name: "@app/core", Facet: bgFacet(bgCore)})
+	source := `(function (require, module, exports) {
+const { defineFacet, int, local, method, str } = require("@earendil-works/chord/next");
+const go = require("@acme/go");
+const Core = local("test.gocore", { version: 1, params: { id: str() }, members: { label: str(), count: int(), add: method(int(), int()) } });
+const Out = local("test.out", { version: 1, params: { id: str() }, members: { label: str(), count: int(), tag: str(), bump: method(int(), int()) } });
+module.exports = { default: defineFacet((host) => host.serve(Out, (_params, self) => {
+	const core = self.get(Core, { id: "a" });
+	return {
+		label: self.derive([core.label], ([label]) => label),
+		count: self.derive([core.count], ([count]) => count),
+		tag: self.derive([core.label], () => "p"),
+		bump: async (by, ctx) => {
+			const [twice, total] = await Promise.all([go.twice(by), core.add(by, ctx)]);
+			return twice * 10 + total;
+		},
+	};
+})) };
+})`
+	node, report, err := NewPluginRuntime(NodeOptions{}).Load(RuntimeLoad{
+		Kind: "worker", Scripts: []PluginScript{handmade(t, "@test/plug", "worker", source)}, Principal: workerPrincipal, Peer: serverPrincipal,
+		Bridged: []BridgedFacet{{Name: "@app/core", Host: goHost, Contracts: []*contracts.Contract{bgCore}}},
+		GoPackages: []GoPackage{{Specifier: "@acme/go", Exports: map[string]GoExport{
+			"twice": GoFunc(func(_ context.Context, args delta.JsonValue) (delta.JsonValue, error) { return args.(float64) * 2, nil }),
+		}}},
+	}, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = node.Close(background) })
+	if len(report.Failed) != 0 {
+		t.Fatalf("failed = %+v", report.Failed)
+	}
+	acceptorOf(t, node, serverPrincipal)
+	out, err := node.Get(bgOut, delta.JsonObjectOf("id", "a"), background, host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(out.Release)
+	if got, err := out.Call("bump", 3.0, background); err != nil || got != 63.0 {
+		t.Fatalf("bump(3) = %v, %v; want 63 (twice 6, the core's count 3)", got, err)
+	}
+}

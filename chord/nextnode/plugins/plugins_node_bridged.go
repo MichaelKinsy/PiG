@@ -27,9 +27,10 @@ import (
 // plugin that needs a type of a Go core facet old when that facet's new code failed (it is shipped as a failed build), and
 // `adopt` keeps the proxy's loaded facet.
 //
-// Async contract of the Node host's requests to the Go host (`get`, `value`, `watch`, `call`): each runs in its own
+// Async contract of the Node host's requests to the Go host (`get`, `value`, `watch`, `bridgeCall`): each runs in its own
 // goroutine, concurrently with the others, with a context that ends when the request's `abort` arrives or the process ends
-// and answers with one `answer` (a ChordError crosses as data). A `watch` lives until its `unwatch`, the end of its source
+// and answers with one `bridgeAnswer` (a ChordError crosses as data). The names are the bridge's own: a Go function call
+// of the callbacks (`call`, answered by `answer`, plugins_node_callbacks.go) has its own ids, and the two share the channel. A `watch` lives until its `unwatch`, the end of its source
 // (`watchEnd`) or the process's end; its frames are sent in the order the Go host's watch delivers them, over the one channel,
 // by that watch's own delivery. `release` and `unwatch` are notifications: the Go reference or watch is released after the
 // request that was running; a reference's watches end with it.
@@ -216,12 +217,12 @@ func (h *NodeHost) serving() *bridgedServing {
 	return h.bridge.served
 }
 
-// bridgedEvent handles an event of the Node host that is a request to the Go host (`get`, `value`, `watch`, `call`: each
+// bridgedEvent handles an event of the Node host that is a request to the Go host (`get`, `value`, `watch`, `bridgeCall`: each
 // answered), or a notification of it (`unwatch`, `release`, `abort`). It runs on the goroutine that reads the channel: the
 // work of a request runs on a goroutine of its own, so a request never delays another or the reading.
 func (h *NodeHost) bridgedEvent(event string, payload []byte) {
 	switch event {
-	case "get", "value", "watch", "call":
+	case "get", "value", "watch", "bridgeCall":
 		var request struct {
 			ID     int             `json:"id"`
 			Facet  string          `json:"facet"`
@@ -259,7 +260,7 @@ func (h *NodeHost) bridgedEvent(event string, payload []byte) {
 				result, err = h.bridgedValue(request.Handle, request.Member)
 			case "watch":
 				result, start, err = h.bridgedWatch(ctx, request.Handle, request.Member, request.Watch)
-			case "call":
+			case "bridgeCall":
 				result, err = h.bridgedCall(ctx, request.Handle, request.Method, request.Args)
 			}
 			h.answerBridged(request.ID, result, err)
@@ -316,7 +317,7 @@ func (h *NodeHost) bridgedEvent(event string, payload []byte) {
 
 // answerBridged answers request id of the Node host with result, or with err as data.
 func (h *NodeHost) answerBridged(id int, result any, err error) {
-	message := map[string]any{"op": "answer", "id": id, "ok": err == nil}
+	message := map[string]any{"op": "bridgeAnswer", "id": id, "ok": err == nil}
 	if err != nil {
 		message["error"] = errorData(err)
 	} else {
