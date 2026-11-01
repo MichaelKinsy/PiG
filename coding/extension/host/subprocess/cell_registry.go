@@ -23,6 +23,7 @@ type CellRegistry struct {
 
 // NewCellRegistry returns an empty registry.
 func NewCellRegistry() *CellRegistry {
+	//portlint:allow ctxbackground the registry owns the lifetime of the processes its Hosts spawn; Close cancels it
 	ctx, cancel := context.WithCancel(context.Background())
 	return &CellRegistry{procs: map[string]*processShare{}, starting: map[string]*sync.Mutex{}, ctx: ctx, cancel: cancel}
 }
