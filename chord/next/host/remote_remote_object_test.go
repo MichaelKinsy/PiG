@@ -1102,6 +1102,9 @@ func TestRemoteObjectAGetAcrossADrop(t *testing.T) {
 				return client.Get(Notes, rhNotes("S2"), background, GetOptions{ReadyTimeout: &timeout})
 			})
 			peer.Next("hold")
+			// Pi's `get` sets its deadline in the same turn as its hold; the Go hold's message may reach the peer while that
+			// section still runs, so the section is over (the deadline set) before the clock moves.
+			client.(*chordHost).loop().Run(func() {})
 			virtual.advance(400)
 			peer.Close()
 			rhParentDown(t, client)
