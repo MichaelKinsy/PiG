@@ -725,3 +725,10 @@ commit = "8fead2d31cb1638ad113f7df3f8f1a5d8a0b773a"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "Go only, no Pi line changed: the fleet's plugins component builds Pi's fixture plugin (testdata/plugins/notes: worker.ts, label.ts, package.json, byte for byte) with the real esbuild build instead of a stand-in Builder and Evaluator, which the plugins component no longer has; the expected labels and reports are Pi's."
+
+[[entry]]
+path = "chord/watch_enter_test.go"
+commit = "8b1f8a99600cb7c98b8872eb2e083f417ca1653d"
+class = "CITE"
+cite = "packages/chord/src/watch.ts:207-220"
+reason = "watch.ts:207-220 queues #drain as a microtask, so a listener's synchronous part runs before the code that awaited the commit resumes (spec.md:1891-1894); the test asserts that order (the flag a listener sets after yielding while it works is set when AwaitEntered returns). The red commit asserted only that the delivery had started, which is not Pi's order."
