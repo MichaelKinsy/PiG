@@ -469,7 +469,10 @@ func (c *Workers) start(record *routed, routing context.Context) (host.ResolvedL
 	if closing {
 		return host.ResolvedLink{}, closed()
 	}
-	ctx := chordctx.WithAbortSignal(routing, c.closingCtx)
+	// The start's context ends with the route's or with Close, and its registrations on both end with the start.
+	own, release := chordctx.WithCancel(routing)
+	defer release(nil)
+	ctx := chordctx.WithAbortSignal(own, c.closingCtx)
 	work := make(chan chordctx.Settled[delta.JsonValue], 1)
 	// The app's start may ignore ctx and never return: it is not joined, its outcome is dropped once Close aborts the wait.
 	//portlint:allow golifetime a call into the app's start hook, which may never return; the wait is bounded by closingCtx
