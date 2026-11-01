@@ -10,8 +10,8 @@ import (
 )
 
 // processExit is Node's `exit` event for a process that ended: its exit code, or -1 and the name of the signal that ended it
-// (`SIGKILL`).
-func processExit(state *os.ProcessState) (code int, signal string) {
+// (`SIGKILL`). killed (the Go side killed it) is what Windows needs; the status says it here.
+func processExit(state *os.ProcessState, killed bool) (code int, signal string) {
 	if state == nil {
 		return -1, ""
 	}

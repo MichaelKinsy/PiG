@@ -553,8 +553,11 @@ type NodeHost struct {
 	activity host.ActivityCounts
 	// killReason is why the Go side killed the process, if it did (NodeExit.Reason).
 	killReason string
-	stderr     tailWriter
-	startOne   sync.Once
+	// killed is whether Process.Kill ended it: Windows has no signal in an exit status, and Node reports a process its
+	// parent killed as ended by a signal (processExit).
+	killed   atomic.Bool
+	stderr   tailWriter
+	startOne sync.Once
 	// cb is what the process calls on the Go side: functions, synchronous callbacks and telemetry (plugins_node_callbacks.go).
 	cb nodeCallbacks
 	// bridge is what the app holds of the plugins' host through the reference RPC (plugins_node_reference.go).
@@ -753,7 +756,7 @@ func (h *NodeHost) wait() {
 	}
 	h.mu.Lock()
 	if !h.closing || err != nil {
-		code, signal := processExit(h.cmd.ProcessState)
+		code, signal := processExit(h.cmd.ProcessState, h.killed.Load())
 		h.exit = &NodeExit{Err: err, Fatal: h.fatal, Stderr: h.stderr.text(), Code: code, Signal: signal, Reason: h.killReason}
 	}
 	exit := h.exit
@@ -797,8 +800,8 @@ func (h *NodeHost) stopGrace() time.Duration {
 }
 
 func (h *NodeHost) kill() {
-	if h.cmd.Process != nil {
-		_ = h.cmd.Process.Kill()
+	if h.cmd.Process != nil && h.cmd.Process.Kill() == nil {
+		h.killed.Store(true)
 	}
 }
 
