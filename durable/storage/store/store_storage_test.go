@@ -465,8 +465,7 @@ func TestStoreStorageReads(t *testing.T) {
 	t.Run("a request error inside a multi-query read rejects that read only; the store goes on", func(t *testing.T) {
 		store, storage := recorded(t)
 		_, err := storage.ScanEntries(background, durable.EntryQuery{ConversationId: 999}, 10, nil)
-		var request *durable.StorageRequestError
-		if !errors.As(err, &request) {
+		if _, ok := errors.AsType[*durable.StorageRequestError](err); !ok {
 			t.Fatalf("ScanEntries = %v, want a StorageRequestError", err)
 		}
 		if found := value(storage.Document(background, 999, durable.CurrentPoint)); found != nil {

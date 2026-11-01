@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -579,12 +580,7 @@ func TestStoreStorageFailures(t *testing.T) {
 }
 
 func contains(items []string, want string) bool {
-	for _, item := range items {
-		if item == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(items, want)
 }
 
 // waitUnderway waits until storage has count calls underway.
@@ -665,25 +661,21 @@ func TestStoreStorageOtherUsersOfTheStore(t *testing.T) {
 			events = append(events, text)
 		}
 		var calls sync.WaitGroup
-		calls.Add(1)
-		go func() {
-			defer calls.Done()
+		calls.Go(func() {
 			_, err := made.storage.Commit(background, [][]durable.StorageWrite{{entryWrite(first)}, {entryWrite(second)}},
 				func(index int, seq durable.Seq) { record(fmt.Sprintf("harness %d %d", index, seq)) })
 			if err != nil {
 				t.Error(err)
 			}
-		}()
+		})
 		<-entered
-		calls.Add(1)
-		go func() {
-			defer calls.Done()
+		calls.Go(func() {
 			_, err := other.Commit(background, [][]durable.StorageWrite{{rootWrite()}},
 				func(index int, seq durable.Seq) { record(fmt.Sprintf("other %d %d", index, seq)) })
 			if err != nil {
 				t.Error(err)
 			}
-		}()
+		})
 		time.Sleep(50 * time.Millisecond)
 		mu.Lock()
 		if len(events) != 0 {

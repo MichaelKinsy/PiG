@@ -16,6 +16,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"slices"
 	"strconv"
 	"sync"
 
@@ -818,8 +819,7 @@ func (storage *StoreStorage) entriesAscending(executor sqlite.SqliteExecutor, qu
 		lower = &bound
 	}
 	values := []durable.EntryRecord{}
-	for index := len(segments) - 1; index >= 0; index-- {
-		each := segments[index]
+	for _, each := range slices.Backward(segments) {
 		rows, err := storage.queries.Entries.Select(executor, entryRange(each.conversationID, lower, each.upper), ascending, int64(limit+1-len(values)))
 		if err != nil {
 			return result{}, err
