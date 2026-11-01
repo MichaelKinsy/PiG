@@ -2188,6 +2188,15 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify("rw_idle_after_trigger=%s" % str(ctx.is_idle()).lower(), "info")
 
     ext.command("rw_idle_after_trigger", "Read isIdle after a message that starts a run", rw_idle_after_trigger)
+
+    def rw_idle_busy_until_yield(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        sync = [str(ctx.is_idle()).lower(), str(ctx.is_idle()).lower()]
+        ctx.wait_for_idle()
+        later = str(ctx.is_idle()).lower()
+        ctx.notify("rw_idle_busy_until_yield=sync:%s;later:%s" % (",".join(sync), later), "info")
+
+    ext.command("rw_idle_busy_until_yield", "Read isIdle after a message that starts a run, before and after a wait for the run", rw_idle_busy_until_yield)
     rw_settled_once = []
 
     def rw_idle_in_settled(ctx: pig_sdk.Context, _args: str) -> None:

@@ -3573,6 +3573,29 @@ fn main() {
             CommandResult::Ok
         },
     );
+    ext.command(
+        "rw_idle_busy_until_yield",
+        "Read isIdle after a message that starts a run, before and after a wait for the run",
+        |ctx, _args| {
+            if let Err(err) = ctx.send_message("rw-trigger", "rw-trigger", true, Some(true), None) {
+                return CommandResult::Error(err.to_string());
+            }
+            let reads = (|| -> std::io::Result<(bool, bool, bool)> {
+                let first = ctx.is_idle()?;
+                let second = ctx.is_idle()?;
+                ctx.wait_for_idle()?;
+                Ok((first, second, ctx.is_idle()?))
+            })();
+            match reads {
+                Ok((first, second, later)) => ctx.notify(
+                    &format!("rw_idle_busy_until_yield=sync:{first},{second};later:{later}"),
+                    "info",
+                ),
+                Err(err) => return CommandResult::Error(err.to_string()),
+            }
+            CommandResult::Ok
+        },
+    );
     let rw_settled_subscriber = ext.event_subscriber();
     let rw_settled_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
         Arc::new(Mutex::new(Vec::new()));

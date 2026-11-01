@@ -877,6 +877,15 @@ export default function (pi) {
       ctx.ui.notify(`rw_idle_after_trigger=${ctx.isIdle()}`, "info");
     },
   });
+  pi.registerCommand("rw_idle_busy_until_yield", {
+    description: "Read isIdle after a message that starts a run, before and after a wait for the run",
+    handler: async (_args, ctx) => {
+      pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+      const sync = [ctx.isIdle(), ctx.isIdle()];
+      await ctx.waitForIdle();
+      ctx.ui.notify(`rw_idle_busy_until_yield=sync:${sync.join(",")};later:${ctx.isIdle()}`, "info");
+    },
+  });
   let rwSettledOnce = false;
   pi.registerCommand("rw_idle_in_settled", {
     description: "Read isIdle after a message that starts a run, sent from an agent_settled handler",

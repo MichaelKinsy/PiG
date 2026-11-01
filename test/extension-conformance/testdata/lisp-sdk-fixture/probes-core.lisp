@@ -686,6 +686,13 @@
                (lambda (ctx args) (declare (ignore args))
                  (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
                  (core-info ctx (format nil "rw_idle_after_trigger=~A" (if (pig:ctx-is-idle-p ctx) "true" "false")))))
+  (pig:command ext "rw_idle_busy_until_yield" "Read isIdle after a message that starts a run, before and after a wait for the run"
+               (lambda (ctx args) (declare (ignore args))
+                 (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
+                 (flet ((idle () (if (pig:ctx-is-idle-p ctx) "true" "false")))
+                   (let ((sync-a (idle)) (sync-b (idle)))
+                     (pig:ctx-wait-for-idle ctx)
+                     (core-info ctx (format nil "rw_idle_busy_until_yield=sync:~A,~A;later:~A" sync-a sync-b (idle)))))))
   (pig:command ext "rw_idle_background" "Poll isIdle from a background callback after agent_end"
                (lambda (ctx args) (declare (ignore ctx args))
                  (pig:on ext "agent_end"

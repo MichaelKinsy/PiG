@@ -1109,6 +1109,31 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("rw_idle_after_trigger=%t", idle), "info")
 		return nil
 	})
+	// rw_idle_busy_until_yield sends a message that starts a run, reads isIdle twice with no yield in between, waits for the run (Pi's `await ctx.waitForIdle()`), and reads once more.
+	ext.Command("rw_idle_busy_until_yield", "Read isIdle after a message that starts a run, before and after a wait for the run", func(ctx sdk.Context, _ string) error {
+		trigger := true
+		if err := ctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger}); err != nil {
+			return err
+		}
+		reads := make([]bool, 3)
+		for i := range 2 {
+			idle, err := ctx.IsIdle()
+			if err != nil {
+				return err
+			}
+			reads[i] = idle
+		}
+		if err := ctx.WaitForIdle(); err != nil {
+			return err
+		}
+		idle, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		reads[2] = idle
+		ctx.Notify(fmt.Sprintf("rw_idle_busy_until_yield=sync:%t,%t;later:%t", reads[0], reads[1], reads[2]), "info")
+		return nil
+	})
 	settledOnce := &atomic.Bool{}
 	ext.Command("rw_idle_in_settled", "Read isIdle after a message that starts a run, sent from an agent_settled handler", func(sdk.Context, string) error {
 		ext.OnEvent("agent_settled", func(hctx sdk.Context, _ map[string]any) (any, error) {

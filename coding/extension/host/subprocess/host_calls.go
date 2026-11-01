@@ -434,6 +434,7 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	callCtx, endExecSignal := h.execSignal(callCtx, conn, call)
 	defer endExecSignal()
 
+	h.endSyncRunHold(conn, call)
 	var result *CallResultPayload
 	var err error
 	switch {
@@ -526,6 +527,8 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	case call.Method == "renderSystemPrompt" && h.uiBridge == nil:
 		// The render is a pure function of the options the call carries, so a Host with no UI bridge (an SDK session) answers it too.
 		result, err = renderSystemPromptCall(call.Args)
+	case call.Method == "isIdle" && h.syncRuns.busy():
+		result = busyIsIdleResult()
 	case h.uiBridge != nil:
 		dialogCtx := callCtx
 		// The extension's options.signal dismisses its own dialog, and only that one.
@@ -546,6 +549,9 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	default:
 		// Every call is answered: an extension waits for its result, so a call no handler takes is an error, not silence.
 		err = fmt.Errorf("the host has no handler for %s", call.Method)
+	}
+	if call.Method == "sendMessage" && err == nil && (result == nil || result.Error == nil) {
+		h.holdAfterSend(conn, call)
 	}
 	if dialogSlot != nil {
 		dialogSlot.Run(func() { h.replyToCall(me, conn, callID, call, callCtx, result, err) })
