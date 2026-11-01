@@ -9,9 +9,8 @@ package harness
 //   - A call a test starts and awaits later (`const creating = c.commit(...)`) is gcGo: it runs on its own goroutine and gcGo
 //     returns once the call entered (returned, or is parked in a wait), which is JavaScript running a call synchronously up
 //     to its first await: it has taken its place on the Session line, and what the test starts next queues behind it.
-//   - Upstream's `await flush()` (one macrotask turn) is gcFlush: a pause in which what can run has run. The scheduler's own
-//     goroutines are not calls the test can wait for, so it is time, as the neighbouring ports do where they assert that
-//     something has not happened.
+//   - Upstream's `await flush()` (one macrotask turn) is gcFlush: it returns once every goroutine is parked in a wait
+//     (awaitQuiescent), so what can run has run. The scheduler's own goroutines are not calls the test can wait for.
 
 import (
 	"context"
@@ -24,11 +23,11 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/session"
 )
 
-// gcFlushPause is how long gcFlush pauses.
-const gcFlushPause = 25 * time.Millisecond
-
-// gcFlush is `await flush()`.
-func gcFlush() { time.Sleep(gcFlushPause) }
+// gcFlush is `await flush()`: every goroutine has run up to a wait.
+func gcFlush(t testing.TB) {
+	t.Helper()
+	awaitQuiescent(t)
+}
 
 // gcTimeout bounds every wait of a test on a call or a storage call that must arrive.
 const gcTimeout = 30 * time.Second
@@ -336,8 +335,9 @@ func (started *gcCall[T]) wait(t *testing.T) T {
 }
 
 // settled reports whether the call returned after a flush; a call that has not is parked.
-func (started *gcCall[T]) settled() bool {
-	gcFlush()
+func (started *gcCall[T]) settled(t testing.TB) bool {
+	t.Helper()
+	gcFlush(t)
 	select {
 	case <-started.done:
 		return true

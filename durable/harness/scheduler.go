@@ -869,7 +869,7 @@ func (s *TaskScheduler) waitForTask(ctx context.Context, id durable.TaskId) (dur
 		record *anyTaskRecord
 		waiter *Waiter[durable.SettledTask[durable.JsonValue]]
 	}
-	result, err := readOnLine(s.options.Session, func(storage durable.Storage) (found, error) {
+	result, err := readOnLine(ctx, s.options.Session, func(storage durable.Storage) (found, error) {
 		s.mu.Lock()
 		if s.sealing.Load() {
 			s.mu.Unlock()
@@ -879,7 +879,7 @@ func (s *TaskScheduler) waitForTask(ctx context.Context, id durable.TaskId) (dur
 		var waiter *Waiter[durable.SettledTask[durable.JsonValue]]
 		closing := s.sealing.Load()
 		if err == nil && !closing && live {
-			waiter = s.taskWaiters.Add(ctx, id)
+			waiter = s.taskWaiters.Add(ctx, s.options.Session, id)
 		}
 		s.mu.Unlock()
 		if err != nil {
@@ -932,10 +932,12 @@ func (s *TaskScheduler) waitForIdle(ctx context.Context, conversationId *durable
 	s.scheduleReconcileLocked()
 	var waiter *Waiter[struct{}]
 	if conversationId == nil {
-		waiter = s.idleHarness.Add(ctx, true)
+		waiter = s.idleHarness.Add(ctx, s.options.Session, true)
 	} else {
-		waiter = s.idleWaiters.Add(ctx, *conversationId)
+		waiter = s.idleWaiters.Add(ctx, s.options.Session, *conversationId)
 	}
+	// Registered before the lock the settle needs is released.
+	waiter.Park()
 	s.mu.Unlock()
 	_, err := waiter.Wait()
 	return err
@@ -3286,7 +3288,7 @@ func (runtime *taskRuntime) GetTask(ctx context.Context, id durable.TaskId) (*an
 	if err := runtime.check(); err != nil {
 		return nil, err
 	}
-	return readOnLine(runtime.scheduler.options.Session, func(storage durable.Storage) (*anyTaskRecord, error) {
+	return readOnLine(ctx, runtime.scheduler.options.Session, func(storage durable.Storage) (*anyTaskRecord, error) {
 		return storage.Task(ctx, id)
 	})
 }
@@ -3308,7 +3310,7 @@ func (runtime *taskRuntime) AbortOwned(ctx context.Context, id durable.TaskId) e
 	}
 	bound, stop := linkSignal(ctx, runtime.invocation.ctx)
 	defer stop()
-	record, err := readOnLine(runtime.scheduler.options.Session, func(storage durable.Storage) (*anyTaskRecord, error) {
+	record, err := readOnLine(ctx, runtime.scheduler.options.Session, func(storage durable.Storage) (*anyTaskRecord, error) {
 		return storage.Task(bound, id)
 	})
 	if err != nil {
@@ -3335,7 +3337,7 @@ func (runtime *taskRuntime) OwnedTasks(ctx context.Context) ([]anyTaskRecord, er
 	}
 	bound, stop := linkSignal(ctx, runtime.invocation.ctx)
 	defer stop()
-	return readOnLine(runtime.scheduler.options.Session, func(durable.Storage) ([]anyTaskRecord, error) {
+	return readOnLine(ctx, runtime.scheduler.options.Session, func(durable.Storage) ([]anyTaskRecord, error) {
 		// The step that ends the invocation may have run on the line before this.
 		if err := runtime.check(); err != nil {
 			return nil, err
@@ -3386,7 +3388,7 @@ func (runtime *taskRuntime) Outcomes(ctx context.Context, ids []durable.TaskId) 
 	if err := runtime.check(); err != nil {
 		return nil, err
 	}
-	return readOnLine(runtime.scheduler.options.Session, func(storage durable.Storage) ([]anyOutcome, error) {
+	return readOnLine(ctx, runtime.scheduler.options.Session, func(storage durable.Storage) ([]anyOutcome, error) {
 		outcomes := make([]anyOutcome, 0, len(ids))
 		for _, id := range ids {
 			record, err := storage.Task(ctx, id)
@@ -3425,7 +3427,7 @@ func (runtime *taskRuntime) Entry(ctx context.Context, id durable.EntryId) (*dur
 		}
 	}
 	scheduler.mu.Unlock()
-	found, err := readOnLine(scheduler.options.Session, func(storage durable.Storage) (*durable.EntryAt, error) {
+	found, err := readOnLine(ctx, scheduler.options.Session, func(storage durable.Storage) (*durable.EntryAt, error) {
 		return storage.VisibleEntry(ctx, runtime.invocation.conversationId, id)
 	})
 	if err != nil || found == nil {
@@ -3440,7 +3442,7 @@ func (runtime *taskRuntime) Entries(ctx context.Context, query durable.EntryQuer
 		return durable.Page[durable.EntryRecord, durable.Cursor]{}, err
 	}
 	scan := conversationEntries(runtime.invocation.conversationId, query)
-	return readOnLine(runtime.scheduler.options.Session, func(storage durable.Storage) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+	return readOnLine(ctx, runtime.scheduler.options.Session, func(storage durable.Storage) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
 		return storage.ScanEntries(ctx, scan, limit, cursor)
 	})
 }

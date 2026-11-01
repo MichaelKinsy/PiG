@@ -474,9 +474,9 @@ func TestTaskGraphView(t *testing.T) {
 		_ = held.entered.wait(testContext)
 		cancelled, cancel := cancelledContext(errors.New("cancelled"))
 		var attaching *future[struct{}]
-		queueOnLine(t, harness, func() <-chan struct{} {
+		queueOnLineAdmittedFrom(t, cancelled, func(ctx context.Context) <-chan struct{} {
 			attaching = asyncErr(func() error {
-				_, err := harness.WatchTaskGraph(cancelled)
+				_, err := harness.WatchTaskGraph(ctx)
 				return err
 			})
 			return attaching.done

@@ -34,6 +34,14 @@ func deferred() *deferredGate { return &deferredGate{done: make(chan struct{})} 
 
 func (gate *deferredGate) resolve() { gate.once.Do(func() { close(gate.done) }) }
 
+// reject settles the gate with err, which every wait returns.
+func (gate *deferredGate) reject(err error) {
+	gate.once.Do(func() {
+		gate.err = err
+		close(gate.done)
+	})
+}
+
 // wait blocks until the gate settles or ctx is cancelled.
 func (gate *deferredGate) wait(ctx context.Context) error {
 	select {
@@ -192,28 +200,23 @@ func (reader *countingRegistry) subscriptions() int {
 
 var errUnreachable = errors.New("unreachable")
 
-// queueOnLine runs start and waits until the operation it began has queued one more job on the Session line, which a held line job keeps queued, or has already settled without one (a cached read).
-func queueOnLine(t *testing.T, harness Harness, start func() <-chan struct{}) {
-	t.Helper()
-	impl := harness.(*harnessImpl)
-	jobs := impl.LineJobs()
-	done := start()
-	eventually(t, func() bool { return impl.LineJobs() > jobs || settled(done) })
-}
-
 // queueOnLineAdmitted runs start with a context that reports when the Session line admits its call, and waits for that or for the
 // operation to settle: the call then holds its position behind the jobs ahead of it, as a TypeScript call that extended
 // the line's chain synchronously does (internal/lineadmission).
 func queueOnLineAdmitted(t *testing.T, start func(ctx context.Context) <-chan struct{}) {
 	t.Helper()
+	queueOnLineAdmittedFrom(t, testContext, start)
+}
+
+// queueOnLineAdmittedFrom is queueOnLineAdmitted for an operation whose context derives from base.
+func queueOnLineAdmittedFrom(t *testing.T, base context.Context, start func(ctx context.Context) <-chan struct{}) {
+	t.Helper()
 	admitted := make(chan struct{})
-	done := start(lineadmission.With(testContext, func() { close(admitted) }))
-	eventually(t, func() bool {
-		select {
-		case <-admitted:
-			return true
-		default:
-			return settled(done)
-		}
-	})
+	done := start(lineadmission.With(base, func() { close(admitted) }))
+	select {
+	case <-admitted:
+	case <-done:
+	case <-time.After(gcTimeout):
+		t.Fatal("the operation was neither admitted to the Session line nor settled")
+	}
 }

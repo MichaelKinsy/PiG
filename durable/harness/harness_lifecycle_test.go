@@ -557,8 +557,8 @@ func TestHarnessClose(t *testing.T) {
 		})
 		_ = held.entered.wait(testContext)
 		var queuedInspect *future[HarnessInspection]
-		queueOnLine(t, harness, func() <-chan struct{} {
-			queuedInspect = async(func() (HarnessInspection, error) { return harness.Inspect(testContext) })
+		queueOnLineAdmitted(t, func(ctx context.Context) <-chan struct{} {
+			queuedInspect = async(func() (HarnessInspection, error) { return harness.Inspect(ctx) })
 			return queuedInspect.done
 		})
 		closeBegan := deferred()
@@ -690,29 +690,29 @@ func TestHarnessClose(t *testing.T) {
 		}
 		// Queue each read in upstream's order: each one enters the line before the next is issued.
 		names := []string{"context", "snapshot", "settledWait", "absentWatch", "waitForTask", "watchDoc", "watch", "watchTaskGraph"}
-		runs := map[string]func() (bool, error){
-			"context": func() (bool, error) { _, err := root.Context(testContext, nil); return true, err },
-			"snapshot": func() (bool, error) {
-				value, err := harness.SnapshotErased(testContext, notes)
+		runs := map[string]func(ctx context.Context) (bool, error){
+			"context": func(ctx context.Context) (bool, error) { _, err := root.Context(ctx, nil); return true, err },
+			"snapshot": func(ctx context.Context) (bool, error) {
+				value, err := harness.SnapshotErased(ctx, notes)
 				return value != nil, err
 			},
-			"settledWait": func() (bool, error) { _, err := write.Wait(testContext); return true, err },
-			"absentWatch": func() (bool, error) {
-				watch, err := harness.WatchDocErased(testContext, absent)
+			"settledWait": func(ctx context.Context) (bool, error) { _, err := write.Wait(ctx); return true, err },
+			"absentWatch": func(ctx context.Context) (bool, error) {
+				watch, err := harness.WatchDocErased(ctx, absent)
 				return watch != nil, err
 			},
-			"waitForTask": func() (bool, error) { _, err := harness.WaitForTask(testContext, taskId); return true, err },
-			"watchDoc": func() (bool, error) {
-				watch, err := harness.WatchDocErased(testContext, notes)
+			"waitForTask": func(ctx context.Context) (bool, error) { _, err := harness.WaitForTask(ctx, taskId); return true, err },
+			"watchDoc": func(ctx context.Context) (bool, error) {
+				watch, err := harness.WatchDocErased(ctx, notes)
 				return watch != nil, err
 			},
-			"watch":          func() (bool, error) { _, err := root.Watch(testContext, nil); return true, err },
-			"watchTaskGraph": func() (bool, error) { _, err := harness.WatchTaskGraph(testContext); return true, err },
+			"watch":          func(ctx context.Context) (bool, error) { _, err := root.Watch(ctx, nil); return true, err },
+			"watchTaskGraph": func(ctx context.Context) (bool, error) { _, err := harness.WatchTaskGraph(ctx); return true, err },
 		}
 		queued := map[string]*future[string]{}
 		for _, name := range names {
-			queueOnLine(t, harness, func() <-chan struct{} {
-				queued[name] = settle(runs[name])
+			queueOnLineAdmitted(t, func(ctx context.Context) <-chan struct{} {
+				queued[name] = settle(func() (bool, error) { return runs[name](ctx) })
 				return queued[name].done
 			})
 		}

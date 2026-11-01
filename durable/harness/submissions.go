@@ -38,9 +38,9 @@ func commitInternal[T any](ctx context.Context, line *session.SessionImpl, chang
 }
 
 // readOnLine runs read on the Session line, with the line's gated Storage, and returns its typed result.
-func readOnLine[T any](line *session.SessionImpl, read func(storage durable.Storage) (T, error)) (T, error) {
+func readOnLine[T any](ctx context.Context, line *session.SessionImpl, read func(storage durable.Storage) (T, error)) (T, error) {
 	var zero T
-	value, err := line.ReadOnLine(func(storage durable.Storage) (any, error) { return read(storage) })
+	value, err := line.ReadOnLineCtx(ctx, func(storage durable.Storage) (any, error) { return read(storage) })
 	if err != nil {
 		return zero, err
 	}
@@ -85,8 +85,20 @@ func NewSubmissions(line *session.SessionImpl, now func() float64, queueModes fu
 
 // Submit admits a submission in one commit; see AdmitSubmission.
 func (submissions *Submissions) Submit(ctx context.Context, conversationId durable.ConversationId, draft durable.SubmissionDraft) (durable.Submission, error) {
+	return submissions.SubmitUnlessCancelled(ctx, nil, conversationId, draft)
+}
+
+// SubmitUnlessCancelled is Submit for a caller whose cancellation applies only until the job starts (session.ts commit:
+// `context.abortSignal?.throwIfAborted()` as the job begins): ctx carries the commit, so it should not be cancellable, and
+// startCheck, when non-nil, runs as the job starts and rejects it, storing nothing, with the error it returns.
+func (submissions *Submissions) SubmitUnlessCancelled(ctx context.Context, startCheck func() error, conversationId durable.ConversationId, draft durable.SubmissionDraft) (durable.Submission, error) {
 	admission, err := submissions.traced(ctx, conversationId, draft, func(span telemetry.TelemetrySpan) (Admission, error) {
 		return commitOnLine(chordctx.WithTelemetry(ctx, span), submissions.line, session.TransactionScope{}, func(tx *session.Transaction) (Admission, error) {
+			if startCheck != nil {
+				if err := startCheck(); err != nil {
+					return Admission{}, err
+				}
+			}
 			return AdmitSubmission(tx, conversationId, draft, submissions.now(), submissions.queueModes(), span)
 		})
 	})
@@ -157,7 +169,7 @@ func (submissions *Submissions) traced(ctx context.Context, conversationId durab
 
 // Get returns a handle for an existing submission; nil when absent.
 func (submissions *Submissions) Get(ctx context.Context, id durable.SubmissionId) (durable.Submission, error) {
-	record, err := readOnLine(submissions.line, func(storage durable.Storage) (*durable.SubmissionRecord, error) {
+	record, err := readOnLine(ctx, submissions.line, func(storage durable.Storage) (*durable.SubmissionRecord, error) {
 		return storage.Submission(ctx, id)
 	})
 	if err != nil || record == nil {
@@ -168,7 +180,7 @@ func (submissions *Submissions) Get(ctx context.Context, id durable.SubmissionId
 
 // Status returns the committed record of a submission.
 func (submissions *Submissions) Status(ctx context.Context, id durable.SubmissionId) (durable.SubmissionRecord, error) {
-	record, err := readOnLine(submissions.line, func(storage durable.Storage) (*durable.SubmissionRecord, error) {
+	record, err := readOnLine(ctx, submissions.line, func(storage durable.Storage) (*durable.SubmissionRecord, error) {
 		return storage.Submission(ctx, id)
 	})
 	if err != nil {
@@ -203,7 +215,7 @@ func (submissions *Submissions) waitSettled(ctx context.Context, id durable.Subm
 		record *durable.SubmissionRecord
 		waiter *Waiter[durable.SettledSubmissionRecord]
 	}
-	result, err := readOnLine(submissions.line, func(storage durable.Storage) (found, error) {
+	result, err := readOnLine(ctx, submissions.line, func(storage durable.Storage) (found, error) {
 		record, err := storage.Submission(ctx, id)
 		if err != nil {
 			return found{}, err
@@ -220,7 +232,7 @@ func (submissions *Submissions) waitSettled(ctx context.Context, id durable.Subm
 		if submissions.closed {
 			return found{}, closedError(submissions.line)
 		}
-		return found{waiter: submissions.waiters.Add(ctx, id)}, nil
+		return found{waiter: submissions.waiters.Add(ctx, submissions.line, id)}, nil
 	})
 	if err != nil {
 		return durable.SubmissionRecord{}, err

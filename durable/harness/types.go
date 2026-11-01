@@ -68,7 +68,8 @@ type GenerationHooks struct {
 	// BeforeRequest runs before every request attempt, including recovery; a non-nil result is used for that request only.
 	BeforeRequest func(ctx context.Context, request GenerationRequest, api HookApi) (*GenerationRequest, error)
 	// BeforeProviderRequest runs after pi-ai builds the provider request body, before it is sent; a non-nil result replaces
-	// the body for that request only. It runs again whenever pi-ai rebuilds the body, such as a retry within one attempt.
+	// the body for that request only. pi-ai calls it once per request, before it retries the provider request, so the hook does
+	// not run again for a retry.
 	// The body is in the provider API's own format (request.Model.ProviderMeta.API), so a hook checks the API before changing it.
 	BeforeProviderRequest func(ctx context.Context, request ProviderRequest, api HookApi) (*ProviderPayload, error)
 	// AfterResponse sees every terminal provider message, before classification.

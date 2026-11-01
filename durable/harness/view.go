@@ -299,7 +299,7 @@ func (views *ConversationViews) Attach(ctx context.Context, id durable.Conversat
 		observer *ViewObserver
 		detach   func()
 	}
-	result, err := views.session.ReadOnLine(func(storage durable.Storage) (any, error) {
+	result, err := views.session.ReadOnLineCtx(ctx, func(storage durable.Storage) (any, error) {
 		views.mu.Lock()
 		mount := views.mounts[id]
 		views.mu.Unlock()

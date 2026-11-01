@@ -17,6 +17,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
+	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 )
 
 // idleGates are the gates and read signals of the tasks of one test, by name.
@@ -201,13 +202,20 @@ func (env *idleEnv) rowsOf(name string, into Conversation, read durable.Conversa
 // quiet waits until the scheduler passes the last changes started have settled.
 func (env *idleEnv) quiet() {
 	env.t.Helper()
-	time.Sleep(50 * time.Millisecond)
-	pollUntil(env.t, func() bool {
-		env.scheduler.mu.Lock()
-		defer env.scheduler.mu.Unlock()
-		return !env.scheduler.reconcileScheduled && env.scheduler.reconcilingWork == 0
+	awaitSchedulerSettled(env.t, env.scheduler)
+}
+
+// awaitSchedulerSettled waits until no scheduler pass is scheduled or underway (reconcile, sweep, drain, wake), then until every
+// goroutine has run up to a wait, so what the passes started has been done.
+func awaitSchedulerSettled(t *testing.T, scheduler *TaskScheduler) {
+	t.Helper()
+	pollUntil(t, func() bool {
+		scheduler.mu.Lock()
+		defer scheduler.mu.Unlock()
+		return !scheduler.reconcileScheduled && scheduler.reconcilingWork == 0 && scheduler.reconciles == 0 &&
+			!scheduler.sweepScheduled && !scheduler.wakeScheduled && !scheduler.draining
 	})
-	time.Sleep(50 * time.Millisecond)
+	awaitQuiescent(t)
 }
 
 func (env *idleEnv) close() {
@@ -230,14 +238,17 @@ func (env *idleEnv) expectState(want SchedulerIdleState, fields string) {
 	check("fullIdleChecks", got.FullIdleChecks, want.FullIdleChecks)
 }
 
-// settledWithin reports whether wait settled within a short time.
-func settledWithin(wait func() error) bool {
+// settledAfterFlush reports whether wait settled once every goroutine has run up to a wait: a wait that its task changes
+// allow to settle has settled by then, and one that is still held is parked.
+func settledAfterFlush(t *testing.T, wait func() error) bool {
+	t.Helper()
 	done := make(chan struct{})
 	go func() { _ = wait(); close(done) }()
+	awaitQuiescent(t)
 	select {
 	case <-done:
 		return true
-	case <-time.After(150 * time.Millisecond):
+	default:
 		return false
 	}
 }
@@ -292,10 +303,11 @@ func TestIdleWaitersByScope(t *testing.T) {
 			return result
 		}
 		isSettled := func(result *waitResult) bool {
+			awaitQuiescent(t)
 			select {
 			case <-result.done:
 				return true
-			case <-time.After(150 * time.Millisecond):
+			default:
 				return false
 			}
 		}
@@ -373,20 +385,22 @@ func TestIdleWaitersByScope(t *testing.T) {
 		}
 		rootWait := make(chan struct{})
 		go func() { _ = second.root.WaitForIdle(testContext); close(rootWait) }()
+		awaitQuiescent(t)
 		select {
 		case <-rootWait:
 			t.Fatal("the root is idle while P and D are live")
-		case <-time.After(150 * time.Millisecond):
+		default:
 		}
 		second.harness.Resume()
 		gates.gate("d").resolve()
 		if _, err := second.harness.WaitForTask(testContext, built.d); err != nil {
 			t.Fatal(err)
 		}
+		awaitQuiescent(t)
 		select {
 		case <-rootWait:
 			t.Fatal("the root is idle while P is live")
-		case <-time.After(150 * time.Millisecond):
+		default:
 		}
 		gates.gate("p").resolve()
 		select {
@@ -403,7 +417,7 @@ func TestIdleWaitersByScope(t *testing.T) {
 		busy, other := env.conversation(0), env.conversation(0)
 		held := env.start("held", busy, 0)
 		quick := env.start("quick", other, 0)
-		idleBusy := func() bool { return settledWithin(func() error { return busy.WaitForIdle(testContext) }) }
+		idleBusy := func() bool { return settledAfterFlush(t, func() error { return busy.WaitForIdle(testContext) }) }
 		idleOther := make(chan struct{})
 		go func() { _ = other.WaitForIdle(testContext); close(idleOther) }()
 		env.end("quick", quick)
@@ -418,6 +432,54 @@ func TestIdleWaitersByScope(t *testing.T) {
 		env.end("held", held)
 		if !idleBusy() {
 			t.Fatal("the conversation did not settle when its task ended")
+		}
+		env.close()
+	})
+
+	// scheduler.ts: a commit's task changes are settled at its publication, over the scopes above the tasks that ended
+	// (addScopesAbove), not at the reconcile pass after it.
+	t.Run("resolve a waiter at the publication of the change that ended the last task below, before the pass after it", func(t *testing.T) {
+		env := openIdle(t, idleEnvOptions{})
+		busy := env.conversation(0)
+		held := env.start("held", busy, 0)
+		waiting := make(chan struct{})
+		go func() { _ = busy.WaitForIdle(testContext); close(waiting) }()
+		awaitQuiescent(t)
+		// The task's end queues behind one line job, and a second one is admitted behind that end: the pass its publication
+		// schedules takes its place after the second, so only the publication's own check can resolve the waiter meanwhile.
+		firstEntered, releaseFirst := holdLine(t, env.harness)
+		if err := firstEntered.wait(testContext); err != nil {
+			t.Fatal(err)
+		}
+		env.gates.gate("held").resolve()
+		awaitQuiescent(t)
+		secondAdmitted, secondEntered, releaseSecond := deferred(), deferred(), deferred()
+		second := goCall(func() error {
+			_, err := env.harness.Commit(lineadmission.With(testContext, secondAdmitted.resolve), func(durable.Tx) (any, error) {
+				secondEntered.resolve()
+				return nil, releaseSecond.wait(t.Context())
+			})
+			return err
+		})
+		if err := secondAdmitted.wait(testContext); err != nil {
+			t.Fatal(err)
+		}
+		releaseFirst()
+		if err := secondEntered.wait(testContext); err != nil {
+			t.Fatal(err)
+		}
+		awaitQuiescent(t)
+		select {
+		case <-waiting:
+		default:
+			t.Error("the waiter was not resolved while a job held the line after the task's end was published")
+		}
+		releaseSecond.resolve()
+		if err := second.wait(t); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := env.harness.WaitForTask(testContext, held); err != nil {
+			t.Fatal(err)
 		}
 		env.close()
 	})
@@ -827,7 +889,7 @@ func TestWakeReadsSleepingTasksAndScansLiveOnesOnlyWhileNothingRuns(t *testing.T
 			clock := &testClock{now: 1_000}
 			opened := tkOpenRoot(t, []durable.AnyTask{idleWork(gates)}, tkOptions{storage: store, now: clock.Now})
 			scheduler := opened.harness.(*harnessImpl).tasks
-			time.Sleep(100 * time.Millisecond)
+			awaitSchedulerSettled(t, scheduler)
 			got := scheduler.Wake()
 			if got.Active != test.want.Active || (got.At == nil) != (test.want.At == nil) || (got.At != nil && *got.At != *test.want.At) {
 				t.Errorf("wake = %+v, want %+v", got, test.want)
@@ -860,7 +922,7 @@ func TestWakeReadsSleepingTasksAndScansLiveOnesOnlyWhileNothingRuns(t *testing.T
 		if _, err := opened.harness.WaitForTask(testContext, id); err != nil {
 			t.Fatal(err)
 		}
-		time.Sleep(100 * time.Millisecond)
+		awaitSchedulerSettled(t, scheduler)
 		if got := scheduler.Wake(); got.Active || got.At == nil || *got.At != 5_000 {
 			t.Errorf("wake = %+v, want inactive with at 5000", got)
 		}
