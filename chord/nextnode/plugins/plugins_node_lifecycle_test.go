@@ -169,10 +169,12 @@ func TestNodeAnUnhandledRejectionIsAnUncaughtExceptionAsNodesDefaultMakesIt(t *t
 }
 
 // `process.exit(7)` in a plugin ends the Node host with code 7 and the app goes on (Pi: it would end the app with code 7):
-// Exited closes, the NodeExit has the code and no signal, and the Go host's link to it closes.
+// Exited closes, the NodeExit has the code and no signal, and the Go host's link to it closes. The exit comes 250 ms after the
+// facet's activation: with none, the process of a slow machine (Windows) ended before it sent the load's report, and the load
+// failed with the exit instead.
 func TestNodeAPluginsProcessExitEndsOnlyTheHostWithItsCode(t *testing.T) {
 	script := handmade(t, "@test/p", "worker", `(function (require, module, exports) {
-		module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => { setTimeout(() => { process.exit(7); }, 0); }) };
+		module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => { setTimeout(() => { process.exit(7); }, 250); }) };
 	})`)
 	node := loadLifecycle(t, NodeOptions{OnOutput: func(NodeStream, []byte) {}}, script)
 	exit := exitOf(t, node)
