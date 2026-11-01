@@ -761,7 +761,9 @@ func (k *NodeKeyed) Pin(ctx context.Context, key string) (*NodePinnedKey, error)
 }
 
 // Get is the pinned document's current value.
-func (p *NodePinnedKey) Get(ctx context.Context) (delta.JsonValue, bool, error) { return p.keyed.Get(ctx, p.key) }
+func (p *NodePinnedKey) Get(ctx context.Context) (delta.JsonValue, bool, error) {
+	return p.keyed.Get(ctx, p.key)
+}
 
 // Release releases the pin (idempotent): a notification, lost with a process that ended.
 func (p *NodePinnedKey) Release() {
