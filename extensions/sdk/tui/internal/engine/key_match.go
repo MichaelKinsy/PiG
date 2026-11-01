@@ -18,7 +18,6 @@ package engine
 
 import (
 	"errors"
-	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring"
 	"math"
 	"slices"
 	"strconv"
@@ -26,6 +25,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring"
 )
 
 // Modifier bit constants: matches Kitty keyboard protocol.
