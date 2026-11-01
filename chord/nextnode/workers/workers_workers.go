@@ -26,7 +26,7 @@ import (
 // Forced Go differences. The component's state is Pi's single JavaScript thread: a `Loop` of its own runs every synchronous
 // part of a Pi function as one section (`loop.Run`), and the microtask `queueMicrotask` is `loop.Queue`. An awaited Promise
 // is a blocking call that enters the loop for each synchronous part; a Promise stored and awaited by several parties
-// (`started`, `ready`, an address's start, a reload's reply) is a once-settled `promise` (workers_promise.go). The
+// (`started`, `ready`, an address's start, a reload's reply) is a once-settled `outcome` (workers_outcome.go). The
 // per-address queue (`routed.queue`, `queue.then(operation)`) is a chain of `done` channels, one owned goroutine per
 // operation, joined by Close. `setTimeout` is `clock.AfterFunc` (the loop's own unless a test gives one), `setInterval` a
 // timer its callback re-arms, `Date.now()` is `clock.Now()` in milliseconds. A thrown error is a returned one: `authorize`,
@@ -175,7 +175,7 @@ type child struct {
 	stopping bool
 	cause    *cause
 	// started: the app's host listens on its link.
-	started *promise[struct{}]
+	started *outcome[struct{}]
 	// ready: its load report; rejected when it exits before.
 	ready *outcome[CrossedReport]
 	// idle: it is idle (from `ready`), since idleSince (unix milliseconds); not while busy or before `ready`.
@@ -204,7 +204,7 @@ type routed struct {
 	child   *child
 	failure *failure
 	// starting is a start queued and not settled.
-	starting *promise[host.ResolvedLink]
+	starting *outcome[host.ResolvedLink]
 }
 
 const (
@@ -280,7 +280,7 @@ func (c *Workers) task(fn func()) {
 // resolve is the route's `resolve`: a failed address returns at once its (public) failure, nothing forks; otherwise a
 // start, after the previous child's exit.
 func (c *Workers) resolve(address contracts.Address, routing context.Context) (host.ResolvedLink, error) {
-	var started *promise[host.ResolvedLink]
+	var started *outcome[host.ResolvedLink]
 	var record *routed
 	var immediate error
 	c.loop.Run(func() {
@@ -297,9 +297,10 @@ func (c *Workers) resolve(address contracts.Address, routing context.Context) (h
 			immediate = closed()
 			return
 		}
-		started = enqueue(c, record, func() (host.ResolvedLink, error) { return c.start(record, routing) })
+		// The start has settled when its address's bookkeeping is done, before whoever awaits it resumes (the first reaction
+		// Pi registers on it).
+		started = enqueue(c, record, func() (host.ResolvedLink, error) { return c.start(record, routing) }, func() { c.settled(record, started) })
 		record.starting = started
-		started.then(func() { c.loop.Run(func() { c.settled(record, started) }) })
 	})
 	if immediate != nil {
 		return host.ResolvedLink{}, immediate
@@ -312,7 +313,7 @@ func (c *Workers) resolve(address contracts.Address, routing context.Context) (h
 // Stop suspends address while it has holders (`RouteHandle.Suspend`), then stops its worker.
 func (c *Workers) Stop(address contracts.Address, ctx context.Context) error {
 	c.route.Suspend(address)
-	var stopped *promise[struct{}]
+	var stopped *outcome[struct{}]
 	c.loop.Run(func() {
 		record := c.addresses[address.Key]
 		if record == nil {
@@ -358,7 +359,7 @@ func (c *Workers) Close(ctx context.Context) error {
 }
 
 func (c *Workers) close(ctx context.Context) error {
-	var stops []*promise[struct{}]
+	var stops []*outcome[struct{}]
 	c.loop.Run(func() {
 		if !c.isClosing() {
 			c.closing(closed())
@@ -404,21 +405,27 @@ func (c *Workers) routedOf(address contracts.Address) *routed {
 }
 
 // enqueue runs operation after the address's earlier ones. Call it in a section.
-func (c *Workers) enqueue(record *routed, operation func() (struct{}, error)) *promise[struct{}] {
-	return enqueue(c, record, operation)
+func (c *Workers) enqueue(record *routed, operation func() (struct{}, error)) *outcome[struct{}] {
+	return enqueue(c, record, operation, nil)
 }
 
-func enqueue[T any](c *Workers, record *routed, operation func() (T, error)) *promise[T] {
+// enqueue is Workers.enqueue for any result; after, if not nil, runs in the section that ends the operation's bookkeeping.
+func enqueue[T any](c *Workers, record *routed, operation func() (T, error), after func()) *outcome[T] {
 	record.pending++
 	previous := record.queue
 	next := make(chan struct{})
 	record.queue = next
-	run := newPromise[T]()
+	run := newOutcome[T]()
 	c.task(func() {
 		<-previous
 		value, err := operation()
 		// The address's bookkeeping first, then whoever awaits the operation, then the next operation.
-		c.loop.Run(func() { c.done(record) })
+		c.loop.Run(func() {
+			c.done(record)
+			if after != nil {
+				after()
+			}
+		})
 		run.settle(value, err)
 		close(next)
 	})
@@ -432,7 +439,7 @@ func (c *Workers) done(record *routed) {
 }
 
 // settled: a start settled: no longer starting.
-func (c *Workers) settled(record *routed, started *promise[host.ResolvedLink]) {
+func (c *Workers) settled(record *routed, started *outcome[host.ResolvedLink]) {
 	if record.starting == started {
 		record.starting = nil
 	}
@@ -581,8 +588,8 @@ func (c *Workers) fork(record *routed) (*child, error) {
 	spawned = &child{
 		process:   process,
 		status:    WorkerStarting,
-		started:   newPromise[struct{}](),
-		ready:     newPromise[CrossedReport](),
+		started:   newOutcome[struct{}](),
+		ready:     newOutcome[CrossedReport](),
 		reloading: reloading,
 	}
 	record.child = spawned
@@ -784,7 +791,7 @@ func (c *Workers) checkIdle() bool {
 			continue
 		}
 		child.idleStop = true
-		enqueue(c, record, func() (struct{}, error) { return struct{}{}, c.idleStop(record, child) })
+		enqueue(c, record, func() (struct{}, error) { return struct{}{}, c.idleStop(record, child) }, nil)
 	}
 	return workers > 0
 }
@@ -825,7 +832,7 @@ func (c *Workers) rollout(scripts []plugins.PluginScript, ctx context.Context) (
 	key := keyOf(scripts)
 	type entry struct {
 		host    string
-		promise *promise[plugins.RolloutHost]
+		entry *outcome[plugins.RolloutHost]
 	}
 	var entries []entry
 	// The failures recorded before this rollout clear; the route is called outside the section, as a resolve it starts enters
@@ -865,21 +872,21 @@ func (c *Workers) rollout(scripts []plugins.PluginScript, ctx context.Context) (
 	})
 	hosts := make([]plugins.RolloutHost, len(entries))
 	for index, each := range entries {
-		hosts[index] = bounded(each.host, each.promise, ctx)
+		hosts[index] = bounded(each.host, each.entry, ctx)
 	}
 	return hosts, nil
 }
 
 // retried is a retried address's entry: its start's load report once ready, or its error.
-func (c *Workers) retried(record *routed, started *promise[host.ResolvedLink]) *promise[plugins.RolloutHost] {
-	entry := newPromise[plugins.RolloutHost]()
+func (c *Workers) retried(record *routed, started *outcome[host.ResolvedLink]) *outcome[plugins.RolloutHost] {
+	entry := newOutcome[plugins.RolloutHost]()
 	hostName := record.address.Key
 	c.task(func() {
 		if _, err := started.wait(); err != nil {
 			entry.resolve(plugins.RolloutHost{Kind: plugins.RolloutErrored, Host: hostName, Error: err})
 			return
 		}
-		var ready *promise[CrossedReport]
+		var ready *outcome[CrossedReport]
 		c.loop.Run(func() {
 			if record.child != nil {
 				ready = record.child.ready
@@ -902,8 +909,8 @@ func (c *Workers) retried(record *routed, started *promise[host.ResolvedLink]) *
 // reload ships scripts to child after its outstanding reload; it settles on `reloaded`, its link's loss or its exit. Only a
 // reload that applied without failures marks the set shipped (a failed plugin is shipped again next time). It runs in a
 // section.
-func (c *Workers) reload(hostName string, child *child, scripts []plugins.PluginScript, key string) *promise[plugins.RolloutHost] {
-	reload := newPromise[plugins.RolloutHost]()
+func (c *Workers) reload(hostName string, child *child, scripts []plugins.PluginScript, key string) *outcome[plugins.RolloutHost] {
+	reload := newOutcome[plugins.RolloutHost]()
 	previous := child.reloading
 	next := make(chan struct{})
 	child.reloading = next
@@ -992,7 +999,7 @@ func keyOf(scripts []plugins.PluginScript) string {
 }
 
 // bounded is entry, or host listed with the abort's error once ctx aborts first (the entry goes on).
-func bounded(hostName string, entry *promise[plugins.RolloutHost], ctx context.Context) plugins.RolloutHost {
+func bounded(hostName string, entry *outcome[plugins.RolloutHost], ctx context.Context) plugins.RolloutHost {
 	result, err := entry.await(ctx)
 	if err != nil {
 		return plugins.RolloutHost{Kind: plugins.RolloutErrored, Host: hostName, Error: err}

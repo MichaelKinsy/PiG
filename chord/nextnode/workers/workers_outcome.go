@@ -3,89 +3,68 @@ package workers
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 )
 
-// promise is a Promise stored and awaited by several parties (a child's `started` and `ready`, an address's start, a
-// reload's reply): settled once, by value or by error; the first settle wins. Reactions run on the settling goroutine
-// before the waiters resume, in the order they were added: Pi runs the reactions registered on a Promise in registration
-// order before the continuations of those awaiting it later. It ports no Pi file.
-type promise[T any] struct {
-	done chan struct{}
-
-	mu        sync.Mutex
-	settled   bool
-	value     T
-	err       error
-	reactions []func()
+// outcome is the result of a piece of work that several parties wait for (a child's `started` and `ready`, an address's
+// start, a reload's reply): settled once, by value or by error, the first settle winning. It is Go's form of a stored
+// Promise: a closed channel, with the fields written before the close. It ports no Pi file.
+type outcome[T any] struct {
+	done    chan struct{}
+	settled atomic.Bool
+	value   T
+	err     error
 }
 
-func newPromise[T any]() *promise[T] { return &promise[T]{done: make(chan struct{})} }
+func newOutcome[T any]() *outcome[T] { return &outcome[T]{done: make(chan struct{})} }
 
-// resolve settles the promise with value; it reports whether it did (false when it was settled already).
-func (p *promise[T]) resolve(value T) bool { return p.settle(value, nil) }
+// resolve settles the outcome with value; it reports whether it did (false when it was settled already).
+func (o *outcome[T]) resolve(value T) bool { return o.settle(value, nil) }
 
-// reject settles the promise with err; it reports whether it did.
-func (p *promise[T]) reject(err error) bool {
+// reject settles the outcome with err; it reports whether it did.
+func (o *outcome[T]) reject(err error) bool {
 	var zero T
-	return p.settle(zero, err)
+	return o.settle(zero, err)
 }
 
-func (p *promise[T]) settle(value T, err error) bool {
-	p.mu.Lock()
-	if p.settled {
-		p.mu.Unlock()
+func (o *outcome[T]) settle(value T, err error) bool {
+	if !o.settled.CompareAndSwap(false, true) {
 		return false
 	}
-	p.settled = true
-	p.value, p.err = value, err
-	reactions := p.reactions
-	p.reactions = nil
-	p.mu.Unlock()
-	for _, reaction := range reactions {
-		reaction()
-	}
-	close(p.done)
+	o.value, o.err = value, err
+	close(o.done)
 	return true
 }
 
-// then adds a reaction that runs when the promise settles (at once when it has).
-func (p *promise[T]) then(reaction func()) {
-	p.mu.Lock()
-	if !p.settled {
-		p.reactions = append(p.reactions, reaction)
-		p.mu.Unlock()
-		return
-	}
-	p.mu.Unlock()
-	reaction()
-}
-
-// wait blocks until the promise settles.
-func (p *promise[T]) wait() (T, error) {
-	<-p.done
-	return p.value, p.err
+// wait blocks until the outcome is settled.
+func (o *outcome[T]) wait() (T, error) {
+	<-o.done
+	return o.value, o.err
 }
 
 // await is `awaitWithContext(promise, ctx)`: the outcome, or ctx's cause when it aborts first (the work goes on).
-func (p *promise[T]) await(ctx context.Context) (T, error) {
+func (o *outcome[T]) await(ctx context.Context) (T, error) {
 	if ctx.Err() != nil {
 		var zero T
 		return zero, context.Cause(ctx)
 	}
 	select {
-	case <-p.done:
-		return p.value, p.err
+	case <-o.done:
+		return o.value, o.err
 	case <-ctx.Done():
 		var zero T
 		return zero, context.Cause(ctx)
 	}
 }
 
-// isSettled reports whether the promise has settled.
-func (p *promise[T]) isSettled() bool {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.settled
+// isSettled reports whether the outcome is settled.
+func (o *outcome[T]) isSettled() bool {
+	select {
+	case <-o.done:
+		return true
+	default:
+		return false
+	}
 }
 
 // taskGroup is the goroutines a component owns: Close joins them. Unlike a sync.WaitGroup it takes a task while another
