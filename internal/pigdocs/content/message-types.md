@@ -103,7 +103,7 @@ These four roles are the messages a provider understands.
 A system message sets the instructions and the tool set from its position in the transcript onward.
 
 ```json
-{"role":"system","content":"","sections":{"preamble":"You are an expert coding assistant..."},"timestamp":1768485600000}
+{"role":"system","content":"","sections":{"preamble":"You are a coding assistant..."},"timestamp":1768485600000}
 ```
 
 | Field | Type | Meaning |

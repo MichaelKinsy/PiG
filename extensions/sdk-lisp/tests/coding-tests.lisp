@@ -334,7 +334,7 @@ C
   (check-equal nil (pig:parse-skill-block "<skill name=\"\" location=\"/l\">"))
   (check-equal nil (pig:parse-skill-block "plain"))
   (let ((skills (json-of "[{\"name\":\"a&b\",\"description\":\"<d>\",\"filePath\":\"/p\"},{\"name\":\"hidden\",\"disableModelInvocation\":true}]")))
-    (check-equal (format nil "~%~%The following skills provide specialized instructions for specific tasks.~%Use the read tool to load a skill's file when the task matches its description.~%When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.~%~%<available_skills>~%  <skill>~%    <name>a&amp;b</name>~%    <description>&lt;d&gt;</description>~%    <location>/p</location>~%  </skill>~%</available_skills>")
+    (check-equal (format nil "~%~%The following skills provide specialized instructions for specific tasks.~%Use the read tool to load a skill's file when the task matches its description.~%Resolve relative paths against the skill's directory (parent of SKILL.md). Use absolute paths in tool calls.~%~%<available_skills>~%  <skill>~%    <name>a&amp;b</name>~%    <description>&lt;d&gt;</description>~%    <location>/p</location>~%  </skill>~%</available_skills>")
                  (pig:format-skills-for-prompt skills))
     (check (search "Use bash to load a skill's file when the task matches its description." (pig:format-skills-for-prompt skills "bash")))
     (check (search "Load a skill's file when the task matches" (pig:format-skills-for-prompt skills "other")))

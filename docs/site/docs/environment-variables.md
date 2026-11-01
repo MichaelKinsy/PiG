@@ -57,6 +57,7 @@ One mistake to avoid: a shell that already has `PIG_CODING_AGENT_DIR` set keeps 
 |---|---|
 | `PIG_OFFLINE`, `PI_OFFLINE` | Turn off startup network operations, such as package update checks and model catalog refreshes. Accepts `1`, `true` or `yes`. `--offline` does the same |
 | `PIG_UPDATE_URL` | Release manifest used by `pig update` |
+| `PIG_SELF_UPDATE_COMMAND` / `PI_SELF_UPDATE_COMMAND` | Command `pig update` runs to update PiG itself, split on whitespace (no quoting), with `{packageName}`, `{version}` and `{installSpec}` placeholders. `PIG_SELF_UPDATE_COMMAND` is read first and either takes precedence over the `selfUpdateCommand` setting. See [Custom update command](cli.md#custom-update-command) |
 | `PIG_UPDATE_TRUST_ROOT` | Public key that signs the release manifest |
 | `PI_SKIP_VERSION_CHECK` | Do not check for a newer PiG release at startup. Any non-empty value disables the check, as in Pi. `pig update` still checks |
 | `PI_OAUTH_CALLBACK_HOST` | Host the OAuth callback listens on |

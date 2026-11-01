@@ -24,6 +24,7 @@ In default mode, `PIG_HOME` moves settings, keybindings, sessions, trust decisio
 |---|---|
 | `PIG_OFFLINE`, `PI_OFFLINE` | Do not check for package updates or refresh dynamic model catalogs such as Radius. Accepts `1`, `true` or `yes`; any `PI_OFFLINE` value stops the catalog refresh |
 | `PIG_UPDATE_URL` | Release manifest used by `pig update` |
+| `PIG_SELF_UPDATE_COMMAND` / `PI_SELF_UPDATE_COMMAND` | Command `pig update` runs to update PiG itself, split on whitespace (no quoting), with `{packageName}`, `{version}` and `{installSpec}` placeholders. `PIG_SELF_UPDATE_COMMAND` is read first and either takes precedence over the `selfUpdateCommand` setting. |
 | `PIG_UPDATE_TRUST_ROOT` | Public key that signs the release manifest |
 | `PI_SKIP_VERSION_CHECK` | Do not check for a newer PiG release at startup. Any non-empty value disables the check, as in Pi. `pig update` still checks |
 | `PI_OAUTH_CALLBACK_HOST` | Host the OAuth callback listens on |
