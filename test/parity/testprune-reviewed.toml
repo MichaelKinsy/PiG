@@ -649,3 +649,10 @@ commit = "875c5c04b3d8e01148a41e386302650de0fec11a"
 class = "CITE"
 cite = "packages/durable/src/storage/jsonl/storage.ts:324-325,346"
 reason = "Pi e5c6182b makes JsonlStorage.commit store several batches (storage.ts:285-325): memory runs ahead of the file once a batch applied, so any failure after that (a sidecar path join failing included) poisons the storage with that failure as the cause instead of leaving it usable; a reopened storage has no record of the batch. The path-join test expects the poisoned error and the absent document."
+
+[[entry]]
+path = "durable/session/session_group_commit_internal_test.go"
+commit = "4a3ad8b882c4a0d114ebb399e665d94e82244326"
+class = "CITE"
+cite = "packages/durable/src/session/session.ts:205-206"
+reason = "session.ts:205-206 publishes the commits of one storage call one by one, in line order, a macrotask apart (spec.md:1892-1894: the host listeners of the first and the continuations of the waits it resolves run before the second is published). The four changed expectations are the order and the publication hop of the Go port, now enforced by the explicit handshake (resumption.go: waits register before they block and acknowledge as they resume) instead of the goroutine-dump ordering the red values were measured with; the values are Pi's contract."
