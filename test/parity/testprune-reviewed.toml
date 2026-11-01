@@ -642,3 +642,17 @@ path = "chord/internal/parking/stall_test.go"
 commit = "73a0b7e6f90076013d5a254c7e196f20d38f46ce"
 class = "NOBEHAVIOR"
 reason = "Go only, no Pi counterpart: the stall report of a section that waits for its handler. The test now guards a goroutine that waits on a Signal with Guard, so the report's stacks name the waiter as parking.(*Signal).Wait (the wait it calls, no longer the report's own); its other expected values are unchanged."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_fleet_test.go"
+commit = "f59f4016039310a105a789060419985ed07c795a"
+class = "CITE"
+cite = "packages/chord/test/next-node/workers/support.ts:138"
+reason = "Pi's fixture plugin writes `label.ts` (`export const label = <JSON>;`) into the copy's notes plugin (support.ts:138); the Go fleet's fixture plugin did write a file named `label`. The commit gives it Pi's file name, content and package files; no expectation of any test changes with it."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_workers_test.go"
+commit = "f59f4016039310a105a789060419985ed07c795a"
+class = "CITE"
+cite = "packages/chord/test/next-node/workers/workers.test.ts:35"
+reason = "Pi reads `workers.state.value` synchronously after the hold and expects `starting` (workers.test.ts:35). A Go worker may be running before a poll of the state sees it, so the test reads the first status of the state's own frames; the expected value is Pi's, `starting`."
