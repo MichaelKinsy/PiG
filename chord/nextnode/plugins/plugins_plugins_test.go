@@ -28,6 +28,9 @@ import (
 // case that Pi writes against a LOCAL type (`host.get(Item)`, a held `item.label.value`) or a JavaScript object (WeakRefs,
 // the heap, `batch.commit`) is read through the probe, which runs the same JavaScript in the subprocess. Each such case says so.
 
+// CreatePlugins returns the concrete *Plugins (review item).
+var _ func(PluginsOptions, context.Context) *Plugins = CreatePlugins
+
 // pcReported collects what the component reports.
 type pcReported struct {
 	mu    sync.Mutex
@@ -84,7 +87,7 @@ func pcNew(t *testing.T, root string, opts ...pcOptions) *pcComponent {
 		node.ExecArgv = []string{"--expose-gc"}
 	}
 	reported := &pcReported{}
-	var created *Plugins = CreatePlugins(PluginsOptions{
+	created := CreatePlugins(PluginsOptions{
 		Roots: []string{root}, Kinds: pcKinds(chosen.modules), Install: chosen.install, OnError: reported.add, Node: node,
 	}, background)
 	t.Cleanup(created.Close)
