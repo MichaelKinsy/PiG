@@ -1714,7 +1714,7 @@ path = "packages/chord/src/next-node/http/upgrades.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLinksOptionsGaveThatSocket"]
-rationale = "ported; one test designed out. Design note 5. PiG: chord/nextnode/http/upgrades.go, chord/nextnode/http/websocket.go (lane nhttp)."
+rationale = "ported (the ws-server GC case is TestGCKeepsNoUpgradeOnceItsLinkSocketClosed). Design note 5. PiG: chord/nextnode/http/upgrades.go, chord/nextnode/http/websocket.go (lane nhttp)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/build.ts"

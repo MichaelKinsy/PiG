@@ -2349,7 +2349,7 @@
       "evidence": [
         "chord/nextnode/http/node_test.go"
       ],
-      "rationale": "6 of 7 upstream cases are ported (lane nhttp); the designed-out case checks that a lazy Web `Request` is made only when something reads it; the Go request is one `nodeIncoming` shape for the listener and Fetch with no lazy Web Request object. Owner approval of the designed-out case is pending.",
+      "rationale": "6 of 7 upstream cases are ported (lane nhttp); the designed-out case checks that a lazy Web `Request` is made only when something reads it; the Go request is one `nodeIncoming` shape for the listener and Fetch with no lazy Web Request object. SCRUTINIZED:approved by the owner (2026-11-01): Go's net/http parses the request before any handler runs, so there is no lazy Request construction to observe; responses and admission results are identical.",
       "designedOutCases": [
         "Web requests › makes a Web Request only when something reads the headers or the body (here: no authenticator does)"
       ]
@@ -2388,10 +2388,7 @@
       "evidence": [
         "chord/nextnode/http/upgrades_test.go"
       ],
-      "rationale": "16 of 17 upstream cases are ported (lane nhttp); the designed-out case asserts that a closed socket keeps no `ws` server object (a GC spy on the ws library); the Go websocket is gorilla over net/http and TestGCKeepsNothingOfAClosedPluginSocket covers what a closed plugin socket keeps. Owner approval of the designed-out case is pending.",
-      "designedOutCases": [
-        "GC › keeps no ws server once its socket closed"
-      ]
+      "rationale": "All 17 upstream cases run in the evidence file (lane nhttp). The case that a closed socket keeps no `ws` server object is TestGCKeepsNoUpgradeOnceItsLinkSocketClosed: weak pointers to the upgraded record and its WebSocket, bounded GC cycles (Pi's ws-server GC spy case); TestGCKeepsNothingOfAClosedPluginSocket covers the plugin socket."
     },
     {
       "path": "packages/chord/test/next-node/plugins/build.test.ts",

@@ -2411,7 +2411,7 @@
       "upstreamTestHash": "sha256:30061cd751fb83b45ed0427740e8e2da51fe9c6a0f7835af63e73ef22bc1ffe7",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. SCRUTINIZED:approved by the owner (2026-11-01): Go's net/http parses the request before any handler runs, so there is no lazy Request construction to observe; responses and admission results are identical.",
       "designedOutCases": [
         "Web requests \u203a makes a Web Request only when something reads the headers or the body (here: no authenticator does)"
       ]
@@ -2442,10 +2442,7 @@
       "upstreamTestHash": "sha256:00dde5d81f498561b16cd4fefe9f4fb08904b7266f0d0f06bf38aa3e20c97953",
       "area": "extensions",
       "tags": [],
-      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
-      "designedOutCases": [
-        "GC \u203a keeps no ws server once its socket closed"
-      ]
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/next-node/plugins/build.test.ts",
