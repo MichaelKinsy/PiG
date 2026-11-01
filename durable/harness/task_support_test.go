@@ -5,8 +5,6 @@ package harness
 import (
 	"context"
 	"errors"
-	"runtime"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -203,15 +201,6 @@ func queueOnLine(t *testing.T, harness Harness, start func() <-chan struct{}) {
 	eventually(t, func() bool { return impl.LineJobs() > jobs || settled(done) })
 }
 
-// waitingOnLine counts the goroutines running operation (a stack substring such as "harnessImpl).Inspect") that wait on the Session
-// line behind a held job. Unlike LineJobs it cannot mistake other line work, such as the scheduler's, for the operation's own job.
-func waitingOnLine(operation string) int {
-	return goroutinesMatching(func(stack string) bool {
-		header, _, _ := strings.Cut(stack, "\n")
-		return strings.Contains(header, "[chan receive") && strings.Contains(stack, "durable/session.enqueue[") && strings.Contains(stack, operation)
-	})
-}
-
 // queueOnLineAdmitted runs start with a context that reports when the Session line admits its call, and waits for that or for the
 // operation to settle: the call then holds its position behind the jobs ahead of it, as a TypeScript call that extended
 // the line's chain synchronously does (internal/lineadmission).
@@ -227,31 +216,4 @@ func queueOnLineAdmitted(t *testing.T, start func(ctx context.Context) <-chan st
 			return settled(done)
 		}
 	})
-}
-
-// queueOnLineIn runs start and waits until a goroutine running operation waits on the Session line behind a held job, or until the
-// operation settled.
-func queueOnLineIn(t *testing.T, operation string, start func() <-chan struct{}) {
-	t.Helper()
-	done := start()
-	eventually(t, func() bool { return settled(done) || waitingOnLine(operation) > 0 })
-}
-
-func goroutinesMatching(match func(stack string) bool) int {
-	buffer := make([]byte, 1<<20)
-	for {
-		n := runtime.Stack(buffer, true)
-		if n < len(buffer) {
-			buffer = buffer[:n]
-			break
-		}
-		buffer = make([]byte, 2*len(buffer))
-	}
-	count := 0
-	for stack := range strings.SplitSeq(string(buffer), "\n\n") {
-		if match(stack) {
-			count++
-		}
-	}
-	return count
 }
