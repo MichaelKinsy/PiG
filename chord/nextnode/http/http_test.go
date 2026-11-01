@@ -31,9 +31,6 @@ import (
 // component's own answers, throwing routes and wraps, `close` (also while authenticating), a mounted handler, and
 // requests' scopes collected. Ports packages/chord/test/next-node/http/http.test.ts.
 //
-// Not ported: "a reload swapping a route leaves a running request on the old router; the next uses the new one" needs
-// host.Reload, which the Go host does not have yet.
-//
 // Forced differences. A route that never answers blocks on its scope's Done and returns a 503 description. The GC
 // tests take a `weak.Pointer` of the scope and of the request through reflect (`host.Ctx` and `HttpRequest` are
 // interfaces over pointers the tests cannot name), and run `runtime.GC` in a bounded loop. An `AbortSignal` of a request
@@ -1010,5 +1007,38 @@ func TestGCCollectsRequestsScopesAndRequestsOnceAnswered(t *testing.T) {
 		mustSend(t, server.port, "GET", "/r", sendOptions{})
 	}
 	httpExpectCollected(t, refs.all())
+	server.close()
+}
+
+func TestReloadsAndCloseAReloadSwappingARouteLeavesARunningRequestOnTheOldRouterTheNextUsesTheNewOne(t *testing.T) {
+	gate := newGate()
+	t.Cleanup(gate.resolve)
+	old := contributing(HttpContribution{Routes: []HttpRouteEntry{
+		RouteFunc("GET /v", func(HttpRequest, host.Ctx) (HttpResponse, error) {
+			<-gate.done()
+			return htmlOf("old"), nil
+		}),
+	}})
+	server := serving(t, []plugin{{"@app/v", old}}, servedOptions{})
+	type sent struct {
+		answer answer
+		err    error
+	}
+	running := httpAsync(func() sent {
+		got, err := send(t, server.port, "GET", "/v", sendOptions{})
+		return sent{got, err}
+	})
+	time.Sleep(50 * time.Millisecond)
+	next := contributing(HttpContribution{Routes: []HttpRouteEntry{
+		RouteFunc("GET /v", func(HttpRequest, host.Ctx) (HttpResponse, error) { return htmlOf("new"), nil }),
+	}})
+	server.reload(t, plugin{"@app/v", next})
+	if got := mustSend(t, server.port, "GET", "/v", sendOptions{}).text(); got != "new" {
+		t.Fatalf("the next request got %q, want new", got)
+	}
+	gate.resolve()
+	if got := receive(t, running, "the running request"); got.err != nil || got.answer.text() != "old" {
+		t.Fatalf("the running request got %q, %v, want old", got.answer.text(), got.err)
+	}
 	server.close()
 }

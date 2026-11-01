@@ -32,9 +32,9 @@ import (
 // again after authenticating, the heartbeat, close bounded for a peer that never answers, and nothing kept of a closed
 // socket. Ports packages/chord/test/next-node/http/upgrades.test.ts.
 //
-// Pending (host.Reload, slice 7b, lands with the kernel fold): the five tests Pi drives with `host.reload(...)`. Each has a Go
-// twin below driven by a writable contribution (`...ViaAWritable`): the router recomposes the same way and `revoke` runs the
-// same code, so the twins keep the behavior covered until the originals can be ported.
+// The revocation tests drive the router with `host.Reload` as Pi's do. A router change reaches the connections on a task of its own
+// (design note 2, rows/nhttp.md), where Pi's watch listener runs before `reload` resolves: after a reload the tests wait for
+// what Pi's checks at once (a scope's seal, a connection ended by the server) before they check or write.
 //
 // Designed out: "keeps no ws server once its socket closed" spies on `WebSocketServer.prototype.handleUpgrade` to see that `ws`
 // servers are dropped; Go's gorilla Upgrader is a stack value made per upgrade (upgrade in upgrades.go) and nothing keeps it.
@@ -342,23 +342,18 @@ func TestRevocationKeepsAWritableContributionsOwnSocketsWhenOnlyItsHostsChange(t
 	socket.Close(0, "")
 }
 
-func TestRevocationTerminatesAPluginsSocketsAtOnceWhenItsHandlerIsRemovedSealingTheirScopesOthersStayViaAWritable(t *testing.T) {
+func TestRevocationTerminatesAPluginsSocketsAtOnceWhenAReloadRemovesItsContributionSealingTheirScopesOthersStayQ6(t *testing.T) {
 	scope := make(chan host.Ctx, 1)
-	removed := newTunnel("app.removed", []string{"on"}, func(args []string) HttpContribution {
-		if len(args) == 0 {
-			return HttpContribution{}
-		}
-		return HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/removed", Handler: &HttpSocket{Handle: func(_ *WebSocketHandle, _ HttpRequest, ctx host.Ctx) error {
-			scope <- ctx
-			return nil
-		}}}}}
-	})
-	other := plugin{"@app/other", contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/other", Handler: noopSocket()}}})}
-	server := serving(t, []plugin{{"@app/removed", removed.facet}, other}, servedOptions{})
+	removed := contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/removed", Handler: &HttpSocket{Handle: func(_ *WebSocketHandle, _ HttpRequest, ctx host.Ctx) error {
+		scope <- ctx
+		return nil
+	}}}}})
+	other := contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/other", Handler: noopSocket()}}})
+	server := serving(t, []plugin{{"@app/removed", removed}, {"@app/other", other}}, servedOptions{})
 	doomed := mustSocketTo(t, server.port, "/removed", owner)
 	kept := mustSocketTo(t, server.port, "/other", owner)
 	ctx := receive(t, scope, "the handler")
-	removed.name(t, server)
+	server.reload(t, plugin{"@app/other", other})
 	receive(t, ctx.Done(), "the scope's seal")
 	if event := receive(t, doomed.closed, "the close"); event.Code != 1006 {
 		t.Fatalf("close code = %d, want 1006", event.Code)
@@ -369,15 +364,14 @@ func TestRevocationTerminatesAPluginsSocketsAtOnceWhenItsHandlerIsRemovedSealing
 	kept.Close(0, "")
 }
 
-func TestRevocationTerminatesLinksAndSocketsThroughAHostNoLongerContributedLoopbackOnesStayViaAWritable(t *testing.T) {
-	tn := hostsTunnel("app.hosts", nil)
-	tn.facet = newTunnel("app.hosts", []string{"a.example.com"}, func(hosts []string) HttpContribution { return HttpContribution{Hosts: hosts} }).facet
-	server := serving(t, []plugin{echo(), {"@app/hosts", tn.facet}}, servedOptions{links: &LinksOptions{Path: "/chord"}})
+func TestRevocationTerminatesLinksAndSocketsThroughAHostNoLongerContributedLoopbackOnesStay(t *testing.T) {
+	hosts := plugin{"@app/hosts", contributing(HttpContribution{Hosts: []string{"a.example.com"}})}
+	server := serving(t, []plugin{echo(), hosts}, servedOptions{links: &LinksOptions{Path: "/chord"}})
 	through := withHeaders(owner, map[string]string{"host": "a.example.com"})
 	linkSocket := mustSocketTo(t, server.port, "/chord", through)
 	socket := mustSocketTo(t, server.port, "/echo/a", through)
 	loopback := mustSocketTo(t, server.port, "/echo/b", owner)
-	tn.name(t, server)
+	server.reload(t, echo())
 	for _, each := range []*clientSocket{linkSocket, socket} {
 		if event := receive(t, each.closed, "the close"); event.Code != 1006 {
 			t.Fatalf("close code = %d, want 1006", event.Code)
@@ -440,32 +434,27 @@ func frame(text string) []byte {
 }
 
 // Astra's security audit A1: a policy close left the peer able to invoke the plugin's handlers.
-func TestRevocationARawPeerWhoseHostOrContributionLeftCanSendNothingMoreToTheHandlerViaAWritable(t *testing.T) {
+func TestRevocationARawPeerWhoseHostOrContributionLeftCanSendNothingMoreToTheHandler(t *testing.T) {
 	var calls collector[string]
-	handler := &HttpSocket{Handle: func(socket *WebSocketHandle, _ HttpRequest, _ host.Ctx) error {
-		socket.OnMessage(func(message Message) { calls.add(message.Text()) })
-		return nil
-	}}
-	sockets := newTunnel("app.sockets", []string{"on"}, func(args []string) HttpContribution {
-		if len(args) == 0 {
-			return HttpContribution{}
-		}
-		return HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/echo", Handler: handler}}}
-	})
-	tunnelPlugin := hostsTunnel("app.tunnel", nil)
-	tunnelPlugin.facet = newTunnel("app.tunnel", []string{"t.example"}, func(hosts []string) HttpContribution { return HttpContribution{Hosts: hosts} }).facet
-	server := serving(t, []plugin{{"@app/sockets", sockets.facet}, {"@app/tunnel", tunnelPlugin.facet}}, servedOptions{})
+	sockets := plugin{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{{
+		Pattern: "/echo", Handler: &HttpSocket{Handle: func(socket *WebSocketHandle, _ HttpRequest, _ host.Ctx) error {
+			socket.OnMessage(func(message Message) { calls.add(message.Text()) })
+			return nil
+		}},
+	}}})}
+	tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
+	server := serving(t, []plugin{sockets, tunnel}, servedOptions{})
 	throughHost := rawSocket(t, server.port, "t.example", "/echo")
 	defer func() { _ = throughHost.Close() }()
 	local := rawSocket(t, server.port, "localhost:"+strconv.Itoa(server.port), "/echo")
 	defer func() { _ = local.Close() }()
-	// A router change reaches the connections off the host's sections (Pi's reload returns after its watch listener ran): the
-	// peer is cut when the server ends its connection, and only then does it write.
-	tunnelPlugin.name(t, server)
+	server.reload(t, sockets)
+	// The peer is cut when the server ends its connection (a router change reaches connections on a task of its own); it
+	// writes after that.
 	endedByServer(t, throughHost)
 	_, _ = throughHost.Write(frame("after the host left"))
 	time.Sleep(50 * time.Millisecond)
-	sockets.name(t, server)
+	server.reload(t)
 	endedByServer(t, local)
 	_, _ = local.Write(frame("after the contribution left"))
 	time.Sleep(50 * time.Millisecond)
@@ -475,12 +464,11 @@ func TestRevocationARawPeerWhoseHostOrContributionLeftCanSendNothingMoreToTheHan
 }
 
 // Astra's security audit A2: an upgrade authenticating across the removal of its host was still handed out.
-func TestRevocationChecksAnUpgradeAgainAfterAuthenticatingOneWhoseHostLeftMeanwhileIsRefusedViaAWritable(t *testing.T) {
+func TestRevocationChecksAnUpgradeAgainAfterAuthenticatingOneWhoseHostLeftMeanwhileIsRefused(t *testing.T) {
 	gate := newGate()
 	started := newGate()
-	tn := newTunnel("app.tunnel", []string{"t.example"}, func(hosts []string) HttpContribution { return HttpContribution{Hosts: hosts} })
 	sockets := plugin{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/echo", Handler: noopSocket()}}})}
-	server := serving(t, []plugin{sockets, {"@app/tunnel", tn.facet}}, servedOptions{
+	server := serving(t, []plugin{sockets, {"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}}, servedOptions{
 		authenticate: func(_ HttpRequest, ctx context.Context) (data.Principal, error) {
 			started.resolve()
 			if err := gate.wait(ctx); err != nil {
@@ -495,7 +483,7 @@ func TestRevocationChecksAnUpgradeAgainAfterAuthenticatingOneWhoseHostLeftMeanwh
 		opening <- err
 	}()
 	receive(t, started.done(), "the authenticator")
-	tn.name(t, server)
+	server.reload(t, sockets)
 	gate.resolve()
 	if err := receive(t, opening, "the upgrade"); err == nil || err.Error() != "refused 403" {
 		t.Fatalf("upgrade = %v, want refused 403", err)

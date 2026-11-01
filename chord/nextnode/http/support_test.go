@@ -194,6 +194,28 @@ func (s *testServer) facets(more ...plugin) []host.HostFacet {
 	return facets
 }
 
+// facetsOf are the core facets and exactly the plugins given (none: the core alone), as a reload's set.
+func (s *testServer) facetsOf(plugins ...plugin) []host.HostFacet {
+	facets := append([]host.HostFacet(nil), s.core...)
+	for _, each := range plugins {
+		facets = append(facets, host.HostFacet{Name: each.name, Facet: each.facet})
+	}
+	return facets
+}
+
+// reload is `host.reload(server.facets(plugins), context)`: the core facets and the plugins given; it fails the test on an error or
+// a plugin that failed.
+func (s *testServer) reload(t *testing.T, plugins ...plugin) {
+	t.Helper()
+	report, err := s.host.Reload(s.facetsOf(plugins...), background, host.ReloadOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, failed := range report.Failed {
+		t.Fatalf("plugin %q failed: %v", failed.Plugin, failed.Error)
+	}
+}
+
 // load loads the host with the facets and waits for the listener's port.
 func (s *testServer) load() {
 	s.t.Helper()
