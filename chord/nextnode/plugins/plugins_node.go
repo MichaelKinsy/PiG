@@ -557,6 +557,8 @@ type NodeHost struct {
 	startOne   sync.Once
 	// cb is what the process calls on the Go side: functions, synchronous callbacks and telemetry (plugins_node_callbacks.go).
 	cb nodeCallbacks
+	// bridge is what the app holds of the plugins' host through the reference RPC (plugins_node_reference.go).
+	bridge nodeBridge
 }
 
 // Exited is closed when the process ended.
@@ -989,6 +991,8 @@ func (h *NodeHost) control(payload []byte) {
 			return
 		}
 		h.options.OnError(event.Error.decode())
+	default:
+		h.bridgeEvent(message.Event, payload)
 	}
 }
 

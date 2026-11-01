@@ -2,11 +2,8 @@ package plugins
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"reflect"
 	"slices"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -27,54 +24,9 @@ import (
 // side is NodeHost.Link, the other end of the one the host `connect`s) and the server routes `Worker` to it
 // (`server.route(Worker, { authorize, resolve: () => ({ link, principal: { kind: "worker" } }) })`: the Go host's Route).
 // `server.get(Notes)` is the Go host's hold over that route. Adapted to the process boundary
-// (docs/plan/chord-plugins-node-evaluator.md): the server's own plugins (kind "server") run in a Node host of their own, which
-// the same Go host routes (its address is `test.server`); `Index`, a local type of that host, is read with a probe held
-// through the route.
-
-// pcServerKind is the host kind of the server's Node host, which serves the server probe.
-var pcServerKind = mustKind(contracts.NewHostKind("test.server"))
-
-// pcServerProbeContract is `test.sprobe`: probeContract on the server kind.
-var pcServerProbeContract = mustContract(contracts.Remote("test.sprobe", contracts.RemoteDeclaration{
-	Version: 1, Params: contracts.Params{},
-	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return pcServerKind.Address(nil), nil },
-	Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-		Methods: []contracts.MethodEntry{contracts.Meth("call", contracts.NewMethod(contracts.Str(), contracts.Str()))},
-	})},
-}))
-
-// pcServerProbeCore is probeCore's module for the server kind: it serves `test.sprobe`, whose one method runs the labelled
-// op (pcLabelOps) in the server's Node host.
-func pcServerProbeCore(t *testing.T, c *pcComponent) CoreFacet {
-	t.Helper()
-	module := `import * as next from "` + c.src(t) + `next/index.ts";
-const { defineFacet, remote, method, str, hostKind } = next;
-const Server = hostKind("test.server");
-const Probe = remote("test.sprobe", {
-	version: 1,
-	params: {},
-	hostAddress: () => Server(),
-	variants: { main: { state: {}, methods: { call: method(str(), str()) } } },
-});
-const ops = { ` + pcLabelOps + ` };
-export default defineFacet((host) =>
-	host.serve(Probe, (_params, _principal, self) => ({
-		variant: "main",
-		members: {
-			call: async (request, ctx) => {
-				const { op, args } = JSON.parse(request);
-				return JSON.stringify((await ops[op](args, { ctx, self })) ?? null);
-			},
-		},
-	})),
-);
-`
-	file := filepath.Join(t.TempDir(), "sprobe.mjs")
-	if err := os.WriteFile(file, []byte(module), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	return CoreFacet{Name: "@test/sprobe", Module: file}
-}
+// (docs/plan/chord-plugins-node-evaluator.md): the server's own plugins (kind "server") run in a Node host of their own, and
+// `server.get(Index)`, a local type of that host, is NodeHost.Get on it (the reference RPC, plugins_node_reference.go): it
+// reads the plugin's label across the reload and watches its frames, as Pi's `index.label` does.
 
 // pcFrames collects what a watch delivers as Pi's `valuesOf` records it (a value as itself, a failure as {failed: message}).
 type pcFrames struct {
@@ -112,7 +64,7 @@ func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThen
 	root := tempRoot(t, "contracts", "notes")
 	c := pcNew(t, root)
 
-	// The worker's host, and the server's own plugins' host (it has an address of its own for the probe).
+	// The worker's host, and the server's own plugins' host.
 	workerAddress := workerKind.Address(nil)
 	workerNode, _, err := c.Load(PluginsLoad{
 		Kind: "worker", Address: &workerAddress, Principal: workerPrincipal, Peer: serverPrincipal,
@@ -121,35 +73,38 @@ func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThen
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = workerNode.Close(background) })
-	serverAddress := pcServerKind.Address(nil)
-	serverNode, _, err := c.Load(PluginsLoad{
-		Kind: "server", Core: []CoreFacet{pcServerProbeCore(t, c)}, Address: &serverAddress,
-		Principal: serverPrincipal, Peer: serverPrincipal,
-	}, background)
+	serverNode, _, err := c.Load(PluginsLoad{Kind: "server", Principal: serverPrincipal, Peer: serverPrincipal}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = serverNode.Close(background) })
+	// The link of the server's own host is attached as a child's (the app attaches every link it makes in time).
+	acceptorOf(t, serverNode, serverPrincipal)
 
-	// The server: it routes `Worker` (and its own plugins' kind) to the links of the Node hosts.
-	server := serverFor(t, workerRoute(workerNode), nodeRoute{kind: pcServerKind, node: serverNode, principal: serverPrincipal})
-	serverProbe := probeHeld(t, server, pcServerProbeContract)
-	indexLabel := func() string {
-		t.Helper()
-		label, ok := serverProbe.must("label", map[string]any{"dir": "index"}).(string)
-		if !ok {
-			t.Fatal("the index label is no text")
-		}
-		return label
-	}
+	// The server routes `Worker` to the link of the worker's Node host; `server.get(Index)` is NodeHost.Get on the server's
+	// own plugins' host, whose type is local.
+	server := serverFor(t, workerRoute(workerNode))
 	notes, err := server.Get(background, notesContract, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(notes.Release)
+	index, err := serverNode.Get(pcIndexContract, delta.NewJsonObject(0), background, host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(index.Release)
 	member := func(name string) delta.JsonValue {
 		t.Helper()
 		value, err := notes.Member(name).Value()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return value
+	}
+	indexLabel := func() delta.JsonValue {
+		t.Helper()
+		value, err := index.Member("label").Value()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -166,6 +121,11 @@ func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThen
 		t.Fatal(err)
 	}
 	frames := pcStartFrames(watch)
+	indexWatch, err := index.Member("label").Watch(background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	indexFrames := pcStartFrames(indexWatch)
 	serverStep, err := c.Step("server", serverNode)
 	if err != nil {
 		t.Fatal(err)
@@ -196,8 +156,12 @@ func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThen
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("rolled = %+v, want %+v", got, want)
 	}
+	indexFrames.count(t, 1)
 	if values := frames.all(); !reflect.DeepEqual(values, []delta.JsonValue{"v2"}) {
 		t.Fatalf("frames = %v, want [v2]", values)
+	}
+	if values := indexFrames.all(); !reflect.DeepEqual(values, []delta.JsonValue{"v2"}) {
+		t.Fatalf("index frames = %v, want [v2]", values)
 	}
 	if got := []any{member("label"), member("count"), indexLabel()}; !reflect.DeepEqual(got, []any{"v2", float64(1), "v2"}) {
 		t.Fatalf("after the edit = %v, want [v2 1 v2]", got)
@@ -224,6 +188,12 @@ func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThen
 	}
 	if values := frames.all(); !reflect.DeepEqual(values, []delta.JsonValue{"v2"}) {
 		t.Fatalf("frames after the broken edit = %v, want [v2]", values)
+	}
+	if values := indexFrames.all(); !reflect.DeepEqual(values, []delta.JsonValue{"v2"}) {
+		t.Fatalf("index frames after the broken edit = %v, want [v2]", values)
+	}
+	if state := index.State().Value(); !reflect.DeepEqual(state, &host.RefState{Kind: host.RefStateLive}) {
+		t.Fatalf("index state = %+v, want {kind: live}", state)
 	}
 	if marks := c.Marks(); !slices.Equal(marks.Dirty, []string{"@test/notes"}) {
 		t.Fatalf("dirty = %v, want [@test/notes]", marks.Dirty)
@@ -285,33 +255,3 @@ func TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost(t *testing.T) {
 var pcIndexContract = mustContract(contracts.Local("test.index", contracts.LocalDeclaration{
 	Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("label", contracts.Str())},
 }))
-
-// Not upstream's (plugnode-differences.md, 1): a local type is the host's own, so the app's Go host cannot `get` one that a
-// plugin serves on its Node host (Pi's app does that in process, `server.get(Index)`): the hold is `unavailable`, `test.index is not served here`. The same
-// type is read through the probe, in the Node host.
-func TestEndToEndTheAppsGoHostCannotGetALocalTypeAPluginServes(t *testing.T) {
-	root := tempRoot(t, "contracts", "notes")
-	c := pcNew(t, root)
-	serverAddress := pcServerKind.Address(nil)
-	serverNode, _, err := c.Load(PluginsLoad{
-		Kind: "server", Core: []CoreFacet{pcServerProbeCore(t, c)}, Address: &serverAddress,
-		Principal: serverPrincipal, Peer: serverPrincipal,
-	}, background)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = serverNode.Close(background) })
-	server := serverFor(t, nodeRoute{kind: pcServerKind, node: serverNode, principal: serverPrincipal})
-	if label := probeHeld(t, server, pcServerProbeContract).must("label", map[string]any{"dir": "index"}); label != "v1" {
-		t.Fatalf("the probe reads %v, want v1", label)
-	}
-	short := 500 * time.Millisecond
-	ref, err := server.Get(background, pcIndexContract, delta.NewJsonObject(0), host.GetOptions{ReadyTimeout: &short})
-	if err == nil {
-		ref.Release()
-		t.Fatal("the app's Go host got a local type of its plugins")
-	}
-	if !strings.Contains(err.Error(), "test.index is not served here") {
-		t.Fatalf("error = %v", err)
-	}
-}
