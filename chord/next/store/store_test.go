@@ -77,14 +77,21 @@ var brokenWrite StagedWrite = stagedWrite{
 	},
 }
 
-// openStoreAt opens the store of the SQLite file at path.
-func openStoreAt(t *testing.T, path string) *ChordStore {
+// openStoreValueAt opens the store of the SQLite file at path and returns it as OpenStore does: the Store interface
+// application code holds.
+func openStoreValueAt(t *testing.T, path string) Store {
 	t.Helper()
 	db, err := node.OpenNodeSqliteDatabase(path, node.NodeSqliteDatabaseOptions{})
 	noError(t, err)
 	opened, err := OpenStore(SqliteBackend(db), background, StoreOptions{})
 	noError(t, err)
-	return opened.(*ChordStore)
+	return opened
+}
+
+// openStoreAt opens the store of the SQLite file at path, as the concrete *ChordStore.
+func openStoreAt(t *testing.T, path string) *ChordStore {
+	t.Helper()
+	return openStoreValueAt(t, path).(*ChordStore)
 }
 
 // newBatch is `new Batch(() => {}, undefined)`.
@@ -106,18 +113,22 @@ func TestStore(t *testing.T) {
 	t.Run("opening", func(t *testing.T) {
 		t.Run("creates a new store at seq 0 without an outbox, and reopens a file at its last seq and ids", func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "store.sqlite")
-			store := openStoreAt(t, path)
+			// Ports packages/chord/test/next/store/store.test.ts:64 (the it() through :77). LastSeq, Outbox and Close go
+			// through the Store OpenStore returned, as store.test.ts:68 (lastSeq, outbox), :70 (close) and :72 (lastSeq of
+			// the reopened store) read them; Commit is ChordStore's.
+			var store Store = openStoreValueAt(t, path)
 			if store.LastSeq() != 0 || store.Outbox() != nil {
 				t.Fatalf("[lastSeq, outbox] = [%d, %v]", store.LastSeq(), store.Outbox())
 			}
-			if id := storeCreated(t, store); id != 2 {
+			if id := storeCreated(t, store.(*ChordStore)); id != 2 {
 				t.Fatalf("first id = %d, want 2", id)
 			}
 			noError(t, store.Close(background))
-			reopened := openStoreAt(t, path)
-			if reopened.LastSeq() != 1 {
-				t.Fatalf("reopened lastSeq = %d, want 1", reopened.LastSeq())
+			var reopenedValue Store = openStoreValueAt(t, path)
+			if reopenedValue.LastSeq() != 1 {
+				t.Fatalf("reopened lastSeq = %d, want 1", reopenedValue.LastSeq())
 			}
+			reopened := reopenedValue.(*ChordStore)
 			adopted, fence := recording()
 			keyed := storeAddress
 			keyed.Key = new("b")

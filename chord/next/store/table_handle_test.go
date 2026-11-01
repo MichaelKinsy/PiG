@@ -166,7 +166,9 @@ func TestTableHandle(t *testing.T) {
 
 		t.Run("reads go through the store's guard: refused once the store closed", func(t *testing.T) {
 			store, edits, _ := filledHandle(t, 1)
-			noError(t, store.Close(background))
+			// table-handle.test.ts:120: the close goes through the Store interface OpenStore returns.
+			var held Store = store
+			noError(t, held.Close(background))
 			_, err := edits.Get(background, Row{"id": "e000"})
 			_ = rejected(t, err, data.CodeReleased, "")
 		})

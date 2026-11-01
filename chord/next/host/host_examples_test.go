@@ -3081,6 +3081,9 @@ func exCloseStore(t testing.TB, st store.Store) {
 
 // --- 20-tables.ts --------------------------------------------------------------------------------------------------
 
+// Ports packages/chord/test/next/examples/20-tables.ts: the factory declares its table with `self.table(Edits)`
+// (20-tables.ts:45, StoreSelf.Table) and the app closes the store it opened with `store.close(context)`
+// (packages/chord/test/next/examples/20-tables.ts:101, through the store.Store interface OpenStore returned).
 func TestExample20Tables(t *testing.T) {
 	// Flat columns, defaults, a key of non-opt str or int columns, and indexes, which end with the key.
 	edits, err := store.DefineTable("edits", store.TableOptions{
@@ -3530,6 +3533,9 @@ func (s *exBytesSource) Close() error { return nil }
 
 // --- 25-export-import.ts -------------------------------------------------------------------------------------------
 
+// Ports packages/chord/test/next/examples/25-export-import.ts: the factory declares its table with `self.table(Visits)`
+// (25-export-import.ts:49, StoreSelf.Table), the original store's `lastSeq` is read at 25-export-import.ts:89 and the
+// store closed at packages/chord/test/next/examples/25-export-import.ts:90, all through the store.Store interface.
 func TestExample25ExportImport(t *testing.T) {
 	visits, err := store.DefineTable("visits", store.TableOptions{
 		Version: 1, Columns: []store.ColumnProp{store.Col("page", store.Str()), store.Col("count", store.Int())}, Key: []string{"page"},

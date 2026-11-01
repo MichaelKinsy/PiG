@@ -105,10 +105,14 @@ func TestOutbox(t *testing.T) {
 		_, open := onFile(t)
 		store := open(nil)
 		outboxCreated(t, store, "")
-		noError(t, store.Close(background))
+		// outbox.test.ts:48 (store.outbox?.floor), :69 (store.outbox undefined) and the closes are read through the
+		// Store interface OpenStore returns (ChordStore.Commit and the rest stay on the concrete store).
+		var held Store = store
+		noError(t, held.Close(background))
 		store = open(new(true))
-		if store.Outbox().Floor() != 1 {
-			t.Fatalf("floor = %d, want 1", store.Outbox().Floor())
+		held = store
+		if held.Outbox().Floor() != 1 {
+			t.Fatalf("floor = %d, want 1", held.Outbox().Floor())
 		}
 		const id = 2
 		opsText := `[["s",["n"],2]]`
@@ -132,10 +136,11 @@ func TestOutbox(t *testing.T) {
 		_ = rejected(t, err, data.CodeInvalid, data.ReasonArgs)
 		noError(t, store.Close(background))
 		store = open(new(false))
-		if store.Outbox() != nil {
-			t.Fatalf("outbox = %v, want none", store.Outbox())
+		held = store
+		if held.Outbox() != nil {
+			t.Fatalf("outbox = %v, want none", held.Outbox())
 		}
-		noError(t, store.Close(background))
+		noError(t, held.Close(background))
 	})
 
 	t.Run("records creations with their ids and seqs; trim is idempotent and refuses beyond lastSeq", func(t *testing.T) {

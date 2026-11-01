@@ -226,6 +226,7 @@ func TestStagingAFactoryThatUsesTheHandlesItDeclaresIsInertNotAFailure(t *testin
 	}
 }
 
+// Ports packages/chord/test/next/host/staging.test.ts:145; the factories declare their table with `self.table(V1)` (staging.test.ts:150, StoreSelf.Table).
 // Mirrors "staging: recorded declarations decide the fate › a table of the new factory at a newer version than the store's restarts the object (its eager migration)".
 func TestStagingATableOfTheNewFactoryAtANewerVersionThanTheStoresRestartsTheObject(t *testing.T) {
 	chordStore := memoryStore(t)

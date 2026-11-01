@@ -995,6 +995,8 @@ func storeImplementation() contracts.Implementation {
 	return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)}}}
 }
 
+// Ports packages/chord/test/next/host/attempt.test.ts:645 ("a fresh table is created at activation at its version, with
+// its indexes, in one commit"): the factory declares the table with `self.table(Edits)` (attempt.test.ts:650, StoreSelf.Table).
 func TestAttemptTablesAFreshTableIsCreatedAtActivationAtItsVersionWithItsIndexesInOneCommit(t *testing.T) {
 	chordStore := memoryStore(t, true)
 	edits := attemptEdits(t)
