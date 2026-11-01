@@ -78,10 +78,14 @@ func TestSendReportsFailedTurnOnMessageNotError(t *testing.T) {
 
 // abortingStreamProviderForSessionTests opens a stream and reports it. When
 // respond is set it ends the stream with an aborted assistant message once the
-// request context is cancelled; otherwise the stream never ends and the loop
-// records the abort itself.
+// request context is cancelled; otherwise the stream stays open, and the loop
+// records the abort itself, until the test closes release. An established
+// stream owns its terminal event (Pi's forwardStream awaits the provider's
+// iterator, not the request signal), so a stream the test leaves open would
+// hold its forwarder goroutines past the test.
 type abortingStreamProviderForSessionTests struct {
 	started chan struct{}
+	release chan struct{}
 	respond bool
 }
 
@@ -93,11 +97,12 @@ func (p abortingStreamProviderForSessionTests) Stream(ctx context.Context, _ ai.
 		return nil, err
 	}
 	close(p.started)
-	if !p.respond {
-		return stream, nil
-	}
 	go func() {
-		<-ctx.Done()
+		if p.respond {
+			<-ctx.Done()
+		} else {
+			<-p.release
+		}
 		aborted := sessionTestMessage("fake", "", ai.StopReasonAborted, "Request was aborted")
 		_ = stream.Push(ai.ErrorEvent{Reason: ai.StopReasonAborted, Error: aborted})
 	}()
@@ -202,12 +207,13 @@ func TestSendAbortedTurnIsNotAnError(t *testing.T) {
 			svcs := newTestServicesWithSettings(t, icodingagent.Settings{
 				Retry: &icodingagent.RetrySettingsJSON{Enabled: &disableRetry},
 			})
-			provider := abortingStreamProviderForSessionTests{started: make(chan struct{}), respond: tc.respond}
+			provider := abortingStreamProviderForSessionTests{started: make(chan struct{}), release: make(chan struct{}), respond: tc.respond}
 			sess, err := NewSession(svcs, SessionOptions{Model: fakeModelWithProvider(provider)})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer func() { _ = sess.Close() }()
+			defer close(provider.release)
 
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
