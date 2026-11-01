@@ -1009,6 +1009,7 @@ func (s *TaskScheduler) observe(publication session.ObservedCommit) {
 	var terminal []anyTaskRecord
 	// The conversations whose idleness the commit's task changes can change; nil when a chain is not known.
 	dirty := map[durable.ConversationId]struct{}{}
+	walkedUp := map[durable.TaskId]struct{}{}
 	// Edges first, so the tasks a commit creates in a new conversation hang from it.
 	for _, change := range publication.Changes {
 		if write, ok := change.(durable.ConversationWrite); ok {
@@ -1035,7 +1036,7 @@ func (s *TaskScheduler) observe(publication session.ObservedCommit) {
 		s.trackLocked(before, record)
 		// Idleness counts live tasks, so only a task that became live or ended can change it. Collected before sweepLocked,
 		// which may forget the chain of a task that ended.
-		if liveness := !hadPrevious || record.State.Status == durable.TaskTerminal; liveness && dirty != nil && !s.addScopesAboveLocked(record, dirty) {
+		if liveness := !hadPrevious || record.State.Status == durable.TaskTerminal; liveness && dirty != nil && !s.addScopesAboveLocked(record, dirty, walkedUp) {
 			dirty = nil
 		}
 		if record.State.Status == durable.TaskTerminal {

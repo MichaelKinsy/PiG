@@ -13,18 +13,40 @@ import (
 )
 
 // addScopesAboveLocked adds the conversations above record to scopes: those whose idleness a change of it can change. It
-// is false when a node on the way up is not known. A conversation already in scopes has everything above it there too.
-func (s *TaskScheduler) addScopesAboveLocked(record anyTaskRecord, scopes map[durable.ConversationId]struct{}) bool {
-	for _, each := range s.aboveLocked(parentOf(nodeOf(record)), nil) {
-		switch each.kind {
-		case stepOwnerUnknown:
-			return false
-		case stepOwnerConversation:
-			if _, seen := scopes[each.conversation]; seen {
-				return true
+// is false when a node on the way up is not known. A conversation already in scopes has everything above it there too, and
+// so has a task already walked up from (walked: the tasks of this publication whose chain scopes already holds), so the
+// tasks of one commit that hang in a chain are walked once in all, not once each.
+func (s *TaskScheduler) addScopesAboveLocked(record anyTaskRecord, scopes map[durable.ConversationId]struct{}, walked map[durable.TaskId]struct{}) bool {
+	var passed []durable.TaskId
+	at := parentOf(nodeOf(record))
+	for {
+		if at.isTask {
+			if _, seen := walked[at.task]; seen {
+				break
 			}
-			scopes[each.conversation] = struct{}{}
+			node, ok := s.nodeLocked(at.task, nil)
+			if !ok {
+				return false
+			}
+			passed = append(passed, at.task)
+			at = parentOf(node)
+			continue
 		}
+		if _, seen := scopes[at.conversation]; seen {
+			break
+		}
+		scopes[at.conversation] = struct{}{}
+		edge, known := s.edgeLocked(at.conversation, nil)
+		if !known {
+			return false
+		}
+		if edge == nil {
+			break
+		}
+		at = up{isTask: true, task: *edge}
+	}
+	for _, id := range passed {
+		walked[id] = struct{}{}
 	}
 	return true
 }
