@@ -117,12 +117,12 @@ func TestCheckParams(t *testing.T) {
 		wrong := validSession()
 		wrong.Set("page", "2")
 		failed = refusal(t, Session, wrong)
-		if failed.Message != "params/page: must be integer" || detailsPath(failed) != "/page" {
+		if failed.Message != "params/page: expected integer, got string" || detailsPath(failed) != "/page" {
 			t.Fatalf("wrong = %+v", failed)
 		}
 
 		failed = refusal(t, Session, "S1")
-		if failed.Message != "params: must be object" || detailsPath(failed) != "/" {
+		if failed.Message != "params: expected object, got string" || detailsPath(failed) != "/" {
 			t.Fatalf("not an object = %+v", failed)
 		}
 	})

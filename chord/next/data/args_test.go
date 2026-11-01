@@ -311,9 +311,20 @@ func TestCheckArgs(t *testing.T) {
 		}
 		nexttest.RequireJSONEqual(t, checked.Args, delta.JsonObjectOf("title", "t"))
 		checked, err = checkArgs(t, local1, "save", delta.JsonObjectOf("title", 1.0), 1)
-		if refusal := refused(t, checked, err); refusal.Message != "args/title: must be string" {
+		if refusal := refused(t, checked, err); refusal.Message != "args/title: expected string, got integer" {
 			t.Fatalf("message = %q", refusal.Message)
 		}
+	})
+
+	t.Run("treats `format` as an annotation: a contract with format email accepts any string", func(t *testing.T) {
+		mail := mustLocal(t, "mail", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{
+			contracts.Mem("send", contracts.NewMethod(contracts.Obj(contracts.Prop("to", contracts.Schema{Node: delta.JsonObjectOf("type", "string", "format", "email")})), contracts.Nul())),
+		}})
+		checked, err := checkArgs(t, bind(t, mail, nil), "send", delta.JsonObjectOf("to", "nope"), 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		nexttest.RequireJSONEqual(t, checked.Args, delta.JsonObjectOf("to", "nope"))
 	})
 
 	t.Run("refuses an unknown method, an unaccepted version and a refused method", func(t *testing.T) {

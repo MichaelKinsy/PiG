@@ -55,7 +55,7 @@ func TestFingerprints(t *testing.T) {
 		{"bounds", contracts.Str(), contracts.Str(contracts.Max(3))},
 		{"formats", contracts.Str(), raw(t, `{"type":"string","format":"email"}`)},
 		{"union order", contracts.Union([]contracts.Schema{contracts.Str(), contracts.Int()}), contracts.Union([]contracts.Schema{contracts.Int(), contracts.Str()})},
-		{"additionalProperties", tbObject(), tbClosedObject()},
+		{"additionalProperties", tbObject(), contracts.Obj()},
 		{"readOnly", contracts.Str(), raw(t, `{"type":"string","readOnly":true}`)},
 	} {
 		t.Run("are sensitive to "+tc.name, func(t *testing.T) {

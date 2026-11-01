@@ -11,8 +11,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Shared helpers of the contracts tests. The TypeBox constructors the upstream tests call (Type.Object, Type.Tuple, ...)
-// have no Go counterpart in the package; the tests build the schema data TypeBox 1.3.27 emits for them.
+// Shared helpers of the contracts tests. The upstream tests write schemas pi-schema has no builder for (an open object,
+// a tuple) as plain object literals; the Go tests build the same data (raw, tbObject).
 
 // must returns value, panicking on err: the test binary then fails with the error and its stack.
 func must[T any](value T, err error) T {
@@ -105,7 +105,7 @@ func sameJSON(t testing.TB, got any, want string) {
 	}
 }
 
-// tbObject is Type.Object(properties): TypeBox's open object, `required` left out when empty.
+// tbObject is the open object `{ type: "object", properties, required }` (a schema a JavaScript caller writes by hand), `required` left out when empty.
 func tbObject(properties ...contracts.Property) contracts.Schema {
 	props := delta.NewJsonObject(len(properties))
 	var required []any
@@ -121,13 +121,6 @@ func tbObject(properties ...contracts.Property) contracts.Schema {
 	}
 	node.Set("properties", props)
 	return contracts.Schema{Node: node}
-}
-
-// tbClosedObject is Type.Object(properties, { additionalProperties: false }), which obj() makes.
-func tbClosedObject(properties ...contracts.Property) contracts.Schema {
-	schema := tbObject(properties...)
-	schema.Node.(*delta.JsonObject).Set("additionalProperties", false)
-	return schema
 }
 
 // server is the host kind of the upstream tests' `Server`.
