@@ -501,6 +501,12 @@ func (w *worker) applyReloads() {
 			report, reloadErr = loaded.runtime.Reload(loaded.node, scripts, w.context)
 			return reloadErr
 		})
+		if err != nil && w.isStopping() {
+			// A reload that fails while the worker shuts down is answered by its exit: the server ends it as stopped. Pi's
+			// worker closes its link to the server before the reload rejects (its host closer), so the server never reads the
+			// failure; here the NodeHost's closer runs first and fails the reload, so the reply stays unsent.
+			continue
+		}
 		if err != nil {
 			failure := crossed(err)
 			w.send(FromWorker{Kind: FromWorkerReloaded, Error: &failure})
