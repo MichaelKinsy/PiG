@@ -4234,6 +4234,15 @@
       "rationale": "CLI startup, selected execution mode, settings, or command routing."
     },
     {
+      "path": "packages/coding-agent/test/extension-keybinding-hints.test.ts",
+      "upstreamTestHash": "sha256:51c495c5375112f4e9b430e1699095e6673439eab715db43947500232d233425",
+      "area": "extensions",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "Extension renderers' keybinding text and hints on message, entry and tool rendering (Pi 9376c8d1)."
+    },
+    {
       "path": "packages/coding-agent/test/extensions-discovery.test.ts",
       "upstreamTestHash": "sha256:2ade4ed3285252af2261350c9c99213a666e01d0f0e7a237b09bf3ba6921cd19",
       "area": "extensions",
@@ -4906,6 +4915,15 @@
       "rationale": "New in 1.1.0; area and tags follow the sibling tests under packages/coding-agent/test/ until the production-path review."
     },
     {
+      "path": "packages/coding-agent/test/project-trust-saved-decision.test.ts",
+      "upstreamTestHash": "sha256:a5c9da1c3c80c4395661fd328bb004b8e06d99cb1b74b9b134339449a82ea2d8",
+      "area": "cli",
+      "tags": [
+        "hot-path"
+      ],
+      "rationale": "CLI startup, selected execution mode, settings, or command routing."
+    },
+    {
       "path": "packages/coding-agent/test/prompt-templates.test.ts",
       "upstreamTestHash": "sha256:34b17a2f491c9d2647b746754bb71ac87d4cc72f6064f73bfd128c79ad452f4c",
       "area": "extensions",
@@ -5323,6 +5341,13 @@
         "hot-path"
       ],
       "rationale": "Extension API, discovery, runtime callbacks, or Resources on startup and turns."
+    },
+    {
+      "path": "packages/coding-agent/test/source-info.test.ts",
+      "upstreamTestHash": "sha256:0689efc998e52bacaac791af6abf6ea3e6f80028648542d2ab0b39da6a6b4f54",
+      "area": "utilities",
+      "tags": [],
+      "rationale": "Supporting pure path/configuration formatting or build-time catalog checks; not a per-turn mechanism."
     },
     {
       "path": "packages/coding-agent/test/startup-session-name.test.ts",

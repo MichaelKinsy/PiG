@@ -3238,9 +3238,9 @@ rationale = "PIG_ alias first. PiG: internal/codingagent/selfupdate_configured.g
 [[files]]
 path = "packages/coding-agent/src/core/agent-session-runtime.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/session_import_windows_paths_test.go#TestImportDestinationRecognizesAStoredSessionInOtherCasingOnWindows"]
+rationale = "Pi 1be312b4 (#11588) compares the stored session path with pathsEqual in the import self-check, so casing on Windows does not copy a stored session onto itself. Ported with resolvepath.PathsEqual in coding/session_import.go; the test runs the check under a simulated Windows platform (resolvepath.OverridePlatform)."
 
 [[files]]
 path = "packages/coding-agent/src/core/agent-session-services.ts"
@@ -3399,16 +3399,16 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/export/export.go +
 [[files]]
 path = "packages/coding-agent/src/core/export-html/tool-renderer.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:test/extension-conformance/keybinding_hints_test.go#TestKeybindingHintsAcrossSDKs", "test:extensions/sdk/keybinding_hints_test.go#TestKeyHintsMatchPi"]
+rationale = "Pi 9376c8d1 (#11630) hands the host's keyText and keyHint to tool, message and entry renderers. Ported as KeyText and KeyHint methods on extension.ToolRenderContext, MessageRenderOptions and EntryRenderOptions (coding/extension/keybinding_hints.go, extensions/sdk/keybinding_hints.go and the Rust, Python, Lisp and Node SDKs), reading the host's keybinding registry at call time; the HTML export renderer builds the same extension.ToolRenderContext value (internal/codingagent/export/tool_renderer.go renderContext), so it gets the methods; the conformance test draws the tool render context in every SDK."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "PORT_MAP records this file n/a with the reason: (barrel). Pi 9376c8d1 adds the KeybindingHints re-export; Go has no barrel exports, the type's counterpart is the KeyText and KeyHint methods of extension.ToolRenderContext, MessageRenderOptions and EntryRenderOptions (coding/extension/keybinding_hints.go), tested by TestKeybindingHintsAcrossSDKs."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/jiti-loader.ts"
@@ -3427,9 +3427,9 @@ rationale = "PORT_MAP records this file n/a with the reason: (barrel re-export)"
 [[files]]
 path = "packages/coding-agent/src/core/extensions/loader.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/host/subprocess/node_pi_ai_models_test.go#TestNodeExtensionImportsPiAiModelsSubpath", "test:coding/extension/host/subprocess/startup_origin_windows_paths_test.go#TestFinalSetOriginIgnoresPathCasingOnWindows"]
+rationale = "Pi 22dc6c26 (#11156) aliases the pi-ai/models subpath; Pi 1be312b4 (#11588) compares the extension cache cwd with pathsEqual. Go has no jiti module cache keyed by cwd, so that one comparison has no counterpart; the loaded-extension origin match that does exist (coding/extension/host/subprocess/startup.go) compares through resolvepath.ComparisonKey under a simulated Windows platform."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/runner.ts"
@@ -3441,9 +3441,9 @@ rationale = "PORT_MAP row is ✅ ported (coding/extension/host/inproc/runner.go 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/types.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/extensions-runtime/01-print-extension-tool-bridge.toml", "scenario:test/parity/scenarios/extension-host/01-register-handshake.toml", "scenario:test/parity/scenarios/extensions-runtime/03-tool-call-blocker.toml", "test:coding/extension/extensiontest/factory_handlers_test.go#TestFactoryRegisteredEntryRendererIsTheRunnersRendererForItsType", "test:coding/extension/extensiontest/factory_handlers_test.go#TestFactoryRegisteredProjectTrustHandlersDecideInRegistrationOrder", "test:coding/extension/host/subprocess/upstream_jev_router_test.go#TestJevRouterExampleRoutes", "test:test/extension-conformance/custom_blocked_test.go#TestConformance_CustomBlockedOption", "test:internal/codingagent/ext_ui_dialog_stack_test.go#TestExtensionDialogsReportBlockedStatusForAnInlineCustomComponentThatOptsIn", "test:test/extension-conformance/keybinding_hints_test.go#TestKeybindingHintsAcrossSDKs", "test:extensions/sdk/keybinding_hints_test.go#TestKeyHintsMatchPi"]
+rationale = "Pi 9376c8d1 (#11630): KeybindingHints and its extension by ToolRenderContext, MessageRenderOptions and EntryRenderOptions. KeyText and KeyHint methods on extension.ToolRenderContext, MessageRenderOptions and EntryRenderOptions (coding/extension/keybinding_hints.go, extensions/sdk/keybinding_hints.go and the Rust, Python, Lisp and Node SDKs), reading the host's keybinding registry at call time; "
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/virtual-modules.ts"
@@ -3567,9 +3567,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/output_guard.go). 
 [[files]]
 path = "packages/coding-agent/src/core/package-manager.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "deferred"
+evidence = ["test:internal/packagemanager/changelog_path_test.go#TestResolveExtensionSourcesExposesThePackageChangelogPath", "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged", "test:coding/cli/package_temporary_refresh_test.go#TestTemporaryNpmSourceRefreshesWhenANewerVersionExists", "test:coding/cli/package_temporary_refresh_test.go#TestTemporaryGitSourceWithABranchRefIsRefreshed", "test:coding/cli/git_update_upstream_test.go#TestGitUpdatesUpstream", "test:internal/packagemanager/package_identity_case_test.go#TestPackageSourcesMatchIgnoresLocalPathCasingOnWindows"]
+rationale = "Pi bec60c54 and cd6a8f7f (#11375) refresh temporary git sources pinned to a branch ref and unpinned temporary npm sources with a newer version (internal/packagemanager/temporary.go); e3da248e (#11648) keeps updating git packages when git clean fails (packagemanager.CleanAndInstallGitDependencies); 1be312b4 (#11588) compares local package identities and resource dedup keys case-insensitively (manager.go, resource_paths.go ResourcePathKey): all ported and tested. Missing: the ancestor .agents/skills exclusion of the user's ~/.agents/skills (resource_paths.go samePath at the two collectors) is an exact resolve compare, where Pi uses pathsEqual, so on Windows a cwd spelled with other casing lists the user skills as project skills."
 
 [[files]]
 path = "packages/coding-agent/src/core/pi-manifest.ts"
@@ -3581,9 +3581,9 @@ rationale = "Pi b4b72a35: PiManifest.changelogPath (empty string disables the ch
 [[files]]
 path = "packages/coding-agent/src/core/project-trust.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/project-trust/01-noninteractive-undecided-denies-project-extension.toml", "scenario:test/parity/scenarios/project-trust/04-project-cannot-set-its-own-trust-default.toml", "scenario:test/parity/scenarios/project-trust/05-global-always-default-loads-project-extension.toml", "test:coding/cli/project_trust_saved_decision_test.go#TestResolveProjectTrustedHonorsASavedDecisionBeforeAutoTrust", "test:coding/cli/project_trust_saved_decision_test.go#TestResolveProjectTrustedHonorsASavedDecisionWhenContextFilesNeedTrust", "test:coding/cli/project_trust_saved_decision_test.go#TestStartupBuildHonorsASavedDecisionForAProjectWithoutTrustRequiringResources"]
+rationale = "Pi 31ade0e0 (#10947): a saved Do not trust decision wins for a project without trust-requiring resources (a folder with only AGENTS.md), and the auto-trust applies only when no decision is saved. Ported in coding/cli/project_trust.go and cli_runtime_build.go; the tests drive resolveProjectTrusted, the startup build and the context-file case with a saved decision."
 
 [[files]]
 path = "packages/coding-agent/src/core/prompt-templates.ts"
@@ -3623,9 +3623,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/configvalue/configvalue.go + i
 [[files]]
 path = "packages/coding-agent/src/core/resource-loader.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/project-trust/01-noninteractive-undecided-denies-project-extension.toml", "scenario:test/parity/scenarios/project-trust/02-no-approve-denies-project-extension.toml", "scenario:test/parity/scenarios/project-trust/03-approve-loads-project-extension.toml", "test:coding/resource_loader_prompt_sources_test.go#TestDefaultLoaderReportsSystemPromptSourcePaths", "test:coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderWarnsAndKeepsLoadingWhenAConfiguredPackageCannotBeInstalled", "test:coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderPointsTemporaryExtensionSourcesAtTheSource", "test:coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderPointsProjectPackagesAtRemoveLocal", "test:coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderWarnsOnceAboutAFailingInstallWhenProjectTrustIsResolved", "test:coding/resource_loader_windows_paths_test.go#TestResourceLoaderPathMatchingIgnoresCaseOnWindows", "test:internal/codingagent/context_files_windows_paths_test.go#TestShadowedContextFileOfComparesCaseInsensitivelyOnWindows"]
+rationale = "Pi 1be312b4 (#11588): worktree AGENTS.md shadowing, extension preload matching and resource source-info matching compare paths with pathsEqual, isPathWithin and getResourcePathKey. Ported in internal/codingagent/context_files.go, coding/resource_loader.go, resource_loader_extend.go and resource_loader_extension_files.go; tests run under a simulated Windows platform."
 
 [[files]]
 path = "packages/coding-agent/src/core/runtime-credentials.ts"
@@ -3658,9 +3658,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/session_export.go 
 [[files]]
 path = "packages/coding-agent/src/core/session-manager.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/session_manager_test.go#TestSessionManagerForkFromFile_CopiesAllEntriesUnchangedIntoTheForkedSession", "test:internal/codingagent/session_file_operations_upstream_test.go#TestSessionFileCreationUpstream", "test:internal/codingagent/session_windows_paths_test.go#TestSessionCwdAndDefaultDirectoryComparisonsIgnoreCaseOnWindows"]
+rationale = "Pi 1be312b4 (#11588): session cwd matching and the default-session-directory test use pathsEqual, so --continue, resume by id and the session list find sessions recorded with other cwd casing. Ported in internal/codingagent/session_resume.go and extension_session_read.go with resolvepath.PathsEqual."
 
 [[files]]
 path = "packages/coding-agent/src/core/settings-defaults.ts"
@@ -3700,16 +3700,16 @@ rationale = "skills hint sentence. PiG: internal/codingagent/prompts/coding.go, 
 [[files]]
 path = "packages/coding-agent/src/core/slash-commands.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/slash-commands/01-session-info-empty.toml", "scenario:test/parity/scenarios/slash-commands/02-name-set-get.toml", "scenario:test/parity/scenarios/slash-commands/03-new-session.toml", "test:internal/codingagent/builtin_slash_commands_oracle_test.go#TestBuiltinSlashCommandsCarryPi2a46c420Descriptions"]
+rationale = "Pi 2a46c420 (#11617) rewords the /import and /resume descriptions; ported in internal/codingagent/slash_commands.go, pinned by the oracle comparison with Pi's list and by a test of the two new descriptions."
 
 [[files]]
 path = "packages/coding-agent/src/core/source-info.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/source/source_package_key_test.go#TestGetSourcePackageKey", "test:internal/codingagent/source_info_changelog_test.go#TestSourceInfoCarriesTheChangelogPath", "test:internal/codingagent/resource_path_key_case_test.go#TestResourcePathKeyFoldsFilePathCasingOnWindowsButNotSyntheticIdentifiers"]
+rationale = "Pi 1be312b4 (#11588) adds getResourcePathKey: synthetic identifiers (builtin:, <inline:) unchanged, file paths through realpath and the platform comparison key. Ported as codingagent.ResourcePathKey (internal/codingagent/resource_source_info.go), used for skill and resource dedup."
 
 [[files]]
 path = "packages/coding-agent/src/core/system-prompt.ts"
@@ -3819,9 +3819,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/tools/read.go + in
 [[files]]
 path = "packages/coding-agent/src/core/tools/render-utils.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/tools/08-print-tool-truncation-pipeline.toml", "scenario:test/parity/scenarios/tools/26-render-tool-path.toml", "test:internal/resolvepath/shorten_home_test.go#TestShortenHomePathReplacesOnlyALeadingHomeDirectory", "test:tui/tool_path_render_pi_test.go#TestRenderToolPathHonorsPiGeneratedExpectations"]
+rationale = "Pi 1be312b4 (#11588): shortenPath replaces only a leading home directory (shortenHomePath), where /home/me2/x was shown as ~2/x. Ported as resolvepath.ShortenHomePath used by tui/tool_path_render.go."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/renderers/bash.ts"
@@ -3903,9 +3903,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/tools/write.go (Wr
 [[files]]
 path = "packages/coding-agent/src/core/trust-manager.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/project-trust/01-noninteractive-undecided-denies-project-extension.toml", "scenario:test/parity/scenarios/project-trust/10-untrusted-ancestor-skills-explicit-only.toml", "scenario:test/parity/scenarios/settings/11-legacy-lock-upgrade.toml", "test:internal/codingagent/trust_manager_test.go#TestHasTrustRequiringProjectResources_AncestorAgentsSkillsExcludesUserHome", "test:internal/codingagent/trust_manager_windows_paths_test.go#TestHasTrustRequiringProjectResourcesIgnoresTheUserSkillsDirWhenHomeDiffersOnlyByCaseOnWindows", "test:internal/codingagent/trust_manager_windows_paths_test.go#TestProjectTrustStoreMatchesSavedDecisionsRegardlessOfCasingOnWindows"]
+rationale = "Pi 1be312b4 (#11588): the user .agents/skills exclusion and the trust store lookup and set match paths case-insensitively on Windows. Ported in internal/codingagent/trust_manager.go with resolvepath.ComparisonKey; both Pi cases run under a simulated Windows platform."
 
 [[files]]
 path = "packages/coding-agent/src/core/usage-totals.ts"
@@ -4099,23 +4099,23 @@ rationale = "PORT_MAP row is ✅ ported (coding/extension/builtin/toolsearch/too
 [[files]]
 path = "packages/coding-agent/src/extensions/tool-search/tool.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/builtin/toolsearch/toolsearch_upstream_test.go#TestBm25RankerRanksAToolFirstWhenTheQueryIsItsName", "test:coding/extension/builtin/toolsearch/toolsearch_oracle_test.go#TestToolSearchNameQueriesMatchPi", "test:coding/extension/builtin/toolsearch/toolsearch_carried_test.go#TestBm25RankerRanksANameMatchAboveMentionsInDescriptions", "test:coding/extension/builtin/toolsearch/toolsearch_carried_test.go#TestBm25RankerRanksAToolMatchingMoreQueryTermsFirst", "test:coding/extension/builtin/toolsearch/toolsearch_carried_test.go#TestBm25RankerMatchesPiTheLatestCarriedRanker", "test:coding/extension/builtin/toolsearch/toolsearch_unicode_test.go#TestTokenizeMatchesPiOnEveryScriptClass", "test:coding/extension/builtin/toolsearch/toolsearch_unicode_test.go#TestBm25RankerMatchesUnicodeQueries"]
+rationale = "Pi cc44fa21 (#11625) weighs tool names above descriptions, e033f255 (#11632) ranks a tool matching more query terms first, 79006f06 (#11037) segments Unicode words. Ported in coding/extension/builtin/toolsearch/toolsearch.go (ranker) and internal/searchtext (tokenizer shared with durable search); the tests port Pi's cases and compare ranking and tokens with Pi's tool.js."
 
 [[files]]
 path = "packages/coding-agent/src/index.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/host/subprocess/node_barrel_exports_oracle_test.go#TestNodeBarrelExportsEveryValuePiExports", "test:internal/packagemanager/resolve_gaps_test.go#TestResolveSkipsAPackageSourceThatFailsToInstallAndReportsIt", "test:test/extension-conformance/keybinding_hints_test.go#TestKeybindingHintsAcrossSDKs", "test:extensions/sdk/keybinding_hints_test.go#TestKeyHintsMatchPi"]
+rationale = "Pi 9376c8d1 adds the KeybindingHints type export; a type has no runtime value in the Node barrel (the barrel oracle compares values), and the Go counterpart is the KeyText and KeyHint methods of the render context types."
 
 [[files]]
 path = "packages/coding-agent/src/main.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/deleted_cwd_unix_test.go#TestMainReportsDeletedWorkingDirectory", "test:coding/cli/project_trust_saved_decision_test.go#TestStartupBuildHonorsASavedDecisionForAProjectWithoutTrustRequiringResources"]
+rationale = "Pi 31ade0e0 (#10947): main's autoTrustOnReload and project trust resolution honor a saved Do not trust decision; Pi 88ffcdc7: a deleted working directory is reported at startup. Ported in coding/cli/main.go and project_trust.go."
 
 [[files]]
 path = "packages/coding-agent/src/migrations.ts"
@@ -4197,9 +4197,9 @@ rationale = "PORT_MAP row is ✅ ported (tui/compaction_summary.go). coverage.md
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/config-selector.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "deferred"
+evidence = ["scenario:test/parity/scenarios/selectors/01-config-empty.toml", "scenario:test/parity/scenarios/selectors/02-config-resources-list.toml", "scenario:test/parity/scenarios/selectors/03-config-filter-narrow.toml"]
+rationale = "Pi 1be312b4 (#11588): formatBaseDir replaces only a leading home directory (ported: tui/config_selector.go formatBaseDir matches whole segments) and getResourceItemKey folds path casing on Windows. Missing: the Go inherited-state key (coding/cli/config_command.go configItemKey over canonicalStatusPath) does not apply resolvepath.ComparisonKey, so on Windows a global and a project resource whose paths differ only by case are not matched as the same item."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/countdown-timer.ts"
@@ -4218,16 +4218,16 @@ rationale = "Pi 3bae8527: an open autocomplete takes the page keys before app ac
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/custom-entry.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/extensions-runtime/18-subprocess-entry-renderer.toml", "test:test/extension-conformance/keybinding_hints_test.go#TestKeybindingHintsAcrossSDKs", "test:extensions/sdk/keybinding_hints_test.go#TestKeyHintsMatchPi"]
+rationale = "Pi 9376c8d1 (#11630) hands the host's keyText and keyHint to tool, message and entry renderers. Ported as KeyText and KeyHint methods on extension.ToolRenderContext, MessageRenderOptions and EntryRenderOptions (coding/extension/keybinding_hints.go, extensions/sdk/keybinding_hints.go and the Rust, Python, Lisp and Node SDKs), reading the host's keybinding registry at call time; entry renderers get them through EntryRenderOptions."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/custom-message.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/interactive-rendering/12-custom-message.toml", "scenario:test/parity/scenarios/extensions-runtime/20-message-output-padding.toml", "scenario:test/parity/scenarios/extensions-runtime/22-custom-message-markdown-wrap.toml", "test:tui/exit_layout_test.go#TestCustomMessageBackgroundTracksTheme", "test:tui/custom_message_component_test.go#TestCustomMessageComponentChildren", "test:test/extension-conformance/keybinding_hints_test.go#TestKeybindingHintsAcrossSDKs", "test:extensions/sdk/keybinding_hints_test.go#TestKeyHintsMatchPi"]
+rationale = "Pi 9376c8d1 (#11630) hands the host's keyText and keyHint to tool, message and entry renderers. Ported as KeyText and KeyHint methods on extension.ToolRenderContext, MessageRenderOptions and EntryRenderOptions (coding/extension/keybinding_hints.go, extensions/sdk/keybinding_hints.go and the Rust, Python, Lisp and Node SDKs), reading the host's keybinding registry at call time; message renderers get them through MessageRenderOptions."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/diff.ts"
@@ -4267,9 +4267,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/pig_egg3d.go + int
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/extension-editor.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/selectors/10-extension-editor.toml", "scenario:test/parity/scenarios/extensions-runtime/35c-extension-editor-external.toml", "test:internal/codingagent/helper_dir_test.go#TestExtensionEditorShowsExternalEditorFailures"]
+rationale = "Pi 6454d07e (#11627) shows an external editor failure in the extension editor. Ported in internal/codingagent/extension_editor.go and external_editor.go; the test starts a failing editor and checks the status line."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/extension-input.ts"
@@ -4379,9 +4379,9 @@ rationale = "Ported per-field tiered search (Pi 8c03fef4d)."
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "deferred"
+evidence = ["test:internal/codingagent/select_page_keys_test.go#TestSessionSelectorCapturesSelectionPageKeys", "test:internal/codingagent/home_shorten_test.go#TestHomeShorteningAnchorsAtAPathSegment"]
+rationale = "Pi 1be312b4 (#11588): home shortening is anchored (ported: internal/codingagent/session_selector.go ShortenHomePath) and the selector's session path keys fold casing on Windows (getSessionPathKey). Missing: canonicalSessionPath (session tree parent lookup, current-session marker, delete guard) is canonicalizePath only, without resolvepath.ComparisonKey, so on Windows two spellings of one session path are different keys."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/settings-selector.ts"
@@ -4442,16 +4442,16 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/thinking_selector.
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/tool-execution.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/tool_execution_streamed_frame_test.go#TestToolCardRendersStreamedPartialArgumentsOncePerFrameWithTheLatestArguments", "test:test/extension-conformance/keybinding_hints_test.go#TestKeybindingHintsAcrossSDKs", "test:extensions/sdk/keybinding_hints_test.go#TestKeyHintsMatchPi"]
+rationale = "Pi 9376c8d1 (#11630) hands the host's keyText and keyHint to tool, message and entry renderers. Ported as KeyText and KeyHint methods on extension.ToolRenderContext, MessageRenderOptions and EntryRenderOptions (coding/extension/keybinding_hints.go, extensions/sdk/keybinding_hints.go and the Rust, Python, Lisp and Node SDKs), reading the host's keybinding registry at call time; the tool card passes them in the tool render context."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/select_page_keys_test.go#TestTreeSelectorCapturesViewportInputUnlessEditingALabel", "test:internal/codingagent/home_shorten_test.go#TestHomeShorteningAnchorsAtAPathSegment"]
+rationale = "Pi 1be312b4 (#11588): the tree row's tool-call path shortening replaces only a leading home directory. Ported in internal/codingagent/tree_row_format.go with resolvepath.ShortenHomePath."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/trust-selector.ts"
@@ -4484,16 +4484,16 @@ rationale = "PORT_MAP row is ✅ ported (tui/visual_truncate.go). coverage.md re
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/external-editor.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/extensions-runtime/35c-extension-editor-external.toml", "test:internal/codingagent/external_editor_test.go#TestOpenExternalEditorStripsOneTrailingNewline", "test:internal/codingagent/helper_dir_test.go#TestOpenExternalEditorReportsFailures", "test:internal/codingagent/external_editor_test.go#TestExternalEditorUpstream"]
+rationale = "Pi 6454d07e (#11627): a launch failure, a non-zero exit or a signal exit is reported with a message (the editor keeps pi's working directory on purpose). Ported as ExternalEditorFailure in internal/codingagent/external_editor.go; the test covers exit code, signal and missing binary."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/startup_hints_test.go#TestFullscreenModelScopeNoticeRendersInHeader", "test:internal/codingagent/interactive_extension_changelog_test.go#TestExtensionChangelogUpdatesUpstream", "test:internal/codingagent/loaded_resources_quiet_upstream_test.go#TestLoadedResourcesQuietReloadUpstream", "test:internal/codingagent/helper_dir_test.go#TestOpenExternalEditorReportsFailures", "test:internal/codingagent/home_shorten_test.go#TestHomeShorteningAnchorsAtAPathSegment"]
+rationale = "Pi 6454d07e (#11627) reports external editor failures in the status line; Pi 1be312b4 (#11588) shortens the display path with shortenHomePath. Ported in internal/codingagent/interactive_editor.go and interactive_helpers.go (ShortenHomePath)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/model-catalog-refresh.ts"
@@ -4652,9 +4652,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/crossspawn (spawnProcess/spawn
 [[files]]
 path = "packages/coding-agent/src/utils/clipboard-command.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/clipboard_command_pi_test.go#TestRunClipboardCommandRunsOutsideOwnProcessGroup", "test:internal/codingagent/helper_dir_test.go#TestClipboardCommandRunsFromTheRoot"]
+rationale = "Pi 6454d07e (#11627): clipboard helpers start from / so a deep WSL working directory does not break Windows programs. Ported in internal/codingagent/clipboard_copy.go (Dir is the root)."
 
 [[files]]
 path = "packages/coding-agent/src/utils/clipboard-image.ts"
@@ -4701,9 +4701,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/git_watcher.go). c
 [[files]]
 path = "packages/coding-agent/src/utils/git.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/cli-utils/06-package-list-git-source.toml", "test:coding/cli/package_temporary_refresh_test.go#TestTemporaryGitSourceWithABranchRefIsRefreshed"]
+rationale = "Pi bec60c54 only rewords the doc comment of GitSource.pinned (pi update reconciles the checkout to the ref); the behavior it describes, refreshing a temporary git source pinned to a branch ref, is in internal/packagemanager/temporary.go."
 
 [[files]]
 path = "packages/coding-agent/src/utils/highlight-js.d.ts"
@@ -4778,9 +4778,9 @@ rationale = "Read against Pi mime.ts: internal/imageprocessing/images.go DetectS
 [[files]]
 path = "packages/coding-agent/src/utils/open-browser.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/open_browser_unix_test.go#TestOpenBrowserLauncherFailureDoesNotPanic", "test:internal/codingagent/open_browser_unix_test.go#TestOpenBrowserLaunchesADetachedLauncherWithIgnoredStdio", "test:internal/codingagent/helper_dir_test.go#TestBrowserLauncherRunsFromTheRoot"]
+rationale = "Pi 6454d07e (#11627): the browser launcher starts from /. Ported in internal/codingagent/interactive_auth.go (Dir is the root)."
 
 [[files]]
 path = "packages/coding-agent/src/utils/output-files.ts"
@@ -4792,9 +4792,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/outputfiles/outputfiles.go (in
 [[files]]
 path = "packages/coding-agent/src/utils/paths.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/cli-utils/04-package-install-local.toml", "scenario:test/parity/scenarios/extensions-runtime/37-imported-registry-relative-session-dir.toml", "test:internal/resolvepath/path_compare_test.go#TestPathComparisonTreatsDriveLettersAndComponentsCaseInsensitivelyOnWindows", "test:internal/resolvepath/path_compare_test.go#TestPathComparisonKeepsCasingOnCaseSensitivePlatforms", "test:internal/resolvepath/path_compare_test.go#TestIsPathWithinMatchesWholePathSegments", "test:internal/resolvepath/shorten_home_test.go#TestShortenHomePathReplacesOnlyALeadingHomeDirectory", "test:internal/resolvepath/shorten_home_test.go#TestShortenHomePathIgnoresCaseOnWindows"]
+rationale = "Pi 1be312b4 (#11588) adds getPathComparisonKey, pathsEqual, isPathWithin and shortenHomePath. Ported in internal/resolvepath (path_compare.go, shorten_home.go) with the platform chosen at call time (OverridePlatform), as Pi picks path.win32 or path.posix from process.platform."
 
 [[files]]
 path = "packages/coding-agent/src/utils/photon.ts"
@@ -6367,16 +6367,16 @@ rationale = "PORT_MAP row is ✅ ported (tui/terminal_colors.go; tui/terminal_co
 [[files]]
 path = "packages/tui/src/terminal-image.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageWhosePlaceholderRowsContainText", "test:tui/terminal_image_orca_test.go#TestDetectCapabilitiesOrca"]
+rationale = "Pi f09d01b8 (#9329) detects Orca terminals as Kitty-image capable (ORCA_IMAGE_PROTOCOL). Ported in tui/terminal_image.go; the test covers disabled without a signal and kitty with it."
 
 [[files]]
 path = "packages/tui/src/terminal.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/terminal_test.go#TestProcessTerminalSetTitleReplacesControlCharacters", "test:tui/terminal_native_shift_enter_test.go#TestNormalizeNativeShiftEnterInputRewritesEscapeReturn", "test:tui/terminal_native_shift_enter_test.go#TestNormalizeProcessInputSequenceForEscapeReturn"]
+rationale = "Pi 86dc686c (#11559) rewrites ESC+Return to Shift+Enter when native Shift is held. Ported in tui/terminal_native_shift_enter.go."
 
 [[files]]
 path = "packages/tui/src/tui-alt-screen.ts"
@@ -6409,9 +6409,9 @@ rationale = "PORT_MAP row is ✅ ported (tui/undo_stack.go). coverage.md reports
 [[files]]
 path = "packages/tui/src/utils.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/widthx/grapheme_range_test.go#TestReplaceControlCharacters", "test:tui/widthx/wrap_boundary_test.go#TestWrapTextWithAnsiStyledWordsAtTheWrapBoundaryPiCases", "test:tui/widthx/wrap_boundary_test.go#TestLineEndResetClosesStrikethrough", "test:tui/markdown_wrap_boundary_test.go#TestMarkdownStyledWordsAtTheWrapBoundaryPiCase"]
+rationale = "Pi 2ce9d527 (#11591): wrapTextWithAnsi drops the space after a styled word at the wrap boundary, and the line-end reset closes strikethrough. Ported in tui/widthx/wrap.go and tracker.go; the tests run Pi's cases and the Pi width differential."
 
 [[files]]
 path = "packages/tui/src/wheel-scroll.ts"
