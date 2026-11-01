@@ -1,0 +1,20 @@
+# plugfull bridge: plugnode differences 1 and 2 (branch fix/follow-plugfull-bridge)
+
+## 1: the app's Go host holds a local type its plugins serve (closed)
+
+- Pi: `server.get(Index)` in process (plugins.test.ts, end to end: `[notes.label.value, index.label.value]` = `[v1, v1]`, then `v2` across the reload, frames `["v2"]`).
+- PiG now: `NodeHost.Get(contract, params, ctx, host.GetOptions)` sends the contract as data (`ContractDataOf`, node/contracts.mjs `contractOf`, refused when its fingerprint differs) and the Node host runs Pi's own `host.get`. `NodeReference` mirrors `host.Reference` for a local type: `Member().Value/Watch`, `Keyed().Get/Watch`, `Call`, `State`, `Release`. Control ops `get/value/watch/call`, notifications `unwatch/release`, ordered `frame/watchEnd/state` events (node/bridge.mjs, plugins_node_reference.go). ReadyTimeout and abort are the Node host's; release is exact; a process end leaves the reference `loading`.
+- Tests: `TestContractDataIsTheNormalFormTheFingerprintHashes`, `TestNodeRebuildsEveryContractWithTheSameFingerprint` (every contract kind and member kind, fixtures `Index`/`Notes`/`Item`, evolved contracts), `TestNodeGet*` (read/call, errors, ordered watch, stop/abort, keyed, exact release through `host.references`, ReadyTimeout `unavailable`, abort, contract refusal, process end), `TestEndToEndAServerAndAWorker...` (now reads `server.get(Index)`; the probe workaround and `TestEndToEndTheAppsGoHostCannotGetALocalTypeAPluginServes` are gone).
+- Red: compile failures at the parent (`undefined: ContractDataOf`, `node.Describe undefined`, `node.Get undefined (type *NodeHost has no field or method Get)`); mutation checks: dropping `keyed()` in `contractOf` fails the fingerprint test (`fingerprint f9a80c0146c05590, want ed7eecaf9bcf43de`); dropping the Node-side `reference.release()` fails `TestNodeGetReleaseIsExact` (`timed out after 15s waiting for the Node host to have the references`).
+
+## 2: Go core facets in the plugins' closure (closed except the workers rewrite)
+
+- Pi: core facets and plugins are one host and closure; `staging.test.ts` "the closure rule", "takes the plugins whose new code failed before staging (`failed`)", plugins.test.ts "the closure rule through builds".
+- PiG now: `RuntimeLoad.Bridged []BridgedFacet{Name, Host, Contracts, Failed}`; each is a proxy script (node/proxy.mjs) of the Node host's load and reload sets (so `adopt` and the closure apply); proxy objects hold the Go object by `Host.Get` (native open/close), follow its state members (`self.follow`, ordered frames), forward methods. `NodeHost.SetBridged` ships a changed or failed set (a failed facet is a failed build and keeps its loaded proxy and Go host); `NodeHost.ReloadOptions(report)` gives the Go host's `Reload` the plugins that failed (Bridged names excluded).
+- Tests: `TestBridgedAPluginNeedingAGoCoreTypeBindsReadsCallsAndWatchesIt` (bind, read, call, ordered watch, change made on the Go side reaches the plugin, exact release observed by the Go object's native close), `TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload`, `TestBridgedAGoCoreFacetNeedingAPluginsTypeKeepsItsOldCodeWhenThePluginFailsToBuild` (real build failure; without `ReloadOptions` the Go host applies the new core facet, with it keeps it old).
+- Limits stated in the doc comments: a keyed member cannot be bridged (a keyed member is the document handle of its object): `BridgedFacet.Contracts` with one is refused; values cross control as JSON (a `bytes()` leaf has no JSON form here).
+
+## Not done
+
+- The workers component (chord/nextnode/workers, testdata/core.mjs) is not rewritten to use a Go core facet through `Bridged`; its comments that say a local type of the NodeHost cannot be read from Go (workers_fixture_worker_test.go:30, testdata/core.mjs:16) are stale, `NodeHost.Get` and `Bridged` now provide what it needed. The run reached its request budget before that rewrite.
+- `bytes()` values over the control channel and keyed members in Bridged (above).
