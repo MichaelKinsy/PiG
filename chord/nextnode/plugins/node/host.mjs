@@ -57,6 +57,9 @@ const KIND_CONTROL = 1;
 class FramedPort extends EventEmitter {
 	#socket;
 	#buffer = Buffer.alloc(0);
+	/** The frames whose write has not completed, and whether `disconnect` waits for them to end the socket. */
+	#writing = 0;
+	#ending = false;
 	connected = true;
 
 	constructor(socket) {
@@ -91,7 +94,12 @@ class FramedPort extends EventEmitter {
 		header.writeUInt32BE(1 + payload.length, 0);
 		header[4] = kind;
 		this.#socket.write(header);
-		return this.#socket.write(payload, (error) => callback(error ?? null));
+		this.#writing++;
+		return this.#socket.write(payload, (error) => {
+			this.#writing--;
+			if (this.#ending && this.#writing === 0) this.#socket.end();
+			callback(error ?? null);
+		});
 	}
 
 	send(message, callback) {
@@ -102,9 +110,11 @@ class FramedPort extends EventEmitter {
 		return this.#write(KIND_CONTROL, Buffer.from(JSON.stringify(message)), callback);
 	}
 
+	/** Ends the writing side once every frame written is out: an `end()` while a write is in flight loses it (Windows). */
 	disconnect() {
 		this.connected = false;
-		this.#socket.end();
+		this.#ending = true;
+		if (this.#writing === 0) this.#socket.end();
 	}
 }
 
