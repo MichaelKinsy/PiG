@@ -82,6 +82,31 @@ func TestProcessLockStopsWaitingWhenTheWaitersContextAborts(t *testing.T) {
 	}
 }
 
+// A waiter that gives up (or dies) closes its connection: the holder forgets it then (`socket.once("close", () =>
+// waiters.delete(socket))`), not at its own release.
+func TestProcessLockForgetsAWaiterWhoseConnectionClosedBeforeItsOwnRelease(t *testing.T) {
+	name := fmt.Sprintf("chord-test-lock-forget-%d-%d", os.Getpid(), time.Now().UnixNano())
+	held, err := ProcessLock(name, chordctx.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	waiters := func() int {
+		held.mu.Lock()
+		defer held.mu.Unlock()
+		return len(held.waiters)
+	}
+	abort, cancel := chordctx.WithCancel(chordctx.Background())
+	var waiting sync.WaitGroup
+	waiting.Go(func() { _, _ = ProcessLock(name, abort) })
+	until(t, func() bool { return waiters() == 1 })
+	cancel(errors.New("gave up"))
+	waiting.Wait()
+	until(t, func() bool { return waiters() == 0 }, 2_000)
+	if err := held.Release(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSocketFileLocksFailClosedOnAStaleLockFileNamingItTwoTakersNeverBothTakeItOver(t *testing.T) {
 	address := filepath.Join(t.TempDir(), "lock.sock")
 	// What a crashed holder leaves: a path nobody accepts on.
