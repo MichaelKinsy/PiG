@@ -500,6 +500,23 @@ func TestCloseStopsWaitingWhenItsContextEndsAnAppHookThatIgnoresItsContextKeepsR
 	}
 }
 
+// The context a start gives the app's `start` hook is derived from the route's and from Close's, which keep a registration
+// of it until it is cancelled: it ends with the start, or a long-lived server keeps one pair per start for good.
+func TestAStartsContextEndsWithTheStartSoItsRegistrationsDoNotAccumulate(t *testing.T) {
+	var given atomic.Pointer[context.Context]
+	f := newFleet(t, fleetOptions{start: func(_ contracts.Address, ctx context.Context) (delta.JsonValue, error) {
+		given.Store(&ctx)
+		return delta.JsonObjectOf(), nil
+	}})
+	notes := f.get(fixtureNotes, "S1")
+	defer notes.Release()
+	ctx := given.Load()
+	if ctx == nil {
+		t.Fatal("start never ran")
+	}
+	until(t, func() bool { return (*ctx).Err() != nil }, 2_000)
+}
+
 func TestFixRound1AStopDuringTheWorkersStartupIsAStopItsClosersRunNothingFails(t *testing.T) {
 	dir := t.TempDir()
 	f := newFleet(t, fleetOptions{})
