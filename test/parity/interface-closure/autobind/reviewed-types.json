@@ -559,10 +559,6 @@
     "go": "chord/next/store/expression.go#InArray",
     "reason": "Pi chord/src/next/store/expression.ts:134 inArray::call:0: Pi's values: readonly T[] is typed by the column's value type T; Go's InArray takes the values as `any` (a slice of the column's Scalar kind) and checks the elements at run time (store/expression.go:224). Go: chord/next/store/expression.go#InArray. Exercised by TestEvaluator (chord/next/store/evaluate_test.go)."
   },
-  "pkg:chord/next#json::call:0": {
-    "go": "chord/next/store/json_column.go#Json",
-    "reason": "Pi chord/src/next/store/json-column.ts:26 json::call:0: Pi's json(schema, options) returns JsonColumnSchema<T> = TUnsafe<T> & { json: JsonColumn }, a type-level intersection; Go's Json returns store.ColumnSchema carrying the JsonColumn (store/json_column.go:46). Go: chord/next/store/json_column.go#Json. Exercised by TestDefineTable (chord/next/store/table_test.go)."
-  },
   "pkg:chord/next#listDocumentEntries::call:0": {
     "go": "chord/next/store/engine.go#ListDocumentEntries",
     "reason": "Pi chord/src/next/store/engine.ts:473 listDocumentEntries::call:0: Pi's executor is Pick<SqliteExecutor, \"all\">, the one member the function reads; Go declares the same one-member consumer-owned interface (store/engine.go:35: rowLister), which a sqlite executor satisfies. Go: chord/next/store/engine.go#ListDocumentEntries."
@@ -570,10 +566,6 @@
   "pkg:chord/next#listDocuments::call:0": {
     "go": "chord/next/store/engine.go#ListDocuments",
     "reason": "Pi chord/src/next/store/engine.ts:435 listDocuments::call:0: Pi's executor is Pick<SqliteExecutor, \"all\">, the one member the function reads; Go declares the same one-member consumer-owned interface (store/engine.go:35: rowLister), which a sqlite executor satisfies. Go: chord/next/store/engine.go#ListDocuments. Exercised by TestEngineHistoryRules (chord/next/store/engine_test.go)."
-  },
-  "pkg:chord/next#lit::call:0": {
-    "go": "chord/next/contracts/schema.go#Lit",
-    "reason": "Pi chord/src/next/contracts/schema.ts:71 lit::call:0: Pi's TLiteral is a TypeBox schema type (Type.TLiteral) the builder returns; Go's builders return contracts.TSchema (contracts/schema.go:37), the one schema value whose JSON is the same schema node. Go: chord/next/contracts/schema.go#Lit. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go)."
   },
   "pkg:chord/next#loadContent::call:0": {
     "go": "chord/next/store/engine.go#LoadContent",
@@ -583,10 +575,6 @@
     "go": "chord/next/store/engine.go#LoadDocument",
     "reason": "Pi chord/src/next/store/engine.ts:371 loadDocument::call:0: Pi's executor is Pick<SqliteExecutor, \"all\">, the one member the function reads; Go declares the same one-member consumer-owned interface (store/engine.go:35: rowLister), which a sqlite executor satisfies. Go: chord/next/store/engine.go#LoadDocument. Exercised by TestImportRoundTrips (chord/next/store/import_test.go)."
   },
-  "pkg:chord/next#map::call:0": {
-    "go": "chord/next/contracts/schema.go#Map",
-    "reason": "Pi chord/src/next/contracts/schema.ts:103 map::call:0: Pi's TRecord is a TypeBox schema type (Type.TRecord) the builder returns; Go's builders return contracts.TSchema (contracts/schema.go:37), the one schema value whose JSON is the same schema node. Go: chord/next/contracts/schema.go#Map. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go)."
-  },
   "pkg:chord/next#max::call:0": {
     "go": "chord/next/store/expression.go#Max",
     "reason": "Pi chord/src/next/store/expression.ts:174 max::call:0: Pi's Operand<T, K> = Expression<T, K> | T is a TypeScript union over the type parameters; Go's operand is `any`: a Scalar (string, int64 or any Go integer, float64, bool) or an *Expression, checked at run time as Pi checks it for JavaScript callers (store/expression.go:30-34). Go: chord/next/store/expression.go#Max. Exercised by TestCompilingSets (chord/next/store/expression_test.go)."
@@ -594,10 +582,6 @@
   "pkg:chord/next#min::call:0": {
     "go": "chord/next/store/expression.go#Min",
     "reason": "Pi chord/src/next/store/expression.ts:179 min::call:0: Pi's Operand<T, K> = Expression<T, K> | T is a TypeScript union over the type parameters; Go's operand is `any`: a Scalar (string, int64 or any Go integer, float64, bool) or an *Expression, checked at run time as Pi checks it for JavaScript callers (store/expression.go:30-34). Go: chord/next/store/expression.go#Min. Exercised by TestEvaluatorAgreesWithSQLite (chord/next/store/evaluate_test.go)."
-  },
-  "pkg:chord/next#nul::call:0": {
-    "go": "chord/next/contracts/schema.go#Nul",
-    "reason": "Pi chord/src/next/contracts/schema.ts:66 nul::call:0: Pi's TNull is a TypeBox schema type (Type.TNull) the builder returns; Go's builders return contracts.TSchema (contracts/schema.go:37), the one schema value whose JSON is the same schema node. Go: chord/next/contracts/schema.go#Nul. Exercised by TestEvolveEdits (chord/next/contracts/evolve_test.go)."
   },
   "pkg:chord/next#oneOf::call:0": {
     "go": "chord/next/contracts/schema.go#OneOf",
@@ -622,14 +606,6 @@
   "pkg:chord/next#sub::call:0": {
     "go": "chord/next/store/expression.go#Sub",
     "reason": "Pi chord/src/next/store/expression.ts:169 sub::call:0: Pi's Operand<T, K> = Expression<T, K> | T is a TypeScript union over the type parameters; Go's operand is `any`: a Scalar (string, int64 or any Go integer, float64, bool) or an *Expression, checked at run time as Pi checks it for JavaScript callers (store/expression.go:30-34). Go: chord/next/store/expression.go#Sub. Exercised by TestCompilingSets (chord/next/store/expression_test.go)."
-  },
-  "pkg:chord/next#union::call:0": {
-    "go": "chord/next/contracts/schema.go#Union",
-    "reason": "Pi chord/src/next/contracts/schema.ts:88 union::call:0: Pi's schemas: [...S] is a variadic tuple type that types the TUnion; Go's Union takes the schemas as the ordered slice of TSchema (contracts/schema.go) and the union is built at run time. Go: chord/next/contracts/schema.go#Union. Exercised by TestSnapshots (chord/next/contracts/snapshot_test.go)."
-  },
-  "pkg:chord/next#unknown::call:0": {
-    "go": "chord/next/contracts/schema.go#Unknown",
-    "reason": "Pi chord/src/next/contracts/schema.ts:113 unknown::call:0: Pi's TUnknown is a TypeBox schema type (Type.TUnknown) the builder returns; Go's builders return contracts.TSchema (contracts/schema.go:37), the one schema value whose JSON is the same schema node. Go: chord/next/contracts/schema.go#Unknown. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go)."
   },
   "pkg:chord/next#when::call:0": {
     "go": "chord/next/store/expression.go#When",

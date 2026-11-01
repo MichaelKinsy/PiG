@@ -609,6 +609,34 @@ class = "NOBEHAVIOR"
 reason = "Go only, no Pi counterpart: the stall report of a section that waits for its handler. The test now guards a goroutine that waits on a Signal with Guard, so the report's stacks name the waiter as parking.(*Signal).Wait (the wait it calls, no longer the report's own); its other expected values are unchanged."
 
 [[entry]]
+path = "chord/nextnode/plugins/plugins_endtoend_test.go"
+commit = "afb14da124492fad80b73f5f5e8abc07915b47dc"
+class = "CITE"
+cite = "packages/chord/src/next-node/workers/main.ts:114"
+reason = "The Node host is the child of the Go side, as Pi's forked worker connects to its parent (main.ts:114) and the server routes the worker's kind to it (workers.ts:98; plugins.test.ts's end to end `server.route(Worker, ...)`). The end-to-end case is Pi's: one observing server host holds Notes over the route, and the broken edit's reference state is compared with Pi's `toEqual({ kind: \"live\" })` (a whole RefState, not its kind), with failures recorded as `{ failed }` like `valuesOf`; the expected values follow."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_examples_test.go"
+commit = "afb14da124492fad80b73f5f5e8abc07915b47dc"
+class = "CITE"
+cite = "packages/chord/test/next/examples/36-plugin-failures/main.ts:139"
+reason = "Example 36 step 4 asserts what Pi's script prints and the first port left unchecked: the status reference's kinds `loading` then `live` (main.ts:139) and the final greeter reload's report (`plugins: changed @example/greeter`, `objects: example.greeting swapped`, `failed @example/weather: ...`, main.ts:151). The example 35 case reads notes and the server's types through one observing server host that routes both Node hosts."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_node_test.go"
+commit = "afb14da124492fad80b73f5f5e8abc07915b47dc"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The Node subprocess is PiG-original (no Pi file: Pi's workers fork the same shape). The expectation that changed is the load's refusal text: RuntimeLoad has no Parent any more (the host is the child of the Go side), so only the Peer is required (`a Peer is required`). The other edits add cases (link attach, heartbeat, fatal ordering, extraction repair) and check the manifest against the pin."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_runtime_test.go"
+commit = "fed839c88739bd28e7e351c297edac660bc7b21f"
+class = "CITE"
+cite = "packages/chord/src/next/host/host.ts:124"
+reason = "Pi's `activation_failed` carries a `failure` (a FailureCause), not an `error` (host.ts:124): the Node host's background reports now keep every field of their kind, so the persisted-document case reads the activation failure's cause (`Failure.Error`, `Failure.Kind`) where the first port flattened it into `Err`."
+
+[[entry]]
 path = "schema/internal/ecmaregex/golden_test.go"
 commit = "14c930470b86a72372bb7af9ae24d577aa603629"
 class = "NOBEHAVIOR"
@@ -646,3 +674,45 @@ path = "chord/next/host/host_reference_test.go"
 commit = "a9c9939258e09cac35f06716f16d712eed3c6e16"
 class = "NOBEHAVIOR"
 reason = "Go language mechanic, no Pi behavior changed: context.Context moved from after the params to the first parameter of Host.Get, Hold and Registry (interface-ledger rule S1, Go convention). The changed lines are call arguments in a new order (background first); every expected value, error text and ordering the tests assert is as before."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_fixture_worker_test.go"
+commit = "8fead2d31cb1638ad113f7df3f8f1a5d8a0b773a"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Go only, no Pi line changed: the expected results are Pi's (workers.test.ts, support.ts, worker.ts). The fixture worker's host topology follows the plugins component, whose evaluation runs in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md): the core facet is the module testdata/core.mjs (Pi's worker.ts core as JavaScript), the worker's Go host is a relay routed to the NodeHost, the app's busy counts are read through a remote view and the worker's own hold on it is declared, and Control.localCalls (called by the worker itself) reports the messages sent to the server between its two lines, expected 0 as before."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_fleet_test.go"
+commit = "8fead2d31cb1638ad113f7df3f8f1a5d8a0b773a"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Go only, no Pi line changed: the fleet's plugins component builds Pi's fixture plugin (testdata/plugins/notes: worker.ts, label.ts, package.json, byte for byte) with the real esbuild build instead of a stand-in Builder and Evaluator, which the plugins component no longer has; the expected labels and reports are Pi's."
+
+[[entry]]
+path = "internal/minimatch/minimatch_oracle_test.go"
+commit = "fffc16ae0a59ad1a839a70e260c6a8ecd6905dba"
+class = "CITE"
+cite = "packages/coding-agent/package.json:59"
+reason = "Pi b4c2e92a moves the coding agent's minimatch dependency from 10.2.6 to 11.0.3 (package.json:59, \"minimatch\": \"11.0.3\"). The oracle test compares internal/minimatch with the installed minimatch, so its expected values are the 11.0.3 results: an empty path portion matches only an empty pattern portion, case folds by Unicode simple case folding, and only a pattern over 65,536 units throws."
+
+[[entry]]
+path = "durable/core/driver/upgrade_in_place_core_test.go"
+commit = "caa5070223561fe78b68864daca314e726814a94"
+class = "CITE"
+cite = "packages/durable/src/storage/sqlite/migrations.ts:91"
+reason = "Pi 1.4.0 writes schema version 2 (migrations.ts:91, 'Version 2 adds the sleeping task status', the tasks table rebuilt in place), so an older store upgrades in place with no backup file. The test expects the upgraded store at SupportedSchemaVersion and no .schema-1.bak, where D188 made PiG refuse and back up."
+
+[[entry]]
+path = "extensions/sdk-py/bundle_test.go"
+commit = "e27a975dc1c7d51b2e985f36f20e0f400e5c47f4"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The SDK bundle layout is PiG-original packaging, which Pi does not have, so no Pi line governs it. The commit moves each gzip copy of a bundled SDK file under the bundle's hidden .gz directory (.gz/<name>.gz) so source-tree walks skip it; the staged files, their bytes and the staged-SDK digests are unchanged, and the test asserts only the new embedded name."
+
+[[entry]]
+path = "ai/catalog_options_upstream_test.go"
+commit = "e4f8e357736b7eae9f16439a3ebd49daa6add1bf"
+class = "CITE"
+cite = "packages/ai/test/openrouter-cache-control-models.test.ts:12"
+reason = "Pi 44f6851b (#9534) deletes packages/ai/test/openrouter-cache-control-models.test.ts (the commit's Pi-Behavior-Change trailer) and sends the OpenRouter ~anthropic/claude-*-latest aliases through the Anthropic Messages API with adaptive thinking, like the versioned Claude models. The Go port of that test now pins the new behavior (TestOpenRouterAnthropicLatestAliasesUseMessages), recorded under D217."

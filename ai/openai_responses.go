@@ -1586,8 +1586,27 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 			payload = assigned
 		}
 	}
+	// Pi builds the client (Azure's base URL resolver) and Codex extracts the account id before it calls onPayload.
+	baseURL := p.cfg.BaseURL
+	if p.cfg.GetBaseURL != nil {
+		if u, err := p.cfg.GetBaseURL(ctx); err != nil {
+			// The resolver's own error is the rejection (azure-openai-config.ts throws it from the provider's stream setup).
+			return nil, err
+		} else if u != "" {
+			baseURL = u
+		}
+	}
+
+	accountID := ""
+	if p.cfg.Codex {
+		accountID = CodexAccountID(apiKey)
+		if accountID == "" {
+			return nil, errors.New("Failed to extract accountId from token")
+		}
+	}
+
 	if opts.OnPayload != nil {
-		next, err := opts.OnPayload(payload, &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{ProviderID: p.cfg.ProviderID}})
+		next, err := opts.OnPayload(payload, providerEventModel(p.cfg.ModelMetadata, p.api(), p.cfg.ProviderID, p.cfg.Model))
 		if err != nil {
 			return nil, fmt.Errorf("openai-responses: onPayload: %w", err)
 		}
@@ -1613,24 +1632,6 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		body = &requestBody{segments: [][]byte{whole}, size: len(whole)}
 	}
 	checkRequestSegments(ctx, APIOpenAIResponses, body)
-
-	baseURL := p.cfg.BaseURL
-	if p.cfg.GetBaseURL != nil {
-		if u, err := p.cfg.GetBaseURL(ctx); err != nil {
-			// The resolver's own error is the rejection (azure-openai-config.ts throws it from the provider's stream setup).
-			return nil, err
-		} else if u != "" {
-			baseURL = u
-		}
-	}
-
-	accountID := ""
-	if p.cfg.Codex {
-		accountID = CodexAccountID(apiKey)
-		if accountID == "" {
-			return nil, errors.New("Failed to extract accountId from token")
-		}
-	}
 
 	endpointURL := strings.TrimRight(baseURL, "/")
 	if !p.cfg.BaseURLIsEndpoint && !p.cfg.Codex {

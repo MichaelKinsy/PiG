@@ -2110,7 +2110,7 @@ evidence = [
 path = "packages/tui/src/utils.ts"
 start = "function wrapSingleLine("
 end = "\nexport function isWhitespaceChar("
-sha256 = "bb268950513da38d0c4941d0137ad3729478e8c016730a5443fc3d070b9c6fcc"
+sha256 = "3d2155a13f8b25033ab250c8a9e11b7b7fcf33de950043ef3823323ad54ee9e4"
 keybindings = []
 
 [[contract]]
@@ -3578,7 +3578,7 @@ evidence = [
 path = "packages/tui/src/terminal-image.ts"
 start = "function detectCapabilitiesFromEnvironment(tmuxForwardsHyperlink: () => boolean): TerminalCapabilities {"
 end = "export function getCapabilities(): TerminalCapabilities {"
-sha256 = "3ce9ff97537885ceb8b1837abc2b22eaf45011c0fb0ec357f59de995af575a14"
+sha256 = "bc783ced6bbc5d452d144b55df1d9ec8a883f4dde21f92e285d257b3d18b0d85"
 keybindings = []
 
 [[contract]]
@@ -3999,7 +3999,7 @@ evidence = [
 path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
 start = "\trender(width: number): string[] {\n\t\tconst lines: string[] = [];\n\n\t\t// Render search input"
 end = "\tprivate buildTreePrefix("
-sha256 = "5aa743e71f06fe6c27b6de5ccada654d124827e08c05f6c2e91dc46e24c4abef"
+sha256 = "47399d2abfd865df759c097d8487fd22807725801a2303db97fdb6cb172e2175"
 keybindings = []
 
 [[contract]]

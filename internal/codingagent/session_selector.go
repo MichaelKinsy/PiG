@@ -12,9 +12,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
-
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -548,8 +545,12 @@ func (s *SessionSelectorComponent) refilter() {
 	s.selected = min(s.selected, max(0, len(s.filtered)-1))
 }
 
+// canonicalSessionPath is Pi's getSessionPathKey (session-selector.ts): the comparison key of a session file path, which follows symlinks and ignores case on Windows. An empty path has no key.
 func canonicalSessionPath(path string) string {
-	return canonicalizePath(path)
+	if path == "" {
+		return ""
+	}
+	return resolvepath.ComparisonKey(canonicalizePath(path))
 }
 
 type sessionTreeNode struct {
@@ -926,7 +927,7 @@ func matchSessionSearch(search *sessionSearch, parsed parsedSearchQuery, queries
 }
 
 func normalizeWhitespaceLower(text string) string {
-	return strings.Join(strings.FieldsFunc(cases.Lower(language.Und).String(text), isJSWhitespace), " ")
+	return strings.Join(strings.FieldsFunc(jsstring.ToLower(text), isJSWhitespace), " ")
 }
 
 // renderNode mirrors one upstream SessionList row: cursor, dim tree prefix,

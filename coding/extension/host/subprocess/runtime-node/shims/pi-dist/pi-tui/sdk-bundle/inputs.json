@@ -47,7 +47,7 @@
     },
     {
       "path": "pi-dist/pi-tui/components/markdown.js",
-      "sha256": "5f3d8a4345f9218add7b2bd8a3d1b40638fb772d5e9f345b7bc0accf6d2ff7f4"
+      "sha256": "4b568a8e15083a5cb7a16d847b2372700b6b547d8e16f8b31ab0e1ecf53901ca"
     },
     {
       "path": "pi-dist/pi-tui/components/mouse-region.js",
@@ -75,7 +75,7 @@
     },
     {
       "path": "pi-dist/pi-tui/components/text.js",
-      "sha256": "89adac5c6e2be6afcdf99ca015943901bc676938fd0115326da5af78c930803c"
+      "sha256": "3d20f9aec7870f17728dfc7bd26b215b5cb3b0a84ab3df2a275d0da438fb4269"
     },
     {
       "path": "pi-dist/pi-tui/components/truncated-text.js",

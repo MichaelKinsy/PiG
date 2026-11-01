@@ -10,6 +10,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -603,5 +604,22 @@ func TestRunConfigCommandFlagsMatchPi(t *testing.T) {
 	_, approved, _ := captureStdoutStderr(t, func() int { return runConfigCommand([]string{"--local", "--approve"}) })
 	if !strings.Contains(denied, "Project is not trusted. Use --approve to modify local resource config.") || strings.Contains(approved, "Project is not trusted") {
 		t.Fatalf("--no-approve stderr=%q, --approve stderr=%q", denied, approved)
+	}
+}
+
+// Pi 1be312b4 (#11588) config-selector.ts getResourceItemKey: a global and a project resource whose paths differ in casing only are one item on Windows, and
+// two on a case-sensitive platform.
+func TestConfigItemKeyFoldsPathCasingOnWindows(t *testing.T) {
+	global := tui.ResourceItem{ResourceType: tui.ResourceSkills, Path: `C:\Users\Me\skills\demo\SKILL.md`}
+	project := tui.ResourceItem{ResourceType: tui.ResourceSkills, Path: `c:\users\me\skills\demo\skill.md`}
+	if configItemKey(global) == configItemKey(project) {
+		t.Fatal("case-sensitive platform: two casings of one path share a key")
+	}
+	t.Cleanup(resolvepath.OverridePlatform("windows"))
+	if configItemKey(global) != configItemKey(project) {
+		t.Fatalf("Windows: keys %q and %q differ", configItemKey(global), configItemKey(project))
+	}
+	if configItemKey(global) == configItemKey(tui.ResourceItem{ResourceType: tui.ResourcePrompts, Path: global.Path}) {
+		t.Fatal("two resource types share a key")
 	}
 }

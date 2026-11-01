@@ -79,7 +79,7 @@ PiG Standard requires every selected extension to be compiled into its Piglet Bi
 | Module | `github.com/MichaelKinsy/PiG` |
 | User configuration root | `~/.pig` or `PIG_HOME` |
 | Agent directory | `~/.pig/agent` or `PIG_CODING_AGENT_DIR` |
-| Pinned Pi release (behavior oracle) | Pi 1.4.0+2c8d1feb |
+| Pinned Pi release (behavior oracle) | Pi 1.4.0+b556cfe5 |
 | License | MIT |
 
 ## Upstream Pi

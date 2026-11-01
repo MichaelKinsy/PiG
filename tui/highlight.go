@@ -399,39 +399,44 @@ func jsParseInt(text string, radix int) float64 {
 	return sign * value
 }
 
+// cliHighlightTokens are the theme color tokens theme.ts buildCliHighlightTheme gives the highlight.js classes that take a color, in its order.
+var cliHighlightTokens = [...]struct{ class, token string }{
+	{"keyword", "syntaxKeyword"},
+	{"built_in", "syntaxType"},
+	{"literal", "syntaxNumber"},
+	{"number", "syntaxNumber"},
+	{"regexp", "syntaxString"},
+	{"string", "syntaxString"},
+	{"subst", "text"},
+	{"comment", "syntaxComment"},
+	{"doctag", "syntaxComment"},
+	{"meta", "muted"},
+	{"function", "syntaxFunction"},
+	{"title", "syntaxFunction"},
+	{"class", "syntaxType"},
+	{"type", "syntaxType"},
+	{"tag", "syntaxPunctuation"},
+	{"name", "syntaxKeyword"},
+	{"attr", "syntaxVariable"},
+	{"variable", "syntaxVariable"},
+	{"params", "syntaxVariable"},
+	{"operator", "syntaxOperator"},
+	{"punctuation", "syntaxPunctuation"},
+	{"addition", "toolDiffAdded"},
+	{"deletion", "toolDiffRemoved"},
+}
+
 // cliHighlightTheme is theme.ts buildCliHighlightTheme for a theme.
 func cliHighlightTheme(t *Theme) HighlightTheme {
-	fg := func(token string) HighlightFormatter {
-		return func(s string) string { return t.Fg(token, s) }
+	theme := make(HighlightTheme, len(cliHighlightTokens)+3)
+	for _, entry := range &cliHighlightTokens {
+		token := entry.token
+		theme[entry.class] = func(s string) string { return t.Fg(token, s) }
 	}
-	return HighlightTheme{
-		"keyword":     fg("syntaxKeyword"),
-		"built_in":    fg("syntaxType"),
-		"literal":     fg("syntaxNumber"),
-		"number":      fg("syntaxNumber"),
-		"regexp":      fg("syntaxString"),
-		"string":      fg("syntaxString"),
-		"subst":       fg("text"),
-		"comment":     fg("syntaxComment"),
-		"doctag":      fg("syntaxComment"),
-		"meta":        fg("muted"),
-		"function":    fg("syntaxFunction"),
-		"title":       fg("syntaxFunction"),
-		"class":       fg("syntaxType"),
-		"type":        fg("syntaxType"),
-		"tag":         fg("syntaxPunctuation"),
-		"name":        fg("syntaxKeyword"),
-		"attr":        fg("syntaxVariable"),
-		"variable":    fg("syntaxVariable"),
-		"params":      fg("syntaxVariable"),
-		"operator":    fg("syntaxOperator"),
-		"punctuation": fg("syntaxPunctuation"),
-		"emphasis":    func(s string) string { return markdownDecoration("\x1b[3m", SGRItalicReset, s) },
-		"strong":      func(s string) string { return markdownDecoration("\x1b[1m", SGRBoldDimReset, s) },
-		"link":        func(s string) string { return markdownDecoration("\x1b[4m", SGRUnderlineReset, s) },
-		"addition":    fg("toolDiffAdded"),
-		"deletion":    fg("toolDiffRemoved"),
-	}
+	theme["emphasis"] = func(s string) string { return markdownDecoration("\x1b[3m", SGRItalicReset, s) }
+	theme["strong"] = func(s string) string { return markdownDecoration("\x1b[1m", SGRBoldDimReset, s) }
+	theme["link"] = func(s string) string { return markdownDecoration("\x1b[4m", SGRUnderlineReset, s) }
+	return theme
 }
 
 // HighlightCode highlights code for the active theme and returns its lines, as theme.ts highlightCode does. Code in a language highlight.js does not support takes the mdCodeBlock color; code highlight.js fails on stays unstyled.

@@ -19,8 +19,6 @@ type Options struct {
 	NoCase bool
 	// Dot lets wildcards match a leading dot.
 	Dot bool
-	// BraceExpand replaces the default brace expansion (brace-expansion 5.0.12 as ported here) for a caller whose expansion bounds its memory more tightly. It is given the pattern after any `!`s are taken off and returns the expansions.
-	BraceExpand func(pattern string) []string
 	// NoNegate makes a leading `!` literal instead of a negation.
 	NoNegate bool
 	// Platform is minimatch's platform option: "win32" reads Windows drive letters and UNC roots, anything else, "", means the platform of the running process.
@@ -79,7 +77,7 @@ var (
 
 // Match reports whether name matches the glob pattern, as minimatch(name, pattern, options). A pattern over MAX_PATTERN_LENGTH, where minimatch throws, matches nothing.
 func Match(name, pattern string, options Options) bool {
-	if len(toUTF16(pattern)) > maxPatternLength {
+	if jsstring.Length(pattern) > maxPatternLength {
 		return false
 	}
 	// shortcut: comments match nothing.
@@ -92,7 +90,7 @@ func Match(name, pattern string, options Options) bool {
 
 // New is new Minimatch(pattern, options). It fails where the constructor throws: for a pattern over MAX_PATTERN_LENGTH.
 func New(pattern string, options Options) (*Minimatch, error) {
-	if len(toUTF16(pattern)) > maxPatternLength {
+	if jsstring.Length(pattern) > maxPatternLength {
 		return nil, ErrPatternTooLong
 	}
 	m := &Minimatch{options: options, pattern: pattern, nocase: options.NoCase, matchers: map[string]*matcher{}}
@@ -122,11 +120,7 @@ func (m *Minimatch) make() {
 	// step 2: expand braces
 	var globSet []string
 	seen := map[string]bool{}
-	expand := braceExpand
-	if m.options.BraceExpand != nil {
-		expand = m.options.BraceExpand
-	}
-	for _, expanded := range expand(m.pattern) {
+	for _, expanded := range braceExpand(m.pattern) {
 		if !seen[expanded] {
 			seen[expanded] = true
 			globSet = append(globSet, expanded)
@@ -218,9 +212,6 @@ func braceExpand(pattern string) []string {
 	}
 	return braceExpansionExpand(pattern)
 }
-
-// BraceExpand is minimatch.braceExpand(pattern).
-func BraceExpand(pattern string) []string { return braceExpand(pattern) }
 
 // slashSplit is #slashSplit: p.split(/\/+/), and for a Windows path that starts with // an extra ” for the one it loses.
 func (m *Minimatch) slashSplit(p string) []string {
