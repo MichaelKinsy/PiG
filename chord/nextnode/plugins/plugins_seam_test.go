@@ -157,7 +157,7 @@ func (e referenceEvaluator) EvaluateFacet(built BuiltFacet, options EvaluateOpti
 		return host.Facet{}, fmt.Errorf("%s: only a built script can be evaluated", where)
 	}
 	facet, ok := e.facets[ScriptFilename(built, options.Plugin)]
-	if !ok || facet.Setup == nil {
+	if !ok || facet == (host.Facet{}) {
 		return host.Facet{}, fmt.Errorf("%s: its default export is not a facet (defineFacet)", where)
 	}
 	return facet, nil

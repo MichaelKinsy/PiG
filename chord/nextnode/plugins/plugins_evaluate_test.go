@@ -34,7 +34,7 @@ func TestEvaluatingAFacetRunsAScriptUnderAStableFilenamePerPluginKindAndDigest(t
 	setup := func(host.FacetHost, host.FacetSelf) error { return nil }
 	evaluator := referenceEvaluator{facets: map[string]host.Facet{ScriptFilename(built, plugin): host.DefineFacet(setup)}}
 	facet, err := evaluator.EvaluateFacet(built, EvaluateOptions{HostPackages: HostPackages{}, Plugin: plugin})
-	if err != nil || facet.Setup == nil {
+	if err != nil || facet == (host.Facet{}) {
 		t.Fatalf("facet = %+v, error = %v", facet, err)
 	}
 	other := built
