@@ -28,14 +28,16 @@ import (
 // `server.get(Index)`, a local type of that host, is NodeHost.Get on it (the reference RPC, plugins_node_reference.go): it
 // reads the plugin's label across the reload and watches its frames, as Pi's `index.label` does.
 
-// pcFrames collects what a watch delivers as Pi's `valuesOf` records it (a value as itself, a failure as {failed: message}).
+// pcFrames collects what a watch delivers as Pi's `valuesOf` records it (a value as itself, a failure as {failed: message}),
+// and announces each.
 type pcFrames struct {
 	mu     sync.Mutex
 	values []delta.JsonValue
+	got    chan struct{}
 }
 
 func pcStartFrames(watch chord.WatchHandle[delta.JsonValue]) *pcFrames {
-	frames := &pcFrames{}
+	frames := &pcFrames{got: make(chan struct{}, 64)}
 	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
 		frames.mu.Lock()
 		if call.Kind == chord.WatchCallValue {
@@ -44,6 +46,7 @@ func pcStartFrames(watch chord.WatchHandle[delta.JsonValue]) *pcFrames {
 			frames.values = append(frames.values, map[string]any{"failed": call.Error.Error()})
 		}
 		frames.mu.Unlock()
+		frames.got <- struct{}{}
 		return nil
 	})
 	return frames
@@ -53,6 +56,24 @@ func (f *pcFrames) all() []delta.JsonValue {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]delta.JsonValue{}, f.values...)
+}
+
+// next waits for the next frame to arrive (an event, not a poll).
+func (f *pcFrames) next(t *testing.T) {
+	t.Helper()
+	select {
+	case <-f.got:
+	case <-time.After(30 * time.Second):
+		t.Fatal("no frame arrived")
+	}
+}
+
+// count waits until n frames arrived.
+func (f *pcFrames) count(t *testing.T, n int) {
+	t.Helper()
+	for len(f.all()) < n {
+		f.next(t)
+	}
 }
 
 // plugins.test.ts › end to end: a server and a worker › loads plugin directories, rolls an edit out (server, then worker),
