@@ -45,6 +45,9 @@ func prepareChannel(cmd *exec.Cmd) (parent *channel, afterStart func(), fail fun
 // one, as in a process nobody forked, the channel is not connected and sends are skipped.
 func openProcessChannel() *channel {
 	spec, ok := os.LookupEnv(channelEnv)
+	// Node deletes NODE_CHANNEL_FD from process.env once it opened the channel: a process this one spawns must not take
+	// descriptor 3 for its own channel.
+	_ = os.Unsetenv(channelEnv)
 	descriptor, found := strings.CutPrefix(spec, "fd:")
 	if !ok || !found {
 		return disconnectedChannel()
