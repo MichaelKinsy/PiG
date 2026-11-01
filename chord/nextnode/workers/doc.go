@@ -30,6 +30,6 @@
 //   - Cancellation: `context.Context` is `AbortSignal`. `Close` cancels starts waiting in the app's `Start`, for `started`
 //     or for the plugins; the caller's context ends only its own wait. A worker's context aborts at shutdown.
 //   - Shutdown draining: `Close` stops every child (`shutdown`, a 5 s grace, then the tree is killed), clears the timers and
-//     joins every goroutine the component owns. A worker runs its closers in reverse order, forcing its own exit after 3 s.
+//     joins every goroutine the component owns. A worker runs its closers in reverse order, then closes its NodeHost, forcing its own exit after 3 s.
 //   - Unawaited Promises are owned tasks (the component's task group, the worker's reload loop), never naked goroutines.
 package workers

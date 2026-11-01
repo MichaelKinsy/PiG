@@ -1,6 +1,7 @@
 // The fixture worker's core facet (test/next-node/fixtures/workers/worker.ts `core`, with `Control` of control.ts), as the module
-// the worker's Node host imports: `Control` (crash, busy, local calls), `Busy` (the app's keep-alive counts) and `Echo`. The
+// the worker's Node host imports: `Control` (crash, busy, block, local calls), `Busy` (the app's keep-alive counts) and `Echo`. The
 // worker's host is the NodeHost, so the app's Go code reads the counts through `BusyView`, a remote type at the address.
+import { existsSync } from "node:fs";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import { defineFacet, defineState, hostKind, int, local, map, method, remote, str } from "@earendil-works/chord/next";
 
@@ -10,7 +11,7 @@ const Control = remote("test.control", {
 	version: 1,
 	params: { id: str() },
 	hostAddress: ({ id }) => Session({ id }),
-	variants: { main: { methods: { crash: method(int()), busy: method(int()), localCalls: method(int(), int()) } } },
+	variants: { main: { methods: { crash: method(int()), busy: method(int()), block: method(str()), localCalls: method(int(), int()) } } },
 });
 
 /** The counts of Busy, read by the worker's Go code (a local type of this host cannot be read from Go). */
@@ -65,6 +66,17 @@ export default defineFacet((facet) => {
 							draft.tasks = 0;
 						}, BACKGROUND_CONTEXT);
 					}, ms);
+					return null;
+				},
+				// Blocks this host's event loop (Pi's `block`, a busy loop) until the file `release` exists, for 2 s at most: nothing
+				// the process is sent (an abort, a close) is read meanwhile. The call settles first; `node blocked` is printed once
+				// the loop is blocked, in the turn that blocks it.
+				block: async (release) => {
+					setTimeout(() => {
+						console.log("node blocked");
+						const cell = new Int32Array(new SharedArrayBuffer(4));
+						for (const end = Date.now() + 2000; !existsSync(release) && Date.now() < end; ) Atomics.wait(cell, 0, 0, 5);
+					}, 0);
 					return null;
 				},
 				// The worker's Go code counts the messages it sends to the server between the two lines.
