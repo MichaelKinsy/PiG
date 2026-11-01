@@ -1,6 +1,6 @@
 # Chord v2 plugins: the build in Go, the evaluation in a Node subprocess
 
-Status: owner decision 2026-11-01 for `chord/nextnode/plugins` (Pi `2c8d1feb`, `packages/chord/src/next-node/plugins`).
+Status: owner decision 2026-11-01 for `chord/nextnode/plugins` (Pi `b556cfe5`, `packages/chord/src/next-node/plugins`).
 Replaces the `Builder` and `Evaluator` seams of the first port, whose only implementations were test fakes.
 
 ## 1. Split
@@ -75,10 +75,11 @@ Pi's `packages/chord` `engines.node` is `>=22.19.0`, the first release that stri
 
 - `node/host.mjs`: the driver, written here.
 - `node/pi/chord/src/**`: the import closure of `next/index.ts`, `next-node/plugins/{evaluate,stack,runtime}.ts`, `next-node/compression.ts` and `context/index.ts` at the pinned Pi commit, copied byte for byte, at Pi's own relative layout (so `../../next/host/index.ts` resolves).
-- `node/pi/node_modules/{typebox,@earendil-works/pi-telemetry}`: Pi's runtime dependencies at Pi's pins (`typebox@1.3.27`, integrity-checked, as `vendor-typebox.sh`; pi-telemetry from the `extensions/sdk-ts` lock).
-- `node/manifest.json`: the Pi commit, the pin (`.upstream/pin`) it was made against, the sha256 of every vendored file, and, when the commit is not the pin's, `catchup` naming it. A Go test fails when a file differs from the manifest, when the pin moved since, and when the commit differs from the pin without being the named catch-up (the pin is `2c8d1feb`, the commit vendored: no catch-up is named; a script run with `PI_COMMIT` other than the pin's records one).
+- `node/pi/schema/`: `@earendil-works/pi-schema`, the package of Pi's tree (`packages/schema`, version checked against the one Pi's chord depends on) that chord imports by name: its `package.json`, `LICENSES/` and the `src` closure of its entry, copied byte for byte. Node refuses to strip the types of a file under `node_modules`, so `host.mjs` answers the name with `schema/src/index.ts` as it answers `@earendil-works/chord/next` (a package vendored as TypeScript cannot be found by Node's own lookup). Pi's chord has no other runtime dependency but pi-telemetry (the script fails if it gains one).
+- `node/pi/node_modules/@earendil-works/pi-telemetry`: Pi's telemetry contracts at Pi's pin (from the `extensions/sdk-ts` lock; its `dist` modules are JavaScript, so Node's lookup finds them).
+- `node/manifest.json`: the Pi commit, the pin (`.upstream/pin`) it was made against, the sha256 of every vendored file, and, when the commit is not the pin's, `catchup` naming it. A Go test fails when a file differs from the manifest, when the pin moved since, and when the commit differs from the pin without being the named catch-up (the pin is `b556cfe5`, the commit vendored: no catch-up is named; a script run with `PI_COMMIT` other than the pin's records one).
 
-`automation/gen/vendor-chord-plugins-node.sh` (`make vendor-chord-plugins-node`, run by `make pin-bump` next to `vendor-pi-dist`) regenerates `node/pi` from the mirror of the pin (`PI_TREE`/`PI_COMMIT` override the Pi tree and its commit for a catch-up); it checks typebox and pi-telemetry against the versions Pi's chord depends on, and writes nothing else.
+`automation/gen/vendor-chord-plugins-node.sh` (`make vendor-chord-plugins-node`, run by `make pin-bump` next to `vendor-pi-dist`) regenerates `node/pi` from the mirror of the pin (`PI_TREE`/`PI_COMMIT` override the Pi tree and its commit for a catch-up); it checks pi-schema and pi-telemetry against the versions Pi's chord depends on (and that those are its only dependencies), and writes nothing else.
 
 ## 8. Designed out, and what differs
 
