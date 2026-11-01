@@ -1,6 +1,6 @@
 # Multi-session RPC server with shared extension cells
 
-Status: design, 2026-11-01. Additive feature record: D201 in `docs/additive-features.md` (to be written with the implementation).
+Status: implemented on `feat/rpc-listen`, commits `205cfa483..bd6f9cad3` and the Task 7 record. Additive feature record: D201 in `docs/additive-features.md`.
 
 ## Intent
 
@@ -70,7 +70,7 @@ The last two rows are the problem this design solves: a session's extension proc
 
 - The startup build (project trust, services, resources, extension load) serves the first connection, as it serves the only session of `pig --mode rpc` today.
 - Every later connection builds through the same cwd-bound factory a session replacement uses (`cliRuntimeBuilder.rebuild`): its own `SettingsManager`, resource loader, extension host, `ModelRuntime` and Session. Builds run one at a time under one mutex, the replacement builds a connection's `new_session` or `switch_session` command requests included; sessions run concurrently.
-- Connections do not share a `ModelRuntime`. Pi's `createRuntime` builds a fresh one per replacement (`main.ts:749-754`), and an extension's `registerProvider` and `registerVirtualModel` land in the runtime (`coding/model_runtime_native.go`, `model_runtime_members.go`): two sessions' instances of one extension would register the same provider twice, and the first session to close would unregister it from the other. A per-connection runtime costs its own catalog state; the bench below records that cost.
+- Connections do not share a `ModelRuntime`. Pi's `createRuntime` builds a fresh one per replacement (`main.ts:733-775`, `createRuntime`; `agent-session-services.ts:140-147`, `ModelRuntime.create` when the options carry no runtime), and an extension's `registerProvider` and `registerVirtualModel` land in the runtime (`coding/model_runtime_native.go`, `model_runtime_members.go`): two sessions' instances of one extension would register the same provider twice, and the first session to close would unregister it from the other. A per-connection runtime costs its own catalog state; the bench below records that cost.
 - `serveRPCMode` takes its reader, its writer and its exit through one transport value instead of `os.Stdin`, the raw stdout writer and `os.Exit`. For `pig --mode rpc` the transport is the process's; for a connection it is the connection, and exit closes the connection. Process-wide signal hooks (`setTerminationPrelude`, `setTerminationShutdownHook`) are installed once by the server and fan out to every live session.
 - The RPC command loop, admission, UI bridge, shutdown ordering and event forwarding are per session and unchanged.
 
@@ -84,7 +84,7 @@ The last two rows are the problem this design solves: a session's extension proc
 
 ### Scoping the Node runtime per session
 
-The Node runtime keeps bookkeeping per process that assumes every member belongs to one session. The host identifies the session group of a member in the `ready` payload: a new optional member `group`, a string unique per Host in the process. A runtime that receives no `group` behaves as today. The Go, Rust and Python SDKs ignore the member.
+The Node runtime keeps bookkeeping per process that assumes every member belongs to one session. The host identifies the session group of a member with a string unique per Host in the process. The payload carries it as a new optional `ready` member `group`, which the Go, Rust and Python SDKs ignore. The Node runtime does not read it from `ready`: its factory subscribes to the bus before `ready` arrives, so the group travels on the cell's admission line (a trailing field, present only for a Host that shares cells) and is set before the factory runs. `ready.group` stays an informational wire member. A runtime that receives no group behaves as today.
 
 In `runtime.mjs`, these become per group:
 
@@ -113,7 +113,7 @@ Memory evidence: a bench script under `bench/` starts `pig --mode rpc --listen` 
 
 ### Records and documentation
 
-- `docs/additive-features.md`: `## D201` with the Stock disposition (inert capability), what, current behavior, the Pi source note (Pi's RPC serves one session per process; Pi's SDK shares one resource loader across sessions from one services object), the policy decisions above, the markers, the tests, the measurements, and the remove-when condition (Pi gains a multi-session RPC mode).
+- `docs/additive-features.md`: `## D201` with the Stock disposition (inert capability), what, current behavior, the Pi source note (Pi's RPC serves one session per process; Pi's SDK shares one resource loader across sessions from one services object (`agent-session-services.ts:214-233`)), the policy decisions above, the markers, the tests, the measurements, and the remove-when condition (Pi gains a multi-session RPC mode).
 - `// pig additive (D201)` markers: `coding/cli/args.go` (`--listen`), `coding/cli/rpc_mode.go` (transport, server loop), `coding/extension/host/subprocess` (registry opt-in and lookup), `coding/extension/host/subprocess/protocol.go` (`ready.group`), `runtime.mjs` (group scoping).
 - `docs/site/docs/cli.md` (PiG Options), `docs/site/docs/rpc.md` (a "Serve many sessions" section with a minimal client), `pigCommands` help text, `docs/extension-api-parity.md` (the cell-sharing invariant, the `ready.group` member and its async contract), `changelog.d/<lane>-<sha>.md` under `### Added`.
 - `make generate`, `make ci-drift ci-contracts`, `make lint-changed`, the affected `make parity-family rpc` and `make test` groups before the handoff.

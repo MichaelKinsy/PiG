@@ -25,6 +25,43 @@ If you omit `--model` and no default model exists, RPC mode starts with Pi's `un
 
 The initial active tool list and system-message tool declarations retain extension load and registration order. When several extensions register the same tool name, the first registration wins.
 
+## Serve many sessions
+
+```bash
+pig --mode rpc --listen /run/user/1000/pig.sock [--model <provider/model>] [options]
+```
+
+`--listen <path>` serves one RPC session per connection on the Unix socket at `<path>` (D201). The connection carries Pi's RPC protocol unchanged: the client writes commands and reads responses and events, framed as in [Framing](#framing).
+
+- Every connection creates a new Session, persisted under the Session directory unless you pass `--no-session`. `--listen` rejects `--continue`, `--resume`, `--session`, `--session-id` and `--fork`.
+- Closing a connection is the end of that session's standard input: PiG shuts the session down, closes the connection and keeps serving.
+- The server ignores its own standard input and runs until a termination signal. The signal shuts every live session down, then PiG exits with `128 +` the signal number.
+- Every session has the server's working directory, agent directory, flags, model and tool selection. Start another server for a different working directory.
+- The socket path must not exist. PiG creates the socket with mode 0600 and removes it at exit. It does not remove a path it did not create.
+- Sessions that load the same extensions share the extension processes. Each session still has its own extension instance, state and events.
+
+A client that connects twice and prompts both sessions:
+
+```python
+import json, socket
+
+def session(path):
+    s = socket.socket(socket.AF_UNIX); s.connect(path); return s, s.makefile("rw")
+
+def prompt(f, text):
+    f.write(json.dumps({"type": "prompt", "message": text}) + "\n"); f.flush()
+
+a, fa = session("/run/user/1000/pig.sock")
+b, fb = session("/run/user/1000/pig.sock")
+prompt(fa, "Name one prime number.")
+prompt(fb, "Name one even number.")
+for f in (fa, fb):
+    for line in f:
+        if json.loads(line).get("type") == "agent_settled":
+            break
+a.close(); b.close()
+```
+
 ## Framing
 
 Each input or output record is one JSON object followed by LF (`\n`).
