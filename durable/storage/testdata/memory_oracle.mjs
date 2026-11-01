@@ -17,6 +17,7 @@ module.registerHooks({
 const { defineTask } = await import(pathToFileURL(`${packages}durable/src/tasks.ts`).href);
 const { defineDoc, defineDocFamily } = await import(pathToFileURL(`${packages}durable/src/documents.ts`).href);
 const { MemoryStorage } = await import(pathToFileURL(`${packages}durable/src/storage/memory.ts`).href);
+const { commitWrites } = await import(pathToFileURL(`${packages}durable/src/testing/commit-writes.ts`).href);
 const { BACKGROUND_CONTEXT } = await import(pathToFileURL(`${packages}chord/src/context/index.ts`).href);
 const { createSession } = await import(pathToFileURL(`${packages}durable/src/session/session.ts`).href);
 const ctx = BACKGROUND_CONTEXT;
@@ -192,7 +193,7 @@ async function runProgram(program, storage, readsOnly) {
 		const result = await settle(async () => {
 			switch (step.op) {
 				case "commit":
-					return await storage.commit(step.writes, () => {}, ctx);
+					return await commitWrites(storage, step.writes, ctx);
 				case "mintId":
 					return await storage.mintId();
 				case "conversation":
