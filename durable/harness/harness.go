@@ -703,5 +703,5 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 type sessionLine struct{ *session.SessionImpl }
 
 func (line sessionLine) ReadOnLine(ctx context.Context, read func(storage durable.Storage) (any, error)) (any, error) {
-	return line.SessionImpl.ReadOnLineCtx(ctx, read)
+	return line.ReadOnLineCtx(ctx, read)
 }
