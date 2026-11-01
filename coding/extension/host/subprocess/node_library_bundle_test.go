@@ -24,7 +24,7 @@ const ai = await import("@earendil-works/pi-ai");
 const legacy = await import("@mariozechner/pi-ai/compat");
 const all = await import("@earendil-works/pi-ai/providers/all");
 const oracle = await import(pathToFileURL(process.argv[3]));
-const oracleAll = await import(new URL("./providers/all.js",pathToFileURL(process.argv[3])));
+const oracleAll = await import(pathToFileURL(process.argv[4]));
 assert.deepEqual(Object.keys(ai),Object.keys(oracle),"public AI export inventory");
 assert.equal(ai,legacy);
 assert.equal(ai.getModel,all.getBuiltinModel);
@@ -53,8 +53,11 @@ const sdk=await import("@earendil-works/pi-coding-agent");
 const runtime=await sdk.ModelRuntime.create({modelsPath:null,authPath:join(process.argv[2],"auth.json"),refreshOnCreate:false});
 await assert.rejects(runtime.prepareRequest({provider:"not-registered",id:"none"}),error=>error instanceof ai.ModelsError && error.message==="Unknown provider: not-registered");
 `
-	oracle := filepath.Join(findModuleRoot(t), "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent", "node_modules", "@earendil-works", "pi-ai", "dist", "compat.js")
-	cmd := exec.CommandContext(t.Context(), "node", "--import", registerLoaderURL(t, root), "--input-type=module", "-e", script, root, t.TempDir(), oracle)
+	// Extensions import pi-ai through the coding agent's extension view (core/extensions/pi-ai-extension-view.ts): pi-ai's compat entry plus TypeBox's Type and StringEnum.
+	agent := filepath.Join(findModuleRoot(t), "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent")
+	oracle := filepath.Join(agent, "dist", "core", "extensions", "pi-ai-extension-view.js")
+	oracleAll := filepath.Join(agent, "node_modules", "@earendil-works", "pi-ai", "dist", "providers", "all.js")
+	cmd := exec.CommandContext(t.Context(), "node", "--import", registerLoaderURL(t, root), "--input-type=module", "-e", script, root, t.TempDir(), oracle, oracleAll)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("shared library bundles: %v\n%s", err, output)
 	}

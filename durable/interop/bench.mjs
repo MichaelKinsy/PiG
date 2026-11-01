@@ -12,7 +12,6 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
-import { Type } from "@earendil-works/pi-ai";
 import { createModels } from "@earendil-works/pi-ai/models";
 import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux";
 import { createRegistry, defineExtension, defineTool, Harness, section } from "@earendil-works/pi-durable";
@@ -131,7 +130,8 @@ async function open(path) {
 	const lookup = defineTool({
 		name: "lookup",
 		description: "Look up record number n",
-		parameters: Type.Object({ n: Type.Number() }),
+		// What pi-schema's obj({ n: num() }) builds (pi-ai no longer exports TypeBox's Type).
+		parameters: { type: "object", properties: { n: { type: "number" } }, required: ["n"], additionalProperties: false },
 		// The result's text for the model: `output` from Pi's 42a3497d on, `content` in 1.1.0 and the durable contract's
 		// main (durable/contract/PIN), which durable-core runs this file against. Each ignores the other's field.
 		execute: async ({ n }) => {
