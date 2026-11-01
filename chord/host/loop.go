@@ -459,62 +459,148 @@ func promiseAllSettled[T any](loop *loop, promises []*Promise[T]) *Promise[[]set
 	return all
 }
 
-// orderedMap is a JavaScript Map: lookups by key, iteration in insertion order.
+// orderedMap is a JavaScript Map: lookups by key, iteration in insertion order. Setting a key that is present keeps its
+// place; deleting it and setting it again moves it to the end. Every operation but the snapshots (Keys, Values),
+// DeleteFunc and Clear is O(1) amortized: a deleted entry stays in its place as a tombstone until the tombstones
+// outnumber the live entries, and the entries are then compacted in order.
 type orderedMap[K comparable, V any] struct {
-	keys   []K
-	values map[K]V
+	entries []orderedEntry[K, V]
+	// positions is the index in entries of each live key.
+	positions map[K]int
+	// first is the index of the first live entry; entries before it are tombstones.
+	first int
 }
 
+type orderedEntry[K comparable, V any] struct {
+	key   K
+	value V
+	live  bool
+}
+
+// minTombstones is the tombstone count under which compacting a map is not worth its walk.
+const minTombstones = 8
+
 func newOrderedMap[K comparable, V any]() *orderedMap[K, V] {
-	return &orderedMap[K, V]{values: map[K]V{}}
+	return &orderedMap[K, V]{positions: map[K]int{}}
 }
 
 func (entries *orderedMap[K, V]) Get(key K) (V, bool) {
-	value, ok := entries.values[key]
-	return value, ok
+	position, ok := entries.positions[key]
+	if !ok {
+		var zero V
+		return zero, false
+	}
+	return entries.entries[position].value, true
 }
 
 func (entries *orderedMap[K, V]) Has(key K) bool {
-	_, ok := entries.values[key]
+	_, ok := entries.positions[key]
 	return ok
 }
 
 func (entries *orderedMap[K, V]) Set(key K, value V) {
-	if _, ok := entries.values[key]; !ok {
-		entries.keys = append(entries.keys, key)
+	if position, ok := entries.positions[key]; ok {
+		entries.entries[position].value = value
+		return
 	}
-	entries.values[key] = value
+	entries.positions[key] = len(entries.entries)
+	entries.entries = append(entries.entries, orderedEntry[K, V]{key: key, value: value, live: true})
 }
 
 func (entries *orderedMap[K, V]) Delete(key K) bool {
-	if _, ok := entries.values[key]; !ok {
+	position, ok := entries.positions[key]
+	if !ok {
 		return false
 	}
-	delete(entries.values, key)
-	for index, existing := range entries.keys {
-		if existing == key {
-			entries.keys = append(entries.keys[:index:index], entries.keys[index+1:]...)
-			break
-		}
-	}
+	delete(entries.positions, key)
+	entries.entries[position] = orderedEntry[K, V]{}
+	entries.settle()
 	return true
 }
 
-func (entries *orderedMap[K, V]) Len() int { return len(entries.keys) }
+// DeleteFunc deletes every entry for which remove returns true, in one walk in insertion order. remove must not
+// change the map.
+func (entries *orderedMap[K, V]) DeleteFunc(remove func(key K, value V) bool) {
+	for position := entries.first; position < len(entries.entries); position++ {
+		entry := &entries.entries[position]
+		if entry.live && remove(entry.key, entry.value) {
+			delete(entries.positions, entry.key)
+			*entry = orderedEntry[K, V]{}
+		}
+	}
+	entries.settle()
+}
+
+// settle restores the invariants after entries were deleted: first is the first live entry, and tombstones do not
+// outnumber the live entries (past minTombstones).
+func (entries *orderedMap[K, V]) settle() {
+	live := len(entries.positions)
+	if live == 0 {
+		entries.entries = entries.entries[:0]
+		entries.first = 0
+		return
+	}
+	for !entries.entries[entries.first].live {
+		entries.first++
+	}
+	if tombstones := len(entries.entries) - live; tombstones >= minTombstones && tombstones > live {
+		entries.compact()
+	}
+}
+
+func (entries *orderedMap[K, V]) compact() {
+	kept := 0
+	for _, entry := range entries.entries[entries.first:] {
+		if !entry.live {
+			continue
+		}
+		entries.entries[kept] = entry
+		entries.positions[entry.key] = kept
+		kept++
+	}
+	clear(entries.entries[kept:])
+	entries.entries = entries.entries[:kept]
+	entries.first = 0
+}
+
+// First is the entry that iteration visits first.
+func (entries *orderedMap[K, V]) First() (key K, value V, ok bool) {
+	if len(entries.positions) == 0 {
+		return key, value, false
+	}
+	entry := entries.entries[entries.first]
+	return entry.key, entry.value, true
+}
+
+func (entries *orderedMap[K, V]) Len() int { return len(entries.positions) }
 
 func (entries *orderedMap[K, V]) Clear() {
-	entries.keys = nil
-	clear(entries.values)
+	entries.entries = nil
+	entries.first = 0
+	clear(entries.positions)
 }
 
 // Keys is a snapshot of the keys in insertion order.
-func (entries *orderedMap[K, V]) Keys() []K { return append([]K(nil), entries.keys...) }
+func (entries *orderedMap[K, V]) Keys() []K {
+	if len(entries.positions) == 0 {
+		return nil
+	}
+	keys := make([]K, 0, len(entries.positions))
+	for _, entry := range entries.entries[entries.first:] {
+		if entry.live {
+			keys = append(keys, entry.key)
+		}
+	}
+	return keys
+}
 
 // Values is a snapshot of the values in insertion order.
 func (entries *orderedMap[K, V]) Values() []V {
-	values := make([]V, len(entries.keys))
-	for index, key := range entries.keys {
-		values[index] = entries.values[key]
+	values := make([]V, 0, len(entries.positions))
+	for _, entry := range entries.entries[entries.first:] {
+		if entry.live {
+			values = append(values, entry.value)
+		}
 	}
 	return values
 }
