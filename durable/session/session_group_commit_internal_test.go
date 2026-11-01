@@ -11,6 +11,7 @@ package session
 import (
 	"context"
 	"errors"
+	"runtime"
 	"slices"
 	"sync"
 	"testing"
@@ -18,8 +19,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
-	"github.com/MichaelKinsy/PiG/internal/entered"
-	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
 var internalNote = durable.DefineDoc(durable.DocDefinition[durable.JsonObject]{
@@ -67,7 +66,6 @@ func abortPrepared(tx *Transaction) {
 }
 
 type internalCall struct {
-	id    uint64
 	done  chan struct{}
 	value any
 	err   error
@@ -78,20 +76,23 @@ func (started *internalCall) wait() (any, error) {
 	return started.value, started.err
 }
 
-// enter blocks until the call is parked in a wait or returned.
-func (started *internalCall) enter() { entered.Await(started.id, started.done) }
+// awaitQueued returns once n parts are admitted behind the publication in flight and not yet sent: Pi's callbacks have all run and
+// the commits are admitted behind the held call. A call parked anywhere (the line's ticket, a lock) is not admitted yet, so only
+// the writer's queue says it.
+func awaitQueued(kernel *SessionImpl, n int) {
+	for kernel.writer.Queued() < n {
+		runtime.Gosched()
+	}
+}
 
 // commitTicketed issues a commit on the line now (a ticket) and runs it on its own goroutine.
 func commitTicketed(kernel *SessionImpl, change func(tx *Transaction) (any, error), options ...durable.CommitOptions) *internalCall {
 	ticket := kernel.TakeLineTicket()
 	started := &internalCall{done: make(chan struct{})}
-	ids := make(chan uint64, 1)
 	go func() {
-		ids <- goroutineid.Current()
 		defer close(started.done)
 		started.value, started.err = kernel.CommitWithTicket(ticket, context.Background(), change, TransactionScope{}, options...)
 	}()
-	started.id = <-ids
 	return started
 }
 
@@ -128,6 +129,11 @@ func openInternal(t *testing.T, conversations int) (*SessionImpl, *scopedMemory,
 		t.Fatal(err)
 	}
 	return kernel, memory, value.([]durable.ConversationId)
+}
+
+// sameError is Pi's `toBe`: the one error value, not one that wraps or equals it.
+func sameError(got, want error) bool {
+	return got == want //nolint:errorlint // identity is what Pi pins: `rejects.toBe(failure)`
 }
 
 func isFailed(err error) (error, bool) {
@@ -172,10 +178,8 @@ func TestGroupCommitLeavesThePartsAfterOneWhoseAdoptionFailsUnpublished(t *testi
 	before := commitTicketed(kernel, internalBump(b, nil))
 	failing := commitTicketed(kernel, internalBump(c, &failingTx))
 	after := commitTicketed(kernel, internalBump(d, nil))
-	// Wait until the three callbacks ran and were admitted behind the held one: each is parked on its commit's outcome.
-	before.enter()
-	failing.enter()
-	after.enter()
+	// Wait until the three commits are admitted behind the held one, as Pi's `await flush()` does.
+	awaitQueued(kernel, 3)
 	close(release)
 	if _, err := first.wait(); err != nil {
 		t.Fatal(err)
@@ -190,9 +194,11 @@ func TestGroupCommitLeavesThePartsAfterOneWhoseAdoptionFailsUnpublished(t *testi
 	if _, isSessionFailed := isFailed(err); isSessionFailed {
 		t.Fatalf("the commit whose adoption failed got SessionFailed %v, want its adoption error", err)
 	}
+	// Pi pins the identity of the failure (`rejects.toBe(failure)`): the one error is what the commit rejects with, what fails
+	// the part after it, and what the Session failed and ended with.
 	_, afterErr := after.wait()
-	if cause, ok := isFailed(afterErr); !ok || !errors.Is(cause, err) {
-		t.Fatalf("the part after it got %v, want SessionFailed caused by %v", afterErr, err)
+	if cause, ok := isFailed(afterErr); !ok || !sameError(cause, err) {
+		t.Fatalf("the part after it got %v, want SessionFailed caused by %v itself", afterErr, err)
 	}
 	publishedMu.Lock()
 	if len(published) != 2 {
@@ -200,8 +206,11 @@ func TestGroupCommitLeavesThePartsAfterOneWhoseAdoptionFailsUnpublished(t *testi
 	}
 	publishedMu.Unlock()
 	<-kernel.Closed()
-	if end := kernel.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, err) {
-		t.Fatalf("session ended %+v, want failed with %v", end, err)
+	if end := kernel.End(); end.Kind != durable.SessionEndFailed || !sameError(end.Error, err) {
+		t.Fatalf("session ended %+v, want failed with %v itself", end, err)
+	}
+	if failure := kernel.Failure(); !sameError(failure, err) {
+		t.Fatalf("session failure %v, want %v itself", failure, err)
 	}
 	// All four are durable: reopening recovers the unpublished one.
 	memory.setScope(nil)
@@ -224,72 +233,118 @@ func TestGroupCommitLeavesThePartsAfterOneWhoseAdoptionFailsUnpublished(t *testi
 	}
 }
 
-func TestGroupCommitFailsTheSessionForADeferredCommitMemoryCannotAdopt(t *testing.T) {
-	for _, alone := range []bool{false, true} {
-		name := "behind a stored commit"
-		if alone {
-			name = "alone, on a storage that runs nothing else"
+// foreverDeferred is a deferred commit that waits for a reading or writing commit, a barrier, or close to store it.
+func foreverDeferred() durable.CommitOptions {
+	forever := positiveInf()
+	return durable.CommitOptions{Persistence: &durable.CommitPersistence{Kind: durable.CommitDeferred, WithinMs: &forever}}
+}
+
+// abortStagedAtPublication makes the adoption of the commit whose transaction is captured in *staged fail: the storage's scope
+// aborts what it prepared right before each publication.
+func abortStagedAtPublication(memory *scopedMemory, staged **Transaction) {
+	memory.setScope(func(_ context.Context, publish func()) {
+		// The held commit is the one whose transaction was captured: its adoption is what fails.
+		if *staged != nil {
+			abortPrepared(*staged)
 		}
-		t.Run(name, func(t *testing.T) {
-			kernel, memory, ids := openInternal(t, 2)
-			a, b := ids[0], ids[1]
-			if _, err := kernel.CommitWith(context.Background(), internalBump(a, nil), TransactionScope{}); err != nil {
-				t.Fatal(err)
-			}
-			if _, err := kernel.CommitWith(context.Background(), internalBump(b, nil), TransactionScope{}); err != nil {
-				t.Fatal(err)
-			}
-			var published []ObservedCommit
-			var publishedMu sync.Mutex
-			kernel.FollowCommits(func(_ context.Context, commit ObservedCommit) {
-				publishedMu.Lock()
-				published = append(published, commit)
-				publishedMu.Unlock()
-			})
-			var staged *Transaction
-			memory.setScope(func(_ context.Context, publish func()) {
-				// The held commit is the one whose transaction was captured: its adoption is what fails.
-				if staged != nil {
-					abortPrepared(staged)
-				}
-				publish()
-			})
-			forever := positiveInf()
-			held := commitTicketed(kernel, internalBump(a, &staged), durable.CommitOptions{Persistence: &durable.CommitPersistence{Kind: durable.CommitDeferred, WithinMs: &forever}})
-			var after *internalCall
-			if !alone {
-				after = commitTicketed(kernel, internalBump(b, nil))
-			}
-			_, err := held.wait()
-			if err == nil {
-				t.Fatal("the deferred commit whose adoption failed resolved")
-			}
-			if _, isSessionFailed := isFailed(err); isSessionFailed {
-				t.Fatalf("the deferred commit got SessionFailed %v, want its adoption error", err)
-			}
-			if after != nil {
-				if _, afterErr := after.wait(); afterErr == nil {
-					t.Fatal("the commit after the failed one resolved")
-				} else if _, ok := isFailed(afterErr); !ok {
-					t.Fatalf("the commit after it got %v, want SessionFailed", afterErr)
-				}
-			}
-			publishedMu.Lock()
-			if len(published) != 0 {
-				t.Fatalf("%d commits published, want none", len(published))
-			}
-			publishedMu.Unlock()
-			<-kernel.Closed()
-			if end := kernel.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, err) {
-				t.Fatalf("session ended %+v, want failed with %v", end, err)
-			}
-			if err := kernel.Close(context.Background()); err != nil && !errors.Is(err, err) {
-				t.Fatal(err)
-			}
-			if sizes := kernel.LineSizes(); sizes != (LineSizes{}) {
-				t.Fatalf("line sizes %+v, want all zero", sizes)
-			}
-		})
+		publish()
+	})
+}
+
+// requireFailedWith requires the Session to have ended failed with err itself, as Pi's `session.closed` equals
+// `{kind: "failed", error: failure}`, and its failure to be that error too.
+func requireFailedWith(t *testing.T, kernel *SessionImpl, err error) {
+	t.Helper()
+	<-kernel.Closed()
+	if end := kernel.End(); end.Kind != durable.SessionEndFailed || !sameError(end.Error, err) {
+		t.Fatalf("session ended %+v, want failed with %v itself", end, err)
+	}
+	if failure := kernel.Failure(); !sameError(failure, err) {
+		t.Fatalf("session failure %v, want %v itself", failure, err)
+	}
+}
+
+// Pi: "fails the Session for a deferred commit memory cannot adopt, and still closes".
+func TestGroupCommitFailsTheSessionForADeferredCommitMemoryCannotAdopt(t *testing.T) {
+	kernel, memory, ids := openInternal(t, 2)
+	a, b := ids[0], ids[1]
+	if _, err := kernel.CommitWith(context.Background(), internalBump(a, nil), TransactionScope{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := kernel.CommitWith(context.Background(), internalBump(b, nil), TransactionScope{}); err != nil {
+		t.Fatal(err)
+	}
+	var published []ObservedCommit
+	var publishedMu sync.Mutex
+	kernel.FollowCommits(func(_ context.Context, commit ObservedCommit) {
+		publishedMu.Lock()
+		published = append(published, commit)
+		publishedMu.Unlock()
+	})
+	var staged *Transaction
+	abortStagedAtPublication(memory, &staged)
+	held := commitTicketed(kernel, internalBump(a, &staged), foreverDeferred())
+	after := commitTicketed(kernel, internalBump(b, nil))
+	_, err := held.wait()
+	if err == nil {
+		t.Fatal("the deferred commit whose adoption failed resolved")
+	}
+	if _, isSessionFailed := isFailed(err); isSessionFailed {
+		t.Fatalf("the deferred commit got SessionFailed %v, want its adoption error", err)
+	}
+	// Pi pins the identity of the failure: the commit rejects with it, and the part after it fails with it as its cause.
+	if _, afterErr := after.wait(); afterErr == nil {
+		t.Fatal("the commit after the failed one resolved")
+	} else if cause, ok := isFailed(afterErr); !ok || !sameError(cause, err) {
+		t.Fatalf("the commit after it got %v, want SessionFailed caused by %v itself", afterErr, err)
+	}
+	publishedMu.Lock()
+	if len(published) != 0 {
+		t.Fatalf("%d commits published, want none", len(published))
+	}
+	publishedMu.Unlock()
+	requireFailedWith(t, kernel, err)
+	if closeErr := kernel.Close(context.Background()); closeErr != nil {
+		t.Fatalf("close of the failed Session: %v", closeErr)
+	}
+}
+
+// Pi: "settles a deferred commit whose adoption throws, alone, and closes": one conversation with its Note, then only the
+// deferred commit, on a storage that runs nothing else.
+func TestGroupCommitSettlesADeferredCommitWhoseAdoptionFailsAlone(t *testing.T) {
+	memory := &scopedMemory{MemoryStorage: storage.NewMemoryStorage()}
+	kernel := NewSessionImpl(memory, Hooks{}, nil, nil)
+	created, err := kernel.CommitWith(context.Background(), func(tx *Transaction) (any, error) {
+		conversation, err := tx.CreateConversation(durable.CreateConversationOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnerless}})
+		if err != nil {
+			return nil, err
+		}
+		if _, err := tx.Doc(internalNote, conversation.Id); err != nil {
+			return nil, err
+		}
+		return conversation.Id, nil
+	}, TransactionScope{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var staged *Transaction
+	abortStagedAtPublication(memory, &staged)
+	_, err = kernel.CommitWith(context.Background(), internalBump(created.(durable.ConversationId), &staged), TransactionScope{}, foreverDeferred())
+	if err == nil {
+		t.Fatal("the deferred commit whose adoption failed resolved")
+	}
+	if _, isSessionFailed := isFailed(err); isSessionFailed {
+		t.Fatalf("the deferred commit got SessionFailed %v, want its adoption error", err)
+	}
+	if failure := kernel.Failure(); !sameError(failure, err) {
+		t.Fatalf("session failure %v, want %v itself", failure, err)
+	}
+	if closeErr := kernel.Close(context.Background()); closeErr != nil {
+		t.Fatalf("close of the failed Session: %v", closeErr)
+	}
+	requireFailedWith(t, kernel, err)
+	if sizes := kernel.LineSizes(); sizes != (LineSizes{}) {
+		t.Fatalf("line sizes %+v, want all zero", sizes)
 	}
 }
 

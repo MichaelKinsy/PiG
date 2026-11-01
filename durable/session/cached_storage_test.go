@@ -4,6 +4,7 @@ package session_test
 
 import (
 	"context"
+	"reflect"
 	"sync"
 	"testing"
 
@@ -319,9 +320,13 @@ func TestCachedStorageKeepsEndedTasksATaskWaitsOnUntilItMovedOnFromItsWait(t *te
 	}
 }
 
+// Pi pins `expect(await storage.task(id)).toBe(record)`: the record the write carried is the one the cache serves. A Go write
+// carries the record by value, so the cache keeps a copy of the struct and what the record references is shared: the same
+// checkpoint and the same memos map, not copies of them. That is as much identity as a value type has.
 func TestCachedStorageKeepsWrittenRecordItselfShared(t *testing.T) {
 	storage := session.NewCachedStorage(newCountingBackend())
 	record := taskRecord(2, durable.TaskPending)
+	record.Memos = map[string]durable.JsonValue{"memo": "value"}
 	storage.Published([]durable.StorageWrite{conversationWrite(1), taskWrite(record)})
 	first, err := storage.Task(ctx, 2)
 	if err != nil {
@@ -331,8 +336,14 @@ func TestCachedStorageKeepsWrittenRecordItselfShared(t *testing.T) {
 	if first != second {
 		t.Fatal("two reads returned different records")
 	}
-	if first.State.Checkpoint != record.State.Checkpoint {
+	if first.State.Checkpoint == nil || first.State.Checkpoint != record.State.Checkpoint {
 		t.Fatal("the written record's state was copied")
+	}
+	if reflect.ValueOf(first.Memos).Pointer() != reflect.ValueOf(record.Memos).Pointer() {
+		t.Fatal("the written record's memos were copied")
+	}
+	if first.Id != record.Id || first.Kind != record.Kind || first.State.Status != record.State.Status {
+		t.Fatalf("the cache serves %+v, not the record written %+v", first, record)
 	}
 	conversation, err := storage.Conversation(ctx, 1)
 	if err != nil || conversation == nil || conversation.Id != 1 {

@@ -194,12 +194,22 @@ type call struct {
 	goroID uint64
 }
 
-// spawn runs fn on a new goroutine, after it extended the line (a line ticket was taken), and returns the call.
-func spawn(fn func() (any, error)) *call {
+// spawn runs fn on a new goroutine, after it extended the line (a line ticket was taken), and returns the call. fn makes its
+// Session calls with the context it is given: it carries the call's Continuation, which the Session waits for, so the code that
+// follows a call ran (a caller's `promise.then(...)`) before the next part of the storage call that released it is published.
+func spawn(fn func(ctx ctxT) (any, error)) *call {
+	return spawnContinuing(func(ctx ctxT, _ *session.Continuation) (any, error) { return fn(ctx) })
+}
+
+// spawnContinuing is spawn for a fn that says itself when its continuation has run up to a wait that is not the Session's.
+func spawnContinuing(fn func(ctx ctxT, continuation *session.Continuation) (any, error)) *call {
 	started := &call{id: make(chan uint64, 1), done: make(chan struct{})}
 	go func() {
 		started.id <- goroutineid.Current()
-		started.value, started.err = fn()
+		callCtx, continuation := session.WithContinuation(ctx)
+		started.value, started.err = fn(callCtx, continuation)
+		// What follows the calls fn made has run.
+		continuation.Entered()
 		close(started.done)
 	}()
 	started.goroID = <-started.id
@@ -242,13 +252,64 @@ func (g *gc) awaitQueued(n int) {
 	}
 }
 
+// awaitHop returns once the writer has published n commits and the Session waits for the caller of the commit it published
+// last, to run its continuation, which the test holds, or, if it does not wait for it, once it published more: then the next
+// part was published ahead of a continuation that Pi runs before it. The test releases the continuation after it.
+func (g *gc) awaitHop(n int) {
+	g.awaitHopAt(n, session.AwaitingCallers)
+}
+
+// awaitWakeHop is awaitHop for a wait that the publication of the nth commit woke, and the Session waits for it to have resumed.
+func (g *gc) awaitWakeHop(n int) {
+	g.awaitHopAt(n, session.AwaitingWakes)
+}
+
+func (g *gc) awaitHopAt(n int, awaiting func(*session.SessionImpl) int) {
+	for {
+		published := g.published.len()
+		if published > n || published == n && awaiting(g.session) > 0 {
+			return
+		}
+		runtime.Gosched()
+	}
+}
+
+// awaitHopOrdered is awaitHop for the callers that record in log, one of which the test holds: it returns once the Session waits
+// for it, or, if it does not wait, once the caller of a later commit recorded before it.
+func (g *gc) awaitHopOrdered(log *order) {
+	for len(log.snapshot()) == 0 && session.AwaitingCallers(g.session) == 0 {
+		runtime.Gosched()
+	}
+}
+
 // order records the names of calls in the order their callers resume, a rejection as `name!`.
 type order struct {
 	mu    sync.Mutex
 	names []string
+	holds map[string]chan struct{}
+}
+
+// hold makes the caller of the call named name slow to run its continuation: it resumes from the Session call and waits for
+// release before it records. A Session that waits for the continuation of one caller before it releases the next is the only
+// way no later caller records first.
+func (recorded *order) hold(name string) (release func()) {
+	gate := make(chan struct{})
+	recorded.mu.Lock()
+	if recorded.holds == nil {
+		recorded.holds = map[string]chan struct{}{}
+	}
+	recorded.holds[name] = gate
+	recorded.mu.Unlock()
+	return func() { close(gate) }
 }
 
 func (recorded *order) record(name string, err error) {
+	recorded.mu.Lock()
+	gate := recorded.holds[name]
+	recorded.mu.Unlock()
+	if gate != nil {
+		<-gate
+	}
 	if err != nil {
 		name += "!"
 	}
@@ -265,7 +326,7 @@ func (recorded *order) snapshot() []string {
 
 // gc is a Session over batchStorage with some conversations, and the commits its own observers got.
 type gc struct {
-	t         *testing.T
+	t         testing.TB
 	storage   *batchStorage
 	session   *session.SessionImpl
 	ids       []durable.ConversationId
@@ -324,13 +385,13 @@ func (log *publishedLog) entryKinds() []string {
 func retentionOf(ms float64) func() *float64 { return func() *float64 { return &ms } }
 
 // openGC opens a Session over storage and creates conversations ownerless conversations in one commit.
-func openGC(t *testing.T, conversations int) *gc {
+func openGC(t testing.TB, conversations int) *gc {
 	t.Helper()
 	return openGCHooks(t, newBatchStorage(), conversations, func(storage *batchStorage) durable.Storage { return storage }, session.Hooks{})
 }
 
 // openGCHooks is openGC over wrap(storage), with a Session that has hooks.
-func openGCHooks(t *testing.T, storage *batchStorage, conversations int, wrap func(*batchStorage) durable.Storage, hooks session.Hooks) *gc {
+func openGCHooks(t testing.TB, storage *batchStorage, conversations int, wrap func(*batchStorage) durable.Storage, hooks session.Hooks) *gc {
 	t.Helper()
 	kernel := session.NewSessionImpl(wrap(storage), hooks, nil, retentionOf(600_000))
 	ids, err := kernel.Commit(ctx, func(tx durable.Tx) (any, error) {
@@ -364,7 +425,7 @@ func (g *gc) commitAsync(change func(tx durable.Tx) (any, error), options ...dur
 
 func (g *gc) commitNamed(log *order, name string, change func(tx durable.Tx) (any, error), options ...durable.CommitOptions) *call {
 	ticket := g.session.TakeLineTicket()
-	return spawn(func() (any, error) {
+	return spawn(func(ctx ctxT) (any, error) {
 		value, err := g.session.CommitWithTicket(ticket, ctx, func(tx *session.Transaction) (any, error) { return change(tx) }, session.TransactionScope{}, options...)
 		if log != nil {
 			log.record(name, err)
@@ -380,8 +441,8 @@ func (g *gc) readAsync(job func(storage durable.Storage) (any, error)) *call {
 
 func (g *gc) readNamed(log *order, name string, job func(storage durable.Storage) (any, error)) *call {
 	ticket := g.session.TakeLineTicket()
-	return spawn(func() (any, error) {
-		value, err := g.session.ReadWithTicket(ticket, job)
+	return spawn(func(ctx ctxT) (any, error) {
+		value, err := g.session.ReadWithTicketCtx(ticket, ctx, job)
 		if log != nil {
 			log.record(name, err)
 		}

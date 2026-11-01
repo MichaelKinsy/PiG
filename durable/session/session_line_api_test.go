@@ -22,7 +22,7 @@ func TestCommitInternalDeliversAJobThatWroteNothingAndWaitedAtNoGateAheadOfUnpub
 	<-held.Entered()
 	ticketed := func(internal bool, change func(tx *session.Transaction) (any, error)) *call {
 		ticket := g.session.TakeLineTicket()
-		return spawn(func() (any, error) {
+		return spawn(func(ctx ctxT) (any, error) {
 			if internal {
 				return g.session.CommitInternalWithTicket(ticket, ctx, change)
 			}
@@ -164,7 +164,7 @@ func TestTouchGatesAKeyUntilItsWriterIsPublished(t *testing.T) {
 	if sizes := g.session.LineSizes(); sizes.Unpublished == 0 {
 		t.Fatalf("line sizes %+v, want unpublished keys", sizes)
 	}
-	waiting := spawn(func() (any, error) { return nil, g.session.AwaitTouch(ctx, session.AppendKey(id)) })
+	waiting := spawn(func(ctx ctxT) (any, error) { return nil, g.session.AwaitTouch(ctx, session.AppendKey(id)) })
 	if waiting.settled() {
 		t.Fatal("AwaitTouch returned while the writer was unpublished")
 	}
@@ -196,9 +196,15 @@ func TestAWakeADeferredPublicationRunsIsEnteredBeforeTheNextPartIsPublished(t *t
 	}
 	wake := make(chan struct{})
 	resumed := make(chan struct{})
-	waiter := spawn(func() (any, error) {
-		<-wake
+	// The waiter's wait is a wait of the Session: the publication that wakes it waits until its continuation, which records and
+	// goes on to wait for something else, ran.
+	// It is slow to start the continuation: the publication still waits for it.
+	start := make(chan struct{})
+	waiter := spawnContinuing(func(ctx ctxT, continuation *session.Continuation) (any, error) {
+		g.session.Await(ctx, wake)
+		<-start
 		record("waiter resumed")
+		continuation.Entered()
 		<-resumed
 		return nil, nil
 	})
@@ -220,6 +226,8 @@ func TestAWakeADeferredPublicationRunsIsEnteredBeforeTheNextPartIsPublished(t *t
 	quiesce(second, third)
 	g.awaitQueued(2)
 	held.Release()
+	g.awaitWakeHop(2)
+	close(start)
 	for _, started := range []*call{first, second, third} {
 		if _, err := started.wait(); err != nil {
 			t.Fatal(err)
