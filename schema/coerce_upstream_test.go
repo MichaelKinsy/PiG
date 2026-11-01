@@ -175,7 +175,7 @@ func wantParseErrors(t *testing.T, got schema.ParseResult, want []schema.Validat
 	wantErrors(t, got.Errors, want)
 }
 
-func obj(properties schema.Properties, options ...schema.ObjOption) schema.Schema {
+func obj(properties schema.Properties, options ...schema.ObjectOption) schema.Schema {
 	return schema.Obj(properties, options...)
 }
 
@@ -529,7 +529,7 @@ func TestCoerceUpstream(t *testing.T) {
 					}
 				}
 			}`), schema.CompileOptions{})
-			// The coercion converts a depth-40 value in linear time; the explanation of the failure is Pi's explain.ts, whose per-call memo of a recursive union is ported with explain.go: until then the explanation of this schema takes 2^depth, so the errors are asserted at explainedDepth. Pi's test asserts both at depth 40.
+			// The coercion converts a depth-40 value in linear time and the explanation of the failure reuses the errors of a `$ref` target per call (explain.ts walkRef), so both finish; Pi's test asserts both at depth 40.
 			deep := func(depth int) any {
 				value := mustDecode(t, `{"x":1}`)
 				for range depth {
@@ -541,7 +541,7 @@ func TestCoerceUpstream(t *testing.T) {
 			if got := coerceOf(t, v, input); got != input {
 				t.Fatalf("coerce of an unconvertible value returned a copy: %s", marshalled(got))
 			}
-			const explainedDepth = 10
+			const explainedDepth = 40
 			result := parseOf(t, v, deep(explainedDepth))
 			var want []schema.ValidationError
 			for i := range explainedDepth + 1 {
@@ -640,11 +640,7 @@ func TestCoerceUnresolvedReferences(t *testing.T) {
 			v := coercing(t, dangling, schema.CompileOptions{UnresolvedRefs: schema.UnresolvedRefsReject})
 			input := mustDecode(t, `{"t":"1"}`)
 			wantJSON(t, coerceOf(t, v, input), `{"t":"1"}`)
-			// Pi also asserts the error text "unresolved reference #/definitions/Missing" (keyword $ref); that wording is the explanation's (explain.ts walkRef), covered where explain.go is ported.
-			result := parseOf(t, v, input)
-			if result.OK || len(result.Errors) != 1 || result.Errors[0].Path != "/t" {
-				t.Fatalf("Parse = %+v, want one error at /t", result)
-			}
+			wantParseErrors(t, parseOf(t, v, input), []schema.ValidationError{{Path: "/t", Keyword: "$ref", Message: "unresolved reference #/definitions/Missing"}})
 		})
 	})
 }

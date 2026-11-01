@@ -6,12 +6,10 @@ package schema
 
 import (
 	"math"
-	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
-	"unsafe"
 )
 
 // explainer explains failures of one compiled schema. The compiler's caches and dynamic scope are mutable state, so one explanation runs at a time.
@@ -23,12 +21,6 @@ type explainer struct {
 	rests map[nodeKey]*Object
 	// memo holds the errors of `$ref` targets for container values within one errors call: a recursive union explains each branch to pick the one to blame, and every branch would explain the same children again, exponentially in the depth.
 	memo map[nodeKey]map[valueKey]refErrors
-}
-
-// valueKey identifies a container value by identity: the first element of an array with its length, or the object.
-type valueKey struct {
-	ptr nodeKey
-	len int
 }
 
 // refErrors are the errors of one value at one path.
@@ -183,7 +175,7 @@ func (e *explainer) walkRef(ref, base string, v any, path string, out *[]Validat
 		return
 	}
 	node, isNode := isSchemaObject(target.node)
-	key, isContainerValue := identityOf(v)
+	key, isContainerValue := explainKey(v)
 	if !isNode || !isContainerValue {
 		e.walk(target.node, target.base, v, path, out)
 		return
@@ -206,18 +198,11 @@ func (e *explainer) walkRef(ref, base string, v any, path string, out *[]Validat
 	*out = append(*out, errors...)
 }
 
-// identityOf is the identity of an object or array value, which the errors memo is keyed on; an empty array has none and is explained again.
-func identityOf(v any) (valueKey, bool) {
-	switch x := v.(type) {
-	case *Object:
-		return valueKey{ptr: nodeKey(x)}, x != nil
-	case map[string]any:
-		return valueKey{ptr: reflect.ValueOf(x).UnsafePointer()}, x != nil
-	case []any:
-		if len(x) == 0 {
-			return valueKey{}, false
-		}
-		return valueKey{ptr: nodeKey(unsafe.SliceData(x)), len: len(x)}, true
+// explainKey is the identity of an object or array value, which the errors memo is keyed on; a primitive and an empty array have none and are explained again.
+func explainKey(v any) (valueKey, bool) {
+	key := identityOf(v, false)
+	if key.kind == kindObject || key.kind == kindArray && key.ptr != nil {
+		return key, true
 	}
 	return valueKey{}, false
 }
