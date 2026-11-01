@@ -67,10 +67,10 @@ func bgFacet(contract *contracts.Contract) host.Facet {
 				Methods: map[string]contracts.MethodFunction{
 					"add": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 						var n float64
-						_, err := counter.Change(func(draft *delta.Object) (any, error) {
+						_, err := counter.Change(ctx, func(draft *delta.Object) (any, error) {
 							n = draft.Get("n").(float64) + args.(float64)
 							return nil, draft.Set("n", n)
-						}, ctx)
+						})
 						return n, err
 					},
 				},

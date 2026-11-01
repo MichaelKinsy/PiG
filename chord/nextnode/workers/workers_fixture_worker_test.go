@@ -226,7 +226,7 @@ func fixtureGoCore() host.Facet {
 		if err := h.Serve(fixtureBusy, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
 			doc := self.State(fixtureCounts).(*documents.Singleton)
 			setTasks := func(n float64, ctx context.Context) error {
-				_, err := doc.Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("tasks", n) }, ctx)
+				_, err := doc.Change(ctx, func(draft *delta.Object) (any, error) { return nil, draft.Set("tasks", n) })
 				return err
 			}
 			return contracts.Implementation{Members: contracts.VariantImplementation{
