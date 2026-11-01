@@ -265,7 +265,7 @@ func (recorded *order) snapshot() []string {
 
 // gc is a Session over batchStorage with some conversations, and the commits its own observers got.
 type gc struct {
-	t         *testing.T
+	t         testing.TB
 	storage   *batchStorage
 	session   *session.SessionImpl
 	ids       []durable.ConversationId
@@ -324,13 +324,13 @@ func (log *publishedLog) entryKinds() []string {
 func retentionOf(ms float64) func() *float64 { return func() *float64 { return &ms } }
 
 // openGC opens a Session over storage and creates conversations ownerless conversations in one commit.
-func openGC(t *testing.T, conversations int) *gc {
+func openGC(t testing.TB, conversations int) *gc {
 	t.Helper()
 	return openGCHooks(t, newBatchStorage(), conversations, func(storage *batchStorage) durable.Storage { return storage }, session.Hooks{})
 }
 
 // openGCHooks is openGC over wrap(storage), with a Session that has hooks.
-func openGCHooks(t *testing.T, storage *batchStorage, conversations int, wrap func(*batchStorage) durable.Storage, hooks session.Hooks) *gc {
+func openGCHooks(t testing.TB, storage *batchStorage, conversations int, wrap func(*batchStorage) durable.Storage, hooks session.Hooks) *gc {
 	t.Helper()
 	kernel := session.NewSessionImpl(wrap(storage), hooks, nil, retentionOf(600_000))
 	ids, err := kernel.Commit(ctx, func(tx durable.Tx) (any, error) {
