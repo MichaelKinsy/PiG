@@ -663,3 +663,10 @@ commit = "afb14da124492fad80b73f5f5e8abc07915b47dc"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The Node subprocess is PiG-original (no Pi file: Pi's workers fork the same shape). The expectation that changed is the load's refusal text: RuntimeLoad has no Parent any more (the host is the child of the Go side), so only the Peer is required (`a Peer is required`). The other edits add cases (link attach, heartbeat, fatal ordering, extraction repair) and check the manifest against the pin."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_runtime_test.go"
+commit = "fed839c88739bd28e7e351c297edac660bc7b21f"
+class = "CITE"
+cite = "packages/chord/src/next/host/host.ts:124"
+reason = "Pi's `activation_failed` carries a `failure` (a FailureCause), not an `error` (host.ts:124): the Node host's background reports now keep every field of their kind, so the persisted-document case reads the activation failure's cause (`Failure.Error`, `Failure.Kind`) where the first port flattened it into `Err`."
