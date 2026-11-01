@@ -16,7 +16,7 @@ func BenchmarkLongStreamingAssistantMessage(b *testing.B) {
 	foreign := func() *MarkdownTheme {
 		theme := GetMarkdownTheme()
 		theme.HighlightCode = func(code, lang string) []string {
-			return highlightCodeUncached(highlightRegistry(), code, lang, true, ActiveTheme())
+			return highlightCodeUncached(highlightRegistry(), code, lang, ActiveTheme())
 		}
 		return &theme
 	}
