@@ -4094,6 +4094,30 @@
       ]
     },
     {
+      "id": "BF-2323d94",
+      "title": "`ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy…",
+      "symptom": "`ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi in every SDK, in print, JSON and RPC mode, isolated and packed: the Host answers busy for every extension from the send until the handler that sent it returns, awaits a Promise-returning member or (Node) awaits, where a run that settled while the read was in flight made the Go, Python, Rust and Lisp SDKs report an idle session.",
+      "rootCause": "Pi's pi.sendMessage with triggerTurn awaits _startRun, which sets _isAgentRunActive before its first await (agent-session.ts:2404, 1895), and Pi's one event loop runs nothing else until the handler awaits or returns, so ctx.isIdle() on the handler's next statements is false whatever the run it started would do. The host runs that run concurrently with the extensions (print mode stages no run start, RPC holds it only for a command's handler), and ctx.isIdle() is a live host call in every SDK, so a run that settles while a read is in flight answers idle. The Node runtime held the answer itself since; the Go, Python, Rust and Lisp SDKs did not.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi in every SDK, in print, JSON and RPC mode, isolated and packed: the Host answers busy for every extension from the send until the handler that sent it returns, awaits a Promise-returning member or (Node) awaits, where a run that settled while the read was in flight made the Go, Python, Rust and Lisp SDKs report an idle session. The Node runtime's own hold is gone; a message sent from `agent_settled` still reads the Session's idle answer.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2323d94ce7",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "coding/cli/extension_host_wiring_binary_test.go::TestSDKExtensionIsBusyThroughTheSynchronousPartAfterATriggeringSend",
+        "coding/extension/host/subprocess/runtime_node_send_idle_test.go::TestNodeIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSendMessage",
+        "test/extension-conformance/replicated_state_rw_test.go::TestReplicatedStateIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSend"
+      ]
+    },
+    {
       "id": "BF-234316d",
       "title": "On Windows, a Go extension's source hash no longer fails, or makes a build beside it fail, with `The process…",
       "symptom": "On Windows, a Go extension's source hash no longer fails, or makes a build beside it fail, with `The process cannot access the file because it is being used by another process`.",
@@ -31873,7 +31897,7 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi, where the started run cannot end before the handler awaits; a run that settled while the read was in flight made print mode report an idle session.",
+      "releaseNote": "In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi, where the started run cannot end before the handler awaits; a run that settled while the read was in flight made print mode report an idle session. The Host now holds that answer for every SDK and extension (`isidle-2323d94ce7`), and the runtime reports only where its handler awaits.",
       "origin": "release note",
       "commits": [
         {

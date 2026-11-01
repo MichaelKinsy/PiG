@@ -154,6 +154,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-228dbea](#bf-228dbea) | fix(durable/core): follow the microtask schedule of Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-2309604](#bf-2309604) | Tool schemas in OpenAI Completions, OpenAI Responses, Codex and Mistral request bodies keep the members in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2316fe3](#bf-2316fe3) | The Piglet JSON Schema that `pig piglet schema` prints rejected `powershell` in `tools`, which `pig piglet… | PiG's own defect | Windows | 0.5.3 |
+| [BF-2323d94](#bf-2323d94) | `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy… | PiG's own defect | All platforms | Unreleased |
 | [BF-234316d](#bf-234316d) | On Windows, a Go extension's source hash no longer fails, or makes a build beside it fail, with `The process… | PiG's own defect | Windows | Unreleased |
 | [BF-234664c](#bf-234664c) | With `codemode.mode: "on"`, a tool whose output schema is a union of objects or any other multi-line type no… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-23ee6e1](#bf-23ee6e1) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -3351,6 +3352,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2316fe38fb` (2026-10-22)
 - **Tests:** `coding/piglet/internal/genstripids/main_test.go::TestCommittedSchemaStripEnumsMatchRegistrations`, `coding/piglet/schema_test.go::TestAC1SchemaParserAgreement`, `coding/piglet/schema_vocabulary_test.go::TestSchemaAcceptsEveryPigletTheRepositoryShips`, `coding/piglet/schema_vocabulary_test.go::TestSchemaAgreesWithParserOnEveryValueOfASet`, `coding/piglet/schema_vocabulary_test.go::TestSchemaEnumsMatchParserSets`, `coding/piglet/schema_vocabulary_test.go::TestSchemaFieldsMatchParserFields`, `coding/piglet/schema_vocabulary_test.go::TestSchemaNeverRejectsWhatTheParserAccepts`
 - **Release note:** The Piglet JSON Schema that `pig piglet schema` prints rejected `powershell` in `tools`, which `pig piglet validate` accepts as a built-in tool, and stated nothing for most of the other closed vocabulary. It now lists all eight built-in tools, the strip IDs of each strip list, the `agentEnv` runtime modes (`inject`, `image`) and policy presets (`minimal`, `standard`, `elevated`), and carries the parser's name, build target, output name, release version and secret patterns, the required `source` and `target` of a mount, and the rule that `agentEnv` names exactly one of `image`, `devContainer` and `source`. `make piglet-strip-ids` writes the strip ID enums, and tests that read the parser's sets from code fail when the schema and the parser disagree.
+
+### BF-2323d94
+
+**`ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi in every SDK, in print, JSON and RPC mode, isolated and packed: the Host answers busy for every extension from the send until the handler that sent it returns, awaits a Promise-returning member or (Node) awaits, where a run that settled while the read was in flight made the Go, Python, Rust and Lisp SDKs report an idle session.
+- **Root cause:** Pi's pi.sendMessage with triggerTurn awaits _startRun, which sets _isAgentRunActive before its first await (agent-session.ts:2404, 1895), and Pi's one event loop runs nothing else until the handler awaits or returns, so ctx.isIdle() on the handler's next statements is false whatever the run it started would do. The host runs that run concurrently with the extensions (print mode stages no run start, RPC holds it only for a command's handler), and ctx.isIdle() is a live host call in every SDK, so a run that settles while a read is in flight answers idle. The Node runtime held the answer itself since; the Go, Python, Rust and Lisp SDKs did not.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2323d94ce7` (2026-11-01)
+- **Tests:** `coding/cli/extension_host_wiring_binary_test.go::TestSDKExtensionIsBusyThroughTheSynchronousPartAfterATriggeringSend`, `coding/extension/host/subprocess/runtime_node_send_idle_test.go::TestNodeIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSendMessage`, `test/extension-conformance/replicated_state_rw_test.go::TestReplicatedStateIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSend`
+- **Release note:** `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi in every SDK, in print, JSON and RPC mode, isolated and packed: the Host answers busy for every extension from the send until the handler that sent it returns, awaits a Promise-returning member or (Node) awaits, where a run that settled while the read was in flight made the Go, Python, Rust and Lisp SDKs report an idle session. The Node runtime's own hold is gone; a message sent from `agent_settled` still reads the Session's idle answer.
 
 ### BF-234316d
 
@@ -16914,7 +16929,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `c7237820c1` (2026-11-01)
 - **Tests:** `coding/cli/extension_send_message_binary_test.go::TestExtensionSendMessageTriggerTurnStartsTheRunAsPi`, `coding/extension/host/subprocess/runtime_node_send_idle_test.go::TestNodeIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSendMessage`
-- **Release note:** In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi, where the started run cannot end before the handler awaits; a run that settled while the read was in flight made print mode report an idle session.
+- **Release note:** In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi, where the started run cannot end before the handler awaits; a run that settled while the read was in flight made print mode report an idle session. The Host now holds that answer for every SDK and extension (`isidle-2323d94ce7`), and the runtime reports only where its handler awaits.
 
 ### BF-c7ebb23
 
