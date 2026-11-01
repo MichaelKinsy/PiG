@@ -2,23 +2,24 @@ package plugins
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"fmt"
-	"maps"
-	"strings"
-	"sync"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
 // Ports packages/chord/src/next-node/plugins/runtime.ts. The plugin runtime (slice 10 §3, D11): loading and reloading hosts
-// with shipped scripts, without building (no Builder, no watcher), so a worker evaluates what the server built. Per host it
-// keeps the facet loaded for every plugin and passes the host its complete set at each reload: unchanged plugins (the same
-// digest) as the same facet values, removed ones (loaded, not shipped) left out; a plugin whose build or evaluation failed
-// keeps its loaded facet (left out at startup) and is reported with the host's report. The plugins component uses one.
-// Upstream turns V8's compilation cache off here (`setFlagsFromString`): there is none in Go, so nothing is ported of it.
+// with shipped scripts, without building (no esbuild, no watcher), so a worker evaluates what the server built. Pi's runtime
+// itself runs, unchanged, in the Node subprocess of the host that loads the plugins (docs/plan/chord-plugins-node-evaluator.md):
+// per host it keeps the facet loaded for every plugin and passes the host its complete set at each reload (unchanged plugins,
+// the same digest, as the same facets; removed ones left out; a plugin whose build or evaluation failed keeps its loaded
+// facet, left out at startup, and is reported with the host's report), and one reload runs after another per host. This
+// file is what the Go side keeps of it: starting that host, shipping scripts to it as data and reading its reports.
+// Upstream turns V8's compilation cache off in createPluginRuntime: that runs in the subprocess.
 
 // PluginScript is one plugin's facet of a kind as shipped to a host (plain data): its build and its plugin record.
 type PluginScript struct {
@@ -26,288 +27,304 @@ type PluginScript struct {
 	Built  BuiltFacet
 }
 
-// RuntimeLoad is what PluginRuntime.Load takes besides the host.
+// HostPackages are the host packages a script's imports are answered with, by specifier: the file of the module (an absolute
+// path) the subprocess imports once, and shares between the scripts of its host. `@earendil-works/chord/next` is always
+// Pi's own, the subprocess's; naming it here replaces nothing.
+type HostPackages map[string]string
+
+// CoreFacet is one of the app's own facets: its name (a plugin name) and the module whose default export is the facet,
+// a file the subprocess imports.
+type CoreFacet struct {
+	Name   string
+	Module string
+}
+
+// RuntimeLoad is what PluginRuntime.Load takes.
 type RuntimeLoad struct {
 	Kind string
-	// Core are the app's own facets.
-	Core []host.HostFacet
+	// Core are the app's own facets, loaded before the plugins.
+	Core []CoreFacet
 	// Scripts is the complete set of Kind.
 	Scripts []PluginScript
-	// Modules are the host packages the scripts' imports are answered with: this process's instances, kept for the host's
-	// reloads.
+	// Modules are the host packages the scripts' imports are answered with; kept for the host's reloads.
 	Modules HostPackages
+	// Address is the subprocess host's address (`createHost`'s `address`), nil for a client: the one a remote type's
+	// `hostAddress` places objects at, and the one the app routes to the host's link.
+	Address *contracts.Address
+	// Principal is who the subprocess host acts as for its own requests (`createHost`'s `principal`); none for a client. The
+	// app stamps the host with it when it attaches the link (RouteOptions.Resolve's, LinkOptions').
+	Principal data.Principal
+	// Peer is who the Go host that attaches the link is, as the subprocess's host stamps it: the `principal` of its
+	// `connect` (trusted), as the server's is to a forked worker. Required.
+	Peer data.Principal
+	// Heartbeat is the subprocess host's heartbeat (`createHost`'s `heartbeat`): it closes a link silent for Close, 30 s by
+	// default, its handshake included, and the process with it, so the app attaches NodeHost.Link in time.
+	Heartbeat *host.HeartbeatOptions
+	// CloseTimeout and ReadyTimeout are the subprocess host's `closeTimeout` and `readyTimeout` (host.HostOptions'): how long
+	// a native's close and an ending object's running calls are waited for (30 s by default), and how long an activation
+	// attempt and a `get` may take until the object is live (60 s). Nil: the host's defaults.
+	CloseTimeout *time.Duration
+	ReadyTimeout *time.Duration
+	// Compression makes the subprocess host compress as Pi's Node hosts do (`createHost({ compression: nodeCompression })`):
+	// the JSON parts above 16 KiB it originates are deflated, and the deflated parts it owns inflated in place. The Go
+	// host the link is attached to compresses its own parts when it is created with host.HostOptions.Compression
+	// (nextnode.NodeCompression): a compressor is a host's, not a link's, and a host without one inflates what it gets.
+	Compression bool
 }
 
-// loadedFacet is a plugin's facet as a host loaded it, with its script's digest.
-type loadedFacet struct {
-	facet  host.Facet
-	digest string
-}
-
-// hostPlugins is a host's plugins as the runtime loaded them: its core facets, its modules, each plugin's loaded facet, and
-// its reloads, one after another (each computes its complete set once the previous one adopted its result).
-type hostPlugins struct {
-	core    []host.HostFacet
-	modules HostPackages
-	// loaded is read and replaced only by the reload whose turn it is.
-	loaded map[string]loadedFacet
-	// tail is closed when the latest queued reload ended; guarded by PluginRuntime.mu.
-	tail chan struct{}
-}
-
-// preparedFacet is a plugin's facet passed to a host, or why it was not: a build or evaluation failure.
-type preparedFacet struct {
-	loadedFacet
-	err error
-}
-
-// PluginRuntime loads and reloads hosts with complete sets of shipped scripts. Its Evaluator turns a script into a facet.
+// PluginRuntime starts the Node subprocesses that host plugins, and loads and reloads them with complete sets of shipped
+// scripts. It is Pi's `createPluginRuntime()`.
 type PluginRuntime struct {
-	evaluator Evaluator
-	mu        sync.Mutex
-	// hosts are the loaded hosts' plugins, until Forget (upstream holds them as long as the host lives).
-	hosts map[host.Host]*hostPlugins
+	node NodeOptions
 }
 
-// NewPluginRuntime is upstream's `createPluginRuntime()`, with the evaluator of the app.
-func NewPluginRuntime(evaluator Evaluator) *PluginRuntime {
-	return &PluginRuntime{evaluator: evaluator, hosts: map[host.Host]*hostPlugins{}}
+// NewPluginRuntime is upstream's `createPluginRuntime()`: how its subprocesses are started.
+func NewPluginRuntime(node NodeOptions) *PluginRuntime { return &PluginRuntime{node: node} }
+
+// loadRequest is the `load` control request of host.mjs.
+type loadRequest struct {
+	envelope
+	Kind      string            `json:"kind"`
+	Core      []coreWire        `json:"core"`
+	Scripts   []scriptWire      `json:"scripts"`
+	Modules   map[string]string `json:"modules"`
+	Address   *addressWire      `json:"address,omitempty"`
+	Principal data.Principal    `json:"principal,omitempty"`
+	Peer      data.Principal    `json:"peer"`
+	Heartbeat *heartbeatWire    `json:"heartbeat,omitempty"`
+	// CloseTimeout and ReadyTimeout are milliseconds.
+	CloseTimeout *int64 `json:"closeTimeout,omitempty"`
+	ReadyTimeout *int64 `json:"readyTimeout,omitempty"`
+	Compression  bool   `json:"compression,omitempty"`
 }
 
-// Load evaluates options.Scripts (the complete set of options.Kind) with options.Modules and loads them on h with
-// options.Core: a plugin whose build or evaluation failed is left out and reported with the host's report (the failures of
-// the scripts first). It returns the host's error as it is, after which nothing is kept for h.
-func (r *PluginRuntime) Load(h host.Host, options RuntimeLoad, ctx context.Context) (host.LoadReport, error) {
-	type named struct {
-		plugin   string
-		prepared preparedFacet
-	}
-	prepared := make([]named, len(options.Scripts))
-	for i, script := range options.Scripts {
-		prepared[i] = named{script.Plugin.Name, r.prepare(script.Plugin, script.Built, options.Modules)}
-	}
-	failed := []host.PluginFailure{}
-	facets := append([]host.HostFacet{}, options.Core...)
-	for _, each := range prepared {
-		if each.prepared.err != nil {
-			failed = append(failed, host.PluginFailure{Plugin: each.plugin, Error: each.prepared.err})
-		} else {
-			facets = append(facets, host.HostFacet{Name: each.plugin, Facet: each.prepared.facet})
+// heartbeatWire is a host.HeartbeatOptions in milliseconds, as `createHost`'s `heartbeat`.
+type heartbeatWire struct {
+	Ping  *int64 `json:"ping,omitempty"`
+	Close *int64 `json:"close,omitempty"`
+}
+
+type coreWire struct {
+	Name   string `json:"name"`
+	Module string `json:"module"`
+}
+
+type addressWire struct {
+	Kind   string            `json:"kind"`
+	Params *delta.JsonObject `json:"params"`
+	Key    string            `json:"key"`
+}
+
+// scriptWire is a PluginScript as data: what Pi's evaluation reads of the plugin and of its build.
+type scriptWire struct {
+	Plugin pluginWire `json:"plugin"`
+	Built  builtWire  `json:"built"`
+}
+
+type pluginWire struct {
+	Name         string            `json:"name"`
+	Dir          string            `json:"dir"`
+	Facets       map[string]string `json:"facets"`
+	Dependencies []string          `json:"dependencies"`
+	External     []string          `json:"external"`
+}
+
+type builtWire struct {
+	Kind   BuiltKind `json:"kind"`
+	Plugin string    `json:"plugin"`
+	Facet  string    `json:"facet"`
+	Source string    `json:"source,omitempty"`
+	Digest string    `json:"digest,omitempty"`
+	Errors []string  `json:"errors,omitempty"`
+}
+
+func scriptsWire(scripts []PluginScript) []scriptWire {
+	wire := make([]scriptWire, len(scripts))
+	for i, script := range scripts {
+		plugin := script.Plugin
+		wire[i] = scriptWire{
+			Plugin: pluginWire{
+				Name: plugin.Name, Dir: plugin.Dir, Facets: plugin.Facets,
+				Dependencies: nonNil(plugin.Dependencies), External: nonNil(plugin.External),
+			},
+			Built: builtWire{
+				Kind: script.Built.Kind, Plugin: script.Built.Plugin, Facet: script.Built.Facet,
+				Source: script.Built.Source, Digest: script.Built.Digest, Errors: script.Built.Errors,
+			},
 		}
 	}
-	report, err := h.Load(facets, ctx)
+	return wire
+}
+
+func nonNil(list []string) []string {
+	if list == nil {
+		return []string{}
+	}
+	return list
+}
+
+// Load starts a Node subprocess whose host evaluates options.Scripts (the complete set of options.Kind) with options.Modules
+// and loads them with options.Core. A plugin whose build or evaluation failed is left out and reported with the host's
+// report (the failures of the scripts first), each error a *NodeError whose Stack names the plugin's files and lines. It
+// returns the host's error as it is: the subprocess is stopped then.
+//
+// The host is the child of the Go side, as a forked worker is of its server (next-node/workers/main.ts): it connects the
+// link to its parent at load. The app attaches the other end, NodeHost.Link, to a Go host as Pi's app does: a route of the
+// host's kind (`host.Route`, whose Resolve returns it) or `host.Accept`, in time (RuntimeLoad.Heartbeat). A NodeHost needs no
+// Go host to load, so one Go host can own any number of them, and a Go host that has a parent of its own can load plugins.
+func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHost, host.LoadReport, error) {
+	if options.Peer == nil {
+		return nil, host.LoadReport{}, errors.New("plugins.load: a Peer is required")
+	}
+	request := &loadRequest{
+		Kind: options.Kind, Core: make([]coreWire, len(options.Core)), Scripts: scriptsWire(options.Scripts),
+		Modules: map[string]string(options.Modules), Principal: options.Principal, Peer: options.Peer,
+	}
+	if request.Modules == nil {
+		request.Modules = map[string]string{}
+	}
+	for i, core := range options.Core {
+		request.Core[i] = coreWire(core)
+	}
+	if options.Address != nil {
+		request.Address = &addressWire{Kind: options.Address.Kind, Params: options.Address.Params, Key: options.Address.Key}
+	}
+	if options.Heartbeat != nil {
+		request.Heartbeat = &heartbeatWire{}
+		if options.Heartbeat.Ping != nil {
+			ping := options.Heartbeat.Ping.Milliseconds()
+			request.Heartbeat.Ping = &ping
+		}
+		if options.Heartbeat.Close != nil {
+			closing := options.Heartbeat.Close.Milliseconds()
+			request.Heartbeat.Close = &closing
+		}
+	}
+	request.Compression = options.Compression
+	if options.CloseTimeout != nil {
+		closing := options.CloseTimeout.Milliseconds()
+		request.CloseTimeout = &closing
+	}
+	if options.ReadyTimeout != nil {
+		ready := options.ReadyTimeout.Milliseconds()
+		request.ReadyTimeout = &ready
+	}
+	h, err := startNode(r.node, ctx)
 	if err != nil {
+		return nil, host.LoadReport{}, err
+	}
+	h.kind = options.Kind
+	call, err := h.send("load", request)
+	if err == nil {
+		var reply nodeReply
+		if reply, err = h.await(call, ctx); err == nil {
+			var report host.LoadReport
+			if report, err = loadReport(reply.Result); err == nil {
+				return h, report, nil
+			}
+		}
+	}
+	_ = h.Close(context.WithoutCancel(ctx))
+	return nil, host.LoadReport{}, err
+}
+
+// Reload reloads h (loaded by Load) with scripts, the complete set now, after its earlier reloads: unchanged plugins (the same
+// digest) as the same facets, new scripts evaluated, a plugin whose build or evaluation failed passed as its loaded facet (an
+// added one left out; both given to the host's closure rule), loaded plugins not in scripts left out. What the host committed
+// is the loaded set, also when the reload returns `aborted` after its commit (a *NodeError wrapping the ChordError, whose
+// details.committed says what the commit applied). It blocks until the report.
+func (r *PluginRuntime) Reload(h *NodeHost, scripts []PluginScript, ctx context.Context) (host.ReloadReport, error) {
+	call, err := h.reload(scripts)
+	if err != nil {
+		return host.ReloadReport{}, err
+	}
+	return h.reloaded(call, ctx)
+}
+
+// reloadRequest is the `reload` control request of host.mjs.
+type reloadRequest struct {
+	envelope
+	Scripts []scriptWire `json:"scripts"`
+}
+
+// reload sends a reload of h; the requests of two calls reach the subprocess in the order of the calls, which its runtime
+// runs one after another.
+func (h *NodeHost) reload(scripts []PluginScript) (*nodeCall, error) {
+	return h.send("reload", &reloadRequest{Scripts: scriptsWire(scripts)})
+}
+
+// reloaded waits for the report of a reload sent.
+func (h *NodeHost) reloaded(call *nodeCall, ctx context.Context) (host.ReloadReport, error) {
+	reply, err := h.await(call, ctx)
+	if err != nil {
+		return host.ReloadReport{}, err
+	}
+	return reloadReport(reply.Result)
+}
+
+// failureWire is a host.PluginFailure as host.mjs sends it.
+type failureWire struct {
+	Plugin string     `json:"plugin"`
+	Error  *wireError `json:"error"`
+}
+
+func failures(wire []failureWire) []host.PluginFailure {
+	out := make([]host.PluginFailure, len(wire))
+	for i, failure := range wire {
+		out[i] = host.PluginFailure{Plugin: failure.Plugin, Error: failure.Error.err()}
+	}
+	return out
+}
+
+func loadReport(result json.RawMessage) (host.LoadReport, error) {
+	var wire struct {
+		Failed []failureWire `json:"failed"`
+	}
+	if err := json.Unmarshal(result, &wire); err != nil {
 		return host.LoadReport{}, err
 	}
-	left := map[string]struct{}{}
-	for _, failure := range report.Failed {
-		left[failure.Plugin] = struct{}{}
-	}
-	loaded := map[string]loadedFacet{}
-	for _, each := range prepared {
-		if _, out := left[each.plugin]; each.prepared.err == nil && !out {
-			loaded[each.plugin] = each.prepared.loadedFacet
-		}
-	}
-	// The host's own facets, for its later reloads.
-	r.mu.Lock()
-	r.hosts[h] = &hostPlugins{core: append([]host.HostFacet{}, options.Core...), modules: options.Modules, loaded: loaded}
-	r.mu.Unlock()
-	return host.LoadReport{Failed: append(failed, report.Failed...)}, nil
+	return host.LoadReport{Failed: failures(wire.Failed)}, nil
 }
 
-// reloadTurn is a place in a host's queue of reloads: it runs once the reload queued before it ended.
-type reloadTurn struct {
-	state *hostPlugins
-	prev  chan struct{}
-	done  chan struct{}
-}
-
-// queue puts a reload of h at the end of its queue, in the order of the calls (upstream's promise chain): the component
-// calls it in the step that decides the set, run then reloads. It fails when h was not loaded by this runtime.
-func (r *PluginRuntime) queue(h host.Host) (*reloadTurn, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	state, ok := r.hosts[h]
-	if !ok {
-		return nil, errors.New("plugins.reload: the host was not loaded by this runtime")
+func reloadReport(result json.RawMessage) (host.ReloadReport, error) {
+	var wire struct {
+		Plugins struct {
+			Added   []string `json:"added"`
+			Changed []string `json:"changed"`
+			Removed []string `json:"removed"`
+		} `json:"plugins"`
+		Failed  []failureWire `json:"failed"`
+		Objects []struct {
+			Object string          `json:"object"`
+			Kind   string          `json:"kind"`
+			Cause  json.RawMessage `json:"cause"`
+		} `json:"objects"`
 	}
-	turn := &reloadTurn{state: state, prev: state.tail, done: make(chan struct{})}
-	state.tail = turn.done
-	return turn, nil
-}
-
-// Reload reloads h (loaded by Load) with scripts, the complete set now, after its earlier reloads: its core facets and
-// unchanged plugins (the same digest) as the same values, new scripts evaluated, a plugin whose build or evaluation failed
-// passed as its loaded facet (an added one left out; both given to the host's closure rule), loaded plugins not in scripts
-// left out. What the host committed is the loaded set, also when the reload returns `aborted` after its commit (its
-// details.committed). It blocks until the report.
-func (r *PluginRuntime) Reload(h host.Host, scripts []PluginScript, ctx context.Context) (host.ReloadReport, error) {
-	turn, err := r.queue(h)
-	if err != nil {
+	if err := json.Unmarshal(result, &wire); err != nil {
 		return host.ReloadReport{}, err
 	}
-	return r.run(turn, h, scripts, ctx)
-}
-
-// run waits for turn's place and does its reload: one after another per host, as a reload computing its set from a loaded
-// map an earlier one is about to change would pass that plugin's old facet and roll it back.
-func (r *PluginRuntime) run(turn *reloadTurn, h host.Host, scripts []PluginScript, ctx context.Context) (host.ReloadReport, error) {
-	if turn.prev != nil {
-		<-turn.prev
+	report := host.ReloadReport{
+		Plugins: host.PluginChanges{Added: nonNil(wire.Plugins.Added), Changed: nonNil(wire.Plugins.Changed), Removed: nonNil(wire.Plugins.Removed)},
+		Failed:  failures(wire.Failed),
+		Objects: make([]host.ReloadedObject, len(wire.Objects)),
 	}
-	defer close(turn.done)
-	return r.reload(h, turn.state, scripts, ctx)
-}
-
-// reload is one reload of h with the complete set scripts.
-func (r *PluginRuntime) reload(h host.Host, state *hostPlugins, scripts []PluginScript, ctx context.Context) (host.ReloadReport, error) {
-	failed := []host.PluginFailure{}
-	next := newLoadedSet()
-	for _, script := range scripts {
-		name := script.Plugin.Name
-		loaded, isLoaded := state.loaded[name]
-		if script.Built.Kind == BuiltFacetScript && isLoaded && script.Built.Digest == loaded.digest {
-			next.set(name, loaded)
+	for i, object := range wire.Objects {
+		report.Objects[i] = host.ReloadedObject{Object: object.Object, Kind: host.ReloadedObjectKind(object.Kind)}
+		if len(object.Cause) == 0 {
 			continue
 		}
-		prepared := r.prepare(script.Plugin, script.Built, state.modules)
-		if prepared.err == nil {
-			next.set(name, prepared.loadedFacet)
-			continue
+		var cause struct {
+			Kind  data.FailureKind `json:"kind"`
+			Error json.RawMessage  `json:"error"`
 		}
-		failed = append(failed, host.PluginFailure{Plugin: name, Error: prepared.err})
-		if isLoaded {
-			next.set(name, loaded)
+		if err := json.Unmarshal(object.Cause, &cause); err != nil {
+			return host.ReloadReport{}, err
 		}
-	}
-	facets := append([]host.HostFacet{}, state.core...)
-	for _, name := range next.order {
-		facets = append(facets, host.HostFacet{Name: name, Facet: next.items[name].facet})
-	}
-	// The plugins whose build or evaluation failed are the host's to report, and its closure rule's to consider.
-	report, err := h.Reload(facets, ctx, host.ReloadOptions{Failed: failed})
-	if err != nil {
-		// Aborted after its commit: the commit stands, and is what the host runs now.
-		if committed, ok := committedOf(err); ok {
-			adopt(state, next, committed.Failed)
+		chord, ok := chordErrorOf(cause.Error)
+		if !ok {
+			return host.ReloadReport{}, errors.New("a reload's parked object has a cause that is no ChordError")
 		}
-		return host.ReloadReport{}, err
+		report.Objects[i].Cause = data.FailureCause{Kind: cause.Kind, Error: chord}
 	}
-	names := make([]string, len(report.Failed))
-	for i, failure := range report.Failed {
-		names[i] = failure.Plugin
-	}
-	adopt(state, next, names)
 	return report, nil
-}
-
-// Forget drops what the runtime keeps of h: Go has no weak table keyed by an interface, so a host that is closed is
-// forgotten by its owner. A later Reload of h fails as for a host never loaded.
-func (r *PluginRuntime) Forget(h host.Host) {
-	r.mu.Lock()
-	delete(r.hosts, h)
-	r.mu.Unlock()
-}
-
-// prepare is built evaluated for plugin with modules, or why not: its build failed, or its evaluation failed (an error, or a
-// panic of the evaluator, which is a plugin's code throwing).
-func (r *PluginRuntime) prepare(plugin Plugin, built BuiltFacet, modules HostPackages) preparedFacet {
-	if built.Kind == BuiltFacetFailed {
-		message := `plugin "` + plugin.Name + `": its ` + built.Facet + ` facet failed to build:` + "\n" + strings.Join(built.Errors, "\n")
-		return preparedFacet{err: errors.New(message)}
-	}
-	var facet host.Facet
-	err := try(func() (err error) {
-		facet, err = r.evaluator.EvaluateFacet(built, EvaluateOptions{HostPackages: modules, Plugin: plugin})
-		return err
-	})
-	if err != nil {
-		return preparedFacet{err: err}
-	}
-	return preparedFacet{loadedFacet: loadedFacet{facet: facet, digest: built.Digest}}
-}
-
-// try runs work, returning its error, or a panic as an error (a throw of plugin code).
-func try(work func() error) (err error) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			if asError, ok := recovered.(error); ok {
-				err = asError
-			} else {
-				err = fmt.Errorf("%v", recovered)
-			}
-		}
-	}()
-	return work()
-}
-
-// loadedSet is Pi's `Map<string, LoadedFacet>`: insertion order kept.
-type loadedSet struct {
-	order []string
-	items map[string]loadedFacet
-}
-
-func newLoadedSet() *loadedSet { return &loadedSet{items: map[string]loadedFacet{}} }
-
-func (s *loadedSet) set(name string, facet loadedFacet) {
-	if _, ok := s.items[name]; !ok {
-		s.order = append(s.order, name)
-	}
-	s.items[name] = facet
-}
-
-func (s *loadedSet) delete(name string) {
-	if _, ok := s.items[name]; !ok {
-		return
-	}
-	delete(s.items, name)
-	for i, each := range s.order {
-		if each == name {
-			s.order = append(s.order[:i], s.order[i+1:]...)
-			break
-		}
-	}
-}
-
-// adopt adopts as state's loaded facets the set next a reload committed: a plugin the host kept old (failed) stays loaded as
-// it was, an added one it left out is not loaded.
-func adopt(state *hostPlugins, next *loadedSet, failed []string) {
-	for _, plugin := range failed {
-		if loaded, ok := state.loaded[plugin]; ok {
-			next.set(plugin, loaded)
-		} else {
-			next.delete(plugin)
-		}
-	}
-	state.loaded = make(map[string]loadedFacet, len(next.items))
-	maps.Copy(state.loaded, next.items)
-}
-
-// committedOf is what the commit of a reload that returned an error applied: an `aborted` error after its commit says
-// (`details.committed`, the object of CommittedReload's lists).
-func committedOf(err error) (host.CommittedReload, bool) {
-	chordErr, ok := data.IsChordErrorCode(err, data.CodeAborted)
-	if !ok || !chordErr.HasDetails {
-		return host.CommittedReload{}, false
-	}
-	details, ok := chordErr.Details.(*delta.JsonObject)
-	if !ok {
-		return host.CommittedReload{}, false
-	}
-	committed, ok := details.Value("committed").(*delta.JsonObject)
-	if !ok {
-		return host.CommittedReload{}, false
-	}
-	names := func(key string) []string {
-		out := []string{}
-		items, _ := committed.Value(key).([]any)
-		for _, item := range items {
-			if text, ok := item.(string); ok {
-				out = append(out, text)
-			}
-		}
-		return out
-	}
-	return host.CommittedReload{Added: names("added"), Changed: names("changed"), Removed: names("removed"), Failed: names("failed")}, true
 }

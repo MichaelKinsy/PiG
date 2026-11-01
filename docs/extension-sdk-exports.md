@@ -12,9 +12,9 @@ Use counts (`uses`) are the number of the 255 scanned npm packages that import t
 |---|---|---|---|---|---|---|---|
 | `pi-coding-agent` | 927 | 307 | 917 | 325 | 325 | 325 | 325 |
 | `pi-tui` | 370 | 85 | 369 | 102 | 102 | 102 | 102 |
-| `pi-ai` | 105 | 199 | 105 | 73 | 73 | 73 | 73 |
-| `pi-ai/compat` | 164 | 206 | 164 | 129 | 129 | 129 | 129 |
-| `pi-agent-core` | 45 | 34 | 45 | 45 | 45 | 45 | 45 |
+| `pi-ai` | 104 | 197 | 104 | 73 | 73 | 73 | 73 |
+| `pi-ai/compat` | 163 | 204 | 163 | 129 | 129 | 129 | 129 |
+| `pi-agent-core` | 45 | 35 | 45 | 45 | 45 | 45 | 45 |
 
 ## Lanes that own gaps
 
@@ -1387,7 +1387,6 @@ None.
 | `ToolCallArgumentsStream.finish` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `ToolCallArgumentsStream.replace` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `ToolCallArgumentsStream.text` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `Type` | 14 | served | native:Type | native:Type | native:Type | native:pig:type-object |
 | `appendAssistantMessageDiagnostic` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `calculateCost` | 8 | served | native:CalculateCost | native:calculate_cost | native:calculate_cost | native:pig:calculate-cost |
 | `clampThinkingLevel` | 12 | served | native:ClampThinkingLevel | native:clamp_thinking_level | native:clamp_thinking_level | native:pig:clamp-thinking-level |
@@ -1505,7 +1504,6 @@ None.
 | `ToolCallArgumentsStream.finish` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `ToolCallArgumentsStream.replace` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
 | `ToolCallArgumentsStream.text` | 0 | served | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers | gap:SdkPiAiHelpers |
-| `Type` | 14 | served | native:Type | native:Type | native:Type | native:pig:type-object |
 | `anthropicMessagesApi` | 3 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `appendAssistantMessageDiagnostic` | 1 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |
 | `azureOpenAIResponsesApi` | 0 | served | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger | gap:SdkExportsLedger |

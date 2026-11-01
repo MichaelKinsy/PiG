@@ -18,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/nodehome"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -166,7 +167,7 @@ func ValidateAutoDiscoveredOverrides(cwd, agentDir string, sm *SettingsManager, 
 		// Only a pattern that cannot compile throws, so without one in the project skill overrides no ancestor directory is checked, and the ancestor walk is skipped.
 		if packagecontent.OverridesThrow(project.Skills) {
 			for _, ancestor := range DiscoverAncestorAgentsSkillDirs(cwd) {
-				if !samePath(ancestor, userAgentsSkills) {
+				if !resolvepath.PathsEqual(ancestor, userAgentsSkills) {
 					dir, paths = agentSkills(ancestor)
 					steps = add(steps, dir, paths, project.Skills, filepath.Dir(ancestor), packagecontent.Skills)
 				}
@@ -253,7 +254,7 @@ func (s *AgentsSkillScan) Dirs() []AgentsSkillDir {
 	s.once.Do(func() {
 		userAgentsSkills, haveUser := userAgentsSkillsDir()
 		for _, dir := range DiscoverAncestorAgentsSkillDirs(s.cwd) {
-			if !haveUser || !samePath(dir, userAgentsSkills) {
+			if !haveUser || !resolvepath.PathsEqual(dir, userAgentsSkills) {
 				s.dirs = append(s.dirs, AgentsSkillDir{Dir: dir, Skills: packagecontent.DiscoverAgentSkillDirs(dir)})
 			}
 		}
@@ -510,13 +511,6 @@ func isDirectoryPath(path string) bool {
 func isRegularFilePath(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && info.Mode().IsRegular()
-}
-
-// samePath reports whether Node's path.resolve gives both paths one result.
-func samePath(a, b string) bool {
-	aa, err1 := nodepath.Resolve(a)
-	bb, err2 := nodepath.Resolve(b)
-	return err1 == nil && err2 == nil && aa == bb
 }
 
 // reportCouldNotRead is resource-loader.ts's console.error(chalk.yellow(`Warning: Could not read ${what}: ${error}`)) for a failed readFileSync: chalk colors by

@@ -76,8 +76,6 @@ type watcherOptions struct {
 	// Failed is called when the watcher cannot watch (the system's limit): reported once, after which the app builds on
 	// demand. It runs in a section of the host.
 	Failed func(error)
-	// newWatcher makes the fsnotify watcher (nil: fsnotify.NewWatcher); a test makes one fail.
-	newWatcher func() (*fsnotify.Watcher, error)
 }
 
 // ignored are the directories never watched, and changes under them never marked.
@@ -400,11 +398,7 @@ func (w *pluginWatcher) watchDirs(dir string) {
 // addWatch puts a watch on dir, starting the watcher and the goroutine that reads its events with the first.
 func (w *pluginWatcher) addWatch(dir string) error {
 	if w.fs == nil {
-		newWatcher := w.options.newWatcher
-		if newWatcher == nil {
-			newWatcher = fsnotify.NewWatcher
-		}
-		watcher, err := newWatcher()
+		watcher, err := fsnotify.NewWatcher()
 		if err != nil {
 			return err
 		}
