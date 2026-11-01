@@ -542,11 +542,12 @@ func (h *NodeHost) wait() {
 	exit := h.exit
 	pending := h.pending
 	h.pending = map[int]*nodeCall{}
+	// Closed under the lock: a request that sees the process alive is in the map the line above emptied or the next one.
+	close(h.exited)
 	h.mu.Unlock()
 	if exit == nil {
 		exit = errors.New("the node subprocess ended")
 	}
-	close(h.exited)
 	for _, call := range pending {
 		call.settle(nodeReply{}, exit)
 	}

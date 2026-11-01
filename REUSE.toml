@@ -169,6 +169,26 @@ precedence = "override"
 SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
 SPDX-License-Identifier = "MIT"
 
+# Verbatim copies of Pi's chord sources and the two packages they run on, run by the Node subprocess of the plugins
+# component (automation/gen/vendor-chord-plugins-node.sh).
+[[annotations]]
+path = "chord/nextnode/plugins/node/pi/chord/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "chord/nextnode/plugins/node/pi/node_modules/@earendil-works/pi-telemetry/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "chord/nextnode/plugins/node/pi/node_modules/typebox/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2017-2026 Haydn Paterson"
+SPDX-License-Identifier = "MIT"
+
 # The unmodified ES module build of yaml 2.9.0, the YAML library Pi uses.
 [[annotations]]
 path = "coding/extension/host/subprocess/runtime-node/shims/yaml/**"

@@ -367,6 +367,8 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 The Node extension runtime serves TypeBox for the `typebox`, `typebox/value`, `typebox/compile`, and `@sinclair/typebox*` specifiers, as Pi does. `coding/extension/host/subprocess/runtime-node/shims/typebox*.mjs` are an esbuild bundle of the npm package `typebox@1.3.27` (integrity `sha512-zu+jc1pcy4UiNThxikUr36f0Rybk9PEeCg/NE6adeWr/SKsdNO4EzZHYRDlv2YCVAfj3Odq3dESSo/jNyoBXzA==`), produced by `automation/gen/vendor-typebox.sh`.
 
+The plugins component's Node subprocess (`chord/nextnode/plugins/node/pi/node_modules/typebox`) carries the same npm package, unbundled, with the integrity checked by `automation/gen/vendor-chord-plugins-node.sh`.
+
 ```text
 The MIT License (MIT)
 

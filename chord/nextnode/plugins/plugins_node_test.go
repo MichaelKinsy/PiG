@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -130,6 +131,66 @@ func TestNodeAReloadAfterTheProcessEndedFailsWithItsExit(t *testing.T) {
 	}
 	if err := node.Close(background); !errors.As(err, &exit) {
 		t.Fatalf("Close = %v, want the exit", err)
+	}
+}
+
+func TestNodeGivesTheProcessesOutputToOnOutputByStream(t *testing.T) {
+	parent := goHost(t)
+	var mu sync.Mutex
+	got := map[NodeStream]string{}
+	script := handmade(t, "@test/p", "worker", `(function (require, module, exports) { console.log("to stdout"); console.error("to stderr"); module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => {}) }; })`)
+	node, _, err := NewPluginRuntime(NodeOptions{OnOutput: func(stream NodeStream, chunk []byte) {
+		mu.Lock()
+		got[stream] += string(chunk)
+		mu.Unlock()
+	}}).Load(RuntimeLoad{Kind: "worker", Scripts: []PluginScript{script}, Parent: parent, Principal: workerPrincipal, Peer: serverPrincipal}, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The process ends once it is closed: every byte it wrote has been given by then.
+	if err := node.Close(background); err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if got[NodeStdout] != "to stdout\n" || got[NodeStderr] != "to stderr\n" {
+		t.Fatalf("output = %q", got)
+	}
+}
+
+func TestNodeAnUncaughtExceptionEndsTheProcessWithItsFatalAndClosesTheLink(t *testing.T) {
+	script := handmade(t, "@test/p", "worker", `(function (require, module, exports) {
+		module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => { setTimeout(() => { throw new Error("late failure"); }, 0); }) };
+	})`)
+	node, _, _ := loadOn(t, script)
+	<-node.Exited()
+	var exit *NodeExit
+	if !errors.As(node.Err(), &exit) || exit.Fatal == nil || exit.Fatal.Message != "late failure" {
+		t.Fatalf("Err = %v, want a *NodeExit whose Fatal is the exception", node.Err())
+	}
+	if !strings.Contains(exit.Fatal.Stack, "late failure") {
+		t.Fatalf("stack = %q", exit.Fatal.Stack)
+	}
+}
+
+// NodeOptions.ExecArgv are Node's flags of the process: --expose-gc is how the tests that read the heap start it.
+func TestNodeExecArgvAreTheProcessesFlags(t *testing.T) {
+	script := handmade(t, "@test/p", "worker", `(function (require, module, exports) {
+		module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => { if (typeof globalThis.gc !== "function") throw new Error("no gc"); }) };
+	})`)
+	load := func(argv ...string) host.LoadReport {
+		node, report, err := NewPluginRuntime(NodeOptions{ExecArgv: argv}).Load(RuntimeLoad{Kind: "worker", Scripts: []PluginScript{script}, Parent: goHost(t), Principal: workerPrincipal, Peer: serverPrincipal}, background)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = node.Close(background) })
+		return report
+	}
+	if report := load(); len(report.Failed) != 1 || !strings.Contains(report.Failed[0].Error.Error(), "no gc") {
+		t.Fatalf("without the flag: failed = %+v", report.Failed)
+	}
+	if report := load("--expose-gc"); len(report.Failed) != 0 {
+		t.Fatalf("with the flag: failed = %+v", report.Failed)
 	}
 }
 

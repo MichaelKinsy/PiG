@@ -1,0 +1,27 @@
+// deno-fmt-ignore-file
+import { Guard } from '../../../guard/index.mjs';
+import { Compare, CompareResultRightInside, CompareResultDisjoint } from '../evaluate/compare.mjs';
+function Comparer(left, right) {
+    const compareResult = Compare(left, right);
+    return (Guard.IsEqual(compareResult, CompareResultRightInside) ? 1 :
+        Guard.IsEqual(compareResult, CompareResultDisjoint) ? 1 :
+            0);
+}
+function Insert(type, types, result = []) {
+    return Guard.ShiftLeft(types, (left, right) => Guard.IsEqual(Comparer(type, left), 1)
+        ? Insert(type, right, [...result, left])
+        : [...result, type, ...types], () => [...result, type]);
+}
+function Sort(types, result = []) {
+    return Guard.ShiftLeft(types, (left, right) => Sort(right, Insert(left, result)), () => result);
+}
+/**
+ * Priority sorts types in sequence of narrowest to broadest using an Insertion Sort
+ * algorithm. This function is typically used to sequence types for union variant
+ * checks to ensure that values are checked against the most narrow types before
+ * the broadest, which in turn helps ensure order-independent Union checking.
+ */
+export function Priority(types) {
+    const result = Sort(types);
+    return result;
+}
