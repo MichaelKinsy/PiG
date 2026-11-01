@@ -5,12 +5,14 @@ package plugins
 import (
 	"bufio"
 	"errors"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 	"unsafe"
 
 	"github.com/Microsoft/go-winio"
@@ -178,5 +180,45 @@ func TestListenNodeAddressIsOneNodesNetConnectReaches(t *testing.T) {
 	}
 	if line := <-got; line != "hello" {
 		t.Fatalf("read %q, want %q", line, "hello")
+	}
+}
+
+// A write to the pipe completes while the peer does not read (the frame a process sends last, before it exits, is in the
+// pipe's buffer when the reader is busy), as one to a unix socket does: a pipe with no buffer would hold the write, and the
+// process with it, until the peer read.
+func TestListenNodeAWriteCompletesWhileThePeerDoesNotRead(t *testing.T) {
+	listener, address, cleanup, err := listenNode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+	defer func() { _ = listener.Close() }()
+	accepted := make(chan net.Conn, 1)
+	go func() {
+		conn, _ := listener.Accept()
+		accepted <- conn
+	}()
+	client, err := winio.DialPipe(address, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = client.Close() }()
+	server := <-accepted
+	if server == nil {
+		t.Fatal("no connection was accepted")
+	}
+	defer func() { _ = server.Close() }()
+	written := make(chan error, 1)
+	go func() {
+		_, err := client.Write(make([]byte, 4096))
+		written <- err
+	}()
+	select {
+	case err := <-written:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the write did not complete while the peer did not read")
 	}
 }
