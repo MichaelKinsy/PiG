@@ -274,7 +274,11 @@ func TestListenRecoversASharedExtensionCrash(t *testing.T) {
 	}
 	first.sendJSON(map[string]any{"id": "slow", "type": "prompt", "message": "Run: ext tool node_slow"})
 	first.await("node_slow start", func(r rpcRecord) bool { return r["type"] == "tool_execution_start" && r["toolName"] == "node_slow" })
-	if err := syscall.Kill(node[0].pid, syscall.SIGKILL); err != nil {
+	victim, err := os.FindProcess(node[0].pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := victim.Kill(); err != nil {
 		t.Fatal(err)
 	}
 	var slowErr bool
@@ -288,18 +292,19 @@ func TestListenRecoversASharedExtensionCrash(t *testing.T) {
 	if !slowErr {
 		t.Fatal("the slow tool call did not fail when its process was killed")
 	}
-	// The other session's next call answers once the cell is recovered, and one process serves both.
-	deadline := time.Now().Add(s.budget)
-	var got string
-	for {
-		got = callTool(second, "node_counter")
-		if got == "1" || got == "2" {
-			break
+	first.await("agent_end after node_slow", func(r rpcRecord) bool { return r["type"] == "agent_end" })
+	// Both sessions' instances restart fresh in the one recovered process.
+	for i, conn := range []*rpcProcess{first, second} {
+		// A call made while the supervisor waits out its restart delay fails; the first answer is the fresh instance's.
+		deadline := time.Now().Add(s.budget)
+		got := callTool(conn, "node_counter")
+		for strings.HasPrefix(got, "error:") && time.Now().Before(deadline) {
+			time.Sleep(200 * time.Millisecond)
+			got = callTool(conn, "node_counter")
 		}
-		if time.Now().After(deadline) {
-			t.Fatalf("node_counter after the crash = %q\n%s", got, s.stderr())
+		if got != "1" {
+			t.Fatalf("session %d node_counter after the crash = %q, want 1\n%s", i+1, got, s.stderr())
 		}
-		time.Sleep(100 * time.Millisecond)
 	}
 	requireCellCounts(t, s, 1, 1, "after the crash")
 }
