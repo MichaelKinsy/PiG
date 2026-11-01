@@ -1145,10 +1145,20 @@ func (session *SessionImpl) OwnsTransaction(tx durable.Tx) (*Transaction, bool) 
 // storage, a view whose reads wait for the publication of what the line admitted before; its outcome comes after theirs
 // (session.ts readOnLine).
 func (session *SessionImpl) ReadOnLine(job func(storage durable.Storage) (any, error)) (any, error) {
+	return session.readOnLine(nil, job)
+}
+
+// ReadOnLineCtx is ReadOnLine for a caller whose ctx carries a line admission callback (internal/lineadmission): it runs
+// once the job holds its position on the line, as a synchronous caller has extended upstream's Promise chain.
+func (session *SessionImpl) ReadOnLineCtx(ctx context.Context, job func(storage durable.Storage) (any, error)) (any, error) {
+	return session.readOnLine(lineadmission.From(ctx), job)
+}
+
+func (session *SessionImpl) readOnLine(admitted func(), job func(storage durable.Storage) (any, error)) (any, error) {
 	if err := session.assertUsable(); err != nil {
 		return nil, err
 	}
-	return enqueue(session, true, nil, func() (any, error) {
+	return enqueue(session, true, admitted, func() (any, error) {
 		if err := session.assertHealthy(); err != nil {
 			return nil, err
 		}
