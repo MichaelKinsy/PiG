@@ -21,6 +21,7 @@ require (
 	github.com/aws/smithy-go v1.28.1
 	github.com/clipperhouse/uax29/v2 v2.7.0
 	github.com/dlclark/regexp2 v1.12.0
+	github.com/evanw/esbuild v0.28.2
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/gofrs/flock v0.13.0
 	github.com/google/uuid v1.6.0
