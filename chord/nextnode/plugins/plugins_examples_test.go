@@ -163,7 +163,7 @@ func exStart(t *testing.T, plugins *Plugins, cache, kind string, modules HostPac
 	return started
 }
 
-// exLoad is exStart's load: the Node host, its link not attached yet (the app attaches it in time: RuntimeLoad.Heartbeat).
+// exLoad is exStart's load: the Node host, its link not attached yet (NodeHost.Link attaches at its first use).
 func exLoad(t *testing.T, plugins *Plugins, cache, kind string, modules HostPackages, address *contracts.Address, principal, peer data.Principal, withProbe bool) *exNode {
 	t.Helper()
 	load := PluginsLoad{Kind: kind, Modules: modules, Address: address, Principal: principal, Peer: peer}

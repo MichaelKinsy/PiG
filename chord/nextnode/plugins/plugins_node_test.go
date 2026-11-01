@@ -407,25 +407,92 @@ func TestNodeALinkAttachedAfterLoadAndOtherRequestsStillCarriesTheHost(t *testin
 	}
 }
 
-// A host closes a link silent for its heartbeat, its handshake included, and the process ends with it: the app attaches the
-// link in time. (The heartbeat is shortened here; the default is 30 s.)
-func TestNodeALinkNotAttachedWithinTheHeartbeatEndsTheProcessAndTheLink(t *testing.T) {
+// Not Pi's: a Pi worker connects its parent link when it starts, and its heartbeat runs from then. Here the Node host connects
+// its parent link when the Go host first uses the other end (NodeHost.Link: OnMessage or Send), so a NodeHost nothing
+// attaches has no link and no heartbeat clock: it stays alive for as long as the app wants it, and Close of it works. (The
+// heartbeat is shortened here; the default is 30 s.)
+func TestNodeAnUnattachedHostStaysAliveWithNoClockAndClosesWhenAsked(t *testing.T) {
 	ping, closeAfter := 100*time.Millisecond, 300*time.Millisecond
 	runtime, node := probeNode(t, `echo: async (args) => args`, NodeOptions{}, &host.HeartbeatOptions{Ping: &ping, Close: &closeAfter})
 	select {
 	case <-node.Exited():
-	case <-time.After(30 * time.Second):
-		t.Fatal("the process outlived its unattached link")
+		t.Fatalf("an unattached host ended after its heartbeat window: %v", node.Err())
+	case <-time.After(10 * closeAfter):
 	}
-	var exit *NodeExit
-	if !errors.As(node.Err(), &exit) || exit.Err != nil || exit.Fatal != nil {
-		t.Fatalf("Err = %v, want a clean exit that nobody asked for", node.Err())
+	if _, err := runtime.Reload(node, nil, background); err != nil {
+		t.Fatalf("an unattached host refused a request: %v", err)
 	}
-	closed := make(chan struct{})
-	node.Link().OnClose(func() { close(closed) })
-	<-closed
-	if _, err := runtime.Reload(node, nil, background); !errors.As(err, &exit) {
-		t.Fatalf("reload = %v, want the exit", err)
+	if err := node.Close(background); err != nil {
+		t.Fatalf("Close = %v, want nil", err)
+	}
+	select {
+	case <-node.Exited():
+	default:
+		t.Fatal("Close returned before the process ended")
+	}
+	if node.Err() != nil {
+		t.Fatalf("Err = %v after a requested close", node.Err())
+	}
+}
+
+// The first use of the link by the Go host attaches it, as the form the use takes: the host's heartbeat starts then. Here the
+// other end is a Go end that never answers its pings, so the host closes the link and ends with it one heartbeat after it
+// was attached, not before.
+func TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat(t *testing.T) {
+	hello, err := link.BinaryCodec.Encode(&link.HelloMessage{Protocol: data.ProtocolVersion, Incarnation: "00112233445566778899aabbccddeeff", Calls: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, use := range []struct {
+		name string
+		do   func(l link.Link)
+	}{
+		{"OnMessage", func(l link.Link) { l.OnMessage(func([]byte) {}) }},
+		{"Send", func(l link.Link) { l.Send(hello) }},
+	} {
+		t.Run(use.name, func(t *testing.T) {
+			ping, closeAfter := 100*time.Millisecond, 300*time.Millisecond
+			_, node := probeNode(t, `echo: async (args) => args`, NodeOptions{}, &host.HeartbeatOptions{Ping: &ping, Close: &closeAfter})
+			select {
+			case <-node.Exited():
+				t.Fatalf("the host ended before its link was used: %v", node.Err())
+			case <-time.After(5 * closeAfter):
+			}
+			use.do(node.Link())
+			select {
+			case <-node.Exited():
+			case <-time.After(30 * time.Second):
+				t.Fatal("the process outlived its attached link that never answered")
+			}
+			var exit *NodeExit
+			if !errors.As(node.Err(), &exit) || exit.Err != nil || exit.Fatal != nil {
+				t.Fatalf("Err = %v, want a clean exit that nobody asked for", node.Err())
+			}
+			closed := make(chan struct{})
+			node.Link().OnClose(func() { close(closed) })
+			<-closed
+		})
+	}
+}
+
+// A link attached long after the heartbeat's window carries the host, and the heartbeat then runs for it: the Go host
+// answers the pings, so the host outlives several windows attached.
+func TestNodeALinkAttachedAfterManyHeartbeatWindowsCarriesTheHost(t *testing.T) {
+	ping, closeAfter := 100*time.Millisecond, 300*time.Millisecond
+	_, node := probeNode(t, `echo: async (args) => args`, NodeOptions{}, &host.HeartbeatOptions{Ping: &ping, Close: &closeAfter})
+	time.Sleep(4 * closeAfter)
+	p := probeOn(t, serverFor(t, workerRoute(node)))
+	if got := p.must("echo", "late"); got != "late" {
+		t.Fatalf("echo = %v", got)
+	}
+	time.Sleep(4 * closeAfter)
+	select {
+	case <-node.Exited():
+		t.Fatalf("an attached host whose peer answers ended: %v", node.Err())
+	default:
+	}
+	if got := p.must("echo", "again"); got != "again" {
+		t.Fatalf("echo = %v", got)
 	}
 }
 

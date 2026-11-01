@@ -58,7 +58,8 @@ type RuntimeLoad struct {
 	// `connect` (trusted), as the server's is to a forked worker. Required.
 	Peer data.Principal
 	// Heartbeat is the subprocess host's heartbeat (`createHost`'s `heartbeat`): it closes a link silent for Close, 30 s by
-	// default, its handshake included, and the process with it, so the app attaches NodeHost.Link in time.
+	// default, its handshake included, and the process with it. It runs for the link from the first use of NodeHost.Link by
+	// the Go host; a host nothing attached has no clock.
 	Heartbeat *host.HeartbeatOptions
 	// CloseTimeout and ReadyTimeout are the subprocess host's `closeTimeout` and `readyTimeout` (host.HostOptions'): how long
 	// a native's close and an ending object's running calls are waited for (30 s by default), and how long an activation
@@ -172,9 +173,10 @@ func nonNil(list []string) []string {
 // returns the host's error as it is: the subprocess is stopped then.
 //
 // The host is the child of the Go side, as a forked worker is of its server (next-node/workers/main.ts): it connects the
-// link to its parent at load. The app attaches the other end, NodeHost.Link, to a Go host as Pi's app does: a route of the
-// host's kind (`host.Route`, whose Resolve returns it) or `host.Accept`, in time (RuntimeLoad.Heartbeat). A NodeHost needs no
-// Go host to load, so one Go host can own any number of them, and a Go host that has a parent of its own can load plugins.
+// link to its parent when the Go side first uses the other end. The app attaches that end, NodeHost.Link, to a Go host as
+// Pi's app does: a route of the host's kind (`host.Route`, whose Resolve returns it) or `host.Accept`, at any time after Load
+// returns: the heartbeat (RuntimeLoad.Heartbeat) runs from that first use. A NodeHost needs no Go host to load, so one Go
+// host can own any number of them, and a Go host that has a parent of its own can load plugins.
 func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHost, host.LoadReport, error) {
 	if options.Peer == nil {
 		return nil, host.LoadReport{}, errors.New("plugins.load: a Peer is required")

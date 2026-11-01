@@ -537,12 +537,14 @@ type NodeHost struct {
 // Exited is closed when the process ended.
 func (h *NodeHost) Exited() <-chan struct{} { return h.exited }
 
-// Link is the link to the process's host, the other end of the one that host connected to its parent (Pi's worker `connect`s
-// a link to its server). The app attaches it to a Go host as the server of a worker does: `Route` of the host's kind, whose
+// Link is the link to the process's host, the other end of the one that host connects to its parent (Pi's worker `connect`s a
+// link to its server). The app attaches it to a Go host as the server of a worker does: `Route` of the host's kind, whose
 // Resolve returns it (with the principal the app stamps the host with), or `Accept` with LinkOptions{Principal, Trusted:
-// true}. It is one link, made when the process connected: the messages the process sent before are queued in it. The
-// process's host closes a link silent for its heartbeat (30 s) and ends with it, so attach it in time. A closed link, from
-// either end, ends the process's channel and the process.
+// true}. It is one link, made when the process connected. It is attached lazily: the first use of it by the Go host
+// (OnMessage or Send) makes the process's host connect its end and start its heartbeat (RuntimeLoad.Heartbeat), which closes
+// a link silent for its window and ends the process with it. A NodeHost whose link nothing uses has no link and no
+// heartbeat: it stays alive until Close, and the link can be attached at any later time. A closed link, from either end,
+// ends the process's channel and the process.
 func (h *NodeHost) Link() link.Link { return h.link }
 
 // Activity is the keep-alive counts of the process's host as last reported (NodeOptions.OnActivity gives each change).
@@ -669,7 +671,7 @@ func startNode(options NodeOptions, ctx context.Context) (*NodeHost, error) {
 	port := newFramedPort(conn, h.control)
 	h.port.Store(port)
 	// Made before the first frame is read: none is lost before the app attaches the link.
-	h.link = link.IpcLink(port)
+	h.link = newNodeLink(h, link.IpcLink(port))
 	go func() {
 		port.read()
 		h.channelEnded()

@@ -5,15 +5,16 @@
 //
 // Frames (4-byte big-endian length, one kind byte, the payload): kind 0 is one chord link message (Pi's `ipcLink` carries
 // it, so the Go host and this one speak the pinned link wire); kind 1 is one control message, a JSON object. Control
-// requests are `{ id, op, ... }` and are answered by one `{ id, ok: true, result }` or `{ id, ok: false, error }`; `abort`
-// and `close` have no answer (a closed host ends this process's channel, and the process exits). Unrequested:
+// requests are `{ id, op, ... }` and are answered by one `{ id, ok: true, result }` or `{ id, ok: false, error }`; `attach`,
+// `abort` and `close` have no answer (a closed host ends this process's channel, and the process exits). Unrequested:
 // `{ event: "started" }`, `{ event: "activity", counts }` (the host's keep-alive counts), `{ event: "error", error }` (the host's onError) and `{ event: "fatal", error }` (an uncaught
 // exception; the process exits).
 //
-// The host is the child of the Go side: `load` makes it, and it `connect`s the link as its parent link with the principal
-// `peer` (trusted), as Pi's forked worker does. The Go side attaches the other end (`NodeHost.Link`) to its host, with a
-// route of the host's kind or `accept`. A link silent for the heartbeat (30 s) is closed by this host, and the process
-// exits with it.
+// The host is the child of the Go side: `load` makes it. It `connect`s the link as its parent link with the principal `peer`
+// (trusted), as Pi's forked worker does, when the Go side first uses the other end (`NodeHost.Link`, which the Go side
+// attaches to its host with a route of the host's kind or `accept`): the control request `attach`, which has no answer. A
+// link silent for the heartbeat (30 s) is closed by this host, and the process exits with it; the heartbeat starts with the
+// link, so a host nothing attaches has none.
 import { EventEmitter } from "node:events";
 import { registerHooks } from "node:module";
 import { connect } from "node:net";
@@ -166,7 +167,7 @@ async function load(request, context) {
 		onError: (error) => port.control({ event: "error", error: hostError(error) }),
 	});
 	const runtime = createPluginRuntime();
-	hosted = { host, runtime, store };
+	hosted = { host, runtime, store, peer: request.peer };
 	// The host's keep-alive counts, for the app that supervises it (NodeOptions.OnActivity): now, and at each change.
 	port.control({ event: "activity", counts: host.activity.value });
 	void host.activity.watch(BACKGROUND_CONTEXT).then((watch) =>
@@ -174,9 +175,6 @@ async function load(request, context) {
 			if (call.kind === "value") port.control({ event: "activity", counts: call.value });
 		}),
 	);
-	// As a worker connects to its parent (next-node/workers/main.ts): the Go side attaches the other end of the link, as the
-	// server of a worker does, and `peer` is who the Go side is, as this host stamps it.
-	host.connect(link, { principal: request.peer, trusted: true }, context);
 	const report = await runtime.load(host, { kind: request.kind, core, scripts: request.scripts, modules }, context);
 	return { failed: report.failed.map(({ plugin, error }) => ({ plugin, error: wireError(error) })) };
 }
@@ -205,12 +203,27 @@ async function reload(request, context) {
 	};
 }
 
+/**
+ * As a worker connects to its parent (next-node/workers/main.ts): the Go side uses the other end of the link, as the server
+ * of a worker does, and `peer` is who the Go side is, as this host stamps it. Once; the host's heartbeat starts with the link.
+ */
+function attach() {
+	if (hosted === undefined) throw new Error("attach: no host is loaded");
+	if (hosted.attached) return;
+	hosted.attached = true;
+	hosted.host.connect(link, { principal: hosted.peer, trusted: true }, BACKGROUND_CONTEXT);
+}
+
 const operations = { load, reload };
 
 port.on("message", (message) => {
 	if (message instanceof Uint8Array) return;
 	if (message.op === "abort") {
 		running.get(message.target)?.abort(new Error("the request was aborted by the Go side"));
+		return;
+	}
+	if (message.op === "attach") {
+		attach();
 		return;
 	}
 	if (message.op === "close") {
