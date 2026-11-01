@@ -480,13 +480,18 @@ func (bound *boundConversation) Submit(ctx context.Context, draft durable.Submis
 	if err := bound.binding.Check(); err != nil {
 		return nil, err
 	}
-	// Cancellation is checked when the job starts, not while it runs (group commit §2): an admission that began before the
-	// invocation's signal fired lands, so the signal is checked here and the commit then runs without it.
+	// Cancellation is checked when the job starts, not while it runs (group commit §2, session.ts commit): a submit queued
+	// behind another job is rejected if the invocation ended before it starts, and once it started it runs without the signal.
 	linked := bound.bind(ctx)
 	if err := linked.Err(); err != nil {
 		return nil, context.Cause(linked)
 	}
-	submission, err := bound.submissions.Submit(context.WithoutCancel(linked), bound.id, draft)
+	submission, err := bound.submissions.SubmitUnlessCancelled(context.WithoutCancel(linked), func() error {
+		if linked.Err() != nil {
+			return context.Cause(linked)
+		}
+		return nil
+	}, bound.id, draft)
 	if err != nil {
 		return nil, err
 	}

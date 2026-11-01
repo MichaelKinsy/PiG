@@ -85,8 +85,20 @@ func NewSubmissions(line *session.SessionImpl, now func() float64, queueModes fu
 
 // Submit admits a submission in one commit; see AdmitSubmission.
 func (submissions *Submissions) Submit(ctx context.Context, conversationId durable.ConversationId, draft durable.SubmissionDraft) (durable.Submission, error) {
+	return submissions.SubmitUnlessCancelled(ctx, nil, conversationId, draft)
+}
+
+// SubmitUnlessCancelled is Submit for a caller whose cancellation applies only until the job starts (session.ts commit:
+// `context.abortSignal?.throwIfAborted()` as the job begins): ctx carries the commit, so it should not be cancellable, and
+// startCheck, when non-nil, runs as the job starts and rejects it, storing nothing, with the error it returns.
+func (submissions *Submissions) SubmitUnlessCancelled(ctx context.Context, startCheck func() error, conversationId durable.ConversationId, draft durable.SubmissionDraft) (durable.Submission, error) {
 	admission, err := submissions.traced(ctx, conversationId, draft, func(span telemetry.TelemetrySpan) (Admission, error) {
 		return commitOnLine(chordctx.WithTelemetry(ctx, span), submissions.line, session.TransactionScope{}, func(tx *session.Transaction) (Admission, error) {
+			if startCheck != nil {
+				if err := startCheck(); err != nil {
+					return Admission{}, err
+				}
+			}
 			return AdmitSubmission(tx, conversationId, draft, submissions.now(), submissions.queueModes(), span)
 		})
 	})
