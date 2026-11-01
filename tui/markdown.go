@@ -518,6 +518,7 @@ func (m *Markdown) renderContent(content string, width int) []string {
 // renderBlocks renders the blocks of content. A top-level render passes rec to record the points a later render of a longer text resumes from, and from to start at one: content is then the text from that point's line (base is its line number), and the state of the loop is the point's.
 // It returns the rendered lines before the end-of-text spacing rules (loopOut), those lines after them (final) and how many leading lines of final are loopOut's.
 func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, rec *resumeRecorder) (loopOut, final []string, finalBase int) {
+	// pig divergence (D220): every block renders with the inline lexer state at its position. Pi 0f21a331 reuses the lines of an earlier block of the same source (markdown.ts:381), so it autolinks a repeated bare URL inside a still-open <a>, which marked does not.
 	lines := strings.Split(content, "\n")
 	source := &markdownBlockSource{lines: lines, lazy: m.lazyLines, indented: m.lazyIndented, breaks: m.lazyBreaks}
 	base := 0

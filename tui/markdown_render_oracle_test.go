@@ -88,20 +88,21 @@ const markdownOpenLinkRepeatDoc = "http://a.b and www.c.d\n\nx <a href=\"u\">ope
 // piReusesMarkdownBlocksByRaw reports whether the Pi mirror's markdown.ts reuses rendered top-level blocks keyed by their
 // source (Pi 0f21a331, "reuse syntax highlighting and rendered Markdown blocks"). Such a Pi renders a block again with
 // the lines of an earlier block of the same source, so a bare URL inside an open <a> is autolinked like the one before it.
-// PiG keeps marked's inline state across blocks. DRAFT divergence and Pi issue: handoffs/next/rows/RenderReuse.md.
+// PiG keeps marked's inline state across blocks (D220).
 func piReusesMarkdownBlocksByRaw() bool {
 	source, err := os.ReadFile("../.upstream/current/packages/tui/src/components/markdown.ts")
 	return err == nil && bytes.Contains(source, []byte("private blocks?: WeakRef<Map<string, RenderedBlock>>"))
 }
 
 // compareMarkdownWithPi requires Markdown.render of every document to equal pi-tui's at several widths and paddings.
-// Against a Pi that reuses blocks by source, markdownOpenLinkRepeatDoc is the one document it leaves out.
+// Against a Pi that reuses blocks by source, markdownOpenLinkRepeatDoc is the one document it leaves out (D220).
 func compareMarkdownWithPi(t *testing.T, docs []string) {
 	t.Helper()
 	var probes []markdownRenderProbe
 	for _, doc := range docs {
 		if doc == markdownOpenLinkRepeatDoc && piReusesMarkdownBlocksByRaw() {
-			t.Logf("not compared: this Pi autolinks a repeated paragraph inside an open <a> (draft divergence in handoffs/next/rows/RenderReuse.md)")
+			// pig divergence (D220): a Pi that reuses rendered blocks by source autolinks a repeated paragraph inside an open <a>; PiG renders it with the inline state at its position.
+			t.Logf("not compared: this Pi autolinks a repeated paragraph inside an open <a> (D220)")
 			continue
 		}
 		for _, pad := range [][2]int{{0, 0}, {1, 1}, {2, 0}} {

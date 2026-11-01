@@ -140,7 +140,7 @@ Provider errors appear in the assistant response without a second `Provider requ
 
 If an update or another `pig` replaced or removed the `pig` executable while a session runs, or another `pig` pruned an extension cell or runtime file the session uses, PiG shows a warning once when an error is shown, in place of the `/bug` hint: `The pig installation this session runs from was removed or replaced. Features that load code on demand can fail until restart.` (`The pig extension files this session runs from were removed or replaced.` for a pruned extension file), followed by the `pig --session <id>` command that continues the session. PiG checks only when an error appears, never on a timer, and does not read a version from the replaced file. This is a PiG adaptation of Pi 1.4.0's install-change warning (D95).
 
-Markdown wraps long unbroken text without truncating it. Link detection scans each word once so long text does not trigger repeated searches through the same suffix.
+Markdown wraps long unbroken text without truncating it. Link detection scans each word once so long text does not trigger repeated searches through the same suffix. Markdown renders each paragraph with the link state at its position: a bare URL inside a raw `<a>` tag that is still open stays plain text even when an identical paragraph earlier in the message was linked. Pi reuses the lines of the earlier paragraph and links it (D220).
 
 ## Extension UI
 
