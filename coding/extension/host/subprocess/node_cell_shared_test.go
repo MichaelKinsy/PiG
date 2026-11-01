@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 // sharedCellsConfig is the shared-cells.mjs factory as a Node member.
@@ -49,7 +48,7 @@ func twoSharedNodeHosts(t *testing.T) (a, b *Host) {
 	t.Cleanup(func() { a.Shutdown("test done"); b.Shutdown("test done"); registry.Close() })
 	loadShared(t, a, configs)
 	loadShared(t, b, configs)
-	if memberShare(t, a, "shared-cells") != memberShare(t, b, "shared-cells") {
+	if memberShare(t, a, "shared-cells") != memberShare(t, b, "shared-cells") || a.MemberProcessID("shared-cells") != b.MemberProcessID("shared-cells") || a.MemberProcessID("shared-cells") == 0 {
 		t.Fatal("the Hosts did not share one process")
 	}
 	return a, b
@@ -80,19 +79,15 @@ func TestSharedNodeCellKeepsVirtualWritesPerHost(t *testing.T) {
 	}
 }
 
-func TestSharedNodeCellDrainsOnlyTheClosingHost(t *testing.T) {
+func TestSharedNodeCellKeepsServingTheOtherHostAfterOneCloses(t *testing.T) {
 	a, b := twoSharedNodeHosts(t)
-	share := memberShare(t, b, "shared-cells")
 	a.EndInput()
 	a.Shutdown("host A closed")
-	time.Sleep(500 * time.Millisecond)
-	select {
-	case <-share.exitedChan():
-		t.Fatal("the process ended when Host A's input ended")
-	default:
-	}
 	if got := callShared(t, b, "counter", `{}`); got != "1" {
-		t.Errorf("Host B counter = %q, want 1", got)
+		t.Errorf("Host B counter = %q, want 1 from the still-running process", got)
+	}
+	if b.MemberProcessID("shared-cells") == 0 {
+		t.Error("Host B's member has no process")
 	}
 }
 

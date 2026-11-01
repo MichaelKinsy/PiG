@@ -23,6 +23,9 @@ func sharedToolText(t *testing.T, h *harness, tool, params string) string {
 }
 
 // Two Hosts that join one cell registry each keep their own instance of an extension in every SDK and realization: an instance-local counter, and a pi.events emit that only the emitting Host's instances hear (pig additive (D201)). The behavior equals two Hosts without a registry.
+// isolatedByDesign names the cases whose member runs alone in its own process per Host (an exact standalone is always isolated; fused-go and inproc-go have no process): they prove instance-local state only. Every other case admits both Hosts' members into one process.
+var isolatedByDesign = map[string]bool{"subprocess-go": true, "subprocess-node": true, "subprocess-rust": true, "subprocess-python": true, "fused-go": true}
+
 func TestConformance_SharedCellsIsolatePerHostInstances(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
@@ -51,6 +54,15 @@ func TestConformance_SharedCellsIsolatePerHostInstances(t *testing.T) {
 			a, b := hosts[0], hosts[1]
 			if a.host.Group() == "" || a.host.Group() == b.host.Group() {
 				t.Fatalf("groups = %q and %q, want two distinct non-empty ids", a.host.Group(), b.host.Group())
+			}
+			pa, pb := a.host.MemberProcessID(tc.extName), b.host.MemberProcessID(tc.extName)
+			switch {
+			case isolatedByDesign[tc.name]:
+				if pa != 0 && pa == pb {
+					t.Errorf("isolated case shares process %d", pa)
+				}
+			case pa == 0 || pa != pb:
+				t.Errorf("member pids = %d and %d, want one shared process", pa, pb)
 			}
 			got := []string{sharedToolText(t, a, "counter", `{}`), sharedToolText(t, a, "counter", `{}`), sharedToolText(t, b, "counter", `{}`)}
 			if strings.Join(got, ",") != "1,2,1" {

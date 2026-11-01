@@ -4382,7 +4382,8 @@ export class Runtime {
   // ctx.abort(). Pi's abort is synchronous up to agent.abort(), which aborts the active run's controller before it returns (agent-session.ts:2464-2474, 3472-3478; agent.ts:340-342), so a handler that aborts and reads ctx.signal, or the signal its tool received, in the same turn sees it aborted. The host's abort and its run_signal frame follow; the frame finds the controller aborted. Every member of a packed process holds the same run, as every extension holds one agent.
   abortRun() {
     this.runSignal?.controller.abort();
-    for (const runtime of liveRuntimes) runtime.runSignal?.controller.abort();
+    // pig additive (D201): ctx.abort() aborts only the runs of this group.
+    for (const runtime of liveRuntimes) if (runtime.group === this.group) runtime.runSignal?.controller.abort();
     this.fireAndForget("abort", {});
   }
 
@@ -5767,3 +5768,6 @@ export function reportLoadFailure(sockPath, failure) {
     socket.on("close", () => resolve());
   });
 }
+
+// pig additive (D201): the per-group state the shared-process tests read.
+export { busFor, drainFor, xrefRealm, liveRuntimes };

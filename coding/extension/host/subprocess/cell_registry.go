@@ -116,3 +116,31 @@ func (h *Host) cellRegistryKey(base string) string {
 	}
 	return base + "\x00" + h.cwd + "\x00" + h.builder.configRoot
 }
+
+// MemberProcessID returns the OS process id of the process serving the named member of this Host, or 0 when it has none (a fused or in-process member). Two members that report one id share a process. pig additive (D201).
+func (h *Host) MemberProcessID(name string) int {
+	h.mu.Lock()
+	me := h.exts[name]
+	h.mu.Unlock()
+	if me == nil {
+		return 0
+	}
+	share := me.share
+	if me.packedProcess != nil {
+		share = me.packedProcess.share
+	}
+	if share != nil {
+		switch origin := share.origin.(type) {
+		case *packedProcessState:
+			if origin.cmd != nil && origin.cmd.Process != nil {
+				return origin.cmd.Process.Pid
+			}
+		case *managedExt:
+			me = origin
+		}
+	}
+	if proc, _ := me.processHandle(); proc != nil {
+		return proc.Pid
+	}
+	return 0
+}
