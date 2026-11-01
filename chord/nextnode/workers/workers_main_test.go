@@ -11,6 +11,9 @@ import (
 	"testing"
 	"time"
 
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
@@ -143,5 +146,51 @@ func TestTheWorkersSideSendsFatalWithTheRedactedErrorAndExits1(t *testing.T) {
 	}
 	if exit := worker.exited(); exit.Code == nil || *exit.Code != 1 {
 		t.Fatalf("exit = %+v, want code 1", exit)
+	}
+}
+
+// The host's activity counts are written by the host's sections; the worker reads them through its watch of the activity, never
+// from its own goroutines (`host.Activity().Value()` is for the host's sections). Under -race, a read off the host's loop is a
+// data race with the counts of the calls running meanwhile.
+func TestTheWorkersIdleStateReadsTheHostsActivityOnlyThroughItsWatch(t *testing.T) {
+	address := fixtureSession.Address(jsonObject("id", "S1"))
+	h, err := host.CreateHost(host.HostOptions{Address: &address, Principal: delta.JsonObjectOf("kind", "worker"), OnError: func(host.HostError) {}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = h.Close(background) }()
+	if _, err := h.Load([]host.HostFacet{{Name: "@test/core", Facet: fixtureCore(h)}}, background); err != nil {
+		t.Fatal(err)
+	}
+	w := &worker{loaded: &loadedHost{host: h}}
+	w.context, w.abort = chordctx.WithCancel(chordctx.Background())
+	defer w.abort(errShuttingDown)
+	if err := w.follow(); err != nil {
+		t.Fatal(err)
+	}
+	echo, err := h.Get(fixtureEcho, delta.JsonObjectOf(), background, host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer echo.Release()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for index := range 300 {
+			if _, err := echo.Call("echo", float64(index), background); err != nil {
+				t.Error(err)
+				return
+			}
+		}
+	}()
+	for running := true; running; {
+		select {
+		case <-done:
+			running = false
+		default:
+		}
+		w.mu.Lock()
+		w.isIdleLocked()
+		w.mu.Unlock()
 	}
 }
