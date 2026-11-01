@@ -11,24 +11,27 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
 // Ports packages/chord/test/next-node/fixtures/workers/{control,worker}.ts: the fixture contracts (the session kind the
 // workers serve, the fixture worker's `Control`, the plugin's `Notes`), the worker's start data (how it behaves), and the
-// fixture worker itself: `WorkerMain`, the shipped plugins, and a core facet serving `Control` (crash, busy, local calls) and
-// `Busy` (the app's keep-alive counts). Its start data picks a behaviour for the tests: exit or fail before connecting, never
-// connect, a slow or endless load, slow closers that log their order to a file.
+// fixture worker itself: `WorkerMain`, the shipped plugins, a JavaScript core facet serving `Control` (crash, busy, local calls)
+// and a Go core facet serving `Busy` (the app's keep-alive counts) and `Echo`. Its start data picks a behaviour for the tests:
+// exit or fail before connecting, never connect, a slow or endless load, slow closers that log their order to a file.
 //
 // The plugins component evaluates in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md), so the host that serves the
-// worker's address, the core facet (a module: testdata/core.mjs, Pi's `core` as JavaScript) and the real plugin built from
-// testdata/plugins/notes is the worker's NodeHost, the child of the worker's Go host; the Go host is a relay without an
-// address that `WorkerPlugins.Load` routes to the NodeHost's link. A local type of the NodeHost cannot be read from Go, so the
-// app's keep-alive counts (`Busy`) are read through `BusyView`, a remote type at the address.
+// worker's address, the JavaScript core facet (a module: testdata/core.mjs) and the real plugin built from testdata/plugins/notes
+// is the worker's NodeHost, the child of the worker's Go host; the Go host is a relay without an address that
+// `WorkerPlugins.Load` routes to the NodeHost's link. The Go core facet (`fixtureGoCore`) loads on that Go host, and
+// `WorkerLoad.Bridged` gives the NodeHost a proxy of its local types, so `Control` binds to `Busy` and `Echo` in the same closure
+// as the plugins, and the worker's Go code reads `Busy` directly, as a local type of its own host.
 //
 // Forced Go differences. A worker is the test binary run again (TestMain, fixtureEnv "worker"). `process.exit` is
 // exitProcess in Go code and the NodeHost's own in `Control.crash` (the worker exits with its code). `Control.block` and
@@ -66,17 +69,30 @@ var (
 		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("label", contracts.Str())}})},
 	}))
 
-	// fixtureBusyView is the fixture core's `BusyView`: the counts of its `Busy` (the app's keep-alive counts), a remote type
-	// at the worker's address, which the worker's Go code reads through its route to its Node host.
-	fixtureBusyView = mustFixture(contracts.Remote("test.busyview", contracts.RemoteDeclaration{
-		Version: 1,
-		Params:  contracts.Params{contracts.Prop("id", contracts.Str())},
-		HostAddress: func(params *delta.JsonObject) (contracts.Address, error) {
-			id, _ := params.Value("id").(string)
-			return fixtureSession.Address(delta.JsonObjectOf("id", id)), nil
+	// fixtureBusy is the Go core facet's `Busy`: the app's keep-alive counts, a local type of the worker's Go host that the
+	// NodeHost's `Control` uses through a proxy (plugins.BridgedFacet), and `fixtureEcho` its `Echo`.
+	fixtureBusy = mustFixture(contracts.Local("test.busy", contracts.LocalDeclaration{
+		Version: 1, Params: contracts.Params{},
+		Members: []contracts.LocalEntry{
+			contracts.Mem("counts", contracts.Map(contracts.Int())), contracts.Mem("set", contracts.NewMethod(contracts.Int())),
+			contracts.Mem("pulse", contracts.NewMethod(contracts.Int())),
 		},
-		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("counts", contracts.Map(contracts.Int()))}})},
 	}))
+	fixtureEcho = mustFixture(contracts.Local("test.echo", contracts.LocalDeclaration{
+		Version: 1, Params: contracts.Params{},
+		Members: []contracts.LocalEntry{contracts.Mem("echo", contracts.NewMethod(contracts.Int(), contracts.Int()))},
+	}))
+
+	fixtureCounts = func() *documents.StateDefinition {
+		definition, err := documents.DefineState("counts", documents.StateOptions{
+			Schema: contracts.Map(contracts.Int()), Version: 1,
+			Initial: func() *delta.JsonObject { return delta.JsonObjectOf("tasks", 0.0) },
+		})
+		if err != nil {
+			panic(err)
+		}
+		return definition
+	}()
 )
 
 func mustFixture[T any](value T, err error) T {
@@ -190,14 +206,56 @@ func (p *countingPort) sendControlThen(payload []byte, then func()) {
 	p.processPort.sendControlThen(payload, then)
 }
 
-// fixtureCoreModule is the fixture worker's core facet (testdata/core.mjs): `Control`, `Busy`, `Echo` and `BusyView`, a module
-// the worker's Node host imports.
+// fixtureCoreModule is the fixture worker's JavaScript core facet (testdata/core.mjs): `Control`, a module the worker's Node host
+// imports.
 func fixtureCoreModule() plugins.CoreFacet {
 	path, err := filepath.Abs(filepath.Join("testdata", "core.mjs"))
 	if err != nil {
 		panic(err)
 	}
 	return plugins.CoreFacet{Name: "@test/core", Module: path}
+}
+
+// fixtureGoCoreName is the name of the fixture's Go core facet on the worker's Go host and of its proxy on the NodeHost.
+const fixtureGoCoreName = "@test/core-go"
+
+// fixtureGoCore is the fixture worker's Go core facet: `Busy` (the app's keep-alive counts: a document, `set` and `pulse`, which
+// is busy for a time and clears itself) and `Echo`, the types the worker.ts `core` serves beside `Control`.
+func fixtureGoCore() host.Facet {
+	return host.DefineFacet(func(h host.FacetHost, _ host.FacetSelf) error {
+		if err := h.Serve(fixtureBusy, func(_ *delta.JsonObject, self host.Self) (contracts.Implementation, error) {
+			doc := self.State(fixtureCounts).(*documents.Singleton)
+			setTasks := func(n float64, ctx context.Context) error {
+				_, err := doc.Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("tasks", n) }, ctx)
+				return err
+			}
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{
+					"counts": self.Derive([]any{doc}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
+				},
+				Methods: map[string]contracts.MethodFunction{
+					"set": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+						return nil, setTasks(args.(float64), ctx)
+					},
+					"pulse": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+						if err := setTasks(1, ctx); err != nil {
+							return nil, err
+						}
+						// After the call settled (its ctx sealed): the document of this object, which the worker's Go code holds.
+						time.AfterFunc(time.Duration(args.(float64))*time.Millisecond, func() { _ = setTasks(0, chordctx.Background()) })
+						return nil, nil
+					},
+				},
+			}}, nil
+		}, host.ServeOptions{}); err != nil {
+			return err
+		}
+		return h.Serve(fixtureEcho, func(*delta.JsonObject, host.Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+				"echo": func(args delta.JsonValue, _ context.Context) (delta.JsonValue, error) { return args, nil },
+			}}}, nil
+		}, host.ServeOptions{})
+	})
 }
 
 // fixtureOutput forwards the worker's Node host's output as a worker's own, and turns the two lines of `Control.localCalls`
@@ -268,6 +326,8 @@ func runWorkerFixture() {
 		}
 		if _, err := start.Plugins.Load(worker, WorkerLoad{
 			Kind: "worker", Core: []plugins.CoreFacet{fixtureCoreModule()}, HostKind: fixtureSession,
+			GoCore:  []host.HostFacet{{Name: fixtureGoCoreName, Facet: fixtureGoCore()}},
+			Bridged: []plugins.BridgedFacet{{Name: fixtureGoCoreName, Contracts: []*contracts.Contract{fixtureBusy, fixtureEcho}}},
 			Principal: delta.JsonObjectOf("kind", "worker"), Peer: delta.JsonObjectOf("kind", "server"),
 		}, ctx); err != nil {
 			return nil, err
@@ -293,11 +353,12 @@ func runWorkerFixture() {
 				}
 			})
 		}
-		busy, err := worker.Get(ctx, fixtureBusyView, delta.JsonObjectOf("id", id), host.GetOptions{})
+		// The app's keep-alive counts are a local type of this Go host: read directly, no hold of the NodeHost's objects.
+		busy, err := worker.Get(ctx, fixtureBusy, delta.NewJsonObject(0), host.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
-		return &WorkerResult{Busy: busy.Member("counts"), Held: 1}, nil
+		return &WorkerResult{Busy: busy.Member("counts")}, nil
 	}, WorkerMainOptions{
 		Node: plugins.NodeOptions{OnOutput: fixtureOutput(port)},
 		Redact: func(err any) CrossedError {
