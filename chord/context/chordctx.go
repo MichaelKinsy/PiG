@@ -71,6 +71,13 @@ var aborts atomic.Uint64
 func AbortOrder(ctx context.Context) uint64 {
 	var earliest uint64
 	for ctx != nil {
+		if c, ok := ctx.(*signalContext); ok {
+			// Its abort is its signal's.
+			if order := AbortOrder(c.Context); order != 0 && (earliest == 0 || order < earliest) {
+				earliest = order
+			}
+			return earliest
+		}
 		c, ok := ctx.(*abortContext)
 		if !ok {
 			return earliest
@@ -124,7 +131,11 @@ func Value[T any](ctx context.Context, key Key[T]) (T, bool) {
 }
 
 // WithAbortSignal derives a context cancelled by either the parent or signal, whichever is first, with that one's cause. The parent is unchanged. A signal that is already cancelled cancels the result before it is returned, as AbortSignal.any does with an aborted input.
+// A parent with no cancellation (no Done channel) leaves signal alone to cancel: Pi's `withAbortSignal` then uses signal itself, with no listener, and so does the result here (signalContext), which registers nothing on signal, so a signal that outlives its derived contexts (an attempt's, a reference's) keeps nothing of them.
 func WithAbortSignal(parent, signal context.Context) context.Context {
+	if parent.Done() == nil {
+		return &signalContext{Context: signal, parent: parent}
+	}
 	derived, cancel := context.WithCancelCause(parent)
 	if signal.Err() != nil {
 		cancel(context.Cause(signal))
@@ -133,6 +144,27 @@ func WithAbortSignal(parent, signal context.Context) context.Context {
 	stop := context.AfterFunc(signal, func() { cancel(context.Cause(signal)) })
 	context.AfterFunc(derived, func() { stop() })
 	return &abortContext{Context: derived, parent: parent, signal: signal}
+}
+
+// signalContext is a context whose abort signal is another context's: the Done channel, the error, the deadline and the
+// cause are signal's, as Pi's `withAbortSignal` with no parent signal is `withContextValue(ABORT_SIGNAL_CONTEXT_KEY, signal,
+// context)`. Its values are parent's (a parent with no cancellation); a key parent does not know the signal answers, which is
+// how context.Cause reaches the signal's cancellation record. It listens to nothing.
+type signalContext struct {
+	// Context is the signal.
+	context.Context
+	parent context.Context
+}
+
+func (c *signalContext) Value(key any) any {
+	if value := c.parent.Value(key); value != nil {
+		return value
+	}
+	return c.Context.Value(key)
+}
+
+func (c *signalContext) String() string {
+	return fmt.Sprint(c.parent) + ".WithValue(chord.abortSignal)"
 }
 
 // WithoutAbortSignal derives a context that keeps every value but ignores caller cancellation. It is for mandatory cleanup only.
@@ -182,7 +214,7 @@ type Settled[T any] struct {
 	Err   error
 }
 
-// Suspend is the first suspension of a method handler: Pi runs an async handler synchronously, inside the section that admits its call, up to its first `await`, and the rest of that section waits for it. A Go handler is blocking code that runs as a coroutine of the section's goroutine, and the section waits until it returns or suspends. The host primitives that wait (Get, Call, Sleep, UntilAborted, transactions, Await, Receive) suspend the handler themselves; call Suspend with the handler's ctx, or a context derived from it, right before waiting for anything else (a channel, a condition, I/O that another goroutine of the host's section must not outwait). Code that waits without suspending is a synchronous block of the section, as a synchronous loop is in Pi: the host's other work does not run until it ends. Suspend of a context that carries no handler does nothing, and a second call does nothing. Only the handler's own goroutine suspends it: a goroutine the handler started leaves the handler's synchronous part to the handler's own next wait.
+// Suspend is the first suspension of a method handler: Pi runs an async handler synchronously, inside the section that admits its call, up to its first `await`, and the rest of that section waits for it. A Go handler is blocking code that runs as a coroutine of the section's goroutine, and the section waits until it returns or suspends. The host primitives that wait (Get, Call, Sleep, UntilAborted, transactions, Await, Receive) suspend the handler themselves; call Suspend with the handler's ctx, or a context derived from it, right before waiting for anything else (a channel, a condition, I/O that another goroutine of the host's section must not outwait). Code that waits without suspending is a synchronous block of the section, as a synchronous loop is in Pi: the host's other work does not run until it ends. Suspend of a context that carries no handler does nothing, and a second call does nothing. Only the handler's own goroutine suspends it: a goroutine the handler started leaves the handler's synchronous part to the handler's own next wait, whatever it waits for itself, as an `await` inside async work that Pi's handler started and did not await does.
 func Suspend(ctx context.Context) { parking.Park(ctx) }
 
 // Await observes work until it settles or the invocation is cancelled. Cancellation returns the cancellation cause from this waiter only; it does not cancel the work, which may still settle later. A nil ctx waits for the work alone.

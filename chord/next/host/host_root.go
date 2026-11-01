@@ -138,6 +138,11 @@ func tryPlugin(work func() (any, error)) (value any, err error) {
 	return work()
 }
 
+// errHandlerGoexit is what a call is rejected with when its handler (or a route's resolve) ended its goroutine with
+// runtime.Goexit (testing.T.FailNow among them) instead of returning: the rejection of an awaited async function that
+// throws, which Pi's handler does and a Go function has no way to say.
+var errHandlerGoexit = errors.New("chord: the handler ended its goroutine (runtime.Goexit) without returning")
+
 // recoveredError is a recovered panic value as the error a JavaScript `throw` of it would be.
 func recoveredError(recovered any) error {
 	if err, ok := recovered.(error); ok {
