@@ -831,7 +831,7 @@ func (c *Workers) idleFor() time.Duration {
 func (c *Workers) rollout(scripts []plugins.PluginScript, ctx context.Context) ([]plugins.RolloutHost, error) {
 	key := keyOf(scripts)
 	type entry struct {
-		host    string
+		host  string
 		entry *outcome[plugins.RolloutHost]
 	}
 	var entries []entry

@@ -158,10 +158,8 @@ func environment(env map[string]string) []string {
 // pump reads one of the child's output streams: the stderr tail is kept, and each chunk goes to onOutput, or to this
 // process's own stream. It ends with the stream: when every process holding its write end is gone.
 func (p *WorkerProcess) pump(reader *os.File, stream string, onOutput func(stream string, chunk []byte)) {
-	p.pumps.Add(1)
 	//portlint:allow golifetime the reader returns at the stream's end, once every holder of its write end is gone; ended joins it
-	go func() {
-		defer p.pumps.Done()
+	p.pumps.Go(func() {
 		defer func() { _ = reader.Close() }()
 		buffer := make([]byte, 32*1024)
 		for {
@@ -184,7 +182,7 @@ func (p *WorkerProcess) pump(reader *os.File, stream string, onOutput func(strea
 				return
 			}
 		}
-	}()
+	})
 }
 
 // keepStderr appends chunk to the tail: the last 4096 UTF-16 code units of what it has written.

@@ -80,7 +80,7 @@ func TestAWorkerProcessPipesItsOutputKeepsItsStderrTailQueuesAnEarlyFrameOnItsLi
 // tells the send's callback, and stays usable.
 func TestAChannelRefusesARecordOverTheLimitAndStaysUsable(t *testing.T) {
 	near, far := net.Pipe()
-	defer far.Close()
+	defer func() { _ = far.Close() }()
 	c := newChannel(near)
 	defer c.finish()
 	var told error

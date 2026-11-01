@@ -469,7 +469,9 @@ func (w *worker) fatal(err any) {
 	var redacted CrossedError
 	func() {
 		defer func() {
-			if recover() != nil {
+			if recovered := recover(); recovered != nil {
+				// Redact itself failed: only the fixed message crosses; the app's log gets what failed.
+				w.options.OnError(panicError{value: recovered})
 				redacted = CrossedError{Message: "worker: fatal error"}
 			}
 		}()
