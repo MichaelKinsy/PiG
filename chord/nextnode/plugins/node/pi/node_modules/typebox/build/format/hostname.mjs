@@ -1,0 +1,10 @@
+import * as Idna from './idna/index.mjs';
+/**
+ * Returns true if the value is a valid hostname.
+ * @specification https://tools.ietf.org/html/rfc1123
+ * @specification https://tools.ietf.org/html/rfc5891
+ * @specification https://tools.ietf.org/html/rfc5892
+ */
+export function IsHostname(value) {
+    return Idna.IsHostname(value);
+}

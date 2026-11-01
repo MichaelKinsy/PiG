@@ -683,3 +683,45 @@ path = "chord/nextnode/workers/workers_workers_test.go"
 commit = "f59f4016039310a105a789060419985ed07c795a"
 class = "NOBEHAVIOR"
 reason = "Go only: the expected value is Pi's (workers.test.ts:35 expects `starting` after the hold). A Go worker may be running before a poll of the state sees it, so the test reads the first status from the state's own frames instead of polling."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_endtoend_test.go"
+commit = "afb14da124492fad80b73f5f5e8abc07915b47dc"
+class = "CITE"
+cite = "packages/chord/src/next-node/workers/main.ts:114"
+reason = "The Node host is the child of the Go side, as Pi's forked worker connects to its parent (main.ts:114) and the server routes the worker's kind to it (workers.ts:98; plugins.test.ts's end to end `server.route(Worker, ...)`). The end-to-end case is Pi's: one observing server host holds Notes over the route, and the broken edit's reference state is compared with Pi's `toEqual({ kind: \"live\" })` (a whole RefState, not its kind), with failures recorded as `{ failed }` like `valuesOf`; the expected values follow."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_examples_test.go"
+commit = "afb14da124492fad80b73f5f5e8abc07915b47dc"
+class = "CITE"
+cite = "packages/chord/test/next/examples/36-plugin-failures/main.ts:139"
+reason = "Example 36 step 4 asserts what Pi's script prints and the first port left unchecked: the status reference's kinds `loading` then `live` (main.ts:139) and the final greeter reload's report (`plugins: changed @example/greeter`, `objects: example.greeting swapped`, `failed @example/weather: ...`, main.ts:151). The example 35 case reads notes and the server's types through one observing server host that routes both Node hosts."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_node_test.go"
+commit = "afb14da124492fad80b73f5f5e8abc07915b47dc"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The Node subprocess is PiG-original (no Pi file: Pi's workers fork the same shape). The expectation that changed is the load's refusal text: RuntimeLoad has no Parent any more (the host is the child of the Go side), so only the Peer is required (`a Peer is required`). The other edits add cases (link attach, heartbeat, fatal ordering, extraction repair) and check the manifest against the pin."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_runtime_test.go"
+commit = "fed839c88739bd28e7e351c297edac660bc7b21f"
+class = "CITE"
+cite = "packages/chord/src/next/host/host.ts:124"
+reason = "Pi's `activation_failed` carries a `failure` (a FailureCause), not an `error` (host.ts:124): the Node host's background reports now keep every field of their kind, so the persisted-document case reads the activation failure's cause (`Failure.Error`, `Failure.Kind`) where the first port flattened it into `Err`."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_fixture_worker_test.go"
+commit = "8fead2d31cb1638ad113f7df3f8f1a5d8a0b773a"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Go only, no Pi line changed: the expected results are Pi's (workers.test.ts, support.ts, worker.ts). The fixture worker's host topology follows the plugins component, whose evaluation runs in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md): the core facet is the module testdata/core.mjs (Pi's worker.ts core as JavaScript), the worker's Go host is a relay routed to the NodeHost, the app's busy counts are read through a remote view and the worker's own hold on it is declared, and Control.localCalls (called by the worker itself) reports the messages sent to the server between its two lines, expected 0 as before."
+
+[[entry]]
+path = "chord/nextnode/workers/workers_fleet_test.go"
+commit = "8fead2d31cb1638ad113f7df3f8f1a5d8a0b773a"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Go only, no Pi line changed: the fleet's plugins component builds Pi's fixture plugin (testdata/plugins/notes: worker.ts, label.ts, package.json, byte for byte) with the real esbuild build instead of a stand-in Builder and Evaluator, which the plugins component no longer has; the expected labels and reports are Pi's."

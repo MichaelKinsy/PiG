@@ -53,7 +53,7 @@ type WorkersOptions struct {
 	Lock func(address contracts.Address) (string, error)
 	// IdleMs is how long a worker idles before it is stopped: 5 minutes by default.
 	IdleMs  func() time.Duration
-	Plugins plugins.Plugins
+	Plugins *plugins.Plugins
 	// OnOutput is a worker's output; without it, mirrored to this process's own.
 	OnOutput func(address contracts.Address, stream string, chunk []byte)
 	OnError  func(err WorkersError)

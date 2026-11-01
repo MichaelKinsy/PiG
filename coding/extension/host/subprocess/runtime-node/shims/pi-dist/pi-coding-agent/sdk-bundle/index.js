@@ -6,10 +6,10 @@ import {
   loadMcpConfig,
   openBrowser,
   updateMcpServerConfig
-} from "./chunk-UAU2WSJW.js";
+} from "./chunk-AMP26ZF4.js";
 import {
   ArminComponent
-} from "./chunk-AC3M6ZO6.js";
+} from "./chunk-DJM4CGTU.js";
 import {
   AgentSession,
   BUG_REPORT_CUSTOM_ENTRY_TYPE,
@@ -125,7 +125,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-2FBPXM36.js";
+} from "./chunk-HIQPQLVG.js";
 import {
   convertToPng,
   createBashToolDefinition,
@@ -160,19 +160,19 @@ import {
   resolveReadPath,
   withFileMutationQueue,
   writeRenderers
-} from "./chunk-UGZ7HYUS.js";
+} from "./chunk-HOGQJAZD.js";
 import {
   CODEMODE_TOOL_NAME,
   TOOL_SEARCH_TOOL_NAME,
   createCodemodeToolDefinition,
   createToolSearchToolDefinition
-} from "./chunk-OWX7THTD.js";
+} from "./chunk-T2257LV5.js";
 import {
   SETTINGS_DEFAULTS,
   addUsageToTotals,
   createUsageTotals,
   getUsageCostBreakdown
-} from "./chunk-LKHC5YTL.js";
+} from "./chunk-IJFG4BUL.js";
 import {
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
@@ -189,7 +189,7 @@ import {
   truncateTail,
   truncateToVisualLines,
   writeOutputFile
-} from "./chunk-T4NPYDVZ.js";
+} from "./chunk-HAAXE2S5.js";
 import {
   SYSTEM_THEME_NAME,
   THEME_TOKENS,
@@ -223,7 +223,7 @@ import {
   setThemeJsonValidator,
   stopThemeWatcher,
   theme
-} from "./chunk-HAHVQ3BS.js";
+} from "./chunk-2W3FEVNE.js";
 import {
   AuthStorage,
   LIST_MCP_RESOURCES_TOOL,
@@ -234,12 +234,12 @@ import {
   mcpNamespace,
   raceWithAbortSignal,
   readStoredCredential
-} from "./chunk-TBA7G64J.js";
+} from "./chunk-QWVFFAFF.js";
 import {
   getPowerShellConfig,
   getShellConfig,
   killTrackedDetachedChildren
-} from "./chunk-WYRO2GZC.js";
+} from "./chunk-F2BIFG4N.js";
 import {
   APP_NAME,
   APP_TITLE,
@@ -278,10 +278,10 @@ import {
   spawnProcessSync,
   stripBom,
   waitForChildProcess
-} from "./chunk-3MI7MSGD.js";
+} from "./chunk-JGRZB36T.js";
 import {
   __name
-} from "./chunk-SHUYVCID.js";
+} from "./chunk-FIOAHQVQ.js";
 
 // pi-dist/pi-coding-agent/index.js
 import {
@@ -834,7 +834,7 @@ function createMcpResourceToolDefinitions(options) {
 __name(createMcpResourceToolDefinitions, "createMcpResourceToolDefinitions");
 
 // pi-dist/pi-coding-agent/extensions/mcp/runtime.lazy.js
-var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-RVA4E6A2.js"), "loadMcpRuntime");
+var loadMcpRuntime = /* @__PURE__ */ __name(() => import("./chunk-F5WWHNNS.js"), "loadMcpRuntime");
 
 // pi-dist/pi-coding-agent/extensions/mcp/ui.js
 import { Container as Container3, Input, SelectList, Spacer as Spacer2, Text as Text3, truncateToWidth, visibleWidth } from "../../../pi-tui.mjs";
@@ -6230,7 +6230,7 @@ var builtInExtensions = [
 ];
 
 // pi-dist/pi-coding-agent/extensions/mcp/cli.lazy.js
-var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-6NXEQ3PS.js"), "loadMcpCommand");
+var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-3M37CNA2.js"), "loadMcpCommand");
 
 // pi-dist/pi-coding-agent/migrations.js
 import chalk4 from "../../../chalk/source/index.js";
@@ -7848,7 +7848,7 @@ import { Container as Container11, Markdown, MouseRegion, Spacer as Spacer10, Te
 
 // pi-dist/pi-coding-agent/modes/interactive/components/markdown-transform.js
 function createMarkdownTransform(messageType, isStreaming, transformers, messageId, timestamp) {
-  return (markdown, availableWidth) => applyMarkdownTransformers(markdown, { messageType, isStreaming, availableWidth, messageId, timestamp }, transformers);
+  return (markdown, availableWidth) => applyMarkdownTransformers(markdown, { messageType, isStreaming: isStreaming(), availableWidth, messageId, timestamp }, transformers);
 }
 __name(createMarkdownTransform, "createMarkdownTransform");
 function applyMarkdownTransformers(markdown, context, transformers) {
@@ -7886,6 +7886,7 @@ var AssistantMessageComponent = class extends Container11 {
   messageId;
   timestamp;
   thinkingVisibilityOverrides = /* @__PURE__ */ new Map();
+  markdownSlots = [];
   constructor(message, hideThinkingBlock = false, markdownTheme = getMarkdownTheme(), hiddenThinkingLabel = "Thinking...", outputPad = 1, markdownTransformers = [], messageId, timestamp) {
     super();
     this.hideThinkingBlock = hideThinkingBlock;
@@ -7922,6 +7923,7 @@ var AssistantMessageComponent = class extends Container11 {
   }
   setOutputPad(padding) {
     this.outputPad = padding;
+    this.markdownSlots = [];
     if (this.lastMessage) {
       this.updateContent(this.lastMessage);
     }
@@ -7939,6 +7941,15 @@ var AssistantMessageComponent = class extends Container11 {
     this.lastMessage = message;
     this.isStreaming = isStreaming;
     this.contentContainer.clear();
+    const previousSlots = this.markdownSlots;
+    this.markdownSlots = [];
+    const markdownBlock = /* @__PURE__ */ __name((kind, text, create) => {
+      const slot = previousSlots[this.markdownSlots.length];
+      const markdown = slot?.kind === kind ? slot.markdown : create();
+      markdown.setText(text);
+      this.markdownSlots.push({ kind, markdown });
+      return markdown;
+    }, "markdownBlock");
     let needsSpacer = true;
     const addVisibleChild = /* @__PURE__ */ __name((child) => {
       if (needsSpacer) {
@@ -7951,9 +7962,10 @@ var AssistantMessageComponent = class extends Container11 {
     for (let i = 0; i < message.content.length; i++) {
       const content = message.content[i];
       if (content.type === "text" && content.text.trim()) {
-        addVisibleChild(new Markdown(content.text.trim(), this.outputPad, 0, this.markdownTheme, void 0, {
-          transform: createMarkdownTransform("assistant", this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp)
-        }));
+        const text = content.text.trim();
+        addVisibleChild(markdownBlock("text", text, () => new Markdown(text, this.outputPad, 0, this.markdownTheme, void 0, {
+          transform: createMarkdownTransform("assistant", () => this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp)
+        })));
       } else if (content.type === "thinking") {
         const thinkingBlocks = [];
         for (; i < message.content.length; i++) {
@@ -7961,9 +7973,9 @@ var AssistantMessageComponent = class extends Container11 {
           if (thinkingContent.type !== "thinking") {
             break;
           }
-          const thinking = thinkingContent.thinking.trim();
-          if (thinking) {
-            thinkingBlocks.push(thinking);
+          const thinking2 = thinkingContent.thinking.trim();
+          if (thinking2) {
+            thinkingBlocks.push(thinking2);
           }
         }
         i--;
@@ -7975,12 +7987,13 @@ var AssistantMessageComponent = class extends Container11 {
         if (hidden && !this.hiddenThinkingLabel.trim()) {
           continue;
         }
-        const thinkingComponent = hidden ? new Text11(theme.italic(theme.fg("thinkingText", this.hiddenThinkingLabel)), this.outputPad, 0) : new Markdown(thinkingBlocks.join("\n\n"), this.outputPad, 0, this.markdownTheme, {
+        const thinking = thinkingBlocks.join("\n\n");
+        const thinkingComponent = hidden ? new Text11(theme.italic(theme.fg("thinkingText", this.hiddenThinkingLabel)), this.outputPad, 0) : markdownBlock("thinking", thinking, () => new Markdown(thinking, this.outputPad, 0, this.markdownTheme, {
           color: /* @__PURE__ */ __name((text) => theme.fg("thinkingText", text), "color"),
           italic: true
         }, {
-          transform: createMarkdownTransform("assistant-thinking", this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp)
-        });
+          transform: createMarkdownTransform("assistant-thinking", () => this.isStreaming, this.markdownTransformers, this.messageId, this.timestamp)
+        }));
         addVisibleChild(new MouseRegion(thinkingComponent, (event) => {
           if (event.type !== "click" || event.button !== "left")
             return void 0;
@@ -8540,7 +8553,7 @@ function playEasterEgg3d(tui, egg) {
   if (tui.hasOverlay())
     return true;
   const screen = tui.getScreenLines();
-  import("./chunk-CC2IOZIE.js").then((module) => module.playEasterEgg3d(tui, screen, egg), () => {
+  import("./chunk-VFDVIQFD.js").then((module) => module.playEasterEgg3d(tui, screen, egg), () => {
   });
   return true;
 }
@@ -12695,7 +12708,7 @@ var UserMessageComponent = class extends Container29 {
     }, {
       preserveOrderedListMarkers: true,
       preserveBackslashEscapes: true,
-      transform: createMarkdownTransform("user", false, this.markdownTransformers, this.messageId, this.timestamp)
+      transform: createMarkdownTransform("user", () => false, this.markdownTransformers, this.messageId, this.timestamp)
     }));
   }
   render(width) {

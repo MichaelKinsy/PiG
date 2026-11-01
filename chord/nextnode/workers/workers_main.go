@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"slices"
 	"sync"
@@ -15,6 +16,7 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
@@ -47,10 +49,23 @@ type WorkerStart struct {
 }
 
 // WorkerLoad is what WorkerPlugins.Load takes besides the host.
+//
+// The plugins of a worker run in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md): Pi's worker host loads them in
+// process, here the worker's Go host is the relay the server's holds pass through, and the host that serves the worker's
+// address, the app's core facets and the plugins' is the NodeHost, the child of the worker's Go host. Load makes it, routes
+// the worker's address kind to its link on the worker's Go host (`Route`, before `Load` of that host: the app's host has
+// no address of its own, which the route would not reach) and loads the Go host.
 type WorkerLoad struct {
 	Kind string
-	// Core is the app's own facets.
-	Core []host.HostFacet
+	// Core is the app's own facets: JavaScript modules whose default export is the facet, loaded into the NodeHost before the
+	// plugins (they import Pi's chord by its package name, `@earendil-works/chord/next`).
+	Core []plugins.CoreFacet
+	// HostKind is the kind of the worker's address, the one the server routes to this worker.
+	HostKind *contracts.HostKind
+	// Principal is who the NodeHost acts as, and how the worker's Go host stamps it; Peer is who the worker's Go host is for
+	// the NodeHost (the server, whose holds it relays).
+	Principal data.Principal
+	Peer      data.Principal
 }
 
 // BusyWatchable is a JSON watchable of numbers: a reference's member, or a source.
@@ -62,14 +77,18 @@ type BusyWatchable interface {
 // WorkerResult is what the app's function returns: extra keep-alive counts (busy while any is nonzero).
 type WorkerResult struct {
 	Busy BusyWatchable
+	// Held is the number of holds the app's own code keeps on the NodeHost's objects (a reference it reads Busy through): the
+	// NodeHost counts them as references like the server's, and they do not keep the worker busy.
+	Held int
 }
 
 // WorkerMainOptions is what WorkerMain takes besides the app's function.
 type WorkerMainOptions struct {
-	// HostPackages is the host packages by specifier: this process's own instances (functions cannot cross IPC).
+	// HostPackages is the host packages by specifier: the module files the NodeHost imports once and the plugins share.
 	HostPackages plugins.HostPackages
-	// Evaluator turns a shipped script into a facet: the plugin runtime's evaluation seam.
-	Evaluator plugins.Evaluator
+	// Node is how the worker's Node subprocess is started (its output goes to this process's own unless OnOutput says
+	// otherwise, as a worker's does).
+	Node plugins.NodeOptions
 	// Redact is what crosses as `fatal` for an error (never the original message unless this returns it).
 	Redact  func(err any) CrossedError
 	OnError func(err any)
@@ -103,6 +122,7 @@ func serve(port processPort, fn func(start WorkerStart, ctx context.Context) (*W
 
 type loadedHost struct {
 	host    host.Host
+	node    *plugins.NodeHost
 	runtime *plugins.PluginRuntime
 }
 
@@ -122,8 +142,10 @@ type worker struct {
 	ready     bool
 	reloading bool
 	busy      BusyWatchable
-	// activity is the watch of the host's activity: its value is the counts as the last delivered frame gave them.
-	activity chord.WatchHandle[delta.JsonValue]
+	// activity is the keep-alive counts of the NodeHost, as it last reported them (NodeOptions.OnActivity).
+	activity host.ActivityCounts
+	// held is the app's own holds on the NodeHost's objects (WorkerResult.Held).
+	held int
 	// idle is the last idle state sent; sent says whether one was.
 	idle     bool
 	idleSent bool
@@ -212,7 +234,15 @@ func (w *worker) runStart(fn func(start WorkerStart, ctx context.Context) (*Work
 	w.lock = lock
 	w.mu.Unlock()
 	parent := &parentLink{inner: link.IpcLink(w.port), started: func() { w.send(FromWorker{Kind: FromWorkerStarted}) }}
-	runtime := plugins.NewPluginRuntime(w.options.Evaluator)
+	node := w.options.Node
+	reportsActivity := node.OnActivity
+	node.OnActivity = func(counts host.ActivityCounts) {
+		w.noteActivity(counts)
+		if reportsActivity != nil {
+			reportsActivity(counts)
+		}
+	}
+	runtime := plugins.NewPluginRuntime(node)
 	var report host.LoadReport
 	loading := &WorkerPlugins{worker: w, message: message, runtime: runtime, report: &report}
 	start := WorkerStart{
@@ -236,6 +266,7 @@ func (w *worker) runStart(fn func(start WorkerStart, ctx context.Context) (*Work
 	w.mu.Lock()
 	if result != nil {
 		w.busy = result.Busy
+		w.held = result.Held
 	}
 	w.mu.Unlock()
 	if err := w.follow(); err != nil {
@@ -271,35 +302,82 @@ type WorkerPlugins struct {
 	report  *host.LoadReport
 }
 
-// Load loads h with the start message's scripts of Kind and Core.
+// nodeHeartbeat is the heartbeat of the NodeHost's link: its host closes a link silent for it, and the link is attached
+// (routed) when the first hold arrives, which may be long after the load. The link is a local socket whose end dies with its
+// process, so the largest timer a Node host takes stands for none.
+var nodeHeartbeat = host.HeartbeatOptions{Ping: new(maxTimer), Close: new(maxTimer)}
+
+const maxTimer = time.Duration(1<<31-1) * time.Millisecond
+
+// Load starts the NodeHost of the worker's address with the start message's scripts of Kind and Core, routes the worker's
+// address kind to its link on h (a host without an address, not loaded yet) and loads h. The report is the NodeHost's. When the
+// NodeHost ends before the worker is told to stop, the worker ends with it: it exits with its exit code, or sends `fatal` with
+// the exception it died of. Its close is a closer of the worker.
 func (p *WorkerPlugins) Load(h host.Host, options WorkerLoad, ctx context.Context) (host.LoadReport, error) {
-	p.worker.mu.Lock()
-	p.worker.loaded = &loadedHost{host: h, runtime: p.runtime}
-	p.worker.mu.Unlock()
-	report, err := p.runtime.Load(h, plugins.RuntimeLoad{Kind: options.Kind, Core: options.Core, Scripts: p.message.Scripts, Modules: p.worker.options.HostPackages}, ctx)
+	address := p.message.Address
+	node, report, err := p.runtime.Load(plugins.RuntimeLoad{
+		Kind: options.Kind, Core: options.Core, Scripts: p.message.Scripts, Modules: p.worker.options.HostPackages,
+		Address: &address, Principal: options.Principal, Peer: options.Peer, Heartbeat: &nodeHeartbeat,
+	}, ctx)
 	if err != nil {
+		return host.LoadReport{}, err
+	}
+	p.worker.mu.Lock()
+	p.worker.loaded = &loadedHost{host: h, node: node, runtime: p.runtime}
+	p.worker.closers = append(p.worker.closers, func(ctx context.Context) error { return node.Close(ctx) })
+	p.worker.mu.Unlock()
+	go p.worker.watchNode(node)
+	if _, err := h.Route(options.HostKind, host.RouteOptions{
+		// The server authorized the hold before it reached this worker.
+		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
+		Resolve: func(contracts.Address, context.Context) (host.ResolvedLink, error) {
+			return host.ResolvedLink{Link: node.Link(), Principal: options.Principal, Trusted: true}, nil
+		},
+	}, ctx); err != nil {
+		return host.LoadReport{}, err
+	}
+	if _, err := h.Load(nil, ctx); err != nil {
 		return host.LoadReport{}, err
 	}
 	*p.report = report
 	return report, nil
 }
 
-// follow follows the host's activity and the app's busy: each idle flip is reported. The host's activity is read through its
-// watch, which holds the counts as the last frame gave them: the counts themselves belong to the host's sections.
+// watchNode ends the worker with its NodeHost: a process that ended before the worker was told to stop is the worker's own
+// crash (its exit code), and an exception it died of is the worker's `fatal`.
+func (w *worker) watchNode(node *plugins.NodeHost) {
+	<-node.Exited()
+	if w.isStopping() {
+		return
+	}
+	exit, ok := errors.AsType[*plugins.NodeExit](node.Err())
+	if !ok {
+		exitProcess(1)
+	}
+	if exit.Fatal != nil {
+		w.fatal(exit.Fatal)
+		return
+	}
+	code := 1
+	if exitErr, ok := errors.AsType[*exec.ExitError](exit.Err); ok && exitErr.ExitCode() > 0 {
+		code = exitErr.ExitCode()
+	}
+	exitProcess(code)
+}
+
+// noteActivity is the NodeHost's keep-alive counts arriving: an idle flip is reported.
+func (w *worker) noteActivity(counts host.ActivityCounts) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.activity = counts
+	w.flipLocked()
+}
+
+// follow follows the app's busy: each idle flip is reported. The NodeHost's activity is followed by noteActivity.
 func (w *worker) follow() error {
 	w.mu.Lock()
-	loaded, busy := w.loaded, w.busy
+	busy := w.busy
 	w.mu.Unlock()
-	if loaded != nil {
-		watch, err := loaded.host.Activity().Watch(w.context)
-		if err != nil {
-			return err
-		}
-		w.mu.Lock()
-		w.activity = watch
-		w.mu.Unlock()
-		w.flipOn(watch)
-	}
 	if busy != nil {
 		watch, err := busy.Watch(w.context)
 		if err != nil {
@@ -324,12 +402,8 @@ func (w *worker) isIdleLocked() bool {
 	if w.reloading {
 		return false
 	}
-	if w.activity != nil {
-		if activity, ok := w.activity.Value().(*delta.JsonObject); ok {
-			if number(activity.Value("references"))+number(activity.Value("jobs"))+number(activity.Value("lingering")) > 0 {
-				return false
-			}
-		}
+	if w.activity.References-w.held+w.activity.Jobs+w.activity.Lingering > 0 {
+		return false
 	}
 	if w.busy != nil {
 		if value, err := w.busy.Value(); err == nil {
@@ -424,7 +498,7 @@ func (w *worker) applyReloads() {
 		var report host.ReloadReport
 		err := w.safely(func() error {
 			var reloadErr error
-			report, reloadErr = loaded.runtime.Reload(loaded.host, scripts, w.context)
+			report, reloadErr = loaded.runtime.Reload(loaded.node, scripts, w.context)
 			return reloadErr
 		})
 		if err != nil {

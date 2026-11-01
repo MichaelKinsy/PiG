@@ -107,8 +107,20 @@ func TestProcessLockForgetsAWaiterWhoseConnectionClosedBeforeItsOwnRelease(t *te
 	}
 }
 
+// shortLockDir is `mkdtemp(join(tmpdir(), "chord-lock-file-"))` of lock.test.ts: a directory whose socket path fits in sun_path
+// (t.TempDir() carries the test's name, which a macOS TMPDIR makes too long for a socket path).
+func shortLockDir(t *testing.T) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "chord-lock-file-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	return dir
+}
+
 func TestSocketFileLocksFailClosedOnAStaleLockFileNamingItTwoTakersNeverBothTakeItOver(t *testing.T) {
-	address := filepath.Join(t.TempDir(), "lock.sock")
+	address := filepath.Join(shortLockDir(t), "lock.sock")
 	// What a crashed holder leaves: a path nobody accepts on.
 	if err := os.WriteFile(address, nil, 0o600); err != nil {
 		t.Fatal(err)
@@ -131,7 +143,7 @@ func TestSocketFileLocksFailClosedOnAStaleLockFileNamingItTwoTakersNeverBothTake
 }
 
 func TestSocketFileLocksAreTakenWaitedForAndReleasedLikeTheOthers(t *testing.T) {
-	address := filepath.Join(t.TempDir(), "lock.sock")
+	address := filepath.Join(shortLockDir(t), "lock.sock")
 	first, err := lockAt(lockLocation{kind: lockFile, address: address}, chordctx.Background())
 	if err != nil {
 		t.Fatal(err)

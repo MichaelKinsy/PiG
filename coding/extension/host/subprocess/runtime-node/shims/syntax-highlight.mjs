@@ -11,6 +11,10 @@ export function supportsLanguage(name) {
   return syntaxHighlight().supportsLanguage(name);
 }
 
+export function getHighlightLanguageCount() {
+  return syntaxHighlight().getHighlightLanguageCount();
+}
+
 // pig additive (D20): highlight.js/lib/index.js requires and registers its ~190 grammars in one synchronous pass: 125 ms on an idle machine and more than the five-second renderer inactivity lease (D56) on a starved one. Pi runs that pass in a process that serves nothing else; here the host's requests (a Markdown transform, a render, a mouse event) queue behind it on this thread and the host abandons them while the extension is healthy. Every grammar module is therefore loaded on its own event-loop turn first, in the order of lib/index.js, which stays the one place that registers them: its require calls then hit the module cache and registration (the only step that changes what highlights) remains one pass, as in Pi. A request is never held behind more than one grammar module.
 // This list is lib/index.js's require order; TestNodeHighlightLanguageListMatchesIndex keeps them equal. Literal specifiers keep the grammars visible to a bundling host.
 const languageModules = [
