@@ -12,57 +12,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
-// testdata/unicode-classes.json holds, for every character class of Pi's idna/pattern/pattern.ts, the code point ranges the Pi regular expression matches under Node 24 (ICU Unicode 17), and the line count and SHA-256 of the NFC checks. It was generated once from Pi commit 6d4b7443 with the script below (`node gen-unicode.mjs > unicode-classes.json`). The test compares each class over every code point from 0 to U+10FFFF, and the NFC lines, with this package's Unicode tables.
-//
-// import { createHash } from "node:crypto";
-// import * as Pattern from "/home/kinsy/nschema-oracle/schema/src/formats/typebox/idna/pattern/pattern.ts";
-//
-// const predicates = {
-// 	permittedCategory: Pattern.RE_PERMITTED_CATEGORY,
-// 	combiningMark: Pattern.RE_COMBINING_MARK,
-// 	letter: Pattern.RE_LETTER,
-// 	markNonspacing: Pattern.RE_MARK_NONSPACING,
-// 	markSpacingCombining: Pattern.RE_MARK_SPACING_COMBINING,
-// 	markEnclosing: Pattern.RE_MARK_ENCLOSING,
-// 	numberDecimal: Pattern.RE_NUMBER_DECIMAL,
-// 	scriptGreek: Pattern.RE_SCRIPT_GREEK,
-// 	scriptHebrew: Pattern.RE_SCRIPT_HEBREW,
-// 	scriptJapanese: Pattern.RE_SCRIPT_JAPANESE,
-// 	scriptArabicLetter: Pattern.RE_SCRIPT_ARABIC_LETTER,
-// 	europeanNumber: Pattern.RE_EUROPEAN_NUMBER,
-// 	arabicIndicDigit: Pattern.RE_ARABIC_INDIC_DIGIT,
-// 	virama: Pattern.RE_VIRAMA,
-// 	rfc5892Disallowed: Pattern.RE_RFC5892_DISALLOWED,
-// 	contextoExceptions: Pattern.RE_CONTEXTO_EXCEPTIONS,
-// 	pvalidExceptions: Pattern.RE_PVALID_EXCEPTIONS,
-// };
-// const ranges = {};
-// for (const [name, regexp] of Object.entries(predicates)) {
-// 	const list = [];
-// 	let start = -1;
-// 	for (let cp = 0; cp <= 0x110000; cp++) {
-// 		const inSet = cp <= 0x10ffff && regexp.test(String.fromCodePoint(cp));
-// 		if (inSet && start < 0) start = cp;
-// 		if (!inSet && start >= 0) {
-// 			list.push([start, cp - 1]);
-// 			start = -1;
-// 		}
-// 	}
-// 	ranges[name] = list;
-// }
-// const hash = createHash("sha256");
-// let lines = 0;
-// const hex = (text) => [...text].map((char) => char.codePointAt(0).toString(16)).join(",");
-// for (let cp = 0; cp <= 0x10ffff; cp++) {
-// 	if (cp >= 0xd800 && cp <= 0xdfff) continue;
-// 	const text = String.fromCodePoint(cp);
-// 	const nfc = text.normalize("NFC");
-// 	const viaNfd = text.normalize("NFD").normalize("NFC");
-// 	if (nfc === text && viaNfd === text) continue;
-// 	hash.update(`${cp.toString(16)} ${hex(nfc)} ${hex(viaNfd)}\n`);
-// 	lines++;
-// }
-// process.stdout.write(JSON.stringify({ ranges, nfc: { lines, sha256: hash.digest("hex") } }));
+// testdata/unicode-classes.json holds, for every character class of Pi's idna/pattern/pattern.ts, the code point ranges the Pi regular expression matches under Node 24 (ICU Unicode 17), and the line count and SHA-256 of the NFC checks. testdata/gen/gen-classes.mjs generates it from a Pi checkout (`node gen-classes.mjs <pi>/packages/schema unicode-classes.json`). The test compares each class over every code point from 0 to U+10FFFF, and the NFC lines, with this package's Unicode tables.
 
 type classGolden struct {
 	Ranges map[string][][2]rune `json:"ranges"`

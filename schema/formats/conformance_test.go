@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/schema/formats"
 )
 
@@ -69,7 +70,7 @@ func TestConformance(t *testing.T) {
 						continue
 					}
 					var value string
-					if err := json.Unmarshal(test.Data, &value); err != nil {
+					if err := jsstring.UnmarshalKeepingSurrogates(test.Data, &value); err != nil {
 						t.Fatalf("%s: %s: %v", file, test.Description, err)
 					}
 					asserted++

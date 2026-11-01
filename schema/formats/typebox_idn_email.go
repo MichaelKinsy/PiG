@@ -33,6 +33,7 @@ package formats
 import (
 	"golang.org/x/text/unicode/norm"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
@@ -43,4 +44,6 @@ var idnEmailRE = lazyregexp.New(`(?i)^(?:[A-Za-z0-9!#$%&'*+/=?^_` + "`" + `{|}~\
 
 // IsIdnEmail returns true if the value is an IdnEmail.
 // Specification: https://datatracker.ietf.org/doc/html/rfc4952.
-func IsIdnEmail(value string) bool { return idnEmailRE.MatchString(norm.NFC.String(value)) }
+func IsIdnEmail(value string) bool {
+	return idnEmailRE.MatchString(norm.NFC.String(jsstring.Canonical(value)))
+}

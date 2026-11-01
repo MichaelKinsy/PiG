@@ -51,30 +51,8 @@ func isLineTerminator(r rune) bool { return r == '\n' || r == '\r' || r == 0x202
 
 func isLineTerminatorUnit(u uint16) bool { return isLineTerminator(rune(u)) }
 
-// ReAscii is /^\p{ASCII}*$/u.
-func ReAscii(value string) bool {
-	for _, r := range value {
-		if r > 0x7f {
-			return false
-		}
-	}
-	return true
-}
-
 // ReNonAscii is /[^\p{ASCII}]/u on one code point.
 func ReNonAscii(r rune) bool { return r > 0x7f }
-
-// ReHighSurrogate is /[\u{d800}-\u{dbff}]/u on one code point.
-func ReHighSurrogate(r rune) bool { return r >= 0xd800 && r <= 0xdbff }
-
-// ReRegionalIndicator is /[\u{1f1e6}-\u{1f1ff}]/u on one code point.
-func ReRegionalIndicator(r rune) bool { return r >= 0x1f1e6 && r <= 0x1f1ff }
-
-// ReVariationSelector is /[\u{fe00}-\u{fe0f}]/u on one code point.
-func ReVariationSelector(r rune) bool { return r >= 0xfe00 && r <= 0xfe0f }
-
-// ReZeroWidthJoiner is /\u{200d}/u on one code point.
-func ReZeroWidthJoiner(r rune) bool { return r == 0x200d }
 
 // ReAsciiDigit is /[0-9]/ on one code point.
 func ReAsciiDigit(r rune) bool { return r >= '0' && r <= '9' }

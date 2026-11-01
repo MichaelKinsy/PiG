@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"golang.org/x/text/unicode/norm"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 func isIdnHostnameLabel(value string) bool {
@@ -35,11 +37,12 @@ func normalizeHostname(value string) string {
 
 // IsIdnHostname reports whether value is a valid internationalized (IDN) hostname.
 func IsIdnHostname(value string) bool {
-	if len(value) == 0 || strings.Contains(value, " ") {
+	value, ok := wellFormed(value)
+	if !ok || len(value) == 0 || strings.Contains(value, " ") {
 		return false
 	}
 	normalized := normalizeHostname(value)
-	if utf16Length(normalized) > 253 {
+	if jsstring.Length(normalized) > 253 {
 		return false
 	}
 	labels := strings.Split(normalized, ".")

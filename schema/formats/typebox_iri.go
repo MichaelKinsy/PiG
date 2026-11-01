@@ -87,7 +87,7 @@ func IsIri(value string) bool {
 	if hasInvalidPercentEncoding(value) {
 		return false
 	}
-	// 3. Delegate to the URL parser, patching the IPvFuture edge case beforehand.
-	_, err := nodeurl.ParseURL(narrowIpvFuture(value))
+	// 3. Delegate to the URL parser, patching the IPvFuture edge case beforehand. URL.canParse converts its argument to a USVString, so a lone surrogate reaches the parser as U+FFFD.
+	_, err := nodeurl.ParseURL(jsstring.StreamText(narrowIpvFuture(value)))
 	return err == nil
 }

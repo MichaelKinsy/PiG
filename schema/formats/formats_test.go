@@ -41,3 +41,20 @@ func TestFormatsReturnsFreshMap(t *testing.T) {
 		t.Fatal("Formats() returned the same map twice")
 	}
 }
+
+// TestSplitSurrogatePairs checks that a surrogate pair written as two WTF-8 halves, which is the same JavaScript string as the pair's UTF-8 spelling, gets the same result in every format.
+func TestSplitSurrogatePairs(t *testing.T) {
+	const pair, split = "\U00010000", "\xed\xa0\x80\xed\xb0\x80"
+	samples := []string{"a@%s.com", "%s@b.com", "%s.com", "http://a/%s", "http://%s.com/", "/%s", "%s", "a/%s", "{a}%s", "/%s~0", "xn--%s"}
+	for name, check := range formats.Formats() {
+		if name == "regex" {
+			continue
+		}
+		for _, sample := range samples {
+			want := check(fmt.Sprintf(sample, pair))
+			if got := check(fmt.Sprintf(sample, split)); got != want {
+				t.Errorf("%s(%q) = %v, but %q is %v", name, fmt.Sprintf(sample, split), got, fmt.Sprintf(sample, pair), want)
+			}
+		}
+	}
+}

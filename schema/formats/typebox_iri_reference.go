@@ -30,7 +30,10 @@ THE SOFTWARE.
 
 package formats
 
-import "github.com/MichaelKinsy/PiG/internal/nodeurl"
+import (
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
+)
 
 // hasInvalidIriReferenceChars is /[\x00-\x20\x7F\\]|%(?![0-9a-fA-F]{2})/: an unencoded space (0x20), backslash, control character (0x00-0x1F, 0x7F), or malformed percent-encoding.
 func hasInvalidIriReferenceChars(value string) bool {
@@ -66,6 +69,7 @@ func IsIriReference(value string) bool {
 	if hasInvalidIriReferenceChars(value) || hasMalformedScheme(value) {
 		return false
 	}
-	_, err := nodeurl.ResolveURL(value, "http://example.com")
+	// URL.canParse converts its argument to a USVString, so a lone surrogate reaches the parser as U+FFFD.
+	_, err := nodeurl.ResolveURL(jsstring.StreamText(value), "http://example.com")
 	return err == nil
 }

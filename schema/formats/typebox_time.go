@@ -52,9 +52,9 @@ func IsTimeWithZone(value string, strictTimeZone bool) bool {
 		return false
 	}
 	hr, _ := strconv.Atoi(matches[1])
-	min, _ := strconv.Atoi(matches[2])
+	minute, _ := strconv.Atoi(matches[2])
 	sec, _ := strconv.Atoi(matches[3])
-	if hr > 23 || min > 59 || sec > 60 {
+	if hr > 23 || minute > 59 || sec > 60 {
 		return false
 	}
 	tzH, _ := strconv.Atoi(matches[6])
@@ -70,6 +70,6 @@ func IsTimeWithZone(value string, strictTimeZone bool) bool {
 	if matches[5] == "-" {
 		tzSign = -1
 	}
-	totalUtcMin := hr*60 + min - tzSign*(tzH*60+tzM)
+	totalUtcMin := hr*60 + minute - tzSign*(tzH*60+tzM)
 	return ((totalUtcMin%1440)+1440)%1440 == 1439
 }

@@ -170,9 +170,7 @@ func digitToChar(digit int) byte {
 	return byte(digit - 26 + 0x30)
 }
 
-// Encode encodes input into its punycode payload (the part after "xn--").
-func Encode(input string) string { return encode([]rune(input)) }
-
+// encode returns the punycode payload (the part after "xn--") of codePoints.
 func encode(codePoints []rune) string {
 	var result []byte
 	basicLength := 0
