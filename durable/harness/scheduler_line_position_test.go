@@ -48,16 +48,16 @@ func TestReservationPassTakesItsLinePositionInThePublishingTurn(t *testing.T) {
 			}
 			// The scheduler takes its line position once the host listeners ran: hold its own goroutine back, start the second
 			// creation, and return once it is queued, ahead of the pass.
-			jobs := impl.LineJobs()
+			entered := make(chan struct{})
 			go func() {
 				_, err := durable.Commit(testContext, opened.root, func(tx durable.Tx) (durable.TaskId, error) {
+					close(entered)
 					return tx.CreateTaskErased(second.Erased(), nil, durable.TaskOptions{Ownership: conversationOwned})
 				})
 				secondErr <- err
 			}()
-			for impl.LineJobs() <= jobs {
-				flush()
-			}
+			// Its callback runs on the line: the creation holds its position ahead of the pass.
+			<-entered
 		}})
 		opened.harness.Resume()
 		// Resume's own pass has ended, so the creation below starts a pass of its own.
