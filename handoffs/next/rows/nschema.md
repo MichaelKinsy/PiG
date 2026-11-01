@@ -131,3 +131,42 @@ Pi exports to Go: `compile` -> `Compile(schema, CompileOptions) (*Validator, err
 8. **Pi's throws become errors at the same operation.** `Check` and `Errors` return an error exactly where Pi's `check` and `errors` throw, so no panic leaves the package for a schema `Compile` accepted: a `$dynamicRef` target compiled on first use that is malformed or unresolved (`Check`: `{"$id":"https://ex/root","$ref":"list","$defs":{"bad":{"$dynamicAnchor":"items","$ref":"#/nope"},...}}` gives `Unresolved $ref #/nope in https://ex/root`), and the explanation reading a subschema the check never compiled (`{"if":5,"minimum":3}`: `Errors(1)` gives `A schema must be an object or a boolean, got 5`). Both are golden cases generated from Pi. A failed lazy compile resets the validator's compile state. Owner call: the error returns make `Check` unusable as a bare predicate (`filter(check)`); the alternative is a `bool`-only `Check` that moves these two throws into `Compile`, which Pi does not do.
 9. **Strings.** A lone UTF-16 unit is WTF-8 in a Go string (the `internal/jsstring` convention); lengths, the `.` of a pattern and messages treat it as JavaScript does (golden cases from Node 24). The code point count mirrors Pi's `codePoints` exactly, including its quirk: any high surrogate unit consumes the next unit (`"\uD800a"` counts 1; `maxLength: 1` accepts `"\uD800\uD800"`). Parity kept; flag as an upstream bug if the owner wants it reported.
 10. **Review follow-ups** (`handoffs/next/reviews/nschema.md` at b8f2f13183): B1, B2, S1, S2, S3 (benchmarks: 0 allocs/op on every speed case; before: nested object 1 alloc/144 B, MCP create issue 2/72 B, MCP edit file 1/48 B, MCP create page 2/192 B), S4, S5 (`Compile(schema, options)`), N1-N3, N5-N10 done; N4 in the package doc; N11 (`ecmaregex` to `internal/`) left to the owner.
+
+## DRAFT divergence text for the owner (not recorded in docs/parity/DIVERGENCES.md; no `D<N>` assigned)
+
+**Scope:** `schema/internal/ecmaregex`, the ECMAScript regular-expression engine under `pattern` and `patternProperties` (Pi: `packages/schema/src/shared.ts`) and the `regex` format (`formats/typebox/regex.ts`). PiG translates a pattern to `dlclark/regexp2`; Pi runs V8. Oracle: Node 24.22.1 (`.node-version`). `TestKnownGaps` pins each row below on both sides, so a change of either side fails the test. Every other row of the 3,821-pattern golden agrees with V8.
+
+**Observable difference.** A schema whose `pattern` or `patternProperties` key uses a case-insensitive modifier group `(?i:...)` (ES2025; Node 22 rejects it, so Pi on Node 22 throws at compile) with a backreference, or one of the three Annex B patterns below, can accept or reject a string that Pi accepts or rejects. No pattern outside modifier groups and no u-mode pattern without `(?i:)` differs.
+
+**1. Backreference inside a case-insensitive modifier group.** V8 compares the captured text with the backreference by ECMAScript Canonicalize; regexp2 compares with `unicode.ToLower`. A translation cannot change the comparison, because it runs inside regexp2.
+
+| mode | pattern | input | V8 | PiG |
+|---|---|---|---|---|
+| u | `^(?i:(\w)\1)$` | `"s\u017f"` | true | false |
+| u | `^(?i:(s)\1)$` | `"s\u017f"` | true | false |
+| u | `^(?i:(\u017f)\1)$` | `"s\u017f"` | true | false |
+| u, annexB | `^(?i:(\u03c3)\1)$` | `"\u03c3\u03c2"` | true | false |
+| u, annexB | `^(?i:(\u03c2)\1)$` | `"\u03c2\u03c3"` | true | false |
+| u, annexB | `^(?i:(.)\1)$` | `"\u03c3\u03c2"`, `"\u03c2\u03c3"` (and `"s\u017f"` in u) | true | false |
+| u, annexB | `^(?i:(\w)\1)$` | `"i\u0130"` | false | true |
+| u, annexB | `^(?i:(i)\1)$` | `"i\u0130"` | false | true |
+| u, annexB | `^(?i:(\u0130)\1)$` | `"\u0130i"` | false | true |
+| u, annexB | `^(?i:(.)\1)$` | `"i\u0130"`, `"\u0130i"` | false | true |
+| annexB | `^(?i:(\w)\1)$` | `"k\u212a"` | false | true |
+| annexB | `^(?i:(k)\1)$` | `"k\u212a"` | false | true |
+| annexB | `^(?i:(\u212a)\1)$` | `"\u212ak"` | false | true |
+| annexB | `^(?i:(.)\1)$` | `"k\u212a"`, `"\u212ak"` | false | true |
+
+**2. Three Annex B patterns with no deterministic V8 rule.** The author read V8's regexp source and found no rule that explains these results.
+
+| mode | pattern | input | V8 | PiG |
+|---|---|---|---|---|
+| annexB | `(?i:[\n\p{Lu}\x62]\|[^a-c😀x-z])\W\u0061` | `"A\u03c3a\u00b5"` | true | false |
+| annexB | `(?im-s:(?<n1>(?:)()\s{\|\u212a[\n\0K]()?)(?:()))` | `"\u212ak"` | false | true |
+| annexB | `(?ims:(?m:(?=\aΩ\c){,2}\n)(?<n1>\b(?=xx??)\d)\|\/(\w)[aA]\|[\u0061a-c\cA])+[^\ude00]` | `"AB"` | false | true |
+
+These need `(?i:...)` with Annex B syntax (a lone `{`, `\a`, `\c`, `\ude00`); they only arise when the u-mode compile of the same source fails.
+
+**3. One-byte subject storage.** V8 decides some modifier-group results by whether the subject string is stored one byte per unit. PiG uses "every unit is <= U+00FF". A subject V8 holds as two-byte although it has only Latin-1 units (for example one built from a wider string) can get the other answer: `(?i-:[\-c\D]?\u212a{2})` on `"kK"` gave both results in one V8 run depending on how the subject was built. There is no PiG result to compare, because the V8 result is not a function of the string value.
+
+**Proposed disposition.** Record one numbered divergence for `schema/internal/ecmaregex`: "`(?i:...)` backreferences compare by simple lowercase, not by Canonicalize; three contrived Annex B patterns and one-byte-storage-dependent results differ". Remove-when: regexp2 gains Canonicalize-based case-insensitive backreference comparison, or PiG gets its own backtracking engine for the ECMAScript grammar. Source markers: `// pig divergence (D<N>): ...` at the case-insensitive backreference translation in `schema/internal/ecmaregex/emit.go` and `casefold.go`. Parity coverage: `TestKnownGaps` (`schema/internal/ecmaregex/golden_test.go`) plus the golden replay. Alternative: leave undocumented as ordinary translation limits, as the ledger does for the Unicode property tables; the owner decides.
