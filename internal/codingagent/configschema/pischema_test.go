@@ -12,7 +12,7 @@ import (
 func compactText(s *Schema) string {
 	text := schemaText(s)
 	var out strings.Builder
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		out.WriteString(strings.TrimSpace(line))
 	}
 	return out.String()
