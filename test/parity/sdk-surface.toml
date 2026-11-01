@@ -1231,6 +1231,16 @@ node = "read:payload.context"
 wire = "subprocess.RenderToolContext.outputPad"
 
 [[row]]
+key = "tool render context.keyText"
+node = "read:payload.context"
+rust = "ToolRenderContext::key_text"
+
+[[row]]
+key = "tool render context.keyHint"
+node = "read:payload.context"
+rust = "ToolRenderContext::key_hint"
+
+[[row]]
 key = "tool renderResult options.expanded"
 node = "read:payload.options"
 python = "Extension.tool_renderers(render_result)"
@@ -1670,6 +1680,32 @@ node = "read:payload.options"
 python = "Extension.entry_renderer"
 lisp = "pig:entry-renderer|pig:entry-renderer-p"
 wire = "literal:expanded"
+
+[[row]]
+key = "message renderer options.keyText"
+node = "read:payload.options"
+rust = "MessageRenderOptions::key_text"
+lisp = "pig:message-render-options-key-text"
+
+[[row]]
+key = "message renderer options.keyHint"
+node = "read:payload.options"
+rust = "MessageRenderOptions::key_hint"
+lisp = "pig:message-render-options-key-hint"
+
+[[row]]
+key = "entry renderer options.keyText"
+node = "read:payload.options"
+rust = "EntryRenderOptions::key_text"
+python = "MessageRenderOptions.key_text"
+lisp = "pig:entry-render-options-key-text"
+
+[[row]]
+key = "entry renderer options.keyHint"
+node = "read:payload.options"
+rust = "EntryRenderOptions::key_hint"
+python = "MessageRenderOptions.key_hint"
+lisp = "pig:entry-render-options-key-hint"
 
 # ── PiG additive: component kit (D107) ─────────────────────────────────────
 #

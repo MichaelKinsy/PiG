@@ -919,6 +919,22 @@
       ]
     },
     {
+      "key": "schema",
+      "name": "@earendil-works/pi-schema",
+      "version": "1.4.0",
+      "origin": "source",
+      "entrypoints": [
+        {
+          "subpath": ".",
+          "file": "packages/schema/src/index.ts"
+        },
+        {
+          "subpath": "./formats",
+          "file": "packages/schema/src/formats/index.ts"
+        }
+      ]
+    },
+    {
       "key": "telemetry",
       "name": "@earendil-works/pi-telemetry",
       "version": "1.4.0",
@@ -456402,6 +456418,2673 @@
         "path": "node_modules/@earendil-works/pi-mcp/dist/transports/in-memory.d.ts",
         "line": 8,
         "column": 5
+      }
+    },
+    {
+      "id": "pkg:schema/.#Annotations",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Annotations",
+      "kind": "interface",
+      "shape": {
+        "aliasTarget": "Annotations",
+        "type": "Annotations<T>",
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "",
+            "default": "unknown"
+          }
+        ],
+        "calls": [],
+        "constructs": [],
+        "properties": [
+          {
+            "name": "default",
+            "optional": true,
+            "readonly": true,
+            "type": "T | undefined",
+            "calls": []
+          },
+          {
+            "name": "deprecated",
+            "optional": true,
+            "readonly": true,
+            "type": "boolean | undefined",
+            "calls": []
+          },
+          {
+            "name": "description",
+            "optional": true,
+            "readonly": true,
+            "type": "string | undefined",
+            "calls": []
+          },
+          {
+            "name": "examples",
+            "optional": true,
+            "readonly": true,
+            "type": "readonly T[] | undefined",
+            "calls": []
+          },
+          {
+            "name": "title",
+            "optional": true,
+            "readonly": true,
+            "type": "string | undefined",
+            "calls": []
+          }
+        ],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:b6818a52fb735cb4394e0432b6a01251ed04c3c8363dcbed19cef525e5b62b63",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 15,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#Annotations::property:default",
+      "parentId": "pkg:schema/.#Annotations",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Annotations.default",
+      "kind": "property",
+      "shape": {
+        "name": "default",
+        "optional": true,
+        "readonly": true,
+        "type": "T | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:c32551b1d335ef8da55d4c72f3b7412c237a6db965586b9253587eac2c20cda7",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 21,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#Annotations::property:deprecated",
+      "parentId": "pkg:schema/.#Annotations",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Annotations.deprecated",
+      "kind": "property",
+      "shape": {
+        "name": "deprecated",
+        "optional": true,
+        "readonly": true,
+        "type": "boolean | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:6e10044db2aa43c5a5985fbd773519c6009dc32260a664f36a0ac3603dce6755",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 19,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#Annotations::property:description",
+      "parentId": "pkg:schema/.#Annotations",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Annotations.description",
+      "kind": "property",
+      "shape": {
+        "name": "description",
+        "optional": true,
+        "readonly": true,
+        "type": "string | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:471da33e85ea5fa0db9508e5860dd7658ec913a10a6fdc1b4102c62736dc0455",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 17,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#Annotations::property:examples",
+      "parentId": "pkg:schema/.#Annotations",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Annotations.examples",
+      "kind": "property",
+      "shape": {
+        "name": "examples",
+        "optional": true,
+        "readonly": true,
+        "type": "readonly T[] | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:abe46bf81c48e03614c174f300c5164fb35fe3e0f97c5150aff134c5ee150bc3",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 18,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#Annotations::property:title",
+      "parentId": "pkg:schema/.#Annotations",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Annotations.title",
+      "kind": "property",
+      "shape": {
+        "name": "title",
+        "optional": true,
+        "readonly": true,
+        "type": "string | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:7457aaadf819760feaff7b9513481be79598cd4250d97392eb177a91191eeba1",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 16,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#arr",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "arr",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "arr",
+        "type": "<T>(items: Schema<T>, options?: Annotations<T[]> & { readonly minItems?: number; readonly maxItems?: number; readonly uniqueItems?: boolean; }) => Schema<T[]>",
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "",
+            "default": ""
+          }
+        ],
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "T",
+                "constraint": "",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "items",
+                "type": "Schema<T>",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "options",
+                "type": "Annotations<T[]> & { readonly minItems?: number; readonly maxItems?: number; readonly uniqueItems?: boolean; }",
+                "optional": true,
+                "rest": false
+              }
+            ],
+            "returns": "Schema<T[]>"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:994b0897319e425dc1a10c0163654ce13cc1a5ac979e1537a7e49b87f4352e9f",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 104,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#arr::call:0",
+      "parentId": "pkg:schema/.#arr",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "arr call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "items",
+            "type": "Schema<T>",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "options",
+            "type": "Annotations<T[]> & { readonly minItems?: number; readonly maxItems?: number; readonly uniqueItems?: boolean; }",
+            "optional": true,
+            "rest": false
+          }
+        ],
+        "returns": "Schema<T[]>"
+      },
+      "shapeHash": "sha256:0ada0d5e8933cea3084ec27a4107d259ebfe04b0b0e55dae1d1246d6584c5467",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 104,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#bool",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "bool",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "bool",
+        "type": "(options?: Annotations<boolean>) => Schema<boolean>",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "options",
+                "type": "Annotations<boolean>",
+                "optional": true,
+                "rest": false
+              }
+            ],
+            "returns": "Schema<boolean>"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:89a9993bbb07d88b0bcda1473f84041dedf1f49ce7a299a23ed4a37e812aa34a",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 57,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#bool::call:0",
+      "parentId": "pkg:schema/.#bool",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "bool call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "options",
+            "type": "Annotations<boolean>",
+            "optional": true,
+            "rest": false
+          }
+        ],
+        "returns": "Schema<boolean>"
+      },
+      "shapeHash": "sha256:889c0ba0e9f6f5fa2a77cead93204b4e23e1c3db3bb89d56c454f135f7fc0c99",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 57,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#bytes",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "bytes",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "bytes",
+        "type": "(options?: Annotations<Uint8Array> & LengthBounds) => Schema<Uint8Array>",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "options",
+                "type": "Annotations<Uint8Array<ArrayBufferLike>> & LengthBounds",
+                "optional": true,
+                "rest": false
+              }
+            ],
+            "returns": "Schema<Uint8Array<ArrayBufferLike>>"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:52d86948cde740f8dc0c312bb49424ecdad054338603656431e7fab7d0593cd7",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 129,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#bytes::call:0",
+      "parentId": "pkg:schema/.#bytes",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "bytes call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "options",
+            "type": "Annotations<Uint8Array<ArrayBufferLike>> & LengthBounds",
+            "optional": true,
+            "rest": false
+          }
+        ],
+        "returns": "Schema<Uint8Array<ArrayBufferLike>>"
+      },
+      "shapeHash": "sha256:50a5b673506b84bd8829fe036676c1a05564dbb6ed0a366f8f53f046418c00ba",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 129,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#Check",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Check",
+      "kind": "type-alias",
+      "shape": {
+        "aliasTarget": "Check",
+        "type": "Check",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "value",
+                "type": "unknown",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "boolean"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:778de1c9b829b07ff52e4dba47655b3d1a25ae6b1d4d0d4fdee4c5d7282d585a",
+      "source": {
+        "path": "packages/schema/src/types.ts",
+        "line": 36,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#Check::call:0",
+      "parentId": "pkg:schema/.#Check",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Check call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "value",
+            "type": "unknown",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "boolean"
+      },
+      "shapeHash": "sha256:b1db74ef5cfcde9ed82dfec39d1b8832807652341d3bcb5ed7fcb14dc2af9011",
+      "source": {
+        "path": "packages/schema/src/types.ts",
+        "line": 36,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#compile",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "compile",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "compile",
+        "type": "<S extends JsonSchema>(schema: S, options?: CompileOptions) => Validator<Static<S>>",
+        "typeParameters": [
+          {
+            "name": "S",
+            "constraint": "JsonSchema",
+            "default": ""
+          }
+        ],
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "S",
+                "constraint": "JsonSchema",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "schema",
+                "type": "S",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "options",
+                "type": "CompileOptions",
+                "optional": true,
+                "rest": false
+              }
+            ],
+            "returns": "Validator<Static<S>>"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:ff70f91173dcf76d57211be0d166fca597949459dc2a9576d7a57be4a08883ac",
+      "source": {
+        "path": "packages/schema/src/validator.ts",
+        "line": 12,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#compile::call:0",
+      "parentId": "pkg:schema/.#compile",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "compile call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "S",
+            "constraint": "JsonSchema",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "schema",
+            "type": "S",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "options",
+            "type": "CompileOptions",
+            "optional": true,
+            "rest": false
+          }
+        ],
+        "returns": "Validator<Static<S>>"
+      },
+      "shapeHash": "sha256:41e0557fb66bfad85ddf555b3ba69bc6a21156577e7357e155b2f6b295754c6a",
+      "source": {
+        "path": "packages/schema/src/validator.ts",
+        "line": 12,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#CompileOptions",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "CompileOptions",
+      "kind": "interface",
+      "shape": {
+        "aliasTarget": "CompileOptions",
+        "type": "CompileOptions",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [
+          {
+            "name": "draft",
+            "optional": true,
+            "readonly": true,
+            "type": "\"2020-12\" | \"7\" | undefined",
+            "calls": []
+          },
+          {
+            "name": "formats",
+            "optional": true,
+            "readonly": true,
+            "type": "Readonly<Record<string, FormatCheck>> | undefined",
+            "calls": []
+          },
+          {
+            "name": "schemas",
+            "optional": true,
+            "readonly": true,
+            "type": "Readonly<Record<string, JsonSchema>> | undefined",
+            "calls": []
+          }
+        ],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:e743df7052d6ae1eb994c81a008ca043820cdae2dfe1b0433d9115f1d2290953",
+      "source": {
+        "path": "packages/schema/src/types.ts",
+        "line": 13,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#CompileOptions::property:draft",
+      "parentId": "pkg:schema/.#CompileOptions",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "CompileOptions.draft",
+      "kind": "property",
+      "shape": {
+        "name": "draft",
+        "optional": true,
+        "readonly": true,
+        "type": "\"2020-12\" | \"7\" | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:c3b2c0afc30d7c60b9da17febea5b903cbda83f5b7e7b427605599e5729a3298",
+      "source": {
+        "path": "packages/schema/src/types.ts",
+        "line": 15,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#CompileOptions::property:formats",
+      "parentId": "pkg:schema/.#CompileOptions",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "CompileOptions.formats",
+      "kind": "property",
+      "shape": {
+        "name": "formats",
+        "optional": true,
+        "readonly": true,
+        "type": "Readonly<Record<string, FormatCheck>> | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:9dfddfe8a22ec4ca3958edb864aea439623bfc25a2f7015d48a575cf9d3e77e9",
+      "source": {
+        "path": "packages/schema/src/types.ts",
+        "line": 20,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#CompileOptions::property:schemas",
+      "parentId": "pkg:schema/.#CompileOptions",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "CompileOptions.schemas",
+      "kind": "property",
+      "shape": {
+        "name": "schemas",
+        "optional": true,
+        "readonly": true,
+        "type": "Readonly<Record<string, JsonSchema>> | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:39c4e9653888a60e906962a524a54ce55abc9585425c06c7e3718ea3487a8533",
+      "source": {
+        "path": "packages/schema/src/types.ts",
+        "line": 22,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#FormatCheck",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "FormatCheck",
+      "kind": "type-alias",
+      "shape": {
+        "aliasTarget": "FormatCheck",
+        "type": "FormatCheck",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "value",
+                "type": "string",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "boolean"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:7dfb08db8279872c10af15ac9652f145847e80f7cc4dd6e4de35551e80073fd8",
+      "source": {
+        "path": "packages/schema/src/types.ts",
+        "line": 10,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#FormatCheck::call:0",
+      "parentId": "pkg:schema/.#FormatCheck",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "FormatCheck call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "value",
+            "type": "string",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "boolean"
+      },
+      "shapeHash": "sha256:aac456e59991e1844564f99629b2f72452de5cbf26ba7b7ba9eaa689e79482d0",
+      "source": {
+        "path": "packages/schema/src/types.ts",
+        "line": 10,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#int",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "int",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "int",
+        "type": "(options?: Annotations<number> & NumberBounds) => Schema<number>",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "options",
+                "type": "Annotations<number> & NumberBounds",
+                "optional": true,
+                "rest": false
+              }
+            ],
+            "returns": "Schema<number>"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:96d902054a1a441add1ce29b624e85d4d2060821afdb8410049092030c059226",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 52,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#int::call:0",
+      "parentId": "pkg:schema/.#int",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "int call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "options",
+            "type": "Annotations<number> & NumberBounds",
+            "optional": true,
+            "rest": false
+          }
+        ],
+        "returns": "Schema<number>"
+      },
+      "shapeHash": "sha256:826978f154f3c49f1698712e0bf38920e69831c56a180c5d3de56112ad6cef63",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 52,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#JsonSchema",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "JsonSchema",
+      "kind": "type-alias",
+      "shape": {
+        "aliasTarget": "JsonSchema",
+        "type": "JsonSchema",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:a369e17b464076a798c85b843935cc4fff90c96fa102aec5de6004678d51650c",
+      "source": {
+        "path": "packages/schema/src/types.ts",
+        "line": 7,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#LengthBounds",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "LengthBounds",
+      "kind": "interface",
+      "shape": {
+        "aliasTarget": "LengthBounds",
+        "type": "LengthBounds",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [
+          {
+            "name": "maxLength",
+            "optional": true,
+            "readonly": true,
+            "type": "number | undefined",
+            "calls": []
+          },
+          {
+            "name": "minLength",
+            "optional": true,
+            "readonly": true,
+            "type": "number | undefined",
+            "calls": []
+          }
+        ],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:d7078715b66b30915672fc7f6950ee8fccf220986e61f79dfab047c6f86f4db9",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 25,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#LengthBounds::property:maxLength",
+      "parentId": "pkg:schema/.#LengthBounds",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "LengthBounds.maxLength",
+      "kind": "property",
+      "shape": {
+        "name": "maxLength",
+        "optional": true,
+        "readonly": true,
+        "type": "number | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:9098c85fe0583e64cbd81a52b22afd1b5d19aebc4e576ab2f646c4944ae0ef34",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 27,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#LengthBounds::property:minLength",
+      "parentId": "pkg:schema/.#LengthBounds",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "LengthBounds.minLength",
+      "kind": "property",
+      "shape": {
+        "name": "minLength",
+        "optional": true,
+        "readonly": true,
+        "type": "number | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:21ce0e2e930dab64e981aea43cdc0f0ea43dd5d1222ab0fb9f48a580bb876ee7",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 26,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#lit",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "lit",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "lit",
+        "type": "<const V extends string | number | boolean | null>(value: V, options?: Annotations<V>) => Schema<V>",
+        "typeParameters": [
+          {
+            "name": "V",
+            "constraint": "string | number | boolean | null",
+            "default": ""
+          }
+        ],
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "V",
+                "constraint": "string | number | boolean | null",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "value",
+                "type": "V",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "options",
+                "type": "Annotations<V>",
+                "optional": true,
+                "rest": false
+              }
+            ],
+            "returns": "Schema<V>"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:3e968c9f1347eed02f03ab41aa59ab55d29465f6c526dc28e6eade1ca79c8367",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 72,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#lit::call:0",
+      "parentId": "pkg:schema/.#lit",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "lit call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "V",
+            "constraint": "string | number | boolean | null",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "value",
+            "type": "V",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "options",
+            "type": "Annotations<V>",
+            "optional": true,
+            "rest": false
+          }
+        ],
+        "returns": "Schema<V>"
+      },
+      "shapeHash": "sha256:86733f4a300dfbc60f7a30368234b9dbd4aad34de50dbec456c9774f9ead0beb",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 72,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#map",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "map",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "map",
+        "type": "<T>(value: Schema<T>, options?: Annotations<Record<string, T>>) => Schema<Record<string, T>>",
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "",
+            "default": ""
+          }
+        ],
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "T",
+                "constraint": "",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "value",
+                "type": "Schema<T>",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "options",
+                "type": "Annotations<Record<string, T>>",
+                "optional": true,
+                "rest": false
+              }
+            ],
+            "returns": "Schema<Record<string, T>>"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:3ecf21e9c14e22be876fef6acd8956cd51d7eb2834ed0ac27e4a0add65ce330f",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 124,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#map::call:0",
+      "parentId": "pkg:schema/.#map",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "map call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "value",
+            "type": "Schema<T>",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "options",
+            "type": "Annotations<Record<string, T>>",
+            "optional": true,
+            "rest": false
+          }
+        ],
+        "returns": "Schema<Record<string, T>>"
+      },
+      "shapeHash": "sha256:234442c2a49bf82775a906dbbbe1fa6e670082a25d7847963703a1e090ce330a",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 124,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#nul",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "nul",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "nul",
+        "type": "(options?: Annotations<null>) => Schema<null>",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "options",
+                "type": "Annotations<null>",
+                "optional": true,
+                "rest": false
+              }
+            ],
+            "returns": "Schema<null>"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:16f257cedb98b673beeb849caeea514fc91ba1f1ac9bdd32603c7a9d11fa1fc5",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 62,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#nul::call:0",
+      "parentId": "pkg:schema/.#nul",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "nul call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "options",
+            "type": "Annotations<null>",
+            "optional": true,
+            "rest": false
+          }
+        ],
+        "returns": "Schema<null>"
+      },
+      "shapeHash": "sha256:979acb6af880428755500f9751c274fea48883baee8d7911a30b30ac4100179a",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 62,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#nullable",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "nullable",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "nullable",
+        "type": "<T>(schema: Schema<T>, options?: Annotations<T | null>) => Schema<T | null>",
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "",
+            "default": ""
+          }
+        ],
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "T",
+                "constraint": "",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "schema",
+                "type": "Schema<T>",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "options",
+                "type": "Annotations<T | null>",
+                "optional": true,
+                "rest": false
+              }
+            ],
+            "returns": "Schema<T | null>"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:83a73317b253ed032f6a3f596dd18534ccbbebd5fa63fb261a679173c2b3858a",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 99,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#nullable::call:0",
+      "parentId": "pkg:schema/.#nullable",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "nullable call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "schema",
+            "type": "Schema<T>",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "options",
+            "type": "Annotations<T | null>",
+            "optional": true,
+            "rest": false
+          }
+        ],
+        "returns": "Schema<T | null>"
+      },
+      "shapeHash": "sha256:9ba6ffddd0f59f3799fb567e28dc2de015cea7b7a8ef6b7ab39aa09ce564f5e3",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 99,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#num",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "num",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "num",
+        "type": "(options?: Annotations<number> & NumberBounds) => Schema<number>",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "options",
+                "type": "Annotations<number> & NumberBounds",
+                "optional": true,
+                "rest": false
+              }
+            ],
+            "returns": "Schema<number>"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:d5312503669a3dc0841ab6293df8bb872e34ae52e0e697a514a1aaff2b21465e",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 47,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#num::call:0",
+      "parentId": "pkg:schema/.#num",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "num call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "options",
+            "type": "Annotations<number> & NumberBounds",
+            "optional": true,
+            "rest": false
+          }
+        ],
+        "returns": "Schema<number>"
+      },
+      "shapeHash": "sha256:826978f154f3c49f1698712e0bf38920e69831c56a180c5d3de56112ad6cef63",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 47,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#NumberBounds",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "NumberBounds",
+      "kind": "interface",
+      "shape": {
+        "aliasTarget": "NumberBounds",
+        "type": "NumberBounds",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [
+          {
+            "name": "exclusiveMaximum",
+            "optional": true,
+            "readonly": true,
+            "type": "number | undefined",
+            "calls": []
+          },
+          {
+            "name": "exclusiveMinimum",
+            "optional": true,
+            "readonly": true,
+            "type": "number | undefined",
+            "calls": []
+          },
+          {
+            "name": "maximum",
+            "optional": true,
+            "readonly": true,
+            "type": "number | undefined",
+            "calls": []
+          },
+          {
+            "name": "minimum",
+            "optional": true,
+            "readonly": true,
+            "type": "number | undefined",
+            "calls": []
+          },
+          {
+            "name": "multipleOf",
+            "optional": true,
+            "readonly": true,
+            "type": "number | undefined",
+            "calls": []
+          }
+        ],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:844c84141f3f1ba7a6ea5ebbd4bd567cf79209eccd93dc646b23b15c19e8994c",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 38,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#NumberBounds::property:exclusiveMaximum",
+      "parentId": "pkg:schema/.#NumberBounds",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "NumberBounds.exclusiveMaximum",
+      "kind": "property",
+      "shape": {
+        "name": "exclusiveMaximum",
+        "optional": true,
+        "readonly": true,
+        "type": "number | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:b2a349583996f27ffd15bd3ac52ec8dbabeaba1cac74d7014589446685e54bcc",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 42,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#NumberBounds::property:exclusiveMinimum",
+      "parentId": "pkg:schema/.#NumberBounds",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "NumberBounds.exclusiveMinimum",
+      "kind": "property",
+      "shape": {
+        "name": "exclusiveMinimum",
+        "optional": true,
+        "readonly": true,
+        "type": "number | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:49c445641d9a4aa5fecb74b89fc6a81173072c06c50d99a39dba230baaf1b062",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 41,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#NumberBounds::property:maximum",
+      "parentId": "pkg:schema/.#NumberBounds",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "NumberBounds.maximum",
+      "kind": "property",
+      "shape": {
+        "name": "maximum",
+        "optional": true,
+        "readonly": true,
+        "type": "number | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:328d35b00999a3f382df40b5cb8de9e46a3ecc22747084ba236c93a78dd90811",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 40,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#NumberBounds::property:minimum",
+      "parentId": "pkg:schema/.#NumberBounds",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "NumberBounds.minimum",
+      "kind": "property",
+      "shape": {
+        "name": "minimum",
+        "optional": true,
+        "readonly": true,
+        "type": "number | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:53107a50e05a1f5af56b77fce8471e3bd44ac3fd890cdf3ee31fac2c7936f138",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 39,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#NumberBounds::property:multipleOf",
+      "parentId": "pkg:schema/.#NumberBounds",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "NumberBounds.multipleOf",
+      "kind": "property",
+      "shape": {
+        "name": "multipleOf",
+        "optional": true,
+        "readonly": true,
+        "type": "number | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:405d12ed528cd62529802d5fd62d3bb3a7f1df9d35c0718b1b562456ce7fba72",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 43,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#obj",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "obj",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "obj",
+        "type": "<const P extends Properties>(properties: P, options?: Annotations<StaticObject<P>> & { readonly open?: boolean; }) => Schema<StaticObject<P>>",
+        "typeParameters": [
+          {
+            "name": "P",
+            "constraint": "Properties",
+            "default": ""
+          }
+        ],
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "P",
+                "constraint": "Properties",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "properties",
+                "type": "P",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "options",
+                "type": "Annotations<{ [K in keyof ({ -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? never : K]: Static<P[K]>; } & { -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? K : never]?: (P[K] extends Optional<infer S extends { readonly [keyword: string]: unknown; } & { readonly [STATIC]?: unknown; }> ? Static<S> : never) | undefined; })]: ({ -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? never : K]: Static<P[K]>; } & { -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? K : never]?: (P[K] extends Optional<infer S extends { readonly [keyword: string]: unknown; } & { readonly [STATIC]?: unknown; }> ? Static<S> : never) | undefined; })[K]; }> & { readonly open?: boolean; }",
+                "optional": true,
+                "rest": false
+              }
+            ],
+            "returns": "Schema<{ [K in keyof ({ -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? never : K]: Static<P[K]>; } & { -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? K : never]?: (P[K] extends Optional<infer S extends { readonly [keyword: string]: unknown; } & { readonly [STATIC]?: unknown; }> ? Static<S> : never) | undefined; })]: ({ -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? never : K]: Static<P[K]>; } & { -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? K : never]?: (P[K] extends Optional<infer S extends { readonly [keyword: string]: unknown; } & { readonly [STATIC]?: unknown; }> ? Static<S> : never) | undefined; })[K]; }>"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:a6f718f91d397e370acc766802ec8283199656beddb37b56b99348fd6dc21196",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 166,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#obj::call:0",
+      "parentId": "pkg:schema/.#obj",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "obj call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "P",
+            "constraint": "Properties",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "properties",
+            "type": "P",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "options",
+            "type": "Annotations<{ [K in keyof ({ -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? never : K]: Static<P[K]>; } & { -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? K : never]?: (P[K] extends Optional<infer S extends { readonly [keyword: string]: unknown; } & { readonly [STATIC]?: unknown; }> ? Static<S> : never) | undefined; })]: ({ -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? never : K]: Static<P[K]>; } & { -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? K : never]?: (P[K] extends Optional<infer S extends { readonly [keyword: string]: unknown; } & { readonly [STATIC]?: unknown; }> ? Static<S> : never) | undefined; })[K]; }> & { readonly open?: boolean; }",
+            "optional": true,
+            "rest": false
+          }
+        ],
+        "returns": "Schema<{ [K in keyof ({ -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? never : K]: Static<P[K]>; } & { -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? K : never]?: (P[K] extends Optional<infer S extends { readonly [keyword: string]: unknown; } & { readonly [STATIC]?: unknown; }> ? Static<S> : never) | undefined; })]: ({ -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? never : K]: Static<P[K]>; } & { -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? K : never]?: (P[K] extends Optional<infer S extends { readonly [keyword: string]: unknown; } & { readonly [STATIC]?: unknown; }> ? Static<S> : never) | undefined; })[K]; }>"
+      },
+      "shapeHash": "sha256:699dacf8ae23dbd7c56ef7a39d12432d5dd0d9b53ba9cc945752184a12e94423",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 166,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#oneOf",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "oneOf",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "oneOf",
+        "type": "<const V extends readonly (string | number | boolean | null)[]>(values: V, options?: Annotations<V[number]>) => Schema<V[number]>",
+        "typeParameters": [
+          {
+            "name": "V",
+            "constraint": "readonly (string | number | boolean | null)[]",
+            "default": ""
+          }
+        ],
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "V",
+                "constraint": "readonly (string | number | boolean | null)[]",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "values",
+                "type": "V",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "options",
+                "type": "Annotations<V[number]>",
+                "optional": true,
+                "rest": false
+              }
+            ],
+            "returns": "Schema<V[number]>"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:7cbfef69fd34ef865642f8da3f8f6d547b920a1948a75a636eb874d602e79653",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 80,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#oneOf::call:0",
+      "parentId": "pkg:schema/.#oneOf",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "oneOf call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "V",
+            "constraint": "readonly (string | number | boolean | null)[]",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "values",
+            "type": "V",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "options",
+            "type": "Annotations<V[number]>",
+            "optional": true,
+            "rest": false
+          }
+        ],
+        "returns": "Schema<V[number]>"
+      },
+      "shapeHash": "sha256:6c0227865a82d7de698922fc4e725dd0554898f5604cb5989e9bf65f0dad5041",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 80,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#opt",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "opt",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "opt",
+        "type": "<S extends Schema>(schema: S) => Optional<S>",
+        "typeParameters": [
+          {
+            "name": "S",
+            "constraint": "Schema<unknown>",
+            "default": ""
+          }
+        ],
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "S",
+                "constraint": "Schema<unknown>",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "schema",
+                "type": "S",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "Optional<S>"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:704ac0931051d57adb9b86da789a6571db83f0006f9344f301eaa687ff1822b3",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 144,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#opt::call:0",
+      "parentId": "pkg:schema/.#opt",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "opt call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "S",
+            "constraint": "Schema<unknown>",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "schema",
+            "type": "S",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "Optional<S>"
+      },
+      "shapeHash": "sha256:471b504b75f5679cc09b7d5db52a59f4156a54a9395b808593580af754f8fd4f",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 144,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#Optional",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Optional",
+      "kind": "class",
+      "shape": {
+        "aliasTarget": "Optional",
+        "type": "Optional<S>",
+        "typeParameters": [
+          {
+            "name": "S",
+            "constraint": "Schema<unknown>",
+            "default": "Schema<unknown>"
+          }
+        ],
+        "calls": [],
+        "constructs": [
+          {
+            "typeParameters": [
+              {
+                "name": "S",
+                "constraint": "Schema<unknown>",
+                "default": "Schema<unknown>"
+              }
+            ],
+            "parameters": [
+              {
+                "name": "schema",
+                "type": "S",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "Optional<S>"
+          }
+        ],
+        "properties": [
+          {
+            "name": "[Symbol.OPTIONAL_TYPE]",
+            "optional": true,
+            "readonly": true,
+            "type": "S | undefined",
+            "calls": []
+          },
+          {
+            "name": "schema",
+            "optional": false,
+            "readonly": true,
+            "type": "S",
+            "calls": []
+          }
+        ],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:88ead9082af980d52bfa436d11cc12505b8c272259c06055c90d299bf2bc6e8f",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 134,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#Optional::construct:0",
+      "parentId": "pkg:schema/.#Optional",
+      "role": "construct-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Optional constructor 0",
+      "kind": "construct-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "S",
+            "constraint": "Schema<unknown>",
+            "default": "Schema<unknown>"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "schema",
+            "type": "S",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "Optional<S>"
+      },
+      "shapeHash": "sha256:7efe9b41d9981db4c7593b6810fdb826f46063db46dd549f372ea0fd38b62703",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 134,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#Optional::property:%5BSymbol.OPTIONAL_TYPE%5D",
+      "parentId": "pkg:schema/.#Optional",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Optional.[Symbol.OPTIONAL_TYPE]",
+      "kind": "property",
+      "shape": {
+        "name": "[Symbol.OPTIONAL_TYPE]",
+        "optional": true,
+        "readonly": true,
+        "type": "S | undefined",
+        "calls": []
+      },
+      "shapeHash": "sha256:4ea09369253b605cf77577af80a76c2f57537e7f165c646028b48c104f7398ce",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 135,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#Optional::property:schema",
+      "parentId": "pkg:schema/.#Optional",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Optional.schema",
+      "kind": "property",
+      "shape": {
+        "name": "schema",
+        "optional": false,
+        "readonly": true,
+        "type": "S",
+        "calls": []
+      },
+      "shapeHash": "sha256:dace9d371fc1051f9210bc3e95fb1fa98538fb0186822069ff3878714995d112",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 136,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#Properties",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Properties",
+      "kind": "type-alias",
+      "shape": {
+        "aliasTarget": "Properties",
+        "type": "Properties",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:d5b5365aa47c294dfc461d3f0da41a6524d5d517cbd2e829f018657c6d754470",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 149,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#Schema",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Schema",
+      "kind": "type-alias",
+      "shape": {
+        "aliasTarget": "Schema",
+        "type": "Schema<T>",
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "",
+            "default": "unknown"
+          }
+        ],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:a5c622b2c5a21c76c100eb9ba99a2cb3e8bbf8281f32232307233b16dbf162a9",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 9,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#Static",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Static",
+      "kind": "type-alias",
+      "shape": {
+        "aliasTarget": "Static",
+        "type": "Static<S>",
+        "typeParameters": [
+          {
+            "name": "S",
+            "constraint": "",
+            "default": ""
+          }
+        ],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:0f816e914ef9118f05e44922ce9987da6d74c0b37e2d7455200111e11925a8fc",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 12,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#StaticObject",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "StaticObject",
+      "kind": "type-alias",
+      "shape": {
+        "aliasTarget": "StaticObject",
+        "type": "{ [K in keyof ({ -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? never : K]: Static<P[K]>; } & { -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? K : never]?: (P[K] extends Optional<infer S extends { readonly [keyword: string]: unknown; } & { readonly [STATIC]?: unknown; }> ? Static<S> : never) | undefined; })]: ({ -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? never : K]: Static<P[K]>; } & { -readonly [K in keyof P as P[K] extends Optional<Schema<unknown>> ? K : never]?: (P[K] extends Optional<infer S extends { readonly [keyword: string]: unknown; } & { readonly [STATIC]?: unknown; }> ? Static<S> : never) | undefined; })[K]; }",
+        "typeParameters": [
+          {
+            "name": "P",
+            "constraint": "Properties",
+            "default": ""
+          }
+        ],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:6997c9b43568fb255a05ef9e72781a06848dff8a934619039c5b13e904a3096a",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 152,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#str",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "str",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "str",
+        "type": "(options?: Annotations<string> & LengthBounds & { readonly pattern?: string; readonly format?: string; }) => Schema<string>",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "options",
+                "type": "Annotations<string> & LengthBounds & { readonly pattern?: string; readonly format?: string; }",
+                "optional": true,
+                "rest": false
+              }
+            ],
+            "returns": "Schema<string>"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:78c902458003e2e165ab8c5478b289cab371ad4631ee9e7c08225b00cf95fa6d",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 31,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#str::call:0",
+      "parentId": "pkg:schema/.#str",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "str call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "options",
+            "type": "Annotations<string> & LengthBounds & { readonly pattern?: string; readonly format?: string; }",
+            "optional": true,
+            "rest": false
+          }
+        ],
+        "returns": "Schema<string>"
+      },
+      "shapeHash": "sha256:c50dabf4bc757c52823a54d39109e0780469e207efc6c9ce2b68257bb6d4336c",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 31,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#tuple",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "tuple",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "tuple",
+        "type": "<const S extends readonly Schema[]>(items: S, options?: Annotations<{ -readonly [K in keyof S]: Static<S[K]>; }>) => Schema<{ -readonly [K in keyof S]: Static<S[K]>; }>",
+        "typeParameters": [
+          {
+            "name": "S",
+            "constraint": "readonly Schema<unknown>[]",
+            "default": ""
+          }
+        ],
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "S",
+                "constraint": "readonly Schema<unknown>[]",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "items",
+                "type": "S",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "options",
+                "type": "Annotations<{ -readonly [K in keyof S]: Static<S[K]>; }>",
+                "optional": true,
+                "rest": false
+              }
+            ],
+            "returns": "Schema<{ -readonly [K in keyof S]: Static<S[K]>; }>"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:5948342e79d5995c6ce26f33b99a79da90aace42b4f4b0172fb578bf2e18f344",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 116,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#tuple::call:0",
+      "parentId": "pkg:schema/.#tuple",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "tuple call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "S",
+            "constraint": "readonly Schema<unknown>[]",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "items",
+            "type": "S",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "options",
+            "type": "Annotations<{ -readonly [K in keyof S]: Static<S[K]>; }>",
+            "optional": true,
+            "rest": false
+          }
+        ],
+        "returns": "Schema<{ -readonly [K in keyof S]: Static<S[K]>; }>"
+      },
+      "shapeHash": "sha256:2e2a443ddda3f048c74a93ec37df90e609c8734232e37861e2cc3c950c921f61",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 116,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#union",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "union",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "union",
+        "type": "<const S extends readonly Schema[]>(schemas: S, options?: Annotations<Static<S[number]>>) => Schema<Static<S[number]>>",
+        "typeParameters": [
+          {
+            "name": "S",
+            "constraint": "readonly Schema<unknown>[]",
+            "default": ""
+          }
+        ],
+        "calls": [
+          {
+            "typeParameters": [
+              {
+                "name": "S",
+                "constraint": "readonly Schema<unknown>[]",
+                "default": ""
+              }
+            ],
+            "parameters": [
+              {
+                "name": "schemas",
+                "type": "S",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "options",
+                "type": "Annotations<Static<S[number]>>",
+                "optional": true,
+                "rest": false
+              }
+            ],
+            "returns": "Schema<Static<S[number]>>"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:07f531f6d54718c2cb8aabd2ac95d868d866f2ab0ab44dc1cc70dec9783f394d",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 91,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#union::call:0",
+      "parentId": "pkg:schema/.#union",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "union call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "S",
+            "constraint": "readonly Schema<unknown>[]",
+            "default": ""
+          }
+        ],
+        "parameters": [
+          {
+            "name": "schemas",
+            "type": "S",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "options",
+            "type": "Annotations<Static<S[number]>>",
+            "optional": true,
+            "rest": false
+          }
+        ],
+        "returns": "Schema<Static<S[number]>>"
+      },
+      "shapeHash": "sha256:15e2be5eeaa1973e6a9c4de80073e1c61e9ea59fd19d6d8e0bc3725f3086ceb9",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 91,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#unknown",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "unknown",
+      "kind": "function",
+      "shape": {
+        "aliasTarget": "unknown",
+        "type": "(options?: Annotations) => Schema<unknown>",
+        "typeParameters": [],
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "options",
+                "type": "Annotations<unknown>",
+                "optional": true,
+                "rest": false
+              }
+            ],
+            "returns": "Schema<unknown>"
+          }
+        ],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:9f1d03cd42af1ae1b2545126bd76de197abac08e45376cd1654a348d587453d8",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 67,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#unknown::call:0",
+      "parentId": "pkg:schema/.#unknown",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "unknown call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "options",
+            "type": "Annotations<unknown>",
+            "optional": true,
+            "rest": false
+          }
+        ],
+        "returns": "Schema<unknown>"
+      },
+      "shapeHash": "sha256:5326fdbfafcf7115f72a5f6e782eeca921eba62d781b070e82c9aee8a2ff7d85",
+      "source": {
+        "path": "packages/schema/src/builders.ts",
+        "line": 67,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#ValidationError",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "ValidationError",
+      "kind": "interface",
+      "shape": {
+        "aliasTarget": "ValidationError",
+        "type": "ValidationError",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [
+          {
+            "name": "keyword",
+            "optional": false,
+            "readonly": true,
+            "type": "string",
+            "calls": []
+          },
+          {
+            "name": "message",
+            "optional": false,
+            "readonly": true,
+            "type": "string",
+            "calls": []
+          },
+          {
+            "name": "path",
+            "optional": false,
+            "readonly": true,
+            "type": "string",
+            "calls": []
+          }
+        ],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:dbdc6b78459bbb73f8e0de34b21a25dd36c978bceca017998727c260c8d35e8a",
+      "source": {
+        "path": "packages/schema/src/types.ts",
+        "line": 26,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#ValidationError::property:keyword",
+      "parentId": "pkg:schema/.#ValidationError",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "ValidationError.keyword",
+      "kind": "property",
+      "shape": {
+        "name": "keyword",
+        "optional": false,
+        "readonly": true,
+        "type": "string",
+        "calls": []
+      },
+      "shapeHash": "sha256:5c3947eb65b9074b1d50a58e66357e30a9f5ebdb6c3502cea157e51a52b4dd22",
+      "source": {
+        "path": "packages/schema/src/types.ts",
+        "line": 28,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#ValidationError::property:message",
+      "parentId": "pkg:schema/.#ValidationError",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "ValidationError.message",
+      "kind": "property",
+      "shape": {
+        "name": "message",
+        "optional": false,
+        "readonly": true,
+        "type": "string",
+        "calls": []
+      },
+      "shapeHash": "sha256:92ed253d0eb70f4bed1b93325b0464e59f3e7f40e1a2edb7de29a0eda188b89a",
+      "source": {
+        "path": "packages/schema/src/types.ts",
+        "line": 29,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#ValidationError::property:path",
+      "parentId": "pkg:schema/.#ValidationError",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "ValidationError.path",
+      "kind": "property",
+      "shape": {
+        "name": "path",
+        "optional": false,
+        "readonly": true,
+        "type": "string",
+        "calls": []
+      },
+      "shapeHash": "sha256:523a40115b8d4decb7c0af5069951197a85aafb198eac1989678abca0a47b67b",
+      "source": {
+        "path": "packages/schema/src/types.ts",
+        "line": 27,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#Validator",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Validator",
+      "kind": "class",
+      "shape": {
+        "aliasTarget": "Validator",
+        "type": "Validator<T>",
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "",
+            "default": "unknown"
+          }
+        ],
+        "calls": [],
+        "constructs": [
+          {
+            "typeParameters": [
+              {
+                "name": "T",
+                "constraint": "",
+                "default": "unknown"
+              }
+            ],
+            "parameters": [
+              {
+                "name": "schema",
+                "type": "JsonSchema",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "options",
+                "type": "CompileOptions",
+                "optional": false,
+                "rest": false
+              },
+              {
+                "name": "check",
+                "type": "Check",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "Validator<T>"
+          }
+        ],
+        "properties": [
+          {
+            "name": "check",
+            "optional": false,
+            "readonly": true,
+            "type": "(value: unknown) => value is T",
+            "calls": [
+              {
+                "typeParameters": [],
+                "parameters": [
+                  {
+                    "name": "value",
+                    "type": "unknown",
+                    "optional": false,
+                    "rest": false
+                  }
+                ],
+                "returns": "boolean"
+              }
+            ]
+          },
+          {
+            "name": "errors",
+            "optional": false,
+            "readonly": false,
+            "type": "(value: unknown) => ValidationError[]",
+            "calls": [
+              {
+                "typeParameters": [],
+                "parameters": [
+                  {
+                    "name": "value",
+                    "type": "unknown",
+                    "optional": false,
+                    "rest": false
+                  }
+                ],
+                "returns": "ValidationError[]"
+              }
+            ]
+          }
+        ],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:317ace07b1080d20594604d39d207af984438a81c93478d181c43d0abeba9492",
+      "source": {
+        "path": "packages/schema/src/validator.ts",
+        "line": 19,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#Validator::construct:0",
+      "parentId": "pkg:schema/.#Validator",
+      "role": "construct-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Validator constructor 0",
+      "kind": "construct-overload",
+      "shape": {
+        "typeParameters": [
+          {
+            "name": "T",
+            "constraint": "",
+            "default": "unknown"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "schema",
+            "type": "JsonSchema",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "options",
+            "type": "CompileOptions",
+            "optional": false,
+            "rest": false
+          },
+          {
+            "name": "check",
+            "type": "Check",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "Validator<T>"
+      },
+      "shapeHash": "sha256:80d350d9fe873a423b4b332572354a05be33d03dba4d401acb8bbef202452c07",
+      "source": {
+        "path": "packages/schema/src/validator.ts",
+        "line": 19,
+        "column": 1
+      }
+    },
+    {
+      "id": "pkg:schema/.#Validator::property:check",
+      "parentId": "pkg:schema/.#Validator",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Validator.check",
+      "kind": "property",
+      "shape": {
+        "name": "check",
+        "optional": false,
+        "readonly": true,
+        "type": "(value: unknown) => value is T",
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "value",
+                "type": "unknown",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "boolean"
+          }
+        ]
+      },
+      "shapeHash": "sha256:e4d61d3a9822ceaffac2c171b2c30b7875159227d33cf95e14335f08a0b1cceb",
+      "source": {
+        "path": "packages/schema/src/validator.ts",
+        "line": 21,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#Validator::property:check::call:0",
+      "parentId": "pkg:schema/.#Validator::property:check",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Validator.check call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "value",
+            "type": "unknown",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "boolean"
+      },
+      "shapeHash": "sha256:b1db74ef5cfcde9ed82dfec39d1b8832807652341d3bcb5ed7fcb14dc2af9011",
+      "source": {
+        "path": "packages/schema/src/validator.ts",
+        "line": 21,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#Validator::property:errors",
+      "parentId": "pkg:schema/.#Validator",
+      "role": "property",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Validator.errors",
+      "kind": "property",
+      "shape": {
+        "name": "errors",
+        "optional": false,
+        "readonly": false,
+        "type": "(value: unknown) => ValidationError[]",
+        "calls": [
+          {
+            "typeParameters": [],
+            "parameters": [
+              {
+                "name": "value",
+                "type": "unknown",
+                "optional": false,
+                "rest": false
+              }
+            ],
+            "returns": "ValidationError[]"
+          }
+        ]
+      },
+      "shapeHash": "sha256:a6995631278aa9f21912c602915c36a4e0adecd716416d855cb1f54a2998b50b",
+      "source": {
+        "path": "packages/schema/src/validator.ts",
+        "line": 37,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/.#Validator::property:errors::call:0",
+      "parentId": "pkg:schema/.#Validator::property:errors",
+      "role": "call-overload",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": ".",
+      "name": "Validator.errors call 0",
+      "kind": "call-overload",
+      "shape": {
+        "typeParameters": [],
+        "parameters": [
+          {
+            "name": "value",
+            "type": "unknown",
+            "optional": false,
+            "rest": false
+          }
+        ],
+        "returns": "ValidationError[]"
+      },
+      "shapeHash": "sha256:9a97438146b91a462b90dfcf98a601481db5366db6de92b5baf3209ec06ee95e",
+      "source": {
+        "path": "packages/schema/src/validator.ts",
+        "line": 37,
+        "column": 2
+      }
+    },
+    {
+      "id": "pkg:schema/formats#formats",
+      "package": "@earendil-works/pi-schema",
+      "entrypoint": "./formats",
+      "name": "formats",
+      "kind": "variable",
+      "shape": {
+        "aliasTarget": "",
+        "type": "Readonly<Record<string, FormatCheck>>",
+        "typeParameters": [],
+        "calls": [],
+        "constructs": [],
+        "properties": [],
+        "enumMembers": []
+      },
+      "shapeHash": "sha256:8dbcf021ed67007cafa023f542a366f6ff5beb0f79267137914e40a4bdcf6941",
+      "source": {
+        "path": "packages/schema/src/formats/index.ts",
+        "line": 26,
+        "column": 14
       }
     },
     {

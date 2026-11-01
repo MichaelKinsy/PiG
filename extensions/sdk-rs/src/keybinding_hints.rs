@@ -1,6 +1,8 @@
 //! pi-coding-agent's keybinding hints (`modes/interactive/components/keybinding-hints.ts`): a key identifier as the interface shows it, and the dim key plus muted
 //! description of a hint such as "esc to interrupt". The keys come from the global keybindings the host published and the colors from the global theme.
 
+use crate::extension::{EntryRenderOptions, MessageRenderOptions};
+use crate::tool_render::ToolRenderContext;
 use crate::tui::{current_host_theme, get_keybindings};
 
 /// `KeyTextFormatOptions`.
@@ -97,7 +99,7 @@ pub fn raw_key_hint(key: &str, description: &str) -> String {
 // Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and
 // entry options (KeybindingHints). Each method delegates to the module function, which reads the host's keybindings.
 
-impl crate::tool_render::ToolRenderContext {
+impl ToolRenderContext {
     /// `KeybindingHints.keyText` of the tool render context: [`key_text`].
     pub fn key_text(&self, keybinding: &str) -> String {
         key_text(keybinding)
@@ -109,7 +111,7 @@ impl crate::tool_render::ToolRenderContext {
     }
 }
 
-impl crate::extension::MessageRenderOptions {
+impl MessageRenderOptions {
     /// `KeybindingHints.keyText` of the message render options: [`key_text`].
     pub fn key_text(&self, keybinding: &str) -> String {
         key_text(keybinding)
@@ -121,7 +123,7 @@ impl crate::extension::MessageRenderOptions {
     }
 }
 
-impl crate::extension::EntryRenderOptions {
+impl EntryRenderOptions {
     /// `KeybindingHints.keyText` of the entry render options: [`key_text`].
     pub fn key_text(&self, keybinding: &str) -> String {
         key_text(keybinding)

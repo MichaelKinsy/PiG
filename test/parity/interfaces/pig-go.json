@@ -167960,9 +167960,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(i int) (*minimatchFilter, error)"
+        "type": "func(i int) (*github.com/MichaelKinsy/PiG/internal/minimatch.Minimatch, error)"
       },
-      "shapeHash": "sha256:249acad1ffbf7e129b2fc96626c012c604351b8dbc36d8f75686436331d63762"
+      "shapeHash": "sha256:f35d557ef8d36d4eb28d0c456b72d2975dbd90fb479e4021322cd3b6f687e5e3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#finalSigma",
@@ -168273,17 +168273,6 @@
       "shapeHash": "sha256:58c4edfb6b4510b75f2f02a3aab499ee7b806d5fe9e574872a76242744f74be4"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#globIsWindows",
-      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
-      "name": "globIsWindows",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "bool"
-      },
-      "shapeHash": "sha256:58c4edfb6b4510b75f2f02a3aab499ee7b806d5fe9e574872a76242744f74be4"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#globMagic",
       "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
       "name": "globMagic",
@@ -168298,17 +168287,6 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#globMaxExtglobRecursion",
       "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
       "name": "globMaxExtglobRecursion",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped int"
-      },
-      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#globMaxGlobstarRecursion",
-      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
-      "name": "globMaxGlobstarRecursion",
       "kind": "constant",
       "exported": false,
       "shape": {
@@ -168526,28 +168504,6 @@
       "shapeHash": "sha256:a8140eee5092d04db5071e81c5c858da9cb860a2155f473a9536405f78f7bb48"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#isDotPart",
-      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
-      "name": "isDotPart",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(f string) bool"
-      },
-      "shapeHash": "sha256:e756ab795c34acd666d7c23f430b2ea7f8410fbabfd883c520275e798de4e0f6"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#isDriveName",
-      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
-      "name": "isDriveName",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(s string) bool"
-      },
-      "shapeHash": "sha256:98781e9fdc5eed4cfdee2034a4af86e78b25f68eef417e8307f1ea07a2ec43d1"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#isExtglobType",
       "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
       "name": "isExtglobType",
@@ -168735,17 +168691,6 @@
       "shapeHash": "sha256:391a9e96555d5038a6d0791e7a3018d91114729515dc2d23dd81c51a27a6b139"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#levelOneOptimize",
-      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
-      "name": "levelOneOptimize",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(parts []string) []string"
-      },
-      "shapeHash": "sha256:ec74436b330ac9f58a305cbb5fa987031ef6b25eb630a3874f1567765ac51864"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#literalBraceValue",
       "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
       "name": "literalBraceValue",
@@ -168766,39 +168711,6 @@
         "type": "func(manifest *packageManifest, kind Kind) *[]string"
       },
       "shapeHash": "sha256:621cff09b75dbb85928c609e8632b7e0b9f65d7cd69cb23af3374dc7a6369a44"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#matchGlobstar",
-      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
-      "name": "matchGlobstar",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(file []string, pattern []packageGlobSegment, fileIndex int, patternIndex int) bool"
-      },
-      "shapeHash": "sha256:052cdfc7f1556a67d54103c4f5c1c9386b8f85d4f99376a64dd125fb1b8d720e"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#matchOne",
-      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
-      "name": "matchOne",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(file []string, pattern []packageGlobSegment) bool"
-      },
-      "shapeHash": "sha256:e4ebec1c5349136aca12ee0e29ec6f6099a9a36121931d3d78bf58b82ba503c1"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#matchSegments",
-      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
-      "name": "matchSegments",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(file []string, pattern []packageGlobSegment, fi int, pi int) bool"
-      },
-      "shapeHash": "sha256:67f12efb4d28e0aa02d256d19a9f0fd94789d23baac7700c1d4407680f58f6d7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#matchesAnyExactPattern",
@@ -168854,28 +168766,6 @@
         "type": "func(pattern string) bool"
       },
       "shapeHash": "sha256:04415b75a8b89da8edd0ab6cd76f1d7c7c69cd5bfae44d9c149d32f92507da6b"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#minimatchFilter",
-      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
-      "name": "minimatchFilter",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "minimatchFilter"
-      },
-      "shapeHash": "sha256:f333a631fb0223e9f0901c354db2f28b33c42e8343272f3570dbe0ebba7a6751"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#minimatchFilter.match",
-      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
-      "name": "minimatchFilter.match",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(f string) bool"
-      },
-      "shapeHash": "sha256:e756ab795c34acd666d7c23f430b2ea7f8410fbabfd883c520275e798de4e0f6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#missingBeforeFilterThrow",
@@ -168950,9 +168840,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(pattern string) (*minimatchFilter, error)"
+        "type": "func(pattern string) (*github.com/MichaelKinsy/PiG/internal/minimatch.Minimatch, error)"
       },
-      "shapeHash": "sha256:5c9e7e79fbb9d6cec2cb7c4bd2f2225b5273c8cf9cc4218a1174be761cf3542c"
+      "shapeHash": "sha256:2389a7f7cc16d9440ce78ac8a1c155cc3dbed352dfc406317cd1d28a5081d849"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#newPackageGlobSegment",
