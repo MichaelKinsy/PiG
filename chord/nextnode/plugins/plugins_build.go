@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -398,7 +400,7 @@ func (rules *importRules) setup(builder api.PluginBuild) {
 		}
 		contents, err := os.ReadFile(args.Path)
 		if err != nil {
-			return api.OnLoadResult{}, err
+			return api.OnLoadResult{Errors: []api.Message{{Text: nodeReadError(err, args.Path)}}}, nil
 		}
 		sum := sha256.Sum256(contents)
 		rules.mu.Lock()
@@ -407,6 +409,20 @@ func (rules *importRules) setup(builder api.PluginBuild) {
 		text := string(contents)
 		return api.OnLoadResult{Contents: &text, Loader: loader, ResolveDir: filepath.Dir(args.Path)}, nil
 	})
+}
+
+// nodeReadError is the text of the error Node's `readFile(path)` throws, which Pi's build reports for an input it cannot read
+// (`ENOENT: no such file or directory, open '<path>'`, `EACCES: permission denied, open '<path>'`); Go's `open <path>: ...`
+// otherwise. (esbuild's JavaScript API puts the location of its own library in front of a thrown plugin error, which is no
+// part of the text: the Go API puts the position of the import in front of it.)
+func nodeReadError(err error, path string) string {
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return "ENOENT: no such file or directory, open '" + path + "'"
+	case errors.Is(err, fs.ErrPermission):
+		return "EACCES: permission denied, open '" + path + "'"
+	}
+	return err.Error()
 }
 
 // inputs is every plugin file read, sorted by path.

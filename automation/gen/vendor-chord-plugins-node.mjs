@@ -1,7 +1,10 @@
 // Copy Pi's own chord sources for the plugins component's Node subprocess (chord/nextnode/plugins/node/pi) and write
 // the manifest that records the Pi commit and the hash of every copied file.
 //
-//   node vendor-chord-plugins-node.mjs <pi tree root> <pi commit> <typebox package dir> <pi-telemetry package dir> <out node dir>
+//   node vendor-chord-plugins-node.mjs <pi tree root> <pi commit> <typebox package dir> <pi-telemetry package dir> <out node dir> <pin commit>
+//
+// The manifest records the pin the copy was made against; when the copied commit is not the pin's, it names that commit as
+// `catchup` (the commit the manifest may differ from the pin by: the Go test accepts exactly it, while the pin stays put).
 //
 // packages/chord/src is copied byte for byte, keeping its layout, for the import closure of the entries the subprocess
 // loads (Node strips the types of the copies; nothing is transpiled). The closure is found on the type-stripped source,
@@ -12,8 +15,8 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statS
 import { stripTypeScriptTypes } from "node:module";
 import { dirname, join, relative, resolve, sep } from "node:path";
 
-const [piTree, commit, typeboxDir, telemetryDir, outDir] = process.argv.slice(2);
-if (outDir === undefined) throw new Error("usage: vendor-chord-plugins-node.mjs <pi tree> <commit> <typebox> <pi-telemetry> <out>");
+const [piTree, commit, typeboxDir, telemetryDir, outDir, pin] = process.argv.slice(2);
+if (pin === undefined) throw new Error("usage: vendor-chord-plugins-node.mjs <pi tree> <commit> <typebox> <pi-telemetry> <out> <pin>");
 
 const ENTRIES = [
 	"next/index.ts",
@@ -71,6 +74,8 @@ for (const file of walk(join(telemetryDir, "dist")).sort()) {
 
 const manifest = {
 	commit,
+	pin,
+	...(commit === pin ? {} : { catchup: commit }),
 	typebox: JSON.parse(readFileSync(join(typeboxDir, "package.json"), "utf8")).version,
 	piTelemetry: JSON.parse(readFileSync(join(telemetryDir, "package.json"), "utf8")).version,
 	files: files.sort().map((path) => ({ path, sha256: createHash("sha256").update(readFileSync(join(outDir, path))).digest("hex") })),

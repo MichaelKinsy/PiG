@@ -234,22 +234,15 @@ export default defineFacet((host) =>
 }
 
 // benchStart starts a worker Node host with the probe (and --expose-gc) as start does, and holds the probe.
-func benchStart(b *testing.B, cache string, start func(parent host.Host, core CoreFacet, address *contracts.Address) (*NodeHost, error)) *benchNode {
+func benchStart(b *testing.B, cache string, start func(core CoreFacet, address *contracts.Address) (*NodeHost, error)) *benchNode {
 	b.Helper()
-	parent, err := host.CreateHost(host.HostOptions{OnError: func(host.HostError) {}})
-	if err != nil {
-		b.Fatal(err)
-	}
-	b.Cleanup(func() { _ = parent.Close(background) })
-	if _, err := parent.Load(nil, background); err != nil {
-		b.Fatal(err)
-	}
 	address := workerKind.Address(nil)
-	node, err := start(parent, benchProbeCore(b, cache), &address)
+	node, err := start(benchProbeCore(b, cache), &address)
 	if err != nil {
 		b.Fatal(err)
 	}
 	b.Cleanup(func() { _ = node.Close(background) })
+	parent := serverFor(b, workerRoute(node))
 	ref, err := parent.Get(probeContract, delta.NewJsonObject(0), background, host.GetOptions{})
 	if err != nil {
 		b.Fatal(err)
@@ -291,9 +284,9 @@ func BenchmarkPluginsEvaluate(b *testing.B) {
 		scripts[index] = PluginScript{Plugin: setup.facets[index], Built: built[index]}
 	}
 	cache := b.TempDir()
-	node := benchStart(b, cache, func(parent host.Host, core CoreFacet, address *contracts.Address) (*NodeHost, error) {
+	node := benchStart(b, cache, func(core CoreFacet, address *contracts.Address) (*NodeHost, error) {
 		h, _, err := NewPluginRuntime(benchNodeOptions(cache)).Load(RuntimeLoad{
-			Kind: "worker", Core: []CoreFacet{core}, Parent: parent, Address: address, Principal: workerPrincipal, Peer: serverPrincipal,
+			Kind: "worker", Core: []CoreFacet{core}, Address: address, Principal: workerPrincipal, Peer: serverPrincipal,
 		}, background)
 		return h, err
 	})
@@ -317,9 +310,9 @@ func BenchmarkPluginsReload(b *testing.B) {
 	}, background)
 	defer component.Close()
 	var node *NodeHost
-	n := benchStart(b, cache, func(parent host.Host, core CoreFacet, address *contracts.Address) (*NodeHost, error) {
+	n := benchStart(b, cache, func(core CoreFacet, address *contracts.Address) (*NodeHost, error) {
 		h, report, err := component.Load(PluginsLoad{
-			Kind: "worker", Core: []CoreFacet{core}, Parent: parent, Address: address, Principal: workerPrincipal, Peer: serverPrincipal,
+			Kind: "worker", Core: []CoreFacet{core}, Address: address, Principal: workerPrincipal, Peer: serverPrincipal,
 		}, background)
 		if err == nil && len(report.Failed) != 0 {
 			err = fmt.Errorf("load failed: %v", report.Failed)

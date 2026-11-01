@@ -152,12 +152,12 @@ type PluginsLoad struct {
 	Core []CoreFacet
 	// Modules are the host packages the scripts' imports are answered with, by specifier; kept for the host's reloads.
 	Modules HostPackages
-	// Parent, Address, Principal and Peer are the Go host the subprocess's host links to and how the two see each other
-	// (RuntimeLoad).
-	Parent    host.Host
+	// Address, Principal, Peer and Heartbeat are the Node host's address and principal, who the Go host that attaches its
+	// link is, and the host's heartbeat (RuntimeLoad).
 	Address   *contracts.Address
 	Principal data.Principal
 	Peer      data.Principal
+	Heartbeat *host.HeartbeatOptions
 }
 
 // CreatePlugins creates the plugins component (and its plugin runtime) and starts the watcher. Discovery runs at first use.
@@ -360,8 +360,8 @@ func (c *Plugins) Current(kind string) ([]PluginScript, bool) {
 }
 
 // Load starts a Node subprocess that hosts options.Kind's current set, evaluated with options.Modules, and options.Core
-// (the app's own facets), linked to options.Parent: a plugin whose build or evaluation fails is left out and reported with
-// the host's report.
+// (the app's own facets): a plugin whose build or evaluation fails is left out and reported with the host's report. The app
+// attaches the returned host's Link to a Go host (PluginRuntime.Load).
 func (c *Plugins) Load(options PluginsLoad, ctx context.Context) (*NodeHost, host.LoadReport, error) {
 	scripts, err := c.Scripts(options.Kind, ctx)
 	if err != nil {
@@ -369,7 +369,7 @@ func (c *Plugins) Load(options PluginsLoad, ctx context.Context) (*NodeHost, hos
 	}
 	h, report, err := c.runtime.Load(RuntimeLoad{
 		Kind: options.Kind, Core: options.Core, Scripts: scripts, Modules: options.Modules,
-		Parent: options.Parent, Address: options.Address, Principal: options.Principal, Peer: options.Peer,
+		Address: options.Address, Principal: options.Principal, Peer: options.Peer, Heartbeat: options.Heartbeat,
 	}, ctx)
 	if err != nil {
 		return nil, host.LoadReport{}, err

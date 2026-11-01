@@ -771,7 +771,7 @@ pin-bump: ## Move the pin to PI_UPSTREAM_REF=<tag|commit>, regenerate what deriv
 	@old=$$(env -u PI_UPSTREAM_REF $(PIN_TOOL) get ref); env -u PI_UPSTREAM_REF $(PIN_TOOL) bump "$(PI_UPSTREAM_REF)"; \
 		$(MAKE) --no-print-directory PI_UPSTREAM_REF= upstream-mirror interface-proposals test-inventory-generate && \
 		$(MAKE) --no-print-directory PI_UPSTREAM_REF= PIN_FROM="$$old" pin-ledgers && \
-		$(MAKE) --no-print-directory PI_UPSTREAM_REF= vendor-pi-dist model-catalogs && \
+		$(MAKE) --no-print-directory PI_UPSTREAM_REF= vendor-pi-dist vendor-chord-plugins-node model-catalogs && \
 		./automation/gen/regenerate-observation-oracles.sh && \
 		./automation/gen/refresh-pi-test-sources.sh
 

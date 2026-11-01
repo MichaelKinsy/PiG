@@ -34,9 +34,10 @@ import (
 const exChord = "@earendil-works/chord/next"
 
 // exOps are the probe ops of the examples. `read` reads one member of a one-member local type on the Node host (every local
-// type the examples read has that shape and no params); `state` reports whether `get` of such a type succeeds; `armStatus`
-// and `armed` are 36's watch of the status reference's state, which ends (answering the state it left to) when it leaves
-// `live`.
+// type the examples read has that shape and no params); `state` reports whether `get` of such a type succeeds; `armStatus`,
+// `armed` and `leftLive` are 36's watch of the status reference's state: `leftLive` answers the kind the state left `live` to,
+// and `armStatus` stays open until the state is `live` again, then answers every kind the watch delivered (36 prints each:
+// `the status reference: <kind>`).
 const exOps = `
 read: async ({ name, member, kind }, { ctx }) => {
 	const Type = next.local(name, { version: 1, params: {}, members: { [member]: next[kind]() } });
@@ -56,15 +57,22 @@ armStatus: async (_args, { ctx }) => {
 	const Status = next.local("example.status", { version: 1, params: {}, members: { text: next.str() } });
 	const ref = await ctx.get(Status, {});
 	globalThis.exArmed = false;
+	const kinds = [];
+	let left;
+	globalThis.exLeft = new Promise((resolve) => (left = resolve));
 	return await new Promise((resolve, reject) => {
 		ref.state.watch(ctx).then((watch) => {
 			watch.start(async (call) => {
-				if (call.kind === "value" && call.value.kind !== "live") resolve(call.value.kind);
+				if (call.kind !== "value") return;
+				kinds.push(call.value.kind);
+				if (call.value.kind !== "live") left(call.value.kind);
+				else if (kinds.length > 1) resolve(kinds);
 			});
 			globalThis.exArmed = true;
 		}, reject);
 	});
 },
+leftLive: async () => await globalThis.exLeft,
 armed: async () => globalThis.exArmed === true,
 `
 
@@ -132,7 +140,7 @@ func exNodeKind(name string, packages ...string) KindDefinition {
 	return KindDefinition{Name: name, Platform: PlatformNode, HostPackages: append([]string{exChord}, packages...)}
 }
 
-// exNode is a Node host loaded with a kind's plugins, linked to its Go host, with the probe when the host has one.
+// exNode is a Node host loaded with a kind's plugins, attached to its Go host, with the probe when the host has one.
 type exNode struct {
 	node   *NodeHost
 	report host.LoadReport
@@ -140,15 +148,25 @@ type exNode struct {
 	probe  *probe
 }
 
-// exStart loads kind's plugins on a new Node host (address, principal, peer as the example's host has them) linked to a new
-// Go host. withProbe adds the probe core facet (the host then has the probe's address).
+// exStart loads kind's plugins on a new Node host (address, principal, peer as the example's host has them) and attaches it to
+// a new Go host: a route of the probe's kind when withProbe adds the probe core facet (the host then has the probe's address),
+// else an accepted child link.
 func exStart(t *testing.T, plugins *Plugins, cache, kind string, modules HostPackages, address *contracts.Address, principal, peer data.Principal, withProbe bool) *exNode {
 	t.Helper()
-	h := goHost(t)
-	if _, err := h.Load(nil, background); err != nil {
-		t.Fatal(err)
+	started := exLoad(t, plugins, cache, kind, modules, address, principal, peer, withProbe)
+	if withProbe {
+		started.h = serverFor(t, nodeRoute{kind: workerKind, node: started.node, principal: principal})
+		started.probe = probeOn(t, started.h)
+	} else {
+		started.h = acceptorOf(t, started.node, principal)
 	}
-	load := PluginsLoad{Kind: kind, Modules: modules, Parent: h, Address: address, Principal: principal, Peer: peer}
+	return started
+}
+
+// exLoad is exStart's load: the Node host, its link not attached yet (the app attaches it in time: RuntimeLoad.Heartbeat).
+func exLoad(t *testing.T, plugins *Plugins, cache, kind string, modules HostPackages, address *contracts.Address, principal, peer data.Principal, withProbe bool) *exNode {
+	t.Helper()
+	load := PluginsLoad{Kind: kind, Modules: modules, Address: address, Principal: principal, Peer: peer}
 	if withProbe {
 		tree, err := extractNode(cache)
 		if err != nil {
@@ -162,11 +180,7 @@ func exStart(t *testing.T, plugins *Plugins, cache, kind string, modules HostPac
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = node.Close(background) })
-	started := &exNode{node: node, report: report, h: h}
-	if withProbe {
-		started.probe = probeOn(t, h)
-	}
-	return started
+	return &exNode{node: node, report: report}
 }
 
 // read is `(await host.get(Type, {}, context))[member].value` for a one-member local type, through the probe.
@@ -336,10 +350,9 @@ func exFailures(t *testing.T, failed []host.PluginFailure) map[string]string {
 	return out
 }
 
-// Ports examples/35-plugins/main.ts. The server and the worker are two Node hosts (kind "server", kind "worker"), each with
-// a Go host as its child: Pi's memory link between its two hosts is one parent link per Node host here. The notes, a remote
-// type on the worker, are held by the worker's Go host (over the link from the worker's Node host); the server's local types
-// (Index, Clock) are read through the probe of the server's Node host.
+// Ports examples/35-plugins/main.ts. The server and the worker are two Node hosts (kind "server", kind "worker"), each the
+// child of a Go host: Pi's memory link between its two hosts is one link per Node host here. The server's local types (Index,
+// Clock) are read through the probe of the server's Node host.
 func TestExample35PluginsLoadEditMarkBuildRollOut(t *testing.T) {
 	cache := t.TempDir()
 	root := filepath.Join(exCopy(t, "35-plugins", "plugins"), "plugins")
@@ -347,8 +360,14 @@ func TestExample35PluginsLoadEditMarkBuildRollOut(t *testing.T) {
 
 	// 2. A worker and a server, each loading the plugins' facets of its kind (no core facets here).
 	workerAddress, probeAddress := exWorkerKind.Address(nil), workerKind.Address(nil)
-	worker := exStart(t, plugins, cache, "worker", nil, &workerAddress, workerPrincipal, serverPrincipal, false)
-	server := exStart(t, plugins, cache, "server", nil, &probeAddress, serverPrincipal, workerPrincipal, true)
+	worker := exLoad(t, plugins, cache, "worker", nil, &workerAddress, workerPrincipal, serverPrincipal, false)
+	server := exLoad(t, plugins, cache, "server", nil, &probeAddress, serverPrincipal, workerPrincipal, true)
+	// The app's server routes both kinds to the Nodes' links, as Pi's server routes its worker's: one Go host observes both.
+	app := serverFor(t,
+		nodeRoute{kind: exWorkerKind, node: worker.node, principal: workerPrincipal},
+		nodeRoute{kind: workerKind, node: server.node, principal: serverPrincipal})
+	worker.h, server.h = app, app
+	server.probe = probeOn(t, app)
 	var discovered []string
 	for _, plugin := range plugins.Discovery().Plugins {
 		var facets []string
@@ -589,17 +608,34 @@ func TestExample36PluginFailures(t *testing.T) {
 	cacheBuilt := buildDirty("@example/cache")
 	aborting, cancel := context.WithCancelCause(background)
 	p.must("holdChecks", nil)
-	left := make(chan any, 1)
+	kindsOf := make(chan any, 1)
 	go func() {
 		answer, err := p.call("armStatus", nil)
 		if err != nil {
-			left <- err
+			kindsOf <- err
 			return
 		}
-		left <- answer
+		kindsOf <- answer
+	}()
+	eventually(t, 15*time.Second, "the status watch armed", func() bool {
+		select {
+		case answer := <-kindsOf:
+			t.Fatalf("the status watch ended before it was armed: %v", answer)
+		default:
+		}
+		return p.must("armed", nil) == true
+	})
+	// The app aborts the moment it sees the status leave `live`.
+	leftTo := make(chan any, 1)
+	go func() {
+		answer, err := p.call("leftLive", nil)
+		if err != nil {
+			leftTo <- err
+		} else {
+			leftTo <- answer
+		}
 		cancel(errors.New("the app shuts down"))
 	}()
-	eventually(t, 15*time.Second, "the status watch armed", func() bool { return p.must("armed", nil) == true })
 	_, err = plugins.Reload(server.node, cacheBuilt, aborting)
 	p.must("release", nil)
 	var nodeErr *NodeError
@@ -614,15 +650,30 @@ func TestExample36PluginFailures(t *testing.T) {
 	if got, want := nodeErr.Chord.Message+" "+string(details), `reload: aborted after its commit {"committed":{"added":[],"changed":["@example/cache"],"removed":[],"failed":["@example/weather"]}}`; got != want {
 		t.Fatalf("4. rejected: aborted %s, want %s", got, want)
 	}
-	if answer := <-left; answer == nil {
-		t.Fatal("the status watch ended with nothing")
-	} else if _, isErr := answer.(error); isErr {
-		t.Fatalf("the status watch: %v", answer)
+	// Pi prints `the status reference: loading` (the kind it left `live` to, where the app aborts), then, once the new cache is
+	// open, `the status reference: live`.
+	if answer := <-leftTo; answer != "loading" {
+		t.Fatalf("4. the status reference left live to %v, want loading", answer)
 	}
 	eventually(t, 15*time.Second, "the status on cache v2", func() bool { return server.read("example.status", "text", "str") == "cache v2" })
+	if kinds := <-kindsOf; !reflect.DeepEqual(kinds, []any{"loading", "live"}) {
+		t.Fatalf("4. the status reference: %v, want [loading live]", kinds)
+	}
 	exEdit(t, root, "greeter/label.ts", `"hi"`, `"hey"`)
-	if _, err := plugins.Reload(server.node, buildDirty("@example/greeter"), background); err != nil {
+	last, err := plugins.Reload(server.node, buildDirty("@example/greeter"), background)
+	if err != nil {
 		t.Fatal(err)
+	}
+	// Pi prints the report: `plugins: {"added":[],"changed":["@example/greeter"],"removed":[]}`, `objects: example.greeting
+	// swapped` and `failed @example/weather: Error: plugin "@example/weather": weather: no API key configured`.
+	if got, want := exLineOf(last), (exLine{[]string{}, []string{"@example/greeter"}, []string{}, []string{"@example/weather"}}); !reflect.DeepEqual(got, want) {
+		t.Fatalf("4. plugins: %+v, want %+v", got, want)
+	}
+	if want := []host.ReloadedObject{{Object: "example.greeting", Kind: host.ReloadSwapped}}; !reflect.DeepEqual(last.Objects, want) {
+		t.Fatalf("4. objects: %+v, want %+v", last.Objects, want)
+	}
+	if got, want := exFailures(t, last.Failed), map[string]string{"@example/weather": `Error: plugin "@example/weather": weather: no API key configured`}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("4. failures: %q, want %q", got, want)
 	}
 	if got := []any{server.read("example.status", "text", "str"), server.read("example.greeting", "text", "str")}; !reflect.DeepEqual(got, []any{"cache v2", "hey"}) {
 		t.Fatalf("after another reload: %v, want [cache v2 hey]", got)
@@ -1006,14 +1057,10 @@ func TestExample39BrowserBuildEvaluatedOnAPage(t *testing.T) {
 		}
 	}
 	cache := t.TempDir()
-	parent := goHost(t)
-	if _, err := parent.Load(nil, background); err != nil {
-		t.Fatal(err)
-	}
 	address := workerKind.Address(nil)
 	node, report, err := NewPluginRuntime(NodeOptions{CacheDir: cache}).Load(RuntimeLoad{
 		Kind: "web", Core: []CoreFacet{probeCore(t, cache, exOps)}, Scripts: []PluginScript{script},
-		Parent: parent, Address: &address, Principal: workerPrincipal, Peer: serverPrincipal,
+		Address: &address, Principal: workerPrincipal, Peer: serverPrincipal,
 	}, background)
 	if err != nil {
 		t.Fatal(err)
@@ -1022,6 +1069,7 @@ func TestExample39BrowserBuildEvaluatedOnAPage(t *testing.T) {
 	if len(report.Failed) != 0 {
 		t.Fatalf("failed: %+v", report.Failed)
 	}
+	parent := serverFor(t, workerRoute(node))
 	page := &exNode{node: node, h: parent, probe: probeOn(t, parent)}
 	want := "/plugin-assets/" + script.Built.Assets[0].Name
 	if got := page.read("example.gallery", "logo", "str"); got != want {

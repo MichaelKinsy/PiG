@@ -72,16 +72,20 @@ export default defineFacet((host) =>
 	return CoreFacet{Name: "@test/probe", Module: file}
 }
 
-// probe is a held reference to `test.probe` on a Go host linked to the Node host.
+// probe is a held reference to `test.probe`, held on a Go host that routes the worker kind to the Node host.
 type probe struct {
 	t   *testing.T
 	ref *host.Reference
 }
 
-// probeOn holds the probe of the Node host h is linked to.
-func probeOn(t *testing.T, h host.Host) *probe {
+// probeOn holds the probe of the Node host h routes the worker kind to (serverFor).
+func probeOn(t *testing.T, h host.Host) *probe { return probeHeld(t, h, probeContract) }
+
+// probeHeld holds a probe contract (`test.probe`, or the same one on another host kind) on h: a hold over h's route to the
+// Node host that serves it, as the app's server holds what its worker serves.
+func probeHeld(t *testing.T, h host.Host, contract *contracts.Contract) *probe {
 	t.Helper()
-	ref, err := h.Get(probeContract, delta.NewJsonObject(0), background, host.GetOptions{})
+	ref, err := h.Get(contract, delta.NewJsonObject(0), background, host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,19 +156,15 @@ var notesContract = mustContract(contracts.Remote("test.notes", contracts.Remote
 func TestProbeSmoke(t *testing.T) {
 	cache := t.TempDir()
 	address := workerKind.Address(nil)
-	parent := goHost(t)
-	if _, err := parent.Load(nil, background); err != nil {
-		t.Fatal(err)
-	}
 	node, _, err := NewPluginRuntime(NodeOptions{CacheDir: cache}).Load(RuntimeLoad{
 		Kind: "worker", Core: []CoreFacet{probeCore(t, cache, `echo: async (args) => args, nope: async () => { throw new Error("nope"); }`)},
-		Parent: parent, Address: &address, Principal: workerPrincipal, Peer: serverPrincipal,
+		Address: &address, Principal: workerPrincipal, Peer: serverPrincipal,
 	}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = node.Close(background) })
-	p := probeOn(t, parent)
+	p := probeOn(t, serverFor(t, workerRoute(node)))
 	if got := p.must("echo", map[string]any{"a": 1.0}); !reflect.DeepEqual(got, map[string]any{"a": 1.0}) {
 		t.Fatalf("echo = %v", got)
 	}

@@ -2,11 +2,11 @@ package plugins
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -14,19 +14,22 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
 // Ports packages/chord/test/next-node/plugins/plugins.test.ts › "end to end: a server and a worker": plugin directories
 // (the fixtures `contracts` and `notes`, Pi's own) loaded on a server and a worker, an edit rolled out (server, then worker),
 // and a broken edit kept old on both.
 //
-// Adapted to the process boundary (docs/plan/chord-plugins-node-evaluator.md): a Node host is one process with one parent
-// link, so the server and the worker are two Node hosts of the component (kind "server", kind "worker"), each the parent of
-// a Go host that observes it. Pi's `server.get(Notes)` goes over a route of the server host to the worker host; here the
-// worker's Go host holds `test.notes` over its parent link from the worker's Node host (a route from the server's Go host to
-// the worker's was tried: the hold never went live, so the two observers stay separate). `Index` is a local type of the
-// server's Node host: it is read with a probe of the server (the worker's is plugins_probe_test.go's, on the worker kind).
+// Pi's shape, with one observing server: the worker's host connects to its parent (here a Node host: its link to the Go
+// side is NodeHost.Link, the other end of the one the host `connect`s) and the server routes `Worker` to it
+// (`server.route(Worker, { authorize, resolve: () => ({ link, principal: { kind: "worker" } }) })`: the Go host's Route).
+// `server.get(Notes)` is the Go host's hold over that route. Adapted to the process boundary
+// (docs/plan/chord-plugins-node-evaluator.md): the server's own plugins (kind "server") run in a Node host of their own, which
+// the same Go host routes (its address is `test.server`); `Index`, a local type of that host, is read with a probe held
+// through the route.
 
 // pcServerKind is the host kind of the server's Node host, which serves the server probe.
 var pcServerKind = mustKind(contracts.NewHostKind("test.server"))
@@ -73,7 +76,8 @@ export default defineFacet((host) =>
 	return CoreFacet{Name: "@test/sprobe", Module: file}
 }
 
-// pcFrames collects the values a watch delivers, and announces each.
+// pcFrames collects what a watch delivers as Pi's `valuesOf` records it (a value as itself, a failure as {failed: message}),
+// and announces each.
 type pcFrames struct {
 	mu     sync.Mutex
 	values []delta.JsonValue
@@ -83,12 +87,14 @@ type pcFrames struct {
 func pcStartFrames(watch chord.WatchHandle[delta.JsonValue]) *pcFrames {
 	frames := &pcFrames{got: make(chan struct{}, 64)}
 	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
+		frames.mu.Lock()
 		if call.Kind == chord.WatchCallValue {
-			frames.mu.Lock()
 			frames.values = append(frames.values, call.Value)
-			frames.mu.Unlock()
-			frames.got <- struct{}{}
+		} else {
+			frames.values = append(frames.values, map[string]any{"failed": call.Error.Error()})
 		}
+		frames.mu.Unlock()
+		frames.got <- struct{}{}
 		return nil
 	})
 	return frames
@@ -110,70 +116,53 @@ func (f *pcFrames) next(t *testing.T) {
 	}
 }
 
+// count waits until n frames arrived: the frame list Pi expects after its `transported()` and `delivered()`.
+func (f *pcFrames) count(t *testing.T, n int) {
+	t.Helper()
+	for len(f.all()) < n {
+		f.next(t)
+	}
+}
+
 // plugins.test.ts › end to end: a server and a worker › loads plugin directories, rolls an edit out (server, then worker),
-// and keeps a broken edit old on both. `Index` (local to the server's Node host) is read through the server's probe; `notes`
-// through the worker's Go host. Pi's `transported()` and `delivered()` (event-loop hops) are the arrival of the frame
-// (v2), and, for the broken edit, where nothing may change, a call of `add` as a barrier: every frame the worker's host
-// sent before its reply has arrived by then (count 2 is that call's, not Pi's).
+// and keeps a broken edit old on both. Pi's `transported()` and `delivered()` (event-loop hops) are the arrival of the frames:
+// the test waits for the frame list it expects. For the broken edit, where nothing may change, a call of `add` is the
+// barrier: every frame the worker's host sent before its reply has arrived by then (count 2 is that call's, not Pi's).
 func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThenWorkerAndKeepsABrokenEditOldOnBoth(t *testing.T) {
 	root := tempRoot(t, "contracts", "notes")
 	c := pcNew(t, root)
 
-	// The worker: its Node host, and the Go host that is its child.
-	workerGo, err := host.CreateHost(host.HostOptions{OnError: func(host.HostError) {}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = workerGo.Close(background) })
-	if _, err := workerGo.Load(nil, background); err != nil {
-		t.Fatal(err)
-	}
+	// The worker's host, and the server's own plugins' host (it has an address of its own for the probe).
 	workerAddress := workerKind.Address(nil)
 	workerNode, _, err := c.Load(PluginsLoad{
-		Kind: "worker", Parent: workerGo, Address: &workerAddress, Principal: workerPrincipal, Peer: serverPrincipal,
+		Kind: "worker", Address: &workerAddress, Principal: workerPrincipal, Peer: serverPrincipal,
 	}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = workerNode.Close(background) })
-
-	serverGo, err := host.CreateHost(host.HostOptions{Principal: serverPrincipal, OnError: func(host.HostError) {}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = serverGo.Close(background) })
-	if _, err := serverGo.Load(nil, background); err != nil {
-		t.Fatal(err)
-	}
 	serverAddress := pcServerKind.Address(nil)
 	serverNode, _, err := c.Load(PluginsLoad{
-		Kind: "server", Core: []CoreFacet{pcServerProbeCore(t, c)}, Parent: serverGo, Address: &serverAddress,
-		Principal: serverPrincipal, Peer: delta.JsonObjectOf("kind", "observer"),
+		Kind: "server", Core: []CoreFacet{pcServerProbeCore(t, c)}, Address: &serverAddress,
+		Principal: serverPrincipal, Peer: serverPrincipal,
 	}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = serverNode.Close(background) })
 
-	probeRef, err := serverGo.Get(pcServerProbeContract, delta.NewJsonObject(0), background, host.GetOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(probeRef.Release)
+	// The server: it routes `Worker` (and its own plugins' kind) to the links of the Node hosts.
+	server := serverFor(t, workerRoute(workerNode), nodeRoute{kind: pcServerKind, node: serverNode, principal: serverPrincipal})
+	serverProbe := probeHeld(t, server, pcServerProbeContract)
 	indexLabel := func() string {
 		t.Helper()
-		request, _ := json.Marshal(map[string]any{"op": "label", "args": map[string]any{"dir": "index"}})
-		answer, err := probeRef.Call("call", string(request), background)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var label string
-		if err := json.Unmarshal([]byte(answer.(string)), &label); err != nil {
-			t.Fatal(err)
+		label, ok := serverProbe.must("label", map[string]any{"dir": "index"}).(string)
+		if !ok {
+			t.Fatal("the index label is no text")
 		}
 		return label
 	}
-	notes, err := workerGo.Get(notesContract, delta.NewJsonObject(0), background, host.GetOptions{})
+	notes, err := server.Get(notesContract, delta.NewJsonObject(0), background, host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +216,7 @@ func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThen
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("rolled = %+v, want %+v", got, want)
 	}
-	frames.next(t)
+	frames.count(t, 1)
 	if values := frames.all(); !reflect.DeepEqual(values, []delta.JsonValue{"v2"}) {
 		t.Fatalf("frames = %v, want [v2]", values)
 	}
@@ -255,13 +244,99 @@ func TestEndToEndAServerAndAWorkerLoadsPluginDirectoriesRollsAnEditOutServerThen
 	if got := []any{member("label"), indexLabel()}; !reflect.DeepEqual(got, []any{"v2", "v2"}) {
 		t.Fatalf("after the broken edit = %v, want [v2 v2]", got)
 	}
-	if state := notes.State().Value(); state.Kind != host.RefStateLive {
-		t.Fatalf("notes state = %+v, want live", state)
+	if state := notes.State().Value(); !reflect.DeepEqual(state, &host.RefState{Kind: host.RefStateLive}) {
+		t.Fatalf("notes state = %+v, want {kind: live}", state)
 	}
-	if values := frames.all(); !slices.Equal(values, []delta.JsonValue{"v2"}) {
+	if values := frames.all(); !reflect.DeepEqual(values, []delta.JsonValue{"v2"}) {
 		t.Fatalf("frames after the broken edit = %v, want [v2]", values)
 	}
 	if marks := c.Marks(); !slices.Equal(marks.Dirty, []string{"@test/notes"}) {
 		t.Fatalf("dirty = %v, want [@test/notes]", marks.Dirty)
+	}
+}
+
+// The review's case against the first port's direction (B1): a Go host that has a parent of its own loads plugins. This is the
+// shape of a worker process of Pi's workers: its host `connect`s to the server that routes its kind to it (workers.ts), and
+// plugins load on that host. Here the worker's Go host (a relay: no address of its own, which its kind's route would not
+// reach) routes the kind to the Node host that serves the plugins' types, so `server.get(Notes)` goes server, worker's Go
+// host (over its parent link), Node host. The first port made the Node host the parent of the Go host: a Go host with a
+// parent could not load, and a hold relayed up to the Node host failed with "hold: an origin on a child link" (a child
+// relays nothing), which the Go side never saw (it timed out).
+func TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost(t *testing.T) {
+	root := tempRoot(t, "contracts", "notes")
+	c := pcNew(t, root)
+	address := workerKind.Address(nil)
+	node, _, err := c.Load(PluginsLoad{Kind: "worker", Address: &address, Principal: workerPrincipal, Peer: workerPrincipal}, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = node.Close(background) })
+
+	up, down := link.MemoryLinkPair()
+	worker := serverFor(t, nodeRoute{kind: workerKind, node: node, principal: workerPrincipal})
+	if err := worker.Connect(up, host.LinkOptions{Principal: serverPrincipal, Trusted: true}, background); err != nil {
+		t.Fatal(err)
+	}
+	server, err := host.CreateHost(host.HostOptions{Principal: serverPrincipal, OnError: func(host.HostError) {}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = server.Close(background) })
+	if _, err := server.Route(workerKind, host.RouteOptions{
+		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
+		Resolve: func(contracts.Address, context.Context) (host.ResolvedLink, error) {
+			return host.ResolvedLink{Link: down, Principal: workerPrincipal, Trusted: true}, nil
+		},
+	}, background); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := server.Load(nil, background); err != nil {
+		t.Fatal(err)
+	}
+	notes, err := server.Get(notesContract, delta.NewJsonObject(0), background, host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(notes.Release)
+	if value, err := notes.Member("label").Value(); err != nil || value != "v1" {
+		t.Fatalf("label = %v, %v", value, err)
+	}
+	if count, err := notes.Call("add", nil, background); err != nil || count != float64(1) {
+		t.Fatalf("add = %v, %v", count, err)
+	}
+}
+
+// pcIndexContract is the fixtures' `Index`: a local type, served by the server kind's plugin on its Node host.
+var pcIndexContract = mustContract(contracts.Local("test.index", contracts.LocalDeclaration{
+	Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("label", contracts.Str())},
+}))
+
+// Not upstream's (plugnode-differences.md, 1): a local type is the host's own, so the app's Go host cannot `get` one that a
+// plugin serves on its Node host (Pi's app does that in process, `server.get(Index)`): the hold is `unavailable`, `test.index is not served here`. The same
+// type is read through the probe, in the Node host.
+func TestEndToEndTheAppsGoHostCannotGetALocalTypeAPluginServes(t *testing.T) {
+	root := tempRoot(t, "contracts", "notes")
+	c := pcNew(t, root)
+	serverAddress := pcServerKind.Address(nil)
+	serverNode, _, err := c.Load(PluginsLoad{
+		Kind: "server", Core: []CoreFacet{pcServerProbeCore(t, c)}, Address: &serverAddress,
+		Principal: serverPrincipal, Peer: serverPrincipal,
+	}, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = serverNode.Close(background) })
+	server := serverFor(t, nodeRoute{kind: pcServerKind, node: serverNode, principal: serverPrincipal})
+	if label := probeHeld(t, server, pcServerProbeContract).must("label", map[string]any{"dir": "index"}); label != "v1" {
+		t.Fatalf("the probe reads %v, want v1", label)
+	}
+	short := 500 * time.Millisecond
+	ref, err := server.Get(pcIndexContract, delta.NewJsonObject(0), background, host.GetOptions{ReadyTimeout: &short})
+	if err == nil {
+		ref.Release()
+		t.Fatal("the app's Go host got a local type of its plugins")
+	}
+	if !strings.Contains(err.Error(), "test.index is not served here") {
+		t.Fatalf("error = %v", err)
 	}
 }

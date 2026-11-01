@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"os/exec"
@@ -55,6 +56,8 @@ type pcOptions struct {
 	modules []string
 	gc      bool
 	install InstallOptions
+	// hostError gets what the Node hosts' hosts report in the background (NodeOptions.OnError).
+	hostError func(NodeHostError)
 }
 
 // pcComponent is the component over a root (plugins.test.ts's `component`), its reports collected, and the cache directory
@@ -82,7 +85,7 @@ func pcNew(t *testing.T, root string, opts ...pcOptions) *pcComponent {
 		chosen = opts[0]
 	}
 	cache := t.TempDir()
-	node := NodeOptions{CacheDir: cache}
+	node := NodeOptions{CacheDir: cache, OnError: chosen.hostError}
 	if chosen.gc {
 		node.ExecArgv = []string{"--expose-gc"}
 	}
@@ -104,7 +107,7 @@ func (c *pcComponent) src(t *testing.T) string {
 	return "file://" + filepath.ToSlash(filepath.Join(tree, "pi", "chord", "src")) + "/"
 }
 
-// pcLoaded is a Node host of the component, the Go host it is the parent of, and its probe.
+// pcLoaded is a Node host of the component, the Go host that routes the worker kind to it, and its probe.
 type pcLoaded struct {
 	node   *NodeHost
 	parent host.Host
@@ -116,19 +119,16 @@ type pcLoaded struct {
 // and ops) and core, closed when the test ends.
 func (c *pcComponent) loadWorker(t *testing.T, ops string, modules HostPackages, core ...CoreFacet) pcLoaded {
 	t.Helper()
-	parent := goHost(t)
-	if _, err := parent.Load(nil, background); err != nil {
-		t.Fatal(err)
-	}
 	address := workerKind.Address(nil)
 	node, report, err := c.Load(PluginsLoad{
 		Kind: "worker", Core: append([]CoreFacet{probeCore(t, c.cache, pcLabelOps+ops)}, core...), Modules: modules,
-		Parent: parent, Address: &address, Principal: workerPrincipal, Peer: serverPrincipal,
+		Address: &address, Principal: workerPrincipal, Peer: serverPrincipal,
 	}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = node.Close(background) })
+	parent := serverFor(t, workerRoute(node))
 	return pcLoaded{node: node, parent: parent, report: report, probe: probeOn(t, parent)}
 }
 
@@ -643,6 +643,11 @@ func pcCollected(t *testing.T, p *probe, from, to int) []bool {
 	if !ok {
 		t.Fatal("collected is no list")
 	}
+	// `made.slice(from, to)` is shorter when fewer values were made: Pi's `expectCollected(made[1]!)` would throw on a value
+	// that was never made, so a short list fails here.
+	if len(answer) != to-from {
+		t.Fatalf("the probe made %d of the %d values %d..%d the case reads", len(answer), to-from, from, to-1)
+	}
 	out := make([]bool, len(answer))
 	for i, each := range answer {
 		out[i], _ = each.(bool)
@@ -860,8 +865,26 @@ func TestPluginsFixRound1LeavesAPluginOutOfAHostWhoseKindItsRebuiltFacetsNoLonge
 	}
 }
 
+// pcClone is `structuredClone(built)`: a deep copy of the plain data (a JSON round trip: the build's exported fields, nothing of
+// its identity or snapshot).
+func pcClone(t *testing.T, built *Built) *Built {
+	t.Helper()
+	text, err := json.Marshal(built)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var clone Built
+	if err := json.Unmarshal(text, &clone); err != nil {
+		t.Fatal(err)
+	}
+	if clone.self != nil || clone.snapshot.Plugins != nil || clone.snapshot.Names != nil {
+		t.Fatal("a clone of the plain data carries the build's identity")
+	}
+	return &clone
+}
+
 // plugins.test.ts › fix round 1 › reloads a structured clone of a build as the build itself: it is plain data (Astra). The
-// clone is a copy of the struct (another address).
+// clone is a deep copy (another address, no shared slices or maps).
 func TestPluginsFixRound1ReloadsAStructuredCloneOfABuildAsTheBuildItselfItIsPlainData(t *testing.T) {
 	root := tempRoot(t)
 	pcItemPlugin(t, root, "a", "a1")
@@ -870,8 +893,11 @@ func TestPluginsFixRound1ReloadsAStructuredCloneOfABuildAsTheBuildItselfItIsPlai
 	pcItemPlugin(t, root, "a", "a2")
 	c.waitMarks(t, "dirty a", pcDirty("@test/a"))
 	built := c.build(t, "@test/a")
-	clone := *built
-	if got := c.reload(t, h, &clone).Plugins.Changed; !slices.Equal(got, []string{"@test/a"}) {
+	clone := pcClone(t, built)
+	if len(built.Facets) == 0 || &clone.Facets[0] == &built.Facets[0] {
+		t.Fatal("the clone shares the build's facets")
+	}
+	if got := c.reload(t, h, clone).Plugins.Changed; !slices.Equal(got, []string{"@test/a"}) {
 		t.Fatalf("changed = %v", got)
 	}
 	if got := h.label("a"); got != "a2" {
@@ -882,8 +908,7 @@ func TestPluginsFixRound1ReloadsAStructuredCloneOfABuildAsTheBuildItselfItIsPlai
 	if err != nil {
 		t.Fatal(err)
 	}
-	cloneAgain := *built
-	result := c.rollout(t, []RolloutStep{step}, &cloneAgain)
+	result := c.rollout(t, []RolloutStep{step}, pcClone(t, built))
 	if result.Stopped != nil {
 		t.Fatalf("stopped = %+v", result.Stopped)
 	}

@@ -31,9 +31,11 @@ import (
 
 // The Node subprocess of the plugins component (docs/plan/chord-plugins-node-evaluator.md). Pi evaluates a built script on
 // Node's `vm` in the process of the host that loads it; Go has no JavaScript runtime in process (AGENTS.md), so the host
-// that loads the plugins is Pi's own chord host in a Node subprocess, linked to the Go host over the chord link wire.
+// that loads the plugins is Pi's own chord host in a Node subprocess, the child of a Go host over the chord link wire.
 //
-// No Pi file corresponds to this one: it is the Go side of what Pi's workers (next-node/workers) do with a forked child.
+// No Pi file corresponds to this one: it is the Go side of what Pi's workers (next-node/workers) do with a forked child: the
+// child connects a link to its parent (workers/main.ts), and the server routes the worker's kind to the other end of it
+// (workers.ts). Here the other end is NodeHost.Link, and the app routes or accepts it.
 // The vendored Pi sources (node/pi, with node/manifest.json) and the driver (node/host.mjs) are embedded and extracted once
 // per content hash.
 
@@ -179,8 +181,13 @@ func discoverNode(ctx context.Context) (string, error) {
 	return path, nil
 }
 
-// extractNode extracts the embedded tree under cacheDir (once per content hash) and returns its directory. The tree is
-// extracted aside and renamed into place: a process that lost the race finds the winner's.
+// completeMarker is the file extractNode writes last into a tree: its content is the hash the tree's directory is named for.
+const completeMarker = ".complete"
+
+// extractNode extracts the embedded tree under cacheDir (once per content hash) and returns its directory. A new tree is
+// extracted aside and renamed into place, so a process that lost the race finds the winner's. A directory is trusted when
+// its marker (written last) names this content and each of its files has the embedded size; one that is not (a cache that
+// was partly deleted, or made by an older version) is repaired in place, file by file, the marker last.
 func extractNode(cacheDir string) (string, error) {
 	if cacheDir == "" {
 		base, err := os.UserCacheDir()
@@ -200,8 +207,15 @@ func extractNode(cacheDir string) (string, error) {
 	sum := sha256.New()
 	sum.Write(manifest)
 	sum.Write(driver)
-	dir := filepath.Join(cacheDir, "chord-plugins-node-"+hex.EncodeToString(sum.Sum(nil))[:16])
-	if _, err := os.Stat(filepath.Join(dir, "host.mjs")); err == nil {
+	hash := hex.EncodeToString(sum.Sum(nil))
+	dir := filepath.Join(cacheDir, "chord-plugins-node-"+hash[:16])
+	if nodeTreeComplete(dir, hash) {
+		return dir, nil
+	}
+	if _, err := os.Stat(dir); err == nil {
+		if err := repairNodeTree(dir, hash); err != nil {
+			return "", err
+		}
 		return dir, nil
 	}
 	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
@@ -212,30 +226,112 @@ func extractNode(cacheDir string) (string, error) {
 		return "", err
 	}
 	defer func() { _ = os.RemoveAll(stage) }()
-	err = fs.WalkDir(nodeFiles, "node", func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		target := filepath.Join(stage, filepath.FromSlash(strings.TrimPrefix(strings.TrimPrefix(path, "node"), "/")))
-		if entry.IsDir() {
-			return os.MkdirAll(target, 0o755)
-		}
-		data, err := nodeFiles.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(target, data, 0o644)
-	})
-	if err != nil {
+	if err := writeNodeTree(stage, hash, func(string) bool { return true }, os.WriteFile); err != nil {
 		return "", err
 	}
 	if err := os.Rename(stage, dir); err != nil {
-		if _, statErr := os.Stat(filepath.Join(dir, "host.mjs")); statErr == nil {
-			return dir, nil
+		// A process that was first published its tree; one that is partial is repaired.
+		if _, statErr := os.Stat(dir); statErr != nil {
+			return "", err
 		}
-		return "", err
+		if !nodeTreeComplete(dir, hash) {
+			if err := repairNodeTree(dir, hash); err != nil {
+				return "", err
+			}
+		}
 	}
 	return dir, nil
+}
+
+// nodeTreeComplete reports whether dir holds the whole embedded tree: its marker names hash and every file has its embedded
+// size.
+func nodeTreeComplete(dir, hash string) bool {
+	marker, err := os.ReadFile(filepath.Join(dir, completeMarker))
+	if err != nil || string(marker) != hash {
+		return false
+	}
+	return nodeTreeMissing(dir) == nil
+}
+
+// nodeTreeMissing is the embedded files dir lacks, or holds with another size.
+func nodeTreeMissing(dir string) map[string]bool {
+	var missing map[string]bool
+	_ = fs.WalkDir(nodeFiles, "node", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return err
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		relative := nodeRelative(path)
+		if stat, err := os.Stat(filepath.Join(dir, relative)); err != nil || stat.Size() != info.Size() {
+			if missing == nil {
+				missing = map[string]bool{}
+			}
+			missing[relative] = true
+		}
+		return nil
+	})
+	return missing
+}
+
+func nodeRelative(path string) string {
+	return filepath.FromSlash(strings.TrimPrefix(strings.TrimPrefix(path, "node"), "/"))
+}
+
+// repairNodeTree writes what dir lacks, each file by a rename of a complete one (a process starting from dir meanwhile reads
+// whole files, and two repairs write the same bytes), then the marker.
+func repairNodeTree(dir, hash string) error {
+	missing := nodeTreeMissing(dir)
+	return writeNodeTree(dir, hash, func(relative string) bool { return missing[relative] }, writeFileAtomic)
+}
+
+// writeNodeTree writes, with write, the embedded files of root that wanted selects (paths relative to it), then the marker.
+func writeNodeTree(root, hash string, wanted func(relative string) bool, write func(path string, content []byte, perm os.FileMode) error) error {
+	err := fs.WalkDir(nodeFiles, "node", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		relative := nodeRelative(path)
+		if entry.IsDir() {
+			return os.MkdirAll(filepath.Join(root, relative), 0o755)
+		}
+		if !wanted(relative) {
+			return nil
+		}
+		content, err := nodeFiles.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return write(filepath.Join(root, relative), content, 0o644)
+	})
+	if err != nil {
+		return err
+	}
+	return write(filepath.Join(root, completeMarker), []byte(hash), 0o644)
+}
+
+// writeFileAtomic writes content to a temporary file next to path and renames it over path.
+func writeFileAtomic(path string, content []byte, perm os.FileMode) error {
+	file, err := os.CreateTemp(filepath.Dir(path), ".write-")
+	if err != nil {
+		return err
+	}
+	_, err = file.Write(content)
+	if closeErr := file.Close(); err == nil {
+		err = closeErr
+	}
+	if err == nil {
+		err = os.Chmod(file.Name(), perm)
+	}
+	if err == nil {
+		err = os.Rename(file.Name(), path)
+	}
+	if err != nil {
+		_ = os.Remove(file.Name())
+	}
+	return err
 }
 
 // framedPort is the IPC channel of a subprocess (link.IpcPort): frames of a length, a kind byte and a payload over one
@@ -243,6 +339,8 @@ func extractNode(cacheDir string) (string, error) {
 type framedPort struct {
 	conn      net.Conn
 	onControl func(payload []byte)
+	// done is closed when read returned: every frame the connection delivered was handled.
+	done chan struct{}
 
 	writeMu sync.Mutex
 
@@ -253,11 +351,12 @@ type framedPort struct {
 }
 
 func newFramedPort(conn net.Conn, onControl func(payload []byte)) *framedPort {
-	return &framedPort{conn: conn, onControl: onControl, connected: true}
+	return &framedPort{conn: conn, onControl: onControl, done: make(chan struct{}), connected: true}
 }
 
 // read reads frames until the connection ends; run on its own goroutine.
 func (p *framedPort) read() {
+	defer close(p.done)
 	reader := bufio.NewReader(p.conn)
 	for {
 		var length [4]byte
@@ -368,12 +467,17 @@ type NodeHost struct {
 	options NodeOptions
 	cmd     *exec.Cmd
 	port    atomic.Pointer[framedPort]
+	// link is the link over port, made when the channel was: the messages the process's host sends queue in it until the app
+	// attaches it to a Go host.
+	link link.Link
 	// kind is the facet kind the host was loaded with; owner is the component that loaded it (nil for a PluginRuntime's).
 	kind  string
 	owner *Plugins
 
 	started chan struct{}
-	exited  chan struct{}
+	// reaped is closed when the process was waited for; exited, once its channel was read to the end too.
+	reaped chan struct{}
+	exited chan struct{}
 
 	mu       sync.Mutex
 	nextID   int
@@ -387,6 +491,14 @@ type NodeHost struct {
 
 // Exited is closed when the process ended.
 func (h *NodeHost) Exited() <-chan struct{} { return h.exited }
+
+// Link is the link to the process's host, the other end of the one that host connected to its parent (Pi's worker `connect`s
+// a link to its server). The app attaches it to a Go host as the server of a worker does: `Route` of the host's kind, whose
+// Resolve returns it (with the principal the app stamps the host with), or `Accept` with LinkOptions{Principal, Trusted:
+// true}. It is one link, made when the process connected: the messages the process sent before are queued in it. The
+// process's host closes a link silent for its heartbeat (30 s) and ends with it, so attach it in time. A closed link, from
+// either end, ends the process's channel and the process.
+func (h *NodeHost) Link() link.Link { return h.link }
 
 // Err is why the process ended before Close asked it to (a *NodeExit), or nil.
 func (h *NodeHost) Err() error {
@@ -446,7 +558,7 @@ func startNode(options NodeOptions, ctx context.Context) (*NodeHost, error) {
 	defer cleanup()
 	defer func() { _ = listener.Close() }()
 
-	h := &NodeHost{options: options, started: make(chan struct{}), exited: make(chan struct{}), pending: map[int]*nodeCall{}}
+	h := &NodeHost{options: options, started: make(chan struct{}), reaped: make(chan struct{}), exited: make(chan struct{}), pending: map[int]*nodeCall{}}
 	output := options.OnOutput
 	if output == nil {
 		output = func(stream NodeStream, chunk []byte) {
@@ -488,21 +600,24 @@ func startNode(options NodeOptions, ctx context.Context) (*NodeHost, error) {
 	select {
 	case got := <-connections:
 		if got.err != nil {
-			h.kill()
+			h.stop()
 			return nil, fmt.Errorf("accepting the node subprocess: %w", got.err)
 		}
 		conn = got.conn
 	case <-h.exited:
 		return nil, h.startFailure("the node subprocess ended before it connected")
 	case <-deadline.C:
-		h.kill()
-		return nil, h.startFailure(fmt.Sprintf("the node subprocess did not connect within %s", timeout))
+		err := h.startFailure(fmt.Sprintf("the node subprocess did not connect within %s", timeout))
+		h.stop()
+		return nil, err
 	case <-ctx.Done():
-		h.kill()
+		h.stop()
 		return nil, context.Cause(ctx)
 	}
 	port := newFramedPort(conn, h.control)
 	h.port.Store(port)
+	// Made before the first frame is read: none is lost before the app attaches the link.
+	h.link = link.IpcLink(port)
 	go func() {
 		port.read()
 		h.channelEnded()
@@ -512,10 +627,11 @@ func startNode(options NodeOptions, ctx context.Context) (*NodeHost, error) {
 	case <-h.exited:
 		return nil, h.startFailure("the node subprocess ended before it started")
 	case <-deadline.C:
-		h.kill()
-		return nil, h.startFailure(fmt.Sprintf("the node subprocess did not start within %s", timeout))
+		err := h.startFailure(fmt.Sprintf("the node subprocess did not start within %s", timeout))
+		h.stop()
+		return nil, err
 	case <-ctx.Done():
-		h.kill()
+		h.stop()
 		return nil, context.Cause(ctx)
 	}
 	return h, nil
@@ -532,9 +648,19 @@ func (h *NodeHost) startFailure(what string) error {
 }
 
 // wait is the goroutine that waits for the process: it records how it ended, closes Exited and fails every pending
-// request.
+// request. The channel is read to its end first (the process closed it when it ended; bounded by stopGrace), so a `fatal`
+// the process sent before it exited is in the NodeExit.
 func (h *NodeHost) wait() {
 	err := h.cmd.Wait()
+	close(h.reaped)
+	if port := h.port.Load(); port != nil {
+		timer := time.NewTimer(stopGrace)
+		select {
+		case <-port.done:
+		case <-timer.C:
+		}
+		timer.Stop()
+	}
 	h.mu.Lock()
 	if !h.closing || err != nil {
 		h.exit = &NodeExit{Err: err, Fatal: h.fatal, Stderr: h.stderr.text()}
@@ -571,6 +697,42 @@ func (h *NodeHost) channelEnded() {
 func (h *NodeHost) kill() {
 	if h.cmd.Process != nil {
 		_ = h.cmd.Process.Kill()
+	}
+}
+
+// stop kills the process and waits until it ended (a process that was killed ends at once; stopGrace bounds the wait for what
+// holds its pipes).
+func (h *NodeHost) stop() {
+	h.kill()
+	timer := time.NewTimer(stopGrace)
+	defer timer.Stop()
+	select {
+	case <-h.exited:
+	case <-timer.C:
+	}
+}
+
+// exitError is why the process ended, as a request that fails because of it reports: its NodeExit, or that it ended when it
+// was asked to. Call it once h.exited is closed.
+func (h *NodeHost) exitError() error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.exit == nil {
+		return errors.New("the node subprocess ended")
+	}
+	return h.exit
+}
+
+// afterChannelEnded is the error of a send that found the channel ended (cause): the process's exit once it is known (it
+// exits by itself, or channelEnded kills it after the grace), else cause.
+func (h *NodeHost) afterChannelEnded(cause error) error {
+	timer := time.NewTimer(2 * stopGrace)
+	defer timer.Stop()
+	select {
+	case <-h.exited:
+		return h.exitError()
+	case <-timer.C:
+		return cause
 	}
 }
 
@@ -613,12 +775,8 @@ func (h *NodeHost) send(op string, body request) (*nodeCall, error) {
 	h.mu.Lock()
 	select {
 	case <-h.exited:
-		err := h.exit
 		h.mu.Unlock()
-		if err == nil {
-			err = errors.New("the node subprocess ended")
-		}
-		return nil, err
+		return nil, h.exitError()
 	default:
 	}
 	h.nextID++
@@ -633,7 +791,7 @@ func (h *NodeHost) send(op string, body request) (*nodeCall, error) {
 	}
 	if err := h.port.Load().write(frameControl, payload); err != nil {
 		h.drop(call)
-		return nil, err
+		return nil, h.afterChannelEnded(err)
 	}
 	return call, nil
 }

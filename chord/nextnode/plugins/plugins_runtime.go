@@ -9,7 +9,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
-	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
 // Ports packages/chord/src/next-node/plugins/runtime.ts. The plugin runtime (slice 10 §3, D11): loading and reloading hosts
@@ -48,15 +47,18 @@ type RuntimeLoad struct {
 	Scripts []PluginScript
 	// Modules are the host packages the scripts' imports are answered with; kept for the host's reloads.
 	Modules HostPackages
-	// Parent is the Go host the subprocess's host links to as its child: Connect is called on it with the link, so a remote
-	// type the Parent does not serve is held on the subprocess's host. Required.
-	Parent host.Host
-	// Address is the subprocess host's address (`createHost`'s `address`), nil for a client.
+	// Address is the subprocess host's address (`createHost`'s `address`), nil for a client: the one a remote type's
+	// `hostAddress` places objects at, and the one the app routes to the host's link.
 	Address *contracts.Address
-	// Principal is who the subprocess host acts as for its own requests, and who Parent stamps it as. Required.
+	// Principal is who the subprocess host acts as for its own requests (`createHost`'s `principal`); none for a client. The
+	// app stamps the host with it when it attaches the link (RouteOptions.Resolve's, LinkOptions').
 	Principal data.Principal
-	// Peer is who Parent is, as the subprocess's host stamps it. Required.
+	// Peer is who the Go host that attaches the link is, as the subprocess's host stamps it: the `principal` of its
+	// `connect` (trusted), as the server's is to a forked worker. Required.
 	Peer data.Principal
+	// Heartbeat is the subprocess host's heartbeat (`createHost`'s `heartbeat`): it closes a link silent for Close, 30 s by
+	// default, its handshake included, and the process with it, so the app attaches NodeHost.Link in time.
+	Heartbeat *host.HeartbeatOptions
 }
 
 // PluginRuntime starts the Node subprocesses that host plugins, and loads and reloads them with complete sets of shipped
@@ -78,6 +80,13 @@ type loadRequest struct {
 	Address   *addressWire      `json:"address,omitempty"`
 	Principal data.Principal    `json:"principal,omitempty"`
 	Peer      data.Principal    `json:"peer"`
+	Heartbeat *heartbeatWire    `json:"heartbeat,omitempty"`
+}
+
+// heartbeatWire is a host.HeartbeatOptions in milliseconds, as `createHost`'s `heartbeat`.
+type heartbeatWire struct {
+	Ping  *int64 `json:"ping,omitempty"`
+	Close *int64 `json:"close,omitempty"`
 }
 
 type coreWire struct {
@@ -140,12 +149,17 @@ func nonNil(list []string) []string {
 }
 
 // Load starts a Node subprocess whose host evaluates options.Scripts (the complete set of options.Kind) with options.Modules
-// and loads them with options.Core, and links that host to options.Parent. A plugin whose build or evaluation failed is left
-// out and reported with the host's report (the failures of the scripts first), each error a *NodeError whose Stack names the
-// plugin's files and lines. It returns the host's error as it is: the subprocess is stopped then.
+// and loads them with options.Core. A plugin whose build or evaluation failed is left out and reported with the host's
+// report (the failures of the scripts first), each error a *NodeError whose Stack names the plugin's files and lines. It
+// returns the host's error as it is: the subprocess is stopped then.
+//
+// The host is the child of the Go side, as a forked worker is of its server (next-node/workers/main.ts): it connects the
+// link to its parent at load. The app attaches the other end, NodeHost.Link, to a Go host as Pi's app does: a route of the
+// host's kind (`host.Route`, whose Resolve returns it) or `host.Accept`, in time (RuntimeLoad.Heartbeat). A NodeHost needs no
+// Go host to load, so one Go host can own any number of them, and a Go host that has a parent of its own can load plugins.
 func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHost, host.LoadReport, error) {
-	if options.Parent == nil || options.Principal == nil || options.Peer == nil {
-		return nil, host.LoadReport{}, errors.New("plugins.load: a Parent host, a Principal and a Peer are required")
+	if options.Peer == nil {
+		return nil, host.LoadReport{}, errors.New("plugins.load: a Peer is required")
 	}
 	request := &loadRequest{
 		Kind: options.Kind, Core: make([]coreWire, len(options.Core)), Scripts: scriptsWire(options.Scripts),
@@ -160,17 +174,22 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 	if options.Address != nil {
 		request.Address = &addressWire{Kind: options.Address.Kind, Params: options.Address.Params, Key: options.Address.Key}
 	}
+	if options.Heartbeat != nil {
+		request.Heartbeat = &heartbeatWire{}
+		if options.Heartbeat.Ping != nil {
+			ping := options.Heartbeat.Ping.Milliseconds()
+			request.Heartbeat.Ping = &ping
+		}
+		if options.Heartbeat.Close != nil {
+			closing := options.Heartbeat.Close.Milliseconds()
+			request.Heartbeat.Close = &closing
+		}
+	}
 	h, err := startNode(r.node, ctx)
 	if err != nil {
 		return nil, host.LoadReport{}, err
 	}
 	h.kind = options.Kind
-	// Connected first, as a worker connects before it loads: the link is the channel's, so the process's host reaches the Go
-	// host's types, and the Go host the process's, once the plugins are loaded.
-	if err := options.Parent.Connect(link.IpcLink(h.port.Load()), host.LinkOptions{Principal: options.Principal, Trusted: true}, ctx); err != nil {
-		_ = h.Close(context.WithoutCancel(ctx))
-		return nil, host.LoadReport{}, err
-	}
 	call, err := h.send("load", request)
 	if err == nil {
 		var reply nodeReply

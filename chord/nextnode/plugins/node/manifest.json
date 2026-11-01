@@ -1,5 +1,7 @@
 {
 	"commit": "2c8d1feb147f6b3d97e855da803bfe7b19f3c403",
+	"pin": "e7a0df27c09d11bf4161d3605246cbf57a129cb2",
+	"catchup": "2c8d1feb147f6b3d97e855da803bfe7b19f3c403",
 	"typebox": "1.3.27",
 	"piTelemetry": "1.4.0",
 	"files": [

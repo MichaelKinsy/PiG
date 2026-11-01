@@ -9,6 +9,11 @@
 // and `close` have no answer (a closed host ends this process's channel, and the process exits). Unrequested:
 // `{ event: "started" }`, `{ event: "error", error }` (the host's onError) and `{ event: "fatal", error }` (an uncaught
 // exception; the process exits).
+//
+// The host is the child of the Go side: `load` makes it, and it `connect`s the link as its parent link with the principal
+// `peer` (trusted), as Pi's forked worker does. The Go side attaches the other end (`NodeHost.Link`) to its host, with a
+// route of the host's kind or `accept`. A link silent for the heartbeat (30 s) is closed by this host, and the process
+// exits with it.
 import { EventEmitter } from "node:events";
 import { connect } from "node:net";
 import { pathToFileURL } from "node:url";
@@ -105,7 +110,7 @@ await new Promise((resolve, reject) => {
 	socket.once("error", reject);
 });
 const port = new FramedPort(socket);
-// Made at once: its messages queue until the host that accepts it listens.
+// Made at once: the messages it receives queue until the host that connects it listens.
 const link = ipcLink(port);
 
 /** The one host and runtime of this process, set by `load`. */
@@ -133,11 +138,14 @@ async function load(request, context) {
 	const host = createHost({
 		...(request.address === undefined ? {} : { address: request.address }),
 		...(request.principal === undefined ? {} : { principal: request.principal }),
+		...(request.heartbeat === undefined ? {} : { heartbeat: request.heartbeat }),
 		onError: (error) => port.control({ event: "error", error: hostError(error) }),
 	});
 	const runtime = createPluginRuntime();
 	hosted = { host, runtime };
-	host.accept(link, { principal: request.peer, trusted: true }, context);
+	// As a worker connects to its parent (next-node/workers/main.ts): the Go side attaches the other end of the link, as the
+	// server of a worker does, and `peer` is who the Go side is, as this host stamps it.
+	host.connect(link, { principal: request.peer, trusted: true }, context);
 	const report = await runtime.load(host, { kind: request.kind, core, scripts: request.scripts, modules }, context);
 	return { failed: report.failed.map(({ plugin, error }) => ({ plugin, error: wireError(error) })) };
 }

@@ -136,25 +136,21 @@ const evaluateOps = evaluateOpsPrelude + `
 	},
 `
 
-// evaluateProbe starts a Node host (linked to a new Go host) with the probe's ops, and holds the probe; execArgv are the
+// evaluateProbe starts a Node host (routed from a new Go host) with the probe's ops, and holds the probe; execArgv are the
 // subprocess's Node flags (`--expose-gc` for a GC case).
 func evaluateProbe(t *testing.T, ops string, execArgv ...string) *probe {
 	t.Helper()
 	cache := t.TempDir()
 	address := workerKind.Address(nil)
-	parent := goHost(t)
-	if _, err := parent.Load(nil, background); err != nil {
-		t.Fatal(err)
-	}
 	node, _, err := NewPluginRuntime(NodeOptions{CacheDir: cache, ExecArgv: execArgv}).Load(RuntimeLoad{
 		Kind: "worker", Core: []CoreFacet{probeCore(t, cache, ops)},
-		Parent: parent, Address: &address, Principal: workerPrincipal, Peer: serverPrincipal,
+		Address: &address, Principal: workerPrincipal, Peer: serverPrincipal,
 	}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = node.Close(background) })
-	return probeOn(t, parent)
+	return probeOn(t, serverFor(t, workerRoute(node)))
 }
 
 // evaluateBuilt builds name's kind facet under root for Node (test's `built`: the plugins of root are the build's, the host
@@ -207,9 +203,8 @@ func evaluateArgs(t *testing.T, script PluginScript, hosts string) map[string]an
 // host reported it.
 func evaluateReport(t *testing.T, kind string, scripts ...PluginScript) host.LoadReport {
 	t.Helper()
-	parent := goHost(t)
 	node, report, err := NewPluginRuntime(NodeOptions{}).Load(RuntimeLoad{
-		Kind: kind, Scripts: scripts, Parent: parent, Principal: workerPrincipal, Peer: serverPrincipal,
+		Kind: kind, Scripts: scripts, Principal: workerPrincipal, Peer: serverPrincipal,
 	}, background)
 	if err != nil {
 		t.Fatal(err)
