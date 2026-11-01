@@ -26,7 +26,6 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/storage"
-	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
 )
 
 // oneStep is a one-phase task running run and completing with null.
@@ -269,13 +268,7 @@ func TestHarnessClose(t *testing.T) {
 			push(fmt.Sprintf("end %d", mine))
 			return nil
 		})
-		openSqlite := func() durable.Storage {
-			store, err := sqlitenode.OpenNodeSqliteStorage(path, sqlitenode.NodeSqliteStorageOptions{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			return store
-		}
+		openSqlite := func() durable.Storage { return openNodeSqliteStorage(t, path) }
 		first, _, _ := openTasks(t, openSqlite(), []durable.AnyTask{stubborn.Erased()})
 		id := start(t, mustRoot(t, first, nil), stubborn)
 		first.Resume()
