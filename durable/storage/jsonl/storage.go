@@ -618,8 +618,11 @@ func (jsonl *JsonlStorage) ScanDocuments(
 	return store.ScanDocuments(ctx, query, limit, cursor)
 }
 
-// Close releases the storage; later operations fail. Repeated calls do nothing.
+// Close releases the storage; later operations fail. Repeated calls do nothing. It waits for a commit in progress, so
+// a commit never meets the closed memory between its batches.
 func (jsonl *JsonlStorage) Close(ctx context.Context) error {
+	jsonl.commitMu.Lock()
+	defer jsonl.commitMu.Unlock()
 	jsonl.stateMu.Lock()
 	if jsonl.closed {
 		jsonl.stateMu.Unlock()

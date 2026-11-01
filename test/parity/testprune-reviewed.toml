@@ -647,5 +647,5 @@ reason = "Go only, no Pi counterpart: the stall report of a section that waits f
 path = "durable/storage/jsonl/reclamation_planning_test.go"
 commit = "875c5c04b3d8e01148a41e386302650de0fec11a"
 class = "CITE"
-cite = "packages/durable/src/storage/jsonl/storage.ts:322"
+cite = "packages/durable/src/storage/jsonl/storage.ts:324-325,346"
 reason = "Pi e5c6182b makes JsonlStorage.commit store several batches (storage.ts:285-325): memory runs ahead of the file once a batch applied, so any failure after that (a sidecar path join failing included) poisons the storage with that failure as the cause instead of leaving it usable; a reopened storage has no record of the batch. The path-join test expects the poisoned error and the absent document."
