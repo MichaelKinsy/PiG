@@ -555,7 +555,7 @@ type NodeHost struct {
 	killReason string
 	stderr     tailWriter
 	startOne   sync.Once
-	// cb is what the process calls on the Go side (plugins_node_callbacks.go).
+	// cb is what the process calls on the Go side: functions, synchronous callbacks and telemetry (plugins_node_callbacks.go).
 	cb nodeCallbacks
 }
 
@@ -634,8 +634,15 @@ func startNode(options NodeOptions, ctx context.Context) (*NodeHost, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer cleanup()
-	defer func() { _ = listener.Close() }()
+	// The listener outlives a successful start: the process's worker thread connects to it when the host needs synchronous
+	// callbacks (plugins_node_callbacks.go), so NodeHost owns it from then on.
+	kept := false
+	defer func() {
+		if !kept {
+			_ = listener.Close()
+			cleanup()
+		}
+	}()
 
 	h := &NodeHost{options: options, started: make(chan struct{}), reaped: make(chan struct{}), exited: make(chan struct{}), pending: map[int]*nodeCall{}}
 	output := options.OnOutput
@@ -713,6 +720,8 @@ func startNode(options NodeOptions, ctx context.Context) (*NodeHost, error) {
 		h.stop()
 		return nil, context.Cause(ctx)
 	}
+	h.keepListener(listener, cleanup)
+	kept = true
 	return h, nil
 }
 
@@ -897,6 +906,10 @@ func (h *NodeHost) drop(call *nodeCall) {
 // returns `aborted`, after its commit with what the commit applied): the wait goes on until the answer or the process's
 // end.
 func (h *NodeHost) await(call *nodeCall, ctx context.Context) (nodeReply, error) {
+	if err := h.refuseSyncCallback(ctx); err != nil {
+		h.drop(call)
+		return nodeReply{}, err
+	}
 	stop := context.AfterFunc(ctx, func() {
 		_ = h.port.Load().control(map[string]any{"op": "abort", "target": call.id})
 	})
@@ -938,7 +951,7 @@ func (h *NodeHost) control(payload []byte) {
 		return
 	}
 	switch message.Event {
-	case "call", "cancel":
+	case "call", "cancel", "telemetry":
 		h.callbackEvent(message.Event, payload)
 	case "started":
 		h.startOne.Do(func() { close(h.started) })
@@ -1042,6 +1055,9 @@ func (w *hostErrorWire) decode() NodeHostError {
 // Close asks the process to close its host and exit, and waits for it (killing it after the grace, or when ctx ends). It
 // returns the exit that was a crash, if the process ended that way before.
 func (h *NodeHost) Close(ctx context.Context) error {
+	if err := h.refuseSyncCallback(ctx); err != nil {
+		return err
+	}
 	h.mu.Lock()
 	select {
 	case <-h.exited:

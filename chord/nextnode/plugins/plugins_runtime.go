@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next-node/plugins/runtime.ts. The plugin runtime (slice 10 §3, D11): loading and reloading hosts
@@ -77,6 +78,24 @@ type RuntimeLoad struct {
 	// each Specifier are answered with a module of asynchronous functions that call the Go functions, and the values. Kept
 	// for the host's reloads, as Modules are.
 	GoPackages []GoPackage
+	// Telemetry is the app's telemetry adapter (`createHost`'s `telemetry`): the subprocess host builds a proxy
+	// TelemetryContext whose spans and metrics are ordered data events, and each is replayed into this adapter on the goroutine
+	// that reads the channel, so the adapter sees them in the order the host made them. The work of the host (a request that
+	// arrives over the link, a reload) runs under the proxy, so a plugin's `ctx.telemetry` spans and measurements land in the
+	// adapter, the spans started there roots. `propagation.inject` of a span in the process makes a carrier that
+	// NodeHost.ExtractTelemetry resolves to the adapter's own carrier of that span; a carrier that is not of that kind is the
+	// adapter's, which extracts it. A span still open when the process ends ends with an error status. Nil: the no-op adapter.
+	Telemetry telemetry.TelemetryContext
+	// PrincipalKey is the key of a principal in identities (`createHost`'s `principalKey`), so the same function can be the Go
+	// host's. The subprocess host calls it synchronously (its worker thread owns a second connection to the Go side): a call
+	// takes tens of microseconds (BenchmarkNodeSyncCall), so it keeps the key by the principal's canonical JSON, for the 4096
+	// principals it asked for last, and asks once per principal where Pi asks once per principal object. The function must be
+	// pure, as Pi's own cache of the key assumes. Nil: canonical JSON, computed in the subprocess.
+	PrincipalKey *data.PrincipalKeyFunction
+	// RevokedBy is what revokes a principal (`createHost`'s `revokedBy`): the subprocess host calls it synchronously, once per
+	// principal object it holds (as Pi's host does, and never memoized), when a revocation reaches it (NodeHost.Revoke, or a Go
+	// host's own `Revoke` over a route to this host). A returned error is Pi's throw. Nil: nothing revokes.
+	RevokedBy host.RevokedBy[delta.JsonValue]
 }
 
 // PluginRuntime starts the Node subprocesses that host plugins, and loads and reloads them with complete sets of shipped
@@ -259,6 +278,9 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 // is the loaded set, also when the reload returns `aborted` after its commit (a *NodeError wrapping the ChordError, whose
 // details.committed says what the commit applied). It blocks until the report, and then until the frames the reload caused have been delivered to the Go host the link is attached to (NodeHost.Link): the process wrote them before its reply, the reader handed each to the host before it decoded the reply, and the host's deliveries have entered their listeners when Reload returns, as a host's own Reload leaves its watchers' listeners entered. ctx ends that last wait, not the report.
 func (r *PluginRuntime) Reload(h *NodeHost, scripts []PluginScript, ctx context.Context) (host.ReloadReport, error) {
+	if err := h.refuseSyncCallback(ctx); err != nil {
+		return host.ReloadReport{}, err
+	}
 	call, err := h.reload(scripts)
 	if err != nil {
 		return host.ReloadReport{}, err

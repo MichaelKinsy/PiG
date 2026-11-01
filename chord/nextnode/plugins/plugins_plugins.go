@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next-node/plugins/plugins.ts. The plugins component (slice 7c §4, §5; decision "Slice 7c's
@@ -165,8 +166,11 @@ type PluginsLoad struct {
 	Compression  bool
 	// Store is the Node host's store (RuntimeLoad).
 	Store *StoreOptions
-	// GoPackages are the host packages the app offers as Go functions and JSON values (RuntimeLoad).
-	GoPackages []GoPackage
+	// GoPackages, Telemetry, PrincipalKey and RevokedBy are the app's callbacks the Node host calls (RuntimeLoad).
+	GoPackages   []GoPackage
+	Telemetry    telemetry.TelemetryContext
+	PrincipalKey *data.PrincipalKeyFunction
+	RevokedBy    host.RevokedBy[delta.JsonValue]
 }
 
 // CreatePlugins creates the plugins component (and its plugin runtime) and starts the watcher. Discovery runs at first use.
@@ -381,7 +385,7 @@ func (c *Plugins) Load(options PluginsLoad, ctx context.Context) (*NodeHost, hos
 		Address: options.Address, Principal: options.Principal, Peer: options.Peer, Heartbeat: options.Heartbeat,
 		CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout, Compression: options.Compression,
 		Store:      options.Store,
-		GoPackages: options.GoPackages,
+		GoPackages: options.GoPackages, Telemetry: options.Telemetry, PrincipalKey: options.PrincipalKey, RevokedBy: options.RevokedBy,
 	}, ctx)
 	if err != nil {
 		return nil, host.LoadReport{}, err
@@ -403,6 +407,9 @@ func (c *Plugins) kindOf(h *NodeHost, what string) (string, error) {
 func (c *Plugins) Reload(h *NodeHost, built *Built, ctx context.Context) (host.ReloadReport, error) {
 	kind, err := c.kindOf(h, "reload")
 	if err != nil {
+		return host.ReloadReport{}, err
+	}
+	if err := h.refuseSyncCallback(ctx); err != nil {
 		return host.ReloadReport{}, err
 	}
 	set, err := c.set(kind, ctx)

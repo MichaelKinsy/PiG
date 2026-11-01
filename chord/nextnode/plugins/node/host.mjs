@@ -10,7 +10,9 @@
 // `{ event: "started" }`, `{ event: "activity", counts }` (the host's keep-alive counts), `{ event: "error", error }` (the host's onError) and `{ event: "fatal", error }` (an uncaught
 // exception or rejection; the process exits with code 1, after the exception was printed on stderr as Node prints it).
 // The calls to the Go side are `{ event: "call", call, name, args }` (answered by the request `{ op: "answer", id: call, ok,
-// result | error }`) and `{ event: "cancel", call }` (callbacks.mjs).
+// result | error }`) and `{ event: "cancel", call }` (callbacks.mjs), and the telemetry the host reports is
+// `{ event: "telemetry", op, ... }` (telemetry.mjs). The host's synchronous callbacks (`principalKey`, `revokedBy`) use a second
+// connection owned by a worker thread (callbacks.mjs).
 //
 // The host is the child of the Go side: `load` makes it. It `connect`s the link as its parent link with the principal `peer`
 // (trusted), as Pi's forked worker does, when the Go side first uses the other end (`NodeHost.Link`, which the Go side
@@ -24,6 +26,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import * as callbacks from "./callbacks.mjs";
 import { importGoPackage } from "./gopackage.mjs";
 import { openHostStore } from "./store.mjs";
+import { createTelemetry } from "./telemetry.mjs";
 import { inspect } from "node:util";
 
 // V8's code cache for the modules below (Pi's vendored closure, type-stripped on import), kept in the extracted tree: a
@@ -41,7 +44,7 @@ registerHooks({
 		return file === undefined ? nextResolve(specifier, context) : { url: new URL(file, tree).href, shortCircuit: true };
 	},
 });
-const [chordNext, { ipcLink }, { createPluginRuntime }, { mapStack }, { BACKGROUND_CONTEXT, withAbortSignal }, { nodeCompression }] =
+const [chordNext, { ipcLink }, { createPluginRuntime }, { mapStack }, { BACKGROUND_CONTEXT, withAbortSignal, withTelemetry }, { nodeCompression }, { canonicalJson }] =
 	await Promise.all([
 		pi("next/index.ts"),
 		pi("next/link/index.ts"),
@@ -49,6 +52,7 @@ const [chordNext, { ipcLink }, { createPluginRuntime }, { mapStack }, { BACKGROU
 		pi("next-node/plugins/stack.ts"),
 		pi("context/index.ts"),
 		pi("next-node/compression.ts"),
+		pi("next/data/internal.ts"),
 	]);
 const { createHost, isChordError } = chordNext;
 
@@ -139,7 +143,7 @@ await new Promise((resolve, reject) => {
 	socket.once("error", reject);
 });
 const port = new FramedPort(socket);
-// The calls of this process to the Go side (GoPackage functions) use this channel.
+// The calls of this process to the Go side (GoPackage functions, the host's principalKey and revokedBy) use this channel.
 callbacks.attach(port);
 // Made at once: the messages it receives queue until the host that connects it listens.
 const link = ipcLink(port);
@@ -189,6 +193,9 @@ async function load(request, context) {
 	const modules = { "@earendil-works/chord/next": chordNext };
 	for (const [specifier, file] of Object.entries(request.modules)) modules[specifier] = await import(pathToFileURL(file).href);
 	for (const pkg of request.goPackages) modules[pkg.specifier] = await importGoPackage(pkg);
+	// principalKey and revokedBy are synchronous in the host: they call the Go side on a connection of their own.
+	if (request.syncToken !== undefined) await callbacks.startSync(process.argv[2], request.syncToken);
+	const telemetry = request.telemetry === undefined ? undefined : createTelemetry({ emit: (event) => port.control({ event: "telemetry", ...event }), ...request.telemetry });
 	const core = [];
 	for (const { name, module } of request.core) {
 		core.push({ name, facet: (await import(pathToFileURL(module).href)).default });
@@ -202,10 +209,17 @@ async function load(request, context) {
 		...(request.closeTimeout === undefined ? {} : { closeTimeout: request.closeTimeout }),
 		...(request.readyTimeout === undefined ? {} : { readyTimeout: request.readyTimeout }),
 		...(request.compression === true ? { compression: nodeCompression } : {}),
+		...(telemetry === undefined ? {} : { telemetry }),
+		...(request.principalKey === true
+			? { principalKey: callbacks.memoizedByPrincipal((principal) => canonicalJson(principal, BACKGROUND_CONTEXT), (principal) => callbacks.callSync("principalKey", principal)) }
+			: {}),
+		...(request.revokedBy === true ? { revokedBy: (principal) => callbacks.callSync("revokedBy", principal) } : {}),
 		onError: (error) => port.control({ event: "error", error: hostError(error) }),
 	});
 	const runtime = createPluginRuntime();
-	hosted = { host, runtime, store, peer: request.peer };
+	// What the host's work runs under: the app's telemetry parent, when it gave an adapter.
+	const base = telemetry === undefined ? BACKGROUND_CONTEXT : withTelemetry(telemetry, BACKGROUND_CONTEXT);
+	hosted = { host, runtime, store, peer: request.peer, base };
 	// The host's keep-alive counts, for the app that supervises it (NodeOptions.OnActivity): now, and at each change.
 	port.control({ event: "activity", counts: host.activity.value });
 	void host.activity.watch(BACKGROUND_CONTEXT).then((watch) =>
@@ -213,7 +227,8 @@ async function load(request, context) {
 			if (call.kind === "value") port.control({ event: "activity", counts: call.value });
 		}),
 	);
-	const report = await runtime.load(host, { kind: request.kind, core, scripts: request.scripts, modules }, context);
+	const traced = telemetry === undefined ? context : withTelemetry(telemetry, context);
+	const report = await runtime.load(host, { kind: request.kind, core, scripts: request.scripts, modules }, traced);
 	return { failed: report.failed.map(({ plugin, error }) => ({ plugin, error: wireError(error) })) };
 }
 
@@ -249,10 +264,16 @@ function attach() {
 	if (hosted === undefined) throw new Error("attach: no host is loaded");
 	if (hosted.attached) return;
 	hosted.attached = true;
-	hosted.host.connect(link, { principal: hosted.peer, trusted: true }, BACKGROUND_CONTEXT);
+	hosted.host.connect(link, { principal: hosted.peer, trusted: true }, hosted.base);
 }
 
-const operations = { load, reload };
+async function revoke(request, context) {
+	if (hosted === undefined) throw new Error("revoke: no host is loaded");
+	hosted.host.revoke(request.revocation, context);
+	return {};
+}
+
+const operations = { load, reload, revoke };
 
 port.on("message", (message) => {
 	if (message instanceof Uint8Array) return;
@@ -279,7 +300,7 @@ port.on("message", (message) => {
 	const operation = operations[message.op];
 	const controller = new AbortController();
 	running.set(message.id, controller);
-	const context = withAbortSignal(controller.signal, BACKGROUND_CONTEXT);
+	const context = withAbortSignal(controller.signal, hosted?.base ?? BACKGROUND_CONTEXT);
 	const answer = operation === undefined ? Promise.reject(new Error(`unknown control request ${message.op}`)) : operation(message, context);
 	answer.then(
 		(result) => ({ id: message.id, ok: true, result }),
