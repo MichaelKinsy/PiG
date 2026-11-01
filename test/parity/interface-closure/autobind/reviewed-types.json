@@ -351,9 +351,21 @@
     "go": "chord/next/host/host_host.go#Host.Activity",
     "reason": "Pi chord/src/next/host/host.ts:294 Host::property:activity: Pi's Watchable<T> is the structural watch contract (watch/value/subscribe); Go carries it as state.SourceHandle (chord/next/state/watchable.go:118), whose Watch/OpenWatch/Subscribe/Deliver members are the Watchable members every source embeds (DESIGN-go-layout.md section 5). Go: chord/next/host/host_host.go#Host.Activity. Exercised by TestHostActivityPublishesOncePerMicrotaskTurnWithChanges (chord/next/host/host_activity_test.go)."
   },
+  "pkg:chord/next#Host::property:get::call:0": {
+    "go": "chord/next/host/host_host.go#Host.Get",
+    "reason": "Pi chord/src/next/host/host.ts:244 Host::property:get::call:0: Pi's ParamsOf<C> is a mapped type over the contract's params shape ({ [F in keyof ShapeOf<C>[\"params\"]]: Static<ShapeOf<C>[\"params\"][F]> }), type-level only; Go's Get takes the params as `any` (a *delta.JsonObject) and checks them against the contract's params at run time (host_host.go checkParams: invalid params are `invalid/params`, an error at once for Hold). Go: chord/next/host/host_host.go#Host.Get. Exercised by TestHostLoadMakesAGetBeforeItResolvesWaitForIt (chord/next/host/host_host_test.go)."
+  },
+  "pkg:chord/next#Host::property:hold::call:0": {
+    "go": "chord/next/host/host_host.go#Host.Hold",
+    "reason": "Pi chord/src/next/host/host.ts:252 Host::property:hold::call:0: Pi's ParamsOf<C> is a mapped type over the contract's params shape ({ [F in keyof ShapeOf<C>[\"params\"]]: Static<ShapeOf<C>[\"params\"][F]> }), type-level only; Go's Hold takes the params as `any` (a *delta.JsonObject) and checks them against the contract's params at run time (host_host.go checkParams: invalid params are `invalid/params`, an error at once for Hold). Go: chord/next/host/host_host.go#Host.Hold. Exercised by TestHostStartBarrierWaitsForALocalBlockersFirstOutcome (chord/next/host/host_host_test.go)."
+  },
   "pkg:chord/next#Host::property:references::call:0": {
     "go": "chord/next/host/host_host.go#Host.References",
     "reason": "Pi chord/src/next/host/host.ts:289 Host::property:references::call:0: Pi's Watchable<T> is the structural watch contract (watch/value/subscribe); Go carries it as state.SourceHandle (chord/next/state/watchable.go:118), whose Watch/OpenWatch/Subscribe/Deliver members are the Watchable members every source embeds (DESIGN-go-layout.md section 5). Go: chord/next/host/host_host.go#Host.References. Exercised by TestExample14FlowControl (chord/next/host/host_examples_test.go)."
+  },
+  "pkg:chord/next#Host::property:registry::call:0": {
+    "go": "chord/next/host/host_host.go#Host.Registry",
+    "reason": "Pi chord/src/next/host/host.ts:301 Host::property:registry::call:0: Pi's RegistryValue<V> is the followed registry value a reader outside objects takes; Go's registries.RegistryValueSource embeds state.FollowedSource and carries every member of it (Name, Version, Value, Watch; registries/value.go:76), the same form Self.Registry returns. Go: chord/next/host/host_host.go#Host.Registry. Exercised by TestHostRegistryEndsAWaitingHostRegistryAtTheCloseWithReleasedClosed (chord/next/host/host_host_test.go)."
   },
   "pkg:chord/next#HostKind::call:0": {
     "go": "chord/next/contracts/host_kind.go#HostKind.Address",
@@ -371,9 +383,21 @@
     "go": "chord/next/documents/handles.go#KeyedHandle.At",
     "reason": "Pi chord/src/next/documents/handles.ts:38 KeyedHandle::property:at::call:0: Pi's Watchable<T> is the structural watch contract; Go's KeyedHandle.At returns documents.KeySource (documents/keyed_slot.go:644), which has every member of Watchable (T9t). Go: chord/next/documents/handles.go#KeyedHandle.At. Exercised by TestKeyedSlotAtKeyIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag (chord/next/documents/keyed_slot_test.go)."
   },
+  "pkg:chord/next#KeyedHandle::property:change::call:0": {
+    "go": "chord/next/documents/handles.go#KeyedHandle.Change",
+    "reason": "Pi chord/src/next/documents/handles.ts:40 KeyedHandle::property:change::call:0: Pi's Draft<T> is the typed proxy of a document's draft (T the document type); Go's draft is the *delta.Object a Tx.Draft returns, over the same tracker (documents are *JsonObject, `Draft<T>` and `HandleOf<D>` are designed out: documents/handles.go header), and the callback returns an error where Pi's throws. Go: chord/next/documents/handles.go#KeyedHandle.Change. Exercised by TestSealedHandlesStillReadSynchronouslyAndFromMemoryChangesAndRetirementsAreRefusedReleased (chord/next/documents/handles_test.go)."
+  },
   "pkg:chord/next#KeyedHandle::property:keys::call:0": {
     "go": "chord/next/documents/handles.go#KeyedHandle.Keys",
     "reason": "Pi chord/src/next/documents/handles.ts:28 KeyedHandle::property:keys::call:0: Pi's keys(context) is an AsyncIterable<string>; Go's documents.KeyIterator (documents/keyed_slot.go:142) is the iterator: Next blocks for the next key, Close ends it (owner 2026-10-29: Promise and iterator mechanics are blocking calls). Go: chord/next/documents/handles.go#KeyedHandle.Keys. Exercised by TestFindALiveRecordWithoutLoadingItAndListKeysInCodePointOrderByPages (chord/next/documents/persistence_test.go)."
+  },
+  "pkg:chord/next#OwnerTable::property:get::call:0": {
+    "go": "chord/next/store/adapter.go#OwnerTable.Get",
+    "reason": "Pi chord/src/next/store/adapter.ts:89 OwnerTable::property:get::call:0: Pi's executor is Pick<SqliteExecutor, \"get\">, the one member the method reads; Go declares the same one-member consumer-owned interface (store/engine.go:30: rowGetter), which a sqlite executor satisfies. Go: chord/next/store/adapter.go#OwnerTable.Get. Exercised by TestStoreOwnerTablesDeclareAndPrepare (chord/next/store/evidence_storeB_adapter_test.go)."
+  },
+  "pkg:chord/next#OwnerTable::property:select::call:0": {
+    "go": "chord/next/store/adapter.go#OwnerTable.Select",
+    "reason": "Pi chord/src/next/store/adapter.ts:141 OwnerTable::property:select::call:0: Pi's executor is Pick<SqliteExecutor, \"all\">, the one member the method reads; Go declares the same one-member consumer-owned interface (store/engine.go:35: rowLister), which a sqlite executor satisfies. Go: chord/next/store/adapter.go#OwnerTable.Select. Exercised by TestStoreOwnerTablesDeclareAndPrepare (chord/next/store/evidence_storeB_adapter_test.go)."
   },
   "pkg:chord/next#Presence": {
     "go": "chord/next/host/host_presence.go#Presence",
@@ -386,6 +410,10 @@
   "pkg:chord/next#RoutineDeclarations::property:on::call:0": {
     "go": "chord/next/host/host_routines.go#RoutineDeclarations.On",
     "reason": "Pi chord/src/next/host/routines.ts:69 RoutineDeclarations::property:on::call:0: Pi's Watchable<T> argument of `on` is a type-level check: the source's identity decides what Chord follows (resolveWatchable); Go's host.JSONSource is the one member every JSON watchable has, Watch (host_routines.go:104-109), and OnNative takes a NativeSource for the native class. Go: chord/next/host/host_routines.go#RoutineDeclarations.On. Exercised by TestExample18Routines (chord/next/host/host_examples_test.go)."
+  },
+  "pkg:chord/next#RunState::property:change::call:0": {
+    "go": "chord/next/host/jobs_job.go#RunState.Change",
+    "reason": "Pi chord/src/next/jobs/job.ts:66 RunState::property:change::call:0: Pi's Draft<T> is the typed proxy of a document's draft (T the document type); Go's draft is the *delta.Object a Tx.Draft returns, over the same tracker (documents are *JsonObject, `Draft<T>` and `HandleOf<D>` are designed out: documents/handles.go header), and the callback returns an error where Pi's throws. Go: chord/next/host/jobs_job.go#RunState.Change. Exercised by TestRunReadsAndChangesItsStateDocumentRunningCarriesIt (chord/next/host/jobs_job_runs_test.go)."
   },
   "pkg:chord/next#Self::property:derive::call:0": {
     "go": "chord/next/host/host_attempt.go#Self.Derive",
@@ -406,6 +434,10 @@
   "pkg:chord/next#Self::property:state::call:0": {
     "go": "chord/next/host/host_attempt.go#Self.State",
     "reason": "Pi chord/src/next/host/attempt.ts:77 Self::property:state::call:0: Pi's HandleOf<D> is the handle type computed from the definition (singleton or keyed); Go's Self.State returns `any` that is a *documents.Singleton or a *documents.Keyed by the definition (host_attempt.go:78-80), asserted by the caller, since Go methods cannot be generic. Go: chord/next/host/host_attempt.go#Self.State. Exercised by TestProviderRaces (chord/next/host/remote_provider_test.go)."
+  },
+  "pkg:chord/next#SingletonHandle::property:change::call:0": {
+    "go": "chord/next/documents/handles.go#SingletonHandle.Change",
+    "reason": "Pi chord/src/next/documents/handles.ts:15 SingletonHandle::property:change::call:0: Pi's Draft<T> is the typed proxy of a document's draft (T the document type); Go's draft is the *delta.Object a Tx.Draft returns, over the same tracker (documents are *JsonObject, `Draft<T>` and `HandleOf<D>` are designed out: documents/handles.go header), and the callback returns an error where Pi's throws. Go: chord/next/documents/handles.go#SingletonHandle.Change. Exercised by TestSealedHandlesStillReadSynchronouslyAndFromMemoryChangesAndRetirementsAreRefusedReleased (chord/next/documents/handles_test.go)."
   },
   "pkg:chord/next#StagedWrite": {
     "go": "chord/next/store/step.go#StagedWrite",
@@ -438,6 +470,14 @@
   "pkg:chord/next#StoreSelf::property:state::call:0": {
     "go": "chord/next/host/host_attempt.go#Self.State",
     "reason": "Pi chord/src/next/host/attempt.ts:146 StoreSelf::property:state::call:0: Pi's HandleOf<D> is the handle type computed from the definition (singleton or keyed); Go's Self.State returns `any` that is a *documents.Singleton or a *documents.Keyed by the definition (host_attempt.go:78-80), asserted by the caller, since Go methods cannot be generic. Go: chord/next/host/host_attempt.go#Self.State. Exercised by TestProviderRaces (chord/next/host/remote_provider_test.go)."
+  },
+  "pkg:chord/next#Table::property:get::call:0": {
+    "go": "chord/next/store/table_handle.go#TableHandle.Get",
+    "reason": "Pi chord/src/next/store/table-handle.ts:31 Table::property:get::call:0: Pi's KeyOf<C, K> is a mapped type of the table's key columns ({ readonly [P in K[number]]: P extends keyof C ? ... }), type-level only; Go's TableHandle.Get takes the key as `any` (a Row or the one key column's value) and checks it against the table's key at run time. Go: chord/next/store/table_handle.go#TableHandle.Get. Exercised by TestTableHandle (chord/next/store/table_handle_test.go)."
+  },
+  "pkg:chord/next#Table::property:rows::call:0": {
+    "go": "chord/next/store/table_handle.go#TableHandle.Rows",
+    "reason": "Pi chord/src/next/store/table-handle.ts:29 Table::property:rows::call:0: Pi's rows() is an AsyncIterable<RowOf<C>>; Go's store.RowsIterator is the iterator: Next blocks for the next row, a page of RowsPage rows at a time (owner 2026-10-29: Promise and iterator mechanics are blocking calls). Go: chord/next/store/table_handle.go#TableHandle.Rows. Exercised by TestTableHandle (chord/next/store/table_handle_test.go)."
   },
   "pkg:chord/next#TableDefinition::property:record": {
     "go": "chord/next/store/table.go#TableDefinition.Record",
