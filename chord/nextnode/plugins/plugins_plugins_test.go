@@ -187,6 +187,7 @@ func (c *pcComponent) reload(t *testing.T, h pcLoaded, built *Built) host.Reload
 func (c *pcComponent) waitMarks(t *testing.T, what string, check func(PluginsState) bool) {
 	t.Helper()
 	eventually(t, 5*time.Second, what, func() bool { return check(c.Marks()) })
+	settle(t, c.Plugins)
 }
 
 func pcDirty(names ...string) func(PluginsState) bool {

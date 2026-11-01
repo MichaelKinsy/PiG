@@ -668,7 +668,7 @@ func TestNodeAnUncaughtExceptionKeepsItsCauseChain(t *testing.T) {
 	if chord, ok := errors.AsType[*data.ChordError](exit.Fatal); !ok || chord.Code != data.CodeUnavailable {
 		t.Fatalf("errors.As finds %v, want the ChordError with code unavailable", chord)
 	}
-	if exit.Fatal.Unwrap()[0] != error(exit.Fatal.Cause) {
+	if !errors.Is(exit.Fatal, exit.Fatal.Cause) {
 		t.Fatalf("Unwrap = %v", exit.Fatal.Unwrap())
 	}
 }

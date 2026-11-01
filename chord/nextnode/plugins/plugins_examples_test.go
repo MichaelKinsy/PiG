@@ -217,6 +217,8 @@ func exWrite(t *testing.T, path, text string) {
 func exUntil(t *testing.T, plugins *Plugins, what string, ready func(PluginsState) bool) {
 	t.Helper()
 	eventually(t, 15*time.Second, what, func() bool { return ready(plugins.Marks()) })
+	// What the edit also raised has arrived too: the next build starts from the marks the edit left.
+	settle(t, plugins)
 }
 
 // exDirty is `dirty(...names)`.

@@ -111,6 +111,9 @@ type pluginWatcher struct {
 	running sync.WaitGroup
 	// reported is set once a failure to watch was reported.
 	reported bool
+	// observed, when set, is called in the section of each event once it is handled (a test's barrier: the events of one file
+	// system arrive in order, so the event of a file written last tells every earlier one was handled).
+	observed func(path string)
 	// generation is the one the next change gets: every mark records a newer one than any before it.
 	generation int
 	// dirty is each dirty plugin's latest change, by generation.
@@ -451,6 +454,9 @@ func (w *pluginWatcher) event(watcher *fsnotify.Watcher, event fsnotify.Event) {
 		}
 	}
 	w.changedIn(path)
+	if w.observed != nil {
+		w.observed(event.Name)
+	}
 }
 
 // changedIn handles an event for path in a watched directory: a new directory gets its watches, a removed one loses them;

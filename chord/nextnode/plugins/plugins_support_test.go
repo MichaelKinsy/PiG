@@ -5,8 +5,12 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 // Ports packages/chord/test/next-node/plugins/support.ts (FIXTURES, KINDS, tempRoot, writeFiles, writePlugin). The host
@@ -81,5 +85,60 @@ func eventually(t *testing.T, timeout time.Duration, what string, check func() b
 			t.Fatalf("timed out after %v waiting for %s", timeout, what)
 		}
 		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// settler is the barrier of a component's watcher: a directory outside its roots, watched by its fsnotify watcher, where a
+// file is written to learn that the events of everything written before it were handled.
+type settler struct {
+	dir     string
+	watcher *fsnotify.Watcher
+	seen    chan string
+	count   int
+}
+
+var settlers sync.Map
+
+// settle returns once the component's watcher handled the events of every file operation made before the call: a watch event
+// of an edit arrives on its own time, and one that arrives after a build that followed the first event of the edit would leave
+// the plugin dirty. A write in place is two events, a copied directory many. Nothing is waited for when the component does
+// not watch (no first use yet, or a watcher that failed).
+func settle(t *testing.T, plugins *Plugins) {
+	t.Helper()
+	found, _ := settlers.LoadOrStore(plugins, &settler{dir: t.TempDir(), seen: make(chan string, 1024)})
+	barrier := found.(*settler)
+	var watching bool
+	plugins.section(func() {
+		fs := plugins.watcher.fs
+		if fs == nil {
+			return
+		}
+		watching = true
+		if barrier.watcher != fs {
+			barrier.watcher = fs
+			if err := fs.Add(barrier.dir); err != nil {
+				t.Error(err)
+			}
+			plugins.watcher.observed = func(path string) { barrier.seen <- path }
+		}
+	})
+	if !watching {
+		return
+	}
+	barrier.count++
+	sentinel := filepath.Join(barrier.dir, "sentinel-"+strconv.Itoa(barrier.count))
+	if err := os.WriteFile(sentinel, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	timeout := time.After(15 * time.Second)
+	for {
+		select {
+		case path := <-barrier.seen:
+			if path == sentinel {
+				return
+			}
+		case <-timeout:
+			t.Fatal("the watcher did not handle a file written after the edits")
+		}
 	}
 }
