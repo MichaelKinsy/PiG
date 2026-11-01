@@ -21,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
 // Ports packages/chord/test/next/examples/35-plugins, 36-plugin-failures, 37-plugin-imports, 38-watch-and-rollout and
@@ -605,7 +606,14 @@ func TestExample36PluginFailures(t *testing.T) {
 	if !errors.As(err, &nodeErr) || nodeErr.Chord == nil || nodeErr.Chord.Code != data.CodeAborted {
 		t.Fatalf("4. the reload returned %v, want aborted", err)
 	}
-	t.Logf("4. rejected: %s %s %v", nodeErr.Chord.Code, nodeErr.Chord.Message, nodeErr.Chord.Details)
+	// Pi prints `rejected: aborted reload: aborted after its commit {"committed":{...}}`.
+	details, jsonErr := chordjson.Marshal(nodeErr.Chord.Details)
+	if jsonErr != nil {
+		t.Fatal(jsonErr)
+	}
+	if got, want := nodeErr.Chord.Message+" "+string(details), `reload: aborted after its commit {"committed":{"added":[],"changed":["@example/cache"],"removed":[],"failed":["@example/weather"]}}`; got != want {
+		t.Fatalf("4. rejected: aborted %s, want %s", got, want)
+	}
 	if answer := <-left; answer == nil {
 		t.Fatal("the status watch ended with nothing")
 	} else if _, isErr := answer.(error); isErr {
@@ -918,20 +926,22 @@ func TestExample39BrowserBuild(t *testing.T) {
 	if gallery == nil || bad == nil || gallery.Kind != BuiltFacetScript || bad.Kind != BuiltFacetFailed {
 		t.Fatalf("unexpected build results: %+v", built.Facets)
 	}
-	if gallery.Facet != "web" || len(gallery.Source) == 0 || gallery.Digest != sha256Hex(gallery.Source) {
+	// Pi's example prints `script of 1397 bytes, digest e4b85888e0b1`: the Go build is the same esbuild (Pi's pin), so the script
+	// is the same bytes.
+	if gallery.Facet != "web" || len(gallery.Source) != 1397 || gallery.Digest != sha256Hex(gallery.Source) || gallery.Digest[:12] != "e4b85888e0b1" {
 		t.Fatalf("1. @example/gallery/web: %d bytes, digest %q", len(gallery.Source), gallery.Digest)
 	}
 	if gallery.CSS == nil {
 		t.Fatal("no stylesheet")
 	}
-	if first := strings.SplitN(gallery.CSS.Text, "\n", 2)[0]; !regexp.MustCompile(`^web-[A-Z0-9]+\.css$`).MatchString(gallery.CSS.Name) || first != ".gallery{display:grid;gap:8px}.gallery img{width:64px}" {
+	if first := strings.SplitN(gallery.CSS.Text, "\n", 2)[0]; gallery.CSS.Name != "web-PDJFG4AT.css" || first != ".gallery{display:grid;gap:8px}.gallery img{width:64px}" {
 		t.Fatalf("stylesheet: %s %q", gallery.CSS.Name, first)
 	}
 	svg, err := os.ReadFile(filepath.Join(root, "gallery", "assets", "logo.svg"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(gallery.Assets) != 1 || !regexp.MustCompile(`^logo-[A-Z0-9]+\.svg$`).MatchString(gallery.Assets[0].Name) || !bytes.Equal(gallery.Assets[0].Bytes, svg) {
+	if len(gallery.Assets) != 1 || gallery.Assets[0].Name != "logo-3IRJDQYU.svg" || !bytes.Equal(gallery.Assets[0].Bytes, svg) {
 		t.Fatalf("assets: %+v", gallery.Assets)
 	}
 	if url := regexp.MustCompile(`/plugin-assets/[^"]+`).FindString(gallery.Source); url != "/plugin-assets/"+gallery.Assets[0].Name {

@@ -547,3 +547,44 @@ func TestEsbuildBuildColumnsAreUTF16CodeUnits(t *testing.T) {
 		t.Errorf("__dirname = %q, want %q", got, want)
 	}
 }
+
+// Not upstream's test: the digest is "the same on every machine", and Pi's JavaScript API runs the same esbuild (0.28.2) as
+// the Go API, so the scripts Pi's `buildFacet` makes of the fixture plugins and these are the same bytes: the digests and
+// lengths below are what Pi's own `buildFacet` printed for the same plugins (test/next-node/fixtures/plugins, Pi 2c8d1feb,
+// built with `hostPackages: ["@earendil-works/chord/next"]`, `platform: "node"`).
+func TestBuildMakesTheSameScriptsAsPisBuildFacetForTheFixtures(t *testing.T) {
+	root := tempRoot(t, "contracts", "notes", "files")
+	discovery, err := DiscoverPlugins([]string{root}, DiscoveryOptions{Kinds: kinds}, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	type key struct{ plugin, kind string }
+	want := map[key]struct {
+		digest string
+		length int
+	}{
+		{"@test/files", "worker"}: {"a6470a1c2ed9ae1beff006680ae77656532e4b8f222f669f04baaa434caa25a1", 2486},
+		{"@test/notes", "server"}: {"b419d92e93a0f2b95d5613c62b6830f160e5282d52e26575180b72d1998d0158", 2217},
+		{"@test/notes", "worker"}: {"9ce9029f0cfc4a5459b16bf3abf1af2406a82b1b87c1ddd983c35e8dc58b841b", 3043},
+	}
+	got := 0
+	for _, plugin := range discovery.Plugins {
+		for kind := range plugin.Facets {
+			built, err := BuildFacet(plugin, kind, BuildOptions{HostPackages: []string{"@earendil-works/chord/next"}, Platform: PlatformNode, Plugins: discovery.Plugins}, background)
+			if err != nil || built.Kind != BuiltFacetScript {
+				t.Fatalf("%s %s: %+v, %v", plugin.Name, kind, built, err)
+			}
+			expected, ok := want[key{plugin.Name, kind}]
+			if !ok {
+				t.Fatalf("unexpected facet %s %s", plugin.Name, kind)
+			}
+			if built.Digest != expected.digest || len(built.Source) != expected.length {
+				t.Errorf("%s %s: digest %s length %d, Pi's %s %d", plugin.Name, kind, built.Digest, len(built.Source), expected.digest, expected.length)
+			}
+			got++
+		}
+	}
+	if got != len(want) {
+		t.Fatalf("built %d facets, want %d", got, len(want))
+	}
+}
