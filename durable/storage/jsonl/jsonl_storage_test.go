@@ -1139,6 +1139,7 @@ func TestJsonlStoragePoisonsWhenAnAppendFailsAfterItsBatchesApplied(t *testing.T
 	awaitReader()
 	select {
 	case err := <-read:
+		close(fileSystem.gate)
 		t.Fatalf("a read started while the append is held returned %v, want it to wait", err)
 	default:
 	}
@@ -1216,6 +1217,7 @@ func TestJsonlStorageBatches(t *testing.T) {
 		awaitReader()
 		select {
 		case early := <-read:
+			close(fileSystem.gate)
 			t.Fatalf("a read started while the append is held returned %+v, want it to wait", early)
 		default:
 		}
@@ -1294,6 +1296,7 @@ func TestJsonlStorageBatches(t *testing.T) {
 		mustDo(t, entered.AwaitBlocked(testContext, <-ids, nil))
 		select {
 		case err := <-closed:
+			close(fileSystem.gate)
 			t.Fatalf("Close returned %v while a commit was being appended, want it to wait", err)
 		default:
 		}
