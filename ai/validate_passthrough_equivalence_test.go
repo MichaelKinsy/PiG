@@ -55,14 +55,13 @@ func passthroughValue(r *rand.Rand, depth int) string {
 }
 
 // Whenever validation hands back the model's own bytes, they are exactly what re-encoding the validated value in the
-// arguments' member order writes, which is what the previous code returned. Schemas cover TypeBox Convert, JSON-schema
-// coercion, optional nulls and the wrapped-array relocation.
+// arguments' member order writes. Schemas cover pi-schema's coercion of scalars, arrays and additionalProperties, and optional nulls.
 func TestValidateToolArgumentsPassthroughMatchesReencoding(t *testing.T) {
 	schemas := []string{
 		`{}`,
 		`{"type":"object","properties":{"n":{"type":"number"},"s":{"type":"string"},"o":{"type":"string"}}}`,
-		`{"~kind":"Object","type":"object","properties":{"path":{"~kind":"String","type":"string"},"content":{"~kind":"String","type":"string"}}}`,
-		`{"~kind":"Object","type":"object","properties":{"edits":{"~kind":"Array","type":"array","items":{"~kind":"Object","type":"object","properties":{"oldText":{"~kind":"String","type":"string"},"newText":{"~kind":"String","type":"string"}}}},"n":{"~kind":"Number","type":"number"}}}`,
+		`{"type":"object","properties":{"path":{"type":"string"},"content":{"type":"string"}}}`,
+		`{"type":"object","properties":{"edits":{"type":"array","items":{"type":"object","properties":{"oldText":{"type":"string"},"newText":{"type":"string"}}}},"n":{"type":"number"}}}`,
 		`{"type":"object","additionalProperties":{"type":"string"}}`,
 	}
 	r := rand.New(rand.NewPCG(7, 11))
