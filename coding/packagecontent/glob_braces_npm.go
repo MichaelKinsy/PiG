@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Limits of npm brace-expansion 5.0.12, the copy Pi's npm minimatch 10.2.6 calls: EXPANSION_MAX_LENGTH bounds the total UTF-16 units of one combine's results, of one sequence, or of one comma set's values, EXPANSION_MAX_DEPTH how deep nesting is followed, and EXPANSION_MAX_REWRITES how often the "{a},b}" rewrite restarts the scan.
+// Limits of npm brace-expansion 5.0.12, the copy Pi's npm minimatch 11.0.3 calls: EXPANSION_MAX_LENGTH bounds the total UTF-16 units of one combine's results, of one sequence, or of one comma set's values, EXPANSION_MAX_DEPTH how deep nesting is followed, and EXPANSION_MAX_REWRITES how often the "{a},b}" rewrite restarts the scan.
 const (
 	// upstream: node_modules/brace-expansion/dist/esm/index.js:EXPANSION_MAX_LENGTH
 	npmBraceExpansionMaxLength = 4_000_000
@@ -19,7 +19,7 @@ const (
 	npmBraceExpansionMaxRewrites = 1_000
 )
 
-// npmBraceExpand is braceExpand of Pi's npm minimatch 10.2.6, which calls npm brace-expansion 5.0.12. It agrees with braceExpand, Node's bundled copy, until a limit: it keeps at most EXPANSION_MAX results and EXPANSION_MAX_LENGTH units, leaves nesting deeper than EXPANSION_MAX_DEPTH and rewrites past EXPANSION_MAX_REWRITES literal, and stops a sequence at EXPANSION_MAX items, so it never throws.
+// npmBraceExpand is braceExpand of Pi's npm minimatch 11.0.3, which calls npm brace-expansion 5.0.12. It agrees with braceExpand, Node's bundled copy, until a limit: it keeps at most EXPANSION_MAX results and EXPANSION_MAX_LENGTH units, leaves nesting deeper than EXPANSION_MAX_DEPTH and rewrites past EXPANSION_MAX_REWRITES literal, and stops a sequence at EXPANSION_MAX items, so it never throws.
 func npmBraceExpand(pattern string) []string {
 	if !hasBraceSet(pattern) {
 		return []string{pattern}

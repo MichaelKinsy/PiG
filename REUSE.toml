@@ -333,6 +333,18 @@ SPDX-FileCopyrightText = "minimatch contributors"
 SPDX-License-Identifier = "BlueOak-1.0.0"
 
 [[annotations]]
+path = "test/parity/dependency-sources/@isaacs/**"
+precedence = "override"
+SPDX-FileCopyrightText = "nonrecursive-glob-match contributors"
+SPDX-License-Identifier = "BlueOak-1.0.0"
+
+[[annotations]]
+path = "test/parity/dependency-sources/node/**"
+precedence = "override"
+SPDX-FileCopyrightText = "minimatch contributors"
+SPDX-License-Identifier = "BlueOak-1.0.0"
+
+[[annotations]]
 path = "test/parity/dependency-sources/brace-expansion/**"
 precedence = "override"
 SPDX-FileCopyrightText = "Copyright Julian Gruber <julian@juliangruber.com>"

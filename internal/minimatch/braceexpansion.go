@@ -1,6 +1,6 @@
 package minimatch
 
-// Ports brace-expansion 5.0.12 and balanced-match (the packages minimatch 10.2.6 expands braces with).
+// Ports brace-expansion 5.0.12 and balanced-match (the packages minimatch 11.0.3 expands braces with).
 
 import (
 	"strconv"
