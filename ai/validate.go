@@ -33,7 +33,7 @@ func validateToolArgs(toolName string, parameters map[string]any, args json.RawM
 
 // decodeJSON decodes a JSON text as JSON.parse does: objects keep JavaScript's own-key order, and the escape of a lone surrogate is that one UTF-16 unit (WTF-8 in the Go string), where encoding/json would hand the tool U+FFFD.
 func decodeJSON(text []byte) (any, error) {
-	return chordjson.DecodeUnquoting(text, func(raw []byte, text *string) error { return jsstring.UnmarshalKeepingSurrogates(raw, text) })
+	return chordjson.DecodeUnquoting(text, jsstring.UnmarshalKeepingSurrogates[string])
 }
 
 // validateToolArgsSchema validates arguments against the JSON Schema rawSchema as Pi's validateToolArguments does: pi-schema's parse coerces them (a number sent as "42", one value for an array, null for an omitted
