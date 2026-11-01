@@ -15,7 +15,7 @@ func compactText(s *Schema) string {
 	for _, line := range strings.Split(text, "\n") {
 		out.WriteString(strings.TrimSpace(line))
 	}
-	return strings.ReplaceAll(out.String(), `":`, `": `)
+	return out.String()
 }
 
 func TestOpenObjectBuildsAnObjectThatAllowsOtherProperties(t *testing.T) {
@@ -52,12 +52,12 @@ func TestStringLiteralStringRecordAndOneOfBuildTheirPiSchemaShapes(t *testing.T)
 		got  *Schema
 		want string
 	}{
-		"stringLiteral":              {StringLiteral("openai"), `{"type": "string","const": "openai"}`},
-		"stringLiteral annotated":    {StringLiteral("anthropic", D("d")), `{"type": "string","const": "anthropic","description": "d"}`},
-		"stringRecord":               {StringRecord(String()), `{"type": "object","patternProperties": {"^.*$": {"type": "string"}}}`},
-		"stringRecord annotated":     {StringRecord(Number(), D("d")), `{"type": "object","patternProperties": {"^.*$": {"type": "number"}},"description": "d"}`},
-		"oneOf":                      {OneOf([]string{"text", "image"}), `{"enum": ["text","image"]}`},
-		"oneOf annotated":            {OneOf([]string{"a"}, D("d")), `{"enum": ["a"],"description": "d"}`},
+		"stringLiteral":           {StringLiteral("openai"), `{"type": "string","const": "openai"}`},
+		"stringLiteral annotated": {StringLiteral("anthropic", D("d")), `{"type": "string","const": "anthropic","description": "d"}`},
+		"stringRecord":            {StringRecord(String()), `{"type": "object","patternProperties": {"^.*$": {"type": "string"}}}`},
+		"stringRecord annotated":  {StringRecord(Number(), D("d")), `{"type": "object","patternProperties": {"^.*$": {"type": "number"}},"description": "d"}`},
+		"oneOf":                   {OneOf([]string{"text", "image"}), `{"enum": ["text","image"]}`},
+		"oneOf annotated":         {OneOf([]string{"a"}, D("d")), `{"enum": ["a"],"description": "d"}`},
 	} {
 		if got := compactText(c.got); got != c.want {
 			t.Errorf("%s:\n got %s\nwant %s", name, got, c.want)
@@ -68,25 +68,25 @@ func TestStringLiteralStringRecordAndOneOfBuildTheirPiSchemaShapes(t *testing.T)
 // piAISchemaTrees are the pi-ai configuration schemas (compat-schema.ts and model-schema.ts), all built with openObject.
 func piAISchemaTrees() map[string]*Schema {
 	return map[string]*Schema{
-		"ProviderCompatSchema":               ProviderCompatSchema(),
-		"OpenAICompletionsCompatSchema":      OpenAICompletionsCompatSchema(),
-		"OpenAIResponsesCompatSchema":        OpenAIResponsesCompatSchema(),
-		"AnthropicMessagesCompatSchema":      AnthropicMessagesCompatSchema(),
-		"BedrockCompatSchema":                BedrockCompatSchema(),
-		"MistralConversationsCompatSchema":   MistralConversationsCompatSchema(),
-		"SystemOneCompatSchema":              SystemOneCompatSchema(),
-		"OpenRouterRoutingSchema":            OpenRouterRoutingSchema(),
-		"VercelGatewayRoutingSchema":         VercelGatewayRoutingSchema(),
+		"ProviderCompatSchema":                ProviderCompatSchema(),
+		"OpenAICompletionsCompatSchema":       OpenAICompletionsCompatSchema(),
+		"OpenAIResponsesCompatSchema":         OpenAIResponsesCompatSchema(),
+		"AnthropicMessagesCompatSchema":       AnthropicMessagesCompatSchema(),
+		"BedrockCompatSchema":                 BedrockCompatSchema(),
+		"MistralConversationsCompatSchema":    MistralConversationsCompatSchema(),
+		"SystemOneCompatSchema":               SystemOneCompatSchema(),
+		"OpenRouterRoutingSchema":             OpenRouterRoutingSchema(),
+		"VercelGatewayRoutingSchema":          VercelGatewayRoutingSchema(),
 		"AnthropicAllowedFallbackModelSchema": AnthropicAllowedFallbackModelSchema(),
-		"ChatTemplateKwargValueSchema":       ChatTemplateKwargValueSchema(),
-		"ThinkingLevelMapSchema":             ThinkingLevelMapSchema(),
-		"ModelPromptCacheSchema":             ModelPromptCacheSchema(),
-		"ModelCostRatesSchema":               ModelCostRatesSchema(),
-		"ModelCostTierSchema":                ModelCostTierSchema(),
-		"ModelCostSchema":                    ModelCostSchema(),
-		"ModelImageResizeOptionsSchema":      ModelImageResizeOptionsSchema(),
-		"ModelImageInputLimitsSchema":        ModelImageInputLimitsSchema(),
-		"ModelInputLimitsSchema":             ModelInputLimitsSchema(),
+		"ChatTemplateKwargValueSchema":        ChatTemplateKwargValueSchema(),
+		"ThinkingLevelMapSchema":              ThinkingLevelMapSchema(),
+		"ModelPromptCacheSchema":              ModelPromptCacheSchema(),
+		"ModelCostRatesSchema":                ModelCostRatesSchema(),
+		"ModelCostTierSchema":                 ModelCostTierSchema(),
+		"ModelCostSchema":                     ModelCostSchema(),
+		"ModelImageResizeOptionsSchema":       ModelImageResizeOptionsSchema(),
+		"ModelImageInputLimitsSchema":         ModelImageInputLimitsSchema(),
+		"ModelInputLimitsSchema":              ModelInputLimitsSchema(),
 	}
 }
 
