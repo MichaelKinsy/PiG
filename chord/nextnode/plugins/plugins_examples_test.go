@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -928,7 +929,7 @@ func TestExample39BrowserBuild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(gallery.Assets) != 1 || !regexp.MustCompile(`^logo-[A-Z0-9]+\.svg$`).MatchString(gallery.Assets[0].Name) || string(gallery.Assets[0].Bytes) != string(svg) {
+	if len(gallery.Assets) != 1 || !regexp.MustCompile(`^logo-[A-Z0-9]+\.svg$`).MatchString(gallery.Assets[0].Name) || !bytes.Equal(gallery.Assets[0].Bytes, svg) {
 		t.Fatalf("assets: %+v", gallery.Assets)
 	}
 	if url := regexp.MustCompile(`/plugin-assets/[^"]+`).FindString(gallery.Source); url != "/plugin-assets/"+gallery.Assets[0].Name {
