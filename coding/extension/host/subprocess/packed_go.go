@@ -273,6 +273,8 @@ type factoryAdmission struct {
 	Socket     string
 	Cwd        string
 	ReloadPass uint64
+	// Group is the admitting Host's ready.group; a Node runtime scopes its per-process bookkeeping by it before the factory runs. pig additive (D201).
+	Group string
 }
 
 func (a factoryAdmission) line() (string, error) {
@@ -285,6 +287,10 @@ func (a factoryAdmission) line() (string, error) {
 		return "", fmt.Errorf("control field %q contains a tab or line break", op)
 	}
 	fields := []string{op, encodeAdmissionField(a.Name), encodeAdmissionField(a.Socket), encodeAdmissionField(a.Entry), encodeAdmissionField(a.Cwd), strconv.FormatUint(a.ReloadPass, 10)}
+	// pig additive (D201): the group travels as a trailing field only for a Host that shares cells, so every other line is unchanged.
+	if a.Group != "" {
+		fields = append(fields, encodeAdmissionField(a.Group))
+	}
 	return strings.Join(fields, "\t") + "\n", nil
 }
 
@@ -526,7 +532,7 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 	if retained != nil && !nodeRuntime {
 		// The runner starts every member's factory together, as a fresh runner does at spawn. The reload pass tells the Python runner when to re-import an edited extension.
 		for i := range pendingExts {
-			if err := processState.share.send(factoryAdmission{Name: pendingExts[i].me.config.Name, Socket: pendingExts[i].address, ReloadPass: reloadPass(ctx)}); err != nil {
+			if err := processState.share.send(factoryAdmission{Name: pendingExts[i].me.config.Name, Socket: pendingExts[i].address, ReloadPass: reloadPass(ctx), Group: h.Group()}); err != nil {
 				processState.stop()
 				return nil, nil, newLoadError(cell.Key, "spawn", "admit_failed", fmt.Errorf("admit %s to the running packed process: %w", pendingExts[i].me.config.Name, err))
 			}
@@ -559,7 +565,7 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 			}
 			if err == nil {
 				processState.factoryOwner.Store(&me.config.Name)
-				if sendErr := processState.share.send(factoryAdmission{Name: me.config.Name, Entry: me.nodeEntry, Socket: pendingExts[i].address, ReloadPass: reloadPass(ctx), Cwd: h.cwd}); sendErr != nil {
+				if sendErr := processState.share.send(factoryAdmission{Name: me.config.Name, Entry: me.nodeEntry, Socket: pendingExts[i].address, ReloadPass: reloadPass(ctx), Cwd: h.cwd, Group: h.Group()}); sendErr != nil {
 					err = &admissionWriteError{err: sendErr}
 				}
 			}
