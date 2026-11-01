@@ -548,8 +548,12 @@ func (s *SessionSelectorComponent) refilter() {
 	s.selected = min(s.selected, max(0, len(s.filtered)-1))
 }
 
+// canonicalSessionPath is Pi's getSessionPathKey (session-selector.ts): the comparison key of a session file path, which follows symlinks and ignores case on Windows. An empty path has no key.
 func canonicalSessionPath(path string) string {
-	return canonicalizePath(path)
+	if path == "" {
+		return ""
+	}
+	return resolvepath.ComparisonKey(canonicalizePath(path))
 }
 
 type sessionTreeNode struct {

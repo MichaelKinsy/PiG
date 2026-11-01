@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/frontend"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -126,7 +127,11 @@ func (s *SessionSelectorComponent) isCurrentSession(path string) bool {
 	if path == s.currentPath {
 		return true
 	}
-	return filepath.Base(path) == filepath.Base(s.currentPath) && canonicalSessionPath(path) == s.currentPath
+	base, currentBase := filepath.Base(path), filepath.Base(s.currentPath)
+	if resolvepath.FoldsCase() {
+		base, currentBase = strings.ToLower(base), strings.ToLower(currentBase)
+	}
+	return base == currentBase && canonicalSessionPath(path) == s.currentPath
 }
 
 // NativeNode reports the levels as a selector whose item ids are the levels;
