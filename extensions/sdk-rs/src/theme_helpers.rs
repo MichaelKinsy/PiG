@@ -31,7 +31,7 @@ pub struct MarkdownTheme {
     pub italic: StyleFn,
     pub underline: StyleFn,
     pub strikethrough: StyleFn,
-    /// `getMarkdownTheme().highlightCode`: [`highlight_code`], with the `mdCodeBlock` color for a highlight that fails.
+    /// `getMarkdownTheme().highlightCode`, which is [`highlight_code`].
     pub highlight_code: HighlightFn,
 }
 
@@ -80,7 +80,7 @@ pub fn get_markdown_theme() -> MarkdownTheme {
         italic: Box::new(|text| current_host_theme().italic(text)),
         underline: Box::new(|text| current_host_theme().underline(text)),
         strikethrough: Box::new(|text| current_host_theme().strikethrough(text)),
-        highlight_code: Box::new(|code, lang| highlight(code, lang, true)),
+        highlight_code: Box::new(highlight_code),
     }
 }
 
@@ -128,21 +128,14 @@ pub fn get_settings_list_theme() -> SettingsListTheme {
 }
 
 /// pi-coding-agent's `highlightCode`: `code` highlighted for `lang` with the global theme, one string per line. Code in a language the host's highlight.js does not support,
-/// or with no language, takes the `mdCodeBlock` color; code highlight.js fails on stays unstyled. The host's highlighter runs it; a host that cannot be reached leaves the
-/// code unstyled, as a failed highlight does.
+/// or with no language, takes the `mdCodeBlock` color, and so does code highlight.js fails on, as Pi's `catch` returns. The host's highlighter runs it; a host that cannot
+/// be reached fails the highlight.
 pub fn highlight_code(code: &str, lang: Option<&str>) -> Vec<String> {
-    highlight(code, lang, false)
-}
-
-fn highlight(code: &str, lang: Option<&str>, markdown: bool) -> Vec<String> {
     match lang.filter(|lang| !lang.is_empty()) {
         // No language: Pi highlights nothing, whatever the host would answer.
         None => code_block_lines(code),
-        Some(lang) => match highlight_code_lines(code, lang, markdown, installed_theme_palette()) {
-            Ok(lines) => lines,
-            Err(_) if markdown => code_block_lines(code),
-            Err(_) => code.split('\n').map(str::to_string).collect(),
-        },
+        Some(lang) => highlight_code_lines(code, lang, installed_theme_palette())
+            .unwrap_or_else(|_| code_block_lines(code)),
     }
 }
 

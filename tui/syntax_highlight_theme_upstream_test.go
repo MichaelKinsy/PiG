@@ -64,7 +64,7 @@ func BenchmarkSyntaxThemeScopes(b *testing.B) {
 			code := strings.Repeat(tc.code, 100)
 			b.ReportAllocs()
 			for b.Loop() {
-				highlightCodeUncached(highlightRegistry(), code, tc.language, false, ActiveTheme())
+				highlightCodeUncached(highlightRegistry(), code, tc.language, ActiveTheme())
 			}
 		})
 	}

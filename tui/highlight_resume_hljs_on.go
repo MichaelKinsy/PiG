@@ -16,13 +16,12 @@ const hlResumeMax = 4
 
 // hlResume is the resume state of the code last highlighted for a block: code[:len(prefix)] is the text before the resume point, lines the complete output lines before it, and partial the output of the line the point is on, up to the point.
 type hlResume struct {
-	lang             string
-	codeBlockOnError bool
-	theme            *Theme
-	prefix           string
-	lines            []string
-	partial          string
-	iterations       int
+	lang       string
+	theme      *Theme
+	prefix     string
+	lines      []string
+	partial    string
+	iterations int
 }
 
 // hlResumes holds the states, least recently used first; hlMu guards it.
@@ -31,11 +30,11 @@ var hlResumes []hlResume
 func resetHighlightResumesLocked() { hlResumes = nil }
 
 // highlightResumable highlights code as highlightCodeUncached does, restarting from the resume state of an earlier prefix of the same block when it has one, and leaves the state to resume from next. It reports false when the engine cannot highlight the language, so the caller highlights without resuming.
-func highlightResumable(registry *hljs.Registry, code, lang string, codeBlockOnError bool, t *Theme) ([]string, bool) {
+func highlightResumable(registry *hljs.Registry, code, lang string, t *Theme) ([]string, bool) {
 	if lang == "" || !registry.SupportsLanguage(lang) {
 		return nil, false
 	}
-	base, generation := hlFindResume(code, lang, codeBlockOnError, t)
+	base, generation := hlFindResume(code, lang, t)
 	html, points, err := registry.HighlightResumable(code, lang, true, hljs.ResumePoint{Byte: len(base.prefix), Iterations: base.iterations})
 	if errors.Is(err, hljs.ErrResumeFailed) {
 		base = hlResume{}
@@ -66,24 +65,23 @@ func highlightResumable(registry *hljs.Registry, code, lang string, codeBlockOnE
 		point := points[len(points)-1]
 		complete := len(base.lines) + strings.Count(headText, "\n")
 		hlStoreResume(hlResume{
-			lang:             lang,
-			codeBlockOnError: codeBlockOnError,
-			theme:            t,
-			prefix:           code[:point.Byte],
-			lines:            lines[:complete:complete],
-			partial:          headText[strings.LastIndexByte(headText, '\n')+1:],
-			iterations:       point.Iterations,
+			lang:       lang,
+			theme:      t,
+			prefix:     code[:point.Byte],
+			lines:      lines[:complete:complete],
+			partial:    headText[strings.LastIndexByte(headText, '\n')+1:],
+			iterations: point.Iterations,
 		}, base, generation)
 	}
 	return lines, true
 }
 
 // hlFindResume is the state with the longest prefix of code for the block, or the zero state, and the generation of the loaded languages it was found under.
-func hlFindResume(code, lang string, codeBlockOnError bool, t *Theme) (found hlResume, generation int) {
+func hlFindResume(code, lang string, t *Theme) (found hlResume, generation int) {
 	hlMu.Lock()
 	defer hlMu.Unlock()
 	for _, r := range hlResumes {
-		if r.lang == lang && r.codeBlockOnError == codeBlockOnError && r.theme == t && len(r.prefix) > len(found.prefix) && strings.HasPrefix(code, r.prefix) {
+		if r.lang == lang && r.theme == t && len(r.prefix) > len(found.prefix) && strings.HasPrefix(code, r.prefix) {
 			found = r
 		}
 	}
@@ -98,7 +96,7 @@ func hlStoreResume(next, replaced hlResume, generation int) {
 		return
 	}
 	for i, r := range hlResumes {
-		if r.lang == replaced.lang && r.theme == replaced.theme && r.prefix == replaced.prefix && r.codeBlockOnError == replaced.codeBlockOnError && replaced.prefix != "" {
+		if r.lang == replaced.lang && r.theme == replaced.theme && r.prefix == replaced.prefix && replaced.prefix != "" {
 			hlResumes = append(hlResumes[:i], hlResumes[i+1:]...)
 			break
 		}
