@@ -27,7 +27,7 @@ Host packages (Pi: `HostPackages`, this process's module instances) are modules 
 
 One local socket (a unix socket in a private 0700 directory; a named pipe on Windows), accepted once. Frames are what Pi's IPC link uses (`next/link/ipc.ts`, `link.IpcLink`): a 4-byte big-endian length, then one kind byte and the payload. Kind `0`: one chord link message (`link.BinaryCodec` bytes), carried by `link.IpcLink` on the Go side and Pi's `ipcLink` on the Node side, so the two hosts speak the pinned link wire byte for byte. Kind `1`: a control message, one JSON object (Pi's worker `envelope` shape).
 
-The Go host is the child of the Node host: `NodeHost.Attach(h)` is `h.Connect(link)`, so a remote type the Go host does not serve is held over the link from the Node host, which serves what the plugins' facets serve. The Node host `accept`s the link as the plugin host's child with the principal `Peer` names.
+The Go host is the child of the Node host: `RuntimeLoad.Parent` is the Go host, `Load` calls `Parent.Connect(link)` before it sends `load`, so a remote type the Go host does not serve (and does not route) is held over the link from the Node host, which serves what the plugins' facets serve. The Node host `accept`s the link as its child with the principal `Peer` names, and acts as `Principal`; `Address` is the Node host's address, the one a remote type's `hostAddress` places objects at. The app loads its Go host (`Parent.Load`) as it does any host: holds wait for its publication. A Go host has one parent, so two NodeHosts (a `server` kind and a `worker` kind, as in Pi's tests) are observed by two Go hosts. Closing the link, from either end, ends the channel, so the process exits (Pi: a worker whose link closed is stopped).
 
 Control (JSON, request ids chosen by Go, one reply per request, replies in any order):
 
@@ -36,7 +36,7 @@ Control (JSON, request ids chosen by Go, one reply per request, replies in any o
 | `load {kind, core, scripts, modules, principal, peer}` (once) | `{failed: [{plugin, error}]}`: runtime.ts `load`'s report. |
 | `reload {scripts}` | `{plugins, failed, objects}`: the host's `ReloadReport`; or an error. |
 | `abort {target}` | none: aborts the context of request `target` (Go's context cancel). |
-| `close` | `{}`, then the process exits: `host.close`, then exit. |
+| `close` | none: `host.close`, which ends the link and with it the channel, then the process exits. `NodeHost.Close` waits for the exit. |
 
 Node to Go, unrequested: `started` (connected), `fatal {error}` (an uncaught exception or rejection; the process exits).
 
@@ -57,7 +57,7 @@ A failure inside Node is data on the wire: `{name, message, stack, code?, detail
 
 ## 6. Node
 
-Pi's `packages/chord` `engines.node` is `>=22.19.0`, the first release that strips types by default. Discovery is the runtime-node way (`ensureNodeRuntime`): `node` on `PATH`, `node --version` parsed as semver, an error naming the requirement when missing or older. The process runs `node --disable-warning=ExperimentalWarning host.mjs <address>`; no other flag. A missing Node is an environment failure of `Load`, not of the build: `Build`, `Discover`, the watcher and `Plugins.Scripts` need none.
+Pi's `packages/chord` `engines.node` is `>=22.19.0`, the first release that strips types by default. Discovery is the runtime-node way (`ensureNodeRuntime`): `node` on `PATH`, `node --version` parsed as semver, an error naming the requirement when missing or older. The process runs `node --disable-warning=ExperimentalWarning <NodeOptions.ExecArgv...> host.mjs <address>`. A missing Node is an environment failure of `Load`, not of the build: `Build`, `Discover`, the watcher and `Plugins.Scripts` need none.
 
 ## 7. Packaging
 
@@ -79,4 +79,4 @@ Pi's `packages/chord` `engines.node` is `>=22.19.0`, the first release that stri
 
 ## 9. Evidence
 
-The tests run the real esbuild build and the real Node subprocess with Pi's inputs: `build.test.ts` and `discover.test.ts`, `install.test.ts` and `watcher.test.ts` (already Go), `plugins.test.ts`, `runtime.test.ts`, `evaluate.test.ts` and `stack.test.ts` with their expected results, and examples 35 to 39. A case that reads a JavaScript object of the evaluated facet (`facet.made instanceof ChordError`, `facet.values`) reads it through a probe core facet (a fixture) that calls Pi's `evaluateFacet` and `mapStack` in the subprocess and serves the answers over a remote contract held by a Go host: the same expectations, the process boundary in between, each such case marked in its test comment.
+The tests run the real esbuild build and the real Node subprocess with Pi's inputs (Node 24.22.1 in `tern-ci:v6`): `build.test.ts` and `discover.test.ts`, `install.test.ts` and `watcher.test.ts` (already Go), `plugins.test.ts`, `runtime.test.ts`, `evaluate.test.ts` and `stack.test.ts` with their expected results, and examples 35 to 39. A case that reads a JavaScript object of the evaluated facet (`facet.made instanceof ChordError`, `facet.values`) reads it through a probe core facet (a fixture) that calls Pi's `evaluateFacet` and `mapStack` in the subprocess and serves the answers over a remote contract held by a Go host: the same expectations, the process boundary in between, each such case marked in its test comment.
