@@ -1,10 +1,8 @@
 // Generates ranker_goldens.json: random tool sets, queries and limits ranked by Pi's own tool-search/tool.ts at commit
-// 79006f06 (earendil-works/pi#11331, #11632, #11037), the field-weighted, coverage-first ranker with Unicode word segmentation that PiG carries (D217).
+// 79006f06 (earendil-works/pi#11331, #11632, #11037), the field-weighted, coverage-first ranker with Unicode word segmentation that PiG ports.
 // The ranker is that of e033f255; 79006f06 adds the words of other scripts to the probes and to the terms they rank by.
 //
 //   PI_CHECKOUT=<pi checkout at 79006f06> node gen_ranker_goldens.mjs > ranker_goldens.json
-//
-// The pinned Pi (b3a29f11) scores the name, description and namespace as one bag of words, so the Pi oracle cannot supply these.
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

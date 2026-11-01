@@ -95,7 +95,6 @@ func watchEvent(change durableenv.FileChange) Object {
 
 // changeEvent is a `change` event listing paths, or an `overflow` one when the list would not fit in a frame: a frame that is too
 // large would end the connection's output (watch.rs change_event).
-// pig divergence (D217): Pi 102d1287 (#10516) reports overflow where the list would exceed the frame limit.
 func changeEvent(paths []string) Object {
 	event := Object{"kind": "change", "paths": paths}
 	if !changeFitsFrame(event, paths) {

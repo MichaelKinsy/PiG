@@ -233,7 +233,7 @@ func TestExecWithOptionsSendsOptionsAndDecodesKilled(t *testing.T) {
 	surfaceShutdown(t, host, done)
 }
 
-// pig divergence (D217) test: Pi c466a359 (#11360) exec.ts maxBuffer. The option crosses as options.maxBuffer and the result's truncated is read; NaN and the
+// Pi c466a359 (#11360) exec.ts maxBuffer. The option crosses as options.maxBuffer and the result's truncated is read; NaN and the
 // infinities cannot cross the wire, so the call fails before it is sent.
 func TestExecWithMaxBufferSendsTheOptionAndDecodesTruncated(t *testing.T) {
 	ext := New("surface")

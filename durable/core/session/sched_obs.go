@@ -110,7 +110,7 @@ func (s *Scheduler) observeCommit(pub *Publication) {
 			before = prev
 		}
 		s.track(before, rec)
-		// pig divergence (D217): Pi 35dfa757 idleness counts live tasks, so only a task that became live or ended can change it.
+		// Pi 35dfa757 idleness counts live tasks, so only a task that became live or ended can change it.
 		// Collected before sweep, which may forget the chain of a task that ended. A new task whose chain is not loaded has its
 		// scopes settled once the chain is (loadChain), where Pi has loaded the chain of a new task in the commit that creates it.
 		pendingChain := !hadPrev && s.unloaded.Has(id)

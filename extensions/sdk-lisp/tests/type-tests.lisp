@@ -49,8 +49,7 @@
         (cons "hasApi" #'pig:has-api-p)
         (cons "modelsAreEqual" #'pig:models-are-equal-p)))
 
-;; Pi d3398f82 (#11492, pig divergence (D217)): LiteLLM's pre-call check ContextWindowExceededError is a context overflow. The pinned vectors cannot
-;; gain a case, so the carried pattern is pinned by hand.
+;; Pi d3398f82 (#11492): LiteLLM's pre-call check ContextWindowExceededError is a context overflow. The pattern is pinned by hand.
 (deftest litellm-context-window-exceeded-is-overflow
   (flet ((message (stop text) (pig:from-json (format nil "{\"role\":\"assistant\",\"stopReason\":\"~A\",\"errorMessage\":\"~A\"}" stop text))))
     (let ((litellm "400: litellm.ContextWindowExceededError: litellm.BadRequestError: litellm._pre_call_checks: Context Window exceeded for given call."))
@@ -58,7 +57,7 @@
       (check (not (pig:context-overflow-p (message "stop" litellm))))
       (check (not (pig:context-overflow-p (message "error" "Throttling error: Context Window exceeded for given call")))))))
 
-;; Pi c719d5b0 (#11572, #11537, pig divergence (D217)): Zhipu/Z.ai usage limit code 1308 arrives as HTTP 429 and resets after hours, so it is not retried.
+;; Pi c719d5b0 (#11572, #11537): Zhipu/Z.ai usage limit code 1308 arrives as HTTP 429 and resets after hours, so it is not retried.
 (deftest zhipu-usage-limit-1308-is-not-retryable
   (flet ((message (text) (pig:from-json (format nil "{\"role\":\"assistant\",\"stopReason\":\"error\",\"errorMessage\":~A}" (pig:to-json text)))))
     (check (not (pig:retryable-assistant-error-p (message "429 {\"error\":{\"code\":\"1308\",\"message\":\"Usage limit reached for 5 hour.\"}}"))))

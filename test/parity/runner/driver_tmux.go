@@ -104,9 +104,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 			return Result{Err: fmt.Errorf("read changelog assertion input: %w", err)}
 		}
 	}
-	program, launchArgs := bin.program()
-	parts = append(parts, program)
-	parts = append(parts, launchArgs...)
+	parts = append(parts, bin.Path)
 	if !sc.Env.OverrideBaseArgs {
 		parts = append(parts, bin.Args...)
 	}

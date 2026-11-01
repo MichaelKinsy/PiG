@@ -439,7 +439,6 @@ _OVERFLOW_PATTERNS = _compile_each(
     r"input is too long for requested model",
     r"exceeds the context window",
     r"exceeds (?:the )?(?:model'?s )?maximum context length(?: of [\d,]+ tokens?|\s*\([\d,]+\))",
-    # pig divergence (D217): Pi d3398f82 (#11492) LiteLLM's pre-call check ContextWindowExceededError is a context overflow.
     r"context window exceeded",
     r"input token count.*exceeds the maximum",
     r"maximum prompt length is \d+",
@@ -470,7 +469,6 @@ _NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN = _js_regexp("|".join([
     "subscription_sharing_usage_limit_exceeded",
     # Sign in with ChatGPT on a ChatGPT Business plan: a usage limit set by the workspace admin. Only the admin can raise it.
     "subscription_sharing_workplace_individual_usage_limit_exceeded",
-    # pig divergence (D217): Pi c719d5b0 (#11537) Zhipu/Z.ai usage limit code 1308 (HTTP 429) resets after hours, so it is not retried.
     r'"code"\s*:\s*"?1308(?![0-9])',
 ]))
 _RETRYABLE_PROVIDER_ERROR_PATTERN = _js_regexp("|".join([

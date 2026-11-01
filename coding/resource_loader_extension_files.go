@@ -171,7 +171,6 @@ func (l *DefaultResourceLoader) loadExtensionFiles(ctx context.Context, request 
 		}
 	}
 	// Extensions follow the order of the paths, built-ins in place, then the inline ones (:765-775).
-	// pig divergence (D217): Pi 1be312b4 (#10488) keys the loaded extensions by getResourcePathKey (getExtensionPathKey for a path), so Windows paths that differ in casing find one extension.
 	files := map[string]extension.Extension{}
 	for _, ext := range result.Extensions {
 		files[icodingagent.ResourcePathKey(ext.ResolvedPath)] = ext

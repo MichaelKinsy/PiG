@@ -43,7 +43,6 @@ func pathSeparatorOfPlatform() string {
 // `C:\Users` are the same directory). It does not touch the filesystem; call CanonicalizePath first when symlinks must compare equal. Use it only for
 // comparison, never for display or filesystem access. A relative path that cannot be resolved because the working directory is gone keeps its spelling,
 // where Pi's path.resolve throws.
-// pig divergence (D217): Pi 1be312b4 (#10488) compares Windows paths case-insensitively; Pi 1.4.0+b3a29f11 compared them as exact strings.
 func ComparisonKey(path string) string {
 	var resolved string
 	var err error

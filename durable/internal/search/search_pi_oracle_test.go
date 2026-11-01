@@ -22,10 +22,9 @@ import (
 // camelCase and acronym boundaries, every plural ending, stop words, digits, punctuation, and letters whose lower case
 // is not their ASCII lower case. A ranking compares the full order Pi gives, ties included.
 //
-// D217 (Pi c7372af4, #11631): the pinned Pi scores the name as part of the text, has no namespace text and ranks by score alone, PiG weighs the name and the namespace as fields of their own
-// and ranks a tool matching more of the query's distinct terms first. The two agree where the name holds no term (every part is a stop word, which also leaves a tool's whole name out of
-// the query) and the query has one distinct term, so every match covers it: those rankings compare in full order. For a query of several distinct terms the two agree on which tools match,
-// compared as a set when the limit keeps them all. TestRankDocumentsMatchesPiTheLatestCarriedRanker pins the carried ranking with Pi's own answers.
+// The probes are the inputs where the name holds no term (every part is a stop word, which also leaves a tool's whole name out of the query) and the query has one distinct
+// term, so every match covers it: those rankings compare in full order. For a query of several distinct terms the probes compare which tools match, as a set when the limit
+// keeps them all. TestRankDocumentsMatchesPiTheLatestCarriedRanker pins the ranking of a name and of a namespace (Pi c7372af4, #11631) with Pi's own answers.
 
 type searchOp struct {
 	Op        string     `json:"op"`
@@ -107,8 +106,8 @@ func sameSet(a, b []string) bool {
 var nonASCIICharacter = regexp.MustCompile(`[^\x00-\x7f]`)
 
 func TestTokenizeAndRankDocumentsMatchPiOnSeededInputs(t *testing.T) {
-	// D217 (Pi 79006f06, #11037): the pinned Pi splits a term at every character outside ASCII, PiG keeps the words of every script. Every such character becomes a space before both sides see
-	// the probes, so they are compared where the two agree; TestTokenizeMatchesPiOnEveryScriptClass pins the carried tokenizer with Pi's own answers.
+	// Every character outside ASCII becomes a space before both sides see the probes, so they are compared on ASCII words;
+	// TestTokenizeMatchesPiOnEveryScriptClass compares the tokenizer (Pi 79006f06, #11037) with Pi's own answers.
 	input, err := json.Marshal(searchOps())
 	if err != nil {
 		t.Fatal(err)

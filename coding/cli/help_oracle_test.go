@@ -45,13 +45,7 @@ func TestHelpMatchesPi(t *testing.T) {
 		"  # Add codemode to the default tools":                                                                 "K1: --tools +name/-name",
 		"  pig --tools +codemode":                                                                               "K1: --tools +name/-name",
 		"  PIG_SHARE_VIEWER_URL              - Base URL for /share command (default: https://pig.dev/session/)": "PiG's /share has no viewer URL variable",
-		// pig divergence (D217) allowance, Pi 2a46c420 (#11532): PiG prints the new wording of these five session flag lines; TestHelpCarriesPi2a46c420SessionFlagWording pins it.
-		"  --continue, -c                 Continue previous session":                                           "D217: Pi 2a46c420",
-		"  --resume, -r                   Select a session to resume":                                          "D217: Pi 2a46c420",
-		"  --session <path|id>            Use specific session file or partial UUID":                           "D217: Pi 2a46c420",
-		"  --session-id <id>              Use exact project session ID, creating it if missing":                "D217: Pi 2a46c420",
-		"  --fork <path|id>               Fork specific session file or partial UUID into a new session":       "D217: Pi 2a46c420",
-		"  PI_SHARE_VIEWER_URL              - Base URL for /share command (default: https://pig.dev/session/)": "PiG's /share has no viewer URL variable",
+		"  PI_SHARE_VIEWER_URL              - Base URL for /share command (default: https://pig.dev/session/)":  "PiG's /share has no viewer URL variable",
 	}
 	// A known-gap example block ends with the blank line that separates examples; it is skipped with the block.
 	var expected []string
@@ -79,7 +73,7 @@ func TestHelpMatchesPi(t *testing.T) {
 	}
 }
 
-// Pi 2a46c420 (#11532, docs(coding-agent): document which working directory resumed sessions use): the help says which working directory each session flag uses. Pinned Pi's help has the older wording, which TestHelpMatchesPi skips under D217.
+// Pi 2a46c420 (#11532, docs(coding-agent): document which working directory resumed sessions use): the help says which working directory each session flag uses. TestHelpMatchesPi compares it with Pi's own help.
 func TestHelpCarriesPi2a46c420SessionFlagWording(t *testing.T) {
 	var help bytes.Buffer
 	printHelp(&help, false)

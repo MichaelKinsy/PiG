@@ -94,8 +94,8 @@ func RawKeyHint(key, description string) string {
 	return theme.Fg("dim", FormatKeyText(key)) + theme.Fg("muted", " "+description)
 }
 
-// pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and
-// entry options (KeybindingHints); pinned Pi has neither. Each method delegates to the package function, which reads the host's keybindings.
+// Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and
+// entry options (KeybindingHints). Each method delegates to the package function, which reads the host's keybindings.
 
 // KeyText is KeybindingHints.keyText of the tool render context: [KeyText].
 func (ToolRenderContext) KeyText(keybinding string) string { return KeyText(keybinding) }

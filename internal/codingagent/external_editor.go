@@ -40,7 +40,6 @@ import (
 )
 
 // ExternalEditorFailure is the error of an editor that did not complete: it could not be started, exited non-zero, or was signaled. Message is the status text Pi shows for it. Error keeps the longer text of the underlying failure.
-// pig divergence (D217): Pi 6454d07e (#11592) reports external editor failures to the user; Pi 1.4.0+b3a29f11 redraws over them silently.
 type ExternalEditorFailure struct {
 	Message string
 	Err     error

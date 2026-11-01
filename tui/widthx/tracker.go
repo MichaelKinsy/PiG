@@ -262,7 +262,6 @@ func (t *AnsiCodeTracker) LineEndReset() string {
 	if t.underline {
 		b.WriteString("\x1b[24m")
 	}
-	// pig divergence (D217): Pi 2ce9d527 (#10925) strikethrough is closed at line end like underline and re-opened by ActiveCodes.
 	if t.strike {
 		b.WriteString("\x1b[29m")
 	}

@@ -223,7 +223,6 @@ func (c *mcpCLI) parseOptions(args []string, known map[string]optionKind, maxPos
 		name := arg[2:]
 		kind, ok := known[name]
 		if !ok {
-			// pig divergence (D217): Pi be15fe3c names the option as typed (-l), not its alias (--local).
 			c.error(fmt.Sprintf("Unknown option %s.\n%s", typed, c.helpHint()))
 			return parsedOptions{}, false
 		}
@@ -299,7 +298,6 @@ func RunMcpCommand(ctx context.Context, args []string, options McpCommandOptions
 		}
 		return c.list(ctx, loaded, parsed.flags["json"], untrustedNote, credentials)
 	case "login", "logout":
-		// pig divergence (D217): Pi be15fe3c login and logout accept -l/--local.
 		known := map[string]optionKind{"local": optionFlag}
 		if command == "login" {
 			known["timeout"] = optionValue
@@ -330,7 +328,6 @@ func RunMcpCommand(ctx context.Context, args []string, options McpCommandOptions
 			if configured == "" {
 				configured = "none"
 			}
-			// pig divergence (D217): Pi be15fe3c suggests the first configured name within edit distance 2.
 			suggestion := ""
 			if index := slices.IndexFunc(names, func(candidate string) bool { return editDistance(candidate, name) <= 2 }); index >= 0 {
 				suggestion = fmt.Sprintf(` Did you mean "%s"?`, names[index])
@@ -338,7 +335,6 @@ func RunMcpCommand(ctx context.Context, args []string, options McpCommandOptions
 			c.error(fmt.Sprintf(`No MCP server named "%s".%s%s Configured: %s.`, name, suggestion, note, configured))
 			return 1
 		}
-		// pig divergence (D217): Pi be15fe3c --local requires a project server.
 		if parsed.flags["local"] && entry.Scope != "project" {
 			c.error(fmt.Sprintf(`MCP server "%s" is defined in %s, not in the project; omit --local.`, name, entry.Source))
 			return 1

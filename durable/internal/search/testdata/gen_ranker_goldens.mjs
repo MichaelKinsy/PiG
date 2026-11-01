@@ -1,10 +1,8 @@
 // Generates ranker_goldens.json: random documents, queries and limits ranked by Pi's own durable/src/search.ts at commit
-// 79006f06 (earendil-works/pi#11631, #11037), the field-weighted, coverage-first ranker with Unicode word segmentation that PiG carries (D217).
+// 79006f06 (earendil-works/pi#11631, #11037), the field-weighted, coverage-first ranker with Unicode word segmentation that PiG ports.
 // The ranker is that of c7372af4; 79006f06 adds the words of other scripts to the probes and to the terms they rank by.
 //
 //   PI_CHECKOUT=<pi checkout at 79006f06> node gen_ranker_goldens.mjs > ranker_goldens.json
-//
-// The pinned Pi (b3a29f11) scores the name as part of the text and has no namespace field, so the Pi oracle cannot supply these.
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 

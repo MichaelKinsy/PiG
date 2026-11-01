@@ -337,7 +337,6 @@
     (check= 0 (pig:tui-get-select-page-index manager page-up 0 0 5))
     (check (null (pig:tui-get-select-page-index manager "x" 2 20 3)) "not a page key")))
 
-;; pig divergence (D217): Pi 9376c8d1 (#4748) key-text and key-hint on the tool render context and the message and entry options.
 (deftest render-hints-read-the-host-keybindings
   (pig::ts-apply-host-state (tv-state "ctrl+y" "ctrl+j" "iterm2"))
   (let ((context (pig:make-tool-render-context)) (options (pig:obj "expanded" t)))

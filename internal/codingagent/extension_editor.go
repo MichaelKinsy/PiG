@@ -64,7 +64,6 @@ func NewExtensionEditorComponent(ui tui.TUI, keybindings *KeybindingsManager, ti
 		}
 	}
 	c.Add(c.editor)
-	// pig divergence (D217): Pi 6454d07e (#11592) shows external editor failures under the editor.
 	c.externalEditorStatus = tui.NewPaddedText("", 1, 0, nil)
 	c.Add(c.externalEditorStatus)
 	c.Add(tui.NewSpacer(1))

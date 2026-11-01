@@ -65,7 +65,6 @@ func RunScenario(ctx context.Context, t *testing.T, sc *Scenario, pig, pi Binary
 	if err != nil {
 		return &ScenarioOutcome{Scenario: sc, Failures: []string{err.Error()}}
 	}
-	pi = pi.forScenario(sc)
 	// Go probes are built here, before the first timed run (go_prebuild.go).
 	runSc, err := goPrebuilds.prepare(sc, t.Logf)
 	if err != nil {

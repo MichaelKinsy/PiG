@@ -2499,98 +2499,207 @@
     },
     {
       "path": "packages/chord/test/next-node/http/admission.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7d3a2dcab8b3791d6f0b8b7cb600d9a7a19b4720bc3f527a3a460a74d10b1026"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7d3a2dcab8b3791d6f0b8b7cb600d9a7a19b4720bc3f527a3a460a74d10b1026",
+      "evidence": [
+        "chord/nextnode/http/admission_test.go"
+      ],
+      "rationale": "All 6 upstream cases run in the evidence files (lane nhttp)."
     },
     {
       "path": "packages/chord/test/next-node/http/authenticate.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6b05e644393f53532ed13d8342056fdd21ba2e6631b95ec6104908531506f539"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6b05e644393f53532ed13d8342056fdd21ba2e6631b95ec6104908531506f539",
+      "evidence": [
+        "chord/nextnode/http/authenticate_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files (lane nhttp)."
     },
     {
       "path": "packages/chord/test/next-node/http/cookies.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:79acb2b491b9986bc1f529733bd1e26de4524e0fa383bd75c7056fec72702fe7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:79acb2b491b9986bc1f529733bd1e26de4524e0fa383bd75c7056fec72702fe7",
+      "evidence": [
+        "chord/nextnode/http/cookies_test.go"
+      ],
+      "rationale": "All 3 upstream cases run in the evidence files (lane nhttp)."
     },
     {
       "path": "packages/chord/test/next-node/http/file.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7f3e1d2099de20e6e40af98533a5329c0660ea388a3910255f9093ce518a22fe"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7f3e1d2099de20e6e40af98533a5329c0660ea388a3910255f9093ce518a22fe",
+      "evidence": [
+        "chord/nextnode/http/file_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files (lane nhttp)."
     },
     {
       "path": "packages/chord/test/next-node/http/headers.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bb92e182ddcc66fa1ea170770a770b6d0033a7e694419093551222e20010b4f2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:bb92e182ddcc66fa1ea170770a770b6d0033a7e694419093551222e20010b4f2",
+      "evidence": [
+        "chord/nextnode/http/headers_test.go"
+      ],
+      "rationale": "All 6 upstream cases run in the evidence files (lane nhttp)."
     },
     {
       "path": "packages/chord/test/next-node/http/http.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8c9a2983685ef2e83593c6386e0ff59f12f2b065ef5820b92ee8ef62e97c9764"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8c9a2983685ef2e83593c6386e0ff59f12f2b065ef5820b92ee8ef62e97c9764",
+      "evidence": [
+        "chord/nextnode/http/http_test.go",
+        "chord/nextnode/http/review_test.go"
+      ],
+      "rationale": "All 32 upstream cases run in the evidence files (lane nhttp)."
     },
     {
       "path": "packages/chord/test/next-node/http/node.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:30061cd751fb83b45ed0427740e8e2da51fe9c6a0f7835af63e73ef22bc1ffe7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:30061cd751fb83b45ed0427740e8e2da51fe9c6a0f7835af63e73ef22bc1ffe7",
+      "evidence": [
+        "chord/nextnode/http/node_test.go"
+      ],
+      "rationale": "6 of 7 upstream cases are ported (lane nhttp); the designed-out case checks that a lazy Web `Request` is made only when something reads it; the Go request is one `nodeIncoming` shape for the listener and Fetch with no lazy Web Request object. Owner approval of the designed-out case is pending.",
+      "designedOutCases": [
+        "Web requests › makes a Web Request only when something reads the headers or the body (here: no authenticator does)"
+      ]
     },
     {
       "path": "packages/chord/test/next-node/http/request.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ac9a492f630c2e4b2d6ee85ddb3ebcfcde4a6219afaf4d8b6c1caf6fda6afec4"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ac9a492f630c2e4b2d6ee85ddb3ebcfcde4a6219afaf4d8b6c1caf6fda6afec4",
+      "evidence": [
+        "chord/nextnode/http/request_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files (lane nhttp)."
     },
     {
       "path": "packages/chord/test/next-node/http/response.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:04c1d54657d2919f3e66807d801b50d270d26357c6d3615b0796972816794cd3"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:04c1d54657d2919f3e66807d801b50d270d26357c6d3615b0796972816794cd3",
+      "evidence": [
+        "chord/nextnode/http/response_test.go"
+      ],
+      "rationale": "All 10 upstream cases run in the evidence files (lane nhttp)."
     },
     {
       "path": "packages/chord/test/next-node/http/router.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d023c26c61823c1c3b5bb58fc98f67080f8093cea0d2ff4993b2d9a235ab9395"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d023c26c61823c1c3b5bb58fc98f67080f8093cea0d2ff4993b2d9a235ab9395",
+      "evidence": [
+        "chord/nextnode/http/router_test.go"
+      ],
+      "rationale": "All 12 upstream cases run in the evidence files (lane nhttp)."
     },
     {
       "path": "packages/chord/test/next-node/http/upgrades.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:00dde5d81f498561b16cd4fefe9f4fb08904b7266f0d0f06bf38aa3e20c97953"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:00dde5d81f498561b16cd4fefe9f4fb08904b7266f0d0f06bf38aa3e20c97953",
+      "evidence": [
+        "chord/nextnode/http/upgrades_test.go"
+      ],
+      "rationale": "16 of 17 upstream cases are ported (lane nhttp); the designed-out case asserts that a closed socket keeps no `ws` server object (a GC spy on the ws library); the Go websocket is gorilla over net/http and TestGCKeepsNothingOfAClosedPluginSocket covers what a closed plugin socket keeps. Owner approval of the designed-out case is pending.",
+      "designedOutCases": [
+        "GC › keeps no ws server once its socket closed"
+      ]
     },
     {
       "path": "packages/chord/test/next-node/plugins/build.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:65bf46154abb890ae41ec0086e608e0f201d6c96b745d93f1c110f2be57b26af"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:65bf46154abb890ae41ec0086e608e0f201d6c96b745d93f1c110f2be57b26af",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_build_test.go"
+      ],
+      "rationale": "1 of 11 upstream cases is ported (lane kfold); the 10 designed-out cases check esbuild's import table, source maps, CSS and asset output: Go cannot run esbuild in process (AGENTS.md forbids an embedded JS runtime), the build is the consumer-owned Builder seam, and the seam's data flow (BuildFacet) is the ported case. Owner approval of the designed-out cases is pending.",
+      "designedOutCases": [
+        "building a facet: the import table › inlines the plugin's own files and another plugin's file (copied); keeps host packages external",
+        "building a facet: the import table › hashes each input as esbuild read it; the digest is the source's hash",
+        "building a facet: the import table › gives the same script and digest from two checkout paths (relative source maps)",
+        "building a facet: the import table › inlines a package of its dependencies; keeps chord.external packages and Node builtins external on Node",
+        "building a facet: the import table › refuses a chord.external package and a Node builtin in a browser build",
+        "building a facet: the import table › collects a browser build's CSS into one stylesheet and its assets into content-hashed files",
+        "building a facet: the import table › refuses CSS and assets in a Node build",
+        "building a facet: the import table › refuses import.meta.url, __dirname, __filename, a dynamic import() and top-level await, pointing to pluginFile",
+        "building a facet: the import table › refuses a path outside the plugin, a package not in its dependencies, and a package in a copied file",
+        "building a facet: the import table › imports another plugin's file by name from any root; refuses relative paths into it, names a missing plugin"
+      ]
     },
     {
       "path": "packages/chord/test/next-node/plugins/discover.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5f0983d9d1ec52054b9a2db6e6ec6c4924bbcc6f4170e5080b7903e53fa7d416"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5f0983d9d1ec52054b9a2db6e6ec6c4924bbcc6f4170e5080b7903e53fa7d416",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_discover_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next-node/plugins/evaluate.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:7640e7b4c26712613d90fe6a9f1140891ae5d0b284a7314512d9bf3c03fc6260"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:7640e7b4c26712613d90fe6a9f1140891ae5d0b284a7314512d9bf3c03fc6260",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_evaluate_test.go"
+      ],
+      "rationale": "2 of 8 upstream cases are ported at the seam (lane kfold: the stable script filename and PluginFile); the 6 designed-out cases check `vm.Script` evaluation: host package instances, ESM/CommonJS interop, Node require, import-time throws, computed import() and ESM namespace wrappers; Go has no JavaScript evaluation (the consumer-owned Evaluator seam). Owner approval of the designed-out cases is pending.",
+      "designedOutCases": [
+        "evaluating a facet › gives host packages as the host's instances: a ChordError crosses the plugin as one",
+        "evaluating a facet › answers default and named imports of an ESM and a CommonJS host package",
+        "evaluating a facet › loads chord.external packages and Node builtins from the plugin's directory",
+        "evaluating a facet › throws an import-time throw, a non-facet export and a refused require, naming the facet",
+        "evaluating a facet › runs a computed import() through the facet's require: an unknown one names the facet (Astra)",
+        "ESM host packages' wrappers › wraps a namespace once, and keeps no namespace nobody else holds"
+      ]
     },
     {
       "path": "packages/chord/test/next-node/plugins/install.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bc737689d188f633dc63c533e04aa669b42b67e108f53ae9e17bdb0795a99353"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:bc737689d188f633dc63c533e04aa669b42b67e108f53ae9e17bdb0795a99353",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_install_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next-node/plugins/plugins.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ff088377ff4c1fb0c9a67d76b81e7d0049a7ae538ddbbaba31025e3b00df4bca"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ff088377ff4c1fb0c9a67d76b81e7d0049a7ae538ddbbaba31025e3b00df4bca",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_plugins_test.go",
+        "chord/nextnode/plugins/plugins_endtoend_test.go",
+        "chord/nextnode/plugins/plugins_examples_test.go"
+      ],
+      "rationale": "All 20 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next-node/plugins/runtime.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:45fbb43317d921cd972f169ed4182f3474812055a68913fa0559049168ad781c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:45fbb43317d921cd972f169ed4182f3474812055a68913fa0559049168ad781c",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_runtime_test.go"
+      ],
+      "rationale": "3 of 4 upstream cases are ported (lane kfold); the designed-out case asserts that a Node worker never imports esbuild (an import hook in a Node process); a PluginRuntime takes an Evaluator and has no Builder. Owner approval of the designed-out case is pending.",
+      "designedOutCases": [
+        "the runtime's imports › loads no esbuild: a worker that only evaluates never imports it"
+      ]
     },
     {
       "path": "packages/chord/test/next-node/plugins/stack.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:aab37113054ab33b852b7c401a5e7c6a70bbb204eff6476548837042254aed9a"
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:aab37113054ab33b852b7c401a5e7c6a70bbb204eff6476548837042254aed9a",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_seam_test.go"
+      ],
+      "rationale": "stack.ts maps V8 stack positions of `vm.Script` scripts through esbuild inline source maps; Chord on Go has no JavaScript script to map (AGENTS.md forbids an embedded JS runtime), plugins are evaluated by the consumer-owned Evaluator seam, so every case (mapStack, the registered map and its lifetime) has no Go counterpart (lane kfold)."
     },
     {
       "path": "packages/chord/test/next-node/plugins/watcher.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1a0bf8cd1c317d813695418cef4778c59ecf6d7351287a94de5506b63f357ece"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1a0bf8cd1c317d813695418cef4778c59ecf6d7351287a94de5506b63f357ece",
+      "evidence": [
+        "chord/nextnode/plugins/plugins_watcher_test.go",
+        "chord/nextnode/plugins/plugins_watcher_linux_test.go"
+      ],
+      "rationale": "All 11 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next-node/workers/control.test.ts",
@@ -2619,8 +2728,12 @@
     },
     {
       "path": "packages/chord/test/next/contracts/accepts.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4d40d02661127eb0f6f0b653b8581960a04a166484fc8afe7b89d02145614387"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4d40d02661127eb0f6f0b653b8581960a04a166484fc8afe7b89d02145614387",
+      "evidence": [
+        "chord/next/contracts/accepts_test.go"
+      ],
+      "rationale": "All 16 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/contracts/contract.test.ts",
@@ -2645,8 +2758,12 @@
     },
     {
       "path": "packages/chord/test/next/contracts/evolve.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b651c1078fe8db4f4056a1039ebcee74f6915a89fa6b8a8c3f5102690dd0885a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b651c1078fe8db4f4056a1039ebcee74f6915a89fa6b8a8c3f5102690dd0885a",
+      "evidence": [
+        "chord/next/contracts/evolve_test.go"
+      ],
+      "rationale": "All 18 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/contracts/fingerprint.test.ts",
@@ -2761,8 +2878,12 @@
     },
     {
       "path": "packages/chord/test/next/documents/address-source.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:fc150239acdcbdf31a14e5fce2e1fb4e1210705a536c5f2e3288c6346688bc55"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:fc150239acdcbdf31a14e5fce2e1fb4e1210705a536c5f2e3288c6346688bc55",
+      "evidence": [
+        "chord/next/documents/address_source_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/documents/definition.test.ts",
@@ -2865,13 +2986,24 @@
     },
     {
       "path": "packages/chord/test/next/host/adapted.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9bc569b6bef516d82b5538dff98e2dd021f04ccff918261709ce15ae4b5273ee"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9bc569b6bef516d82b5538dff98e2dd021f04ccff918261709ce15ae4b5273ee",
+      "evidence": [
+        "chord/next/host/host_adapted_test.go"
+      ],
+      "rationale": "All 39 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/host/attempt.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:559fe6b611ea3102da19a3e40dceacc05f275c20803267e2b21f285e09dd2647"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:559fe6b611ea3102da19a3e40dceacc05f275c20803267e2b21f285e09dd2647",
+      "evidence": [
+        "chord/next/host/host_attempt_test.go"
+      ],
+      "rationale": "All 31 upstream cases run in the evidence files (lane kfold); 1 type-level cases are designed out.",
+      "designedOutCases": [
+        "the call path's cost › makes at most 19 promises per local call (a guard: the drain and the cleanups share one reaction)"
+      ]
     },
     {
       "path": "packages/chord/test/next/host/backoff.test.ts",
@@ -2902,13 +3034,25 @@
     },
     {
       "path": "packages/chord/test/next/host/dependencies.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c52938c06fa2edab6896614a587dd6eddaa66b92b3871b95299015415404c8b9"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c52938c06fa2edab6896614a587dd6eddaa66b92b3871b95299015415404c8b9",
+      "evidence": [
+        "chord/next/host/host_dependencies_test.go"
+      ],
+      "rationale": "All 13 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/host/facet.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3ebb27d656a5bf110a9dc602602f7d36f1839b0ce731e9bbe36b162b40e75fac"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3ebb27d656a5bf110a9dc602602f7d36f1839b0ce731e9bbe36b162b40e75fac",
+      "evidence": [
+        "chord/next/host/host_facet_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files (lane kfold); 2 type-level cases are designed out.",
+      "designedOutCases": [
+        "facets › only declare: a setup takes the host and a self that only contributes; no documents, routines or natives",
+        "facets › are typed by exactly the app's principal type"
+      ]
     },
     {
       "path": "packages/chord/test/next/host/follow.test.ts",
@@ -2924,8 +3068,13 @@
     },
     {
       "path": "packages/chord/test/next/host/host.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c19a318b675fe7928fc38cbdf5b5fa83a809bb32e06898646f8ed4a4a98ee33d"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c19a318b675fe7928fc38cbdf5b5fa83a809bb32e06898646f8ed4a4a98ee33d",
+      "evidence": [
+        "chord/next/host/host_host_test.go",
+        "chord/next/host/host_examples_test.go"
+      ],
+      "rationale": "All 74 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/host/members.test.ts",
@@ -2950,8 +3099,14 @@
     },
     {
       "path": "packages/chord/test/next/host/object.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e31b4f075c25b0f3a6ccfcac36712fb4d916010c55ae4f3704cf53294c847b2c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e31b4f075c25b0f3a6ccfcac36712fb4d916010c55ae4f3704cf53294c847b2c",
+      "evidence": [
+        "chord/next/host/host_object_test.go",
+        "chord/next/host/host_object_reload_test.go",
+        "chord/next/host/host_object_cycles_test.go"
+      ],
+      "rationale": "All 66 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/host/parked.test.ts",
@@ -2976,23 +3131,43 @@
     },
     {
       "path": "packages/chord/test/next/host/ref-state.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:afe3b6c88cc9b1b6aabbc8728054e77e0e4cf2110373c47017f53083b5cf56f0"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:afe3b6c88cc9b1b6aabbc8728054e77e0e4cf2110373c47017f53083b5cf56f0",
+      "evidence": [
+        "chord/next/host/host_ref_state_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/host/reference-keys.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:27c9acc263adaffb0944467df9079c9704aa58960292d7fbcf81d25cf2615bb5"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:27c9acc263adaffb0944467df9079c9704aa58960292d7fbcf81d25cf2615bb5",
+      "evidence": [
+        "chord/next/host/host_reference_keys_test.go"
+      ],
+      "rationale": "All 13 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/host/reference-source.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:9d731ecc0f6ec80136be5efcfdfc15c57ef0409911f21d8b92fbad9e3b5c9d52"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:9d731ecc0f6ec80136be5efcfdfc15c57ef0409911f21d8b92fbad9e3b5c9d52",
+      "evidence": [
+        "chord/next/host/host_reference_source_test.go"
+      ],
+      "rationale": "All 18 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/host/reference.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0c03d2712d96987e54f3aafa39f3539e73306afd0e20b69867fe1a2665e9ddad"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0c03d2712d96987e54f3aafa39f3539e73306afd0e20b69867fe1a2665e9ddad",
+      "evidence": [
+        "chord/next/host/host_reference_test.go"
+      ],
+      "rationale": "All 27 upstream cases run in the evidence files (lane kfold); 2 type-level cases are designed out.",
+      "designedOutCases": [
+        "remote reference types › narrow on variant; RefIn picks variants",
+        "remote reference types › a held reference's variant may be undefined (before its first binding) and still narrows"
+      ]
     },
     {
       "path": "packages/chord/test/next/host/retry-on.test.ts",
@@ -3005,18 +3180,31 @@
     },
     {
       "path": "packages/chord/test/next/host/revocation.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:54ba6ebfb432c06c07504bd8da801b7ae700c6e32bd9d07610a7151efa21e24a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:54ba6ebfb432c06c07504bd8da801b7ae700c6e32bd9d07610a7151efa21e24a",
+      "evidence": [
+        "chord/next/host/host_revocation_test.go"
+      ],
+      "rationale": "All 19 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/host/root.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:55666b248437dccc3b807842a6ba370fb43d227a1fd954f8fe41cde7c1d9b07a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:55666b248437dccc3b807842a6ba370fb43d227a1fd954f8fe41cde7c1d9b07a",
+      "evidence": [
+        "chord/next/host/host_root_test.go",
+        "chord/next/host/host_root_anonymous_test.go"
+      ],
+      "rationale": "All 12 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/host/route.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:43747118c586f13e79138c7b912d619f9d09097c2c31f9d92e64c8a62e4432cf"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:43747118c586f13e79138c7b912d619f9d09097c2c31f9d92e64c8a62e4432cf",
+      "evidence": [
+        "chord/next/host/host_route_test.go"
+      ],
+      "rationale": "All 23 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/host/routines.test.ts",
@@ -3045,13 +3233,21 @@
     },
     {
       "path": "packages/chord/test/next/host/staging.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3301a848d71d69eab1da2ef8a91d57b13227d3dc502a62c9146e0a574bc1fb81"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3301a848d71d69eab1da2ef8a91d57b13227d3dc502a62c9146e0a574bc1fb81",
+      "evidence": [
+        "chord/next/host/host_staging_test.go"
+      ],
+      "rationale": "All 15 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/host/unbound.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:61987ddc21e47126ae183b57fa43031e5f5438f7c8b310b9a4747e87412ecf23"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:61987ddc21e47126ae183b57fa43031e5f5438f7c8b310b9a4747e87412ecf23",
+      "evidence": [
+        "chord/next/host/host_unbound_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/jobs/definition.test.ts",
@@ -3075,18 +3271,30 @@
     },
     {
       "path": "packages/chord/test/next/jobs/persisted.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3e61ccf4717e0977b0eda54e2e724cd329602d8fd6435f7544dccd3edcb2fc06"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3e61ccf4717e0977b0eda54e2e724cd329602d8fd6435f7544dccd3edcb2fc06",
+      "evidence": [
+        "chord/next/host/jobs_persisted_test.go"
+      ],
+      "rationale": "All 33 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/jobs/records.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:484368ddafdb8d8015e647a2c7ec90a304684428fb3e114c42703a27167c5062"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:484368ddafdb8d8015e647a2c7ec90a304684428fb3e114c42703a27167c5062",
+      "evidence": [
+        "chord/next/host/jobs_records_test.go"
+      ],
+      "rationale": "All 10 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/jobs/run.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b91be0b95ba88bcf8ced7ddf7973e7a50b3c86947e7dcf58baae5da3e624f73b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b91be0b95ba88bcf8ced7ddf7973e7a50b3c86947e7dcf58baae5da3e624f73b",
+      "evidence": [
+        "chord/next/host/jobs_run_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/jobs/running.test.ts",
@@ -3145,8 +3353,13 @@
     },
     {
       "path": "packages/chord/test/next/link/message.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1f7c29d914015b7cdcef556306f2a06f2786da90a5d69079ece070596b81ad8a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1f7c29d914015b7cdcef556306f2a06f2786da90a5d69079ece070596b81ad8a",
+      "evidence": [
+        "chord/next/link/message_test.go",
+        "chord/next/link/oracle_test.go"
+      ],
+      "rationale": "All 33 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/link/part.test.ts",
@@ -3190,18 +3403,53 @@
     },
     {
       "path": "packages/chord/test/next/registries/record.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:991dc15b97cc6f63107fdc93e34e884ec63be5d5c237d1894a2dc612666378d5"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:991dc15b97cc6f63107fdc93e34e884ec63be5d5c237d1894a2dc612666378d5",
+      "evidence": [
+        "chord/next/registries/record_test.go"
+      ],
+      "rationale": "17 of 22 upstream cases are ported (lane kfold); the 5 missing cases exercise registry behavior through a loaded host (load, host.registry reads, objects contributing) that no Go test reproduces yet; their record-level analogs are in the evidence and the cases are listed in missingCases.",
+      "missingCases": [
+        "compose › before any good composition, `.value` throws the error and `host.registry` rejects with it at its readyTimeout",
+        "contributions › catches a ring through a derive, and one declared within one factory, the same way (audit A2)",
+        "contributions › an object's contribution is in the table from live until it fails, again once retried, until it ends",
+        "the last good composition (decision 5) › is dropped when a contribution it was built from leaves: `.value` throws until `compose` succeeds",
+        "the table's memory › keeps nothing of a closed host: records, tables and followed contributions go with it"
+      ]
     },
     {
       "path": "packages/chord/test/next/registries/registry.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a872251f8b41200e8fc12741b9c3ca3a589d6f5c1d056e66daa84dbaa59f5e68"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:a872251f8b41200e8fc12741b9c3ca3a589d6f5c1d056e66daa84dbaa59f5e68",
+      "evidence": [
+        "chord/next/registries/registry_test.go"
+      ],
+      "rationale": "1 of 5 upstream cases are ported (lane kfold); the 4 missing cases exercise registry behavior through a loaded host (load, host.registry reads, objects contributing) that no Go test reproduces yet; their record-level analogs are in the evidence and the cases are listed in missingCases.",
+      "missingCases": [
+        "providers › one per host: a second serve leaves its plugin out at load, reported",
+        "providers › a provider without compose leaves its plugin out at load (plugin code is not type-checked)",
+        "providers › a registry whose provider comes with `load` heals a `host.registry` made before it",
+        "providers › are served only while the setup runs"
+      ]
     },
     {
       "path": "packages/chord/test/next/registries/value.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:643edd3ed832fec2e49027c0bc9e6b137f444115605c59204de5f2c2727b49dd"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:643edd3ed832fec2e49027c0bc9e6b137f444115605c59204de5f2c2727b49dd",
+      "evidence": [
+        "chord/next/registries/value_test.go"
+      ],
+      "rationale": "9 of 17 upstream cases are ported (lane kfold); the 8 missing cases exercise registry behavior through a loaded host (load, host.registry reads, objects contributing) that no Go test reproduces yet; their record-level analogs are in the evidence and the cases are listed in missingCases.",
+      "missingCases": [
+        "older readers (S2) › never hands out a mapped native whose contributor failed and closed it (fix round 1, Sol 2)",
+        "readers (S3) › activate once the registry has a value; a reader of a registry nobody serves parks failed { waiting }, `load` waits for nothing",
+        "readers (S3) › a reader parked on a first `compose` that threw goes on at the first good composition",
+        "readers (S3) › host.registry before the publication waits for it, then resolves with the provider it served",
+        "readers (S3) › host.registry waits through no value until a first good composition, woken by it, its wait then gone",
+        "readers (S3) › once live, a later throwing `compose` changes nothing for the reader: `.value` keeps the last good one",
+        "readers' memory › an ended reader is collected while the registry lives: its derive and its read leave the value",
+        "values' memory › a value an app keeps after `host.close` keeps no closed host, and reads its last composition (Sol, Astra)"
+      ]
     },
     {
       "path": "packages/chord/test/next/remote/calls.test.ts",
@@ -3223,33 +3471,58 @@
     },
     {
       "path": "packages/chord/test/next/remote/hold.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4e1328801e103e5e0bdcbcc0aca01f0745f5e06d8ee8f875fbc680740906356f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4e1328801e103e5e0bdcbcc0aca01f0745f5e06d8ee8f875fbc680740906356f",
+      "evidence": [
+        "chord/next/host/remote_hold_test.go",
+        "chord/next/host/remote_hold_reload_test.go"
+      ],
+      "rationale": "All 35 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/remote/host-link.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:56b51d8f492e30a8717cb2d2db3bead5afe13770a8108b369812e7129182bf62"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:56b51d8f492e30a8717cb2d2db3bead5afe13770a8108b369812e7129182bf62",
+      "evidence": [
+        "chord/next/host/remote_host_link_test.go"
+      ],
+      "rationale": "All 21 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/remote/path.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:01f2f345054c339c8f25a92b0b3426cb1e553f6685a862fb0dd36a628471397a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:01f2f345054c339c8f25a92b0b3426cb1e553f6685a862fb0dd36a628471397a",
+      "evidence": [
+        "chord/next/host/remote_path_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/remote/provider.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d91d78b20ca8642f8843e503115d5231a69f2a02e2a20c06cf7faafc85e53e08"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d91d78b20ca8642f8843e503115d5231a69f2a02e2a20c06cf7faafc85e53e08",
+      "evidence": [
+        "chord/next/host/remote_provider_test.go"
+      ],
+      "rationale": "All 45 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/remote/relay.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c38b8aa5606cc2d7dbbeb23245cae3bf30901c5d67e7907aa312924096c1e8f7"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c38b8aa5606cc2d7dbbeb23245cae3bf30901c5d67e7907aa312924096c1e8f7",
+      "evidence": [
+        "chord/next/host/remote_relay_test.go"
+      ],
+      "rationale": "All 25 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/remote/remote-object.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b062f0658bf7528cffab5e845c5dd37d83fe60acc8208af6f4e988e813a0b4bf"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b062f0658bf7528cffab5e845c5dd37d83fe60acc8208af6f4e988e813a0b4bf",
+      "evidence": [
+        "chord/next/host/remote_remote_object_test.go"
+      ],
+      "rationale": "All 30 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/remote/replica.test.ts",
@@ -3516,8 +3789,12 @@
     },
     {
       "path": "packages/chord/test/next/store/store.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:3679ae0ec89c123aa034a82a42ff2f90ec9d5f4921c35c8f92f983dd63f68603"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:3679ae0ec89c123aa034a82a42ff2f90ec9d5f4921c35c8f92f983dd63f68603",
+      "evidence": [
+        "chord/next/store/store_test.go"
+      ],
+      "rationale": "All 26 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/store/table-changes.test.ts",
@@ -3539,8 +3816,12 @@
     },
     {
       "path": "packages/chord/test/next/store/table-handle.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:338a2f3b4d8bcddf6981505c8804f8177da44587bfc8e8e63988c1fce4b88f04"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:338a2f3b4d8bcddf6981505c8804f8177da44587bfc8e8e63988c1fce4b88f04",
+      "evidence": [
+        "chord/next/store/table_handle_test.go"
+      ],
+      "rationale": "All 8 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/next/store/table-history.test.ts",
@@ -3607,8 +3888,13 @@
     },
     {
       "path": "packages/chord/test/output.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6bf1b15a6a47b45b96fecb7c41ee3a659e0af908959e85fee4ca1ee761881551"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6bf1b15a6a47b45b96fecb7c41ee3a659e0af908959e85fee4ca1ee761881551",
+      "evidence": [
+        "chord/output/output_test.go",
+        "chord/output/output_sanitize_golden_test.go"
+      ],
+      "rationale": "All 22 upstream cases run in the evidence files (lane kfold)."
     },
     {
       "path": "packages/chord/test/placement.test.ts",
@@ -4634,8 +4920,16 @@
     },
     {
       "path": "packages/coding-agent/test/config.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:79b13dbcb25895b11964be308d641d043a3a6820058bf4ac17a8f803ca81dbb5"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:79b13dbcb25895b11964be308d641d043a3a6820058bf4ac17a8f803ca81dbb5",
+      "evidence": [
+        "coding/cli/config_command_test.go",
+        "internal/configvalue/configvalue_test.go",
+        "internal/codingagent/config_upstream_test.go",
+        "coding/cli/self_update_prefix_upstream_test.go",
+        "internal/installchange/installchange_test.go#TestDetectInstallChangeReportsARemovedInstallInsteadOfReadingAFileFurtherUp"
+      ],
+      "rationale": "All 21 upstream cases run in the evidence files (lane nfixca)."
     },
     {
       "path": "packages/coding-agent/test/crash-log.test.ts",
@@ -5390,13 +5684,33 @@
     },
     {
       "path": "packages/coding-agent/test/mcp-command.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d2f83af09b71ab898981f959871290417c1632925931de9a51ec43fbd17ab778"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d2f83af09b71ab898981f959871290417c1632925931de9a51ec43fbd17ab778",
+      "evidence": [
+        "coding/mcpext/cli_upstream_test.go#TestMcpCommandListsServersWithTheirStateToolsAndErrors",
+        "coding/mcpext/cli_upstream_test.go"
+      ],
+      "rationale": "All 11 upstream cases run in the evidence files (lane nfixca)."
     },
     {
       "path": "packages/coding-agent/test/mcp-extension.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:375fb19d698c8b89a05f8e3ab1dc639750aac339ad45c97e072c0fab35dadcee"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:375fb19d698c8b89a05f8e3ab1dc639750aac339ad45c97e072c0fab35dadcee",
+      "evidence": [
+        "coding/mcpext/config_test.go#TestMCPConfigMergesGlobalAndTrustedProjectServersAndValidatesEntries",
+        "coding/mcpext/extension_test.go#TestAgentSessionMCPDeclaresDirectlyExposedMCPToolsToTheModel",
+        "coding/mcpext/config_test.go#TestMCPConfigValidatesTheOAuthCallbackURLScopeAndClientName",
+        "coding/mcpext/config_test.go#TestMCPConfigLetsProjectEntriesOverrideEnabledAndExposureOfGlobalServers",
+        "coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns",
+        "coding/mcpext/connection_test.go#TestMCPConnectionsStopsWaitingToRetryAConnectionWhenClosed",
+        "coding/mcpext/tools_test.go#TestMCPToolsDeclaresTheCallToolResultScriptsReceiveKeepingReferencesInTheServersOutputSchema",
+        "coding/mcpext/tools_test.go#67996ab75 (#10416): array structured content reaches the model as JSON and scripts as sent",
+        "coding/mcpext/connection_test.go#TestMCPConnectionsConnectsToServersWithResourcesWithoutListingThem",
+        "coding/mcpext/config_test.go#TestMCPConfigReadsAndEditsMcpJSONFilesThatStartWithAUTF8BOM",
+        "internal/codingagent/radius_login_mcp_offer_upstream_test.go#TestRadiusMcpServerConfigReadsAMcpJSONThatStartsWithAUTF8BOM",
+        "coding/mcpext/oauth_cimd_test.go"
+      ],
+      "rationale": "All 30 upstream cases run in the evidence files (lane nfixca)."
     },
     {
       "path": "packages/coding-agent/test/mcp-manager-view.test.ts",
@@ -5411,8 +5725,23 @@
     },
     {
       "path": "packages/coding-agent/test/mcp-oauth-refresh.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1fb21076d34c9786601341df34800d0550de3bbcc009ddac61e31b9c3b52ca44"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1fb21076d34c9786601341df34800d0550de3bbcc009ddac61e31b9c3b52ca44",
+      "evidence": [
+        "coding/mcpext/oauth_refresh_test.go#TestMCPOAuthRefreshRefreshesOnceWhenSeveralProcessesFindTheSameTokenRejected",
+        "coding/mcpext/oauth_refresh_test.go#TestMCPOAuthRefreshWaitsForARunningRefreshToSaveTheNewTokens",
+        "coding/mcpext/oauth_refresh_test.go#TestMCPOAuthSignInRejectsAnAuthorizationResponseFromAnotherIssuer",
+        "coding/mcpext/oauth_refresh_test.go#TestMCPOAuthSignInKeepsTheGrantedScopeWhenTheServerAsksForMore",
+        "coding/mcpext/oauth_refresh_test.go#TestMCPOAuthSignInUsesTheConfiguredAuthorizationServerMetadataURL",
+        "coding/mcpext/oauth_cimd_test.go#TestMCPOAuthCIMDRegistersDynamicallyByDefaultEvenWhenTheServerSupportsDocuments",
+        "coding/mcpext/oauth_cimd_test.go#TestMCPOAuthCIMDUsesPisDocumentWhenAuthorizationResponsesNameTheirIssuer",
+        "coding/mcpext/oauth_cimd_test.go#TestMCPOAuthCIMDUsesADocumentAndCallbackPathSpecificToTheMCPServerWithoutTheIssParameter",
+        "coding/mcpext/oauth_cimd_test.go#TestMCPOAuthCIMDReplacesARegisteredClientWhenSwitchingToTheDocument",
+        "coding/mcpext/oauth_cimd_test.go#TestMCPOAuthCIMDAcceptsTheAuthorizationResponseOnlyOnTheServerSpecificRedirectURI",
+        "coding/mcpext/oauth_cimd_test.go#TestMCPOAuthCIMDFailsInsteadOfRegisteringWhenTheServerDoesNotSupportDocuments",
+        "coding/mcpext/oauth_cimd_test.go"
+      ],
+      "rationale": "All 14 upstream cases run in the evidence files (lane nfixca)."
     },
     {
       "path": "packages/coding-agent/test/mcp-oauth-store.test.ts",
@@ -5655,8 +5984,36 @@
     },
     {
       "path": "packages/coding-agent/test/package-command-paths.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bb087a9e58bba1971db13cb8ecc2b52c15a603e5011450ab93bf0319911ef9ac"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:bb087a9e58bba1971db13cb8ecc2b52c15a603e5011450ab93bf0319911ef9ac",
+      "evidence": [
+        "coding/cli/package_cli_output_test.go#TestPackageRemovalProgressAndEmptySettings",
+        "coding/cli/package_cli_parity_test.go#TestPackageCLIComparedWithPi",
+        "coding/cli/package_commands_test.go#TestParsePackageCommand_UninstallAlias",
+        "coding/cli/package_commands_test.go#TestAddSourceToSettings_NormalizesLocalPathsRelativeToScopeBase",
+        "coding/cli/package_commands_test.go#TestRemoveSourceFromSettings_MatchesEquivalentLocalPaths",
+        "coding/cli/package_commands_test.go#TestRunPackageCommand_HelpIncludesUpstreamExamples",
+        "coding/cli/package_commands_test.go#TestRunPackageCommand_InvalidOptionMatchesUpstreamHint",
+        "coding/cli/package_commands_test.go#TestUpdatePackages_SuggestsNpmSourcePrefix",
+        "coding/cli/self_update_routing_test.go#TestRunPackageCommand_SelfUpdateTargetWithoutSourceShowsFallback",
+        "coding/cli/package_npm_trust_test.go#TestPackageUpdateNpmCommandTrust",
+        "coding/cli/package_npm_trust_test.go#TestPackageInstallRemoveNpmCommandTrust",
+        "coding/cli/package_npm_trust_test.go#TestPackageLocalMutationRequiresTrustBeforeCommand",
+        "coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10PackageCommandPaths",
+        "coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation",
+        "coding/cli/port_wave_10_self_update_test.go#TestPortWave10NativeSelfUpdate",
+        "coding/cli/self_update_test.go#TestAC3StandaloneUpdateVerificationAndAtomicity",
+        "coding/cli/self_update_test.go#TestAC11ForceReinstallsCurrentStandaloneRelease",
+        "coding/cli/self_update_test.go#TestAC3StandaloneReceiptFailureRestoresPreviousExecutable",
+        "coding/cli/self_update_test.go#TestAC11ExactReleasePlanUsesSignedReplacementPackage",
+        "internal/codingagent/selfupdate_tier_test.go#TestAC4PackageManagerFailureSurfacesNoFallback",
+        "coding/cli/config_builtin_upstream_test.go#TestUpstreamConfigTogglesBuiltinExtensionsInGlobalMode",
+        "coding/cli/config_builtin_upstream_test.go#TestUpstreamConfigCyclesProjectBuiltinExtensionOverridesInLocalMode",
+        "internal/codingagent/selfupdate_test.go#TestSelfReplaceAtWithCommitKeepsOnlyTheNewExecutable",
+        "internal/codingagent/selfupdate_test.go#TestSelfReplaceAtWithCommitRestoresPreviousExecutable",
+        "coding/cli/self_update_configured_test.go"
+      ],
+      "rationale": "All 39 upstream cases run in the evidence files (lane nfixca)."
     },
     {
       "path": "packages/coding-agent/test/package-distribution.test.ts",
@@ -7622,8 +7979,15 @@
     },
     {
       "path": "packages/coding-agent/test/system-prompt.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:23f6041425ccebb5368c688ff6818f550b5cf98a43b5d20a056b3d45fb2f78fe"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:23f6041425ccebb5368c688ff6818f550b5cf98a43b5d20a056b3d45fb2f78fe",
+      "evidence": [
+        "internal/codingagent/prompts/system_prompt_upstream_test.go#TestUpstreamSystemPrompt",
+        "internal/codingagent/prompts/system_prompt_second_half_upstream_test.go#TestUpstreamSystemPromptSecondHalfExactSections",
+        "internal/codingagent/prompts/hidden_tools_upstream_test.go#TestUpstreamSystemPromptHiddenTools",
+        "internal/codingagent/prompts/system_prompt_second_half_upstream_test.go"
+      ],
+      "rationale": "All 16 upstream cases run in the evidence files (lane nfixca)."
     },
     {
       "path": "packages/coding-agent/test/system-theme.test.ts",
@@ -9059,23 +9423,42 @@
     },
     {
       "path": "packages/schema/test/builders.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:db5e8ff652d0e52a3b47a50d24eb059d9d5bfeba9358f8422d0173612495c3f4"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:db5e8ff652d0e52a3b47a50d24eb059d9d5bfeba9358f8422d0173612495c3f4",
+      "evidence": [
+        "schema/builders_upstream_test.go"
+      ],
+      "rationale": "All 4 upstream cases run in the evidence files (lane nschema); 1 type-level cases are designed out.",
+      "designedOutCases": [
+        "builders › carry the static type of valid values"
+      ]
     },
     {
       "path": "packages/schema/test/conformance.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c8a4ff57f6a93a380b9ac1020ad6fc1cb8ce1805657fd4b761ede18340f3fcf0"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c8a4ff57f6a93a380b9ac1020ad6fc1cb8ce1805657fd4b761ede18340f3fcf0",
+      "evidence": [
+        "schema/conformance_upstream_test.go"
+      ],
+      "rationale": "All 1 upstream cases run in the evidence files (lane nschema)."
     },
     {
       "path": "packages/schema/test/shared.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:cdde5a66a4e2aaa169c07d4baa3d5f43efbaa9de48ad210656a4314034be6ec4"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:cdde5a66a4e2aaa169c07d4baa3d5f43efbaa9de48ad210656a4314034be6ec4",
+      "evidence": [
+        "schema/shared_upstream_test.go"
+      ],
+      "rationale": "All 2 upstream cases run in the evidence files (lane nschema)."
     },
     {
       "path": "packages/schema/test/validator.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2c9924a8aeca971d1a6377d04e608f60f48ad4aee59713908cad86b0d8489bf6"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2c9924a8aeca971d1a6377d04e608f60f48ad4aee59713908cad86b0d8489bf6",
+      "evidence": [
+        "schema/validator_upstream_test.go"
+      ],
+      "rationale": "All 19 upstream cases run in the evidence files (lane nschema)."
     },
     {
       "path": "packages/telemetry/test/conformance.test.ts",

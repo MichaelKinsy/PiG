@@ -1,5 +1,4 @@
 // Run the installed Pi's getLanguageFromPath (theme.ts) over seeded paths, never a translated oracle.
-import "./pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 const root = realpathSync(new URL("../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";

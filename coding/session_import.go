@@ -71,7 +71,6 @@ func (s *Session) ImportFromJsonl(ctx context.Context, inputPath, cwdOverride st
 // until the name is free.
 func importDestination(sessionDir, resolvedPath string) (destinationPath string, sourceAlreadyStored bool) {
 	destinationPath = filepath.Join(sessionDir, filepath.Base(resolvedPath))
-	// pig divergence (D217): Pi 1be312b4 (#10488) pathsEqual(destinationPath, resolvedPath); on Windows a source stored under a directory spelled with other casing is still already stored.
 	if resolvepath.PathsEqual(destinationPath, resolvedPath) {
 		return destinationPath, true
 	}

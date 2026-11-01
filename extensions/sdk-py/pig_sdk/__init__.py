@@ -434,7 +434,6 @@ class ToolRenderContext:
     def invalidate(self) -> None:
         self._invalidate()
 
-    # pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and entry options (KeybindingHints); pinned Pi has neither.
     def key_text(self, keybinding: str) -> str:
         """``KeybindingHints.keyText``: the keys of a keybinding as the host's configured keybindings show them, empty when it has none."""
         return key_text(keybinding)
@@ -446,7 +445,7 @@ class ToolRenderContext:
 
 class MessageRenderOptions(dict[str, Any]):
     """The options a custom-message renderer receives: the host's ``{"expanded", "outputPad"}`` mapping plus the host's
-    keybinding hints (pig divergence D217: Pi 9376c8d1 #4748)."""
+    keybinding hints (Pi 9376c8d1 #4748)."""
 
     def key_text(self, keybinding: str) -> str:
         """``KeybindingHints.keyText``: the keys of a keybinding as the host's configured keybindings show them, empty when it has none."""
@@ -459,7 +458,7 @@ class MessageRenderOptions(dict[str, Any]):
 
 class EntryRenderOptions(MessageRenderOptions):
     """The options a custom-entry renderer receives: the host's ``{"expanded"}`` mapping plus the host's keybinding hints
-    (pig divergence D217: Pi 9376c8d1 #4748)."""
+    (Pi 9376c8d1 #4748)."""
 
 
 # A call renderer: (ctx, args, render context, width) -> lines.

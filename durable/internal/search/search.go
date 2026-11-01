@@ -14,8 +14,6 @@ import (
 )
 
 // Document is a tool as the ranker sees it: its name, its text and the text of its namespace.
-//
-// pig divergence (D217): Pi c7372af4 (#11631) the name is a field of its own and the namespace text is separate; pinned Pi folds both into the text.
 type Document struct {
 	Name string
 	// Text is the description and the parameters' names and descriptions, not the name.
@@ -98,8 +96,6 @@ const (
 //   - A query that is exactly a tool's name, or its name after a `__`, ranks that tool first, before coverage.
 //
 // Only the text is length-normalized, so a long name or long namespace instructions do not lower a tool's score.
-//
-// pig divergence (D217): Pi c7372af4 (#11631) pinned Pi scores the name, description and namespace as one bag of words and has no coverage-first order.
 func RankDocuments(query string, documents []Document, limit int) []string {
 	var queryTerms []string
 	for _, term := range searchtext.Tokenize(query) {

@@ -61,7 +61,7 @@ func ResolveTemporarySource(cwd, agentDir string, sm *codingagent.SettingsManage
 			return "", err
 		}
 	} else if !isExactNpmVersion(ref.NPMVer) && !IsOfflineModeEnabled() && npmHasAvailableUpdate(cwd, sm, ref, packageRoot, false) {
-		// pig divergence (D217): Pi cd6a8f7f (#11375) refreshes an unpinned temporary npm source on load when the registry has a newer version; pinned Pi installed it once and reused it forever.
+		// Pi cd6a8f7f (#11375) refreshes an unpinned temporary npm source on load when the registry has a newer version.
 		// Temporary (-e) sources have no `pig update` path. Like `pig update`, an unversioned spec installs name@latest because a bare `npm install name` keeps the range already saved in the temporary package.json.
 		spec := ref.Locator
 		if ref.NPMVer == "" {
@@ -151,7 +151,7 @@ func resolveTemporaryGitSource(sm *codingagent.SettingsManager, source string, p
 var commitHashRef = lazyregexp.New(`^[0-9a-fA-F]{7,64}$`)
 
 // refreshTemporaryGitSource is package-manager.ts refreshTemporaryGitSource. Every failure keeps the cached checkout.
-// pig divergence (D217): Pi bec60c54 (#11375) refreshes a temporary Git source pinned to a ref too, because a ref can name a moving branch; pinned Pi refreshed unpinned sources only, so git:host/repo@main stayed on its first checkout.
+// Pi bec60c54 (#11375) refreshes a temporary Git source pinned to a ref too, because a ref can name a moving branch, so git:host/repo@main does not stay on its first checkout.
 // The network call is skipped only when the ref is a commit hash that is already checked out.
 func refreshTemporaryGitSource(sm *codingagent.SettingsManager, ref sourceref.Ref, source, checkout, packageRoot string, progress ProgressCallback) {
 	if commitHashRef.MatchString(ref.GitRef) {

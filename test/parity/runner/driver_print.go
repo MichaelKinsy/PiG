@@ -24,8 +24,7 @@ func (printModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc 
 	preserveAuth, injectAuth := scenarioAuthModes(sc)
 	pigEnv, piEnv := snapshotAgentDirs(t, sc.SourcePath, sc.Env.Pig, sc.Env.Pi, preserveAuth, injectAuth)
 
-	var args []string
-	bin.Path, args = bin.program()
+	args := []string{}
 	if !sc.Env.OverrideBaseArgs {
 		args = append(args, bin.Args...)
 	}

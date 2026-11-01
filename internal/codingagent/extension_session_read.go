@@ -44,7 +44,6 @@ func (v ExtensionSessionView) persisted() bool {
 }
 
 // usesDefaultSessionDir mirrors upstream SessionManager.usesDefaultSessionDir.
-// pig divergence (D217): Pi 1be312b4 (#10488) compares with pathsEqual, which ignores case on Windows; Pi 1.4.0+b3a29f11 compared the strings.
 func (v ExtensionSessionView) usesDefaultSessionDir() bool {
 	dir := v.sessionDir()
 	return dir != "" && resolvepath.PathsEqual(dir, defaultSessionDir(v.CWD))

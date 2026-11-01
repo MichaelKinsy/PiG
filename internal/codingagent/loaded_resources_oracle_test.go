@@ -38,7 +38,7 @@ func TestLoadedResourcesFormattingMatchesPi(t *testing.T) {
 	sources := []string{"local", "cli", "npm:foo", "npm:@scope/pkg", "git:github.com/user/repo", "auto", "npm:@a/b@1.2.3"}
 	scopes := []string{"user", "project", "temporary", "other"}
 	bases := []string{"", home + "/.pi/agent/npm/node_modules/foo", "/opt/node_modules/@scope/pkg", home + "/.pi/agent/git/github.com/user/repo", "/srv/base", `C:\\work\\base`}
-	// pig divergence (D217) allowance, Pi 1be312b4 (#10488): the corpus leaves out home + "x/not-home". Pinned Pi shortens it to "~x/not-home" by bare string prefix; PiG anchors the home directory at a path segment and keeps it. TestHomeShorteningAnchorsAtAPathSegment pins PiG's result.
+	// The corpus leaves out home + "x/not-home"; TestHomeShorteningAnchorsAtAPathSegment pins that the home directory is anchored at a path segment (Pi 1be312b4, #10488).
 	paths := []string{
 		home + "/.pi/agent/npm/node_modules/foo/extensions/index.ts", "/opt/node_modules/@scope/pkg/skills/a/SKILL.md", "/opt/node_modules/@scope/pkg",
 		home + "/.pi/agent/git/github.com/user/repo/prompts/p.md", home + "/.pi/agent/skills/x/SKILL.md", home + "/project/.pi/extensions/e.ts",

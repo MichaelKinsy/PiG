@@ -260,7 +260,6 @@ func formatDisplayPath(path string) string {
 	if err != nil {
 		return path
 	}
-	// pig divergence (D217): Pi 1be312b4 (#10488) anchors the home prefix at a path segment (resolvepath.ShortenHomePath); Pi 1.4.0+b3a29f11 matched a bare string prefix.
 	return resolvepath.ShortenHomePath(path, home)
 }
 

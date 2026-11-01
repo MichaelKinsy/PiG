@@ -1,5 +1,4 @@
 // Drive the installed Pi's ToolExecutionComponent with its built-in tool definitions, never a translated oracle.
-import "../../../tui/testdata/pi-d217/register.mjs"; // D217: the pin plus the Pi fixes 0.6.0 carries (tui/testdata/pi-d217)
 import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 const root = realpathSync(new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/", import.meta.url)) + "/";

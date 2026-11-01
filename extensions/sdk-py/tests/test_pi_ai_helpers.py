@@ -93,7 +93,7 @@ def test_the_default_retry_delay_cap_is_pis():
 
 
 def test_litellm_context_window_exceeded_is_overflow():
-    # Pi d3398f82 (#11492, pig divergence (D217)): the pinned vectors cannot gain a case, so the carried pattern is pinned by hand.
+    # Pi d3398f82 (#11492): the pattern is pinned by hand.
     litellm = "400: litellm.ContextWindowExceededError: litellm.BadRequestError: litellm._pre_call_checks: Context Window exceeded for given call."
     assert helpers.is_context_overflow({"role": "assistant", "stopReason": "error", "errorMessage": litellm})
     assert not helpers.is_context_overflow({"role": "assistant", "stopReason": "stop", "errorMessage": litellm})
@@ -101,7 +101,7 @@ def test_litellm_context_window_exceeded_is_overflow():
 
 
 def test_zhipu_usage_limit_1308_is_not_retryable():
-    # Pi c719d5b0 (#11572, #11537, pig divergence (D217)): the pinned vectors cannot gain a case, so the carried pattern is pinned by hand.
+    # Pi c719d5b0 (#11572, #11537): the pattern is pinned by hand.
     for text, want in (
         ('429 {"error":{"code":"1308","message":"Usage limit reached for 5 hour."}}', False),
         ('429 {"error":{"code":1308,"message":"Usage limit reached"}}', False),

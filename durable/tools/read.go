@@ -65,8 +65,7 @@ func CreateReadTool(options *ReadToolOptions) *durable.ToolRegistration {
 	}
 	description := fmt.Sprintf("Read the contents of a file. Supports text files and images (%s). Images are sent as attachments. For text files, output is truncated to %d lines or %dKB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.", formats, durable.DEFAULT_MAX_LINES, durable.DEFAULT_MAX_BYTES/1024)
 	return &durable.ToolRegistration{
-		ToolSchema: toolSchema("read", description, readParameters),
-		// pig divergence (D217): Pi 04414839 (#11015) read declares what programs such as Code Mode scripts get, a text file's text or an image's block.
+		ToolSchema:             toolSchema("read", description, readParameters),
 		StructuredOutputSchema: readStructuredOutputSchema(),
 		Execute: func(ctx context.Context, args any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			return executeRead(ctx, args, api, options.Images)
@@ -342,7 +341,6 @@ func readText(ctx context.Context, reader env.BinaryReader, input ReadToolInput)
 		})
 	}
 
-	// pig divergence (D217): Pi 04414839 (#11015) the shown text is also the structured output, "" when there is none.
 	result := durable.ToolExecutionResult{Output: []ai.ToolResultMessageContent{}, StructuredOutput: outputText, HasStructuredOutput: true, Diagnostics: diagnostics}
 	if outputText != "" {
 		result.Output = []ai.ToolResultMessageContent{ai.TextContent{Text: outputText}}

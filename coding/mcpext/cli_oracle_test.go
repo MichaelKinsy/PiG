@@ -148,19 +148,19 @@ func TestMcpCommandMatchesPi(t *testing.T) {
 			}
 			return args
 		case 7:
-			// pig divergence (D217) allowance, Pi be15fe3c: PiG's login/logout usage text ends in " [-l]" and a mistyped name within edit distance 2 of a configured one gets a suggestion, so the probes always give exactly one name that no seed server is that close to. TestMcpCommandSuggestsAConfiguredServerForAMistypedName and TestMcpCommandReportsArgumentErrors pin PiG's text.
+			// The probes always give exactly one name that no seed server is within edit distance 2 of (Pi be15fe3c suggests a configured name that close).
 			args := []string{pick("login", "logout"), farName()}
 			if rng.Intn(4) == 0 {
 				args = append(args, "--timeout", pick("0", "-1", "abc", "10", "", "1e400", " 5 ", "0x10"))
 			}
 			return args
 		case 8:
-			// pig divergence (D217) allowance, Pi be15fe3c: the help text lists login/logout -l, so "help" is not probed; TestMcpCommandHelpIsPisHelpWithPiGsIdentity pins PiG's text.
+			// "help" is not probed here; TestMcpCommandHelpIsPisHelpWithPiGsIdentity pins the help text.
 			return []string{pick("bogus", "")}
 		case 9:
 			return []string{"add", "--bogus"}
 		default:
-			// pig divergence (D217) allowance, Pi be15fe3c: a bare login or logout prints PiG's usage text with " [-l]", so only remove and add run without a name.
+			// Only remove and add run without a name; a bare login or logout is not probed.
 			return []string{pick("remove", "add")}
 		}
 	}

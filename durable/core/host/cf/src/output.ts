@@ -44,7 +44,7 @@ export type OutputSlice = {
 
 const NEWLINE = 0x0a;
 const INVALID_OUTPUT = /[\x00-\x08\x0b-\x1f\ufff9-\ufffb]/g;
-// pig divergence (D217): Pi 50d9f823 (#11604) removes whole 7-bit escape sequences: strings (OSC, DCS, APC, PM, SOS) up to BEL or ST, CSI, and short `ESC x` forms.
+// Pi 50d9f823 (#11604) removes whole 7-bit escape sequences: strings (OSC, DCS, APC, PM, SOS) up to BEL or ST, CSI, and short `ESC x` forms.
 const ESCAPE_SEQUENCE =
 	/\x1b[\]PX^_][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]|\x1b[\x20-\x2f]*[\x30-\x7e]/g;
 const encoder = new TextEncoder();

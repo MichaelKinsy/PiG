@@ -19,7 +19,6 @@ func isAppleTerminalSessionFor(goos, termProgram string) bool {
 
 // isNativeShiftEnterCandidate mirrors terminal.ts isNativeShiftEnterCandidate: Return, or ESC+Return, which some Apple Terminal setups
 // send for Shift+Enter.
-// pig divergence (D217): Pi 86dc686c (#11559) ESC+Return is a candidate as well as a lone Return.
 func isNativeShiftEnterCandidate(data string) bool {
 	return data == "\r" || data == "\x1b\r"
 }

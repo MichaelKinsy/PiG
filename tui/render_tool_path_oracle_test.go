@@ -41,7 +41,7 @@ func renderToolPathProbe(t testing.TB, probe toolPathProbe) string {
 	return renderToolPathArg(path, probe.Path != nil, probe.Cwd, fallback)
 }
 
-// pig divergence (D217) allowance, Pi 1be312b4 (#10488): the corpus leaves out "/home/probex/f.go" and "/home/probe/". Pinned Pi shortens them by bare string prefix ("~x/f.go", "~/"); PiG anchors the home directory at a path segment and normalizes the rest ("/home/probex/f.go", "~"). TestRenderToolPathHonorsPiGeneratedExpectations pins PiG's result.
+// The corpus leaves out "/home/probex/f.go" and "/home/probe/"; TestRenderToolPathHonorsPiGeneratedExpectations pins that the home directory is anchored at a path segment and the rest normalized (Pi 1be312b4, #10488).
 func toolPathProbes() []toolPathProbe {
 	str := func(s string) *string { return &s }
 	paths := []*string{nil, str(""), str("a.txt"), str("src/main.go"), str("./x/../y"), str("/abs/file.go"), str("/home/probe/proj/f.go"), str("/home/probe"), str("~"), str("~/notes.md"), str("~user/x"),

@@ -827,7 +827,6 @@ fn wrap_single_line(line: &[char], width: i64) -> Vec<String> {
     for token in split_into_tokens(line) {
         let token_chars: Vec<char> = token.chars().collect();
         let token_len = visible_width_chars(&token_chars);
-        // pig divergence (D217): Pi 2ce9d527 (#10925) the codes that close a styled word sit on the following space token, which is still whitespace.
         let is_whitespace = is_whitespace_token(&token_chars);
         if token_len > width && !is_whitespace {
             if !current.is_empty() {

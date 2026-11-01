@@ -110,8 +110,7 @@ declare module "@earendil-works/pi-coding-agent" {
     /** In a tool's `execute`: `JSON.stringify` of the call's arguments, members in the model's order. */
     readonly toolInput?: string;
   }
-  // pig divergence (D217): Pi c466a359 (#11360) adds ExecOptions.maxBuffer and ExecResult.truncated, merged after the pinned 1.4.0 declarations. PiG's
-  // host implements them, so the declarations are added here; the re-exported Pi declarations stay the pinned ones.
+  // Pi c466a359 (#11360) adds ExecOptions.maxBuffer and ExecResult.truncated. PiG's host implements them and this augmentation declares them.
   interface ExecOptions {
     /**
      * Combined stdout/stderr byte limit; exceeding it terminates the command with `truncated: true`.
@@ -123,8 +122,8 @@ declare module "@earendil-works/pi-coding-agent" {
     /** Output exceeded `maxBuffer`; stdout and stderr are incomplete and `code` is nonzero. */
     truncated: boolean;
   }
-  // pig divergence (D217): Pi 9376c8d1 (#4748) adds KeybindingHints to the tool render context and the message and entry renderer options, merged after
-  // the pinned 1.4.0 declarations. PiG's host passes them, so the declarations are added here; the re-exported Pi declarations stay the pinned ones.
+  // Pi 9376c8d1 (#4748) adds KeybindingHints to the tool render context and the message and entry renderer options. PiG's host passes them and this
+  // augmentation declares them.
   /**
    * Formats the host's configured keybindings for display.
    * Use these instead of importing `keyText`/`keyHint`: an import may resolve to another copy of the package, which does not see the host's keybindings.

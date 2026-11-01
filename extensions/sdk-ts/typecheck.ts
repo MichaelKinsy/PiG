@@ -122,7 +122,6 @@ export function toolDefinitionFields(): ToolDefinition {
   };
 }
 
-// pig divergence (D217): Pi 9376c8d1 (#4748) keyText and keyHint on the tool render context and the message and entry options, declared by the PiG augmentation (the pinned declarations have none).
 export function keybindingHints(pi: ExtensionAPI): void {
   const hints = (hint: KeybindingHints): string => `${hint.keyText("app.tools.expand")} ${hint.keyHint("app.tools.expand", "to expand")}`;
   pi.registerMessageRenderer("hints", (_message, options: MessageRenderOptions) => {
@@ -141,7 +140,6 @@ export function keybindingHints(pi: ExtensionAPI): void {
 }
 
 export function apiAdditions(pi: ExtensionAPI): void {
-  // pig divergence (D217): Pi c466a359 (#11360) maxBuffer and truncated, declared by the PiG augmentation (the pinned declarations have neither).
   void pi.exec("git", ["log"], { maxBuffer: 1024 * 1024 }).then((result) => {
     const truncated: boolean = result.truncated;
     const killed: boolean = result.killed;

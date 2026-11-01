@@ -1616,7 +1616,7 @@ def new_extension() -> pig_sdk.Extension:
             % (message.get("content", ""), str(bool(options.get("expanded"))).lower(), width)
         ],
     )
-    # pig divergence (D217) test fixture: Pi 9376c8d1 (#4748) key_text and key_hint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
+    # Test fixture, Pi 9376c8d1 (#4748): key_text and key_hint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
     def hints_of(hints, keybinding):
         return "%s | %s" % (hints.key_text(keybinding), hints.key_hint(keybinding, "to expand"))
 

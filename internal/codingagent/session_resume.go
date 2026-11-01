@@ -828,7 +828,6 @@ func (sm *SessionManager) FindMostRecentForContinue() string {
 // might be shared across cwds and does. Mirrors upstream's
 // `dir !== getDefaultSessionDirPath(cwd)` test inverted.
 func (sm *SessionManager) sessionDirIsCwdScoped() bool {
-	// pig divergence (D217): Pi 1be312b4 (#10488) pathsEqual; Pi 1.4.0+b3a29f11 compared the strings, so on Windows a session directory spelled with other casing counted as a custom one.
 	return resolvepath.PathsEqual(absCleanDir(sm.sessionDir), absCleanDir(defaultSessionDir(sm.cwd)))
 }
 
@@ -842,7 +841,6 @@ func sessionCwdMatches(sessionCwd, runtimeCwd string) bool {
 	if strings.TrimSpace(sessionCwd) == "" {
 		return false
 	}
-	// pig divergence (D217): Pi 1be312b4 (#10488) pathsEqual(resolvePath(cwd), resolvedCwd); on Windows a header cwd that differs from the working directory in casing still matches.
 	return resolvepath.PathsEqual(canonicalDir(sessionCwd), canonicalDir(runtimeCwd))
 }
 

@@ -310,7 +310,7 @@ function piSession() {
 function piProviderComposer() {
   return requireModule("./shims/pi-dist/pi-coding-agent/core/provider-composer.js");
 }
-// pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and entry options; pinned Pi has neither. They load with the first render, not at startup: the module draws in pi-tui's bundle.
+// Renderers get the host's keyText and keyHint (Pi 9376c8d1, #4748) on the tool render context and the message and entry options. They load with the first render, not at startup: the module draws in pi-tui's bundle.
 function piKeybindingHints() {
   return requireModule("./shims/pi-dist/pi-coding-agent/modes/interactive/components/keybinding-hints.js");
 }
@@ -5154,7 +5154,6 @@ export class Runtime {
           const handler = this.renderers.get(request.tool);
           if (!handler) throw new Error(`unknown renderer: ${request.tool}`);
           const payload = request.args || {};
-          // pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and entry options; pinned Pi has neither.
           const { keyText, keyHint } = piKeybindingHints();
           const component = await handler(payload.message, { ...payload.options, keyText, keyHint }, this.ui.theme);
           await this.respond(id, this.withSurfaceTheme(component, () => {
@@ -5182,7 +5181,6 @@ export class Runtime {
           const handler = this.entryRenderers.get(request.tool);
           if (!handler) throw new Error(`unknown entry renderer: ${request.tool}`);
           const payload = request.args || {};
-          // pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and entry options; pinned Pi has neither.
           const { keyText, keyHint } = piKeybindingHints();
           const component = await handler(payload.entry, { ...payload.options, keyText, keyHint }, this.ui.theme);
           await this.respond(id, this.withSurfaceTheme(component, () => {
@@ -5216,7 +5214,6 @@ export class Runtime {
               invalidate: () => this.notify("tool_render_invalidate", { card: payload.card }),
               lastComponent: component,
               state: card.state,
-              // pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint; pinned Pi has neither.
               keyText,
               keyHint,
             };

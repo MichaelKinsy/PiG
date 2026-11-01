@@ -138,7 +138,6 @@ func HasTrustRequiringProjectResources(cwd string) bool {
 
 	for {
 		isUserSkills := probe.Set(current, ".agents", "skills").Is(userAgentsSkills)
-		// pig divergence (D217): Pi 1be312b4 (#10488) compares the user's directory with pathsEqual, which ignores case on Windows; Pi 1.4.0+b3a29f11 compared strings, so a home that differs only in casing from the working directory's made ~/.agents/skills a project resource.
 		if !isUserSkills && resolvepath.FoldsCase() {
 			isUserSkills = resolvepath.PathsEqual(filepath.Join(current, ".agents", "skills"), userAgentsSkills)
 		}
@@ -186,7 +185,6 @@ func NewProjectTrustStore(agentDir string) *ProjectTrustStore {
 }
 
 // trustFileKeys are the keys of data that name path, in key order: usually one, several on Windows when the decision was saved with different casing.
-// pig divergence (D217): Pi 1be312b4 (#10488) findTrustFileKeys matches keys with pathsEqual, so a Windows decision is found and replaced whatever its casing; Pi 1.4.0+b3a29f11 looked the exact string up.
 func trustFileKeys(data map[string]*bool, path string) []string {
 	if len(data) == 0 {
 		return nil

@@ -1200,7 +1200,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 		Path:         "inproc-conformance-fixture",
 		ResolvedPath: "inproc-conformance-fixture",
 		MessageRenderers: map[string]extension.MessageRenderer{
-			// pig divergence (D217) test fixture: Pi 9376c8d1 (#4748) KeyText and KeyHint on the message options. The content is the keybinding id.
+			// Test fixture, Pi 9376c8d1 (#4748): KeyText and KeyHint on the message options. The content is the keybinding id.
 			"keyhints-message": func(message extension.CustomMessage, options extension.MessageRenderOptions, _ extension.Theme) extension.Component {
 				id, _ := message.Content.(string)
 				return &conformanceLinesComponent{lines: []string{options.KeyText(id) + " | " + options.KeyHint(id, "to expand")}}
@@ -1215,7 +1215,7 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 			},
 		},
 		EntryRenderers: map[string]extension.EntryRenderer{
-			// pig divergence (D217) test fixture: Pi 9376c8d1 (#4748) KeyText and KeyHint on the entry options. The data is the keybinding id.
+			// Test fixture, Pi 9376c8d1 (#4748): KeyText and KeyHint on the entry options. The data is the keybinding id.
 			"keyhints-entry": func(entry extension.CustomEntry, options extension.EntryRenderOptions, _ extension.Theme) extension.Component {
 				id, _ := entry.Data.(string)
 				return &conformanceLinesComponent{lines: []string{options.KeyText(id) + " | " + options.KeyHint(id, "to expand")}}

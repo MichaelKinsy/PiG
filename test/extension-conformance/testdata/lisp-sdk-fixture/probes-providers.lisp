@@ -24,7 +24,7 @@
     (declare (ignore ctx render width))
     (list (format nil "~A:~A:~A" prefix tool (pig:jget args "q")))))
 
-;; pig divergence (D217) test fixture: Pi 9376c8d1 (#4748) key-text and key-hint on the message and entry options and the tool render context.
+;; Test fixture, Pi 9376c8d1 (#4748): key-text and key-hint on the message and entry options and the tool render context.
 ;; The content, data and q are the keybinding id.
 (defun pv-hints-line (key-text key-hint id)
   (list (format nil "~A | ~A" (funcall key-text id) (funcall key-hint id "to expand"))))

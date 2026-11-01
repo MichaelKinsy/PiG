@@ -16,9 +16,8 @@ import (
 // JS-only case mappings such as U+0130, non-ASCII letters, whitespace kinds), tools with nested schemas, and random queries and limits. Names, their order
 // and the scores must match exactly: the idf goes through jsmath.Log, V8's fdlibm Math.log.
 //
-// D217 (Pi cc44fa21, #11331): the pinned Pi scores the name and the namespace as part of the one text, PiG weighs them as fields of their own, so the two rank a tool
-// with a name term or a namespace differently. The probes are the inputs the two agree on: tools whose names hold only stop words (no name term) and no namespace.
-// TestBm25RankerMatchesPiCC44fa21 pins the carried ranking with Pi's own numbers.
+// The probes are tools whose names hold only stop words (no name term) and no namespace. TestBm25RankerMatchesPiCC44fa21 pins the ranking of a name term and
+// of a namespace with Pi's own numbers.
 func TestToolSearchMatchesPi(t *testing.T) {
 	rng := rand.New(rand.NewSource(8))
 	words := []string{"issue", "issues", "search", "searches", "boxes", "class", "classes", "status", "the", "and", "of", "GitHub", "getHTTPResponse", "XMLParser", "list_issues", "mcp__server__tool", "A1b2", "ABc", "aBC", "ies", "ries", "dies", "ches", "wishes", "as", "us", "\u0130stanbul", "\u0130x", "caf\u00e9", "\u212a", "日本語", "tab\tsep", "line\nbreak", "\u00a0nbsp", "\ufeffbom", "x-y.z", "UPPER", "lower", "Mixed3Case", "FILEName", "id", "URLs", "Pass", "boss", "gas"}
@@ -125,8 +124,8 @@ emit(input.map((p) => {
 			}
 		}
 		ranked := NewBm25Ranker().Rank(p.Query, docs, p.Limit)
-		// D217 (Pi e033f255, #11632): PiG ranks a tool matching more of the query's distinct terms first, the pinned Pi by score alone. The two agree on the order for a
-		// query of one term (every match covers it) and on the scores of every match; a many-term query is compared as the multiset of scores, where the limit keeps them all.
+		// Pi e033f255 (#11632) ranks a tool matching more of the query's distinct terms first. The order is compared for a query of one term (every match covers it)
+		// and the scores of every match; a many-term query is compared as the multiset of scores, where the limit keeps them all.
 		distinct := map[string]bool{}
 		for _, term := range Tokenize(p.Query) {
 			distinct[term] = true
@@ -165,8 +164,8 @@ emit(input.map((p) => {
 
 var nonASCIICharacter = regexp.MustCompile(`[^\x00-\x7f]`)
 
-// spaceOutNonASCII replaces every character outside ASCII of a probe with a space before both sides see it. The pinned Pi splits a term at each of them, which is a space; PiG keeps the words of every
-// script (Pi 79006f06, #11037, D217), so the probes are compared where the two agree. TestTokenizeMatchesPiOnEveryScriptClass pins the carried tokenizer with Pi's own answers.
+// spaceOutNonASCII replaces every character outside ASCII of a probe with a space before both sides see it. The probes are compared on ASCII words;
+// TestTokenizeMatchesPiOnEveryScriptClass compares the tokenizer (Pi 79006f06, #11037) with Pi's own answers on every script class.
 func spaceOutNonASCII[T any](t *testing.T, probe T) T {
 	t.Helper()
 	raw, err := json.Marshal(probe)
@@ -200,8 +199,8 @@ func sameTerms(a, b []string) bool {
 // hold separators, upper case, the Kelvin sign and U+0130 (JS lowercases them before the replacement), a character outside the BMP (two UTF-16 code units, each
 // replaced) and surrounding white space, with the queries that name them in every form, partial names and non-names.
 //
-// D217 (Pi cc44fa21, #11331): the scores and the order inside the tools that do not name the query differ from the pinned Pi, which scores the name as part of the text.
-// What the two agree on is the name rule: how many tools lead the result as exact names, which ones when all of them fit the limit, and which tools match at all.
+// The scores and the order inside the tools that do not name the query are not compared (Pi cc44fa21, #11331 weighs the name apart from the text).
+// What is compared is the name rule: how many tools lead the result as exact names, which ones when all of them fit the limit, and which tools match at all.
 func TestToolSearchNameQueriesMatchPi(t *testing.T) {
 	names := []string{
 		"mcp__app__queue_read", "mcp__dev-app__thread_read", "thread_read", "app__thread_read", "mcp__app__THREAD_READ", "mcp__a.b__read thread", "\u212aelvin_read",

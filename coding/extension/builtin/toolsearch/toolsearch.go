@@ -28,8 +28,6 @@ const ToolName = "tool_search"
 const DefaultLimit = 8
 
 // Document is a tool as the ranker sees it: its name and the texts built by CreateDocument.
-//
-// pig divergence (D217): Pi cc44fa21 (#11331) the name is a field of its own and the namespace text is separate; pinned Pi folds both into Text.
 type Document struct {
 	Name string
 	// Text is the description, schema descriptions and property names.
@@ -50,8 +48,6 @@ type Ranker interface {
 }
 
 // Tokenize is Pi's tokenize: Unicode word segmentation of the NFC-normalized text with identifier boundaries, without English stop words and with singular forms (searchtext.Tokenize).
-//
-// pig divergence (D217): Pi 79006f06 (#11037) pinned Pi lowercases the text and splits it on /[^a-z0-9]+/, which drops every letter outside ASCII.
 func Tokenize(text string) []string { return searchtext.Tokenize(text) }
 
 // schemaText collects schema descriptions and property names, recursively.
@@ -90,8 +86,6 @@ func mapsKeys(m map[string]any) func(yield func(string) bool) {
 }
 
 // CreateDocument builds the search texts of a tool: the description with the schema descriptions and property names, and separately the namespace name, description and instructions. The ranker reads the name from Name. BM25 counts terms, so the order of the parts does not matter.
-//
-// pig divergence (D217): Pi cc44fa21 (#11331) pinned Pi puts the name, the name with `_` as spaces and the namespace into the one text.
 func CreateDocument(tool extension.ToolInfo, namespace *extension.ToolNamespace) Document {
 	parts := []string{tool.Description}
 	var parameters any
@@ -182,8 +176,6 @@ const namespaceWeight = 0.5
 //   - a query that is exactly a tool's name ranks that tool first, before coverage.
 //
 // The description alone is length-normalized, so a long name or long namespace instructions do not lower a tool's score. Ties keep document order.
-//
-// pig divergence (D217): Pi cc44fa21 (#11331) and e033f255 (#11632) pinned Pi scores the name, description and namespace as one bag of words and has no coverage-first order.
 type Bm25Ranker struct{ K1, B float64 }
 
 // NewBm25Ranker returns a ranker with k1 1.2 and b 0.75.

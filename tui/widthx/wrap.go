@@ -66,8 +66,6 @@ func wrapSingleLine(line string, width int) []string {
 
 	for _, token := range tokens {
 		tokenWidth := VisibleWidth(token)
-		// pig divergence (D217): Pi 2ce9d527 (#10925) the codes that close a styled word sit on the following space token, which is
-		// still whitespace.
 		isWhitespace := isWhitespaceToken(token)
 
 		// Token alone is longer than width: break by graphemes.

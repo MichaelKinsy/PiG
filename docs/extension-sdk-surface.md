@@ -2,7 +2,7 @@
 
 # Extension SDK surface matrix
 
-Every extension-facing surface of Pi 1.4.0+e7a0df27's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.4.0+e7a0df27`.
+Every extension-facing surface of Pi 1.4.0+2c8d1feb's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.4.0+2c8d1feb`.
 
 A cell's status comes from the runtime itself: the Go SDK's exported identifiers, the Rust SDK's `pub` items, the Python SDK's classes, members and parameters and the Lisp SDK's exported symbols and the keyword and optional parameters of its exported functions, read from their source, and the Node runtime's objects, read by instantiating the runtime in Node (`test/parity/cmd/sdksurface/probe.mjs`), plus the properties it reads from an extension's definitions. [`test/parity/sdk-surface.toml`](../test/parity/sdk-surface.toml) names the symbol where a language's naming differs from the default rule and says why a realization is a stand-in; a named symbol that does not exist is `missing`. Payload, result and option fields that cross the subprocess wire are also checked against the host's Go decoding type, so a field an SDK sends but the host drops is `missing`. The PiG additive sections list surfaces PiG adds where Pi has none, such as the component kit (D107); the map names each one's symbols, and its cells are classified the same way.
 
@@ -10,7 +10,7 @@ A cell's status comes from the runtime itself: the Go SDK's exported identifiers
 - `stand-in/partial`: the symbol exists; the note says what differs and why.
 - `missing`: no symbol. Each missing cell is listed in [`test/parity/sdk-surface-exceptions.toml`](../test/parity/sdk-surface-exceptions.toml) with its reviewed reason, and `go test ./test/parity/cmd/sdksurface` fails on any other.
 
-The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/models`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.4.0+e7a0df27.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
+The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/models`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.4.0+2c8d1feb.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
 
 - `Pi's own code`: the function originates in the vendored pinned modules or their dependencies; host import rewrites can still affect behavior (D73).
 - `bridged`: PiG's implementation in the extension runtime, a line-for-line port or a host bridge, locked by the D73 tests (`TestNodeRuntimeShimsExportEveryPinnedPiValue`, `TestPiTuiComponentsMatchThePinnedPackage`, `TestPiAiUtilitiesMatchThePinnedPackage`, `TestPiThemeHelpersMatchThePinnedPackage`).
@@ -21,15 +21,15 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 ## Summary
 
-523 extension API surfaces:
+529 extension API surfaces:
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 485 | 27 | 11 |
-| Go | 487 | 26 | 10 |
-| Rust | 487 | 26 | 10 |
-| Python | 487 | 26 | 10 |
-| Lisp | 494 | 19 | 10 |
+| Node runtime | 485 | 27 | 17 |
+| Go | 493 | 26 | 10 |
+| Rust | 487 | 26 | 16 |
+| Python | 491 | 26 | 12 |
+| Lisp | 496 | 19 | 14 |
 
 31 PiG-only surfaces:
 
@@ -1316,6 +1316,8 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `tool render context.isError` | `ToolRenderContext.isError` | implemented `read:payload.context` | implemented `ToolRenderContext.IsError` | implemented `ToolRenderContext.is_error` | implemented `ToolRenderContext.is_error` | implemented `pig:tool-render-context-is-error` |
 | `tool render context.durationMs` | `ToolRenderContext.durationMs` | missing [exception](#exceptions) | implemented `ToolRenderContext.DurationMs` | implemented `ToolRenderContext.duration_ms` | implemented `ToolRenderContext.duration_ms` | implemented `pig:tool-render-context-duration-ms` |
 | `tool render context.outputPad` | `ToolRenderContext.outputPad` | implemented `read:payload.context` | implemented `ToolRenderContext.OutputPad` | implemented `ToolRenderContext.output_pad` | implemented `ToolRenderContext.output_pad` | implemented `pig:tool-render-context-output-pad` |
+| `tool render context.keyText` | `ToolRenderContext.keyText` | missing | implemented `ToolRenderContext.KeyText` | missing | implemented `ToolRenderContext.key_text` | implemented `pig:tool-render-context-key-text` |
+| `tool render context.keyHint` | `ToolRenderContext.keyHint` | missing | implemented `ToolRenderContext.KeyHint` | missing | implemented `ToolRenderContext.key_hint` | implemented `pig:tool-render-context-key-hint` |
 | `tool renderResult options.expanded` | `ToolRenderResultOptions.expanded` | implemented `read:payload.options` | implemented `ToolRenderResultOptions.Expanded` | implemented `ToolRenderResultOptions.expanded` | implemented `Extension.tool_renderers(render_result)` | implemented `pig:tool-renderers(render-result)` |
 | `tool renderResult options.isPartial` | `ToolRenderResultOptions.isPartial` | implemented `read:payload.options` | implemented `ToolRenderResultOptions.IsPartial` | implemented `ToolRenderResultOptions.is_partial` | implemented `Extension.tool_renderers(render_result)` | implemented `pig:tool-renderers(render-result)` |
 
@@ -1374,7 +1376,11 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 |---|---|---|---|---|---|---|
 | `message renderer options.expanded` | `MessageRenderOptions.expanded` | implemented `read:payload.options` | implemented `MessageRenderOptions.Expanded` | implemented `MessageRenderOptions.expanded` | implemented `Extension.message_renderer` | implemented `pig:message-renderer` |
 | `message renderer options.outputPad` | `MessageRenderOptions.outputPad` | implemented `read:payload.options` | implemented `MessageRenderOptions.OutputPad` | implemented `MessageRenderOptions.output_pad` | implemented `Extension.message_renderer` | implemented `pig:message-renderer` |
+| `message renderer options.keyText` | `MessageRenderOptions.keyText` | missing | implemented `MessageRenderOptions.KeyText` | missing | implemented `MessageRenderOptions.key_text` | missing |
+| `message renderer options.keyHint` | `MessageRenderOptions.keyHint` | missing | implemented `MessageRenderOptions.KeyHint` | missing | implemented `MessageRenderOptions.key_hint` | missing |
 | `entry renderer options.expanded` | `EntryRenderOptions.expanded` | implemented `read:payload.options` | implemented `EntryRenderOptions.Expanded` | implemented `EntryRenderOptions.expanded` | implemented `Extension.entry_renderer` | implemented `pig:entry-renderer` |
+| `entry renderer options.keyText` | `EntryRenderOptions.keyText` | missing | implemented `EntryRenderOptions.KeyText` | missing | missing | missing |
+| `entry renderer options.keyHint` | `EntryRenderOptions.keyHint` | missing | implemented `EntryRenderOptions.KeyHint` | missing | missing | missing |
 | `markdown transform context.messageType` | `MarkdownTransformContext.messageType` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.MessageType` | implemented `MarkdownTransformContext.message_type` | implemented `Extension.markdown_transformer` | implemented `pig:markdown-transformer` |
 | `markdown transform context.isStreaming` | `MarkdownTransformContext.isStreaming` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.IsStreaming` | implemented `MarkdownTransformContext.is_streaming` | implemented `Extension.markdown_transformer` | implemented `pig:markdown-transformer` |
 | `markdown transform context.availableWidth` | `MarkdownTransformContext.availableWidth` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.AvailableWidth` | implemented `MarkdownTransformContext.available_width` | implemented `Extension.markdown_transformer` | implemented `pig:markdown-transformer` |

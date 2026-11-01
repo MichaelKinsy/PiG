@@ -11,7 +11,7 @@ import (
 )
 
 // Scores and ties measured on Pi's own Bm25Ranker for the same documents; the upstream tests assert order only, so these pin the numbers, the schema walk and
-// the tie order. The numbers are from Pi cc44fa21 (tool-search/tool.ts, #11331, D217), which scores the name apart from the description; the 0.99.1 numbers
+// the tie order. The numbers are from Pi cc44fa21 (tool-search/tool.ts, #11331), which scores the name apart from the description; the 0.99.1 numbers
 // they replace came from a ranker that folded the name into the text.
 
 func referenceDocuments() []toolsearch.Document {

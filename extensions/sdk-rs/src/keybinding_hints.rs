@@ -94,8 +94,8 @@ pub fn raw_key_hint(key: &str, description: &str) -> String {
     ) + &theme.fg("muted", &format!(" {description}"))
 }
 
-// pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and
-// entry options (KeybindingHints); pinned Pi has neither. Each method delegates to the module function, which reads the host's keybindings.
+// Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and
+// entry options (KeybindingHints). Each method delegates to the module function, which reads the host's keybindings.
 
 impl crate::tool_render::ToolRenderContext {
     /// `KeybindingHints.keyText` of the tool render context: [`key_text`].

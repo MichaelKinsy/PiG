@@ -83,7 +83,7 @@ func TestKeyHintsMatchPi(t *testing.T) {
 	}
 }
 
-// pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and entry
+// Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and entry
 // options. Each answers as the package function does, from the host's keybindings, with Pi's strings for a bound, an unbound and a multi-key id.
 func TestRenderHintsReadTheHostKeybindings(t *testing.T) {
 	previous := tui.GetKeybindings()

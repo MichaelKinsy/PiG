@@ -12,7 +12,6 @@ func (m *InteractiveMode) openExternalEditor(ctx context.Context) {
 }
 
 // openExternalEditorBuffer hands terminal input and output to the child off the UI loop. Completion returns to the owner loop and only a successful edit replaces the caller's buffer.
-// pig divergence (D217): Pi 6454d07e (#11592) reports an editor that failed through report, which receives the status text; Pi 1.4.0+b3a29f11 stays silent.
 func (m *InteractiveMode) openExternalEditorBuffer(ctx context.Context, command, initial string, apply func(string), report func(message string)) {
 	if m.externalEditorActive {
 		return

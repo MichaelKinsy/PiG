@@ -661,7 +661,6 @@ func defaultBuiltins() []BuiltinSlashCommand {
 		{Name: "thinking", Description: "Set thinking level", ArgumentHint: "<level>", TakesArguments: true, Handler: thinkingHandler},
 		{Name: "scoped-models", Description: "Enable/disable models for Ctrl+P cycling", Handler: scopedModelsHandler},
 		{Name: "export", Description: "Export session (HTML default, or specify path: .html/.jsonl)", TakesArguments: true, Handler: exportHandler},
-		// pig divergence (D217): Pi 2a46c420 (#11532) describes /import as keeping the session ID and working directory, and /resume as resuming another session; Pi 1.4.0+b3a29f11 says "Import and resume a session from a JSONL file" and "Resume a different session".
 		{Name: "import", Description: "Import a JSONL session, preserving its ID and working directory", TakesArguments: true, Handler: importHandler},
 		// pig divergence (D64): PiG shares through its own expiring gateway, not a GitHub gist.
 		{Name: "share", Description: "Share session with an unlisted 30-day link", Handler: shareHandler},

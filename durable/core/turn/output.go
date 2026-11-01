@@ -55,7 +55,6 @@ func SanitizeOutput(text string) string {
 	}
 	var b strings.Builder
 	for i := 0; i < len(text); {
-		// pig divergence (D217): Pi 50d9f823 (#11604) removes whole ANSI escape sequences, not only their ESC bytes.
 		if text[i] == 0x1b {
 			i += max(escapeSequenceLength(text[i:]), 1)
 			continue

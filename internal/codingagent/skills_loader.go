@@ -188,7 +188,6 @@ func LoadSkills(options LoadSkillsOptions) (LoadSkillsResult, error) {
 		}
 		source := "path"
 		if !options.IncludeDefaults {
-			// pig divergence (D217): Pi 1be312b4 (#10488) isPathWithin ignores case on Windows; Pi 1.4.0+b3a29f11 compared the strings.
 			if resolvepath.IsPathWithin(userDir, path) {
 				source = "user"
 			} else if resolvepath.IsPathWithin(projectDir, path) {

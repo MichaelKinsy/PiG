@@ -210,7 +210,7 @@ export default function (pi) {
     render(width) { return [`entryrenderer:${entry.data}:expanded=${Boolean(options.expanded)}:width=${width}`]; },
     invalidate() {},
   }));
-  // pig divergence (D217) test fixture: Pi 9376c8d1 (#4748) keyText and keyHint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
+  // Test fixture, Pi 9376c8d1 (#4748): keyText and keyHint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
   const hintsOf = (hints, id) => `${hints.keyText(id)} | ${hints.keyHint(id, "to expand")}`;
   pi.registerMessageRenderer("keyhints-message", (message, options) => ({ render: () => [hintsOf(options, message.content)], invalidate() {} }));
   pi.registerEntryRenderer("keyhints-entry", (entry, options) => ({ render: () => [hintsOf(options, entry.data)], invalidate() {} }));

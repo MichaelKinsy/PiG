@@ -15,8 +15,8 @@ RENDER-SHELL is \"default\" or \"self\"."
   (args (obj)) (tool-call-id "") (cwd "") execution-started args-complete is-partial expanded show-images is-error (output-pad 0)
   duration-ms (state (obj)) invalidate)
 
-;;; pig divergence (D217): Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and entry
-;;; options (KeybindingHints); pinned Pi has neither. The message and entry options are the host's JSON object, so each form takes it as its first
+;;; Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and entry
+;;; options (KeybindingHints). The message and entry options are the host's JSON object, so each form takes it as its first
 ;;; argument, as a method takes its receiver; every form delegates to KEY-TEXT and KEY-HINT, which read the host's keybindings.
 
 (defun tool-render-context-key-text (context keybinding)

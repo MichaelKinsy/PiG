@@ -2,9 +2,9 @@ package extension
 
 import "github.com/MichaelKinsy/PiG/tui"
 
-// pig divergence (D217): Pi 9376c8d1 (#4748) adds KeybindingHints, keyText and keyHint, to the tool render context and to the message and entry
-// render options, so an extension formats the host's configured keybindings without importing a copy of the package that does not see them. Pinned
-// Pi has neither. A method reads the host's keybinding registry and theme when it is called, so one value serves every render and a
+// Pi 9376c8d1 (#4748) adds KeybindingHints, keyText and keyHint, to the tool render context and to the message and entry
+// render options, so an extension formats the host's configured keybindings without importing a copy of the package that does not see them.
+// A method reads the host's keybinding registry and theme when it is called, so one value serves every render and a
 // ToolRenderContext, MessageRenderOptions or EntryRenderOptions stays comparable and encodes to the same wire JSON as before.
 
 // KeyText is upstream KeybindingHints.keyText: the keys bound to keybinding in the host's registry, formatted for display and joined by "/",

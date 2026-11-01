@@ -27,10 +27,9 @@ import (
 // multi-line descriptions, names with underscores, and queries that match one, several or none of them. The tool's own
 // declaration (name, description, parameters, callers, replay mode) is compared too.
 //
-// D217 (Pi c7372af4, #11631): the pinned Pi searches the name as part of the text and ranks by score alone, PiG weighs the name as a field of its own and ranks a tool matching more of the
-// query's distinct terms first. The two agree where the name holds no term, so the tools are named with stop words only, and where the query has one distinct term, so every match covers it:
-// those results compare in full. For a query of several distinct terms the two agree on which tools load, compared as a set when the limit keeps them all.
-// TestToolSearchMatchesPiTheLatestCarriedRanking pins the carried ranking with Pi's own answers.
+// The tools are named with stop words only, so the name holds no term, and the queries have one distinct term, so every match covers it: those results compare in full.
+// For a query of several distinct terms the probes compare which tools load, as a set when the limit keeps them all.
+// TestToolSearchMatchesPiTheLatestCarriedRanking pins the ranking of a name (Pi c7372af4, #11631) with Pi's own answers.
 
 type toolSearchCase struct {
 	Deferred []json.RawMessage `json:"deferred"`
@@ -156,8 +155,8 @@ func TestToolSearchMatchesPiOnSeededDeferredTools(t *testing.T) {
 			cases = append(cases, toolSearchCase{Deferred: tools, Query: query, Limit: limits[rng.IntN(len(limits))]})
 		}
 	}
-	// D217 (Pi 79006f06, #11037): the pinned Pi splits a term at every character outside ASCII, PiG keeps the words of every script. Every such character becomes a space before both sides see
-	// the cases, so they are compared where the two agree; TestTokenizeMatchesPiOnEveryScriptClass of durable/internal/search pins the carried tokenizer with Pi's own answers.
+	// Every character outside ASCII becomes a space before both sides see the cases, so they are compared on ASCII words;
+	// TestTokenizeMatchesPiOnEveryScriptClass of durable/internal/search compares the tokenizer (Pi 79006f06, #11037) with Pi's own answers.
 	input, err := json.Marshal(cases)
 	if err != nil {
 		t.Fatal(err)

@@ -569,7 +569,7 @@ func Extension() *sdk.Extension {
 		}
 		return []string{fmt.Sprintf("renderer:%v:expanded=%t:width=%d", message["content"], options.Expanded, width)}, nil
 	})
-	// pig divergence (D217) test fixture: Pi 9376c8d1 (#4748) KeyText and KeyHint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
+	// Test fixture, Pi 9376c8d1 (#4748): KeyText and KeyHint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
 	ext.MessageRenderer("keyhints-message", func(_ sdk.Context, message map[string]any, options sdk.MessageRenderOptions, _ int) ([]string, error) {
 		id, _ := message["content"].(string)
 		return []string{options.KeyText(id) + " | " + options.KeyHint(id, "to expand")}, nil

@@ -298,7 +298,7 @@ fn truncate_to_visual_lines_matches_pi() {
     }
 }
 
-// pig divergence (D217): Pi 9376c8d1 (#4748) key_text and key_hint on the message and entry render options (the tool render context is built only by the
+// Pi 9376c8d1 (#4748) key_text and key_hint on the message and entry render options (the tool render context is built only by the
 // request path, which the conformance row exercises); each answers as the module function does.
 #[test]
 fn render_options_hints_read_the_host_keybindings() {

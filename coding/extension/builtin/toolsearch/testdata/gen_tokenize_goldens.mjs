@@ -1,5 +1,5 @@
-// Generates tokenize_goldens.json: Pi's own tokenize at commit 79006f06 (earendil-works/pi#11037), the Unicode word segmentation PiG carries
-// (D217), over probes of every script class. The coding agent's (packages/coding-agent/src/extensions/tool-search/tool.ts) and durable's
+// Generates tokenize_goldens.json: Pi's own tokenize at commit 79006f06 (earendil-works/pi#11037), the Unicode word segmentation PiG ports
+// over probes of every script class. The coding agent's (packages/coding-agent/src/extensions/tool-search/tool.ts) and durable's
 // (packages/durable/src/search.ts) tokenizers are two copies in Pi; the script fails when they answer differently, so one file serves the two PiG
 // packages (copy it to durable/internal/search/testdata/).
 //

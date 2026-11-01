@@ -1712,65 +1712,65 @@ rationale = "ported; one test designed out. Design note 5. PiG: chord/nextnode/h
 [[files]]
 path = "packages/chord/src/next-node/plugins/build.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_build_test.go#TestBuildingAFacetReturnsASyntaxErrorAndAMissingFacetAsFailedResultsNeverAThrow"]
+rationale = "the esbuild build, `ImportRules`, `freeGlobals`, `describe` are the `Builder` seam (Go cannot run esbuild in process). Ported: `BuildOptions`, `BuildInput`, `BuiltFacet` (plain data), `BuildFacet` (missing-facet failed result, abort, delegate), `inside`. PiG: chord/nextnode/plugins/plugins_build.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/discover.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_discover_test.go#TestDiscoveryNamesAPluginByItsPackageJSONListsItsFacetFilesByKindItsDependenciesAndExternals"]
+rationale = "`DiscoverPlugins`, `Plugin`, `Discovery`, `DiscoveryProblem`, `DiscoveryOptions`; `isPluginName` is a private copy of host/staging.ts's regex (the host's is unexported, see open questions). PiG: chord/nextnode/plugins/plugins_discover.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/evaluate.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_evaluate_test.go#TestEvaluatingAFacetRunsAScriptUnderAStableFilenamePerPluginKindAndDigest"]
+rationale = "`require`, `interop`, `registerScript`, `evaluateFacet` are the `Evaluator` seam (the default-export-is-a-facet check is the evaluator's error). Ported: `HostPackages`, `EvaluateOptions`, `ScriptFilename` (stable filename per plugin/kind/digest), `PluginFile` (= `fileOf`: path in the plugin's directory, `..` out refused). `PLUGINS_SPECIFIER`, `packageName`, the exported throwing `pluginFile` stub are JS-evaluation/esbuild internals: designed-out (no Go caller). PiG: chord/nextnode/plugins/plugins_evaluate.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "barrel: Go imports the package (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/install.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesRunsNpmInstallWithoutDevDependenciesPeersScriptsAuditOrFundingInThePluginsRealDirectory"]
+rationale = "`InstallDependencies`, `InstallOptions`. PiG: chord/nextnode/plugins/plugins_install.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/plugins.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go", "test:chord/nextnode/plugins/plugins_endtoend_test.go", "test:chord/nextnode/plugins/plugins_examples_test.go"]
+rationale = "`CreatePlugins`, `Plugins`, `PluginsOptions`, `KindDefinition`, `Built`, `RolloutStep/Host/Result`, `PluginsError`; state/watcher touched only in sections of the component's own `host.Loop`. PiG: chord/nextnode/plugins/plugins_plugins.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/runtime.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_runtime_test.go#TestLoadingAndReloadingWithCompleteSetsReloadsACompleteSetSameDigestsUnchangedAChangedOneAppliedALoadedOneNotShippedRemoved"]
+rationale = "`NewPluginRuntime(evaluator)`, `PluginRuntime.Load/Reload`, `PluginScript`, `RuntimeLoad`; V8 compilation-cache switch designed out; per-host reload queue in call order (`queue`/`run`); `Forget(host)` replaces the WeakMap. PiG: chord/nextnode/plugins/plugins_runtime.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/stack.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "`mapStack`/`registerScript`/`inlineSourceMap` map V8 stack positions through esbuild's inline source maps of `vm.Script` scripts; there is no JS script in Go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/watcher.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/nextnode/plugins/plugins_watcher_test.go#TestTheWatchersMarksFromRealFileEventsPublishingTheMarksToAWatch"]
+rationale = "`pluginWatcher` is a `state.Source`; fsnotify replaces `fs.watch`. PiG: chord/nextnode/plugins/plugins_watcher.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next-node/workers/control.ts"
@@ -1817,16 +1817,16 @@ rationale = ""
 [[files]]
 path = "packages/chord/src/next/contracts/accepts.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/accepts_test.go#TestAcceptsKeyedMappings"]
+rationale = "KeyedMapping, VersionMappings.Keyed, needs.keyed, checkKeyedMapping. PiG: chord/next/contracts/accepts.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/contract.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/contract_test.go#TestVariantsAt"]
+rationale = "variantsAt; unknown version is an error (TS `!`). PiG: chord/next/contracts/contract.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/declare.ts"
@@ -1838,9 +1838,9 @@ rationale = "`Local`/`Remote` over `LocalDeclaration`/`RemoteDeclaration` with `
 [[files]]
 path = "packages/chord/src/next/contracts/evolve.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/evolve_test.go#TestEvolveKeyedEdits"]
+rationale = "LocalEditor.Keyed/AddKeyed/RemoveKeyed; draft clones Keyed; refuseDeclared sees keyed; type-level PutKeyed/DropKeyed designed out. PiG: chord/next/contracts/evolve.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/fingerprint.ts"
@@ -1852,9 +1852,9 @@ rationale = "`Materialize`, `FingerprintOf`, `Hash64`, `NormalFormVersion` 2; pi
 [[files]]
 path = "packages/chord/src/next/contracts/history.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/evolve_test.go#TestEvolveKeyedEdits", "test:chord/next/contracts/history_test.go#TestRuntimeHistory"]
+rationale = "Change side \"keyed\". PiG: chord/next/contracts/history.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/host-kind.ts"
@@ -1873,9 +1873,9 @@ rationale = "re-export barrel; Go packages export names directly (lane D1)."
 [[files]]
 path = "packages/chord/src/next/contracts/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "barrel; Go imports the package (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/names.ts"
@@ -1908,9 +1908,9 @@ rationale = "`SnapshotSchema`, `SnapshotArguments`; TypeBox refinements/codecs/u
 [[files]]
 path = "packages/chord/src/next/data/args.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/data/args_test.go#TestBinds"]
+rationale = "Provider.Accepts, Binds. PiG: chord/next/data/args.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/data/errors.ts"
@@ -1936,9 +1936,9 @@ rationale = "re-export barrel (lane D1)."
 [[files]]
 path = "packages/chord/src/next/data/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "barrel (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/data/params.ts"
@@ -1964,9 +1964,9 @@ rationale = "`ValidatorFor`, `Check` over `internal/typebox` (counters `chord.da
 [[files]]
 path = "packages/chord/src/next/documents/address-source.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/address_source_test.go"]
+rationale = "AddressImpl.Owner and KeySource.Owner removed (SingletonSlot keeps its own owner). PiG: chord/next/documents/address_source.go, chord/next/documents/keyed_slot.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/documents/definition.ts"
@@ -1978,9 +1978,9 @@ rationale = "`DefineState(name, StateOptions)`, `StateDefinition`; the three `de
 [[files]]
 path = "packages/chord/src/next/documents/documents.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/documents_test.go#TestDocumentsCheckChecksADeclarationAsDeclareWouldChangingNothing"]
+rationale = "Documents.Check. PiG: chord/next/documents/documents.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/documents/fence.ts"
@@ -2013,9 +2013,9 @@ rationale = "re-export barrel for Chord's layers (lane D4)."
 [[files]]
 path = "packages/chord/src/next/documents/keyed-slot.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/address_source_test.go"]
+rationale = "AddressImpl.Owner and KeySource.Owner removed (SingletonSlot keeps its own owner). PiG: chord/next/documents/address_source.go, chord/next/documents/keyed_slot.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/documents/line.ts"
@@ -2048,9 +2048,9 @@ rationale = "`DocumentSlot`/`PersistedSlot` interfaces, `SlotDefinition`, `Singl
 [[files]]
 path = "packages/chord/src/next/documents/transaction.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/transaction_test.go#TestTransactionsCommitNothingWhenNothingChanged"]
+rationale = "`handle()` calls the store `TableHandle.AssertVersion` (Pi `transaction.ts`). PiG: chord/next/documents/transaction.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/activity.ts"
@@ -2062,16 +2062,16 @@ rationale = "D5b ported the source (`activity`, unexported; `ActivityCounts` exp
 [[files]]
 path = "packages/chord/src/next/host/adapted.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_adapted_test.go#TestAnOlderConsumerKeepsNothingOfItsInstancesMappingLetsAnEndedInstancesMappingDerivesGoWhileTheOlderReferenceWaitsWithAnOpenWatch", "test:chord/next/host/host_adapted_test.go#TestReloadAdaptedMembersFollowTheProvidersTopologyMapsExistingLocalWatchesWhenTheConsumersCurrentVersionBecomesAnAcceptedOlderOne"]
+rationale = "`refusal`, `adaptedMembers` (member, key, keyed, detach), `mappingsOf`, `stateMapping`. PiG: chord/next/host/host_adapted.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/attempt.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_attempt_test.go#TestAttemptParkedAttemptsRunNoTimerWhileParkedButParkedLongsNoDependencyDeadlineNoBackoffTheFactoryRunOnce", "test:chord/next/host/host_object_reload_test.go#TestReloadFatesSwapsAPureObjectInPlaceSameDocumentsAndInstanceIdNewCodeForNewCalls"]
+rationale = "`memberAt`, `keyMapping`, `pinKey` (blocking; `pinOwn` is Pi's `pinned`), `dropVersion`, `adaptedAt`, `attachedVariant`, `handOver`, `stopRoutines`, `handOverRoutines`, `drainCalls`, `startedByReload`, `reloadStarted`, `declaresJob` (by the names declared), `opensNatives`, `checked`/`settleCheck`, `seal(err, runs)`, `close` (handed-over jobs, routine calls, runs), `workSet`s (`running`, `routineRun.calls`, `runs`), `dependencies` in declaration order, `call(..., version)` (provider `checkArgs` at the consumer's version, `call` replacement, result mapped back), `park` (`settleCheck`, `parkedCause`, `blockedBy`), `pinKeys(long)`, `retryDependencies(walk)`; `prepareKeys` and the registry edges are gone. PiG: chord/next/host/host_attempt.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/backoff.ts"
@@ -2097,58 +2097,58 @@ rationale = "restated from d5b.md: `deadline` unexported; budget is a `time.Dura
 [[files]]
 path = "packages/chord/src/next/host/dependencies.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_dependencies_test.go#TestParkedLongIsNotReportedForAnAttemptThatLeavesParkingWithinReadyTimeoutItsTimerStops"]
+rationale = "`blocker`, `check.blocker/loadingOn`, `parkedCause`, new `parkedLong` (clock from parking, any blocker, `state`). PiG: chord/next/host/host_dependencies.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/destination.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_staging_test.go"]
+rationale = "placedHere. PiG: chord/next/host/host_destination.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/facet.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_facet_test.go"]
+rationale = "ServeOptions.Accepts; a Facet carries an identity (see (e)). PiG: chord/next/host/host_facet.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/follow.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment"]
+rationale = "comment-only change in Pi. PiG: chord/next/host/host_follow.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/host.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_host_test.go#TestHostReloadAWatchListenerMayCallReloadItself", "test:chord/next/host/host_host_test.go#TestHostLoadLeavesOutAndReportsInvalidAndDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad"]
+rationale = "load per plugin (LoadReport), reload (staging, closure fixpoint, one commit, fates, report), CommittedReload, rewait, bind's anonymous refusal, unboundCause via data.Binds. PiG: chord/next/host/host_host.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "barrels (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "barrels (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/members.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:chord/next/host/host_members_test.go#TestMemberCheckRefusesAMethodTheImplementationDoesNotOwn"]
+rationale = "comment-only change in Pi; the `Method` export has no Go counterpart (Go uses `contracts.MethodFunction`); `contributionOf` changed in the K-fold foundations part. PiG: chord/next/host/host_members.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/native.ts"
@@ -2160,9 +2160,9 @@ rationale = "D5b ported `nativeHandle`/`within`/`drained`; the 8 host cases run 
 [[files]]
 path = "packages/chord/src/next/host/object.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_object_reload_test.go#TestReloadFatesALiveLocalDependentOfARemovedTypeKeepsItsLastValueServedAgainItsDeriveHealsOneFrame", "test:chord/next/host/host_object_reload_test.go#TestReloadThePureSwapAnOldCallTouchingADocumentWhoseVersionRoseThrowsOnceR15TheDocumentIsMigrated", "test:chord/next/host/host_object_reload_test.go#TestReloadAStuckRoutineCallPastTheHandoverAnOldRoutineCallStuckPastTheHandoverDrainTimeoutTheOldAttemptSealedItsCommitRefusedAudit12", "test:chord/next/host/host_object_reload_test.go#TestReloadGCCollectsARemovedTypesObjectsItsProviderItsRegistryEntriesAndTheOldFacetsCode"]
+rationale = "Holder (`contract`, `retarget`, `following`, `removed`), `removal`, `reloadFate`, `swap` (gate, `done`), `retire`, `restart`, `retryReloaded`, `remove`, `reload`, `followed`, `attachable`, `instance`, `liveMember`, `keyedMapping`, `pinKey`, `binds`, `checkJob`, `jobRecords` redefine, failLive/`stopFollowing` (A10), `parked`/`unparked` with swap, `ending` (end/removed), retry by `retryWalk.visited`. `Promise.all` is `promiseAll2` / `promiseAllVoid`. The retry id set (`retried`), the member sources and the keyed members of the object are removed with their Pi code. PiG: chord/next/host/host_object.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/parked.ts"
@@ -2181,37 +2181,37 @@ rationale = "`presenceObject`/`presenceHolder` are `*chordObject` and `holder`. 
 [[files]]
 path = "packages/chord/src/next/host/ref-state.ts"
 change = "added"
-disposition = "deferred"
-evidence = ["test:chord/next/host/host_ref_state_test.go#TestRefStateIsWatchedFromItsCurrentStateAndReleaseEndsIt"]
-rationale = "Partial: partial (8 of 8 upstream cases missing: need a whole host, pending for D5a). all 8 upstream cases need a host/remote: `missing`. `RefState` is one struct (Kind, Cause, RetryAt *int64, Error) used as a pointer: LOADING/LIVE are `refLoading`/`refLive` (compared by pointer identity; non-zero-size struct so identities are distinct); `Failed`/`Ended` are aliases `failed`/`ended` of it. Consumers (D5a/D6) must use these names. `referenceState` takes the batch's `*chord.DeliveryScheduler` (seam note: host passes the batch's scheduler; state.Batch.deliveries is unexported). `Watch` is exported (it is `NativeWatchable`). PiG: chord/next/host/host_ref_state.go (lane D5b)."
+disposition = "unchanged-observable"
+evidence = ["test:chord/next/host/host_ref_state_test.go"]
+rationale = "one case changes in Pi: the last value stays readable while the hold is failed; host_ref_state_test.go has it. PiG: chord/next/host/host_ref_state.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/reference-keys.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_reference_keys_test.go#TestReferenceKeysAConsumerReleasedWhileTheObjectReactivatesLeavesNoHoldBehindNothingIsKeptForIt"]
+rationale = "`hold` blocks outside a section (like the old `pinKey`); pins are goroutines of the loop settling a `keyedPromise` in a section. PiG: chord/next/host/host_reference_keys.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/reference-source.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_reference_source_test.go#TestHostReferenceSourceAFailedAttemptIsCollectedAfterARetryWhileTheObjectItsMemberSourceAndARetainedWatchLive", "test:chord/next/host/host_reference_source_test.go#TestReferenceSourceAFailedAttemptIsCollectedAfterARebindWhileTheMemberSourceAndARetainedWatchLive"]
+rationale = "`Source` subclass as `memberSource` was; states unbound/bound/held/failed/ended; `fail/hold/vanish/end/bind`. PiG: chord/next/host/host_reference_source.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/reference.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_reference_test.go#TestKeyedStateMembersTwoConsumersOfOneKeyEachHoldTheirOwnPinReferencesOwnTheirKeysEachReleasedOnceWithItsReference"]
+rationale = "`target` final (`followed`, `attachable`, `instance`, `keyedMapping`, `pinKey(version)`, `call(version)`, `retry(walk)`, no `heldOnLink`/`member`/`lastValues`); `followed`/`followedKind`, `retryWalk`/`newRetryWalk(hops)`, `contractRef`, `binding.bind/retarget/removed/keepAll/memberSource/none/keyedMapping/pinKey/firstValues`, `place`; `retryOperation` deleted. PiG: chord/next/host/host_reference.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/retry-on.ts"
 change = "added"
-disposition = "deferred"
+disposition = "unchanged-observable"
 evidence = ["test:chord/next/host/host_retry_on_test.go#TestRetryWakesOnValueCallsOnly"]
-rationale = "Partial: partial (8 of 8 upstream cases missing: need a whole host, pending for D5a). all 8 upstream cases need a host/attempt: `missing`. Pi's type `RetrySource` and function `retrySource` collide once unexported: the type is `retrySourceType` (struct with `value *registries.RegistryValueSource` or `constant *state.Constant`). PiG: chord/next/host/host_retry_on.go (lane D5b)."
+rationale = "no Pi diff between e7a0df27 and 6d4b7443. (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/revocation.ts"
@@ -2223,23 +2223,23 @@ rationale = "D5b ported `revocationKeys`/`RevokedBy[R]` (only R generic); the 19
 [[files]]
 path = "packages/chord/src/next/host/root.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_root_test.go#TestHostRootRunsAnonymousWithAnExplicitUndefinedPrincipalOnlyAnOmittedOneTakesTheHosts", "test:chord/next/host/host_root_test.go#TestHostRootRefusesAnAnonymousScopeARemoteTypeServedHereForbiddenALocalOneItGets"]
+rationale = "no linked signal: the scope's own cancel + one AfterFunc on the caller; RootOptions.Anonymous (same form as lane NHttp). PiG: chord/next/host/host_root.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/route.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_route_test.go#TestRouteAdmissionRunsOneResolvePerAddressSharedByTheHoldsThatWaitForItRace1"]
+rationale = "no backoff; `Host.Route` returns `RouteHandle{Retry, Suspend}`; a rejected `resolve` or a link closed before its handshake fails the address's holders `failed { waiting }` (`path.unreachable`, `PathEvent`). Forced Go form: Pi's `#resolve` calls `options.resolve` synchronously inside the triggering section; the Go `Resolve` is lent that section (`Loop.Lend`) and must call `chordctx.Suspend(ctx)` before it waits for anything that is not a host section. `RouteHandle.Retry` returns `bool` (a Go-only addition). PiG: chord/next/host/host_route.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/routines.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_routines_test.go#TestOnCallsFirstWithTheCurrentValueAsRThenOncePerChangeWithItsOps"]
+rationale = "`routines.empty()`. PiG: chord/next/host/host_routines.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/sleep.ts"
@@ -2251,16 +2251,16 @@ rationale = "restated from d5b.md: `Sleep(ms time.Duration, ctx) error` blocks; 
 [[files]]
 path = "packages/chord/src/next/host/staging.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_staging_test.go#TestStagingAThrowKeepsThePluginOnItsOldCodeReported"]
+rationale = "stagePlugin, addStaged, Staged (`staged`), StagedPlugin, Recorded, recordFactory + recording self, migratesTables, IsPluginName (exported: the plugins package needs it). Pi's `Map` order is `namedMap`. Forced differences below. PiG: chord/next/host/host_staging.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/unbound.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/host_unbound_test.go#TestTheIndexWakesTheRequestsOfTheNamesAReloadServesOnlyCarryOverPublicationsWakePerName"]
+rationale = "`unboundIndex.wake(names)`. PiG: chord/next/host/host_unbound.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/host/uuid.ts"
@@ -2272,9 +2272,9 @@ rationale = "restated from d5b.md (no upstream test file; the tests are the prop
 [[files]]
 path = "packages/chord/src/next/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "aggregate barrel of every layer; Go imports the layer packages (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/jobs/definition.ts"
@@ -2293,44 +2293,44 @@ rationale = "barrel: Go imports the package (DESIGN-go-layout.md section 2); wha
 [[files]]
 path = "packages/chord/src/next/jobs/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "barrel (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/jobs/job.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_records_test.go#TestRecordsJobsAcrossAReloadAJobTheNewCodeNoLongerDeclaresBlocksItsRunsVersionDeclaredAgainTheyGoOn"]
+rationale = "`handed` state, `handOver`, `seal(err, reason)`, own `definition` for args, `outcomeOf` in finish, `admitRun` owner member. PiG: chord/next/host/jobs_job.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/jobs/persisted.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_persisted_test.go#TestPersistedVersionsResolvedByAReloadAPersistedRunBlockedForItsVersionAtItsLoadIsResumedByTheReloadThatBringsItsVersion"]
+rationale = "`forgetBlockedState`. PiG: chord/next/host/jobs_persisted.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/jobs/records.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_records_test.go"]
+rationale = "`redefine`, `check`, `undeclare`, `retryBlocked`, `takes`, `argsOf`, `outcomeOf`, `entryOf`, `unblock` change, `reload` outcome, per-run version/fingerprint, blockedPhase. PiG: chord/next/host/jobs_records.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/jobs/run-states.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_records_test.go#TestRecordsARunCutOffByItsAttemptsSealEndsAbortedRestartAndIsFinishedOnTheNextLiveAttempt"]
+rationale = "`redefine`, `migrated`, `older` definitions. PiG: chord/next/host/jobs_run_states.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/jobs/run.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_run_test.go#TestARunHasAnEntryPerPhaseArgsAndStateWhileRunningOrFinishingNeitherWhenBlockedWithItsReason"]
+rationale = "fingerprint, mapped, blockedPhase, `entryFor(state, args)`. PiG: chord/next/host/jobs_run.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/jobs/running.ts"
@@ -2342,16 +2342,16 @@ rationale = "`Running` is `running` embedding `state.Source` (state.SourceHandle
 [[files]]
 path = "packages/chord/src/next/jobs/stored.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/jobs_persisted_test.go#TestPersistedRecordsARunsRecordAndStateLiveInTheStoreWhileItIsUnsettledFinishDeletesTheRecordRetiresTheState"]
+rationale = "`storedRun(run, fields)` uses the run's fingerprint; `clearBlocked` field is the Go form of `blocked: undefined`. PiG: chord/next/host/jobs_stored.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/link/binary.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go#TestMessages", "test:chord/next/link/message_test.go#TestTheBinaryCodec", "test:chord/next/link/message_test.go#TestTheTextCodec", "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi"]
+rationale = "RetryMessage{Hops}, RETRY_HOPS, schema 1..16. PiG: chord/next/link/binary.go, chord/next/link/text.go, chord/next/link/message.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/link/channel.ts"
@@ -2377,9 +2377,9 @@ rationale = "re-export barrel; Go packages export names directly (lane D2)."
 [[files]]
 path = "packages/chord/src/next/link/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "barrel (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/link/ipc.ts"
@@ -2398,9 +2398,9 @@ rationale = "`Link`, `LinkEnd`, `MemoryLinkPair`/`MemoryLink` (+ `Flushed`: the 
 [[files]]
 path = "packages/chord/src/next/link/message.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go#TestMessages", "test:chord/next/link/message_test.go#TestTheBinaryCodec", "test:chord/next/link/message_test.go#TestTheTextCodec", "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi"]
+rationale = "RetryMessage{Hops}, RETRY_HOPS, schema 1..16. PiG: chord/next/link/binary.go, chord/next/link/text.go, chord/next/link/message.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/link/part.ts"
@@ -2412,9 +2412,9 @@ rationale = "`Part` (sealed: `Text`, `Bytes`, `*DeflatedPart`), `Limits`/`PartLi
 [[files]]
 path = "packages/chord/src/next/link/text.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/link/message_test.go#TestMessages", "test:chord/next/link/message_test.go#TestTheBinaryCodec", "test:chord/next/link/message_test.go#TestTheTextCodec", "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi"]
+rationale = "RetryMessage{Hops}, RETRY_HOPS, schema 1..16. PiG: chord/next/link/binary.go, chord/next/link/text.go, chord/next/link/message.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/link/values.ts"
@@ -2433,9 +2433,9 @@ rationale = "`WebSocketLike`, `WebSocketLink`; the event names are `WebSocketEve
 [[files]]
 path = "packages/chord/src/next/registries/contribution.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/record_test.go#TestAReloadsNewContributionAdapter"]
+rationale = "adapter identity in adapt cache; Reads()/cycle edge removed. PiG: chord/next/registries/contribution.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/registries/entries.ts"
@@ -2454,16 +2454,16 @@ rationale = "re-export barrel (lane D1)."
 [[files]]
 path = "packages/chord/src/next/registries/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "barrel: Go imports the package (the helper `try`/`asError` that runs plugin code lives in chord/next/registries/internal.go). KFix2 S1 removed the `sameFunc` helper: `adaptation`, `mapping` and `mapFailure` carry the `*provided` record and compare pointers, as Pi compares the provider adapter objects (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/registries/record.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/record_test.go#TestTheTable", "test:chord/next/registries/record_test.go#TestProviderCheck"]
+rationale = "CheckProvider, Serve (no error, replaces, batch), Unserve, ComposeServed; RegistryEdge/AssertNoCycle/reads removed. PiG: chord/next/registries/record.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/registries/registry.ts"
@@ -2475,9 +2475,9 @@ rationale = "`DefineRegistry`, `Registry[C,V]`, `RegistryProvider`, `RegistryAcc
 [[files]]
 path = "packages/chord/src/next/registries/value.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/registries/value_test.go#TestAReloadsNewValueAdapter"]
+rationale = "mapped/mapFailure keyed by adapter; Record() removed. PiG: chord/next/registries/value.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/remote/calls.ts"
@@ -2489,58 +2489,58 @@ rationale = "`CallWindow<C>` is `callWindow[C queuedCall]`; Pi's `Set<C>` is a s
 [[files]]
 path = "packages/chord/src/next/remote/consumer.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_remote_object_test.go", "test:chord/next/host/remote_hold_reload_test.go"]
+rationale = "`retry(hold, hops)`; `failed` rejects the hold's calls still waiting for a slot. PiG: chord/next/host/remote_consumer.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/remote/hold.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_hold_reload_test.go#TestHoldsAcrossAReload"]
+rationale = "`callable`, `contract`, `#request`, `retry(hops)`, `moved` (rebind / unbind / follow the instance), `#unbind`, `#rebind`, `removed`, `retarget`/`following`, boundEntry at the hold's version (`liveMember`), `bindTo` at `VariantsAt`, `method` by `previous` names. PiG: chord/next/host/remote_hold.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/remote/host-link.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_host_link_test.go#TestHostLinkOriginsOnlyFromRelays"]
+rationale = "origin on a child link is a protocol error `<kind>: an origin on a child link`; `drop(provider)`. PiG: chord/next/host/remote_host_link.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/remote/internal.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "barrel (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/remote/path.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_path_test.go"]
+rationale = "not redone. PiG: chord/next/host/remote_path.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/remote/provider.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_provider_test.go#TestProviderOrigins"]
+rationale = "`settle`, `unbound`, `callable`, flush skips unbound holds. PiG: chord/next/host/remote_provider.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/remote/relay.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_relay_test.go#TestRelayIDsAndOrigins"]
+rationale = "retry forwarded with its hops as they are (`unreachable` was done by the lead). PiG: chord/next/host/remote_relay.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/remote/remote-object.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_remote_object_test.go"]
+rationale = "`followed`, `attachable` (`attachedVariant` on the binding), `instance` nil, `keyedMapping`, `retry(walk)` with `walk.hops > 0`, `failed` no longer ignored when live, `move` retargets in a batch, `heldOnLink`/`lastValues` removed, no `dependencyMoved` on attach/drop. PiG: chord/next/host/remote_remote_object.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/remote/replica.ts"
@@ -2552,9 +2552,9 @@ rationale = "`Replica` is `replica` embedding `state.Source` (a `state.SourceHan
 [[files]]
 path = "packages/chord/src/next/state/batch.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/state/batch_own_test.go#TestBatchCount"]
+rationale = "CounterContractAdapts. PiG: chord/next/state/batch.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/state/derive.ts"
@@ -2587,9 +2587,9 @@ rationale = "`NativeSource`, `FollowedSource`, `NativeStart`, `NativeObserver`, 
 [[files]]
 path = "packages/chord/src/next/state/watchable.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:chord/next/state/watchable_test.go#TestConstant"]
+rationale = "lazy watch/subscriber sets: Go orderedSet zero value is already lazy; doc comments updated. Exports needed by host reference-source (Batch, Dependent, DeriveSource, HandedOut, Source, Subscriber) already exist. PiG: chord/next/state/watchable.go (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next/state/writable.ts"
@@ -2651,7 +2651,7 @@ rationale = "`WriteCatalog` writes in name order (Go maps unordered). PiG: catal
 path = "packages/chord/src/next/store/claims.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:chord/next/store/claims_test.go#TestClaims/assert_what_a_claim_would_refuse"]
+evidence = ["test:chord/next/store/claims_test.go#TestClaims"]
 rationale = "`assertTable`/`assertDocuments` -> `AssertTable`/`AssertDocuments`; `#claim`/`#assert` -> `claim`/`assert` over one `refusal(key, claimant)` (locked first, then another holder). No upstream test exercises them in the store directory (the host's staging, `staging.ts`, calls them), so the evidence is a Go-only case. PiG: chord/next/store/claims.go (lane kfold)."
 
 [[files]]
@@ -2770,7 +2770,7 @@ rationale = "Step.Run/RunCounted/Get/All in call order within the step's transac
 path = "packages/chord/src/next/store/store.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:chord/next/store/store_test.go#TestStore/a_commit_series", "test:chord/next/store/table_handle_test.go#TestTableHandle/the_version_fence_against_a_migration_in_flight_(fix_round_1"]
+evidence = ["test:chord/next/store/store_test.go#TestStore", "test:chord/next/store/table_handle_test.go#TestTableHandle"]
 rationale = "`commitSeries` -> `CommitSeries` (+ `SeriesCommit`, `SeriesResult`, private `series`, `seriesProgress`, `watchedExecutor`); `commitInBatch` removed (no Go caller; clean cutover); `tableVersion`/`announceTable` -> `TableVersion`/`AnnounceTable`; `#write` split into `write` (writes, catalog, outbox) and `writeMeta`, which `step` and the series call; doc wording \"adopt\" -> \"publish\" for `Attachment`/`Batch()` (Pi's `store.batch`, here the existing `Batch()`). PiG: chord/next/store/store.go (lane kfold)."
 
 [[files]]
@@ -2791,7 +2791,7 @@ rationale = "`EvolveTable` with one concrete `*TableEditor` (editor types design
 path = "packages/chord/src/next/store/table-handle.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:chord/next/store/table_handle_test.go#TestTableHandle/the_version_fence_of_old_handles_(R15"]
+evidence = ["test:chord/next/store/table_handle_test.go#TestTableHandle"]
 rationale = "`assertVersion` -> `AssertVersion() error`, called by `Page`, `Get`, `Count` after the liveness check (`Rows` reads through `Page`). PiG: chord/next/store/table_handle.go (lane kfold)."
 
 [[files]]
@@ -2805,7 +2805,7 @@ rationale = "unions (`TableEdit`, `DataStep`, `TablePlan`) are Kind-tagged struc
 path = "packages/chord/src/next/store/table-migration.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:chord/next/store/table_handle_test.go#TestTableHandle/the_version_fence_against_a_migration_in_flight_(fix_round_1"]
+evidence = ["test:chord/next/store/table_handle_test.go#TestTableHandle"]
 rationale = "`migrateVersion` announces the version before its first commit and withdraws it after its last (`defer`); the commits moved to `migrateSteps`. The `macrotask` change (`setImmediate` read once and checked with `typeof`) is a JS runtime feature check: Go yields with `runtime.Gosched()` (existing designed-out note, extended in the file header). PiG: chord/next/store/table_migration.go (lane kfold)."
 
 [[files]]
@@ -2854,7 +2854,7 @@ rationale = "aa9cf15b (principals, placement checks, state init) and b45e0ebc: a
 path = "packages/chord/src/output.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:chord/output/output_test.go#TestToolOutputBounds/removes_whole_ANSI_escape_sequences", "test:chord/output/output_sanitize_golden_test.go#TestSanitizeOutputEscapeSequencesMatchPi"]
+evidence = ["test:chord/output/output_test.go#TestToolOutputBounds", "test:chord/output/output_sanitize_golden_test.go#TestSanitizeOutputEscapeSequencesMatchPi"]
 rationale = "`ESCAPE_SEQUENCE` is the same regex in Go RE2 (leftmost-first alternation, same matches as JS); `SanitizeOutput` removes escape sequences first, then the control characters; a string with no ESC byte skips the regex. `OutputBuffer` sanitizes at `Snapshot` on the retained text, so sequences split across pushes are removed whole, as upstream's test requires. PiG: chord/output/output.go (lane kfold)."
 
 [[files]]
@@ -3147,9 +3147,9 @@ rationale = "PORT_MAP row is ✅ ported (coding/cli/main.go). coverage.md report
 [[files]]
 path = "packages/coding-agent/src/cli/args.ts"
 change = "added"
-disposition = "pending"
+disposition = "deferred"
 evidence = []
-rationale = ""
+rationale = "Partial: the help text is generated from Pi (coding/cli/help_upstream.txt via gen-help.sh) and was not regenerated at the pin: Pi 2c8d1feb's help lists `PI_SELF_UPDATE_COMMAND` (args.ts:466), help_upstream.txt does not yet; the setting itself is ported (see config.ts, package-manager-cli.ts, settings-schema.ts) and docs/site environment-variables.md documents it. Missing: regenerate coding/cli/help_upstream.txt and the PiG help for the new env row, then TestHelpMatchesPi at the pin. (lane nfixca)."
 
 [[files]]
 path = "packages/coding-agent/src/cli/auth-check.ts"
@@ -3231,9 +3231,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/startup_ui.go (Sho
 [[files]]
 path = "packages/coding-agent/src/config.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/config_upstream_test.go#TestConfigConfiguredSelfUpdateCommandFillsPlaceholdersInEveryArgument"]
+rationale = "PIG_ alias first. PiG: internal/codingagent/selfupdate_configured.go, selfupdate_tier.go (lane nfixca)."
 
 [[files]]
 path = "packages/coding-agent/src/core/agent-session-runtime.ts"
@@ -3504,9 +3504,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/keybindings.go, in
 [[files]]
 path = "packages/coding-agent/src/core/mcp-servers.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/mcpext/config_test.go#TestMCPConfigValidatesTheOAuthCallbackURLScopeAndClientName"]
+rationale = "the OAuth `clientRegistration` value `auto` is validated; `IsClientMetadataDocumentCallback` recognises the document callback. PiG: coding/extension/mcp_servers.go (lane nfixca)."
 
 [[files]]
 path = "packages/coding-agent/src/core/messages.ts"
@@ -3686,16 +3686,16 @@ rationale = "Pi b4b72a35: get/setExtensionChangelogVersion as GetExtensionChange
 [[files]]
 path = "packages/coding-agent/src/core/settings-schema.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/config_schemas_upstream_test.go#TestCommittedSchemasMatchTheRenderedArtifacts", "test:internal/codingagent/settings_test.go#TestSelfUpdateCommandSettingIsReadFromGlobalSettingsOnly"]
+rationale = "schema JSON is byte-identical to Pi's diff. PiG: internal/codingagent/configschema/settings.go, internal/codingagent/settings.go, schemas/settings.schema.json (lane nfixca)."
 
 [[files]]
 path = "packages/coding-agent/src/core/skills.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/prompts/upstream_skills_test.go#TestUpstreamCoreFormatSkillsForPrompt", "test:internal/codingagent/upstream_skills_test.go#TestCoreSkillMetadataUsesYAMLTypes"]
+rationale = "skills hint sentence. PiG: internal/codingagent/prompts/coding.go, extensions/sdk/session_skill_helpers.go (lane nfixca)."
 
 [[files]]
 path = "packages/coding-agent/src/core/slash-commands.ts"
@@ -3714,9 +3714,9 @@ rationale = ""
 [[files]]
 path = "packages/coding-agent/src/core/system-prompt.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/prompts/system_prompt_second_half_upstream_test.go#TestUpstreamSystemPromptSecondHalfExactSections", "test:internal/codingagent/prompts/coding_test.go#TestToolsWithoutSnippetsAreNotListed"]
+rationale = "preamble, tools tail, docs section (D2 product names kept: \"PiG documentation\", \"pig\" preamble). PiG: internal/codingagent/prompts/coding.go, internal/codingagent/prompts/docs_section.go (lane nfixca)."
 
 [[files]]
 path = "packages/coding-agent/src/core/telemetry.ts"
@@ -3749,9 +3749,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/tools/edit_diff.go
 [[files]]
 path = "packages/coding-agent/src/core/tools/edit.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/prompt_contributions_port_test.go#TestToolSystemPromptContributionsPort", "test:coding/session_prompt_options_review_test.go#TestSessionPromptOptionsEmptyCollectionsArePresent"]
+rationale = "two guidelines. PiG: internal/codingagent/tools/edit.go, coding/testdata/pi_tool_definitions.json (lane nfixca)."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/file-mutation-queue.ts"
@@ -4022,9 +4022,9 @@ rationale = "PORT_MAP records this file n/a with the reason: (lazy dynamic-impor
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/cli.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/mcpext/cli_upstream_test.go#TestMcpCommandAddSavesTheResolvedExposureAlias"]
+rationale = "`mcp add --oauth-client-registration` (dcr|cimd|auto). PiG: coding/mcpext/cli.go, coding/mcpext/testdata/mcp_help.txt (lane nfixca)."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/config.ts"
@@ -4050,9 +4050,9 @@ rationale = "PORT_MAP row is ✅ ported (coding/mcpext/log.go). coverage.md repo
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/oauth.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/mcpext/oauth_cimd_test.go#TestMCPOAuthCIMDAcceptsTheAuthorizationResponseOnlyOnTheServerSpecificRedirectURI"]
+rationale = "`auto` registers the client dynamically (DCR) unless the application is `pi`, where it offers the client metadata document: ported faithfully (offersClientMetadataDocument); PiG's app name is pig, so PiG's default stays DCR and only `cimd` uses pi.dev's document (tests run the Pi cases with AppName \"pi\" and add the pig case). Owner call (D2): if PiG should present as a pi.dev client by default it needs its own document. PiG: coding/mcpext/oauth.go (lane nfixca)."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/mcp/resources.ts"
@@ -4610,9 +4610,9 @@ rationale = "PORT_MAP row is ✅ ported (coding/cli/rpc_types.go, coding/cli/rpc
 [[files]]
 path = "packages/coding-agent/src/package-manager-cli.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/cli/self_update_configured_test.go#TestConfiguredSelfUpdateCommandEnvReplacesTheTierAndTheSetting"]
+rationale = "D39 tier: explicit configured owner, no fallthrough. PiG: coding/cli/self_update.go, self_update_configured.go (lane nfixca)."
 
 [[files]]
 path = "packages/coding-agent/src/rpc-entry.ts"
@@ -5775,6 +5775,279 @@ change = "added"
 disposition = "ported"
 evidence = ["test:mcp/mcptest/inmemory_test.go#TestInMemoryTransportDropsQueuedMessagesOfAClosedEndAndReportsPlacement", "test:mcp/mcptest/inmemory_test.go#TestInMemoryTransportListenersCanBeDisposedAndErrorsAreEmitted", "test:mcp/mcptest/inmemory_test.go#TestInMemoryTransportPairDeliversInOrderAndCloseNotifiesBothEnds"]
 rationale = "PORT_MAP row is ✅ ported (mcp/transport.go (Send(ctx) carries McpTransportSendOptions.signal as its context)). coverage.md reports 36 behavioral verifications for this file (0 scenarios whose covers list it, 36 named unit tests); the first of each are cited."
+
+[[files]]
+path = "packages/schema/src/annotations.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/conformance_upstream_test.go#TestConformanceSuite", "test:schema/errors_golden_test.go#TestHandWrittenCaseErrorsMatchPi"]
+rationale = "closure compiler ported 1:1 (see design notes). PiG: schema/annotations.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/builders.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/builders_upstream_test.go#TestBuildersProducePlainJSONSchema", "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf", "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound"]
+rationale = "closure compiler ported 1:1 (see design notes). PiG: schema/builders.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/checks.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/conformance_upstream_test.go#TestConformanceSuite", "test:schema/errors_golden_test.go#TestErrorsMatchPi"]
+rationale = "closure compiler ported 1:1 (see design notes). PiG: schema/checks.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/compiler.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/conformance_upstream_test.go#TestConformanceSuite", "test:schema/errors_golden_test.go#TestErrorsMatchPi", "test:schema/errors_golden_test.go#TestHandWrittenCaseErrorsMatchPi", "test:schema/bench_test.go#BenchmarkCheck"]
+rationale = "closure compiler ported 1:1 (see design notes). PiG: schema/compiler.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/explain.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/validator_upstream_test.go#TestErrors", "test:schema/errors_golden_test.go#TestErrorsMatchPi", "test:schema/errors_golden_test.go#TestHandWrittenCaseErrorsMatchPi", "test:schema/errors_golden_test.go#TestSpeedCaseErrorsMatchPi"]
+rationale = "closure compiler ported 1:1 (see design notes). PiG: schema/explain.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/index.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/formats_test.go#TestFormatsNames", "test:schema/formats/formats_test.go#TestFormatsReturnsFreshMap"]
+rationale = "`formats` (frozen record) becomes `Formats()`, a fresh map per call. PiG: schema/formats/index.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/date.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_date.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/date_time.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_date_time.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/duration.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_duration.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/email.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_email.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/hostname.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_hostname.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/idn_email.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_idn_email.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/idn_hostname.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_idn_hostname.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/idna/format/bidi.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/internal/idna/classes_test.go#TestPatternClassesMatchPi"]
+rationale = "idna is `schema/formats/internal/idna` because `idna/hostname.ts` and `hostname.ts` both export `IsHostname`. PiG: schema/formats/internal/idna/format_bidi.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/idna/format/puny.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/internal/idna/classes_test.go#TestPatternClassesMatchPi"]
+rationale = "idna is `schema/formats/internal/idna` because `idna/hostname.ts` and `hostname.ts` both export `IsHostname`. PiG: schema/formats/internal/idna/format_puny.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/idna/hostname.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/internal/idna/classes_test.go#TestPatternClassesMatchPi"]
+rationale = "idna is `schema/formats/internal/idna` because `idna/hostname.ts` and `hostname.ts` both export `IsHostname`. PiG: schema/formats/internal/idna/hostname.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/idna/idn-hostname.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/internal/idna/classes_test.go#TestPatternClassesMatchPi"]
+rationale = "idna is `schema/formats/internal/idna` because `idna/hostname.ts` and `hostname.ts` both export `IsHostname`. PiG: schema/formats/internal/idna/idn_hostname.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/idna/index.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "re-export of idna/hostname.ts and idna/idn-hostname.ts; Go package idna exports them directly (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/idna/label/ascii.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/internal/idna/classes_test.go#TestPatternClassesMatchPi"]
+rationale = "idna is `schema/formats/internal/idna` because `idna/hostname.ts` and `hostname.ts` both export `IsHostname`. PiG: schema/formats/internal/idna/label_ascii.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/idna/label/puny.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/internal/idna/classes_test.go#TestPatternClassesMatchPi"]
+rationale = "idna is `schema/formats/internal/idna` because `idna/hostname.ts` and `hostname.ts` both export `IsHostname`. PiG: schema/formats/internal/idna/label_puny.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/idna/label/unicode.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/internal/idna/classes_test.go#TestPatternClassesMatchPi"]
+rationale = "idna is `schema/formats/internal/idna` because `idna/hostname.ts` and `hostname.ts` both export `IsHostname`. PiG: schema/formats/internal/idna/label_unicode.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/idna/pattern/pattern.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/internal/idna/classes_test.go#TestPatternClassesMatchPi"]
+rationale = "idna is `schema/formats/internal/idna` because `idna/hostname.ts` and `hostname.ts` both export `IsHostname`. PiG: schema/formats/internal/idna/pattern.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/ipv4.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_ipv4.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/ipv6.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_ipv6.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/iri.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_iri.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/iri_reference.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_iri_reference.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/json_pointer.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_json_pointer.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/regex.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/conformance_test.go#TestConformance", "test:schema/internal/ecmaregex/ecmaregex_test.go#TestFormatRegex"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_regex.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/relative_json_pointer.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_relative_json_pointer.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/time.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it ; `IsTimeWithZone(value, strictTimeZone)` carries Pi's optional second argument. PiG: schema/formats/typebox_time.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/uri.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_uri.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/uri_reference.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_uri_reference.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/uri_template.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_uri_template.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/formats/typebox/uuid.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_uuid.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/index.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "re-export barrel: the Go exports are the package-level identifiers of schema (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/resolver.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/conformance_upstream_test.go#TestConformanceSuite", "test:schema/errors_golden_test.go#TestHandWrittenCaseErrorsMatchPi"]
+rationale = "closure compiler ported 1:1 (see design notes). PiG: schema/resolver.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/shared.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/shared_upstream_test.go#TestSharedChecks", "test:schema/internal/ecmaregex/golden_test.go#TestGoldenRegex"]
+rationale = "closure compiler ported 1:1 (see design notes). PiG: schema/shared.go, schema/internal/ecmaregex/*.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/types.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/builders_upstream_test.go#TestBuildersProducePlainJSONSchema"]
+rationale = "closure compiler ported 1:1 (see design notes). PiG: schema/types.go (lane nschema)."
+
+[[files]]
+path = "packages/schema/src/validator.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:schema/validator_upstream_test.go#TestErrors", "test:schema/validator_upstream_test.go#TestValues", "test:schema/validator_upstream_test.go#TestOptions", "test:schema/validator_upstream_test.go#TestSchemas"]
+rationale = "closure compiler ported 1:1 (see design notes). PiG: schema/validator.go (lane nschema)."
 
 [[files]]
 path = "packages/telemetry/src/index.ts"

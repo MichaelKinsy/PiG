@@ -41,7 +41,6 @@ func resolveProjectTrusted(ctx context.Context, opts projectTrustResolutionOptio
 		hasTrustResources = codingagent.HasProjectContextFile(opts.CWD)
 	}
 	if !hasTrustResources {
-		// pig divergence (D217): Pi 31ade0e0 (#10947) lets a saved decision beat auto-trust; pinned Pi auto-trusted a project without trust-requiring resources whatever trust.json held.
 		decision, err := opts.Store.Get(opts.CWD)
 		if err != nil {
 			return false, err

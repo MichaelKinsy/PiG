@@ -641,7 +641,6 @@ def _wrap_single_line(line: str, width: int) -> list[str]:
     current_len = 0
     for token in _split_into_tokens(line):
         token_len = visible_width(token)
-        # pig divergence (D217): Pi 2ce9d527 (#10925) the codes that close a styled word sit on the following space token, which is still whitespace.
         is_whitespace = _is_whitespace_token(token)
         if token_len > width and not is_whitespace:
             if current:

@@ -262,8 +262,7 @@ func runGoldenCase(t *testing.T, c goldenCase) string {
 }
 
 // envApiKeyAuth resolves and logs in as Pi's does.
-// Pi d3398f82 (#11492, pig divergence (D217)): LiteLLM's pre-call check ContextWindowExceededError is a context overflow. The pinned
-// vectors cannot gain a case, so the carried pattern is pinned by hand.
+// Pi d3398f82 (#11492): LiteLLM's pre-call check ContextWindowExceededError is a context overflow. The pattern is pinned by hand.
 func TestLiteLLMContextWindowExceededIsOverflow(t *testing.T) {
 	message := func(stop, text string) map[string]any {
 		return map[string]any{"role": "assistant", "stopReason": stop, "errorMessage": text}
@@ -280,7 +279,7 @@ func TestLiteLLMContextWindowExceededIsOverflow(t *testing.T) {
 	}
 }
 
-// Pi c719d5b0 (#11572, #11537, pig divergence (D217)): Zhipu/Z.ai usage limit code 1308 arrives as HTTP 429 and resets after hours, so it is not retried.
+// Pi c719d5b0 (#11572, #11537): Zhipu/Z.ai usage limit code 1308 arrives as HTTP 429 and resets after hours, so it is not retried.
 func TestZhipuUsageLimit1308IsNotRetryable(t *testing.T) {
 	for text, want := range map[string]bool{
 		`429 {"error":{"code":"1308","message":"Usage limit reached for 5 hour."}}`: false,

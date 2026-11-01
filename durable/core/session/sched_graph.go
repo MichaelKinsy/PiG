@@ -149,7 +149,7 @@ func (s *Scheduler) belowCancelled(start up) bool {
 func (s *Scheduler) loadChain(start up, o *overlay) error {
 	s.chainInstalled = false
 	passed, err := s.loadChainWalk(start, o)
-	// pig divergence (D217): Pi 35dfa757 idle counts a live task whose chain is not loaded as inside every scope it may be in: what this
+	// Pi 35dfa757 idle counts a live task whose chain is not loaded as inside every scope it may be in: what this
 	// load resolved can make other scopes idle without a task change below them. The conversations above a task that became loaded
 	// are checked next; a load that stopped early owes a check of every scope.
 	everything := s.chainInstalled && s.hasLiveUnloaded()

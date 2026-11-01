@@ -645,7 +645,7 @@ func (s *TaskScheduler) wakeLocked() Wake { return s.wakeAtLocked(s.options.Now(
 func (s *TaskScheduler) wakeAtLocked(now float64) Wake {
 	// A reconcile pass with work to do is work too: it finalizes held outcomes and marks cascades, at open as recovery. A
 	// process that dies before it lands must be woken again. A pass with nothing to do is not.
-	// pig divergence (D217): Pi 35dfa757 the earliest sleep comes from the sleeping tasks, and the live tasks are scanned for one that
+	// Pi 35dfa757 the earliest sleep comes from the sleeping tasks, and the live tasks are scanned for one that
 	// can run only while nothing else answers.
 	active := len(s.invocations) > 0 || s.reconcilingWork > 0 || s.reconcileWorkLocked() || s.runsNowLocked(now)
 	return Wake{Active: active, At: s.earliestSleepLocked(now)}
@@ -997,7 +997,7 @@ func (s *TaskScheduler) observe(publication session.ObservedCommit) {
 			before = &previous
 		}
 		s.trackLocked(before, record)
-		// pig divergence (D217): Pi 35dfa757 idleness counts live tasks, so only a task that became live or ended can change it.
+		// Pi 35dfa757 idleness counts live tasks, so only a task that became live or ended can change it.
 		// Collected before sweepLocked, which may forget the chain of a task that ended.
 		// A new task whose chain is not loaded has its scopes settled once the chain is (loadChainLocked), where Pi has loaded the chain
 		// of a new task in the commit that creates it.
@@ -1188,8 +1188,8 @@ func (s *TaskScheduler) settleIdleWaitsLocked(scopes idleScopes) []func() {
 // the conversations above it, so no check visits every conversation. It runs behind the host listeners of the commit that queued
 // it.
 //
-// pig divergence (D217): Pi 35dfa757 settles the conversations above the changed tasks, and expires idle ranges from an index ordered
-// by idleSince, where 1.4.0+b3a29f11 re-checked every kept range after every commit that changed a task.
+// Pi 35dfa757 settles the conversations above the changed tasks, and expires idle ranges from an index ordered
+// by idleSince.
 func (s *TaskScheduler) settleIdleScopes(scopes idleScopes) {
 	now := s.options.Now()
 	// #settleIdle and the #scheduleExpiry it calls each read the setting, so a failing source is reported twice.
@@ -1690,7 +1690,7 @@ func (s *TaskScheduler) loadScopesLocked(queued bool) ([]durable.ConversationId,
 func (s *TaskScheduler) loadChainLocked(start up, staged *overlay) error {
 	var passed []durable.TaskId
 	installed := false
-	// pig divergence (D217): Pi 35dfa757 idleLocked counts a live task whose chain is not loaded as inside every scope it may be in:
+	// Pi 35dfa757 idleLocked counts a live task whose chain is not loaded as inside every scope it may be in:
 	// what this load resolved can make other scopes idle without a task change below them. The conversations above a task that
 	// became loaded are checked next; a load that stopped early owes a check of every scope.
 	defer func() {

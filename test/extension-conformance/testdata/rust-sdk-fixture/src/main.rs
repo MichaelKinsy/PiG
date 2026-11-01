@@ -2361,7 +2361,7 @@ fn main() {
             options.expanded
         )])
     });
-    // pig divergence (D217) test fixture: Pi 9376c8d1 (#4748) key_text and key_hint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
+    // Test fixture, Pi 9376c8d1 (#4748): key_text and key_hint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
     ext.message_renderer("keyhints-message", |_ctx, message, options, _width| {
         let id = message.get("content").and_then(Value::as_str).unwrap_or("");
         Ok(vec![format!(

@@ -93,8 +93,6 @@ func isASCIIWord(word string) bool {
 //
 // pig additive (D92): a Piglet Binary built with pig_strip_word_dictionaries has no ICU dictionary data, so each run of Han, Hiragana, Katakana, Thai, Lao, Khmer or Myanmar text is one word, as ICU
 // segments it without the dictionaries.
-//
-// pig divergence (D217): Pi 79006f06 (#11037) pinned Pi lowercases the text and splits it on /[^a-z0-9]+/, which drops every letter outside ASCII, so a query in another script finds nothing.
 func Tokenize(text string) []string {
 	text = norm.NFC.String(text)
 	text = lowerUpper.ReplaceAllString(text, "$1 $2")

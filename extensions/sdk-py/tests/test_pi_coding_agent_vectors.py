@@ -142,7 +142,6 @@ def test_truncate_to_visual_lines_matches_pi():
 
 
 def test_render_hints_read_the_host_keybindings(monkeypatch):
-    # pig divergence (D217): Pi 9376c8d1 (#4748) keyText and keyHint on the tool render context and the message and entry options.
     case = _cases("keyHint")[0]
     result = case["result"]
     _install_palette(result["palette"])

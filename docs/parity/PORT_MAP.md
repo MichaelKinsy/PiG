@@ -20,7 +20,7 @@ Release history and open work belong in the tracked sync plan and generated cove
 
 ## Package scope
 
-PORT_MAP maps every source file of every package in the upstream monorepo: the fourteen packages listed in `test/parity/upstreampackages/packages.json`, which a test requires to equal the package directories of the pinned mirror. A package that upstream adds fails `make port-map-drift` until it is listed and mapped. The coverage report counts each package and the sums in `test/parity/coverage.md`; PiG's experimental remote Session stack (`packages/client`, `packages/protocol` and `packages/server`) and the experimental parts of `packages/coding-agent` are reported separately as the part of the monorepo that Pi does not ship in its npm package.
+PORT_MAP maps every source file of every package in the upstream monorepo: the fifteen packages listed in `test/parity/upstreampackages/packages.json`, which a test requires to equal the package directories of the pinned mirror. A package that upstream adds fails `make port-map-drift` until it is listed and mapped. The coverage report counts each package and the sums in `test/parity/coverage.md`; PiG's experimental remote Session stack (`packages/client`, `packages/protocol` and `packages/server`) and the experimental parts of `packages/coding-agent` are reported separately as the part of the monorepo that Pi does not ship in its npm package.
 
 Package scope, one line each:
 
@@ -29,6 +29,7 @@ Package scope, one line each:
 - `packages/client`, `packages/protocol` and `packages/server` are the experimental remote Session stack.
 - `packages/codemode` is the sandboxed code-execution runtime and `packages/mcp` is the Model Context Protocol client library; both back built-in coding-agent extensions.
 - `packages/evals` is the evaluation tooling and `packages/telemetry` is the standalone telemetry library.
+- `packages/schema` is the eval-free JSON Schema validator (drafts 2020-12 and 7, compiled to closures); the Go package is `schema` (with `schema/formats`).
 
 The drift gate also rejects explicit production comments claiming to port an
 upstream file while its row remains not-started, deferred, or n/a. Such conflicts
@@ -360,7 +361,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/config.ts` | `internal/codingagent/paths.go + internal/codingagent/selfupdate_package_command.go + internal/codingagent/selfupdate_tier.go (D2 directory opt-in; D39 native update ownership); the 1.0.3 quickJSWasmPath cache and in-memory codemode worker URL are designed out: PiG embeds its code in one native executable, as Pi's Bun binary does; detectInstallChange is ported as the additive D95 in internal/installchange/installchange.go`, `internal/codingagent/windows_self_update.go`, `coding/upstream.go` | ✅ |
 | `packages/coding-agent/src/migrations.ts` | `internal/codingagent/migrations.go` | ✅ |
 | `packages/coding-agent/src/package-manager-cli.ts` | `coding/cli/package_commands.go + coding/cli/cli_error.go + coding/cli/package_command_trust.go + coding/cli/package_model_catalogs.go + coding/cli/config_command.go + coding/packagecontent/packagecontent.go; Pi 1.4.0 pruneManagedReleases (#10392, keeps the new and the previous release) has no managed release directory to prune under D39: a standalone replacement keeps only the new executable, locked by internal/codingagent/selfupdate_test.go TestSelfReplaceAtWithCommitKeepsOnlyTheNewExecutable)` | ✅ |
-| `packages/coding-agent/src/cli/args.ts` | `coding/cli/args.go` | ✅ |
+| `packages/coding-agent/src/cli/args.ts` | `coding/cli/args.go (the PI_SELF_UPDATE_COMMAND help line awaits the regeneration of coding/cli/help_upstream.txt at the pin)` | 🟡 |
 | `packages/coding-agent/src/cli/initial-message.ts` | `coding/cli/main.go` | ✅ |
 | `packages/coding-agent/src/cli/file-processor.ts` | `internal/codingagent/file_processor.go` | ✅ |
 | `packages/coding-agent/src/cli/list-models.ts` | `coding/cli/model.go (printModelList, called from coding/cli/main.go for --list-models)` | ✅ |
@@ -850,22 +851,20 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/host/uuid.ts` | `chord/next/host/host_uuid.go` | ✅ |
 | `packages/chord/src/next/host/activity.ts` | `chord/next/host/host_activity.go` | 🟡 |
 | `packages/chord/src/next/host/revocation.ts` | `chord/next/host/host_revocation.go` | 🟡 |
-| `packages/chord/src/next/host/unbound.ts` | `chord/next/host/host_unbound.go` | 🟡 |
-| `packages/chord/src/next/host/retry-on.ts` | `chord/next/host/host_retry_on.go` | 🟡 |
-| `packages/chord/src/next/host/ref-state.ts` | `chord/next/host/host_ref_state.go` | 🟡 |
-| `packages/chord/src/next/host/dependencies.ts` | `chord/next/host/host_dependencies.go` | 🟡 |
+| `packages/chord/src/next/host/unbound.ts` | `chord/next/host/host_unbound.go` | ✅ |
+| `packages/chord/src/next/host/retry-on.ts` | `chord/next/host/host_retry_on.go` | ✅ |
+| `packages/chord/src/next/host/ref-state.ts` | `chord/next/host/host_ref_state.go` | ✅ |
+| `packages/chord/src/next/host/dependencies.ts` | `chord/next/host/host_dependencies.go` | ✅ |
 | `packages/chord/src/next/host/parked.ts` | `chord/next/host/host_parked.go` | 🟡 |
 | `packages/chord/src/next/host/native.ts` | `chord/next/host/host_native.go` | 🟡 |
-| `packages/chord/src/next/host/follow.ts` | `chord/next/host/host_follow.go` | 🟡 |
-| `packages/chord/src/next/host/member-source.ts` | `chord/next/host/host_member_source.go` | 🟡 |
-| `packages/chord/src/next/host/keyed-members.ts` | `chord/next/host/host_keyed_members.go` | 🟡 |
-| `packages/chord/src/next/host/members.ts` | `chord/next/host/host_members.go` | 🟡 |
+| `packages/chord/src/next/host/follow.ts` | `chord/next/host/host_follow.go` | ✅ |
+| `packages/chord/src/next/host/members.ts` | `chord/next/host/host_members.go` | ✅ |
 | `packages/chord/src/next/host/ctx.ts` | `chord/next/host/host_ctx.go` | 🟡 |
-| `packages/chord/src/next/host/root.ts` | `chord/next/host/host_root.go` | 🟡 |
-| `packages/chord/src/next/host/routines.ts` | `chord/next/host/host_routines.go` | 🟡 |
+| `packages/chord/src/next/host/root.ts` | `chord/next/host/host_root.go` | ✅ |
+| `packages/chord/src/next/host/routines.ts` | `chord/next/host/host_routines.go` | ✅ |
 | `packages/chord/src/next/host/facet.ts` | `chord/next/host/host_facet.go` | ✅ |
 | `packages/chord/src/next/host/presence.ts` | `chord/next/host/host_presence.go` | 🟡 |
-| `packages/chord/src/next/host/route.ts` | `chord/next/host/host_route.go` | 🟡 |
+| `packages/chord/src/next/host/route.ts` | `chord/next/host/host_route.go` | ✅ |
 | `packages/chord/src/next/host/destination.ts` | `chord/next/host/host_destination.go` | ✅ |
 | `packages/chord/src/next/host/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above (Ctx, Facet, FacetHost, Host..., Sleep, UntilAborted, Presence, RefState, RevokedBy, RootOptions, RouteOptions, RoutineDeclarations, Native*, Follow*, GetOptions, HostError, Position; Host, HostOptions, LinkOptions, createHost, Factory, Self, StoreSelf, Held, Reference, RefIn are D5a's))` | n/a |
 | `packages/chord/src/next/host/internal.ts` | `(barrel for jobs/remote: one package, identifiers are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
@@ -937,6 +936,19 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next-node/http/response.ts` | `chord/nextnode/http/response.go, chord/nextnode/http/statuscodes.go` | ✅ |
 | `packages/chord/src/next-node/http/router.ts` | `chord/nextnode/http/router.go` | ✅ |
 | `packages/chord/src/next-node/http/upgrades.ts` | `chord/nextnode/http/upgrades.go, chord/nextnode/http/websocket.go` | ✅ |
+| `packages/chord/src/next-node/plugins/build.ts` | `chord/nextnode/plugins/plugins_build.go` | ✅ |
+| `packages/chord/src/next-node/plugins/discover.ts` | `chord/nextnode/plugins/plugins_discover.go` | ✅ |
+| `packages/chord/src/next-node/plugins/evaluate.ts` | `chord/nextnode/plugins/plugins_evaluate.go` | ✅ |
+| `packages/chord/src/next-node/plugins/index.ts` | `(barrel: Go imports the package)` | n/a |
+| `packages/chord/src/next-node/plugins/install.ts` | `chord/nextnode/plugins/plugins_install.go` | ✅ |
+| `packages/chord/src/next-node/plugins/plugins.ts` | `chord/nextnode/plugins/plugins_plugins.go` | ✅ |
+| `packages/chord/src/next-node/plugins/runtime.ts` | `chord/nextnode/plugins/plugins_runtime.go` | ✅ |
+| `packages/chord/src/next-node/plugins/stack.ts` | `(mapStack/registerScript/inlineSourceMap map V8 stack positions through esbuild's inline source maps of vm.Script scripts; there is no JS script in Go)` | n/a |
+| `packages/chord/src/next-node/plugins/watcher.ts` | `chord/nextnode/plugins/plugins_watcher.go` | ✅ |
+| `packages/chord/src/next/host/adapted.ts` | `chord/next/host/host_adapted.go` | ✅ |
+| `packages/chord/src/next/host/reference-keys.ts` | `chord/next/host/host_reference_keys.go` | ✅ |
+| `packages/chord/src/next/host/reference-source.ts` | `chord/next/host/host_reference_source.go` | ✅ |
+| `packages/chord/src/next/host/staging.ts` | `chord/next/host/host_staging.go` | ✅ |
 
 ## `packages/protocol/src/`
 
@@ -1087,6 +1099,50 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 | `packages/evals/src/harness.ts` | `internal/evals/harness.go + internal/evals/harness_run.go + internal/evals/agent_process.go + internal/evals/bridge + cmd/pig-eval-extension` | ✅ |
 | `packages/evals/src/plan.ts` | `internal/evals/plan.go` | ✅ |
 | `packages/evals/src/report.ts` | `internal/evals/report.go` | ✅ |
+
+## `packages/schema/src/`
+
+| Upstream | PiG | Status |
+|---|---|---|
+| `packages/schema/src/annotations.ts` | `schema/annotations.go` | ✅ |
+| `packages/schema/src/builders.ts` | `schema/builders.go` | ✅ |
+| `packages/schema/src/checks.ts` | `schema/checks.go` | ✅ |
+| `packages/schema/src/compiler.ts` | `schema/compiler.go` | ✅ |
+| `packages/schema/src/explain.ts` | `schema/explain.go` | ✅ |
+| `packages/schema/src/formats/index.ts` | `schema/formats/index.go` | ✅ |
+| `packages/schema/src/formats/typebox/date.ts` | `schema/formats/typebox_date.go` | ✅ |
+| `packages/schema/src/formats/typebox/date_time.ts` | `schema/formats/typebox_date_time.go` | ✅ |
+| `packages/schema/src/formats/typebox/duration.ts` | `schema/formats/typebox_duration.go` | ✅ |
+| `packages/schema/src/formats/typebox/email.ts` | `schema/formats/typebox_email.go` | ✅ |
+| `packages/schema/src/formats/typebox/hostname.ts` | `schema/formats/typebox_hostname.go` | ✅ |
+| `packages/schema/src/formats/typebox/idn_email.ts` | `schema/formats/typebox_idn_email.go` | ✅ |
+| `packages/schema/src/formats/typebox/idn_hostname.ts` | `schema/formats/typebox_idn_hostname.go` | ✅ |
+| `packages/schema/src/formats/typebox/idna/format/bidi.ts` | `schema/formats/internal/idna/format_bidi.go` | ✅ |
+| `packages/schema/src/formats/typebox/idna/format/puny.ts` | `schema/formats/internal/idna/format_puny.go` | ✅ |
+| `packages/schema/src/formats/typebox/idna/hostname.ts` | `schema/formats/internal/idna/hostname.go` | ✅ |
+| `packages/schema/src/formats/typebox/idna/idn-hostname.ts` | `schema/formats/internal/idna/idn_hostname.go` | ✅ |
+| `packages/schema/src/formats/typebox/idna/index.ts` | `(re-export of idna/hostname.ts and idna/idn-hostname.ts; Go package idna exports them directly)` | n/a |
+| `packages/schema/src/formats/typebox/idna/label/ascii.ts` | `schema/formats/internal/idna/label_ascii.go` | ✅ |
+| `packages/schema/src/formats/typebox/idna/label/puny.ts` | `schema/formats/internal/idna/label_puny.go` | ✅ |
+| `packages/schema/src/formats/typebox/idna/label/unicode.ts` | `schema/formats/internal/idna/label_unicode.go` | ✅ |
+| `packages/schema/src/formats/typebox/idna/pattern/pattern.ts` | `schema/formats/internal/idna/pattern.go` | ✅ |
+| `packages/schema/src/formats/typebox/ipv4.ts` | `schema/formats/typebox_ipv4.go` | ✅ |
+| `packages/schema/src/formats/typebox/ipv6.ts` | `schema/formats/typebox_ipv6.go` | ✅ |
+| `packages/schema/src/formats/typebox/iri.ts` | `schema/formats/typebox_iri.go` | ✅ |
+| `packages/schema/src/formats/typebox/iri_reference.ts` | `schema/formats/typebox_iri_reference.go` | ✅ |
+| `packages/schema/src/formats/typebox/json_pointer.ts` | `schema/formats/typebox_json_pointer.go` | ✅ |
+| `packages/schema/src/formats/typebox/regex.ts` | `schema/formats/typebox_regex.go` | ✅ |
+| `packages/schema/src/formats/typebox/relative_json_pointer.ts` | `schema/formats/typebox_relative_json_pointer.go` | ✅ |
+| `packages/schema/src/formats/typebox/time.ts` | `schema/formats/typebox_time.go` | ✅ |
+| `packages/schema/src/formats/typebox/uri.ts` | `schema/formats/typebox_uri.go` | ✅ |
+| `packages/schema/src/formats/typebox/uri_reference.ts` | `schema/formats/typebox_uri_reference.go` | ✅ |
+| `packages/schema/src/formats/typebox/uri_template.ts` | `schema/formats/typebox_uri_template.go` | ✅ |
+| `packages/schema/src/formats/typebox/uuid.ts` | `schema/formats/typebox_uuid.go` | ✅ |
+| `packages/schema/src/index.ts` | `(re-export barrel: the Go exports are the package-level identifiers of schema)` | n/a |
+| `packages/schema/src/resolver.ts` | `schema/resolver.go` | ✅ |
+| `packages/schema/src/shared.ts` | `schema/shared.go, schema/internal/ecmaregex` | ✅ |
+| `packages/schema/src/types.ts` | `schema/types.go` | ✅ |
+| `packages/schema/src/validator.ts` | `schema/validator.go` | ✅ |
 
 ## `packages/telemetry/src/`
 

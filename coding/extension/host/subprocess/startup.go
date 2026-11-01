@@ -17,7 +17,6 @@ func finalSetOrigin(cwd string, config ExtConfig) string {
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(cwd, path)
 	}
-	// pig divergence (D217): Pi 1be312b4 (#10488) matches the preloaded and final paths by getResourcePathKey, which folds the case of a Windows path; Pi 1.4.0+b3a29f11 matched resolved strings.
 	return resolvepath.ComparisonKey(filepath.Clean(path))
 }
 

@@ -69,8 +69,6 @@ func schemaText(schema any, parts *[]string) {
 }
 
 // searchText is the search text of a tool: its description and its parameters' names and descriptions; the ranker reads the name.
-//
-// pig divergence (D217): Pi c7372af4 (#11631) pinned Pi repeats the name, and the name with `_` as spaces, in the search text.
 func searchText(tool *durable.ToolRegistration) string {
 	parts := []string{tool.Description}
 	var decoded any

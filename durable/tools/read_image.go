@@ -105,7 +105,6 @@ func readImage(ctx context.Context, reader env.BinaryReader, info env.FileInfo, 
 		notes = append(notes, "The current model does not support images; it sees a placeholder instead.")
 	}
 	message := strings.Join(append([]string{fmt.Sprintf("Read image file [%s].", image.MimeType)}, notes...), " ")
-	// pig divergence (D217): Pi 04414839 (#11015) the image block is also the structured output, so Code Mode scripts get it from tools.read.
 	return durable.ToolExecutionResult{
 		Output:              []ai.ToolResultMessageContent{image},
 		StructuredOutput:    delta.JsonObjectOf("type", "image", "data", image.Data, "mimeType", image.MimeType),

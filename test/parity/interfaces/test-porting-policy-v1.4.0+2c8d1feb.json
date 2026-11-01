@@ -2365,6 +2365,168 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/next-node/http/admission.test.ts",
+      "upstreamTestHash": "sha256:7d3a2dcab8b3791d6f0b8b7cb600d9a7a19b4720bc3f527a3a460a74d10b1026",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next-node/http/authenticate.test.ts",
+      "upstreamTestHash": "sha256:6b05e644393f53532ed13d8342056fdd21ba2e6631b95ec6104908531506f539",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next-node/http/cookies.test.ts",
+      "upstreamTestHash": "sha256:79acb2b491b9986bc1f529733bd1e26de4524e0fa383bd75c7056fec72702fe7",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next-node/http/file.test.ts",
+      "upstreamTestHash": "sha256:7f3e1d2099de20e6e40af98533a5329c0660ea388a3910255f9093ce518a22fe",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next-node/http/headers.test.ts",
+      "upstreamTestHash": "sha256:bb92e182ddcc66fa1ea170770a770b6d0033a7e694419093551222e20010b4f2",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next-node/http/http.test.ts",
+      "upstreamTestHash": "sha256:8c9a2983685ef2e83593c6386e0ff59f12f2b065ef5820b92ee8ef62e97c9764",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next-node/http/node.test.ts",
+      "upstreamTestHash": "sha256:30061cd751fb83b45ed0427740e8e2da51fe9c6a0f7835af63e73ef22bc1ffe7",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
+      "designedOutCases": [
+        "Web requests \u203a makes a Web Request only when something reads the headers or the body (here: no authenticator does)"
+      ]
+    },
+    {
+      "path": "packages/chord/test/next-node/http/request.test.ts",
+      "upstreamTestHash": "sha256:ac9a492f630c2e4b2d6ee85ddb3ebcfcde4a6219afaf4d8b6c1caf6fda6afec4",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next-node/http/response.test.ts",
+      "upstreamTestHash": "sha256:04c1d54657d2919f3e66807d801b50d270d26357c6d3615b0796972816794cd3",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next-node/http/router.test.ts",
+      "upstreamTestHash": "sha256:d023c26c61823c1c3b5bb58fc98f67080f8093cea0d2ff4993b2d9a235ab9395",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next-node/http/upgrades.test.ts",
+      "upstreamTestHash": "sha256:00dde5d81f498561b16cd4fefe9f4fb08904b7266f0d0f06bf38aa3e20c97953",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
+      "designedOutCases": [
+        "GC \u203a keeps no ws server once its socket closed"
+      ]
+    },
+    {
+      "path": "packages/chord/test/next-node/plugins/build.test.ts",
+      "upstreamTestHash": "sha256:65bf46154abb890ae41ec0086e608e0f201d6c96b745d93f1c110f2be57b26af",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
+      "designedOutCases": [
+        "building a facet: the import table \u203a inlines the plugin's own files and another plugin's file (copied); keeps host packages external",
+        "building a facet: the import table \u203a hashes each input as esbuild read it; the digest is the source's hash",
+        "building a facet: the import table \u203a gives the same script and digest from two checkout paths (relative source maps)",
+        "building a facet: the import table \u203a inlines a package of its dependencies; keeps chord.external packages and Node builtins external on Node",
+        "building a facet: the import table \u203a refuses a chord.external package and a Node builtin in a browser build",
+        "building a facet: the import table \u203a collects a browser build's CSS into one stylesheet and its assets into content-hashed files",
+        "building a facet: the import table \u203a refuses CSS and assets in a Node build",
+        "building a facet: the import table \u203a refuses import.meta.url, __dirname, __filename, a dynamic import() and top-level await, pointing to pluginFile",
+        "building a facet: the import table \u203a refuses a path outside the plugin, a package not in its dependencies, and a package in a copied file",
+        "building a facet: the import table \u203a imports another plugin's file by name from any root; refuses relative paths into it, names a missing plugin"
+      ]
+    },
+    {
+      "path": "packages/chord/test/next-node/plugins/discover.test.ts",
+      "upstreamTestHash": "sha256:5f0983d9d1ec52054b9a2db6e6ec6c4924bbcc6f4170e5080b7903e53fa7d416",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next-node/plugins/evaluate.test.ts",
+      "upstreamTestHash": "sha256:7640e7b4c26712613d90fe6a9f1140891ae5d0b284a7314512d9bf3c03fc6260",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
+      "designedOutCases": [
+        "evaluating a facet \u203a gives host packages as the host's instances: a ChordError crosses the plugin as one",
+        "evaluating a facet \u203a answers default and named imports of an ESM and a CommonJS host package",
+        "evaluating a facet \u203a loads chord.external packages and Node builtins from the plugin's directory",
+        "evaluating a facet \u203a throws an import-time throw, a non-facet export and a refused require, naming the facet",
+        "evaluating a facet \u203a runs a computed import() through the facet's require: an unknown one names the facet (Astra)",
+        "ESM host packages' wrappers \u203a wraps a namespace once, and keeps no namespace nobody else holds"
+      ]
+    },
+    {
+      "path": "packages/chord/test/next-node/plugins/install.test.ts",
+      "upstreamTestHash": "sha256:bc737689d188f633dc63c533e04aa669b42b67e108f53ae9e17bdb0795a99353",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next-node/plugins/plugins.test.ts",
+      "upstreamTestHash": "sha256:ff088377ff4c1fb0c9a67d76b81e7d0049a7ae538ddbbaba31025e3b00df4bca",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next-node/plugins/runtime.test.ts",
+      "upstreamTestHash": "sha256:45fbb43317d921cd972f169ed4182f3474812055a68913fa0559049168ad781c",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path. Re-review pending: designedOutCases need owner approval.",
+      "designedOutCases": [
+        "the runtime's imports \u203a loads no esbuild: a worker that only evaluates never imports it"
+      ]
+    },
+    {
+      "path": "packages/chord/test/next-node/plugins/stack.test.ts",
+      "upstreamTestHash": "sha256:aab37113054ab33b852b7c401a5e7c6a70bbb204eff6476548837042254aed9a",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next-node/plugins/watcher.test.ts",
+      "upstreamTestHash": "sha256:1a0bf8cd1c317d813695418cef4778c59ecf6d7351287a94de5506b63f357ece",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
       "path": "packages/chord/test/next/contracts/accepts.test.ts",
       "upstreamTestHash": "sha256:4d40d02661127eb0f6f0b653b8581960a04a166484fc8afe7b89d02145614387",
       "area": "extensions",
@@ -2567,6 +2729,13 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/next/host/adapted.test.ts",
+      "upstreamTestHash": "sha256:9bc569b6bef516d82b5538dff98e2dd021f04ccff918261709ce15ae4b5273ee",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
       "path": "packages/chord/test/next/host/attempt.test.ts",
       "upstreamTestHash": "sha256:559fe6b611ea3102da19a3e40dceacc05f275c20803267e2b21f285e09dd2647",
       "area": "extensions",
@@ -2678,6 +2847,20 @@
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
+      "path": "packages/chord/test/next/host/reference-keys.test.ts",
+      "upstreamTestHash": "sha256:27c9acc263adaffb0944467df9079c9704aa58960292d7fbcf81d25cf2615bb5",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/reference-source.test.ts",
+      "upstreamTestHash": "sha256:9d731ecc0f6ec80136be5efcfdfc15c57ef0409911f21d8b92fbad9e3b5c9d52",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
       "path": "packages/chord/test/next/host/reference.test.ts",
       "upstreamTestHash": "sha256:0c03d2712d96987e54f3aafa39f3539e73306afd0e20b69867fe1a2665e9ddad",
       "area": "extensions",
@@ -2732,6 +2915,13 @@
       "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..e7a0df27) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/chord/test/next/host/staging.test.ts",
+      "upstreamTestHash": "sha256:3301a848d71d69eab1da2ef8a91d57b13227d3dc502a62c9146e0a574bc1fb81",
+      "area": "extensions",
+      "tags": [],
+      "rationale": "Chord v2 (Pi 93029a0f..2c8d1feb) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/next/host/unbound.test.ts",
@@ -7312,6 +7502,37 @@
       "designedOutCases": [
         "StreamableHttpTransport \u203a calls fetch without a receiver"
       ]
+    },
+    {
+      "path": "packages/schema/test/builders.test.ts",
+      "upstreamTestHash": "sha256:db5e8ff652d0e52a3b47a50d24eb059d9d5bfeba9358f8422d0173612495c3f4",
+      "area": "utilities",
+      "tags": [],
+      "rationale": "pi-schema is a new library package (eval-free JSON Schema validation) that no PiG product code uses yet: ai/validate.go and chord still validate with internal/typebox, so it is not on a PiG product hot path. SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders \u203a carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go SCRUTINIZED:approved by the owner (2026-10-30) under the type-level class (verified per row): [builders \u203a carry the static type of valid values]: Go's compiler carries the static types of the builders' results (they return plain `Schema` values and the checks take `any`); Pi's Static<> type inference has no runtime form, and the runtime halves of the same test (the JSON shapes, the compile semantics) are TestBuildersProducePlainJSONSchema, TestBuildersProduceEveryLeaf and TestBuildersAcceptEveryAnnotationAndBound in schema/builders_upstream_test.go",
+      "designedOutCases": [
+        "builders \u203a carry the static type of valid values"
+      ]
+    },
+    {
+      "path": "packages/schema/test/conformance.test.ts",
+      "upstreamTestHash": "sha256:c8a4ff57f6a93a380b9ac1020ad6fc1cb8ce1805657fd4b761ede18340f3fcf0",
+      "area": "utilities",
+      "tags": [],
+      "rationale": "pi-schema is a new library package (eval-free JSON Schema validation) that no PiG product code uses yet: ai/validate.go and chord still validate with internal/typebox, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/schema/test/shared.test.ts",
+      "upstreamTestHash": "sha256:cdde5a66a4e2aaa169c07d4baa3d5f43efbaa9de48ad210656a4314034be6ec4",
+      "area": "utilities",
+      "tags": [],
+      "rationale": "pi-schema is a new library package (eval-free JSON Schema validation) that no PiG product code uses yet: ai/validate.go and chord still validate with internal/typebox, so it is not on a PiG product hot path."
+    },
+    {
+      "path": "packages/schema/test/validator.test.ts",
+      "upstreamTestHash": "sha256:2c9924a8aeca971d1a6377d04e608f60f48ad4aee59713908cad86b0d8489bf6",
+      "area": "utilities",
+      "tags": [],
+      "rationale": "pi-schema is a new library package (eval-free JSON Schema validation) that no PiG product code uses yet: ai/validate.go and chord still validate with internal/typebox, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/telemetry/test/conformance.test.ts",

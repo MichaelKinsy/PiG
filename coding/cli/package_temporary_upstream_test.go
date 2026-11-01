@@ -127,7 +127,7 @@ func TestTemporaryGitInstallAndCleanup(t *testing.T) {
 	}
 }
 
-// package-manager.ts:1298-1311 refreshes only existing unpinned online checkouts; Pi bec60c54 (#11375, package-manager.ts:1446) refreshes ref-pinned ones too, so a branch or tag ref is fetched (D217). A failed refresh retains the cached resources, while an offline miss contributes nothing.
+// package-manager.ts:1298-1311 refreshes only existing unpinned online checkouts; Pi bec60c54 (#11375, package-manager.ts:1446) refreshes ref-pinned ones too, so a branch or tag ref is fetched. A failed refresh retains the cached resources, while an offline miss contributes nothing.
 func TestTemporaryGitCacheBoundaries(t *testing.T) {
 	for _, tc := range []struct {
 		name, source                string

@@ -1,11 +1,11 @@
 // Generates tool_search_goldens.json: Pi's own tool_search tool (packages/durable/src/tool-search/tool-search.ts and search.ts) at commit
-// c7372af4 (earendil-works/pi#11631), the field-weighted, coverage-first ranking PiG carries (D217), run over seeded random deferred tools and queries.
+// c7372af4 (earendil-works/pi#11631), the field-weighted, coverage-first ranking PiG ports, run over seeded random deferred tools and queries.
 //
 //   PI_CHECKOUT=<dir holding packages/durable/src/search.ts and tool-search/tool-search.ts at c7372af4> \
 //   PI_PACKAGES=<.upstream/current/packages> PI_INTEROP_DIR=<durable/interop> node gen_tool_search_goldens.mjs > tool_search_goldens.json
 //
-// The pinned Pi (b3a29f11) ranks with the name folded into the text, so its oracle (tool_search_oracle.mjs) cannot supply these. The two files of the
-// carried commit are laid over a copy of the pinned durable sources, which supply everything the commit did not touch.
+// The two files of the
+// commit are laid over a copy of the pinned durable sources, which supply everything the commit did not touch.
 import { cpSync, mkdtempSync, realpathSync } from "node:fs";
 import module from "node:module";
 import { tmpdir } from "node:os";

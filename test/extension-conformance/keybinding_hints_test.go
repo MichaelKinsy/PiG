@@ -12,7 +12,7 @@ import (
 
 var keyHintANSI = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 
-// pig divergence (D217): Pi 9376c8d1 (#4748, packages/coding-agent/test/extension-keybinding-hints.test.ts) hands renderers the host's keyText and
+// Pi 9376c8d1 (#4748, packages/coding-agent/test/extension-keybinding-hints.test.ts) hands renderers the host's keyText and
 // keyHint on the tool render context and the message and entry render options, so an extension formats the user's keybindings without importing a
 // copy of the package that does not see them. Each renderer prints `keyText | keyHint` (ANSI stripped) for the keybinding id it is given, and
 // every expectation differs from what an SDK that returns "" or reads the defaults prints:

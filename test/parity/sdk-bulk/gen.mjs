@@ -9,7 +9,6 @@
 //
 // Output files (JSON, committed): tui-text.json, tui-keys.json, tui-fuzzy.json, tui-colors.json, tui-terminal.json.
 // Determinism: a fixed-seed PRNG; rerunning against the same pin reproduces the files exactly.
-import "../../../tui/testdata/pi-d217/register.mjs"; // D217: pin + carried Pi fixes in pi-tui utils.js
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -19,7 +18,7 @@ const [srcDir, eawDir, outDir] = process.argv.slice(2);
 if (!srcDir || !eawDir || !outDir) throw new Error("usage: gen.mjs <tui/src> <get-east-asian-width> <out>");
 
 // Pi's utils.ts imports a bare "get-east-asian-width"; stage the sources next to a node_modules holding it. The staged dist sits where the
-// installed package keeps it (node_modules/@earendil-works/pi-tui/dist), the URL the D217 hook swaps utils.js by.
+// installed package keeps it (node_modules/@earendil-works/pi-tui/dist).
 const stage = fs.mkdtempSync(path.join(os.tmpdir(), "pig-vectors-"));
 const staged = path.join(stage, "node_modules", "@earendil-works", "pi-tui", "dist");
 fs.cpSync(path.join(srcDir, "dist"), staged, { recursive: true });

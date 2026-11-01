@@ -424,7 +424,7 @@ fn a_stream_the_sdk_makes_for_a_host_operation_is_not_timed() {
     );
 }
 
-/// Pi d3398f82 (#11492, pig divergence (D217)): LiteLLM's pre-call check ContextWindowExceededError is a context overflow. The pinned vectors cannot gain a case, so the carried pattern is pinned by hand.
+/// Pi d3398f82 (#11492): LiteLLM's pre-call check ContextWindowExceededError is a context overflow. The pattern is pinned by hand.
 #[test]
 fn litellm_context_window_exceeded_is_overflow() {
     let message = |stop: &str, text: &str| json!({"role": "assistant", "stopReason": stop, "errorMessage": text});
@@ -440,7 +440,7 @@ fn litellm_context_window_exceeded_is_overflow() {
     ));
 }
 
-/// Pi c719d5b0 (#11572, #11537, pig divergence (D217)): Zhipu/Z.ai usage limit code 1308 arrives as HTTP 429 and resets after hours, so it is not retried. The pinned vectors cannot gain a case.
+/// Pi c719d5b0 (#11572, #11537): Zhipu/Z.ai usage limit code 1308 arrives as HTTP 429 and resets after hours, so it is not retried.
 #[test]
 fn zhipu_usage_limit_1308_is_not_retryable() {
     for (text, want) in [

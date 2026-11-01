@@ -221,7 +221,6 @@ func findShadowedContextFile(cwd string) string {
 // the linked worktree's own context file shadows, or "". canonical resolves a path for the comparison of the main repository's .git with the common git directory.
 func shadowedContextFileOf(commonGitDir, worktreeRoot string, canonical func(string) string) string {
 	mainRepoRoot := filepath.Dir(commonGitDir)
-	// pig divergence (D217): Pi 1be312b4 (#10488) isPathWithin and pathsEqual ignore case on Windows, where git's paths and the working directory may be spelled differently; Pi 1.4.0+b3a29f11 compared the strings.
 	if !resolvepath.IsPathWithin(mainRepoRoot, worktreeRoot) || resolvepath.PathsEqual(worktreeRoot, mainRepoRoot) {
 		return ""
 	}

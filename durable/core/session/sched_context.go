@@ -143,8 +143,8 @@ func (s *Scheduler) deferIdleIfUnloaded(conversationID ID) {
 // or ends the idle periods of the kept contexts in scopes. A task change can change the idleness only of the conversations above it,
 // so no check visits every conversation.
 //
-// pig divergence (D217): Pi 35dfa757 settles the conversations above the changed tasks, and expires idle ranges from an index ordered
-// by idleSince, where 1.4.0+b3a29f11 re-checked every kept range after every commit that changed a task.
+// Pi 35dfa757 settles the conversations above the changed tasks, and expires idle ranges from an index ordered
+// by idleSince.
 func (s *Scheduler) settleIdle(scopes idleScopes) {
 	now, retention := s.env.Now(), s.retention()
 	if s.hasLiveUnloaded() {

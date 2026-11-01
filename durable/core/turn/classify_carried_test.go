@@ -2,7 +2,7 @@ package turn
 
 import "testing"
 
-// Pi c719d5b0 (#11572, #11537, pig divergence (D217)): Zhipu/Z.ai usage limit code 1308 arrives as HTTP 429 and resets after hours, so it is not retried.
+// Pi c719d5b0 (#11572, #11537): Zhipu/Z.ai usage limit code 1308 arrives as HTTP 429 and resets after hours, so it is not retried.
 // Pi added no test; the inputs are the provider's body shapes.
 func TestZhipuUsageLimit1308IsNotRetryable(t *testing.T) {
 	for _, tc := range []struct {
@@ -20,8 +20,8 @@ func TestZhipuUsageLimit1308IsNotRetryable(t *testing.T) {
 	}
 }
 
-// Pi d3398f82 (#11492, #11494, pig divergence (D217)): LiteLLM's pre-call check ContextWindowExceededError is a context overflow.
-// The pinned corpus (classify.hex) predates it, so the pattern is carried by oracle/gen_patterns.mjs and pinned here.
+// Pi d3398f82 (#11492, #11494): LiteLLM's pre-call check ContextWindowExceededError is a context overflow.
+// The pattern is pinned here by hand.
 func TestLiteLLMContextWindowExceededIsOverflow(t *testing.T) {
 	const litellm = "400: {\"message\":\"litellm.ContextWindowExceededError: litellm.BadRequestError: litellm._pre_call_checks: Context Window exceeded for given call. No models have context window large enough for this call.\\nModel=Qwen3.8-Flash-Next, Max Input Tokens=262144, Got=265262\\nmodel=Qwen3.8-Flash-Next. context_window_fallbacks=None. fallbacks=[].\"}"
 	for _, tc := range []struct {

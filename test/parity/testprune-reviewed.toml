@@ -550,8 +550,8 @@ reason = "The changed expectations are the Go form of Pi's examples (test/next/e
 path = "chord/next/host/host_keyed_members_test.go"
 commit = "0b76ae5e5feed52171c3a8bda3cc0edf9f38e33f"
 class = "CITE"
-cite = "packages/chord/test/next/host/keyed-members.test.ts:333"
-reason = "keyed-members.test.ts:333 expects the late pin on provider a to be gone (pinsOf(providers.a) undefined) once the viewer and the aborted get are released; the red commit's Go test read the pins once and expected none, and now waits until the release, which the object's teardown makes on a task. The expected value (no pin) is Pi's."
+cite = "packages/chord/test/next/host/reference-keys.test.ts:340"
+reason = "reference-keys.test.ts:340 (Pi 6d4b7443 moved keyed-members.test.ts:333 there) expects the late pin on provider a to be gone (pinsOf(providers.a) undefined) once the viewer and the aborted get are released; the red commit's Go test read the pins once and expected none, and now waits until the release, which the object's teardown makes on a task. The expected value (no pin) is Pi's."
 
 [[entry]]
 path = "chord/next/host/host_keyed_slot_host_test.go"

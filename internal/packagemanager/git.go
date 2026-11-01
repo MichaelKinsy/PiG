@@ -113,7 +113,7 @@ func RepairMissingGitDependencies(packageRoot string, sm *codingagent.SettingsMa
 }
 
 // CleanAndInstallGitDependencies is cleanAndInstallGitDependencies.
-// pig divergence (D217): Pi e3da248e (#11648, fixes #11597) no longer aborts the update when `git clean -fdx` fails (on Windows a file another pi session holds open cannot be deleted). It warns through the progress callback, still installs the dependencies and keeps the update marker so the next update retries the clean; pinned Pi returned the clean error.
+// Pi e3da248e (#11648, fixes #11597) no longer aborts the update when `git clean -fdx` fails (on Windows a file another pi session holds open cannot be deleted). It warns through the progress callback, still installs the dependencies and keeps the update marker so the next update retries the clean.
 func CleanAndInstallGitDependencies(checkout, packageRoot, marker string, sm *codingagent.SettingsManager, opts ...InstallOption) error {
 	cleaned := true
 	if err := RunPackageProcess(checkout, "git", "clean", "-fdx"); err != nil {

@@ -92197,6 +92197,17 @@
       "shapeHash": "sha256:d5f7da257bd739ba7ae67668f5cf9427e7a99de9ffd0ec799bee62a2f8c8f207"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#installedVersionAfterUpdate",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "installedVersionAfterUpdate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(want string) string"
+      },
+      "shapeHash": "sha256:be3e36e557a258484f56fbe93b270475d7a1774339c0f865af707b286eeb26b5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#interactiveRuntime",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "interactiveRuntime",
@@ -94945,6 +94956,17 @@
         "type": "func(path string) (string, error)"
       },
       "shapeHash": "sha256:f40d4f34dc5bbd0e74838ec92049f48e4ae39f2b85f7c153e0f98d59ea7e6036"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#readVersionOf",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "readVersionOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string) string"
+      },
+      "shapeHash": "sha256:864bd81dd802775a1a082d7f99fe261c8f3185dea2a3f45bbeae79e27ef91e07"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rebuildNote",
@@ -98544,6 +98566,17 @@
       "shapeHash": "sha256:8f4c5eca9cca0ab238a0013025b1b93e9a121e4be84056eedf65eb90a423dd11"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#runConfiguredSelfUpdate",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "runConfiguredSelfUpdate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(argv []string, force bool) int"
+      },
+      "shapeHash": "sha256:62548dcae5e6006236e2c005a4fecca6352ba8b394f4fab9c6742edfd2785a1e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#runDiagnose",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "runDiagnose",
@@ -99015,6 +99048,17 @@
         "type": "func(a string, b string) bool"
       },
       "shapeHash": "sha256:968ce1a7dee2275299fde4b8cf32edf3f46c82d20241fa36916c133213a2e03f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#sameRelease",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "sameRelease",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(installed string, want string) bool"
+      },
+      "shapeHash": "sha256:9b4786508188fa05d4724ef9ebd8365bdeb33069307c86c88a590d94349f7e4b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#sanitizeExtensionName",
@@ -106242,6 +106286,17 @@
         "type": "func(event ToolResultEvent) bool"
       },
       "shapeHash": "sha256:bdeebc0dd8c1a15ce46b8e77b75d03f0aaac126bdf4596b99a9cbac78e1bea06"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#IsClientMetadataDocumentCallback",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "IsClientMetadataDocumentCallback",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(callbackURL string) bool"
+      },
+      "shapeHash": "sha256:b77fa2a9d28a4e55fcb50394adcef99d2277f801b2e14dc42831ed90ad3f3c57"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#IsEditToolResult",
@@ -164443,6 +164498,17 @@
         "type": "map[string]bool"
       },
       "shapeHash": "sha256:3af528a2ba91555bb23ee8186a48c3c9201b3cf65594c81b5d32e417b99fd811"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#offersClientMetadataDocument",
+      "package": "github.com/MichaelKinsy/PiG/coding/mcpext",
+      "name": "offersClientMetadataDocument",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(settings McpOAuthSettings, appName string) bool"
+      },
+      "shapeHash": "sha256:28f8ef6db64b982fc3bfb0f2cf04ec2762de2681f843296f3f8ee64609f40e80"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/mcpext#openFlight",
@@ -236341,6 +236407,17 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ConfiguredSelfUpdateArgv",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ConfiguredSelfUpdateArgv",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(setting []string) []string"
+      },
+      "shapeHash": "sha256:2e031cbefa169e9770d5ab4c4c7939d3420fd76486b0e3474b67fb50dc33c2e3"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ContainerRemediation",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ContainerRemediation",
@@ -252203,6 +252280,17 @@
       "shapeHash": "sha256:fd8b0fca357225855c1e04207903d38c63724330be4f95b5e6281c6cadc06fd5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#MakeConfiguredSelfUpdateCommand",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "MakeConfiguredSelfUpdateCommand",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(argv []string, release SelfUpdateRelease) *SelfUpdateCommand"
+      },
+      "shapeHash": "sha256:3d1b3281066dff624612333c108b52826da733126bd2e8da5d3b7b56764b097e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#MarkPathIgnoredByCloudSync",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "MarkPathIgnoredByCloudSync",
@@ -257197,6 +257285,17 @@
       "shapeHash": "sha256:dad73bf63e271b85fd87d8bae21818d4a6768d5d124f76b84bdca1294b01cfc0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#RunConfiguredSelfUpdateCommand",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "RunConfiguredSelfUpdateCommand",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, cmd *SelfUpdateCommand) error"
+      },
+      "shapeHash": "sha256:b1c314939b469432bfb3462a1a12217fc63879b79f673f6ab0cf85bb8b52fc52"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#RunInputHandlers",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "RunInputHandlers",
@@ -257393,6 +257492,17 @@
         "type": "func() string"
       },
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SelfUpdateRelease",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "SelfUpdateRelease",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "SelfUpdateRelease"
+      },
+      "shapeHash": "sha256:f94c4fe16f49252591a14a73b19aef0edc2950ae15f6f178e82a4701568de7a0"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SelfUpdateTier",
@@ -274278,6 +274388,17 @@
         "type": "untyped string"
       },
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#exitSignalName",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "exitSignalName",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err *os/exec.ExitError) string"
+      },
+      "shapeHash": "sha256:326f8bef83e72e94da061e821cb06d02c1b76761d0631b87a9a450986c0963b4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#expandKeyHint",

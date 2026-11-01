@@ -265,7 +265,6 @@
      (let ((wrapped '()) (tracker (make-tui-tracker)) (current "") (current-len 0))
        (dolist (token (tui-split-into-tokens line))
          (let* ((token-len (tui-visible-width token))
-                ;; pig divergence (D217): Pi 2ce9d527 (#10925) the codes that close a styled word sit on the following space token, which is still whitespace.
                 (whitespace (tui-whitespace-token-p token))
                 (wrapped-space nil))
            (cond
