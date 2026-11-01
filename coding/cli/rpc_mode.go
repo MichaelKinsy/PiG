@@ -245,7 +245,10 @@ func runRPCMode(ctx context.Context, flags Args, activePiglet *piglet.Piglet, re
 	defer rawStdout.Close()
 	defer func() {
 		// A normal exit flushes the tail; a termination signal exits without waiting on a blocked reader.
-		if receivedTerminationSignal.Load() == 0 {
+		// pig additive (D201): a connection's tail is flushed on a server-wide signal too, bounded by flushConnectionTail.
+		if !transport.processOwned {
+			flushConnectionTail(rawStdout)
+		} else if receivedTerminationSignal.Load() == 0 {
 			rawStdout.Wait(context.Background())
 		}
 		if stdoutFailed.Load() && exitCode == 0 {
@@ -422,7 +425,10 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	}
 	exitRPC := func(code int) {
 		stdoutClosed.Store(true)
-		if code != 128+int(syscall.SIGTERM) {
+		if !transport.processOwned {
+			// pig additive (D201): a connection flushes its pending records on every exit, SIGTERM included, but never waits on a peer that stopped reading.
+			flushConnectionTail(rawStdout)
+		} else if code != 128+int(syscall.SIGTERM) {
 			// Upstream flushes stdout before process.exit unless the signal is SIGTERM; the queued tail is that pending output.
 			rawStdout.Wait(context.Background())
 		}

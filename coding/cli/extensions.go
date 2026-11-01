@@ -105,8 +105,12 @@ func normalizeRuntimeExtensionConfigs(configs []subprocess.ExtConfig) []subproce
 
 // newSubprocessExtensionHost creates an extension host with no extensions
 // loaded and no config loader.
-func newSubprocessExtensionHost(cwd string, mode extension.ExtensionMode, registry *codingagent.ModelRegistry) (*subprocess.Host, *subprocess.UIBridge) {
+func newSubprocessExtensionHost(cwd string, mode extension.ExtensionMode, registry *codingagent.ModelRegistry, cells *subprocess.CellRegistry) (*subprocess.Host, *subprocess.UIBridge) {
 	host := subprocess.NewHostWithConfigRoot(cwd, codingagent.ConfigRoot())
+	if cells != nil {
+		// pig additive (D201): a --listen server's Hosts share cell processes.
+		host.ShareCells(cells)
+	}
 	// Create UIBridge: starts with NoopUIContext. The real UIContext is wired
 	// in interactive mode after the TUI is created. Widget pushes still work
 	// (cached by PushProxy); UI method calls return noop results until the
@@ -194,7 +198,7 @@ func ensureReloadableExtensionHost(host *subprocess.Host, bridge *subprocess.UIB
 	if host != nil || noExtensions {
 		return host, bridge
 	}
-	host, bridge = newSubprocessExtensionHost(cwd, extension.ModeTUI, registry)
+	host, bridge = newSubprocessExtensionHost(cwd, extension.ModeTUI, registry, nil)
 	setExtensionConfigLoader(host, nil, reloadConfigs)
 	return host, bridge
 }
@@ -222,7 +226,7 @@ func loadFinalSubprocessExtensions(ctx context.Context, cwd string, mode extensi
 		host, bridge = preloaded.host, preloaded.bridge
 	}
 	if host == nil {
-		host, bridge = newSubprocessExtensionHost(cwd, mode, registry)
+		host, bridge = newSubprocessExtensionHost(cwd, mode, registry, nil)
 	}
 	setExtensionConfigLoader(host, configs, reloadConfigs)
 
