@@ -1693,22 +1693,7 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 		}
 		payload = assigned
 	}
-	if opts.OnPayload != nil {
-		next, err := opts.OnPayload(payload, &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{ProviderID: p.cfg.ProviderID}})
-		if err != nil {
-			return nil, fmt.Errorf("openai: onPayload: %w", err)
-		}
-		if next != nil {
-			payload = payloadReplacement(next)
-		}
-	}
-
-	body, err := marshalSpliced(payload, requestStrings, marshalRequestBody)
-	if err != nil {
-		return nil, fmt.Errorf("openai: marshal request: %w", err)
-	}
-	checkRequestSegments(ctx, APIOpenAICompletions, body)
-
+	// Pi resolves the API key and builds the client (Azure's base URL resolver included) before it calls onPayload.
 	baseURL := p.cfg.BaseURL
 	if p.cfg.GetBaseURL != nil {
 		if u, err := p.cfg.GetBaseURL(ctx); err != nil {
@@ -1727,6 +1712,22 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 			apiKey = k
 		}
 	}
+
+	if opts.OnPayload != nil {
+		next, err := opts.OnPayload(payload, providerEventModel(p.cfg.ModelMetadata, APIOpenAICompletions, p.cfg.ProviderID, p.cfg.Model))
+		if err != nil {
+			return nil, fmt.Errorf("openai: onPayload: %w", err)
+		}
+		if next != nil {
+			payload = payloadReplacement(next)
+		}
+	}
+
+	body, err := marshalSpliced(payload, requestStrings, marshalRequestBody)
+	if err != nil {
+		return nil, fmt.Errorf("openai: marshal request: %w", err)
+	}
+	checkRequestSegments(ctx, APIOpenAICompletions, body)
 
 	endpoint, err := sdkBuildURL(baseURL, "/chat/completions")
 	if err != nil {

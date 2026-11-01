@@ -27,7 +27,12 @@ func TestRepairToolFlowReachesEveryProviderPayload(t *testing.T) {
 				model := &Model{ID: "test-model", ProviderMeta: ProviderMetadata{API: api, ProviderID: "test-provider", BaseURL: "https://example.invalid"}, Capabilities: ModelCapabilities{ContextWindow: 10000, MaxOutputTokens: 1000}}
 				sentinel := errors.New("captured")
 				var payload []byte
-				options := StreamOptions{APIKey: "request-key", RepairToolFlow: repair, Env: ProviderEnv{"AWS_REGION": "us-east-1", "AWS_ACCESS_KEY_ID": "k", "AWS_SECRET_ACCESS_KEY": "s"}, OnPayload: func(value any, _ *Model) (any, error) {
+				// openai-codex-responses.ts extractAccountId throws before onPayload for a key that is not a ChatGPT token.
+				apiKey := "request-key"
+				if api == APIOpenAICodexResponses {
+					apiKey = codexToken()
+				}
+				options := StreamOptions{APIKey: apiKey, RepairToolFlow: repair, Env: ProviderEnv{"AWS_REGION": "us-east-1", "AWS_ACCESS_KEY_ID": "k", "AWS_SECRET_ACCESS_KEY": "s"}, OnPayload: func(value any, _ *Model) (any, error) {
 					encoded, err := json.Marshal(value)
 					if err != nil {
 						t.Error(err)
