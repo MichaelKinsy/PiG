@@ -426,8 +426,7 @@ func TestNodeASendAfterTheChannelEndedReturnsTheProcessesExit(t *testing.T) {
 	// The app closes the link: the connection is closed here at once, the process notices later.
 	node.Link().Close()
 	_, err := runtime.Reload(node, nil, background)
-	var exit *NodeExit
-	if !errors.As(err, &exit) {
+	if _, ok := errors.AsType[*NodeExit](err); !ok {
 		t.Fatalf("reload = %v (%T), want a *NodeExit", err, err)
 	}
 }
@@ -543,12 +542,10 @@ func TestNodeConcurrentExtractionsShareOneCompleteTree(t *testing.T) {
 	var group sync.WaitGroup
 	start := make(chan struct{})
 	for i := range extractors {
-		group.Add(1)
-		go func() {
-			defer group.Done()
+		group.Go(func() {
 			<-start
 			dirs[i], errs[i] = extractNode(cache)
-		}()
+		})
 	}
 	close(start)
 	group.Wait()
