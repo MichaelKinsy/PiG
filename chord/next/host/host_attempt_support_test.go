@@ -28,7 +28,7 @@ func enterOf(self Self) func(work func()) { return self.(*attempt).object.host.e
 // mustGet is `await host.get(Type, params, context)`.
 func mustGet(t testing.TB, host Host, typ *contracts.Contract, params *delta.JsonObject) *Reference {
 	t.Helper()
-	reference, err := host.Get(typ, params, background, GetOptions{})
+	reference, err := host.Get(background, typ, params, GetOptions{})
 	must(t, err)
 	return reference
 }
@@ -36,7 +36,7 @@ func mustGet(t testing.TB, host Host, typ *contracts.Contract, params *delta.Jso
 // mustHold is `host.hold(Type, params, context)`.
 func mustHold(t testing.TB, host Host, typ *contracts.Contract, params *delta.JsonObject) *Reference {
 	t.Helper()
-	reference, err := host.Hold(typ, params, background, GetOptions{})
+	reference, err := host.Hold(background, typ, params, GetOptions{})
 	must(t, err)
 	return reference
 }

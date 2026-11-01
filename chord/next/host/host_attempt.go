@@ -104,7 +104,7 @@ type Self interface {
 		options ...NativeOptions,
 	) Native[any]
 	// Tx runs fn as one transaction of this object (§9).
-	Tx(fn func(tx *documents.Transaction) (any, error), ctx context.Context) (any, error)
+	Tx(fn func(tx documents.Tx) (any, error), ctx context.Context) (any, error)
 	// Follow is a source following another runtime's synchronous observer (Durable's views, slice 6b §3): attach runs
 	// during activation once the natives opened (an error or no attachment fails the activation `transient`), and the
 	// observer is detached when the attempt ends. Its runtime failing fails this object `transient`; its `ended` is final,
@@ -522,9 +522,11 @@ func (a *attempt) Open(
 	return native
 }
 
-// Tx implements Self.
-func (a *attempt) Tx(fn func(tx *documents.Transaction) (any, error), ctx context.Context) (any, error) {
-	return a.object.documents.Tx(fn, a.token, ctx)
+// Tx implements Self. The callback holds the transaction as the documents.Tx interface, what `self.tx` gives it; the
+// object's runtime (Documents.Tx) works on the concrete *Transaction. The adapter closure does not escape (Documents.Tx
+// only calls fn), so it costs no allocation.
+func (a *attempt) Tx(fn func(tx documents.Tx) (any, error), ctx context.Context) (any, error) {
+	return a.object.documents.Tx(func(tx *documents.Transaction) (any, error) { return fn(tx) }, a.token, ctx)
 }
 
 // Follow implements Self.
@@ -1899,7 +1901,7 @@ func (e *exposedKeyed) keyed() documents.KeyedHandle {
 
 // Get is the document at key; found is false when absent.
 func (e *exposedKeyed) Get(ctx context.Context, key string) (delta.JsonValue, bool, error) {
-	value, err := e.keyed().Get(key, ctx)
+	value, err := e.keyed().Get(ctx, key)
 	if err != nil || value == nil {
 		return nil, false, err
 	}
@@ -1908,7 +1910,7 @@ func (e *exposedKeyed) Get(ctx context.Context, key string) (delta.JsonValue, bo
 
 // Watch is a watch of the document at key that follows its address.
 func (e *exposedKeyed) Watch(ctx context.Context, key string) (chord.WatchHandle[delta.JsonValue], error) {
-	return e.keyed().Watch(key, ctx)
+	return e.keyed().Watch(ctx, key)
 }
 
 // At is, in a factory only, the document at key as a watchable.

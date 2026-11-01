@@ -102,7 +102,7 @@ func servedWorker(b *testing.B, persisted bool) *benchWorker {
 			return contracts.Implementation{}, nil
 		}, ServeOptions{})
 	})}}, background))
-	reference, err := host.Get(benchWorkerType, jsonObject(), background, GetOptions{})
+	reference, err := host.Get(background, benchWorkerType, jsonObject(), GetOptions{})
 	must(b, err)
 	worker.close = func() {
 		reference.Release()
@@ -160,7 +160,7 @@ func BenchmarkJobsStateChange(b *testing.B) {
 			b.ResetTimer()
 			for index := 1; b.Loop(); index++ {
 				done := float64(index)
-				if _, err := run.state.Change(func(draft *delta.Object) (any, error) { return nil, draft.Set("done", done) }, background, c.options); err != nil {
+				if _, err := run.state.Change(background, func(draft *delta.Object) (any, error) { return nil, draft.Set("done", done) }, c.options); err != nil {
 					b.Fatal(err)
 				}
 			}

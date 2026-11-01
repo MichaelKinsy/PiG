@@ -169,9 +169,9 @@ func TestAttemptFailureKindsFailBrokenReportedTheGetRejectsAtOnceWithAChordError
 					return each.factory(self)
 				}, ServeOptions{})
 			}, loadedOptions{})
-			_, first := host.Get(attemptBroken, jsonObject("id", 1.0), background, GetOptions{})
+			_, first := host.Get(background, attemptBroken, jsonObject("id", 1.0), GetOptions{})
 			wantChordError(t, first, data.CodeUnavailable, "", each.message)
-			_, second := host.Get(attemptBroken, jsonObject("id", 1.0), background, GetOptions{})
+			_, second := host.Get(background, attemptBroken, jsonObject("id", 1.0), GetOptions{})
 			if second == nil || second.Error() != each.message {
 				t.Fatalf("second get = %v, want %q", second, each.message)
 			}
@@ -204,7 +204,7 @@ func TestAttemptAnOpenThatThrowsFailsTransientReportedTheGetWaitsThroughRetries(
 		}, ServeOptions{})
 	}, loadedOptions{})
 	ten := 10 * time.Millisecond
-	_, err := host.Get(attemptBroken, jsonObject("id", 1.0), background, GetOptions{ReadyTimeout: &ten})
+	_, err := host.Get(background, attemptBroken, jsonObject("id", 1.0), GetOptions{ReadyTimeout: &ten})
 	wantChordError(t, err, data.CodeUnavailable, "", "app.broken(1): offline")
 	all := errs.All()
 	if len(all) != 1 || all[0].Kind != ErrActivationFailed || all[0].Object != "app.broken(1)" ||
@@ -243,7 +243,7 @@ func TestAttemptAnAttemptNotLiveWithinReadyTimeoutIsAbandonedAndFailsTransientTh
 	long := 150 * time.Millisecond
 	got := make(chan error, 1)
 	go func() {
-		_, err := host.Get(attemptBroken, jsonObject("id", 1.0), background, GetOptions{ReadyTimeout: &long})
+		_, err := host.Get(background, attemptBroken, jsonObject("id", 1.0), GetOptions{ReadyTimeout: &long})
 		got <- err
 	}()
 	until(t, "the second opener", func() bool { mu.Lock(); defer mu.Unlock(); return opener != nil })
@@ -317,7 +317,7 @@ func TestAttemptAKeyedDocumentsInitialFailingItsSchemaFailsThatTransactionNotThe
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"label": constant("live")},
 				Methods: map[string]contracts.MethodFunction{"slow": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-					_, err := handle.Change("a", func(*delta.Object) (any, error) { return nil, nil }, ctx)
+					_, err := handle.Change(ctx, "a", func(*delta.Object) (any, error) { return nil, nil })
 					return nil, err
 				}},
 			}}, nil
@@ -354,7 +354,7 @@ func TestAttemptReleasesTheReferencesItAcquired(t *testing.T) {
 			}}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	_, err := host.Get(attemptBroken, jsonObject("id", 1.0), background, GetOptions{})
+	_, err := host.Get(background, attemptBroken, jsonObject("id", 1.0), GetOptions{})
 	if err == nil || err.Error() != "app.broken(1): late" {
 		t.Fatalf("get error = %v, want late", err)
 	}
@@ -386,7 +386,7 @@ func TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbo
 				Methods: map[string]contracts.MethodFunction{"slow": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					started.fire()
 					proceed.await(t, ctx)
-					_, err := self.Tx(func(tx *documents.Transaction) (any, error) { return tx.Draft(list) }, background)
+					_, err := self.Tx(func(tx documents.Tx) (any, error) { return tx.Draft(list) }, background)
 					finished <- outcome{aborted: ctx.Err() != nil, err: err}
 					return nil, nil
 				}},
@@ -523,7 +523,7 @@ func TestAttemptEndingRefusesTransactionsAtOnceDocumentsStayReadableUntilTheClos
 			list = self.State(attemptListDoc).(*documents.Singleton)
 			self.Open(func(context.Context) (any, error) { return nil, nil }, func(any, NativeCloseReason, context.Context) error {
 				value, _ := list.Value()
-				_, err := list.Change(func(*delta.Object) (any, error) { return nil, nil }, background)
+				_, err := list.Change(background, func(*delta.Object) (any, error) { return nil, nil })
 				seen <- seenAtClose{items: value, err: err}
 				return nil
 			})
@@ -729,11 +729,11 @@ func TestAttemptDeclarationsContributeOnlyInHostLifetimeObjectsR21SelfHasNoContr
 			return contracts.Implementation{}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	_, err = host.Get(attemptPage, jsonObject("id", 1.0), background, GetOptions{})
+	_, err = host.Get(background, attemptPage, jsonObject("id", 1.0), GetOptions{})
 	if err == nil || !hasText(err.Error(), "app.page(1): self.contribute is valid only in a local type with empty params") {
 		t.Fatalf("page get = %v", err)
 	}
-	_, err = host.Get(storeType, jsonObject(), background, GetOptions{})
+	_, err = host.Get(background, storeType, jsonObject(), GetOptions{})
 	if err == nil || !hasText(err.Error(), "app.store: registry app.names is contributed to twice") {
 		t.Fatalf("store get = %v", err)
 	}
@@ -751,7 +751,7 @@ func TestAttemptDeclarationsRefuseADocumentDefinitionDeclaredTwice(t *testing.T)
 			return contracts.Implementation{}, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	_, err := host.Get(twice, jsonObject("n", 2.0), background, GetOptions{})
+	_, err := host.Get(background, twice, jsonObject("n", 2.0), GetOptions{})
 	if err == nil || !hasText(err.Error(), `app.twice(2): state "list" is declared twice`) {
 		t.Fatalf("get = %v", err)
 	}
@@ -955,7 +955,7 @@ func TestAttemptRemoteVariantsFailTheActivationBroken(t *testing.T) {
 	} {
 		t.Run(each.name, func(t *testing.T) {
 			host, errs := two(t, each.implementation)
-			_, err := host.Get(attemptTwo, jsonObject(), background, GetOptions{})
+			_, err := host.Get(background, attemptTwo, jsonObject(), GetOptions{})
 			wantChordError(t, err, data.CodeUnavailable, "", "app.two: "+each.message)
 			if got := failures(errs.All()); !reflect.DeepEqual(got, []string{"app.two: broken"}) {
 				t.Fatalf("failures = %v", got)
@@ -995,6 +995,8 @@ func storeImplementation() contracts.Implementation {
 	return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(1.0)}}}
 }
 
+// Ports packages/chord/test/next/host/attempt.test.ts:645 ("a fresh table is created at activation at its version, with
+// its indexes, in one commit"): the factory declares the table with `self.table(Edits)` (attempt.test.ts:650, StoreSelf.Table).
 func TestAttemptTablesAFreshTableIsCreatedAtActivationAtItsVersionWithItsIndexesInOneCommit(t *testing.T) {
 	chordStore := memoryStore(t, true)
 	edits := attemptEdits(t)
@@ -1073,7 +1075,7 @@ func TestAttemptTablesFailTheActivationBroken(t *testing.T) {
 					return storeImplementation(), nil
 				}, ServeOptions{})
 			}, loadedOptions{Store: chordStore})
-			_, err := host.Get(attemptStoreType, jsonObject(), background, GetOptions{})
+			_, err := host.Get(background, attemptStoreType, jsonObject(), GetOptions{})
 			if err == nil || !hasText(err.Error(), each.message) {
 				t.Fatalf("get = %v, want a message containing %q", err, each.message)
 			}
@@ -1099,11 +1101,11 @@ func TestAttemptTablesNeedALocalTypeWithEmptyParamsP3AndAHostWithAStore(t *testi
 			return storeImplementation(), nil
 		}, ServeOptions{})
 	}, loadedOptions{})
-	_, err := host.Get(attemptPage, jsonObject("id", 1.0), background, GetOptions{})
+	_, err := host.Get(background, attemptPage, jsonObject("id", 1.0), GetOptions{})
 	if err == nil || !hasText(err.Error(), "persist needs a stable identity") {
 		t.Fatalf("page get = %v", err)
 	}
-	_, err = host.Get(attemptStoreType, jsonObject(), background, GetOptions{})
+	_, err = host.Get(background, attemptStoreType, jsonObject(), GetOptions{})
 	if err == nil || !hasText(err.Error(), "persist needs a store") {
 		t.Fatalf("store get = %v", err)
 	}

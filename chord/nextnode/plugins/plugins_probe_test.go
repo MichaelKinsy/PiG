@@ -85,7 +85,7 @@ func probeOn(t *testing.T, h host.Host) *probe { return probeHeld(t, h, probeCon
 // Node host that serves it, as the app's server holds what its worker serves.
 func probeHeld(t *testing.T, h host.Host, contract *contracts.Contract) *probe {
 	t.Helper()
-	ref, err := h.Get(contract, delta.NewJsonObject(0), background, host.GetOptions{})
+	ref, err := h.Get(background, contract, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -421,7 +421,7 @@ func TestHostRevokeNeverRevokesTheHostsOwnPrincipal(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		host, _, _, _ := revocationWorker(t, nil)
 		defer closeHosts(t, host)
-		own, err := host.Get(Notes, jsonObject("session", "S1"), background, GetOptions{})
+		own, err := host.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
 		must(t, err)
 		must(t, host.Revoke(jsonObject("session", "S1"), background))
 		if kind := refStateOf(own).Kind; kind != RefStateLive {
@@ -647,7 +647,7 @@ func TestHostRevokeSendsRevokeOnEveryRouteLinkAndOnNoneMadeLater(t *testing.T) {
 		workers := newRawWorkers(t, rawWorkerOptions{})
 		r := relay(t, relayedOptions{Resolve: workers.Resolve})
 		defer closeHosts(t, r.Tab, r.Server)
-		_, err := r.Tab.Hold(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+		_, err := r.Tab.Hold(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 		must(t, err)
 		scopeEventually(t, "the first worker was resolved", func() bool { return len(workers.Peers()) >= 1 })
 		r.Transported()
@@ -666,7 +666,7 @@ func TestHostRevokeSendsRevokeOnEveryRouteLinkAndOnNoneMadeLater(t *testing.T) {
 		if revokes := revokesOf(workers.Peers()[0]); len(revokes) != 1 || !reflect.DeepEqual(revokes[0], &link.RevokeMessage{Revocation: jsonObject("session", "S7")}) {
 			t.Fatalf("revokes = %v, want one revoke of S7", revokes)
 		}
-		_, err = r.Tab.Hold(PlacedNotes, jsonObject("session", "S2"), background, GetOptions{})
+		_, err = r.Tab.Hold(background, PlacedNotes, jsonObject("session", "S2"), GetOptions{})
 		must(t, err)
 		scopeEventually(t, "the second worker was resolved", func() bool { return len(workers.Peers()) >= 2 })
 		r.Transported()
@@ -710,7 +710,7 @@ func TestHostRevocationAcrossARelayClosesARevokedTabsLinkAndEndsItsObjectsOnTheW
 	forEachCodec(t, func(t *testing.T) {
 		r := relay(t, relayedOptions{Tab: revocationS1, RevokedBy: revokedByApp})
 		defer closeHosts(t, r.Tab, r.Server)
-		notes, err := r.Tab.Hold(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+		notes, err := r.Tab.Hold(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 		must(t, err)
 		r.Transported()
 		r.Transported()
@@ -739,7 +739,7 @@ func TestHostRevocationAcrossARelayEndsTheWorkersObjectsThroughTheRevokeMessageA
 		// The server's own revokedBy names no guest: its tab link stays, only the worker applies the revocation.
 		r := relay(t, relayedOptions{Tab: revocationS1, RevokedBy: revokedByApp, ServerRevokedBy: func(data.Principal) ([]delta.JsonValue, error) { return nil, nil }})
 		defer closeHosts(t, r.Tab, r.Server)
-		notes, err := r.Tab.Hold(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+		notes, err := r.Tab.Hold(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 		must(t, err)
 		r.Transported()
 		r.Transported()
@@ -758,7 +758,7 @@ func TestHostRevocationAcrossARelayEndsTheWorkersObjectsThroughTheRevokeMessageA
 			t.Fatalf("tab errors = %d, want 0", got)
 		}
 		// The tab's link stayed open: a new hold binds.
-		again, err := r.Tab.Get(PlacedNotes, jsonObject("session", "S1"), background, GetOptions{})
+		again, err := r.Tab.Get(background, PlacedNotes, jsonObject("session", "S1"), GetOptions{})
 		must(t, err)
 		if kind := refStateOf(again).Kind; kind != RefStateLive {
 			t.Fatalf("state = %s, want live", kind)

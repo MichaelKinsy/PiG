@@ -317,7 +317,7 @@ func exMember(t *testing.T, ref *host.Reference, member string) delta.JsonValue 
 
 func exPlainGet(t *testing.T, h host.Host, contract *contracts.Contract) *host.Reference {
 	t.Helper()
-	ref, err := h.Get(contract, delta.NewJsonObject(0), background, host.GetOptions{})
+	ref, err := h.Get(background, contract, delta.NewJsonObject(0), host.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

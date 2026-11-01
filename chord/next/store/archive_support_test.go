@@ -182,7 +182,7 @@ func assertRowText(t *testing.T, handle *TableHandle, want string) {
 	t.Helper()
 	expected := nexttest.ParseJSON(t, want)
 	id := expected.(*delta.JsonObject).Value("id")
-	got, err := handle.Get(Row{"id": id}, background)
+	got, err := handle.Get(background, Row{"id": id})
 	if err != nil {
 		t.Fatalf("get %v: %v", id, err)
 	}

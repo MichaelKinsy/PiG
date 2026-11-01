@@ -342,7 +342,7 @@ func (tx *Transaction) Get(table *store.TableHandle, key any) (store.Row, error)
 	tx.documents.Do(func() { tx.pending++ })
 	defer tx.documents.Do(func() { tx.pending-- })
 	if changes == nil {
-		return handle.Get(key, tx.ctx)
+		return handle.Get(tx.ctx, key)
 	}
 	return changes.Get(key, tx.ctx)
 }
@@ -361,7 +361,7 @@ func (tx *Transaction) Page(table *store.TableHandle, q *store.Query, limit int6
 	}
 	tx.documents.Do(func() { tx.pending++ })
 	defer tx.documents.Do(func() { tx.pending-- })
-	return handle.Page(q, limit, tx.ctx, option)
+	return handle.Page(tx.ctx, q, limit, option)
 }
 
 // TxRows is every committed row of a query, read a page of store.RowsPage at a time (Pi's `rows` AsyncIterable).

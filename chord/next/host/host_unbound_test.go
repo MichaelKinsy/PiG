@@ -221,9 +221,9 @@ func indexedHolds(host Host) []weak.Pointer[hold] {
 // Mirrors unbound.test.ts "references waiting in the index › before the publication: loading, placed by it; a type not served then waits failed { waiting }".
 func TestHostReferencesWaitingInTheIndexBeforeThePublicationAreLoadingPlacedByIt(t *testing.T) {
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
-	info, err := host.Hold(unboundInfo, jsonObject(), background, GetOptions{})
+	info, err := host.Hold(background, unboundInfo, jsonObject(), GetOptions{})
 	must(t, err)
-	missing, err := host.Hold(unboundMissing, jsonObject("id", float64(1)), background, GetOptions{})
+	missing, err := host.Hold(background, unboundMissing, jsonObject("id", float64(1)), GetOptions{})
 	must(t, err)
 	for _, ref := range []*Reference{info, missing} {
 		if kind := refStateOf(ref).Kind; kind != RefStateLoading {
@@ -257,19 +257,19 @@ func TestHostReferencesWaitingInTheIndexLeaveNothingBehindOnceReleased(t *testin
 	defer closeHosts(t, host)
 	var weaks []weak.Pointer[binding]
 	func() {
-		first, err := host.Hold(unboundMissing, jsonObject("id", float64(1)), background, GetOptions{})
+		first, err := host.Hold(background, unboundMissing, jsonObject("id", float64(1)), GetOptions{})
 		must(t, err)
 		weaks = append(weaks, weak.Make(first.binding))
 		first.Release()
 		mustLoad(t)(host.Load(nil, background))
-		second, err := host.Hold(unboundMissing, jsonObject("id", float64(2)), background, GetOptions{})
+		second, err := host.Hold(background, unboundMissing, jsonObject("id", float64(2)), GetOptions{})
 		must(t, err)
 		weaks = append(weaks, weak.Make(second.binding))
 		second.Release()
 		readyTimeout := time.Millisecond
 		got := make(chan error, 1)
 		go func() {
-			_, err := host.Get(unboundMissing, jsonObject("id", float64(3)), background, GetOptions{ReadyTimeout: &readyTimeout})
+			_, err := host.Get(background, unboundMissing, jsonObject("id", float64(3)), GetOptions{ReadyTimeout: &readyTimeout})
 			got <- err
 		}()
 		waiting := indexedBindings(host)
@@ -312,10 +312,10 @@ func TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose(t *testing.
 	mustLoad(t)(host.Load([]HostFacet{{Name: "@test/a", Facet: facet}}, background))
 	outcome := make(chan error, 1)
 	go func() {
-		_, err := host.Get(unboundMissing, jsonObject("id", float64(1)), background, GetOptions{})
+		_, err := host.Get(background, unboundMissing, jsonObject("id", float64(1)), GetOptions{})
 		outcome <- err
 	}()
-	held, err := host.Hold(unboundMissing, jsonObject("id", float64(2)), background, GetOptions{})
+	held, err := host.Hold(background, unboundMissing, jsonObject("id", float64(2)), GetOptions{})
 	must(t, err)
 	for len(indexedBindings(host)) < 2 {
 		turn(host)

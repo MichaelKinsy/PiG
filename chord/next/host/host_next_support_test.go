@@ -273,7 +273,7 @@ func restartableOf(
 		}, ServeOptions{})
 	}, options)
 	get := func() *Reference {
-		reference, err := host.Get(typ, params, background, GetOptions{})
+		reference, err := host.Get(background, typ, params, GetOptions{})
 		must(t, err)
 		return reference
 	}
@@ -1197,7 +1197,7 @@ func stateOf(self Self, definition *documents.StateDefinition) *singletonDoc {
 
 // Change is `await doc.change((draft) => ..., ctx)`.
 func (d *singletonDoc) Change(fn func(draft *delta.Object), ctx context.Context) error {
-	_, err := d.s.Change(func(draft *delta.Object) (any, error) { fn(draft); return nil, nil }, ctx)
+	_, err := d.s.Change(ctx, func(draft *delta.Object) (any, error) { fn(draft); return nil, nil })
 	return err
 }
 
@@ -1219,7 +1219,7 @@ func (d *singletonDoc) Member() chord.Watchable[delta.JsonValue] { return Expose
 // addNote adds a note to the session's store from the server itself; the reference it takes keeps the store.
 func addNote(t testing.TB, server Host, session, text string) {
 	t.Helper()
-	store, err := server.Get(NoteStore, jsonObject("session", session), background, GetOptions{})
+	store, err := server.Get(background, NoteStore, jsonObject("session", session), GetOptions{})
 	must(t, err)
 	_, err = store.Call("add", jsonObject("text", text), background)
 	must(t, err)

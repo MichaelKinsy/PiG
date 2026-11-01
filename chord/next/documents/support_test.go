@@ -330,8 +330,8 @@ func (a *attempt) Activate() error {
 }
 
 // Tx is `self.tx`.
-func (a *attempt) Tx(fn func(tx *Transaction) (any, error), ctx context.Context) (any, error) {
-	return a.object.documents.Tx(fn, a.token, ctx)
+func (a *attempt) Tx(fn func(tx Tx) (any, error), ctx context.Context) (any, error) {
+	return a.object.documents.Tx(func(tx *Transaction) (any, error) { return fn(tx) }, a.token, ctx)
 }
 
 // Fail is the attempt failing live: its token is sealed and its open transaction discarded; the object stays.
