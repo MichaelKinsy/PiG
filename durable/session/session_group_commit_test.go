@@ -877,8 +877,8 @@ func TestGroupCommitAFailureBetweenTwoPublications(t *testing.T) {
 			value, err := g.session.CommitWithTicket(ticket, ctx, func(tx *session.Transaction) (any, error) { return appendChange(id, "one")(tx) }, session.TransactionScope{})
 			if err == nil {
 				_, err = g.session.CommitWith(ctx, func(tx *session.Transaction) (any, error) { return tx.Task(999) }, session.TransactionScope{})
-				if err != read {
-					return value, fmt.Errorf("the continuation's read got %w, want %v", err, read)
+				if !errors.Is(err, read) {
+					return value, fmt.Errorf("the continuation's read got %w, want %w", err, read)
 				}
 				err = nil
 			}

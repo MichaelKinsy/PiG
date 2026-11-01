@@ -200,7 +200,7 @@ func TestGroupCommitLeavesThePartsAfterOneWhoseAdoptionFailsUnpublished(t *testi
 	}
 	publishedMu.Unlock()
 	<-kernel.Closed()
-	if end := kernel.End(); end.Kind != durable.SessionEndFailed || end.Error != err {
+	if end := kernel.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, err) {
 		t.Fatalf("session ended %+v, want failed with %v", end, err)
 	}
 	// All four are durable: reopening recovers the unpublished one.

@@ -3,7 +3,6 @@ package codemode
 // pi: packages/durable/src/codemode/codemode.ts
 
 import (
-	"slices"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -11,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"

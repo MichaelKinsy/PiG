@@ -279,17 +279,19 @@ func history(t *testing.T, storage durable.Storage) (rewindable durable.Document
 	rewindable = mintID[durable.DocumentId](t, storage)
 	latest := mintID[durable.DocumentId](t, storage)
 	empty := mintID[durable.DocumentId](t, storage)
-	seqs = append(seqs, value(commitWrites(storage,
-		durable.DocumentCreateWrite{Record: durable.DocumentCreate{Id: rewindable, Kind: "r", Scope: rootScope, History: durable.HistoryRewindable, Fork: durable.ForkAsOf}, Content: base(0)},
-		durable.DocumentCreateWrite{Record: durable.DocumentCreate{Id: latest, Kind: "l", Scope: rootScope, History: durable.HistoryLatest, Fork: durable.ForkCurrent}, Content: base(0)},
-	)))
-	seqs = append(seqs, value(commitWrites(storage, durable.DocumentChangeWrite{Id: rewindable, Content: deltaTo(1)})))
-	seqs = append(seqs, value(commitWrites(storage,
-		durable.DocumentChangeWrite{Id: latest, Content: deltaTo(2)},
-		durable.DocumentRetireWrite{Id: latest},
-		durable.DocumentCreateWrite{Record: durable.DocumentCreate{Id: empty, Kind: "e", Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}}, Content: base(3)},
-		durable.DocumentRetireWrite{Id: empty},
-	)))
+	seqs = append(seqs,
+		value(commitWrites(storage,
+			durable.DocumentCreateWrite{Record: durable.DocumentCreate{Id: rewindable, Kind: "r", Scope: rootScope, History: durable.HistoryRewindable, Fork: durable.ForkAsOf}, Content: base(0)},
+			durable.DocumentCreateWrite{Record: durable.DocumentCreate{Id: latest, Kind: "l", Scope: rootScope, History: durable.HistoryLatest, Fork: durable.ForkCurrent}, Content: base(0)},
+		)),
+		value(commitWrites(storage, durable.DocumentChangeWrite{Id: rewindable, Content: deltaTo(1)})),
+		value(commitWrites(storage,
+			durable.DocumentChangeWrite{Id: latest, Content: deltaTo(2)},
+			durable.DocumentRetireWrite{Id: latest},
+			durable.DocumentCreateWrite{Record: durable.DocumentCreate{Id: empty, Kind: "e", Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}}, Content: base(3)},
+			durable.DocumentRetireWrite{Id: empty},
+		)),
+	)
 	return rewindable, seqs
 }
 
