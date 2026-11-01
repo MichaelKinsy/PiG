@@ -11,81 +11,14 @@ import (
 	"syscall"
 	"testing"
 	"time"
-
-	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 )
 
-// Not upstream's: the start of the Node subprocess where the test needs a process that does not connect (a script `--require`d
-// before the driver, which blocks it) or another `node` on PATH (a shell script): unix only.
-
-// blockedStart is a NodeOptions whose process prints its pid and blocks before the driver connects: pids receives the pid
-// once the process is running.
-func blockedStart(t *testing.T) (NodeOptions, <-chan int) {
-	t.Helper()
-	block := filepath.Join(t.TempDir(), "block.cjs")
-	script := `process.stdout.write("pid " + process.pid + "\n");
-Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0);
-`
-	if err := os.WriteFile(block, []byte(script), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	pids := make(chan int, 1)
-	return NodeOptions{
-		CacheDir: t.TempDir(),
-		ExecArgv: []string{"--require", block},
-		OnOutput: func(stream NodeStream, chunk []byte) {
-			if stream != NodeStdout {
-				return
-			}
-			if pid, ok := strings.CutPrefix(strings.TrimSpace(string(chunk)), "pid "); ok {
-				if n, err := strconv.Atoi(pid); err == nil {
-					select {
-					case pids <- n:
-					default:
-					}
-				}
-			}
-		},
-	}, pids
-}
+// Not upstream's: the parts of the start tests (plugins_node_start_test.go) and the file tests that only a unix has: a pid
+// probe, a `node` that is a shell script, the socket directory of the listener, a file that has no permission.
 
 // processGone reports whether pid is no process any more: the one a failed start killed was waited for, so it is not even a
 // zombie.
 func processGone(pid int) bool { return errors.Is(syscall.Kill(pid, 0), syscall.ESRCH) }
-
-// A start that is aborted while its process runs kills the process and returns the cause, before Load returns.
-func TestNodeAbortedStartWhileTheProcessRunsKillsItAndReturnsTheCause(t *testing.T) {
-	options, pids := blockedStart(t)
-	ctx, cancel := chordctx.WithCancel(background)
-	loaded := make(chan error, 1)
-	go func() {
-		_, _, err := NewPluginRuntime(options).Load(RuntimeLoad{Kind: "worker", Principal: workerPrincipal, Peer: serverPrincipal}, ctx)
-		loaded <- err
-	}()
-	pid := <-pids
-	cancel(errors.New("stop it"))
-	err := <-loaded
-	if err == nil || !strings.Contains(err.Error(), "stop it") {
-		t.Fatalf("error = %v, want the cause", err)
-	}
-	if !processGone(pid) {
-		t.Fatalf("process %d is running after the aborted start returned", pid)
-	}
-}
-
-// A start whose process does not connect within ReadyTimeout kills it and says what it was waiting for.
-func TestNodeAStartThatDoesNotConnectInTimeKillsTheProcess(t *testing.T) {
-	options, pids := blockedStart(t)
-	timeout := 200 * time.Millisecond
-	options.ReadyTimeout = &timeout
-	_, _, err := NewPluginRuntime(options).Load(RuntimeLoad{Kind: "worker", Principal: workerPrincipal, Peer: serverPrincipal}, background)
-	if err == nil || !strings.Contains(err.Error(), "did not connect within 200ms") {
-		t.Fatalf("error = %v", err)
-	}
-	if pid := <-pids; !processGone(pid) {
-		t.Fatalf("process %d is running after the failed start returned", pid)
-	}
-}
 
 // Every failed start leaves no socket directory behind (the one the process was to connect to).
 func TestNodeAFailedStartRemovesItsSocketDirectory(t *testing.T) {
@@ -107,44 +40,29 @@ func TestNodeAFailedStartRemovesItsSocketDirectory(t *testing.T) {
 	}
 }
 
-// fakeNode puts a `node` on PATH (alone) that runs script.
-func fakeNode(t *testing.T, script string) {
+// fakeNode puts a `node` on PATH (alone) that prints stdout, writes stderr and exits with code.
+func fakeNode(t *testing.T, stdout, stderr string, code int) {
 	t.Helper()
+	script := "#!/bin/sh\n"
+	if stdout != "" {
+		script += "echo " + shellQuote(stdout) + "\n"
+	}
+	if stderr != "" {
+		script += "echo " + shellQuote(stderr) + " >&2\n"
+	}
+	script += "exit " + strconv.Itoa(code) + "\n"
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "node"), []byte("#!/bin/sh\n"+script+"\n"), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "node"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir)
 }
 
-func TestNodeOlderThanTheMinimumNamesTheRequirementAndTheVersionFound(t *testing.T) {
-	fakeNode(t, "echo v22.18.0")
-	_, _, err := NewPluginRuntime(NodeOptions{CacheDir: t.TempDir()}).Load(RuntimeLoad{Kind: "worker", Principal: workerPrincipal, Peer: serverPrincipal}, background)
-	want := "evaluating plugins needs Node.js 22.19.0 or newer; found v22.18.0"
-	if err == nil || err.Error() != want {
-		t.Fatalf("error = %v, want %q", err, want)
-	}
-}
-
-func TestNodeWhoseVersionIsNoVersionIsRefused(t *testing.T) {
-	fakeNode(t, "echo not a version")
-	_, _, err := NewPluginRuntime(NodeOptions{CacheDir: t.TempDir()}).Load(RuntimeLoad{Kind: "worker", Principal: workerPrincipal, Peer: serverPrincipal}, background)
-	want := `evaluating plugins needs Node.js 22.19.0 or newer; node --version returned "not a version"`
-	if err == nil || err.Error() != want {
-		t.Fatalf("error = %v, want %q", err, want)
-	}
-}
-
-func TestNodeThatFailsItsVersionNamesWhatItSaid(t *testing.T) {
-	fakeNode(t, "echo broken install >&2; exit 4")
-	_, _, err := NewPluginRuntime(NodeOptions{CacheDir: t.TempDir()}).Load(RuntimeLoad{Kind: "worker", Principal: workerPrincipal, Peer: serverPrincipal}, background)
-	if err == nil || !strings.Contains(err.Error(), "node --version failed: broken install") {
-		t.Fatalf("error = %v", err)
-	}
-}
+func shellQuote(text string) string { return "'" + strings.ReplaceAll(text, "'", `'\''`) + "'" }
 
 // A file the plugin imports and the build cannot read (here: forbidden) fails the build with Node's text, as Pi's build does
-// (its `readFile`): `EACCES: permission denied, open '<path>'`, after the position of the import. (A user that can read every file reads this one too.)
+// (its `readFile`): `EACCES: permission denied, open '<path>'`, after the position of the import. (A user that can read every file reads this one too.) Unix only: on Windows `os.Chmod` only
+// toggles the read-only attribute, which does not make a file unreadable.
 func TestEsbuildBuildAForbiddenInputFailsTheBuildWithNodesText(t *testing.T) {
 	root := tempRoot(t)
 	dir := writePlugin(t, root, "locked", "@test/locked", map[string]string{
