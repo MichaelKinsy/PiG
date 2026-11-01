@@ -38,6 +38,7 @@ fs.writeFileSync(file, JSON.stringify(pkg, null, 2));
 ) >"$work/help.raw"
 grep -v 'PI_SHARE_VIEWER_URL' "$work/help.raw" \
   | sed -e 's/^  PI_PACKAGE_DIR /  PIG_PACKAGE_DIR/' \
+    -e 's/^  PI_SELF_UPDATE_COMMAND \(.*\)Command pi update runs to update pi itself/  PI_SELF_UPDATE_COMMAND \1Command pig update runs to update pig itself/' \
     -e 's/^  pig update \[source|self|pi\]   Update pi, extensions, or model catalogs$/  pig update [source|self|pig]   Update pig, extensions, or model catalogs/' \
   | awk '
       /^ +Only \+name\/-name entries add to or remove from the defaults$/ { next }
