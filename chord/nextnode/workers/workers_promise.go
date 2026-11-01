@@ -93,11 +93,15 @@ func (p *promise[T]) isSettled() bool {
 type taskGroup struct {
 	mu      sync.Mutex
 	running int
-	idle    *sync.Cond
+	// idle is closed when the running count reaches zero, and replaced by the next task.
+	idle chan struct{}
 }
 
 func (g *taskGroup) add() {
 	g.mu.Lock()
+	if g.running == 0 {
+		g.idle = make(chan struct{})
+	}
 	g.running++
 	g.mu.Unlock()
 }
@@ -105,20 +109,26 @@ func (g *taskGroup) add() {
 func (g *taskGroup) done() {
 	g.mu.Lock()
 	g.running--
-	if g.running == 0 && g.idle != nil {
-		g.idle.Broadcast()
+	if g.running == 0 {
+		close(g.idle)
 	}
 	g.mu.Unlock()
 }
 
-// wait blocks until no task runs.
-func (g *taskGroup) wait() {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if g.idle == nil {
-		g.idle = sync.NewCond(&g.mu)
-	}
-	for g.running > 0 {
-		g.idle.Wait()
+// wait blocks until no task runs, or until ctx ends: it returns ctx's cause then (the tasks go on).
+func (g *taskGroup) wait(ctx context.Context) error {
+	for {
+		g.mu.Lock()
+		idle := g.idle
+		running := g.running
+		g.mu.Unlock()
+		if running == 0 {
+			return nil
+		}
+		select {
+		case <-idle:
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		}
 	}
 }

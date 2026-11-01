@@ -349,10 +349,11 @@ func (c *Workers) Step(name string) plugins.RolloutStep {
 
 // Close cancels starts, stops every worker; new starts reject `released/closed`.
 func (c *Workers) Close(ctx context.Context) error {
-	err := c.close(ctx)
-	// Shutdown draining: the component's own goroutines end with their work.
-	c.tasks.wait()
-	return err
+	if err := c.close(ctx); err != nil {
+		return err
+	}
+	// Shutdown draining: the component's own goroutines end with their work, as far as ctx lets Close wait for them.
+	return c.tasks.wait(ctx)
 }
 
 func (c *Workers) close(ctx context.Context) error {
