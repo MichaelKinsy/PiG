@@ -12,15 +12,17 @@
 //     on. The writer, one goroutine it owns, sends everything admitted while no call is in flight as one Storage.Commit call,
 //     off the line, and publishes the parts of a call in line order. A job's reads wait on the gate of the newest unpublished
 //     writer of their key (Touch, AwaitTouch, GatedStorage); a gate wait blocks the job's goroutine, never the writer.
-//   - Pi's event loop gives two guarantees that Go's scheduler does not, and the Session keeps them with the shared `entered`
-//     mechanism (a goroutine that was woken has "entered" once it is parked in a wait or has exited):
+//   - Pi's event loop gives two guarantees that Go's scheduler does not, and the Session keeps them with an explicit handshake
+//     (resumption.go) that the waits of the Session signal, never by reading the state of goroutines, at any number of them:
 //     (1) a publication queues one dispatch to the host's observers, which runs a microtask later, before every wait the commit
 //     resolves and every abort it queues: here the publication runs the dispatch right after the part's own observers
 //     (inside the Storage's publication scope when it has one), then the work the observers deferred (DeferUntilPublished:
-//     wakes of waits, aborts), and waits until the goroutines those wakes woke have entered; (2) outcomes are delivered in line
-//     order, and the continuations of what a publication resolved start before the next part of the call is published (a
-//     macrotask hop): a delivery goroutine the Session owns releases the callers in line order, waiting for each released caller
-//     to have entered, and the writer's hop before the next part waits for that delivery goroutine to be idle.
+//     wakes of waits, aborts), and waits until the registered waits those wakes readied have resumed (Park, Await);
+//     (2) outcomes are delivered in line order, and the continuations of what a publication resolved start before the next
+//     part of the call is published (a macrotask hop): a delivery goroutine the Session owns releases the callers in line
+//     order, waiting for each released caller to have resumed from its wait, and the writer's hop before the next part waits
+//     for that delivery goroutine to be idle. "Started" is as far as the Session can know for code that is not its own: a
+//     caller that needs its continuation ordered up to its next wait brings a Continuation (WithContinuation).
 //   - A job's outcome is delivered in line order (the fence): a no-write job, a read, and a callback's own error wait for the
 //     outcomes before them, and a commit for its own publication. CommitInternal's jobs are exempt when they wrote nothing and
 //     waited at no gate. At most maxOutstanding admitted jobs have no outcome delivered; beyond it the line waits.
@@ -34,13 +36,13 @@ import (
 	"fmt"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
-	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
@@ -97,9 +99,10 @@ type lineJob struct {
 // SessionImpl.fenceMu until released is closed.
 type delivery struct {
 	index int
-	// caller is the goroutine that runs the job, which the delivery goroutine waits for to have entered once it is released.
-	caller uint64
-	ready  bool
+	// resumption is acknowledged by the job's caller once it resumed from waiting for released: the delivery goroutine waits for
+	// it before it releases the next caller.
+	resumption
+	ready bool
 	// skip is set when the caller takes its outcome at once (an exempt job) or the position was never used: nothing to deliver.
 	skip bool
 	// outcome is what the job settled with; final is what its caller gets, written before released is closed.
@@ -163,6 +166,14 @@ type SessionImpl struct {
 	// takes only it and the writer's.
 	jobMu   sync.Mutex
 	current *lineJob
+
+	// parkMu guards parks, the waits of the Session registered before they block (Park), which a publication waits for once it
+	// readied them. awaitingWakes is the number of those the writer waits for now, awaitingCallers the number of released commit
+	// callers the delivery goroutine waits for.
+	parkMu          sync.Mutex
+	parks           map[*Parked]struct{}
+	awaitingWakes   atomic.Int32
+	awaitingCallers atomic.Int32
 
 	// fenceMu guards the fence: the queue of deliveries in line order, the delivery goroutine's state, the backpressure
 	// counters, and the failure's boundary.
@@ -375,7 +386,7 @@ func (host writerHost) Publishing(publish func(), ctx context.Context) <-chan st
 }
 
 // Hop is the macrotask between two publications of a call: it returns once the callers of the commits published so far have
-// been released in line order and have entered, and the watch deliveries scheduled by the publications have entered.
+// been released in line order and have resumed, and the watch deliveries scheduled by the publications have entered.
 func (host writerHost) Hop() {
 	session := host.session
 	session.awaitDeliveriesIdle()
@@ -401,7 +412,7 @@ func (session *SessionImpl) takeSlotLocked(fenced bool) *slot {
 	session.tail = taken.done
 	session.lineJobs++
 	if fenced {
-		taken.delivery = &delivery{index: taken.index, released: make(chan struct{})}
+		taken.delivery = &delivery{index: taken.index, resumption: newResumption(nil), released: make(chan struct{})}
 		session.fenceMu.Lock()
 		session.fence = append(session.fence, taken.delivery)
 		session.fenceMu.Unlock()
@@ -455,20 +466,32 @@ func onLine[T any](session *SessionImpl, s *slot, work func(index int) (T, error
 	return work(s.index)
 }
 
+// lineCall is what a job on the line takes from the context of its caller.
+type lineCall struct {
+	// admitted, when non-nil, runs once the job holds its position and before it waits for earlier jobs: the point at which
+	// upstream's synchronous caller has extended the line's Promise chain (internal/lineadmission).
+	admitted func()
+	// continuation, when non-nil, is the caller's Continuation (WithContinuation).
+	continuation *Continuation
+}
+
+// lineCallOf is the lineCall of a caller with context ctx.
+func lineCallOf(ctx context.Context) lineCall {
+	return lineCall{admitted: lineadmission.From(ctx), continuation: continuationOf(ctx)}
+}
+
 // runFenced runs a job with an outcome on the line: after its predecessor, within the backpressure bound. The line goes on once
 // the job's work returned; the job's caller then waits for its outcome, which is delivered in line order once its commit, if it
-// admitted one, is published. admitted, when non-nil, runs once the job holds its position and before it waits for earlier jobs:
-// the point at which upstream's synchronous caller has extended the line's Promise chain. With exempt, a job that admitted no
-// commit and waited at no gate is delivered as soon as it has its outcome: it is equivalent to having run before every
-// unpublished commit.
-func runFenced[T any](session *SessionImpl, s *slot, exempt bool, admitted func(), work func(index int) (ran[T], error)) (T, error) {
+// admitted one, is published. call.admitted runs once the job holds its position and before it waits for earlier jobs. With
+// exempt, a job that admitted no commit and waited at no gate is delivered as soon as it has its outcome: it is equivalent to
+// having run before every unpublished commit. The caller acknowledges its resumption once it is released, which the delivery
+// goroutine waits for before it releases the next one.
+func runFenced[T any](session *SessionImpl, s *slot, exempt bool, call lineCall, work func(index int) (ran[T], error)) (T, error) {
 	var zero T
 	delivery := s.delivery
-	session.fenceMu.Lock()
-	delivery.caller = goroutineid.Current()
-	session.fenceMu.Unlock()
-	if admitted != nil {
-		admitted()
+	delivery.continuation = call.continuation
+	if call.admitted != nil {
+		call.admitted()
 	}
 	var result ran[T]
 	var err error
@@ -476,11 +499,20 @@ func runFenced[T any](session *SessionImpl, s *slot, exempt bool, admitted func(
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				// The callback panicked: its outcome settles like a rejection, so the jobs after it are delivered, then it keeps
-				// panicking.
+				// panicking. It never waits for its release, so it has resumed as far as anybody can tell.
 				session.settleJob(s, false, panicError(recovered))
+				delivery.acknowledge()
 				panic(recovered)
 			}
 		}()
+		if s.previous != nil && call.continuation != nil {
+			select {
+			case <-s.previous:
+			default:
+				// Waiting for the line is a wait of the Session: a continuation that goes on to it has entered.
+				call.continuation.Entered()
+			}
+		}
 		result, err = onLine(session, s, func(index int) (ran[T], error) {
 			session.waitRoom()
 			return work(index)
@@ -504,7 +536,13 @@ func runFenced[T any](session *SessionImpl, s *slot, exempt bool, admitted func(
 		session.delivered(s.index, false)
 		final = session.poison(s.index, outcome)
 	} else {
-		<-delivery.released
+		select {
+		case <-delivery.released:
+		default:
+			call.continuation.Entered()
+			<-delivery.released
+		}
+		delivery.resume()
 		final = delivery.final
 	}
 	if final != nil {
@@ -559,8 +597,8 @@ func (session *SessionImpl) kickDeliver() {
 }
 
 // deliverLoop is the delivery goroutine: it releases the callers of the jobs at the head of the fence, in line order, as long as
-// they are ready, and waits for each released caller to have entered (parked in a wait, or returned) before it releases the
-// next: upstream delivers outcomes in line order, and the continuation of one starts before the next.
+// they are ready, and waits for each released caller to have resumed from its wait before it releases the next: upstream
+// delivers outcomes in line order, and the continuation of one starts before the next.
 func (session *SessionImpl) deliverLoop() {
 	// The loop ends, and says so, when the head of the fence is not ready.
 	for {
@@ -573,7 +611,7 @@ func (session *SessionImpl) deliverLoop() {
 		}
 		next := session.fence[0]
 		session.fence = session.fence[1:]
-		skip, caller := next.skip, next.caller
+		skip := next.skip
 		session.fenceMu.Unlock()
 		if skip {
 			continue
@@ -581,14 +619,13 @@ func (session *SessionImpl) deliverLoop() {
 		session.delivered(next.index, true)
 		next.final = session.poison(next.index, next.outcome)
 		close(next.released)
-		if caller != 0 {
-			// The caller's goroutine may hold a lock the next delivery's does not need; one blocked on a lock has entered.
-			awaitEntered(session.lifetime, caller)
-		}
+		// The caller acknowledges as the first thing it does after its wait returned, holding nothing: the continuation of
+		// this outcome started before the next is released.
+		session.awaitResumed(&next.resumption, &session.awaitingCallers)
 	}
 }
 
-// awaitDeliveriesIdle returns once the delivery goroutine released every caller that is ready, and each has entered.
+// awaitDeliveriesIdle returns once the delivery goroutine released every caller that is ready, and each has resumed.
 func (session *SessionImpl) awaitDeliveriesIdle() {
 	session.fenceMu.Lock()
 	for session.delivering {
@@ -652,15 +689,15 @@ func (session *SessionImpl) ended(job *lineJob) {
 }
 
 // enqueue runs job on the mutation line after every previously admitted job, as a job with an outcome and no commit: a read.
-// With admit, the Session must be usable when the job takes its position. admitted, when non-nil, runs once the job holds its
+// With admit, the Session must be usable when the job takes its position. call.admitted, when non-nil, runs once the job holds its
 // position and before it waits for earlier jobs.
-func enqueue[T any](session *SessionImpl, admit bool, admitted func(), job func() (T, error)) (T, error) {
+func enqueue[T any](session *SessionImpl, admit bool, call lineCall, job func() (T, error)) (T, error) {
 	s, err := session.admitSlot(admit, true)
 	if err != nil {
 		var zero T
 		return zero, err
 	}
-	return runFenced(session, s, false, admitted, func(int) (ran[T], error) {
+	return runFenced(session, s, false, call, func(int) (ran[T], error) {
 		value, err := job()
 		return ran[T]{value: value}, err
 	})
@@ -872,12 +909,18 @@ func (session *SessionImpl) Touch(key string) <-chan struct{} {
 // AwaitTouch is Touch as a blocking call, which also checks that the Session is healthy once the gate opened. It returns at once
 // when key has no unpublished writer. A gate always opens, by a publication or by the Session's failure, so the wait is not
 // cancellable (the context is only the caller's, as GatedStorage's touch passes it).
-func (session *SessionImpl) AwaitTouch(_ context.Context, key string) error {
+func (session *SessionImpl) AwaitTouch(ctx context.Context, key string) error {
 	gate := session.Touch(key)
 	if gate == nil {
 		return nil
 	}
-	<-gate
+	select {
+	case <-gate:
+	default:
+		// A continuation that goes on to wait for a gate has entered.
+		continuationOf(ctx).Entered()
+		<-gate
+	}
 	return session.assertHealthy()
 }
 
@@ -1033,7 +1076,7 @@ func (session *SessionImpl) commitWith(ctx context.Context, change func(tx *Tran
 	if err != nil {
 		return nil, err
 	}
-	return runFenced(session, s, exempt, lineadmission.From(ctx), func(index int) (ran[any], error) {
+	return runFenced(session, s, exempt, lineCallOf(ctx), func(index int) (ran[any], error) {
 		return session.runCommit(ctx, change, scope, withinMs, index)
 	})
 }
@@ -1111,7 +1154,7 @@ func (session *SessionImpl) commitWithTicket(ticket *LineTicket, ctx context.Con
 	if ticket == nil {
 		return session.commitWith(ctx, change, scope, exempt, options)
 	}
-	return runFenced(session, ticket.slot, exempt, nil, func(index int) (ran[any], error) {
+	return runFenced(session, ticket.slot, exempt, lineCall{continuation: continuationOf(ctx)}, func(index int) (ran[any], error) {
 		withinMs, err := session.admitCommit(options)
 		if err != nil {
 			return ran[any]{}, err
@@ -1123,10 +1166,19 @@ func (session *SessionImpl) commitWithTicket(ticket *LineTicket, ctx context.Con
 // ReadWithTicket runs a read-only job at the ticket's position on the mutation line and releases it. The job reads through
 // storage, whose reads wait for the publication of what the line admitted before.
 func (session *SessionImpl) ReadWithTicket(ticket *LineTicket, job func(storage durable.Storage) (any, error)) (any, error) {
+	return session.readWithTicket(ticket, lineCall{}, job)
+}
+
+// ReadWithTicketCtx is ReadWithTicket for a caller whose ctx carries a Continuation (WithContinuation).
+func (session *SessionImpl) ReadWithTicketCtx(ticket *LineTicket, ctx context.Context, job func(storage durable.Storage) (any, error)) (any, error) {
+	return session.readWithTicket(ticket, lineCallOf(ctx), job)
+}
+
+func (session *SessionImpl) readWithTicket(ticket *LineTicket, call lineCall, job func(storage durable.Storage) (any, error)) (any, error) {
 	if ticket == nil {
-		return session.ReadOnLine(job)
+		return session.readOnLine(call, job)
 	}
-	return runFenced(session, ticket.slot, false, nil, func(int) (ran[any], error) {
+	return runFenced(session, ticket.slot, false, lineCall{continuation: call.continuation}, func(int) (ran[any], error) {
 		if err := session.assertUsable(); err != nil {
 			return ran[any]{}, err
 		}
@@ -1145,20 +1197,20 @@ func (session *SessionImpl) OwnsTransaction(tx durable.Tx) (*Transaction, bool) 
 // storage, a view whose reads wait for the publication of what the line admitted before; its outcome comes after theirs
 // (session.ts readOnLine).
 func (session *SessionImpl) ReadOnLine(job func(storage durable.Storage) (any, error)) (any, error) {
-	return session.readOnLine(nil, job)
+	return session.readOnLine(lineCall{}, job)
 }
 
 // ReadOnLineCtx is ReadOnLine for a caller whose ctx carries a line admission callback (internal/lineadmission): it runs
 // once the job holds its position on the line, as a synchronous caller has extended upstream's Promise chain.
 func (session *SessionImpl) ReadOnLineCtx(ctx context.Context, job func(storage durable.Storage) (any, error)) (any, error) {
-	return session.readOnLine(lineadmission.From(ctx), job)
+	return session.readOnLine(lineCallOf(ctx), job)
 }
 
-func (session *SessionImpl) readOnLine(admitted func(), job func(storage durable.Storage) (any, error)) (any, error) {
+func (session *SessionImpl) readOnLine(call lineCall, job func(storage durable.Storage) (any, error)) (any, error) {
 	if err := session.assertUsable(); err != nil {
 		return nil, err
 	}
-	return enqueue(session, true, admitted, func() (any, error) {
+	return enqueue(session, true, call, func() (any, error) {
 		if err := session.assertHealthy(); err != nil {
 			return nil, err
 		}
@@ -1216,7 +1268,7 @@ func (session *SessionImpl) SnapshotErased(ctx context.Context, token durable.An
 	}
 	loaded := cached
 	if cached == nil || cached.ValueVersion != definition.Version {
-		loaded, err = enqueue(session, true, lineadmission.From(ctx), func() (*LoadedDocument, error) {
+		loaded, err = enqueue(session, true, lineCallOf(ctx), func() (*LoadedDocument, error) {
 			if err := session.assertHealthy(); err != nil {
 				return nil, err
 			}
@@ -1313,7 +1365,7 @@ func (session *SessionImpl) ObserveDocErased(ctx context.Context, token durable.
 // meanwhile rejects with the cancellation cause, after cancel undid an attachment made.
 func attachDocument[A comparable](session *SessionImpl, ctx context.Context, definition *durable.AnyDocDefinition, resolved durable.ResolvedAddress, attach func(*LoadedDocument) (A, error), cancel func(A)) (A, error) {
 	var none A
-	attached, err := enqueue(session, true, lineadmission.From(ctx), func() (A, error) {
+	attached, err := enqueue(session, true, lineCallOf(ctx), func() (A, error) {
 		if err := session.assertHealthy(); err != nil {
 			return none, err
 		}
@@ -1357,7 +1409,7 @@ func (session *SessionImpl) SnapshotAsOfErased(ctx context.Context, token durabl
 		return nil, errors.New("Session.snapshotAsOf() requires a conversation document")
 	}
 	conversationId := resolved.Address.Scope.ConversationId
-	return enqueue(session, true, lineadmission.From(ctx), func() (durable.JsonObject, error) {
+	return enqueue(session, true, lineCallOf(ctx), func() (durable.JsonObject, error) {
 		if err := session.assertHealthy(); err != nil {
 			return nil, err
 		}
@@ -1452,7 +1504,7 @@ func (session *SessionImpl) beginClose(ctx context.Context) <-chan struct{} {
 				}
 				// The writer's goroutine ended: nothing is queued or in flight.
 				session.writer.Wait()
-				// The outcomes of the jobs admitted before the seal are delivered, in line order, and their callers have entered,
+				// The outcomes of the jobs admitted before the seal are delivered, in line order, and their callers have resumed,
 				// before Storage closes: what a caller reads off the line right after its job (a context read derives its view from
 				// Storage) starts before the backend closes, as upstream's continuation precedes the close job's later awaits.
 				session.awaitFenceEmpty()
@@ -1874,8 +1926,8 @@ func (session *SessionImpl) beginPublication() {
 
 // endPublication ends the publication of a part, once its own observers ran: it runs the dispatch the publication queued with
 // the listeners registered now, then the work the observers deferred: the waits they resolved and the aborts they queued, and
-// returns once the goroutines those woke have entered. Upstream's dispatch is one microtask after the publication, before every
-// wait it resolves.
+// returns once the registered waits those woke (Park) have resumed. Upstream's dispatch is one microtask after the publication,
+// before every wait it resolves.
 func (session *SessionImpl) endPublication() {
 	for {
 		session.deferMu.Lock()
@@ -1894,11 +1946,10 @@ func (session *SessionImpl) endPublication() {
 			wakes := pub.deferred
 			pub.deferred = nil
 			session.deferMu.Unlock()
-			wakeAndEnter(session.lifetime, func() {
-				for _, wake := range wakes {
-					wake()
-				}
-			})
+			for _, wake := range wakes {
+				wake()
+			}
+			session.awaitReadied()
 		default:
 			session.pub = nil
 			session.deferMu.Unlock()
@@ -2024,8 +2075,8 @@ func documentChanges(documents []durable.DocumentCommitChange) []durable.CommitC
 // that dispatches the commit to host listeners; a goroutine woken inside an observer would race them, so waiters wake
 // through this, and so does the abort of a task the commit newly marks (upstream queues it in a microtask). Observers
 // call it from the publishing goroutine, as publications are serialized by the writer. Once the work ran, the publication
-// returns only when the goroutines it woke have entered, so the next part of the call is published after what this one
-// resolved started (the hop).
+// returns only when the registered waits it readied (Park, Await) have resumed, so the next part of the call is published after
+// what this one resolved started (the hop). A wait that is not registered is not waited for.
 func (session *SessionImpl) DeferUntilPublished(run func()) {
 	session.deferMu.Lock()
 	if session.pub == nil {

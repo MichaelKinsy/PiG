@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -30,6 +31,8 @@ func TestGroupCommitBatching(t *testing.T) {
 		a, b, c := g.ids[0], g.ids[1], g.ids[2]
 		held := g.storage.hold()
 		var log order
+		// The caller of the first commit is slow to run its continuation: it still goes before the others.
+		releaseFirst := log.hold("a")
 		first := g.bumpNamed(&log, "a", a)
 		<-held.Entered()
 		ran := make(chan string, 2)
@@ -56,6 +59,8 @@ func TestGroupCommitBatching(t *testing.T) {
 			t.Fatalf("%d commits published while the first call is in flight", g.published.len())
 		}
 		held.Release()
+		g.awaitHopOrdered(&log)
+		releaseFirst()
 		for _, started := range []*call{first, second, third} {
 			if _, err := started.wait(); err != nil {
 				t.Fatal(err)
@@ -409,6 +414,7 @@ func TestGroupCommitOutcomes(t *testing.T) {
 		a, b := g.ids[0], g.ids[1]
 		held := g.storage.hold()
 		var log order
+		releaseFirst := log.hold("first")
 		first := g.bumpNamed(&log, "first", a)
 		<-held.Entered()
 		_ = first
@@ -422,6 +428,8 @@ func TestGroupCommitOutcomes(t *testing.T) {
 		g.awaitQueued(1)
 		expectNames(t, log.snapshot())
 		held.Release()
+		g.awaitHopOrdered(&log)
+		releaseFirst()
 		for _, started := range calls {
 			_, _ = started.wait()
 		}
@@ -719,8 +727,11 @@ func TestGroupCommitPublication(t *testing.T) {
 		var seenAtSecond atomic.Int64
 		seenAtSecond.Store(-1)
 		ticket := g.session.TakeLineTicket()
-		second := spawn(func() (any, error) {
+		// The caller of the second commit is slow to start its continuation: it still runs before the third is published.
+		startSecond := make(chan struct{})
+		second := spawn(func(ctx ctxT) (any, error) {
 			value, err := g.session.CommitWithTicket(ticket, ctx, func(tx *session.Transaction) (any, error) { return bumpChange(b)(tx) }, session.TransactionScope{})
+			<-startSecond
 			// What the commit's continuation sees: the third part is not published yet.
 			seenAtSecond.Store(int64(g.published.len()))
 			return value, err
@@ -729,6 +740,8 @@ func TestGroupCommitPublication(t *testing.T) {
 		quiesce(second, third)
 		g.awaitQueued(2)
 		held.Release()
+		g.awaitHop(2)
+		close(startSecond)
 		mustBump(t, first)
 		mustBump(t, second)
 		mustBump(t, third)
@@ -873,8 +886,11 @@ func TestGroupCommitAFailureBetweenTwoPublications(t *testing.T) {
 		g.storage.taskFailure = read
 		g.storage.mu.Unlock()
 		ticket := g.session.TakeLineTicket()
-		one := spawn(func() (any, error) {
+		// The caller of `one` is slow to start its continuation: it still runs before `two` is published.
+		startOne := make(chan struct{})
+		one := spawn(func(ctx ctxT) (any, error) {
 			value, err := g.session.CommitWithTicket(ticket, ctx, func(tx *session.Transaction) (any, error) { return appendChange(id, "one")(tx) }, session.TransactionScope{})
+			<-startOne
 			if err == nil {
 				_, err = g.session.CommitWith(ctx, func(tx *session.Transaction) (any, error) { return tx.Task(999) }, session.TransactionScope{})
 				if !errors.Is(err, read) {
@@ -888,6 +904,8 @@ func TestGroupCommitAFailureBetweenTwoPublications(t *testing.T) {
 		quiesce(one, two)
 		g.awaitQueued(2)
 		held.Release()
+		g.awaitHop(2)
+		close(startOne)
 		_, _ = lead.wait()
 		_, err := one.wait()
 		must(t, err)
@@ -908,8 +926,10 @@ func TestGroupCommitAFailureBetweenTwoPublications(t *testing.T) {
 		<-held.Entered()
 		failure := errors.New("failed between publications")
 		ticket := g.session.TakeLineTicket()
-		one := spawn(func() (any, error) {
+		startOne := make(chan struct{})
+		one := spawn(func(ctx ctxT) (any, error) {
 			value, err := g.session.CommitWithTicket(ticket, ctx, func(tx *session.Transaction) (any, error) { return appendChange(id, "one")(tx) }, session.TransactionScope{})
+			<-startOne
 			g.session.Fail(ctx, failure)
 			return value, err
 		})
@@ -917,6 +937,8 @@ func TestGroupCommitAFailureBetweenTwoPublications(t *testing.T) {
 		quiesce(one, two)
 		g.awaitQueued(2)
 		held.Release()
+		g.awaitHop(2)
+		close(startOne)
 		_, _ = lead.wait()
 		_, _ = one.wait()
 		_, err := two.wait()
@@ -963,7 +985,7 @@ func TestGroupCommitUpkeepThroughTheWriter(t *testing.T) {
 		held := g.storage.hold()
 		first := g.bump(a)
 		<-held.Entered()
-		unloading := spawn(func() (any, error) { return nil, g.session.UnloadDocuments() })
+		unloading := spawn(func(ctxT) (any, error) { return nil, g.session.UnloadDocuments() })
 		if unloading.settled() {
 			t.Fatal("the unload settled while a call was in flight")
 		}
@@ -1051,7 +1073,7 @@ func TestGroupCommitUpkeepThroughTheWriter(t *testing.T) {
 		later := g.bump(b, deferredForever)
 		quiesce(later)
 		g.awaitQueued(1)
-		closing := spawn(func() (any, error) { return nil, g.session.Close(ctx) })
+		closing := spawn(func(ctxT) (any, error) { return nil, g.session.Close(ctx) })
 		held.Release()
 		mustBump(t, first)
 		mustBump(t, later)
@@ -1113,12 +1135,35 @@ func TestGroupCommitBackpressureAndBounds(t *testing.T) {
 	})
 }
 
-// random is a small deterministic generator, so a failing seed reproduces.
-func random(seed int64) func() float64 {
+// random is Pi's generator (session-group-commit.test.ts `random`), bit for bit: the state is a float64 and the step is computed
+// in IEEE doubles, which is inexact from the second draw on (1103527590 * 1103515245 is above 2^53), and math.Mod is `%` on
+// doubles. The product is rounded on its own, as the conversion says, so no fused multiply-add changes the result on the
+// architectures that have one. It is safe for concurrent use: the writer draws the storage's latency from the same stream as the
+// test's plans, as Pi's `next` does.
+func random(seed float64) func() float64 {
+	var mu sync.Mutex
 	state := seed
 	return func() float64 {
-		state = (state*1_103_515_245 + 12_345) % 2_147_483_648
-		return float64(state) / 2_147_483_648
+		mu.Lock()
+		defer mu.Unlock()
+		state = math.Mod(float64(state*1_103_515_245)+12_345, 2_147_483_648)
+		return state / 2_147_483_648
+	}
+}
+
+// The draws of Pi's generator, taken from running it (node 24): the same seeds give the same floats.
+func TestRandomIsPisGenerator(t *testing.T) {
+	for seed, want := range map[float64][]float64{
+		1:      {0.5138700781390071, 0.1757413148880005, 0.15525975823402405, 0.14626556634902954, 0.2847188413143158, 0.9290890693664551},
+		42:     {0.5823075897060335, 0.5198186635971069, 0.9149397611618042, 0.6987155675888062, 0.753081202507019, 0.6894334554672241},
+		99_991: {0.8081818241626024, 0.6953468322753906, 0.9783573150634766, 0.22982025146484375, 0.10119441151618958, 0.816924512386322},
+	} {
+		next := random(seed)
+		for position, expected := range want {
+			if got := next(); got != expected {
+				t.Fatalf("seed %v draw %d = %v, want %v", seed, position, got, expected)
+			}
+		}
 	}
 }
 
@@ -1138,14 +1183,13 @@ func loggedIndex(t *testing.T, data any) int {
 }
 
 func TestGroupCommitRandomizedInterleavings(t *testing.T) {
-	for _, seed := range []int64{1, 7, 42, 1_234, 99_991} {
+	for _, seed := range []int{1, 7, 42, 1_234, 99_991} {
 		t.Run(fmt.Sprintf("stores, publishes, and reads only what an order of the commits implies (seed %d)", seed), func(t *testing.T) {
-			next := random(seed)
+			next := random(float64(seed))
 			g := openGC(t, 4)
 			log := g.ids[0]
 			g.storage.mu.Lock()
-			delays := random(seed + 1)
-			g.storage.latency = func() time.Duration { return time.Duration(int(delays()*3)) * time.Millisecond }
+			g.storage.latency = func() time.Duration { return time.Duration(int(next()*3)) * time.Millisecond }
 			g.storage.mu.Unlock()
 			refuseAt := -1
 			if seed%2 == 0 {
