@@ -5,6 +5,7 @@ package workers
 import (
 	"os"
 	"os/exec"
+	"sync"
 	"syscall"
 	"unsafe"
 
@@ -12,8 +13,12 @@ import (
 )
 
 // processTree is the job object a worker is placed in: Windows has no process groups to signal, so killing the job kills
-// everything the worker spawned.
-type processTree struct{ job windows.Handle }
+// everything the worker spawned. The handle is closed when the worker ended, while a Kill may still come (a timer, a
+// `fatal`): mu keeps a Kill from using a closed handle, whose value Windows may give to another object.
+type processTree struct {
+	mu  sync.Mutex
+	job windows.Handle
+}
 
 // detach gives cmd a process group of its own, as libuv does for a detached child.
 func detach(cmd *exec.Cmd) {
@@ -48,14 +53,25 @@ func treeOf(cmd *exec.Cmd) (*processTree, error) {
 
 // kill terminates the job's processes; false when there is no job.
 func (tree *processTree) kill() bool {
-	if tree == nil || tree.job == 0 {
+	if tree == nil {
+		return false
+	}
+	tree.mu.Lock()
+	defer tree.mu.Unlock()
+	if tree.job == 0 {
 		return false
 	}
 	return windows.TerminateJobObject(tree.job, 1) == nil
 }
 
+// close closes the job's handle once; a kill after it finds no job.
 func (tree *processTree) close() {
-	if tree != nil && tree.job != 0 {
+	if tree == nil {
+		return
+	}
+	tree.mu.Lock()
+	defer tree.mu.Unlock()
+	if tree.job != 0 {
 		_ = windows.CloseHandle(tree.job)
 		tree.job = 0
 	}

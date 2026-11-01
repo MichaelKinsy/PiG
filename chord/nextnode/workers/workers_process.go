@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"io"
 	"os"
 	"os/exec"
 	"slices"
@@ -123,6 +122,10 @@ func NewWorkerProcess(options ForkOptions, events ProcessEvents) (*WorkerProcess
 	process.Pid = cmd.Process.Pid
 	if tree, err := treeOf(cmd); err == nil {
 		process.tree = tree
+	} else {
+		// Without its job the worker's tree cannot be killed: the start fails (its exit tells), what failed is in its tail.
+		process.keepStderr([]byte("workers: placing the worker in a job object: " + err.Error() + "\n"))
+		_ = cmd.Process.Kill()
 	}
 	process.pump(stdout, "stdout", options.OnOutput)
 	process.pump(stderr, "stderr", options.OnOutput)
@@ -175,9 +178,6 @@ func (p *WorkerProcess) pump(reader *os.File, stream string, onOutput func(strea
 				}
 			}
 			if err != nil {
-				if err != io.EOF {
-					return
-				}
 				return
 			}
 		}
@@ -239,8 +239,13 @@ func (p *WorkerProcess) Send(message ToWorker) {
 	p.channel.SendControl(payload)
 }
 
-// Kill kills the child and every process it spawned.
+// Kill kills the child and every process it spawned; it does nothing once the process ended.
 func (p *WorkerProcess) Kill() {
+	select {
+	case <-p.done:
+		return
+	default:
+	}
 	if p.tree.kill() || p.cmd.Process == nil {
 		return
 	}
