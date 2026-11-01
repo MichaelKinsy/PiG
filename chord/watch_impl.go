@@ -8,8 +8,6 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
-	"github.com/MichaelKinsy/PiG/internal/entered"
-	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
 // Ports packages/chord/src/watch.ts (Watch, NativeWatch, NativeWatchHandle and their shared lifecycle).
@@ -43,10 +41,10 @@ type pending struct {
 	held  []func()
 }
 
-// delivery is one scheduled delivery goroutine. started is closed once id is set; done once the goroutine ended.
+// delivery is one scheduled delivery goroutine. entered is closed when the goroutine starts to run the delivery's job, done once
+// it ended.
 type delivery struct {
-	id      uint64
-	started chan struct{}
+	entered chan struct{}
 	done    chan struct{}
 }
 
@@ -123,47 +121,37 @@ func (tracker *pending) holding(start func()) bool {
 // schedule runs job off the caller's goroutine, as upstream's queueMicrotask runs it outside the publishing call.
 // awaitEntered waits for what it scheduled.
 func (tracker *pending) schedule(job func()) {
-	d := &delivery{started: make(chan struct{}), done: make(chan struct{})}
+	d := &delivery{entered: make(chan struct{}), done: make(chan struct{})}
 	tracker.begin()
 	tracker.mu.Lock()
 	tracker.deliveries = append(slices.DeleteFunc(tracker.deliveries, (*delivery).finished), d)
 	tracker.mu.Unlock()
 	//portlint:allow asyncorder joined by pending.wait (begin/end count); watch frames are taken under watch.mu in publish order and one runs at a time, as watch.ts #schedule/#drain
 	go func() {
-		d.id = goroutineid.Current()
-		close(d.started)
+		close(d.entered)
 		defer close(d.done)
 		defer tracker.end()
 		job()
 	}()
 }
 
-// awaitEntered blocks until every delivery scheduled before the call has entered: its callback returned or is parked in a
-// wait or blocked behind a lock (internal/entered.AwaitBlocked), never until it finishes a wait of its own. Upstream's
-// drain microtask enters the listener, up to the listener's first await, before the code that awaited a commit's promise
-// resumes; a Go caller that resumes on another goroutine awaits the deliveries it would otherwise outrun. A Go listener
-// that waits for a lock is the analogue of an upstream listener's await, and the caller may be the holder: it is not
-// waited for. A delivery on the caller's own goroutine is skipped, and a listener that waits for the Harness is parked
-// in that wait, so waiting listeners never wait for each other. It returns the cause of ctx when ctx ends the wait.
+// awaitEntered blocks until every delivery scheduled before the call has entered: its goroutine runs and is about to call its
+// listener, or the delivery ended. Upstream's drain microtask enters the listener before the code that awaited a commit's
+// promise resumes; a Go caller that resumes on another goroutine awaits the deliveries it would otherwise outrun.
+//
+// The guarantee is that the delivery started, not that it reached its listener's first wait: Go cannot tell when code that
+// is not the caller's own waits, and a listener that waits for a lock the caller holds would never be entered. The wait reads
+// no goroutine state: it is one channel receive per delivery, so its cost does not depend on the goroutines of the process.
+// A delivery that is the caller's own is entered already. It returns the cause of ctx when ctx ends the wait.
 func (tracker *pending) awaitEntered(ctx context.Context) error {
 	tracker.mu.Lock()
 	scheduled := slices.DeleteFunc(slices.Clone(tracker.deliveries), (*delivery).finished)
 	tracker.mu.Unlock()
-	if len(scheduled) == 0 {
-		return nil
-	}
-	self := goroutineid.Current()
 	for _, d := range scheduled {
 		select {
-		case <-d.started:
+		case <-d.entered:
 		case <-ctx.Done():
 			return context.Cause(ctx)
-		}
-		if d.id == self {
-			continue
-		}
-		if err := entered.AwaitBlocked(ctx, d.id, d.done); err != nil {
-			return err
 		}
 	}
 	return nil
