@@ -4143,8 +4143,15 @@
     },
     {
       "path": "packages/coding-agent/test/assistant-message.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:fe7c16aff97cdc92b3aa75e3bb2c3b3d1b2a8bc026f2faee46d9d85e0041d780"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:fe7c16aff97cdc92b3aa75e3bb2c3b3d1b2a8bc026f2faee46d9d85e0041d780",
+      "evidence": [
+        "tui/assistant_message_block_test.go",
+        "internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream",
+        "tui/assistant_mouse_upstream_test.go#TestAssistantThinkingClicksThroughTerminal",
+        "tui/assistant_message_reuse_upstream_test.go#TestUpstreamAssistantMessageReusesItsMarkdownAcrossStreamingAndItsEnd"
+      ],
+      "rationale": "The complete pinned upstream case set is reviewed in gate-close-08 and its delivered tests are composed from e503bb258. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations. Delta at Pi a6a7bac8 (#11402): the two added cases are ported as TestAssistantMessageUpstream subtests with the same inputs and expectations (\"renders nothing for hidden thinking with an empty label\": no rows before a tool call, a spacer and the answer before text; \"keeps label row and spacing for hidden thinking with a label\": a spacer, Thinking..., a spacer, the answer). PiG's constructor reads an empty label as the default, so the empty label is set with SetHiddenThinkingLabel(\"\"), the call ctx.ui.setHiddenThinkingLabel(\"\") makes; one more case pins that a skipped run adds no spacing between text blocks. Red on the unfixed code: the empty-label case rendered the blank label row and the skipped-run case rendered two extra blank rows. Delta at Pi 0f21a331: the case 'reuses its Markdown across streaming and its end, and renders like a new component after a theme change' runs with a counting Markdown-theme highlighter in place of the highlight.js spy (lane RenderReuse)."
     },
     {
       "path": "packages/coding-agent/test/auth-check.test.ts",
@@ -4397,8 +4404,14 @@
     },
     {
       "path": "packages/coding-agent/test/code-highlighter.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e8d098a05d4275c6568e593e8f5d3755089ea07038f77b88b0ce1d7dd4c895fb"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e8d098a05d4275c6568e593e8f5d3755089ea07038f77b88b0ce1d7dd4c895fb",
+      "evidence": [
+        "tui/code_highlighter_test.go#TestCodeHighlighterReusesItsLastResultUntilTheCodeTheThemeOrTheGrammarsChange",
+        "internal/codingagent/code_highlighter_rows_norace_test.go#TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
+        "internal/codingagent/code_highlighter_rows_norace_test.go#TestCompleteWriteRowReusesItsHighlightingAcrossRedraws"
+      ],
+      "rationale": "All 3 upstream cases run. The CodeHighlighter case checks the identity of the returned lines and bumps the language generation (the grammar load is a generation bump because the Once already ran). The codemode and write cases are ported in Go form: PiG cannot count highlight.js calls because the process memo answers a repeated call, so each test flushes the memo before every redraw and bounds the bytes a redraw allocates (red 66 MB and 36.7 MB per redraw, green 1.1 MB and under 6x the arguments), which only the row's CodeHighlighter can serve (lane RenderReuse)."
     },
     {
       "path": "packages/coding-agent/test/codemode-renderer.test.ts",
@@ -9345,8 +9358,39 @@
     },
     {
       "path": "packages/tui/test/markdown.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:faee37fda4db30c32c7e66e49af33d0ae01d24d770bbc2380f696de4ea797764"
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:faee37fda4db30c32c7e66e49af33d0ae01d24d770bbc2380f696de4ea797764",
+      "evidence": [
+        "tui/markdown_upstream_test.go#TestUpstreamMarkdown",
+        "tui/markdown_cjk_url_test.go#TestMarkdownBareURLCJKPunctuation",
+        "tui/markdown_test.go#TestMarkdownTableSimple",
+        "tui/w3_sessions_test.go#TestMarkdownRuleWidthCap",
+        "internal/codingagent/w3_pi_test.go#TestW3SessionPiComparison",
+        "tui/markdown_codeblock_wrap_test.go#TestCodeBlockKeepsEveryCharacterAtNarrowWidth",
+        "tui/markdown_row_invariant_test.go#TestRealMarkdownNeverEmitsAnOverWideRow",
+        "tui/markdown_width_test.go#TestMarkdownRender_NeverExceedsWidth",
+        "tui/markdown_latex_test.go#TestMarkdownLatexMatchesUpstream",
+        "tui/markdown_upstream_fixture_test.go",
+        "tui/markdown_port_regressions_test.go",
+        "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_cjk_test.go#TestMarkdownCJKEmphasisPiCases",
+        "tui/markdown_cjk_test.go#TestMarkdownCJKEmphasisMatchesPi",
+        "tui/markdown_cjk_test.go#TestMarkedCJKClassMatchesPinnedPackage",
+        "tui/markdown_marked_test.go#TestMarkedRightDelimiterScanMatchesRegexps",
+        "tui/markdown_latex_table_test.go#TestMarkdownUnclosedDisplayMathBeforeTables",
+        "tui/markdown_latex_table_test.go#TestMarkdownUnclosedDisplayMathBeforeTablesMatchesPi",
+        "tui/markdown_latex_table_test.go#TestMarkdownContainsTableStart",
+        "tui/markdown_upstream_test.go#TestMarkdownRendersQuotesNestedDeeperThanTheWidthAllowsWithoutExploding",
+        "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource",
+        "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWidthFallbackMatchesPi",
+        "tui/markdown_wrap_boundary_test.go#TestMarkdownStyledWordsAtTheWrapBoundaryPiCase",
+        "tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
+        "tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender"
+      ],
+      "rationale": "101 of 102 upstream cases are ported: the 98 cases of the earlier pin keep their evidence and three of the four Pi 0f21a331 'Block reuse' cases run as TestUpstreamMarkdownBlockReuse subtests with the same inputs and expectations. The fourth ('holds rendered blocks weakly, so a full garbage collection releases them') checks a JavaScript WeakRef; PiG holds its memos strongly and releases them in FinishStreaming (subtest 'releases the reused highlighting when streaming finishes'). It stays missing until the owner approves it as designed out (lane RenderReuse).",
+      "missingCases": [
+        "Markdown component › Block reuse › holds rendered blocks weakly, so a full garbage collection releases them"
+      ]
     },
     {
       "path": "packages/tui/test/mouse-components.test.ts",
@@ -9578,8 +9622,12 @@
     },
     {
       "path": "packages/tui/test/text.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:e4a3c616422775d0b4373fbe0a7895d43d3d762bf0ce289c66b1397dfd95caa2"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e4a3c616422775d0b4373fbe0a7895d43d3d762bf0ce289c66b1397dfd95caa2",
+      "evidence": [
+        "tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
+      ],
+      "rationale": "The one upstream case (\"keeps its wrapped lines when the same text is set again\") runs with the same inputs and expectations (lane RenderReuse)."
     },
     {
       "path": "packages/tui/test/truncate-to-width.test.ts",

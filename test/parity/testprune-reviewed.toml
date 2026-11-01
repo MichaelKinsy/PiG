@@ -365,20 +365,6 @@ cite = "packages/coding-agent/src/core/client-identity.ts:14"
 reason = "Pi adc5fa9f80 and 04a93bad8f make the session's client identity carry the attribution only while install telemetry is enabled (client-identity.ts:14: `attribution: isInstallTelemetryEnabled(settingsManager) ? PI_ATTRIBUTION : null`) and apply it through the ai package's request options (identity.ts:107, getAttributionHeaders) instead of a provider wrapper of the coding package: the model's provider type is the request-options provider, and the test of the install-telemetry gate on the wrapper is replaced by the identity's own gate."
 
 [[entry]]
-path = "coding/session_extension_hooks_test.go"
-commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
-class = "CITE"
-cite = "packages/ai/src/utils/identity.ts:130"
-reason = "Pi adc5fa9f80 and 04a93bad8f send the OpenCode session header through getOpenCodeSessionHeaders (identity.ts:130) from the ai package, instead of the attribution wrapper's x-opencode-client header, so the before-provider-headers hook (sdk.ts transformHeaders) sees x-opencode-session, and the hook that deletes a header deletes that one."
-
-[[entry]]
-path = "durable/harness/harness_tools_models_test.go"
-commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
-class = "CITE"
-cite = "packages/durable/src/harness/harness.ts:193"
-reason = "Pi adc5fa9f80 and 04a93bad8f give the Harness a view of the host's Models that adds the Harness identity, withClientIdentity (harness.ts:193-197 currentModels; identity.ts:154), shared by the tools and the hooks (harness-tools.test.ts: seen[0] is seen[1]): the models a tool reads are no longer the host's own value, so the test expects a view that lists the same models and returns the same model for faux/faux-1."
-
-[[entry]]
 path = "durable/core/turn/live_test.go"
 commit = "42fc4e620ef0b4ccf6a3c4a7b1a1818a98955298"
 class = "CITE"
@@ -716,3 +702,17 @@ commit = "e4f8e357736b7eae9f16439a3ebd49daa6add1bf"
 class = "CITE"
 cite = "packages/ai/scripts/model-data.ts:1"
 reason = "Pi 44f6851b (#9534: scripts/generate-models.ts and scripts/openrouter-catalog.ts) deletes packages/ai/test/openrouter-cache-control-models.test.ts:12 (the commit's Pi-Behavior-Change trailer) and sends the OpenRouter ~anthropic/claude-*-latest aliases through the Anthropic Messages API with adaptive thinking, like the versioned Claude models. The Go port of that test now pins the new behavior (TestOpenRouterAnthropicLatestAliasesUseMessages), recorded under D217."
+
+[[entry]]
+path = "cmd/gen-models/emit_shares_test.go"
+commit = "875a364a714c18b5bcb69e5509f0f61b2e829531"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The expected text is the layout of the Go catalog file cmd/gen-models emits (PiG-original): the header, thinking-level, sampling and prompt-cache maps are built from pair lists the linker lays out instead of one map literal per model. The generated rows of every model, and the catalog Pi's build produces, are unchanged: regenerating from the pinned Pi build reproduces the committed file."
+
+[[entry]]
+path = "internal/minimatch/braceexpansion_test.go"
+commit = "875a364a714c18b5bcb69e5509f0f61b2e829531"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The test moved with the brace-expansion port from coding/packagecontent (glob_braces_npm_test.go) to internal/minimatch, which now has the single port; the recorded rows of Pi's npm minimatch are the same and only the called function is renamed (npmBraceExpand to braceExpand)."

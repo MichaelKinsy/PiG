@@ -3896,9 +3896,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/tool_builtin_rende
 [[files]]
 path = "packages/coding-agent/src/core/tools/renderers/write.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/code_highlighter_rows_norace_test.go#TestCompleteWriteRowReusesItsHighlightingAcrossRedraws"]
+rationale = "A complete write call highlights its file through the row's CodeHighlighter (cache nil) and reuses its `*tui.Text` (Pi's WriteCallRenderComponent extends Text); a streaming call keeps the incremental cache, whose prefixEpoch check (D112) already skips re-highlighting an unchanged leading block, as Pi's refreshWriteHighlightPrefix highlighter hit does. PiG: internal/codingagent/tool_builtin_renderers.go (writeRenderCall, builtInRenderState.highlighter, reusableText), write_highlight_cache.go (lane RenderReuse)."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/tool-definition-wrapper.ts"
@@ -3973,9 +3973,9 @@ rationale = "PORT_MAP row is ✅ ported (coding/extension/builtin/codemode/tool.
 [[files]]
 path = "packages/coding-agent/src/extensions/codemode/renderer.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/code_highlighter_rows_norace_test.go#TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws"]
+rationale = "The codemode row holds its script CodeHighlighter in builtInRenderState (Pi: context.state). PiG: internal/codingagent/tool_codemode_renderer.go, tool_builtin_renderers.go (lane RenderReuse)."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/codemode/tool.ts"
@@ -4176,9 +4176,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/armin.go + interna
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/assistant-message.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:tui/assistant_message_reuse_upstream_test.go#TestUpstreamAssistantMessageReusesItsMarkdownAcrossStreamingAndItsEnd"]
+rationale = "PiG already reuses one Markdown per slot (SetContent) and SetOutputPad changes paddingX in place and Invalidates; the ported case drives it with a counting Markdown-theme highlighter. PiG: tui/assistant_message_block.go (lane RenderReuse)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/auth-url.ts"
@@ -4344,9 +4344,9 @@ rationale = "Pi 89c921d8: only normalized web URLs are opened and linked; other 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/markdown-transform.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:tui/assistant_message_reuse_upstream_test.go#TestUpstreamAssistantMessageReusesItsMarkdownAcrossStreamingAndItsEnd"]
+rationale = "createMarkdownTransform already reads `isStreaming func() bool` per call; the last transform sees isStreaming=false. PiG: tui/assistant_message_block.go (lane RenderReuse)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/mermaid.ts"
@@ -4491,9 +4491,9 @@ rationale = "Pi 3bae8527: the capture flag lives on UserMessageList only; tui/us
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/user-message.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:tui/assistant_message_reuse_upstream_test.go#TestUpstreamAssistantMessageReusesItsMarkdownAcrossStreamingAndItsEnd"]
+rationale = "UserMessage already builds a finished Markdown, so a transform reading isStreaming sees false. PiG: tui/assistant_message_block.go (lane RenderReuse)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/components/visual-truncate.ts"
@@ -4575,9 +4575,9 @@ rationale = "Token metadata (slots, fallbacks) already matched the 42a build; th
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/theme/theme.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/code_highlighter_test.go#TestCodeHighlighterReusesItsLastResultUntilTheCodeTheThemeOrTheGrammarsChange"]
+rationale = "`CodeHighlighter` (last result reused until the code, the theme or the grammars change) is ported. Not ported: Pi 0f21a331 styles a failed highlightCode with mdCodeBlock so getMarkdownTheme().highlightCode equals highlightCode; PiG keeps `codeBlockOnError` because the `markdown` flag is part of the host protocol and the Go, Rust, Python and Lisp SDKs (HighlightCodeFor, CallHighlightCode); highlight.js fails only on pathological input with the built-in theme. Open item: unify in one cross-SDK change. PiG: tui/highlight.go (CodeHighlighter, HighlightEpoch) (lane RenderReuse)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/tui-renderer.ts"
@@ -4729,9 +4729,9 @@ rationale = "Pi bec60c54 only rewords the doc comment of GitSource.pinned (pi up
 [[files]]
 path = "packages/coding-agent/src/utils/highlight-js.d.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "TypeScript declaration of the highlight.js module; Go has no declaration file (tui/internal/hljs is the vendored engine) (lane RenderReuse)."
 
 [[files]]
 path = "packages/coding-agent/src/utils/html.ts"
@@ -4848,9 +4848,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/assistant_retry.go (sleepContext is 
 [[files]]
 path = "packages/coding-agent/src/utils/syntax-highlight.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "`getHighlightLanguageCount` is the language generation: tui/highlight.go HighlightEpoch.generation is bumped by every grammar registry load, and the CodeHighlighter test bumps it (lane RenderReuse)."
 
 [[files]]
 path = "packages/coding-agent/src/utils/text.ts"
@@ -6234,9 +6234,9 @@ rationale = "PORT_MAP row is ✅ ported (tui/loader.go). coverage.md reports 2 b
 [[files]]
 path = "packages/tui/src/components/markdown.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse", "test:tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender"]
+rationale = "Highlight reuse is keyed by language and code, kept for the last render's blocks only, cleared by Invalidate, a language-generation change and FinishStreaming, and shared by list-item and quote children through the owner. Rendered-block (lines) reuse keyed by token.raw (Pi 0f21a331) is not ported: PiG's resume state, wraps memo and inline memo serve the streaming case and, unlike a raw-keyed map, stay correct when marked's inline state differs between identical blocks (unnumbered draft divergence, owner to number). WeakRef block holding is a JavaScript memory-lifetime contract: PiG holds its memos strongly and FinishStreaming/Invalidate release them. PiG: tui/markdown.go (highlights, nextHighlights, startHighlights, endHighlights, highlightCode, Invalidate, dropStreamingMemos) (lane RenderReuse)."
 
 [[files]]
 path = "packages/tui/src/components/mouse-region.ts"
@@ -6283,9 +6283,9 @@ rationale = "PORT_MAP row is ✅ ported (tui/stack.go). coverage.md reports 37 b
 [[files]]
 path = "packages/tui/src/components/text.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"]
+rationale = "`Text.SetText` keeps its wrapped lines when the same text is set again. PiG: tui/text.go (lane RenderReuse)."
 
 [[files]]
 path = "packages/tui/src/components/truncated-text.ts"
