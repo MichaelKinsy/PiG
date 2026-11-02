@@ -283,7 +283,7 @@ func runRPCMode(ctx context.Context, flags Args, activePiglet *piglet.Piglet, re
 	if codingagent.ModelNetworkEnabled() {
 		registry := initial.Services.Registry()
 		registry.StartModelTask(ctx, func(taskContext context.Context) {
-			refreshCtx, cancelRefresh := context.WithTimeout(taskContext, 15*time.Second)
+			refreshCtx, cancelRefresh := context.WithTimeout(taskContext, 15*time.Second) // upstream: coding-agent/src/main.ts:main (the RPC catalog refresh's 15_000 ms abort)
 			defer cancelRefresh()
 			registry.RefreshCatalogs(refreshCtx, codingagent.CatalogRefreshOptions{AllowNetwork: true})
 		})
