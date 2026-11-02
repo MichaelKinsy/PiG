@@ -40,12 +40,11 @@ func branchSource(t *testing.T, turns int) (*SessionManager, *Session, int64) {
 	return manager, s, st.Size()
 }
 
-// Clone (/fork's createBranchedSession) and the JSONL export write the branch's records with each parentId chained. Both rewrite every
-// record through rewriteMemberJSONField (a Decoder token per member, marshalJSONLine per key, json.Compact per value) and Canonicalize,
-// and Clone then decodes every rewritten record again (DecodeFileEntry) and writes the lines with one Fprintf each; the export builds the
-// file in a strings.Builder and copies it to []byte. ForkFromFile, which lw-open moved to Canonicalize plus a buffered write, costs
-// 11 B per source byte; a raw splice of parentId into a record that IsCanonical, entries built from the decoded branch and a buffered
-// write cost a few: the decode of the branch (logged as the floor) and one line per record.
+// Clone (/fork's createBranchedSession) and the JSONL export write the branch's records with each parentId chained. ForkFromFile, which
+// lw-open moved to Canonicalize plus a buffered write, costs 11 B per source byte; a raw splice of parentId into a record that IsCanonical and
+// a buffered write cost a few. Clone streams each record from the source to the clone's file and opens that file as a resume does, so it
+// costs that open (about the decode of the branch, logged as the floor) and no copy of a record; the export builds the file in a
+// strings.Builder and copies it to []byte.
 func TestCloneAndExportCostAFewBytesPerSourceByte(t *testing.T) {
 	const turns = 300
 	const ceiling = 6.0
@@ -71,7 +70,7 @@ func TestCloneAndExportCostAFewBytesPerSourceByte(t *testing.T) {
 		ratio := float64(allocated) / float64(size)
 		t.Logf("Clone of a %d-byte branch allocated %d B (%.2f per source byte)", size, allocated, ratio)
 		if ratio > ceiling {
-			t.Fatalf("Clone of a %d-byte branch allocated %d B (%.2f per source byte); want at most %.1f: every record is rewritten member by member, canonicalized and decoded again",
+			t.Fatalf("Clone of a %d-byte branch allocated %d B (%.2f per source byte); want at most %.1f: a record is copied or decoded more than the clone's open needs",
 				size, allocated, ratio, ceiling)
 		}
 	})

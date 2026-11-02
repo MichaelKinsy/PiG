@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -14,7 +15,7 @@ import (
 
 // SessionManager.createBranchedSession (session-manager.ts:1632-1730) against Session.CreateBranchedSession on seeded random session trees with labels, label removals, compactions whose firstKeptEntryId names a label, model changes and custom entries: the branched file holds the root-to-leaf path without labels (re-chained parentIds, compaction firstKeptEntryId rewritten to the entry a label stood for), then one fresh label entry per labeled target on the path in label-map order. The ids of the new label entries are random, so they are renamed L1, L2, ... in file order before comparing.
 func TestCreateBranchedSessionMatchesPiOracle(t *testing.T) {
-	rng := rand.New(rand.NewSource(20261017))
+	rng := rand.New(rand.NewSource(20261102))
 	const header = `{"type":"session","version":3,"id":"%s","timestamp":"2026-01-01T00:00:00.000Z","cwd":"/work/p"}`
 	type probe struct {
 		Name string `json:"name"`
@@ -41,14 +42,24 @@ func TestCreateBranchedSessionMatchesPiOracle(t *testing.T) {
 			ts := fmt.Sprintf("2026-01-01T00:%02d:00.000Z", i)
 			p := pick()
 			var line string
-			switch k := rng.Intn(10); {
-			case k < 4:
+			switch k := rng.Intn(18); {
+			case k < 3:
 				line = fmt.Sprintf(`{"type":"message","id":"%s","parentId":%s,"timestamp":"%s","message":{"role":"user","content":"u%d","timestamp":1}}`, id, p, ts, i)
 				messageIDs = append(messageIDs, id)
-			case k < 6:
+			case k < 5:
 				line = fmt.Sprintf(`{"type":"message","id":"%s","parentId":%s,"timestamp":"%s","message":{"role":"assistant","content":[{"type":"text","text":"a%d"}],"api":"x","provider":"p","model":"m","usage":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0,"totalTokens":2,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":2}}`, id, p, ts, i)
 				messageIDs = append(messageIDs, id)
-			case k < 8 && len(ids) > 0:
+			case k == 5:
+				line = fmt.Sprintf(`{"type":"message","id":"%s","parentId":%s,"timestamp":"%s","message":{"role":"user","content":[{"type":"text","text":"look %d"},{"type":"image","data":"%s","mimeType":"image/png"}],"timestamp":3}}`, id, p, ts, i, fixtureImage(rng))
+				messageIDs = append(messageIDs, id)
+			case k == 6:
+				line = fmt.Sprintf(`{"type":"message","id":"%s","parentId":%s,"timestamp":"%s","message":{"role":"toolResult","toolCallId":"c%d","toolName":"read","content":[{"type":"image","data":"%s","mimeType":"image/jpeg"}],"isError":false,"timestamp":4}}`, id, p, ts, i, fixtureImage(rng))
+				messageIDs = append(messageIDs, id)
+			case k == 7:
+				// A record that is valid JSON but not JSON.stringify's text: Pi's parse and stringify canonicalize it.
+				line = fmt.Sprintf(`{ "type" : "message", "id":"%s", "parentId":%s, "timestamp":"%s", "message":{"role":"user","content":"caf\u00e9 \/ x\u2028 %d","timestamp":1.0}}`, id, p, ts, i)
+				messageIDs = append(messageIDs, id)
+			case k < 11 && len(ids) > 0:
 				target := ids[rng.Intn(len(ids))]
 				if rng.Intn(4) == 0 {
 					line = fmt.Sprintf(`{"type":"label","id":"%s","parentId":%s,"timestamp":"%s","targetId":"%s"}`, id, p, ts, target)
@@ -56,12 +67,22 @@ func TestCreateBranchedSessionMatchesPiOracle(t *testing.T) {
 					label := fmt.Sprintf(`"label%d"`, rng.Intn(5))
 					line = fmt.Sprintf(`{"type":"label","id":"%s","parentId":%s,"timestamp":"%s","targetId":"%s","label":%s}`, id, p, ts, target, label)
 				}
-			case k == 8 && len(ids) > 0:
+			case k == 11 && len(ids) > 0:
 				kept := ids[rng.Intn(len(ids))]
 				if rng.Intn(5) == 0 {
 					kept = id
 				}
 				line = fmt.Sprintf(`{"type":"compaction","id":"%s","parentId":%s,"timestamp":"%s","summary":"s%d","firstKeptEntryId":"%s","tokensBefore":%d}`, id, p, ts, i, kept, 100+i)
+			case k == 12:
+				line = fmt.Sprintf(`{"type":"custom","id":"%s","parentId":%s,"timestamp":"%s","customType":"ext","data":{"n":%d,"nested":{"a":[1,2,{"b":null}]}}}`, id, p, ts, i)
+			case k == 13:
+				line = fmt.Sprintf(`{"type":"custom_message","id":"%s","parentId":%s,"timestamp":"%s","customType":"ext","content":"note %d","display":true,"details":{"k":"v"}}`, id, p, ts, i)
+			case k == 14:
+				line = fmt.Sprintf(`{"type":"session_info","id":"%s","parentId":%s,"timestamp":"%s","name":"named %d"}`, id, p, ts, i)
+			case k == 15:
+				line = fmt.Sprintf(`{"type":"branch_summary","id":"%s","parentId":%s,"timestamp":"%s","fromId":%s,"summary":"summary %d"}`, id, p, ts, p, i)
+			case k == 16:
+				line = fmt.Sprintf(`{"type":"thinking_level_change","id":"%s","parentId":%s,"timestamp":"%s","thinkingLevel":"high"}`, id, p, ts)
 			default:
 				line = fmt.Sprintf(`{"type":"model_change","id":"%s","parentId":%s,"timestamp":"%s","provider":"p","modelId":"m%d"}`, id, p, ts, i)
 			}
@@ -101,6 +122,22 @@ emit(input.probes.map(({ name, leaf }) => {
 		return { lines };
 	} catch (e) { return { error: e.message }; }
 }));`, map[string]any{"probes": probes, "root": root, "piDir": piDir}, &want, "HOME=/home/oracle")
+	// The probes must reach every record shape the rewrite has to keep, or a match proves nothing about it.
+	reached := map[string]int{}
+	for _, result := range want {
+		for _, line := range result.Lines {
+			for _, shape := range []string{`"type":"image"`, `"type":"custom"`, `"type":"custom_message"`, `"type":"session_info"`, `"type":"branch_summary"`, `"type":"thinking_level_change"`, `"type":"compaction"`, `"type":"label"`, `caf\u00e9`, "café"} {
+				if strings.Contains(line, shape) {
+					reached[shape]++
+				}
+			}
+		}
+	}
+	for _, shape := range []string{`"type":"image"`, `"type":"custom"`, `"type":"custom_message"`, `"type":"session_info"`, `"type":"branch_summary"`, `"type":"thinking_level_change"`, `"type":"compaction"`, `"type":"label"`, "café"} {
+		if reached[shape] == 0 {
+			t.Errorf("no probe branch of Pi's output holds %s", shape)
+		}
+	}
 	normalize := func(lines []string) string {
 		renamed := map[string]string{}
 		var out []string
@@ -164,4 +201,11 @@ emit(input.probes.map(({ name, leaf }) => {
 	if differing > 0 {
 		t.Errorf("%d of %d branches differ from Pi", differing, len(probes))
 	}
+}
+
+// fixtureImage is a base64 payload of a few KiB, the shape of an attached screenshot.
+func fixtureImage(rng *rand.Rand) string {
+	raw := make([]byte, 1500+rng.Intn(2500))
+	rng.Read(raw)
+	return base64.StdEncoding.EncodeToString(raw)
 }
