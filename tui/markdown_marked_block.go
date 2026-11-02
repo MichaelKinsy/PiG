@@ -183,6 +183,7 @@ func (s *markdownBlockSource) def(index int) (tag, href string, next int, ok boo
 	label, _ := markedGroup(match, 1)
 	destination, _ := markedGroup(match, 2)
 	// hrefBrackets, /^<(.*)>$/; the destination rule admits no line terminator for "." to reject.
+	//portlint:allow utf16units Tokenizer.ts hrefBrackets (/^<(.*)>$/): the first and last bytes tested are ASCII "<" and ">", so the trim removes one unit at each end
 	if len(destination) >= 2 && destination[0] == '<' && destination[len(destination)-1] == '>' {
 		destination = destination[1 : len(destination)-1]
 	}

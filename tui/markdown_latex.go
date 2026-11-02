@@ -79,6 +79,7 @@ func tokenizeInlineLatex(source string) (latexToken, bool) {
 		opening, closing = "\\(", "\\)"
 	case strings.HasPrefix(source, "\\["):
 		opening, closing = "\\[", "\\]"
+	//portlint:allow utf16units markdown.ts tokenizeInlineLatex tests /^\$\s/ on source: only the first four bytes can hold "$" plus one JS space, so a four-byte prefix decides the same
 	case strings.HasPrefix(source, "$") && !reMdInlineDollarSpace.MatchString(source[:min(len(source), utf8.UTFMax)]):
 		opening, closing = "$", "$"
 	default:

@@ -343,6 +343,7 @@ func lexMarkedInline(src string, state *markedInlineState) []markedToken {
 	}
 	if state.arena == nil {
 		// Start with room for one token per eight characters of the first source instead of growing from empty.
+		//portlint:allow numbers capacity hint for the token arena; Lexer.ts has no counterpart and the value is never observable
 		state.arena = make([]markedToken, 0, max(16, len(src)/8))
 		state.frames = make([]markedLexFrame, 0, 4)
 	}
@@ -665,6 +666,7 @@ func markedEscapeToken(src []rune, str string) (markedToken, bool) {
 	if src[0] != '\\' || len(src) < 2 || src[1] > 0x7F || !strings.ContainsRune("!\"#$%&'()*+,-./:;<=>?@[]\\^_`{|}~", src[1]) {
 		return markedToken{}, false
 	}
+	//portlint:allow utf16units Tokenizer.ts escape rule: src[1] is checked ASCII above, so the escape is exactly two bytes and two units
 	return markedToken{kind: markedEscape, raw: str[:2], text: str[1:2]}, true
 }
 
@@ -808,6 +810,7 @@ func markedUnescapePunctuation(s string) string {
 	for i := 0; i < len(s); {
 		if s[i] == '\\' {
 			if r, size := utf8.DecodeRuneInString(s[i+1:]); size > 0 && (unicode.IsPunct(r) || unicode.IsSymbol(r)) {
+				//portlint:allow utf16units Tokenizer.ts unescape (/\\([\p{P}\p{S}])/gu): size is the byte size of the rune just decoded after the backslash, so the slice is that code point
 				out.WriteString(s[i+1 : i+1+size])
 				i += 1 + size
 				continue
@@ -1029,6 +1032,7 @@ func (l *markedInlineState) emStrong(src []rune, str string, maskedSrc func() []
 			text := rawStr[1 : len(rawStr)-1]
 			return markedToken{kind: markedEm, raw: rawStr, text: text, tokens: l.inlineTokens(raw[1:len(raw)-1], text)}, true
 		}
+		//portlint:allow utf16units Tokenizer.ts emStrong: both ends of rawStr are ASCII delimiters, so trimming two bytes trims two units
 		text := rawStr[2 : len(rawStr)-2]
 		return markedToken{kind: markedStrong, raw: rawStr, text: text, tokens: l.inlineTokens(raw[2:len(raw)-2], text)}, true
 	}
@@ -1333,6 +1337,7 @@ func (l *markedInlineState) del(src []rune, str string) (markedToken, bool) {
 	}
 	raw := markedSlice(src, str, 0, end)
 	// The "~~" delimiters are ASCII.
+	//portlint:allow utf16units Tokenizer.ts del: both ends of raw are the ASCII "~~" delimiters, so trimming two bytes trims two units
 	text := raw[2 : len(raw)-2]
 	return markedToken{kind: markedDel, raw: raw, text: text, tokens: l.inlineTokens(src[2:textEnd], text)}, true
 }

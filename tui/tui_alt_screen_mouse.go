@@ -122,7 +122,8 @@ func parseWheelEvent(data string) (wheelEvent, bool) {
 	var button, x, y int
 	if m := altSgrMousePattern.FindStringSubmatch(data); m != nil {
 		button, x, y = atoiDigits(m[1]), atoiDigits(m[2])-1, atoiDigits(m[3])-1
-	} else if len(data) == 6 && strings.HasPrefix(data, "\x1b[M") {
+	} else if len(data) == 6 && strings.HasPrefix(data, "\x1b[M") { //portlint:allow utf16units tui-alt-screen.ts parseWheelEvent legacy X10 report: ESC [ M plus three coordinate bytes below 0x80 (Pi enables SGR mode 1006); bytes and units agree there
+		//portlint:allow utf16units tui-alt-screen.ts parseWheelEvent charCodeAt(3..5) of an X10 report, whose coordinate bytes are below 0x80, so byte and unit agree
 		button, x, y = int(data[3])-32, int(data[4])-33, int(data[5])-33
 	} else {
 		return wheelEvent{}, false
@@ -140,10 +141,12 @@ func parseWheelEvent(data string) (wheelEvent, bool) {
 // isMouseSequence reports whether data is any mouse report, so unhandled
 // reports are consumed rather than typed. Mirrors upstream isMouseSequence.
 func isMouseSequence(data string) bool {
+	//portlint:allow utf16units tui-alt-screen.ts isMouseSequence legacy X10 report: ESC [ M plus three coordinate bytes below 0x80; bytes and units agree there
 	return altSgrMousePattern.MatchString(data) || (len(data) == 6 && strings.HasPrefix(data, "\x1b[M"))
 }
 
 func atoiDigits(s string) int {
+	//portlint:allow numbers tui-alt-screen.ts parseInt of an SGR mouse field the pattern /\d+/ captured: ASCII digits, and overflow clamps where JS keeps a float no screen has
 	n, _ := strconv.Atoi(s)
 	return n
 }
@@ -569,6 +572,7 @@ func scrollbarScrollTop(geometry ScrollbarGeometry, pointerY, grabOffset int) in
 	if maxThumbOffset == 0 {
 		return 0
 	}
+	//portlint:allow numbers tui-alt-screen.ts:1098 Math.round(thumbOffset / maxThumbOffset * maxScrollTop): maxThumbOffset == 0 returns above and the factors are non-negative, where math.Round and Math.round agree
 	return int(math.Round(float64(thumbOffset) / float64(maxThumbOffset) * float64(geometry.MaxScrollTop)))
 }
 
@@ -603,6 +607,7 @@ func (t *TuiAltScreen) handleScrollbarMouseEvent(event sgrMouseEvent, eff *mouse
 	t.lastClick = nil
 	t.setScrollbarHover(sv)
 	onThumb := event.y >= geometry.ThumbTop && event.y < geometry.ThumbTop+geometry.ThumbHeight
+	//portlint:allow numbers tui-alt-screen.ts:1138 Math.floor(thumbHeight / 2): thumbHeight is a non-negative row count, where truncation is floor
 	grabOffset := geometry.ThumbHeight / 2
 	if onThumb {
 		grabOffset = event.y - geometry.ThumbTop
@@ -645,6 +650,7 @@ func (t *TuiAltScreen) compositeScrollToEndIndicator(screen []string, layout *La
 		return screen
 	}
 	label := widthx.TruncateToWidth(t.scrollToEndIndicator(), clip.Width, "", false)
+	//portlint:allow numbers tui-alt-screen.ts:1667 Math.floor((clip.width - labelWidth) / 2): label is truncated to clip.Width, so the difference is never negative and truncation is floor
 	column := clip.X + (clip.Width-widthx.VisibleWidth(label))/2
 	rightEdge := clip.X + clip.Width
 	if geometry := GetScrollbarGeometry(box); geometry != nil {

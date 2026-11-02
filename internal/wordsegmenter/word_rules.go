@@ -70,6 +70,7 @@ func joinWordRules(left, right string) bool {
 func ruleWordLike(text string) bool {
 	tail := len(text)
 	for tail > 0 {
+		//portlint:allow utf16units tail is a UTF-8 byte offset in the segment under test, stepped back by DecodeLastRune sizes; ICU's word.txt rules inside Intl.Segmenter (utils.ts:getWordSegmenter) see code points, never UTF-16 offsets
 		r, size := utf8.DecodeLastRuneInString(text[:tail])
 		if wordRuleClass(r)&ruleExFm == 0 {
 			break
@@ -79,14 +80,18 @@ func ruleWordLike(text string) bool {
 	if tail == 0 {
 		return false
 	}
+	//portlint:allow utf16units tail is a UTF-8 byte offset in the segment under test, stepped back by DecodeLastRune sizes; ICU's word.txt rules inside Intl.Segmenter (utils.ts:getWordSegmenter) see code points, never UTF-16 offsets
 	last, size := utf8.DecodeLastRuneInString(text[:tail])
 	class := wordRuleClass(last)
 	if class&(ruleHangul|ruleExtendNumLet) != 0 {
+		//portlint:allow utf16units tail is a UTF-8 byte offset in the segment under test, stepped back by DecodeLastRune sizes; ICU's word.txt rules inside Intl.Segmenter (utils.ts:getWordSegmenter) see code points, never UTF-16 offsets
 		return tail == len(text) && (class&ruleHangul != 0 || tail > size)
 	}
+	//portlint:allow utf16units tail is a UTF-8 byte offset in the segment under test, stepped back by DecodeLastRune sizes; ICU's word.txt rules inside Intl.Segmenter (utils.ts:getWordSegmenter) see code points, never UTF-16 offsets
 	if wordLike(text[tail-size : tail]) {
 		return true
 	}
+	//portlint:allow utf16units tail is a UTF-8 byte offset in the segment under test, stepped back by DecodeLastRune sizes; ICU's word.txt rules inside Intl.Segmenter (utils.ts:getWordSegmenter) see code points, never UTF-16 offsets
 	if tail < len(text) {
 		return false
 	}
