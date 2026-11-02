@@ -1,5 +1,7 @@
 package plugins
 
+// pi: packages/chord/src/next-node/plugins/build.ts
+
 import (
 	"bytes"
 	"context"
@@ -544,19 +546,20 @@ module.exports.default.setup("some-package").then((value) => console.log(JSON.st
 	}
 }
 
-// A column is counted in UTF-16 code units, as the JavaScript esbuild API `build.ts` reads reports it (the Go API's own are
-// bytes): a build error and a free `__dirname` after non-ASCII text on their line.
-func TestEsbuildBuildColumnsAreUTF16CodeUnits(t *testing.T) {
+// A build error's column is esbuild's own, in bytes (the JavaScript API `build.ts` reads reports the same number: `location.column`
+// is "0-based, in bytes"), and a free `__dirname`'s is where the script's source map puts it, in UTF-16 code units, after
+// non-ASCII text on their line.
+func TestEsbuildBuildColumnsAreBytesForErrorsAndUTF16CodeUnitsForGlobals(t *testing.T) {
 	root := tempRoot(t)
-	prefix := `const s = "é😀"; `
+	prefix := `const s = "éé😀"; `
 	writePlugin(t, root, "wide", "@test/wide", map[string]string{
 		"worker.ts": prefix + "export default {",
 		"server.ts": "console.log(\"é😀\", __dirname);\nexport default { setup: () => 1 };",
 	}, nil)
 	_, plugin := esbuildDiscovered(t, "@test/wide", root)
 	got := esbuildErrors(t, esbuildBuild(t, plugin, "worker", esbuildNode))
-	if len(got) != 1 || !strings.HasPrefix(got[0], "worker.ts:1:"+strconv.Itoa(utf16Length(prefix+"export default {")+1)+": Expected ") {
-		t.Errorf("syntax error = %q, want it at column %d", got, utf16Length(prefix+"export default {")+1)
+	if column := len(prefix+"export default {") + 1; utf16Length(prefix+"export default {")+1 == column || len(got) != 1 || !strings.HasPrefix(got[0], "worker.ts:1:"+strconv.Itoa(column)+": Expected ") {
+		t.Errorf("syntax error = %q, want it at byte column %d", got, column)
 	}
 	got = esbuildErrors(t, esbuildBuild(t, plugin, "server", esbuildNode))
 	want := "server.ts:1:" + strconv.Itoa(utf16Length(`console.log("é😀", `)+1) + ": " + noModuleIdentity

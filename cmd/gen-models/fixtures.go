@@ -54,11 +54,19 @@ func (transport *recordingTransport) RoundTrip(request *http.Request) (*http.Res
 		return nil, err
 	}
 	transport.index = append(transport.index, fixtureEntry{URL: request.URL.String(), Status: response.StatusCode, File: file})
-	encoded, err := json.MarshalIndent(transport.index, "", "  ")
-	if err != nil {
+	// JSON.stringify(value, null, 2) leaves <, > and & as they are; Encode ends the document with the newline the file keeps.
+	var encoded bytes.Buffer
+	encoder := json.NewEncoder(&encoded)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	index := transport.index
+	if index == nil {
+		index = fixtureIndex{} // an empty recording is [], not null
+	}
+	if err := encoder.Encode(index); err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(filepath.Join(transport.dir, fixtureIndexFile), append(encoded, '\n'), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(transport.dir, fixtureIndexFile), encoded.Bytes(), 0o644); err != nil {
 		return nil, err
 	}
 	response.Body = io.NopCloser(bytes.NewReader(body))

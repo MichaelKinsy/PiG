@@ -841,6 +841,23 @@ type ToolUpdatePayload struct {
 	Result    json.RawMessage `json:"result"`
 }
 
+// CallYield (ext→host) is the explicit yield of a thread-based SDK (ctx.Yield, and ctx.Sleep before it waits): the handler of the request that made it
+// stands where Pi's code writes `await`, so the hold a triggering send set (sync_run_hold.go) ends and later reads of isIdle are live. Args are empty, the
+// result is empty. A runtime with an event loop needs no such call: it reports its first microtask checkpoint (NotifyHandlerYielded).
+const CallYield = "yield"
+
+// NotifyHandlerYielded (ext→host) tells the host that the code that sent a triggering message, a handler or a timer's or an I/O callback, awaited or
+// returned control to the runtime's event loop. The send carried the token in its yield_token argument. A runtime with an event
+// loop sends it from the first microtask checkpoint after the send, because the host cannot see an await, and only after the host answered the send;
+// the host then answers isIdle from the Session again (sync_run_hold.go). A thread-based SDK does not send it: its handler yields in a call whose
+// upstream API returns a Promise, or when it returns.
+const NotifyHandlerYielded = "handler_yielded"
+
+// HandlerYieldedPayload is the NotifyHandlerYielded argument.
+type HandlerYieldedPayload struct {
+	Token string `json:"token"`
+}
+
 // Focused custom UI uses three current-wire message classes. Input is an
 // ordered, non-idempotent event; render is a replaceable snapshot; open and
 // close/error are exactly-once barriers that delimit one key generation.

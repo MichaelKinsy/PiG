@@ -108,7 +108,7 @@ func TestReplacedSession2860AcrossSDKs(t *testing.T) {
 		{
 			name:     "new",
 			messages: []string{"/repro"},
-			want: []string{"start:1", "shutdown:1", "start:2", "with:1", "replacement:true", "staleCtx:true", "stalePi:true", "idle:true", "model:faux-1",
+			want: []string{"start:1", "shutdown:1", "start:2", "with:1", "replacement:true", "staleCtx:true", "stalePi:true", "idle:true", "yield:ok", "model:faux-1",
 				"conversation:user:reply with exactly: hello reply|assistant:hello reply", "shutdown:2"},
 		},
 		{

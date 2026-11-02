@@ -877,6 +877,60 @@ export default function (pi) {
       ctx.ui.notify(`rw_idle_after_trigger=${ctx.isIdle()}`, "info");
     },
   });
+  pi.registerCommand("rw_idle_busy_until_yield", {
+    description: "Read isIdle after a message that starts a run, before and after a wait for the run",
+    handler: async (_args, ctx) => {
+      pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+      const sync = [ctx.isIdle(), ctx.isIdle()];
+      await ctx.waitForIdle();
+      ctx.ui.notify(`rw_idle_busy_until_yield=sync:${sync.join(",")};later:${ctx.isIdle()}`, "info");
+    },
+  });
+  pi.registerCommand("rw_idle_send_then_await", {
+    description: "Await the run a message starts with no read in between, then read; again for a second message",
+    handler: async (_args, ctx) => {
+      pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+      await ctx.waitForIdle();
+      const awaited = ctx.isIdle();
+      pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+      const second = ctx.isIdle();
+      await ctx.waitForIdle();
+      ctx.ui.notify(`rw_idle_send_then_await=awaited:${awaited};second:${second};awaited-again:${ctx.isIdle()}`, "info");
+    },
+  });
+  pi.registerCommand("rw_idle_blocking", {
+    description: "Read isIdle after a message that starts a run and a wait that is no call",
+    handler: async (_args, ctx) => {
+      const before = ctx.isIdle();
+      pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300);
+      ctx.ui.notify(`rw_idle_blocking=before:${before};after:${ctx.isIdle()}`, "info");
+    },
+  });
+  pi.registerCommand("rw_idle_yield_poll", {
+    description: "Poll isIdle with a sleep after a message that starts a run, until the Session is idle",
+    handler: async (_args, ctx) => {
+      pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+      const first = ctx.isIdle();
+      for (const deadline = Date.now() + 5000; !ctx.isIdle() && Date.now() < deadline;) await new Promise((resolve) => setTimeout(resolve, 10));
+      ctx.ui.notify(`rw_idle_yield_poll=first:${first};final:${ctx.isIdle()}`, "info");
+    },
+  });
+  pi.registerCommand("rw_idle_callback", {
+    description: "Read isIdle after a message that starts a run, sent from a timer's callback while the handler awaits it",
+    handler: async (_args, ctx) => {
+      const before = ctx.isIdle();
+      await new Promise((resolve) => {
+        setTimeout(async () => {
+          pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+          const sync = [ctx.isIdle(), ctx.isIdle()];
+          await ctx.waitForIdle();
+          ctx.ui.notify(`rw_idle_callback=before:${before};sync:${sync.join(",")};later:${ctx.isIdle()}`, "info");
+          resolve();
+        }, 10);
+      });
+    },
+  });
   let rwSettledOnce = false;
   pi.registerCommand("rw_idle_in_settled", {
     description: "Read isIdle after a message that starts a run, sent from an agent_settled handler",

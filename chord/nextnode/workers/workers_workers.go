@@ -271,7 +271,7 @@ func (c *Workers) timer(d time.Duration, job func()) host.Timer {
 func (c *Workers) task(fn func()) {
 	c.tasks.add()
 	//portlint:allow golifetime the component's own tasks end with their work and Close joins them
-	go func() {
+	go func() { //portlint:allow asyncorder workers.ts:233 `void started.then(...)` and :562 `void this.#enqueue(...)` start owned unawaited work; operations are chained by their done channels, not by this hand-off
 		defer c.tasks.done()
 		fn()
 	}()

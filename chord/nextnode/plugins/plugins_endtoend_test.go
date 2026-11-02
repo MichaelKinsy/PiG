@@ -1,5 +1,7 @@
 package plugins
 
+// pi: packages/chord/src/next-node/plugins/plugins.ts
+
 import (
 	"context"
 	"reflect"

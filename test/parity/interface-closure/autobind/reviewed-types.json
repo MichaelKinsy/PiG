@@ -35,6 +35,10 @@
     "go": "ai/types.go#StreamOptions",
     "reason": "Pi ai/src/types.ts:241 is StreamOptions & Record<string, unknown>: the open record is the per-provider extension slot. LEAD-ANSWERS-ledger #2 maps per-provider options to typed Go fields by json tag, so the Go struct carries the StreamOptions members and each provider option; A7 never reads an open record operand, so this is reviewed rather than ruled. lg-decide reviewed exception (lead order: close the last rows by rules or reviewed exceptions)."
   },
+  "pkg:ai/.#ResolvedGoogleThinkingLevel": {
+    "go": "ai/google.go#ResolvedGoogleThinkingLevel",
+    "reason": "Pi google-shared.ts:37 declares ResolvedGoogleThinkingLevel = Exclude<ThinkingLevel, \"xhigh\" | \"max\">, and ThinkingLevel is the closed union \"minimal\" | \"low\" | \"medium\" | \"high\" | \"xhigh\" | \"max\" (model-schema.ts:16, :22, :104), so the type is exactly \"minimal\" | \"low\" | \"medium\" | \"high\" (the four values resolveGoogleThinkingLevel returns, google-shared.ts:54-59). PiG's ai.ResolvedGoogleThinkingLevel is a string type with exactly those four constants (ai/google.go); TestResolveGoogleThinkingLevelUpstream asserts each resolved value and the unsupported-mapping error, and TestToGoogleThinkingLevelUpstream maps each of the four constants through ToGoogleThinkingLevel."
+  },
   "pkg:ai/.#StreamingJsonParser::property:snapshot::call:0": {
     "go": "ai/streaming_json_parser.go#StreamingJSONParser.Snapshot",
     "reason": "Pi snapshot(): JsonValue | undefined returns the value of the text read so far, or undefined before a value starts. Go cannot express an optional of any JSON value without a sentinel, so Snapshot() returns StreamingJSONSnapshot{Value, Defined, Order, Version}: Defined is false where Pi returns undefined, Value is the plain JSON value (nil, bool, float64, string, []any or map[string]any), Order carries the member order of objects whose keys are not sorted (a JavaScript object keeps insertion order itself) and Version changes when a fresh copy was made, so a caller can tell a changed snapshot where Pi compares identity. TestStreamingJSONParserMatchesPi compares the snapshot after every piece with Pi's."
@@ -74,6 +78,10 @@
   "pkg:ai/api/constrained-sampling#getJsonSchemaToolParameters::call:0": {
     "go": "ai/provider_kit.go#GetJSONSchemaToolParameters",
     "reason": "Pi constrained-sampling.ts:142-144 getJsonSchemaToolParameters returns the TSchema JSON object (tool.parameters, or the strict copy), whose member order JSON.stringify keeps in every request body. The Go form of TSchema is map[string]any (representations.json ai:TSchema), which has no order, so Go returns jsonSchemaToolParameters: that map as Schema plus the member order of its objects, and its MarshalJSON writes the schema in Pi's order. The exported GetJSONSchemaToolParameters (provider_kit.go) is the one function the ai/providers/bedrock package calls into ai/constrained_sampling.go getJSONSchemaToolParameters, and every provider sends the result that way (openai.go, openai_responses.go, mistral.go, anthropic.go, google.go, ai/providers/bedrock/bedrock.go convertTools). Locked by the Pi-oracle body tests TestOpenAICompletionsRequestKeysFollowPiAssignmentOrder, TestAnthropicToolsFollowPiMemberOrder, TestGoogleToolDeclarationsFollowPiMemberOrder, TestGoogleRequestBodyMatchesPi and TestBedrockRequestBodyMatchesPi, and by constrained_sampling_oracle_test.go."
+  },
+  "pkg:ai/api/google-shared#ResolvedGoogleThinkingLevel": {
+    "go": "ai/google.go#ResolvedGoogleThinkingLevel",
+    "reason": "Pi google-shared.ts:37 declares ResolvedGoogleThinkingLevel = Exclude<ThinkingLevel, \"xhigh\" | \"max\">, and ThinkingLevel is the closed union \"minimal\" | \"low\" | \"medium\" | \"high\" | \"xhigh\" | \"max\" (model-schema.ts:16, :22, :104), so the type is exactly \"minimal\" | \"low\" | \"medium\" | \"high\" (the four values resolveGoogleThinkingLevel returns, google-shared.ts:54-59). PiG's ai.ResolvedGoogleThinkingLevel is a string type with exactly those four constants (ai/google.go); TestResolveGoogleThinkingLevelUpstream asserts each resolved value and the unsupported-mapping error, and TestToGoogleThinkingLevelUpstream maps each of the four constants through ToGoogleThinkingLevel."
   },
   "pkg:ai/api/openai-responses#OpenAIResponsesOptions::property:toolChoice": {
     "go": "ai/types.go#StreamOptions.ToolChoice",
@@ -130,6 +138,10 @@
   "pkg:ai/compat#ProviderStreamOptions": {
     "go": "ai/types.go#StreamOptions",
     "reason": "Pi ai/src/types.ts:241 is StreamOptions & Record<string, unknown>: the open record is the per-provider extension slot. LEAD-ANSWERS-ledger #2 maps per-provider options to typed Go fields by json tag, so the Go struct carries the StreamOptions members and each provider option; A7 never reads an open record operand, so this is reviewed rather than ruled. lg-decide reviewed exception (lead order: close the last rows by rules or reviewed exceptions)."
+  },
+  "pkg:ai/compat#ResolvedGoogleThinkingLevel": {
+    "go": "ai/google.go#ResolvedGoogleThinkingLevel",
+    "reason": "Pi google-shared.ts:37 declares ResolvedGoogleThinkingLevel = Exclude<ThinkingLevel, \"xhigh\" | \"max\">, and ThinkingLevel is the closed union \"minimal\" | \"low\" | \"medium\" | \"high\" | \"xhigh\" | \"max\" (model-schema.ts:16, :22, :104), so the type is exactly \"minimal\" | \"low\" | \"medium\" | \"high\" (the four values resolveGoogleThinkingLevel returns, google-shared.ts:54-59). PiG's ai.ResolvedGoogleThinkingLevel is a string type with exactly those four constants (ai/google.go); TestResolveGoogleThinkingLevelUpstream asserts each resolved value and the unsupported-mapping error, and TestToGoogleThinkingLevelUpstream maps each of the four constants through ToGoogleThinkingLevel."
   },
   "pkg:ai/compat#StreamingJsonParser::property:snapshot::call:0": {
     "go": "ai/streaming_json_parser.go#StreamingJSONParser.Snapshot",
@@ -210,6 +222,10 @@
   "pkg:chord/.#Ctx::property:get::call:0": {
     "go": "chord/host/types.go#Ctx.Get",
     "reason": "Pi chord/src/types.ts:33 Ctx.get<C extends AnyContract>(type, input: InputOf<C>, options?: GetOptions<P>): Promise<Ref<C>> types the input as Static of the contract's input schema, computed from the contract value; Go methods cannot be generic or compute types from values, so Get(*Contract, any, *GetOptions) (Ref, error) takes the input untyped and the host normalizes it against the contract's input schema at runtime as Pi's does (invalid/input), failing with the error Pi's promise rejects with. TestHostCtxGetActsAsTheRootPrincipalAtIngressAndAsTheHostInsideObjects (host.test.ts:508-531) and TestStateInitRunsInARootItCanCallOtherObjects."
+  },
+  "pkg:chord/.#Description": {
+    "go": "chord/host/contract.go#Description",
+    "reason": "Pi chord/src/contract.ts:151 declares Description = Static<typeof DescriptionSchema> (:139-150, an open object { name, scope, version, input, host?, variants: map(map(MemberDescriptionSchema)) }), the TypeBox-computed type of the schema that validates a reference's contract token (wire.ts hold frames) and that fingerprints hash. Go cannot compute a type from a schema value, so host.Description is the struct with those members (Name, Scope, Version, Input, Host, Variants of MemberDescription: kind method/state/opaque with args, result, schema, id), and descriptionSchema (contract.go) validates a token as DescriptionSchema does. TestDescriptionSchemaMatchesPi replays 1774 descriptions (a valid one of each shape and seeded edits) through Pi's isValid(DescriptionSchema, ...) under Node 24 (testdata/pi_description.mjs regenerates the verdicts from the pinned mirror) and Go agrees on each; TestContractsFingerprintsAreStableAndDescriptionBased and TestIsFrameChecksErrorCodesAndContractTokens exercise the struct (precedent: pkg:chord/.#Frame)."
   },
   "pkg:chord/.#Factory::call:0": {
     "go": "chord/host/object.go#Factory",
@@ -754,6 +770,38 @@
   "pkg:coding-agent/.#WriteToolCallEvent::property:input": {
     "go": "coding/extension/events.go#CustomToolCallEvent.Input",
     "reason": "Pi agent-session.ts:651-662 builds every tool_call event as {type: \"tool_call\", toolCallId, toolName, input} with the call's arguments, the shape of CustomToolCallEvent (types.ts:1207-1210, input: Record<string, unknown>); the per-tool input types of types.ts:1166-1204 narrow it for a handler through isToolCallEventType (types.ts:1349). Go's production emitter builds CustomToolCallEvent (coding/session_extension_hooks.go:65) whose Input is a map[string]any with WireInput keeping the model's member order, and a subprocess handler receives the same JSON object; the typed per-tool structs are the Go form of the TS narrowing."
+  },
+  "pkg:coding-agent/.#createBashTool::call:0": {
+    "go": "internal/codingagent/tools/tools.go#CreateBashTool",
+    "reason": "Pi bash.ts:433 createBashTool returns the TypeBoxAgentTool wrapToolDefinition(createBashToolDefinition(cwd, options)): the name, label, description, parameters and execute of the definition (wrapToolDefinition copies prepareArguments too, but this definition never sets it, which rule T12u proves from the Pi source). PiG's tools.CreateBashTool(cwd, options) returns *tools.BashTool, the agent.Tool of the wrapped definition, with cwd and the options bound as fields; TestCreateToolFactoriesBindTheirCwdAndOptions asserts the factory binds both. The upstream generic AgentTool type has no Go counterpart of its own, so T9 cannot compare them."
+  },
+  "pkg:coding-agent/.#createEditTool::call:0": {
+    "go": "internal/codingagent/tools/tools.go#CreateEditTool",
+    "reason": "Pi edit.ts:215-217 createEditTool returns wrapToolDefinition(createEditToolDefinition(cwd, options)), a TypeBoxAgentTool whose members are the name, label, description, parameters and execute of the definition plus prepareArguments: prepareEditArguments (edit.ts:155), which the wrapper copies (tool-definition-wrapper.ts:38). PiG's tools.CreateEditTool returns *tools.EditTool, the agent.Tool of the wrapped tool, and EditTool.PrepareArguments (edit.go) is the optional agent.ArgumentPreparer that carries prepareEditArguments; TestEditPrepareArgumentsUpstreamCases asserts it on Pi's cases and TestCreateToolFactoriesBindTheirCwdAndOptions asserts the factory's options reach the tool. Rule T12u does not close this row: the factory's definition sets prepareArguments, so the source proof refuses."
+  },
+  "pkg:coding-agent/.#createFindTool::call:0": {
+    "go": "internal/codingagent/tools/tools.go#CreateFindTool",
+    "reason": "Pi find.ts:311-315 createFindTool returns the TypeBoxAgentTool wrapToolDefinition(createFindToolDefinition(cwd, options)): the name, label, description, parameters and execute of the definition (wrapToolDefinition copies prepareArguments too, but this definition never sets it, which rule T12u proves from the Pi source). PiG's tools.CreateFindTool(cwd, options) returns *tools.FindTool, the agent.Tool of the wrapped definition, with cwd and the options bound as fields; TestCreateToolFactoriesBindTheirCwdAndOptions asserts the factory binds both. The upstream generic AgentTool type has no Go counterpart of its own, so T9 cannot compare them."
+  },
+  "pkg:coding-agent/.#createGrepTool::call:0": {
+    "go": "internal/codingagent/tools/tools.go#CreateGrepTool",
+    "reason": "Pi grep.ts:322 createGrepTool returns the TypeBoxAgentTool wrapToolDefinition(createGrepToolDefinition(cwd, options)): the name, label, description, parameters and execute of the definition (wrapToolDefinition copies prepareArguments too, but this definition never sets it, which rule T12u proves from the Pi source). PiG's tools.CreateGrepTool(cwd, options) returns *tools.GrepTool, the agent.Tool of the wrapped definition, with cwd and the options bound as fields; TestCreateToolFactoriesBindTheirCwdAndOptions asserts the factory binds both. The upstream generic AgentTool type has no Go counterpart of its own, so T9 cannot compare them."
+  },
+  "pkg:coding-agent/.#createLsTool::call:0": {
+    "go": "internal/codingagent/tools/tools.go#CreateLsTool",
+    "reason": "Pi ls.ts:172 createLsTool returns the TypeBoxAgentTool wrapToolDefinition(createLsToolDefinition(cwd, options)): the name, label, description, parameters and execute of the definition (wrapToolDefinition copies prepareArguments too, but this definition never sets it, which rule T12u proves from the Pi source). PiG's tools.CreateLsTool(cwd, options) returns *tools.LsTool, the agent.Tool of the wrapped definition, with cwd and the options bound as fields; TestCreateToolFactoriesBindTheirCwdAndOptions asserts the factory binds both. The upstream generic AgentTool type has no Go counterpart of its own, so T9 cannot compare them."
+  },
+  "pkg:coding-agent/.#createPowerShellTool::call:0": {
+    "go": "internal/codingagent/tools/tools.go#CreatePowerShellTool",
+    "reason": "Pi powershell.ts:59 createPowerShellTool returns the TypeBoxAgentTool wrapToolDefinition(createPowerShellToolDefinition(cwd, options)): the name, label, description, parameters and execute of the definition (wrapToolDefinition copies prepareArguments too, but this definition never sets it, which rule T12u proves from the Pi source). PiG's tools.CreatePowerShellTool(cwd, options) returns *tools.PowerShellTool, the agent.Tool of the wrapped definition, with cwd and the options bound as fields; TestCreateToolFactoriesBindTheirCwdAndOptions asserts the factory binds both. The upstream generic AgentTool type has no Go counterpart of its own, so T9 cannot compare them."
+  },
+  "pkg:coding-agent/.#createReadTool::call:0": {
+    "go": "internal/codingagent/tools/tools.go#CreateReadTool",
+    "reason": "Pi read.ts:221 createReadTool returns the TypeBoxAgentTool wrapToolDefinition(createReadToolDefinition(cwd, options)): the name, label, description, parameters and execute of the definition (wrapToolDefinition copies prepareArguments too, but this definition never sets it, which rule T12u proves from the Pi source). PiG's tools.CreateReadTool(cwd, options) returns *tools.ReadTool, the agent.Tool of the wrapped definition, with cwd and the options bound as fields; TestCreateToolFactoriesBindTheirCwdAndOptions asserts the factory binds both. The upstream generic AgentTool type has no Go counterpart of its own, so T9 cannot compare them."
+  },
+  "pkg:coding-agent/.#createWriteTool::call:0": {
+    "go": "internal/codingagent/tools/tools.go#CreateWriteTool",
+    "reason": "Pi write.ts:94 createWriteTool returns the TypeBoxAgentTool wrapToolDefinition(createWriteToolDefinition(cwd, options)): the name, label, description, parameters and execute of the definition (wrapToolDefinition copies prepareArguments too, but this definition never sets it, which rule T12u proves from the Pi source). PiG's tools.CreateWriteTool(cwd, options) returns *tools.WriteTool, the agent.Tool of the wrapped definition, with cwd and the options bound as fields; TestCreateToolFactoriesBindTheirCwdAndOptions asserts the factory binds both. The upstream generic AgentTool type has no Go counterpart of its own, so T9 cannot compare them."
   },
   "pkg:durable/.#AnyTask": {
     "go": "durable/tasks.go#AnyTask",

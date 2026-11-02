@@ -667,7 +667,7 @@ class ClosureTests(unittest.TestCase):
         self.assertIsNotNone(lock, f"no frozen durable closure for {pin.commit}: durable/interop would run the published pi-durable, not a build of the pin")
         top = lock["packages"][""]["devDependencies"]
         self.assertLessEqual(set(oracle.INTEROP), set(top))
-        self.assertIn("typebox", top, "pi-durable's source imports typebox: the Go tests that import it resolve it from durable/interop/node_modules")
+        self.assertIn("diff", top, "pi-durable's source imports diff: it resolves it from the top of durable/interop/node_modules")
         for name in oracle.INTEROP:
             item = lock["packages"]["node_modules/" + name]
             self.assertTrue(item["resolved"].startswith(oracle.PACK_PREFIX), f"{name} must come from the pin's pack: {item['resolved']}")

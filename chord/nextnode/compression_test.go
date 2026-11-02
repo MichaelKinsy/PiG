@@ -3,12 +3,14 @@ package nextnode_test
 import (
 	"bytes"
 	"encoding/json"
+	"math"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/nextnode"
 )
 
+// pi: packages/chord/src/next-node/compression.ts
 // Ports packages/chord/test/next-node/compression.test.ts: raw deflate and the bounded inflate with its tagged
 // outcomes, a limit of 0 included.
 
@@ -69,4 +71,19 @@ func TestNodeCompression(t *testing.T) {
 			t.Fatalf("inflate = %+v, want corrupt with an error", inflated)
 		}
 	})
+}
+
+func TestNodeCompressionInflateLimitEdges(t *testing.T) {
+	deflated := nextnode.NodeCompression.Deflate([]byte("abc"))
+	// Node takes its default max for a NaN maxOutputLength and `len > NaN` is false: the bytes come back.
+	if got := nextnode.NodeCompression.Inflate(deflated, math.NaN()); got.Kind != nextnode.InflatedBytes || string(got.Bytes) != "abc" {
+		t.Fatalf("NaN limit = %+v, want bytes abc", got)
+	}
+	// A negative or infinite-below limit is past by one byte, like a limit of 0.
+	if got := nextnode.NodeCompression.Inflate(deflated, math.Inf(-1)); got.Kind != nextnode.InflatedTooLarge {
+		t.Fatalf("-Inf limit kind = %q, want too_large", got.Kind)
+	}
+	if got := nextnode.NodeCompression.Inflate(deflated, -5); got.Kind != nextnode.InflatedTooLarge {
+		t.Fatalf("-5 limit kind = %q, want too_large", got.Kind)
+	}
 }

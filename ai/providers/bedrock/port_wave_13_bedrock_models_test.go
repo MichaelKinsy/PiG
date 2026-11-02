@@ -20,6 +20,7 @@ func TestPortWave13BedrockModels(t *testing.T) {
 	for _, model := range models {
 		t.Run("should make a simple request with "+model.ID, func(t *testing.T) {
 			t.Logf("live provider: %s", "amazon-bedrock")
+			useLiveAWSEnvironment(t)
 			testenv.RequireLiveEnv(t, "BEDROCK_EXTENSIVE_MODEL_TEST")
 			// packages/ai/test/bedrock-utils.ts:14-20 selects these three credential alternatives.
 			switch {

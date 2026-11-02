@@ -267,5 +267,9 @@ func evaluate(node ExprNode, row EvaluatedRow, table string) (value any, present
 		return nil, false, data.Invalid(data.ReasonArgs,
 			table+": "+string(node.Op)+" gives "+strconv.FormatFloat(result, 'f', -1, 64)+", outside ±(2^53 - 1)")
 	}
-	return int64(result), true, nil
+	// A sum of int operands is a safe integer; a number that is none stays the number, as in JavaScript.
+	if integer, safe := safeInteger(result); safe {
+		return integer, true, nil
+	}
+	return result, true, nil
 }

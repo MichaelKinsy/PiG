@@ -72,8 +72,10 @@ func (nodeCompression) Inflate(input []byte, limit float64) Inflated {
 	reader := flate.NewReader(bytes.NewReader(input))
 	var source io.Reader = reader
 	if limit < math.MaxInt64 {
-		// One byte past the limit proves the output is larger.
-		source = io.LimitReader(reader, int64(limit)+1)
+		// One byte past the limit proves the output is larger; zlib refuses a bound of 0 (`Math.max(1, ...)`), and one
+		// byte is past a limit of 0 or less. The bound is in [1, MaxInt64), so the conversion is exact.
+		//portlint:allow numbers the bound is clamped to [1, MaxInt64) first, as compression.ts:17 clamps maxOutputLength with Math.max(1, Math.min(limit, buffer.MAX_LENGTH)); a NaN limit fails the comparison, so it reads unbounded as Node's default max does
+		source = io.LimitReader(reader, int64(math.Max(1, limit))+1)
 	}
 	inflated, err := io.ReadAll(source)
 	if err != nil {

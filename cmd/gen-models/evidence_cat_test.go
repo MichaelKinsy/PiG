@@ -1,5 +1,7 @@
 package main
 
+// pi: packages/ai/catalog/README.md
+
 import (
 	"encoding/json"
 	"os"

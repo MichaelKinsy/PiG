@@ -395,6 +395,7 @@ func decodeFields(kind int, reader *reader) Message {
 			}
 			// The failure count times two, plus one when retirements follow.
 			flags := reader.varint()
+			//portlint:allow numbers flags is a non-negative varint, so integer division equals Math.floor(flags / 2) at binary.ts:255
 			entry.Failed = reader.failedEntries(flags / 2)
 			if flags%2 == 0 {
 				entry.Retired = NoRetired
@@ -544,6 +545,7 @@ func (w *writer) text(text string, scale int) {
 	if !utf8.ValidString(text) {
 		text = wellFormed(text)
 	}
+	//portlint:allow numbers scale is 1 or 2, so SHORT / scale is the exact integer 42 or 21 that text.length is compared with at binary.ts:364
 	limit := shortText / scale
 	count := units(text, limit, longText)
 	if count <= limit {
@@ -587,13 +589,14 @@ func wellFormed(text string) string {
 			index += size
 			continue
 		}
-		out = append(out, text[index:index+size]...)
+		out = utf8.AppendRune(out, r)
 		index += size
 	}
 	return string(out)
 }
 
 func surrogateLength(text string) int {
+	//portlint:allow utf16units text is WTF-8 bytes: the check reads the three bytes of an encoded lone surrogate (ED A0..BF 80..BF), which TextEncoder (binary.ts:19) replaces with one U+FFFD; no UTF-16 position is involved
 	if len(text) >= 3 && text[0] == 0xED && text[1] >= 0xA0 && text[1] <= 0xBF && text[2] >= 0x80 && text[2] <= 0xBF {
 		return 3
 	}
@@ -752,6 +755,7 @@ func (r *reader) object(what string) *delta.JsonObject {
 // part is a part as a view of the message, unparsed and not inflated.
 func (r *reader) part() Part {
 	prefix := r.varint()
+	//portlint:allow numbers prefix is a non-negative varint, so integer division equals Math.floor(prefix / 2) at binary.ts:502
 	bytes := r.raw(prefix / 2)
 	if prefix%2 == deflatedFlag {
 		return NewDeflatedPart(bytes)
@@ -858,5 +862,6 @@ func hexText(bytes []byte) string {
 // uuid is 16 bytes as a UUID's text.
 func uuid(bytes []byte) string {
 	text := hexText(bytes)
+	//portlint:allow utf16units text is hexText's ASCII output, where bytes equal UTF-16 units, sliced at the same offsets as binary.ts:564
 	return text[:8] + "-" + text[8:12] + "-" + text[12:16] + "-" + text[16:20] + "-" + text[20:]
 }

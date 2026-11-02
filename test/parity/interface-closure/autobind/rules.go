@@ -101,6 +101,9 @@ type checker struct {
 	depth         int
 	// recv is the Go receiver of the accessor being judged; T3s reads a settled value from a sibling method.
 	recv types.Type
+	// neverSets reports whether the Pi factory whose call result is judged returns a value that never has the member (T12u); nil outside
+	// the result of a call row of a top-level function.
+	neverSets func(member string) bool
 }
 
 func (c *checker) alias(name string) *string { return c.aliases.lookup(c.sourcePkg(), name) }
@@ -1059,6 +1062,9 @@ func (c *checker) objectLiteral(up string, t types.Type) verdict {
 				continue // T12d: a string-literal member is a discriminator the Go type writes (M5 or its encoder)
 			}
 		}
+		if optionalMember(part) && isFuncType(typ) && c.neverSets != nil && c.neverSets(name) {
+			continue // T12u: an optional function member the factory's value never has needs no Go member
+		}
 		return noV("T12: Go struct %s has no field for %s", typeLabel(t), name)
 	}
 	return all(vs...)
@@ -1650,6 +1656,16 @@ func objectMember(part string) (name, typ string, ok bool) {
 	}
 	name, typ, ok = strings.Cut(part, ":")
 	return strings.TrimSuffix(strings.TrimSpace(name), "?"), strings.TrimSpace(typ), ok
+}
+
+// optionalMember reports whether an object type member is declared optional (`name?: T` or `name?(...)`).
+func optionalMember(part string) bool {
+	head := strings.TrimSpace(part)
+	end := strings.IndexAny(head, ":(")
+	if end < 0 {
+		return false
+	}
+	return strings.HasSuffix(strings.TrimSpace(head[:end]), "?")
 }
 
 // methodFor returns the method of a Go type (or its pointer) whose name stands for an upstream member name.

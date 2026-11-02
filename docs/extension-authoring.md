@@ -68,6 +68,20 @@ ext.Command("refresh", "Refresh models.", func(ctx sdk.Context, _ string) error 
 
 The Go subprocess SDK already runs each inbound handler on its own goroutine. Blocking inside the handler preserves upstream `await`: the host receives the response only when the callback completes. Wrapping the body in another `go func()` and returning `nil` early changes ordering, drops the returned error, and cancels the handler-scoped `sdk.Context` as soon as the handler returns.
 
+After a triggering `pi.sendMessage(..., { triggerTurn: true })`, `ctx.isIdle()` reads busy in every extension until the code that sent the message awaits or returns (Pi's one event loop runs nothing else before that). A thread-based SDK has no `await`, so blocking is not the same here: a handler that blocks on a raw sleep keeps `isIdle` busy for everyone until it returns, and only a call Pi awaits (`waitForIdle`, `exec`, the dialogs, ...) or the SDK's yield helper stands for `await`. A handler that waits for the run it started polls with the helper:
+
+```go
+trigger := true
+ctx.SendCustomMessage(msg, sdk.SendMessageOptions{TriggerTurn: &trigger})
+for idle, _ := ctx.IsIdle(); !idle; idle, _ = ctx.IsIdle() {
+    if err := ctx.Sleep(10 * time.Millisecond); err != nil { // yields first, then sleeps; not time.Sleep
+        return err
+    }
+}
+```
+
+The helpers are `ctx.Yield()` and `ctx.Sleep(d)` (Go), `ctx.yield_now()` and `ctx.sleep(duration)` (Rust, with a `Duration`), `ctx.yield_now()` and `ctx.sleep(seconds)` (Python), and `pig:ctx-yield` and `pig:ctx-sleep` (Lisp). Like Pi's `setTimeout`, the sleep helpers do not return early when the request is cancelled; use `Done()` (`is_cancelled()`, `ctx-wait-cancelled`) to stop earlier. A Node extension awaits as in Pi and needs nothing. The remaining difference is D225: a raw sleep keeps the hold, and a send from a thread the handler started holds nothing. `chord.DeliveryEntered` (D224) is the same pattern for a watch listener's wait in Chord's Go packages.
+
 ### Per-run prompt sections
 
 `before_agent_start` handlers receive `event.messageType`: `"user"` with `event.prompt` and `event.images` for a run that a user message starts, and `"custom"` with `event.message` for a run that `sendMessage` with `triggerTurn` starts while the agent is idle. A custom run also checks compaction first, applies the handlers' result and delivers pending `nextTurn` messages, as a user run does. Either run counts as busy while its handlers run, so messages sent meanwhile join it and a prompt or `sendUserMessage` must name its delivery. Handlers that should act only on user prompts check `event.messageType === "user"`, as `examples/extensions/plan-mode` does. This is Pi 1.4.0's behavior (Pi #5581, Pi PR #10739).

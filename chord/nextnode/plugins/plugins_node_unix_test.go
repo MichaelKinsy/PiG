@@ -3,6 +3,7 @@
 package plugins
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -92,4 +93,33 @@ func TestEsbuildBuildAForbiddenInputFailsTheBuildWithNodesText(t *testing.T) {
 	options := esbuildNode
 	options.Plugins = plugins
 	esbuildMatches(t, esbuildErrors(t, esbuildBuild(t, plugin, "worker", options)), "worker.ts:1:19: EACCES: permission denied, open '"+filepath.Join(plugin.Dir, "locked.ts")+"'")
+}
+
+// A Value waiting when the process dies ends with the process's exit, not also with a cancellation nobody asked for (the
+// reads' context is the host's life, which ends right after the pending requests settle). A stopped process holds the read.
+func TestNodeMemberValueInFlightWhenTheProcessDiesReturnsItsExitOnly(t *testing.T) {
+	node := rfNode(t)
+	ref := rfGet(t, node)
+	if err := node.cmd.Process.Signal(syscall.SIGSTOP); err != nil {
+		t.Fatal(err)
+	}
+	result := make(chan error, 1)
+	go func() {
+		_, err := ref.Member("count").Value()
+		result <- err
+	}()
+	eventually(t, 15*time.Second, "the read to be sent", func() bool {
+		node.mu.Lock()
+		defer node.mu.Unlock()
+		return len(node.pending) > 0
+	})
+	node.kill()
+	select {
+	case err := <-result:
+		if _, ok := errors.AsType[*NodeExit](err); !ok || errors.Is(err, context.Canceled) {
+			t.Fatalf("Value = %v, want the *NodeExit alone (canceled: %v)", err, errors.Is(err, context.Canceled))
+		}
+	case <-time.After(15 * time.Second):
+		t.Fatal("the read did not return")
+	}
 }

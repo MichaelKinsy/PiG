@@ -633,7 +633,35 @@ func TestImportRefusals(t *testing.T) {
 			t.Fatal("the stalled input was not closed")
 		}
 	})
+
+	t.Run("an input whose Next panics fails the import with the panic as its error", func(t *testing.T) {
+		parts := importArchive(t)
+		db, err := node.OpenNodeSqliteDatabase(":memory:", node.NodeSqliteDatabaseOptions{})
+		if err != nil {
+			t.Fatalf("open: %v", err)
+		}
+		_, err = ImportStore(SqliteBackend(db), &panickingSource{values: parts[:2]}, chordctx.Background(), StoreOptions{})
+		if err == nil || err.Error() != "the input threw" {
+			t.Fatalf("ImportStore error = %v, want the input threw", err)
+		}
+	})
 }
+
+// panickingSource yields `values`, then panics in Next: an iterator whose next() throws.
+type panickingSource struct {
+	values []ArchivePart
+	index  int
+}
+
+func (source *panickingSource) Next(ctx context.Context) (any, bool, error) {
+	if source.index < len(source.values) {
+		source.index++
+		return source.values[source.index-1], true, nil
+	}
+	panic("the input threw")
+}
+
+func (source *panickingSource) Close() error { return nil }
 
 // stalledSource yields `values`, then waits for ever: a Close wakes nothing, as Pi's never-settling promise.
 type stalledSource struct {

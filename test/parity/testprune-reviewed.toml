@@ -704,6 +704,13 @@ cite = "packages/ai/scripts/model-data.ts:1"
 reason = "Pi 44f6851b (#9534: scripts/generate-models.ts and scripts/openrouter-catalog.ts) deletes packages/ai/test/openrouter-cache-control-models.test.ts:12 (the commit's Pi-Behavior-Change trailer) and sends the OpenRouter ~anthropic/claude-*-latest aliases through the Anthropic Messages API with adaptive thinking, like the versioned Claude models. The Go port of that test now pins the new behavior (TestOpenRouterAnthropicLatestAliasesUseMessages), recorded under D217."
 
 [[entry]]
+path = "coding/extension/host/subprocess/runtime_node_send_idle_test.go"
+commit = "2323d94ce79cad45512f3e1bafe9e4e1cde84608"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session.ts:2404"
+reason = "Pi's sendCustomMessage with triggerTurn awaits _startRun (agent-session.ts:2404), which sets _isAgentRunActive before its first await (1895), so ctx.isIdle() is busy in every extension until the sending handler awaits or returns. The Host now holds that answer for every extension, so the test's handler reports its reads through setSessionName and covers a read by another extension while the sender has not yet yielded, and no longer polls a result file."
+
+[[entry]]
 path = "cmd/gen-models/emit_shares_test.go"
 commit = "875a364a714c18b5bcb69e5509f0f61b2e829531"
 class = "NOBEHAVIOR"
@@ -780,3 +787,10 @@ commit = "3b9bd165af"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "Pi evaluates plugins in its own process and has no Node to find. The expectations moved with PiG's own Node discovery (an additive Go integration of the Node subprocess): a too-old error names where the newest Node was found, and Volta's and mise's install directories, not their shims, are the candidates."
+
+[[entry]]
+path = "chord/nextnode/compression_test.go"
+commit = "ff5017db9e8dbbeef61da454b37d8e552500f19f"
+class = "CITE"
+cite = "packages/chord/src/next-node/compression.ts:17"
+reason = "Pi passes Math.max(1, Math.min(limit, buffer.MAX_LENGTH)) to inflateRawSync as maxOutputLength (compression.ts:17): Math.min and Math.max return NaN for a NaN limit, Node takes its default maximum for a NaN maxOutputLength, and the check `inflated.byteLength > limit` (:18) is false against NaN, so Pi returns the bytes. The NaN-limit expectation was corrupt and is the bytes."
