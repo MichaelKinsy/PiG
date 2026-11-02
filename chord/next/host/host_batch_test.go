@@ -21,7 +21,7 @@ import (
 // Ports packages/chord/test/next/state/batch.test.ts: the cases that run on a host with served objects, documents and
 // references: "reentrancy" (every Chord call a derive compute may not make is refused with invalid/reentrant, in a
 // commit's compute and in a lazy one, and the flag is cleared after a throwing compute) and "delivery" (a delivery
-// that fails is reported and the later frames of the commit are still delivered; the report itself is designed out here, see the test).
+// that throws is reported and the later frames of the commit are still delivered).
 
 var (
 	batchNum = func() *documents.StateDefinition {
