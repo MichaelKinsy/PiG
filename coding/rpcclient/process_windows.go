@@ -1,11 +1,12 @@
 //go:build windows
-
 package rpcclient
 
 import (
 	"os"
 	"strconv"
 )
+
+// Ports packages/coding-agent/src/modes/rpc/rpc-client.ts (stop and exit reporting: terminateProcess, exitCodeAndSignal).
 
 // terminateProcess mirrors Node's kill("SIGTERM"), which terminates the
 // process outright on Windows.
