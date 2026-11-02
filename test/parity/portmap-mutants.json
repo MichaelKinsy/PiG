@@ -2131,5 +2131,110 @@
    "old": "return string(encoded)",
    "new": "return string(encoded) + \" \""
   }
+ ],
+ "packages/durable/src/harness/context.ts": [
+  {
+   "file": "durable/harness/context.go",
+   "old": "if edited && edit.Action == durable.EditOmit {\n\t\treturn []ai.Message{}",
+   "new": "if edited && edit.Action != durable.EditOmit {\n\t\treturn []ai.Message{}"
+  }
+ ],
+ "packages/durable/src/harness/json.ts": [
+  {
+   "file": "durable/harness/json.go",
+   "old": "if _, has := record[name]; !has {",
+   "new": "if _, has := record[name]; has {"
+  }
+ ],
+ "packages/durable/src/harness/prompt.ts": [
+  {
+   "file": "durable/harness/prompt.go",
+   "old": "if head != nil && !hasLaterSystemEntry(view.Entries, head.Id) {",
+   "new": "if head != nil && hasLaterSystemEntry(view.Entries, head.Id) {"
+  }
+ ],
+ "packages/durable/src/harness/submissions.ts": [
+  {
+   "file": "durable/harness/submissions.go",
+   "old": "strings.HasPrefix(entry.Kind, \"pi.\")",
+   "new": "strings.HasPrefix(entry.Kind, \"pj.\")"
+  }
+ ],
+ "packages/durable/src/harness/util.ts": [
+  {
+   "file": "durable/harness/util.go",
+   "old": "\tif ctx.Err() != nil {\n\t\twaiter.err = context.Cause(ctx)",
+   "new": "\tif ctx.Err() == nil {\n\t\twaiter.err = context.Cause(ctx)"
+  }
+ ],
+ "packages/durable/src/ids.ts": [
+  {
+   "file": "durable/ids.go",
+   "old": "\treturn I(value)\n",
+   "new": "\treturn I(value + 1)\n"
+  }
+ ],
+ "packages/durable/src/session/forks.ts": [
+  {
+   "file": "durable/session/forks.go",
+   "old": "source.Fork != policy",
+   "new": "source.Fork == policy"
+  }
+ ],
+ "packages/durable/src/session/transaction.ts": [
+  {
+   "file": "durable/session/transaction.go",
+   "old": "\t\t\tKind:           value.Kind,\n\t\t\tModel:          value.Model,",
+   "new": "\t\t\tKind:           value.Kind + \"x\",\n\t\t\tModel:          value.Model,"
+  }
+ ],
+ "packages/durable/src/storage/scan.ts": [
+  {
+   "file": "durable/storage/internal/scan/scan.go",
+   "old": "requested != nil && *requested != order",
+   "new": "requested != nil && *requested == order"
+  }
+ ],
+ "packages/durable/src/tools/edit-diff.ts": [
+  {
+   "file": "durable/tools/diff_string.go",
+   "old": "return generateDiffString(oldContent, newContent, 4)",
+   "new": "return generateDiffString(oldContent, newContent, 3)"
+  }
+ ],
+ "packages/durable/src/tools/env.ts": [
+  {
+   "file": "durable/tools/env.go",
+   "old": "executionEnv == nil",
+   "new": "executionEnv != nil"
+  }
+ ],
+ "packages/durable/src/tools/file-mutation-queue.ts": [
+  {
+   "file": "durable/tools/file_mutation_queue.go",
+   "old": "\tif previous != nil {\n\t\t<-previous\n\t}",
+   "new": "\tif previous != nil && false {\n\t\t<-previous\n\t}"
+  }
+ ],
+ "packages/durable/src/tools/image.ts": [
+  {
+   "file": "durable/tools/image.go",
+   "old": "\tif len(data) < 26 {\n\t\treturn false\n\t}\n\tdeclaredFileSize",
+   "new": "\tif len(data) < 20 {\n\t\treturn false\n\t}\n\tdeclaredFileSize"
+  }
+ ],
+ "packages/durable/src/tools/path-utils.ts": [
+  {
+   "file": "durable/tools/path_utils.go",
+   "old": "strings.TrimPrefix(normalized, \"@\")",
+   "new": "normalized"
+  }
+ ],
+ "packages/durable/src/truncate.ts": [
+  {
+   "file": "durable/truncate.go",
+   "old": "DEFAULT_MAX_BYTES = 50 * 1024 ",
+   "new": "DEFAULT_MAX_BYTES = 50*1024 + 1 "
+  }
  ]
 }
