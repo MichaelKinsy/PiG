@@ -32,6 +32,7 @@ var chordHelpers = []string{
 	"internal/nodepath",
 	"internal/nodeurl",
 	"internal/typebox",
+	"internal/watchentered", // tells a watch delivery that its listener went on to a wait of the host (chord/watch_impl.go)
 	"telemetry", // pi-telemetry, the dependency of Context.telemetry (chord/context)
 	"third_party/jsonschema",
 	"third_party/jsonschema/kind",

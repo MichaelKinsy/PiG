@@ -18,16 +18,11 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
-	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
 )
 
 func tkOpenSqlite(t *testing.T, path string) durable.Storage {
 	t.Helper()
-	store, err := sqlitenode.OpenNodeSqliteStorage(path, sqlitenode.NodeSqliteStorageOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return store
+	return openNodeSqliteStorage(t, path)
 }
 
 // crash simulates a crash during the held commit: it never reaches storage, and later commits proceed.

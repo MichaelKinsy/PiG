@@ -46,11 +46,11 @@ func (store *killableStorage) parked() bool {
 	return false
 }
 
-func (store *killableStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (store *killableStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
 	if store.parked() {
-		return 0, context.Cause(crashedProcesses)
+		return durable.CommitResult{}, context.Cause(crashedProcesses)
 	}
-	return store.Storage.Commit(ctx, writes, adopt)
+	return store.Storage.Commit(ctx, batches, receive)
 }
 
 func (store *killableStorage) Conversation(ctx context.Context, id durable.ConversationId) (*durable.ConversationRecord, error) {

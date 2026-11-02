@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
@@ -1057,6 +1058,100 @@ func TestGenerationHooks(t *testing.T) {
 					t.Fatal("the injected message was stored")
 				}
 			}
+		}
+		mustClose(t, run.harness)
+	})
+
+	// harness-tools.test.ts:755 it("chains beforeProviderRequest over every provider request body") (Pi d280e1ff)
+	t.Run("chains beforeProviderRequest over every provider request body", func(t *testing.T) {
+		setup := chatSetup(t)
+		type seenRequest struct {
+			hook    string
+			model   string
+			payload any
+		}
+		seen := &syncList[seenRequest]{}
+		extend := func(payload any, key string) map[string]any {
+			next := maps.Clone(payload.(map[string]any))
+			next[key] = true
+			return next
+		}
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{BeforeProviderRequest: func(_ context.Context, request ProviderRequest, _ HookApi) (*ProviderPayload, error) {
+			seen.add(seenRequest{"first", request.Model.ProviderMeta.ProviderID + "/" + request.Model.ID, request.Payload})
+			return &ProviderPayload{Payload: extend(request.Payload, "first")}, nil
+		}})
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{BeforeProviderRequest: func(_ context.Context, request ProviderRequest, _ HookApi) (*ProviderPayload, error) {
+			seen.add(seenRequest{"keep", request.Model.ProviderMeta.ProviderID + "/" + request.Model.ID, request.Payload})
+			return nil, nil
+		}})
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{BeforeProviderRequest: func(_ context.Context, request ProviderRequest, _ HookApi) (*ProviderPayload, error) {
+			return &ProviderPayload{Payload: extend(request.Payload, "last")}, nil
+		}})
+		sent := &syncList[any]{}
+		// pi-ai builds a body per provider call, and again when it resends within one attempt.
+		respond := ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, model *ai.Model) (ai.AssistantMessage, error) {
+			for _, body := range []float64{1, 2} {
+				replaced, err := options.OnPayload(map[string]any{"body": body}, model)
+				if err != nil {
+					return ai.AssistantMessage{}, err
+				}
+				sent.add(replaced)
+			}
+			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}}.AssistantMessage(), nil
+		})
+		run := tlRun(t, setup, []ai.FauxResponseStep{respond}, nil)
+		if run.status != durable.SubmissionDone {
+			t.Fatalf("status %s, want done", run.status)
+		}
+		wantSent := []any{
+			map[string]any{"body": 1.0, "first": true, "last": true},
+			map[string]any{"body": 2.0, "first": true, "last": true},
+		}
+		if !reflect.DeepEqual(sent.all(), wantSent) {
+			t.Fatalf("sent %v, want %v", sent.all(), wantSent)
+		}
+		wantSeen := []seenRequest{
+			{"first", "faux/faux-1", map[string]any{"body": 1.0}},
+			{"keep", "faux/faux-1", map[string]any{"body": 1.0, "first": true}},
+			{"first", "faux/faux-1", map[string]any{"body": 2.0}},
+			{"keep", "faux/faux-1", map[string]any{"body": 2.0, "first": true}},
+		}
+		if !reflect.DeepEqual(seen.all(), wantSeen) {
+			t.Fatalf("seen %v, want %v", seen.all(), wantSeen)
+		}
+		mustClose(t, run.harness)
+	})
+
+	// harness-tools.test.ts:787 it("reports a throwing beforeProviderRequest hook and continues the chain") (Pi d280e1ff)
+	t.Run("reports a throwing beforeProviderRequest hook and continues the chain", func(t *testing.T) {
+		setup := chatSetup(t)
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{BeforeProviderRequest: func(context.Context, ProviderRequest, HookApi) (*ProviderPayload, error) {
+			return nil, errors.New("broken hook")
+		}}, "broken")
+		addHooks(t, setup.Registry, GenerationTask.Erased(), &GenerationHooks{BeforeProviderRequest: func(_ context.Context, request ProviderRequest, _ HookApi) (*ProviderPayload, error) {
+			next := maps.Clone(request.Payload.(map[string]any))
+			next["after"] = true
+			return &ProviderPayload{Payload: next}, nil
+		}})
+		sent := &syncValue[any]{}
+		respond := ai.FauxFactoryStep(func(_ ai.TranscriptContext, options ai.StreamOptions, _ *ai.FauxProviderState, model *ai.Model) (ai.AssistantMessage, error) {
+			replaced, err := options.OnPayload(map[string]any{"body": 1.0}, model)
+			if err != nil {
+				return ai.AssistantMessage{}, err
+			}
+			sent.put(replaced)
+			return ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}}.AssistantMessage(), nil
+		})
+		run := tlRun(t, setup, []ai.FauxResponseStep{respond}, nil)
+		if run.status != durable.SubmissionDone {
+			t.Fatalf("status %s, want done", run.status)
+		}
+		if got, _ := sent.get(); !reflect.DeepEqual(got, map[string]any{"body": 1.0, "after": true}) {
+			t.Fatalf("sent %v, want body 1 with after", got)
+		}
+		infos := arInfosOf(setup, durable.ReportExtensionError)
+		if len(infos) != 1 || infos[0].Extension != "broken" {
+			t.Fatalf("extension_error infos = %+v, want one for broken", infos)
 		}
 		mustClose(t, run.harness)
 	})

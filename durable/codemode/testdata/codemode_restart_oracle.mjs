@@ -88,7 +88,9 @@ class QueuedStorage extends ControlledStorage {
 	failNext(message) {
 		this.failure = new Error(message);
 	}
-	async commit(writes, adopt, commitContext) {
+	async commit(batches, receive, commitContext) {
+		// One call is one commit here, as the Go queuedStorage counts it: its batches' writes together.
+		const writes = batches.flat();
 		this.entered++;
 		if (this.marked) {
 			let appended = 0;
@@ -114,11 +116,11 @@ class QueuedStorage extends ControlledStorage {
 			this.failure = undefined;
 			throw failure;
 		}
-		return super.commit(writes, adopt, commitContext);
+		return super.commit(batches, receive, commitContext);
 	}
 }
 
-const Parameters = obj({ text: opt(str()), id: opt(num()) });
+const Parameters = obj({ text: opt(str()), id: opt(num()) }, { open: true });
 const tool = (name, execute, replay = "unsafe") => defineTool({ name, description: name, parameters: Parameters, execute, replay });
 const DONE = () => fauxAssistantMessage([fauxText("done")]);
 const script = (code) => fauxAssistantMessage([fauxToolCall("codemode", { code }, { id: "s1" })], { stopReason: "toolUse" });

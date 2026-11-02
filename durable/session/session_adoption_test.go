@@ -1,15 +1,14 @@
 package session_test
 
-// Ports packages/durable/test/session-adoption.test.ts: the Session adopts and publishes a batch inside Storage.Commit, as
-// Storage calls its adopt callback once when the batch is durable, and fails when Storage rejects after adopting or never
-// adopts. Upstream's one microtask that dispatches the commit to observeCommits observers, which runs between the
-// storage's synchronous step and its asynchronous resolution, runs here when Storage.Commit returns to the Session
-// (before the Session sees it resolve), so the storage's own "resolve" step precedes "host" in the order logs. The JSONL
-// case of "publishes a JSONL commit before the storage reclaims its sidecar and resolves" has no Go counterpart for the
-// same reason: Go runs the dispatch after the storage's reclaim. Upstream
-// also spies on Transaction.prototype.adopt and .discard; Go cannot patch a method, so the adoption count is read from the
-// storage's own order log and from the adopted snapshot, and "discard not called" is read from the Session failing with the
-// storage's error while the adopted value stays visible.
+// Ports packages/durable/test/session-adoption.test.ts: Storage stores a batch and takes the Session's durability receipt
+// (receive) once when the batch is durable; the Session adopts and publishes it once Storage resolved, and fails when
+// Storage rejects after the receipt or never gives one. Upstream's one microtask that dispatches the commit to
+// observeCommits observers runs here right after the publication's scope, before the commit resolves for its caller, so
+// the order logs read "resolve" (Storage) before "observed" (the Session's own observers) and "host".
+//
+// Go cannot patch Transaction.prototype.adopt and .discard, so the adoption count is read from the storage's own order log and
+// from the adopted snapshot, "discard not called" is read from the Session failing with the storage's error while the adopted
+// value stays visible, and the case where adoption itself throws is in session_group_commit_internal_test.go.
 
 import (
 	"context"
@@ -58,30 +57,30 @@ func (faulty *faultyStorage) Order() []string {
 	return slices.Clone(faulty.order)
 }
 
-func (faulty *faultyStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (faulty *faultyStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(int, durable.Seq)) (durable.CommitResult, error) {
 	faulty.mu.Lock()
 	fault := faulty.fault
 	faulty.fault = noFault
 	faulty.mu.Unlock()
 	switch fault {
 	case skipAdopt:
-		return faulty.ControlledStorage.Commit(ctx, writes, func(durable.Seq) {})
+		return faulty.ControlledStorage.Commit(ctx, batches, func(int, durable.Seq) {})
 	case rejectBeforeAdopt:
-		return 0, errors.New("disk full")
+		return durable.CommitResult{}, errors.New("disk full")
 	}
-	seq, err := faulty.ControlledStorage.Commit(ctx, writes, func(committed durable.Seq) {
+	result, err := faulty.ControlledStorage.Commit(ctx, batches, func(index int, committed durable.Seq) {
 		faulty.record("adopt")
-		adopt(committed)
+		receive(index, committed)
 		faulty.record("adopted")
 	})
 	if err != nil {
-		return 0, err
+		return durable.CommitResult{}, err
 	}
 	faulty.record("resolve")
 	if fault == rejectAfterAdopt {
-		return 0, errors.New("reclaim failed")
+		return durable.CommitResult{}, errors.New("reclaim failed")
 	}
-	return seq, nil
+	return result, nil
 }
 
 func openAdoption() (*session.SessionImpl, *faultyStorage) {
@@ -97,8 +96,8 @@ func bumpCounter(t *testing.T, kernel *session.SessionImpl) error {
 	})
 }
 
-func TestSessionAdoptionInsideStorageCommit(t *testing.T) {
-	t.Run("adopts synchronously inside the commit, before Storage resolves", func(t *testing.T) {
+func TestSessionAdoptionAfterStorageStoredACommit(t *testing.T) {
+	t.Run("takes the durability receipt inside the commit, and adopts once Storage resolved", func(t *testing.T) {
 		kernel, faulty := openAdoption()
 		must(t, bumpCounter(t, kernel))
 		if got := faulty.Order(); !slices.Equal(got, []string{"adopt", "adopted", "resolve"}) {
@@ -167,8 +166,8 @@ func opsOf(documents []durable.DocumentChange) []any {
 	return ops
 }
 
-func TestPublicationAtAdoption(t *testing.T) {
-	t.Run("runs its own observers inside adopt and host listeners when Storage returns, outside it", func(t *testing.T) {
+func TestPublicationAfterStorage(t *testing.T) {
+	t.Run("runs its own observers once Storage resolved, and host listeners one microtask later", func(t *testing.T) {
 		kernel, faulty := openAdoption()
 		kernel.FollowCommits(func(context.Context, session.ObservedCommit) {
 			faulty.record(fmt.Sprintf("observed adopting=%v", faulty.Adopting()))
@@ -177,25 +176,36 @@ func TestPublicationAtAdoption(t *testing.T) {
 			faulty.record(fmt.Sprintf("host adopting=%v", faulty.Adopting()))
 		})
 		must(t, bumpCounter(t, kernel))
-		expectEqual(t, faulty.Order(), []string{"adopt", "observed adopting=true", "adopted", "resolve", "host adopting=false"})
+		expectEqual(t, faulty.Order(), []string{"adopt", "adopted", "resolve", "observed adopting=false", "host adopting=false"})
 		must(t, kernel.Close(ctx))
 	})
 
-	t.Run("calls the host listeners registered when its dispatch runs, and none for a commit adopted without one", func(t *testing.T) {
-		kernel, faulty := openAdoption()
+	t.Run("calls the host listeners registered when its dispatch runs, and none for a commit published without one", func(t *testing.T) {
+		kernel, _ := openAdoption()
 		var calls []string
 		removed := sessiontest.ObserveCommitsFunc(kernel, func(context.Context, durable.CommitPublication) { calls = append(calls, "removed") })
 		sessiontest.ObserveCommitsFunc(kernel, func(context.Context, durable.CommitPublication) { calls = append(calls, "kept") })
-		faulty.AfterAdopt(func() {
+		// During the publication, after the dispatch was queued.
+		changed := false
+		kernel.FollowCommits(func(context.Context, session.ObservedCommit) {
+			if changed {
+				return
+			}
+			changed = true
 			removed()
 			sessiontest.ObserveCommitsFunc(kernel, func(context.Context, durable.CommitPublication) { calls = append(calls, "added") })
 		})
 		must(t, bumpCounter(t, kernel))
 		expectEqual(t, calls, []string{"kept", "added"})
-		// A Session with no host listener at adoption queues no dispatch, so one added before Storage resolves misses it.
-		bare, bareFaulty := openAdoption()
+		// A Session with no host listener at the publication queues no dispatch, so one added during it misses it.
+		bare, _ := openAdoption()
 		var late []durable.Seq
-		bareFaulty.AfterAdopt(func() {
+		added := false
+		bare.FollowCommits(func(context.Context, session.ObservedCommit) {
+			if added {
+				return
+			}
+			added = true
 			sessiontest.ObserveCommitsFunc(bare, func(_ context.Context, publication durable.CommitPublication) { late = append(late, publication.Seq) })
 		})
 		must(t, bumpCounter(t, bare))
@@ -223,8 +233,8 @@ func TestPublicationAtAdoption(t *testing.T) {
 		})
 		kernel.SubscribeClose(func() { faulty.record("close") })
 		must(t, bumpCounter(t, kernel))
-		// adopted and resolve: adopt returned to Storage without panicking, and the Session failed only after that.
-		expectEqual(t, faulty.Order(), []string{"adopt", "observed", "observed after", "adopted", "resolve", "host failed=false", "close"})
+		// Published once Storage resolved; the Session failed only after the hosts got the commit.
+		expectEqual(t, faulty.Order(), []string{"adopt", "adopted", "resolve", "observed", "observed after", "host failed=false", "close"})
 		<-kernel.Closed()
 		if end := kernel.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, bug) {
 			t.Fatalf("end %+v", end)
@@ -249,7 +259,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		faulty.fault = rejectAfterAdopt
 		faulty.mu.Unlock()
 		expectErrorContains(t, bumpCounter(t, kernel), "reclaim failed")
-		expectEqual(t, faulty.Order(), []string{"adopt", "observed", "adopted", "resolve", "host"})
+		expectEqual(t, faulty.Order(), []string{"adopt", "adopted", "resolve", "observed", "host"})
 		if len(stored) != 1 {
 			t.Fatalf("stored %v", stored)
 		}
@@ -287,7 +297,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		// Held in memory: observed at once, nothing stored.
 		expectEqual(t, faulty.Order(), []string{"observed"})
 		commit(t, kernel, func(tx durable.Tx) error { return mustDoc(t, tx, adoptionNoteDoc, conversationId).Set("b", 2) })
-		expectEqual(t, faulty.Order(), []string{"observed", "adopt", "observed", "adopted", "resolve", "host"})
+		expectEqual(t, faulty.Order(), []string{"observed", "adopt", "adopted", "resolve", "observed", "host"})
 		if len(observed) != 2 || len(stored) != 1 {
 			t.Fatalf("observed %d stored %d", len(observed), len(stored))
 		}
@@ -299,7 +309,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		must(t, kernel.Close(ctx))
 	})
 
-	t.Run("publishes a store of held changes to host listeners once its adopt returned", func(t *testing.T) {
+	t.Run("publishes a store of held changes to host listeners once Storage resolved", func(t *testing.T) {
 		kernel, faulty := openAdoption()
 		conversationId := sessiontest.CreateConversation(t, kernel)
 		commit(t, kernel, func(tx durable.Tx) error { _, err := tx.Doc(adoptionNoteDoc, conversationId); return err })

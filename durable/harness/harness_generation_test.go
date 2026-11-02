@@ -216,6 +216,8 @@ func TestGeneration(t *testing.T) {
 		// upstream: packages/durable/test/harness-generation.test.ts:119
 		setup := chatSetup(t, ai.FauxConfig{TokensPerSecond: 200, TokenSize: &ai.FauxTokenSize{Min: new(1), Max: new(1)}})
 		setup.Faux.SetResponses([]ai.FauxResponseStep{fauxAnswer(strings.Repeat("w", 200))})
+		// Store deferred partials well within the stream, so some reach Storage before the answer.
+		setup.SetSettings(func(settings *HarnessSettings) { settings.Progress = &ProgressPolicyPatch{PersistWithinMs: new(100.0)} })
 		store := newControlledStorage()
 		harness, root := openChat(t, store, setup)
 		rootId := root.Id()

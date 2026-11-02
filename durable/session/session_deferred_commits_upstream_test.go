@@ -159,7 +159,7 @@ func (opened *deferredSession) fire() {
 	for _, timer := range due {
 		timer.callback()
 	}
-	_, err := opened.session.ReadOnLine(func() (any, error) { return nil, nil })
+	_, err := opened.session.ReadOnLine(func(durable.Storage) (any, error) { return nil, nil })
 	must(opened.t, err)
 }
 
@@ -812,7 +812,7 @@ func TestAHeldDocumentIsPinned(t *testing.T) {
 	t.Run("keeps a held document cached with retention 0 until it is stored, then lets it go", func(t *testing.T) {
 		opened := openDeferred(t, deferredOptions{retentionMs: 0})
 		settle := func() {
-			_, err := opened.session.ReadOnLine(func() (any, error) { return nil, nil })
+			_, err := opened.session.ReadOnLine(func(durable.Storage) (any, error) { return nil, nil })
 			must(t, err)
 		}
 		settle()
