@@ -115,22 +115,6 @@ pkg:chord/next#union	chord	child-gap	chord/next/contracts/schema.go#Union
 pkg:chord/next#union::call:0	chord	signature-mismatch	chord/next/contracts/schema.go#Union
 pkg:chord/next#unknown	chord	child-gap	chord/next/contracts/schema.go#Unknown
 pkg:chord/next#unknown::call:0	chord	signature-mismatch	chord/next/contracts/schema.go#Unknown
-pkg:coding-agent/.#createBashTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateBashTool
-pkg:coding-agent/.#createBashTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateBashTool
-pkg:coding-agent/.#createEditTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateEditTool
-pkg:coding-agent/.#createEditTool::call:0	coding-agent	undecidable	internal/codingagent/tools/tools.go#CreateEditTool
-pkg:coding-agent/.#createFindTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateFindTool
-pkg:coding-agent/.#createFindTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateFindTool
-pkg:coding-agent/.#createGrepTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateGrepTool
-pkg:coding-agent/.#createGrepTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateGrepTool
-pkg:coding-agent/.#createLsTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateLsTool
-pkg:coding-agent/.#createLsTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateLsTool
-pkg:coding-agent/.#createPowerShellTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreatePowerShellTool
-pkg:coding-agent/.#createPowerShellTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreatePowerShellTool
-pkg:coding-agent/.#createReadTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateReadTool
-pkg:coding-agent/.#createReadTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateReadTool
-pkg:coding-agent/.#createWriteTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateWriteTool
-pkg:coding-agent/.#createWriteTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateWriteTool
 pkg:durable/.#CommitResult	durable	no-go-symbol	
 pkg:durable/.#GenerationHooks	durable	child-gap	durable/harness/types.go#GenerationHooks
 pkg:durable/.#GenerationHooks::property:beforeProviderRequest	durable	member-missing	durable/harness/types.go#GenerationHooks
