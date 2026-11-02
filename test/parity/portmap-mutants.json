@@ -1618,5 +1618,26 @@
    "old": "\t\t\tinput = Strings(\"text\", \"image\")\n",
    "new": "\t\t\tinput = Strings(\"text\")\n"
   }
+ ],
+ "packages/ai/src/models.generated.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "generatedRows[ref.row].Headers = generatedHeaders[ref.element]",
+   "new": "generatedRows[ref.row].Headers = nil"
+  }
+ ],
+ "packages/ai/src/model-catalog.ts": [
+  {
+   "file": "ai/model_catalog.go",
+   "old": "if _, ok := c.models[id]; !ok {",
+   "new": "if _, ok := c.models[id]; ok {"
+  }
+ ],
+ "packages/ai/src/cli.ts": [
+  {
+   "file": "coding/cli/auth_commands.go",
+   "old": "fmt.Printf(\"\\nCredentials saved to %s\\n\", credentialPath)",
+   "new": "fmt.Printf(\"\\nCredentials saved to %s.\\n\", credentialPath)"
+  }
  ]
 }

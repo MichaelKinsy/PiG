@@ -33,14 +33,9 @@ packages/ai/src/auth/oauth/radius.ts
 packages/ai/src/auth/oauth/xai.ts
 packages/ai/src/auth/resolve.ts
 packages/ai/src/auth/types.ts
-packages/ai/src/bedrock-provider.ts
-packages/ai/src/cli.ts
 packages/ai/src/compat.ts
 packages/ai/src/compat/extension-oauth-types.ts
 packages/ai/src/images-api-registry.ts
-packages/ai/src/model-catalog.ts
-packages/ai/src/models-store.ts
-packages/ai/src/models.generated.ts
 packages/ai/src/models.ts
 packages/ai/src/oauth.ts
 packages/ai/src/providers/all.ts
@@ -128,7 +123,6 @@ packages/ai/src/providers/zai-coding-cn.models.ts
 packages/ai/src/providers/zai-coding-cn.ts
 packages/ai/src/providers/zai.models.ts
 packages/ai/src/providers/zai.ts
-packages/ai/src/session-resources.ts
 packages/ai/src/types.ts
 packages/ai/src/utils/error-body.ts
 packages/ai/src/utils/estimate.ts
