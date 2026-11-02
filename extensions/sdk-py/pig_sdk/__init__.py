@@ -3023,7 +3023,14 @@ class Context:
         optional, as upstream's are: None is sent as unset and the host applies
         upstream's default for the session's state. ``details`` is upstream's
         message ``details``, extension data kept with the message and not sent
-        to the model; None leaves it unset."""
+        to the model; None leaves it unset.
+
+        ``trigger_turn=True`` marks the session busy, and ``is_idle`` stays
+        busy until the code that sent it yields, as in Pi until its first
+        ``await``. A handler that waits for the run it started (a poll
+        ``while not ctx.is_idle(): ctx.sleep(0.01)``) must use ``ctx.sleep`` or
+        ``ctx.yield_now()``; a raw ``time.sleep`` keeps the hold until the
+        handler returns."""
         options: dict[str, Any] = {}
         if trigger_turn is not None:
             options["triggerTurn"] = trigger_turn
@@ -3757,6 +3764,15 @@ class Context:
         return bool(self._reply_field("isProjectTrusted", "trusted"))
 
     def is_idle(self) -> bool:
+        """``ctx.isIdle()``: whether the session is idle.
+
+        ``send_message(..., trigger_turn=True)`` marks the session busy, and the
+        host keeps ``is_idle`` busy until the code that sent it yields, as Pi
+        does until its handler reaches its first ``await``. A handler that waits
+        for the run it started (``while not ctx.is_idle(): ...``) must wait with
+        ``ctx.sleep(seconds)`` or call ``ctx.yield_now()`` first; a raw
+        ``time.sleep`` keeps the hold until the handler returns.
+        """
         return bool(self._reply_field("isIdle", "idle"))
 
     def abort(self) -> None:
@@ -3807,6 +3823,26 @@ class Context:
 
     def wait_for_idle(self) -> None:
         self._call("waitForIdle")
+
+    def yield_now(self) -> None:
+        """Stand for Pi's first ``await``: tell the host this handler yields.
+
+        The host holds ``is_idle`` busy after ``send_message(..., trigger_turn=True)``
+        until the sending code yields. Python has no ``await`` here, so this
+        call ends the hold. A host failure raises, as ``wait_for_idle`` does.
+        """
+        self._call("yield", {})
+
+    def sleep(self, seconds: float) -> None:
+        """Yield (``yield_now``), then block this thread for ``seconds``.
+
+        Use it instead of ``time.sleep`` in a poll such as
+        ``while not ctx.is_idle(): ctx.sleep(0.01)``; a raw ``time.sleep``
+        keeps the host's hold until the handler returns. Like Pi's ``setTimeout`` it does
+        not return early when the request is cancelled; check ``is_cancelled()`` to stop earlier.
+        """
+        self.yield_now()
+        time.sleep(seconds)
 
     def new_session(self, opts: dict[str, Any] | None = None) -> Any:
         """Start a new session. ``opts`` may hold ``parentSession``, a ``setup`` callable taking a SetupSessionManager that seeds the new session before it starts (types.ts:411), and a ``withSession`` callable taking a ReplacedSessionContext."""

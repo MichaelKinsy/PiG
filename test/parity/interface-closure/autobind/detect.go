@@ -9,6 +9,7 @@ import (
 	"go/types"
 	"maps"
 	"path"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
@@ -88,6 +89,7 @@ type detector struct {
 	row          *upstreamEntry               // the property row whose member is being exercised, for rule P1(b)
 	srcText      []string                     // the pinned upstream package sources, read on first use by rule CC (rulings.go)
 	placements   map[string]reviewedPlacement // rule RP's reviewed placements (placements-reviewed.json), keyed pkg:Name
+	readers      map[string]*tsReader         // the pinned Pi sources of a package, read on first use by rule T12u
 }
 
 func newDetector(ix *index, l *ledger, renames renameTable, aliases aliasTable) *detector {
@@ -1837,4 +1839,17 @@ func (d *detector) receiverFunction(prop *upstreamEntry, owner *sym) *sym {
 		}
 	}
 	return nil
+}
+
+// factoryNeverSets is rule T12u's source proof for the exported function name of the upstream package pkg (see optionalmember.go).
+func (d *detector) factoryNeverSets(pkg, name, member string) bool {
+	if d.readers == nil {
+		d.readers = map[string]*tsReader{}
+	}
+	r := d.readers[pkg]
+	if r == nil {
+		r = newTSReader(filepath.Join(d.ix.root, ".upstream/current"), pkg)
+		d.readers[pkg] = r
+	}
+	return r.factoryNeverSets(name, member)
 }

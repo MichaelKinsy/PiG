@@ -1,5 +1,21 @@
 package providers
 
+// pi: packages/ai/catalog/providers/opencode.ts
+// pi: packages/ai/catalog/providers/opencode-go.ts
+// pi: packages/ai/catalog/providers/openrouter.ts
+// pi: packages/ai/catalog/providers/qwen-token-plan.ts
+// pi: packages/ai/catalog/providers/qwen-token-plan-cn.ts
+// pi: packages/ai/catalog/providers/qwen-token-plan-individual.ts
+// pi: packages/ai/catalog/providers/together.ts
+// pi: packages/ai/catalog/providers/typesafe.ts
+// pi: packages/ai/catalog/providers/xai.ts
+// pi: packages/ai/catalog/providers/xiaomi.ts
+// pi: packages/ai/catalog/providers/xiaomi-token-plan-ams.ts
+// pi: packages/ai/catalog/providers/xiaomi-token-plan-cn.ts
+// pi: packages/ai/catalog/providers/xiaomi-token-plan-sgp.ts
+// pi: packages/ai/catalog/providers/zai.ts
+// pi: packages/ai/catalog/providers/zai-coding-cn.ts
+
 // Behavioral evidence, second half: see evidence_provB_test.go.
 
 import (
@@ -23,7 +39,7 @@ func provBOpenCodeAPIs(protocol, baseURL, aisdk string) string {
 }
 
 func TestProvBOpencode(t *testing.T) {
-	// pi: providers/opencode.ts opencodeApi + opencodeModels + finalizeOpencodeModel
+	// Pi source: providers/opencode.ts opencodeApi + opencodeModels + finalizeOpencodeModel
 	defaults := `{"supportsStore":false,"supportsDeveloperRole":false,"supportsStrictMode":true`
 	sources := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"opencode": {
 		// Native protocols come before Chat Completions when models.dev lists several.
@@ -106,7 +122,7 @@ func TestProvBOpencode(t *testing.T) {
 }
 
 func TestProvBOpencodeGo(t *testing.T) {
-	// pi: providers/opencode-go.ts (opencodeModels and finalizeOpencodeModel of providers/opencode.ts with OpenCode Go's rules)
+	// Pi source: providers/opencode-go.ts (opencodeModels and finalizeOpencodeModel of providers/opencode.ts with OpenCode Go's rules)
 	defaults := `{"supportsStore":false,"supportsDeveloperRole":false,"supportsStrictMode":true`
 	sources := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"opencode-go": {
 		{ID: "kimi-k2.6", API: provBOpenCodeAPIs("chat-completions", provBGoV1, "")},
@@ -160,7 +176,7 @@ func provBOpenRouterModel(id string) *Obj {
 }
 
 func TestProvBOpenRouter(t *testing.T) {
-	// pi: providers/openrouter.ts
+	// Pi source: providers/openrouter.ts
 	sources := &CatalogSources{OpenRouter: OpenRouterCatalog{
 		Chat: []*Obj{
 			provBOpenRouterModel("anthropic/claude-x"),
@@ -219,7 +235,7 @@ func TestProvBOpenRouter(t *testing.T) {
 }
 
 func TestProvBQwenTokenPlans(t *testing.T) {
-	// pi: providers/qwen-token-plan.ts, qwen-token-plan-cn.ts, qwen-token-plan-individual.ts
+	// Pi source: providers/qwen-token-plan.ts, qwen-token-plan-cn.ts, qwen-token-plan-individual.ts
 	effort := `"supported":true,"effort":["low","high"]`
 	intl := []provBSpec{
 		{ID: "qwen3.7-plus", Reasoning: effort},
@@ -291,7 +307,7 @@ func TestProvBQwenTokenPlans(t *testing.T) {
 }
 
 func TestProvBTogether(t *testing.T) {
-	// pi: providers/together.ts
+	// Pi source: providers/together.ts
 	base := `"supportsStore":false,"supportsDeveloperRole":false`
 	compat := func(effort, format string) string {
 		return `{` + base + `,"supportsReasoningEffort":` + effort + `,"maxTokensField":"max_tokens","thinkingFormat":"` + format + `","supportsLongCacheRetention":false,"supportsStrictMode":false}`
@@ -327,7 +343,7 @@ func TestProvBTogether(t *testing.T) {
 }
 
 func TestProvBTypesafe(t *testing.T) {
-	// pi: providers/typesafe.ts
+	// Pi source: providers/typesafe.ts
 	decision := func(limit float64) *CatalogSources {
 		return &CatalogSources{ModelsDevDecisions: map[string]ModelsDevDecisionMetadata{
 			"typesafe/jev-latest": {ID: "typesafe/jev-latest", Type: "decision", Name: "Typesafe Jev", ContextLimit: limit},
@@ -362,7 +378,7 @@ func TestProvBTypesafe(t *testing.T) {
 }
 
 func TestProvBXai(t *testing.T) {
-	// pi: providers/xai.ts
+	// Pi source: providers/xai.ts
 	sources := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"xai": {
 		{ID: "grok-3"},
 		{ID: "grok-3-fast"},
@@ -395,7 +411,7 @@ func TestProvBXai(t *testing.T) {
 }
 
 func TestProvBXiaomi(t *testing.T) {
-	// pi: providers/xiaomi.ts, xiaomi-token-plan-ams.ts, xiaomi-token-plan-cn.ts, xiaomi-token-plan-sgp.ts
+	// Pi source: providers/xiaomi.ts, xiaomi-token-plan-ams.ts, xiaomi-token-plan-cn.ts, xiaomi-token-plan-sgp.ts
 	specs := []provBSpec{
 		{ID: "mimo-reasoning", Reasoning: `"supported":true,"effort":["low","high"]`},
 		{ID: "mimo-plain"},
@@ -429,7 +445,7 @@ func TestProvBXiaomi(t *testing.T) {
 }
 
 func TestProvBZai(t *testing.T) {
-	// pi: providers/zai.ts, zai-coding-cn.ts
+	// Pi source: providers/zai.ts, zai-coding-cn.ts
 	plan := `{"text":{"input":{"price":1},"output":{"price":2}}}`
 	payg := `{"text":{"input":{"price":5,"cache":{"read":0.5}},"output":{"price":10}}}`
 	effort := `"supported":true,"effort":["high"]`

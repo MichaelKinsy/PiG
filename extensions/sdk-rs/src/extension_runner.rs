@@ -1273,6 +1273,16 @@ impl ExtensionCommandContext {
             None => Ok(()),
         }
     }
+    /// The yield helper of the wire `Context`: this in-process realization has no busy hold, so it is a no-op.
+    pub fn yield_now(&self) -> io::Result<()> {
+        Ok(())
+    }
+    /// `yield_now`, then blocks the thread for `duration`.
+    pub fn sleep(&self, duration: std::time::Duration) -> io::Result<()> {
+        self.yield_now()?;
+        std::thread::sleep(duration);
+        Ok(())
+    }
     /// `ctx.newSession(options?)`: the bound function receives `options` as given, with its `setup` and `with_session`.
     pub fn new_session(&self, options: CommandNewSessionOptions) -> io::Result<CancelledResult> {
         match self.actions()?.new_session {

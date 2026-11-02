@@ -157,6 +157,9 @@ func (d *detector) callReturns(row *upstreamEntry) string {
 func (d *detector) callVerdict(row *upstreamEntry, sig *types.Signature, errUnionPinned bool) verdict {
 	chk := d.checker(row)
 	chk.errUnionPinned = errUnionPinned
+	if id := parseID(row.ID); id.Member == "" && id.Call != "" {
+		chk.neverSets = func(member string) bool { return d.factoryNeverSets(id.Pkg, id.Name, member) }
+	}
 	own := callShape{TypeParameters: row.Shape.TypeParameters, Parameters: row.Shape.Parameters, Returns: d.callReturns(row)}
 	v := chk.signature(own, sig)
 	if v.ok == yes {

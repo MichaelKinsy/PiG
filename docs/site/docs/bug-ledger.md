@@ -156,6 +156,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-228dbea](#bf-228dbea) | fix(durable/core): follow the microtask schedule of Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-2309604](#bf-2309604) | Tool schemas in OpenAI Completions, OpenAI Responses, Codex and Mistral request bodies keep the members in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2316fe3](#bf-2316fe3) | The Piglet JSON Schema that `pig piglet schema` prints rejected `powershell` in `tools`, which `pig piglet… | PiG's own defect | Windows | 0.5.3 |
+| [BF-2323d94](#bf-2323d94) | `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy… | PiG's own defect | All platforms | Unreleased |
 | [BF-234316d](#bf-234316d) | On Windows, a Go extension's source hash no longer fails, or makes a build beside it fail, with `The process… | PiG's own defect | Windows | Unreleased |
 | [BF-234664c](#bf-234664c) | With `codemode.mode: "on"`, a tool whose output schema is a union of objects or any other multi-line type no… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-23ee6e1](#bf-23ee6e1) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -1152,6 +1153,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c6c2cf3](#bf-c6c2cf3) | An `env` request whose context is already cancelled is now always sent to the daemon and then cancelled, as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c6cad39](#bf-c6cad39) | fix(session): fork writes the header and entries through one file (Pi,) | PiG's own defect | All platforms | Unreleased |
 | [BF-c6f6953](#bf-c6f6953) | Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-c723782](#bf-c723782) | In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., {… | PiG's own defect | All platforms | Unreleased |
 | [BF-c7ebb23](#bf-c7ebb23) | A cancelled prompt in a `config.oauth` login now rejects with Pi's `Login cancelled` in every SDK (it was… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c7ebb23-2](#bf-c7ebb23-2) | A `config.oauth` login's `onManualCodeInput` asks "Paste the authorization code", as Pi does, and a provider… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c8a90a6](#bf-c8a90a6) | Pressing the login dialog's cancel key again cancels again, and Enter after a cancelled prompt leaves the… | PiG's own defect | All platforms | 0.5.0 |
@@ -1398,6 +1400,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ef0f95a](#bf-ef0f95a) | OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f00bf6c](#bf-f00bf6c) | fix(childwait): call PeekNamedPipe through kernel32 | PiG's own defect | All platforms | Unreleased |
 | [BF-f02269c](#bf-f02269c) | When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f051c65](#bf-f051c65) | fix(extensions): a yield call on the withSession route answers empty; D225 marker at endSyncRunHold, docs of… | PiG's own defect | All platforms | Unreleased |
 | [BF-f06ab7e](#bf-f06ab7e) | A run that `sendMessage({ triggerTurn: true })` starts while idle emits `before_agent_start`, checks… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f07d033](#bf-f07d033) | A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f12896b](#bf-f12896b) | Interactive startup writes the terminal color query before its first frame, as Pi does: starting the renderer… | PiG's own defect | All platforms | 0.5.0 |
@@ -1409,6 +1412,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f24a8ee](#bf-f24a8ee) | Fixed Markdown links not being clickable in Herdr: `TERM_PROGRAM=herdr` is now detected as supporting OSC 8… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f24a8ee-2](#bf-f24a8ee-2) | Fixed the fullscreen text selection and multi-click state surviving a session switch or other transcript… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f25348f](#bf-f25348f) | A `turn_end` or `agent_before_settle` handler in an extension process receives each… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f26dfe2](#bf-f26dfe2) | fix(chord/nextnode/workers): a worker closes its link to the server before its NodeHost fails a reload in… | PiG's own defect | All platforms | Unreleased |
 | [BF-f2790f9](#bf-f2790f9) | A `tui` input listener or light/dark listener that is added while input is dispatched now sees that input… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f288d69](#bf-f288d69) | MCP OAuth token and client registration responses keep empty lists, read `expires_in` like JavaScript's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f288d69-2](#bf-f288d69-2) | On Windows, an npm self-update no longer fails when a virus scanner or indexer holds `pig.exe` open for a… | A Pi defect that PiG fixed first | Windows | 0.5.0 |
@@ -3402,6 +3406,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2316fe38fb` (2026-10-22)
 - **Tests:** `coding/piglet/internal/genstripids/main_test.go::TestCommittedSchemaStripEnumsMatchRegistrations`, `coding/piglet/schema_test.go::TestAC1SchemaParserAgreement`, `coding/piglet/schema_vocabulary_test.go::TestSchemaAcceptsEveryPigletTheRepositoryShips`, `coding/piglet/schema_vocabulary_test.go::TestSchemaAgreesWithParserOnEveryValueOfASet`, `coding/piglet/schema_vocabulary_test.go::TestSchemaEnumsMatchParserSets`, `coding/piglet/schema_vocabulary_test.go::TestSchemaFieldsMatchParserFields`, `coding/piglet/schema_vocabulary_test.go::TestSchemaNeverRejectsWhatTheParserAccepts`
 - **Release note:** The Piglet JSON Schema that `pig piglet schema` prints rejected `powershell` in `tools`, which `pig piglet validate` accepts as a built-in tool, and stated nothing for most of the other closed vocabulary. It now lists all eight built-in tools, the strip IDs of each strip list, the `agentEnv` runtime modes (`inject`, `image`) and policy presets (`minimal`, `standard`, `elevated`), and carries the parser's name, build target, output name, release version and secret patterns, the required `source` and `target` of a mount, and the rule that `agentEnv` names exactly one of `image`, `devContainer` and `source`. `make piglet-strip-ids` writes the strip ID enums, and tests that read the parser's sets from code fail when the schema and the parser disagree.
+
+### BF-2323d94
+
+**`ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi in every SDK, in print, JSON and RPC mode, isolated and packed: the Host answers busy for every extension from the send until the code that sent it yields, where a run that settled while the read was in flight made the Go, Python, Rust and Lisp SDKs report an idle session.
+- **Root cause:** Pi's pi.sendMessage with triggerTurn awaits _startRun, which sets _isAgentRunActive before its first await (agent-session.ts:2404, 1895), and Pi's one event loop runs nothing else until the handler awaits or returns, so ctx.isIdle() on the handler's next statements is false whatever the run it started would do. The host runs that run concurrently with the extensions (print mode stages no run start, RPC holds it only for a command's handler), and ctx.isIdle() is a live host call in every SDK, so a run that settles while a read is in flight answers idle. The Node runtime held the answer itself since; the Go, Python, Rust and Lisp SDKs did not.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2323d94ce7` (2026-11-01), `c3939f9670` (2026-11-01)
+- **Tests:** `coding/cli/extension_host_wiring_binary_test.go::TestSDKExtensionIsBusyThroughTheSynchronousPartAfterATriggeringSend`, `coding/extension/host/subprocess/runtime_node_send_idle_test.go::TestNodeIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSendMessage`, `test/extension-conformance/replicated_state_rw_test.go::TestReplicatedStateIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSend`
+- **Release note:** `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi in every SDK, in print, JSON and RPC mode, isolated and packed: the Host answers busy for every extension from the send until the code that sent it yields, where a run that settled while the read was in flight made the Go, Python, Rust and Lisp SDKs report an idle session. A Go, Python, Rust or Lisp handler yields when it returns or awaits a Promise-returning member (`registerProvider` and `addAutocompleteProvider` return nothing in Pi and no longer end the hold); the Node runtime reports its first microtask checkpoint after the send, so a send from a timer's or an I/O callback that runs after the handler returned holds the Session busy as well, as it does in Pi. The Node runtime's own hold is gone; a message sent from `agent_settled` still reads the Session's idle answer, and a send the Host fails holds nothing. A Go, Python, Rust or Lisp handler that waits for the run it started with `while !isIdle: sleep` uses the SDK's new yield helper (`ctx.Sleep`/`ctx.Yield`, `ctx.sleep`/`ctx.yield_now`, `pig:ctx-sleep`/`pig:ctx-yield`), the stand-in for Pi's `await`; a raw sleep keeps the hold until the handler returns (D225).
 
 ### BF-234316d
 
@@ -17185,6 +17203,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `tui/markdown_wrap_boundary_test.go::TestMarkdownStyledWordsAtTheWrapBoundaryPiCase`, `tui/widthx/wrap_boundary_test.go::TestLineEndResetClosesStrikethrough`, `tui/widthx/wrap_boundary_test.go::TestWrapTextWithAnsiStyledWordsAtTheWrapBoundaryPiCases`
 - **Release note:** Wrapped text no longer starts the next line with a space when a styled word ends exactly at the wrap width, and strikethrough no longer runs into the right padding of a wrapped line: the wrap closes `\x1b[29m` at line end like underline and opens it again on the next line. The text-wrapping helpers in the Go, Rust, Python and Lisp extension SDKs wrap the same way. Carried forward from Pi 2ce9d527 (earendil-works/pi#10925), past the 1.4.0+b3a29f11 pin.
 
+### BF-c723782
+
+**In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., {…**
+
+- **Source:** PiG's own defect
+- **Symptom:** In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi, where the started run cannot end before the handler awaits; a run that settled while the read was in flight made print mode report an idle session.
+- **Root cause:** TestExtensionSendMessageTriggerTurnStartsTheRunAsPi failed under load with stderr "idle=true\n", want "idle=false\n": 6 to 9 runs in 384 with 48 concurrent loops (the first stress run: 1 in 144), none alone (5 and 40 runs green). A debug stack at every runState.active=false and at the host's isIdle answer showed, for a failing process, publishAgentSettled (the triggered run ended) 81 ms before the handler's isIdle read was answered, true.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c7237820c1` (2026-11-01)
+- **Tests:** `coding/cli/extension_send_message_binary_test.go::TestExtensionSendMessageTriggerTurnStartsTheRunAsPi`, `coding/extension/host/subprocess/runtime_node_send_idle_test.go::TestNodeIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSendMessage`
+- **Release note:** In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi, where the started run cannot end before the handler awaits; a run that settled while the read was in flight made print mode report an idle session. The Host now holds that answer for every SDK and extension (`isidle-2323d94ce7`), and the runtime reports only where its handler awaits.
+
 ### BF-c7ebb23
 
 **A cancelled prompt in a `config.oauth` login now rejects with Pi's `Login cancelled` in every SDK (it was…**
@@ -20587,6 +20619,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/anthropic_replaced_payload_order_oracle_test.go::TestAnthropicReplacedPayloadKeepsPiMemberOrder`
 - **Release note:** When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket request carries raw JSON, nested values are written as Pi's `JSON.stringify` writes them after `JSON.parse`: `\u00e9` becomes `é`, and a nested object's repeated key keeps its first place with its last value. PiG copied the replacement's text unchanged.
 
+### BF-f051c65
+
+**fix(extensions): a yield call on the withSession route answers empty; D225 marker at endSyncRunHold, docs of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extensions): a yield call on the withSession route answers empty; D225 marker at endSyncRunHold, docs of the helper
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f051c65f8b` (2026-11-02)
+- **Tests:** None recorded.
+
 ### BF-f06ab7e
 
 **A run that `sendMessage({ triggerTurn: true })` starts while idle emits `before_agent_start`, checks…**
@@ -20744,6 +20789,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6a6fffa638` (2026-10-10), `34f7594aa5` (2026-10-11), `f25348fcf6` (2026-10-11)
 - **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `coding/extension/host/inproc/boundary_test.go::TestEmitBoundaryDecodesSourcesOnlyForHandlersThatReadGoValues`, `coding/extension/host/subprocess/boundary_wire_test.go::TestBoundaryEventWireEncodesAsTheEvent`, `coding/extension/host/subprocess/boundary_wire_test.go::TestBoundaryWireCacheSharesOnlyAcrossUnchangedInputs`, `coding/extension/host/subprocess/boundary_wire_test.go::TestBoundaryWireEncodesEachSourceAsItsRecord` and 15 more in docs/bug-ledger.json
 - **Release note:** A `turn_end` or `agent_before_settle` handler in an extension process receives each `context.contextEntries[].sourceEntry` with its members in the order the session wrote them, as in Pi, instead of sorted by name.
+
+### BF-f26dfe2
+
+**fix(chord/nextnode/workers): a worker closes its link to the server before its NodeHost fails a reload in…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord/nextnode/workers): a worker closes its link to the server before its NodeHost fails a reload in flight
+- **Root cause:** WorkerPlugins.Load appended the NodeHost's closer to the worker's closers after the app's, and shutdown runs them in reverse, so the NodeHost closed first, ended the Node subprocess and failed the reload in flight, and the worker sent that `reloaded` failure before the app's host closer closed the link to the server. The server read it as the reload's own error whenever it arrived ahead of the link's close. Pi runs the host closer, which closes the parent link, first (packages/chord/src/next-node/workers/main.ts #shutdown, ipc.ts: the close frame precedes the `reloaded` reply), so the server's `ended` settles the reload as stopped.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f06ba8fd15` (2026-11-01), `f26dfe2355` (2026-11-01)
+- **Tests:** `chord/nextnode/workers/workers_main_test.go::TestTheWorkersSideClosesItsLinkToTheServerBeforeItsNodeHostFailsAReloadInFlightAtShutdown`, `chord/nextnode/workers/workers_rollout_blocked_unix_test.go::TestTheRolloutStepListsAWorkerStoppedCleanlyDuringItAsStoppedAndOneThatCrashedWithItsError`
 
 ### BF-f2790f9
 
@@ -22358,6 +22416,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D218 | Chord's HTTP listener runs on Go's net/http, which answers some malformed requests before the component does | deliberate difference |
 | D219 | pi-schema regular expressions differ from V8 in four contrived cases | deliberate difference |
 | D222 | A plugin input the build cannot read is reported at the import that names it, not at esbuild's library | deliberate difference |
+| D225 | A thread-based SDK's wait for the run it started needs the SDK's yield helper | deliberate difference |
 
 ## Fix-titled commits that are not bugs in a release
 

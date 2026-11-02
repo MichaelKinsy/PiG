@@ -10,13 +10,11 @@ pkg:ai/.#ModelInputLimits	ai	undecidable	ai/types.go#ModelInputLimits
 pkg:ai/.#ModelInputModality	ai	undecidable	ai/types.go#ModelInputModality
 pkg:ai/.#ModelPromptCache	ai	undecidable	ai/types.go#ModelPromptCache
 pkg:ai/.#ModelThinkingLevel	ai	undecidable	ai/types.go#ModelThinkingLevel
-pkg:ai/.#ResolvedGoogleThinkingLevel	ai	undecidable	ai/google.go#ResolvedGoogleThinkingLevel
 pkg:ai/.#SessionAffinityFormat	ai	undecidable	ai/types.go#SessionAffinityFormat
 pkg:ai/.#ThinkingLevel	ai	undecidable	ai/types.go#ThinkingLevel
 pkg:ai/.#ThinkingLevelMap	ai	undecidable	ai/types.go#ThinkingLevelMap
 pkg:ai/api/constrained-sampling#makeStrictJsonSchema	ai	child-gap	ai/constrained_sampling.go#MakeStrictJSONSchema
 pkg:ai/api/constrained-sampling#makeStrictJsonSchema::call:0	ai	undecidable	ai/constrained_sampling.go#MakeStrictJSONSchema
-pkg:ai/api/google-shared#ResolvedGoogleThinkingLevel	ai	undecidable	ai/google.go#ResolvedGoogleThinkingLevel
 pkg:ai/compat#CacheRetention	ai	undecidable	ai/types.go#CacheRetention
 pkg:ai/compat#ChatTemplateKwargValue	ai	undecidable	ai/types_unions.go#ChatTemplateKwargValue
 pkg:ai/compat#ModelCost	ai	undecidable	ai/types.go#ModelCost
@@ -28,7 +26,6 @@ pkg:ai/compat#ModelInputLimits	ai	undecidable	ai/types.go#ModelInputLimits
 pkg:ai/compat#ModelInputModality	ai	undecidable	ai/types.go#ModelInputModality
 pkg:ai/compat#ModelPromptCache	ai	undecidable	ai/types.go#ModelPromptCache
 pkg:ai/compat#ModelThinkingLevel	ai	undecidable	ai/types.go#ModelThinkingLevel
-pkg:ai/compat#ResolvedGoogleThinkingLevel	ai	undecidable	ai/google.go#ResolvedGoogleThinkingLevel
 pkg:ai/compat#SessionAffinityFormat	ai	undecidable	ai/types.go#SessionAffinityFormat
 pkg:ai/compat#ThinkingLevel	ai	undecidable	ai/types.go#ThinkingLevel
 pkg:ai/compat#ThinkingLevelMap	ai	undecidable	ai/types.go#ThinkingLevelMap
@@ -53,22 +50,6 @@ pkg:ai/providers/schema-builders#stringLiteral	ai	no-go-symbol
 pkg:ai/providers/schema-builders#stringLiteral::call:0	ai	child-gap	
 pkg:ai/providers/schema-builders#stringRecord	ai	no-go-symbol	
 pkg:ai/providers/schema-builders#stringRecord::call:0	ai	child-gap	
-pkg:coding-agent/.#createBashTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateBashTool
-pkg:coding-agent/.#createBashTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateBashTool
-pkg:coding-agent/.#createEditTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateEditTool
-pkg:coding-agent/.#createEditTool::call:0	coding-agent	undecidable	internal/codingagent/tools/tools.go#CreateEditTool
-pkg:coding-agent/.#createFindTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateFindTool
-pkg:coding-agent/.#createFindTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateFindTool
-pkg:coding-agent/.#createGrepTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateGrepTool
-pkg:coding-agent/.#createGrepTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateGrepTool
-pkg:coding-agent/.#createLsTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateLsTool
-pkg:coding-agent/.#createLsTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateLsTool
-pkg:coding-agent/.#createPowerShellTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreatePowerShellTool
-pkg:coding-agent/.#createPowerShellTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreatePowerShellTool
-pkg:coding-agent/.#createReadTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateReadTool
-pkg:coding-agent/.#createReadTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateReadTool
-pkg:coding-agent/.#createWriteTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateWriteTool
-pkg:coding-agent/.#createWriteTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateWriteTool
 pkg:durable/.#CommitResult	durable	no-go-symbol	
 pkg:durable/.#GenerationHooks	durable	child-gap	durable/harness/types.go#GenerationHooks
 pkg:durable/.#GenerationHooks::property:beforeProviderRequest	durable	member-missing	durable/harness/types.go#GenerationHooks
