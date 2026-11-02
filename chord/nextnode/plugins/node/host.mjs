@@ -42,7 +42,7 @@ enableCompileCache(fileURLToPath(new URL("./v8/", import.meta.url)));
 
 const tree = new URL("./pi/chord/src/", import.meta.url);
 const pi = (path) => import(new URL(path, tree).href);
-const [chordNext, { ipcLink }, { createPluginRuntime }, { mapStack }, { BACKGROUND_CONTEXT, withAbortSignal, withTelemetry }, { nodeCompression }, { canonicalJson }] =
+const [chordNext, { ipcLink }, { createPluginRuntime, PluginError }, { mapStack }, { BACKGROUND_CONTEXT, withAbortSignal, withTelemetry }, { nodeCompression }, { canonicalJson }] =
 	await Promise.all([
 		pi("next/index.ts"),
 		pi("next/link/index.ts"),
@@ -238,8 +238,16 @@ async function load(request, context) {
 		}),
 	);
 	const traced = telemetry === undefined ? context : withTelemetry(telemetry, context);
-	const report = await runtime.load(host, { kind: request.kind, core, scripts: request.scripts, modules }, traced);
-	return { failed: report.failed.map(({ plugin, error }) => ({ plugin, error: wireError(error) })) };
+	const wireFailures = (failures) => failures.map(({ plugin, error }) => ({ plugin, error: wireError(error) }));
+	try {
+		const report = await runtime.load(host, { kind: request.kind, core, scripts: request.scripts, modules }, traced);
+		return { failed: wireFailures(report.failed) };
+	} catch (error) {
+		// A required root's plugins failed once the host's load settled (runtime.ts's PluginError): the host stays
+		// loaded, and the Go side raises the error with these (`required` is never empty then).
+		if (!(error instanceof PluginError)) throw error;
+		return { failed: wireFailures(error.failed), required: wireFailures(error.required) };
+	}
 }
 
 /**
