@@ -51,13 +51,7 @@ packages/ai/src/providers/cloudflare-auth.ts
 packages/ai/src/providers/cloudflare-stream.ts
 packages/ai/src/providers/github-copilot.ts
 packages/ai/src/providers/google-vertex.ts
-packages/ai/src/providers/google.ts
-packages/ai/src/providers/meta.ts
-packages/ai/src/providers/mistral.ts
-packages/ai/src/providers/opencode-headers.ts
 packages/ai/src/providers/openrouter.ts
-packages/ai/src/providers/qwen-token-plan-individual.ts
-packages/ai/src/providers/radius.ts
 packages/ai/src/session-resources.ts
 packages/ai/src/types.ts
 packages/ai/src/utils/error-body.ts
