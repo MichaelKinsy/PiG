@@ -751,3 +751,11 @@ commit = "30940806a9688959174fb1b02b8b50d6cf8de24e"
 class = "CITE"
 cite = "packages/durable/src/tools/read.ts:51"
 reason = "Pi 6536f801 builds the read tool's structured output schema with pi-schema (read.ts:51: obj({ type: lit(\"image\"), ... }, { open: true })), whose literal is a bare {\"const\":\"image\"}; the Go declaration emits the same JSON."
+
+[[entry]]
+path = "chord/delta/text_tails_test.go"
+commit = "e33dbb0ad0a613f339125390bd966dff79f1eadc"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The commit makes the tracker's weak text buffers observable to the test: the expected texts of each commit are now built apart from the tracker's strings (strings.Clone of an independently concatenated text), so a buffer the tracker reuses cannot change what the test expects. The values Pi's tracker.ts produces (every revision and op keeps its text while later appends grow the same buffer) are unchanged."
+

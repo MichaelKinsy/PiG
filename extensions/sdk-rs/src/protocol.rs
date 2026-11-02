@@ -310,7 +310,7 @@ pub struct RendererDef {
     pub custom_type: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct ReadyMsg {
     #[serde(default)]
     pub cwd: String,
@@ -738,6 +738,8 @@ pub struct Connection {
     closed: AtomicBool,
     /// Set for a connection a factory opened before `run` (host_helpers.rs): no reader thread serves it yet, so a call made on it reads the frames itself, and only the host calls the host answers before the extension registers are sent. `run` clears it when it takes the connection.
     loading: AtomicBool,
+    /// Set when a loading connection read the host's shutdown frame while a call waited: `run` then registers and ends.
+    shutdown_read: AtomicBool,
     // One thread at a time reads a frame for a loading connection's calls; it does not hold the lock while a frame is served.
     pump: Mutex<()>,
     /// What serves the requests and notifies a loading connection receives while a call waits (event_bus.rs `serve_loading`); cleared when `run` takes the connection.
@@ -844,6 +846,7 @@ impl Connection {
             request_parents: Mutex::new(HashMap::new()),
             closed: AtomicBool::new(false),
             loading: AtomicBool::new(false),
+            shutdown_read: AtomicBool::new(false),
             pump: Mutex::new(()),
             loading_server: Mutex::new(None),
             closed_signal: crate::provider::ProviderSignal::new(),
@@ -898,6 +901,11 @@ impl Connection {
         *self.loading_server.lock().unwrap() = Some(server);
     }
 
+    /// Whether a call made while this connection loaded read the host's shutdown frame.
+    pub(crate) fn shutdown_read(&self) -> bool {
+        self.shutdown_read.load(Ordering::Acquire)
+    }
+
     /// Whether the connection is a factory's, not yet taken by `run`.
     pub(crate) fn is_loading(&self) -> bool {
         self.loading.load(Ordering::Acquire)
@@ -934,6 +942,10 @@ impl Connection {
                         ..Default::default()
                     })?;
                 }
+                continue;
+            }
+            if env.msg_type == "shutdown" {
+                self.shutdown_read.store(true, Ordering::Release);
                 continue;
             }
             let server = self.loading_server.lock().unwrap().clone();
