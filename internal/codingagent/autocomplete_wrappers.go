@@ -1,5 +1,7 @@
 package codingagent
 
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (autocompleteProviderWrappers).
+
 import (
 	"context"
 	"errors"
@@ -9,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -32,6 +35,7 @@ func (m *InteractiveMode) pruneAutocompleteFactories() {
 
 func utf16Column(text string, byteColumn int) int {
 	column := 0
+	//portlint:allow utf16units byteColumn is a Go byte offset taken from ApplyCompletion; this loop converts it to the UTF-16 column Pi reports
 	for _, r := range text[:min(max(byteColumn, 0), len(text))] {
 		column++
 		if r > 0xffff {
@@ -144,7 +148,7 @@ func (m *InteractiveMode) baseAutocompleteProvider(base tui.AutocompleteProvider
 	// Pi CombinedAutocompleteProvider.shouldTriggerFileCompletion only rejects the slash-command-name context.
 	provider.ShouldTriggerFileCompletion = func(_ context.Context, lines []string, line, col int) (bool, error) {
 		before := autocompleteLine(lines, line)
-		before = jsTrim(before[:byteColumn(before, col)])
+		before = jsTrim(jsstring.Slice(before, 0, col))
 		return !strings.HasPrefix(before, "/") || strings.Contains(before, " "), nil
 	}
 	return provider

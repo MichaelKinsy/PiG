@@ -8,6 +8,8 @@
 //
 // Two flavours: FilterableList (returns int index) and TreeSelectorComponent
 // (returns string id).
+//
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (showSelector and the selector hosts).
 
 package codingagent
 
