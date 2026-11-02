@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/tui/src/tui-alt-screen.ts (viewport input and search focus handling)
+
 import (
 	"slices"
 	"sort"
@@ -162,8 +164,10 @@ func (t *TuiAltScreen) performViewportAction(action TUIKeybinding) {
 	case KBAltScreenPageDown:
 		t.ScrollBy(max(1, viewportHeight-altPageScrollOverlap))
 	case KBAltScreenHalfPageUp:
+		//portlint:allow numbers tui-alt-screen.ts:776 Math.floor(viewportHeight / 2): viewportHeight is a non-negative row count, where truncation is floor
 		t.ScrollBy(-max(1, viewportHeight/2))
 	case KBAltScreenHalfPageDown:
+		//portlint:allow numbers tui-alt-screen.ts:780 Math.floor(viewportHeight / 2): viewportHeight is a non-negative row count, where truncation is floor
 		t.ScrollBy(max(1, viewportHeight/2))
 	case KBAltScreenLineUp:
 		t.ScrollBy(-1)
@@ -458,6 +462,7 @@ func revealSearchMatch(scrollView *ScrollView, match AltScreenSearchMatch) bool 
 	before := scrollView.ScrollTop()
 	target := before
 	if first.Row < before || last.Row > before+viewportHeight-1 {
+		//portlint:allow numbers tui-alt-screen.ts revealSearchMatch Math.floor(viewportHeight / 3): viewportHeight > 0 is checked above, where truncation is floor
 		target = first.Row - viewportHeight/3
 	}
 	scrollView.ScrollTo(target, ScrollViewScrollToOptions{DisableFollow: true})

@@ -27,7 +27,8 @@ func TestHighlightFailureMatchesPi(t *testing.T) {
 		fence("javascript", "const answer = 42;\nreturn answer"),
 		fence("python", "def f(x):\n    return x * 2"),
 		fence("json", `{"a": 1}`),
-		fence("text", "no highlighter for this language"),
+		// highlight.js names no language "not-a-language" in any registry state; "text" is its plaintext alias, which LoadAllHighlightLanguages registers, so a "text" probe depends on which test ran before.
+		fence("not-a-language", "no highlighter for this language"),
 		fence("", "no language"),
 	}
 	input, _ := json.Marshal(probes)
