@@ -360,6 +360,7 @@ class SharedStoreTests(unittest.TestCase):
 
     def setUp(self):
         self.store = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: (oracle.thaw(self.store), shutil.rmtree(self.store, ignore_errors=True)))
         self.builds = 0
         self.build_delay = 0.0
         self.probe = lambda: None
@@ -483,6 +484,58 @@ class SharedStoreTests(unittest.TestCase):
         self.assertEqual(len(set(results)), 1)
         self.assertEqual(self.label_of(results[0]), "first")
 
+    def test_a_cached_build_without_the_oracle_package_is_rebuilt_not_reused(self):
+        held = oracle.ensure(COMMIT)
+        oracle.thaw(held.parent)
+        shutil.rmtree(held)
+        held.mkdir()
+        rebuilt = oracle.ensure(COMMIT)
+        self.assertNotEqual(rebuilt.resolve(), held.resolve())
+        self.assertEqual(self.label_of(rebuilt), "first")
+        self.assertTrue((rebuilt / "@earendil-works" / "pi-coding-agent" / "cli.js").is_file())
+        self.assertEqual(self.builds, 2)
+
+    def test_a_cached_build_of_another_package_version_is_rebuilt_not_reused(self):
+        held = oracle.ensure(COMMIT)
+        manifest = held / "@earendil-works" / "pi-coding-agent" / "package.json"
+        manifest.write_text(json.dumps({**json.loads(manifest.read_text()), "version": "0.0.1"}))
+        rebuilt = oracle.ensure(COMMIT)
+        self.assertNotEqual(rebuilt.resolve(), held.resolve())
+        self.assertEqual(json.loads((rebuilt / "@earendil-works" / "pi-coding-agent" / "package.json").read_text())["version"], "1.1.0")
+        self.assertEqual(self.builds, 2)
+
+    @unittest.skipIf(os.name == "nt", "a directory's mode is not enforced on Windows")
+    def test_a_published_oracle_has_no_writable_directory(self):
+        held = oracle.ensure(COMMIT)
+        writable = [str(d) for d, _n, _f in os.walk(held) if os.stat(d).st_mode & 0o222]
+        self.assertEqual(writable, [], "an npm ci through extensions/sdk-ts/node_modules could empty the shared build")
+
+    @unittest.skipIf(os.name == "nt" or os.geteuid() == 0, "root ignores a directory's mode")
+    def test_emptying_a_published_oracle_the_way_npm_ci_does_fails_and_leaves_it_whole(self):
+        held = oracle.ensure(COMMIT)
+        for name in os.listdir(held):  # npm ci removes each entry of node_modules, recursively
+            with self.assertRaises(PermissionError):
+                shutil.rmtree(held / name)
+        self.assertEqual(self.label_of(held), "first")
+        self.assertEqual(oracle.ensure(COMMIT), held, "the whole build must still be the one reused")
+        self.assertEqual(self.builds, 1)
+
+    def test_a_thawed_build_can_be_deleted(self):
+        held = oracle.ensure(COMMIT)
+        oracle.thaw(held.parent)
+        shutil.rmtree(held.parent)
+        self.assertFalse(held.parent.exists())
+
+    def test_a_build_that_installs_no_oracle_package_fails_and_publishes_nothing(self):
+        def empty_install(_closure, _packed, flat):
+            (flat / "node_modules").mkdir(parents=True)
+
+        with mock.patch.object(oracle, "install_closure", empty_install):
+            with self.assertRaises(FileNotFoundError):
+                oracle.ensure(COMMIT)
+        self.assertEqual(list(self.store.rglob("*.ref")), [], "an empty build must not be published")
+        self.assertEqual(list(self.store.rglob(oracle.STAMP)), [])
+
     def test_a_forced_rebuild_publishes_a_new_directory_and_keeps_the_held_one(self):
         held = oracle.ensure(COMMIT)
         rebuilt = oracle.ensure(COMMIT, force=True)
@@ -525,6 +578,13 @@ class SharedStoreTests(unittest.TestCase):
                 oracle.ensure_durable(COMMIT)
         self.assertEqual(packed_from, [built / "src"])
 
+
+
+class PiVersionTests(unittest.TestCase):
+    def test_a_missing_oracle_package_is_a_pin_error_that_names_the_remedy(self):
+        with tempfile.TemporaryDirectory() as empty:
+            with self.assertRaisesRegex(pinlib.PinError, "make parity-deps"):
+                oracle.pi_version(Path(empty))
 
 
 def make_tree(root: Path, packages: dict[str, str]) -> Path:
