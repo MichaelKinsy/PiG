@@ -870,3 +870,31 @@ func TestWorkersFollowTheCPUsTheProcessMayUse(t *testing.T) {
 		})
 	}
 }
+
+// TestRowsThatNameTheSameTestsButMapDifferentFilesDoNotShareARecord: a coverage record holds the executed statements of one row's mapped
+// files only, so two rows of a package that name the same evidence tests and cite files of that package (the ai providers/*.models.ts
+// rows) need different digests, or the record the last row stored would judge the others.
+func TestRowsThatNameTheSameTestsButMapDifferentFilesDoNotShareARecord(t *testing.T) {
+	root := t.TempDir()
+	for name, body := range map[string]string{
+		"lib/a.go": "package lib\n\nfunc A() {}\n", "lib/b.go": "package lib\n\nfunc B() {}\n",
+		"lib/a_test.go": "package lib\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) { A() }\n",
+	} {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(root, name)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	d := newDigester(root)
+	cited := []string{"lib/a.go", "lib/b.go"}
+	onA := result{Cited: cited, Hit: []string{"lib/a.go"}, Tests: []string{"lib#TestA"}}
+	onB := result{Cited: cited, Hit: []string{"lib/b.go"}, Tests: []string{"lib#TestA"}}
+	if d.of(onA, nil) == d.of(onB, nil) {
+		t.Fatal("rows that map different cited files share one digest, so one row's coverage record would judge the other")
+	}
+	if d.of(onA, nil) != d.of(onA, nil) {
+		t.Fatal("the digest of one row is not stable")
+	}
+}

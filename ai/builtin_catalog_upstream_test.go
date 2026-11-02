@@ -1,5 +1,47 @@
 package ai
 
+// pi: packages/ai/src/providers/amazon-bedrock.models.ts
+// pi: packages/ai/src/providers/ant-ling.models.ts
+// pi: packages/ai/src/providers/anthropic.models.ts
+// pi: packages/ai/src/providers/azure.models.ts
+// pi: packages/ai/src/providers/cerebras.models.ts
+// pi: packages/ai/src/providers/cloudflare-ai-gateway.models.ts
+// pi: packages/ai/src/providers/cloudflare-workers-ai.models.ts
+// pi: packages/ai/src/providers/deepseek.models.ts
+// pi: packages/ai/src/providers/fireworks.models.ts
+// pi: packages/ai/src/providers/github-copilot.models.ts
+// pi: packages/ai/src/providers/google-vertex.models.ts
+// pi: packages/ai/src/providers/google.models.ts
+// pi: packages/ai/src/providers/groq.models.ts
+// pi: packages/ai/src/providers/huggingface.models.ts
+// pi: packages/ai/src/providers/kimi-coding.models.ts
+// pi: packages/ai/src/providers/meta.models.ts
+// pi: packages/ai/src/providers/minimax-cn.models.ts
+// pi: packages/ai/src/providers/minimax.models.ts
+// pi: packages/ai/src/providers/mistral.models.ts
+// pi: packages/ai/src/providers/moonshotai-cn.models.ts
+// pi: packages/ai/src/providers/moonshotai.models.ts
+// pi: packages/ai/src/providers/nvidia.models.ts
+// pi: packages/ai/src/providers/openai-codex.models.ts
+// pi: packages/ai/src/providers/openai.models.ts
+// pi: packages/ai/src/providers/opencode-go.models.ts
+// pi: packages/ai/src/providers/opencode.models.ts
+// pi: packages/ai/src/providers/openrouter.models.ts
+// pi: packages/ai/src/providers/qwen-token-plan-cn.models.ts
+// pi: packages/ai/src/providers/qwen-token-plan-individual.models.ts
+// pi: packages/ai/src/providers/qwen-token-plan.models.ts
+// pi: packages/ai/src/providers/radius.models.ts
+// pi: packages/ai/src/providers/together.models.ts
+// pi: packages/ai/src/providers/typesafe.models.ts
+// pi: packages/ai/src/providers/vercel-ai-gateway.models.ts
+// pi: packages/ai/src/providers/xai.models.ts
+// pi: packages/ai/src/providers/xiaomi-token-plan-ams.models.ts
+// pi: packages/ai/src/providers/xiaomi-token-plan-cn.models.ts
+// pi: packages/ai/src/providers/xiaomi-token-plan-sgp.models.ts
+// pi: packages/ai/src/providers/xiaomi.models.ts
+// pi: packages/ai/src/providers/zai-coding-cn.models.ts
+// pi: packages/ai/src/providers/zai.models.ts
+
 import (
 	"encoding/json"
 	"os"
