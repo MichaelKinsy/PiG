@@ -12,7 +12,7 @@ import (
 )
 
 // An image with a width or a height of zero, which Photon decodes (farbfeld, an interlaced GIF): the answers below are what Photon 0.3.3 and
-// photon-node 0.3.4 gave under Node for a PhotonImage of 0x4, 4x0 and 0x0 (the probe is in the rows of branch fix/follow-photon-decode-e):
+// photon-node 0.3.4 gave under Node for a PhotonImage of 0x4, 4x0 and 0x0:
 // `get_bytes()` throws, `get_bytes_jpeg(q)` returns 625 bytes (the SHA-256 prefixes below), `resize` of it gives transparent black.
 
 func TestEncodePNGOfAnImageWithNoPixelsFails(t *testing.T) {
