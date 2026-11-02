@@ -4904,9 +4904,9 @@ rationale = "PORT_MAP records this file n/a with the reason: (Go archive/zip, us
 [[files]]
 path = "packages/durable/src/codemode/codemode.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/codemode/codemode_test.go#TestDurableCodeMode", "test:durable/codemode/output_tool_test.go#TestDurableCodeModeOutputAndToolSearch", "test:durable/codemode/models_test.go#TestCodeModeModelCallsRunInTheCallingPhasesTrace"]
+rationale = "New in Pi 1.2.0: the code mode tool and extension (createCodemodeTool, createCodemodeExtension, the run/journal/nested-call documents). durable/codemode/tool.go, docs.go and call.go port it; TestDurableCodeMode runs the cases of codemode.test.ts, and the other two cover output/tool search and the model-call trace."
 
 [[files]]
 path = "packages/durable/src/codemode/describe.ts"
@@ -4925,9 +4925,9 @@ rationale = "New in Pi 1.2.0: a re-export barrel for codemode.ts and describe.ts
 [[files]]
 path = "packages/durable/src/codemode/models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/codemode/models_test.go#TestCodeModeModels", "test:durable/codemode/models_test.go#TestCodeModeModelCallsRunInTheCallingPhasesTrace"]
+rationale = "New in Pi 1.2.0: the models global of code mode. durable/codemode/models.go ports it; TestCodeModeModels holds the cases of codemode-models.test.ts as subtests under their Pi titles."
 
 [[files]]
 path = "packages/durable/src/codemode/output.ts"
@@ -5009,30 +5009,30 @@ rationale = "only the `pi.live` v3 tests changed. PiG: durable/harness/compactio
 [[files]]
 path = "packages/durable/src/harness/context.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_context_test.go#TestConversationContext", "test:durable/harness/context_extend_test.go#TestTaskContextReadIsExtendedWithOnlyNewerEntries", "test:durable/harness/harness_context_at_test.go#TestConversationContextAtReadsTheContextAsAForkAtThatEntryStarts", "test:durable/harness/context_kept_range_test.go#TestKeptContextRanges"]
+rationale = "durable/harness/context.go ports conversation and task context reads; the four tests port harness-context.test.ts (context, extension with newer entries, contextAt) and harness-context-range.test.ts (kept ranges)."
 
 [[files]]
 path = "packages/durable/src/harness/define.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/define_tool_test.go#TestDefineToolReturnsTheRegistrationUnchanged", "test:durable/harness/define_regression_test.go#TestSectionOptionsWithoutTagStayTagged", "test:durable/harness/harness_registry_test.go#TestRegistry"]
+rationale = "durable/harness/define.go ports the define* helpers (defineTool, defineSection and the rest); the tests check that defineTool returns the registration unchanged, section options keep their tag, and registrations resolve through the registry."
 
 [[files]]
 path = "packages/durable/src/harness/generation.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_generation_test.go#TestGeneration", "test:durable/harness/harness_generation_recovery_test.go#TestGenerationRecovery"]
+rationale = "durable/harness/generation.go ports generation runs (model call, phases, recovery after a restart); the tests port harness-generation.test.ts and harness-generation-recovery.test.ts."
 
 [[files]]
 path = "packages/durable/src/harness/harness.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_lifecycle_test.go#TestHarnessOpen", "test:durable/harness/harness_lifecycle_test.go#TestHarnessClose", "test:durable/harness/harness_group_commit_test.go#TestGroupCommitOutcomesAndPublicationThroughTheHarness", "test:durable/harness/harness_inspect_test.go#TestHarnessInspect"]
+rationale = "durable/harness/harness.go ports the Harness (open, close, pause/resume, inspect, submit through the group-commit path); the tests port harness-lifecycle, harness-inspect and harness-group-commit.test.ts."
 
 [[files]]
 path = "packages/durable/src/harness/inbox.ts"
@@ -5079,9 +5079,9 @@ rationale = "PORT_MAP row is ✅ ported (durable/harness/provider.go). coverage.
 [[files]]
 path = "packages/durable/src/harness/registry-reader.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/registry_reader_test.go#TestRegistryReader", "test:durable/harness/registry_reader_upstream_test.go#TestRegistryReaderSnapshotsAreImmutableAndSubscribersSeeEachPublication"]
+rationale = "durable/harness/registry_reader.go ports the registry reader (composed snapshot, listeners); the tests port the scheduler-wake case and the snapshot/listener cases of harness-registry-reader.test.ts."
 
 [[files]]
 path = "packages/durable/src/harness/registry.ts"
@@ -5093,23 +5093,23 @@ rationale = "PORT_MAP row is ✅ ported (durable/harness/registry.go). coverage.
 [[files]]
 path = "packages/durable/src/harness/scheduler.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/scheduler_indexes_test.go#TestSchedulerIndexes", "test:durable/harness/scheduler_retention_test.go#TestSchedulerRetention", "test:durable/harness/harness_tasks_scheduling_test.go#TestTaskScheduling", "test:durable/harness/harness_group_commit_test.go#TestGroupCommitSchedulerRegions"]
+rationale = "durable/harness/scheduler*.go port the scheduler (indexes, retention, task scheduling, group-commit regions); the tests port harness-scheduler-indexes, harness-scheduler-retention, harness-tasks and harness-group-commit.test.ts."
 
 [[files]]
 path = "packages/durable/src/harness/submissions.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_submissions_test.go#TestSubmissions", "test:durable/harness/harness_submissions_test.go#TestSubmissionDraftIgnoresTheFieldsOfTheOtherType"]
+rationale = "durable/harness/submissions.go ports submission drafts and the submit path; the tests port harness-submissions.test.ts."
 
 [[files]]
 path = "packages/durable/src/harness/task-graph.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_task_graph_test.go#TestTaskGraphView", "test:durable/harness/harness_task_graph_test.go#TestTaskGraphViewAdvancesWithTheConversationViewAtThePublicationOfTheOneCommitThatChangesBoth"]
+rationale = "durable/harness/task_graph.go ports the task graph view; the tests port harness-task-graph.test.ts."
 
 [[files]]
 path = "packages/durable/src/harness/telemetry.ts"
@@ -5121,9 +5121,9 @@ rationale = "span description, `continue` value. PiG: durable/harness/telemetry.
 [[files]]
 path = "packages/durable/src/harness/tool.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_tools_test.go#TestToolRound", "test:durable/harness/harness_tools_test.go#TestToolExecutionApi", "test:durable/harness/tool_nested_test.go#TestANestedCallIsItsOwnToolTaskAndItsResultGoesToTheCaller", "test:durable/harness/tool_structured_output_test.go#TestStructuredOutputError"]
+rationale = "durable/harness/tool.go and tool_nested.go port tool rounds, the execution API, nested calls and structured output; the tests port harness-tools, harness-nested-tools and harness-structured-output.test.ts."
 
 [[files]]
 path = "packages/durable/src/harness/transcript.ts"
@@ -5135,9 +5135,9 @@ rationale = "New in Pi f3255de7: ConversationTranscript, TranscriptItem (entry, 
 [[files]]
 path = "packages/durable/src/harness/types.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/types_upstream_test.go#TestTypesUpstreamHarness", "test:durable/harness/types_upstream_test.go#TestMissingPhaseHandlerFaultsTheTaskAsAThrowingHandlerDoes"]
+rationale = "durable/harness/types.go (with harness_types.go) ports the harness type surface; the tests are the harness part of types.test.ts."
 
 [[files]]
 path = "packages/durable/src/harness/usage.ts"
@@ -5156,9 +5156,9 @@ rationale = "`conversationEntries`. PiG: durable/harness/util.go (lane C)."
 [[files]]
 path = "packages/durable/src/harness/view.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_view_test.go#TestConversationView", "test:durable/harness/harness_view_test.go#TestConversationViewWindow", "test:durable/harness/harness_view_run_test.go#TestARunAsTheConversationViewShowsIt"]
+rationale = "durable/harness/view.go ports the conversation view; the tests port harness-view.test.ts and harness-view-run.test.ts."
 
 [[files]]
 path = "packages/durable/src/ids.ts"
@@ -5212,30 +5212,30 @@ rationale = "Declares Photon's WebAssembly import for TypeScript. The Go process
 [[files]]
 path = "packages/durable/src/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Re-export barrel of the durable package. re-export barrel: the exports are the Go package surface; a barrel has no Go form (PORT_MAP n/a)."
 
 [[files]]
 path = "packages/durable/src/search.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/internal/search/search_test.go#TestTokenizeMatchesPi", "test:durable/internal/search/search_test.go#TestRankDocumentsMatchesPi", "test:durable/internal/search/search_test.go#TestRankDocumentsNormalizesByDocumentLength"]
+rationale = "durable/internal/search/search.go ports the tokenizer and BM25 ranking; the tests port search.test.ts and compare with Pi's output."
 
 [[files]]
 path = "packages/durable/src/session/cached-storage.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/session/cached_storage_test.go#TestCachedStorageServesWrittenRecordWithoutReadAndFollowsLaterWrites", "test:durable/session/cached_storage_test.go#TestCachedStorageDropsReadOverlappedByPublicationAndKeepsVersionsOnlyForReadsInFlight", "test:durable/session/cached_storage_test.go#TestCachedStorageKeepsBoundedEndedTasksAndEveryLiveOneUntilItEnds"]
+rationale = "durable/session/cached_storage.go ports CachedStorage (records served from written commits, reads overlapped by a publication dropped, bounded ended tasks); the tests port session-cached-storage.test.ts."
 
 [[files]]
 path = "packages/durable/src/session/conversation-tails.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/session/conversation_tails_test.go#TestConversationTailsReadsOnceThenFollowsCommits", "test:durable/session/conversation_tails_test.go#TestConversationTailsAnswersCutoffFromNewestMarkerOnlyAtOrAfterIt", "test:durable/session/conversation_tails_test.go#TestConversationTailsPeekIsThreeStated"]
+rationale = "durable/session/conversation_tails.go ports ConversationTails; the tests port session-conversation-tails.test.ts."
 
 [[files]]
 path = "packages/durable/src/session/forks.ts"
@@ -5247,37 +5247,37 @@ rationale = "PORT_MAP row is ✅ ported (durable/session/forks.go). coverage.md 
 [[files]]
 path = "packages/durable/src/session/keys.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/session/keys_test.go#TestKeyFormats", "test:durable/session/keys_test.go#TestTableKeys", "test:durable/session/keys_test.go#TestGatedStorageReadsTouchTheirKeysFirst"]
+rationale = "durable/session/keys.go ports the key formats, table keys and the gated storage that touches keys before reads; the tests check the formats and the touch order."
 
 [[files]]
 path = "packages/durable/src/session/session.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/session/session_group_commit_test.go#TestGroupCommitBatching", "test:durable/session/session_observers_test.go#TestObserveCommits", "test:durable/session/session_adoption_test.go#TestSessionAdoptionAfterStorageStoredACommit", "test:durable/session/session_document_retention_test.go#TestSessionDocumentCacheRetention"]
+rationale = "durable/session/session.go ports Session (group commit, observers, adoption of a stored commit, document cache retention); the tests port session-group-commit, session-observers, session-adoption and session-document-retention.test.ts."
 
 [[files]]
 path = "packages/durable/src/session/transaction.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/session/session_tables_test.go#TestSessionTransactionTables", "test:durable/session/session_documents_test.go#TestSessionDocumentTransactions"]
+rationale = "durable/session/transaction.go ports Transaction (tables and documents inside a commit); the tests port session-tables.test.ts and session-documents.test.ts."
 
 [[files]]
 path = "packages/durable/src/session/writer.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/session/session_group_commit_test.go#TestGroupCommitUpkeepThroughTheWriter", "test:durable/session/session_group_commit_test.go#TestGroupCommitBackpressureAndBounds", "test:durable/session/session_group_commit_test.go#TestGroupCommitOutcomes"]
+rationale = "durable/session/writer.go ports the commit writer (batching, backpressure, upkeep); the tests are the writer cases of session-group-commit.test.ts."
 
 [[files]]
 path = "packages/durable/src/storage/indexeddb.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Browser-only Storage backed by window IndexedDB (the file opens with /// <reference lib=\"dom\" />); PiG is a Go process with no browser or WebAssembly build, so no caller can reach it. The Storage contract it implements is the one memory, jsonl, sqlite and the Cloudflare SQLite driver satisfy (PORT_MAP row for storage/indexeddb.ts). Its test indexeddb-storage.test.ts is likewise browser-fake-only."
 
 [[files]]
 path = "packages/durable/src/storage/jsonl/index.ts"
@@ -5296,16 +5296,16 @@ rationale = "PORT_MAP row is ✅ ported (durable/storage/jsonl/node/node.go). co
 [[files]]
 path = "packages/durable/src/storage/jsonl/storage.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageConformance", "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches"]
+rationale = "durable/storage/jsonl/storage.go ports the JSONL storage; the tests port jsonl-storage.test.ts (conformance and batches)."
 
 [[files]]
 path = "packages/durable/src/storage/memory.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/memory_storage_test.go#TestMemoryStorageConformance", "test:durable/storage/memory_storage_test.go#TestMemoryStorageDoesNotExposeRetainedStateThroughAPreparedCommit"]
+rationale = "durable/storage/memory.go ports MemoryStorage; the tests port memory-storage.test.ts (conformance and prepared commits)."
 
 [[files]]
 path = "packages/durable/src/storage/scan.ts"
@@ -5359,51 +5359,51 @@ rationale = "Pi 4c25119f (replicate storages as a commit log) changes this file 
 [[files]]
 path = "packages/durable/src/storage/sqlite/storage.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageConformance", "test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches"]
+rationale = "durable/storage/sqlite/storage.go ports the SQLite storage; the tests port sqlite-storage.test.ts (conformance and batches)."
 
 [[files]]
 path = "packages/durable/src/storage/store/commit.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOneTransactionPerCall", "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageRefusals", "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability"]
+rationale = "durable/storage/store/commit.go ports the store's commit; the tests port store-storage-commit.test.ts."
 
 [[files]]
 path = "packages/durable/src/storage/store/documents.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageSemantics", "test:durable/storage/store/store_storage_test.go#TestStoreStorageConformance"]
+rationale = "durable/storage/store/documents.go ports the documents engine mapping; the store storage semantics and conformance tests (store-storage.test.ts) read and write documents through it."
 
 [[files]]
 path = "packages/durable/src/storage/store/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Re-export barrel of the store package. re-export barrel: the exports are the Go package surface (PORT_MAP n/a)."
 
 [[files]]
 path = "packages/durable/src/storage/store/queries.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageReads", "test:durable/storage/store/store_storage_test.go#TestStoreStorageHeadMarkers"]
+rationale = "durable/storage/store/queries.go ports the store's read queries; the tests port the read and head-marker cases of store-storage.test.ts."
 
 [[files]]
 path = "packages/durable/src/storage/store/storage.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageConformance", "test:durable/storage/store/store_storage_test.go#TestStoreStorageClaimsAndClose", "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits"]
+rationale = "durable/storage/store/storage.go ports StoreStorage; the tests port store-storage.test.ts (conformance, claims and close, commits)."
 
 [[files]]
 path = "packages/durable/src/storage/store/tables.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageSemantics", "test:durable/storage/store/store_storage_test.go#TestStoreStorageArchives"]
+rationale = "durable/storage/store/tables.go ports the declared tables behind the store storage; the semantics and archive tests in store-storage.test.ts exercise its rows and indexes."
 
 [[files]]
 path = "packages/durable/src/tasks.ts"
@@ -5422,9 +5422,9 @@ rationale = "PORT_MAP row is ✅ ported (durable/durabletest/durabletest.go). co
 [[files]]
 path = "packages/durable/src/testing/commit-writes.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/durabletest/conformance_meta_test.go#TestStorageConformanceCasesPassForMemoryStorageAndFailForBrokenStorage", "test:durable/storage/create_unions_variants_test.go#TestSubmissionCreateUnionEveryVariantIsStored", "test:durable/storage/backend_reads_test.go#TestBackendReadsAgreeWithMemory"]
+rationale = "durable/durabletest/commit_writes.go ports commitWrites (one batch through Storage.Commit, refusal as an error); the storage conformance cases and backend tests commit through it."
 
 [[files]]
 path = "packages/durable/src/testing/env-conformance.ts"
@@ -5436,9 +5436,9 @@ rationale = "Pi 5f312dac: covers() by kind and 'watch stops reporting once stopp
 [[files]]
 path = "packages/durable/src/testing/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Re-export barrel of the testing package. re-export barrel: the exports are the Go package surface (PORT_MAP n/a)."
 
 [[files]]
 path = "packages/durable/src/testing/runner.ts"
@@ -5450,16 +5450,16 @@ rationale = "PORT_MAP row is ✅ ported (durable/durabletest/durabletest.go + du
 [[files]]
 path = "packages/durable/src/testing/storage-benchmark.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/storage_bench_test.go#TestStorageBenchmarkExpectations"]
+rationale = "durable/durabletest/storage_benchmark.go ports the storage benchmark; TestStorageBenchmarkExpectations checks its expectations."
 
 [[files]]
 path = "packages/durable/src/testing/storage-conformance.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream", "test:durable/durabletest/conformance_meta_test.go#TestStorageConformanceCasesPassForMemoryStorageAndFailForBrokenStorage"]
+rationale = "durable/durabletest/storage_conformance.go ports the storage conformance cases; the tests check the case list matches upstream and that the cases pass on memory and fail on a broken storage."
 
 [[files]]
 path = "packages/durable/src/testing/types.ts"
@@ -5485,16 +5485,16 @@ rationale = "New in Pi 1.2.0: a re-export barrel for tool-search.ts. The Go pack
 [[files]]
 path = "packages/durable/src/tool-search/tool-search.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/toolsearch/toolsearch_test.go#TestOffersADeferredToolOnlyOnceToolSearchLoadsItByAppendingItsDeclaration", "test:durable/toolsearch/toolsearch_carried_test.go#TestToolSearchMatchesPiTheLatestCarriedRanking", "test:durable/toolsearch/toolsearch_test.go#TestToolSearchToolDeclarationMatchesPi"]
+rationale = "durable/toolsearch/toolsearch.go ports the durable tool search; the tests port tool-search.test.ts and check the ranking against Pi's carried ranking."
 
 [[files]]
 path = "packages/durable/src/tools/bash.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/tools/bash_input_test.go#TestBashToolInputIsTheBashSchemaArguments", "test:durable/tools/tools_test.go#TestBashAnswersANonzeroExitWithAnErrorResultAndTimeoutsThrow", "test:durable/tools/tools_test.go#TestBashStreamsCombinedStdoutAndStderrReturnsNoOutputOfItsOwnAndRepeatsItWithTheExitCode", "test:durable/tools/powershell_upstream_test.go#TestPowerShellAnswersANonzeroExitWithAnErrorResultAfterStreamingTheOutput"]
+rationale = "durable/tools/bash.go ports the bash tool; the tests check its input schema and the PowerShell cases."
 
 [[files]]
 path = "packages/durable/src/tools/edit-diff.ts"
@@ -5506,9 +5506,9 @@ rationale = "PORT_MAP row is ✅ ported (durable/tools/diff_string.go + durable/
 [[files]]
 path = "packages/durable/src/tools/edit.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/tools/tools_test.go#TestEditAppliesDisjointEditsAndReturnsBothDiffFormats", "test:durable/tools/edit_input_test.go#TestEditToolInputIsPathAndEdits"]
+rationale = "durable/tools/edit.go ports the edit tool; the tests port the edit cases of tools.test.ts."
 
 [[files]]
 path = "packages/durable/src/tools/env.ts"
@@ -5555,16 +5555,16 @@ rationale = "PORT_MAP row is ✅ ported (durable/tools/path_utils.go). coverage.
 [[files]]
 path = "packages/durable/src/tools/read.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/tools/tools_test.go#TestReadReadsTextWithOffsetsAndLimitsAndReportsContinuationAsADiagnostic", "test:durable/tools/read_differential_test.go#TestReadToolReturnsExactlyWhatReadingTheWholeFileReturned", "test:durable/tools/tools_images_test.go#TestReadOfImagesWithoutAnImageProcessor"]
+rationale = "durable/tools/read.go ports the read tool; the tests port tools.test.ts, tools-read-differential.test.ts and tools-images.test.ts read cases."
 
 [[files]]
 path = "packages/durable/src/tools/write.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/tools/tools_test.go#TestWriteWritesFilesAndCreatesParentDirectories", "test:durable/tools/tools_test.go#TestWriteKeepsTheMutationQueueLockedUntilAnAbortedWriteSettles"]
+rationale = "durable/tools/write.go ports the write tool; the tests port the write cases of tools.test.ts."
 
 [[files]]
 path = "packages/durable/src/truncate.ts"
@@ -5576,9 +5576,9 @@ rationale = "PORT_MAP row is ✅ ported (durable/truncate.go). coverage.md repor
 [[files]]
 path = "packages/durable/src/types.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/types_upstream_test.go#TestTypesUpstream"]
+rationale = "durable/types.go (with documents.go, entries.go, tasks.go) ports the shared type surface; TestTypesUpstream ports types.test.ts."
 
 [[files]]
 path = "packages/env/src/connection.ts"
