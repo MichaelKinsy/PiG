@@ -46,6 +46,10 @@ for (const [name, pkg] of piPackages) {
         record(output, undefined, pkg, "absolute SDK entry -> owned session adapter");
         continue;
       }
+      if (name === "pi-coding-agent" && rel === "dist/cli.js") {
+        record(output, undefined, pkg, "CLI entry -> the extension harness");
+        continue;
+      }
       throw new Error(`No pinned source for ${output}`);
     }
     let rewrite;

@@ -17,8 +17,9 @@ process.emitWarning = () => {};
 // extension view (compat entry point plus TypeBox's Type and StringEnum), so both names share one shim here. pi-ai/models is its own entry (shims/pi-ai-models.mjs). The pi-ai/oauth entry
 // point is type-only; pi-ai/providers/all and pi-agent-core are Pi's own modules.
 export const shims = new Map([
-  ["@mariozechner/pi-coding-agent", new URL("./shims/pi-coding-agent.mjs", import.meta.url).href],
-  ["@earendil-works/pi-coding-agent", new URL("./shims/pi-coding-agent.mjs", import.meta.url).href],
+  // Pi's package.json "exports" names ./dist/index.js, so an extension that resolves the package (import.meta.resolve) and goes two directories up reaches the package root and finds the CLI at <root>/dist/cli.js (pi-open-agents resolvePiEntryPoint). The vendored package root, which getPackageDir() reports, has that layout: dist/index.js re-exports the barrel and dist/cli.js starts the harness.
+  ["@mariozechner/pi-coding-agent", new URL("./shims/pi-dist/pi-coding-agent/dist/index.js", import.meta.url).href],
+  ["@earendil-works/pi-coding-agent", new URL("./shims/pi-dist/pi-coding-agent/dist/index.js", import.meta.url).href],
   ["@mariozechner/pi-tui", new URL("./shims/pi-tui.mjs", import.meta.url).href],
   ["@earendil-works/pi-tui", new URL("./shims/pi-tui.mjs", import.meta.url).href],
   ["@mariozechner/pi-agent-core", new URL("./shims/pi-agent-core.mjs", import.meta.url).href],

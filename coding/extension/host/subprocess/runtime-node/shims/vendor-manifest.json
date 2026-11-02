@@ -10901,6 +10901,16 @@
       "rewrite": "module specifiers"
     },
     {
+      "path": "pi-dist/pi-coding-agent/dist/cli.js",
+      "package": {
+        "name": "@earendil-works/pi-coding-agent",
+        "version": "1.4.0",
+        "integrity": "sha512-Z41LpZ3yYHSC/UUps6Mr39UMFPwH8elhJBG9DY1P7kuzsE5qSK/6eMj2EHzO5evJRQWLbKSqUMw+4nCNtIyiQg=="
+      },
+      "sha256": "5fecc2ce57cf09725a8918a194e3f0be84d3e26152b2ca0d6ba0379adb07f6c9",
+      "rewrite": "CLI entry -> the extension harness"
+    },
+    {
       "path": "pi-dist/pi-coding-agent/dist/index.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
