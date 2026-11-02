@@ -347,7 +347,7 @@ func TestNodeRuntimeParseFrontmatterMatchesPi(t *testing.T) {
 	runtimeRoot := filepath.Join(modRoot, "coding", "extension", "host", "subprocess", "runtime-node")
 	pinned := filepath.Join(modRoot, "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent", "dist", "utils", "frontmatter.js")
 	if _, err := os.Stat(pinned); err != nil {
-		t.Fatalf("pinned Pi package missing (run npm ci in extensions/sdk-ts): %v", err)
+		t.Fatalf("pinned Pi package missing (run make parity-deps; npm ci in extensions/sdk-ts empties the shared oracle build): %v", err)
 	}
 	script := `import { pathToFileURL } from "node:url";
 const pi = await import(pathToFileURL(process.argv[1]).href);

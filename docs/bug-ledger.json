@@ -7664,6 +7664,28 @@
       "tests": []
     },
     {
+      "id": "BF-3c2dde4",
+      "title": "A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC…",
+      "symptom": "A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC timer, as in Pi, where Node emits no data event for it.",
+      "rootCause": "Node emits no data event for a read that decodes to the empty string, so Pi's StdinBuffer.process() neither restarts nor clears its timeout (terminal.ts:281-283, stdin-buffer.ts:321-325).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC timer, as in Pi, where Node emits no data event for it. ESC, then the two bytes of é arriving 5 ms and 11 ms later, is Escape followed by é, not Alt+é.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3c2dde4146",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "tui/terminal_input_esc_timer_test.go::TestTerminalInputHeldUTF8ReadLeavesEscTimerAlone"
+      ]
+    },
+    {
       "id": "BF-3ca622b",
       "title": "fix(durable/core): the tool round resumes one tick after runtime.outcomes, as Pi's #read does; drop the…",
       "symptom": "fix(durable/core): the tool round resumes one tick after runtime.outcomes, as Pi's #read does; drop the experimental hop",
@@ -10012,6 +10034,28 @@
       ],
       "tests": [
         "internal/codingagent/trust_store_multi_oracle_test.go::TestProjectTrustStoreMultiEntryFilesMatchPi"
+      ]
+    },
+    {
+      "id": "BF-4b9f5f8",
+      "title": "`/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer",
+      "symptom": "`/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer. When a partial assistant reply failed and automatic retry succeeded, the branch summary still contained the failed attempt, and a context edit that replaced an entry's content was ignored. The summary input now applies each entry's latest context edit through the projection the live context and compaction use: an omission drops the entry and a replacement swaps its content (Pi d0fe21308).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4b9f5f800d",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/session_branch_summary_upstream_test.go::TestNavigateTreeSummaryOmitsFailedRetriedAttempt"
       ]
     },
     {

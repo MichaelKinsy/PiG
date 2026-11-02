@@ -232,7 +232,8 @@ export function buildContextEntries(entries, leafId, byId) {
  * If leafId is provided, walks from that entry to root.
  * Handles compaction and branch summaries along the path.
  */
-function projectContextEntry(entry, edit) {
+/** Project one entry into model-visible messages, applying its latest context edit if any. */
+export function projectContextEntry(entry, edit) {
     const messages = sessionEntryToContextMessages(entry);
     if (!edit)
         return messages;

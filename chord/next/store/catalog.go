@@ -48,25 +48,27 @@ func (records IndexRecords) Get(name string) ([]string, bool) {
 }
 
 // MarshalJSON is the JSON object of the indexes, in order.
-func (records IndexRecords) MarshalJSON() ([]byte, error) {
-	out := []byte{'{'}
+func (records IndexRecords) MarshalJSON() ([]byte, error) { return records.AppendStringify(nil) }
+
+// AppendStringify appends the indexes' JSON.stringify text to dst.
+func (records IndexRecords) AppendStringify(dst []byte) ([]byte, error) {
+	dst = append(dst, '{')
 	for index, record := range records {
 		if index > 0 {
-			out = append(out, ',')
+			dst = append(dst, ',')
 		}
-		out = jsstring.AppendString(out, record.Name)
-		out = append(out, ':')
+		dst = jsstring.AppendString(dst, record.Name)
+		dst = append(dst, ':')
 		columns := record.Columns
 		if columns == nil {
 			columns = []string{}
 		}
-		text, err := jsstring.MarshalJSON(columns)
-		if err != nil {
+		var err error
+		if dst, err = jsstring.AppendMarshalJSON(dst, columns); err != nil {
 			return nil, err
 		}
-		out = append(out, text...)
 	}
-	return append(out, '}'), nil
+	return append(dst, '}'), nil
 }
 
 // IndexRecordsFromJSON reads a decoded JSON object (an *delta.JsonObject) of name to column-name arrays.
