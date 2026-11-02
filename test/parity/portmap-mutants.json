@@ -2057,5 +2057,31 @@
    "old": "\t\t\tinput = Strings(\"text\", \"image\")\n",
    "new": "\t\t\tinput = Strings(\"text\")\n"
   }
+ ],
+ "packages/ai/scripts/check-model-data.ts": [
+  {
+   "file": "cmd/check-model-data/main.go",
+   "old": "Model data is missing or stale.",
+   "new": "Model data is missing or stalZ."
+  }
+ ],
+ "packages/ai/scripts/model-data.ts": [
+  {
+   "file": "internal/modelgen/modeldata/model_data.go",
+   "old": "out.WriteString(\":{\")",
+   "new": "out.WriteString(\":[\")"
+  },
+  {
+   "file": "internal/modelgen/modeldata/model_data_json.go",
+   "old": "result == \"true\"",
+   "new": "result == \"truz\""
+  }
+ ],
+ "packages/ai/scripts/hydrate-model-catalog.ts": [
+  {
+   "file": "internal/modelgen/modeldata/hydrate.go",
+   "old": "const hydrationGeneratedAt = \"1970-01-01T00:00:00.000Z\"",
+   "new": "const hydrationGeneratedAt = \"1970-01-01T00:00:00.001Z\""
+  }
  ]
 }
