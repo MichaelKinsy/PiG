@@ -101,13 +101,12 @@ func ResolvePackageChangelogPath(packageRoot string) string {
 	if filepath.IsAbs(changelogPath) {
 		resolved = filepath.Clean(changelogPath)
 	}
-	if _, err := os.Stat(resolved); err != nil {
+	//perf:ok one stat per package changelog lookup, run when a package is installed or updated
+	info, err := os.Stat(resolved)
+	if err != nil {
 		return ""
 	}
-	if !isPathInside(canonicalizePath(packageRoot), canonicalizePath(resolved)) {
-		return ""
-	}
-	if info, err := os.Stat(resolved); err != nil || !info.Mode().IsRegular() {
+	if !isPathInside(canonicalizePath(packageRoot), canonicalizePath(resolved)) || !info.Mode().IsRegular() {
 		return ""
 	}
 	return resolved

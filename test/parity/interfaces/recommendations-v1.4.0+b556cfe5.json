@@ -166576,7 +166576,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "76 normalized-name Pig candidates are ambiguous."
+        "77 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -166601,6 +166601,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#streamedToolCallCounter.Store",
         "go:github.com/MichaelKinsy/PiG/ai#testFauxRetryState.Store",
         "go:github.com/MichaelKinsy/PiG/ai#walkPlans.Store",
+        "go:github.com/MichaelKinsy/PiG/coding#testFauxProviderFactory.Store",
         "go:github.com/MichaelKinsy/PiG/coding#uiRawResult.store",
         "go:github.com/MichaelKinsy/PiG/coding/cli#receivedTerminationSignal.Store",
         "go:github.com/MichaelKinsy/PiG/coding/cli#remoteCLIResolutions.Store",

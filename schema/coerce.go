@@ -619,7 +619,13 @@ var keyBuffers = sync.Pool{New: func() any { return new(keyBuffer) }}
 // borrowKeys returns an empty key stack; the caller gives it back with returnKeys.
 func borrowKeys() *keyBuffer { return keyBuffers.Get().(*keyBuffer) }
 
+// maxPooledKeyStack bounds the key stack a run keeps pooled, in keys (golang/go#23199): one object with a huge key list does not stay pooled.
+const maxPooledKeyStack = 1 << 10
+
 func returnKeys(buffer *keyBuffer) {
+	if cap(buffer.stack) > maxPooledKeyStack {
+		return
+	}
 	clear(buffer.stack)
 	buffer.stack = buffer.stack[:0]
 	keyBuffers.Put(buffer)

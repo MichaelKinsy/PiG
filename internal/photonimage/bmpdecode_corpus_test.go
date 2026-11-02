@@ -4,16 +4,16 @@
 package photonimage
 
 import (
-	"embed"
 	"fmt"
 	"io/fs"
 	"math"
+	"os"
 	"slices"
 	"strings"
 )
 
-//go:embed testdata/bmp-real/*.bmp testdata/bmp-real/*.bad_bmp
-var bmpRealFiles embed.FS
+// bmpRealFiles reads the real BMP files from testdata, which is a data-only module that go:embed cannot reach.
+var bmpRealFiles = os.DirFS(".")
 
 // bmpSpec is a BMP file: the file header (with the fields that a decoder may or may not read), the bitmap header, palette and pixels of the dib.
 type bmpSpec struct {
@@ -143,7 +143,7 @@ func bmpCorpus() []formatCase {
 		panic(err)
 	}
 	for _, e := range entries {
-		data, err := bmpRealFiles.ReadFile("testdata/bmp-real/" + e.Name())
+		data, err := fs.ReadFile(bmpRealFiles, "testdata/bmp-real/"+e.Name())
 		if err != nil {
 			panic(err)
 		}
