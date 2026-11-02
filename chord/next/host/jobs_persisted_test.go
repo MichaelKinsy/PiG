@@ -6,6 +6,7 @@ import (
 	"errors"
 	"math"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -1580,4 +1581,39 @@ func TestPersistedVersionsResolvedByAReloadAPersistedRunBlockedForItsVersionAtIt
 	eventually(t, "the record to be retired", func() bool { return record(t, st, run.ID()) == nil })
 	must(t, host.Close(background))
 	must(t, st.Close(background))
+}
+
+// run-states.ts has no test of its own in Pi: its deadline rule is what persisted.test.ts › deferred state (D8) shows
+// through the object's timer (a change held withinMs is stored by then), asserted here on the states themselves: the
+// deadline of a run's held changes is the earliest of them, a change with no finite withinMs holds none, and the owner is
+// told each finite deadline.
+func TestRunStatesTheDeadlineOfHeldChangesIsTheEarliestOfThem(t *testing.T) {
+	loop := newFakeLoop()
+	loop.Advance(1_000)
+	var told []int64
+	states := newRunStates(loop, jobImportProgress, runStatesOwner{held: func(deadline int64) { told = append(told, deadline) }}, nil)
+	states.create("run", jsonObject("done", 0.0), nil)
+	hold := func(withinMs float64, done float64) {
+		t.Helper()
+		prepared := states.trackers["run"].PrepareReplace(jsonObject("done", done))
+		states.hold("run", prepared, documents.StoredChange{Kind: documents.StoredHeld, WithinMs: withinMs})
+	}
+	if got := states.deadline("run"); got != noDeadline {
+		t.Fatalf("deadline before any held change = %d, want none", got)
+	}
+	hold(100, 1)
+	if got := states.deadline("run"); got != 1_100 {
+		t.Fatalf("deadline after a change held 100 ms = %d, want 1100", got)
+	}
+	hold(30, 2)
+	if got := states.deadline("run"); got != 1_030 {
+		t.Fatalf("deadline after a change held 30 ms more = %d, want the earlier, 1030", got)
+	}
+	hold(math.Inf(1), 3)
+	if got := states.deadline("run"); got != 1_030 {
+		t.Fatalf("deadline after a change held without a deadline = %d, want 1030 kept", got)
+	}
+	if want := []int64{1_100, 1_030, 1_030}; !slices.Equal(told, want) {
+		t.Fatalf("deadlines told to the owner = %v, want %v", told, want)
+	}
 }
