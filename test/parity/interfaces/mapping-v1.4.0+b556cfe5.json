@@ -112748,8 +112748,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchRetainsNeitherItsSourceNorItsListenerOnceEnded",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
+        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR"
       ]
     },
     {
@@ -112770,8 +112770,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchRetainsNeitherItsSourceNorItsListenerOnceEnded",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
+        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR"
       ]
     },
     {
@@ -112791,9 +112791,9 @@
         "call:chord/delta/pending.go#PendingOps.Push"
       ],
       "evidence": [
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
         "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize"
+        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
       ]
     },
     {
@@ -112813,9 +112813,9 @@
         "call:chord/delta/pending.go#PendingOps.Push"
       ],
       "evidence": [
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
         "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize"
+        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
       ]
     },
     {
@@ -112857,9 +112857,9 @@
         "call:chord/delta/pending.go#PendingOps.Take"
       ],
       "evidence": [
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
         "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize"
+        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
       ]
     },
     {
@@ -112879,9 +112879,9 @@
         "call:chord/delta/pending.go#PendingOps.Take"
       ],
       "evidence": [
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
         "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize"
+        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
       ]
     },
     {
