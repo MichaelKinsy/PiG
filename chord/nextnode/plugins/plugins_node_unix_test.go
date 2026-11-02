@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 )
 
 // Not upstream's: the parts of the start tests (plugins_node_start_test.go) and the file tests that only a unix has: a pid
@@ -21,24 +23,76 @@ import (
 // zombie.
 func processGone(pid int) bool { return errors.Is(syscall.Kill(pid, 0), syscall.ESRCH) }
 
-// Every failed start leaves no socket directory behind (the one the process was to connect to).
-func TestNodeAFailedStartRemovesItsSocketDirectory(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("TMPDIR", tmp)
-	options, pids := blockedStart(t)
-	timeout := 100 * time.Millisecond
-	options.ReadyTimeout = &timeout
-	if _, _, err := NewPluginRuntime(options).Load(RuntimeLoad{Kind: "worker", Principal: workerPrincipal, Peer: serverPrincipal}, background); err == nil {
-		t.Fatal("the start succeeded")
+// endedStart is a NodeOptions whose process ends before the driver connects.
+func endedStart(t *testing.T) NodeOptions {
+	t.Helper()
+	end := filepath.Join(t.TempDir(), "end.cjs")
+	if err := os.WriteFile(end, []byte("process.exit(3);\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	<-pids
-	entries, err := os.ReadDir(tmp)
+	return NodeOptions{CacheDir: t.TempDir(), ExecArgv: []string{"--require", end}}
+}
+
+// socketTemp makes TMPDIR a new empty directory and returns it. Its name is short on purpose: the listener's socket path lives
+// under it, and a unix socket path of about 100 bytes or more cannot be bound, which a subtest's t.TempDir (named for the test)
+// reaches. The test's own temporary root is made first, so the directories the test makes with t.TempDir stay out of the new one.
+func socketTemp(t *testing.T) string {
+	t.Helper()
+	t.TempDir()
+	dir, err := os.MkdirTemp("", "ns-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	t.Setenv("TMPDIR", dir)
+	return dir
+}
+
+// requireEmpty fails the test if dir has an entry.
+func requireEmpty(t *testing.T, dir string) {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(entries) != 0 {
 		t.Fatalf("left in TMPDIR: %v", entries)
 	}
+}
+
+// Every failed start leaves no socket directory behind (the one the process was to connect to). Each start fails after the
+// directory exists, by an event and not by a timer: a timer short enough to be quick fires before a loaded machine has started
+// the process (or even found Node), so the test would wait for a pid that never comes.
+func TestNodeAFailedStartRemovesItsSocketDirectory(t *testing.T) {
+	load := func(options NodeOptions, ctx context.Context) error {
+		_, _, err := NewPluginRuntime(options).Load(RuntimeLoad{Kind: "worker", Principal: workerPrincipal, Peer: serverPrincipal}, ctx)
+		return err
+	}
+	t.Run("the process ends before it connects", func(t *testing.T) {
+		tmp := socketTemp(t)
+		err := load(endedStart(t), background)
+		if err == nil || !strings.Contains(err.Error(), "ended before it connected") {
+			t.Fatalf("error = %v", err)
+		}
+		requireEmpty(t, tmp)
+	})
+	t.Run("the start is aborted while the process runs", func(t *testing.T) {
+		tmp := socketTemp(t)
+		options, pids := blockedStart(t)
+		ctx, cancel := chordctx.WithCancel(background)
+		loaded := make(chan error, 1)
+		go func() { loaded <- load(options, ctx) }()
+		select {
+		case <-pids:
+		case err := <-loaded:
+			t.Fatalf("the start ended before its process ran: %v", err)
+		}
+		cancel(errors.New("stop it"))
+		if err := <-loaded; err == nil || !strings.Contains(err.Error(), "stop it") {
+			t.Fatalf("error = %v, want the cause", err)
+		}
+		requireEmpty(t, tmp)
+	})
 }
 
 // writeFakeNode writes a `node` into dir (made if need be) that prints stdout, writes stderr and exits with code, and returns
