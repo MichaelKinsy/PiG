@@ -1203,6 +1203,37 @@ func (s *Session) GetBranch(fromID ...string) []SessionEntry {
 	return s.pathToLocked(*s.leafID)
 }
 
+// EntryReads is how many entries the Session has read back from its records and decoded since it opened (a resident entry costs none). A
+// test or diagnostic that bounds what a path reads compares it before and after the path.
+func (s *Session) EntryReads() int64 { return s.slotReads.Load() }
+
+// GetBranchSystemMessages returns the system messages of the branch ending at the current leaf, in branch order: the messages of the
+// entries GetBranch returns whose message is a system message, read without reading or decoding any other entry. Pi's
+// _restoreToolsFromTranscript (agent-session.ts:1815-1844) filters getBranch() the same way, where every entry is already decoded; here a
+// branch of 90,000 entries would be read and decoded whole for the few system messages it holds.
+//
+// pig additive (D112): the split between resident and file-backed entries is a Go memory choice; the result is Pi's.
+func (s *Session) GetBranchSystemMessages() []agent.AgentMessage {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.leafID == nil {
+		return nil
+	}
+	var systems []int32
+	for _, idx := range s.pathIndexesLocked(*s.leafID) {
+		if slot := &s.slots[idx]; slot.typ() == typeMessage && slot.role() == "system" {
+			systems = append(systems, idx)
+		}
+	}
+	var messages []agent.AgentMessage
+	for _, entry := range s.entriesAtLocked(systems) {
+		if message, ok := asMessage(entry); ok && message.Message.System != nil {
+			messages = append(messages, message.Message)
+		}
+	}
+	return messages
+}
+
 // branchHandles is GetBranch with each message entry that is not resident a sessionentry.LazyEntry, for this module's whole-history
 // readers, which read entries through the sessionentry funnel.
 func (s *Session) branchHandles(fromID ...string) []SessionEntry {
