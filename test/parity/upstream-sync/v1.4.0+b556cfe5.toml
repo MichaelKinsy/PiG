@@ -3434,16 +3434,16 @@ rationale = "PORT_MAP records this file n/a with the reason: (barrel re-export)"
 [[files]]
 path = "packages/coding-agent/src/core/extensions/loader.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/host/subprocess/node_cache_cwd_case_test.go#TestPrepareCacheComparesTheCwdAsPiDoesOnWindows", "test:coding/extension/host/subprocess/node_pi_ai_models_test.go#TestNodeExtensionImportsPiAiModelsSubpath", "test:coding/extension/host/subprocess/node_loader_test.go#TestNodeRuntimeVirtualModulesMatchPiNamespaces"]
+rationale = "Pi 22dc6c26 (#11156) aliases @earendil-works/pi-ai/models and the legacy @mariozechner scope; 6536f801 resolves the pi-ai root to the extension view (compat plus TypeBox Type); 1be312b4 (#11588) compares the extension-cache cwd with pathsEqual, which ignores case on Windows. Ported in the Node runtime: loader.mjs and shims/pi-ai-models.mjs serve the models subpath under both scopes (TestNodeExtensionImportsPiAiModelsSubpath loads an extension through jiti and a native import and checks the shared module), shims/pi-ai.mjs serves the extension view (the namespace test compares every export name and value kind with the pinned Pi's VIRTUAL_MODULES in both directions, so a missing Type fails), and Generations.prepareCache (runtime-node/generations.mjs) clears the factory cache only when the pathsEqual key changes, with the platform read at call time as Pi's: TestPrepareCacheComparesTheCwdAsPiDoesOnWindows runs it under a simulated win32 platform (cwd differing only in case keeps the cache, another directory clears it) and under a case-sensitive one (case differs: cleared)."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/pi-ai-extension-view.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/host/subprocess/node_loader_test.go#TestNodeRuntimeVirtualModulesMatchPiNamespaces", "test:coding/extension/host/subprocess/runtime_node_vendored_test.go#TestPiAiUtilitiesMatchThePinnedPackage"]
+rationale = "The file is new (6536f801): the module extensions import as @earendil-works/pi-ai is pi-ai's compat entry plus TypeBox's Type and a TypeBox-built StringEnum. Ported as runtime-node/shims/pi-ai.mjs (export * from compat, Type from shims/typebox.mjs, StringEnum built with Type.Unsafe). TestNodeRuntimeVirtualModulesMatchPiNamespaces compares each of the four pi-ai specifiers' export names and value kinds with the pinned Pi's own VIRTUAL_MODULES namespaces; it failed with missing=[Type] before the shim carried the view. TestPiAiUtilitiesMatchThePinnedPackage compares StringEnum's JSON with Pi's."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/runner.ts"
@@ -3462,9 +3462,9 @@ rationale = "Pi 9376c8d1 (#11630): KeybindingHints and its extension by ToolRend
 [[files]]
 path = "packages/coding-agent/src/core/extensions/virtual-modules.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/host/subprocess/node_loader_test.go#TestNodeRuntimeVirtualModulesMatchPiNamespaces", "test:coding/extension/host/subprocess/node_loader_test.go#TestNodeRuntimeLoaderCoversPiVirtualModules", "test:coding/extension/host/subprocess/node_pi_ai_models_test.go#TestNodeExtensionImportsPiAiModelsSubpath"]
+rationale = "Pi 22dc6c26 (#11156) adds the pi-ai/models entries and 6536f801 swaps the pi-ai root and compat entries to the extension view. The loader shim table serves every specifier of the table (TestNodeRuntimeLoaderCoversPiVirtualModules reads Pi's virtual-modules.ts and fails when a specifier has no shim); TestNodeRuntimeVirtualModulesMatchPiNamespaces compares each namespace's export names and value kinds with the pinned Pi's, in both directions; TestNodeExtensionImportsPiAiModelsSubpath loads the models subpath under both scopes."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/wrapper.ts"
@@ -3532,9 +3532,9 @@ rationale = "PORT_MAP row is ✅ ported (agent/messages.go). coverage.md reports
 [[files]]
 path = "packages/coding-agent/src/core/model-config.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/models_json_oracle_test.go#TestModelsJSONValidationMatchesPiModelConfigLoad", "test:internal/codingagent/configschema/render_test.go#TestRenderedSchemasAreByteEqualToThePinnedPiPackage", "test:internal/codingagent/configschema/config_schemas_upstream_test.go#TestModelsSchemaRejectsNonPositiveTokenLimits", "test:internal/codingagent/config_schemas_runtime_upstream_test.go#TestConfigSchemasValidateSchemaInModelsJSONAtRuntime"]
+rationale = "Pi 7f9e1198 publishes the models.json schema, 8efd314f adds the field descriptions, defaults and exclusiveMinimum limits, and 6536f801 takes the compat, cost, input-limit, modality, prompt-cache and thinking-level schemas from pi-ai through pi-ai-schemas.ts. Ported as internal/codingagent/configschema/models.go over the pi-ai schemas of model.go and compat_*.go. The oracle test validates a document set through Pi's own ModelConfig.load and compares the error text; the byte-equality test compares the rendered models.schema.json with the pinned Pi package's; the other two check non-positive token limits are rejected and that $schema and a malformed field behave at runtime as in Pi."
 
 [[files]]
 path = "packages/coding-agent/src/core/model-registry.ts"
@@ -3588,9 +3588,9 @@ rationale = "Pi bec60c54 and cd6a8f7f (#11375) refresh temporary git sources pin
 [[files]]
 path = "packages/coding-agent/src/core/pi-ai-schemas.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/pischema_test.go#TestPartialModelCostSchemaIsModelCostWithoutRequired", "test:internal/codingagent/configschema/pischema_test.go#TestModelCostSchemaTextMatchesPiSchemaBuilders", "test:internal/codingagent/configschema/model_schema_upstream_test.go#TestModelSchemaExportsMatchPi", "test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi"]
+rationale = "The file is new (6536f801): it wraps pi-ai's pi-schema-built ProviderCompat, ModelCost, ModelInputLimits, ModelInputModality, ModelPromptCache, ModelThinkingLevel and ThinkingLevelMap schemas as TypeBox Unsafe values, and adds PartialModelCostSchema (ModelCostSchema without its required list). Ported as internal/codingagent/configschema/pi_ai_schemas.go: the wrapped schemas are the trees of model.go and compat_*.go as they are, since Pi's wrapper changes only the TypeScript type, and PartialModelCostSchema drops the required list. TestModelSchemaExportsMatchPi and TestCompatSchemaExportsMatchPi compare each export with Pi's JSON text, and the other two check the cost schema and its partial form."
 
 [[files]]
 path = "packages/coding-agent/src/core/pi-manifest.ts"
@@ -4219,7 +4219,7 @@ rationale = "PORT_MAP row is ✅ ported (tui/compaction_summary.go). coverage.md
 path = "packages/coding-agent/src/modes/interactive/components/config-selector.ts"
 change = "added"
 disposition = "ported"
-evidence = ["scenario:test/parity/scenarios/selectors/01-config-empty.toml", "scenario:test/parity/scenarios/selectors/02-config-resources-list.toml", "scenario:test/parity/scenarios/selectors/03-config-filter-narrow.toml", "test:coding/cli/config_command_test.go#TestConfigItemKeyFoldsPathCasingOnWindows"]
+evidence = ["scenario:test/parity/scenarios/selectors/01-config-empty.toml", "scenario:test/parity/scenarios/selectors/02-config-resources-list.toml", "scenario:test/parity/scenarios/selectors/03-config-filter-narrow.toml", "test:coding/cli/config_selector_command_test.go#TestConfigItemKeyFoldsPathCasingOnWindows"]
 rationale = "Pi 1be312b4 (#11588): formatBaseDir replaces only a leading home directory (ported: tui/config_selector.go formatBaseDir matches whole segments) and getResourceItemKey folds path casing on Windows. The inherited-state key (coding/cli/config_command.go configItemKey) is codingagent.ResourcePathKey (Pi getResourceItemKey over getResourcePathKey), so a global and a project resource whose paths differ only by case are one item on Windows."
 
 [[files]]

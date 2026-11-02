@@ -430,6 +430,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5a093cd](#bf-5a093cd) | In print and JSON mode, Node extensions that share one process now keep Pi's order at disposal | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5aab94c](#bf-5aab94c) | The color level check reads `TERM` with JavaScript's case-insensitive matching, as Pi's chalk does: a name… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5ab2304](#bf-5ab2304) | Starting an extension no longer fails with `fork/exec …: text file busy` when the host builds or starts… | PiG's own defect | Linux | Unreleased |
+| [BF-5af3a18](#bf-5af3a18) | On Windows, a session replacement whose working directory differs from the previous one only in letter case… | PiG's own defect | Windows | Unreleased |
 | [BF-5b0e909](#bf-5b0e909) | /scoped-models: an empty search no longer makes enable-all/clear-all act on every model, clearing every model… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5b15407](#bf-5b15407) | In-process extensions that call `pi.getCommands()` now receive the extension commands, prompt templates and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5b1d5b1](#bf-5b1d5b1) | A resource pattern that starts with `~` (`!~/claude-backup/skills/pdf`, `+~/…`, `-~/…`, wildcards) now… | PiG's own defect | All platforms | 0.5.0 |
@@ -976,6 +977,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D203](#bf-d203) | registerProvider with an empty `apiKey` leaves the provider unconfigured where Pi treats the empty string as… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D207](#bf-d207) | TuiAltScreen.children is a copy in the Go, Rust, Python and Lisp SDKs, where Pi's is a live array | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D208](#bf-d208) | From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D226](#bf-d226) | Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -7181,6 +7183,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5ab230421c` (2026-10-24)
 - **Tests:** `coding/extension/host/cellpack/extract_fork_test.go::TestAtomicWriteFileStartsNoChildWhileWriting`, `coding/extension/host/runtimecell/cellcache_exec_test.go::TestPublishArtifactStartsNoChildWhileCopyingAnExternalArtifact`, `coding/extension/host/subprocess/builder_rust_copy_test.go::TestCopyBuiltBinaryStartsNoChildWhileCopying`, `internal/execfile/execfile_test.go::TestWriteReleasesTheForkLockWhenItFails`, `internal/execfile/execfile_test.go::TestWriteStartsNoChildWhileTheFileIsOpen`, `internal/execfile/execfile_test.go::TestWriteTruncatesWhenAsked`, `internal/execfile/execfile_unix_test.go::TestStartAfterWriteIsNeverBusy`, `internal/execfile/execfile_unix_test.go::TestWriteLeavesNoDescriptorOpen` and 1 more in docs/bug-ledger.json
 - **Release note:** Starting an extension no longer fails with `fork/exec …: text file busy` when the host builds or starts other extensions at the same moment (seen as a `ci-test-conformance` failure in `TestModelTypesVirtualModelsAcrossSDKs/rust-isolated`). The host copies a compiled extension binary into its cache and starts the copy as soon as it is published: a Rust cell runner when `CARGO_TARGET_DIR` puts the compiler output outside the build directory, a standalone Rust extension, and the embedded cells of a Piglet Binary. A process that another goroutine started while the copy was open still held the copy's write descriptor, and Linux refuses to start a file that any process holds open for writing. The host now starts no process from before the copy is opened until after it is closed, so a start waits for at most one 256 KiB chunk of a copy (about 0.2 ms), not the whole copy. A standalone Rust extension build also no longer reads the whole binary into memory to copy it.
+
+### BF-5af3a18
+
+**On Windows, a session replacement whose working directory differs from the previous one only in letter case…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, a session replacement whose working directory differs from the previous one only in letter case (`c:\work\proj` after `C:\Work\Proj`) keeps the loaded Node extension factories instead of dropping them and re-running every module, as Pi does (#11588).
+- **Root cause:** Pi (#11588) loader.ts useExtensionCacheCwd clears the factory cache when !pathsEqual(extensionCacheCwd, resolvedCwd), and pathsEqual compares the platform's resolved path lower-cased on Windows only. Generations.prepareCache compared the resolved strings, so a session replacement whose cwd differed from the first only in case lost its factory cache on Windows. The helper reads process.platform at call time, as Pi's, and the test drives it with a simulated win32 platform and with a case-sensitive one.
+- **User impact:** Wrong output or ordering
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `5af3a1803d` (2026-11-02)
+- **Tests:** `coding/extension/host/subprocess/node_cache_cwd_case_test.go::TestPrepareCacheComparesTheCwdAsPiDoesOnWindows`
+- **Release note:** On Windows, a session replacement whose working directory differs from the previous one only in letter case (`c:\work\proj` after `C:\Work\Proj`) keeps the loaded Node extension factories instead of dropping them and re-running every module, as Pi does (#11588).
 
 ### BF-5b0e909
 
@@ -14771,6 +14787,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Removed when Pi fixes it:** the host's frame can be entered again from inside a render and these calls run as Pi's do; then the call-site marker, the error and this record go.
 - **Fix commits:** `1d6732bee8` (2026-10-28), `395ad20127` (2026-10-28), `5a671a6be6` (2026-10-28), `be8abc8c03` (2026-10-28)
 - **Tests:** `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReentryAcrossSDKs`
+
+### BF-D226
+
+**Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D226)
+- **Symptom:** none.
+- **Root cause:** Only TypeBox's own `Value.Check` runs them, and a Node extension can call that itself. The Go, Rust, Python and Lisp SDKs have no `Value.Check`, so a refinement they build can be checked by no one but the extension's own handler.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** every SDK serves TypeBox `Value.Check`, so a stored refinement has a consumer.
+- **Fix commits:** `24d55ab3f0` (2026-11-02), `4a7c33c707` (2026-11-02), `82fd316d04` (2026-11-02), `e27164c914` (2026-11-02)
+- **Tests:** `test/extension-conformance/refine_arguments_test.go::TestConformance_RefinedToolArgumentsAreNotRefined`
 
 ### BF-a076a50
 
@@ -22477,6 +22508,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D219 | pi-schema regular expressions differ from V8 in four contrived cases | deliberate difference |
 | D222 | A plugin input the build cannot read is reported at the import that names it, not at esbuild's library | deliberate difference |
 | D225 | A thread-based SDK's wait for the run it started needs the SDK's yield helper | deliberate difference |
+| D226 | Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs | [BF-D226](#bf-d226) |
 
 ## Fix-titled commits that are not bugs in a release
 

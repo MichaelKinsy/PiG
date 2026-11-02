@@ -12294,6 +12294,28 @@
       ]
     },
     {
+      "id": "BF-5af3a18",
+      "title": "On Windows, a session replacement whose working directory differs from the previous one only in letter case…",
+      "symptom": "On Windows, a session replacement whose working directory differs from the previous one only in letter case (`c:\\work\\proj` after `C:\\Work\\Proj`) keeps the loaded Node extension factories instead of dropping them and re-running every module, as Pi does (#11588).",
+      "rootCause": "Pi (#11588) loader.ts useExtensionCacheCwd clears the factory cache when !pathsEqual(extensionCacheCwd, resolvedCwd), and pathsEqual compares the platform's resolved path lower-cased on Windows only. Generations.prepareCache compared the resolved strings, so a session replacement whose cwd differed from the first only in case lost its factory cache on Windows. The helper reads process.platform at call time, as Pi's, and the test drives it with a simulated win32 platform and with a case-sensitive one.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, a session replacement whose working directory differs from the previous one only in letter case (`c:\\work\\proj` after `C:\\Work\\Proj`) keeps the loaded Node extension factories instead of dropping them and re-running every module, as Pi does (#11588).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5af3a1803d",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_cache_cwd_case_test.go::TestPrepareCacheComparesTheCwdAsPiDoesOnWindows"
+      ]
+    },
+    {
       "id": "BF-5b0e909",
       "title": "/scoped-models: an empty search no longer makes enable-all/clear-all act on every model, clearing every model…",
       "symptom": "/scoped-models: an empty search no longer makes enable-all/clear-all act on every model, clearing every model from an all-enabled list now leaves none enabled (not all), and the save key is checked after the navigation keys like Pi.",
@@ -27218,6 +27240,41 @@
       ],
       "tests": [
         "test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReentryAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-D226",
+      "title": "Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs",
+      "symptom": "none.",
+      "rootCause": "Only TypeBox's own `Value.Check` runs them, and a Node extension can call that itself. The Go, Rust, Python and Lisp SDKs have no `Value.Check`, so a refinement they build can be checked by no one but the extension's own handler.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D226",
+      "removeWhen": "every SDK serves TypeBox `Value.Check`, so a stored refinement has a consumer.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "24d55ab3f0",
+          "date": "2026-11-02"
+        },
+        {
+          "hash": "4a7c33c707",
+          "date": "2026-11-02"
+        },
+        {
+          "hash": "82fd316d04",
+          "date": "2026-11-02"
+        },
+        {
+          "hash": "e27164c914",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/refine_arguments_test.go::TestConformance_RefinedToolArgumentsAreNotRefined"
       ]
     },
     {
@@ -45025,6 +45082,11 @@
     {
       "id": "D225",
       "title": "A thread-based SDK's wait for the run it started needs the SDK's yield helper"
+    },
+    {
+      "id": "D226",
+      "title": "Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs",
+      "entry": "BF-D226"
     }
   ],
   "exemptCommits": {
