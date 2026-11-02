@@ -266,8 +266,9 @@ func TestToolRound(t *testing.T) {
 		if run.status != durable.SubmissionDone {
 			t.Fatalf("status %s, want done", run.status)
 		}
-		results := tlResults(run.entries)
-		ghost, echo := results[0], results[1]
+		// Pi reads results[0], results[1] and the first result entry: a parallel round appends its results as its tool tasks finish, which Pi's single event loop makes the unoffered call's first (it never resolves a tool) and Go's concurrent tool tasks do not. The spec orders a round's results by call in the context (spec.md, context derivation step 7), so the Go test reads them by call ID.
+		byId := tlResultById(run.entries)
+		ghost, echo := byId["c1"], byId["c2"]
 		if ghost.ToolCallID != "c1" || !ghost.IsError {
 			t.Fatalf("ghost result %+v", ghost)
 		}
@@ -276,7 +277,13 @@ func TestToolRound(t *testing.T) {
 			t.Fatalf("echo result %+v", echo)
 		}
 		wantData := map[string]any{"diagnostics": []any{map[string]any{"severity": "error", "code": "tool_unavailable", "message": "Tool ghost is not available"}}}
-		if got := tlFirstToolResultEntry(t, run.entries).Data; !reflect.DeepEqual(plainObject(got), wantData) {
+		var ghostEntry durable.EntryRecord
+		for index := range run.entries {
+			if durable.ToolResultEntry.Is(&run.entries[index]) && run.entries[index].Model[0].(ai.ToolResultMessage).ToolCallID == "c1" {
+				ghostEntry = run.entries[index]
+			}
+		}
+		if got := ghostEntry.Data; !reflect.DeepEqual(plainObject(got), wantData) {
 			t.Fatalf("ghost data %v, want %v", got, wantData)
 		}
 		// #11043: the unoffered call has its own task, so `afterTool` and `control` apply to it as to any call.
