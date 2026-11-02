@@ -16,6 +16,8 @@ export type ModelContextEffect = {
   extends?: number
   append?: unknown[]
   options?: Record<string, unknown>
+  /** The request is a generation's: the options carry an `onPayload` that asks the core to run the beforeProviderRequest chain (ABI section 6, effect 3). */
+  onPayload?: boolean
 }
 
 /** tool effect (effect 6). `handler` indexes the registry's handler table; hosts fall back to the first installed tool of that name. */
@@ -52,9 +54,10 @@ export type CallbackEffect = { name: string; txId: number; payload: Record<strin
 /** tool.ts readCall: a nested call's hook call carries the call that made it, `{ ...call, parent: { taskId, callId } }`; the core sends it beside the call. */
 const hookCall = (p: Record<string, any>) => (p.parent === undefined ? p.call : { ...p.call, parent: p.parent })
 
-/** The positional arguments each hook of §7.2 receives before `(api, context)`, from the effect's `payload`. */
-export const HOOK_ARGUMENTS: Record<string, (payload: Record<string, any>) => unknown[]> = {
+/** The positional arguments each hook of §7.2 receives before `(api, context)`, from the effect's `payload`; `models` resolves the model a hook names. */
+export const HOOK_ARGUMENTS: Record<string, (payload: Record<string, any>, models: { getModel(provider: string, modelId: string): unknown }) => unknown[]> = {
   beforeRequest: p => [{ messages: p.messages }],
+  beforeProviderRequest: (p, models) => [{ model: models.getModel(p.model.provider, p.model.modelId), payload: p.payload }],
   afterResponse: p => [p.message],
   onYield: p => [p.answer],
   afterTools: p => [p.assistant, p.results],
@@ -84,7 +87,7 @@ export type DocAddress = { scope: "session" | "conversation" | "task"; definitio
 export type ApiAnswer = { ok: unknown } | { error: WireError }
 
 /** tx_result bodies (ABI section 8): the line is held (`ready`), queued (`waiting`), an operation's answer, or Pi's rejection. */
-export type TxAnswer = { ready: true; current?: unknown } | { waiting: true } | { gated: true } | { result: unknown } | { rejected: WireError }
+export type TxAnswer = { ready: true; current?: unknown } | { waiting: true } | { result: unknown } | { rejected: WireError }
 
 export type PublishedNotice = {
   submissions?: { id?: number; requestId: string; status: string }[]

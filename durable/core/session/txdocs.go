@@ -38,7 +38,7 @@ func (tx *Tx) prepareForkDocumentCopies(parent, at, child ID) ([]forkCopy, error
 				if sk, _ := getStr(getObj(src, "scope"), "kind"); sk != "conversation" || ForkPolicy(srcFork) != policy {
 					continue
 				}
-				id := tx.mint()
+				id := tx.mint(tx.ticks, hopcost.MintLead(tx.s.hop))
 				kind, _ := getStr(src, "kind")
 				rec := obj("id", idv(id), "kind", kind)
 				if key, ok := getStr(src, "key"); ok {
@@ -99,11 +99,11 @@ func (tx *Tx) Doc(def *DocDef, args DocArgs) (*delta.Obj, error) {
 	latest := tx.latestByAddr[id]
 	if latest != nil && !latest.retireOnCommit {
 		if latest.draft != nil {
-			tx.charge(hopcost.TxDoc(tx.s.hop, true, 0, 0, false, false))
+			tx.charge(hopcost.TxDoc(tx.s.hop, true, 0, 0, false, false, false, hopcost.CacheMiss))
 			return latest.draft, nil
 		}
 		if latest.target != nil && latest.target.kind == targetForkCopy {
-			tx.charge(hopcost.TxDoc(tx.s.hop, false, hopcost.DocStored, 0, false, false))
+			tx.charge(hopcost.TxDoc(tx.s.hop, false, hopcost.DocStored, 0, false, false, false, hopcost.CacheMiss))
 		}
 		if latest.target != nil && latest.target.kind == targetForkCopy {
 			draft, err := tx.acquireForkCopy(latest, def)
@@ -137,13 +137,18 @@ func (tx *Tx) Doc(def *DocDef, args DocArgs) (*delta.Obj, error) {
 		scope = 't'
 	}
 	createdHere := tx.createdConvs[addr.Scope.Owner]
-	taskStaged, _ := tx.taskTicksState(addr.Scope.Owner)
+	taskStaged, taskCached, taskHit := tx.taskTicksState(addr.Scope.Owner)
+	hit := taskHit
+	if scope == 'c' {
+		hit = tx.s.hasConversation(addr.Scope.Owner)
+	}
+	e.mintAfter = hopcost.TxDocMint(tx.s.hop, scope, createdHere, taskStaged, taskCached, hit)
 	draft, err := tx.acquire(e, seed, latest != nil && latest.retireOnCommit)
 	if err == nil {
 		if load == hopcost.DocAbsent && e.target != nil && e.target.kind == targetLoaded {
 			load = hopcost.DocStored
 		}
-		tx.charge(hopcost.TxDoc(tx.s.hop, false, load, scope, createdHere, taskStaged))
+		tx.charge(hopcost.TxDoc(tx.s.hop, false, load, scope, createdHere, taskStaged, taskCached, hit))
 	}
 	if err != nil {
 		if _, need := IsNeedRead(err); need {
@@ -211,7 +216,7 @@ func (tx *Tx) acquire(e *docEntry, seed any, skipLoad bool) (*delta.Obj, error) 
 		return nil, errors.New("document initial returned no value")
 	}
 	value = jv.Clone(value).(*jv.Object)
-	docID := tx.mint()
+	docID := tx.mint(tx.ticks, e.mintAfter)
 	tracker := delta.Track(value)
 	e.target = &docTarget{kind: targetCreated, record: documentCreate(def, e.address, docID), version: def.Version, tracker: tracker}
 	e.change = tracker.BeginChange()
@@ -284,6 +289,9 @@ func (tx *Tx) RetireDoc(def *DocDef, args DocArgs) error {
 	}
 	tx.latestByAddr[id] = e
 	var rec *jv.Object
+	if err := tx.s.Touch(DocumentKey(id)); err != nil {
+		return err
+	}
 	if cached := tx.s.docs[id]; cached != nil {
 		tx.s.touchDocument(id)
 		rec = cached.record
@@ -338,6 +346,23 @@ func planDocument(e *docEntry) *docPlan {
 	return plan
 }
 
+// writeKeys is the keys this commit writes, once settled (and after takeHeld), for the Session's unpublished write set: its table
+// records, and the address and incarnation of every document it creates, changes or retires, with the scope of every incarnation it
+// creates or retires.
+func (tx *Tx) writeKeys(writes []Write) []string {
+	keys := tableKeys(writes, nil)
+	for _, p := range tx.plans {
+		if p.content == nil && !p.retire {
+			continue
+		}
+		keys = append(keys, DocumentKey(p.addressID), IncarnationKey(mustInt(p.record, "id")))
+		if p.retire || !p.committed {
+			keys = append(keys, ScopeKey(recordAddress(p.record).Scope))
+		}
+	}
+	return keys
+}
+
 func (p *docPlan) publishes() bool {
 	return p.retire || p.change == nil || p.change.loaded == nil || p.content != nil
 }
@@ -353,6 +378,43 @@ func (tx *Tx) abortChanges() {
 func (tx *Tx) settleFailure() {
 	tx.sealed = true
 	tx.abortChanges()
+}
+
+// touchSettle waits, before the settle changes anything, for the keys its Storage reads touch: the committed record of each replaced task, the
+// owners it validates, the documents of a task going terminal, the submissions it changes. A host transaction's Finish can then be called again
+// once they are published.
+func (tx *Tx) touchSettle() error {
+	s := tx.s
+	s.touchAt = tx.ticks
+	staged := func(id ID) bool { t := tx.tasks[id]; return t != nil && t.write != nil }
+	for _, id := range tx.taskOrder {
+		t := tx.tasks[id]
+		if t.write == nil {
+			continue
+		}
+		if !t.writeIsNew {
+			if err := s.Touch(TaskKey(id)); err != nil {
+				return err
+			}
+			if taskStatus(t.write) == StatusTerminal {
+				if err := s.Touch(ScopeKey(Scope{Kind: ScopeTask, Owner: id})); err != nil {
+					return err
+				}
+			}
+		} else if owner, ok := getInt(t.write, "owner"); ok && !staged(owner) {
+			if err := s.Touch(TaskKey(owner)); err != nil {
+				return err
+			}
+		}
+	}
+	for _, ch := range tx.submissionChanges {
+		if tx.submissions[ch.id] == nil {
+			if err := s.Touch(SubmissionKey(ch.id)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // settleSuccess prepares every document change and assembles the writes.
@@ -406,6 +468,8 @@ func (tx *Tx) assemble() ([]Write, error) {
 		}
 		if t.hasCommitted {
 			tx.settleCached++
+		} else {
+			tx.settleReads += hopcost.TxTask(tx.s.hop, false, tx.s.hasTask(id))
 		}
 		committed, err := tx.committedTask(id)
 		if err != nil {
@@ -445,8 +509,23 @@ func (tx *Tx) assemble() ([]Write, error) {
 			if tx.tasks[taskID].writeIsNew {
 				continue
 			}
+			// The Session knows the documents of the tasks it created; any other task's are scanned. Either waits for what an unpublished commit
+			// created or retired in the task's scope.
+			if err := tx.s.Touch(ScopeKey(Scope{Kind: ScopeTask, Owner: taskID})); err != nil {
+				return nil, err
+			}
+			if known, ok := tx.s.TaskDocuments(taskID); ok {
+				for _, rec := range known {
+					if rid := mustInt(rec, "id"); !retiring[rid] {
+						tx.plans = append(tx.plans, &docPlan{addressID: addressID(recordAddress(rec)), record: rec, committed: true, retire: true})
+						retiring[rid] = true
+					}
+				}
+				continue
+			}
 			var after ID
 			for {
+				tx.settleReads += hopcost.ReadHops(tx.s.hop, hopcost.ReadRow)
 				page, err := tx.s.store.ScanDocuments(Scope{Kind: ScopeTask, Owner: taskID}, Current, "", internalScanPage, after)
 				if err != nil {
 					return nil, err
@@ -482,6 +561,8 @@ func (tx *Tx) assemble() ([]Write, error) {
 		tid := mustInt(scope, "taskId")
 		t := tx.taskEntry(tid)
 		if t.pubConv == 0 {
+			staged, cached, hit := tx.taskTicksState(tid)
+			tx.settleReads += hopcost.CurrentTask(tx.s.hop, staged, cached, hit)
 			cur, err := tx.currentTask(tid)
 			if err != nil {
 				return nil, err
@@ -497,7 +578,7 @@ func (tx *Tx) assemble() ([]Write, error) {
 		cur := tx.submissions[ch.id]
 		if cur == nil {
 			var err error
-			tx.settleReads++
+			tx.settleReads += hopcost.RecordRead(tx.s.hop, hopcost.RecordSubmission, tx.s.hasSubmission(ch.id))
 			if cur, err = tx.s.store.Submission(ch.id); err != nil {
 				return nil, err
 			}
@@ -588,6 +669,8 @@ func (tx *Tx) validateOwners() error {
 		}
 	}
 	for _, o := range owners {
+		staged, cached, hit := tx.taskTicksState(o.id)
+		tx.settleOwners += hopcost.CurrentTask(tx.s.hop, staged, cached, hit)
 		task, err := tx.currentTask(o.id)
 		if err != nil {
 			return err
@@ -674,7 +757,13 @@ func (tx *Tx) adopt(seq Seq) (observed, stored []Change, err error) {
 				needAdopt = len(c.prepared.Ops()) > 0
 			}
 			if needAdopt {
-				if err := c.tracker.Adopt(c.prepared); err != nil {
+				var err error
+				if c.loaded != nil {
+					err = c.loaded.adopt(c.prepared)
+				} else {
+					err = c.tracker.Adopt(c.prepared)
+				}
+				if err != nil {
 					return nil, nil, err
 				}
 			} else {
@@ -692,7 +781,8 @@ func (tx *Tx) adopt(seq Seq) (observed, stored []Change, err error) {
 					}
 				}
 			} else if !p.retire {
-				tx.s.docs[p.addressID] = &loadedDoc{addressID: p.addressID, record: record, storedVersion: c.version, valueVersion: c.version, tracker: c.tracker}
+				tx.s.docEpochs++
+				tx.s.docs[p.addressID] = &loadedDoc{addressID: p.addressID, record: record, storedVersion: c.version, valueVersion: c.version, tracker: c.tracker, epoch: tx.s.docEpochs}
 				tx.s.touchDocument(p.addressID)
 			}
 		}

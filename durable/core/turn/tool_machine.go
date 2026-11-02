@@ -70,15 +70,23 @@ func (r *toolRun) readCall(then func(call *jv.Object, ok bool)) {
 		r.fail(errors.New("Nested call " + str(r.input, "key") + " has no call"))
 		return
 	}
-	r.entry(idField(r.input, "assistant"), func(entry *jv.Object) {
+	r.entry(idField(r.input, "assistant"), func(entry *jv.Object, kept bool) {
 		// `#read` returns the arrow's promise from an async function (adoption, 2), runtime.entry's awaiting readCall resumes (1) and
-		// the phase's `await readCall()` resumes one hop later (tool.ts:57, :121-122; scheduler.ts :1216-1228, :1269-1272).
-		r.hops(readCallReturnHops, func() { r.readCallFrom(entry, then) })
+		// the phase's `await readCall()` resumes one hop later (tool.ts:57, :121-122; scheduler.ts :1216-1228, :1269-1272). An entry of the
+		// kept range is already at runtime.entry's caller (keptEntryHops covers the adoption and that resumption): only the phase's resumes.
+		hops := readCallReturnHops
+		if kept {
+			hops = readCallKeptReturnHops
+		}
+		r.hops(hops, func() { r.readCallFrom(entry, then) })
 	})
 }
 
 // readCallReturnHops is the hops from the entry read job's resolution to the tool phase resuming with the call.
 const readCallReturnHops = 3
+
+// readCallKeptReturnHops is the hop from readCall resuming with an entry of the kept range to the tool phase resuming with the call.
+const readCallKeptReturnHops = 1
 
 // executeReturnHops is the hops from the host's toolDone (after `await tool.execute()` and `await Promise.allSettled(admissions)`,
 // which the host spends) to finalResult starting: `await progress.stop()` of an idle Progress, its `await this.#inFlight` and its return.
@@ -140,129 +148,172 @@ type ending struct {
 var completed = ending{status: "completed"}
 
 func (r *toolRun) call() {
-	h := r.g.Host
-	r.readCall(func(call *jv.Object, _ bool) {
-		if r.cutOffTooOften(r.task) {
-			r.endCutOff(call)
-			return
-		}
-		name := str(call, "name")
-		if r.isUnoffered() {
-			// Settles `tool_unavailable` without resolving the name.
-			r.reject(call, nil, HarnessError("tool_unavailable", "Tool "+name+" is not available"))
-			return
-		}
-		r.findTool(name, func(tool *Tool) {
-			if tool == nil {
-				r.reject(call, nil, HarnessError("tool_unavailable", "Tool "+name+" is not available"))
-				return
-			}
-			args := objField(call, "arguments")
-			if args == nil {
-				args = jv.NewObject()
-			}
-			invalid := func(text string) {
-				r.reject(call, tool, HarnessError("invalid_arguments", text))
-			}
-			h.PrepareArguments(name, args, func(prepared any, errText string, err error) {
-				if err != nil {
-					r.fail(err)
-					return
-				}
-				if errText != "" {
-					invalid(errText)
-					return
-				}
-				h.ValidateArguments(name, call, prepared, func(checked *jv.Object, errText string, err error) {
-					if err != nil {
-						r.fail(err)
-						return
-					}
-					if errText != "" {
-						invalid(errText)
-						return
-					}
-					r.beforeTool(call, tool, checked, invalid)
-				})
-			})
-		})
-	})
+	c := &callRun{r: r}
+	r.readCall(c.read)
 }
 
-func (r *toolRun) beforeTool(call *jv.Object, tool *Tool, args *jv.Object, invalid func(string)) {
-	h := r.g.Host
-	var block *string
-	r.eachHookRaw("beforeTool", func() *jv.Object {
-		withArgs := call.Shallow()
-		withArgs.Set("arguments", args)
-		return r.hookPayload(jobj("call", withArgs))
-	}, func(result any, err error) (bool, error) {
-		if err != nil {
-			// A throw blocks the call with its message, unless the invocation was aborted (tool.ts beforeTool).
-			if r.rt.Signal().Aborted() || errors.Is(err, session.ErrAborted) {
-				return true, err
-			}
-			text := errorText(err)
-			block = &text
+// callRun is the call phase of one tool call: resolving the tool, preparing and validating the arguments, beforeTool, and the intent.
+type callRun struct {
+	r        *toolRun
+	call     *jv.Object
+	tool     *Tool
+	name     string
+	args     *jv.Object
+	final    *jv.Object
+	blocked  string
+	hasBlock bool
+	replay   string
+}
+
+func (c *callRun) read(call *jv.Object, _ bool) {
+	r := c.r
+	c.call = call
+	if r.cutOffTooOften(r.task) {
+		r.endCutOff(call)
+		return
+	}
+	c.name = str(call, "name")
+	if r.isUnoffered() {
+		// Settles `tool_unavailable` without resolving the name.
+		r.reject(call, nil, HarnessError("tool_unavailable", "Tool "+c.name+" is not available"))
+		return
+	}
+	r.findTool(c.name, c.found)
+}
+
+func (c *callRun) found(tool *Tool) {
+	r := c.r
+	if tool == nil {
+		r.reject(c.call, nil, HarnessError("tool_unavailable", "Tool "+c.name+" is not available"))
+		return
+	}
+	c.tool = tool
+	c.args = objField(c.call, "arguments")
+	if c.args == nil {
+		c.args = jv.NewObject()
+	}
+	r.g.Host.PrepareArguments(c.name, c.args, c.prepared)
+}
+
+func (c *callRun) invalid(text string) {
+	c.r.reject(c.call, c.tool, HarnessError("invalid_arguments", text))
+}
+
+func (c *callRun) prepared(prepared any, errText string, err error) {
+	if err != nil {
+		c.r.fail(err)
+		return
+	}
+	if errText != "" {
+		c.invalid(errText)
+		return
+	}
+	c.r.g.Host.ValidateArguments(c.name, c.call, prepared, c.checked)
+}
+
+func (c *callRun) checked(checked *jv.Object, errText string, err error) {
+	if err != nil {
+		c.r.fail(err)
+		return
+	}
+	if errText != "" {
+		c.invalid(errText)
+		return
+	}
+	c.args = checked
+	c.r.eachHookRaw("beforeTool", c.payload, c.hookResult, c.hooked)
+}
+
+func (c *callRun) payload() *jv.Object {
+	withArgs := c.call.Shallow()
+	withArgs.Set("arguments", c.args)
+	return c.r.hookPayload(jobj("call", withArgs))
+}
+
+func (c *callRun) hookResult(result any, err error) (bool, error) {
+	r := c.r
+	if err != nil {
+		// A throw blocks the call with its message, unless the invocation was aborted (tool.ts beforeTool).
+		if r.rt.Signal().Aborted() || errors.Is(err, session.ErrAborted) {
+			return true, err
+		}
+		c.blocked, c.hasBlock = errorText(err), true
+		return true, nil
+	}
+	if o, ok := result.(*jv.Object); ok {
+		if b, has := o.Get("block"); has && b != nil {
+			c.blocked, c.hasBlock = jsString(b), true
 			return true, nil
 		}
-		if o, ok := result.(*jv.Object); ok {
-			if b, has := o.Get("block"); has && b != nil {
-				text := jsString(b)
-				block = &text
-				return true, nil
-			}
-			if a := objField(o, "arguments"); a != nil {
-				args = a
-			}
+		if a := objField(o, "arguments"); a != nil {
+			c.args = a
 		}
-		return false, nil
-	}, func(err error) {
-		if err != nil {
-			r.fail(err)
-			return
-		}
-		if block != nil {
-			blocked := *block
-			r.reject(call, tool, HarnessError("blocked", "Tool call blocked: "+blocked))
-			return
-		}
-		h.ValidateArguments(str(call, "name"), call, args, func(final *jv.Object, errText string, err error) {
-			if err != nil {
-				r.fail(err)
-				return
-			}
-			if errText != "" {
-				invalid(errText)
-				return
-			}
-			replay := tool.Replay
-			if replay == "" {
-				replay = "unsafe"
-			}
-			r.commit(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
-				live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
-				if err != nil {
-					return nil, err
-				}
-				if slot := ToolSlotOf(live, r.rt.TaskID()); slot != nil {
-					if err := slot.Set("status", "running"); err != nil {
-						return nil, err
-					}
-					// A nested slot shows the arguments the call runs with, which repair, hooks, and coercion may have changed.
-					// They are compared with the input, which the slot got at admission: reading the draft would track every leaf.
-					if r.isNested() && IsNestedSlot(slot) && !jv.Equal(objField(objField(r.input, "call"), "arguments"), final) {
-						if err := slot.Set("arguments", jv.Clone(final)); err != nil {
-							return nil, err
-						}
-					}
-				}
-				intent := jobj("phase", phaseExecute, "arguments", final, "replay", replay)
-				return jobj("status", "running", "checkpoint", intent), nil
-			}, func() { r.runTool(call, tool, final) })
-		})
-	})
+	}
+	return false, nil
 }
+
+func (c *callRun) hooked(err error) {
+	r := c.r
+	if err != nil {
+		r.fail(err)
+		return
+	}
+	if c.hasBlock {
+		r.reject(c.call, c.tool, HarnessError("blocked", "Tool call blocked: "+c.blocked))
+		return
+	}
+	r.g.Host.ValidateArguments(c.name, c.call, c.args, c.validated)
+}
+
+func (c *callRun) validated(final *jv.Object, errText string, err error) {
+	r := c.r
+	if err != nil {
+		r.fail(err)
+		return
+	}
+	if errText != "" {
+		c.invalid(errText)
+		return
+	}
+	c.final = final
+	c.replay = c.tool.Replay
+	if c.replay == "" {
+		c.replay = "unsafe"
+	}
+	// The slot's status and arguments are presentation, stored like progress; the intent is durable before the tool runs.
+	// Parallel calls of one round then share no immediate write to pi.live.
+	r.commitProgress(c.showRunning, c.stored)
+}
+
+func (c *callRun) showRunning(tx *session.Tx) error {
+	r := c.r
+	live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
+	if err != nil {
+		return err
+	}
+	if slot := ToolSlotOf(live, r.rt.TaskID()); slot != nil {
+		if err := slot.Set("status", "running"); err != nil {
+			return err
+		}
+		// A nested slot shows the arguments the call runs with, which repair, hooks, and coercion may have changed.
+		// Assigned whole: an equal value records no change, and a rerun corrects what an earlier attempt showed.
+		if IsNestedSlot(slot) {
+			if err := slot.Set("arguments", jv.Clone(c.final)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (c *callRun) stored() { c.r.commit(c.intent, c.run) }
+
+func (c *callRun) intent(*session.Tx, *jv.Object) (*jv.Object, error) {
+	intent := jobj("phase", phaseExecute, "arguments", c.final, "replay", c.replay)
+	return jobj("status", "running", "checkpoint", intent), nil
+}
+
+func (c *callRun) run() { c.r.runTool(c.call, c.tool, c.final) }
 
 // execute is the recovery phase after intent: rerun only when the stored and the current policy both say safe.
 func (r *toolRun) execute(cp *jv.Object) {
@@ -277,7 +328,8 @@ func (r *toolRun) execute(cp *jv.Object) {
 		name := str(call, "name")
 		r.findTool(name, func(tool *Tool) {
 			if replay == "safe" && tool != nil && tool.Replay == "safe" {
-				// The rerun reports from scratch; clear what the interrupted attempt published.
+				// The rerun reports from scratch: clear what the interrupted attempt published, and show the slot running with the
+				// arguments it runs with again, as the deferred commit that showed them may have been lost with the crash.
 				r.commit(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
 					live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
 					if err != nil {
@@ -285,6 +337,14 @@ func (r *toolRun) execute(cp *jv.Object) {
 					}
 					if slot := ToolSlotOf(live, r.rt.TaskID()); slot != nil {
 						ClearProgress(slot)
+						if err := slot.Set("status", "running"); err != nil {
+							return nil, err
+						}
+						if IsNestedSlot(slot) {
+							if err := slot.Set("arguments", jv.Clone(args)); err != nil {
+								return nil, err
+							}
+						}
 					}
 					return nil, nil
 				}, func() { r.runTool(call, tool, args) })
@@ -642,213 +702,291 @@ func limitsOf(t *Tool) OutputLimits {
 	return l
 }
 
+// toolExec is one execution of a tool: what it reported through its api, the progress that publishes it, and the state the steps
+// that settle its result share. The api and the steps are its methods, so an execution holds one frame instead of a box for each
+// variable its callbacks read.
+type toolExec struct {
+	r         *toolRun
+	call      *jv.Object
+	tool      *Tool
+	rep       *reported
+	prog      *progress
+	startedAt float64
+	// ended is set once the tool returned: later reports are refused.
+	ended bool
+	// The result being settled, how it ends, the time the attempt took, the waiters of the final progress commit and the error the
+	// steps hand on.
+	result   *jv.Object
+	end      ending
+	duration float64
+	pending  []func(error)
+	before   int
+	settled  *jv.Object
+	err      error
+}
+
 // runTool executes with the resolved implementation, then settles its result.
 func (r *toolRun) runTool(call *jv.Object, tool *Tool, args *jv.Object) {
 	h := r.g.Host
 	limits := limitsOf(tool)
-	rep := &reported{output: NewOutputBuffer(limits), limits: limits}
-	prog := r.publishProgress(rep)
-	ended := false
-	io := &ToolIO{
-		Output: func(chunk []byte, isString bool, skipped *Skip) error {
-			if ended {
-				return errors.New("Tool call " + str(call, "id") + " has settled")
-			}
-			var accepted bool
-			if isString {
-				accepted = rep.output.PushString(string(chunk), skipped)
-			} else {
-				accepted = rep.output.PushBytes(chunk, skipped)
-			}
-			if accepted {
-				prog.mark()
-			}
-			return nil
-		},
-		Diagnostic: func(d *jv.Object) error {
-			if ended {
-				return errors.New("Tool call " + str(call, "id") + " has settled")
-			}
-			rep.diagnostics = append(rep.diagnostics, jv.Clone(d))
-			prog.mark()
-			return nil
-		},
-		Details: func(value any, then func(error)) {
-			if ended {
-				then(errors.New("Tool call " + str(call, "id") + " has settled"))
-				return
-			}
-			if r.rt.Signal().Aborted() {
-				then(session.ErrAborted)
-				return
-			}
-			rep.details, rep.hasDetails = jv.Clone(value), true
-			rep.detailsEpoch++
-			prog.markAndWait(then)
-		},
-	}
+	x := &toolExec{r: r, call: call, tool: tool, rep: &reported{output: NewOutputBuffer(limits), limits: limits}}
+	x.prog = r.publishProgress(x.rep)
+	io := &ToolIO{Output: x.output, Diagnostic: x.diagnostic, Details: x.details}
 	run := &ToolRun{Task: r.rt.TaskID(), Conversation: r.conv, CallID: str(call, "id"), Name: str(call, "name"), Arguments: args}
 	if limits.Retain == "tail" {
 		run.OutputWindow = jobj("maxBytes", float64(limits.MaxBytes), "maxLines", float64(limits.MaxLines),
 			"minIntervalMs", h.Settings().OutputIntervalMs, "bytesPerSecond", float64(ProgressBytesPerSecond))
 	}
-	startedAt := h.Now()
-	onDone := func(result *jv.Object, err error) {
-		// Execution time of this attempt; a rerun after recovery measures only itself.
-		duration := math.Floor(h.Now() - startedAt + 0.5)
-		end := completed
-		if err != nil {
-			var fault *ResultFault
-			if errors.As(err, &fault) || r.rt.Signal().Aborted() {
-				ended = true
-				prog.stop(func(waiters []func(error)) {
-					for _, w := range waiters {
-						w(err)
-					}
-					r.fail(err)
-				})
-				return
-			}
-			result = jobj("isError", true, "diagnostics", []any{diagnostic("error", "tool_error", errorText(err))})
-			// A throw ends the task failed, which cancels what the call owned; it no longer supervises it. The error text is
-			// already in the result entry.
-			end = ending{status: "failed", message: "Tool " + str(call, "name") + " threw"}
-		}
-		ended = true
-		rep.output.End()
-		// Details still waiting for a progress commit settle with the terminal commit, the final flush. The host reports after
-		// `await tool.execute()` and `await Promise.allSettled(admissions)`; `await progress.stop()` takes executeReturnHops (tool.ts run).
-		stop := func(before int) {
-			prog.stop(func(pending []func(error)) {
-				r.finalResult(call, tool, result, rep, before, func(settled *jv.Object, err error, lead int) {
-					// finalResult is an async function: `await finalResult(...)` resumes one tick after it returns or throws. lead
-					// is the ticks that passed before it settled and that its caller has not spent.
-					r.hops(lead+finalResultReturnHops, func() {
-						if err != nil {
-							for _, w := range pending {
-								w(err)
-							}
-							r.fail(err)
-							return
-						}
-						r.settleThen(call, end, func(*delta.Obj) *jv.Object { return settled }, &duration, func() {
-							for _, w := range pending {
-								w(nil)
-							}
-							r.done(nil)
-						})
-					})
-				})
-			})
-		}
-		if prog.idle() && r.finalResultPure(tool, result) {
-			// Nothing waits for a progress commit and afterTool has no handler: the stop, the walk and the settled result run no host
-			// code and no job, and nothing they read changes in the two ticks of `await progress.stop()`, so they run now and
-			// those ticks are spent with the rest, on one chain.
-			stop(executeReturnHops)
-			return
-		}
-		r.hops(executeReturnHops, func() { stop(0) })
-	}
-	h.RunTool(run, io, r.rt.Signal(), onDone)
+	x.startedAt = h.Now()
+	h.RunTool(run, io, r.rt.Signal(), x.done)
 }
 
-// publishProgress is the throttled commits of what the tool reported into its pi.live.tools slot, each writing only what
-// changed since the last one.
-func (r *toolRun) publishProgress(rep *reported) *progress {
-	h := r.g.Host
-	writtenText, writtenDiagnostics, writtenEpoch := "", 0, 0
-	// A nested call made with progress: false commits only its status; its output stays in the result.
-	enabled := true
-	if off, ok := r.input.Get("progress"); r.isNested() && ok && off == false {
-		enabled = false
+func (x *toolExec) settledError() error {
+	return errors.New("Tool call " + str(x.call, "id") + " has settled")
+}
+
+func (x *toolExec) output(chunk []byte, isString bool, skipped *Skip) error {
+	if x.ended {
+		return x.settledError()
 	}
-	write := func(then func(bytes int, err error)) {
-		if !enabled {
-			then(0, nil)
+	var accepted bool
+	if isString {
+		accepted = x.rep.output.PushString(string(chunk), skipped)
+	} else {
+		accepted = x.rep.output.PushBytes(chunk, skipped)
+	}
+	if accepted {
+		x.prog.mark()
+	}
+	return nil
+}
+
+func (x *toolExec) diagnostic(d *jv.Object) error {
+	if x.ended {
+		return x.settledError()
+	}
+	x.rep.diagnostics = append(x.rep.diagnostics, jv.Clone(d))
+	x.prog.mark()
+	return nil
+}
+
+func (x *toolExec) details(value any, then func(error)) {
+	if x.ended {
+		then(x.settledError())
+		return
+	}
+	if x.r.rt.Signal().Aborted() {
+		then(session.ErrAborted)
+		return
+	}
+	x.rep.details, x.rep.hasDetails = jv.Clone(value), true
+	x.rep.detailsEpoch++
+	x.prog.markAndWait(then)
+}
+
+// done is the tool's return: its result, or the error it threw.
+func (x *toolExec) done(result *jv.Object, err error) {
+	r := x.r
+	// Execution time of this attempt; a rerun after recovery measures only itself.
+	x.duration = math.Floor(r.g.Host.Now() - x.startedAt + 0.5)
+	x.result, x.end = result, completed
+	if err != nil {
+		var fault *ResultFault
+		if errors.As(err, &fault) || r.rt.Signal().Aborted() {
+			x.ended, x.err = true, err
+			x.prog.stop(x.abandoned)
 			return
 		}
-		// Capture everything synchronously: the tool keeps reporting while the commit is in flight.
-		snapshot := rep.output.Snapshot()
-		details, hasDetails, epoch := rep.details, rep.hasDetails, rep.detailsEpoch
-		count := len(rep.diagnostics)
-		added := append([]any{}, rep.diagnostics[writtenDiagnostics:count]...)
-		detailsChanged := epoch != writtenEpoch
-		// What the commit writes, as Chord diffs the string: an append, a trim plus an append of what follows the shared
-		// part, or the whole window when its bounded overlap search finds nothing.
-		bytes := 0
-		if snapshot.Text != writtenText {
-			var shared int
-			if jv.HasPrefix(snapshot.Text, writtenText) {
-				shared = jv.UTF16Len(writtenText)
-			} else {
-				shared = delta.Overlap(writtenText, snapshot.Text, 65536)
-			}
-			bytes += len(jv.SliceFrom(snapshot.Text, shared))
+		x.result = jobj("isError", true, "diagnostics", []any{diagnostic("error", "tool_error", errorText(err))})
+		// A throw ends the task failed, which cancels what the call owned; it no longer supervises it. The error text is
+		// already in the result entry.
+		x.end = ending{status: "failed", message: "Tool " + str(x.call, "name") + " threw"}
+	}
+	x.ended = true
+	x.rep.output.End()
+	// Details still waiting for a progress commit settle with the terminal commit, the final flush. The host reports after
+	// `await tool.execute()` and `await Promise.allSettled(admissions)`; `await progress.stop()` takes executeReturnHops (tool.ts run).
+	if x.prog.idle() && r.finalResultPure(x.tool, x.result) {
+		// Nothing waits for a progress commit and afterTool has no handler: the stop, the walk and the settled result run no host
+		// code and no job, and nothing they read changes in the two ticks of `await progress.stop()`, so they run now and
+		// those ticks are spent with the rest, on one chain.
+		x.stop(executeReturnHops)
+		return
+	}
+	r.hops(executeReturnHops, x.stopNow)
+}
+
+func (x *toolExec) stopNow() { x.stop(0) }
+
+// abandoned fails the task of a result the host cannot record or of an aborted call, once the progress commit in flight ended.
+func (x *toolExec) abandoned(waiters []func(error)) {
+	for _, w := range waiters {
+		w(x.err)
+	}
+	x.r.fail(x.err)
+}
+
+func (x *toolExec) stop(before int) {
+	x.before = before
+	x.prog.stop(x.stopped)
+}
+
+func (x *toolExec) stopped(pending []func(error)) {
+	x.pending = pending
+	x.r.finalResult(x.call, x.tool, x.result, x.rep, x.before, x.finalDone)
+}
+
+// finalDone: finalResult is an async function: `await finalResult(...)` resumes one tick after it returns or throws. lead is the ticks
+// that passed before it settled and that its caller has not spent.
+func (x *toolExec) finalDone(settled *jv.Object, err error, lead int) {
+	x.settled, x.err = settled, err
+	x.r.hops(lead+finalResultReturnHops, x.resume)
+}
+
+func (x *toolExec) resume() {
+	if x.err != nil {
+		for _, w := range x.pending {
+			w(x.err)
 		}
-		if detailsChanged {
-			bytes += len(jv.Stringify(details)) // an unset value is JSON null
+		x.r.fail(x.err)
+		return
+	}
+	x.r.settleThen(x.call, x.end, x.build, &x.duration, x.finish)
+}
+
+func (x *toolExec) build(*delta.Obj) *jv.Object { return x.settled }
+
+func (x *toolExec) finish() {
+	for _, w := range x.pending {
+		w(nil)
+	}
+	x.r.done(nil)
+}
+
+// toolProgress is the throttled commits of what a tool reported into its pi.live.tools slot, each writing only what changed
+// since the last one. One commit is in flight at a time; the fields after `then` are that commit's.
+type toolProgress struct {
+	r   *toolRun
+	rep *reported
+	// enabled is false for a nested call made with progress: false, which commits only its status; its output stays in the result.
+	enabled            bool
+	writtenText        string
+	writtenDiagnostics int
+	writtenEpoch       int
+
+	then           func(bytes int, err error)
+	bytes          int
+	snapshot       BoundedOutput
+	details        any
+	hasDetails     bool
+	epoch          int
+	count          int
+	added          []any
+	detailsChanged bool
+}
+
+// publishProgress is the progress of a running tool.
+func (r *toolRun) publishProgress(rep *reported) *progress {
+	h := r.g.Host
+	t := &toolProgress{r: r, rep: rep, enabled: true}
+	if off, ok := r.input.Get("progress"); r.isNested() && ok && off == false {
+		t.enabled = false
+	}
+	return newProgress(h, t.write, t.onError, h.Settings().OutputIntervalMs)
+}
+
+func (t *toolProgress) write(then func(bytes int, err error)) {
+	if !t.enabled {
+		then(0, nil)
+		return
+	}
+	rep := t.rep
+	// Capture everything synchronously: the tool keeps reporting while the commit is in flight.
+	t.snapshot = rep.output.Snapshot()
+	t.details, t.hasDetails, t.epoch = rep.details, rep.hasDetails, rep.detailsEpoch
+	t.count = len(rep.diagnostics)
+	t.added = append([]any{}, rep.diagnostics[t.writtenDiagnostics:t.count]...)
+	t.detailsChanged = t.epoch != t.writtenEpoch
+	// What the commit writes, as Chord diffs the string: an append, a trim plus an append of what follows the shared
+	// part, or the whole window when its bounded overlap search finds nothing.
+	bytes := 0
+	if t.snapshot.Text != t.writtenText {
+		var shared int
+		if jv.HasPrefix(t.snapshot.Text, t.writtenText) {
+			shared = jv.UTF16Len(t.writtenText)
+		} else {
+			shared = delta.Overlap(t.writtenText, t.snapshot.Text, 65536)
 		}
-		if len(added) > 0 {
-			bytes += len(jv.Stringify(added))
+		bytes += len(jv.SliceFrom(t.snapshot.Text, shared))
+	}
+	if t.detailsChanged {
+		bytes += len(jv.Stringify(t.details)) // an unset value is JSON null
+	}
+	if len(t.added) > 0 {
+		bytes += len(jv.Stringify(t.added))
+	}
+	t.then, t.bytes = then, bytes
+	t.r.rt.CommitDeferred(t.change, t.committed)
+}
+
+func (t *toolProgress) change(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
+	live, err := tx.Doc(LiveDef, session.DocArgs{Owner: t.r.conv})
+	if err != nil {
+		return nil, err
+	}
+	slot := ToolSlotOf(live, t.r.rt.TaskID())
+	if slot == nil {
+		return nil, nil
+	}
+	snapshot := &t.snapshot
+	// Assign output as one string field: Chord then diffs it into an append, or a trim plus an append for a sliding
+	// tail; replacing the slot object would record the whole window on every commit.
+	if cur, _ := slot.Get("output").(string); cur != snapshot.Text {
+		if err := slot.Set("output", snapshot.Text); err != nil {
+			return nil, err
 		}
-		r.rt.CommitDeferred(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
-			live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
-			if err != nil {
+	}
+	if snapshot.DroppedBytes > 0 {
+		if err := slot.Set("droppedBytes", float64(snapshot.DroppedBytes)); err != nil {
+			return nil, err
+		}
+	}
+	if snapshot.DroppedLines > 0 {
+		if err := slot.Set("droppedLines", float64(snapshot.DroppedLines)); err != nil {
+			return nil, err
+		}
+	}
+	// Diff details leaf by leaf and append new diagnostics, so each commit writes only what changed.
+	if t.detailsChanged && t.hasDetails {
+		if err := assignObj(slot, "details", t.details); err != nil {
+			return nil, err
+		}
+	}
+	if len(t.added) > 0 {
+		if !slot.Has("diagnostics") {
+			if err := slot.Set("diagnostics", []any{}); err != nil {
 				return nil, err
 			}
-			slot := ToolSlotOf(live, r.rt.TaskID())
-			if slot == nil {
-				return nil, nil
-			}
-			// Assign output as one string field: Chord then diffs it into an append, or a trim plus an append for a sliding
-			// tail; replacing the slot object would record the whole window on every commit.
-			if cur, _ := slot.Get("output").(string); cur != snapshot.Text {
-				if err := slot.Set("output", snapshot.Text); err != nil {
-					return nil, err
-				}
-			}
-			if snapshot.DroppedBytes > 0 {
-				if err := slot.Set("droppedBytes", float64(snapshot.DroppedBytes)); err != nil {
-					return nil, err
-				}
-			}
-			if snapshot.DroppedLines > 0 {
-				if err := slot.Set("droppedLines", float64(snapshot.DroppedLines)); err != nil {
-					return nil, err
-				}
-			}
-			// Diff details leaf by leaf and append new diagnostics, so each commit writes only what changed.
-			if detailsChanged && hasDetails {
-				if err := assignObj(slot, "details", details); err != nil {
-					return nil, err
-				}
-			}
-			if len(added) > 0 {
-				if !slot.Has("diagnostics") {
-					if err := slot.Set("diagnostics", []any{}); err != nil {
-						return nil, err
-					}
-				}
-				if _, err := slot.Arr("diagnostics").Push(added...); err != nil {
-					return nil, err
-				}
-			}
-			return nil, nil
-		}, func(err error) {
-			if err == nil {
-				writtenText, writtenDiagnostics, writtenEpoch = snapshot.Text, count, epoch
-			}
-			then(bytes, err)
-		})
-	}
-	onError := func(err error) {
-		// Rejections after an abort mark or close are expected; the committed state stays consistent.
-		if !r.rt.Signal().Aborted() {
-			_ = r.rt.Report(err)
+		}
+		if _, err := slot.Arr("diagnostics").Push(t.added...); err != nil {
+			return nil, err
 		}
 	}
-	return newProgress(h, write, onError, h.Settings().OutputIntervalMs)
+	return nil, nil
+}
+
+func (t *toolProgress) committed(err error) {
+	if err == nil {
+		t.writtenText, t.writtenDiagnostics, t.writtenEpoch = t.snapshot.Text, t.count, t.epoch
+	}
+	t.then(t.bytes, err)
+}
+
+func (t *toolProgress) onError(err error) {
+	// Rejections after an abort mark or close are expected; the committed state stays consistent.
+	if !t.r.rt.Signal().Aborted() {
+		_ = t.r.rt.Report(err)
+	}
 }
 
 // finalResult is the settled result: the tool's result with the retained output and last details as fallbacks, its
@@ -858,118 +996,148 @@ func (r *toolRun) publishProgress(rep *reported) *progress {
 // before is the ticks of the caller's awaits that have not passed yet: only with finalResultPure, which runs it at once, and then
 // they are part of lead, the ticks the caller spends before `await finalResult()` resumes.
 func (r *toolRun) finalResult(call *jv.Object, tool *Tool, result *jv.Object, rep *reported, before int, then func(settled *jv.Object, err error, lead int)) {
-	h := r.g.Host
-	var harness []any
-	var retained *BoundedOutput
-	var content []any
+	f := &finalRun{r: r, call: call, tool: tool, rep: rep, then: then}
 	if resultContent, ok := arrayField(result, "output"); ok {
-		content = resultContent
+		f.content = resultContent
 	} else {
 		snap := rep.output.Snapshot()
-		retained = &snap
-		content = []any{}
+		f.retained = &snap
+		f.content = []any{}
 		if snap.Text != "" {
-			content = []any{jobj("type", "text", "text", snap.Text)}
+			f.content = []any{jobj("type", "text", "text", snap.Text)}
 		}
 	}
-	final := result.Shallow()
-	final.Set("output", content)
+	f.final = result.Shallow()
+	f.final.Set("output", f.content)
 	if _, ok := result.Get("details"); !ok && rep.hasDetails {
-		final.Set("details", rep.details)
+		f.final.Set("details", rep.details)
 	}
 	diagnostics := append([]any{}, rep.diagnostics...)
 	if list, ok := arrayField(result, "diagnostics"); ok {
 		diagnostics = append(diagnostics, list...)
 	}
-	final.Set("diagnostics", diagnostics)
-	// settle is what follows afterTool: lead is the ticks of hooks.each that already passed when it runs (see below).
-	settle := func(err error, lead int) {
-		if err != nil {
-			then(nil, err, lead)
-			return
-		}
-		finalContent, _ := arrayField(final, "output")
-		// The retained output's truncation applies only while afterTool kept that content.
-		if retained != nil && retained.DroppedBytes > 0 && jv.Equal(finalContent, content) {
-			harness = append(harness, truncatedDiagnostic(retained.DroppedLines, retained.DroppedBytes, rep.limits.Retain))
-		}
-		bounded, droppedBytes, droppedLines := boundContent(finalContent, rep.limits)
-		if droppedBytes > 0 {
-			harness = append(harness, truncatedDiagnostic(droppedLines, droppedBytes, rep.limits.Retain))
-		}
-		out := final.Shallow()
-		out.Set("output", bounded)
-		finish := func(broken string) {
-			if broken != "" {
-				out.Delete("structuredOutput")
-				if r.isNested() {
-					// A nested call whose structuredOutput breaks the contract gets an error result without it.
-					out.Set("isError", true)
-					harness = append(harness, diagnostic("error", "invalid_structured_output", broken))
-				} else {
-					// The model never sees structured output, so its call stands; the host learns of the broken tool.
-					// Only names the extension: a failed resolution leaves the report without the name.
-					_ = r.rt.Report(errors.New(broken), session.ReportFrom{Extension: tool.Extension})
-				}
-			}
-			// Programs get the tool's own value: without a schema, its output. The model reads only content, so model-issued calls
-			// skip both.
-			if r.isNested() && !tool.StructuredOutput {
-				out.Set("structuredOutput", outputValue(bounded))
-			}
-			list, _ := arrayField(final, "diagnostics")
-			// A schema tool's error result without structured output has its text only in the output, which programs never get:
-			// it becomes an error diagnostic, as a thrown error's message does, unless one says what went wrong already (Pi 1.2.0
-			// tool.ts finalResult :534-546).
-			if isError, _ := out.Get("isError"); r.isNested() && tool.StructuredOutput && isError == true {
-				if _, has := out.Get("structuredOutput"); !has && !hasErrorDiagnostic(list) && !hasErrorDiagnostic(harness) {
-					var texts []string
-					for _, item := range bounded {
-						if o, ok := item.(*jv.Object); ok && str(o, "type") == "text" {
-							texts = append(texts, str(o, "text"))
-						}
-					}
-					if text := strings.Join(texts, "\n"); text != "" {
-						harness = append(harness, diagnostic("error", "tool_error", text))
-					}
-				}
-			}
-			out.Set("diagnostics", append(append([]any{}, list...), harness...))
-			then(out, nil, lead)
-		}
-		// The host holds the schema and judges the settled result, after afterTool (structuredOutputError); a result with no
-		// structured output from a tool with no schema keeps the contract without asking.
-		if _, has := out.Get("structuredOutput"); !has && !tool.StructuredOutput {
-			finish("")
-			return
-		}
-		probe := jv.NewObject()
-		if value, has := out.Get("structuredOutput"); has {
-			probe.Set("structuredOutput", value)
-		}
-		if isError, has := out.Get("isError"); has {
-			probe.Set("isError", isError)
-		}
-		h.CheckStructuredOutput(str(call, "name"), probe, func(text string, err error) {
-			if err != nil {
-				then(nil, err, lead)
-				return
-			}
-			finish(text)
-		})
-	}
+	f.final.Set("diagnostics", diagnostics)
 	if r.finalResultPure(tool, result) {
 		// No handler: hooks.each takes its two ticks (eachHookRaw) and what follows computes the settled result from the values at
 		// hand without a host call, so it runs now and the caller spends those ticks with its own: one chain, not three.
-		settle(nil, before+eachHookNoHandlerHops)
+		f.settle(nil, before+eachHookNoHandlerHops)
 		return
 	}
-	r.eachHook("afterTool", func() *jv.Object { return r.hookPayload(jobj("call", call, "result", final)) }, func(res any) bool {
-		if o, ok := res.(*jv.Object); ok {
-			final = o
+	r.eachHook("afterTool", f.hookPayload, f.hookResult, f.hookDone)
+}
+
+// finalRun is one finalResult: the result being built and what follows afterTool shares.
+type finalRun struct {
+	r        *toolRun
+	call     *jv.Object
+	tool     *Tool
+	rep      *reported
+	then     func(settled *jv.Object, err error, lead int)
+	harness  []any
+	retained *BoundedOutput
+	content  []any
+	final    *jv.Object
+	out      *jv.Object
+	bounded  []any
+	// lead is the ticks of hooks.each that already passed when settle runs.
+	lead int
+}
+
+func (f *finalRun) hookPayload() *jv.Object {
+	return f.r.hookPayload(jobj("call", f.call, "result", f.final))
+}
+
+func (f *finalRun) hookResult(res any) bool {
+	if o, ok := res.(*jv.Object); ok {
+		f.final = o
+	}
+	return false
+}
+
+func (f *finalRun) hookDone(err error) { f.settle(err, 0) }
+
+// settle is what follows afterTool: lead is the ticks of hooks.each that already passed when it runs.
+func (f *finalRun) settle(err error, lead int) {
+	f.lead = lead
+	if err != nil {
+		f.then(nil, err, lead)
+		return
+	}
+	rep := f.rep
+	finalContent, _ := arrayField(f.final, "output")
+	// The retained output's truncation applies only while afterTool kept that content.
+	if f.retained != nil && f.retained.DroppedBytes > 0 && jv.Equal(finalContent, f.content) {
+		f.harness = append(f.harness, truncatedDiagnostic(f.retained.DroppedLines, f.retained.DroppedBytes, rep.limits.Retain))
+	}
+	bounded, droppedBytes, droppedLines := boundContent(finalContent, rep.limits)
+	if droppedBytes > 0 {
+		f.harness = append(f.harness, truncatedDiagnostic(droppedLines, droppedBytes, rep.limits.Retain))
+	}
+	f.bounded = bounded
+	f.out = f.final.Shallow()
+	f.out.Set("output", bounded)
+	// The host holds the schema and judges the settled result, after afterTool (structuredOutputError); a result with no
+	// structured output from a tool with no schema keeps the contract without asking.
+	if _, has := f.out.Get("structuredOutput"); !has && !f.tool.StructuredOutput {
+		f.finish("")
+		return
+	}
+	probe := jv.NewObject()
+	if value, has := f.out.Get("structuredOutput"); has {
+		probe.Set("structuredOutput", value)
+	}
+	if isError, has := f.out.Get("isError"); has {
+		probe.Set("isError", isError)
+	}
+	f.r.g.Host.CheckStructuredOutput(str(f.call, "name"), probe, f.judged)
+}
+
+func (f *finalRun) judged(text string, err error) {
+	if err != nil {
+		f.then(nil, err, f.lead)
+		return
+	}
+	f.finish(text)
+}
+
+func (f *finalRun) finish(broken string) {
+	r, out, tool := f.r, f.out, f.tool
+	if broken != "" {
+		out.Delete("structuredOutput")
+		if r.isNested() {
+			// A nested call whose structuredOutput breaks the contract gets an error result without it.
+			out.Set("isError", true)
+			f.harness = append(f.harness, diagnostic("error", "invalid_structured_output", broken))
+		} else {
+			// The model never sees structured output, so its call stands; the host learns of the broken tool.
+			// Only names the extension: a failed resolution leaves the report without the name.
+			_ = r.rt.Report(errors.New(broken), session.ReportFrom{Extension: tool.Extension})
 		}
-		return false
-	}, func(err error) { settle(err, 0) })
+	}
+	// Programs get the tool's own value: without a schema, its output. The model reads only content, so model-issued calls
+	// skip both.
+	if r.isNested() && !tool.StructuredOutput {
+		out.Set("structuredOutput", outputValue(f.bounded))
+	}
+	list, _ := arrayField(f.final, "diagnostics")
+	// A schema tool's error result without structured output has its text only in the output, which programs never get:
+	// it becomes an error diagnostic, as a thrown error's message does, unless one says what went wrong already (Pi 1.2.0
+	// tool.ts finalResult :534-546).
+	if isError, _ := out.Get("isError"); r.isNested() && tool.StructuredOutput && isError == true {
+		if _, has := out.Get("structuredOutput"); !has && !hasErrorDiagnostic(list) && !hasErrorDiagnostic(f.harness) {
+			var texts []string
+			for _, item := range f.bounded {
+				if o, ok := item.(*jv.Object); ok && str(o, "type") == "text" {
+					texts = append(texts, str(o, "text"))
+				}
+			}
+			if text := strings.Join(texts, "\n"); text != "" {
+				f.harness = append(f.harness, diagnostic("error", "tool_error", text))
+			}
+		}
+	}
+	out.Set("diagnostics", append(append([]any{}, list...), f.harness...))
+	f.then(out, nil, f.lead)
 }
 
 // finalResultPure reports whether finalResult settles the result without a host call: afterTool has no handler (the walk is

@@ -46,12 +46,12 @@ export async function withStorage(use: (storage: any) => Promise<void>): Promise
 	const guard = () => { if (closed) throw new Error("storage is closed") }
 	const wrapped = new Proxy(storage, {
 		get(target, prop) {
-			if (prop === "commit") return async (writes: unknown, adopt: (seq: number) => void, _context: unknown) => {
+			if (prop === "commit") return async (batches: unknown, receive: (index: number, seq: number) => void, _context: unknown) => {
 				guard()
-				// Storage.commit(writes, adopt, context): the batch is durable when the provider answers; the one adoption is made there.
-				const seq = (await call("commit", { writes })) as number
-				adopt(seq)
-				return seq
+				// Storage.commit(batches, receive, context): the batches are durable when the provider answers; one receipt per durable batch, in order.
+				const { seqs, refused } = (await call("commit", { batches })) as { seqs: number[]; refused?: { name: string; message: string } }
+				seqs.forEach((seq, index) => receive(index, seq))
+				return refused === undefined ? { stored: seqs.length } : { stored: seqs.length, refused: Object.assign(new Error(refused.message), { name: refused.name }) }
 			}
 			if (prop === "mintId") return async () => { guard(); return call("mint") }
 			if (prop === "close") return async (context: unknown) => {

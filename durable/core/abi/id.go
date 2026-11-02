@@ -7,4 +7,4 @@ package abi
 //go:generate go run ./spec/cmd/abigen -dir .
 
 // ID is abi_id: the hex sha256 of the canonical rendering of the ABI 1 tables in package spec.
-const ID = "5924d7021da56928c5e8ca9bac10aa949f83212c251dbbf11d943261786b526c"
+const ID = "2014bb9829cfda2cef5bb6c41910f75af7945d98a09a902bed6f6c83ffa72c94"

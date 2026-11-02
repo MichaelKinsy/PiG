@@ -52,24 +52,41 @@ func (h *handler) storageAPI(method string, req *jv.Object) (any, error) {
 		h.mintNext++
 		return float64(n), nil
 	case "commit":
-		raw, _ := req.Get("writes")
+		// pi-durable's Storage.commit(batches): each batch one atomic commit with its own seq, checked against the state the earlier ones
+		// left; it stops at the first batch Durable's own checks refuse (the batches before it are durable). The commits of the call are
+		// one transaction for the host (joined).
+		raw, _ := req.Get("batches")
 		list, _ := raw.([]any)
-		writes := make([]session.Write, 0, len(list))
-		for _, item := range list {
-			w, err := storageWrite(item)
+		seqs := make([]any, 0, len(list))
+		var refused error
+		for i, item := range list {
+			batch, _ := item.([]any)
+			writes := make([]session.Write, 0, len(batch))
+			for _, entry := range batch {
+				w, err := storageWrite(entry)
+				if err != nil {
+					return nil, err
+				}
+				writes = append(writes, w)
+			}
+			seq, err := a.store(writes, h.mintNext, i > 0)
+			if r, ok := errors.AsType[*session.RefusedError](err); ok {
+				refused = r.Err
+				break
+			}
 			if err != nil {
 				return nil, err
 			}
-			writes = append(writes, w)
+			if next := m.NextID(); next > h.mintNext {
+				h.mintNext = next
+			}
+			seqs = append(seqs, float64(seq))
 		}
-		seq, err := a.Commit(writes, h.mintNext)
-		if err != nil {
-			return nil, err
+		out := jobj("seqs", seqs)
+		if refused != nil {
+			out.Set("refused", jobj("name", errorName(refused), "message", errorMessage(refused)))
 		}
-		if next := m.NextID(); next > h.mintNext {
-			h.mintNext = next
-		}
-		return float64(seq), nil
+		return out, nil
 	case "conversation":
 		return orNull(m.Conversation(id))
 	case "entry":

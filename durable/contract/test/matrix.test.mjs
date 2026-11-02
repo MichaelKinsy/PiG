@@ -33,9 +33,9 @@ test("the fixture exists (run `contract fixtures 50`)", () => assert.ok(existsSy
 
 test("crash points are the measured turn's commits, in seq order, and the first is the fixture's next_seq", async () => {
 	const points = await crashPoints(fixture, scenario, { work: join(work, "points") })
-	assert.equal(points.length, 77)
+	assert.equal(points.length, 68)
 	assert.deepEqual(points, [...points].sort((a, b) => a - b))
-	assert.equal(points[0], 558)
+	assert.equal(points[0], 474)
 })
 
 test("the TypeScript control is handoff-equal to pi-durable in every order at sampled crash points and the clean restart", async () => {
@@ -95,11 +95,11 @@ async function buildHost(name, change) {
 	return impl
 }
 
-// 564 and 573 are the commits after which the tool may have run: recovery writes the interrupted result.
+// 479 and 487 are the commits after which the tool may have run (the tool task's execute phase of the first and the second round): recovery writes the interrupted result.
 test("the native host is handoff-equal to pi-durable in every order, at sampled crash points, the interrupted-tool points and the clean restart", async () => {
 	const impl = await buildHost("ok")
 	const all = await crashPoints(fixture, scenario, { work: join(work, "points") })
-	const points = [...new Set([...sample(all, 6), 564, 573])].sort((a, b) => a - b)
+	const points = [...new Set([...sample(all, 6), 479, 487])].sort((a, b) => a - b)
 	const r = await matrix({ fixture, scenario, candidate: impl, work: join(work, "native"), points, concurrency: 8 })
 	assert.equal(r.rows.length, (points.length + 1) * 3)
 	assert.deepEqual(r.rows.filter(x => !x.ok), [])
@@ -107,7 +107,7 @@ test("the native host is handoff-equal to pi-durable in every order, at sampled 
 
 test("negative control, native host: a duration on the recovery's interrupted result fails the matrix at the entry it differs in", async () => {
 	const impl = await buildHost("duration", ['if isError {\n\t\tduration = ""', 'if false {\n\t\tduration = ""'])
-	const r = await matrix({ fixture, scenario, candidate: impl, work: join(work, "native-duration"), points: [564], concurrency: 8 })
+	const r = await matrix({ fixture, scenario, candidate: impl, work: join(work, "native-duration"), points: [479], concurrency: 8 })
 	const bad = r.rows.filter(x => !x.ok)
 	assert.ok(bad.length > 0, "the broken host passed")
 	assert.match(JSON.stringify(bad[0].report), /durationMs/)
@@ -115,12 +115,12 @@ test("negative control, native host: a duration on the recovery's interrupted re
 
 test("a candidate whose run fails is a failed row carrying its stderr, never a gate error", async () => {
 	registerImpl("broken", { label: "broken", contexts: ["bench"], runBench: async o => ({ code: 1, signal: null, stderr: "boom: Harness.open needs a core", stores: [], trace: join(o.out, "none.trace"), stdout: "" }) })
-	const r = await matrix({ fixture, scenario, candidate: "broken", work: join(work, "broken"), points: [560], concurrency: 4 })
+	const r = await matrix({ fixture, scenario, candidate: "broken", work: join(work, "broken"), points: [476], concurrency: 4 })
 	assert.equal(r.rows.length, 4 * 0 + 3 * 2)
 	assert.ok(r.rows.every(x => !x.ok))
 	assert.ok(r.rows.some(x => /boom: Harness\.open needs a core/.test(x.problem ?? "")))
 	// injection on a candidate's missing store (X1-live) is the same failure, not a TypeError
-	const x = await matrix({ fixture, scenario, candidate: "broken", work: join(work, "broken-inject"), points: [560], concurrency: 4, injectAtCrash: ["task"] })
+	const x = await matrix({ fixture, scenario, candidate: "broken", work: join(work, "broken-inject"), points: [476], concurrency: 4, injectAtCrash: ["task"] })
 	assert.ok(x.rows.every(row => !row.ok && typeof row.problem === "string"))
 })
 
@@ -140,7 +140,7 @@ test("negative control: a crashed store that differs only in rows the recovery d
 		}
 		return r
 	} })
-	const r = await matrix({ fixture, scenario, candidate: "pi-stray-live", work: join(work, "stray-live"), points: [558], orders: ["X>P"], concurrency: 2 })
+	const r = await matrix({ fixture, scenario, candidate: "pi-stray-live", work: join(work, "stray-live"), points: [474], orders: ["X>P"], concurrency: 2 })
 	const bad = r.rows.filter(x => !x.ok)
 	assert.equal(bad.length, 1, JSON.stringify(r.rows).slice(0, 600))
 	assert.equal(bad[0].phase, "at crash")
