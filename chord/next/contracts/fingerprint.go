@@ -18,6 +18,17 @@ const NormalFormVersion = 2
 // Materialize materializes a version with its fingerprint: Hash64 of `JSON.stringify({ normalFormVersion, value })`
 // over the normal form `{ kind: "remote", params, variants }` or `{ kind: "local", params, members }`.
 func Materialize(kind Kind, params *ParamsData, version int, variants *NamedMap[*VariantData], changes []Change) (VersionData, error) {
+	fingerprint, err := FingerprintOf(NormalForm(kind, params, variants))
+	if err != nil {
+		return VersionData{}, err
+	}
+	return VersionData{Version: version, Fingerprint: fingerprint, Variants: variants, Changes: slices.Clone(changes)}, nil
+}
+
+// NormalForm is the normal form a version's fingerprint hashes: `{ kind: "remote", params, variants }` or `{ kind:
+// "local", params, members }`, the members a sorted dictionary. Additive Go API: a contract that crosses a process boundary
+// as data carries this form (chord/nextnode/plugins).
+func NormalForm(kind Kind, params *ParamsData, variants *NamedMap[*VariantData]) *delta.JsonObject {
 	normal := delta.JsonObjectOf("kind", string(kind), "params", params.Normal)
 	if kind == KindLocal {
 		normal.Set("members", variantNormal(variants.Value(LocalVariant)))
@@ -28,11 +39,7 @@ func Materialize(kind Kind, params *ParamsData, version int, variants *NamedMap[
 		}
 		normal.Set("variants", sortedDict(entries))
 	}
-	fingerprint, err := FingerprintOf(normal)
-	if err != nil {
-		return VersionData{}, err
-	}
-	return VersionData{Version: version, Fingerprint: fingerprint, Variants: variants, Changes: slices.Clone(changes)}, nil
+	return normal
 }
 
 // FingerprintOf is Hash64 of `JSON.stringify({ normalFormVersion, value: normal })`: the fingerprint of a normal form.

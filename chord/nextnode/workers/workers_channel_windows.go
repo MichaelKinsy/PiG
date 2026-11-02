@@ -14,6 +14,8 @@ import (
 
 	"github.com/Microsoft/go-winio"
 	"golang.org/x/sys/windows"
+
+	"github.com/MichaelKinsy/PiG/internal/chord/winpipe"
 )
 
 // prepareChannel makes the parent's end of cmd's IPC channel: a named pipe with a random name that only this user can open,
@@ -30,7 +32,7 @@ func prepareChannel(cmd *exec.Cmd) (parent *channel, afterStart func(), fail fun
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	listener, err := winio.ListenPipe(name, &winio.PipeConfig{SecurityDescriptor: "D:P(A;;GA;;;" + user.User.Sid.String() + ")"})
+	listener, err := winpipe.Listen(name, &winio.PipeConfig{SecurityDescriptor: "D:P(A;;GA;;;" + user.User.Sid.String() + ")"})
 	if err != nil {
 		return nil, nil, nil, err
 	}
