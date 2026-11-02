@@ -3573,28 +3573,6 @@
       ]
     },
     {
-      "id": "BF-1f2f940",
-      "title": "The Anthropic federation token exchange reads `expires_in` with Number(), as the SDK does",
-      "symptom": "A token response whose expires_in was a string or array that JavaScript's Number() reads differently from Go's ParseFloat was accepted or rejected opposite to Pi.",
-      "rootCause": "jsNumberFromJSON in ai/anthropic_federation.go converted a string expires_in with strconv.ParseFloat, which accepts \"inf\", hexadecimal floats and underscores that Number() does not, and rejects the 0x/0b/0o integer forms and numeric arrays that Number() accepts. The Anthropic SDK reads Number(data.expires_in) (oidc-federation.ts:125).",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "The Anthropic workload-identity token exchange read `expires_in` with Go's `strconv.ParseFloat` where Pi's SDK reads `Number(data.expires_in)`. A response that sends the lifetime as a string such as `\"0x10\"`, `\"0b11\"` or `[5]` was rejected as missing required fields although Number() accepts it, and one such as `\"1_0\"`, `\"inf\"` or `\"0x1p3\"` was accepted as a finite lifetime although Number() yields NaN and Pi rejects the response. The value now goes through the JavaScript number conversion Pi uses.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "1f2f94065d",
-          "date": "2026-11-02"
-        }
-      ],
-      "tests": [
-        "ai/anthropic_federation_number_oracle_test.go::TestFederationExpiresInNumberMatchesJS"
-      ]
-    },
-    {
       "id": "BF-1f7fa2f",
       "title": "In print and JSON mode, an extension in its own Node process no longer runs its callbacks with a stale ctx…",
       "symptom": "In print and JSON mode, an extension in its own Node process no longer runs its callbacks with a stale ctx when a later extension's handler awaits a timer or I/O.",

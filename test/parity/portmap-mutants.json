@@ -3381,5 +3381,129 @@
    "old": "sharedRegexes.bySource[source] = weak.Make(re)",
    "new": "_ = weak.Make(re)"
   }
+ ],
+ "packages/agent/src/agent-loop.ts": [
+  {
+   "file": "agent/tool_execution.go",
+   "old": "\tif len(finalized) == 0 {\n\t\treturn false\n\t}\n\tfor _, f := range finalized {\n\t\tif !f.result.Terminate {",
+   "new": "\tif len(finalized) == 0 {\n\t\treturn true\n\t}\n\tfor _, f := range finalized {\n\t\tif !f.result.Terminate {"
+  },
+  {
+   "file": "agent/tool_execution.go",
+   "old": "if r.h.cfg.ToolExecution == ToolModeSequential || r.hasSequentialToolCall(calls) {",
+   "new": "if r.h.cfg.ToolExecution == ToolModeSequential && r.hasSequentialToolCall(calls) {"
+  },
+  {
+   "file": "agent/tool_execution.go",
+   "old": "result.Terminate = hookResult.Terminate\n",
+   "new": "result.Terminate = !hookResult.Terminate\n"
+  },
+  {
+   "file": "agent/agent_loop.go",
+   "old": "assistant.StopReason == ai.StopReasonLength",
+   "new": "assistant.StopReason == ai.StopReasonStop"
+  }
+ ],
+ "packages/agent/src/types.ts": [
+  {
+   "file": "agent/queue.go",
+   "old": "\tif q.mode == QueueModeAll {\n",
+   "new": "\tif q.mode != QueueModeAll {\n"
+  },
+  {
+   "file": "agent/queue.go",
+   "old": "\t\tif message.User != nil {\n",
+   "new": "\t\tif message.User == nil {\n"
+  },
+  {
+   "file": "agent/queue.go",
+   "old": "\tq.messages = q.messages[len(drained):]\n",
+   "new": "\tq.messages = q.messages[:0]\n"
+  }
+ ],
+ "packages/ai/src/types.ts": [
+  {
+   "file": "ai/model_utils.go",
+   "old": "\tThinkingMedium,\n\tThinkingHigh,\n",
+   "new": "\tThinkingHigh,\n\tThinkingMedium,\n"
+  },
+  {
+   "file": "ai/model_utils.go",
+   "old": "\treturn []ModelThinkingLevel{ThinkingOff}\n",
+   "new": "\treturn []ModelThinkingLevel{ThinkingLow}\n"
+  },
+  {
+   "file": "ai/model_utils.go",
+   "old": "CacheRead:  c.CacheReadCostPer1M,",
+   "new": "CacheRead:  c.CacheWriteCostPer1M,"
+  }
+ ],
+ "packages/ai/src/models.ts": [
+  {
+   "file": "ai/model_utils.go",
+   "old": "input*2*float64(longWrite)",
+   "new": "input*3*float64(longWrite)"
+  },
+  {
+   "file": "ai/models_runtime_stream.go",
+   "old": "\"Provider is not configured: \"",
+   "new": "\"Provider not configured: \""
+  },
+  {
+   "file": "ai/models_runtime_auth.go",
+   "old": "\"Credential store delete failed for \"",
+   "new": "\"Credential store remove failed for \""
+  }
+ ],
+ "packages/ai/src/compat.ts": [
+  {
+   "file": "ai/compat.go",
+   "old": "\tif hasExplicitAPIKey(options.APIKey) {\n\t\treturn options\n\t}\n\tapiKey :=",
+   "new": "\tif !hasExplicitAPIKey(options.APIKey) {\n\t\treturn options\n\t}\n\tapiKey :="
+  },
+  {
+   "file": "ai/compat.go",
+   "old": "apiKey == \"\" || apiKey == envAuthenticated",
+   "new": "apiKey == \"\" || apiKey != envAuthenticated"
+  },
+  {
+   "file": "ai/compat.go",
+   "old": "strings.HasPrefix(modelProviderID(model), \"cloudflare-\")",
+   "new": "strings.HasPrefix(modelProviderID(model), \"cloudflare_\")"
+  }
+ ],
+ "packages/ai/src/utils/event-stream.ts": [
+  {
+   "file": "ai/event_stream_generic.go",
+   "old": "\tif s.done {\n\t\treturn\n\t}\n\tif s.isComplete(event) {",
+   "new": "\tif s.done && false {\n\t\treturn\n\t}\n\tif s.isComplete(event) {"
+  },
+  {
+   "file": "ai/event_stream.go",
+   "old": "value.Reason != StopReasonError && value.Reason != StopReasonAborted {",
+   "new": "value.Reason != StopReasonError {"
+  }
+ ],
+ "packages/ai/src/utils/validation.ts": [
+  {
+   "file": "ai/validate.go",
+   "old": "strings.ReplaceAll(segment, \"~1\", \"/\")",
+   "new": "strings.ReplaceAll(segment, \"~1\", \".\")"
+  },
+  {
+   "file": "ai/validate.go",
+   "old": "\t\tmessage.WriteString(\"  - \")\n",
+   "new": "\t\tmessage.WriteString(\"  * \")\n"
+  },
+  {
+   "file": "ai/validate.go",
+   "old": "\t\treturn \"root\"\n",
+   "new": "\t\treturn \"$\"\n"
+  },
+  {
+   "file": "ai/validate_arguments.go",
+   "old": "fmt.Errorf(\"Tool \\\"%s\\\" not found\", call.Name)",
+   "new": "fmt.Errorf(\"Tool %s not found\", call.Name)"
+  }
  ]
 }

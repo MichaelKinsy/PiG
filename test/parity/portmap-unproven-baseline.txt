@@ -1,9 +1,3 @@
-packages/agent/src/agent-loop.ts
-packages/agent/src/types.ts
-packages/ai/src/compat.ts
-packages/ai/src/models.ts
-packages/ai/src/types.ts
-packages/ai/src/utils/event-stream.ts
 packages/codemode/src/wasm.ts
 packages/coding-agent/src/cli.ts
 packages/coding-agent/src/cli/auth-check.ts
