@@ -112728,8 +112728,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchRetainsNeitherItsSourceNorItsListenerOnceEnded",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
+        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR"
       ]
     },
     {
@@ -112750,8 +112750,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchRetainsNeitherItsSourceNorItsListenerOnceEnded",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
+        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR"
       ]
     },
     {
@@ -112771,9 +112771,9 @@
         "call:chord/delta/pending.go#PendingOps.Push"
       ],
       "evidence": [
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
         "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize"
+        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
       ]
     },
     {
@@ -112793,9 +112793,9 @@
         "call:chord/delta/pending.go#PendingOps.Push"
       ],
       "evidence": [
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
         "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize"
+        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
       ]
     },
     {
@@ -112837,9 +112837,9 @@
         "call:chord/delta/pending.go#PendingOps.Take"
       ],
       "evidence": [
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
         "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize"
+        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
       ]
     },
     {
@@ -112859,9 +112859,9 @@
         "call:chord/delta/pending.go#PendingOps.Take"
       ],
       "evidence": [
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
         "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize"
+        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
       ]
     },
     {
@@ -113714,13 +113714,34 @@
     },
     {
       "id": "pkg:chord/next#arr",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:dcbdb1f8606b095a786bd1c50d3b00dd93ff15d2ca9bb627d2cfcbcedf6ccd93"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:dcbdb1f8606b095a786bd1c50d3b00dd93ff15d2ca9bb627d2cfcbcedf6ccd93",
+      "rationale": "Derived by the interface gap detector: arr is Go chord/next/contracts/schema.go#Arr (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Arr"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Arr"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsStateMappings",
+        "test:chord/next/contracts/declare_test.go#TestDeclarationChecks",
+        "test:chord/next/contracts/declare_test.go#TestDeclarationMembersAcrossVariants"
+      ]
     },
     {
       "id": "pkg:chord/next#arr::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6606bcdaf5ada8a62522ee73c8ab45825c3a9011ba6e8ec6f340824dccaf37ae"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:6606bcdaf5ada8a62522ee73c8ab45825c3a9011ba6e8ec6f340824dccaf37ae",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:134 arr::call:0 (Pi 1.4.0+b556cfe5): Pi's `arr` takes an options object ({ min, max }) that limits() and defaultOf() turn into the builder's keywords (minItems/maxItems; an absent bound or default is left out, snapshots refuse `undefined`); Go has no optional parameters or options object, so the constructor takes variadic Option values (Min, Max, Pattern, Default; contracts/schema.go:44-71) applied in call order, and panics on an option the constructor does not take where TypeScript rejects it at compile time. The overload typing the result `& Defaulted<T>` is type-level. Designed out as a Go language mechanic (functional options). Go: chord/next/contracts/schema.go#Arr. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Arr"
+      ]
     },
     {
       "id": "pkg:chord/next#Backend",
@@ -113802,8 +113823,8 @@
       ],
       "evidence": [
         "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi",
-        "test:chord/next/host/remote_relay_test.go#TestRelayMixedCodecs",
-        "test:chord/next/host/remote_relay_test.go#TestRelayReceivedBuffers"
+        "test:chord/next/host/host_link_deliveries_test.go#TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt",
+        "test:chord/next/host/remote_relay_test.go#TestRelayMixedCodecs"
       ]
     },
     {
@@ -113828,33 +113849,70 @@
     },
     {
       "id": "pkg:chord/next#bool",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:152b2ab6c2e8a8fa8265fbaf5d5d783adba93248e01fdec983a52ec1abf898ea"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:152b2ab6c2e8a8fa8265fbaf5d5d783adba93248e01fdec983a52ec1abf898ea",
+      "rationale": "Derived by the interface gap detector: bool is Go chord/next/store/columns.go#Bool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/columns.go#Bool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/columns.go#Bool"
+      ],
+      "evidence": [
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
+        "test:chord/next/host/host_examples_test.go#TestExample20Tables",
+        "test:chord/next/store/columns_test.go#TestColumnDescriptors"
+      ]
     },
     {
       "id": "pkg:chord/next#bool::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b8bdcc5567287babeb64addeaa33159f22283f6f99a3b74e45e946143df9b39d"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:b8bdcc5567287babeb64addeaa33159f22283f6f99a3b74e45e946143df9b39d",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:93 bool::call:0 (Pi 1.4.0+b556cfe5): Pi's `bool` takes an options object ({ default }) that limits() and defaultOf() turn into the builder's keywords (default; an absent bound or default is left out, snapshots refuse `undefined`); Go has no optional parameters or options object, so the constructor takes variadic Option values (Min, Max, Pattern, Default; contracts/schema.go:44-71) applied in call order, and panics on an option the constructor does not take where TypeScript rejects it at compile time. The overload typing the result `& Defaulted<T>` is type-level. Designed out as a Go language mechanic (functional options). Go: chord/next/contracts/schema.go#Bool. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Bool"
+      ]
     },
     {
       "id": "pkg:chord/next#bool::call:1",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:58340637ca235e4ceacde92dc4c89c1b86a96b0a652e6d5c1c1d2ca0ac5f7daf"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:58340637ca235e4ceacde92dc4c89c1b86a96b0a652e6d5c1c1d2ca0ac5f7daf",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:93 bool::call:1 (Pi 1.4.0+b556cfe5): Pi's `bool` takes an options object ({ default }) that limits() and defaultOf() turn into the builder's keywords (default; an absent bound or default is left out, snapshots refuse `undefined`); Go has no optional parameters or options object, so the constructor takes variadic Option values (Min, Max, Pattern, Default; contracts/schema.go:44-71) applied in call order, and panics on an option the constructor does not take where TypeScript rejects it at compile time. The overload typing the result `& Defaulted<T>` is type-level. Designed out as a Go language mechanic (functional options). Go: chord/next/contracts/schema.go#Bool. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Bool"
+      ]
     },
     {
       "id": "pkg:chord/next#BooleanSchema",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a01907e368fea578a971f700b33d166092fef38f505d8cde79c44b439898d327"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:a01907e368fea578a971f700b33d166092fef38f505d8cde79c44b439898d327",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:50 BooleanSchema (Pi 1.4.0+b556cfe5): is a TypeScript-only type: an interface extending Schema<boolean> that narrows the `type` literal to \"boolean\" so declaration files of apps' contracts can name what bool() returns; it has no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); the Go type that carries the shape where it is used is contracts.TSchema, whose Node has `type: \"boolean\"` (Bool, contracts/schema.go:37). Go: chord/next/contracts/schema.go#TSchema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#BooleanSchema::property:%5BSymbol.STATIC%5D",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:26ddbe082d48fae258ad544d6faa424bbf186b75aaf6922d84a065e49663b775"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:26ddbe082d48fae258ad544d6faa424bbf186b75aaf6922d84a065e49663b775",
+      "rationale": "Pi packages/schema/src/builders.ts:11 BooleanSchema::property:[Symbol.STATIC] (Pi 1.4.0+b556cfe5): the optional `[STATIC]?: T` of pi-schema's Schema<T> is a declared-only unique symbol property, the type-level brand that records the static type of the values a schema accepts; nothing extra exists at run time (builders.ts:11 comment), and Go generics cannot carry it, so it is designed out (owner 2026-10-29/30: type-level mechanics). Go: chord/next/contracts/schema.go#TSchema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#BooleanSchema::property:type",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a039a49e43d7cbbc397f288d9b8e9046589ee846effc439d7a5ee29bdea8b0ea"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:a039a49e43d7cbbc397f288d9b8e9046589ee846effc439d7a5ee29bdea8b0ea",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:51 BooleanSchema::property:type (Pi 1.4.0+b556cfe5): `readonly type: \"boolean\"` narrows the node's `type` keyword to a literal type; the node is plain data, so Go reads the keyword from TSchema.Node's `type` member, which Bool writes as \"boolean\". Designed out as a type-level mechanic (owner 2026-10-29/30: type-level mechanics). Go: chord/next/contracts/schema.go#TSchema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#Bounds",
@@ -113911,13 +113969,34 @@
     },
     {
       "id": "pkg:chord/next#bytes",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:914e1b1db7bbe9c75304421e6e56f163e2d3a9c2acd5490834827f267325872b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:914e1b1db7bbe9c75304421e6e56f163e2d3a9c2acd5490834827f267325872b",
+      "rationale": "Derived by the interface gap detector: bytes is Go chord/next/contracts/schema.go#Bytes (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Bytes"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Bytes"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/derived_runtime_test.go#TestDerivedShapes",
+        "test:chord/next/contracts/params_test.go#TestParamsPolicy",
+        "test:chord/next/contracts/schema_test.go#TestSchemaBytes"
+      ]
     },
     {
       "id": "pkg:chord/next#bytes::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ce3206fd5398e17fb04995dcb6f12511557f83e3e76aa7e810b721534cf5a2f3"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:ce3206fd5398e17fb04995dcb6f12511557f83e3e76aa7e810b721534cf5a2f3",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:152 bytes::call:0 (Pi 1.4.0+b556cfe5): Pi's `bytes` takes an options object ({ min, max }) that limits() and defaultOf() turn into the builder's keywords (minLength/maxLength; an absent bound or default is left out, snapshots refuse `undefined`); Go has no optional parameters or options object, so the constructor takes variadic Option values (Min, Max, Pattern, Default; contracts/schema.go:44-71) applied in call order, and panics on an option the constructor does not take where TypeScript rejects it at compile time. The overload typing the result `& Defaulted<T>` is type-level. Designed out as a Go language mechanic (functional options). Go: chord/next/contracts/schema.go#Bytes. Exercised by TestSchemaBytes (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Bytes"
+      ]
     },
     {
       "id": "pkg:chord/next#ChordError",
@@ -115027,8 +115106,8 @@
       ],
       "evidence": [
         "test:chord/next/host/remote_hold_test.go#TestHoldFailuresWhileTheWindowIsFull",
-        "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi",
-        "test:chord/next/host/host_ctx_test.go#TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAtOnce"
+        "test:chord/nextnode/plugins/plugins_node_test.go#TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat",
+        "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi"
       ]
     },
     {
@@ -115049,8 +115128,8 @@
       ],
       "evidence": [
         "test:chord/next/host/remote_hold_test.go#TestHoldFailuresWhileTheWindowIsFull",
-        "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi",
-        "test:chord/next/host/host_ctx_test.go#TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAtOnce"
+        "test:chord/nextnode/plugins/plugins_node_test.go#TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat",
+        "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi"
       ]
     },
     {
@@ -118128,33 +118207,70 @@
     },
     {
       "id": "pkg:chord/next#int",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d973e0e8563ff76eddb4428527ac04f4eb13b1c7cee0ebc1970ed1b4e7d8972a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d973e0e8563ff76eddb4428527ac04f4eb13b1c7cee0ebc1970ed1b4e7d8972a",
+      "rationale": "Derived by the interface gap detector: int is Go chord/next/store/columns.go#Int (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/columns.go#Int"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/columns.go#Int"
+      ],
+      "evidence": [
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
+        "test:chord/next/host/host_attempt_test.go#TestAttemptTablesFailTheActivationBroken",
+        "test:chord/next/host/host_examples_test.go#TestExample20Tables"
+      ]
     },
     {
       "id": "pkg:chord/next#int::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d7e63dce6f39609eab175299870db90bd9da7e74a5ccdd6f85d0e861a8ddfffd"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:d7e63dce6f39609eab175299870db90bd9da7e74a5ccdd6f85d0e861a8ddfffd",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:86 int::call:0 (Pi 1.4.0+b556cfe5): Pi's `int` takes an options object ({ min, max, default }) that limits() and defaultOf() turn into the builder's keywords (minimum/maximum and default; an absent bound or default is left out, snapshots refuse `undefined`); Go has no optional parameters or options object, so the constructor takes variadic Option values (Min, Max, Pattern, Default; contracts/schema.go:44-71) applied in call order, and panics on an option the constructor does not take where TypeScript rejects it at compile time. The overload typing the result `& Defaulted<T>` is type-level. Designed out as a Go language mechanic (functional options). Go: chord/next/contracts/schema.go#Int. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Int"
+      ]
     },
     {
       "id": "pkg:chord/next#int::call:1",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b857c7b35ee6941c83a5e5495018de0e6326b6972ccfe939af6e2cc708b49512"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:b857c7b35ee6941c83a5e5495018de0e6326b6972ccfe939af6e2cc708b49512",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:86 int::call:1 (Pi 1.4.0+b556cfe5): Pi's `int` takes an options object ({ min, max, default }) that limits() and defaultOf() turn into the builder's keywords (minimum/maximum and default; an absent bound or default is left out, snapshots refuse `undefined`); Go has no optional parameters or options object, so the constructor takes variadic Option values (Min, Max, Pattern, Default; contracts/schema.go:44-71) applied in call order, and panics on an option the constructor does not take where TypeScript rejects it at compile time. The overload typing the result `& Defaulted<T>` is type-level. Designed out as a Go language mechanic (functional options). Go: chord/next/contracts/schema.go#Int. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Int"
+      ]
     },
     {
       "id": "pkg:chord/next#IntegerSchema",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3ebbd3de045598721360fd81dbb896a50c00ecf6961273259d0182632aa5fa56"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:3ebbd3de045598721360fd81dbb896a50c00ecf6961273259d0182632aa5fa56",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:45 IntegerSchema (Pi 1.4.0+b556cfe5): is a TypeScript-only type: an interface extending Schema<number> that narrows the `type` literal to \"integer\" so declaration files of apps' contracts can name what int() returns; it has no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); the Go type that carries the shape where it is used is contracts.TSchema, whose Node has `type: \"integer\"` (Int, contracts/schema.go:37). Go: chord/next/contracts/schema.go#TSchema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#IntegerSchema::property:%5BSymbol.STATIC%5D",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4d93216ecc98a1ffd492b2fb2b8569c838b3fb0f11a4b1bc9016f1469d4ee8ff"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:4d93216ecc98a1ffd492b2fb2b8569c838b3fb0f11a4b1bc9016f1469d4ee8ff",
+      "rationale": "Pi packages/schema/src/builders.ts:11 IntegerSchema::property:[Symbol.STATIC] (Pi 1.4.0+b556cfe5): the optional `[STATIC]?: T` of pi-schema's Schema<T> is a declared-only unique symbol property, the type-level brand that records the static type of the values a schema accepts; nothing extra exists at run time (builders.ts:11 comment), and Go generics cannot carry it, so it is designed out (owner 2026-10-29/30: type-level mechanics). Go: chord/next/contracts/schema.go#TSchema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#IntegerSchema::property:type",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9f6d02d11a1be536540e99e2add1495bc4b167f99494af28de5410cbffc29757"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:9f6d02d11a1be536540e99e2add1495bc4b167f99494af28de5410cbffc29757",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:46 IntegerSchema::property:type (Pi 1.4.0+b556cfe5): `readonly type: \"integer\"` narrows the node's `type` keyword to a literal type; the node is plain data, so Go reads the keyword from TSchema.Node's `type` member, which Int writes as \"integer\". Designed out as a type-level mechanic (owner 2026-10-29/30: type-level mechanics). Go: chord/next/contracts/schema.go#TSchema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#ipcLink",
@@ -119034,18 +119150,31 @@
     },
     {
       "id": "pkg:chord/next#JsonColumnSchema",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f58757a12bda34c92dbb234fe7f854449acaa9110e311aec3606c84698993ff4"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:f58757a12bda34c92dbb234fe7f854449acaa9110e311aec3606c84698993ff4",
+      "rationale": "Pi chord/src/next/store/json-column.ts:23 JsonColumnSchema (Pi 1.4.0+b556cfe5): is a TypeScript-only type computed from its type parameters (an interface extending Schema<T> with the `json: JsonColumn` the table reads, typing a JSON column); it has no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); the Go type that carries the shape where it is used is store.ColumnSchema carrying the JsonColumn (store/json_column.go:46), which Json returns. Exercised by TestDefineTable (chord/next/store/table_test.go).",
+      "pigTargets": [
+        "chord/next/store/columns.go#ColumnSchema",
+        "chord/next/store/json_column.go#JsonColumn"
+      ]
     },
     {
       "id": "pkg:chord/next#JsonColumnSchema::property:%5BSymbol.STATIC%5D",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0e5c3648314e3c385f0e728c67b27510386c7f07dfb8b3a3224215b30017695d"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0e5c3648314e3c385f0e728c67b27510386c7f07dfb8b3a3224215b30017695d",
+      "rationale": "Pi packages/schema/src/builders.ts:11 JsonColumnSchema::property:[Symbol.STATIC] (Pi 1.4.0+b556cfe5): the optional `[STATIC]?: T` of pi-schema's Schema<T> is a declared-only unique symbol property, the type-level brand that records the static type of the values a schema accepts; nothing extra exists at run time (builders.ts:11 comment), and Go generics cannot carry it, so it is designed out (owner 2026-10-29/30: type-level mechanics). Go: chord/next/store/columns.go#ColumnSchema. Exercised by TestDefineTable (chord/next/store/table_test.go).",
+      "pigTargets": [
+        "chord/next/store/columns.go#ColumnSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#JsonColumnSchema::property:json",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:19ab67e9e1a04e7fbf3aebaaea7559ac7073fe748326fb9839c482a299af97f0"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:19ab67e9e1a04e7fbf3aebaaea7559ac7073fe748326fb9839c482a299af97f0",
+      "rationale": "Pi chord/src/next/store/json-column.ts:24 JsonColumnSchema::property:json (Pi 1.4.0+b556cfe5): `readonly json: JsonColumn` is the column definition json() attaches to the schema it returns so the table reads it; Go's store.ColumnSchema carries the JsonColumn in its Json field (store/columns.go:32, store/json_column.go:46), which Json returns. Designed out as a type-level mechanic (owner 2026-10-29/30: type-level mechanics). Go: chord/next/store/columns.go#ColumnSchema. Exercised by TestDefineTable (chord/next/store/table_test.go).",
+      "pigTargets": [
+        "chord/next/store/columns.go#ColumnSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#JsonObject",
@@ -119959,13 +120088,34 @@
     },
     {
       "id": "pkg:chord/next#lit",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:217688b53a253deae36d86ea9e0600908b58a6aa1fae1b3380faeaf2c5dc92f4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:217688b53a253deae36d86ea9e0600908b58a6aa1fae1b3380faeaf2c5dc92f4",
+      "rationale": "Derived by the interface gap detector: lit is Go chord/next/contracts/schema.go#Lit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Lit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Lit"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/schema_test.go#TestSchemaHelpers",
+        "test:chord/nextnode/plugins/plugins_node_contracts_test.go#TestContractDataIsTheNormalFormTheFingerprintHashes",
+        "test:chord/nextnode/plugins/plugins_node_contracts_test.go#TestNodeRebuildsEveryContractWithTheSameFingerprint"
+      ]
     },
     {
       "id": "pkg:chord/next#lit::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e6d353229a9abc27c3aca93ebb592333ec16e966a9c2c244cd9f04691751f185"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:e6d353229a9abc27c3aca93ebb592333ec16e966a9c2c244cd9f04691751f185",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:111 lit::call:0 (Pi 1.4.0+b556cfe5): `lit<const V extends Literal>(value: V): Schema<V>` returns `{ type: typeof value, const: value }` typed with the literal's static type through a const type parameter; Schema<V> carries V as a phantom brand and Go cannot compute the static type from a value; Go's Lit[V Literal](value V) TSchema returns the one schema value, the same node (type and const members in that order). Designed out as a type-level mechanic (owner 2026-10-29/30: type-level mechanics). Go: chord/next/contracts/schema.go#Lit. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Lit"
+      ]
     },
     {
       "id": "pkg:chord/next#loadContent",
@@ -120196,13 +120346,34 @@
     },
     {
       "id": "pkg:chord/next#map",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d5461c0c93400e018bfb246f8b2c387b18b25e24f718a20183f8295fab81c93b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d5461c0c93400e018bfb246f8b2c387b18b25e24f718a20183f8295fab81c93b",
+      "rationale": "Derived by the interface gap detector: map is Go chord/next/contracts/schema.go#Map (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Map"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Map"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/schema_test.go#TestSchemaHelpers",
+        "test:chord/next/contracts/snapshot_test.go#TestSnapshotClosedArguments",
+        "test:chord/next/contracts/snapshot_test.go#TestSnapshotVocabulary"
+      ]
     },
     {
       "id": "pkg:chord/next#map::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:691c67eaf883cf998e6d981efa02eca69785a36e4c022d1de24d070d076bf47e"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:691c67eaf883cf998e6d981efa02eca69785a36e4c022d1de24d070d076bf47e",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:139 map::call:0 (Pi 1.4.0+b556cfe5): `map<T>(value: Schema<T>): Schema<Record<string, T>>` returns `{ type: \"object\", patternProperties: { \"^.*$\": value } }`; the T of Schema<T> and the Record<string, T> result are phantom brands Go generics cannot carry; Go's Map(value TSchema) TSchema returns the same node. Designed out as a type-level mechanic (owner 2026-10-29/30: type-level mechanics). Go: chord/next/contracts/schema.go#Map. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Map"
+      ]
     },
     {
       "id": "pkg:chord/next#mapShared",
@@ -120358,28 +120529,61 @@
     },
     {
       "id": "pkg:chord/next#method",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8efe17701885e567892c3649c31b16bc928cce6409c16bd79230e3f72396ace0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8efe17701885e567892c3649c31b16bc928cce6409c16bd79230e3f72396ace0",
+      "rationale": "Derived by the interface gap detector: method is Go chord/host/contract.go#Method (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/host/contract.go#Method"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/host/contract.go#Method"
+      ],
+      "evidence": [
+        "test:chord/host/bindings_upstream_test.go#TestBindingsIdentityNormalizedEqualInputsAndEqualPrincipalKeysShareOtherPrincipalsAndFingerprintsDoNot",
+        "test:chord/host/cluster_upstream_test.go#TestCrossHostReloadForcedRetirementCancelsABrowserCallRelayedToAWorkerBeforeTheServerClosesTheOldCodesResources",
+        "test:chord/host/contract_upstream_test.go#TestContractsCoverAdditiveChangesAndRefuseBreakingOnes"
+      ]
     },
     {
       "id": "pkg:chord/next#method::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:59abf0ea4419f4215ef14cf2d8949daaa2fda12d67b4591d3e428e9df7938ba8"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:59abf0ea4419f4215ef14cf2d8949daaa2fda12d67b4591d3e428e9df7938ba8",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:195 method::call:0 (Pi 1.4.0+b556cfe5): Pi declares method as four overloads; method() is one: Go's NewMethod(sides ...TSchema) takes no side, args, or args and result, a zero TSchema being the omitted side, as method(undefined, result) omits the arguments (contracts/schema.go:323-335; Go cannot name a function method beside the Method type), and the Method<A, R> type arguments are phantom. Designed out as an overload set folded into one variadic Go function. Go: chord/next/contracts/schema.go#NewMethod. Exercised by TestSchemaMethod (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#NewMethod"
+      ]
     },
     {
       "id": "pkg:chord/next#method::call:1",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6dfc7cf9feffd46880858f948d57420eac0db3568e50ca0742c251cce3b170df"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:6dfc7cf9feffd46880858f948d57420eac0db3568e50ca0742c251cce3b170df",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:195 method::call:1 (Pi 1.4.0+b556cfe5): Pi declares method as four overloads; method(args) is one: Go's NewMethod(sides ...TSchema) takes no side, args, or args and result, a zero TSchema being the omitted side, as method(undefined, result) omits the arguments (contracts/schema.go:323-335; Go cannot name a function method beside the Method type), and the Method<A, R> type arguments are phantom. Designed out as an overload set folded into one variadic Go function. Go: chord/next/contracts/schema.go#NewMethod. Exercised by TestSchemaMethod (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#NewMethod"
+      ]
     },
     {
       "id": "pkg:chord/next#method::call:2",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f9b18f411bb6270d45da33094e9a396373df2c6ab7bb12557890fcd52ed4c297"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:f9b18f411bb6270d45da33094e9a396373df2c6ab7bb12557890fcd52ed4c297",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:195 method::call:2 (Pi 1.4.0+b556cfe5): Pi declares method as four overloads; method(undefined, result) is one: Go's NewMethod(sides ...TSchema) takes no side, args, or args and result, a zero TSchema being the omitted side, as method(undefined, result) omits the arguments (contracts/schema.go:323-335; Go cannot name a function method beside the Method type), and the Method<A, R> type arguments are phantom. Designed out as an overload set folded into one variadic Go function. Go: chord/next/contracts/schema.go#NewMethod. Exercised by TestSchemaMethod (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#NewMethod"
+      ]
     },
     {
       "id": "pkg:chord/next#method::call:3",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f69ef26d58bfee59a2220e642d70150cf622bce65e0810708402d30700e66ced"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:f69ef26d58bfee59a2220e642d70150cf622bce65e0810708402d30700e66ced",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:195 method::call:3 (Pi 1.4.0+b556cfe5): Pi declares method as four overloads; method(args, result) is one: Go's NewMethod(sides ...TSchema) takes no side, args, or args and result, a zero TSchema being the omitted side, as method(undefined, result) omits the arguments (contracts/schema.go:323-335; Go cannot name a function method beside the Method type), and the Method<A, R> type arguments are phantom. Designed out as an overload set folded into one variadic Go function. Go: chord/next/contracts/schema.go#NewMethod. Exercised by TestSchemaMethod (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#NewMethod"
+      ]
     },
     {
       "id": "pkg:chord/next#min",
@@ -120718,68 +120922,159 @@
     },
     {
       "id": "pkg:chord/next#nul",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:46d722a28a2a2683323e767b50767048c327ff400975ae43da29ae8b0fff5fe5"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:46d722a28a2a2683323e767b50767048c327ff400975ae43da29ae8b0fff5fe5",
+      "rationale": "Derived by the interface gap detector: nul is Go chord/next/contracts/schema.go#Nul (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Nul"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Nul"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsMethodMappings",
+        "test:chord/next/contracts/contract_test.go#TestContractTakesNoArgs",
+        "test:chord/next/contracts/derived_runtime_test.go#TestDerivedShapes"
+      ]
     },
     {
       "id": "pkg:chord/next#nul::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d6d4dd086f5876cccb38c5c57e7ad8e8c1c663ec0c84d5110c8b6c78c47bc4a3"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:d6d4dd086f5876cccb38c5c57e7ad8e8c1c663ec0c84d5110c8b6c78c47bc4a3",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:105 nul::call:0 (Pi 1.4.0+b556cfe5): `nul(): NullSchema` returns `{ type: \"null\" }` typed as the NullSchema interface (also the omitted side of a method); NullSchema is an interface narrowing the `type` literal, which has no Go counterpart besides the node; Go's Nul() TSchema returns the same node. Designed out as a type-level mechanic (owner 2026-10-29/30: type-level mechanics). Go: chord/next/contracts/schema.go#Nul. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Nul"
+      ]
     },
     {
       "id": "pkg:chord/next#NullSchema",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ceba5c0eae8727b65c1b5b1a65d4f7b8547bb995df36695f9a149b18812e8eb7"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:ceba5c0eae8727b65c1b5b1a65d4f7b8547bb995df36695f9a149b18812e8eb7",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:55 NullSchema (Pi 1.4.0+b556cfe5): is a TypeScript-only type: an interface extending Schema<null> that narrows the `type` literal to \"null\" so declaration files of apps' contracts can name what nul() returns; it has no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); the Go type that carries the shape where it is used is contracts.TSchema, whose Node has `type: \"null\"` (Nul, contracts/schema.go:37). Go: chord/next/contracts/schema.go#TSchema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#NullSchema::property:%5BSymbol.STATIC%5D",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:815759c8fa4a438cda6b5f010e43c5c767b35884ea399bc466389fe1200792b8"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:815759c8fa4a438cda6b5f010e43c5c767b35884ea399bc466389fe1200792b8",
+      "rationale": "Pi packages/schema/src/builders.ts:11 NullSchema::property:[Symbol.STATIC] (Pi 1.4.0+b556cfe5): the optional `[STATIC]?: T` of pi-schema's Schema<T> is a declared-only unique symbol property, the type-level brand that records the static type of the values a schema accepts; nothing extra exists at run time (builders.ts:11 comment), and Go generics cannot carry it, so it is designed out (owner 2026-10-29/30: type-level mechanics). Go: chord/next/contracts/schema.go#TSchema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#NullSchema::property:type",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4b132800b3d39d62e7b9c1634cbb34a1131d369bcaab39a21eb9ac51040076d2"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:4b132800b3d39d62e7b9c1634cbb34a1131d369bcaab39a21eb9ac51040076d2",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:56 NullSchema::property:type (Pi 1.4.0+b556cfe5): `readonly type: \"null\"` narrows the node's `type` keyword to a literal type; the node is plain data, so Go reads the keyword from TSchema.Node's `type` member, which Nul writes as \"null\". Designed out as a type-level mechanic (owner 2026-10-29/30: type-level mechanics). Go: chord/next/contracts/schema.go#TSchema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#num",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cbb8d537d74f1cd4bdc7bb0fc83937be6bf54daa9a49813bb10df9ccad890546"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:cbb8d537d74f1cd4bdc7bb0fc83937be6bf54daa9a49813bb10df9ccad890546",
+      "rationale": "Derived by the interface gap detector: num is Go chord/next/store/columns.go#Num (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/columns.go#Num"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/columns.go#Num"
+      ],
+      "evidence": [
+        "test:chord/next/store/columns_test.go#TestColumnDescriptors",
+        "test:chord/next/store/evaluate_test.go#TestEvaluator",
+        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite"
+      ]
     },
     {
       "id": "pkg:chord/next#num::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0a160bf2a2c0a65f0003b117de11e74157e661696ced0d94e8de9607e4802beb"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0a160bf2a2c0a65f0003b117de11e74157e661696ced0d94e8de9607e4802beb",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:79 num::call:0 (Pi 1.4.0+b556cfe5): Pi's `num` takes an options object ({ min, max, default }) that limits() and defaultOf() turn into the builder's keywords (minimum/maximum and default; an absent bound or default is left out, snapshots refuse `undefined`); Go has no optional parameters or options object, so the constructor takes variadic Option values (Min, Max, Pattern, Default; contracts/schema.go:44-71) applied in call order, and panics on an option the constructor does not take where TypeScript rejects it at compile time. The overload typing the result `& Defaulted<T>` is type-level. Designed out as a Go language mechanic (functional options). Go: chord/next/contracts/schema.go#Num. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Num"
+      ]
     },
     {
       "id": "pkg:chord/next#num::call:1",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6caeb8013939501dd5efb86ec93ff1a32778789a51ffe21f82868900319f7232"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:6caeb8013939501dd5efb86ec93ff1a32778789a51ffe21f82868900319f7232",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:79 num::call:1 (Pi 1.4.0+b556cfe5): Pi's `num` takes an options object ({ min, max, default }) that limits() and defaultOf() turn into the builder's keywords (minimum/maximum and default; an absent bound or default is left out, snapshots refuse `undefined`); Go has no optional parameters or options object, so the constructor takes variadic Option values (Min, Max, Pattern, Default; contracts/schema.go:44-71) applied in call order, and panics on an option the constructor does not take where TypeScript rejects it at compile time. The overload typing the result `& Defaulted<T>` is type-level. Designed out as a Go language mechanic (functional options). Go: chord/next/contracts/schema.go#Num. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Num"
+      ]
     },
     {
       "id": "pkg:chord/next#NumberSchema",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f365ffc8a1ecb975ee711560ef8c0cb8eedab912344242cdc623ae6ebc652e29"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:f365ffc8a1ecb975ee711560ef8c0cb8eedab912344242cdc623ae6ebc652e29",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:40 NumberSchema (Pi 1.4.0+b556cfe5): is a TypeScript-only type: an interface extending Schema<number> that narrows the `type` literal to \"number\" so declaration files of apps' contracts can name what num() returns; it has no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); the Go type that carries the shape where it is used is contracts.TSchema, whose Node has `type: \"number\"` (Num, contracts/schema.go:37). Go: chord/next/contracts/schema.go#TSchema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#NumberSchema::property:%5BSymbol.STATIC%5D",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4d93216ecc98a1ffd492b2fb2b8569c838b3fb0f11a4b1bc9016f1469d4ee8ff"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:4d93216ecc98a1ffd492b2fb2b8569c838b3fb0f11a4b1bc9016f1469d4ee8ff",
+      "rationale": "Pi packages/schema/src/builders.ts:11 NumberSchema::property:[Symbol.STATIC] (Pi 1.4.0+b556cfe5): the optional `[STATIC]?: T` of pi-schema's Schema<T> is a declared-only unique symbol property, the type-level brand that records the static type of the values a schema accepts; nothing extra exists at run time (builders.ts:11 comment), and Go generics cannot carry it, so it is designed out (owner 2026-10-29/30: type-level mechanics). Go: chord/next/contracts/schema.go#TSchema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#NumberSchema::property:type",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:667b2c7d5ec2c60ed5a6c05560f458dc498948564277ef7b930131018e9a9004"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:667b2c7d5ec2c60ed5a6c05560f458dc498948564277ef7b930131018e9a9004",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:41 NumberSchema::property:type (Pi 1.4.0+b556cfe5): `readonly type: \"number\"` narrows the node's `type` keyword to a literal type; the node is plain data, so Go reads the keyword from TSchema.Node's `type` member, which Num writes as \"number\". Designed out as a type-level mechanic (owner 2026-10-29/30: type-level mechanics). Go: chord/next/contracts/schema.go#TSchema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#obj",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8215d0948aa2ad9c71131e6a206a4abf38049a1d5e5473e32810798bcf0810b0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8215d0948aa2ad9c71131e6a206a4abf38049a1d5e5473e32810798bcf0810b0",
+      "rationale": "Derived by the interface gap detector: obj is Go chord/next/contracts/schema.go#Obj (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Obj"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Obj"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsKeyedMappings",
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsMethodMappings",
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsStateMappings"
+      ]
     },
     {
       "id": "pkg:chord/next#obj::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:28d4bbda6d62cbedbcc651c327d181606503f17a823da7e4b4c9b851df50cecc"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:28d4bbda6d62cbedbcc651c327d181606503f17a823da7e4b4c9b851df50cecc",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:129 obj::call:0 (Pi 1.4.0+b556cfe5): `obj<const P extends Properties>(properties: P): Schema<StaticObject<P>>` takes the properties as an object literal whose key order is observable (the order of properties, required and of reported errors; opt(...) marks an optional field) and types the result with StaticObject<P>, computed from the properties; Go has no ordered map and cannot compute that type, so Obj takes the ordered Property entries (Prop, Opt) as variadic arguments (contracts/schema.go:21-33) and returns the one TSchema. Designed out as a Go language mechanic. Go: chord/next/contracts/schema.go#Obj. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Obj"
+      ]
     },
     {
       "id": "pkg:chord/next#oneOf",
@@ -121009,13 +121304,34 @@
     },
     {
       "id": "pkg:chord/next#Optional",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:88ead9082af980d52bfa436d11cc12505b8c272259c06055c90d299bf2bc6e8f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:88ead9082af980d52bfa436d11cc12505b8c272259c06055c90d299bf2bc6e8f",
+      "rationale": "Derived by the interface gap detector: Optional is Go chord/next/link/message.go#Optional (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/link/message.go#Optional"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/link/binary.go#binaryCodec.Encode"
+      ],
+      "evidence": [
+        "test:chord/next/host/remote_consumer_test.go#TestConsumerLimitsPerPart",
+        "test:chord/next/host/remote_hold_reload_test.go#TestHoldsAcrossAReload",
+        "test:chord/next/host/remote_hold_test.go#TestHoldFailuresWhileTheWindowIsFull"
+      ]
     },
     {
       "id": "pkg:chord/next#Optional::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7efe9b41d9981db4c7593b6810fdb826f46063db46dd549f372ea0fd38b62703"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:7efe9b41d9981db4c7593b6810fdb826f46063db46dd549f372ea0fd38b62703",
+      "rationale": "Pi packages/schema/src/builders.ts:147 Optional::construct:0 (Pi 1.4.0+b556cfe5): `new Optional(schema)` is the class constructor opt(schema) calls to mark an obj() property optional, and `instanceof Optional` is isOptional (contracts/schema.ts:165); Go has no wrapper object, so contracts.Opt(schema TSchema) TSchema returns the schema with its Optional flag set (contracts/schema.go:37-44, 266) and isOptional reads the flag. Designed out as a Go language mechanic: the marker is a field of the one schema value. Go: chord/next/contracts/schema.go#Opt. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Opt"
+      ]
     },
     {
       "id": "pkg:chord/next#Optional::property:%5BSymbol.OPTIONAL_TYPE%5D",
@@ -121028,8 +121344,12 @@
     },
     {
       "id": "pkg:chord/next#Optional::property:schema",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:dace9d371fc1051f9210bc3e95fb1fa98538fb0186822069ff3878714995d112"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:dace9d371fc1051f9210bc3e95fb1fa98538fb0186822069ff3878714995d112",
+      "rationale": "Pi packages/schema/src/builders.ts:149 Optional::property:schema (Pi 1.4.0+b556cfe5): `readonly schema: S` is the schema an Optional wraps; Go has no wrapper object (see Optional::construct:0), the optional TSchema is the wrapped schema with its Optional flag set, so the wrapped schema is the TSchema's own Node (contracts/schema.go:37-44). Designed out as a Go language mechanic. Go: chord/next/contracts/schema.go#TSchema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#or",
@@ -122194,7 +122514,8 @@
       ],
       "evidence": [
         "test:chord/next/data/principal_test.go#TestPrincipalKey",
-        "test:chord/next/host/host_host_test.go#TestHostPrincipalsIdentityIncludesThePrincipalKeyEqualKeysShareOneObject"
+        "test:chord/next/host/host_host_test.go#TestHostPrincipalsIdentityIncludesThePrincipalKeyEqualKeysShareOneObject",
+        "test:chord/nextnode/plugins/plugins_node_hostoptions_test.go#TestPrincipalKeyIsAskedOncePerCanonicalPrincipal"
       ]
     },
     {
@@ -122215,7 +122536,8 @@
       ],
       "evidence": [
         "test:chord/next/data/principal_test.go#TestPrincipalKey",
-        "test:chord/next/host/host_host_test.go#TestHostPrincipalsIdentityIncludesThePrincipalKeyEqualKeysShareOneObject"
+        "test:chord/next/host/host_host_test.go#TestHostPrincipalsIdentityIncludesThePrincipalKeyEqualKeysShareOneObject",
+        "test:chord/nextnode/plugins/plugins_node_hostoptions_test.go#TestPrincipalKeyIsAskedOncePerCanonicalPrincipal"
       ]
     },
     {
@@ -123410,8 +123732,12 @@
     },
     {
       "id": "pkg:chord/next#Schema",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a5c622b2c5a21c76c100eb9ba99a2cb3e8bbf8281f32232307233b16dbf162a9"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:a5c622b2c5a21c76c100eb9ba99a2cb3e8bbf8281f32232307233b16dbf162a9",
+      "rationale": "Pi packages/schema/src/builders.ts:11 Schema (Pi 1.4.0+b556cfe5): `Schema<T = unknown> = { readonly [keyword: string]: unknown } & { readonly [STATIC]?: T }` is a TypeScript-only type: a JSON Schema object branded with the static type T of the values it accepts, computed from its type parameter; it has no member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); the Go type that carries the shape where it is used is contracts.TSchema, the schema node as data (contracts/schema.go:37). Go: chord/next/contracts/schema.go#TSchema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#Self",
@@ -124305,13 +124631,34 @@
     },
     {
       "id": "pkg:chord/next#StateDefinition",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5b410d34096e1aea243f838b371eecf8499d8e91aa427a388aeda3983875e0bb"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5b410d34096e1aea243f838b371eecf8499d8e91aa427a388aeda3983875e0bb",
+      "rationale": "Derived by the interface gap detector: StateDefinition is Go chord/next/documents/definition.go#StateDefinition (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/definition.go#StateDefinition"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/documents/definition.go#DefineState"
+      ],
+      "evidence": [
+        "test:chord/next/documents/definition_test.go#TestInitialIsCheckedAgainstTheSchemaOnceTheFirstTimeItIsUsed",
+        "test:chord/next/documents/definition_test.go#TestInitialRefusesAValueThatDoesNotMatchEveryTimeUntilOneDoes",
+        "test:chord/next/documents/definition_test.go#TestMigrateMapsAnOlderValueAndChecksTheResultEachTimeItProducesOne"
+      ]
     },
     {
       "id": "pkg:chord/next#StateDefinition::construct:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:dcfe97adaff034d72f63f5f50d059a09a12737dbce71b0829394409afa1ba0af"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:dcfe97adaff034d72f63f5f50d059a09a12737dbce71b0829394409afa1ba0af",
+      "rationale": "Pi chord/src/next/documents/definition.ts:90 StateDefinition::construct:0 (Pi 1.4.0+b556cfe5): `new StateDefinition(...)` is the class constructor DefineState calls; Go's documents.DefineState(name, options) (documents/definition.go:78) is the one constructor, returning (*StateDefinition, error) as Pi's throws, and the struct's unexported members (initial, migrate, checkpoint, snapshot) cannot be set by a literal. Exercised by TestDefineStateTakesARestrictedNameOnly (chord/next/documents/definition_test.go).",
+      "pigTargets": [
+        "chord/next/documents/definition.go#DefineState"
+      ]
     },
     {
       "id": "pkg:chord/next#StateDefinition::property:~keyed",
@@ -124563,8 +124910,12 @@
     },
     {
       "id": "pkg:chord/next#StateDefinition::property:schema",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ae92c71a80e474fa86e7fe81dc4eec787364317f1f967d37f79acc7abd64c7b4"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:ae92c71a80e474fa86e7fe81dc4eec787364317f1f967d37f79acc7abd64c7b4",
+      "rationale": "Pi chord/src/next/documents/definition.ts:92 StateDefinition::property:schema (Pi 1.4.0+b556cfe5): `readonly schema: Schema` is pi-schema's Schema<T>, the brand-typed JSON Schema object (a type-level carrier of T, designed out as pkg:chord/next#Schema); Go's StateDefinition.Schema is the contracts.TSchema the definition was declared with (documents/definition.go:90), the same schema node. Designed out as a type-level mechanic (owner 2026-10-29/30: type-level mechanics). Go: chord/next/documents/definition.go#StateDefinition.Schema. Exercised by TestDefineStateTakesARestrictedNameOnly (chord/next/documents/definition_test.go).",
+      "pigTargets": [
+        "chord/next/documents/definition.go#StateDefinition.Schema"
+      ]
     },
     {
       "id": "pkg:chord/next#StateDefinition::property:version",
@@ -124588,8 +124939,12 @@
     },
     {
       "id": "pkg:chord/next#Static",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0f816e914ef9118f05e44922ce9987da6d74c0b37e2d7455200111e11925a8fc"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0f816e914ef9118f05e44922ce9987da6d74c0b37e2d7455200111e11925a8fc",
+      "rationale": "Pi packages/schema/src/builders.ts:19 Static (Pi 1.4.0+b556cfe5): is a TypeScript-only type computed from its type parameters (the type of the values a schema accepts: the type a builder recorded, or TypeBox's static type for a TypeBox schema); it has no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); the Go type that carries the shape where it is used is the JSON value a TSchema validates, which Go keeps as delta.JsonValue (contracts/schema.go:14-15 designs Static out; ai Static is designed out the same way). Go: chord/next/contracts/schema.go#TSchema. Exercised by TestHostKinds (chord/next/contracts/host_kind_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#Step",
@@ -125937,33 +126292,70 @@
     },
     {
       "id": "pkg:chord/next#str",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:fefcc0e8832044c031b9b0fec4e8030c6efc4e853d18c7b27fff045ec4df2b22"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:fefcc0e8832044c031b9b0fec4e8030c6efc4e853d18c7b27fff045ec4df2b22",
+      "rationale": "Derived by the interface gap detector: str is Go chord/next/store/columns.go#Str (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/store/columns.go#Str"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/store/columns.go#Str"
+      ],
+      "evidence": [
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
+        "test:chord/next/host/host_attempt_test.go#TestAttemptTablesFailTheActivationBroken",
+        "test:chord/next/host/host_examples_test.go#TestExample20Tables"
+      ]
     },
     {
       "id": "pkg:chord/next#str::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:15c2687a843dc64469ecfef0f92bc05dc07e81d5dd4636faa54c5140afb7e0b8"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:15c2687a843dc64469ecfef0f92bc05dc07e81d5dd4636faa54c5140afb7e0b8",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:65 str::call:0 (Pi 1.4.0+b556cfe5): Pi's `str` takes an options object ({ min, max, pattern, default }) that limits() and defaultOf() turn into the builder's keywords (minLength/maxLength, pattern and default; an absent bound or default is left out, snapshots refuse `undefined`); Go has no optional parameters or options object, so the constructor takes variadic Option values (Min, Max, Pattern, Default; contracts/schema.go:44-71) applied in call order, and panics on an option the constructor does not take where TypeScript rejects it at compile time. The overload typing the result `& Defaulted<T>` is type-level. Designed out as a Go language mechanic (functional options). Go: chord/next/contracts/schema.go#Str. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Str"
+      ]
     },
     {
       "id": "pkg:chord/next#str::call:1",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0017a91d74a5ee662238b0a07a22f8abf273211565dcf8a87cbf42b94de06cb8"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:0017a91d74a5ee662238b0a07a22f8abf273211565dcf8a87cbf42b94de06cb8",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:65 str::call:1 (Pi 1.4.0+b556cfe5): Pi's `str` takes an options object ({ min, max, pattern, default }) that limits() and defaultOf() turn into the builder's keywords (minLength/maxLength, pattern and default; an absent bound or default is left out, snapshots refuse `undefined`); Go has no optional parameters or options object, so the constructor takes variadic Option values (Min, Max, Pattern, Default; contracts/schema.go:44-71) applied in call order, and panics on an option the constructor does not take where TypeScript rejects it at compile time. The overload typing the result `& Defaulted<T>` is type-level. Designed out as a Go language mechanic (functional options). Go: chord/next/contracts/schema.go#Str. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Str"
+      ]
     },
     {
       "id": "pkg:chord/next#StringSchema",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:dac227064d4b5d2ca8bd6b77d4d9dc684af01b5ca77f152ddcec95cab969c12d"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:dac227064d4b5d2ca8bd6b77d4d9dc684af01b5ca77f152ddcec95cab969c12d",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:35 StringSchema (Pi 1.4.0+b556cfe5): is a TypeScript-only type: an interface extending Schema<string> that narrows the `type` literal to \"string\" so declaration files of apps' contracts can name what str() returns; it has no value, member or call at run time and Go generics cannot express it, so it is designed out (owner 2026-10-29/30: type-level mechanics); the Go type that carries the shape where it is used is contracts.TSchema, whose Node has `type: \"string\"` (Str, contracts/schema.go:37). Go: chord/next/contracts/schema.go#TSchema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#StringSchema::property:%5BSymbol.STATIC%5D",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:08c5f59d84d78f12ac335c42c1dfc33628444a82e17da1af08e13b828536b02f"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:08c5f59d84d78f12ac335c42c1dfc33628444a82e17da1af08e13b828536b02f",
+      "rationale": "Pi packages/schema/src/builders.ts:11 StringSchema::property:[Symbol.STATIC] (Pi 1.4.0+b556cfe5): the optional `[STATIC]?: T` of pi-schema's Schema<T> is a declared-only unique symbol property, the type-level brand that records the static type of the values a schema accepts; nothing extra exists at run time (builders.ts:11 comment), and Go generics cannot carry it, so it is designed out (owner 2026-10-29/30: type-level mechanics). Go: chord/next/contracts/schema.go#TSchema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#StringSchema::property:type",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d38b1c5d080cc24fd452ecd6bc85025f9d2364f408d675096747baac0b6f14ef"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:d38b1c5d080cc24fd452ecd6bc85025f9d2364f408d675096747baac0b6f14ef",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:36 StringSchema::property:type (Pi 1.4.0+b556cfe5): `readonly type: \"string\"` narrows the node's `type` keyword to a literal type; the node is plain data, so Go reads the keyword from TSchema.Node's `type` member, which Str writes as \"string\". Designed out as a type-level mechanic (owner 2026-10-29/30: type-level mechanics). Go: chord/next/contracts/schema.go#TSchema. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#TSchema"
+      ]
     },
     {
       "id": "pkg:chord/next#sub",
@@ -127661,23 +128053,65 @@
     },
     {
       "id": "pkg:chord/next#union",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:200e171ae4eebe9cc7d29f2bc32e5fbc3a89842ad6a73f1c8edb82d0f38ed6c4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:200e171ae4eebe9cc7d29f2bc32e5fbc3a89842ad6a73f1c8edb82d0f38ed6c4",
+      "rationale": "Derived by the interface gap detector: union is Go chord/next/contracts/schema.go#Union (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Union"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Union"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/contract_test.go#TestContractTakesNoArgs",
+        "test:chord/next/contracts/derived_runtime_test.go#TestDerivedShapes",
+        "test:chord/next/contracts/fingerprint_test.go#TestFingerprints"
+      ]
     },
     {
       "id": "pkg:chord/next#union::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d6244f2126bac76eeb14e294dd2a6ed8b862e8d0fc20f37fd0a5684622a15966"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:d6244f2126bac76eeb14e294dd2a6ed8b862e8d0fc20f37fd0a5684622a15966",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:124 union::call:0 (Pi 1.4.0+b556cfe5): `union<const S extends readonly Schema[]>(schemas: S): Schema<Static<S[number]>>` is a union of the given schemas (`anyOf`); the const tuple parameter and the Static<S[number]> result are computed from the schema values and Go cannot express them; Go's Union(schemas []TSchema) TSchema returns the same node over the schemas in order. Designed out as a type-level mechanic (owner 2026-10-29/30: type-level mechanics). Go: chord/next/contracts/schema.go#Union. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Union"
+      ]
     },
     {
       "id": "pkg:chord/next#unknown",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:960d7018be2ecd1c4cc4ad6a97e8a2853861f0336c1942338ff6c2ad2ab4e0d5"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:960d7018be2ecd1c4cc4ad6a97e8a2853861f0336c1942338ff6c2ad2ab4e0d5",
+      "rationale": "Derived by the interface gap detector: unknown is Go chord/next/contracts/schema.go#Unknown (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Unknown"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Unknown"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/schema_test.go#TestSchemaHelpers",
+        "test:chord/next/host/jobs_definition_test.go#TestDefineJobRequiresClosedJSONArgs",
+        "test:chord/nextnode/plugins/plugins_node_contracts_test.go#TestContractDataIsTheNormalFormTheFingerprintHashes"
+      ]
     },
     {
       "id": "pkg:chord/next#unknown::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7089b09f29f4af2bf86f75069ac0129e9a2421a18444b316c8af2ca72b0bf6f1"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:7089b09f29f4af2bf86f75069ac0129e9a2421a18444b316c8af2ca72b0bf6f1",
+      "rationale": "Pi chord/src/next/contracts/schema.ts:144 unknown::call:0 (Pi 1.4.0+b556cfe5): `unknown(): Schema<unknown>` is the schema of any value; Schema<unknown> is a phantom brand; Go's Unknown() TSchema returns the empty node. Designed out as a type-level mechanic (owner 2026-10-29/30: type-level mechanics). Go: chord/next/contracts/schema.go#Unknown. Exercised by TestSchemaHelpers (chord/next/contracts/schema_test.go).",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Unknown"
+      ]
     },
     {
       "id": "pkg:chord/next#untilAborted",
@@ -127812,18 +128246,52 @@
     },
     {
       "id": "pkg:chord/next#WebSocketLike",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7bdb36ac1fb35f549901ea30d82542e03a1d529403be7f0e8418c2d6348ac666"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7bdb36ac1fb35f549901ea30d82542e03a1d529403be7f0e8418c2d6348ac666",
+      "rationale": "Derived by the interface gap detector: WebSocketLike is Go chord/next/link/websocket.go#WebSocketLike (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/link/websocket.go#WebSocketLink"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointCutsOffAClientThatStoppedReadingPast4MiBUnsentBeyondTheFrameBeingSent"
+      ]
     },
     {
       "id": "pkg:chord/next#WebSocketLike::property:addEventListener",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2b75af7ad879385b7b2744c9bc47ba86e34b59acb045386ea8cf2324c21cc88b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2b75af7ad879385b7b2744c9bc47ba86e34b59acb045386ea8cf2324c21cc88b",
+      "rationale": "Derived by the interface gap detector: WebSocketLike::property:addEventListener is Go chord/next/link/websocket.go#WebSocketLike.AddEventListener (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.AddEventListener"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/link/websocket.go#WebSocketLink"
+      ],
+      "evidence": [
+        "reach:chord/next/link/websocket.go#WebSocketLink"
+      ]
     },
     {
       "id": "pkg:chord/next#WebSocketLike::property:addEventListener::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a06502102317147ae77ab06e2279e0a2207a5236072c8d9157544af44bca4bf6"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:a06502102317147ae77ab06e2279e0a2207a5236072c8d9157544af44bca4bf6",
+      "rationale": "Pi chord/src/next/link/websocket.ts:14 WebSocketLike::property:addEventListener::call:0 (Pi 1.4.0+b556cfe5): Node's EventEmitter pair on(event, listener) / removeListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: WebSocketLike.AddEventListener(event, listener) returns remove func() (link/websocket.go:27-29). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). The Go call returns the removal where Pi's returns nothing. Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.AddEventListener"
+      ]
     },
     {
       "id": "pkg:chord/next#WebSocketLike::property:addEventListener::call:message",
@@ -127905,13 +128373,21 @@
     },
     {
       "id": "pkg:chord/next#WebSocketLike::property:removeEventListener",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:19c7dbbb10c8a0f0f3be034b40320f4d080b5293c201084363acb52675a283c4"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:19c7dbbb10c8a0f0f3be034b40320f4d080b5293c201084363acb52675a283c4",
+      "rationale": "Pi chord/src/next/link/websocket.ts:16 WebSocketLike::property:removeEventListener (Pi 1.4.0+b556cfe5): Node's EventEmitter pair on(event, listener) / removeListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: WebSocketLike.AddEventListener(event, listener) returns remove func() (link/websocket.go:27-29). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.AddEventListener"
+      ]
     },
     {
       "id": "pkg:chord/next#WebSocketLike::property:removeEventListener::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a06502102317147ae77ab06e2279e0a2207a5236072c8d9157544af44bca4bf6"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:a06502102317147ae77ab06e2279e0a2207a5236072c8d9157544af44bca4bf6",
+      "rationale": "Pi chord/src/next/link/websocket.ts:16 WebSocketLike::property:removeEventListener::call:0 (Pi 1.4.0+b556cfe5): Node's EventEmitter pair on(event, listener) / removeListener(event, listener) removes a listener by its function identity; Go cannot compare funcs, so a listener registration returns its own removal: WebSocketLike.AddEventListener(event, listener) returns remove func() (link/websocket.go:27-29). Designed out as a language mechanic (Go funcs are not comparable; the same reason registries.sameFunc needs unsafe, kfold lead note 5). Exercised by TestWebSocketLinksOverAFakeSocket (chord/next/link/websocket_test.go).",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.AddEventListener"
+      ]
     },
     {
       "id": "pkg:chord/next#WebSocketLike::property:removeEventListener::call:message",
@@ -180043,9 +180519,9 @@
         "call:tui/markdown_style.go#GetMarkdownTheme"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_theme_oracle_test.go#TestGetMarkdownThemeMatchesPi",
-        "test:tui/branch_summary_test.go#TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme",
-        "test:tui/compaction_summary_test.go#TestCompactionSummaryMessageComponentUsesTheInjectedMarkdownTheme"
+        "test:tui/branch_summary_test.go#TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme"
       ]
     },
     {
@@ -180065,9 +180541,9 @@
         "call:tui/markdown_style.go#GetMarkdownTheme"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_theme_oracle_test.go#TestGetMarkdownThemeMatchesPi",
-        "test:tui/branch_summary_test.go#TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme",
-        "test:tui/compaction_summary_test.go#TestCompactionSummaryMessageComponentUsesTheInjectedMarkdownTheme"
+        "test:tui/branch_summary_test.go#TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme"
       ]
     },
     {
@@ -286207,9 +286683,9 @@
         "call:tui/assistant_message_block.go#AssistantMessageComponent.Dispose"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
-        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
-        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle"
+        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse"
       ]
     },
     {
@@ -286229,9 +286705,9 @@
         "call:tui/markdown_options.go#NewMarkdownWithOptions"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
-        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
-        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle"
+        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse"
       ]
     },
     {
@@ -286295,9 +286771,9 @@
         "call:tui/markdown.go#Markdown.Render"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
-        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
-        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle"
+        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse"
       ]
     },
     {
@@ -286317,9 +286793,9 @@
         "call:tui/markdown.go#Markdown.Render"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
-        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
-        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle"
+        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse"
       ]
     },
     {
@@ -286488,9 +286964,9 @@
         "call:tui/assistant_message_block.go#NewAssistantMessageComponent"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_theme_oracle_test.go#TestGetMarkdownThemeMatchesPi",
-        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle",
-        "test:tui/markdown_latex_random_oracle_test.go#TestMarkdownInlineMathRandomMatchesPiOracle"
+        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle"
       ]
     },
     {
@@ -286752,9 +287228,9 @@
         "call:tui/component_themes.go#markdownThemeReading"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_theme_oracle_test.go#TestGetMarkdownThemeMatchesPi",
-        "test:tui/component_themes_test.go#TestComponentThemeDefaultMarkdownFollowsActiveTheme",
-        "test:tui/component_themes_test.go#TestComponentThemeMarkdownBoundToTheme"
+        "test:tui/component_themes_test.go#TestComponentThemeDefaultMarkdownFollowsActiveTheme"
       ]
     },
     {
@@ -295952,9 +296428,9 @@
         "call:tui/colors.go#BackgroundAnsi"
       ],
       "evidence": [
+        "test:test/extension-conformance/tui_theme_test.go#TestHighlightCodeThatFailsTakesTheCodeBlockColorAcrossSDKs",
         "test:tui/theme_load_random_oracle_test.go#TestLoadThemeFromPathOnRandomColorsMatchesPi",
-        "test:tui/theme_tokens_metadata_oracle_test.go#TestOmittedOptionalThemeTokensFallBackAsInPi",
-        "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi"
+        "test:tui/theme_tokens_metadata_oracle_test.go#TestOmittedOptionalThemeTokensFallBackAsInPi"
       ]
     },
     {
