@@ -88,7 +88,7 @@ Pi's `packages/chord` `engines.node` is `>=22.19.0`, the first release that stri
 - **V8's compilation cache flag** (`runtime.ts`): runs unchanged inside the subprocess.
 - **Other runtimes** (Bun, a runtime-slot executable) for this subprocess: Node is the only runtime (AGENTS.md: no embedded JavaScript).
 
-Every remaining difference a Pi user or plugin can observe, with whether and at what cost it can be closed, is in `handoffs/next/rows/plugnode-differences.md`.
+Every remaining difference a Pi user or plugin can observe, with whether and at what cost it can be closed, is numbered below.
 
 ## 9. Evidence
 
@@ -96,7 +96,7 @@ The tests run the real esbuild build and the real Node subprocess with Pi's inpu
 
 ## 10. Closing the observable differences (owner decision 2026-11-01: full support, no divergences)
 
-`handoffs/next/rows/plugnode-differences.md` numbers the differences from Pi. Every one closes by the designs below except #12 (the location Pi prints cannot be produced without inventing it: numbered divergence D222, 10.10) and the keyed members of a bridged Go core facet (10.4: Pi's `KeyedSlot` is owned by an object's own documents); only #12 is a numbered divergence. All rules of AGENTS.md hold: one subprocess, Pi's TypeScript vendored verbatim, no embedded JavaScript runtime, no `plugin.Open`. Where the process boundary makes Pi's behavior strictly more isolated than Pi's (the app survives what ends Pi's process), the difference is additive and stated as such.
+The differences from Pi are numbered. Every one closes by the designs below except #12 (the location Pi prints cannot be produced without inventing it: numbered divergence D222, 10.10) and the keyed members of a bridged Go core facet (10.4: Pi's `KeyedSlot` is owned by an object's own documents); only #12 is a numbered divergence. All rules of AGENTS.md hold: one subprocess, Pi's TypeScript vendored verbatim, no embedded JavaScript runtime, no `plugin.Open`. Where the process boundary makes Pi's behavior strictly more isolated than Pi's (the app survives what ends Pi's process), the difference is additive and stated as such.
 
 Two mechanisms carry most of the work and are specified once.
 
@@ -166,7 +166,7 @@ The Node host does not `connect` its parent link at `load`. `NodeHost.Link()` re
 
 ### 10.10 #12: esbuild error location text
 
-Pi's text for an unreadable input is `<relative path of esbuild's lib/main.js>:1552:22: EACCES: ...`. Esbuild's JavaScript API takes the location of a plugin callback's exception from the first frame of its stack whose file it can read (`parseStackLinesV8`): Node's `node:internal/fs/promises` frames and the `file://` frame of Pi's own `build.ts` cannot be read as paths, so the first readable one is esbuild's own `await callback(...)` at `lib/main.js` line 1552 column 22 (0.28.2), shown relative to the plugin's directory. Pi's test (`build.test.ts`) and the examples assert no such text. The location is a line of a JavaScript library that exists only where Pi's `node_modules` is, and the Go API has no JavaScript stack: PiG's text stays `worker.ts:1:19: EACCES: permission denied, open '<path>'` (the import's position, Node's text). It is not closable without inventing a location; the evidence is in `handoffs/next/rows/plugfull-buildwin.md`. Decided (owner, 2026-11-01): keep PiG's location and record the difference as D222 (`docs/parity/divergences/D222.md`, marker in `plugins_build.go`).
+Pi's text for an unreadable input is `<relative path of esbuild's lib/main.js>:1552:22: EACCES: ...`. Esbuild's JavaScript API takes the location of a plugin callback's exception from the first frame of its stack whose file it can read (`parseStackLinesV8`): Node's `node:internal/fs/promises` frames and the `file://` frame of Pi's own `build.ts` cannot be read as paths, so the first readable one is esbuild's own `await callback(...)` at `lib/main.js` line 1552 column 22 (0.28.2), shown relative to the plugin's directory. Pi's test (`build.test.ts`) and the examples assert no such text. The location is a line of a JavaScript library that exists only where Pi's `node_modules` is, and the Go API has no JavaScript stack: PiG's text stays `worker.ts:1:19: EACCES: permission denied, open '<path>'` (the import's position, Node's text). It is not closable without inventing a location; the evidence is the esbuild 0.28.2 reproduction in Node stated in D222. Decided (owner, 2026-11-01): keep PiG's location and record the difference as D222 (`docs/parity/divergences/D222.md`, marker in `plugins_build.go`).
 
 ### 10.11 #13: Windows
 
