@@ -1017,6 +1017,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a9264aa](#bf-a9264aa) | A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the… | PiG's own defect | All platforms | Unreleased |
 | [BF-a94455c](#bf-a94455c) | The durable code mode joins the text items of a script's output in linear time (Pi f11e50f7… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a9757c8](#bf-a9757c8) | A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a9d41ed](#bf-a9d41ed) | `chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a… | PiG's own defect | All platforms | Unreleased |
 | [BF-aa2003c](#bf-aa2003c) | The edit tool's prepared arguments keep the members in the order the model sent them | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aa69959](#bf-aa69959) | Key matching follows Pi for more terminal inputs and key identifiers | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aabd300](#bf-aabd300) | An OpenAI Responses, Azure OpenAI Responses or Google stream event whose JSON is a number, string, boolean or… | PiG's own defect | All platforms | 0.5.0 |
@@ -15319,6 +15320,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a9757c8ed3` (2026-10-10)
 - **Tests:** `ai/provider_wrap_test.go::TestWrapBuiltinProviderResolvesTheEndpointFromTheConfiguredEnv`, `coding/cloudflare_build_model_test.go::TestBuildModelCloudflareEndpointUsesTheStoredCredentialEnv`
 - **Release note:** A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves `{CLOUDFLARE_ACCOUNT_ID}` and `{CLOUDFLARE_GATEWAY_ID}` from the stored credential's env again, under the request env, as Pi's `Models.applyAuth` merges the resolution env before `cloudflareStreams` runs. Since `ai.WrapBuiltinProvider` the wrapper read only the request env, so such a request went to the literal placeholder URL.
+
+### BF-a9d41ed
+
+**`chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a proxy script for a Go core facet whose name has `<`, `>` or `&` is written as `JSON.stringify` writes it.
+- **Root cause:** The Node host owns the context of the work its process asks of the Go side (it ends with the process); a failed build's errors array is sent when it is empty; the bridged proxy script is written as JSON.stringify writes it. The remaining findings are allowed with the Pi line that does the same (build.ts:157, :399) or the lifetime that ends them.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a9d41edbb7` (2026-11-01)
+- **Tests:** `chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeLifeContextEndsWithTheProcess`, `chord/nextnode/plugins/plugins_node_wire_test.go::TestBridgedProxyScriptWritesHTMLCharactersAsJSONStringifyDoes`, `chord/nextnode/plugins/plugins_node_wire_test.go::TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways`
+- **Release note:** `chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a proxy script for a Go core facet whose name has `<`, `>` or `&` is written as `JSON.stringify` writes it.
 
 ### BF-aa2003c
 
