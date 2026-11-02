@@ -649,28 +649,28 @@ path = "packages/chord/src/next-node/plugins/discover.ts"
 disposition = "translated"
 contracts = ["awaited", "cancellable"]
 evidence = ["test:chord/nextnode/plugins/plugins_discover_test.go#TestDiscoveryReturnsTheAbortsReasonBeforeEachDirectoryAndNothingForNoDirectory"]
-rationale = "`discoverPlugins`: blocking `DiscoverPlugins(roots, options, ctx)`; roots listed in order, abort checked before each directory (never at entry or after the last), a read error is the returned error."
+rationale = "`discoverPlugins`: blocking `DiscoverPlugins(roots, options, ctx)`; roots listed in order, abort checked before each directory (never at entry or after the last), a read error is the returned error. Delta at Pi 9823079ad: `discoverPackage` is the same blocking call; roots are `PluginRoot`s and a required root that does not exist is a problem, not an error (lane chord-slice12)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/install.ts"
 disposition = "translated"
 contracts = ["awaited", "cancellable"]
-evidence = ["test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesRejectsWithTheCommandsOutputWhenItFailsAndWhenTheContextAborts", "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesRefusesAnEmptyCommandAndAnAbortedContextBeforeRunningAnything"]
-rationale = "`installDependencies` (spawn with the context's signal): blocking `InstallDependencies`; an aborted ctx returns its reason before starting, abort while running sends SIGTERM and returns the reason, a non-zero exit returns the command output."
+evidence = ["test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesRejectsWithTheCommandsOutputWhenItFailsAndWhenTheContextAborts", "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesRefusesAnEmptyCommandAndAnAbortedContextBeforeRunningAnything", "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallPluginReturnsTheAbortsReasonAndRemovesWhatItCreated"]
+rationale = "`installDependencies` (spawn with the context's signal): blocking `InstallDependencies`; an aborted ctx returns its reason before starting, abort while running sends SIGTERM and returns the reason, a non-zero exit returns the command output. Delta at Pi 9823079ad: `installPlugin` (git clone and npm pack/extract as awaited child processes, a mkdir claim, staging, a rename) is blocking `InstallPlugin`; an aborted ctx returns its reason (`context.Cause`), kills the running child (SIGTERM) and removes only what the call created; two concurrent installs of one name: the mkdir claim lets one win and the other removes nothing of it (lane chord-slice12)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/plugins.ts"
 disposition = "translated"
 contracts = ["awaited", "concurrent-joined", "microtask-ordering", "cancellable"]
-evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothChanges", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsRolloutCountsAHostsErrorAsTheStepsBuiltPluginsFailingThereAHostStoppedCleanlyDirtiesNothing", "test:chord/nextnode/plugins/plugins_watcher_test.go#TestTheWatchersMarksFromRealFileEventsPublishingTheMarksToAWatch"]
-rationale = "`build` Promise.all is `buildAll` (one goroutine per facet in a WaitGroup, results by index); reloads of one host are serialized by a ticket taken in the section that applies the build; `rollout` runs the steps in order, a step's error stops it as a result; the watcher's microtask publication is `Batch.Soon` and fs events run as host sections."
+evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothChanges", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsRolloutCountsAHostsErrorAsTheStepsBuiltPluginsFailingThereAHostStoppedCleanlyDirtiesNothing", "test:chord/nextnode/plugins/plugins_watcher_test.go#TestTheWatchersMarksFromRealFileEventsPublishingTheMarksToAWatch", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsTheAppsAPIRequiredRootsAndInstallsInstallsAPluginIntoOneOfItsRootsAndMarksSetRefusesADirectoryThatIsNoRoot"]
+rationale = "`build` Promise.all is `buildAll` (one goroutine per facet in a WaitGroup, results by index); reloads of one host are serialized by a ticket taken in the section that applies the build; `rollout` runs the steps in order, a step's error stops it as a result; the watcher's microtask publication is `Batch.Soon` and fs events run as host sections. Delta at Pi 9823079ad: `installPlugin` is a blocking `Plugins.InstallPlugin` that marks `set` after the install; `load` of a required root rejects with a `PluginError` after the host's load settled (the loaded host is returned with the error) (lane chord-slice12)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/runtime.ts"
 disposition = "translated"
 contracts = ["awaited", "microtask-ordering", "cancellable"]
-evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothChanges", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1AdoptsWhatAReloadCommittedWhenItsWaitAbortsAfterTheCommitALaterReloadKeepsIt"]
-rationale = "`evaluateFacet` and `createPluginRuntime().load/reload` run in the Node subprocess; `PluginRuntime.Load/Reload` block over the control channel: ctx abort sends `abort`, the wait goes on until the subprocess answers (`aborted`, with `details.committed` after a commit) or ends; requests reach the subprocess in call order and Pi's runtime queues one reload after another per host; a NodeHost is never restarted, a process exit fails pending requests with `*NodeExit`."
+evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothChanges", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1AdoptsWhatAReloadCommittedWhenItsWaitAbortsAfterTheCommitALaterReloadKeepsIt", "test:chord/nextnode/plugins/plugins_runtime_test.go#TestRuntimeRequiredRootsAtLoadRejectsWithAPluginErrorNamingARequiredPluginThatFailedAfterTheHostsLoadSettled"]
+rationale = "`evaluateFacet` and `createPluginRuntime().load/reload` run in the Node subprocess; `PluginRuntime.Load/Reload` block over the control channel: ctx abort sends `abort`, the wait goes on until the subprocess answers (`aborted`, with `details.committed` after a commit) or ends; requests reach the subprocess in call order and Pi's runtime queues one reload after another per host; a NodeHost is never restarted, a process exit fails pending requests with `*NodeExit`. Delta at Pi 9823079ad: `load` throws `PluginError` after `host.load` settled when a plugin of a required root is among the failed: the vendored runtime throws it in the subprocess, host.mjs answers it as data and `PluginRuntime.Load` returns the host, the report and a `*PluginError` (lane chord-slice12)."
 
 [[files]]
 path = "packages/chord/src/next-node/workers/lock.ts"

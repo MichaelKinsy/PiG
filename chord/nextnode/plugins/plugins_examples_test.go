@@ -815,13 +815,13 @@ func TestExample37PluginImports(t *testing.T) {
 		},
 		"@example/refused": {
 			`plugin "@example/refused": its server facet failed to build:`,
-			`server.ts:6:17: "../../app/index.ts": outside the plugin (base code is reached through a host package, packages through dependencies)`,
+			`server.ts:6:17: "../../app/index.ts": outside the plugin's root (base code is reached through a host package, other repositories' plugins through dependencies)`,
 			"server.ts:9:14: " + identity,
 			`server.ts:10:14: import("./other.ts"): a plugin script has no dynamic import` + hint,
 		},
 		"@example/report": {
 			`plugin "@example/report": its server facet failed to build:`,
-			`server.ts:12:23: Could not resolve "example-greeting"`,
+			`server.ts:10:23: Could not resolve "example-greeting"`,
 		},
 		"@example/ruler": {
 			`plugin "@example/ruler": its server facet failed to build:`,
@@ -1254,16 +1254,19 @@ func exAcmeComponent(t *testing.T, roots []PluginRoot, cache string, versions []
 	return plugins, collected
 }
 
-// exFileOps are the probe ops of 51: `hold` holds `example.hello` and answers its text, `held` reads it again (after a reload),
-// `release` is the example's `hello.release()`.
+// exFileOps are the probe ops of 51: `hold` is the example's `await host.get(Hello)` and its `hello.release()`: the reference is
+// held for as long as the call lasts (a reference lives as long as the context it was got with, here the call's), so the call
+// stays open until `release`; `held` answers its text and whether it is held yet, `release` ends the call.
 const exFileOps = `
 hold: async (_args, { ctx }) => {
 	const Hello = next.local("example.hello", { version: 1, params: {}, members: { text: next.str() } });
-	globalThis.exHello = await ctx.get(Hello, {});
-	return globalThis.exHello.text.value;
+	const hello = await ctx.get(Hello, {});
+	globalThis.exHello = hello;
+	await new Promise((resolve) => (globalThis.exHelloEnd = resolve));
+	hello.release();
 },
-held: async () => globalThis.exHello.text.value,
-release: async () => globalThis.exHello.release(),
+held: async () => (globalThis.exHello === undefined ? null : globalThis.exHello.text.value),
+release: async () => globalThis.exHelloEnd(),
 `
 
 // exAcmeStart loads kind's plugins on a new Node host of the app (the example's `plugins.load(host, { kind, core, modules })`)
@@ -1548,7 +1551,21 @@ func TestExample51SingleFilePlugin(t *testing.T) {
 	for _, failure := range server.report.Failed {
 		printed = append(printed, "   "+failure.Plugin+" refused: "+exRefused(failure))
 	}
-	hello := server.probe.must("hold", nil)
+	holding := make(chan error, 1)
+	go func() {
+		_, err := server.probe.call("hold", nil)
+		holding <- err
+	}()
+	var hello any
+	eventually(t, 15*time.Second, "hello held", func() bool {
+		select {
+		case err := <-holding:
+			t.Fatalf("the hold ended before it was held: %v", err)
+		default:
+		}
+		hello = server.probe.must("held", nil)
+		return hello != nil
+	})
 	printed = append(printed, fmt.Sprintf("2. hello: %v | clock: %v", hello, server.read("example.clock", "text", "str")))
 
 	// 2. `hello` needs a second file: it becomes the directory `hello/` (a package.json named `hello`), its files removed.
@@ -1574,7 +1591,9 @@ func TestExample51SingleFilePlugin(t *testing.T) {
 		return marks.Set && slices.Contains(marks.Dirty, "hello")
 	})
 	marks := plugins.Marks()
-	exMarks(t, plugins, PluginsState{Dirty: []string{"bad", "clock", "hello"}, Set: true})
+	// Pi's run on macOS prints `bad` and `clock` dirty too: FSEvents delivers, late, the events of the example's own copy of
+	// `plugins/` made just before the watch began. Only the files the example changes are marked here (inotify, kqueue).
+	exMarks(t, plugins, PluginsState{Dirty: []string{"hello"}, Set: true})
 	printed = append(printed, "3. marks: "+exMarksJSON(marks))
 
 	// 3. A build discovers again; the reload changes `hello` in place (the same plugin, its object swapped), a holder sees the
@@ -1593,6 +1612,9 @@ func TestExample51SingleFilePlugin(t *testing.T) {
 	}
 	printed = append(printed, "   hello is now: "+string(layout))
 	server.probe.must("release", nil)
+	if err := <-holding; err != nil {
+		t.Fatalf("hold: %v", err)
+	}
 
 	want := []string{
 		"1. bad (file): bad.server.ts",
@@ -1600,7 +1622,7 @@ func TestExample51SingleFilePlugin(t *testing.T) {
 		"1. hello (file): hello.server.ts, hello.web.ts",
 		`   bad refused: bad.server.ts:4:24: "./helper.ts": a single-file plugin imports only host packages (the app's API); make it a directory "bad/" with a package.json`,
 		"2. hello: hello from one file | clock: ticking on the acme server",
-		`3. marks: {"dirty":["bad","clock","hello"],"install":[],"set":true,"base":false}`,
+		`3. marks: {"dirty":["hello"],"install":[],"set":true,"base":false}`,
 		`4. reload: {"added":[],"changed":["hello"],"removed":[]} | hello: hello from a directory`,
 		"   hello is now: directory",
 	}

@@ -174,6 +174,13 @@ func TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPip
 	}
 }
 
+// allowGitDependencies lets the npm of the machine install git dependencies: npm 12 refuses them unless allowed (the
+// tests' dependencies are local repositories).
+func allowGitDependencies(t *testing.T) {
+	t.Helper()
+	t.Setenv("npm_config_allow_git", "all")
+}
+
 // workerOf is the worker facet of plugin name under root, built for Node with Chord as the host package.
 func workerOf(t *testing.T, root, name string) string {
 	t.Helper()
@@ -241,6 +248,7 @@ func TestInstallDependenciesRefusesASingleFilePlugin(t *testing.T) {
 }
 
 func TestInstallDependenciesGitDependenciesInstallsAGitDependencyPinnedToACommitWithNpmTheBuildInlinesThatCommitsFile(t *testing.T) {
+	allowGitDependencies(t)
 	first := gitRepository(t, "notes", notesPackage(t, "notes at v1"), "v1", nil)
 	gitRepository(t, "notes", notesPackage(t, "notes at v2"), "v2", &first)
 	root := tempRoot(t)
@@ -258,6 +266,7 @@ func TestInstallDependenciesGitDependenciesInstallsAGitDependencyPinnedToACommit
 }
 
 func TestInstallDependenciesGitDependenciesReachesAPluginInsideAMultiPluginRepositoryThroughADependencyOnTheWholeRepositoryByPath(t *testing.T) {
+	allowGitDependencies(t)
 	repository := gitRepository(t, "plugins", map[string]string{
 		"package.json":       manifestText(t, map[string]any{"name": "@bob/plugins", "version": "1.0.0", "chord": map[string]any{"plugins": []any{"notes"}}}),
 		"notes/package.json": manifestText(t, map[string]any{"name": "@bob/notes"}),

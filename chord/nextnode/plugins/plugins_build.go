@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"os"
@@ -19,11 +20,21 @@ import (
 )
 
 // Ports packages/chord/src/next-node/plugins/build.ts (`buildFacet`, `ImportRules`, `freeGlobals`, `describe`) on esbuild's
-// Go API (`github.com/evanw/esbuild/pkg/api`, Pi's pin 0.28.2). Building (slice 7c §2): one facet of one plugin as one
-// script, by esbuild from cold. Its own files, files of other discovered plugins imported by name (`@app/notes/contract`:
-// copies) and its npm `dependencies` are inlined; host packages, this component, `chord.external` packages and Node
-// builtins stay external, answered at evaluation by the `require` the script takes. The result is plain data; a failed
+// Go API (`github.com/evanw/esbuild/pkg/api`, Pi's pin 0.28.2). Building (slice 7c §2, slice 12 §1-§4): one facet of one
+// plugin as one script, by esbuild from cold. Its own files, files of other plugins of its root imported by relative
+// path (copies; decision "Contracts come from where the plugin's code came from") and its npm `dependencies` (through
+// their `exports`) are inlined; host packages, this component, `chord.external` packages and Node builtins stay external,
+// answered at evaluation by the `require` the script takes. Every import is checked by the file it resolves to: a
+// per-kind file only for its kind, the app's API only at a listed version the kind provides, one version per facet,
+// never Chord directly. The result is plain data, the same value a worker or a page evaluates where it runs; a failed
 // build is a result, never an error.
+
+// AppApi is the app's API (slice 12 §1): the package plugins import it as and the versions it provides, newest first
+// (`{ name: "@acme/app", versions: ["v3", "v2"] }`). Its modules are host packages (`@acme/app/v3`, `@acme/app/v3/web`).
+type AppApi struct {
+	Name     string
+	Versions []string
+}
 
 // Platform is where a built script runs: Node (a server, a worker, a TUI) or a browser (a page).
 type Platform string
@@ -37,12 +48,18 @@ const (
 
 // BuildOptions is what a build takes besides the plugin and the kind.
 type BuildOptions struct {
-	// HostPackages are the host packages' specifiers (`@earendil-works/chord/next`, `react`, `react/jsx-runtime`,
-	// `@app/core`): external.
+	// HostPackages are the host packages' specifiers (`@acme/app/v3`, `@acme/app/v3/web`, `react`, `react/jsx-runtime`):
+	// external.
 	HostPackages []string
 	// Platform is where the script runs.
 	Platform Platform
-	// Plugins are the discovered plugins: a file of one of them may be imported (a copy).
+	// Api is the app's API: its imports checked by version and kind, Chord refused. Without one (nil), host packages as
+	// listed.
+	Api *AppApi
+	// Kinds are the app's facet kinds: a file named `<name>.<kind>.<ext>` is one of that kind, refused in a facet of another.
+	Kinds []string
+	// Plugins are the discovered plugins: a file of a directory plugin of the same root may be imported by relative path
+	// (a copy).
 	Plugins []Plugin
 	// PublicPath is where the app serves a browser build's assets: the URL prefix their imports evaluate to (nil: `/`).
 	PublicPath *string
@@ -76,8 +93,16 @@ const (
 	BuiltFacetFailed BuiltKind = "failed"
 )
 
+// BuiltApi is the app's API a build checked against and the version the script imports (when it imports one): evaluation
+// refuses other versions and Chord to a computed `require` as the build did to imports.
+type BuiltApi struct {
+	Name string
+	// Version is the version the script imports; empty is upstream's `undefined` (it imports none).
+	Version string
+}
+
 // BuiltFacet is a built facet: its script and what it used, or the build's errors. Plain data. Plugin and Facet (the kind)
-// are set for both kinds; Source, Digest, Inputs, Copied, CSS and Assets for BuiltFacetScript, Errors for
+// are set for both kinds; Source, Digest, Inputs, Copied, CSS, Assets and Api for BuiltFacetScript, Errors for
 // BuiltFacetFailed.
 type BuiltFacet struct {
 	Kind   BuiltKind
@@ -95,6 +120,8 @@ type BuiltFacet struct {
 	CSS *CSS
 	// Assets is a browser build's assets, by content-hashed file name.
 	Assets []Asset
+	// Api is the app's API the build checked against, when the build had one (nil otherwise).
+	Api *BuiltApi
 	// Errors is why the build failed, each naming its file and line where there is one.
 	Errors []string
 }
@@ -108,22 +135,31 @@ const pluginsSpecifier = "@earendil-works/chord/next/plugins"
 var globalMarkers = map[string]string{"__dirname": "__chord_plugin_dirname", "__filename": "__chord_plugin_filename"}
 
 // BuildFacet builds plugin's facet of kind (one esbuild build from cold): a script wrapped as `(function (require,
-// module, exports) { … })`, or the errors that refuse it (an import the rules of §2 do not admit, a syntax error,
+// module, exports) { … })`, or the errors that refuse it (an import the rules do not admit, a syntax error,
 // `import.meta`, `__dirname`, `__filename`, a literal dynamic `import("x")`, a top-level `await`), each naming its file and
 // line. A computed `import(x)` becomes a call of the script's `require`. It returns an error only when ctx is aborted
-// before the build (its cause, as `throwIfAborted`), or when the script's own source map cannot be read.
+// before the build (its cause, as `throwIfAborted`), when the facet file's real path cannot be read (upstream's `realpath`
+// rejects), or when the script's own source map cannot be read.
 func BuildFacet(plugin Plugin, kind string, options BuildOptions, ctx context.Context) (BuiltFacet, error) {
 	failed := func(errors []string) BuiltFacet {
 		return BuiltFacet{Kind: BuiltFacetFailed, Plugin: plugin.Name, Facet: kind, Errors: errors}
 	}
-	entry, ok := plugin.Facets[kind]
+	named, ok := plugin.Facets[kind]
 	if !ok {
 		return failed([]string{`plugin "` + plugin.Name + `" has no ` + kind + ` facet`}), nil
 	}
 	if ctx.Err() != nil {
 		return BuiltFacet{}, context.Cause(ctx)
 	}
-	rules := newImportRules(plugin, options)
+	// A facet file may be a link: its real file must be the plugin's, and of no other kind.
+	entry, err := filepath.EvalSymlinks(named)
+	if err != nil {
+		return BuiltFacet{}, err
+	}
+	rules := newImportRules(plugin, kind, entry, options, ctx)
+	if wrongEntry := rules.checkEntry(named, entry); wrongEntry != "" {
+		return failed([]string{wrongEntry}), nil
+	}
 	browser := options.Platform == PlatformBrowser
 	publicPath := "/"
 	if options.PublicPath != nil {
@@ -199,6 +235,9 @@ func BuildFacet(plugin Plugin, kind string, options BuildOptions, ctx context.Co
 	if len(globals) > 0 {
 		return failed(globals), nil
 	}
+	if mixed := rules.mixedVersions(); mixed != "" {
+		return failed([]string{mixed}), nil
+	}
 	digest := sha256.Sum256([]byte(source))
 	built := BuiltFacet{
 		Kind:   BuiltFacetScript,
@@ -223,6 +262,9 @@ func BuildFacet(plugin Plugin, kind string, options BuildOptions, ctx context.Co
 			return BuiltFacet{}, err
 		}
 		built.Assets = append(built.Assets, Asset{Name: name, Bytes: file.Contents})
+	}
+	if options.Api != nil {
+		built.Api = &BuiltApi{Name: options.Api.Name, Version: rules.version()}
 	}
 	return built, nil
 }
@@ -271,19 +313,21 @@ func utf16Length(text string) int {
 	return n
 }
 
-// Where a resolved file lies, from the plugin being built: its own source, another plugin's (a copy), a package.
+// Where a resolved file lies (a real path), from the plugin being built: its own source, another plugin's of its root (a
+// copy), a package of its own `node_modules`, a plugin of another root, or no plugin.
 type placeKind uint8
 
 const (
 	placeOwn placeKind = iota
 	placeCopied
 	placePackage
+	placeOtherRoot
 	placeOutside
 )
 
 type place struct {
 	kind placeKind
-	// plugin is the other plugin of a placeCopied (identity: the same pointer is the same plugin).
+	// plugin is the other plugin of a placeCopied or placeOtherRoot (identity: the same pointer is the same plugin).
 	plugin *Plugin
 }
 
@@ -311,31 +355,104 @@ var loaders = map[string]api.Loader{
 	".wasm": api.LoaderFile,
 }
 
-// importRules is the import rules of one build (§2's table) as an esbuild plugin, and what the build read: every file of a
-// plugin hashed as it is handed to esbuild (the exact bytes built, not a later read racing a save), and the copied files.
+// chordPackage is Chord's package: never imported by plugins of an app with an API (only its `/next/plugins` for
+// `pluginFile`).
+const chordPackage = "@earendil-works/chord"
+
+// manifestKind is what a directory's `package.json` is: absent, without a `chord` field, or with one.
+type manifestKind uint8
+
+const (
+	manifestNone manifestKind = iota
+	manifestPlain
+	manifestChord
+)
+
+// listedPlugins is the plugin folders a `chord` package lists, or the error of reading it.
+type listedPlugins struct {
+	dirs map[string]bool
+	err  error
+}
+
+// memo is a map of values computed once per key (upstream's map of promises): esbuild runs its callbacks on several
+// goroutines, and the first to ask for a key computes it while the others wait for that value.
+type memo[V any] struct {
+	mu      sync.Mutex
+	entries map[string]*memoEntry[V]
+}
+
+type memoEntry[V any] struct {
+	once  sync.Once
+	value V
+}
+
+func (m *memo[V]) get(key string, compute func() V) V {
+	m.mu.Lock()
+	if m.entries == nil {
+		m.entries = map[string]*memoEntry[V]{}
+	}
+	entry, ok := m.entries[key]
+	if !ok {
+		entry = &memoEntry[V]{}
+		m.entries[key] = entry
+	}
+	m.mu.Unlock()
+	entry.once.Do(func() { entry.value = compute() })
+	return entry.value
+}
+
+// importedVersion is an API version a facet imports, with its first importer.
+type importedVersion struct {
+	version  string
+	importer string
+}
+
+// importRules is the import rules of one build (§2's table, slice 12 §1-§4) as an esbuild plugin, and what the build read:
+// every file of a plugin hashed as it is handed to esbuild (the exact bytes built, not a later read racing a save), the
+// copied files, the importer of each file (for the chain a per-kind refusal names) and the API versions imported.
 // esbuild runs its callbacks on several goroutines; mu guards what they record.
 type importRules struct {
-	plugin       api.Plugin
-	own          *Plugin
+	plugin api.Plugin
+	own    *Plugin
+	kind   string
+	// entry is the facet file's real path.
+	entry string
+	// modules is the plugin's own packages' directory: every package file inlined lies in it.
+	modules string
+	// others are the other directory plugins: a single-file plugin's files are no one's to import.
 	others       []Plugin
 	options      BuildOptions
 	hostPackages map[string]bool
+	ctx          context.Context
+	// manifests is what a directory of a package's `package.json` is, by directory.
+	manifests memo[manifestKind]
+	// listed is the plugin folders a `chord` package lists, by its directory.
+	listed memo[listedPlugins]
 
 	mu         sync.Mutex
 	readInputs map[string]string
 	readCopied map[string]bool
+	// importers is the first importer of every file resolved, by file.
+	importers map[string]string
+	// versions is the API versions imported, in the order they were first imported.
+	versions []importedVersion
 }
 
-func newImportRules(own Plugin, options BuildOptions) *importRules {
+func newImportRules(own Plugin, kind, entry string, options BuildOptions, ctx context.Context) *importRules {
 	rules := &importRules{
 		own:          &own,
+		kind:         kind,
+		entry:        entry,
+		modules:      filepath.Join(own.Dir, "node_modules"),
 		options:      options,
 		hostPackages: map[string]bool{},
+		ctx:          ctx,
 		readInputs:   map[string]string{},
 		readCopied:   map[string]bool{},
+		importers:    map[string]string{},
 	}
 	for _, each := range options.Plugins {
-		if each.Dir != own.Dir {
+		if each.Dir != own.Dir && each.Layout == LayoutDirectory {
 			rules.others = append(rules.others, each)
 		}
 	}
@@ -346,13 +463,22 @@ func newImportRules(own Plugin, options BuildOptions) *importRules {
 	return rules
 }
 
+// noteImporter records importer as the first importer of path, when it has none.
+func (rules *importRules) noteImporter(path, importer string) {
+	rules.mu.Lock()
+	defer rules.mu.Unlock()
+	if _, has := rules.importers[path]; !has {
+		rules.importers[path] = importer
+	}
+}
+
 func (rules *importRules) setup(builder api.PluginBuild) {
 	builder.OnResolve(api.OnResolveOptions{Filter: ".*"}, func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 		// The plugin's files are resolved here, the entry too: esbuild then gives them no Node module type
 		// (`"type": "module"`), whose interop would read a whole host package for a default import instead of honouring
 		// the `__esModule` an ESM namespace is wrapped with (§3).
 		if args.Kind == api.ResolveEntryPoint {
-			return api.OnResolveResult{Path: resolvePath(rules.own.Dir, args.Path)}, nil
+			return api.OnResolveResult{Path: rules.entry}, nil
 		}
 		if args.PluginData == any(resolving{}) {
 			return api.OnResolveResult{}, nil
@@ -363,10 +489,12 @@ func (rules *importRules) setup(builder api.PluginBuild) {
 			return api.OnResolveResult{Errors: []api.Message{{Text: resolved.text}}}, nil
 		case resolvedExternal:
 			return api.OnResolveResult{Path: args.Path, External: true}, nil
-		case resolvedDefault:
-			return api.OnResolveResult{}, nil
 		}
-		found := builder.Resolve(resolved.path, api.ResolveOptions{
+		target := args.Path
+		if resolved.kind == resolvedPath {
+			target = resolved.path
+		}
+		found := builder.Resolve(target, api.ResolveOptions{
 			Kind:       args.Kind,
 			Importer:   args.Importer,
 			ResolveDir: args.ResolveDir,
@@ -375,10 +503,43 @@ func (rules *importRules) setup(builder api.PluginBuild) {
 		if len(found.Errors) > 0 {
 			return api.OnResolveResult{Errors: found.Errors}, nil
 		}
+		sideEffects := api.SideEffectsTrue
+		if !found.SideEffects {
+			sideEffects = api.SideEffectsFalse
+		}
+		// A module a package's `browser` field disables: as esbuild resolved it.
+		if found.Namespace != "file" {
+			return api.OnResolveResult{Path: found.Path, External: found.External, SideEffects: sideEffects, Namespace: found.Namespace, Suffix: found.Suffix}, nil
+		}
+		// esbuild resolves links: `found.Path` is the real file.
+		if resolved.kind == resolvedPackage {
+			if rules.place(found.Path).kind != placePackage {
+				return api.OnResolveResult{Errors: []api.Message{{Text: `"` + args.Path + `": resolves outside the plugin's node_modules (` + rules.shown(found.Path) + `)`}}}, nil
+			}
+			// A package that is plugin code (a `chord` field: a plugin, or a repository of several) keeps the per-kind
+			// rule; an ordinary library names its files as it likes (`pdf.worker.mjs`).
+			code, err := rules.pluginCode(found.Path)
+			if err != nil {
+				return api.OnResolveResult{}, err
+			}
+			if code != nil {
+				rules.noteImporter(found.Path, args.Importer)
+				if refused := rules.checkKind(found.Path, args.Path, code.top); refused != "" {
+					return api.OnResolveResult{Errors: []api.Message{{Text: refused}}}, nil
+				}
+			}
+			return api.OnResolveResult{Path: found.Path, SideEffects: sideEffects, Suffix: found.Suffix}, nil
+		}
+		if found.Path != rules.entry {
+			rules.noteImporter(found.Path, args.Importer)
+		}
+		if refused := rules.checkKind(found.Path, args.Path, ""); refused != "" {
+			return api.OnResolveResult{Errors: []api.Message{{Text: refused}}}, nil
+		}
 		if rules.options.Platform == PlatformNode && browserOnly[extname(found.Path)] {
 			return api.OnResolveResult{Errors: []api.Message{{Text: `"` + args.Path + `": stylesheets and assets are for browser builds`}}}, nil
 		}
-		if checked := rules.checkFile(found.Path, args.Importer, args.Path, resolved.named); checked != "" {
+		if checked := rules.checkFile(found.Path, args.Importer, args.Path); checked != "" {
 			return api.OnResolveResult{Errors: []api.Message{{Text: checked}}}, nil
 		}
 		result := api.OnResolveResult{Path: found.Path}
@@ -451,35 +612,95 @@ func (rules *importRules) copied() []string {
 	return copied
 }
 
+// version is the API version the script imports, if it imports one (one version: `mixedVersions` refuses two); empty
+// when it imports none.
+func (rules *importRules) version() string {
+	rules.mu.Lock()
+	defer rules.mu.Unlock()
+	if len(rules.versions) == 0 {
+		return ""
+	}
+	return rules.versions[0].version
+}
+
+// checkEntry is why the facet file named (its real path entry) may not be built: a link out of the plugin (a single-file
+// plugin's out of its root's top), or to a file of another kind; "" when it may.
+func (rules *importRules) checkEntry(named, entry string) string {
+	var own bool
+	if rules.own.Layout == LayoutFile {
+		own = filepath.Dir(entry) == rules.own.Dir
+	} else {
+		own = inside(rules.own.Dir, entry)
+	}
+	if !own {
+		return filepath.Base(named) + ": the facet file links out of its plugin (" + entry + ")"
+	}
+	fileKind, ok := rules.kindOf(entry, "")
+	if !ok || sameKind(fileKind, rules.kind) {
+		return ""
+	}
+	return filepath.Base(named) + ": links to a " + fileKind + " file (" + rules.shown(entry) + "), not a " + rules.kind + " facet"
+}
+
+// mixedVersions is the error of a facet importing two API versions (both named with an importer), or "".
+func (rules *importRules) mixedVersions() string {
+	rules.mu.Lock()
+	defer rules.mu.Unlock()
+	if len(rules.versions) < 2 {
+		return ""
+	}
+	name := rules.options.Api.Name
+	sorted := slices.Clone(rules.versions)
+	slices.SortFunc(sorted, func(a, b importedVersion) int { return compareUTF16(a.version, b.version) })
+	seen := make([]string, len(sorted))
+	for i, each := range sorted {
+		seen[i] = name + "/" + each.version + " (" + rules.shown(each.importer) + ")"
+	}
+	return "one facet imports one version of " + name + ": this one imports " + strings.Join(seen, " and ")
+}
+
 type resolutionKind uint8
 
 const (
 	resolvedExternal resolutionKind = iota
-	resolvedDefault
+	resolvedPackage
 	resolvedPath
 	resolvedError
 )
 
-// resolution is what an import becomes (see importRules.resolve).
+// resolution is what an import becomes (see importRules.resolve): external, refused, a package, or a plugin file.
 type resolution struct {
 	kind  resolutionKind
 	path  string
 	asset bool
-	// named is the plugin an import by name named (`@app/notes/contract`).
-	named *Plugin
 	text  string
 }
 
-// resolve is what an import of specifier from importer becomes: external, refused, esbuild's own resolution (a package of
-// the plugin's `dependencies`, or anything a package imports), or a path esbuild resolves and the rules check.
+// resolve is what an import of specifier from importer becomes: external, refused, a package esbuild resolves (one of the
+// plugin's `dependencies`, or anything a package imports) or a path esbuild resolves and the rules check.
 func (rules *importRules) resolve(specifier, importer string, kind api.ResolveKind) resolution {
 	browser := rules.options.Platform == PlatformBrowser
 	failure := func(text string) resolution { return resolution{kind: resolvedError, text: text} }
 	if kind == api.ResolveJSDynamicImport {
 		return failure(`import("` + specifier + `"): a plugin script has no dynamic import (` + pluginFileHint + `)`)
 	}
-	if specifier == pluginsSpecifier || rules.hostPackages[specifier] {
+	if specifier == pluginsSpecifier {
 		return resolution{kind: resolvedExternal}
+	}
+	if imported, ok := rules.apiImport(specifier, importer); ok {
+		return imported
+	}
+	if rules.hostPackages[specifier] {
+		return resolution{kind: resolvedExternal}
+	}
+	if rules.own.Layout == LayoutFile {
+		directory := rules.own.Name + "/"
+		return failure(`"` + specifier + `": a single-file plugin imports only host packages (the app's API); make it a directory "` + directory + `" with a package.json`)
+	}
+	from := rules.place(importer)
+	// A copied file (another plugin's) imports host packages and its own plugin's files only: no builtins either.
+	if from.kind == placeCopied && !strings.HasPrefix(specifier, ".") && !filepath.IsAbs(specifier) {
+		return failure(`"` + specifier + `": ` + copiedRule(*from.plugin))
 	}
 	if isBuiltin(specifier) {
 		if !browser {
@@ -493,31 +714,13 @@ func (rules *importRules) resolve(specifier, importer string, kind api.ResolveKi
 		}
 		return failure(`"` + specifier + `": assets by URL are for browser builds (` + pluginFileHint + `)`)
 	}
-	from := rules.place(importer)
 	if from.kind == placePackage {
-		return resolution{kind: resolvedDefault}
+		return resolution{kind: resolvedPackage}
 	}
 	if strings.HasPrefix(specifier, ".") || filepath.IsAbs(specifier) {
 		return resolution{kind: resolvedPath, path: specifier}
 	}
 	name := packageName(specifier)
-	var named *Plugin
-	if name == rules.own.Name {
-		named = rules.own
-	} else {
-		for i := range rules.others {
-			if rules.others[i].Name == name {
-				named = &rules.others[i]
-				break
-			}
-		}
-	}
-	if named != nil {
-		return rules.byName(specifier, named, from)
-	}
-	if from.kind == placeCopied {
-		return failure(`"` + specifier + `": ` + copiedRule(*from.plugin))
-	}
 	if slices.Contains(rules.own.External, name) {
 		if !browser {
 			return resolution{kind: resolvedExternal}
@@ -525,37 +728,136 @@ func (rules *importRules) resolve(specifier, importer string, kind api.ResolveKi
 		return failure(`"` + specifier + `": chord.external packages are for Node builds`)
 	}
 	if slices.Contains(rules.own.Dependencies, name) {
-		return resolution{kind: resolvedDefault}
+		return resolution{kind: resolvedPackage}
 	}
-	return failure(`"` + specifier + `": neither a host package, in the dependencies of plugin "` + rules.own.Name + `" nor a discovered plugin "` + name + `"`)
+	return failure(`"` + specifier + `": neither a host package nor in the dependencies of plugin "` + rules.own.Name + `"`)
 }
 
-// byName is an import by name of a file of plugin named (`@app/notes/contract`, decision "Plugins import each other by
-// name"): its path in that plugin's directory, wherever that is; from a copied file only its own plugin's.
-func (rules *importRules) byName(specifier string, named *Plugin, from place) resolution {
-	file := ""
-	if len(specifier) > len(named.Name) {
-		file = specifier[len(named.Name)+1:]
+// newestVersion is the app's newest API version as upstream interpolates `api.versions[0]`: `undefined` for an app that
+// lists no version.
+func newestVersion(app *AppApi) string {
+	if len(app.Versions) == 0 {
+		return "undefined"
 	}
-	if file == "" {
-		return resolution{kind: resolvedError, text: `"` + specifier + `": names plugin "` + named.Name + `", not a file of it ("` + named.Name + `/contract")`}
-	}
-	if from.kind == placeCopied && from.plugin != named {
-		return resolution{kind: resolvedError, text: `"` + specifier + `": ` + copiedRule(*from.plugin)}
-	}
-	return resolution{kind: resolvedPath, path: filepath.Join(named.Dir, file), named: named}
+	return app.Versions[0]
 }
 
-// checkFile is why the file path (resolved from importer's import of specifier, by name of plugin named or a relative
-// path) may not be inlined: a relative path into another plugin's directory, outside every discovered plugin, or, from a
-// copied file, outside that file's own plugin; "" when it may (another plugin's file is recorded as copied).
-func (rules *importRules) checkFile(path, importer, specifier string, named *Plugin) string {
+// apiImport is an import of the app's API or of Chord when the app has an API (slice 12 §1): a listed version the kind
+// provides is external (its version recorded); an unlisted version, a module the kind lacks and Chord itself are refused.
+// It reports false for any other specifier.
+func (rules *importRules) apiImport(specifier, importer string) (resolution, bool) {
+	app := rules.options.Api
+	if app == nil {
+		return resolution{}, false
+	}
+	failure := func(text string) (resolution, bool) { return resolution{kind: resolvedError, text: text}, true }
+	newest := app.Name + "/" + newestVersion(app)
+	if packageName(specifier) == chordPackage {
+		return failure(`"` + specifier + `": plugins import Chord through the app's API ("` + newest + `"), never directly`)
+	}
+	if specifier != app.Name && !strings.HasPrefix(specifier, app.Name+"/") {
+		return resolution{}, false
+	}
+	provided := "this app provides " + strings.Join(app.Versions, ", ")
+	version, _, _ := strings.Cut(strings.TrimPrefix(strings.TrimPrefix(specifier, app.Name), "/"), "/")
+	if version == "" {
+		return failure(`"` + specifier + `": import a version of the app's API (` + provided + `)`)
+	}
+	if !slices.Contains(app.Versions, version) {
+		return failure(`"` + specifier + `": ` + app.Name + "/" + version + " is not available: " + provided)
+	}
+	if !rules.hostPackages[specifier] {
+		return failure(`"` + specifier + `": not available to ` + rules.kind + ` facets`)
+	}
+	rules.mu.Lock()
+	if !slices.ContainsFunc(rules.versions, func(each importedVersion) bool { return each.version == version }) {
+		rules.versions = append(rules.versions, importedVersion{version: version, importer: importer})
+	}
+	rules.mu.Unlock()
+	return resolution{kind: resolvedExternal}, true
+}
+
+// checkKind is why the plugin file path (not a package's: npm packages name files as they like, `pdf.worker.mjs`) may not
+// be in a facet of this kind: a per-kind file (`contract.web.tsx`) or a facet file (`web.tsx`) of another kind, named with
+// the chain of imports that reached it; "" when it may. packageTop is the directory of the plugin package path is in, or "".
+func (rules *importRules) checkKind(path, specifier, packageTop string) string {
+	fileKind, ok := rules.kindOf(path, packageTop)
+	if !ok || sameKind(fileKind, rules.kind) {
+		return ""
+	}
+	chain := rules.chainOf(path)
+	for i, file := range chain {
+		chain[i] = rules.shown(file)
+	}
+	return `"` + specifier + `": a ` + fileKind + ` file, imported into a ` + rules.kind + ` facet (` + strings.Join(chain, " → ") + `)`
+}
+
+// kindOf is the kind of the plugin file path, one of the app's kinds (compared without case): a name
+// `<name>.<kind>.<ext>`, or a facet file `<kind>.<ext>` at the top of a directory plugin (or of the plugin package
+// packageTop, when it is not empty). It reports false for a file of no kind.
+func (rules *importRules) kindOf(path, packageTop string) (string, bool) {
+	parts := strings.Split(filepath.Base(path), ".")
+	if len(parts) >= 3 {
+		return rules.kindNamed(parts[len(parts)-2])
+	}
+	dir := filepath.Dir(path)
+	top := packageTop != "" && dir == packageTop
+	if !top {
+		for _, each := range append([]Plugin{*rules.own}, rules.others...) {
+			if each.Layout == LayoutDirectory && dir == each.Dir {
+				top = true
+				break
+			}
+		}
+	}
+	if len(parts) == 2 && top {
+		return rules.kindNamed(parts[0])
+	}
+	return "", false
+}
+
+// kindNamed is the app's kind that name is, compared without case.
+func (rules *importRules) kindNamed(name string) (string, bool) {
+	for _, kind := range rules.options.Kinds {
+		if sameKind(kind, name) {
+			return kind, true
+		}
+	}
+	return "", false
+}
+
+// chainOf is the files from the entry to file, by their first importers; an import cycle ends the walk.
+func (rules *importRules) chainOf(file string) []string {
+	rules.mu.Lock()
+	defer rules.mu.Unlock()
+	chain := []string{file}
+	seen := map[string]bool{file: true}
+	for at, ok := rules.importers[file]; ok && !seen[at]; at, ok = rules.importers[at] {
+		seen[at] = true
+		chain = slices.Insert(chain, 0, at)
+	}
+	return chain
+}
+
+// shown is file as an error names it: relative to the plugin's directory.
+func (rules *importRules) shown(file string) string {
+	rest, err := relative(rules.own.Dir, file)
+	if err != nil {
+		rest = file
+	}
+	return filepath.ToSlash(rest)
+}
+
+// checkFile is why the plugin file path (resolved from importer's import of specifier) may not be inlined: outside the
+// plugin's root, in no plugin of it, or, from a copied file, outside that file's own plugin; "" when it may (another
+// plugin's file of the root is recorded as copied).
+func (rules *importRules) checkFile(path, importer, specifier string) string {
 	from := rules.place(importer)
 	to := rules.place(path)
 	if to.kind == placeOwn && from.kind == placeOwn {
 		return ""
 	}
-	if to.kind == placeCopied && (to.plugin == named || (from.kind == placeCopied && from.plugin == to.plugin)) {
+	if to.kind == placeCopied && (from.kind == placeOwn || (from.kind == placeCopied && from.plugin == to.plugin)) {
 		rules.mu.Lock()
 		rules.readCopied[path] = true
 		rules.mu.Unlock()
@@ -564,26 +866,118 @@ func (rules *importRules) checkFile(path, importer, specifier string, named *Plu
 	if from.kind == placeCopied {
 		return `"` + specifier + `": ` + copiedRule(*from.plugin)
 	}
-	if to.kind == placeCopied {
-		return `"` + specifier + `": a relative path into plugin "` + to.plugin.Name + `" (import its files by name: "` + to.plugin.Name + `/…")`
+	if to.kind == placeOutside && inside(rules.own.Root, path) {
+		return `"` + specifier + `": not a file of a plugin in this root`
 	}
-	return `"` + specifier + `": outside the plugin (base code is reached through a host package, packages through dependencies)`
+	base := "a host package"
+	if app := rules.options.Api; app != nil {
+		base = `the app's API ("` + app.Name + "/" + newestVersion(app) + `")`
+	}
+	return `"` + specifier + `": outside the plugin's root (base code is reached through ` + base + `, other repositories' plugins through dependencies)`
 }
 
-// place is where path lies.
+// pluginCodeOf is what is known of a package file that is plugin code.
+type pluginCodeOf struct {
+	// top is the file's own directory when that is the package's (a facet file there is of its kind), else empty.
+	top string
+}
+
+// pluginCode is whether the package file path is plugin code: its nearest `package.json` (walking up to the plugin's
+// `node_modules`) has a `chord` field, or is a plugin folder the next `package.json` above lists in its `chord.plugins` (a
+// plugin of a repository of several, reached as a dependency); a library (even one nested in a plugin package) is not. It
+// returns nil for a library.
+func (rules *importRules) pluginCode(path string) (*pluginCodeOf, error) {
+	var nearest string
+	for dir := filepath.Dir(path); inside(rules.modules, dir); dir = filepath.Dir(dir) {
+		manifest := rules.manifestIn(dir)
+		if manifest == manifestNone {
+			continue
+		}
+		if nearest == "" && manifest == manifestChord {
+			if dir == filepath.Dir(path) {
+				return &pluginCodeOf{top: dir}, nil
+			}
+			return &pluginCodeOf{}, nil
+		}
+		if nearest == "" {
+			nearest = dir
+			continue
+		}
+		listed := rules.listedIn(dir)
+		if listed.err != nil {
+			return nil, listed.err
+		}
+		if manifest == manifestPlain || !listed.dirs[nearest] {
+			return nil, nil
+		}
+		if nearest == filepath.Dir(path) {
+			return &pluginCodeOf{top: nearest}, nil
+		}
+		return &pluginCodeOf{}, nil
+	}
+	return nil, nil
+}
+
+// listedIn is the plugin folders the package in dir lists in `chord.plugins` (discovery's reading of it; once per build).
+func (rules *importRules) listedIn(dir string) listedPlugins {
+	return rules.listed.get(dir, func() listedPlugins {
+		at := RootContext{Root: dir, Required: false, Kinds: rules.options.Kinds}
+		discovery, err := DiscoverPackage(dir, at, rules.ctx)
+		if err != nil {
+			return listedPlugins{err: err}
+		}
+		dirs := map[string]bool{}
+		for _, each := range discovery.Plugins {
+			dirs[each.Dir] = true
+		}
+		return listedPlugins{dirs: dirs}
+	})
+}
+
+// manifestIn is what dir's `package.json` is: absent, without a `chord` field, or with one (read once per build).
+func (rules *importRules) manifestIn(dir string) manifestKind {
+	return rules.manifests.get(dir, func() manifestKind {
+		text, err := os.ReadFile(filepath.Join(dir, "package.json"))
+		if err != nil {
+			return manifestNone
+		}
+		// A trust boundary: a package's manifest, read only for its `chord` field.
+		var manifest map[string]json.RawMessage
+		if json.Unmarshal(text, &manifest) != nil {
+			return manifestPlain
+		}
+		if _, has := manifest["chord"]; has {
+			return manifestChord
+		}
+		return manifestPlain
+	})
+}
+
+// place is where path (a real path) lies; a package is one of the plugin's own `node_modules`, any other is outside.
 func (rules *importRules) place(path string) place {
-	if slices.Contains(strings.Split(path, string(filepath.Separator)), "node_modules") {
+	if inside(rules.modules, path) {
 		return place{kind: placePackage}
 	}
 	if inside(rules.own.Dir, path) {
 		return place{kind: placeOwn}
 	}
+	// Another plugin's own packages are no one's to import; a root may itself lie under a `node_modules` (an app installed
+	// from npm with its plugins), so only the part below a plugin's directory counts.
 	for i := range rules.others {
-		if inside(rules.others[i].Dir, path) {
-			return place{kind: placeCopied, plugin: &rules.others[i]}
+		other := &rules.others[i]
+		if inside(other.Dir, path) && !inside(filepath.Join(other.Dir, "node_modules"), path) {
+			if other.Root == rules.own.Root {
+				return place{kind: placeCopied, plugin: other}
+			}
+			return place{kind: placeOtherRoot, plugin: other}
 		}
 	}
 	return place{kind: placeOutside}
+}
+
+// sameKind is whether two kind names are the same kind: compared without case (`contract.Web.ts` is a web file).
+func sameKind(a, b string) bool {
+	return strings.EqualFold(a, b)
 }
 
 // copiedRule is the rule a copied file broke.

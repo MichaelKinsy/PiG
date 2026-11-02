@@ -374,6 +374,10 @@ func (p *WorkerPlugins) Load(h host.Host, options WorkerLoad, ctx context.Contex
 		Address: &address, Principal: options.Principal, Peer: options.Peer, Heartbeat: &nodeHeartbeat, Bridged: bridged,
 	}, ctx)
 	if err != nil {
+		// A *plugins.PluginError comes with the loaded host (Pi's `host` is the caller's to stop): the worker ends instead.
+		if node != nil {
+			_ = node.Close(context.WithoutCancel(ctx))
+		}
 		return host.LoadReport{}, err
 	}
 	nodeLink.Store(node)
