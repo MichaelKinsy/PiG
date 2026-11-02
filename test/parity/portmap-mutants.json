@@ -96,6 +96,23 @@
    "new": "\tif providerDisplay != \"\" || providerDisplay == unknownProvider {"
   }
  ],
+ "packages/coding-agent/src/core/bash-executor.ts": [
+  {
+   "file": "internal/codingagent/tools/bash_executor.go",
+   "old": "\"\\r\", \"\")",
+   "new": "\"\\r\", \" \")"
+  },
+  {
+   "file": "internal/codingagent/tools/bash_executor.go",
+   "old": "\tif cancelled {\n\t\texitCode = nil\n\t}",
+   "new": "\tif !cancelled {\n\t\texitCode = nil\n\t}"
+  },
+  {
+   "file": "internal/codingagent/tools/bash_executor.go",
+   "old": "for outputBytes > maxOutputBytes && len(outputChunks) > 1 {",
+   "new": "for outputBytes > maxOutputBytes*2 && len(outputChunks) > 1 {"
+  }
+ ],
  "packages/coding-agent/src/core/bug-report.ts": [
   {
    "file": "coding/bug_report.go",
@@ -187,6 +204,118 @@
    "new": "\tif lfIdx != -1 {"
   }
  ],
+ "packages/coding-agent/src/core/tools/edit.ts": [
+  {
+   "file": "internal/codingagent/tools/edit.go",
+   "old": "\"Successfully replaced %d block(s) in %s.\"",
+   "new": "\"Successfully replaced %d blocks in %s.\""
+  },
+  {
+   "file": "internal/codingagent/tools/edit.go",
+   "old": "detail = \"Error code: \" + code",
+   "new": "detail = \"Error: \" + err.Error()"
+  },
+  {
+   "file": "internal/codingagent/tools/edit.go",
+   "old": "normalized := normalizeToLF(content)",
+   "new": "normalized := content"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/grep.ts": [
+  {
+   "file": "internal/codingagent/tools/grep.go",
+   "old": "\tif p.IgnoreCase {",
+   "new": "\tif !p.IgnoreCase {"
+  },
+  {
+   "file": "internal/codingagent/tools/grep.go",
+   "old": "\"No matches found\"",
+   "new": "\"No match found\""
+  },
+  {
+   "file": "internal/codingagent/tools/grep.go",
+   "old": "effectiveLimit = math.Max(1, effectiveLimit)",
+   "new": "effectiveLimit = math.Max(2, effectiveLimit)"
+  },
+  {
+   "file": "internal/codingagent/tools/grep.go",
+   "old": "\tif p.Literal {",
+   "new": "\tif !p.Literal {"
+  },
+  {
+   "file": "internal/codingagent/tools/grep.go",
+   "old": "if float64(run.matchCount) >= limit {",
+   "new": "if float64(run.matchCount) > limit {"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/ls.ts": [
+  {
+   "file": "internal/codingagent/tools/ls.go",
+   "old": "if float64(len(results)) >= effectiveLimit {",
+   "new": "if float64(len(results)) > effectiveLimit {"
+  },
+  {
+   "file": "internal/codingagent/tools/ls.go",
+   "old": "\t\t\tentry += \"/\"",
+   "new": "\t\t\tentry += \"\\\\\""
+  },
+  {
+   "file": "internal/codingagent/tools/ls.go",
+   "old": "\"(empty directory)\"",
+   "new": "\"(empty)\""
+  }
+ ],
+ "packages/coding-agent/src/core/tools/output-accumulator.ts": [
+  {
+   "file": "internal/codingagent/tools/output_accumulator.go",
+   "old": "return errAppendAfterFinish",
+   "new": "return nil"
+  },
+  {
+   "file": "internal/codingagent/tools/output_accumulator.go",
+   "old": "truncated := a.totalLines > a.maxLines || a.totalDecodedBytes > a.maxBytes",
+   "new": "truncated := a.totalLines >= a.maxLines || a.totalDecodedBytes > a.maxBytes"
+  },
+  {
+   "file": "internal/codingagent/tools/output_accumulator.go",
+   "old": "return a.totalRawBytes > a.maxBytes || a.totalDecodedBytes > a.maxBytes || a.totalLines > a.maxLines",
+   "new": "return a.totalRawBytes > a.maxBytes || a.totalDecodedBytes > a.maxBytes"
+  },
+  {
+   "file": "internal/codingagent/tools/output_accumulator.go",
+   "old": "\ta.totalLines = a.completedLines\n\tif a.hasOpenLine {\n\t\ta.totalLines++\n\t}",
+   "new": "\ta.totalLines = a.completedLines"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/path-utils.ts": [
+  {
+   "file": "internal/codingagent/tools/path_utils.go",
+   "old": "\t\treturn s[1:]\n",
+   "new": "\t\treturn s\n"
+  },
+  {
+   "file": "internal/codingagent/tools/path_utils.go",
+   "old": "amPmVariant != resolved && fileExists(amPmVariant)",
+   "new": "amPmVariant == resolved && fileExists(amPmVariant)"
+  },
+  {
+   "file": "internal/codingagent/tools/path_utils.go",
+   "old": "strings.ReplaceAll(filePath, \"'\", \"\\u2019\")",
+   "new": "strings.ReplaceAll(filePath, \"'\", \"\\u2018\")"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/read.ts": [
+  {
+   "file": "internal/codingagent/tools/read.go",
+   "old": "startLine = math.Max(0, *p.Offset-1)",
+   "new": "startLine = math.Max(0, *p.Offset)"
+  },
+  {
+   "file": "internal/codingagent/tools/read.go",
+   "old": "if tr.TruncatedBy == \"lines\" {",
+   "new": "if tr.TruncatedBy == \"bytes\" {"
+  }
+ ],
  "packages/coding-agent/src/core/tools/render-utils.ts": [
   {
    "file": "tui/tool_call_args.go",
@@ -212,6 +341,57 @@
    "file": "tui/tool_path_render.go",
    "old": "ToolOutput, \"...\")",
    "new": "ToolOutput, \"..\")"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/tool-definition-wrapper.ts": [
+  {
+   "file": "coding/extension_bridge.go",
+   "old": "trimmed == \"\" || trimmed == \"false\" || trimmed == \"null\"",
+   "new": "trimmed == \"\" || trimmed == \"null\""
+  },
+  {
+   "file": "coding/extension_bridge.go",
+   "old": "return &bridgeTool{def: rt.Definition, declaration",
+   "new": "return &bridgeTool{def: extension.ToolDefinition{Name: rt.Definition.Name, Description: rt.Definition.Description, Parameters: rt.Definition.Parameters}, declaration"
+  },
+  {
+   "file": "coding/extension_bridge.go",
+   "old": "if b.def.ExecutionMode == \"sequential\" {",
+   "new": "if b.def.ExecutionMode != \"sequential\" {"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/truncate.ts": [
+  {
+   "file": "internal/codingagent/tools/truncate.go",
+   "old": "scaled := int64(f*10 + 0.5)",
+   "new": "scaled := int64(f * 10)"
+  },
+  {
+   "file": "internal/codingagent/tools/truncate.go",
+   "old": "if units+n > maxChars {",
+   "new": "if units+n >= maxChars {"
+  },
+  {
+   "file": "internal/codingagent/tools/truncate.go",
+   "old": "\t\tMaxLines:              maxLines,",
+   "new": "\t\tMaxLines:              maxBytes,"
+  },
+  {
+   "file": "internal/truncate/tail.go",
+   "old": "return w.maxBytes + 2",
+   "new": "return w.maxBytes + 1"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/write.ts": [
+  {
+   "file": "internal/codingagent/tools/write.go",
+   "old": "\"Successfully wrote to \" + p.Path",
+   "new": "\"Wrote \" + p.Path"
+  },
+  {
+   "file": "internal/codingagent/tools/write.go",
+   "old": "ops.Mkdir(filepath.Dir(path))",
+   "new": "ops.Mkdir(path)"
   }
  ],
  "packages/coding-agent/src/modes/interactive/components/assistant-message.ts": [
