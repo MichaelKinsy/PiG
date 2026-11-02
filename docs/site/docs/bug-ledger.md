@@ -1018,6 +1018,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a9264aa](#bf-a9264aa) | A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the… | PiG's own defect | All platforms | Unreleased |
 | [BF-a94455c](#bf-a94455c) | The durable code mode joins the text items of a script's output in linear time (Pi f11e50f7… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a9757c8](#bf-a9757c8) | A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a9d41ed](#bf-a9d41ed) | `chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a… | PiG's own defect | All platforms | Unreleased |
 | [BF-aa2003c](#bf-aa2003c) | The edit tool's prepared arguments keep the members in the order the model sent them | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aa69959](#bf-aa69959) | Key matching follows Pi for more terminal inputs and key identifiers | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aabd300](#bf-aabd300) | An OpenAI Responses, Azure OpenAI Responses or Google stream event whose JSON is a number, string, boolean or… | PiG's own defect | All platforms | 0.5.0 |
@@ -1348,6 +1349,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e59f3f6](#bf-e59f3f6) | Fixed tool-call arguments losing a field and every field after it when the model wrote an invalid `\u` escape… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e5a345e](#bf-e5a345e) | An Anthropic request holds a mid-conversation system update until an assistant message that is actually sent… | A fix Pi shipped that PiG ported | All platforms | 0.5.3 |
 | [BF-e5aae63](#bf-e5aae63) | The editor now enters bash mode (bash border color, Escape clears it) when the text starts with `!` after any… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e5b8ad5](#bf-e5b8ad5) | `chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was… | PiG's own defect | All platforms | Unreleased |
+| [BF-e5b8ad5-2](#bf-e5b8ad5-2) | `chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the… | PiG's own defect | All platforms | Unreleased |
 | [BF-e5f9fdd](#bf-e5f9fdd) | The provider retry transport no longer replaces `Body` on the caller's request when it retries | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e63c61c](#bf-e63c61c) | fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209) | PiG's own defect | All platforms | Unreleased |
 | [BF-e64d2cf](#bf-e64d2cf) | fix(tui): a tool error result collapses like any other (Pi updateResult) | PiG's own defect | All platforms | Unreleased |
@@ -15336,6 +15339,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/provider_wrap_test.go::TestWrapBuiltinProviderResolvesTheEndpointFromTheConfiguredEnv`, `coding/cloudflare_build_model_test.go::TestBuildModelCloudflareEndpointUsesTheStoredCredentialEnv`
 - **Release note:** A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves `{CLOUDFLARE_ACCOUNT_ID}` and `{CLOUDFLARE_GATEWAY_ID}` from the stored credential's env again, under the request env, as Pi's `Models.applyAuth` merges the resolution env before `cloudflareStreams` runs. Since `ai.WrapBuiltinProvider` the wrapper read only the request env, so such a request went to the literal placeholder URL.
 
+### BF-a9d41ed
+
+**`chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a proxy script for a Go core facet whose name has `<`, `>` or `&` is written as `JSON.stringify` writes it.
+- **Root cause:** The Node host owns the context of the work its process asks of the Go side (it ends with the process); a failed build's errors array is sent when it is empty; the bridged proxy script is written as JSON.stringify writes it. The remaining findings are allowed with the Pi line that does the same (build.ts:157, :399) or the lifetime that ends them.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a9d41edbb7` (2026-11-01)
+- **Tests:** `chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeLifeContextEndsWithTheProcess`, `chord/nextnode/plugins/plugins_node_wire_test.go::TestBridgedProxyScriptWritesHTMLCharactersAsJSONStringifyDoes`, `chord/nextnode/plugins/plugins_node_wire_test.go::TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways`
+- **Release note:** `chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a proxy script for a Go core facet whose name has `<`, `>` or `&` is written as `JSON.stringify` writes it.
+
 ### BF-aa2003c
 
 **The edit tool's prepared arguments keep the members in the order the model sent them**
@@ -19894,6 +19911,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e5aae639c1` (2026-10-13)
 - **Tests:** `internal/codingagent/tool_codemode_timer_test.go::TestCodemodeRowShowsElapsedWhileRunningAndTookOnceFinished`, `tui/bash_execution_test.go::TestEditorBashModeTrimsTheWholeTextAsJavaScript`, `tui/terminal_image_test.go::TestHerdrWithGraphicsSignalRendersKittyImage`
 - **Release note:** The editor now enters bash mode (bash border color, Escape clears it) when the text starts with `!` after any JavaScript whitespace, including blank lines and non-breaking spaces, as in Pi. PiG looked only at spaces and tabs on the first line.
+
+### BF-e5b8ad5
+
+**`chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was counted in UTF-16 units after non-ASCII text.
+- **Root cause:** NodeMember.Value waits on the host's life without awaitAborted, so the exit is not joined with a cancellation nobody asked for. Pi's describe prints esbuild's `location.column`, which the JS API reports in bytes: the column is printed as esbuild gives it. builtWire is encoded by its struct tags.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e5b8ad5546` (2026-11-01)
+- **Tests:** `chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildColumnsAreBytesForErrorsAndUTF16CodeUnitsForGlobals`, `chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeMemberValueInFlightWhenTheProcessDiesReturnsItsExitOnly`, `chord/nextnode/plugins/plugins_node_wire_test.go::TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways`
+- **Release note:** `chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was counted in UTF-16 units after non-ASCII text.
+
+### BF-e5b8ad5-2
+
+**`chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the process's exit alone, not also a cancellation nobody asked for.
+- **Root cause:** NodeMember.Value waits on the host's life without awaitAborted, so the exit is not joined with a cancellation nobody asked for. Pi's describe prints esbuild's `location.column`, which the JS API reports in bytes: the column is printed as esbuild gives it. builtWire is encoded by its struct tags.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e5b8ad5546` (2026-11-01)
+- **Tests:** `chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildColumnsAreBytesForErrorsAndUTF16CodeUnitsForGlobals`, `chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeMemberValueInFlightWhenTheProcessDiesReturnsItsExitOnly`, `chord/nextnode/plugins/plugins_node_wire_test.go::TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways`
+- **Release note:** `chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the process's exit alone, not also a cancellation nobody asked for.
 
 ### BF-e5f9fdd
 

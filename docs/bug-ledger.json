@@ -28506,6 +28506,30 @@
       ]
     },
     {
+      "id": "BF-a9d41ed",
+      "title": "`chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a…",
+      "symptom": "`chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a proxy script for a Go core facet whose name has `\u003c`, `\u003e` or `\u0026` is written as `JSON.stringify` writes it.",
+      "rootCause": "The Node host owns the context of the work its process asks of the Go side (it ends with the process); a failed build's errors array is sent when it is empty; the bridged proxy script is written as JSON.stringify writes it. The remaining findings are allowed with the Pi line that does the same (build.ts:157, :399) or the lifetime that ends them.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a proxy script for a Go core facet whose name has `\u003c`, `\u003e` or `\u0026` is written as `JSON.stringify` writes it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a9d41edbb7",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeLifeContextEndsWithTheProcess",
+        "chord/nextnode/plugins/plugins_node_wire_test.go::TestBridgedProxyScriptWritesHTMLCharactersAsJSONStringifyDoes",
+        "chord/nextnode/plugins/plugins_node_wire_test.go::TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways"
+      ]
+    },
+    {
       "id": "BF-aa2003c",
       "title": "The edit tool's prepared arguments keep the members in the order the model sent them",
       "symptom": "A `tool_call` handler used to see the members sorted, with `\u003c`, `\u003e` and `\u0026` escaped.",
@@ -39072,6 +39096,54 @@
         "internal/codingagent/tool_codemode_timer_test.go::TestCodemodeRowShowsElapsedWhileRunningAndTookOnceFinished",
         "tui/bash_execution_test.go::TestEditorBashModeTrimsTheWholeTextAsJavaScript",
         "tui/terminal_image_test.go::TestHerdrWithGraphicsSignalRendersKittyImage"
+      ]
+    },
+    {
+      "id": "BF-e5b8ad5",
+      "title": "`chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was…",
+      "symptom": "`chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was counted in UTF-16 units after non-ASCII text.",
+      "rootCause": "NodeMember.Value waits on the host's life without awaitAborted, so the exit is not joined with a cancellation nobody asked for. Pi's describe prints esbuild's `location.column`, which the JS API reports in bytes: the column is printed as esbuild gives it. builtWire is encoded by its struct tags.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was counted in UTF-16 units after non-ASCII text.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e5b8ad5546",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildColumnsAreBytesForErrorsAndUTF16CodeUnitsForGlobals",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeMemberValueInFlightWhenTheProcessDiesReturnsItsExitOnly",
+        "chord/nextnode/plugins/plugins_node_wire_test.go::TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways"
+      ]
+    },
+    {
+      "id": "BF-e5b8ad5-2",
+      "title": "`chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the…",
+      "symptom": "`chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the process's exit alone, not also a cancellation nobody asked for.",
+      "rootCause": "NodeMember.Value waits on the host's life without awaitAborted, so the exit is not joined with a cancellation nobody asked for. Pi's describe prints esbuild's `location.column`, which the JS API reports in bytes: the column is printed as esbuild gives it. builtWire is encoded by its struct tags.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the process's exit alone, not also a cancellation nobody asked for.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e5b8ad5546",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildColumnsAreBytesForErrorsAndUTF16CodeUnitsForGlobals",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeMemberValueInFlightWhenTheProcessDiesReturnsItsExitOnly",
+        "chord/nextnode/plugins/plugins_node_wire_test.go::TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways"
       ]
     },
     {
