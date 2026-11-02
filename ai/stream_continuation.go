@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 )
 
+// Ports packages/ai/src/utils/event-stream.ts (the reaction-queue ordering a for-await consumer of EventStream observes).
 // StreamContinuation reserves a FIFO continuation before its owner transfers work to another goroutine. Its owner must Run it once or Cancel it before abandoning queued work.
 type StreamContinuation struct {
 	turn    *continuationTurn

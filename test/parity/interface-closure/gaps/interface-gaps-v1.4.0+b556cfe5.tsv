@@ -1,4 +1,3 @@
-pkg:agent/.#AgentToolParams	agent	no-go-symbol	
 pkg:ai/.#CacheRetention	ai	undecidable	ai/types.go#CacheRetention
 pkg:ai/.#ChatTemplateKwargValue	ai	undecidable	ai/types_unions.go#ChatTemplateKwargValue
 pkg:ai/.#ModelCost	ai	undecidable	ai/types.go#ModelCost

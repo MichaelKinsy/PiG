@@ -18,8 +18,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/procpolicy"
 )
 
-// Tool-call execution for one assistant message. Mirrors upstream
-// packages/agent/src/agent-loop.ts executeToolCalls and its helpers.
+// Tool-call execution for one assistant message.
+// Ports packages/agent/src/agent-loop.ts (executeToolCalls and its helpers).
 
 // executedToolCallBatch is the outcome of one assistant message's tool calls.
 type executedToolCallBatch struct {

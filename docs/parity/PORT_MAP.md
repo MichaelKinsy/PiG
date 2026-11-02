@@ -129,8 +129,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | upstream | pig | status |
 |---|---|---|
 | `packages/agent/src/agent.ts` | `agent/agent.go + agent/lifecycle.go + agent/queue.go (StreamFunction exposes the caller override; nil denotes the stock path, whose DefaultStreamFn is stored separately because Go cannot compare functions)`, `agent/agent_prompt.go`, `agent/agent_state.go` | ✅ |
-| `packages/agent/src/agent-loop.ts` | `agent/agent_loop.go + agent/standalone_loop.go + agent/run_tool_call.go + agent/agent.go + agent/message_json.go + agent/tool_execution.go + agent/system_state.go; shallow stream views use ai/assistant_observation.go and ai/stream_observation.go (all 35 agent-loop.test.ts cases, the standalone loop API and runToolCall are ported; docs/parity/gap-closure/gap-agent-tui.md)` | ✅ |
-| `packages/agent/src/types.ts` | `agent/types.go + agent/agent.go + agent/message_json.go`, `agent/tool_call_hook_funcs.go`, `agent/standalone_loop.go`, `agent/agent_state.go`, `agent/run_tool_call.go`, `agent/queue.go`, `ai/types.go`, `coding/extension/opaque_types.go` | ✅ |
+| `packages/agent/src/agent-loop.ts` | `agent/agent_loop.go + agent/standalone_loop.go + agent/run_tool_call.go + agent/agent.go + agent/tool_execution.go + agent/system_state.go; shallow stream views use ai/assistant_observation.go and ai/stream_observation.go (all 35 agent-loop.test.ts cases, the standalone loop API and runToolCall are ported; docs/parity/gap-closure/gap-agent-tui.md)` | ✅ |
+| `packages/agent/src/types.ts` | `agent/types.go + agent/agent.go + agent/message_json.go`, `agent/tool_call_hook_funcs.go`, `agent/standalone_loop.go`, `agent/agent_state.go`, `agent/run_tool_call.go`, `agent/queue.go`, `ai/types.go` | ✅ |
 | `packages/agent/src/proxy.ts` | `agent/proxy.go (request and event reconstruction, tool-call member merge, abort and timeout messages, unknown-event warning; differential tests agent/proxy_oracle_test.go and agent/proxy_sparse_oracle_test.go run Pi's proxy.js against the same response bodies as StreamProxy; D182 and D183 record the two approved divergences)` | ✅ |
 | `packages/agent/src/index.ts` | `(Go has no barrel exports)` | n/a |
 
@@ -270,7 +270,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/rpc-entry.ts` | `(npm package export wrapper for --mode rpc; pig exposes the CLI mode directly)` | n/a |
 | `packages/coding-agent/src/utils/image-process.ts` | `internal/imageprocessing/images.go` | ✅ |
 | `packages/ai/src/api/lazy.ts` | `ai/provider_streams.go + ai/models_runtime_stream.go + ai/continuation.go + coding/model_stream_forwarding.go (owned setup, promise reactions, ordered reference forwarding, and result settlement; dynamic module loading is statically linked in Go)` | ✅ |
-| `packages/agent/src/stream-fn.ts` | `agent/stream_fn.go + agent/agent.go + agent/agent_loop.go (configured host stream fallback and explicit StreamFn injection; NewAgent returns an error where Pi's constructor throws)` | ✅ |
+| `packages/agent/src/stream-fn.ts` | `agent/stream_fn.go (configured host stream fallback; Agent and the standalone loop read it through GetDefaultStreamFn, and NewAgent returns an error where Pi's constructor throws)` | ✅ |
 | `packages/ai/src/env-api-keys.ts` | `ai/auth_env_keys.go` | ✅ |
 | `packages/ai/src/session-resources.ts` | `ai/session_resources.go + coding/session.go` | ✅ |
 | `packages/ai/src/oauth.ts` | `ai/oauth_types.go (OAuthCredentials, OAuthAuthInfo, OAuthDeviceCodeInfo, OAuthLoginCallbacks, OAuthPrompt, OAuthSelectOption, OAuthSelectPrompt: the type-only re-exports)` | ✅ |

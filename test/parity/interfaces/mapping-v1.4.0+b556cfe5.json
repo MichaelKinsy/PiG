@@ -3856,8 +3856,12 @@
     },
     {
       "id": "pkg:agent/.#AgentToolParams",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2d137ab4e523e577a00996e5c1ccd9114dcf351dffdfbb9adf5971658ac1f079"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:2d137ab4e523e577a00996e5c1ccd9114dcf351dffdfbb9adf5971658ac1f079",
+      "rationale": "agent/src/types.ts:465-472 AgentToolParams<TParameters> is a conditional type alias: IsAny<TParameters> extends true ? any : Static<TParameters>. It selects the argument type that AgentTool.execute and AgentTool.prepareArguments (types.ts:485, 497) receive from the tool's parameter schema at compile time and has no runtime value. Go has no type to compute: AgentTool.Execute (agent/agent.go) receives the validated arguments as json.RawMessage, ArgumentPreparer.PrepareArguments takes and returns json.RawMessage, and each tool decodes them into its own parameter struct. Designed out as a TypeScript conditional-type mechanic, by the lead's ruling of 2026-10-07 15:20 MDT (language mechanics with no Go meaning are designed out with a citation).",
+      "pigTargets": [
+        "agent/agent.go#AgentTool"
+      ]
     },
     {
       "id": "pkg:agent/.#AgentToolResult",

@@ -1,6 +1,4 @@
 packages/agent/src/agent-loop.ts
-packages/agent/src/agent.ts
-packages/agent/src/stream-fn.ts
 packages/agent/src/types.ts
 packages/ai/scripts/check-model-data.ts
 packages/ai/scripts/hydrate-model-catalog.ts
@@ -15,7 +13,6 @@ packages/ai/src/api/openai-codex-responses.ts
 packages/ai/src/api/openai-completions.ts
 packages/ai/src/api/openai-responses-shared.ts
 packages/ai/src/api/openrouter-images.ts
-packages/ai/src/api/transform-messages.ts
 packages/ai/src/auth/context.ts
 packages/ai/src/auth/helpers.ts
 packages/ai/src/auth/oauth/anthropic.ts
