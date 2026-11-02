@@ -113710,7 +113710,8 @@
       ],
       "evidence": [
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreABatchSeqGap"
+        "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreABatchSeqGap",
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageArchives"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -113732,7 +113733,8 @@
       ],
       "evidence": [
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreABatchSeqGap"
+        "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreABatchSeqGap",
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageArchives"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -114242,7 +114244,8 @@
       ],
       "evidence": [
         "test:chord/next/store/store_test.go#TestStore",
-        "test:chord/next/store/table_handle_test.go#TestTableHandle"
+        "test:chord/next/store/table_handle_test.go#TestTableHandle",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures"
       ]
     },
     {
@@ -114263,7 +114266,8 @@
       ],
       "evidence": [
         "test:chord/next/store/store_test.go#TestStore",
-        "test:chord/next/store/table_handle_test.go#TestTableHandle"
+        "test:chord/next/store/table_handle_test.go#TestTableHandle",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures"
       ]
     },
     {
@@ -114283,7 +114287,8 @@
         "call:chord/next/store/store.go#ChordStore.Attach"
       ],
       "evidence": [
-        "test:chord/next/store/store_test.go#TestStore"
+        "test:chord/next/store/store_test.go#TestStore",
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits"
       ]
     },
     {
@@ -114303,7 +114308,8 @@
         "call:chord/next/store/store.go#ChordStore.Attach"
       ],
       "evidence": [
-        "test:chord/next/store/store_test.go#TestStore"
+        "test:chord/next/store/store_test.go#TestStore",
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits"
       ]
     },
     {
@@ -114323,7 +114329,8 @@
         "call:chord/next/store/store.go#ChordStore.Batch"
       ],
       "evidence": [
-        "test:chord/next/store/store_test.go#TestStore"
+        "test:chord/next/store/store_test.go#TestStore",
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits"
       ]
     },
     {
@@ -114498,7 +114505,9 @@
         "call:chord/next/store/store.go#ChordStore.Detach"
       ],
       "evidence": [
-        "test:chord/next/store/store_test.go#TestStore"
+        "test:chord/next/store/store_test.go#TestStore",
+        "test:durable/harness/harness_tasks_group_commit_test.go#TestPublicationAtAdoptionGroupCommit",
+        "test:durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryAttachesSynchronousCommitListenerReportsToTheActiveSubmissionSpan"
       ]
     },
     {
@@ -114518,7 +114527,9 @@
         "call:chord/next/store/store.go#ChordStore.Detach"
       ],
       "evidence": [
-        "test:chord/next/store/store_test.go#TestStore"
+        "test:chord/next/store/store_test.go#TestStore",
+        "test:durable/harness/harness_tasks_group_commit_test.go#TestPublicationAtAdoptionGroupCommit",
+        "test:durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryAttachesSynchronousCommitListenerReportsToTheActiveSubmissionSpan"
       ]
     },
     {
@@ -114539,8 +114550,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
-        "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/archive_test.go#TestArchivePartSchema"
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOtherUsersOfTheStore",
+        "test:chord/next/store/apply_batch_test.go#TestApplyBatch"
       ]
     },
     {
@@ -114561,8 +114572,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport",
-        "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/archive_test.go#TestArchivePartSchema"
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOtherUsersOfTheStore",
+        "test:chord/next/store/apply_batch_test.go#TestApplyBatch"
       ]
     },
     {
@@ -114795,11 +114806,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:chord/next/store/store.go#ReadTransaction"
+        "call:chord/next/store/store.go#ReadTransaction"
       ],
       "evidence": [
         "test:chord/next/store/store_test.go#TestStore"
@@ -114816,11 +114827,11 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:chord/next/store/store.go#ReadTransaction"
+        "call:chord/next/store/store.go#ReadTransaction"
       ],
       "evidence": [
         "test:chord/next/store/store_test.go#TestStore"
@@ -224010,7 +224021,7 @@
         "call:durable/session/session.go#SessionImpl.ObserveCommits"
       ],
       "evidence": [
-        "test:durable/harness/harness_tasks_test.go#TestPublicationAtAdoption",
+        "test:durable/harness/harness_tasks_group_commit_test.go#TestPublicationAtAdoptionGroupCommit",
         "test:durable/core/driver/docs_core_test.go#TestCoreAnUncertainStorageFailurePoisonsTheSession",
         "test:durable/core/driver/watch_test.go#TestObserveCommitsDeliversPublicationsInOrder"
       ]
@@ -224053,8 +224064,8 @@
       ],
       "evidence": [
         "test:durable/core/driver/session_deferred_commits_core_test.go#TestCoreADeferredCommitWithANegativeWindowIsRejected",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestACrashLeavesStorageAtTheLastStoredState",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestAHeldDocumentIsPinned"
+        "test:durable/session/session_group_commit_test.go#TestGroupCommitUpkeepThroughTheWriter",
+        "test:durable/session/session_deferred_commits_upstream_test.go#TestACrashLeavesStorageAtTheLastStoredState"
       ]
     },
     {
@@ -224075,8 +224086,8 @@
       ],
       "evidence": [
         "test:durable/core/driver/session_deferred_commits_core_test.go#TestCoreADeferredCommitWithANegativeWindowIsRejected",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestHoldingADeferredCommit",
-        "test:durable/session/session_deferred_commits_upstream_test.go#TestStoringHeldChanges"
+        "test:durable/session/session_group_commit_test.go#TestGroupCommitUpkeepThroughTheWriter",
+        "test:durable/session/session_deferred_commits_upstream_test.go#TestHoldingADeferredCommit"
       ]
     },
     {
@@ -224103,8 +224114,25 @@
     },
     {
       "id": "pkg:durable/.#CommitResult",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a23d9f57919105d2c1495cc4dee37502cbf52fe217f07d9320100835094df31f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a23d9f57919105d2c1495cc4dee37502cbf52fe217f07d9320100835094df31f",
+      "rationale": "Derived by the interface gap detector: CommitResult is Go durable/types.go#CommitResult (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/types.go#CommitResult"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/session/cached_storage.go#CachedStorage.Commit"
+      ],
+      "evidence": [
+        "test:durable/session/cached_storage_test.go#TestCachedStorageAppliesBatchStoredWithCommitWhenPublishedNotAtReceipt",
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches",
+        "test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches"
+      ]
     },
     {
       "id": "pkg:durable/.#CommonDocDefinition",
@@ -226886,7 +226914,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/session/retention.go#SessionImpl.touchChanged"
+        "call:durable/session/retention.go#SessionImpl.refreshChanged"
       ],
       "evidence": [
         "test:durable/types_upstream_test.go#TestCommitChangeUnionsKeepPiDiscriminatorsAndMembership",
@@ -227180,12 +227208,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/session/forks.go#collectCopies"
+        "call:durable/session/cached_storage.go#CachedStorage.Document"
       ],
       "evidence": [
         "test:durable/types_upstream_test.go#TestCommitChangeUnionsKeepPiDiscriminatorsAndMembership",
         "test:durable/ledger_commit_change_test.go#TestDocumentCommitChangeKindsAndCopySource",
-        "test:durable/storage/memory_edges_pi_test.go#TestMemoryStorageDocumentReadAtARevisionSeqIncludesIt"
+        "test:durable/session/keys_test.go#TestGatedStorageReadsTouchTheirKeysFirst"
       ]
     },
     {
@@ -227202,12 +227230,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/session/forks.go#collectCopies"
+        "call:durable/session/cached_storage.go#CachedStorage.ScanDocuments"
       ],
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
-        "test:durable/session/session_tables_test.go#TestSessionTransactionTables",
-        "test:durable/storage/jsonl/direct_members_test.go#TestJsonlStorageDirectReadMembers"
+        "test:durable/session/keys_test.go#TestGatedStorageReadsTouchTheirKeysFirst",
+        "test:durable/session/session_tables_test.go#TestSessionTransactionTables"
       ]
     },
     {
@@ -227510,7 +227538,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/context.go#CaptureContextBounds"
+        "call:durable/harness/context.go#readContextFrom"
       ],
       "evidence": [
         "test:durable/session/read_after_write_methods_upstream_test.go#TestEveryTableReadFailsWithItsOwnNameAfterATableWrite",
@@ -227738,8 +227766,26 @@
     },
     {
       "id": "pkg:durable/.#GenerationHooks",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0309ee4e1eaf7ab64e47a7f8f7bfe978c1bd027e72cdafaf8d6c25de013145a1"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0309ee4e1eaf7ab64e47a7f8f7bfe978c1bd027e72cdafaf8d6c25de013145a1",
+      "rationale": "Derived by the interface gap detector: GenerationHooks is Go durable/harness/types.go#GenerationHooks (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/types.go#GenerationHooks"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/generation.go#answer"
+      ],
+      "evidence": [
+        "test:durable/core/driver/harness_lanec_core_test.go#TestCoreRunsTheTasksAnAfterRunHookAsksFor",
+        "test:durable/core/driver/harness_lifecycle_core_test.go#TestCoreHarnessCloseJoinsAToolAndAHookThatIgnoreTheirSignal",
+        "test:durable/core/driver/harness_reports_core_test.go#TestReports"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#GenerationHooks::property:afterResponse",
@@ -227879,13 +227925,43 @@
     },
     {
       "id": "pkg:durable/.#GenerationHooks::property:beforeProviderRequest",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b7279795c91f8e326671c9a5ab37e99a239113c84aaaa9be31aeb2116625df64"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b7279795c91f8e326671c9a5ab37e99a239113c84aaaa9be31aeb2116625df64",
+      "rationale": "Derived by the interface gap detector: GenerationHooks::property:beforeProviderRequest is Go durable/harness/types.go#GenerationHooks.BeforeProviderRequest (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/types.go#GenerationHooks.BeforeProviderRequest"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/generation.go#providerPayload"
+      ],
+      "evidence": [
+        "test:durable/harness/harness_tools_test.go#TestGenerationHooks"
+      ]
     },
     {
       "id": "pkg:durable/.#GenerationHooks::property:beforeProviderRequest::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:77536367a210968d63f1237fe821330eb119db2dcbb08903bdab92afa95bfece"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:77536367a210968d63f1237fe821330eb119db2dcbb08903bdab92afa95bfece",
+      "rationale": "Derived by the interface gap detector: GenerationHooks::property:beforeProviderRequest::call:0 is Go durable/harness/types.go#GenerationHooks.BeforeProviderRequest (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/harness/types.go#GenerationHooks.BeforeProviderRequest"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/generation.go#providerPayload"
+      ],
+      "evidence": [
+        "test:durable/harness/harness_tools_test.go#TestGenerationHooks"
+      ]
     },
     {
       "id": "pkg:durable/.#GenerationHooks::property:beforeRequest",
@@ -228801,7 +228877,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/closed_before_poison_test.go#TestJsonlClosedErrorWinsOverThePoison",
-        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageRejectsSameCommitSidecarRecordsOutOfOrdinalOrder"
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches"
       ]
     },
     {
@@ -229047,8 +229123,26 @@
     },
     {
       "id": "pkg:durable/.#MemoryStorage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5f36622b7fca904ae9921eee6a569ddaa6da12f1b847ccf7c2f26378deebcb95"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5f36622b7fca904ae9921eee6a569ddaa6da12f1b847ccf7c2f26378deebcb95",
+      "rationale": "Derived by the interface gap detector: MemoryStorage is Go durable/storage/memory.go#MemoryStorage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/memory.go#MemoryStorage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/storage.go#JsonlStorage.Close"
+      ],
+      "evidence": [
+        "test:durable/durabletest/conformance_meta_test.go#TestStorageConformanceCasesPassForMemoryStorageAndFailForBrokenStorage",
+        "test:durable/durabletest/storage_conformance_options_test.go#TestRegisterStorageConformanceUsesTheProviderOncePerCase",
+        "test:durable/durabletest/storage_conformance_options_test.go#TestStorageConformanceOptionsSupplyAssertionsAndFreshStoragePerCase"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#MemoryStorage::construct:0",
@@ -229120,13 +229214,45 @@
     },
     {
       "id": "pkg:durable/.#MemoryStorage::property:commit",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:43ea17c00203970c8747072a56ca122df3c73df13bc174720253b47206775796"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:43ea17c00203970c8747072a56ca122df3c73df13bc174720253b47206775796",
+      "rationale": "Derived by the interface gap detector: MemoryStorage::property:commit is Go durable/storage/memory.go#MemoryStorage.Commit (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/memory.go#MemoryStorage.Commit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/memory.go#MemoryStorage.Commit"
+      ],
+      "evidence": [
+        "reach:durable/storage/memory.go#MemoryStorage.Commit"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#MemoryStorage::property:commit::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:012ddfc15b28436f77e033e8b878d293059d6c0efd8ed295ee13cd342e75aa91"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:012ddfc15b28436f77e033e8b878d293059d6c0efd8ed295ee13cd342e75aa91",
+      "rationale": "Derived by the interface gap detector: MemoryStorage::property:commit::call:0 is Go durable/storage/memory.go#MemoryStorage.Commit (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/memory.go#MemoryStorage.Commit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/memory.go#MemoryStorage.Commit"
+      ],
+      "evidence": [
+        "reach:durable/storage/memory.go#MemoryStorage.Commit"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#MemoryStorage::property:conversation",
@@ -230070,7 +230196,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/context.go#CaptureContextBounds"
+        "call:durable/harness/context.go#scanEntries"
       ],
       "evidence": [
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput",
@@ -231511,9 +231637,9 @@
         "call:durable/ids.go#SeqFromNumber"
       ],
       "evidence": [
-        "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
-        "test:durable/storage/jsonl/node/open_node_storage_upstream_test.go#TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersists",
-        "test:durable/storage/memory_ownership_upstream_test.go#TestMemoryStorageClonesRetainedWritesAndReads"
+        "test:durable/codecs_test.go#TestDocumentRecordMarshalsInPiStorageOrder",
+        "test:durable/storage/prepared_commit_apply_test.go#TestPrepareCommitAtRejectsASequenceBeyondTheSafeIntegers",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOneTransactionPerCall"
       ]
     },
     {
@@ -232555,8 +232681,26 @@
     },
     {
       "id": "pkg:durable/.#Storage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8defb955d77a348d0c8d0ad8d879ea9231523742d4557a84bf8108582db553b7"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8defb955d77a348d0c8d0ad8d879ea9231523742d4557a84bf8108582db553b7",
+      "rationale": "Derived by the interface gap detector: Storage is Go durable/types.go#Storage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/types.go#Storage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/context.go#CaptureContextBounds"
+      ],
+      "evidence": [
+        "test:durable/durabletest/conformance_meta_test.go#TestStorageConformanceCasesPassForMemoryStorageAndFailForBrokenStorage",
+        "test:durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream",
+        "test:durable/durabletest/storage_conformance_options_test.go#TestRegisterStorageConformanceUsesTheProviderOncePerCase"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#Storage::property:close",
@@ -232572,7 +232716,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/session/guard.go#guardedStorage.Close"
+        "call:durable/session/cached_storage.go#CachedStorage.Close"
       ],
       "evidence": [
         "test:durable/harness/harness_blocked_test.go#TestBlockedTasksOnTheReference",
@@ -232595,7 +232739,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/session/guard.go#guardedStorage.Close"
+        "call:durable/session/cached_storage.go#CachedStorage.Close"
       ],
       "evidence": [
         "test:durable/harness/harness_blocked_test.go#TestBlockedTasksOnTheReference",
@@ -232606,13 +232750,47 @@
     },
     {
       "id": "pkg:durable/.#Storage::property:commit",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7e403367181c610809ab89e97a2b171209eee6ab79bb4958066b16556c6a2170"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7e403367181c610809ab89e97a2b171209eee6ab79bb4958066b16556c6a2170",
+      "rationale": "Derived by the interface gap detector: Storage::property:commit is Go durable/types.go#Storage.Commit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/types.go#Storage.Commit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/session/cached_storage.go#CachedStorage.Commit"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageRefusals"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#Storage::property:commit::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e8705edbc6249379a32cb9787b40a58b412ce11e080960f44ba0850c9a587b47"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e8705edbc6249379a32cb9787b40a58b412ce11e080960f44ba0850c9a587b47",
+      "rationale": "Derived by the interface gap detector: Storage::property:commit::call:0 is Go durable/types.go#Storage.Commit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/types.go#Storage.Commit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/session/cached_storage.go#CachedStorage.Commit"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageRefusals"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#Storage::property:conversation",
@@ -232633,7 +232811,7 @@
       "evidence": [
         "test:durable/harness/harness_storage_failure_test.go#TestAFailedStorageCall",
         "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface",
-        "test:durable/storage/jsonl_pi_oracle_test.go#TestJsonlStorageMatchesPiOnSeededPrograms"
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232656,7 +232834,7 @@
       "evidence": [
         "test:durable/harness/harness_storage_failure_test.go#TestAFailedStorageCall",
         "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface",
-        "test:durable/storage/jsonl_pi_oracle_test.go#TestJsonlStorageMatchesPiOnSeededPrograms"
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232674,12 +232852,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/session/guard.go#guardedStorage.Document"
+        "call:durable/session/cached_storage.go#CachedStorage.Document"
       ],
       "evidence": [
         "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface",
         "test:durable/storage/storage_write_benchmark_test.go#TestStorageWriteBenchmarksSeedAndCommitPisRecords",
-        "test:durable/storage/jsonl_pi_oracle_test.go#TestJsonlStorageMatchesPiOnSeededPrograms"
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232697,12 +232875,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/session/guard.go#guardedStorage.Document"
+        "call:durable/session/cached_storage.go#CachedStorage.Document"
       ],
       "evidence": [
         "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface",
         "test:durable/storage/storage_write_benchmark_test.go#TestStorageWriteBenchmarksSeedAndCommitPisRecords",
-        "test:durable/storage/jsonl_pi_oracle_test.go#TestJsonlStorageMatchesPiOnSeededPrograms"
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232720,12 +232898,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/session/guard.go#guardedStorage.Entry"
+        "call:durable/session/cached_storage.go#CachedStorage.Entry"
       ],
       "evidence": [
+        "test:durable/session/session_group_commit_test.go#TestGroupCommitGates",
         "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface",
-        "test:durable/storage/storage_write_benchmark_effects_test.go#TestStorageWriteBenchmarksWriteWhatTheyName",
-        "test:durable/storage/jsonl_pi_oracle_test.go#TestJsonlStorageMatchesPiOnSeededPrograms"
+        "test:durable/storage/storage_write_benchmark_effects_test.go#TestStorageWriteBenchmarksWriteWhatTheyName"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232743,12 +232921,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/session/guard.go#guardedStorage.Entry"
+        "call:durable/session/cached_storage.go#CachedStorage.Entry"
       ],
       "evidence": [
+        "test:durable/session/session_group_commit_test.go#TestGroupCommitGates",
         "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface",
-        "test:durable/storage/storage_write_benchmark_effects_test.go#TestStorageWriteBenchmarksWriteWhatTheyName",
-        "test:durable/storage/jsonl_pi_oracle_test.go#TestJsonlStorageMatchesPiOnSeededPrograms"
+        "test:durable/storage/storage_write_benchmark_effects_test.go#TestStorageWriteBenchmarksWriteWhatTheyName"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232789,7 +232967,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/session/guard.go#guardedStorage.FindDocument"
+        "call:durable/session/cached_storage.go#CachedStorage.FindDocument"
       ],
       "evidence": [
         "test:durable/session/session_failure_test.go#TestAFailedStorageCallFailsTheSession",
@@ -232812,7 +232990,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/session/guard.go#guardedStorage.FindDocument"
+        "call:durable/session/cached_storage.go#CachedStorage.FindDocument"
       ],
       "evidence": [
         "test:durable/session/session_failure_test.go#TestAFailedStorageCallFailsTheSession",
@@ -232835,12 +233013,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/context.go#CaptureContextBounds"
+        "call:durable/session/cached_storage.go#CachedStorage.FindLatestHeadMarker"
       ],
       "evidence": [
+        "test:durable/session/session_group_commit_test.go#TestGroupCommitGates",
         "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface",
-        "test:durable/storage/sqlite/storage_request_error_test.go#TestBuiltinStoragesRejectInvalidReadsWithStorageRequestError",
-        "test:durable/storage/jsonl_pi_oracle_test.go#TestJsonlStorageMatchesPiOnSeededPrograms"
+        "test:durable/storage/sqlite/storage_request_error_test.go#TestBuiltinStoragesRejectInvalidReadsWithStorageRequestError"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232858,12 +233036,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/context.go#CaptureContextBounds"
+        "call:durable/session/cached_storage.go#CachedStorage.FindLatestHeadMarker"
       ],
       "evidence": [
+        "test:durable/session/session_group_commit_test.go#TestGroupCommitGates",
         "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface",
-        "test:durable/storage/sqlite/storage_request_error_test.go#TestBuiltinStoragesRejectInvalidReadsWithStorageRequestError",
-        "test:durable/storage/jsonl_pi_oracle_test.go#TestJsonlStorageMatchesPiOnSeededPrograms"
+        "test:durable/storage/sqlite/storage_request_error_test.go#TestBuiltinStoragesRejectInvalidReadsWithStorageRequestError"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -232881,7 +233059,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/session/forks.go#collectCopies"
+        "call:durable/session/cached_storage.go#CachedStorage.MintId"
       ],
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
@@ -232904,7 +233082,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/session/forks.go#collectCopies"
+        "call:durable/session/cached_storage.go#CachedStorage.MintId"
       ],
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
@@ -232915,8 +233093,23 @@
     },
     {
       "id": "pkg:durable/.#Storage::property:publishing",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:97ec82f8f94a3942d7c7c993f6d551808da0bdc9ffa29a2169e3ee9ab5a89589"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:97ec82f8f94a3942d7c7c993f6d551808da0bdc9ffa29a2169e3ee9ab5a89589",
+      "rationale": "Derived by the interface gap detector: Storage::property:publishing is Go durable/types.go#PublishingStorage.Publishing (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/types.go#PublishingStorage.Publishing"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/session/cached_storage.go#ScopeOf"
+      ],
+      "evidence": [
+        "reach:durable/session/cached_storage.go#ScopeOf"
+      ]
     },
     {
       "id": "pkg:durable/.#Storage::property:scanConversations",
@@ -232978,7 +233171,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/session/forks.go#collectCopies"
+        "call:durable/session/cached_storage.go#CachedStorage.ScanDocuments"
       ],
       "evidence": [
         "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface",
@@ -233001,7 +233194,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/session/forks.go#collectCopies"
+        "call:durable/session/cached_storage.go#CachedStorage.ScanDocuments"
       ],
       "evidence": [
         "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface",
@@ -233024,12 +233217,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/context.go#CaptureContextBounds"
+        "call:durable/harness/context.go#scanEntries"
       ],
       "evidence": [
-        "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface",
-        "test:durable/storage/sqlite/storage_request_error_test.go#TestBuiltinStoragesRejectInvalidReadsWithStorageRequestError",
-        "test:durable/storage/storage_write_benchmark_effects_test.go#TestStorageWriteBenchmarksWriteWhatTheyName"
+        "test:durable/session/session_group_commit_test.go#TestGroupCommitGates",
+        "test:durable/session/session_resumption_test.go#TestAContinuationThatWaitsForTheLineHasEntered",
+        "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -233047,12 +233240,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/context.go#CaptureContextBounds"
+        "call:durable/harness/context.go#scanEntries"
       ],
       "evidence": [
-        "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface",
-        "test:durable/storage/sqlite/storage_request_error_test.go#TestBuiltinStoragesRejectInvalidReadsWithStorageRequestError",
-        "test:durable/storage/storage_write_benchmark_effects_test.go#TestStorageWriteBenchmarksWriteWhatTheyName"
+        "test:durable/session/session_group_commit_test.go#TestGroupCommitGates",
+        "test:durable/session/session_resumption_test.go#TestAContinuationThatWaitsForTheLineHasEntered",
+        "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -233208,7 +233401,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/session/guard.go#guardedStorage.SubmissionByRequest"
+        "call:durable/session/cached_storage.go#CachedStorage.SubmissionByRequest"
       ],
       "evidence": [
         "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface",
@@ -233231,7 +233424,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/session/guard.go#guardedStorage.SubmissionByRequest"
+        "call:durable/session/cached_storage.go#CachedStorage.SubmissionByRequest"
       ],
       "evidence": [
         "test:durable/storage/memory_read_api_pi_test.go#TestStorageInterfaceReadContractThroughTheInterface",
@@ -235356,7 +235549,7 @@
       "evidence": [
         "test:durable/core/driver/task_abort_owned_core_test.go#TestTaskRuntimeAbortOwnedOverTheCore",
         "test:durable/harness/harness_context_ranges_test.go#TestTaskContextRanges",
-        "test:durable/harness/harness_structured_test.go#TestAbortOrder"
+        "test:durable/harness/harness_group_commit_test.go#TestGroupCommitRecordsADecisionCopies"
       ]
     },
     {
@@ -237043,8 +237236,9 @@
         "call:durable/harness/tool.go#toolAbort"
       ],
       "evidence": [
-        "test:durable/harness/agent_regression_test.go#TestCheckpointPhasesAreTheClosedPiUnions",
-        "test:durable/harness/phase_types_test.go#TestCheckpointPhasesAreTheUpstreamLiterals"
+        "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointKeepsItsArgumentsInTheirStoredOrderWhenDecoded",
+        "test:durable/harness/tool_checkpoint_order_test.go#TestAToolCheckpointWithoutArgumentsShowsAnEmptyObject",
+        "test:durable/harness/agent_regression_test.go#TestCheckpointPhasesAreTheClosedPiUnions"
       ]
     },
     {
@@ -237135,8 +237329,26 @@
     },
     {
       "id": "pkg:durable/.#Tx",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:df888a85a21ccafa197ca2c59e9a6fdff9f9db6f12c0c91e18c9cd36682ec832"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:df888a85a21ccafa197ca2c59e9a6fdff9f9db6f12c0c91e18c9cd36682ec832",
+      "rationale": "Derived by the interface gap detector: Tx is Go durable/types.go#Tx (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/types.go#Tx"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/codemode/call.go#call.checkFingerprint"
+      ],
+      "evidence": [
+        "test:durable/harness/context_pi_oracle_test.go#TestContextDerivationMatchesPi",
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput",
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestReadingPiLiveInACommitStoresTheHeldPartial"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#Tx::property:appendEntry",
@@ -237653,13 +237865,47 @@
     },
     {
       "id": "pkg:durable/.#Tx::property:latestEntryId",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:27ecad7479e660af2b47d131f6b71f9c2681c343f6135868ec8190bc03efb430"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:27ecad7479e660af2b47d131f6b71f9c2681c343f6135868ec8190bc03efb430",
+      "rationale": "Derived by the interface gap detector: Tx::property:latestEntryId is Go durable/types.go#Tx.LatestEntryId (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/types.go#Tx.LatestEntryId"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/generation.go#generationPrepareHandler"
+      ],
+      "evidence": [
+        "test:durable/session/session_group_commit_test.go#TestGroupCommitGates",
+        "test:durable/session/session_line_api_test.go#TestKnownLatestEntryIdFollowsTheSessionsOwnCommits"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#Tx::property:latestEntryId::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:70f9b9f6a338e3eb205103401844586e4f568aa8aa420dc75c4a06db56cdc874"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:70f9b9f6a338e3eb205103401844586e4f568aa8aa420dc75c4a06db56cdc874",
+      "rationale": "Derived by the interface gap detector: Tx::property:latestEntryId::call:0 is Go durable/types.go#Tx.LatestEntryId (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/types.go#Tx.LatestEntryId"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/harness/generation.go#generationPrepareHandler"
+      ],
+      "evidence": [
+        "test:durable/session/session_group_commit_test.go#TestGroupCommitGates",
+        "test:durable/session/session_line_api_test.go#TestKnownLatestEntryIdFollowsTheSessionsOwnCommits"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/.#Tx::property:latestHeadMarker",
@@ -237678,6 +237924,7 @@
         "call:durable/harness/inbox.go#PrepareBoundary"
       ],
       "evidence": [
+        "test:durable/session/session_group_commit_test.go#TestGroupCommitGates",
         "test:durable/session/session_tx_submission_reads_test.go#TestSessionTransactionLatestHeadMarkerSubmissionByRequestAndPlaceSubmission",
         "test:durable/core/driver/lazy_core_test.go#TestCoreReopenReadsSettledRecordsOnDemand"
       ],
@@ -237700,6 +237947,7 @@
         "call:durable/harness/inbox.go#PrepareBoundary"
       ],
       "evidence": [
+        "test:durable/session/session_group_commit_test.go#TestGroupCommitGates",
         "test:durable/session/session_tx_submission_reads_test.go#TestSessionTransactionLatestHeadMarkerSubmissionByRequestAndPlaceSubmission",
         "test:durable/core/driver/lazy_core_test.go#TestCoreReopenReadsSettledRecordsOnDemand"
       ],
@@ -237946,16 +238194,14 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "complete",
+        "production": "public-api-tested",
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#generationPrepareHandler"
+        "public-api:durable/types.go#Tx.ScanEntries"
       ],
       "evidence": [
-        "test:durable/core/driver/docs_core_tables_test.go#TestCoreTableReadsAreAllowedOnlyBeforeTheFirstTableWrite",
-        "test:durable/core/driver/docs_core_test.go#TestCoreForkUsesTheFinalDocumentStateOfTheEntryCommitAndExcludesLaterSameCommitEntries",
-        "test:durable/examples/session_examples_test.go#TestExample02Forks"
+        "test:durable/core/driver/docs_core_tables_test.go#TestCoreTableReadsAreAllowedOnlyBeforeTheFirstTableWrite"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -237969,16 +238215,14 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "complete",
+        "production": "public-api-tested",
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/generation.go#generationPrepareHandler"
+        "public-api:durable/types.go#Tx.ScanEntries"
       ],
       "evidence": [
-        "test:durable/core/driver/docs_core_tables_test.go#TestCoreTableReadsAreAllowedOnlyBeforeTheFirstTableWrite",
-        "test:durable/core/driver/docs_core_test.go#TestCoreForkUsesTheFinalDocumentStateOfTheEntryCommitAndExcludesLaterSameCommitEntries",
-        "test:durable/examples/session_examples_test.go#TestExample02Forks"
+        "test:durable/core/driver/docs_core_tables_test.go#TestCoreTableReadsAreAllowedOnlyBeforeTheFirstTableWrite"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -245395,8 +245639,9 @@
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a801c92517afafc2198d09b803f61dcd8d9505756ec2ffd81d80019f0bb2af54"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:a801c92517afafc2198d09b803f61dcd8d9505756ec2ffd81d80019f0bb2af54",
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0+b556cfe5) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. The class implements Pi's Storage interface over IndexedDB; the Go Storage contract is implemented by durable/storage/memory.go, jsonl, sqlite and the Cloudflare SQLite driver; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at the pinned Pi: storage/indexeddb.ts changed since 2c8d1feb in commit, which now takes batches (readonly (readonly StorageWrite[])[]) and a receive callback and returns CommitResult, one IndexedDB transaction for the group commit (Pi e5c6182b); the file is still browser-only (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:close",
@@ -245412,13 +245657,15 @@
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:43ea17c00203970c8747072a56ca122df3c73df13bc174720253b47206775796"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:43ea17c00203970c8747072a56ca122df3c73df13bc174720253b47206775796",
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0+b556cfe5) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. commit is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at the pinned Pi: storage/indexeddb.ts changed since 2c8d1feb in commit, which now takes batches (readonly (readonly StorageWrite[])[]) and a receive callback and returns CommitResult, one IndexedDB transaction for the group commit (Pi e5c6182b); the file is still browser-only (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:012ddfc15b28436f77e033e8b878d293059d6c0efd8ed295ee13cd342e75aa91"
+      "disposition": "designed-out",
+      "upstreamShapeHash": "sha256:012ddfc15b28436f77e033e8b878d293059d6c0efd8ed295ee13cd342e75aa91",
+      "rationale": "packages/durable/src/storage/indexeddb.ts (Pi 16f5f0af4d, Pi 1.4.0+b556cfe5) is the browser-only IndexedDbStorage: the file opens with /// <reference lib=\"dom\" /> and its members drive IDBDatabase, IDBTransaction and IDBKeyRange, which exist only in a browser. PiG is a Go process with no browser or WebAssembly build, so no caller can open it. commit is a member of that class, part of the Storage contract Go already satisfies by durable.Storage in its memory, JSONL, SQLite and Cloudflare backends; PORT_MAP and upstream-sync v1.4.0 record the file designed out for the same reason. Re-reviewed at the pinned Pi: storage/indexeddb.ts changed since 2c8d1feb in commit, which now takes batches (readonly (readonly StorageWrite[])[]) and a receive callback and returns CommitResult, one IndexedDB transaction for the group commit (Pi e5c6182b); the file is still browser-only (its header, the dom reference and IndexedDbStorage implements Storage at :408 stand), so the design-out holds."
     },
     {
       "id": "pkg:durable/storage/indexeddb#IndexedDbStorage::property:conversation",
@@ -245602,8 +245849,26 @@
     },
     {
       "id": "pkg:durable/storage/jsonl/node#JsonlStorage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9641e36da129bb36a2dfac17073d603634a734fe7d6d2f7afb92d463a2632e54"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9641e36da129bb36a2dfac17073d603634a734fe7d6d2f7afb92d463a2632e54",
+      "rationale": "Derived by the interface gap detector: JsonlStorage is Go durable/storage/jsonl/storage.go#JsonlStorage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/node/node.go#OpenNodeJsonlStorage"
+      ],
+      "evidence": [
+        "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
+        "test:durable/storage/jsonl/node/open_node_storage_upstream_test.go#TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersists",
+        "test:durable/storage/jsonl/closed_before_poison_test.go#TestJsonlClosedErrorWinsOverThePoison"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/jsonl/node#JsonlStorage::property:close",
@@ -245653,13 +245918,47 @@
     },
     {
       "id": "pkg:durable/storage/jsonl/node#JsonlStorage::property:commit",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7e403367181c610809ab89e97a2b171209eee6ab79bb4958066b16556c6a2170"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7e403367181c610809ab89e97a2b171209eee6ab79bb4958066b16556c6a2170",
+      "rationale": "Derived by the interface gap detector: JsonlStorage::property:commit is Go durable/storage/jsonl/storage.go#JsonlStorage.Commit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorage.Commit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/storage.go#JsonlStorage.Commit"
+      ],
+      "evidence": [
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches",
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStoragePoisonsWhenAnAppendFailsAfterItsBatchesApplied"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/jsonl/node#JsonlStorage::property:commit::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e8705edbc6249379a32cb9787b40a58b412ce11e080960f44ba0850c9a587b47"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e8705edbc6249379a32cb9787b40a58b412ce11e080960f44ba0850c9a587b47",
+      "rationale": "Derived by the interface gap detector: JsonlStorage::property:commit::call:0 is Go durable/storage/jsonl/storage.go#JsonlStorage.Commit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorage.Commit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/storage.go#JsonlStorage.Commit"
+      ],
+      "evidence": [
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches",
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStoragePoisonsWhenAnAppendFailsAfterItsBatchesApplied"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/jsonl/node#JsonlStorage::property:conversation",
@@ -245726,7 +246025,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose",
-        "test:durable/storage/jsonl/jsonl_storage_test.go#TestPicoJsonlStoragePublicationAndRecovery"
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -245749,7 +246048,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose",
-        "test:durable/storage/jsonl/jsonl_storage_test.go#TestPicoJsonlStoragePublicationAndRecovery"
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -245772,7 +246071,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose",
-        "test:durable/storage/jsonl/jsonl_storage_test.go#TestPicoJsonlStoragePublicationAndRecovery"
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -245795,7 +246094,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose",
-        "test:durable/storage/jsonl/jsonl_storage_test.go#TestPicoJsonlStoragePublicationAndRecovery"
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -246517,8 +246816,26 @@
     },
     {
       "id": "pkg:durable/storage/jsonl#JsonlStorage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9641e36da129bb36a2dfac17073d603634a734fe7d6d2f7afb92d463a2632e54"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9641e36da129bb36a2dfac17073d603634a734fe7d6d2f7afb92d463a2632e54",
+      "rationale": "Derived by the interface gap detector: JsonlStorage is Go durable/storage/jsonl/storage.go#JsonlStorage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/node/node.go#OpenNodeJsonlStorage"
+      ],
+      "evidence": [
+        "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
+        "test:durable/storage/jsonl/node/open_node_storage_upstream_test.go#TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersists",
+        "test:durable/storage/jsonl/closed_before_poison_test.go#TestJsonlClosedErrorWinsOverThePoison"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/jsonl#JsonlStorage::property:close",
@@ -246568,13 +246885,47 @@
     },
     {
       "id": "pkg:durable/storage/jsonl#JsonlStorage::property:commit",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7e403367181c610809ab89e97a2b171209eee6ab79bb4958066b16556c6a2170"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7e403367181c610809ab89e97a2b171209eee6ab79bb4958066b16556c6a2170",
+      "rationale": "Derived by the interface gap detector: JsonlStorage::property:commit is Go durable/storage/jsonl/storage.go#JsonlStorage.Commit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorage.Commit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/storage.go#JsonlStorage.Commit"
+      ],
+      "evidence": [
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches",
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStoragePoisonsWhenAnAppendFailsAfterItsBatchesApplied"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/jsonl#JsonlStorage::property:commit::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e8705edbc6249379a32cb9787b40a58b412ce11e080960f44ba0850c9a587b47"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e8705edbc6249379a32cb9787b40a58b412ce11e080960f44ba0850c9a587b47",
+      "rationale": "Derived by the interface gap detector: JsonlStorage::property:commit::call:0 is Go durable/storage/jsonl/storage.go#JsonlStorage.Commit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/jsonl/storage.go#JsonlStorage.Commit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/storage.go#JsonlStorage.Commit"
+      ],
+      "evidence": [
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches",
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStoragePoisonsWhenAnAppendFailsAfterItsBatchesApplied"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/jsonl#JsonlStorage::property:conversation",
@@ -246641,7 +246992,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose",
-        "test:durable/storage/jsonl/jsonl_storage_test.go#TestPicoJsonlStoragePublicationAndRecovery"
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -246664,7 +247015,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose",
-        "test:durable/storage/jsonl/jsonl_storage_test.go#TestPicoJsonlStoragePublicationAndRecovery"
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -246687,7 +247038,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose",
-        "test:durable/storage/jsonl/jsonl_storage_test.go#TestPicoJsonlStoragePublicationAndRecovery"
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -246710,7 +247061,7 @@
       "evidence": [
         "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
         "test:durable/storage/jsonl/jsonl_storage_reads_test.go#TestJsonlStorageReadsCommittedRecordsRecoversThemAndFailsAfterClose",
-        "test:durable/storage/jsonl/jsonl_storage_test.go#TestPicoJsonlStoragePublicationAndRecovery"
+        "test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -247382,8 +247733,26 @@
     },
     {
       "id": "pkg:durable/storage/memory#MemoryStorage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0eb6ac24d8a4645af6e2b1813c4a9c4068a8884ab6c73f30ba94ab5605ae20ec"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0eb6ac24d8a4645af6e2b1813c4a9c4068a8884ab6c73f30ba94ab5605ae20ec",
+      "rationale": "Derived by the interface gap detector: MemoryStorage is Go durable/storage/memory.go#MemoryStorage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/memory.go#MemoryStorage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/jsonl/storage.go#JsonlStorage.Close"
+      ],
+      "evidence": [
+        "test:durable/durabletest/conformance_meta_test.go#TestStorageConformanceCasesPassForMemoryStorageAndFailForBrokenStorage",
+        "test:durable/durabletest/storage_conformance_options_test.go#TestRegisterStorageConformanceUsesTheProviderOncePerCase",
+        "test:durable/durabletest/storage_conformance_options_test.go#TestStorageConformanceOptionsSupplyAssertionsAndFreshStoragePerCase"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/memory#MemoryStorage::construct:0",
@@ -247455,13 +247824,45 @@
     },
     {
       "id": "pkg:durable/storage/memory#MemoryStorage::property:commit",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:43ea17c00203970c8747072a56ca122df3c73df13bc174720253b47206775796"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:43ea17c00203970c8747072a56ca122df3c73df13bc174720253b47206775796",
+      "rationale": "Derived by the interface gap detector: MemoryStorage::property:commit is Go durable/storage/memory.go#MemoryStorage.Commit (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/memory.go#MemoryStorage.Commit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/memory.go#MemoryStorage.Commit"
+      ],
+      "evidence": [
+        "reach:durable/storage/memory.go#MemoryStorage.Commit"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/memory#MemoryStorage::property:commit::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:012ddfc15b28436f77e033e8b878d293059d6c0efd8ed295ee13cd342e75aa91"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:012ddfc15b28436f77e033e8b878d293059d6c0efd8ed295ee13cd342e75aa91",
+      "rationale": "Derived by the interface gap detector: MemoryStorage::property:commit::call:0 is Go durable/storage/memory.go#MemoryStorage.Commit (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/memory.go#MemoryStorage.Commit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/memory.go#MemoryStorage.Commit"
+      ],
+      "evidence": [
+        "reach:durable/storage/memory.go#MemoryStorage.Commit"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/memory#MemoryStorage::property:conversation",
@@ -249908,8 +250309,26 @@
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteStorage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0e2f1ac007d5edfa103c0f558f263ecb3d79c2a5e8c0de0faf5372637b81b3a9"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0e2f1ac007d5edfa103c0f558f263ecb3d79c2a5e8c0de0faf5372637b81b3a9",
+      "rationale": "Derived by the interface gap detector: SqliteStorage is Go durable/storage/sqlite/storage.go#SqliteStorage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/storage.go#SqliteStorage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/cloudflare/cloudflare.go#OpenDurableObjectSqliteStorage"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/cloudflare/cloudflare_test.go#TestDurableObjectSqliteAdapter",
+        "test:durable/storage/sqlite/document_text_test.go#TestSqliteDocumentTextKeepsKeyOrderAndLoneSurrogates",
+        "test:durable/storage/sqlite/node/sqlite_facade_test.go#TestNewNodeSqliteDatabaseAdaptsADatabaseSync"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteStorage::property:close",
@@ -249959,13 +250378,45 @@
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteStorage::property:commit",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:43ea17c00203970c8747072a56ca122df3c73df13bc174720253b47206775796"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:43ea17c00203970c8747072a56ca122df3c73df13bc174720253b47206775796",
+      "rationale": "Derived by the interface gap detector: SqliteStorage::property:commit is Go durable/storage/sqlite/storage.go#SqliteStorage.Commit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/storage.go#SqliteStorage.Commit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/storage.go#SqliteStorage.Commit"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteStorage::property:commit::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:012ddfc15b28436f77e033e8b878d293059d6c0efd8ed295ee13cd342e75aa91"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:012ddfc15b28436f77e033e8b878d293059d6c0efd8ed295ee13cd342e75aa91",
+      "rationale": "Derived by the interface gap detector: SqliteStorage::property:commit::call:0 is Go durable/storage/sqlite/storage.go#SqliteStorage.Commit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/sqlite/storage.go#SqliteStorage.Commit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/sqlite/storage.go#SqliteStorage.Commit"
+      ],
+      "evidence": [
+        "test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/sqlite#SqliteStorage::property:conversation",
@@ -250676,193 +251127,829 @@
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f09303def09880156561163e2576d97cd61695f29c4f0cd79dc3935aaf9c6906"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f09303def09880156561163e2576d97cd61695f29c4f0cd79dc3935aaf9c6906",
+      "rationale": "Derived by the interface gap detector: StoreStorage is Go durable/storage/store/storage.go#StoreStorage (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#Open"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOneTransactionPerCall"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:close",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:213d94733ac6bd5066f3c3b15f75aad7969587c993bdc6f33ce76ce8f2c65772"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:213d94733ac6bd5066f3c3b15f75aad7969587c993bdc6f33ce76ce8f2c65772",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:close is Go durable/storage/store/storage.go#StoreStorage.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.Close"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.Close"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOtherUsersOfTheStore",
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageClaimsAndClose"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:close::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:0fc4c7e097a3243f969510a69e35ecdf4b52b1a581fc88959f2bf9fcdf0e9fd6"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:0fc4c7e097a3243f969510a69e35ecdf4b52b1a581fc88959f2bf9fcdf0e9fd6",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:close::call:0 is Go durable/storage/store/storage.go#StoreStorage.Close (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.Close"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.Close"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOtherUsersOfTheStore",
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageClaimsAndClose"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:commit",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7e403367181c610809ab89e97a2b171209eee6ab79bb4958066b16556c6a2170"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7e403367181c610809ab89e97a2b171209eee6ab79bb4958066b16556c6a2170",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:commit is Go durable/storage/store/storage.go#StoreStorage.Commit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.Commit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.Commit"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOneTransactionPerCall"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:commit::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e8705edbc6249379a32cb9787b40a58b412ce11e080960f44ba0850c9a587b47"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e8705edbc6249379a32cb9787b40a58b412ce11e080960f44ba0850c9a587b47",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:commit::call:0 is Go durable/storage/store/storage.go#StoreStorage.Commit (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.Commit"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.Commit"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOneTransactionPerCall"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:conversation",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9b5d58f63fadca2436603b2001d0b2dc9c527ed6201d8a3fd42b28610a9ecfc9"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9b5d58f63fadca2436603b2001d0b2dc9c527ed6201d8a3fd42b28610a9ecfc9",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:conversation is Go durable/storage/store/storage.go#StoreStorage.Conversation (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.Conversation"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.Conversation"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageClaimsAndClose",
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageReads"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:conversation::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:13b852bacb5284d58bb4733cc86b0c40e2a67ad6e4e98dceec51ac7324c53085"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:13b852bacb5284d58bb4733cc86b0c40e2a67ad6e4e98dceec51ac7324c53085",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:conversation::call:0 is Go durable/storage/store/storage.go#StoreStorage.Conversation (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.Conversation"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.Conversation"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageClaimsAndClose",
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageReads"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:document",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:460271c0edc3e4f1e66e772e40b00870344ae697e2919780c88919fb11866925"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:460271c0edc3e4f1e66e772e40b00870344ae697e2919780c88919fb11866925",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:document is Go durable/storage/store/storage.go#StoreStorage.Document (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.Document"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.Document"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageRefusals",
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageArchives"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:document::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:32597996a158a5ec2b9becd7d25d80d041caffea1ab8d8b48294235f4864939a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:32597996a158a5ec2b9becd7d25d80d041caffea1ab8d8b48294235f4864939a",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:document::call:0 is Go durable/storage/store/storage.go#StoreStorage.Document (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.Document"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.Document"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageRefusals",
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageArchives"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:entry",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f6bcffd408e41d4762c9822a58d6d0b651e9a9a6f5d4604d3d85a5aacff6cd1e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f6bcffd408e41d4762c9822a58d6d0b651e9a9a6f5d4604d3d85a5aacff6cd1e",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:entry is Go durable/storage/store/storage.go#StoreStorage.Entry (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.Entry"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.Entry"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOneTransactionPerCall"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:entry::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4bdcf11031b16a6bab554ce9e487229ba368672c25b6bbf76f76c8e6ad110fb4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4bdcf11031b16a6bab554ce9e487229ba368672c25b6bbf76f76c8e6ad110fb4",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:entry::call:0 is Go durable/storage/store/storage.go#StoreStorage.Entry (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.Entry"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.Entry"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageOneTransactionPerCall"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:entry::call:1",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8ce4b5d11b0fdf1258da1f7e871c17d801bb4657555f3abed6fe9daef70d56d7"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8ce4b5d11b0fdf1258da1f7e871c17d801bb4657555f3abed6fe9daef70d56d7",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:entry::call:1 is Go durable/storage/store/storage.go#StoreStorage.VisibleEntry (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.VisibleEntry"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.VisibleEntry"
+      ],
+      "evidence": [
+        "reach:durable/storage/store/storage.go#StoreStorage.VisibleEntry"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:findDocument",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4e5d4c9fbeb72df4a25cabf16023e393304a3f2663391217e6f31f940aff9685"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4e5d4c9fbeb72df4a25cabf16023e393304a3f2663391217e6f31f940aff9685",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:findDocument is Go durable/storage/store/storage.go#StoreStorage.FindDocument (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.FindDocument"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.FindDocument"
+      ],
+      "evidence": [
+        "reach:durable/storage/store/storage.go#StoreStorage.FindDocument"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:findDocument::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c7390e165769639ff246d20736899d0561ca99f029e22505afea13eaf2284c50"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c7390e165769639ff246d20736899d0561ca99f029e22505afea13eaf2284c50",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:findDocument::call:0 is Go durable/storage/store/storage.go#StoreStorage.FindDocument (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.FindDocument"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.FindDocument"
+      ],
+      "evidence": [
+        "reach:durable/storage/store/storage.go#StoreStorage.FindDocument"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:findLatestHeadMarker",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:c0245bb523c5e4bb8c75b0bf561e207d65547b0bf5c97d3db606372a72d3487d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:c0245bb523c5e4bb8c75b0bf561e207d65547b0bf5c97d3db606372a72d3487d",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:findLatestHeadMarker is Go durable/storage/store/storage.go#StoreStorage.FindLatestHeadMarker (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.FindLatestHeadMarker"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.FindLatestHeadMarker"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageReviewRegressions"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:findLatestHeadMarker::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d0c9271a9ba8ef51d1df3a0eb636e138d59bf21829b0a669004d4e613571aadd"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d0c9271a9ba8ef51d1df3a0eb636e138d59bf21829b0a669004d4e613571aadd",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:findLatestHeadMarker::call:0 is Go durable/storage/store/storage.go#StoreStorage.FindLatestHeadMarker (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.FindLatestHeadMarker"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.FindLatestHeadMarker"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageReviewRegressions"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:mintId",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:de56cbba9c4dd497f2e821aadae610e208a8b1597d22d8f17196f167c6e0d151"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:de56cbba9c4dd497f2e821aadae610e208a8b1597d22d8f17196f167c6e0d151",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:mintId is Go durable/storage/store/storage.go#StoreStorage.MintId (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.MintId"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.MintId"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageArchives"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:mintId::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6fd62caa1e26abc517caaf4a0b8f513fdc906c3fd48f56019962d8876f9a0cb8"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6fd62caa1e26abc517caaf4a0b8f513fdc906c3fd48f56019962d8876f9a0cb8",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:mintId::call:0 is Go durable/storage/store/storage.go#StoreStorage.MintId (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.MintId"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.MintId"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageDurability",
+        "test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageFailures",
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageArchives"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:publishing",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:529681c27e48ed20b21108de7081ce07e0214b639754d61e266d4d95fdb840d2"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:529681c27e48ed20b21108de7081ce07e0214b639754d61e266d4d95fdb840d2",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:publishing is Go durable/storage/store/storage.go#StoreStorage.Publishing (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.Publishing"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.Publishing"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits"
+      ]
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:publishing::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3ffabf1359bae1bb6d22f8e70e8061ab812760c4ea4829a860ee3d03b799688c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3ffabf1359bae1bb6d22f8e70e8061ab812760c4ea4829a860ee3d03b799688c",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:publishing::call:0 is Go durable/storage/store/storage.go#StoreStorage.Publishing (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.Publishing"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.Publishing"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits"
+      ]
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:scanConversations",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:11a756472269e183dcd3cb6455e9f1c90f984c9d55ea3734080af7ce9ac14468"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:11a756472269e183dcd3cb6455e9f1c90f984c9d55ea3734080af7ce9ac14468",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:scanConversations is Go durable/storage/store/storage.go#StoreStorage.ScanConversations (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.ScanConversations"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.ScanConversations"
+      ],
+      "evidence": [
+        "reach:durable/storage/store/storage.go#StoreStorage.ScanConversations"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:scanConversations::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2754a22b8c5402592fa74e0a23d78fb8c9c33a8ea86b8272fd6ec5dccb0a6435"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2754a22b8c5402592fa74e0a23d78fb8c9c33a8ea86b8272fd6ec5dccb0a6435",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:scanConversations::call:0 is Go durable/storage/store/storage.go#StoreStorage.ScanConversations (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.ScanConversations"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.ScanConversations"
+      ],
+      "evidence": [
+        "reach:durable/storage/store/storage.go#StoreStorage.ScanConversations"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:scanDocuments",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1210ce3e7b03066716e1d2ef72fb995fcbc91fd77da4f7a63a05bfac6ac6416f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1210ce3e7b03066716e1d2ef72fb995fcbc91fd77da4f7a63a05bfac6ac6416f",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:scanDocuments is Go durable/storage/store/storage.go#StoreStorage.ScanDocuments (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.ScanDocuments"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.ScanDocuments"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageArchives"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:scanDocuments::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:327a4e5f07c326839d15f14b839dab024eaa0d56438c364862185cfda917e490"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:327a4e5f07c326839d15f14b839dab024eaa0d56438c364862185cfda917e490",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:scanDocuments::call:0 is Go durable/storage/store/storage.go#StoreStorage.ScanDocuments (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.ScanDocuments"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.ScanDocuments"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageArchives"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:scanEntries",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cacdad01521338d02cca0f098006c2fb3efd0096145d90cbc8a893056919821e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:cacdad01521338d02cca0f098006c2fb3efd0096145d90cbc8a893056919821e",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:scanEntries is Go durable/storage/store/storage.go#StoreStorage.ScanEntries (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.ScanEntries"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.ScanEntries"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageReads",
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageReviewRegressions"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:scanEntries::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:3db39fc7361767adba21051a798c2b549565f807cfc49b12eef879066cdbb3ed"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:3db39fc7361767adba21051a798c2b549565f807cfc49b12eef879066cdbb3ed",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:scanEntries::call:0 is Go durable/storage/store/storage.go#StoreStorage.ScanEntries (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.ScanEntries"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.ScanEntries"
+      ],
+      "evidence": [
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageReads",
+        "test:durable/storage/store/store_storage_test.go#TestStoreStorageReviewRegressions"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:scanSubmissions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:109a559b865c416421e4f906b7878d383acb6611c2d79619dfb2610f0ae2a777"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:109a559b865c416421e4f906b7878d383acb6611c2d79619dfb2610f0ae2a777",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:scanSubmissions is Go durable/storage/store/storage.go#StoreStorage.ScanSubmissions (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.ScanSubmissions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.ScanSubmissions"
+      ],
+      "evidence": [
+        "reach:durable/storage/store/storage.go#StoreStorage.ScanSubmissions"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:scanSubmissions::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e7aae2f367d5a273f55b91b7a4129a85606e8476fc27f5998303aaae8c49604d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e7aae2f367d5a273f55b91b7a4129a85606e8476fc27f5998303aaae8c49604d",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:scanSubmissions::call:0 is Go durable/storage/store/storage.go#StoreStorage.ScanSubmissions (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.ScanSubmissions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.ScanSubmissions"
+      ],
+      "evidence": [
+        "reach:durable/storage/store/storage.go#StoreStorage.ScanSubmissions"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:scanTasks",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1ecf1a80edafef8f89fb4c08077e3eadd63405de5482f6eb9dc5bd86bd6afbd2"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1ecf1a80edafef8f89fb4c08077e3eadd63405de5482f6eb9dc5bd86bd6afbd2",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:scanTasks is Go durable/storage/store/storage.go#StoreStorage.ScanTasks (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.ScanTasks"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.ScanTasks"
+      ],
+      "evidence": [
+        "reach:durable/storage/store/storage.go#StoreStorage.ScanTasks"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:scanTasks::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:31f06927e80c939753135f1fc2a046d8480af3e671e759c5034ea696cfe3621a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:31f06927e80c939753135f1fc2a046d8480af3e671e759c5034ea696cfe3621a",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:scanTasks::call:0 is Go durable/storage/store/storage.go#StoreStorage.ScanTasks (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.ScanTasks"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.ScanTasks"
+      ],
+      "evidence": [
+        "reach:durable/storage/store/storage.go#StoreStorage.ScanTasks"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:submission",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6f480c8e883e7b8c79a32477239e2350e5d257a8c18ec248bc0cacdb15db6796"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6f480c8e883e7b8c79a32477239e2350e5d257a8c18ec248bc0cacdb15db6796",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:submission is Go durable/storage/store/storage.go#StoreStorage.Submission (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.Submission"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.Submission"
+      ],
+      "evidence": [
+        "reach:durable/storage/store/storage.go#StoreStorage.Submission"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:submission::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:618e6ac405d13af41226c65e46818a321b24690561584b80d06ea2949f93ee61"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:618e6ac405d13af41226c65e46818a321b24690561584b80d06ea2949f93ee61",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:submission::call:0 is Go durable/storage/store/storage.go#StoreStorage.Submission (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.Submission"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.Submission"
+      ],
+      "evidence": [
+        "reach:durable/storage/store/storage.go#StoreStorage.Submission"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:submissionByRequest",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e64de9746597854794ac16a46eb47f26d78af149ad644a422abb34891df4dffd"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e64de9746597854794ac16a46eb47f26d78af149ad644a422abb34891df4dffd",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:submissionByRequest is Go durable/storage/store/storage.go#StoreStorage.SubmissionByRequest (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.SubmissionByRequest"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.SubmissionByRequest"
+      ],
+      "evidence": [
+        "reach:durable/storage/store/storage.go#StoreStorage.SubmissionByRequest"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:submissionByRequest::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9b71d19d4ccda38d7e396b6d333d9fb1cba203965e0fe7807d38b812d59d71c3"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9b71d19d4ccda38d7e396b6d333d9fb1cba203965e0fe7807d38b812d59d71c3",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:submissionByRequest::call:0 is Go durable/storage/store/storage.go#StoreStorage.SubmissionByRequest (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.SubmissionByRequest"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.SubmissionByRequest"
+      ],
+      "evidence": [
+        "reach:durable/storage/store/storage.go#StoreStorage.SubmissionByRequest"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:task",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e3d5844b9361df0201bbe2e5cc8df392291b142dc07c8c449cfc05174a043c5a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e3d5844b9361df0201bbe2e5cc8df392291b142dc07c8c449cfc05174a043c5a",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:task is Go durable/storage/store/storage.go#StoreStorage.Task (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.Task"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.Task"
+      ],
+      "evidence": [
+        "reach:durable/storage/store/storage.go#StoreStorage.Task"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/storage/store#StoreStorage::property:task::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d4394db1a3ee6c2696861efc90e264077fae681e795d823f484b4aa1896b9c4a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d4394db1a3ee6c2696861efc90e264077fae681e795d823f484b4aa1896b9c4a",
+      "rationale": "Derived by the interface gap detector: StoreStorage::property:task::call:0 is Go durable/storage/store/storage.go#StoreStorage.Task (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/storage/store/storage.go#StoreStorage.Task"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/storage/store/storage.go#StoreStorage.Task"
+      ],
+      "evidence": [
+        "reach:durable/storage/store/storage.go#StoreStorage.Task"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/testing#commitWrites",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a1a1252ca5ea5cc2e3d6a3547d68c499e3d073f8ba764f843899b24ce5f5325e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a1a1252ca5ea5cc2e3d6a3547d68c499e3d073f8ba764f843899b24ce5f5325e",
+      "rationale": "Derived by the interface gap detector: commitWrites is Go durable/durabletest/commit_writes.go#CommitWrites (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/durabletest/commit_writes.go#CommitWrites"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:durable/durabletest/commit_writes.go#CommitWrites"
+      ],
+      "evidence": [
+        "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
+        "test:durable/storage/jsonl/node/open_node_storage_upstream_test.go#TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersists",
+        "test:durable/storage/memory_ownership_upstream_test.go#TestMemoryStorageClonesRetainedWritesAndReads"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/testing#commitWrites::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1bdc4cef3a1111dd23df6606f5cfd546ce2319f5a705e7162471c64d77e6370d"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1bdc4cef3a1111dd23df6606f5cfd546ce2319f5a705e7162471c64d77e6370d",
+      "rationale": "Derived by the interface gap detector: commitWrites::call:0 is Go durable/durabletest/commit_writes.go#CommitWrites (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/durabletest/commit_writes.go#CommitWrites"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:durable/durabletest/commit_writes.go#CommitWrites"
+      ],
+      "evidence": [
+        "test:durable/storage/jsonl/closed_storage_upstream_test.go#TestJsonlStorageEveryOperationAfterCloseFailsWithTheClosedMessage",
+        "test:durable/storage/jsonl/node/open_node_storage_upstream_test.go#TestOpenNodeJsonlStorageResolvesAgainstTheOpenTimeWorkingDirectoryAndPersists",
+        "test:durable/storage/memory_ownership_upstream_test.go#TestMemoryStorageClonesRetainedWritesAndReads"
+      ],
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
     {
       "id": "pkg:durable/testing#createEnvConformance",
