@@ -1,0 +1,2655 @@
+{
+	"toFile": [
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "aborted",
+				"message": "m-aborted",
+				"path": "/own"
+			},
+			"fallback": null,
+			"result": {
+				"code": "aborted",
+				"message": "m-aborted",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "aborted",
+				"message": "m-aborted",
+				"path": "/own"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "aborted",
+				"message": "m-aborted",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "aborted",
+				"message": "m-aborted",
+				"path": "/own"
+			},
+			"fallback": "",
+			"result": {
+				"code": "aborted",
+				"message": "m-aborted",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "aborted",
+				"message": "m-aborted"
+			},
+			"fallback": null,
+			"result": {
+				"code": "aborted",
+				"message": "m-aborted",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "aborted",
+				"message": "m-aborted"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "aborted",
+				"message": "m-aborted",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "aborted",
+				"message": "m-aborted"
+			},
+			"fallback": "",
+			"result": {
+				"code": "aborted",
+				"message": "m-aborted",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "aborted",
+				"message": "m-aborted",
+				"path": ""
+			},
+			"fallback": null,
+			"result": {
+				"code": "aborted",
+				"message": "m-aborted",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "aborted",
+				"message": "m-aborted",
+				"path": ""
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "aborted",
+				"message": "m-aborted",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "aborted",
+				"message": "m-aborted",
+				"path": ""
+			},
+			"fallback": "",
+			"result": {
+				"code": "aborted",
+				"message": "m-aborted",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOENT",
+				"message": "m-ENOENT",
+				"path": "/own"
+			},
+			"fallback": null,
+			"result": {
+				"code": "not_found",
+				"message": "m-ENOENT",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOENT",
+				"message": "m-ENOENT",
+				"path": "/own"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "not_found",
+				"message": "m-ENOENT",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOENT",
+				"message": "m-ENOENT",
+				"path": "/own"
+			},
+			"fallback": "",
+			"result": {
+				"code": "not_found",
+				"message": "m-ENOENT",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOENT",
+				"message": "m-ENOENT"
+			},
+			"fallback": null,
+			"result": {
+				"code": "not_found",
+				"message": "m-ENOENT",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOENT",
+				"message": "m-ENOENT"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "not_found",
+				"message": "m-ENOENT",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOENT",
+				"message": "m-ENOENT"
+			},
+			"fallback": "",
+			"result": {
+				"code": "not_found",
+				"message": "m-ENOENT",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOENT",
+				"message": "m-ENOENT",
+				"path": ""
+			},
+			"fallback": null,
+			"result": {
+				"code": "not_found",
+				"message": "m-ENOENT",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOENT",
+				"message": "m-ENOENT",
+				"path": ""
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "not_found",
+				"message": "m-ENOENT",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOENT",
+				"message": "m-ENOENT",
+				"path": ""
+			},
+			"fallback": "",
+			"result": {
+				"code": "not_found",
+				"message": "m-ENOENT",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EACCES",
+				"message": "m-EACCES",
+				"path": "/own"
+			},
+			"fallback": null,
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EACCES",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EACCES",
+				"message": "m-EACCES",
+				"path": "/own"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EACCES",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EACCES",
+				"message": "m-EACCES",
+				"path": "/own"
+			},
+			"fallback": "",
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EACCES",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EACCES",
+				"message": "m-EACCES"
+			},
+			"fallback": null,
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EACCES",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EACCES",
+				"message": "m-EACCES"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EACCES",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EACCES",
+				"message": "m-EACCES"
+			},
+			"fallback": "",
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EACCES",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EACCES",
+				"message": "m-EACCES",
+				"path": ""
+			},
+			"fallback": null,
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EACCES",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EACCES",
+				"message": "m-EACCES",
+				"path": ""
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EACCES",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EACCES",
+				"message": "m-EACCES",
+				"path": ""
+			},
+			"fallback": "",
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EACCES",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EPERM",
+				"message": "m-EPERM",
+				"path": "/own"
+			},
+			"fallback": null,
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EPERM",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EPERM",
+				"message": "m-EPERM",
+				"path": "/own"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EPERM",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EPERM",
+				"message": "m-EPERM",
+				"path": "/own"
+			},
+			"fallback": "",
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EPERM",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EPERM",
+				"message": "m-EPERM"
+			},
+			"fallback": null,
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EPERM",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EPERM",
+				"message": "m-EPERM"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EPERM",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EPERM",
+				"message": "m-EPERM"
+			},
+			"fallback": "",
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EPERM",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EPERM",
+				"message": "m-EPERM",
+				"path": ""
+			},
+			"fallback": null,
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EPERM",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EPERM",
+				"message": "m-EPERM",
+				"path": ""
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EPERM",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EPERM",
+				"message": "m-EPERM",
+				"path": ""
+			},
+			"fallback": "",
+			"result": {
+				"code": "permission_denied",
+				"message": "m-EPERM",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOTDIR",
+				"message": "m-ENOTDIR",
+				"path": "/own"
+			},
+			"fallback": null,
+			"result": {
+				"code": "not_directory",
+				"message": "m-ENOTDIR",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOTDIR",
+				"message": "m-ENOTDIR",
+				"path": "/own"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "not_directory",
+				"message": "m-ENOTDIR",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOTDIR",
+				"message": "m-ENOTDIR",
+				"path": "/own"
+			},
+			"fallback": "",
+			"result": {
+				"code": "not_directory",
+				"message": "m-ENOTDIR",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOTDIR",
+				"message": "m-ENOTDIR"
+			},
+			"fallback": null,
+			"result": {
+				"code": "not_directory",
+				"message": "m-ENOTDIR",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOTDIR",
+				"message": "m-ENOTDIR"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "not_directory",
+				"message": "m-ENOTDIR",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOTDIR",
+				"message": "m-ENOTDIR"
+			},
+			"fallback": "",
+			"result": {
+				"code": "not_directory",
+				"message": "m-ENOTDIR",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOTDIR",
+				"message": "m-ENOTDIR",
+				"path": ""
+			},
+			"fallback": null,
+			"result": {
+				"code": "not_directory",
+				"message": "m-ENOTDIR",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOTDIR",
+				"message": "m-ENOTDIR",
+				"path": ""
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "not_directory",
+				"message": "m-ENOTDIR",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOTDIR",
+				"message": "m-ENOTDIR",
+				"path": ""
+			},
+			"fallback": "",
+			"result": {
+				"code": "not_directory",
+				"message": "m-ENOTDIR",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EISDIR",
+				"message": "m-EISDIR",
+				"path": "/own"
+			},
+			"fallback": null,
+			"result": {
+				"code": "is_directory",
+				"message": "m-EISDIR",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EISDIR",
+				"message": "m-EISDIR",
+				"path": "/own"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "is_directory",
+				"message": "m-EISDIR",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EISDIR",
+				"message": "m-EISDIR",
+				"path": "/own"
+			},
+			"fallback": "",
+			"result": {
+				"code": "is_directory",
+				"message": "m-EISDIR",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EISDIR",
+				"message": "m-EISDIR"
+			},
+			"fallback": null,
+			"result": {
+				"code": "is_directory",
+				"message": "m-EISDIR",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EISDIR",
+				"message": "m-EISDIR"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "is_directory",
+				"message": "m-EISDIR",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EISDIR",
+				"message": "m-EISDIR"
+			},
+			"fallback": "",
+			"result": {
+				"code": "is_directory",
+				"message": "m-EISDIR",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EISDIR",
+				"message": "m-EISDIR",
+				"path": ""
+			},
+			"fallback": null,
+			"result": {
+				"code": "is_directory",
+				"message": "m-EISDIR",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EISDIR",
+				"message": "m-EISDIR",
+				"path": ""
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "is_directory",
+				"message": "m-EISDIR",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EISDIR",
+				"message": "m-EISDIR",
+				"path": ""
+			},
+			"fallback": "",
+			"result": {
+				"code": "is_directory",
+				"message": "m-EISDIR",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EINVAL",
+				"message": "m-EINVAL",
+				"path": "/own"
+			},
+			"fallback": null,
+			"result": {
+				"code": "invalid",
+				"message": "m-EINVAL",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EINVAL",
+				"message": "m-EINVAL",
+				"path": "/own"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "invalid",
+				"message": "m-EINVAL",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EINVAL",
+				"message": "m-EINVAL",
+				"path": "/own"
+			},
+			"fallback": "",
+			"result": {
+				"code": "invalid",
+				"message": "m-EINVAL",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EINVAL",
+				"message": "m-EINVAL"
+			},
+			"fallback": null,
+			"result": {
+				"code": "invalid",
+				"message": "m-EINVAL",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EINVAL",
+				"message": "m-EINVAL"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "invalid",
+				"message": "m-EINVAL",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EINVAL",
+				"message": "m-EINVAL"
+			},
+			"fallback": "",
+			"result": {
+				"code": "invalid",
+				"message": "m-EINVAL",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EINVAL",
+				"message": "m-EINVAL",
+				"path": ""
+			},
+			"fallback": null,
+			"result": {
+				"code": "invalid",
+				"message": "m-EINVAL",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EINVAL",
+				"message": "m-EINVAL",
+				"path": ""
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "invalid",
+				"message": "m-EINVAL",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EINVAL",
+				"message": "m-EINVAL",
+				"path": ""
+			},
+			"fallback": "",
+			"result": {
+				"code": "invalid",
+				"message": "m-EINVAL",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "SYMLINK",
+				"message": "m-SYMLINK",
+				"path": "/own"
+			},
+			"fallback": null,
+			"result": {
+				"code": "invalid",
+				"message": "m-SYMLINK",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "SYMLINK",
+				"message": "m-SYMLINK",
+				"path": "/own"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "invalid",
+				"message": "m-SYMLINK",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "SYMLINK",
+				"message": "m-SYMLINK",
+				"path": "/own"
+			},
+			"fallback": "",
+			"result": {
+				"code": "invalid",
+				"message": "m-SYMLINK",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "SYMLINK",
+				"message": "m-SYMLINK"
+			},
+			"fallback": null,
+			"result": {
+				"code": "invalid",
+				"message": "m-SYMLINK",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "SYMLINK",
+				"message": "m-SYMLINK"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "invalid",
+				"message": "m-SYMLINK",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "SYMLINK",
+				"message": "m-SYMLINK"
+			},
+			"fallback": "",
+			"result": {
+				"code": "invalid",
+				"message": "m-SYMLINK",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "SYMLINK",
+				"message": "m-SYMLINK",
+				"path": ""
+			},
+			"fallback": null,
+			"result": {
+				"code": "invalid",
+				"message": "m-SYMLINK",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "SYMLINK",
+				"message": "m-SYMLINK",
+				"path": ""
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "invalid",
+				"message": "m-SYMLINK",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "SYMLINK",
+				"message": "m-SYMLINK",
+				"path": ""
+			},
+			"fallback": "",
+			"result": {
+				"code": "invalid",
+				"message": "m-SYMLINK",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "NOT_REGULAR",
+				"message": "m-NOT_REGULAR",
+				"path": "/own"
+			},
+			"fallback": null,
+			"result": {
+				"code": "invalid",
+				"message": "m-NOT_REGULAR",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "NOT_REGULAR",
+				"message": "m-NOT_REGULAR",
+				"path": "/own"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "invalid",
+				"message": "m-NOT_REGULAR",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "NOT_REGULAR",
+				"message": "m-NOT_REGULAR",
+				"path": "/own"
+			},
+			"fallback": "",
+			"result": {
+				"code": "invalid",
+				"message": "m-NOT_REGULAR",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "NOT_REGULAR",
+				"message": "m-NOT_REGULAR"
+			},
+			"fallback": null,
+			"result": {
+				"code": "invalid",
+				"message": "m-NOT_REGULAR",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "NOT_REGULAR",
+				"message": "m-NOT_REGULAR"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "invalid",
+				"message": "m-NOT_REGULAR",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "NOT_REGULAR",
+				"message": "m-NOT_REGULAR"
+			},
+			"fallback": "",
+			"result": {
+				"code": "invalid",
+				"message": "m-NOT_REGULAR",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "NOT_REGULAR",
+				"message": "m-NOT_REGULAR",
+				"path": ""
+			},
+			"fallback": null,
+			"result": {
+				"code": "invalid",
+				"message": "m-NOT_REGULAR",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "NOT_REGULAR",
+				"message": "m-NOT_REGULAR",
+				"path": ""
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "invalid",
+				"message": "m-NOT_REGULAR",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "NOT_REGULAR",
+				"message": "m-NOT_REGULAR",
+				"path": ""
+			},
+			"fallback": "",
+			"result": {
+				"code": "invalid",
+				"message": "m-NOT_REGULAR",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EEXIST",
+				"message": "m-EEXIST",
+				"path": "/own"
+			},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "m-EEXIST",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EEXIST",
+				"message": "m-EEXIST",
+				"path": "/own"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "m-EEXIST",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EEXIST",
+				"message": "m-EEXIST",
+				"path": "/own"
+			},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "m-EEXIST",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EEXIST",
+				"message": "m-EEXIST"
+			},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "m-EEXIST",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EEXIST",
+				"message": "m-EEXIST"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "m-EEXIST",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EEXIST",
+				"message": "m-EEXIST"
+			},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "m-EEXIST",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EEXIST",
+				"message": "m-EEXIST",
+				"path": ""
+			},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "m-EEXIST",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EEXIST",
+				"message": "m-EEXIST",
+				"path": ""
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "m-EEXIST",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "EEXIST",
+				"message": "m-EEXIST",
+				"path": ""
+			},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "m-EEXIST",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOSPC",
+				"message": "m-ENOSPC",
+				"path": "/own"
+			},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "m-ENOSPC",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOSPC",
+				"message": "m-ENOSPC",
+				"path": "/own"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "m-ENOSPC",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOSPC",
+				"message": "m-ENOSPC",
+				"path": "/own"
+			},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "m-ENOSPC",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOSPC",
+				"message": "m-ENOSPC"
+			},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "m-ENOSPC",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOSPC",
+				"message": "m-ENOSPC"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "m-ENOSPC",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOSPC",
+				"message": "m-ENOSPC"
+			},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "m-ENOSPC",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOSPC",
+				"message": "m-ENOSPC",
+				"path": ""
+			},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "m-ENOSPC",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOSPC",
+				"message": "m-ENOSPC",
+				"path": ""
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "m-ENOSPC",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOSPC",
+				"message": "m-ENOSPC",
+				"path": ""
+			},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "m-ENOSPC",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "unknown",
+				"message": "m-unknown",
+				"path": "/own"
+			},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "m-unknown",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "unknown",
+				"message": "m-unknown",
+				"path": "/own"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "m-unknown",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "unknown",
+				"message": "m-unknown",
+				"path": "/own"
+			},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "m-unknown",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "unknown",
+				"message": "m-unknown"
+			},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "m-unknown",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "unknown",
+				"message": "m-unknown"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "m-unknown",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "unknown",
+				"message": "m-unknown"
+			},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "m-unknown",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "unknown",
+				"message": "m-unknown",
+				"path": ""
+			},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "m-unknown",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "unknown",
+				"message": "m-unknown",
+				"path": ""
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "m-unknown",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "unknown",
+				"message": "m-unknown",
+				"path": ""
+			},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "m-unknown",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "",
+				"message": "m-",
+				"path": "/own"
+			},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "m-",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "",
+				"message": "m-",
+				"path": "/own"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "m-",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "",
+				"message": "m-",
+				"path": "/own"
+			},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "m-",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "",
+				"message": "m-"
+			},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "m-",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "",
+				"message": "m-"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "m-",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "",
+				"message": "m-"
+			},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "m-",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "",
+				"message": "m-",
+				"path": ""
+			},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "m-",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "",
+				"message": "m-",
+				"path": ""
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "m-",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "",
+				"message": "m-",
+				"path": ""
+			},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "m-",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "enoent",
+				"message": "m-enoent",
+				"path": "/own"
+			},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "m-enoent",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "enoent",
+				"message": "m-enoent",
+				"path": "/own"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "m-enoent",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "enoent",
+				"message": "m-enoent",
+				"path": "/own"
+			},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "m-enoent",
+				"path": "/own",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "enoent",
+				"message": "m-enoent"
+			},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "m-enoent",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "enoent",
+				"message": "m-enoent"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "m-enoent",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "enoent",
+				"message": "m-enoent"
+			},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "m-enoent",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "enoent",
+				"message": "m-enoent",
+				"path": ""
+			},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "m-enoent",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "enoent",
+				"message": "m-enoent",
+				"path": ""
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "m-enoent",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "enoent",
+				"message": "m-enoent",
+				"path": ""
+			},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "m-enoent",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "Remote operation failed",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "Remote operation failed",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "Remote operation failed",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"message": "boom"
+			},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "boom",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"message": "boom"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "boom",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"message": "boom"
+			},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "boom",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": 7,
+				"path": 3,
+				"message": 9
+			},
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "Remote operation failed",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": 7,
+				"path": 3,
+				"message": 9
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "Remote operation failed",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": 7,
+				"path": 3,
+				"message": 9
+			},
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "Remote operation failed",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOENT",
+				"path": 3
+			},
+			"fallback": null,
+			"result": {
+				"code": "not_found",
+				"message": "Remote operation failed",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOENT",
+				"path": 3
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "not_found",
+				"message": "Remote operation failed",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOENT",
+				"path": 3
+			},
+			"fallback": "",
+			"result": {
+				"code": "not_found",
+				"message": "Remote operation failed",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOENT",
+				"message": "multi\nline 😀",
+				"path": "/x"
+			},
+			"fallback": null,
+			"result": {
+				"code": "not_found",
+				"message": "multi\nline 😀",
+				"path": "/x",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOENT",
+				"message": "multi\nline 😀",
+				"path": "/x"
+			},
+			"fallback": "/fallback",
+			"result": {
+				"code": "not_found",
+				"message": "multi\nline 😀",
+				"path": "/x",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "remote",
+			"fields": {
+				"code": "ENOENT",
+				"message": "multi\nline 😀",
+				"path": "/x"
+			},
+			"fallback": "",
+			"result": {
+				"code": "not_found",
+				"message": "multi\nline 😀",
+				"path": "/x",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "error",
+			"message": "boom",
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "boom",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "error",
+			"message": "boom",
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "boom",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "error",
+			"message": "boom",
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "boom",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "error",
+			"message": "",
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "error",
+			"message": "",
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "error",
+			"message": "",
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "error",
+			"message": "multi\nline",
+			"fallback": null,
+			"result": {
+				"code": "unknown",
+				"message": "multi\nline",
+				"path": null,
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "error",
+			"message": "multi\nline",
+			"fallback": "/fallback",
+			"result": {
+				"code": "unknown",
+				"message": "multi\nline",
+				"path": "/fallback",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "error",
+			"message": "multi\nline",
+			"fallback": "",
+			"result": {
+				"code": "unknown",
+				"message": "multi\nline",
+				"path": "",
+				"hasCause": true
+			},
+			"causeIsInput": true,
+			"isFileError": true
+		},
+		{
+			"kind": "file",
+			"fileCode": "invalid",
+			"message": "kept",
+			"path": "/p",
+			"fallback": null,
+			"result": {
+				"code": "invalid",
+				"message": "kept",
+				"path": "/p",
+				"hasCause": false
+			},
+			"same": true
+		},
+		{
+			"kind": "file",
+			"fileCode": "invalid",
+			"message": "kept",
+			"path": "/p",
+			"fallback": "/fallback",
+			"result": {
+				"code": "invalid",
+				"message": "kept",
+				"path": "/p",
+				"hasCause": false
+			},
+			"same": true
+		},
+		{
+			"kind": "file",
+			"fileCode": "invalid",
+			"message": "kept",
+			"path": "/p",
+			"fallback": "",
+			"result": {
+				"code": "invalid",
+				"message": "kept",
+				"path": "/p",
+				"hasCause": false
+			},
+			"same": true
+		},
+		{
+			"kind": "file",
+			"fileCode": "not_found",
+			"message": "gone",
+			"path": null,
+			"fallback": null,
+			"result": {
+				"code": "not_found",
+				"message": "gone",
+				"path": null,
+				"hasCause": false
+			},
+			"same": true
+		},
+		{
+			"kind": "file",
+			"fileCode": "not_found",
+			"message": "gone",
+			"path": null,
+			"fallback": "/fallback",
+			"result": {
+				"code": "not_found",
+				"message": "gone",
+				"path": null,
+				"hasCause": false
+			},
+			"same": true
+		},
+		{
+			"kind": "file",
+			"fileCode": "not_found",
+			"message": "gone",
+			"path": null,
+			"fallback": "",
+			"result": {
+				"code": "not_found",
+				"message": "gone",
+				"path": null,
+				"hasCause": false
+			},
+			"same": true
+		},
+		{
+			"kind": "file",
+			"fileCode": "aborted",
+			"message": "",
+			"path": "",
+			"fallback": null,
+			"result": {
+				"code": "aborted",
+				"message": "",
+				"path": "",
+				"hasCause": false
+			},
+			"same": true
+		},
+		{
+			"kind": "file",
+			"fileCode": "aborted",
+			"message": "",
+			"path": "",
+			"fallback": "/fallback",
+			"result": {
+				"code": "aborted",
+				"message": "",
+				"path": "",
+				"hasCause": false
+			},
+			"same": true
+		},
+		{
+			"kind": "file",
+			"fileCode": "aborted",
+			"message": "",
+			"path": "",
+			"fallback": "",
+			"result": {
+				"code": "aborted",
+				"message": "",
+				"path": "",
+				"hasCause": false
+			},
+			"same": true
+		}
+	],
+	"abort": [
+		{
+			"signal": "live",
+			"path": null,
+			"result": null
+		},
+		{
+			"signal": "live",
+			"path": "/p",
+			"result": null
+		},
+		{
+			"signal": "live",
+			"path": "",
+			"result": null
+		},
+		{
+			"signal": "aborted",
+			"path": null,
+			"result": {
+				"ok": false,
+				"error": {
+					"code": "aborted",
+					"message": "aborted",
+					"path": null,
+					"hasCause": false
+				},
+				"isFileError": true
+			}
+		},
+		{
+			"signal": "aborted",
+			"path": "/p",
+			"result": {
+				"ok": false,
+				"error": {
+					"code": "aborted",
+					"message": "aborted",
+					"path": "/p",
+					"hasCause": false
+				},
+				"isFileError": true
+			}
+		},
+		{
+			"signal": "aborted",
+			"path": "",
+			"result": {
+				"ok": false,
+				"error": {
+					"code": "aborted",
+					"message": "aborted",
+					"path": "",
+					"hasCause": false
+				},
+				"isFileError": true
+			}
+		},
+		{
+			"signal": "absent",
+			"path": null,
+			"result": null
+		},
+		{
+			"signal": "absent",
+			"path": "/p",
+			"result": null
+		},
+		{
+			"signal": "absent",
+			"path": "",
+			"result": null
+		}
+	]
+}

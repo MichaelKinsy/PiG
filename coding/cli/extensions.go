@@ -61,7 +61,7 @@ func resolveAppMode(mode string, print, stdinIsTTY, stdoutIsTTY bool) appMode {
 }
 
 // isPlainRuntimeMetadataCommand preserves stdout only for metadata without explicit mode/print options.
-// Ports packages/coding-agent/src/main.ts:129-130.
+// Ports packages/coding-agent/src/main.ts (lines 129-130).
 func isPlainRuntimeMetadataCommand(flags Args) bool {
 	return !flags.Print && !flags.modeSet && (flags.Help || flags.ListModelsAll || flags.ListModels != "")
 }

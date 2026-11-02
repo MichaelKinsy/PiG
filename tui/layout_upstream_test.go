@@ -1,5 +1,8 @@
 package tui
 
+// pi: packages/tui/src/layout.ts
+// pi: packages/tui/src/layout-node.ts
+
 import (
 	"encoding/json"
 	"slices"

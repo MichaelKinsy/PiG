@@ -166,7 +166,11 @@ func (definition *StateDefinition) check(value *JsonObject, what string, ctx con
 	if err != nil {
 		return err
 	}
-	if !validator.Check(value) {
+	ok, err := validator.Check(value)
+	if err != nil {
+		return err
+	}
+	if !ok {
 		return fmt.Errorf("%s: %s does not match the schema", definition.Name, what)
 	}
 	return nil

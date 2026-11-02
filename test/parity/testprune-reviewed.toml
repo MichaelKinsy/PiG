@@ -836,7 +836,6 @@ class = "NOBEHAVIOR"
 cite = ""
 reason = "The commit makes the tracker's weak text buffers observable to the test: the expected texts of each commit are now built apart from the tracker's strings (strings.Clone of an independently concatenated text), so a buffer the tracker reuses cannot change what the test expects. The values Pi's tracker.ts produces (every revision and op keeps its text while later appends grow the same buffer) are unchanged."
 
-
 [[entry]]
 path = "chord/nextnode/plugins/plugins_node_test.go"
 commit = "e0f6bd3215"
@@ -927,3 +926,31 @@ commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
 class = "CITE"
 cite = "packages/durable/test/session-adoption.test.ts:47"
 reason = "Pi e5c6182b: Storage.commit takes batches and a receive callback that gives the Session's durability receipt (session-adoption.test.ts:47, :57); the Session adopts and publishes once Storage resolved. The Go test follows the same order logs. The expected order is Pi's."
+
+[[entry]]
+path = "coding/extension/host/subprocess/host_helpers_highlight_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
+
+[[entry]]
+path = "tui/component_themes_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
+
+[[entry]]
+path = "tui/highlight_cache_bytes_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
+
+[[entry]]
+path = "tui/highlight_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."

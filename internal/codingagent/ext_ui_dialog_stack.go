@@ -1,5 +1,7 @@
 package codingagent
 
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (showExtensionSelector, showExtensionConfirm, showExtensionInput, showExtensionEditor).
+
 import (
 	"context"
 	"slices"

@@ -8,6 +8,9 @@
 // pig-specific: upstream's interactive-mode.ts creates these inline;
 // pig needs a separate type because the UIContext interface lives in
 // coding/extension/ and the TUI lives in internal/.
+//
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (createExtensionUIContext).
+// Ports packages/coding-agent/src/modes/interactive/components/extension-selector.ts (dialogTimeout: the timeout option that starts the selector's countdown).
 
 package codingagent
 
@@ -271,10 +274,13 @@ func dialogTimeout(opts extension.ExtensionUIDialogOptions) time.Duration {
 	// The countdown shows whole seconds; a timeout beyond Duration's range
 	// counts down from its largest.
 	longest := time.Duration(math.MaxInt64) - time.Second
+	//portlint:allow numbers clamp of a timeout beyond Duration's range (about 292 years); CountdownTimer has no such bound but the countdown cannot reach it either
 	if timeout >= float64(longest/time.Millisecond) {
 		return longest
 	}
-	return time.Duration(timeout * float64(time.Millisecond))
+	// A fraction of a nanosecond past a whole second still counts the next second down (Math.ceil(timeoutMs / 1000)).
+	//portlint:allow numbers timeout is below longest here, so the product is within Duration's range and ceiled; the countdown shows whole seconds
+	return time.Duration(math.Ceil(timeout * float64(time.Millisecond)))
 }
 
 func (u *ExtUIContext) runDialog(

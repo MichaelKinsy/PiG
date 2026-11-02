@@ -30,7 +30,7 @@ type CountdownTimer struct {
 // every later second, including one already dispatched.
 func NewCountdownTimer(timeout time.Duration, dispatch func(func()), onTick func(int), onExpire func()) *CountdownTimer {
 	ct := &CountdownTimer{
-		remaining: int((timeout + 999*time.Millisecond) / time.Second), // ceil
+		remaining: int((timeout + time.Second - 1) / time.Second), // Math.ceil(timeoutMs / 1000)
 		dispatch:  dispatch,
 		onTick:    onTick,
 		onExpire:  onExpire,
