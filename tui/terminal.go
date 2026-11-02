@@ -366,12 +366,18 @@ func (t *ProcessTerminal) EnterRawMode() (restore func(), err error) {
 	return t.enterRawMode(true)
 }
 
+// makeRawTerminal and restoreTerminal are the raw-mode ioctls (TCGETS/TCSETS, TIOCGETA/TIOCSETA); tests replace them to interrupt the call.
+var (
+	makeRawTerminal = term.MakeRaw
+	restoreTerminal = term.Restore
+)
+
 func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err error) {
 	if t.stdin == nil || t.out == nil {
 		return nil, fmt.Errorf("terminal raw mode requires stdin/stdout")
 	}
 	fd := int(t.stdin.Fd())
-	state, err := term.MakeRaw(fd)
+	state, err := makeRawTerminal(fd)
 	if err != nil {
 		return nil, err
 	}
@@ -385,7 +391,7 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 	// The process-exit restore (RestoreTerminalOnExit) owns the terminal from here until restore runs, as Pi's exit handler
 	// owns it from start() to stop(). It also hands the terminal back in cooked mode, which libuv does when Node exits.
 	registerExitRestoreTerminal(t, func() {
-		_ = term.Restore(fd, state)
+		_ = restoreTerminal(fd, state)
 		vtRestore()
 	})
 	return func() {
@@ -402,7 +408,7 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 		if drainOnRestore {
 			_ = t.DrainInput(time.Second, 50*time.Millisecond)
 		}
-		_ = term.Restore(fd, state)
+		_ = restoreTerminal(fd, state)
 		vtRestore()
 		t.protocolQueried = false
 	}, nil

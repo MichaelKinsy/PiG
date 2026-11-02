@@ -45,5 +45,5 @@ func RestoreTerminalFromSignal() bool {
 		return false
 	}
 	processTerminal.disableKeyboardProtocol()
-	return term.Restore(restore.fd, restore.state) == nil
+	return restoreTerminal(restore.fd, restore.state) == nil
 }
