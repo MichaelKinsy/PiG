@@ -695,6 +695,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-75c6ccb](#bf-75c6ccb) | fix(codingagent): context edits leave system messages unchanged | PiG's own defect | All platforms | Unreleased |
 | [BF-7633906](#bf-7633906) | On arm64, `tool_search` and `searchTools()` scores use the same natural logarithm as Pi running on Node for… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7662334](#bf-7662334) | An extension that writes a large amount to stderr no longer grows its diagnostic log without limit | PiG's own defect | All platforms | 0.5.0 |
+| [BF-7689b82](#bf-7689b82) | An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor… | PiG's own defect | All platforms | Unreleased |
 | [BF-76f780d](#bf-76f780d) | A tool call that streams many argument deltas no longer costs time and memory that grow with the square of… | PiG's own defect | All platforms | Unreleased |
 | [BF-76f780d-2](#bf-76f780d-2) | A grammar (custom) tool input no longer copies the whole input so far on every delta | PiG's own defect | All platforms | Unreleased |
 | [BF-773a868](#bf-773a868) | RPC mode no longer hangs when a Node extension command calls `pi.sendMessage(..., { triggerTurn: true })`… | PiG's own defect | All platforms | 0.5.0 |
@@ -702,6 +703,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7744a0b](#bf-7744a0b) | `--model <provider>/<id>` now resolves when the provider id itself contains a `/`, such as a URL-derived id… | PiG's own defect | All platforms | Unreleased |
 | [BF-7768bea](#bf-7768bea) | fix(ai): tool-call arguments are written as JSON.stringify writes them, and keep a lone surrogate | PiG's own defect | All platforms | Unreleased |
 | [BF-776b600](#bf-776b600) | fix(durable/core): the scheduler's reconcile and drain microtasks run behind the host listeners' dispatch of… | PiG's own defect | All platforms | Unreleased |
+| [BF-776d60b](#bf-776d60b) | An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a… | PiG's own defect | All platforms | Unreleased |
+| [BF-776d60b-2](#bf-776d60b-2) | A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead… | PiG's own defect | All platforms | Unreleased |
 | [BF-777e981](#bf-777e981) | The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before… | PiG's own defect | All platforms | Unreleased |
 | [BF-779318a](#bf-779318a) | OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7809364](#bf-7809364) | Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as… | PiG's own defect | All platforms | Unreleased |
@@ -10868,6 +10871,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/extension/host/subprocess/conn_framing_test.go::TestConnAllocationBudgets`, `coding/extension/host/subprocess/conn_framing_test.go::TestLargeFrameChunksArriveIntact`, `coding/extension/host/subprocess/conn_framing_test.go::TestSendAllocatesNothingInSteadyState`, `coding/extension/host/subprocess/conn_framing_test.go::TestSmallFrameIsOneSocketWrite`, `coding/extension/host/subprocess/stderr_bound_test.go::TestFloodingChildNeitherBlocksNorFillsTheDisk`, `coding/extension/host/subprocess/stderr_bound_test.go::TestHelperFloodStderr`, `coding/extension/host/subprocess/stderr_bound_test.go::TestStderrLogKeepsHeadAndTail`, `coding/extension/host/subprocess/stderr_bound_test.go::TestStderrLogUnderTheBoundIsVerbatim` and 4 more in docs/bug-ledger.json
 - **Release note:** An extension that writes a large amount to stderr no longer grows its diagnostic log without limit. The log keeps the first 1 MiB and the last 64 KiB of the output and says how many bytes it dropped, so a startup failure and a crash line both survive a flood.
 
+### BF-7689b82
+
+**An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor column now gets Pi's answer: the column counts back from the end of the line in UTF-16 units as `line.slice(0, col)` does, where it was treated as column 0.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7689b82bf7` (2026-11-02)
+- **Tests:** `internal/codingagent/autocomplete_wrappers_test.go::TestShouldTriggerFileCompletionSlicesTheLineLikeJavaScript`
+- **Release note:** An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor column now gets Pi's answer: the column counts back from the end of the line in UTF-16 units as `line.slice(0, col)` does, where it was treated as column 0.
+
 ### BF-76f780d
 
 **A tool call that streams many argument deltas no longer costs time and memory that grow with the square of…**
@@ -10963,6 +10980,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `776b600064` (2026-10-27)
 - **Tests:** None recorded.
+
+### BF-776d60b
+
+**An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a whole second, such as `1000.5`, now starts its countdown from the next second like Pi's `Math.ceil(timeoutMs / 1000)`; the countdown rounded the milliseconds down to whole milliseconds first and started one second short.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `776d60b196` (2026-11-02)
+- **Tests:** `internal/codingagent/ext_ui_dialog_timeout_test.go::TestDialogTimeoutKeepsAFractionOfAMillisecondPastAWholeSecond`, `internal/codingagent/ext_ui_dialog_timeout_test.go::TestSubprocessOptionalInt64RejectsAValueBeyondInt64`, `tui/countdown_timer_parity_test.go::TestCountdownTimerParity_InitialTickMatchesCeil`
+- **Release note:** An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a whole second, such as `1000.5`, now starts its countdown from the next second like Pi's `Math.ceil(timeoutMs / 1000)`; the countdown rounded the milliseconds down to whole milliseconds first and started one second short.
+
+### BF-776d60b-2
+
+**A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead of converting to the largest `int64` on arm64.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `776d60b196` (2026-11-02)
+- **Tests:** `internal/codingagent/ext_ui_dialog_timeout_test.go::TestDialogTimeoutKeepsAFractionOfAMillisecondPastAWholeSecond`, `internal/codingagent/ext_ui_dialog_timeout_test.go::TestSubprocessOptionalInt64RejectsAValueBeyondInt64`, `tui/countdown_timer_parity_test.go::TestCountdownTimerParity_InitialTickMatchesCeil`
+- **Release note:** A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead of converting to the largest `int64` on arm64.
 
 ### BF-777e981
 
