@@ -1,6 +1,6 @@
 package ai
 
-// Ports the workload identity federation of packages/ai/src/api/anthropic-messages.ts (getAnthropicFederation, the
+// Ports packages/ai/src/api/anthropic-messages.ts (the workload identity federation: getAnthropicFederation and the
 // federation client of createClient) together with the parts of @anthropic-ai/sdk@0.129.0 it relies on:
 // lib/credentials/oidc-federation.mjs (the jwt-bearer token exchange), types.mjs (endpoint check, response parsing,
 // redaction), identity-token.mjs (the identity token file) and token-cache.mjs (proactive refresh).
