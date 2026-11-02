@@ -1,5 +1,11 @@
 package providers
 
+// pi: packages/ai/catalog/providers/moonshotai.ts
+// pi: packages/ai/catalog/providers/nvidia.ts
+// pi: packages/ai/catalog/providers/openai-codex.ts
+// pi: packages/ai/catalog/providers/openai.ts
+// pi: packages/ai/catalog/families/kimi.ts
+
 // Behavioral evidence for packages/ai/catalog/providers/{moonshotai,nvidia,openai-codex,openai,opencode-go,opencode,openrouter,
 // qwen-token-plan-cn,qwen-token-plan-individual,qwen-token-plan,radius,together,typesafe,vercel-ai-gateway,xai,
 // xiaomi-token-plan-ams,xiaomi-token-plan-cn,xiaomi-token-plan-sgp,xiaomi,zai-coding-cn,zai}.ts.
@@ -161,7 +167,7 @@ func provBIDsEqual(t *testing.T, got []string, want ...string) {
 }
 
 func TestProvBMoonshotai(t *testing.T) {
-	// pi: providers/moonshotai.ts moonshotModels + finalizeMoonshotModel, families/kimi.ts
+	// Pi source: providers/moonshotai.ts moonshotModels + finalizeMoonshotModel, families/kimi.ts
 	sources := &CatalogSources{ModelsDev: provBModelsDev(t, map[string][]provBSpec{"moonshotai": {
 		// K3 reports no reasoning upstream and lists the input rate as cache_write: reasoning is forced on, cache writes are free.
 		{ID: "kimi-k3.1-pro-highspeed", Cost: `{"text":{"input":{"price":6,"cache":{"read":0.6,"write":6}},"output":{"price":30}}}`},
@@ -203,7 +209,7 @@ func TestProvBMoonshotai(t *testing.T) {
 }
 
 func TestProvBNvidia(t *testing.T) {
-	// pi: providers/nvidia.ts
+	// Pi source: providers/nvidia.ts
 	live := map[string]string{}
 	for _, id := range []string{"acme/Model.One", "acme/embedder", "acme/plain", "google/gemma-4-31b-it", "acme/named"} {
 		live[id] = id
@@ -243,7 +249,7 @@ func TestProvBNvidia(t *testing.T) {
 }
 
 func TestProvBOpenAICodex(t *testing.T) {
-	// pi: providers/openai-codex.ts (an authored list: models.dev does not list the ChatGPT OAuth models)
+	// Pi source: providers/openai-codex.ts (an authored list: models.dev does not list the ChatGPT OAuth models)
 	catalog, err := provBBuild(t, "openai-codex", &CatalogSources{}, true)
 	if err != nil {
 		t.Fatal(err)
@@ -276,7 +282,7 @@ func TestProvBOpenAICodex(t *testing.T) {
 }
 
 func TestProvBOpenAI(t *testing.T) {
-	// pi: providers/openai.ts
+	// Pi source: providers/openai.ts
 	longCost := `{"text":{"input":{"price":5,"cache":{"read":0.5,"write":6.25},"overrides":[{"when":{"context":{"gt":272000}},"price":10}]},"output":{"price":30,"overrides":[{"when":{"context":{"gt":272000}},"price":45}]}}}`
 	both := `{"responses":{"base_url":"https://api.openai.com/v1"},"chat-completions":{"base_url":"https://api.openai.com/v1"}}`
 	chatOnly := `{"chat-completions":{"base_url":"https://api.openai.com/v1"}}`

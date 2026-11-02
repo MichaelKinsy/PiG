@@ -1,5 +1,7 @@
 package main
 
+// pi: packages/ai/catalog/generate.ts
+
 import (
 	"encoding/json"
 	"os"

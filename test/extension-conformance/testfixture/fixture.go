@@ -1109,6 +1109,144 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("rw_idle_after_trigger=%t", idle), "info")
 		return nil
 	})
+	// rw_idle_busy_until_yield sends a message that starts a run, reads isIdle twice with no yield in between, waits for the run (Pi's `await ctx.waitForIdle()`), and reads once more.
+	ext.Command("rw_idle_busy_until_yield", "Read isIdle after a message that starts a run, before and after a wait for the run", func(ctx sdk.Context, _ string) error {
+		trigger := true
+		if err := ctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger}); err != nil {
+			return err
+		}
+		reads := make([]bool, 3)
+		for i := range 2 {
+			idle, err := ctx.IsIdle()
+			if err != nil {
+				return err
+			}
+			reads[i] = idle
+		}
+		if err := ctx.WaitForIdle(); err != nil {
+			return err
+		}
+		idle, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		reads[2] = idle
+		ctx.Notify(fmt.Sprintf("rw_idle_busy_until_yield=sync:%t,%t;later:%t", reads[0], reads[1], reads[2]), "info")
+		return nil
+	})
+	// rw_idle_send_then_await waits for the run a message starts with no read in between, reads, and does the same for a second message with a read before the wait.
+	ext.Command("rw_idle_send_then_await", "Await the run a message starts with no read in between, then read; again for a second message", func(ctx sdk.Context, _ string) error {
+		trigger := true
+		send := func() error {
+			return ctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger})
+		}
+		if err := send(); err != nil {
+			return err
+		}
+		if err := ctx.WaitForIdle(); err != nil {
+			return err
+		}
+		awaited, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		if err := send(); err != nil {
+			return err
+		}
+		second, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		if err := ctx.WaitForIdle(); err != nil {
+			return err
+		}
+		again, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("rw_idle_send_then_await=awaited:%t;second:%t;awaited-again:%t", awaited, second, again), "info")
+		return nil
+	})
+	// rw_idle_blocking blocks on something that is no host call (a sleep) after a message that starts a run, which ends meanwhile, and reads.
+	ext.Command("rw_idle_blocking", "Read isIdle after a message that starts a run and a wait that is no call", func(ctx sdk.Context, _ string) error {
+		before, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		trigger := true
+		if err := ctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger}); err != nil {
+			return err
+		}
+		time.Sleep(300 * time.Millisecond)
+		after, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("rw_idle_blocking=before:%t;after:%t", before, after), "info")
+		return nil
+	})
+	// rw_idle_yield_poll polls isIdle for the run it started with the SDK's sleep helper, which yields first, as Pi's handler awaits a timer.
+	ext.Command("rw_idle_yield_poll", "Poll isIdle for a run the handler started, sleeping with the SDK helper", func(ctx sdk.Context, _ string) error {
+		trigger := true
+		if err := ctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger}); err != nil {
+			return err
+		}
+		first, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		deadline := time.Now().Add(5 * time.Second)
+		for {
+			idle, err := ctx.IsIdle()
+			if err != nil {
+				return err
+			}
+			if idle || !time.Now().Before(deadline) {
+				break
+			}
+			if err := ctx.Sleep(10 * time.Millisecond); err != nil {
+				return err
+			}
+		}
+		final, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("rw_idle_yield_poll=first:%t;final:%t", first, final), "info")
+		return nil
+	})
+	// rw_idle_callback sends the message from a goroutine the handler waits for, as Pi's handler awaits a timer's callback that sends it.
+	ext.Command("rw_idle_callback", "Read isIdle after a message that starts a run, sent from a goroutine the handler waits for", func(ctx sdk.Context, _ string) error {
+		before, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		done := make(chan error, 1)
+		go func() {
+			done <- func() error {
+				trigger := true
+				if err := ctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger}); err != nil {
+					return err
+				}
+				var sync [2]bool
+				for i := range sync {
+					if sync[i], err = ctx.IsIdle(); err != nil {
+						return err
+					}
+				}
+				if err := ctx.WaitForIdle(); err != nil {
+					return err
+				}
+				later, err := ctx.IsIdle()
+				if err != nil {
+					return err
+				}
+				ctx.Notify(fmt.Sprintf("rw_idle_callback=before:%t;sync:%t,%t;later:%t", before, sync[0], sync[1], later), "info")
+				return nil
+			}()
+		}()
+		return <-done
+	})
 	settledOnce := &atomic.Bool{}
 	ext.Command("rw_idle_in_settled", "Read isIdle after a message that starts a run, sent from an agent_settled handler", func(sdk.Context, string) error {
 		ext.OnEvent("agent_settled", func(hctx sdk.Context, _ map[string]any) (any, error) {

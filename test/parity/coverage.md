@@ -4,11 +4,11 @@ Generated from `1012` PORT_MAP entries and `832` parity scenarios.
 
 ## Status
 
-- **Porting:** 906 / 913 intended-portable entries ✅ (99.2%).
-- **Behavior verification:** 838 / 906 ported entries (92.5%); 0 weak-only, 68 untested.
+- **Porting:** 905 / 912 intended-portable entries ✅ (99.2%).
+- **Behavior verification:** 837 / 905 ported entries (92.5%); 0 weak-only, 68 untested.
 - **Upstream test porting:** 753 ported / 15 partial / 118 pending (5 other dispositions; [file mapping](interfaces/test-mapping-v1.4.0+b556cfe5.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.4.0+b556cfe5.json) (`deferred-0.3.x`).
 
-Raw PORT_MAP rows: 1012. Breakdown: 99 n/a (designed out) · 7 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
+Raw PORT_MAP rows: 1012. Breakdown: 100 n/a (designed out) · 7 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 ## Packages
 
@@ -16,7 +16,7 @@ Raw PORT_MAP rows: 1012. Breakdown: 99 n/a (designed out) · 7 🟡 partial. See
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `ai` | 264 | 22 | 242 | 242 | 0 | 0 | 100.0% | 99.2% |
-| `chord` | 247 | 27 | 220 | 214 | 6 | 0 | 97.3% | 86.9% |
+| `chord` | 247 | 28 | 219 | 213 | 6 | 0 | 97.3% | 86.9% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 100.0% |
 | `coding-agent` | 254 | 27 | 227 | 227 | 0 | 0 | 100.0% | 100.0% |
 | `durable` | 85 | 9 | 76 | 76 | 0 | 0 | 100.0% | 98.7% |
@@ -29,8 +29,8 @@ Raw PORT_MAP rows: 1012. Breakdown: 99 n/a (designed out) · 7 🟡 partial. See
 
 - **Four core packages (agent, ai, coding-agent, tui):** 520 / 520 intended-portable files ✅ (100.0%) from 570 rows; 518 behavioral (99.6%), 0 weak-only, 2 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 592 / 592 intended-portable files ✅ (100.0%) from 652 rows; 553 behavioral (93.4%), 0 weak-only, 39 untested.
-- **Whole monorepo (12 packages):** 906 / 913 intended-portable files ✅ (99.2%) from 1012 rows; 838 behavioral (92.5%), 0 weak-only, 68 untested.
-- **Interface closure:** 14231 of 14469 semantic interface IDs closed (330 designed-out, 238 pending, 13901 ported). A file-level ✅ does not close an interface ID.
+- **Whole monorepo (12 packages):** 905 / 912 intended-portable files ✅ (99.2%) from 1012 rows; 837 behavioral (92.5%), 0 weak-only, 68 untested.
+- **Interface closure:** 14251 of 14469 semantic interface IDs closed (330 designed-out, 218 pending, 13921 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
 
@@ -855,7 +855,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/chord/test/next/examples/30-host-root.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample30HostRoot) | not run | ./chord/next/host:TestExample30HostRoot |
 | `packages/chord/test/next/examples/31-parked-dependencies.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample31ParkedDependencies) | not run | ./chord/next/host:TestExample31ParkedDependencies |
 | `packages/chord/test/next/examples/32-startup.ts` | ✅ | 0 | 1 (unit:./chord/next/host:TestExample32Startup) | not run | ./chord/next/host:TestExample32Startup |
-| `packages/chord/test/next/support.ts` | ✅ | 0 | 3 (unit:./chord/next/host:TestExample08Remote, unit:./chord/next/host:TestExample12Routes, unit:./chord/next/host:TestExample12Routes) | not run | ./chord/next/host:TestExample08Remote, ./chord/next/host:TestExample12Routes, ./chord/next/host:TestExample12Routes |
+| `packages/chord/test/next/support.ts` | n/a | 0 | 3 (unit:./chord/next/host:TestExample08Remote, unit:./chord/next/host:TestExample12Routes, unit:./chord/next/host:TestExample12Routes) | not run | ./chord/next/host:TestExample08Remote, ./chord/next/host:TestExample12Routes, ./chord/next/host:TestExample12Routes |
 | `packages/chord/src/next-node/http/admission.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/next-node/http/authenticate.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/chord/src/next-node/http/cookies.ts` | ✅ | **0 (untested)** | **0** | not run |  |

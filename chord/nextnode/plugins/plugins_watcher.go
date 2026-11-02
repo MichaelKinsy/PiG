@@ -412,6 +412,7 @@ func (w *pluginWatcher) addWatch(dir string) error {
 // readEvents is the goroutine of a watcher: each event or error enters the host as a section.
 func (w *pluginWatcher) readEvents(watcher *fsnotify.Watcher) {
 	for {
+		//portlint:allow golifetime the loop ends when close closes the fsnotify watcher, which closes both channels
 		select {
 		case event, ok := <-watcher.Events:
 			if !ok {

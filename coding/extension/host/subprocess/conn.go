@@ -794,8 +794,12 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	if invocation.Bound(ctx) {
 		ctx = withAckHold(ctx)
 	}
+	sink := requestStateSink{ch: stateCh, ctx: ctx}
+	if env.Request != nil {
+		sink.event = env.Request.Event
+	}
 	c.stateMu.Lock()
-	c.requestStates[env.ID] = requestStateSink{ch: stateCh, ctx: ctx}
+	c.requestStates[env.ID] = sink
 	c.stateMu.Unlock()
 
 	// Clean up on exit.
@@ -1489,8 +1493,17 @@ func drainRequestStates(ctx context.Context, stateCh <-chan RequestStatePayload)
 
 // requestStateSink is where a request's lifecycle frames go: its waiting goroutine's channel, or, for a request that does not react to them (a nil ch), the read loop applies them to the request's context.
 type requestStateSink struct {
-	ch  chan RequestStatePayload
-	ctx context.Context
+	ch    chan RequestStatePayload
+	ctx   context.Context
+	event string // the request's event name, empty for a request that is not an event
+}
+
+// requestEvent returns the event a request in flight delivers, and whether the request is in flight.
+func (c *Conn) requestEvent(requestID string) (string, bool) {
+	c.stateMu.Lock()
+	defer c.stateMu.Unlock()
+	sink, ok := c.requestStates[requestID]
+	return sink.event, ok
 }
 
 // requestReportsSuspension reports whether ctx reports the request's suspension, which the request's own goroutine applies in frame order.

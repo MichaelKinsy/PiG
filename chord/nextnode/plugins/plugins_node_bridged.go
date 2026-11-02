@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Go core facets in the plugins' closure (docs/plan/chord-plugins-node-evaluator.md 10.4). No Pi file corresponds to this one:
@@ -116,7 +117,7 @@ func bridgedScripts(kind string, facets []BridgedFacet) ([]scriptWire, error) {
 			}
 			spec.Contracts[i] = wire
 		}
-		encoded, err := json.Marshal(spec)
+		encoded, err := jsstring.MarshalJSON(spec)
 		if err != nil {
 			return nil, err
 		}
@@ -129,8 +130,9 @@ func bridgedScripts(kind string, facets []BridgedFacet) ([]scriptWire, error) {
 	return scripts, nil
 }
 
+// quoteJS is text as a JavaScript string literal, as JSON.stringify writes it (it leaves <, > and & as they are).
 func quoteJS(text string) string {
-	encoded, _ := json.Marshal(text)
+	encoded, _ := jsstring.MarshalJSON(text)
 	return string(encoded)
 }
 
@@ -204,15 +206,13 @@ func (h *NodeHost) serving() *bridgedServing {
 	h.bridge.mu.Lock()
 	defer h.bridge.mu.Unlock()
 	if h.bridge.served == nil {
-		life, cancel := context.WithCancel(context.Background())
 		served := &bridgedServing{
-			life: life, references: map[int]*host.Reference{}, watches: map[int]chord.WatchHandle[delta.JsonValue]{}, running: map[int]context.CancelFunc{},
+			life: h.life, references: map[int]*host.Reference{}, watches: map[int]chord.WatchHandle[delta.JsonValue]{}, running: map[int]context.CancelFunc{},
 		}
 		h.bridge.served = served
 		//portlint:allow golifetime ends with the process: the context of every request the Node host made ends with it
 		go func() {
-			<-h.exited
-			cancel()
+			<-h.life.Done()
 			served.releaseAll()
 		}()
 	}

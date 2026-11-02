@@ -320,6 +320,7 @@ func (set *joins) end() {
 	}
 	set.done = true
 	for each := range set.waiting {
+		//portlint:allow doubleclose the set.done flag above returns first, so each join closes once; Pi's Joins.end guards with `if (this.#over) return` (run.ts:234)
 		close(each.over)
 	}
 	clear(set.waiting)

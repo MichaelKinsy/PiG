@@ -119,7 +119,7 @@ jobs:
             esac
           done
           test "${#packages[@]}" -gt 0
-          automation/ci/with-isolated-pig-home.sh go test -json -count=1 -tags 'integration live' -run "$RUN_FILTER" "${packages[@]}" | tee "$RUNNER_TEMP/live-providers.jsonl"
+          automation/ci/with-isolated-pig-home.sh go test -json -count=1 -timeout 30m -tags 'integration live' -run "$RUN_FILTER" "${packages[@]}" | tee "$RUNNER_TEMP/live-providers.jsonl"
       - name: Summarize providers that ran or skipped
         if: always()
         shell: bash

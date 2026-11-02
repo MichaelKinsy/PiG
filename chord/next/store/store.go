@@ -404,6 +404,7 @@ func (store *ChordStore) Take(end func()) <-chan func() {
 	store.tail = held
 	store.mu.Unlock()
 	taken := make(chan func(), 1)
+	//portlint:allow asyncorder this is Pi's `this.#tail.then(...)` continuation (store.ts:245): the queue place (store.tail) is taken under mu above, before the goroutine starts, and its result is joined by the returned channel, as take's promise
 	go func() {
 		<-previous
 		// A store closed meanwhile (also before the export's first Next) holds nothing: the export ends.
@@ -585,6 +586,7 @@ func (store *ChordStore) Close(ctx context.Context) error {
 		for _, end := range ends {
 			end()
 		}
+		//portlint:allow golifetime finishClose is Pi's memoized `this.#closing ??= this.#close()` (store.ts:399): it closes started.done, which every Close call selects on, and it ends once the queue's last entry and the reads underway settled
 		go store.finishClose(started, tail)
 	} else {
 		store.mu.Unlock()

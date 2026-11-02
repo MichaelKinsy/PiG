@@ -24,9 +24,9 @@ func TestProviderPayloadHookReceivesModelAPIAndPayload(t *testing.T) {
 		{"openai-codex-responses", APIOpenAICodexResponses, NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{Model: modelID, APIKey: codexToken(), BaseURL: "https://example.invalid"})},
 		{"azure-openai-responses", APIAzureOpenAIResponses, NewAzureOpenAIResponsesProvider(AzureOpenAIResponsesConfig{Model: modelID, APIKey: "k", ProviderID: "azure-openai-responses", BaseURL: "https://example.invalid/openai/v1"})},
 		{"anthropic-messages", APIAnthropicMessages, NewAnthropicProvider(AnthropicConfig{Model: modelID, ProviderID: "anthropic", APIKey: "k", BaseURL: "https://example.invalid"})},
-		{"mistral-conversations", APIMistralConversations, NewMistralProvider(MistralConfig{Model: modelID, APIKey: "k", BaseURL: "https://example.invalid"})},
+		{"mistral-conversations", APIMistralConversations, newMistralTestProvider(MistralConfig{Model: modelID, APIKey: "k", BaseURL: "https://example.invalid"}, nil)},
 		{"google-generative-ai", APIGoogleGenerativeAI, NewGoogleProvider(GoogleConfig{Model: modelID, ProviderID: "google", APIKey: "k", BaseURL: "http://127.0.0.1:1"})},
-		{"google-vertex", APIGoogleVertex, NewGoogleVertexProvider(GoogleVertexConfig{Model: modelID, APIKey: "k", BaseURL: "http://127.0.0.1:1"})},
+		{"google-vertex", APIGoogleVertex, newGoogleVertexTestProvider(GoogleVertexConfig{Model: modelID, APIKey: "k", BaseURL: "http://127.0.0.1:1"}, nil)},
 		{"pi-messages", APIPiMessages, NewPiMessagesProvider(PiMessagesConfig{Model: modelID, ProviderID: "pi", APIKey: "k", BaseURL: "https://example.invalid"})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

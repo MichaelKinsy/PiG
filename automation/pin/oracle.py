@@ -400,7 +400,7 @@ def derive_closure(pin: Pin, source: Path, packed: dict[str, Path], work: Path, 
     root = root or AGENT
     roots = [root] + sorted(name for name in INTEROP if name != root) if root == DURABLE else [root]
     overrides = {name: "file:" + str(tgz) for name, tgz in packed.items() if name not in roots}
-    # The third-party packages the pinned pi-durable imports (typebox, ...) also sit at the top, where Pi's source resolves them for the Go tests that import it.
+    # The third-party packages the pinned pi-durable imports (diff, ...) also sit at the top, where Pi's source resolves them for the Go tests that import it.
     third_party = {}
     if root == DURABLE:
         workspaces = workspace_names(source)

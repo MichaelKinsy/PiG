@@ -132,6 +132,7 @@ func ownTuple(message Message) string {
 		return jsonText([]any{"h", float64(typed.Protocol), typed.Incarnation, float64(typed.Calls)})
 	case *HoldMessage:
 		head := jsonText([]any{"H", float64(typed.Hold), typed.Type, float64(typed.Version), typed.Fingerprint})
+		//portlint:allow utf16units head is jsonText's output, ending in the one-byte ASCII ']' that is also one code unit; dropped as .slice(0, -1) at text.ts:77
 		head = head[:len(head)-1]
 		// Optional trailing fields: an absent one in the middle is null, absent ones at the end are left out.
 		optional := []any{nil, nil, nil, nil}
@@ -252,6 +253,7 @@ func withPayload(head string, part Part, segments [][]byte) string {
 	if part == nil {
 		return head
 	}
+	//portlint:allow utf16units head is a closed JSON tuple ending in the one-byte ASCII ']' that is also one code unit; dropped as head.slice(0, -1) at text.ts:150
 	prefix := head[:len(head)-1] + "," + mustPartText(part)
 	if segments == nil {
 		return prefix + "]"
@@ -291,6 +293,7 @@ func asInt(value any) int {
 	if !ok || number != math.Trunc(number) || math.Abs(number) > maxSafeInteger {
 		fail("text: expected an integer")
 	}
+	//portlint:allow numbers number was checked an integer within the safe range (|number| <= maxSafeInteger) on the lines above, so int(number) is exact
 	return int(number)
 }
 
@@ -511,8 +514,10 @@ func payloadFields(fields []any, rest []byte) (Part, [][]byte) {
 		if !ok || length != math.Trunc(length) || length < 0 || length > maxSafeInteger {
 			fail("text: a segment length")
 		}
+		//portlint:allow numbers length was checked a non-negative safe integer on the lines above, as Number.isSafeInteger(length) at text.ts:320, so int(length) is exact
 		end := min(offset+int(length), len(rest))
 		segments[index] = rest[offset:end:end]
+		//portlint:allow numbers length was checked a non-negative safe integer on the lines above, as Number.isSafeInteger(length) at text.ts:320, so int(length) is exact
 		offset += int(length)
 	}
 	if offset != len(rest) {

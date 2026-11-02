@@ -390,7 +390,11 @@ func putOf(record *TableRecord, stored sqlite.SqliteRow) (*PutWrite, error) {
 			}
 		}
 	}
-	return &PutWrite{Table: record.Table, Row: row, Version: int(exportNumber(stored[RowVersion])), Columns: versions}, nil
+	version, ok := integerOf(stored[RowVersion])
+	if !ok {
+		panic(fmt.Sprintf("store: export: a stored row version is %T", stored[RowVersion]))
+	}
+	return &PutWrite{Table: record.Table, Row: row, Version: int(version), Columns: versions}, nil
 }
 
 // exportNumber is a stored number as a JSON number.
