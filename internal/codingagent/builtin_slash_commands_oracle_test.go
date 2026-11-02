@@ -57,3 +57,22 @@ func TestBuiltinSlashCommandsMatchPi(t *testing.T) {
 		}
 	}
 }
+
+// Pi 2a46c420 (#11532): /import keeps the session ID and working directory, /resume resumes another session.
+func TestBuiltinSlashCommandsCarryPi2a46c420Descriptions(t *testing.T) {
+	want := map[string]string{
+		"import": "Import a JSONL session, preserving its ID and working directory",
+		"resume": "Resume another session",
+	}
+	for _, command := range BuiltinSlashCommands() {
+		if description, ok := want[command.Name]; ok {
+			if command.Description != description {
+				t.Errorf("/%s description = %q, want %q", command.Name, command.Description, description)
+			}
+			delete(want, command.Name)
+		}
+	}
+	for name := range want {
+		t.Errorf("/%s is not a built-in command", name)
+	}
+}

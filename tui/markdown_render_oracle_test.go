@@ -3,6 +3,7 @@ package tui
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"os/exec"
 	"reflect"
 	"strings"
@@ -22,6 +23,7 @@ type markdownRenderProbe struct {
 func markdownRenderDocs() []string {
 	return []string{
 		"", "plain paragraph", "two\n\nparagraphs", "soft\nbreak and  \nhard break\\\nbackslash break",
+		"https://example.com。后面的中文 and www.example.com，后面 and https://example.com/中文?q=搜索#片段…后面", "https://example.com.，后面的中文 and https://example.com紧接着中文 and <https://example.com/中文，路径>",
 		"# H1\n## H2\n### H3\n#### H4\n##### H5\n###### H6", "Setext H1\n=========\n\nSetext H2\n---------",
 		"**bold** *italic* ***both*** ~~strike~~ `code` __under__ _it_ **bold with *nested italic* inside**",
 		"- one\n- two\n  - nested a\n  - nested b\n    - deeper\n- three", "1. first\n2. second\n   1. sub\n   2. sub\n10. tenth\n11. eleventh",
@@ -79,11 +81,29 @@ func TestMarkdownRenderMatchesPi(t *testing.T) {
 	compareMarkdownWithPi(t, markdownRenderDocs())
 }
 
+// markdownOpenLinkRepeatDoc repeats a paragraph with a bare URL before and inside a raw <a> that is still open. marked lexes
+// the second one without autolinks.
+const markdownOpenLinkRepeatDoc = "http://a.b and www.c.d\n\nx <a href=\"u\">open\n\nhttp://a.b and www.c.d\n\nclose</a>\n\nhttp://a.b and www.c.d"
+
+// piReusesMarkdownBlocksByRaw reports whether the Pi mirror's markdown.ts reuses rendered top-level blocks keyed by their
+// source (Pi 0f21a331, "reuse syntax highlighting and rendered Markdown blocks"). Such a Pi renders a block again with
+// the lines of an earlier block of the same source, so a bare URL inside an open <a> is autolinked like the one before it.
+// PiG keeps marked's inline state across blocks. DRAFT divergence and Pi issue: handoffs/next/rows/RenderReuse.md.
+func piReusesMarkdownBlocksByRaw() bool {
+	source, err := os.ReadFile("../.upstream/current/packages/tui/src/components/markdown.ts")
+	return err == nil && bytes.Contains(source, []byte("private blocks?: WeakRef<Map<string, RenderedBlock>>"))
+}
+
 // compareMarkdownWithPi requires Markdown.render of every document to equal pi-tui's at several widths and paddings.
+// Against a Pi that reuses blocks by source, markdownOpenLinkRepeatDoc is the one document it leaves out.
 func compareMarkdownWithPi(t *testing.T, docs []string) {
 	t.Helper()
 	var probes []markdownRenderProbe
 	for _, doc := range docs {
+		if doc == markdownOpenLinkRepeatDoc && piReusesMarkdownBlocksByRaw() {
+			t.Logf("not compared: this Pi autolinks a repeated paragraph inside an open <a> (draft divergence in handoffs/next/rows/RenderReuse.md)")
+			continue
+		}
 		for _, pad := range [][2]int{{0, 0}, {1, 1}, {2, 0}} {
 			probes = append(probes, markdownRenderProbe{Text: doc, PaddingX: pad[0], PaddingY: pad[1], Widths: []int{1, 2, 3, 4, 20, 40, 80}})
 		}

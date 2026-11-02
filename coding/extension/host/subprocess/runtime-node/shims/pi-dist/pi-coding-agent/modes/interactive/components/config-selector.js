@@ -1,12 +1,11 @@
 /**
  * TUI component for managing package resources (enable/disable)
  */
-import { homedir } from "node:os";
 import { basename, dirname, join, relative } from "node:path";
 import { Container, getKeybindings, Input, matchesKey, Spacer, truncateToWidth, visibleWidth, } from "../../../../../pi-tui.mjs";
 import { CONFIG_DIR_NAME } from "../../../config.js";
-import { BUILTIN_PATH_PREFIX } from "../../../core/source-info.js";
-import { canonicalizePath, isLocalPath, resolvePath } from "../../../utils/paths.js";
+import { BUILTIN_PATH_PREFIX, getResourcePathKey } from "../../../core/source-info.js";
+import { isLocalPath, resolvePath, shortenHomePath } from "../../../utils/paths.js";
 import { theme } from "../theme/theme.js";
 import { DynamicBorder } from "./dynamic-border.js";
 import { keyHint, rawKeyHint } from "./keybinding-hints.js";
@@ -18,19 +17,7 @@ const RESOURCE_TYPE_LABELS = {
     themes: "Themes",
 };
 function formatBaseDir(baseDir) {
-    const homeDir = homedir();
-    let displayPath;
-    if (baseDir === homeDir) {
-        displayPath = "~";
-    }
-    else if (baseDir.startsWith(homeDir)) {
-        // Replace home prefix with ~, normalize separators for display
-        const rest = baseDir.slice(homeDir.length);
-        displayPath = `~${rest.replace(/\\/g, "/")}`;
-    }
-    else {
-        displayPath = baseDir.replace(/\\/g, "/");
-    }
+    const displayPath = shortenHomePath(baseDir).replace(/\\/g, "/");
     return displayPath.endsWith("/") ? displayPath : `${displayPath}/`;
 }
 function getGroupLabel(metadata, agentDir) {
@@ -697,7 +684,7 @@ class ResourceList {
         return entry.startsWith("!") || entry.startsWith("+") || entry.startsWith("-") ? entry.slice(1) : entry;
     }
     getResourceItemKey(item) {
-        return `${item.resourceType}:${canonicalizePath(item.path)}`;
+        return `${item.resourceType}:${getResourcePathKey(item.path)}`;
     }
     getItemScope(item) {
         return item.metadata.scope === "project" ? "project" : "user";

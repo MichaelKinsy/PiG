@@ -38,7 +38,7 @@ storage.commit = async (writes, context) => {
 	return seq;
 };
 const pubs = [];
-session.subscribeCommits((p) => pubs.push(clone({ seq: p.seq, changes: p.changes })));
+session.observeCommits({ advance: (p) => pubs.push(clone({ seq: p.seq, changes: p.changes })), end: () => {} });
 
 function walk(root, path) {
 	let t = root;

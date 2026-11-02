@@ -4,7 +4,7 @@ import { detectCapabilities, getTerminalColorMode } from "../../../pi-tui.mjs";
 import chalk from "../../../chalk/source/index.js";
 import { APP_NAME, CONFIG_DIR_NAME } from "../config.js";
 import { loadThemeFromPath } from "../modes/interactive/theme/theme.js";
-import { canonicalizePath, isLocalPath, resolvePath } from "../utils/paths.js";
+import { canonicalizePath, isLocalPath, isPathWithin, pathsEqual, resolvePath } from "../utils/paths.js";
 import { stripBom } from "../utils/text.js";
 import { createEventBus } from "./event-bus.js";
 import { clearExtensionCache, createExtensionRuntime, loadExtensionFromFactory, loadExtensionsCached, } from "./extensions/loader.js";
@@ -13,7 +13,7 @@ import { DefaultPackageManager, } from "./package-manager.js";
 import { loadPromptTemplates } from "./prompt-templates.js";
 import { SettingsManager } from "./settings-manager.js";
 import { loadSkills } from "./skills.js";
-import { BUILTIN_PATH_PREFIX, createSourceInfo, getSyntheticPathSource, isSyntheticPath, } from "./source-info.js";
+import { BUILTIN_PATH_PREFIX, createSourceInfo, getResourcePathKey, getSyntheticPathSource, isSyntheticPath, } from "./source-info.js";
 import { resetTimings } from "./timings.js";
 const HOST_PROVIDED_EXTENSION_PACKAGES = new Set([
     "@earendil-works/pi-agent-core",
@@ -165,13 +165,13 @@ function findShadowedContextFile(cwd) {
     const mainRepoRoot = dirname(commonGitDir);
     // False for an ordinary repo, where the two are the same dir, and for a sibling
     // worktree (`git worktree add ../feat`), whose main repo is not an ancestor.
-    if (!worktreeRoot.startsWith(`${mainRepoRoot}${sep}`))
+    if (!isPathWithin(mainRepoRoot, worktreeRoot) || pathsEqual(worktreeRoot, mainRepoRoot))
         return undefined;
     // dirname of the common git dir is the main worktree root only when that dir is
     // itself checked out from the same repo. In a bare layout (`proj/.bare` +
     // `proj/main`) it is just the directory holding `.bare`, which tracks nothing; a
     // submodule's gitdir has no `commondir`, so it lands under `.git/modules`.
-    if (canonicalizePath(join(mainRepoRoot, ".git")) !== commonGitDir)
+    if (!pathsEqual(canonicalizePath(join(mainRepoRoot, ".git")), commonGitDir))
         return undefined;
     const worktreeContextFile = loadContextFileFromDir(worktreeRoot);
     return worktreeContextFile ? join(mainRepoRoot, basename(worktreeContextFile.path)) : undefined;
@@ -195,7 +195,7 @@ export function loadProjectContextFiles(options) {
         // symlinks to the main repo's file resolves to the shadowed path itself.
         const isShadowed = shadowedContextFile !== undefined &&
             contextFile !== null &&
-            join(canonicalizePath(currentDir), basename(contextFile.path)) === shadowedContextFile;
+            pathsEqual(join(canonicalizePath(currentDir), basename(contextFile.path)), shadowedContextFile);
         if (contextFile && !isShadowed && !seenPaths.has(contextFile.path)) {
             ancestorContextFiles.unshift(contextFile);
             seenPaths.add(contextFile.path);
@@ -540,6 +540,9 @@ export class DefaultResourceLoader {
     resolveExtensionLoadPath(path) {
         return isSyntheticPath(path) ? path : resolvePath(path, this.cwd, { normalizeUnicodeSpaces: true });
     }
+    getExtensionPathKey(path) {
+        return getResourcePathKey(this.resolveExtensionLoadPath(path));
+    }
     /** Load extension paths: files from disk and `builtin:<name>` paths from the built-in extensions. */
     async loadExtensionPaths(paths, runtime) {
         const isBuiltinPath = (path) => path.startsWith(BUILTIN_PATH_PREFIX);
@@ -567,22 +570,22 @@ export class DefaultResourceLoader {
         const preloaded = preTrustExtensions?.extensions ?? [];
         const preloadedByPath = new Map(preloaded
             .filter((extension) => !extension.path.startsWith("<inline:"))
-            .map((extension) => [extension.resolvedPath, extension]));
-        const failedPreloadPaths = new Set((preTrustExtensions?.errors ?? []).map((error) => this.resolveExtensionLoadPath(error.path)));
+            .map((extension) => [getResourcePathKey(extension.resolvedPath), extension]));
+        const failedPreloadPaths = new Set((preTrustExtensions?.errors ?? []).map((error) => this.getExtensionPathKey(error.path)));
         const remainingPaths = extensionPaths.filter((path) => {
-            const resolvedPath = this.resolveExtensionLoadPath(path);
-            return !preloadedByPath.has(resolvedPath) && !failedPreloadPaths.has(resolvedPath);
+            const pathKey = this.getExtensionPathKey(path);
+            return !preloadedByPath.has(pathKey) && !failedPreloadPaths.has(pathKey);
         });
         const remainingExtensions = await this.loadExtensionPaths(remainingPaths, preTrustExtensions?.runtime);
         const loadedByPath = new Map(preloadedByPath);
         for (const extension of remainingExtensions.extensions) {
-            loadedByPath.set(extension.resolvedPath, extension);
+            loadedByPath.set(getResourcePathKey(extension.resolvedPath), extension);
         }
         const inlineExtensions = preTrustExtensions
             ? { extensions: preloaded.filter((extension) => extension.path.startsWith("<inline:")), errors: [] }
             : await this.loadExtensionFactories(remainingExtensions.runtime);
         const orderedExtensions = extensionPaths
-            .map((path) => loadedByPath.get(this.resolveExtensionLoadPath(path)))
+            .map((path) => loadedByPath.get(this.getExtensionPathKey(path)))
             .filter((extension) => extension !== undefined);
         orderedExtensions.push(...inlineExtensions.extensions);
         const replacementWarnings = [];
@@ -736,9 +739,7 @@ export class DefaultResourceLoader {
         const normalizedResourcePath = resolve(resourcePath);
         if (extraSourceInfos) {
             for (const [sourcePath, sourceInfo] of extraSourceInfos.entries()) {
-                const normalizedSourcePath = resolve(sourcePath);
-                if (normalizedResourcePath === normalizedSourcePath ||
-                    normalizedResourcePath.startsWith(`${normalizedSourcePath}${sep}`)) {
+                if (isPathWithin(sourcePath, normalizedResourcePath)) {
                     return { ...sourceInfo, path: resourcePath };
                 }
             }
@@ -749,9 +750,7 @@ export class DefaultResourceLoader {
                 return createSourceInfo(resourcePath, exact);
             }
             for (const [sourcePath, metadata] of metadataByPath.entries()) {
-                const normalizedSourcePath = resolve(sourcePath);
-                if (normalizedResourcePath === normalizedSourcePath ||
-                    normalizedResourcePath.startsWith(`${normalizedSourcePath}${sep}`)) {
+                if (isPathWithin(sourcePath, normalizedResourcePath)) {
                     return createSourceInfo(resourcePath, metadata);
                 }
             }
@@ -804,10 +803,10 @@ export class DefaultResourceLoader {
         const seen = new Set();
         for (const p of [...primary, ...additional]) {
             const resolved = this.resolveResourcePath(p);
-            const canonicalPath = canonicalizePath(resolved);
-            if (seen.has(canonicalPath))
+            const pathKey = getResourcePathKey(resolved);
+            if (seen.has(pathKey))
                 continue;
-            seen.add(canonicalPath);
+            seen.add(pathKey);
             merged.push(resolved);
         }
         return merged;

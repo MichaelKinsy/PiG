@@ -1,0 +1,148 @@
+{
+ "packages/chord/test/next/link/channel.test.ts": {
+  "ported": [
+   "the handshake › sends hello with the protocol version and the host's incarnation first",
+   "the handshake › closes the link on traffic before hello",
+   "the handshake › closes the link on a second hello",
+   "the handshake › closes the link on another protocol version",
+   "the handshake › closes the link on a message failing its checks",
+   "a codec mismatch › fails the first hello as a protocol error naming the expected codec",
+   "the heartbeat › closes a link whose peer never sends hello after 30 s (race 30)",
+   "the heartbeat › sends no pings on a busy link",
+   "trusted links › skip the message schema check: no chord.link.checks, the codec and the owners' checks still run",
+   "in-order handling › holds every later message, a ping included, until the asynchronous one was handled, then handles them in order",
+   "in-order handling › keeps the rest behind a held message that holds again, in order, a long queue included",
+   "in-order handling › drops the held message's successors when the link closes meanwhile (race 13)",
+   "in-order handling › keeps no held message once the link closed (GC)",
+   "in-order handling › treats a rejected asynchronous handling as a protocol error: reported, the link closes"
+  ],
+  "missing": [
+   "the handshake › queues a consumer's messages until the peer's hello; a get over a link that never greets waits for its deadline",
+   "the heartbeat › pings a silent link after 15 s and closes it after 30 s without an answer: references go loading",
+   "the heartbeat › answers each ping with a pong at once; two sides pinging at once both answer",
+   "the heartbeat › runs one timer per host, only while it has links: none per message",
+   "the heartbeat › takes its numbers from the host's options"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/link/errors.test.ts": {
+  "ported": [
+   "errors on the wire › carry a ChordError as its JSON, without stack or cause",
+   "errors on the wire › carry a PluginError's code, message and details only; the consumer rethrows a PluginError",
+   "errors on the wire › carry anything else as the plugin code internal with its message",
+   "errors on the wire › throw on a malformed ChordError envelope (a protocol error)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/link/ipc.test.ts": {
+  "ported": [
+   "IPC links over a fake port › deliver Uint8Array messages in order, queued until the listener is set; other messages are not the link's",
+   "IPC links over a fake port › treat send returning false as backpressure, not a close",
+   "IPC links over a fake port › close once on %s; listeners removed, later messages dropped (race 27)",
+   "IPC links over a fake port › disconnect the port on close, once; a port not connected gives a closed link",
+   "IPC links to a forked child › carry Uint8Array messages both ways and close when the child exits mid-send (race 27)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/link/link.test.ts": {
+  "ported": [
+   "memory links › deliver in order, one task later, and queue what arrives before the listener",
+   "memory links › close this end at once and the peer one task later; send after close is a no-op",
+   "memory links › drop messages still in flight to a closed end",
+   "memory links › stop delivering queued messages once a listener closed the link",
+   "memory links › keep no listener once closed"
+  ],
+  "missing": [
+   "a closed memory link › keeps no listener set after its close: accepting it keeps no host"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/link/message.test.ts": {
+  "ported": [
+   "messages › round-trip %j and pass the message schema",
+   "messages › round-trip deflated parts in every part's place, still deflated (a relay forwards them so)",
+   "messages › round-trip parts received as bytes (a relay forwards them as they came)",
+   "messages › carry byte segments beside a payload, as views of the message",
+   "messages › refuse an empty message, an unknown kind and trailing bytes",
+   "messages › refuse an origin on a kind without one, an origin 0, and a closed without one (the message schema)",
+   "messages › keep a leading U+FEFF in strings and parts (it is data, not a byte order mark)",
+   "messages › leave the envelope to the message schema: a misshapen error passes the codec and fails the schema",
+   "the binary codec › writes ids as varints, the incarnation as 16 and the fingerprint as 8 raw bytes, no outer length",
+   "the binary codec › writes a failure's cause as one byte, 0 transient, 1 broken, 2 waiting (dependency model §2); refuses another",
+   "the binary codec › costs a state entry without retirements no byte: the failure count is doubled, plus one when they follow",
+   "the binary codec › prefixes a part with its length doubled, plus one when it is deflated",
+   "the binary codec › decodes parts as views of the message, never parsing them: a malformed part decodes",
+   "the binary codec › refuses varints past a safe integer and lengths past the message",
+   "the binary codec › refuses a varint of more than 8 bytes, which would read as no number",
+   "the binary codec › refuses unknown hold flags",
+   "the binary codec › returns a right-sized message: a large one keeps no larger backing store",
+   "the binary codec › refuses invalid UTF-8 in strings",
+   "the binary codec › writes retry as its kind, hold, flags, operation (16 raw bytes) and objects passed through, loading as its kind and hold, and failed's retryIn as one more than it (0: absent)",
+   "the text codec › writes one JSON tuple per message with short tags and positional fields, parts spliced in",
+   "the text codec › tags every part with its codec, [0, json] or [1, base64] for a deflated one, so no value is reserved",
+   "the text codec › refuses a part that is no [codec, payload] pair, or of an unknown codec",
+   "the text codec › carries a binary link's deflated part over a text hop and back unchanged (a relay between codecs)",
+   "the text codec › leaves out a hold's absent optional fields at the end, null in the middle",
+   "the text codec › puts byte segments after the tuple and a newline, their lengths the tuple's last field",
+   "the text codec › refuses a tuple of the wrong arity and segments without a payload carrying them",
+   "the text codec › refuses a hold without its address: every hold names one",
+   "describeMessage › prints a message in the text tuple form",
+   "a codec mismatch › decodes the other codec's hello as no message of its own",
+   "the binary codec's strings › survive the buffer growing around them, at every offset near the initial size",
+   "the binary codec's long strings › round-trip %s, encoded in place behind a padded length",
+   "the binary codec's short strings › round-trip at %i three-byte characters, around the one-byte length"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/link/part.test.ts": {
+  "ported": [
+   "limits per part › default to none on trusted links and to 16 MiB on the wire, 64 MiB decoded on untrusted ones",
+   "limits per part › check a part's size on the wire with one comparison, nothing parsed",
+   "limits per part › count text in UTF-8 bytes, not UTF-16 units (a text link bounds what a binary link does)",
+   "compression at the origin › deflates a JSON part above 16 KiB when the host compresses, and counts it",
+   "compression at the origin › measures the threshold in UTF-8 bytes: a text of few units but many bytes is compressed",
+   "compression at the origin › sends a part as it is without a compressor, and its bytes when deflating does not make it smaller",
+   "opening a part › returns a plain part within its limits; past either it throws too_large/part",
+   "opening a part › inflates a deflated part synchronously within the decoded limit, and counts it",
+   "opening a part › refuses a compression bomb: a small part inflating past the decoded limit",
+   "opening a part › checks the wire size before inflating anything",
+   "opening a part › opens what an asynchronous inflate left on the part",
+   "opening a part › throws a plain error for a deflated part nothing inflated, or no raw deflate stream (a protocol error)",
+   "the asynchronous inflate › inflates with DecompressionStream, counting output bytes",
+   "the asynchronous inflate › stops past the limit: a bomb leaves too_large, never the whole output; a limit of 0 too",
+   "the asynchronous inflate › leaves corrupt for data that is no raw deflate stream",
+   "the asynchronous inflate › stops at once when its link closes (the signal), leaving no outcome"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/link/values.test.ts": {
+  "ported": [
+   "parts › are JSON text at their origin, parsed from text or from UTF-8 bytes where they are owned",
+   "parts › that are no strict UTF-8 JSON throw (a protocol error where they are parsed)",
+   "payloads › marked as carrying bytes write each byte leaf as a segment referenced by {$bytes: i}",
+   "payloads › marked as carrying bytes refuse the reserved key $bytes with invalid/args",
+   "payloads › not marked are plain JSON, $bytes included; undefined is null",
+   "payloads › refuse a malformed reference: %s",
+   "payloads › define a resolved key __proto__ as an own property"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/link/websocket.test.ts": {
+  "ported": [
+   "WebSocket links over a fake socket › buffer messages sent while connecting and send them on open, as binary frames (race 29)",
+   "WebSocket links over a fake socket › give a closed link for a socket closing or closed already",
+   "WebSocket links over a fake socket › close once on %s, listeners removed",
+   "WebSocket links over a loopback ws server › survive closing a socket that still connects: ws's late error is handled"
+  ],
+  "missing": [
+   "WebSocket links over a loopback ws server › carry a live reference both ways; the client's hello waits for open",
+   "WebSocket links over a loopback ws server › close the connection on a frame above maxPayload (1009): references go loading (race 28)"
+  ],
+  "designedOut": []
+ }
+}

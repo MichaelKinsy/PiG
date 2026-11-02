@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/jsnumber"
@@ -94,8 +95,8 @@ func (c *mcpCLI) help() string {
   %[2]s mcp add <server> [options] --url <url>
   %[2]s mcp remove <server> [-l]
   %[2]s mcp list [--json]
-  %[2]s mcp login <server> [--timeout <seconds>]
-  %[2]s mcp logout <server>
+  %[2]s mcp login <server> [-l] [--timeout <seconds>]
+  %[2]s mcp logout <server> [-l]
 
 Configure and check MCP servers and sign in to OAuth servers without starting a session.
 Reads ~/%[3]s/agent/mcp.json and, in trusted projects, %[3]s/mcp.json.
@@ -107,7 +108,7 @@ Commands:
   login <server>          Sign in through the browser
   logout <server>         Delete the stored OAuth credentials
 
-Options for add and remove:
+Options for add, remove, login, and logout:
   -l, --local             Use %[3]s/mcp.json in the current project instead of the global file
 
 Options for add:
@@ -124,6 +125,8 @@ Options for add:
                           Fixed OAuth callback port
   --oauth-client-name <name>
                           Client name sent when registering with the OAuth server
+  --oauth-client-registration <mode>
+                          auto (default), cimd, or dcr
   --exposure <mode>       codemode (default), deferred, direct, or hidden
   --description <text>    What the server offers, shown in the system prompt
 
@@ -200,7 +203,8 @@ func (p parsedOptions) has(name string) bool {
 func (c *mcpCLI) parseOptions(args []string, known map[string]optionKind, maxPositionals int) (parsedOptions, bool) {
 	parsed := parsedOptions{values: map[string]string{}, flags: map[string]bool{}, lists: map[string][]string{}}
 	for index := 0; index < len(args); index++ {
-		arg := args[index]
+		typed := args[index]
+		arg := typed
 		if alias, ok := optionAliases[arg]; ok {
 			arg = alias
 		}
@@ -219,7 +223,7 @@ func (c *mcpCLI) parseOptions(args []string, known map[string]optionKind, maxPos
 		name := arg[2:]
 		kind, ok := known[name]
 		if !ok {
-			c.error(fmt.Sprintf("Unknown option %s.\n%s", arg, c.helpHint()))
+			c.error(fmt.Sprintf("Unknown option %s.\n%s", typed, c.helpHint()))
 			return parsedOptions{}, false
 		}
 		if kind == optionFlag {
@@ -294,7 +298,7 @@ func RunMcpCommand(ctx context.Context, args []string, options McpCommandOptions
 		}
 		return c.list(ctx, loaded, parsed.flags["json"], untrustedNote, credentials)
 	case "login", "logout":
-		known := map[string]optionKind{}
+		known := map[string]optionKind{"local": optionFlag}
 		if command == "login" {
 			known["timeout"] = optionValue
 		}
@@ -303,7 +307,7 @@ func RunMcpCommand(ctx context.Context, args []string, options McpCommandOptions
 			return 1
 		}
 		if len(parsed.positional) == 0 || parsed.positional[0] == "" || len(parsed.positional) > 1 {
-			c.error(fmt.Sprintf("Usage: %s mcp %s <server>\n%s", c.app, command, c.helpHint()))
+			c.error(fmt.Sprintf("Usage: %s mcp %s <server> [-l]\n%s", c.app, command, c.helpHint()))
 			return 1
 		}
 		name := parsed.positional[0]
@@ -324,7 +328,15 @@ func RunMcpCommand(ctx context.Context, args []string, options McpCommandOptions
 			if configured == "" {
 				configured = "none"
 			}
-			c.error(fmt.Sprintf(`No MCP server named "%s".%s Configured: %s.`, name, note, configured))
+			suggestion := ""
+			if index := slices.IndexFunc(names, func(candidate string) bool { return editDistance(candidate, name) <= 2 }); index >= 0 {
+				suggestion = fmt.Sprintf(` Did you mean "%s"?`, names[index])
+			}
+			c.error(fmt.Sprintf(`No MCP server named "%s".%s%s Configured: %s.`, name, suggestion, note, configured))
+			return 1
+		}
+		if parsed.flags["local"] && entry.Scope != "project" {
+			c.error(fmt.Sprintf(`MCP server "%s" is defined in %s, not in the project; omit --local.`, name, entry.Source))
 			return 1
 		}
 		connection, err := c.newConnection(*entry, credentials)
@@ -377,6 +389,28 @@ func (c *mcpCLI) trusted() (bool, error) {
 	return c.options.IsProjectTrusted(c.options.Cwd)
 }
 
+// editDistance is the Levenshtein distance between a and b in UTF-16 code units, as Pi's editDistance counts them. It suggests a configured server name for a mistyped one.
+func editDistance(a, b string) int {
+	ua, ub := utf16.Encode([]rune(a)), utf16.Encode([]rune(b))
+	previous := make([]int, len(ub)+1)
+	for j := range previous {
+		previous[j] = j
+	}
+	for i := 1; i <= len(ua); i++ {
+		current := make([]int, len(ub)+1)
+		current[0] = i
+		for j := 1; j <= len(ub); j++ {
+			cost := 1
+			if ua[i-1] == ub[j-1] {
+				cost = 0
+			}
+			current[j] = min(previous[j]+1, current[j-1]+1, previous[j-1]+cost)
+		}
+		previous = current
+	}
+	return previous[len(ub)]
+}
+
 // parsePairs parses the `KEY=VALUE` pairs of a repeatable option into an object in insertion order. It returns false after reporting a malformed pair.
 func (c *mcpCLI) parsePairs(option string, pairs []string) (*orderedjson.Object, bool) {
 	record := orderedjson.New()
@@ -394,18 +428,19 @@ func (c *mcpCLI) parsePairs(option string, pairs []string) (*orderedjson.Object,
 func (c *mcpCLI) add(args []string, projectConfig string) int {
 	usage := fmt.Sprintf("Usage: %s mcp add <server> [options] (--url <url> | -- <command> [args...])\n%s", c.app, c.helpHint())
 	parsed, ok := c.parseOptions(args, map[string]optionKind{
-		"local":                optionFlag,
-		"url":                  optionValue,
-		"env":                  optionList,
-		"cwd":                  optionValue,
-		"header":               optionList,
-		"bearer-token-env-var": optionValue,
-		"oauth-client-id":      optionValue,
-		"oauth-client-secret":  optionValue,
-		"oauth-callback-port":  optionValue,
-		"oauth-client-name":    optionValue,
-		"exposure":             optionValue,
-		"description":          optionValue,
+		"local":                     optionFlag,
+		"url":                       optionValue,
+		"env":                       optionList,
+		"cwd":                       optionValue,
+		"header":                    optionList,
+		"bearer-token-env-var":      optionValue,
+		"oauth-client-id":           optionValue,
+		"oauth-client-secret":       optionValue,
+		"oauth-callback-port":       optionValue,
+		"oauth-client-name":         optionValue,
+		"oauth-client-registration": optionValue,
+		"exposure":                  optionValue,
+		"description":               optionValue,
 	}, 2)
 	if !ok {
 		return 1
@@ -420,7 +455,7 @@ func (c *mcpCLI) add(args []string, projectConfig string) int {
 		c.error(usage)
 		return 1
 	}
-	httpOnly := []string{"header", "bearer-token-env-var", "oauth-client-id", "oauth-client-secret", "oauth-callback-port", "oauth-client-name"}
+	httpOnly := []string{"header", "bearer-token-env-var", "oauth-client-id", "oauth-client-secret", "oauth-callback-port", "oauth-client-name", "oauth-client-registration"}
 	stdioOnly := []string{"env", "cwd"}
 	misplacedOptions := httpOnly
 	if hasURL {
@@ -458,6 +493,9 @@ func (c *mcpCLI) add(args []string, projectConfig string) int {
 		}
 		if clientName, ok := parsed.values["oauth-client-name"]; ok {
 			_ = oauth.SetValue("clientName", clientName)
+		}
+		if registration, ok := parsed.values["oauth-client-registration"]; ok {
+			_ = oauth.SetValue("clientRegistration", registration)
 		}
 		_ = config.SetValue("url", serverURL)
 		if headers.Len() > 0 {

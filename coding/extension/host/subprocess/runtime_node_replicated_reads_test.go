@@ -20,7 +20,7 @@ import { Runtime } from %q;
 
 const bound = () => {
   const runtime = new Runtime("/ext/replicated.mjs");
-  runtime.conn = {};
+  runtime.conn = { notify() {} }; // a send reports where its handler yields (handler_yielded)
   runtime.hostReady = true;
   const host = { prompt: "host prompt", options: { selectedTools: ["host"] }, idle: true };
   const sent = [];

@@ -338,17 +338,17 @@ func (r *taskRuntime) Report(err error, from ...durable.ReportFrom) {
 		r.s.report(err, r.about(durable.ReportTaskError))
 		return
 	}
-	if from[0].Type == durable.ReportFromExtension {
-		r.s.report(err, durable.ReportInfo{Type: durable.ReportExtensionError, Task: task, Extension: from[0].Extension})
+	if from[0].Kind == durable.ReportFromExtension {
+		r.s.report(err, durable.ReportInfo{Kind: durable.ReportExtensionError, Task: task, Extension: from[0].Extension})
 		return
 	}
-	r.s.report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: from[0].Callback, Task: task})
+	r.s.report(err, durable.ReportInfo{Kind: durable.ReportHostError, Callback: from[0].Callback, Task: task})
 }
 
 // about is the report info of a failure of this invocation's task: the task, and the extension that installed the definition
 // the invocation runs (scheduler.ts #aboutTask).
-func (r *taskRuntime) about(reportType durable.ReportType) durable.ReportInfo {
-	return durable.ReportInfo{Type: reportType, Task: &durable.ReportTask{Id: r.task, Kind: r.kind, ConversationId: r.conversation}, Extension: r.extension}
+func (r *taskRuntime) about(reportKind durable.ReportKind) durable.ReportInfo {
+	return durable.ReportInfo{Kind: reportKind, Task: &durable.ReportTask{Id: r.task, Kind: r.kind, ConversationId: r.conversation}, Extension: r.extension}
 }
 
 // Hooks returns the handlers of this task's name from the extensions its conversation selects, in extension order. A throw is
@@ -372,7 +372,7 @@ func (h taskHooks) Each(name string, invoke func(handlers any) error) error {
 			if h.r.ctx.Err() != nil {
 				return err
 			}
-			h.r.s.report(err, durable.ReportInfo{Type: durable.ReportExtensionError, Extension: hook.Extension, Task: &durable.ReportTask{Id: h.r.task, Kind: h.r.kind, ConversationId: h.r.conversation}})
+			h.r.s.report(err, durable.ReportInfo{Kind: durable.ReportExtensionError, Extension: hook.Extension, Task: &durable.ReportTask{Id: h.r.task, Kind: h.r.kind, ConversationId: h.r.conversation}})
 		}
 	}
 	return nil
@@ -511,6 +511,15 @@ func (r *taskRuntime) Entry(ctx context.Context, id durable.EntryId) (*durable.E
 	}
 	var record durable.EntryRecord
 	return &record, json.Unmarshal(raw, &record)
+}
+
+// Entries is the committed raw history of the task's conversation, as Conversation.Entries (TaskRuntime.entries).
+func (r *taskRuntime) Entries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+	if err := r.check(); err != nil {
+		return durable.Page[durable.EntryRecord, durable.Cursor]{}, err
+	}
+	page, err := r.s.entriesIn(ctx, r.conversation, query, limit, cursor)
+	return page, r.ended(err)
 }
 
 func (r *taskRuntime) Context(ctx context.Context, conversationId durable.ConversationId, options *durable.ContextOptions) (durable.ContextView, error) {

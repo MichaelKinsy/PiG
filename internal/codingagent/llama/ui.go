@@ -194,8 +194,8 @@ var exactModelPattern = lazyregexp.New(`^[^/` + jsWhitespaceClass + `]+/[^:` + j
 // jsLength mirrors String.prototype.length in UTF-16 code units.
 func jsLength(text string) int { return len(utf16.Encode([]rune(text))) }
 
-// pig divergence (D155): searchPageSize is the visible results and the rows a selection page key moves (SEARCH_PAGE_SIZE of Pi PR #7680's ui.ts).
-const searchPageSize = 10
+// searchMaxVisible is ui.ts SEARCH_MAX_VISIBLE: the visible results and the rows a selection page key moves.
+const searchMaxVisible = 10
 
 const searchingStatus = "Searching Hugging Face…"
 
@@ -253,6 +253,9 @@ func newHuggingFaceSearch(lock *sync.Mutex, requestRender func(), search Hugging
 	return component
 }
 
+// CapturesViewportInput is ui.ts HuggingFaceSearch capturesViewportInput: the search takes the fullscreen viewport keys.
+func (s *HuggingFaceSearch) CapturesViewportInput() bool { return true }
+
 // Render draws the prompt, input, and results. The component reports no
 // dirty state, so its container renders it every frame.
 func (s *HuggingFaceSearch) Render(width int) []string { return s.container.Render(width) }
@@ -262,8 +265,8 @@ func (s *HuggingFaceSearch) Invalidate() { s.container.Invalidate() }
 
 func (s *HuggingFaceSearch) updateResults() {
 	s.results.Clear()
-	start := max(0, min(s.selectedIndex-searchPageSize/2, len(s.filteredResults)-searchPageSize))
-	end := min(start+searchPageSize, len(s.filteredResults))
+	start := max(0, min(s.selectedIndex-searchMaxVisible/2, len(s.filteredResults)-searchMaxVisible))
+	end := min(start+searchMaxVisible, len(s.filteredResults))
 	for index := start; index < end; index++ {
 		model := s.filteredResults[index]
 		details := compactCount(model.Downloads) + " downloads"
@@ -408,8 +411,10 @@ func (s *HuggingFaceSearch) HandleInput(data string) {
 			s.updateResults()
 		}
 	case keys.Matches(data, tui.KBSelectPageUp) || keys.Matches(data, tui.KBSelectPageDown):
-		s.selectedIndex, _ = tui.PageSelectionIndex(keys, data, s.selectedIndex, len(s.filteredResults), searchPageSize)
-		s.updateResults()
+		if len(s.filteredResults) > 0 {
+			s.selectedIndex, _ = tui.GetSelectPageIndex(keys, data, s.selectedIndex, len(s.filteredResults), searchMaxVisible)
+			s.updateResults()
+		}
 	case keys.Matches(data, tui.KBSelectConfirm):
 		selected := ""
 		if exactModelPattern.MatchString(s.query) {
@@ -459,19 +464,18 @@ func NewLlamaView(requestRender func()) *LlamaView {
 	}
 }
 
-// setContentLocked shows content. capturesSelectPage says the handler moves a selection with tui.select.pageUp and
-// tui.select.pageDown (ui.ts LlamaView.capturesSelectPageInput, Pi PR #7680).
-func (v *LlamaView) setContentLocked(content tui.Component, inputHandler func(string), capturesSelectPage bool) {
+// setContentLocked shows content. capturesViewportInput is the current input handler's capturesViewportInput (ui.ts InputHandler).
+func (v *LlamaView) setContentLocked(content tui.Component, inputHandler func(string), capturesViewportInput bool) {
 	v.progressStop = nil
 	v.showingProgress = false
 	v.content = content
 	v.inputHandler = inputHandler
-	v.captures = capturesSelectPage && inputHandler != nil
+	v.captures = capturesViewportInput && inputHandler != nil
 }
 
-func (v *LlamaView) setContent(content tui.Component, inputHandler func(string), capturesSelectPage bool) {
+func (v *LlamaView) setContent(content tui.Component, inputHandler func(string), capturesViewportInput bool) {
 	v.mu.Lock()
-	v.setContentLocked(content, inputHandler, capturesSelectPage)
+	v.setContentLocked(content, inputHandler, capturesViewportInput)
 	v.mu.Unlock()
 	v.requestRender()
 }
@@ -628,8 +632,8 @@ func (v *LlamaView) updateProgressLocked(state ProgressState) bool {
 	return true
 }
 
-// CapturesSelectPageInput reports that the current view handles tui.select.pageUp and tui.select.pageDown.
-func (v *LlamaView) CapturesSelectPageInput() bool {
+// CapturesViewportInput is ui.ts LlamaView capturesViewportInput: the current input handler's flag.
+func (v *LlamaView) CapturesViewportInput() bool {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	return v.captures

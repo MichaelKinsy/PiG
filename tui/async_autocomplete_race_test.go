@@ -27,7 +27,8 @@ func TestAsyncAutocomplete_NoRaceWithInput(t *testing.T) {
 			_ = p.editor.Render(80)
 		}
 		p.editor.HandleInput("/")
-		synctest.Wait()
+		// The request starts at the end of the read, which the probe's task queue stands in for.
+		p.drain()
 		time.Sleep(2 * time.Millisecond)
 		p.drain()
 		if !p.editor.AutocompleteOpen() {

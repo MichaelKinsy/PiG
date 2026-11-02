@@ -116,7 +116,7 @@ func viewBenchDelivered(b *testing.B, watches []ConversationWatch, id func() dur
 	}
 }
 
-func viewBenchWatches(b *testing.B, root Conversation, count int, listener func(context.Context, chord.WatchChange[ConversationView]) error) []ConversationWatch {
+func viewBenchWatches(b *testing.B, root Conversation, count int, listener func(context.Context, chord.WatchCall[ConversationView]) error) []ConversationWatch {
 	b.Helper()
 	watches := make([]ConversationWatch, count)
 	for index := range watches {
@@ -124,7 +124,7 @@ func viewBenchWatches(b *testing.B, root Conversation, count int, listener func(
 		if err != nil {
 			b.Fatal(err)
 		}
-		watch.Start(listener)
+		watch.Start(onValue(listener))
 		watches[index] = watch
 	}
 	return watches
@@ -163,7 +163,7 @@ func BenchmarkConversationViewAppend(b *testing.B) {
 	for _, scenario := range []struct{ watches, burst, commits int }{{1, 1, 2000}, {4, 1, 2000}, {4, 50, 200}} {
 		b.Run("append x"+strconv.Itoa(scenario.burst)+" per commit, "+strconv.Itoa(scenario.watches)+" watches", func(b *testing.B) {
 			_, root := viewBenchRoot(b, 5000)
-			watches := viewBenchWatches(b, root, scenario.watches, func(context.Context, chord.WatchChange[ConversationView]) error { return nil })
+			watches := viewBenchWatches(b, root, scenario.watches, func(context.Context, chord.WatchCall[ConversationView]) error { return nil })
 			b.ResetTimer()
 			started := time.Now()
 			var last durable.EntryId
@@ -190,7 +190,7 @@ func BenchmarkConversationViewStream(b *testing.B) {
 	b.Run("pi.live only, 4 watches", func(b *testing.B) {
 		_, root := viewBenchRoot(b, 5000)
 		var calls atomic.Int64
-		watches := viewBenchWatches(b, root, watchCount, func(context.Context, chord.WatchChange[ConversationView]) error {
+		watches := viewBenchWatches(b, root, watchCount, func(context.Context, chord.WatchCall[ConversationView]) error {
 			calls.Add(1)
 			return nil
 		})
@@ -202,7 +202,7 @@ func BenchmarkConversationViewStream(b *testing.B) {
 				if err != nil {
 					return nil, err
 				}
-				return nil, live.Set("compactionFailure", map[string]any{"taskId": 1, "reason": "manual", "error": strconv.Itoa(index)})
+				return nil, live.Set("compactionFailure", map[string]any{"taskId": 1, "trigger": "manual", "error": strconv.Itoa(index)})
 			}); err != nil {
 				b.Fatal(err)
 			}
@@ -259,7 +259,7 @@ func BenchmarkConversationViewLongLived(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		watch.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
+		watch.Start(onValue(func(_ context.Context, change chord.WatchCall[ConversationView]) error {
 			mu.Lock()
 			defer mu.Unlock()
 			if entries := change.Value.Entries; !seen && len(entries) > 0 {
@@ -267,7 +267,7 @@ func BenchmarkConversationViewLongLived(b *testing.B) {
 				seen = true
 			}
 			return nil
-		})
+		}))
 		b.ResetTimer()
 		viewBenchAppend(b, root, 1, 1)
 		id := viewBenchNewest(b, root)

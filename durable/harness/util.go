@@ -174,6 +174,15 @@ func closedError(session failureSource) error {
 	return ErrClosed
 }
 
+// sessionEnd is what a source ends its observers with when the Session closes: ended, or failed with the Session's
+// failure (ENDED and the failed end of view.ts and task-graph.ts).
+func sessionEnd(failure error) durable.WatchEnd {
+	if failure == nil {
+		return durable.WatchEnd{Kind: durable.WatchEnded}
+	}
+	return durable.WatchEnd{Kind: durable.WatchFailed, Error: failure}
+}
+
 // jsonQuote is JSON.stringify of a string.
 func jsonQuote(text string) string {
 	var buffer bytes.Buffer
@@ -181,4 +190,10 @@ func jsonQuote(text string) string {
 	encoder.SetEscapeHTML(false)
 	_ = encoder.Encode(text)
 	return string(bytes.TrimSuffix(buffer.Bytes(), []byte("\n")))
+}
+
+// conversationEntries is the scan of conversation conversationId's history that query asks for, without fields an
+// untyped caller added: only the query's bounds and order are kept.
+func conversationEntries(conversationId durable.ConversationId, query durable.EntryQuery) durable.EntryQuery {
+	return durable.EntryQuery{ConversationId: conversationId, MinEntryId: query.MinEntryId, MaxEntryId: query.MaxEntryId, Order: query.Order}
 }

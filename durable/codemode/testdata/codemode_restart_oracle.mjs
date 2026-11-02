@@ -508,5 +508,4 @@ for (const scenario of JSON.parse(input)) {
 		out.push({ err: error instanceof Error ? error.message : String(error) });
 	}
 }
-process.stdout.write(JSON.stringify(out));
-process.exit(0);
+process.stdout.write(JSON.stringify(out), () => process.exit(0));

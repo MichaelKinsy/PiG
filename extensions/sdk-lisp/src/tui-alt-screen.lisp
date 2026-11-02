@@ -36,12 +36,14 @@ RESTORE-ON-EXIT (lambda (before after)), optional in Pi."
   set-title set-progress set-program-status restore-on-exit)
 
 (defstruct (tui-component
-            (:constructor make-tui-component (&key render invalidate handle-input handle-mouse focusable on-focus wants-key-release)))
+            (:constructor make-tui-component (&key render invalidate handle-input handle-mouse focusable on-focus wants-key-release captures-viewport-input)))
   "pi-tui's Component, the child of a screen. RENDER is (lambda (width)) returning a list of strings. The rest is optional: INVALIDATE is (lambda ());
 HANDLE-INPUT (lambda (data)); HANDLE-MOUSE (lambda (mouse-event)) returning NIL or a plist (:handled :capture :focus :render); FOCUSABLE is Pi's
 Focusable, whose focus the host sets and ON-FOCUS, (lambda (focused-p)), hears; FOCUSED reads it; WANTS-KEY-RELEASE asks for key release input.
-The host is never asked to deliver input or mouse to a component that has no handler."
-  render invalidate handle-input handle-mouse focusable on-focus wants-key-release (focused nil))
+The host is never asked to deliver input or mouse to a component that has no handler.
+CAPTURES-VIEWPORT-INPUT (Pi's Component.capturesViewportInput) is a boolean or a function of no arguments returning one; a non-NIL slot is the capability
+the host sees, and the host asks for the current value through the capturesViewportInput callback."
+  render invalidate handle-input handle-mouse focusable on-focus wants-key-release captures-viewport-input (focused nil))
 
 ;;; ---------------------------------------------------------------- the screens of an extension
 
@@ -131,7 +133,8 @@ of that callback's request, and the host orders calls per parent request: while 
 
 (defun tas-caps (component)
   (obj "input" (tas-bool (tui-component-handle-input component)) "mouse" (tas-bool (tui-component-handle-mouse component))
-       "focusable" (tas-bool (tui-component-focusable component)) "wantsKeyRelease" (tas-bool (tui-component-wants-key-release component))))
+       "focusable" (tas-bool (tui-component-focusable component)) "wantsKeyRelease" (tas-bool (tui-component-wants-key-release component))
+       "capturesViewportInput" (tas-bool (tui-component-captures-viewport-input component))))
 
 (defun tas-component-fields (screen component)
   (unless (tui-component-p component) (error "~S is not a tui-component" component))
@@ -549,6 +552,8 @@ Returns the function that unsubscribes."
            (setf (tui-component-focused component) focused)
            (when (tui-component-on-focus component) (funcall (tui-component-on-focus component) focused)))
          (obj)))
+      ((equal kind "capturesViewportInput")
+       (obj "captures" (tas-bool (capture-viewport-input-p (tui-component-captures-viewport-input (tas-component screen args))))))
       ((equal kind "invalidate")
        (let ((invalidate (tui-component-invalidate (tas-component screen args))))
          (when invalidate (funcall invalidate))

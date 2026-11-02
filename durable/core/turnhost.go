@@ -440,6 +440,7 @@ func agentOf(o *jv.Object) *turn.Agent {
 		a.HookExtensions = append(a.HookExtensions, strOf(asObject(hk), "extension"))
 	}
 	a.Instructions, a.Cwd = strOf(o, "instructions"), strOf(o, "cwd")
+	a.MaxTurns = int(numOf(o, "maxTurns"))
 	return a
 }
 
@@ -691,16 +692,7 @@ func (h *handler) deferredEffect(op string, model turn.ModelRef, handle *jv.Obje
 
 // ThrownError is what host code (a tool, a hook, a section) threw: its text is the error's message, as errorText in
 // harness/tool.ts reads it, and its name survives for a caller that classifies.
-type ThrownError struct{ Name, Message string }
-
-func (e *ThrownError) Error() string { return e.Message }
+type ThrownError = turn.ThrownError
 
 // thrown reads the {name, message} a host sends for a throw.
-func thrown(value any) error {
-	o := asObject(value)
-	name := strOf(o, "name")
-	if name == "" {
-		name = "Error"
-	}
-	return &ThrownError{name, strOf(o, "message")}
-}
+func thrown(value any) error { return turn.Thrown(asObject(value)) }

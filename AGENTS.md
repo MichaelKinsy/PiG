@@ -273,27 +273,28 @@ make async-contracts` or `make verify` from `docs/parity/PORT_MAP.md` and `test/
   port. Everything else is invariant rule, not progress narrative.
 -->
 
-**Porting:** 636 / 638 intended-portable entries ✅ (99.7%); **Verification:** 632 behavioral (99.4%), 4 untested.
-Raw PORT_MAP rows: 713. Breakdown: 75 n/a (designed out) · 2 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
+**Porting:** 905 / 912 intended-portable entries ✅ (99.2%); **Verification:** 837 behavioral (92.5%), 68 untested.
+Raw PORT_MAP rows: 1012. Breakdown: 100 n/a (designed out) · 7 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 | package | src files | n/a | intended | ✅ | 🟡 | ⬜ | ported | behavioral |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `agent` | 6 | 1 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
-| `ai` | 210 | 22 | 188 | 187 | 1 | 0 | 99.5% | 98.9% |
-| `chord` | 41 | 5 | 36 | 36 | 0 | 0 | 100.0% | 97.2% |
+| `ai` | 264 | 22 | 242 | 242 | 0 | 0 | 100.0% | 99.2% |
+| `chord` | 247 | 28 | 219 | 213 | 6 | 0 | 97.3% | 86.9% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 100.0% |
 | `coding-agent` | 254 | 27 | 227 | 227 | 0 | 0 | 100.0% | 100.0% |
 | `durable` | 85 | 9 | 76 | 76 | 0 | 0 | 100.0% | 98.7% |
 | `env` | 23 | 3 | 20 | 19 | 1 | 0 | 95.0% | 100.0% |
 | `evals` | 5 | 0 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `mcp` | 18 | 3 | 15 | 15 | 0 | 0 | 100.0% | 100.0% |
+| `schema` | 39 | 2 | 37 | 37 | 0 | 0 | 100.0% | 0.0% |
 | `telemetry` | 8 | 1 | 7 | 7 | 0 | 0 | 100.0% | 100.0% |
 | `tui` | 46 | 0 | 46 | 46 | 0 | 0 | 100.0% | 100.0% |
 
-- **Four core packages (agent, ai, coding-agent, tui):** 465 / 466 intended-portable files ✅ (99.8%) from 516 rows; 463 behavioral (99.6%), 0 weak-only, 2 untested.
-- **Shipped surface (agent, ai, codemode, coding-agent, mcp, telemetry, tui; coding-agent without ):** 500 / 501 intended-portable files ✅ (99.8%) from 559 rows; 498 behavioral (99.6%), 0 weak-only, 2 untested.
-- **Whole monorepo (11 packages):** 636 / 638 intended-portable files ✅ (99.7%) from 713 rows; 632 behavioral (99.4%), 0 weak-only, 4 untested.
-- **Interface closure:** 13476 of 13476 semantic interface IDs closed (226 designed-out, 13250 ported). A file-level ✅ does not close an interface ID.
+- **Four core packages (agent, ai, coding-agent, tui):** 520 / 520 intended-portable files ✅ (100.0%) from 570 rows; 518 behavioral (99.6%), 0 weak-only, 2 untested.
+- **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 592 / 592 intended-portable files ✅ (100.0%) from 652 rows; 553 behavioral (93.4%), 0 weak-only, 39 untested.
+- **Whole monorepo (12 packages):** 905 / 912 intended-portable files ✅ (99.2%) from 1012 rows; 837 behavioral (92.5%), 0 weak-only, 68 untested.
+- **Interface closure:** 14251 of 14469 semantic interface IDs closed (330 designed-out, 218 pending, 13921 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
 Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registration-only, 1 smoke-only.
@@ -303,17 +304,17 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `_top` | 1 | 1 | 0 | 0 | 0 | 1 | not run |
 | `ai-sdk` | 3 | 3 | 0 | 0 | 0 | 90 | not run |
 | `autocomplete` | 14 | 14 | 0 | 0 | 0 | 5 | not run |
-| `cli-utils` | 33 | 33 | 0 | 0 | 0 | 15 | not run |
+| `cli-utils` | 38 | 38 | 0 | 0 | 0 | 17 | not run |
 | `clipboard-images` | 7 | 7 | 0 | 0 | 2 | 11 | not run |
 | `compaction` | 15 | 15 | 0 | 0 | 0 | 10 | not run |
 | `export-html` | 7 | 7 | 0 | 0 | 0 | 2 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
 | `extensions-runtime` | 143 | 142 | 0 | 1 | 0 | 63 | not run |
 | `footer` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
-| `fullscreen` | 13 | 13 | 0 | 0 | 0 | 10 | not run |
+| `fullscreen` | 14 | 14 | 0 | 0 | 0 | 11 | not run |
 | `interactive-rendering` | 68 | 67 | 1 | 0 | 0 | 37 | not run |
 | `json` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
-| `model-resolver-selector` | 27 | 27 | 0 | 0 | 0 | 16 | not run |
+| `model-resolver-selector` | 28 | 28 | 0 | 0 | 0 | 16 | not run |
 | `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 24 | not run |
 | `oauth` | 32 | 32 | 0 | 0 | 0 | 19 | not run |
 | `print` | 13 | 13 | 0 | 0 | 0 | 9 | not run |
@@ -560,7 +561,7 @@ Code and interface style:
   an explicit user-owned blocker. Passing unrelated gates does not close it.
 
 Go style:
-- Build, CI, release-candidate, security-analysis, and documented setup commands use Go 1.27.3.
+- Build, CI, release-candidate, security-analysis, and documented setup commands use the Go version in `.go-version`, the single source. Do not write the version number in this file.
 - `.go-version` is the one Go pin. Workflows, scripts, images, the devcontainer, and the `toolchain` lines of `go.mod` and `go.work` name that release and no other. A script reads `.go-version` instead of repeating the number. Moving the pin changes `.go-version` and its recorded copies in one change; `make compliance` and `TestGoVersionPolicy` fail on any other release. Dated measurement records keep the release they ran on.
 - Maintained modules declare Go 1.26 or 1.26.0 as their language floor unless a concrete language requirement is approved. Do not raise a `go` directive merely to match the build toolchain.
 - Use language features available at the module floor. Prefer applicable modern standard-library APIs such as `slices.Sort`, `slices.SortFunc`, `cmp.Compare`, `maps.Copy`, `slices.Sorted(maps.Keys(m))`, `strings.Cut`, `CutPrefix`, `SplitSeq`, `for i := range n`, `wg.Go`, `min`, and `max`.

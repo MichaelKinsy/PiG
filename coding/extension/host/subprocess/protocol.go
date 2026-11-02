@@ -21,15 +21,18 @@ type autocompleteDescriptor struct {
 }
 
 type autocompleteInvocation struct {
-	QueryID    string                     `json:"queryId,omitempty"`
-	ID         string                     `json:"id"`
-	Operation  string                     `json:"operation"`
-	Lines      []string                   `json:"lines"`
-	CursorLine int                        `json:"cursorLine"`
-	CursorCol  int                        `json:"cursorCol"`
-	Force      bool                       `json:"force"`
-	Item       extension.AutocompleteItem `json:"item"`
-	Prefix     string                     `json:"prefix"`
+	QueryID    string   `json:"queryId,omitempty"`
+	ID         string   `json:"id"`
+	Operation  string   `json:"operation"`
+	Lines      []string `json:"lines"`
+	CursorLine int      `json:"cursorLine"`
+	CursorCol  int      `json:"cursorCol"`
+	Force      bool     `json:"force"`
+	// SuggestRequestID names the autocomplete.suggest request whose chain makes this call, when the call cannot name it as its parent: a
+	// packed Node member's captured provider called directly by another member's provider.
+	SuggestRequestID string                     `json:"suggestRequestId,omitempty"`
+	Item             extension.AutocompleteItem `json:"item"`
+	Prefix           string                     `json:"prefix"`
 }
 
 // MaxFrameSize bounds a single length-prefixed wire frame. The 4-byte length
@@ -139,6 +142,9 @@ type RegisterPayload struct {
 	// MarkdownTransformer reports that the extension registered a Markdown
 	// transformer. The host runs it with RequestMarkdownTransform.
 	MarkdownTransformer bool `json:"markdown_transformer,omitempty"`
+	// OwnsThinkingRuns reports that the extension owns the thinking runs of assistant messages (pi.ownThinkingRuns), as of the register frame. Later changes arrive as CallOwnThinkingRuns.
+	// pig additive (D214)
+	OwnsThinkingRuns bool `json:"owns_thinking_runs,omitempty"`
 	// ToolRenderers is the number of tool renderer resolvers the extension
 	// registered while loading (pi.registerToolRenderer). The host asks them
 	// with RequestResolveToolRenderers; NotifyToolRenderers reports later ones.
@@ -185,6 +191,15 @@ func (p *RegisterPayload) UnmarshalJSON(data []byte) error {
 
 // CallRegisterTool carries one ToolDecl after the initial registration. The host validates and replaces the definition, refreshes the Session registry before replying, and replies with an empty result. The SDK reads the registry through getAllTools and getActiveTools, so the reply carries no catalog.
 const CallRegisterTool = "registerTool"
+
+// CallOwnThinkingRuns (ext→host) declares or withdraws the extension's ownership of thinking runs after the register frame. The host updates the extension's own flag and answers with an empty result; calls of one connection apply in arrival order.
+// pig additive (D214)
+const CallOwnThinkingRuns = "ownThinkingRuns"
+
+// OwnThinkingRunsPayload is the CallOwnThinkingRuns argument; enabled is required.
+type OwnThinkingRunsPayload struct {
+	Enabled *bool `json:"enabled"`
+}
 
 // CallRegisterDeclaration carries a RegisterPayload holding only commands, shortcuts, flags, message renderers and entry renderers registered after the initial registration. The host applies each to the live extension, replacing an earlier one with the same key, and replies with an empty result.
 const CallRegisterDeclaration = "registerDeclaration"
@@ -856,6 +871,23 @@ type ToolUpdatePayload struct {
 	Result    json.RawMessage `json:"result"`
 }
 
+// CallYield (ext→host) is the explicit yield of a thread-based SDK (ctx.Yield, and ctx.Sleep before it waits): the handler of the request that made it
+// stands where Pi's code writes `await`, so the hold a triggering send set (sync_run_hold.go) ends and later reads of isIdle are live. Args are empty, the
+// result is empty. A runtime with an event loop needs no such call: it reports its first microtask checkpoint (NotifyHandlerYielded).
+const CallYield = "yield"
+
+// NotifyHandlerYielded (ext→host) tells the host that the code that sent a triggering message, a handler or a timer's or an I/O callback, awaited or
+// returned control to the runtime's event loop. The send carried the token in its yield_token argument. A runtime with an event
+// loop sends it from the first microtask checkpoint after the send, because the host cannot see an await, and only after the host answered the send;
+// the host then answers isIdle from the Session again (sync_run_hold.go). A thread-based SDK does not send it: its handler yields in a call whose
+// upstream API returns a Promise, or when it returns.
+const NotifyHandlerYielded = "handler_yielded"
+
+// HandlerYieldedPayload is the NotifyHandlerYielded argument.
+type HandlerYieldedPayload struct {
+	Token string `json:"token"`
+}
+
 // Focused custom UI uses three current-wire message classes. Input is an
 // ordered, non-idempotent event; render is a replaceable snapshot; open and
 // close/error are exactly-once barriers that delimit one key generation.
@@ -973,6 +1005,9 @@ type RemoteOverlayRenderPayload struct {
 	// Mouse reports a component that takes the mouse:
 	// the host hands it NotifyUICustomMouse events inside its bounds.
 	Mouse bool `json:"mouse,omitempty"`
+	// CapturesViewportInput is the component's capturesViewportInput when the frame was drawn (Component.capturesViewportInput in
+	// packages/tui/src/tui.ts): the host keeps fullscreen viewport keys (PageUp, PageDown, ...) away from the transcript while it is true.
+	CapturesViewportInput bool `json:"capturesViewportInput,omitempty"`
 }
 
 // pig additive (D107): the extension component kit. A view describes an
@@ -1567,6 +1602,14 @@ const RequestResolveToolRenderers = "resolve_tool_renderers"
 // NotifyToolRenderers (ext→host) reports the extension's resolver count after
 // a registration that followed loading. Args is a ToolRenderersPayload.
 const NotifyToolRenderers = "tool_renderers"
+
+// NotifyUIAutocompletePending (ext→host, args {"requestId"}) tells the host that the provider chain serving the autocomplete.suggest request with that
+// id awaits real I/O. Pi's editor awaits the whole wrapper chain in the Promise jobs after the terminal read (editor.ts startAutocompleteRequest), so a
+// chain that settles there has opened its menu before the next read, and the host holds that read for it. Only a runtime whose providers are async sends
+// the notice: the Node runtime, at the end of its macrotask, when the chain is neither settled nor waiting on a ui.autocomplete.invoke it made. The Go,
+// Rust, Python and Lisp SDKs call blocking providers, which settle when they return, as a synchronous Pi provider holds the loop until it returns.
+// The notice is sent at most once per request and before the response; a request the host did not hold ignores it.
+const NotifyUIAutocompletePending = "ui.autocomplete.pending"
 
 // ToolRenderersPayload is the NotifyToolRenderers argument.
 type ToolRenderersPayload struct {

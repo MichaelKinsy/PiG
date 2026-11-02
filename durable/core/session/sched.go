@@ -188,7 +188,25 @@ type Scheduler struct {
 	idleWaitKeys []ID
 
 	contexts map[ID]*keptContext
-	expiry   struct {
+	// idleOrder holds the kept contexts with an idle period by idleSince, oldest first: the expiry order, so neither an expiry nor
+	// finding the next one visits every kept context (see markIdle).
+	idleOrder *orderedSet[ID]
+	// idleNewest is at least the newest idleSince in idleOrder (drops do not lower it): an older one added means the clock went back.
+	idleNewest float64
+	// idleDeferred holds the conversations whose idle check waits for a chain load: while a live task's chain is not loaded, idle
+	// counts it inside every scope, so a check of any scope is not trustworthy.
+	idleDeferred map[ID]struct{}
+	// dirtyScopes is the conversations the commit being observed can change the idleness of, reused by each commit.
+	dirtyScopes map[ID]struct{}
+	// dirtyTasks is the tasks of that commit whose way up was walked.
+	dirtyTasks map[ID]struct{}
+	// chainInstalled is set while loadChain walks when it installed a node or an edge, for the check after it.
+	chainInstalled bool
+	// unknownsChanged is set when an idle check has to cover every scope after a chain load that stopped early.
+	unknownsChanged bool
+	// fullIdleChecks counts the idle checks that covered every scope (a diagnostic for tests).
+	fullIdleChecks int
+	expiry         struct {
 		set    bool
 		at     float64
 		cancel func()
@@ -252,6 +270,7 @@ type Scheduler struct {
 	dirty              bool
 	draining           bool
 	reserveSkip        uint8 // the decision of the reservation job's first run, which a later run of the same job keeps (reserve)
+	stateAwaits        int   // the `await #loadChain` calls of #loadScopes in the terminal #commitState just staged (runtime.go commitStateTicks)
 
 	// observing is set while the commit observer runs (it runs inside the Storage's adopt).
 	observing bool
@@ -263,10 +282,10 @@ func NewScheduler(sess *Session, loop *Loop, env Env) *Scheduler {
 		sess: sess, loop: loop, env: env,
 		live: newTaskMap(), invocations: map[ID]*invocation{},
 		taskWaiters: map[ID][]*taskWaiter{}, idleWaiters: map[ID][]*idleWaiter{},
-		contexts: map[ID]*keptContext{}, failedMigrations: map[ID]failedMigration{}, migrations: map[ID]*migration{}, edges: map[ID]ID{}, settled: map[ID]taskNode{},
+		contexts: map[ID]*keptContext{}, idleOrder: newOrderedSet[ID](), idleDeferred: map[ID]struct{}{}, dirtyScopes: map[ID]struct{}{}, dirtyTasks: map[ID]struct{}{}, failedMigrations: map[ID]failedMigration{}, migrations: map[ID]*migration{}, edges: map[ID]ID{}, settled: map[ID]taskNode{},
 		below: map[treeNode]*orderedSet[treeNode]{}, roots: newOrderedSet[ID](), unloaded: newOrderedSet[ID](), intent: newOrderedSet[ID](), runnable: newOrderedSet[ID](), finalizeChecks: newOrderedSet[ID](), waiters: map[ID]*orderedSet[ID]{}, sleeping: newOrderedSet[ID](), dropQueue: newOrderedSet[treeNode](), abandoned: newOrderedSet[ID](),
 	}
-	sess.OnFail = func(err error) { s.report(err, obj("type", "session_failed")) }
+	sess.OnFail = func(err error) { s.report(err, obj("kind", "storage_failed")) }
 	return s
 }
 
@@ -340,7 +359,7 @@ func reportTask(id ID, kind string, conversationID ID) *jv.Object {
 // definition: the code that failed is that extension's. Built-in tasks have none (scheduler.ts #aboutTask).
 func (s *Scheduler) aboutRecord(typ string, rec *jv.Object) *jv.Object {
 	kind, _ := getStr(rec, "kind")
-	info := obj("type", typ, "task", reportTask(mustInt(rec, "id"), kind, mustInt(rec, "conversationId")))
+	info := obj("kind", typ, "task", reportTask(mustInt(rec, "id"), kind, mustInt(rec, "conversationId")))
 	if task := s.env.Snapshot().Task(kind); task != nil && task.Extension != "" {
 		info.Set("extension", task.Extension)
 	}
@@ -350,7 +369,7 @@ func (s *Scheduler) aboutRecord(typ string, rec *jv.Object) *jv.Object {
 // aboutInvocation is the report info of a failure of an invocation's task: the task, and the extension that installed
 // the definition the invocation runs.
 func aboutInvocation(typ string, inv *invocation) *jv.Object {
-	info := obj("type", typ, "task", reportTask(inv.taskID, inv.kind, inv.conversationID))
+	info := obj("kind", typ, "task", reportTask(inv.taskID, inv.kind, inv.conversationID))
 	if inv.extension != "" {
 		info.Set("extension", inv.extension)
 	}
@@ -836,6 +855,7 @@ func (s *Scheduler) Seal() {
 	// which signals every invocation: one microtask on, ahead of the reactions of the waits this seal rejects, not inside it.
 	s.loop.Defer(s.signalInvocations)
 	s.contexts = map[ID]*keptContext{}
+	s.idleOrder.Clear()
 	s.cancelExpiry()
 	s.cancelWakeTimer()
 	for _, id := range slices.Clone(s.taskWaitKeys) {
@@ -940,23 +960,6 @@ func (s *Scheduler) idle(conversationID ID) bool {
 		}
 	}
 	return true
-}
-
-func (s *Scheduler) settleIdle() {
-	defer s.expireContexts()
-	for _, id := range slices.Clone(s.idleWaitKeys) {
-		if !s.idle(id) {
-			continue
-		}
-		list := s.idleWaiters[id]
-		s.dropIdleKey(id)
-		for _, w := range list {
-			if w.remove != nil {
-				w.remove()
-			}
-			s.deliverIdle(w.done, w.late, nil)
-		}
-	}
 }
 
 type scope struct {

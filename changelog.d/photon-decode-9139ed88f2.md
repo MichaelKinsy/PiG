@@ -1,0 +1,3 @@
+### Fixed
+
+- Reading a JPEG or a WebP image now decodes it with ports of the decoders Photon runs (jpeg-decoder 0.3.1 and the image 0.24.9 WebP decoder: baseline and progressive JPEG in every sampling, restart intervals, CMYK and YCCK; lossy, lossless, alpha and animated WebP), pixel for pixel and error for error, instead of Go's `image/jpeg` and `x/image/webp`. A JPEG or WebP the model is sent after a resize, a rotation or a re-encode is therefore Pi's own bytes, and what depends on its pixels (sizes, the quality ladder, the choice of PNG or JPEG) is Pi's too; with this PiG's image pipeline writes the same bytes as Pi in every measured case. <!-- fix: 9139ed88f2 -->

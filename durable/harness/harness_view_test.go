@@ -57,7 +57,7 @@ func record(t *testing.T, conversation Conversation, window ...*ConversationWind
 	t.Helper()
 	watch := must(conversation.Watch(testContext, windowArg(window)))
 	recorded := &recording{initial: watch.Value(), watch: watch}
-	watch.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
+	watch.Start(func(_ context.Context, change chord.WatchCall[ConversationView]) error {
 		value := change.Value
 		ops := change.Ops
 		recorded.mu.Lock()
@@ -192,7 +192,7 @@ func (c *touchCounter) value() int {
 // touches counts the commits that touch conversation's mounted state (harness-view.test.ts:70).
 func touches(harness Harness, conversation Conversation) *touchCounter {
 	counter := &touchCounter{}
-	harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+	observeStored(harness, func(_ context.Context, publication durable.CommitPublication) {
 		touched := slices.ContainsFunc(publication.Changes, func(change durable.CommitChange) bool {
 			switch typed := change.(type) {
 			case durable.EntryWrite:
@@ -449,7 +449,7 @@ func TestConversationView(t *testing.T) {
 		}
 		var mu sync.Mutex
 		var frames []viewFrame
-		watch.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
+		watch.Start(func(_ context.Context, change chord.WatchCall[ConversationView]) error {
 			value := change.Value
 			ops := change.Ops
 			mu.Lock()
@@ -506,7 +506,7 @@ func TestConversationView(t *testing.T) {
 		watch := must(root.Watch(testContext, nil))
 		closeHarness(t, harness)
 		<-watch.Closed()
-		if end := watch.End(); end.Reason != durable.WatchEnded || end.Error != nil {
+		if end := watch.End(); end.Kind != durable.WatchEnded || end.Error != nil {
 			t.Fatalf("end %+v", end)
 		}
 		if entries := watch.Value().Entries; len(entries) != 0 {
@@ -585,12 +585,12 @@ func TestConversationView(t *testing.T) {
 			t.Fatal("observers do not share the mount's documents")
 		}
 		must(shared.Stop())
-		failing.Start(func(context.Context, chord.WatchChange[ConversationView]) error { return errors.New("listener failed") })
+		failing.Start(func(context.Context, chord.WatchCall[ConversationView]) error { return errors.New("listener failed") })
 		noteEntry(t, root, "one")
 		noteEntry(t, root, "two")
 		drained(harness)
 		<-failing.Closed()
-		if end := failing.End(); end.Reason != durable.WatchListenerError {
+		if end := failing.End(); end.Kind != durable.WatchListenerError {
 			t.Fatalf("end %+v", end)
 		}
 		if frames := recorded.snapshot(); len(frames) != 2 {
@@ -887,7 +887,7 @@ func TestConversationViewWindow(t *testing.T) {
 		}
 		var mu sync.Mutex
 		var frames []viewFrame
-		watch.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
+		watch.Start(func(_ context.Context, change chord.WatchCall[ConversationView]) error {
 			mu.Lock()
 			defer mu.Unlock()
 			frames = append(frames, viewFrame{value: change.Value, ops: change.Ops})
@@ -917,7 +917,7 @@ func TestConversationViewWindow(t *testing.T) {
 		var first weak.Pointer[durable.EntryRecord]
 		var seen bool
 		count := 0
-		watch.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
+		watch.Start(func(_ context.Context, change chord.WatchCall[ConversationView]) error {
 			mu.Lock()
 			defer mu.Unlock()
 			count = len(change.Value.Entries)

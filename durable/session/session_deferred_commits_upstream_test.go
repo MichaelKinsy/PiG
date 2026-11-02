@@ -61,7 +61,7 @@ type armedTimer struct {
 }
 
 // deferredSession is a Session over controlled storage with a manual clock and manual foreground timers (background ones are
-// declined, so commits evict), recording what SubscribeCommits and the Session's own observers get.
+// declined, so commits evict), recording what observeCommits() and the Session's own observers get.
 type deferredSession struct {
 	t              *testing.T
 	clock          *retentionClock
@@ -106,12 +106,12 @@ func openDeferred(t *testing.T, options ...deferredOptions) *deferredSession {
 		},
 		PersistWithinMs: func() *float64 { return opts.persistWithinMs },
 	}, opened.clock.read, func() *float64 { return &retention })
-	opened.session.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+	sessiontest.ObserveCommitsFunc(opened.session, func(_ context.Context, publication durable.CommitPublication) {
 		opened.mu.Lock()
 		opened.stored = append(opened.stored, publication)
 		opened.mu.Unlock()
 	})
-	opened.session.ObserveCommits(func(_ context.Context, commit session.ObservedCommit) {
+	opened.session.FollowCommits(func(_ context.Context, commit session.ObservedCommit) {
 		opened.mu.Lock()
 		opened.observed = append(opened.observed, commit)
 		opened.mu.Unlock()
@@ -279,7 +279,7 @@ func TestHoldingADeferredCommit(t *testing.T) {
 			t.Fatalf("Storage admitted %d batches, want %d", got, admitted)
 		}
 		if got := len(opened.storedPublications()); got != publications {
-			t.Fatalf("subscribeCommits saw %d publications, want %d", got, publications)
+			t.Fatalf("observeCommits saw %d publications, want %d", got, publications)
 		}
 		expectEqual(t, opened.snapshotText(deferredText), "ab")
 		expectEqual(t, opened.storedText(), "")
@@ -557,7 +557,7 @@ func TestStoringHeldChanges(t *testing.T) {
 			t.Fatalf("close returned %v, want the storage error", err)
 		}
 		<-failing.session.Closed()
-		if end := failing.session.End(); end.Reason != durable.SessionEndFailed || !errors.Is(end.Error, failure) {
+		if end := failing.session.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, failure) {
 			t.Fatalf("end = %+v, want failed with the storage error", end)
 		}
 		expectEqual(t, failing.storedText(), "")
@@ -704,7 +704,7 @@ func TestBasesAndOverflowOfHeldChanges(t *testing.T) {
 }
 
 func TestPublicationsOfDeferredCommits(t *testing.T) {
-	t.Run("give SubscribeCommits exactly what was stored, and nothing for a held commit", func(t *testing.T) {
+	t.Run("give observeCommits() exactly what was stored, and nothing for a held commit", func(t *testing.T) {
 		opened := openDeferred(t)
 		from, publications := len(opened.storage.Commits()), len(opened.storedPublications())
 		opened.append("a")
@@ -770,7 +770,7 @@ func TestPublicationsOfDeferredCommits(t *testing.T) {
 		must(t, err)
 		var mu sync.Mutex
 		values := []any{}
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			value := change.Value
 			mu.Lock()
 			values = append(values, value.Value("text"))
@@ -837,7 +837,7 @@ func TestACrashLeavesStorageAtTheLastStoredState(t *testing.T) {
 	opened := openDeferred(t)
 	var mu sync.Mutex
 	states := []any{}
-	opened.session.ObserveCommits(func(_ context.Context, commit session.ObservedCommit) {
+	opened.session.FollowCommits(func(_ context.Context, commit session.ObservedCommit) {
 		for _, change := range commit.Changes {
 			if document, ok := change.(durable.DocumentChange); ok && document.Record.Id == opened.recordId {
 				mu.Lock()

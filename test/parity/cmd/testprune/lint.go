@@ -220,7 +220,9 @@ func piSourceNames(root string) (map[string]bool, error) {
 // checkCoEdits returns each commit that edits an expectation value in a test
 // file while changing production code of the same directory, unless the commit
 // message or a line the commit adds to the test file cites a Pi source line
-// (a file piNames holds) whose behavior changed.
+// (a file piNames holds) whose behavior changed, or the reviewed ledger holds an entry for the commit and path. An entry
+// is read first: it can record that a commit's own citation names a Pi line that did not change, which history cannot
+// rewrite.
 func checkCoEdits(root string, rangeSpec string, from time.Time, piNames map[string]bool, ledger []reviewEntry) ([]string, error) {
 	edits, err := scanCoEdits(root, []string{rangeSpec, "--", "*.go"})
 	if err != nil {
@@ -242,13 +244,6 @@ func checkCoEdits(root string, rangeSpec string, from time.Time, piNames map[str
 		if err != nil {
 			return nil, err
 		}
-		cited := slices.ContainsFunc(e.Cited, func(name string) bool { return piNames[name] })
-		for _, m := range piCiteRE.FindAllSubmatch(msg, -1) {
-			cited = cited || piNames[path.Base(string(m[1]))]
-		}
-		if cited {
-			continue
-		}
 		reviewed := false
 		for i, r := range ledger {
 			if len(r.Commit) < 10 || !strings.HasPrefix(e.Commit, r.Commit) || r.Path != e.Path {
@@ -261,6 +256,13 @@ func checkCoEdits(root string, rangeSpec string, from time.Time, piNames map[str
 			reviewed = true
 		}
 		if reviewed {
+			continue
+		}
+		cited := slices.ContainsFunc(e.Cited, func(name string) bool { return piNames[name] })
+		for _, m := range piCiteRE.FindAllSubmatch(msg, -1) {
+			cited = cited || piNames[path.Base(string(m[1]))]
+		}
+		if cited {
 			continue
 		}
 		problems = append(problems, fmt.Sprintf("%s %s: changes %d expected value(s) in %s together with %s; cite the Pi behavior that changed (a `Pi-Behavior-Change: <pi file.ts:line>` trailer, or a `name.ts:line` comment on a changed test line, naming a Pi file of %s), or leave the expectation alone",

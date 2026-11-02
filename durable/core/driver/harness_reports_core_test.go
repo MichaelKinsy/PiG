@@ -20,7 +20,7 @@ import (
 )
 
 // Ports packages/durable/test/harness-reports.test.ts (Pi 482c1381a0) over both engines: what each report to OnReport says
-// about its source (ReportInfo). The one expectation that needs a failing Storage commit (:229 session_failed) runs on the
+// about its source (ReportInfo). The one expectation that needs a failing Storage commit (:229 storage_failed) runs on the
 // reference only, in durable/harness (harness_reports_test.go).
 
 type reportOpen struct {
@@ -88,8 +88,8 @@ func TestReports(t *testing.T) {
 			task := &durable.ReportTask{Id: id, Kind: "test.faulty", ConversationId: root.Id()}
 			got := opened.reports.all()
 			want := []reported{
-				{errors.New("noted"), durable.ReportInfo{Type: durable.ReportTaskError, Task: task, Extension: "test"}},
-				{errors.New("broken"), durable.ReportInfo{Type: durable.ReportTaskFaulted, Task: task, Extension: "test", Reason: "threw"}},
+				{errors.New("noted"), durable.ReportInfo{Kind: durable.ReportTaskError, Task: task, Extension: "test"}},
+				{errors.New("broken"), durable.ReportInfo{Kind: durable.ReportTaskFaulted, Task: task, Extension: "test", Reason: "threw"}},
 			}
 			for i := range want {
 				if got[i].err.Error() != want[i].err.Error() || !reflect.DeepEqual(got[i].info, want[i].info) {
@@ -137,7 +137,7 @@ func TestReports(t *testing.T) {
 			var faulted reported
 			pollUntil(t, "the fault report", func() bool {
 				for _, item := range opened.reports.all() {
-					if item.info.Type == durable.ReportTaskFaulted {
+					if item.info.Kind == durable.ReportTaskFaulted {
 						faulted = item
 						return true
 					}
@@ -189,13 +189,13 @@ func TestReports(t *testing.T) {
 			generation := func(info durable.ReportInfo) bool {
 				return info.Task != nil && info.Task.Kind == "pi.generation" && info.Task.ConversationId == root.Id()
 			}
-			if info := infoOf("env"); info.Type != durable.ReportHostError || info.Callback != durable.HostCallbackEnv || !generation(info) {
+			if info := infoOf("env"); info.Kind != durable.ReportHostError || info.Callback != durable.HostCallbackEnv || !generation(info) {
 				t.Fatalf("env report %+v, want host_error env of the generation", info)
 			}
-			if info := infoOf("section"); info.Type != durable.ReportExtensionError || info.Extension != "sections" || !generation(info) {
+			if info := infoOf("section"); info.Kind != durable.ReportExtensionError || info.Extension != "sections" || !generation(info) {
 				t.Fatalf("section report %+v, want extension_error of sections in the generation", info)
 			}
-			if info := infoOf("hook"); info.Type != durable.ReportExtensionError || info.Extension != "hooks" || !generation(info) {
+			if info := infoOf("hook"); info.Kind != durable.ReportExtensionError || info.Extension != "hooks" || !generation(info) {
 				t.Fatalf("hook report %+v, want extension_error of hooks in the generation", info)
 			}
 		})
@@ -241,7 +241,7 @@ func TestReports(t *testing.T) {
 			})}}); err != nil {
 				t.Fatal(err)
 			}
-			opened.h.SubscribeCommits(func(context.Context, durable.CommitPublication) { panic(errors.New("listener")) })
+			opened.h.ObserveCommits(commitsFunc(func(context.Context, durable.CommitPublication) { panic(errors.New("listener")) }))
 			root := rootOf(t, opened.h)
 			if _, err := root.Agent(t.Context()); err != nil {
 				t.Fatal(err)
@@ -264,17 +264,17 @@ func TestReports(t *testing.T) {
 				}
 				return item.info
 			}
-			wantWrap := durable.ReportInfo{Type: durable.ReportExtensionError, ConversationId: new(root.Id()), Extension: "wraps"}
+			wantWrap := durable.ReportInfo{Kind: durable.ReportExtensionError, ConversationId: new(root.Id()), Extension: "wraps"}
 			if got := infoOf("Wrapper renamed echo to renamed"); !reflect.DeepEqual(got, wantWrap) {
 				t.Fatalf("wrapper report %+v, want %+v", got, wantWrap)
 			}
-			if got := infoOf("listener"); !reflect.DeepEqual(got, durable.ReportInfo{Type: durable.ReportListenerError}) {
+			if got := infoOf("listener"); !reflect.DeepEqual(got, durable.ReportInfo{Kind: durable.ReportListenerError}) {
 				t.Fatalf("listener report %+v, want listener_error", got)
 			}
-			if got := infoOf("alarm"); !reflect.DeepEqual(got, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackOnWake}) {
+			if got := infoOf("alarm"); !reflect.DeepEqual(got, durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackOnWake}) {
 				t.Fatalf("alarm report %+v, want host_error onWake", got)
 			}
-			if got := infoOf("no timers"); got.Type != durable.ReportHostError || got.Callback != durable.HostCallbackSetTimer {
+			if got := infoOf("no timers"); got.Kind != durable.ReportHostError || got.Callback != durable.HostCallbackSetTimer {
 				t.Fatalf("timer report %+v, want host_error setTimer", got)
 			}
 		})

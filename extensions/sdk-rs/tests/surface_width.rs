@@ -54,7 +54,11 @@ impl Host {
 
     /// `start` with the mode and hasUI the host reports: Pi runs a footer or header factory only in the TUI.
     fn start_in(ext: Extension, mode: &str, has_ui: bool) -> Self {
-        let dir = std::env::temp_dir().join(format!("pig-surface-width-{}-{:?}", std::process::id(), thread::current().id()));
+        let dir = std::env::temp_dir().join(format!(
+            "pig-surface-width-{}-{:?}",
+            std::process::id(),
+            thread::current().id()
+        ));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir(&dir).unwrap();
         let socket = dir.join("host.sock");
@@ -63,7 +67,10 @@ impl Host {
         let (mut stream, _) = listener.accept().unwrap();
         let write = Arc::new(Mutex::new(stream.try_clone().unwrap()));
         assert_eq!(read_frame(&mut stream).unwrap()["type"], "register");
-        write_frame(&write, &json!({"type": "ready", "ready": {"cwd": "/tmp", "width": 80, "mode": mode, "state": {"hasUI": has_ui}}}));
+        write_frame(
+            &write,
+            &json!({"type": "ready", "ready": {"cwd": "/tmp", "width": 80, "mode": mode, "state": {"hasUI": has_ui}}}),
+        );
         let (tx, calls) = channel();
         let reply = write.clone();
         thread::spawn(move || {
@@ -71,7 +78,10 @@ impl Host {
                 if frame["type"] == "call" {
                     let method = frame["call"]["method"].as_str().unwrap().to_string();
                     let _ = tx.send((method, frame["call"]["args"].clone()));
-                    write_frame(&reply, &json!({"type": "call_result", "id": frame["id"], "call_result": {}}));
+                    write_frame(
+                        &reply,
+                        &json!({"type": "call_result", "id": frame["id"], "call_result": {}}),
+                    );
                 }
                 // A widget_push has no reply; it is recorded as a call named
                 // widget_push whose arguments are the payload.
@@ -80,20 +90,34 @@ impl Host {
                 }
             }
         });
-        Self { write, calls, runner: Some(runner), dir }
+        Self {
+            write,
+            calls,
+            runner: Some(runner),
+            dir,
+        }
     }
 
     fn command(&self, name: &str) {
-        write_frame(&self.write, &json!({"type": "request", "id": format!("req-{name}"), "request": {"method": "command", "tool": name, "args": {}}}));
+        write_frame(
+            &self.write,
+            &json!({"type": "request", "id": format!("req-{name}"), "request": {"method": "command", "tool": name, "args": {}}}),
+        );
     }
 
     fn width(&self, width: u32) {
-        write_frame(&self.write, &json!({"type": "notify", "notify": {"method": "width_change", "args": {"width": width}}}));
+        write_frame(
+            &self.write,
+            &json!({"type": "notify", "notify": {"method": "width_change", "args": {"width": width}}}),
+        );
     }
 
     fn next(&self, method: &str) -> Value {
         loop {
-            let (got, args) = self.calls.recv_timeout(Duration::from_secs(5)).unwrap_or_else(|_| panic!("no {method} call within the deadline"));
+            let (got, args) = self
+                .calls
+                .recv_timeout(Duration::from_secs(5))
+                .unwrap_or_else(|_| panic!("no {method} call within the deadline"));
             if got == method {
                 return args;
             }
@@ -111,7 +135,10 @@ impl Host {
 
 impl Drop for Host {
     fn drop(&mut self) {
-        write_frame(&self.write, &json!({"type": "shutdown", "shutdown": {"reason": "test"}}));
+        write_frame(
+            &self.write,
+            &json!({"type": "shutdown", "shutdown": {"reason": "test"}}),
+        );
         // A failed assertion may leave the extension blocked; report the
         // failure instead of waiting for it forever.
         if thread::panicking() {
@@ -130,15 +157,30 @@ fn static_rows_are_tagged_with_the_sdk_width() {
         let mut ext = Extension::new("rs-surface");
         ext.command("go", "push rows", move |ctx, _| {
             let rows = vec![format!("rows@{}", ctx.width())];
-            let result = if surface == "footer" { ctx.set_footer(rows) } else { ctx.set_header(rows) };
-            result.map_or_else(|e| CommandResult::Error(e.to_string()), |()| CommandResult::Ok)
+            let result = if surface == "footer" {
+                ctx.set_footer(rows)
+            } else {
+                ctx.set_header(rows)
+            };
+            result.map_or_else(
+                |e| CommandResult::Error(e.to_string()),
+                |()| CommandResult::Ok,
+            )
         });
         let host = Host::start(ext);
         host.command("go");
-        assert_eq!(host.next(method), json!({"lines": ["rows@80"], "width": 80}), "{surface}");
+        assert_eq!(
+            host.next(method),
+            json!({"lines": ["rows@80"], "width": 80}),
+            "{surface}"
+        );
         host.width(60);
         host.command("go");
-        assert_eq!(host.next(method), json!({"lines": ["rows@60"], "width": 60}), "{surface}");
+        assert_eq!(
+            host.next(method),
+            json!({"lines": ["rows@60"], "width": 60}),
+            "{surface}"
+        );
     }
 }
 
@@ -148,22 +190,48 @@ fn renderers_render_at_host_width_and_follow_resize() {
         let mut ext = Extension::new("rs-surface");
         ext.command("go", "install renderer", move |ctx, _| {
             let render = |width: u32| vec![format!("row@{width}")];
-            let result = if surface == "footer" { ctx.set_footer_renderer(Some(render)) } else { ctx.set_header_renderer(Some(render)) };
-            result.map_or_else(|e| CommandResult::Error(e.to_string()), |()| CommandResult::Ok)
+            let result = if surface == "footer" {
+                ctx.set_footer_renderer(Some(render))
+            } else {
+                ctx.set_header_renderer(Some(render))
+            };
+            result.map_or_else(
+                |e| CommandResult::Error(e.to_string()),
+                |()| CommandResult::Ok,
+            )
         });
         ext.command("clear", "clear renderer", move |ctx, _| {
             let none: Option<fn(u32) -> Vec<String>> = None;
-            let result = if surface == "footer" { ctx.set_footer_renderer(none) } else { ctx.set_header_renderer(none) };
-            result.map_or_else(|e| CommandResult::Error(e.to_string()), |()| CommandResult::Ok)
+            let result = if surface == "footer" {
+                ctx.set_footer_renderer(none)
+            } else {
+                ctx.set_header_renderer(none)
+            };
+            result.map_or_else(
+                |e| CommandResult::Error(e.to_string()),
+                |()| CommandResult::Ok,
+            )
         });
         let host = Host::start(ext);
         host.command("go");
-        assert_eq!(host.next(method), json!({"lines": ["row@80"], "width": 80}), "{surface}");
+        assert_eq!(
+            host.next(method),
+            json!({"lines": ["row@80"], "width": 80}),
+            "{surface}"
+        );
         // No extension action: the SDK re-renders at the host's new width.
         host.width(60);
-        assert_eq!(host.next(method), json!({"lines": ["row@60"], "width": 60}), "{surface}");
+        assert_eq!(
+            host.next(method),
+            json!({"lines": ["row@60"], "width": 60}),
+            "{surface}"
+        );
         host.width(114);
-        assert_eq!(host.next(method), json!({"lines": ["row@114"], "width": 114}), "{surface}");
+        assert_eq!(
+            host.next(method),
+            json!({"lines": ["row@114"], "width": 114}),
+            "{surface}"
+        );
         host.command("clear");
         assert_eq!(host.next(method), json!({"clear": true}), "{surface}");
         host.width(90);
@@ -175,16 +243,26 @@ fn renderers_render_at_host_width_and_follow_resize() {
 fn static_footer_replaces_renderer() {
     let mut ext = Extension::new("rs-surface");
     ext.command("go", "install renderer", |ctx, _| {
-        ctx.set_footer_renderer(Some(|width: u32| vec![format!("dyn@{width}")])).map_or_else(|e| CommandResult::Error(e.to_string()), |()| CommandResult::Ok)
+        ctx.set_footer_renderer(Some(|width: u32| vec![format!("dyn@{width}")]))
+            .map_or_else(
+                |e| CommandResult::Error(e.to_string()),
+                |()| CommandResult::Ok,
+            )
     });
     ext.command("static", "static rows", |ctx, _| {
-        ctx.set_footer(vec!["static".to_string()]).map_or_else(|e| CommandResult::Error(e.to_string()), |()| CommandResult::Ok)
+        ctx.set_footer(vec!["static".to_string()]).map_or_else(
+            |e| CommandResult::Error(e.to_string()),
+            |()| CommandResult::Ok,
+        )
     });
     let host = Host::start(ext);
     host.command("go");
     host.next("ui.setFooter");
     host.command("static");
-    assert_eq!(host.next("ui.setFooter"), json!({"lines": ["static"], "width": 80}));
+    assert_eq!(
+        host.next("ui.setFooter"),
+        json!({"lines": ["static"], "width": 80})
+    );
     host.width(60);
     host.quiet("ui.setFooter");
 }
@@ -197,7 +275,10 @@ fn renderer_panic_is_reported_not_fatal() {
             assert_eq!(width, 80, "boom");
             vec!["ok".to_string()]
         };
-        ctx.set_footer_renderer(Some(render)).map_or_else(|e| CommandResult::Error(e.to_string()), |()| CommandResult::Ok)
+        ctx.set_footer_renderer(Some(render)).map_or_else(
+            |e| CommandResult::Error(e.to_string()),
+            |()| CommandResult::Ok,
+        )
     });
     let host = Host::start(ext);
     host.command("go");
@@ -205,19 +286,32 @@ fn renderer_panic_is_reported_not_fatal() {
     host.width(60);
     let notice = host.next("ui.notify");
     assert_eq!(notice["level"], "error");
-    assert!(notice["message"].as_str().unwrap().starts_with("footer render failed: "), "{notice}");
+    assert!(
+        notice["message"]
+            .as_str()
+            .unwrap()
+            .starts_with("footer render failed: "),
+        "{notice}"
+    );
 }
 
 #[test]
 fn set_widget_string_list_is_content_without_width() {
     let mut ext = Extension::new("rs-surface");
     ext.command("go", "set widget", |ctx, _| {
-        ctx.set_widget("status", vec!["● 3 agents running".to_string()]).map_or_else(|e| CommandResult::Error(e.to_string()), |()| CommandResult::Ok)
+        ctx.set_widget("status", vec!["● 3 agents running".to_string()])
+            .map_or_else(
+                |e| CommandResult::Error(e.to_string()),
+                |()| CommandResult::Ok,
+            )
     });
     let host = Host::start(ext);
     host.command("go");
     // No width: the host treats a width-less widget_push as string list content.
-    assert_eq!(host.next("widget_push"), json!({"key": "status", "lines": ["● 3 agents running"]}));
+    assert_eq!(
+        host.next("widget_push"),
+        json!({"key": "status", "lines": ["● 3 agents running"]})
+    );
 }
 
 // Pi's RPC mode writes one request per setWidget call, in call order and before the handler's response (rpc-mode.ts), so in RPC mode a string
@@ -226,7 +320,11 @@ fn set_widget_string_list_is_content_without_width() {
 fn set_widget_string_list_in_rpc_mode_is_a_host_call() {
     let mut ext = Extension::new("rs-surface");
     ext.command("go", "set widget", |ctx, _| {
-        ctx.set_widget("status", vec!["w-one".to_string()]).map_or_else(|e| CommandResult::Error(e.to_string()), |()| CommandResult::Ok)
+        ctx.set_widget("status", vec!["w-one".to_string()])
+            .map_or_else(
+                |e| CommandResult::Error(e.to_string()),
+                |()| CommandResult::Ok,
+            )
     });
     let host = Host::start_in(ext, "rpc", true);
     host.command("go");
@@ -247,7 +345,11 @@ fn set_widget_from_a_width_handler_does_not_block_the_message_loop() {
         std::mem::forget(ctx.on_width_change(move |width| {
             let _ = handler_ctx.set_widget("fit", vec![format!("w@{width}")]);
         }));
-        ctx.set_widget("fit", vec![format!("w@{}", ctx.width())]).map_or_else(|e| CommandResult::Error(e.to_string()), |()| CommandResult::Ok)
+        ctx.set_widget("fit", vec![format!("w@{}", ctx.width())])
+            .map_or_else(
+                |e| CommandResult::Error(e.to_string()),
+                |()| CommandResult::Ok,
+            )
     });
     let host = Host::start(ext);
     host.command("go");
@@ -274,8 +376,15 @@ fn renderers_are_not_run_outside_the_tui() {
                     seen.lock().unwrap().push(width);
                     vec!["must-not-render".to_string()]
                 };
-                let result = if surface == "footer" { ctx.set_footer_renderer(Some(render)) } else { ctx.set_header_renderer(Some(render)) };
-                result.map_or_else(|e| CommandResult::Error(e.to_string()), |()| CommandResult::Ok)
+                let result = if surface == "footer" {
+                    ctx.set_footer_renderer(Some(render))
+                } else {
+                    ctx.set_header_renderer(Some(render))
+                };
+                result.map_or_else(
+                    |e| CommandResult::Error(e.to_string()),
+                    |()| CommandResult::Ok,
+                )
             });
             let host = Host::start_in(ext, mode, has_ui);
             host.command("go");
@@ -283,7 +392,11 @@ fn renderers_are_not_run_outside_the_tui() {
             host.quiet(method);
             host.command("go");
             host.quiet(method);
-            assert_eq!(*rendered.lock().unwrap(), Vec::<u32>::new(), "{mode} {surface}");
+            assert_eq!(
+                *rendered.lock().unwrap(),
+                Vec::<u32>::new(),
+                "{mode} {surface}"
+            );
         }
     }
 }
@@ -298,7 +411,10 @@ fn custom_resolves_none_in_rpc_without_running_the_component() {
             self.0.lock().unwrap().push("render");
             Vec::new()
         }
-        fn handle_input(&mut self, _data: &pig_sdk::JsString) -> Result<RemoteComponentResult, String> {
+        fn handle_input(
+            &mut self,
+            _data: &pig_sdk::JsString,
+        ) -> Result<RemoteComponentResult, String> {
             self.0.lock().unwrap().push("input");
             Ok(RemoteComponentResult::pending())
         }
@@ -310,7 +426,11 @@ fn custom_resolves_none_in_rpc_without_running_the_component() {
     ext.command("go", "custom", move |ctx, _| {
         let component = ctx.custom_component(Component(seen_ran.clone()), json!({}));
         let options = ctx.custom(json!({"overlay": true}));
-        seen_results.lock().unwrap().send(format!("{component:?} {options:?}")).unwrap();
+        seen_results
+            .lock()
+            .unwrap()
+            .send(format!("{component:?} {options:?}"))
+            .unwrap();
         CommandResult::Ok
     });
     let host = Host::start_in(ext, "rpc", true);
@@ -320,6 +440,13 @@ fn custom_resolves_none_in_rpc_without_running_the_component() {
         let keys: Vec<&String> = args.as_object().unwrap().keys().collect();
         assert_eq!(keys, ["key"], "ui.custom args {args}");
     }
-    assert_eq!(results.recv_timeout(Duration::from_secs(5)).unwrap(), "Ok(None) Ok(None)");
-    assert!(ran.lock().unwrap().is_empty(), "component callbacks ran in RPC mode: {:?}", ran.lock().unwrap());
+    assert_eq!(
+        results.recv_timeout(Duration::from_secs(5)).unwrap(),
+        "Ok(None) Ok(None)"
+    );
+    assert!(
+        ran.lock().unwrap().is_empty(),
+        "component callbacks ran in RPC mode: {:?}",
+        ran.lock().unwrap()
+    );
 }

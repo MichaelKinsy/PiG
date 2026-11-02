@@ -326,3 +326,24 @@
   (check= "Ctrl+Y" (pig:format-key-text "ctrl+y" t))
   (check= "ctrl+y/enter" (pig:format-key-text "ctrl+y/enter"))
   (check= (if (member :darwin *features*) "option+left" "alt+left") (pig:format-key-text "alt+left")))
+
+(deftest get-select-page-index-moves-by-a-page-and-clamps
+  (let ((manager (pig:tui-make-keybindings-manager pig:*tui-keybindings*))
+        (page-up (format nil "~C[5~~" (code-char 27))) (page-down (format nil "~C[6~~" (code-char 27))))
+    (check= 5 (pig:tui-get-select-page-index manager page-down 2 20 3))
+    (check= 0 (pig:tui-get-select-page-index manager page-up 2 20 3) "clamped at the first item")
+    (check= 19 (pig:tui-get-select-page-index manager page-down 18 20 5) "clamped at the last item")
+    (check= 0 (pig:tui-get-select-page-index manager page-down 0 0 5) "an empty list answers 0 for a page key")
+    (check= 0 (pig:tui-get-select-page-index manager page-up 0 0 5))
+    (check (null (pig:tui-get-select-page-index manager "x" 2 20 3)) "not a page key")))
+
+(deftest render-hints-read-the-host-keybindings
+  (pig::ts-apply-host-state (tv-state "ctrl+y" "ctrl+j" "iterm2"))
+  (let ((context (pig:make-tool-render-context)) (options (pig:obj "expanded" t)))
+    (check= "ctrl+y" (pig:tool-render-context-key-text context "tui.input.submit") "the host's table, not Pi's default")
+    (check= "ctrl+y" (pig:message-render-options-key-text options "tui.input.submit"))
+    (check= "ctrl+y" (pig:entry-render-options-key-text options "tui.input.submit"))
+    (check= "" (pig:entry-render-options-key-text options "x.probe.missing"))
+    (check= (pig:key-hint "tui.input.submit" "to go") (pig:tool-render-context-key-hint context "tui.input.submit" "to go"))
+    (check= (pig:key-hint "tui.input.submit" "to go") (pig:message-render-options-key-hint options "tui.input.submit" "to go"))
+    (check= (pig:key-hint "tui.input.submit" "to go") (pig:entry-render-options-key-hint options "tui.input.submit" "to go"))))

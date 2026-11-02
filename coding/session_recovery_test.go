@@ -201,9 +201,10 @@ func newRecoveryHarness(t *testing.T, opts harnessOptions, responses ...scripted
 		session.bindExtensionCommandActions(runner)
 	}
 	h := &recoveryHarness{session: session, provider: provider, done: make(chan struct{})}
+	eventsCh := session.Events()
 	go func() {
 		defer close(h.done)
-		for event := range session.Events() {
+		for event := range eventsCh {
 			if AcknowledgeEvent(event) {
 				continue
 			}

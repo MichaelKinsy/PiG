@@ -159,11 +159,6 @@ func TestInputEntries(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
-	// harness-input-entries.test.ts:138 it("takes only kind and data from an untyped caller's entry")
-	t.Run("takes only kind and data from an untyped caller's entry", func(t *testing.T) {
-		t.Skip("Pi harness-input-entries.test.ts:138: the typed InputEntry carries only Kind and Data, so no caller can add model, head or edits; durable/core/inbox TestAnUntypedCallersInputEntryGivesOnlyItsKindAndData ports the case on the JSON draft path")
-	})
-
 	// harness-input-entries.test.ts:172 it("queues busy inputs with their entries in the inbox and places them as those entries at boundaries")
 	t.Run("queues busy inputs with their entries in the inbox and places them as those entries at boundaries", func(t *testing.T) {
 		setup := chatSetup(t)
@@ -438,7 +433,8 @@ func TestDataOnlyWrites(t *testing.T) {
 		failing.awaitReached(t)
 		f := submit(t, root, inputWith("f", mention("f"), ""))
 		failing.release()
-		expectSettled(t, must(input.Wait(testContext)), durable.SubmissionUnanswered, "model_error")
+		failed := must(input.Wait(testContext))
+		expectSettled(t, failed, durable.SubmissionUnanswered, "model_error")
 		mustOK(t, harness.WaitForIdle(testContext))
 		note := submit(t, root, writeDraft(durable.EntryDraft{Kind: "note", Data: "n"}))
 		if got := status(t, note).Status; got != durable.SubmissionDone {
@@ -451,7 +447,7 @@ func TestDataOnlyWrites(t *testing.T) {
 		if ids := inboxIds(inboxItemsOf(t, harness, root)); len(ids) != 1 || ids[0] != f.Id() {
 			t.Fatalf("inbox = %v, want [%d]", ids, f.Id())
 		}
-		expectMatch(t, liveOf(t, harness, root.Id()), jsonText(t, map[string]any{"runFailure": map[string]any{"inputs": []durable.SubmissionId{input.Id()}, "reason": "model_error", "detail": "invalid request"}}))
+		expectMatch(t, liveOf(t, harness, root.Id()), jsonText(t, map[string]any{"runFailure": map[string]any{"inputs": []durable.SubmissionId{input.Id()}, "reason": "model_error", "detail": "invalid request", "first": *failed.Entry}}))
 		if calls := setup.Faux.CallCount(); calls != 1 {
 			t.Fatalf("calls = %d, want 1", calls)
 		}

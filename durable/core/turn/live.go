@@ -26,17 +26,58 @@ const (
 // Read-only: assigned once at initialization.
 var LiveDef = &session.DocDef{
 	Kind:    "pi.live",
-	Version: 1,
+	Version: 3,
 	Scope:   session.ScopeConversation,
 	History: session.HistoryLatest,
 	Fork:    session.ForkInitial,
 	Initial: func(any) *jv.Object { return jv.NewObject() },
+	// Version 1 named a compaction's trigger `reason`, in `compactions` and `compactionFailure`. Versions 1 and 2 (as builds before
+	// `run.turns` stored it) may lack `run.turns`: a run in flight across the upgrade counts its turns from 0. Version 2 already names the
+	// trigger `trigger`, so renaming leaves it alone.
+	Migrate: func(value *jv.Object, _ int) *jv.Object {
+		live := value.Shallow()
+		if run, ok := value.Get("run"); ok {
+			stored, _ := run.(*jv.Object)
+			migrated := stored.Shallow()
+			if turns, _ := stored.Get("turns"); turns == nil {
+				migrated.Set("turns", float64(0))
+			} else if _, isNumber := turns.(float64); !isNumber {
+				migrated.Set("turns", float64(0))
+			}
+			live.Set("run", migrated)
+		}
+		if list, ok := value.Get("compactions"); ok {
+			statuses, _ := list.([]any)
+			renamed := make([]any, len(statuses))
+			for i, status := range statuses {
+				renamed[i] = renameReason(status.(*jv.Object))
+			}
+			live.Set("compactions", renamed)
+		}
+		if failure, ok := value.Get("compactionFailure"); ok {
+			live.Set("compactionFailure", renameReason(failure.(*jv.Object)))
+		}
+		return live
+	},
 	CheckpointWhen: func(value *jv.Object, _ []delta.Op, _ int) bool {
 		if _, ok := value.Get("generation"); ok {
 			return false
 		}
 		return !anySlotRunning(value)
 	},
+}
+
+// renameReason is a copy of a version 1 compaction status or failure with `reason` renamed `trigger`, its keys in their order.
+func renameReason(value *jv.Object) *jv.Object {
+	out := jv.NewObject()
+	value.Entries(func(key string, field any) bool {
+		if key == "reason" {
+			key = "trigger"
+		}
+		out.Set(key, field)
+		return true
+	})
+	return out
 }
 
 func anySlotRunning(value *jv.Object) bool {
@@ -58,8 +99,8 @@ func anySlotRunning(value *jv.Object) bool {
 type RunEnd struct {
 	// Answer is the entry a run that ended with an answer produced; it is used when Reason is empty.
 	Answer ID
-	// Reason is why a run that ended without an answer did: model_error, no_model, aborted, reset, faulted, orphaned, interrupted or
-	// restart_limit.
+	// Reason is why a run that ended without an answer did: model_error, no_model, aborted, reset, faulted, orphaned, interrupted,
+	// restart_limit, nothing_to_answer or turn_limit.
 	Reason string
 	// Detail is the failure's detail when HasDetail.
 	Detail    string
@@ -79,8 +120,9 @@ func UnansweredWith(reason, detail string) RunEnd {
 	return RunEnd{Reason: reason, Detail: detail, HasDetail: true}
 }
 
-// EndRun is endRun: it settles each input of the run owned by taskID, removes `run` and, without an answer, records `runFailure`,
-// and always removes `generation` and `tools`, whose presentation belongs to the ending run.
+// EndRun is endRun: it settles each input of the run owned by taskID, removes `run` and, without an answer, records `runFailure`. A run
+// that answered already, and runs only its `afterRun` tasks, records no failure, however it ends. It always removes `generation`,
+// `tools` and `nestedTools`, whose presentation belongs to the ending run.
 func EndRun(tx *session.Tx, live *delta.Obj, taskID session.ID, end RunEnd) error {
 	if run := live.Obj("run"); run != nil && sameID(run.Get("taskId"), taskID) {
 		var inputs []any
@@ -106,16 +148,21 @@ func EndRun(tx *session.Tx, live *delta.Obj, taskID session.ID, end RunEnd) erro
 				}
 			}
 		}
-		for _, input := range inputs {
-			id, _ := input.(float64)
-			if err := tx.SettleSubmission(session.ID(id), settlement); err != nil {
-				return err
+		if end.Reason == "" || run.Get("afterRun") == nil {
+			for _, input := range inputs {
+				id, _ := input.(float64)
+				if err := tx.SettleSubmission(session.ID(id), settlement); err != nil {
+					return err
+				}
 			}
 		}
-		if end.Reason != "" {
+		if end.Reason != "" && run.Get("afterRun") == nil {
 			failure := jobj("taskId", run.Get("taskId"), "inputs", inputs, "reason", reason)
 			if end.HasDetail {
 				failure.Set("detail", detail)
+			}
+			if first := run.Get("first"); first != nil {
+				failure.Set("first", first)
 			}
 			if err := live.Set("runFailure", failure); err != nil {
 				return err
@@ -171,7 +218,7 @@ func RemoveCompactionStatus(live *delta.Obj, taskID session.ID) error {
 // message (pi.live.compactionFailure).
 func FailCompactionStatus(live *delta.Obj, taskID session.ID, message string) error {
 	if status := CompactionStatusOf(live, taskID); status != nil {
-		if err := live.Set("compactionFailure", jobj("taskId", float64(taskID), "reason", status.Get("reason"), "error", message)); err != nil {
+		if err := live.Set("compactionFailure", jobj("taskId", float64(taskID), "trigger", status.Get("trigger"), "error", message)); err != nil {
 			return err
 		}
 	}

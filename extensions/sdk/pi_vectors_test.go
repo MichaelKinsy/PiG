@@ -174,7 +174,6 @@ func TestHighlightCodeAsksTheHostLikePi(t *testing.T) {
 	cases := loadPiCoding(t, "highlightCode")
 	type call struct {
 		code, lang string
-		markdown   bool
 		palette    string
 	}
 	var seen []call
@@ -190,8 +189,8 @@ func TestHighlightCodeAsksTheHostLikePi(t *testing.T) {
 		lang, _ := c.Args[1].(string)
 		answers[fmt.Sprint(c.Args[0], "\x00", lang, "\x00", string(r.Palette))] = r.Lines
 	}
-	SetHostHelpers(&HostHelpers{HighlightCode: func(code, lang string, markdown bool, palette []byte) ([]string, error) {
-		seen = append(seen, call{code, lang, markdown, string(palette)})
+	SetHostHelpers(&HostHelpers{HighlightCode: func(code, lang string, palette []byte) ([]string, error) {
+		seen = append(seen, call{code, lang, string(palette)})
 		return []string{"host:" + code}, nil
 	}})
 	t.Cleanup(func() { SetHostHelpers(nil) })
@@ -213,7 +212,7 @@ func TestHighlightCodeAsksTheHostLikePi(t *testing.T) {
 			}
 			continue
 		}
-		if len(seen) != 1 || seen[0].code != code || seen[0].lang != lang || seen[0].markdown || seen[0].palette != "" {
+		if len(seen) != 1 || seen[0].code != code || seen[0].lang != lang || seen[0].palette != "" {
 			t.Errorf("%s: the host was asked %+v", c.Name, seen)
 		}
 		if !reflect.DeepEqual(got, []string{"host:" + code}) {

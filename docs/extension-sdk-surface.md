@@ -2,7 +2,7 @@
 
 # Extension SDK surface matrix
 
-Every extension-facing surface of Pi 1.4.0+b3a29f11's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.4.0+b3a29f11`.
+Every extension-facing surface of Pi 1.4.0+b556cfe5's extension API, and how each PiG extension runtime realizes it. The rows come from Pi's `packages/coding-agent/src/core/extensions/types.ts` and the declarations it re-exports or exposes through its members (`EventBus`, `ExecOptions`/`ExecResult`, `CacheWarmingDecisionEvent`, `ReadonlySessionManager`, `ModelRegistry`, `Theme`, `AgentToolResult`), read from `.upstream/v1.4.0+b556cfe5`.
 
 A cell's status comes from the runtime itself: the Go SDK's exported identifiers, the Rust SDK's `pub` items, the Python SDK's classes, members and parameters and the Lisp SDK's exported symbols and the keyword and optional parameters of its exported functions, read from their source, and the Node runtime's objects, read by instantiating the runtime in Node (`test/parity/cmd/sdksurface/probe.mjs`), plus the properties it reads from an extension's definitions. [`test/parity/sdk-surface.toml`](../test/parity/sdk-surface.toml) names the symbol where a language's naming differs from the default rule and says why a realization is a stand-in; a named symbol that does not exist is `missing`. Payload, result and option fields that cross the subprocess wire are also checked against the host's Go decoding type, so a field an SDK sends but the host drops is `missing`. The PiG additive sections list surfaces PiG adds where Pi has none, such as the component kit (D107); the map names each one's symbols, and its cells are classified the same way.
 
@@ -10,7 +10,7 @@ A cell's status comes from the runtime itself: the Go SDK's exported identifiers
 - `stand-in/partial`: the symbol exists; the note says what differs and why.
 - `missing`: no symbol. Each missing cell is listed in [`test/parity/sdk-surface-exceptions.toml`](../test/parity/sdk-surface-exceptions.toml) with its reviewed reason, and `go test ./test/parity/cmd/sdksurface` fails on any other.
 
-The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/models`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.4.0+b3a29f11.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
+The package sections list every runtime export of the modules Pi serves to extensions (`pi-coding-agent`, `pi-tui`, `pi-ai`, `pi-ai/compat`, `pi-ai/models`, `pi-ai/providers/all`, `pi-agent-core`), from the compiler-derived inventory of Pi's `.d.ts` files (`test/parity/interfaces/upstream-v1.4.0+b556cfe5.json`), and every public instance member of each exported class represented by that inventory. Static factories and overload-specific reachability are outside this probe. Only the Node runtime imports these modules. The probe loads each module the runtime serves and classifies every value by where its code lives, using the V8 inspector's function locations:
 
 - `Pi's own code`: the function originates in the vendored pinned modules or their dependencies; host import rewrites can still affect behavior (D73).
 - `bridged`: PiG's implementation in the extension runtime, a line-for-line port or a host bridge, locked by the D73 tests (`TestNodeRuntimeShimsExportEveryPinnedPiValue`, `TestPiTuiComponentsMatchThePinnedPackage`, `TestPiAiUtilitiesMatchThePinnedPackage`, `TestPiThemeHelpersMatchThePinnedPackage`).
@@ -21,15 +21,15 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 
 ## Summary
 
-521 extension API surfaces:
+529 extension API surfaces:
 
 | Runtime | implemented | stand-in/partial | missing (all with a reviewed exception) |
 |---|---|---|---|
-| Node runtime | 483 | 27 | 11 |
-| Go | 485 | 26 | 10 |
-| Rust | 485 | 26 | 10 |
-| Python | 485 | 26 | 10 |
-| Lisp | 492 | 19 | 10 |
+| Node runtime | 491 | 27 | 11 |
+| Go | 493 | 26 | 10 |
+| Rust | 493 | 26 | 10 |
+| Python | 493 | 26 | 10 |
+| Lisp | 500 | 19 | 10 |
 
 31 PiG-only surfaces:
 
@@ -41,14 +41,14 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Python | 31 | 0 | 0 |
 | Lisp | 31 | 0 | 0 |
 
-1628 package exports and class members, Node runtime:
+1637 package exports and class members, Node runtime:
 
 | Module | Pi's own code | bridged | stand-in | missing (all with a reviewed exception) |
 |---|---|---|---|---|
-| `pi-coding-agent` | 900 | 10 | 0 | 10 |
-| `pi-tui` | 364 | 1 | 0 | 1 |
-| `pi-ai` | 103 | 2 | 0 | 0 |
-| `pi-ai/compat` | 154 | 10 | 0 | 0 |
+| `pi-coding-agent` | 907 | 10 | 0 | 10 |
+| `pi-tui` | 368 | 1 | 0 | 1 |
+| `pi-ai` | 102 | 2 | 0 | 0 |
+| `pi-ai/compat` | 153 | 10 | 0 | 0 |
 | `pi-ai/models` | 16 | 0 | 0 | 0 |
 | `pi-ai/providers/all` | 12 | 0 | 0 | 0 |
 | `pi-agent-core` | 45 | 0 | 0 | 0 |
@@ -134,10 +134,12 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi.exec(options.signal)` | `ExtensionAPI.exec(options.signal)` | implemented `api.exec` | implemented `ExecOptions.Signal` | implemented `ExecOptions.signal` | implemented `Context.exec(signal)` | implemented `pig:ctx-exec(signal)` |
 | `pi.exec(options.timeout)` | `ExtensionAPI.exec(options.timeout)` | implemented `api.exec` | implemented `ExecOptions.Timeout` | implemented `ExecOptions.timeout` | implemented `Context.exec(timeout)` | implemented `pig:ctx-exec(timeout)` |
 | `pi.exec(options.cwd)` | `ExtensionAPI.exec(options.cwd)` | implemented `api.exec` | implemented `ExecOptions.Cwd` | implemented `ExecOptions.cwd` | implemented `Context.exec(cwd)` | implemented `pig:ctx-exec(cwd)` |
+| `pi.exec(options.maxBuffer)` | `ExtensionAPI.exec(options.maxBuffer)` | implemented `api.exec` | implemented `ExecOptions.MaxBuffer` | implemented `ExecOptions.max_buffer` | implemented `Context.exec(max_buffer)` | implemented `pig:ctx-exec(max-buffer)` |
 | `pi.exec → stdout` | `ExtensionAPI.exec → stdout` | implemented `api.exec` | implemented `ExecResult.Stdout` | implemented `ExecResult.stdout` | implemented `ExecResult.stdout` | implemented `pig:exec-result-stdout` |
 | `pi.exec → stderr` | `ExtensionAPI.exec → stderr` | implemented `api.exec` | implemented `ExecResult.Stderr` | implemented `ExecResult.stderr` | implemented `ExecResult.stderr` | implemented `pig:exec-result-stderr` |
 | `pi.exec → code` | `ExtensionAPI.exec → code` | implemented `api.exec` | implemented `ExecResult.ExitCode` | implemented `ExecResult.exit_code` | implemented `ExecResult.exit_code` | implemented `pig:exec-result-exit-code` |
 | `pi.exec → killed` | `ExtensionAPI.exec → killed` | implemented `api.exec` | implemented `ExecResult.Killed` | implemented `ExecResult.killed` | implemented `ExecResult.killed` | implemented `pig:exec-result-killed` |
+| `pi.exec → truncated` | `ExtensionAPI.exec → truncated` | implemented `api.exec` | implemented `ExecResult.Truncated` | implemented `ExecResult.truncated` | implemented `ExecResult.truncated` | implemented `pig:exec-result-truncated` |
 
 ## pi (ExtensionAPI)
 
@@ -1314,6 +1316,8 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `tool render context.isError` | `ToolRenderContext.isError` | implemented `read:payload.context` | implemented `ToolRenderContext.IsError` | implemented `ToolRenderContext.is_error` | implemented `ToolRenderContext.is_error` | implemented `pig:tool-render-context-is-error` |
 | `tool render context.durationMs` | `ToolRenderContext.durationMs` | missing [exception](#exceptions) | implemented `ToolRenderContext.DurationMs` | implemented `ToolRenderContext.duration_ms` | implemented `ToolRenderContext.duration_ms` | implemented `pig:tool-render-context-duration-ms` |
 | `tool render context.outputPad` | `ToolRenderContext.outputPad` | implemented `read:payload.context` | implemented `ToolRenderContext.OutputPad` | implemented `ToolRenderContext.output_pad` | implemented `ToolRenderContext.output_pad` | implemented `pig:tool-render-context-output-pad` |
+| `tool render context.keyText` | `ToolRenderContext.keyText` | implemented `read:payload.context` | implemented `ToolRenderContext.KeyText` | implemented `ToolRenderContext::key_text` | implemented `ToolRenderContext.key_text` | implemented `pig:tool-render-context-key-text` |
+| `tool render context.keyHint` | `ToolRenderContext.keyHint` | implemented `read:payload.context` | implemented `ToolRenderContext.KeyHint` | implemented `ToolRenderContext::key_hint` | implemented `ToolRenderContext.key_hint` | implemented `pig:tool-render-context-key-hint` |
 | `tool renderResult options.expanded` | `ToolRenderResultOptions.expanded` | implemented `read:payload.options` | implemented `ToolRenderResultOptions.Expanded` | implemented `ToolRenderResultOptions.expanded` | implemented `Extension.tool_renderers(render_result)` | implemented `pig:tool-renderers(render-result)` |
 | `tool renderResult options.isPartial` | `ToolRenderResultOptions.isPartial` | implemented `read:payload.options` | implemented `ToolRenderResultOptions.IsPartial` | implemented `ToolRenderResultOptions.is_partial` | implemented `Extension.tool_renderers(render_result)` | implemented `pig:tool-renderers(render-result)` |
 
@@ -1372,7 +1376,11 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 |---|---|---|---|---|---|---|
 | `message renderer options.expanded` | `MessageRenderOptions.expanded` | implemented `read:payload.options` | implemented `MessageRenderOptions.Expanded` | implemented `MessageRenderOptions.expanded` | implemented `Extension.message_renderer` | implemented `pig:message-renderer` |
 | `message renderer options.outputPad` | `MessageRenderOptions.outputPad` | implemented `read:payload.options` | implemented `MessageRenderOptions.OutputPad` | implemented `MessageRenderOptions.output_pad` | implemented `Extension.message_renderer` | implemented `pig:message-renderer` |
+| `message renderer options.keyText` | `MessageRenderOptions.keyText` | implemented `read:payload.options` | implemented `MessageRenderOptions.KeyText` | implemented `MessageRenderOptions::key_text` | implemented `MessageRenderOptions.key_text` | implemented `pig:message-render-options-key-text` |
+| `message renderer options.keyHint` | `MessageRenderOptions.keyHint` | implemented `read:payload.options` | implemented `MessageRenderOptions.KeyHint` | implemented `MessageRenderOptions::key_hint` | implemented `MessageRenderOptions.key_hint` | implemented `pig:message-render-options-key-hint` |
 | `entry renderer options.expanded` | `EntryRenderOptions.expanded` | implemented `read:payload.options` | implemented `EntryRenderOptions.Expanded` | implemented `EntryRenderOptions.expanded` | implemented `Extension.entry_renderer` | implemented `pig:entry-renderer` |
+| `entry renderer options.keyText` | `EntryRenderOptions.keyText` | implemented `read:payload.options` | implemented `EntryRenderOptions.KeyText` | implemented `EntryRenderOptions::key_text` | implemented `MessageRenderOptions.key_text` | implemented `pig:entry-render-options-key-text` |
+| `entry renderer options.keyHint` | `EntryRenderOptions.keyHint` | implemented `read:payload.options` | implemented `EntryRenderOptions.KeyHint` | implemented `EntryRenderOptions::key_hint` | implemented `MessageRenderOptions.key_hint` | implemented `pig:entry-render-options-key-hint` |
 | `markdown transform context.messageType` | `MarkdownTransformContext.messageType` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.MessageType` | implemented `MarkdownTransformContext.message_type` | implemented `Extension.markdown_transformer` | implemented `pig:markdown-transformer` |
 | `markdown transform context.isStreaming` | `MarkdownTransformContext.isStreaming` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.IsStreaming` | implemented `MarkdownTransformContext.is_streaming` | implemented `Extension.markdown_transformer` | implemented `pig:markdown-transformer` |
 | `markdown transform context.availableWidth` | `MarkdownTransformContext.availableWidth` | implemented `api.registerMarkdownTransformer` | implemented `MarkdownTransformContext.AvailableWidth` | implemented `MarkdownTransformContext.available_width` | implemented `Extension.markdown_transformer` | implemented `pig:markdown-transformer` |
@@ -1593,6 +1601,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: CustomEditor.actionHandlers` | `CustomEditor.actionHandlers` | Pi's own code |
 | `pi-coding-agent: CustomEditor.addToHistory` | `CustomEditor.addToHistory` | Pi's own code |
 | `pi-coding-agent: CustomEditor.borderColor` | `CustomEditor.borderColor` | Pi's own code |
+| `pi-coding-agent: CustomEditor.capturesViewportInput` | `CustomEditor.capturesViewportInput` | Pi's own code |
 | `pi-coding-agent: CustomEditor.disableSubmit` | `CustomEditor.disableSubmit` | Pi's own code |
 | `pi-coding-agent: CustomEditor.embedWorkingStatus` | `CustomEditor.embedWorkingStatus` | Pi's own code |
 | `pi-coding-agent: CustomEditor.focused` | `CustomEditor.focused` | Pi's own code |
@@ -1862,6 +1871,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: ModelRuntime.unregisterVirtualModel` | `ModelRuntime.unregisterVirtualModel` | Pi's own code |
 | `pi-coding-agent: ModelSelectorComponent` | `class ModelSelectorComponent` | Pi's own code |
 | `pi-coding-agent: ModelSelectorComponent.addChild` | `ModelSelectorComponent.addChild` | Pi's own code |
+| `pi-coding-agent: ModelSelectorComponent.capturesViewportInput` | `ModelSelectorComponent.capturesViewportInput` | Pi's own code |
 | `pi-coding-agent: ModelSelectorComponent.children` | `ModelSelectorComponent.children` | Pi's own code |
 | `pi-coding-agent: ModelSelectorComponent.clear` | `ModelSelectorComponent.clear` | Pi's own code |
 | `pi-coding-agent: ModelSelectorComponent.dispose` | `ModelSelectorComponent.dispose` | Pi's own code |
@@ -1874,6 +1884,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: ModelSelectorComponent.render` | `ModelSelectorComponent.render` | Pi's own code |
 | `pi-coding-agent: OAuthSelectorComponent` | `class OAuthSelectorComponent` | Pi's own code |
 | `pi-coding-agent: OAuthSelectorComponent.addChild` | `OAuthSelectorComponent.addChild` | Pi's own code |
+| `pi-coding-agent: OAuthSelectorComponent.capturesViewportInput` | `OAuthSelectorComponent.capturesViewportInput` | Pi's own code |
 | `pi-coding-agent: OAuthSelectorComponent.children` | `OAuthSelectorComponent.children` | Pi's own code |
 | `pi-coding-agent: OAuthSelectorComponent.clear` | `OAuthSelectorComponent.clear` | Pi's own code |
 | `pi-coding-agent: OAuthSelectorComponent.focused` | `OAuthSelectorComponent.focused` | Pi's own code |
@@ -1968,6 +1979,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: SessionManager.usesDefaultSessionDir` | `SessionManager.usesDefaultSessionDir` | Pi's own code |
 | `pi-coding-agent: SessionSelectorComponent` | `class SessionSelectorComponent` | Pi's own code |
 | `pi-coding-agent: SessionSelectorComponent.addChild` | `SessionSelectorComponent.addChild` | Pi's own code |
+| `pi-coding-agent: SessionSelectorComponent.capturesViewportInput` | `SessionSelectorComponent.capturesViewportInput` | Pi's own code |
 | `pi-coding-agent: SessionSelectorComponent.children` | `SessionSelectorComponent.children` | Pi's own code |
 | `pi-coding-agent: SessionSelectorComponent.clear` | `SessionSelectorComponent.clear` | Pi's own code |
 | `pi-coding-agent: SessionSelectorComponent.focused` | `SessionSelectorComponent.focused` | Pi's own code |
@@ -2005,6 +2017,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: SettingsManager.getEnableInstallTelemetry` | `SettingsManager.getEnableInstallTelemetry` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getEnableSkillCommands` | `SettingsManager.getEnableSkillCommands` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getEnabledModels` | `SettingsManager.getEnabledModels` | Pi's own code |
+| `pi-coding-agent: SettingsManager.getExtensionChangelogVersion` | `SettingsManager.getExtensionChangelogVersion` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getExtensionPaths` | `SettingsManager.getExtensionPaths` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getExternalEditorCommand` | `SettingsManager.getExternalEditorCommand` | Pi's own code |
 | `pi-coding-agent: SettingsManager.getFollowUpMode` | `SettingsManager.getFollowUpMode` | Pi's own code |
@@ -2072,6 +2085,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: SettingsManager.setEnableInstallTelemetry` | `SettingsManager.setEnableInstallTelemetry` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setEnableSkillCommands` | `SettingsManager.setEnableSkillCommands` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setEnabledModels` | `SettingsManager.setEnabledModels` | Pi's own code |
+| `pi-coding-agent: SettingsManager.setExtensionChangelogVersion` | `SettingsManager.setExtensionChangelogVersion` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setExtensionPaths` | `SettingsManager.setExtensionPaths` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setFollowUpMode` | `SettingsManager.setFollowUpMode` | Pi's own code |
 | `pi-coding-agent: SettingsManager.setFullscreenCopyOnSelect` | `SettingsManager.setFullscreenCopyOnSelect` | Pi's own code |
@@ -2199,6 +2213,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-coding-agent: ToolExecutionComponent.updateResult` | `ToolExecutionComponent.updateResult` | Pi's own code |
 | `pi-coding-agent: TreeSelectorComponent` | `class TreeSelectorComponent` | Pi's own code |
 | `pi-coding-agent: TreeSelectorComponent.addChild` | `TreeSelectorComponent.addChild` | Pi's own code |
+| `pi-coding-agent: TreeSelectorComponent.capturesViewportInput` | `TreeSelectorComponent.capturesViewportInput` | Pi's own code |
 | `pi-coding-agent: TreeSelectorComponent.children` | `TreeSelectorComponent.children` | Pi's own code |
 | `pi-coding-agent: TreeSelectorComponent.clear` | `TreeSelectorComponent.clear` | Pi's own code |
 | `pi-coding-agent: TreeSelectorComponent.focused` | `TreeSelectorComponent.focused` | Pi's own code |
@@ -2385,6 +2400,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: Editor` | `class Editor` | Pi's own code |
 | `pi-tui: Editor.addToHistory` | `Editor.addToHistory` | Pi's own code |
 | `pi-tui: Editor.borderColor` | `Editor.borderColor` | Pi's own code |
+| `pi-tui: Editor.capturesViewportInput` | `Editor.capturesViewportInput` | Pi's own code |
 | `pi-tui: Editor.disableSubmit` | `Editor.disableSubmit` | Pi's own code |
 | `pi-tui: Editor.focused` | `Editor.focused` | Pi's own code |
 | `pi-tui: Editor.getAutocompleteMaxVisible` | `Editor.getAutocompleteMaxVisible` | Pi's own code |
@@ -2504,6 +2520,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: ScrollView.updateLayout` | `ScrollView.updateLayout` | Pi's own code |
 | `pi-tui: ScrollView.viewportHeight` | `ScrollView.viewportHeight` | Pi's own code |
 | `pi-tui: SelectList` | `class SelectList` | Pi's own code |
+| `pi-tui: SelectList.capturesViewportInput` | `SelectList.capturesViewportInput` | Pi's own code |
 | `pi-tui: SelectList.getSelectedItem` | `SelectList.getSelectedItem` | Pi's own code |
 | `pi-tui: SelectList.handleInput` | `SelectList.handleInput` | Pi's own code |
 | `pi-tui: SelectList.handleMouse` | `SelectList.handleMouse` | Pi's own code |
@@ -2515,6 +2532,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: SelectList.setFilter` | `SelectList.setFilter` | Pi's own code |
 | `pi-tui: SelectList.setSelectedIndex` | `SelectList.setSelectedIndex` | Pi's own code |
 | `pi-tui: SettingsList` | `class SettingsList` | Pi's own code |
+| `pi-tui: SettingsList.capturesViewportInput` | `SettingsList.capturesViewportInput` | Pi's own code |
 | `pi-tui: SettingsList.handleInput` | `SettingsList.handleInput` | Pi's own code |
 | `pi-tui: SettingsList.handleMouse` | `SettingsList.handleMouse` | Pi's own code |
 | `pi-tui: SettingsList.invalidate` | `SettingsList.invalidate` | Pi's own code |
@@ -2672,6 +2690,7 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-tui: getNativeClipboard` | `function getNativeClipboard` | Pi's own code |
 | `pi-tui: getOsc8LinkAtColumn` | `function getOsc8LinkAtColumn` | Pi's own code |
 | `pi-tui: getPngDimensions` | `function getPngDimensions` | Pi's own code |
+| `pi-tui: getSelectPageIndex` | `function getSelectPageIndex` | Pi's own code |
 | `pi-tui: getTerminalColorMode` | `function getTerminalColorMode` | Pi's own code |
 | `pi-tui: getWebpDimensions` | `function getWebpDimensions` | Pi's own code |
 | `pi-tui: hyperlink` | `function hyperlink` | Pi's own code |
@@ -2753,7 +2772,6 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai: ToolCallArgumentsStream.finish` | `ToolCallArgumentsStream.finish` | Pi's own code |
 | `pi-ai: ToolCallArgumentsStream.replace` | `ToolCallArgumentsStream.replace` | Pi's own code |
 | `pi-ai: ToolCallArgumentsStream.text` | `ToolCallArgumentsStream.text` | Pi's own code |
-| `pi-ai: Type` | `external Type` | Pi's own code |
 | `pi-ai: appendAssistantMessageDiagnostic` | `function appendAssistantMessageDiagnostic` | Pi's own code |
 | `pi-ai: calculateCost` | `function calculateCost` | Pi's own code |
 | `pi-ai: clampThinkingLevel` | `function clampThinkingLevel` | Pi's own code |
@@ -2871,7 +2889,6 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai/compat: ToolCallArgumentsStream.finish` | `ToolCallArgumentsStream.finish` | Pi's own code |
 | `pi-ai/compat: ToolCallArgumentsStream.replace` | `ToolCallArgumentsStream.replace` | Pi's own code |
 | `pi-ai/compat: ToolCallArgumentsStream.text` | `ToolCallArgumentsStream.text` | Pi's own code |
-| `pi-ai/compat: Type` | `external Type` | Pi's own code |
 | `pi-ai/compat: anthropicMessagesApi` | `variable anthropicMessagesApi` | Pi's own code |
 | `pi-ai/compat: appendAssistantMessageDiagnostic` | `function appendAssistantMessageDiagnostic` | Pi's own code |
 | `pi-ai/compat: azureOpenAIResponsesApi` | `variable azureOpenAIResponsesApi` | Pi's own code |

@@ -405,9 +405,6 @@ func (l configResourceList) Render(width int) []string {
 	return lines
 }
 
-// CapturesSelectPageInput reports that the selector handles tui.select.pageUp and tui.select.pageDown.
-func (cs *ConfigSelectorComponent) CapturesSelectPageInput() bool { return true }
-
 // HandleInput processes keyboard input.
 func (cs *ConfigSelectorComponent) HandleInput(data string) {
 	// Route through the TUI keybinding registry.

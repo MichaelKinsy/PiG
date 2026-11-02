@@ -192,11 +192,11 @@ During initial theme detection and managed-tool setup, submitting keeps the text
 | `tui.select.confirm` | `enter` | Confirm selection |
 | `tui.select.cancel` | `escape`, `ctrl+c` | Cancel selection |
 
-PiG moves the selection by one visible page on PageUp and PageDown in every selection list: select and settings lists, the open autocomplete list, and the model, session, tree, OAuth, scoped-models, config, trust and extension selectors. The transcript behind an open list does not scroll. Pi 1.4.0 scrolls the fullscreen transcript on these keys while a selector is open, and lists without a page action ignore them (D155, [Pi #7629](https://github.com/earendil-works/pi/issues/7629)). An extension overlay cannot capture the page keys yet, so they still scroll the transcript there.
+PiG pages like Pi 1.4.0: PageUp and PageDown move the selection by one visible page in the select and settings lists, the open autocomplete list, and the model, session, tree, user-message, OAuth, scoped-models, llama.cpp and `/mcp` selectors, and the fullscreen transcript behind such a list does not scroll. The config selector also pages, but, as in Pi, it does not keep the fullscreen transcript from scrolling on those keys. The extension selector, the trust selector and the first-time setup dialog have no page keys and ignore them ([Pi #7629](https://github.com/earendil-works/pi/issues/7629)).
 
 ### Fullscreen transcript
 
-These actions apply when `tuiMode` is `fullscreen`. They take precedence over editor actions that use the same key.
+These actions apply when `tuiMode` is `fullscreen`. They take precedence over editor actions that use the same key. While an overlay or a scrollable list such as autocomplete, `/settings`, or the model selector has focus, the scrolling and prompt-jump actions go to it instead of the transcript, so `tui.select.pageUp` and `tui.select.pageDown` move the list selection. Transcript search actions keep working.
 
 | Action | Default key | Effect |
 |---|---|---|

@@ -126,7 +126,7 @@ func TestRemoteWatcherOutlivesTheContextThatOpenedIt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = watcher.Close(background) }()
+	defer func() { _ = watcher.Stop(background) }()
 	cancel()
 	// Give a cancel that reached the daemon time to stop its watcher before the change.
 	time.Sleep(200 * time.Millisecond)

@@ -380,19 +380,20 @@ func TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration(t *testing.T
 	})
 	history.Detach()
 	states, views := history.Live(), history.All()
-	// The call not offered is listed done, with its result entry, in the commit of its calling answer.
+	// #11043: the call not offered is listed pending with its task in the commit of its calling answer, and its task ends it done with
+	// its result entry.
 	ghostSlots := slotsOf(states, "c1")
 	listed := slices.IndexFunc(ghostSlots, func(slot *slotView) bool { return slot != nil })
 	ghost := ghostSlots[listed]
-	if ghost.Status != harness.ToolSlotDone {
-		t.Fatalf("the call not offered is %s when listed, want done", ghost.Status)
+	if ghost.Status != harness.ToolSlotPending || !ghost.Unoffered || ghost.TaskId == nil {
+		t.Fatalf("the call not offered is %+v when listed, want pending, unoffered, with its task", ghost)
 	}
-	listing := views[listed].Entries
-	if kinds := []string{listing[len(listing)-2].Kind, listing[len(listing)-1].Kind}; !slices.Equal(kinds, []string{"pi.assistant", "pi.tool-result"}) {
-		t.Fatalf("the call not offered is listed with entries %v", kinds)
+	if listing := views[listed].Entries; listing[len(listing)-1].Kind != "pi.assistant" {
+		t.Fatalf("the call not offered is listed with the entry %s last", listing[len(listing)-1].Kind)
 	}
-	if ghost.Entry == nil || *ghost.Entry != listing[len(listing)-1].Id {
-		t.Fatalf("the call not offered names entry %v, want %d", ghost.Entry, listing[len(listing)-1].Id)
+	ended := slices.IndexFunc(ghostSlots, func(slot *slotView) bool { return slot != nil && slot.Status == harness.ToolSlotDone })
+	if ended < 0 || ghostSlots[ended].Entry == nil || *ghostSlots[ended].Entry != views[ended].Entries[len(views[ended].Entries)-1].Id {
+		t.Fatalf("the call not offered ends with %+v", ghostSlots[ended])
 	}
 	// The aborted tool ends with its result entry, then the run ends without an answer.
 	waitSlots := slotsOf(states, "c2")

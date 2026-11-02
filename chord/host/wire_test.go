@@ -161,3 +161,18 @@ func TestWireErrorsKeepCodeReasonAndMessage(t *testing.T) {
 		t.Fatalf("plain error %+v", got)
 	}
 }
+
+// IsFrame runs on every frame a link carries, so a frame's check is a validation, not a compilation: Pi's isFrame holds
+// its checker (wire.ts). A frame check that serialized the frame schema each time cost about 1,900 allocations and
+// 130 KB for a ping, 400 times Pi's cost per frame, and saturated the process-wide delivery queue of in-memory links
+// under -race (TestLinksADeadLinkIsClosedAndReleasesEverythingHeld).
+func TestIsFrameChecksWithoutRecompilingTheFrameSchema(t *testing.T) {
+	ping := PingFrame{N: 1}.encode()
+	if !IsFrame(ping) {
+		t.Fatal("a ping is not a frame")
+	}
+	// A whole ping cycle through a memory link costs 260 allocations with the checker held and 1,885 without it.
+	if allocations := testing.AllocsPerRun(100, func() { _ = IsFrame(ping) }); allocations > 400 {
+		t.Fatalf("IsFrame(ping) allocates %v times, want a validation's few (a compile of the frame schema is about 1,850)", allocations)
+	}
+}

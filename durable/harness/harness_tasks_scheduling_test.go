@@ -145,7 +145,7 @@ func TestTaskRuntime(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			watch.Start(func(_ context.Context, change chord.WatchChange[durable.JsonObject]) error {
+			watch.Start(func(_ context.Context, change chord.WatchCall[durable.JsonObject]) error {
 				delivered.add(change.Value.Value("text").(string))
 				return nil
 			})
@@ -163,7 +163,7 @@ func TestTaskRuntime(t *testing.T) {
 		// The watch stops when the step after the phase ends the invocation; later commits deliver nothing.
 		watch, _ := watchHandle.get()
 		<-watch.Closed()
-		if end := watch.End(); end.Reason != durable.WatchStopped {
+		if end := watch.End(); end.Kind != durable.WatchStopped {
 			t.Fatalf("watch ended %+v, want stopped", end)
 		}
 		tkSetNotes(t, opened.harness, notes, "after")
@@ -408,7 +408,7 @@ func TestTaskScheduling(t *testing.T) {
 		store.failNextCommit(failure)
 		opened.harness.Resume()
 		<-opened.harness.Closed()
-		if end := opened.harness.End(); end.Reason != durable.SessionEndFailed || !errors.Is(end.Error, failure) {
+		if end := opened.harness.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, failure) {
 			t.Fatalf("end %+v, want failed with the storage error", end)
 		}
 		if reports := opened.reports.all(); len(reports) != 1 || !errors.Is(reports[0], failure) {
@@ -451,7 +451,7 @@ func TestTaskScheduling(t *testing.T) {
 		id := tkStart(t, opened.root, throws.Erased())
 		opened.harness.Resume()
 		<-opened.harness.Closed()
-		if end := opened.harness.End(); end.Reason != durable.SessionEndFailed || !errors.Is(end.Error, failure) {
+		if end := opened.harness.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, failure) {
 			t.Fatalf("end %+v, want failed with the storage error", end)
 		}
 		if runs.Load() != 1 {
@@ -1115,7 +1115,7 @@ func TestTaskClose(t *testing.T) {
 		}
 		mustClose(t, opened.harness)
 		tkContainsError(t, tkWaitErr(t, fromListener), "closed")
-		if end, _ := watchEnd.get(); end.Reason != durable.WatchEnded {
+		if end, _ := watchEnd.get(); end.Kind != durable.WatchEnded {
 			t.Fatalf("watch ended %+v, want ended", end)
 		}
 	})

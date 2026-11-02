@@ -61,7 +61,13 @@ Every active divergence must have:
 
 - D171 — An errored Anthropic tool result carries no images (Pi #10792, #10794; Pi 34a8bb38). Retired by the Pi pin `1.2.0+5ab7fe74`: Pi commit `34a8bb38` replaced each image of an error tool result with a text note, and Pi commit `5ab7fe74` replaces it with a placeholder and sends the images after all tool results of the turn, in the same user message, under a caption naming the tool call (`splitErrorToolResultImages` in `packages/ai/src/api/transform-messages.ts`, used by `anthropic-messages.ts` and, for Claude, `bedrock-converse-stream.ts`). `ai.SplitErrorToolResultImages` and the Anthropic and Bedrock converters do the same, and the payload oracles no longer project Pi's payload.
 
+- D173 — Tool search matches Chinese, Japanese and Korean queries (Pi #10816). Retired by Pi 79006f06 (#11037, fixes #10816), which D217 carries: Pi's `tokenize` (`packages/coding-agent/src/extensions/tool-search/tool.ts`, `packages/durable/src/search.ts`) NFC-normalizes the text, reduces it to letters, marks and numbers and splits it with `Intl.Segmenter` at word granularity, so words in every script match and `搜索记录` is split into words by ICU's dictionary. `internal/searchtext.Tokenize` does the same with `internal/wordsegmenter` (ICU 78.3 word rules and the CJK, Thai, Lao, Khmer and Burmese dictionaries, which the editor already embeds) and `golang.org/x/text/unicode/norm`; PiG no longer makes each character a term. `TestTokenizeMatchesPiOnEveryScriptClass` (`coding/extension/builtin/toolsearch`, `durable/internal/search`) compares 4,854 Pi 79006f06 tokenizations of every script class with no difference, and `TestTokenizeSegmentsUnicodeWords` and `TestBm25RankerMatchesUnicodeQueries` port Pi's tests. A Piglet Binary built with `pig_strip_word_dictionaries` has no dictionary, so it keeps a run of Han, Hiragana, Katakana, Thai, Lao, Khmer or Myanmar text as one term (D92, `TestTokenizeKeepsDictionaryScriptRunsWholeWithoutDictionaries`). The ID remains reserved.
+
 - D179 — No Windows host manager (ForkDriver and ProcessChannel Unix-only). Retired before release: the Windows port (`chord/host/manager_fork_windows.go`, `manager_pipe_windows.go`, `manager_ipc_frames.go`) replaces the fallback, so `ForkDriver` and `ProcessChannel` exist on Unix and Windows and `NewNodeLoader` (D178) works on both. Native Windows evidence: all 27 chord/host C2 tests pass x1 and x5 on a Windows x64 runner with Node 24.22.0 (2026-10-14, PiG c0adb3e3cf), including real Node IPC (`TestProcessChannelIsNodesIPCChannel`) and every child-host `HostManager` case. The ID remains reserved.
+
+- D188 — Opening a store at an older Durable schema version keeps a copy of it first, where Pi upgrades it in place. Retired by Pi 1.4.0 (npm `@earendil-works/pi-durable` 1.4.0, tag `v1.4.0` at `4a080252`, 2026-10-21), which writes SQLite schema version 2: Pi commit `f75b3240` (feat(durable): durable sleeping state replaces runtime.sleep, `packages/durable/src/storage/sqlite/migrations.ts:91-116`) adds the `sleeping` task status as migration 2, and the pin `1.4.0+b3a29f11` carries it unchanged. A user going back to a released Pi can open an upgraded store, so the copy PiG wrote to `<path>.schema-1.bak` is no longer needed. `durable/internal/schemabackup` and the two call-site markers are gone; `driver.OpenHarness` and `node.OpenNodeSqliteStorage` upgrade a version 1 store in place, as Pi does (`TestOpenHarnessUpgradesAVersionOneStoreInPlace`, `TestOpenNodeSqliteStorageUpgradesAVersionOneStoreInPlace`; Pi's migration test is twinned by `durable/storage/sqlite/sqlite_migrations_test.go`). Pi releases before 1.4.0 still refuse a version 2 store; a user who needs one keeps their own copy.
+
+- D217 — Pi bug fixes after the pin that next carried (Pi e7a0df27..e3da248e). Retired by pin 2c8d1feb, which is at or after every carried Pi commit (`86dc686c` through `e3da248e`); its fixes are Pi behavior, and the markers, oracle hooks and allowances are gone.
 
 ## Active divergences
 
@@ -319,6 +325,8 @@ The package-manager tier invokes the proven owner's exact `install -g` command. 
 Pi 1.4.0 prunes managed releases after `pi update` and keeps the new release and the one that ran the update (`package-manager-cli.ts` `pruneManagedReleases`, #10392). A standalone pig has no release directory: a replacement leaves only the new executable, with the rollback link and the lock sidecar removed (`TestSelfReplaceAtWithCommitKeepsOnlyTheNewExecutable`).
 
 Pi `476a303c1` (#11270) drops the `--min-release-age=0` override from the `npm ci` that a pi.dev installer update runs against its release lockfile (`package-manager-cli.ts` `runManagedNpmCi`). A standalone pig runs no managed `npm ci`, so the flag has no counterpart and nothing is ported; the update tiers above are unchanged.
+
+Pi 8bc94b19 adds `PI_SELF_UPDATE_COMMAND` and the global `selfUpdateCommand` setting. In PiG a configured command is the user's explicit choice of the one owner, made before tier resolution: it replaces the standalone, package-manager, immutable-binary and container tiers (as Pi lets it replace every install method) and never falls through to one, and a failing command surfaces as its own error. The release it fills `{packageName}`, `{version}` and `{installSpec}` from is the signed update manifest, so a configured command with no update source does not run. `PIG_SELF_UPDATE_COMMAND` is read before `PI_SELF_UPDATE_COMMAND`, as `PIG_PACKAGE_DIR` precedes `PI_PACKAGE_DIR`. Success is reported only when the replaced executable, else `pig --version` on PATH, reports the release version (build metadata ignored). Only the global settings are read, so a project cannot inject a command. The update note prints as plain text, and the unsupported-installation message names the variable and setting without repeating `pig update`. Locked by `coding/cli/self_update_configured_test.go` and `internal/codingagent/config_upstream_test.go`.
 
 Immutable-binary and container tiers emit exact pull/rebuild/redeploy
 remediation rather than in-place drift; read-only/Windows standalone/unknown
@@ -2116,24 +2124,6 @@ Remove when: Pi reports the size of the last counted line.
 
 SCRUTINIZED:approved
 
-## D155 Selection lists page with PageUp and PageDown (Pi #7629)
-
-What: PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one visible page, clamped at both ends without wrapping, in the select list, settings list, the open editor autocomplete list, and the extension, model, OAuth, scoped-models, tree, user-message, config, session, trust, first-time-setup and llama.cpp selectors. A component that takes these keys reports it through `tui.CapturesSelectPageInput`, and the fullscreen viewport and the modal host loops then leave the keys to it. The tree selector keeps paging on Left and Right and also pages on these keys. Pi 1.4.0 scrolls the fullscreen transcript on these keys while a selector is open and ignores them in the lists that have no page action.
-
-Why: the selection stays where the user is looking. Pi #7629 is open, and its PR #7680 (`packages/tui/src/tui-alt-screen.ts`, `getPageSelectionIndex`, `capturesSelectPageInput`) is unmerged.
-
-Observable effect: in a selector, PageDown moves the selection down one page and does not scroll the transcript behind it. Pi scrolls the transcript or does nothing. An open editor autocomplete list pages the same way, and a user binding of the same key to an app action does not fire while the list is open. Extension-provided overlays cannot yet report that they capture the page keys, so the viewport still takes them there.
-
-Call-site markers: `tui/selection_navigation.go`, the page cases of the components above, `tui/tui_alt_screen_input.go` (`matchViewportAction`), `internal/codingagent/interactive_theme_modal.go` (`readModalInputFor`, `consumeModalHostInputFor`), `internal/codingagent/custom_editor.go`.
-
-Locked by: `tui/select_page_keys_test.go` (`TestPageSelectionIndex`, `TestSelectListPageKeysMoveByAPage`, `TestSettingsListPageKeysMoveByAPage`, `TestEditorAutocompletePageKeys`, `TestSelectorComponentsMoveByTheirPage`, `TestAltScreenGivesSelectionPageKeysToACapturingFocus`), `internal/codingagent/select_page_keys_test.go`, `TestHuggingFaceSearchPageKeysMoveTenResults` (`internal/codingagent/llama/ui_test.go`), `TestFullscreenSelectionKeepsItsPageKeys`, `TestEditorSlotSelectorPageKeyMovesSelectionInEveryMode`.
-
-Parity allowance: the Pi-oracle input generators for the select list, settings list, model, OAuth, theme, show-images, trust, settings and submenu selectors, the editor autocomplete and the llama view leave PageUp and PageDown out, because Pi 1.4.0 ignores them there.
-
-Remove when: Pi merges PR #7680 or another change that pages selection lists on these keys; then restore the keys in the oracle generators.
-
-SCRUTINIZED:approved
-
 ## D156 MCP server `url` expands environment references (Pi #10654)
 
 What: PiG expands the environment references of an MCP server's `url` (`$VAR`, `${VAR}`, `$$`) the way it resolves `headers` and `env` values. It validates the expanded URL when it loads `mcp.json` or registers a server, connects to it, and uses it as the OAuth server URL. A `url` that cannot be expanded now (a `!command`, or a variable that is unset or empty) is used as written, so a literal URL with a `$` keeps working. Pi uses the `url` as written in `validateMcpServerConfig` (`packages/coding-agent/src/core/mcp-servers.ts`), `createDefaultTransport` and `McpServerConnection.oauthUrl` (`packages/coding-agent/src/extensions/mcp/runtime.ts`).
@@ -2208,41 +2198,6 @@ Remove when: Pi stops re-wrapping a one-grapheme segment.
 
 SCRUTINIZED:approved
 
-## D165 The durable image processor is native Go, not Photon's WebAssembly
-
-What: `images.CreatePhotonImages()` (`durable/images`, `images/node`, `images/cloudflare`) decodes with the Go image decoders (PNG, JPEG, GIF, WebP, BMP), resamples with a Go Lanczos3 filter, encodes JPEG with Go's `image/jpeg`, and encodes PNG with `encodePhotonPNG`, a Go port of the encoder Photon's `get_bytes()` runs (image 0.24.9 `PngEncoder` defaults: png 0.17.14 `Compression::Fast` with adaptive filtering over fdeflate 0.3.6). Pi's `createPhotonImages(wasm)` (`packages/durable/src/images/index.ts`) runs `@silvia-odwyer/photon` 0.3.3, Rust compiled to WebAssembly, for the same steps. Pi's pipeline is reproduced step for step: EXIF orientation (`exif.ts`), inline passthrough once the image decodes, `Math.round` target size, JPEG qualities 80, 70, 55, 40 (JPEG first for JPEG sources), 3/4 shrink until the base64 fits, BMP to PNG. The JPEG bytes and the resampled pixels differ from Photon's: Go's JPEG encoder writes other bytes than the Rust `image` crate, and the Go Lanczos3 rounds differently from Photon's. Equal pixels encode to Photon's PNG bytes, so a PNG's size, which decides whether it fits the byte limit or the next encoding is tried, is Photon's. The `wasm` argument of `createPhotonImages` has no Go counterpart (the Go processor has no binary to load), and `createNodePhotonImages` and `createCloudflarePhotonImages` take none and read no file.
-
-Why: Photon under wazero reproduces Pi byte for byte (measured: the same SHA-256 as Pi's Node Photon for a 12 MP photo), but it costs a 1.8 MiB embedded binary, about 0.9 s of JIT compile on first use (34 ms with a disk cache), 1.3 times Node's time per image, 229 MiB of WebAssembly memory for one 12 MP image that never shrinks, and it needs wazero's JIT compiler, which exists on amd64 and arm64 only: its interpreter takes 3.5 minutes for the same image. The native pipeline adds about 0.6 MB, runs a 12 MP photo in 1.7 s, and works on every platform Go builds for. `internal/imageprocessing`, the coding agent's image path, is native Go for the same reasons. The owner chose the native pipeline on 2026-10-10 after these measurements (`questions/designout-port.md`).
-
-Observable effect: for one input and set of limits, the image the model receives has Pi's format, dimensions, `resized` and `convertedFrom` records, and the same `Read image file [...]` notes. A PNG written from unresampled pixels has Photon's bytes. A resized image's pixels differ by a mean of 0.01 of 255 per channel when both write PNG (so its PNG bytes differ too), and by 4.0 of 255 when both write JPEG q80 (the two JPEG encoders quantize differently); JPEG bytes differ. A model sees the same picture; a test that compares resized or JPEG image bytes with Pi's does not pass.
-
-Scope: `durable/images` (`images.go` `Prepare` and its encoders, `lanczos.go`). `tools.CreateReadTool`, `tools.CreateCodingTools`, the limits, the notes and the error results follow Pi exactly.
-
-Owner decision: 2026-10-10, option A: the native Go pipeline (lead ruling 18:16Z, LEAD-RULINGS-1520.md: D165 for it; the `wasm` parameter design-out accepted).
-
-Rejected alternative, measured 2026-10-10 on a loaded linux/amd64 host with Pi's pinned Photon 0.3.3 `photon_rs_bg.wasm` run in-process by wazero v1.12.0 (a Go host for the 42 `wbg` imports; only `__wbindgen_throw` and the externref init are called) on a synthetic 12 MP (4000x3000) JPEG:
-
-| | native Go (chosen) | Photon under wazero JIT | Pi's Photon under Node |
-|---|---|---|---|
-| output bytes | not Photon's | identical (same SHA-256) | reference |
-| binary size added | about 0.6 MB (1.1 MB as wasip1) | 1.88 MB embedded (669 KB gzip) | n/a |
-| cold cost | none | compile 0.94 s (34 ms with a 6.1 MB disk cache), first image 3.7 to 5.0 s | n/a |
-| warm 12 MP prepare | 1.67 s | 3.03 s | 2.26 s |
-| memory for one 12 MP image | transient | 229 MiB WebAssembly memory, never shrinks, plus 175 MiB Go heap | same WebAssembly memory |
-| without wazero's JIT (not amd64 or arm64) | works | interpreter: 3 min 30 s | n/a |
-
-Workers: neither option goes into the Durable core wasm that runs on Workers (Workers cannot run wazero's JIT or compile WebAssembly at run time), so a Workers host keeps Pi's own Photon in JavaScript. The measuring harness is not committed.
-
-Call-site markers: `durable/images/images.go` (`Prepare`, `encodeJPEG`), `durable/images/lanczos.go` (`resizeLanczos3`).
-
-Locked by: `TestPreparedPixelsStayCloseToWhatPhotonProduces` (`durable/images/photon_differential_test.go`) against Photon 0.3.3 output committed in `durable/images/testdata/` (a regenerating Node script is in the test comment; PNG mean error 0.010, JPEG 3.97, limits 1.0 and 4.5); `TestEncodePhotonPNGWritesPhotonsBytes` (`durable/images/png_test.go`: Photon's PNG bytes for the committed fixture, and Photon's lengths and SHA-256s for three inputs); the behavior tests in `durable/images/images_test.go` (orientation 1 to 8, shrink chain, JPEG-first order, BMP to PNG, extreme aspect ratio, give-up, undecodable bytes), `durable/tools/read_images_test.go` (notes and error results through `read`) and the Pi 1.4.0 `tools-images.test.ts` port (`durable/images/node/tools_images_test.go`, including the noisy PNG that Photon's size sends to JPEG).
-
-Parity allowance: none. No paired scenario reads an image through `createCodingTools({ images })`.
-
-Remove when: the owner moves the processor to Photon under wazero (it then matches Pi's bytes), or Pi's pipeline stops being byte-defined by Photon.
-
-SCRUTINIZED:approved
-
 ## D167 A history longer than the model's context window is summarized in chunks
 
 What: when the messages a compaction summarizes are longer than the model's context window, PiG splits them into consecutive chunks that fit one summary request and summarizes them in order. Each chunk's request carries the summary of the chunk before it in `<previous-summary>` and uses `UPDATE_SUMMARIZATION_PROMPT`, the prompt Pi uses when a compaction has a previous summary. The first chunk starts from the compaction's own previous summary, and the usage of every request is added. A chunk the provider still refuses as a context overflow (`ai.IsContextOverflow` on its error) is halved and retried until one message is left. A history that fits the window is one request, byte-identical to Pi's. When a compaction cuts inside a turn and the turn prefix is longer than the window by the same measure, all but the prefix's last window-sized part joins the history and is summarized by the chunked path; the turn-prefix request keeps the last part. A split turn whose prefix fits keeps Pi's two requests. `/tree` branch summarization keeps Pi's request for the newest entries that fit the window by the character estimate; when the provider still refuses it as a context overflow, PiG retries with the newest half of what it sent, never less than the newest message, until the provider accepts it or one message is left. A retry that would select no fewer messages ends with the provider's error.
@@ -2260,26 +2215,6 @@ Evidence: `TestGenerateSummaryOfAHistoryLongerThanTheWindowIsChunked`, `TestGene
 Parity allowance: no paired scenario compacts a history longer than the model's window, and the oracle rows summarize histories that fit one request.
 
 Remove when: Pi summarizes over-window histories itself (chunking or trimming the summary input).
-
-SCRUTINIZED:approved
-
-## D173 Tool search matches Chinese, Japanese and Korean queries (Pi #10816)
-
-What: Pi's tool-search tokenizer (`tokenize` in `packages/coding-agent/src/extensions/tool-search/tool.ts`) lowercases text and splits it on `/[^a-z0-9]+/`, so every Chinese, Japanese and Korean character is dropped: `tokenize("记录")` is empty and a query in those scripts never matches a tool whose name, description or schema holds the same words. `tool_search` and codemode `searchTools()` both rank with it. PiG makes each Han, Hiragana, Katakana or Hangul character a term of its own, so `记录` becomes the terms `记` and `录` and matches a tool whose metadata holds them, and `search_notes 搜索记录` keeps its ASCII terms beside the four characters. Text without those characters tokenizes exactly as in Pi: accented Latin letters still split a word (`café` is `caf`), Cyrillic and Arabic are still dropped, and the Japanese prolonged sound mark (script Common) still splits a term.
-
-Why: A user who writes tool descriptions or queries in Chinese, Japanese or Korean cannot find their tools by search. Pi 1.4.0 and Pi main have the same tokenizer and no fix or pull request; the report was auto-closed.
-
-Scope: `Tokenize` in `coding/extension/builtin/toolsearch/toolsearch.go`, used by the BM25 ranker of `tool_search` and codemode search. Terms are single characters (no segmentation, no bigrams), so a two-character query matches a tool holding either character and BM25 ranks a tool holding both higher. Other scripts are not widened.
-
-Owner decision: 2026-10-12T04:15Z, owner approved the sign-off entry for #10816 (lane fix-pi-bugs-ai): ship it as a numbered divergence, CJK scripts only.
-
-Call-site markers: `coding/extension/builtin/toolsearch/toolsearch.go` (`Tokenize`).
-
-Evidence: `TestTokenizeKeepsCJKCharactersAsTerms` and `TestBm25RankerFindsAChineseQueryInChineseToolMetadata` (`coding/extension/builtin/toolsearch/toolsearch_cjk_test.go`; red without the change, with rows for text without CJK characters that stays Pi's).
-
-Parity allowance: `TestToolSearchMatchesPi` replaces every CJK character of its probes with a space on both sides before comparing (`spaceOutCJK`), because Pi 1.4.0 splits a term at each of them; the rest of its probes stay byte-equal with Pi.
-
-Remove when: Pi's tokenizer keeps Chinese, Japanese and Korean characters.
 
 SCRUTINIZED:approved
 
@@ -2487,28 +2422,6 @@ Remove when: a native SDK's handlers run where a blocked handler yields to the n
 
 SCRUTINIZED:approved
 
-## D188 Opening a store at an older Durable schema version keeps a copy of it first, where Pi upgrades it in place
-
-What: PiG's Durable writes SQLite schema version 2 (Pi main's `sleeping` task status, `packages/durable/src/storage/sqlite/migrations.ts`), which no Pi release writes yet: pi-durable 1.3.0 writes version 1 and refuses a newer store ("Durable SQLite schema version 2 is newer than supported version 1"). Pi upgrades a version 1 store in place when it opens it. PiG first copies the file to `<path>.schema-1.bak` (`VACUUM INTO`, which includes the WAL), then upgrades it as Pi does. If that name is taken it uses `<path>.schema-1-2.bak`, and so on: an earlier copy is never replaced. If the copy fails, the open fails and the store stays at version 1.
-
-Why: without the copy, trying PiG on a store pi-durable 1.3.0 wrote is a one-way step: the user cannot go back to the released Pi with their data (issue #245). The copy is a store pi-durable 1.3.0 opens as it was.
-
-Scope: the two openers that take a file path, `driver.OpenHarness` (`durable/core/driver/open.go`) and `node.OpenNodeSqliteStorage` (`durable/storage/sqlite/node/node.go`), through `schemabackup.BeforeUpgrade` (`durable/internal/schemabackup`). It copies only a file whose schema table holds a version from 1 up to one below the version PiG writes. A new or empty file, `:memory:`, a `file:` URI, a store at the current version, and storage opened over a database the caller already holds (`sqlite.Open`, the Cloudflare Durable Object storage, the contract gate's hosts) are unchanged.
-
-Workaround: none needed in PiG. In Pi, copy the database file before opening it with a newer release.
-
-Owner decision: approved by owner Michael Kinsy on 2026-10-20 ("proceed with your fix" on issue #245; choice: a copy before the upgrade rather than leaving version 1 stores unupgraded, because the harness relies on the `sleeping` status for retries and sleeps; user impact: one extra file the size of the store, written once per older store; parity cost: a file Pi does not write).
-
-Call-site markers: `durable/core/driver/open.go` (`openHarness`), `durable/storage/sqlite/node/node.go` (`OpenNodeSqliteStorage`).
-
-Evidence: `TestOpenNodeSqliteStorageCopiesAnOlderSchemaBeforeUpgrading` and `TestOpenNodeSqliteStorageDoesNotCopyANewOrCurrentStore` (`durable/storage/sqlite/node/schema_backup_test.go`), `TestOpenHarnessCopiesAnOlderSchemaBeforeUpgrading` (`durable/core/driver/schema_backup_core_test.go`). Checked by hand on 2026-10-20: a store pi-durable 1.3.0 created, opened by PiG, is refused by pi-durable 1.3.0, and its `.schema-1.bak` copy opens in pi-durable 1.3.0.
-
-Parity allowance: none needed. No paired scenario looks at the files next to a store, and the contract gate's hosts open stores without the copy, so every store, commit and order comparison is unchanged.
-
-Remove when: a Pi release writes schema version 2, so a user going back to released Pi can open the upgraded store; or the owner reverses the decision. Then `durable/internal/schemabackup`, the two call sites and the three tests go.
-
-SCRUTINIZED:approved
-
 ## D190 The built-in file mutation queue also orders mutations of one existing file reached through a hard link or a case alias Pi's realpath key keeps apart
 
 What: Pi's `withFileMutationQueue` (`packages/coding-agent/src/core/tools/file-mutation-queue.ts`) keys each call by `realpath(resolve(path))`, and a path that does not exist keeps its resolved name. PiG's queue (`FileMutationQueue`, behind the `edit` and `write` tools and `WithFileMutationQueue`) keeps that key and also makes a call wait for every earlier call that is still queued for the same existing file under another key (`os.SameFile`): the hard links of a file, and the case aliases of a file on a case-insensitive filesystem. Pi runs those calls at once. On macOS Pi's native `realpath` returns the on-disk case, so Pi orders case aliases there (reported from the #270 author's run of the pinned Pi on macOS; not rerun here), while Go's `filepath.EvalSymlinks` keeps the name as typed; the identity check restores that order and is parity on macOS. Pi's probe on Linux (pinned `1402973a`, `fs.promises.realpath` through glibc): two calls through a hard link both start while the first is held, and so do two calls through `Target.txt` and `target.txt` on an ext4 casefold directory.
@@ -2625,17 +2538,17 @@ Evidence: `TestTypeOmitsTheCodecFamily` (`extensions/sdk/type_vectors_test.go`) 
 
 ## D199 PiG lists OpenRouter's :nitro and :floor routing variants beside every OpenRouter model, where Pi lists only what OpenRouter's /models returns
 
-What: for every `openrouter` chat model of Pi's catalog that does not already end in a routing variant, PiG also lists `<id>:nitro` and `<id>:floor` (named `<name> (nitro)` and `<name> (floor)`), right after the model, and resolves a lookup of either. The variants are derived from the base entry when listed or looked up; the bundled catalog (`ai.GeneratedModels`) stays exactly Pi's. A variant is a copy of its base entry in everything but its id, name and JSON record: API, base URL, prices, limits, input types, reasoning and thinking levels are the base model's. `--list-models`, the model selector, `/scoped-models`, RPC `get_available_models` and the SDKs list them like any other built-in model.
+What: for every `openrouter` chat model of Pi's catalog that does not already end in a routing variant, PiG also lists `<id>:nitro` and `<id>:floor` (named `<name> (nitro)` and `<name> (floor)`), right after the model, and resolves a lookup of either. The variants are derived from the base entry when listed or looked up, from the current OpenRouter list: the bundled catalog, or the list `pig update --models` saved, which replaces it (the saved list never holds a derived variant); the bundled catalog (`ai.GeneratedModels`) stays exactly Pi's. A variant is a copy of its base entry in everything but its id, name and JSON record: API, base URL, prices, limits, input types, reasoning and thinking levels are the base model's. `--list-models`, the model selector, `/scoped-models`, RPC `get_available_models` and the SDKs list them like any other built-in model.
 
 Why: OpenRouter accepts `:nitro` (providers sorted by throughput, priority service tier endpoints admitted) and `:floor` (providers sorted by price, flex service tier endpoints admitted) on every model ID but never lists them in `GET /api/v1/models`, which is where Pi's catalog comes from, so a user cannot pick them in Pi's selector (issue #315). OpenRouter's variants page (https://openrouter.ai/docs/guides/routing/model-variants/overview, "Offering routing variants in a model picker") tells clients to derive them from the base entries and to read the metadata from the base entry.
 
-Scope: one rule, `ai/openrouter_variants.go` (`OpenRouterRoutingVariants`, `OpenRouterVariant`, `WithOpenRouterRoutingVariants`), data-driven from OpenRouter's documented suffix list; no model is named. Used by `ai.ListModels` (OpenRouter and the whole catalog), `ai.LookupModel` and `ai.LookupModelExact` (a variant the catalog does not list is derived from its base and cached), `builtinChatCatalogListed` (the registry's selector, `--list-models`, RPC and SDK lists; built on first use, so a caller that only resolves a model builds none), `GetProviderModelDataByID` and the model reference resolver (`withNamedRoutingVariants`: a reference that names `:nitro` or `:floor` finds the variant of the model it means). A partial model text (`--model 4o`, scoped-model patterns, the resolver's fuzzy match) is not matched against a variant unless the text itself names `:nitro` or `:floor`, so every text Pi resolves resolves to the same model here (Pi's reverse-collation tie break would otherwise prefer `:nitro`). The listed price is the base model's rate; OpenRouter bills a request at the rate of the endpoint that served it (a priority endpoint for `:nitro`, a flex endpoint for `:floor`). Image and classifier models, other providers, the remote catalog overlay and the other routing variants (`:exacto`, `:online`) are unchanged.
+Scope: one rule, `ai/openrouter_variants.go` (`OpenRouterRoutingVariants`, `OpenRouterVariant`, `WithOpenRouterRoutingVariants`, and `WithOpenRouterRoutingVariantModels` for a saved list), data-driven from OpenRouter's documented suffix list; no model is named. Used by `ai.ListModels` (OpenRouter and the whole catalog), `ai.LookupModel` and `ai.LookupModelExact` (a variant the catalog does not list is derived from its base and cached), `builtinChatCatalogListed` (the registry's selector, `--list-models`, RPC and SDK lists and `RuntimeModels`; built on first use, so a caller that only resolves a model, or reads the available models of a registry without OpenRouter auth, builds none), `GetProviderModelDataByID` and the model reference resolver (`withNamedRoutingVariants`: a reference that names `:nitro` or `:floor` finds the variant of the model it means). A partial model text (`--model 4o`, scoped-model patterns, the resolver's fuzzy match) is not matched against a variant unless the text itself names `:nitro` or `:floor`, so every text Pi resolves resolves to the same model here (Pi's reverse-collation tie break would otherwise prefer `:nitro`). The listed price is the base model's rate; OpenRouter bills a request at the rate of the endpoint that served it (a priority endpoint for `:nitro`, a flex endpoint for `:floor`). Image and classifier models, other providers, the remote catalog overlay and the other routing variants (`:exacto`, `:online`) are unchanged.
 
 Owner decision: approved by owner Michael Kinsy on 2026-10-24 (issue #315, an additive extension that overlaps Pi's catalog).
 
-Call-site markers: `ai/openrouter_variants.go` (`OpenRouterVariant`), `ai/registry.go` (`ListModels`, `LookupModel`, `LookupModelExact`), `internal/codingagent/builtin_chat_catalog.go` (`builtinChatCatalogListed`), `internal/codingagent/model_catalog_data.go` (`GetProviderModelDataByID`), `internal/codingagent/model_pattern.go` (`withNamedRoutingVariants`, `fuzzyMatches`).
+Call-site markers: `ai/openrouter_variants.go` (`OpenRouterVariant`), `ai/registry.go` (`ListModels`, `LookupModel`, `LookupModelExact`), `internal/codingagent/builtin_chat_catalog.go` (`builtinChatCatalogListed`), `internal/codingagent/model_catalog_data.go` (`GetProviderModelData`, `GetProviderModelDataByID`), `internal/codingagent/remote_catalog_provider.go` (`withPersonalizedCatalogOverlay`), `internal/codingagent/model_pattern.go` (`withNamedRoutingVariants`, `fuzzyMatches`).
 
-Evidence: `TestOpenRouterRoutingVariantsMirrorTheirBaseEntries`, `TestOpenRouterRoutingVariantsAreLookedUpFromTheirBase` and `TestRewriteRecordIdentity` (`ai/openrouter_variants_test.go`) pin the rule from OpenRouter's documentation: both variants after each base entry, equal to the base but for id, name and record, found by lookup, none on another provider, none stored in `GeneratedModels`; `TestPartialModelTextIgnoresOpenRouterRoutingVariants` (`internal/codingagent/model_pattern_openrouter_variants_test.go`) pins the resolver rule against the failure the paired `TestResolveCliModelAndScopeMatchPi` showed when a variant was a candidate (`--model 4o` resolved to `:nitro`, Pi to `:batch`).
+Evidence: `TestRefreshedOpenRouterProviderListsRoutingVariantsOfTheRefreshedList`, `TestSavedOpenRouterListShowsRoutingVariantsOnEveryRegistryListing` (`internal/codingagent/remote_catalog_openrouter_variants_test.go`) and `TestRegistryPersonalizesTheOpenRouterCatalogThroughTheConfiguredBaseURL` pin the refreshed list; `TestOpenRouterRoutingVariantsMirrorTheirBaseEntries`, `TestOpenRouterRoutingVariantsAreLookedUpFromTheirBase` and `TestRewriteRecordIdentity` (`ai/openrouter_variants_test.go`) pin the rule from OpenRouter's documentation: both variants after each base entry, equal to the base but for id, name and record, found by lookup, none on another provider, none stored in `GeneratedModels`; `TestAvailableModelDataDerivesRoutingVariantsOnlyForAConfiguredOpenRouter` and `TestSelectorModelLookupBuildsOnlyTheModelRead` (`internal/codingagent`) pin that a variant is derived only where it is listed or named, and `TestPartialModelTextIgnoresOpenRouterRoutingVariants` (`internal/codingagent/model_pattern_openrouter_variants_test.go`) pins the resolver rule against the failure the paired `TestResolveCliModelAndScopeMatchPi` showed when a variant was a candidate (`--model 4o` resolved to `:nitro`, Pi to `:batch`).
 
 Parity allowance: the bundled catalog and every comparison of it with Pi (`TestCatalogModelJSONMatchesPiForEveryBuiltinModel`, `TestGeneratedCatalogsMatchPublishedPackage`, `TestModelObjectsMatchPisModelObjects`) are unchanged. The tests that compare a provider list with Pi's (`TestBuiltinCatalogsMatchPinnedProviderDataModules`, `TestProviderCatalogExportsMatchPinnedData`, the Anthropic catalog denominators, `TestModelRegistryMatchesPi`) leave the derived variants out of the comparison. `TestResolveCliModelAndScopeMatchPi` is unchanged and still equal to Pi.
 
@@ -2792,5 +2705,162 @@ Evidence: `TestLlamaClientAndCatalogAgainstLlamaSwapAndLlamaServerMatchPi` (`int
 Parity allowance: `TestLlamaClientRequestsMatchPi` compares load and unload against Pi over random statuses and bodies, 404 included; its server answers `GET /running` with 404, which is not llama-swap's, so every outcome there stays Pi's.
 
 Remove when: Pi's `/llama` names llama-swap itself, or can manage llama-swap models; or the owner withdraws the decision. Then the call-site marker, the `GET /running` probe, the docs section and this record go.
+
+SCRUTINIZED:approved
+
+## D213 A crashed or exited extension runtime releases the read the host holds for an autocomplete provider chain
+
+What: Pi's editor awaits an autocomplete request in the Promise jobs that follow the terminal read that typed the text (`editor.ts` `requestAutocomplete`, `startAutocompleteRequest`), and its extensions run in Pi's own process. A provider chain that needs no I/O therefore opens its menu before the next read, and a chain that awaits real I/O (a timer, a socket, a process) has not settled when the next read arrives. PiG's extension chain crosses a process boundary, so after each read PiG starts the request of the extension chain and holds the next read until the chain settles and its menu is published, or until the chain announces that it awaits real I/O (`ui.autocomplete.pending`), which is when Pi's next read would have come first. The Node runtime announces at the end of its macrotask (`setImmediate`), Pi's rule exactly; the base provider's awaited work (an `@` file search, a command's Promise-returning argument completer) is announced by the host, also through a chain another packed member calls directly. The Go, Rust, Python and Lisp SDKs have only synchronous providers, which settle when they return, as a synchronous Pi provider holds the loop until it returns, so they announce nothing. No timer releases the read. The one difference a user can see: when the extension runtime exits or its connection ends while the chain is unsettled, the request fails and the host releases the read; in Pi a crashing extension takes the whole process with it.
+
+Why: the hold is the mechanism that carries Pi's event-loop order across the process boundary. A runtime that dies cannot answer, and a frozen editor would be worse than Pi, where the process would have ended.
+
+Pi bug: none claimed.
+
+Scope: requests of the extension provider chain that start at the end of a read: natural slash, argument and mention requests of text typed or pasted. Debounced symbol requests (a later task in Pi too), forced Tab requests and a request made behind an unfinished one never hold the read. The native provider chain without an extension provider is unchanged.
+
+Owner decision: owner Michael Kinsy ordered Pi's exact rule for 0.6.0 on 2026-10-29 ("don't care about delay, most correct") and a numbered record for what remains.
+
+Call-site markers: `coding/extension/host/subprocess/autocomplete_bridge.go` (`GetSuggestions` of the remote provider).
+
+Evidence: journey `extension-completion-fast-enter` (j18, packed Node runtime) runs Pi and PiG through `/model provider/id` and `/thinking level` typed and entered at once. `TestAutocompleteSettlementAcrossSDKs` runs a fast chain, a chain that sleeps and a chain that waits on a slow host answer in the Go, Node (isolated and packed), Rust, Python and Lisp realizations, fused and packed Go included, and requires the sleeping chain to be announced in Node only. `TestNodeAutocompleteChainTellsTheHostWhenItAwaitsIO` pins the Node rule in isolated and packed mode and `TestPackedNodeMembersShareTheBaseProvidersIOAnnouncement` the packed case. `TestEnterInTheReadAfterTheTextAcceptsTheMenuAnExtensionProviderOpened`, `TestEnterWaitsForAnExtensionProviderThatBlocksUntilItReturns`, `TestEnterInTheReadAfterTheTextSubmitsWhileAnExtensionProviderAwaitsIO` and `TestBaseProviderAnnouncesItsAwaitedWork` cover the host, and `tui/editor_autocomplete_hold_test.go` the editor.
+
+Parity allowance: none needed for the journey: a provider that needs no I/O matches Pi, and no journey can observe a runtime exit.
+
+Remove when: Pi's extensions run outside the editor's process, or the owner withdraws the decision. Then the release on runtime exit, the call-site marker and this record go.
+
+SCRUTINIZED:approved
+
+## D215 A local Package typed by absolute path is stored as typed
+
+What: Pi's `pi install <path>` records every local Package in `packages[]` relative to the settings directory as it was spelled at install (`package-manager.ts` `normalizePackageSourceForSettings`). An install made through one spelling of the agent directory (a symlinked `PIG_HOME`, such as an XDG link) writes, for example, `../../../../../../pkgsrc/my-pkg`; a start through another spelling at another depth resolves it to a path that does not exist, and the Package's tools are gone. PiG stores a path typed absolute (`/abs/pkg`, `~/pkg`, a `file://` URL) as typed, trimmed; a path typed relative (`./pkg`, `../pkg`) is still stored relative to the settings directory, as Pi stores it.
+
+Why: 20 of 21 Packages on one host disappeared after a re-registration run through a symlinked `PIG_HOME`, with only a boot line on stderr to show it (#389). An absolute path resolves the same way from every spelling of the agent directory.
+
+Pi bug: Pi writes the same relative record (`package-manager.ts` `normalizePackageSourceForSettings` at the pin, b3a29f11); not reported upstream.
+
+Scope: `PackageManager.NormalizeSourceForSettings` (`pig install`, `pig remove` matching is unchanged: both forms resolve to the same path), through `resolvepath.IsAbsolutePackagePath`. Entries already in `settings.json` are read as before; running `pig install <absolute path>` again rewrites an entry that still resolves to the absolute form. The SDK resource loader is unchanged.
+
+Owner decision: approved by owner Michael Kinsy on 2026-10-30 (store an absolute path as typed rather than always absolute or symlink-resolved relative). The report of a Package that does not resolve is not part of this record: Pi skips it silently, so it is the additive D216.
+
+Call-site marker: `internal/packagemanager/package_manager.go` (`NormalizeSourceForSettings`).
+
+Evidence: `TestInstalledAbsoluteLocalPackageResolvesThroughAnotherAgentDirSpelling` (`coding/cli/package_local_path_test.go`, red with the call site reverted), `TestNormalizePackageSourceForSettings_UsesScopeBase` (`coding/cli/package_commands_test.go`), `TestPackageManagerAddAndRemoveSourceInTheScopeSettings` (`internal/packagemanager/package_manager_ops_gaps_test.go`: an absolute spelling of a relative entry replaces it with the absolute path); `TestSessionGraphDefaultPackageManagerAcrossSDKs` and `TestSessionGraphLispPackedAcrossSDKs` (`test/extension-conformance/session_graph_test.go`: the script installs an absolute path, so every PiG row reports `<root>/pkgs/localpkg` where the Node row, Pi itself, reports the settings-relative spelling).
+
+Parity allowance: the ported case `package-command-paths.test.ts:431` ("allows local package install to initialize fresh project settings", `TestPortWave10PackageCommandPaths`) installs an absolute path and expects the entry relative to `.pi`; PiG's port asserts the path as typed. Scenario `cli-utils/04-package-install-local` installs a relative path, which is stored as Pi stores it.
+
+Remove when: Pi stores an absolute local path as typed, or the owner reverses the decision. Then the branch, the call-site marker and the tests' D215 cases go.
+
+SCRUTINIZED:approved
+
+## D218 Chord's HTTP listener runs on Go's net/http, which answers some malformed requests before the component does
+
+What: Pi's Chord HTTP listener is Node's `http` module; PiG's is a `net/http.Server` (`chord/nextnode/http`). Pi's parser hands a request with two `Host` headers, or a `Host` with userinfo, to the component, which refuses it 403 with the default security headers. Go's server refuses both itself, before any handler, with a canned `400 Bad Request` and none of the default headers (`net/http/request.go` "too many Host headers", `server.go` "malformed Host header"). Also: an HTTP/1.0 request's answer has an `HTTP/1.0` status line (Node writes `HTTP/1.1`); the status line's reason phrase is Go's (the answers' own text is Node's table); header names are written in canonical case; and net/http watches the connection for a disconnect only once the request body is read, so a client that goes away with an unread body is seen when the route reads or writes, where Node sees the socket close at any time.
+
+Why: no `http.Server` option, hook or `ErrorLog` reaches these checks, and a pre-scan or rewrite of the request bytes would be an HTTP framing parser. The listener keeps Node's limits (`headersTimeout`, `requestTimeout`, 16 KiB of headers, keep-alive 5 s) in Go's settings.
+
+Scope: the listener of `chord/nextnode/http` (`node.go`). `Fetch` and `NodeRequestOf`, which take a request from any server, still refuse these requests with Pi's 403. Every affected request is refused either way and no route runs, so the difference is visible only to whoever owns the listener.
+
+Owner decision: 2026-11-01, owner approved recording the net/http differences as one numbered divergence (D218).
+
+Call-site marker: `chord/nextnode/http/node.go` (the "Forced Go differences" block).
+
+Evidence: `TestTargetsRefuseAnAbsoluteFormTargetTwoHostHeadersAndNone` and the other tests of `chord/nextnode/http/node_test.go` state both answers; the review tests in `review_test.go` pin the cancellation reason `http: the client disconnected`.
+
+Parity allowance: none needed; the Pi side has no oracle that sends these requests to a Go listener.
+
+Remove when: Pi's listener stops being Node's `http` module, or Go's net/http lets a handler see a request it now refuses.
+
+SCRUTINIZED:approved
+
+## D219 pi-schema regular expressions differ from V8 in four contrived cases
+
+What: PiG's `schema` package compiles `pattern` and `patternProperties` keys and the `regex` format with `schema/internal/ecmaregex`, which translates an ECMAScript pattern to `dlclark/regexp2`; Pi runs V8 (`packages/schema/src/shared.ts`, `formats/typebox/regex.ts`). A schema whose pattern uses a case-insensitive modifier group `(?i:...)` (ES2025; Node 22 rejects it, so Pi on Node 22 throws at compile) with a backreference, or one of three Annex B patterns, or a subject V8 stores two bytes per unit although it holds only Latin-1 units, can accept or reject a string that Pi rejects or accepts. No pattern outside modifier groups and no u-mode pattern without `(?i:)` differs; every other row of the 3,821-pattern golden agrees with V8.
+
+Why: V8 compares a backreference inside `(?i:...)` by ECMAScript Canonicalize; regexp2 compares with `unicode.ToLower`, and a translation cannot change a comparison that runs inside regexp2. The three Annex B results have no deterministic rule in V8's regexp source. V8 decides some modifier-group results by whether the subject string is stored one byte per unit, which is not a function of the string value, so PiG uses "every unit is <= U+00FF".
+
+Scope: `schema/internal/ecmaregex` (the case-insensitive backreference translation in `emit.go` and `casefold.go`), reached through `schema.Compile` and `formats.IsRegex`. Oracle: Node 24.22.1.
+
+Owner decision: 2026-11-01, owner approved recording the four differences as one numbered divergence (D219).
+
+Call-site markers: `schema/internal/ecmaregex/emit.go`, `schema/internal/ecmaregex/casefold.go`.
+
+Evidence: `TestKnownGaps` (`schema/internal/ecmaregex/golden_test.go`) pins each row on both sides, so a change of either side fails it; the golden replay (`TestGoldenRegex`) covers every other row.
+
+The differences, in modifier groups with a backreference:
+
+| mode | pattern | input | V8 | PiG |
+|---|---|---|---|---|
+| u | `^(?i:(\w)\1)$` | `"s\u017f"` | true | false |
+| u | `^(?i:(s)\1)$` | `"s\u017f"` | true | false |
+| u | `^(?i:(\u017f)\1)$` | `"s\u017f"` | true | false |
+| u, annexB | `^(?i:(\u03c3)\1)$` | `"\u03c3\u03c2"` | true | false |
+| u, annexB | `^(?i:(\u03c2)\1)$` | `"\u03c2\u03c3"` | true | false |
+| u, annexB | `^(?i:(.)\1)$` | `"\u03c3\u03c2"`, `"\u03c2\u03c3"` (and `"s\u017f"` in u) | true | false |
+| u, annexB | `^(?i:(\w)\1)$` | `"i\u0130"` | false | true |
+| u, annexB | `^(?i:(i)\1)$` | `"i\u0130"` | false | true |
+| u, annexB | `^(?i:(\u0130)\1)$` | `"\u0130i"` | false | true |
+| u, annexB | `^(?i:(.)\1)$` | `"i\u0130"`, `"\u0130i"` | false | true |
+| annexB | `^(?i:(\w)\1)$` | `"k\u212a"` | false | true |
+| annexB | `^(?i:(k)\1)$` | `"k\u212a"` | false | true |
+| annexB | `^(?i:(\u212a)\1)$` | `"\u212ak"` | false | true |
+| annexB | `^(?i:(.)\1)$` | `"k\u212a"`, `"\u212ak"` | false | true |
+
+Annex B patterns with no deterministic V8 rule (they need `(?i:...)` with Annex B syntax, a lone `{`, `\a`, `\c`, `\ude00`, and only arise when the u-mode compile of the same source fails):
+
+| mode | pattern | input | V8 | PiG |
+|---|---|---|---|---|
+| annexB | `(?i:[\n\p{Lu}\x62]\|[^a-c😀x-z])\W\u0061` | `"A\u03c3a\u00b5"` | true | false |
+| annexB | `(?im-s:(?<n1>(?:)()\s{\|\u212a[\n\0K]()?)(?:()))` | `"\u212ak"` | false | true |
+| annexB | `(?ims:(?m:(?=\aΩ\c){,2}\n)(?<n1>\b(?=xx??)\d)\|\/(\w)[aA]\|[\u0061a-c\cA])+[^\ude00]` | `"AB"` | false | true |
+
+These need `(?i:...)` with Annex B syntax (a lone `{`, `\a`, `\c`, `\ude00`); they only arise when the u-mode compile of the same source fails.
+
+One-byte subject storage: `(?i-:[\-c\D]?\u212a{2})` on `"kK"` gave both results in one V8 run depending on how the subject was built; there is no PiG result to compare.
+
+Parity allowance: `schema/internal/ecmaregex/golden_test.go` (`TestKnownGaps`) states both sides of every row.
+
+Remove when: regexp2 gains Canonicalize-based case-insensitive backreference comparison, or PiG gets its own backtracking engine for the ECMAScript grammar. Then the markers, the rows of `knownGaps` and this record go.
+
+SCRUTINIZED:approved
+
+## D222 A plugin input the build cannot read is reported at the import that names it, not at esbuild's library
+
+What: Pi builds plugins with esbuild's JavaScript API. When a plugin's `onLoad` cannot read an input (`readFile` throws `EACCES`), esbuild's JavaScript library takes the error's location from the first readable frame of the JavaScript stack, which is its own `await callback(...)` in `lib/main.js`, and Pi prints `<path of esbuild's lib/main.js relative to the plugin's directory>:1552:22: EACCES: permission denied, open '<path>'` (esbuild 0.28.2). PiG builds on esbuild's Go API, which has no JavaScript stack: the location of an input that cannot be read is the position of the import that names it, so PiG prints `worker.ts:1:19: EACCES: permission denied, open '<path>'`. The text after the location is Node's, as Pi's.
+
+Why: the line Pi prints is a line of a JavaScript library that exists only where Pi's `node_modules` is, and nothing in PiG reads it; printing it would invent a file and a position. No Pi test or example asserts the location.
+
+Scope: `chord/nextnode/plugins` `BuildFacet`, the failure of an input that cannot be read (`ENOENT` and `EACCES` read errors). The build fails in both with one error whose text after the location is equal. Evidence of Pi's text: `handoffs/next/rows/plugfull-buildwin.md` (reproduced with esbuild 0.28.2 in Node).
+
+Owner decision: 2026-11-01, owner decided to keep PiG's location and record the difference (D222).
+
+Call-site marker: `chord/nextnode/plugins/plugins_build.go` (the `OnLoad` read failure).
+
+Evidence: `TestEsbuildBuildAForbiddenInputFailsTheBuildWithNodesText` (`chord/nextnode/plugins/plugins_node_unix_test.go`) states PiG's text with the import's location.
+
+Parity allowance: none needed; Pi's text names a file of Pi's installation, so no parity scenario can compare it byte for byte.
+
+Remove when: Pi reports the importing location.
+
+SCRUTINIZED:approved
+
+## D225 A thread-based SDK's wait for the run it started needs the SDK's yield helper
+
+What: Pi's `pi.sendMessage(..., { triggerTurn: true })` marks the Session busy before its first `await` (`agent-session.ts:2404`, `_startRun` sets `_isAgentRunActive` first, `1895`), and Pi's one event loop runs nothing else until the code that sent the message awaits or returns, so `ctx.isIdle()` reads busy in every extension until then. A handler that waits with `while (!ctx.isIdle()) await sleep(10)` sees the run end, because its `await` is where the loop turns. A Go, Rust, Python or Lisp handler has no `await`, and the Host runs the started run concurrently with the SDK's thread, so the Host cannot tell a raw sleep that stands for Pi's `await` from one that stands for Pi's synchronous wait. The Host answers `isIdle` busy for every extension from the send until the handler returns, calls a member whose Pi API returns a Promise (`waitForIdle`, `exec`, `setModel`, the dialogs and the rest of `returnsPromiseInPi`), or calls the SDK's yield helper (`ctx.Yield()` and `ctx.Sleep(d)` in Go, `ctx.yield_now()` and `ctx.sleep(...)` in Rust and Python, `pig:ctx-yield` and `pig:ctx-sleep` in Lisp), which stands for the `await`. A handler that polls `isIdle` with a raw sleep (`time.Sleep`, `thread::sleep`, `time.sleep`, `sleep`) and no helper keeps the hold and never sees idle until it returns; a send from a thread a handler started after its request returned holds nothing, because no event loop reports where that callback yields. The Node runtime has an event loop and reports its first microtask checkpoint after the send, so it needs no helper and has no difference.
+
+Why: the alternatives are observably worse. Releasing the hold when the triggered turn starts and the Session's busy flag takes over is no release at all, since the Session is busy from the send; it reinstates the defect that a run which ends while the handler still runs makes the next read idle where Pi reads busy. Releasing on a timer is nondeterministic. The helper is the only point where an SDK author can say what Pi's code says with `await`.
+
+Scope: `ctx.isIdle()` after a triggering `sendMessage` in the Go, Rust, Python and Lisp SDKs, isolated and packed, print, JSON and RPC mode. Not affected: a handler that returns, awaits a Promise-returning member or calls the helper; every Node extension.
+
+Owner decision: 2026-11-02, owner ruled "yield helper + divergence": every thread SDK gets the helper with the same interface and behavior, and the residual difference (raw sleep or poll without it, sends from detached threads) is recorded here.
+
+Call-site marker: `coding/extension/host/subprocess/sync_run_hold.go` (`holdAfterSend`, `endSyncRunHold`).
+
+Evidence: `TestReplicatedStateIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSend`: `rw_idle_yield_poll` (a `while !isIdle: sleep` poll with the helper sees idle and returns in every SDK) and `rw_idle_blocking` (a raw sleep keeps the hold while the run ends, against the Session's own answer: `after:true` without the hold). `TestSyncRunHoldEndsAtTheYieldCall`.
+
+Related: D224 (`chord.DeliveryEntered`) uses the same pattern for a watch listener's wait; the two mechanisms never meet, since D224 is a package function of Chord's Go packages and D225 a ctx method of a separate extension process.
+
+Parity allowance: none needed; the scenarios that poll with a helper match Pi, and the raw-sleep poll has no Pi counterpart that a thread SDK can express.
+
+Remove when: the thread-based SDKs can report where a handler's thread yields without an explicit call (for example a runtime-level scheduler of their own), or Pi gives `ctx.isIdle()` a definition that no longer depends on the loop's order.
 
 SCRUTINIZED:approved

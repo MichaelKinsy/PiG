@@ -18,13 +18,13 @@
    #:ctx-wait-cancelled #:ctx-signal #:ctx-tool-call-id #:ctx-request-id #:ctx-on-update
    #:ctx-notify #:ctx-set-status #:ctx-clear-status #:ctx-set-title
    #:ctx-select #:ctx-confirm #:ctx-input #:ctx-editor
-   #:ctx-exec #:exec-result #:exec-result-stdout #:exec-result-stderr #:exec-result-exit-code #:exec-result-killed
+   #:ctx-exec #:exec-result #:exec-result-stdout #:exec-result-stderr #:exec-result-exit-code #:exec-result-killed #:exec-result-truncated
    #:ctx-is-idle-p #:ctx-abort #:ctx-has-pending-messages-p #:ctx-shutdown #:ctx-compact #:ctx-reload
    #:ctx-get-flag #:ctx-get-system-prompt #:ctx-get-thinking-level #:ctx-get-all-tools #:ctx-get-active-tools
    #:ctx-send-message #:ctx-send-user-message #:ctx-append-entry #:ctx-set-session-name
    #:ctx-call-host
    #:ctx-set-active-tools #:ctx-get-commands #:ctx-get-context-usage #:ctx-get-system-prompt-options #:ctx-get-model-info
-   #:ctx-get-model-auth #:ctx-get-scoped-models #:ctx-set-model #:ctx-set-thinking-level #:ctx-set-label #:ctx-wait-for-idle
+   #:ctx-get-model-auth #:ctx-get-scoped-models #:ctx-set-model #:ctx-set-thinking-level #:ctx-set-label #:ctx-wait-for-idle #:ctx-yield #:ctx-sleep
    #:ctx-project-trusted-p #:ctx-get-session-id #:ctx-get-leaf-id #:ctx-get-all-themes #:ctx-get-theme #:ctx-set-theme
    #:ctx-on-width-change #:ctx-get-editor-text #:ctx-tools-expanded-p
    #:registry-find #:registry-get-provider-auth #:registry-refresh #:registry-get-available-of-type
@@ -81,7 +81,7 @@
     #:make-tui-keybinding-definition #:tui-keybinding-definition-default-keys #:tui-keybinding-definition-description #:tui-keybinding-conflict-key
     #:tui-keybinding-conflict-keybindings #:tui-make-keybindings-manager #:tui-keybindings-from-wire #:tui-keybindings-matches
     #:tui-keybindings-get-keys #:tui-keybindings-get-definition #:tui-keybindings-get-conflicts #:tui-keybindings-set-user-bindings
-    #:tui-keybindings-get-user-bindings #:tui-keybindings-get-resolved-bindings #:tui-get-keybindings #:tui-set-keybindings #:make-tui-capabilities
+    #:tui-keybindings-get-user-bindings #:tui-keybindings-get-resolved-bindings #:tui-get-keybindings #:tui-get-select-page-index #:tui-set-keybindings #:make-tui-capabilities
     #:tui-capabilities-images #:tui-capabilities-true-color #:tui-capabilities-hyperlinks #:tui-hyperlink #:tui-detect-capabilities
     #:tui-get-capabilities #:tui-get-terminal-color-mode #:tui-reset-capabilities-cache #:tui-set-capability-overrides #:tui-set-capabilities
     #:tui-error #:tui-error-message #:tui-indexed-color #:tui-rgb-color #:tui-oklch-color #:tui-okhsl-color #:tui-parse-color #:tui-color-to-rgb
@@ -283,7 +283,7 @@
    #:oauth-on-prompt #:oauth-on-select #:oauth-on-manual-code-input #:register-virtual-model #:unregister-virtual-model
    #:ctx-register-virtual-model #:ctx-unregister-virtual-model #:register-mcp-server #:unregister-mcp-server
    #:ctx-register-mcp-server #:ctx-unregister-mcp-server #:ctx-get-mcp-servers #:tool-renderer #:message-renderer
-   #:message-view-renderer #:entry-renderer #:entry-view-renderer #:markdown-transformer #:ctx-set-login #:ctx-register-sprite
+   #:message-view-renderer #:entry-renderer #:entry-view-renderer #:markdown-transformer #:own-thinking-runs #:ctx-own-thinking-runs #:ctx-set-login #:ctx-register-sprite
    #:auth-context #:make-auth-context #:auth-context-p #:auth-context-env #:auth-context-file-exists #:api-key-auth-input
    #:make-api-key-auth-input #:api-key-auth-input-p #:api-key-auth-input-ctx #:api-key-auth-input-credential
    #:api-key-auth-input-signal #:auth-result #:make-auth-result #:auth-result-p #:auth-result-auth #:auth-result-env
@@ -326,7 +326,9 @@
    #:tool-render-context-args #:tool-render-context-tool-call-id #:tool-render-context-cwd #:tool-render-context-execution-started
    #:tool-render-context-args-complete #:tool-render-context-is-partial #:tool-render-context-expanded
    #:tool-render-context-show-images #:tool-render-context-is-error #:tool-render-context-output-pad
-   #:tool-render-context-duration-ms #:tool-render-context-state #:tool-render-context-invalidate #:login-definition
+   #:tool-render-context-duration-ms #:tool-render-context-state #:tool-render-context-invalidate
+   #:tool-render-context-key-text #:tool-render-context-key-hint #:message-render-options-key-text #:message-render-options-key-hint
+   #:entry-render-options-key-text #:entry-render-options-key-hint #:login-definition
    #:make-login-definition #:login-definition-p #:login-definition-brand #:login-definition-hero #:login-definition-mascot
    #:login-definition-palette #:login-definition-name #:login-definition-description #:login-definition-tagline
    #:sprite-definition #:make-sprite-definition #:sprite-definition-p #:sprite-definition-id #:sprite-definition-name
@@ -358,7 +360,7 @@
    #:kit-view #:kit-render-result #:kit-event-node #:kit-event-type #:kit-event-index #:kit-event-item #:kit-event-id #:kit-event-value
    #:kit-event-cursor #:kit-event-mouse
    ;; ui.custom and overlays
-   #:make-custom-component #:make-custom-result #:ctx-custom #:make-mouse-event #:mouse-event-type #:mouse-event-button #:mouse-event-x
+   #:make-custom-component #:custom-component-captures-viewport-input #:make-custom-result #:ctx-custom #:make-mouse-event #:mouse-event-type #:mouse-event-button #:mouse-event-x
    #:mouse-event-y #:mouse-event-screen-x #:mouse-event-screen-y #:mouse-event-width #:mouse-event-height #:mouse-event-shift
    #:mouse-event-alt #:mouse-event-ctrl #:mouse-event-wheel-delta #:mouse-event-click-count
    #:overlay-handle #:overlay-hide #:overlay-set-hidden #:overlay-hidden-p #:overlay-focus #:overlay-unfocus #:overlay-focused-p
@@ -379,6 +381,7 @@
    #:editor-status #:make-editor-status #:editor-status-kind #:editor-status-message #:editor-status-frames #:editor-status-frame
    #:editor-status-spinner-color #:editor-status-message-color #:editor-status-indicator-verbatim
    #:editor-component #:make-editor-component #:editor-component-base #:editor-component-embed-working-status
+   #:editor-component-captures-viewport-input
    #:editor-component-handle-input #:editor-component-handle-mouse #:editor-component-render #:editor-component-set-text
    #:editor-component-insert-text-at-cursor #:editor-component-add-to-history #:editor-component-set-working-status-indicator
    #:editor-component-invalidate
@@ -400,7 +403,7 @@
    #:tui-terminal-clear-line #:tui-terminal-clear-from-cursor #:tui-terminal-clear-screen #:tui-terminal-set-title #:tui-terminal-set-progress
    #:tui-terminal-set-program-status #:tui-terminal-restore-on-exit
    #:tui-component #:make-tui-component #:tui-component-render #:tui-component-invalidate #:tui-component-handle-input
-   #:tui-component-handle-mouse #:tui-component-focusable #:tui-component-on-focus #:tui-component-wants-key-release #:tui-component-focused
+   #:tui-component-handle-mouse #:tui-component-focusable #:tui-component-on-focus #:tui-component-wants-key-release #:tui-component-captures-viewport-input #:tui-component-focused
    #:tui-alt-screen #:make-tui-alt-screen #:tui-alt-screen-viewport-tui-p #:tui-alt-screen-add-child #:tui-alt-screen-add-input-listener
    #:tui-alt-screen-children #:tui-alt-screen-clear #:tui-alt-screen-copy-active-selection-to-clipboard #:tui-alt-screen-flash
    #:tui-alt-screen-full-redraws #:tui-alt-screen-get-clear-on-shrink #:tui-alt-screen-get-copy-on-select #:tui-alt-screen-get-focused-component

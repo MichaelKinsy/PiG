@@ -167,11 +167,10 @@ func thinkingMaxLevelForEntry(entry icodingagent.ModelEntry) ai.ThinkingLevel {
 	return ai.ThinkingLevel(levels[len(levels)-1])
 }
 
+// lookupGeneratedModel matches only providerID's own catalog, so a model of a provider that is not registered yet
+// never takes another provider's API and base URL.
 func lookupGeneratedModel(providerID, modelID string) (*ai.GeneratedModel, bool) {
-	if generated, ok := ai.LookupModel(providerID + "/" + modelID); ok {
-		return generated, true
-	}
-	return ai.LookupModel(modelID)
+	return ai.LookupModelExact(providerID + "/" + modelID)
 }
 
 // buildProviderForEntry builds the provider for entry. A non-empty explicitKey

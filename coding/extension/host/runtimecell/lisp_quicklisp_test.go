@@ -32,7 +32,6 @@ func tgz(t *testing.T, entries map[string]string, headers ...tar.Header) []byte 
 		_, _ = tw.Write([]byte(body))
 	}
 	for _, h := range headers {
-		h := h
 		if err := tw.WriteHeader(&h); err != nil {
 			t.Fatal(err)
 		}

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"testing"
 	"testing/synctest"
+	"time"
 )
 
 // upstream: packages/tui/src/components/editor.ts:1112-1125,2289-2358
@@ -87,7 +88,9 @@ func TestOwnedAutocompleteErrorRunsOnOwner(t *testing.T) {
 	})
 }
 
-// upstream: packages/tui/src/components/editor.ts:2311-2333,2424-2440
+// upstream: packages/tui/src/components/editor.ts:2305-2312,2311-2333,2424-2440
+// A debounced symbol request runs on the ordered worker: its preparation and publication are owner tasks, and the request is
+// complete only after the owner applied the answer. A request without a debounce has no worker (FlushAutocomplete).
 func TestOwnedAutocompleteWaitsForOwnerPublication(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		e, _ := completionUpstreamEditor(t)
@@ -103,7 +106,8 @@ func TestOwnedAutocompleteWaitsForOwnerPublication(t *testing.T) {
 			}
 		})
 		e.SetAutocomplete(&completionUpstreamProvider{query: func(prefix string, _ bool) *AutocompleteSuggestions { return completionUpstreamItems(prefix, "item") }})
-		e.HandleInput("/")
+		e.HandleInput("@")
+		time.Sleep(20 * time.Millisecond)
 		synctest.Wait()
 		select {
 		case prepare := <-tasks:

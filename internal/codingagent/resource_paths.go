@@ -18,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodefs"
 	"github.com/MichaelKinsy/PiG/internal/nodehome"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -102,6 +103,8 @@ type PathMetadata struct {
 	BaseDir string
 	// PackageRoot is the directory of the npm, git or local-directory Package that supplied the resource; it is empty for a top-level resource and for a local source that is a single file.
 	PackageRoot string
+	// ChangelogPath is the changelog file of the Package that supplied the resource, or empty when it has none (package-manager.ts PathMetadata.changelogPath).
+	ChangelogPath string
 }
 
 // ResolvedResource is a resolved resource path with its PathMetadata (package-manager.ts ResolvedResource).
@@ -114,7 +117,7 @@ type ResolvedResource struct {
 
 // SourceInfo is source-info.ts createSourceInfo.
 func (m PathMetadata) SourceInfo(path string) PiSourceInfo {
-	return PiSourceInfo{Path: path, Source: m.Source, Scope: m.Scope, Origin: m.Origin, BaseDir: m.BaseDir}
+	return PiSourceInfo{Path: path, Source: m.Source, Scope: m.Scope, Origin: m.Origin, BaseDir: m.BaseDir, ChangelogPath: m.ChangelogPath}
 }
 
 // ResourcePaths lists the paths of the enabled resources.
@@ -164,7 +167,7 @@ func ValidateAutoDiscoveredOverrides(cwd, agentDir string, sm *SettingsManager, 
 		// Only a pattern that cannot compile throws, so without one in the project skill overrides no ancestor directory is checked, and the ancestor walk is skipped.
 		if packagecontent.OverridesThrow(project.Skills) {
 			for _, ancestor := range DiscoverAncestorAgentsSkillDirs(cwd) {
-				if !samePath(ancestor, userAgentsSkills) {
+				if !resolvepath.PathsEqual(ancestor, userAgentsSkills) {
 					dir, paths = agentSkills(ancestor)
 					steps = add(steps, dir, paths, project.Skills, filepath.Dir(ancestor), packagecontent.Skills)
 				}
@@ -251,7 +254,7 @@ func (s *AgentsSkillScan) Dirs() []AgentsSkillDir {
 	s.once.Do(func() {
 		userAgentsSkills, haveUser := userAgentsSkillsDir()
 		for _, dir := range DiscoverAncestorAgentsSkillDirs(s.cwd) {
-			if !haveUser || !samePath(dir, userAgentsSkills) {
+			if !haveUser || !resolvepath.PathsEqual(dir, userAgentsSkills) {
 				s.dirs = append(s.dirs, AgentsSkillDir{Dir: dir, Skills: packagecontent.DiscoverAgentSkillDirs(dir)})
 			}
 		}
@@ -457,11 +460,11 @@ func OrderResolvedResources(packages, ambient []ResolvedResource) []ResolvedReso
 	ordered := make([]ResolvedResource, 0, len(accumulated))
 	seen := make(map[string]struct{}, len(accumulated))
 	for _, resource := range accumulated {
-		canonical := CanonicalizePath(resource.Path)
-		if _, duplicate := seen[canonical]; duplicate {
+		pathKey := ResourcePathKey(resource.Path)
+		if _, duplicate := seen[pathKey]; duplicate {
 			continue
 		}
-		seen[canonical] = struct{}{}
+		seen[pathKey] = struct{}{}
 		ordered = append(ordered, resource)
 	}
 	return ordered
@@ -508,13 +511,6 @@ func isDirectoryPath(path string) bool {
 func isRegularFilePath(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && info.Mode().IsRegular()
-}
-
-// samePath reports whether Node's path.resolve gives both paths one result.
-func samePath(a, b string) bool {
-	aa, err1 := nodepath.Resolve(a)
-	bb, err2 := nodepath.Resolve(b)
-	return err1 == nil && err2 == nil && aa == bb
 }
 
 // reportCouldNotRead is resource-loader.ts's console.error(chalk.yellow(`Warning: Could not read ${what}: ${error}`)) for a failed readFileSync: chalk colors by

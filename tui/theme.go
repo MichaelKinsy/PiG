@@ -234,7 +234,12 @@ func (t *Theme) GetFgAnsi(token string) string {
 	return ansi
 }
 
-func unknownThemeColor(token string) error { return fmt.Errorf("Unknown theme color: %s", token) }
+// unknownThemeColorError is the Error theme.ts fg, bg, getFgAnsi and getBgAnsi throw for a token the theme does not define.
+type unknownThemeColorError struct{ token string }
+
+func (e unknownThemeColorError) Error() string { return "Unknown theme color: " + e.token }
+
+func unknownThemeColor(token string) error { return unknownThemeColorError{token} }
 
 // GetBgAnsi returns the opening escape sequence of a background token.
 // Mirrors upstream theme.getBgAnsi(tokenName).

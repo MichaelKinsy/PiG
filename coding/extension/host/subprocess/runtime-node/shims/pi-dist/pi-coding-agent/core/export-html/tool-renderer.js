@@ -4,6 +4,7 @@
  * Renders custom tool calls and results to HTML by invoking their TUI renderers
  * and converting the ANSI output to HTML.
  */
+import { keyHint, keyText } from "../../modes/interactive/components/keybinding-hints.js";
 import { ansiLinesToHtml } from "./ansi-to-html.js";
 /**
  * Create a tool HTML renderer.
@@ -54,6 +55,8 @@ export function createToolHtmlRenderer(deps) {
             isError,
             durationMs: undefined,
             outputPad: 1,
+            keyText,
+            keyHint,
         };
     };
     return {

@@ -31,8 +31,8 @@ type liveOps struct {
 
 func observeLiveOps(harness Harness) *liveOps {
 	collected := &liveOps{}
-	observeCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
-		for _, change := range documentChanges(publication.Changes) {
+	followCommits(harness, func(_ context.Context, publication session.ObservedCommit) {
+		for _, change := range documentValues(publication.Changes) {
 			if change.Record.Kind == "pi.live" && len(change.Ops) > 0 {
 				collected.mu.Lock()
 				collected.commits = append(collected.commits, slices.Clone(change.Ops))
@@ -167,16 +167,20 @@ func TestLiveDeltas(t *testing.T) {
 		if len(commits) != 8 {
 			t.Fatalf("commits = %s", jsonText(t, commits))
 		}
-		expectLike(t, commits[0], jsonText(t, []any{[]any{"s", []any{"run"}, map[string]any{"taskId": generations[0], "inputs": []any{"$number"}}}}))
+		expectLike(t, commits[0], jsonText(t, []any{[]any{"s", []any{"run"}, map[string]any{"taskId": generations[0], "inputs": []any{"$number"}, "turns": 0, "first": "$number"}}}))
 		expectLike(t, commits[1], `[["s",["generation"],{"attempt":1}]]`)
-		expectContainsLike(t, commits[2], jsonText(t, []any{[]any{"d", []any{"generation"}}, []any{"s", []any{"tools"}, []any{map[string]any{"callId": "c1", "name": "noop", "taskId": tools[0], "status": "pending"}}}}))
+		expectContainsLike(t, commits[2], jsonText(t, []any{[]any{"d", []any{"generation"}}, []any{"s", []any{"tools"}, []any{map[string]any{"callId": "c1", "name": "noop", "taskId": tools[0], "status": "pending"}}}, []any{"s", []any{"run", "turns"}, 1}}))
 		expectLike(t, commits[3], `[["s",["tools",0,"status"],"running"]]`)
 		expectContainsLike(t, commits[4], jsonText(t, []any{[]any{"s", []any{"tools", 0, "status"}, "done"}, []any{"s", []any{"tools", 0, "entry"}, result}}))
 		expectContainsLike(t, commits[5], jsonText(t, []any{[]any{"d", []any{"tools"}}, []any{"s", []any{"run", "taskId"}, generations[1]}}))
 		expectLike(t, commits[6], `[["s",["generation"],{"attempt":1}]]`)
 		expectContainsLike(t, commits[7], `[["d",["run"]],["d",["generation"]]]`)
 		for _, index := range []int{2, 4, 5} {
-			if len(commits[index]) != 2 {
+			want := 2
+			if index == 2 {
+				want = 3
+			}
+			if len(commits[index]) != want {
 				t.Fatalf("commit %d = %s, want two operations", index, jsonText(t, commits[index]))
 			}
 		}
@@ -313,20 +317,21 @@ func TestLiveDeltas(t *testing.T) {
 		harness, root := openChat(t, store, setup)
 		var mu sync.Mutex
 		values := map[durable.Seq]LiveState{}
-		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
 			for _, change := range documentChanges(publication.Changes) {
-				if change.Record.Kind != "pi.live" {
+				record := documentRecordOf(change)
+				if record.Kind != "pi.live" {
 					continue
 				}
-				store.setLive(change.Record.Id)
-				if change.Value != nil {
-					value := must(durable.FromJsonValue[LiveState](change.Value))
+				store.setLive(record.Id)
+				if changed, ok := change.(durable.DocumentChange); ok {
+					value := must(durable.FromJsonValue[LiveState](changed.Value))
 					mu.Lock()
 					values[publication.Seq] = value
 					mu.Unlock()
 				}
 			}
-		})
+		}})
 		must(submitInput(t, root, "go").Wait(testContext))
 		nothingRuns := func(value LiveState) bool {
 			return value.Generation == nil && !slices.ContainsFunc(value.Tools, func(slot ToolSlot) bool { return slot.Status == ToolSlotRunning })
@@ -355,8 +360,8 @@ func TestLiveDeltas(t *testing.T) {
 		closeHarness(t, harness)
 	})
 
-	// harness-live-deltas.test.ts:343 it("starts calls the request did not offer as done and marks a faulted tool's slot done without an entry")
-	t.Run("starts calls the request did not offer as done and marks a faulted tool's slot done without an entry", func(t *testing.T) {
+	// harness-live-deltas.test.ts:357 it("starts calls the request did not offer as flagged tasks and marks a faulted tool's slot done without an entry")
+	t.Run("starts calls the request did not offer as flagged tasks and marks a faulted tool's slot done without an entry", func(t *testing.T) {
 		setup := chatSetup(t)
 		addTool(t, setup.Registry, DefineTool(durable.ToolRegistration{
 			ToolSchema: ai.ToolSchema{Name: "bad", Description: "bad", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}},
@@ -370,13 +375,6 @@ func TestLiveDeltas(t *testing.T) {
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		ops := observeLiveOps(harness)
 		must(submitInput(t, root, "go").Wait(testContext))
-		var ghostResult durable.EntryId
-		for _, entry := range allEntries(t, root) {
-			if entry.Kind == "pi.tool-result" {
-				ghostResult = entry.Id
-				break
-			}
-		}
 		commits := ops.all()
 		var handover []durable.Op
 		for _, commit := range commits {
@@ -385,8 +383,9 @@ func TestLiveDeltas(t *testing.T) {
 				break
 			}
 		}
+		// #11043: an unoffered call gets a task too, flagged on its slot.
 		expectContainsLike(t, handover, jsonText(t, []any{[]any{"s", []any{"tools"}, []any{
-			map[string]any{"callId": "g", "name": "ghost", "status": "done", "entry": ghostResult},
+			map[string]any{"callId": "g", "name": "ghost", "taskId": "$number", "status": "pending", "unoffered": true},
 			map[string]any{"callId": "b", "name": "bad", "taskId": "$number", "status": "pending"},
 		}}}))
 		// The fault cleanup writes only the status.
@@ -402,8 +401,8 @@ func TestLiveDeltas(t *testing.T) {
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		var mu sync.Mutex
 		var handover *durable.CommitPublication
-		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
-			for _, change := range documentChanges(publication.Changes) {
+		harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
+			for _, change := range documentValues(publication.Changes) {
 				tools, _ := change.Value.Value("tools").([]any)
 				mu.Lock()
 				if change.Record.Kind == "pi.live" && len(tools) == 2 && handover == nil {
@@ -411,7 +410,7 @@ func TestLiveDeltas(t *testing.T) {
 				}
 				mu.Unlock()
 			}
-		})
+		}})
 		must(submitInput(t, root, "go").Wait(testContext))
 		mu.Lock()
 		published := handover
@@ -469,7 +468,7 @@ func TestLiveDeltas(t *testing.T) {
 			return must(LiveDoc.AnyDefinition().CheckpointWhen(object, nil, durable.CheckpointInfo{DeltasSinceBase: 1000}))
 		}
 		slot := func(status string) string { return `{"callId":"c","name":"n","status":"` + status + `"}` }
-		run := `"run":{"taskId":1,"inputs":[]}`
+		run := `"run":{"taskId":1,"inputs":[],"turns":0}`
 		if !base(`{}`) || base(`{`+run+`,"generation":{"attempt":1}}`) || !base(`{`+run+`,"tools":[`+slot("pending")+`,`+slot("done")+`]}`) ||
 			base(`{`+run+`,"tools":[`+slot("done")+`,`+slot("running")+`]}`) || !base(`{`+run+`}`) {
 			t.Fatal("pi.live checkpoint predicate disagrees with whether something runs")

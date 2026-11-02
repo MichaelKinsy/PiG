@@ -1,6 +1,6 @@
 # Additive features
 
-These PiG-only features have no Pi equivalent. This page lists the ones that matter when you extend or modify PiG: extensions and SDKs, Piglets and Binaries, and diagnostic commands. 20 more additive records cover performance, crash handling, security, and platform details; they do not change how you author. Search this page with `grep -n -i <word>`. [Divergences](divergences.md) lists the places where PiG behaves differently from Pi.
+These PiG-only features have no Pi equivalent. This page lists the ones that matter when you extend or modify PiG: extensions and SDKs, Piglets and Binaries, and diagnostic commands. 21 more additive records cover performance, crash handling, security, and platform details; they do not change how you author. Search this page with `grep -n -i <word>`. [Divergences](divergences.md) lists the places where PiG behaves differently from Pi.
 
 | ID | Title | Summary |
 |---|---|---|
@@ -24,3 +24,6 @@ These PiG-only features have no Pi equivalent. This page lists the ones that mat
 | D202 | A Piglet Binary accepts overlay Piglets unless it is built closed (build.closed) | A Piglet Binary accepts a Piglet that you choose at launch as an overlay, as stock PiG does, unless you build it with build.closed. |
 | D209 | A session exports its active Piglet to its tool processes (PIG_ACTIVE_PIGLET_SOURCE) | A running session sets PIG_ACTIVE_PIGLET_SOURCE for its tools, so pig status, pig diagnose, and pig piglet show can name the active Piglet. |
 | D211 | A Piglet can withhold a project's context files until the project is trusted (contextFiles: trusted-only) | A Piglet with contextFiles: trusted-only loads no AGENTS.md or CLAUDE.md of a project that is not trusted, and says which files it skipped. |
+| D214 | An extension can own thinking runs, so a run that draws no rows leaves no blank rows (ownThinkingRuns) | An extension that calls ownThinkingRuns() leaves no blank rows around a thinking run that is hidden or rewritten to empty text, and can turn that on and off while it runs. |
+| D216 | A configured local Package that does not exist is reported at startup and by pig install --validate-only | A local Package in packages[] whose directory is gone shows as a session warning and fails pig install --validate-only, with its resolved path and the pig remove that drops it. |
+| D223 | The plugins' Node subprocess: a store, a spare process, exit details, and the link waits it needs | A program that evaluates chord plugins can give them a SQLite store, keep a spare Node process warm, read why the process ended, and wait for a host to handle a link's deliveries. |

@@ -12,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -98,8 +99,7 @@ func (m *extensionSourceInfos) set(path string, info icodingagent.PiSourceInfo) 
 func (m extensionSourceInfos) find(resourcePath string) (icodingagent.PiSourceInfo, bool) {
 	normalized := absPath(resourcePath)
 	for _, path := range m.paths {
-		source := absPath(path)
-		if normalized == source || strings.HasPrefix(normalized, source+string(filepath.Separator)) {
+		if resolvepath.IsPathWithin(path, normalized) {
 			info := m.infos[path]
 			info.Path = resourcePath
 			return info, true

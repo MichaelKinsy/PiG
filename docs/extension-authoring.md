@@ -68,6 +68,20 @@ ext.Command("refresh", "Refresh models.", func(ctx sdk.Context, _ string) error 
 
 The Go subprocess SDK already runs each inbound handler on its own goroutine. Blocking inside the handler preserves upstream `await`: the host receives the response only when the callback completes. Wrapping the body in another `go func()` and returning `nil` early changes ordering, drops the returned error, and cancels the handler-scoped `sdk.Context` as soon as the handler returns.
 
+After a triggering `pi.sendMessage(..., { triggerTurn: true })`, `ctx.isIdle()` reads busy in every extension until the code that sent the message awaits or returns (Pi's one event loop runs nothing else before that). A thread-based SDK has no `await`, so blocking is not the same here: a handler that blocks on a raw sleep keeps `isIdle` busy for everyone until it returns, and only a call Pi awaits (`waitForIdle`, `exec`, the dialogs, ...) or the SDK's yield helper stands for `await`. A handler that waits for the run it started polls with the helper:
+
+```go
+trigger := true
+ctx.SendCustomMessage(msg, sdk.SendMessageOptions{TriggerTurn: &trigger})
+for idle, _ := ctx.IsIdle(); !idle; idle, _ = ctx.IsIdle() {
+    if err := ctx.Sleep(10 * time.Millisecond); err != nil { // yields first, then sleeps; not time.Sleep
+        return err
+    }
+}
+```
+
+The helpers are `ctx.Yield()` and `ctx.Sleep(d)` (Go), `ctx.yield_now()` and `ctx.sleep(duration)` (Rust, with a `Duration`), `ctx.yield_now()` and `ctx.sleep(seconds)` (Python), and `pig:ctx-yield` and `pig:ctx-sleep` (Lisp). Like Pi's `setTimeout`, the sleep helpers do not return early when the request is cancelled; use `Done()` (`is_cancelled()`, `ctx-wait-cancelled`) to stop earlier. A Node extension awaits as in Pi and needs nothing. The remaining difference is D225: a raw sleep keeps the hold, and a send from a thread the handler started holds nothing. `chord.DeliveryEntered` (D224) is the same pattern for a watch listener's wait in Chord's Go packages.
+
 ### Per-run prompt sections
 
 `before_agent_start` handlers receive `event.messageType`: `"user"` with `event.prompt` and `event.images` for a run that a user message starts, and `"custom"` with `event.message` for a run that `sendMessage` with `triggerTurn` starts while the agent is idle. A custom run also checks compaction first, applies the handlers' result and delivers pending `nextTurn` messages, as a user run does. Either run counts as busy while its handlers run, so messages sent meanwhile join it and a prompt or `sendUserMessage` must name its delivery. Handlers that should act only on user prompts check `event.messageType === "user"`, as `examples/extensions/plan-mode` does. This is Pi 1.4.0's behavior (Pi #5581, Pi PR #10739).
@@ -224,6 +238,10 @@ carries the final result's `durationMs`, which a shell card draws as
 `set_output_pad`, `ToolResult::duration_ms`; Python `output_pad=`,
 `set_output_pad`, `ToolResult(duration_ms=)`. Node uses Pi's components
 directly.
+
+### Keybinding hints in renderers
+
+A renderer formats the user's configured keybindings with `keyText(id)` and `keyHint(id, description)` on the tool render context and on the message and entry renderer options, as Pi's `KeybindingHints` does (Pi 9376c8d1, #4748). `keyText` returns the keys of the id, joined by `/`, or an empty string when it has none; `keyHint` returns the keys in the host theme's dim color followed by the description in its muted color. Use these in renderers instead of the module-level function: Go `render.KeyHint("app.tools.expand", "to expand")` and `options.KeyText(...)`, Rust `render.key_hint(...)` and `options.key_text(...)`, Python `render.key_hint(...)` and `options.key_text(...)` (the options are the host's mapping and carry the two methods), Lisp `(pig:tool-render-context-key-hint render id description)` and `(pig:message-render-options-key-text options id)`, Node `context.keyHint(...)` and `options.keyText(...)`.
 
 ### Mouse in custom components
 
@@ -563,6 +581,10 @@ The Promise contract is kept as blocking calls: creation returns once resources 
 The session belongs to the extension's connection: closing the connection aborts the run, cancels the tools' contexts and disposes the session, as Node's `independent-session-owner.mjs` does. `message_update` events travel as a keyframe followed by operations (`child_session_delta.go`) and the listener receives the full event Pi's `subscribe` delivers (`message` and `assistantMessageEvent.partial`), so a long output costs wire bytes linear in its length.
 
 Differences from Pi, each tested: a `model` the host's registry does not hold raises `Model <provider>/<id> not found` (Pi uses the object as given; a wire object carries no stream function), and Pi's `sessionManager`, `settingsManager`, `resourceLoader` and `modelRuntime` objects are in-process handles that do not cross the wire (`settings` and `resources` select what they would). `Dispose` is Pi's: the session is disconnected and its listeners dropped, a later prompt still runs the agent, and the host releases the session when the connection closes. The expected observations (event order, the leading system message, error messages) come from running Pi's own `createAgentSession` (`test/extension-conformance/testdata/child-session-want.json`).
+
+## Thinking runs
+
+An extension that draws the model's thinking itself, for example in an activity tree, calls `pi.ownThinkingRuns()` (Go `ext.OwnThinkingRuns(true)`, Rust `ext.own_thinking_runs(true)`, Python `ext.own_thinking_runs()`, Lisp `(own-thinking-runs ext)`) while it loads, and rewrites the visible run to an empty string with a Markdown transformer for `assistant-thinking`. The built-in message then draws no blank rows for a run that is hidden or empty (D214). Call it again with `false` through the runtime entry point (`ctx.OwnThinkingRuns(false)`, `ctx.own_thinking_runs(False)`, `ctx-own-thinking-runs`, Node `pi.ownThinkingRuns(false)`) to give the rows back; the flag is yours alone, the host ORs it with other extensions', and it leaves with your extension. In Node the call is a void setter ordered after your earlier UI calls; elsewhere it returns once the host applied it.
 
 ## Adding a new extension API surface
 

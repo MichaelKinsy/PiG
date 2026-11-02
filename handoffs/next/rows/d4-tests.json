@@ -1,0 +1,182 @@
+{
+ "packages/chord/test/next/documents/address-source.test.ts": {
+  "ported": [
+   "address frames › a write over the read value carries its ops; over another base, a root replacement",
+   "address frames › a retirement reads initial() with the flag; a recreation in the same batch is one root replacement, flagged",
+   "address frames › a replacement outside a commit (a load, a migration) is a root replacement",
+   "unwatched addresses › keep no ops of a write: no frame takes them"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/documents/definition.test.ts": {
+  "ported": [
+   "defineState › types the value and whether it is keyed",
+   "defineState › Restricted names",
+   "initial() (R8) › is checked against the schema once, the first time it is used",
+   "initial() (R8) › refuses a value that does not match, every time until one does",
+   "fingerprints › are computed once from the schema's structure: descriptions ignored, a structural change seen",
+   "migrate (R8) › maps an older value and checks the result against the schema each time it produces one",
+   "migrate (R8) › refuses an older value without a migrate"
+  ],
+  "missing": [],
+  "designedOut": [
+   "defineState › typed value, keyed and persisted flags (the `expectTypeOf` assertions): compile-time only; Go has one *StateDefinition whose documents are *JsonObject (a `var _ *JsonObject` assertion and the runtime Keyed check remain)",
+   "defineState(42 as never, ...) 'A state name 42': a Go name is a string, the call cannot be written"
+  ]
+ },
+ "packages/chord/test/next/documents/documents.test.ts": {
+  "ported": [
+   "singleton documents › read initial() until written and again after a retire, whose frame replaces the root",
+   "singleton documents › throw not_ready when read in the factory",
+   "keyed documents › are absent until written; get, keys and retire by key",
+   "when the owner ends › documents are dropped: every use throws released and watches end"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/documents/fence.test.ts": {
+  "ported": [
+   "seal tokens › start open and stay sealed once sealed"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/documents/handles.test.ts": {
+  "ported": [
+   "keyed handles › list keys in code point order, not UTF-16 order",
+   "sealed handles › still read synchronously and from memory; changes and retirements are refused released"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/documents/keyed-slot.test.ts": {
+  "ported": [
+   "keyed reads in memory › get and keys take a context; keys come in code point order",
+   "migration on access › a newer version migrates each in-memory key when it is read; a key whose migrate fails fails the owner then",
+   "keys and the text rules › a lone surrogate in a key is U+FFFD at every entry point, in memory and in the store; NUL is refused",
+   "keys and the text rules › in memory too: one key per spelling, NUL refused",
+   "keys and the text rules › the empty key is a key: listed first, also on a later page",
+   "keyed watches › watch(key) is undefined when absent; it follows the address through a retirement and a recreation",
+   "keyed watches › a stopped watch unpins its key: its source is collected",
+   "at(key) › is initial() while absent, a state member, derive and on source; retirement arrives with the flag",
+   "at(key) › a persisted key is loaded before the object goes live and stays pinned until the next factory returns",
+   "cold keyed loads on the line › load a cold key once; a cached get touches no SQLite; an absent key is not cached",
+   "cold keyed loads on the line › two readers share one load; a cancelled waiter rejects alone",
+   "cold keyed loads on the line › a cold get racing a draft of the same key: the load installs only while the key is absent",
+   "cold keyed loads on the line › keys come from the store in code point order, a page per line job",
+   "cold keyed loads on the line › tx.retire of a cold key finds it without loading it; an absent key retires nothing",
+   "cold keyed loads on the line › tx.retire of a cold key stored at %s fails the owner broken as a read would and keeps it (R15, audit)",
+   "cold keyed loads on the line › a retirement cut by its attempt's seal while it finds the document fails no successor (audit)",
+   "cold keyed loads on the line › a sealed handle reads cached documents; a cold read is refused released",
+   "cold keyed loads on the line › a sealed handle joining a cold load in flight is refused released (rule 4)",
+   "cold keyed loads on the line › cold reads queued on the line before the object's end are refused released when they run after it",
+   "cold keyed loads on the line › cold reads queued behind an admitted step are refused released when their attempt failed live meanwhile",
+   "cold keyed loads on the line › a still-valid waiter sharing that load gets the document: only the sealed handle's read is refused",
+   "cold keyed loads on the line › a load cut by the seal never installs: a successor's retirement stands",
+   "cold keyed loads on the line › a plugin migrate throwing a ChordError fails its owner like any other error",
+   "cold keyed loads on the line › a key whose migrate fails fails its owner broken; the get rejects with the cause",
+   "eviction › an unpinned key idle for the retention leaves memory; a pinned one stays",
+   "eviction › an evicted document is collected"
+  ],
+  "missing": [
+   "at(key) › only in the factory [host: the \"valid only in the factory\" error is the attempt's (host/attempt.ts, host/reference.ts); the harness's KeyDeclarer is a stand-in]",
+   "migration on access › a newer version migrates each in-memory key when it is read; a key whose migrate fails fails the owner then [host half: host: the object_failed report kinds and reference.state (the documents' failure is asserted through the object's Failures)]",
+   "cold keyed loads on the line › tx.retire of a cold key stored at %s fails the owner broken as a read would and keeps it (R15, audit) [host half: host: object_failed kinds and reference.state]",
+   "cold keyed loads on the line › a retirement cut by its attempt's seal while it finds the document fails no successor (audit) [host half: host: object_failed kinds and reference.state]",
+   "cold keyed loads on the line › a plugin migrate throwing a ChordError fails its owner like any other error [host half: host: object_failed kinds and reference.state]",
+   "cold keyed loads on the line › a key whose migrate fails fails its owner broken; the get rejects with the cause [host half: host: object_failed kinds and reference.state]"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/documents/line.test.ts": {
+  "ported": [
+   "the line › hands the line to each holder in the order they asked, once the previous one released",
+   "the line › ignores a second release of the same holder"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/documents/persistence.test.ts": {
+  "ported": [
+   "loads › load an absent document as undefined and a stored one with its record",
+   "loads › migrate an older stored version and check the result once",
+   "loads › refuse a stored version newer than the code's and the same version with another fingerprint (D9)",
+   "loads › find a live record without loading it, and list keys in code point order by pages",
+   "staged writes › store a creation as a base, changes as deltas until checkpointWhen asks for a base",
+   "staged writes › store a base when the stored version is older than the definition's (the migrated base written back)",
+   "staged writes › stage a retirement before a recreation, and number creations by their order in the commit",
+   "staged writes › serialize at staging: a value JSON cannot encode fails there, never in the step (rule 8)"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/documents/residency.test.ts": {
+  "ported": [
+   "the idle structure › evict idle documents oldest first once their retention passed, with one timer",
+   "the idle structure › move a touched document to the back at most once per granule",
+   "the idle structure › forget pinned documents; after end nothing is evicted and no timer is left"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/documents/slot.test.ts": {
+  "ported": [
+   "retirement › reaches watches as initial() with retired: true",
+   "retirement › a retire and a recreate of a present document in one transaction: one frame, retired, the new value",
+   "across attempts › keep in-memory documents across a failure and retry; initial() is taken once",
+   "across attempts › drop the in-memory documents a later factory no longer declares: their watches end",
+   "across attempts › keep them across a throwing factory: only a factory that returns drops what it does not declare",
+   "across attempts › migrate in memory when a later attempt declares a newer version; the old handles are refused",
+   "across attempts › fail the attempt broken for a flipped keyed, an older version or a schema changed without a bump",
+   "persisted singletons › load once per object at activation (not again on a retry), and survive the host",
+   "persisted singletons › migrate a stored older version at load; the next change writes the migrated base back",
+   "persisted singletons › fail the activation broken for a newer stored version or another fingerprint at the same version (D9)",
+   "persisted singletons › refuse persisting without a stable identity or a store, and a flipped persist"
+  ],
+  "missing": [
+   "across attempts › keep them across a throwing factory: only a factory that returns drops what it does not declare [host half: host: the thrown factory's message \"app.restartable(1): factory threw\" and the `errors` report]",
+   "across attempts › fail the attempt broken for a flipped keyed, an older version or a schema changed without a bump [host half: host: the reported kinds [object_failed, activation_failed] and the \"app.restartable(1): \" prefix (the documents' own message is asserted)]",
+   "persisted singletons › fail the activation broken for a newer stored version or another fingerprint at the same version (D9) [host half: host: the \"app.store: \" prefix and the host.get rejection (Activate's error is asserted)]",
+   "persisted singletons › refuse persisting without a stable identity or a store, and a flipped persist [host half: host: `persist needs a stable identity` and `persist needs a store` are host/attempt.ts checks; Declare makes neither (the flipped-persist part is ported)]"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/documents/transaction.test.ts": {
+  "ported": [
+   "transactions › run one at a time per object and return what their callback returns",
+   "transactions › give the same draft for the same document",
+   "transactions › settle a warm draft at once: a continuation the callback did not await runs before the commit (rule 3)",
+   "transactions › reject a draft of a handle a transaction cannot use instead of throwing",
+   "transactions › commit nothing when nothing changed",
+   "transactions › discard everything on a throw and on an aborted context",
+   "transactions › revoke their drafts when they settle",
+   "transactions › refuse another object's documents",
+   "transactions › commit the object's documents in one batch: one compute, one frame",
+   "transactions › commit their other changes when they retire an absent document (R13)",
+   "transactions › draft a retired document anew: watches get a root replacement",
+   "the in-memory change's cost › settles an in-memory change within five microtask turns (a guard: an extra await per tx operation shows here)",
+   "staged changes › adopt in the commit step with the documents, then hear of the commit once the line is free",
+   "staged changes › adopt without any document change, and hear of a discard instead when the transaction throws",
+   "the seal fence › discards the transaction holding the line at the seal: the line is free, its later uses are refused",
+   "the seal fence › refuses a sealed attempt's transactions waiting for the line and every new one; its handles still read",
+   "tables in a transaction › commit rows and documents in one step: the documents adopt inside it, one seq",
+   "tables in a transaction › in-memory-only commits take no step and no seq (W12)",
+   "tables in a transaction › read committed rows with tx.page and tx.rows, overlay own writes with tx.get",
+   "tables in a transaction › write nothing on a throw or an abort, and refuse a callback that settles with a pending read (rule 3)",
+   "tables in a transaction › refuse another object's table",
+   "tables in a transaction › a commit queued behind another owner's step is refused at the seal; an admitted one is adopted",
+   "persisted documents in a transaction › commit persisted and in-memory documents in one step; a delta commit takes three statements",
+   "persisted documents in a transaction › a keyed retirement takes 6a's statements: the counted DELETE, the revisions, lastSeq (cost guard)",
+   "persisted documents in a transaction › assign the created documents' ids by their order in the commit; retire and recreate in one commit",
+   "persisted documents in a transaction › draft a cold keyed document by loading it inside the transaction; refuse a callback with a pending load",
+   "persisted documents in a transaction › settle a warm keyed draft at once: a continuation the callback did not await runs before the commit",
+   "persisted documents in a transaction › a commit cut at the seal while it waits in the store's queue rejects released at once, writing nothing",
+   "persisted documents in a transaction › a host closing while an admitted commit is in the SQL waits for its adoption; the store stays usable"
+  ],
+  "missing": [
+   "persisted documents in a transaction › a handler's commit held in the SQL past closeTimeout still adopts before the object ends; the store stays usable [host: `serve` of a method handler, closeTimeout, the drain_timeout report and the host releasing a stuck handler call; the documents half (an admitted commit holds the line past the seal and adopts) is TestPersistedDocumentsInATransactionAHostClosingWhileAnAdmittedCommitIsInTheSQLWaitsForItsAdoptionTheStoreStaysUsable]"
+  ],
+  "designedOut": []
+ }
+}

@@ -1167,14 +1167,21 @@ func TestNormalizePackageSourceForSettings_UsesScopeBase(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	relative := filepath.Join("..", "ext", "sysmon")
 	for _, baseDir := range []string{filepath.Join(tmp, "home", ".pig"), filepath.Join(cwd, ".pig")} {
 		want, err := filepath.Rel(baseDir, pkg)
 		if err != nil {
 			t.Fatal(err)
 		}
-		got := packagemanager.NewPackageManager(packagemanager.PackageManagerOptions{CWD: cwd, SettingsManager: nil}).NormalizeSourceForSettings(baseDir, pkg)
-		if got != want {
-			t.Errorf("base %q: stored path = %q, want %q", baseDir, got, want)
+		manager := packagemanager.NewPackageManager(packagemanager.PackageManagerOptions{CWD: cwd, SettingsManager: nil})
+		if got := manager.NormalizeSourceForSettings(baseDir, relative); got != want {
+			t.Errorf("base %q: stored path of %q = %q, want %q", baseDir, relative, got, want)
+		}
+		// pig divergence (D215): a path typed absolute, or from the home directory, is stored as typed (trimmed), not relative to baseDir.
+		for typed, want := range map[string]string{pkg: pkg, " " + pkg + " ": pkg, "~/ext/sysmon": "~/ext/sysmon"} {
+			if got := manager.NormalizeSourceForSettings(baseDir, typed); got != want {
+				t.Errorf("base %q: stored path of %q = %q, want %q", baseDir, typed, got, want)
+			}
 		}
 	}
 

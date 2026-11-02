@@ -314,6 +314,8 @@ func (session *SessionImpl) touchChanged(documents []durable.DocumentCommitChang
 		switch change := change.(type) {
 		case durable.DocumentChange:
 			record = change.Record
+		case durable.DocumentRetireChange:
+			record = change.Record
 		case durable.DocumentCopyChange:
 			record = change.Record
 		}

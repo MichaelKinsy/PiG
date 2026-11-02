@@ -310,6 +310,20 @@ type TaskScheduler struct {
 	waiters map[durable.TaskId]*orderedSet[durable.TaskId]
 	// sleeping holds the sleeping live tasks, due or not: the candidates of wakeDueLocked.
 	sleeping *orderedSet[durable.TaskId]
+	// idleOrder holds the kept contexts with an idle period by idleSince, oldest first: the expiry order, so neither an expiry
+	// nor finding the next one visits every kept context. It stays sorted when the Harness clock goes back (see markIdleLocked).
+	idleOrder *orderedSet[durable.ConversationId]
+	// idleNewest is at least the newest idleSince in idleOrder (drops do not lower it): an older one added means the clock went back.
+	idleNewest float64
+	// idleDeferred holds the conversations whose idle check waits for a chain load: while a live task's chain is not loaded,
+	// idleLocked counts it inside every scope, so a check of any scope is not trustworthy. The conversations above a task whose
+	// chain a load resolved are added, and the next idle check after the load covers them.
+	idleDeferred idleScopes
+	// unknownsChanged is set when a check has to cover every scope after a chain load: one that stopped early, or one a check
+	// could not wait for.
+	unknownsChanged bool
+	// fullIdleChecks counts the idle checks that covered every scope (a diagnostic for tests).
+	fullIdleChecks int
 	// timer is the timer for the earliest sleep, without OnWake while scheduling runs.
 	timer *wakeTimer
 	// lastWake is the last value given to OnWake, so an unchanged one is not repeated.
@@ -409,6 +423,8 @@ func NewTaskScheduler(options TaskSchedulerOptions) *TaskScheduler {
 		finalizeChecks:      newOrderedSet[durable.TaskId](),
 		waiters:             map[durable.TaskId]*orderedSet[durable.TaskId]{},
 		sleeping:            newOrderedSet[durable.TaskId](),
+		idleOrder:           newOrderedSet[durable.ConversationId](),
+		idleDeferred:        idleScopes{},
 		blockedListeners:    map[int]func(){},
 		dropQueue:           newOrderedSet[treeNode](),
 		unsubscribeRegistry: func() {},
@@ -443,7 +459,7 @@ func (s *TaskScheduler) liveValuesLocked() []anyTaskRecord {
 // a task cut off settings.restartLimit times ends when it is next reserved. Read-only, it only loads them: a running task
 // stays as committed, running in another process.
 func (s *TaskScheduler) Open(ctx context.Context) error {
-	s.options.Session.ObserveCommits(func(_ context.Context, publication session.ObservedCommit) { s.observe(publication) })
+	s.options.Session.FollowCommits(func(_ context.Context, publication session.ObservedCommit) { s.observe(publication) })
 	s.options.Session.SubscribeClose(s.seal)
 	s.unsubscribeRegistry = s.options.Registry.Subscribe(func() {
 		s.notifyBlocked()
@@ -582,7 +598,7 @@ func (s *TaskScheduler) notifyBlockedLocked() {
 	s.background.Go(func() {
 		for _, listener := range listeners {
 			session.Contained(listener, func(err error) {
-				s.options.Report(context.Background(), err, durable.ReportInfo{Type: durable.ReportListenerError})
+				s.options.Report(context.Background(), err, durable.ReportInfo{Kind: durable.ReportListenerError})
 			})
 		}
 	})
@@ -629,31 +645,33 @@ func (s *TaskScheduler) wakeLocked() Wake { return s.wakeAtLocked(s.options.Now(
 func (s *TaskScheduler) wakeAtLocked(now float64) Wake {
 	// A reconcile pass with work to do is work too: it finalizes held outcomes and marks cascades, at open as recovery. A
 	// process that dies before it lands must be woken again. A pass with nothing to do is not.
-	active := len(s.invocations) > 0 || s.reconcilingWork > 0 || s.reconcileWorkLocked()
-	var at *float64
+	// Pi 35dfa757 the earliest sleep comes from the sleeping tasks, and the live tasks are scanned for one that
+	// can run only while nothing else answers.
+	active := len(s.invocations) > 0 || s.reconcilingWork > 0 || s.reconcileWorkLocked() || s.runsNowLocked(now)
+	return Wake{Active: active, At: s.earliestSleepLocked(now)}
+}
+
+// runsNowLocked reports whether a live task can run now: the scan wake needs only while no invocation runs.
+func (s *TaskScheduler) runsNowLocked(now float64) bool {
 	var snapshot durable.RegistrySnapshot
 	snapshotFailed := false
-	for _, record := range s.liveValuesLocked() {
+	runs := false
+	// In insertion order, stopping at the first: a Session with nothing to run pays one pass over its live tasks.
+	s.liveOrder.Range(func(id durable.TaskId) bool {
+		record := s.live[id]
 		state := record.State
 		if state.Status == durable.TaskCompleting {
-			continue
+			return true
 		}
 		if state.Status == durable.TaskWaiting && !record.AbortRequested && slices.ContainsFunc(state.On, func(id durable.TaskId) bool { _, live := s.live[id]; return live }) {
-			continue
+			return true
 		}
-		if state.Status == durable.TaskSleeping && !record.AbortRequested && state.Until != nil && *state.Until > now {
-			if at == nil || *state.Until < *at {
-				until := *state.Until
-				at = &until
-			}
-			continue
-		}
-		if active {
-			continue
+		if notDueAt(record, now) {
+			return true
 		}
 		// An abort invocation waits for the live work below it, which counts itself.
 		if record.AbortRequested && len(s.waitingOnLocked(record, true)) > 0 {
-			continue
+			return true
 		}
 		// A task no definition can take waits for a registry change, except an abort-marked one, which is orphaned.
 		if !record.AbortRequested || record.AbortReason != "" {
@@ -662,12 +680,13 @@ func (s *TaskScheduler) wakeAtLocked(now float64) Wake {
 				snapshotFailed = snapshot == nil
 			}
 			if snapshot != nil && s.fitLocked(record.Id, record.Version, snapshot.Task(record.Kind)).reason != "" {
-				continue
+				return true
 			}
 		}
-		active = true
-	}
-	return Wake{Active: active, At: at}
+		runs = true
+		return false
+	})
+	return runs
 }
 
 // snapshotOrReportLocked takes a registry snapshot; one that panics is reported and yields nil.
@@ -951,6 +970,9 @@ func (s *TaskScheduler) observe(publication session.ObservedCommit) {
 	changed := false
 	var updated []anyTaskRecord
 	var terminal []anyTaskRecord
+	// The conversations whose idleness the commit's task changes can change; nil when a chain is not known (every conversation).
+	dirty := idleScopes{}
+	var reached map[durable.TaskId]struct{}
 	// Edges first, so the tasks a commit creates in a new conversation hang from it.
 	for _, change := range publication.Changes {
 		if write, ok := change.(durable.ConversationWrite); ok {
@@ -975,6 +997,14 @@ func (s *TaskScheduler) observe(publication session.ObservedCommit) {
 			before = &previous
 		}
 		s.trackLocked(before, record)
+		// Pi 35dfa757 idleness counts live tasks, so only a task that became live or ended can change it.
+		// Collected before sweepLocked, which may forget the chain of a task that ended.
+		// A new task whose chain is not loaded has its scopes settled once the chain is (loadChainLocked), where Pi has loaded the chain
+		// of a new task in the commit that creates it.
+		pendingChain := !hadPrevious && s.unloaded.Has(record.Id)
+		if (!hadPrevious || record.State.Status == durable.TaskTerminal) && dirty != nil && !pendingChain && !s.addScopesAboveLocked(record, dirty, &reached) {
+			dirty = nil
+		}
 		if record.State.Status == durable.TaskTerminal {
 			delete(s.failedMigrations, record.Id)
 			delete(s.failFastChecks, record.Id)
@@ -1054,7 +1084,7 @@ func (s *TaskScheduler) observe(publication session.ObservedCommit) {
 	// settled for good; only the code awaiting them resumes after the host listeners.
 	var idleWakes []func()
 	if changed {
-		idleWakes = s.settleIdleWaitsLocked()
+		idleWakes = s.settleIdleWaitsLocked(s.effectiveScopesLocked(dirty))
 	}
 	s.mu.Unlock()
 	// Upstream resolves a wait here, inside the observer, so it is settled for good and only the code awaiting it resumes
@@ -1069,16 +1099,79 @@ func (s *TaskScheduler) observe(publication session.ObservedCommit) {
 	if !changed {
 		return
 	}
-	s.options.Session.DeferUntilPublished(s.resolveIdleWaiters)
+	s.options.Session.DeferUntilPublished(func() { s.settleIdleScopes(dirty) })
 	s.kick()
 }
 
-// settleIdleWaitsLocked takes the idle waits the state decides out of the pending set and fixes their result, as resolving
+// idleScopes is a set of conversations whose idleness a change can change; nil stands for every conversation.
+type idleScopes map[durable.ConversationId]struct{}
+
+// addScopesAboveLocked adds the conversations above record to scopes: those whose idleness a change of it can change. It reports
+// false when a node on the way up is not known. A conversation already in scopes has everything above it there too, and so has a
+// task in reached, the tasks of this commit whose way up was walked: a chain of owners is walked once, not once per task. reached
+// is made when a walk first passes a task, and may be nil.
+func (s *TaskScheduler) addScopesAboveLocked(record anyTaskRecord, scopes idleScopes, reached *map[durable.TaskId]struct{}) bool {
+	if reached != nil {
+		defer func() {
+			if *reached == nil {
+				*reached = map[durable.TaskId]struct{}{}
+			}
+			(*reached)[record.Id] = struct{}{}
+		}()
+	}
+	at := parentOf(nodeOf(record))
+	for {
+		if at.isTask {
+			if reached != nil {
+				if _, done := (*reached)[at.task]; done {
+					return true
+				}
+			}
+			node, ok := s.nodeLocked(at.task, nil)
+			if !ok {
+				return false
+			}
+			at = parentOf(node)
+			continue
+		}
+		if _, done := scopes[at.conversation]; done {
+			return true
+		}
+		scopes[at.conversation] = struct{}{}
+		edge, known := s.edgeLocked(at.conversation, nil)
+		if !known {
+			return false
+		}
+		if edge == nil {
+			return true
+		}
+		at = up{isTask: true, task: *edge}
+	}
+}
+
+// effectiveScopesLocked is scopes with the conversations whose idle check was deferred; nil (every conversation) when scopes is
+// nil or a check over every scope is owed.
+func (s *TaskScheduler) effectiveScopesLocked(scopes idleScopes) idleScopes {
+	if scopes == nil || s.unknownsChanged {
+		return nil
+	}
+	if len(s.idleDeferred) == 0 {
+		return scopes
+	}
+	merged := maps.Clone(scopes)
+	maps.Copy(merged, s.idleDeferred)
+	return merged
+}
+
+// settleIdleWaitsLocked takes the idle waits of the conversations in scopes (all when nil) and the Harness-wide ones that the state decides out of the pending set and fixes their result, as resolving
 // a promise does, and returns the functions that wake them (Waiters.Settle): a seal that comes before the wake can no
 // longer reject them.
-func (s *TaskScheduler) settleIdleWaitsLocked() []func() {
+func (s *TaskScheduler) settleIdleWaitsLocked(scopes idleScopes) []func() {
 	var wakes []func()
 	for _, conversationId := range s.idleWaiters.Keys() {
+		if _, inScopes := scopes[conversationId]; scopes != nil && !inScopes {
+			continue
+		}
 		if s.idleLocked(&conversationId) {
 			wakes = append(wakes, s.idleWaiters.Settle(conversationId, struct{}{}))
 		}
@@ -1089,35 +1182,162 @@ func (s *TaskScheduler) settleIdleWaitsLocked() []func() {
 	return wakes
 }
 
-// resolveIdleWaiters resolves idle waiters, and drops each kept context whose conversation has been idle for the
-// retention period (scheduler.ts #settleIdle). It runs behind the host listeners of the commit that queued it, at the end
-// of a reconcile pass, and on the context expiry timer.
-func (s *TaskScheduler) resolveIdleWaiters() {
+// settleIdleScopes is scheduler.ts #settleIdle after task changes below the conversations in scopes (every conversation when
+// nil): it resolves their idle waiters and the Harness-wide ones, drops the kept contexts whose idle period passed the
+// retention, then starts or ends the idle periods of the kept contexts in scopes. A task change can change the idleness only of
+// the conversations above it, so no check visits every conversation. It runs behind the host listeners of the commit that queued
+// it.
+//
+// Pi 35dfa757 settles the conversations above the changed tasks, and expires idle ranges from an index ordered
+// by idleSince.
+func (s *TaskScheduler) settleIdleScopes(scopes idleScopes) {
 	now := s.options.Now()
 	// #settleIdle and the #scheduleExpiry it calls each read the setting, so a failing source is reported twice.
 	retention := s.contextRetentionMs()
 	expiryRetention := s.contextRetentionMs()
 	s.mu.Lock()
-	wakes := s.settleIdleWaitsLocked()
-	for conversationId, kept := range s.contexts {
-		switch {
-		case kept.idleSince != nil && now-*kept.idleSince >= retention:
-			delete(s.contexts, conversationId)
-		case !s.idleLocked(&conversationId):
-			kept.idleSince = nil
-		case retention > 0:
-			if kept.idleSince == nil {
-				kept.idleSince = &now
-			}
-		default:
-			delete(s.contexts, conversationId)
-		}
-	}
-	s.scheduleExpiryLocked(now, expiryRetention)
+	wakes := s.settleIdleLocked(scopes, now, retention, expiryRetention)
 	s.mu.Unlock()
 	for _, wake := range wakes {
 		wake()
 	}
+}
+
+// settleIdleLocked is settleIdleScopes under the lock; it returns the functions that wake the idle waits it settled.
+func (s *TaskScheduler) settleIdleLocked(scopes idleScopes, now, retention, expiryRetention float64) []func() {
+	if s.hasLiveUnloadedLocked() {
+		// Every scope counts a live task whose chain is not loaded as busy, so no check of one is trustworthy: it waits for the load
+		// (loadChainLocked), which schedules the pass whose end settles it. Expiry does not depend on idleness.
+		if scopes == nil {
+			s.unknownsChanged = true
+		}
+		for id := range scopes {
+			s.idleDeferred[id] = struct{}{}
+		}
+		s.expireContextsLocked(now, retention)
+		s.scheduleExpiryLocked(now, expiryRetention)
+		return nil
+	}
+	scopes = s.effectiveScopesLocked(scopes)
+	s.unknownsChanged = false
+	clear(s.idleDeferred)
+	if scopes == nil {
+		s.fullIdleChecks++
+	}
+	wakes := s.settleIdleWaitsLocked(scopes)
+	// Expired first: a context past its retention is dropped even when the same commit makes it busy again.
+	s.expireContextsLocked(now, retention)
+	ids := make([]durable.ConversationId, 0, len(scopes))
+	if scopes == nil {
+		for id := range s.contexts {
+			ids = append(ids, id)
+		}
+	} else {
+		for id := range scopes {
+			ids = append(ids, id)
+		}
+	}
+	for _, conversationId := range ids {
+		kept := s.contexts[conversationId]
+		if kept == nil {
+			continue
+		}
+		switch {
+		case !s.idleLocked(&conversationId):
+			if kept.idleSince != nil {
+				kept.idleSince = nil
+				s.idleOrder.Delete(conversationId)
+			}
+		case retention <= 0:
+			s.dropContextLocked(conversationId)
+		case kept.idleSince == nil:
+			kept.idleSince = &now
+			s.markIdleLocked(conversationId, now)
+		}
+	}
+	s.scheduleExpiryLocked(now, expiryRetention)
+	return wakes
+}
+
+// settleAfterReconcile is what the end of a reconcile pass settles. Its commit's task changes were settled at their
+// publication; a waiter that asked for this pass checks again, and what its chain loads resolved can make any scope idle. A pass
+// checks expiry too, for hosts that decline the expiry timer.
+func (s *TaskScheduler) settleAfterReconcile() {
+	now := s.options.Now()
+	retention := s.contextRetentionMs()
+	expiryRetention := s.contextRetentionMs()
+	s.mu.Lock()
+	var wakes []func()
+	if s.unknownsChanged || len(s.idleDeferred) > 0 {
+		wakes = s.settleIdleLocked(idleScopes{}, now, retention, expiryRetention)
+		wakes = append(wakes, s.settleIdleWaitsLocked(nil)...)
+	} else {
+		wakes = s.settleIdleWaitsLocked(nil)
+		s.expireContextsLocked(now, retention)
+		s.scheduleExpiryLocked(now, expiryRetention)
+	}
+	s.mu.Unlock()
+	for _, wake := range wakes {
+		wake()
+	}
+}
+
+// expireIdleContexts runs when the earliest idle context expires, on the background timer: it drops the expired contexts
+// and arms the timer for the next one.
+func (s *TaskScheduler) expireIdleContexts() {
+	now := s.options.Now()
+	retention := s.contextRetentionMs()
+	expiryRetention := s.contextRetentionMs()
+	s.mu.Lock()
+	s.expireContextsLocked(now, retention)
+	s.scheduleExpiryLocked(now, expiryRetention)
+	s.mu.Unlock()
+}
+
+// expireContextsLocked drops the kept contexts idle for at least retention, oldest first, with the retention setting of now;
+// with no retention, every idle one, also those whose idle period a clock that went back makes start after now.
+func (s *TaskScheduler) expireContextsLocked(now, retention float64) {
+	for {
+		conversationId, ok := s.idleOrder.First()
+		if !ok {
+			return
+		}
+		kept := s.contexts[conversationId]
+		if kept == nil || kept.idleSince == nil {
+			s.idleOrder.Delete(conversationId)
+			continue
+		}
+		if retention > 0 && now-*kept.idleSince < retention {
+			return
+		}
+		s.dropContextLocked(conversationId)
+	}
+}
+
+// markIdleLocked starts the idle period of a kept context in the expiry order. An idle period older than the newest one kept,
+// which a clock that went back starts, sorts the order again, and the newest is taken from what is kept then.
+func (s *TaskScheduler) markIdleLocked(conversationId durable.ConversationId, idleSince float64) {
+	s.idleOrder.Delete(conversationId)
+	s.idleOrder.Add(conversationId)
+	if s.idleOrder.Len() == 1 || idleSince >= s.idleNewest {
+		s.idleNewest = idleSince
+		return
+	}
+	order := s.idleOrder.Values()
+	slices.SortStableFunc(order, func(a, b durable.ConversationId) int {
+		return cmp.Compare(*s.contexts[a].idleSince, *s.contexts[b].idleSince)
+	})
+	s.idleOrder.Clear()
+	for _, id := range order {
+		s.idleOrder.Add(id)
+	}
+	s.idleNewest = *s.contexts[order[len(order)-1]].idleSince
+}
+
+// dropContextLocked forgets a kept context, idle or not, and its place in the expiry order.
+func (s *TaskScheduler) dropContextLocked(conversationId durable.ConversationId) {
+	delete(s.contexts, conversationId)
+	s.idleOrder.Delete(conversationId)
 }
 
 // contextRetentionMs is Settings().ContextRetentionMs, or 0 when the settings source panics, which it reports
@@ -1146,15 +1366,13 @@ func (s *TaskScheduler) contextRetention() (retention float64, err error) {
 	return s.options.Settings().ContextRetentionMs, nil
 }
 
-// scheduleExpiryLocked runs resolveIdleWaiters when the earliest idle context expires, on a background timer, which
+// scheduleExpiryLocked runs expireIdleContexts when the earliest idle context expires, on a background timer, which
 // never keeps the process alive: close stops it. Where the host declines it, none is kept, and task changes alone check
 // expiry.
 func (s *TaskScheduler) scheduleExpiryLocked(now float64, retention float64) {
 	var at *float64
-	for _, kept := range s.contexts {
-		if kept.idleSince != nil && (at == nil || *kept.idleSince+retention < *at) {
-			at = new(*kept.idleSince + retention)
-		}
+	if oldest, ok := s.idleOrder.First(); ok {
+		at = new(*s.contexts[oldest].idleSince + retention)
 	}
 	if s.expiry != nil && at != nil && s.expiry.at == *at {
 		return
@@ -1175,7 +1393,7 @@ func (s *TaskScheduler) scheduleExpiryLocked(now float64, retention float64) {
 		closing := s.sealing.Load()
 		s.mu.Unlock()
 		if !closing {
-			s.resolveIdleWaiters()
+			s.expireIdleContexts()
 		}
 	}, *at-now)
 	if disarm == nil {
@@ -1328,7 +1546,7 @@ func (s *TaskScheduler) reconcile(ticket *session.LineTicket) {
 	}
 	s.scheduleWakeLocked()
 	s.mu.Unlock()
-	s.resolveIdleWaiters()
+	s.settleAfterReconcile()
 }
 
 // reconcileWorkLocked reports whether a reconcile pass would have work: a cascade to derive, held outcomes to check, or
@@ -1471,6 +1689,23 @@ func (s *TaskScheduler) loadScopesLocked(queued bool) ([]durable.ConversationId,
 // reveal a cancelled owner, so it makes the next reconcile derive cascade marks.
 func (s *TaskScheduler) loadChainLocked(start up, staged *overlay) error {
 	var passed []durable.TaskId
+	installed := false
+	// Pi 35dfa757 idleLocked counts a live task whose chain is not loaded as inside every scope it may be in:
+	// what this load resolved can make other scopes idle without a task change below them. The conversations above a task that
+	// became loaded are checked next; a load that stopped early owes a check of every scope.
+	defer func() {
+		everything := installed && s.hasLiveUnloadedLocked()
+		for _, id := range passed {
+			if record, live := s.live[id]; live && !s.addScopesAboveLocked(record, s.idleDeferred, nil) {
+				everything = true
+			}
+		}
+		if everything {
+			s.unknownsChanged = true
+			// A waiter such a task held is checked again at the pass's end, also when this load was not a reconcile's.
+			s.scheduleReconcileLocked()
+		}
+	}()
 	at := &start
 	for at != nil {
 		if at.isTask {
@@ -1494,6 +1729,7 @@ func (s *TaskScheduler) loadChainLocked(start up, staged *overlay) error {
 				node = nodeOf(*record)
 				if record.State.Status == durable.TaskTerminal {
 					s.settleLocked(id, node)
+					installed = true
 				}
 				// A loaded node can reveal a cancelling owner: the next reconcile derives marks again.
 				s.scheduleReconcileLocked()
@@ -1513,6 +1749,7 @@ func (s *TaskScheduler) loadChainLocked(start up, staged *overlay) error {
 				edge = ownerTaskOf(*record)
 			}
 			s.setEdgeLocked(at.conversation, edge)
+			installed = true
 			// A loaded node can reveal a cancelling owner: the next reconcile derives marks again.
 			s.scheduleReconcileLocked()
 		}
@@ -1526,6 +1763,25 @@ func (s *TaskScheduler) loadChainLocked(start up, staged *overlay) error {
 		s.unloaded.Delete(id)
 	}
 	return nil
+}
+
+// deferIdleIfUnloadedLocked leaves the idle check of a conversation judged busy to the load of the chain that made it so, when it
+// was a live task whose chain is not loaded: no task change below the conversation will check it.
+func (s *TaskScheduler) deferIdleIfUnloadedLocked(conversationId durable.ConversationId) {
+	if s.hasLiveUnloadedLocked() {
+		s.idleDeferred[conversationId] = struct{}{}
+	}
+}
+
+// hasLiveUnloadedLocked reports whether a live task's chain is not loaded yet: one idleLocked counts as inside every scope it may
+// be in.
+func (s *TaskScheduler) hasLiveUnloadedLocked() bool {
+	live := false
+	s.unloaded.Range(func(id durable.TaskId) bool {
+		_, live = s.live[id]
+		return !live
+	})
+	return live
 }
 
 // stagedTask returns the commit's candidate for id; staged may be nil.
@@ -1675,6 +1931,7 @@ func (s *TaskScheduler) finishSealLocked() {
 		s.sealedRunning[id] = struct{}{}
 	}
 	clear(s.contexts)
+	s.idleOrder.Clear()
 	if s.expiry != nil {
 		s.expiry.disarm()
 		s.expiry = nil
@@ -2039,7 +2296,7 @@ func (s *TaskScheduler) inspectTaskLocked(record anyTaskRecord, snapshot durable
 	if found.migrates && found.task.AnyDefinition().Migrate == nil {
 		return TaskInspectionState{Kind: TaskInspectionBlocked, Reason: blockedMigrationFailed, Error: missingMigration(record, found.task.AnyDefinition())}
 	}
-	return TaskInspectionState{Kind: TaskInspectionReady, Migrates: found.migrates}
+	return TaskInspectionState{Kind: TaskInspectionPending, Migrates: found.migrates}
 }
 
 func (s *TaskScheduler) createInvocationLocked(record anyTaskRecord, mode invocationMode, extension string) *invocation {
@@ -2323,10 +2580,7 @@ func (s *TaskScheduler) decideLocked(tx *session.Transaction, current anyTaskRec
 		}
 		if phase.reported == nil || !sameTaskDefinition(phase.reported.task, next) {
 			phase.reported = &reportedTask{task: next}
-			reason := durable.ReasonIncompatibleTask
-			if next.Definition == nil {
-				reason = durable.ReasonMissingTask
-			}
+			reason := outdatedReason(next, current)
 			info := s.aboutRecord(durable.ReportTaskOutdated, current)
 			info.Extension, info.Reason = invocation.extension, reason
 			s.options.Report(invocation.telemetryContext(), fmt.Errorf("Task %d keeps running under its old %s definition", current.Id, current.Kind), info)
@@ -2788,7 +3042,7 @@ func (hooks runtimeHooks) Each(name string, invoke func(handlers any) error) err
 			if runtime.invocation.ctx.Err() != nil {
 				return err
 			}
-			runtime.scheduler.options.Report(runtime.invocation.telemetryContext(), err, durable.ReportInfo{Type: durable.ReportExtensionError, Extension: hook.Extension, Task: runtime.invocation.reportTask()})
+			runtime.scheduler.options.Report(runtime.invocation.telemetryContext(), err, durable.ReportInfo{Kind: durable.ReportExtensionError, Extension: hook.Extension, Task: runtime.invocation.reportTask()})
 		}
 	}
 	return nil
@@ -2860,9 +3114,17 @@ func (runtime *taskRuntime) Commit(ctx context.Context, change func(tx durable.T
 			}
 		}
 		// A task that ends for crashes says so (task_interrupted), so a host keeps a crash-loop signal.
-		if next.Status == durable.TaskTerminal && next.Outcome != nil && next.Outcome.Status == durable.OutcomeFailed && next.Outcome.Error != nil {
-			if reason := interruptionOf(next.Outcome.Error); reason != "" {
+		if next.Status == durable.TaskTerminal {
+			reason := ""
+			if next.Outcome != nil && next.Outcome.Status == durable.OutcomeFailed && next.Outcome.Error != nil {
+				reason = interruptionOf(next.Outcome.Error)
+			}
+			if reason != "" {
 				interrupted = &interruption{message: next.Outcome.Error.Message, reason: reason, restarts: current.Restarts, record: current}
+			} else if message, ok := ctx.Value(endedByCrashesKey{}).(string); ok {
+				// A task that ended for crashes with another outcome says so itself, as a generation whose run answered
+				// ends completed without its after-run tasks.
+				interrupted = &interruption{message: message, reason: durable.ReasonRestartLimit, restarts: current.Restarts, record: current}
 			}
 		}
 		return struct{}{}, nil
@@ -3044,6 +3306,16 @@ func (runtime *taskRuntime) Entry(ctx context.Context, id durable.EntryId) (*dur
 	return &entry, nil
 }
 
+func (runtime *taskRuntime) Entries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+	if err := runtime.check(); err != nil {
+		return durable.Page[durable.EntryRecord, durable.Cursor]{}, err
+	}
+	scan := conversationEntries(runtime.invocation.conversationId, query)
+	return readOnLine(runtime.scheduler.options.Session, func() (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+		return runtime.scheduler.options.Storage.ScanEntries(ctx, scan, limit, cursor)
+	})
+}
+
 func (runtime *taskRuntime) Context(ctx context.Context, conversationId durable.ConversationId, options *durable.ContextOptions) (durable.ContextView, error) {
 	var at *durable.EntryId
 	if options != nil {
@@ -3087,6 +3359,8 @@ func (s *TaskScheduler) keepContext(runtime *taskRuntime, conversationId durable
 	}
 	if !s.idleLocked(&conversationId) {
 		s.contexts[conversationId] = &keptContext{rng: rng}
+		s.idleOrder.Delete(conversationId)
+		s.deferIdleIfUnloadedLocked(conversationId)
 		s.mu.Unlock()
 		return
 	}
@@ -3109,6 +3383,8 @@ func (s *TaskScheduler) keepContext(runtime *taskRuntime, conversationId durable
 	}
 	if !s.idleLocked(&conversationId) {
 		s.contexts[conversationId] = &keptContext{rng: rng}
+		s.idleOrder.Delete(conversationId)
+		s.deferIdleIfUnloadedLocked(conversationId)
 		return
 	}
 	idleSince := now
@@ -3116,6 +3392,10 @@ func (s *TaskScheduler) keepContext(runtime *taskRuntime, conversationId durable
 		idleSince = *kept.idleSince
 	}
 	s.contexts[conversationId] = &keptContext{rng: rng, idleSince: &idleSince}
+	// An idle period that already started keeps its place in the expiry order; a new one starts now.
+	if kept == nil || kept.idleSince == nil {
+		s.markIdleLocked(conversationId, idleSince)
+	}
 	s.scheduleExpiryLocked(now, retention)
 }
 
@@ -3138,11 +3418,11 @@ func (runtime *taskRuntime) Report(err error, from ...durable.ReportFrom) {
 		runtime.scheduler.options.Report(invocation.telemetryContext(), err, runtime.scheduler.aboutInvocation(durable.ReportTaskError, invocation))
 		return
 	}
-	switch from[0].Type {
+	switch from[0].Kind {
 	case durable.ReportFromExtension:
-		runtime.scheduler.options.Report(invocation.telemetryContext(), err, durable.ReportInfo{Type: durable.ReportExtensionError, Task: invocation.reportTask(), Extension: from[0].Extension})
+		runtime.scheduler.options.Report(invocation.telemetryContext(), err, durable.ReportInfo{Kind: durable.ReportExtensionError, Task: invocation.reportTask(), Extension: from[0].Extension})
 	default:
-		runtime.scheduler.options.Report(invocation.telemetryContext(), err, durable.ReportInfo{Type: durable.ReportHostError, Callback: from[0].Callback, Task: invocation.reportTask()})
+		runtime.scheduler.options.Report(invocation.telemetryContext(), err, durable.ReportInfo{Kind: durable.ReportHostError, Callback: from[0].Callback, Task: invocation.reportTask()})
 	}
 }
 
@@ -3352,6 +3632,18 @@ func withState(record anyTaskRecord, state anyTaskState) anyTaskRecord {
 		record.Restarts = 0
 	}
 	return record
+}
+
+// outdatedReason is why a replacement definition cannot take a running task, in fitLocked's words: none is registered, it
+// is older than the task, or it is newer without a migrate (outdatedReason in scheduler.ts).
+func outdatedReason(task durable.AnyTask, record anyTaskRecord) string {
+	if task.Definition == nil {
+		return blockedMissingTask
+	}
+	if task.AnyDefinition().Version < record.Version {
+		return blockedTaskTooOld
+	}
+	return blockedMigrationFailed
 }
 
 // canReserve reports whether a definition can take the task at reservation: same version, or newer with a migration.
@@ -3628,10 +3920,10 @@ func (s *TaskScheduler) armTimerLocked(at *float64) {
 }
 
 var (
-	registryInfo  = durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackRegistry}
-	settingsInfo  = durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSettings}
-	onWakeInfo    = durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackOnWake}
-	telemetryInfo = durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackTelemetry}
+	registryInfo  = durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackRegistry}
+	settingsInfo  = durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackSettings}
+	onWakeInfo    = durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackOnWake}
+	telemetryInfo = durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackTelemetry}
 )
 
 // installerOf is the extension that installed task in snapshot, the last one that lists it; empty for a built-in task.
@@ -3655,15 +3947,15 @@ func (invocation *invocation) reportTask() *durable.ReportTask {
 
 // aboutInvocation is the report info of a failure of an invocation's task: the task, and the extension that installed the
 // definition the invocation runs.
-func (s *TaskScheduler) aboutInvocation(reportType durable.ReportType, invocation *invocation) durable.ReportInfo {
-	return durable.ReportInfo{Type: reportType, Task: invocation.reportTask(), Extension: invocation.extension}
+func (s *TaskScheduler) aboutInvocation(reportKind durable.ReportKind, invocation *invocation) durable.ReportInfo {
+	return durable.ReportInfo{Kind: reportKind, Task: invocation.reportTask(), Extension: invocation.extension}
 }
 
 // aboutRecord is the report info of a failure of a stored task, with the extension that installed its current
 // definition: the code that failed is that extension's. Built-in tasks have none. A registry that panics is reported where
 // it is read for scheduling; a report goes out without the name.
-func (s *TaskScheduler) aboutRecord(reportType durable.ReportType, record anyTaskRecord) durable.ReportInfo {
-	info := durable.ReportInfo{Type: reportType, Task: &durable.ReportTask{Id: record.Id, Kind: record.Kind, ConversationId: record.ConversationId}}
+func (s *TaskScheduler) aboutRecord(reportKind durable.ReportKind, record anyTaskRecord) durable.ReportInfo {
+	info := durable.ReportInfo{Kind: reportKind, Task: &durable.ReportTask{Id: record.Id, Kind: record.Kind, ConversationId: record.ConversationId}}
 	func() {
 		defer func() {
 			// upstream: packages/durable/src/harness/scheduler.ts:#aboutTask
@@ -3692,4 +3984,18 @@ func (s *TaskScheduler) restartLimit() float64 {
 		return durable.DefaultRestartLimit
 	}
 	return limit
+}
+
+// endedByCrashesKey carries, in the context of a terminal commit, the message that ends the committing task for crashes
+// (task_interrupted) whatever its outcome (endedByCrashes in scheduler.ts, which marks the state object instead: a Go
+// commit takes a state value that its typed runtime re-encodes, so the mark travels with the commit's context, as the
+// line hold does).
+type endedByCrashesKey struct{}
+
+// endedByCrashes returns ctx marked so that a terminal state committed with it ends its task for crashes: the scheduler
+// reports it task_interrupted with message, even though its outcome does not say so (a failure with detail
+// {reason: "restart_limit"} does). Used by built-in tasks that were cut off settings.restartLimit times and end with
+// another outcome.
+func endedByCrashes(ctx context.Context, message string) context.Context {
+	return context.WithValue(ctx, endedByCrashesKey{}, message)
 }

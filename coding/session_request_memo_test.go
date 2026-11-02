@@ -56,9 +56,10 @@ func TestSessionRequestsMatchTheStandardConversionAfterHistoryOperations(t *test
 		}
 		s.Subscribe(func(agent.AgentEvent) {})
 		drained := make(chan struct{})
+		eventsCh := s.Events()
 		go func() {
 			defer close(drained)
-			for event := range s.Events() {
+			for event := range eventsCh {
 				AcknowledgeEvent(event)
 			}
 		}()

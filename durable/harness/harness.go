@@ -66,6 +66,11 @@ func (conversation *conversationImpl) Submit(ctx context.Context, submission dur
 	return conversation.host.submissions.Submit(ctx, conversation.id, submission)
 }
 
+// SubmitIn admits a submission inside the caller's commit tx, with the same rules as Submit.
+func (conversation *conversationImpl) SubmitIn(tx durable.Tx, submission durable.SubmissionDraft) (durable.SubmissionId, error) {
+	return conversation.host.submissions.Admit(tx, conversation.id, submission)
+}
+
 func (conversation *conversationImpl) Compact(ctx context.Context, instructions *string) (durable.TaskId, error) {
 	if err := conversation.host.tasks.TryResume(); err != nil {
 		return 0, err
@@ -105,7 +110,7 @@ func (conversation *conversationImpl) Context(ctx context.Context, options *dura
 }
 
 func (conversation *conversationImpl) Entries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
-	bounded := durable.EntryQuery{ConversationId: conversation.id, MinEntryId: query.MinEntryId, MaxEntryId: query.MaxEntryId, Order: query.Order}
+	bounded := conversationEntries(conversation.id, query)
 	page, err := conversation.host.harness.ReadOnLine(func() (any, error) {
 		return conversation.host.storage.ScanEntries(ctx, bounded, limit, cursor)
 	})
@@ -195,7 +200,7 @@ func (harness *harnessImpl) resolveAgent(ctx context.Context, id durable.Convers
 		return durable.Agent{}, err
 	}
 	return ResolveAgent(state, registry, harness.settings(), func(err error, extension string) {
-		harness.report(ctx, err, durable.ReportInfo{Type: durable.ReportExtensionError, ConversationId: &id, Extension: extension})
+		harness.report(ctx, err, durable.ReportInfo{Kind: durable.ReportExtensionError, ConversationId: &id, Extension: extension})
 	}), nil
 }
 
@@ -459,7 +464,19 @@ func (bound *boundConversation) bind(ctx context.Context) context.Context {
 
 func (bound *boundConversation) Id() durable.ConversationId { return bound.id }
 
-func (bound *boundConversation) Submit(ctx context.Context, draft durable.InputSubmissionDraft) (durable.Submission, error) {
+// SubmitIn is the transaction form of Submit. The caller's commit carries its own context, so the invocation's abort is
+// checked here.
+func (bound *boundConversation) SubmitIn(tx durable.Tx, draft durable.SubmissionDraft) (durable.SubmissionId, error) {
+	if err := bound.binding.Check(); err != nil {
+		return 0, err
+	}
+	if err := bound.binding.Signal.Err(); err != nil {
+		return 0, context.Cause(bound.binding.Signal)
+	}
+	return bound.submissions.Admit(tx, bound.id, draft)
+}
+
+func (bound *boundConversation) Submit(ctx context.Context, draft durable.SubmissionDraft) (durable.Submission, error) {
 	if err := bound.binding.Check(); err != nil {
 		return nil, err
 	}
@@ -547,14 +564,14 @@ func OpenHarness(ctx context.Context, storage durable.Storage, options HarnessOp
 
 // SafeReport is onReport that cannot fail: it is the last place an error goes, so its own panic is dropped. Ports harness.ts
 // safeReport; the Harness over the core wraps its OnReport with it too.
-func SafeReport(onReport func(err error, info durable.ReportInfo)) func(err error, info durable.ReportInfo) {
+func SafeReport(onReport func(report durable.Report)) func(err error, info durable.ReportInfo) {
 	return func(err error, info durable.ReportInfo) {
 		defer func() {
 			// upstream: packages/durable/src/harness/harness.ts:safeReport
 			_ = recover()
 		}()
 		if onReport != nil {
-			onReport(err, info)
+			onReport(durable.Report{ReportInfo: info, Error: err})
 		}
 	}
 }
@@ -578,7 +595,7 @@ func SafeNow(now func() float64, report func(err error, info durable.ReportInfo)
 					if !ok {
 						err = fmt.Errorf("%v", recovered)
 					}
-					report(err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackNow})
+					report(err, durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackNow})
 				}
 				value = wall()
 			}
@@ -630,7 +647,7 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 		Now:      now,
 		OnWake:   options.OnWake,
 		Timers: durable.HostTimers(options.SetTimer, func(err error) {
-			harness.report(context.Background(), err, durable.ReportInfo{Type: durable.ReportHostError, Callback: durable.HostCallbackSetTimer})
+			harness.report(context.Background(), err, durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackSetTimer})
 		}),
 		WriteAtClose: func(writes func() []durable.StorageWrite) error {
 			// A close writes what it stops straight to Storage, off the published changes, with no caller to cancel it.

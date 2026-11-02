@@ -57,7 +57,7 @@ The flow in `label` mode: push; the light run reports `CI result` red with the m
 | Changed paths, Bookkeeping, Project documents, CI result, Linux verification, Prune superseded caches | always | 5 | |
 | Linux / preflight | always | 20 | Build, and vet natively, for both Windows architectures and for Android, and `go fix` |
 | Linux / test-fast-sharded | pr | 31 | |
-| Linux / test-fast | pr | 26 | Packages the pull request does not affect: it runs `make ci-test-changed`, the fast packages that `automation/ci/changed-packages.py` selects against the base branch (direct, affected and the pigfault tests of the durable driver), and the whole of `ci-test-fast` when the change touches `go.mod`, `go.sum`, `go.work` or `go.work.sum`, or a file no package test reads. The sharded, cmd/pig and extension host packages stay in their own rows. The run summary lists the selection (direct, affected, tagged, unmapped and module-wide counts and lists) and says whether the run fell back to the whole shard and why. |
+| Linux / test-fast | pr | 26 | Packages the pull request does not affect: it runs `make ci-test-changed`, the fast packages that `automation/ci/changed-packages.py` selects against the base branch (direct, affected and the pigfault tests of the durable driver), and the whole of `ci-test-fast` when the change touches `go.mod`, `go.sum`, `go.work` or `go.work.sum`, or a file no package test reads. The sharded, cmd/pig and extension host packages stay in their own rows. The run summary lists the selection (direct, affected, tagged, unmapped and module-wide counts and lists) and says whether the run fell back to the whole shard and why. `ci-test-changed` also runs `make sdk-vectors-changed`: when the diff touches `tui/`, an SDK, `internal/typebox/` or a vector file (`automation/ci/sdk-vectors-changed.sh`), it checks the generated Pi vectors, lints every Rust crate (`make lint-rust`: rustfmt and Clippy with warnings denied, from the `rustfmt` and `clippy` components the Linux jobs install with the pinned toolchain) and runs the Go, Rust, Python and Lisp SDK suites, which the main module's package selection never reaches. The full run runs the same suites in the toolchains shard (`ci-sdk`), and `test/ci-images` checks that each one the light gate runs is still there. |
 | Linux / test-cli-1 | pr | 15 | |
 | Linux / test-cli-2 | pr | 12 | |
 | Linux / test-subprocess | pr | 12 | |
@@ -72,7 +72,7 @@ The flow in `label` mode: push; the light run reports `CI result` red with the m
 | Linux / parity-2 | queue | 12 | The other hermetic parity hash shard |
 | Linux / portmap-1, portmap-2, portmap-3 | queue | 44 | |
 | Linux / test-conformance | queue | 18 | Conformance of every SDK |
-| Linux / toolchains | queue | 7 | Race, integration, SDK and extension corpus gates |
+| Linux / toolchains | queue | 7 | Race, integration, SDK (including `make lint-rust`) and extension corpus gates |
 | Node extensions | queue | 11 | |
 | Durable Cloudflare host | queue | 25 | |
 | Durable contract / pi, wasm-tinygo, native | queue | 60 | The Durable core conformance gate (`make ci-durable-contract`), one build of the core per job; the limit is the job's, not yet a measured run time |
@@ -87,6 +87,10 @@ Minutes are runner minutes, each job rounded up to the minute, from run 39510928
 Merge queue settings, in the `Default` ruleset, for `queue` mode: add the `merge_queue` rule with `merge_method` `SQUASH` (the ruleset's pull request rule allows only squash merges), `grouping_strategy` `ALLGREEN`, `check_response_timeout_minutes` 120, `max_entries_to_build` 2, `max_entries_to_merge` 3, `min_entries_to_merge` 1 and `min_entries_to_merge_wait_minutes` 5, then set `PIG_PR_CI_LIGHT` to `queue`. GitHub offers merge queues only in repositories owned by an organization, and `MichaelKinsy/PiG` is owned by a user account, so until the repository moves to an organization the variable is unset or `label`. Delete the variable to return pull requests to the full run.
 
 Secret scanning in the queue runs TruffleHog over the commits the queue added. `gitleaks-action` supports only `push`, `pull_request`, `workflow_dispatch` and `schedule` and fails the job on `merge_group`, so that step is skipped there; the pull request run has scanned the same commits.
+
+### Nix vendor hash
+
+`nix/package.nix` pins `vendorHash`, the hash of the Go module cache the flake builds from (`go list -deps ./cmd/pig` on each supported platform). It changes with `go.mod`, `go.sum`, `go.work`, `go.work.sum`, and with any import that pulls a different set of modules into `cmd/pig`, so a dependency bump or a new import of an already-required module makes it stale. `nix-vendor-hash.yml` (`Nix vendor hash`) runs `nix/vendor-hash.sh check` on every pull request that touches Go files, the flake or `nix/`, on pushes to `main`, and weekly. It builds only the fixed-output module cache on x86_64-linux (the hash is the same on every system) and, when the pinned hash is stale, fails with an `::error` naming the value to set. A contributor without Nix copies that value into `nix/package.nix`; with Nix, `nix/vendor-hash.sh update` rewrites it. `nix.yml` still builds and smoke-tests the whole package. Neither workflow is a required check.
 
 ## CI images
 

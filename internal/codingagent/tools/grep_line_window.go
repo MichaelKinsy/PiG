@@ -4,6 +4,8 @@ import (
 	"io"
 	"math"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/utf8stream"
 )
 
 const (
@@ -25,7 +27,7 @@ type grepLineWindow struct {
 	started bool
 	done    bool
 	failed  bool
-	decoder utf8StreamDecoder
+	decoder utf8stream.Decoder
 	chunk   []byte
 	partial []byte
 	runes   int
@@ -95,12 +97,12 @@ func (w *grepLineWindow) fill() {
 	}
 	n, err := w.src.Read(w.chunk)
 	if n > 0 {
-		w.add(w.decoder.decode(w.chunk[:n], true))
+		w.add(w.decoder.Decode(w.chunk[:n], true))
 	}
 	switch err {
 	case nil:
 	case io.EOF:
-		w.add(w.decoder.decode(nil, false))
+		w.add(w.decoder.Decode(nil, false))
 		w.endLine()
 		w.done = true
 		w.close()

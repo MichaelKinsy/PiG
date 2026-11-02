@@ -35,7 +35,7 @@ const maxPendingAnsiLength = 256
 
 // unfinishedCSIAtEnd is the CSI half of utils/ansi.ts unfinishedAnsiAtEndRegex: an introducer, its optional intermediates and
 // parameters, and no final byte before the end of the text.
-var unfinishedCSIAtEnd = lazyregexp.New(`^[\x1b\x{9b}][\[\]()#;?]*(?:\d{1,4}(?:[;:]\d{0,4})*)?$`)
+var unfinishedCSIAtEnd = lazyregexp.New(`^(?:(?:\x1b\[|\x{9b})[<=>]|[\x1b\x{9b}][\[\]()#;?]*)(?:\d{1,4}(?:[;:]\d{0,4})*)?$`)
 
 // unfinishedOSCAtEnd reports whether s, which starts with ESC ], is an OSC sequence without its string terminator: the
 // OSC half of unfinishedAnsiAtEndRegex, `ESC](?:[^BEL U+009C ESC]|ESC(?!\\))*$`. A trailing ESC may start ESC \.

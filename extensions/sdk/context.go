@@ -470,6 +470,18 @@ func (c Context) ClearHiddenThinkingLabel() error {
 	return callResultError(result, err)
 }
 
+// OwnThinkingRuns declares (true) or withdraws (false) that this extension
+// owns the thinking runs of assistant messages, so a hidden or zero-row
+// thinking run leaves no blank spacer rows. The host ORs the flag across
+// extensions; the last call of an extension wins.
+// pig additive (D214)
+func (c Context) OwnThinkingRuns(enabled bool) error {
+	result, err := c.callHost("ownThinkingRuns", map[string]bool{
+		"enabled": enabled,
+	})
+	return callResultError(result, err)
+}
+
 // SetTitle sets the terminal window/tab title.
 func (c Context) SetTitle(title string) {
 	_, _ = c.callHost("ui.setTitle", map[string]string{
@@ -596,7 +608,7 @@ type SendMessageOptions struct {
 	DeliverAs   string // "steer", "followUp", or "nextTurn"; empty: host default
 }
 
-// SendMessage injects a custom message into the conversation.
+// SendMessage injects a custom message into the conversation. With TriggerTurn the run it starts keeps [Context.IsIdle] busy until the handler yields ([Context.Yield], [Context.Sleep]) or returns; a handler that polls for that run with a raw time.Sleep stays busy.
 func (c Context) SendMessage(customType, content string, display bool, opts SendMessageOptions) error {
 	options := map[string]any{}
 	if opts.TriggerTurn != nil {
@@ -637,7 +649,10 @@ type CustomMessage struct {
 }
 
 // SendCustomMessage injects a custom message into the conversation, as
-// upstream pi.sendMessage does, with block content and details.
+// upstream pi.sendMessage does, with block content and details. With
+// TriggerTurn the run it starts keeps IsIdle busy until this handler yields
+// ([Context.Yield], [Context.Sleep], a call Pi awaits, or its return): a handler
+// that polls IsIdle for that run must use Sleep, not time.Sleep (D225).
 func (c Context) SendCustomMessage(msg CustomMessage, opts SendMessageOptions) error {
 	options := map[string]any{}
 	if opts.TriggerTurn != nil {
@@ -798,6 +813,9 @@ type SourceInfo struct {
 	Scope   string `json:"scope"`
 	Origin  string `json:"origin"`
 	BaseDir string `json:"baseDir,omitempty"`
+	// ChangelogPath is the changelog file of the package that supplied the resource, when it has one (source-info.ts
+	// SourceInfo.changelogPath). It is set for a resource a package contributed and empty otherwise.
+	ChangelogPath string `json:"changelogPath,omitempty"`
 }
 
 // ToolInfo mirrors upstream ToolInfo, one entry of GetAllTools: a tool
@@ -1676,9 +1694,10 @@ type ExecResult struct {
 	Stdout   string `json:"stdout"`
 	Stderr   string `json:"stderr"`
 	ExitCode int    `json:"code"`
-	// Killed reports that the command was killed by its timeout or by
-	// cancellation.
+	// Killed reports that the command was terminated by pi: its timeout, cancellation, or output over MaxBuffer.
 	Killed bool `json:"killed"`
+	// Truncated reports that the output exceeded MaxBuffer: Stdout and Stderr are incomplete and ExitCode is nonzero.
+	Truncated bool `json:"truncated"`
 }
 
 // ExecOptions are the options of [Context.ExecWithOptions], upstream's ExecOptions.
@@ -1689,11 +1708,16 @@ type ExecOptions struct {
 	Timeout float64 `json:"timeout,omitempty"`
 	// Cwd is the command's working directory. Empty uses the session's.
 	Cwd string `json:"cwd,omitempty"`
+	// MaxBuffer is the byte limit of stdout and stderr together. Output past it terminates the command and the result has Truncated
+	// and Killed set and a nonzero ExitCode; a character the limit cuts is dropped whole. nil is undefined: 256 MiB, capped by the
+	// runtime string limit. Pi's maxBuffer is a JavaScript number that must be an integer from 0 to that limit: the host fails
+	// the call for a fraction, a negative value or a value above it (and the call fails here for NaN or an infinity).
+	MaxBuffer *float64 `json:"maxBuffer,omitempty"`
 	// Signal is upstream's options.signal. When it is done the host terminates the command, as Pi does: the command alone
 	// receives SIGTERM (the process is killed on Windows), no descendant is signalled, and the call returns the output
 	// written so far with Killed set and ExitCode 0, which is what a command that a signal ended reports. A Signal that is done
-	// before the call starts the command and ends it at once. Like upstream, nothing follows the SIGTERM, so a command that
-	// ignores it keeps the call waiting.
+	// before the call starts the command and ends it at once. SIGKILL follows the SIGTERM five seconds later if the command has not
+	// exited, as it does for a timeout or a MaxBuffer overflow.
 	//
 	// Without a Signal the command ends when the calling request is cancelled. A Signal replaces that cancellation, as
 	// upstream's exec has no signal but the one the caller passes: cancelling the request then leaves the command running
@@ -1708,6 +1732,11 @@ func (c Context) Exec(command string, args []string) (*ExecResult, error) {
 
 // ExecWithOptions is [Context.Exec] with upstream's exec options.
 func (c Context) ExecWithOptions(command string, args []string, opts ExecOptions) (*ExecResult, error) {
+	// Upstream rejects a maxBuffer that is not an integer before it spawns. NaN and the infinities cross the wire as null, which the host reads as
+	// undefined, so the call fails here instead.
+	if opts.MaxBuffer != nil && (math.IsNaN(*opts.MaxBuffer) || math.IsInf(*opts.MaxBuffer, 0)) {
+		return nil, errors.New("maxBuffer must be an integer between 0 and the runtime string limit")
+	}
 	payload := map[string]any{"command": command, "args": args, "options": opts}
 	if opts.Signal == nil {
 		return c.exec(payload)
@@ -2293,7 +2322,7 @@ func (c Context) IsProjectTrusted() (bool, error) {
 	return hostRequired[bool](c, "isProjectTrusted", nil, "trusted")
 }
 
-// IsIdle returns whether the agent is currently idle (not streaming). A host or transport failure is returned rather than assumed idle.
+// IsIdle returns whether the agent is currently idle (not streaming). A host or transport failure is returned rather than assumed idle. After a SendMessage with TriggerTurn the session reads busy until the handler yields: a handler that waits for the run it started (a poll `for !idle { sleep }`) must use [Context.Sleep] or [Context.Yield]; a raw time.Sleep keeps the hold until the handler returns.
 func (c Context) IsIdle() (bool, error) {
 	return hostRequired[bool](c, "isIdle", nil, "idle")
 }
@@ -2403,6 +2432,21 @@ func decodeCancelledResult(result *callResultMsg) CancelledResult {
 func (c Context) WaitForIdle() error {
 	result, err := c.callHost("waitForIdle", nil)
 	return callResultError(result, err)
+}
+
+// Yield is the point where a handler's code gives control back to the host, standing for Pi's first `await`. Pi's `sendMessage(..., {triggerTurn: true})` keeps IsIdle busy until the sending code yields; a goroutine cannot await, so a handler that waits for the run it started (a poll `for !idle { ctx.Sleep(...) }`) must call Yield or Sleep. A raw time.Sleep keeps the hold until the handler returns. A host or transport failure is returned.
+func (c Context) Yield() error {
+	result, err := c.callHost("yield", map[string]any{})
+	return callResultError(result, err)
+}
+
+// Sleep yields (see [Context.Yield]) and then blocks for d. Use it instead of time.Sleep when polling IsIdle for a run the handler started with SendMessage. Like Pi's setTimeout it does not return early when the request is cancelled: select on Done() to stop earlier.
+func (c Context) Sleep(d time.Duration) error {
+	if err := c.Yield(); err != nil {
+		return err
+	}
+	time.Sleep(d)
+	return nil
 }
 
 // NewSession starts a new session. opts may hold "parentSession", a "setup" SetupFunc that seeds the new session through its SessionManager before it starts (types.ts:411), and a "withSession" WithSessionFunc.

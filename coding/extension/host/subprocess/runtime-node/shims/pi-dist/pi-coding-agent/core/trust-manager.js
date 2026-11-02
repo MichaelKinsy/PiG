@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import lockfile from "../../../proper-lockfile.mjs";
 import { CONFIG_DIR_NAME } from "../config.js";
-import { canonicalizePath, resolvePath } from "../utils/paths.js";
+import { canonicalizePath, pathsEqual, resolvePath } from "../utils/paths.js";
 import { stripBom } from "../utils/text.js";
 const TRUST_REQUIRING_PROJECT_CONFIG_RESOURCES = [
     "settings.json",
@@ -18,12 +18,18 @@ const TRUST_REQUIRING_PROJECT_CONFIG_RESOURCES = [
 function normalizeCwd(cwd) {
     return canonicalizePath(resolvePath(cwd));
 }
+/** Trust file keys naming `path`. Usually one; several on Windows when saved with different casing. */
+function findTrustFileKeys(data, path) {
+    return Object.keys(data).filter((key) => pathsEqual(key, path));
+}
 function findNearestTrustEntry(data, cwd) {
     let currentDir = normalizeCwd(cwd);
     while (true) {
-        const value = data[currentDir];
-        if (value === true || value === false) {
-            return { path: currentDir, decision: value };
+        for (const key of findTrustFileKeys(data, currentDir)) {
+            const value = data[key];
+            if (value === true || value === false) {
+                return { path: key, decision: value };
+            }
         }
         const parentDir = dirname(currentDir);
         if (parentDir === currentDir) {
@@ -158,7 +164,7 @@ export function hasTrustRequiringProjectResources(cwd) {
     }
     while (true) {
         const agentsSkillsDir = join(currentDir, ".agents", "skills");
-        if (agentsSkillsDir !== userAgentsSkillsDir && existsSync(agentsSkillsDir)) {
+        if (!pathsEqual(agentsSkillsDir, userAgentsSkillsDir) && existsSync(agentsSkillsDir)) {
             return true;
         }
         const parentDir = dirname(currentDir);
@@ -190,10 +196,10 @@ export class ProjectTrustStore {
             const data = readTrustFile(this.trustPath);
             for (const { path, decision } of decisions) {
                 const key = normalizeCwd(path);
-                if (decision === null) {
-                    delete data[key];
+                for (const existingKey of findTrustFileKeys(data, key)) {
+                    delete data[existingKey];
                 }
-                else {
+                if (decision !== null) {
                     data[key] = decision;
                 }
             }

@@ -711,15 +711,15 @@ func TestInbox(t *testing.T) {
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
 		var mu sync.Mutex
 		ops := [][]durable.Op{}
-		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
-			for _, change := range documentChanges(publication.Changes) {
+		harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
+			for _, change := range documentValues(publication.Changes) {
 				if change.Record.Kind == "pi.inbox" && len(change.Ops) > 0 {
 					mu.Lock()
 					ops = append(ops, slices.Clone(change.Ops))
 					mu.Unlock()
 				}
 			}
-		})
+		}})
 		input := submit(t, root, inputDraft("a"))
 		first.awaitReached(t)
 		w1 := submit(t, root, writeDraft(queuedNote("w")))
@@ -976,15 +976,15 @@ func TestInbox(t *testing.T) {
 		}
 		var mu sync.Mutex
 		ops := [][]durable.Op{}
-		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
-			for _, change := range documentChanges(publication.Changes) {
+		harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
+			for _, change := range documentValues(publication.Changes) {
 				if change.Record.Kind == "pi.inbox" && len(change.Ops) > 0 {
 					mu.Lock()
 					ops = append(ops, slices.Clone(change.Ops))
 					mu.Unlock()
 				}
 			}
-		})
+		}})
 		must(items[1].Abort(testContext))
 		mu.Lock()
 		expectEqualJSON(t, ops, `[[["p",["items"],1,1,[]]]]`)
@@ -999,13 +999,13 @@ func TestInbox(t *testing.T) {
 		first := gatedReply("first")
 		setup.Faux.SetResponses([]ai.FauxResponseStep{first.step, fauxAnswer("second")})
 		harness, root := openChat(t, store, setup)
-		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
 			for _, change := range documentChanges(publication.Changes) {
-				if change.Record.Kind == "pi.inbox" {
-					store.setInbox(change.Record.Id)
+				if record := documentRecordOf(change); record.Kind == "pi.inbox" {
+					store.setInbox(record.Id)
 				}
 			}
-		})
+		}})
 		input := submit(t, root, inputDraft("a"))
 		first.awaitReached(t)
 		submit(t, root, inputDraft("f1"))
@@ -1180,8 +1180,8 @@ func TestUsage(t *testing.T) {
 		}
 		var mu sync.Mutex
 		commits := []usageCommit{}
-		harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
-			for _, change := range documentChanges(publication.Changes) {
+		harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
+			for _, change := range documentValues(publication.Changes) {
 				if change.Record.Kind != "pi.usage" {
 					continue
 				}
@@ -1195,7 +1195,7 @@ func TestUsage(t *testing.T) {
 				commits = append(commits, usageCommit{entries: entries, ops: change.Ops})
 				mu.Unlock()
 			}
-		})
+		}})
 		must(submit(t, root, inputDraft("a")).Wait(testContext))
 		must(submit(t, root, inputDraft("b")).Wait(testContext))
 		waitFor(t, func() bool {
@@ -1287,4 +1287,15 @@ func (store *inboxRecordingStorage) Commit(ctx context.Context, writes []durable
 	}
 	store.mu.Unlock()
 	return store.MemoryStorage.Commit(ctx, writes, adopt)
+}
+
+// documentRecordOf is the record of a document change, a retirement included.
+func documentRecordOf(change durable.DocumentCommitChange) durable.DocumentRecord {
+	switch typed := change.(type) {
+	case durable.DocumentChange:
+		return typed.Record
+	case durable.DocumentRetireChange:
+		return typed.Record
+	}
+	panic("unexpected document commit change")
 }

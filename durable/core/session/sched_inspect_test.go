@@ -15,7 +15,7 @@ type snap map[string]*session.TaskImpl
 func (s snap) Task(name string) *session.TaskImpl { return s[name] }
 
 // Harness.inspect derives each live task's state without running task code and reports the scheduling state
-// (scheduler.ts inspect): paused until resume, a newer definition with migrate is ready+migrates, one without it is
+// (scheduler.ts inspect): paused until resume, a newer definition with migrate is pending+migrates, one without it is
 // blocked migration_failed, an older one task_too_old, an unknown one missing_task, a task waiting on a live task waits.
 func TestInspectDerivesStatesWithoutRunningTasks(t *testing.T) {
 	mem := sessiontest.New()
@@ -79,7 +79,7 @@ func TestInspectDerivesStatesWithoutRunningTasks(t *testing.T) {
 		got[idOf(task.Record)] = fmt.Sprint(task.Kind, " ", task.Migrates, " ", task.Reason, " ", task.Err)
 	}
 	want := map[string]string{
-		"t.ready": "ready false  <nil>", "t.migrating": "ready true  <nil>",
+		"t.ready": "pending false  <nil>", "t.migrating": "pending true  <nil>",
 		"t.nomigrate": "blocked false migration_failed Task t.nomigrate version 2 has no migration from 1",
 		"t.old":       "blocked false task_too_old <nil>", "t.missing": "blocked false missing_task <nil>",
 	}

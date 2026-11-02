@@ -110,13 +110,13 @@ func startSpinningListener(t *testing.T) *spinningListener {
 	spinning := &spinningListener{chat: openSettledChat(t)}
 	t.Cleanup(func() { spinning.release.Store(true) })
 	spinning.stream = must(spinning.chat.root.Watch(testContext, nil))
-	spinning.stream.Start(func(_ context.Context, _ chord.WatchChange[ConversationView]) error {
+	spinning.stream.Start(onValue(func(_ context.Context, _ chord.WatchCall[ConversationView]) error {
 		for !spinning.release.Load() {
 			runtime.Gosched()
 		}
 		spinning.given.Add(1)
 		return nil
-	})
+	}))
 	spinning.chat.publishBatch(t)
 	return spinning
 }
@@ -204,12 +204,12 @@ func TestAHarnessWaitDoesNotWaitForAListenerBlockedOnALockTheCallerHolds(t *test
 			var held sync.Mutex
 			var given atomic.Int32
 			stream := must(chat.root.Watch(testContext, nil))
-			stream.Start(func(_ context.Context, _ chord.WatchChange[ConversationView]) error {
+			stream.Start(onValue(func(_ context.Context, _ chord.WatchCall[ConversationView]) error {
 				held.Lock()
 				defer held.Unlock()
 				given.Add(1)
 				return nil
-			})
+			}))
 			held.Lock()
 			chat.publishBatch(t)
 			// The caller holds the lock the listener needs: a wait for the listener to finish would never return.
@@ -233,11 +233,11 @@ func TestAHarnessWaitDoesNotWaitForAListenerParkedInAWait(t *testing.T) {
 	release, entered := make(chan struct{}), make(chan struct{})
 	var once sync.Once
 	stream := must(chat.root.Watch(testContext, nil))
-	stream.Start(func(_ context.Context, _ chord.WatchChange[ConversationView]) error {
+	stream.Start(onValue(func(_ context.Context, _ chord.WatchCall[ConversationView]) error {
 		once.Do(func() { close(entered) })
 		<-release
 		return nil
-	})
+	}))
 	chat.publishBatch(t)
 	<-entered
 	// The listener is parked, as an upstream listener awaiting I/O is: its first part ran, and the wait returns.
@@ -263,7 +263,7 @@ func TestListenersThatWaitForTheHarnessDoNotWaitForEachOther(t *testing.T) {
 		stream := must(chat.root.Watch(testContext, nil))
 		waiting.Add(1)
 		var once sync.Once
-		stream.Start(func(_ context.Context, _ chord.WatchChange[ConversationView]) error {
+		stream.Start(onValue(func(_ context.Context, _ chord.WatchCall[ConversationView]) error {
 			once.Do(func() {
 				defer waiting.Done()
 				if err := chat.harness.WaitForIdle(testContext); err != nil {
@@ -274,7 +274,7 @@ func TestListenersThatWaitForTheHarnessDoNotWaitForEachOther(t *testing.T) {
 				}
 			})
 			return nil
-		})
+		}))
 		t.Cleanup(func() { _, _ = stream.Stop() })
 	}
 	chat.publishBatch(t)

@@ -194,6 +194,8 @@ type editorSession struct {
 	lastLines []string
 	lastWidth int
 	rendered  bool
+	// lastCaptures is the capturesViewportInput the last frame carried; a change alone sends a frame.
+	lastCaptures bool
 
 	// lastStatus is the working status the component was last told, and statusSent that it was told one.
 	lastStatus *EditorStatus
@@ -263,12 +265,17 @@ func (s *editorSession) renderNow() {
 	if lines == nil {
 		lines = []string{}
 	}
-	if s.rendered && width == s.lastWidth && slices.Equal(lines, s.lastLines) {
+	captures := capturesViewportInput(s.component)
+	if s.rendered && width == s.lastWidth && captures == s.lastCaptures && slices.Equal(lines, s.lastLines) {
 		return
 	}
-	s.rendered, s.lastLines, s.lastWidth = true, lines, width
+	s.rendered, s.lastLines, s.lastWidth, s.lastCaptures = true, lines, width, captures
 	s.frameSeq++
-	_ = s.ext.conn.notify("ui.editor.render", map[string]any{"key": s.key, "lines": lines, "width": width, "seq": s.frameSeq})
+	args := map[string]any{"key": s.key, "lines": lines, "width": width, "seq": s.frameSeq}
+	if captures {
+		args["capturesViewportInput"] = true
+	}
+	_ = s.ext.conn.notify("ui.editor.render", args)
 }
 
 // handleEditorNotify routes the host's editor notifies to the installed component; it reports whether method was one.

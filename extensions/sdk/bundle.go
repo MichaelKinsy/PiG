@@ -24,9 +24,11 @@ import (
 //
 // bundle_embed.go lists every non-test .go file, the module declaration, and
 // the license: go:embed cannot leave test files out of a pattern, so the list is
-// generated (go generate) rather than written as a glob. Every source file is listed as its
-// gzip, <name>.gz, which go generate writes beside it
-// and the stager writes back as <name>: the sources are most of the weight
+// generated (go generate) rather than written as a glob. Every source file is
+// listed as its gzip, .gz/<name>.gz, which go generate writes in the module's
+// .gz directory (a walk of the source tree skips it as hidden, where a copy
+// beside each file doubled the entries every build reading the tree lists) and
+// the stager writes back as <name>: the sources are most of the weight
 // this package adds to every binary that stages them, and source text is a
 // fifth of its size compressed. A named list silently
 // shipped extensions a partial SDK when session_mirror.go was added: the file
@@ -38,8 +40,8 @@ import (
 
 // BundledFiles lists the embedded filenames in a stable order. It is the
 // canonical set a stager must write to produce a compilable SDK module. A name
-// ending in .gz is the gzip of the file the stager writes under the name
-// without it.
+// under .gz/ is the gzip of the file the stager writes under the rest of the
+// name, without .gz.
 //
 // Derived from the embed FS so it cannot drift from what is actually embedded.
 // bundle.go and _test.go files are excluded: the staged module is a plain

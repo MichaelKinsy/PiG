@@ -1,5 +1,5 @@
 # The reference the corpus is captured from (CONTRACT section 1). `make durable-contract-setup` checks it out.
 repo   https://github.com/earendil-works/pi
-main   b3a29f1111114fac696e2cfcd65acdb382a6ed5e
+main   e7a0df27c09d11bf4161d3605246cbf57a129cb2
 release v1.0.4
 node   >=24.19

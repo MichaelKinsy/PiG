@@ -12,6 +12,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 
 export default function (pi) {
+  pi.ownThinkingRuns(true);
   // factoryAgentDir is getAgentDir() while the factory runs, where Pi's extensions call it (TestConformance_HostConfigurationAgreesAcrossSDKs).
   const factoryAgentDir = getAgentDir();
   let schemaRejected = false;
@@ -92,6 +93,20 @@ export default function (pi) {
     try {
       const result = await pi.exec(probe.command, probe.args, { signal: controller.signal });
       ctx.ui.notify(`exec-abort:killed=${result.killed};code=${result.code};stdout=${result.stdout.trim()}`, "info");
+    } catch (error) {
+      ctx.ui.notify(`rejected:${error.message}`, "info");
+    }
+  }});
+  pi.registerCommand("select-page-probe", { description: "Answer getSelectPageIndex", handler: async (args, ctx) => {
+    const probe = JSON.parse(args);
+    const index = piTui.getSelectPageIndex(piTui.getKeybindings(), probe.data, probe.selected, probe.count, probe.page);
+    ctx.ui.notify(`select-page=${index === undefined ? "none" : index}`, "info");
+  }});
+  pi.registerCommand("exec-limits-probe", { description: "Exec with a maxBuffer", handler: async (args, ctx) => {
+    const probe = JSON.parse(args);
+    try {
+      const result = await pi.exec(probe.command, probe.args, probe.maxBuffer === undefined ? undefined : { maxBuffer: probe.maxBuffer });
+      ctx.ui.notify(`exec-limits:truncated=${result.truncated};killed=${result.killed};code=${result.code};stdout=${result.stdout.trim()};stderr=${result.stderr.trim()}`, "info");
     } catch (error) {
       ctx.ui.notify(`rejected:${error.message}`, "info");
     }
@@ -195,12 +210,17 @@ export default function (pi) {
     render(width) { return [`entryrenderer:${entry.data}:expanded=${Boolean(options.expanded)}:width=${width}`]; },
     invalidate() {},
   }));
+  // Test fixture, Pi 9376c8d1 (#4748): keyText and keyHint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
+  const hintsOf = (hints, id) => `${hints.keyText(id)} | ${hints.keyHint(id, "to expand")}`;
+  pi.registerMessageRenderer("keyhints-message", (message, options) => ({ render: () => [hintsOf(options, message.content)], invalidate() {} }));
+  pi.registerEntryRenderer("keyhints-entry", (entry, options) => ({ render: () => [hintsOf(options, entry.data)], invalidate() {} }));
   pi.registerMarkdownTransformer((markdown, context) =>
     `md:${markdown}:${context.messageType}:streaming=${context.isStreaming}:width=${context.availableWidth}`);
   const resolvedLine = (prefix, toolName) => (args) => ({ render: () => [`${prefix}:${toolName}:${args?.q}`], invalidate: () => {} });
   pi.registerToolRenderer((toolName, next) => {
     switch (toolName) {
       case "conformance_tool_renderer": return { renderCall: resolvedLine("resolved", toolName) };
+      case "conformance_keyhints": return { renderCall: (args, _theme, context) => ({ render: () => [hintsOf(context, args.q)], invalidate() {} }) };
       case "conformance_no_renderer": return undefined;
       case "conformance_fill": return next() ?? { renderCall: resolvedLine("filled", toolName) };
       case "conformance_wrap": return { ...next(), renderCall: resolvedLine("wrapped", toolName) };
@@ -473,6 +493,8 @@ export default function (pi) {
     handler: async () => {},
   });
   pi.registerCommand("ping", { description: "Respond with pong", handler: async (_args, ctx) => ctx.ui.notify("pong", "info") });
+  pi.registerCommand("thinking_runs_off", { description: "Release thinking-run ownership", handler: async () => pi.ownThinkingRuns(false) });
+  pi.registerCommand("thinking_runs_on", { description: "Claim thinking-run ownership", handler: async () => pi.ownThinkingRuns(true) });
   pi.registerCommand("model-stream-probe", {
     description: "Exercise model streaming",
     handler: async (_args, ctx) => {
@@ -855,6 +877,60 @@ export default function (pi) {
       ctx.ui.notify(`rw_idle_after_trigger=${ctx.isIdle()}`, "info");
     },
   });
+  pi.registerCommand("rw_idle_busy_until_yield", {
+    description: "Read isIdle after a message that starts a run, before and after a wait for the run",
+    handler: async (_args, ctx) => {
+      pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+      const sync = [ctx.isIdle(), ctx.isIdle()];
+      await ctx.waitForIdle();
+      ctx.ui.notify(`rw_idle_busy_until_yield=sync:${sync.join(",")};later:${ctx.isIdle()}`, "info");
+    },
+  });
+  pi.registerCommand("rw_idle_send_then_await", {
+    description: "Await the run a message starts with no read in between, then read; again for a second message",
+    handler: async (_args, ctx) => {
+      pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+      await ctx.waitForIdle();
+      const awaited = ctx.isIdle();
+      pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+      const second = ctx.isIdle();
+      await ctx.waitForIdle();
+      ctx.ui.notify(`rw_idle_send_then_await=awaited:${awaited};second:${second};awaited-again:${ctx.isIdle()}`, "info");
+    },
+  });
+  pi.registerCommand("rw_idle_blocking", {
+    description: "Read isIdle after a message that starts a run and a wait that is no call",
+    handler: async (_args, ctx) => {
+      const before = ctx.isIdle();
+      pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 300);
+      ctx.ui.notify(`rw_idle_blocking=before:${before};after:${ctx.isIdle()}`, "info");
+    },
+  });
+  pi.registerCommand("rw_idle_yield_poll", {
+    description: "Poll isIdle with a sleep after a message that starts a run, until the Session is idle",
+    handler: async (_args, ctx) => {
+      pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+      const first = ctx.isIdle();
+      for (const deadline = Date.now() + 5000; !ctx.isIdle() && Date.now() < deadline;) await new Promise((resolve) => setTimeout(resolve, 10));
+      ctx.ui.notify(`rw_idle_yield_poll=first:${first};final:${ctx.isIdle()}`, "info");
+    },
+  });
+  pi.registerCommand("rw_idle_callback", {
+    description: "Read isIdle after a message that starts a run, sent from a timer's callback while the handler awaits it",
+    handler: async (_args, ctx) => {
+      const before = ctx.isIdle();
+      await new Promise((resolve) => {
+        setTimeout(async () => {
+          pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+          const sync = [ctx.isIdle(), ctx.isIdle()];
+          await ctx.waitForIdle();
+          ctx.ui.notify(`rw_idle_callback=before:${before};sync:${sync.join(",")};later:${ctx.isIdle()}`, "info");
+          resolve();
+        }, 10);
+      });
+    },
+  });
   let rwSettledOnce = false;
   pi.registerCommand("rw_idle_in_settled", {
     description: "Read isIdle after a message that starts a run, sent from an agent_settled handler",
@@ -880,6 +956,22 @@ export default function (pi) {
         };
         setTimeout(poll, 10);
       });
+    },
+  });
+  pi.registerCommand("rw_idle_live", {
+    description: "Poll isIdle live and report the sequence of answers",
+    handler: async (_args, ctx) => {
+      const seen = [];
+      const deadline = Date.now() + 10000;
+      const poll = () => {
+        const answer = String(ctx.isIdle());
+        if (seen.at(-1) !== answer) {
+          seen.push(answer);
+          ctx.ui.notify(`rw_idle_live=${seen.join(",")}`, "info");
+        }
+        if (seen.length < 3 && Date.now() < deadline) setTimeout(poll, 10);
+      };
+      poll();
     },
   });
   pi.registerCommand("set_model", {
@@ -1270,6 +1362,16 @@ export default function (pi) {
     const missing = ctx.ui.getTheme("missing");
     const result = ctx.ui.setTheme("missing");
     ctx.ui.notify(`selected=${selected} expanded=${ctx.ui.getToolsExpanded()} named=${named?.name} missing=${missing === undefined} success=${result.success} error=${result.error}`, "info");
+  }});
+  pi.registerCommand("autocomplete-settle-register", {handler: async (_,ctx) => {
+    ctx.ui.addAutocompleteProvider(current => ({
+      async getSuggestions(lines,line,col,options) {
+        await current.getSuggestions(lines,line,col,options);
+        if(lines[0]==="slow")await new Promise(resolve=>setTimeout(resolve,400));
+        return {items:[{value:lines[0],label:"settled:"+lines[0]}],prefix:lines[0]};
+      },
+      applyCompletion(...args){return current.applyCompletion(...args);},
+    }));
   }});
   pi.registerCommand("autocomplete-register", {handler: async (_,ctx) => {
     for(const tag of ["A","B"]) {
@@ -1803,6 +1905,25 @@ export default function (pi) {
     handler: async (_args, ctx) => {
       const result = await ctx.ui.custom((_tui, _theme, _keys, done) => new MouseProbe(done), { overlay: true });
       ctx.ui.notify(`mouse=${result ?? ""}`, "info");
+    },
+  });
+  // viewport-probe's component: Component.capturesViewportInput is true until it gets "t", and it closes on "q".
+  class ViewportProbe {
+    constructor(done) {
+      this.done = done;
+      this.capturesViewportInput = true;
+    }
+    render() { return ["viewport probe"]; }
+    handleInput(data) {
+      if (data === "t") this.capturesViewportInput = false;
+      if (data === "q") this.done("viewport=done");
+    }
+  }
+  pi.registerCommand("viewport-probe", {
+    description: "Exercise capturesViewportInput",
+    handler: async (_args, ctx) => {
+      const result = await ctx.ui.custom((_tui, _theme, _keys, done) => new ViewportProbe(done), { overlay: true });
+      ctx.ui.notify(`${result ?? ""}`, "info");
     },
   });
   pi.registerMessageRenderer("kit-message", (_message, _options, theme) => new KitProbe(theme));

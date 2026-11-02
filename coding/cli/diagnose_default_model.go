@@ -65,8 +65,8 @@ func writeDiagnoseDefaultModel(w io.Writer, cwd, agentDir string, trust projectT
 		_, _ = fmt.Fprintf(w, "  effective:      %s/%s (startup falls back to it)\n", selected.Provider, selected.ID)
 		if settings.DefaultProvider != "" && settings.DefaultModel != "" {
 			_, _ = fmt.Fprintf(w, "                  %s/%s is not an available model.", settings.DefaultProvider, settings.DefaultModel)
-			if strings.HasPrefix(settings.DefaultModel, settings.DefaultProvider+"/") {
-				_, _ = fmt.Fprintf(w, " Pi reads defaultModel as a model id and does not split a provider prefix: set defaultProvider %q and defaultModel %q.", settings.DefaultProvider, strings.TrimPrefix(settings.DefaultModel, settings.DefaultProvider+"/"))
+			if after, ok := strings.CutPrefix(settings.DefaultModel, settings.DefaultProvider+"/"); ok {
+				_, _ = fmt.Fprintf(w, " Pi reads defaultModel as a model id and does not split a provider prefix: set defaultProvider %q and defaultModel %q.", settings.DefaultProvider, after)
 			}
 			_, _ = fmt.Fprintln(w)
 		}

@@ -130,12 +130,21 @@ func (h *handler) openFinished(err error) {
 	h.openWaiters = nil
 }
 
+// openedReturnHops is the hops from the end of the scheduler's open job to Harness.open resolving: `await commitWith` in the scheduler's
+// open (1), `await harness.openTasks()` in Harness.open (1) and the caller's await of Harness.open (1) (scheduler.ts open, harness.ts
+// Harness.open). Measured on Pi e7a0df27 with the cut-off tests of host/cf/test/cutoff-ticks.test.ts: Harness.open 56 passes over an
+// idle store's recovery commit.
+const openedReturnHops = 3
+
 func (h *handler) answerOpened(id uint32) {
-	if h.openErr != nil {
-		h.apiError(id, h.openErr)
-		return
-	}
-	h.apiOK(id, nil)
+	err := h.openErr
+	h.hopsThen(openedReturnHops, func() {
+		if err != nil {
+			h.apiError(id, err)
+			return
+		}
+		h.apiOK(id, nil)
+	})
 }
 
 // freshSnapshot is registry.snapshot() inside a step job (scheduler.ts:955 #decide): the host calls the user's reader
@@ -222,7 +231,7 @@ func (h *handler) onTimer(ev *abi.Event) error {
 }
 
 // report forwards a non-fatal failure to HarnessOptions.onReport as a report notice: {name, message, info}, info being the
-// ReportInfo of types.ts (type, and task, extension, reason, callback or conversationId where they apply).
+// ReportInfo of types.ts (kind, and task, extension, reason, callback or conversationId where they apply).
 func (h *handler) report(err error, info *jv.Object) {
 	body := errorJSON(err)
 	body = append(body[:len(body)-1], `,"info":`...)
@@ -246,10 +255,10 @@ func (h *handler) reportFrom(task session.ID, err error, from session.ReportFrom
 		return
 	}
 	if from.Callback != "" {
-		h.report(err, jobj("type", "host_error", "callback", from.Callback))
+		h.report(err, jobj("kind", "host_error", "callback", from.Callback))
 		return
 	}
-	info := jobj("type", "extension_error")
+	info := jobj("kind", "extension_error")
 	if from.Extension != "" {
 		info.Set("extension", from.Extension)
 	}

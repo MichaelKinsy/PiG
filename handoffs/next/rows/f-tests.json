@@ -1,0 +1,87 @@
+{
+ "packages/coding-agent/test/exec-runtime-limit.test.ts": {
+  "ported": [
+   "executes with the default cap when the runtime string limit is below 256 MiB",
+   "still rejects an explicit cap above the runtime string limit"
+  ],
+  "missing": [],
+  "designedOut": [],
+  "evidence": [
+   "coding/extension/exec_max_buffer_test.go#TestExecCommandDefaultCapFollowsTheRuntimeStringLimit",
+   "coding/extension/exec_max_buffer_test.go#TestExecCommandDefaultCapIs256MiB"
+  ]
+ },
+ "packages/coding-agent/test/exec-utf8-chunks.test.ts": {
+  "ported": [
+   "discards pending %s UTF-8 bytes when either stream exceeds the cap"
+  ],
+  "missing": [],
+  "designedOut": [],
+  "evidence": [
+   "coding/extension/exec_utf8_chunks_test.go#TestExecCommandDiscardsPendingUTF8WhenAStreamExceedsTheCap"
+  ]
+ },
+ "packages/coding-agent/test/exec.test.ts": {
+  "ported": [
+   "execCommand › reports spawn errors in stderr",
+   "execCommand › keeps stderr empty when a command exits silently",
+   "execCommand › rejects invalid maxBuffer %s instead of attempting execution",
+   "execCommand › accepts maxBuffer boundary %s",
+   "execCommand › truncates all output when maxBuffer is zero",
+   "execCommand › caps combined output at maxBuffer, terminates the command, and reports truncation",
+   "execCommand › keeps complete UTF-8 characters from %s output %s capped at %i bytes",
+   "execCommand › still flushes incomplete UTF-8 at normal EOF when output was not truncated",
+   "execCommand › leaves output up to maxBuffer unchanged",
+   "execCommand › returns when a shell's child keeps writing after the shell is terminated",
+   "execCommand › force-kills a command that ignores SIGTERM"
+  ],
+  "missing": [],
+  "designedOut": [],
+  "evidence": [
+   "coding/extension/exec_max_buffer_test.go#TestExecCommandResultsAreNotTruncatedWithoutACap",
+   "coding/extension/exec_max_buffer_test.go#TestExecCommandRejectsAnInvalidMaxBuffer",
+   "coding/extension/exec_max_buffer_test.go#TestExecCommandAcceptsTheMaxBufferBoundaries",
+   "coding/extension/exec_max_buffer_test.go#TestExecCommandTruncatesAllOutputWhenMaxBufferIsZero",
+   "coding/extension/exec_max_buffer_test.go#TestExecCommandCapsCombinedOutputAtMaxBuffer",
+   "coding/extension/exec_max_buffer_test.go#TestExecCommandKeepsCompleteUTF8CharactersUnderTheCap",
+   "coding/extension/exec_max_buffer_test.go#TestExecCommandFlushesIncompleteUTF8AtEOFWithoutATruncation",
+   "coding/extension/exec_max_buffer_test.go#TestExecCommandLeavesOutputUpToMaxBufferUnchanged",
+   "coding/extension/exec_tree_test.go#TestExecCommandForceKillsAChildThatIgnoresSIGTERMAfterFiveSeconds",
+   "coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
+   "test/extension-conformance/exec_limits_test.go#TestExecLimitsAcrossSDKs"
+  ]
+ },
+ "packages/coding-agent/test/git-merge-and-resolve-extension.test.ts": {
+  "ported": [
+   "git-merge-and-resolve example › skips when not a git repository",
+   "git-merge-and-resolve example › skips when no upstream is configured",
+   "git-merge-and-resolve example › re-sends conflicts when in an unfinished merge",
+   "git-merge-and-resolve example › skips when working tree is dirty and not in a merge",
+   "git-merge-and-resolve example › skips when fetch fails",
+   "git-merge-and-resolve example › skips when merge is clean",
+   "git-merge-and-resolve example › sends conflict report as a follow-up",
+   "git-merge-and-resolve example › handles empty ours or theirs sections",
+   "git-merge-and-resolve example › skips message when merge fails but no conflict markers found"
+  ],
+  "missing": [],
+  "designedOut": [],
+  "evidence": [
+   "coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample"
+  ]
+ },
+ "packages/coding-agent/test/input-transform-streaming-example.test.ts": {
+  "ported": [
+   "input-transform-streaming example › skips exec during steering",
+   "input-transform-streaming example › transforms when idle and text matches trigger",
+   "input-transform-streaming example › transforms when queued as follow-up",
+   "input-transform-streaming example › continues when text does not match trigger",
+   "input-transform-streaming example › continues when git diff is empty",
+   "input-transform-streaming example › continues when git fails"
+  ],
+  "missing": [],
+  "designedOut": [],
+  "evidence": [
+   "coding/extension/host/subprocess/upstream_examples_test.go#TestInputTransformStreamingExample"
+  ]
+ }
+}

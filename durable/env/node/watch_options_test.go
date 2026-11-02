@@ -35,6 +35,6 @@ func TestNodeWatchOptionsForceTheModeAndSetThePollInterval(t *testing.T) {
 				t.Fatal("a 30 ms poll interval must report the change well before the 2 s default")
 			}
 		}
-		mustDo(t, watcher.Close(background))
+		mustDo(t, watcher.Stop(background))
 	}
 }

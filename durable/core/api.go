@@ -131,7 +131,7 @@ func (h *handler) onAPI(ev *abi.Event) error {
 			h.job.readLine = true
 			// A read that returns the Storage promise itself (readOnLine(() => storage.submission(id)): status, get) settles one tick earlier than
 			// Submissions.wait's async arrow, which awaits it (submissions.ts :63-86).
-			h.job.direct = op == "conversation" || op == "getTask" || op == "entry" || op == "scanEntries" || (op == "submission" && !req.Has("wait"))
+			h.job.direct = op == "conversation" || op == "getTask" || op == "entry" || op == "scanEntries" || op == "entries" || (op == "submission" && !req.Has("wait"))
 			value, err = h.api(op, req)
 			return err
 		}, func(err error) {
@@ -189,7 +189,7 @@ func (h *handler) answerDirect(id uint32, req *jv.Object) error {
 // snapshot whose document is not loaded.
 func (h *handler) onLine(op string, req *jv.Object) bool {
 	switch op {
-	case "conversation", "getTask", "submission", "scanEntries", "context", "entry", "taskGraph", "snapshotAsOf":
+	case "conversation", "getTask", "submission", "scanEntries", "entries", "context", "entry", "taskGraph", "snapshotAsOf":
 		return true
 	case "unloadDocuments":
 		// Storing held changes first is a Storage commit: a job on the Session line (session.ts unloadDocuments).
@@ -214,44 +214,10 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 		// session.ts unloadDocuments: the loaded-document cache is dropped, held changes stored first; later reads load from the
 		// store (and migrate again).
 		return nil, h.sess.UnloadDocuments()
-	case "snapshot":
-		def, args, err := docDef(req)
-		if err != nil {
-			return nil, err
-		}
-		migrating := hostMigration(def, req)
-		v, err := h.sess.Snapshot(def, args)
-		if err != nil || v == nil {
-			return nil, migrating.need(err)
-		}
-		return v, nil
-	case "snapshotAsOf":
-		def, args, err := docDef(req)
-		if err != nil {
-			return nil, err
-		}
-		migrating := hostMigration(def, req)
-		v, err := h.sess.SnapshotAsOf(def, args, session.ID(numOf(req, "at")))
-		if err != nil || v == nil {
-			return nil, migrating.need(err)
-		}
-		return v, nil
-	case "conversation":
-		// readOnLine(() => storage.conversation(id)): one single-statement Storage read (harness.ts :313-316).
-		h.read(hopcost.ReadRow)
-		c, err := h.mir.Conversation(session.ID(numOf(req, "conversationId")))
-		if err != nil || c == nil {
-			return nil, err
-		}
-		return c, nil
-	case "getTask":
-		// readOnLine(() => storage.task(id)): one single-statement Storage read (harness.ts :243).
-		h.read(hopcost.ReadRow)
-		t, err := h.mir.Task(session.ID(numOf(req, "taskId")))
-		if err != nil || t == nil {
-			return nil, err
-		}
-		return t, nil
+	case "snapshot", "snapshotAsOf":
+		return h.apiSnapshot(op, req)
+	case "conversation", "getTask", "submission", "entry":
+		return h.apiRecord(op, req)
 	case "context":
 		conv := int64(numOf(req, "conversationId"))
 		tail, head, found, err := h.contextBounds(conv, int64(numOf(req, "at")))
@@ -259,34 +225,8 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 			return nil, err
 		}
 		return contextAnswer{conv, head, tail, found}, nil
-	case "submission":
-		// Submissions.status/get/wait read the record on the Session line (submissions.ts :63-86): one single-statement Storage read.
-		h.read(hopcost.ReadRow)
-		rec, _ := h.mir.Submission(session.ID(numOf(req, "submissionId")))
-		if rec == nil {
-			return nil, nil
-		}
-		return rec, nil
-	case "scanEntries":
-		// Conversation.entries is readOnLine(() => storage.scanEntries(query, limit, cursor)) (harness.ts :127-139).
-		q := objOf(req, "query")
-		if q == nil {
-			q = jv.NewObject()
-		}
-		cursor, _ := req.Get("cursor")
-		order, after, err := scanStart(q, cursor, "descending")
-		if err != nil {
-			return nil, err
-		}
-		h.read(hopcost.ReadScanEntries)
-		items, next, err := h.mir.scanEntriesRaw(session.EntryQuery{
-			ConversationID: session.ID(numOf(q, "conversationId")), MinEntryID: session.ID(numOf(q, "minEntryId")),
-			MaxEntryID: session.ID(numOf(q, "maxEntryId")), Ascending: order == "ascending",
-		}, int(numOf(req, "limit")), after)
-		if err != nil {
-			return nil, err
-		}
-		return rawPage(items, next, order), nil
+	case "entries", "scanEntries":
+		return h.apiEntries(op, req)
 	case "taskGraph":
 		if h.graph != nil {
 			return jv.Clone(h.graph.value), nil
@@ -305,16 +245,117 @@ func (h *handler) api(op string, req *jv.Object) (any, error) {
 		return h.watchOpen(req)
 	case "watch.close":
 		return h.watchClose(req)
-	case "entry":
-		// readOnLine(() => storage.entry(conversationId, id, context)) (scheduler.ts :1216-1228): the conversation's row, then the entry.
-		h.read(hopcost.ReadEntryIn)
-		e, _, err := h.mir.EntryIn(session.ID(numOf(req, "conversationId")), session.ID(numOf(req, "entryId")))
-		if err != nil || e == nil {
-			return nil, err
-		}
-		return e, nil
 	}
 	return nil, ErrNotImplemented
+}
+
+// apiSnapshot answers the read-only document reads "snapshot" and "snapshotAsOf".
+//
+//go:noinline
+func (h *handler) apiSnapshot(op string, req *jv.Object) (any, error) {
+	def, args, err := docDef(req)
+	if err != nil {
+		return nil, err
+	}
+	migrating := hostMigration(def, req)
+	if op == "snapshotAsOf" {
+		v, err := h.sess.SnapshotAsOf(def, args, session.ID(numOf(req, "at")))
+		if err != nil || v == nil {
+			return nil, migrating.need(err)
+		}
+		return v, nil
+	}
+	v, err := h.sess.Snapshot(def, args)
+	if err != nil || v == nil {
+		return nil, migrating.need(err)
+	}
+	return v, nil
+}
+
+// apiRecord answers the single-row reads "conversation", "getTask", "submission" and "entry": one Storage read on the line each.
+//
+//go:noinline
+func (h *handler) apiRecord(op string, req *jv.Object) (any, error) {
+	switch op {
+	case "conversation":
+		// readOnLine(() => storage.conversation(id)): one single-statement Storage read (harness.ts :313-316).
+		h.read(hopcost.ReadRow)
+		c, err := h.mir.Conversation(session.ID(numOf(req, "conversationId")))
+		if err != nil || c == nil {
+			return nil, err
+		}
+		return c, nil
+	case "getTask":
+		// readOnLine(() => storage.task(id)): one single-statement Storage read (harness.ts :243).
+		h.read(hopcost.ReadRow)
+		t, err := h.mir.Task(session.ID(numOf(req, "taskId")))
+		if err != nil || t == nil {
+			return nil, err
+		}
+		return t, nil
+	case "submission":
+		// Submissions.status/get/wait read the record on the Session line (submissions.ts :63-86): one single-statement Storage read.
+		h.read(hopcost.ReadRow)
+		rec, _ := h.mir.Submission(session.ID(numOf(req, "submissionId")))
+		if rec == nil {
+			return nil, nil
+		}
+		return rec, nil
+	}
+	// readOnLine(() => storage.entry(conversationId, id, context)) (scheduler.ts :1216-1228): the conversation's row, then the entry.
+	h.read(hopcost.ReadEntryIn)
+	e, _, err := h.mir.EntryIn(session.ID(numOf(req, "conversationId")), session.ID(numOf(req, "entryId")))
+	if err != nil || e == nil {
+		return nil, err
+	}
+	return e, nil
+}
+
+// apiEntries answers "entries" (a task's view of its conversation's history) and "scanEntries".
+//
+//go:noinline
+func (h *handler) apiEntries(op string, req *jv.Object) (any, error) {
+	if op == "entries" {
+		// TaskRuntime.entries and HookApi.entries: the committed raw history of the task's conversation, as Conversation.entries
+		// (scheduler.ts runtime.entries: readOnLine(() => storage.scanEntries(conversationEntries(conversationId, query), ...))). Only the
+		// entry ID bounds and the order of the query are used.
+		var conv float64
+		if rt := h.runtimes[session.ID(numOf(req, "taskId"))]; rt != nil {
+			conv = float64(rt.ConversationID())
+		} else if t, err := h.mir.Task(session.ID(numOf(req, "taskId"))); err != nil {
+			return nil, err
+		} else if t != nil {
+			conv = numOf(t, "conversationId")
+		}
+		asked := objOf(req, "query")
+		scan := jobj("conversationId", conv)
+		for _, key := range [...]string{"minEntryId", "maxEntryId", "order"} {
+			if v, ok := asked.Get(key); ok {
+				scan.Set(key, v)
+			}
+		}
+		cursor, _ := req.Get("cursor")
+		return h.api("scanEntries", jobj("query", scan, "limit", valueOf(req, "limit"), "cursor", cursor))
+	}
+	// Conversation.entries is readOnLine(() => storage.scanEntries(query, limit, cursor)) (harness.ts :127-139).
+	q := objOf(req, "query")
+	if q == nil {
+		q = jv.NewObject()
+	}
+	cursor, _ := req.Get("cursor")
+	order, after, err := scanStart(q, cursor, "descending")
+	if err != nil {
+		return nil, err
+	}
+	h.read(hopcost.ReadScanEntries)
+	items, next, err := h.mir.scanEntriesRaw(session.EntryQuery{
+		ConversationID: session.ID(numOf(q, "conversationId")), MinEntryID: session.ID(numOf(q, "minEntryId")),
+		MaxEntryID: session.ID(numOf(q, "maxEntryId")), Ascending: order == "ascending",
+	}, int(numOf(req, "limit")), after)
+	if err != nil {
+		return nil, err
+	}
+	return rawPage(items, next, order), nil
 }
 
 // migration is the host-run migrate of one read-only document access: the definition's migrate(value, from) is host code, so

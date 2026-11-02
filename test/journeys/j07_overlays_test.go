@@ -8,12 +8,11 @@ import (
 
 func init() {
 	register(&harness.Journey{
-		Name:        "overlays-selectors-settings",
-		Doc:         "Slash-command autocomplete, /settings (toggle, search, persistence), /model, /scoped-models and /hotkeys: each selector or overlay opens over a live conversation, is driven with the keyboard, closes, and leaves the editor and the settings file as Pi does.",
-		Touches:     []string{"internal/codingagent/", "tui/", "coding/", "internal/coding/"},
-		AgentFiles:  []string{"settings.json"},
-		Normalizers: []harness.Normalizer{d80SettingsCount},
-		Script:      script(),
+		Name:       "overlays-selectors-settings",
+		Doc:        "Slash-command autocomplete, /settings (toggle, search, persistence), /model, /scoped-models and /hotkeys: each selector or overlay opens over a live conversation, is driven with the keyboard, closes, and leaves the editor and the settings file as Pi does.",
+		Touches:    []string{"internal/codingagent/", "tui/", "coding/", "internal/coding/"},
+		AgentFiles: []string{"settings.json"},
+		Script:     script(),
 		Backbone: []harness.Step{
 			{Name: "launch", Run: func(c *harness.Ctx) { c.Launch(); c.Snap("startup") }},
 			{Name: "one-turn", Run: func(c *harness.Ctx) { prompt(c, "Show me the settings next", 1); c.Snap("turn") }},

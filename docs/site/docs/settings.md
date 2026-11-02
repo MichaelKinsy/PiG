@@ -116,8 +116,9 @@ To turn cache warming off, choose `off` for **Cache warming** in `/settings`, or
 | `markdown.codeBlockIndent` | string | `"  "` | Prefix that indents rendered code blocks. |
 | `markdown.mermaid` | string | `streaming` | Mermaid rendering mode: `off`, `final`, or `streaming`. |
 | `quietStartup` | boolean \| `"header"` | `false` | `true` hides the startup header and the loaded-resource listing. `"header"` keeps the header (version and key hints) but hides the model scope line and the loaded-resource listing. `--verbose` overrides both. |
-| `collapseChangelog` | boolean | `false` | Show a condensed changelog after an update. |
+| `collapseChangelog` | boolean | `false` | Show a condensed changelog after an update. Also condenses extension Package changelogs to one line per Package. |
 | `lastChangelogVersion` | string |  | Last changelog version shown. PiG writes this. |
+| `extensionChangelogVersions` | object |  | Last seen changelog version per extension package, keyed by package source and scope. PiG writes this. |
 
 ## Images and terminal
 
@@ -165,6 +166,7 @@ A setting wins over the matching `PI_HYPERLINKS`, `PI_IMAGE_PROTOCOL` or `PI_TRU
 | `shellCommandPrefix` | string |  | Prefix applied to every shell command. |
 | `externalEditor` | string | `$VISUAL`, `$EDITOR`, then the platform default | Editor opened by `app.editor.external`. |
 | `npmCommand` | string[] | `["npm"]` | Command and arguments used to run npm for package lookup and installation. |
+| `selfUpdateCommand` | string[] | none | Command and arguments `pig update` runs to update PiG itself, with `{packageName}`, `{version}` and `{installSpec}` placeholders. `PI_SELF_UPDATE_COMMAND` takes precedence. **Can only be set in agent-directory settings.** See [Custom update command](cli.md#custom-update-command). |
 
 ## Tools
 

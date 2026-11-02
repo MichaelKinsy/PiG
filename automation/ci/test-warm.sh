@@ -21,11 +21,18 @@ if ! command -v cargo >/dev/null 2>&1; then
   exit 0
 fi
 sdk="$ROOT/extensions/sdk-rs"
+# A Rust cell depends on pig-sdk by absolute path, and Cargo keys a path dependency's unit on that path: the SDK built as the
+# root package of its own manifest is a different unit, so every cell would compile the SDK again (measured: cell tests took
+# 92-98 s against 103-118 s cold with that build, and 10-16 s with the cell's own unit). The dependencies are therefore built
+# through a cell crate rendered by runtimecell, the code that renders a real cell's manifest and lock copy.
+cell=$(mktemp -d)
+trap 'rm -rf "$cell"' EXIT
+go run ./automation/ci/cargocell "$sdk" "$cell"
 # One target per package that builds Rust cells; the names match the SharedCargoTargetDir calls in each package's TestMain.
-for pkg in subprocess cli conformance; do
+for pkg in subprocess runtimecell cli conformance; do
   target=$(go run ./automation/ci/cargotarget "$pkg" "$sdk")
-  echo "[test-warm] Rust SDK dependencies -> $target"
-  (cd "$sdk" && CARGO_TARGET_DIR="$target" cargo build --release --locked --quiet)
+  echo "[test-warm] Rust SDK cell dependencies -> $target"
+  (cd "$cell" && CARGO_TARGET_DIR="$target" cargo build --release --quiet)
 done
 
 daemon="$ROOT/.upstream/current/packages/env/daemon"

@@ -611,3 +611,41 @@ def test_a_view_renderer_that_cannot_be_encoded_answers_an_error() -> None:
 def test_kit_is_reachable_from_the_package() -> None:
     assert pig_sdk.kit is kit
     assert pig_sdk.ViewComponent is kit.ViewComponent
+
+
+class _Viewport:
+    """A line component that captures viewport input until it receives ``t``."""
+
+    def __init__(self) -> None:
+        self.captures_viewport_input = True
+
+    def render(self, width: int) -> list[str]:
+        return ["viewport probe"]
+
+    def handle_input(self, data: str) -> pig_sdk.RemoteComponentResult:
+        if data == "t":
+            self.captures_viewport_input = False
+        return pig_sdk.RemoteComponentResult(done=data == "q", value="viewport=done" if data == "q" else None)
+
+
+def test_custom_frame_carries_captures_viewport_input_and_a_change_alone_sends_a_frame() -> None:
+    host = _Host("viewport", _custom_ext("viewport-ext", _Viewport), {"hasUI": True})
+    try:
+        host.request("pick", "tool_call", "pick", {})
+        call = host.next()
+        key = call["call"]["args"]["key"]
+        first = host.next()["notify"]
+        assert first["method"] == "ui.custom.render"
+        assert first["args"]["lines"] == ["viewport probe"] and first["args"]["capturesViewportInput"] is True
+        host.notify("ui.custom.input", {"key": key, "data": "x"})  # same lines, same flag: no frame
+        host.notify("ui.custom.input", {"key": key, "data": "t"})
+        second = host.next()["notify"]
+        assert second["method"] == "ui.custom.render" and second["args"]["seq"] == 2
+        assert "capturesViewportInput" not in second["args"], "the flag is omitted when false"
+        host.notify("ui.custom.input", {"key": key, "data": "q"})
+        close = host.next()["notify"]
+        assert close["method"] == "ui.custom.close" and close["args"]["result"] == "viewport=done"
+        host.answer(call, {"ok": True, "result": "viewport=done"})
+        assert host.next()["type"] == "response"
+    finally:
+        host.close()

@@ -2,19 +2,63 @@ package harness
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
-// Pi 42a3497d harness/tool.ts: the built-in tool task is version 2 and its input and result are tagged unions
-// (`kind: "model"` for a model-issued call, `kind: "nested"` for a call a running tool made through executeTool()).
-// Version 1 had only model-issued calls and no `kind`.
+// Pi 42a3497d harness/tool.ts: the built-in tool task's input and result are tagged unions (`kind: "model"` for a
+// model-issued call, `kind: "nested"` for a call a running tool made through executeTool()), version 2; version 1 had only
+// model-issued calls and no `kind`. Pi 1c6928b3 made it version 3: `unoffered` on a model-issued call's input.
 
-func TestToolTaskIsVersion2(t *testing.T) {
-	if got := ToolTask.AnyDefinition().Version; got != 2 {
-		t.Fatalf("pi.tool version = %d, want 2 (tool.ts ToolTask)", got)
+func TestToolTaskIsVersion3(t *testing.T) {
+	if got := ToolTask.AnyDefinition().Version; got != 3 {
+		t.Fatalf("pi.tool version = %d, want 3 (tool.ts ToolTask)", got)
+	}
+}
+
+// harness-nested-tools.test.ts:1237 it("keeps version 2 tool task input as it is") (#11043)
+func TestToolTaskKeepsVersion2InputAsItIs(t *testing.T) {
+	migrate := ToolTask.AnyDefinition().Migrate
+	model := map[string]any{"kind": "model", "assistant": 3.0, "callId": "c1"}
+	nested := map[string]any{
+		"kind": "nested", "parent": 7.0, "parentCallId": "c1", "key": "k",
+		"call": map[string]any{"type": "toolCall", "id": "c1/k", "name": "echo", "arguments": map[string]any{}},
+	}
+	checkpoint, err := durable.ToJsonValue(map[string]any{"phase": "call"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]map[string]any{"model": model, "nested": nested} {
+		input, err := durable.ToJsonValue(want)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, _, err := migrate(input, checkpoint, 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		encoded, err := json.Marshal(got)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var decoded map[string]any
+		if err := json.Unmarshal(encoded, &decoded); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(decoded, want) {
+			t.Errorf("%s: migrating a version 2 input gives %s, want %v", name, encoded, want)
+		}
+	}
+}
+
+// harness-tools.test.ts:171: a call to a tool its request did not offer carries `unoffered: true` in its input (#11043).
+func TestToolTaskUnofferedInputSerializes(t *testing.T) {
+	got, err := json.Marshal(ToolTaskInput{Kind: "model", Assistant: 7, CallId: "call_1", Unoffered: true})
+	if want := `{"kind":"model","assistant":7,"callId":"call_1","unoffered":true}`; err != nil || string(got) != want {
+		t.Fatalf("%s, %v; want %s", got, err, want)
 	}
 }
 

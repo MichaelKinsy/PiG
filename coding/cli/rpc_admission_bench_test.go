@@ -24,9 +24,10 @@ func BenchmarkRPCPromptAdmission(b *testing.B) {
 		}
 		write := func(v any) { writeJSONLine(io.Discard, v) }
 		done := make(chan struct{})
+		eventsCh := session.Events()
 		go func() {
 			defer close(done)
-			for event := range session.Events() {
+			for event := range eventsCh {
 				if coding.AcknowledgeEvent(event) {
 					continue
 				}

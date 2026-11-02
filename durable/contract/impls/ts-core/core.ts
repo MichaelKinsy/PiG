@@ -91,6 +91,10 @@ export interface RecoverInput { tasks: string[]; submissions: string[] }
 
 const INTERRUPTED = "Tool lookup was interrupted and may have partially run"
 const ATTEMPT_DELTA = `[["s",["generation"],{"attempt":1}]]`
+/** The pi.live document's version at the pin (harness/live.ts `LiveDoc`): 3, with `run.turns` and `run.first`, `trigger` for a compaction's reason. */
+const LIVE_VERSION = 3
+/** The task definitions' versions at the pin (GenerationTask in generation.ts, ToolTask in tool.ts). */
+const TASK_VERSION: Record<string, number> = { "pi.generation": 2, "pi.tool": 3 }
 /** A delta that sets pi.live's `generation` (the attempt, and the retry a failed attempt waits for). */
 const generationDelta = (generation: Rec) => `[["s",["generation"],${JSON.stringify(generation)}]]`
 const INTERRUPTED_REQUEST = (attempt: number) => `The host stopped while the model was answering, on attempt ${attempt}`
@@ -303,7 +307,7 @@ export class Core {
   private task(id: number, kind: string, input: object, owner: number): Rec {
     let o = this.tasks.get(id)
     if (!o) {
-      o = { id, conversationId: this.conv, kind, version: this.head && kind === "pi.tool" ? 2 : 1, input }
+      o = { id, conversationId: this.conv, kind, version: this.head ? TASK_VERSION[kind] ?? 1 : 1, input }
       if (owner) o.owner = owner
       o.background = false; o.abortRequested = false; o.state = {}
       this.tasks.set(id, o)
@@ -346,7 +350,7 @@ export class Core {
     this.records.push(record)
   }
 
-  private putRevision(doc: number, seq: number, kind: string, content: string) { this.stmt(SQL_REVISION, doc, seq, kind, 1, content) }
+  private putRevision(doc: number, seq: number, kind: string, content: string) { this.stmt(SQL_REVISION, doc, seq, kind, doc === this.liveDoc ? LIVE_VERSION : 1, content) }
   private putBase(doc: number, seq: number, state: unknown) { this.stmt(SQL_DELETE_REVISIONS, doc); this.putRevision(doc, seq, "base", JSON.stringify(state)) }
 
   private gen(id: number) { return this.task(id, "pi.generation", {}, 0) }
@@ -379,7 +383,7 @@ export class Core {
       this.putEntry(t.user, rec)
       this.putSubmission()
       this.putTask(this.gen(t.gen), { status: "pending", checkpoint: { phase: "prepare", attempt: 1 } })
-      this.live.run = { taskId: t.gen, inputs: [t.sub] }
+      this.live.run = { taskId: t.gen, inputs: [t.sub], turns: 0, first: t.user }
       this.putBase(this.liveDoc, seq, this.live)
     })
     this.runGeneration()
@@ -436,6 +440,7 @@ export class Core {
       this.putTask(this.gen(t.gen), { status: "waiting", checkpoint: { phase: "tools", assistant: t.asst, tools: [t.toolTask], pending: [] }, on: [t.toolTask], policy: "allSettled" })
       this.putTask(this.tool(), { status: "pending", checkpoint: { phase: "call" } })
       delete this.live.generation
+      this.live.run.turns++
       this.live.tools = [{ callId: `call-${call}`, name: "lookup", taskId: t.toolTask, status: "pending" }]
       this.putBase(this.liveDoc, seq, this.live)
       this.putBase(this.usageDoc, seq, this.usage)
@@ -493,7 +498,8 @@ export class Core {
     const t = this.t
     const g = this.gen(t.gen)
     const running = { status: "running", checkpoint: { phase: "tools", assistant: t.asst, tools: [t.toolTask], pending: [] } }
-    if (resumed) this.commit(() => this.putTask(g, { ...running, status: "pending" }))
+    // The scheduler's open sets a running task pending with one more restart (scheduler.ts, `restarts + 1`); the wake to running keeps it.
+    if (resumed) this.commit(() => { g.state = { ...running, status: "pending" }; g.restarts = (g.restarts ?? 0) + 1; this.writeTask(g) })
     this.commit(() => this.putTask(g, running))
     const old = t.gen
     t.gen = this.alloc()

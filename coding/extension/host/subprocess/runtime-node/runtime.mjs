@@ -7,6 +7,7 @@ import { disposeIndependentSessions } from "./independent-session-owner.mjs";
 import { dispatchNativeProvider, nativeDeclaration } from "./native-provider.mjs";
 import { dispatchProviderObjectSync, dispatchProviderObjectCallback, remoteProvider } from "./provider-object.mjs";
 import { isWaiting, ProviderSocket, setProviderSocketsRef, shareDecodedFrames } from "./provider-socket.mjs";
+import { constants as bufferConstants } from "node:buffer";
 import { MessageChannel } from "node:worker_threads";
 import net from "node:net";
 import { closeSync, openSync, readSync } from "node:fs";
@@ -308,6 +309,10 @@ function piSession() {
 }
 function piProviderComposer() {
   return requireModule("./shims/pi-dist/pi-coding-agent/core/provider-composer.js");
+}
+// Renderers get the host's keyText and keyHint (Pi 9376c8d1, #4748) on the tool render context and the message and entry options. They load with the first render, not at startup: the module draws in pi-tui's bundle.
+function piKeybindingHints() {
+  return requireModule("./shims/pi-dist/pi-coding-agent/modes/interactive/components/keybinding-hints.js");
 }
 function piVirtualModels() {
   return requireModule("./shims/pi-dist/pi-coding-agent/core/virtual-models.js");
@@ -1626,7 +1631,10 @@ class RuntimeContext {
 
   // Pi's runner.ts:createContext reads the Session live, including from I/O
   // callbacks after the last subscribed event's busy snapshot.
-  isIdle() { this.runtime.extensionRuntime.assertActive(); return this.runtime.callSync("isIdle")?.idle === true; }
+  isIdle() {
+    this.runtime.extensionRuntime.assertActive();
+    return this.runtime.callSync("isIdle")?.idle === true;
+  }
   isProjectTrusted() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.projectTrusted; }
   abort() { this.runtime.extensionRuntime.assertActive(); this.runtime.abortRun(); }
   // Pi's hasPendingMessages is a live getter (agent-session.js:2728, `pendingMessageCount > 0`),
@@ -2133,6 +2141,8 @@ export class Runtime {
     this.extensionRuntime = createExtensionRuntime();
     this.hostReady = false;
     this.markdownTransformer = undefined;
+    // PiG-only: whether this extension owns the thinking runs of assistant messages. Recorded during load, carried by the register frame; later calls go to the host.
+    this.ownsThinkingRuns = false;
     this.requestContext = new AsyncLocalStorage();
     // withSession callbacks of replacement calls in flight, by the handle the call names.
     this.withSessionCallbacks = new Map();
@@ -2317,6 +2327,12 @@ export class Runtime {
       registerMarkdownTransformer: (transformer) => {
         this.markdownTransformer = transformer;
       },
+      // pig additive (D214): the extension owns the thinking runs of assistant messages; recorded while loading, a host call afterwards.
+      ownThinkingRuns: (enabled = true) => {
+        if (typeof enabled !== "boolean") throw new TypeError("ownThinkingRuns requires a boolean");
+        this.ownsThinkingRuns = enabled;
+        if (this.providersSent) this.fireAndForget("ownThinkingRuns", { enabled });
+      },
       registerToolRenderer: (resolver) => this.registerToolRenderer(resolver),
       registerProvider: (name, config) => this.registerProvider(name, config),
       unregisterProvider: (name) => this.unregisterProvider(name),
@@ -2324,10 +2340,11 @@ export class Runtime {
       sendMessage: action((message, options = {}) => {
         this.reportCommandYield();
         if (options?.deliverAs === "nextTurn") return this.fireAndForget("sendMessage", { message, options });
-        // A triggering message starts the run before pi.sendMessage returns (agent-session.ts sendCustomMessage awaits _runAgentPrompt), so the same handler sees a busy session, unless the Session holds the message back: one sent while the agent_settled handlers run waits for them (agent-session.ts:2344-2349) and the session stays idle. In such a handler the answer is the Host's. Elsewhere the run is in progress, and asking would race a run that has already ended.
+        // A triggering message marks the Session busy before pi.sendMessage returns (agent-session.ts sendCustomMessage awaits _startRun, which sets _isAgentRunActive before its first await), and Pi's loop runs nothing else until the code that sent it, a handler or a timer's or an I/O callback, awaits or returns. The host holds its isIdle answer busy, for every extension, from the send until this code yields (Host.syncRuns): the send carries a token and the first microtask checkpoint reports it (reportHandlerYield), whichever code sent. The Session holds back a message sent while the agent_settled handlers run (agent-session.ts:2344-2349) and stays idle: there the answer is the Host's and nothing is held.
         if (options?.triggerTurn) {
           const idle = this.state.isIdle;
-          try { this.writeSync("sendMessage", { message, options }); }
+          const token = uuid("y");
+          try { this.writeSync("sendMessage", { message, options, yield_token: token }); }
           catch (err) {
             if (!isHostCancellation(err)) {
               try { process.stderr.write(`pig: host call sendMessage failed: ${err && err.message ? err.message : String(err)}\n`); } catch {}
@@ -2335,7 +2352,10 @@ export class Runtime {
             return;
           }
           if (this.activeRequest()?.event === "agent_settled") this.state.isIdle = this.callSync("isIdle")?.idle === true;
-          else if (idle) this.state.isIdle = false;
+          else {
+            if (idle) this.state.isIdle = false;
+            this.reportHandlerYield(token);
+          }
           return;
         }
         try { this.writeSync("sendMessage", { message, options }); }
@@ -2546,6 +2566,11 @@ export class Runtime {
   //
   // core/exec.ts:46-52 kills the child when options.signal aborts, and the call has no other signal. An AbortSignal cannot cross the process boundary: the call names itself by an exec id and carries ownSignal, which detaches it from the calling request, and the abort reaches the Host as exec.cancel.
   exec(request) {
+    // core/exec.ts rejects an invalid maxBuffer before it spawns. NaN and the infinities would reach the Host as null, which means undefined, so the check runs here with the runtime's own limit.
+    const maxBuffer = request.options?.maxBuffer;
+    if (maxBuffer != null && (!Number.isInteger(maxBuffer) || maxBuffer < 0 || maxBuffer > bufferConstants.MAX_STRING_LENGTH)) {
+      return Promise.reject(new RangeError(`maxBuffer must be an integer between 0 and ${bufferConstants.MAX_STRING_LENGTH} bytes`));
+    }
     const signal = request.options?.signal;
     if (!signal || typeof signal.addEventListener !== "function") return this.execCall(request, false, () => {});
     const { signal: _signal, ...options } = request.options;
@@ -3015,6 +3040,7 @@ export class Runtime {
         message_renderers: [...this.renderers.keys()].map((customType) => ({ custom_type: customType })),
         entry_renderers: [...this.entryRenderers.keys()].map((customType) => ({ custom_type: customType })),
         markdown_transformer: typeof this.markdownTransformer === "function" || undefined,
+        owns_thinking_runs: this.ownsThinkingRuns || undefined,
         tool_renderers: this.toolRendererResolvers.length || undefined,
         mcp_servers: this.mcpServersPending.size > 0 ? [...this.mcpServersPending].map(([name, config]) => ({ name, config })) : undefined,
         virtual_models: this.virtualModelsPending.length > 0 ? this.virtualModelsPending : undefined,
@@ -3732,6 +3758,7 @@ export class Runtime {
     let lastWidth;
     let lastViewKey;
     let lastMouse = false;
+    let lastCaptures = false;
     // ui.view.evicted: the next frame goes out with the image data again.
     overlay.resendFrame = () => {
       lastViewKey = undefined;
@@ -3759,17 +3786,21 @@ export class Runtime {
       // The frame says whether the component takes the
       // mouse, so the host hands it fullscreen mouse events.
       const mouse = takesMouse(component);
-      if (termWidth === lastWidth && mouse === lastMouse && derived?.key === lastViewKey && out.length === lastLines.length && out.every((value, index) => value === lastLines[index])) return;
+      // Component.capturesViewportInput is read as Pi reads it, when the frame is drawn: the host keeps the viewport keys from the transcript while it is true.
+      const captures = component.capturesViewportInput === true;
+      if (termWidth === lastWidth && mouse === lastMouse && captures === lastCaptures && derived?.key === lastViewKey && out.length === lastLines.length && out.every((value, index) => value === lastLines[index])) return;
       lastLines = out;
       lastWidth = termWidth;
       lastViewKey = derived?.key;
       lastMouse = mouse;
+      lastCaptures = captures;
       overlay.viewRefs = derived?.images;
       overlay.seq += 1;
       try {
         const args = { key, lines: out, width: termWidth, seq: overlay.seq };
         if (derived) args.view = this.viewWithImages(derived);
         if (mouse) args.mouse = true;
+        if (captures) args.capturesViewportInput = true;
         this.notify("ui.custom.render", args);
       } catch (err) {
         fail(err);
@@ -5130,7 +5161,8 @@ export class Runtime {
           const handler = this.renderers.get(request.tool);
           if (!handler) throw new Error(`unknown renderer: ${request.tool}`);
           const payload = request.args || {};
-          const component = await handler(payload.message, payload.options, this.ui.theme);
+          const { keyText, keyHint } = piKeybindingHints();
+          const component = await handler(payload.message, { ...payload.options, keyText, keyHint }, this.ui.theme);
           await this.respond(id, this.withSurfaceTheme(component, () => {
             const lines = Array.isArray(component) ? component : component?.render?.(payload.width);
             return this.rendererResult(component, Array.isArray(lines) ? lines : [], payload.width);
@@ -5156,7 +5188,8 @@ export class Runtime {
           const handler = this.entryRenderers.get(request.tool);
           if (!handler) throw new Error(`unknown entry renderer: ${request.tool}`);
           const payload = request.args || {};
-          const component = await handler(payload.entry, payload.options, this.ui.theme);
+          const { keyText, keyHint } = piKeybindingHints();
+          const component = await handler(payload.entry, { ...payload.options, keyText, keyHint }, this.ui.theme);
           await this.respond(id, this.withSurfaceTheme(component, () => {
             const lines = Array.isArray(component) ? component : component?.render?.(payload.width);
             return this.rendererResult(component, Array.isArray(lines) ? lines : [], payload.width);
@@ -5181,12 +5214,15 @@ export class Runtime {
           const phase = isResult ? "result" : "call";
           let component = card[phase];
           if (payload.rerender || component === undefined) {
+            const { keyText, keyHint } = piKeybindingHints();
             const context = {
               ...(payload.context || {}),
               args: payload.args,
               invalidate: () => this.notify("tool_render_invalidate", { card: payload.card }),
               lastComponent: component,
               state: card.state,
+              keyText,
+              keyHint,
             };
             try {
               component = isResult
@@ -5205,7 +5241,7 @@ export class Runtime {
           return;
         }
         case "autocomplete.suggest": {
-          await this.respond(id, await this.autocomplete.suggest(request.args, ctx[requestSignal]));
+          await this.respond(id, await this.autocomplete.suggest(request.args, ctx[requestSignal], id));
           return;
         }
         case "terminal_input": {
@@ -5663,6 +5699,13 @@ export class Runtime {
       if (request) request.windowSettled = new Promise((resolve) => { request.settleWindow = resolve; });
       this.conn.requestState(id, "blocked", "external_io");
     });
+  }
+
+  // reportHandlerYield tells the host, at the first microtask checkpoint after the send that carried token, that the code that sent a triggering message awaited or returned. The checkpoint comes once the code's synchronous run ends, as the loop's next turn does in Pi, where the run the message started can proceed (Host.syncRuns); the host sets its hold before it answers the send, and this process sends the report only after that answer.
+  reportHandlerYield(token) {
+    const conn = this.conn;
+    if (!conn) return;
+    queueMicrotask(() => { if (!conn.closed) conn.notify("handler_yielded", { token }); });
   }
 
   // reportCommandYield follows a send from an RPC command's handler. The host holds the run the send starts while the handler runs, as Pi's run starts only once the handler that sent it awaits or returns (agent-session.ts:2129, 2293 sendCustomMessage); a handler still unsettled at the next event-loop turn has awaited, so the command reports its suspension then.

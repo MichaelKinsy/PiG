@@ -432,53 +432,68 @@
           (push thread (extension-request-threads ext)))))))
 
 (defun read-ready (ext conn)
-  (declare (ignorable ext))
-  (loop
-    (let ((env (read-frame conn)))
-      (when (eq env :eof) (error "the host closed the connection before it answered the registration"))
-      (let ((type (jget env "type")))
-        (cond ((equal type "ready") (return env))
-              ((equal type "ping")
-               (send-frame conn (obj "type" "pong" "pong" (obj "nonce" (jget (or (jget env "ping") (obj)) "nonce" "")))))
-              (t nil))))))
+  "Read frames until the host's ready and return it, and as a second value the events.dispatch requests that came first, in arrival order: a listener the host
+dispatches to while the extension registers is served once the extension is ready, as the other SDKs and the node runtime serve it.
+The first value is :SHUTDOWN when the host shut the extension down first, whether the frame was read here or by a call the extension made before it registered."
+  (when (helper-take-shutdown conn) (return-from read-ready (values :shutdown (reverse (shiftf (extension-early-dispatches ext) '())))))
+  (let ((early (shiftf (extension-early-dispatches ext) '())))
+    (loop
+      (let ((env (read-frame conn)))
+        (when (eq env :eof) (error "the host closed the connection before it answered the registration"))
+        (let ((type (jget env "type")))
+          (cond ((equal type "ready") (return (values env (nreverse early))))
+                ((equal type "shutdown") (return (values :shutdown (nreverse early))))
+                ((equal type "ping")
+                 (send-frame conn (obj "type" "pong" "pong" (obj "nonce" (jget (or (jget env "ping") (obj)) "nonce" "")))))
+                ((and (equal type "request") (equal (jget (or (jget env "request") (obj)) "method") "events.dispatch"))
+                 (push env early))
+                (t nil)))))))
+
+(declaim (ftype function helper-take-shutdown))
 
 (defun serve (ext conn)
   "Register EXT over CONN and serve the host until it shuts the extension down or closes the connection.
-True when every handler thread stopped in time."
+True when every handler thread stopped in time.
+A shutdown before ready ends the run as one after ready does: no error, because Pi's session shutdown never fails an extension (runner.ts emitSessionShutdownEvent) and the node runtime returns.
+The register frame is sent, and the dispatches read before the shutdown are answered while the handler threads stop."
   (setf (extension-conn ext) conn)
-  (let ((stopped t))
+  (let ((stopped t) (early '()) (shutdown nil))
     (unwind-protect
          (progn
            (let ((ready nil))
              (sb-thread:with-mutex ((extension-reg-lock ext))
                (send-frame conn (obj "type" "register" "register" (register-payload ext)))
-               (setf ready (read-ready ext conn))
+               (multiple-value-setq (ready early) (read-ready ext conn))
                (setf (extension-live ext) t))
-             (let ((data (or (jget ready "ready") (obj))))
-               (sb-thread:with-mutex ((extension-state-lock ext))
-                 (setf (extension-cwd ext) (let ((c (jget data "cwd"))) (if (stringp c) c ""))
-                       (extension-mode ext) (let ((m (jget data "mode"))) (if (stringp m) m ""))
-                       (extension-width ext) (let ((w (jget data "width"))) (if (integerp w) w 0))
-                       (extension-height ext) (let ((h (jget data "height"))) (if (integerp h) h 0)))
-                 (let ((state (or (jget data "state") (obj))))
-                   (apply-footer-data ext (jget state "footerData"))
-                   (apply-ui-state ext state)))
-               (run-hooks '*ready-hooks* ext data)))
-           (run-loaded-handlers ext)
-           (loop
-             (let ((env (handler-case (read-frame conn) (error () :eof))))
-               (when (eq env :eof) (return))
-               (let ((type (jget env "type")))
-                 (cond
-                   ((equal type "ping")
-                    (send-frame conn (obj "type" "pong" "pong" (obj "nonce" (jget (or (jget env "ping") (obj)) "nonce" "")))))
-                   ((equal type "call_result") (deliver-call-result ext env))
-                   ((equal type "notify") (handle-notify ext env))
-                   ((equal type "request")
-                    (apply-event-stream ext (or (jget env "request") (obj)))
-                    (start-request ext env))
-                   ((equal type "cancel") (handle-cancel ext env))
-                   ((equal type "shutdown") (return)))))))
+             (setf shutdown (eq ready :shutdown))
+             (unless shutdown
+               (let ((data (or (jget ready "ready") (obj))))
+                 (sb-thread:with-mutex ((extension-state-lock ext))
+                   (setf (extension-cwd ext) (let ((c (jget data "cwd"))) (if (stringp c) c ""))
+                         (extension-mode ext) (let ((m (jget data "mode"))) (if (stringp m) m ""))
+                         (extension-width ext) (let ((w (jget data "width"))) (if (integerp w) w 0))
+                         (extension-height ext) (let ((h (jget data "height"))) (if (integerp h) h 0)))
+                   (let ((state (or (jget data "state") (obj))))
+                     (apply-footer-data ext (jget state "footerData"))
+                     (apply-ui-state ext state)))
+                 (run-hooks '*ready-hooks* ext data))))
+           (unless shutdown (run-loaded-handlers ext))
+           (dolist (env early) (start-request ext env))
+           (unless shutdown
+             (loop
+               (let ((env (handler-case (read-frame conn) (error () :eof))))
+                 (when (eq env :eof) (return))
+                 (let ((type (jget env "type")))
+                   (cond
+                     ((equal type "ping")
+                      (send-frame conn (obj "type" "pong" "pong" (obj "nonce" (jget (or (jget env "ping") (obj)) "nonce" "")))))
+                     ((equal type "call_result") (deliver-call-result ext env))
+                     ((equal type "notify") (handle-notify ext env))
+                     ((equal type "request")
+                      (apply-event-stream ext (or (jget env "request") (obj)))
+                      (start-request ext env))
+                     ((equal type "cancel") (handle-cancel ext env))
+                     ((equal type "shutdown") (return))))))))
       (setf stopped (stop-runtime ext))
       (remhash ext *ticket-tails*)
       (conn-close conn))

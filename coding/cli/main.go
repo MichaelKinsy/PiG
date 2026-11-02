@@ -691,6 +691,10 @@ type MainOptions struct {
 	ExtensionFactories []extension.InlineExtension
 }
 
+// processCwd is process.cwd(). It is a variable so that a test can make the working directory fail the way Pi's deleted-cwd.test.ts
+// stubs process.cwd().
+var processCwd = nodepath.Cwd
+
 // Main runs the pig command line for args, the arguments after the program name, as Pi's main(args, options) does (main.ts:573). The default and experimental executables call it with args and no options.
 func Main(args []string, options *MainOptions) {
 	// pig additive (D174): at most procpolicy.Cap Ps unless the environment sets GOMAXPROCS; set before anything reads the width.
@@ -757,6 +761,18 @@ func Main(args []string, options *MainOptions) {
 	if runtime.GOOS == "windows" {
 		codingagent.CleanupWindowsSelfUpdateQuarantine(codingagent.GetPackageDir())
 	}
+	// main.ts:594-605 process.cwd(): the physical directory, not os.Getwd's $PWD, which may reach it through a symlink. A deleted working
+	// directory is reported in one line before any command, --version and --help included (88ffcdc7, #11511); any other failure is
+	// reported as it is.
+	initialCWD, err := processCwd()
+	if errors.Is(err, fs.ErrNotExist) {
+		printCLIError("The current working directory no longer exists. Change to an existing directory and try again.")
+		exitProcess(1)
+	}
+	if err != nil {
+		printCLIError("get cwd: %v", err)
+		exitProcess(1)
+	}
 	if len(args) > 0 {
 		if code := runLoginCommand(args); code >= 0 {
 			exitProcess(code)
@@ -820,6 +836,12 @@ func Main(args []string, options *MainOptions) {
 	if flags.Version {
 		fmt.Println(cliVersionString())
 		exitProcess(0)
+	}
+
+	// pig additive (D202): a Piglet Binary built with build.closed runs only the extensions its signed closure lists.
+	if message := pigletBinaryExtensionFlagRefusal(currentPigletBinary(), flags.Extensions); message != "" {
+		fmt.Fprintln(os.Stderr, message)
+		exitProcess(1)
 	}
 
 	// A Piglet Binary embeds prebuilt cells and may link fused extensions. Register
@@ -911,13 +933,6 @@ func Main(args []string, options *MainOptions) {
 			printCLIError("Session id must be non-empty, contain only alphanumeric characters, '-', '_', and '.', and start and end with an alphanumeric character")
 			exitProcess(1)
 		}
-	}
-
-	// main.ts:593 process.cwd(): the physical directory, not os.Getwd's $PWD, which may reach it through a symlink.
-	initialCWD, err := nodepath.Cwd()
-	if err != nil {
-		printCLIError("get cwd: %v", err)
-		exitProcess(1)
 	}
 
 	// Set up context with signal handling.

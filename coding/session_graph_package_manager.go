@@ -60,6 +60,9 @@ func graphResolved(resources []icodingagent.ResolvedResource) []map[string]any {
 		if resource.Metadata.BaseDir != "" {
 			metadata["baseDir"] = resource.Metadata.BaseDir
 		}
+		if resource.Metadata.ChangelogPath != "" {
+			metadata["changelogPath"] = resource.Metadata.ChangelogPath
+		}
 		out = append(out, map[string]any{"path": resource.Path, "enabled": resource.Enabled, "metadata": metadata})
 	}
 	return out

@@ -132,7 +132,7 @@ func TestCoreAFailedBlockingCompactionFailsTheRunAndIsRecorded(t *testing.T) {
 			t.Fatalf("provider calls = %d, want 2 (first turn and summary, no request after the failed compaction)", pending)
 		}
 		live := r.live(t)
-		if failure := live.CompactionFailure; failure == nil || failure.Reason != "threshold" || failure.Error != "Summarization failed: bad request" || live.Compactions != nil {
+		if failure := live.CompactionFailure; failure == nil || failure.Trigger != "threshold" || failure.Error != "Summarization failed: bad request" || live.Compactions != nil {
 			t.Fatalf("live compactionFailure %+v, compactions %+v", live.CompactionFailure, live.Compactions)
 		}
 	})
@@ -166,7 +166,7 @@ func TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced(t *testing.T) {
 		r.firstTurn(t)
 		expectUnansweredModelError(t, r.submit(t, strings.Repeat("y", 500)), "Compaction failed: Summarization failed: bad request")
 		recorded := r.live(t).CompactionFailure
-		if recorded == nil || recorded.Reason != "threshold" || recorded.Error != "Summarization failed: bad request" {
+		if recorded == nil || recorded.Trigger != "threshold" || recorded.Error != "Summarization failed: bad request" {
 			t.Fatalf("compactionFailure = %+v", recorded)
 		}
 		if got := ended(recorded.TaskId).CompactionFailure; got == nil || *got != *recorded {
@@ -268,7 +268,7 @@ func TestCoreAFaultedBlockingCompactionFailsTheRunAndIsRecorded(t *testing.T) {
 		r.models.SetProvider(&restored)
 		live := r.live(t)
 		failure := live.CompactionFailure
-		if failure == nil || failure.Reason != "threshold" || failure.Error == "" || live.Compactions != nil {
+		if failure == nil || failure.Trigger != "threshold" || failure.Error == "" || live.Compactions != nil {
 			t.Fatalf("live compactionFailure %+v, compactions %+v", failure, live.Compactions)
 		}
 		const strictJSON = "Value contains a non-finite number and is not strict JSON"

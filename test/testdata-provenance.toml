@@ -129,6 +129,12 @@ why = "Pi has no Piglets, so the text of `pig piglet tree` (D170) is PiG's own f
 [[input]]
 paths = ["durable/core/probe/testdata/*.events", "durable/core/contracttest/binding/testdata/*.events"]
 
+# session-replaced-2860.lisp is the Lisp SDK realization of the fixture program that session-replaced-2860.{mjs,py} and the -go and -rs
+# directories realize: a test program (the bodies of Pi's 2860-replaced-session-context.test.ts cases), not expected output. Those
+# other realizations are exempt by extension; .lisp is a source language too, and it is listed here because it is not in the skip list.
+[[input]]
+paths = ["coding/cli/testdata/session-replaced-2860.lisp"]
+
 [[input]]
 paths = ["coding/cli/testdata/*/go.mod", "coding/cli/testdata/*/LICENSE", "coding/cli/testdata/*/Cargo.toml", "coding/cli/testdata/*/Cargo.lock"]
 

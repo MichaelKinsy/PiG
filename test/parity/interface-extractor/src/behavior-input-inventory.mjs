@@ -124,6 +124,20 @@ function qualifyCollidingRenderers(renderers) {
   }
 }
 
+// Handler ids are owner and name too: an object-literal `handleInput` callback inside a class method collides with
+// the class's own handleInput (mcp/ui.ts: McpManagerView.menu and .prompt hand `{ handleInput }` to setContent).
+// Only a colliding callback is qualified by its enclosing function, which keeps every id that was already unique.
+function qualifyCollidingHandlers(handlers) {
+  const counts = new Map();
+  for (const handler of handlers) counts.set(handler.id, (counts.get(handler.id) ?? 0) + 1);
+  for (const handler of handlers) {
+    if (counts.get(handler.id) > 1 && handler.enclosing) {
+      handler.method = `${handler.enclosing}.${handler.method}`;
+      handler.id = `input:${handler.path}#${handler.owner}.${handler.method}`;
+    }
+  }
+}
+
 function behaviorMethodName(method) {
   return method.slice(method.lastIndexOf(".") + 1);
 }
@@ -321,6 +335,7 @@ function inspectHandler(node, sourceFile, relativePath) {
   const start = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
   const end = sourceFile.getLineAndCharacterOfPosition(node.getEnd()).line + 1;
   return {
+    enclosing: enclosingFunctionName(node, sourceFile),
     id: `input:${relativePath}#${owner}.${method}`,
     path: relativePath,
     owner,
@@ -439,6 +454,7 @@ export function extractBehaviorInputInventory({ sourceRoot, upstreamVersion }) {
     };
     visit(sourceFile);
   }
+  qualifyCollidingHandlers(handlers);
   handlers.sort((left, right) => left.id.localeCompare(right.id));
   qualifyCollidingRenderers(renderers);
   renderers.sort((left, right) => left.id.localeCompare(right.id));
@@ -446,6 +462,7 @@ export function extractBehaviorInputInventory({ sourceRoot, upstreamVersion }) {
   if (duplicates.length > 0) throw new Error(`duplicate input handler id ${duplicates[0].id}`);
   const duplicateRenderers = renderers.filter((renderer, index) => index > 0 && renderer.id === renderers[index - 1].id);
   if (duplicateRenderers.length > 0) throw new Error(`duplicate renderer id ${duplicateRenderers[0].id}`);
+  for (const handler of handlers) delete handler.enclosing;
   for (const renderer of renderers) delete renderer.enclosing;
   const keybindings = [...definitions.values()].map(({ definitionSet: _definitionSet, ...entry }) => entry).sort((left, right) => left.id.localeCompare(right.id));
   const declared = [...declarations].sort();

@@ -171,6 +171,19 @@
                                                 (pig:exec-result-exit-code result)
                                                 (string-trim '(#\Space #\Newline #\Tab) (pig:exec-result-stdout result)))))
                      (pig:host-call-error (e) (core-info ctx (format nil "rejected:~A" (pig:host-call-error-message e))))))))
+  (pig:command ext "exec-limits-probe" "Run a command with a max_buffer and report truncation"
+               (lambda (ctx args)
+                 (let* ((probe (pig:from-json args)) (max-buffer (pig:jget probe "maxBuffer")))
+                   (handler-case
+                       (let ((result (apply #'pig:ctx-exec ctx (pig:jget probe "command") :args (coerce (pig:jget probe "args") 'list)
+                                            (and max-buffer (list :max-buffer max-buffer)))))
+                         (flet ((trimmed (text) (string-trim '(#\Space #\Newline #\Tab #\Return) text)))
+                           (core-info ctx (format nil "exec-limits:truncated=~A;killed=~A;code=~D;stdout=~A;stderr=~A"
+                                                  (if (pig:exec-result-truncated result) "true" "false")
+                                                  (if (pig:exec-result-killed result) "true" "false")
+                                                  (pig:exec-result-exit-code result)
+                                                  (trimmed (pig:exec-result-stdout result)) (trimmed (pig:exec-result-stderr result))))))
+                     (pig:host-call-error (e) (core-info ctx (format nil "rejected:~A" (pig:host-call-error-message e))))))))
   (pig:command ext "timeout-probe" "Send JavaScript-number timeouts"
                (lambda (ctx args) (declare (ignore args))
                  (dolist (timeout (list 0.5d0 4294967296.5d0 1d21)) (pig:ctx-exec ctx "timeout-command" :args '() :timeout timeout))
@@ -673,6 +686,50 @@
                (lambda (ctx args) (declare (ignore args))
                  (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
                  (core-info ctx (format nil "rw_idle_after_trigger=~A" (if (pig:ctx-is-idle-p ctx) "true" "false")))))
+  (pig:command ext "rw_idle_busy_until_yield" "Read isIdle after a message that starts a run, before and after a wait for the run"
+               (lambda (ctx args) (declare (ignore args))
+                 (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
+                 (flet ((idle () (if (pig:ctx-is-idle-p ctx) "true" "false")))
+                   (let ((sync-a (idle)) (sync-b (idle)))
+                     (pig:ctx-wait-for-idle ctx)
+                     (core-info ctx (format nil "rw_idle_busy_until_yield=sync:~A,~A;later:~A" sync-a sync-b (idle)))))))
+  (pig:command ext "rw_idle_send_then_await" "Await the run a message starts with no read in between, then read; again for a second message"
+               (lambda (ctx args) (declare (ignore args))
+                 (flet ((idle () (if (pig:ctx-is-idle-p ctx) "true" "false")))
+                   (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
+                   (pig:ctx-wait-for-idle ctx)
+                   (let ((awaited (idle)))
+                     (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
+                     (let ((second (idle)))
+                       (pig:ctx-wait-for-idle ctx)
+                       (core-info ctx (format nil "rw_idle_send_then_await=awaited:~A;second:~A;awaited-again:~A" awaited second (idle))))))))
+  (pig:command ext "rw_idle_yield_poll" "Poll isIdle with the SDK sleep helper after a message that starts a run"
+               (lambda (ctx args) (declare (ignore args))
+                 (flet ((idle () (if (pig:ctx-is-idle-p ctx) "true" "false")))
+                   (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
+                   (let ((first (idle))
+                         (deadline (+ (get-internal-real-time) (* 5 internal-time-units-per-second))))
+                     (loop until (or (pig:ctx-is-idle-p ctx) (>= (get-internal-real-time) deadline))
+                           do (pig:ctx-sleep ctx 0.01))
+                     (core-info ctx (format nil "rw_idle_yield_poll=first:~A;final:~A" first (idle)))))))
+  (pig:command ext "rw_idle_blocking" "Read isIdle after a message that starts a run and a wait that is no call"
+               (lambda (ctx args) (declare (ignore args))
+                 (flet ((idle () (if (pig:ctx-is-idle-p ctx) "true" "false")))
+                   (let ((before (idle)))
+                     (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
+                     (sleep 0.3)
+                     (core-info ctx (format nil "rw_idle_blocking=before:~A;after:~A" before (idle)))))))
+  (pig:command ext "rw_idle_callback" "Read isIdle after a message that starts a run, sent from a thread the handler waits for"
+               (lambda (ctx args) (declare (ignore args))
+                 (flet ((idle () (if (pig:ctx-is-idle-p ctx) "true" "false")))
+                   (let ((before (idle)))
+                     (sb-thread:join-thread
+                      (sb-thread:make-thread
+                       (lambda ()
+                         (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
+                         (let ((sync-a (idle)) (sync-b (idle)))
+                           (pig:ctx-wait-for-idle ctx)
+                           (core-info ctx (format nil "rw_idle_callback=before:~A;sync:~A,~A;later:~A" before sync-a sync-b (idle)))))))))))
   (pig:command ext "rw_idle_background" "Poll isIdle from a background callback after agent_end"
                (lambda (ctx args) (declare (ignore ctx args))
                  (pig:on ext "agent_end"
@@ -686,6 +743,19 @@
                                          (unless idle (sleep 0.01)))
                                 (core-info hctx (format nil "rw_idle_background=~A" (if idle "true" "false"))))))
                            nil))))
+  (pig:command ext "rw_idle_live" "Poll isIdle live and report the sequence of answers"
+               (lambda (ctx args) (declare (ignore args))
+                 (sb-thread:make-thread
+                  (lambda ()
+                    (let ((seen nil)
+                          (deadline (+ (get-internal-real-time) (* 10 internal-time-units-per-second))))
+                      (loop while (and (< (length seen) 3) (<= (get-internal-real-time) deadline))
+                            do (let ((answer (if (pig:ctx-is-idle-p ctx) "true" "false")))
+                                 (unless (equal answer (car (last seen)))
+                                   (setf seen (append seen (list answer)))
+                                   (core-info ctx (format nil "rw_idle_live=~{~A~^,~}" seen))))
+                               (sleep 0.01)))))
+                 nil))
   (let ((settled-once nil))
     (pig:command ext "rw_idle_in_settled" "Read isIdle after a message that starts a run, sent from an agent_settled handler"
                  (lambda (ctx args) (declare (ignore ctx args))

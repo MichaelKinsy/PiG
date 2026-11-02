@@ -18,7 +18,7 @@ func TestNodeFileWatcherReportsNoPathForAnEventWithoutAnAbsolutePath(t *testing.
 	mustDo(t, os.MkdirAll(filepath.Join(target, "sub"), 0o700))
 	watcher, err := openFileWatcher([]durableenv.WatchTarget{{Path: target, Recursive: true}}, func(path string) string { return path }, func(durableenv.FileChange) {}, NodeWatchOptions{Mode: durableenv.WatchNative})
 	mustDo(t, err)
-	t.Cleanup(func() { _ = watcher.Close(background) })
+	t.Cleanup(func() { _ = watcher.Stop(background) })
 
 	for _, name := range []string{"", "."} {
 		watcher.onEvent(name)

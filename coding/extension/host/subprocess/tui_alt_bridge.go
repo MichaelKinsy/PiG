@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
@@ -27,6 +28,8 @@ type tuiAltCaps struct {
 	Mouse           bool `json:"mouse"`
 	Focusable       bool `json:"focusable"`
 	WantsKeyRelease bool `json:"wantsKeyRelease"`
+	// CapturesViewportInput reports that the component has Component.capturesViewportInput; its value is read with a callback each time the screen asks.
+	CapturesViewportInput bool `json:"capturesViewportInput"`
 }
 
 type tuiAltTerminalBlock struct {
@@ -79,6 +82,12 @@ type tuiAltScreenState struct {
 	screen *tui.TuiAltScreen
 	term   *tuiAltTerminal
 
+	// ctx is the context of every request the screen makes (callback); end, called by disposeTuiAlt, ends it. The goroutine that runs a frame holds the frame
+	// lock while it waits for the extension to answer, and disposing the screen takes that lock, so the host must be able to end the wait of an extension that
+	// never answers.
+	ctx context.Context
+	end context.CancelFunc
+
 	// waits holds the callbacks the goroutine that runs the renderer's frame is waiting on, by request id: see callback.
 	waitMu sync.Mutex
 	waits  map[string]*tuiAltWait
@@ -89,7 +98,6 @@ type tuiAltScreenState struct {
 	layoutRoot tui.Component
 	overlays   map[string]*tui.OverlayHandle
 	listeners  map[string]*tui.TuiInputListener
-	disposed   bool
 }
 
 type tuiAltRegistry struct {
@@ -128,11 +136,8 @@ type tuiAltWait struct {
 // goroutine runs it, while it holds the frame lock: the call applies at once and a later read sees it, as in Pi.
 func (s *tuiAltScreenState) callback(kind string, fields map[string]any, result any) error {
 	args := map[string]any{"id": s.id, "kind": kind}
-	for k, v := range fields {
-		args[k] = v
-	}
-	//portlint:allow ctxbackground the screen outlives the call that built it; a callback ends with the connection (Request returns when it closes)
-	ctx := context.Background()
+	maps.Copy(args, fields)
+	ctx := s.ctx
 	frame, inFrame := s.screen.Frame()
 	if !inFrame {
 		return autocompleteRequest(ctx, s.conn, RequestTuiAltCallback, args, result)
@@ -195,9 +200,7 @@ type tuiAltTerminal struct {
 
 func (t *tuiAltTerminal) send(method string, fields map[string]any) {
 	args := map[string]any{"method": method}
-	for k, v := range fields {
-		args[k] = v
-	}
+	maps.Copy(args, fields)
 	_ = t.state.callback("terminal", args, nil)
 }
 
@@ -294,6 +297,21 @@ func (c *tuiAltComponent) HandleInput(data string) {
 }
 
 func (c *tuiAltComponent) WantsKeyRelease() bool { return c.caps.WantsKeyRelease }
+
+// CapturesViewportInput is the component's current capturesViewportInput (Component.capturesViewportInput in packages/tui/src/tui.ts), which the
+// screen reads whenever a viewport key arrives: the extension answers a callback with the value it holds now.
+func (c *tuiAltComponent) CapturesViewportInput() bool {
+	if !c.caps.CapturesViewportInput {
+		return false
+	}
+	var result struct {
+		Captures bool `json:"captures"`
+	}
+	if err := c.state.callback("capturesViewportInput", map[string]any{"key": c.key}, &result); err != nil {
+		return false
+	}
+	return result.Captures
+}
 
 func (c *tuiAltComponent) SetFocused(focused bool) {
 	if c.caps.Focusable {
@@ -410,10 +428,9 @@ func (b *UIBridge) disposeTuiAlt(owner *Conn, all bool) {
 	}
 	registry.mu.Unlock()
 	for _, s := range screens {
-		s.mu.Lock()
-		s.disposed = true
-		s.mu.Unlock()
-		// The connection is gone, so a stop could not reach the extension's terminal; end the renderer's own timers only.
+		s.end()
+		// Ending the screen's callbacks lets a frame that waits on the extension finish and release the lock CancelPendingRender takes; the connection is
+		// still open (a shutdown disposes before it closes the extension), so the extension is not told to stop its terminal: end the renderer's own timers only.
 		s.screen.CancelPendingRender()
 	}
 }
@@ -525,6 +542,8 @@ func (b *UIBridge) tuiAltCreate(owner *Conn, call *tuiAltCall) (*CallResultPaylo
 		}
 		s.bindCallbacks(&options, o.Callbacks)
 	}
+	//portlint:allow ctxbackground the screen outlives the call that built it; its callbacks end when disposeTuiAlt ends it or the connection closes (Request returns when it closes)
+	s.ctx, s.end = context.WithCancel(context.Background())
 	s.screen = tui.NewTuiAltScreen(s.term, call.ShowHardwareCursor, call.LogDirectory, options)
 	// The components are the extension's: their render calls back into the screen, from the goroutine that runs the frame (callback).
 	s.screen.EnableFrameAccess()
@@ -647,6 +666,11 @@ type tuiAltMembers interface {
 	Clear()
 	Children() []tui.Component
 	HandleMouse(event tui.TuiMouseEvent) *tui.TuiMouseDispatchResult
+	ViewportTop() int
+	IsFollowingOutput() bool
+	ScrollBy(lines int)
+	ScrollToTop()
+	ScrollToBottom()
 }
 
 // run applies call to the screen. inFrame says the call comes from a callback the goroutine that runs the frame waits for and runs on that goroutine, and m
@@ -711,13 +735,13 @@ func (s *tuiAltScreenState) run(call *tuiAltCall, m tuiAltMembers, inFrame bool)
 		if err := json.Unmarshal(call.Lines, &lines); err != nil {
 			return nil, errors.New("tui.alt: scrollBy lines is a number")
 		}
-		screen.ScrollBy(int(lines))
+		m.ScrollBy(int(lines))
 		return empty()
 	case "scrollToTop":
-		screen.ScrollToTop()
+		m.ScrollToTop()
 		return empty()
 	case "scrollToBottom":
-		screen.ScrollToBottom()
+		m.ScrollToBottom()
 		return empty()
 	case "flash":
 		screen.Flash(call.Message, call.DurationMs)
@@ -745,7 +769,7 @@ func (s *tuiAltScreenState) run(call *tuiAltCall, m tuiAltMembers, inFrame bool)
 		return tuiAltResult(map[string]any{"value": screen.CopyActiveSelectionToClipboard()})
 	case "state":
 		return tuiAltResult(map[string]any{
-			"viewportTop": screen.ViewportTop(), "isFollowingOutput": screen.IsFollowingOutput(), "fullRedraws": screen.FullRedraws(),
+			"viewportTop": m.ViewportTop(), "isFollowingOutput": m.IsFollowingOutput(), "fullRedraws": screen.FullRedraws(),
 			"hasOverlay": screen.HasVisibleOverlay(), "hasOverlayEntries": screen.HasOverlay(), "hasActiveSelection": m.HasActiveSelection(),
 			"copyOnSelect": m.GetCopyOnSelect(), "showHardwareCursor": m.GetShowHardwareCursor(), "clearOnShrink": m.GetClearOnShrink(),
 			"focusedKey": s.focusedKey(),

@@ -82,6 +82,12 @@ type builtInRenderState struct {
 	writeHighlight *writeHighlightCache
 	// writePlain is the write card's lines for a path without a language, extended as its content streams in.
 	writePlain writePlainLines
+	// highlighter is the row's highlighting of a complete write call's file, or of a codemode call's script (upstream
+	// WriteCallRenderComponent.highlighter and CodemodeRenderState.scriptHighlighter). A complete write call redraws on
+	// every update and expand toggle with the same file, and a codemode call on every progress update and timer tick with
+	// the same script, so the row keeps the last highlighting until the code, the theme or the loaded grammars change. It
+	// holds the only copy of a complete call's displayed source.
+	highlighter tui.CodeHighlighter
 
 	// editArgs is the decoded edit arguments the renderers last read; editArgsFor is the arguments the preview belongs to.
 	editArgs     *editRenderArgs
@@ -511,46 +517,57 @@ func listRenderResult(name string) extension.ToolRenderResultFunc {
 // writeRenderCall is upstream write.ts renderCall: the path, then the content
 // being written, highlighted by the file's language, ten lines while
 // collapsed. A frame reads the lines it draws and the line count: while the
-// content streams in, the card state extends both from the previous frame.
+// content streams in, the card state extends both from the previous frame, and
+// a complete call reuses the row's highlighting of its whole file.
 func writeRenderCall(args json.RawMessage, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
 	theme := tui.ActiveTheme()
 	fields := callFields(args, context)
 	text := tui.FormatWriteHeaderArgs(writeHeaderFields(fields), context.Cwd)
 	rawPath, _ := stringField(fields, "file_path", "path")
 	content, ok := stringField(fields, "content")
+	lang := ""
+	if rawPath != "" {
+		lang = tui.LanguageFromPath(rawPath)
+	}
 	state := builtInState(context)
 	state.mu.Lock()
 	defer state.mu.Unlock()
-	switch {
-	case !ok:
-		state.writeHighlight = nil
-	case context.ArgsComplete:
-		state.writeHighlight = rebuildWriteHighlightCacheFull(rawPath, content)
-	default:
+	// A call whose content still streams in extends the cache of its highlighted lines (upstream renderCall:
+	// fileContent !== null && !context.argsComplete ? updateWriteHighlightCacheIncremental : undefined).
+	if ok && !context.ArgsComplete {
 		state.writeHighlight = updateWriteHighlightCacheIncremental(state.writeHighlight, rawPath, content)
+	} else {
+		state.writeHighlight = nil
 	}
 	cache := state.writeHighlight
 	var plain writePlainLines
-	if cache == nil && ok {
+	if ok && lang == "" {
 		plain = state.writePlain
 		plain.update(content)
 	}
 	state.writePlain = plain
 	if context.ArgsComplete {
-		// Complete arguments rebuild on every call (upstream renderCall: context.argsComplete ? rebuildWriteHighlightCacheFull),
-		// so nothing read from the content needs to outlive this call.
-		state.writeHighlight, state.writePlain = nil, writePlainLines{}
+		// Nothing read from a complete call's content outlives the call but the highlighter's result.
+		state.writePlain = writePlainLines{}
 	}
 	switch {
 	case !ok:
 		text += "\n\n" + themeFg(theme.Error, "[invalid content arg - expected string]")
 	case content != "":
-		// A path with a language draws the cache's highlighted lines, any other the content's lines (upstream
-		// formatWriteCall: lang ? cache.highlightedLines : normalizeDisplayText(fileContent).split("\n")).
+		// A path with a language draws the cache's highlighted lines while the content streams in and the highlighter's
+		// lines of the whole file once it is complete, any other path the content's lines (upstream formatWriteCall:
+		// lang ? cache?.highlightedLines ?? highlighter.highlight(...) : normalizeDisplayText(fileContent).split("\n")).
+		var complete []string
+		if cache == nil && lang != "" {
+			complete = trimTrailingEmptyLines(state.highlighter.Highlight(normalizeWriteText(content), lang))
+		}
 		var total int
-		if cache != nil {
+		switch {
+		case cache != nil:
 			total = cache.lineCount()
-		} else {
+		case complete != nil:
+			total = len(complete)
+		default:
 			total = plain.count()
 		}
 		shown := total
@@ -558,11 +575,14 @@ func writeRenderCall(args json.RawMessage, _ extension.Theme, context extension.
 			shown = builtInPreviewLines
 		}
 		styled := make([]string, 0, shown)
-		if cache != nil {
+		switch {
+		case cache != nil:
 			for i := range shown {
 				styled = append(styled, cache.line(i))
 			}
-		} else {
+		case complete != nil:
+			styled = append(styled, complete[:shown]...)
+		default:
 			for line := range plain.lines(shown) {
 				styled = append(styled, themeFg(theme.ToolOutput, normalizeWriteText(line)))
 			}
@@ -572,7 +592,19 @@ func writeRenderCall(args json.RawMessage, _ extension.Theme, context extension.
 			text += moreLinesHint("\n... (" + strconv.Itoa(remaining) + " more lines, " + strconv.Itoa(total) + " total,")
 		}
 	}
-	return tui.NewPaddedText(text, 0, 0, nil)
+	// The row's Text is reused, and keeps its wrapped lines when a redraw sets the text it showed (upstream
+	// WriteCallRenderComponent extends Text).
+	component := reusableText(context.LastComponent)
+	component.SetText(text)
+	return component
+}
+
+// reusableText is the card's reusable Text: the last component of the renderer, or a new empty one.
+func reusableText(last extension.Component) *tui.Text {
+	if text, ok := last.(*tui.Text); ok && text != nil {
+		return text
+	}
+	return tui.NewPaddedText("", 0, 0, nil)
 }
 
 // writeHeaderFields is the arguments the write header reads its path from. A path holding a lone surrogate reads U+FFFD

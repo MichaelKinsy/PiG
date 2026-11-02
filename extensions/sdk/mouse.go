@@ -64,4 +64,20 @@ type MouseHandler interface {
 	HandleMouse(event MouseEvent) (RemoteComponentResult, error)
 }
 
+// ViewportInputCapturer is the optional capturesViewportInput of pi-tui's
+// Component: a ui.custom, editor or tui.alt component that implements it
+// keeps the alt-screen viewport's scroll keys when it returns true. The SDK
+// reads it each time it sends a frame (ui.custom.render, ui.editor.render) and
+// each time the host asks (tui.alt); a frame goes out when only this value
+// changed. A component without the method reports false.
+type ViewportInputCapturer interface {
+	CapturesViewportInput() bool
+}
+
+// capturesViewportInput is a component's current CapturesViewportInput, false for a component without it.
+func capturesViewportInput(component any) bool {
+	c, ok := component.(ViewportInputCapturer)
+	return ok && c.CapturesViewportInput()
+}
+
 const notifyUICustomMouse = "ui.custom.mouse"

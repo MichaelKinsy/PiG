@@ -1,0 +1,38 @@
+# Behavior family: cli-utils
+# The script prints the output, the exit code and the written mcp.json, so the flag's effect is compared, not only the message.
+# Pi 6d4b7443 probe (packages/coding-agent/dist/cli.js, scratch agent dir): exit 0, stdout: Added global MCP server "linear" in <agent>/mcp.json. / Check it with: pi mcp list. If it requires sign-in: pi mcp login linear
+# Source: packages/coding-agent/src/extensions/mcp/cli.ts (--oauth-client-registration, Pi 908aa7b7), core/mcp-servers.ts:205.
+# Pi's pinned release (e7a0df27) predates the flag, so this scenario compares against Pi only after the pin bump to 6d4b7443.
+name = "33-mcp-add-oauth-client-registration"
+description = "`pi mcp add --oauth-client-registration dcr` adds the server and prints the usual next steps."
+covers = ["packages/coding-agent/src/extensions/mcp/cli.ts", "packages/coding-agent/src/core/mcp-servers.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/mcp-add-effect.sh", "pig"]
+pi_args = ["bash", "./test/parity/testdata/mcp-add-effect.sh", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 25
+
+[assert]
+exit_code = 0
+both_contain = ['Added global MCP server "linear"', "If it requires sign-in:", '"clientRegistration": "dcr"']
+output_equal = true
+runs = 3
+
+# normalize-rationale: D2 changes only the command identity, and the isolated agent directory. Keep every other diagnostic byte.
+[[assert.normalize_replace]]
+pattern = '\bpig\b'
+with = 'pi'
+reason = "D2: PiG uses the pig executable name instead of pi."
+
+[[assert.normalize_replace]]
+pattern = ' in \S+mcp\.json'
+with = ' in AGENT/mcp.json'
+reason = "The isolated agent directory differs by its random suffix; the file name and message stay compared."

@@ -298,6 +298,15 @@ function hostSurface(pi, tool) {
   });
   tool("c3_theme_disarm", async () => { log.themeOff(); return reply({ ok: true }); });
   tool("c3_theme_log", async () => reply({ log: log.theme }));
+  // The theme gate: a handler that holds its delivery until c3_theme_gate_release. Armed before c3_theme_arm it runs ahead of the logger in every delivery, so the logger receives a change after the host changed the theme again: each handler must still get the theme of its own change.
+  let openGate;
+  const gate = { entered: false, open: new Promise((resolve) => { openGate = resolve; }) };
+  tool("c3_theme_gate_arm", async (_id, _params, _signal, _update, ctx) => {
+    ctx.ui.onThemeChange(async () => { gate.entered = true; await gate.open; });
+    return reply({ ok: true });
+  });
+  tool("c3_theme_gate_state", async (_id, _params, _signal, _update, ctx) => reply({ entered: gate.entered, live: ctx.ui.theme.name }));
+  tool("c3_theme_gate_release", async () => { openGate(); return reply({ ok: true }); });
   tool("c3_expanded_arm", async (_id, _params, _signal, _update, ctx) => {
     log.expandedOff = ctx.ui.onToolsExpandedChange((expanded) => { log.expanded.push(expanded); });
     return reply({ ok: true });

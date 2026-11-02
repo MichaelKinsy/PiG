@@ -50,6 +50,37 @@ type tuiAltFocusable struct {
 func (c *tuiAltFocusable) SetFocused(focused bool) { c.focused = focused }
 func (c *tuiAltFocusable) HandleInput(data string) { c.inputs = append(c.inputs, data) }
 
+// tuiAltCapturing is a focusable component with capturesViewportInput true.
+type tuiAltCapturing struct{ tuiAltFocusable }
+
+func (c *tuiAltCapturing) CapturesViewportInput() bool { return true }
+
+// tuiAltViewportProbe mounts a focused component that captures viewport input and idles until the context ends.
+func tuiAltViewportProbe(ctx sdk.Context, _ string) error {
+	term := &tuiAltTerminal{}
+	hardware, mouse := false, false
+	screen, err := sdk.NewTuiAltScreen(ctx, term, &hardware, "", sdk.TuiAltScreenOptions{Mouse: &mouse})
+	if err != nil {
+		return err
+	}
+	component := &tuiAltCapturing{}
+	component.render = func(int) []string { return []string{"viewport"} }
+	if err := screen.AddChild(component); err != nil {
+		return err
+	}
+	if err := screen.SetFocus(component); err != nil {
+		return err
+	}
+	if err := screen.Start(); err != nil {
+		return err
+	}
+	if err := screen.RenderNow(false); err != nil {
+		return err
+	}
+	<-ctx.Done()
+	return screen.Stop(false)
+}
+
 var tuiAltANSI = regexp.MustCompile("\x1b\\[[0-9;?]*[A-Za-z]|\x1b\\]8;;[^\x07\x1b]*(?:\x07|\x1b\\\\)?")
 
 // tuiAltProbe drives a TuiAltScreen the way the Node fixture drives Pi's own class and reports the same text.
@@ -352,14 +383,14 @@ func tuiAltChildrenProbe(ctx sdk.Context, _ string) error {
 		return "?"
 	}
 	order := func() string {
-		var s string
+		var s strings.Builder
 		for _, k := range screen.Children() {
-			s += name(k)
+			s.WriteString(name(k))
 		}
-		if s == "" {
+		if s.String() == "" {
 			return "-"
 		}
-		return s
+		return s.String()
 	}
 	f := []string{"empty=" + order()}
 	must(screen.AddChild(a))

@@ -443,7 +443,13 @@ func TestToolProgressAndLifetime(t *testing.T) {
 			}
 			return durable.ToolExecutionResult{}, nil
 		}))
-		addHooks(t, setup.Registry, ToolTask.Erased(), &ToolHooks{AfterTool: func(ctx context.Context, _ ToolHookCall, _ durable.ToolExecutionResult, _ HookApi) (*durable.ToolExecutionResult, error) {
+		addHooks(t, setup.Registry, ToolTask.Erased(), &ToolHooks{AfterTool: func(ctx context.Context, _ ToolHookCall, result durable.ToolExecutionResult, _ HookApi) (*durable.ToolExecutionResult, error) {
+			// The abort handler's result runs the hooks too (#11043); only the executed call's waits.
+			for _, diagnostic := range result.Diagnostics {
+				if diagnostic.Code == "aborted" {
+					return nil, nil
+				}
+			}
 			inAfterTool.resolve()
 			return nil, abortedBy(ctx)
 		}})

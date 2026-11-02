@@ -2,7 +2,7 @@
   "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me)",
   "name": "minimatch",
   "description": "a glob matcher in javascript",
-  "version": "10.2.6",
+  "version": "11.0.3",
   "repository": {
     "type": "git",
     "url": "git@github.com:isaacs/minimatch"
@@ -45,9 +45,9 @@
     "node": "18 || 20 || >=22"
   },
   "devDependencies": {
-    "@types/node": "^26.1.2",
+    "@types/node": "^26.6.5",
     "mkdirp": "^3.0.1",
-    "oxlint": "^1.76.0",
+    "oxlint": "^1.90.0",
     "oxlint-tsgolint": "^7.0.2001",
     "prettier": "^3.9.6",
     "tap": "^21.7.5",
@@ -68,6 +68,7 @@
   "type": "module",
   "module": "./dist/esm/index.js",
   "dependencies": {
-    "brace-expansion": "^5.0.8"
+    "@isaacs/nonrecursive-glob-match": "^1.0.3",
+    "brace-expansion": "^5.0.12"
   }
 }

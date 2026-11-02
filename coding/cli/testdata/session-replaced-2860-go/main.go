@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
 )
@@ -98,6 +99,12 @@ func main() {
 					return err
 				}
 				record(fmt.Sprintf("idle:%t", idle))
+				// Pi's `await sleep()` works in a withSession callback: the SDK's yield helper must answer on the replacement route too.
+				if err := replaced.Sleep(time.Millisecond); err != nil {
+					record("yield:" + err.Error())
+				} else {
+					record("yield:ok")
+				}
 				record("model:" + replaced.Model())
 				record("conversation:" + conversation(replaced.SessionManager()))
 				return nil

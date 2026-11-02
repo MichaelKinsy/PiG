@@ -143,3 +143,15 @@ def get_keybindings() -> KeybindingsManager:
     if _global_keybindings is None:
         _global_keybindings = KeybindingsManager(TUI_KEYBINDINGS)
     return _global_keybindings
+
+
+def get_select_page_index(keybindings: KeybindingsManager, data: str, selected_index: int, item_count: int, page_size: int) -> int | None:
+    """Pi's ``getSelectPageIndex``: the index a select list moves to for a ``tui.select.pageUp`` (-1) or ``tui.select.pageDown`` (+1) key,
+    ``selected_index + direction * page_size`` clamped to ``0..item_count - 1`` (0 for an empty list), or ``None`` when ``data`` is no page key."""
+    if keybindings.matches(data, "tui.select.pageUp"):
+        direction = -1
+    elif keybindings.matches(data, "tui.select.pageDown"):
+        direction = 1
+    else:
+        return None
+    return max(0, min(item_count - 1, selected_index + direction * page_size))

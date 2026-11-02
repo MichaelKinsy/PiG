@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
@@ -511,7 +512,12 @@ var frameSchema = Schema{"anyOf": []any{
 
 // IsFrame is wire.ts isFrame: whether value (decoded JSON) passes structural validation; anything else is a protocol
 // violation.
-func IsFrame(value any) bool { return typebox.Check(frameSchema, value) }
+func IsFrame(value any) bool { return frameChecker().Check(value) }
+
+// frameChecker is frameSchema compiled once, on the first frame: every frame a link carries passes IsFrame, and checking
+// against the schema value would serialize all of it to find the compiled validator for each one (Pi's isFrame holds its
+// checker, wire.ts).
+var frameChecker = sync.OnceValue(func() *typebox.Checker { return typebox.NewChecker(frameSchema) })
 
 // DecodeFrame parses and validates one frame. It fails when the data is not JSON or not a frame.
 func DecodeFrame(data []byte) (Frame, error) {

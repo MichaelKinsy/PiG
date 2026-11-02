@@ -386,7 +386,7 @@ func TestSchedulerRetention(t *testing.T) {
 			if err != nil {
 				return made{}, err
 			}
-			return made{p, b, keep, conversation.Id}, setJSON(live, "run", map[string]any{"taskId": int64(keep), "inputs": []any{}})
+			return made{p, b, keep, conversation.Id}, setJSON(live, "run", map[string]any{"taskId": int64(keep), "inputs": []any{}, "turns": 0})
 		})
 		if err != nil {
 			t.Fatal(err)

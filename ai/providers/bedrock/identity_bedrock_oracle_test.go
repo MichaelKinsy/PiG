@@ -7,6 +7,7 @@ import (
 
 	"bytes"
 	"encoding/json"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -62,6 +63,7 @@ func TestBedrockUserAgentMatchesPi(t *testing.T) {
 		t.Fatal(err)
 	}
 	cmd := exec.CommandContext(t.Context(), "node", "-e", script, piCodingAgentPackage(t), string(encoded))
+	cmd.Env = withoutAWSEnvironment(os.Environ())
 	cmd.Stderr = new(bytes.Buffer)
 	out, err := cmd.Output()
 	if err != nil {
@@ -71,6 +73,7 @@ func TestBedrockUserAgentMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(out, &want); err != nil {
 		t.Fatalf("oracle output %q: %v", out, err)
 	}
+	clearAWSEnvironment(t)
 	t.Setenv("AWS_BEDROCK_SKIP_AUTH", "1")
 	t.Setenv("AWS_REGION", "us-east-1")
 	t.Setenv("AWS_EC2_METADATA_DISABLED", "true")

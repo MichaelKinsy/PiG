@@ -20,7 +20,7 @@ Release history and open work belong in the tracked sync plan and generated cove
 
 ## Package scope
 
-PORT_MAP maps every source file of every package in the upstream monorepo: the fourteen packages listed in `test/parity/upstreampackages/packages.json`, which a test requires to equal the package directories of the pinned mirror. A package that upstream adds fails `make port-map-drift` until it is listed and mapped. The coverage report counts each package and the sums in `test/parity/coverage.md`; PiG's experimental remote Session stack (`packages/client`, `packages/protocol` and `packages/server`) and the experimental parts of `packages/coding-agent` are reported separately as the part of the monorepo that Pi does not ship in its npm package.
+PORT_MAP maps every source file of every package in the upstream monorepo: the fifteen packages listed in `test/parity/upstreampackages/packages.json`, which a test requires to equal the package directories of the pinned mirror. A package that upstream adds fails `make port-map-drift` until it is listed and mapped. The coverage report counts each package and the sums in `test/parity/coverage.md`; PiG's experimental remote Session stack (`packages/client`, `packages/protocol` and `packages/server`) and the experimental parts of `packages/coding-agent` are reported separately as the part of the monorepo that Pi does not ship in its npm package.
 
 Package scope, one line each:
 
@@ -29,6 +29,7 @@ Package scope, one line each:
 - `packages/client`, `packages/protocol` and `packages/server` are the experimental remote Session stack.
 - `packages/codemode` is the sandboxed code-execution runtime and `packages/mcp` is the Model Context Protocol client library; both back built-in coding-agent extensions.
 - `packages/evals` is the evaluation tooling and `packages/telemetry` is the standalone telemetry library.
+- `packages/schema` is the eval-free JSON Schema validator (drafts 2020-12 and 7, compiled to closures); the Go package is `schema` (with `schema/formats`).
 
 The drift gate also rejects explicit production comments claiming to port an
 upstream file while its row remains not-started, deferred, or n/a. Such conflicts
@@ -57,12 +58,71 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 
 | upstream | pig | status |
 |---|---|---|
-| `packages/ai/scripts/models-dev-reasoning-options.ts` | `internal/modelgen/reasoning_options.go` | ✅ |
-| `packages/ai/scripts/openrouter-reasoning-options.ts` | `internal/modelgen/reasoning_options.go` | ✅ |
-| `packages/ai/scripts/generate-models.ts` | `cmd/gen-models/main.go + cmd/gen-models/reasoning.go + cmd/gen-models/models_dev.go (catalog emission, raw vendor reasoning snapshots, models.dev Fireworks/Qwen stages and strict JSON publication; the MiniMax direct-provider stage (the effort-level thinkingLevelMap and forceAdaptiveThinking of MiniMax-M3.1-Flash, the hidden M2, M2.1, M2.5 and M2.5-highspeed models) runs in the pinned Pi's generator at `make pin-bump` and reaches PiG through the frozen provider data, asserted by ai/minimax_models_upstream_test.go; the OpenCode protocol-specific base URLs (Pi 177e2ad7) and the GPT-5.4/GPT-5.5 top-level tool declarations on OpenAI and OpenCode (Pi 81d6759f) take the same route, asserted by ai/opencode_endpoints_upstream_test.go and ai/openai_responses_compat_upstream_test.go; other source-provider stages and TypeScript publication remain unported: Go can port the deterministic transform over fetched snapshots, with Pi's patch tables as data)` | 🟡 |
-| `packages/ai/scripts/check-model-data.ts` | `cmd/check-model-data/main.go (validation command)` | ✅ |
-| `packages/ai/scripts/model-data.ts` | `cmd/check-model-data/model_data.go + model_data_json.go (identity, shard, manifest, hash and metadata validation; Node supplies Date.parse and JSON syntax diagnostics)` | ✅ |
-| `packages/ai/scripts/hydrate-model-catalog.ts` | `cmd/check-model-data/hydrate.go (-hydrate <models.all.json>; groupProviderModelData, staging, validation and replacement; hydration cases of model-data-validation.test.ts in hydrate_upstream_test.go)` | ✅ |
+| `packages/ai/scripts/check-model-data.ts` | `cmd/check-model-data/main.go (validation command over internal/modelgen/modeldata)` | ✅ |
+| `packages/ai/scripts/model-data.ts` | `internal/modelgen/modeldata/model_data.go + model_data_json.go (identity, shard, manifest, hash and metadata validation; Node supplies Date.parse and JSON syntax diagnostics; moved from cmd/check-model-data so cmd/gen-models shares it)` | ✅ |
+| `packages/ai/scripts/hydrate-model-catalog.ts` | `internal/modelgen/modeldata/hydrate.go (HydrateModelCatalog and GroupProviderModelData; command in cmd/check-model-data -hydrate <models.all.json>; hydration cases of model-data-validation.test.ts in hydrate_upstream_test.go)` | ✅ |
+
+## `packages/ai/catalog/`
+
+| upstream | pig | status |
+|---|---|---|
+| `packages/ai/catalog/build.ts` | `internal/modelgen/build.go` | ✅ |
+| `packages/ai/catalog/define.ts` | `internal/modelgen/define.go (+ internal/modelgen/obj.go: the ordered JavaScript-object value the models are built as)` | ✅ |
+| `packages/ai/catalog/families/anthropic.ts` | `internal/modelgen/family_anthropic.go` | ✅ |
+| `packages/ai/catalog/families/deepseek.ts` | `internal/modelgen/family_deepseek.go` | ✅ |
+| `packages/ai/catalog/families/google.ts` | `internal/modelgen/family_google.go` | ✅ |
+| `packages/ai/catalog/families/kimi.ts` | `internal/modelgen/family_kimi.go` | ✅ |
+| `packages/ai/catalog/families/openai.ts` | `internal/modelgen/family_openai.go` | ✅ |
+| `packages/ai/catalog/generate.ts` | `cmd/gen-models/generate.go (flags, staging, validation, data and public JSON output; `-data-output` is the Go form of Pi's `src/providers/data`, `-data-only` takes its provider ids from that directory) + cmd/gen-models/main.go + cmd/gen-models/fixtures.go (-record/-replay)` | ✅ |
+| `packages/ai/catalog/providers/amazon-bedrock.ts` | `internal/modelgen/providers/amazon_bedrock.go` | ✅ |
+| `packages/ai/catalog/providers/ant-ling.ts` | `internal/modelgen/providers/ant_ling.go` | ✅ |
+| `packages/ai/catalog/providers/anthropic.ts` | `internal/modelgen/providers/anthropic.go` | ✅ |
+| `packages/ai/catalog/providers/azure.ts` | `internal/modelgen/providers/azure.go` | ✅ |
+| `packages/ai/catalog/providers/baseten.ts` | `internal/modelgen/providers/baseten.go` | ✅ |
+| `packages/ai/catalog/providers/cerebras.ts` | `internal/modelgen/providers/cerebras.go` | ✅ |
+| `packages/ai/catalog/providers/cloudflare-ai-gateway.ts` | `internal/modelgen/providers/cloudflare_ai_gateway.go` | ✅ |
+| `packages/ai/catalog/providers/cloudflare-workers-ai.ts` | `internal/modelgen/providers/cloudflare_workers_ai.go` | ✅ |
+| `packages/ai/catalog/providers/deepseek.ts` | `internal/modelgen/providers/deepseek.go` | ✅ |
+| `packages/ai/catalog/providers/fireworks.ts` | `internal/modelgen/providers/fireworks.go` | ✅ |
+| `packages/ai/catalog/providers/github-copilot.ts` | `internal/modelgen/providers/github_copilot.go` | ✅ |
+| `packages/ai/catalog/providers/google-vertex.ts` | `internal/modelgen/providers/google_vertex.go` | ✅ |
+| `packages/ai/catalog/providers/google.ts` | `internal/modelgen/providers/google.go` | ✅ |
+| `packages/ai/catalog/providers/groq.ts` | `internal/modelgen/providers/groq.go` | ✅ |
+| `packages/ai/catalog/providers/huggingface.ts` | `internal/modelgen/providers/huggingface.go` | ✅ |
+| `packages/ai/catalog/providers/index.ts` | `internal/modelgen/providers/index.go` | ✅ |
+| `packages/ai/catalog/providers/kimi-coding.ts` | `internal/modelgen/providers/kimi_coding.go` | ✅ |
+| `packages/ai/catalog/providers/meta.ts` | `internal/modelgen/providers/meta.go` | ✅ |
+| `packages/ai/catalog/providers/minimax-cn.ts` | `internal/modelgen/providers/minimax_cn.go` | ✅ |
+| `packages/ai/catalog/providers/minimax.ts` | `internal/modelgen/providers/minimax.go` | ✅ |
+| `packages/ai/catalog/providers/mistral.ts` | `internal/modelgen/providers/mistral.go` | ✅ |
+| `packages/ai/catalog/providers/moonshotai-cn.ts` | `internal/modelgen/providers/moonshotai_cn.go` | ✅ |
+| `packages/ai/catalog/providers/moonshotai.ts` | `internal/modelgen/providers/moonshotai.go` | ✅ |
+| `packages/ai/catalog/providers/nvidia.ts` | `internal/modelgen/providers/nvidia.go` | ✅ |
+| `packages/ai/catalog/providers/openai-codex.ts` | `internal/modelgen/providers/openai_codex.go` | ✅ |
+| `packages/ai/catalog/providers/openai.ts` | `internal/modelgen/providers/openai.go` | ✅ |
+| `packages/ai/catalog/providers/opencode-go.ts` | `internal/modelgen/providers/opencode_go.go` | ✅ |
+| `packages/ai/catalog/providers/opencode.ts` | `internal/modelgen/providers/opencode.go` | ✅ |
+| `packages/ai/catalog/providers/openrouter.ts` | `internal/modelgen/providers/openrouter.go` | ✅ |
+| `packages/ai/catalog/providers/qwen-token-plan-cn.ts` | `internal/modelgen/providers/qwen_token_plan_cn.go` | ✅ |
+| `packages/ai/catalog/providers/qwen-token-plan-individual.ts` | `internal/modelgen/providers/qwen_token_plan_individual.go` | ✅ |
+| `packages/ai/catalog/providers/qwen-token-plan.ts` | `internal/modelgen/providers/qwen_token_plan.go` | ✅ |
+| `packages/ai/catalog/providers/radius.ts` | `internal/modelgen/providers/radius.go` | ✅ |
+| `packages/ai/catalog/providers/together.ts` | `internal/modelgen/providers/together.go` | ✅ |
+| `packages/ai/catalog/providers/typesafe.ts` | `internal/modelgen/providers/typesafe.go` | ✅ |
+| `packages/ai/catalog/providers/vercel-ai-gateway.ts` | `internal/modelgen/providers/vercel_ai_gateway.go` | ✅ |
+| `packages/ai/catalog/providers/xai.ts` | `internal/modelgen/providers/xai.go` | ✅ |
+| `packages/ai/catalog/providers/xiaomi-token-plan-ams.ts` | `internal/modelgen/providers/xiaomi_token_plan_ams.go` | ✅ |
+| `packages/ai/catalog/providers/xiaomi-token-plan-cn.ts` | `internal/modelgen/providers/xiaomi_token_plan_cn.go` | ✅ |
+| `packages/ai/catalog/providers/xiaomi-token-plan-sgp.ts` | `internal/modelgen/providers/xiaomi_token_plan_sgp.go` | ✅ |
+| `packages/ai/catalog/providers/xiaomi.ts` | `internal/modelgen/providers/xiaomi.go` | ✅ |
+| `packages/ai/catalog/providers/zai-coding-cn.ts` | `internal/modelgen/providers/zai_coding_cn.go` | ✅ |
+| `packages/ai/catalog/providers/zai.ts` | `internal/modelgen/providers/zai.go` | ✅ |
+| `packages/ai/catalog/reasoning.ts` | `internal/modelgen/reasoning.go` | ✅ |
+| `packages/ai/catalog/sources/index.ts` | `internal/modelgen/sources.go (+ the Radius gateway config reader of packages/ai/src/providers/radius-config.ts)` | ✅ |
+| `packages/ai/catalog/sources/models-dev.ts` | `internal/modelgen/models_dev.go` | ✅ |
+| `packages/ai/catalog/sources/openrouter.ts` | `internal/modelgen/source_openrouter.go (+ openRouterCost of src/providers/openrouter-api.ts, kept equal to ai.OpenRouterCost by internal/modelgen/crosscheck_test.go)` | ✅ |
+| `packages/ai/catalog/sources/vercel-ai-gateway.ts` | `internal/modelgen/source_vercel.go (replaces scripts/ai-gateway-pricing.ts)` | ✅ |
+| `packages/ai/catalog/README.md` | `internal/modelgen/README.md` (the build order it documents: `internal/modelgen/build.go`; the `ModelsDevModels` helper it documents: `internal/modelgen/define.go`) | ✅ |
 
 ## `packages/agent/src/`
 
@@ -296,12 +356,12 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | upstream | pig | status |
 |---|---|---|
 | `packages/coding-agent/src/cli.ts` | `coding/cli/main.go` | ✅ |
-| `packages/coding-agent/src/main.ts` | `coding/cli/main.go + coding/cli/startup_session.go + coding/cli/extensions.go (mode/metadata routing)` | ✅ |
+| `packages/coding-agent/src/main.ts` | `coding/cli/main.go + coding/cli/startup_session.go + coding/cli/extensions.go (mode/metadata routing); deleted working directory check (coding/cli/main.go)` | ✅ |
 | `packages/coding-agent/src/index.ts` | `coding/extension/host/subprocess/runtime-node/shims/pi-coding-agent.mjs (pinned Node barrel; independent SDK objects; main-process identity remains D73)` | ✅ |
 | `packages/coding-agent/src/config.ts` | `internal/codingagent/paths.go + internal/codingagent/selfupdate_package_command.go + internal/codingagent/selfupdate_tier.go (D2 directory opt-in; D39 native update ownership); the 1.0.3 quickJSWasmPath cache and in-memory codemode worker URL are designed out: PiG embeds its code in one native executable, as Pi's Bun binary does; detectInstallChange is ported as the additive D95 in internal/installchange/installchange.go`, `internal/codingagent/windows_self_update.go`, `coding/upstream.go` | ✅ |
 | `packages/coding-agent/src/migrations.ts` | `internal/codingagent/migrations.go` | ✅ |
 | `packages/coding-agent/src/package-manager-cli.ts` | `coding/cli/package_commands.go + coding/cli/cli_error.go + coding/cli/package_command_trust.go + coding/cli/package_model_catalogs.go + coding/cli/config_command.go + coding/packagecontent/packagecontent.go; Pi 1.4.0 pruneManagedReleases (#10392, keeps the new and the previous release) has no managed release directory to prune under D39: a standalone replacement keeps only the new executable, locked by internal/codingagent/selfupdate_test.go TestSelfReplaceAtWithCommitKeepsOnlyTheNewExecutable)` | ✅ |
-| `packages/coding-agent/src/cli/args.ts` | `coding/cli/args.go` | ✅ |
+| `packages/coding-agent/src/cli/args.ts` | `coding/cli/args.go (the PI_SELF_UPDATE_COMMAND help line is in the generated coding/cli/help_upstream.txt)` | ✅ |
 | `packages/coding-agent/src/cli/initial-message.ts` | `coding/cli/main.go` | ✅ |
 | `packages/coding-agent/src/cli/file-processor.ts` | `internal/codingagent/file_processor.go` | ✅ |
 | `packages/coding-agent/src/cli/list-models.ts` | `coding/cli/model.go (printModelList, called from coding/cli/main.go for --list-models)` | ✅ |
@@ -310,8 +370,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/cli/session-picker.ts` | `internal/codingagent/startup_ui.go (SelectStartupSession, hosting the SessionSelectorComponent of internal/codingagent/session_selector.go; called from coding/cli/main.go for --resume)` | ✅ |
 | `packages/coding-agent/src/cli/project-trust.ts` | `coding/cli/project_trust.go` | ✅ |
 | `packages/coding-agent/src/cli/startup-ui.ts` | `internal/codingagent/startup_ui.go (ShowStartupSelector/ShowStartupInput/SelectStartupSession; startStartupTui color-scheme + OSC 11 background query with reply consumption). First-time setup: upstream shouldRunFirstTimeSetup (startup-ui.ts:122-140, called from main.ts:674) returns false unless package @earendil-works/pi-coding-agent, app pi and .pi config dir; PiG's own gate (D88) is coding/cli/extensions.go shouldRunFirstTimeSetup and showFirstTimeSetup is ShowFirstTimeSetup in internal/codingagent/first_time_setup.go, run on its own startup screen before runtime services as main.ts:674 does. The four shouldRunFirstTimeSetup cases in test/first-time-setup.test.ts stay designedOutCases (their real-CLI inputs assert PiG's D88 gate) and its four analytics cases stay ported` | ✅ |
-| `packages/coding-agent/src/core/sdk.ts` | `coding/session.go + coding/resource_loader.go (resourceLoader option; DefaultResourceLoader resolves skills, prompt templates, context files and SYSTEM.md/APPEND_SYSTEM.md from the default and settings-configured locations, ~/.agents/skills, ancestor .agents/skills, configured Packages (installing missing npm and git ones) and additional paths under project trust, with Pi's resource metadata and option and override callbacks; extensions, themes, extension-discovered resources and inline extension factories stay with the Extension Host and the theme controller) + coding/session_manager.go + coding/session_tool_registry.go + coding/session_extension_hooks.go + coding/session_cache_warming.go + coding/runtime.go + coding/services.go + coding/extension/host/subprocess/runtime-node/shims/independent-session.mjs (independent Node Session composition and owned shutdown)`, `coding/create_agent_session.go`, `coding/runtime_replacement.go` | ✅ |
-| `packages/coding-agent/src/core/agent-session.ts` | `coding/session.go + coding/session_boundaries.go + coding/session_bind.go + coding/session_replaced.go + coding/session_custom_messages.go + coding/session_prompt_resources.go + internal/codingagent/skills.go + coding/session_summarization_auth.go + coding/session_model_cycle.go + coding/session_prompt.go + coding/session_scoped_models.go + coding/session_preflight.go + coding/session_retry_scheduler.go + coding/session_transcript.go + coding/session_extension_hooks.go + coding/session_tools.go + coding/session_tool_registry.go + internal/codingagent/prompts/tool_definitions.go + ai/assistant_retry.go + internal/codingagent/auto_recovery.go (SDK tool-registry, abort/admission and next-turn tool prompt regressions ported; every covering test file is ported in the reviewed test mapping; the forced-prompt request shape and the JSON round-trip case of system-prompt-updates.test.ts are ported in coding/session_system_prompt_updates_upstream_test.go)`, `coding/session_run_state.go`, `coding/session_state.go`, `coding/session_cache_warming.go`, `coding/session_loadout.go`, `coding/session_recovery.go`, `coding/virtual_models.go`, `coding/session_manager.go`, `coding/bug_report.go`, `coding/services.go`, `coding/runtime_replacement.go`, `agent/agent.go`, `internal/codingagent/session_handle.go` | ✅ |
+| `packages/coding-agent/src/core/sdk.ts` | `coding/session.go + coding/resource_loader.go (resourceLoader option; DefaultResourceLoader resolves skills, prompt templates, context files and SYSTEM.md/APPEND_SYSTEM.md from the default and settings-configured locations, ~/.agents/skills, ancestor .agents/skills, configured Packages (installing missing npm and git ones) and additional paths under project trust, with Pi's resource metadata and option and override callbacks; extensions, themes, extension-discovered resources and inline extension factories stay with the Extension Host and the theme controller) + coding/session_manager.go + coding/session_tool_registry.go + coding/session_extension_hooks.go + coding/session_cache_warming.go + coding/runtime.go + coding/services.go + coding/extension/host/subprocess/runtime-node/shims/independent-session.mjs (independent Node Session composition and owned shutdown)`, `coding/create_agent_session.go`, `coding/runtime_replacement.go; Session.runtimeStream set by CreateAgentSession (markRuntimeStreamFunction)` | ✅ |
+| `packages/coding-agent/src/core/agent-session.ts` | `coding/session.go + coding/session_boundaries.go + coding/session_bind.go + coding/session_replaced.go + coding/session_custom_messages.go + coding/session_prompt_resources.go + internal/codingagent/skills.go + coding/session_summarization_auth.go + coding/session_model_cycle.go + coding/session_prompt.go + coding/session_scoped_models.go + coding/session_preflight.go + coding/session_retry_scheduler.go + coding/session_transcript.go + coding/session_extension_hooks.go + coding/session_tools.go + coding/session_tool_registry.go + internal/codingagent/prompts/tool_definitions.go + ai/assistant_retry.go + internal/codingagent/auto_recovery.go (SDK tool-registry, abort/admission and next-turn tool prompt regressions ported; every covering test file is ported in the reviewed test mapping; the forced-prompt request shape and the JSON round-trip case of system-prompt-updates.test.ts are ported in coding/session_system_prompt_updates_upstream_test.go)`, `coding/session_run_state.go`, `coding/session_state.go`, `coding/session_cache_warming.go`, `coding/session_loadout.go`, `coding/session_recovery.go`, `coding/virtual_models.go`, `coding/session_manager.go`, `coding/bug_report.go`, `coding/services.go`, `coding/runtime_replacement.go`, `agent/agent.go`, `internal/codingagent/session_handle.go; Session.runtimeStream (markRuntimeStreamFunction)` | ✅ |
 | `packages/coding-agent/src/core/agent-session-runtime.ts` | `coding/runtime.go, coding/runtime_replacement.go, coding/session_bind.go, coding/session.go, coding/session_ops.go, coding/session_extension_replacement.go, coding/session_import.go, internal/codingagent/session_selectors.go, and coding/cli/rpc_mode.go; native factory/replacement callbacks and retirement implemented; CLI/extension factory ownership and subprocess callback transport follow D30 and D61` | ✅ |
 | `packages/coding-agent/src/core/agent-session-services.ts` | `coding/services.go`, `internal/codingagent/settings_diagnostics.go`, `coding/create_agent_session.go` | ✅ |
 | `packages/coding-agent/src/core/auth-storage.ts` | `ai/auth.go + ai/auth_reload.go + ai/auth_store.go + ai/auth_mutex.go + internal/pilock/lock.go (shared directory locks and reader-owned reloads; CredentialStore, ReadOnlyAuthStorage, in-memory store; Pi shared-file round-trip/concurrent-writer tests)`, `coding/auth_storage.go` | ✅ |
@@ -342,18 +402,18 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/core/usage-totals.ts` | `internal/codingagent/session_stats.go + internal/codingagent/status_line.go + internal/codingagent/slash_commands.go + internal/usagetotals/usagetotals.go (combineUsage)` | ✅ |
 | `packages/coding-agent/src/core/model-resolver.ts` | `coding/cli/model.go + coding/cli/startup_model.go + coding/cli/resolve_cli_model.go + coding/extension/scoped_models.go + internal/codingagent/default_models.go + internal/codingagent/model_pattern.go + internal/codingagent/model_scope.go + internal/codingagent/model_registry_runtime_models.go`, `coding/model_resolver.go` | ✅ |
 | `packages/coding-agent/src/core/output-guard.ts` | `internal/codingagent/output_guard.go` | ✅ |
-| `packages/coding-agent/src/core/package-manager.ts` | `coding/packagecontent/packagecontent.go, coding/packagecontent/glob.go, coding/packagecontent/autoload_patterns.go, internal/resolvepath/resolvepath.go, internal/packagemanager/doc.go, internal/packagemanager/manager.go, internal/packagemanager/git.go, internal/packagemanager/npm_metadata.go, internal/packagemanager/process.go, internal/packagemanager/progress.go, internal/packagemanager/capture_unix.go, internal/packagemanager/capture_windows.go, internal/packagemanager/temporary.go, internal/packagemanager/updates.go, internal/packagemanager/resources.go, internal/packagemanager/autoload.go, coding/cli/package_commands.go, coding/cli/package_progress.go, coding/cli/package_git.go, coding/cli/package_update_operations.go, coding/cli/package_updates.go, coding/cli/package_npm_metadata.go, coding/cli/package_temporary.go, coding/cli/package_resource_selection.go, coding/cli/configured_resources.go, internal/codingagent/settings.go, coding/cli/config_command.go, coding/cli/resource_source_info.go (skill entry-file metadata)` | ✅ |
+| `packages/coding-agent/src/core/package-manager.ts` | `coding/packagecontent/packagecontent.go, coding/packagecontent/glob.go, coding/packagecontent/autoload_patterns.go, internal/resolvepath/resolvepath.go, internal/packagemanager/doc.go, internal/packagemanager/manager.go, internal/packagemanager/git.go, internal/packagemanager/npm_metadata.go, internal/packagemanager/process.go, internal/packagemanager/progress.go, internal/packagemanager/capture_unix.go, internal/packagemanager/capture_windows.go, internal/packagemanager/temporary.go, internal/packagemanager/updates.go, internal/packagemanager/resources.go, internal/packagemanager/autoload.go, coding/cli/package_commands.go, coding/cli/package_progress.go, coding/cli/package_git.go, coding/cli/package_update_operations.go, coding/cli/package_updates.go, coding/cli/package_npm_metadata.go, coding/cli/package_temporary.go, coding/cli/package_resource_selection.go, coding/cli/configured_resources.go, internal/codingagent/settings.go, coding/cli/config_command.go, coding/cli/resource_source_info.go (skill entry-file metadata); changelog path: coding/packagecontent/pi_manifest.go ResolvePackageChangelogPath; unchanged-version warning: internal/packagemanager/package_update_operations.go reportUnchangedNpmUpdates; the ancestor .agents/skills exclusion of the user's ~/.agents/skills compares with resolvepath.PathsEqual (pathsEqual)` | ✅ |
 | `packages/coding-agent/src/core/prompt-templates.ts` | `internal/codingagent/prompt_templates.go + prompt_diagnostics.go (file/YAML warnings reach interactive startup/reload and RPC; differential tests against the pinned Pi loader pass, frontmatter parsed by internal/yaml12, a port of the yaml 2.9.0 engine; CI-pending: the host zone of a date used as a mapping key on Windows (region-first CLDR mapping, TZ handling) is proven only by the native Windows test internal/yaml12/zonelocal_windows_test.go)`, `coding/session_prompt_resources.go` | ✅ |
 | `packages/coding-agent/src/core/resolve-config-value.ts` | `internal/configvalue/configvalue.go + internal/configvalue/configured_shell.go + internal/configvalue/shell_unix.go + internal/configvalue/shell_windows.go` | ✅ |
 | `packages/coding-agent/src/core/resource-loader.ts` | `coding/resource_loader.go (native DefaultResourceLoader for skills, prompt templates, context files and system prompt text) + coding/packagecontent/packagecontent.go + internal/codingagent/resources.go + internal/codingagent/context_files.go + coding/cli/configured_resources.go (resolved skills precede additional --skill paths) + coding/cli/resource_prompts.go + internal/codingagent/prompt_templates.go + internal/codingagent/skills.go + coding/cli/config_command.go + coding/cli/reload_resources.go + coding/cli/resource_source_info.go + internal/codingagent/extension_host_info.go (skill provenance projection) + coding/cli/headless_resources.go + internal/codingagent/interactive.go + internal/codingagent/reload_resources.go + internal/codingagent/extension_diagnostics.go (theme load diagnostics and first-name-wins deduplication)`, `coding/resource_loader_extend.go` | ✅ |
 | `packages/coding-agent/src/core/session-cwd.ts` | `internal/codingagent/session_cwd.go + coding/runtime_replacement.go (persisted-only missing-CWD diagnostics and factory preflight)` | ✅ |
 | `packages/coding-agent/src/core/session-manager.ts` | `internal/codingagent/session_manager.go + internal/codingagent/session_manager_accessors.go + coding/session_manager.go + internal/codingagent/session.go + internal/codingagent/session_resume.go + internal/codingagent/extension_session_read.go + internal/codingagent/session_restore.go + internal/codingagent/session_branch.go + internal/codingagent/session_branch_runtime.go + internal/codingagent/session_context.go + internal/codingagent/session_listing.go + internal/codingagent/session_file.go (entry identity, collision checks, clone label reconstruction, assistant-gated writes, migration, discovery, cancellable listing, explicit opening and settings-only branch restoration)`, `internal/sessionentry/entry.go`, `internal/codingagent/session_manager_projection.go`, `internal/sessionentry/union.go`, `internal/sessionentry/projection.go`, `coding/session_ops.go`, `coding/rpcclient/types.go` | ✅ |
-| `packages/coding-agent/src/core/settings-manager.ts` | `coding/settings.go + internal/codingagent/settings.go + internal/codingagent/settings_compaction.go + internal/codingagent/file_lock.go + internal/pilock/lock.go (file and in-memory settings; shared-file round-trip/concurrent writers)`, `coding/services.go`, `tui/tui_mode.go` | ✅ |
+| `packages/coding-agent/src/core/settings-manager.ts` | `coding/settings.go + internal/codingagent/settings.go + internal/codingagent/settings_compaction.go + internal/codingagent/file_lock.go + internal/pilock/lock.go (file and in-memory settings; shared-file round-trip/concurrent writers)`, `coding/services.go`, `tui/tui_mode.go; extensionChangelogVersions (GetExtensionChangelogVersion/SetExtensionChangelogVersion)` | ✅ |
 | `packages/coding-agent/src/core/settings-defaults.ts` | `internal/codingagent/configschema/settings.go (settingsDefaults); the runtime defaults stay with the settings managers of coding and internal/codingagent` | ✅ |
-| `packages/coding-agent/src/core/settings-schema.ts` | `internal/codingagent/configschema/settings.go (settingsSchema); TestSettingsSchemaRejectsWhatRuntimeAccessorsReject`, `internal/codingagent/settings.go`, `coding/services.go`, `tui/tui_mode.go` | ✅ |
+| `packages/coding-agent/src/core/settings-schema.ts` | `internal/codingagent/configschema/settings.go (settingsSchema); TestSettingsSchemaRejectsWhatRuntimeAccessorsReject`, `internal/codingagent/settings.go`, `coding/services.go`, `tui/tui_mode.go; extensionChangelogVersions` | ✅ |
 | `packages/coding-agent/src/core/skills.ts` | `internal/codingagent/skills.go + skills_loader.go + internal/codingagent/prompts/coding.go (differential tests against the pinned Pi loader pass; frontmatter parsed by internal/yaml12; the Windows zone item is recorded on prompt-templates.ts)` | ✅ |
 | `packages/coding-agent/src/core/slash-commands.ts` | `internal/codingagent/slash_commands.go`, `internal/codingagent/extension_host_info.go`, `coding/extension/opaque_types.go` | ✅ |
-| `packages/coding-agent/src/core/source-info.ts` | `internal/codingagent/resource_source_info.go + coding/cli/resource_source_info.go + coding/cli/rpc_mode.go`, `internal/codingagent/extension_host_info.go`, `coding/source/source_info.go` | ✅ |
+| `packages/coding-agent/src/core/source-info.ts` | `internal/codingagent/resource_source_info.go + coding/cli/resource_source_info.go + coding/cli/rpc_mode.go`, `internal/codingagent/extension_host_info.go`, `coding/source/source_info.go; coding/source/source_info.go SourceInfo.ChangelogPath, GetSourcePackageKey` | ✅ |
 | `packages/coding-agent/src/core/system-prompt.ts` | `internal/codingagent/prompts/coding.go (default/explicit-empty tools and opaque forced prompt state) + internal/codingagent/prompts/custom_sections.go + coding/extension/system_prompt_options.go (collection-complete option normalization)` | ✅ |
 | `packages/coding-agent/src/core/telemetry.ts` | `internal/codingagent/settings.go (IsInstallTelemetryEnabled, isTruthyTelemetryEnvFlag, TestSettingsManager_IsInstallTelemetryEnabled) gates the attribution headers (D26) and internal/codingagent/install_telemetry.go (reportInstallTelemetry, recordChangelogVersionAndMaybeReportInstall), wired at the same two call sites as interactive-mode.ts:1265-1307 in internal/codingagent/interactive.go's Run, now sends the install/update ping to PiG's own endpoint (D64) instead of pi.dev; tests in internal/codingagent/install_telemetry_test.go` | ✅ |
 | `packages/coding-agent/src/core/timings.ts` | `internal/codingagent/timings/timings.go` | ✅ |
@@ -396,11 +456,11 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/core/export-html/ansi-to-html.ts` | `internal/codingagent/export/ansi_html.go` | ✅ |
 | `packages/coding-agent/src/core/export-html/tool-renderer.ts` | `internal/codingagent/export/ansi_html.go + internal/codingagent/export/tool_renderer.go + internal/codingagent/slash_session_handlers.go` | ✅ |
 | `packages/coding-agent/src/core/export-html/index.ts` | `internal/codingagent/export/export.go + internal/codingagent/export/assets/` | ✅ |
-| `packages/coding-agent/src/modes/interactive/interactive-mode.ts` | `internal/codingagent/interactive.go (formatResumeCommand preserves TTY/persistence gates and the default-directory decision), internal/codingagent/auth_warnings.go, internal/codingagent/interactive_input.go, internal/codingagent/startup_input.go, internal/codingagent/interactive_turn.go, internal/codingagent/interactive_user_bash.go, internal/codingagent/ext_ui_editor_snapshot.go, internal/codingagent/interactive_commands.go, internal/codingagent/interactive_reload.go, internal/codingagent/interactive_rebind.go, internal/codingagent/model_command.go, internal/codingagent/scoped_models_selection.go, internal/codingagent/interactive_auth.go, internal/codingagent/interactive_login.go, internal/codingagent/interactive_api_key_login.go, internal/codingagent/slash_auth.go, internal/codingagent/interactive_post_login.go, internal/codingagent/interactive_events.go, internal/codingagent/interactive_tui.go, internal/codingagent/startup_header.go, internal/codingagent/ext_ui_context.go, internal/codingagent/interactive_signals_unix.go, internal/codingagent/interactive_signals_windows.go, internal/codingagent/suspend.go, internal/codingagent/session_selectors.go, internal/codingagent/interactive_theme_modal.go, internal/codingagent/interactive_theme_watcher.go, internal/codingagent/interactive_models.go, internal/codingagent/interactive_extensions.go, internal/codingagent/interactive_chat.go, internal/codingagent/interactive_changelog.go, internal/codingagent/interactive_layout.go, internal/codingagent/interactive_editor.go, internal/codingagent/remote_editor.go, internal/codingagent/interactive_transcript.go, internal/codingagent/interactive_compaction.go, internal/codingagent/interactive_thinking.go, internal/codingagent/interactive_helpers.go, internal/codingagent/interactive_hotkeys.go, internal/codingagent/loaded_resources.go, internal/codingagent/extension_diagnostics.go (quiet resource diagnostics), internal/codingagent/project_trust_warning.go (startup transcript warning), internal/codingagent/resource_diagnostics.go, internal/codingagent/autocomplete_wrappers.go, internal/codingagent/extension_ui_phase.go, coding/extension/autocomplete.go, coding/extension/host/subprocess/runtime-node/widget-component.mjs`, `internal/codingagent/interactive_lifecycle.go`, internal/codingagent/ext_ui_dialog_stack.go (extension dialog stack: select, confirm, input, editor and editor-slot custom dialogs stack, a hidden dialog's abort removes only itself, session replacement and /reload dispose every dialog; Pi 38847563) | ✅ |
+| `packages/coding-agent/src/modes/interactive/interactive-mode.ts` | `internal/codingagent/interactive.go (formatResumeCommand preserves TTY/persistence gates and the default-directory decision), internal/codingagent/auth_warnings.go, internal/codingagent/interactive_input.go, internal/codingagent/startup_input.go, internal/codingagent/interactive_turn.go, internal/codingagent/interactive_user_bash.go, internal/codingagent/ext_ui_editor_snapshot.go, internal/codingagent/interactive_commands.go, internal/codingagent/interactive_reload.go, internal/codingagent/interactive_rebind.go, internal/codingagent/model_command.go, internal/codingagent/scoped_models_selection.go, internal/codingagent/interactive_auth.go, internal/codingagent/interactive_login.go, internal/codingagent/interactive_api_key_login.go, internal/codingagent/slash_auth.go, internal/codingagent/interactive_post_login.go, internal/codingagent/interactive_events.go, internal/codingagent/interactive_tui.go, internal/codingagent/startup_header.go, internal/codingagent/ext_ui_context.go, internal/codingagent/interactive_signals_unix.go, internal/codingagent/interactive_signals_windows.go, internal/codingagent/suspend.go, internal/codingagent/session_selectors.go, internal/codingagent/interactive_theme_modal.go, internal/codingagent/interactive_theme_watcher.go, internal/codingagent/interactive_models.go, internal/codingagent/interactive_extensions.go, internal/codingagent/interactive_chat.go, internal/codingagent/interactive_changelog.go, internal/codingagent/interactive_layout.go, internal/codingagent/interactive_editor.go, internal/codingagent/remote_editor.go, internal/codingagent/interactive_transcript.go, internal/codingagent/interactive_compaction.go, internal/codingagent/interactive_thinking.go, internal/codingagent/interactive_helpers.go, internal/codingagent/interactive_hotkeys.go, internal/codingagent/loaded_resources.go, internal/codingagent/extension_diagnostics.go (quiet resource diagnostics), internal/codingagent/project_trust_warning.go (startup transcript warning), internal/codingagent/resource_diagnostics.go, internal/codingagent/autocomplete_wrappers.go, internal/codingagent/extension_ui_phase.go, coding/extension/autocomplete.go, coding/extension/host/subprocess/runtime-node/widget-component.mjs`, `internal/codingagent/interactive_lifecycle.go`, internal/codingagent/ext_ui_dialog_stack.go (extension dialog stack: select, confirm, input, editor and editor-slot custom dialogs stack, a hidden dialog's abort removes only itself, session replacement and /reload dispose every dialog; Pi 38847563); getModelScopeNotice/showFullscreenModelScopeNotice: internal/codingagent/model_scope_line.go; getExtensionChangelogUpdates/readPackageJson: internal/codingagent/interactive_changelog.go | ✅ |
 | `packages/coding-agent/src/modes/interactive/external-editor.ts` | `internal/codingagent/external_editor.go (opened by the interactive editor, the extension UI context and the session selectors)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/trust-selector.ts` | `internal/codingagent/trust_selector.go; internal/codingagent/slash_session_handlers.go (trustHandler)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/first-time-setup.ts` | `internal/codingagent/first_time_setup.go (FirstTimeSetupComponent; D88 adds the sprite step and the pig-head logo)` | ✅ |
-| `packages/coding-agent/src/modes/interactive/theme/theme.ts` | `tui/theme.go + tui/theme_loader.go + tui/theme_watcher.go (indexed-color load/var/ANSI/CSS/export coverage in TestLoadThemeFileIndexedColors; complete optional-color fallbacks and authored key order in scrollbar_theme_test.go) + exact pinned dark/light JSON; tui/component_themes.go (getMarkdownTheme, getSelectListTheme, getSettingsListTheme against an explicit theme); internal/codingagent/interactive_tui.go (foreground scrollbarThumb style); internal/codingagent/extension_diagnostics.go (getCustomThemeInfos availability)`, `tui/highlight.go`, `tui/markdown_style.go`, `tui/select_list.go`, `tui/settings_list.go`, `coding/cli/theme_init.go`, `tui/theme_tokens.go` | ✅ |
+| `packages/coding-agent/src/modes/interactive/theme/theme.ts` | `tui/theme.go + tui/theme_loader.go + tui/theme_watcher.go (indexed-color load/var/ANSI/CSS/export coverage in TestLoadThemeFileIndexedColors; complete optional-color fallbacks and authored key order in scrollbar_theme_test.go) + exact pinned dark/light JSON; tui/component_themes.go (getMarkdownTheme, getSelectListTheme, getSettingsListTheme against an explicit theme); internal/codingagent/interactive_tui.go (foreground scrollbarThumb style); internal/codingagent/extension_diagnostics.go (getCustomThemeInfos availability)`, `tui/highlight.go` (HighlightCode; CodeHighlighter reuses its last result until the code, theme or grammars change; Pi 0f21a331), `tui/markdown_style.go`, `tui/select_list.go`, `tui/settings_list.go`, `coding/cli/theme_init.go`, `tui/theme_tokens.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/theme/theme-controller.ts` | `internal/codingagent/presentation_theme.go + interactive_theme.go + interactive_theme_modal.go + startup_ui.go (terminal color query, live scheme notifications, selection, preview, persistence and lifecycle); theme_controller_native_upstream_test.go; interactive_theme_autoswitch_test.go; interactive-rendering/36–37` | ✅ |
 | `packages/coding-agent/src/modes/interactive/model-search.ts` | `tui/model_search.go (ModelSearchItem, GetModelSearchText, GetModelSelectorSearchText); GetModelSelectorSearchText feeds tui/model_select.go applyFilter over ModelSelectorItem.Name (raw model name), GetModelSearchText feeds tui/scoped_models_list.go refresh and internal/codingagent/interactive_commands.go modelArgCompletions. tui/model_search_test.go proxy-provider fixture (openrouter/vercel-ai-gateway openai/gpt-5 ids) asserts the upstream 0.99.1 fuzzyFilter order for both functions and the selector` | ✅ |
 | `packages/coding-agent/src/modes/print-mode.ts` | `coding/cli/print_mode.go (text) and coding/cli/json_mode.go (json): upstream runs both modes from one function, pig splits them by mode. json streams the session event stream as JSONL while the turn runs; text still prints only the final assistant message. Behavioral coverage: print/01-print-mode-arithmetic, json/01-json-mode-streams-events` | ✅ |
@@ -411,7 +471,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/index.ts` | `(barrel)` | n/a |
 | `packages/coding-agent/src/utils/changelog.ts` | `internal/codingagent/changelog.go + internal/codingagent/changelog_links.go (the bundled CHANGELOG.md is embedded by the root embed package)` | ✅ |
 | `packages/coding-agent/src/utils/output-files.ts` | `internal/outputfiles/outputfiles.go (internal/outputfiles/outputfiles_test.go); callers: the bash executor, the output accumulator, the MCP tools and the codemode execute tool` | ✅ |
-| `packages/coding-agent/src/utils/ansi.ts` | `internal/codingagent/tools/sanitize.go (StripANSI, SplitIncompleteAnsiSuffix)` | ✅ |
+| `packages/coding-agent/src/utils/ansi.ts` | `internal/codingagent/tools/sanitize.go (StripANSI, SplitIncompleteAnsiSuffix); internal/text/strip_ansi.go (the private-parameter CSI regex tools.StripANSI delegates to)` | ✅ |
 | `packages/coding-agent/src/utils/child-process.ts` | `internal/crossspawn (spawnProcess/spawnProcessSync Windows shebang routing and cross-spawn escaping); internal/childwait (waitForChildProcess post-exit stdio grace, EXIT_STDIO_GRACE_MS, used by core/exec.ts and the bash tool)` | ✅ |
 | `packages/coding-agent/src/utils/clipboard.ts` | `internal/codingagent/clipboard_copy.go (copyToClipboard; the text reader lives in clipboard and clipboard_text: readClipboardText command fallbacks, then the getNativeClipboard getText reader on every platform, and interactive Ctrl+V/right-click paths; internal/codingagent/clipboard_read_text_test.go)` | ✅ |
 | `packages/coding-agent/src/utils/clipboard-image.ts` | `internal/codingagent/clipboard.go + internal/codingagent/clipboard_paste.go (backend read and paste caller; unsupported formats are normalized to PNG; temp file name, umask mode, extensions and WSL temp names match Pi; command timeouts (1 s, 5 s, 3 s), the native octet-stream label, the PowerShell ok check and the empty-Wayland no-fallthrough are mutation-checked; the native Windows and macOS helper reads an image the desktop copied: internal/nativeplatform TestNativeClipboardImageRoundTrip)` | ✅ |
@@ -444,7 +504,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/interactive/components/bordered-loader.ts` | `tui/bordered_loader.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts` | `tui/branch_summary.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts` | `tui/compaction_summary.go` | ✅ |
-| `packages/coding-agent/src/modes/interactive/components/config-selector.ts` | `tui/config_selector.go` | ✅ |
+| `packages/coding-agent/src/modes/interactive/components/config-selector.ts` | `tui/config_selector.go (formatBaseDir matches whole path segments); coding/cli/config_command.go configItemKey keys the inherited state by codingagent.ResourcePathKey (getResourcePathKey)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/countdown-timer.ts` | `tui/countdown_timer.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/custom-editor.ts` | `internal/codingagent/custom_editor.go, tui/editor.go and tui/editor_status.go hold the CustomEditor members. InteractiveMode mounts that CustomEditor as its default editor and registers the app handlers on it (defaultCustomEditor and setupKeyHandlers in the codingagent interactive_input source), with the CustomEditor app-keybinding precedence: extension shortcuts -> paste-image -> interrupt with autocomplete/empty guards -> exit-on-empty -> app.session actions -> editor fallthrough. Ctrl+D exits only when the editor has zero-length text; nonempty text, including whitespace, falls through to tui.editor.deleteCharForward. Conflicting paste-image/interrupt/exit bindings use CustomEditor order rather than registry declaration order. Guarded by mutation-proven TestCustomEditorHighPriorityBindingOrder, TestCustomEditorDispatchPrecedence, and test/parity/scenarios/custom-editor-precedence.toml.` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/custom-entry.ts` | `internal/codingagent/interactive.go addCustomEntryToChat (rebuild + live-append, Spacer(1) + expand-toggle) over the entry-renderer wire in coding/extension/host/subprocess/{protocol.go,host.go,render_proxy.go} + RegisterEntryRenderer in extensions/sdk{,-rs,-py} + runtime-node. Cross-SDK verified by extension-conformance (inproc-go reference vs subprocess go/rust/python) + parity scenario extensions-runtime/18-subprocess-entry-renderer (pi 0.84.0 vs pig byte-identical, mutation-proven)` | ✅ |
@@ -462,7 +522,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/interactive/components/model-selector.ts` | `tui/model_select.go + tui/model_selector_runtime.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/oauth-selector.ts` | `tui/oauth_selector.go (driven by the interactive login and slash auth code)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts` | `tui/scoped_models_list.go (driven by the interactive mode)` | ✅ |
-| `packages/coding-agent/src/modes/interactive/components/session-selector.ts` | `internal/codingagent/session_selector.go (the component, hosted by startup_ui, the interactive mode and its theme modal; its unexported helpers session_selector_load (owned scope loads, progress and cancellation), session_selector_status (setStatusMessage) and session_selector_delete with its _unix and _windows variants (deleteSessionFile) await storage with UI-task pumping)`, `internal/codingagent/session_selector_load.go` | ✅ |
+| `packages/coding-agent/src/modes/interactive/components/session-selector.ts` | `internal/codingagent/session_selector.go (the component, hosted by startup_ui, the interactive mode and its theme modal; its unexported helpers session_selector_load (owned scope loads, progress and cancellation), session_selector_status (setStatusMessage) and session_selector_delete with its _unix and _windows variants (deleteSessionFile) await storage with UI-task pumping; canonicalSessionPath is getSessionPathKey: canonicalizePath through resolvepath.ComparisonKey)`, `internal/codingagent/session_selector_load.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/session-selector-search.ts` | `internal/codingagent/session_selector.go + tui/fuzzy.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/settings-selector.ts` | `tui/settings_list.go + internal/codingagent/slash_session_handlers.go`, `internal/codingagent/settings_selector.go (no share-destination item, D64)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/show-images-selector.ts` | `tui/show_images_selector.go (layout and onSelect/onCancel dispatch match upstream (TestShowImagesUpstreamRender, TestShowImagesUpstreamCallbacks); Pi 1.4.0 has no ordinary interactive entry point either)` | ✅ |
@@ -477,7 +537,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/interactive/components/visual-truncate.ts` | `tui/visual_truncate.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/armin.ts` | `internal/codingagent/armin.go + internal/codingagent/interactive_easter_eggs.go (D87: a pig head labeled pigsayhi; /pigsayhi is an alias)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/earendil-announcement.ts` | `internal/codingagent/earendil_announcement.go (shown by the interactive easter-egg code)` | ✅ |
-| `packages/coding-agent/src/core/pi-manifest.ts` | `coding/packagecontent/pi_manifest.go ReadPiManifest (BOM strip, object-only package and "pi", per-field string arrays), used by coding/extension/host/subprocess/builder_node.go piPackageEntrypoints; coding/packagecontent/packagecontent.go readPackageManifest applies the same parse for package discovery (pi_manifest_test.go, builder_node_entry_test.go)` | ✅ |
+| `packages/coding-agent/src/core/pi-manifest.ts` | `coding/packagecontent/pi_manifest.go ReadPiManifest (BOM strip, object-only package and "pi", per-field string arrays), used by coding/extension/host/subprocess/builder_node.go piPackageEntrypoints; coding/packagecontent/packagecontent.go readPackageManifest applies the same parse for package discovery (pi_manifest_test.go, builder_node_entry_test.go); PiManifest.ChangelogPath` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/markdown-transform.ts` | `coding/extension/markdowntransform/markdowntransform.go, internal/codingagent/interactive_chat.go, tui/markdown_async.go (chain order and context, a throwing transformer keeping the current Markdown, stale-generation publication, and a body that outlives an extension disconnect publishing nothing are covered and mutation-checked; D56: a body the renderer inactivity boundary abandoned disables its transformer in later chains while it runs)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/mermaid.ts` | `internal/codingagent/mermaid_transform.go + internal/codingagent/mermaid_fence_parser.go + internal/codingagent/mermaid_definition_parser.go + internal/codingagent/mermaid_html_parser.go + internal/codingagent/mermaid_heading_parser.go (natural-layout raw fallback and display-only partial warnings: mermaid_fallback_upstream_test.go; exact transform corpus: mermaid_transform_test.go)` | ✅ |
 | `packages/coding-agent/src/modes/json-event.ts` | `coding/cli/rpc_events.go + coding/cli/rpc_object.go + ai/assistant_observation.go + agent/messages.go (ordered JSON/RPC conversion; field-only live projections exclude partials before serialization and read toolcall_start identity)`, `coding/rpcclient/types.go` | ✅ |
@@ -506,7 +566,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/core/tools/renderers/index.ts` | `tui/tool_renderers.go (createAllToolRenderers by name, withBuiltInRenderers fallback) + tui/tool_execution.go FormatBuiltinToolHeader + internal/codingagent/tool_render.go toolBodyRenderer` | ✅ |
 | `packages/coding-agent/src/core/tools/renderers/ls.ts` | `tui/tool_execution.go (FormatLsHeader) + internal/codingagent/tool_render_list.go` | ✅ |
 | `packages/coding-agent/src/core/tools/renderers/read.ts` | `internal/codingagent/tool_builtin_renderers.go (readRenderCall, readRenderResult) + tui/compact_read_header.go (compact read call for SKILL.md, AGENTS/CLAUDE files and Pi docs, line ranges, invalid-argument marker) + internal/codingagent/tool_render.go (renderReadLines, truncation warnings); TestBuiltInRenderersMatchPi104 compares 124 read cases, collapsed and expanded, row by row with the recorded output of Pi's built renderer (testdata/pi104-render-probe, recorded from the 1.0.4 build; read.ts is unchanged in 1.1.0)` | ✅ |
-| `packages/coding-agent/src/core/tools/renderers/write.ts` | `internal/codingagent/tool_builtin_renderers.go + internal/codingagent/write_highlight_cache.go (WriteHighlightCache: incremental highlight while the content streams) (writeRenderCall, writeRenderResult: the content preview while arguments stream, the invalid-content marker, error-only results) + tui/tool_execution.go (FormatWriteHeader) + internal/codingagent/tool_render.go (renderWriteContent); TestBuiltInRenderersMatchPi104 compares 50 write cases row by row with the recorded output of Pi's built renderer (testdata/pi104-render-probe, recorded from the 1.0.4 build; write.ts is unchanged in 1.1.0)` | ✅ |
+| `packages/coding-agent/src/core/tools/renderers/write.ts` | `internal/codingagent/tool_builtin_renderers.go + internal/codingagent/write_highlight_cache.go (WriteHighlightCache: incremental highlight while the content streams) (writeRenderCall, writeRenderResult: the content preview while arguments stream, the invalid-content marker, error-only results) + tui/tool_execution.go (FormatWriteHeader) + internal/codingagent/tool_render.go (renderWriteContent) + internal/codingagent/tool_builtin_renderers.go (builtInRenderState.highlighter: a complete call highlights through the row's tui.CodeHighlighter; reusableText keeps the row's *tui.Text; Pi 0f21a331); TestBuiltInRenderersMatchPi104 compares 50 write cases row by row with the recorded output of Pi's built renderer (testdata/pi104-render-probe, recorded from the 1.0.4 build; write.ts is unchanged in 1.1.0)` | ✅ |
 | `packages/coding-agent/src/experimental/source-resolver.ts` | `(Node-runtime-only: a node:module registerHooks resolve hook that maps tsconfig @earendil-works/* path aliases to .ts sources so internal processes run from a source checkout; Go links packages at build time)` | n/a |
 | `packages/coding-agent/src/modes/interactive/bug-report.ts` | `internal/codingagent/slash_bug.go, internal/codingagent/interactive_bug.go (consent flow, export-only; D62)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/chat-viewport.ts` | `internal/codingagent/chat_viewport.go (CreateChatViewport; mounted by buildChatViewport in internal/codingagent/interactive_tui.go)` | ✅ |
@@ -528,7 +588,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/extensions/codemode/execute.lazy.ts` | `(designed out: the sandbox is created on the first script by construction, coding/extension/builtin/codemode/execute.go)` | n/a |
 | `packages/coding-agent/src/extensions/codemode/execute.ts` | `coding/extension/builtin/codemode/execute.go + run.go (nested calls, discovery globals, store/load, output truncation, header, process-wide worker admission); models.* ported`, coding/extension/builtin/codemode/execute.go reserve/admit/release (scripts at the worker limit wait up to 60 s in arrival order; PI_CODEMODE_MAX_WORKERS; Pi 885a564b) + codemode/workerlauncher.go (a launch resuming after its result settled starts no worker) | ✅ |
 | `packages/coding-agent/src/extensions/codemode/index.ts` | `coding/extension/builtin/codemode/tool.go (Extension, settings-driven mode and budget) + coding/cli/builtin_extensions.go` | ✅ |
-| `packages/coding-agent/src/extensions/codemode/renderer.ts` | `internal/codingagent/tool_codemode_renderer.go (CodemodeRenderers, carried by the codemode tool definition)` | ✅ |
+| `packages/coding-agent/src/extensions/codemode/renderer.ts` | `internal/codingagent/tool_codemode_renderer.go (CodemodeRenderers, carried by the codemode tool definition; the script's tui.CodeHighlighter lives in builtInRenderState, as Pi's scriptHighlighter lives in context.state)` | ✅ |
 | `packages/coding-agent/src/extensions/codemode/tool.ts` | `coding/extension/builtin/codemode/{tool,description,description_text}.go (description catalog, loadout, definition)` | ✅ |
 | `packages/coding-agent/src/extensions/codemode/worker.ts` | `(designed out: the sandbox runs in-process on wazero, codemode/sandbox.go; there is no worker entry)` | n/a |
 | `packages/coding-agent/src/extensions/mcp/cli.lazy.ts` | `(lazy dynamic-import wrapper; Go links the command statically)` | n/a |
@@ -552,11 +612,11 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 
 | upstream | pig | status |
 |---|---|---|
-| `packages/tui/src/tui.ts` | `tui/tui.go, tui/terminal_color_query.go (FIFO background-query lifetime), tui/overlay_command.go (input-boundary focus restoration), tui/cell_size.go (CSI 16t query and response consumption), tui/mouse.go (mouse event API, Container/Box dispatch, overlay bounds and hit testing), internal/codingagent/interactive_input.go + interactive_theme.go + startup_ui.go (driver-owned terminal input routing and theme detection)`, `tui/bash_execution.go`, `tui/login_dialog.go`, `tui/theme_selector.go`, `tui/tree_select.go`, `tui/user_message_block.go`, `tui/stack.go`, `tui/widthx/cursor_marker.go`, `tui/tui_alt_screen.go`, `tui/overlay_compositor.go`, `tui/overlay_spec.go`, `tui/renderer.go`, `tui/tui_input.go`, `tui/renderer_terminal.go`, `tui/tui_mode_debug.go`, `tui/tui_mode.go` | ✅ |
+| `packages/tui/src/tui.ts` | `tui/tui.go, tui/terminal_color_query.go (FIFO background-query lifetime), tui/overlay_command.go (input-boundary focus restoration), tui/cell_size.go (CSI 16t query and response consumption), tui/mouse.go (mouse event API, Container/Box dispatch, overlay bounds and hit testing), internal/codingagent/interactive_input.go + interactive_theme.go + startup_ui.go (driver-owned terminal input routing and theme detection)`, `tui/bash_execution.go`, `tui/login_dialog.go`, `tui/theme_selector.go`, `tui/tree_select.go`, `tui/user_message_block.go`, `tui/stack.go`, `tui/widthx/cursor_marker.go`, `tui/tui_alt_screen.go`, `tui/overlay_compositor.go`, `tui/overlay_spec.go`, `tui/renderer.go`, `tui/tui_input.go`, `tui/renderer_terminal.go`, `tui/tui_mode_debug.go`, `tui/tui_mode.go; tui/selection_navigation.go ViewportInputCapturer, CapturesViewportInput (Component.capturesViewportInput)` | ✅ |
 | `packages/tui/src/editor-component.ts` | `tui/editor_component.go (EditorComponent and its optional-member interfaces)`, `tui/editor.go` | ✅ |
 | `packages/tui/src/autocomplete.ts` | `tui/autocomplete.go + tui/file_autocomplete.go`, `tui/editor_async_provider.go` | ✅ |
 | `packages/tui/src/fuzzy.ts` | `tui/fuzzy.go` | ✅ |
-| `packages/tui/src/keybindings.ts` | `tui/keybindings.go`, `internal/codingagent/keybindings.go`, `tui/alt_screen_keybindings.go` | ✅ |
+| `packages/tui/src/keybindings.ts` | `tui/keybindings.go`, `internal/codingagent/keybindings.go`, `tui/alt_screen_keybindings.go; tui/selection_navigation.go GetSelectPageIndex (replaces the PR-7680 PageSelectionIndex)` | ✅ |
 | `packages/tui/src/keys.ts` | `tui/key_match.go + tui/key_parse.go + tui/keys_decode.go + tui/keybindings.go + internal/codingagent/keys.go + internal/codingagent/stdin_buffer.go + internal/codingagent/kitty_csi.go`, `tui/terminal.go`, `tui/key_helper.go` | ✅ |
 | `packages/tui/src/kill-ring.ts` | `tui/kill_ring.go` | ✅ |
 | `packages/tui/src/stdin-buffer.ts` | `tui/stdin_buffer.go (shared UTF-16 parser), internal/codingagent/stdin_buffer.go (owner timer and modal routing); native unit tests pass, full cross-boundary qualification remains partial`, `tui/stdin_buffer_events.go` | ✅ |
@@ -575,11 +635,11 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/tui/src/components/image.ts` | `tui/image.go` | ✅ |
 | `packages/tui/src/components/input.ts` | `tui/text_input.go (lossless UTF-16 via internal/jsstring)`, `tui/tui.go` | ✅ |
 | `packages/tui/src/components/loader.ts` | `tui/loader.go` | ✅ |
-| `packages/tui/src/components/markdown.ts` | `tui/markdown.go + tui/markdown_options.go + tui/markdown_style.go + tui/markdown_list.go + tui/markdown_marked.go + tui/markdown_marked_block.go (marked 18.0.11 lexer rules) + tui/markdown_cjk.go (marked-cjk-friendly 0.1.2 emStrong: the CJK class and the previous-character recovery; Pi b2d0da6f)`, tui/markdown_latex.go containsTableStart (display math never spans a GFM table; Pi 2ed3118b) | ✅ |
+| `packages/tui/src/components/markdown.ts` | `tui/markdown.go + tui/markdown_options.go + tui/markdown_style.go + tui/markdown_list.go + tui/markdown_marked.go + tui/markdown_marked_block.go (marked 18.0.11 lexer rules) + tui/markdown_cjk.go (marked-cjk-friendly 0.1.2 emStrong: the CJK class and the previous-character recovery; Pi b2d0da6f)`, tui/markdown_latex.go containsTableStart (display math never spans a GFM table; Pi 2ed3118b); markedURL CJK-punctuation cut (Pi fa168515); tui/markdown_block_reuse_upstream_test.go (Pi 0f21a331 Block reuse: highlighting reused by language and code until Invalidate; rendered-block reuse keyed by raw is not ported, see its sync row) | ✅ |
 | `packages/tui/src/components/select-list.ts` | `tui/select_list.go (SelectList) + tui/select_filterable.go (shared row layout and truncation)`, `tui/select_submenu.go`, `tui/tui.go` | ✅ |
 | `packages/tui/src/components/settings-list.ts` | `tui/settings_list.go`, `tui/tui.go` | ✅ |
 | `packages/tui/src/components/spacer.ts` | `tui/spacer.go`, `tui/tui.go` | ✅ |
-| `packages/tui/src/components/text.ts` | `tui/text.go`, `tui/loader.go` | ✅ |
+| `packages/tui/src/components/text.ts` | `tui/text.go (SetText with the same text keeps the wrapped lines; tui/text_set_text_upstream_test.go)`, `tui/loader.go` | ✅ |
 | `packages/tui/src/components/truncated-text.ts` | `tui/truncated_text.go (D66 clamps horizontal padding when the full padding cannot fit instead of emitting a fatal over-wide row)`, `tui/tui.go` | ✅ |
 | `packages/tui/src/components/alt-screen-flash.ts` | `tui/alt_screen_flash.go (ported; default/explicit duration, timer removal, rendering, truncation, disposal, and ordering unit-tested in tui/alt_screen_flash_test.go, including TestAltScreenFlashExplicitNonPositiveDurationExpiresImmediately; composite-render wired in tui_alt_screen.go; flash("Copied!") production trigger wired via app.message.copy/Ctrl+X → confirmMessageCopied in interactive.go, unit-tested TestConfirmMessageCopied_FullscreenFlashesInsteadOfStatusLine)` | ✅ |
 | `packages/tui/src/components/h-stack.ts` | `tui/stack.go (HStack, ported + unit-tested side-by-side/align compositing; Stack-base parity)` | ✅ |
@@ -590,7 +650,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/tui/src/layout-node.ts` | `tui/layout_node.go` | ✅ |
 | `packages/tui/src/layout.ts` | `tui/layout.go` | ✅ |
 | `packages/tui/src/tui-alt-screen.ts` | `tui/tui_alt_screen.go, tui/tui_alt_screen_input.go, tui/tui_alt_screen_mouse.go, tui/tui_alt_screen_selection.go`, `tui/tui.go`, tui/terminal_exit_restore.go (exit prefix and suffix of the alternate screen) | ✅ |
-| `packages/tui/src/tui-main-screen.ts` | `tui/tui.go, tui/bounded_terminal_writer.go, tui/redraw_debug.go, tui/render_overflow.go`, `tui/tui_mode_debug.go` | ✅ |
+| `packages/tui/src/tui-main-screen.ts` | `tui/tui.go, tui/bounded_terminal_writer.go, tui/redraw_debug.go, tui/render_overflow.go`, `tui/tui_mode_debug.go; OSC 133 strip of the regular-mode renderer (Pi 19ce8059): tui/tui.go stripOsc133ZonePrefixes, tui/layout.go stripOsc133ZonePrefix` | ✅ |
 | `packages/tui/src/alt-screen-search.ts` | `tui/alt_screen_search.go` | ✅ |
 | `packages/tui/src/components/mouse-region.ts` | `tui/mouse_region.go` | ✅ |
 | `packages/tui/src/native-module-path.ts` | `partial: coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-tui/native-module-path.js (pinned Pi for Node extensions); TestNodeVendoredTuiUpstreamTests/native-module-path runs the upstream lookup cases; host Go terminal needs no Node module lookup` | ✅ |
@@ -651,11 +711,11 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/index.ts` | `(re-export barrel: every runtime export has its Go counterpart in chord/host, chord/delta, chord/context and chord/json.go; each is mapped by its own source row)` | n/a |
 | `packages/chord/src/types.ts` | `chord/host/types.go (Context is context.Context; JsonRepresentation, RemoteServiceContract, IsAny are compile-time TypeScript machinery with no Go form, replaced by reflection classification at provide time)` | ✅ |
 | `packages/chord/src/json.ts` | `internal/chord/chordjson/chordjson.go:70 Copy, Stored, IsValue; chord/json.go:12`, `chord/delta/delta.go`, `durable/json.go CopyJson` | ✅ |
-| `packages/chord/src/context/index.ts` | `chord/context/chordctx.go Background, TODO, NewKey, WithValue, WithAbortSignal, WithoutAbortSignal, WithCancel, Await, Telemetry, WithTelemetry, TraceIn (Pi 92ab5360 moves traceIn's context last, traceIn(options, fn, context); TraceIn keeps the context first, as every Go function does)` | ✅ |
+| `packages/chord/src/context/index.ts` | `chord/context/chordctx.go Background, TODO, NewKey, WithValue, WithAbortSignal, WithoutAbortSignal, WithCancel, Await, Telemetry, WithTelemetry, TraceIn (Pi 92ab5360 moves traceIn's context last, traceIn(options, fn, context); TraceIn keeps the context first, as every Go function does)`, `chord/next/host/host_ctx.go` | ✅ |
 | `packages/chord/src/delta/index.ts` | `chord/delta/delta.go:317 AssertValidOpValue, apply.go:227 Apply, ApplyImmutable, apply.go:255 ApplyImmutableBatchesSeq, codec.go:17 Encoder/Decoder, overlap.go:17; ownedSlice is a V8 string-view detail that Go strings.Clone covers where an op or value keeps a cut of a larger string` | ✅ |
 | `packages/chord/src/delta/pending.ts` | `chord/delta/pending.go (PendingOps, PendingTake, MaxPendingOps; chord/delta/pending_test.go)` | ✅ |
 | `packages/chord/src/delta/diff.ts` | `chord/delta/diff.go:611 DiffRevisions` | ✅ |
-| `packages/chord/src/delta/tracker.ts` | `chord/delta/tracker.go + chord/delta/handles.go (overlay with Object/Array draft handles, the Proxy draft; array roots through TrackArray, Change.Elements, Tracker.Root, Prepared.ValueRoot, PrepareReplaceRoot; AppendText, the draft's append of text to a string member)` | ✅ |
+| `packages/chord/src/delta/tracker.ts` | `chord/delta/tracker.go + chord/delta/handles.go (overlay with Object/Array draft handles, the Proxy draft; array roots through TrackArray, Change.Elements, Tracker.Root, Prepared.ValueRoot, PrepareReplaceRoot; AppendText, the draft's append of text to a string member)`; second mapped port: durable/core/internal/delta/tracker.go, the core copy over jv values with no registry: staleness is by revision (assertOpen, Change.Prepare, Tracker.Adopt refuse a draft whose baseRevision differs), which is what Pi a9228305's #open/#competitors registry computes, so the registry mechanics are designed out (core purity rules forbid sync, reflect and runtime) and the competing-change cases run against it in durable/core/internal/delta/tracker_competing_test.go; an abandoned draft is reclaimed at once instead of at the next change, a GC-timing difference no caller observes) | ✅ |
 | `packages/chord/src/delta/draft.ts` | `TypeScript mapped type; the Go draft is chord/delta Object/Array` | n/a |
 | `packages/chord/src/delta/apply-immutable-trusted.ts` | `self-produced-op fast path of the tracker; the Go trackers materialize candidates themselves and ApplyImmutable covers the checked path (apply_immutable_upstream_test.go)` | n/a |
 | `packages/chord/src/delta/revision-validator.ts` | `WeakSet memo of validated JS container identities; a decoded Go revision has no shared identity and is validated by chordjson.Validate (state.go:917)` | n/a |
@@ -689,6 +749,212 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/wire.ts` | `chord/host/wire.go (link protocol 4)` | ✅ |
 | `packages/chord/src/telemetry-sqlite/index.ts` | `chord/telemetrysqlite/index.go` | ✅ |
 | `packages/chord/src/telemetry-sqlite/store.ts` | `chord/telemetrysqlite/store.go` | ✅ |
+| `packages/chord/src/next/contracts/accepts.ts` | `chord/next/contracts/accepts.go` | ✅ |
+| `packages/chord/src/next/contracts/contract.ts` | `chord/next/contracts/contract.go` | ✅ |
+| `packages/chord/src/next/contracts/declare.ts` | `chord/next/contracts/declare.go` | ✅ |
+| `packages/chord/src/next/contracts/evolve.ts` | `chord/next/contracts/evolve.go` | ✅ |
+| `packages/chord/src/next/contracts/fingerprint.ts` | `chord/next/contracts/fingerprint.go` | ✅ |
+| `packages/chord/src/next/contracts/history.ts` | `chord/next/contracts/history.go` | ✅ |
+| `packages/chord/src/next/contracts/host-kind.ts` | `chord/next/contracts/host_kind.go` | ✅ |
+| `packages/chord/src/next/contracts/index.ts` | `(re-export barrel; Go packages export names directly)` | n/a |
+| `packages/chord/src/next/contracts/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
+| `packages/chord/src/next/contracts/names.ts` | `chord/next/contracts/names.go` | ✅ |
+| `packages/chord/src/next/contracts/params.ts` | `chord/next/contracts/params.go` | ✅ |
+| `packages/chord/src/next/contracts/schema.ts` | `chord/next/contracts/schema.go, chord/next/contracts/namedmap.go, chord/next/contracts/jsorder.go` | ✅ |
+| `packages/chord/src/next/contracts/snapshot.ts` | `chord/next/contracts/snapshot.go` | ✅ |
+| `packages/chord/src/next/data/args.ts` | `chord/next/data/args.go` | ✅ |
+| `packages/chord/src/next/data/errors.ts` | `chord/next/data/errors.go` | ✅ |
+| `packages/chord/src/next/data/failure.ts` | `chord/next/data/failure.go` | ✅ |
+| `packages/chord/src/next/data/index.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/next/data/internal.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/next/data/params.ts` | `chord/next/data/params.go` | ✅ |
+| `packages/chord/src/next/data/principal.ts` | `chord/next/data/principal.go` | ✅ |
+| `packages/chord/src/next/data/validator.ts` | `chord/next/data/validator.go` | ✅ |
+| `packages/chord/src/next/index.ts` | `(aggregate barrel of every layer; Go imports the layer packages)` | n/a |
+| `packages/chord/src/next/registries/contribution.ts` | `chord/next/registries/contribution.go` | ✅ |
+| `packages/chord/src/next/registries/entries.ts` | `chord/next/registries/entries.go` | ✅ |
+| `packages/chord/src/next/registries/index.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/next/registries/internal.ts` | `chord/next/registries/internal.go` | ✅ |
+| `packages/chord/src/next/registries/record.ts` | `chord/next/registries/record.go` | ✅ |
+| `packages/chord/src/next/registries/registry.ts` | `chord/next/registries/registry.go` | ✅ |
+| `packages/chord/src/next/registries/value.ts` | `chord/next/registries/value.go` | ✅ |
+| `packages/chord/src/next/state/batch.ts` | `chord/next/state/batch.go` | ✅ |
+| `packages/chord/src/next/state/derive.ts` | `chord/next/state/derive.go` | ✅ |
+| `packages/chord/src/next/state/index.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/next/state/internal.ts` | `(re-export barrel)` | n/a |
+| `packages/chord/src/next/state/native-source.ts` | `chord/next/state/native_source.go` | ✅ |
+| `packages/chord/src/next/state/watchable.ts` | `chord/next/state/watchable.go, chord/next/state/identical.go, chord/next/state/set.go` | ✅ |
+| `packages/chord/src/next/state/writable.ts` | `chord/next/state/writable.go` | ✅ |
+| `packages/chord/src/next-node/compression.ts` | `chord/nextnode/compression.go` | ✅ |
+| `packages/chord/src/next/link/binary.ts` | `chord/next/link/binary.go` | ✅ |
+| `packages/chord/src/next/link/channel.ts` | `chord/next/link/channel.go` | ✅ |
+| `packages/chord/src/next/link/errors.ts` | `chord/next/link/errors.go` | ✅ |
+| `packages/chord/src/next/link/index.ts` | `(re-export barrel; Go packages export names directly)` | n/a |
+| `packages/chord/src/next/link/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
+| `packages/chord/src/next/link/ipc.ts` | `chord/next/link/ipc.go` | ✅ |
+| `packages/chord/src/next/link/link.ts` | `chord/next/link/link.go` | ✅ |
+| `packages/chord/src/next/link/message.ts` | `chord/next/link/message.go` | ✅ |
+| `packages/chord/src/next/link/part.ts` | `chord/next/link/part.go` | ✅ |
+| `packages/chord/src/next/link/text.ts` | `chord/next/link/text.go` | ✅ |
+| `packages/chord/src/next/link/values.ts` | `chord/next/link/values.go` | ✅ |
+| `packages/chord/src/next/link/websocket.ts` | `chord/next/link/websocket.go` | ✅ |
+| `packages/chord/src/next/store/table-writes.ts` | `chord/next/store/table_writes.go` | ✅ |
+| `packages/chord/src/next/store/table-changes.ts` | `chord/next/store/table_changes.go` | ✅ |
+| `packages/chord/src/next/store/table-handle.ts` | `chord/next/store/table_handle.go` | ✅ |
+| `packages/chord/src/next/store/engine.ts` | `chord/next/store/engine.go` | ✅ |
+| `packages/chord/src/next/store/outbox.ts` | `chord/next/store/outbox.go` | ✅ |
+| `packages/chord/src/next/store/store.ts` | `chord/next/store/store.go` | ✅ |
+| `packages/chord/src/next/store/applier.ts` | `chord/next/store/applier.go` | ✅ |
+| `packages/chord/src/next/store/apply-batch.ts` | `chord/next/store/apply_batch.go` | ✅ |
+| `packages/chord/src/next/store/index.ts` | `(export barrel: the Go package exports the names directly. Each exported name of the list exists in package store: ArchivePart (ArchiveManifest is ManifestPart), Backend/SqliteBackend, expression builders (Add And ColumnRef Condition Coalesce Concat Expression Eq Gt Gte InArray IsNull Lt Lte Max Min Ne Not Or Prefix ReplacePrefix SetOf Sub When), ImportStore, JsonColumnOptions/Json, DecodeJsonl/EncodeJsonl, Outbox/OutboxCommit, ColumnRefs/Query, OpenStore/Store/StoreOptions, DefineTable/TableDefinition/TableOptions, EvolveTable/TableEditor, Page/PageOptions, CompareText, StoreWrite. Type-level only, designed out by the other D3 agents: Columns PutRowOf RowOf KeyOf PatchOf AddedColumn TableTailEditor TableOf Table)` | n/a |
+| `packages/chord/src/next/store/archive.ts` | `chord/next/store/archive.go` | ✅ |
+| `packages/chord/src/next/store/export.ts` | `chord/next/store/export.go` | ✅ |
+| `packages/chord/src/next/store/import.ts` | `chord/next/store/import.go` | ✅ |
+| `packages/chord/src/next/store/text.ts` | `chord/next/store/text.go` | ✅ |
+| `packages/chord/src/next/store/allocator.ts` | `allocator.go` | ✅ |
+| `packages/chord/src/next/store/claims.ts` | `claims.go` | ✅ |
+| `packages/chord/src/next/store/refusal.ts` | `refusal.go` | ✅ |
+| `packages/chord/src/next/store/columns.ts` | `columns.go` | ✅ |
+| `packages/chord/src/next/store/json-column.ts` | `json_column.go` | ✅ |
+| `packages/chord/src/next/store/rows.ts` | `rows.go` | ✅ |
+| `packages/chord/src/next/store/sql.ts` | `sql.go` | ✅ |
+| `packages/chord/src/next/store/jsonl.ts` | `jsonl.go` | ✅ |
+| `packages/chord/src/next/store/catalog.ts` | `catalog.go` | ✅ |
+| `packages/chord/src/next/store/expression.ts` | `expression.go` | ✅ |
+| `packages/chord/src/next/store/evaluate.ts` | `evaluate.go` | ✅ |
+| `packages/chord/src/next/store/query.ts` | `query.go` | ✅ |
+| `packages/chord/src/next/store/table.ts` | `table.go` | ✅ |
+| `packages/chord/src/next/store/table-history.ts` | `table_history.go` | ✅ |
+| `packages/chord/src/next/store/table-evolve.ts` | `table_evolve.go` | ✅ |
+| `packages/chord/src/next/store/table-migration.ts` | `table_migration.go` | ✅ |
+| `packages/chord/src/next/store/adapter.ts` | `chord/next/store/adapter.go` | ✅ |
+| `packages/chord/src/next/store/backend.ts` | `chord/next/store/backend.go` | ✅ |
+| `packages/chord/src/next/store/schema.ts` | `chord/next/store/schema.go` | ✅ |
+| `packages/chord/src/next/store/step.ts` | `chord/next/store/step.go` | ✅ |
+| `packages/chord/src/next/store/writes.ts` | `(type-only: the StoreWrite union; chord/next/store/writes.go StoreWrite interface)` | n/a |
+| `packages/chord/src/next/documents/address-source.ts` | `chord/next/documents/address_source.go` | ✅ |
+| `packages/chord/src/next/documents/definition.ts` | `chord/next/documents/definition.go` | ✅ |
+| `packages/chord/src/next/documents/documents.ts` | `chord/next/documents/documents.go` | ✅ |
+| `packages/chord/src/next/documents/fence.ts` | `chord/next/documents/fence.go` | ✅ |
+| `packages/chord/src/next/documents/handles.ts` | `chord/next/documents/handles.go` | ✅ |
+| `packages/chord/src/next/documents/index.ts` | `(re-export barrel; the app-facing set is listed in doc.go)` | n/a |
+| `packages/chord/src/next/documents/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
+| `packages/chord/src/next/documents/keyed-slot.ts` | `chord/next/documents/keyed_slot.go` | ✅ |
+| `packages/chord/src/next/documents/line.ts` | `chord/next/documents/line.go` | ✅ |
+| `packages/chord/src/next/documents/persistence.ts` | `chord/next/documents/persistence.go` | ✅ |
+| `packages/chord/src/next/documents/residency.ts` | `chord/next/documents/residency.go` | ✅ |
+| `packages/chord/src/next/documents/slot.ts` | `chord/next/documents/slot.go` | ✅ |
+| `packages/chord/src/next/documents/transaction.ts` | `chord/next/documents/transaction.go, chord/next/documents/job.go` | ✅ |
+| `packages/chord/src/next/host/backoff.ts` | `chord/next/host/host_backoff.go` | ✅ |
+| `packages/chord/src/next/host/deadline.ts` | `chord/next/host/host_deadline.go` | ✅ |
+| `packages/chord/src/next/host/sleep.ts` | `chord/next/host/host_sleep.go` | ✅ |
+| `packages/chord/src/next/host/uuid.ts` | `chord/next/host/host_uuid.go` | ✅ |
+| `packages/chord/src/next/host/activity.ts` | `chord/next/host/host_activity.go` | 🟡 |
+| `packages/chord/src/next/host/revocation.ts` | `chord/next/host/host_revocation.go` | 🟡 |
+| `packages/chord/src/next/host/unbound.ts` | `chord/next/host/host_unbound.go` | ✅ |
+| `packages/chord/src/next/host/retry-on.ts` | `chord/next/host/host_retry_on.go` | ✅ |
+| `packages/chord/src/next/host/ref-state.ts` | `chord/next/host/host_ref_state.go` | ✅ |
+| `packages/chord/src/next/host/dependencies.ts` | `chord/next/host/host_dependencies.go` | ✅ |
+| `packages/chord/src/next/host/parked.ts` | `chord/next/host/host_parked.go` | 🟡 |
+| `packages/chord/src/next/host/native.ts` | `chord/next/host/host_native.go` | 🟡 |
+| `packages/chord/src/next/host/follow.ts` | `chord/next/host/host_follow.go` | ✅ |
+| `packages/chord/src/next/host/members.ts` | `chord/next/host/host_members.go` | ✅ |
+| `packages/chord/src/next/host/ctx.ts` | `chord/next/host/host_ctx.go` | 🟡 |
+| `packages/chord/src/next/host/root.ts` | `chord/next/host/host_root.go` | ✅ |
+| `packages/chord/src/next/host/routines.ts` | `chord/next/host/host_routines.go` | ✅ |
+| `packages/chord/src/next/host/facet.ts` | `chord/next/host/host_facet.go` | ✅ |
+| `packages/chord/src/next/host/presence.ts` | `chord/next/host/host_presence.go` | 🟡 |
+| `packages/chord/src/next/host/route.ts` | `chord/next/host/host_route.go` | ✅ |
+| `packages/chord/src/next/host/destination.ts` | `chord/next/host/host_destination.go` | ✅ |
+| `packages/chord/src/next/host/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above (Ctx, Facet, FacetHost, Host..., Sleep, UntilAborted, Presence, RefState, RevokedBy, RootOptions, RouteOptions, RoutineDeclarations, Native*, Follow*, GetOptions, HostError, Position; Host, HostOptions, LinkOptions, createHost, Factory, Self, StoreSelf, Held, Reference, RefIn are D5a's))` | n/a |
+| `packages/chord/src/next/host/internal.ts` | `(barrel for jobs/remote: one package, identifiers are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
+| `packages/chord/src/next/host/host.ts` | `chord/next/host/host_host.go, host_error.go` | ✅ |
+| `packages/chord/src/next/host/attempt.ts` | `chord/next/host/host_attempt.go` | ✅ |
+| `packages/chord/src/next/host/object.ts` | `chord/next/host/host_object.go` | ✅ |
+| `packages/chord/src/next/host/reference.ts` | `chord/next/host/host_reference.go` | ✅ |
+| `packages/chord/src/next/jobs/definition.ts` | `chord/next/host/jobs_definition.go` | ✅ |
+| `packages/chord/src/next/jobs/persisted.ts` | `chord/next/host/jobs_persisted.go` | ✅ |
+| `packages/chord/src/next/jobs/records.ts` | `chord/next/host/jobs_records.go` | ✅ |
+| `packages/chord/src/next/jobs/run-states.ts` | `chord/next/host/jobs_run_states.go` | ✅ |
+| `packages/chord/src/next/jobs/run.ts` | `chord/next/host/jobs_run.go` | ✅ |
+| `packages/chord/src/next/jobs/running.ts` | `chord/next/host/jobs_running.go` | ✅ |
+| `packages/chord/src/next/jobs/stored.ts` | `chord/next/host/jobs_stored.go` | ✅ |
+| `packages/chord/src/next/jobs/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above: DefineJob, JobAccepts, JobDefinition, JobError, JobOptions, Outcome, JobCtx, JobHandle, JobImplementation, RunState, StartOptions, BlockedReason, Run; RunningEntry is type-level (jobs_running.go))` | n/a |
+| `packages/chord/src/next/jobs/internal.ts` | `(barrel for host/remote: one package, Job, JobRecords, JobContext, Staging, ... are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
+| `packages/chord/src/next/remote/hold.ts` | `chord/next/host/remote_hold.go` | ✅ |
+| `packages/chord/src/next/remote/remote-object.ts` | `chord/next/host/remote_remote_object.go` | ✅ |
+| `packages/chord/src/next/remote/host-link.ts` | `chord/next/host/remote_host_link.go` | ✅ |
+| `packages/chord/src/next/remote/path.ts` | `chord/next/host/remote_path.go` | ✅ |
+| `packages/chord/src/next/remote/calls.ts` | `chord/next/host/remote_calls.go` | ✅ |
+| `packages/chord/src/next/remote/provider.ts` | `chord/next/host/remote_provider.go` | ✅ |
+| `packages/chord/src/next/remote/consumer.ts` | `chord/next/host/remote_consumer.go` | ✅ |
+| `packages/chord/src/next/remote/relay.ts` | `chord/next/host/remote_relay.go` | ✅ |
+| `packages/chord/src/next/remote/replica.ts` | `chord/next/host/remote_replica.go` | ✅ |
+| `packages/chord/src/next/remote/internal.ts` | `(barrel for Chord's own layers: Go imports the package; what it exported (Path, Upstream, HostLink, HoldRequest, actingFor, ...) is unexported in Go (DESIGN-go-layout.md section 2))` | n/a |
+| `packages/chord/src/next/jobs/job.ts` | `chord/next/host/jobs_job.go` | ✅ |
+| `packages/chord/test/next/examples/01-objects.ts` | `chord/next/host/host_example_01_test.go`, `chord/next/host/host_host.go`, `chord/next/host/host_object.go`, `chord/next/data/args.go` | ✅ |
+| `packages/chord/test/next/examples/02-documents.ts` | `chord/next/host/host_example_02_test.go`, `chord/next/documents/transaction.go`, `chord/next/documents/slot.go`, `chord/next/documents/handles.go` | ✅ |
+| `packages/chord/test/next/examples/03-derives.ts` | `chord/next/host/host_example_03_test.go`, `chord/next/state/derive.go` | ✅ |
+| `packages/chord/test/next/examples/04-watches.ts` | `chord/next/host/host_example_04_test.go`, `chord/next/state/derive.go`, `chord/next/documents/address_source.go` | ✅ |
+| `packages/chord/test/next/examples/05-errors.ts` | `chord/next/host/host_example_05_test.go`, `chord/next/host/host_dependencies.go`, `chord/next/host/host_unbound.go`, `chord/next/data/validator.go` | ✅ |
+| `packages/chord/test/next/examples/06-natives.ts` | `chord/next/host/host_example_06_test.go`, `chord/next/host/host_native.go` | ✅ |
+| `packages/chord/test/next/examples/07-failures.ts` | `chord/next/host/host_example_07_test.go`, `chord/next/host/host_backoff.go`, `chord/next/host/host_dependencies.go` | ✅ |
+| `packages/chord/test/next/examples/08-remote.ts` | `chord/next/host/host_example_08_test.go`, `chord/next/host/host_destination.go`, `chord/next/host/remote_remote_object.go`, `chord/next/host/remote_replica.go` | ✅ |
+| `packages/chord/test/next/examples/09-calls.ts` | `chord/next/host/host_example_09_test.go`, `chord/next/link/values.go`, `chord/next/link/errors.go`, `chord/next/host/host_ctx.go`, `chord/next/host/remote_consumer.go`, `chord/next/host/remote_provider.go` | ✅ |
+| `packages/chord/test/next/examples/10-drops.ts` | `chord/next/host/host_example_10_test.go`, `chord/next/host/host_parked.go`, `chord/next/host/host_reference_source.go`, `chord/next/host/host_reference.go` | ✅ |
+| `packages/chord/test/next/examples/11-linger-and-retry.ts` | `chord/next/host/host_example_11_test.go`, `chord/next/host/host_object.go`, `chord/next/host/host_backoff.go` | ✅ |
+| `packages/chord/test/next/examples/12-routes.ts` | `chord/next/host/host_example_12_test.go`, `chord/next/host/host_route.go`, `chord/next/host/host_ctx.go` | ✅ |
+| `packages/chord/test/next/examples/13-relay.ts` | `chord/next/host/host_example_13_test.go`, `chord/next/link/websocket.go`, `chord/next/link/ipc.go`, `chord/next/host/remote_relay.go` | ✅ |
+| `packages/chord/test/next/examples/14-flow-control.ts` | `chord/next/host/host_example_14_test.go`, `chord/next/host/remote_hold.go`, `chord/next/host/remote_provider.go` | ✅ |
+| `packages/chord/test/next/examples/15-revocation.ts` | `chord/next/host/host_example_15_test.go`, `chord/next/host/host_revocation.go`, `chord/next/host/host_host.go`, `chord/next/host/remote_host_link.go` | ✅ |
+| `packages/chord/test/next/examples/16-presence-and-activity.ts` | `chord/next/host/host_example_16_test.go`, `chord/next/host/host_activity.go`, `chord/next/host/host_presence.go` | ✅ |
+| `packages/chord/test/next/examples/17-limits-and-compression.ts` | `chord/next/host/host_example_17_test.go`, `chord/next/link/part.go`, `chord/nextnode/compression.go`, `chord/next/link/channel.go` | ✅ |
+| `packages/chord/test/next/examples/18-routines.ts` | `chord/next/host/host_example_18_test.go`, `chord/next/host/host_routines.go`, `chord/next/host/host_sleep.go` | ✅ |
+| `packages/chord/test/next/examples/19-jobs.ts` | `chord/next/host/host_example_19_test.go`, `chord/next/host/jobs_job.go`, `chord/next/host/jobs_run_states.go`, `chord/next/host/jobs_records.go`, `chord/next/host/jobs_running.go`, `chord/next/host/jobs_run.go` | ✅ |
+| `packages/chord/test/next/examples/20-tables.ts` | `chord/next/host/host_example_20_test.go`, `chord/next/store/query.go`, `chord/next/store/table_handle.go`, `chord/next/store/rows.go`, `chord/next/store/sql.go`, `chord/next/store/columns.go`, `chord/next/store/table_writes.go`, `chord/next/store/table_changes.go` | ✅ |
+| `packages/chord/test/next/examples/21-persisted-documents.ts` | `chord/next/host/host_example_21_test.go`, `chord/next/store/engine.go`, `chord/next/documents/persistence.go`, `chord/next/documents/keyed_slot.go` | ✅ |
+| `packages/chord/test/next/examples/22-migrations.ts` | `chord/next/host/host_example_22_test.go`, `chord/next/store/table_evolve.go`, `chord/next/store/table_migration.go`, `chord/next/store/catalog.go` | ✅ |
+| `packages/chord/test/next/examples/23-keyed-watches.ts` | `chord/next/host/host_example_23_test.go`, `chord/next/documents/keyed_slot.go`, `chord/next/documents/address_source.go` | ✅ |
+| `packages/chord/test/next/examples/24-keyed-members.ts` | `chord/next/host/host_example_24_test.go`, `chord/next/host/host_reference_keys.go`, `chord/next/host/host_members.go` | ✅ |
+| `packages/chord/test/next/examples/25-export-import.ts` | `chord/next/host/host_example_25_test.go`, `chord/next/store/export.go`, `chord/next/store/import.go`, `chord/next/store/jsonl.go`, `chord/next/store/applier.go`, `chord/next/store/archive.go` | ✅ |
+| `packages/chord/test/next/examples/28-persisted-jobs.ts` | `chord/next/host/host_example_28_test.go`, `chord/next/host/jobs_persisted.go`, `chord/next/host/jobs_stored.go`, `chord/next/host/jobs_run_states.go`, `chord/next/host/jobs_records.go` | ✅ |
+| `packages/chord/test/next/examples/29-registries.ts` | `chord/next/host/host_example_29_test.go`, `chord/next/registries/registry.go`, `chord/next/registries/contribution.go`, `chord/next/registries/value.go`, `chord/next/registries/entries.go`, `chord/next/registries/record.go` | ✅ |
+| `packages/chord/test/next/examples/30-host-root.ts` | `chord/next/host/host_example_30_test.go`, `chord/next/host/host_root.go`, `chord/next/host/host_ctx.go` | ✅ |
+| `packages/chord/test/next/examples/31-parked-dependencies.ts` | `chord/next/host/host_example_31_test.go`, `chord/next/host/host_dependencies.go`, `chord/next/host/host_unbound.go` | ✅ |
+| `packages/chord/test/next/examples/32-startup.ts` | `chord/next/host/host_example_32_test.go`, `chord/next/host/remote_remote_object.go`, `chord/next/host/host_host.go` | ✅ |
+| `packages/chord/test/next/support.ts` | `(Pi test scaffolding; ported as the shared helpers in chord/next/host/host_next_support_test.go, tested by host_next_support_helpers_test.go; its fidelity is evidenced by the ported slice and example tests built on it. Forced difference: holdNextCommit holds the next commit step at the statements that close its writes, since the store type is concrete)` | n/a |
+| `packages/chord/src/next-node/http/admission.ts` | `chord/nextnode/http/admission.go` | ✅ |
+| `packages/chord/src/next-node/http/authenticate.ts` | `chord/nextnode/http/authenticate.go` | ✅ |
+| `packages/chord/src/next-node/http/cookies.ts` | `chord/nextnode/http/cookies.go` | ✅ |
+| `packages/chord/src/next-node/http/file.ts` | `chord/nextnode/http/file.go` | ✅ |
+| `packages/chord/src/next-node/http/headers.ts` | `chord/nextnode/http/headers.go` | ✅ |
+| `packages/chord/src/next-node/http/http.ts` | `chord/nextnode/http/http.go` | ✅ |
+| `packages/chord/src/next-node/http/incoming.ts` | `chord/nextnode/http/incoming.go` | ✅ |
+| `packages/chord/src/next-node/http/index.ts` | `(barrel: Go imports the package; exported names are those of Pi's index.ts, the rest is unexported)` | n/a |
+| `packages/chord/src/next-node/http/node.ts` | `chord/nextnode/http/node.go, chord/nextnode/http/url.go` | ✅ |
+| `packages/chord/src/next-node/http/request.ts` | `chord/nextnode/http/request.go` | ✅ |
+| `packages/chord/src/next-node/http/response.ts` | `chord/nextnode/http/response.go, chord/nextnode/http/statuscodes.go` | ✅ |
+| `packages/chord/src/next-node/http/router.ts` | `chord/nextnode/http/router.go` | ✅ |
+| `packages/chord/src/next-node/http/upgrades.ts` | `chord/nextnode/http/upgrades.go, chord/nextnode/http/websocket.go` | ✅ |
+| `packages/chord/src/next-node/plugins/build.ts` | `chord/nextnode/plugins/plugins_build.go, chord/nextnode/plugins/plugins_sourcemap.go` | ✅ |
+| `packages/chord/src/next-node/plugins/discover.ts` | `chord/nextnode/plugins/plugins_discover.go` | ✅ |
+| `packages/chord/src/next-node/plugins/evaluate.ts` | `chord/nextnode/plugins/plugins_runtime.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/evaluate.ts, node/host.mjs` | ✅ |
+| `packages/chord/src/next-node/plugins/index.ts` | `(barrel: Go imports the package)` | n/a |
+| `packages/chord/src/next-node/plugins/install.ts` | `chord/nextnode/plugins/plugins_install.go` | ✅ |
+| `packages/chord/src/next-node/plugins/plugins.ts` | `chord/nextnode/plugins/plugins_plugins.go` | ✅ |
+| `packages/chord/src/next-node/plugins/runtime.ts` | `chord/nextnode/plugins/plugins_runtime.go, chord/nextnode/plugins/plugins_node.go; Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/runtime.ts` | ✅ |
+| `packages/chord/src/next-node/plugins/stack.ts` | `Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/next-node/plugins/stack.ts; Go sees *NodeError.Stack (chord/nextnode/plugins/plugins_node.go)` | ✅ |
+| `packages/chord/src/next-node/plugins/watcher.ts` | `chord/nextnode/plugins/plugins_watcher.go` | ✅ |
+| `packages/chord/src/next/host/adapted.ts` | `chord/next/host/host_adapted.go` | ✅ |
+| `packages/chord/src/next/host/reference-keys.ts` | `chord/next/host/host_reference_keys.go` | ✅ |
+| `packages/chord/src/next/host/reference-source.ts` | `chord/next/host/host_reference_source.go` | ✅ |
+| `packages/chord/src/next/host/staging.ts` | `chord/next/host/host_staging.go` | ✅ |
+| `packages/chord/src/next-node/workers/control.ts` | `chord/nextnode/workers/workers_control.go` | ✅ |
+| `packages/chord/src/next-node/workers/index.ts` | `(re-export barrel; the exported set is the package's (CrossedError, ProcessLock, WorkerMain, WorkerStart, WorkerPlugins, WorkerResult, WorkerMainOptions, CreateWorkers, WorkerState, Workers, WorkersError, WorkersOptions))` | n/a |
+| `packages/chord/src/next-node/workers/lock.ts` | `chord/nextnode/workers/workers_lock.go, workers_lock_unix.go` (the Windows named-pipe variant workers_lock_windows is built only on Windows and is run by the native Windows CI job) | ✅ |
+| `packages/chord/src/next-node/workers/main.ts` | `chord/nextnode/workers/workers_main.go` | ✅ |
+| `packages/chord/src/next-node/workers/process.ts` | `chord/nextnode/workers/workers_process.go, workers_process_unix.go, workers_channel.go, workers_channel_unix.go` (the Windows variants workers_process_windows and workers_channel_windows are built only on Windows and are run by the native Windows CI job) | ✅ |
+| `packages/chord/src/next-node/workers/workers.ts` | `chord/nextnode/workers/workers_workers.go, workers_outcome.go` | ✅ |
 
 ## `packages/protocol/src/`
 
@@ -747,7 +1013,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/images/photon-wasm.d.ts` | `(TypeScript declaration of the WebAssembly import; Go has no compiled module to import)` | n/a |
 | `packages/durable/src/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/durable/src/session/forks.ts` | `durable/session/forks.go` | ✅ |
-| `packages/durable/src/session/session.ts` | `durable/session/session.go` | ✅ |
+| `packages/durable/src/session/session.ts` | `durable/session/session.go`; the Durable core's native Go host of one Session, which the SQLite engine drives through the core ABI: `durable/core/sqlhost/host.go` (`Host.Close` is `Session.close`) | ✅ |
 | `packages/durable/src/session/transaction.ts` | `durable/session/transaction.go` | ✅ |
 | `packages/durable/src/storage/indexeddb.ts` | `(browser-only Storage backed by window IndexedDB: the file opens with /// <reference lib="dom" /> and every method drives IDBDatabase/IDBTransaction, which exist only in a browser; PiG is a Go process with no browser or WebAssembly build, so no caller can reach it. The Storage contract it implements is the one durable/storage/memory.go, jsonl, sqlite and the Cloudflare SQLite driver already satisfy; Pi 16f5f0af4d)` | n/a |
 | `packages/durable/src/storage/jsonl/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
@@ -839,6 +1105,50 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 | `packages/evals/src/harness.ts` | `internal/evals/harness.go + internal/evals/harness_run.go + internal/evals/agent_process.go + internal/evals/bridge + cmd/pig-eval-extension` | ✅ |
 | `packages/evals/src/plan.ts` | `internal/evals/plan.go` | ✅ |
 | `packages/evals/src/report.ts` | `internal/evals/report.go` | ✅ |
+
+## `packages/schema/src/`
+
+| Upstream | PiG | Status |
+|---|---|---|
+| `packages/schema/src/annotations.ts` | `schema/annotations.go` | ✅ |
+| `packages/schema/src/builders.ts` | `schema/builders.go` | ✅ |
+| `packages/schema/src/checks.ts` | `schema/checks.go` | ✅ |
+| `packages/schema/src/compiler.ts` | `schema/compiler.go` | ✅ |
+| `packages/schema/src/explain.ts` | `schema/explain.go` | ✅ |
+| `packages/schema/src/formats/index.ts` | `schema/formats/index.go` | ✅ |
+| `packages/schema/src/formats/typebox/date.ts` | `schema/formats/typebox_date.go` | ✅ |
+| `packages/schema/src/formats/typebox/date_time.ts` | `schema/formats/typebox_date_time.go` | ✅ |
+| `packages/schema/src/formats/typebox/duration.ts` | `schema/formats/typebox_duration.go` | ✅ |
+| `packages/schema/src/formats/typebox/email.ts` | `schema/formats/typebox_email.go` | ✅ |
+| `packages/schema/src/formats/typebox/hostname.ts` | `schema/formats/typebox_hostname.go` | ✅ |
+| `packages/schema/src/formats/typebox/idn_email.ts` | `schema/formats/typebox_idn_email.go` | ✅ |
+| `packages/schema/src/formats/typebox/idn_hostname.ts` | `schema/formats/typebox_idn_hostname.go` | ✅ |
+| `packages/schema/src/formats/typebox/idna/format/bidi.ts` | `schema/formats/internal/idna/format_bidi.go` | ✅ |
+| `packages/schema/src/formats/typebox/idna/format/puny.ts` | `schema/formats/internal/idna/format_puny.go` | ✅ |
+| `packages/schema/src/formats/typebox/idna/hostname.ts` | `schema/formats/internal/idna/hostname.go` | ✅ |
+| `packages/schema/src/formats/typebox/idna/idn-hostname.ts` | `schema/formats/internal/idna/idn_hostname.go` | ✅ |
+| `packages/schema/src/formats/typebox/idna/index.ts` | `(re-export of idna/hostname.ts and idna/idn-hostname.ts; Go package idna exports them directly)` | n/a |
+| `packages/schema/src/formats/typebox/idna/label/ascii.ts` | `schema/formats/internal/idna/label_ascii.go` | ✅ |
+| `packages/schema/src/formats/typebox/idna/label/puny.ts` | `schema/formats/internal/idna/label_puny.go` | ✅ |
+| `packages/schema/src/formats/typebox/idna/label/unicode.ts` | `schema/formats/internal/idna/label_unicode.go` | ✅ |
+| `packages/schema/src/formats/typebox/idna/pattern/pattern.ts` | `schema/formats/internal/idna/pattern.go` | ✅ |
+| `packages/schema/src/formats/typebox/ipv4.ts` | `schema/formats/typebox_ipv4.go` | ✅ |
+| `packages/schema/src/formats/typebox/ipv6.ts` | `schema/formats/typebox_ipv6.go` | ✅ |
+| `packages/schema/src/formats/typebox/iri.ts` | `schema/formats/typebox_iri.go` | ✅ |
+| `packages/schema/src/formats/typebox/iri_reference.ts` | `schema/formats/typebox_iri_reference.go` | ✅ |
+| `packages/schema/src/formats/typebox/json_pointer.ts` | `schema/formats/typebox_json_pointer.go` | ✅ |
+| `packages/schema/src/formats/typebox/regex.ts` | `schema/formats/typebox_regex.go` | ✅ |
+| `packages/schema/src/formats/typebox/relative_json_pointer.ts` | `schema/formats/typebox_relative_json_pointer.go` | ✅ |
+| `packages/schema/src/formats/typebox/time.ts` | `schema/formats/typebox_time.go` | ✅ |
+| `packages/schema/src/formats/typebox/uri.ts` | `schema/formats/typebox_uri.go` | ✅ |
+| `packages/schema/src/formats/typebox/uri_reference.ts` | `schema/formats/typebox_uri_reference.go` | ✅ |
+| `packages/schema/src/formats/typebox/uri_template.ts` | `schema/formats/typebox_uri_template.go` | ✅ |
+| `packages/schema/src/formats/typebox/uuid.ts` | `schema/formats/typebox_uuid.go` | ✅ |
+| `packages/schema/src/index.ts` | `(re-export barrel: the Go exports are the package-level identifiers of schema)` | n/a |
+| `packages/schema/src/resolver.ts` | `schema/resolver.go` | ✅ |
+| `packages/schema/src/shared.ts` | `schema/shared.go, schema/internal/ecmaregex` | ✅ |
+| `packages/schema/src/types.ts` | `schema/types.go` | ✅ |
+| `packages/schema/src/validator.ts` | `schema/validator.go` | ✅ |
 
 ## `packages/telemetry/src/`
 

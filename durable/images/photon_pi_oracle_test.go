@@ -15,18 +15,17 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
-// D165: runs Pi's images/index.ts createPhotonImages (Photon 0.3.3 under Node, types stripped) and PiG's CreatePhotonImages over
+// Runs Pi's images/index.ts createPhotonImages (Photon 0.3.3 under Node, types stripped) and PiG's CreatePhotonImages over
 // one corpus and compares what the model receives: whether an image can be prepared, its format, the resized and convertedFrom
-// records, the decoded size, byte-exact output when Pi passes the image through, and the pixels within the D165 tolerance
-// (PNG: Lanczos3 differences only; JPEG: two encoders). The limits of every case leave the choice of PNG or JPEG and the
-// number of 3/4 shrinks beyond what the two encoders' sizes can change.
+// records, the decoded size, and every byte: the decoders (JPEG and WebP included), the resample and both encoders are ports of
+// Photon's, byte for byte.
 type oracleCase struct {
 	name      string
 	data      []byte
 	mime      string
 	limits    tools.ImageLimits
 	tolerance float64 // mean absolute channel error of the decoded images, 0 = bytes must be equal
-	skipPix   bool    // compare size only (noise: JPEG encoders differ widely on it)
+	skipPix   bool    // compare size only
 	quantized bool    // a JPEG result must carry the quantization table of the quality Pi chose
 }
 
@@ -44,13 +43,13 @@ func oracleCorpus(t *testing.T) []oracleCase {
 		{name: "png within the limits", data: encodePNG(t, pixels(8, 6)), mime: "image/png", limits: def},
 		{name: "gif within the limits", data: gif(), mime: "image/gif", limits: def},
 		{name: "jpeg within the limits", data: encodeJPEG(t, pixels(40, 30)), mime: "image/jpeg", limits: def},
-		{name: "png wider than the limit", data: encodePNG(t, pixels(4000, 1000)), mime: "image/png", limits: def, tolerance: 1},
-		{name: "png whose resized height rounds up", data: encodePNG(t, pixels(2999, 1000)), mime: "image/png", limits: def, tolerance: 1},
-		{name: "png of an extreme aspect ratio", data: encodePNG(t, pixels(6000, 2)), mime: "image/png", limits: def, tolerance: 1},
-		{name: "bmp becomes png", data: bmp(4, 4), mime: "image/bmp", limits: def, tolerance: 1},
-		{name: "model limit narrower than the image", data: scene, mime: "image/png", limits: tools.ImageLimits{MaxWidth: 300, MaxHeight: 300, MaxBytes: def.MaxBytes}, tolerance: 1},
-		{name: "model limit shorter than the image", data: scene, mime: "image/png", limits: tools.ImageLimits{MaxWidth: 2000, MaxHeight: 100, MaxBytes: def.MaxBytes}, tolerance: 1},
-		{name: "png too large for the byte limit", data: noisyPNG(t, 1100, 1100), mime: "image/png", limits: def, skipPix: true},
+		{name: "png wider than the limit", data: encodePNG(t, pixels(4000, 1000)), mime: "image/png", limits: def},
+		{name: "png whose resized height rounds up", data: encodePNG(t, pixels(2999, 1000)), mime: "image/png", limits: def},
+		{name: "png of an extreme aspect ratio", data: encodePNG(t, pixels(6000, 2)), mime: "image/png", limits: def},
+		{name: "bmp becomes png", data: bmp(4, 4), mime: "image/bmp", limits: def},
+		{name: "model limit narrower than the image", data: scene, mime: "image/png", limits: tools.ImageLimits{MaxWidth: 300, MaxHeight: 300, MaxBytes: def.MaxBytes}},
+		{name: "model limit shorter than the image", data: scene, mime: "image/png", limits: tools.ImageLimits{MaxWidth: 2000, MaxHeight: 100, MaxBytes: def.MaxBytes}},
+		{name: "png too large for the byte limit", data: noisyPNG(t, 1100, 1100), mime: "image/png", limits: def},
 		{name: "not even one pixel fits", data: encodePNG(t, pixels(4, 4)), mime: "image/png", limits: tools.ImageLimits{MaxWidth: 2000, MaxHeight: 2000, MaxBytes: 8}},
 		{name: "truncated png", data: encodePNG(t, pixels(4, 4))[:40], mime: "image/png", limits: def},
 		{name: "not an image", data: []byte("definitely not a png"), mime: "image/png", limits: def},
@@ -60,10 +59,27 @@ func oracleCorpus(t *testing.T) []oracleCase {
 	for orientation := 1; orientation <= 8; orientation++ {
 		cases = append(cases, oracleCase{
 			name: "jpeg with EXIF orientation " + string(rune('0'+orientation)),
-			data: withOrientation(jpegSource, orientation, orientation%2 == 0, orientation == 5), mime: "image/jpeg", limits: def, tolerance: 6,
+			data: withOrientation(jpegSource, orientation, orientation%2 == 0, orientation == 5), mime: "image/jpeg", limits: def,
 		})
 	}
-	cases = append(cases, oracleCase{name: "jpeg that must be resized", data: withOrientation(encodeJPEG(t, pixels(3000, 1500)), 3, false, false), mime: "image/jpeg", limits: def, tolerance: 6})
+	// TIFF: Photon decodes it (tiff 0.9.1 in image 0.24.9), so a TIFF whose declared type is one providers take inline is returned as it
+	// is, and any other type makes it a PNG; files Photon refuses are not prepared.
+	tiffFiles, err := filepath.Glob("../../internal/imageprocessing/testdata/tiff/*.tif")
+	if err != nil || len(tiffFiles) == 0 {
+		t.Fatalf("no TIFF files: %v", err)
+	}
+	for _, file := range tiffFiles {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, mime := range []string{"image/png", "image/tiff", "image/bmp"} {
+			cases = append(cases, oracleCase{name: "tiff " + filepath.Base(file) + " as " + mime, data: data, mime: mime, limits: def},
+				oracleCase{name: "tiff " + filepath.Base(file) + " as " + mime + " beyond a small limit", data: data, mime: mime, limits: tools.ImageLimits{MaxWidth: 16, MaxHeight: 16, MaxBytes: def.MaxBytes}})
+		}
+	}
+	cases = append(cases, formatOracleCases(def)...)
+	cases = append(cases, oracleCase{name: "jpeg that must be resized", data: withOrientation(encodeJPEG(t, pixels(3000, 1500)), 3, false, false), mime: "image/jpeg", limits: def})
 	return cases
 }
 
@@ -147,7 +163,7 @@ func comparePhotonToPi(t *testing.T, corpus []oracleCase) {
 		}
 		if c.tolerance == 0 && !c.skipPix {
 			if got.Data != want.Data {
-				t.Errorf("%s: Pi passed the image through; PiG's data differs", c.name)
+				t.Errorf("%s: PiG's bytes differ from Pi's (%d bytes, Pi %d)", c.name, len(got.Data), len(want.Data))
 			}
 			continue
 		}

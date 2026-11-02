@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/MichaelKinsy/PiG/internal/modelgen/modeldata"
 )
 
 func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) }
@@ -23,12 +25,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	if *hydrate != "" {
-		if err := HydrateModelCatalog(*root, *hydrate, false); err != nil {
+		if err := modeldata.HydrateModelCatalog(*root, *hydrate, false); err != nil {
 			_, _ = fmt.Fprintln(stderr, err)
 			return 1
 		}
 	}
-	if err := ValidateGeneratedModelData(*root); err != nil {
+	if err := modeldata.ValidateGeneratedModelData(*root); err != nil {
 		_, _ = fmt.Fprintln(stderr, err)
 		_, _ = fmt.Fprintln(stderr, "\nModel data is missing or stale. Run `npm run hydrate:model-data` from the repository root.")
 		return 1

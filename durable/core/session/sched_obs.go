@@ -77,6 +77,10 @@ func (s *Scheduler) observeCommit(pub *Publication) {
 	var updated []*jv.Object
 	var failed []ID
 	changed := false
+	// The conversations whose idleness the commit's task changes can change; every conversation when a chain is not known.
+	dirty, everything := s.dirtyScopes, false
+	clear(dirty)
+	clear(s.dirtyTasks)
 	// Edges first, so the tasks a commit creates in a new conversation hang from it.
 	for _, ch := range pub.Changes {
 		if ch.Kind == ChangeTable && ch.Table == WriteConversation {
@@ -106,6 +110,13 @@ func (s *Scheduler) observeCommit(pub *Publication) {
 			before = prev
 		}
 		s.track(before, rec)
+		// Pi 35dfa757 idleness counts live tasks, so only a task that became live or ended can change it.
+		// Collected before sweep, which may forget the chain of a task that ended. A new task whose chain is not loaded has its
+		// scopes settled once the chain is (loadChain), where Pi has loaded the chain of a new task in the commit that creates it.
+		pendingChain := !hadPrev && s.unloaded.Has(id)
+		if (!hadPrev || taskStatus(rec) == StatusTerminal) && !everything && !pendingChain && !s.addScopesAbove(rec, dirty, s.dirtyTasks) {
+			everything = true
+		}
 		if taskStatus(rec) == StatusTerminal {
 			delete(s.failedMigrations, id)
 			delete(s.migrations, id)
@@ -191,7 +202,10 @@ func (s *Scheduler) observeCommit(pub *Publication) {
 	if !changed {
 		return
 	}
-	s.settleIdle()
+	if everything {
+		dirty = nil
+	}
+	s.settleIdle(dirty)
 	s.kick()
 }
 
@@ -253,7 +267,7 @@ func (j *reconcileJob) doneJob(err error) {
 		s.reconcilingWork--
 	}
 	s.scheduleWake()
-	s.settleIdle()
+	s.settleAfterReconcile()
 }
 
 func (j *reconcileJob) change(tx *Tx) error {
@@ -440,10 +454,14 @@ func (s *Scheduler) drain() {
 				finish()
 				return
 			}
-			for _, r := range res {
-				s.start(r)
-			}
-			loop()
+			// `for (const reservation of await this.#reserve())` (scheduler.ts #drain): #reserve is an async function, so #drain resumes a tick after it
+			// returns, and then starts each reservation and asks for the next pass.
+			s.loop.NextTick(func() {
+				for _, r := range res {
+					s.start(r)
+				}
+				loop()
+			})
 		})
 	}
 	loop()

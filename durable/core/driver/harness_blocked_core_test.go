@@ -40,10 +40,10 @@ type reported struct {
 	info durable.ReportInfo
 }
 
-func (log *infoLog) add(err error, info durable.ReportInfo) {
+func (log *infoLog) add(report durable.Report) {
 	log.mu.Lock()
 	defer log.mu.Unlock()
-	log.items = append(log.items, reported{err, info})
+	log.items = append(log.items, reported{report.Error, report.ReportInfo})
 }
 
 func (log *infoLog) all() []reported {
@@ -283,7 +283,7 @@ func TestBlockedTasks(t *testing.T) {
 					inspected = task.State
 				}
 			}
-			if inspected.Kind != harness.TaskInspectionReady || inspected.Migrates {
+			if inspected.Kind != harness.TaskInspectionPending || inspected.Migrates {
 				t.Fatalf("inspection %+v, want ready", inspected)
 			}
 			if !h.Wake().Active {
@@ -302,7 +302,7 @@ func TestBlockedTasks(t *testing.T) {
 				t.Fatalf("the task started again: %d starts, want 3", started)
 			}
 			pollUntil(t, "the report", func() bool { return len(current.infos.all()) > 0 })
-			want := []durable.ReportInfo{{Type: durable.ReportTaskFaulted, Task: &durable.ReportTask{Id: id, Kind: "test.crash-loop", ConversationId: root.Id()}, Extension: "loop", Reason: "restart_limit"}}
+			want := []durable.ReportInfo{{Kind: durable.ReportTaskFaulted, Task: &durable.ReportTask{Id: id, Kind: "test.crash-loop", ConversationId: root.Id()}, Extension: "loop", Reason: "restart_limit"}}
 			if got := current.infos.infos(); !reflect.DeepEqual(got, want) {
 				t.Fatalf("report infos %+v, want %+v", got, want)
 			}
@@ -381,7 +381,7 @@ func TestBlockedTasks(t *testing.T) {
 			}
 			pollUntil(t, "the report", func() bool { return len(current.infos.all()) > 0 })
 			infos := current.infos.infos()
-			if len(infos) != 1 || infos[0].Type != durable.ReportTaskFaulted || infos[0].Task == nil || infos[0].Task.Id != id || infos[0].Reason != "restart_limit" {
+			if len(infos) != 1 || infos[0].Kind != durable.ReportTaskFaulted || infos[0].Task == nil || infos[0].Task.Id != id || infos[0].Reason != "restart_limit" {
 				t.Fatalf("report infos %+v, want one task_faulted of the task with reason restart_limit", infos)
 			}
 		})

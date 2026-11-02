@@ -45,12 +45,7 @@ func (r modelSelectorRuntime) GetAvailableSnapshot() []*ai.Model {
 }
 
 func (r modelSelectorRuntime) GetModel(provider, id string) *ai.Model {
-	for _, model := range r.registry.GetAllModelData() {
-		if model.ProviderID() == provider && model.ModelID() == id {
-			return model
-		}
-	}
-	return nil
+	return r.registry.modelData(provider, id)
 }
 
 func (r modelSelectorRuntime) GetError() string { return r.registry.LoadError() }

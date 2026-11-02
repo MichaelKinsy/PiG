@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable/core/history"
+	"github.com/MichaelKinsy/PiG/durable/core/inbox"
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 	"github.com/MichaelKinsy/PiG/durable/core/session"
 	"github.com/MichaelKinsy/PiG/durable/core/session/sessiontest"
@@ -23,9 +24,11 @@ type rig struct {
 	hops []int // the hops chains the turn asked for, in order
 	ctxProbe
 	sched *session.Scheduler
-	host  *turn.Host
-	reg   *registry
-	now   float64
+	// agentFails, when set, is the error the host resolves the agent with.
+	agentFails error
+	host       *turn.Host
+	reg        *registry
+	now        float64
 
 	settings turn.Settings
 	agent    turn.Agent
@@ -107,7 +110,13 @@ func newRig(t *testing.T) *rig {
 	h := &turn.Host{
 		Now:      func() float64 { return r.now },
 		Settings: func() turn.Settings { return r.settings },
-		Agent:    func(_ session.ID, _ *session.Cancel, then func(*turn.Agent, error)) { then(&r.agent, nil) },
+		Agent: func(_ session.ID, _ *session.Cancel, then func(*turn.Agent, error)) {
+			if r.agentFails != nil {
+				then(nil, r.agentFails)
+				return
+			}
+			then(&r.agent, nil)
+		},
 		ContextWindow: func(m turn.ModelRef) (float64, bool) {
 			return 128000, m.Provider == "faux"
 		},
@@ -308,7 +317,7 @@ func (r *rig) start(text string) (conv, submission session.ID) {
 		if err != nil {
 			return err
 		}
-		return turn.Runs{}.Start(tx, 1, live, []session.ID{submission})
+		return turn.Runs{}.Start(tx, 1, live, inbox.RunStart{Inputs: []session.ID{submission}})
 	})
 	return conv, submission
 }
@@ -807,5 +816,47 @@ func TestGenerationResolvesItsAgentBehindThreeHops(t *testing.T) {
 	}
 	if threes == 0 {
 		t.Fatalf("hops chains %v: no three-hop agent resolution", r.hops)
+	}
+}
+
+// Pi tool.ts toolForLimits (`resolveTool(...).catch(() => undefined)`): a failed agent resolution does not fail the lookup of the limits;
+// the afterTool walk that follows resolves the agent itself and fails the same way, so an aborted tool task whose agent cannot be resolved
+// faults with that error, once, and the core does not crash on the absent tool.
+func TestAnAbortedToolFaultsWithTheAgentErrorWhenTheAgentCannotBeResolved(t *testing.T) {
+	r := newRig(t)
+	r.toolRound(`{}`)
+	tools := r.tasks(turn.KindTool)
+	if len(tools) != 1 {
+		t.Fatalf("tool tasks = %d", len(tools))
+	}
+	r.agentFails = errors.New("the agent cannot be resolved")
+	id, _ := tools[0].Get("id")
+	r.sched.Abort(session.ID(id.(float64)), false, nil, func(string, error) {})
+	r.run()
+	tools = r.tasks(turn.KindTool)
+	if got := outcomeOf(t, tools[0]); got != `{"status":"faulted","error":{"message":"the agent cannot be resolved"}}` {
+		t.Fatalf("tool outcome = %s", got)
+	}
+}
+
+// finishToolRound's `await runtime.outcomes(...)` resumes a hop after the line job that read the outcomes: `#read` is an async function that
+// returns the job's pending promise, which it adopts a hop after it settles (scheduler.ts:2235-2246, :2347-2350). The hops of the round
+// after the tool's result are then that one, the cached snapshot of pi.live (3), the agent resolution of the afterTools walk (2), the end
+// of hooks.each (1) and the `runtime.agent` of maxTurns (2) (generation.ts:1050-1070). The F-ticks-tools rows hold the same count against
+// Pi's (settled 1728 gate / 1509 node).
+func TestToolRoundResumesAHopAfterItsOutcomes(t *testing.T) {
+	r := newRig(t)
+	r.agent.Tools = []turn.Tool{echoTool()}
+	r.start("hi")
+	r.resume()
+	r.finish(toolUseWith("echo", `{"text":"x"}`))
+	before := len(r.hops)
+	r.toolRuns[0].then(mustParse(t, `{"output":[{"type":"text","text":"hello world"}]}`), nil)
+	r.run()
+	// The tool machine's own two five-hop chains come first.
+	got := r.hops[before:]
+	want := []int{5, 5, 1, 3, 2, 1, 2}
+	if len(got) < len(want) || fmt.Sprint(got[:len(want)]) != fmt.Sprint(want) {
+		t.Fatalf("hops after the tool's result = %v, want a prefix %v", got, want)
 	}
 }

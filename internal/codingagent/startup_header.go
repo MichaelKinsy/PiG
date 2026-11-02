@@ -29,11 +29,14 @@ func (m *InteractiveMode) headerContainer() *tui.Container {
 func (m *InteractiveMode) fillHeaderContainer(box *tui.Container) {
 	if !m.opts.LoginVisible {
 		box.Add(m.extHeader)
-		return
+	} else {
+		box.Add(tui.NewSpacer(1))
+		box.Add(m.extHeader)
+		box.Add(tui.NewSpacer(1))
 	}
-	box.Add(tui.NewSpacer(1))
-	box.Add(m.extHeader)
-	box.Add(tui.NewSpacer(1))
+	if m.altScreen != nil {
+		m.showFullscreenModelScopeNotice(box)
+	}
 }
 
 // mountStartupHeader builds the built-in header and adds it to the header container. Startup calls it once the terminal's colors were reported or the query timed out, because the header bakes theme colors into its text (interactive-mode.ts init(), after waitForTerminalColors).

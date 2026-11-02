@@ -1,8 +1,10 @@
 # Builds the two documentation-variant images from the repository (build context = repository root).
 # Both variants run the same binaries; the harness removes the PiG documentation from the without_docs run's home
 # (internal/evals/harness_run.go) and the without_docs prompt loses its documentation section.
-ARG GO_VERSION=1.27.3
-FROM golang:${GO_VERSION}-bookworm AS builder
+# Base images are pinned by digest of the tag written beside it (the multi-platform index), so a rebuilt tag cannot change
+# the evaluator. Dependabot's docker ecosystem refreshes each digest; the Go release in the tag is .go-version
+# (make compliance rejects any other), so a Go release moves with that pin, not with a digest refresh.
+FROM golang:1.27.3-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9 AS builder
 WORKDIR /src
 # Build against the repository mount; only the staged binaries persist.
 RUN --mount=type=bind,source=.,target=/src,rw \
@@ -12,7 +14,7 @@ RUN --mount=type=bind,source=.,target=/src,rw \
     && CGO_ENABLED=0 go build -o /opt/pig-evals/pig-eval-extension ./cmd/pig-eval-extension \
     && CGO_ENABLED=0 go build -o /opt/pig-evals/pig-evals ./cmd/pig-evals
 
-FROM debian:bookworm-slim AS evaluator
+FROM debian:bookworm-slim@sha256:99c0b25c46d0214d5a2091092e7908907dcaecd6a962cde0ac700acee222b6f3 AS evaluator
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates tmux coreutils \
     && rm -rf /var/lib/apt/lists/*

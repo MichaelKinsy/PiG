@@ -60,7 +60,7 @@ type Rig = ReturnType<typeof rig>
 const reports: unknown[] = []
 
 async function open(path: string, r: Rig, core: unknown = module(), extra: Record<string, unknown> = {}) {
-  return Harness.open(await openNodeSqliteStorage(path) as never, { models: r.models, registry: r.registry, core, onReport: (e: unknown) => { reports.push(e) }, ...extra } as never, context)
+  return Harness.open(await openNodeSqliteStorage(path) as never, { models: r.models, registry: r.registry, core, onReport: (report: { error: unknown }) => { reports.push(report.error) }, ...extra } as never, context)
 }
 
 /** What a conversation left, without ids and clocks: the transcript's entry kinds and the text of its messages. */

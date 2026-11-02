@@ -59,7 +59,7 @@ export function customTaskRunner(sources: TaskRuntimeSources) {
               if (typeof handler !== "function") continue
               try { await invoke(handler.bind(hook.handlers) as (...args: unknown[]) => unknown) } catch (error) {
                 if (abort.signal.aborted) throw error
-                sources.report(error, { type: "extension_error", task, ...(extension.name === undefined ? {} : { extension: extension.name }) }, phase.context)
+                sources.report(error, { kind: "extension_error", task, ...(extension.name === undefined ? {} : { extension: extension.name }) }, phase.context)
               }
             }
           }
@@ -73,9 +73,9 @@ export function customTaskRunner(sources: TaskRuntimeSources) {
       now: () => { binding.check(); return sources.now() },
       report: (error: unknown, from?: ReportFrom) => {
         binding.check()
-        sources.report(error, (from === undefined ? { type: "task_error", task, ...installer }
-          : from.type === "extension" ? { type: "extension_error", task, ...(from.extension === undefined ? {} : { extension: from.extension }) }
-          : { type: "host_error", callback: from.callback, task }) as ReportInfo, phase.context)
+        sources.report(error, (from === undefined ? { kind: "task_error", task, ...installer }
+          : from.kind === "extension" ? { kind: "extension_error", task, ...(from.extension === undefined ? {} : { extension: from.extension }) }
+          : { kind: "host_error", callback: from.callback, task }) as ReportInfo, phase.context)
       },
       env: async (callContext: Context) => sources.env?.({ conversationId, read: sources.readTarget?.() ?? documentReader(sources.hostApi.client) }, callContext),
       // scheduler.ts runtime.setTimer: a foreground host timer that ends with the invocation, so a late fire runs nothing.

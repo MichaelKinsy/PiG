@@ -1,0 +1,26 @@
+{
+ "packages/chord/test/next/store/columns.test.ts": {
+  "ported": [],
+  "missing": [],
+  "designedOut": [
+   {
+    "case": "row types \u203a types rows with optional opt(...) fields and puts with optional defaulted fields",
+    "class": "type-level (approved)",
+    "mechanism": "compile-time assertions in chord/next/store/evidence_storeA_test.go TestEvidenceStoreAColumnsOptionalRowType: Opt(ColumnSchema) ColumnSchema, Optional bool on ColumnSchema/Column/ColumnRecord, Row = map[string]any; runtime half fails when describeColumn drops Optional"
+   }
+  ]
+ },
+ "packages/chord/test/next/store/table-migration.test.ts": {
+  "ported": [
+   "the chunk yield \u203a yields between chunks without Node's setImmediate (Workers, browsers), through a message, not a timer",
+   "the chunk yield \u203a yields between chunks without a timer (no 1 ms clamp), while timers due run in between (a latency guard)"
+  ],
+  "missing": [],
+  "designedOut": [],
+  "go": [
+   "chord/next/store/evidence_storeB_test.go#TestMigrationYieldsBetweenChunksOfAThreeChunkMigration",
+   "chord/next/store/evidence_storeB_test.go#TestMigrationRunsADueCallbackBetweenChunksOfATenChunkMigration"
+  ],
+  "note": "timer class rejected by owner; deterministic test through the unexported prepareTables yield seam (PrepareTables passes runtime.Gosched); red with the yield removed (both tests fail)"
+ }
+}

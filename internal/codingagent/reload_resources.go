@@ -163,6 +163,7 @@ func (m *InteractiveMode) replaceExtensionRunner(exts []extension.Extension) []e
 		hostRuntime = previousRunner.Runtime()
 	}
 	m.newRunner = inproc.NewRunner(allExts, m.opts.CWD, hostRuntime)
+	m.bindThinkingRuns()
 	m.opts.ExtensionRunner = m.newRunner
 	m.wireInprocContextActions()
 	if session, ok := m.opts.SessionHandle.(interface{ ReplaceRunner(*inproc.Runner) }); ok {

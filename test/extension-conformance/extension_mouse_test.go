@@ -158,3 +158,35 @@ func TestConformance_ExtensionMouseClicksKitList(t *testing.T) {
 		})
 	}
 }
+
+// TestConformance_ExtensionCapturesViewportInput is the capturesViewportInput row: in every SDK and mode, a ui.custom component's
+// Component.capturesViewportInput reaches the host with its frames (the host then keeps fullscreen PageUp and PageDown away from
+// the transcript), and a change of the flag alone sends a new frame. viewport-probe's flag is true until it gets "t": an SDK that
+// never sends the flag reads false from the start, and one that sends it once reads true after "t".
+func TestConformance_ExtensionCapturesViewportInput(t *testing.T) {
+	t.Parallel()
+	for _, tc := range componentKitSDKCells() {
+		t.Run(tc.name, func(t *testing.T) {
+			h := startKitCell(t, tc)
+			ui := newKitUI(h)
+			session, done := openKitSession(t, h, ui, "viewport-probe")
+			if session.capturesViewportInput == nil {
+				t.Fatal("the overlay host publishes no capturesViewportInput")
+			}
+			waitFlag := func(want bool, step string) {
+				deadline := time.Now().Add(6 * time.Second)
+				for session.capturesViewportInput() != want {
+					if time.Now().After(deadline) {
+						t.Fatalf("%s: capturesViewportInput = %v, want %v", step, !want, want)
+					}
+					time.Sleep(5 * time.Millisecond)
+				}
+			}
+			waitFlag(true, "first frame")
+			session.input("t")
+			waitFlag(false, "after t")
+			session.input("q")
+			awaitKitResult(t, h, "viewport-probe", done, "viewport=done:info")
+		})
+	}
+}

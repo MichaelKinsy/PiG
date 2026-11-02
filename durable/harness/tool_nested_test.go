@@ -1222,12 +1222,12 @@ func TestSeveralRunningNestedCallsReportTheirOutputAndShowToALateSubscriber(t *t
 	initial := watch.Value()
 	var mu sync.Mutex
 	var frames []viewFrame
-	watch.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
+	watch.Start(onValue(func(_ context.Context, change chord.WatchCall[ConversationView]) error {
 		mu.Lock()
 		defer mu.Unlock()
 		frames = append(frames, viewFrame{value: change.Value, ops: change.Ops})
 		return nil
-	})
+	}))
 	outputs := func() [2]string {
 		mu.Lock()
 		defer mu.Unlock()

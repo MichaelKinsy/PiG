@@ -129,9 +129,9 @@ func (docs *ViewDocs) UnmarshalJSON(data []byte) error {
 // ViewObserver receives each next revision of one observer's window, and the Session's close.
 type ViewObserver struct {
 	// Advance receives each next revision.
-	Advance func(ctx context.Context, change chord.WatchChange[ConversationView])
-	// End receives the Session's failure, nil when it closed.
-	End func(failure error)
+	Advance func(ctx context.Context, change chord.WatchCall[ConversationView])
+	// End receives the Session's close (ended), or its failure (failed).
+	End func(end chord.WatchEnd)
 }
 
 // mountedDocs are the documents a view mounts, in mount order.
@@ -183,7 +183,7 @@ type ConversationViews struct {
 // NewConversationViews subscribes the mounts to the Session's commits and close.
 func NewConversationViews(sessionImpl *session.SessionImpl, storage durable.Storage) *ConversationViews {
 	views := &ConversationViews{session: sessionImpl, storage: storage, mounts: map[durable.ConversationId]*viewMount{}}
-	sessionImpl.ObserveCommits(func(ctx context.Context, publication session.ObservedCommit) {
+	sessionImpl.FollowCommits(func(ctx context.Context, publication session.ObservedCommit) {
 		// Detach may run off the line, from a watch that ends on its delivery goroutine; read the observers under the lock.
 		type advancing struct {
 			id        durable.ConversationId
@@ -202,7 +202,7 @@ func NewConversationViews(sessionImpl *session.SessionImpl, storage durable.Stor
 		}
 	})
 	sessionImpl.SubscribeClose(func() {
-		failure := views.session.Failure()
+		end := sessionEnd(views.session.Failure())
 		views.mu.Lock()
 		views.closed = true
 		var observers []*windowedObserver
@@ -213,7 +213,7 @@ func NewConversationViews(sessionImpl *session.SessionImpl, storage durable.Stor
 		views.order = nil
 		views.mu.Unlock()
 		for _, windowed := range observers {
-			session.Contained(func() { windowed.observer.End(failure) }, views.session.Report)
+			session.Contained(func() { windowed.observer.End(end) }, views.session.Report)
 		}
 	})
 	return views
@@ -239,25 +239,25 @@ func (views *ConversationViews) Observe(ctx context.Context, id durable.Conversa
 	return session.NewObservation(value, guarded), nil
 }
 
-// Watch returns a serialized watch of the view, an observer of its mount; cancelling ctx stops it.
+// Watch returns a serialized watch of the view, an observer of its mount; aborting ctx ends it aborted.
 func (views *ConversationViews) Watch(ctx context.Context, id durable.ConversationId, window *ConversationWindow) (ConversationWatch, error) {
 	var watch *chord.Watch[ConversationView]
 	_, _, err := views.Attach(ctx, id, window, func(value ConversationView, release func()) *ViewObserver {
 		watch = session.NewSessionWatch(views.session, value, release)
 		return &ViewObserver{
 			Advance: watch.Advance,
-			End:     watch.SourceEnded,
+			End:     watch.EndWith,
 		}
 	})
 	if err != nil {
 		return nil, err
 	}
 	if ctx.Err() != nil {
-		watch.Cancel()
+		watch.Abort()
 		return nil, context.Cause(ctx)
 	}
 	if ctx.Done() != nil {
-		watch.ObserveCancellation(ctx)
+		watch.ObserveAbort(ctx)
 	}
 	return watch, nil
 }
@@ -452,30 +452,40 @@ func advanceView(ctx context.Context, id durable.ConversationId, mount *viewMoun
 			appended = append(appended, write.Value)
 			continue
 		}
-		document, ok := change.(durable.DocumentChange)
-		if !ok || document.ConversationId == nil || *document.ConversationId != id {
+		var record durable.DocumentRecord
+		var owner *durable.ConversationId
+		var changed *durable.DocumentChange
+		switch document := change.(type) {
+		case durable.DocumentChange:
+			record, owner, changed = document.Record, document.ConversationId, &document
+		case durable.DocumentRetireChange:
+			record, owner = document.Record, document.ConversationId
+		default:
 			continue
 		}
-		kind := document.Record.Kind
-		if !mountedKind(kind) || document.Record.Key != nil {
+		if owner == nil || *owner != id {
+			continue
+		}
+		kind := record.Kind
+		if !mountedKind(kind) || record.Key != nil {
 			continue
 		}
 		path := []any{"docs", kind}
 		mounted, isMounted := mount.incarnations[kind]
 		switch {
-		case document.Value == nil:
-			if !isMounted || mounted.id != document.Record.Id {
+		case changed == nil:
+			if !isMounted || mounted.id != record.Id {
 				continue
 			}
 			delete(mount.incarnations, kind)
 			docOps = append(docOps, durable.Op{"d", path})
-		case isMounted && mounted.id == document.Record.Id && document.Version != nil && mounted.version == *document.Version:
-			for _, op := range document.Ops {
+		case isMounted && mounted.id == record.Id && mounted.version == changed.Version:
+			for _, op := range changed.Ops {
 				docOps = append(docOps, prefixedOp(op, path))
 			}
 		default:
-			mount.incarnations[kind] = docIncarnation{id: document.Record.Id, version: *document.Version}
-			docOps = append(docOps, durable.Op{"s", path, document.Value})
+			mount.incarnations[kind] = docIncarnation{id: record.Id, version: changed.Version}
+			docOps = append(docOps, durable.Op{"s", path, changed.Value})
 		}
 	}
 	if len(docOps) == 0 && len(appended) == 0 {
@@ -513,8 +523,8 @@ func advanceView(ctx context.Context, id durable.ConversationId, mount *viewMoun
 			}
 		}
 		windowed.value = viewOf(mount.conversation, entries, before, mount.docs)
-		change := chord.WatchChange[ConversationView]{Value: windowed.value, Ops: ops}
-		session.Contained(func() { windowed.observer.Advance(frameContext, change) }, report)
+		call := chord.WatchCall[ConversationView]{Kind: chord.WatchCallValue, Value: windowed.value, Ops: ops}
+		session.Contained(func() { windowed.observer.Advance(frameContext, call) }, report)
 	}
 }
 

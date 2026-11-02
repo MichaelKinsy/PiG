@@ -177,7 +177,7 @@ func TestEveryPageIsReachableFromTheIndex(t *testing.T) {
 	table, _, _ = strings.Cut(table, "\n## ")
 	link := regexp.MustCompile(`\]\(([A-Za-z0-9_.-]+\.md)(?:#[^)]*)?\)`)
 	routed := map[string]bool{}
-	for _, row := range strings.Split(table, "\n") {
+	for row := range strings.SplitSeq(table, "\n") {
 		cells := strings.Split(row, "|")
 		// A row is "| task | Start here | Then read |": three cells between four bars.
 		if len(cells) != 5 || !strings.HasPrefix(row, "|") {

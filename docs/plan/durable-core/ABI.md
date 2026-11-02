@@ -142,7 +142,7 @@ Payload layouts; "JSON" is UTF-8 JSON.
 |---|---|---|---|
 | 1 | `open` | JSON: harness options the core needs (settings, agent defaults, models catalogue entries in use, registry snapshot: extension order, tool schemas and replay policies, sections, task definitions' names and versions), `core_id` expectation, sidecar mode | answered by a step that commits the schema prelude and reads the schema version (section 3, invariant 3) |
 | 2 | `rows` | section 4.5 | only after a read step |
-| 3 | `submit` | JSON `{conversationId, type, content or entry, requestId, whenBusy}` | §6 admission |
+| 3 | `submit` | JSON `{conversationId, type (input, write or continue), content or entry, requestId, whenBusy, whenIdle}` | §6 admission; the transaction op `submit`, the `afterRun` hook, the `entries` api op and the context summary's `owes` are in host/PROTOCOL.md (Pi 7e15f960..e7a0df27 additions) |
 | 4 | `model_event` | `u32 effectId`, JSON array of pi-ai `AssistantMessageEvent` | context plane; batching allowed; the final `done`/`error` event carries the final message |
 | 5 | `model_bytes` | `u32 effectId`, `u8 phase` (0 response head JSON, 1 body chunk, 2 end, 3 transport error JSON), bytes | wire plane |
 | 6 | `tool_progress` | `u32 effectId`, `u8 kind` (0 output chunk, 1 details JSON, 2 diagnostic JSON), `u32 skipped` (`ShellOutputSkip.bytes`), `u32 waitId` (kind 1 only; 0 otherwise), bytes; when `skipped` is non-zero the bytes start with `u32 metaLength` and the JSON `{bytes, newlines, endsWithNewline}` (the full `ShellOutputSkip`), then the chunk | throttled into `pi.live` by the core; a details update answers with a `progress_ack` notice once the commit that includes it is applied, because Pi's `api.details()` resolves only then (`src/harness/tool.ts:211-216`, `output.ts:292`) |
@@ -213,7 +213,7 @@ The host keeps a snapshot until the core says it holds no work for it. The core 
 | 1 | `published` | JSON: committed document ops by document, appended entry IDs, task status changes, submission settlements; drives `Submission.wait`, watches and Chord clients (§9) |
 | 2 | `api_result` | `u32 requestId`, JSON |
 | 3 | `tx_result` | `u32 txId`, JSON (`ready`, `waiting` for the line, an op's result, or `rejected` with Pi's error) |
-| 4 | `report` | JSON for `HarnessOptions.onReport` |
+| 4 | `report` | JSON `{name, message, info, span?}` for `HarnessOptions.onReport`: `info` is the `ReportInfo` of the `Report`, tagged by `kind` (`task_error`, `task_faulted`, `task_interrupted`, `task_outdated`, `migration_failed`, `extension_error`, `host_error`, `listener_error`, `storage_failed`); a `task_outdated` `reason` is `missing_task`, `task_too_old` or `migration_failed` |
 | 5 | `sidecar` | JSON `{conversationId, rows}`: the core wrote a sidecar chunk in this step's commits (diagnostics only) |
 | 6 | `progress_ack` | `u32 waitId`, `u8 outcome` (0 committed, 1 rejected), JSON error when rejected: settles the promise of a tool's `api.details()` |
 | 7 | `doc_cache` | JSON `{cached, idle, attached, sweeps, held}`: the core's document cache sizes, published after a step in which they changed; the host's synchronous `documentCacheSizes` replicates them (`attached` counts the incarnations a document watch or a held document pins; `held` the incarnations with changes a deferred commit holds in memory, section 8.2) |

@@ -89,6 +89,23 @@ class MouseProbe:
         return pig_sdk.RemoteComponentResult()
 
 
+class ViewportProbe:
+    """Captures viewport input until it receives "t", then stops; closes on "q"."""
+
+    def __init__(self) -> None:
+        self.captures_viewport_input = True
+
+    def render(self, _width: int) -> list[str]:
+        return ["viewport probe"]
+
+    def handle_input(self, data: str) -> pig_sdk.RemoteComponentResult:
+        if data == "t":
+            self.captures_viewport_input = False
+        if data == "q":
+            return pig_sdk.RemoteComponentResult(done=True, value="viewport=done")
+        return pig_sdk.RemoteComponentResult()
+
+
 KIT_WIDGET_CASES: dict[str, Any] = {}
 """The widget kinds' Pi vector cases (D107, docs/plan/extension-component-kit.md
 §10), built with the SDK's own constructors; the key is
@@ -716,6 +733,26 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("editor-install-embed", "Install a custom editor that embeds the working status", lambda ctx, _args: ctx.set_editor_component(EmbeddingEditor))
     ext.command("editor-install", "Install a custom editor component", lambda ctx, _args: ctx.set_editor_component(ConformanceEditor))
 
+    class ViewportEditor(ConformanceEditor):
+        """Captures viewport input until it receives "t", then stops; every other key goes to super like ConformanceEditor."""
+
+        captures_viewport_input = True
+
+        def handle_input(self, data):
+            if data == "t":
+                self.captures_viewport_input = False
+                return
+            super().handle_input(data)
+
+    ext.command("editor-install-viewport", "Install a custom editor that captures viewport input until it receives t", lambda ctx, _args: ctx.set_editor_component(ViewportEditor))
+
+    def select_page_probe(ctx, args):
+        a = json.loads(args)
+        index = pig_sdk.tui.get_select_page_index(pig_sdk.tui.get_keybindings(), a["data"], a["selected"], a["count"], a["page"])
+        ctx.notify("select-page=%s" % ("none" if index is None else index), "info")
+
+    ext.command("select-page-probe", "Report getSelectPageIndex for a key", select_page_probe)
+
     # headless-ui-probe hands the SDK footer, header and custom component closures; its argument is a file every closure appends a marker to when it runs (TestConformance_HeadlessModesNeverRunUIClosures).
     def headless_ui_probe(ctx, path):
         def mark(line):
@@ -1234,6 +1271,11 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("ui_forward_probe", "Call the working, paste, editor-text and tools-expanded UI members", ui_forward_probe)
 
+    # The extension owns the thinking runs from load; thinking_runs_off/on flip the flag through the runtime entry point (the conformance row reads the host's aggregated flag).
+    ext.own_thinking_runs(True)
+    ext.command("thinking_runs_off", "Clear the owns-thinking-runs flag", lambda ctx, _args: ctx.own_thinking_runs(False))
+    ext.command("thinking_runs_on", "Set the owns-thinking-runs flag", lambda ctx, _args: ctx.own_thinking_runs(True))
+
     # dialog-stack-probe opens its dialogs at the same time, each from its own thread, and reports each one's answer as it settles (TestConformance_ConcurrentDialogsAgreeAcrossSDKs). "pair" is a select A and a confirm B; "mix" is a select S, a confirm C, an input I and an editor E.
     def dialog_stack_probe(ctx, scenario):
         def chosen(result):
@@ -1356,6 +1398,21 @@ def new_extension() -> pig_sdk.Extension:
             ctx.notify(f"rejected:{error}", "info")
 
     ext.command("exec-abort-probe", "Abort a running exec through its signal", exec_abort_probe)
+
+    def exec_limits_probe(ctx, args):
+        probe = json.loads(args)
+        try:
+            options = {"max_buffer": probe["maxBuffer"]} if "maxBuffer" in probe else {}
+            result = ctx.exec(probe["command"], probe["args"], **options)
+            ctx.notify(
+                f"exec-limits:truncated={str(result.truncated).lower()};killed={str(result.killed).lower()};code={result.exit_code}"
+                f";stdout={result.stdout.strip()};stderr={result.stderr.strip()}",
+                "info",
+            )
+        except RuntimeError as error:
+            ctx.notify(f"rejected:{error}", "info")
+
+    ext.command("exec-limits-probe", "Run a command with a max_buffer and report truncation", exec_limits_probe)
 
     def language_probe(ctx, args):
         ctx.notify("language:%s:end" % json.dumps({"lang": pig_sdk.get_language_from_path(json.loads(args)["path"])}, separators=(",", ":")), "info")
@@ -1559,6 +1616,12 @@ def new_extension() -> pig_sdk.Extension:
             % (message.get("content", ""), str(bool(options.get("expanded"))).lower(), width)
         ],
     )
+    # Test fixture, Pi 9376c8d1 (#4748): key_text and key_hint on the message and entry options and the tool render context. The content, data and q are the keybinding id.
+    def hints_of(hints, keybinding):
+        return "%s | %s" % (hints.key_text(keybinding), hints.key_hint(keybinding, "to expand"))
+
+    ext.message_renderer("keyhints-message", lambda _ctx, message, options, _width: [hints_of(options, message.get("content", ""))])
+    ext.entry_renderer("keyhints-entry", lambda _ctx, entry, options, _width: [hints_of(options, entry.get("data", ""))])
     ext.message_view_renderer("kit-message", lambda _ctx, _message, _options, _width: kit_probe_view())
     ext.entry_view_renderer("kit-entry", lambda _ctx, _entry, _options, _width: kit_probe_view())
     def transform_markdown(markdown, context):
@@ -1588,6 +1651,8 @@ def new_extension() -> pig_sdk.Extension:
             renderers.call_view = lambda _ctx, _args, _render, _width: kit_probe_view()
             renderers.result_view = lambda _ctx, _result, _options, _render, _width: kit_probe_view()
             return renderers
+        if tool == "conformance_keyhints":
+            return pig_sdk.ToolRenderers(render_call=lambda _ctx, args, render, _width: [hints_of(render, args.get("q", ""))])
         if tool == "conformance_no_renderer":
             return None
         if tool == "conformance_fill":
@@ -2123,6 +2188,60 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify("rw_idle_after_trigger=%s" % str(ctx.is_idle()).lower(), "info")
 
     ext.command("rw_idle_after_trigger", "Read isIdle after a message that starts a run", rw_idle_after_trigger)
+
+    def rw_idle_busy_until_yield(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        sync = [str(ctx.is_idle()).lower(), str(ctx.is_idle()).lower()]
+        ctx.wait_for_idle()
+        later = str(ctx.is_idle()).lower()
+        ctx.notify("rw_idle_busy_until_yield=sync:%s;later:%s" % (",".join(sync), later), "info")
+
+    ext.command("rw_idle_busy_until_yield", "Read isIdle after a message that starts a run, before and after a wait for the run", rw_idle_busy_until_yield)
+
+    def rw_idle_send_then_await(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        ctx.wait_for_idle()
+        awaited = str(ctx.is_idle()).lower()
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        second = str(ctx.is_idle()).lower()
+        ctx.wait_for_idle()
+        ctx.notify("rw_idle_send_then_await=awaited:%s;second:%s;awaited-again:%s" % (awaited, second, str(ctx.is_idle()).lower()), "info")
+
+    ext.command("rw_idle_send_then_await", "Await the run a message starts with no read in between, then read; again for a second message", rw_idle_send_then_await)
+
+    def rw_idle_blocking(ctx: pig_sdk.Context, _args: str) -> None:
+        before = str(ctx.is_idle()).lower()
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        time.sleep(0.3)
+        ctx.notify("rw_idle_blocking=before:%s;after:%s" % (before, str(ctx.is_idle()).lower()), "info")
+
+    ext.command("rw_idle_blocking", "Read isIdle after a message that starts a run and a wait that is no call", rw_idle_blocking)
+
+    def rw_idle_yield_poll(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        first = ctx.is_idle()
+        deadline = time.monotonic() + 5
+        while not ctx.is_idle() and time.monotonic() < deadline:
+            ctx.sleep(0.01)
+        final = ctx.is_idle()
+        ctx.notify("rw_idle_yield_poll=first:%s;final:%s" % (str(first).lower(), str(final).lower()), "info")
+
+    ext.command("rw_idle_yield_poll", "Poll isIdle after a message that starts a run, waiting with the SDK's yielding sleep", rw_idle_yield_poll)
+
+    def rw_idle_callback(ctx: pig_sdk.Context, _args: str) -> None:
+        before = str(ctx.is_idle()).lower()
+
+        def callback():
+            ctx.send_message("rw-trigger", "rw-trigger", True, True)
+            sync = [str(ctx.is_idle()).lower(), str(ctx.is_idle()).lower()]
+            ctx.wait_for_idle()
+            ctx.notify("rw_idle_callback=before:%s;sync:%s;later:%s" % (before, ",".join(sync), str(ctx.is_idle()).lower()), "info")
+
+        thread = threading.Thread(target=callback, daemon=True)
+        thread.start()
+        thread.join()
+
+    ext.command("rw_idle_callback", "Read isIdle after a message that starts a run, sent from a thread the handler waits for", rw_idle_callback)
     rw_settled_once = []
 
     def rw_idle_in_settled(ctx: pig_sdk.Context, _args: str) -> None:
@@ -2153,6 +2272,21 @@ def new_extension() -> pig_sdk.Extension:
         ext.on_event("agent_end", agent_end)
 
     ext.command("rw_idle_background", "Poll isIdle from a background callback after agent_end", rw_idle_background)
+
+    def rw_idle_live(ctx: pig_sdk.Context, _args: str) -> None:
+        def poll():
+            seen = []
+            deadline = time.monotonic() + 10
+            while len(seen) < 3 and time.monotonic() < deadline:
+                answer = str(ctx.is_idle()).lower()
+                if not seen or seen[-1] != answer:
+                    seen.append(answer)
+                    ctx.notify("rw_idle_live=" + ",".join(seen), "info")
+                time.sleep(0.01)
+
+        threading.Thread(target=poll, daemon=True).start()
+
+    ext.command("rw_idle_live", "Poll isIdle live and report the sequence of answers", rw_idle_live)
 
     def set_model(ctx: pig_sdk.Context, args: str) -> None:
         ok, error = ctx.set_model(args)
@@ -2324,6 +2458,21 @@ def new_extension() -> pig_sdk.Extension:
             ctx.notify("registered:" + tag, "info")
 
     ext.command("autocomplete-register", "Register retained provider wrappers", autocomplete_register)
+    def autocomplete_settle_register(ctx, args):
+        def factory(ctx, current):
+            class Settling:
+                trigger_characters = []
+                def get_suggestions(self, ctx, lines, line, col, force=False):
+                    current.get_suggestions(ctx, lines, line, col, force)
+                    if lines[0] == "slow":
+                        time.sleep(0.4)
+                    return {"items": [{"value": lines[0], "label": "settled:" + lines[0]}], "prefix": lines[0]}
+                def apply_completion(self, ctx, lines, line, col, item, prefix):
+                    return current.apply_completion(ctx, lines, line, col, item, prefix)
+            return Settling()
+        ctx.add_autocomplete_provider(factory)
+
+    ext.command("autocomplete-settle-register", "Register a provider whose answer settles or awaits real I/O", autocomplete_settle_register)
     def signal_probe(ctx: pig_sdk.Context, args: str) -> None:
         signal = ctx.signal
         ctx.notify("signal:" + ("none" if signal is None else "aborted" if signal.is_set() else "live"), "info")
@@ -2485,6 +2634,14 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify(f"mouse={'' if result is None else result}", "info")
 
     ext.command("mouse-probe", "Exercise extension mouse input", mouse_probe)
+
+    # viewport-probe opens a component that captures viewport input until it
+    # receives "t", and closes on "q".
+    def viewport_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        result = ctx.custom(ViewportProbe(), {"overlay": True})
+        ctx.notify(f"{'' if result is None else result}", "info")
+
+    ext.command("viewport-probe", "Exercise capturesViewportInput", viewport_probe)
 
     # kit-surfaces shows the kit probe's tree on every other view surface
     # (D107, spec §10): a pushed widget, the header, the footer and a tool
@@ -2907,6 +3064,7 @@ def new_extension() -> pig_sdk.Extension:
     _register_signal_abort(ext)
     _register_tui_alt_screen_probe(ext)
     _register_tui_alt_frame_probe(ext)
+    _register_tui_alt_viewport_probe(ext)
     _register_tui_alt_children_probe(ext)
     _register_tui_alt_reentry_probe(ext)
     return ext
@@ -3267,6 +3425,12 @@ class _AltCounted(_AltLines):
         self.invalidated += 1
 
 
+class _AltViewport(_AltLines):
+    """A tui.alt component that captures viewport input."""
+
+    captures_viewport_input = True
+
+
 def _register_tui_alt_frame_probe(ext: pig_sdk.Extension) -> None:
     """Read the screen from inside a component's render, and drive an overlay's visible callback, over a recording terminal. Every SDK fixture runs the
     same steps as the Pi oracle probe and must print its exact text."""
@@ -3380,6 +3544,24 @@ class _AltSame:
 
     def invalidate(self) -> None:
         pass
+
+
+def _register_tui_alt_viewport_probe(ext: pig_sdk.Extension) -> None:
+    """Mount a focused component with captures_viewport_input on a screen, then idle until the context ends."""
+
+    def tui_alt_viewport_probe(ctx: pig_sdk.Context, _args: str) -> None:
+        term = _AltTerminal()
+        screen = pig_sdk.TuiAltScreen(ctx, term, False, None, pig_sdk.TuiAltScreenOptions(mouse=False))
+        component = _AltViewport(lambda _w: ["viewport"])
+        screen.add_child(component)
+        screen.set_focus(component)
+        screen.start()
+        try:
+            (ctx.signal or pig_sdk.ProviderSignal()).wait(60)
+        finally:
+            screen.stop()
+
+    ext.command("tui-alt-viewport-probe", "Mount a viewport-capturing component on a TuiAltScreen and idle", tui_alt_viewport_probe)
 
 
 def _register_tui_alt_children_probe(ext: pig_sdk.Extension) -> None:

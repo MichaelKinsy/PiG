@@ -186,9 +186,9 @@ def test_children_keys_and_caps() -> None:
     _, host, _, screen = _screen()
     plain, full = _Lines("a"), _Full()
     screen.add_child(plain)
-    assert host.last() == {"id": "t1", "op": "addChild", "key": "c1", "caps": {"input": False, "mouse": False, "focusable": False, "wantsKeyRelease": False}, "terminal": host.last()["terminal"]}
+    assert host.last() == {"id": "t1", "op": "addChild", "key": "c1", "caps": {"input": False, "mouse": False, "focusable": False, "capturesViewportInput": False, "wantsKeyRelease": False}, "terminal": host.last()["terminal"]}
     screen.add_child(full)
-    assert host.last()["caps"] == {"input": True, "mouse": True, "focusable": True, "wantsKeyRelease": True}
+    assert host.last()["caps"] == {"input": True, "mouse": True, "focusable": True, "capturesViewportInput": False, "wantsKeyRelease": True}
     assert screen.children == [plain, full]
     screen.set_focus(full)
     assert host.last()["key"] == "c2"  # the same object, the same key
@@ -471,3 +471,30 @@ def test_calls_inside_a_callback_are_children_of_its_request() -> None:
     # Once the callback is answered, the thread's calls have no parent again.
     screen.invalidate()
     assert host.rests[-1] == ()
+
+
+def test_caps_and_callback_report_captures_viewport_input() -> None:
+    class Capturing(_Lines):
+        captures_viewport_input = True
+
+    class Toggling(_Lines):
+        def __init__(self) -> None:
+            super().__init__("t")
+            self._captures = True
+
+        @property
+        def captures_viewport_input(self) -> bool:
+            return self._captures
+
+    ext, host, _, screen = _screen()
+    plain, capturing, toggling = _Lines("p"), Capturing("c"), Toggling()
+    screen.add_child(plain)
+    assert host.last()["caps"]["capturesViewportInput"] is False
+    screen.add_child(capturing)
+    assert host.last()["caps"]["capturesViewportInput"] is True
+    screen.add_child(toggling)
+    key = screen._key_of(toggling)
+    assert _cb(ext, screen, kind="capturesViewportInput", key=key) == {"captures": True}
+    toggling._captures = False
+    assert _cb(ext, screen, kind="capturesViewportInput", key=key) == {"captures": False}
+    assert _cb(ext, screen, kind="capturesViewportInput", key=screen._key_of(plain)) == {"captures": False}

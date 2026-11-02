@@ -2,7 +2,7 @@ package session_test
 
 // Ports packages/durable/test/session-adoption.test.ts: the Session adopts and publishes a batch inside Storage.Commit, as
 // Storage calls its adopt callback once when the batch is durable, and fails when Storage rejects after adopting or never
-// adopts. Upstream's one microtask that dispatches the commit to subscribeCommits listeners, which runs between the
+// adopts. Upstream's one microtask that dispatches the commit to observeCommits observers, which runs between the
 // storage's synchronous step and its asynchronous resolution, runs here when Storage.Commit returns to the Session
 // (before the Session sees it resolve), so the storage's own "resolve" step precedes "host" in the order logs. The JSONL
 // case of "publishes a JSONL commit before the storage reclaims its sidecar and resolves" has no Go counterpart for the
@@ -170,10 +170,10 @@ func opsOf(documents []durable.DocumentChange) []any {
 func TestPublicationAtAdoption(t *testing.T) {
 	t.Run("runs its own observers inside adopt and host listeners when Storage returns, outside it", func(t *testing.T) {
 		kernel, faulty := openAdoption()
-		kernel.ObserveCommits(func(context.Context, session.ObservedCommit) {
+		kernel.FollowCommits(func(context.Context, session.ObservedCommit) {
 			faulty.record(fmt.Sprintf("observed adopting=%v", faulty.Adopting()))
 		})
-		kernel.SubscribeCommits(func(context.Context, durable.CommitPublication) {
+		sessiontest.ObserveCommitsFunc(kernel, func(context.Context, durable.CommitPublication) {
 			faulty.record(fmt.Sprintf("host adopting=%v", faulty.Adopting()))
 		})
 		must(t, bumpCounter(t, kernel))
@@ -184,11 +184,11 @@ func TestPublicationAtAdoption(t *testing.T) {
 	t.Run("calls the host listeners registered when its dispatch runs, and none for a commit adopted without one", func(t *testing.T) {
 		kernel, faulty := openAdoption()
 		var calls []string
-		removed := kernel.SubscribeCommits(func(context.Context, durable.CommitPublication) { calls = append(calls, "removed") })
-		kernel.SubscribeCommits(func(context.Context, durable.CommitPublication) { calls = append(calls, "kept") })
+		removed := sessiontest.ObserveCommitsFunc(kernel, func(context.Context, durable.CommitPublication) { calls = append(calls, "removed") })
+		sessiontest.ObserveCommitsFunc(kernel, func(context.Context, durable.CommitPublication) { calls = append(calls, "kept") })
 		faulty.AfterAdopt(func() {
 			removed()
-			kernel.SubscribeCommits(func(context.Context, durable.CommitPublication) { calls = append(calls, "added") })
+			sessiontest.ObserveCommitsFunc(kernel, func(context.Context, durable.CommitPublication) { calls = append(calls, "added") })
 		})
 		must(t, bumpCounter(t, kernel))
 		expectEqual(t, calls, []string{"kept", "added"})
@@ -196,7 +196,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		bare, bareFaulty := openAdoption()
 		var late []durable.Seq
 		bareFaulty.AfterAdopt(func() {
-			bare.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) { late = append(late, publication.Seq) })
+			sessiontest.ObserveCommitsFunc(bare, func(_ context.Context, publication durable.CommitPublication) { late = append(late, publication.Seq) })
 		})
 		must(t, bumpCounter(t, bare))
 		if len(late) != 0 {
@@ -213,12 +213,12 @@ func TestPublicationAtAdoption(t *testing.T) {
 	t.Run("fails the Session after Storage returned for a panic of its own observers; the others and hosts got the commit", func(t *testing.T) {
 		kernel, faulty := openAdoption()
 		bug := errors.New("observer bug")
-		kernel.ObserveCommits(func(context.Context, session.ObservedCommit) {
+		kernel.FollowCommits(func(context.Context, session.ObservedCommit) {
 			faulty.record("observed")
 			panic(bug)
 		})
-		kernel.ObserveCommits(func(context.Context, session.ObservedCommit) { faulty.record("observed after") })
-		kernel.SubscribeCommits(func(context.Context, durable.CommitPublication) {
+		kernel.FollowCommits(func(context.Context, session.ObservedCommit) { faulty.record("observed after") })
+		sessiontest.ObserveCommitsFunc(kernel, func(context.Context, durable.CommitPublication) {
 			faulty.record(fmt.Sprintf("host failed=%v", kernel.Failure() != nil))
 		})
 		kernel.SubscribeClose(func() { faulty.record("close") })
@@ -226,7 +226,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		// adopted and resolve: adopt returned to Storage without panicking, and the Session failed only after that.
 		expectEqual(t, faulty.Order(), []string{"adopt", "observed", "observed after", "adopted", "resolve", "host failed=false", "close"})
 		<-kernel.Closed()
-		if end := kernel.End(); end.Reason != durable.SessionEndFailed || !errors.Is(end.Error, bug) {
+		if end := kernel.End(); end.Kind != durable.SessionEndFailed || !errors.Is(end.Error, bug) {
 			t.Fatalf("end %+v", end)
 		}
 		faulty.Reopen()
@@ -239,8 +239,8 @@ func TestPublicationAtAdoption(t *testing.T) {
 		kernel, faulty := openAdoption()
 		must(t, bumpCounter(t, kernel))
 		var stored []durable.Seq
-		kernel.ObserveCommits(func(context.Context, session.ObservedCommit) { faulty.record("observed") })
-		kernel.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		kernel.FollowCommits(func(context.Context, session.ObservedCommit) { faulty.record("observed") })
+		sessiontest.ObserveCommitsFunc(kernel, func(_ context.Context, publication durable.CommitPublication) {
 			faulty.record("host")
 			stored = append(stored, publication.Seq)
 		})
@@ -254,7 +254,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 			t.Fatalf("stored %v", stored)
 		}
 		<-kernel.Closed()
-		if end := kernel.End(); end.Reason != durable.SessionEndFailed {
+		if end := kernel.End(); end.Kind != durable.SessionEndFailed {
 			t.Fatalf("end %+v", end)
 		}
 		faulty.Reopen()
@@ -269,11 +269,11 @@ func TestPublicationAtAdoption(t *testing.T) {
 		commit(t, kernel, func(tx durable.Tx) error { _, err := tx.Doc(adoptionNoteDoc, conversationId); return err })
 		var observed []session.ObservedCommit
 		var stored []durable.CommitPublication
-		kernel.ObserveCommits(func(_ context.Context, publication session.ObservedCommit) {
+		kernel.FollowCommits(func(_ context.Context, publication session.ObservedCommit) {
 			faulty.record("observed")
 			observed = append(observed, publication)
 		})
-		kernel.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		sessiontest.ObserveCommitsFunc(kernel, func(_ context.Context, publication durable.CommitPublication) {
 			faulty.record("host")
 			stored = append(stored, publication)
 		})
@@ -303,7 +303,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		kernel, faulty := openAdoption()
 		conversationId := sessiontest.CreateConversation(t, kernel)
 		commit(t, kernel, func(tx durable.Tx) error { _, err := tx.Doc(adoptionNoteDoc, conversationId); return err })
-		kernel.SubscribeCommits(func(context.Context, durable.CommitPublication) {
+		sessiontest.ObserveCommitsFunc(kernel, func(context.Context, durable.CommitPublication) {
 			faulty.record(fmt.Sprintf("host adopting=%v", faulty.Adopting()))
 		})
 		_, err := kernel.Commit(ctx, func(tx durable.Tx) (any, error) {
@@ -323,7 +323,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		conversationId := sessiontest.CreateConversation(t, kernel)
 		commit(t, kernel, func(tx durable.Tx) error { _, err := tx.Doc(adoptionNoteDoc, conversationId); return err })
 		var stored [][]any
-		kernel.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		sessiontest.ObserveCommitsFunc(kernel, func(_ context.Context, publication durable.CommitPublication) {
 			stored = append(stored, opsOf(documentChangesOf(publication.Changes)))
 		})
 		_, err := kernel.Commit(ctx, func(tx durable.Tx) (any, error) {
@@ -338,7 +338,7 @@ func TestPublicationAtAdoption(t *testing.T) {
 		expectEqual(t, faulty.Order(), []string{"adopt", "adopted", "resolve"})
 		expectEqual(t, stored, [][]any{{[]durable.Op{{"s", []any{"a"}, 1}}}})
 		<-kernel.Closed()
-		if end := kernel.End(); end.Reason != durable.SessionEndFailed || end.Error == nil || end.Error.Error() != "reclaim failed" {
+		if end := kernel.End(); end.Kind != durable.SessionEndFailed || end.Error == nil || end.Error.Error() != "reclaim failed" {
 			t.Fatalf("end %+v", end)
 		}
 	})

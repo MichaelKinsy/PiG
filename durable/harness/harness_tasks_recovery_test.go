@@ -853,14 +853,20 @@ type startedHandover struct {
 
 func tkStartHandover(t *testing.T, log *syncList[string], gates handoverGates, store ...durable.Storage) startedHandover {
 	t.Helper()
-	registry := CreateRegistry()
-	old := addTask(t, registry, tkHandoverTask("old", 1, log, handoverOptions{gates: gates}).Erased())
 	var backing durable.Storage = storage.NewMemoryStorage()
 	if len(store) > 0 {
 		backing = store[0]
 	}
+	return tkStartHandoverAt(t, log, gates, backing, 1)
+}
+
+// tkStartHandoverAt starts the handover task at `version` (harness-tasks-recovery.test.ts startHandover's `version`).
+func tkStartHandoverAt(t *testing.T, log *syncList[string], gates handoverGates, backing durable.Storage, version int) startedHandover {
+	t.Helper()
+	registry := CreateRegistry()
+	old := addTask(t, registry, tkHandoverTask("old", version, log, handoverOptions{gates: gates}).Erased())
 	harness, _, reports := openTasks(t, backing, nil, openTasksOptions{registry: registry})
-	id := tkCreateIn(t, harness, tkHandoverTask("old", 1, log).Erased())
+	id := tkCreateIn(t, harness, tkHandoverTask("old", version, log).Erased())
 	harness.Resume()
 	eventually(t, func() bool { return log.len() == 1 })
 	return startedHandover{harness: harness, registry: registry, reports: reports, old: old, id: id}
@@ -971,7 +977,7 @@ func TestDefinitionHandover(t *testing.T) {
 		gate.resolve()
 		eventually(t, func() bool { return len(started.reports.all()) == 1 })
 		// harness-tasks-recovery.test.ts:735: the report is a migration_failed of the task.
-		if infos := started.reports.allInfos(); infos[0].Type != durable.ReportMigrationFailed || infos[0].Task == nil || infos[0].Task.Id != started.id {
+		if infos := started.reports.allInfos(); infos[0].Kind != durable.ReportMigrationFailed || infos[0].Task == nil || infos[0].Task.Id != started.id {
 			t.Fatalf("report %+v, want migration_failed of task %d", infos[0], started.id)
 		}
 		flush()
@@ -994,7 +1000,7 @@ func TestDefinitionHandover(t *testing.T) {
 		gateA.resolve()
 		eventually(t, func() bool { return slicesContains(log.all(), "old:b start") })
 		// A newer definition without a migration cannot take the task either.
-		addTask(t, started.registry, tkHandoverTask("incompatible", 2, log).Erased())
+		addTask(t, started.registry, tkHandoverTask("unmigratable", 2, log).Erased())
 		gateB.resolve()
 		tkWaitOutcome(t, started.harness, started.id)
 		want := []string{"old:a start", "old:a end", "old:b start", "old:b end", "old:c"}
@@ -1006,10 +1012,29 @@ func TestDefinitionHandover(t *testing.T) {
 		if len(infos) != 2 {
 			t.Fatalf("reports %+v, want two task_outdated reports", infos)
 		}
-		for index, reason := range []string{durable.ReasonMissingTask, durable.ReasonIncompatibleTask} {
-			if infos[index].Type != durable.ReportTaskOutdated || infos[index].Task == nil || infos[index].Task.Id != started.id || infos[index].Reason != reason {
+		for index, reason := range []string{durable.ReasonMissingTask, durable.ReasonMigrationFailed} {
+			if infos[index].Kind != durable.ReportTaskOutdated || infos[index].Task == nil || infos[index].Task.Id != started.id || infos[index].Reason != reason {
 				t.Fatalf("report %d = %+v, want task_outdated of task %d with reason %s", index, infos[index], started.id, reason)
 			}
+		}
+		mustClose(t, started.harness)
+	})
+
+	t.Run("reports a replacement older than the running task as `task_too_old` and keeps the old definition", func(t *testing.T) {
+		log := &syncList[string]{}
+		gate := deferred()
+		started := tkStartHandoverAt(t, log, handoverGates{a: gate}, storage.NewMemoryStorage(), 2)
+		// The same extension name replaces the running definition with an older version.
+		addTask(t, started.registry, tkHandoverTask("older", 1, log).Erased())
+		gate.resolve()
+		tkWaitOutcome(t, started.harness, started.id)
+		want := []string{"old:a start", "old:a end", "old:b start", "old:b end", "old:c"}
+		if !reflect.DeepEqual(log.all(), want) {
+			t.Fatalf("log %v, want %v", log.all(), want)
+		}
+		infos := started.reports.allInfos()
+		if len(infos) != 1 || infos[0].Kind != durable.ReportTaskOutdated || infos[0].Task == nil || infos[0].Task.Id != started.id || infos[0].Reason != durable.ReasonTaskTooOld {
+			t.Fatalf("reports %+v, want one task_outdated of task %d with reason task_too_old", infos, started.id)
 		}
 		mustClose(t, started.harness)
 	})

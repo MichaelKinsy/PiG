@@ -1578,10 +1578,10 @@
   "upstream": "packages/durable/src/session/session.ts",
   "package": "./durable/session",
   "tests": [
-   "TestSessionSubscribeCommitsDisposeRemovesOnlyItsOwnListener"
+   "TestSessionObserveCommitsDetachRemovesOnlyItsOwnListener"
   ],
   "upstream_reference": "packages/durable/src/session/session.ts:385",
-  "mutation": "durable/session/session.go: replace '\\t\\tfor index, candidate := range session.commitOrder {\\n\\t\\t\\tif candidate == entry {' with '\\t\\tfor index, candidate := range session.commitOrder {\\n\\t\\t\\tif candidate != entry {'; compiling go test -overlay -run exact test -count=1 fails TestSessionSubscribeCommitsDisposeRemovesOnlyItsOwnListener."
+  "mutation": "durable/session/session.go: replace '\\t\\tfor index, candidate := range session.commitOrder {\\n\\t\\t\\tif candidate == entry {' with '\\t\\tfor index, candidate := range session.commitOrder {\\n\\t\\t\\tif candidate != entry {'; compiling go test -overlay -run exact test -count=1 fails TestSessionObserveCommitsDetachRemovesOnlyItsOwnListener."
  },
  {
   "upstream": "packages/mcp/src/oauth/types.ts",

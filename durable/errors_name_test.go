@@ -8,6 +8,7 @@ func TestErrorNames(t *testing.T) {
 		"StorageRequestError": NewStorageRequestError("m").Name(),
 		"SessionFailed":       NewSessionFailed(nil).Name(),
 		"ConversationBusy":    NewConversationBusy(7).Name(),
+		"ConversationIdle":    NewConversationIdle(7).Name(),
 		"ReadAfterWrite":      NewReadAfterWrite("doc").Name(),
 		"ReadOnlySession":     NewReadOnlySession("running tasks").Name(),
 	} {

@@ -46,7 +46,7 @@ func roOpen(t *testing.T, core bool, path string, setup *roChat, readOnly bool, 
 		Models:   setup.models,
 		Registry: setup.registry,
 		ReadOnly: readOnly,
-		OnReport: func(err error, _ durable.ReportInfo) { setup.reports.add(err) },
+		OnReport: func(report durable.Report) { setup.reports.add(report.Error) },
 		OnWake:   onWake,
 	}
 	var opened harness.Harness

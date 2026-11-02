@@ -135,11 +135,23 @@ def ci_commit(pin: Pin, text: str) -> str:
     return sub(r"^(ARG PI_COMMIT=).*$", rf"\g<1>{pin.commit if pin.kind == 'commit' else ''}", text, "Dockerfile", 1)
 
 
+def interface_snapshot_ignore(pin: Pin, text: str) -> str:
+    reviewed = re.search(r'^const UpstreamReviewedVersion = "([^"]+)"', (ROOT / "coding/upstream.go").read_text(encoding="utf-8"), re.M)
+    if reviewed is None:
+        raise PinError("coding/upstream.go: missing UpstreamReviewedVersion")
+    lines = ["# BEGIN PINNED INTERFACE SNAPSHOTS", "/test/parity/interfaces/*-v*.json"]
+    for version in dict.fromkeys((pin.version, reviewed.group(1))):
+        lines.append(f"!/test/parity/interfaces/*-v{version}.json")
+    lines.append("# END PINNED INTERFACE SNAPSHOTS")
+    return sub(r"(?s)^# BEGIN PINNED INTERFACE SNAPSHOTS\n.*?^# END PINNED INTERFACE SNAPSHOTS$", "\n".join(lines), text, ".gitignore", 1)
+
+
 # (path, transform(pin, text), command to refresh a lock when the file changed or None)
 INTEROP = ['@earendil-works/chord', '@earendil-works/pi-ai', '@earendil-works/pi-durable', '@earendil-works/pi-telemetry']
 CF_HOST = ['@earendil-works/chord', '@earendil-works/pi-ai', '@earendil-works/pi-durable']
 ORACLE_PACKAGES = ['@earendil-works/pi-agent-core', '@earendil-works/pi-ai', '@earendil-works/pi-coding-agent', '@earendil-works/pi-tui']
 RULES: list[tuple[str, object, str | None]] = [
+    (".gitignore", lambda p, t: interface_snapshot_ignore(p, t), None),
     ("README.md", lambda p, t: readme(p, t), None),
     ("docs/site/docs/index.md", regex_rule(r"^(\| Pinned Pi release \(behavior oracle\) \| Pi )\S+( \|)", r"\g<1>{v}\g<2>"), None),
     ("extensions/sdk-ts/package.json", package_deps(["@earendil-works/pi-coding-agent"]), "extensions/sdk-ts"),

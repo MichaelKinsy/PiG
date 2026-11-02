@@ -244,8 +244,8 @@ func (s *OAuthSelectorComponent) confirm() {
 	}
 }
 
-// CapturesSelectPageInput reports that the selector handles tui.select.pageUp and tui.select.pageDown.
-func (s *OAuthSelectorComponent) CapturesSelectPageInput() bool { return true }
+// CapturesViewportInput reports that fullscreen viewport keys go to the selector (oauth-selector.ts capturesViewportInput).
+func (s *OAuthSelectorComponent) CapturesViewportInput() bool { return true }
 
 // HandleInput processes navigation, select, and cancel keys.
 func (s *OAuthSelectorComponent) HandleInput(data string) {
@@ -253,6 +253,7 @@ func (s *OAuthSelectorComponent) HandleInput(data string) {
 		return
 	}
 	kb := GetTUIKeybindings()
+	pageIndex, isPage := GetSelectPageIndex(kb, data, s.cursor, len(s.filtered), authSelectorMaxVisible)
 	switch {
 	case kb.Matches(data, KBSelectUp):
 		if s.cursor > 0 {
@@ -262,8 +263,11 @@ func (s *OAuthSelectorComponent) HandleInput(data string) {
 		if s.cursor < len(s.filtered)-1 {
 			s.cursor++
 		}
-	case pageSelectionKey(kb, data):
-		s.cursor, _ = PageSelectionIndex(kb, data, s.cursor, len(s.filtered), authSelectorMaxVisible)
+	case isPage:
+		if len(s.filtered) == 0 {
+			return
+		}
+		s.cursor = pageIndex
 	case kb.Matches(data, KBSelectConfirm):
 		s.confirm()
 	case kb.Matches(data, KBSelectCancel):

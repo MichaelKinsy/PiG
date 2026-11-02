@@ -16,7 +16,7 @@ import (
 type failureLatch interface {
 	failure() error
 	fail(error)
-	// finishPublication runs what the commit's adoption queued: the dispatch to subscribeCommits listeners, then the work
+	// finishPublication runs what the commit's adoption queued: the dispatch to observeCommits observers, then the work
 	// its observers deferred.
 	finishPublication()
 }

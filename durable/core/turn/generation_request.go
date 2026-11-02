@@ -192,7 +192,7 @@ const invokeSettleHops = 1
 // that returns the handler's promise (afterResponse, afterTools).
 func asyncInvoke(name string) bool {
 	switch name {
-	case "beforeTool", "afterTool", "beforeRequest", "onYield", "beforeCompact":
+	case "beforeTool", "afterTool", "beforeRequest", "onYield", "beforeCompact", "afterRun":
 		return true
 	}
 	return false

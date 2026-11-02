@@ -143,6 +143,13 @@ func ResolvePackagePath(input, baseDir string) (string, error) {
 	return resolve(Trim(input), baseDir, os.Getenv("HOME"))
 }
 
+// IsAbsolutePackagePath reports whether a Package path names its location without a base directory: after the package manager's trim and tilde
+// and file:// URL expansion it is absolute, so it resolves to the same place from any settings directory. A path that does not expand is not absolute.
+func IsAbsolutePackagePath(input string) bool {
+	normalized, err := normalize(Trim(input), os.Getenv("HOME"))
+	return err == nil && normalized != "" && nodepath.IsAbsolute(normalized)
+}
+
 // Trim applies String.prototype.trim, including BOM but excluding NEL.
 func Trim(input string) string {
 	return strings.TrimFunc(input, jsstring.IsSpace)

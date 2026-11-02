@@ -71,6 +71,22 @@ func TestImplicitProjectTrustAfterReload(t *testing.T) {
 			t.Fatalf("decision = %v, want the saved false", decision)
 		}
 	})
+	// Pi 31ade0e0 (#10947): a project without trust-requiring resources that carries a saved Do not trust decision starts untrusted, stays armed for /reload,
+	// and when resources appear the untrusted project saves nothing over the decision.
+	t.Run("a saved Do not trust decision survives a reload that adds resources", func(t *testing.T) {
+		m, cwd := reloadTrustMode(t, "cwd")
+		if err := NewProjectTrustStore(m.opts.AgentDir).Set(cwd, new(false)); err != nil {
+			t.Fatal(err)
+		}
+		m.opts.SettingsManager.SetProjectTrusted(false)
+		addProjectResource(t, cwd)
+		if m.maybeSaveImplicitProjectTrustAfterReload() {
+			t.Fatal("saved trust for a project the saved decision left untrusted")
+		}
+		if decision, _ := NewProjectTrustStore(m.opts.AgentDir).Get(cwd); decision == nil || *decision {
+			t.Fatalf("decision = %v, want the saved false", decision)
+		}
+	})
 	t.Run("not armed or untrusted saves nothing", func(t *testing.T) {
 		m, cwd := reloadTrustMode(t, "")
 		addProjectResource(t, cwd)

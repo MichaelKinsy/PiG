@@ -51,7 +51,7 @@ func TestFullscreenSelectionKeepsItsPageKeys(t *testing.T) {
 }
 
 // TestRegularModeSelectorPageKeyMovesItsSelection: with no viewport listener PageDown reaches the model selector, which moves its selection a
-// page (model-selector.ts handleInput, getPageSelectionIndex) and does not refilter the search.
+// page (model-selector.ts handleInput, getSelectPageIndex) and does not refilter the search.
 func TestRegularModeSelectorPageKeyMovesItsSelection(t *testing.T) {
 	m := newSwitchTuiProbe(t)
 	if m.altScreen != nil {
@@ -67,7 +67,7 @@ func TestRegularModeSelectorPageKeyMovesItsSelection(t *testing.T) {
 // listener order to a subprocess extension's ui.custom component: in the
 // editor slot PageDown scrolls the transcript and never reaches the extension,
 // while other keys still do. A focused overlay keeps PageDown, because the
-// viewport defers to it (shouldDeferViewportInputToOverlay).
+// viewport defers to it (shouldDeferViewportInput).
 func TestFullscreenViewportKeysPrecedeEditorSlotExtensionUI(t *testing.T) {
 	t.Run("editor slot", func(t *testing.T) { checkFullscreenExtensionUIFirstInput(t, false, "k") })
 	t.Run("overlay", func(t *testing.T) { checkFullscreenExtensionUIFirstInput(t, true, pageDownKey) })

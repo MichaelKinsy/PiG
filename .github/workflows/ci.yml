@@ -321,7 +321,7 @@ jobs:
             test/parity/interface-extractor/package-lock.json
             automation/images/ci-parity/package-lock.json
             automation/images/npm-runtime/package-lock.json
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         id: python
         with:
           python-version: '3.12'
@@ -353,7 +353,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rustup toolchain install "$RUST_VERSION" --profile minimal
+          # rustfmt and clippy: make lint-rust (ci-sdk) checks every Rust crate with them.
+          rustup toolchain install "$RUST_VERSION" --profile minimal --component rustfmt --component clippy
           rustup default "$RUST_VERSION"
       # The pinned SBCL (automation/dev/toolchains.lock) builds and runs Lisp extension images; the conformance rows, make test-sdk-lisp and the portmap shards (portmap-check requires it through test-prereqs)
       # fail without it. install-sbcl.sh installs the checksummed official binary, and the cache keeps the prefix for the pin.
@@ -400,7 +401,7 @@ jobs:
           test "$(rustc --version | cut -d' ' -f2)" = "$RUST_VERSION"
           if [ -n "${PIG_SBCL:-}" ]; then test "$("$PIG_SBCL" --version)" = "SBCL $(awk -F'\t' '!/^#/ && $1=="sbcl-source" {print $2}' automation/dev/toolchains.lock)"; fi
           python3 automation/pin/pin.py check-oracle
-      # Rust SDK dependencies and Pi's env daemon build into persistent targets (internal/testenv.SharedCargoTargetDir) named for a hash of their lockfiles, so a lock change selects a new directory and a hit skips the compile.
+      # Rust SDK dependencies and Pi's env daemon build into persistent targets (internal/testenv.SharedCargoTargetDir) named for a hash of their lockfiles, so a lock change selects a new directory and a hit skips the compile. The key also hashes automation/ci/test-warm.sh, the list of targets: actions/cache saves only on a key miss, so a target the script gains needs a new key to reach the cache.
       - name: Restore the Cargo registry and test targets
         if: startsWith(matrix.shard, 'test-') || matrix.shard == 'toolchains'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -409,7 +410,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             ~/.cache/pig-dev/cargo-target
-          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml') }}
+          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
           restore-keys: |
             cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-
       # The PORT_MAP evidence tests of the extension, CLI and env packages build the Rust SDK cells and Pi's env daemon into the same
@@ -423,7 +424,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             ~/.cache/pig-dev/cargo-target
-          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml') }}
+          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
           restore-keys: |
             cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-
       - name: Warm the fixture caches
@@ -786,7 +787,7 @@ jobs:
           cache-dependency-path: |
             extensions/sdk-ts/package-lock.json
             test/parity/interface-extractor/package-lock.json
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
       - name: Select the qualified Rust toolchain
@@ -1004,7 +1005,7 @@ jobs:
           cache-dependency-path: |
             extensions/sdk-ts/package-lock.json
             test/parity/interface-extractor/package-lock.json
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
       - name: Select the qualified Rust toolchain

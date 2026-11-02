@@ -64,9 +64,7 @@ func llamaOracleScenarios() []llamaOracleScenario {
 	statuses := []string{"loaded", "unloaded", "loading", "downloading", "sleeping"}
 	argLists := [][]string{nil, {"--ctx-size", "8192"}, {"-c", "32000"}, {"-ctx", "0"}, {"--ctx-size", "abc"}, {"-c", "1500"}, {"-c", "999"}, {"--ctx-size"}, {"-c", "-5"}, {"-c", "1e4"}, {"--x", "-c", "2048"}, {"-c", "", "-c", "4096"}, {"-ctx", "4096", "-c", "8192"}, {"-c", "1499.5"}, {"-c", "Infinity"}, {"-c", " 4096 "}}
 	numbers := []float64{0, 1, 999, 1000, 1499, 1500, 1501, 2048, 4096, 32768, 128000, 262144, 2500}
-	// Pi 1.1.0 ignores PageUp and PageDown in these views; Pig moves the selection by a page (D155, Pi PR #7680), which
-	// TestHuggingFaceSearchPageKeysMoveTenResults covers, so the generator leaves those keys out.
-	keys := []string{"\r", "\r", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[A", "\x1b", "\x1b[H", "\x1b[F", "a", "/", "\t", "\x03", "j", "k", "\n", " "}
+	keys := []string{"\r", "\r", "\x1b[B", "\x1b[B", "\x1b[B", "\x1b[A", "\x1b[5~", "\x1b[6~", "\x1b", "\x1b[H", "\x1b[F", "a", "/", "\t", "\x03", "j", "k", "\n", " "}
 	pickKeys := func(max int) []string {
 		out := make([]string, rng.IntN(max+1))
 		for i := range out {

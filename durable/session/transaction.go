@@ -37,8 +37,9 @@ type submissionChange struct {
 }
 
 // applySubmissionChange returns the complete record after one change.
-// Placement turns a queued input placed and a queued write done; only a
-// placed input can be answered. A settled record stays.
+// Placement turns a queued input placed and a queued write done; a continue is
+// never queued, so never placed. Only a placed input or continue can be
+// answered. A settled record stays.
 func applySubmissionChange(current durable.SubmissionRecord, change submissionChange) (durable.SubmissionRecord, bool, error) {
 	if current.Status == durable.SubmissionDone || current.Status == durable.SubmissionUnanswered {
 		return current, false, nil
@@ -58,7 +59,7 @@ func applySubmissionChange(current durable.SubmissionRecord, change submissionCh
 	}
 	settlement := change.settlement
 	if settlement.Status == durable.SubmissionDone && current.Status != durable.SubmissionPlaced {
-		return current, false, fmt.Errorf("Submission %d is not a placed input", current.Id)
+		return current, false, fmt.Errorf("Submission %d is not a placed input or continue", current.Id)
 	}
 	// Queued and placed records carry no answer, reason, or detail; an unanswered input keeps its entry.
 	next := current
@@ -288,6 +289,32 @@ type Transaction struct {
 
 var _ durable.Tx = (*Transaction)(nil)
 
+// Context is internal: the context of the commit this transaction belongs to (transaction.ts `get context`). It is
+// released once the transaction settles.
+func (tx *Transaction) Context() context.Context {
+	tx.mu.Lock()
+	defer tx.mu.Unlock()
+	return tx.ctx
+}
+
+// HasTableWrite is internal: whether a table write was staged, after which table reads throw ReadAfterWrite
+// (transaction.ts `get hasTableWrite`).
+func (tx *Transaction) HasTableWrite() bool {
+	tx.mu.Lock()
+	defer tx.mu.Unlock()
+	return tx.hasTableWrite
+}
+
+// transactionOwnedBy is internal: whether tx is a transaction of a commit of the Session behind host (transaction.ts
+// `Transaction.ownedBy`). A brand check, so a wrapper of a transaction is not one.
+func transactionOwnedBy(tx durable.Tx, host *transactionHost) (*Transaction, bool) {
+	owned, ok := tx.(*Transaction)
+	if !ok || owned == nil || owned.host != host {
+		return nil, false
+	}
+	return owned, true
+}
+
 func newTransaction(host *transactionHost, ctx context.Context, scope TransactionScope) *Transaction {
 	tx := &Transaction{
 		host:                      host,
@@ -346,7 +373,7 @@ func read[T any](tx *Transaction, method string, run func() (T, error)) (T, erro
 	}
 	if tx.hasTableWrite {
 		tx.mu.Unlock()
-		return zero, durable.NewReadAfterWrite(method)
+		return zero, durable.NewReadAfterWrite("Tx." + method + "()")
 	}
 	tx.beginLocked()
 	tx.mu.Unlock()
@@ -1254,7 +1281,7 @@ func (tx *Transaction) discard() {
 	tx.mu.Unlock()
 }
 
-// adoptedDocuments is what adoption publishes: to the Session's own observers, and the stored changes to SubscribeCommits.
+// adoptedDocuments is what adoption publishes: to the Session's own observers, and the stored changes to ObserveCommits.
 type adoptedDocuments struct {
 	// observed is this commit's own changes, as memory adopted them.
 	observed []durable.DocumentCommitChange
@@ -1360,7 +1387,7 @@ func (tx *Transaction) adopt(seq durable.Seq) (adoptedDocuments, error) {
 func describe(plan *documentPlan, record durable.DocumentRecord) durable.DocumentCommitChange {
 	conversationId := plan.conversationId
 	if plan.retire {
-		return durable.DocumentChange{Record: record, ConversationId: conversationId, Ops: []durable.Op{}}
+		return durable.DocumentRetireChange{Record: record, ConversationId: conversationId}
 	}
 	if copyWrite, ok := plan.content.(durable.DocumentCopyWrite); ok {
 		return durable.DocumentCopyChange{Record: record, ConversationId: *conversationId, Source: copyWrite.Source}
@@ -1374,7 +1401,7 @@ func describe(plan *documentPlan, record durable.DocumentRecord) durable.Documen
 		ops = []durable.Op{}
 	}
 	version := change.version
-	return durable.DocumentChange{Record: record, ConversationId: conversationId, Version: &version, Value: change.prepared.Value(), Ops: ops}
+	return durable.DocumentChange{Record: record, ConversationId: conversationId, Version: version, Value: change.prepared.Value(), Ops: ops}
 }
 
 // heldDocument holds the changes of a cached incarnation that deferred commits adopted in memory and the Session has not
@@ -1458,7 +1485,7 @@ func (tx *Transaction) adoptHeld() ([]durable.DocumentCommitChange, error) {
 		publications = append(publications, durable.DocumentChange{
 			Record:         change.loaded.Record,
 			ConversationId: plan.conversationId,
-			Version:        &version,
+			Version:        version,
 			Value:          change.prepared.Value(),
 			Ops:            change.prepared.Ops(),
 		})

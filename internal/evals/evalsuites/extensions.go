@@ -3,8 +3,8 @@ package evalsuites
 // Ports packages/evals/evals/extensions.docs.eval.ts.
 //
 // Pi's output reads session.resourceLoader.getExtensions(). A PiG Session runs in a pig process, so the output
-// reports what that process exposes: extension_error events, and the tool as loaded when it returned a successful
-// result in the Session (a tool that never loaded cannot return one).
+// reports what that process exposes: extension_error events and the tool's result (a tool that never loaded cannot
+// return one).
 
 import (
 	"context"
@@ -46,12 +46,12 @@ func Extensions() evals.Suite {
 					toolResult = result
 				}
 				return map[string]any{
-					"response": run.Response, "extensionErrors": extensionErrors(run.ExtensionErrors), "toolLoaded": loaded, "toolResult": toolResult,
+					"response": run.Response, "extensionErrors": extensionErrors(run.ExtensionErrors), "toolResult": toolResult,
 				}, nil
 			},
 		}),
 		Judges: []evals.Judge{
-			mustJudge(map[string]any{"response": helloToolResult, "extensionErrors": []any{}, "toolLoaded": true, "toolResult": helloToolResult}),
+			mustJudge(map[string]any{"response": helloToolResult, "extensionErrors": []any{}, "toolResult": helloToolResult}),
 			evals.ToolCallJudge(evals.ExpectedTool{Name: helloToolName, Arguments: map[string]any{"name": "Bob"}}),
 		},
 		NoJudgeThreshold: true,

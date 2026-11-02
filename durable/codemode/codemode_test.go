@@ -20,6 +20,7 @@ import (
 	cm "github.com/MichaelKinsy/PiG/codemode"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/harness"
+	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
 )
 
 func expectText(t *testing.T, got string, isError bool, want string, wantError bool) {
@@ -84,7 +85,7 @@ func TestDurableCodeMode(t *testing.T) {
 		// the journal (with one processor, 2's tool can return and 1's result still post first).
 		arrived := newGate()
 		f.onFirstOpen = func(opened harness.Harness) {
-			unsubscribe := opened.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+			unsubscribe := sessiontest.ObserveCommitsFunc(opened, func(_ context.Context, publication durable.CommitPublication) {
 				for _, change := range publication.Changes {
 					document, ok := change.(durable.DocumentChange)
 					if !ok || document.Record.Kind != "pi.codemode.journal" || document.Value == nil {
@@ -921,7 +922,7 @@ func TestDurableCodeMode(t *testing.T) {
 		// document's last commit).
 		var orderMu sync.Mutex
 		var lastJournalOnly, lastRun, commits int
-		unsubscribe := opened.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		unsubscribe := sessiontest.ObserveCommitsFunc(opened, func(_ context.Context, publication durable.CommitPublication) {
 			orderMu.Lock()
 			defer orderMu.Unlock()
 			commits++

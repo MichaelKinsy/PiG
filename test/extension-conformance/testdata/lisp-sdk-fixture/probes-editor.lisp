@@ -16,10 +16,10 @@
          (pig:editor-base-set-text base (concatenate 'string "raw:lines=" (lfx-editor-join "|" (pig:editor-base-get-lines base)))))
         (t (pig:editor-base-handle-input base (if (string= data "a") "A" data)))))
 
-(defun lfx-conformance-editor (base &key embed handle-input set-working-status-indicator invalidate)
+(defun lfx-conformance-editor (base &key embed handle-input set-working-status-indicator invalidate captures-viewport-input)
   "Swallows \"q\", rewrites \"a\" to \"A\", upper-cases the host's setText, and frames super.render."
   (pig:make-editor-component
-   base :embed-working-status embed
+   base :embed-working-status embed :captures-viewport-input captures-viewport-input
         :handle-input (or handle-input (lambda (data) (lfx-editor-handle base data)))
         :set-text (lambda (text) (pig:editor-base-set-text base (if (lfx-editor-raw-p text) text (string-upcase text))))
         :insert-text-at-cursor (lambda (text) (pig:editor-base-insert-text-at-cursor base (if (lfx-editor-raw-p text) text (concatenate 'string "<" text ">"))))
@@ -30,6 +30,15 @@
 
 (defun lfx-editor-factory (base) (lfx-conformance-editor base))
 (defun lfx-editor-embed-factory (base) (lfx-conformance-editor base :embed t))
+(defun lfx-editor-viewport-factory (base)
+  "Delegates to the base like lfx-editor-factory; captures viewport input until it receives \"t\"."
+  (let ((capturing t))
+    (lfx-conformance-editor base
+                            :captures-viewport-input (lambda () capturing)
+                            :handle-input (lambda (data)
+                                            (if (string= data "t")
+                                                (setf capturing nil)
+                                                (lfx-editor-handle base data))))))
 
 (defun lfx-editor-bool (value) (if value "true" "false"))
 
@@ -96,6 +105,14 @@ the host's working status and invalidate. Each handler writes what ran into the 
                         (lfx-conformance-editor base)))))
   (pig:command ext "editor-install-embed" "Install a custom editor that embeds the working status"
                (lambda (ctx args) (declare (ignore args)) (pig:ctx-set-editor-component ctx #'lfx-editor-embed-factory)))
+  (pig:command ext "editor-install-viewport" "Install a custom editor that captures viewport input until it receives t"
+               (lambda (ctx args) (declare (ignore args)) (pig:ctx-set-editor-component ctx #'lfx-editor-viewport-factory)))
+  (pig:command ext "select-page-probe" "Report getSelectPageIndex over the global keybindings"
+               (lambda (ctx args)
+                 (let* ((case (pig:from-json args))
+                        (index (pig:tui-get-select-page-index (pig:tui-get-keybindings) (pig:jget case "data") (pig:jget case "selected")
+                                                              (pig:jget case "count") (pig:jget case "page"))))
+                   (pig:ctx-notify ctx (format nil "select-page=~A" (if index index "none")) "info"))))
   (pig:command ext "editor-install" "Install a custom editor component"
                (lambda (ctx args) (declare (ignore args)) (pig:ctx-set-editor-component ctx #'lfx-editor-factory)))
   (pig:command ext "editor-clear" "Restore the host's editor"
@@ -168,10 +185,28 @@ the host's working status and invalidate. Each handler writes what ran into the 
        :should-trigger-file-completion
        (lambda (ctx lines line col) (pig:autocomplete-should-trigger-file-completion current ctx lines line col))))))
 
+(defun lfx-settle-factory ()
+  "A provider that asks the current one, sleeps when the line is \"slow\" and answers a single item labelled settled:<line>."
+  (lambda (ctx current)
+    (pig:make-autocomplete-provider
+     :get-suggestions
+     (lambda (ctx lines line col force)
+       (pig:autocomplete-get-suggestions current ctx lines line col force)
+       (let ((text (aref lines 0)))
+         (when (string= text "slow") (sleep 0.4))
+         (pig:obj "items" (vector (pig:obj "value" text "label" (concatenate 'string "settled:" text))) "prefix" text)))
+     :apply-completion
+     (lambda (ctx lines line col item prefix)
+       (pig:autocomplete-apply-completion current ctx lines line col item prefix)))))
+
 (def-fixture "autocomplete" (ext)
   (pig:command ext "autocomplete-register" "Register retained provider wrappers"
                (lambda (ctx args)
                  (declare (ignore args))
                  (dolist (tag '("A" "B"))
                    (pig:ctx-add-autocomplete-provider ctx (lfx-autocomplete-factory tag))
-                   (pig:ctx-notify ctx (concatenate 'string "registered:" tag) "info")))))
+                   (pig:ctx-notify ctx (concatenate 'string "registered:" tag) "info"))))
+  (pig:command ext "autocomplete-settle-register" "Register a provider whose answer settles or awaits real I/O"
+               (lambda (ctx args)
+                 (declare (ignore args))
+                 (pig:ctx-add-autocomplete-provider ctx (lfx-settle-factory)))))

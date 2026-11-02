@@ -1,5 +1,5 @@
 {
-  "piVersion": "1.4.0+b3a29f11",
+  "piVersion": "1.4.0+b556cfe5",
   "node": "v24.19.0",
   "scenarios": [
     {
@@ -115,7 +115,7 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "durationMs": 29
+        "durationMs": 27
       }
     },
     {
@@ -1013,7 +1013,7 @@
         },
         "stopReason": "toolUse",
         "responseId": "r1",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -2036,7 +2036,7 @@
         },
         "stopReason": "error",
         "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {
@@ -2234,7 +2234,7 @@
         },
         "stopReason": "error",
         "errorMessage": "body failed",
-        "durationMs": 1
+        "durationMs": 0
       }
     },
     {

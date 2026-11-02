@@ -48,6 +48,12 @@ const E = {
 	"29-tool-override": ["loop", "replace and decorate a tool"],
 	"30-reload-and-restart": ["session", "reload an extension while a call runs, then restart"],
 	"31-transcript": ["session", "a client keeps a conversation's transcript over the windowed view"],
+	"32-tests-after-edits": ["loop", "run the tests after the agent's edits"],
+	"33-turn-limit-and-continue": ["loop", "a per-conversation turn limit and a continue submission"],
+	"34-submit-in-commit": ["session", "admit a submission inside the caller's commit"],
+	"35-durable-on-the-store": ["store", "a Harness on Chord's store"],
+	"36-durable-views": ["store", "Durable views on Chord's store"],
+	"37-harness-registry": ["loop", "a Harness over a registry"],
 }
 const U = {
 	"codemode-checkpoints": "loop", "harness-blocked": "session", "harness-deferred-progress": "session", "harness-failed-run-inbox": "session", "harness-host-inputs": "session",
@@ -65,6 +71,22 @@ const U = {
 	"session-forks": "store", "session-tables": "store", "session-watches": "session", "spec-usage": "store",
 	"sqlite-cloudflare": "host", "sqlite-facade": "host", "sqlite-migrations": "store", "sqlite-storage": "store", "storage-runtime-boundary": "store",
 	"system-order-cache-e2e": "loop", "tools-read-differential": "loop", "tools": "loop", "types": "store",
+	"codemode-imports": "loop", "harness-after-run": "loop", "harness-continue": "session", "harness-hook-reads": "loop", "harness-submit-in-commit": "session", "harness-tool-hooks": "loop",
+	"harness-turn-limit": "loop", "harness-registry-reader": "loop", "store-storage": "store",
+}
+// Sources that gained, after Pi 5f312dac, what lane D-store of the follow ports (Durable on Chord's store and the registry: 14b4c56e,
+// 6eb99ad6). The row is pending, with the lane in its reason, until that lane lands: the candidates cannot pass it, and a row that
+// reports the lane's work as `ready` would fail every candidate for the wrong reason.
+const laneDStore = what => `pending lane D-store (Durable on Chord's store, registries): ${what}`
+const LATER = {
+	"35-durable-on-the-store": laneDStore("a Harness on StoreStorage over Chord's store (14b4c56e)"),
+	"36-durable-views": laneDStore("Durable views on Chord's store (14b4c56e)"),
+	"37-harness-registry": laneDStore("a Harness over a registry and host.root (6eb99ad6)"),
+	"harness-registry-reader": laneDStore("the registry reader (6eb99ad6)"),
+	"store-storage": laneDStore("StoreStorage, Durable's storage on Chord's store (14b4c56e)"),
+	"harness-observers": laneDStore("a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"),
+	"session-observers": laneDStore("a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"),
+	"SC": laneDStore("it refuses a creation and a change of one document in one commit (14b4c56e)"),
 }
 const out = []
 const emit = (...lines) => out.push(...lines, "")
@@ -79,7 +101,7 @@ emit(
 	"# status: ready (a runner exists and the reference capture is deterministic), pending (no candidate can run it yet, with the",
 	"# reason and the owner; `--strict` fails on it), skipped (nobody can run it here, with the reason).",
 	"",
-	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("b3a29f1111114fac696e2cfcd65acdb382a6ed5e")}`, `release = ${q("1.0.4")}`,
+	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("e7a0df27c09d11bf4161d3605246cbf57a129cb2")}`, `release = ${q("1.0.4")}`,
 )
 for (const f of readdirSync(join(pi, "packages/durable/test/examples")).filter(f => /^\d\d-.*\.ts$/.test(f)).sort()) {
 	const name = f.replace(/\.ts$/, "")
@@ -87,7 +109,7 @@ for (const f of readdirSync(join(pi, "packages/durable/test/examples")).filter(f
 	const skip = name === "15-real-model"
 	emit("[[scenario]]", `id = ${q("E" + name.slice(0, 2))}`, `family = "example"`, `runner = "example"`, `source = ${q("packages/durable/test/examples/" + f)}`,
 		`sha256 = ${q(sha("packages/durable/test/examples/" + f))}`, `owner = ${q("dcore-" + owner)}`, `about = ${q(about)}`,
-		`levels = ["store", "commit", "context", "output", "order"]`, `normalisers = []`, ...(skip ? [`status = "pending"`, `reason = "pending-owner: needs the owner's OPENAI_API_KEY or a cassette recorded with it (CONTRACT section 6)"`] : [`status = "ready"`]))
+		`levels = ["store", "commit", "context", "output", "order"]`, `normalisers = []`, ...(skip ? [`status = "pending"`, `reason = "pending-owner: needs the owner's OPENAI_API_KEY or a cassette recorded with it (CONTRACT section 6)"`] : LATER[name] ? [`status = "pending"`, `reason = ${q(LATER[name])}`] : [`status = "ready"`]))
 }
 // U files that cannot run against the core. Each carries its reason (lib/corpus.mjs requires one); a pass that never reaches the
 // core must not count (dcore-int ruling, 2026-10-07). The Session files import ../src/session/session.ts (SessionImpl) and drive
@@ -135,11 +157,13 @@ const MEASURED = {
 }
 for (const f of readdirSync(join(pi, "packages/durable/test")).filter(f => f.endsWith(".test.ts")).sort()) {
 	const name = f.replace(/\.test\.ts$/, "")
+	const status = NOT_THE_CORE[name] ? [`status = "skipped"`, `reason = ${q(NOT_THE_CORE[name])}`] : LATER[name] ? [`status = "pending"`, `reason = ${q(LATER[name])}`] : [`status = "ready"`]
 	emit("[[scenario]]", `id = ${q("U-" + name)}`, `family = "upstream-test"`, `runner = "vitest"`, `source = ${q("packages/durable/test/" + f)}`, `sha256 = ${q(sha("packages/durable/test/" + f))}`,
-		`owner = ${q("dcore-" + U[name])}`, `levels = ["tests"]`, ...(NOT_THE_CORE[name] ? [`status = "skipped"`, `reason = ${q(NOT_THE_CORE[name])}`] : [`status = "ready"`]), ...(REAL_TIME[name] ?? []), ...(MEASURED[name] ?? []))
+		`owner = ${q("dcore-" + U[name])}`, `levels = ["tests"]`, ...status, ...(REAL_TIME[name] ?? []), ...(MEASURED[name] ?? []))
 }
 emit("[[scenario]]", `id = "SC"`, `family = "storage-conformance"`, `runner = "storage-conformance"`, `source = "packages/durable/src/testing/storage-conformance.ts"`, `sha256 = ${q(sha("packages/durable/src/testing/storage-conformance.ts"))}`,
-	`owner = "dcore-store"`, `about = "the core's write encoder wrapped as a Storage passes the upstream storage conformance suite (CONTRACT 3.10): the suite registered by memory-storage, jsonl-storage, sqlite-storage, sqlite-cloudflare, sqlite-facade and indexeddb-storage"`, `levels = ["tests"]`, `status = "ready"`)
+	`owner = "dcore-store"`, `about = "the core's write encoder wrapped as a Storage passes the upstream storage conformance suite (CONTRACT 3.10): the suite registered by memory-storage, jsonl-storage, sqlite-storage, sqlite-cloudflare, sqlite-facade and indexeddb-storage"`, `levels = ["tests"]`,
+	`status = "pending"`, `reason = ${q(LATER["SC"])}`)
 emit("[[scenario]]", `id = "I"`, `family = "interop"`, `runner = "interop"`, `source = "durable/interop/scenario.mjs"`, `owner = "dcore-host"`,
 	`about = "documents, a task-starting tool, a fork with init, compaction and a reset, then the Go port reads the store"`, `levels = ["store", "commit", "output", "order"]`, `status = "ready"`)
 // F: differential ordering. Each seed draws a random schedule of parallel tools, hooks, observers and inbox arrivals
@@ -160,6 +184,12 @@ for (const profile of ["gate", "node"]) for (const seed of [...Array.from({ leng
 for (const profile of ["gate", "node"]) {
 	emit("[[scenario]]", `id = ${q(`F-ticks-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/client-ticks.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
 		`about = ${q(`microtask passes each client call spends (submit, wait, entries, inspect, abort) on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
+}
+// F-ticks-seq: the sequence of durable/core/host/cf/test/ticks.test.ts (scenarios/ticks-sequence.mjs): the passes of inspect, conversation, submit, wait, entries, getTask, status, submission and snapshot, whose
+// numbers the test pins; Pi's own are the reference run of this row.
+for (const profile of ["gate", "node"]) {
+	emit("[[scenario]]", `id = ${q(`F-ticks-seq-${profile}`)}`, `family = "differential"`, `runner = "diff"`, `source = "durable/contract/scenarios/ticks-sequence.mjs"`, `seed = 0`, `profile = ${q(profile)}`, `owner = "dcore-host"`,
+		`about = ${q(`microtask passes of the calls of the cf host's ticks.test.ts sequence (inspect, conversation, submit, wait, entries, getTask, status, submission, snapshot) on the ${profile} storage profile`)}`, `levels = ["store", "commit", "context", "output", "order"]`, `status = "ready"`)
 }
 // F-ticks-tools: the pass at which each of three parallel tool calls runs its beforeTool hook, `execute`, return and afterTool hook
 // (scenarios/tool-start-ticks.mjs): the gap between two calls' hooks decides whose hook wait starts first (F-gate seeds 26, 61, 67, 77).

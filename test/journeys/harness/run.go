@@ -409,6 +409,30 @@ func (c *Run) Say(text string) {
 	c.Key("Enter")
 }
 
+// SayNextRead types text and presses Enter right behind it, as the product's next terminal read. Say sends the two as consecutive tmux commands, and tmux can hand both to the pty in one write, which a product reads at once: its keys then all see the editor before the menu the text opens, and Enter submits, in Pi as in PiG. The first output the product writes after the text shows that it has read the text, so the Enter that follows is a read of its own, sent as soon as the notification arrives.
+func (c *Run) SayNextRead(text string) {
+	before := c.T.Outputs()
+	c.Type(text)
+	desc := fmt.Sprintf("the first output after typing %q", truncate(text, 40))
+	quiet := time.NewTimer(c.scaled(hangQuiet))
+	defer quiet.Stop()
+	start := time.Now()
+	for c.T.Outputs() <= before {
+		changed := c.T.Changed()
+		if c.T.Outputs() > before {
+			break
+		}
+		select {
+		case <-changed:
+		case <-c.T.Exited():
+			c.fail("exit", "process exited while waiting for %s (exit %s)", desc, c.exitText())
+		case <-quiet.C:
+			c.hang(desc, fmt.Sprintf("no terminal output for %s", c.scaled(hangQuiet)), time.Since(start))
+		}
+	}
+	c.Key("Enter")
+}
+
 // Type types literal text.
 func (c *Run) Type(text string) {
 	if err := c.T.SendText(text); err != nil {

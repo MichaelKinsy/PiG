@@ -5,10 +5,12 @@ package harness
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/storage"
@@ -212,8 +214,22 @@ func (s *controlledStorage) Close(ctx context.Context) error {
 	return s.closeFailure
 }
 
-// documentChanges returns the document changes among the changes of a publication.
-func documentChanges(publication []durable.CommitChange) []durable.DocumentChange {
+// documentChanges returns the document changes among the changes of a publication: durable.DocumentChange (a creation or
+// update) and durable.DocumentRetireChange (a retirement), in order; documentValues keeps only the former.
+func documentChanges(publication []durable.CommitChange) []durable.DocumentCommitChange {
+	var changes []durable.DocumentCommitChange
+	for _, change := range publication {
+		switch change.(type) {
+		case durable.DocumentChange, durable.DocumentRetireChange:
+			changes = append(changes, change.(durable.DocumentCommitChange))
+		}
+	}
+	return changes
+}
+
+// documentValues returns the document changes of a publication that carry a value: creations and updates, no retirements
+// (session-support.ts documentValues).
+func documentValues(publication []durable.CommitChange) []durable.DocumentChange {
 	var changes []durable.DocumentChange
 	for _, change := range publication {
 		if document, ok := change.(durable.DocumentChange); ok {
@@ -223,8 +239,31 @@ func documentChanges(publication []durable.CommitChange) []durable.DocumentChang
 	return changes
 }
 
-// observeCommits observes every commit as memory adopts it, deferred ones before they are stored, as views and document
-// watches do; SubscribeCommits sees only what was stored (session-support.ts observeCommits).
-func observeCommits(harness Harness, listener func(context.Context, session.ObservedCommit)) func() {
-	return harness.(*harnessImpl).ObserveCommits(listener)
+// followCommits follows every commit as memory adopts it, deferred ones before they are stored, as views and document
+// watches do; ObserveCommits sees only what was stored (session-support.ts followCommits).
+func followCommits(harness Harness, listener func(context.Context, session.ObservedCommit)) func() {
+	return harness.(*harnessImpl).FollowCommits(listener)
+}
+
+// commitsObserver is a CommitObserver that runs advance for each publication and ignores the end (session-support.ts
+// openTestSession's observer).
+type commitsObserver struct {
+	advance func(context.Context, durable.CommitPublication)
+}
+
+func (observer commitsObserver) Advance(ctx context.Context, publication durable.CommitPublication) {
+	observer.advance(ctx, publication)
+}
+
+func (commitsObserver) End(durable.WatchEnd) {}
+
+// onValue is a watch listener for value calls: Durable's watches never send a failed call (their failures end them), so
+// one here fails the listener, which ends the watch listener_error (session-support.ts onValue).
+func onValue[T any](listener func(context.Context, chord.WatchCall[T]) error) func(context.Context, chord.WatchCall[T]) error {
+	return func(ctx context.Context, call chord.WatchCall[T]) error {
+		if call.Kind != chord.WatchCallValue {
+			return fmt.Errorf("unexpected %v watch call", call.Kind)
+		}
+		return listener(ctx, call)
+	}
 }

@@ -19,7 +19,6 @@ func TestAdvanceViewFollowsOnlyTheMountedIncarnation(t *testing.T) {
 	const conversation = durable.ConversationId(7)
 	const mountedID, otherID = durable.DocumentId(10), durable.DocumentId(11)
 	kind := LiveDoc.AnyDefinition().Kind
-	version := func(v int) *int { return &v }
 	newMount := func() *viewMount {
 		document := delta.JsonObjectOf("tools", []any{"a"})
 		return &viewMount{
@@ -27,14 +26,21 @@ func TestAdvanceViewFollowsOnlyTheMountedIncarnation(t *testing.T) {
 			incarnations: map[string]docIncarnation{kind: {id: mountedID, version: 1}},
 		}
 	}
-	change := func(id durable.DocumentId, v *int, value durable.JsonObject, ops ...durable.Op) session.ObservedCommit {
+	change := func(id durable.DocumentId, version int, value durable.JsonObject, ops ...durable.Op) session.ObservedCommit {
 		owner := conversation
 		return session.ObservedCommit{Seq: 2, Changes: []durable.CommitChange{durable.DocumentChange{
 			Record:         durable.DocumentRecord{Id: id, Kind: kind},
 			ConversationId: &owner,
-			Version:        v,
+			Version:        version,
 			Value:          value,
 			Ops:            ops,
+		}}}
+	}
+	retire := func(id durable.DocumentId) session.ObservedCommit {
+		owner := conversation
+		return session.ObservedCommit{Seq: 2, Changes: []durable.CommitChange{durable.DocumentRetireChange{
+			Record:         durable.DocumentRecord{Id: id, Kind: kind},
+			ConversationId: &owner,
 		}}}
 	}
 	setTools := durable.Op{"s", []any{"tools"}, []any{"b"}}
@@ -47,34 +53,34 @@ func TestAdvanceViewFollowsOnlyTheMountedIncarnation(t *testing.T) {
 	}{
 		{
 			name:        "a retirement of another incarnation leaves the mounted document",
-			publication: change(otherID, nil, nil),
+			publication: retire(otherID),
 			ops:         nil,
 			docs:        map[string]any{kind: map[string]any{"tools": []any{"a"}}},
 			incarnation: &docIncarnation{id: mountedID, version: 1},
 		},
 		{
 			name:        "a retirement of the mounted incarnation unmounts it",
-			publication: change(mountedID, nil, nil),
+			publication: retire(mountedID),
 			ops:         []any{[]any{"d", []any{"docs", kind}}},
 			docs:        map[string]any{},
 		},
 		{
 			name:        "an update of another incarnation at the mounted version is set whole",
-			publication: change(otherID, version(1), delta.JsonObjectOf("tools", []any{"c"}), setTools),
+			publication: change(otherID, 1, delta.JsonObjectOf("tools", []any{"c"}), setTools),
 			ops:         []any{[]any{"s", []any{"docs", kind}, map[string]any{"tools": []any{"c"}}}},
 			docs:        map[string]any{kind: map[string]any{"tools": []any{"c"}}},
 			incarnation: &docIncarnation{id: otherID, version: 1},
 		},
 		{
 			name:        "an update of the mounted incarnation at another version is set whole",
-			publication: change(mountedID, version(2), delta.JsonObjectOf("tools", []any{"c"}), setTools),
+			publication: change(mountedID, 2, delta.JsonObjectOf("tools", []any{"c"}), setTools),
 			ops:         []any{[]any{"s", []any{"docs", kind}, map[string]any{"tools": []any{"c"}}}},
 			docs:        map[string]any{kind: map[string]any{"tools": []any{"c"}}},
 			incarnation: &docIncarnation{id: mountedID, version: 2},
 		},
 		{
 			name:        "an update of the mounted incarnation and version applies its ops",
-			publication: change(mountedID, version(1), delta.JsonObjectOf("tools", []any{"c"}), setTools),
+			publication: change(mountedID, 1, delta.JsonObjectOf("tools", []any{"c"}), setTools),
 			ops:         []any{[]any{"s", []any{"docs", kind, "tools"}, []any{"b"}}},
 			docs:        map[string]any{kind: map[string]any{"tools": []any{"b"}}},
 			incarnation: &docIncarnation{id: mountedID, version: 1},
@@ -84,7 +90,7 @@ func TestAdvanceViewFollowsOnlyTheMountedIncarnation(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mount := newMount()
 			var advanced []durable.Op
-			observer := &ViewObserver{Advance: func(_ context.Context, change chord.WatchChange[ConversationView]) { advanced = change.Ops }}
+			observer := &ViewObserver{Advance: func(_ context.Context, call chord.WatchCall[ConversationView]) { advanced = call.Ops }}
 			windowed := &windowedObserver{min: 50, max: 100, value: ConversationView{Docs: mount.docs}, observer: observer}
 			advanceView(t.Context(), conversation, mount, []*windowedObserver{windowed}, tc.publication, func(err error) { t.Errorf("observer reported %v", err) })
 			expectSameJSON(t, advanced, tc.ops)

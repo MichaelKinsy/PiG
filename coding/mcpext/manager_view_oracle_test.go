@@ -40,7 +40,6 @@ type item struct {
 	Description string `json:"description,omitempty"`
 }
 
-// The page keys are left out: SelectList pages the selection under D155 where Pi 1.1.0 ignores them.
 // The /mcp manager view (mcp/ui.js) against Pi's component: menus (details, error, empty message, more items than fit, long and wide labels and descriptions, initial selection, arrow-key moves with wraparound),
 // the status screen with and without a cancel hint, and the sign-in screen with typed input, rendered at several widths. Rows are compared byte for byte, colours included.
 func TestMcpManagerViewMatchesPi(t *testing.T) {
@@ -52,7 +51,7 @@ func TestMcpManagerViewMatchesPi(t *testing.T) {
 		widths := []int{20, 40, 80, 120}
 		keys := []string{}
 		for range rng.Intn(5) {
-			keys = append(keys, pick("\x1b[B", "\x1b[A", "\x1b[B", "j"))
+			keys = append(keys, pick("\x1b[B", "\x1b[A", "\x1b[B", "\x1b[5~", "\x1b[6~", "j"))
 		}
 		switch rng.Intn(5) {
 		case 0, 1, 2:

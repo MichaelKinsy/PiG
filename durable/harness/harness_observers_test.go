@@ -52,10 +52,10 @@ func observersWriter(name string, gate *deferredGate, written func()) stepTask {
 
 // observedCall is one call of a recorded observer: an advance with whether it ran inside the storage's adopt, or the end.
 type observedCall[T any] struct {
-	advance   *chord.WatchChange[T]
-	adopting  bool
-	end       bool
-	endFailed error
+	advance  *chord.WatchCall[T]
+	adopting bool
+	end      bool
+	endWith  durable.WatchEnd
 }
 
 // callRecorder is an observer recording each call and whether it ran inside the storage's adopt.
@@ -63,26 +63,26 @@ type callRecorder[T any] struct {
 	adopting func() bool
 	mu       sync.Mutex
 	calls    []observedCall[T]
-	onEnd    func(failure error)
+	onEnd    func(end durable.WatchEnd)
 }
 
 func newCallRecorder[T any](store *controlledStorage) *callRecorder[T] {
 	return &callRecorder[T]{adopting: store.adopting.Load}
 }
 
-func (recorder *callRecorder[T]) Advance(_ context.Context, change chord.WatchChange[T]) {
+func (recorder *callRecorder[T]) Advance(_ context.Context, change chord.WatchCall[T]) {
 	recorder.mu.Lock()
 	defer recorder.mu.Unlock()
 	recorder.calls = append(recorder.calls, observedCall[T]{advance: &change, adopting: recorder.adopting()})
 }
 
-func (recorder *callRecorder[T]) End(failure error) {
+func (recorder *callRecorder[T]) End(end durable.WatchEnd) {
 	if recorder.onEnd != nil {
-		recorder.onEnd(failure)
+		recorder.onEnd(end)
 	}
 	recorder.mu.Lock()
 	defer recorder.mu.Unlock()
-	recorder.calls = append(recorder.calls, observedCall[T]{end: true, endFailed: failure})
+	recorder.calls = append(recorder.calls, observedCall[T]{end: true, endWith: end})
 }
 
 func (recorder *callRecorder[T]) all() []observedCall[T] {
@@ -148,8 +148,8 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		}
 		watch := must(root.Watch(testContext, nil))
 		var watchedMu sync.Mutex
-		var watched []chord.WatchChange[ConversationView]
-		watch.Start(func(_ context.Context, change chord.WatchChange[ConversationView]) error {
+		var watched []chord.WatchCall[ConversationView]
+		watch.Start(func(_ context.Context, change chord.WatchCall[ConversationView]) error {
 			watchedMu.Lock()
 			defer watchedMu.Unlock()
 			watched = append(watched, change)
@@ -161,7 +161,7 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 			t.Fatalf("view calls %d", len(calls))
 		}
 		call := calls[0]
-		if !call.adopting || call.advance.Retired || call.advance.Value.Entries[len(call.advance.Value.Entries)-1].Id != entry.Id {
+		if !call.adopting || call.advance.Kind != durable.WatchCallValue || call.advance.Retired || call.advance.Value.Entries[len(call.advance.Value.Entries)-1].Id != entry.Id {
 			t.Fatalf("view call %+v", call)
 		}
 		eventually(t, func() bool { watchedMu.Lock(); defer watchedMu.Unlock(); return len(watched) == 1 })
@@ -181,7 +181,7 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		}
 		must(watch.Stop())
 		mustClose(t, harness)
-		if got := graph.all(); len(got) != 1 || !got[0].end || got[0].endFailed != nil {
+		if got := graph.all(); len(got) != 1 || !got[0].end || got[0].endWith != (durable.WatchEnd{Kind: durable.WatchEnded}) {
 			t.Fatalf("graph calls %+v", got)
 		}
 	})
@@ -201,7 +201,7 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		}
 		<-opened.harness.Closed()
 		got := graph.all()
-		if len(got) != 1 || !got[0].end || !errors.Is(got[0].endFailed, failure) {
+		if len(got) != 1 || !got[0].end || got[0].endWith.Kind != durable.WatchFailed || !errors.Is(got[0].endWith.Error, failure) {
 			t.Fatalf("graph calls %+v", got)
 		}
 	})
@@ -212,10 +212,10 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		harness, root := opened.harness, opened.root
 		bug := errors.New("observer bug")
 		var endsMu sync.Mutex
-		var ends []error
+		var ends []durable.WatchEnd
 		must(harness.ObserveConversation(testContext, root.Id(), observerFuncs[ConversationView]{
-			advance: func(context.Context, chord.WatchChange[ConversationView]) { panic(bug) },
-			end:     func(failure error) { endsMu.Lock(); ends = append(ends, failure); endsMu.Unlock() },
+			advance: func(context.Context, chord.WatchCall[ConversationView]) { panic(bug) },
+			end:     func(end durable.WatchEnd) { endsMu.Lock(); ends = append(ends, end); endsMu.Unlock() },
 		}, nil))
 		healthy := newCallRecorder[ConversationView](store)
 		must(harness.ObserveConversation(testContext, root.Id(), healthy, nil))
@@ -224,11 +224,11 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		if reports := opened.reports.all(); len(reports) != 1 || !errors.Is(reports[0], bug) {
 			t.Fatalf("reports %v", reports)
 		}
-		if infos := opened.reports.allInfos(); !reflect.DeepEqual(infos, []durable.ReportInfo{{Type: durable.ReportListenerError}}) {
+		if infos := opened.reports.allInfos(); !reflect.DeepEqual(infos, []durable.ReportInfo{{Kind: durable.ReportListenerError}}) {
 			t.Fatalf("infos %v", infos)
 		}
 		endsMu.Lock()
-		if len(ends) != 1 || !errors.Is(ends[0], bug) {
+		if len(ends) != 1 || ends[0].Kind != durable.WatchListenerError || !errors.Is(ends[0].Error, bug) {
 			t.Fatalf("ends %v", ends)
 		}
 		endsMu.Unlock()
@@ -241,7 +241,7 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		if len(ends) != 1 {
 			t.Fatalf("ends after close %v", ends)
 		}
-		if end := harness.End(); end.Reason != durable.SessionEndClosed {
+		if end := harness.End(); end.Kind != durable.SessionEndClosed {
 			t.Fatalf("end %+v", end)
 		}
 	})
@@ -303,7 +303,7 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		id := tkStart(t, opened.root, missing.Erased())
 		key := taskKey(id)
 		calls := graph.all()
-		if len(calls) != 1 || !calls[0].adopting || calls[0].advance.Retired || calls[0].advance.Value.Tasks[key].Blocked != durable.BlockedMissingTask {
+		if len(calls) != 1 || !calls[0].adopting || calls[0].advance.Kind != durable.WatchCallValue || calls[0].advance.Retired || calls[0].advance.Value.Tasks[key].Blocked != durable.BlockedMissingTask {
 			t.Fatalf("calls %+v", calls)
 		}
 		first := calls[0].advance
@@ -318,7 +318,7 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		// The registry change re-derives the reason on the line, with no commit and outside the storage's adopt.
 		second := graph.all()[1]
 		wantOps := []durable.Op{{"d", []any{"tasks", key, "blocked"}}}
-		if second.adopting || second.advance.Retired || !reflect.DeepEqual(second.advance.Ops, wantOps) || second.advance.Value.Tasks[key].Blocked != "" {
+		if second.adopting || second.advance.Kind != durable.WatchCallValue || second.advance.Retired || !reflect.DeepEqual(second.advance.Ops, wantOps) || second.advance.Value.Tasks[key].Blocked != "" {
 			t.Fatalf("second call %+v", second)
 		}
 		harness.Resume()
@@ -339,8 +339,8 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 		}
 		// attach attaches observers only the Harness references; detach says whether to detach them before returning.
 		attach := func(detach bool) attached {
-			view := &observerFuncs[ConversationView]{advance: func(context.Context, chord.WatchChange[ConversationView]) {}, end: func(error) {}}
-			graph := &observerFuncs[TaskGraph]{advance: func(context.Context, chord.WatchChange[TaskGraph]) {}, end: func(error) {}}
+			view := &observerFuncs[ConversationView]{advance: func(context.Context, chord.WatchCall[ConversationView]) {}, end: func(durable.WatchEnd) {}}
+			graph := &observerFuncs[TaskGraph]{advance: func(context.Context, chord.WatchCall[TaskGraph]) {}, end: func(durable.WatchEnd) {}}
 			viewObservation := must(harness.ObserveConversation(testContext, root.Id(), view, nil))
 			graphObservation := must(harness.ObserveTaskGraph(testContext, graph))
 			detachAll := func() { viewObservation.Detach(); graphObservation.Detach() }
@@ -370,14 +370,14 @@ func TestObserveConversationAndObserveTaskGraph(t *testing.T) {
 
 // observerFuncs is an Observer made of two functions.
 type observerFuncs[T any] struct {
-	advance func(ctx context.Context, change chord.WatchChange[T])
-	end     func(failure error)
+	advance func(ctx context.Context, change chord.WatchCall[T])
+	end     func(end durable.WatchEnd)
 }
 
-func (observer observerFuncs[T]) Advance(ctx context.Context, change chord.WatchChange[T]) {
+func (observer observerFuncs[T]) Advance(ctx context.Context, change chord.WatchCall[T]) {
 	observer.advance(ctx, change)
 }
-func (observer observerFuncs[T]) End(failure error) { observer.end(failure) }
+func (observer observerFuncs[T]) End(end durable.WatchEnd) { observer.end(end) }
 
 func TestTaskDocuments(t *testing.T) {
 	watchProgress := func(t *testing.T, opened observersWriterOpened) durable.DocumentWatch[observersProgressState] {
@@ -395,8 +395,8 @@ func TestTaskDocuments(t *testing.T) {
 			t.Fatalf("value %+v", watch.Value())
 		}
 		var mu sync.Mutex
-		var changes []chord.WatchChange[observersProgressState]
-		watch.Start(func(_ context.Context, change chord.WatchChange[observersProgressState]) error {
+		var changes []chord.WatchCall[observersProgressState]
+		watch.Start(func(_ context.Context, change chord.WatchCall[observersProgressState]) error {
 			mu.Lock()
 			defer mu.Unlock()
 			changes = append(changes, change)
@@ -405,11 +405,11 @@ func TestTaskDocuments(t *testing.T) {
 		opened.finish()
 		must(opened.harness.WaitForTask(testContext, opened.id))
 		<-watch.Closed()
-		if end := watch.End(); end.Reason != chord.WatchEnded {
+		if end := watch.End(); end.Kind != chord.WatchEnded {
 			t.Fatalf("end %+v", end)
 		}
 		mu.Lock()
-		if len(changes) != 1 || !changes[0].Retired || len(changes[0].Ops) != 0 || !reflect.DeepEqual(changes[0].Value, observersProgressState{Lines: []string{"started"}}) || !reflect.DeepEqual(changes[0].Value, watch.Value()) {
+		if len(changes) != 1 || changes[0].Kind != chord.WatchCallValue || !changes[0].Retired || len(changes[0].Ops) != 0 || !reflect.DeepEqual(changes[0].Value, observersProgressState{Lines: []string{"started"}}) || !reflect.DeepEqual(changes[0].Value, watch.Value()) {
 			t.Fatalf("changes %+v", changes)
 		}
 		mu.Unlock()
@@ -424,12 +424,12 @@ func TestTaskDocuments(t *testing.T) {
 		opened := openObserversWriter(t)
 		progress := newCallRecorder[observersProgressState](opened.store)
 		var endedAdopting bool
-		progress.onEnd = func(error) { endedAdopting = opened.store.adopting.Load() }
+		progress.onEnd = func(durable.WatchEnd) { endedAdopting = opened.store.adopting.Load() }
 		must(durable.ObserveDoc(testContext, opened.harness, observersProgress, progress, opened.id))
 		opened.finish()
 		must(opened.harness.WaitForTask(testContext, opened.id))
 		calls := progress.all()
-		if len(calls) != 2 || calls[0].advance == nil || !calls[0].adopting || !calls[0].advance.Retired || len(calls[0].advance.Ops) != 0 || !reflect.DeepEqual(calls[0].advance.Value, observersProgressState{Lines: []string{"started"}}) || !calls[1].end || calls[1].endFailed != nil {
+		if len(calls) != 2 || calls[0].advance == nil || calls[0].advance.Kind != durable.WatchCallValue || !calls[0].adopting || !calls[0].advance.Retired || len(calls[0].advance.Ops) != 0 || !reflect.DeepEqual(calls[0].advance.Value, observersProgressState{Lines: []string{"started"}}) || !calls[1].end || calls[1].endWith != (durable.WatchEnd{Kind: durable.WatchEnded}) {
 			t.Fatalf("calls %+v", calls)
 		}
 		if !endedAdopting {
@@ -446,7 +446,7 @@ func TestTaskDocuments(t *testing.T) {
 		// acquire starts a watch of the task's document, which only the Harness references.
 		acquire := func() weak.Pointer[chord.Watch[durable.JsonObject]] {
 			watch := must(opened.harness.WatchDocErased(testContext, observersProgress, opened.id))
-			watch.Start(func(context.Context, chord.WatchChange[durable.JsonObject]) error { return nil })
+			watch.Start(func(context.Context, chord.WatchCall[durable.JsonObject]) error { return nil })
 			return weak.Make(watch.(*chord.Watch[durable.JsonObject]))
 		}
 		watch := acquire()
@@ -486,11 +486,11 @@ func TestTaskDocuments(t *testing.T) {
 		watch, harness := acquire()
 		// Closed at the Harness's close, the pending retirement dropped, as for every watch.
 		<-watch.Closed()
-		if end := watch.End(); end.Reason != chord.WatchEnded {
+		if end := watch.End(); end.Kind != chord.WatchEnded {
 			t.Fatalf("end %+v", end)
 		}
 		tkExpectPanic(t, "Watch is stopped", func() {
-			watch.Start(func(context.Context, chord.WatchChange[observersProgressState]) error { return nil })
+			watch.Start(func(context.Context, chord.WatchCall[observersProgressState]) error { return nil })
 		})
 		collectGarbage()
 		if harness.Value() != nil {
@@ -512,7 +512,7 @@ func TestTaskDocuments(t *testing.T) {
 			t.Fatalf("commit error %v", err)
 		}
 		<-watch.Closed()
-		if end := watch.End(); end.Reason != chord.WatchFailed || !errors.Is(end.Error, failure) {
+		if end := watch.End(); end.Kind != chord.WatchFailed || !errors.Is(end.Error, failure) {
 			t.Fatalf("end %+v", end)
 		}
 	})
@@ -523,7 +523,7 @@ func TestTaskDocuments(t *testing.T) {
 		entered, release := deferred(), deferred()
 		var mu sync.Mutex
 		var values []observersProgressState
-		watch.Start(func(_ context.Context, change chord.WatchChange[observersProgressState]) error {
+		watch.Start(func(_ context.Context, change chord.WatchCall[observersProgressState]) error {
 			mu.Lock()
 			values = append(values, change.Value)
 			mu.Unlock()
@@ -553,7 +553,7 @@ func TestTaskDocuments(t *testing.T) {
 			t.Fatalf("commit error %v", err)
 		}
 		<-watch.Closed()
-		if end := watch.End(); end.Reason != chord.WatchFailed || !errors.Is(end.Error, failure) {
+		if end := watch.End(); end.Kind != chord.WatchFailed || !errors.Is(end.Error, failure) {
 			t.Fatalf("end %+v", end)
 		}
 		release.resolve()
@@ -571,7 +571,7 @@ func TestTaskDocuments(t *testing.T) {
 		entered, release := deferred(), deferred()
 		var returned bool
 		var mu sync.Mutex
-		watch.Start(func(context.Context, chord.WatchChange[observersProgressState]) error {
+		watch.Start(func(context.Context, chord.WatchCall[observersProgressState]) error {
 			entered.resolve()
 			err := release.wait(testContext)
 			mu.Lock()
@@ -594,7 +594,7 @@ func TestTaskDocuments(t *testing.T) {
 		}
 		release.resolve()
 		<-watch.Closed()
-		if end := watch.End(); end.Reason != chord.WatchEnded {
+		if end := watch.End(); end.Kind != chord.WatchEnded {
 			t.Fatalf("end %+v", end)
 		}
 		mu.Lock()
@@ -607,12 +607,12 @@ func TestTaskDocuments(t *testing.T) {
 
 	t.Run("hands listeners changes that keep nothing of the Harness", func(t *testing.T) {
 		// acquire watches a task document until its task ends, keeping every change, then closes the Harness.
-		acquire := func() ([]chord.WatchChange[observersProgressState], weak.Pointer[harnessImpl]) {
+		acquire := func() ([]chord.WatchCall[observersProgressState], weak.Pointer[harnessImpl]) {
 			opened := openObserversWriter(t)
 			watch := watchProgress(t, opened)
 			var mu sync.Mutex
-			var changes []chord.WatchChange[observersProgressState]
-			watch.Start(func(_ context.Context, change chord.WatchChange[observersProgressState]) error {
+			var changes []chord.WatchCall[observersProgressState]
+			watch.Start(func(_ context.Context, change chord.WatchCall[observersProgressState]) error {
 				mu.Lock()
 				defer mu.Unlock()
 				changes = append(changes, change)
@@ -631,13 +631,13 @@ func TestTaskDocuments(t *testing.T) {
 			opened.finish()
 			must(opened.harness.WaitForTask(testContext, opened.id))
 			<-watch.Closed()
-			if end := watch.End(); end.Reason != chord.WatchEnded {
+			if end := watch.End(); end.Kind != chord.WatchEnded {
 				t.Fatalf("end %+v", end)
 			}
 			mustClose(t, opened.harness)
 			mu.Lock()
 			defer mu.Unlock()
-			return append([]chord.WatchChange[observersProgressState](nil), changes...), weak.Make(opened.harness.(*harnessImpl))
+			return append([]chord.WatchCall[observersProgressState](nil), changes...), weak.Make(opened.harness.(*harnessImpl))
 		}
 		changes, harness := acquire()
 		if len(changes) != 2 {

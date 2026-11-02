@@ -39,6 +39,7 @@ Product distributions may contribute additional top-level or nested command path
 | `pig remove <source> [-l]` | Remove a package from settings. `pig uninstall` is an alias. |
 | `pig update [self\|pig\|<source>] [--self\|--extensions\|--models\|--all] [--extension <source>] [--force]` | Bare `pig update` updates the pig binary, as `pi update` does. `<source>` (or `--extension <source>`) updates one package, `--extensions` updates every package, `--models` refreshes the model catalogs, and `--all` updates packages and then pig. `--force` reinstalls pig even when it is the latest version. |
 | `pig install <path> --validate-only [--json]` | Validate without installing; emits structured diagnostics. |
+| `pig install --validate-only [--json]` | With no source, check that every configured local Package path resolves; exit 1 and name each missing one (D216). |
 | `pig install --validate-only --set "<p1>,<p2>"` | Validate a piglet-style extension set. |
 | `pig extension init <path> [--name <matching-name>] [--lang go\|python\|rust\|lisp] [--login] [--isolated] [--force] [--json]` | Scaffold an extension that resolves the staged SDK offline (Go default). `--login` scaffolds a Go login factory with standard PiG art. |
 | `pig extension upgrade [<name\|path>...] [--all] [--dry-run] [--summary]` | Rewrite Go extensions written for an older SDK with the SDK's tested rules: back up, show a diff, rebuild, report per extension (D109). See [Upgrade a Go extension](extensions.md#upgrade-a-go-extension-written-for-an-older-sdk). |
@@ -70,7 +71,7 @@ Product distributions may contribute additional top-level or nested command path
 | `pig mcp add\|remove\|list\|login\|logout` | Configure and check MCP servers without starting a session. See [MCP servers](mcp.md#mcp-commands). |
 | `pig docs [sync\|path\|list\|show <name>]` | Materialize and read the documentation bundled with Stock PiG. |
 
-`pig install` accepts one source. Missing sources and unknown options show the ordinary single-source usage. Use `pig install --help` for the separate multi-source `--validate-only` forms (D28).
+`pig install` accepts one source. Missing sources and unknown options show the ordinary single-source usage, except that `--validate-only` with no source checks the configured local Packages (D216). Use `pig install --help` for the separate multi-source `--validate-only` forms (D28).
 
 ## Options
 
@@ -82,10 +83,10 @@ These options apply to `pig [options] [prompt]`. Run `pig --help` for the full l
 | `--thinking <level>` | Set the thinking level: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. |
 | `--system-prompt <text>` | Replace the system prompt. |
 | `--append-system-prompt <text>` | Append text or a file's contents to the system prompt. Repeat it to append more. |
-| `--continue`, `-c` | Continue the previous session. |
-| `--resume`, `-r` | Select a session to resume. |
-| `--session <path\|id>` | Use a session file or a partial session UUID. |
-| `--fork <path\|id>` | Fork a session file or partial UUID into a new session. |
+| `--continue`, `-c` | Continue the most recent session for the current directory. |
+| `--resume`, `-r` | Pick a session to resume. |
+| `--session <path\|id>` | Open a session by file path or full/partial ID. |
+| `--fork <path\|id>` | Fork a session by file path or full/partial ID into the current directory. |
 | `--session-dir <dir>` | Directory for session storage and lookup. |
 | `--no-session` | Do not save the session. |
 | `--name`, `-n <name>` | Set the session display name. |
@@ -172,6 +173,18 @@ To keep the default set without one tool, exclude it:
 ```bash
 pig --exclude-tools bash
 ```
+
+## Custom update command
+
+When a wrapper or another package manager provides PiG, set `PI_SELF_UPDATE_COMMAND` (or `PIG_SELF_UPDATE_COMMAND`) so `pig update` runs its update command:
+
+```sh
+export PI_SELF_UPDATE_COMMAND="mise use -g npm:{packageName}@{version}"
+```
+
+`pig update` checks the signed release manifest first and runs the command only when the release is newer (or with `--force`), after printing the release note. `{packageName}`, `{version}` and `{installSpec}` (`{packageName}@{version}`) come from that release. The value is split on whitespace. For arguments with spaces, use the `selfUpdateCommand` setting in `~/.pig/agent/settings.json`, an argv array such as `["nix", "profile", "upgrade", "pig"]`. A project's settings file is never read for it.
+
+The configured command is your explicit choice of the one owner of the update. It replaces PiG's own tier selection (standalone replace, package manager, immutable Piglet Binary, container image) and never falls through to one of them. Without an update source there is no release to fill the placeholders from, so the command does not run. Exit code 0 does not prove an update: `pig update` prints `Updated pig from X to Y` when `pig --version` reports Y (from the replaced executable, else from `PATH`), and otherwise warns with the version it found.
 
 ## `pig docs`
 

@@ -33,12 +33,13 @@ test("negative control: a different commit (seq or tables) and a missing token a
 })
 
 const traces = join(import.meta.dirname, "..", "traces")
-const rows = loadCorpus().scenario.filter(r => (r.runner === "example" || r.runner === "interop") && r.status !== "skipped").map(r => r.id)
+// A pending row (E15 waits for a key, E32-E37 for the later lanes of the follow) has no reference run, so no golden trace until it is ready.
+const rows = loadCorpus().scenario.filter(r => (r.runner === "example" || r.runner === "interop") && r.status === "ready").map(r => r.id)
 
 test("every program row has a golden Pi interleaving, as parseable tokens", () => {
 	for (const id of rows) {
 		const file = join(traces, `${id}.pi.jsonl`)
-		if (!existsSync(file)) { assert.ok(["E15"].includes(id), `${id} has no golden trace: run node cli/trace.mjs record ${id}`); continue }
+		assert.ok(existsSync(file), `${id} has no golden trace: run node cli/trace.mjs record ${id}`)
 		const events = readFileSync(file, "utf8").split("\n").filter(Boolean).map(l => JSON.parse(l))
 		assert.ok(events.length > 0 && events.every(e => ["#", ">", "!"].includes(e.k)), `${id}: tokens`)
 		// E00-E05 drive the Session kernel, not a Harness: their trace is commits only.

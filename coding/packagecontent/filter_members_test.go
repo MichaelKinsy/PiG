@@ -3,13 +3,14 @@ package packagecontent
 import (
 	"fmt"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
 )
 
-// filterThrow is a pattern minimatch cannot compile: a POSIX class makes the RegExp use the u flag, which rejects the escaped ",".
-const filterThrow = "[[:alpha:]]*,md"
+// filterThrow is a pattern minimatch 11.0.3 cannot compile: assertValidPattern throws a TypeError for one over 65,536 UTF-16 units. (Through minimatch 10.2.6 a POSIX class made the segment's RegExp use the u flag, which rejects an escaped ",": "[[:alpha:]]*,md". The 11.0.3 Matcher builds no RegExp from the segment, so that pattern now compiles.)
+var filterThrow = strings.Repeat("a", 65537)
 
 // Pi's applyPackageFilter matches each member's absolute path with the Package root as the base (package-manager.ts:2280-2306), and matchesAnyPattern tries the path relative to that base, the base name and the whole path, and for a SKILL.md also its directory in those three forms (:661-685).
 func TestMemberFiltersMatchPisCandidates(t *testing.T) {
@@ -62,9 +63,9 @@ func TestMinimatchFilterPatternLength(t *testing.T) {
 	}
 }
 
-// On Windows minimatch treats the "?" of a "//?/<drive>:" root as a literal, so the pattern does not match another UNC host; any other "?" stays magic. Recorded with Pi's npm minimatch 10.2.6 on Windows.
+// On Windows minimatch treats the "?" of a "//?/<drive>:" root as a literal, so the pattern does not match another UNC host; any other "?" stays magic. Recorded with Pi's npm minimatch 10.2.6 on Windows and re-checked with 11.0.3 (platform: win32), which gives the same.
 func TestMinimatchFilterWindowsUNCRoots(t *testing.T) {
-	if !globIsWindows {
+	if runtime.GOOS != "windows" {
 		t.Skip("minimatch keeps the ? of a //?/ root literal only on Windows")
 	}
 	for _, tc := range []struct {
@@ -87,7 +88,7 @@ func TestMinimatchFilterWindowsUNCRoots(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := m.match(tc.path); got != tc.want {
+		if got := m.Match(tc.path); got != tc.want {
 			t.Errorf("minimatch(%q, %q) = %t, want %t", tc.path, tc.pattern, got, tc.want)
 		}
 	}

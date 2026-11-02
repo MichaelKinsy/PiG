@@ -30,7 +30,7 @@ func TestReservationPassTakesItsLinePositionInThePublishingTurn(t *testing.T) {
 		var commits []string
 		var started atomic.Bool
 		secondErr := make(chan error, 1)
-		opened.harness.SubscribeCommits(func(_ context.Context, publication durable.CommitPublication) {
+		opened.harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
 			var writes []string
 			for _, change := range publication.Changes {
 				if write, ok := change.(durable.TaskWrite); ok && write.Value.State.Status != durable.TaskTerminal {
@@ -60,7 +60,7 @@ func TestReservationPassTakesItsLinePositionInThePublishingTurn(t *testing.T) {
 			for impl.LineJobs() <= jobs {
 				flush()
 			}
-		})
+		}})
 		opened.harness.Resume()
 		// Resume's own pass has ended, so the creation below starts a pass of its own.
 		eventually(t, func() bool {

@@ -3,7 +3,7 @@ import { Agent, setDefaultStreamFn } from "../../pi-agent-core/index.js";
 import { clampThinkingLevel, streamSimple } from "../../pi-ai/sdk-bundle/compat.js";
 import { getAgentDir } from "../config.js";
 import { resolvePath } from "../utils/paths.js";
-import { AgentSession } from "./agent-session.js";
+import { AgentSession, markRuntimeStreamFunction } from "./agent-session.js";
 import { formatNoModelsAvailableMessage } from "./auth-guidance.js";
 import { CacheWarmer } from "./cache-warmer.js";
 import { getClientIdentity } from "./client-identity.js";
@@ -286,6 +286,8 @@ export async function createAgentSession(options = {}) {
         thinkingBudgets: settingsManager.getThinkingBudgets(),
         maxRetryDelayMs: settingsManager.getProviderRetrySettings().maxRetryDelayMs,
     });
+    // This stream resolves auth through modelRuntime, so summaries must not pre-resolve it (#11520).
+    markRuntimeStreamFunction(agent.streamFunction, modelRuntime);
     // Restore missing settings metadata for older sessions.
     if (hasExistingSession) {
         if (!hasThinkingEntry) {

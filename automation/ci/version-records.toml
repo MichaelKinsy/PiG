@@ -49,7 +49,6 @@ paths = [
   "docs/parity/markdown-discovery.md",
   "docs/parity/model-availability-task-ownership.md",
   "docs/parity/native-clipboard-linux.md",
-  "docs/parity/pending-tests-batches.md",
   "docs/parity/pending-tests-triage.md",
   "docs/parity/pt-nonhot-ext-cli-report.md",
   "docs/parity/resource-loader-test-review.md",

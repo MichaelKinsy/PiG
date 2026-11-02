@@ -73,7 +73,7 @@ const settle = () => new Promise(resolve => setTimeout(resolve, 1000))
 
 if (part === 1 || part === 2) {
 	const view = await root.watch(context)
-	view.start(({ value }) => { const live = value.docs["pi.live"]; marks.push([`view ${live?.run === undefined ? "idle" : live.generation?.message === undefined ? "run" : "streaming"} ${value.entries.length} entries`, passes]) })
+	view.start(call => { if (call.kind !== "value") return; const { value } = call; const live = value.docs["pi.live"]; marks.push([`view ${live?.run === undefined ? "idle" : live.generation?.message === undefined ? "run" : "streaming"} ${value.entries.length} entries`, passes]) })
 	for (const label of ["cold", "idle"]) {
 		marks.length = 0
 		start()

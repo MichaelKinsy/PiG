@@ -185,7 +185,8 @@ func TestPortWave10PackageCommandPaths(t *testing.T) {
 
 		packages := readPackageCommandPackages(t, filepath.Join(f.projectDir, ".pi", "settings.json"))
 		require.Len(t, packages, 1)
-		assert.Equal(t, packageCommandRealpath(t, f.packageDir), packageCommandRealpath(t, filepath.Join(f.projectDir, ".pi", packages[0])))
+		// pig divergence (D215): the absolute path is stored as typed, where Pi stores it relative to .pi.
+		assert.Equal(t, f.packageDir, packages[0])
 		assert.Equal(t, 0, code)
 	})
 

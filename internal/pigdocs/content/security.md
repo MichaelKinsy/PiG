@@ -108,6 +108,8 @@ The guarantees below hold for a Piglet Binary built with `build.closed: true`. A
 
 **No Piglet or ambient Resource selection at run time.** A closed Binary refuses `--piglet`, `PIG_PIGLET_PATH`, `PIG_PIGLET_NAME` and `--system-prompt`, and each refusal names `build.closed`. It loads no ambient extension or skill, even when its Piglet lists a discovery scope.
 
+**No extension or MCP server added at run time.** A closed Binary refuses `-e`/`--extension` (a path, `npm:` or `git:` source), `pig install`, `pig remove`, `pig update --extensions` and `pig mcp add`, and each refusal names the option, the Binary and `build.closed`. It ignores `settings.extensions` and the servers of the user and project `mcp.json`, and reports a notice. Only what its signed closure lists runs; an extension in the closure can still register MCP servers.
+
 **A fixed set of fused and packed extensions.** At startup the Binary checks that the fused and packed extensions that start have the names its component plan lists, no more and no fewer. This is a check of names. It does not pin `PATH` for tools or runtimes. Startup does not install a Package or download a component.
 
 **Tool ceilings.** The `tools` list of a Piglet, and the `tools` list of an extension entry, are a ceiling. The session tool registry admits a tool only when the ceiling, `--tools` and `--exclude-tools` all admit it. A tool outside the ceiling is not listed, is not active, and is not reachable by `codemode` or `tool_search`. A later `setActiveTools` call, a late registration, or a reload cannot bring it back. The ceiling does not filter the arguments, paths or output of a tool that it admits. A Piglet with no `extensions:` section keeps every MCP tool, and a tool of an extension that the Piglet does not name is kept.
@@ -121,7 +123,7 @@ The guarantees below hold for a Piglet Binary built with `build.closed: true`. A
 ## What a Piglet Binary does not guarantee
 
 - **It is not a sandbox.** A Binary runs as the user. The fused code shares the PiG process. The model can still run the tools that the ceiling leaves.
-- **It does not stop `-e`, `pig install` or MCP configuration.** A Binary loads an extension that the user names with `-e` (a path, `npm:` or `git:` source). A test Binary built without overlays loaded a `-e` extension and ran its code, and a closed Binary still accepts `-e`. A Binary also accepts the package commands, closed or not. A later release is planned to refuse `-e`, `pig install` and MCP configuration when `build.closed` is true. A Binary that keeps the `mcp` built-in loads the MCP servers of the user configuration and of a trusted project. A Binary fixes what it ships. It does not fix what a user adds. Strip `mcp` to remove MCP, and control the command line to control `-e`.
+- **An open Binary does not stop `-e`, `pig install` or MCP configuration.** An open Binary loads an extension that the user names with `-e` (a path, `npm:` or `git:` source), accepts the package commands, and loads the MCP servers of the user configuration and of a trusted project, as stock PiG does. Only a closed Binary (`build.closed: true`) refuses them. Strip `mcp` to remove MCP from a Binary of either kind.
 - **It does not pin `PATH` or runtimes.** The `bash` tool, MCP servers and extensions find programs through the inherited `PATH`. A Node extension runs the `node` found on `PATH`. A Python or Lisp source extension finds `uv`, Python or SBCL on `PATH`.
 - **The signature is a self-check.** A signature proves that the file is unchanged since a key signed it. A person who can rewrite the Binary and the trust store can sign a replacement. An unsigned Binary runs unless `trust require` is on.
 - **Revocation is local.** `pig piglet trust revoke` changes a file on one machine. There is no revocation list, no key expiry and no online check. Distribute the `revoked` file with your configuration tool.
@@ -204,7 +206,7 @@ Build a controlled Binary in these steps:
 2. Strip the built-ins that the application does not need, with `strip`.
 3. Set `build.closed: true`, and add `mcp` to `strip.extensions` when the application needs no MCP server.
 4. Build with `--sign-key`. Run `pig piglet trust add` for the publisher key, and run `pig piglet trust require on` on each host.
-5. Run the Binary in a container or virtual machine that you provide, with the secrets injected at run time. Start it with a fixed command line, because `-e` loads any extension that the command line names. The Binary fixes what it ships, and the container fixes what it can reach.
+5. Run the Binary in a container or virtual machine that you provide, with the secrets injected at run time. The closed Binary refuses `-e`, the package commands and MCP configuration, so the command line cannot add code. The Binary fixes what it ships, and the container fixes what it can reach.
 6. Run `pig verify <binary>` and `pig piglet verify <binary> --source <piglet.yaml>` before you release it. The second command fails when the source differs from the baked Piglet, which includes a source that turns `build.closed` off.
 
 An open Binary refuses nothing for `--piglet`. A closed Binary refuses `--piglet` with a message that names `build.closed`. Use that message to test a build.

@@ -313,6 +313,11 @@ func (h *remoteEditor) EditorFrame(lines []string, width int, wantsKeyRelease bo
 	})
 }
 
+// EditorCapturesViewportInput is extension.RemoteEditorViewportHost: the component's capturesViewportInput of the frame that follows.
+func (h *remoteEditor) EditorCapturesViewportInput(captures bool) {
+	h.onLoop(func() { h.m.editor.SetRemoteCapturesViewportInput(captures) })
+}
+
 func (h *remoteEditor) EditorChanged(text, expanded string) {
 	h.onLoop(func() { h.m.editor.ApplyRemoteChange(text, expanded) })
 }

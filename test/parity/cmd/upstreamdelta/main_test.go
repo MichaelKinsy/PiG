@@ -180,3 +180,36 @@ func TestCarryAuditsKeepsOnlyReviewedRowsOfByteIdenticalFiles(t *testing.T) {
 		t.Fatal("carrying a manifest onto its own target was accepted")
 	}
 }
+
+// TestValidateManifestChecksGoTestFragments proves a test evidence reference names something in its file: a Go
+// identifier after the # must occur in the file, while a title with spaces (a vitest case) is not checked.
+func TestValidateManifestChecksGoTestFragments(t *testing.T) {
+	repo := t.TempDir()
+	writeTestFile(t, repo, "ai/a_test.go", "func TestPresent(t *testing.T) {}")
+	writeTestFile(t, repo, "durable/cf/b.test.ts", "it('a title', () => {})")
+	cases := []struct {
+		name     string
+		evidence string
+		want     string
+	}{
+		{"fragment present", "test:ai/a_test.go#TestPresent", ""},
+		{"no fragment", "test:ai/a_test.go", ""},
+		{"vitest title is not checked", "test:durable/cf/b.test.ts#Some Suite a title", ""},
+		{"fragment absent from the file", "test:ai/a_test.go#TestGone", `does not contain "TestGone"`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			manifest := syncManifest{From: "1.0.0", To: "1.1.0", Files: []fileAudit{{
+				Path: "packages/ai/src/ported.ts", Change: "modified", Disposition: "ported",
+				Evidence: []string{tc.evidence}, Rationale: "The test asserts the changed behavior.",
+			}}}
+			problems := strings.Join(validateManifest(manifest, []sourceDelta{{Path: "packages/ai/src/ported.ts", Change: "modified"}}, repo), "\n")
+			if tc.want == "" && problems != "" {
+				t.Fatalf("validateManifest() problems = %q", problems)
+			}
+			if tc.want != "" && !strings.Contains(problems, tc.want) {
+				t.Fatalf("validateManifest() problems = %q, want %q", problems, tc.want)
+			}
+		})
+	}
+}

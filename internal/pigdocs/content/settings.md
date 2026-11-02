@@ -120,8 +120,9 @@ set it in `~/.pig/agent/settings.json`:
 | `showHardwareCursor` | boolean | `false` | Show the terminal's own cursor. |
 | `markdown` | object |  | Markdown rendering: `codeBlockIndent`, `mermaid`. |
 | `quietStartup` | boolean | `false` | Suppress the startup banner. |
-| `collapseChangelog` | boolean | `false` | Show a condensed changelog. |
+| `collapseChangelog` | boolean | `false` | Show a condensed changelog. Also condenses extension Package changelogs to one line per Package. |
 | `lastChangelogVersion` | string |  | Last changelog version shown. PiG writes this. |
+| `extensionChangelogVersions` | object |  | Last seen changelog version per extension package, keyed by package source and scope. PiG writes this. |
 
 ## Images and terminal
 
@@ -168,6 +169,7 @@ in the 256-color palette, as Pi does. See [terminal setup](terminal-setup.md).
 | `shellCommandPrefix` | string |  | Prefix applied to every shell command. |
 | `externalEditor` | string |  | Editor opened by `app.editor.external`. |
 | `npmCommand` | string[] | `["npm"]` | Command and arguments used to run npm for package lookup and installation. |
+| `selfUpdateCommand` | string[] | none | Command and arguments `pig update` runs to update PiG itself, with `{packageName}`, `{version}` and `{installSpec}` placeholders. `PI_SELF_UPDATE_COMMAND` takes precedence. **Can only be set in agent-directory settings.** |
 
 ## Tools
 

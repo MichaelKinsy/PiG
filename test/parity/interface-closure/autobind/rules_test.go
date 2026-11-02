@@ -1752,12 +1752,14 @@ func TestInvocationContextIsTheGoContext(t *testing.T) {
 	w("chord/src/types.ts", "export interface Context {\n\treadonly abortSignal: AbortSignal | undefined;\n}\n")
 	w("durable/src/a.ts", "import type { AttachedReplicatedState, Context, Draft } from \"@earendil-works/chord\";\n")
 	w("durable/src/b.ts", "import type {\n\tContext,\n\tJsonValue,\n} from \"@earendil-works/chord\";\n")
+	w("server/src/c.ts", "import type { Context } from \"@earendil-works/chord/context\";\n") // the subpath export is the same Context (durable harness/registry-reader.ts)
+	w("client/src/c.ts", "import type { Context } from \"@earendil-works/chord/context\";\nimport type { Context as Other } from \"@earendil-works/pi-ai\";\n")
 	w("coding-agent/src/a.ts", "import type { Context } from \"@earendil-works/chord\";\n")
 	w("coding-agent/src/b.ts", "import { type Context, type Model } from \"@earendil-works/pi-ai\";\n")
 	w("ai/src/types.ts", "export interface Context {\n\tsystemPrompt?: string;\n}\n")
 	w("env/src/a.ts", "import type { Logger } from \"@earendil-works/chord\";\n")
 	tab := tsAliases(root)
-	for pkg, want := range map[string]bool{"chord": true, "durable": true, "coding-agent": false, "ai": false, "env": false, "nope": false} {
+	for pkg, want := range map[string]bool{"chord": true, "durable": true, "server": true, "client": false, "coding-agent": false, "ai": false, "env": false, "nope": false} {
 		if got := tab.invocationContext(pkg); got != want {
 			t.Errorf("invocationContext(%s) = %v, want %v", pkg, got, want)
 		}
@@ -1784,6 +1786,34 @@ func WithAbortSignal(parent context.Context, signal context.Context) context.Con
 	with := callShape{Parameters: []param{{Name: "signal", Type: "AbortSignal"}, {Name: "context", Type: "Context"}}, Returns: "Context"}
 	if got := c.signature(with, sigs["WithAbortSignal"].(*types.Signature)); got.ok == no {
 		t.Errorf("S1c fallback: a Go function that takes a Context value of its own reads the parameter as ordinary: %v %s", got.ok, got.why)
+	}
+}
+
+// TestNextEntryDeclarationsAreKeptApartFromTheRoot: chord's root entry (src/errors.ts) and its next entry (src/next/data/errors.ts)
+// both export ChordErrorCode. Read under one package key the name was declared twice and every row that names it was undecided; each
+// entry reads its own declaration, and the next entry still reads the names it imports from the root.
+func TestNextEntryDeclarationsAreKeptApartFromTheRoot(t *testing.T) {
+	root := t.TempDir()
+	w := func(p, s string) { write(t, filepath.Join(root, ".upstream/current/packages", p), s) }
+	w("chord/src/errors.ts", "export type ChordErrorCode = \"invalid\" | \"forbidden\";\nexport type JsonValue = string | number;\n")
+	w("chord/src/next/data/errors.ts", "export type ChordErrorCode = \"invalid\" | \"missing\" | \"gone\";\n")
+	tab := tsAliases(root)
+	rootBody, nextBody := tab.lookup("chord", "ChordErrorCode"), tab.lookup("chord/next", "ChordErrorCode")
+	if rootBody == nil || *rootBody != `"invalid" | "forbidden"` {
+		t.Errorf("the root entry reads its own ChordErrorCode, got %v", rootBody)
+	}
+	if nextBody == nil || *nextBody != `"invalid" | "missing" | "gone"` {
+		t.Errorf("the next entry reads its own ChordErrorCode, got %v", nextBody)
+	}
+	if got := tab.lookup("chord/next", "JsonValue"); got == nil || *got != "string | number" {
+		t.Errorf("the next entry reads a name only the root declares, got %v", got)
+	}
+	d := &detector{l: &ledger{}, aliases: tab}
+	for id, want := range map[string]string{"pkg:chord/.#ChordErrorCode": `"invalid" | "forbidden"`, "pkg:chord/next#ChordErrorCode": `"invalid" | "missing" | "gone"`} {
+		got := d.checker(&upstreamEntry{ID: id}).alias("ChordErrorCode")
+		if got == nil || *got != want {
+			t.Errorf("%s: alias = %v, want %s", id, got, want)
+		}
 	}
 }
 

@@ -18,9 +18,10 @@ func BenchmarkSessionQueueReentrantPublication(b *testing.B) {
 				b.Fatal(err)
 			}
 			done := make(chan struct{})
+			eventsCh := session.Events()
 			go func() {
 				defer close(done)
-				for event := range session.Events() {
+				for event := range eventsCh {
 					AcknowledgeEvent(event)
 				}
 			}()

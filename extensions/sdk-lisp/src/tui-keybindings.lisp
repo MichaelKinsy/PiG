@@ -115,3 +115,11 @@
   (let ((published (ts-take-keybindings)))
     (when published (setf *tui-global-keybindings* (tui-keybindings-from-wire published)))
     (or *tui-global-keybindings* (setf *tui-global-keybindings* (tui-make-keybindings-manager *tui-keybindings*)))))
+
+(defun tui-get-select-page-index (keybindings data selected-index item-count page-size)
+  "The selected index after the page key in DATA (pi-tui's getSelectPageIndex): tui.select.pageUp moves by -PAGE-SIZE, tui.select.pageDown by +PAGE-SIZE,
+clamped to 0..ITEM-COUNT-1 (0 for an empty list); NIL when DATA is not a page key."
+  (let ((direction (cond ((tui-keybindings-matches keybindings data "tui.select.pageUp") -1)
+                         ((tui-keybindings-matches keybindings data "tui.select.pageDown") 1))))
+    (when direction
+      (max 0 (min (1- item-count) (+ selected-index (* direction page-size)))))))

@@ -5,7 +5,6 @@ import {
   StreamingJsonParser,
   StringEnum,
   ToolCallArgumentsStream,
-  Type,
   cleanupSessionResources,
   createAssistantMessageEventStream,
   createFauxCore,
@@ -30,7 +29,7 @@ import {
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-V34LBYPQ.js";
+} from "./chunk-ZKUDAZD6.js";
 import {
   envApiKeyAuth,
   lazyOAuth
@@ -97,7 +96,6 @@ export {
   StreamingJsonParser,
   StringEnum,
   ToolCallArgumentsStream,
-  Type,
   appendAssistantMessageDiagnostic,
   calculateCost,
   clampThinkingLevel,

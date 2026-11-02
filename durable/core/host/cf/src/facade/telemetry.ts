@@ -69,7 +69,7 @@ export function spanFields(client: CoreClient, context: Context): { span?: numbe
   return trace === undefined ? { span } : { span, trace }
 }
 
-const TELEMETRY: ReportInfo = { type: "host_error", callback: "telemetry" }
+const TELEMETRY: ReportInfo = { kind: "host_error", callback: "telemetry" }
 const ROOT = NOOP_TELEMETRY_CONTEXT as TelemetryContext
 
 type Open = { end: () => void; started: number; task: string; phase: string }
@@ -89,7 +89,7 @@ export class HarnessTelemetry {
     this.table = table
     this.report = report
     const metrics = this.root.metrics ?? NOOP_TELEMETRY_METRICS
-    this.reports = metrics.counter("pi.durable.reports", { description: "Reports raised, grouped by their fixed ReportInfo type." })
+    this.reports = metrics.counter("pi.durable.reports", { description: "Reports raised, grouped by their fixed kind." })
     this.active = metrics.upDownCounter("pi.durable.tasks.active", { description: "Live tasks held by this Harness; decremented at terminal settlement or close." })
     this.duration = metrics.histogram("pi.durable.phase.duration", { description: "Duration of a phase invocation and its decision commit.", unit: "ms" })
   }
@@ -102,11 +102,12 @@ export class HarnessTelemetry {
 
   /** submissions.ts submit: the `pi.durable.submit` span around one admission. `send` makes the call to the core with the span's fields; `undefined` when the span is the NOOP span. */
   submit<T extends { id: number; status?: string; link?: TelemetryCarrier }>(conversationId: number, draft: { type: string }, context: Context, send: (fields: Record<string, unknown>) => Promise<T>): Promise<T> | undefined {
-    // Inputs start their own trace, linked to the caller; writes are children of the caller's span.
-    const parent = draft.type === "input" ? this.root : context.telemetry
+    // Inputs and continues start runs: their own trace, linked to the caller; writes are children of the caller's span.
+    const startsRun = draft.type !== "write"
+    const parent = startsRun ? this.root : context.telemetry
     if (parent === ROOT) return undefined
     return parent.startSpan({ name: "pi.durable.submit", attributes: { "submission.type": draft.type, "conversation.id": conversationId } }, async span => {
-      if (draft.type === "input") span.addLink({ context: context.telemetry })
+      if (startsRun) span.addLink({ context: context.telemetry })
       const handle = this.table.hold(span)
       try {
         const trace = span.propagation?.inject(span)
@@ -189,17 +190,17 @@ export class HarnessTelemetry {
     }
   }
 
-  /** harness.ts safeReport, after `onReport`: count the report by its type and record its fixed fields on the span of `context`. A throwing metric or event is dropped. */
+  /** harness.ts safeReport, after `onReport`: count the report by its kind and record its fixed fields on the span of `context`. A throwing metric or event is dropped. */
   reported(info: ReportInfo, context: Context | undefined): void {
-    const attributes: SpanAttributes = { type: info.type }
+    const attributes: SpanAttributes = { type: info.kind }
     const i = info as Record<string, any>
-    switch (info.type) {
+    switch (info.kind) {
       case "task_faulted": case "task_interrupted": case "task_outdated": attributes.reason = i.reason; attributes.extension = i.extension; attributes["task.id"] = i.task?.id; break
       case "migration_failed": case "task_error": case "extension_error": attributes.extension = i.extension; attributes["task.id"] = i.task?.id; break
       case "host_error": attributes["task.id"] = i.task?.id; break
     }
     try {
-      this.reports.add(1, { type: info.type })
+      this.reports.add(1, { type: info.kind })
       context?.telemetry.addEvent("pi.durable.report", attributes)
     } catch { /* dropped: reporting it would report again */ }
   }

@@ -206,6 +206,10 @@ export class Editor {
     };
     /** Focusable interface - set by TUI when focus changes */
     focused = false;
+    /** The open autocomplete menu receives fullscreen viewport keys, such as PageUp/PageDown. */
+    get capturesViewportInput() {
+        return this.autocompleteState !== null;
+    }
     tui;
     theme;
     paddingX = 0;
@@ -604,7 +608,10 @@ export class Editor {
                 this.cancelAutocomplete();
                 return;
             }
-            if (kb.matches(data, "tui.select.up") || kb.matches(data, "tui.select.down")) {
+            if (kb.matches(data, "tui.select.up") ||
+                kb.matches(data, "tui.select.down") ||
+                kb.matches(data, "tui.select.pageUp") ||
+                kb.matches(data, "tui.select.pageDown")) {
                 this.autocompleteList.handleInput(data);
                 return;
             }

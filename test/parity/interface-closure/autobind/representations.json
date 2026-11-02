@@ -58,6 +58,7 @@
  "durable:SessionDocFamilyToken": "durable.AnyDocToken",
  "durable:SessionDocToken": "durable.AnyDocToken",
  "durable:StorageConformanceRunner": "testing.T",
+ "durable:TSchema": "map[string]any",
  "durable:TaskDocFamilyToken": "durable.AnyDocToken",
  "durable:TaskDocToken": "durable.AnyDocToken",
  "durable:TextDecoder": "env.RangeDecoder",

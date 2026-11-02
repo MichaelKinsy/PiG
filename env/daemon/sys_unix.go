@@ -156,3 +156,23 @@ func defaultChildSignals() {
 		}
 	})
 }
+
+// notifyExitSignals delivers the number of SIGTERM, SIGINT or SIGHUP, whichever arrives first, instead of dying at once
+// (sys/unix.rs on_exit_signal). The returned function stops the delivery.
+func notifyExitSignals() (<-chan int, func()) {
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
+	numbers := make(chan int, 1)
+	done := make(chan struct{})
+	go func() {
+		select {
+		case received := <-signals:
+			numbers <- int(received.(syscall.Signal))
+		case <-done:
+		}
+	}()
+	return numbers, func() {
+		signal.Stop(signals)
+		close(done)
+	}
+}

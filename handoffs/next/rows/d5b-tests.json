@@ -1,0 +1,369 @@
+{
+ "packages/chord/test/next/host/activity.test.ts": {
+  "ported": [],
+  "missing": [
+   "host.activity › counts holds arriving over links and served here, not this host's own references: needs createHost/linked hosts (host core, remote lane); the source-level behavior is covered by own tests in host_activity_test.go",
+   "host.activity › counts a hold placed here from its arrival, bound or not: a missing provider keeps the worker alive (M§10): needs createHost/linked hosts (host core, remote lane); the source-level behavior is covered by own tests in host_activity_test.go",
+   "host.activity › counts method calls running on this host, local and remote, until they settle: needs createHost/linked hosts (host core, remote lane); the source-level behavior is covered by own tests in host_activity_test.go",
+   "host.activity › publishes once per microtask turn with changes; a slow watcher gets the newest counts: needs createHost/linked hosts (host core, remote lane); the source-level behavior is covered by own tests in host_activity_test.go",
+   "host.activity › gives a slow watcher the newest counts once it is free: its pending frames fold: needs createHost/linked hosts (host core, remote lane); the source-level behavior is covered by own tests in host_activity_test.go",
+   "host.activity › schedules nothing while nobody watches or derives from it; a later watch reads the counts then: needs createHost/linked hosts (host core, remote lane); the source-level behavior is covered by own tests in host_activity_test.go",
+   "host.activity › feeds derives (base code holding the host): they recompute in the publishing batch: needs createHost/linked hosts (host core, remote lane); the source-level behavior is covered by own tests in host_activity_test.go",
+   "host.activity › lingering › counts live objects kept by their type's linger after their last reference, until they end: needs createHost/linked hosts (host core, remote lane); the source-level behavior is covered by own tests in host_activity_test.go",
+   "host.activity › counts no jobs before slice 5: needs createHost/linked hosts (host core, remote lane); the source-level behavior is covered by own tests in host_activity_test.go"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/backoff.test.ts": {
+  "ported": [
+   "backoff › opens a window of 1 s after the first failure, doubling up to 60 s, and calls due at its end",
+   "backoff › tells when a running window ends: a failed reference's retryAt",
+   "backoff › is waiting only inside a window",
+   "backoff › skip ends a window without due and keeps its delay; delete starts over",
+   "backoff › ended keeps a running window and drops a passed one",
+   "backoff › a failure inside a running window replaces it: one due, after the doubled delay",
+   "backoff › clear forgets every identity with its timer"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/ctx.test.ts": {
+  "ported": [
+   "ctx › ctx.get after the handler settled throws released (TestCtxGetAfterTheHandlerSettledThrowsReleased)",
+   "ctx › ctx.get of a handler whose call was aborted checks the signal first: nothing is created (TestCtxGetOfAHandlerWhoseCallWasAbortedChecksTheSignalFirstNothingIsCreated)",
+   "ctx › a ctx.get finishing after its handler settled is released at once (race 11) (TestCtxAGetFinishingAfterItsHandlerSettledIsReleasedAtOnceRace11)",
+   "ctx › a ctx.get still waiting when its handler settles gives up: its reference is released at once (TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAtOnce)",
+   "linked abort signals › abort with the caller's signal or the call's, the caller's reason first (TestLinkedAbortSignalsAbortWithTheCallersSignalOrTheCallsTheCallersReasonFirst)",
+   "linked abort signals › detach from both sources on release: a later abort reaches nothing (TestLinkedAbortSignalsDetachFromBothSourcesOnReleaseALaterAbortReachesNothing)",
+   "linked abort signals › is the call's own signal without a caller's (TestLinkedAbortSignalsIsTheCallsOwnSignalWithoutACallers: the identity assertion is the behavior: aborted by the call's signal with its reason, release a no-op)"
+  ],
+  "missing": [
+   "ctx › ctx.get references are released when the handler settles: a released reference's own `released` read and the host's factory count (createHost); own TestCallContextSettleReleasesEveryReferenceTakenOnce",
+   "ctx › a local handler's ctx.principal is the host's, its incarnation this host's: the host's principal and incarnation (createHost); own TestCallContextActsAsTheCallerItWasMadeFor",
+   "local handlers act as the host (§4, audit) › a local object called from a remote handler's ctx.get runs with this host's principal and incarnation: needs linked hosts and a remote object (D5a/D6)"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/deadline.test.ts": {
+  "ported": [
+   "deadline › expires once after its budget",
+   "deadline › paused time does not count: resumed with the budget it had left",
+   "deadline › a cleared deadline never expires, also when resumed"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/dependencies.test.ts": {
+  "ported": [],
+  "missing": [
+   "the dependency check › breaks a dependent off a cycle with the cycle's error: it would wait on a ring that never heals: needs createHost, host.hold and raw peers or relayed hosts (host core, remote lane); checkDependencies and parkedLong are covered by own tests in host_dependencies_test.go",
+   "the dependency check › breaks a dependent whose dependency ended (gone): the request cannot come back: needs createHost, host.hold and raw peers or relayed hosts (host core, remote lane); checkDependencies and parkedLong are covered by own tests in host_dependencies_test.go",
+   "the dependency check › goes live once every dependency is: one parked on two, the second binding last: needs createHost, host.hold and raw peers or relayed hosts (host core, remote lane); checkDependencies and parkedLong are covered by own tests in host_dependencies_test.go",
+   "the dependency check › breaks a dependent whose dependency a relay's authorize refused: forbidden heals only by retry() (fix round 1, Fable): needs createHost, host.hold and raw peers or relayed hosts (host core, remote lane); checkDependencies and parkedLong are covered by own tests in host_dependencies_test.go",
+   "the dependency check › settles a waiting ring across hosts after one round: the root cause kept (fix round 1, Opus F1): needs createHost, host.hold and raw peers or relayed hosts (host core, remote lane); checkDependencies and parkedLong are covered by own tests in host_dependencies_test.go",
+   "parked_long (dependency model §7) › starts its clock when the hold gets on a link: a late link is not reported at once (fix round 2, Opus F2): needs createHost, host.hold and raw peers or relayed hosts (host core, remote lane); checkDependencies and parkedLong are covered by own tests in host_dependencies_test.go",
+   "parked_long (dependency model §7) › is not reported while the path has no link: no remote attempt answers for it (fix round 1, Opus F2): needs createHost, host.hold and raw peers or relayed hosts (host core, remote lane); checkDependencies and parkedLong are covered by own tests in host_dependencies_test.go",
+   "parked_long (dependency model §7) › is reported once per parking episode, after readyTimeout on a remote attempt only loading; nothing fails: needs createHost, host.hold and raw peers or relayed hosts (host core, remote lane); checkDependencies and parkedLong are covered by own tests in host_dependencies_test.go",
+   "parked_long (dependency model §7) › is not reported for a remote blocker that failed: the parked attempt shows its cause instead: needs createHost, host.hold and raw peers or relayed hosts (host core, remote lane); checkDependencies and parkedLong are covered by own tests in host_dependencies_test.go",
+   "parked_long (dependency model §7) › is not reported for a local blocker: its own deadline bounds it: needs createHost, host.hold and raw peers or relayed hosts (host core, remote lane); checkDependencies and parkedLong are covered by own tests in host_dependencies_test.go",
+   "a getter of a parked object (fix round 1, Astra 6) › rejects with the last parked cause after its dependency fell back to loading, the newest of several: needs createHost, host.hold and raw peers or relayed hosts (host core, remote lane); checkDependencies and parkedLong are covered by own tests in host_dependencies_test.go"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/facet.test.ts": {
+  "ported": [
+   "facets › declare only while their setup runs (TestFacetsDeclareOnlyWhileTheirSetupRuns; `loaded` is setUp)",
+   "facets › contribute at most one value per registry, only while their setup runs (TestFacetsContributeAtMostOneValuePerRegistryOnlyWhileTheirSetupRuns)"
+  ],
+  "missing": [],
+  "designedOut": [
+   "facets › only declare: a setup takes the host and a self that only contributes; no documents, routines or natives: owner class (a) type-level check; Go mechanism: FacetHost/FacetSelf have only Serve+References and Contribute; Go test TestFacetsOnlyDeclareASetupTakesTheHostAndASelfThatOnlyContributes (reflect)",
+   "facets › are typed by exactly the app's principal type: owner class (a) type-level check; Go mechanism: no principal type parameter (principals are data.Principal), Facet is exactly its Setup; Go test TestFacetsAreTypedByExactlyTheAppsPrincipalType"
+  ]
+ },
+ "packages/chord/test/next/host/follow.test.ts": {
+  "ported": [
+   "ends during activation and in one batch (review regressions) › an end before the attachment resolved keeps the attachment's value on the source",
+   "ends during activation and in one batch (review regressions) › a retirement and an end inside one batch: the watch gets the retirement, then ends",
+   "ends during activation and in one batch (review regressions) › a call and an end outside a batch with nothing watching: a later watch opens at the value and ends"
+  ],
+  "missing": [
+   "calls › inside a running batch: one frame per commit, and a derive over two views computes once with both: needs createHost/serve/get and host.batch (own mirror: TestFollowCallsInsideARunningBatch...)",
+   "calls › outside any batch: queued and applied in one batch on the next microtask: needs createHost/serve/get (own mirror: TestFollowCallsOutsideAnyBatch...)",
+   "calls › before the attachment resolved: applied in order on its value: needs createHost/serve (own mirror: TestFollowCallsBeforeTheAttachmentResolved...)",
+   "activation › an absent address fails the activation transient; a failed activation detaches what attached: needs host.get, activation_failed reports, host.close (own mirror: TestFollowActivationAnAbsentAddress...)",
+   "ends (R4) › failed: the live object fails transient once, reported, and its retry attaches again: needs a live object, object_failed report, view.retry (own mirror: TestFollowEndsFailed...)",
+   "ends (R4) › ended: final; a queued retirement reaches the watch first, the value stays, a new watch ends at once: needs reference watches over a served object (own mirror: TestFollowEndsEnded...)",
+   "ends during activation and in one batch (review regressions) › an ended end before the attachment resolved fails the activation transient: needs loaded()/serve/activation_failed and host.close (own mirror: TestFollowAnEndBeforeTheAttachmentResolved.../ended)",
+   "ends during activation and in one batch (review regressions) › an failed end before the attachment resolved fails the activation transient: needs loaded()/serve/activation_failed and host.close (own mirror: TestFollowAnEndBeforeTheAttachmentResolved.../failed)",
+   "ends during activation and in one batch (review regressions) › an end while the object activates (after its sources attached) fails the activation transient: needs a derive computing during an attempt's activation and host.get (own mirror: TestFollowAnEndWhileTheObjectActivatesTellsTheOwner)",
+   "ends during activation and in one batch (review regressions) › an end outside a batch after calls of two views: the views of one commit are delivered together: needs served()/reference watches (own mirror: TestFollowAnEndOutsideABatchAfterCallsOfTwoViews...)",
+   "GC › a source its runtime ended is still detached at the object's end, then collected: needs host.close and the object's attempt (own mirror: TestFollowASourceItsRuntimeEndedIsStillDetached...)",
+   "GC › an ended object's followed sources are collected, and their observers detached: needs host.close (own mirror: TestFollowAnEndedObjectsFollowedSources...)"
+  ],
+  "designedOut": [
+   "types › infers the value type from the attachment, without a type argument: class (a) TypeScript type-level check (expectTypeOf); Go mechanism: generic FollowAttach[T] / FollowAttachment[T]; Go test TestFollowAttachIsTypedByItsAttachment (host_follow_test.go)"
+  ]
+ },
+ "packages/chord/test/next/host/keyed-members.test.ts": {
+  "ported": [],
+  "missing": [
+   "a failed object's held keys › keep their last values and get no frames (at, watch, a derive over at); the provider goes on: needs served providers/exposers/viewer (own mirror: TestKeyedMembersAFailedObjectsHeldKeys...)",
+   "re-binding when a new attempt goes live › follows the new attempt's member of the same name (one frame); the old provider's pin is released: needs served objects and failLive (own mirror: TestKeyedMembersRebindingFollowsTheNewAttemptsMember...)",
+   "re-binding when a new attempt goes live › loads a cold persisted key of the new member before the new attempt goes live: needs persisted keyed defineState and memoryStore (own mirror: TestKeyedMembersRebindingLoadsAColdPersistedKey...)",
+   "a key whose first pin still loads › the object fails and re-binds meanwhile: the consumer retries on the new member, the late pin is released: needs the consumer object (Viewer) retrying after a dependency failure (own mirror: TestKeyedMembersAKeyWhoseFirstPinStillLoadsTheObjectFailsAndRebinds...)",
+   "a key whose first pin still loads › the object fails and stays failed: the consumer parks failed { waiting } on it, never live on it: asserts the consumer's parked state via host.hold (own mirror: ...TheObjectFailsAndStaysFailed...)",
+   "a key whose first pin still loads › the object ends meanwhile: the consumer's wait rejects, the late pin is released: needs host.close (own mirror: ...TheObjectEndsMeanwhile...)",
+   "a keyed watch whose object closes while it is set up › rejects with the object's end error, whichever microtask the close lands in: needs ref.watch(key) and host.close microtask gaps (own mirror: TestKeyedMembersAKeyedWatchWhoseObjectCloses...)",
+   "chains and releases › a key re-exposed through two objects freezes with the middle one and follows its next attempt: needs three served objects (own mirror: TestKeyedMembersAKeyReexposedThroughTwoObjects...)",
+   "chains and releases › a consumer released while the object re-activates leaves no hold behind; nothing is kept for it: needs the viewer's teardown through the host and host.close (own mirror: TestKeyedMembersAConsumerReleasedWhileTheObjectReactivates...)",
+   "a key whose first pin still loads at startup (scenario 20, Astra) › keeps the first pass pending during an otherwise-ready dependency's delayed keyed pin: spies ChordObject.prototype.pinKey and asserts host.load's first pass"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/member-source.test.ts": {
+  "ported": [],
+  "missing": [
+   "following the live attempt › passes the member's frames on as they are, and keeps a derive member lazy while nothing watches it: needs createHost/serve/defineState and metered telemetry (own mirror: TestMemberSourceFollowingTheLiveAttempt...)",
+   "a failed object's members › keep their last values and get no frames; a new watch opens at the last value (slice 6a §1.4): needs ChordObject attempts, failLive, store.retry (own mirror: TestMemberSourceAFailedObjectsMembersKeep...)",
+   "a failed object's members › re-exposed from another object freeze with the re-exposing object; the provider's source goes on: needs two served objects, keyed defineState, failLive",
+   "the window of a live failure › members following another object's sources freeze at once, while an admitted commit of the object runs: needs persisted defineState, memoryStore, holdNextCommit, failLive",
+   "re-binding when a new attempt goes live › recovers a consumer's derive that failed on the provider's earlier error, and the derives downstream: needs two served objects and attempt retries (own mirror: TestMemberSourceRebindingRecovers...)",
+   "re-binding when a new attempt goes live › re-binds a consumer's derive over a retried provider's derive member, and its watches get frames again: needs two served objects (own mirror: TestMemberSourceRebindingRebinds...)",
+   "re-binding when a new attempt goes live › sends one frame from the last value when the new attempt's member differs: needs a served object with two attempts (own mirror: TestMemberSourceRebindingSendsOneFrame...)",
+   "subscribers › a hold over a link on a remote object re-exposing a local member gets frames again after the local retry: needs linked() hosts, memory links and a remote hold",
+   "subscribers, directly › are fed the member's calls: a failure, then its recovery at the re-bind as a root replacement: needs resolveWatchable over a reference member and ChordObject attempts (own mirror: TestMemberSourceSubscribersDirectly...)",
+   "a member the new attempt's variant lacks › fails: its watch gets one failure call and stays open, reads throw invalid/member; a later attempt brings it back: needs createHost/defineFacet/load and a remote variant switch (own mirror: TestMemberSourceAMemberTheNewAttemptsVariantLacks...)",
+   "an ended object's members › mark the derives over them: a consumer's derive keeps no cached value, its read throws released: needs ChordObject.end() of a served object (own mirror: TestMemberSourceAnEndedObjectsMembersMarkTheDerives...)",
+   "member sources and memory › a failed attempt is collected after a retry while the object, its member source and a retained watch live: needs host attempts (own mirror: TestMemberSourceAFailedAttemptIsCollected...)",
+   "member sources and memory › an ended object's member sources are collected with it: needs host.close and resolveWatchable of a reference member (own mirror: TestMemberSourceAnEndedObjectsMemberSourcesAreCollected...)"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/members.test.ts": {
+  "ported": [],
+  "missing": [
+   "the member check (Q14) › refuses an inherited property for a member: asserts the host's `app.named(1): ` prefixed failure of host.get (own mirror: TestMemberCheckRefusesAMethodTheImplementationDoesNotOwn; an inherited property has no Go form)",
+   "the member check (Q14) › names a derive in errors by its member when exposed, else by its position: asserts host.get failures with the object label (own mirror: TestMemberCheckNamesADeriveInErrorsByItsMemberWhenExposedElseByItsPosition)"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/native.test.ts": {
+  "ported": [],
+  "missing": [
+   "opening › opens one after another in declaration order; a later opener reads an earlier handle: needs loaded() host with self.open in a served factory (attempt/host core); nativeHandle, within and drained are covered by own tests in host_native_test.go",
+   "opening › opens nothing for an object ended before its first open started: needs loaded() host with self.open in a served factory (attempt/host core); nativeHandle, within and drained are covered by own tests in host_native_test.go",
+   "opening › throws not_ready before its open resolved and released once its close started: needs loaded() host with self.open in a served factory (attempt/host core); nativeHandle, within and drained are covered by own tests in host_native_test.go",
+   "opening › a partly failed attempt closes what it opened, with reason end: needs loaded() host with self.open in a served factory (attempt/host core); nativeHandle, within and drained are covered by own tests in host_native_test.go",
+   "opening › aborts the opener's context when the object ends while opening; a late value is closed once (%s): needs loaded() host with self.open in a served factory (attempt/host core); nativeHandle, within and drained are covered by own tests in host_native_test.go",
+   "closing › closes in reverse, with reason end when the object ends and close when the host closes: needs loaded() host with self.open in a served factory (attempt/host core); nativeHandle, within and drained are covered by own tests in host_native_test.go",
+   "closing › collects every throwing close in host.close; an object ending in the background reports each: needs loaded() host with self.open in a served factory (attempt/host core); nativeHandle, within and drained are covered by own tests in host_native_test.go",
+   "closing › timeouts › report a close still running after its closeTimeout, abort its context then, and close the others: needs loaded() host with self.open in a served factory (attempt/host core); nativeHandle, within and drained are covered by own tests in host_native_test.go"
+  ],
+  "designedOut": [
+   "facets › cannot open natives: proposed class (a) TypeScript type-level check (expectTypeOf<FacetHost>().not.toHaveProperty(\"open\")); Go mechanism: the FacetHost interface of host_facet.go (lane D5b b/c) declares no Open member, so a facet cannot call it at compile time; no Go test in this lane (the check is the interface itself)"
+  ]
+ },
+ "packages/chord/test/next/host/parked.test.ts": {
+  "ported": [],
+  "missing": [
+   "calls on a loading local reference › are queued and sent in the order they were made once it is live, before later calls: needs createHost, host.hold and ref calls on a Gated object or a raw peer (host core, remote lane); parkedCalls is covered by own tests in host_parked_test.go",
+   "calls on a loading local reference › keep their order when a handler calls the reference while they are sent: its call queues behind them: needs createHost, host.hold and ref calls on a Gated object or a raw peer (host core, remote lane); parkedCalls is covered by own tests in host_parked_test.go",
+   "calls on a loading local reference › are checked against their deadline when sent: one that passed while earlier ones ran is not sent: needs createHost, host.hold and ref calls on a Gated object or a raw peer (host core, remote lane); parkedCalls is covered by own tests in host_parked_test.go",
+   "calls on a loading local reference › reject unavailable/park_timeout at the reference's readyTimeout, measured from each call: needs createHost, host.hold and ref calls on a Gated object or a raw peer (host core, remote lane); parkedCalls is covered by own tests in host_parked_test.go",
+   "calls on a loading local reference › reject at once when their caller cancels; the others stay queued: needs createHost, host.hold and ref calls on a Gated object or a raw peer (host core, remote lane); parkedCalls is covered by own tests in host_parked_test.go",
+   "calls on a loading local reference › reject released when the reference is released; nothing runs: needs createHost, host.hold and ref calls on a Gated object or a raw peer (host core, remote lane); parkedCalls is covered by own tests in host_parked_test.go",
+   "calls on a loading local reference › reject with the cause when the object fails: needs createHost, host.hold and ref calls on a Gated object or a raw peer (host core, remote lane); parkedCalls is covered by own tests in host_parked_test.go",
+   "calls on a loading local reference › stop being sent when one's handler releases the reference: the rest reject released (race 15): needs createHost, host.hold and ref calls on a Gated object or a raw peer (host core, remote lane); parkedCalls is covered by own tests in host_parked_test.go",
+   "calls on a loading local reference › calls on a loading remote reference › keep one deadline across reconnects; nothing is sent for them on either link: needs createHost, host.hold and ref calls on a Gated object or a raw peer (host core, remote lane); parkedCalls is covered by own tests in host_parked_test.go",
+   "calls on a loading local reference › calls on a loading remote reference › are resolved against the binding they are sent on: indexes from the new variant, missing methods invalid: needs createHost, host.hold and ref calls on a Gated object or a raw peer (host core, remote lane); parkedCalls is covered by own tests in host_parked_test.go",
+   "calls on a loading local reference › calls on a loading remote reference › on a reference released while loading without a link: nothing is sent, the next connect holds nothing (race 3): needs createHost, host.hold and ref calls on a Gated object or a raw peer (host core, remote lane); parkedCalls is covered by own tests in host_parked_test.go"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/presence.test.ts": {
+  "ported": [],
+  "missing": [
+   "host.references › lists every reference with the object's params, its principal and its incarnation: linked hosts; own TestReferencesListsEveryReferenceWithTheObjectsParamsItsPrincipalAndItsIncarnation",
+   "host.references › is made for the first ask with the references that exist then, and kept: host.references (D5a)",
+   "host.references › changes in the batch where a reference binds or ends: a watch gets one splice per change: linked hosts; own TestReferencesChangeInTheBatchWhereAReferenceBindsOrEndsAWatchGetsOneSplicePerChange",
+   "host.references › feeds derives in factories: viewers per session, a link drop a departure in its batch (race 9): hosts, derives in factories, links",
+   "host.references › puts a departure discovered while a commit sends into the next batch: one state message per commit (race 9): links and raw peers; own TestReferencesPutsADepartureDiscoveredWhileACommitSendsIntoTheNextBatch",
+   "host.references › completes a hold's bookkeeping before its presence entry publishes: a link closing then leaks nothing: holds and links (D6)",
+   "host.references › completes a release's bookkeeping before its departure publishes: a link closing then leaves no lingering: holds and links (D6)",
+   "host.references › removes a bulk departure with one list and one splice op per entry, in one frame (a revoke of many holds): revoke on a host; own TestReferencesRemovesABulkDepartureWithOneListAndOneSpliceOpPerEntryInOneFrame",
+   "host.references › counts two tabs through a relay as two incarnations on the worker: relays and links (D6)",
+   "host.references › has no entries for lingering objects: host linger (D5a); own TestReferencesHasNoEntryForAHolderThatEnded",
+   "host.references › keeps no released reference (GC): remote Hold instances; own TestReferencesKeepsNoReleasedReferenceGC"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/ref-state.test.ts": {
+  "ported": [],
+  "missing": [
+   "ref.state of a local reference › is watched from its current state: failed with retryAt, loading on the next attempt, live; release ends it: needs createHost and host.hold of a local or remote reference (host core, remote lane); referenceState is covered by own tests in host_ref_state_test.go",
+   "ref.state of a local reference › reads and calls follow the state: not_ready before live, the cause's error while failed, released after: needs createHost and host.hold of a local or remote reference (host core, remote lane); referenceState is covered by own tests in host_ref_state_test.go",
+   "ref.state of a local reference › retry renews a broken object: loading, then live: needs createHost and host.hold of a local or remote reference (host core, remote lane); referenceState is covered by own tests in host_ref_state_test.go",
+   "ref.state of a local reference › is made on first access, once; a watch taken after release has ended: needs createHost and host.hold of a local or remote reference (host core, remote lane); referenceState is covered by own tests in host_ref_state_test.go",
+   "ref.state of a local reference › a watch ends cancelled with its context: needs createHost and host.hold of a local or remote reference (host core, remote lane); referenceState is covered by own tests in host_ref_state_test.go",
+   "ref.state of a remote reference › loading until bound, loading while its link is down, failed with retryAt from retryIn, live again (per codec, forEachCodec): needs createHost and host.hold of a local or remote reference (host core, remote lane); referenceState is covered by own tests in host_ref_state_test.go",
+   "ref.state of a remote reference › a failed with retryIn 0 retries now: retryAt is the current time (per codec, forEachCodec): needs createHost and host.hold of a local or remote reference (host core, remote lane); referenceState is covered by own tests in host_ref_state_test.go",
+   "ref.state of a remote reference › variant: undefined before the first binding, the last bound one while loading or failed (per codec, forEachCodec): needs createHost and host.hold of a local or remote reference (host core, remote lane); referenceState is covered by own tests in host_ref_state_test.go"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/retry-on.test.ts": {
+  "ported": [],
+  "missing": [
+   "retryOn › retries a failed object (a broken open) when a source gets a new value: the watches were installed before the open: needs createHost/loaded with self.retryOn and an attempt (host core); retrySource and retryWakes are covered by own tests in host_retry_on_test.go",
+   "retryOn › does nothing while the object is parked failed { waiting }: its dependencies decide (dependency model §3.8): needs createHost/loaded with self.retryOn and an attempt (host core); retrySource and retryWakes are covered by own tests in host_retry_on_test.go",
+   "retryOn › wakes on value calls only: a throwing compose wakes nothing, its next good composition does: needs createHost/loaded with self.retryOn and an attempt (host core); retrySource and retryWakes are covered by own tests in host_retry_on_test.go",
+   "retryOn › remembers a wake while it activates: that attempt failing is retried at once: needs createHost/loaded with self.retryOn and an attempt (host core); retrySource and retryWakes are covered by own tests in host_retry_on_test.go",
+   "retryOn › ignores wakes while live: needs createHost/loaded with self.retryOn and an attempt (host core); retrySource and retryWakes are covered by own tests in host_retry_on_test.go",
+   "retryOn › refuses sources that end with an attempt: a reference's member, its own writable, `ref.state`: needs createHost/loaded with self.retryOn and an attempt (host core); retrySource and retryWakes are covered by own tests in host_retry_on_test.go",
+   "retryOn › are the object's: a failed object that ends releases them, and is collected while the registry lives: needs createHost/loaded with self.retryOn and an attempt (host core); retrySource and retryWakes are covered by own tests in host_retry_on_test.go",
+   "retryOn › does not wake an object by its own contributions leaving (it failed live: no retry without backoff): needs createHost/loaded with self.retryOn and an attempt (host core); retrySource and retryWakes are covered by own tests in host_retry_on_test.go"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/revocation.test.ts": {
+  "ported": [],
+  "missing": [
+   "revocation keys › are computed once per principal object, compared as canonical JSON: needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "revocation keys › keep no principal alive (a WeakMap keyed by the principal the host cached them for): needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "revocation keys › revoke on one host › ends the principal's objects at once, whatever references remain: each hold gets gone forbidden: needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "revocation keys › revoke on one host › aborts running calls (race 2): the handler's context, no result; a call crossing the gone is ignored: needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "revocation keys › revoke on one host › abandons an activation in progress (race 1): its open's context is aborted, its holders get gone: needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "revocation keys › revoke on one host › never revokes the host's own principal: needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "revocation keys › revoke on one host › ends a hold the parent sent before its revoke while it still waits for load (race 3): gone, never bound: needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "revocation keys › revoke on one host › ends a relayed hold of the principal still waiting for its route's link: never held there: needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "revocation keys › revoke on one host › ends an unbound hold of the principal (refused, waiting for a provider): gone, nothing left of it: needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "revocation keys › revoke on one host › binds a hold made for a revoked principal, then the parent's revoke after it ends it (race 3, R10's window): needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "revocation keys › links and revoke messages › closes the child links whose principal it revokes, never the parent link: needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "revocation keys › links and revoke messages › ignores a revoke from a child link (race 6): needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "revocation keys › links and revoke messages › sends revoke on every route link, and on none made later (race 5: nothing is replayed): needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "GC of revoked objects › keeps no revoked object, however many references its holders still have: needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "revocation across a relay › closes a revoked tab's link at the server and ends its objects on the worker: needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "revocation across a relay › ends the worker's objects of the principal through the revoke message alone; the relay forwards their gone: needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "revocation of this host's own requests over its paths (fix round 1) › ends a guest's ctx.get waiting for its route before any link exists, at once (Astra 1, Sol 1): needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "revocation of this host's own requests over its paths (fix round 1) › never lets the revoked request bind on the route's later link (Astra 1): needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)",
+   "revocation of this host's own requests over its paths (fix round 1) › ends a guest's reference over a route link that dropped, and nothing holds it on the next one: needs createHost, host.revoke, links and RawPeer or relayed hosts (host core, remote lane)"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/root.test.ts": {
+  "ported": [
+   "host.root › an aborted context rejects before fn runs; a synchronous throw is a rejection (TestHostRootAnAbortedContextRejectsBeforeFnRunsASynchronousThrowIsARejection; the synchronous throw is a returned error and a panic)",
+   "host.root › aborts the scope's own signal when fn settles and at `host.close`, the caller's context having one (Fable, Opus, Sol) (TestHostRootAbortsTheScopesOwnSignalWhenFnSettlesAndAtHostCloseTheCallersContextHavingOne; host.close is rootScopes.close(closed))",
+   "host.root › `host.close` rejects the caller at once, whatever an uncooperative fn still does (Sol) (TestHostRootHostCloseRejectsTheCallerAtOnceWhateverAnUncooperativeFnStillDoes)",
+   "host.root › leaves no listener on the caller's signal once `host.close` rejected an fn that never settles (Astra) (TestHostRootLeavesNoListenerOnTheCallersSignalOnceHostCloseRejectedAnFnThatNeverSettles; listeners counted by a counting abort signal)",
+   "host.root › keeps nothing once sealed: its scope and references are collected while the caller's signal lives on (TestHostRootKeepsNothingOnceSealedItsScopeAndReferencesAreCollectedWhileTheCallersSignalLivesOn; weak.Pointer + nexttest.ExpectCollected)"
+  ],
+  "missing": [
+   "host.root › gives fn a call context: the host's principal (or the given one), this host's incarnation, `ctx.get`: the host's default principal (createHost); own TestRootScopesRunGivesFnACallContext",
+   "host.root › seals the context when fn settles: its references released, its signal aborted, `ctx.get` refused `released`: asserts a reference's own ended state (D5a); own TestRootScopesRunSealsTheContextWhenFnSettles",
+   "host.root › an abort rejects at once and seals: a running call through its reference rejects, a later get is `released`: a call through a reference (D5a); own TestRootScopesRunAnAbortRejectsAtOnceAndSeals",
+   "host.root › a `ctx.get` before `load` resolved parks until it did: host load and parking (D5a)",
+   "host.root › `host.close` seals every open scope (an fn sleeping on its ctx ends); after it, `root` rejects `released`: root after close is the host's (D5a); own TestRootScopesCloseSealsEveryOpenScopeAndRejectsItsCaller"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/route.test.ts": {
+  "ported": [],
+  "missing": [
+   "route admission › runs one resolve per address, shared by the holds that wait for it (race 1): relayed hosts; own TestRouteAdmissionRunsOneResolvePerAddressSharedByTheHoldsThatWaitForItRace1",
+   "route admission › authorizes every hold with its principal: a refusal is broken forbidden, other principals still resolve (race 4): relayed hosts; own TestRouteAdmissionAuthorizesEveryHoldWithItsPrincipalARefusalIsBrokenForbiddenOtherPrincipalsStillResolveRace4",
+   "route admission › ref.retry() holds a refused hold again: authorize admitting it later, over a link and on this host (audit): references and links (D5a/D6)",
+   "route admission › ref.retry() of a reference refused on this host after host.close ends it released, nothing resolved (audit): references (D5a)",
+   "route admission › fails a hold broken with what authorize throws: hold failure text is the host's; own TestRouteAdmissionFailsAHoldBrokenWithWhatAuthorizeThrows",
+   "route admission › fails a hold broken invalid/host_address for an address whose params do not fit the kind: relayed hosts; own TestRouteAdmissionFailsAHoldBrokenInvalidHostAddressForAnAddressWhoseParamsDoNotFitTheKind",
+   "resolve failures and re-resolves › a rejected resolve leaves the holds loading, is reported, and resolves again after the address's backoff (race 2): relayed hosts, reference states; own TestResolveFailuresAndReResolvesARejectedResolve...Race2",
+   "resolve failures and re-resolves › a returned link that is closed already starts the backoff: memoryLinkPair and a live worker; own TestResolveFailuresAndReResolvesAReturnedLinkThatIsClosedAlreadyStartsTheBackoff",
+   "resolve failures and re-resolves › a dropped link resolves again while held: references go loading, then live on a fresh worker (race 6): hosts, links; own TestResolveFailuresAndReResolvesADroppedLinkResolvesAgainWhileHeld...Race6",
+   "resolve failures and re-resolves › only a link that completed its handshake resets the backoff: hosts, links; own TestResolveFailuresAndReResolvesOnlyALinkThatCompletedItsHandshakeResetsTheBackoff",
+   "resolve failures and re-resolves › a link whose peer never greets closes after 30 s of silence; the address backs off, then resolves again while held: heartbeat of HostLink (D6)",
+   "resolve failures and re-resolves › an address without holds is not resolved again after its link drops: relayed hosts; own TestResolveFailuresAndReResolvesAnAddressWithoutHoldsIsNotResolvedAgainAfterItsLinkDrops",
+   "resolve failures and re-resolves › a resolve whose holds were all released meanwhile finishes and its link is kept (race 3): relayed hosts and server.close; own TestResolveFailuresAndReResolvesAResolveWhoseHoldsWereAllReleasedMeanwhileFinishesAndItsLinkIsKeptRace3",
+   "host.close during a resolve (race 7) › aborts the resolve's context and closes a link returned afterwards: host.close and routeLinks; own TestHostCloseDuringAResolveRace7AbortsTheResolvesContextAndClosesALinkReturnedAfterwards",
+   "declaring routes › is done before load, once per kind: host.route (D5a)",
+   "a route's context › is the parent of its resolves and of the work arriving on its links: hosts, links, context values",
+   "GC › a closed route link and its released references keep no route state: HostLink and references (D6)",
+   "GC › holds released while their resolve never settles are not kept: references (D5a)"
+  ],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/routines.test.ts": {
+  "ported": [
+   "on › follows an app's JSON watchable whose watch is Chord's shared Watch with ops, as its type says (TestOnFollowsAnAppsJSONWatchable...; `store(...)` replaced by a fake owner)",
+   "on › reports a retirement as retired, folded with the changes around it into one call, and goes on (TestOnReportsARetirementAsRetiredFolded...)",
+   "on › folds a native source to its newest value after a busy call (TestOnFoldsANativeSourceToItsNewestValueAfterABusyCall)",
+   "on › takes every value a busy call left buffered before calling again: [0, 20], also when it set them itself (TestOnTakesEveryValueABusyCallLeftBuffered...; the handler waits for the delivery task replay, Pi's microtask order; see rows.md)",
+   "on › reports a source whose watch cannot be taken; a source that ended meanwhile ends it quietly (TestOnReportsASourceWhoseWatchCannotBeTaken...)",
+   "on › follows a native source: one call per new value, without ops; ends with it (TestOnFollowsANativeSourceOneCallPerNewValueWithoutOpsEndsWithIt)",
+   "on › after a throw › reports a retirement again on the retry after the call that got it threw (TestOnAfterAThrowReportsARetirementAgainOnTheRetryAfterTheCallThatGotItThrew)",
+   "onLive › is called once when its object is live; returning ends it (TestOnLiveIsCalledOnceWhenItsObjectIsLiveReturningEndsIt)",
+   "onLive › restarts after a throw with the backoff, reset after a run of at least a minute (TestOnLiveRestartsAfterAThrowWithTheBackoffResetAfterARunOfAtLeastAMinute; advanceTimersByTimeAsync(2000+60000) is split in two steps, the handler's sleep being a timer of its own task)"
+  ],
+  "missing": [
+   "on › calls first with the current value as [['r', value]], then once per change with its ops: needs a Durable document and ref.bump (D4/D5a); covered by the ported jsonSource case",
+   "on › never overlaps calls: changes during a call fold into the next, which is not aborted by them: documents; own TestOnNeverOverlapsCallsChangesDuringACall...",
+   "on › after a throw › reports, keeps the watch, and calls again with [['r', value]] after 1 s doubling; success resets: documents; own TestOnAfterAThrowReportsKeepsTheWatch...",
+   "on › after a throw › retries a change folded behind the throwing call after the backoff, once: no third call, no timer: documents; own TestOnAfterAThrowRetriesAChangeFoldedBehindTheThrowingCall...",
+   "on › after a throw › makes one retry per throw; a change during a failing retry waits for its backoff; no timer left: documents and an object's release (D5a)",
+   "on › after a throw › backs off after a throw even when the failed call changed its own source: no burst: documents; own TestOnAfterAThrowBacksOffEvenWhenTheFailedCallChangedItsOwnSourceNoBurst",
+   "on › after a throw › retries with the value that arrived during the failed call, as a whole value: documents; own TestOnAfterAThrowRetriesWithTheValueThatArrivedDuringTheFailedCall...",
+   "on › after a throw › folds changes made during a slow retry into one call with the newest value: documents; own TestOnAfterAThrowFoldsChangesMadeDuringASlowRetry...",
+   "on › after a throw › waits for the next good value when its source fails during the backoff: the retry is dropped: derive and documents; own TestOnAfterAThrowWaitsForTheNextGoodValueWhenItsSourceFailsDuringTheBackoff...",
+   "on › after a throw › clears its retry timer when its object ends during the backoff: an object's release (D5a); own TestOnAfterAThrowClearsItsRetryTimerWhenItsOwnerEndsDuringTheBackoff",
+   "on › after a throw › calls at once with the newest whole value when the source changes during the backoff: documents; own TestOnAfterAThrowCallsAtOnceWithTheNewestWholeValue...",
+   "on › folds every change made during the first call into one next call: [0, 3], not [0, 1, 3]: documents; own TestOnFoldsEveryChangeMadeDuringTheFirstCall...",
+   "on › ends without a report when its source ends: another object's document; own TestOnEndsWithoutAReportWhenItsSourceEnds",
+   "on › is not called for its source's failures: it waits for the next value (a derive healing): derives and documents; own TestOnIsNotCalledForItsSourcesFailures...",
+   "on › drops a value queued behind a busy call when a failure follows it; the next call is the healed value: derives; own TestOnDropsAValueQueuedBehindABusyCall...",
+   "on › starts on a source failed now: no call and no report until its first good value (a reference member): reference members (D5a); own TestOnStartsOnASourceFailedNow...",
+   "on › follows a reference member: the provider's value first, then its changes: reference members (D5a)",
+   "on › converges when it writes its own source: an unchanged draft commits nothing: documents (D4)",
+   "on › on a remote member with no value yet, a first value followed at once by a failure calls nothing: links and a raw peer; own TestOnWithNoValueYetAFirstValueFollowedAtOnceByAFailureCallsNothing",
+   "on › on a remote member failed since its binding (no value yet), waits for its first value: remote hosts and links (D6)",
+   "on › follows ref.state: a reference over a link going loading and live again: references and links",
+   "on › releases its watch when its object ends; a call that throws as it ends is not reported: an object's release; own TestOnReleasesItsWatchWhenItsOwnerEndsACallThatThrowsAsItEndsIsNotReported",
+   "onLive › is aborted by its object's end: no report, no restart: an object's release; own TestOnLiveIsAbortedByItsOwnersEndNoReportNoRestart",
+   "routines and the end › start in the turn their object went live, next to a method call admitted in that turn: a Go handler runs on a task of its own, and the order of two handlers' first statements is not Pi's (see rows.md); host and parked calls (D5a)",
+   "routines and the end › never start a routine call once the object ended in its first turn: no call, no report, no rejection: object end inside a handler's synchronous part; own TestRoutinesNeverStartARoutineCallOnceTheOwnerEndedInItsFirstTurn",
+   "routines and the end › are in the drain before their handler runs: a handler releasing the last reference keeps natives open: natives and the attempt drain (D5a); own TestRoutinesAreInTheDrainBeforeTheirHandlerRuns",
+   "routines and the end › make no call queued behind a busy one once the object ended: an object's release; own TestRoutinesMakeNoCallQueuedBehindABusyOneOnceTheOwnerEnded",
+   "routines and the end › release their calls' ctx.get references when each call settles: host.references; own TestRoutinesReleaseTheirCallsCtxGetReferencesWhenEachCallSettles",
+   "routines and the end › act as a remote object's principal: remote objects over a link; own TestRoutinesActAsTheOwnersCallerPrincipal",
+   "routines and the end › are aborted by host.close, which drains their running calls (bounded by closeTimeout): host.close and the drain (D5a)",
+   "routines and the end › leave nothing of an ended object: its routines' watches and contexts are collected: an object's release; own TestRoutinesLeaveNothingOfAnEndedOwnerItsWatchesAndContextsAreCollected"
+  ],
+  "designedOut": [
+   "routines and the end › type their handler by the source's kind: ops and retired for a JSON watchable, the value alone for a native one: owner class (a) type-level check; Go mechanism: OnHandler[delta.JsonValue]/OnNativeHandler[any] take chord.WatchCall / chord.NativeWatchCall (no Ops/Retired) and RoutineDeclarations has On/OnNative/OnLive; Go test TestOnTypesTheirHandlerByTheSourcesKindOpsAndRetiredForAJSONWatchableTheValueAloneForANativeOne"
+  ]
+ },
+ "packages/chord/test/next/host/sleep.test.ts": {
+  "ported": [
+   "sleep › resolves after its delay",
+   "sleep › rejects with the abort reason and clears its timer",
+   "sleep › rejects at once when its context is aborted already",
+   "sleep › chains timers for delays above 2^31-1 ms; an abort clears the chained timer",
+   "untilAborted › resolves once its context is aborted, at once when it is already"
+  ],
+  "missing": [],
+  "designedOut": []
+ },
+ "packages/chord/test/next/host/unbound.test.ts": {
+  "ported": [
+   "the index › wakes every request at the publication, out of the index first; a deleted one is not woken",
+   "the index › ends the requests of a revoked principal only, and every request at the host's close"
+  ],
+  "missing": [
+   "references waiting in the index › before the publication: loading, placed by it; a type not served then waits failed { waiting }: needs createHost, host.hold/accept, memoryLinkPair and RawPeer (host core, remote lane)",
+   "references waiting in the index › leave nothing behind once released, before and after the publication (GC): needs createHost, host.hold/accept, memoryLinkPair and RawPeer (host core, remote lane)",
+   "references waiting in the index › end at the start of the host's close, not after its slow native closes (fix round 1, Sol 6): needs createHost, host.hold/accept, memoryLinkPair and RawPeer (host core, remote lane)",
+   "holds waiting in the index › wait for the publication without a word, then are refused failed { waiting } and kept: needs createHost, host.hold/accept, memoryLinkPair and RawPeer (host core, remote lane)",
+   "holds waiting in the index › leave nothing behind once their link closed, before and after the publication (GC): needs createHost, host.hold/accept, memoryLinkPair and RawPeer (host core, remote lane)"
+  ],
+  "designedOut": []
+ }
+}

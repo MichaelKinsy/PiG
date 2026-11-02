@@ -111,6 +111,9 @@ type PathMetadata struct {
 	Scope   string `json:"scope"`
 	Origin  string `json:"origin"`
 	BaseDir string `json:"baseDir,omitempty"`
+	// ChangelogPath is the changelog file of the package that supplied the resource, when it has one (package-manager.ts
+	// PathMetadata.changelogPath).
+	ChangelogPath string `json:"changelogPath,omitempty"`
 }
 
 // ExtensionResourcePath is one entry of Pi's ResourceExtensionPaths.

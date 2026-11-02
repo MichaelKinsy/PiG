@@ -12,7 +12,7 @@ export const INSTRUCTIONS_KEY = "instructions"
 
 export const AgentDoc = defineDoc({ kind: "pi.agent", version: 1, scope: "conversation", history: "rewindable", fork: "asOf", initial: () => ({}), checkpointWhen: () => true })
 
-export type AgentState = { model?: { provider: string; modelId: string }; thinkingLevel?: string; extensions?: string[] | { add?: string[]; remove?: string[] }; tools?: string[] | { remove: string[] }; modelTools?: string[] | { remove?: string[]; add?: string[] }; instructions?: string; cwd?: string }
+export type AgentState = { model?: { provider: string; modelId: string }; thinkingLevel?: string; extensions?: string[] | { add?: string[]; remove?: string[] }; tools?: string[] | { remove: string[] }; modelTools?: string[] | { remove?: string[]; add?: string[] }; instructions?: string; cwd?: string; maxTurns?: number }
 type Named = { readonly name: string }
 
 /** Default `settings.contextRetentionMs`: ten minutes (harness/agent.ts). */
@@ -110,6 +110,9 @@ export function applyChange(state: Record<string, any>, change: any): void {
   set("modelTools", m === undefined || m === null ? m : isList(m) ? names(m as Named[]) : { ...(m.remove === undefined ? {} : { remove: names(m.remove) }), ...(m.add === undefined ? {} : { add: names(m.add) }) })
   set("instructions", change.instructions)
   set("cwd", change.cwd)
+  const maxTurns = change.maxTurns
+  if (maxTurns !== undefined && maxTurns !== null && !(Number.isSafeInteger(maxTurns) && maxTurns >= 1)) throw new RangeError(`maxTurns must be an integer 1 or more, got ${String(maxTurns)}`)
+  set("maxTurns", maxTurns)
 }
 
 /** `configure(tx, conversationId, change)`: one change to `pi.agent` inside a commit. */
@@ -117,7 +120,7 @@ export async function configure(tx: { doc(token: unknown, ...args: unknown[]): P
   applyChange(await tx.doc(AgentDoc, conversationId), change)
 }
 
-export type ResolvedAgent = { model?: unknown; thinkingLevel: string; extensions: HostExtension[]; tools: HostTool[]; callable: HostTool[]; deferred: HostTool[]; sections: HostSection[]; instructions?: string; cwd?: string }
+export type ResolvedAgent = { model?: unknown; thinkingLevel: string; extensions: HostExtension[]; tools: HostTool[]; callable: HostTool[]; deferred: HostTool[]; sections: HostSection[]; instructions?: string; cwd?: string; maxTurns?: number }
 
 /** Resolve an agent from its stored state, a registry snapshot and resolved settings. A wrapper that throws or renames drops its target and is reported. */
 export function resolveAgent(state: AgentState | undefined, snapshot: ReturnType<HostRegistrySource["snapshot"]>, settings: ReturnType<typeof resolveSettings>, report: (e: unknown, extension: string | undefined) => void): ResolvedAgent {
@@ -146,7 +149,7 @@ export function resolveAgent(state: AgentState | undefined, snapshot: ReturnType
   return {
     ...(state?.model === undefined ? {} : { model: state.model }),
     thinkingLevel: state?.thinkingLevel ?? "off", extensions, tools, callable, deferred, sections: all,
-    ...(instructions === undefined ? {} : { instructions }), ...(state?.cwd === undefined ? {} : { cwd: state.cwd }),
+    ...(instructions === undefined ? {} : { instructions }), ...(state?.cwd === undefined ? {} : { cwd: state.cwd }), ...(state?.maxTurns === undefined ? {} : { maxTurns: state.maxTurns }),
   }
 }
 
@@ -220,6 +223,7 @@ export function agentJSON(agent: ResolvedAgent, id: (object: unknown) => number)
     hooks: agent.extensions.flatMap(x => (x.hooks ?? []).map(hook => ({ extension: x.name, task: hook.task, handlers: Object.fromEntries(Object.entries(hook.handlers).filter(([, fn]) => typeof fn === "function").map(([name, fn]) => [name, id(fn)])) }))),
     ...(agent.instructions === undefined ? {} : { instructions: agent.instructions }),
     ...(agent.cwd === undefined ? {} : { cwd: agent.cwd }),
+    ...(agent.maxTurns === undefined ? {} : { maxTurns: agent.maxTurns }),
   }
 }
 export { copyJson }

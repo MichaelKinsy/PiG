@@ -105,6 +105,7 @@ Without a UI it does nothing."
                           (or (gethash (jget args "id") (acomp-registry-providers registry))
                               (error "unknown autocomplete provider ~S" (jget args "id")))))
               (lines (jget args "lines")) (line (jget args "cursorLine")) (col (jget args "cursorCol")))
+                 ;; a blocking provider is settled when it returns, as a synchronous Pi provider holds the loop until it returns; this SDK never sends ui.autocomplete.pending (only the async Node runtime does).
           (cond ((equal operation "getSuggestions")
                  (autocomplete-get-suggestions provider ctx lines line col (eq (jget args "force") t)))
                 ((equal operation "applyCompletion")

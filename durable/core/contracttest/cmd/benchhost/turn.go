@@ -166,8 +166,11 @@ func (e *engine) task(id int64, kind string, input *jv.Object, owner int64) *rec
 		return t
 	}
 	version := 1
-	if kind == "pi.tool" {
-		version = 2 // tool.ts ToolTask version 2: tagged input and result
+	switch kind {
+	case "pi.generation":
+		version = 2 // generation.ts GenerationTask version 2: calls to tools not offered are not tool task results
+	case "pi.tool":
+		version = 3 // tool.ts ToolTask version 3: the input may carry unoffered
 	}
 	return rec.NewTask(id, e.conv, kind, version, input, owner, false, nil)
 }
@@ -290,7 +293,7 @@ func (e *engine) submit(reqID, text string) error {
 		}
 		e.putSubmission(tx)
 		e.putTask(tx, e.gen(t.gen), state("pending", prepareCheckpoint()))
-		e.live.Set("run", obj("taskId", num(t.gen), "inputs", []any{num(t.sub)}))
+		e.live.Set("run", obj("taskId", num(t.gen), "inputs", []any{num(t.sub)}, "turns", num(0), "first", num(t.user)))
 		e.putLive(tx)
 		return nil
 	})
@@ -411,6 +414,8 @@ func (e *engine) model(trace *contracttest.Writer) error {
 			"checkpoint", obj("phase", "tools", "assistant", num(t.asst), "tools", []any{num(t.tool)}, "pending", []any{}),
 			"on", []any{num(t.tool)}, "policy", "allSettled"))
 		e.putTask(tx, e.tool(), state("pending", obj("phase", "call")))
+		run, _ := e.live.Get("run")
+		run.(*jv.Object).Set("turns", num(intOf(run.(*jv.Object), "turns")+1)) // a tool round is one turn of the run (generation.ts)
 		e.live.Delete("generation")
 		e.live.Set("tools", []any{obj("callId", "call-"+strconv.Itoa(call), "name", "lookup", "taskId", num(t.tool), "status", "pending")})
 		e.putLive(tx)

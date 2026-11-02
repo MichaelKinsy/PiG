@@ -90,7 +90,7 @@ func TestBlockedTasksOnTheReference(t *testing.T) {
 			t.Fatal(err)
 		}
 		<-harness.Closed()
-		if end := harness.End(); end.Reason != durable.SessionEndFailed {
+		if end := harness.End(); end.Kind != durable.SessionEndFailed {
 			t.Fatalf("session end %+v, want failed", end)
 		}
 		// The host was told work is underway, and never that it ended: its recovery alarm stays.

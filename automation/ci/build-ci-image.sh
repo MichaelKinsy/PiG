@@ -40,7 +40,7 @@ for variable in GO_IMAGE GO_BUILDER WOLFI_BASE HTTP_PROXY HTTPS_PROXY NO_PROXY h
   [ -n "$value" ] && build_args+=(--build-arg "$variable=$value")
 done
 for variable in http_proxy https_proxy no_proxy; do
-  upper="${variable^^}"
+  upper=$(printf '%s' "$variable" | tr '[:lower:]' '[:upper:]')
   if [ -z "${!variable:-}" ] && [ -n "${!upper:-}" ]; then
     build_args+=(--build-arg "$variable=${!upper}")
   fi
@@ -65,17 +65,17 @@ build_image() {
   fi
   if [ -n "${CI_BASE_DIR:-}" ]; then
     declare -a build_hosts=()
-    declare -A mapped_hosts=()
+    mapped_hosts=" "
     for variable in HTTP_PROXY HTTPS_PROXY; do
       proxy="${!variable:-}"
       [ -n "$proxy" ] || continue
       host="$(python3 -c 'import sys; from urllib.parse import urlparse; print(urlparse(sys.argv[1]).hostname or "")' "$proxy")"
       [ -n "$host" ] || { echo "$variable has no hostname" >&2; exit 2; }
-      [ -z "${mapped_hosts[$host]:-}" ] || continue
+      case "$mapped_hosts" in *" $host "*) continue ;; esac
       address="$(getent ahostsv4 "$host" | awk 'NR == 1 { print $1 }')"
       [ -n "$address" ] || { echo "cannot resolve proxy host: $host" >&2; exit 1; }
       build_hosts+=(--add-host "$host:$address")
-      mapped_hosts[$host]=1
+      mapped_hosts="$mapped_hosts$host "
     done
 
     builder="pig-ci-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-0}-${image}-$$"
@@ -104,15 +104,15 @@ build_image() {
       --driver-opt image=pig-ci-base-buildkit:0.32.2 >/dev/null
     docker buildx inspect --bootstrap "$builder" >/dev/null
     docker buildx build --builder "$builder" --platform "$platform" \
-      "${build_args[@]}" \
-      "${build_hosts[@]}" \
+      ${build_args[@]+"${build_args[@]}"} \
+      ${build_hosts[@]+"${build_hosts[@]}"} \
       "${result_args[@]}" \
       -f "$root/automation/images/$image_dir/Dockerfile" \
-      "${load_args[@]}" \
+      ${load_args[@]+"${load_args[@]}"} \
       "$root"
   else
     docker build --platform "$platform" \
-      "${build_args[@]}" \
+      ${build_args[@]+"${build_args[@]}"} \
       "${result_args[@]}" \
       -f "$root/automation/images/$image_dir/Dockerfile" \
       "$root"

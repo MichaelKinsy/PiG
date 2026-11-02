@@ -15,10 +15,39 @@ RENDER-SHELL is \"default\" or \"self\"."
   (args (obj)) (tool-call-id "") (cwd "") execution-started args-complete is-partial expanded show-images is-error (output-pad 0)
   duration-ms (state (obj)) invalidate)
 
+;;; Pi 9376c8d1 (#4748) hands renderers the host's keyText and keyHint on the tool render context and the message and entry
+;;; options (KeybindingHints). The message and entry options are the host's JSON object, so each form takes it as its first
+;;; argument, as a method takes its receiver; every form delegates to KEY-TEXT and KEY-HINT, which read the host's keybindings.
+
+(defun tool-render-context-key-text (context keybinding)
+  "KeybindingHints.keyText of the tool render context CONTEXT: KEY-TEXT."
+  (declare (ignore context))
+  (key-text keybinding))
+(defun tool-render-context-key-hint (context keybinding description)
+  "KeybindingHints.keyHint of the tool render context CONTEXT: KEY-HINT."
+  (declare (ignore context))
+  (key-hint keybinding description))
+(defun message-render-options-key-text (options keybinding)
+  "KeybindingHints.keyText of the OPTIONS a message renderer receives: KEY-TEXT."
+  (declare (ignore options))
+  (key-text keybinding))
+(defun message-render-options-key-hint (options keybinding description)
+  "KeybindingHints.keyHint of the OPTIONS a message renderer receives: KEY-HINT."
+  (declare (ignore options))
+  (key-hint keybinding description))
+(defun entry-render-options-key-text (options keybinding)
+  "KeybindingHints.keyText of the OPTIONS an entry renderer receives: KEY-TEXT."
+  (declare (ignore options))
+  (key-text keybinding))
+(defun entry-render-options-key-hint (options keybinding description)
+  "KeybindingHints.keyHint of the OPTIONS an entry renderer receives: KEY-HINT."
+  (declare (ignore options))
+  (key-hint keybinding description))
+
 (defstruct (rd-state (:conc-name rd-))
   (message-declarations '()) (message-handlers (make-hash-table :test 'equal)) (message-views (make-hash-table :test 'equal))
   (entry-declarations '()) (entry-handlers (make-hash-table :test 'equal)) (entry-views (make-hash-table :test 'equal))
-  (markdown nil)
+  (markdown nil) (owns-thinking-runs nil)
   (resolvers '()) (resolved (make-hash-table :test 'equal))
   (cards (make-hash-table :test 'equal))      ; card -> (lock . state)
   (lock (sb-thread:make-mutex :name "pig renderers")))
@@ -79,6 +108,24 @@ RENDER-SHELL is \"default\" or \"self\"."
   "Register the extension's display-only Markdown transform: TRANSFORMER is (lambda (markdown context)) -> string; any other value, or
 a signalled condition, keeps the input. A later registration replaces an earlier one."
   (setf (rd-markdown (rd-of ext)) transformer)
+  nil)
+
+; pig additive (D214)
+(defun own-thinking-runs (ext &optional (enabled t))
+  "Declare that the extension owns the thinking runs of assistant messages: a hidden or zero-row thinking run then leaves no blank
+spacer rows around it. Before the extension is live this records the value for the register payload (a later call wins; no argument
+means on); once live it calls the host. The host ORs the flag over extensions and drops it when the extension unloads."
+  (let ((live (sb-thread:with-mutex ((extension-reg-lock ext))
+                (setf (rd-owns-thinking-runs (rd-of ext)) (and enabled t))
+                (extension-live ext))))
+    (when live
+      (host-call ext "ownThinkingRuns" (obj "enabled" (if enabled t :false)))))
+  nil)
+
+; pig additive (D214)
+(defun ctx-own-thinking-runs (ctx &optional (enabled t))
+  "Change, while the extension runs, whether it owns the thinking runs of assistant messages (see OWN-THINKING-RUNS)."
+  (ctx-call-host ctx "ownThinkingRuns" (obj "enabled" (if enabled t :false)))
   nil)
 
 (def-request "markdown_transform" (ext ctx req)
@@ -200,6 +247,7 @@ functions: returning it keeps them. Resolvers run in extension load order, an ex
     (setf (gethash "message_renderers" payload) (prov-vec (rd-message-declarations rd))
           (gethash "entry_renderers" payload) (prov-vec (rd-entry-declarations rd)))
     (when (rd-markdown rd) (setf (gethash "markdown_transformer" payload) t))
+    (when (rd-owns-thinking-runs rd) (setf (gethash "owns_thinking_runs" payload) t))
     (when (rd-resolvers rd) (setf (gethash "tool_renderers" payload) (length (rd-resolvers rd))))))
 
 ;;; ---------------------------------------------------------------- login and sprite definitions

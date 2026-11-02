@@ -12,6 +12,8 @@ import (
 	"runtime/debug"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/utf8stream"
 )
 
 // Pi #9276: grep.ts getFileLines reads and splits every matched file to print a
@@ -109,8 +111,8 @@ func samplePeakHeap(t *testing.T) func() uint64 {
 // referenceGrepLines is upstream getFileLines (grep.ts): decode, normalize line
 // endings, split.
 func referenceGrepLines(data []byte) []string {
-	var decoder utf8StreamDecoder
-	content := strings.ReplaceAll(decoder.decode(data, false), "\r\n", "\n")
+	var decoder utf8stream.Decoder
+	content := strings.ReplaceAll(decoder.Decode(data, false), "\r\n", "\n")
 	return strings.Split(content, "\n")
 }
 

@@ -161,9 +161,9 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 		opened.bump(t, conversationId, 1)
 		watch := watchOf(t, opened, retentionCounterDoc, conversationId)
 		kept := watchOf(t, opened, retentionCounterDoc, conversationId)
-		kept.Start(func(_ context.Context, change durable.WatchChange[obj]) error { return nil })
+		kept.Start(func(_ context.Context, change durable.WatchCall[obj]) error { return nil })
 		seen := &watchRecorder{}
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error {
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error {
 			value, ops := change.Value, change.Ops
 			seen.record(value, ops)
 			return nil
@@ -503,7 +503,7 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 		conversationId := opened.conversation(t)
 		opened.bump(t, conversationId, 1)
 		watch := watchOf(t, opened, retentionCounterDoc, conversationId)
-		watch.Start(func(_ context.Context, change durable.WatchChange[obj]) error { return nil })
+		watch.Start(func(_ context.Context, change durable.WatchCall[obj]) error { return nil })
 		commit(t, opened.session, func(tx durable.Tx) error { return tx.RetireDoc(retentionCounterDoc, conversationId) })
 		opened.untilCached(t, 0)
 		if attached := opened.sizes().Attached; attached != 0 {
@@ -618,11 +618,6 @@ func TestSessionDocumentCacheRetention(t *testing.T) {
 			t.Fatalf("Infinity: cached %d, want 1", cached)
 		}
 		opened.close(t)
-	})
-
-	// Pi 1.2.0 packages/durable/test/session-document-retention.test.ts:451 "keeps no timer where timers cannot be unreferenced, and evicts on commits"
-	t.Run("keeps no timer where timers cannot be unreferenced, and evicts on commits", func(t *testing.T) {
-		t.Skip("JS mechanic: the case replaces globalThis.setTimeout with one returning plain numbers without unref (as in Cloudflare Workers); Go has no global timer function to replace and its timers have no unref, so they never keep the process alive")
 	})
 
 	// Pi 1.2.0 packages/durable/test/session-document-retention.test.ts:539 "keeps a reloaded newer version cached while an observer of the older one is attached"

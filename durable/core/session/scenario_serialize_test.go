@@ -73,18 +73,20 @@ func pubValue(pub *session.Publication) any {
 			o.Set("source", obj("id", idNum(c.Source.ID), "at", pointValue(c.Source.At)))
 			changes[i] = o
 		default:
-			o := obj("type", "document", "record", c.Record)
+			// Pi 5f312dac: a document change and a retirement are tagged by `kind`; a retirement carries no version, value or ops.
+			kind := "change"
+			if c.Value == nil {
+				kind = "retire"
+			}
+			o := obj("type", "document", "kind", kind, "record", c.Record)
 			if c.ConversationID != 0 {
 				o.Set("conversationId", idNum(c.ConversationID))
 			}
 			if c.Value != nil {
 				o.Set("version", idNum(int64(c.Version)))
 				o.Set("value", c.Value)
-			} else {
-				o.Set("value", nil)
+				o.Set("ops", delta.OpsValue(c.Ops))
 			}
-			ops := delta.OpsValue(c.Ops)
-			o.Set("ops", ops)
 			changes[i] = o
 		}
 	}

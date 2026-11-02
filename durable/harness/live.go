@@ -24,10 +24,11 @@ const (
 type ToolSlot struct {
 	CallId string `json:"callId"`
 	Name   string `json:"name"`
-	// TaskId is nil for a call not started yet (sequential round) and for a call its request did not offer, which
-	// starts done with the entry generation wrote.
+	// TaskId is nil for a call not started yet (sequential round).
 	TaskId *durable.TaskId `json:"taskId,omitempty"`
 	Status ToolSlotStatus  `json:"status"`
+	// Unoffered is a call to a tool its request did not offer: its task settles tool_unavailable without running anything.
+	Unoffered bool `json:"unoffered,omitempty"`
 	// Output is the retained running output; DroppedBytes and DroppedLines are what the bounds dropped.
 	Output       *string `json:"output,omitempty"`
 	DroppedBytes *int    `json:"droppedBytes,omitempty"`
@@ -82,8 +83,9 @@ type RetryStatus struct {
 
 // CompactionStatus is the presentation of one live compaction task (spec §8.7, live.ts:34-43).
 type CompactionStatus struct {
-	TaskId durable.TaskId           `json:"taskId"`
-	Reason durable.CompactionReason `json:"reason"`
+	TaskId durable.TaskId `json:"taskId"`
+	// Trigger is what started it: compact(), a threshold, or a context overflow.
+	Trigger durable.CompactionReason `json:"trigger"`
 	// Blocking reports whether a generation waits for it: a compaction the generation owns.
 	Blocking bool `json:"blocking"`
 	Attempt  int  `json:"attempt"`
@@ -94,8 +96,9 @@ type CompactionStatus struct {
 // CompactionFailure is the newest compaction that failed since a compaction last produced a summary (spec §8.7,
 // live.ts:74-79).
 type CompactionFailure struct {
-	TaskId durable.TaskId           `json:"taskId"`
-	Reason durable.CompactionReason `json:"reason"`
+	TaskId durable.TaskId `json:"taskId"`
+	// Trigger is what started the compaction that failed.
+	Trigger durable.CompactionReason `json:"trigger"`
 	// Error is the failed or faulted outcome's error message, or why the scheduler orphaned the task.
 	Error string `json:"error"`
 }
@@ -111,7 +114,10 @@ type CompactionFailure struct {
 //   - RunOrphaned: the run's task was aborted while no registered definition could take it;
 //   - RunInterrupted: the host stopped while the model was answering, more often than settings.retry retries;
 //   - RunRestartLimit: the run's generation was cut off settings.restartLimit times in a row; a request or poll it was cut
-//     off during counts as a failed attempt first, so this ends one whose charge itself keeps failing.
+//     off during counts as a failed attempt first, so this ends one whose charge itself keeps failing;
+//   - RunNothingToAnswer: the context did not end in a user message or tool results (empty, or ending in an answer), so
+//     no request was sent, as for a continue after an answer;
+//   - RunTurnLimit: a tool round reached the conversation's MaxTurns; a continue resumes on its results.
 type RunFailureReason string
 
 const (
@@ -122,8 +128,10 @@ const (
 	RunFaulted    RunFailureReason = "faulted"
 	RunOrphaned   RunFailureReason = "orphaned"
 	// RunInterrupted and RunRestartLimit end a run the host's crashes cut off.
-	RunInterrupted  RunFailureReason = "interrupted"
-	RunRestartLimit RunFailureReason = "restart_limit"
+	RunInterrupted     RunFailureReason = "interrupted"
+	RunRestartLimit    RunFailureReason = "restart_limit"
+	RunNothingToAnswer RunFailureReason = "nothing_to_answer"
+	RunTurnLimit       RunFailureReason = "turn_limit"
 )
 
 // RunFailure is the newest run that ended without an answer (spec §8.2).
@@ -135,14 +143,31 @@ type RunFailure struct {
 	Reason RunFailureReason       `json:"reason"`
 	// Detail is, for model_error, the error text; no_model, which model is missing; faulted, the error message; orphaned, why
 	// the task could not run (missing_task, task_too_old, migration_failed); interrupted and restart_limit: what was cut off,
-	// and how often.
+	// and how often; turn_limit: the tool rounds the run took, "1 turn" or "N turns".
 	Detail *string `json:"detail,omitempty"`
+	// First is the failed run's run.first, so a continue's afterRun hooks see its history too.
+	First *durable.EntryId `json:"first,omitempty"`
 }
 
 // LiveRun is run control: the task that settles the run's inputs, and those inputs.
 type LiveRun struct {
-	TaskId durable.TaskId         `json:"taskId"`
+	TaskId durable.TaskId `json:"taskId"`
+	// Inputs are the run's placed inputs, settled when it ends; empty once it answered and runs only its afterRun tasks.
 	Inputs []durable.SubmissionId `json:"inputs"`
+	// Turns are the tool rounds so far, which AgentState.MaxTurns bounds; an onYield continuation starts the count over.
+	Turns int `json:"turns"`
+	// First is the run's first entry: the first one the boundary that started it placed, a continue's the failed run's it
+	// continues; otherwise its first tool-calling answer. A run started before it was recorded may lack it; afterRun
+	// hooks then get the answer as the first entry.
+	First *durable.EntryId `json:"first,omitempty"`
+	// AfterRun is present once the run answered and its generation waits for the tasks afterRun hooks asked for, listed
+	// once created: queued items stay queued until they are terminal, and the run then ends without a failure.
+	AfterRun *LiveRunAfterRun `json:"afterRun,omitempty"`
+}
+
+// LiveRunAfterRun is LiveRun.AfterRun: the tasks afterRun hooks asked for.
+type LiveRunAfterRun struct {
+	Tasks []durable.TaskId `json:"tasks,omitempty"`
 }
 
 // DeferredStatus is a provider-side deferred response being polled.
@@ -190,7 +215,32 @@ type LiveState struct {
 var LiveDoc = durable.DefineDoc(durable.DocDefinition[LiveState]{
 	CommonDocDefinition: durable.CommonDocDefinition[LiveState]{
 		Kind:    "pi.live",
-		Version: 1,
+		Version: 3,
+		// Version 1 named a compaction's trigger `reason`, in `compactions` and `compactionFailure`. Versions 1 and 2 (as
+		// builds before `run.turns` stored it) may lack `run.turns`: a run in flight across the upgrade counts its turns
+		// from 0. Version 2 already names the trigger `trigger`, so renaming leaves it alone.
+		Migrate: func(value durable.JsonObject, _ int) (LiveState, error) {
+			live := value.Clone()
+			if run, ok := value.Get("run"); ok {
+				migrated := run.(durable.JsonObject).Clone()
+				if turns, _ := migrated.Get("turns"); !isJSONNumber(turns) {
+					migrated.Set("turns", float64(0))
+				}
+				live.Set("run", migrated)
+			}
+			if list, ok := value.Get("compactions"); ok {
+				statuses, _ := list.([]any)
+				renamed := make([]any, len(statuses))
+				for i, status := range statuses {
+					renamed[i] = renameReason(status.(durable.JsonObject))
+				}
+				live.Set("compactions", renamed)
+			}
+			if failure, ok := value.Get("compactionFailure"); ok {
+				live.Set("compactionFailure", renameReason(failure.(durable.JsonObject)))
+			}
+			return durable.FromJsonValue[LiveState](live)
+		},
 		CheckpointWhenRaw: func(value durable.JsonObject, _ []durable.Op, _ durable.CheckpointInfo) bool {
 			if generation, _ := value.Get("generation"); generation != nil {
 				return false
@@ -213,6 +263,28 @@ var LiveDoc = durable.DefineDoc(durable.DocDefinition[LiveState]{
 	},
 	DocumentSemantics: durable.NewLatestConversationSemantics(durable.ForkInitial).DocumentSemantics,
 })
+
+// isJSONNumber reports whether a decoded JSON value is a number (`typeof value === "number"`).
+func isJSONNumber(value any) bool {
+	switch value.(type) {
+	case float64, float32, int, int32, int64, uint, uint32, uint64:
+		return true
+	}
+	return false
+}
+
+// renameReason is a copy of a version 1 compaction status or failure with `reason` renamed `trigger`, its keys in their
+// order (renameReason in live.ts).
+func renameReason(value durable.JsonObject) durable.JsonObject {
+	renamed := delta.NewJsonObject(value.Len())
+	for key, field := range value.All() {
+		if key == "reason" {
+			key = "trigger"
+		}
+		renamed.Set(key, field)
+	}
+	return renamed
+}
 
 // ProgressCommit is how the progress throttles commit a partial answer and running tool output into pi.live: deferred, so
 // storage gets them together, at the next commit that reads or writes pi.live or after Settings.Progress.PersistWithinMs.
@@ -291,7 +363,8 @@ func runUnanswered(reason RunFailureReason, detail *string) RunEnd {
 }
 
 // EndRun ends the run owned by taskId: it settles each of its inputs, removes run, and, without an answer, records
-// runFailure. It always removes generation, tools, and nestedTools, whose presentation belongs to the ending run.
+// runFailure. A run that answered already, and runs only its afterRun tasks, records no failure, however it ends.
+// It always removes generation, tools, and nestedTools, whose presentation belongs to the ending run.
 func EndRun(tx durable.Tx, live *delta.Object, taskId durable.TaskId, end RunEnd) error {
 	if owner, ok := runTaskOf(live); ok && owner == taskId {
 		run, err := liveRunOf(live)
@@ -305,7 +378,7 @@ func EndRun(tx durable.Tx, live *delta.Object, taskId durable.TaskId, end RunEnd
 					return err
 				}
 			}
-		} else {
+		} else if run.AfterRun == nil {
 			settlement := durable.SubmissionSettlement{Status: durable.SubmissionUnanswered, Reason: string(end.Reason)}
 			if end.Detail != nil {
 				settlement.Detail = *end.Detail
@@ -318,7 +391,7 @@ func EndRun(tx durable.Tx, live *delta.Object, taskId durable.TaskId, end RunEnd
 					return err
 				}
 			}
-			if err := setJSON(live, "runFailure", RunFailure{TaskId: taskId, Inputs: inputs, Reason: end.Reason, Detail: end.Detail}); err != nil {
+			if err := setJSON(live, "runFailure", RunFailure{TaskId: taskId, Inputs: inputs, Reason: end.Reason, Detail: end.Detail, First: run.First}); err != nil {
 				return err
 			}
 		}
@@ -378,8 +451,8 @@ func RemoveCompactionStatus(live *delta.Object, taskId durable.TaskId) error {
 // FailCompactionStatus removes the status of compaction task taskId and records that it failed with message.
 func FailCompactionStatus(live *delta.Object, taskId durable.TaskId, message string) error {
 	if status := FindCompactionStatus(live, taskId); status != nil {
-		reason, _ := status.Get("reason").(string)
-		if err := setJSON(live, "compactionFailure", CompactionFailure{TaskId: taskId, Reason: durable.CompactionReason(reason), Error: message}); err != nil {
+		trigger, _ := status.Get("trigger").(string)
+		if err := setJSON(live, "compactionFailure", CompactionFailure{TaskId: taskId, Trigger: durable.CompactionReason(trigger), Error: message}); err != nil {
 			return err
 		}
 	}

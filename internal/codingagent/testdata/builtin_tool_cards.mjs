@@ -10,6 +10,12 @@ const { KeybindingsManager } = await load("dist/core/keybindings.js");
 const { initTheme } = await load("dist/modes/interactive/theme/theme.js");
 const { ToolExecutionComponent } = await load("dist/modes/interactive/components/tool-execution.js");
 const { createAllToolDefinitions } = await load("dist/core/tools/index.js");
+const { loadAllHighlightLanguages } = await load("dist/utils/syntax-highlight.js");
+// Interactive mode's init loads every highlight.js language off the loop (interactive-mode.ts:1124) and a card drawn after
+// that highlights README.md as markdown. The load is a one-way latch in Pi's process as in PiG's, and PiG's may already have
+// tripped in an earlier test, so both sides draw with every language registered (compareToolCards loads PiG's) instead of
+// matching whichever state the tests left.
+await loadAllHighlightLanguages();
 let input = "";
 // The bash card's clock (renderers/bash.ts createShellRenderers) reads Date.now(): each probe starts it at the
 // Go test's toolCardClockStart and moves it by elapsedMs before the result lands, so the row shows that span on both sides.

@@ -234,7 +234,12 @@ func TestToolResultHelpersMatchPi(t *testing.T) {
 					slot.Details = &value
 				}
 			}
-			got = resultJSON(fromSlot(slot, op.Code, op.Message))
+			fromResult, truncation := fromSlot(slot, op.Code, op.Message)
+			shape := map[string]any{"result": resultJSON(fromResult)}
+			if truncation != nil {
+				shape["truncation"] = canonical(*truncation)
+			}
+			got = shape
 		default:
 			result := durable.ToolExecutionResult{Output: decodeContent(op.Result.Output), IsError: op.Result.IsError, Diagnostics: diagnostics(op.Result.Diagnostics)}
 			if op.Result.Details != nil {

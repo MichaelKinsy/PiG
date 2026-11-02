@@ -1,0 +1,8 @@
+### Added
+
+- A conversation can limit how many tool rounds one run takes (Pi `f6a9db1d`, #11043). `AgentState.MaxTurns` (set with `AgentChange{MaxTurns: SetTo(n)}`, cleared with `Cleared[float64]()`, resolved as `Agent.MaxTurns`; task-owned children and forks inherit it) is an integer 1 or more, else `Configure` fails with `maxTurns must be an integer 1 or more, got X`. The tool round that reaches it runs its tools, then the run ends `unanswered` with the new `turn_limit` failure (`RunTurnLimit`, detail `"1 turn"` or `"N turns"`), and `HarnessSettings.AfterFailedRun` decides the inputs queued behind it; a `continue` submission resumes on the round's results with a fresh budget. An `onYield` continuation also starts the count over. A run that cannot answer (a context ending in neither a user message nor tool results) ends `unanswered` with the new `nothing_to_answer` failure (`RunNothingToAnswer`) before any request.
+- `LiveRun` records `Turns` (tool rounds so far) and `First` (the run's first entry), `RunFailure.First` keeps the failed run's, and `LiveRun.AfterRun` marks a run that answered and waits for its after-run tasks, which records no failure however it ends. `BoundaryResult` and `StartRun` (`RunStart{Inputs, First}`) carry the first entry.
+
+### Upgrading
+
+- The stored format of `pi.live` changes again: its version is now 3 and `run` stores `turns`. A `run` stored without `turns` (versions 1 and 2) reads with `turns` 0, so a run in flight across the upgrade counts its rounds from 0 (Pi `018fdcf4`); a store written by this version cannot be read by a build that still expects `pi.live` version 2.

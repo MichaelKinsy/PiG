@@ -785,7 +785,7 @@
       "TestExtensionSelectorPreviewDropsWhenTheBodyWouldSqueeze",
       "TestExtensionSelectorEmptyPreviewKeepsFullWidthRows",
       "TestExtensionDialogsOwnTheirCountdown",
-      "TestExtensionSelectorComponentHasNoPreviewWithoutOptionsAndCapturesThePageKeys"
+      "TestExtensionSelectorComponentHasNoPreviewWithoutOptionsAndDoesNotCaptureViewportInput"
     ],
     "upstream_reference": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts ExtensionSelectorComponent",
     "mutation": "tui/extension_selector.go: 40 mutants run with go test -overlay -run 'TestExtensionSelector|TestExtensionDialogs' ./tui. Killed: the description and its spacer, the countdown conditions, first-tick render request, the hint text, the title/row/option colors, the preview floor and gap, row widths and padding, the countdown title text and its title update, replacing and disposing a countdown, cancel/done/selected-value state, the page size, the done guard in HandleInput, k/j navigation, clamping at both ends, the confirm and cancel handling, the tools-expand callback and the hint colors. Survived and fixed with the new test: drawing a preview with no options and reporting that the page keys are captured. Survived and left: the done guard of the countdown expiry (a Go-only host-polling state) and the bare '\\n' confirm (the confirm binding already matches it)."

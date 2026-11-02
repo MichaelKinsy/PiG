@@ -35,11 +35,20 @@ type baseEditorHost struct {
 	provider      json.RawMessage
 	submits       []string
 	changes       []string
+	// captures records the capturesViewportInput each frame carried, in order.
+	captures []bool
 }
 
 func (h *baseEditorHost) EditorEmbedWorkingStatusChanged() {
 	h.mu.Lock()
 	h.optIns++
+	h.mu.Unlock()
+}
+
+// EditorCapturesViewportInput is extension.RemoteEditorViewportHost: the component's capturesViewportInput of the frame that follows.
+func (h *baseEditorHost) EditorCapturesViewportInput(captures bool) {
+	h.mu.Lock()
+	h.captures = append(h.captures, captures)
 	h.mu.Unlock()
 }
 
@@ -508,6 +517,49 @@ func TestEditorComponentGoBaseQueriesReachTheHost(t *testing.T) {
 			if padding != 3 || visible != 7 {
 				t.Fatalf("setPaddingX saw %d and setAutocompleteMaxVisible saw %d; want 3 and 7", padding, visible)
 			}
+		})
+	}
+}
+
+// Pi's editor component may set capturesViewportInput (tui.ts Component.capturesViewportInput): the host keeps the fullscreen viewport keys
+// from the transcript while it is true. editor-install-viewport's component captures until it gets "t": its first frame carries true and the
+// frame after "t" carries false, in every SDK. An SDK that never sends the flag reads false from the start; one that sends it once never turns it off.
+func TestEditorComponentCapturesViewportInputReachesTheHost(t *testing.T) {
+	t.Parallel()
+	for _, tc := range delegatedEditorCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t)
+			cleanupHarness(t, h)
+			if !h.runner.ExecuteCommand(context.Background(), "editor-install-viewport", "") {
+				t.Fatal("fixture has no editor-install-viewport command")
+			}
+			editor := waitInstalledEditor(t, h)
+			host := &baseEditorHost{inputs: make(chan struct{}, 16)}
+			editor.Bind(host)
+			editor.Configure(extension.RemoteEditorConfig{Focused: true})
+			captured := func() []bool {
+				host.mu.Lock()
+				defer host.mu.Unlock()
+				return slices.Clone(host.captures)
+			}
+			// A key may draw more than one frame; the latest one is what the host reads.
+			waitLast := func(step string, want bool) {
+				t.Helper()
+				deadline := time.Now().Add(15 * time.Second)
+				for {
+					if frames := captured(); len(frames) > 0 && frames[len(frames)-1] == want {
+						return
+					}
+					if time.Now().After(deadline) {
+						t.Fatalf("%s: frames carried capturesViewportInput %v, want the latest to be %v", step, captured(), want)
+					}
+					time.Sleep(5 * time.Millisecond)
+				}
+			}
+			editor.Input("x")
+			waitLast("after x", true)
+			editor.Input("t")
+			waitLast("after t", false)
 		})
 	}
 }

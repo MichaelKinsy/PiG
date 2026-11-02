@@ -14,7 +14,7 @@ Python names: Pi's ``viewportTop`` is :attr:`TuiAltScreen.viewport_top`, ``scrol
 ``terminal``, ``viewport_top``, ``is_following_output``, ``full_redraws``, ``has_overlay_entries``) are properties here; ``children`` is a snapshot.
 
 A child component is any object with ``render(width) -> list[str]`` and, optionally, ``invalidate()``, ``handle_input(data)``,
-``handle_mouse(event: MouseEvent) -> TuiMouseEventResult | None``, a ``focused`` attribute (Pi's Focusable) and ``wants_key_release``. The host is never
+``handle_mouse(event: MouseEvent) -> TuiMouseEventResult | None``, a ``captures_viewport_input`` attribute, property or method (a bool read when the host asks; Pi's ``capturesViewportInput``), a ``focused`` attribute (Pi's Focusable) and ``wants_key_release``. The host is never
 asked to deliver input or mouse events to a component that lacks the handler. :meth:`TuiAltScreen.get_focused_component` returns the very object given to
 :meth:`TuiAltScreen.set_focus`.
 
@@ -187,11 +187,21 @@ def _settle(value: Any) -> Any:
     return value
 
 
+def captures_viewport_input(component: Any) -> bool:
+    """The component's current ``captures_viewport_input`` (Pi's ``Component.capturesViewportInput``): an attribute or property
+    holding a bool, or a method returning one. A component without the member does not capture viewport input."""
+    value = getattr(component, "captures_viewport_input", False)
+    if callable(value):
+        value = value()
+    return bool(value)
+
+
 def _caps(component: Any) -> dict[str, bool]:
     return {
         "input": callable(getattr(component, "handle_input", None)),
         "mouse": callable(getattr(component, "handle_mouse", None)),
         "focusable": hasattr(component, "focused"),
+        "capturesViewportInput": hasattr(component, "captures_viewport_input"),
         "wantsKeyRelease": bool(getattr(component, "wants_key_release", False)),
     }
 
@@ -699,6 +709,8 @@ class TuiAltScreen:
             return {}
         if kind == "mouse":
             return {"result": self._mouse_callback(args)}
+        if kind == "capturesViewportInput":
+            return {"captures": captures_viewport_input(self._component(args))}
         if kind == "focus":
             component = self._component(args)
             if hasattr(component, "focused"):

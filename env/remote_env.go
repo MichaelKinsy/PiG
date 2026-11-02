@@ -1053,7 +1053,7 @@ func (e *RemoteExecutionEnv) Watch(ctx context.Context, targets []durableenv.Wat
 		return nil, toFileError(err, "")
 	}
 	if abort := abortError(ctx, ""); abort != nil {
-		_ = watcher.Close(ctx)
+		_ = watcher.Stop(ctx)
 		return nil, abort
 	}
 	return watcher, nil

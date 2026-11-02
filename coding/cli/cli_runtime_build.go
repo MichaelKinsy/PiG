@@ -191,7 +191,11 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	}
 	projectTrusted := flags.ProjectTrustOverride != nil && *flags.ProjectTrustOverride
 	if flags.ProjectTrustOverride == nil && !hasTrustResources {
-		projectTrusted = true
+		saved, err := b.trustStore.Get(cwd)
+		if err != nil {
+			return nil, cliPigError("resolve project trust: %v", err)
+		}
+		projectTrusted = saved == nil || *saved
 	}
 	cached, hasCached := b.trustByCWD[cwd]
 	if flags.ProjectTrustOverride == nil && hasTrustResources && hasCached {
@@ -362,10 +366,13 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	if err := validateConfiguredPackageSources(services.SettingsManager(), projectTrusted); err != nil {
 		return nil, cliCLIError("%v", err)
 	}
+	// pig additive (D216): a configured local Package whose directory does not exist warns in the session with its resolved path; Pi skips it silently.
+	missingLocal := packagemanager.MissingLocalPackages(cwd, services.SettingsManager().AgentDir(), services.SettingsManager())
 	if reinstalled, missingPkgs := packagemanager.EnsureConfiguredPackagesInstalled(cwd, services.SettingsManager().AgentDir(), services.SettingsManager()); len(reinstalled)+len(missingPkgs) > 0 {
 		if len(reinstalled) > 0 {
 			fmt.Fprintf(os.Stderr, "[pig] Reinstalled missing packages: %s\n", strings.Join(reinstalled, ", "))
 		}
+		missingPkgs = slices.DeleteFunc(missingPkgs, func(source string) bool { return packagemanager.DetectSourceKind(source) == "local" })
 		if len(missingPkgs) > 0 {
 			fmt.Fprintf(os.Stderr, "[pig] Could not install: %s (run `pig update` when online)\n", strings.Join(missingPkgs, ", "))
 		}
@@ -379,6 +386,10 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	build.ThemePaths = collectThemePaths(cwd, b.agentDir, services.SettingsManager(), resourceFlags, projectTrusted, resolver.Resolve)
 	extensionScopes, skillScopes := b.ambientScopes(projectTrusted)
 	build.ExtensionScopes, build.SkillScopes = extensionScopes, skillScopes
+	// pig additive (D202): a closed Piglet Binary loads no settings.extensions entry and says so.
+	if message := pigletBinarySettingsExtensionsRefusal(currentPigletBinary(), services.SettingsManager().GetGlobalSettings().Extensions, projectSettingsExtensions(services.SettingsManager(), projectTrusted)); message != "" {
+		build.StartupDiagnostics = append(build.StartupDiagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "warning", Message: message})
+	}
 	if err := validateConfiguredPackagesForStartup(cwd, services.SettingsManager(), func(scope string) bool {
 		return !resourceFlags.NoExtensions && packagemanager.PackageScopeEnabled(extensionScopes, scope)
 	}, resolver.Resolve); err != nil {
@@ -424,7 +435,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 		return nil, cliCLIError("%v", err)
 	}
 	// An -e source that could not be installed warns before the package warnings and the load goes on (resource-loader.ts [...installWarnings, ...packageWarnings], Pi 6dfb54678).
-	packageWarnings = mergeExtensionWarnings(fromCodingAgentWarnings(packagemanager.PackageInstallWarnings(cliExtensions.installFailures)), packageWarnings)
+	packageWarnings = mergeExtensionWarnings(fromCodingAgentWarnings(packagemanager.PackageInstallWarnings(cliExtensions.installFailures, missingLocal)), packageWarnings)
 
 	var embeddedCells []subprocess.EmbeddedCell
 	if b.activePigletBaked {

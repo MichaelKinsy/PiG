@@ -20,6 +20,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/outputfiles"
 	"github.com/MichaelKinsy/PiG/internal/text"
+	"github.com/MichaelKinsy/PiG/internal/utf8stream"
 )
 
 // BashResult mirrors upstream BashResult (bash-executor.ts).
@@ -74,7 +75,7 @@ func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operati
 		tempWriter     *bufio.Writer
 		tempFileOpened bool
 		// TextDecoder, like upstream's: a leading BOM is dropped.
-		decoder = utf8StreamDecoder{stripBOM: true}
+		decoder = utf8stream.Decoder{StripBOM: true}
 	)
 	ensureTempFile := func() {
 		if tempFileOpened {
@@ -122,7 +123,7 @@ func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operati
 	}
 	onData := func(data []byte) {
 		totalBytes += len(data)
-		decoded := decoder.decode(data, true)
+		decoded := decoder.Decode(data, true)
 		if pendingAnsi != "" {
 			decoded = pendingAnsi + decoded
 		}
@@ -131,7 +132,7 @@ func ExecuteBashWithOperations(ctx context.Context, command, cwd string, operati
 		appendText(complete)
 	}
 	flushOutput := func() {
-		rest := pendingAnsi + decoder.decode(nil, false)
+		rest := pendingAnsi + decoder.Decode(nil, false)
 		pendingAnsi = ""
 		appendText(rest)
 	}

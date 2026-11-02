@@ -168,8 +168,8 @@ func TestResolveWindow(t *testing.T) {
 	}
 }
 
-// Session.subscribeCommits receives types.ts CommitChange records: a table write is {type, value}; a document change
-// carries its record, conversation, version, value and ops, with a null value and no version for a retirement; a copy
+// Session.observeCommits observes types.ts CommitChange records: a table write is {type, value}; a document change
+// is kind change, with its record, conversation, version, value and ops, or kind retire, with its record and conversation; a copy
 // names its source.
 func TestCommitChangesAreTheSessionPublicationShape(t *testing.T) {
 	got := jv.Stringify(commitChanges([]session.Change{
@@ -181,8 +181,8 @@ func TestCommitChangesAreTheSessionPublicationShape(t *testing.T) {
 		{Kind: session.ChangeDocumentCopy, ConversationID: 4, Record: parsed(t, `{"id":9}`), Source: session.DocCopySource{ID: 3, At: session.Current}},
 	}, nil, valueWhole))
 	want := `[{"type":"task","value":{"id":7}},` +
-		`{"type":"document","record":{"id":2},"conversationId":1,"version":1,"value":{"a":1},"ops":[["s",["a"],1]]},` +
-		`{"type":"document","record":{"id":3},"conversationId":1,"value":null,"ops":[]},` +
+		`{"type":"document","kind":"change","record":{"id":2},"conversationId":1,"version":1,"value":{"a":1},"ops":[["s",["a"],1]]},` +
+		`{"type":"document","kind":"retire","record":{"id":3},"conversationId":1},` +
 		`{"type":"document.copy","record":{"id":8},"conversationId":4,"source":{"id":2,"at":6}},` +
 		`{"type":"document.copy","record":{"id":9},"conversationId":4,"source":{"id":3,"at":"current"}}]`
 	if got != want {
@@ -214,11 +214,11 @@ func TestMemoryNoticesOmitTheValueOfADocumentTheHostHolds(t *testing.T) {
 	appendOp := delta.Op{Verb: delta.Append, Path: delta.Path{delta.Key("a")}, Text: "y"}
 	sent := &idSet{}
 	first := jv.Stringify(commitChanges(change(appendOp), sent, valueFromOps))
-	if want := `[{"type":"document","record":{"id":2},"conversationId":1,"version":1,"value":{"a":"xy"},"ops":[["a",["a"],"y"]]}]`; first != want {
+	if want := `[{"type":"document","kind":"change","record":{"id":2},"conversationId":1,"version":1,"value":{"a":"xy"},"ops":[["a",["a"],"y"]]}]`; first != want {
 		t.Fatalf("first %s\nwant  %s", first, want)
 	}
 	second := jv.Stringify(commitChanges(change(appendOp), sent, valueFromOps))
-	if want := `[{"type":"document","record":{"id":2},"conversationId":1,"version":1,"ops":[["a",["a"],"y"]]}]`; second != want {
+	if want := `[{"type":"document","kind":"change","record":{"id":2},"conversationId":1,"version":1,"ops":[["a",["a"],"y"]]}]`; second != want {
 		t.Fatalf("second %s\nwant   %s", second, want)
 	}
 	if got := jv.Stringify(commitChanges(change(appendOp), sent, valueWhole)); got == second {

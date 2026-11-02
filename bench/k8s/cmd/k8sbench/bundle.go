@@ -248,6 +248,30 @@ var sourceAgentPins = map[string]agentPins{
 		},
 		tree: "a370325fce00b85dd7639908e2548f21ff28056cc66a6db41012af45b60b5b34",
 	},
+	"e7a0df27c09d11bf4161d3605246cbf57a129cb2": {
+		files: map[string]string{
+			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
+			"pi-agent/package-lock.json": "729d2abc0debadf2d1d4ecebdb2aca8224b9a0937adf342b83cfcd40110607e4",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "33c54058aaa189d1f8eb9b23b63c8c240ed6e522b4c62496d22f6854cdac2ad3",
+	},
+	"2c8d1feb147f6b3d97e855da803bfe7b19f3c403": {
+		files: map[string]string{
+			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
+			"pi-agent/package-lock.json": "b1364e14f092535561200beec7037ec7b66e3319b83612b5dd8993430f727afd",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "5dc52e9affe1549d7d726e6929b97407b9ef3b316e84ffa70cbb3f161f9179f7",
+	},
+	"b556cfe5b0300a91f39c7bc5369a65a25fb7fcd5": {
+		files: map[string]string{
+			"pi-agent/package.json":      "6a649aef6e7fa11cb4904c07b7daf57a8d40409cf3f1708e12ee144d4bdbe624",
+			"pi-agent/package-lock.json": "6a4e410fa74d30721aafa685c521737709c3273ef4df5fe6459b156b992cc7fe",
+			piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
+		},
+		tree: "798c5b09a1f48406ed8c8ff21d6a457e87b888ba82596cf63ef03ffc5fc2ba59",
+	},
 }
 
 // pinnedAgentPins are the pins of the committed Pi pin.

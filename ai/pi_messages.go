@@ -288,7 +288,11 @@ func (p *piMessagesProvider) payload(transcript TranscriptContext, opts StreamOp
 		"options": options,
 	}
 	if opts.OnPayload != nil {
-		next, err := opts.OnPayload(payload, &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{ProviderID: p.cfg.ProviderID, API: APIPiMessages, BaseURL: p.cfg.BaseURL}})
+		model := p.cfg.ModelMetadata
+		if model == nil {
+			model = &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{ProviderID: p.cfg.ProviderID, API: APIPiMessages, BaseURL: p.cfg.BaseURL}}
+		}
+		next, err := opts.OnPayload(payload, model)
 		if err != nil {
 			return nil, err
 		}

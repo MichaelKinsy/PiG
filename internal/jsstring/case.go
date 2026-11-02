@@ -3,6 +3,7 @@ package jsstring
 import (
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 // ToLower is String.prototype.toLowerCase: the full Unicode lowercase mapping. Besides the simple per-code-point mapping it maps U+0130 to
@@ -11,24 +12,43 @@ func ToLower(s string) string {
 	if isASCIIOnly(s) {
 		return strings.ToLower(s)
 	}
-	runes := []rune(s)
-	var b strings.Builder
-	b.Grow(len(s))
+	runes := codePoints(s)
+	out := make([]byte, 0, len(s))
 	for i, r := range runes {
 		switch r {
 		case 0x0130:
-			b.WriteString("i\u0307")
+			out = append(out, "i\u0307"...)
 		case 0x03A3:
 			if isFinalSigma(runes, i) {
-				b.WriteRune('ς')
+				out = utf8.AppendRune(out, 'ς')
 			} else {
-				b.WriteRune('σ')
+				out = utf8.AppendRune(out, 'σ')
 			}
 		default:
-			b.WriteRune(unicode.ToLower(r))
+			out = appendCodePoint(out, unicode.ToLower(r))
 		}
 	}
-	return b.String()
+	return string(out)
+}
+
+// codePoints decodes s as the JavaScript code points of its UTF-16 units. A lone surrogate is kept as its own surrogate value, which has no case
+// and is neither cased nor case-ignorable, so toLowerCase and toUpperCase leave it alone; each other ill-formed byte is U+FFFD.
+func codePoints(s string) []rune {
+	runes := make([]rune, 0, len(s))
+	for i := 0; i < len(s); {
+		r, size := DecodeRuneInString(s[i:])
+		runes = append(runes, r)
+		i += size
+	}
+	return runes
+}
+
+// appendCodePoint appends r as UTF-8, or as WTF-8 when r is a surrogate, which utf8.AppendRune would turn into U+FFFD.
+func appendCodePoint(out []byte, r rune) []byte {
+	if r >= 0xd800 && r <= 0xdfff {
+		return append(out, byte(0xe0|(r>>12)), byte(0x80|((r>>6)&0x3f)), byte(0x80|(r&0x3f)))
+	}
+	return utf8.AppendRune(out, r)
 }
 
 // LowerContains is strings.Contains(ToLower(s), lowerNeedle) for a lowerNeedle that is already lowercase. An ASCII-only s, the common case of a model
