@@ -976,6 +976,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D203](#bf-d203) | registerProvider with an empty `apiKey` leaves the provider unconfigured where Pi treats the empty string as… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D207](#bf-d207) | TuiAltScreen.children is a copy in the Go, Rust, Python and Lisp SDKs, where Pi's is a live array | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D208](#bf-d208) | From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D226](#bf-d226) | Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -14772,6 +14773,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1d6732bee8` (2026-10-28), `395ad20127` (2026-10-28), `5a671a6be6` (2026-10-28), `be8abc8c03` (2026-10-28)
 - **Tests:** `test/extension-conformance/tui_alt_screen_test.go::TestTuiAltScreenFrameReentryAcrossSDKs`
 
+### BF-D226
+
+**Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D226)
+- **Symptom:** none.
+- **Root cause:** Only TypeBox's own `Value.Check` runs them, and a Node extension can call that itself. The Go, Rust, Python and Lisp SDKs have no `Value.Check`, so a refinement they build can be checked by no one but the extension's own handler.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** every SDK serves TypeBox `Value.Check`, so a stored refinement has a consumer.
+- **Fix commits:** `24d55ab3f0` (2026-11-02), `4a7c33c707` (2026-11-02), `82fd316d04` (2026-11-02), `e27164c914` (2026-11-02)
+- **Tests:** `test/extension-conformance/refine_arguments_test.go::TestConformance_RefinedToolArgumentsAreNotRefined`
+
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -22477,6 +22493,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D219 | pi-schema regular expressions differ from V8 in four contrived cases | deliberate difference |
 | D222 | A plugin input the build cannot read is reported at the import that names it, not at esbuild's library | deliberate difference |
 | D225 | A thread-based SDK's wait for the run it started needs the SDK's yield helper | deliberate difference |
+| D226 | Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs | [BF-D226](#bf-d226) |
 
 ## Fix-titled commits that are not bugs in a release
 

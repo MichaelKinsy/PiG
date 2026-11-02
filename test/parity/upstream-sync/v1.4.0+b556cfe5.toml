@@ -543,9 +543,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/images.go). coverage.md reports 6 be
 [[files]]
 path = "packages/ai/src/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi packages/ai/src/index.ts (1.4.0+b556cfe5) is the package barrel: export * and export type lines over the modules of ai, plus three re-exports of utils/text.ts (contentText, getSystemMessageText, renderSystemMessageUpdate). PORT_MAP records it n/a (ai/doc.go): Go exports are package-level identifiers of package ai, and the three values exist there as ai.ContentText (ai/text.go), ai.GetSystemMessageText (ai/estimate.go) and ai.RenderSystemMessageUpdate (ai/transcript.go). The modules the barrel re-exports carry their own ledger entries."
 
 [[files]]
 path = "packages/ai/src/legacy-api-aliases.ts"
@@ -725,9 +725,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/models_generated.go + internal/codin
 [[files]]
 path = "packages/ai/src/providers/compat-schema.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/compat_schema_upstream_test.go#TestCompatSchemasPreserveAPISpecificDefaults", "test:internal/codingagent/configschema/compat_schema_upstream_test.go#TestProviderCompatSchemaAssignsNoAPISpecificDefaults", "test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi", "test:internal/codingagent/configschema/render_test.go#TestRenderedSchemasAreByteEqualToThePinnedPiPackage"]
+rationale = "The schema trees of compat-schema.ts (the per-API compat schemas, ProviderCompatSchema, CompatSchemasByApi) are ported in internal/codingagent/configschema/compat_a.go and compat_b.go. TestCompatSchemaExportsMatchPi compares every export with the JSON text of the pinned pi-ai module, TestRenderedSchemasAreByteEqualToThePinnedPiPackage compares the rendered models.schema.json with Pi's artifact, and the two upstream-test ports (packages/ai/test/compat-schema.test.ts) check the API-specific defaults and that the provider superset assigns none. One Pi member has no Go form, by owner decision (2026-11-02, test/parity/interface-closure/autobind/reviewed-decisions.json pkg:ai/providers/compat-schema#ProviderCompat, designed-out): the type ProviderCompat = Static of ProviderCompatSchema, which Go holds as ai.OpenAICompat with the other APIs members kept verbatim in Extra; the Pi test case that checks the property types of that type is a TypeScript type-level assertion, checked by the Go compiler."
 
 [[files]]
 path = "packages/ai/src/providers/data-json.d.ts"
@@ -921,9 +921,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/mistral.go, ai/provider_constructors
 [[files]]
 path = "packages/ai/src/providers/model-schema.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/model_schema_upstream_test.go#TestModelSchemaExportsMatchPi", "test:internal/codingagent/configschema/render_test.go#TestRenderedSchemasAreByteEqualToThePinnedPiPackage", "test:internal/codingagent/configschema/pischema_test.go#TestModelCostSchemaTextMatchesPiSchemaBuilders"]
+rationale = "The schema constants and literal lists of model-schema.ts (ThinkingLevelSchema, ModelCostSchema, ModelImageResizeOptionsSchema and the rest) are ported in internal/codingagent/configschema/model.go. TestModelSchemaExportsMatchPi compares every export with the JSON text of the pinned pi-ai module, and TestRenderedSchemasAreByteEqualToThePinnedPiPackage compares the rendered models.schema.json with Pi's artifact."
 
 [[files]]
 path = "packages/ai/src/providers/moonshotai-cn.models.ts"
@@ -1117,9 +1117,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/radius.go + internal/codingagent/rad
 [[files]]
 path = "packages/ai/src/providers/schema-builders.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/pischema_test.go#TestOpenObjectBuildsAnObjectThatAllowsOtherProperties", "test:internal/codingagent/configschema/pischema_test.go#TestStringLiteralStringRecordAndOneOfBuildTheirPiSchemaShapes", "test:internal/codingagent/configschema/pischema_test.go#TestPiAISchemaObjectsWriteTypePropertiesRequiredThenAnnotations"]
+rationale = "openObject, stringLiteral and stringRecord of schema-builders.ts are ported as OpenObject, StringLiteral and StringRecord in internal/codingagent/configschema/pischema.go, building the same JSON Schema members in the same order (type, then properties and required, then annotations; additionalProperties true only when asked; patternProperties with the pattern ^.*$). The Pi call shape (the options object whose own key order is the member order, returning a Schema typed with the accepted value) is designed out by owner decision (2026-11-02, reviewed-decisions.json pkg:ai/providers/schema-builders#openObject::call:0, stringLiteral::call:0 and stringRecord::call:0): the Go builders return the schema tree and take their options in call order."
 
 [[files]]
 path = "packages/ai/src/providers/together.models.ts"
@@ -1278,9 +1278,9 @@ rationale = "Pi f715a15c1 wraps the 500-character span error message in ownedSli
 [[files]]
 path = "packages/ai/src/types.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/message_types_upstream_test.go#TestToolResultMessagePreservesJSONCompatibleDetailTypes", "test:ai/message_types_upstream_test.go#TestToolResultMessageRejectsNonJSONDetailTypes", "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream", "test:ai/catalog_options_upstream_test.go#TestModelCatalogTypes", "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream", "test:ai/validate_probes_upstream_test.go#TestValidateToolArgumentsValidatesTheSchemaItIsGiven"]
+rationale = "packages/ai/src/types.ts declares types and interfaces only (86 type and interface exports, no value); its Go form is ai/types.go and the files PORT_MAP row lists (ai/messages.go, ai/model_types.go, ai/events.go, ai/types_unions.go and others). The tests port the Pi test files that exercise those shapes: the JSON detail types of ToolResultMessage (message-types.test.ts), the typed model shapes (model-types.test.ts, model-catalog-types.test.ts), the typed System One options (typesafe-system-one.test.ts), and a Tool whose parameters are any JSON Schema, which since the schema switch is the contract of Tool.parameters (types.ts:768-774). TypeScript-only members (conditional and mapped types) are recorded one by one as designed-out in test/parity/interface-closure/autobind/reviewed-decisions.json."
 
 [[files]]
 path = "packages/ai/src/utils/abort-signals.ts"
@@ -1439,9 +1439,9 @@ rationale = "Pi f715a15c1 adds StreamingJsonParser (an incremental, tolerant JSO
 [[files]]
 path = "packages/ai/src/utils/string-enum.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/string_enum_test.go#TestStringEnumBuildsThePiSchema"]
+rationale = "StringEnum of string-enum.ts (Pi: type string and enum, plus description and default only when given and non-empty) is ported as ai.StringEnum (ai/string_enum.go), returning the JSON-schema map; the test compares the schema for no options, description and default, empty strings omitted, and description only. Pi types the result with Schema of the union of the values, a type-level member Go does not have."
 
 [[files]]
 path = "packages/ai/src/utils/text.ts"
@@ -1453,9 +1453,9 @@ rationale = "Pi f715a15c1 adds ownedSlice, which copies a short slice of a long 
 [[files]]
 path = "packages/ai/src/utils/transcript.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/transcript_replay_oracle_test.go#TestTranscriptReplayMatchesPi", "test:ai/system_message_replay_test.go#TestSystemMessageReplayReplaysContentSectionsAndToolsIntoOneLeadingMessage", "test:ai/system_message_replay_test.go#TestSystemMessageReplayToolStateChangesTreatChangedDefinitionsAsRemovalPlusAddition", "test:ai/transcript_tool_changes_test.go#TestResolveTranscriptToolsBoundaryPerTransport", "test:ai/transcript_resolve_equivalence_test.go#TestResolveTranscriptToolsMatchesTheCopyingReference", "scenario:test/parity/scenarios/rpc/59-rpc-prompt-wrong-typed-system-replay.toml"]
+rationale = "Every export of transcript.ts (createInitialSystemMessage, normalizeContext, getInitialSystemMessage, withoutInitialSystemMessage, getCurrentTools, getCurrentSystemMessage, getCurrentSystemPrompt, collapseSystemMessages, resolveTranscript, toToolDeclaration, declarationsEqual, getToolStateChanges, getDeclaredTools, hasToolRedefinitions, hasNonAdditiveToolChanges, resolveTranscriptTools) is ported in ai/transcript.go. TestTranscriptReplayMatchesPi runs the replay helpers in the pinned pi-ai and in PiG over generated histories; the system-message-replay and transcript-tool-changes ports (Pi system-message-replay.test.ts and transcript-tool-changes.test.ts) check the replay, the tool state changes and the per-transport tool support through provider requests; the resolve test compares resolveTranscriptTools with the copying reference; the scenario replays a wrong-typed system message through the RPC mode."
 
 [[files]]
 path = "packages/ai/src/utils/uuid.ts"
@@ -1467,9 +1467,9 @@ rationale = "PORT_MAP row is ✅ ported (ai/uuid.go (UUIDv7, uuidv7Generator: th
 [[files]]
 path = "packages/ai/src/utils/validation.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:ai/validate_upstream_test.go#TestValidateToolArgumentsListsSchemaErrorsThenTheArguments", "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReportsAMissingRequiredPropertyAtTheProperty", "test:ai/validate_upstream_test.go#TestValidateToolArgumentsReturnsACopyOfTheArgumentsAlsoWhenNothingIsCoerced", "test:ai/validate_upstream_test.go#TestValidateToolCallFindsTheNamedTool", "test:ai/validate_probes_upstream_test.go#TestValidationProbesMatchPi", "test:ai/validate_pi_oracle_test.go#TestValidateToolArgumentsMatchesPiOnSeededSchemas", "scenario:test/parity/scenarios/tools/13-print-read-argument-coercion.toml", "scenario:test/parity/scenarios/providers-faux-streaming/05-print-faux-validation-reject.toml"]
+rationale = "validateToolCall and validateToolArguments of validation.ts compile the tool schema with pi-schema (formats, coerce, unresolvedRefs reject), parse a copy of the arguments, report argumentsError, and format errors as dotted paths followed by the received arguments. Ported in ai/validate.go and ai/validate_arguments.go over schema.CompileCoercing (the Go form of compile with coerce true, designed out as a separate function by owner decision 2026-11-02). The ports of validation.test.ts and validation-probes.test.ts check the messages, the missing-property path, the copy and the named-tool lookup; TestValidationProbesMatchPi and the seeded-schema oracle compare PiG with the pinned pi-ai on the same schemas and arguments; the scenarios run coercion and a rejected call through print mode."
 
 [[files]]
 path = "packages/ai/src/utils/version.ts"
@@ -5807,23 +5807,23 @@ rationale = "closure compiler ported 1:1 (see design notes). PiG: schema/annotat
 [[files]]
 path = "packages/schema/src/builders.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/builders_upstream_test.go#TestBuildersProducePlainJSONSchema", "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf", "test:schema/builders_upstream_test.go#TestObjUsesOwnKeyOrder", "test:schema/builders_options_test.go#TestBuilderOptionsWriteMembersInCallOrder"]
+rationale = "The builders of builders.ts (arr, bool, bytes, int, lit, map, nul, nullable, num, obj, oneOf, opt, str, tuple, union, unknown and the annotation and bound options) are ported in schema/builders.go; the port of builders.test.ts checks the JSON Schema they produce, every leaf, the compiled semantics and the own key order of obj. Pi builders take an options object whose own key order is the member order (builders.ts:44-48); the Go builders take typed options applied in call order, which writes the same members in the same order (TestBuilderOptionsWriteMembersInCallOrder), a call-syntax difference the owner approved as designed-out on 2026-11-02 (reviewed-decisions.json, the 16 pkg:schema builder call rows)."
 
 [[files]]
 path = "packages/schema/src/checks.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/conformance_upstream_test.go#TestConformanceSuite", "test:schema/validator_upstream_test.go#TestValues", "test:schema/validator_additions_upstream_test.go#TestStringLengths", "test:schema/shared_upstream_test.go#TestSharedChecks"]
+rationale = "The check closures of checks.ts (type, bytes, string and number bounds, object and array guards, required, enum, const, oneOf, not, uniqueness) are ported in schema/checks.go. TestConformanceSuite runs every test of the JSON-Schema-Test-Suite (drafts 2020-12 and 7, including optional tests) through them, the port of validator.test.ts checks the value rules (undefined as absent, bytes, own properties) and TestStringLengths the code point count, and TestSharedChecks the lifetime of shared patterns."
 
 [[files]]
 path = "packages/schema/src/coerce.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/coerce_upstream_test.go#TestCoerceUpstream", "test:schema/coerce_typebox_upstream_test.go#TestCoerceTypeBoxUpstream", "test:schema/coerce_oracle_test.go#TestCoerceMatchesPi", "test:schema/coerce_upstream_test.go#TestCoerceUnresolvedReferences"]
+rationale = "The three coercion passes of coerce.ts (optional nulls, TypeBox Value.Convert rules, primitive coercion by schema) and parse are ported in schema/coerce.go; the ports of coerce.test.ts and coerce-typebox.test.ts run Pi's cases, and TestCoerceMatchesPi compares the coerced values and errors with the recorded results of the pinned pi-schema. Pi's compile(schema, with coerce true) returns a CoercingValidator by overload; Go has the separate schema.CompileCoercing, an owner-approved designed-out form (2026-11-02, reviewed-decisions.json CompileCoercing rows)."
 
 [[files]]
 path = "packages/schema/src/compiler.ts"
@@ -5835,16 +5835,16 @@ rationale = "closure compiler ported 1:1 (see design notes). PiG: schema/compile
 [[files]]
 path = "packages/schema/src/explain.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/errors_golden_test.go#TestErrorsMatchPi", "test:schema/errors_golden_test.go#TestHandWrittenCaseErrorsMatchPi", "test:schema/validator_upstream_test.go#TestErrors", "test:schema/validator_additions_upstream_test.go#TestErrorMessages"]
+rationale = "The Explainer of explain.ts (the errors of a failed value: paths as JSON Pointers, keyword, messages, the oneOf branch blame, enum and contains wording) is ported in schema/explain.go; TestErrorsMatchPi and TestHandWrittenCaseErrorsMatchPi compare the errors with Pi's, and the ports of validator.test.ts check the escaping, the tagged-union branch, the reference-following paths and the message wording."
 
 [[files]]
 path = "packages/schema/src/formats/index.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/formats/formats_test.go#TestFormatsNames", "test:schema/formats/formats_test.go#TestFormatsReturnsFreshMap", "test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/formats/conformance_test.go#TestConformance"]
+rationale = "The formats table of formats/index.ts (21 names: the JSON Schema 2020-12 formats plus url and json-pointer-uri-fragment) is ported as formats.Formats in schema/formats/index.go; TestFormatsNames compares the names with Pi's, TestOracleCorpus replays Pi's results for every format, and TestConformance runs the format tests of the JSON-Schema-Test-Suite. Pi exports a frozen object; Go returns a fresh map per call (TestFormatsReturnsFreshMap), so a caller cannot change the table."
 
 [[files]]
 path = "packages/schema/src/formats/typebox/date.ts"
@@ -5996,9 +5996,9 @@ rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_json_point
 [[files]]
 path = "packages/schema/src/formats/typebox/json_pointer_uri_fragment.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/validator_additions_upstream_test.go#TestExtraFormats"]
+rationale = "IsJsonPointerUriFragment is ported in schema/formats/typebox_json_pointer_uri_fragment.go. TestOracleCorpus replays Pi's own results for the json-pointer-uri-fragment format (at least 30 rows, 20 with a lone surrogate), and the port of the validator.test.ts case checks the format through Compile."
 
 [[files]]
 path = "packages/schema/src/formats/typebox/regex.ts"
@@ -6045,9 +6045,9 @@ rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_uri_templa
 [[files]]
 path = "packages/schema/src/formats/typebox/url.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/formats/oracle_test.go#TestOracleCorpus", "test:schema/validator_additions_upstream_test.go#TestExtraFormats"]
+rationale = "IsUrl (URL.canParse) is ported in schema/formats/typebox_url.go. TestOracleCorpus replays Pi's own results for the url format (at least 30 rows, 20 with a lone surrogate), and the port of the validator.test.ts case checks the format through Compile."
 
 [[files]]
 path = "packages/schema/src/formats/typebox/uuid.ts"
@@ -6059,16 +6059,16 @@ rationale = "`Is{Name}` as Pi exports it. PiG: schema/formats/typebox_uuid.go (l
 [[files]]
 path = "packages/schema/src/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi packages/schema/src/index.ts is the package barrel (builders, types and validator re-exports). PORT_MAP records it n/a: the Go exports are the package-level identifiers of package schema, each ledgered under its own file."
 
 [[files]]
 path = "packages/schema/src/resolver.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/validator_additions_upstream_test.go#TestUnresolvedReferences", "test:schema/validator_upstream_test.go#TestOptions", "test:schema/conformance_upstream_test.go#TestConformanceSuite", "test:schema/coerce_upstream_test.go#TestCoerceUnresolvedReferences"]
+rationale = "The Resolver of resolver.ts ($ref, $dynamicRef, $anchor and $id resolution, registered documents, the unresolved-reference policy) is ported in schema/resolver.go. The JSON-Schema-Test-Suite exercises the resolution of every reference keyword and its remote documents; the ports of validator.test.ts check a registered document, the throw for a reference that names nothing, and unresolvedRefs reject (also for coercion)."
 
 [[files]]
 path = "packages/schema/src/shared.ts"
@@ -6080,23 +6080,23 @@ rationale = "closure compiler ported 1:1 (see design notes). PiG: schema/shared.
 [[files]]
 path = "packages/schema/src/typebox-static.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "typebox-static.ts is type-level only: TypeBoxStatic reads the static type of a TypeBox-built schema from its type shape (~kind, ~optional, ~readonly, ~unsafe) so Static also types tool arguments of TypeBox schemas, and no value, function or runtime member exists. Its test (typebox-static.test.ts) is expectTypeOf assertions that pass when the file type-checks. Go has no type-level programming and no TypeBox schemas, which the extension SDKs build in their own languages; PORT_MAP records the file n/a."
 
 [[files]]
 path = "packages/schema/src/types.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/types_upstream_test.go#TestFormatCheckIsTheCheckOfAFormatName", "test:schema/types_upstream_test.go#TestCheckIsABooleanFunctionOfAValue", "test:schema/validator_upstream_test.go#TestOptions", "test:schema/validator_additions_upstream_test.go#TestUnresolvedReferences"]
+rationale = "The types of types.ts are ported in schema/types.go: JsonSchema, FormatCheck, Check, CompileOptions (draft, formats, schemas, unresolvedRefs), ParseResult and ValidationError. The option tests check the draft, the formats and the registered schemas, and the unresolved-reference policy; the type tests check FormatCheck and Check. CompileOptions has no coerce member: coercion is the separate CompileCoercing (owner-approved designed-out form, 2026-11-02, reviewed-decisions.json); SchemaObject is a type-level alias with no Go form."
 
 [[files]]
 path = "packages/schema/src/validator.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:schema/validator_upstream_test.go#TestErrors", "test:schema/validator_upstream_test.go#TestValues", "test:schema/validator_upstream_test.go#TestOptions", "test:schema/validator_upstream_test.go#TestSchemas", "test:schema/validator_additions_upstream_test.go#TestUnresolvedReferences", "test:schema/coerce_upstream_test.go#TestCoerceUpstream"]
+rationale = "Compile, Validator (check, errors) and CoercingValidator (coerce, parse) of validator.ts are ported in schema/validator.go and schema/coerce.go; the ports of validator.test.ts check errors, values, options, schemas (TypeBox schemas as they are, deep-frozen schemas, recursive and malformed ones) and the unresolved-reference policy, and the port of coerce.test.ts the coercing validator. Pi's compile overload with coerce true is the separate schema.CompileCoercing in Go, an owner-approved designed-out form (2026-11-02, reviewed-decisions.json)."
 
 [[files]]
 path = "packages/telemetry/src/index.ts"
