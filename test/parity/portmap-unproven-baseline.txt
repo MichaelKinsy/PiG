@@ -2,9 +2,6 @@ packages/agent/src/agent-loop.ts
 packages/agent/src/agent.ts
 packages/agent/src/stream-fn.ts
 packages/agent/src/types.ts
-packages/ai/scripts/check-model-data.ts
-packages/ai/scripts/hydrate-model-catalog.ts
-packages/ai/scripts/model-data.ts
 packages/ai/src/api/anthropic-messages.ts
 packages/ai/src/api/cloudflare-ai-binding.ts
 packages/ai/src/api/cloudflare.ts

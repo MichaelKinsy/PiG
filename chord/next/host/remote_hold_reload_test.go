@@ -30,7 +30,7 @@ var rhShown = mustContract(contracts.Remote("app.shown", contracts.RemoteDeclara
 	Version: 1, Params: contracts.Params{}, HostAddress: exServerAddress,
 	Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
 		State:   []contracts.Property{rhProp("label", contracts.Str()), rhProp("n", contracts.Int())},
-		Methods: []contracts.MethodEntry{contracts.Meth("bump", contracts.NewMethod(contracts.TSchema{}, contracts.Int()))},
+		Methods: []contracts.MethodEntry{contracts.Meth("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
 	})},
 }))
 
@@ -323,13 +323,13 @@ func TestHoldsAcrossAReload(t *testing.T) {
 				contracts.Var("a", contracts.VariantDeclaration{
 					State: []contracts.Property{rhProp("label", contracts.Str())},
 					Methods: []contracts.MethodEntry{
-						contracts.Meth("bump", contracts.NewMethod(contracts.TSchema{}, contracts.Int())),
-						contracts.Meth("ping", contracts.NewMethod(contracts.TSchema{}, contracts.Int())),
+						contracts.Meth("bump", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
+						contracts.Meth("ping", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
 					},
 				}),
 				contracts.Var("b", contracts.VariantDeclaration{
 					State:   []contracts.Property{rhProp("label", contracts.Str())},
-					Methods: []contracts.MethodEntry{contracts.Meth("ping", contracts.NewMethod(contracts.TSchema{}, contracts.Int()))},
+					Methods: []contracts.MethodEntry{contracts.Meth("ping", contracts.NewMethod(contracts.Schema{}, contracts.Int()))},
 				}),
 			},
 		}))

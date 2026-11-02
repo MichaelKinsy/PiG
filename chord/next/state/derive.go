@@ -2,11 +2,13 @@ package state
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"runtime"
 	"sync"
 	"weak"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 )
 
@@ -37,6 +39,9 @@ const (
 )
 
 var noOps = []delta.Op{}
+
+// errNotJSON is why a delivery fails on a derive value that is no JSON.
+var errNotJSON = errors.New("chord: a derive produced a value that is not JSON")
 
 // Derive is a derive: compute over its sources' values, recomputed on read when dirty, so each compute runs at most once
 // per batch and after its sources. A commit only marks it; the batch recomputes it only when something watched depends
@@ -170,8 +175,8 @@ func (d *Derive) SourceRetired(visited map[Dependent]struct{}) {
 
 // Deliver delivers the frame: the diff from the watches' value, a retirement even without ops (rule 21). A compute that
 // fails gives one failure call when the watches had a value (one per failure episode), the watches stay open; a
-// retirement waits for the next value. Diffing cannot fail in Go: delta.DiffRevisions takes JSON, which Go values
-// cannot violate the way an `undefined` property does, so the error is always nil.
+// retirement waits for the next value. A value that is no JSON cannot be diffed (Pi's `{ a: undefined }` makes
+// diffRevisions throw): the delivery fails and the batch reports it as delivery_failed, as it does for a throwing diff.
 func (d *Derive) Deliver(ctx context.Context) error {
 	beforeKind, before := d.framed, d.framedVal
 	retired := d.retired
@@ -191,6 +196,9 @@ func (d *Derive) Deliver(ctx context.Context) error {
 		if beforeKind != framedValue {
 			ops = []delta.Op{{"r", after}}
 		} else {
+			if !chord.IsJsonValue(after) {
+				return errNotJSON
+			}
 			ops = delta.DiffRevisions(before, after)
 		}
 	}

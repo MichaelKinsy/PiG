@@ -22,7 +22,7 @@ import (
 
 func TestExample06Natives(t *testing.T) {
 	clock := exLocal("example.clock", contracts.Params{exProp("zone", exStr())},
-		contracts.Mem("zone", exStr()), contracts.Mem("now", contracts.NewMethod(contracts.TSchema{}, exStr())))
+		contracts.Mem("zone", exStr()), contracts.Mem("now", contracts.NewMethod(contracts.Schema{}, exStr())))
 	leaky := exLocal("example.leaky", contracts.Params{}, contracts.Mem("n", exInt()))
 	var logs exCollector
 	var ticks sync.Map

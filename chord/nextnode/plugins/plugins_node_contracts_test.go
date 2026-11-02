@@ -42,7 +42,7 @@ func cdContracts(t *testing.T) map[string]*contracts.Contract {
 			contracts.Mem("flag", contracts.Bool(contracts.Default(true))),
 			contracts.Mem("nothing", contracts.Nul()),
 			contracts.Mem("exactly", contracts.Lit("a")),
-			contracts.Mem("either", contracts.Union([]contracts.TSchema{contracts.Str(), contracts.Int()})),
+			contracts.Mem("either", contracts.Union([]contracts.Schema{contracts.Str(), contracts.Int()})),
 			contracts.Mem("one", contracts.OneOf(1, 2, 3)),
 			contracts.Mem("list", contracts.Arr(contracts.Str(), contracts.Min(1), contracts.Max(5))),
 			contracts.Mem("record", contracts.Map(contracts.Int())),
@@ -54,14 +54,14 @@ func cdContracts(t *testing.T) map[string]*contracts.Contract {
 			contracts.Mem("noargs", contracts.NewMethod()),
 			contracts.Mem("argsonly", contracts.NewMethod(contracts.Obj(contracts.Prop("k", contracts.Str())))),
 			contracts.Mem("both", contracts.NewMethod(contracts.Arr(contracts.Int()), contracts.Str())),
-			contracts.Mem("resultonly", contracts.NewMethod(contracts.TSchema{}, contracts.Num())),
+			contracts.Mem("resultonly", contracts.NewMethod(contracts.Schema{}, contracts.Num())),
 			contracts.Mem("docs", contracts.Keyed(contracts.Obj(contracts.Prop("title", contracts.Str())))),
 			contracts.Mem("blobs", contracts.Keyed(contracts.Bytes())),
 		},
 	}))
 	out["every schema constructor, every member kind, every params kind"] = allSchemas
 
-	raw := func(pairs ...any) contracts.TSchema { return contracts.TSchema{Node: delta.JsonObjectOf(pairs...)} }
+	raw := func(pairs ...any) contracts.Schema { return contracts.Schema{Node: delta.JsonObjectOf(pairs...)} }
 	out["raw schemas"] = mustContract(contracts.Local("test.raw", contracts.LocalDeclaration{
 		Version: 1, Params: contracts.Params{},
 		Members: []contracts.LocalEntry{
@@ -78,7 +78,7 @@ func cdContracts(t *testing.T) map[string]*contracts.Contract {
 			contracts.Mem("enumerated", raw("enum", []any{"b", "a", float64(2), delta.JsonObjectOf("z", 1.0, "a", 2.0)})),
 			contracts.Mem("constant", raw("const", delta.JsonObjectOf("y", []any{1.0, 2.0}, "x", nil))),
 			contracts.Mem("bounded", raw("type", "number", "exclusiveMinimum", 0.0, "multipleOf", 0.25)),
-			contracts.Mem("boolean schema", contracts.TSchema{Node: true}),
+			contracts.Mem("boolean schema", contracts.Schema{Node: true}),
 		},
 	}))
 

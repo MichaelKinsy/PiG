@@ -23,7 +23,7 @@ func adaptedLocal(name string, members ...contracts.LocalEntry) *contracts.Contr
 }
 
 // adaptedObjOf is `obj({ name: int(), ... })`.
-func adaptedObjOf(names ...string) contracts.TSchema {
+func adaptedObjOf(names ...string) contracts.Schema {
 	props := make([]contracts.Property, len(names))
 	for i, name := range names {
 		props[i] = contracts.Prop(name, contracts.Int())

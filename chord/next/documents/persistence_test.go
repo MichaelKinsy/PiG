@@ -1,6 +1,7 @@
 package documents
 
 // Ports packages/chord/test/next/documents/persistence.test.ts
+// pi: packages/chord/src/next/documents/persistence.ts
 //
 // Persisted documents' store side (slice 6a §8, §10): loads with the version and fingerprint checks and `migrate`,
 // finds, keys, and the writes one commit stages (creation, base or delta by `checkpointWhen`, retirement).
@@ -17,7 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
-func noteSchema() contracts.TSchema {
+func noteSchema() contracts.Schema {
 	return contracts.Obj(contracts.Prop("title", contracts.Str()), contracts.Prop("n", contracts.Int()))
 }
 

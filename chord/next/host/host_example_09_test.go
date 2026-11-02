@@ -22,7 +22,7 @@ import (
 func TestExample09Calls(t *testing.T) {
 	files := exRemote("example.files", contracts.Params{}, exServerAddress, contracts.Var("owner", contracts.VariantDeclaration{
 		Methods: []contracts.MethodEntry{
-			contracts.Meth("whoami", contracts.NewMethod(contracts.TSchema{}, exStr())),
+			contracts.Meth("whoami", contracts.NewMethod(contracts.Schema{}, exStr())),
 			// A `bytes()` leaf: the argument and result travel as raw segments, never base64.
 			contracts.Meth("upload", contracts.NewMethod(exObj(exProp("name", exStr()), exProp("data", exBytes())), exInt())),
 			contracts.Meth("download", contracts.NewMethod(exObj(exProp("name", exStr())), exBytes())),
