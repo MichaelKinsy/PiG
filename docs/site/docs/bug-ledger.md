@@ -24,6 +24,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-006a496](#bf-006a496) | The faux provider no longer counts newly cached prompt tokens as input as well as cache writes: with a… | PiG's own defect | All platforms | Unreleased |
 | [BF-007c91d](#bf-007c91d) | Go, Python and Rust extensions: in a `before_agent_start` handler, the event's `systemPrompt` and the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-00933e5](#bf-00933e5) | `mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load… | PiG's own defect | Windows | 0.5.2 |
+| [BF-016a19a](#bf-016a19a) | A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the… | PiG's own defect | All platforms | Unreleased |
 | [BF-02114ff](#bf-02114ff) | fix(tui): filterable list drops the label when no cell remains (Pi select-list) | PiG's own defect | All platforms | Unreleased |
 | [BF-0225926](#bf-0225926) | fix: symlink callers, changelog fragment name, behavior contract hash at the new pin, interface extractor… | PiG's own defect | All platforms | Unreleased |
 | [BF-0225a43](#bf-0225a43) | A device-attributes reply delivered in slow reads no longer reaches the editor as input: an `ESC[?` prefix… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -1590,6 +1591,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `00933e586a` (2026-10-20)
 - **Tests:** `coding/mcpext/config_test.go::TestMCPConfigReadsAndEditsMcpJSONFilesThatStartWithAUTF8BOM`, `internal/codingagent/radius_login_mcp_offer_upstream_test.go::TestRadiusMcpServerConfigReadsAMcpJSONThatStartsWithAUTF8BOM`
 - **Release note:** `mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load their MCP servers again, and `pig mcp add` and `pig mcp remove` work on them (Pi bdd9f039, #11191).
+
+### BF-016a19a
+
+**A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The derive's watchers used to receive the non-JSON frame without any report.
+- **Root cause:** Deliver assumed that diffing could not fail in Go because delta.DiffRevisions takes JSON, but nothing checked that the derive's value was JSON, so the batch had no failure to report.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `016a19ac68` (2026-11-02)
+- **Tests:** `chord/next/host/host_batch_test.go::TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit`
+- **Release note:** A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the host reports as `delivery_failed` while the later frames of the commit are still delivered, as Pi's batch does when diffing throws. The derive's watchers used to receive the non-JSON frame without any report.
 
 ### BF-02114ff
 
