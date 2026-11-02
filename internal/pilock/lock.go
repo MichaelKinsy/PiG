@@ -76,6 +76,7 @@ type Lock struct {
 }
 
 // AcquireSync is the settings and trust loop, settings-manager.ts acquireLockSyncWithRetry and trust-manager.ts acquireTrustLockSync: ten attempts 20 ms apart that retry only ELOCKED. It reclaims stale idle legacy sidecars.
+// Ports packages/coding-agent/src/core/settings-manager.ts
 func AcquireSync(path string) (*Lock, error) {
 	return acquireSyncWithRetry(path, func(err error) bool { return errors.Is(err, ErrLocked) })
 }
