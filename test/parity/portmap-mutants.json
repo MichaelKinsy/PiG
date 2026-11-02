@@ -2146,5 +2146,122 @@
    "old": "return \"temporary\"",
    "new": "return \"inline\""
   }
+ ],
+ "packages/coding-agent/src/core/cache-stats.ts": [
+  {
+   "file": "internal/codingagent/cache_stats.go",
+   "old": "if missedTokens <= cacheNoiseFloorTokens {",
+   "new": "if missedTokens < cacheNoiseFloorTokens {"
+  },
+  {
+   "file": "internal/codingagent/cache_stats.go",
+   "old": "missedTokens := min(prev.promptTokens, promptTokens) - usage.CacheRead",
+   "new": "missedTokens := max(prev.promptTokens, promptTokens) - usage.CacheRead"
+  },
+  {
+   "file": "internal/codingagent/session_stats.go",
+   "old": "a.stats.CacheWaste.MissCount++",
+   "new": "a.stats.CacheWaste.MissCount += 2"
+  },
+  {
+   "file": "internal/codingagent/model_cache_price.go",
+   "old": "rate = definition.Cost.CacheRead",
+   "new": "rate = definition.Cost.CacheRead * 2"
+  }
+ ],
+ "packages/coding-agent/src/core/usage-totals.ts": [
+  {
+   "file": "internal/usagetotals/usagetotals.go",
+   "old": "derefBool(first.Cost.TotalFromProvider) && derefBool(second.Cost.TotalFromProvider)",
+   "new": "derefBool(first.Cost.TotalFromProvider) || derefBool(second.Cost.TotalFromProvider)"
+  },
+  {
+   "file": "internal/usagetotals/usagetotals.go",
+   "old": "if first.CacheWrite1h != nil || second.CacheWrite1h != nil {",
+   "new": "if first.CacheWrite1h != nil && second.CacheWrite1h != nil {"
+  },
+  {
+   "file": "internal/codingagent/session_stats.go",
+   "old": "breakdown.Cost += usage.Cost.Total",
+   "new": "breakdown.Cost += usage.Cost.Input"
+  }
+ ],
+ "packages/coding-agent/src/core/agent-session-services.ts": [
+  {
+   "file": "internal/codingagent/settings_diagnostics.go",
+   "old": "Invalid %s settings: %v",
+   "new": "Invalid %s setting: %v"
+  },
+  {
+   "file": "internal/codingagent/settings_diagnostics.go",
+   "old": "if seen[diagnostic] {",
+   "new": "if !seen[diagnostic] {"
+  },
+  {
+   "file": "coding/create_agent_session.go",
+   "old": "\"Invalid tools option: \"",
+   "new": "\"Invalid tool option: \""
+  },
+  {
+   "file": "coding/services.go",
+   "old": "return slices.Clone(s.diagnostics)",
+   "new": "return nil"
+  },
+  {
+   "file": "coding/services.go",
+   "old": "func (s *AgentSessionServices) CWD() string { return s.cwd }",
+   "new": "func (s *AgentSessionServices) CWD() string { return s.agentDir }"
+  }
+ ],
+ "packages/coding-agent/src/core/agent-session.ts": [
+  {
+   "file": "internal/codingagent/auto_recovery.go",
+   "old": "return !ai.IsContextOverflow(message, contextWindow) && ai.IsRetryableAssistantError(message)",
+   "new": "return ai.IsContextOverflow(message, contextWindow) && ai.IsRetryableAssistantError(message)"
+  },
+  {
+   "file": "coding/session_model_cycle.go",
+   "old": "next := levels[(slices.Index(levels, s.ThinkingLevel())+1)%len(levels)]",
+   "new": "next := levels[(slices.Index(levels, s.ThinkingLevel())+2)%len(levels)]"
+  },
+  {
+   "file": "coding/session_recovery.go",
+   "old": "if attempt > cfg.MaxRetries {",
+   "new": "if attempt >= cfg.MaxRetries {"
+  }
+ ],
+ "packages/coding-agent/src/core/sdk.ts": [
+  {
+   "file": "coding/create_agent_session.go",
+   "old": "fallback = \"Could not restore model \"",
+   "new": "fallback = \"Could not restore models \""
+  },
+  {
+   "file": "coding/create_agent_session.go",
+   "old": "session.runtimeStream = true",
+   "new": "session.runtimeStream = false"
+  },
+  {
+   "file": "coding/runtime.go",
+   "old": "return current.ModelFallbackMessage",
+   "new": "return \"\""
+  }
+ ],
+ "packages/coding-agent/src/core/agent-session-runtime.ts": [
+  {
+   "file": "coding/runtime_replacement.go",
+   "old": "extension.SessionShutdownEvent{Type: \"session_shutdown\", Reason: reason, TargetSessionFile: target}",
+   "new": "extension.SessionShutdownEvent{Type: \"session_shutdown\", Reason: \"quit\", TargetSessionFile: target}"
+  },
+  {
+   "file": "coding/runtime_replacement.go",
+   "old": "if position != \"at\" {",
+   "new": "if position == \"at\" {"
+  },
+  {
+   "file": "coding/runtime.go",
+   "old": "return current.Diagnostics",
+   "new": "return nil"
+  }
  ]
 }
