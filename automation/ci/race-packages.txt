@@ -30,6 +30,7 @@ libs  ./chord
 libs  ./chord/host
 libs  ./chord/output
 libs  ./chord/telemetrysqlite
+libs  ./chord/nextnode/workers
 libs  ./codemode
 libs  ./coding/extension/builtin/codemode
 libs  ./durable
@@ -46,6 +47,7 @@ libs  ./internal/sessionentry
 libs  ./mcp
 libs  ./mcp/oauth
 libs  ./cmd/gen-models
+libs  ./internal/modelgen
 libs  ./coding/extension/host/subprocess/internal/noderuntimepack
 libs  ./durable/core/cmd/corenative
 libs  ./durable/core/contracttest/guard
