@@ -49,7 +49,7 @@ PiG does not sweep logs from earlier sessions. Their names do not identify an ow
 | Fact | Examples |
 |---|---|
 | strategy/key/members | packed or isolated placement |
-| reason | source command, shared factory, quarantine/fission |
+| reason | source command, shared factory, quarantine/fission; for a member moved out of a packed cell that failed, `packed cell failed:` and the error that ended that cell on one line |
 | artifact | resolved runner path |
 | cache/build | hit or cold-build duration |
 | result | success/failure and wall duration |
