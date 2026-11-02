@@ -30,7 +30,9 @@ import (
 //   - :745 "fails the Harness on a failed reservation commit; reopening runs the task" and :777 "fails the Harness instead of
 //     running a task again when its fault write fails": they fail one chosen commit; OpenHarnessFault's onCommit hook can
 //     hold or record a commit but not fail it, so durable/harness TestTaskScheduling ports them over ControlledStorage.
-// The ports below hold the owner goroutine in the store between a step's commits (driver.OpenHarnessFault's OnCommit hook).
+// The ports below hold the owner goroutine in the store between a step's commits (driver.OpenHarnessFault's OnCommit hook), except
+// the two close-sealing ports (:1237, :1295): since group commit (Pi e5c6182b) a stored commit no longer holds the Session line, so they
+// hold the line with a commit whose callback waits (holdLine) and leave the owner free.
 
 // harness-tasks.test.ts:1163 "stops without outcomes and starts no fresh phase or abort invocation while closing".
 func TestCoreFaultCloseStopsWithoutOutcomesAndStartsNoFreshPhaseOrAbortInvocation(t *testing.T) {
@@ -124,14 +126,14 @@ func TestCoreFaultCloseStopsWithoutOutcomesAndStartsNoFreshPhaseOrAbortInvocatio
 	}
 }
 
-// harness-tasks.test.ts:1243 "writes no fault when close seals while the step after a failed phase is queued".
+// harness-tasks.test.ts:1237 "writes no fault when close seals while the step after a failed phase is queued".
 func TestCoreFaultWritesNoFaultWhenCloseSealsWhileTheStepAfterAFailedPhaseIsQueued(t *testing.T) {
 	store := &controlledStore{}
 	var held atomic.Pointer[commitGate]
 	var harnessRef atomic.Pointer[harness.Harness]
 	throws := defineSteps("test.close-fault", nil, map[string]func(context.Context, stepRecord, stepRuntime) error{
 		"start": func(context.Context, stepRecord, stepRuntime) error {
-			// The step after this phase queues behind a job that holds the line (harness-tasks.test.ts:1240).
+			// The step after this phase queues behind a job that holds the line (harness-tasks.test.ts:1242).
 			held.Store(holdLine(*harnessRef.Load()))
 			return errors.New("would fault")
 		},
@@ -149,7 +151,7 @@ func TestCoreFaultWritesNoFaultWhenCloseSealsWhileTheStepAfterAFailedPhaseIsQueu
 	}
 	gate.waitEntered(t)
 	// The failed phase's completion reaches the core and the step after it is queued on the line before close() runs, as Pi's
-	// `await flush()` (:1250) lets the microtasks that queue the fault step run.
+	// `await flush()` (:1252) lets the microtasks that queue the fault step run.
 	waitDelivered(t, h, abi.EventPhaseDone)
 	if err := driver.Flush(t.Context(), h); err != nil {
 		t.Fatal(err)
@@ -164,7 +166,7 @@ func TestCoreFaultWritesNoFaultWhenCloseSealsWhileTheStepAfterAFailedPhaseIsQueu
 	case <-time.After(15 * time.Second):
 		t.Fatal("Close never returned")
 	}
-	// harness-tasks.test.ts:1222: created, reserved, and written back as pending by close: no fault.
+	// harness-tasks.test.ts:1259: created, reserved, and written back as pending by close: no fault.
 	if got, want := statuses(store.taskWrites(id)), []string{"pending", "running", "pending"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("task writes %v, want %v: close wrote a fault", got, want)
 	}
@@ -439,7 +441,7 @@ func TestCoreFaultOrdersRuntimeCommitsAgainstTheStep(t *testing.T) {
 	}
 }
 
-// harness-tasks.test.ts:1297 "rejects a runtime commit that was queued on the line when close sealed it".
+// harness-tasks.test.ts:1295 "rejects a runtime commit that was queued on the line when close sealed it".
 func TestCoreFaultRejectsARuntimeCommitQueuedOnTheLineWhenCloseSealedIt(t *testing.T) {
 	store := &controlledStore{}
 	var h harness.Harness
@@ -480,7 +482,7 @@ func TestCoreFaultRejectsARuntimeCommitQueuedOnTheLineWhenCloseSealedIt(t *testi
 	if err := awaitChan(t, "close", closing); err != nil {
 		t.Fatal(err)
 	}
-	// harness-tasks.test.ts:1288: created, reserved, and written back as pending by close; the queued outcome never landed.
+	// harness-tasks.test.ts:1322: created, reserved, and written back as pending by close; the queued outcome never landed.
 	if got, want := statuses(store.taskWrites(id)), []string{"pending", "running", "pending"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("task writes %v, want %v", got, want)
 	}
