@@ -371,7 +371,7 @@ func TestNavigateTreeSummaryOmitsFailedRetriedAttempt(t *testing.T) {
 
 	var requests []string
 	h.session.Agent().SetStreamFunction(func(_ context.Context, model *ai.Model, request ai.TranscriptContext, _ ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
-		raw, err := json.Marshal(request)
+		raw, err := json.Marshal(ai.CollapsedMessages(request))
 		if err != nil {
 			return nil, err
 		}
