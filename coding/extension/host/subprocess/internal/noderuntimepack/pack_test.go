@@ -173,3 +173,23 @@ func TestExtractRejectsNamesThatEscape(t *testing.T) {
 		t.Fatal("a name with .. was extracted")
 	}
 }
+
+// A vendored package's README is left out of the archive; Pi's own documentation, licenses and code stay.
+func TestUnreadAtRuntimeLeavesVendoredReadmes(t *testing.T) {
+	for name, want := range map[string]bool{
+		"shims/undici/README.md":                                 true,
+		"shims/chalk/readme.md":                                  true,
+		"shims/hosted-git-info/node_modules/lru-cache/README.md": true,
+		"shims/undici/types/README.md":                           true,
+		"shims/undici/lib/web/subresource-integrity/Readme.md":   true,
+		"shims/undici/LICENSE":                                   false,
+		"shims/photon-node/LICENSE.md":                           false,
+		"shims/pi-dist/pi-coding-agent/README.md":                false,
+		"shims/pi-dist/pi-coding-agent/docs/usage.md":            false,
+		"shims/yaml/dist/index.js":                               false,
+	} {
+		if got := UnreadAtRuntime(name); got != want {
+			t.Errorf("UnreadAtRuntime(%q) = %t, want %t", name, got, want)
+		}
+	}
+}
