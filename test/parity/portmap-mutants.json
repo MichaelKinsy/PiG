@@ -155,11 +155,131 @@
    "new": "`json:\"kind\"`"
   }
  ],
+ "packages/coding-agent/src/core/exec.ts": [
+  {
+   "file": "coding/extension/exec.go",
+   "old": "if value != math.Trunc(value) || value < 0 || value > float64(execMaxStringLength) {",
+   "new": "if value != math.Trunc(value) || value < -1 || value > float64(execMaxStringLength) {"
+  },
+  {
+   "file": "coding/extension/exec.go",
+   "old": "if truncated && result.Code == 0 {",
+   "new": "if truncated && result.Code == 7 {"
+  },
+  {
+   "file": "coding/extension/exec.go",
+   "old": "chunk = chunk[:max(remaining, 0)]",
+   "new": "chunk = chunk[:max(remaining, 0)/2]"
+  },
+  {
+   "file": "coding/extension/exec.go",
+   "old": "\tif !truncated {\n\t\tstdout.WriteString(stdoutDecode.Decode(nil, false))",
+   "new": "\tif truncated {\n\t\tstdout.WriteString(stdoutDecode.Decode(nil, false))"
+  },
+  {
+   "file": "coding/extension/exec.go",
+   "old": "\tcase terminated:\n\t\tresult.Code = 0",
+   "new": "\tcase terminated:\n\t\tresult.Code = 3"
+  }
+ ],
  "packages/coding-agent/src/core/export-html/ansi-to-html.ts": [
   {
    "file": "internal/codingagent/export/ansi_html.go",
    "old": "\tif index < 0 {",
    "new": "\tif index >= 0 {"
+  }
+ ],
+ "packages/coding-agent/src/core/extensions/loader.ts": [
+  {
+   "file": "coding/discover_extensions.go",
+   "old": "addPaths(discoverExtensionsInDir(filepath.Join(resolvedAgentDir, \"extensions\")))",
+   "new": "addPaths(discoverExtensionsInDir(filepath.Join(resolvedAgentDir, \"extension\")))"
+  },
+  {
+   "file": "coding/discover_extensions.go",
+   "old": "\t\t\t\tseen[resolved] = true\n",
+   "new": "\t\t\t\tseen[resolved] = false\n"
+  },
+  {
+   "file": "coding/discover_extensions.go",
+   "old": "if entries := resolveExtensionEntries(resolved); entries != nil {",
+   "new": "if entries := resolveExtensionEntries(resolved); entries == nil {"
+  },
+  {
+   "file": "coding/extension/provider_runtime.go",
+   "old": "\tr.mu.Unlock()\n\treturn register(name, config)",
+   "new": "\tr.mu.Unlock()\n\t_ = register\n\treturn nil"
+  },
+  {
+   "file": "coding/extension/provider_runtime.go",
+   "old": "report(&ExtensionError{ExtensionPath: entry.ExtensionPath, Event: \"register_provider\"",
+   "new": "report(&ExtensionError{ExtensionPath: \"\", Event: \"register_provider\""
+  },
+  {
+   "file": "coding/extension/provider_runtime.go",
+   "old": "\tif unregister != nil {\n\t\tunregister(name)\n\t}\n}",
+   "new": "\t_ = unregister\n}"
+  }
+ ],
+ "packages/coding-agent/src/core/extensions/types.ts": [
+  {
+   "file": "coding/extension/context.go",
+   "old": "\tif c.actions.IsIdle == nil {\n\t\treturn true, nil",
+   "new": "\tif c.actions.IsIdle == nil {\n\t\treturn false, nil"
+  },
+  {
+   "file": "coding/extension/ui.go",
+   "old": "ExtensionUIDialogOptions) (bool, error) {\n\treturn false, nil\n}\nfunc (*noopUIContext) Input",
+   "new": "ExtensionUIDialogOptions) (bool, error) {\n\treturn true, nil\n}\nfunc (*noopUIContext) Input"
+  },
+  {
+   "file": "coding/extension/runtime_state.go",
+   "old": "\tif r.staleMessage != \"\" {\n\t\treturn errors.New(r.staleMessage)",
+   "new": "\tif r.staleMessage == \"\" {\n\t\treturn errors.New(r.staleMessage)"
+  }
+ ],
+ "packages/coding-agent/src/core/extensions/virtual-modules.ts": [
+  {
+   "file": "coding/extension/host/subprocess/node_runtime_on.go",
+   "old": "strings.TrimPrefix(name, \"runtime-node/\")",
+   "new": "strings.TrimPrefix(name, \"runtime-node-x/\")"
+  },
+  {
+   "file": "coding/extension/host/subprocess/node_runtime_cache.go",
+   "old": "\t\tlinks = append(links, link{path, target})\n\t\treturn nil",
+   "new": "\t\tif relative != filepath.Join(\"shims\", \"pi-ai-models.mjs\") {\n\t\t\tlinks = append(links, link{path, target})\n\t\t}\n\t\treturn nil"
+  }
+ ],
+ "packages/coding-agent/src/core/footer-data-provider.ts": [
+  {
+   "file": "internal/codingagent/git_watcher.go",
+   "old": "gitWatchDebounce = 500 * time.Millisecond",
+   "new": "gitWatchDebounce = 400 * time.Millisecond"
+  },
+  {
+   "file": "internal/codingagent/git_watcher.go",
+   "old": "gitWatchRetry = 5000 * time.Millisecond",
+   "new": "gitWatchRetry = 4000 * time.Millisecond"
+  },
+  {
+   "file": "internal/codingagent/git_watcher.go",
+   "old": "\t\tif !ok {\n\t\t\treturn gitPaths{}, false, false\n",
+   "new": "\t\tif !ok {\n\t\t\treturn gitPaths{}, false, true\n"
+  },
+  {
+   "file": "internal/codingagent/status_line.go",
+   "old": "\tif branch == \".invalid\" {",
+   "new": "\tif branch == \".invalidx\" {"
+  },
+  {
+   "file": "internal/codingagent/status_line.go",
+   "old": "\"git\", \"--no-optional-locks\", \"symbolic-ref\", \"--quiet\", \"--short\", \"HEAD\")",
+   "new": "\"git\", \"symbolic-ref\", \"--quiet\", \"--short\", \"HEAD\")"
+  },
+  {
+   "file": "internal/codingagent/footer_data_provider.go",
+   "old": "\td.providerCount = n\n\td.mu.Unlock()",
+   "new": "\td.providerCount = n + 1\n\td.mu.Unlock()"
   }
  ],
  "packages/coding-agent/src/core/key-id-schema.ts": [
@@ -174,6 +294,23 @@
    "file": "internal/codingagent/keybindings_schema.go",
    "old": "props := []configschema.Prop{configschema.Optional(\"$schema\", configschema.String())}",
    "new": "props := []configschema.Prop{}"
+  }
+ ],
+ "packages/coding-agent/src/core/nested-tool-calls.ts": [
+  {
+   "file": "coding/nested_tool_calls.go",
+   "old": "MaxArgumentBytesTotal: 32 * 1024",
+   "new": "MaxArgumentBytesTotal: 64 * 1024"
+  },
+  {
+   "file": "coding/nested_tool_calls.go",
+   "old": "id := fmt.Sprintf(\"%s/%d\", callerID, scope.nextID)",
+   "new": "id := fmt.Sprintf(\"%s/%d\", callerID, scope.nextID+1)"
+  },
+  {
+   "file": "coding/nested_tool_calls.go",
+   "old": "exclusive = tool.ExecutionMode() == agent.ToolModeSequential",
+   "new": "exclusive = tool.ExecutionMode() != agent.ToolModeSequential"
   }
  ],
  "packages/coding-agent/src/core/output-guard.ts": [
