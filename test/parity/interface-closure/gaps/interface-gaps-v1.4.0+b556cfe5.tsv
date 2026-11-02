@@ -53,7 +53,6 @@ pkg:ai/providers/schema-builders#stringLiteral	ai	no-go-symbol
 pkg:ai/providers/schema-builders#stringLiteral::call:0	ai	child-gap	
 pkg:ai/providers/schema-builders#stringRecord	ai	no-go-symbol	
 pkg:ai/providers/schema-builders#stringRecord::call:0	ai	child-gap	
-pkg:chord/.#Description	chord	undecidable	chord/host/contract.go#Description
 pkg:chord/next#BooleanSchema	chord	no-go-symbol	
 pkg:chord/next#BooleanSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
 pkg:chord/next#BooleanSchema::property:type	chord	child-gap	
