@@ -169,7 +169,7 @@ func (tracker *pending) schedule(job func(d *delivery)) *delivery {
 	d := tracker.register(nil)
 	tracker.begin()
 	//portlint:allow asyncorder joined by pending.wait (begin/end count); watch frames are taken under watch.mu in publish order and one runs at a time, as watch.ts #schedule/#drain
-	go func() {
+	go func() { //portlint:allow golifetime the pending count (begin/end) is the join: pending.wait returns once every scheduled drain ended (watch.ts #schedule/#drain)
 		unregister := watchentered.Register(d)
 		defer func() {
 			unregister()
