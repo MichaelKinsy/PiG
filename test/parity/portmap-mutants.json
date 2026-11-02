@@ -1737,56 +1737,6 @@
    "new": "return !ok || subscription.IsSubscription()"
   }
  ],
- "packages/ai/src/auth/context.ts": [
-  {
-   "file": "ai/auth_resolve.go",
-   "old": "if !ok || trimJSWhitespace(value) == \"\" {",
-   "new": "if !ok {"
-  },
-  {
-   "file": "ai/auth_resolve.go",
-   "old": "path = home + path[1:]",
-   "new": "path = home + path"
-  }
- ],
- "packages/ai/src/auth/helpers.ts": [
-  {
-   "file": "ai/auth_lazy.go",
-   "old": "l.once.Do(func() { l.loaded, l.err = l.load() })",
-   "new": "l.loaded, l.err = l.load()"
-  }
- ],
- "packages/ai/src/auth/types.ts": [
-  {
-   "file": "ai/auth.go",
-   "old": "json.Indent(&out, canonical, \"\", \"  \")",
-   "new": "json.Indent(&out, canonical, \"\", \"   \")"
-  }
- ],
- "packages/ai/src/compat/extension-oauth-types.ts": [
-  {
-   "file": "ai/oauth_types.go",
-   "old": "codexCredentialMembers        = append(slices.Clone(accessFirstCredentialMembers), \"accountId\")",
-   "new": "codexCredentialMembers        = append(slices.Clone(accessFirstCredentialMembers), \"accountID\")"
-  },
-  {
-   "file": "ai/oauth_types.go",
-   "old": "accessFirstCredentialMembers  = []string{\"type\", \"access\", \"refresh\", \"expires\"}",
-   "new": "accessFirstCredentialMembers  = []string{\"type\", \"refresh\", \"access\", \"expires\"}"
-  },
-  {
-   "file": "ai/oauth_types.go",
-   "old": "Access  string                     `json:\"access\"`",
-   "new": "Access  string                     `json:\"accessToken\"`"
-  }
- ],
- "packages/ai/src/images-api-registry.ts": [
-  {
-   "file": "ai/images.go",
-   "old": "imagesAPIProviderRegistry[provider.API] = entry",
-   "new": "imagesAPIProviderRegistry[provider.API+\"-x\"] = entry"
-  }
- ],
  "packages/ai/src/cli.ts": [
   {
    "file": "coding/cli/auth_commands.go",
@@ -1832,6 +1782,82 @@
    "new": "\tif q.mode != QueueModeAll {\n"
   }
  ],
+ "packages/ai/src/api/anthropic-messages.ts": [
+  {
+   "file": "ai/anthropic_client.go",
+   "old": "strings.Contains(apiKey, \"sk-ant-oat\")",
+   "new": "strings.Contains(apiKey, \"sk-ant-oaz\")"
+  },
+  {
+   "file": "ai/anthropic.go",
+   "old": "r == '_' || r == '-'",
+   "new": "r == '_'"
+  }
+ ],
+ "packages/ai/src/api/constrained-sampling.ts": [
+  {
+   "file": "ai/constrained_sampling.go",
+   "old": "\t\"Too many strict tools (\",\n",
+   "new": "\t\"Too many strict toolz (\",\n"
+  }
+ ],
+ "packages/ai/src/api/mistral-conversations.ts": [
+  {
+   "file": "ai/mistral.go",
+   "old": "req.ReasoningEffort = \"high\"",
+   "new": "req.ReasoningEffort = \"low\""
+  }
+ ],
+ "packages/ai/src/auth/context.ts": [
+  {
+   "file": "ai/auth_resolve.go",
+   "old": "if !ok || trimJSWhitespace(value) == \"\" {",
+   "new": "if !ok {"
+  },
+  {
+   "file": "ai/auth_resolve.go",
+   "old": "path = home + path[1:]",
+   "new": "path = home + path"
+  }
+ ],
+ "packages/ai/src/auth/helpers.ts": [
+  {
+   "file": "ai/auth_lazy.go",
+   "old": "l.once.Do(func() { l.loaded, l.err = l.load() })",
+   "new": "l.loaded, l.err = l.load()"
+  }
+ ],
+ "packages/ai/src/auth/types.ts": [
+  {
+   "file": "ai/auth.go",
+   "old": "json.Indent(&out, canonical, \"\", \"  \")",
+   "new": "json.Indent(&out, canonical, \"\", \"   \")"
+  }
+ ],
+ "packages/ai/src/compat/extension-oauth-types.ts": [
+  {
+   "file": "ai/oauth_types.go",
+   "old": "codexCredentialMembers        = append(slices.Clone(accessFirstCredentialMembers), \"accountId\")",
+   "new": "codexCredentialMembers        = append(slices.Clone(accessFirstCredentialMembers), \"accountID\")"
+  },
+  {
+   "file": "ai/oauth_types.go",
+   "old": "accessFirstCredentialMembers  = []string{\"type\", \"access\", \"refresh\", \"expires\"}",
+   "new": "accessFirstCredentialMembers  = []string{\"type\", \"refresh\", \"access\", \"expires\"}"
+  },
+  {
+   "file": "ai/oauth_types.go",
+   "old": "Access  string                     `json:\"access\"`",
+   "new": "Access  string                     `json:\"accessToken\"`"
+  }
+ ],
+ "packages/ai/src/api/lazy.ts": [
+  {
+   "file": "ai/provider_streams.go",
+   "old": "\tobservation.onEvent(event)\n\tobservation.onResult(message)\n",
+   "new": "\tobservation.onEvent(event)\n"
+  }
+ ],
  "packages/agent/src/stream-fn.ts": [
   {
    "file": "agent/stream_fn.go",
@@ -1839,11 +1865,60 @@
    "new": "\tdefaultStream.fn = nil\n"
   }
  ],
+ "packages/ai/src/api/openai-completions.ts": [
+  {
+   "file": "ai/openai.go",
+   "old": "req.PromptCacheRetention = new(\"24h\")",
+   "new": "req.PromptCacheRetention = new(\"1h\")"
+  }
+ ],
+ "packages/ai/src/api/openai-responses-shared.ts": [
+  {
+   "file": "ai/openai_responses.go",
+   "old": "Type: \"additional_tools\", Role: \"developer\"",
+   "new": "Type: \"additional_tools\", Role: \"user\""
+  }
+ ],
+ "packages/ai/src/api/openai-codex-responses.ts": [
+  {
+   "file": "ai/openai_codex_responses.go",
+   "old": "return raw + \"/codex/responses\"",
+   "new": "return raw + \"/codex/response\""
+  }
+ ],
+ "packages/ai/src/api/cloudflare.ts": [
+  {
+   "file": "ai/cloudflare.go",
+   "old": "{CLOUDFLARE_ACCOUNT_ID}/ai\"",
+   "new": "{CLOUDFLARE_ACCOUNT_ID}/ai/\""
+  }
+ ],
  "packages/ai/src/api/transform-messages.ts": [
   {
    "file": "ai/tool_flow.go",
    "old": "ToolResultMessage{ToolCallID: call.ID, ToolName: call.Name,",
    "new": "ToolResultMessage{ToolCallID: call.Name, ToolName: call.Name,"
+  }
+ ],
+ "packages/ai/src/api/openrouter-images.ts": [
+  {
+   "file": "ai/openrouter_images.go",
+   "old": "modalities = []string{\"image\", \"text\"}",
+   "new": "modalities = []string{\"image\"}"
+  }
+ ],
+ "packages/ai/src/images-api-registry.ts": [
+  {
+   "file": "ai/images.go",
+   "old": "imagesAPIProviderRegistry[provider.API] = entry",
+   "new": "imagesAPIProviderRegistry[provider.API+\"-x\"] = entry"
+  }
+ ],
+ "packages/ai/src/api/cloudflare-ai-binding.ts": [
+  {
+   "file": "ai/cloudflare_ai_binding.go",
+   "old": "the AI binding does not expose fetch()\"",
+   "new": "the AI binding does not expose fetch\""
   }
  ]
 }
