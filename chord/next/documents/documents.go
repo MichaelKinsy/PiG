@@ -80,8 +80,15 @@ func NewDocuments(owner DocumentsOwner) *Documents {
 	// A sweep's only failure is OnLine's `released` once the object ended (a sweep itself drops trackers in memory and
 	// does not fail): nothing to report.
 	d.residency = NewResidency(owner, func(sweep func()) {
-		go func() {
-			_ = d.OnLine(context.Background(), func() error {
+		// Pi's `onLine` refuses `released` before it queues, and takes its place on the line at the call.
+		if d.refusedOnLine(nil) != nil {
+			return
+		}
+		place := d.line.reserve()
+		//portlint:allow asyncorder Pi fires the sweep unawaited (`void this.onLine(async () => sweep()).catch(() => {})`, documents.ts:48) and onLine's `this.line.acquire()` (documents.ts:137) takes its place at the call: the place is reserved above, so the order of the line is the order of the calls
+		go func() { //portlint:allow golifetime the sweep is a floating promise in Pi (documents.ts:48); it ends once its place on the line is handed over and the job ran or was refused `released`
+			//portlint:allow ctxbackground Pi's `onLine` takes no signal (documents.ts:135) and `line.acquire()` none (line.ts `acquire()`): a line job has no caller to cancel it
+			_ = d.runOnLine(place, context.Background(), func() error {
 				d.Do(sweep)
 				return nil
 			}, nil)
@@ -216,7 +223,13 @@ func (d *Documents) OnLine(ctx context.Context, job func() error, token *SealTok
 	if err := d.refusedOnLine(token); err != nil {
 		return err
 	}
-	release := d.line.Acquire(ctx)
+	return d.runOnLine(d.line.reserve(), ctx, job, token)
+}
+
+// runOnLine is the rest of OnLine once its place on the line is taken: waits for the place, checks the refusals again
+// and runs job.
+func (d *Documents) runOnLine(place linePlace, ctx context.Context, job func() error, token *SealToken) error {
+	release := place.wait(ctx)
 	defer release()
 	if err := d.refusedOnLine(token); err != nil {
 		return err
@@ -338,6 +351,7 @@ func (d *Documents) Seal() {
 // Settled blocks until the line is free. After Seal only an admitted step can hold it (every other holder was cut):
 // the object's teardown waits here, so the step adopts into documents that still exist (slice 6a §1.3).
 func (d *Documents) Settled() {
+	//portlint:allow ctxbackground Pi's `settled()` takes no signal and `line.acquire()` none (documents.ts:215-216, line.ts `acquire()`): the teardown's wait is not cancellable and no handler is parked here
 	d.line.Acquire(context.Background())()
 }
 

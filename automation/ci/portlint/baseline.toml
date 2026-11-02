@@ -1231,12 +1231,6 @@ snippet = "AllowedFallbackModels                       []jsonAllowedFallbackMode
 
 [[hit]]
 check = "emptydrop"
-file = "cmd/gen-models/models_dev.go"
-func = "(decl)"
-snippet = "ThinkingLevelMap map[string]*string `json:\"thinkingLevelMap,omitempty\"`"
-
-[[hit]]
-check = "emptydrop"
 file = "coding/cli/auth_commands.go"
 func = "(decl)"
 snippet = "Diagnostics []authInspectionDiagnostic `json:\"diagnostics,omitempty\"`"
@@ -1428,12 +1422,6 @@ check = "emptydrop"
 file = "coding/extension/host/runtimecell/cache_lifecycle.go"
 func = "(decl)"
 snippet = "Errors         []string `json:\"errors,omitempty\"`"
-
-[[hit]]
-check = "emptydrop"
-file = "coding/extension/host/subprocess/editor_proxy.go"
-func = "(decl)"
-snippet = "Lines              []string `json:\"lines,omitempty\"`"
 
 [[hit]]
 check = "emptydrop"
@@ -2324,12 +2312,6 @@ check = "jsonescape"
 file = "cmd/gen-models/main.go"
 func = "emit"
 snippet = "compat, err := json.Marshal(r.Compat)"
-
-[[hit]]
-check = "jsonescape"
-file = "cmd/gen-models/models_dev.go"
-func = "writeModelsDevCatalog"
-snippet = "data, err = json.MarshalIndent(value, \"\", \"  \")"
 
 [[hit]]
 check = "jsonescape"
@@ -3286,12 +3268,6 @@ check = "numbers"
 file = "ai/provider_retry.go"
 func = "providerRetryDelay"
 snippet = "return time.Duration(jitteredMs) * time.Millisecond, nil"
-
-[[hit]]
-check = "numbers"
-file = "cmd/gen-models/openrouter_catalog.go"
-func = "roundCost"
-snippet = "result, _ := strconv.ParseFloat(floor.String()+\"e-6\", 64)"
 
 [[hit]]
 check = "numbers"
@@ -4430,18 +4406,6 @@ check = "providerliteral"
 file = "ai/overflow.go"
 func = "IsContextOverflow"
 snippet = "if message.Provider == \"cerebras\" && cerebrasBodylessOverflowPattern.MatchString(message.ErrorMessage) {"
-
-[[hit]]
-check = "providerliteral"
-file = "cmd/gen-models/reasoning.go"
-func = "applyVendorReasoning"
-snippet = "if provider == \"google-vertex\" {"
-
-[[hit]]
-check = "providerliteral"
-file = "cmd/gen-models/reasoning.go"
-func = "applyVendorReasoning"
-snippet = "if rows[i].Provider == \"openrouter\" {"
 
 [[hit]]
 check = "providerliteral"
@@ -6216,12 +6180,6 @@ check = "ctxbackground"
 file = "env/daemon/watch.go"
 func = "server.runWatch"
 snippet = "ctx, cancel := context.WithCancel(context.Background())"
-
-[[hit]]
-check = "ctxbackground"
-file = "env/daemon/watch.go"
-func = "server.runWatch"
-snippet = "defer func() { _ = opened.Close(context.Background()) }()"
 
 [[hit]]
 check = "ctxbackground"

@@ -365,7 +365,9 @@ func addMillis(now int64, within float64) int64 {
 	if math.IsInf(within, 1) || math.IsNaN(within) || within >= float64(noDeadline-now) {
 		return noDeadline
 	}
-	return now + int64(within)
+	// Pi's deadline is the float Date.now() + withinMs and flushHeld keeps a change while `deadline > now`: for the whole-millisecond now it reads, that holds exactly while now < ceil(deadline).
+	//portlint:allow numbers NaN and +Inf return above and within is below the int64 range there, so the ceiled value converts exactly (run-states.ts:263 `Date.now() + change.withinMs`, records.ts:586 `deadline > now`)
+	return now + int64(math.Ceil(within))
 }
 
 // heldOps is what each stores, its queue left as it was (a commit may still be refused): its folded ops, or a base once

@@ -112728,8 +112728,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchRetainsNeitherItsSourceNorItsListenerOnceEnded",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
+        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR"
       ]
     },
     {
@@ -112750,8 +112750,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchRetainsNeitherItsSourceNorItsListenerOnceEnded",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
+        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR"
       ]
     },
     {
@@ -112771,9 +112771,9 @@
         "call:chord/delta/pending.go#PendingOps.Push"
       ],
       "evidence": [
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
         "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize"
+        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
       ]
     },
     {
@@ -112793,9 +112793,9 @@
         "call:chord/delta/pending.go#PendingOps.Push"
       ],
       "evidence": [
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
         "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize"
+        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
       ]
     },
     {
@@ -112837,9 +112837,9 @@
         "call:chord/delta/pending.go#PendingOps.Take"
       ],
       "evidence": [
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
         "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize"
+        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
       ]
     },
     {
@@ -112859,9 +112859,9 @@
         "call:chord/delta/pending.go#PendingOps.Take"
       ],
       "evidence": [
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
         "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize"
+        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
       ]
     },
     {
@@ -113802,8 +113802,8 @@
       ],
       "evidence": [
         "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi",
-        "test:chord/next/host/remote_relay_test.go#TestRelayMixedCodecs",
-        "test:chord/next/host/remote_relay_test.go#TestRelayReceivedBuffers"
+        "test:chord/next/host/host_link_deliveries_test.go#TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt",
+        "test:chord/next/host/remote_relay_test.go#TestRelayMixedCodecs"
       ]
     },
     {
@@ -115027,8 +115027,8 @@
       ],
       "evidence": [
         "test:chord/next/host/remote_hold_test.go#TestHoldFailuresWhileTheWindowIsFull",
-        "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi",
-        "test:chord/next/host/host_ctx_test.go#TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAtOnce"
+        "test:chord/nextnode/plugins/plugins_node_test.go#TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat",
+        "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi"
       ]
     },
     {
@@ -115049,8 +115049,8 @@
       ],
       "evidence": [
         "test:chord/next/host/remote_hold_test.go#TestHoldFailuresWhileTheWindowIsFull",
-        "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi",
-        "test:chord/next/host/host_ctx_test.go#TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAtOnce"
+        "test:chord/nextnode/plugins/plugins_node_test.go#TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat",
+        "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi"
       ]
     },
     {
@@ -115406,7 +115406,8 @@
         "call:chord/next/link/part.go#OpenPart"
       ],
       "evidence": [
-        "test:chord/nextnode/compression_test.go#TestNodeCompression"
+        "test:chord/nextnode/compression_test.go#TestNodeCompression",
+        "test:chord/nextnode/compression_test.go#TestNodeCompressionInflateLimitEdges"
       ]
     },
     {
@@ -115426,7 +115427,8 @@
         "call:chord/next/link/part.go#OpenPart"
       ],
       "evidence": [
-        "test:chord/nextnode/compression_test.go#TestNodeCompression"
+        "test:chord/nextnode/compression_test.go#TestNodeCompression",
+        "test:chord/nextnode/compression_test.go#TestNodeCompressionInflateLimitEdges"
       ]
     },
     {
@@ -118077,7 +118079,8 @@
       ],
       "evidence": [
         "test:chord/next/link/part_test.go#TestTheAsynchronousInflate",
-        "test:chord/nextnode/compression_test.go#TestNodeCompression"
+        "test:chord/nextnode/compression_test.go#TestNodeCompression",
+        "test:chord/nextnode/compression_test.go#TestNodeCompressionInflateLimitEdges"
       ]
     },
     {
@@ -122194,7 +122197,8 @@
       ],
       "evidence": [
         "test:chord/next/data/principal_test.go#TestPrincipalKey",
-        "test:chord/next/host/host_host_test.go#TestHostPrincipalsIdentityIncludesThePrincipalKeyEqualKeysShareOneObject"
+        "test:chord/next/host/host_host_test.go#TestHostPrincipalsIdentityIncludesThePrincipalKeyEqualKeysShareOneObject",
+        "test:chord/nextnode/plugins/plugins_node_hostoptions_test.go#TestPrincipalKeyIsAskedOncePerCanonicalPrincipal"
       ]
     },
     {
@@ -122215,7 +122219,8 @@
       ],
       "evidence": [
         "test:chord/next/data/principal_test.go#TestPrincipalKey",
-        "test:chord/next/host/host_host_test.go#TestHostPrincipalsIdentityIncludesThePrincipalKeyEqualKeysShareOneObject"
+        "test:chord/next/host/host_host_test.go#TestHostPrincipalsIdentityIncludesThePrincipalKeyEqualKeysShareOneObject",
+        "test:chord/nextnode/plugins/plugins_node_hostoptions_test.go#TestPrincipalKeyIsAskedOncePerCanonicalPrincipal"
       ]
     },
     {
@@ -180043,9 +180048,9 @@
         "call:tui/markdown_style.go#GetMarkdownTheme"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_theme_oracle_test.go#TestGetMarkdownThemeMatchesPi",
-        "test:tui/branch_summary_test.go#TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme",
-        "test:tui/compaction_summary_test.go#TestCompactionSummaryMessageComponentUsesTheInjectedMarkdownTheme"
+        "test:tui/branch_summary_test.go#TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme"
       ]
     },
     {
@@ -180065,9 +180070,9 @@
         "call:tui/markdown_style.go#GetMarkdownTheme"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_theme_oracle_test.go#TestGetMarkdownThemeMatchesPi",
-        "test:tui/branch_summary_test.go#TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme",
-        "test:tui/compaction_summary_test.go#TestCompactionSummaryMessageComponentUsesTheInjectedMarkdownTheme"
+        "test:tui/branch_summary_test.go#TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme"
       ]
     },
     {
@@ -286207,9 +286212,9 @@
         "call:tui/assistant_message_block.go#AssistantMessageComponent.Dispose"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
-        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
-        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle"
+        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse"
       ]
     },
     {
@@ -286229,9 +286234,9 @@
         "call:tui/markdown_options.go#NewMarkdownWithOptions"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
-        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
-        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle"
+        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse"
       ]
     },
     {
@@ -286295,9 +286300,9 @@
         "call:tui/markdown.go#Markdown.Render"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
-        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
-        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle"
+        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse"
       ]
     },
     {
@@ -286317,9 +286322,9 @@
         "call:tui/markdown.go#Markdown.Render"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
-        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
-        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle"
+        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse"
       ]
     },
     {
@@ -286488,9 +286493,9 @@
         "call:tui/assistant_message_block.go#NewAssistantMessageComponent"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_theme_oracle_test.go#TestGetMarkdownThemeMatchesPi",
-        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle",
-        "test:tui/markdown_latex_random_oracle_test.go#TestMarkdownInlineMathRandomMatchesPiOracle"
+        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle"
       ]
     },
     {
@@ -286752,9 +286757,9 @@
         "call:tui/component_themes.go#markdownThemeReading"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_theme_oracle_test.go#TestGetMarkdownThemeMatchesPi",
-        "test:tui/component_themes_test.go#TestComponentThemeDefaultMarkdownFollowsActiveTheme",
-        "test:tui/component_themes_test.go#TestComponentThemeMarkdownBoundToTheme"
+        "test:tui/component_themes_test.go#TestComponentThemeDefaultMarkdownFollowsActiveTheme"
       ]
     },
     {
@@ -295952,9 +295957,9 @@
         "call:tui/colors.go#BackgroundAnsi"
       ],
       "evidence": [
+        "test:test/extension-conformance/tui_theme_test.go#TestHighlightCodeThatFailsTakesTheCodeBlockColorAcrossSDKs",
         "test:tui/theme_load_random_oracle_test.go#TestLoadThemeFromPathOnRandomColorsMatchesPi",
-        "test:tui/theme_tokens_metadata_oracle_test.go#TestOmittedOptionalThemeTokensFallBackAsInPi",
-        "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi"
+        "test:tui/theme_tokens_metadata_oracle_test.go#TestOmittedOptionalThemeTokensFallBackAsInPi"
       ]
     },
     {

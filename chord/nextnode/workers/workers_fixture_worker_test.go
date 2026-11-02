@@ -122,6 +122,8 @@ type workerBehaviour struct {
 	DisconnectAndBlock bool
 	// LocalCalls: 300 ms after its load, this many sequential local calls, then `local calls sent <n>` on stdout.
 	LocalCalls int
+	// CloserPanics: a closer fails, and the app's OnError panics on that failure once (Pi's `onError` that throws).
+	CloserPanics bool
 }
 
 func (b workerBehaviour) json() *delta.JsonObject {
@@ -153,6 +155,9 @@ func (b workerBehaviour) json() *delta.JsonObject {
 	if b.LocalCalls != 0 {
 		object.Set("localCalls", float64(b.LocalCalls))
 	}
+	if b.CloserPanics {
+		object.Set("closerPanics", true)
+	}
 	return object
 }
 
@@ -170,6 +175,7 @@ func behaviourOf(value delta.JsonValue) workerBehaviour {
 	if connect, ok := object.Value("connect").(bool); ok && !connect {
 		b.NoConnect = true
 	}
+	b.CloserPanics, _ = object.Value("closerPanics").(bool)
 	if ms, ok := object.Value("loadMs").(float64); ok {
 		b.LoadMs = int(ms)
 	}
@@ -278,6 +284,9 @@ func fixtureOutput(port *countingPort) func(stream plugins.NodeStream, chunk []b
 	}
 }
 
+// onErrorThrew is whether the fixture's OnError threw already.
+var onErrorThrew atomic.Bool
+
 func runWorkerFixture() {
 	port := &countingPort{processPort: openProcessChannel()}
 	var worker host.Host
@@ -302,6 +311,9 @@ func runWorkerFixture() {
 			return worker.Close(chordctx.Background())
 		})
 		start.OnClose(func(context.Context) error {
+			if behaviour.CloserPanics {
+				return errors.New("closer-boom")
+			}
 			if behaviour.CloseMs != 0 {
 				time.Sleep(time.Duration(behaviour.CloseMs) * time.Millisecond)
 			}
@@ -369,7 +381,13 @@ func runWorkerFixture() {
 			return CrossedError{Message: regexp.MustCompile(`secret\S*`).ReplaceAllString(message, "[redacted]")}
 		},
 		// Its errors on stderr, as an app logs them: the server keeps the tail private.
-		OnError: func(err any) { fmt.Fprintln(os.Stderr, err) },
+		OnError: func(err any) {
+			fmt.Fprintln(os.Stderr, err)
+			// The first report of a failed closer throws; `fatal`'s own report of it then goes through.
+			if strings.Contains(fmt.Sprint(err), "closer-boom") && !onErrorThrew.Swap(true) {
+				panic("onError throws")
+			}
+		},
 	})
 }
 

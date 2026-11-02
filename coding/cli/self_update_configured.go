@@ -26,6 +26,7 @@ func runConfiguredSelfUpdate(argv []string, force bool) int {
 		fmt.Fprintf(os.Stderr, "Update failed: no update source configured\n%s\n", codingagent.SelfUpdateFallback())
 		return 1
 	}
+	//portlint:allow ctxbackground Pi's runConfiguredSelfUpdate (package-manager-cli.ts:745) takes no AbortSignal: the update runs to its own end
 	ctx, cancel := context.WithTimeout(context.Background(), selfUpdateTimeout)
 	defer cancel()
 	manifest, err := codingagent.FetchUpdateManifest(ctx, &http.Client{Timeout: selfUpdateTimeout}, src, codingagent.FetchUpdateManifestOptions{Retry: true})
@@ -46,6 +47,7 @@ func runConfiguredSelfUpdate(argv []string, force bool) int {
 		fmt.Println()
 	}
 	fmt.Println(chalkDim(fmt.Sprintf("Updating %s with %s...", codingagent.AppName, command.Display)))
+	//portlint:allow ctxbackground Pi's runConfiguredSelfUpdate (package-manager-cli.ts:745) takes no AbortSignal: the update runs to its own end
 	if err := codingagent.RunConfiguredSelfUpdateCommand(context.Background(), command); err != nil {
 		fmt.Fprintln(os.Stderr, chalkRed("Error: "+err.Error()))
 		return 1
@@ -99,6 +101,7 @@ func readVersionOf(path string) string {
 			env = append(env, kv)
 		}
 	}
+	//portlint:allow ctxbackground Pi's readVersionOnPath (package-manager-cli.ts:775) is a synchronous spawn with no AbortSignal; the timeout is pig's bound on it
 	ctx, cancel := context.WithTimeout(context.Background(), selfUpdateTimeout)
 	defer cancel()
 	cmd := crossspawn.Command(ctx, "", filepath.Clean(path), "--version")

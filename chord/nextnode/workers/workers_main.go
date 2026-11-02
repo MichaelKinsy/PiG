@@ -178,7 +178,13 @@ func newWorker(port processPort, options WorkerMainOptions) *worker {
 		signals := make(chan os.Signal, 1)
 		signal.Notify(signals, each)
 		//portlint:allow golifetime the process ends through exitProcess, which is what the worker waits for
-		go func() {
+		go func() { //portlint:allow asyncorder the handler is main.ts:98 process.once(signal, () => void this.#shutdown()), a signal event with no ordering against other work
+			// A throw in a handler is Pi's `unhandledRejection`: fatal (main.ts:100).
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					w.fatal(panicError{value: recovered})
+				}
+			}()
 			<-signals
 			signal.Stop(signals)
 			w.shutdown()
@@ -190,7 +196,7 @@ func newWorker(port processPort, options WorkerMainOptions) *worker {
 // run takes the lock, makes the parent link, runs fn, then reports ready and applies reloads.
 func (w *worker) run(fn func(start WorkerStart, ctx context.Context) (*WorkerResult, error)) {
 	//portlint:allow golifetime the process ends through exitProcess, which is what the worker waits for
-	go func() {
+	go func() { //portlint:allow asyncorder main.ts:106 `void this.#run(fn).catch(...)` starts the run unawaited, as here
 		// A throw while shutting down is the shutdown's own cancellation (its ctx aborted): no fatal, the closers run.
 		err := w.safely(func() error { return w.runStart(fn) })
 		if err != nil && !w.isStopping() {
@@ -367,15 +373,17 @@ func (p *WorkerPlugins) Load(h host.Host, options WorkerLoad, ctx context.Contex
 	p.worker.loaded = &loadedHost{host: h, node: node, runtime: p.runtime}
 	p.worker.closers = append(p.worker.closers, func(ctx context.Context) error { return node.Close(ctx) })
 	p.worker.mu.Unlock()
-	go p.worker.watchNode(node)
+	go func() { //portlint:allow asyncorder pig runs the plugins in a Node subprocess (NodeHost) where Pi loads them in-process (main.ts:116-123 runtime.load), so there is no Pi hand-off to order; the watcher only observes the child exit
+		<-node.Exited()
+		p.worker.watchNode(node)
+	}()
 	*p.report = report
 	return report, nil
 }
 
-// watchNode ends the worker with its NodeHost: a process that ended before the worker was told to stop is the worker's own
+// watchNode ends the worker with its NodeHost, once it has exited: a process that ended before the worker was told to stop is the worker's own
 // crash (its exit code), and an exception it died of is the worker's `fatal`.
 func (w *worker) watchNode(node *plugins.NodeHost) {
-	<-node.Exited()
 	if w.isStopping() {
 		return
 	}
@@ -491,7 +499,7 @@ func (w *worker) message(message ToWorker) {
 		w.mu.Unlock()
 		if ready {
 			//portlint:allow golifetime the reload loop returns when the reloads are applied or the worker stops; shutdown exits the process
-			go w.applyReloads()
+			go w.applyReloads() //portlint:allow asyncorder main.ts:195 `if (this.#ready) void this.#applyReloads()` starts it unawaited, serialized by the reloading flag
 		}
 	}
 }
@@ -556,7 +564,13 @@ func (w *worker) shutdown() {
 	time.AfterFunc(forcedExit, func() { exitProcess(0) })
 	slices.Reverse(closers)
 	//portlint:allow golifetime the closers end with the process, which exitProcess ends
-	go func() {
+	go func() { //portlint:allow asyncorder main.ts:189 and :98 call `void this.#shutdown()` unawaited; the closers run in that async function (main.ts:226-)
+		// An OnError that throws rejects `#shutdown`, which nothing awaits: Pi's `unhandledRejection`, fatal (main.ts:100).
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				w.fatal(panicError{value: recovered})
+			}
+		}()
 		for _, closer := range closers {
 			if err := w.safely(func() error { return closer(chordctx.Background()) }); err != nil {
 				w.options.OnError(err)

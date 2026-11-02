@@ -277976,17 +277976,6 @@
       "shapeHash": "sha256:e9fc1c0306b24a343523d14f02ef563605a3f7179fd9525dfb6164e5a4b02f86"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#indexRoutingVariant",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "indexRoutingVariant",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(lower string, variant string) int"
-      },
-      "shapeHash": "sha256:bc0b5dca4e800b592c197f15fdda7cd544810720cac5abb6d57be5d0767526b4"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#inferCopilotInitiatorProbe",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "inferCopilotInitiatorProbe",
