@@ -91,15 +91,15 @@ type continueKillable struct {
 
 func (store *continueKillable) kill() { store.once.Do(func() { close(store.dead) }) }
 
-func (store *continueKillable) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (store *continueKillable) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
 	select {
 	case <-store.dead:
 		// Parked like a crashed process; TestMain ends it after every test has run.
 		_ = parkLikeACrashedProcess()
-		return 0, context.Cause(crashedProcesses)
+		return durable.CommitResult{}, context.Cause(crashedProcesses)
 	default:
 	}
-	return store.Storage.Commit(ctx, writes, adopt)
+	return store.Storage.Commit(ctx, batches, receive)
 }
 
 func TestContinue(t *testing.T) {

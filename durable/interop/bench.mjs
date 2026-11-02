@@ -130,8 +130,7 @@ async function open(path) {
 	const lookup = defineTool({
 		name: "lookup",
 		description: "Look up record number n",
-		// What pi-schema's obj({ n: num() }) builds (pi-ai no longer exports TypeBox's Type).
-		parameters: { type: "object", properties: { n: { type: "number" } }, required: ["n"], additionalProperties: false },
+		parameters: { type: "object", properties: { n: { type: "number" } }, required: ["n"] },
 		// The result's text for the model: `output` from Pi's 42a3497d on, `content` in 1.1.0 and the durable contract's
 		// main (durable/contract/PIN), which durable-core runs this file against. Each ignores the other's field.
 		execute: async ({ n }) => {

@@ -16,6 +16,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
@@ -25,6 +26,8 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl"
 	"github.com/MichaelKinsy/PiG/durable/storage/jsonl/node"
+	"github.com/MichaelKinsy/PiG/internal/entered"
+	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
 var testContext = context.Background()
@@ -93,7 +96,7 @@ type reopeningStorage struct {
 	current   *jsonl.JsonlStorage
 	directory string
 	closed    bool
-	// mu is held for a whole commit, so the read the adoption case starts from inside adopt (on its own goroutine) waits
+	// mu is held for a whole commit, so the read the receipt case starts from inside receive (on its own goroutine) waits
 	// out the reopen and then reads the recovered state.
 	mu sync.RWMutex
 }
@@ -102,22 +105,24 @@ func openJsonl(directory string) (*jsonl.JsonlStorage, error) {
 	return jsonl.Open(testContext, directory, &node.NodeFileSystem{Cwd: directory}, jsonl.JsonlStorageOptions{})
 }
 
-func (storage *reopeningStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (storage *reopeningStorage) Commit(
+	ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq),
+) (durable.CommitResult, error) {
 	storage.mu.Lock()
 	defer storage.mu.Unlock()
 	if storage.closed {
-		return storage.current.Commit(ctx, writes, adopt)
+		return storage.current.Commit(ctx, batches, receive)
 	}
-	seq, err := storage.current.Commit(ctx, writes, adopt)
+	result, err := storage.current.Commit(ctx, batches, receive)
 	if closeErr := storage.current.Close(testContext); closeErr != nil && err == nil {
 		err = closeErr
 	}
 	reopened, openErr := openJsonl(storage.directory)
 	if openErr != nil {
-		return 0, openErr
+		return durable.CommitResult{}, openErr
 	}
 	storage.current = reopened
-	return seq, err
+	return result, err
 }
 
 func (storage *reopeningStorage) MintId() (int64, error) { return storage.current.MintId() }
@@ -239,7 +244,7 @@ func terminalTask(id durable.TaskId) storedTask {
 
 func commit(t *testing.T, storage durable.Storage, writes ...durable.StorageWrite) durable.Seq {
 	t.Helper()
-	return must(storage.Commit(testContext, writes, func(durable.Seq) {}))
+	return must(durabletest.CommitWrites(testContext, storage, writes))
 }
 
 func createRoot(t *testing.T, storage durable.Storage) {
@@ -529,10 +534,10 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 		createRoot(t, storage)
 		taskId := mint[durable.TaskId](t, storage)
 		instrumented.fail(failure{operation: "append", call: 1, mode: "short"})
-		_, err := storage.Commit(testContext, []durable.StorageWrite{
+		_, err := durabletest.CommitWrites(testContext, storage, []durable.StorageWrite{
 			durable.TaskWrite{Value: pendingTask(taskId, "first")},
 			durable.TaskWrite{Value: pendingTask(taskId, "second-"+strings.Repeat("x", 512))},
-		}, func(durable.Seq) {})
+		})
 		expectError(t, err, "poisoned")
 		partial := must(os.ReadFile(file(directory, "task", int64(taskId))))
 		if partial[len(partial)-1] == '\n' {
@@ -558,9 +563,9 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 		instrumented.clear()
 		id := mint[durable.EntryId](t, storage)
 		// Go has no BigInt; a channel is the JSON-unencodable value standing in for upstream's 1n.
-		_, err := storage.Commit(testContext, []durable.StorageWrite{durable.EntryWrite{Value: durable.EntryRecord{
+		_, err := durabletest.CommitWrites(testContext, storage, []durable.StorageWrite{durable.EntryWrite{Value: durable.EntryRecord{
 			Id: id, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "bad", Data: make(chan int),
-		}}}, func(durable.Seq) {})
+		}}})
 		if err == nil {
 			t.Fatal("commit of unencodable data succeeded")
 		}
@@ -587,10 +592,10 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 			firstId := mint[durable.DocumentId](t, storage)
 			secondId := mint[durable.DocumentId](t, storage)
 			instrumented.fail(injectedFailure)
-			_, err := storage.Commit(testContext, []durable.StorageWrite{
+			_, err := durabletest.CommitWrites(testContext, storage, []durable.StorageWrite{
 				durable.DocumentCreateWrite{Record: sessionDocument(firstId, "first"), Content: base(chorddelta.JsonObjectOf("text", "α"))},
 				durable.DocumentCreateWrite{Record: sessionDocument(secondId, "second"), Content: base(chorddelta.JsonObjectOf("text", "β"))},
-			}, func(durable.Seq) {})
+			})
 			expectError(t, err, "poisoned")
 			_, err = storage.Document(testContext, firstId, durable.CurrentPoint)
 			expectError(t, err, "poisoned")
@@ -623,10 +628,10 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 			firstId := mint[durable.DocumentId](t, storage)
 			secondId := mint[durable.DocumentId](t, storage)
 			instrumented.fail(injectedFailure)
-			_, err := storage.Commit(testContext, []durable.StorageWrite{
+			_, err := durabletest.CommitWrites(testContext, storage, []durable.StorageWrite{
 				durable.DocumentCreateWrite{Record: sessionDocument(firstId, "flush.first"), Content: base(chorddelta.NewJsonObject(0))},
 				durable.DocumentCreateWrite{Record: sessionDocument(secondId, "flush.second"), Content: base(chorddelta.NewJsonObject(0))},
-			}, func(durable.Seq) {})
+			})
 			expectError(t, err, "poisoned")
 			reopened := open(t, directory)
 			for _, id := range []durable.DocumentId{firstId, secondId} {
@@ -972,7 +977,8 @@ func TestPicoJsonlStoragePublicationAndRecovery(t *testing.T) {
 			t.Fatal("unconfirmed terminal task sidecar was not removed")
 		}
 		expectEqual(t, must(reopened.Task(testContext, taskId)), terminalTask(taskId))
-		if seq := commit(t, reopened); seq != 4 {
+		next := mint[durable.ConversationId](t, reopened)
+		if seq := commit(t, reopened, durable.ConversationWrite{Value: durable.ConversationRecord{Id: next}}); seq != 4 {
 			t.Fatalf("seq = %d, want 4", seq)
 		}
 	})
@@ -1079,4 +1085,227 @@ func TestJsonlStorageKeepsRecordKeyOrder(t *testing.T) {
 	if err := durabletest.CheckRecordKeyOrder(storage); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// gatedJoinFileSystem holds every JoinPath once armed until the gate opens, then fails it; entered closes when the first
+// one is held.
+type gatedJoinFileSystem struct {
+	*node.NodeFileSystem
+	armed   atomic.Bool
+	entered chan struct{}
+	once    sync.Once
+	gate    chan struct{}
+}
+
+func (fileSystem *gatedJoinFileSystem) JoinPath(ctx context.Context, parts []string) (string, error) {
+	if !fileSystem.armed.Load() {
+		return fileSystem.NodeFileSystem.JoinPath(ctx, parts)
+	}
+	fileSystem.once.Do(func() { close(fileSystem.entered) })
+	<-fileSystem.gate
+	return "", injected("injected path resolution failure", "")
+}
+
+// Pi packages/durable/test/jsonl-storage.test.ts "poisons the storage when an append fails after its batches applied,
+// before a waiting read goes on (review)". The read starts once the batches are in memory and the append is held; it
+// returns the poisoned error whether it was waiting on the append or started after the poison.
+func TestJsonlStoragePoisonsWhenAnAppendFailsAfterItsBatchesApplied(t *testing.T) {
+	directory := tempDirectory(t)
+	fileSystem := &gatedJoinFileSystem{
+		NodeFileSystem: &node.NodeFileSystem{Cwd: directory}, entered: make(chan struct{}), gate: make(chan struct{}),
+	}
+	storage := must(jsonl.Open(testContext, directory, fileSystem, jsonl.JsonlStorageOptions{}))
+	t.Cleanup(func() { _ = storage.Close(testContext) })
+	fileSystem.armed.Store(true)
+	const conversationId durable.ConversationId = 100
+	committed := make(chan error, 1)
+	go func() {
+		_, err := storage.Commit(testContext, [][]durable.StorageWrite{
+			{durable.ConversationWrite{Value: durable.ConversationRecord{Id: conversationId}}},
+			{durable.DocumentCreateWrite{
+				Record:  durable.DocumentCreate{Id: 101, Kind: "state", Scope: durable.DocumentRecordScope{Kind: durable.ScopeSession}},
+				Content: base(chorddelta.JsonObjectOf()),
+			}},
+		}, func(int, durable.Seq) {})
+		committed <- err
+	}()
+	// Started while the batches are in memory and the append waits.
+	<-fileSystem.entered
+	read := make(chan error, 1)
+	awaitReader := entered.Go(func() {
+		_, err := storage.Conversation(testContext, conversationId)
+		read <- err
+	})
+	awaitReader()
+	select {
+	case err := <-read:
+		close(fileSystem.gate)
+		t.Fatalf("a read started while the append is held returned %v, want it to wait", err)
+	default:
+	}
+	close(fileSystem.gate)
+	expectError(t, <-committed, "poisoned")
+	expectError(t, <-read, "poisoned")
+	mustDo(t, storage.Close(testContext))
+	reopened := open(t, directory)
+	if must(reopened.Conversation(testContext, conversationId)) != nil {
+		t.Fatal("a conversation of a failed append was recovered")
+	}
+}
+
+// gatedAppendFileSystem holds the first AppendFile once armed until the gate opens; entered closes when it is held.
+type gatedAppendFileSystem struct {
+	*node.NodeFileSystem
+	armed   atomic.Bool
+	entered chan struct{}
+	once    sync.Once
+	gate    chan struct{}
+}
+
+func (fileSystem *gatedAppendFileSystem) AppendFile(ctx context.Context, path string, content any) error {
+	if fileSystem.armed.Load() {
+		fileSystem.once.Do(func() {
+			close(fileSystem.entered)
+			<-fileSystem.gate
+		})
+	}
+	return fileSystem.NodeFileSystem.AppendFile(ctx, path, content)
+}
+
+// Pi packages/durable/test/jsonl-storage.test.ts describe("JsonlStorage batches").
+func TestJsonlStorageBatches(t *testing.T) {
+	t.Run("appends a batch's markers in one write and recovers a shorter prefix from a torn one", func(t *testing.T) {
+		directory := tempDirectory(t)
+		fileSystem := &gatedAppendFileSystem{
+			NodeFileSystem: &node.NodeFileSystem{Cwd: directory}, entered: make(chan struct{}), gate: make(chan struct{}),
+		}
+		storage := openStorage(t, directory, fileSystem, jsonl.JsonlStorageOptions{})
+		createRoot(t, storage)
+		documentId := mint[durable.DocumentId](t, storage)
+		commit(t, storage, durable.DocumentCreateWrite{Record: sessionDocument(documentId, "test.document"), Content: base(chorddelta.JsonObjectOf("n", 0))})
+		mainPath := filepath.Join(directory, "main.jsonl")
+		before := len(must(os.ReadFile(mainPath)))
+		entries := []durable.EntryId{mint[durable.EntryId](t, storage), mint[durable.EntryId](t, storage), mint[durable.EntryId](t, storage)}
+		var batches [][]durable.StorageWrite
+		for index, id := range entries {
+			batches = append(batches, []durable.StorageWrite{
+				durable.EntryWrite{Value: durable.EntryRecord{Id: id, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "note"}},
+				durable.DocumentChangeWrite{Id: documentId, Content: delta(durable.Op{"s", []any{"n"}, index + 1})},
+			})
+		}
+		// Reads wait for the append: a read started while it runs sees every batch durable.
+		fileSystem.armed.Store(true)
+		type commitOutcome struct {
+			result durable.CommitResult
+			err    error
+		}
+		committed := make(chan commitOutcome, 1)
+		go func() {
+			result, err := storage.Commit(testContext, batches, func(int, durable.Seq) {})
+			committed <- commitOutcome{result, err}
+		}()
+		<-fileSystem.entered
+		type readOutcome struct {
+			entry *durable.EntryAt
+			err   error
+		}
+		read := make(chan readOutcome, 1)
+		awaitReader := entered.Go(func() {
+			entry, err := storage.Entry(testContext, entries[2])
+			read <- readOutcome{entry, err}
+		})
+		awaitReader()
+		select {
+		case early := <-read:
+			close(fileSystem.gate)
+			t.Fatalf("a read started while the append is held returned %+v, want it to wait", early)
+		default:
+		}
+		close(fileSystem.gate)
+		outcome := <-committed
+		mustDo(t, outcome.err)
+		if outcome.result.Stored != 3 || outcome.result.Refused != nil {
+			t.Fatalf("result = %+v, want 3 stored", outcome.result)
+		}
+		got := <-read
+		mustDo(t, got.err)
+		if got.entry == nil {
+			t.Fatal("the read started during the append did not see the last batch")
+		}
+		main := string(must(os.ReadFile(mainPath)))
+		var markers []string
+		for line := range strings.SplitSeq(main[before:], "\n") {
+			if line != "" {
+				markers = append(markers, line)
+			}
+		}
+		expectLength(t, markers, 3)
+		mustDo(t, storage.Close(testContext))
+
+		// Torn inside the last marker: the two complete ones survive, and the third's sidecar record is unconfirmed.
+		tornAt := len(main) - len(markers[2])/2
+		mustDo(t, os.WriteFile(mainPath, []byte(main[:tornAt]), 0o644))
+		reopened := open(t, directory)
+		if must(reopened.Entry(testContext, entries[0])) == nil || must(reopened.Entry(testContext, entries[1])) == nil {
+			t.Fatal("a complete marker's entry was lost")
+		}
+		if must(reopened.Entry(testContext, entries[2])) != nil {
+			t.Fatal("the torn marker's entry was recovered")
+		}
+		expectEqual(t, must(reopened.Document(testContext, documentId, durable.CurrentPoint)).Value, map[string]any{"n": 2})
+		seq := commit(t, reopened, durable.DocumentChangeWrite{Id: documentId, Content: delta(durable.Op{"s", []any{"n"}, 9})})
+		if seq != 5 {
+			t.Fatalf("seq = %d, want 5", seq)
+		}
+		again := open(t, directory)
+		expectEqual(t, must(again.Document(testContext, documentId, durable.CurrentPoint)).Value, map[string]any{"n": 9})
+	})
+
+	t.Run("Close waits for a commit in progress instead of closing the memory between its batches", func(t *testing.T) {
+		directory := tempDirectory(t)
+		fileSystem := &gatedAppendFileSystem{
+			NodeFileSystem: &node.NodeFileSystem{Cwd: directory}, entered: make(chan struct{}), gate: make(chan struct{}),
+		}
+		storage := openStorage(t, directory, fileSystem, jsonl.JsonlStorageOptions{})
+		createRoot(t, storage)
+		entries := []durable.EntryId{mint[durable.EntryId](t, storage), mint[durable.EntryId](t, storage)}
+		var batches [][]durable.StorageWrite
+		for _, id := range entries {
+			batches = append(batches, []durable.StorageWrite{
+				durable.EntryWrite{Value: durable.EntryRecord{Id: id, ConversationId: durable.ROOT_CONVERSATION_ID, Kind: "note"}},
+			})
+		}
+		fileSystem.armed.Store(true)
+		type commitOutcome struct {
+			result durable.CommitResult
+			err    error
+		}
+		committed := make(chan commitOutcome, 1)
+		go func() {
+			result, err := storage.Commit(testContext, batches, func(int, durable.Seq) {})
+			committed <- commitOutcome{result, err}
+		}()
+		<-fileSystem.entered
+		closed := make(chan error, 1)
+		ids := make(chan uint64, 1)
+		go func() {
+			ids <- goroutineid.Current()
+			closed <- storage.Close(testContext)
+		}()
+		// Close has returned or waits on the commit.
+		mustDo(t, entered.AwaitBlocked(testContext, <-ids, nil))
+		select {
+		case err := <-closed:
+			close(fileSystem.gate)
+			t.Fatalf("Close returned %v while a commit was being appended, want it to wait", err)
+		default:
+		}
+		close(fileSystem.gate)
+		outcome := <-committed
+		mustDo(t, outcome.err)
+		if outcome.result.Stored != 2 || outcome.result.Refused != nil {
+			t.Fatalf("result = %+v, want 2 stored", outcome.result)
+		}
+		mustDo(t, <-closed)
+	})
 }

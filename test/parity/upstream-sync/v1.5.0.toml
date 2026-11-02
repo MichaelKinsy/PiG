@@ -5010,7 +5010,7 @@ rationale = "only the `pi.live` v3 tests changed. PiG: durable/harness/compactio
 path = "packages/durable/src/harness/context.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:durable/harness/context_range_test.go"]
+evidence = ["test:durable/harness/context_range_test.go", "test:durable/harness/context_kept_range_test.go#TestKeptContextRanges"]
 rationale = "Whole file ported in durable/harness/context.go. The 1.5.0 delta is Pi e5c6182ba (the kept context range reads its bounds from Session.latestEntryId/latestHeadMarker instead of a storage read). Ported in durable/harness/context.go of NDur r7 e837161149 (fix/follow-ndur) (not in this base); context_kept_range_test.go is that revision's test."
 
 [[files]]
@@ -5226,16 +5226,16 @@ rationale = "Whole file ported in durable/internal/search/search.go. The 1.5.0 d
 [[files]]
 path = "packages/durable/src/session/cached-storage.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Not ported in this base: New file of Pi e5c6182ba: the Session's read cache with write-through at publication. The port is in durable/session/cached_storage.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
+disposition = "ported"
+evidence = ["test:durable/session/cached_storage_test.go#TestCachedStorageKeepsEndedTasksATaskWaitsOnUntilItMovedOnFromItsWait"]
+rationale = "New file of Pi e5c6182ba: the Session's read cache with write-through at publication. Ported in durable/session/cached_storage.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
 
 [[files]]
 path = "packages/durable/src/session/conversation-tails.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Not ported in this base: New file of Pi e5c6182ba: the bounded cache of conversation tails. The port is in durable/session/conversation_tails.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
+disposition = "ported"
+evidence = ["test:durable/session/conversation_tails_test.go#TestConversationTailsAnswersCutoffFromNewestMarkerOnlyAtOrAfterIt"]
+rationale = "New file of Pi e5c6182ba: the bounded cache of conversation tails. Ported in durable/session/conversation_tails.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
 
 [[files]]
 path = "packages/durable/src/session/forks.ts"
@@ -5247,9 +5247,9 @@ rationale = "PORT_MAP row is ✅ ported (durable/session/forks.go). coverage.md 
 [[files]]
 path = "packages/durable/src/session/keys.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Not ported in this base: New file of Pi e5c6182ba: the keys a commit touches and the gated storage reads. The port is in durable/session/keys.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
+disposition = "ported"
+evidence = ["test:durable/session/keys_test.go#TestGatedStorageReadsTouchTheirKeysFirst"]
+rationale = "New file of Pi e5c6182ba: the keys a commit touches and the gated storage reads. Ported in durable/session/keys.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
 
 [[files]]
 path = "packages/durable/src/session/session.ts"
@@ -5268,9 +5268,9 @@ rationale = "Whole file ported in durable/session/transaction.go. The 1.5.0 delt
 [[files]]
 path = "packages/durable/src/session/writer.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Not ported in this base: New file of Pi e5c6182ba: the Writer that owns a Session's commits (parts, per-part outcomes, publication). The port is in durable/session/writer.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
+disposition = "ported"
+evidence = ["test:durable/session/session_group_commit_test.go#TestGroupCommitBatching"]
+rationale = "New file of Pi e5c6182ba: the Writer that owns a Session's commits (parts, per-part outcomes, publication). Ported in durable/session/writer.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
 
 [[files]]
 path = "packages/durable/src/storage/indexeddb.ts"
@@ -5297,7 +5297,7 @@ rationale = "PORT_MAP row is ✅ ported (durable/storage/jsonl/node/node.go). co
 path = "packages/durable/src/storage/jsonl/storage.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:durable/storage/jsonl/jsonl_storage_test.go"]
+evidence = ["test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches", "test:durable/storage/jsonl/jsonl_storage_test.go"]
 rationale = "Whole file ported in durable/storage/jsonl/storage.go. The 1.5.0 delta is Pi e5c6182ba: commit(batches, receive) checks each batch against memory, appends all markers in one write, and poisons the storage when an append fails after batches applied. Ported in durable/storage/jsonl/storage.go of NDur r7 e837161149 (fix/follow-ndur) (not in this base)."
 
 [[files]]
@@ -5360,22 +5360,22 @@ rationale = "Pi 4c25119f (replicate storages as a commit log) changes this file 
 path = "packages/durable/src/storage/sqlite/storage.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:durable/storage/sqlite/sqlite_storage_test.go"]
+evidence = ["test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches", "test:durable/storage/sqlite/sqlite_storage_test.go"]
 rationale = "Whole file ported in durable/storage/sqlite/storage.go. The 1.5.0 delta is Pi e5c6182ba: commit(batches, receive) runs the batches in one transaction and commits the prefix before the first refusal. Ported in durable/storage/sqlite/storage.go of NDur r7 e837161149 (fix/follow-ndur) (not in this base)."
 
 [[files]]
 path = "packages/durable/src/storage/store/commit.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Not ported in this base: Whole file of the Pi Durable store Storage (D-store, over chord's store): not ported in this base. The port is in durable/storage/store/commit.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
+disposition = "ported"
+evidence = ["test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageRefusals"]
+rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): not ported in this base. Ported in durable/storage/store/commit.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
 
 [[files]]
 path = "packages/durable/src/storage/store/documents.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Not ported in this base: Whole file of the Pi Durable store Storage (D-store, over chord's store): not ported in this base. The port is in durable/storage/store/documents.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
+disposition = "ported"
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageArchives"]
+rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): not ported in this base. Ported in durable/storage/store/documents.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
 
 [[files]]
 path = "packages/durable/src/storage/store/index.ts"
@@ -5387,23 +5387,23 @@ rationale = "Re-export barrel: the exports are the Go package surface (PORT_MAP 
 [[files]]
 path = "packages/durable/src/storage/store/queries.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Not ported in this base: Whole file of the Pi Durable store Storage (D-store, over chord's store): not ported in this base. The port is in durable/storage/store/queries.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
+disposition = "ported"
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageReviewRegressions"]
+rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): not ported in this base. Ported in durable/storage/store/queries.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
 
 [[files]]
 path = "packages/durable/src/storage/store/storage.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Not ported in this base: Whole file of the Pi Durable store Storage (D-store, over chord's store): not ported in this base. The port is in durable/storage/store/storage.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
+disposition = "ported"
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageClaimsAndClose"]
+rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): not ported in this base. Ported in durable/storage/store/storage.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
 
 [[files]]
 path = "packages/durable/src/storage/store/tables.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Not ported in this base: Whole file of the Pi Durable store Storage (D-store, over chord's store): not ported in this base. The port is in durable/storage/store/tables.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
+disposition = "ported"
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageHeadMarkers"]
+rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): not ported in this base. Ported in durable/storage/store/tables.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
 
 [[files]]
 path = "packages/durable/src/tasks.ts"
@@ -5422,9 +5422,9 @@ rationale = "PORT_MAP row is ✅ ported (durable/durabletest/durabletest.go). co
 [[files]]
 path = "packages/durable/src/testing/commit-writes.ts"
 change = "added"
-disposition = "deferred"
-evidence = []
-rationale = "Not ported in this base: New file of Pi e5c6182ba: commitWrites(storage, writes) commits one batch and returns its seq. The port is in durable/durabletest/commit_writes.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
+disposition = "ported"
+evidence = ["test:durable/storage/memory_storage_test.go#TestMemoryStorageConformance"]
+rationale = "New file of Pi e5c6182ba: commitWrites(storage, writes) commits one batch and returns its seq. Ported in durable/durabletest/commit_writes.go of NDur r7 e837161149 (fix/follow-ndur); this base has no such file."
 
 [[files]]
 path = "packages/durable/src/testing/env-conformance.ts"

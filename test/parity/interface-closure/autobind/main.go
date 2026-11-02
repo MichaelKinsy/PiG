@@ -366,7 +366,7 @@ var (
 // `export ... from` closure of its source).
 var libraryEntries = map[string][]string{
 	"env:.":                               {"./env"},
-	"durable:.":                           {"./durable", "./durable/core", "./durable/core/session", "./durable/harness", "./durable/session", "./durable/storage"},
+	"durable:.":                           {"./durable", "./durable/core", "./durable/core/session", "./durable/core/sqlhost", "./durable/harness", "./durable/session", "./durable/storage"},
 	"durable:./env":                       {"./durable/env"},
 	"durable:./env/node":                  {"./durable/env/node"},
 	"durable:./codemode":                  {"./durable/codemode"},
@@ -381,9 +381,10 @@ var libraryEntries = map[string][]string{
 	"durable:./storage/sqlite":            {"./durable/storage/sqlite"},
 	"durable:./storage/sqlite/node":       {"./durable/storage/sqlite/node"},
 	"durable:./storage/sqlite/cloudflare": {"./durable/storage/sqlite/cloudflare"},
-	"chord:.":                             {"./chord", "./chord/context", "./chord/delta", "./chord/host", "./chord/next/documents", "./durable", "./durable/core/internal/delta"},
+	"durable:./storage/store":             {"./durable/storage/store"},
+	"chord:.":                             {"./chord", "./chord/context", "./chord/delta", "./chord/host", "./chord/next/documents", "./chord/next/host", "./durable", "./durable/core/internal/delta"},
 	"chord:./next":                        {"./chord", "./chord/next/contracts", "./chord/next/data", "./chord/next/documents", "./chord/next/host", "./chord/next/link", "./chord/next/registries", "./chord/next/state", "./chord/next/store"},
-	"chord:./context":                     {"./chord/context"},
+	"chord:./context":                     {"./chord/context", "./chord/next/host"},
 	"chord:./delta":                       {"./chord", "./chord/delta", "./durable", "./durable/core/internal/delta"},
 	"chord:./node":                        {"./chord/host"},
 	"chord:./output":                      {"./chord/output"},

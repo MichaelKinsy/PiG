@@ -18,11 +18,21 @@ let commitCount = 0; // the Harness clock advances with each applied commit, so 
 const now = () => 1000 + commitCount;
 const session = createSession(storage, { now });
 const origCommit = storage.commit.bind(storage);
-storage.commit = async (writes, ctx) => {
-	const seq = await origCommit(writes, ctx);
-	commitCount++;
-	log.push({ t: "commit", seq, writes: clone(writes) });
-	return seq;
+storage.commit = async (batches, receive, ctx) => {
+	// Storage.commit(batches, receive): one log entry per stored batch, one tick after Storage adopted it (receive returned), as
+	// the scenarios' single commits were logged after `await origCommit(...)`.
+	return origCommit(
+		batches,
+		(index, seq) => {
+			receive(index, seq);
+			const writes = clone(batches[index]);
+			queueMicrotask(() => {
+				commitCount++;
+				log.push({ t: "commit", seq, writes });
+			});
+		},
+		ctx,
+	);
 };
 
 // ---- scripted task definitions

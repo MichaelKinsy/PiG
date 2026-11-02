@@ -190,21 +190,21 @@ func TestTaskContextRanges(t *testing.T) {
 			initial, _ := read(nil)
 			expectSame("initial", initial)
 
-			// Three new entries: the bounds probe reads one row, the extension the three new ones.
+			// Three new entries: the kept range took them as they were committed, so the read scans nothing.
 			write(durable.EntryDraft{Kind: "message", Model: []ai.Message{user("new")}})
 			write(durable.EntryDraft{Kind: "note", Data: map[string]any{"text": "display only"}})
 			write(durable.EntryDraft{Kind: "message", Model: []ai.Message{assistant("answer")}})
 			extended, rows := read(nil)
-			if rows != 4 {
-				t.Errorf("the extension scanned %d rows, want 4", rows)
+			if rows != 0 {
+				t.Errorf("the extension scanned %d rows, want 0", rows)
 			}
 			expectSame("extended", extended)
 
 			// A newer edit of an older entry applies to the extended range.
 			write(durable.EntryDraft{Kind: "edit", Edits: []durable.ContextEdit{{Target: setup.first.Id, Action: durable.EditOmit}}})
 			edited, rows := read(nil)
-			if rows != 2 {
-				t.Errorf("the edit read scanned %d rows, want 2", rows)
+			if rows != 0 {
+				t.Errorf("the edit read scanned %d rows, want 0", rows)
 			}
 			expectSame("edited", edited)
 			if slices.Contains(describeMessages(edited.Messages), "user:first") {
@@ -311,10 +311,10 @@ func TestTaskContextRanges(t *testing.T) {
 		pollUntil(t, func() bool { return scheduler.idleContextCount() == 1 })
 		setup.clock.advance(600_000)
 		run("expired")
-		// Bounds probes read one row each. The child scans its own new entry; the waiting parent's later invocation and
-		// the probe within the retention period scan nothing new. After it, the probe reads the whole transcript again.
+		// The Session knows the bounds, and the kept range takes each committed entry, so only a first read scans: the
+		// parent's, and the probe's after the retention period, which reads the whole transcript again.
 		got := rows.all()
-		want := map[string]int64{"parent": 22, "child": 2, "after": 1, "idle": 1, "expired": 23}
+		want := map[string]int64{"parent": 21, "child": 0, "after": 0, "idle": 0, "expired": 22}
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("rows = %v, want %v", got, want)
 		}
@@ -503,9 +503,11 @@ func TestTaskContextRanges(t *testing.T) {
 				}
 			}
 			ctxRunTask(t, setup, reader.Erased())
-			want := map[string]int64{"first": 7, "second": 1}
+			// The Session knows the bounds, so a read scans only the six entries of the range, and a kept range that took no
+			// entry since needs no scan.
+			want := map[string]int64{"first": 6, "second": 0}
 			if retention == 0 {
-				want["second"] = 7
+				want["second"] = 6
 			}
 			if got := rowsOf.all(); !reflect.DeepEqual(got, want) {
 				t.Errorf("retention %d: rows = %v, want %v", retention, got, want)
@@ -658,8 +660,8 @@ func TestTaskContextRanges(t *testing.T) {
 		}
 		close(probeStart)
 		tkWaitOutcome(t, setup.opened.harness, probeId)
-		if got, _ := rows.get(); got != 22 {
-			t.Errorf("the probe scanned %d rows, want 22", got)
+		if got, _ := rows.get(); got != 21 {
+			t.Errorf("the probe scanned %d rows, want 21", got)
 		}
 		mustClose(t, setup.opened.harness)
 	})
@@ -692,7 +694,7 @@ func TestTaskContextRanges(t *testing.T) {
 		pollUntil(t, func() bool { return scheduler.keptContextCount() == 1 && scheduler.expiryPending() })
 		pollUntil(t, func() bool { return scheduler.keptContextCount() == 0 && !scheduler.expiryPending() })
 		run("second")
-		if got, want := rowsOf.all(), map[string]int64{"first": 22, "second": 22}; !reflect.DeepEqual(got, want) {
+		if got, want := rowsOf.all(), map[string]int64{"first": 21, "second": 21}; !reflect.DeepEqual(got, want) {
 			t.Errorf("rows = %v, want %v", got, want)
 		}
 		mustClose(t, setup.opened.harness)
@@ -718,7 +720,7 @@ func TestTaskContextRanges(t *testing.T) {
 			tkWaitOutcome(t, setup.opened.harness, tkStart(t, setup.opened.root, probe))
 			waitForIdle(t, setup.opened.root)
 		}
-		if got, want := rowsOf.all(), map[string]int64{"first": 22, "second": 22}; !reflect.DeepEqual(got, want) {
+		if got, want := rowsOf.all(), map[string]int64{"first": 21, "second": 21}; !reflect.DeepEqual(got, want) {
 			t.Errorf("rows = %v, want %v", got, want)
 		}
 		mustClose(t, setup.opened.harness)
@@ -805,7 +807,7 @@ func TestExtendRangeDerivesAgainWhenAnAddedEntryChangesWhatIsDerived(t *testing.
 		return durable.EntryRecord{Id: id, Kind: "message", Model: []ai.Message{user(text)}}
 	}
 	edit := durable.EntryRecord{Id: 2, Kind: "edit", Edits: []durable.ContextEdit{{Target: 3, Action: durable.EditReplace, Messages: []ai.Message{user("edited")}}}}
-	previous := deriveRange(ContextBounds{Tail: 2}, []durable.EntryRecord{entry(1, "one"), edit})
+	previous := deriveRange(ContextBounds{Tail: 2}, []durable.EntryRecord{entry(1, "one"), edit}, false)
 	summary := durable.EntryRecord{Id: 4, Kind: "summary", Head: new(durable.EntryId(1)), Model: []ai.Message{user("summary")}}
 	for name, c := range map[string]struct {
 		added durable.EntryRecord
@@ -816,8 +818,8 @@ func TestExtendRangeDerivesAgainWhenAnAddedEntryChangesWhatIsDerived(t *testing.
 		"a head marker":                 {summary, &summary},
 	} {
 		bounds := ContextBounds{Head: c.head, Tail: c.added.Id}
-		got := extendRange(previous, bounds, []durable.EntryRecord{c.added})
-		want := deriveRange(bounds, []durable.EntryRecord{entry(1, "one"), edit, c.added})
+		got := extendRange(previous, bounds, []durable.EntryRecord{c.added}, false)
+		want := deriveRange(bounds, []durable.EntryRecord{entry(1, "one"), edit, c.added}, false)
 		if !reflect.DeepEqual(got.view, want.view) {
 			t.Errorf("%s: extended view %s, want the whole derivation %s", name, jsonText(t, got.view), jsonText(t, want.view))
 		}

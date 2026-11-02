@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
 
@@ -28,11 +29,11 @@ func TestMemoryStorageVisibleEntryReturnsItsCommitSeqAndACopy(t *testing.T) {
 	write := func(id durable.EntryId) durable.StorageWrite {
 		return durable.EntryWrite{Value: durable.EntryRecord{Id: id, ConversationId: root, Kind: "plain", Data: map[string]any{"n": int64(id)}}}
 	}
-	firstSeq, err := store.Commit(ctx, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: root}}, write(first)}, func(durable.Seq) {})
+	firstSeq, err := durabletest.CommitWrites(ctx, store, []durable.StorageWrite{durable.ConversationWrite{Value: durable.ConversationRecord{Id: root}}, write(first)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondSeq, err := store.Commit(ctx, []durable.StorageWrite{write(second)}, func(durable.Seq) {})
+	secondSeq, err := durabletest.CommitWrites(ctx, store, []durable.StorageWrite{write(second)})
 	if err != nil {
 		t.Fatal(err)
 	}

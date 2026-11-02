@@ -115,7 +115,6 @@ const taskGraphScanPageSize = 256
 // TaskGraphView is the Harness's task graph mount: built on the Session line by its first observer and dropped with its last. It advances from the Session's commit publications as memory adopts them.
 type TaskGraphView struct {
 	session  *session.SessionImpl
-	storage  durable.Storage
 	blocking TaskGraphBlocking
 	// mu guards mount and closed: a watch may detach off the line, from its delivery goroutine.
 	mu     sync.Mutex
@@ -124,8 +123,8 @@ type TaskGraphView struct {
 }
 
 // NewTaskGraphView subscribes the mount to the Session's commits and close.
-func NewTaskGraphView(sessionImpl *session.SessionImpl, storage durable.Storage, blocking TaskGraphBlocking) *TaskGraphView {
-	view := &TaskGraphView{session: sessionImpl, storage: storage, blocking: blocking}
+func NewTaskGraphView(sessionImpl *session.SessionImpl, blocking TaskGraphBlocking) *TaskGraphView {
+	view := &TaskGraphView{session: sessionImpl, blocking: blocking}
 	sessionImpl.FollowCommits(func(ctx context.Context, publication session.ObservedCommit) {
 		// A commit held in memory changes documents only, which the graph does not show.
 		if publication.Memory {
@@ -201,12 +200,12 @@ func (view *TaskGraphView) Watch(ctx context.Context) (TaskGraphWatch, error) {
 
 // attach registers an observer created from the current revision, atomically on the Session line.
 func (view *TaskGraphView) attach(ctx context.Context, create func(value TaskGraph, release func()) taskGraphObserver) (func(), error) {
-	result, err := view.session.ReadOnLine(func() (any, error) {
+	result, err := view.session.ReadOnLineCtx(ctx, func(storage durable.Storage) (any, error) {
 		view.mu.Lock()
 		mount := view.mount
 		view.mu.Unlock()
 		if mount == nil {
-			built, err := view.build(ctx)
+			built, err := view.build(ctx, storage)
 			if err != nil {
 				return nil, err
 			}
@@ -250,7 +249,7 @@ func (view *TaskGraphView) refreshBlocked() {
 		return
 	}
 	// Rejected only once the Session is closing or failed.
-	_, _ = view.session.ReadOnLine(func() (any, error) {
+	_, _ = view.session.ReadOnLine(func(durable.Storage) (any, error) {
 		view.mu.Lock()
 		mount := view.mount
 		var observers []taskGraphObserver
@@ -283,13 +282,14 @@ func (view *TaskGraphView) refreshBlocked() {
 	})
 }
 
-func (view *TaskGraphView) build(ctx context.Context) (*taskGraphMount, error) {
+// build reads the graph on the line, through the line's storage.
+func (view *TaskGraphView) build(ctx context.Context, storage durable.Storage) (*taskGraphMount, error) {
 	tasks := map[string]TaskGraphNode{}
 	live := map[string]BlockedSubject{}
 	var records []durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]
 	for _, status := range taskGraphLiveStatuses {
 		scanned, err := ScanAll(func(cursor durable.Cursor) (durable.Page[durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], durable.Cursor], error) {
-			return view.storage.ScanTasks(ctx, durable.TaskQuery{Status: &status}, taskGraphScanPageSize, cursor)
+			return storage.ScanTasks(ctx, durable.TaskQuery{Status: &status}, taskGraphScanPageSize, cursor)
 		})
 		if err != nil {
 			return nil, err
@@ -302,7 +302,7 @@ func (view *TaskGraphView) build(ctx context.Context) (*taskGraphMount, error) {
 	for _, record := range records {
 		owner := record.Id
 		owned, err := ScanAll(func(cursor durable.Cursor) (durable.Page[durable.ConversationRecord, durable.Cursor], error) {
-			return view.storage.ScanConversations(ctx, durable.ConversationQuery{OwnerTaskId: &owner}, taskGraphScanPageSize, cursor)
+			return storage.ScanConversations(ctx, durable.ConversationQuery{OwnerTaskId: &owner}, taskGraphScanPageSize, cursor)
 		})
 		if err != nil {
 			return nil, err

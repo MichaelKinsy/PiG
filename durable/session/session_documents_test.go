@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/session"
 	"github.com/MichaelKinsy/PiG/durable/session/sessiontest"
+	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 )
 
 // Ports packages/durable/test/session-documents.test.ts
@@ -794,18 +795,21 @@ func TestSessionDocumentTransactions(t *testing.T) {
 		}()
 		waitClosed(t, gate.Entered())
 		queued := make(chan error, 1)
+		queuedAdmitted := make(chan struct{})
 		go func() {
-			queued <- tryCommit(harness.Session, func(tx durable.Tx) error {
-				return mustDoc(t, tx, liveDoc, harness.conversationId).Set("message", "queued")
+			_, err := harness.Session.Commit(lineadmission.With(ctx, func() { close(queuedAdmitted) }), func(tx durable.Tx) (any, error) {
+				return nil, mustDoc(t, tx, liveDoc, harness.conversationId).Set("message", "queued")
 			})
+			queued <- err
 		}()
-		waitLineJobs(harness.Harness, 2)
+		<-queuedAdmitted
 		admittedSnapshot := make(chan obj, 1)
+		snapshotAdmitted := make(chan struct{})
 		go func() {
-			value, _ := harness.Session.SnapshotErased(ctx, memberDoc, "absent")
+			value, _ := harness.Session.SnapshotErased(lineadmission.With(ctx, func() { close(snapshotAdmitted) }), memberDoc, "absent")
 			admittedSnapshot <- value
 		}()
-		waitLineJobs(harness.Harness, 3)
+		<-snapshotAdmitted
 		closed := make(chan error, 1)
 		go func() { closed <- harness.Session.Close(ctx) }()
 		for !session.IsClosing(harness.Session) {

@@ -173,6 +173,17 @@ func (p *txProxy) LatestHeadMarker(conversationId durable.ConversationId) (*dura
 	return decodeOptional[durable.EntryRecord](p.op("latestHeadMarker", map[string]any{"conversationId": conversationId}))
 }
 
+// LatestEntryId is the newest visible entry of the conversation: the first of a descending scan of one (the core has no
+// separate op for it; Pi's Tx.latestEntryId is that read).
+func (p *txProxy) LatestEntryId(conversationId durable.ConversationId) (*durable.EntryId, error) {
+	page, err := p.ScanEntries(durable.EntryQuery{ConversationId: conversationId}, 1, nil)
+	if err != nil || len(page.Items) == 0 {
+		return nil, err
+	}
+	id := page.Items[0].Id
+	return &id, nil
+}
+
 func (p *txProxy) ScanTasks(query durable.TaskQuery, limit int, cursor durable.Cursor) (durable.Page[durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue], durable.Cursor], error) {
 	return decodePage[durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]](p.op("scanTasks", map[string]any{"query": wireTaskQuery(query), "limit": limit, "cursor": cursor}))
 }

@@ -6,6 +6,7 @@ import (
 
 	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
 )
 
@@ -104,9 +105,9 @@ func TestSqliteStorageLookupsAndScansReadCommittedRecords(t *testing.T) {
 	if got := must(storage.Conversation(testContext, durable.ROOT_CONVERSATION_ID+100)); got != nil {
 		t.Fatalf("Conversation(unknown) = %+v", got)
 	}
-	must(storage.Commit(testContext, []durable.StorageWrite{
+	must(durabletest.CommitWrites(testContext, storage, []durable.StorageWrite{
 		durable.EntryWrite{Value: entryOf(10, durable.ROOT_CONVERSATION_ID, "a")}, durable.EntryWrite{Value: entryOf(20, durable.ROOT_CONVERSATION_ID, "b")},
-	}, func(durable.Seq) {}))
+	}))
 	if got := must(storage.Entry(testContext, 20)); got == nil || got.Entry.Id != 20 || got.CommitSeq == 0 {
 		t.Fatalf("Entry(20) = %+v", got)
 	}
