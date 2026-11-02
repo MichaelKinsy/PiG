@@ -693,6 +693,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-75426aa-2](#bf-75426aa-2) | A Node extension's `tool_call` handler can edit `event.input` in place and the tool runs with the edit, as in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-756cac8](#bf-756cac8) | A streaming run no longer hangs, rarely and mostly under load, when a response turn resumes just as the drain… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-75c6ccb](#bf-75c6ccb) | fix(codingagent): context edits leave system messages unchanged | PiG's own defect | All platforms | Unreleased |
+| [BF-761f5a2](#bf-761f5a2) | `/fork` and `/clone` of a very long session no longer decode and rewrite every record of the branch in memory | PiG's own defect | All platforms | Unreleased |
 | [BF-7633906](#bf-7633906) | On arm64, `tool_search` and `searchTools()` scores use the same natural logarithm as Pi running on Node for… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7662334](#bf-7662334) | An extension that writes a large amount to stderr no longer grows its diagnostic log without limit | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7689b82](#bf-7689b82) | An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor… | PiG's own defect | All platforms | Unreleased |
@@ -10847,6 +10848,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `75c6ccb80e` (2026-10-10)
 - **Tests:** `internal/codingagent/session_context_oracle_test.go::TestBuildSessionContextMatchesPi`
+
+### BF-761f5a2
+
+**`/fork` and `/clone` of a very long session no longer decode and rewrite every record of the branch in memory**
+
+- **Source:** PiG's own defect
+- **Symptom:** `/fork` and `/clone` of a very long session no longer decode and rewrite every record of the branch in memory.
+- **Root cause:** SessionManager.Clone decoded every record of the branch (GetBranch), rewrote each with replaceJSONField, decoded the rewritten records again and built the clone from them: a 427 MB session peaked at 2.9-4.5 GB on /fork where Pi peaks at 1.23 GB. Clone now plans the retained path from the index, reads each record from its resident entry, line or block, splices the new parentId (and a compaction's firstKeptEntryId) into its text, writes it to the new file, and opens that file the lazy way a resume does.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `761f5a208c` (2026-11-02)
+- **Tests:** `internal/codingagent/session_branched_file_oracle_test.go::TestCreateBranchedSessionMatchesPiOracle`, `internal/codingagent/session_clone_export_alloc_test.go::TestCloneAndExportCostAFewBytesPerSourceByte`, `internal/codingagent/session_clone_stream_test.go::TestCloneReadsNoSourceEntryBackToDecodeIt`, `internal/codingagent/session_clone_stream_test.go::TestCloneWritesTheSameFileFromResidentAndFileBackedSources`
+- **Release note:** `/fork` and `/clone` of a very long session no longer decode and rewrite every record of the branch in memory. Forking a 427 MB session peaked at 4.8-5.1 GB and now peaks at about 280 MB (settling at about 190 MB); Pi peaks at about 1.2 GB for the same file. The new file is byte-for-byte what it was.
 
 ### BF-7633906
 

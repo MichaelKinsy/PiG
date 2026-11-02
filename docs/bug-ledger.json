@@ -19501,6 +19501,31 @@
       ]
     },
     {
+      "id": "BF-761f5a2",
+      "title": "`/fork` and `/clone` of a very long session no longer decode and rewrite every record of the branch in memory",
+      "symptom": "`/fork` and `/clone` of a very long session no longer decode and rewrite every record of the branch in memory.",
+      "rootCause": "SessionManager.Clone decoded every record of the branch (GetBranch), rewrote each with replaceJSONField, decoded the rewritten records again and built the clone from them: a 427 MB session peaked at 2.9-4.5 GB on /fork where Pi peaks at 1.23 GB. Clone now plans the retained path from the index, reads each record from its resident entry, line or block, splices the new parentId (and a compaction's firstKeptEntryId) into its text, writes it to the new file, and opens that file the lazy way a resume does.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/fork` and `/clone` of a very long session no longer decode and rewrite every record of the branch in memory. Forking a 427 MB session peaked at 4.8-5.1 GB and now peaks at about 280 MB (settling at about 190 MB); Pi peaks at about 1.2 GB for the same file. The new file is byte-for-byte what it was.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "761f5a208c",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_branched_file_oracle_test.go::TestCreateBranchedSessionMatchesPiOracle",
+        "internal/codingagent/session_clone_export_alloc_test.go::TestCloneAndExportCostAFewBytesPerSourceByte",
+        "internal/codingagent/session_clone_stream_test.go::TestCloneReadsNoSourceEntryBackToDecodeIt",
+        "internal/codingagent/session_clone_stream_test.go::TestCloneWritesTheSameFileFromResidentAndFileBackedSources"
+      ]
+    },
+    {
       "id": "BF-7633906",
       "title": "On arm64, `tool_search` and `searchTools()` scores use the same natural logarithm as Pi running on Node for…",
       "symptom": "The logarithm in the BM25 weights differed from Node's in the last bit for about 1 in 500 arguments, which could change scores and break ties in a different order.",
