@@ -42,7 +42,7 @@ func readTypeBoxSchemas(text string, schemas typeBoxSchemas) {
 		}
 	}
 	for _, m := range importClauseRe.FindAllStringSubmatch(text, -1) {
-		for _, item := range strings.Split(m[1], ",") {
+		for item := range strings.SplitSeq(m[1], ",") {
 			if a := importAliasRe.FindStringSubmatch(strings.TrimSpace(item)); a != nil && typeBoxCallRe.MatchString(a[1]+"(") && schemas["as:"+a[2]] != a[1] {
 				record("as:"+a[2], a[1])
 			}
@@ -151,7 +151,7 @@ func staticRefinements(aliases map[string]*string) {
 			continue
 		}
 		omitted := map[string]bool{}
-		for _, k := range strings.Split(m[2], "|") {
+		for k := range strings.SplitSeq(m[2], "|") {
 			omitted[strings.Trim(strings.TrimSpace(k), `"`)] = true
 		}
 		members, ok := literalMembers("{" + m[3] + "}")
