@@ -6,12 +6,5 @@
    "pkg:codemode/cloudflare#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions",
    "pkg:codemode/portable#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions"
   }
- },
- "packages/chord/src/delta/tracker.ts": {
-  "reason": "Pi's Tracker.adopt (tracker.ts) has two Go ports: chord/delta/tracker.go (Tracker.Adopt, with the registry of open drafts) and the durable core copy durable/core/internal/delta/tracker.go (Tracker.Adopt over jv values, staleness by revision, which computes what Pi a9228305's #open/#competitors registry computes). The ledger maps adopt to the chord/delta port; this entry names the durable port as the second one the row cites, so the cited file holds a mapped symbol and its competing-change tests (durable/core/internal/delta/tracker_competing_test.go, marked `// pi:`) are evidence of the row.",
-  "members": {
-   "pkg:chord/delta#Tracker::property:adopt": "durable/core/internal/delta/tracker.go#Tracker.Adopt",
-   "pkg:chord/delta#Tracker::property:adopt::call:0": "durable/core/internal/delta/tracker.go#Tracker.Adopt"
-  }
  }
 }

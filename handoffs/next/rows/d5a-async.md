@@ -100,11 +100,11 @@ Contracts: awaited, concurrent-joined, detached-owned, cancellable, ui-handoff, 
 
 | file | contract (awaited, concurrent-joined, detached-owned, cancellable, ui-handoff, microtask-ordering) | evidence test | rationale |
 |---|---|---|---|
-| support.ts `RawPeer.next` | awaited, cancellable | host_examples_test.go#TestExample13Relay (+ remote tests) | a `sync.Cond` wait over the received list; fails the test when the link closes first (Pi throws `link closed before <kind>`). |
+| support.ts `RawPeer.next` | awaited, cancellable | host_example_13_test.go#TestExample13Relay (+ remote tests) | a `sync.Cond` wait over the received list; fails the test when the link closes first (Pi throws `link closed before <kind>`). |
 | support.ts `notesProbe.wait` / `AwaitWaits` | awaited | remote provider tests | the handler blocks on `ctx.Done()`; `AwaitWaits` waits on a replaced channel closed by each `wait` call, and fails with the test context. |
 | support.ts `rawWorkers.At` | awaited | remote relay tests | Pi polls `transported()` up to ten times; Go blocks on a channel closed by `Resolve`. |
-| support.ts `relayed` `void host.load(...)` | detached-owned | host_examples_test.go#TestExample12Routes | a goroutine of the test calling `host.Load`; the worker is closed by the test. |
-| support.ts `transported`, `flushed`, `delivered` | microtask-ordering | host_examples_test.go#TestExample14FlowControl | `transported(links...)` waits for the memory queue to drain (`MemoryLink.Flushed`) six times, as Pi's six `setImmediate` hops. |
+| support.ts `relayed` `void host.load(...)` | detached-owned | host_example_12_test.go#TestExample12Routes | a goroutine of the test calling `host.Load`; the worker is closed by the test. |
+| support.ts `transported`, `flushed`, `delivered` | microtask-ordering | host_example_14_test.go#TestExample14FlowControl | `transported(links...)` waits for the memory queue to drain (`MemoryLink.Flushed`) six times, as Pi's six `setImmediate` hops. |
 | support.ts `failLive` | microtask-ordering | host_examples_test.go (via restartable users) | runs in a host section (`host.enter`), as Pi's synchronous call. |
 | support.ts `holdNextCommit` | awaited | store/host d4 halves | `entered` is a closed channel, `release` closes the gate once. |
 | examples/01-objects.ts | awaited calls (blocking Go calls) | TestExample01Objects | the Go test joins every goroutine it starts through channels or polls the printed observable; no `time.Sleep` for ordering. |

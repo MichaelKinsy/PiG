@@ -1219,12 +1219,5 @@
    "old": "func (*remoteObject) blocksFirstPass() bool { return false }",
    "new": "func (*remoteObject) blocksFirstPass() bool { return true }"
   }
- ],
- "packages/chord/test/next/support.ts": [
-  {
-   "file": "chord/next/store/store.go",
-   "old": "Reason: data.ReasonStorageFailed, Message: \"store: storage failed\"",
-   "new": "Reason: data.ReasonArgs, Message: \"store: storage failed\""
-  }
  ]
 }
