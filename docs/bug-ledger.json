@@ -39507,6 +39507,29 @@
       ]
     },
     {
+      "id": "BF-e8a5d2e",
+      "title": "The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message…",
+      "symptom": "The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message effort (`supportsMidConvoEffort`), as Pi's generator does since 9ee7586a9 (#10954).",
+      "rootCause": "finalizeOpencodeModel enables per-message effort for the Claude models that support it, as Pi's catalog generator does at. OpenCode Go rejected replayed thinking with a 400 after the tool list or system prompt changed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message effort (`supportsMidConvoEffort`), as Pi's generator does since 9ee7586a9 (#10954). Their `anthropic-messages` requests then carry per-message effort markers and `thinking.block_binding: drop_block` like the Anthropic provider, so OpenCode Go no longer rejects replayed thinking with a 400 after the tool list or system prompt changed. The bundled catalog is converted from the published Pi package and carries the flag once the pin moves to a release that includes that commit.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e8a5d2ef7e",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "ai/opencode_dropblock_catalog_test.go::TestOpencodeClaudeCatalogCompatReachesTheAnthropicPayload",
+        "internal/modelgen/providers/opencode_dropblock_test.go::TestOpencodeClaudeMidConvoEffort"
+      ]
+    },
+    {
       "id": "BF-e90ac19",
       "title": "Very long streamed answers no longer slow down with their length: each streamed frame renders only the last…",
       "symptom": "Very long streamed answers no longer slow down with their length: each streamed frame renders only the last blocks of the message that can still change instead of lexing, wrapping and laying out all of it, so a 60,000-character answer costs about 5% of the CPU it did, with the same output.",
