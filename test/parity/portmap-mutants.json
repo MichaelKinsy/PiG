@@ -802,5 +802,89 @@
    "old": "\t\t\tcall.changes = append(call.changes, change)\n",
    "new": "\t\t\tcall.changes = append(call.changes[:0], change)\n"
   }
+ ],
+ "packages/chord/src/next/host/backoff.ts": [
+  {
+   "file": "chord/next/host/host_backoff.go",
+   "old": "return min(previous*2, maxDelay)",
+   "new": "return min(previous*3, maxDelay)"
+  }
+ ],
+ "packages/chord/src/next/host/deadline.ts": [
+  {
+   "file": "chord/next/host/host_deadline.go",
+   "old": "d.remaining = max(0, d.remaining-time.Duration(d.loop.Now()-d.started)*time.Millisecond)",
+   "new": "d.remaining = max(0, d.remaining+time.Duration(d.loop.Now()-d.started)*time.Millisecond)"
+  }
+ ],
+ "packages/chord/src/next/host/uuid.ts": [
+  {
+   "file": "chord/next/host/host_uuid.go",
+   "old": "\t\tstate.sequence++\n",
+   "new": "\t\t_ = state.sequence\n"
+  }
+ ],
+ "packages/chord/src/next/host/unbound.ts": [
+  {
+   "file": "chord/next/host/host_unbound.go",
+   "old": "principal != nil && revoked(principal)",
+   "new": "principal != nil && !revoked(principal)"
+  }
+ ],
+ "packages/chord/src/next/host/retry-on.ts": [
+  {
+   "file": "chord/next/host/host_retry_on.go",
+   "old": "if call.Kind == chord.WatchCallValue {",
+   "new": "if call.Kind != chord.WatchCallValue {"
+  }
+ ],
+ "packages/chord/src/next/host/dependencies.ts": [
+  {
+   "file": "chord/next/host/host_dependencies.go",
+   "old": "|| err.Code == data.CodeForbidden",
+   "new": "|| err.Code == data.CodeUnavailable"
+  }
+ ],
+ "packages/chord/src/next/host/members.ts": [
+  {
+   "file": "chord/next/host/host_members.go",
+   "old": "fmt.Sprintf(\"derive #%d\", position+1)",
+   "new": "fmt.Sprintf(\"derive #%d\", position)"
+  }
+ ],
+ "packages/chord/src/next/host/destination.ts": [
+  {
+   "file": "chord/next/host/host_destination.go",
+   "old": "from.role == linkRoleParent ||",
+   "new": "from.role != linkRoleParent ||"
+  }
+ ],
+ "packages/chord/src/next/host/object.ts": [
+  {
+   "file": "chord/next/host/host_object.go",
+   "old": "if kind != objectLive || o.served.linger == 0 {",
+   "new": "if kind != objectLive || o.served.linger != 0 {"
+  }
+ ],
+ "packages/chord/src/next/host/adapted.ts": [
+  {
+   "file": "chord/next/host/host_adapted.go",
+   "old": "strconv.Itoa(version) + \" is not served here\"",
+   "new": "strconv.Itoa(version) + \" is not served\""
+  }
+ ],
+ "packages/chord/src/next/host/reference-keys.ts": [
+  {
+   "file": "chord/next/host/host_reference_keys.go",
+   "old": "if entry.holders > 0 {",
+   "new": "if entry.holders > 1 {"
+  }
+ ],
+ "packages/chord/src/next/host/reference-source.ts": [
+  {
+   "file": "chord/next/host/host_reference_source.go",
+   "old": "if current.failure == nil {",
+   "new": "if current.failure != nil {"
+  }
  ]
 }
