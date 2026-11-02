@@ -8,6 +8,8 @@
 // pig-specific: upstream's interactive-mode.ts creates these inline;
 // pig needs a separate type because the UIContext interface lives in
 // coding/extension/ and the TUI lives in internal/.
+//
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (createExtensionUIContext).
 
 package codingagent
 

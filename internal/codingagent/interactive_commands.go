@@ -1,5 +1,7 @@
 package codingagent
 
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (slash command dispatch and the autocomplete provider).
+
 import (
 	"context"
 	"errors"
