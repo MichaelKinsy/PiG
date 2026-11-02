@@ -12294,6 +12294,28 @@
       ]
     },
     {
+      "id": "BF-5af3a18",
+      "title": "On Windows, a session replacement whose working directory differs from the previous one only in letter case…",
+      "symptom": "On Windows, a session replacement whose working directory differs from the previous one only in letter case (`c:\\work\\proj` after `C:\\Work\\Proj`) keeps the loaded Node extension factories instead of dropping them and re-running every module, as Pi does (#11588).",
+      "rootCause": "Pi (#11588) loader.ts useExtensionCacheCwd clears the factory cache when !pathsEqual(extensionCacheCwd, resolvedCwd), and pathsEqual compares the platform's resolved path lower-cased on Windows only. Generations.prepareCache compared the resolved strings, so a session replacement whose cwd differed from the first only in case lost its factory cache on Windows. The helper reads process.platform at call time, as Pi's, and the test drives it with a simulated win32 platform and with a case-sensitive one.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, a session replacement whose working directory differs from the previous one only in letter case (`c:\\work\\proj` after `C:\\Work\\Proj`) keeps the loaded Node extension factories instead of dropping them and re-running every module, as Pi does (#11588).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5af3a1803d",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_cache_cwd_case_test.go::TestPrepareCacheComparesTheCwdAsPiDoesOnWindows"
+      ]
+    },
+    {
       "id": "BF-5b0e909",
       "title": "/scoped-models: an empty search no longer makes enable-all/clear-all act on every model, clearing every model…",
       "symptom": "/scoped-models: an empty search no longer makes enable-all/clear-all act on every model, clearing every model from an all-enabled list now leaves none enabled (not all), and the save key is checked after the navigation keys like Pi.",

@@ -39,9 +39,9 @@ rationale = "PORT_MAP row is ✅ ported (agent/stream_fn.go + agent/agent.go + a
 [[files]]
 path = "packages/agent/src/types.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:agent/agent_loop_upstream_test.go#TestAgentLoop_RecordsToolExecutionDurationExcludingHooks", "test:agent/agent_loop_upstream_test.go#TestAgentLoop_RecordsDurationOfThrowingTool", "test:agent/agent_loop_upstream_test.go#TestRunToolCallOutcomeCarriesDurationMs"]
+rationale = "Pi 36a686ee adds durationMs (milliseconds execute() took, monotonic clock, absent when the tool did not run) to AgentToolCallOutcome and to the tool_execution_end event. Ported as the DurationMs field of the loop's tool outcome and of the ToolExecutionEnd event (agent/agent.go); the first test checks the ran call carries 30 and a blocked call none, in the outcome and in the event, with hook time excluded; the second checks a throwing tool still carries its duration; the third checks runToolCall's outcome. Pi 6536f801 and 6291b9bc move Static to pi-schema and give AgentTool<TParameters extends object> the AgentToolParams<TParameters> conditional type for execute and prepareArguments: compile-time typing with no Go form (Go AgentTool.Execute receives json.RawMessage), designed out for the AgentToolParams alias by the lead's 2026-10-07 type-mechanics ruling recorded in reviewed-decisions.json on dp/fix/follow-proof-ai-rest; outputSchema?: object is the Go AgentTool schema bytes."
 
 [[files]]
 path = "packages/ai/src/api/anthropic-messages.lazy.ts"
@@ -3434,16 +3434,16 @@ rationale = "PORT_MAP records this file n/a with the reason: (barrel re-export)"
 [[files]]
 path = "packages/coding-agent/src/core/extensions/loader.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/host/subprocess/node_cache_cwd_case_test.go#TestPrepareCacheComparesTheCwdAsPiDoesOnWindows", "test:coding/extension/host/subprocess/node_pi_ai_models_test.go#TestNodeExtensionImportsPiAiModelsSubpath", "test:coding/extension/host/subprocess/node_loader_test.go#TestNodeRuntimeVirtualModulesMatchPiNamespaces"]
+rationale = "Pi 22dc6c26 (#11156) aliases @earendil-works/pi-ai/models and the legacy @mariozechner scope; 6536f801 resolves the pi-ai root to the extension view (compat plus TypeBox Type); 1be312b4 (#11588) compares the extension-cache cwd with pathsEqual, which ignores case on Windows. Ported in the Node runtime: loader.mjs and shims/pi-ai-models.mjs serve the models subpath under both scopes (TestNodeExtensionImportsPiAiModelsSubpath loads an extension through jiti and a native import and checks the shared module), shims/pi-ai.mjs serves the extension view (the namespace test compares every export name and value kind with the pinned Pi's VIRTUAL_MODULES in both directions, so a missing Type fails), and Generations.prepareCache (runtime-node/generations.mjs) clears the factory cache only when the pathsEqual key changes, with the platform read at call time as Pi's: TestPrepareCacheComparesTheCwdAsPiDoesOnWindows runs it under a simulated win32 platform (cwd differing only in case keeps the cache, another directory clears it) and under a case-sensitive one (case differs: cleared)."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/pi-ai-extension-view.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/host/subprocess/node_loader_test.go#TestNodeRuntimeVirtualModulesMatchPiNamespaces", "test:coding/extension/host/subprocess/runtime_node_vendored_test.go#TestPiAiUtilitiesMatchThePinnedPackage"]
+rationale = "The file is new (6536f801): the module extensions import as @earendil-works/pi-ai is pi-ai's compat entry plus TypeBox's Type and a TypeBox-built StringEnum. Ported as runtime-node/shims/pi-ai.mjs (export * from compat, Type from shims/typebox.mjs, StringEnum built with Type.Unsafe). TestNodeRuntimeVirtualModulesMatchPiNamespaces compares each of the four pi-ai specifiers' export names and value kinds with the pinned Pi's own VIRTUAL_MODULES namespaces; it failed with missing=[Type] before the shim carried the view. TestPiAiUtilitiesMatchThePinnedPackage compares StringEnum's JSON with Pi's."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/runner.ts"
@@ -3462,9 +3462,9 @@ rationale = "Pi 9376c8d1 (#11630): KeybindingHints and its extension by ToolRend
 [[files]]
 path = "packages/coding-agent/src/core/extensions/virtual-modules.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/host/subprocess/node_loader_test.go#TestNodeRuntimeVirtualModulesMatchPiNamespaces", "test:coding/extension/host/subprocess/node_loader_test.go#TestNodeRuntimeLoaderCoversPiVirtualModules", "test:coding/extension/host/subprocess/node_pi_ai_models_test.go#TestNodeExtensionImportsPiAiModelsSubpath"]
+rationale = "Pi 22dc6c26 (#11156) adds the pi-ai/models entries and 6536f801 swaps the pi-ai root and compat entries to the extension view. The loader shim table serves every specifier of the table (TestNodeRuntimeLoaderCoversPiVirtualModules reads Pi's virtual-modules.ts and fails when a specifier has no shim); TestNodeRuntimeVirtualModulesMatchPiNamespaces compares each namespace's export names and value kinds with the pinned Pi's, in both directions; TestNodeExtensionImportsPiAiModelsSubpath loads the models subpath under both scopes."
 
 [[files]]
 path = "packages/coding-agent/src/core/extensions/wrapper.ts"
@@ -3532,9 +3532,9 @@ rationale = "PORT_MAP row is ✅ ported (agent/messages.go). coverage.md reports
 [[files]]
 path = "packages/coding-agent/src/core/model-config.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/models_json_oracle_test.go#TestModelsJSONValidationMatchesPiModelConfigLoad", "test:internal/codingagent/configschema/render_test.go#TestRenderedSchemasAreByteEqualToThePinnedPiPackage", "test:internal/codingagent/configschema/config_schemas_upstream_test.go#TestModelsSchemaRejectsNonPositiveTokenLimits", "test:internal/codingagent/config_schemas_runtime_upstream_test.go#TestConfigSchemasValidateSchemaInModelsJSONAtRuntime"]
+rationale = "Pi 7f9e1198 publishes the models.json schema, 8efd314f adds the field descriptions, defaults and exclusiveMinimum limits, and 6536f801 takes the compat, cost, input-limit, modality, prompt-cache and thinking-level schemas from pi-ai through pi-ai-schemas.ts. Ported as internal/codingagent/configschema/models.go over the pi-ai schemas of model.go and compat_*.go. The oracle test validates a document set through Pi's own ModelConfig.load and compares the error text; the byte-equality test compares the rendered models.schema.json with the pinned Pi package's; the other two check non-positive token limits are rejected and that $schema and a malformed field behave at runtime as in Pi."
 
 [[files]]
 path = "packages/coding-agent/src/core/model-registry.ts"
@@ -3588,9 +3588,9 @@ rationale = "Pi bec60c54 and cd6a8f7f (#11375) refresh temporary git sources pin
 [[files]]
 path = "packages/coding-agent/src/core/pi-ai-schemas.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/pischema_test.go#TestPartialModelCostSchemaIsModelCostWithoutRequired", "test:internal/codingagent/configschema/pischema_test.go#TestModelCostSchemaTextMatchesPiSchemaBuilders", "test:internal/codingagent/configschema/model_schema_upstream_test.go#TestModelSchemaExportsMatchPi", "test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi"]
+rationale = "The file is new (6536f801): it wraps pi-ai's pi-schema-built ProviderCompat, ModelCost, ModelInputLimits, ModelInputModality, ModelPromptCache, ModelThinkingLevel and ThinkingLevelMap schemas as TypeBox Unsafe values, and adds PartialModelCostSchema (ModelCostSchema without its required list). Ported as internal/codingagent/configschema/pi_ai_schemas.go: the wrapped schemas are the trees of model.go and compat_*.go as they are, since Pi's wrapper changes only the TypeScript type, and PartialModelCostSchema drops the required list. TestModelSchemaExportsMatchPi and TestCompatSchemaExportsMatchPi compare each export with Pi's JSON text, and the other two check the cost schema and its partial form."
 
 [[files]]
 path = "packages/coding-agent/src/core/pi-manifest.ts"
@@ -3707,9 +3707,9 @@ rationale = "Pi b4b72a35: get/setExtensionChangelogVersion as GetExtensionChange
 [[files]]
 path = "packages/coding-agent/src/core/settings-schema.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/render_settings_test.go#TestRenderedSettingsSchemaIsByteEqualToTheUpstreamMirror", "test:internal/codingagent/configschema/config_schemas_upstream_test.go#TestSettingsSchemaRejectsWhatRuntimeAccessorsReject", "test:internal/codingagent/configschema/config_schemas_upstream_test.go#TestSettingsSchemaDescribesLegacyMigrations", "test:internal/codingagent/configschema/config_schemas_upstream_test.go#TestRepresentativeDocumentsValidateAgainstTheGeneratedSchemas", "test:internal/codingagent/config_schemas_runtime_upstream_test.go#TestConfigSchemasAcceptSchemaInSettingsJSON"]
+rationale = "The file is new in this leap (7f9e1198 publishes the configuration schemas; b4b72a35 adds extensionChangelogVersions; cea25743 the share destination; 8bc94b19 selfUpdateCommand and PI_SELF_UPDATE_COMMAND; 6536f801 builds it with the TypeBox-compatible pi-ai schemas). Ported as the settings schema in internal/codingagent/configschema/settings.go. The first test renders Pig's settings.schema.json and compares it byte for byte with Pi's committed schemas/settings.schema.json in the upstream mirror, so every property, default, description and constraint Pi declares is present; the others are the settings.json cases of Pi's config-schemas.test.ts (runtime-accessor rejects, legacy-migration descriptions, a representative document, and $schema accepted by SettingsManager)."
 
 [[files]]
 path = "packages/coding-agent/src/core/skills.ts"
@@ -3756,9 +3756,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/timings/timings.go
 [[files]]
 path = "packages/coding-agent/src/core/tools/bash.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:internal/codingagent/tools/tools_bash_port_test.go#TestToolsBashPort", "test:internal/codingagent/tools/spawn_arguments_test.go#TestSearchAndShellToolsReportSpawnArgumentErrorsAsPiDoes"]
+rationale = "Pi 6536f801 changes bash.ts by two lines: the AgentTool import goes and createBashTool returns TypeBoxAgentTool<typeof bashSchema>. That is a compile-time type (Go AgentTool has no parameter-schema type argument), so the tool's runtime is unchanged; the port of tools.test.ts bash cases and the spawn-argument oracle still pass against internal/codingagent/tools/bash.go."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/edit-diff.ts"
@@ -3770,9 +3770,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/tools/edit_diff.go
 [[files]]
 path = "packages/coding-agent/src/core/tools/edit.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/prompt_contributions_port_test.go#TestToolSystemPromptContributionsPort", "test:internal/codingagent/tools/tools_edit_port_test.go#TestToolsEditPort"]
+rationale = "Pi 705d047c (tighten system prompt) replaces edit's four prompt guidelines with two: 'Use edit for targeted changes. Batch changes to one file in a single call.' and 'Each edits[].oldText must exactly and uniquely match the original file. Keep matches short and non-overlapping; merge nearby changes without including large unchanged regions.'. internal/codingagent/tools/edit.go carries the same two strings in the definition's PromptGuidelines; TestToolSystemPromptContributionsPort checks the edit definition and DefaultToolGuidelines hold exactly them, with the snippet. Pi 6536f801 also returns TypeBoxAgentTool from createEditTool, a compile-time type with no Go form; TestToolsEditPort runs the file's edit behavior."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/file-mutation-queue.ts"
@@ -3784,16 +3784,16 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/tools/mutation_que
 [[files]]
 path = "packages/coding-agent/src/core/tools/find.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:internal/codingagent/tools/tools_search_port_test.go#TestToolsFindPort", "test:internal/codingagent/tools/spawn_arguments_test.go#TestSearchAndShellToolsReportSpawnArgumentErrorsAsPiDoes"]
+rationale = "Pi 6536f801 changes find.ts by two lines: the AgentTool import goes and createFindTool returns TypeBoxAgentTool<typeof findSchema>. That is a compile-time type, so the tool's runtime is unchanged; the port of tools.test.ts find cases and the spawn-argument oracle still pass against internal/codingagent/tools/find.go."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/grep.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/tools_search_port_test.go#TestToolsGrepPort", "test:internal/codingagent/tools/spawn_arguments_test.go#TestSearchAndShellToolsReportSpawnArgumentErrorsAsPiDoes"]
+rationale = "Pi 8c4e8738 starts grep's ripgrep argument list with --no-config so RIPGREP_CONFIG_PATH cannot change the tool contract, and fecc19e4 (#11465) stops turning a lone CR into a line break so context line numbers stay aligned with ripgrep. internal/codingagent/tools/grep.go starts its ripgrep arguments with --no-config; TestToolsGrepPort has the two Pi cases ('should ignore RIPGREP_CONFIG_PATH' with a config that would change the output, and 'should keep context line numbers aligned with ripgrep when a file contains a lone CR'); the spawn-argument oracle compares the exact rg argument list with Node's spawn. Pi 6536f801 also returns TypeBoxAgentTool from createGrepTool, a compile-time type."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/index.ts"
@@ -3805,9 +3805,9 @@ rationale = "PORT_MAP records this file n/a with the reason: (barrel)"
 [[files]]
 path = "packages/coding-agent/src/core/tools/ls.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:internal/codingagent/tools/tools_bash_port_test.go#TestToolsLsPort"]
+rationale = "Pi 6536f801 changes ls.ts by two lines: the AgentTool import goes and createLsTool returns TypeBoxAgentTool<typeof lsSchema>. That is a compile-time type, so the tool's runtime is unchanged; the port of tools.test.ts ls cases still passes against internal/codingagent/tools/ls.go."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/output-accumulator.ts"
@@ -3833,9 +3833,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/tools/powershell.g
 [[files]]
 path = "packages/coding-agent/src/core/tools/read.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:internal/codingagent/tools/tools_read_port_test.go#TestToolsReadPort"]
+rationale = "Pi 6536f801 changes read.ts by two lines: the AgentTool import goes and createReadTool returns TypeBoxAgentTool<typeof readSchema>. That is a compile-time type, so the tool's runtime is unchanged; the port of tools.test.ts read cases still passes against internal/codingagent/tools/read.go."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/render-utils.ts"
@@ -3903,9 +3903,9 @@ rationale = "A complete write call highlights its file through the row's CodeHig
 [[files]]
 path = "packages/coding-agent/src/core/tools/tool-definition-wrapper.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:coding/wrap_registered_tool_upstream_test.go#TestWrapRegisteredToolUpstream", "test:coding/wrap_registered_tool_members_test.go#TestWrapRegisteredToolCarriesTheDefinitionsMembers", "test:coding/extension_bridge_calls_test.go#TestWrappedRegisteredToolSchemaPrepareAndReservationFollowTheDefinition"]
+rationale = "The delta adds the exported type TypeBoxAgentTool (an AgentTool whose execute and prepareArguments are typed by TypeBox Static) and its imports (6536f801, 6291b9bc); wrapToolDefinition's runtime code is untouched. The type is compile-time only (Go AgentTool has no parameter-schema type argument), so the wrapper's observable behavior is unchanged: the evidence tests exercise the Go counterpart (coding/extension_bridge.go, coding/session_tool_registry.go) copying name, label, description, parameters, outputSchema, constrainedSampling and prepareArguments from the definition and creating the per-call context."
 
 [[files]]
 path = "packages/coding-agent/src/core/tools/truncate.ts"
@@ -3917,9 +3917,9 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/tools/truncate.go 
 [[files]]
 path = "packages/coding-agent/src/core/tools/write.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:internal/codingagent/tools/tools_edit_port_test.go#TestToolsWritePort"]
+rationale = "Pi 6536f801 changes write.ts by two lines: the AgentTool import goes and createWriteTool returns TypeBoxAgentTool<typeof writeSchema>. That is a compile-time type, so the tool's runtime is unchanged; the port of tools.test.ts write cases still passes against internal/codingagent/tools/write.go."
 
 [[files]]
 path = "packages/coding-agent/src/core/trust-manager.ts"
@@ -3980,9 +3980,9 @@ rationale = "The codemode row holds its script CodeHighlighter in builtInRenderS
 [[files]]
 path = "packages/coding-agent/src/extensions/codemode/tool.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:coding/extension/builtin/codemode/reach_describe_test.go#TestDescribeOutputDescribesTheFieldsOfObjectFieldsOneLevelDeep", "test:coding/extension/builtin/codemode/reach_describe_test.go#TestDescribeOutputSummarizesUnionsAndMultiLineTypes", "test:coding/extension/builtin/codemode/reach_describe_test.go#TestScriptReachIsAllForDiscoveryGlobalsAndTheWordsOfTheSourceOtherwise", "test:coding/extension/builtin/codemode/description_oracle_test.go#TestCodemodeDescriptionMatchesPi", "test:coding/extension/builtin/codemode/settings_defaults_oracle_test.go#TestCodemodeDefaultsAreThePinnedPiSettingsDefaults", "test:coding/extension/builtin/codemode/description_namespace_test.go#TestCodemodePromptContributionAndSchemaAreTheLeanerOnes"]
+rationale = "Pi 11513 (f6ee9ce9) summarizes union and multi-line output types in the tool descriptions, 7f9e1198/42705224/26912161/eb326d26 reword the intro and globals (failure resolves, awaited searchTools/describeTool/describeNamespace, text item headers), 24382bed drops the MCP preamble and isCodemodeTool, and 6536f801 adds reachesTools (the script's words or all for a discovery global) and the settings-defaults budget and mode. Ported in coding/extension/builtin/codemode/tool.go (describeFields, describeOutput, scriptReach set as the definition's ReachesTools) and description.go; the oracle test compares CreateDescription with Pi's createCodemodeDescription over the probe set (no Shared MCP Types section, the new intro and globals), the reach tests pin describeFields depth, const fields, unions, multi-line types and the scriptReach words, and the defaults test compares the budget and mode with Pi's SETTINGS_DEFAULTS. TypeBoxAgentTool for createCodemodeTool is a compile-time type."
 
 [[files]]
 path = "packages/coding-agent/src/extensions/codemode/worker.ts"
@@ -4219,7 +4219,7 @@ rationale = "PORT_MAP row is ✅ ported (tui/compaction_summary.go). coverage.md
 path = "packages/coding-agent/src/modes/interactive/components/config-selector.ts"
 change = "added"
 disposition = "ported"
-evidence = ["scenario:test/parity/scenarios/selectors/01-config-empty.toml", "scenario:test/parity/scenarios/selectors/02-config-resources-list.toml", "scenario:test/parity/scenarios/selectors/03-config-filter-narrow.toml", "test:coding/cli/config_command_test.go#TestConfigItemKeyFoldsPathCasingOnWindows"]
+evidence = ["scenario:test/parity/scenarios/selectors/01-config-empty.toml", "scenario:test/parity/scenarios/selectors/02-config-resources-list.toml", "scenario:test/parity/scenarios/selectors/03-config-filter-narrow.toml", "test:coding/cli/config_selector_command_test.go#TestConfigItemKeyFoldsPathCasingOnWindows"]
 rationale = "Pi 1be312b4 (#11588): formatBaseDir replaces only a leading home directory (ported: tui/config_selector.go formatBaseDir matches whole segments) and getResourceItemKey folds path casing on Windows. The inherited-state key (coding/cli/config_command.go configItemKey) is codingagent.ResourcePathKey (Pi getResourceItemKey over getResourcePathKey), so a global and a project resource whose paths differ only by case are one item on Windows."
 
 [[files]]
