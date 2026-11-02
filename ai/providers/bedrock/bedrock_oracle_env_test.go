@@ -96,10 +96,6 @@ func TestBedrockOraclesIgnoreAmbientAWSEnvironment(t *testing.T) {
 	}
 }
 
-// keepAWSEnvironmentVariable tells TestMain to leave the process's AWS variables alone. The meta-test above sets it for its child so that the oracles
-// meet the workflow's environment, which TestMain would otherwise remove before they run.
-const keepAWSEnvironmentVariable = "PIG_TEST_BEDROCK_KEEP_AWS_ENVIRONMENT"
-
 // A package run starts without the caller's AWS variables (TestMain), so a configured AWS_BEARER_TOKEN_BEDROCK, profile or static keys cannot change what a
 // hermetic test does: under skip-auth over http:// PiG refuses to send a token (D196), and a wire test then waits for a request that never arrives.
 func TestBedrockPackageRunsWithoutAmbientAWSEnvironment(t *testing.T) {

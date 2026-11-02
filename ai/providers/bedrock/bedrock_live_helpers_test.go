@@ -3,15 +3,26 @@
 package bedrock
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
+// useLiveAWSEnvironment gives the test the AWS variables the process was started with, which TestMain removed.
+func useLiveAWSEnvironment(t *testing.T) {
+	t.Helper()
+	for _, entry := range liveAWSEnvironment {
+		name, value, _ := strings.Cut(entry, "=")
+		t.Setenv(name, value)
+	}
+}
+
 // upstream: packages/ai/src/env-api-keys.ts:getEnvApiKey accepts AWS profiles, IAM keys, bearer tokens, ECS task roles, and web identity.
 func requireBedrockLiveCredentials(t *testing.T) {
 	t.Helper()
+	useLiveAWSEnvironment(t)
 	t.Log("live provider: amazon-bedrock")
 	if ai.GetEnvAPIKey("amazon-bedrock", nil) != "" {
 		return
