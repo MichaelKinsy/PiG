@@ -4,8 +4,8 @@ package main
 
 // Tests for the pig-evals command, the Go entry of packages/evals/src/cli.ts. They drive run with the recorded upstream
 // behavior of parseEvalCli (internal/evals/testdata/cli_oracle.json): an argument error is reported with Pi's message
-// before any Docker work, and an accepted command line reaches the credential check, the first step after the parse
-// and the file selection.
+// before any Docker work, and an accepted command line selects a model or stops at the missing-model message, and one that selects a model reaches
+// the credential check, the first step after the parse and the file selection.
 
 import (
 	"context"
@@ -21,7 +21,10 @@ type cliOracleCase struct {
 	Args   []string          `json:"args"`
 	Env    map[string]string `json:"env"`
 	Error  string            `json:"error"`
-	Result *struct{}         `json:"result"`
+	Result *struct {
+		Provider string `json:"provider"`
+		Model    string `json:"model"`
+	} `json:"result"`
 }
 
 func TestRunDocsFollowsTheUpstreamCommandLine(t *testing.T) {
@@ -69,8 +72,13 @@ func TestRunDocsFollowsTheUpstreamCommandLine(t *testing.T) {
 			}
 			continue
 		}
-		if !strings.HasPrefix(err.Error(), "Eval authentication file does not exist: ") {
-			t.Errorf("run docs %q env %v error = %q, want the credential check", args, c.Env, err)
+		// cli.ts:115 stops an accepted command line that selected no model before any other step.
+		want := "Eval authentication file does not exist: "
+		if c.Result.Provider == "" || c.Result.Model == "" {
+			want = "Set PI_PROVIDER and PI_MODEL, or pass --provider and --model."
+		}
+		if !strings.HasPrefix(err.Error(), want) {
+			t.Errorf("run docs %q env %v error = %q, want one starting %q", args, c.Env, err, want)
 		}
 	}
 }

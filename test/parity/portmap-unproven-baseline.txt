@@ -305,11 +305,6 @@ packages/durable/src/truncate.ts
 packages/env/src/connection.ts
 packages/env/src/errors.ts
 packages/env/src/remote-env.ts
-packages/evals/src/cli.ts
-packages/evals/src/docker.ts
-packages/evals/src/harness.ts
-packages/evals/src/plan.ts
-packages/evals/src/report.ts
 packages/mcp/src/transports/stdio.ts
 packages/tui/src/alt-screen-search.ts
 packages/tui/src/components/alt-screen-flash.ts
