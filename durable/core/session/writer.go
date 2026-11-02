@@ -628,11 +628,12 @@ func (c *call) finishOne(part *Part, seq Seq, hostErr error) {
 	// until the host adopted it.
 	w.unregister(part)
 	adoption := hostErr
-	if adoption != nil {
+	switch {
+	case adoption != nil:
 		// Memory could not adopt it: nothing of it was published.
-	} else if c.index >= 0 && c.result.Adoption != nil && c.index == c.result.AdoptionAt {
+	case c.index >= 0 && c.result.Adoption != nil && c.index == c.result.AdoptionAt:
 		adoption = c.result.Adoption
-	} else {
+	default:
 		adoption = part.publish(w.s, seq)
 	}
 	part.published = true

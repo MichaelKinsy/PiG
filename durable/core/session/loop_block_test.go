@@ -152,8 +152,7 @@ func TestLoopJobThatWaitsForAPublicationHoldsTheLineAndRunsAgain(t *testing.T) {
 func TestLoopHostJobHoldsTheLineUntilTheHostEndsIt(t *testing.T) {
 	loop := &session.Loop{}
 	var order []string
-	var host *session.HostJob
-	host = loop.LineHost(func() error { order = append(order, "grant"); return nil }, func(err error) { order = append(order, fmt.Sprint("host done ", err)) })
+	host := loop.LineHost(func() error { order = append(order, "grant"); return nil }, func(err error) { order = append(order, fmt.Sprint("host done ", err)) })
 	loop.Line(func() error { order = append(order, "b"); return nil }, nil)
 	if err := loop.Run(); err != nil {
 		t.Fatal(err)

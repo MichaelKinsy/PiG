@@ -309,7 +309,9 @@ func (tx *Tx) ScanEntries(q EntryQuery, limit int, after ID) (Page, error) {
 }
 
 // LatestHeadMarker returns the newest head-marker entry of a conversation, or nil.
-func (tx *Tx) LatestHeadMarker(conversationID ID) (*jv.Object, error) { return tx.LatestHeadMarkerAt(conversationID, 0) }
+func (tx *Tx) LatestHeadMarker(conversationID ID) (*jv.Object, error) {
+	return tx.LatestHeadMarkerAt(conversationID, 0)
+}
 
 // LatestHeadMarkerAt returns the newest head-marker entry of a conversation at or before atOrBefore (0: any), or nil.
 func (tx *Tx) LatestHeadMarkerAt(conversationID, atOrBefore ID) (*jv.Object, error) {

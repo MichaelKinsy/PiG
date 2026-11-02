@@ -187,7 +187,8 @@ func (h *handler) elapsed(e session.Ended) (callback, work int) {
 	} else if mints := int(h.sess.NextID() - st.mintStart); st.mintStart != 0 && mints > 0 {
 		change += mints * hopcost.ReadHops(p, hopcost.MintID)
 	}
-	if e.Read {
+	switch {
+	case e.Read:
 		if h.timed && st.nreads > 0 {
 			// The first statement waits for the transaction of a commit in flight (hopcost.Busy). The gate's lazy proxy adds a tick before it.
 			issued := h.vnow + st.firstAt
@@ -197,13 +198,13 @@ func (h *handler) elapsed(e session.Ended) (callback, work int) {
 			change += h.busy.Delay(p, issued)
 		}
 		callback, work = 0, hopcost.ReadReturn(change, st.direct)
-	} else if e.Err != nil {
+	case e.Err != nil:
 		if e.Ticks.Change < 0 {
 			// It failed before its callback ran (the Session failed, or the caller's signal was aborted): the work rejects at once.
 			return 0, 0
 		}
 		callback, work = 0, hopcost.Job{Change: change}.ReturnFailed()
-	} else {
+	default:
 		j := hopcost.Job{Change: change, Settle: hopcost.Settle(e.Ticks.SettleOwners, e.Ticks.SettleCached, e.Ticks.SettleReads), Membership: e.Ticks.Membership}
 		callback, work = j.Callback(), j.Return()
 	}

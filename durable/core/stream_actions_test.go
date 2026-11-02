@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"strings"
 	"testing"
@@ -55,7 +56,7 @@ func checkStreamActions(t testing.TB, batch string) {
 			t.Fatalf("%q: action %d is %+v, want %+v", batch, i, g, w)
 		}
 		if w.kind == actPayload {
-			if got, want := jv.Append(nil, g.body), jv.Append(nil, w.body); g.call != w.call || string(got) != string(want) {
+			if got, want := jv.Append(nil, g.body), jv.Append(nil, w.body); g.call != w.call || !bytes.Equal(got, want) {
 				t.Fatalf("%q: payload %d is call %v body %s, want call %v body %s", batch, i, g.call, got, w.call, want)
 			}
 		}

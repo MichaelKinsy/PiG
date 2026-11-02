@@ -276,16 +276,17 @@ func (w *hookWalk) next(i int) {
 
 func (w *hookWalk) answer(result any, err error) {
 	r := w.r
-	if w.handle != nil {
+	switch {
+	case w.handle != nil:
 		w.stop, w.fail = w.handle(result, err)
-	} else if err != nil {
+	case err != nil:
 		if r.rt.Signal().Aborted() || errors.Is(err, session.ErrAborted) {
 			w.stop, w.fail = true, err
 		} else {
 			_ = r.rt.Report(err, session.ReportFrom{Extension: r.hookExtension(w.name)})
 			w.stop, w.fail = false, nil
 		}
-	} else {
+	default:
 		w.stop, w.fail = w.eachOf(result), nil
 	}
 	// The caller's invoke callback is an async arrow that awaits the handler (the host's answer) and settles a tick before

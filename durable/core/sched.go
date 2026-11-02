@@ -4,6 +4,7 @@
 package core
 
 import (
+	"errors"
 	"math"
 
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
@@ -230,7 +231,8 @@ func (h *handler) onTimer(ev *abi.Event) error {
 // ReportInfo of types.ts (kind, and task, extension, reason, callback or conversationId where they apply).
 func (h *handler) report(err error, info *jv.Object) {
 	// The host that failed the Session keeps its error and reports it itself.
-	if _, ok := err.(hostFailed); ok {
+	var failed hostFailed
+	if errors.As(err, &failed) {
 		return
 	}
 	body := errorJSON(err)
