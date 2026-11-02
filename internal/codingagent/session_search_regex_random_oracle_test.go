@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/modes/interactive/components/session-selector-search.ts
+
 import (
 	"math/rand"
 	"slices"

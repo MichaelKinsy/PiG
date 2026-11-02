@@ -19556,6 +19556,28 @@
       ]
     },
     {
+      "id": "BF-7689b82",
+      "title": "An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor…",
+      "symptom": "An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor column now gets Pi's answer: the column counts back from the end of the line in UTF-16 units as `line.slice(0, col)` does, where it was treated as column 0.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor column now gets Pi's answer: the column counts back from the end of the line in UTF-16 units as `line.slice(0, col)` does, where it was treated as column 0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7689b82bf7",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/autocomplete_wrappers_test.go::TestShouldTriggerFileCompletionSlicesTheLineLikeJavaScript"
+      ]
+    },
+    {
       "id": "BF-76f780d",
       "title": "A tool call that streams many argument deltas no longer costs time and memory that grow with the square of…",
       "symptom": "A tool call that streams many argument deltas no longer costs time and memory that grow with the square of its text: every provider (Anthropic Messages, Bedrock Converse Stream, Mistral, OpenAI Completions and Responses, Pi messages), the faux provider and the proxy stream read each delta once.",
@@ -19730,6 +19752,54 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-776d60b",
+      "title": "An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a…",
+      "symptom": "An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a whole second, such as `1000.5`, now starts its countdown from the next second like Pi's `Math.ceil(timeoutMs / 1000)`; the countdown rounded the milliseconds down to whole milliseconds first and started one second short.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a whole second, such as `1000.5`, now starts its countdown from the next second like Pi's `Math.ceil(timeoutMs / 1000)`; the countdown rounded the milliseconds down to whole milliseconds first and started one second short.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "776d60b196",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/ext_ui_dialog_timeout_test.go::TestDialogTimeoutKeepsAFractionOfAMillisecondPastAWholeSecond",
+        "internal/codingagent/ext_ui_dialog_timeout_test.go::TestSubprocessOptionalInt64RejectsAValueBeyondInt64",
+        "tui/countdown_timer_parity_test.go::TestCountdownTimerParity_InitialTickMatchesCeil"
+      ]
+    },
+    {
+      "id": "BF-776d60b-2",
+      "title": "A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead…",
+      "symptom": "A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead of converting to the largest `int64` on arm64.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead of converting to the largest `int64` on arm64.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "776d60b196",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/ext_ui_dialog_timeout_test.go::TestDialogTimeoutKeepsAFractionOfAMillisecondPastAWholeSecond",
+        "internal/codingagent/ext_ui_dialog_timeout_test.go::TestSubprocessOptionalInt64RejectsAValueBeyondInt64",
+        "tui/countdown_timer_parity_test.go::TestCountdownTimerParity_InitialTickMatchesCeil"
+      ]
     },
     {
       "id": "BF-777e981",
@@ -31140,6 +31210,56 @@
       ]
     },
     {
+      "id": "BF-bb70e6b",
+      "title": "When a shared extension cell fails to build or start, each member that then runs in its own process shows…",
+      "symptom": "A retry that succeeded used to hide why the members were not shared.",
+      "rootCause": "A cell build whose context had already ended failed with \"wait for cell build lock: context deadline exceeded\" while the lock was free, because the lock is never tried once its context is done. A go test run that used up its deadline made every later build fail that way within seconds, and the message sent the reader after a lock holder that did not exist. The error now says the context had ended before the build began.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When a shared extension cell fails to build or start, each member that then runs in its own process shows `packed cell failed:` and the error that ended the shared cell in `/reload --explain`. A retry that succeeded used to hide why the members were not shared.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bb70e6b139",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/runtimecell/cellcache_lock_test.go::TestCellcacheLockHolderProcess",
+        "coding/extension/host/runtimecell/cellcache_lock_test.go::TestPublishArtifactEndedContextIsNotReportedAsALockWait",
+        "coding/extension/host/runtimecell/cellcache_lock_test.go::TestPublishArtifactLockLeftByAnEndedBuildDoesNotBlock",
+        "coding/extension/host/subprocess/isolate_cell_failure_test.go::TestIsolateCellFailureReportsTheErrorThatEndedThePackedCell"
+      ]
+    },
+    {
+      "id": "BF-bb70e6b-2",
+      "title": "An extension build that began after its deadline or cancellation no longer fails with `wait for cell build…",
+      "symptom": "The error now says the context had ended before the build began.",
+      "rootCause": "A cell build whose context had already ended failed with \"wait for cell build lock: context deadline exceeded\" while the lock was free, because the lock is never tried once its context is done. A go test run that used up its deadline made every later build fail that way within seconds, and the message sent the reader after a lock holder that did not exist. The error now says the context had ended before the build began.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension build that began after its deadline or cancellation no longer fails with `wait for cell build lock: context deadline exceeded` while no lock was held. The error now says the context had ended before the build began.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bb70e6b139",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/runtimecell/cellcache_lock_test.go::TestCellcacheLockHolderProcess",
+        "coding/extension/host/runtimecell/cellcache_lock_test.go::TestPublishArtifactEndedContextIsNotReportedAsALockWait",
+        "coding/extension/host/runtimecell/cellcache_lock_test.go::TestPublishArtifactLockLeftByAnEndedBuildDoesNotBlock",
+        "coding/extension/host/subprocess/isolate_cell_failure_test.go::TestIsolateCellFailureReportsTheErrorThatEndedThePackedCell"
+      ]
+    },
+    {
       "id": "BF-bb888ae",
       "title": "The `/model` picker now keeps its model list when the catalog refresh times out, as in Pi",
       "symptom": "The `/model` picker now keeps its model list when the catalog refresh times out, as in Pi.",
@@ -32614,6 +32734,28 @@
       "tests": [
         "coding/cli/extension_send_message_binary_test.go::TestExtensionSendMessageTriggerTurnStartsTheRunAsPi",
         "coding/extension/host/subprocess/runtime_node_send_idle_test.go::TestNodeIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSendMessage"
+      ]
+    },
+    {
+      "id": "BF-c7b91e7",
+      "title": "Terminal input bytes decode as Node's StringDecoder does, as Pi's `stdin.setEncoding(\"utf8\")` reads them: a…",
+      "symptom": "Terminal input bytes decode as Node's StringDecoder does, as Pi's `stdin.setEncoding(\"utf8\")` reads them: a trailing C0, C1, F5-F7, or an E0, ED, F0 or F4 lead followed by an out-of-range byte is held until the next read instead of becoming U+FFFD at once, so a mouse report ending in such a byte is no longer taken as a wheel scroll.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Terminal input bytes decode as Node's StringDecoder does, as Pi's `stdin.setEncoding(\"utf8\")` reads them: a trailing C0, C1, F5-F7, or an E0, ED, F0 or F4 lead followed by an out-of-range byte is held until the next read instead of becoming U+FFFD at once, so a mouse report ending in such a byte is no longer taken as a wheel scroll.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c7b91e7cb9",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "tui/utf8_decoder_oracle_test.go::TestUTF8DecoderMatchesNodeStringDecoder"
       ]
     },
     {
