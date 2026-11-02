@@ -564,7 +564,13 @@ func (w *worker) shutdown() {
 	time.AfterFunc(forcedExit, func() { exitProcess(0) })
 	slices.Reverse(closers)
 	//portlint:allow golifetime the closers end with the process, which exitProcess ends
-	go func() { //portlint:allow asyncorder main.ts:189 and :98 call `void this.#shutdown()` unawaited; the closers run in that async function (main.ts:231-)
+	go func() { //portlint:allow asyncorder main.ts:189 and :98 call `void this.#shutdown()` unawaited; the closers run in that async function (main.ts:226-)
+		// An OnError that throws rejects `#shutdown`, which nothing awaits: Pi's `unhandledRejection`, fatal (main.ts:100).
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				w.fatal(panicError{value: recovered})
+			}
+		}()
 		for _, closer := range closers {
 			if err := w.safely(func() error { return closer(chordctx.Background()) }); err != nil {
 				w.options.OnError(err)

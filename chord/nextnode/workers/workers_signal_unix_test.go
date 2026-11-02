@@ -19,3 +19,19 @@ func TestTheWorkersSideShutsDownOnSIGTERM(t *testing.T) {
 		t.Fatalf("exit = %+v, want {code: 0, signal: null}", exit)
 	}
 }
+
+// An OnError that throws while the closers run rejects Pi's unawaited `#shutdown`: `unhandledRejection`, fatal (main.ts:100).
+func TestTheWorkersSideTreatsAnOnErrorPanicInTheClosersAsFatal(t *testing.T) {
+	worker := started(t, workerBehaviour{CloserPanics: true})
+	until(t, func() bool { return worker.has(FromWorkerReady) })
+	if err := syscall.Kill(worker.child.Pid, syscall.SIGTERM); err != nil {
+		t.Fatal(err)
+	}
+	until(t, func() bool { return worker.exited() != nil })
+	if exit := worker.exited(); exit.Code == nil || *exit.Code != 1 {
+		t.Fatalf("exit = %+v, want code 1", exit)
+	}
+	if !worker.has(FromWorkerFatal) {
+		t.Fatalf("control = %+v, want a fatal", worker.messages())
+	}
+}
