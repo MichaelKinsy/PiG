@@ -222,6 +222,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3cf03c0](#bf-3cf03c0) | A faux provider error message that carries a response id writes `responseId` after `errorMessage` in session… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3d12e48](#bf-3d12e48) | fix(tui): tree selector cursor follows Pi's selectedIndex over an empty list | PiG's own defect | All platforms | Unreleased |
 | [BF-3d475c4](#bf-3d475c4) | Image resize strategy against live Pi: new `TestResizeImageDimensionStrategyMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-3d921e7](#bf-3d921e7) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-3def2a7](#bf-3def2a7) | MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3e755ef](#bf-3e755ef) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-3e88414](#bf-3e88414) | fix(coding-agent): render system messages in HTML export (Pi) | A fix Pi shipped that PiG ported | All platforms | Unreleased |
@@ -910,6 +911,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bb9e9d8](#bf-bb9e9d8) | fix(extensions): parallel Node runtime linking reports the walk-order first failure under every schedule | PiG's own defect | All platforms | Unreleased |
 | [BF-bc24321](#bf-bc24321) | fix(mem M3): arm the idle collection at run end and run it after 500 ms | PiG's own defect | All platforms | Unreleased |
 | [BF-bc4cd62](#bf-bc4cd62) | `toPrecision` rounds a value just below a power of ten (1e-11 to 16 digits, 9.999999999999998e9 to 16 digits)… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-bc8931c](#bf-bc8931c) | fix(rpc): retry transient accept errors, end --listen on Ctrl+C and on a second signal after the fan-out | PiG's own defect | All platforms | Unreleased |
 | [BF-bc8d37f](#bf-bc8d37f) | `FileModelsStore` roots and index keys: new live-Pi oracle… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bcc2046](#bf-bcc2046) | A nested list whose last item is empty but for spaces after its marker is followed by an empty row before the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd3e8ab](#bf-bd3e8ab) | On arm64 and other CPUs with a fused multiply-add, Kimi, Radius and xAI OAuth credentials store the `expires`… | PiG's own defect | All platforms | 0.5.0 |
@@ -1140,6 +1142,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ed05099-4](#bf-ed05099-4) | Tool-call input keeps its object members in the order the model sent them through events, tool execution… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-edb73db](#bf-edb73db) | fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's… | PiG's own defect | All platforms | Unreleased |
 | [BF-edd287c](#bf-edd287c) | Migrating a version 1 session file that holds a line parsing to a number, string, array or `true` no longer… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ee32cbc](#bf-ee32cbc) | fix(extension-host): drop per-group node state, start again after a joined process exits, forget released… | PiG's own defect | All platforms | Unreleased |
 | [BF-eeac307](#bf-eeac307) | Anthropic and Bedrock assistant messages write `providerThinkingLevel` after `model`, and write… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ef0f95a](#bf-ef0f95a) | OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f02269c](#bf-f02269c) | When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket… | PiG's own defect | All platforms | 0.5.0 |
@@ -4056,6 +4059,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `433d232815` (2026-10-09), `6a6fffa638` (2026-10-10), `3d475c443d` (2026-10-11)
 - **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult` and 19 more in docs/bug-ledger.json
 - **Release note:** Image resize strategy against live Pi: new `TestResizeImageDimensionStrategyMatchesPi` (`internal/imageprocessing/resize_strategy_oracle_test.go`; `resizeImageInProcess` through Photon vs `ResizeImage`; 200 seeded PNGs 1-2,600 px, maxWidth/maxHeight 1-3,000, default/huge/1-byte maxBytes, unset/explicit mime). One real fix, red first (15 of 300): a scaled side that rounds to zero (8000x1 under the 2000 limit gives a height of round(0.25) = 0) made PiG clamp it to one pixel and return an image, where Pi's Photon resize throws and `resizeImageInProcess` returns null, so the image is dropped; `ResizeImage` now returns `ErrImageTooLarge` (`internal/imageprocessing/images.go`). Regression `TestResizeImageReturnsNoImageWhenAScaledSideRoundsToZero`. 5 mutations: 4 red; the 0.75 shrink factor survives because the shrink loop is reached only when every candidate misses maxBytes, which depends on the encoders (named as not compared). Not compared: the encoded bytes, which candidate wins a tight maxBytes, BMP input (PiG-only branch), the shrink steps.
+
+### BF-3d921e7
+
+**Fix in shipped code**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fix in shipped code
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3d921e7202` (2026-11-01)
+- **Tests:** None recorded.
 
 ### BF-3def2a7
 
@@ -13626,6 +13642,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/jsstring/toprecision_oracle_test.go::TestToPrecisionAgainstNodeCorpus`, `internal/jsstring/toprecision_oracle_test.go::TestToPrecisionKeepsTheExponentOfAValueJustBelowAPowerOfTen`
 - **Release note:** `toPrecision` rounds a value just below a power of ten (1e-11 to 16 digits, 9.999999999999998e9 to 16 digits) to the digits Node prints (`9.999999999999999e-12`, `9999999999.999998`) instead of carrying it up to the power of ten.
 
+### BF-bc8931c
+
+**fix(rpc): retry transient accept errors, end --listen on Ctrl+C and on a second signal after the fan-out**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(rpc): retry transient accept errors, end --listen on Ctrl+C and on a second signal after the fan-out
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bc8931c776` (2026-11-02)
+- **Tests:** `coding/cli/rpc_listen_accept_test.go::TestAcceptWithBackoffRetriesTransientErrors`, `coding/cli/rpc_listen_accept_test.go::TestAcceptWithBackoffReturnsAPermanentError`, `coding/cli/rpc_listen_accept_test.go::TestAcceptWithBackoffStopsWhenTheServerStops`, `coding/cli/rpc_listen_accept_test.go::TestHoldForFurtherSignalsForwardsASignalAfterTheFanOut`, `coding/cli/rpc_listen_accept_test.go::TestHoldForFurtherSignalsForwardsASignalDuringTheFanOut`, `coding/cli/rpc_listen_accept_test.go::TestNextAcceptDelayDoublesFromFiveMillisecondsToOneSecond`, `coding/cli/rpc_listen_ext_test.go::TestListenCloseDuringAConfirmDialogLeavesNothingBehind`, `coding/cli/rpc_listen_ext_test.go::TestListenCloseDuringASlowToolCallEndsOnlyThatSession` and 6 more in docs/bug-ledger.json
+
 ### BF-bc8d37f
 
 **`FileModelsStore` roots and index keys: new live-Pi oracle…**
@@ -16813,6 +16842,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `34f7594aa5` (2026-10-11), `edd287c5d8` (2026-10-12)
 - **Tests:** `internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestNewSessionEndedByShutdownIsNotAFatalRuntimeError`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseDoesNotWaitForAHandlerThatIgnoresCancellation`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseEndsThePhase`, `internal/codingagent/session_open_nonentry_oracle_test.go::TestMigrateSessionEntriesPassesOverRecordsThatAreNotObjectsWhenFindingTheHeader`, `internal/codingagent/session_open_nonentry_oracle_test.go::TestMigrateV1ToV2ChainsThroughAnArrayRecordAndRefusesAPrimitiveAsPiDoes`, `internal/codingagent/session_open_nonentry_oracle_test.go::TestSessionOpenKeepsRecordsThatAreNotEntriesAsPiDoes`, `test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-fork.toml` and 2 more in docs/bug-ledger.json
 - **Release note:** Migrating a version 1 session file that holds a line parsing to a number, string, array or `true` no longer fails while finding the header. Like Pi, an array record stays as written and still takes a place in the migration's id chain, and a number, string or boolean record stops the migration with the same `Cannot create property 'id'` error Pi throws.
+
+### BF-ee32cbc
+
+**fix(extension-host): drop per-group node state, start again after a joined process exits, forget released…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extension-host): drop per-group node state, start again after a joined process exits, forget released registry entries
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ee32cbcabe` (2026-11-02)
+- **Tests:** `coding/extension/host/subprocess/node_cell_shared_test.go::TestSharedCellsForgetAProcessWhenItsLastHostLeaves`, `coding/extension/host/subprocess/node_cell_shared_test.go::TestSharedNodeCellAdmitsAHostWhoseJoinedProcessExitsBeforeAdmission`, `coding/extension/host/subprocess/node_cell_shared_test.go::TestSharedNodeCellKeepsOneBeforeExitListenerAcrossSessions`, `coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellDropsAGroupsStateWhenItsLastRuntimeLeaves`, `coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellKeepsAGroupsBusWhileAListenerRemains`, `coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellNeverCrossesAPayloadToAForeignGroup`
 
 ### BF-eeac307
 
