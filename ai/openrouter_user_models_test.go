@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/providers/openrouter.ts
+
 import (
 	"fmt"
 	"net/http"

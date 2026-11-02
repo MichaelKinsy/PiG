@@ -1,3 +1,4 @@
+// Ports packages/coding-agent/src/config.ts (detectInstallMethod, getInferredNpmInstall; the native ownership tier is D39).
 package codingagent
 
 import (

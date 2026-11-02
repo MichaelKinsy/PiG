@@ -451,21 +451,20 @@ func (h *Host) childSessionTools(conn *Conn, create ChildSessionCreate) ([]exten
 	definitions := make([]extension.ToolDefinition, 0, len(create.CustomTools))
 	for _, tool := range create.CustomTools {
 		definition := extension.ToolDefinition{
-			Name:                 tool.Name,
-			Label:                tool.Label,
-			Description:          tool.Description,
-			Parameters:           tool.Parameters,
-			ValidationParameters: tool.ValidationParameters,
-			ConstrainedSampling:  tool.ConstrainedSampling,
-			PromptSnippet:        tool.PromptSnippet,
-			PromptGuidelines:     tool.PromptGuidelines,
-			ExecutionMode:        extension.ToolExecutionMode(tool.ExecutionMode),
-			Execute:              h.toolExecuteFunc(tool.Name, target),
-			OutputSchema:         tool.OutputSchema,
-			Exposure:             extension.ToolExposure(tool.Exposure),
-			Namespace:            tool.Namespace,
-			Annotations:          tool.Annotations,
-			DefaultActive:        tool.DefaultActive,
+			Name:                tool.Name,
+			Label:               tool.Label,
+			Description:         tool.Description,
+			Parameters:          tool.Parameters,
+			ConstrainedSampling: tool.ConstrainedSampling,
+			PromptSnippet:       tool.PromptSnippet,
+			PromptGuidelines:    tool.PromptGuidelines,
+			ExecutionMode:       extension.ToolExecutionMode(tool.ExecutionMode),
+			Execute:             h.toolExecuteFunc(tool.Name, target),
+			OutputSchema:        tool.OutputSchema,
+			Exposure:            extension.ToolExposure(tool.Exposure),
+			Namespace:           tool.Namespace,
+			Annotations:         tool.Annotations,
+			DefaultActive:       tool.DefaultActive,
 			ReserveCallOrder: func(json.RawMessage) *extension.CallOrder {
 				place := conn.toolOrder.Reserve()
 				return &extension.CallOrder{Wait: place.Wait, Release: place.Release}

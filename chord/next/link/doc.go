@@ -4,7 +4,7 @@
 //
 // Go forced differences, each recorded where it applies:
 //   - Messages are a sealed interface (Message) of one struct per kind, built by the codecs and checked by
-//     CheckMessage; upstream's TypeBox `MESSAGE` schema is checked on the typed struct, field by field.
+//     CheckMessage; upstream's `MESSAGE` schema is checked on the typed struct, field by field.
 //   - A Part is a sealed interface: Text (JSON text), Bytes (received bytes) or *DeflatedPart.
 //   - `string | Uint8Array | undefined` unions are a Part holding Text or Bytes; an absent optional is the zero value
 //     (nil part, nil slice, "" for the incarnations whose pattern excludes the empty string) or Optional for numbers.

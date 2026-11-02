@@ -182,6 +182,11 @@ func finalizeOpencodeModel(model ChatModel) {
 		if provider == "opencode" && SupportsClaudeMidConvoSystemMessages(id) {
 			MergeCompat(model, O("supportsMidConvoSystemMessages", true))
 		}
+		// Zen and Go forward per-message effort and `thinking.block_binding`. Without
+		// `drop_block`, Go rejects replayed thinking after the system prompt or tools change.
+		if SupportsClaudeMidConvoEffort(id) {
+			EnableClaudeMidConvoEffort(model)
+		}
 		// OpenCode Qwen 3.8 Flash emits and accepts thinking blocks with empty signatures.
 		if id == "qwen3.8-flash" {
 			MergeCompat(model, O("allowEmptySignature", true))

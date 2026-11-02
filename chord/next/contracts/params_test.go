@@ -6,8 +6,9 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
+// pi: packages/chord/src/next/contracts/params.ts
 // Ports packages/chord/test/next/contracts/params.test.ts. The type-level half of each case ("in the types") is
-// designed out: the Go declaration takes TSchema values, so the policy is the runtime check alone.
+// designed out: the Go declaration takes Schema values, so the policy is the runtime check alone.
 
 func paramsVariants() contracts.VariantEntry {
 	return variant("a", state(contracts.Prop("s", contracts.Str())))
@@ -31,14 +32,14 @@ func TestParamsPolicy(t *testing.T) {
 
 	for _, tc := range []struct {
 		name   string
-		schema contracts.TSchema
+		schema contracts.Schema
 	}{
 		{"a number", contracts.Num()},
 		{"nested objects", contracts.Obj(contracts.Prop("a", contracts.Str()))},
 		{"arrays", contracts.Arr(contracts.Str())},
 		{"bytes", contracts.Bytes()},
 		{"numeric literals", contracts.OneOf(1, 2)},
-		{"defaults", raw(t, `{"type":"string","default":"x"}`)},
+		{"defaults", contracts.Str(contracts.Default("x"))},
 	} {
 		t.Run("refuses "+tc.name+" at declaration", func(t *testing.T) {
 			_, err := declareRemote("n", 1, props(contracts.Prop("p", tc.schema)), paramsVariants())

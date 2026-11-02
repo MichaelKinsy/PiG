@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// Pi validation.ts:337-341 lists validator.Errors(args) for tool.parameters as the tool defined it, so a schema's properties are checked in their authored
+// Pi validation.ts:59,64 lists result.errors of the validator compiled from tool.parameters as the tool defined it, so a schema's properties are checked in their authored
 // order. ValidateToolArguments must validate the decoded schema in that order, not in a Go map's sorted order.
 func TestValidateToolArgumentsListsErrorsInTheSchemasMemberOrder(t *testing.T) {
 	var tool ToolSchema

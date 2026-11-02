@@ -18,6 +18,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode"
 )
 
+// pi: packages/chord/src/next/remote/consumer.ts
+
 // Ports packages/chord/test/next/remote/consumer.test.ts: the consumer side of a link, against a server host or a raw
 // provider peer.
 

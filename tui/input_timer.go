@@ -1,12 +1,14 @@
 package tui
 
+// Ports packages/tui/src/terminal.ts (the escape and negotiation timers of ProcessTerminal's stdin buffer).
+
 import (
 	"os"
 	"time"
 )
 
 func newProcessStdinBuffer() *StdinBuffer {
-	return NewStdinBuffer(StdinBufferOptions{EscapeTimeout: time.Duration(ResolveEscapeTimeoutMs(os.Getenv) * float64(time.Millisecond))})
+	return NewStdinBuffer(StdinBufferOptions{EscapeTimeout: nodeTimerDelay(ResolveEscapeTimeoutMs(os.Getenv))})
 }
 
 // inputTimer belongs to its input-loop owner; cancellation never dispatches a callback on another goroutine.

@@ -1,5 +1,7 @@
 package modeldata
 
+// pi: packages/ai/scripts/model-data.ts
+
 import (
 	"encoding/json"
 	"os"

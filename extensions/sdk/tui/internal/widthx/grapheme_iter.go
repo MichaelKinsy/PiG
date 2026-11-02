@@ -2,6 +2,8 @@
 
 package widthx
 
+// Ports packages/tui/src/utils.ts (the grapheme walk behind visibleWidth, sliceByColumn and wrapTextWithAnsi)
+
 import (
 	"unicode/utf8"
 )

@@ -2,6 +2,8 @@
 
 package tui
 
+// Ports packages/tui/src/terminal.ts (ProcessTerminal on Unix: raw-mode input and the terminal size).
+
 import (
 	"context"
 	"errors"

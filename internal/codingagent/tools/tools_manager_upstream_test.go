@@ -1,5 +1,7 @@
 package tools
 
+// pi: packages/coding-agent/src/utils/tools-manager.ts
+
 import (
 	"errors"
 	"io"

@@ -108,11 +108,8 @@ func (b *bridgeTool) Schema() ai.ToolSchema {
 // upstream: tool-definition-wrapper.ts:17,52 (outputSchema)
 func (b *bridgeTool) OutputSchema() json.RawMessage { return b.def.OutputSchema }
 
-// ArgumentSchema keeps TypeBox's non-enumerable conversion metadata off provider requests.
+// ArgumentSchema is the JSON Schema the agent loop validates a call's arguments against: the tool's parameters.
 func (b *bridgeTool) ArgumentSchema() json.RawMessage {
-	if len(b.def.ValidationParameters) > 0 {
-		return b.def.ValidationParameters
-	}
 	if len(b.def.Parameters) > 0 {
 		return b.def.Parameters
 	}
@@ -124,17 +121,6 @@ func (b *bridgeTool) PrepareArguments(params json.RawMessage) (json.RawMessage, 
 		return params, nil
 	}
 	return b.def.PrepareArguments(params)
-}
-
-// RefinementSites implements ai.Refiner: the nodes of the tool's schema that carry refinements, which the extension runs.
-func (b *bridgeTool) RefinementSites() []ai.RefinementSite { return b.def.RefinementSites }
-
-// Refine implements ai.Refiner.
-func (b *bridgeTool) Refine(ctx context.Context, path string, index int, value any, withMessage bool) (ai.RefineOutcome, error) {
-	if b.def.RefineArguments == nil {
-		return ai.RefineOutcome{OK: true}, nil
-	}
-	return b.def.RefineArguments(ctx, path, index, value, withMessage)
 }
 
 // Execute invokes the underlying `extension.ToolDefinition.Execute` (types.ts ToolDefinition.execute): the result is an

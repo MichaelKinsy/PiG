@@ -12,14 +12,14 @@ import (
 // Designed out (no Go input: a declaration is a typed struct): a contract name that is no string; an unknown
 // declaration or variant key; a method placed under `state`; a schema placed under `methods` (the Go form is a nil
 // *Method, covered below); an unknown key of a local declaration, and a host address in one (a LocalDeclaration has no
-// such field); a keyed member under a remote variant's state (VariantDeclaration.State holds []Property of TSchema, and
-// *KeyedMember is not a TSchema: a compile error), so the @ts-expect-error variants of those tests have nothing to
+// such field); a keyed member under a remote variant's state (VariantDeclaration.State holds []Property of Schema, and
+// *KeyedMember is not a Schema: a compile error), so the @ts-expect-error variants of those tests have nothing to
 // refuse at runtime. The missing host address is a runtime test (TestDeclarationTypeChecksAtRuntime).
 //
 // A nil slice is upstream's absent field (`missing params`, `no variants`); an empty non-nil one is `{}`.
 
 func TestDeclarationChecks(t *testing.T) {
-	note := func() contracts.TSchema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
+	note := func() contracts.Schema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
 
 	t.Run("accept a remote and a local declaration", func(t *testing.T) {
 		notes := remote(t, "notes", 1, props(contracts.Prop("session", contracts.Str())),
@@ -66,7 +66,7 @@ func TestDeclarationChecks(t *testing.T) {
 		{"open arguments", "n", contracts.RemoteDeclaration{Version: 1, Params: noParams(), HostAddress: serverAddress, Variants: []contracts.VariantEntry{
 			variant("a", nil, contracts.Meth("m", contracts.NewMethod(tbObject())))}}, "n.a.methods.m.args: argument objects must be closed"},
 		{"bad result", "n", contracts.RemoteDeclaration{Version: 1, Params: noParams(), HostAddress: serverAddress, Variants: []contracts.VariantEntry{
-			variant("a", nil, contracts.Meth("m", contracts.NewMethod(contracts.TSchema{}, raw(t, `{"not":{}}`))))}}, `n.a.methods.m.result: unsupported keyword "not"`},
+			variant("a", nil, contracts.Meth("m", contracts.NewMethod(contracts.Schema{}, raw(t, `{"not":{}}`))))}}, `n.a.methods.m.result: unsupported keyword "not"`},
 	} {
 		t.Run("remote refuses "+tc.name, func(t *testing.T) {
 			_, err := contracts.Remote(tc.contract, tc.declaration)
@@ -163,7 +163,7 @@ func TestReservedMemberNames(t *testing.T) {
 }
 
 func TestKeyedMembers(t *testing.T) {
-	note := func() contracts.TSchema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
+	note := func() contracts.Schema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
 
 	t.Run("declare a keyed member in a local contract: its own kind and a node of its own in the fingerprint", func(t *testing.T) {
 		keyed := local(t, "app.store", 1, noParams(), contracts.Mem("notes", contracts.Keyed(note())), contracts.Mem("add", contracts.NewMethod()))
