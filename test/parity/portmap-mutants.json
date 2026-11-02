@@ -4497,7 +4497,7 @@
   {
    "file": "internal/codingagent/export/export.go",
    "old": "out = jsReplace(out, \"{{MARKED_CJK_FRIENDLY_JS}}\", markedCjkFriendly)",
-   "new": "out = jsReplace(out, \"{{MARKED_CJK_FRIENDLY_JS}}\", \"\")"
+   "new": "out = jsReplace(out, \"{{MARKED_CJK_FRIENDLY_JS}}\", marked[:0]+markedCjkFriendly[:0])"
   },
   {
    "file": "internal/codingagent/export/export.go",
