@@ -41,6 +41,8 @@ export class WatchHub {
   /** The value each open watch holds: a view frame carries ops only. */
   private readonly values = new Map<number, unknown>()
   private readonly targets = new Map<number, WatchTarget>()
+  /** Frames that arrive while the watch's acquisition on a replacement core is unanswered: they follow its first value. */
+  private readonly reattaching = new Map<number, Frame[]>()
 
   private closing = false
   private readonly mounts = new Map<string, Mount>()
@@ -60,6 +62,8 @@ export class WatchHub {
     const change = this.targets.get(watchId)?.kind === "doc" && frame.ops !== undefined ? sharedChange(this.client, frame as { value?: unknown; ops: readonly Op[] }) : undefined
     if (change !== undefined) frame = { ...frame, ...(frame.value === undefined ? {} : { value: change.value }), ops: change.ops as never }
     if (!sink) { this.early.get(watchId)?.push(frame); return }
+    const queued = this.reattaching.get(watchId)
+    if (queued !== undefined) { queued.push(frame); return }
     this.apply(watchId, sink, frame, currentCommit(this.client) ?? this.context)
   }
 
@@ -282,18 +286,25 @@ export class WatchHub {
 
   /**
    * The host replaced the core handle: the watches the old core held are gone. Each established watch is opened again under its ID;
-   * the commits that reached this host were all published before the replacement, so the first frame equals the value held and the
-   * frames that follow continue it. A first frame that differs (the store changed under the host) replaces the value.
+   * the commits that reached this host were all published before the replacement, so the first value equals the value held and the
+   * frames that follow continue it: they wait for the answer, which a commit published after the acquisition can overtake. A first
+   * value that differs (the store changed under the host) replaces the value.
    */
   reattach() {
     if (this.closing) return
     for (const [watchId, target] of [...this.targets]) {
       const migrating = target.kind === "doc" ? (target.def as { migrate?: unknown } | undefined) ?? {} : {}
-      migrateRead(migrating, migrated => this.client.api<{ value: unknown }>("watch.open", { watchId, target: migrated === undefined ? target : { ...target, migrated } })).then(first => {
+      const queued: Frame[] = []
+      this.reattaching.set(watchId, queued)
+      // The first value is the store's at the core's acquisition boundary; a commit published after it is a frame, which can reach the host before the answer does.
+      const settle = (first: { value: unknown } | undefined) => {
+        this.reattaching.delete(watchId)
         const sink = this.sinks.get(watchId)
-        if (sink === undefined || first.value === null || first.value === undefined || sameContent(first.value, this.values.get(watchId))) return
-        this.apply(watchId, sink, { value: first.value, ops: [] }, this.context)
-      }, error => this.report(error as Error))
+        if (sink === undefined) return
+        if (first !== undefined && first.value !== null && first.value !== undefined && !sameContent(first.value, this.values.get(watchId))) this.apply(watchId, sink, { value: first.value, ops: [] }, this.context)
+        for (const frame of queued) this.apply(watchId, sink, frame, this.context)
+      }
+      migrateRead(migrating, migrated => this.client.api<{ value: unknown }>("watch.open", { watchId, target: migrated === undefined ? target : { ...target, migrated } })).then(settle, error => { settle(undefined); this.report(error as Error) })
     }
   }
 

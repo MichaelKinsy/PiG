@@ -6,7 +6,7 @@
 // Run by lib/run.mjs under the hooks:  storage-failure.mjs --fail <k>   (k = 0: no failure, prints the commit count)
 import { join } from "node:path"
 import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context"
-import { Type } from "@earendil-works/pi-ai"
+import { num, obj } from "@earendil-works/pi-schema"
 import { createModels } from "@earendil-works/pi-ai/models"
 import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux"
 import { createRegistry, defineExtension, defineTool, Harness } from "@earendil-works/pi-durable"
@@ -28,7 +28,7 @@ const respond = transcript => {
 	return fauxAssistantMessage(`answer after ${done} lookups`)
 }
 faux.setResponses([respond])
-const lookup = defineTool({ name: "lookup", description: "Look up record n", parameters: Type.Object({ n: Type.Number() }), execute: async ({ n }) => ({ output: [{ type: "text", text: `record ${n}` }] }) })
+const lookup = defineTool({ name: "lookup", description: "Look up record n", parameters: obj({ n: num() }), execute: async ({ n }) => ({ output: [{ type: "text", text: `record ${n}` }] }) })
 const registry = createRegistry()
 registry.install(defineExtension({ name: "sf", tools: [lookup] }))
 

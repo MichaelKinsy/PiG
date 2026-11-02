@@ -159,3 +159,58 @@ func TestHostMigrationAnswersLater(t *testing.T) {
 		_ = id
 	}
 }
+
+// Pi scheduler.ts inspect is `await this.#published(); await this.#loadScopes(false)`: a read job on the line that first waits for every commit admitted
+// before it to be published (a job that finds one runs again once it is), and the await of the settled promise costs the job a tick of its own. That tick
+// keeps the line, so the job behind an inspection starts a tick later (the status read of F-ticks-runtime-drift-*, queued behind the inspection).
+func TestInspectJobChargesTheTickOfAwaitingPublished(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		unpublished bool
+		runs        int
+	}{{"nothing unpublished", false, 1}, {"a commit in flight", true, 2}} {
+		t.Run(tc.name, func(t *testing.T) {
+			mem := sessiontest.New()
+			s := newSession(mem, mem.NextID())
+			loop := bound(s)
+			loop.StoreTicks = func([][]session.Write) (int, int, int) { return 0, 0, 20 }
+			var ended []session.Ended
+			loop.Elapsed = func(e session.Ended) (int, int) { ended = append(ended, e); return 0, 0 }
+			registry := snap{}
+			sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return 1 }})
+			sched.Open(func(err error) {
+				if err != nil {
+					t.Error(err)
+				}
+			})
+			if err := loop.Run(); err != nil {
+				t.Fatal(err)
+			}
+			ended = nil
+			if tc.unpublished {
+				s.Writer().Admit(&session.Part{Writes: []session.Write{{Kind: session.WriteConversation, Record: obj("id", 1.0)}}, Keys: []string{"conv:1"}})
+			}
+			runs, done := 0, false
+			loop.ReadLine(func() error {
+				runs++
+				_, _, err := sched.Inspect(registry)
+				return err
+			}, func(err error) {
+				if err != nil {
+					t.Error(err)
+				}
+				done = true
+			})
+			if err := loop.Run(); err != nil {
+				t.Fatal(err)
+			}
+			if !done || runs != tc.runs {
+				t.Fatalf("the inspection ran %d times (done %v), want %d", runs, done, tc.runs)
+			}
+			inspect := ended[len(ended)-1]
+			if !inspect.Read || inspect.Ticks.Change != 1 {
+				t.Fatalf("the inspection's job charged %d ticks (read %v), want the one tick of `await #published()`", inspect.Ticks.Change, inspect.Read)
+			}
+		})
+	}
+}

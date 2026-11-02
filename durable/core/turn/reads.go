@@ -54,14 +54,20 @@ func (r *run) context(at ID, then func(*history.View)) {
 	})
 }
 
-// entry is runtime.entry(id).
-func (r *run) entry(id ID, then func(*jv.Object)) {
+// entry is runtime.entry(id); then is told whether the kept range answered it, which is no Session line job.
+func (r *run) entry(id ID, then func(entry *jv.Object, kept bool)) {
+	if r.g.Host.KeptEntry != nil {
+		if kept := r.g.Host.KeptEntry(r.conv, id); kept != nil {
+			r.hops(keptEntryHops, func() { then(kept, true) })
+			return
+		}
+	}
 	var entry *jv.Object
 	r.read(func() error {
 		var err error
 		entry, err = r.g.Host.Entry(id)
 		return err
-	}, func() { then(entry) })
+	}, func() { then(entry, false) })
 }
 
 // outcomes is runtime.outcomes(ids) (scheduler.ts:2235-2246): `#read(invocation, () => session.readOnLine(...))`, where `#read` is an
@@ -109,6 +115,10 @@ func (r *run) snapshotCached(def *session.DocDef) (value *jv.Object, err error, 
 	value, err = r.g.Host.Snapshot(def, r.conv)
 	return value, err, true
 }
+
+// keptEntryHops is the hops from a runtime.entry answered from the kept range to its awaiting caller: `#read` is an async function
+// returning the promise of the async arrow, which has no await to wait for, so the caller resumes as it does after a cached snapshot.
+const keptEntryHops = snapshotHitHops
 
 // snapshotHitHops is the hops from a cached Session.snapshot call to its awaiting caller (dcore-trace E23).
 const snapshotHitHops = 3

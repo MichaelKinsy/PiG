@@ -6,7 +6,11 @@ package session_test
 // re-checks only the conversations above the tasks that became live or ended, and idle ranges expire from an index ordered by
 // idleSince. wake() already takes the earliest sleep from the sleeping tasks (TestWakeNamesTheEarliestSleepWhileATaskRuns).
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/MichaelKinsy/PiG/durable/core/session"
+)
 
 func (f *idleFixture) expectState(contexts, idle int) {
 	f.t.Helper()
@@ -19,9 +23,9 @@ func (f *idleFixture) expectState(contexts, idle int) {
 func TestKeptContextsExpireInIdleOrderWhenTheClockGoesBack(t *testing.T) {
 	f := newIdleFixture(t)
 	a, b := f.conversation(), f.conversation()
-	f.sched.KeepContext(a, 0, 5, false)
+	f.sched.KeepContext(a, session.ContextRange{Tail: 5}, false)
 	f.now = 500
-	f.sched.KeepContext(b, 0, 5, false)
+	f.sched.KeepContext(b, session.ContextRange{Tail: 5}, false)
 	f.expectState(2, 2)
 	// B went idle at 500 and expires first, though it went idle last: the timer is for it.
 	if got := f.armed[len(f.armed)-1]; got != 1500 {
@@ -29,10 +33,10 @@ func TestKeptContextsExpireInIdleOrderWhenTheClockGoesBack(t *testing.T) {
 	}
 	f.now = 1600
 	f.fire()
-	if _, _, ok := f.sched.KeptContext(b); ok {
+	if _, ok := f.sched.KeptContext(b); ok {
 		t.Fatal("B is kept past its retention")
 	}
-	if _, _, ok := f.sched.KeptContext(a); !ok {
+	if _, ok := f.sched.KeptContext(a); !ok {
 		t.Fatal("A, idle for 600 ms of 1000, expired with B")
 	}
 	f.expectState(1, 1)
@@ -46,7 +50,7 @@ func TestKeptContextsAreAllDroppedWhenRetentionBecomesZero(t *testing.T) {
 	a, z := f.conversation(), f.conversation()
 	_ = z
 	f.now = 2000
-	f.sched.KeepContext(a, 0, 5, false)
+	f.sched.KeepContext(a, session.ContextRange{Tail: 5}, false)
 	f.expectState(1, 1)
 	// The clock goes back below A's idle start; then retention 0 and a task change.
 	f.now = 1000
@@ -58,18 +62,18 @@ func TestKeptContextsAreAllDroppedWhenRetentionBecomesZero(t *testing.T) {
 func TestAKeptContextKeepsItsExpiryWhenReadAgain(t *testing.T) {
 	f := newIdleFixture(t)
 	a, b := f.conversation(), f.conversation()
-	f.sched.KeepContext(a, 0, 5, false)
+	f.sched.KeepContext(a, session.ContextRange{Tail: 5}, false)
 	f.now = 1500
-	f.sched.KeepContext(b, 0, 5, false)
+	f.sched.KeepContext(b, session.ContextRange{Tail: 5}, false)
 	f.now = 1800
-	f.sched.KeepContext(a, 0, 6, false)
+	f.sched.KeepContext(a, session.ContextRange{Tail: 6}, false)
 	f.now = 2100
 	f.end(f.task())
 	// A's period began at 1000 and was not extended by its second read; B's began at 1500.
-	if _, _, ok := f.sched.KeptContext(a); ok {
+	if _, ok := f.sched.KeptContext(a); ok {
 		t.Fatal("A kept past the retention of its first idle read")
 	}
-	if _, _, ok := f.sched.KeptContext(b); !ok {
+	if _, ok := f.sched.KeptContext(b); !ok {
 		t.Fatal("B dropped before its retention")
 	}
 	f.expectState(1, 1)
@@ -78,7 +82,7 @@ func TestAKeptContextKeepsItsExpiryWhenReadAgain(t *testing.T) {
 func TestATaskChangeSettlesTheConversationsAboveItWithoutACheckOfEveryScope(t *testing.T) {
 	f := newIdleFixture(t)
 	for range 20 {
-		f.sched.KeepContext(f.conversation(), 0, 5, false)
+		f.sched.KeepContext(f.conversation(), session.ContextRange{Tail: 5}, false)
 	}
 	f.expectState(20, 20)
 	_, _, _, before := f.sched.IdleState()
@@ -95,7 +99,7 @@ func TestATaskChangeSettlesTheConversationsAboveItWithoutACheckOfEveryScope(t *t
 // A kept range whose conversation gets work goes busy, and idle again with its end.
 func TestAKeptContextGoesBusyWithWorkBelowItAndIdleAgainWhenItEnds(t *testing.T) {
 	f := newIdleFixture(t)
-	f.sched.KeepContext(f.root, 0, 5, false)
+	f.sched.KeepContext(f.root, session.ContextRange{Tail: 5}, false)
 	f.expectState(1, 1)
 	id := f.task()
 	f.expectState(1, 0)
@@ -111,7 +115,7 @@ func TestEndingATaskCostsTheSameAtAnyNumberOfKeptContexts(t *testing.T) {
 		result := testing.Benchmark(func(b *testing.B) {
 			f := newIdleFixture(b)
 			for range contexts {
-				f.sched.KeepContext(f.conversation(), 0, 5, false)
+				f.sched.KeepContext(f.conversation(), session.ContextRange{Tail: 5}, false)
 			}
 			b.ResetTimer()
 			for b.Loop() {

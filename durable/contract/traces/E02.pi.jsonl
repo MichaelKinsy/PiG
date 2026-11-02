@@ -1,5 +1,5 @@
-{"k":"#","seq":1,"summary":"conversations:i","tick":174,"begin":163}
-{"k":"#","seq":2,"summary":"document_revisions:i documents:i entries:i","tick":253,"begin":233}
-{"k":"#","seq":3,"summary":"document_revisions:i entries:i","tick":305,"begin":287}
-{"k":"#","seq":4,"summary":"conversations:i document_revisions:i documents:i","tick":393,"begin":369}
-{"k":"#","seq":5,"summary":"document_revisions:i","tick":479,"begin":466}
+{"k":"#","seq":1,"summary":"conversations:i","tick":155,"begin":138}
+{"k":"#","seq":2,"summary":"document_revisions:i documents:i entries:i","tick":236,"begin":207}
+{"k":"#","seq":3,"summary":"document_revisions:i entries:i","tick":295,"begin":268}
+{"k":"#","seq":4,"summary":"conversations:i document_revisions:i documents:i","tick":398,"begin":362}
+{"k":"#","seq":5,"summary":"document_revisions:i","tick":505,"begin":484}

@@ -16,6 +16,7 @@ import (
 )
 
 func (h *handler) apiOK(id uint32, value any) {
+	delete(h.cancels, id)
 	if c, ok := value.(contextAnswer); ok {
 		value = rawJSON(c.json())
 	}
@@ -29,6 +30,7 @@ func (h *handler) apiOK(id uint32, value any) {
 }
 
 func (h *handler) apiError(id uint32, err error) {
+	delete(h.cancels, id)
 	out := append(make([]byte, 0, 64), `{"error":`...)
 	out = append(out, errorJSON(err)...)
 	h.notice(abi.NoticeAPIResult, id, append(out, '}'))
@@ -47,11 +49,22 @@ func (h *handler) onAPI(ev *abi.Event) error {
 	if !ok {
 		return reject("TypeError", "api: the request is not an object")
 	}
-	if strOf(req, "op") == "adopt" {
-		// The host's Storage adopted the batch of the commit the gate asked it to take (gate.go).
-		if err := h.gateAdopt(session.Seq(numOf(req, "seq"))); err != nil {
+	switch strOf(req, "op") {
+	case "receive":
+		// The host's Storage made batch index of the call the writer sent durable (gate.go).
+		if err := h.onReceive(int(numOf(req, "index")), session.Seq(numOf(req, "seq"))); err != nil {
 			return err
 		}
+		h.apiOK(ev.ID, nil)
+		return nil
+	case "publish":
+		h.onPublish()
+		h.apiOK(ev.ID, nil)
+		return nil
+	case "touch":
+		return h.onTouch(ev.ID, req)
+	case "cancel":
+		h.onCancel(req)
 		h.apiOK(ev.ID, nil)
 		return nil
 	}
@@ -90,16 +103,13 @@ func (h *handler) onAPI(ev *abi.Event) error {
 		})
 		return nil
 	}
-	if strOf(req, "op") == "watch.open" && h.loop != nil && strOf(objOf(req, "target"), "kind") != "" {
+	if strOf(req, "op") == "watch.open" && strOf(objOf(req, "target"), "kind") != "" {
 		// Opening a watch is a job on the Session line (session.ts watchDoc, view.ts and task-graph.ts readOnLine): it takes
 		// its turn behind the jobs already queued, so a step that ends the caller's invocation runs before it.
 		var value any
 		// ConversationViews.attach is Session.readOnLine over the Storage reads of #build (view.ts :135-175): its caller awaits the run
 		// promise, so the answer of a view leaves a hop before the line frees.
 		run := func() error {
-			if strOf(objOf(req, "target"), "kind") == "view" {
-				h.job.readLine = true
-			}
 			var err error
 			value, err = h.api("watch.open", req)
 			return err
@@ -112,7 +122,7 @@ func (h *handler) onAPI(ev *abi.Event) error {
 			h.apiOK(ev.ID, value)
 		}
 		if strOf(objOf(req, "target"), "kind") == "view" {
-			h.loop.ClientReadLine(run, done)
+			h.loop.ReadLineLead(run, done, hostReadLead)
 			return nil
 		}
 		h.loop.Line(run, done)
@@ -126,12 +136,14 @@ func (h *handler) onAPI(ev *abi.Event) error {
 		// task-graph.ts) or a snapshot that misses the cache: a job on the Session line, which waits behind the queued
 		// commits and holds the line for its reads.
 		var value any
-		h.loop.ClientReadLine(func() error {
+		h.loop.ReadLineLead(func() error {
 			var err error
-			h.job.readLine = true
 			// A read that returns the Storage promise itself (readOnLine(() => storage.submission(id)): status, get) settles one tick earlier than
 			// Submissions.wait's async arrow, which awaits it (submissions.ts :63-86).
 			h.job.direct = op == "conversation" || op == "getTask" || op == "entry" || op == "scanEntries" || op == "entries" || (op == "submission" && !req.Has("wait"))
+			if err = h.touchClientRead(op, req); err != nil {
+				return err
+			}
 			value, err = h.api(op, req)
 			return err
 		}, func(err error) {
@@ -140,13 +152,7 @@ func (h *handler) onAPI(ev *abi.Event) error {
 				return
 			}
 			h.apiOK(ev.ID, value)
-		})
-		return nil
-	}
-	if h.loop == nil && strOf(req, "op") == "watch.open" && (h.holder != 0 || len(h.queue) != 0) {
-		// Opening a watch is a job on the Session line (session.ts watchDoc, readOnLine): it waits behind the transactions queued
-		// before it, so a commit queued before the attachment is in its value.
-		h.queue = append(h.queue, lineWait{api: ev.ID, req: req})
+		}, hostReadLead)
 		return nil
 	}
 	return h.answerDirect(ev.ID, req)
@@ -163,18 +169,6 @@ func (h *handler) answerDirect(id uint32, req *jv.Object) error {
 	if errors.Is(err, ErrNotImplemented) {
 		return err
 	}
-	if session.IsNeedGate(err) && h.loop == nil {
-		// A read that stores held changes first (session/held.go): the host's Storage holds that commit, so the read runs again
-		// once it answered.
-		h.cg.retry, h.cg.retryID, h.cg.retryReq = retryAPI, id, req
-		return nil
-	}
-	if h.loop == nil && h.cg.state == gateApplied {
-		// The read stored held changes and the Storage adopted them: it answers when the Storage's call settles, with that call's failure
-		// if it failed after adopting (session.ts unloadDocuments awaits the store).
-		h.cg.heldID, h.cg.heldValue, h.cg.heldErr = id, value, err
-		return nil
-	}
 	h.answerAfterReads(func() {
 		if err != nil {
 			h.apiError(id, err)
@@ -189,7 +183,10 @@ func (h *handler) answerDirect(id uint32, req *jv.Object) error {
 // snapshot whose document is not loaded.
 func (h *handler) onLine(op string, req *jv.Object) bool {
 	switch op {
-	case "conversation", "getTask", "submission", "scanEntries", "entries", "context", "entry", "taskGraph", "snapshotAsOf":
+	case "entry":
+		// runtime.entry answers an entry of the conversation's kept context range from it: no line job (scheduler.ts runtime.entry).
+		return h.sched == nil || !h.sched.KeptEntry(session.ID(numOf(req, "conversationId")), session.ID(numOf(req, "entryId")))
+	case "conversation", "getTask", "submission", "scanEntries", "entries", "context", "taskGraph", "snapshotAsOf":
 		return true
 	case "unloadDocuments":
 		// Storing held changes first is a Storage commit: a job on the Session line (session.ts unloadDocuments).
@@ -279,31 +276,42 @@ func (h *handler) apiRecord(op string, req *jv.Object) (any, error) {
 	switch op {
 	case "conversation":
 		// readOnLine(() => storage.conversation(id)): one single-statement Storage read (harness.ts :313-316).
-		h.read(hopcost.ReadRow)
-		c, err := h.mir.Conversation(session.ID(numOf(req, "conversationId")))
+		id := session.ID(numOf(req, "conversationId"))
+		hit := h.readRecord(hopcost.RecordConversation, id)
+		c, err := h.mir.Conversation(id)
 		if err != nil || c == nil {
 			return nil, err
+		}
+		if hit == hopcost.CacheMiss {
+			h.sess.KeepRecord(hopcost.RecordConversation, id, c)
 		}
 		return c, nil
 	case "getTask":
 		// readOnLine(() => storage.task(id)): one single-statement Storage read (harness.ts :243).
-		h.read(hopcost.ReadRow)
-		t, err := h.mir.Task(session.ID(numOf(req, "taskId")))
+		id := session.ID(numOf(req, "taskId"))
+		hit := h.readRecord(hopcost.RecordTask, id)
+		t, err := h.mir.Task(id)
 		if err != nil || t == nil {
 			return nil, err
+		}
+		if hit == hopcost.CacheMiss {
+			h.sess.KeepRecord(hopcost.RecordTask, id, t)
 		}
 		return t, nil
 	case "submission":
 		// Submissions.status/get/wait read the record on the Session line (submissions.ts :63-86): one single-statement Storage read.
-		h.read(hopcost.ReadRow)
+		h.readRecord(hopcost.RecordSubmission, session.ID(numOf(req, "submissionId")))
 		rec, _ := h.mir.Submission(session.ID(numOf(req, "submissionId")))
 		if rec == nil {
 			return nil, nil
 		}
 		return rec, nil
 	}
-	// readOnLine(() => storage.entry(conversationId, id, context)) (scheduler.ts :1216-1228): the conversation's row, then the entry.
-	h.read(hopcost.ReadEntryIn)
+	// readOnLine(() => storage.entry(conversationId, id, context)) (scheduler.ts runtime.entry): the conversation's row, then the entry; an
+	// entry of the conversation's kept context range is read from it instead.
+	if h.sched == nil || !h.sched.KeptEntry(session.ID(numOf(req, "conversationId")), session.ID(numOf(req, "entryId"))) {
+		h.read(hopcost.ReadEntryIn)
+	}
 	e, _, err := h.mir.EntryIn(session.ID(numOf(req, "conversationId")), session.ID(numOf(req, "entryId")))
 	if err != nil || e == nil {
 		return nil, err

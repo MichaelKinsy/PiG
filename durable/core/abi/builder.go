@@ -55,6 +55,13 @@ func (b *Builder) Commit(seq int64, stmts []Stmt) {
 	b.step.Commits = append(b.step.Commits, Commit{Seq: seq, Stmts: stmts})
 }
 
+// JoinLast marks the step's last commit as belonging to the same Storage call as the commit before it (ABI section 5.5).
+func (b *Builder) JoinLast() {
+	if n := len(b.step.Commits); n > 1 {
+		b.step.Commits[n-1].Joined = true
+	}
+}
+
 // DetachCommit removes and returns the step's last commit (a core that holds a line job's statements until Pi's COMMIT hop).
 // Its slot is cleared, as Reset clears the others: the holder decides how long the statements live.
 func (b *Builder) DetachCommit() Commit {

@@ -99,7 +99,11 @@ func (s *Session) scheduleDocumentSweep() {
 	if s.closed {
 		return
 	}
+	// Documents with unpublished changes are not swept: their publication touches them again.
 	oldest := s.idleHead
+	for oldest != nil && s.writer.Gate(DocumentKey(oldest.id)) != nil {
+		oldest = oldest.next
+	}
 	if oldest == nil {
 		return
 	}
@@ -152,8 +156,13 @@ func (s *Session) sweepDocuments() {
 		// No job or timer to run the pending sweep: this one is it.
 		s.sweepPending = false
 	}
-	for node := s.idleHead; node != nil && node.since <= expired; node = s.idleHead {
-		s.dropDocument(node.id)
+	for node := s.idleHead; node != nil && node.since <= expired; {
+		next := node.next
+		// A document with an unpublished change stays until its publication touches it.
+		if s.writer.Gate(DocumentKey(node.id)) == nil {
+			s.dropDocument(node.id)
+		}
+		node = next
 	}
 	s.scheduleDocumentSweep()
 }

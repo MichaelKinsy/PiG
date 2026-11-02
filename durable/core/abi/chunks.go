@@ -60,13 +60,18 @@ func appendHopsChunks(c *Chunks, h Hops, consume bool) {
 	c.Set(binary.LittleEndian.AppendUint32(b, h.At))
 	for i := range h.Commits {
 		commit := &h.Commits[i]
-		body := 10
+		body := 11
 		for j := range commit.Stmts {
 			body += 2 + paramsSize(commit.Stmts[j].Params)
 		}
-		b := c.Tail(14)
+		b := c.Tail(15)
 		b = binary.LittleEndian.AppendUint32(b, uint32(body))
 		b = binary.LittleEndian.AppendUint64(b, uint64(commit.Seq))
+		flags := byte(0)
+		if commit.Joined {
+			flags = commitJoined
+		}
+		b = append(b, flags)
 		c.Set(binary.LittleEndian.AppendUint16(b, uint16(len(commit.Stmts))))
 		for j := range commit.Stmts {
 			s := &commit.Stmts[j]

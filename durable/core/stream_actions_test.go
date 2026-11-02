@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"strings"
 	"testing"
@@ -29,6 +30,9 @@ func referenceStreamActions(payload []byte) ([]streamAction, error) {
 			actions = append(actions, streamAction{kind: actError, message: objOf(eo, "error")})
 		case "fault":
 			actions = append(actions, streamAction{kind: actFault, text: strOf(eo, "message")})
+		case "payload":
+			v, _ := eo.Get("payload")
+			actions = append(actions, streamAction{kind: actPayload, call: numOf(eo, "call"), body: v})
 		}
 	}
 	return actions, nil
@@ -51,6 +55,11 @@ func checkStreamActions(t testing.TB, batch string) {
 		if g.kind != w.kind || g.text != w.text || (g.message == nil) != (w.message == nil) || (g.message != nil && jv.Stringify(g.message) != jv.Stringify(w.message)) {
 			t.Fatalf("%q: action %d is %+v, want %+v", batch, i, g, w)
 		}
+		if w.kind == actPayload {
+			if got, want := jv.Append(nil, g.body), jv.Append(nil, w.body); g.call != w.call || !bytes.Equal(got, want) {
+				t.Fatalf("%q: payload %d is call %v body %s, want call %v body %s", batch, i, g.call, got, w.call, want)
+			}
+		}
 		if w.kind == actPartial {
 			parsed, err := jv.Parse(g.partial)
 			if err != nil || jv.Stringify(parsed) != string(w.partial) {
@@ -71,6 +80,9 @@ func TestStreamActionsAgreeWithTheParsedBatch(t *testing.T) {
 		`[{"type":"error","reason":"error","error":` + msg + `}]`,
 		`[{"type":"fault","message":"the host could not serialize"}]`,
 		`[{"type":"fault","message":"caf\u00e9"},{"type":"done","message":{}}]`,
+		// a provider request body the host holds onPayload open for: any JSON value, in a batch with other events.
+		`[{"type":"payload","call":0,"payload":{"body":1}}]`, `[{"type":"payload","call":3,"payload":[1,"x",null]},{"type":"fault","message":"x"}]`,
+		`[{"type":"payload","call":2,"payload":"text"}]`, ` [ { "type" : "payload" , "call" : 1 , "payload" : { "a" : [ 1 , 2 ] } } ] `,
 		// events that give no action, or fewer than they hold.
 		`[]`, ` [ ] `, `[{}]`, `[{"type":"start"}]`, `[{"type":"done"}]`, `[{"type":"done","message":null}]`, `[{"type":"done","message":"x"}]`,
 		`[{"type":"error","error":[1]}]`, `[{"type":"fault"}]`, `[{"type":"fault","message":3}]`, `[{"type":"fault","message":null}]`,
