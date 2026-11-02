@@ -697,6 +697,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7744a0b](#bf-7744a0b) | `--model <provider>/<id>` now resolves when the provider id itself contains a `/`, such as a URL-derived id… | PiG's own defect | All platforms | Unreleased |
 | [BF-7768bea](#bf-7768bea) | fix(ai): tool-call arguments are written as JSON.stringify writes them, and keep a lone surrogate | PiG's own defect | All platforms | Unreleased |
 | [BF-776b600](#bf-776b600) | fix(durable/core): the scheduler's reconcile and drain microtasks run behind the host listeners' dispatch of… | PiG's own defect | All platforms | Unreleased |
+| [BF-776d60b](#bf-776d60b) | An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a… | PiG's own defect | All platforms | Unreleased |
+| [BF-776d60b-2](#bf-776d60b-2) | A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead… | PiG's own defect | All platforms | Unreleased |
 | [BF-777e981](#bf-777e981) | The Durable core conformance gate runs `U-codemode` and `U-harness-tools` alone, their reference run before… | PiG's own defect | All platforms | Unreleased |
 | [BF-779318a](#bf-779318a) | OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7809364](#bf-7809364) | Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as… | PiG's own defect | All platforms | Unreleased |
@@ -10885,6 +10887,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `776b600064` (2026-10-27)
 - **Tests:** None recorded.
+
+### BF-776d60b
+
+**An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a whole second, such as `1000.5`, now starts its countdown from the next second like Pi's `Math.ceil(timeoutMs / 1000)`; the countdown rounded the milliseconds down to whole milliseconds first and started one second short.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `776d60b196` (2026-11-02)
+- **Tests:** `internal/codingagent/ext_ui_dialog_timeout_test.go::TestDialogTimeoutKeepsAFractionOfAMillisecondPastAWholeSecond`, `internal/codingagent/ext_ui_dialog_timeout_test.go::TestSubprocessOptionalInt64RejectsAValueBeyondInt64`, `tui/countdown_timer_parity_test.go::TestCountdownTimerParity_InitialTickMatchesCeil`
+- **Release note:** An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a whole second, such as `1000.5`, now starts its countdown from the next second like Pi's `Math.ceil(timeoutMs / 1000)`; the countdown rounded the milliseconds down to whole milliseconds first and started one second short.
+
+### BF-776d60b-2
+
+**A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead of converting to the largest `int64` on arm64.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `776d60b196` (2026-11-02)
+- **Tests:** `internal/codingagent/ext_ui_dialog_timeout_test.go::TestDialogTimeoutKeepsAFractionOfAMillisecondPastAWholeSecond`, `internal/codingagent/ext_ui_dialog_timeout_test.go::TestSubprocessOptionalInt64RejectsAValueBeyondInt64`, `tui/countdown_timer_parity_test.go::TestCountdownTimerParity_InitialTickMatchesCeil`
+- **Release note:** A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead of converting to the largest `int64` on arm64.
 
 ### BF-777e981
 
