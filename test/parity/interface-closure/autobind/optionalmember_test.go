@@ -23,11 +23,14 @@ func writeFactorySources(t *testing.T, files map[string]string) *tsReader {
 }
 
 const wrapperSource = `
-export function wrapToolDefinition(definition: ToolDefinition): AgentTool {
+export function wrapToolDefinition<TDetails = unknown>(
+	definition: ToolDefinition<any, TDetails>,
+	factory?: F,
+): AgentTool<any, TDetails> {
 	return {
 		name: definition.name,
 		prepareArguments: definition.prepareArguments,
-		execute: (id, params) => definition.execute(id, params),
+		execute: (id, params, ctx?: Ctx) => definition.execute(id, params, ctx ?? (factory?.(id) as Ctx)),
 	};
 }
 `

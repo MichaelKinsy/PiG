@@ -293,7 +293,7 @@ type unsetProof struct {
 
 var (
 	identRe2    = regexp.MustCompile(`^[A-Za-z_$][\w$]*$`)
-	asSuffixRe  = regexp.MustCompile(`\s+(?:as|satisfies)\s+[^;]*$`)
+	asRe        = regexp.MustCompile(`\s(?:as|satisfies)\s`)
 	callRe      = regexp.MustCompile(`^([A-Za-z_$][\w$]*)\s*\(`)
 	importLineR = regexp.MustCompile(`(?s)import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*"([^"]+)"`)
 )
@@ -324,7 +324,7 @@ func (p *unsetProof) function(f *tsFile, name string, args []*binding, _ *scope)
 		return unsetUnknown
 	}
 	sc := &scope{file: f, body: [2]int{bodyOpen + 1, bodyClose}, params: map[string]*binding{}}
-	for i, part := range topLevel(f.skel, open+1, closeParen, ',') {
+	for i, part := range paramList(f.skel, open+1, closeParen) {
 		param := paramName(f.skel[part[0]:part[1]])
 		if param == "" {
 			return unsetUnknown
@@ -389,6 +389,33 @@ func functionBodyStart(skel string, from int) int {
 	return -1
 }
 
+// paramList splits a parameter list at the commas outside brackets and outside the angle brackets of a type.
+func paramList(skel string, from, to int) [][2]int {
+	var parts [][2]int
+	depth, start := 0, from
+	for i := from; i < to; i++ {
+		switch skel[i] {
+		case '(', '[', '{', '<':
+			depth++
+		case ')', ']', '}':
+			depth--
+		case '>':
+			if i == 0 || skel[i-1] != '=' {
+				depth--
+			}
+		case ',':
+			if depth == 0 {
+				parts = append(parts, [2]int{start, i})
+				start = i + 1
+			}
+		}
+	}
+	if strings.TrimSpace(skel[start:to]) != "" {
+		parts = append(parts, [2]int{start, to})
+	}
+	return parts
+}
+
 // paramName is the identifier a parameter declares (`cwd: string`, `options?: X`, `definition: ToolDefinition<...>`).
 func paramName(param string) string {
 	param = strings.TrimSpace(param)
@@ -439,8 +466,8 @@ func (p *unsetProof) expr(sc *scope, from, to int) unsetResult {
 	skel := sc.file.skel
 	text := strings.TrimSpace(skel[from:to])
 	from += strings.Index(skel[from:to], text)
-	if loc := asSuffixRe.FindStringIndex(text); loc != nil && !strings.Contains(text[loc[0]:], "{") {
-		text = strings.TrimSpace(text[:loc[0]])
+	if at := topLevelAs(text); at >= 0 {
+		text = strings.TrimSpace(text[:at])
 		to = from + len(text)
 	}
 	switch {
@@ -457,6 +484,25 @@ func (p *unsetProof) expr(sc *scope, from, to int) unsetResult {
 		return p.call(sc, m[1], open, from+len(text)-1)
 	}
 	return unsetUnknown
+}
+
+// topLevelAs returns the index of the ` as T` or ` satisfies T` cast that ends the expression, outside every bracket, or -1.
+func topLevelAs(text string) int {
+	for _, loc := range asRe.FindAllStringIndex(text, -1) {
+		depth := 0
+		for _, c := range text[:loc[0]] {
+			switch c {
+			case '(', '[', '{':
+				depth++
+			case ')', ']', '}':
+				depth--
+			}
+		}
+		if depth == 0 {
+			return loc[0]
+		}
+	}
+	return -1
 }
 
 // literal judges an object literal body: it must not name the member, and every spread must be a value that has none.
@@ -680,7 +726,7 @@ func (p *unsetProof) passedToReader(sc *scope, seg string, at int, name string) 
 		return false
 	}
 	body := target.skel[bodyOpen : matching(target.skel, bodyOpen)+1]
-	params := topLevel(target.skel, decl[1], closeParen, ',')
+	params := paramList(target.skel, decl[1], closeParen)
 	for i, a := range topLevel(skel, open+1, end, ',') {
 		arg := strings.TrimSpace(skel[a[0]:a[1]])
 		if !regexp.MustCompile(`\b` + regexp.QuoteMeta(name) + `\b`).MatchString(arg) {
