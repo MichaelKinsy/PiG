@@ -3928,14 +3928,17 @@ func (s *TaskScheduler) earliestSleepLocked(now float64) *float64 {
 	return at
 }
 
-// wakeDueLocked makes every sleeping task whose time has come a reservation candidate.
-func (s *TaskScheduler) wakeDueLocked() {
+// wakeDueLocked makes every sleeping task whose time has come a reservation candidate, and reports whether it made one that
+// was not already.
+func (s *TaskScheduler) wakeDueLocked() (added bool) {
 	s.sleeping.Range(func(id durable.TaskId) bool {
-		if record, live := s.live[id]; live && !s.notDueLocked(record) {
+		if record, live := s.live[id]; live && !s.notDueLocked(record) && !s.runnable.Has(id) {
 			s.runnable.Add(id)
+			added = true
 		}
 		return true
 	})
+	return added
 }
 
 // scheduleWakeLocked recomputes the wake in a goroutine the Session line never waits for, with no order relative to host
@@ -3982,11 +3985,20 @@ func (s *TaskScheduler) publishWake(asOf float64, firstWake *Wake) {
 		// The built-in timer reads only wake().at, the earliest sleep not yet due, so it scans the sleeping tasks rather than
 		// every live task: a scan per change over a large Session is quadratic.
 		var at *float64
+		due := false
 		if s.enabled {
 			at = s.earliestSleepLocked(asOf)
+			// A sleep that came due after the last pass dropped it, and at or before asOf, is no longer ahead, so the timer
+			// armed for it goes with this recomputation, and nothing else would make it a candidate. Upstream's microtask runs
+			// in the turn of its change, in which the clock does not move past a sleep the pass found ahead; here it runs
+			// later. Such a sleep is handed to a pass instead.
+			due = s.wakeDueLocked()
 		}
 		s.armTimerLocked(at)
 		s.mu.Unlock()
+		if due {
+			s.kick()
+		}
 		return
 	}
 	wake := s.wakeAtLocked(asOf)
