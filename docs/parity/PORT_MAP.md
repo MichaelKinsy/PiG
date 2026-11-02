@@ -995,6 +995,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/harness/live.ts` | `durable/harness/live.go` | ✅ |
 | `packages/durable/src/harness/prompt.ts` | `durable/harness/prompt.go` | ✅ |
 | `packages/durable/src/harness/provider.ts` | `durable/harness/provider.go` | ✅ |
+| `packages/durable/src/harness/registry-reader.ts` | `durable/harness/registry_reader.go (durable/harness/registry_reader_test.go, durable/harness/registry_reader_upstream_test.go)` | 🟡 |
 | `packages/durable/src/harness/registry.ts` | `durable/harness/registry.go` | ✅ |
 | `packages/durable/src/harness/scheduler.ts` | `durable/harness/scheduler.go`, `durable/types.go` | ✅ |
 | `packages/durable/src/harness/submissions.ts` | `durable/harness/submissions.go` | ✅ |
