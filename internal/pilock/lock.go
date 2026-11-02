@@ -1,5 +1,6 @@
 // Package pilock implements Pi's proper-lockfile directory-lock protocol for shared stores.
 // Ports packages/coding-agent/src/core/auth-storage.ts
+// Ports packages/coding-agent/src/core/trust-manager.ts
 package pilock
 
 import (

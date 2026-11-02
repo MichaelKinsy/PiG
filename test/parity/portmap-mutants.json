@@ -2477,5 +2477,139 @@
    "old": "RenderCustomTools(&sd, getToolRenderers, cwd, 100)",
    "new": "RenderCustomTools(&sd, nil, cwd, 100)"
   }
+ ],
+ "packages/coding-agent/src/core/auth-storage.ts": [
+  {
+   "file": "coding/auth_storage.go",
+   "old": "if json.Unmarshal(entry, &credential) != nil {",
+   "new": "if json.Unmarshal(entry, &credential) == nil {"
+  }
+ ],
+ "packages/coding-agent/src/core/http-dispatcher.ts": [
+  {
+   "file": "ai/http_proxy.go",
+   "old": "if _, exists := os.LookupEnv(key); !exists {",
+   "new": "if _, exists := os.LookupEnv(key); exists {"
+  },
+  {
+   "file": "ai/http_transport.go",
+   "old": "dialer.FallbackDelay = 2000 * time.Millisecond",
+   "new": "dialer.FallbackDelay = 250 * time.Millisecond"
+  },
+  {
+   "file": "internal/codingagent/settings.go",
+   "old": "jsstring.ToLower(trimmed) == \"disabled\"",
+   "new": "trimmed == \"disabled\""
+  }
+ ],
+ "packages/coding-agent/src/core/model-config.ts": [
+  {
+   "file": "internal/codingagent/model_registry.go",
+   "old": "\tif len(errs) > 0 {\n\t\treturn nil, \"Invalid models.json schema:",
+   "new": "\tif len(errs) > 1 {\n\t\treturn nil, \"Invalid models.json schema:"
+  },
+  {
+   "file": "internal/codingagent/model_registry.go",
+   "old": "strings.Join(errs, \"\\n\")",
+   "new": "strings.Join(errs, \"\\n\\n\")"
+  }
+ ],
+ "packages/coding-agent/src/core/model-resolver.ts": [
+  {
+   "file": "internal/codingagent/model_pattern.go",
+   "old": "return !modelDateSuffix.MatchString(id)",
+   "new": "return modelDateSuffix.MatchString(id)"
+  }
+ ],
+ "packages/coding-agent/src/core/model-runtime.ts": [
+  {
+   "file": "coding/model_runtime_members.go",
+   "old": "return runtime.services.Registry().RemoveRuntimeAPIKeyOperation(ctx, providerID)",
+   "new": "return runtime.services.Registry().RemoveRuntimeAPIKeyOperation(ctx, \"\")"
+  },
+  {
+   "file": "internal/codingagent/model_registry.go",
+   "old": "\tr.runtimeCredentialsLocked().SetRuntimeAPIKey(providerID, apiKey)",
+   "new": "\tr.runtimeCredentialsLocked().SetRuntimeAPIKey(providerID, apiKey+\"!\")"
+  }
+ ],
+ "packages/coding-agent/src/core/models-store.ts": [
+  {
+   "file": "internal/codingagent/radius_models.go",
+   "old": "filepath.Join(agentDir, \"models-store.json\")",
+   "new": "filepath.Join(agentDir, \"models.store.json\")"
+  },
+  {
+   "file": "internal/codingagent/model_registry.go",
+   "old": "\t\tr.modelsStore = defaultModelsStore(r.agentDir)\n\t}\n\tr.load()",
+   "new": "\t\tr.modelsStore = ai.NewInMemoryModelsStore()\n\t}\n\tr.load()"
+  },
+  {
+   "file": "ai/models_store.go",
+   "old": "json.Indent(&indented, canonical, \"\", \"  \")",
+   "new": "json.Indent(&indented, canonical, \"\", \"\\t\")"
+  }
+ ],
+ "packages/coding-agent/src/core/project-trust.ts": [
+  {
+   "file": "coding/cli/project_trust.go",
+   "old": "return decision == nil || *decision, nil",
+   "new": "return decision == nil || !*decision, nil"
+  },
+  {
+   "file": "coding/cli/project_trust.go",
+   "old": "\tif decision != nil {\n\t\treturn *decision, nil\n\t}\n\tswitch opts.Default {",
+   "new": "\tif decision != nil && opts.Default == \"\" {\n\t\treturn *decision, nil\n\t}\n\tswitch opts.Default {"
+  }
+ ],
+ "packages/coding-agent/src/core/provider-composer.ts": [
+  {
+   "file": "internal/codingagent/model_data.go",
+   "old": "\t\te.DisplayName = ovr.Name\n",
+   "new": "\t\te.DisplayName = ovr.Name + \"!\"\n"
+  }
+ ],
+ "packages/coding-agent/src/core/radius.ts": [
+  {
+   "file": "internal/codingagent/radius.go",
+   "old": "\tif !ok {\n\t\tgateway = ai.DefaultRadiusGateway",
+   "new": "\tif !ok || gateway == \"\" {\n\t\tgateway = ai.DefaultRadiusGateway"
+  },
+  {
+   "file": "internal/codingagent/radius.go",
+   "old": "const EnvRadiusGateway = \"PI_RADIUS_GATEWAY\"",
+   "new": "const EnvRadiusGateway = \"PI_RADIUS_GATEWAY_\""
+  }
+ ],
+ "packages/coding-agent/src/core/resolve-config-value.ts": [
+  {
+   "file": "internal/configvalue/configured_shell.go",
+   "old": "return strings.TrimSpace(string(out)), true",
+   "new": "return string(out), true"
+  }
+ ],
+ "packages/coding-agent/src/core/runtime-credentials.ts": [
+  {
+   "file": "ai/runtime_credentials.go",
+   "old": "ok && key != \"\"",
+   "new": "ok && key == \"\""
+  },
+  {
+   "file": "ai/runtime_credentials.go",
+   "old": "entries[providerID] = CredentialInfo{ProviderID: providerID, Type: CredentialAPIKey}",
+   "new": "entries[providerID] = CredentialInfo{ProviderID: providerID, Type: CredentialOAuth}"
+  }
+ ],
+ "packages/coding-agent/src/core/trust-manager.ts": [
+  {
+   "file": "internal/codingagent/trust_manager.go",
+   "old": "entry = &ProjectTrustStoreEntry{Path: key, Decision: *value}",
+   "new": "entry = &ProjectTrustStoreEntry{Path: key, Decision: !*value}"
+  },
+  {
+   "file": "internal/codingagent/trust_manager.go",
+   "old": "if !isUserSkills && probe.Exists() {",
+   "new": "if probe.Exists() {"
+  }
  ]
 }

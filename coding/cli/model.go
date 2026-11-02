@@ -1,5 +1,7 @@
 package cli
 
+// Ports packages/coding-agent/src/core/model-resolver.ts
+
 import (
 	"context"
 	"fmt"

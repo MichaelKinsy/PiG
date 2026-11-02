@@ -1,5 +1,7 @@
 package cli
 
+// Ports packages/coding-agent/src/core/model-resolver.ts
+
 // Startup model selection. Mirrors upstream main.ts buildSessionOptions (CLI
 // model, then the --models / enabledModels scope for a new session) and
 // sdk.ts createAgentSession's findInitialModel fallback (saved default with
