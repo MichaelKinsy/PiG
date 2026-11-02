@@ -144,6 +144,17 @@ export function createXTool(cwd: string) { return wrapToolDefinition(createXTool
 		{"a factory with a conditional return", map[string]string{
 			"x.ts": `export function createXTool(cwd: string) { if (cwd) { return { name: "a" }; } return { name: "b" }; }`,
 		}, false},
+		{"a factory with a braceless conditional return that sets the member", map[string]string{
+			"x.ts": `function other() { return { name: "a", prepareArguments: normalize }; }
+export function createXTool(cwd: string) { if (cwd) return other(); return { name: "b" }; }`,
+		}, false},
+		{"a wrapper with a braceless conditional return that sets the member", map[string]string{
+			"w.ts": `export function wrapToolDefinition(definition: D) { if (definition.name) return legacy(definition); return { name: definition.name }; }
+function legacy(definition: D) { return { name: definition.name, prepareArguments: normalize }; }`,
+			"x.ts": `import { wrapToolDefinition } from "./w.ts";
+export function createXToolDefinition(cwd: string) { return { name: "x" }; }
+export function createXTool(cwd: string) { return wrapToolDefinition(createXToolDefinition(cwd)); }`,
+		}, false},
 		{"a factory declared twice", map[string]string{
 			"a.ts": `export function createXTool(cwd: string) { return { name: "a" }; }`,
 			"b.ts": `export function createXTool(cwd: string) { return { name: "b" }; }`,

@@ -1841,7 +1841,7 @@ func (d *detector) receiverFunction(prop *upstreamEntry, owner *sym) *sym {
 	return nil
 }
 
-// factoryNeverSets is rule T12o's source proof for the exported function name of the upstream package pkg (see optionalmember.go).
+// factoryNeverSets is rule T12u's source proof for the exported function name of the upstream package pkg (see optionalmember.go).
 func (d *detector) factoryNeverSets(pkg, name, member string) bool {
 	if d.readers == nil {
 		d.readers = map[string]*tsReader{}

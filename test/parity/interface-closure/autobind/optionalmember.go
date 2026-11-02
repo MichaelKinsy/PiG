@@ -432,8 +432,8 @@ func paramName(param string) string {
 
 var returnRe = regexp.MustCompile(`(?:^|[;{}\s])return\b`)
 
-// returns lists the expressions the function body returns at its own level. Control flow is not followed: a return nested in a block
-// refuses, since the rule reads only straight-line factories.
+// returns lists the expressions the function body returns at its own level. Control flow is not followed: a return in any other
+// statement (a block, or a braceless `if (c) return x;`) refuses, since the rule reads only straight-line factories.
 func (p *unsetProof) returns(sc *scope) ([][2]int, bool) {
 	skel := sc.file.skel
 	var out [][2]int
@@ -444,7 +444,7 @@ func (p *unsetProof) returns(sc *scope) ([][2]int, bool) {
 			out = append(out, [2]int{start, stmt[1]})
 			continue
 		}
-		if returnRe.MatchString(skel[stmt[0]:stmt[1]]) && strings.ContainsAny(text, "{") && !strings.HasPrefix(text, "const ") && !strings.HasPrefix(text, "Object.assign(") {
+		if returnRe.MatchString(skel[stmt[0]:stmt[1]]) && !strings.HasPrefix(text, "const ") && !strings.HasPrefix(text, "Object.assign(") {
 			return nil, false // a nested block may return: refuse
 		}
 	}
@@ -468,7 +468,6 @@ func (p *unsetProof) expr(sc *scope, from, to int) unsetResult {
 	from += strings.Index(skel[from:to], text)
 	if at := topLevelAs(text); at >= 0 {
 		text = strings.TrimSpace(text[:at])
-		to = from + len(text)
 	}
 	switch {
 	case strings.HasPrefix(text, "{") && matching(skel, from) == from+len(text)-1:
