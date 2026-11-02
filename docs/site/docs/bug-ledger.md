@@ -1366,6 +1366,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e79c70e](#bf-e79c70e) | fix(ai): Codex WebSocket, OpenRouter images, pi-messages and replaced Anthropic bodies write JSON.stringify… | PiG's own defect | All platforms | Unreleased |
 | [BF-e7b494a](#bf-e7b494a) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-e8489d4](#bf-e8489d4) | A key hint for an app action the user unbound shows no key, as in Pi, instead of the action's default key | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e8a5d2e](#bf-e8a5d2e) | The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message… | PiG's own defect | All platforms | Unreleased |
 | [BF-e90ac19](#bf-e90ac19) | Very long streamed answers no longer slow down with their length: each streamed frame renders only the last… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e90f6c8-2](#bf-e90f6c8-2) | Paths under a directory whose name merely starts with the home directory's (`/users/bob2/x` with home… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-e9332c8](#bf-e9332c8) | fix(codingagent): session search re: reads patterns as V8 does | PiG's own defect | All platforms | Unreleased |
@@ -20150,6 +20151,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e8489d4003` (2026-10-11), `fac470319e` (2026-10-11)
 - **Tests:** `internal/codingagent/extension_editor_test.go::TestExtensionEditorHandleInputMatchesPi`
 - **Release note:** A key hint for an app action the user unbound shows no key, as in Pi, instead of the action's default key. For example, the extension editor dialog showed `ctrl+g external editor` after `app.editor.external` was bound to `[]`; it now shows ` external editor` (`tui/keybinding_hints.go` AppKeyText, keybinding-hints.ts keyText; probe in `TestExtensionEditorHandleInputMatchesPi`, red before).
+
+### BF-e8a5d2e
+
+**The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message effort (`supportsMidConvoEffort`), as Pi's generator does since 9ee7586a9 (#10954).
+- **Root cause:** OpenCode Go rejected replayed thinking with a 400 because the requests carried no `drop_block` binding after the tool list or system prompt changed.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e8a5d2ef7e` (2026-11-02)
+- **Tests:** `ai/opencode_dropblock_catalog_test.go::TestOpencodeClaudeCatalogCompatReachesTheAnthropicPayload`, `internal/modelgen/providers/opencode_dropblock_test.go::TestOpencodeClaudeMidConvoEffort`
+- **Release note:** The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message effort (`supportsMidConvoEffort`), as Pi's generator does since 9ee7586a9 (#10954). Their `anthropic-messages` requests then carry per-message effort markers and `thinking.block_binding: drop_block` like the Anthropic provider. OpenCode Go rejected replayed thinking with a 400 because the requests carried no `drop_block` binding after the tool list or system prompt changed. The bundled catalog is converted from the published Pi package and carries the flag once the pin moves to a Pi version that includes that commit. Until then the remote catalog overlay can deliver the flag: pi-in-go.dev (D64) serves the overlay that `withRemoteCatalog` reads, as pi.dev does for released Pi.
 
 ### BF-e90ac19
 
