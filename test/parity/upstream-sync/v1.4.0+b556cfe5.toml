@@ -5228,14 +5228,14 @@ path = "packages/durable/src/session/cached-storage.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:durable/session/cached_storage_test.go#TestCachedStorageKeepsEndedTasksATaskWaitsOnUntilItMovedOnFromItsWait"]
-rationale = "New file of Pi e5c6182ba: the Session's read cache with write-through at publication. Ported in durable/session/cached_storage.go;"
+rationale = "New file of Pi e5c6182ba: the Session's read cache with write-through at publication. Ported in durable/session/cached_storage.go; TestCachedStorageKeepsEndedTasksATaskWaitsOnUntilItMovedOnFromItsWait pins that an ended task a task waits on stays cached until the wait moved on."
 
 [[files]]
 path = "packages/durable/src/session/conversation-tails.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:durable/session/conversation_tails_test.go#TestConversationTailsAnswersCutoffFromNewestMarkerOnlyAtOrAfterIt"]
-rationale = "New file of Pi e5c6182ba: the bounded cache of conversation tails. Ported in durable/session/conversation_tails.go;"
+rationale = "New file of Pi e5c6182ba: the bounded cache of conversation tails. Ported in durable/session/conversation_tails.go; TestConversationTailsAnswersCutoffFromNewestMarkerOnlyAtOrAfterIt pins that a tail answers a cutoff only at or after its newest marker."
 
 [[files]]
 path = "packages/durable/src/session/forks.ts"
@@ -5249,14 +5249,14 @@ path = "packages/durable/src/session/keys.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:durable/session/keys_test.go#TestGatedStorageReadsTouchTheirKeysFirst"]
-rationale = "New file of Pi e5c6182ba: the keys a commit touches and the gated storage reads. Ported in durable/session/keys.go;"
+rationale = "New file of Pi e5c6182ba: the keys a commit touches and the gated storage reads. Ported in durable/session/keys.go; TestGatedStorageReadsTouchTheirKeysFirst pins that a gated read touches its keys before it reads."
 
 [[files]]
 path = "packages/durable/src/session/session.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:durable/session/session_group_commit_test.go#TestGroupCommitBatching", "test:durable/session/session_adoption_test.go", "test:durable/session/session_line_api_test.go"]
-rationale = "Whole file ported in durable/session/session.go. The group-commit delta is Pi e5c6182ba: a Writer owns commits (parts, per-part outcomes), an unpublished write set per key, MAX_OUTSTANDING, outcome fences, and the read cache writes through at publication. Ported in durable/session/session.go, guard.go, held.go, retention.go and woken.go."
+rationale = "Whole file ported in durable/session/session.go. The group-commit delta is Pi e5c6182ba: a Writer owns commits (parts, per-part outcomes), an unpublished write set per key, MAX_OUTSTANDING, outcome fences, and the read cache writes through at publication. Ported in durable/session/session.go, writer.go, guard.go, held.go, retention.go and wait.go; TestGroupCommitBatching pins the batching, session_adoption_test.go and session_line_api_test.go the adoption and line API the Session keeps."
 
 [[files]]
 path = "packages/durable/src/session/transaction.ts"
@@ -5270,7 +5270,7 @@ path = "packages/durable/src/session/writer.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:durable/session/session_group_commit_test.go#TestGroupCommitBatching"]
-rationale = "New file of Pi e5c6182ba: the Writer that owns a Session's commits (parts, per-part outcomes, publication). Ported in durable/session/writer.go;"
+rationale = "New file of Pi e5c6182ba: the Writer that owns a Session's commits (parts, per-part outcomes, publication). Ported in durable/session/writer.go; TestGroupCommitBatching pins that commits batch into one storage commit with a per-part outcome."
 
 [[files]]
 path = "packages/durable/src/storage/indexeddb.ts"
@@ -5368,14 +5368,14 @@ path = "packages/durable/src/storage/store/commit.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageRefusals"]
-rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): . Ported in durable/storage/store/commit.go;"
+rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): one Durable commit as one commit of the store's series. Ported in durable/storage/store/commit.go; TestStoreStorageRefusals pins the refusals of Durable's own checks (CommitResult.Refused, not an error)."
 
 [[files]]
 path = "packages/durable/src/storage/store/documents.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageArchives"]
-rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): . Ported in durable/storage/store/documents.go;"
+rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): Durable's documents in the store's documents engine. Ported in durable/storage/store/documents.go; TestStoreStorageArchives pins the documents' archive and retirement."
 
 [[files]]
 path = "packages/durable/src/storage/store/index.ts"
@@ -5389,21 +5389,21 @@ path = "packages/durable/src/storage/store/queries.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageReviewRegressions"]
-rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): . Ported in durable/storage/store/queries.go;"
+rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): the reads as the store's compiled queries. Ported in durable/storage/store/queries.go; TestStoreStorageReviewRegressions pins the reads reviewed against Pi's SqliteStorage."
 
 [[files]]
 path = "packages/durable/src/storage/store/storage.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageClaimsAndClose"]
-rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): . Ported in durable/storage/store/storage.go;"
+rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): opening under an owner name, commits as one series of the store's commit queue, guarded reads, Close. Ported in durable/storage/store/storage.go; TestStoreStorageClaimsAndClose pins the owner claims and Close."
 
 [[files]]
 path = "packages/durable/src/storage/store/tables.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageHeadMarkers"]
-rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): . Ported in durable/storage/store/tables.go;"
+rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): Durable's records as declared tables of the store. Ported in durable/storage/store/tables.go; TestStoreStorageHeadMarkers pins the head markers the tables hold."
 
 [[files]]
 path = "packages/durable/src/tasks.ts"
@@ -5424,7 +5424,7 @@ path = "packages/durable/src/testing/commit-writes.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:durable/storage/memory_storage_test.go#TestMemoryStorageConformance"]
-rationale = "New file of Pi e5c6182ba: commitWrites(storage, writes) commits one batch and returns its seq. Ported in durable/durabletest/commit_writes.go;"
+rationale = "New file of Pi e5c6182ba: commitWrites(storage, writes) commits one batch and returns its seq. Ported in durable/durabletest/commit_writes.go; TestMemoryStorageConformance runs the storage conformance suite through it."
 
 [[files]]
 path = "packages/durable/src/testing/env-conformance.ts"
