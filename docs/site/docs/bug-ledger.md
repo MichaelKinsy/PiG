@@ -1106,6 +1106,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bada2af](#bf-bada2af) | Session and crash timestamps are read like Date.parse of a JavaScript string: U+00A0 and U+FEFF between… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bb324f7](#bf-bb324f7) | A JavaScript or TypeScript extension loads when its `registerCommand` options carry a member Pi does not… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bb3d661](#bf-bb3d661) | An extension served in-process now refuses to serve a second connection while it serves one, with the error… | PiG's own defect | All platforms | Unreleased |
+| [BF-bb70e6b](#bf-bb70e6b) | When a shared extension cell fails to build or start, each member that then runs in its own process shows… | PiG's own defect | All platforms | Unreleased |
+| [BF-bb70e6b-2](#bf-bb70e6b-2) | An extension build that began after its deadline or cancellation no longer fails with `wait for cell build… | PiG's own defect | All platforms | Unreleased |
 | [BF-bb888ae](#bf-bb888ae) | The `/model` picker now keeps its model list when the catalog refresh times out, as in Pi | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bb9e9d8](#bf-bb9e9d8) | fix(extensions): parallel Node runtime linking reports the walk-order first failure under every schedule | PiG's own defect | All platforms | Unreleased |
 | [BF-bba3679](#bf-bba3679) | Images in the formats Photon decodes beyond PNG, JPEG, GIF, WebP, BMP and TIFF are now decoded the way Pi… | PiG's own defect | All platforms | Unreleased |
@@ -16564,6 +16566,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `bb3d661967` (2026-10-25)
 - **Tests:** `extensions/sdk/extension_serve_overlap_test.go::TestExtensionRefusesASecondConcurrentServe`
 - **Release note:** An extension served in-process now refuses to serve a second connection while it serves one, with the error `this extension is already serving a connection; an Extension serves one connection at a time, so build a new one per connection`. A second serve of the same `sdk.Extension` used to overwrite the first one's state and leave the second host waiting for a registration that never came.
+
+### BF-bb70e6b
+
+**When a shared extension cell fails to build or start, each member that then runs in its own process shows…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A retry that succeeded used to hide why the members were not shared.
+- **Root cause:** A cell build whose context had already ended failed with "wait for cell build lock: context deadline exceeded" while the lock was free, because the lock is never tried once its context is done. A go test run that used up its deadline made every later build fail that way within seconds, and the message sent the reader after a lock holder that did not exist. The error now says the context had ended before the build began.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bb70e6b139` (2026-11-02)
+- **Tests:** `coding/extension/host/runtimecell/cellcache_lock_test.go::TestCellcacheLockHolderProcess`, `coding/extension/host/runtimecell/cellcache_lock_test.go::TestPublishArtifactEndedContextIsNotReportedAsALockWait`, `coding/extension/host/runtimecell/cellcache_lock_test.go::TestPublishArtifactLockLeftByAnEndedBuildDoesNotBlock`, `coding/extension/host/subprocess/isolate_cell_failure_test.go::TestIsolateCellFailureReportsTheErrorThatEndedThePackedCell`
+- **Release note:** When a shared extension cell fails to build or start, each member that then runs in its own process shows `packed cell failed:` and the error that ended the shared cell in `/reload --explain`. A retry that succeeded used to hide why the members were not shared.
+
+### BF-bb70e6b-2
+
+**An extension build that began after its deadline or cancellation no longer fails with `wait for cell build…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The error now says the context had ended before the build began.
+- **Root cause:** A cell build whose context had already ended failed with "wait for cell build lock: context deadline exceeded" while the lock was free, because the lock is never tried once its context is done. A go test run that used up its deadline made every later build fail that way within seconds, and the message sent the reader after a lock holder that did not exist. The error now says the context had ended before the build began.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bb70e6b139` (2026-11-02)
+- **Tests:** `coding/extension/host/runtimecell/cellcache_lock_test.go::TestCellcacheLockHolderProcess`, `coding/extension/host/runtimecell/cellcache_lock_test.go::TestPublishArtifactEndedContextIsNotReportedAsALockWait`, `coding/extension/host/runtimecell/cellcache_lock_test.go::TestPublishArtifactLockLeftByAnEndedBuildDoesNotBlock`, `coding/extension/host/subprocess/isolate_cell_failure_test.go::TestIsolateCellFailureReportsTheErrorThatEndedThePackedCell`
+- **Release note:** An extension build that began after its deadline or cancellation no longer fails with `wait for cell build lock: context deadline exceeded` while no lock was held. The error now says the context had ended before the build began.
 
 ### BF-bb888ae
 
