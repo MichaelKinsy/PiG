@@ -8,7 +8,7 @@ import (
 )
 
 func newProcessStdinBuffer() *StdinBuffer {
-	return NewStdinBuffer(StdinBufferOptions{EscapeTimeout: time.Duration(ResolveEscapeTimeoutMs(os.Getenv) * float64(time.Millisecond))})
+	return NewStdinBuffer(StdinBufferOptions{EscapeTimeout: nodeTimerDelay(ResolveEscapeTimeoutMs(os.Getenv))})
 }
 
 // inputTimer belongs to its input-loop owner; cancellation never dispatches a callback on another goroutine.
