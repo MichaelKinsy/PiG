@@ -60,6 +60,9 @@ type TxScope struct {
 	Span uint32
 	// Trace is the carrier of that span (propagation.inject(span)): the trace of a task the commit creates without one.
 	Trace any
+	// Host marks a transaction whose callback runs in the host (ABI section 8): it cannot run again, so a Finish that returns a *NeedPublication
+	// keeps the transaction's state and may be called again once the key is published.
+	Host bool
 	// Deferred marks the commit deferrable (durable CommitPersistence): see held.go. WithinMs is its window in milliseconds,
 	// or negative for the Session's default (PersistWithin).
 	Deferred bool
@@ -108,6 +111,8 @@ type docEntry struct {
 	change         *delta.Change
 	prepared       *delta.Prepared
 	retireOnCommit bool
+	// mintAfter is the ticks from the call of tx.doc to the mint of the ID of a document it creates (hopcost.TxDocMint).
+	mintAfter int
 	// external holds operations a host's tracker produced for this draft (SetDocOps); hasExternal marks them set.
 	external    []delta.Op
 	hasExternal bool
@@ -144,12 +149,12 @@ type Tx struct {
 	sealed        bool
 	hasTableWrite bool
 
-	writes  []Write
-	settled []Write // the writes of a commit a *NeedGate held
-	// taken is the holds whose changes this commit stores with its own (held.go takeHeld); settledTaken marks the settled writes
-	// as already carrying them.
-	taken        []*loadedDoc
-	settledTaken bool
+	writes []Write
+	// taken is the holds whose changes this commit stores with its own (held.go takeHeld).
+	taken []*loadedDoc
+	// settledWrites are the writes settleSuccess assembled, once settledOK: a Finish that waited for a publication does not settle again.
+	settledWrites []Write
+	settledOK     bool
 	// The maps below are made by their first write: most transactions of a step write none of them, and a nil map reads as empty.
 	createdConvs      map[ID]bool
 	forkSourceConvs   map[ID]bool
@@ -159,11 +164,16 @@ type Tx struct {
 	submissions       map[ID]*jv.Object
 	submissionOrder   []ID
 	submissionChanges []submissionChange
-	// settleReads counts the Storage reads of the settle that the change callback did not already make: the committed record of
-	// each staged submission change (transaction.ts #assemble :818-823).
+	// settleReads is the ticks of the settle's awaits that the change callback did not already make (hopcost.Settle): the committed record of
+	// each replaced task and of each staged submission change, the document pages of a task going terminal that the Session did not create, and the
+	// `#currentTask` of each task whose document the commit publishes (transaction.ts #assemble).
 	settleReads int
 	// settleCached counts the replaced tasks whose committed read the callback had already made (assemble awaits the settled promise).
 	settleCached int
+	// settleOwners is the ticks of validateOwners (hopcost.Settle): its `#currentTask` of each owner of a created task or conversation.
+	settleOwners int
+	// convHit is whether the last requireConversation found its conversation in the Session's cache.
+	convHit hopcost.Cache
 
 	plans        []*docPlan
 	documents    []*docEntry
@@ -179,7 +189,13 @@ type Tx struct {
 func (tx *Tx) DeferWithin(ms float64) { tx.scope.Deferred, tx.scope.WithinMs = true, ms }
 
 // charge adds the ticks of one Transaction method await.
-func (tx *Tx) charge(n int) { tx.ticks += n }
+func (tx *Tx) charge(n int) {
+	tx.s.touchAt = tx.ticks
+	tx.ticks += n
+}
+
+// Ticks is Pi's await ticks the callback has spent so far (hopcost): where, in the job's duration, the code that runs now would run.
+func (tx *Tx) Ticks() int { return tx.ticks }
 
 // Await charges the ticks of a callback's own `await` of Pi code that is not a Transaction method (hopcost: an async function
 // without awaits of its own settles at once and its caller resumes one tick later).
@@ -198,12 +214,22 @@ func (tx *Tx) assertOpen() error {
 	if tx.sealed {
 		return ErrSealed
 	}
+	// A Transaction method starts after the awaits of the methods before it: a key it touches is waited for from there.
+	tx.s.touchAt = tx.ticks
 	return nil
 }
 
-func (tx *Tx) mint() ID {
+// mint takes the next ID. Pi's Storage mints it `after` ticks into the Transaction method that began at tick `from` of the callback, so
+// the Storage's own counter has it from then on (Session.storageNextID). A host transaction's methods run as the host calls them: the
+// ticks are from now.
+func (tx *Tx) mint(from, after int) ID {
 	id := tx.s.nextID
 	tx.s.nextID++
+	if tx.scope.Host {
+		tx.s.mintsAt(after, false)
+	} else {
+		tx.s.mintsAt(from+after, true)
+	}
 	return id
 }
 
@@ -234,8 +260,13 @@ func (tx *Tx) Conversation(id ID) (*jv.Object, error) {
 	if err := tx.read("conversation"); err != nil {
 		return nil, err
 	}
-	tx.readTicks(hopcost.ReadRow)
-	return tx.s.store.Conversation(id)
+	hit := tx.s.hasConversation(id)
+	tx.charge(hopcost.TxConversation(tx.s.hop, hit))
+	rec, err := tx.s.store.Conversation(id)
+	if rec != nil && hit == hopcost.CacheMiss {
+		tx.s.keepConversation(id)
+	}
+	return rec, err
 }
 
 // Entry returns a committed entry, or nil.
@@ -254,7 +285,8 @@ func (tx *Tx) Task(id ID) (*jv.Object, error) {
 		return nil, err
 	}
 	t := tx.tasks[id]
-	tx.charge(hopcost.TxTask(tx.s.hop, t != nil && t.hasCommitted))
+	cached := t != nil && t.hasCommitted
+	tx.charge(hopcost.TxTask(tx.s.hop, cached, tx.s.hasTask(id)))
 	return tx.committedTask(id)
 }
 
@@ -277,12 +309,33 @@ func (tx *Tx) ScanEntries(q EntryQuery, limit int, after ID) (Page, error) {
 }
 
 // LatestHeadMarker returns the newest head-marker entry of a conversation, or nil.
-func (tx *Tx) LatestHeadMarker(conversationID ID) (*jv.Object, error) {
+func (tx *Tx) LatestHeadMarker(conversationID ID) (*jv.Object, error) { return tx.LatestHeadMarkerAt(conversationID, 0) }
+
+// LatestHeadMarkerAt returns the newest head-marker entry of a conversation at or before atOrBefore (0: any), or nil.
+func (tx *Tx) LatestHeadMarkerAt(conversationID, atOrBefore ID) (*jv.Object, error) {
 	if err := tx.read("latestHeadMarker"); err != nil {
 		return nil, err
 	}
-	tx.readTicks(hopcost.ReadHeadMarker)
-	return tx.s.store.LatestHeadMarker(conversationID, 0)
+	marker, ticks, err := tx.s.LatestHeadMarker(conversationID, atOrBefore)
+	if err != nil {
+		return nil, err
+	}
+	tx.charge(ticks)
+	return marker, nil
+}
+
+// LatestEntryID returns the newest entry ID visible from a conversation, 0 for none, known from the Session's commits when it
+// can be (transaction.ts latestEntryId).
+func (tx *Tx) LatestEntryID(conversationID ID) (ID, error) {
+	if err := tx.read("latestEntryId"); err != nil {
+		return 0, err
+	}
+	id, ticks, err := tx.s.LatestEntryID(conversationID)
+	if err != nil {
+		return 0, err
+	}
+	tx.charge(ticks)
+	return id, nil
 }
 
 // ScanTasks scans committed tasks.
@@ -299,7 +352,7 @@ func (tx *Tx) Submission(id ID) (*jv.Object, error) {
 	if err := tx.read("submission"); err != nil {
 		return nil, err
 	}
-	tx.readTicks(hopcost.ReadRow)
+	tx.charge(hopcost.TxSubmission(tx.s.hop, tx.s.hasSubmission(id)))
 	return tx.s.store.Submission(id)
 }
 
@@ -312,12 +365,16 @@ func (tx *Tx) SubmissionByRequest(conversationID ID, requestID string) (*jv.Obje
 	return tx.s.store.SubmissionByRequest(conversationID, requestID)
 }
 
-// taskTicksState is whether the task is staged in this transaction, and whether its committed read is cached.
-func (tx *Tx) taskTicksState(id ID) (staged, cached bool) {
+// taskTicksState is whether the task is staged in this transaction, whether its committed read is cached, and whether the Session's cache
+// answers that read (hopcost.CurrentTask).
+func (tx *Tx) taskTicksState(id ID) (staged, cached bool, hit hopcost.Cache) {
 	if t := tx.tasks[id]; t != nil {
-		return t.write != nil, t.hasCommitted
+		staged, cached = t.write != nil, t.hasCommitted
 	}
-	return false, false
+	if !staged && !cached {
+		hit = tx.s.hasTask(id)
+	}
+	return staged, cached, hit
 }
 
 func (tx *Tx) taskEntry(id ID) *txTask {
@@ -337,9 +394,13 @@ func (tx *Tx) taskEntry(id ID) *txTask {
 func (tx *Tx) committedTask(id ID) (*jv.Object, error) {
 	t := tx.taskEntry(id)
 	if !t.hasCommitted {
+		hit := tx.s.hasTask(id)
 		rec, err := tx.s.store.Task(id)
 		if err != nil {
 			return nil, err
+		}
+		if rec != nil && hit == hopcost.CacheMiss {
+			tx.s.keepTask(rec)
 		}
 		t.committed, t.hasCommitted = rec, true
 	}
@@ -360,12 +421,17 @@ func (tx *Tx) requireConversation(id ID) error {
 	if tx.createdConvs[id] {
 		return nil
 	}
+	hit := tx.s.hasConversation(id)
+	tx.convHit = hit
 	rec, err := tx.s.store.Conversation(id)
 	if err != nil {
 		return err
 	}
 	if rec == nil {
 		return errorf("Conversation %d does not exist", id)
+	}
+	if hit == hopcost.CacheMiss {
+		tx.s.keepConversation(id)
 	}
 	return nil
 }
@@ -398,7 +464,7 @@ func (tx *Tx) ForkConversation(parent, at ID, own Ownership) (*jv.Object, error)
 type forkParent struct{ conversationID, at ID }
 
 func (tx *Tx) stageConversation(parent *forkParent, own Ownership, reserved ID) (*jv.Object, error) {
-	ownerStaged, ownerCached := tx.taskTicksState(own.Task)
+	ownerStaged, ownerCached, ownerHit := tx.taskTicksState(own.Task)
 	before := tx.ticks
 	defer func() {
 		// The conversationCreated hook's own awaits were charged as they ran; Pi's Session default is Promise.resolve() (1).
@@ -408,11 +474,11 @@ func (tx *Tx) stageConversation(parent *forkParent, own Ownership, reserved ID) 
 		} else {
 			hook++ // the async hook's return
 		}
-		tx.ticks = before + hopcost.TxCreateConversation(tx.s.hop, own.Task != 0, ownerStaged, ownerCached, hook)
+		tx.ticks = before + hopcost.TxCreateConversation(tx.s.hop, own.Task != 0, ownerStaged, ownerCached, ownerHit, hook)
 	}()
 	id := reserved
 	if id == 0 {
-		id = tx.mint()
+		id = tx.mint(tx.ticks, hopcost.TxCreateConversationMint(tx.s.hop))
 	}
 	var owner *jv.Object
 	if own.Task != 0 {
@@ -479,11 +545,12 @@ func (tx *Tx) AppendEntry(conversationID ID, draft *jv.Object) (*jv.Object, erro
 	if err := tx.write(); err != nil {
 		return nil, err
 	}
-	tx.charge(hopcost.TxAppendEntry(tx.s.hop, tx.createdConvs[conversationID]))
+	from, mintAfter := tx.ticks, hopcost.TxAppendEntryMint(tx.s.hop, tx.createdConvs[conversationID], tx.s.hasConversation(conversationID))
+	tx.charge(hopcost.TxAppendEntry(tx.s.hop, tx.createdConvs[conversationID], tx.s.hasConversation(conversationID)))
 	if err := tx.requireConversation(conversationID); err != nil {
 		return nil, err
 	}
-	id := tx.mint()
+	id := tx.mint(from, mintAfter)
 	rest := without(draft, "head")
 	record := rest.Shallow()
 	record.Set("id", idv(id))
@@ -513,7 +580,7 @@ func (tx *Tx) CreateTask(def *TaskDef, input any, opts TaskOptions) (ID, error) 
 			return 0, err
 		}
 	}
-	ownerStaged, ownerCached := tx.taskTicksState(opts.OwnerTask)
+	ownerStaged, ownerCached, ownerHit := tx.taskTicksState(opts.OwnerTask)
 	defer func() {
 		conv := opts.ConversationID
 		if conv == 0 {
@@ -526,7 +593,7 @@ func (tx *Tx) CreateTask(def *TaskDef, input any, opts TaskOptions) (ID, error) 
 				conv = mustInt(t.committed, "conversationId")
 			}
 		}
-		tx.charge(hopcost.TxCreateTask(tx.s.hop, opts.OwnerTask != 0, ownerStaged, ownerCached, tx.createdConvs[conv]))
+		tx.charge(hopcost.TxCreateTask(tx.s.hop, opts.OwnerTask != 0, ownerStaged, ownerCached, ownerHit, tx.createdConvs[conv], tx.convHit))
 	}()
 	var owner *jv.Object
 	if opts.OwnerTask != 0 {
@@ -558,7 +625,7 @@ func (tx *Tx) CreateTask(def *TaskDef, input any, opts TaskOptions) (ID, error) 
 		return 0, err
 	}
 	checkpoint := def.Initial(input)
-	id := tx.mint()
+	id := tx.mint(tx.ticks, hopcost.TxCreateTaskMint(tx.s.hop, opts.OwnerTask != 0, ownerStaged, ownerCached, ownerHit, tx.createdConvs[conv], tx.convHit))
 	if opts.Owned {
 		checkpoint = shared(&tx.s.lastCheckpoint, checkpoint)
 	} else {
@@ -597,7 +664,7 @@ func (tx *Tx) traceOfRun(submissions []ID) (trace any, noTrace bool, links []any
 	for i, id := range submissions {
 		rec := tx.submissions[id]
 		if rec == nil {
-			tx.readTicks(hopcost.ReadRow)
+			tx.charge(hopcost.TxSubmission(tx.s.hop, tx.s.hasSubmission(id)))
 			if rec, err = tx.s.store.Submission(id); err != nil {
 				return nil, false, nil, err
 			}
@@ -623,11 +690,12 @@ func (tx *Tx) CreateSubmission(create *jv.Object) (*jv.Object, error) {
 	if err := tx.write(); err != nil {
 		return nil, err
 	}
-	tx.charge(hopcost.TxCreateSubmission(tx.s.hop, tx.createdConvs[mustInt(create, "conversationId")]))
+	from, mintAfter := tx.ticks, hopcost.TxCreateSubmissionMint(tx.s.hop, tx.createdConvs[mustInt(create, "conversationId")], tx.s.hasConversation(mustInt(create, "conversationId")))
+	tx.charge(hopcost.TxCreateSubmission(tx.s.hop, tx.createdConvs[mustInt(create, "conversationId")], tx.s.hasConversation(mustInt(create, "conversationId"))))
 	if err := tx.requireConversation(mustInt(create, "conversationId")); err != nil {
 		return nil, err
 	}
-	id := tx.mint()
+	id := tx.mint(from, mintAfter)
 	rec := jv.Clone(create).(*jv.Object)
 	rec.Set("id", idv(id))
 	tx.setSubmission(id, rec)

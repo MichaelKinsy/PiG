@@ -11,31 +11,12 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/session/sessiontest"
 )
 
-// gateOnRunning makes the reservation commit of one task wait for the host's Storage once: the line job returns a *NeedGate and
-// runs again from its start after the answer (handler.gateCommit).
-type gateOnRunning struct {
-	*sessiontest.MemStore
-	asked bool
-}
-
-func (g *gateOnRunning) Commit(writes []session.Write, nextID session.ID) (session.Seq, error) {
-	for _, w := range writes {
-		if w.Kind == session.WriteTask && !g.asked && taskStatusOf(w.Record) == session.StatusRunning {
-			g.asked = true
-			return 0, &session.NeedGate{}
-		}
-	}
-	return g.MemStore.Commit(writes, nextID)
-}
-
 // Ports packages/durable/test/harness-tasks.test.ts "joins a reservation that settles while closing without starting its handler".
-// The reservation pass decides once, at its start, as Pi's callback does: a Seal that arrives while the host's Storage holds the
-// commit does not make the job's second run stage nothing, so the reservation lands, no handler starts, and close writes the task
-// back as pending.
-func TestAGatedReservationCommitLandsWhenCloseSealsWhileTheStorageHoldsIt(t *testing.T) {
+// The reservation pass decides once, at its start, as Pi's callback does: a Seal that arrives while the Storage holds the commit (the
+// writer's call is in flight) does not undo the job, so the reservation lands, no handler starts, and close writes the task back as pending.
+func TestAReservationCommitLandsWhenCloseSealsWhileTheStorageHoldsIt(t *testing.T) {
 	mem := sessiontest.New()
-	gated := &gateOnRunning{MemStore: mem}
-	s := newSession(gated, mem.NextID())
+	s := newSession(mem, mem.NextID())
 	def := &session.TaskDef{Name: "t.never", Version: 1, Initial: func(any) any { return jv.NewObject() }}
 	var id session.ID
 	if _, err := s.Commit(func(tx *session.Tx) error {
@@ -50,8 +31,22 @@ func TestAGatedReservationCommitLandsWhenCloseSealsWhileTheStorageHoldsIt(t *tes
 	}
 	ran := false
 	registry := snap{"t.never": {Def: *def, Phase: func(*session.Runtime, *jv.Object, func(error)) { ran = true }}}
-	loop := &session.Loop{}
-	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return 1 }})
+	loop := bound(s)
+	var sched *session.Scheduler
+	calls := 0
+	sealed := false
+	loop.StoreTicks = func(batches [][]session.Write) (int, int, int) {
+		calls++
+		for _, w := range batches[0] {
+			if w.Kind == session.WriteTask && taskStatusOf(w.Record) == session.StatusRunning && !sealed {
+				// The reservation commit is in flight: close begins.
+				sealed = true
+				sched.Seal()
+			}
+		}
+		return 0, 0, 4
+	}
+	sched = session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return 1 }})
 	sched.Open(func(err error) {
 		if err != nil {
 			t.Error(err)
@@ -61,13 +56,8 @@ func TestAGatedReservationCommitLandsWhenCloseSealsWhileTheStorageHoldsIt(t *tes
 	if err := loop.Run(); err != nil {
 		t.Fatal(err)
 	}
-	if !gated.asked || !loop.Busy() {
-		t.Fatalf("the reservation commit did not wait for the Storage (asked %v, busy %v)", gated.asked, loop.Busy())
-	}
-	sched.Seal()
-	loop.Ungate()
-	if err := loop.Run(); err != nil {
-		t.Fatal(err)
+	if !sealed {
+		t.Fatalf("the reservation commit was never in flight (%d Storage calls)", calls)
 	}
 	rec, err := mem.Task(id)
 	if err != nil {

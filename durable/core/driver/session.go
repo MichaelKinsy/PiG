@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"maps"
 	"math"
+	"reflect"
 	"slices"
 	"sync"
 	"time"
@@ -64,27 +65,34 @@ type SessionConfig struct {
 // core, and every public call below is a request on a channel of the ABI (event, api request, transaction) or a read of Pi's
 // own tables on the owner's connection (CONTRACT section 3.10).
 type coreSession struct {
-	cfg      SessionConfig
-	host     *sqlhost.Host
-	client   *Client
-	table    *handlerTable
-	settings durable.Settings
-	envs     *Envs
-	tasks    *taskRuntimes
-	timers   durable.Timers
-	unsub    func()
-	watches  *watchHub
-	commits  commitListeners
+	cfg    SessionConfig
+	host   *sqlhost.Host
+	client *Client
+	table  *handlerTable
+	// settingsMu guards the settings last encoded for the host: settingsText compares the resolved settings with them.
+	settingsMu   sync.Mutex
+	sentSettings durable.Settings
+	sentNames    []string
+	sentText     []byte
+	settings     durable.Settings
+	envs         *Envs
+	tasks        *taskRuntimes
+	timers       durable.Timers
+	unsub        func()
+	watches      *watchHub
+	commits      commitListeners
 
-	mu          sync.Mutex
-	resumed     bool
-	closed      bool
-	admitted    int           // calls admitted before Close began that have not returned (session.ts #tail)
-	drained     chan struct{} // closed when Close began and the last admitted call returned
-	ended       chan struct{} // closed once the Session ended, with end set
-	end         durable.SessionEnd
-	instruction map[string]*durable.PromptSection
-	callbacks   map[string]Callback
+	mu sync.Mutex
+	// documentValues are the values of the documents the core published, which it leaves out of a change when the host holds them (commits.go).
+	documentValues map[durable.DocumentId]durable.JsonObject
+	resumed        bool
+	closed         bool
+	admitted       int           // calls admitted before Close began that have not returned (session.ts #tail)
+	drained        chan struct{} // closed when Close began and the last admitted call returned
+	ended          chan struct{} // closed once the Session ended, with end set
+	end            durable.SessionEnd
+	instruction    map[string]*durable.PromptSection
+	callbacks      map[string]Callback
 	// wakes are the wake notices waiting for OnWake, lastWake the last value it took; wakeRunning is set while deliverWakes runs.
 	wakes       []harness.Wake
 	lastWake    *harness.Wake
@@ -183,8 +191,7 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 				}
 			}()
 			//portlint:allow mapkeyorder driver-to-core wire (durable/core/host/PROTOCOL.md): the core reads the settings members by name, as open's
-			text, _ = json.Marshal(s.settingsJSON())
-			return text
+			return s.settingsText()
 		},
 		OnCancel: func(id uint32) {
 			if s.tasks != nil {
@@ -234,16 +241,42 @@ func (s *coreSession) resolveSettings() durable.Settings {
 	return harness.ResolveSettings(s.cfg.Harness.Settings())
 }
 
+// settingsText is the settings the host compares before every event: the resolved settings as JSON, encoded again only when
+// they differ from the ones last encoded, so an event that finds them unchanged costs a comparison, not a marshal.
+func (s *coreSession) settingsText() []byte {
+	st := s.resolveSettings()
+	names := extensionNames(st)
+	st.Extensions = nil
+	s.settingsMu.Lock()
+	defer s.settingsMu.Unlock()
+	if s.sentText != nil && slices.Equal(names, s.sentNames) && reflect.DeepEqual(st, s.sentSettings) {
+		return s.sentText
+	}
+	//portlint:allow mapkeyorder driver-to-core wire (durable/core/host/PROTOCOL.md): the core reads the settings members by name, as open's
+	text, _ := json.Marshal(settingsMap(st, names))
+	s.sentText, s.sentNames, s.sentSettings = text, names, st
+	return text
+}
+
+// extensionNames is the names of the settings' extensions, nil when the settings name none (every installed extension).
+func extensionNames(st durable.Settings) []string {
+	if st.Extensions == nil {
+		return nil
+	}
+	names := make([]string, 0, len(st.Extensions))
+	for _, e := range st.Extensions {
+		names = append(names, e.Name)
+	}
+	return names
+}
+
 // settingsJSON is the resolved settings as data: extensions are names (PROTOCOL.md, open).
 func (s *coreSession) settingsJSON() map[string]any {
 	st := s.resolveSettings()
-	names := []string(nil)
-	if st.Extensions != nil {
-		names = make([]string, 0, len(st.Extensions))
-		for _, e := range st.Extensions {
-			names = append(names, e.Name)
-		}
-	}
+	return settingsMap(st, extensionNames(st))
+}
+
+func settingsMap(st durable.Settings, names []string) map[string]any {
 	out := map[string]any{
 		"stream": st.Stream, "retry": st.Retry, "compaction": st.Compaction, "progress": st.Progress,
 		"toolExecution": st.ToolExecution, "steeringMode": st.SteeringMode, "followUpMode": st.FollowUpMode,

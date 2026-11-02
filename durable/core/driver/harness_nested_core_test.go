@@ -23,25 +23,25 @@ import (
 
 // nestedCoreHarness opens a native Harness over the core whose registry holds the given tools and whose model calls batch
 // once, then answers.
-func nestedCoreHarness(t *testing.T, tools ...*durable.ToolRegistration) (harness.Harness, harness.Conversation, durable.Submission) {
+func nestedCoreHarness(t testing.TB, tools ...*durable.ToolRegistration) (harness.Harness, harness.Conversation, durable.Submission) {
 	t.Helper()
 	return nestedCoreHarnessWith(t, &durable.Extension{Name: "nested", Tools: tools})
 }
 
 // nestedCoreHarnessWith is nestedCoreHarness over an extension that may also hold hooks.
-func nestedCoreHarnessWith(t *testing.T, extension *durable.Extension, onReport ...func(durable.Report)) (harness.Harness, harness.Conversation, durable.Submission) {
+func nestedCoreHarnessWith(t testing.TB, extension *durable.Extension, onReport ...func(durable.Report)) (harness.Harness, harness.Conversation, durable.Submission) {
 	t.Helper()
 	h, root, submit := nestedCoreOpen(t, extension, onReport...)
 	return h, root, submit()
 }
 
 // nestedCoreHarnessPaused is nestedCoreHarness that submits when told, so a test can watch events first.
-func nestedCoreHarnessPaused(t *testing.T, tools ...*durable.ToolRegistration) (harness.Harness, harness.Conversation, func() durable.Submission) {
+func nestedCoreHarnessPaused(t testing.TB, tools ...*durable.ToolRegistration) (harness.Harness, harness.Conversation, func() durable.Submission) {
 	t.Helper()
 	return nestedCoreOpen(t, &durable.Extension{Name: "nested", Tools: tools})
 }
 
-func nestedCoreOpen(t *testing.T, extension *durable.Extension, onReport ...func(durable.Report)) (harness.Harness, harness.Conversation, func() durable.Submission) {
+func nestedCoreOpen(t testing.TB, extension *durable.Extension, onReport ...func(durable.Report)) (harness.Harness, harness.Conversation, func() durable.Submission) {
 	t.Helper()
 	faux := ai.NewFauxProvider(ai.FauxConfig{})
 	models := ai.CreateModels()

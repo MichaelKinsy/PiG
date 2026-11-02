@@ -31,11 +31,11 @@ func TestHostDocContinuesFromTheCoresOwnEdits(t *testing.T) {
 		if err := draft.Set("core", "edit"); err != nil {
 			return err
 		}
-		value, _, _, err := tx.HostDoc(def, args)
+		host, err := tx.HostDoc(def, args, session.DocRevision{}, false)
 		if err != nil {
 			return err
 		}
-		seen = jv.Stringify(value)
+		seen = jv.Stringify(host.Value)
 		return tx.SetDocOps(def, args, -1, []delta.Op{{Verb: delta.Set, Path: delta.Path{delta.Key("host")}, Value: "write"}})
 	}, session.TxScope{})
 	if err != nil {
@@ -119,7 +119,7 @@ func TestHostDocWritesNameTheirIncarnation(t *testing.T) {
 		t.Fatal(err)
 	}
 	pub, err := s.Commit(func(tx *session.Tx) error {
-		if _, _, _, err := tx.HostDoc(def, args); err != nil {
+		if _, err := tx.HostDoc(def, args, session.DocRevision{}, false); err != nil {
 			return err
 		}
 		old := tx.DocEntry(def, args)
@@ -128,7 +128,7 @@ func TestHostDocWritesNameTheirIncarnation(t *testing.T) {
 		}
 		fresh := *def
 		fresh.HostInitial = func(any) (*jv.Object, error) { return jv.NewObject(), nil }
-		if _, _, _, err := tx.HostDoc(&fresh, args); err != nil {
+		if _, err := tx.HostDoc(&fresh, args, session.DocRevision{}, false); err != nil {
 			return err
 		}
 		replacement := tx.DocEntry(&fresh, args)
@@ -186,7 +186,7 @@ func TestLoadedIsFalseForADocumentTheRunningJobLoaded(t *testing.T) {
 	if err := s.UnloadDocuments(); err != nil {
 		t.Fatal(err)
 	}
-	loop := &session.Loop{Session: s}
+	loop := bound(s)
 	var during, after bool
 	loop.Line(func() error {
 		_, err := s.Snapshot(def, args)

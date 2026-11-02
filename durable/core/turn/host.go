@@ -148,10 +148,12 @@ type CompleteRequest struct {
 	Context, Options *jv.Object
 }
 
-// KeptRange is the head marker entry (0: none) and newest entry of a kept context range; Ok is false when none is kept.
+// KeptRange is the bounds of a kept context range: the head marker entry (0: none), the entry its context starts from (0: the
+// first), the newest entry, and whether the range is kept current as commits append (session.ContextRange); Ok is false when none
+// is kept.
 type KeptRange struct {
-	Head, Tail ID
-	Ok         bool
+	Head, From, Tail ID
+	Current, Ok      bool
 }
 
 // Host is what the built-in tasks need of the surrounding Harness: the clock, settings, agent and model resolution,
@@ -219,6 +221,9 @@ type Host struct {
 	SnapshotLoaded func(def *session.DocDef, conversation ID) bool
 	// Entry reads one committed entry record, or nil.
 	Entry func(id ID) (*jv.Object, error)
+	// KeptEntry is the entry of the conversation that its kept context range holds, which is committed and visible from the
+	// conversation: runtime.entry answers it from the range, without a Storage read or a line job. nil when the range does not hold it.
+	KeptEntry func(conversation, id ID) *jv.Object
 	// AddTools adds tools to the agent's loadout in this commit (agent.ts addTools), for a tool result's addTools control.
 	AddTools func(tx *session.Tx, conversation ID, added []any) error
 	// After arms a volatile timer; the returned function cancels it.

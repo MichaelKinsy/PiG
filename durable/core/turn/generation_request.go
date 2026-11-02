@@ -23,71 +23,100 @@ func (r *run) request(cp *jv.Object) {
 		r.interrupted(cp)
 		return
 	}
-	h := r.g.Host
-	attempt := num(cp, "attempt")
-	compacted := idField(cp, "compacted")
-	ref := modelRefOf(objField(cp, "model"))
-	thinking := str(cp, "thinkingLevel")
-	cutoff := idField(cp, "cutoff")
-	r.commit(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
-		live, err := tx.Doc(LiveDef, session.DocArgs{Owner: r.conv})
-		if err != nil {
-			return nil, err
+	q := &requestRun{r: r, cp: cp, attempt: num(cp, "attempt"), compacted: idField(cp, "compacted"), ref: modelRefOf(objField(cp, "model")),
+		thinking: str(cp, "thinkingLevel"), cutoff: idField(cp, "cutoff")}
+	// The attempt shown is presentation, stored like progress; converting a partial left by an interrupted attempt appends an entry,
+	// which makes the commit immediate.
+	r.commitProgress(q.showAttempt, q.shown)
+}
+
+// requestRun is one request phase.
+type requestRun struct {
+	r         *run
+	cp        *jv.Object
+	attempt   float64
+	compacted ID
+	ref       ModelRef
+	thinking  string
+	cutoff    ID
+	view      RequestContext
+	// The hooks see every message; they are parsed only when a handler is registered, and each handler sees the messages as the
+	// one before replaced them.
+	replaced []*jv.Object
+	messages []*jv.Object
+	parsed   bool
+}
+
+func (q *requestRun) showAttempt(tx *session.Tx) error {
+	live, err := tx.Doc(LiveDef, session.DocArgs{Owner: q.r.conv})
+	if err != nil {
+		return err
+	}
+	if err := convertPartial(tx, live, q.r.conv); err != nil {
+		return err
+	}
+	return live.Set("generation", jobj("attempt", q.attempt))
+}
+
+func (q *requestRun) shown() {
+	if _, ok := q.r.g.Host.ContextWindow(q.ref); !ok {
+		q.r.failNoModel(&q.ref)
+		return
+	}
+	q.r.requestContext(q.cutoff, q.context)
+}
+
+func (q *requestRun) context(view RequestContext) {
+	q.view = view
+	q.r.eachHook("beforeRequest", q.payload, q.hookResult, q.hooked)
+}
+
+func (q *requestRun) payload() *jv.Object {
+	if !q.parsed {
+		q.messages, q.parsed = q.view.Messages(), true
+	}
+	return jobj("messages", toAny(q.messages))
+}
+
+func (q *requestRun) hookResult(result any) bool {
+	if o, ok := result.(*jv.Object); ok {
+		if list, ok := arrayField(o, "messages"); ok {
+			q.replaced = objectsOf(list)
+			q.messages = q.replaced
 		}
-		if err := convertPartial(tx, live, r.conv); err != nil {
-			return nil, err
-		}
-		return nil, live.Set("generation", jobj("attempt", attempt))
-	}, func() {
-		if _, ok := h.ContextWindow(ref); !ok {
-			r.failNoModel(&ref)
-			return
-		}
-		r.requestContext(cutoff, func(view RequestContext) {
-			var replaced []*jv.Object
-			// The hooks see every message; they are parsed only when a handler is registered, and each handler sees the messages as the one before replaced them.
-			var messages []*jv.Object
-			parsed := false
-			r.eachHook("beforeRequest", func() *jv.Object {
-				if !parsed {
-					messages, parsed = view.Messages(), true
-				}
-				return jobj("messages", toAny(messages))
-			}, func(result any) bool {
-				if o, ok := result.(*jv.Object); ok {
-					if list, ok := arrayField(o, "messages"); ok {
-						replaced = objectsOf(list)
-						messages = replaced
-					}
-				}
-				return false
-			}, func(err error) {
-				if err != nil {
-					r.fail(err)
-					return
-				}
-				r.provider(func(sessionID string, err error) {
-					if err != nil {
-						r.fail(err)
-						return
-					}
-					options := streamOrEmpty(objField(cp, "streamOptions"))
-					options.Set("sessionId", sessionID)
-					if thinking != "off" {
-						options.Set("reasoning", thinking)
-					}
-					req := &StreamRequest{Conversation: r.conv, Model: ref, Context: view, Replaced: replaced, Options: options}
-					r.streamResponse(req, attempt, func(message *jv.Object, err error) {
-						if err != nil {
-							r.fail(err)
-							return
-						}
-						r.classify(requestInfo{attempt: attempt, compacted: compacted, model: ref, thinking: thinkingOf(cp), cutoff: cutoff, messages: view.SystemMessages()}, message)
-					})
-				})
-			})
-		})
-	})
+	}
+	return false
+}
+
+func (q *requestRun) hooked(err error) {
+	if err != nil {
+		q.r.fail(err)
+		return
+	}
+	q.r.provider(q.provided)
+}
+
+func (q *requestRun) provided(sessionID string, err error) {
+	r := q.r
+	if err != nil {
+		r.fail(err)
+		return
+	}
+	options := streamOrEmpty(objField(q.cp, "streamOptions"))
+	options.Set("sessionId", sessionID)
+	if q.thinking != "off" {
+		options.Set("reasoning", q.thinking)
+	}
+	req := &StreamRequest{Conversation: r.conv, Model: q.ref, Context: q.view, Replaced: q.replaced, Options: options}
+	r.streamResponse(req, q.attempt, q.streamed)
+}
+
+func (q *requestRun) streamed(message *jv.Object, err error) {
+	if err != nil {
+		q.r.fail(err)
+		return
+	}
+	q.r.classify(requestInfo{attempt: q.attempt, compacted: q.compacted, model: q.ref, thinking: thinkingOf(q.cp), cutoff: q.cutoff, messages: q.view.SystemMessages()}, message)
 }
 
 func toAny(list []*jv.Object) []any {
@@ -112,16 +141,21 @@ func objectsOf(list []any) []*jv.Object {
 // passing each result to handle; handle returns true to stop early. A handler that throws is reported and the next one
 // runs, unless the invocation was aborted, which ends the walk with that error. then runs after the last handler.
 func (r *run) eachHook(name string, payload func() *jv.Object, handle func(result any) (stop bool), then func(error)) {
-	r.eachHookRaw(name, payload, func(result any, err error) (bool, error) {
-		if err != nil {
-			if r.rt.Signal().Aborted() || errors.Is(err, session.ErrAborted) {
-				return true, err
-			}
-			_ = r.rt.Report(err, session.ReportFrom{Extension: r.hookExtension(name)})
-			return false, nil
-		}
-		return handle(result), nil
-	}, then)
+	r.walkHooks(&hookWalk{name: name, payload: payload, each: handle, then: then})
+}
+
+// hookWalk is one walk of the handlers of a hook (eachHook, eachHookRaw): either each or handle is set.
+type hookWalk struct {
+	name    string
+	payload func() *jv.Object
+	each    func(result any) (stop bool)
+	handle  func(result any, err error) (stop bool, fail error)
+	then    func(error)
+	r       *run
+	n       int
+	i       int
+	stop    bool
+	fail    error
 }
 
 // hookExtension is the extension of the handler eachHookRaw is calling.
@@ -136,52 +170,81 @@ func (r *run) hookExtension(name string) string {
 // what a throw means (beforeTool blocks the call). handle returns whether to stop the walk and the error then ends
 // with (nil: the walk ended normally).
 func (r *run) eachHookRaw(name string, payload func() *jv.Object, handle func(result any, err error) (stop bool, fail error), then func(error)) {
+	r.walkHooks(&hookWalk{name: name, payload: payload, handle: handle, then: then})
+}
+
+func (r *run) walkHooks(w *hookWalk) {
 	h := r.g.Host
-	n := 0
-	// hooks.each is an async function: its caller's `await` resumes one tick after it returns, or after it throws.
-	end := func(err error) { r.hops(1, func() { then(err) }) }
-	// The caller's invoke callback is an async arrow that awaits the handler (the host's answer) and settles a tick before
-	// hooks.each's `await invoke(...)` resumes; a plain callback hands back the handler's promise itself.
-	settles := asyncInvoke(name)
-	var next func(i int)
-	next = func(i int) {
-		if i >= n {
-			end(nil)
-			return
-		}
-		r.hookIndex = i
-		h.Hook(name, i, r.conv, r.rt.TaskID(), payload(), func(result any, err error) {
-			stop, fail := handle(result, err)
-			cont := func() {
-				if stop {
-					end(fail)
-					return
-				}
-				next(i + 1)
-			}
-			if settles {
-				r.hops(invokeSettleHops, cont)
-				return
-			}
-			cont()
-		})
-	}
+	w.r = r
 	if h.Hooks == nil {
-		n = 0
-		then(nil)
+		w.then(nil)
 		return
 	}
-	if r.agentSeen && h.Hooks(name, r.conv) == 0 {
+	if r.agentSeen && h.Hooks(w.name, r.conv) == 0 {
 		// hooks.each walks the handlers of the phase's resolved agent (scheduler.ts :1973 agentHooks(await agent())), which does not
 		// change once resolved: with none the walk is `await agent()` of a settled resolution (one tick) and the caller's await of
 		// the async function (one tick), nothing between them to run, so one chain carries both.
-		r.hops(eachHookNoHandlerHops, func() { then(nil) })
+		r.hops(eachHookNoHandlerHops, w.thenNil)
 		return
 	}
-	r.withAgent(func() {
-		n = h.Hooks(name, r.conv)
-		next(0)
-	})
+	r.withAgent(w.start)
+}
+
+func (w *hookWalk) thenNil() { w.then(nil) }
+
+func (w *hookWalk) start() {
+	w.n = w.r.g.Host.Hooks(w.name, w.r.conv)
+	w.next(0)
+}
+
+// end: hooks.each is an async function: its caller's `await` resumes one tick after it returns, or after it throws.
+func (w *hookWalk) end(err error) {
+	w.fail = err
+	w.r.hops(1, w.thenFail)
+}
+
+func (w *hookWalk) thenFail() { w.then(w.fail) }
+
+func (w *hookWalk) next(i int) {
+	r := w.r
+	if i >= w.n {
+		w.end(nil)
+		return
+	}
+	w.i = i
+	r.hookIndex = i
+	r.g.Host.Hook(w.name, i, r.conv, r.rt.TaskID(), w.payload(), w.answer)
+}
+
+func (w *hookWalk) answer(result any, err error) {
+	r := w.r
+	if w.handle != nil {
+		w.stop, w.fail = w.handle(result, err)
+	} else if err != nil {
+		if r.rt.Signal().Aborted() || errors.Is(err, session.ErrAborted) {
+			w.stop, w.fail = true, err
+		} else {
+			_ = r.rt.Report(err, session.ReportFrom{Extension: r.hookExtension(w.name)})
+			w.stop, w.fail = false, nil
+		}
+	} else {
+		w.stop, w.fail = w.each(result), nil
+	}
+	// The caller's invoke callback is an async arrow that awaits the handler (the host's answer) and settles a tick before
+	// hooks.each's `await invoke(...)` resumes; a plain callback hands back the handler's promise itself.
+	if asyncInvoke(w.name) {
+		r.hops(invokeSettleHops, w.cont)
+		return
+	}
+	w.cont()
+}
+
+func (w *hookWalk) cont() {
+	if w.stop {
+		w.end(w.fail)
+		return
+	}
+	w.next(w.i + 1)
 }
 
 // invokeSettleHops is the hop between an async invoke callback's settlement and hooks.each resuming from `await invoke(...)`.

@@ -178,6 +178,19 @@ func (r *run) commit(change func(tx *session.Tx, current *jv.Object) (*jv.Object
 	})
 }
 
+// commitProgress runs change in a task commit stored like progress (PROGRESS_COMMIT): a commit that changes only documents is held
+// in memory and stored with the next commit, and one that appends an entry is stored at once. change stages writes and leaves the
+// task as it is.
+func (r *run) commitProgress(change func(tx *session.Tx) error, then func()) {
+	r.rt.CommitDeferred(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) { return nil, change(tx) }, func(err error) {
+		if err != nil {
+			r.fail(err)
+			return
+		}
+		then()
+	})
+}
+
 func (r *run) commitDone(change func(tx *session.Tx, current *jv.Object) (*jv.Object, error)) {
 	r.commit(change, func() { r.done(nil) })
 }
@@ -519,12 +532,11 @@ func (r *run) prepareRequest(agent *Agent, settings Settings, window, attempt fl
 				return
 			}
 			r.commitDone(func(tx *session.Tx, _ *jv.Object) (*jv.Object, error) {
-				page, err := tx.ScanEntries(session.EntryQuery{ConversationID: r.conv}, 1, 0)
+				// The context ends in a message the model answers, so the conversation has an entry.
+				cutoff, err := tx.LatestEntryID(r.conv)
 				if err != nil {
 					return nil, err
 				}
-				// The context ends in a message the model answers, so the conversation has an entry.
-				cutoff := idField(page.Items[0], "id")
 				for _, e := range entries {
 					rec, err := tx.AppendEntry(r.conv, entryDraft(KindSystem, e))
 					if err != nil {

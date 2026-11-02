@@ -23,7 +23,9 @@ type hopClock struct {
 	now      int
 	seen     map[uint32]bool
 	due      []hopDue
-	commitAt int // the tick the first commit statements were applied (in a step, or by a chain), or -1
+	macros   []uint32 // the macrotasks (effect 15) queued and not yet run, in queue order
+	ran      int      // the macrotasks run so far
+	commitAt int      // the tick the first commit statements were applied (in a step, or by a chain), or -1
 }
 
 type hopDue struct {
@@ -51,6 +53,10 @@ func (c *hopClock) collect() {
 			}
 			c.due = append(c.due, hopDue{at: c.now + int(chain.N), id: e.ID})
 		}
+		if e.Kind == abi.EffectMacrotask && !c.seen[e.ID] {
+			c.seen[e.ID] = true
+			c.macros = append(c.macros, e.ID)
+		}
 	}
 }
 
@@ -67,7 +73,17 @@ func (c *hopClock) run(t *testing.T) {
 		}
 		c.collect()
 		if len(c.due) == 0 {
-			return
+			if len(c.macros) == 0 {
+				return
+			}
+			// A macrotask runs once the microtask queue, every hops chain included, drained.
+			id := c.macros[0]
+			c.macros = c.macros[1:]
+			c.ran++
+			if err := c.h.onHopped(&abi.Event{Kind: abi.EventHopped, ID: id}); err != nil {
+				t.Fatal(err)
+			}
+			continue
 		}
 		next := 0
 		for i, d := range c.due {
@@ -154,66 +170,67 @@ func TestContextReturnHopsOfAKeptAndAScannedRange(t *testing.T) {
 	}
 }
 
-// A commit job publishes its commit when Storage adopts it (session.ts #runCommit publishes inside `adopt`), hopcost.AdoptTail
-// hops before #runCommit resumes from Storage.commit and two more before the job's run resolves (session.ts :446-449, :531):
-// commit listeners and publication waiters see it there, while the job's caller resumes at the job's end and the statements
-// land at Pi's COMMIT, seven hops before it (capsql direct: the adapter resumes its caller three hops after the COMMIT, the
-// Session's guard adds two, the job's return two; Pi 1.2.0, F-ticks-tools-gate), so the adoption comes two hops after the COMMIT.
-func TestCommitJobPublishesAtAdoptionBeforeItEnds(t *testing.T) {
+// lineRig is a handler whose Session line runs the Loop of startLine over an in-memory store, with the host clock of hopClock.
+func lineRig(t *testing.T, profile string) (*handler, *hopClock) {
+	t.Helper()
 	mem := sessiontest.New()
-	s := session.New(mem, mem.NextID(), func() float64 { return 0 })
-	h := &handler{b: abi.NewBuilder(), sess: s, open: parsed(t, `{"storageProfile":"gate-capsql"}`)}
-	h.loop = &session.Loop{Session: s, Hold: h.holdJob}
-	c := newHopClock(h)
-	published, done := -1, -1
-	s.SubscribeCommits(func(*session.Publication) { published = c.now })
-	def := &session.DocDef{Kind: "t.note", Version: 1, Scope: session.ScopeSession, History: session.HistoryLatest,
-		Initial: func(any) *jv.Object { return jv.NewObject() }}
+	h := &handler{b: abi.NewBuilder(), mir: newMirror(), open: parsed(t, `{"storageProfile":"`+profile+`"}`)}
+	h.sess = session.New(mem, mem.NextID(), func() float64 { return 0 })
+	h.startLine()
+	return h, newHopClock(h)
+}
+
+// noteJob queues a commit job that creates one conversation: the jobs touch no common key, so none waits for another's publication.
+func noteJob(h *handler, done func(error)) {
 	h.loop.Line(func() error {
-		_, err := s.RunCommit(func(tx *session.Tx) error {
-			_, err := tx.Doc(def, session.DocArgs{})
+		_, err := h.sess.RunCommit(func(tx *session.Tx) error {
+			_, err := tx.CreateConversation(session.Ownership{})
 			return err
 		}, session.TxScope{})
-		// The statements the handle's Store emitted for the commit, held for Pi's COMMIT hop.
-		h.held = []abi.Commit{{Seq: 1}}
 		return err
-	}, func(error) { done = c.now })
-	c.run(t)
-	if done < 8 || c.commitAt != done-7 {
-		t.Fatalf("the job ended at %d and emitted its statements at %d: want them seven hops before its end", done, c.commitAt)
+	}, done)
+}
+
+// The writer sends the parts admitted while a Storage call is in flight as one call, and publishes the parts of a call a macrotask apart
+// (ABI.md section 5.5): the host delivers what the first publication resolves before the macrotask that publishes the second.
+func TestTwoPartsOfOneCallArePublishedAMacrotaskApart(t *testing.T) {
+	h, c := lineRig(t, "gate-capsql")
+	// A Storage call that outlasts the jobs behind it.
+	h.loop.StoreTicks = func([][]session.Write) (read, receive, resume int) { return 0, 60, 70 }
+	type published struct{ tick, macros int }
+	var pubs []published
+	h.sess.SubscribeCommits(func(*session.Publication) { pubs = append(pubs, published{c.now, c.ran}) })
+	// The first part goes out alone; the next two are admitted while its call is in flight, so they leave together.
+	for range 3 {
+		noteJob(h, func(error) {})
 	}
-	if want := done - 2 - hopcost.AdoptTail(hopcost.GateCapsql); published != want || published != c.commitAt+2 {
-		t.Fatalf("published at %d, the job ended at %d and its statements landed at %d: want %d, two hops after the COMMIT", published, done, c.commitAt, want)
+	c.run(t)
+	if len(pubs) != 3 {
+		t.Fatalf("%d parts published, want 3", len(pubs))
+	}
+	if pubs[2].macros != pubs[1].macros+1 {
+		t.Fatalf("the two parts of one call were published in the same macrotask or %d apart: %+v", pubs[2].macros-pubs[1].macros, pubs)
+	}
+	// The macrotask runs once every microtask queued, chains of other jobs included, drained.
+	if pubs[2].tick < pubs[1].tick {
+		t.Fatalf("published at %d and %d", pubs[1].tick, pubs[2].tick)
 	}
 }
 
-// What a hops chain keeps between steps does not grow with the number of jobs: the arena stays one hopArenaSize buffer, a
-// chain whose statements do not fit it gets a buffer that goes with the step, and no parked chain outlives its job.
+// What a hops chain keeps between steps does not grow with the number of jobs: the arena stays one hopArenaSize buffer and no parked
+// chain outlives its job.
 func TestHopsStateIsFlatAcrossManyCommitJobs(t *testing.T) {
-	mem := sessiontest.New()
-	s := session.New(mem, mem.NextID(), func() float64 { return 0 })
-	h := &handler{b: abi.NewBuilder(), sess: s, open: parsed(t, `{"storageProfile":"gate-capsql"}`)}
-	h.loop = &session.Loop{Session: s, Hold: h.holdJob}
-	c := newHopClock(h)
-	big := make([]byte, 3*hopArenaSize)
+	h, c := lineRig(t, "gate-capsql")
 	arenaCap := -1
 	for i := range 500 {
-		seq := int64(i + 1)
-		params := []abi.Value{abi.Int(seq)}
-		if i%7 == 0 {
-			params = append(params, abi.Blob(big)) // a chain that does not fit the arena
-		}
-		h.loop.Line(func() error {
-			h.held = []abi.Commit{{Seq: seq, Stmts: []abi.Stmt{{SQL: 0, Params: params}}}}
-			return nil
-		}, func(error) {})
+		noteJob(h, func(error) {})
 		c.run(t)
 		h.StepStart()
 		if i == 0 {
 			arenaCap = cap(h.hopArena)
 		}
-		if len(h.hops) != 0 || len(c.due) != 0 {
-			t.Fatalf("job %d left %d parked chains and %d due", i, len(h.hops), len(c.due))
+		if len(h.hops) != 0 || len(c.due) != 0 || len(c.macros) != 0 {
+			t.Fatalf("job %d left %d parked chains, %d due and %d macrotasks", i, len(h.hops), len(c.due), len(c.macros))
 		}
 	}
 	if arenaCap != hopArenaSize || cap(h.hopArena) != hopArenaSize || len(h.hopArena) != 0 {

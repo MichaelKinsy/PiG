@@ -49,6 +49,13 @@ func (h *handler) newTurnHost() *turn.Host {
 			e, _, err := h.mir.Entry(id)
 			return e, err
 		},
+		KeptEntry: func(conv, id turn.ID) *jv.Object {
+			if h.sched == nil || !h.sched.KeptEntry(session.ID(conv), session.ID(id)) {
+				return nil
+			}
+			e, _, _ := h.mir.EntryIn(session.ID(conv), session.ID(id))
+			return e
+		},
 		AddTools: docs.AddTools,
 		PrepareArguments: func(tool string, args *jv.Object, then func(any, string, error)) {
 			h.checkArguments("prepareArguments", tool, nil, args, then)
@@ -519,6 +526,7 @@ func (h *handler) stream(req *turn.StreamRequest, onPartial func(jv.Raw), cancel
 	h.keepPayload(out)
 	var remove func()
 	finished := false
+	ms := &modelStream{onPartial: onPartial, then: then}
 	id := h.startEffect(abi.EffectModelContext, out, &pending{progress: func(ev *abi.Event) bool {
 		actions, err := streamActions(ev.Payload)
 		if err != nil {
@@ -527,16 +535,10 @@ func (h *handler) stream(req *turn.StreamRequest, onPartial func(jv.Raw), cancel
 			return true
 		}
 		for _, a := range actions {
-			switch a.kind {
-			case actPartial:
-				h.loop.Defer(func() { onPartial(a.partial) })
-			case actDone, actError:
+			if a.kind != actPartial {
 				finished = true
-				h.loop.Defer(func() { then(a.message, nil) })
-			case actFault:
-				finished = true
-				h.loop.Defer(func() { then(nil, errors.New(a.text)) })
 			}
+			h.loop.DeferResumer(&streamDelivery{ms: ms, a: a})
 		}
 		if finished && remove != nil {
 			remove()
@@ -548,6 +550,31 @@ func (h *handler) stream(req *turn.StreamRequest, onPartial func(jv.Raw), cancel
 		// and classify() throws afterwards (generation.ts:415-426), so the request settles when the provider ends the stream
 		// (the faux provider checks its signal at its next chunk), not at the abort.
 		remove = cancel.OnAbort(func() { h.cancelEffect(id) })
+	}
+}
+
+// modelStream is the request of one stream call, which every action of its model_event batches is delivered to.
+type modelStream struct {
+	onPartial func(jv.Raw)
+	then      func(*jv.Object, error)
+}
+
+// streamDelivery is one action of a model_event batch, delivered as a microtask.
+type streamDelivery struct {
+	ms *modelStream
+	a  streamAction
+}
+
+// Resume hands the action to the request.
+func (d *streamDelivery) Resume() {
+	a, ms := d.a, d.ms
+	switch a.kind {
+	case actPartial:
+		ms.onPartial(a.partial)
+	case actDone, actError:
+		ms.then(a.message, nil)
+	case actFault:
+		ms.then(nil, errors.New(a.text))
 	}
 }
 

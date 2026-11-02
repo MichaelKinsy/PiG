@@ -217,10 +217,19 @@ func (h *Hooks) afterRun(ctx context.Context, call *sqlhost.Call, p hookEffect) 
 		}
 		tasks = append(tasks, preparedWire{name, installed.Definition.Version, input, checkpoint})
 	}
-	body, err := json.Marshal(struct {
-		Tasks    []preparedWire `json:"tasks"`
-		Rejected []rejectedWire `json:"rejected,omitempty"`
-	}{tasks, rejected})
+	// `rejected` is part of the answer only when a request was rejected (PROTOCOL.md, hook afterRun).
+	var body []byte
+	var err error
+	if len(rejected) == 0 {
+		body, err = json.Marshal(struct {
+			Tasks []preparedWire `json:"tasks"`
+		}{tasks})
+	} else {
+		body, err = json.Marshal(struct {
+			Tasks    []preparedWire `json:"tasks"`
+			Rejected []rejectedWire `json:"rejected"`
+		}{tasks, rejected})
+	}
 	if err != nil {
 		return fmt.Errorf("hook afterRun result: %w", err)
 	}
