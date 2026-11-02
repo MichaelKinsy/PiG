@@ -7624,6 +7624,28 @@
       "tests": []
     },
     {
+      "id": "BF-3c2dde4",
+      "title": "A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC…",
+      "symptom": "A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC timer, as in Pi, where Node emits no data event for it.",
+      "rootCause": "Node emits no data event for a read that decodes to the empty string, so Pi's StdinBuffer.process() neither restarts nor clears its timeout (terminal.ts:281-283, stdin-buffer.ts:321-325).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC timer, as in Pi, where Node emits no data event for it. ESC, then the two bytes of é arriving 5 ms and 11 ms later, is Escape followed by é, not Alt+é.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3c2dde4146",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "tui/terminal_input_esc_timer_test.go::TestTerminalInputHeldUTF8ReadLeavesEscTimerAlone"
+      ]
+    },
+    {
       "id": "BF-3ca622b",
       "title": "fix(durable/core): the tool round resumes one tick after runtime.outcomes, as Pi's #read does; drop the…",
       "symptom": "fix(durable/core): the tool round resumes one tick after runtime.outcomes, as Pi's #read does; drop the experimental hop",
