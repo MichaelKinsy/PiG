@@ -67,7 +67,7 @@ func TestDependabotRefreshesTheEvaluatorImageDigests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, line := range strings.Split(string(dockerfile), "\n") {
+	for line := range strings.SplitSeq(string(dockerfile), "\n") {
 		image, ok := strings.CutPrefix(line, "FROM ")
 		if !ok {
 			continue
