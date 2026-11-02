@@ -9,13 +9,13 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting. Only the first box is required; everything else helps if you have it.
+        Thanks for reporting. Only the first box is required, and pasting the error is enough. Everything else helps if you have it.
         Do not report an undisclosed vulnerability here. Follow .github/SECURITY.md instead.
         Do not include credentials, customer data, private configuration, or internal-only endpoints.
   - type: textarea
     id: actual
     attributes:
-      label: What happened
+      label: What happened (an error message or a sentence is plenty)
       description: Paste the error or describe what went wrong. `/bug` fills this in and attaches its report archive.
     validations:
       required: true

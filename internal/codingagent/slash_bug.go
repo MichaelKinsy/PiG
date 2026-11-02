@@ -210,7 +210,7 @@ func exportBugReport(sc *SlashContext, bundle BugReportBundle) error {
 		upstreamVersion = sc.UpstreamVersion()
 	}
 	// pig divergence (D62): link to the PiG issue form; the user attaches the archive.
-	sc.Append(fmt.Sprintf("To report it, open a PiG issue and attach `%s`:\n\n%s", archiveName, BugReportIssueLink(bundle.Metadata, archiveName, upstreamVersion)))
+	sc.Append(fmt.Sprintf("To report it, open this link, drag `%s` into the issue and submit. The link fills in your versions and report ID, and \"What happened\" is the only field you need:\n\n%s", archiveName, BugReportIssueLink(bundle.Metadata, archiveName, upstreamVersion)))
 	return nil
 }
 
