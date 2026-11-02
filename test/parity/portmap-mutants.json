@@ -11,6 +11,55 @@
    "new": "(httpsOnly && parsed.Protocol == \"https:\")"
   }
  ],
+ "packages/ai/src/auth/oauth/anthropic.ts": [
+  {
+   "file": "ai/oauth_anthropic.go",
+   "old": "\t\t\"refresh_token\": refreshToken,\n",
+   "new": "\t\t\"refresh_token\": refreshToken,\n\t\t\"scope\":         anthropicScopes,\n"
+  }
+ ],
+ "packages/ai/src/auth/oauth/device-code.ts": [
+  {
+   "file": "ai/oauth_device_code.go",
+   "old": "\t\t\tslowDownResponses++\n",
+   "new": "\t\t\tslowDownResponses += 0\n"
+  }
+ ],
+ "packages/ai/src/auth/oauth/github-copilot.ts": [
+  {
+   "file": "ai/copilot_verification_uri.go",
+   "old": "\"Untrusted verification_uri in device code response\"",
+   "new": "\"Untrusted verification_uri in device code respons\""
+  }
+ ],
+ "packages/ai/src/auth/oauth/load.ts": [
+  {
+   "file": "ai/oauth_registry.go",
+   "old": "float64(nowMillis()) >= creds.ExpiresMillis()",
+   "new": "float64(nowMillis()) < creds.ExpiresMillis()"
+  }
+ ],
+ "packages/ai/src/auth/oauth/kimi-coding.ts": [
+  {
+   "file": "ai/oauth_kimi.go",
+   "old": "\tcase \"slow_down\":\n",
+   "new": "\tcase \"slow_dowZ\":\n"
+  }
+ ],
+ "packages/ai/src/auth/oauth/pkce.ts": [
+  {
+   "file": "ai/pkce.go",
+   "old": "make([]byte, 32)",
+   "new": "make([]byte, 31)"
+  }
+ ],
+ "packages/ai/src/auth/oauth/callback-server.ts": [
+  {
+   "file": "ai/oauth_callback_server.go",
+   "old": "http.StatusNotFound, OAuthErrorHTML(\"Callback route not found.\"",
+   "new": "http.StatusBadRequest, OAuthErrorHTML(\"Callback route not found.\""
+  }
+ ],
  "packages/codemode/src/cloudflare.ts": [
   {
    "file": "codemode/cloudflare/cloudflare.go",

@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/auth/oauth/load.ts
+
 import (
 	"go/ast"
 	"go/parser"
