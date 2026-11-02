@@ -184,7 +184,7 @@ func barrelGoResult(t *testing.T, c barrelCase) any {
 		return Hyperlink(argString(a[0]), argString(a[1]))
 	case "calculateImageRows":
 		cell := argDims(a[2])
-		return CalculateImageRows(argDims(a[0]), argInt(a[1]), CellDimensions{WidthPx: cell.WidthPx, HeightPx: cell.HeightPx})
+		return CalculateImageRows(argDims(a[0]), argInt(a[1]), CellDimensions(cell))
 	case "visibleWidth":
 		return widthx.VisibleWidth(argString(a[0]))
 	case "stripTerminalSequences":
