@@ -20,7 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
-// Not upstream's host options (plugnode-differences.md, 7): `principalKey` and `revokedBy` of the app's host are the Node host's.
+// Not upstream's host options (docs/plan/chord-plugins-node-evaluator.md, 10.6 #7): `principalKey` and `revokedBy` of the app's host are the Node host's.
 // Pi's host calls them synchronously, so the Node host calls the Go functions on a second connection of the socket
 // (callbacks.mjs `callSync`). Two cases port Pi's own: host.test.ts's "identity includes the principal key: equal keys share
 // one object", and revocation.test.ts's "revoke on one host ends the principal's objects at once, whatever references remain:

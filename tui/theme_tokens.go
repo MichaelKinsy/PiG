@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/coding-agent/src/modes/interactive/theme/theme.ts (the ThemeColor and ThemeBg tokens).
+
 // ThemeColor is a foreground theme token: upstream `ThemeColor` (modes/interactive/theme/theme.ts:57).
 type ThemeColor string
 

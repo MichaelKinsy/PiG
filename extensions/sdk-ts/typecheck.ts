@@ -20,7 +20,6 @@ import type {
   ToolLoadout,
   ToolLoadoutChanges,
   ToolNamespace,
-  ToolRenderContext,
 } from "@earendil-works/pi-coding-agent";
 import { clampThinkingLevel } from "@earendil-works/pi-ai/models";
 import type { Component, Container } from "@earendil-works/pi-tui";
@@ -34,6 +33,9 @@ import type {
   PiGViewLines,
   PiGViewTheme,
 } from "@michaelkinsy/pig-extension-types";
+
+// Pi's package root does not export ToolRenderContext (Pi 1.4.0+b556cfe5 and 1.5.0 export KeybindingHints, MessageRenderOptions and EntryRenderOptions beside it), so an extension names it through the context parameter Pi's ToolDefinition hands to renderCall.
+type ToolRenderContext = Parameters<NonNullable<ToolDefinition["renderCall"]>>[2];
 
 const login: PiGLoginDefinition = {
   brand: ["."],
