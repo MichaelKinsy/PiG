@@ -513,7 +513,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/interactive/components/dynamic-border.ts` | `tui/dynamic_border.go`, `tui/tui.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/extension-editor.ts` | `internal/codingagent/extension_editor.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/extension-input.ts` | `tui/extension_input.go (hosted by the extension UI context)` | ✅ |
-| `packages/coding-agent/src/modes/interactive/components/extension-selector.ts` | `tui/extension_selector.go` | ✅ |
+| `packages/coding-agent/src/modes/interactive/components/extension-selector.ts` | `tui/extension_selector.go + internal/codingagent/ext_ui_context.go (dialogTimeout, the selector's timeout option)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/footer.ts` | `internal/codingagent/status_line.go`, `internal/codingagent/footer_data_provider.go`, `tui/tui.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/index.ts` | `(barrel)` | n/a |
 | `packages/coding-agent/src/modes/interactive/components/keybinding-hints.ts` | `tui/keybinding_hints.go` | ✅ |

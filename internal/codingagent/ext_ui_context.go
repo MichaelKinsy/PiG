@@ -10,6 +10,7 @@
 // coding/extension/ and the TUI lives in internal/.
 //
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (createExtensionUIContext).
+// Ports packages/coding-agent/src/modes/interactive/components/extension-selector.ts (dialogTimeout: the timeout option that starts the selector's countdown).
 
 package codingagent
 
