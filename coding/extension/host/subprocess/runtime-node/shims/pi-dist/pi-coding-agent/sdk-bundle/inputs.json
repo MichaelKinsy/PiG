@@ -95,7 +95,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/compaction/branch-summarization.js",
-      "sha256": "af3335a68d2b9a541a544c77523bf2bdaea600b484bf4e77783dce7242dfbe36"
+      "sha256": "5fb529e0613cc6e5c133ef9a61427e8589ab2c7fd2a56e0c2117687a4eeb779b"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/compaction/compaction.js",
@@ -287,7 +287,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/session-manager.js",
-      "sha256": "d12e77129947a32f964e55ab5a0bdc84a915481c9085b814181b4eb2e24c2913"
+      "sha256": "998d13e9324542262aa67c486d1b8051830e47391fc173a8be65aefcf514b184"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/settings-defaults.js",

@@ -1,8 +1,8 @@
 {
-	"commit": "b556cfe5b0300a91f39c7bc5369a65a25fb7fcd5",
-	"pin": "b556cfe5b0300a91f39c7bc5369a65a25fb7fcd5",
-	"piSchema": "1.4.0",
-	"piTelemetry": "1.4.0",
+	"commit": "f9a26365568127461c47a07a37dcb42c140a3ac5",
+	"pin": "f9a26365568127461c47a07a37dcb42c140a3ac5",
+	"piSchema": "1.5.0",
+	"piTelemetry": "1.5.0",
 	"files": [
 		{
 			"path": "pi/chord/src/context/index.ts",
@@ -670,7 +670,7 @@
 		},
 		{
 			"path": "pi/node_modules/@earendil-works/pi-telemetry/package.json",
-			"sha256": "d6e047b173341260b811a294e377e2f90ce31755fdc94ac2fe30bfbdf0d32847"
+			"sha256": "6e9dbd90ae345976c464f9b8b4540b117d4c05aa670202b53a732e06af737ef6"
 		},
 		{
 			"path": "pi/schema/LICENSES/typebox-LICENSE",
@@ -678,7 +678,7 @@
 		},
 		{
 			"path": "pi/schema/package.json",
-			"sha256": "e56e7792660505dceefde5a8286261b63eaa50bd6b23d72e2bcf3a3dbf6bdda3"
+			"sha256": "88f3e22dc6830ed0a7dc287ce82dfc63a0958483143031e6f0c462183ad6177c"
 		},
 		{
 			"path": "pi/schema/src/annotations.ts",

@@ -255184,6 +255184,17 @@
       "shapeHash": "sha256:bd967d6bccf28adb91b5de8d18fba27a27370db99c9bf39b8ee8ed82db0b1709"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ProjectContextEntry",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ProjectContextEntry",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(entry SessionEntry, messages []github.com/MichaelKinsy/PiG/agent.AgentMessage, edit *ContextEditEntry) []github.com/MichaelKinsy/PiG/agent.AgentMessage"
+      },
+      "shapeHash": "sha256:6bf9ff9f2f6beac20141663eebf9a75d43c507b764c839bb4688714905caba0f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ProjectSessionPath",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ProjectSessionPath",
@@ -289053,17 +289064,6 @@
       "shapeHash": "sha256:cfbcc29c1cd50fa6c3ea75254534e6c1614480329a660fc60f6cd43bdd9d82d0"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#projectContextEntry",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "projectContextEntry",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(entry SessionEntry, messages []github.com/MichaelKinsy/PiG/agent.AgentMessage, edit *ContextEditEntry) []github.com/MichaelKinsy/PiG/agent.AgentMessage"
-      },
-      "shapeHash": "sha256:6bf9ff9f2f6beac20141663eebf9a75d43c507b764c839bb4688714905caba0f"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#projectRawContextEntry",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "projectRawContextEntry",
@@ -301423,9 +301423,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(e github.com/MichaelKinsy/PiG/internal/codingagent.SessionEntry) (github.com/MichaelKinsy/PiG/agent.AgentMessage, bool)"
+        "type": "func(e github.com/MichaelKinsy/PiG/internal/codingagent.SessionEntry, edit *github.com/MichaelKinsy/PiG/internal/codingagent.ContextEditEntry) (github.com/MichaelKinsy/PiG/agent.AgentMessage, bool)"
       },
-      "shapeHash": "sha256:3442bc6ba5e28a2fe397243968949c4a518e119dd88600dc2dcee55c4271cf7b"
+      "shapeHash": "sha256:3ae70caa60bce82e97fbca8468c727f7ca8923d58fca6dded542d4fba6787273"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#getMessagesFromProjectedEntryForCompaction",

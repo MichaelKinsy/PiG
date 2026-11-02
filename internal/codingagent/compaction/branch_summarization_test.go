@@ -353,3 +353,69 @@ func TestBranchSummaryMaxTokens(t *testing.T) {
 		}
 	}
 }
+
+// makeAssistantEntry builds an assistant "message" SessionEntry with one text block.
+func makeAssistantEntry(id, parentID, text, stopReason string) codingagent.SessionEntry {
+	message := map[string]any{
+		"role":       "assistant",
+		"content":    []any{map[string]any{"type": "text", "text": text}},
+		"api":        "faux",
+		"provider":   "faux",
+		"model":      "faux-model",
+		"stopReason": stopReason,
+		"timestamp":  2,
+		"usage": map[string]any{
+			"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 0,
+			"cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0},
+		},
+	}
+	if stopReason == "error" {
+		message["errorMessage"] = "lost"
+	}
+	raw, _ := json.Marshal(map[string]any{"type": "message", "id": id, "parentId": parentID, "timestamp": "1970-01-01T00:00:00.002Z", "message": message})
+	return sessionentry.DecodeSessionEntry(raw)
+}
+
+// makeContextEditEntry builds a context_edit SessionEntry; a nil replacement omits the target.
+func makeContextEditEntry(id, parentID, targetID string, replacement map[string]any) codingagent.SessionEntry {
+	raw, _ := json.Marshal(map[string]any{"type": "context_edit", "id": id, "parentId": parentID, "timestamp": "1970-01-01T00:00:00.003Z", "targetId": targetID, "replacement": replacement})
+	return sessionentry.DecodeSessionEntry(raw)
+}
+
+// TestPrepareBranchEntries_AppliesContextEdits: an omitted assistant entry is dropped and a replaced one carries its replacement content.
+// Pi: packages/coding-agent/test/branch-summarization.test.ts "applies context edits to branch entries"; packages/coding-agent/src/core/compaction/branch-summarization.ts:196 (prepareBranchEntries).
+func TestPrepareBranchEntries_AppliesContextEdits(t *testing.T) {
+	user, err := json.Marshal(map[string]any{"type": "message", "id": "u1", "parentId": nil, "timestamp": "1970-01-01T00:00:00.001Z", "message": map[string]any{"role": "user", "content": "Investigate login", "timestamp": 1}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	branch := []codingagent.SessionEntry{
+		sessionentry.DecodeSessionEntry(user),
+		makeAssistantEntry("failed", "u1", "FAILED_ATTEMPT", "error"),
+		makeContextEditEntry("e1", "failed", "failed", nil),
+		makeAssistantEntry("ok", "e1", "ORIGINAL_TEXT", "stop"),
+		makeContextEditEntry("e2", "ok", "ok", map[string]any{"content": "REPLACED_TEXT"}),
+	}
+
+	prep, err := PrepareBranchEntries(branch, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	serialized, err := json.Marshal(prep.Messages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(serialized)
+	if !strings.Contains(got, "Investigate login") {
+		t.Errorf("user entry missing from %s", got)
+	}
+	if strings.Contains(got, "FAILED_ATTEMPT") {
+		t.Errorf("omitted entry present in %s", got)
+	}
+	if strings.Contains(got, "ORIGINAL_TEXT") {
+		t.Errorf("replaced entry kept its original text in %s", got)
+	}
+	if !strings.Contains(got, "REPLACED_TEXT") {
+		t.Errorf("replacement missing from %s", got)
+	}
+}

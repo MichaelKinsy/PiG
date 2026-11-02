@@ -1,6 +1,6 @@
 {
   "from": "0.84.0",
-  "to": "1.4.0+b556cfe5",
+  "to": "1.5.0",
   "changes": [
     {
       "id": "cli:pi/--no-mcp",
@@ -28093,7 +28093,7 @@
     {
       "id": "pkg:ai/.#PI_AI_VERSION",
       "change": "added",
-      "after_shape_hash": "sha256:17e7b4d4ab23cde200e579100798c4875cf8ad960f66b0f6abb4755c4fd0d15d",
+      "after_shape_hash": "sha256:85b37cd335f94073878559e2844fc02f908a987e75687c87c6bf30e1a6834144",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -36288,7 +36288,7 @@
     {
       "id": "pkg:ai/compat#PI_AI_VERSION",
       "change": "added",
-      "after_shape_hash": "sha256:17e7b4d4ab23cde200e579100798c4875cf8ad960f66b0f6abb4755c4fd0d15d",
+      "after_shape_hash": "sha256:85b37cd335f94073878559e2844fc02f908a987e75687c87c6bf30e1a6834144",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
@@ -45063,7 +45063,7 @@
     {
       "id": "pkg:ai/utils/version#PI_AI_VERSION",
       "change": "added",
-      "after_shape_hash": "sha256:da73cc73835fc7b09041e2edafe9bee709894f52e89836072dd50a34416d4371",
+      "after_shape_hash": "sha256:227206df1d6891ea129af3717c94b124076c54335314ab6a2e6d9969bbd255a7",
       "disposition": "pending",
       "evidence": [],
       "rationale": ""
