@@ -185,7 +185,11 @@ func prefixOverload(a, b callShape) bool { return rules.PrefixOverload(a, b) }
 
 // typeFor resolves an upstream interface, class or alias name to the Go type it stands for: a documented rename, a name rule, or a unique
 // shape match, in that order. It returns nil when the name does not resolve (or resolution is already in progress).
-func (d *detector) typeFor(pkg, name string) *types.TypeName {
+func (d *detector) typeFor(pkg, name string) *types.TypeName { return d.typeForLayer(pkg, "", name) }
+
+// typeForLayer is typeFor for a row of the entry layer (chord's src/next, which declares names chord's own layer declares too,
+// such as Link): the declarations of that layer come first among those of the package.
+func (d *detector) typeForLayer(pkg, layer, name string) *types.TypeName {
 	var rows []*upstreamEntry
 	for _, e := range d.l.entries {
 		if e.Name == name && e.Role == "" && (e.Kind == "interface" || e.Kind == "class" || e.Kind == "type-alias") {
@@ -196,6 +200,9 @@ func (d *detector) typeFor(pkg, name string) *types.TypeName {
 		pi, pj := parseID(rows[i].ID).Pkg == pkg, parseID(rows[j].ID).Pkg == pkg
 		if pi != pj {
 			return pi
+		}
+		if li, lj := layer != "" && parseID(rows[i].ID).Entry == layer, layer != "" && parseID(rows[j].ID).Entry == layer; li != lj {
+			return li
 		}
 		return rows[i].ID < rows[j].ID
 	})
@@ -244,11 +251,16 @@ func (d *detector) propNames(name string) []string {
 
 // propShapes lists the properties (name, type, optionality) of the upstream interface or class called name, in the package of the
 // row when it declares one, else the first declaration.
-func (d *detector) propShapes(pkg, name string) []propShape { return d.propShapesDepth(pkg, name, 0) }
+func (d *detector) propShapes(pkg, name string) []propShape {
+	return d.propShapesDepth(pkg, "", name, 0)
+}
 
-func (d *detector) propShapesDepth(pkg, name string, depth int) []propShape {
+func (d *detector) propShapesDepth(pkg, layer, name string, depth int) []propShape {
 	var first []propShape
 	for _, e := range d.l.entries {
+		if layer != "" && parseID(e.ID).Entry != layer && d.declaredInLayer(pkg, layer, name) {
+			continue
+		}
 		if e.Name == name && e.Role == "" && (e.Kind == "interface" || e.Kind == "class") {
 			var out []propShape
 			for _, p := range d.l.properties(e.ID) {
@@ -266,6 +278,18 @@ func (d *detector) propShapesDepth(pkg, name string, depth int) []propShape {
 		return d.sourceProps(pkg, name, depth)
 	}
 	return first
+}
+
+// declaredInLayer reports whether the ledger lists an interface or class called name in the entry layer of package pkg.
+func (d *detector) declaredInLayer(pkg, layer, name string) bool {
+	for _, e := range d.l.entries {
+		if e.Name == name && e.Role == "" && (e.Kind == "interface" || e.Kind == "class") {
+			if id := parseID(e.ID); id.Pkg == pkg && id.Entry == layer {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // sourceProps reads the members of an interface the ledger does not list from the pinned sources: its member block and the members
@@ -294,7 +318,7 @@ func (d *detector) readSourceProps(pkg, name string, depth int) []propShape {
 	for _, part := range splitTop(stripTypeNoise(*body), "&") {
 		part = strings.TrimSpace(part)
 		if !strings.HasPrefix(part, "{") {
-			inherited := d.propShapesDepth(pkg, part, depth+1)
+			inherited := d.propShapesDepth(pkg, "", part, depth+1)
 			if len(inherited) == 0 {
 				return nil
 			}
