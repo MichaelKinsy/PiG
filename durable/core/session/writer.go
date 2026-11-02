@@ -666,7 +666,13 @@ func (c *call) fail() {
 		}
 	}
 	if c.hasRejected {
-		w.s.failAt(c.rejected, own[0], own)
+		// Without a part of its own (something else failed the Session before the first publication) the boundary is the Session's default,
+		// as Pi's `own[0]!` is undefined there.
+		at := w.s.failBoundary()
+		if len(own) > 0 {
+			at = own[0]
+		}
+		w.s.failAt(c.rejected, at, own)
 	} else {
 		w.s.failAt(c.stop.err, c.stop.at, own)
 	}

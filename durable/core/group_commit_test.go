@@ -520,6 +520,100 @@ func TestACallThatRejectsAfterItsReceiptsPublishesThenRejects(t *testing.T) {
 	}
 }
 
+// failedCall runs the failure fan-out of one Storage call of n parts (packages/durable/src/session/writer.ts #publish, test
+// session-group-commit.test.ts "failures per part"): a first commit holds call 0 in flight while n more are admitted; they leave as call
+// 1, which script describes. It returns the n parts' answers, in admission order.
+func failedCall(t *testing.T, n int, script *storageScript, noWriteAfter int) []string {
+	t.Helper()
+	g := openGC(t, "commit")
+	convs := make([]int, n+1)
+	for i := range convs {
+		convs[i] = g.createConversation()
+	}
+	index, release := g.holdNext()
+	hold := g.appendEntry(convs[0])
+	g.waitFor("the held call", func() bool { return len(g.calls) > index })
+	g.script(index+1, script)
+	runs := make([]*commitRun, 0, n+1)
+	for i := range n {
+		runs = append(runs, g.appendEntry(convs[i+1]))
+		if i == noWriteAfter {
+			// A job without writes between two parts of the call: not stored, and after a stop it was not sent either.
+			run := g.beginTx()
+			g.end(run)
+			runs = append(runs, run)
+		}
+	}
+	release()
+	if res := g.result(hold); res != `{"result":null}` {
+		t.Fatalf("the held commit ended with %s", res)
+	}
+	out := make([]string, len(runs))
+	for i, run := range runs {
+		out[i] = g.result(run)
+	}
+	return out
+}
+
+func sessionFailed(res string) bool {
+	return strings.Contains(res, `"rejected"`) && strings.Contains(res, "SessionFailed")
+}
+
+// A batch Durable's checks refuse at index k of n stops the call: the parts before k are published and resolve, k rejects with the
+// refusal, and every part after k was never stored, so it rejects with SessionFailed and does not resolve (writer.ts #failed(stop.error)).
+func TestThePartsAfterARefusedOneRejectWithSessionFailed(t *testing.T) {
+	const n = 4
+	for k := range n {
+		t.Run("refused="+strconv.Itoa(k), func(t *testing.T) {
+			got := failedCall(t, n, &storageScript{refuseAt: &k}, -1)
+			for i, res := range got {
+				switch {
+				case i < k:
+					if res != `{"result":null}` {
+						t.Errorf("part %d before the refusal ended with %s, want it published and resolved", i, res)
+					}
+				case i == k:
+					if !strings.Contains(res, `"rejected"`) || !strings.Contains(res, "refused") || sessionFailed(res) {
+						t.Errorf("the refused part %d ended with %s, want its refusal", i, res)
+					}
+				default:
+					if !sessionFailed(res) {
+						t.Errorf("part %d after the refusal ended with %s, want SessionFailed", i, res)
+					}
+				}
+			}
+		})
+	}
+}
+
+// A call that rejects after its k-th receipt publishes the received parts, which reject with the call's error; every stored part after
+// the last receipt has the call's error too, while a job without writes between them is SessionFailed (writer.ts #publish: "A part after a
+// rejected call's last receipt has the call's error").
+func TestThePartsAfterARejectedCallsLastReceiptRejectWithItsError(t *testing.T) {
+	const n = 4
+	for k := range n {
+		t.Run("receipts="+strconv.Itoa(k), func(t *testing.T) {
+			got := failedCall(t, n, &storageScript{refuseAt: &k, reject: "connection lost"}, 1)
+			// The job without writes follows part 1.
+			for i, res := range got {
+				part := i
+				if i > 2 {
+					part = i - 1
+				}
+				if i == 2 {
+					if !sessionFailed(res) {
+						t.Errorf("the job without writes ended with %s, want SessionFailed", res)
+					}
+					continue
+				}
+				if !strings.Contains(res, `"rejected"`) || !strings.Contains(res, "connection lost") || sessionFailed(res) {
+					t.Errorf("part %d (received %v) ended with %s, want the call's error", part, part < k, res)
+				}
+			}
+		})
+	}
+}
+
 // The parts of one call are published a macrotask apart: what the first resolves (the host's end answer and what it wakes) is delivered
 // before the second is published (session.ts #publish, group-commit.md 5.3).
 func TestThePartsOfOneCallArePublishedAMacrotaskApart(t *testing.T) {
