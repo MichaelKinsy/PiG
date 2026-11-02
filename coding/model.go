@@ -203,7 +203,7 @@ func buildLeafProviderForEntry(providerID, modelID string, apiKind ai.API, entry
 		if os.Getenv("PIG_TEST_FAUX") != "1" {
 			return nil, fmt.Errorf("coding: BuildModel: test-faux is disabled")
 		}
-		return svcs.testFauxProvider(), nil
+		return svcs.testFauxProvider()
 	}
 
 	if providerID == "github-copilot" && !resolvedAuth {

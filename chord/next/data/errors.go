@@ -135,7 +135,10 @@ func (err *ChordError) ToJSON() *delta.JsonObject {
 }
 
 // MarshalJSON is JSON.stringify's call of toJSON: the wire form, so a ChordError marshals without stack or cause.
-func (err *ChordError) MarshalJSON() ([]byte, error) { return err.ToJSON().MarshalJSON() }
+func (err *ChordError) MarshalJSON() ([]byte, error) {
+	//perf:ok a ChordError is encoded once, when it crosses as a failure; its wire object is built by ToJSON
+	return err.ToJSON().MarshalJSON()
+}
 
 // IsChordError reports whether err is a ChordError and returns it. It is upstream's `instanceof`: an error that wraps
 // a ChordError (with %w, or as Broken's cause) is not one; AsChordError and OpenFailure read the causes they own.

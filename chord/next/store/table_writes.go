@@ -53,8 +53,11 @@ type tableWriteJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *TableDefinitionWrite) MarshalJSON() ([]byte, error) {
-	return jsstring.MarshalJSON(tableWriteJSON{"table", write.Table, write.Version, write.State, write.Columns, namesOrEmpty(write.Key), write.Fingerprint})
+func (write *TableDefinitionWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
+
+// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+func (write *TableDefinitionWrite) AppendStringify(dst []byte) ([]byte, error) {
+	return jsstring.AppendMarshalJSON(dst, tableWriteJSON{"table", write.Table, write.Version, write.State, write.Columns, namesOrEmpty(write.Key), write.Fingerprint})
 }
 
 func namesOrEmpty(names []string) []string {
@@ -82,8 +85,11 @@ type indexWriteJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *IndexWrite) MarshalJSON() ([]byte, error) {
-	return jsstring.MarshalJSON(indexWriteJSON{"index", write.Table, write.Name, namesOrEmpty(write.Columns)})
+func (write *IndexWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
+
+// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+func (write *IndexWrite) AppendStringify(dst []byte) ([]byte, error) {
+	return jsstring.AppendMarshalJSON(dst, indexWriteJSON{"index", write.Table, write.Name, namesOrEmpty(write.Columns)})
 }
 
 // DropIndexWrite is the `dropIndex` write.
@@ -102,8 +108,11 @@ type dropIndexWriteJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *DropIndexWrite) MarshalJSON() ([]byte, error) {
-	return jsstring.MarshalJSON(dropIndexWriteJSON{"dropIndex", write.Table, write.Name})
+func (write *DropIndexWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
+
+// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+func (write *DropIndexWrite) AppendStringify(dst []byte) ([]byte, error) {
+	return jsstring.AppendMarshalJSON(dst, dropIndexWriteJSON{"dropIndex", write.Table, write.Name})
 }
 
 // AlterWrite is the `alter` write: a column edit of the migration to Version; DDL rendered from it.
@@ -130,8 +139,11 @@ func editJSON(edit TableEdit) *delta.JsonObject {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *AlterWrite) MarshalJSON() ([]byte, error) {
-	return jsstring.MarshalJSON(delta.JsonObjectOf("kind", "alter", "table", write.Table, "version", write.Version, "edit", editJSON(write.Edit)))
+func (write *AlterWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
+
+// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+func (write *AlterWrite) AppendStringify(dst []byte) ([]byte, error) {
+	return jsstring.AppendMarshalJSON(dst, delta.JsonObjectOf("kind", "alter", "table", write.Table, "version", write.Version, "edit", editJSON(write.Edit)))
 }
 
 // PutWrite is the `put` write.
@@ -155,8 +167,11 @@ type putWriteJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *PutWrite) MarshalJSON() ([]byte, error) {
-	return jsstring.MarshalJSON(putWriteJSON{"put", write.Table, write.Row, write.Version, write.Columns})
+func (write *PutWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
+
+// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+func (write *PutWrite) AppendStringify(dst []byte) ([]byte, error) {
+	return jsstring.AppendMarshalJSON(dst, putWriteJSON{"put", write.Table, write.Row, write.Version, write.Columns})
 }
 
 // UpdateWrite is the `update` write of one row by key.
@@ -185,8 +200,11 @@ type updateWriteJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *UpdateWrite) MarshalJSON() ([]byte, error) {
-	return jsstring.MarshalJSON(updateWriteJSON{"update", write.Table, write.Key, write.Set, write.Columns, write.Count, write.Version})
+func (write *UpdateWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
+
+// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+func (write *UpdateWrite) AppendStringify(dst []byte) ([]byte, error) {
+	return jsstring.AppendMarshalJSON(dst, updateWriteJSON{"update", write.Table, write.Key, write.Set, write.Columns, write.Count, write.Version})
 }
 
 // DeleteWrite is the `delete` write of one row by key.
@@ -207,8 +225,11 @@ type deleteWriteJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *DeleteWrite) MarshalJSON() ([]byte, error) {
-	return jsstring.MarshalJSON(deleteWriteJSON{"delete", write.Table, write.Key, write.Count})
+func (write *DeleteWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
+
+// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+func (write *DeleteWrite) AppendStringify(dst []byte) ([]byte, error) {
+	return jsstring.AppendMarshalJSON(dst, deleteWriteJSON{"delete", write.Table, write.Key, write.Count})
 }
 
 // UpdateWhereWrite is the `updateWhere` write.
@@ -236,8 +257,11 @@ type updateWhereWriteJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *UpdateWhereWrite) MarshalJSON() ([]byte, error) {
-	return jsstring.MarshalJSON(updateWhereWriteJSON{"updateWhere", write.Table, write.Where, write.Set, write.Columns, write.Count, write.Version})
+func (write *UpdateWhereWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
+
+// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+func (write *UpdateWhereWrite) AppendStringify(dst []byte) ([]byte, error) {
+	return jsstring.AppendMarshalJSON(dst, updateWhereWriteJSON{"updateWhere", write.Table, write.Where, write.Set, write.Columns, write.Count, write.Version})
 }
 
 // DeleteWhereWrite is the `deleteWhere` write.
@@ -258,8 +282,11 @@ type deleteWhereWriteJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *DeleteWhereWrite) MarshalJSON() ([]byte, error) {
-	return jsstring.MarshalJSON(deleteWhereWriteJSON{"deleteWhere", write.Table, write.Where, write.Count})
+func (write *DeleteWhereWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
+
+// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+func (write *DeleteWhereWrite) AppendStringify(dst []byte) ([]byte, error) {
+	return jsstring.AppendMarshalJSON(dst, deleteWhereWriteJSON{"deleteWhere", write.Table, write.Where, write.Count})
 }
 
 // JsonVersions are the versions of the `json(...)` columns of definition that set writes, which its statement

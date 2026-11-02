@@ -397,6 +397,7 @@ func scriptsJSON(scripts []plugins.PluginScript) any {
 	if err != nil {
 		return []any{}
 	}
+	//perf:ok once per worker start or plugin reload; the control message carries scripts as plain data, and PluginScript has no hand-written wire mapping to replace the JSON form
 	value, err := delta.DecodeJson(text)
 	if err != nil {
 		return []any{}
@@ -411,6 +412,7 @@ func scriptsFromJSON(value any) ([]plugins.PluginScript, error) {
 		return nil, err
 	}
 	var scripts []plugins.PluginScript
+	//perf:ok once per worker start or plugin reload; the inverse of scriptsJSON
 	if err := json.Unmarshal(text, &scripts); err != nil {
 		return nil, err
 	}

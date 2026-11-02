@@ -402,6 +402,10 @@ Extensions can put an editor in a view they draw. The component that builds it u
 
 An extension that constructs a `TuiAltScreen` (Pi's alternate-screen TUI) draws it through the host's renderer, which links the word dictionaries through its text inputs. The `pig` command enables it with `subprocess.EnableTuiAltScreens()` where it creates the extension host. A program that never serves one does not call it, and the renderer is not linked. A program that serves them to its own terminal calls `subprocess.EnableTuiAltScreens()` once before the first extension loads. Until then a `tui.alt` call fails with an error that names the call.
 
+### The test-only test-faux provider
+
+The `pig` command can serve a deterministic test provider, `test-faux`, when `PIG_TEST_FAUX=1`; the parity harness and the command's tests use it, and `PIG_TEST_FAUX_SCENARIO` picks its scenario. The command enables it with `coding.EnableTestFauxProvider()` where it starts. A program that never serves it does not call it, and the provider and its scenario classifier are not linked. A program that builds the model through `coding.BuildModel` with `PIG_TEST_FAUX=1` calls `coding.EnableTestFauxProvider()` once first. Until then the build fails with an error that names the call.
+
 ### Size gate
 
 `TestHeadlessEmbedBinarySizeGate` builds `examples/headless` for every release platform, with no tags and with every strip tag except `pig_strip_mcp`, and fails when a binary is larger than its ceiling in `automation/perf/ratchet.toml` (`binary.headless.*`). A ceiling only moves down. It is the same gate that holds the `pig` command's size (`binary.pig.*`).

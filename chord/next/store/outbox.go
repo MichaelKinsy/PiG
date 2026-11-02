@@ -62,7 +62,12 @@ func (write *UnknownWrite) StoreWriteKind() string {
 }
 
 // MarshalJSON is the element as it was parsed.
-func (write *UnknownWrite) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(write.Value) }
+func (write *UnknownWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
+
+// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+func (write *UnknownWrite) AppendStringify(dst []byte) ([]byte, error) {
+	return jsstring.AppendMarshalJSON(dst, write.Value)
+}
 
 // Outbox is a store's outbox: its commits after the floor (the seq it was turned on at, advanced by Trim).
 type Outbox struct {
