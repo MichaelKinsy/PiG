@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/coding-agent/src/modes/interactive/theme/theme.ts (loadTheme, resolveColor).
+
 // theme_loader.go: JSON theme file loading.
 //
 // Loads themes from upstream-compatible JSON files (dark.json, light.json,
