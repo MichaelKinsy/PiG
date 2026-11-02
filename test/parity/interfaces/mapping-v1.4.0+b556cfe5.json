@@ -113823,8 +113823,8 @@
       ],
       "evidence": [
         "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi",
-        "test:chord/next/host/host_link_deliveries_test.go#TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt",
-        "test:chord/next/host/remote_relay_test.go#TestRelayMixedCodecs"
+        "test:chord/next/host/host_channel_test.go#TestACodecMismatchFailsTheFirstHelloAsAProtocolErrorNamingTheExpectedCodec",
+        "test:chord/next/host/host_link_deliveries_test.go#TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt"
       ]
     },
     {
@@ -114275,6 +114275,7 @@
         "call:chord/next/store/adapter.go#StoreOwnerTables.Declare"
       ],
       "evidence": [
+        "test:chord/next/host/host_store_claims_test.go#TestClaimsAnObjectClaimsItsTablesAndDocumentsWhenItDeclaresThemAndReleasesThemAtItsEnd",
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch"
       ]
     },
@@ -115150,8 +115151,8 @@
       ],
       "evidence": [
         "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi",
-        "test:chord/next/host/host_host_test.go#TestHostALoadWhoseSetupThrowsLeavesThatPluginOutAndReportsItTheOthersPublishTheHostAndItsLinksStayOpen",
-        "test:chord/next/host/host_host_test.go#TestHostConnectAfterADropThrowsWhileThePreviousParentLinkIsOpenOrStillClosing"
+        "test:chord/next/host/host_channel_test.go#TestTheHandshakeQueuesAConsumersMessagesUntilThePeersHelloAGetOverALinkThatNeverGreetsWaitsForItsDeadline",
+        "test:chord/next/host/host_channel_test.go#TestTheHeartbeatPingsASilentLinkAfter15sAndClosesItAfter30sWithoutAnAnswerReferencesGoLoading"
       ]
     },
     {
@@ -115172,8 +115173,8 @@
       ],
       "evidence": [
         "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
-        "test:chord/next/host/host_examples_test.go#TestExample20Tables",
-        "test:chord/next/store/query_test.go#TestQueries"
+        "test:chord/next/host/host_refusal_test.go#TestRefusalAnIntOutOfRangeFailsOnlyItsTransactionAndTheObjectStaysLive",
+        "test:chord/next/host/host_examples_test.go#TestExample20Tables"
       ]
     },
     {
@@ -115194,6 +115195,7 @@
       ],
       "evidence": [
         "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
+        "test:chord/next/host/host_refusal_test.go#TestRefusalAnIntOutOfRangeFailsOnlyItsTransactionAndTheObjectStaysLive",
         "test:chord/next/host/host_examples_test.go#TestExample20Tables"
       ]
     },
@@ -117540,7 +117542,7 @@
         "public-api:chord/next/host/host_host.go#Host.Get"
       ],
       "evidence": [
-        "test:chord/next/host/host_ctx_test.go#TestCtxGetOfAHandlerWhoseCallWasAbortedChecksTheSignalFirstNothingIsCreated"
+        "test:chord/next/host/host_batch_test.go#TestReentrancyClearsTheFlagAfterAThrowingCompute"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -117561,7 +117563,7 @@
         "public-api:chord/next/host/host_host.go#Host.Get"
       ],
       "evidence": [
-        "test:chord/next/host/host_ctx_test.go#TestCtxGetOfAHandlerWhoseCallWasAbortedChecksTheSignalFirstNothingIsCreated"
+        "test:chord/next/host/host_batch_test.go#TestReentrancyClearsTheFlagAfterAThrowingCompute"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119997,9 +119999,9 @@
         "call:chord/next/host/host_host.go#chordHost.Accept"
       ],
       "evidence": [
-        "test:chord/next/host/host_examples_test.go#TestExample12Routes",
-        "test:chord/next/host/host_examples_test.go#TestExample13Relay",
-        "test:chord/next/host/host_examples_test.go#TestExample14FlowControl"
+        "test:chord/next/host/host_channel_test.go#TestACodecMismatchFailsTheFirstHelloAsAProtocolErrorNamingTheExpectedCodec",
+        "test:chord/next/host/host_channel_test.go#TestTheHandshakeQueuesAConsumersMessagesUntilThePeersHelloAGetOverALinkThatNeverGreetsWaitsForItsDeadline",
+        "test:chord/next/host/host_channel_test.go#TestTheHeartbeatRunsOneTimerPerHostOnlyWhileItHasLinksNonePerMessage"
       ]
     },
     {
@@ -122928,8 +122930,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_host_test.go#TestHostReloadRegistriesOlderReadersAReaderOfAnOlderVersionFollowsTheNewProvidersAcceptsOldValueOneItNoLongerServesWaits",
-        "test:chord/next/registries/record_test.go#TestAReloadsNewContributionAdapter",
-        "test:chord/next/registries/record_test.go#TestContributions"
+        "test:chord/next/host/host_registry_readers_test.go#TestOlderReadersDropAnOlderReadersLastGoodMappingAfterAContributorItWasBuiltFromFailedLive",
+        "test:chord/next/host/host_registry_readers_test.go#TestOlderReadersNeverHandOutAMappedNativeWhoseContributorFailedAndClosedItSol"
       ]
     },
     {
@@ -127558,8 +127560,8 @@
       ],
       "evidence": [
         "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi",
-        "test:chord/next/host/remote_relay_test.go#TestRelayMixedCodecs",
-        "test:chord/next/link/channel_test.go#TestACodecMismatchOfChannels"
+        "test:chord/next/host/host_channel_test.go#TestACodecMismatchFailsTheFirstHelloAsAProtocolErrorNamingTheExpectedCodec",
+        "test:chord/next/host/remote_relay_test.go#TestRelayMixedCodecs"
       ]
     },
     {
@@ -131251,7 +131253,7 @@
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/store_test.go#TestStore"
+        "test:chord/next/store/schema_test.go#TestStoreSchemaMigratesAnOlderVersionToTheNewest"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -131274,7 +131276,7 @@
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/store_test.go#TestStore"
+        "test:chord/next/store/schema_test.go#TestStoreSchemaMigratesAnOlderVersionToTheNewest"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -131297,7 +131299,7 @@
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/sql_test.go#TestSqlDDL"
+        "test:chord/next/store/schema_test.go#TestStoreSchemaOfANewDatabase"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -131320,7 +131322,7 @@
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/sql_test.go#TestSqlDDL"
+        "test:chord/next/store/schema_test.go#TestStoreSchemaOfANewDatabase"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -248549,7 +248551,7 @@
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/store_test.go#TestStore"
+        "test:chord/next/store/schema_test.go#TestStoreSchemaMigratesAnOlderVersionToTheNewest"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -248572,7 +248574,7 @@
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/store_test.go#TestStore"
+        "test:chord/next/store/schema_test.go#TestStoreSchemaMigratesAnOlderVersionToTheNewest"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -248595,7 +248597,7 @@
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/sql_test.go#TestSqlDDL"
+        "test:chord/next/store/schema_test.go#TestStoreSchemaOfANewDatabase"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -248618,7 +248620,7 @@
       "evidence": [
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteExecutorExecRunGetAllOnDatabaseAndTransaction",
         "test:durable/storage/sqlite/sqlite_executor_upstream_test.go#TestSqliteValueMembersBindAndReadBack",
-        "test:chord/next/store/sql_test.go#TestSqlDDL"
+        "test:chord/next/store/schema_test.go#TestStoreSchemaOfANewDatabase"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
