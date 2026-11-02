@@ -236,6 +236,11 @@
    "file": "coding/extension/runtime_state.go",
    "old": "\tif r.staleMessage != \"\" {\n\t\treturn errors.New(r.staleMessage)",
    "new": "\tif r.staleMessage == \"\" {\n\t\treturn errors.New(r.staleMessage)"
+  },
+  {
+   "file": "coding/extension/api.go",
+   "old": "orderedjson.UnmarshalFields(data, (*plain)(p), \"details\")",
+   "new": "orderedjson.UnmarshalFields(data, (*plain)(p), \"detailz\")"
   }
  ],
  "packages/coding-agent/src/core/extensions/virtual-modules.ts": [
