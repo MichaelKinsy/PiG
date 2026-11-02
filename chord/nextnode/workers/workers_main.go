@@ -144,7 +144,10 @@ type worker struct {
 	loaded    *loadedHost
 	ready     bool
 	reloading bool
-	busy      BusyWatchable
+	// reloadApplying, when set (a test's seam; nil in the process of an app), is called, without the lock, each time a reload
+	// was taken off the queue and is about to be applied.
+	reloadApplying func()
+	busy           BusyWatchable
 	// activity is the keep-alive counts of the NodeHost, as it last reported them (NodeOptions.OnActivity).
 	activity host.ActivityCounts
 	// held is the app's own holds on the NodeHost's objects (WorkerResult.Held).
@@ -494,7 +497,11 @@ func (w *worker) applyReloads() {
 		}
 		scripts := w.reloads[0]
 		w.reloads = w.reloads[1:]
+		applying := w.reloadApplying
 		w.mu.Unlock()
+		if applying != nil {
+			applying()
+		}
 		if loaded == nil {
 			failure := CrossedError{Message: "worker: plugins.load was never called"}
 			w.send(FromWorker{Kind: FromWorkerReloaded, Error: &failure})

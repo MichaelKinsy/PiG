@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -339,17 +340,17 @@ func runWorkerFixture() {
 		}
 		if behaviour.ShutdownDuringReload {
 			w := start.Plugins.worker
-			//portlint:allow golifetime the poll ends with the worker's context, which the shutdown it makes aborts
+			applying := make(chan struct{})
+			var once sync.Once
+			w.mu.Lock()
+			w.reloadApplying = func() { once.Do(func() { close(applying) }) }
+			w.mu.Unlock()
+			//portlint:allow golifetime the wait ends with the worker's context, which the shutdown it makes aborts
 			go func() {
-				for ctx.Err() == nil {
-					w.mu.Lock()
-					inFlight := w.reloading && len(w.reloads) == 0
-					w.mu.Unlock()
-					if inFlight {
-						w.shutdown()
-						return
-					}
-					time.Sleep(time.Millisecond)
+				select {
+				case <-applying:
+					w.shutdown()
+				case <-ctx.Done():
 				}
 			}()
 		}
