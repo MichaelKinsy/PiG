@@ -1,3 +1,4 @@
+// Ports packages/coding-agent/src/modes/rpc/rpc-mode.ts (the extension UI context: dialog requests and extension_ui_response handling).
 package cli
 
 import (
