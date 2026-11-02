@@ -11608,6 +11608,72 @@
       ]
     },
     {
+      "id": "BF-576065f",
+      "title": "A stream of appends to one text costs the appended bytes instead of the whole text so far",
+      "symptom": "A stream of appends to one text costs the appended bytes instead of the whole text so far.",
+      "rootCause": "Pi (appendText) and (PendingOps folds appends) rely on V8 ropes: an append, and the merge of two appends to one path, cost the appended text. A Go string is flat, so each AppendText copied the whole text twice (once into the draft, once when Prepare replays the append op) and each merged append in PendingOps copied the folded text again.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A stream of appends to one text costs the appended bytes instead of the whole text so far. `delta.AppendText` and the preparation of the change that adopts it each copied the text into a new string for every append, and `delta.PendingOps` copied the folded text again for every merged append, as Go strings do where Pi's V8 ropes do not. The new revision's string now shares the bytes of the old one and the queue folds into one buffer. 10000 adopted 8-byte `AppendText` commits take 23 ms and 22 MB (they took 190 ms and 879 MB; the same number of commits that set a number take 23 ms and 18 MB), and 10000 appends to one path fold in `PendingOps` in 1.4 ms and 1 MB (they took 120 ms and 429 MB). The ops and values are unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "576065f106",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/delta/append_text_scaling_norace_test.go::TestScalingPendingOpsFoldAppends",
+        "chord/delta/append_text_scaling_norace_test.go::TestScalingTrackerAppendTextStream",
+        "chord/delta/text_tails_test.go::TestAppendTextJoinsSurrogateHalvesOfOneChange",
+        "chord/delta/text_tails_test.go::TestPendingOpsFoldedAppendsAreConcatenatedAndStayTaken",
+        "chord/delta/text_tails_test.go::TestSyncTextTailsConcurrentAppends",
+        "chord/delta/text_tails_test.go::TestTextTailsBranchesFromOneStringStayApart",
+        "chord/delta/text_tails_test.go::TestTextTailsConcatIsJSStringConcat",
+        "chord/delta/text_tails_test.go::TestTextTailsKeepsGrowingPastTheBound",
+        "chord/delta/text_tails_test.go::TestTextTailsRepeatedAppendReturnsTheStringAlreadyMade",
+        "chord/delta/text_tails_test.go::TestTextTailsSharesTheBytesOfAGrowingText",
+        "chord/delta/text_tails_test.go::TestTrackerAppendTextCompetingChangesStayApart",
+        "chord/delta/text_tails_test.go::TestTrackerAppendTextStreamKeepsEarlierRevisions"
+      ]
+    },
+    {
+      "id": "BF-576065f-2",
+      "title": "Several `AppendText` calls to one key in one change join their texts as JavaScript string concatenation does…",
+      "symptom": "Several `AppendText` calls to one key in one change join their texts as JavaScript string concatenation does: a high surrogate that ends one text and a low surrogate that starts the next make one character in the op, as they already do in the new value.",
+      "rootCause": "Pi (appendText) and (PendingOps folds appends) rely on V8 ropes: an append, and the merge of two appends to one path, cost the appended text. A Go string is flat, so each AppendText copied the whole text twice (once into the draft, once when Prepare replays the append op) and each merged append in PendingOps copied the folded text again.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Several `AppendText` calls to one key in one change join their texts as JavaScript string concatenation does: a high surrogate that ends one text and a low surrogate that starts the next make one character in the op, as they already do in the new value.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "576065f106",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/delta/append_text_scaling_norace_test.go::TestScalingPendingOpsFoldAppends",
+        "chord/delta/append_text_scaling_norace_test.go::TestScalingTrackerAppendTextStream",
+        "chord/delta/text_tails_test.go::TestAppendTextJoinsSurrogateHalvesOfOneChange",
+        "chord/delta/text_tails_test.go::TestPendingOpsFoldedAppendsAreConcatenatedAndStayTaken",
+        "chord/delta/text_tails_test.go::TestSyncTextTailsConcurrentAppends",
+        "chord/delta/text_tails_test.go::TestTextTailsBranchesFromOneStringStayApart",
+        "chord/delta/text_tails_test.go::TestTextTailsConcatIsJSStringConcat",
+        "chord/delta/text_tails_test.go::TestTextTailsKeepsGrowingPastTheBound",
+        "chord/delta/text_tails_test.go::TestTextTailsRepeatedAppendReturnsTheStringAlreadyMade",
+        "chord/delta/text_tails_test.go::TestTextTailsSharesTheBytesOfAGrowingText",
+        "chord/delta/text_tails_test.go::TestTrackerAppendTextCompetingChangesStayApart",
+        "chord/delta/text_tails_test.go::TestTrackerAppendTextStreamKeepsEarlierRevisions"
+      ]
+    },
+    {
       "id": "BF-5774749",
       "title": "A Piglet found by name in `\u003cproject\u003e/.pig/piglets` now follows project trust: it is used only when the…",
       "symptom": "A cloned repository could shadow the user's Piglet of that name, with its system prompt, extensions and model, with no prompt and no flag.",
@@ -38227,6 +38293,29 @@
         "coding/piglet/origin_integrity_test.go::TestReadNPMOriginIntegrityResolvesLockfileKeys",
         "env/watch_test.go::TestRemoteWatcherOpensAgainAfterALostConnectionAndReportsOverflow",
         "test/ci-images/macos_shards_test.go::TestMacOSShardsTestTheMacOSSensitivePackages"
+      ]
+    },
+    {
+      "id": "BF-e33dbb0",
+      "title": "fix(chord/delta): textTails remembers buffers weakly so a released text costs nothing",
+      "symptom": "fix(chord/delta): textTails remembers buffers weakly so a released text costs nothing",
+      "rootCause": "The tracker owner's textTails held every buffer it made strongly, for as long as the Tracker lived: a streamed text that was deleted or replaced stayed pinned (the current buffer, up to twice its size, and the replaced one behind its alias). 4096 adopted 1 KiB AppendText commits followed by a commit that deletes the key left 12.3 MiB after two collections.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e33dbb0ad0",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/delta/append_text_retention_norace_test.go::TestTrackerAppendTextReleasesBuffersOfReleasedKeys",
+        "chord/delta/text_tails_test.go::TestTextTailsForgetCollectedBuffers",
+        "chord/delta/text_tails_test.go::TestTrackerAppendTextStreamKeepsEarlierRevisions"
       ]
     },
     {
