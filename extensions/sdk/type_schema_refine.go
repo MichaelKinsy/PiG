@@ -14,6 +14,7 @@ type Refinement struct {
 
 // Refine is `Type.Refine(type, check, error?)`: a copy of the schema whose hidden `~refine` list has the refinement appended. The schema's JSON does not change. A schema made of an
 // array, or anything that is not an object, panics as Unsafe does.
+// pig divergence (D226): the stored check is never run by any API; remove when every SDK serves TypeBox Value.Check.
 func (t typeNamespace) Refine(schema any, check func(value any) (bool, error), errorFn ...func(value any) (string, error)) *TSchema {
 	refinement := Refinement{Check: check}
 	if len(errorFn) > 0 {

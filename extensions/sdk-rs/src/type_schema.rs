@@ -783,6 +783,7 @@ impl Type {
     /// `Type.Optional(value)` of a value that is not a [`TSchema`]: a plain JSON object, or a list (whose copy loses the marker, see [`Type::unsafe_`]). Any other value is an error.
     /// `Type.Refine(type, check, error?)`: a copy of the schema whose hidden `~refine` list has the refinement appended; the schema's JSON does not change. The refinements are
     /// not run: a tool's arguments are validated as plain JSON Schema, so check such constraints in the handler.
+    /// pig divergence (D226): the stored check is never run by any API; remove when every SDK serves TypeBox Value.Check.
     pub fn refine(
         schema: impl Into<TSchema>,
         check: impl Fn(&Value) -> Result<bool, String> + Send + Sync + 'static,

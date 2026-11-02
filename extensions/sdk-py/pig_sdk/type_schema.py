@@ -336,6 +336,7 @@ class _Type(_EngineMembers):
     def immutable(schema: Any) -> TSchema:
         return _update(schema, {"~immutable": True}, None)
 
+    # pig divergence (D226): the stored check is never run by any API; remove when every SDK serves TypeBox Value.Check.
     @staticmethod
     def refine(*args: Any) -> TSchema:
         """``Type.Refine(type, check)`` or ``(type, check, error)``: a copy of the schema whose hidden ``~refine`` list has the refinement appended; the schema's JSON does not change.
