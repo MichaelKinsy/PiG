@@ -88,6 +88,122 @@ func TestStatusJSONFailsOnUnmaterializedPackage(t *testing.T) {
 	}
 }
 
+// A configured Package source may carry credentials (a git URL with a user and
+// token, or a secret query parameter). `pig status` is an aggregate report meant
+// to be pasted or piped to other tools, and the messages of the layers below
+// name the source they failed on, so it names a URL as Pi's bug report does
+// (redactUrl): without the credentials.
+func TestStatusRedactsCredentialsInPackageSources(t *testing.T) {
+	const gitSource = "git:https://deploy:S3CRET-PASSWORD@example.invalid/org/repo.git"
+	const querySource = "git:https://example.invalid/org/other.git?access_token=S3CRET-QUERY"
+	for name, test := range map[string]struct {
+		sources   []string
+		install   bool
+		wantCode  int
+		wantNamed string
+	}{
+		"installed Package resources carry the source":  {[]string{gitSource}, true, 0, "example.invalid/org/repo.git"},
+		"unmaterialized Package error names the source": {[]string{gitSource, querySource}, false, 1, "example.invalid/org/other.git"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			agentDir := filepath.Join(root, "agent")
+			cwd := filepath.Join(root, "workspace")
+			if err := os.MkdirAll(cwd, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("PIG_HOME", root)
+			t.Setenv("PIG_CODING_AGENT_DIR", agentDir)
+			t.Chdir(cwd)
+			var sources []codingagent.PackageSource
+			for _, source := range test.sources {
+				sources = append(sources, codingagent.PackageSource{Source: source})
+			}
+			if err := codingagent.NewSettingsManager(cwd, agentDir).SetPackages(sources); err != nil {
+				t.Fatal(err)
+			}
+			if test.install {
+				writeStatusSkillPackage(t, filepath.Join(agentDir, "git", "example.invalid", "org", "repo"))
+			}
+
+			stdout, stderr, code := captureStdoutStderr(t, func() int { return runStatusCommand([]string{"status", "--json"}) })
+			if code != test.wantCode || stderr != "" {
+				t.Fatalf("code=%d stdout=%s stderr=%s", code, stdout, stderr)
+			}
+			text, textErr, _ := captureStdoutStderr(t, func() int { return runStatusCommand([]string{"status"}) })
+			for _, output := range []string{stdout, text + textErr} {
+				for _, secret := range []string{"S3CRET-PASSWORD", "S3CRET-QUERY", "deploy:"} {
+					if strings.Contains(output, secret) {
+						t.Errorf("status carries %q:\n%s", secret, output)
+					}
+				}
+			}
+			if !strings.Contains(stdout, test.wantNamed) {
+				t.Errorf("status no longer names the Package %q:\n%s", test.wantNamed, stdout)
+			}
+		})
+	}
+}
+
+// A password may hold any character a URL's user information allows, a quote
+// included; the redaction of a message must not stop at it and print the rest.
+func TestStatusRedactsAPasswordThatHoldsAQuote(t *testing.T) {
+	root := t.TempDir()
+	agentDir := filepath.Join(root, "agent")
+	cwd := filepath.Join(root, "workspace")
+	if err := os.MkdirAll(cwd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PIG_HOME", root)
+	t.Setenv("PIG_CODING_AGENT_DIR", agentDir)
+	t.Chdir(cwd)
+	const source = "git:https://deploy:S3CRET'TAILPART@example.invalid/org/repo.git"
+	if err := codingagent.NewSettingsManager(cwd, agentDir).SetPackages([]codingagent.PackageSource{{Source: source}}); err != nil {
+		t.Fatal(err)
+	}
+	stdout, _, _ := captureStdoutStderr(t, func() int { return runStatusCommand([]string{"status", "--json"}) })
+	text, textErr, _ := captureStdoutStderr(t, func() int { return runStatusCommand([]string{"status"}) })
+	for _, output := range []string{stdout, text + textErr} {
+		for _, secret := range []string{"S3CRET", "TAILPART"} {
+			if strings.Contains(output, secret) {
+				t.Errorf("status carries %q:\n%s", secret, output)
+			}
+		}
+		if !strings.Contains(output, "example.invalid/org/repo.git") {
+			t.Errorf("status no longer names the Package:\n%s", output)
+		}
+	}
+}
+
+// A settings file with a syntax error reports it as Node's JSON.parse does,
+// quoting about twenty characters around the error. In a file that holds a
+// credential the quote may be cut out of the middle of it, where no URL is left
+// to redact, so `pig status` (which has no Pi output to match) reports the
+// error without the quoted text.
+func TestStatusSettingsSyntaxErrorQuotesNoFileText(t *testing.T) {
+	root := t.TempDir()
+	agentDir := filepath.Join(root, "agent")
+	cwd := filepath.Join(root, "workspace")
+	for _, directory := range []string{cwd, agentDir} {
+		if err := os.MkdirAll(directory, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("PIG_HOME", root)
+	t.Setenv("PIG_CODING_AGENT_DIR", agentDir)
+	t.Chdir(cwd)
+	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte(`{"packages": ["git:https://example.invalid/r.git", @SECRETPASS1234 ]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	stdout, stderr, code := captureStdoutStderr(t, func() int { return runStatusCommand([]string{"status", "--json"}) })
+	if code != 1 || stderr != "" || !strings.Contains(stdout, "settings: Unexpected token '@'") || !strings.Contains(stdout, "is not valid JSON") {
+		t.Fatalf("code=%d stdout=%s stderr=%s: want the settings syntax error", code, stdout, stderr)
+	}
+	if strings.Contains(stdout, "SECRETPAS") {
+		t.Errorf("the settings error quotes the file:\n%s", stdout)
+	}
+}
+
 func TestStatusHelpAndUnknownOption(t *testing.T) {
 	stdout, stderr, code := captureStdoutStderr(t, func() int { return runStatusCommand([]string{"status", "--help"}) })
 	if code != 0 || stderr != "" || !strings.Contains(stdout, "Usage:") {

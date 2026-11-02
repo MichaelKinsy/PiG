@@ -2,6 +2,8 @@ bin/
 /out/
 /build/
 /dist/
+# durable/core/probe/build.sh writes the probe core here; it is a build output, regenerated on demand.
+/durable/core/dist/
 /coverage/
 /evidence/
 # No trailing slash: a worktree's node_modules is often a symlink, which a directory-only pattern does not match.

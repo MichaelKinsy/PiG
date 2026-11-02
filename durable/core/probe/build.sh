@@ -1,5 +1,5 @@
 #!/bin/sh
-# Build the probe core as a WASI reactor. Usage: build.sh [out]  (default: dist/probe.wasm next to this script)
+# Build the probe core as a WASI reactor. Usage: build.sh [out]  (default: durable/core/dist/probe.wasm)
 set -e
 here=$(cd "$(dirname "$0")" && pwd)
 out=$(realpath -m "${1:-$here/../dist/probe.wasm}")

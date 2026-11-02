@@ -84,6 +84,24 @@ updates:
         patterns: ["*"]
     open-pull-requests-limit: 5
 
+  # The evaluator images' base-image digests (internal/evals/docker/Dockerfile). The Go release in the golang tag is the one
+  # .go-version pin (make compliance rejects any other), so version bumps of golang are ignored here and only a rebuilt tag's
+  # new digest is proposed; the Go pin moves with .go-version.
+  - package-ecosystem: docker
+    directory: /internal/evals/docker
+    schedule:
+      interval: monthly
+    ignore:
+      - dependency-name: golang
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+    groups:
+      docker:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
