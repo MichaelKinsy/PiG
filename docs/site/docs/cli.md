@@ -88,7 +88,7 @@ These options apply to `pig [options] [prompt]`. Run `pig --help` for the full l
 | `--fork <path\|id>` | Fork a session file or partial UUID into a new session. |
 | `--session-dir <dir>` | Directory for session storage and lookup. |
 | `--no-session` | Do not save the session. |
-| `--listen <path>` | Serve one RPC session per connection on the Unix socket at path; requires `--mode rpc` (D201). |
+| `--listen <path>` | Serve one RPC session per connection on the Unix socket at path; requires `--mode rpc` (D201). Every session's instance of an extension runs in one process per extension, so module-level state is shared between sessions. |
 | `--name`, `-n <name>` | Set the session display name. |
 | `--no-mcp` | Turn off the built-in MCP support for this run: no servers connect, and there are no MCP tools or `/mcp`. It does not affect an extension that replaces the built-in MCP support. |
 | `--no-skills`, `-ns` | Turn off skill discovery and loading. |

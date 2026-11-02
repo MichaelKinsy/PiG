@@ -860,6 +860,10 @@ func Main(args []string, options *MainOptions) {
 	if runtime.GOOS != "windows" {
 		signal.Notify(sigCh, syscall.SIGHUP)
 	}
+	if flags.Listen != "" {
+		// pig additive (D201): Ctrl+C ends a --listen server like SIGTERM, so the sessions shut down and the socket file is removed.
+		signal.Notify(sigCh, os.Interrupt)
+	}
 	defer signal.Stop(sigCh)
 	go func() {
 		noteTerminationSignal(<-sigCh)

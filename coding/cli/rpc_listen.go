@@ -27,6 +27,71 @@ func flushConnectionTail(tail *stdoutQueue) {
 	tail.Wait(ctx)
 }
 
+// listenTerminationSignals are the signals that end a --listen server: the ones rpc mode handles, and Ctrl+C, which would otherwise leave the socket file behind. pig additive (D201).
+func listenTerminationSignals() []os.Signal {
+	return append(terminationSignals(), os.Interrupt)
+}
+
+// holdForFurtherSignals passes the first signal on second to forceWith, whether it arrives during the first signal's fan-out or after it, until serverDone closes: a connection unwind that wedges after the fan-out still ends on a further signal. It stops watching second, and returns once the fan-out finished or a signal arrived. pig additive (D201).
+func holdForFurtherSignals(second chan os.Signal, fanout <-chan struct{}, serverDone <-chan struct{}, forceWith func(os.Signal)) {
+	select {
+	case <-fanout:
+		go func() {
+			defer signal.Stop(second)
+			select {
+			case s := <-second:
+				forceWith(s)
+			case <-serverDone:
+			}
+		}()
+	case s := <-second:
+		signal.Stop(second)
+		forceWith(s)
+	}
+}
+
+// retryableAcceptError reports whether an accept failure is transient: a descriptor shortage or an aborted connection, as net/http's Server.Serve treats it. pig additive (D201).
+func retryableAcceptError(err error) bool {
+	if errors.Is(err, syscall.EMFILE) || errors.Is(err, syscall.ENFILE) || errors.Is(err, syscall.ECONNABORTED) {
+		return true
+	}
+	var temporary interface{ Temporary() bool }
+	return errors.As(err, &temporary) && temporary.Temporary()
+}
+
+// nextAcceptDelay is the wait after a transient accept failure: 5 ms for the first, then doubled up to 1 s.
+func nextAcceptDelay(previous time.Duration) time.Duration {
+	if previous == 0 {
+		// pig additive (D201): the 5 ms start of Go's net/http Server.Serve (net/http/server.go).
+		return 5 * time.Millisecond
+	}
+	// pig additive (D201): the 1 s ceiling of Go's net/http Server.Serve (net/http/server.go).
+	return min(2*previous, time.Second)
+}
+
+// acceptWithBackoff accepts one connection. A transient failure is reported through retrying and retried after a delay that starts at 5 ms, doubles and stops at 1 s, as Go's net/http Server.Serve does (net/http/server.go; Pi has no counterpart); any other error is returned, and so is ctx's end.
+func acceptWithBackoff(ctx context.Context, listener net.Listener, retrying func(err error, delay time.Duration)) (net.Conn, error) {
+	var delay time.Duration
+	for {
+		conn, err := listener.Accept()
+		if err == nil {
+			return conn, nil
+		}
+		if !retryableAcceptError(err) || ctx.Err() != nil {
+			return nil, err
+		}
+		delay = nextAcceptDelay(delay)
+		retrying(err, delay)
+		timer := time.NewTimer(delay) //perf:ok cold: one timer per transient accept failure
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, err
+		}
+	}
+}
+
 // listenControls is the set of live connection sessions' signal controls; the server's termination hooks fan out to it. pig additive (D201).
 type listenControls struct {
 	mu       sync.Mutex
@@ -150,8 +215,18 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 	defer stop()
 	controls := &listenControls{}
 	hosts := &listenHosts{}
-	// forced carries the termination signal that arrives while the first signal's fan-out is still running.
+	// forced carries a termination signal that arrives after the first one, from the start of its fan-out until runRPCListen returns.
 	forced := make(chan syscall.Signal, 1)
+	serverDone := make(chan struct{})
+	defer close(serverDone)
+	forceWith := func(s os.Signal) {
+		if sig, ok := s.(syscall.Signal); ok {
+			select {
+			case forced <- sig:
+			default:
+			}
+		}
+	}
 	// The startup build's Host stays tracked until the first connection's session ends, or until exit if none connects.
 	hosts.add(resources.Build)
 
@@ -160,20 +235,15 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 	setTerminationShutdownHook(func() {
 		_ = listener.Close()
 		sig := syscall.Signal(receivedTerminationSignal.Load())
-		// pig additive (D201): as in process mode, a further termination signal ends the wait for a session whose dispose hangs.
+		// pig additive (D201): as in process mode, a further termination signal ends the wait for a session whose dispose hangs; the listener stays live until the server returns, so it also ends a connection unwind that wedges after the fan-out.
 		second := make(chan os.Signal, 1)
-		signal.Notify(second, terminationSignals()...)
-		defer signal.Stop(second)
+		signal.Notify(second, listenTerminationSignals()...)
 		fanout := make(chan struct{})
 		go func() {
 			defer close(fanout)
 			controls.each(true, func(c rpcSessionControls) { c.shutdown(sig) })
 		}()
-		select {
-		case <-fanout:
-		case s := <-second:
-			forced <- s.(syscall.Signal)
-		}
+		holdForFurtherSignals(second, fanout, serverDone, forceWith)
 	})
 	defer setTerminationPrelude(nil)
 	defer setTerminationShutdownHook(nil)
@@ -190,7 +260,9 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 	var acceptFailed error
 	conns.Go(func() {
 		for {
-			conn, err := listener.Accept()
+			conn, err := acceptWithBackoff(ctx, listener, func(err error, delay time.Duration) {
+				fmt.Fprintf(os.Stderr, "pig --listen: accept: %v; retrying in %v\n", err, delay)
+			})
 			if err != nil {
 				if ctx.Err() == nil && !errors.Is(err, net.ErrClosed) {
 					acceptFailed = err
