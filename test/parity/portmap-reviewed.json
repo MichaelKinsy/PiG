@@ -6,5 +6,13 @@
    "pkg:codemode/cloudflare#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions",
    "pkg:codemode/portable#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions"
   }
+ },
+ "packages/chord/src/watch.ts": {
+  "reason": "SingletonHandle declares no `value` or `watch` of its own: it extends Watchable<T> (watch.ts), so the ledger files these members under watch.ts. Their Go form is the Watchable interface of chord/watch.go (Value, Watch); chord/next/documents/handles.go's SingletonHandle declares the same two methods with the Go-forced difference that Value also returns an error (a read of a released handle refuses), and chord/next/documents/handles_test.go exercises them.",
+  "members": {
+   "pkg:chord/next#SingletonHandle::property:value": "chord/watch.go#Watchable.Value",
+   "pkg:chord/next#SingletonHandle::property:watch": "chord/watch.go#Watchable.Watch",
+   "pkg:chord/next#SingletonHandle::property:watch::call:0": "chord/watch.go#Watchable.Watch"
+  }
  }
 }
