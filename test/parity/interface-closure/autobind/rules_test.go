@@ -469,6 +469,7 @@ func TestValueRuleDecodesTypeScriptEscapes(t *testing.T) {
 // flattens, a method member as a Go method (T12m), and a string-literal member as the JSON discriminator the type marshals (T12d).
 func TestObjectLiteralMembers(t *testing.T) {
 	gt := goTypes(t, `
+import "fmt"
 type Base struct{ ID string `+"`json:\"id\"`"+` }
 type Tagged struct{ Base `+"`json:\"base\"`"+` }
 type Draft struct {
@@ -498,6 +499,8 @@ var (
 	H  Hello
 	A  any
 	Sm map[string]any
+	Bm map[string][]byte
+	Im map[string]fmt.Stringer
 	Ns struct{ Kind struct{ Name string } }
 	TI TaskID
 	Gs func(id ...string) string
@@ -517,7 +520,9 @@ var (
 	}{
 		{"{ /** the id */ readonly id: string; readonly count: number }", "D", yes},
 		{"{ id: string; count: number; missing: string }", "D", no},
-		{"{ readonly [keyword: string]: unknown }", "Sm", yes},                  // T12i: an index signature is a Go map from string to the value type
+		{"{ readonly [keyword: string]: unknown }", "Sm", unknown},              // T12i: a Go map loses the member order, so it is not the Go form
+		{"{ readonly [keyword: string]: unknown }", "Bm", unknown},              // base64 on the wire: not an unknown value
+		{"{ readonly [keyword: string]: unknown }", "Im", unknown},              // an interface that is not empty cannot hold every value
 		{"{ readonly [keyword: string]: unknown }", "D", no},                    // a struct is not an index signature's Go form
 		{"{ id: string; count: number; readonly [rowBrand]: true }", "D", yes},  // T12k: a unique-symbol brand is no field
 		{"{ id: string; count: number; readonly [rowBrand]: string }", "D", no}, // only the boolean tag is a brand

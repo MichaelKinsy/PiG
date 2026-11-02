@@ -2636,8 +2636,9 @@ func (c *checker) overloadSet(up string, sig *types.Signature) (verdict, bool) {
 var openObjectRe = regexp.MustCompile(`^\{\s*(?:readonly\s+)?\[\s*\w+\s*:\s*string\s*\]\s*:\s*(.+?)\s*[;,]?\s*\}$`)
 
 // keywordObject applies T12i: an upstream object whose only member is a string index signature (pi-schema's Schema, a JSON Schema
-// node) is the repository's JSON object: the ordered chordjson.Object (the Go form of a pi-schema schema, schema.Object), or a Go map
-// from string to a type unknown agrees with (map[string]any). Only the unknown or any value type is judged here. It reports ok false for any other shape.
+// node) is the repository's JSON object, the ordered chordjson.Object (the Go form of a pi-schema schema, schema.Object). A Go map is not
+// accepted: it loses the member order JSON.stringify keeps, and a map element type other than any cannot hold every value. Only the unknown or
+// any value type is judged here. It reports ok false for any other shape.
 func (c *checker) keywordObject(up string, t types.Type) (verdict, bool) {
 	m := openObjectRe.FindStringSubmatch(stripTypeNoise(up))
 	if m == nil {
@@ -2648,9 +2649,6 @@ func (c *checker) keywordObject(up string, t types.Type) (verdict, bool) {
 	}
 	if n := namedOf(t); n != nil && n.Obj().Name() == "Object" && n.Obj().Pkg() != nil && strings.HasSuffix(n.Obj().Pkg().Path(), "/internal/chord/chordjson") {
 		return yesV(), true
-	}
-	if mt, ok := t.Underlying().(*types.Map); ok && basicInfo(mt.Key())&types.IsString != 0 {
-		return c.agree(m[1], mt.Elem()), true
 	}
 	return verdict{}, false
 }
