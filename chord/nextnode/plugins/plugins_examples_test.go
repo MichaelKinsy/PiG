@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"slices"
 	"sort"
 	"strings"
@@ -163,7 +164,7 @@ func exStart(t *testing.T, plugins *Plugins, cache, kind string, modules HostPac
 	return started
 }
 
-// exLoad is exStart's load: the Node host, its link not attached yet (the app attaches it in time: RuntimeLoad.Heartbeat).
+// exLoad is exStart's load: the Node host, its link not attached yet (NodeHost.Link attaches at its first use).
 func exLoad(t *testing.T, plugins *Plugins, cache, kind string, modules HostPackages, address *contracts.Address, principal, peer data.Principal, withProbe bool) *exNode {
 	t.Helper()
 	load := PluginsLoad{Kind: kind, Modules: modules, Address: address, Principal: principal, Peer: peer}
@@ -200,6 +201,7 @@ func exEdit(t *testing.T, dir, file, from, to string) {
 	if !strings.Contains(string(text), from) {
 		t.Fatalf("%s has no %q", file, from)
 	}
+	exTouch(t, filepath.Dir(path))
 	if err := os.WriteFile(path, []byte(strings.Replace(string(text), from, to, 1)), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -208,6 +210,7 @@ func exEdit(t *testing.T, dir, file, from, to string) {
 // exWrite writes a whole file (`writeFile`).
 func exWrite(t *testing.T, path, text string) {
 	t.Helper()
+	exTouch(t, filepath.Dir(path))
 	if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -245,9 +248,76 @@ func exMarks(t *testing.T, plugins *Plugins, want PluginsState) {
 	if want.Install == nil {
 		want.Install = []string{}
 	}
+	if runtime.GOOS == "windows" {
+		got = withoutDirectoryStamps(t, got, want)
+	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("marks = %+v, want %+v", got, want)
 	}
+}
+
+// exTouched is the directories each test changed an entry of, by name: only they can report their own last-write time.
+var exTouched = struct {
+	sync.Mutex
+	dirs map[*testing.T][]string
+}{dirs: map[*testing.T][]string{}}
+
+// exTouch records that the test changes an entry of dir.
+func exTouch(t *testing.T, dir string) {
+	t.Helper()
+	exTouched.Lock()
+	defer exTouched.Unlock()
+	if _, ok := exTouched.dirs[t]; !ok {
+		t.Cleanup(func() {
+			exTouched.Lock()
+			defer exTouched.Unlock()
+			delete(exTouched.dirs, t)
+		})
+	}
+	exTouched.dirs[t] = append(exTouched.dirs[t], filepath.Base(dir))
+}
+
+func exTouchedBy(t *testing.T) []string {
+	exTouched.Lock()
+	defer exTouched.Unlock()
+	return slices.Clone(exTouched.dirs[t])
+}
+
+// exStamp is whether the mark of a plugin is what Windows adds when its directory's entries changed: a directory the test
+// changed an entry of (the plugin's directory is named as the last segment of its name).
+func exStamp(touched []string, plugin string) bool {
+	_, dir, _ := strings.Cut(plugin, "/")
+	if dir == "" {
+		dir = plugin
+	}
+	return slices.Contains(touched, dir)
+}
+
+// withoutDirectoryStamps is got without what Windows adds to the marks of a plugin directory whose entries changed: the OS
+// reports the directory's own last-write time as a change of it (Node's `fs.watch` reports it as `change`, which Pi's watcher
+// marks too), at a moment no test can bound: the set is marked and the plugin dirty, though only the entry's own change was
+// made. Only the marks of a directory the test changed an entry of, and that want does not have, are dropped (the set's only
+// when the test changed some entry); an unrelated plugin that is dirty, or a mark want has and got lacks, still fails.
+func withoutDirectoryStamps(t *testing.T, got, want PluginsState) PluginsState {
+	touched := exTouchedBy(t)
+	if !want.Set && len(touched) > 0 {
+		got.Set = false
+	}
+	got.Dirty = slices.DeleteFunc(slices.Clone(got.Dirty), func(name string) bool {
+		return !slices.Contains(want.Dirty, name) && exStamp(touched, name)
+	})
+	return got
+}
+
+// exDirtyOf is the plugins the marks say to build, as the case expects them (want): on Windows the plugins whose directory
+// saw an entry come or go are dirty too (see withoutDirectoryStamps), and are not built here.
+func exDirtyOf(t *testing.T, plugins *Plugins, want ...string) []string {
+	dirty := plugins.Marks().Dirty
+	if runtime.GOOS == "windows" {
+		touched := exTouchedBy(t)
+		dirty = slices.DeleteFunc(slices.Clone(dirty), func(name string) bool { return !slices.Contains(want, name) && exStamp(touched, name) })
+	}
+	return dirty
 }
 
 func exBuild(t *testing.T, plugins *Plugins, names []string) *Built {
@@ -423,7 +493,7 @@ func TestExample35PluginsLoadEditMarkBuildRollOut(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	built := exBuild(t, plugins, plugins.Marks().Dirty)
+	built := exBuild(t, plugins, exDirtyOf(t, plugins, "@example/notes"))
 	var builtLines []string
 	for _, facet := range built.Facets {
 		builtLines = append(builtLines, facet.Plugin+"/"+facet.Facet+": "+string(facet.Kind))
@@ -732,7 +802,7 @@ func TestExample37PluginImports(t *testing.T) {
 		},
 		"@example/ruler": {
 			`plugin "@example/ruler": its server facet failed to build:`,
-			`../shapes/units.ts:4:22: "typebox": a file copied from plugin "@example/shapes" may import only host packages and files of its own plugin`,
+			`../shapes/units.ts:4:21: "@earendil-works/pi-schema": a file copied from plugin "@example/shapes" may import only host packages and files of its own plugin`,
 		},
 	}
 	if !reflect.DeepEqual(left, wantLeft) {
@@ -761,7 +831,7 @@ func TestExample37PluginImports(t *testing.T) {
 	facet := built.Facets[0]
 	var read []string
 	for _, input := range facet.Inputs {
-		read = append(read, strings.TrimPrefix(input.File, root+string(filepath.Separator)))
+		read = append(read, filepath.ToSlash(strings.TrimPrefix(input.File, root+string(filepath.Separator))))
 	}
 	if want := []string{"report/server.ts", "shapes/contract.ts"}; !slices.Equal(read, want) || len(facet.Copied) != 1 {
 		t.Fatalf("built %s/%s: read %v; copied %d file, want %v and 1", facet.Plugin, facet.Facet, read, len(facet.Copied), want)
@@ -774,7 +844,13 @@ func TestExample37PluginImports(t *testing.T) {
 	if got, want := exLineOf(report), (exLine{[]string{"@example/report"}, []string{}, []string{}, []string{"@example/paths", "@example/refused", "@example/ruler"}}); !reflect.DeepEqual(got, want) {
 		t.Fatalf("reload = %+v, want %+v", got, want)
 	}
-	want := "example app v3 | EUR 12.50 | ...vat | 20% | hello, plugins | node_modules/example-native/index.js"
+	// The fixture reports the last three segments of `__filename` split at "/": a Windows path has none, so the report holds
+	// the whole path there, as Pi's does on Windows.
+	native := "node_modules/example-native/index.js"
+	if runtime.GOOS == "windows" {
+		native = filepath.Join(realOf(t, root), "report", "node_modules", "example-native", "index.js")
+	}
+	want := "example app v3 | EUR 12.50 | ...vat | 20% | hello, plugins | " + native
 	if got := server.read("example.report", "text", "str"); got != want {
 		t.Fatalf("3. the report: %q, want %q", got, want)
 	}
@@ -836,6 +912,8 @@ func TestExample38WatchAndRollout(t *testing.T) {
 		t.Fatal(err)
 	}
 	exMarks(t, plugins, PluginsState{Dirty: all})
+	exTouch(t, root)
+	exTouch(t, filepath.Join(root, "tags"))
 	if err := os.CopyFS(filepath.Join(root, "extra"), os.DirFS(incoming)); err != nil {
 		t.Fatal(err)
 	}
@@ -1002,7 +1080,7 @@ func TestExample39BrowserBuild(t *testing.T) {
 	}
 	var read []string
 	for _, input := range gallery.Inputs {
-		read = append(read, strings.TrimPrefix(input.File, root))
+		read = append(read, filepath.ToSlash(strings.TrimPrefix(input.File, root)))
 	}
 	if want := []string{"/gallery/assets/logo.svg", "/gallery/gallery.css", "/gallery/web.ts"}; !slices.Equal(read, want) {
 		t.Fatalf("read: %v, want %v", read, want)
