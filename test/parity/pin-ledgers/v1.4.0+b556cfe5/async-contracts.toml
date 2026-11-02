@@ -641,8 +641,8 @@ rationale = "`socket` (`void host.root(...)`): an owned background task ending w
 path = "packages/chord/src/next-node/plugins/build.ts"
 disposition = "translated"
 contracts = ["awaited", "cancellable"]
-evidence = ["test:chord/nextnode/plugins/plugins_build_test.go#TestBuildingAFacetReturnsASyntaxErrorAndAMissingFacetAsFailedResultsNeverAThrow", "test:chord/nextnode/plugins/plugins_build_test.go#TestBuildingAFacetThrowsOnlyWhenItsContextAborts"]
-rationale = "`buildFacet`: blocking `BuildFacet`; a missing facet is a failed result without an abort check (upstream order), then the abort check, then the Builder; failed builds are results, errors only for abort (lane kfold)."
+evidence = ["test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildReturnsASyntaxErrorAndAMissingFacetAsFailedResultsNeverAThrow", "test:chord/nextnode/plugins/plugins_build_test.go#TestEsbuildBuildAnAbortedContextIsItsCause"]
+rationale = "`buildFacet`: blocking `BuildFacet` on esbuild's Go API; a missing facet and a failed build are results, an error only for an aborted ctx (`context.Cause`) (lane plugnode)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/discover.ts"
@@ -662,43 +662,43 @@ rationale = "`installDependencies` (spawn with the context's signal): blocking `
 path = "packages/chord/src/next-node/plugins/plugins.ts"
 disposition = "translated"
 contracts = ["awaited", "concurrent-joined", "microtask-ordering", "cancellable"]
-evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothChangesAstraSolOpusS1", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestRolloutCountsAHostsErrorAsTheStepsBuiltPluginsFailingThereAHostStoppedCleanlyDirtiesNothingD12", "test:chord/nextnode/plugins/plugins_watcher_test.go#TestTheWatchersMarksFromRealFileEventsPublishingTheMarksToAWatch"]
+evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothChanges", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsRolloutCountsAHostsErrorAsTheStepsBuiltPluginsFailingThereAHostStoppedCleanlyDirtiesNothing", "test:chord/nextnode/plugins/plugins_watcher_test.go#TestTheWatchersMarksFromRealFileEventsPublishingTheMarksToAWatch"]
 rationale = "`build` Promise.all is `buildAll` (one goroutine per facet in a WaitGroup, results by index); reloads of one host are serialized by a ticket taken in the section that applies the build; `rollout` runs the steps in order, a step's error stops it as a result; the watcher's microtask publication is `Batch.Soon` and fs events run as host sections (lane kfold)."
 
 [[files]]
 path = "packages/chord/src/next-node/plugins/runtime.ts"
 disposition = "translated"
-contracts = ["awaited", "microtask-ordering"]
-evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothChangesAstraSolOpusS1", "test:chord/nextnode/plugins/plugins_runtime_test.go#TestRuntimeAdoptsWhatAReloadCommittedWhenItsWaitAbortsAfterTheCommitALaterReloadKeepsIt"]
-rationale = "`PluginRuntime.reload` queue (`state.reloading.then`): blocking `Reload` queued in call order per host by a ticket; a rejected reload does not break the chain; `committed` after an aborted reload is adopted from the host's `aborted` error (lane kfold)."
+contracts = ["awaited", "microtask-ordering", "cancellable"]
+evidence = ["test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1SerializesReloadsOfOneHostTwoStartedTogetherKeepBothChanges", "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsFixRound1AdoptsWhatAReloadCommittedWhenItsWaitAbortsAfterTheCommitALaterReloadKeepsIt"]
+rationale = "`evaluateFacet` and `createPluginRuntime().load/reload` run in the Node subprocess; `PluginRuntime.Load/Reload` block over the control channel: ctx abort sends `abort`, the wait goes on until the subprocess answers (`aborted`, with `details.committed` after a commit) or ends; requests reach the subprocess in call order and Pi's runtime queues one reload after another per host; a NodeHost is never restarted, a process exit fails pending requests with `*NodeExit` (lane plugnode)."
 
 [[files]]
 path = "packages/chord/src/next-node/workers/lock.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "microtask-ordering"]
+evidence = ["test:chord/nextnode/workers/workers_lock_test.go#TestProcessLockStopsWaitingWhenTheWaitersContextAborts", "test:chord/nextnode/workers/workers_lock_test.go#TestProcessLockMakesASecondTakerWaitUntilTheHolderReleasesThenTakesIt", "test:chord/nextnode/workers/workers_lock_test.go#TestSocketFileLocksFailClosedOnAStaleLockFileNamingItTwoTakersNeverBothTakeItOver", "test:chord/nextnode/workers/workers_lock_test.go#TestSocketFileLocksAreTakenWaitedForAndReleasedLikeTheOthers"]
+rationale = "lock.ts processLock / lockAt: blocking calls returning (handle, error); the abort returns `context.Cause(ctx)`; the waiter learns of the release by its connection's close, no polling (asserted: the waiter takes the lock within 100 ms) lock.ts listened, waitWhileHeld: `context.AfterFunc(ctx, conn.Close)` ends the read; a refused connect is the stale-file answer lock.ts release() (server.close + destroy waiters): `Release` closes the listener, joins the accept goroutine, then closes the waiters; releasing again returns the first result lock.ts process.once(\"exit\", removeFile): `atExit` hook run by `exitProcess` (lane nwork)"
 
 [[files]]
 path = "packages/chord/src/next-node/workers/main.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["detached-owned", "cancellable", "microtask-ordering"]
+evidence = ["test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideSendsStartedWhenTheAppConnectsThenReadyWithItsLoadReportAndIdleState", "test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideSendsFatalWithTheRedactedErrorAndExits1", "test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideShutsDownDuringItsStartupAbortsItRunsTheClosersRegisteredSoFarInReverseOrderExits0", "test:chord/nextnode/workers/workers_signal_unix_test.go#TestTheWorkersSideShutsDownOnSIGTERM", "test:chord/nextnode/workers/workers_main_test.go#TestTheWorkersSideShutsDownOnTheParentsDisconnect", "test:chord/nextnode/workers/workers_workers_test.go#TestKeepAliveStopsAWorkerIdleSinceIdleMsAHoldKeepsOneRunningBusyKeepsItToo"]
+rationale = "main.ts #start (Promise.withResolvers): a one-slot channel filled by the first `start` main.ts void this.#run(fn).catch(...): one goroutine for the process's life; an error or panic is `fatal` unless stopping; shutdown ends the process (`exitProcess`) main.ts void this.#applyReloads(): an owned task per trigger, serialized by the `reloading` flag under the worker's mutex; the loop ends atomically with its last pop main.ts void this.#shutdown(), signals, disconnect: aborts the worker's context, runs the closers in reverse, forced exit after 3 s (`time.AfterFunc`), then `exitProcess(0)` main.ts #follow (watch.start(async () => flip())): the watch listener flips under the worker's mutex, sending `idle` in order of the flips main.ts #fatal (process.send(message, callback)): the channel's send callback runs once the message is written (or dropped with the channel), then `exitProcess(1)` (lane nwork)"
 
 [[files]]
 path = "packages/chord/src/next-node/workers/process.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["microtask-ordering", "detached-owned"]
+evidence = ["test:chord/nextnode/workers/workers_process_test.go#TestAWorkerProcessPipesItsOutputKeepsItsStderrTailQueuesAnEarlyFrameOnItsLinkTellsControlMessages", "test:chord/nextnode/workers/workers_workers_test.go#TestFixRound1AStopDuringTheWorkersStartupIsAStopItsClosersRunNothingFails", "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFixRound1ReapsAWorkerThatClosedItsOwnIPCChannelAndLivesOnKilledAfterTheGraceFailed", "test:chord/nextnode/workers/workers_blocked_unix_test.go#TestFailuresStayALinkLostWhileItsChildLivesABlockedWorkerPastTheHeartbeatIsKilledAfterTheGraceFailed"]
+rationale = "process.ts exited: Promise<Exit>: closed channel + `Exit()`; the `Exited` handler runs first, then the channel closes (Pi runs the `exit` listener before the promise's continuations) process.ts events (control, linkLost, linkClosed, exited): called from the goroutine that observes them (channel reader, waiter), in each source's order; the handler enters the component's loop process.ts output data listeners: one reader goroutine per stream, ends at the stream's end (every holder of its write end gone: the tree is killed at exit) (lane nwork)"
 
 [[files]]
 path = "packages/chord/src/next-node/workers/workers.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["awaited", "cancellable", "concurrent-joined", "detached-owned", "microtask-ordering"]
+evidence = ["test:chord/nextnode/workers/workers_workers_test.go#TestFailuresStayAStartThatFailsFailsTheAddressHoldersFailWaitingWithItANewHoldForksNothingRetryStartsIt", "test:chord/nextnode/workers/workers_workers_test.go#TestStopAStopDuringAStartWaitsForItThenStopsAStartDuringAStopWaitsForItsExit", "test:chord/nextnode/workers/workers_workers_test.go#TestFixRound1CloseDuringAnAppsStartThatIgnoresItsSignalReturnsAtOnceNothingForksAfterIt", "test:chord/nextnode/workers/workers_workers_test.go#TestFixRound1CloseDuringAForkedStartThatNeverConnectsReturnsAtOnceNoFailure", "test:chord/nextnode/workers/workers_workers_test.go#TestCloseCancelsAStartWaitingInStartAddressNothingForksNewStartsRejectNoWorkerFailedAtShutdown", "test:chord/nextnode/workers/workers_workers_test.go#TestFailuresStayAnExitBeforeStartedFailsTheStartAWorkerThatNeverConnectsIsKilledAtTheStartTimer", "test:chord/nextnode/workers/workers_workers_test.go#TestFailuresStayTheStartTimerCoversOnlyTheStartASlowLoadAfterConnectingIsNotKilled", "test:chord/nextnode/workers/workers_workers_test.go#TestKeepAliveStopsAWorkerIdleSinceIdleMsAHoldKeepsOneRunningBusyKeepsItToo", "test:chord/nextnode/workers/workers_rollout_test.go#TestTheRolloutStepShipsTheCurrentSetToRunningWorkersRetriesHeldFailedOnesListsEach", "test:chord/nextnode/workers/workers_workers_test.go#TestStartsOnDemandStartsAWorkerForTheFirstHoldStartingThenRunningItsLinkBindsTheHolder"]
+rationale = "workers.ts resolve: blocks in the route's `Resolve` task; the synchronous part is one loop section workers.ts #enqueue (queue.then(operation)): a chain of `done` channels, one owned goroutine per operation; the address's bookkeeping runs before the awaiter and the next operation workers.ts #start awaits (options.start, plugins.scripts, started): the app's `Start` runs in its own goroutine whose outcome is dropped once the wait is aborted (it may never return: not joined) workers.ts setTimeout start timer, grace timers, setInterval idle check: `clock.AfterFunc` wrapped in `loop.Run`; fake timers in the tests (vitest's, for `setTimeout`/`clearTimeout` only) workers.ts close (Promise.all(stops)): every stop is queued, then awaited in order with the caller's ctx; `Close` joins the component's tasks as far as ctx lets it (the wait ends with ctx's cause) workers.ts #closeWith (void this.close(...).catch): `context.AfterFunc` starts an owned task joined by `Close` workers.ts #reload, child.reloading, #rollout (Promise.all of entries), #retried, bounded: entries are once-settled outcomes awaited in order with the caller's ctx (equal to `Promise.all` of `awaitWithContext`); one reload outstanding per child (a `done` channel chain) workers.ts WorkersState.refresh (queueMicrotask): `loop.Queue`, one publication per turn while watched or derived from (lane nwork)"
 
 [[files]]
 path = "packages/chord/src/next/contracts/accepts.ts"
@@ -2011,10 +2011,10 @@ rationale = "The Session-owned retry loop blocks in sleepContext until the timer
 
 [[files]]
 path = "packages/coding-agent/src/utils/syntax-highlight.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["detached-owned", "ui-handoff"]
+evidence = ["test:internal/codingagent/highlight_languages_load_test.go#TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop", "test:internal/codingagent/highlight_languages_load_test.go#TestLoadRemainingHighlightLanguagesSkipsTheRepaintAfterStop", "test:tui/syntax_highlight_upstream_test.go#TestSyntaxHighlightRendererUpstream"]
+rationale = "loadAllHighlightLanguages memoizes one Promise that, after setImmediate, imports highlight.js/lib/index.js and resolves on success or failure, so the eager languages stay available either way; interactive-mode.ts init calls it unawaited after renderNow and, once it resolves and the mode is still initialized, invalidates and requests a render. Go links every grammar, so LoadAllHighlightLanguages is a sync.Once that registers them under the registry's lock and drops the memoized highlights; the interactive mode runs it on a background task owned by the mode's lifetime (joined at exit) and posts the invalidate and render to the owner loop, which a stopped mode never runs. Highlights requested meanwhile use the eager languages, as in Pi. The added getHighlightLanguageCount is synchronous (Pi 0f21a331; tui/highlight.go HighlightEpoch.generation) (lane RenderReuse)."
 
 [[files]]
 path = "packages/coding-agent/src/utils/tool-result-images.ts"
