@@ -5,27 +5,29 @@ package formats
 
 import "github.com/MichaelKinsy/PiG/schema"
 
-// Formats is Pi's `formats` export: every format JSON Schema 2020-12 defines, by name. It returns a new map on each call.
+// Formats is Pi's `formats` export: every format JSON Schema 2020-12 defines, by name, plus `url` and `json-pointer-uri-fragment`, which TypeBox and ajv-formats also check. It returns a new map on each call.
 func Formats() map[string]schema.FormatCheck {
 	return map[string]schema.FormatCheck{
-		"date":                  IsDate,
-		"date-time":             IsDateTime,
-		"duration":              IsDuration,
-		"email":                 IsEmail,
-		"hostname":              IsHostname,
-		"idn-email":             IsIdnEmail,
-		"idn-hostname":          IsIdnHostname,
-		"ipv4":                  IsIPv4,
-		"ipv6":                  IsIPv6,
-		"iri":                   IsIri,
-		"iri-reference":         IsIriReference,
-		"json-pointer":          IsJsonPointer,
-		"regex":                 IsRegex,
-		"relative-json-pointer": IsRelativeJsonPointer,
-		"time":                  IsTime,
-		"uri":                   IsUri,
-		"uri-reference":         IsUriReference,
-		"uri-template":          IsUriTemplate,
-		"uuid":                  IsUuid,
+		"date":                      IsDate,
+		"date-time":                 IsDateTime,
+		"duration":                  IsDuration,
+		"email":                     IsEmail,
+		"hostname":                  IsHostname,
+		"idn-email":                 IsIdnEmail,
+		"idn-hostname":              IsIdnHostname,
+		"ipv4":                      IsIPv4,
+		"ipv6":                      IsIPv6,
+		"iri":                       IsIri,
+		"iri-reference":             IsIriReference,
+		"json-pointer":              IsJsonPointer,
+		"json-pointer-uri-fragment": IsJsonPointerUriFragment,
+		"regex":                     IsRegex,
+		"relative-json-pointer":     IsRelativeJsonPointer,
+		"time":                      IsTime,
+		"uri":                       IsUri,
+		"uri-reference":             IsUriReference,
+		"uri-template":              IsUriTemplate,
+		"url":                       IsUrl,
+		"uuid":                      IsUuid,
 	}
 }

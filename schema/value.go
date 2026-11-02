@@ -185,28 +185,12 @@ func utf16Len(s string) int {
 	return n
 }
 
-// codePoints is the number of Unicode code points of s: JSON Schema string lengths count code points, not UTF-16 units. Like the upstream count, it reads UTF-16 units and treats any high surrogate unit as the first half of a pair: the unit after it is not counted, whatever it is, so "\uD800a" counts 1.
+// codePoints is the number of Unicode code points of s: JSON Schema string lengths count code points, not UTF-16 units. A high surrogate unit starts a pair only when a low surrogate unit follows (DecodeRuneInString combines adjacent halves); an unpaired one, held as WTF-8, is a code point of its own, so "\uD800a" counts 2.
 func codePoints(s string) int {
 	n := 0
-	skip := false
-	unit := func(u rune) {
-		if skip {
-			skip = false
-			return
-		}
-		n++
-		skip = u >= 0xd800 && u <= 0xdbff
-	}
-	for i := 0; i < len(s); {
-		r, size := jsstring.DecodeRuneInString(s[i:])
+	for i := 0; i < len(s); n++ {
+		_, size := jsstring.DecodeRuneInString(s[i:])
 		i += size
-		if r >= 0x10000 {
-			r -= 0x10000
-			unit(0xd800 + r>>10)
-			unit(0xdc00 + r&0x3ff)
-		} else {
-			unit(r)
-		}
 	}
 	return n
 }

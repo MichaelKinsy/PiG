@@ -286,6 +286,7 @@ func tsAliases(root string) aliasTable {
 		pkg := strings.TrimPrefix(key, localPrefix)
 		constArrayElements(aliases, consts[pkg])
 		staticTypes(aliases, schemas[pkg])
+		staticRefinements(aliases)
 	}
 	return out
 }

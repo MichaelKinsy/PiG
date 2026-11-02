@@ -16,7 +16,7 @@ def new_extension() -> pig_sdk.Extension:
     e = pig_sdk.Extension("early-dispatch")
     pure = os.environ.get("PIG_TEST_PURE_LISTENER")
     if pure:
-        e.events.on("early:ch", lambda ctx, data: (pathlib.Path(pure) / str(data["seq"])).write_text(data["tag"]))
+        e.events.on("early:ch", lambda ctx, data: (pathlib.Path(pure) / str(data["seq"])).write_bytes(data["tag"].encode()))
     else:
         e.events.on("early:ch", lambda ctx, data: ctx.events.emit("early:echo", data))
     if os.environ.get("PIG_TEST_FACTORY_EMIT"):

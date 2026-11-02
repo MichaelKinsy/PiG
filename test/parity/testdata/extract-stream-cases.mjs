@@ -39,7 +39,7 @@ const require=specifier=>{
  if(specifier==='vitest')return{describe,it,expect,beforeAll:fn=>scopes.at(-1).before.push(fn),afterAll:fn=>scopes.at(-1).after.push(fn)};
  if(specifier==='child_process')return{execSync:()=>'',spawn:()=>({kill(){}})};
  if(specifier==='typebox')return{Type:{Object:properties=>({type:'object',properties,required:Object.keys(properties)}),Number:options=>({type:'number',...options})}};
- if(specifier.includes('typebox-helpers'))return{StringEnum:(values,options)=>({type:'string',enum:values,...options})};
+ if(specifier.includes('string-enum'))return{StringEnum:(values,options)=>({type:'string',enum:values,...options})};
  if(specifier.includes('compat.ts'))return{getModel,stream(){throw new Error('unexpected raw stream in extractor');},complete:async(model,request,options)=>{record('bedrockSpecial',model,options,request);options?.onPayload?.({additionalModelRequestFields:{thinking:{type:'adaptive',display:'summarized'},output_config:{effort:'max'}},...(options.requestMetadata?{requestMetadata:options.requestMetadata}:{})});return{stopReason:'stop'};}};
  if(specifier.includes('azure-utils'))return{hasAzureOpenAICredentials:()=>true,resolveAzureDeploymentName:()=>undefined};
  if(specifier.includes('bedrock-utils'))return{hasBedrockCredentials:()=>true};
