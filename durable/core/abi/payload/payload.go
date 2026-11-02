@@ -89,8 +89,11 @@ type ModelContextEffect struct {
 	Model          ModelRef        `json:"model"`
 	Context        json.RawMessage `json:"context"`
 	Options        json.RawMessage `json:"options,omitempty"`
-	Extends        *uint32         `json:"extends,omitempty"`
-	Append         json.RawMessage `json:"append,omitempty"`
+	// OnPayload is set for a generation request: the host sets the provider's onPayload, which asks the core to run the
+	// beforeProviderRequest chain over each request body (host/PROTOCOL.md, "Provider request bodies").
+	OnPayload bool            `json:"onPayload,omitempty"`
+	Extends   *uint32         `json:"extends,omitempty"`
+	Append    json.RawMessage `json:"append,omitempty"`
 }
 
 // ToolEffect is the payload of a tool effect.

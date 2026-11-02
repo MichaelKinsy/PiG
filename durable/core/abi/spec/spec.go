@@ -25,7 +25,7 @@ var eventRows = []kindRow{
 	{"open", uint8(abi.EventOpen), "JSON OpenOptions"},
 	{"rows", uint8(abi.EventRows), "u16 nReads, (u32 readId, u32 nRows, u8 nCols, value{nRows*nCols})*"},
 	{"submit", uint8(abi.EventSubmit), "JSON SubmitEvent"},
-	{"model_event", uint8(abi.EventModelEvent), "u32 effectId, JSON array of AssistantMessageEvent"},
+	{"model_event", uint8(abi.EventModelEvent), "u32 effectId, JSON array of AssistantMessageEvent or payload request {type, call, payload}"},
 	{"model_bytes", uint8(abi.EventModelBytes), "u32 effectId, u8 phase, bytes"},
 	{"tool_progress", uint8(abi.EventToolProgress), "u32 effectId, u8 kind, u32 skipped, u32 waitId, bytes"},
 	{"tool_done", uint8(abi.EventToolDone), "u32 effectId, u8 outcome, JSON"},

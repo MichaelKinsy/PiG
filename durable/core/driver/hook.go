@@ -12,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
+	"github.com/MichaelKinsy/PiG/durable/core/abi/payload"
 	"github.com/MichaelKinsy/PiG/durable/core/sqlhost"
 	"github.com/MichaelKinsy/PiG/durable/harness"
 )
@@ -36,6 +37,8 @@ type Hooks struct {
 	Lookup func(handler int) (any, bool)
 	// API returns the reads and memos a hook of one task may use.
 	API func(task durable.TaskId, conversation durable.ConversationId) harness.HookApi
+	// Models returns the Harness's models, which resolve the model a beforeProviderRequest hook receives.
+	Models func() durable.Models
 	// Task returns the registered definition of a task kind, for the `migrate` hook the core asks when it reserves a record that an
 	// older version stored (scheduler.ts #resolve).
 	Task func(kind string) (durable.AnyTask, bool)
@@ -61,7 +64,7 @@ func (h *Hooks) run(ctx context.Context, call *sqlhost.Call) error {
 	}
 	api := h.API(durable.TaskId(p.TaskID), durable.ConversationId(p.ConversationID))
 	var value any
-	err := callDefinition(func() (err error) { value, err = runHook(ctx, p, target, api); return err })
+	err := callDefinition(func() (err error) { value, err = runHook(ctx, p, target, api, h.Models); return err })
 	if _, ok := errors.AsType[*protocolError](err); ok {
 		return err
 	}
@@ -252,8 +255,30 @@ func protocol(name string, err error) error {
 }
 
 // runHook returns the JSON-marshalable result of one hook: the object the hook's result type takes in Pi, or nil.
-func runHook(ctx context.Context, p hookEffect, target any, api harness.HookApi) (any, error) {
+func runHook(ctx context.Context, p hookEffect, target any, api harness.HookApi, models func() durable.Models) (any, error) {
 	switch p.Name {
+	case "beforeProviderRequest":
+		hooks, ok := target.(*harness.GenerationHooks)
+		if !ok {
+			return nil, mismatch(p.Name, target)
+		}
+		var in struct {
+			Model   payload.ModelRef `json:"model"`
+			Payload any              `json:"payload"`
+		}
+		if err := json.Unmarshal(p.Payload, &in); err != nil {
+			return nil, protocol(p.Name, err)
+		}
+		if hooks.BeforeProviderRequest == nil {
+			return nil, nil
+		}
+		out, err := hooks.BeforeProviderRequest(ctx, harness.ProviderRequest{Model: models().GetModel(in.Model.Provider, in.Model.ModelID), Payload: in.Payload}, api)
+		if out == nil || err != nil {
+			return nil, err
+		}
+		return struct {
+			Payload any `json:"payload"`
+		}{out.Payload}, nil
 	case "beforeRequest":
 		hooks, ok := target.(*harness.GenerationHooks)
 		if !ok {

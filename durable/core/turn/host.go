@@ -139,6 +139,15 @@ type StreamRequest struct {
 	Options *jv.Object
 	// Span is the host's handle of the span of the phase making the request: its Context.telemetry.
 	Span uint32
+	// PayloadHook runs generation.ts providerPayload: the beforeProviderRequest chain over one provider request body, each time the
+	// provider builds one. A request without it, as a compaction request, sets no onPayload.
+	PayloadHook PayloadHook
+}
+
+// PayloadHook is the beforeProviderRequest chain of a request. then receives the body to send; sent is false when the chain's
+// last result had no payload (the provider then keeps its own body); err is the abort that ended the chain.
+type PayloadHook interface {
+	BeforeProviderRequest(payload any, then func(payload any, sent bool, err error))
 }
 
 // CompleteRequest is a non-streaming model request (completeSimple): the compaction summarizer.

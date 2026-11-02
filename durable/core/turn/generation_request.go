@@ -45,6 +45,12 @@ type requestRun struct {
 	replaced []*jv.Object
 	messages []*jv.Object
 	parsed   bool
+	// The beforeProviderRequest chain of the request body being built: the walk, the body the next handler sees, whether the
+	// chain's last result had a payload, and the answer.
+	walk    hookWalk
+	body    any
+	sent    bool
+	replied func(payload any, sent bool, err error)
 }
 
 func (q *requestRun) showAttempt(tx *session.Tx) error {
@@ -107,9 +113,31 @@ func (q *requestRun) provided(sessionID string, err error) {
 	if q.thinking != "off" {
 		options.Set("reasoning", q.thinking)
 	}
-	req := &StreamRequest{Conversation: r.conv, Model: q.ref, Context: q.view, Replaced: q.replaced, Options: options}
+	req := &StreamRequest{Conversation: r.conv, Model: q.ref, Context: q.view, Replaced: q.replaced, Options: options, PayloadHook: q}
 	r.streamResponse(req, q.attempt, q.streamed)
 }
+
+// BeforeProviderRequest is generation.ts providerPayload: the replacement chain of beforeProviderRequest over one body. A handler's
+// result replaces the body with its `payload` member, which a result without one leaves undefined; a throw is reported and the
+// chain continues. The request is the walk's sink: the provider calls one body at a time.
+func (q *requestRun) BeforeProviderRequest(body any, then func(payload any, sent bool, err error)) {
+	q.body, q.sent, q.replied = body, true, then
+	q.walk = hookWalk{name: "beforeProviderRequest", sink: q}
+	q.r.walkHooks(&q.walk)
+}
+
+func (q *requestRun) hookPayload() *jv.Object {
+	return jobj("model", q.ref.object(), "payload", q.body)
+}
+
+func (q *requestRun) hookEach(result any) bool {
+	if o, ok := result.(*jv.Object); ok {
+		q.body, q.sent = o.Get("payload")
+	}
+	return false
+}
+
+func (q *requestRun) hookEnd(err error) { q.replied(q.body, q.sent, err) }
 
 func (q *requestRun) streamed(message *jv.Object, err error) {
 	if err != nil {
@@ -144,13 +172,21 @@ func (r *run) eachHook(name string, payload func() *jv.Object, handle func(resul
 	r.walkHooks(&hookWalk{name: name, payload: payload, each: handle, then: then})
 }
 
-// hookWalk is one walk of the handlers of a hook (eachHook, eachHookRaw): either each or handle is set.
+// hookSink is a walk's callbacks as the methods of one value, for a walk that must not allocate a closure for each.
+type hookSink interface {
+	hookPayload() *jv.Object
+	hookEach(result any) (stop bool)
+	hookEnd(err error)
+}
+
+// hookWalk is one walk of the handlers of a hook (eachHook, eachHookRaw): either each or handle is set, or sink serves all three.
 type hookWalk struct {
 	name    string
 	payload func() *jv.Object
 	each    func(result any) (stop bool)
 	handle  func(result any, err error) (stop bool, fail error)
 	then    func(error)
+	sink    hookSink
 	r       *run
 	n       int
 	i       int
@@ -177,7 +213,7 @@ func (r *run) walkHooks(w *hookWalk) {
 	h := r.g.Host
 	w.r = r
 	if h.Hooks == nil {
-		w.then(nil)
+		w.finish(nil)
 		return
 	}
 	if r.agentSeen && h.Hooks(w.name, r.conv) == 0 {
@@ -190,7 +226,7 @@ func (r *run) walkHooks(w *hookWalk) {
 	r.withAgent(w.start)
 }
 
-func (w *hookWalk) thenNil() { w.then(nil) }
+func (w *hookWalk) thenNil() { w.finish(nil) }
 
 func (w *hookWalk) start() {
 	w.n = w.r.g.Host.Hooks(w.name, w.r.conv)
@@ -203,7 +239,29 @@ func (w *hookWalk) end(err error) {
 	w.r.hops(1, w.thenFail)
 }
 
-func (w *hookWalk) thenFail() { w.then(w.fail) }
+func (w *hookWalk) thenFail() { w.finish(w.fail) }
+
+func (w *hookWalk) finish(err error) {
+	if w.sink != nil {
+		w.sink.hookEnd(err)
+		return
+	}
+	w.then(err)
+}
+
+func (w *hookWalk) payloadOf() *jv.Object {
+	if w.sink != nil {
+		return w.sink.hookPayload()
+	}
+	return w.payload()
+}
+
+func (w *hookWalk) eachOf(result any) bool {
+	if w.sink != nil {
+		return w.sink.hookEach(result)
+	}
+	return w.each(result)
+}
 
 func (w *hookWalk) next(i int) {
 	r := w.r
@@ -213,7 +271,7 @@ func (w *hookWalk) next(i int) {
 	}
 	w.i = i
 	r.hookIndex = i
-	r.g.Host.Hook(w.name, i, r.conv, r.rt.TaskID(), w.payload(), w.answer)
+	r.g.Host.Hook(w.name, i, r.conv, r.rt.TaskID(), w.payloadOf(), w.answer)
 }
 
 func (w *hookWalk) answer(result any, err error) {
@@ -228,7 +286,7 @@ func (w *hookWalk) answer(result any, err error) {
 			w.stop, w.fail = false, nil
 		}
 	} else {
-		w.stop, w.fail = w.each(result), nil
+		w.stop, w.fail = w.eachOf(result), nil
 	}
 	// The caller's invoke callback is an async arrow that awaits the handler (the host's answer) and settles a tick before
 	// hooks.each's `await invoke(...)` resumes; a plain callback hands back the handler's promise itself.
@@ -255,7 +313,7 @@ const invokeSettleHops = 1
 // that returns the handler's promise (afterResponse, afterTools).
 func asyncInvoke(name string) bool {
 	switch name {
-	case "beforeTool", "afterTool", "beforeRequest", "onYield", "beforeCompact", "afterRun":
+	case "beforeTool", "afterTool", "beforeRequest", "beforeProviderRequest", "onYield", "beforeCompact", "afterRun":
 		return true
 	}
 	return false

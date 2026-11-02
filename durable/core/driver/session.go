@@ -76,6 +76,7 @@ type coreSession struct {
 	sentText     []byte
 	settings     durable.Settings
 	envs         *Envs
+	models       *Models
 	tasks        *taskRuntimes
 	timers       durable.Timers
 	unsub        func()
@@ -147,11 +148,12 @@ func open(ctx context.Context, cfg SessionConfig) (*coreSession, error) {
 		report(err, durable.ReportInfo{Kind: durable.ReportHostError, Callback: durable.HostCallbackModels})
 	})
 	models.monotonic = cfg.Monotonic
+	s.models = models
 	maps.Copy(handlers, models.Handlers())
 	var client *Client
 	getClient := func() *Client { return client }
 	s.envs = &Envs{Build: cfg.Harness.Env, Reader: func() durable.DocumentReader { return &invocation{s: s} }}
-	hooks := &Hooks{Lookup: s.table.lookupHook, Task: func(kind string) (durable.AnyTask, bool) {
+	hooks := &Hooks{Lookup: s.table.lookupHook, Models: cfg.Harness.CurrentModels, Task: func(kind string) (durable.AnyTask, bool) {
 		task := s.cfg.Harness.Registry.Snapshot().Task(kind)
 		return task, task.Definition != nil
 	}, API: func(task durable.TaskId, conversation durable.ConversationId) harness.HookApi {
@@ -570,6 +572,20 @@ func (s *coreSession) hookHandler(hooks *Hooks) sqlhost.Handler {
 			return s.argumentsHook(call, head.Name, head.Payload)
 		case "complete":
 			return s.completeHook(ctx, call, head.Payload)
+		case "modelPayload":
+			// The core's answer to a provider's onPayload (host/PROTOCOL.md, "Provider request bodies").
+			var in struct {
+				Effect  uint32          `json:"effect"`
+				Call    int             `json:"call"`
+				Payload json.RawMessage `json:"payload"`
+				Aborted bool            `json:"aborted"`
+			}
+			if err := json.Unmarshal(head.Payload, &in); err != nil {
+				return fmt.Errorf("modelPayload payload: %w", err)
+			}
+			s.models.answerPayload(in.Effect, in.Call, payloadAnswer{payload: in.Payload, sent: in.Payload != nil, aborted: in.Aborted})
+			call.Post(abi.Event{Kind: abi.EventHookDone, ID: call.ID, Phase: abi.OutcomeResult, Payload: []byte("null")})
+			return nil
 		case "registrySnapshot":
 			// registry.snapshot() where Pi's #decide calls it (scheduler.ts:955): the snapshot JSON of open.registry.
 			body, err := s.registryJSON()
