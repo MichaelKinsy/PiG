@@ -6,12 +6,15 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
 	"testing"
+
+	"golang.org/x/sys/unix"
 )
 
 const foregroundHelperEnv = "PIG_TUI_FOREGROUND_HELPER"
@@ -29,6 +32,19 @@ func TestStdinForegroundHelper(t *testing.T) {
 	if role == "member" {
 		report("member")
 		os.Exit(0)
+	}
+	if role == "raw" {
+		// The process of a background job that resumes: the termios ioctl of raw mode stops it with SIGTTOU until fg.
+		restore, err := EnterRawModeForHandoff()
+		fmt.Printf("raw errno=%v\n", errnoOf(err))
+		if err == nil {
+			restore()
+		}
+		os.Exit(0)
+	}
+	if role == "fg-cycle" {
+		runForegroundCycle()
+		return
 	}
 	// The leader is the session leader that owns the terminal as its controlling terminal; its group is the foreground group.
 	// Closing the master hangs the session leader up; it must outlive that to report what the terminal answers.
@@ -116,5 +132,70 @@ func TestStdinInForegroundFollowsTheTerminalProcessGroup(t *testing.T) {
 	// EIO and ENOTTY are the errors Pi's DEAD_TERMINAL_ERROR_CODES names for a terminal that went away.
 	if last != "hung-up foreground=false errno=input/output error" && last != "hung-up foreground=false errno=inappropriate ioctl for device" {
 		t.Fatalf("after the master closed the helper reported %q, want EIO or ENOTTY", last)
+	}
+}
+
+// runForegroundCycle is the shell in TestRawModeEntryFromABackgroundGroupSurvivesTheStopAndFg: the session leader that starts a job in its own
+// process group, waits for the job to stop, then does what `fg` does (tcsetpgrp, then SIGCONT to the group).
+func runForegroundCycle() {
+	read, write, err := os.Pipe()
+	if err != nil {
+		fmt.Printf("pipe: %v\n", err)
+		os.Exit(1)
+	}
+	job := exec.Command(os.Args[0], "-test.run=^TestStdinForegroundHelper$")
+	job.Env = append(os.Environ(), foregroundHelperEnv+"=raw")
+	job.Stdin = os.Stdin
+	job.Stdout = write
+	job.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if err := job.Start(); err != nil {
+		fmt.Printf("start: %v\n", err)
+		os.Exit(1)
+	}
+	_ = write.Close()
+	pid := job.Process.Pid
+	var status syscall.WaitStatus
+	if _, err := syscall.Wait4(pid, &status, syscall.WUNTRACED, nil); err != nil {
+		fmt.Printf("wait: %v\n", err)
+		os.Exit(1)
+	}
+	if !status.Stopped() {
+		fmt.Printf("job ended without stopping: %v\n", status)
+		_, _ = io.Copy(os.Stdout, read)
+		os.Exit(1)
+	}
+	fmt.Printf("stopped by %v\n", status.StopSignal())
+	if err := unix.IoctlSetPointerInt(0, unix.TIOCSPGRP, pid); err != nil {
+		fmt.Printf("tcsetpgrp: %v\n", err)
+		os.Exit(1)
+	}
+	if err := syscall.Kill(-pid, syscall.SIGCONT); err != nil {
+		fmt.Printf("kill: %v\n", err)
+		os.Exit(1)
+	}
+	if _, err := syscall.Wait4(pid, &status, 0, nil); err != nil || !status.Exited() || status.ExitStatus() != 0 {
+		fmt.Printf("job did not exit cleanly: %v %v\n", status, err)
+		os.Exit(1)
+	}
+	_, _ = io.Copy(os.Stdout, read)
+	os.Exit(0)
+}
+
+// A Ctrl+Z, bg, fg cycle for the raw-mode ioctl: the resumed job is a background group, its first termios ioctl stops it with SIGTTOU, and fg
+// continues it inside that call. Node's libuv retries the ioctl, so setRawMode returns; where the kernel reports EINTR to the continued call
+// (macOS), an ioctl that is not retried ended the session with "interrupted system call" (#397).
+func TestRawModeEntryFromABackgroundGroupSurvivesTheStopAndFg(t *testing.T) {
+	master, slave := openTestPTY(t)
+	defer master.Close()
+	leader := exec.Command(os.Args[0], "-test.run=^TestStdinForegroundHelper$")
+	leader.Env = append(os.Environ(), foregroundHelperEnv+"=fg-cycle")
+	leader.Stdin = slave
+	leader.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true, Ctty: 0}
+	output, err := leader.CombinedOutput()
+	if err != nil {
+		t.Fatalf("shell: %v\n%s", err, output)
+	}
+	if got := string(output); !strings.Contains(got, "stopped by stopped (tty output)") || !strings.Contains(got, "raw errno=<nil>") {
+		t.Fatalf("job-control cycle reported %q, want the SIGTTOU stop and then raw mode entered", got)
 	}
 }
