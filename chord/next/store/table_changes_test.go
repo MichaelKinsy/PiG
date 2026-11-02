@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
+// pi: packages/chord/src/next/store/table-changes.ts
 // Ports packages/chord/test/next/store/table-changes.test.ts: a transaction's table writes (slice 6a §6, §7):
 // staging, and the `tx.get` overlay over committed rows.
 

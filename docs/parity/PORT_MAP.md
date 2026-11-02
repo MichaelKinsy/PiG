@@ -813,20 +813,20 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/store/text.ts` | `chord/next/store/text.go` | ✅ |
 | `packages/chord/src/next/store/allocator.ts` | `chord/next/store/allocator.go` | ✅ |
 | `packages/chord/src/next/store/claims.ts` | `chord/next/store/claims.go` | ✅ |
-| `packages/chord/src/next/store/refusal.ts` | `refusal.go` | ✅ |
+| `packages/chord/src/next/store/refusal.ts` | `chord/next/store/refusal.go` | ✅ |
 | `packages/chord/src/next/store/columns.ts` | `chord/next/store/columns.go` | ✅ |
 | `packages/chord/src/next/store/json-column.ts` | `json_column.go` | ✅ |
-| `packages/chord/src/next/store/rows.ts` | `rows.go` | ✅ |
-| `packages/chord/src/next/store/sql.ts` | `sql.go` | ✅ |
+| `packages/chord/src/next/store/rows.ts` | `chord/next/store/rows.go` | ✅ |
+| `packages/chord/src/next/store/sql.ts` | `chord/next/store/sql.go` | ✅ |
 | `packages/chord/src/next/store/jsonl.ts` | `chord/next/store/jsonl.go` | ✅ |
 | `packages/chord/src/next/store/catalog.ts` | `chord/next/store/catalog.go` | ✅ |
 | `packages/chord/src/next/store/expression.ts` | `chord/next/store/expression.go` | ✅ |
 | `packages/chord/src/next/store/evaluate.ts` | `chord/next/store/evaluate.go` | ✅ |
 | `packages/chord/src/next/store/query.ts` | `chord/next/store/query.go`, `chord/next/store/expression.go` | ✅ |
-| `packages/chord/src/next/store/table.ts` | `table.go` | ✅ |
-| `packages/chord/src/next/store/table-history.ts` | `table_history.go` | ✅ |
-| `packages/chord/src/next/store/table-evolve.ts` | `table_evolve.go` | ✅ |
-| `packages/chord/src/next/store/table-migration.ts` | `table_migration.go` | ✅ |
+| `packages/chord/src/next/store/table.ts` | `chord/next/store/table.go` | ✅ |
+| `packages/chord/src/next/store/table-history.ts` | `chord/next/store/table_history.go` | ✅ |
+| `packages/chord/src/next/store/table-evolve.ts` | `chord/next/store/table_evolve.go` | ✅ |
+| `packages/chord/src/next/store/table-migration.ts` | `chord/next/store/table_migration.go` | ✅ |
 | `packages/chord/src/next/store/adapter.ts` | `chord/next/store/adapter.go` | ✅ |
 | `packages/chord/src/next/store/backend.ts` | `chord/next/store/backend.go` | ✅ |
 | `packages/chord/src/next/store/schema.ts` | `chord/next/store/schema.go` | ✅ |

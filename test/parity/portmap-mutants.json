@@ -837,5 +837,47 @@
    "old": "\t\tcase truthTrue:\n\t\t\treturn truthFalse\n\t\t}\n\t\treturn truthTrue",
    "new": "\t\tcase truthTrue:\n\t\t\treturn truthTrue\n\t\t}\n\t\treturn truthTrue"
   }
+ ],
+ "packages/chord/src/next/store/table-writes.ts": [
+  {
+   "file": "chord/next/store/table_writes.go",
+   "old": "write := &PutWrite{Table: table, Row: row.Row, Version: version, Columns: row.Columns}",
+   "new": "write := &PutWrite{Table: table, Row: row.Row, Version: version + 1, Columns: row.Columns}"
+  }
+ ],
+ "packages/chord/src/next/store/table-changes.ts": [
+  {
+   "file": "chord/next/store/table_changes.go",
+   "old": "if changes.bulk {",
+   "new": "if !changes.bulk {"
+  }
+ ],
+ "packages/chord/src/next/store/refusal.ts": [
+  {
+   "file": "chord/next/store/refusal.go",
+   "old": "return coded.Code() == sqliteConstraintCheck",
+   "new": "return coded.Code() != sqliteConstraintCheck"
+  }
+ ],
+ "packages/chord/src/next/store/table-history.ts": [
+  {
+   "file": "chord/next/store/table_history.go",
+   "old": "if version > definition.Version {",
+   "new": "if version >= definition.Version {"
+  }
+ ],
+ "packages/chord/src/next/store/table-migration.ts": [
+  {
+   "file": "chord/next/store/table_migration.go",
+   "old": "const MigrationChunk = 100\n",
+   "new": "const MigrationChunk = 101\n"
+  }
+ ],
+ "packages/chord/src/next/store/schema.ts": [
+  {
+   "file": "chord/next/store/schema.go",
+   "old": "VALUES (1, 0, 2, 0, 0)",
+   "new": "VALUES (1, 0, 3, 0, 0)"
+  }
  ]
 }
