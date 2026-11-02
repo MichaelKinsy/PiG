@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/internal/lineadmission"
 	"github.com/MichaelKinsy/PiG/telemetry"
@@ -44,6 +45,9 @@ func (gate *deferredGate) reject(err error) {
 
 // wait blocks until the gate settles or ctx is cancelled.
 func (gate *deferredGate) wait(ctx context.Context) error {
+	// A test's await: a watch listener that waits here has run the synchronous part of its call, as an upstream listener that
+	// awaits a promise has (chord.DeliveryEntered).
+	chord.DeliveryEntered()
 	select {
 	case <-gate.done:
 		return gate.err
