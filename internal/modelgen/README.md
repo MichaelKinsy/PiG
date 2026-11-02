@@ -51,3 +51,7 @@ test/parity/testdata/catalog-generation/equivalence.sh compare build/catalog-fix
 `go test ./cmd/gen-models -run TestCatalogGenerationMatchesPi` holds the Go generator to the sha256 of what Pi's generator wrote for
 a pruned set of recorded responses (`cmd/gen-models/testdata/catalog-generation`). After a pin bump, re-record, prune
 (`prune.mjs`), and refresh the golden file with `equivalence.sh golden`.
+
+Until the pin is bumped past Pi 9ee7586a9 (OpenCode Zen and Go Claude models get per-message effort, #10954), the golden file holds the
+sha256 of Pi's generator at the pin with that one commit applied (it changes only `catalog/providers/opencode.ts`), so the Go generator
+is held to it. A pin bump re-records the golden from the mirrored pin, which then contains the commit.
