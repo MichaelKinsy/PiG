@@ -40,78 +40,11 @@ class TSchema(dict):
 
 class Refinement(NamedTuple):
     """One entry of a schema's hidden ``~refine`` list (TypeBox's ``{check, error}``): ``check(value)`` decides whether a value passes and ``error(value)`` words the failure (None is
-    TypeBox's "Refine Error"). Pi runs them while it validates a tool call's arguments; an extension tool's refinements run in this process when the host asks for them. An exception
-    raised by either is what a thrown JavaScript error is: it ends the validation and the tool call fails with its message."""
+    TypeBox's "Refine Error"). TypeBox's own validation runs them, but a tool's arguments are validated as plain JSON Schema (Pi 1.4.0+b556cfe5 validates with pi-schema: ai/CHANGELOG.md:25, coding-agent/docs/extensions.md:176), so nothing in a tool's
+    registration or call consults the list: arguments a refinement would reject are accepted, and the constraint belongs in the tool's handler."""
 
     check: Callable[[Any], Any]
     error: Optional[Callable[[Any], str]] = None
-
-
-class RefinementSite(NamedTuple):
-    """A schema node that carries refinements: its path in the schema (the keywords that lead to it: ``/properties/a``, ``/anyOf/1``, ``/items``) and the refinements in the order added."""
-
-    path: str
-    refinements: List[Refinement]
-
-
-_KEYWORDS_WITH_CHILD = ("additionalProperties", "additionalItems", "contains", "propertyNames", "not", "if", "then", "else", "items", "unevaluatedItems", "unevaluatedProperties")
-_KEYWORDS_WITH_MEMBERS = ("properties", "patternProperties", "dependentSchemas", "dependencies", "$defs", "definitions")
-_KEYWORDS_WITH_LIST = ("allOf", "anyOf", "oneOf", "prefixItems", "items")
-
-
-def _pointer_segment(key: str) -> str:
-    return key.replace("~", "~0").replace("/", "~1")
-
-
-def refinement_sites(root: Any) -> List[RefinementSite]:
-    """The nodes of a schema that carry refinements, in the order they are found. A node reached only through a keyword whose value is plain JSON has none."""
-    sites: List[RefinementSite] = []
-
-    def visit(node: Any, path: str) -> None:
-        if not isinstance(node, TSchema):
-            return
-        refinements = node.hidden.get("~refine")
-        if refinements:
-            sites.append(RefinementSite(path, list(refinements)))
-        for key, value in node.items():
-            if key in _KEYWORDS_WITH_MEMBERS and isinstance(value, dict):
-                for name, member in value.items():
-                    visit(member, f"{path}/{key}/{_pointer_segment(str(name))}")
-            elif key in _KEYWORDS_WITH_LIST and isinstance(value, (list, tuple)):
-                for index, member in enumerate(value):
-                    visit(member, f"{path}/{key}/{index}")
-            elif key in _KEYWORDS_WITH_CHILD:
-                visit(value, f"{path}/{key}")
-
-    visit(root, "")
-    return sites
-
-
-def validation_schema(node: Any) -> Any:
-    """The schema as the host validates arguments with it: the same tree with TypeBox's ``~kind`` appended to every node that has one. JSON drops those, but the host's port of
-    Value.Convert reads them (the Node runtime sends the same form as ``validation_parameters``)."""
-    if isinstance(node, TSchemaArray):
-        return [validation_schema(item) for item in node]
-    if isinstance(node, dict):
-        out = {key: validation_schema(member) for key, member in node.items()}
-        if isinstance(node, TSchema) and "~kind" in node.hidden:
-            out["~kind"] = node.hidden["~kind"]
-        return out
-    if isinstance(node, (list, tuple)):
-        return [validation_schema(item) for item in node]
-    return node
-
-
-def count_refinements(node: Any) -> int:
-    """Every refinement in a schema, wherever it hangs: more than :func:`refinement_sites` finds means a refinement sits under a keyword whose refinements the host does not run."""
-    total = 0
-    if isinstance(node, (TSchema, TSchemaArray)):
-        total += len(node.hidden.get("~refine") or [])
-    if isinstance(node, dict):
-        total += sum(count_refinements(member) for member in node.values())
-    elif isinstance(node, (list, tuple)):
-        total += sum(count_refinements(member) for member in node)
-    return total
 
 
 class TSchemaArray(list):
@@ -403,10 +336,11 @@ class _Type(_EngineMembers):
     def immutable(schema: Any) -> TSchema:
         return _update(schema, {"~immutable": True}, None)
 
+    # pig divergence (D226): the stored check is never run by any API; remove when every SDK serves TypeBox Value.Check.
     @staticmethod
     def refine(*args: Any) -> TSchema:
         """``Type.Refine(type, check)`` or ``(type, check, error)``: a copy of the schema whose hidden ``~refine`` list has the refinement appended; the schema's JSON does not change.
-        The refinements run when the host validates a tool call's arguments (see :meth:`Extension.tool`). TypeBox matches the arguments by count, so any other count raises
+        The refinements are not run: a tool's arguments are validated as plain JSON Schema, so check such constraints in the handler. TypeBox matches the arguments by count, so any other count raises
         ``ValueError("Invalid Arguments")``, as Pi's does; a ``None`` error is the default "Refine Error"."""
         if len(args) not in (2, 3):
             raise ValueError("Invalid Arguments")

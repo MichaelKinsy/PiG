@@ -1,6 +1,7 @@
 package ai
 
 // pi: packages/ai/src/auth/oauth/openrouter.ts
+// pi: packages/ai/src/providers/openrouter.ts
 
 import (
 	"context"

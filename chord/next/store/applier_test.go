@@ -16,6 +16,8 @@ import (
 // Tests of the applier (slice 6a §13): recorded writes applied as recorded, checked against the store's own records:
 // table names and columns by the name rules, indexes, rows against their recorded columns (NULL cells, defaults kept
 // as stored, booleans, json(...) cells as JSON text) and documents with their ids kept.
+//
+// pi: packages/chord/src/next/store/applier.ts
 
 const applierTable = "app.store:edits"
 

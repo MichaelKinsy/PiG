@@ -6,7 +6,7 @@ Generated from `1012` PORT_MAP entries and `832` parity scenarios.
 
 - **Porting:** 905 / 912 intended-portable entries ✅ (99.2%).
 - **Behavior verification:** 837 / 905 ported entries (92.5%); 0 weak-only, 68 untested.
-- **Upstream test porting:** 753 ported / 15 partial / 118 pending (5 other dispositions; [file mapping](interfaces/test-mapping-v1.4.0+b556cfe5.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.4.0+b556cfe5.json) (`deferred-0.3.x`).
+- **Upstream test porting:** 756 ported / 15 partial / 115 pending (5 other dispositions; [file mapping](interfaces/test-mapping-v1.4.0+b556cfe5.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.4.0+b556cfe5.json) (`deferred-0.3.x`).
 
 Raw PORT_MAP rows: 1012. Breakdown: 100 n/a (designed out) · 7 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
@@ -30,7 +30,7 @@ Raw PORT_MAP rows: 1012. Breakdown: 100 n/a (designed out) · 7 🟡 partial. Se
 - **Four core packages (agent, ai, coding-agent, tui):** 520 / 520 intended-portable files ✅ (100.0%) from 570 rows; 518 behavioral (99.6%), 0 weak-only, 2 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 592 / 592 intended-portable files ✅ (100.0%) from 652 rows; 553 behavioral (93.4%), 0 weak-only, 39 untested.
 - **Whole monorepo (12 packages):** 905 / 912 intended-portable files ✅ (99.2%) from 1012 rows; 837 behavioral (92.5%), 0 weak-only, 68 untested.
-- **Interface closure:** 14251 of 14469 semantic interface IDs closed (330 designed-out, 218 pending, 13921 ported). A file-level ✅ does not close an interface ID.
+- **Interface closure:** 14402 of 14469 semantic interface IDs closed (395 designed-out, 67 pending, 14007 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
 

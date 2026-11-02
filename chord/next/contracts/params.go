@@ -8,15 +8,16 @@ import (
 )
 
 // Ports packages/chord/src/next/contracts/params.ts (the policy for params fields and the closed object schema checked
-// on every get). The type-level ParamSchema, Params and RequiredFields types are designed out: Params is a slice of
-// properties (see schema.go) and the policy is the runtime check below.
+// on every get). The type-level ParamSchema (required, no default), Params and RequiredFields types are designed out:
+// Params is a slice of properties (see schema.go) and the policy is the runtime check below, which refuses an optional
+// field and, through the normal form's keywords, a defaulted one.
 
 // ParamsData is the Chord-owned data of declared params, held by pointer.
 type ParamsData struct {
 	// Fields are the field names in identity order.
 	Fields []string
 	// Schema is the closed object schema of all fields.
-	Schema TSchema
+	Schema Schema
 	// Normal is the `[field, normal form]` pairs in identity order.
 	Normal delta.JsonValue
 }
@@ -28,11 +29,14 @@ func ReadParams(declared []Property, path string) (*ParamsData, error) {
 	snapshots := make([]*Snapshot, len(ordered))
 	for i, field := range ordered {
 		fieldPath := path + "." + field.Name
+		if field.Value.Optional {
+			return nil, fail("%s: a param is a required str(), int(), bool() or oneOf(...) of strings", fieldPath)
+		}
 		snapshot, err := SnapshotSchema(field.Value, fieldPath)
 		if err != nil {
 			return nil, err
 		}
-		if field.Value.Optional || !isParamSchema(snapshot.Normal) {
+		if !isParamSchema(snapshot.Normal) {
 			return nil, fail("%s: a param is a required str(), int(), bool() or oneOf(...) of strings", fieldPath)
 		}
 		snapshots[i] = snapshot
@@ -47,7 +51,7 @@ func ReadParams(declared []Property, path string) (*ParamsData, error) {
 		normal[i] = []any{field.Name, snapshots[i].Normal}
 	}
 	schema := delta.JsonObjectOf("type", "object", "properties", properties, "required", required, "additionalProperties", false)
-	return &ParamsData{Fields: fields, Schema: TSchema{Node: schema}, Normal: normal}, nil
+	return &ParamsData{Fields: fields, Schema: Schema{Node: schema}, Normal: normal}, nil
 }
 
 // JoinKey joins key parts with `|`, each escaped (`\` and `|`), so two different part lists never join to one key.

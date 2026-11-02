@@ -60,7 +60,7 @@ type CheckpointWhen func(value *JsonObject, ops []delta.Op, info CheckpointInfo)
 
 // StateOptions is what DefineState takes.
 type StateOptions struct {
-	Schema  contracts.TSchema
+	Schema  contracts.Schema
 	Version int
 	// Initial is checked against the schema once, when the declaring definition is first used.
 	Initial func() *JsonObject
@@ -87,7 +87,7 @@ func neverCheckpoint(*JsonObject, []delta.Op, CheckpointInfo) bool { return fals
 // StateDefinition is a declared document.
 type StateDefinition struct {
 	Name    string
-	Schema  contracts.TSchema
+	Schema  contracts.Schema
 	Version int
 	Keyed   bool
 	Persist bool

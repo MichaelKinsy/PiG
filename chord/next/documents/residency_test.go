@@ -8,6 +8,7 @@ import (
 )
 
 // Ports packages/chord/test/next/documents/residency.test.ts
+// pi: packages/chord/src/next/documents/residency.ts
 //
 // Pi's fake timers (`vi.useFakeTimers`, `advanceTimersByTime`, `getTimerCount`) are the fakeClock of support_test.go.
 

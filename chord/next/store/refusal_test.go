@@ -7,13 +7,13 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
+// pi: packages/chord/src/next/store/refusal.ts
 // Ports packages/chord/test/next/store/refusal.test.ts: tests of refusals as Chord's owners take them (slice 6b D4,
 // §1.4): an `int` CHECK fails only its transaction, any other refusal its object; the store's own errors pass
 // through.
 //
-// Pending: the "Chord's owners" case ("an int out of range fails only its transaction; the object stays live") runs a
-// Chord host and a local object (`loaded`, `host.serve`, `self.tx`), which is outside this package; it is ported with
-// the host layer.
+// The "Chord's owners" case ("an int out of range fails only its transaction; the object stays live") runs a Chord host and a
+// local object, so it is ported in chord/next/host/host_refusal_test.go.
 
 // codedError is an error with SQLite's extended result code, as Node's binding reports `errcode`.
 type codedError struct {

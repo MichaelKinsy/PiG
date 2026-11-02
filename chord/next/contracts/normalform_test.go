@@ -22,7 +22,7 @@ func normalText(t *testing.T, normal *delta.JsonObject) string {
 }
 
 func TestNormalFormOfARemoteContractIsWhatItsFingerprintHashes(t *testing.T) {
-	note := func() contracts.TSchema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
+	note := func() contracts.Schema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
 	notes := remote(t, "notes", 1, props(contracts.Prop("session", contracts.Str())),
 		variant("reader", state(contracts.Prop("notes", note()))),
 		variant("editor", state(contracts.Prop("notes", note())), contracts.Meth("add", contracts.NewMethod(note(), contracts.Str()))))

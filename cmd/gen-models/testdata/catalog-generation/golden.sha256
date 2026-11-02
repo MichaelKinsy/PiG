@@ -1,5 +1,5 @@
-9ba68e7127fbb5c70102ad12502245d436cbb51e8055899378495d8de06395c7  ./catalog/models.all.json
-0f6bdece5f9b983da5142f2bf529f69f0984964ded8924d6e7dc37ad7c448011  ./catalog/models.json
+747315feb69b6852e56d3eb8194f6c75a878acf57b08de51f4bcca8486ce3ced  ./catalog/models.all.json
+ca460499e8c995efcabce8d80934bdd8aa3a7d0b20237fc49b4f5036c68f07b1  ./catalog/models.json
 a8c431bb656fa68175d633aae53f111ad4bee350086f5d5d4642733b53406250  ./catalog/providers.json
 7419229c324ce6afeb212f315daa693272d64c9f28943c10646c487741bef709  ./catalog/providers/amazon-bedrock.all.json
 6842fc1a5ec83e987350b956ff487114b1d068db4d523a2ec3d8cd830a04918d  ./catalog/providers/amazon-bedrock.json
@@ -51,10 +51,10 @@ e00787e148c478e7cb221cc555707f285a3c87c9df13ba2fb7c7ca3165c26693  ./catalog/prov
 2bce1aa83b6bfd7c75202ffc0834dc5924acaf9fbf1c60ed899a0d6678b73786  ./catalog/providers/openai-codex.json
 e6b8e8d43f08b0fb4de7d1432c2b45a8f6d0b1b0715831b7ff5dc79910ef0595  ./catalog/providers/openai.all.json
 bb5085ab27c82b6f594dbf069404ced7c4c98ae6f592f7ee157d96bae382d040  ./catalog/providers/openai.json
-ea61288acb34cab75901d91ba29726d981a49771c8cdefd82a6b70055ec07558  ./catalog/providers/opencode-go.all.json
-dca04f1e5822cd2f0f5501a5ef0ba41bdbc3bb2f9640edd92d6557029cd33c75  ./catalog/providers/opencode-go.json
-61b16e44995fce3a56358737351f1030fa9a554f78d0f52c6f392442ee131f2c  ./catalog/providers/opencode.all.json
-b44dfe3e3512a11d60c4da7cac76983b44bb1008ae954235e5afeea86e98b5a1  ./catalog/providers/opencode.json
+7876344164ae667f1ed67798115aa3acc2ecc4149ae261ebcaa3686ead318b92  ./catalog/providers/opencode-go.all.json
+4df46039d965ec629192901686c8558f90d97a3451efa2331aaeba6ec4d9040e  ./catalog/providers/opencode-go.json
+6343106a42753ab340e0424c1fe8cb5a75720b9ca7e7a0dcf7b23b0138bf1ab8  ./catalog/providers/opencode.all.json
+0c059f4081ab4056e1f625481e6dd93cb3ad508bd2d3c1b29fa168bef5176d33  ./catalog/providers/opencode.json
 5a6180ed48e4d75e86297699bb827437698cae56d0f00110cbb6c4b31a88fb7e  ./catalog/providers/openrouter.all.json
 cf1629a683923ad51edb95501b400cbc3be61ad2df3ad3ea7933f115924ac4bb  ./catalog/providers/openrouter.json
 9245d70438947f987312b5f7d92bf56b25de1507c7024cf3bef0ed50efbc2702  ./catalog/providers/qwen-token-plan-cn.all.json
@@ -108,8 +108,8 @@ aac3dc558652c3fbafba48a184651617da7796bfab0242d69ad6afd335dd56a1  ./data/moonsho
 21e2964d5a4a05c41272a915a8c41ee722f979346e38379fb6e219e03ec0df01  ./data/nvidia.json
 dd30453068f310317abf35d9adc6d841339a1351f0c6925a6aff45d975e0257c  ./data/openai-codex.json
 f21e61bace78948d6a78d39ee96a323ed3c917ec91d0693427829bca777896e5  ./data/openai.json
-22b56aadddc472f1ef52336232f767cb07c6185e3a2500ad708e739c10667975  ./data/opencode-go.json
-3eb6e894f076a135f6ef9f5b9f313c3923dbc30a2129be73a07b3d286c8eb578  ./data/opencode.json
+60694538cff9ae7d0497de79412cde36a3ca55efefafc2eefa69a5b5aec8df13  ./data/opencode-go.json
+73f96a0a2503bee874182e92c6047965acd99a8c70a0adee6c2a3b1282294ac8  ./data/opencode.json
 add7fe56e865b4e11e75b323ab2de0774ba6f1cb719cd21e75d9dafe8948d5ed  ./data/openrouter.json
 2f4b024581971e9a86cc91a272642d0e84eb190c634d3f1b2a1f801bae1ca286  ./data/qwen-token-plan-cn.json
 7d416a2af46d5ad5d7872f8edfa7727af4392827a5b77618ce89a3786628492a  ./data/qwen-token-plan-individual.json

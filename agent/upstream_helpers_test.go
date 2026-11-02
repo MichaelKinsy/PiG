@@ -168,11 +168,12 @@ func roles(messages []AgentMessage) []string {
 	return out
 }
 
-// valueSchema is upstream's Type.Object({ value: Type.String() }).
+// valueSchema is upstream's obj({ value: str() }) (pi-schema: a closed object).
 var valueSchema = map[string]any{
-	"type":       "object",
-	"properties": map[string]any{"value": map[string]any{"type": "string"}},
-	"required":   []any{"value"},
+	"type":                 "object",
+	"properties":           map[string]any{"value": map[string]any{"type": "string"}},
+	"required":             []any{"value"},
+	"additionalProperties": false,
 }
 
 // scriptTool is an AgentTool whose Execute runs a test-supplied function.

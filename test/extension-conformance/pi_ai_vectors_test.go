@@ -66,7 +66,7 @@ func piVectorsFile(t *testing.T) string {
 
 	var cases []map[string]any
 	for _, export := range exports {
-		if export == "envApiKeyAuth" || export == "createAssistantMessageEventStream" || export == "Type" || export == "validateToolArguments" { // Type has its own vectors and rows (type_schema_registration_test.go); validateToolArguments is the host's, read by the refinement rows (refine_arguments_test.go)
+		if export == "envApiKeyAuth" || export == "createAssistantMessageEventStream" || export == "Type" || export == "validateToolArguments" { // Type has its own vectors and rows (type_schema_registration_test.go); validateToolArguments is the host's (ai package vectors)
 			continue
 		}
 		for _, c := range piVectorCases(t, "pi-ai", export) {
