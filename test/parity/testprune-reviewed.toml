@@ -759,3 +759,31 @@ commit = "ff5017db9e8dbbeef61da454b37d8e552500f19f"
 class = "CITE"
 cite = "packages/chord/src/next-node/compression.ts:17"
 reason = "Pi passes Math.max(1, Math.min(limit, buffer.MAX_LENGTH)) to inflateRawSync as maxOutputLength (compression.ts:17): Math.min and Math.max return NaN for a NaN limit, Node takes its default maximum for a NaN maxOutputLength, and the check `inflated.byteLength > limit` (:18) is false against NaN, so Pi returns the bytes. The NaN-limit expectation was corrupt and is the bytes."
+
+[[entry]]
+path = "coding/extension/host/subprocess/host_helpers_highlight_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
+
+[[entry]]
+path = "tui/component_themes_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
+
+[[entry]]
+path = "tui/highlight_cache_bytes_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
+
+[[entry]]
+path = "tui/highlight_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
