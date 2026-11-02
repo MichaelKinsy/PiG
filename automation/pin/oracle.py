@@ -904,11 +904,15 @@ def link_mirror(pin: Pin) -> Path | None:
 
 def freeze_closure(pin: Pin, published_lock: Path | None = None) -> Path:
     """Freeze the pin's dependency closure into automation/pin/frozen: a release's from the lock of the published install, a
-    commit's derived from its packs (a build of the commit must exist)."""
+    commit's derived from its packs. The packs come from a build of the commit, made here when none exists."""
     build = published(pin, "current")
     source = build / "src" if build is not None else entry(pin) / "src"
     if not (source / "packages").is_dir():
         extract_source(pin, source)
+    if not (source / "packages" / "coding-agent" / "dist").is_dir():
+        # The closure records the integrity of each pack. A pack of unbuilt source has no dist, so its integrity is not the one the
+        # oracle's build produces, and the later `npm ci` of the closure fails EINTEGRITY. Build with the pin's frozen model data first.
+        build_source(pin, source)
     if pin.kind == "tag":
         if published_lock is None:
             raise PinError("a release pin freezes the lock of the published install: pass --from-published-lock <package-lock.json>")

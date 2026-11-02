@@ -557,6 +557,29 @@ class ClosureTests(unittest.TestCase):
         self.assertEqual(sorted(closure["packages"]), ["", self.AGENT, self.AGENT + "/node_modules/@earendil-works/pi-ai", self.AGENT + "/node_modules/openai"])
         self.assertEqual(closure["packages"][""]["devDependencies"], {oracle.AGENT: "1.1.0"})
 
+    def test_freezing_a_closure_builds_unbuilt_source_before_it_packs(self):
+        # A pack of source without dist has another integrity than the oracle's build, so a closure frozen from it fails `npm ci` with EINTEGRITY.
+        calls = []
+
+        def extract(_pin, destination):
+            (destination / "packages" / "coding-agent").mkdir(parents=True)
+            calls.append("extract")
+
+        def build(_pin, source):
+            (source / "packages" / "coding-agent" / "dist").mkdir()
+            calls.append("build")
+
+        def pack(*_a):
+            calls.append("pack")
+            raise pinlib.PinError("packed")
+
+        with tempfile.TemporaryDirectory() as home:
+            with mock.patch.object(oracle, "published", lambda *_a: None), mock.patch.object(oracle, "entry", lambda _pin: Path(home)), \
+                    mock.patch.object(oracle, "extract_source", extract), mock.patch.object(oracle, "build_source", build), mock.patch.object(oracle, "pack", pack):
+                with self.assertRaisesRegex(pinlib.PinError, "packed"):
+                    oracle.freeze_closure(TAG, Path("published-lock.json"))
+        self.assertEqual(calls, ["extract", "build", "pack"])
+
     def test_a_lock_of_another_install_is_not_a_closure(self):
         with self.assertRaisesRegex(pinlib.PinError, "not the lock of an install"):
             oracle.published_closure({"lockfileVersion": 3, "packages": {"": {}, "node_modules/typescript": {"version": "5"}}}, "1.1.0")

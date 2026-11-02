@@ -1,8 +1,8 @@
 {
-  "upstreamVersion": "1.4.0+b556cfe5",
+  "upstreamVersion": "1.5.0",
   "generator": "extract-test-inventory.mjs",
   "fileCount": 891,
-  "caseCount": 10067,
+  "caseCount": 10068,
   "dynamicCaseSiteCount": 4,
   "files": [
     {
@@ -31690,8 +31690,8 @@
     {
       "path": "packages/coding-agent/test/branch-summarization.test.ts",
       "package": "coding-agent",
-      "sha256": "sha256:a2a3d79974d66a2b22f7ef79ba9bdb0be265ce97f38df4044a2a4d2d6510e3e5",
-      "caseCount": 4,
+      "sha256": "sha256:cf90d138bbc782c72fb73a1a1ee556bb9432aa9235c3e8fdaffd0904cc386b5f",
+      "caseCount": 5,
       "cases": [
         {
           "id": "branch summarization › passes the thinking level only for reasoning-capable models",
@@ -31716,6 +31716,12 @@
           "kind": "it",
           "modifiers": [],
           "line": 111
+        },
+        {
+          "id": "branch summarization › applies context edits to branch entries",
+          "kind": "it",
+          "modifiers": [],
+          "line": 135
         }
       ]
     },

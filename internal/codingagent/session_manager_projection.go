@@ -234,7 +234,7 @@ func (p *sessionProjector) add(entry SessionEntry, first bool) {
 			edit = &found
 		}
 		messages := sessionEntryToContextMessagesInto(entry, p.decode, p.clone, &p.slab)
-		projected.Messages = projectContextEntry(entry, messages, edit)
+		projected.Messages = ProjectContextEntry(entry, messages, edit)
 	}
 	p.projection.Entries = append(p.projection.Entries, projected)
 	p.projection.Messages = append(p.projection.Messages, projected.Messages...)
@@ -448,10 +448,10 @@ func entryTimestampMs(timestamp string) int64 {
 	return 0
 }
 
-// projectContextEntry applies the latest context edit for one entry
+// ProjectContextEntry applies the latest context edit for one entry
 // (session-manager.ts projectContextEntry). Only user, assistant, tool-result,
 // and custom messages take replacement content; other roles pass through.
-func projectContextEntry(entry SessionEntry, messages []agent.AgentMessage, edit *ContextEditEntry) []agent.AgentMessage {
+func ProjectContextEntry(entry SessionEntry, messages []agent.AgentMessage, edit *ContextEditEntry) []agent.AgentMessage {
 	if edit == nil {
 		return messages
 	}
