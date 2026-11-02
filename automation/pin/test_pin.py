@@ -314,6 +314,42 @@ class UpstreamDeltaMirrorTests(unittest.TestCase):
         self.assertLess(target.index("mirror-upstream.sh --version"), target.index("upstreamdelta"))
         self.assertIn("sync-from", target)
 
+    def test_a_cached_tarball_expands_a_short_commit_without_a_request(self):
+        cache = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, cache, True)
+        commit = "b556cfe5" + "0" * 32
+        (cache / "checkouts/github.com" / pinlib.UPSTREAM_REPO / "tarballs").mkdir(parents=True)
+        (cache / "checkouts/github.com" / pinlib.UPSTREAM_REPO / "tarballs" / f"{commit}.tar.gz").write_bytes(b"")
+        with (
+            mock.patch.dict(os.environ, {"XDG_CACHE_HOME": str(cache)}),
+            mock.patch.object(pinlib.subprocess, "run", side_effect=AssertionError("asked the network")),
+        ):
+            self.assertEqual(pinlib.full_commit("b556cfe5"), commit)
+
+    def test_an_extracted_from_mirror_is_reused_without_a_request(self):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        for rel in ("automation/gen/mirror-upstream.sh", "automation/pin/pin.py", "automation/pin/pinlib.py", "automation/pin/oracle.py"):
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(pinlib.ROOT / rel, root / rel)
+        commit = "b556cfe5" + "0" * 32
+        mirror = root / ".upstream" / "v1.4.0+b556cfe5"
+        (mirror / "packages/coding-agent/src/core/extensions").mkdir(parents=True)
+        (mirror / "packages/coding-agent/src/core/extensions/types.ts").write_text("")
+        for n in range(200):
+            (mirror / f"packages/coding-agent/src/f{n}.ts").write_text("")
+        (mirror / ".pig-upstream-source.json").write_text(json.dumps({"version": "1.4.0+b556cfe5", "tag": commit, "commit": commit}, indent=2) + "\n")
+        shims = root / "shims"
+        shims.mkdir()
+        shim = shims / "curl"
+        shim.write_text("#!/bin/sh\necho curl called >&2\nexit 22\n")
+        shim.chmod(0o755)
+        env = {**os.environ, "PATH": f"{shims}{os.pathsep}{os.environ['PATH']}", "XDG_CACHE_HOME": str(root / "cache"), "CI": "1"}
+        done = subprocess.run(["bash", str(root / "automation/gen/mirror-upstream.sh"), "--version", "v1.4.0+b556cfe5", "--sources-only"], env=env, capture_output=True, text=True, timeout=120)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("already mirrored", done.stdout)
+        self.assertNotIn("curl called", done.stderr)
+
 
 class SourceBuildTests(unittest.TestCase):
     def source(self):

@@ -174,7 +174,18 @@ if [[ -n "$OVERRIDE_TAG" ]]; then
     # A commit build, as the ledgers name an earlier commit pin (1.4.0+b556cfe5): the mirror of exactly that commit, as
     # the pin's own mirror is, under the ledger version's directory.
     COMMIT_BUILD=1
-    read -r RESOLVED_COMMIT PACKAGE_VERSION BUILD_TARBALL < <(python3 "$REPO_ROOT/automation/pin/pin.py" mirror-spec "$TARGET_VERSION") || exit 1
+    # An extracted mirror names its commit in its provenance marker: use that, so a run with the mirror in place makes no
+    # request. Only a missing mirror (or --force) resolves the commit and fetches the tarball.
+    RESOLVED_COMMIT=""
+    marker="${MIRROR_ROOT}/${TARGET_TAG}/.pig-upstream-source.json"
+    if [[ "$FORCE" -eq 0 && -f "$marker" ]]; then
+      RESOLVED_COMMIT=$(sed -n 's/^ *"commit": *"\([0-9a-f]\{40\}\)".*$/\1/p' "$marker")
+      [[ "$RESOLVED_COMMIT" == "${TARGET_VERSION#*+}"* ]] || RESOLVED_COMMIT=""
+      PACKAGE_VERSION="${TARGET_VERSION%%+*}"
+    fi
+    if [[ -z "$RESOLVED_COMMIT" ]]; then
+      read -r RESOLVED_COMMIT PACKAGE_VERSION BUILD_TARBALL < <(python3 "$REPO_ROOT/automation/pin/pin.py" mirror-spec "$TARGET_VERSION") || exit 1
+    fi
     valid_commit "$RESOLVED_COMMIT" || { echo "error: ${TARGET_VERSION} did not resolve to a commit" >&2; exit 1; }
     TARGET_TAG="$RESOLVED_COMMIT"
   else
