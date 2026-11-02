@@ -292648,9 +292648,9 @@
         "call:tui/scroll_view.go#ScrollView.Scrollbar"
       ],
       "evidence": [
+        "test:internal/codingagent/chat_viewport_test.go#TestBuildChatViewportDefaultsScrollbarToAutoAndAcceptsTheSetting",
         "test:internal/codingagent/chat_viewport_test.go#TestCreateChatViewportDefaultsScrollbarToAuto",
-        "test:internal/codingagent/interactive_teardown_test.go#TestOnSettingAppliedFullscreenScrollbarAppliesLive",
-        "test:internal/codingagent/interactive_test.go#TestBuildChatViewportWiresLiveThemedScrollbar"
+        "test:internal/codingagent/interactive_teardown_test.go#TestOnSettingAppliedFullscreenScrollbarAppliesLive"
       ]
     },
     {
@@ -305493,9 +305493,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.SetWheelScrollLines"
       ],
       "evidence": [
+        "test:internal/codingagent/interactive_tui_wheel_upstream_test.go#TestCreateInteractiveTuiWheelScrollLinesDefaultUpstream",
         "test:tui/tui_alt_screen_wheel_upstream_test.go#TestUpstreamAltScreenAppliesRuntimeWheelLineCountUpdates",
-        "test:tui/wheel_scroll_upstream_test.go#TestUpstreamWheelScrollAccelerator",
-        "test:tui/tui_alt_screen_wheel_test.go#TestAltScreenAutoWheelAcceleratesAndScrollsByTheDispatchedDelta"
+        "test:tui/wheel_scroll_upstream_test.go#TestUpstreamWheelScrollAccelerator"
       ]
     },
     {
