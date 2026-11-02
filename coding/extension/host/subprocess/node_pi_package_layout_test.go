@@ -35,6 +35,13 @@ var piLayoutGaps = map[string]string{
 	"@earendil-works/pi-tui":        "served by shims/pi-tui.mjs, outside any package root; vendoring a root with package.json and dist/index.js is not done",
 }
 
+// piLayoutAliases lists the specifiers Pi's extension loader serves as one module with another
+// (core/extensions/virtual-modules.ts:28-29 maps the pi-ai root and pi-ai/compat to the same extension view). They
+// must resolve to the same file as the specifier they alias, because the namespace of a module is its identity.
+var piLayoutAliases = map[string]string{
+	"@earendil-works/pi-ai/compat": "@earendil-works/pi-ai",
+}
+
 func TestNodeServesEachPiPackageWithPisLayoutOrRecordsTheGap(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
@@ -93,18 +100,28 @@ func TestNodeServesEachPiPackageWithPisLayoutOrRecordsTheGap(t *testing.T) {
 		var asMap map[string]json.RawMessage
 		if len(m.Exports) > 0 && json.Unmarshal(m.Exports, &asMap) == nil {
 			value, ok := asMap[subpath]
+			star := ""
+			if !ok {
+				// A pattern export ("./providers/*": "./dist/providers/*.js") serves every subpath its prefix and suffix match.
+				for key, v := range asMap {
+					before, after, found := strings.Cut(key, "*")
+					if found && strings.HasPrefix(subpath, before) && strings.HasSuffix(subpath, after) && len(subpath) > len(before)+len(after) {
+						value, ok, star = v, true, subpath[len(before):len(subpath)-len(after)]
+					}
+				}
+			}
 			if !ok {
 				return ""
 			}
 			var s string
 			if json.Unmarshal(value, &s) == nil {
-				return path.Clean(s)
+				return path.Clean(strings.ReplaceAll(s, "*", star))
 			}
 			var conditions map[string]string
 			if json.Unmarshal(value, &conditions) == nil {
 				for _, condition := range []string{"import", "default"} {
 					if conditions[condition] != "" {
-						return path.Clean(conditions[condition])
+						return path.Clean(strings.ReplaceAll(conditions[condition], "*", star))
 					}
 				}
 			}
@@ -141,6 +158,12 @@ func TestNodeServesEachPiPackageWithPisLayoutOrRecordsTheGap(t *testing.T) {
 		file, ok := strings.CutPrefix(url, "file://")
 		if !ok {
 			problems[pkg] = append(problems[pkg], spec+" resolves to "+url+", not a file")
+			continue
+		}
+		if target, aliased := piLayoutAliases[spec]; aliased {
+			if url != resolved[target] {
+				problems[pkg] = append(problems[pkg], spec+" resolves to "+url+", Pi's loader serves it as the same module as "+target+" ("+resolved[target]+")")
+			}
 			continue
 		}
 		pi, ok := readManifest(oracleDirs(pkg))
