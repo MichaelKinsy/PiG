@@ -163,10 +163,12 @@ func TestHighlightMatchesPiOracle(t *testing.T) {
 				fail("%s %s (%s): highlight.js HTML differs from Pi %s", expected.Stage, c.ID, c.Lang, oracle.Pi)
 			}
 		}
-		if got := highlightDigest(strings.Join(highlightCodeUncached(registry, c.Code, c.Lang, false, ActiveTheme()), "\n")); got != expected.Lines {
+		// highlightCode and getMarkdownTheme().highlightCode are one function at Pi 0f21a331, so both digests are PiG's one result.
+		lines := highlightDigest(strings.Join(highlightCodeUncached(registry, c.Code, c.Lang, ActiveTheme()), "\n"))
+		if lines != expected.Lines {
 			fail("%s %s (%s): highlightCode differs from Pi %s", expected.Stage, c.ID, c.Lang, oracle.Pi)
 		}
-		if got := highlightDigest(strings.Join(highlightCodeUncached(registry, c.Code, c.Lang, true, ActiveTheme()), "\n")); got != expected.Markdown {
+		if lines != expected.Markdown {
 			fail("%s %s (%s): Markdown highlightCode differs from Pi %s", expected.Stage, c.ID, c.Lang, oracle.Pi)
 		}
 	}

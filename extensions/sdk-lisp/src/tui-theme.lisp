@@ -75,7 +75,7 @@ HIGHLIGHT-CODE is (lambda (code &optional lang)) giving a vector of lines."
    :list-bullet (th-foreground-of "mdListBullet")
    :bold (lambda (text) (theme-bold (ts-current-theme) text)) :italic (lambda (text) (theme-italic (ts-current-theme) text))
    :underline (lambda (text) (theme-underline (ts-current-theme) text)) :strikethrough (lambda (text) (theme-strikethrough (ts-current-theme) text))
-   :highlight-code (lambda (code &optional lang) (th-highlight code lang t))))
+   :highlight-code (lambda (code &optional lang) (th-highlight code lang))))
 
 (defun get-select-list-theme ()
   "pi-coding-agent's getSelectListTheme."
@@ -97,22 +97,22 @@ HIGHLIGHT-CODE is (lambda (code &optional lang)) giving a vector of lines."
   (let ((theme (ts-current-theme)))
     (coerce (mapcar (lambda (line) (theme-fg theme "mdCodeBlock" line)) (tui-split code #\Newline)) 'simple-vector)))
 
-(defun th-highlight (code lang markdown)
+(defun th-highlight (code lang)
   (if (or (null lang) (eq lang :null) (zerop (length lang)))
       (th-code-block-lines code)
       (handler-case
           (let* ((palette (ts-installed-theme-palette))
-                 (args (apply #'obj "code" code "lang" lang (append (and markdown (list "markdown" t)) (and palette (list "theme" palette)))))
+                 (args (apply #'obj "code" code "lang" lang (and palette (list "theme" palette))))
                  (lines (jget (helper-call "highlight.code" args) "lines")))
             (unless (and (vectorp lines) (not (stringp lines))) (tc-fail "decode highlightCode: the host answered no lines"))
             (coerce (remove-if-not #'stringp lines) 'simple-vector))
-        (error () (if markdown (th-code-block-lines code) (coerce (tui-split code #\Newline) 'simple-vector))))))
+        (error () (th-code-block-lines code)))))
 
 (defun highlight-code (code &optional lang)
   "pi-coding-agent's highlightCode: CODE highlighted for LANG with the global theme, as a vector with one string per line. Code in a language the
-host's highlight.js does not support, or with no language, takes the mdCodeBlock color; code highlight.js fails on stays unstyled. The host's
-highlighter runs it; a host that cannot be reached leaves the code unstyled, as a failed highlight does."
-  (th-highlight code lang nil))
+host's highlight.js does not support, with no language, or that highlight.js fails on, takes the mdCodeBlock color. The host's
+highlighter runs it; a host that cannot be reached takes the mdCodeBlock color too, as a failed highlight does."
+  (th-highlight code lang))
 
 (defun init-theme (&optional name)
   "pi-coding-agent's initTheme: make the host's theme of that name, or the system theme for NIL, an empty name or one the host has no theme of,

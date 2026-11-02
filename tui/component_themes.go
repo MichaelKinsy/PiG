@@ -47,10 +47,10 @@ func SettingsListThemeFor(th *Theme) SettingsListTheme {
 func MarkdownThemeFor(th *Theme) MarkdownTheme {
 	return markdownThemeReading(func() *Theme { return th }, func(code, lang string) []string {
 		if th == ActiveTheme() {
-			return highlightMarkdownCode(code, lang)
+			return HighlightCode(code, lang)
 		}
 		// The highlight memo holds the active theme's colors only.
-		return highlightCodeUncached(highlightRegistry(), code, lang, true, th)
+		return highlightCodeUncached(highlightRegistry(), code, lang, th)
 	})
 }
 

@@ -3,6 +3,7 @@
 package tui
 
 import (
+	"errors"
 	"slices"
 	"strings"
 	"sync"
@@ -85,9 +86,6 @@ func TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently(t *testing.
 	}
 	if got := HighlightCode(code, "python"); !slices.Equal(got, want) {
 		t.Errorf("HighlightCode = %q, want %q", got, want)
-	}
-	if got := highlightMarkdownCode(code, "python"); !slices.Equal(got, want) {
-		t.Errorf("markdown theme highlightCode = %q, want %q", got, want)
 	}
 }
 
@@ -201,5 +199,21 @@ func TestRenderHighlightedHtmlReadsObjectPrototypeMembers(t *testing.T) {
 	}
 	if got := RenderHighlightedHtml(`<span class="hljs-keyword">x</span>y`, HighlightTheme{"keyword": nil, "default": defaultFormatter}); got != "DxDy" {
 		t.Errorf("own undefined keyword: got %q, want %q", got, "DxDy")
+	}
+}
+
+// theme.ts highlightCode (Pi 0f21a331): a highlight that throws takes the mdCodeBlock color, as code in a language highlight.js does not support does.
+func TestHighlightCodeStylesAFailedHighlightWithTheCodeBlockColor(t *testing.T) {
+	theme := ActiveTheme()
+	code := "a\n\nb"
+	want := []string{theme.Fg("mdCodeBlock", "a"), theme.Fg("mdCodeBlock", ""), theme.Fg("mdCodeBlock", "b")}
+	if got := highlightedLines("", errors.New("highlight.js threw"), code, theme); !slices.Equal(got, want) {
+		t.Errorf("a failed highlight = %q, want %q", got, want)
+	}
+	if got := highlightedLines("x\ny", nil, code, theme); !slices.Equal(got, []string{"x", "y"}) {
+		t.Errorf("a highlight = %q, want its own lines", got)
+	}
+	if got := HighlightCode(code, "no-such-language"); !slices.Equal(got, want) {
+		t.Errorf("an unsupported language = %q, want %q", got, want)
 	}
 }

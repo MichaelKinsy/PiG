@@ -56,7 +56,7 @@ func TestHighlightCodeLinesMatchPiUnderThePalette(t *testing.T) {
 			t.Fatal(err)
 		}
 		_ = json.Unmarshal(c.Args[1], &lang)
-		got, err := HighlightCodeLines(code, derefOrEmpty(lang), false, want.Palette)
+		got, err := HighlightCodeLines(code, derefOrEmpty(lang), want.Palette)
 		if err != nil {
 			t.Fatalf("%s: %v", c.Name, err)
 		}
@@ -83,19 +83,19 @@ func TestMarkdownHighlightCodeLinesMatchPi(t *testing.T) {
 		}
 		for _, h := range want.Highlight {
 			lang, _ := h.Lang.(string)
-			got, err := HighlightCodeLines(h.Code, lang, true, want.Palette)
+			got, err := HighlightCodeLines(h.Code, lang, want.Palette)
 			if err != nil {
 				t.Fatalf("%s: %v", c.Name, err)
 			}
 			if !reflect.DeepEqual(got, h.Lines) {
-				t.Errorf("%s: markdown HighlightCodeLines(%q, %q) = %q\nPi %q", c.Name, h.Code, lang, got, h.Lines)
+				t.Errorf("%s: HighlightCodeLines(%q, %q) = %q\nPi %q", c.Name, h.Code, lang, got, h.Lines)
 			}
 		}
 	}
 }
 
 func TestHighlightCodeLinesRejectsAPaletteMissingAToken(t *testing.T) {
-	if _, err := HighlightCodeLines("x", "javascript", false, []byte(`{"name":"bad","foregrounds":{"accent":"<a>"},"backgrounds":{}}`)); err == nil {
+	if _, err := HighlightCodeLines("x", "javascript", []byte(`{"name":"bad","foregrounds":{"accent":"<a>"},"backgrounds":{}}`)); err == nil {
 		t.Fatal("a palette without the interface's tokens drew")
 	}
 }

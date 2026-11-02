@@ -87,7 +87,7 @@ def get_markdown_theme() -> MarkdownTheme:
         italic=lambda text: _tui_state.current_host_theme().italic(text),
         underline=lambda text: _tui_state.current_host_theme().underline(text),
         strikethrough=lambda text: _tui_state.current_host_theme().strikethrough(text),
-        highlight_code=lambda code, lang=None: _highlight(code, lang, True),
+        highlight_code=highlight_code,
     )
 
 
@@ -121,19 +121,19 @@ def get_settings_list_theme() -> SettingsListTheme:
 
 def highlight_code(code: str, lang: Optional[str] = None) -> list[str]:
     """pi-coding-agent's ``highlightCode``: ``code`` highlighted for ``lang`` with the global theme, one string per line. Code in a language the host's
-    highlight.js does not support, or with no language, takes the ``mdCodeBlock`` color; code highlight.js fails on stays unstyled. The host's highlighter
-    runs it; a host that cannot be reached leaves the code unstyled, as a failed highlight does."""
-    return _highlight(code, lang, False)
+    highlight.js does not support, with no language, or that highlight.js fails on, takes the ``mdCodeBlock`` color. The host's highlighter
+    runs it; a host that cannot be reached takes the ``mdCodeBlock`` color too, as a failed highlight does."""
+    return _highlight(code, lang)
 
 
-def _highlight(code: str, lang: Optional[str], markdown: bool) -> list[str]:
+def _highlight(code: str, lang: Optional[str]) -> list[str]:
     if not lang:
         # No language: Pi highlights nothing, whatever the host would answer.
         return _code_block_lines(code)
     try:
-        return host_helpers.highlight_code_lines(code, lang, markdown, _tui_state.installed_theme_palette())
+        return host_helpers.highlight_code_lines(code, lang, _tui_state.installed_theme_palette())
     except Exception:  # noqa: BLE001 - any failure of the host call is a failed highlight, as in Pi's catch
-        return _code_block_lines(code) if markdown else code.split("\n")
+        return _code_block_lines(code)
 
 
 def _code_block_lines(code: str) -> list[str]:

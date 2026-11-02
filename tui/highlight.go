@@ -439,9 +439,9 @@ func cliHighlightTheme(t *Theme) HighlightTheme {
 	return theme
 }
 
-// HighlightCode highlights code for the active theme and returns its lines, as theme.ts highlightCode does. Code in a language highlight.js does not support takes the mdCodeBlock color; code highlight.js fails on stays unstyled.
+// HighlightCode highlights code for the active theme and returns its lines, as theme.ts highlightCode does. Code in a language highlight.js does not support, and code highlight.js fails on, take the mdCodeBlock color (Pi 0f21a331: theme.ts styles a failed highlight too, and getMarkdownTheme().highlightCode is this function).
 func HighlightCode(code, lang string) []string {
-	return highlightCodeLines(code, lang, false)
+	return highlightCodeLines(code, lang)
 }
 
 // HighlightEpoch is what HighlightCode's lines depend on besides its arguments: the active theme and the highlight.js
@@ -485,21 +485,16 @@ func (h *CodeHighlighter) Highlight(code, lang string) []string {
 	return h.lines
 }
 
-// highlightMarkdownCode is getMarkdownTheme().highlightCode, which styles a failed highlight with the mdCodeBlock color too.
-func highlightMarkdownCode(code, lang string) []string {
-	return highlightCodeLines(code, lang, true)
-}
-
 // highlightCodeLines is highlightCode with the memo and the resume state (D112). Both keep the lines they computed, so
 // each caller gets its own copy: theme.ts highlightCode returns a new array on every call, and its callers write into
 // it (write.ts updateWriteHighlightCacheIncremental sets highlightedLines[i]), which must not change a later call's lines.
-func highlightCodeLines(code, lang string, codeBlockOnError bool) []string {
+func highlightCodeLines(code, lang string) []string {
 	t := ActiveTheme()
 	// pig additive (D92): a Piglet that strips syntax-highlight renders every code block as Pi renders a language highlight.js does not support.
 	if highlightStripped() {
 		return codeBlockLines(code, t)
 	}
-	key := hlKey{lang: lang, code: code, codeBlockOnError: codeBlockOnError}
+	key := hlKey{lang: lang, code: code}
 
 	hlMu.Lock()
 	if t != hlTheme {
@@ -514,9 +509,9 @@ func highlightCodeLines(code, lang string, codeBlockOnError bool) []string {
 	generation := hlGeneration
 	hlMu.Unlock()
 
-	out, ok := highlightResumable(highlightRegistry(), code, lang, codeBlockOnError, t)
+	out, ok := highlightResumable(highlightRegistry(), code, lang, t)
 	if !ok {
-		out = highlightCodeUncached(highlightRegistry(), code, lang, codeBlockOnError, t)
+		out = highlightCodeUncached(highlightRegistry(), code, lang, t)
 	}
 
 	hlMu.Lock()
@@ -533,7 +528,7 @@ func storeHighlightLocked(key hlKey, out []string) {
 	if size > hlCacheMaxBytes {
 		return
 	}
-	if last := hlLast; last.lang == key.lang && last.codeBlockOnError == key.codeBlockOnError && strings.HasPrefix(key.code, last.code) {
+	if last := hlLast; last.lang == key.lang && strings.HasPrefix(key.code, last.code) {
 		if lines, ok := hlCache[last]; ok {
 			delete(hlCache, last)
 			hlCacheBytes -= hlEntrySize(last, lines)
@@ -549,8 +544,7 @@ func storeHighlightLocked(key hlKey, out []string) {
 
 // hlKey memoizes highlighted lines for the active theme and loaded languages.
 type hlKey struct {
-	lang, code       string
-	codeBlockOnError bool
+	lang, code string
 }
 
 // pig additive (D112): Pi keeps no process-wide highlight memo. Its Markdown component keeps the highlighting of each code block it rendered until invalidate(), and a CodeHighlighter keeps a row's last result (markdown.ts render, theme.ts CodeHighlighter; Markdown.highlights and CodeHighlighter here), so a streamed answer and a redrawn row highlight the same code once. The memo also serves a new component and a code block that was streamed through a longer prefix (the resume state). Its bounds are a Go CPU choice, and a miss, an eviction or a reset returns the same lines as a hit.
@@ -590,16 +584,18 @@ func resetHighlightCacheLocked() {
 }
 
 // highlightCodeUncached is the pure highlighter behind the memo: streaming re-parses a message every frame, so closed code blocks would otherwise re-highlight with unchanged input.
-func highlightCodeUncached(registry highlightEngine, code, lang string, codeBlockOnError bool, t *Theme) []string {
+func highlightCodeUncached(registry highlightEngine, code, lang string, t *Theme) []string {
 	if lang == "" || !registry.SupportsLanguage(lang) {
 		return codeBlockLines(code, t)
 	}
 	highlighted, err := highlightWith(registry, code, HighlightOptions{Language: lang, IgnoreIllegals: true, Theme: cliHighlightTheme(t)})
+	return highlightedLines(highlighted, err, code, t)
+}
+
+// highlightedLines is the lines of a highlight, or, when highlight.js threw, the code in the mdCodeBlock color (the catch of theme.ts highlightCode).
+func highlightedLines(highlighted string, err error, code string, t *Theme) []string {
 	if err != nil {
-		if codeBlockOnError {
-			return codeBlockLines(code, t)
-		}
-		return strings.Split(code, "\n")
+		return codeBlockLines(code, t)
 	}
 	return strings.Split(terminalText(highlighted), "\n")
 }

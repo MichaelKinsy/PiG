@@ -4577,7 +4577,7 @@ path = "packages/coding-agent/src/modes/interactive/theme/theme.ts"
 change = "added"
 disposition = "ported"
 evidence = ["test:tui/code_highlighter_test.go#TestCodeHighlighterReusesItsLastResultUntilTheCodeTheThemeOrTheGrammarsChange"]
-rationale = "`CodeHighlighter` (last result reused until the code, the theme or the grammars change) is ported. Not ported: Pi 0f21a331 styles a failed highlightCode with mdCodeBlock so getMarkdownTheme().highlightCode equals highlightCode; PiG keeps `codeBlockOnError` because the `markdown` flag is part of the host protocol and the Go, Rust, Python and Lisp SDKs (HighlightCodeFor, CallHighlightCode); highlight.js fails only on pathological input with the built-in theme. Open item: unify in one cross-SDK change. PiG: tui/highlight.go (CodeHighlighter, HighlightEpoch) (lane RenderReuse)."
+rationale = "`CodeHighlighter` (last result reused until the code, the theme or the grammars change) is ported. A failed highlightCode takes the mdCodeBlock color, so getMarkdownTheme().highlightCode equals highlightCode as in Pi 0f21a331: tui.HighlightCode styles it, and the `markdown` flag of the host call `highlight.code` and of the Go, Rust, Python and Lisp SDK helpers is removed (a flag an older SDK still sends is ignored). PiG: tui/highlight.go (CodeHighlighter, HighlightEpoch, HighlightCode) (lane RenderReuse)."
 
 [[files]]
 path = "packages/coding-agent/src/modes/interactive/tui-renderer.ts"
