@@ -11,6 +11,8 @@ import (
 
 // Ports packages/chord/test/next/store/catalog.test.ts: the catalog (slice 6a §8): the store's records of its tables,
 // read once at open, changed after COMMIT returned.
+//
+// pi: packages/chord/src/next/store/catalog.ts
 
 const catalogTable = "app.store:edits"
 

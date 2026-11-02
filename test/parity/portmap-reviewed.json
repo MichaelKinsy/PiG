@@ -6,5 +6,11 @@
    "pkg:codemode/cloudflare#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions",
    "pkg:codemode/portable#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions"
   }
+ },
+ "packages/chord/src/next/store/engine.ts": {
+  "reason": "Pi's DocumentPoint (number | \"current\") is chord/next/store/engine.go#DocumentPoint, a struct whose zero value is \"current\" (AtSeq(n) is the number). The ledger's durable/types.go#DocumentPoint is the chord v1 session type of the same name, not the implementation of this Pi file.",
+  "members": {
+   "pkg:chord/next#DocumentPoint": "chord/next/store/engine.go#DocumentPoint"
+  }
  }
 }
