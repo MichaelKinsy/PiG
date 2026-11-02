@@ -21516,6 +21516,28 @@
       ]
     },
     {
+      "id": "BF-85c4c8f",
+      "title": "`pig login \u003cprovider\u003e` now prints what Pi's `packages/ai/src/cli.ts` prints and keeps `auth.json` private",
+      "symptom": "`pig login \u003cprovider\u003e` now prints what Pi's `packages/ai/src/cli.ts` prints and keeps `auth.json` private.",
+      "rootCause": "pig login printed a blank line after every authorization URL, listed select options as \"1) label\" and read the default option on an empty answer, prefixed \"Error:\" to every login failure except an unknown provider, and left an existing auth.json at its old permissions while it stored OAuth tokens in it. Pi's packages/ai/src/cli.ts prints neither the blank line nor \"1)\", asks \"Enter number (1-N): \" and fails an answer that is not a listed number with \"Invalid selection\", prefixes every failure with \"Error:\", and chmods an existing auth.json to 0600 before it saves.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig login \u003cprovider\u003e` now prints what Pi's `packages/ai/src/cli.ts` prints and keeps `auth.json` private. It left a blank line after every authorization URL, listed a provider's select options as `1) label` and took the first option for an empty answer, and printed an unknown provider without the `Error:` prefix that every other login failure has. Pi asks `Enter number (1-N): ` for a select option, lists `1. label`, and fails an answer that is not a listed number with `Invalid selection`. An existing `auth.json` keeps the permissions an older version gave it while the new OAuth tokens are written into it; login now sets it to owner-only (`0600`) before it saves, as `cli.ts` does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "85c4c8f1e4",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/cli/ai_cli_pi_oracle_test.go::TestAICLILoginMatchesPi"
+      ]
+    },
+    {
       "id": "BF-85c98be",
       "title": "`durable/interop/bench.mjs` and `sqlhost-bench seed|sample` report the process's own peak RSS on Linux…",
       "symptom": "`durable/interop/bench.mjs` and `sqlhost-bench seed|sample` report the process's own peak RSS on Linux (`VmHWM`), as `bench/durableperf` already did. getrusage's maxRSS lagged it by 6 to 20 MiB, and it took on the launcher's peak when that was larger: Go, Python and Node all spawn with vfork, so the child's maxRSS starts from the parent's.",

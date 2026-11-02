@@ -3,13 +3,8 @@ packages/agent/src/types.ts
 packages/ai/scripts/check-model-data.ts
 packages/ai/scripts/hydrate-model-catalog.ts
 packages/ai/scripts/model-data.ts
-packages/ai/src/bedrock-provider.ts
-packages/ai/src/cli.ts
 packages/ai/src/compat.ts
 packages/ai/src/compat/extension-oauth-types.ts
-packages/ai/src/model-catalog.ts
-packages/ai/src/models-store.ts
-packages/ai/src/models.generated.ts
 packages/ai/src/models.ts
 packages/ai/src/providers/all.ts
 packages/ai/src/providers/amazon-bedrock.models.ts
@@ -96,7 +91,6 @@ packages/ai/src/providers/zai-coding-cn.models.ts
 packages/ai/src/providers/zai-coding-cn.ts
 packages/ai/src/providers/zai.models.ts
 packages/ai/src/providers/zai.ts
-packages/ai/src/session-resources.ts
 packages/ai/src/types.ts
 packages/ai/src/utils/event-stream.ts
 packages/ai/src/utils/validation.ts
