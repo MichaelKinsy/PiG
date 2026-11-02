@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/session"
 )
 
 // pig divergence (D224), round 4 review B1. Every blocking point a listener can reach goes through the Session's wait helper, so the
@@ -17,6 +19,9 @@ import (
 
 // listenerAtTheEndOfOne opens two hold tasks, observes the commits, and calls act from the listener that sees the publication of
 // one's end. It returns once both ends were published behind a held storage call, with the result of act.
+// endOfOne is the value the watch is advanced with at the publication of one's end.
+const endOfOne = 1
+
 func listenerAtTheEndOfOne(t *testing.T, act func(harness Harness, one, two durable.TaskId) error) error {
 	t.Helper()
 	fixtures := newGCFixtures()
@@ -31,14 +36,24 @@ func listenerAtTheEndOfOne(t *testing.T, act func(harness Harness, one, two dura
 		return gcStatus(t, harness, one) == "running" && gcStatus(t, harness, two) == "running"
 	})
 	acted := make(chan error, 1)
+	// A started watch (chord.Watch) fed by the publications of the Session: its listener is a delivery, the kind whose synchronous
+	// part the hop waits for. It acts at the publication of one's end.
+	impl := harness.(*harnessImpl)
+	watch := session.NewSessionWatch(impl.SessionImpl, 0, func() {})
 	var once sync.Once
-	harness.ObserveCommits(commitsObserver{advance: func(_ context.Context, publication durable.CommitPublication) {
-		for _, change := range publication.Changes {
+	watch.Start(func(ctx context.Context, call chord.WatchCall[int]) error {
+		if call.Kind == chord.WatchCallValue && call.Value == endOfOne {
+			once.Do(func() { acted <- act(harness, one, two) })
+		}
+		return nil
+	})
+	impl.FollowCommits(func(callCtx context.Context, commit session.ObservedCommit) {
+		for _, change := range commit.Changes {
 			if write, ok := change.(durable.TaskWrite); ok && write.Value.Id == one && write.Value.State.Status == durable.TaskTerminal {
-				once.Do(func() { acted <- act(harness, one, two) })
+				watch.Advance(callCtx, chord.WatchCall[int]{Kind: chord.WatchCallValue, Value: endOfOne})
 			}
 		}
-	}})
+	})
 	// Both end in one call, behind a commit in flight.
 	held := store.holdCommits()
 	blocker := gcGo(gcAppendNote(root))
