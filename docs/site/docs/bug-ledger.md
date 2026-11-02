@@ -923,6 +923,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-97cd675](#bf-97cd675) | fix(agent): nested records keep a message whatever the spelling of its numbers | PiG's own defect | All platforms | Unreleased |
 | [BF-97e178f](#bf-97e178f) | Tool-call arguments that arrive as incomplete or malformed JSON are now recovered exactly as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-983d651](#bf-983d651) | The bash truncation notice for a last line over 50 KB that ends with a newline reports the line's size… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-9841da6](#bf-9841da6) | A shutdown that reaches an extension after it registered and before the host marked it ready now ends its run… | PiG's own defect | All platforms | Unreleased |
 | [BF-985b5f9](#bf-985b5f9) | fix(coding): a resumed session takes its active tools from the transcript (pi-mono #10785) [SIGNOFF-PENDING] | PiG's own defect | All platforms | Unreleased |
 | [BF-98666df](#bf-98666df) | Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close… | PiG's own defect | All platforms | Unreleased |
 | [BF-98a21df](#bf-98a21df) | Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
@@ -13998,6 +13999,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `983d651097` (2026-10-09)
 - **Tests:** `internal/codingagent/tools/last_line_bytes_test.go::TestBashLongLastLineNoticeNamesTheLineSize`, `internal/codingagent/tools/last_line_bytes_test.go::TestOutputAccumulatorLastLineBytes`
 - **Release note:** The bash truncation notice for a last line over 50 KB that ends with a newline reports the line's size instead of `line is 0B` (Pi #10015).
+
+### BF-9841da6
+
+**A shutdown that reaches an extension after it registered and before the host marked it ready now ends its run…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A shutdown that reaches an extension after it registered and before the host marked it ready now ends its run the same way in every SDK.
+- **Root cause:** A shutdown frame between the register frame and ready made the Go, Rust and Python SDKs return an error (a packed runner then exited non-zero because a member's run failed) while the Lisp SDK read the frame and went on until the host closed the socket. The Node runtime returned. Pi has no failing path for it: an extension that has not finished loading is not on the runner, and a session shutdown never fails an extension.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9841da6f6d` (2026-11-01)
+- **Tests:** `extensions/sdk/shutdown_before_ready_test.go::TestShutdownBeforeReadyAnswersTheDispatchesBeforeIt`, `extensions/sdk/shutdown_before_ready_test.go::TestShutdownBeforeReadyEndsTheRunWithoutError`, `extensions/sdk/shutdown_before_ready_test.go::TestShutdownDuringTheFactoryEndsTheRunAfterItRegisters`, `extensions/sdk/shutdown_before_ready_test.go::TestShutdownDuringTheFactorySubscriptionEndsTheRunAfterItRegisters`, `test/extension-conformance/shutdown_before_ready_conformance_test.go::TestShutdownBeforeReadyEndsTheRunCleanly`
+- **Release note:** A shutdown that reaches an extension after it registered and before the host marked it ready now ends its run the same way in every SDK. The Go, Rust and Python SDKs returned an error (`expected ready message, got shutdown`), so an extension process exited non-zero and a packed runner failed because one member's run failed, and the Lisp SDK ignored the frame until the host closed the socket. All five SDKs, and the Node runtime that already did, answer the listener dispatches they read before the shutdown, close their end of the connection and return no error. A shutdown read while the factory's listener subscription or a factory-time host call waits no longer ends that call: the call returns, the extension registers and then ends.
 
 ### BF-985b5f9
 
