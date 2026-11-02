@@ -3702,8 +3702,8 @@
   },
   {
    "file": "coding/extension/exec.go",
-   "old": "\tcase terminated:\n\t\tresult.Code = 0",
-   "new": "\tcase terminated:\n\t\tresult.Code = 3"
+   "old": "result.Code = max(state.ExitCode(), 0)",
+   "new": "result.Code = state.ExitCode()"
   }
  ],
  "packages/coding-agent/src/core/extensions/loader.ts": [
