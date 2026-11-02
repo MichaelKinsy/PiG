@@ -1688,5 +1688,75 @@
    "old": "CustomType: \"pi.share\",",
    "new": "CustomType: \"pi.shared\","
   }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/status-indicator.ts": [
+  {
+   "file": "tui/status_indicator.go",
+   "old": "line := strings.Repeat(\" \", max(0, width))",
+   "new": "line := strings.Repeat(\" \", max(0, width-1))"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/trust-selector.ts": [
+  {
+   "file": "internal/codingagent/trust_selector.go",
+   "old": "\"Current session: \"+current",
+   "new": "\"Current sessio: \"+current"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/theme/theme-controller.ts": [
+  {
+   "file": "internal/codingagent/startup_ui.go",
+   "old": "if ui.ConsumeTerminalColorResponse(chunk) {",
+   "new": "if false && ui.ConsumeTerminalColorResponse(chunk) {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/model-search.ts": [
+  {
+   "file": "tui/model_search.go",
+   "old": "return provider + \" \" + provider + \"/\" + id",
+   "new": "return id + \" \" + provider + \"/\" + id"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/custom-entry.ts": [
+  {
+   "file": "coding/extension/host/subprocess/render_proxy.go",
+   "old": "payloadKey: \"entry\",",
+   "new": "payloadKey: \"entry2\","
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/markdown-transform.ts": [
+  {
+   "file": "coding/extension/markdowntransform/markdowntransform.go",
+   "old": "\tout = transformer(markdown, ctx)\n",
+   "new": "\tout = markdown\n"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/bug-report.ts": [
+  {
+   "file": "internal/codingagent/slash_bug.go",
+   "old": "\"Description: %s\\nTranscript: %s",
+   "new": "\"Descriptio: %s\\nTranscript: %s"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/chat-viewport.ts": [
+  {
+   "file": "internal/codingagent/chat_viewport.go",
+   "old": "scrollbar = string(tui.ScrollbarAuto)",
+   "new": "scrollbar = string(tui.ScrollbarHidden)"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts": [
+  {
+   "file": "tui/select_submenu.go",
+   "old": "if value := s.CurrentValue(); value != \"\" {",
+   "new": "if value := s.CurrentValue(); value == \"\" {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/tui-renderer.ts": [
+  {
+   "file": "internal/codingagent/clipboard_text.go",
+   "old": "\"\\x1b[200~\"",
+   "new": "\"\\x1b[201~\""
+  }
  ]
 }

@@ -3,9 +3,12 @@ package tui
 // pi: packages/coding-agent/src/modes/interactive/model-search.ts
 
 import (
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 func TestGetModelSearchText(t *testing.T) {
@@ -212,5 +215,30 @@ func TestGetDistinctModelName(t *testing.T) {
 		if got := GetDistinctModelName(item); got != item.Name {
 			t.Errorf("GetDistinctModelName(%+v) = %q, want %q", item, got, item.Name)
 		}
+	}
+}
+
+// The scoped-models list filters with getModelSearchText (scoped-models-selector.ts), so the proxy-provider fixture ranks the typed
+// provider-qualified query as getModelSearchText does, not as the /model selector does.
+func TestScopedModelsListRanksWithGetModelSearchText(t *testing.T) {
+	items := proxyProviderFixture()
+	models := make([]ModelItem, len(items))
+	for i, item := range items {
+		models[i] = ModelItem{FullID: item.FQ(), Name: item.FQ(), Provider: item.Provider}
+	}
+	list := NewScopedModelsList(ScopedModelsConfig{AllModels: models})
+	for _, key := range "openai/gpt-5" {
+		list.HandleInput(string(key))
+	}
+	row := regexp.MustCompile(`\((\S+)\) \[`)
+	var got []string
+	for _, line := range list.Render(120) {
+		if m := row.FindStringSubmatch(widthx.StripAnsi(line)); m != nil {
+			got = append(got, m[1])
+		}
+	}
+	want := []string{"openrouter/openai/gpt-5", "openrouter/openai/gpt-5-mini", "vercel-ai-gateway/openai/gpt-5", "openai/gpt-5", "openai/gpt-5-mini"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("scoped list order = %v, want %v", got, want)
 	}
 }
