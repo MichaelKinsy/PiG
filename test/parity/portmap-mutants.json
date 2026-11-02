@@ -2108,5 +2108,47 @@
    "old": "func ZaiProvider() *ModelsProvider { return builtinProvider(\"zai\") }",
    "new": "func ZaiProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
   }
+ ],
+ "packages/ai/src/providers/google.ts": [
+  {
+   "file": "ai/builtin_providers_google_openai_together.go",
+   "old": "func GoogleProvider() *ModelsProvider { return builtinProvider(\"google\") }",
+   "new": "func GoogleProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/meta.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func MetaProvider() *ModelsProvider { return builtinProvider(\"meta\") }",
+   "new": "func MetaProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/mistral.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func MistralProvider() *ModelsProvider { return builtinProvider(\"mistral\") }",
+   "new": "func MistralProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/qwen-token-plan-individual.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "return builtinProvider(\"qwen-token-plan-individual\")",
+   "new": "return builtinProvider(\"qwen-token-plan\")"
+  }
+ ],
+ "packages/ai/src/providers/radius.ts": [
+  {
+   "file": "ai/radius.go",
+   "old": "if gateway == NormalizeRadiusGatewayURL(DefaultRadiusGateway) {",
+   "new": "if gateway != NormalizeRadiusGatewayURL(DefaultRadiusGateway) {"
+  }
+ ],
+ "packages/ai/src/providers/opencode-headers.ts": [
+  {
+   "file": "ai/opencode_headers.go",
+   "old": "if options.SessionID == \"\" || hasProviderHeader(",
+   "new": "if hasProviderHeader("
+  }
  ]
 }
