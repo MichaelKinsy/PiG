@@ -1,3 +1,9 @@
+pkg:ai/.#StringEnum	ai	child-gap	ai/string_enum.go#StringEnum
+pkg:ai/.#StringEnum::call:0	ai	undecidable	ai/string_enum.go#StringEnum
+pkg:ai/compat#StringEnum	ai	child-gap	ai/string_enum.go#StringEnum
+pkg:ai/compat#StringEnum::call:0	ai	undecidable	ai/string_enum.go#StringEnum
+pkg:ai/utils/string-enum#StringEnum	ai	child-gap	ai/string_enum.go#StringEnum
+pkg:ai/utils/string-enum#StringEnum::call:0	ai	undecidable	ai/string_enum.go#StringEnum
 pkg:durable/.#CommitResult	durable	no-go-symbol	
 pkg:durable/.#GenerationHooks	durable	child-gap	durable/harness/types.go#GenerationHooks
 pkg:durable/.#GenerationHooks::property:beforeProviderRequest	durable	member-missing	durable/harness/types.go#GenerationHooks
