@@ -189,6 +189,8 @@ func classifyDiagnostic(diagnostic Diagnostic, source FileSource, files map[stri
 		return RuleNotComparable, "ToolInfo", true
 	case (strings.Contains(message, "cannot be compared") || strings.Contains(message, "invalid map key")) && strings.Contains(message, "OAuthCredentials"):
 		return RuleNotComparable, "OAuthCredentials", true
+	case strings.Contains(message, "bool, palette []byte) ([]string, error)") && strings.HasPrefix(message, "cannot use ") && importsSDK(diagnostic, source, files):
+		return RuleHostHighlightCode, "HostHelpers.HighlightCode", true
 	case strings.Contains(message, "TransformHeaders") && strings.Contains(message, "ProviderStreamOptions"):
 		return RuleTransformHeaders, "ProviderStreamOptions.TransformHeaders", true
 	case credentialType().MatchString(message) && importsSDK(diagnostic, source, files):

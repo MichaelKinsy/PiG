@@ -583,6 +583,23 @@ func TestModelRegistryFindChangeIsNamed(t *testing.T) {
 	}
 }
 
+// A HostHelpers.HighlightCode written for the markdown parameter is named with its old and new shape; the change has no mechanical rewrite.
+func TestHostHelpersHighlightCodeChangeIsNamed(t *testing.T) {
+	result, _ := planSource(t, `var helpers = sdk.HostHelpers{
+	HighlightCode: func(code, lang string, markdown bool, palette []byte) ([]string, error) {
+		return []string{code}, nil
+	},
+}
+`)
+	if result.Changed() || len(result.Remaining) != 1 {
+		t.Fatalf("result = %+v", result)
+	}
+	drift := result.Remaining[0]
+	if drift.Rule != upgrade.RuleHostHighlightCode || drift.Symbol != "HostHelpers.HighlightCode" || drift.Rewrites || drift.Old != "func(string, string, bool, []byte) ([]string, error)" || drift.New != "func(string, string, []byte) ([]string, error)" || drift.Since != "0.7.0" {
+		t.Fatalf("drift = %+v", drift)
+	}
+}
+
 // A provider object written for map[string]any credentials names each changed field with its old and new shape; the change has no mechanical rewrite.
 func TestProviderCredentialChangesAreNamed(t *testing.T) {
 	result, _ := planSource(t, `var provider = sdk.Provider{
