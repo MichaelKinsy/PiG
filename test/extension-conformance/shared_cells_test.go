@@ -85,3 +85,49 @@ func TestConformance_SharedCellsIsolatePerHostInstances(t *testing.T) {
 		})
 	}
 }
+
+// Hosts that join one cell registry share an extension's process, so the module-level state of a Node extension and the package-level state of a Go extension is shared between their instances: the second Host's instance reads the first's factory increment (D201). Only state kept in the factory closure or the instance is per Host. An exact standalone is isolated by design and never shares: it reads 1 in each Host.
+func TestConformance_SharedCellsShareModuleLevelState(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	t.Setenv("PIG_FIXTURE_MODULE_STATE", "1")
+	want := map[string][2]string{
+		"subprocess-node-packed": {"factoryCalls=1", "factoryCalls=2"},
+		"subprocess-go-packed":   {"factoryCalls=1", "factoryCalls=2"},
+		"subprocess-node":        {"factoryCalls=1", "factoryCalls=1"},
+		"subprocess-go":          {"factoryCalls=1", "factoryCalls=1"},
+	}
+	for _, tc := range append(allHarnessCases(), packedSDKHarnessCases()...) {
+		reads, ok := want[tc.name]
+		if !ok {
+			continue
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			registry := subprocess.NewCellRegistry()
+			conformanceCellRegistry, conformanceCellCwd = registry, t.TempDir()
+			t.Cleanup(func() { conformanceCellRegistry, conformanceCellCwd = nil, ""; registry.Close() })
+			load := func() *harness {
+				h := tc.make(t)
+				t.Cleanup(func() {
+					if h.cleanup != nil {
+						h.cleanup()
+					}
+					h.host.Shutdown("test done")
+				})
+				return h
+			}
+			a := load()
+			if got := sharedToolText(t, a, "module_state", `{}`); got != reads[0] {
+				t.Fatalf("Host A module state = %q, want %q", got, reads[0])
+			}
+			b := load()
+			if got := sharedToolText(t, b, "module_state", `{}`); got != reads[1] {
+				t.Errorf("Host B module state = %q, want %q", got, reads[1])
+			}
+			if got := sharedToolText(t, a, "module_state", `{}`); got != reads[1] {
+				t.Errorf("Host A module state after Host B joined = %q, want %q", got, reads[1])
+			}
+		})
+	}
+}
