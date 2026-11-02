@@ -299,6 +299,29 @@
       "tests": []
     },
     {
+      "id": "BF-0344513",
+      "title": "fix(durable/harness): register waits with the Session before they block; one-task run benchmark; the…",
+      "symptom": "fix(durable/harness): register waits with the Session before they block; one-task run benchmark; the wait-continuation port holds the continuation",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "03445138be",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "durable/harness/harness_group_commit_test.go::TestGroupCommitOutcomesAndPublicationThroughTheHarness",
+        "durable/harness/harness_submissions_test.go::TestSubmissions",
+        "durable/harness/harness_tasks_test.go::TestPublicationAtAdoption"
+      ]
+    },
+    {
       "id": "BF-03675ab",
       "title": "fix(chord/next/store): report the recovered panic, bytes.Equal, allow jsonparse in the chord boundary",
       "symptom": "fix(chord/next/store): report the recovered panic, bytes.Equal, allow jsonparse in the chord boundary",
@@ -766,6 +789,32 @@
         "internal/packagemanager/resolve_gaps_test.go::TestResolveExtensionSourcesReportsATemporarySourceThatFailsToInstall",
         "internal/packagemanager/resolve_gaps_test.go::TestResolveReportsNoInstallFailureForASkippedSourceAndKeepsTheErrorDecision",
         "internal/packagemanager/resolve_gaps_test.go::TestResolveSkipsAPackageSourceThatFailsToInstallAndReportsIt"
+      ]
+    },
+    {
+      "id": "BF-08099eb",
+      "title": "A wait of a Session continuation stays registered until the continuation has entered, so a publication that…",
+      "symptom": "A wait of a Session continuation stays registered until the continuation has entered, so a publication that looks for the waits it readied after their goroutines ran still waits for it.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A wait of a Session continuation stays registered until the continuation has entered, so a publication that looks for the waits it readied after their goroutines ran still waits for it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "08099eb763",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_activity_test.go::TestActivityGivesASlowWatcherTheNewestCountsOnceItIsFree",
+        "chord/next/host/host_host_test.go::TestHostReloadAnAbortEndsTheReportsWaitForAListenerStillRunning",
+        "chord/next/state/derive_own_test.go::TestDeriveFailures",
+        "chord/next/state/watchable_own_test.go::TestSourceWatches",
+        "durable/harness/harness_group_commit_test.go::TestGroupCommitOutcomesAndPublicationThroughTheHarness"
       ]
     },
     {
@@ -2114,6 +2163,25 @@
       "tests": []
     },
     {
+      "id": "BF-13a9eb1",
+      "title": "fix(durable/harness): a bound submit checks the invocation's signal before it queues and runs without it",
+      "symptom": "fix(durable/harness): a bound submit checks the invocation's signal before it queues and runs without it",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "13a9eb11a4",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-13f7697",
       "title": "The model catalog no longer offers models.dev's realtime and image models as chat models: `gpt-realtime-2.1`…",
       "symptom": "The model catalog no longer offers models.dev's realtime and image models as chat models: `gpt-realtime-2.1` (Azure and OpenAI), `gemini-3.1-flash-live-preview` and `gemini-3.1-flash-lite-image` (Google and Google Vertex).",
@@ -3053,6 +3121,27 @@
       "tests": []
     },
     {
+      "id": "BF-19ed965",
+      "title": "fix(durable): the core driver's Tx has LatestEntryId; the root rejected-copy test seeds through CommitWrites",
+      "symptom": "fix(durable): the core driver's Tx has LatestEntryId; the root rejected-copy test seeds through CommitWrites",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "19ed965483",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "durable/storage_rejected_copy_test.go::TestMemoryStorageRejectsAnUnresolvableDocumentCopyBeforeAnyEffect"
+      ]
+    },
+    {
       "id": "BF-1a855cd",
       "title": "The `/session` block now follows a later theme change and shows the cache-warming countdown as of each…",
       "symptom": "The `/session` block now follows a later theme change and shows the cache-warming countdown as of each redraw, as in Pi.",
@@ -3205,7 +3294,6 @@
         "durable/harness/harness_read_only_test.go::TestReadOnlyHarness",
         "durable/json_test.go::TestCopyJsonDetachesAndRejectsNonFiniteNumbers",
         "durable/session/session_adoption_internal_test.go::TestSessionFailsWithItsOwnAdoptionErrorWhichNeverReachesStorage",
-        "durable/session/session_adoption_test.go::TestSessionAdoptionInsideStorageCommit",
         "internal/usagetotals/usagetotals_test.go::TestCombineUsageMarksTheTotalProviderReportedOnlyWhenBothTotalsAre",
         "test/parity/interface-closure/autobind/library_test.go::TestAliasesOwnerKnowsGenericAliases"
       ]
@@ -6077,6 +6165,25 @@
       "tests": [
         "durable/core/driver/docs_core_watches_test.go::TestCoreWatchOpenWaitsBehindTheTransactionHoldingTheLine"
       ]
+    },
+    {
+      "id": "BF-33008a8",
+      "title": "fix(durable/session): a publication refreshes its changed documents before its keys leave and arms one sweep…",
+      "symptom": "fix(durable/session): a publication refreshes its changed documents before its keys leave and arms one sweep after",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "33008a8701",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-333229c",
@@ -9561,6 +9668,25 @@
       ]
     },
     {
+      "id": "BF-49584f8",
+      "title": "Fix in shipped code",
+      "symptom": "Fix in shipped code",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "49584f898c",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-495f017",
       "title": "A `bashExecution` entry records `excludeFromContext: false` when the caller passed `false`, as Pi does; an…",
       "symptom": "A `bashExecution` entry records `excludeFromContext: false` when the caller passed `false`, as Pi does; an RPC `bash` command without the member records none.",
@@ -9666,6 +9792,34 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-4a3ad8b",
+      "title": "The Session orders the continuations of what a publication resolved before the next part of the same storage…",
+      "symptom": "The ordering used to read a dump of every goroutine, cost about a millisecond per publication, and was given up above 128 goroutines.",
+      "rootCause": "The writer's hop and the delivery of outcomes waited for the goroutines a publication readied by reading a dump of every goroutine, and gave the order up above 128 of them. The waits of the Session now register before they block (Park, Await) and acknowledge when they resumed; a caller that needs its continuation ordered whole brings a Continuation. No stack is read, and the cost of a publication does not depend on the number of goroutines in the process.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Session orders the continuations of what a publication resolved before the next part of the same storage call is published at any number of goroutines in the process. The ordering used to read a dump of every goroutine, cost about a millisecond per publication, and was given up above 128 goroutines. The waits of the Session (`SessionImpl.Park`, `SessionImpl.Await`, a commit caller's resumption) now register before they block and acknowledge when they resumed, so a publication costs microseconds and 4 KiB, whatever the process runs. A caller that needs its continuation ordered up to its next wait of the Session passes `session.WithContinuation(ctx)` and calls `Entered`. `SessionImpl.ReadOnLineCtx` and `ReadWithTicketCtx` run a line read with the caller's line admission and continuation.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4a3ad8b882",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "durable/session/session_group_commit_internal_test.go::TestGroupCommitSettlesADeferredCommitWhoseAdoptionFailsAlone",
+        "durable/session/session_group_commit_test.go::TestRandomIsPisGenerator",
+        "durable/session/session_resumption_test.go::TestAContinuationThatWaitsForAGateHasEntered",
+        "durable/session/session_resumption_test.go::TestAContinuationThatWaitsForTheLineHasEntered",
+        "durable/session/session_resumption_test.go::TestAWaitDeregistersWhenItResumesHoweverItReturned",
+        "durable/session/session_resumption_test.go::TestOrderingHoldsAboveAHundredAndTwentyEightGoroutines",
+        "durable/session/session_resumption_test.go::TestParkOnAChannelThatIsClosedRegistersNothing"
+      ]
     },
     {
       "id": "BF-4ac21c8",
@@ -15927,6 +16081,33 @@
       "tests": []
     },
     {
+      "id": "BF-64e8830",
+      "title": "Expiring kept contexts stops at the first context still retained instead of copying the whole idle order on…",
+      "symptom": "Expiring kept contexts stops at the first context still retained instead of copying the whole idle order on every settle, so the cost of a settle no longer grows with the number of idle contexts.",
+      "rootCause": "Inspect, Get/Status/Wait, task reads and the view and task graph attachments pass their context to the line, whose admission callback the tests wait on instead of the net LineJobs gauge. expireContextsLocked takes orderedSet.First instead of the whole idle order.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Expiring kept contexts stops at the first context still retained instead of copying the whole idle order on every settle, so the cost of a settle no longer grows with the number of idle contexts.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "64e88301d0",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "durable/harness/harness_lifecycle_test.go::TestHarnessClose",
+        "durable/harness/harness_task_graph_test.go::TestTaskGraphView",
+        "durable/harness/harness_view_test.go::TestConversationView",
+        "durable/harness/scheduler_idle_expiry_alloc_test.go::TestExpiringIdleContextsAllocatesNothingWhenTheOldestIsRetained",
+        "durable/harness/scheduler_idle_expiry_alloc_test.go::TestExpiringIdleContextsStopsAtTheFirstRetainedOne",
+        "durable/harness/task_runtime_get_task_test.go::TestTaskRuntimeGetTaskReadsOnTheSessionLineAndRefusesAnEndedInvocation"
+      ]
+    },
+    {
       "id": "BF-65411f7",
       "title": "fix(chord/next/documents): a transaction releases the line and tells its staged changes in one section, as…",
       "symptom": "fix(chord/next/documents): a transaction releases the line and tells its staged changes in one section, as Pi's finally does",
@@ -16699,6 +16880,29 @@
       ]
     },
     {
+      "id": "BF-674b449",
+      "title": "The Session's blocking points a listener can reach (the wait for the previous line job, for room, for the…",
+      "symptom": "The Session's blocking points a listener can reach (the wait for the previous line job, for room, for the writer's drain and for a part's publication) mark the delivery entered, so a listener that calls `UnloadDocuments` during a multi-part call does not stall the Session's publications.",
+      "rootCause": "onLine's wait for the previous job, waitRoom, awaitDrained and Part.Wait go through one helper that calls chord.DeliveryEntered before it blocks, so a listener that calls UnloadDocuments during a multi-part call no longer stalls the hop. The counter-based ParkedWaits test of a continuation's wait is dropped: TestAWakeADeferredPublicationRunsIsEnteredBeforeTheNextPartIsPublished asserts the behavior.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Session's blocking points a listener can reach (the wait for the previous line job, for room, for the writer's drain and for a part's publication) mark the delivery entered, so a listener that calls `UnloadDocuments` during a multi-part call does not stall the Session's publications.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "674b44978e",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "durable/session/session_group_commit_test.go::TestGroupCommitAListenerThatUnloadsDocumentsDoesNotStallTheHop",
+        "durable/session/session_line_api_test.go::TestAWakeADeferredPublicationRunsIsEnteredBeforeTheNextPartIsPublished"
+      ]
+    },
+    {
       "id": "BF-677ded1",
       "title": "An indented line after a quoted heading, rule or fence in a blockquote renders as the code block Pi shows",
       "symptom": "An indented line after a quoted heading, rule or fence in a blockquote renders as the code block Pi shows.",
@@ -16745,6 +16949,29 @@
         "internal/codingagent/model_registry_available_variants_test.go::TestAvailableModelDataDerivesRoutingVariantsOnlyForAConfiguredOpenRouter",
         "internal/codingagent/model_registry_variants_allocs_norace_test.go::TestRuntimeModelsAllocatesNothingPerRoutingVariant",
         "internal/codingagent/model_registry_variants_allocs_norace_test.go::TestSelectorModelLookupBuildsOnlyTheModelRead"
+      ]
+    },
+    {
+      "id": "BF-68a3187",
+      "title": "A running watch drain registers the call it makes next when its frame is published, so `AwaitEntered` and the…",
+      "symptom": "A running watch drain registers the call it makes next when its frame is published, so `AwaitEntered` and the Session's hop between two parts of a call see every listener call that is not yet entered; frames published behind a running call no longer fold into one call at more than one processor.",
+      "rootCause": "Frames published behind a running call joined the running delivery, which was already entered, and later frames folded into one call (2-27 of 2000 rounds at -cpu 2 and 8). The call for the next frame is registered under the watch lock when the frame is published; a listener that awaits the deliveries does not wait for the later calls of its own drain.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A running watch drain registers the call it makes next when its frame is published, so `AwaitEntered` and the Session's hop between two parts of a call see every listener call that is not yet entered; frames published behind a running call no longer fold into one call at more than one processor.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "68a31878e8",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/watch_enter_frames_test.go::TestAListenerThatAwaitsDeliveriesDoesNotWaitForTheNextFrameOfItsOwnDrain",
+        "chord/watch_enter_frames_test.go::TestAwaitEnteredSeesEveryFrameOfARunningDrain"
       ]
     },
     {
@@ -21540,6 +21767,29 @@
       ]
     },
     {
+      "id": "BF-875c5c0",
+      "title": "A JSONL commit whose file path fails to resolve after its batch applied in memory now poisons the storage, as…",
+      "symptom": "A JSONL commit whose file path fails to resolve after its batch applied in memory now poisons the storage, as every failure after that point does, instead of leaving memory ahead of the files.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A JSONL commit whose file path fails to resolve after its batch applied in memory now poisons the storage, as every failure after that point does, instead of leaving memory ahead of the files.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "875c5c04b3",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "durable/storage/jsonl/jsonl_storage_test.go::TestJsonlStorageBatches",
+        "durable/storage/jsonl/reclamation_planning_test.go::TestJsonlCommitNamesAFailedSidecarPathJoin"
+      ]
+    },
+    {
       "id": "BF-8780292",
       "title": "The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start",
       "symptom": "The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start.",
@@ -21689,6 +21939,27 @@
         "internal/codingagent/loaded_resources_quiet_upstream_test.go::TestLoadedResourcesQuietReloadUpstream",
         "internal/codingagent/skill_collision_test.go::TestShowLoadedResourcesSkillConflicts",
         "internal/codingagent/skill_file_metadata_test.go::TestSkillFileMetadataRetainsCollisionDiagnostics"
+      ]
+    },
+    {
+      "id": "BF-88dd574",
+      "title": "fix(durable/session): order continuations by dump only below 128 goroutines, JSONL adoption test, observation…",
+      "symptom": "fix(durable/session): order continuations by dump only below 128 goroutines, JSONL adoption test, observation comment",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "88dd574521",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "durable/session/session_adoption_jsonl_test.go::TestPublishesAJsonlCommitOnceTheStorageReclaimedItsSidecarAndResolved"
       ]
     },
     {
@@ -21978,6 +22249,111 @@
       "tests": [
         "internal/codingagent/tools/grep_context_memory_test.go::TestGrepLineWindowMatchesTheWholeFileSplit",
         "internal/codingagent/tools/tools_search_port_test.go::TestToolsGrepPort"
+      ]
+    },
+    {
+      "id": "BF-8b1f8a9",
+      "title": "The Chord delivery scheduler no longer reads goroutine stacks or depends on how many goroutines the process…",
+      "symptom": "The Chord delivery scheduler no longer reads goroutine stacks or depends on how many goroutines the process holds: `AwaitEntered` returns once the synchronous part of every earlier delivery's listener ran (its call returned, or it went on to a wait of the Session, `chord.DeliveryEntered`), as Pi's `#drain` microtask does, so the Durable Session's hop between two publications of one storage call, the Harness waits and the reload report order the listeners' code as in Pi at any goroutine count.",
+      "rootCause": "AwaitEntered waits until every earlier delivery's first listener call returned, or the listener went on to a wait of the host (watchentered.Entered from Session.Park, gate and line waits and the host loop's park), or the delivery ended; a call from inside a delivery enters it and skips it. Waiter.Wait abandons a rejected or cancelled wait. chordstore.JsonText carries a cell's text and value. Stale contracts and the conflict markers of the rows are fixed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Chord delivery scheduler no longer reads goroutine stacks or depends on how many goroutines the process holds: `AwaitEntered` returns once the synchronous part of every earlier delivery's listener ran (its call returned, or it went on to a wait of the Session, `chord.DeliveryEntered`), as Pi's `#drain` microtask does, so the Durable Session's hop between two publications of one storage call, the Harness waits and the reload report order the listeners' code as in Pi at any goroutine count. A listener blocked on a plain lock the caller holds is the one gap.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8b1f8a9960",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_host_test.go::TestHostReloadAListenerThatAbortsTheContextFromItsCallbackEndsTheReportAborted",
+        "chord/next/host/host_host_test.go::TestHostReloadAnAbortEndsTheReportsWaitForAListenerStillRunning",
+        "chord/next/store/json_text_cell_test.go::TestEncodeCellChecksTheValueOfAJsonText",
+        "chord/next/store/json_text_cell_test.go::TestEncodeCellStoresTheTextOfAJsonTextWithoutSerializingTheValueAgain",
+        "chord/watch_enter_test.go::TestAListenerThatAwaitsDeliveriesDoesNotWaitForItselfOrForOthersThatDo",
+        "chord/watch_enter_test.go::TestAwaitEnteredDoesNotWaitForAListenerParkedInAHostWait",
+        "chord/watch_enter_test.go::TestAwaitEnteredEndsWhenItsContextIsCancelledWhileAListenerIsStillAtWork",
+        "chord/watch_enter_test.go::TestAwaitEnteredReturnsAfterTheSynchronousPartOfAListenerRan",
+        "durable/harness/wait_deliveries_test.go::TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerParkedInAWait",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitResumesItsCallerAfterTheListenersOfEarlierBatchesEntered",
+        "durable/harness/waiter_cancel_test.go::TestACancelledWaitOfAContinuationDoesNotHoldLaterPublications",
+        "durable/session/session_group_commit_test.go::TestGroupCommitTheHopWaitsForTheSynchronousPartOfAListener",
+        "durable/session/session_resumption_test.go::TestAnAbandonedWaitOfAContinuationIsAcknowledgedAtOnce"
+      ]
+    },
+    {
+      "id": "BF-8b1f8a9-2",
+      "title": "A Harness wait that ended by cancellation or a close no longer holds the publications after it when its…",
+      "symptom": "A Harness wait that ended by cancellation or a close no longer holds the publications after it when its caller brought a `WithContinuation`.",
+      "rootCause": "AwaitEntered waits until every earlier delivery's first listener call returned, or the listener went on to a wait of the host (watchentered.Entered from Session.Park, gate and line waits and the host loop's park), or the delivery ended; a call from inside a delivery enters it and skips it. Waiter.Wait abandons a rejected or cancelled wait. chordstore.JsonText carries a cell's text and value. Stale contracts and the conflict markers of the rows are fixed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Harness wait that ended by cancellation or a close no longer holds the publications after it when its caller brought a `WithContinuation`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8b1f8a9960",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_host_test.go::TestHostReloadAListenerThatAbortsTheContextFromItsCallbackEndsTheReportAborted",
+        "chord/next/host/host_host_test.go::TestHostReloadAnAbortEndsTheReportsWaitForAListenerStillRunning",
+        "chord/next/store/json_text_cell_test.go::TestEncodeCellChecksTheValueOfAJsonText",
+        "chord/next/store/json_text_cell_test.go::TestEncodeCellStoresTheTextOfAJsonTextWithoutSerializingTheValueAgain",
+        "chord/watch_enter_test.go::TestAListenerThatAwaitsDeliveriesDoesNotWaitForItselfOrForOthersThatDo",
+        "chord/watch_enter_test.go::TestAwaitEnteredDoesNotWaitForAListenerParkedInAHostWait",
+        "chord/watch_enter_test.go::TestAwaitEnteredEndsWhenItsContextIsCancelledWhileAListenerIsStillAtWork",
+        "chord/watch_enter_test.go::TestAwaitEnteredReturnsAfterTheSynchronousPartOfAListenerRan",
+        "durable/harness/wait_deliveries_test.go::TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerParkedInAWait",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitResumesItsCallerAfterTheListenersOfEarlierBatchesEntered",
+        "durable/harness/waiter_cancel_test.go::TestACancelledWaitOfAContinuationDoesNotHoldLaterPublications",
+        "durable/session/session_group_commit_test.go::TestGroupCommitTheHopWaitsForTheSynchronousPartOfAListener",
+        "durable/session/session_resumption_test.go::TestAnAbandonedWaitOfAContinuationIsAcknowledgedAtOnce"
+      ]
+    },
+    {
+      "id": "BF-8b1f8a9-3",
+      "title": "Durable's `StoreStorage` serializes a record once: the store takes the record's JSON text with its parsed…",
+      "symptom": "Durable's `StoreStorage` serializes a record once: the store takes the record's JSON text with its parsed value (`chordstore.JsonText`) instead of serializing the value again.",
+      "rootCause": "AwaitEntered waits until every earlier delivery's first listener call returned, or the listener went on to a wait of the host (watchentered.Entered from Session.Park, gate and line waits and the host loop's park), or the delivery ended; a call from inside a delivery enters it and skips it. Waiter.Wait abandons a rejected or cancelled wait. chordstore.JsonText carries a cell's text and value. Stale contracts and the conflict markers of the rows are fixed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Durable's `StoreStorage` serializes a record once: the store takes the record's JSON text with its parsed value (`chordstore.JsonText`) instead of serializing the value again.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8b1f8a9960",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_host_test.go::TestHostReloadAListenerThatAbortsTheContextFromItsCallbackEndsTheReportAborted",
+        "chord/next/host/host_host_test.go::TestHostReloadAnAbortEndsTheReportsWaitForAListenerStillRunning",
+        "chord/next/store/json_text_cell_test.go::TestEncodeCellChecksTheValueOfAJsonText",
+        "chord/next/store/json_text_cell_test.go::TestEncodeCellStoresTheTextOfAJsonTextWithoutSerializingTheValueAgain",
+        "chord/watch_enter_test.go::TestAListenerThatAwaitsDeliveriesDoesNotWaitForItselfOrForOthersThatDo",
+        "chord/watch_enter_test.go::TestAwaitEnteredDoesNotWaitForAListenerParkedInAHostWait",
+        "chord/watch_enter_test.go::TestAwaitEnteredEndsWhenItsContextIsCancelledWhileAListenerIsStillAtWork",
+        "chord/watch_enter_test.go::TestAwaitEnteredReturnsAfterTheSynchronousPartOfAListenerRan",
+        "durable/harness/wait_deliveries_test.go::TestACancelledContextEndsAHarnessWaitForTheListenersAtOnce",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitDoesNotWaitForAListenerParkedInAWait",
+        "durable/harness/wait_deliveries_test.go::TestAHarnessWaitResumesItsCallerAfterTheListenersOfEarlierBatchesEntered",
+        "durable/harness/waiter_cancel_test.go::TestACancelledWaitOfAContinuationDoesNotHoldLaterPublications",
+        "durable/session/session_group_commit_test.go::TestGroupCommitTheHopWaitsForTheSynchronousPartOfAListener",
+        "durable/session/session_resumption_test.go::TestAnAbandonedWaitOfAContinuationIsAcknowledgedAtOnce"
       ]
     },
     {
@@ -22512,6 +22888,27 @@
       "tests": [
         "durable/core/driver/session_test.go::TestCloseSealsTheCoreBeforeTheEventsItsCloseListenersFree",
         "durable/core/driver/tool_nested_restart_core_test.go::TestCoreAbandonedNestedCallsAfterARestartSettleInterruptedOrAbandoned"
+      ]
+    },
+    {
+      "id": "BF-8ceda60",
+      "title": "fix(chord): a call suspended in a host wait does not hold AwaitEntered back for the frame behind it",
+      "symptom": "fix(chord): a call suspended in a host wait does not hold AwaitEntered back for the frame behind it",
+      "rootCause": "The call a running drain makes next is registered behind the running one; once that one went on to a wait of the host (DeliveryEntered) without returning, the awaiting code does not wait for the next call, as Pi's drain resumes the next frame when the listener's await does. Documents the listener contract (pig divergence D224) at DeliveryEntered, awaitEntered and the watch Start methods.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "8ceda6023e",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/watch_enter_frames_test.go::TestAwaitEnteredDoesNotWaitForTheFrameBehindASuspendedCall"
       ]
     },
     {
@@ -25029,6 +25426,26 @@
       ]
     },
     {
+      "id": "BF-93d0f2f",
+      "title": "Nested tool calls reach the Session line in call order, also when the calls waited on the same first memo…",
+      "symptom": "Nested tool calls reach the Session line in call order, also when the calls waited on the same first memo, and a call's own wait no longer holds the next call's start (a deadlock with the core driver).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Nested tool calls reach the Session line in call order, also when the calls waited on the same first memo, and a call's own wait no longer holds the next call's start (a deadlock with the core driver).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "93d0f2f0cb",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-93f8b7c",
       "title": "fix(agent): a listener failure at agent_start ends the run as in Pi; failure messages carry the model's api",
       "symptom": "fix(agent): a listener failure at agent_start ends the run as in Pi; failure messages carry the model's api",
@@ -25096,6 +25513,25 @@
         "coding/extension/exec_test.go::TestExecCommand_SilentExitKeepsStderrEmpty",
         "coding/extension/exec_test.go::TestExecCommand_SpawnFailureResolvesWithCodeOne"
       ]
+    },
+    {
+      "id": "BF-94a3919",
+      "title": "fix(durable/harness): drop a duplicated tail of waitForTask",
+      "symptom": "fix(durable/harness): drop a duplicated tail of waitForTask",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "94a3919338",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-94e3498",
@@ -28797,11 +29233,7 @@
         "durable/core/session/sched_idle_scopes_test.go::TestKeptContextsAreAllDroppedWhenRetentionBecomesZero",
         "durable/core/session/sched_idle_scopes_test.go::TestKeptContextsExpireInIdleOrderWhenTheClockGoesBack",
         "durable/harness/harness_tasks_test.go::TestPublicationAtAdoption",
-        "durable/harness/scheduler_idle_scaling_bench_test.go::TestWakeWhileATaskRunsCostsTheSameAtAnyNumberOfLiveTasks",
-        "durable/harness/scheduler_idle_scopes_test.go::TestIdleWaitersByScope",
-        "durable/harness/scheduler_idle_scopes_test.go::TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork",
-        "durable/harness/scheduler_idle_scopes_test.go::TestKeptContextRanges",
-        "durable/harness/scheduler_idle_scopes_test.go::TestWakeReadsSleepingTasksAndScansLiveOnesOnlyWhileNothingRuns"
+        "durable/harness/scheduler_idle_scaling_bench_test.go::TestWakeWhileATaskRunsCostsTheSameAtAnyNumberOfLiveTasks"
       ]
     },
     {
@@ -30042,6 +30474,27 @@
         "tui/config_selector_oracle_test.go::TestConfigSelectorMatchesPi",
         "tui/terminal_negotiation_stop_test.go::TestTerminalInputCarriesOnlyWhatIsSent",
         "tui/terminal_split_reply_test.go::TestForwardTerminalConsumesAnOwedReplySplitAcrossSlowReads"
+      ]
+    },
+    {
+      "id": "BF-b6d9f91",
+      "title": "fix(durable/harness): register a wait with the Session outside line jobs; close-race in the view test",
+      "symptom": "fix(durable/harness): register a wait with the Session outside line jobs; close-race in the view test",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "b6d9f919e5",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "durable/harness/harness_view_test.go::TestConversationView"
       ]
     },
     {
@@ -32195,6 +32648,25 @@
       ]
     },
     {
+      "id": "BF-c95de2b",
+      "title": "fix(durable/session): close delivers the admitted jobs' outcomes before Storage closes",
+      "symptom": "fix(durable/session): close delivers the admitted jobs' outcomes before Storage closes",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "c95de2bb66",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-c98be55",
       "title": "The renderer's width and height are read through one atomic snapshot",
       "symptom": "The renderer's width and height are read through one atomic snapshot.",
@@ -33136,6 +33608,46 @@
         "coding/extension/host/subprocess/host_test.go::TestProtocol_RegisterRoundTrip",
         "coding/extension/host/subprocess/registration_fields_wiring_test.go::TestRegistrationDeclarationsKeepEveryField"
       ]
+    },
+    {
+      "id": "BF-cf6bb3a",
+      "title": "A tool's invocation-bound conversation handle rejects a `Submit` that queued behind another Session job when…",
+      "symptom": "A tool's invocation-bound conversation handle rejects a `Submit` that queued behind another Session job when the invocation ended before the submit's job started, and stores nothing, as Pi's job-start abort check does; the handle's cancellation no longer detaches before the call queues (Pi session.ts commit).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A tool's invocation-bound conversation handle rejects a `Submit` that queued behind another Session job when the invocation ended before the submit's job started, and stores nothing, as Pi's job-start abort check does; the handle's cancellation no longer detaches before the call queues (Pi session.ts commit).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cf6bb3ac45",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "BF-cf6bb3a-2",
+      "title": "A replay-safe tool's rerun shows its nested call's arguments in the member order of the stored checkpoint…",
+      "symptom": "A replay-safe tool's rerun shows its nested call's arguments in the member order of the stored checkpoint, not sorted (Pi tool.ts).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A replay-safe tool's rerun shows its nested call's arguments in the member order of the stored checkpoint, not sorted (Pi tool.ts).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cf6bb3ac45",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-cf6c634",
@@ -34993,6 +35505,25 @@
         "coding/extension/host/subprocess/xref_event_bus_test.go::TestXrefEventBusIntegrityLevelsMatchPi",
         "coding/extension/host/subprocess/xref_event_bus_test.go::TestXrefEventBusRejectedWritesMatchPi"
       ]
+    },
+    {
+      "id": "BF-d8ff93b",
+      "title": "fix(durable/harness): providerPayload returns nil when no hook replaced the body, as OnPayload expects",
+      "symptom": "fix(durable/harness): providerPayload returns nil when no hook replaced the body, as OnPayload expects",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "d8ff93bde0",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-d90c2f4",
@@ -38413,6 +38944,25 @@
       ]
     },
     {
+      "id": "BF-e366160",
+      "title": "fix(durable/harness): one walk up per chain of a publication's new tasks when settling idle scopes",
+      "symptom": "fix(durable/harness): one walk up per chain of a publication's new tasks when settling idle scopes",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e3661607a9",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-e3f39b7",
       "title": "Automatic retry now triggers for the gateway error \"Unable to forward upstream stream\"",
       "symptom": "Automatic retry now triggers for the gateway error \"Unable to forward upstream stream\".",
@@ -39649,6 +40199,32 @@
       ],
       "tests": [
         "coding/session_hidden_tools_order_test.go::TestSystemPromptOptionsListHiddenToolsInTheOrderTheHooksHidThem"
+      ]
+    },
+    {
+      "id": "BF-ec1b8f0",
+      "title": "fix(durable/session): publication hooks after keys leave, fail before the causing commit resolves, line API…",
+      "symptom": "fix(durable/session): publication hooks after keys leave, fail before the causing commit resolves, line API tests, rows and changelog",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ec1b8f07dc",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": [
+        "durable/session/session_line_api_test.go::TestAReadOnlySessionKnowsNoTailsAndRefusesCommitsWithWrites",
+        "durable/session/session_line_api_test.go::TestAWakeADeferredPublicationRunsIsEnteredBeforeTheNextPartIsPublished",
+        "durable/session/session_line_api_test.go::TestCommitInternalDeliversAJobThatWroteNothingAndWaitedAtNoGateAheadOfUnpublishedCommits",
+        "durable/session/session_line_api_test.go::TestKnownLatestEntryIdFollowsTheSessionsOwnCommits",
+        "durable/session/session_line_api_test.go::TestOnJobEndRunsOnceTheJobsOutcomeSettles",
+        "durable/session/session_line_api_test.go::TestTouchGatesAKeyUntilItsWriterIsPublished"
       ]
     },
     {
@@ -44408,6 +44984,10 @@
     {
       "id": "D219",
       "title": "pi-schema regular expressions differ from V8 in four contrived cases"
+    },
+    {
+      "id": "D224",
+      "title": "A watch listener that blocks on a wait the host cannot see holds back the waits and publications that follow…"
     }
   ],
   "exemptCommits": {
