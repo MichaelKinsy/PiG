@@ -140,3 +140,114 @@ func TestCloneReadsNoSourceEntryBackToDecodeIt(t *testing.T) {
 		t.Fatalf("clone has %d entries, want 600", got)
 	}
 }
+
+// blockBackedSource is a session of 150 exchanges with a compaction every sixth, as a long session without a file holds it: the entries
+// before the compaction's kept range are held as compressed records in blocks (packLocked), and no entry of them is resident. appended is
+// each entry's record as it was appended, by id.
+func blockBackedSource(t *testing.T) (source *Session, leaf string, appended map[string]string) {
+	t.Helper()
+	source = NewSession("block-backed", "/work/p")
+	appended = map[string]string{}
+	var users []string
+	record := func(id string, err error) string {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+		entry, ok := source.GetEntry(id)
+		if !ok {
+			t.Fatalf("entry %s was not appended", id)
+		}
+		appended[id] = string(entry.Raw())
+		return id
+	}
+	for i := range 150 {
+		users = append(users, record(source.AppendMessage(mkUserMsg(fmt.Sprintf("question %d %s", i, strings.Repeat("y", 200))))))
+		leaf = record(source.AppendMessage(mkAssistantMsg(fmt.Sprintf("answer %d", i))))
+		if (i+1)%6 == 0 {
+			leaf = record(source.AppendCompaction("summary", users[len(users)-2], 1000, nil, false, nil))
+		}
+	}
+	return source, leaf, appended
+}
+
+// A clone of a branch whose older entries are only in compressed blocks reads each record from its block and writes the records the source
+// appended: the chain is linear, so the rewrite of each parentId changes no byte. Both a source without a file (the clone stays in memory)
+// and one that names a file (the clone is written and opened) are cloned.
+func TestCloneReadsRecordsFromCompressedBlocks(t *testing.T) {
+	for _, persisted := range []bool{false, true} {
+		t.Run(fmt.Sprintf("persisted=%v", persisted), func(t *testing.T) {
+			source, leaf, appended := blockBackedSource(t)
+			inBlocks := 0
+			for i := range source.slots {
+				if slot := &source.slots[i]; slot.entry == nil && source.coldPart(slot).block != 0 {
+					inBlocks++
+				}
+			}
+			if inBlocks < 200 || len(source.blockList) == 0 {
+				t.Fatalf("%d entries are in %d compressed blocks, want the older entries packed", inBlocks, len(source.blockList))
+			}
+			dir := t.TempDir()
+			if persisted {
+				source.path = filepath.Join(dir, "source.jsonl")
+			}
+			clone, err := NewSessionManagerWithDir("/work/p", filepath.Join(dir, "clones")).Clone(source, leaf)
+			if err != nil {
+				t.Fatal(err)
+			}
+			branch := clone.GetBranch()
+			if len(branch) != len(appended) {
+				t.Fatalf("clone has %d entries, want %d", len(branch), len(appended))
+			}
+			for _, entry := range branch {
+				if got, want := string(entry.Raw()), appended[entry.Base().ID]; got != want {
+					t.Fatalf("clone entry %s is\n%s\nthe source appended\n%s", entry.Base().ID, got, want)
+				}
+			}
+			if persisted != (clone.Path() != "") {
+				t.Fatalf("clone path %q for a source with persisted=%v", clone.Path(), persisted)
+			}
+		})
+	}
+}
+
+// A clone that fails after it has written records leaves its file as written so far, as Pi's does: Pi opens the file and writes entry by entry
+// (session-manager.ts _rewriteFile), and nothing there removes it. A label entry whose targetId is not a string, which Clone decodes after the
+// path, fails it.
+func TestCloneKeepsTheFileItWroteWhenItFails(t *testing.T) {
+	dir := t.TempDir()
+	message := func(id, parent, role string) string {
+		return fmt.Sprintf(`{"type":"message","id":"%s","parentId":%s,"timestamp":"2026-01-01T00:00:01.000Z","message":{"role":"%s","content":"text of %s","timestamp":1}}`, id, parent, role, id)
+	}
+	lines := []string{
+		`{"type":"session","version":3,"id":"source","timestamp":"2026-01-01T00:00:00.000Z","cwd":"/work/p"}`,
+		message("u1", "null", "user"), message("a1", `"u1"`, "assistant"),
+		`{"type":"label","id":"lb","parentId":"a1","timestamp":"2026-01-01T00:00:02.000Z","targetId":5,"label":"bad"}`,
+		message("u2", `"lb"`, "user"), message("a2", `"u2"`, "assistant"),
+	}
+	sourcePath := filepath.Join(dir, "source.jsonl")
+	if err := os.WriteFile(sourcePath, []byte(strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	clones := filepath.Join(dir, "clones")
+	manager := NewSessionManagerWithDir("/work/p", clones)
+	source, err := manager.Open(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.Clone(source, "a2"); err == nil {
+		t.Fatal("Clone of a branch with a label whose targetId is a number succeeded, want the decode error")
+	}
+	files, err := filepath.Glob(filepath.Join(clones, "*.jsonl"))
+	if err != nil || len(files) != 1 {
+		t.Fatalf("clone directory holds %v (%v), want the one file the failed clone wrote", files, err)
+	}
+	data, err := os.ReadFile(files[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	written := strings.Split(strings.TrimSuffix(string(data), "\n"), "\n")
+	if len(written) != 5 || !strings.HasPrefix(written[0], `{"type":"session"`) || !strings.Contains(written[4], `"id":"a2"`) {
+		t.Fatalf("the failed clone's file holds %d records, want its header and the four entries of the path:\n%s", len(written), data)
+	}
+}

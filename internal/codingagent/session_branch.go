@@ -73,8 +73,6 @@ func (s *Session) planBranchedSession(leafID string) (branchedPlan, bool) {
 // record with its parentId chained to the entry before it (and a compaction's firstKeptEntryId moved past the labels removed), then one
 // fresh label entry for each labeled target on the path. A record that is not resident is read from its line alone, so no more than one record
 // is held. The members the rewrite leaves alone keep the bytes the source has for them.
-//
-// pig additive (D112): Pi holds every entry decoded and writes the file from them (session-manager.ts createBranchedSession, _rewriteFile); streaming the records is a Go memory choice and the bytes are Pi's.
 func (s *Session) writeBranchedSession(plan branchedPlan, emit func(parts ...[]byte) error) error {
 	records := recordSource{s: s}
 	defer records.close()

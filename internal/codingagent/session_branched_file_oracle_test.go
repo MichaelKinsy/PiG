@@ -17,12 +17,8 @@ import (
 func TestCreateBranchedSessionMatchesPiOracle(t *testing.T) {
 	rng := rand.New(rand.NewSource(20261102))
 	const header = `{"type":"session","version":3,"id":"%s","timestamp":"2026-01-01T00:00:00.000Z","cwd":"/work/p"}`
-	type probe struct {
-		Name string `json:"name"`
-		Leaf string `json:"leaf"`
-	}
 	root := t.TempDir()
-	var probes []probe
+	var probes []branchProbe
 	for n := range 80 {
 		name := fmt.Sprintf("s%02d", n)
 		var lines []string
@@ -97,9 +93,22 @@ func TestCreateBranchedSessionMatchesPiOracle(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, leaf := range []string{messageIDs[len(messageIDs)-1], messageIDs[rng.Intn(len(messageIDs))], ids[rng.Intn(len(ids))]} {
-			probes = append(probes, probe{name, leaf})
+			probes = append(probes, branchProbe{name, leaf})
 		}
 	}
+	assertBranchesMatchPi(t, root, probes, []string{`"type":"image"`, `"type":"custom"`, `"type":"custom_message"`, `"type":"session_info"`, `"type":"branch_summary"`, `"type":"thinking_level_change"`, `"type":"compaction"`, `"type":"label"`, "café"})
+}
+
+// branchProbe is one createBranchedSession call: the session file named Name under the probes' root, branched at Leaf.
+type branchProbe struct {
+	Name string `json:"name"`
+	Leaf string `json:"leaf"`
+}
+
+// assertBranchesMatchPi branches each probe's session with Pi's SessionManager.createBranchedSession and with Session.CreateBranchedSession and compares the branched files'
+// records after their headers, with the ids of the new label entries renamed L1, L2, ... in file order. Every shape must appear in some record of Pi's output.
+func assertBranchesMatchPi(t *testing.T, root string, probes []branchProbe, shapes []string) {
+	t.Helper()
 	type result struct {
 		Lines []string `json:"lines"`
 		Error string   `json:"error"`
@@ -123,18 +132,16 @@ emit(input.probes.map(({ name, leaf }) => {
 	} catch (e) { return { error: e.message }; }
 }));`, map[string]any{"probes": probes, "root": root, "piDir": piDir}, &want, "HOME=/home/oracle")
 	// The probes must reach every record shape the rewrite has to keep, or a match proves nothing about it.
-	reached := map[string]int{}
-	for _, result := range want {
-		for _, line := range result.Lines {
-			for _, shape := range []string{`"type":"image"`, `"type":"custom"`, `"type":"custom_message"`, `"type":"session_info"`, `"type":"branch_summary"`, `"type":"thinking_level_change"`, `"type":"compaction"`, `"type":"label"`, `caf\u00e9`, "café"} {
+	for _, shape := range shapes {
+		reached := 0
+		for _, result := range want {
+			for _, line := range result.Lines {
 				if strings.Contains(line, shape) {
-					reached[shape]++
+					reached++
 				}
 			}
 		}
-	}
-	for _, shape := range []string{`"type":"image"`, `"type":"custom"`, `"type":"custom_message"`, `"type":"session_info"`, `"type":"branch_summary"`, `"type":"thinking_level_change"`, `"type":"compaction"`, `"type":"label"`, "café"} {
-		if reached[shape] == 0 {
+		if reached == 0 {
 			t.Errorf("no probe branch of Pi's output holds %s", shape)
 		}
 	}
@@ -208,4 +215,57 @@ func fixtureImage(rng *rand.Rand) string {
 	raw := make([]byte, 1500+rng.Intn(2500))
 	rng.Read(raw)
 	return base64.StdEncoding.EncodeToString(raw)
+}
+
+// createBranchedSession removes the label entries from the path and rechains it, and a compaction's firstKeptEntryId that names a removed label becomes the entry that follows the label on the path (session-manager.ts:1655-1685). The sessions here put that rule through each of its cases: a label before the entries it precedes, a label directly before the compaction that keeps it (the compaction itself), two labels in a row, a compaction that keeps itself, one that keeps an entry that is not a label in a path with labels, one that keeps a label off the path, one that keeps an id nothing names, and two compactions that each keep a label. Each is branched at the compaction and at the entry before it, and the files are Pi's.
+func TestCreateBranchedSessionCompactionBoundariesMatchPiOracle(t *testing.T) {
+	message := func(id, parent, role string) string {
+		p := "null"
+		if parent != "" {
+			p = `"` + parent + `"`
+		}
+		return fmt.Sprintf(`{"type":"message","id":"%s","parentId":%s,"timestamp":"2026-01-01T00:00:01.000Z","message":{"role":"%s","content":"text of %s","timestamp":1}}`, id, p, role, id)
+	}
+	label := func(id, parent, target, text string) string {
+		return fmt.Sprintf(`{"type":"label","id":"%s","parentId":"%s","timestamp":"2026-01-01T00:00:02.000Z","targetId":"%s","label":"%s"}`, id, parent, target, text)
+	}
+	compaction := func(id, parent, kept string) string {
+		return fmt.Sprintf(`{"type":"compaction","id":"%s","parentId":"%s","timestamp":"2026-01-01T00:00:03.000Z","summary":"summary %s","firstKeptEntryId":"%s","tokensBefore":100}`, id, parent, id, kept)
+	}
+	const header = `{"type":"session","version":3,"id":"%s","timestamp":"2026-01-01T00:00:00.000Z","cwd":"/work/p"}`
+	sessions := []struct {
+		name   string
+		leaves []string
+		lines  []string
+	}{
+		{"label-before-entries", []string{"c1", "m3"}, []string{
+			message("m1", "", "user"), message("m2", "m1", "assistant"), label("l1", "m2", "m1", "start"), message("m3", "l1", "user"), compaction("c1", "m3", "l1")}},
+		{"label-directly-before-compaction", []string{"c1", "l1"}, []string{
+			message("m1", "", "user"), message("m2", "m1", "assistant"), label("l1", "m2", "m1", "start"), compaction("c1", "l1", "l1")}},
+		{"two-labels-in-a-row", []string{"c1", "l2"}, []string{
+			message("m1", "", "user"), message("m2", "m1", "assistant"), label("l1", "m2", "m2", "a"), label("l2", "l1", "m1", "b"), compaction("c1", "l2", "l1")}},
+		{"compaction-keeps-itself", []string{"c1"}, []string{
+			message("m1", "", "user"), message("m2", "m1", "assistant"), compaction("c1", "m2", "c1")}},
+		{"kept-entry-is-not-a-label", []string{"c1", "m3"}, []string{
+			message("m1", "", "user"), message("m2", "m1", "assistant"), label("l1", "m2", "m2", "a"), message("m3", "l1", "user"), compaction("c1", "m3", "m2")}},
+		{"kept-label-is-off-the-path", []string{"c1"}, []string{
+			message("m1", "", "user"), message("m2", "m1", "assistant"), label("lx", "m1", "m1", "side"), message("m3", "m2", "user"), compaction("c1", "m3", "lx")}},
+		{"kept-id-names-nothing", []string{"c1"}, []string{
+			message("m1", "", "user"), message("m2", "m1", "assistant"), label("l1", "m2", "m1", "a"), message("m3", "l1", "user"), compaction("c1", "m3", "zzzz")}},
+		{"two-compactions", []string{"c2", "m4", "c1"}, []string{
+			message("m1", "", "user"), message("m2", "m1", "assistant"), label("l1", "m2", "m1", "a"), message("m3", "l1", "user"), compaction("c1", "m3", "l1"),
+			label("l2", "c1", "m3", "b"), message("m4", "l2", "assistant"), compaction("c2", "m4", "l2")}},
+	}
+	root := t.TempDir()
+	var probes []branchProbe
+	for _, session := range sessions {
+		lines := append([]string{fmt.Sprintf(header, session.name)}, session.lines...)
+		if err := os.WriteFile(filepath.Join(root, session.name+".jsonl"), []byte(strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		for _, leaf := range session.leaves {
+			probes = append(probes, branchProbe{session.name, leaf})
+		}
+	}
+	assertBranchesMatchPi(t, root, probes, []string{`"type":"compaction"`, `"type":"label"`, `"firstKeptEntryId":"m3"`, `"firstKeptEntryId":"c1"`, `"firstKeptEntryId":"zzzz"`, `"firstKeptEntryId":"lx"`})
 }

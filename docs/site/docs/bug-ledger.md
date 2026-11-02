@@ -10855,12 +10855,12 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 - **Source:** PiG's own defect
 - **Symptom:** `/fork` and `/clone` of a very long session no longer decode and rewrite every record of the branch in memory.
-- **Root cause:** SessionManager.Clone decoded every record of the branch (GetBranch), rewrote each with replaceJSONField, decoded the rewritten records again and built the clone from them: a 427 MB session peaked at 2.9-4.5 GB on /fork where Pi peaks at 1.23 GB. Clone now plans the retained path from the index, reads each record from its resident entry, line or block, splices the new parentId (and a compaction's firstKeptEntryId) into its text, writes it to the new file, and opens that file the lazy way a resume does.
+- **Root cause:** SessionManager.Clone decoded every record of the branch (GetBranch), rewrote each with replaceJSONField, decoded the rewritten records again and built the clone from them: a 427 MB session peaked at 4.8-5.1 GB on /fork where Pi peaks at 1.23 GB. Clone now plans the retained path from the index, reads each record from its resident entry, line or block, splices the new parentId (and a compaction's firstKeptEntryId) into its text, writes it to the new file, and opens that file the lazy way a resume does.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `761f5a208c` (2026-11-02)
-- **Tests:** `internal/codingagent/session_branched_file_oracle_test.go::TestCreateBranchedSessionMatchesPiOracle`, `internal/codingagent/session_clone_export_alloc_test.go::TestCloneAndExportCostAFewBytesPerSourceByte`, `internal/codingagent/session_clone_stream_test.go::TestCloneReadsNoSourceEntryBackToDecodeIt`, `internal/codingagent/session_clone_stream_test.go::TestCloneWritesTheSameFileFromResidentAndFileBackedSources`
+- **Tests:** `internal/codingagent/session_branched_file_oracle_test.go::TestCreateBranchedSessionCompactionBoundariesMatchPiOracle`, `internal/codingagent/session_branched_file_oracle_test.go::TestCreateBranchedSessionMatchesPiOracle`, `internal/codingagent/session_clone_export_alloc_test.go::TestCloneAndExportCostAFewBytesPerSourceByte`, `internal/codingagent/session_clone_stream_test.go::TestCloneKeepsTheFileItWroteWhenItFails`, `internal/codingagent/session_clone_stream_test.go::TestCloneReadsNoSourceEntryBackToDecodeIt`, `internal/codingagent/session_clone_stream_test.go::TestCloneReadsRecordsFromCompressedBlocks`, `internal/codingagent/session_clone_stream_test.go::TestCloneWritesTheSameFileFromResidentAndFileBackedSources`
 - **Release note:** `/fork` and `/clone` of a very long session no longer decode and rewrite every record of the branch in memory. Forking a 427 MB session peaked at 4.8-5.1 GB and now peaks at about 280 MB (settling at about 190 MB); Pi peaks at about 1.2 GB for the same file. The new file is byte-for-byte what it was.
 
 ### BF-7633906

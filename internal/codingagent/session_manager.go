@@ -249,7 +249,6 @@ func (sm *SessionManager) Clone(source *Session, leafID string) (*Session, error
 			return source.writeBranchedSession(plan, emit)
 		})
 		if err != nil {
-			_ = os.Remove(path)
 			return nil, err
 		}
 		var empty bool
