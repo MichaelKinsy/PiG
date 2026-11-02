@@ -24,10 +24,9 @@ func TestDeadTerminalWriteChild(t *testing.T) {
 	if err := master.Close(); err != nil {
 		t.Fatal(err)
 	}
-	remove := m.exitOnDeadTerminalWrite()
-	defer remove()
+	_ = m.exitOnDeadTerminalWrite()
 	tui.NewProcessTerminal(slave, slave).Write("frame")
-	os.Stdout.WriteString("survived\n")
+	_, _ = os.Stdout.WriteString("survived\n")
 	os.Exit(0)
 }
 

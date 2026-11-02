@@ -85,8 +85,8 @@ func TestStdinInForegroundFollowsTheTerminalProcessGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer gateRead.Close()
-	defer gateWrite.Close()
+	defer func() { _ = gateRead.Close() }()
+	defer func() { _ = gateWrite.Close() }()
 	leader := exec.Command(os.Args[0], "-test.run=^TestStdinForegroundHelper$")
 	leader.Env = append(os.Environ(), foregroundHelperEnv+"=leader")
 	leader.Stdin = slave
@@ -186,7 +186,7 @@ func runForegroundCycle() {
 // (macOS), an ioctl that is not retried ended the session with "interrupted system call" (#397).
 func TestRawModeEntryFromABackgroundGroupSurvivesTheStopAndFg(t *testing.T) {
 	master, slave := openTestPTY(t)
-	defer master.Close()
+	defer func() { _ = master.Close() }()
 	leader := exec.Command(os.Args[0], "-test.run=^TestStdinForegroundHelper$")
 	leader.Env = append(os.Environ(), foregroundHelperEnv+"=fg-cycle")
 	leader.Stdin = slave
