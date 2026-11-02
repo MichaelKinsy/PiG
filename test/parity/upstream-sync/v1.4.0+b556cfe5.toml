@@ -3897,7 +3897,7 @@ rationale = "PORT_MAP row is ✅ ported (internal/codingagent/tool_builtin_rende
 path = "packages/coding-agent/src/core/tools/renderers/write.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:internal/codingagent/code_highlighter_rows_norace_test.go#TestCompleteWriteRowReusesItsHighlightingAcrossRedraws"]
+evidence = ["test:internal/codingagent/code_highlighter_rows_test.go#TestCompleteWriteRowReusesItsHighlightingAcrossRedraws"]
 rationale = "A complete write call highlights its file through the row's CodeHighlighter (cache nil) and reuses its `*tui.Text` (Pi's WriteCallRenderComponent extends Text); a streaming call keeps the incremental cache, whose prefixEpoch check (D112) already skips re-highlighting an unchanged leading block, as Pi's refreshWriteHighlightPrefix highlighter hit does. PiG: internal/codingagent/tool_builtin_renderers.go (writeRenderCall, builtInRenderState.highlighter, reusableText), write_highlight_cache.go (lane RenderReuse)."
 
 [[files]]
@@ -3974,7 +3974,7 @@ rationale = "PORT_MAP row is ✅ ported (coding/extension/builtin/codemode/tool.
 path = "packages/coding-agent/src/extensions/codemode/renderer.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:internal/codingagent/code_highlighter_rows_norace_test.go#TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws"]
+evidence = ["test:internal/codingagent/code_highlighter_rows_test.go#TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws"]
 rationale = "The codemode row holds its script CodeHighlighter in builtInRenderState (Pi: context.state). PiG: internal/codingagent/tool_codemode_renderer.go, tool_builtin_renderers.go (lane RenderReuse)."
 
 [[files]]

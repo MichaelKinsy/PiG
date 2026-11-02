@@ -2822,3 +2822,25 @@ Parity allowance: `schema/internal/ecmaregex/golden_test.go` (`TestKnownGaps`) s
 Remove when: regexp2 gains Canonicalize-based case-insensitive backreference comparison, or PiG gets its own backtracking engine for the ECMAScript grammar. Then the markers, the rows of `knownGaps` and this record go.
 
 SCRUTINIZED:approved
+
+## D220 Markdown renders each paragraph with the inline state at its position, not with the lines of an earlier identical block
+
+What: Pi 0f21a331 (`fix(coding-agent,tui): reuse syntax highlighting and rendered Markdown blocks`) renders a top-level Markdown block again with the lines of an earlier block of the same source in the same render (`blocks.get(token.raw) ?? previousBlocks?.get(token.raw)`, `packages/tui/src/components/markdown.ts:381`). marked's inline lexer carries state from block to block: an open raw `<a>` tag suppresses URL autolinks until its `</a>`. The same source therefore renders differently at different positions. Pi autolinks `http://a.b` inside the open `<a>` of `"http://a.b\n\nx <a href=\"u\">open\n\nhttp://a.b\n\nclose</a>"` because an earlier identical paragraph was autolinked, while `http://a.c` in that place is not. PiG renders each block with the lexer state at its position, as Pi did before 0f21a331 and as Pi does when the paragraphs differ.
+
+Why: Replicating the Pi behavior makes the output depend on which identical blocks came earlier and on streaming order. Pi's own reference-link guard (`reuseBlocks`, `markdown.ts:373`) exists to avoid that property; it guards reference definitions and not the `inLink` and raw-block state. PiG keeps reuse of syntax highlighting by language and code (the rest of 0f21a331), which does not depend on inline state.
+
+Pi bug: reported as `handoffs/next/pi-issue-markdown-block-reuse.md`; the owner files it. Not filed yet.
+
+Scope: `tui.Markdown` rendering (`tui/markdown.go`, `renderBlocks`) for Markdown whose raw HTML spans blocks and whose blocks repeat. Every other document renders identically to Pi.
+
+Owner decision: 2026-11-01, owner approved recording this as a numbered divergence (D220).
+
+Call-site markers: `tui/markdown.go` (`renderBlocks`), `tui/markdown_render_oracle_test.go` (`compareMarkdownWithPi`).
+
+Parity allowance: `compareMarkdownWithPi` (`tui/markdown_render_oracle_test.go`) leaves out `markdownOpenLinkRepeatDoc` when the Pi mirror reuses blocks by source (`piReusesMarkdownBlocksByRaw`); every other document is compared with Pi.
+
+Evidence: `TestMarkdownRenderMatchesPi` compares the same document with Pi before 0f21a331 and every other document at the pin.
+
+Remove when: Pi stops reusing rendered Markdown blocks by token.raw across differing inline state (markdown.ts:381). Then the markers, the oracle skip and this record go.
+
+SCRUTINIZED:approved
