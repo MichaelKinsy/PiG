@@ -1896,5 +1896,106 @@
    "old": "\tcase StateConnected:\n\t\treturn 4",
    "new": "\tcase StateConnected:\n\t\treturn -1"
   }
+ ],
+ "packages/coding-agent/src/utils/image-process.ts": [
+  {
+   "file": "internal/imageprocessing/images.go",
+   "old": "if !autoResize {\n\t\treturn normalized, mime, conversionHint, nil",
+   "new": "if autoResize {\n\t\treturn normalized, mime, conversionHint, nil"
+  },
+  {
+   "file": "internal/imageprocessing/images.go",
+   "old": "from == \"\" || from == to || isUpstreamSupportedImageMIME(from)",
+   "new": "from == \"\" || from == to"
+  }
+ ],
+ "packages/coding-agent/src/utils/ansi.ts": [
+  {
+   "file": "internal/text/strip_ansi.go",
+   "old": "(?:\\x07|\\x1b\\\\|\\x{9c}))",
+   "new": "(?:\\x1b\\\\|\\x{9c}))"
+  },
+  {
+   "file": "internal/codingagent/tools/sanitize.go",
+   "old": "const maxPendingAnsiLength = 256",
+   "new": "const maxPendingAnsiLength = 255"
+  }
+ ],
+ "packages/coding-agent/src/utils/child-process.ts": [
+  {
+   "file": "internal/childwait/wait.go",
+   "old": "const Grace = 100 * time.Millisecond",
+   "new": "const Grace = 150 * time.Millisecond"
+  },
+  {
+   "file": "internal/crossspawn/crossspawn.go",
+   "old": "\tcmd.Dir = dir\n",
+   "new": "\tcmd.Dir = \"\"\n"
+  },
+  {
+   "file": "internal/crossspawn/windows_plan.go",
+   "old": "if executableFile.MatchString(file) {",
+   "new": "if !executableFile.MatchString(file) {"
+  }
+ ],
+ "packages/coding-agent/src/utils/exif-orientation.ts": [
+  {
+   "file": "internal/imageprocessing/images.go",
+   "old": "if value >= 1 && value <= 8 {",
+   "new": "if value >= 1 && value <= 7 {"
+  },
+  {
+   "file": "internal/imageprocessing/images.go",
+   "old": "data[tiffStart] == 0x49 && data[tiffStart+1] == 0x49",
+   "new": "data[tiffStart] == 0x4d && data[tiffStart+1] == 0x4d"
+  }
+ ],
+ "packages/coding-agent/src/utils/git.ts": [
+  {
+   "file": "coding/source/gitparse.go",
+   "old": "useHTTPSPrefix := !strings.HasPrefix(lowerRepo, \"http://\") &&",
+   "new": "useHTTPSPrefix := strings.HasPrefix(lowerRepo, \"http://\") &&"
+  },
+  {
+   "file": "coding/source/gitparse.go",
+   "old": "return buildGitSource(\"https://\"+repo, info.domain",
+   "new": "return buildGitSource(repo, info.domain"
+  }
+ ],
+ "packages/coding-agent/src/utils/html.ts": [
+  {
+   "file": "tui/highlight.go",
+   "old": "case \"lt\":\n\t\treturn \"<\", true",
+   "new": "case \"lt\":\n\t\treturn \">\", true"
+  },
+  {
+   "file": "tui/highlight.go",
+   "old": "len(jsstring.ToUTF16(html[index:semicolon])) > 16",
+   "new": "len(jsstring.ToUTF16(html[index:semicolon])) > 17"
+  }
+ ],
+ "packages/coding-agent/src/utils/paths.ts": [
+  {
+   "file": "internal/resolvepath/resolvepath.go",
+   "old": "return strings.ToUpper(match[1]) + `:\\` +",
+   "new": "return match[1] + `:\\` +"
+  },
+  {
+   "file": "internal/codingagent/paths.go",
+   "old": "\"http:\", \"https:\", \"ssh:\", BuiltinPathPrefix}",
+   "new": "\"http:\", \"https:\", BuiltinPathPrefix}"
+  }
+ ],
+ "packages/coding-agent/src/utils/management-http.ts": [
+  {
+   "file": "internal/managementhttp/managementhttp.go",
+   "old": "retryableStatusCodes[response.StatusCode] && attempt < maxRetries",
+   "new": "retryableStatusCodes[response.StatusCode] && attempt < 0"
+  },
+  {
+   "file": "internal/managementhttp/managementhttp.go",
+   "old": "var retryableStatusCodes = map[int]bool{408: true, 425: true, 429: true, 500: true, 502: true, 503: true, 504: true}",
+   "new": "var retryableStatusCodes = map[int]bool{408: true, 425: true, 429: true, 500: true, 502: true, 504: true}"
+  }
  ]
 }
