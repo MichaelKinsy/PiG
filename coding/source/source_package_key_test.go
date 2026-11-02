@@ -11,6 +11,11 @@ func TestGetSourcePackageKey(t *testing.T) {
 	if want := `{"source":"npm:@scope/pkg \"x\"","scope":"project"}`; got != want {
 		t.Fatalf("GetSourcePackageKey = %s, want %s", got, want)
 	}
+	// JSON.stringify writes U+2028 and U+2029 raw, where encoding/json escapes them.
+	got = GetSourcePackageKey("./a\u2028b\u2029c", "project")
+	if want := "{\"source\":\"./a\u2028b\u2029c\",\"scope\":\"project\"}"; got != want {
+		t.Fatalf("GetSourcePackageKey = %q, want %q", got, want)
+	}
 }
 
 // JSON.stringify leaves <, > and & unescaped.
