@@ -4,7 +4,10 @@ package coding
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,8 +33,8 @@ func replayReadsSession(t *testing.T, turns, systemEvery int) (session *icodinga
 			}
 			systems++
 		}
-		user := agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: fmt.Sprintf("question %d", i)}}, Timestamp: time.Now().UnixMilli()}}
-		assistant := agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: fmt.Sprintf("answer %d", i)}}, Timestamp: time.Now().UnixMilli()}}
+		user := agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: fmt.Sprintf("question %d %s", i, strings.Repeat("q", 2048))}}, Timestamp: time.Now().UnixMilli()}}
+		assistant := agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: fmt.Sprintf("answer %d %s", i, strings.Repeat("a", 2048))}}, Timestamp: time.Now().UnixMilli()}}
 		if _, err := live.AppendMessage(user); err != nil {
 			t.Fatal(err)
 		}
@@ -72,5 +75,35 @@ func TestReplayedTranscriptReadsOnlyTheSystemMessagesOfALongBranch(t *testing.T)
 		if got := reads[len(reads)-1]; got > int64(systems) {
 			t.Fatalf("%d turns (%d entries): the replay read %d entries, want at most the %d system messages", turns, 2*turns+systems, got, systems)
 		}
+	}
+}
+
+// The bound the replay keeps, with the size of the session file as its denominator and no count of PiG's own reads: the bytes the replay
+// allocates stay a small fraction of the file however long the branch is. The branch's entries are 4 KB each, so a replay that decodes them
+// allocates at least the file's size.
+func TestReplayedTranscriptAllocatesAFractionOfTheSessionFile(t *testing.T) {
+	var perFile []float64
+	for _, turns := range []int{300, 1200} {
+		session, _ := replayReadsSession(t, turns, turns/4)
+		info, err := os.Stat(session.Path())
+		if err != nil {
+			t.Fatal(err)
+		}
+		var before, after runtime.MemStats
+		runtime.GC()
+		runtime.ReadMemStats(&before)
+		if _, err := replayedTranscript(session); err != nil {
+			t.Fatal(err)
+		}
+		runtime.ReadMemStats(&after)
+		allocated := after.TotalAlloc - before.TotalAlloc
+		perFile = append(perFile, float64(allocated)/float64(info.Size()))
+		t.Logf("%d turns, file %d B: the replay allocated %d B (%.3f of the file)", turns, info.Size(), allocated, perFile[len(perFile)-1])
+		if allocated > uint64(info.Size())/10 {
+			t.Fatalf("%d turns: the replay allocated %d B for a %d B session file; want at most a tenth", turns, allocated, info.Size())
+		}
+	}
+	if perFile[1] > perFile[0] {
+		t.Fatalf("the replay's allocation grew faster than the file: %.4f of the file at 300 turns, %.4f at 1200", perFile[0], perFile[1])
 	}
 }
