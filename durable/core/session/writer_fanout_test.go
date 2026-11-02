@@ -108,7 +108,7 @@ func (f *fanout) wasPublished(n int) bool {
 // sessionFailedWith reports whether err is SessionFailed with cause as its cause.
 func sessionFailedWith(err, cause error) bool {
 	var failed *session.FailedError
-	return errors.Is(err, session.ErrSessionFailed) && errors.As(err, &failed) && failed.Cause == cause
+	return errors.Is(err, session.ErrSessionFailed) && errors.As(err, &failed) && errors.Is(failed.Cause, cause)
 }
 
 // storedBefore is the number of parts with writes before part i.
@@ -138,7 +138,7 @@ func TestThePartsAfterARefusedBatchRejectWithSessionFailedAndTheRefusal(t *testi
 			}
 			call.done(session.CommitResult{Stored: k, Refused: refusal}, nil)
 			f.settle()
-			if got := f.sess.Failure(); got != refusal {
+			if got := f.sess.Failure(); !errors.Is(got, refusal) {
 				t.Fatalf("the Session failed with %v, want the refusal", got)
 			}
 			for i, p := range parts {
@@ -146,7 +146,7 @@ func TestThePartsAfterARefusedBatchRejectWithSessionFailedAndTheRefusal(t *testi
 				before := storedBefore(stored, i)
 				switch {
 				case stored[i] && before == k:
-					if p.Err() != refusal || published {
+					if !errors.Is(p.Err(), refusal) || published {
 						t.Errorf("the refused part %d ended with %v (published %v), want the refusal", i, p.Err(), published)
 					}
 				case before < k || !stored[i] && before == k:
@@ -178,7 +178,7 @@ func TestThePartsAfterARejectedCallsLastReceiptRejectWithItsError(t *testing.T) 
 			}
 			call.done(session.CommitResult{}, lost)
 			f.settle()
-			if got := f.sess.Failure(); got != lost {
+			if got := f.sess.Failure(); !errors.Is(got, lost) {
 				t.Fatalf("the Session failed with %v, want the call's error", got)
 			}
 			for i, p := range parts {
@@ -186,12 +186,12 @@ func TestThePartsAfterARejectedCallsLastReceiptRejectWithItsError(t *testing.T) 
 				before := storedBefore(stored, i)
 				switch {
 				case stored[i]:
-					if p.Err() != lost || published != (before < k) {
+					if !errors.Is(p.Err(), lost) || published != (before < k) {
 						t.Errorf("stored part %d ended with %v (published %v), want the call's error, published only with a receipt (%v)", i, p.Err(), published, before < k)
 					}
 				case before <= k:
 					// A part published while its call rejected is durable but rejects (spec section 10.1).
-					if p.Err() != lost || !published {
+					if !errors.Is(p.Err(), lost) || !published {
 						t.Errorf("held part %d ended with %v (published %v), want it published, then the call's error", i, p.Err(), published)
 					}
 				default:
@@ -223,7 +223,7 @@ func TestAPartAfterAFailureBetweenTwoPublicationsRejectsWithSessionFailed(t *tes
 	first := errors.New("first failure")
 	f.sess.Fail(first)
 	f.settle()
-	if f.sess.Failure() != first {
+	if !errors.Is(f.sess.Failure(), first) {
 		t.Fatalf("the Session failed with %v, want the first failure", f.sess.Failure())
 	}
 	if err := parts[0].Err(); err != nil {
@@ -257,7 +257,7 @@ func TestARejectedCallWithoutAnOwnPartDoesNotPanic(t *testing.T) {
 	f.sess.Fail(first)
 	scopes[0]()
 	f.settle()
-	if f.sess.Failure() != first {
+	if !errors.Is(f.sess.Failure(), first) {
 		t.Fatalf("the Session failed with %v, want the first failure", f.sess.Failure())
 	}
 	if !part.Done() || !sessionFailedWith(part.Err(), first) || f.wasPublished(0) {
