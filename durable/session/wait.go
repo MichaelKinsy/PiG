@@ -48,7 +48,10 @@ func block(continuation *Continuation, done <-chan struct{}, ctx context.Context
 func Enter(ctx context.Context) { enter(continuationOf(ctx)) }
 
 // await blocks until done is closed, for the Session's own goroutines' waits that nothing can cancel.
-func await(done <-chan struct{}) { _ = block(nil, done, nil) }
+func await(done <-chan struct{}) { hold(nil, done) }
+
+// hold is await for a wait of a Continuation: the continuation, and the delivery, enter before it blocks.
+func hold(continuation *Continuation, done <-chan struct{}) { _ = block(continuation, done, nil) }
 
 // Wait blocks until done is closed, or ctx ends: its cause is returned. It is the wait of the Harness on what the Session
 // publishes (a gate, a drain): the delivery or continuation that calls it has entered, so the publication it waits for is not held

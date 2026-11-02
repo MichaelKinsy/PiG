@@ -512,7 +512,7 @@ func runFenced[T any](session *SessionImpl, s *slot, exempt bool, call lineCall,
 		}()
 		if s.previous != nil {
 			// Waiting for the line is a wait of the Session: a continuation, and a watch delivery, that goes on to it has entered.
-			block(call.continuation, s.previous, nil)
+			hold(call.continuation, s.previous)
 		}
 		result, err = onLine(session, s, func(index int) (ran[T], error) {
 			session.waitRoom()
@@ -537,7 +537,7 @@ func runFenced[T any](session *SessionImpl, s *slot, exempt bool, call lineCall,
 		session.delivered(s.index, false)
 		final = session.poison(s.index, outcome)
 	} else {
-		block(call.continuation, delivery.released, nil)
+		hold(call.continuation, delivery.released)
 		delivery.resume()
 		final = delivery.final
 	}
@@ -912,7 +912,7 @@ func (session *SessionImpl) AwaitTouch(ctx context.Context, key string) error {
 	if gate == nil {
 		return nil
 	}
-	block(continuationOf(ctx), gate, nil)
+	hold(continuationOf(ctx), gate)
 	return session.assertHealthy()
 }
 
