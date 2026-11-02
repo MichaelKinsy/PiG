@@ -1263,6 +1263,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d91ce8f](#bf-d91ce8f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-d943286](#bf-d943286) | A tool's `handoff` control now continues the run in the new context in the Durable core as it does in Pi: the… | PiG's own defect | All platforms | Unreleased |
 | [BF-d943286-2](#bf-d943286-2) | `HarnessSettings.afterFailedRun` reaches the Durable core from the TypeScript host, so inputs queued behind a… | PiG's own defect | All platforms | Unreleased |
+| [BF-d94e83f](#bf-d94e83f) | Subagents of `pi-open-agents` (and any extension that finds the Pi CLI from the package root of… | PiG's own defect | All platforms | Unreleased |
 | [BF-d983b74](#bf-d983b74) | Anthropic requests whose strict `prefer` tools exceed a strict tool limit ("The compiled grammar is too… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d9886fe](#bf-d9886fe) | fix(hljs): no magic-literal hits for the resume and dispatch bounds | PiG's own defect | All platforms | Unreleased |
 | [BF-d991498](#bf-d991498) | Display math (`$$...$$`, `\[...\]`) wider than the Markdown content width renders as its raw LaTeX source… | PiG's own defect | All platforms | Unreleased |
@@ -18749,6 +18750,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d943286774` (2026-10-27)
 - **Tests:** `durable/core/driver/harness_inbox_core_test.go::TestInboxHandoff`, `durable/core/turn/tool_round_controls_pi_test.go::TestToolRoundHandoffAppendsAResetAndContinuesTheRunUnlessItTerminates`
 - **Release note:** `HarnessSettings.afterFailedRun` reaches the Durable core from the TypeScript host, so inputs queued behind a failed run start the next run with `continue` and settle `run_failed` with `withdraw`.
+
+### BF-d94e83f
+
+**Subagents of `pi-open-agents` (and any extension that finds the Pi CLI from the package root of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Subagents of `pi-open-agents` (and any extension that finds the Pi CLI from the package root of `@earendil-works/pi-coding-agent`) start under PiG.
+- **Root cause:** They died at once with `Cannot find module '.../runtime/dist/cli.js'` (MODULE_NOT_FOUND): `import.meta.resolve` of the package pointed into the runtime's shim directory, so the `dist/cli.js` two directories up did not exist.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d94e83f2ac` (2026-11-02)
+- **Tests:** `coding/extension/host/subprocess/node_pi_package_root_test.go::TestNodeExtensionStartsThePiCLIFromTheResolvedPackageRoot`
+- **Release note:** Subagents of `pi-open-agents` (and any extension that finds the Pi CLI from the package root of `@earendil-works/pi-coding-agent`) start under PiG. They died at once with `Cannot find module '.../runtime/dist/cli.js'` (MODULE_NOT_FOUND): `import.meta.resolve` of the package pointed into the runtime's shim directory, so the `dist/cli.js` two directories up did not exist. The package now resolves to `dist/index.js` of the vendored package root, as it does in Pi, and that root's `dist/cli.js` starts PiG with the arguments it is given, as `process.execPath process.argv[1]` does.
 
 ### BF-d983b74
 

@@ -35943,6 +35943,28 @@
       ]
     },
     {
+      "id": "BF-d94e83f",
+      "title": "Subagents of `pi-open-agents` (and any extension that finds the Pi CLI from the package root of…",
+      "symptom": "Subagents of `pi-open-agents` (and any extension that finds the Pi CLI from the package root of `@earendil-works/pi-coding-agent`) start under PiG.",
+      "rootCause": "They died at once with `Cannot find module '.../runtime/dist/cli.js'` (MODULE_NOT_FOUND): `import.meta.resolve` of the package pointed into the runtime's shim directory, so the `dist/cli.js` two directories up did not exist.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Subagents of `pi-open-agents` (and any extension that finds the Pi CLI from the package root of `@earendil-works/pi-coding-agent`) start under PiG. They died at once with `Cannot find module '.../runtime/dist/cli.js'` (MODULE_NOT_FOUND): `import.meta.resolve` of the package pointed into the runtime's shim directory, so the `dist/cli.js` two directories up did not exist. The package now resolves to `dist/index.js` of the vendored package root, as it does in Pi, and that root's `dist/cli.js` starts PiG with the arguments it is given, as `process.execPath process.argv[1]` does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d94e83f2ac",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_pi_package_root_test.go::TestNodeExtensionStartsThePiCLIFromTheResolvedPackageRoot"
+      ]
+    },
+    {
       "id": "BF-d983b74",
       "title": "Anthropic requests whose strict `prefer` tools exceed a strict tool limit (\"The compiled grammar is too…",
       "symptom": "Anthropic requests whose strict `prefer` tools exceed a strict tool limit (\"The compiled grammar is too large\", \"Too many strict tools\", too many union parameters) no longer fail every turn: PiG retries once with the `prefer` tools non-strict, keeps `require` tools strict, and records an `anthropic_strict_tools_fallback` diagnostic, as Pi 1.2.0 does (pi-mono #10409).",
