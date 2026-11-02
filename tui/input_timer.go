@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/tui/src/terminal.ts (the escape and negotiation timers of ProcessTerminal's stdin buffer).
+
 import (
 	"os"
 	"time"

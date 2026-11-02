@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/tui/src/keys.ts
+
 // key_match.go: Dynamic key matching, ported from upstream Pi's keys.ts.
 //
 // matchesKeyDynamic resolves any KeyID string (e.g. "ctrl+shift+left")

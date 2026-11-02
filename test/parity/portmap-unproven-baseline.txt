@@ -301,11 +301,4 @@ packages/durable/src/tools/file-mutation-queue.ts
 packages/durable/src/tools/image.ts
 packages/durable/src/tools/path-utils.ts
 packages/durable/src/truncate.ts
-packages/tui/src/index.ts
-packages/tui/src/keys.ts
-packages/tui/src/native-modifiers.ts
 packages/tui/src/native-module-path.ts
-packages/tui/src/native-platform.ts
-packages/tui/src/stdin-buffer.ts
-packages/tui/src/terminal-colors.ts
-packages/tui/src/terminal.ts
