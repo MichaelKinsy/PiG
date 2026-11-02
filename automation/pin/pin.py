@@ -165,6 +165,7 @@ RULES: list[tuple[str, object, str | None]] = [
     ("durable/interop/package.json", package_deps(INTEROP), "durable/interop"),
     ("durable/core/host/cf/package.json", package_deps(CF_HOST), "durable/core/host/cf"),
     ("bench/k8s/image/pi-durable/package.json", package_deps(INTEROP), "bench/k8s/image/pi-durable"),
+    ("bench/k8s/image/pi-agent/package.json", lambda p, t: package_deps(["@earendil-works/pi-coding-agent"])(p, regex_rule(r'^(\t"version": ")[^"]+(")', r'\g<1>{v}\g<2>', "package_version")(p, t)), "bench/k8s/image/pi-agent"),
     ("coding/extension/host/subprocess/runtime-node/harness/package.json", regex_rule(r'^(  "version": ")[^"]+(")', r'\g<1>{v}\g<2>', "package_version"), None),
 ]
 
