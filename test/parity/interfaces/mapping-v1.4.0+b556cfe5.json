@@ -113853,8 +113853,8 @@
       ],
       "evidence": [
         "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi",
-        "test:chord/next/host/remote_relay_test.go#TestRelayMixedCodecs",
-        "test:chord/next/host/remote_relay_test.go#TestRelayReceivedBuffers"
+        "test:chord/next/host/host_link_deliveries_test.go#TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt",
+        "test:chord/next/host/remote_relay_test.go#TestRelayMixedCodecs"
       ]
     },
     {
@@ -115078,8 +115078,8 @@
       ],
       "evidence": [
         "test:chord/next/host/remote_hold_test.go#TestHoldFailuresWhileTheWindowIsFull",
-        "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi",
-        "test:chord/next/host/host_ctx_test.go#TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAtOnce"
+        "test:chord/nextnode/plugins/plugins_node_test.go#TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat",
+        "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi"
       ]
     },
     {
@@ -115100,8 +115100,8 @@
       ],
       "evidence": [
         "test:chord/next/host/remote_hold_test.go#TestHoldFailuresWhileTheWindowIsFull",
-        "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi",
-        "test:chord/next/host/host_ctx_test.go#TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAtOnce"
+        "test:chord/nextnode/plugins/plugins_node_test.go#TestNodeTheFirstUseOfTheLinkAttachesItAndStartsTheHostsHeartbeat",
+        "test:chord/next/link/oracle_test.go#TestWireFormatsMatchPi"
       ]
     },
     {
@@ -122245,7 +122245,8 @@
       ],
       "evidence": [
         "test:chord/next/data/principal_test.go#TestPrincipalKey",
-        "test:chord/next/host/host_host_test.go#TestHostPrincipalsIdentityIncludesThePrincipalKeyEqualKeysShareOneObject"
+        "test:chord/next/host/host_host_test.go#TestHostPrincipalsIdentityIncludesThePrincipalKeyEqualKeysShareOneObject",
+        "test:chord/nextnode/plugins/plugins_node_hostoptions_test.go#TestPrincipalKeyIsAskedOncePerCanonicalPrincipal"
       ]
     },
     {
@@ -122266,7 +122267,8 @@
       ],
       "evidence": [
         "test:chord/next/data/principal_test.go#TestPrincipalKey",
-        "test:chord/next/host/host_host_test.go#TestHostPrincipalsIdentityIncludesThePrincipalKeyEqualKeysShareOneObject"
+        "test:chord/next/host/host_host_test.go#TestHostPrincipalsIdentityIncludesThePrincipalKeyEqualKeysShareOneObject",
+        "test:chord/nextnode/plugins/plugins_node_hostoptions_test.go#TestPrincipalKeyIsAskedOncePerCanonicalPrincipal"
       ]
     },
     {
@@ -162928,7 +162930,7 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.ListConfiguredPackages"
       ],
       "evidence": [
-        "test:coding/cli/config_command_test.go#TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage",
+        "test:coding/cli/config_selector_command_test.go#TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage",
         "test:coding/cli/package_commands_test.go#TestListConfiguredPackagesPreservesBothSettingsScopesLikePi",
         "test:coding/cli/package_unavailable_resources_test.go#TestUnavailableNpmPackagesDoNotProvideResources"
       ]
@@ -162950,7 +162952,7 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.ListConfiguredPackages"
       ],
       "evidence": [
-        "test:coding/cli/config_command_test.go#TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage",
+        "test:coding/cli/config_selector_command_test.go#TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage",
         "test:coding/cli/package_commands_test.go#TestListConfiguredPackagesPreservesBothSettingsScopesLikePi",
         "test:coding/cli/package_unavailable_resources_test.go#TestUnavailableNpmPackagesDoNotProvideResources"
       ]
@@ -191824,7 +191826,7 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.ListConfiguredPackages"
       ],
       "evidence": [
-        "test:coding/cli/config_command_test.go#TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage",
+        "test:coding/cli/config_selector_command_test.go#TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage",
         "test:coding/cli/package_commands_test.go#TestListConfiguredPackagesPreservesBothSettingsScopesLikePi",
         "test:coding/cli/package_unavailable_resources_test.go#TestUnavailableNpmPackagesDoNotProvideResources"
       ]
@@ -191846,7 +191848,7 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.ListConfiguredPackages"
       ],
       "evidence": [
-        "test:coding/cli/config_command_test.go#TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage",
+        "test:coding/cli/config_selector_command_test.go#TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage",
         "test:coding/cli/package_commands_test.go#TestListConfiguredPackagesPreservesBothSettingsScopesLikePi",
         "test:coding/cli/package_unavailable_resources_test.go#TestUnavailableNpmPackagesDoNotProvideResources"
       ]
