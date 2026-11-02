@@ -718,6 +718,10 @@ func emitFold(n *node, path Path, ops *[]Op) {
 // emitArray emits removals of base elements (from the end), a permutation of
 // retained base elements, insertion runs, and then element changes at final
 // indices, mirroring tracker.ts emitArrayOperations and buildArrayPlan.
+//
+// Out of line: TinyGo would inline this single-caller function into emitOperations, and V8 compiles a function that runs hot as one unit, at a cost that grows with its body (host/cf/test/functionsize.test.ts).
+//
+//go:noinline
 func emitArray(n *node, path Path, ops *[]Op) {
 	if n.tailed && n.tail.overwrites() > 1 {
 		n.ensureEntries()
