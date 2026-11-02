@@ -1039,6 +1039,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ae1ee6d-2](#bf-ae1ee6d-2) | A terminal title that holds a control character (a session name from a session file with an ESC or BEL) no… | PiG's own defect | All platforms | Unreleased |
 | [BF-ae498eb](#bf-ae498eb) | A line of many `>` characters no longer makes the Markdown renderer's output grow exponentially with the… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-ae49fdd](#bf-ae49fdd) | fix(gen-models): link the TLS distrust hook into the catalog generator | PiG's own defect | All platforms | Unreleased |
+| [BF-ae79485](#bf-ae79485) | fix(chord/nextnode/plugins): the stop grace default is pinned and the close wording follows Pi | PiG's own defect | All platforms | Unreleased |
 | [BF-aeaaf97](#bf-aeaaf97) | Model requests reuse their HTTP connection | PiG's own defect | All platforms | 0.5.0 |
 | [BF-aec0042](#bf-aec0042) | The pi-env daemon runs a command whose `timeoutMs` is above 2^31-1 ms without a deadline, as Pi's daemon… | PiG's own defect | All platforms | Unreleased |
 | [BF-af1fe1a](#bf-af1fe1a) | Cycling models in the interactive UI goes through the Session as in Pi: the new model persists as the… | PiG's own defect | All platforms | 0.5.0 |
@@ -4971,14 +4972,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 **`chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node…**
 
 - **Source:** PiG's own defect
-- **Symptom:** `chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node process ends; a `Close` past its deadline still stops a starting spare; a process running its host's close is not killed before the host's `closeTimeout`.
+- **Symptom:** `chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node process ends; a `Close` past its deadline still stops a starting spare; a process running its host's close (Pi ends every object at once, then drains and closes them one by one, each step bounded by `closeTimeout`) is not killed before one `closeTimeout` plus the grace has passed.
 - **Root cause:** The bridged references and watches are released when the Node process ends; the caller-free `value` request is gone. The stop grace is Pi's 5 s and a process running its host's close is not killed before the host's closeTimeout. Close past its deadline still stops a starting spare. Channel.Idle returns when the channel closes. The lazy-attach expectation change is recorded as a NOBEHAVIOR entry, and the additive records describe the new embedding API.
-- **User impact:** Behavior differed from Pi
+- **User impact:** Lost or altered data
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `3b9bd165af` (2026-11-01)
 - **Tests:** `chord/next/contracts/normalform_test.go::TestNormalFormOfALocalContractHasItsMembersAsASortedDictionary`, `chord/next/contracts/normalform_test.go::TestNormalFormOfARemoteContractIsWhatItsFingerprintHashes`, `chord/next/host/host_link_deliveries_test.go::TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt`, `chord/next/link/channel_idle_test.go::TestIdleReturnsAtOnceWhenNothingWaitsBehindAnAsynchronousHandling`, `chord/next/link/channel_idle_test.go::TestIdleReturnsWhenTheChannelClosedWithAMessageHeld`, `chord/next/link/channel_idle_test.go::TestIdleWaitsForTheHeldMessageAndForTheOnesBehindIt`, `chord/nextnode/plugins/plugins_node_bridged_test.go::TestBridgedTheProcessEndingReleasesTheGoReferencesAndWatchesItsProxiesHeld`, `chord/nextnode/plugins/plugins_node_discover_test.go::TestDiscoverNodeFindsFnmAtItsDefaultDirectoriesWithoutFNMDIR` and 9 more in docs/bug-ledger.json
-- **Release note:** `chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node process ends; a `Close` past its deadline still stops a starting spare; a process running its host's close is not killed before the host's `closeTimeout`.
+- **Release note:** `chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node process ends; a `Close` past its deadline still stops a starting spare; a process running its host's close (Pi ends every object at once, then drains and closes them one by one, each step bounded by `closeTimeout`) is not killed before one `closeTimeout` plus the grace has passed.
 
 ### BF-3b9bd16-2
 
@@ -15620,6 +15621,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `ae49fdd701` (2026-10-30)
 - **Tests:** None recorded.
+
+### BF-ae79485
+
+**fix(chord/nextnode/plugins): the stop grace default is pinned and the close wording follows Pi**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord/nextnode/plugins): the stop grace default is pinned and the close wording follows Pi
+- **Root cause:** Pi ends every object of a host at once, then drains and closes them one by one, each step bounded by closeTimeout, and the app's store closes after it. The bridge comment no longer lists value among the proxies' own requests to Go.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ae79485d82` (2026-11-01)
+- **Tests:** `chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeTheDefaultStopGraceIsPisFiveSeconds`
 
 ### BF-aeaaf97
 

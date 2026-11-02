@@ -7393,14 +7393,14 @@
     {
       "id": "BF-3b9bd16",
       "title": "`chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node…",
-      "symptom": "`chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node process ends; a `Close` past its deadline still stops a starting spare; a process running its host's close is not killed before the host's `closeTimeout`.",
+      "symptom": "`chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node process ends; a `Close` past its deadline still stops a starting spare; a process running its host's close (Pi ends every object at once, then drains and closes them one by one, each step bounded by `closeTimeout`) is not killed before one `closeTimeout` plus the grace has passed.",
       "rootCause": "The bridged references and watches are released when the Node process ends; the caller-free `value` request is gone. The stop grace is Pi's 5 s and a process running its host's close is not killed before the host's closeTimeout. Close past its deadline still stops a starting spare. Channel.Idle returns when the channel closes. The lazy-attach expectation change is recorded as a NOBEHAVIOR entry, and the additive records describe the new embedding API.",
       "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
+      "userImpact": "Lost or altered data",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "`chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node process ends; a `Close` past its deadline still stops a starting spare; a process running its host's close is not killed before the host's `closeTimeout`.",
+      "releaseNote": "`chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node process ends; a `Close` past its deadline still stops a starting spare; a process running its host's close (Pi ends every object at once, then drains and closes them one by one, each step bounded by `closeTimeout`) is not killed before one `closeTimeout` plus the grace has passed.",
       "origin": "release note",
       "commits": [
         {
@@ -29150,6 +29150,27 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-ae79485",
+      "title": "fix(chord/nextnode/plugins): the stop grace default is pinned and the close wording follows Pi",
+      "symptom": "fix(chord/nextnode/plugins): the stop grace default is pinned and the close wording follows Pi",
+      "rootCause": "Pi ends every object of a host at once, then drains and closes them one by one, each step bounded by closeTimeout, and the app's store closes after it. The bridge comment no longer lists value among the proxies' own requests to Go.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ae79485d82",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeTheDefaultStopGraceIsPisFiveSeconds"
+      ]
     },
     {
       "id": "BF-aeaaf97",
