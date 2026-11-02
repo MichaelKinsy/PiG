@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -82,8 +83,13 @@ func TestTheRolloutStepShipsTheCurrentSetToRunningWorkersRetriesHeldFailedOnesLi
 	until(t, func() bool {
 		return labelOf(t, one) == "S1 v2" && labelOf(t, two) == "S2 v2" && labelOf(t, failed) == "S3 v2"
 	})
-	if dirty := f.dirty(); len(dirty) != 0 {
-		t.Fatalf("dirty = %v, want none", dirty)
+	// Windows also reports the plugin directory's own last-write time (the label is renamed into it) as a change of it, as
+	// Node's fs.watch does, at a moment after the rollout that the test cannot bound: that plugin is dirty again, and only
+	// it. The rollout is asserted to have cleared its marks where the platform does not do that.
+	for _, name := range f.dirty() {
+		if runtime.GOOS != "windows" || name != "@test/notes" {
+			t.Fatalf("dirty = %v, want none (on Windows, at most the plugin whose directory the label was written into)", f.dirty())
+		}
 	}
 	for _, reference := range []interface{ Release() }{one, two, failed, control} {
 		reference.Release()

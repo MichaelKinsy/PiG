@@ -8,8 +8,9 @@ import (
 	"path/filepath"
 )
 
-// listenNode listens for the one connection of a Node subprocess and returns the address it connects to: a unix socket
-// in a directory of its own, which only the current user can enter. cleanup removes the directory.
+// listenNode listens for the connections of a Node subprocess and returns the address it connects to: a unix socket in a
+// directory of its own, which only the current user can enter. The process makes the channel's connection, and later (when
+// the host needs synchronous callbacks) one more from a worker thread. cleanup removes the directory.
 func listenNode() (listener net.Listener, address string, cleanup func(), err error) {
 	dir, err := os.MkdirTemp("", "chord-plugins-")
 	if err != nil {
