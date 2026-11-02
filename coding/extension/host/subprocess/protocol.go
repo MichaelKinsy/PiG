@@ -871,15 +871,16 @@ type ToolUpdatePayload struct {
 	Result    json.RawMessage `json:"result"`
 }
 
-// NotifyHandlerYielded (ext→host) tells the host that the code of the request RequestID named in a HandlerYieldedPayload awaited or returned control
-// to the runtime's event loop after it sent a triggering message. A runtime with an event loop sends it from the first microtask checkpoint after the
-// send, because the host cannot see an await; the host then answers isIdle from the Session again (sync_run_hold.go). A thread-based SDK does not send
-// it: its handler yields in a call whose upstream API returns a Promise, or when it returns.
+// NotifyHandlerYielded (ext→host) tells the host that the code that sent a triggering message, a handler or a timer's or an I/O callback, awaited or
+// returned control to the runtime's event loop. The send carried the token in its yield_token argument. A runtime with an event
+// loop sends it from the first microtask checkpoint after the send, because the host cannot see an await, and only after the host answered the send;
+// the host then answers isIdle from the Session again (sync_run_hold.go). A thread-based SDK does not send it: its handler yields in a call whose
+// upstream API returns a Promise, or when it returns.
 const NotifyHandlerYielded = "handler_yielded"
 
 // HandlerYieldedPayload is the NotifyHandlerYielded argument.
 type HandlerYieldedPayload struct {
-	RequestID string `json:"request_id"`
+	Token string `json:"token"`
 }
 
 // Focused custom UI uses three current-wire message classes. Input is an

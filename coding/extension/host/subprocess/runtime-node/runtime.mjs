@@ -2340,10 +2340,11 @@ export class Runtime {
       sendMessage: action((message, options = {}) => {
         this.reportCommandYield();
         if (options?.deliverAs === "nextTurn") return this.fireAndForget("sendMessage", { message, options });
-        // A triggering message starts the run before pi.sendMessage returns (agent-session.ts sendCustomMessage awaits _runAgentPrompt), so the same handler sees a busy session, unless the Session holds the message back: one sent while the agent_settled handlers run waits for them (agent-session.ts:2344-2349) and the session stays idle. In such a handler the answer is the Host's. Elsewhere the Host answers busy for every extension until this code awaits (reportHandlerYield).
+        // A triggering message marks the Session busy before pi.sendMessage returns (agent-session.ts sendCustomMessage awaits _startRun, which sets _isAgentRunActive before its first await), and Pi's loop runs nothing else until the code that sent it, a handler or a timer's or an I/O callback, awaits or returns. The host holds its isIdle answer busy, for every extension, from the send until this code yields (Host.syncRuns): the send carries a token and the first microtask checkpoint reports it (reportHandlerYield), whichever code sent. The Session holds back a message sent while the agent_settled handlers run (agent-session.ts:2344-2349) and stays idle: there the answer is the Host's and nothing is held.
         if (options?.triggerTurn) {
           const idle = this.state.isIdle;
-          try { this.writeSync("sendMessage", { message, options }); }
+          const token = uuid("y");
+          try { this.writeSync("sendMessage", { message, options, yield_token: token }); }
           catch (err) {
             if (!isHostCancellation(err)) {
               try { process.stderr.write(`pig: host call sendMessage failed: ${err && err.message ? err.message : String(err)}\n`); } catch {}
@@ -2353,7 +2354,7 @@ export class Runtime {
           if (this.activeRequest()?.event === "agent_settled") this.state.isIdle = this.callSync("isIdle")?.idle === true;
           else {
             if (idle) this.state.isIdle = false;
-            this.reportHandlerYield();
+            this.reportHandlerYield(token);
           }
           return;
         }
@@ -5700,12 +5701,11 @@ export class Runtime {
     });
   }
 
-  // reportHandlerYield tells the host when the code that sent a triggering message awaits or returns. Pi's sendCustomMessage marks the Session busy (_startRun sets _isAgentRunActive before its first await) and its one event loop runs nothing else until the handler's next await, so no run can end before the handler's next statement; the host runs the started run concurrently with this process and answers isIdle busy, for every extension, until the first microtask checkpoint, where Pi's loop can run the run's own continuations (Host.syncRuns).
-  reportHandlerYield() {
-    const owner = this.activeRequest();
+  // reportHandlerYield tells the host, at the first microtask checkpoint after the send that carried token, that the code that sent a triggering message awaited or returned. The checkpoint comes once the code's synchronous run ends, as the loop's next turn does in Pi, where the run the message started can proceed (Host.syncRuns); the host sets its hold before it answers the send, and this process sends the report only after that answer.
+  reportHandlerYield(token) {
     const conn = this.conn;
-    if (!owner || !conn) return;
-    queueMicrotask(() => { if (!conn.closed) conn.notify("handler_yielded", { request_id: owner.id }); });
+    if (!conn) return;
+    queueMicrotask(() => { if (!conn.closed) conn.notify("handler_yielded", { token }); });
   }
 
   // reportCommandYield follows a send from an RPC command's handler. The host holds the run the send starts while the handler runs, as Pi's run starts only once the handler that sent it awaits or returns (agent-session.ts:2129, 2293 sendCustomMessage); a handler still unsettled at the next event-loop turn has awaited, so the command reports its suspension then.

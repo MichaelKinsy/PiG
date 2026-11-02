@@ -3596,6 +3596,77 @@ fn main() {
             CommandResult::Ok
         },
     );
+    ext.command(
+        "rw_idle_send_then_await",
+        "Await the run a message starts with no read in between, then read; again for a second message",
+        |ctx, _args| {
+            let reads = (|| -> std::io::Result<(bool, bool, bool)> {
+                ctx.send_message("rw-trigger", "rw-trigger", true, Some(true), None)?;
+                ctx.wait_for_idle()?;
+                let awaited = ctx.is_idle()?;
+                ctx.send_message("rw-trigger", "rw-trigger", true, Some(true), None)?;
+                let second = ctx.is_idle()?;
+                ctx.wait_for_idle()?;
+                Ok((awaited, second, ctx.is_idle()?))
+            })();
+            match reads {
+                Ok((awaited, second, again)) => ctx.notify(
+                    &format!("rw_idle_send_then_await=awaited:{awaited};second:{second};awaited-again:{again}"),
+                    "info",
+                ),
+                Err(err) => return CommandResult::Error(err.to_string()),
+            }
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "rw_idle_blocking",
+        "Read isIdle after a message that starts a run and a wait that is no call",
+        |ctx, _args| {
+            let reads = (|| -> std::io::Result<(bool, bool)> {
+                let before = ctx.is_idle()?;
+                ctx.send_message("rw-trigger", "rw-trigger", true, Some(true), None)?;
+                std::thread::sleep(std::time::Duration::from_millis(300));
+                Ok((before, ctx.is_idle()?))
+            })();
+            match reads {
+                Ok((before, after)) => ctx.notify(
+                    &format!("rw_idle_blocking=before:{before};after:{after}"),
+                    "info",
+                ),
+                Err(err) => return CommandResult::Error(err.to_string()),
+            }
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "rw_idle_callback",
+        "Read isIdle after a message that starts a run, sent from a thread the handler waits for",
+        |ctx, _args| {
+            let before = match ctx.is_idle() {
+                Ok(idle) => idle,
+                Err(err) => return CommandResult::Error(err.to_string()),
+            };
+            let thread_ctx = ctx.clone();
+            let callback = std::thread::spawn(move || -> std::io::Result<()> {
+                thread_ctx.send_message("rw-trigger", "rw-trigger", true, Some(true), None)?;
+                let first = thread_ctx.is_idle()?;
+                let second = thread_ctx.is_idle()?;
+                thread_ctx.wait_for_idle()?;
+                let later = thread_ctx.is_idle()?;
+                thread_ctx.notify(
+                    &format!("rw_idle_callback=before:{before};sync:{first},{second};later:{later}"),
+                    "info",
+                );
+                Ok(())
+            });
+            match callback.join() {
+                Ok(Ok(())) => CommandResult::Ok,
+                Ok(Err(err)) => CommandResult::Error(err.to_string()),
+                Err(_) => CommandResult::Error("the callback thread panicked".to_string()),
+            }
+        },
+    );
     let rw_settled_subscriber = ext.event_subscriber();
     let rw_settled_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
         Arc::new(Mutex::new(Vec::new()));

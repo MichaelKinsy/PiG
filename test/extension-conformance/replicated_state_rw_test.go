@@ -132,11 +132,28 @@ func TestReplicatedStateIsIdleAfterAMessageThatStartsARun(t *testing.T) {
 }
 
 // Pi's sendCustomMessage with triggerTurn marks the Session busy (_startRun sets _isAgentRunActive before its first await, agent-session.ts:1895, 2404), and the handler's next statements run before anything else on Pi's one event loop, so ctx.isIdle() reads busy through the handler's synchronous part whatever the run it started would do. The host runs that run concurrently with the extension, and a run that settles while a read is in flight answers idle: the host below answers idle at every read, as that run does, so only an SDK that holds the busy answer itself reads false right after the send. Pi's loop runs the run's continuations once the handler awaits, so a read after `await ctx.waitForIdle()` is live: the host's answer, true. A constant (true, false or a fallback) or a snapshot never reports sync:false,false;later:true. Print and RPC mode, every isolated, packed and fused realization.
+//
+// The code that sent the message keeps the loop until it awaits or returns, so the answer ends where that code yields, and nowhere before:
+//   - rw_idle_busy_until_yield: two reads right after the send are busy; a read after `await ctx.waitForIdle()` is live.
+//   - rw_idle_send_then_await: the handler awaits the run with no read between the send and the await, so the hold has to end at the await however the host orders it against the send (true), reads right after a second send are busy again (false), and a read after the second await is live (true). An SDK that never holds, that never releases, or that answers a constant reports another line.
+//   - rw_idle_blocking: the handler blocks on something that is no host call (a sleep) while the run ends, and reads: busy, as Pi's synchronous wait is, whatever the Session says by then. The Session itself answers here: the run, which needs no extension and finishes within the sleep, ends meanwhile, so a hold that ended when the triggered turn started (the Session is busy from the send, so releasing there leaves nothing but the Session's own answer) reports true.
+//   - rw_idle_callback: the send comes from a callback (a timer's in Node, a goroutine or thread elsewhere) that the handler waits for; its reads are busy, and a read after its own await is live. A callback that runs after the handler returned holds only in Node, whose event loop reports where it yields (TestNodeHoldAfterATriggeringSendEndsWhereTheSendingCodeYields).
 func TestReplicatedStateIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSend(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
 	}
-	const want = "rw_idle_busy_until_yield=sync:false,false;later:true"
+	rows := []struct {
+		command string
+		want    string
+		runs    int
+		// liveSession leaves isIdle bound to the Session: the row reads the answer a real run gives, not one the host fakes.
+		liveSession bool
+	}{
+		{command: "rw_idle_busy_until_yield", want: "rw_idle_busy_until_yield=sync:false,false;later:true", runs: 1},
+		{command: "rw_idle_send_then_await", want: "rw_idle_send_then_await=awaited:true;second:false;awaited-again:true", runs: 2},
+		{command: "rw_idle_blocking", want: "rw_idle_blocking=before:true;after:false", runs: 1, liveSession: true},
+		{command: "rw_idle_callback", want: "rw_idle_callback=before:true;sync:false,false;later:true", runs: 1},
+	}
 	// rpcRowMode is read by every harness factory: this test is not parallel, so it owns the value while it runs.
 	for _, mode := range []string{"print", "rpc"} {
 		t.Run(mode, func(t *testing.T) {
@@ -144,18 +161,26 @@ func TestReplicatedStateIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringS
 			t.Cleanup(func() { rpcRowMode = "" })
 			for _, tc := range replicatedStateCases() {
 				t.Run(tc.name, func(t *testing.T) {
-					runReplicatedStateCase(t, tc, func(t *testing.T, h *harness, session *coding.Session, faux *ai.FauxProviderHandle) {
-						faux.SetResponses([]ai.FauxResponseStep{
-							ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}),
+					for _, row := range rows {
+						t.Run(row.command, func(t *testing.T) {
+							runReplicatedStateCase(t, tc, func(t *testing.T, h *harness, session *coding.Session, faux *ai.FauxProviderHandle) {
+								steps := make([]ai.FauxResponseStep, row.runs)
+								for i := range steps {
+									steps[i] = ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"})
+								}
+								faux.SetResponses(steps)
+								if !row.liveSession {
+									h.bridge.SetHostAction("isIdle", func() bool { return true })
+								}
+								runConformanceCommand(t, h, row.command)
+								got := reportedLine(t, h, row.command+"=")
+								pollUntilConformance(t, "the run the message started never ended", session.IsIdle)
+								if got != row.want {
+									t.Fatalf("the code read %q, want %q", got, row.want)
+								}
+							})
 						})
-						h.bridge.SetHostAction("isIdle", func() bool { return true })
-						runConformanceCommand(t, h, "rw_idle_busy_until_yield")
-						got := reportedLine(t, h, "rw_idle_busy_until_yield=")
-						pollUntilConformance(t, "the run the message started never ended", session.IsIdle)
-						if got != want {
-							t.Fatalf("the handler read %q, want %q", got, want)
-						}
-					})
+					}
 				})
 			}
 		})
