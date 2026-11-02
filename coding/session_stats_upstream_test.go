@@ -1,5 +1,8 @@
 package coding
 
+// pi: packages/coding-agent/src/core/agent-session.ts
+// pi: packages/coding-agent/src/core/usage-totals.ts
+
 import (
 	"encoding/json"
 	"reflect"
