@@ -1618,5 +1618,77 @@
    "old": "\t\t\tinput = Strings(\"text\", \"image\")\n",
    "new": "\t\t\tinput = Strings(\"text\")\n"
   }
+ ],
+ "packages/ai/src/auth/oauth/openrouter.ts": [
+  {
+   "file": "ai/oauth_openrouter.go",
+   "old": "1<<53 - 1",
+   "new": "1<<53 - 2"
+  },
+  {
+   "file": "ai/oauth_openrouter.go",
+   "old": "\"S256\",\n\t})",
+   "new": "\"plain\",\n\t})"
+  }
+ ],
+ "packages/ai/src/auth/oauth/openai-codex.ts": [
+  {
+   "file": "ai/oauth_openai_codex.go",
+   "old": "float64(jsnumber.FromJSON(tok.ExpiresIn)*1000))",
+   "new": "float64(jsnumber.FromJSON(tok.ExpiresIn)*999))"
+  },
+  {
+   "file": "ai/oauth_openai_codex.go",
+   "old": "!accessOK || !refreshOK || !jsonNumberToken(tok.ExpiresIn)",
+   "new": "!accessOK || refreshOK || !jsonNumberToken(tok.ExpiresIn)"
+  }
+ ],
+ "packages/ai/src/auth/oauth/radius.ts": [
+  {
+   "file": "ai/oauth_radius.go",
+   "old": "\"gateway offline_access\"",
+   "new": "\"gateway\""
+  },
+  {
+   "file": "ai/oauth_radius.go",
+   "old": "= \"pi-gateway\"",
+   "new": "= \"pi-gatewayx\""
+  }
+ ],
+ "packages/ai/src/auth/oauth/xai.ts": [
+  {
+   "file": "ai/oauth_xai.go",
+   "old": "\"b1a00492-073a-47ea-816f-4c329264a828\"",
+   "new": "\"b1a00492-073a-47ea-816f-4c329264a829\""
+  },
+  {
+   "file": "ai/oauth_xai.go",
+   "old": "\"openid profile email offline_access grok-cli:access api:access\"",
+   "new": "\"openid profile email offline_access\""
+  }
+ ],
+ "packages/ai/src/auth/oauth/meta.ts": [
+  {
+   "file": "ai/oauth_meta.go",
+   "old": "\"1031625952748946\"",
+   "new": "\"1031625952748947\""
+  },
+  {
+   "file": "ai/oauth_meta.go",
+   "old": "Expires: p.now().Add(metaAPIKeyLifetime).UnixMilli(),",
+   "new": "Expires: p.now().Add(metaAPIKeyLifetime).UnixMilli() + 1,"
+  }
+ ],
+ "packages/ai/src/auth/oauth/openai-chatgpt.ts": [
+  {
+   "file": "ai/oauth_openai_chatgpt.go",
+   "old": "\"chatgpt.tokens.use.direct\"",
+   "new": "\"chatgpt.tokens.use.indirect\""
+  },
+  {
+   "file": "ai/oauth_openai_chatgpt.go",
+   "old": "\"code_challenge_method\", \"S256\", \"nonce\"",
+   "new": "\"code_challenge_method\", \"plain\", \"nonce\""
+  }
  ]
 }

@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"math/rand"
 	"net/http"
 	"os/exec"
@@ -182,7 +181,14 @@ func runPigCodexResponse(t *testing.T, probe codexResponseProbe) codexResponseAn
 	return codexResponseAnswer{OK: encoded}
 }
 
+// codexFixedNowMillis is the instant the Pi oracle's fixed clock reports.
+const codexFixedNowMillis = 1_700_000_000_000
+
 func TestCodexResponsesMatchPi(t *testing.T) {
+	// Pi's oracle runs on a fixed clock; the Go flow reads nowMillis, so it reads the same instant and a loaded host cannot add milliseconds to a credential's time to live.
+	previousNow := nowMillis
+	nowMillis = func() int64 { return codexFixedNowMillis }
+	t.Cleanup(func() { nowMillis = previousNow })
 	probes := codexResponseProbes()
 	payload, err := json.Marshal(probes)
 	if err != nil {
@@ -201,8 +207,8 @@ func TestCodexResponsesMatchPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
-	// Pi's credentials carry an absolute expiry from its fixed clock; both sides are compared as a time to live, to the nearest 100 ms.
-	normalize := func(raw json.RawMessage, pi bool, started float64) any {
+	// Both sides run on the same fixed clock; their credentials are compared as a time to live.
+	normalize := func(raw json.RawMessage) any {
 		var value any
 		if len(raw) == 0 {
 			return nil
@@ -212,11 +218,7 @@ func TestCodexResponsesMatchPi(t *testing.T) {
 		walk = func(node any) {
 			if object, ok := node.(map[string]any); ok {
 				if expires, ok := object["expires"].(float64); ok {
-					base := started
-					if pi {
-						base = 1_700_000_000_000
-					}
-					object["ttlMs"] = math.Round((expires-base)/100) * 100
+					object["ttlMs"] = expires - codexFixedNowMillis
 					delete(object, "expires")
 				}
 				for _, child := range object {
@@ -229,7 +231,6 @@ func TestCodexResponsesMatchPi(t *testing.T) {
 	}
 	differing, succeeded, failed := 0, 0, 0
 	for i, probe := range probes {
-		started := float64(nowMillis())
 		got := runPigCodexResponse(t, probe)
 		want := expected[i]
 		same := (got.Err == nil) == (want.Err == nil)
@@ -237,7 +238,7 @@ func TestCodexResponsesMatchPi(t *testing.T) {
 			same = got.Syntax == want.Syntax && *got.Err == *want.Err
 		}
 		if same && got.Err == nil {
-			same = reflect.DeepEqual(normalize(got.OK, false, started), normalize(want.OK, true, 0))
+			same = reflect.DeepEqual(normalize(got.OK), normalize(want.OK))
 		}
 		if want.Err == nil {
 			succeeded++

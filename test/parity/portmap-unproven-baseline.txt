@@ -24,13 +24,7 @@ packages/ai/src/auth/oauth/device-code.ts
 packages/ai/src/auth/oauth/github-copilot.ts
 packages/ai/src/auth/oauth/kimi-coding.ts
 packages/ai/src/auth/oauth/load.ts
-packages/ai/src/auth/oauth/meta.ts
-packages/ai/src/auth/oauth/openai-chatgpt.ts
-packages/ai/src/auth/oauth/openai-codex.ts
-packages/ai/src/auth/oauth/openrouter.ts
 packages/ai/src/auth/oauth/pkce.ts
-packages/ai/src/auth/oauth/radius.ts
-packages/ai/src/auth/oauth/xai.ts
 packages/ai/src/auth/resolve.ts
 packages/ai/src/auth/types.ts
 packages/ai/src/bedrock-provider.ts
