@@ -4436,10 +4436,10 @@
       "upstreamTestHash": "sha256:e8d098a05d4275c6568e593e8f5d3755089ea07038f77b88b0ce1d7dd4c895fb",
       "evidence": [
         "tui/code_highlighter_test.go#TestCodeHighlighterReusesItsLastResultUntilTheCodeTheThemeOrTheGrammarsChange",
-        "internal/codingagent/code_highlighter_rows_norace_test.go#TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
-        "internal/codingagent/code_highlighter_rows_norace_test.go#TestCompleteWriteRowReusesItsHighlightingAcrossRedraws"
+        "internal/codingagent/code_highlighter_rows_test.go#TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
+        "internal/codingagent/code_highlighter_rows_test.go#TestCompleteWriteRowReusesItsHighlightingAcrossRedraws"
       ],
-      "rationale": "All 3 upstream cases run. The CodeHighlighter case checks the identity of the returned lines and bumps the language generation (the grammar load is a generation bump because the Once already ran). The codemode and write cases are ported in Go form: PiG cannot count highlight.js calls because the process memo answers a repeated call, so each test flushes the memo before every redraw and bounds the bytes a redraw allocates (red 66 MB and 36.7 MB per redraw, green 1.1 MB and under 6x the arguments), which only the row's CodeHighlighter can serve (lane RenderReuse)."
+      "rationale": "All 3 upstream cases run. The CodeHighlighter case checks the identity of the returned lines and bumps the language generation (the grammar load is a generation bump because the Once already ran). The codemode and write cases are ported in Go form: PiG cannot count highlight.js calls because the process memo answers a repeated call, so each test reads the row's own CodeHighlighter (builtInState(context).highlighter). The row must highlight through it, and every later redraw, collapsed or expanded, must find the very slice of lines the highlighter held, which only a row that keeps its CodeHighlighter does (lane RenderReuse)."
     },
     {
       "path": "packages/coding-agent/test/codemode-renderer.test.ts",
