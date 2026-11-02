@@ -1,5 +1,56 @@
 package main
 
+// pi: packages/ai/catalog/define.ts
+// pi: packages/ai/catalog/generate.ts
+// pi: packages/ai/catalog/families/anthropic.ts
+// pi: packages/ai/catalog/families/openai.ts
+// pi: packages/ai/catalog/families/deepseek.ts
+// pi: packages/ai/catalog/families/google.ts
+// pi: packages/ai/catalog/families/kimi.ts
+// pi: packages/ai/catalog/providers/amazon-bedrock.ts
+// pi: packages/ai/catalog/providers/ant-ling.ts
+// pi: packages/ai/catalog/providers/anthropic.ts
+// pi: packages/ai/catalog/providers/azure.ts
+// pi: packages/ai/catalog/providers/baseten.ts
+// pi: packages/ai/catalog/providers/cerebras.ts
+// pi: packages/ai/catalog/providers/cloudflare-ai-gateway.ts
+// pi: packages/ai/catalog/providers/cloudflare-workers-ai.ts
+// pi: packages/ai/catalog/providers/deepseek.ts
+// pi: packages/ai/catalog/providers/fireworks.ts
+// pi: packages/ai/catalog/providers/github-copilot.ts
+// pi: packages/ai/catalog/providers/google-vertex.ts
+// pi: packages/ai/catalog/providers/google.ts
+// pi: packages/ai/catalog/providers/groq.ts
+// pi: packages/ai/catalog/providers/huggingface.ts
+// pi: packages/ai/catalog/providers/index.ts
+// pi: packages/ai/catalog/providers/kimi-coding.ts
+// pi: packages/ai/catalog/providers/meta.ts
+// pi: packages/ai/catalog/providers/minimax-cn.ts
+// pi: packages/ai/catalog/providers/minimax.ts
+// pi: packages/ai/catalog/providers/mistral.ts
+// pi: packages/ai/catalog/providers/moonshotai-cn.ts
+// pi: packages/ai/catalog/providers/moonshotai.ts
+// pi: packages/ai/catalog/providers/nvidia.ts
+// pi: packages/ai/catalog/providers/openai-codex.ts
+// pi: packages/ai/catalog/providers/openai.ts
+// pi: packages/ai/catalog/providers/opencode-go.ts
+// pi: packages/ai/catalog/providers/opencode.ts
+// pi: packages/ai/catalog/providers/openrouter.ts
+// pi: packages/ai/catalog/providers/qwen-token-plan-cn.ts
+// pi: packages/ai/catalog/providers/qwen-token-plan-individual.ts
+// pi: packages/ai/catalog/providers/qwen-token-plan.ts
+// pi: packages/ai/catalog/providers/radius.ts
+// pi: packages/ai/catalog/providers/together.ts
+// pi: packages/ai/catalog/providers/typesafe.ts
+// pi: packages/ai/catalog/providers/vercel-ai-gateway.ts
+// pi: packages/ai/catalog/providers/xai.ts
+// pi: packages/ai/catalog/providers/xiaomi-token-plan-ams.ts
+// pi: packages/ai/catalog/providers/xiaomi-token-plan-cn.ts
+// pi: packages/ai/catalog/providers/xiaomi-token-plan-sgp.ts
+// pi: packages/ai/catalog/providers/xiaomi.ts
+// pi: packages/ai/catalog/providers/zai-coding-cn.ts
+// pi: packages/ai/catalog/providers/zai.ts
+
 import (
 	"archive/tar"
 	"bufio"
