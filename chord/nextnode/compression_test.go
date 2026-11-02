@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode"
 )
 
+// pi: packages/chord/src/next-node/compression.ts
 // Ports packages/chord/test/next-node/compression.test.ts: raw deflate and the bounded inflate with its tagged
 // outcomes, a limit of 0 included.
 

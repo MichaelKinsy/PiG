@@ -7,6 +7,11 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 )
 
+// Ports packages/chord/src/delta/tracker.ts: the core copy of the delta tracker over jv values. It keeps no registry of
+// open drafts: a draft is stale when its base revision is not the tracker's (assertOpen, Change.Prepare, Tracker.Adopt),
+// which is what Pi's #open/#competitors registry computes (the registry mechanics are designed out: the core's purity
+// rules forbid sync, reflect and runtime). chord/delta/tracker.go is the port with the registry.
+
 // maxDeltaOperations is tracker.ts MAX_DELTA_OPERATIONS: a larger batch folds
 // into one root replacement.
 const maxDeltaOperations = 4_096
