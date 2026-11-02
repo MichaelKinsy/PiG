@@ -2083,5 +2083,610 @@
    "old": "const hydrationGeneratedAt = \"1970-01-01T00:00:00.000Z\"",
    "new": "const hydrationGeneratedAt = \"1970-01-01T00:00:00.001Z\""
   }
+ ],
+ "packages/ai/src/providers/amazon-bedrock.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"amazon.nova-2-lite-v1:0\",\n\t\tProvider:             \"amazon-bedrock\",\n\t\tDisplayName:          \"Nova 2 Lite\",\n",
+   "new": "\t\tID:                   \"amazon.nova-2-lite-v1:0\",\n\t\tProvider:             \"amazon-bedrock\",\n\t\tDisplayName:          \"Nova 2 Lite!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/ant-ling.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"Ling-2.6-1T\",\n\t\tProvider:             \"ant-ling\",\n\t\tDisplayName:          \"Ling 2.6 1T\",\n",
+   "new": "\t\tID:                   \"Ling-2.6-1T\",\n\t\tProvider:             \"ant-ling\",\n\t\tDisplayName:          \"Ling 2.6 1T!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/anthropic.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"claude-fable-5\",\n\t\tProvider:             \"anthropic\",\n\t\tDisplayName:          \"Claude Fable 5\",\n",
+   "new": "\t\tID:                   \"claude-fable-5\",\n\t\tProvider:             \"anthropic\",\n\t\tDisplayName:          \"Claude Fable 5!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/azure.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"chat-latest\",\n\t\tProvider:             \"azure\",\n\t\tDisplayName:          \"Chat Latest\",\n",
+   "new": "\t\tID:                   \"chat-latest\",\n\t\tProvider:             \"azure\",\n\t\tDisplayName:          \"Chat Latest!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/cerebras.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"gpt-oss-120b\",\n\t\tProvider:             \"cerebras\",\n\t\tDisplayName:          \"GPT OSS 120B\",\n",
+   "new": "\t\tID:                   \"gpt-oss-120b\",\n\t\tProvider:             \"cerebras\",\n\t\tDisplayName:          \"GPT OSS 120B!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/cloudflare-ai-gateway.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"claude-fable-5\",\n\t\tProvider:             \"cloudflare-ai-gateway\",\n\t\tDisplayName:          \"Claude Fable 5\",\n",
+   "new": "\t\tID:                   \"claude-fable-5\",\n\t\tProvider:             \"cloudflare-ai-gateway\",\n\t\tDisplayName:          \"Claude Fable 5!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/cloudflare-workers-ai.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"@cf/deepseek-ai/deepseek-v4-flash-0731\",\n\t\tProvider:             \"cloudflare-workers-ai\",\n\t\tDisplayName:          \"DeepSeek V4 Flash 0731\",\n",
+   "new": "\t\tID:                   \"@cf/deepseek-ai/deepseek-v4-flash-0731\",\n\t\tProvider:             \"cloudflare-workers-ai\",\n\t\tDisplayName:          \"DeepSeek V4 Flash 0731!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/deepseek.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deepseek-flash\",\n\t\tProvider:             \"deepseek\",\n\t\tDisplayName:          \"DeepSeek V4.1 Flash\",\n",
+   "new": "\t\tID:                   \"deepseek-flash\",\n\t\tProvider:             \"deepseek\",\n\t\tDisplayName:          \"DeepSeek V4.1 Flash!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/fireworks.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"accounts/fireworks/models/deepseek-v4p1-flash\",\n\t\tProvider:             \"fireworks\",\n\t\tDisplayName:          \"DeepSeek V4.1 Flash\",\n",
+   "new": "\t\tID:                   \"accounts/fireworks/models/deepseek-v4p1-flash\",\n\t\tProvider:             \"fireworks\",\n\t\tDisplayName:          \"DeepSeek V4.1 Flash!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/github-copilot.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"claude-fable-5\",\n\t\tProvider:             \"github-copilot\",\n\t\tDisplayName:          \"Claude Fable 5\",\n",
+   "new": "\t\tID:                   \"claude-fable-5\",\n\t\tProvider:             \"github-copilot\",\n\t\tDisplayName:          \"Claude Fable 5!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/google-vertex.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"gemini-2.5-flash\",\n\t\tProvider:             \"google-vertex\",\n\t\tDisplayName:          \"Gemini 2.5 Flash\",\n",
+   "new": "\t\tID:                   \"gemini-2.5-flash\",\n\t\tProvider:             \"google-vertex\",\n\t\tDisplayName:          \"Gemini 2.5 Flash!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/google.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deep-research-max-preview-04-2026\",\n\t\tProvider:             \"google\",\n\t\tDisplayName:          \"Deep Research Max Preview (Apr-21-2026)\",\n",
+   "new": "\t\tID:                   \"deep-research-max-preview-04-2026\",\n\t\tProvider:             \"google\",\n\t\tDisplayName:          \"Deep Research Max Preview (Apr-21-2026)!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/groq.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"llama-3.1-8b-instant\",\n\t\tProvider:             \"groq\",\n\t\tDisplayName:          \"Llama 3.1 8B\",\n",
+   "new": "\t\tID:                   \"llama-3.1-8b-instant\",\n\t\tProvider:             \"groq\",\n\t\tDisplayName:          \"Llama 3.1 8B!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/huggingface.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deepseek-ai/DeepSeek-R1\",\n\t\tProvider:             \"huggingface\",\n\t\tDisplayName:          \"DeepSeek-R1\",\n",
+   "new": "\t\tID:                   \"deepseek-ai/DeepSeek-R1\",\n\t\tProvider:             \"huggingface\",\n\t\tDisplayName:          \"DeepSeek-R1!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/kimi-coding.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"k3\",\n\t\tProvider:             \"kimi-coding\",\n\t\tDisplayName:          \"Kimi K3\",\n",
+   "new": "\t\tID:                   \"k3\",\n\t\tProvider:             \"kimi-coding\",\n\t\tDisplayName:          \"Kimi K3!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/meta.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"muse-spark-1.1\",\n\t\tProvider:             \"meta\",\n\t\tDisplayName:          \"Muse Spark 1.1\",\n",
+   "new": "\t\tID:                   \"muse-spark-1.1\",\n\t\tProvider:             \"meta\",\n\t\tDisplayName:          \"Muse Spark 1.1!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/minimax-cn.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"MiniMax-M2.7\",\n\t\tProvider:             \"minimax-cn\",\n\t\tDisplayName:          \"MiniMax-M2.7\",\n",
+   "new": "\t\tID:                   \"MiniMax-M2.7!\",\n\t\tProvider:             \"minimax-cn\",\n\t\tDisplayName:          \"MiniMax-M2.7!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/minimax.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"MiniMax-M2.7\",\n\t\tProvider:             \"minimax\",\n\t\tDisplayName:          \"MiniMax-M2.7\",\n",
+   "new": "\t\tID:                   \"MiniMax-M2.7!\",\n\t\tProvider:             \"minimax\",\n\t\tDisplayName:          \"MiniMax-M2.7!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/mistral.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"codestral-2508\",\n\t\tProvider:             \"mistral\",\n\t\tDisplayName:          \"Codestral 25.08\",\n",
+   "new": "\t\tID:                   \"codestral-2508\",\n\t\tProvider:             \"mistral\",\n\t\tDisplayName:          \"Codestral 25.08!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/moonshotai-cn.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"kimi-k2.6\",\n\t\tProvider:             \"moonshotai-cn\",\n\t\tDisplayName:          \"Kimi K2.6\",\n",
+   "new": "\t\tID:                   \"kimi-k2.6\",\n\t\tProvider:             \"moonshotai-cn\",\n\t\tDisplayName:          \"Kimi K2.6!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/moonshotai.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"kimi-k2.6\",\n\t\tProvider:             \"moonshotai\",\n\t\tDisplayName:          \"Kimi K2.6\",\n",
+   "new": "\t\tID:                   \"kimi-k2.6\",\n\t\tProvider:             \"moonshotai\",\n\t\tDisplayName:          \"Kimi K2.6!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/nvidia.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deepseek-ai/deepseek-v4.1-flash\",\n\t\tProvider:             \"nvidia\",\n\t\tDisplayName:          \"DeepSeek V4.1 Flash\",\n",
+   "new": "\t\tID:                   \"deepseek-ai/deepseek-v4.1-flash\",\n\t\tProvider:             \"nvidia\",\n\t\tDisplayName:          \"DeepSeek V4.1 Flash!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/openai-codex.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"gpt-5.6-luna\",\n\t\tProvider:             \"openai-codex\",\n\t\tDisplayName:          \"GPT-5.6 Luna\",\n",
+   "new": "\t\tID:                   \"gpt-5.6-luna\",\n\t\tProvider:             \"openai-codex\",\n\t\tDisplayName:          \"GPT-5.6 Luna!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/openai.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"chat-latest\",\n\t\tProvider:             \"openai\",\n\t\tDisplayName:          \"Chat Latest\",\n",
+   "new": "\t\tID:                   \"chat-latest\",\n\t\tProvider:             \"openai\",\n\t\tDisplayName:          \"Chat Latest!\",\n"
+  },
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tAPI:                  \"openai-responses\",\n\t\tBaseURL:              \"https://api.openai.com/v1\",\n\t\tCompat:               &generatedCompats[0],\n\t\tInputLimits:          &generatedInputLimits[5],\n\t\tContextWindow:        400000,\n",
+   "new": "\t\tAPI:                  \"openai-responses\",\n\t\tBaseURL:              \"https://api.openai.com/v1\",\n\t\tInputLimits:          &generatedInputLimits[5],\n\t\tContextWindow:        400000,\n"
+  },
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tgeneratedRows[ref.row].PromptCache = generatedMap(generatedPromptCachesPairs[ref.element])",
+   "new": "\t\t_ = generatedMap(generatedPromptCachesPairs[ref.element])"
+  }
+ ],
+ "packages/ai/src/providers/opencode-go.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"claude-haiku-5-5\",\n\t\tProvider:             \"opencode-go\",\n\t\tDisplayName:          \"Claude Haiku 5.5\",\n",
+   "new": "\t\tID:                   \"claude-haiku-5-5\",\n\t\tProvider:             \"opencode-go\",\n\t\tDisplayName:          \"Claude Haiku 5.5!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/opencode.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"claude-fable-5\",\n\t\tProvider:             \"opencode\",\n\t\tDisplayName:          \"Claude Fable 5\",\n",
+   "new": "\t\tID:                   \"claude-fable-5\",\n\t\tProvider:             \"opencode\",\n\t\tDisplayName:          \"Claude Fable 5!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/openrouter.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"~anthropic/claude-fable-latest\",\n\t\tProvider:             \"openrouter\",\n\t\tDisplayName:          \"Anthropic: Claude Fable Latest\",\n",
+   "new": "\t\tID:                   \"~anthropic/claude-fable-latest\",\n\t\tProvider:             \"openrouter\",\n\t\tDisplayName:          \"Anthropic: Claude Fable Latest!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/qwen-token-plan-cn.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deepseek-v3.2\",\n\t\tProvider:             \"qwen-token-plan-cn\",\n\t\tDisplayName:          \"DeepSeek V3.2\",\n",
+   "new": "\t\tID:                   \"deepseek-v3.2\",\n\t\tProvider:             \"qwen-token-plan-cn\",\n\t\tDisplayName:          \"DeepSeek V3.2!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/qwen-token-plan-individual.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deepseek-v4-flash-0731\",\n\t\tProvider:             \"qwen-token-plan-individual\",\n\t\tDisplayName:          \"DeepSeek V4 Flash 0731\",\n",
+   "new": "\t\tID:                   \"deepseek-v4-flash-0731\",\n\t\tProvider:             \"qwen-token-plan-individual\",\n\t\tDisplayName:          \"DeepSeek V4 Flash 0731!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/qwen-token-plan.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deepseek-v3.2\",\n\t\tProvider:             \"qwen-token-plan\",\n\t\tDisplayName:          \"DeepSeek V3.2\",\n",
+   "new": "\t\tID:                   \"deepseek-v3.2\",\n\t\tProvider:             \"qwen-token-plan\",\n\t\tDisplayName:          \"DeepSeek V3.2!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/radius.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"balanced\",\n\t\tProvider:             \"radius\",\n\t\tDisplayName:          \"Balanced\",\n",
+   "new": "\t\tID:                   \"balanced\",\n\t\tProvider:             \"radius\",\n\t\tDisplayName:          \"Balanced!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/together.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deepseek-ai/DeepSeek-V4-Pro-0813\",\n\t\tProvider:             \"together\",\n\t\tDisplayName:          \"DeepSeek V4 Pro 0813\",\n",
+   "new": "\t\tID:                   \"deepseek-ai/DeepSeek-V4-Pro-0813\",\n\t\tProvider:             \"together\",\n\t\tDisplayName:          \"DeepSeek V4 Pro 0813!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/typesafe.models.ts": [
+  {
+   "file": "ai/classifier_models_generated.go",
+   "old": "\t{ID: \"jev-latest\", Name: \"Jev\", API: ClassifierAPI(\"typesafe-system-one\"), Provider: \"typesafe\",",
+   "new": "\t{ID: \"jev-latest\", Name: \"Jev!\", API: ClassifierAPI(\"typesafe-system-one\"), Provider: \"typesafe\","
+  }
+ ],
+ "packages/ai/src/providers/vercel-ai-gateway.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"alibaba/qwen-3-14b\",\n\t\tProvider:             \"vercel-ai-gateway\",\n\t\tDisplayName:          \"Qwen3-14B\",\n",
+   "new": "\t\tID:                   \"alibaba/qwen-3-14b\",\n\t\tProvider:             \"vercel-ai-gateway\",\n\t\tDisplayName:          \"Qwen3-14B!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/xai.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"grok-4.3\",\n\t\tProvider:             \"xai\",\n\t\tDisplayName:          \"Grok 4.3\",\n",
+   "new": "\t\tID:                   \"grok-4.3\",\n\t\tProvider:             \"xai\",\n\t\tDisplayName:          \"Grok 4.3!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/xiaomi-token-plan-ams.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"mimo-v2.6-flash\",\n\t\tProvider:             \"xiaomi-token-plan-ams\",\n\t\tDisplayName:          \"MiMo-V2.6-Flash\",\n",
+   "new": "\t\tID:                   \"mimo-v2.6-flash\",\n\t\tProvider:             \"xiaomi-token-plan-ams\",\n\t\tDisplayName:          \"MiMo-V2.6-Flash!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/xiaomi-token-plan-cn.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"mimo-v2.6-flash\",\n\t\tProvider:             \"xiaomi-token-plan-cn\",\n\t\tDisplayName:          \"MiMo-V2.6-Flash\",\n",
+   "new": "\t\tID:                   \"mimo-v2.6-flash\",\n\t\tProvider:             \"xiaomi-token-plan-cn\",\n\t\tDisplayName:          \"MiMo-V2.6-Flash!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/xiaomi-token-plan-sgp.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"mimo-v2.6-flash\",\n\t\tProvider:             \"xiaomi-token-plan-sgp\",\n\t\tDisplayName:          \"MiMo-V2.6-Flash\",\n",
+   "new": "\t\tID:                   \"mimo-v2.6-flash\",\n\t\tProvider:             \"xiaomi-token-plan-sgp\",\n\t\tDisplayName:          \"MiMo-V2.6-Flash!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/xiaomi.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"mimo-v2.6-flash\",\n\t\tProvider:             \"xiaomi\",\n\t\tDisplayName:          \"MiMo-V2.6-Flash\",\n",
+   "new": "\t\tID:                   \"mimo-v2.6-flash\",\n\t\tProvider:             \"xiaomi\",\n\t\tDisplayName:          \"MiMo-V2.6-Flash!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/zai-coding-cn.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"glm-4.6v\",\n\t\tProvider:             \"zai-coding-cn\",\n\t\tDisplayName:          \"GLM-4.6V\",\n",
+   "new": "\t\tID:                   \"glm-4.6v\",\n\t\tProvider:             \"zai-coding-cn\",\n\t\tDisplayName:          \"GLM-4.6V!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/zai.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"glm-4.7\",\n\t\tProvider:             \"zai\",\n\t\tDisplayName:          \"GLM-4.7\",\n",
+   "new": "\t\tID:                   \"glm-4.7\",\n\t\tProvider:             \"zai\",\n\t\tDisplayName:          \"GLM-4.7!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/ant-ling.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func AntLingProvider() *ModelsProvider { return builtinProvider(\"ant-ling\") }",
+   "new": "func AntLingProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/cerebras.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func CerebrasProvider() *ModelsProvider { return builtinProvider(\"cerebras\") }",
+   "new": "func CerebrasProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/cloudflare-ai-gateway.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func CloudflareAIGatewayProvider() *ModelsProvider { return builtinProvider(\"cloudflare-ai-gateway\") }",
+   "new": "func CloudflareAIGatewayProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/cloudflare-workers-ai.ts": [
+  {
+   "file": "ai/builtin_providers.go",
+   "old": "func CloudflareWorkersAIProvider() *ModelsProvider { return builtinProvider(\"cloudflare-workers-ai\") }",
+   "new": "func CloudflareWorkersAIProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/deepseek.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func DeepseekProvider() *ModelsProvider { return builtinProvider(\"deepseek\") }",
+   "new": "func DeepseekProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/fireworks.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func FireworksProvider() *ModelsProvider { return builtinProvider(\"fireworks\") }",
+   "new": "func FireworksProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/groq.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func GroqProvider() *ModelsProvider { return builtinProvider(\"groq\") }",
+   "new": "func GroqProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/huggingface.ts": [
+  {
+   "file": "ai/builtin_providers.go",
+   "old": "func HuggingFaceProvider() *ModelsProvider { return builtinProvider(\"huggingface\") }",
+   "new": "func HuggingFaceProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/kimi-coding.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func KimiCodingProvider() *ModelsProvider { return builtinProvider(\"kimi-coding\") }",
+   "new": "func KimiCodingProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/minimax-cn.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func MinimaxCnProvider() *ModelsProvider { return builtinProvider(\"minimax-cn\") }",
+   "new": "func MinimaxCnProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/minimax.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func MinimaxProvider() *ModelsProvider { return builtinProvider(\"minimax\") }",
+   "new": "func MinimaxProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/moonshotai-cn.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func MoonshotaiCnProvider() *ModelsProvider { return builtinProvider(\"moonshotai-cn\") }",
+   "new": "func MoonshotaiCnProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/moonshotai.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func MoonshotaiProvider() *ModelsProvider { return builtinProvider(\"moonshotai\") }",
+   "new": "func MoonshotaiProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/nvidia.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func NvidiaProvider() *ModelsProvider { return builtinProvider(\"nvidia\") }",
+   "new": "func NvidiaProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/openai-codex.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func OpenaiCodexProvider() *ModelsProvider { return builtinProvider(\"openai-codex\") }",
+   "new": "func OpenaiCodexProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/openai.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func OpenaiProvider() *ModelsProvider { return builtinProvider(\"openai\") }",
+   "new": "func OpenaiProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/opencode-go.ts": [
+  {
+   "file": "ai/builtin_providers.go",
+   "old": "func OpenCodeGoProvider() *ModelsProvider { return builtinProvider(\"opencode-go\") }",
+   "new": "func OpenCodeGoProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/opencode.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func OpencodeProvider() *ModelsProvider { return builtinProvider(\"opencode\") }",
+   "new": "func OpencodeProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/qwen-token-plan-cn.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func QwenTokenPlanCnProvider() *ModelsProvider { return builtinProvider(\"qwen-token-plan-cn\") }",
+   "new": "func QwenTokenPlanCnProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/qwen-token-plan.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func QwenTokenPlanProvider() *ModelsProvider { return builtinProvider(\"qwen-token-plan\") }",
+   "new": "func QwenTokenPlanProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/together.ts": [
+  {
+   "file": "ai/builtin_providers_google_openai_together.go",
+   "old": "func TogetherProvider() *ModelsProvider { return builtinProvider(\"together\") }",
+   "new": "func TogetherProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/vercel-ai-gateway.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func VercelAIGatewayProvider() *ModelsProvider { return builtinProvider(\"vercel-ai-gateway\") }",
+   "new": "func VercelAIGatewayProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/xai.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func XaiProvider() *ModelsProvider { return builtinProvider(\"xai\") }",
+   "new": "func XaiProvider() *ModelsProvider { return builtinProvider(\"groq\") }"
+  }
+ ],
+ "packages/ai/src/providers/xiaomi-token-plan-ams.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func XiaomiTokenPlanAmsProvider() *ModelsProvider { return builtinProvider(\"xiaomi-token-plan-ams\") }",
+   "new": "func XiaomiTokenPlanAmsProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/xiaomi-token-plan-cn.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func XiaomiTokenPlanCnProvider() *ModelsProvider { return builtinProvider(\"xiaomi-token-plan-cn\") }",
+   "new": "func XiaomiTokenPlanCnProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/xiaomi-token-plan-sgp.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func XiaomiTokenPlanSgpProvider() *ModelsProvider { return builtinProvider(\"xiaomi-token-plan-sgp\") }",
+   "new": "func XiaomiTokenPlanSgpProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/xiaomi.ts": [
+  {
+   "file": "ai/builtin_providers.go",
+   "old": "func XiaomiProvider() *ModelsProvider { return builtinProvider(\"xiaomi\") }",
+   "new": "func XiaomiProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/zai-coding-cn.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func ZaiCodingCnProvider() *ModelsProvider { return builtinProvider(\"zai-coding-cn\") }",
+   "new": "func ZaiCodingCnProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/zai.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func ZaiProvider() *ModelsProvider { return builtinProvider(\"zai\") }",
+   "new": "func ZaiProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/google.ts": [
+  {
+   "file": "ai/builtin_providers_google_openai_together.go",
+   "old": "func GoogleProvider() *ModelsProvider { return builtinProvider(\"google\") }",
+   "new": "func GoogleProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/meta.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func MetaProvider() *ModelsProvider { return builtinProvider(\"meta\") }",
+   "new": "func MetaProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/mistral.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func MistralProvider() *ModelsProvider { return builtinProvider(\"mistral\") }",
+   "new": "func MistralProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/qwen-token-plan-individual.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "return builtinProvider(\"qwen-token-plan-individual\")",
+   "new": "return builtinProvider(\"qwen-token-plan\")"
+  }
+ ],
+ "packages/ai/src/providers/radius.ts": [
+  {
+   "file": "ai/radius.go",
+   "old": "if gateway == NormalizeRadiusGatewayURL(DefaultRadiusGateway) {",
+   "new": "if gateway != NormalizeRadiusGatewayURL(DefaultRadiusGateway) {"
+  }
+ ],
+ "packages/ai/src/providers/opencode-headers.ts": [
+  {
+   "file": "ai/opencode_headers.go",
+   "old": "if options.SessionID == \"\" || hasProviderHeader(",
+   "new": "if hasProviderHeader("
+  }
+ ],
+ "packages/ai/src/providers/all.ts": [
+  {
+   "file": "ai/builtin_providers.go",
+   "old": "for _, image := range GetImageModels(BuiltinImageProvider(provider)) {",
+   "new": "for _, image := range GetImageModels(BuiltinImageProvider(provider))[:0] {"
+  }
+ ],
+ "packages/ai/src/providers/amazon-bedrock.ts": [
+  {
+   "file": "ai/auth_providers.go",
+   "old": "return &AuthResult{Env: credentialEnv(credential), Source: \"AWS_PROFILE\"}, ctx.Err()",
+   "new": "return &AuthResult{Env: credentialEnv(credential), Source: \"AWS_PROFILE_ENV\"}, ctx.Err()"
+  }
+ ],
+ "packages/ai/src/providers/google-vertex.ts": [
+  {
+   "file": "ai/auth_providers.go",
+   "old": "source := \"gcloud application default credentials\"",
+   "new": "source := \"gcloud credentials\""
+  }
+ ],
+ "packages/ai/src/providers/cloudflare-auth.ts": [
+  {
+   "file": "ai/auth_providers.go",
+   "old": "source := cloudflareAPIKey",
+   "new": "source := \"CLOUDFLARE_KEY\""
+  }
+ ],
+ "packages/ai/src/providers/cloudflare-stream.ts": [
+  {
+   "file": "ai/cloudflare_streams.go",
+   "old": "return stream(ctx, ResolveCloudflareModel(model, options.Env), transcript, options)",
+   "new": "return stream(ctx, model, transcript, options)"
+  }
+ ],
+ "packages/ai/src/providers/azure.ts": [
+  {
+   "file": "ai/azure.go",
+   "old": "resolved.cfg.requestModel = ResolveAzureDeploymentName(p.cfg.Model, options)",
+   "new": "resolved.cfg.requestModel = p.cfg.Model"
+  }
+ ],
+ "packages/ai/src/providers/anthropic.ts": [
+  {
+   "file": "ai/auth_providers.go",
+   "old": "Headers: ProviderHeaders{\"Authorization\": new(\"Bearer \" + token)}}, Source: AnthropicAuthTokenEnv",
+   "new": "Headers: ProviderHeaders{\"Authorization\": new(\"Token \" + token)}}, Source: AnthropicAuthTokenEnv"
+  }
+ ],
+ "packages/ai/src/providers/github-copilot.ts": [
+  {
+   "file": "ai/github_copilot_filter.go",
+   "old": "credential.Type != CredentialOAuth",
+   "new": "credential.Type == CredentialOAuth"
+  }
+ ],
+ "packages/ai/src/providers/openrouter.ts": [
+  {
+   "file": "ai/openrouter_user_models.go",
+   "old": "request.Header.Set(\"authorization\", \"Bearer \"+key)",
+   "new": "request.Header.Set(\"authorization\", \"Basic \"+key)"
+  }
  ]
 }
