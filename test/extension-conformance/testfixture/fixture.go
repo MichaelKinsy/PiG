@@ -1185,6 +1185,36 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("rw_idle_blocking=before:%t;after:%t", before, after), "info")
 		return nil
 	})
+	// rw_idle_yield_poll polls isIdle for the run it started with the SDK's sleep helper, which yields first, as Pi's handler awaits a timer.
+	ext.Command("rw_idle_yield_poll", "Poll isIdle for a run the handler started, sleeping with the SDK helper", func(ctx sdk.Context, _ string) error {
+		trigger := true
+		if err := ctx.SendMessage("rw-trigger", "rw-trigger", true, sdk.SendMessageOptions{TriggerTurn: &trigger}); err != nil {
+			return err
+		}
+		first, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		deadline := time.Now().Add(5 * time.Second)
+		for {
+			idle, err := ctx.IsIdle()
+			if err != nil {
+				return err
+			}
+			if idle || !time.Now().Before(deadline) {
+				break
+			}
+			if err := ctx.Sleep(10 * time.Millisecond); err != nil {
+				return err
+			}
+		}
+		final, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("rw_idle_yield_poll=first:%t;final:%t", first, final), "info")
+		return nil
+	})
 	// rw_idle_callback sends the message from a goroutine the handler waits for, as Pi's handler awaits a timer's callback that sends it.
 	ext.Command("rw_idle_callback", "Read isIdle after a message that starts a run, sent from a goroutine the handler waits for", func(ctx sdk.Context, _ string) error {
 		before, err := ctx.IsIdle()

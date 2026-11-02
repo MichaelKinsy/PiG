@@ -17,9 +17,10 @@ import (
 //   - A runtime with an event loop (Node) reports it (NotifyHandlerYielded): its first microtask checkpoint after the send, for a handler and
 //     for a timer's or an I/O callback alike. The send carries the token the report names and the host sets the hold before it answers the send,
 //     which the runtime waits for, so the report can only follow the hold.
-//   - A thread-based SDK's handler yields when it returns or makes a call whose upstream API returns a Promise (returnsPromiseInPi). A handler
-//     that blocks on something that is no call, such as a sleep, has not yielded in Pi's terms either: it keeps the hold until it returns, as
-//     a synchronous wait does in Pi. The thread-based SDKs have no report for a send from a thread a handler started, which holds nothing.
+//   - A thread-based SDK's handler yields when it returns, makes a call whose upstream API returns a Promise, or calls the SDK's yield helper
+//     (ctx.Yield, and ctx.Sleep, which yields first), which stands for the `await` Pi's code writes there (returnsPromiseInPi). A handler that
+//     blocks on something else, such as a raw sleep, has not yielded in Pi's terms either: it keeps the hold until it returns, as a synchronous
+//     wait does in Pi. The thread-based SDKs have no report for a send from a thread a handler started, which holds nothing.
 
 // syncRunHolds are the triggering sends whose code has not yet yielded.
 type syncRunHolds struct {
@@ -85,6 +86,9 @@ func (s *syncRunHolds) busy() bool {
 	return false
 }
 
+// pig divergence (D225): a thread-based SDK's handler that waits for the run with a raw sleep and no yield helper keeps the hold until it returns,
+// and a send from a thread it started after its request returned holds nothing.
+//
 // holdAfterSend holds the Session busy for the code that made the sendMessage call. A message sent while the agent_settled handlers run is
 // held back by the Session (agent-session.ts:2344-2349), which stays idle, so the Session's own answer stands there; so does a message that
 // does not start or join a run.
@@ -114,11 +118,13 @@ func (h *Host) holdAfterSend(conn *Conn, call *CallPayload) {
 	}
 }
 
-// returnsPromiseInPi reports whether the upstream API behind method returns a Promise, so the code that calls it awaits it. Most calls that run
+// returnsPromiseInPi reports whether the code that calls method awaits in Pi: the upstream API behind it returns a Promise, or it is the explicit yield of a thread-based SDK (CallYield). Most calls that run
 // off their lane (startsAsync) do; registerProvider and addAutocompleteProvider return nothing there and only run so because the host's work
 // behind them can wait for the session or a callback.
 func returnsPromiseInPi(method string) bool {
 	switch method {
+	case CallYield:
+		return true
 	case "registerProvider", "ui.addAutocompleteProvider":
 		return false
 	}

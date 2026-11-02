@@ -320,7 +320,9 @@ so far, killed, code 0. It replaces the cancellation of the calling request."
 
 ;;; agent and session control -------------------------------------------------
 
-(defun ctx-is-idle-p (ctx) (eq (reply-field ctx "isIdle" "idle") t))
+(defun ctx-is-idle-p (ctx)
+  "True when the session is idle. A handler that waits for a run it started (poll until idle) must use ctx-sleep/ctx-yield between reads; a raw SLEEP keeps the hold until the handler returns."
+  (eq (reply-field ctx "isIdle" "idle") t))
 (defun ctx-has-pending-messages-p (ctx) (eq (reply-field ctx "hasPendingMessages" "pending") t))
 (defun ctx-abort (ctx) (ctx-call-host ctx "abort") nil)
 (defun ctx-shutdown (ctx) (ctx-call-host ctx "shutdown") nil)
@@ -405,6 +407,14 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
 (defun ctx-set-thinking-level (ctx level) (ctx-call-host ctx "setThinkingLevel" (obj "level" level)) nil)
 (defun ctx-set-label (ctx entry-id label) (ctx-call-host ctx "setLabel" (obj "entryId" entry-id "label" label)) nil)
 (defun ctx-wait-for-idle (ctx) (ctx-call-host ctx "waitForIdle") nil)
+(defun ctx-yield (ctx)
+  "Stand for Pi's first `await`: end the host's busy hold for this request (host call \"yield\")."
+  (ctx-call-host ctx "yield" (obj)) nil)
+(defun ctx-sleep (ctx seconds)
+  "ctx-yield, then block the thread for SECONDS."
+  (ctx-yield ctx)
+  (sleep seconds)
+  nil)
 (defun ctx-project-trusted-p (ctx) (eq (reply-field ctx "isProjectTrusted" "trusted") t))
 (defun ctx-get-session-id (ctx) (reply-field ctx "getSessionID" "sessionId"))
 (defun ctx-get-leaf-id (ctx) (optional-string-field ctx "getLeafID" "leafId"))
@@ -419,6 +429,7 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
 
 
 (defun ctx-send-message (ctx custom-type content &key (display t) trigger-turn deliver-as details)
+  "Send a custom message. With :TRIGGER-TURN the run it starts keeps ctx-is-idle-p false and the host holds that busy until this handler yields. A handler that waits for that run (a poll `loop until (ctx-is-idle-p ctx) do (sleep ...)`) MUST use ctx-sleep or ctx-yield; a raw CL SLEEP keeps the hold until the handler returns."
   (let ((options (obj))
         (message (obj "customType" custom-type "content" content "display" (if display t :false))))
     (when trigger-turn (setf (gethash "triggerTurn" options) (if (eq trigger-turn :false) :false t)))

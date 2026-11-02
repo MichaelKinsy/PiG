@@ -413,6 +413,60 @@ def _probe_getter(call: Callable[[pig_sdk.Context], Any], answer: dict[str, Any]
         host.close()
 
 
+def test_yield_now_sends_the_yield_call_with_the_request_parent() -> None:
+    """``yield_now`` is a plain synchronous ``yield`` call with empty args, carrying the request's id like isIdle does."""
+    calls, response = _run_command(lambda ctx: ctx.yield_now(), {"yield": {}})
+    assert [c["call"]["method"] for c in calls] == ["yield"]
+    assert calls[0]["call"]["args"] == {}
+    assert calls[0]["call"]["parent_request_id"] == "r1"
+    assert "error" not in response["response"]
+
+
+def test_sleep_yields_before_it_sleeps(monkeypatch: pytest.MonkeyPatch) -> None:
+    events: list[str] = []
+    real_sleep = pig_sdk.time.sleep
+
+    def fake_sleep(seconds: float) -> None:
+        if seconds == 0.0123:
+            events.append("sleep")
+        else:
+            real_sleep(seconds)
+
+    monkeypatch.setattr(pig_sdk.time, "sleep", fake_sleep)
+    ext = pig_sdk.Extension("py-sleep")
+    ext.command("go", "run", lambda ctx, _args: ctx.sleep(0.0123))
+    host = _Host(ext)
+    try:
+        host.request("r1", {"method": "command", "tool": "go"})
+        while True:
+            env = host.read()
+            if env["type"] == "call":
+                events.append("call:" + env["call"]["method"])
+                assert env["call"]["parent_request_id"] == "r1"
+                host.answer(env, {})
+            elif env["type"] == "response":
+                break
+    finally:
+        host.close()
+    assert events == ["call:yield", "sleep"]
+
+
+def test_yield_and_sleep_propagate_a_host_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A failed ``yield`` raises as ``wait_for_idle`` does, and ``sleep`` does not sleep then."""
+    failure = {"code": "host_failed", "message": "boom"}
+    slept: list[float] = []
+    real_sleep = pig_sdk.time.sleep
+    monkeypatch.setattr(pig_sdk.time, "sleep", lambda seconds: slept.append(seconds) if seconds == 0.0123 else real_sleep(seconds))
+    for name, call in (
+        ("wait_for_idle", lambda c: c.wait_for_idle()),
+        ("yield_now", lambda c: c.yield_now()),
+        ("sleep", lambda c: c.sleep(0.0123)),
+    ):
+        raised = _probe_getter(call, None, failure)
+        assert isinstance(raised, pig_sdk.HostCallError) and "boom" in str(raised), name
+    assert slept == []
+
+
 def test_getters_distinguish_absent_empty_and_failure() -> None:
     """Pi's getters return undefined for absent state and throw for a failed host call."""
     assert _probe_getter(lambda c: c.get_session_name(), {"name": "named"}) == "named"

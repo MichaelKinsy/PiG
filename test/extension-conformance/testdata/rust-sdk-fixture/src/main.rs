@@ -3640,6 +3640,29 @@ fn main() {
         },
     );
     ext.command(
+        "rw_idle_yield_poll",
+        "Read isIdle while polling for the run a message started, waiting with the SDK sleep helper",
+        |ctx, _args| {
+            let reads = (|| -> std::io::Result<(bool, bool)> {
+                ctx.send_message("rw-trigger", "rw-trigger", true, Some(true), None)?;
+                let first = ctx.is_idle()?;
+                let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+                while !ctx.is_idle()? && std::time::Instant::now() < deadline {
+                    ctx.sleep(std::time::Duration::from_millis(10))?;
+                }
+                Ok((first, ctx.is_idle()?))
+            })();
+            match reads {
+                Ok((first, last)) => ctx.notify(
+                    &format!("rw_idle_yield_poll=first:{first};final:{last}"),
+                    "info",
+                ),
+                Err(err) => return CommandResult::Error(err.to_string()),
+            }
+            CommandResult::Ok
+        },
+    );
+    ext.command(
         "rw_idle_callback",
         "Read isIdle after a message that starts a run, sent from a thread the handler waits for",
         |ctx, _args| {

@@ -3229,7 +3229,9 @@ impl Context {
 
     // ─── Message injection ───────────────────────────────────────────────
 
-    /// Send a custom message into the conversation.
+    /// Send a custom message into the conversation. With `trigger_turn = Some(true)` the session is
+    /// busy (`is_idle` is false) until this handler yields; to wait for the run, poll `is_idle`
+    /// with `sleep`/`yield_now`, not a raw sleep.
     pub fn send_message(
         &self,
         custom_type: &str,
@@ -4590,7 +4592,10 @@ impl Context {
         self.required_field("isProjectTrusted", None, "trusted")
     }
 
-    /// Whether the agent is idle. A host failure is an error, not an assumed idle state.
+    /// Whether the agent is idle. A host failure is an error, not an assumed idle state. After a
+    /// `send_message` that triggers a turn this stays busy until the sending handler yields: a handler
+    /// that polls `while !is_idle` must wait with `sleep` or `yield_now`, since a raw sleep keeps the
+    /// hold until the handler returns.
     pub fn is_idle(&self) -> io::Result<bool> {
         self.required_field("isIdle", None, "idle")
     }
@@ -4614,6 +4619,22 @@ impl Context {
 
     pub fn wait_for_idle(&self) -> io::Result<()> {
         call_result_to_io(self.call_wire("waitForIdle", None)?)
+    }
+
+    /// Pi's first `await`: tells the host this handler has yielded, which ends the busy hold that
+    /// `send_message(.., trigger_turn = Some(true))` put on `is_idle`. A thread cannot express
+    /// `await`, so a handler that waits for the run it started (a poll `while !is_idle: sleep`) must
+    /// call this or `sleep`; a raw `std::thread::sleep` keeps the hold until the handler returns.
+    pub fn yield_now(&self) -> io::Result<()> {
+        call_result_to_io(self.call_wire("yield", Some(serde_json::json!({})))?)
+    }
+
+    /// `yield_now`, then blocks the thread for `duration`. Use it instead of `std::thread::sleep`
+    /// in a poll on `is_idle`.
+    pub fn sleep(&self, duration: Duration) -> io::Result<()> {
+        self.yield_now()?;
+        thread::sleep(duration);
+        Ok(())
     }
 
     pub fn new_session(&self, opts: serde_json::Value) -> io::Result<Option<serde_json::Value>> {
@@ -6671,6 +6692,73 @@ mod sdk_surface_call_tests {
         let (id, call) = next_call(&host);
         reply(&ctx, id, answer);
         (call, caller.join().unwrap())
+    }
+
+    #[test]
+    fn yield_now_sends_the_yield_call_with_the_request_parent() {
+        let (call, result) = roundtrip(|ctx| ctx.yield_now(), ok(Some(json!({}))));
+        result.unwrap();
+        assert_eq!(call.method, "yield");
+        assert_eq!(call.parent_request_id.as_deref(), Some("req-1"));
+        assert_eq!(call.args.unwrap_or_else(|| json!({})), json!({}));
+    }
+
+    #[test]
+    fn yield_now_propagates_a_host_error() {
+        let (_, result) = roundtrip(
+            |ctx| ctx.yield_now(),
+            CallResultMsg {
+                result: None,
+                error: Some(ErrorInfo {
+                    code: None,
+                    message: "yield failed".to_string(),
+                }),
+            },
+        );
+        assert!(result.unwrap_err().to_string().contains("yield failed"));
+    }
+
+    #[test]
+    fn sleep_yields_before_it_sleeps() {
+        let (ext_stream, host_stream) = UnixStream::pair().unwrap();
+        let ctx = context(ext_stream, "req-1");
+        let (tx, rx) = mpsc::channel();
+        let caller = {
+            let ctx = ctx.clone();
+            std::thread::spawn(move || {
+                let result = ctx.sleep(Duration::from_millis(200));
+                let _ = tx.send(());
+                result
+            })
+        };
+        let host = Connection::new(host_stream);
+        let (id, call) = next_call(&host);
+        assert_eq!(call.method, "yield");
+        assert_eq!(call.parent_request_id.as_deref(), Some("req-1"));
+        // The call is on the wire while the sleep has not run yet.
+        assert!(rx.try_recv().is_err());
+        reply(&ctx, id, ok(Some(json!({}))));
+        let started = std::time::Instant::now();
+        rx.recv_timeout(Duration::from_secs(5)).unwrap();
+        assert!(started.elapsed() >= Duration::from_millis(100));
+        caller.join().unwrap().unwrap();
+    }
+
+    #[test]
+    fn sleep_propagates_a_yield_error_without_sleeping() {
+        let started = std::time::Instant::now();
+        let (_, result) = roundtrip(
+            |ctx| ctx.sleep(Duration::from_secs(30)),
+            CallResultMsg {
+                result: None,
+                error: Some(ErrorInfo {
+                    code: None,
+                    message: "yield failed".to_string(),
+                }),
+            },
+        );
+        assert!(result.is_err());
+        assert!(started.elapsed() < Duration::from_secs(10));
     }
 
     #[test]

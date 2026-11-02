@@ -137,6 +137,7 @@ func TestReplicatedStateIsIdleAfterAMessageThatStartsARun(t *testing.T) {
 //   - rw_idle_busy_until_yield: two reads right after the send are busy; a read after `await ctx.waitForIdle()` is live.
 //   - rw_idle_send_then_await: the handler awaits the run with no read between the send and the await, so the hold has to end at the await however the host orders it against the send (true), reads right after a second send are busy again (false), and a read after the second await is live (true). An SDK that never holds, that never releases, or that answers a constant reports another line.
 //   - rw_idle_blocking: the handler blocks on something that is no host call (a sleep) while the run ends, and reads: busy, as Pi's synchronous wait is, whatever the Session says by then. The Session itself answers here: the run, which needs no extension and finishes within the sleep, ends meanwhile, so a hold that ended when the triggered turn started (the Session is busy from the send, so releasing there leaves nothing but the Session's own answer) reports true.
+//   - rw_idle_yield_poll: the handler polls `while !isIdle: sleep` against the Session's own answer, with the SDK's sleep helper that yields first (ctx.Sleep, ctx.sleep, ctx-sleep; Node awaits a timer): the first read after the send is busy, and the poll sees idle and returns once the run ends. An SDK whose helper does not yield stays busy until its deadline and reports final:false.
 //   - rw_idle_callback: the send comes from a callback (a timer's in Node, a goroutine or thread elsewhere) that the handler waits for; its reads are busy, and a read after its own await is live. A callback that runs after the handler returned holds only in Node, whose event loop reports where it yields (TestNodeHoldAfterATriggeringSendEndsWhereTheSendingCodeYields).
 func TestReplicatedStateIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSend(t *testing.T) {
 	if testing.Short() {
@@ -152,6 +153,7 @@ func TestReplicatedStateIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringS
 		{command: "rw_idle_busy_until_yield", want: "rw_idle_busy_until_yield=sync:false,false;later:true", runs: 1},
 		{command: "rw_idle_send_then_await", want: "rw_idle_send_then_await=awaited:true;second:false;awaited-again:true", runs: 2},
 		{command: "rw_idle_blocking", want: "rw_idle_blocking=before:true;after:false", runs: 1, liveSession: true},
+		{command: "rw_idle_yield_poll", want: "rw_idle_yield_poll=first:false;final:true", runs: 1, liveSession: true},
 		{command: "rw_idle_callback", want: "rw_idle_callback=before:true;sync:false,false;later:true", runs: 1},
 	}
 	// rpcRowMode is read by every harness factory: this test is not parallel, so it owns the value while it runs.

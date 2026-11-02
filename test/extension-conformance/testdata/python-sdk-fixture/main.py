@@ -2217,6 +2217,17 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("rw_idle_blocking", "Read isIdle after a message that starts a run and a wait that is no call", rw_idle_blocking)
 
+    def rw_idle_yield_poll(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        first = ctx.is_idle()
+        deadline = time.monotonic() + 5
+        while not ctx.is_idle() and time.monotonic() < deadline:
+            ctx.sleep(0.01)
+        final = ctx.is_idle()
+        ctx.notify("rw_idle_yield_poll=first:%s;final:%s" % (str(first).lower(), str(final).lower()), "info")
+
+    ext.command("rw_idle_yield_poll", "Poll isIdle after a message that starts a run, waiting with the SDK's yielding sleep", rw_idle_yield_poll)
+
     def rw_idle_callback(ctx: pig_sdk.Context, _args: str) -> None:
         before = str(ctx.is_idle()).lower()
 

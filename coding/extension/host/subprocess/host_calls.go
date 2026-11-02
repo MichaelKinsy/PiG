@@ -438,6 +438,9 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	var result *CallResultPayload
 	var err error
 	switch {
+	case call.Method == CallYield:
+		// The hold ended above (endSyncRunHold); the call carries nothing else.
+		result = &CallResultPayload{}
 	case me.facetBridge != nil && (call.Method == "facet.host" || call.Method == "facet.host.sync"):
 		result, err = me.facetBridge.handleCall(callCtx, call)
 	case call.Method == CallRegisterTool:

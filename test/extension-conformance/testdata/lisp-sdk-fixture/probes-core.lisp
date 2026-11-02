@@ -703,6 +703,15 @@
                      (let ((second (idle)))
                        (pig:ctx-wait-for-idle ctx)
                        (core-info ctx (format nil "rw_idle_send_then_await=awaited:~A;second:~A;awaited-again:~A" awaited second (idle))))))))
+  (pig:command ext "rw_idle_yield_poll" "Poll isIdle with the SDK sleep helper after a message that starts a run"
+               (lambda (ctx args) (declare (ignore args))
+                 (flet ((idle () (if (pig:ctx-is-idle-p ctx) "true" "false")))
+                   (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
+                   (let ((first (idle))
+                         (deadline (+ (get-internal-real-time) (* 5 internal-time-units-per-second))))
+                     (loop until (or (pig:ctx-is-idle-p ctx) (>= (get-internal-real-time) deadline))
+                           do (pig:ctx-sleep ctx 0.01))
+                     (core-info ctx (format nil "rw_idle_yield_poll=first:~A;final:~A" first (idle)))))))
   (pig:command ext "rw_idle_blocking" "Read isIdle after a message that starts a run and a wait that is no call"
                (lambda (ctx args) (declare (ignore args))
                  (flet ((idle () (if (pig:ctx-is-idle-p ctx) "true" "false")))

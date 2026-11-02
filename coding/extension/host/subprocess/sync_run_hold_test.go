@@ -85,3 +85,19 @@ func TestSyncRunHoldIsSetOnlyByASendThatMarksTheSessionBusy(t *testing.T) {
 		t.Fatal("a send from agent_settled held, where the Session holds the message back and stays idle")
 	}
 }
+
+// The yield helper of a thread-based SDK (CallYield) stands for Pi's first `await`: it ends the hold of its own request and no other.
+func TestSyncRunHoldEndsAtTheYieldCall(t *testing.T) {
+	conn := &Conn{requestStates: map[string]requestStateSink{"req-1": {event: "session_start"}}}
+	h := &Host{}
+	args, _ := json.Marshal(map[string]any{"message": map[string]any{"customType": "x"}, "options": map[string]any{"triggerTurn": true}})
+	h.holdAfterSend(conn, &CallPayload{Method: "sendMessage", ParentRequestID: "req-1", Args: args})
+	h.endSyncRunHold(conn, &CallPayload{Method: CallYield, ParentRequestID: "req-2"})
+	if !h.syncRuns.busy() {
+		t.Fatal("another request's yield ended the hold")
+	}
+	h.endSyncRunHold(conn, &CallPayload{Method: CallYield, ParentRequestID: "req-1"})
+	if h.syncRuns.busy() {
+		t.Fatal("the handler's yield did not end its hold")
+	}
+}

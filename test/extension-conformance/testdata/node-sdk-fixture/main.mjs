@@ -907,6 +907,15 @@ export default function (pi) {
       ctx.ui.notify(`rw_idle_blocking=before:${before};after:${ctx.isIdle()}`, "info");
     },
   });
+  pi.registerCommand("rw_idle_yield_poll", {
+    description: "Poll isIdle with a sleep after a message that starts a run, until the Session is idle",
+    handler: async (_args, ctx) => {
+      pi.sendMessage({ customType: "rw-trigger", content: "rw-trigger", display: true }, { triggerTurn: true });
+      const first = ctx.isIdle();
+      for (const deadline = Date.now() + 5000; !ctx.isIdle() && Date.now() < deadline;) await new Promise((resolve) => setTimeout(resolve, 10));
+      ctx.ui.notify(`rw_idle_yield_poll=first:${first};final:${ctx.isIdle()}`, "info");
+    },
+  });
   pi.registerCommand("rw_idle_callback", {
     description: "Read isIdle after a message that starts a run, sent from a timer's callback while the handler awaits it",
     handler: async (_args, ctx) => {
