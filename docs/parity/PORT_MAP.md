@@ -122,7 +122,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/catalog/sources/models-dev.ts` | `internal/modelgen/models_dev.go` | ✅ |
 | `packages/ai/catalog/sources/openrouter.ts` | `internal/modelgen/source_openrouter.go (+ openRouterCost of src/providers/openrouter-api.ts, kept equal to ai.OpenRouterCost by internal/modelgen/crosscheck_test.go)` | ✅ |
 | `packages/ai/catalog/sources/vercel-ai-gateway.ts` | `internal/modelgen/source_vercel.go (replaces scripts/ai-gateway-pricing.ts)` | ✅ |
-| `packages/ai/catalog/README.md` | `internal/modelgen/README.md` | ✅ |
+| `packages/ai/catalog/README.md` | `internal/modelgen/README.md` (the build order it documents: `internal/modelgen/build.go`; the `ModelsDevModels` helper it documents: `internal/modelgen/define.go`) | ✅ |
 
 ## `packages/agent/src/`
 

@@ -1,6 +1,7 @@
 package modelgen
 
 // pi: packages/ai/catalog/build.ts
+// pi: packages/ai/catalog/README.md
 // No upstream test covers the build; the cases pin its order of steps on tiny fake provider definitions.
 
 import (

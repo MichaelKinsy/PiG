@@ -1219,5 +1219,404 @@
    "old": "func (*remoteObject) blocksFirstPass() bool { return false }",
    "new": "func (*remoteObject) blocksFirstPass() bool { return true }"
   }
+ ],
+ "packages/ai/catalog/build.ts": [
+  {
+   "file": "internal/modelgen/build.go",
+   "old": "\"maxWidth\"",
+   "new": "\"maxWidtZ\""
+  }
+ ],
+ "packages/ai/catalog/define.ts": [
+  {
+   "file": "internal/modelgen/define.go",
+   "old": "\"deprecated\"",
+   "new": "\"deprecateZ\""
+  }
+ ],
+ "packages/ai/catalog/families/anthropic.ts": [
+  {
+   "file": "internal/modelgen/family_anthropic.go",
+   "old": "\"claude-opus-5\"",
+   "new": "\"claude-opus-Z\""
+  }
+ ],
+ "packages/ai/catalog/families/deepseek.ts": [
+  {
+   "file": "internal/modelgen/family_deepseek.go",
+   "old": "\"thinkingFormat\"",
+   "new": "\"thinkingFormaZ\""
+  }
+ ],
+ "packages/ai/catalog/families/google.ts": [
+  {
+   "file": "internal/modelgen/family_google.go",
+   "old": "\"off\"",
+   "new": "\"ofZ\""
+  }
+ ],
+ "packages/ai/catalog/families/kimi.ts": [
+  {
+   "file": "internal/modelgen/family_kimi.go",
+   "old": "\"input\"",
+   "new": "\"inpuZ\""
+  }
+ ],
+ "packages/ai/catalog/families/openai.ts": [
+  {
+   "file": "internal/modelgen/family_openai.go",
+   "old": "\"tiers\"",
+   "new": "\"tierZ\""
+  }
+ ],
+ "packages/ai/catalog/generate.ts": [
+  {
+   "file": "cmd/gen-models/generate.go",
+   "old": "\"providers.json\"",
+   "new": "\"providerZ.json\""
+  }
+ ],
+ "packages/ai/catalog/providers/amazon-bedrock.ts": [
+  {
+   "file": "internal/modelgen/providers/amazon_bedrock.go",
+   "old": "\"anthropic.claude-opus-5\"",
+   "new": "\"anthropic.claude-opus-Z\""
+  }
+ ],
+ "packages/ai/catalog/providers/ant-ling.ts": [
+  {
+   "file": "internal/modelgen/providers/ant_ling.go",
+   "old": "\"name\"",
+   "new": "\"namZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/anthropic.ts": [
+  {
+   "file": "internal/modelgen/providers/anthropic.go",
+   "old": "\"claude-fable-5\"",
+   "new": "\"claude-fable-Z\""
+  }
+ ],
+ "packages/ai/catalog/providers/azure.ts": [
+  {
+   "file": "internal/modelgen/providers/azure.go",
+   "old": "\"gpt-5.4\"",
+   "new": "\"gpt-5.Z\""
+  }
+ ],
+ "packages/ai/catalog/providers/baseten.ts": [
+  {
+   "file": "internal/modelgen/providers/baseten.go",
+   "old": "\"supportsStore\"",
+   "new": "\"supportsStorZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/cerebras.ts": [
+  {
+   "file": "internal/modelgen/providers/cerebras.go",
+   "old": "\"https://api.cerebras.ai/v1\"",
+   "new": "\"https://api.cerebras.ai/vZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/cloudflare-ai-gateway.ts": [
+  {
+   "file": "internal/modelgen/providers/cloudflare_ai_gateway.go",
+   "old": "\"https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/compat\"",
+   "new": "\"https://gateway.ai.cloudflare.com/v1/{CLOUDFLARE_ACCOUNT_ID}/{CLOUDFLARE_GATEWAY_ID}/compaZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/cloudflare-workers-ai.ts": [
+  {
+   "file": "internal/modelgen/providers/cloudflare_workers_ai.go",
+   "old": "\"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1\"",
+   "new": "\"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/vZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/deepseek.ts": [
+  {
+   "file": "internal/modelgen/providers/deepseek.go",
+   "old": "\"deepseek-flash\"",
+   "new": "\"deepseek-flasZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/fireworks.ts": [
+  {
+   "file": "internal/modelgen/providers/fireworks.go",
+   "old": "\"allowEmptySignature\"",
+   "new": "\"allowEmptySignaturZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/github-copilot.ts": [
+  {
+   "file": "internal/modelgen/providers/github_copilot.go",
+   "old": "\"https://api.individual.githubcopilot.com\"",
+   "new": "\"https://api.individual.githubcopilot.coZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/google-vertex.ts": [
+  {
+   "file": "internal/modelgen/providers/google_vertex.go",
+   "old": "\"https://{location}-aiplatform.googleapis.com\"",
+   "new": "\"https://{location}-aiplatform.googleapis.coZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/google.ts": [
+  {
+   "file": "internal/modelgen/providers/google.go",
+   "old": "\"gemini-flash-latest\"",
+   "new": "\"gemini-flash-latesZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/groq.ts": [
+  {
+   "file": "internal/modelgen/providers/groq.go",
+   "old": "\"https://api.groq.com/openai/v1\"",
+   "new": "\"https://api.groq.com/openai/vZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/huggingface.ts": [
+  {
+   "file": "internal/modelgen/providers/huggingface.go",
+   "old": "\"https://router.huggingface.co/v1\"",
+   "new": "\"https://router.huggingface.co/vZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/index.ts": [
+  {
+   "file": "internal/modelgen/providers/index.go",
+   "old": "\t\tmeta(),\n",
+   "new": ""
+  }
+ ],
+ "packages/ai/catalog/providers/kimi-coding.ts": [
+  {
+   "file": "internal/modelgen/providers/kimi_coding.go",
+   "old": "\"k3-256k\"",
+   "new": "\"k3-256Z\""
+  }
+ ],
+ "packages/ai/catalog/providers/meta.ts": [
+  {
+   "file": "internal/modelgen/providers/meta.go",
+   "old": "\"openai-responses\"",
+   "new": "\"openai-responseZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/minimax-cn.ts": [
+  {
+   "file": "internal/modelgen/providers/minimax_cn.go",
+   "old": "\"https://api.minimaxi.com/anthropic\"",
+   "new": "\"https://api.minimaxi.com/anthropiZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/minimax.ts": [
+  {
+   "file": "internal/modelgen/providers/minimax.go",
+   "old": "\"MiniMax-M2\"",
+   "new": "\"MiniMax-MZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/mistral.ts": [
+  {
+   "file": "internal/modelgen/providers/mistral.go",
+   "old": "\"mistral-medium-3.5\"",
+   "new": "\"mistral-medium-3.Z\""
+  }
+ ],
+ "packages/ai/catalog/providers/moonshotai-cn.ts": [
+  {
+   "file": "internal/modelgen/providers/moonshotai_cn.go",
+   "old": "\"https://api.moonshot.cn/v1\"",
+   "new": "\"https://api.moonshot.cn/vZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/moonshotai.ts": [
+  {
+   "file": "internal/modelgen/providers/moonshotai.go",
+   "old": "\"kimi-k2.7-code\"",
+   "new": "\"kimi-k2.7-codZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/nvidia.ts": [
+  {
+   "file": "internal/modelgen/providers/nvidia.go",
+   "old": "\"google/gemma-4-31b-it\"",
+   "new": "\"google/gemma-4-31b-iZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/openai-codex.ts": [
+  {
+   "file": "internal/modelgen/providers/openai_codex.go",
+   "old": "\"GPT-6.1 Sol\"",
+   "new": "\"GPT-6.1 SoZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/openai.ts": [
+  {
+   "file": "internal/modelgen/providers/openai.go",
+   "old": "\"https://api.openai.com/v1\"",
+   "new": "\"https://api.openai.com/vZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/opencode-go.ts": [
+  {
+   "file": "internal/modelgen/providers/opencode_go.go",
+   "old": "\"opencode-go\"",
+   "new": "\"opencode-gZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/opencode.ts": [
+  {
+   "file": "internal/modelgen/providers/opencode.go",
+   "old": "\"opencode:deepseek-v4-flash\"",
+   "new": "\"opencode:deepseek-v4-flasZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/openrouter.ts": [
+  {
+   "file": "internal/modelgen/providers/openrouter.go",
+   "old": "\"https://openrouter.ai/api/v1\"",
+   "new": "\"https://openrouter.ai/api/vZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/qwen-token-plan-cn.ts": [
+  {
+   "file": "internal/modelgen/providers/qwen_token_plan_cn.go",
+   "old": "\"qwen-token-plan-cn\"",
+   "new": "\"qwen-token-plan-cZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/qwen-token-plan-individual.ts": [
+  {
+   "file": "internal/modelgen/providers/qwen_token_plan_individual.go",
+   "old": "\"deepseek-v4-flash-0731\"",
+   "new": "\"deepseek-v4-flash-073Z\""
+  }
+ ],
+ "packages/ai/catalog/providers/qwen-token-plan.ts": [
+  {
+   "file": "internal/modelgen/providers/qwen_token_plan.go",
+   "old": "\"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1\"",
+   "new": "\"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/vZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/radius.ts": [
+  {
+   "file": "internal/modelgen/providers/radius.go",
+   "old": "\"radius\"",
+   "new": "\"radiuZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/together.ts": [
+  {
+   "file": "internal/modelgen/providers/together.go",
+   "old": "\"supportsStrictMode\"",
+   "new": "\"supportsStrictModZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/typesafe.ts": [
+  {
+   "file": "internal/modelgen/providers/typesafe.go",
+   "old": "\"typesafe/jev-latest\"",
+   "new": "\"typesafe/jev-latesZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/vercel-ai-gateway.ts": [
+  {
+   "file": "internal/modelgen/providers/vercel_ai_gateway.go",
+   "old": "\"vercel-ai-gateway\"",
+   "new": "\"vercel-ai-gatewaZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/xai.ts": [
+  {
+   "file": "internal/modelgen/providers/xai.go",
+   "old": "\"grok-3\"",
+   "new": "\"grok-Z\""
+  }
+ ],
+ "packages/ai/catalog/providers/xiaomi-token-plan-ams.ts": [
+  {
+   "file": "internal/modelgen/providers/xiaomi_token_plan_ams.go",
+   "old": "\"xiaomi-token-plan-ams\"",
+   "new": "\"xiaomi-token-plan-amZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/xiaomi-token-plan-cn.ts": [
+  {
+   "file": "internal/modelgen/providers/xiaomi_token_plan_cn.go",
+   "old": "\"xiaomi-token-plan-cn\"",
+   "new": "\"xiaomi-token-plan-cZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/xiaomi-token-plan-sgp.ts": [
+  {
+   "file": "internal/modelgen/providers/xiaomi_token_plan_sgp.go",
+   "old": "\"xiaomi-token-plan-sgp\"",
+   "new": "\"xiaomi-token-plan-sgZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/xiaomi.ts": [
+  {
+   "file": "internal/modelgen/providers/xiaomi.go",
+   "old": "\"supportsReasoningEffort\"",
+   "new": "\"supportsReasoningEfforZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/zai-coding-cn.ts": [
+  {
+   "file": "internal/modelgen/providers/zai_coding_cn.go",
+   "old": "\"zai-coding-cn\"",
+   "new": "\"zai-coding-cZ\""
+  }
+ ],
+ "packages/ai/catalog/providers/zai.ts": [
+  {
+   "file": "internal/modelgen/providers/zai.go",
+   "old": "\"glm-4.5\"",
+   "new": "\"glm-4.Z\""
+  }
+ ],
+ "packages/ai/catalog/reasoning.ts": [
+  {
+   "file": "internal/modelgen/reasoning.go",
+   "old": "\"minimal\"",
+   "new": "\"minimaZ\""
+  }
+ ],
+ "packages/ai/catalog/sources/index.ts": [
+  {
+   "file": "internal/modelgen/sources.go",
+   "old": "\"https://radius.pi.dev\"",
+   "new": "\"https://radius.pi.deZ\""
+  }
+ ],
+ "packages/ai/catalog/sources/models-dev.ts": [
+  {
+   "file": "internal/modelgen/models_dev.go",
+   "old": "\"explicit\"",
+   "new": "\"expliciZ\""
+  }
+ ],
+ "packages/ai/catalog/sources/openrouter.ts": [
+  {
+   "file": "internal/modelgen/source_openrouter.go",
+   "old": "\"effort\"",
+   "new": "\"efforZ\""
+  }
+ ],
+ "packages/ai/catalog/sources/vercel-ai-gateway.ts": [
+  {
+   "file": "internal/modelgen/source_vercel.go",
+   "old": "\"https://ai-gateway.vercel.sh/v1/models\"",
+   "new": "\"https://ai-gateway.vercel.sh/v1/modelZ\""
+  }
+ ],
+ "packages/ai/catalog/README.md": [
+  {
+   "file": "internal/modelgen/define.go",
+   "old": "\t\t\tinput = Strings(\"text\", \"image\")\n",
+   "new": "\t\t\tinput = Strings(\"text\")\n"
+  }
  ]
 }

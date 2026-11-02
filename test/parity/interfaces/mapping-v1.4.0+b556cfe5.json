@@ -31045,8 +31045,25 @@
     },
     {
       "id": "pkg:ai/.#ResolvedGoogleThinkingLevel",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1aeba1453437212e524ea5944797f60906d29518c3def9414c34eabd022ed70a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1aeba1453437212e524ea5944797f60906d29518c3def9414c34eabd022ed70a",
+      "rationale": "Derived by the interface gap detector: ResolvedGoogleThinkingLevel is Go ai/google.go#ResolvedGoogleThinkingLevel (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/google.go#ResolvedGoogleThinkingLevel"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/google.go#ToGoogleThinkingLevel"
+      ],
+      "evidence": [
+        "test:ai/google_thinking_level_map_upstream_test.go#TestToGoogleSdkThinkingLevelUpstream",
+        "test:ai/google_thinking_level_map_upstream_test.go#TestToGoogleThinkingLevelUpstream",
+        "test:ai/lower_sites_regex_test.go#TestGoogleThinkingLevelMappingLowerCasesLikeJS"
+      ]
     },
     {
       "id": "pkg:ai/.#resolveTranscript",
@@ -40409,8 +40426,25 @@
     },
     {
       "id": "pkg:ai/api/google-shared#ResolvedGoogleThinkingLevel",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:31d2eb7d70a70d89d96007bcd8eff3c800d9533179d23bd611a0d523b408ef49"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:31d2eb7d70a70d89d96007bcd8eff3c800d9533179d23bd611a0d523b408ef49",
+      "rationale": "Derived by the interface gap detector: ResolvedGoogleThinkingLevel is Go ai/google.go#ResolvedGoogleThinkingLevel (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/google.go#ResolvedGoogleThinkingLevel"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/google.go#ToGoogleThinkingLevel"
+      ],
+      "evidence": [
+        "test:ai/google_thinking_level_map_upstream_test.go#TestToGoogleSdkThinkingLevelUpstream",
+        "test:ai/google_thinking_level_map_upstream_test.go#TestToGoogleThinkingLevelUpstream",
+        "test:ai/lower_sites_regex_test.go#TestGoogleThinkingLevelMappingLowerCasesLikeJS"
+      ]
     },
     {
       "id": "pkg:ai/api/google-shared#resolveGoogleFunctionCallingMode",
@@ -75606,8 +75640,25 @@
     },
     {
       "id": "pkg:ai/compat#ResolvedGoogleThinkingLevel",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1aeba1453437212e524ea5944797f60906d29518c3def9414c34eabd022ed70a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1aeba1453437212e524ea5944797f60906d29518c3def9414c34eabd022ed70a",
+      "rationale": "Derived by the interface gap detector: ResolvedGoogleThinkingLevel is Go ai/google.go#ResolvedGoogleThinkingLevel (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/google.go#ResolvedGoogleThinkingLevel"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/google.go#ToGoogleThinkingLevel"
+      ],
+      "evidence": [
+        "test:ai/google_thinking_level_map_upstream_test.go#TestToGoogleSdkThinkingLevelUpstream",
+        "test:ai/google_thinking_level_map_upstream_test.go#TestToGoogleThinkingLevelUpstream",
+        "test:ai/lower_sites_regex_test.go#TestGoogleThinkingLevelMappingLowerCasesLikeJS"
+      ]
     },
     {
       "id": "pkg:ai/compat#resolveTranscript",
@@ -158568,13 +158619,47 @@
     },
     {
       "id": "pkg:coding-agent/.#createBashTool",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6b9d8d2ed225ccf858109de2fb5776ec7dca32ea0b632bf76afa35d0a3f8709a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6b9d8d2ed225ccf858109de2fb5776ec7dca32ea0b632bf76afa35d0a3f8709a",
+      "rationale": "Derived by the interface gap detector: createBashTool is Go internal/codingagent/tools/tools.go#CreateBashTool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/tools.go#CreateBashTool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/tools.go#CreateBashTool"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/bash_tool_oracle_test.go#TestBashToolMatchesPi",
+        "test:internal/codingagent/tools/bash_tool_options_test.go#TestCreateBashToolAppliesPrefixThenSpawnHookToCustomOperations",
+        "test:internal/codingagent/tools/bash_tool_options_test.go#TestCreateBashToolExposeSessionEnvironmentDefaultsToTrue"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createBashTool::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6e15be02c5633d9f96a29e58e5ed78bdb9a7e1c9d3011910574c3f9d8f10b476"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6e15be02c5633d9f96a29e58e5ed78bdb9a7e1c9d3011910574c3f9d8f10b476",
+      "rationale": "Derived by the interface gap detector: createBashTool::call:0 is Go internal/codingagent/tools/tools.go#CreateBashTool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/tools.go#CreateBashTool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/tools.go#CreateBashTool"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/bash_tool_oracle_test.go#TestBashToolMatchesPi",
+        "test:internal/codingagent/tools/bash_tool_options_test.go#TestCreateBashToolAppliesPrefixThenSpawnHookToCustomOperations",
+        "test:internal/codingagent/tools/bash_tool_options_test.go#TestCreateBashToolExposeSessionEnvironmentDefaultsToTrue"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createBashToolDefinition",
@@ -158710,13 +158795,47 @@
     },
     {
       "id": "pkg:coding-agent/.#createEditTool",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:51c786536ca3a567188096cebe5906ed09cde589f401e29867d81ada7ab7188b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:51c786536ca3a567188096cebe5906ed09cde589f401e29867d81ada7ab7188b",
+      "rationale": "Derived by the interface gap detector: createEditTool is Go internal/codingagent/tools/tools.go#CreateEditTool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/tools.go#CreateEditTool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/tools.go#CreateEditTool"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateToolFactoriesBindTheirCwdAndOptions",
+        "test:internal/codingagent/tools/process_mutation_queue_test.go#TestSeparatelyCreatedEditAndWriteToolsShareOneMutationQueue",
+        "test:internal/codingagent/tools/with_file_mutation_queue_test.go#TestWithFileMutationQueueSharesTheQueueWithEditAndWriteTools"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createEditTool::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:00ca84692b1dd6d380c1dd6bf56e1c1cba1beb8613c2a76f1d35a0da5bd036c0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:00ca84692b1dd6d380c1dd6bf56e1c1cba1beb8613c2a76f1d35a0da5bd036c0",
+      "rationale": "Derived by the interface gap detector: createEditTool::call:0 is Go internal/codingagent/tools/tools.go#CreateEditTool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/tools.go#CreateEditTool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/tools.go#CreateEditTool"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateToolFactoriesBindTheirCwdAndOptions",
+        "test:internal/codingagent/tools/process_mutation_queue_test.go#TestSeparatelyCreatedEditAndWriteToolsShareOneMutationQueue",
+        "test:internal/codingagent/tools/with_file_mutation_queue_test.go#TestWithFileMutationQueueSharesTheQueueWithEditAndWriteTools"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createEditToolDefinition",
@@ -158850,13 +158969,47 @@
     },
     {
       "id": "pkg:coding-agent/.#createFindTool",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5aa3e4910dee1d0b30ca5a129857dc06fb7abee4a3afa530e30dfecfa2af2e59"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5aa3e4910dee1d0b30ca5a129857dc06fb7abee4a3afa530e30dfecfa2af2e59",
+      "rationale": "Derived by the interface gap detector: createFindTool is Go internal/codingagent/tools/tools.go#CreateFindTool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/tools.go#CreateFindTool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/tools.go#CreateFindTool"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/bin_dir_options_test.go#TestToolBinDirComesFromOptions",
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateToolFactoriesBindTheirCwdAndOptions",
+        "test:internal/codingagent/tools/create_tool_options_test.go#TestCreateToolsTakeCwdAndOptions"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createFindTool::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ff29321031d1faa511d7afbab29c0b40680848036894aeb82f9ba965ab5cfe45"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ff29321031d1faa511d7afbab29c0b40680848036894aeb82f9ba965ab5cfe45",
+      "rationale": "Derived by the interface gap detector: createFindTool::call:0 is Go internal/codingagent/tools/tools.go#CreateFindTool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/tools.go#CreateFindTool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/tools.go#CreateFindTool"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/bin_dir_options_test.go#TestToolBinDirComesFromOptions",
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateToolFactoriesBindTheirCwdAndOptions",
+        "test:internal/codingagent/tools/create_tool_options_test.go#TestCreateToolsTakeCwdAndOptions"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createFindToolDefinition",
@@ -158904,13 +159057,47 @@
     },
     {
       "id": "pkg:coding-agent/.#createGrepTool",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:9f0b8f84f8bad4570bc7442ec037920a3e7911f09545fc45eb30040b68851f7c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:9f0b8f84f8bad4570bc7442ec037920a3e7911f09545fc45eb30040b68851f7c",
+      "rationale": "Derived by the interface gap detector: createGrepTool is Go internal/codingagent/tools/tools.go#CreateGrepTool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/tools.go#CreateGrepTool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/tools.go#CreateGrepTool"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/bin_dir_options_test.go#TestToolBinDirComesFromOptions",
+        "test:internal/codingagent/tools/bin_dir_search_tools_test.go#TestSearchToolBinDirSelectsTheManagedToolsDirectory",
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateToolFactoriesBindTheirCwdAndOptions"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createGrepTool::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:255a9903c68ea6e58178ea9dafc3039851234de749bfbf2273535d2f6071dc5c"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:255a9903c68ea6e58178ea9dafc3039851234de749bfbf2273535d2f6071dc5c",
+      "rationale": "Derived by the interface gap detector: createGrepTool::call:0 is Go internal/codingagent/tools/tools.go#CreateGrepTool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/tools.go#CreateGrepTool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/tools.go#CreateGrepTool"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/bin_dir_options_test.go#TestToolBinDirComesFromOptions",
+        "test:internal/codingagent/tools/bin_dir_search_tools_test.go#TestSearchToolBinDirSelectsTheManagedToolsDirectory",
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateToolFactoriesBindTheirCwdAndOptions"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createGrepToolDefinition",
@@ -159046,13 +159233,47 @@
     },
     {
       "id": "pkg:coding-agent/.#createLsTool",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2ab4260c022a57b2128871d337381622df07c84bd96b2ad5bf88d7aa84428c57"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2ab4260c022a57b2128871d337381622df07c84bd96b2ad5bf88d7aa84428c57",
+      "rationale": "Derived by the interface gap detector: createLsTool is Go internal/codingagent/tools/tools.go#CreateLsTool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/tools.go#CreateLsTool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/tools.go#CreateLsTool"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/ls_create_tool_upstream_test.go#TestCreateLsToolUpstream",
+        "test:internal/codingagent/tools/ls_create_tool_upstream_test.go#TestLsSortsLikeLocaleCompareUpstream",
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateToolFactoriesBindTheirCwdAndOptions"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createLsTool::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1e516c0f77a2c18ad1e73a80d16866a7bee313e07249d95421225a45152d3d9b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1e516c0f77a2c18ad1e73a80d16866a7bee313e07249d95421225a45152d3d9b",
+      "rationale": "Derived by the interface gap detector: createLsTool::call:0 is Go internal/codingagent/tools/tools.go#CreateLsTool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/tools.go#CreateLsTool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/tools.go#CreateLsTool"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/ls_create_tool_upstream_test.go#TestCreateLsToolUpstream",
+        "test:internal/codingagent/tools/ls_create_tool_upstream_test.go#TestLsSortsLikeLocaleCompareUpstream",
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateToolFactoriesBindTheirCwdAndOptions"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createLsToolDefinition",
@@ -159382,13 +159603,47 @@
     },
     {
       "id": "pkg:coding-agent/.#createPowerShellTool",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:07d8c3d21c16490596f6870311dee0fb2e45e34714456bc11a48d057b1fbbb98"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:07d8c3d21c16490596f6870311dee0fb2e45e34714456bc11a48d057b1fbbb98",
+      "rationale": "Derived by the interface gap detector: createPowerShellTool is Go internal/codingagent/tools/tools.go#CreatePowerShellTool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/tools.go#CreatePowerShellTool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/tools.go#CreatePowerShellTool"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/bash_tool_options_test.go#TestCreatePowerShellToolRunsCustomOperationsAfterTheSpawnHook",
+        "test:internal/codingagent/tools/bin_dir_options_test.go#TestToolBinDirComesFromOptions",
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateShellToolsBindTheirCwdAndSettings"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createPowerShellTool::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:54db64b43eb6921731019d8151bd7d0eb122bac4ecba1d2411635a2a351f5760"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:54db64b43eb6921731019d8151bd7d0eb122bac4ecba1d2411635a2a351f5760",
+      "rationale": "Derived by the interface gap detector: createPowerShellTool::call:0 is Go internal/codingagent/tools/tools.go#CreatePowerShellTool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/tools.go#CreatePowerShellTool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/tools.go#CreatePowerShellTool"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/bash_tool_options_test.go#TestCreatePowerShellToolRunsCustomOperationsAfterTheSpawnHook",
+        "test:internal/codingagent/tools/bin_dir_options_test.go#TestToolBinDirComesFromOptions",
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateShellToolsBindTheirCwdAndSettings"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createPowerShellToolDefinition",
@@ -159480,13 +159735,47 @@
     },
     {
       "id": "pkg:coding-agent/.#createReadTool",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b566ad7fa0d048719f28014848f3f4db89f9c0cb7d97691c3d7497c2205b5ce0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b566ad7fa0d048719f28014848f3f4db89f9c0cb7d97691c3d7497c2205b5ce0",
+      "rationale": "Derived by the interface gap detector: createReadTool is Go internal/codingagent/tools/tools.go#CreateReadTool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/tools.go#CreateReadTool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/tools.go#CreateReadTool"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateToolFactoriesBindTheirCwdAndOptions",
+        "test:internal/codingagent/tools/read_directory_test.go#TestReadDirectoryReportsNodeEISDIR",
+        "test:internal/codingagent/tools/tool_definition_test.go#TestToolDefinitionFromAgentToolKeepsTheParameterMemberOrder"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createReadTool::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5b8bc5017c49b1d0793574690e341f52f5cdedabc96861e7275c0f1916880fc4"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5b8bc5017c49b1d0793574690e341f52f5cdedabc96861e7275c0f1916880fc4",
+      "rationale": "Derived by the interface gap detector: createReadTool::call:0 is Go internal/codingagent/tools/tools.go#CreateReadTool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/tools.go#CreateReadTool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/tools.go#CreateReadTool"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateToolFactoriesBindTheirCwdAndOptions",
+        "test:internal/codingagent/tools/read_directory_test.go#TestReadDirectoryReportsNodeEISDIR",
+        "test:internal/codingagent/tools/tool_definition_test.go#TestToolDefinitionFromAgentToolKeepsTheParameterMemberOrder"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createReadToolDefinition",
@@ -159618,13 +159907,47 @@
     },
     {
       "id": "pkg:coding-agent/.#createWriteTool",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e167ff6478aef97aa8fea8db225b6c4255508a3c274cfc627fc96d0f5c205254"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e167ff6478aef97aa8fea8db225b6c4255508a3c274cfc627fc96d0f5c205254",
+      "rationale": "Derived by the interface gap detector: createWriteTool is Go internal/codingagent/tools/tools.go#CreateWriteTool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/tools.go#CreateWriteTool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/tools.go#CreateWriteTool"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateToolFactoriesBindTheirCwdAndOptions",
+        "test:internal/codingagent/tools/process_mutation_queue_test.go#TestSeparatelyCreatedEditAndWriteToolsShareOneMutationQueue",
+        "test:internal/codingagent/tools/with_file_mutation_queue_test.go#TestWithFileMutationQueueSharesTheQueueWithEditAndWriteTools"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createWriteTool::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:391f91538f9f89480bebe13d206509a9e690fa1ff5836251cbc56fd4f0785967"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:391f91538f9f89480bebe13d206509a9e690fa1ff5836251cbc56fd4f0785967",
+      "rationale": "Derived by the interface gap detector: createWriteTool::call:0 is Go internal/codingagent/tools/tools.go#CreateWriteTool (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/tools/tools.go#CreateWriteTool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/tools/tools.go#CreateWriteTool"
+      ],
+      "evidence": [
+        "test:internal/codingagent/tools/create_tool_factories_test.go#TestCreateToolFactoriesBindTheirCwdAndOptions",
+        "test:internal/codingagent/tools/process_mutation_queue_test.go#TestSeparatelyCreatedEditAndWriteToolsShareOneMutationQueue",
+        "test:internal/codingagent/tools/with_file_mutation_queue_test.go#TestWithFileMutationQueueSharesTheQueueWithEditAndWriteTools"
+      ]
     },
     {
       "id": "pkg:coding-agent/.#createWriteToolDefinition",
@@ -162627,7 +162950,7 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.ListConfiguredPackages"
       ],
       "evidence": [
-        "test:coding/cli/config_command_test.go#TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage",
+        "test:coding/cli/config_selector_command_test.go#TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage",
         "test:coding/cli/package_commands_test.go#TestListConfiguredPackagesPreservesBothSettingsScopesLikePi",
         "test:coding/cli/package_unavailable_resources_test.go#TestUnavailableNpmPackagesDoNotProvideResources"
       ]
@@ -162649,7 +162972,7 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.ListConfiguredPackages"
       ],
       "evidence": [
-        "test:coding/cli/config_command_test.go#TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage",
+        "test:coding/cli/config_selector_command_test.go#TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage",
         "test:coding/cli/package_commands_test.go#TestListConfiguredPackagesPreservesBothSettingsScopesLikePi",
         "test:coding/cli/package_unavailable_resources_test.go#TestUnavailableNpmPackagesDoNotProvideResources"
       ]
@@ -191523,7 +191846,7 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.ListConfiguredPackages"
       ],
       "evidence": [
-        "test:coding/cli/config_command_test.go#TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage",
+        "test:coding/cli/config_selector_command_test.go#TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage",
         "test:coding/cli/package_commands_test.go#TestListConfiguredPackagesPreservesBothSettingsScopesLikePi",
         "test:coding/cli/package_unavailable_resources_test.go#TestUnavailableNpmPackagesDoNotProvideResources"
       ]
@@ -191545,7 +191868,7 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.ListConfiguredPackages"
       ],
       "evidence": [
-        "test:coding/cli/config_command_test.go#TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage",
+        "test:coding/cli/config_selector_command_test.go#TestProjectConfigPackageOverrideIsDeltaOverInheritedGlobalPackage",
         "test:coding/cli/package_commands_test.go#TestListConfiguredPackagesPreservesBothSettingsScopesLikePi",
         "test:coding/cli/package_unavailable_resources_test.go#TestUnavailableNpmPackagesDoNotProvideResources"
       ]
