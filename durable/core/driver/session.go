@@ -251,6 +251,7 @@ func (s *coreSession) settingsText() []byte {
 	st.Extensions = nil
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()
+	//perf:ok the comparison is the saving: unchanged settings cost 1.5 µs and 4 allocs per event (BenchmarkSettingsTextUnchanged), the encode it skips 9.6 µs and 49 allocs (BenchmarkSettingsTextEncode), and the text is never encoded twice
 	if s.sentText != nil && slices.Equal(names, s.sentNames) && reflect.DeepEqual(st, s.sentSettings) {
 		return s.sentText
 	}

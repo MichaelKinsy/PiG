@@ -5,6 +5,7 @@ package driver
 
 import (
 	"bytes"
+	"encoding/json"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/durable"
@@ -23,5 +24,29 @@ func TestSettingsTextIsEncodedOnlyWhenTheSettingsChange(t *testing.T) {
 	changed := s.settingsText()
 	if bytes.Equal(changed, first) {
 		t.Fatal("changed settings were answered with the old text")
+	}
+}
+
+// BenchmarkSettingsTextUnchanged is the cost the host pays per event for settings that did not change: a comparison, no encode.
+func BenchmarkSettingsTextUnchanged(b *testing.B) {
+	settings := &harness.HarnessSettings{ToolExecution: durable.ToolExecutionSequential}
+	s := &coreSession{cfg: SessionConfig{Harness: harness.HarnessOptions{Settings: func() *harness.HarnessSettings { return settings }}}}
+	s.settingsText()
+	b.ReportAllocs()
+	for b.Loop() {
+		s.settingsText()
+	}
+}
+
+// BenchmarkSettingsTextEncode is the encode the comparison saves.
+func BenchmarkSettingsTextEncode(b *testing.B) {
+	settings := &harness.HarnessSettings{ToolExecution: durable.ToolExecutionSequential}
+	s := &coreSession{cfg: SessionConfig{Harness: harness.HarnessOptions{Settings: func() *harness.HarnessSettings { return settings }}}}
+	st := s.resolveSettings()
+	names := extensionNames(st)
+	st.Extensions = nil
+	b.ReportAllocs()
+	for b.Loop() {
+		_, _ = json.Marshal(settingsMap(st, names))
 	}
 }
