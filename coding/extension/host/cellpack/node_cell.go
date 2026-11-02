@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -62,10 +63,11 @@ func extractNodeCell(data []byte, c CellEntry, dest string) error {
 //
 // Link names are text, but the kernel resolves them against the tree being
 // written: "z/.." climbs one directory more than it reads when z is a link to
-// ".". So no member may pass through a link the archive wrote (a member's
-// location is then its name), a link target climbs only before it names
-// anything (archivepath.CheckLink), and every write goes through an os.Root,
-// which refuses any resolution that leaves root.
+// ".". So no entry may be located through a link the archive wrote, judged on
+// disk (requireRealFolders) because a file system may fold one name onto
+// another (case, Unicode normalization), a link target climbs only before it
+// names anything (archivepath.CheckLink), and every write goes through an
+// os.Root, which refuses any resolution that leaves root.
 func untarNodeSources(data []byte, root string) error {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return err
@@ -75,7 +77,7 @@ func untarNodeSources(data []byte, root string) error {
 		return err
 	}
 	defer func() { _ = tree.Close() }()
-	links := map[string]struct{}{}
+	real := map[string]struct{}{}
 	reader := tar.NewReader(bytes.NewReader(data))
 	for {
 		header, err := reader.Next()
@@ -89,8 +91,8 @@ func untarNodeSources(data []byte, root string) error {
 		if err != nil {
 			return err
 		}
-		if link, through := archivepath.ThroughLink(links, name); through {
-			return fmt.Errorf("archive entry %s passes through the link %s", header.Name, link)
+		if err := requireRealFolders(tree, real, name, header.Typeflag == tar.TypeDir); err != nil {
+			return fmt.Errorf("archive entry %s: %w", header.Name, err)
 		}
 		local := filepath.FromSlash(name)
 		switch header.Typeflag {
@@ -124,9 +126,43 @@ func untarNodeSources(data []byte, root string) error {
 			if err := tree.Symlink(filepath.FromSlash(header.Linkname), local); err != nil {
 				return err
 			}
-			links[name] = struct{}{}
 		default:
 			return fmt.Errorf("archive entry %s has unsupported type %q", header.Name, header.Typeflag)
 		}
 	}
+}
+
+// requireRealFolders refuses an entry located through a symbolic link: it
+// Lstats each folder on the way to name (and name itself for a folder entry,
+// which MkdirAll would accept as an existing link to a folder), nearest to the
+// root first so each Lstat resolves through folders already confirmed real.
+// Folders that do not exist yet are the extraction's to create. real holds the
+// folders confirmed so far, which stay real: a folder cannot become a link.
+func requireRealFolders(tree *os.Root, real map[string]struct{}, name string, includeName bool) error {
+	for end := 0; end <= len(name); end++ {
+		atSeparator := end < len(name) && name[end] == '/'
+		atName := end == len(name) && includeName
+		if !atSeparator && !atName {
+			continue
+		}
+		folder := name[:end]
+		if _, ok := real[folder]; ok {
+			continue
+		}
+		info, err := tree.Lstat(filepath.FromSlash(folder))
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		switch {
+		case info.Mode()&fs.ModeSymlink != 0:
+			return fmt.Errorf("is located through the link %s", folder)
+		case !info.IsDir():
+			return fmt.Errorf("is located under %s, which is not a folder", folder)
+		}
+		real[folder] = struct{}{}
+	}
+	return nil
 }

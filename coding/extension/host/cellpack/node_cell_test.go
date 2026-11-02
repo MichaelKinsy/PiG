@@ -208,6 +208,37 @@ func TestUntarNodeSourcesRefusesWritesThroughSymbolicLinks(t *testing.T) {
 	}
 }
 
+// On a file system that folds case (macOS APFS by default, Windows NTFS) a link
+// is reached by every spelling of its name, so judging "does this member pass
+// through a link" from the archive's own text misses a spelling the archive did
+// not write. a/b/Z links to "a"; the folder entry a/b/z names the same link, and
+// the member a/b/z/w would be created as a/w, a link whose target
+// "../../../x" resolves above the root. The check reads the tree on disk.
+func TestUntarNodeSourcesRefusesALinkReachedByAnotherSpellingOfItsName(t *testing.T) {
+	probe := t.TempDir()
+	if err := os.WriteFile(filepath.Join(probe, "a"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(probe, "A")); err != nil {
+		t.Skip("the file system distinguishes case, so one spelling names one entry")
+	}
+	data, _ := nodeArchive(t,
+		archiveEntry{name: "a/", dir: true},
+		archiveEntry{name: "a/b/", dir: true},
+		archiveEntry{name: "a/b/Z", link: "../"},
+		archiveEntry{name: "a/b/z/", dir: true},
+		archiveEntry{name: "a/b/z/w", link: "../../../x"},
+	)
+	parent := t.TempDir()
+	err := untarNodeSources(data, filepath.Join(parent, "sources"))
+	if err == nil {
+		t.Error("untarNodeSources accepted a member that passes through a link by another spelling of its name")
+	}
+	if link, readErr := os.Readlink(filepath.Join(parent, "sources", "a", "w")); readErr == nil {
+		t.Errorf("extraction created a/w -> %s outside the folder the archive named", link)
+	}
+}
+
 // Links that stay inside the tree keep working: a package manager's
 // node_modules link climbs out of its own directory before naming the target,
 // and a package may link to itself or to a sibling.

@@ -29,6 +29,9 @@ func TestCheckLink(t *testing.T) {
 		{"a/l", "../../c", false},
 		{"a/l", "/c", false},
 		{"a/l", `b\c`, false},
+		{"a/l", "C:foo", false},
+		{"a/l", "c:", false},
+		{"a/l", "b:c", false},
 		{"a/l", "..", false},
 		{"a/b/l", "z/../z/../..", false},
 		{"a/b/l", "b/../c", false},
@@ -36,16 +39,6 @@ func TestCheckLink(t *testing.T) {
 	} {
 		if err := CheckLink(test.name, test.target); (err == nil) != test.ok {
 			t.Errorf("CheckLink(%q, %q) = %v, want ok=%v", test.name, test.target, err, test.ok)
-		}
-	}
-}
-
-func TestThroughLink(t *testing.T) {
-	links := map[string]struct{}{"a/z": {}, "top": {}}
-	for name, want := range map[string]string{"a/z": "a/z", "a/z/x/y": "a/z", "top/x": "top", "a/q": "", "a": "", "b/top": ""} {
-		got, through := ThroughLink(links, name)
-		if got != want || through != (want != "") {
-			t.Errorf("ThroughLink(%q) = %q, %v; want %q", name, got, through, want)
 		}
 	}
 }

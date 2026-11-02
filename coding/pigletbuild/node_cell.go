@@ -151,14 +151,14 @@ func writeArchiveLink(writer *tar.Writer, name, root, current string) error {
 		return err
 	}
 	slashTarget := filepath.ToSlash(target)
-	if err := archivepath.CheckLink(name, slashTarget); err != nil {
-		return fmt.Errorf("symbolic link %s: %w", current, err)
-	}
 	member, _, _ := strings.Cut(name, "/")
 	//portlint:allow pathseparators tar member and link names are slash paths by the tar format, not host paths
 	resolved := path.Join(path.Dir(name), slashTarget)
 	if filepath.IsAbs(target) || (resolved != member && !strings.HasPrefix(resolved, member+"/")) {
 		return fmt.Errorf("symbolic link %s points outside the extension directory %s; the Piglet Binary embeds only that directory", current, root)
+	}
+	if err := archivepath.CheckLink(name, slashTarget); err != nil {
+		return fmt.Errorf("symbolic link %s: %w", current, err)
 	}
 	return writer.WriteHeader(&tar.Header{Typeflag: tar.TypeSymlink, Name: name, Linkname: slashTarget, Mode: 0o777, Format: tar.FormatPAX})
 }
