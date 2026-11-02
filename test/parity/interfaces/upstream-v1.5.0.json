@@ -1,12 +1,12 @@
 {
-  "upstreamVersion": "1.4.0+b556cfe5",
+  "upstreamVersion": "1.5.0",
   "typescriptVersion": "5.9.3",
   "origin": "published",
   "packages": [
     {
       "key": "agent",
       "name": "@earendil-works/pi-agent-core",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "origin": "published",
       "entrypoints": [
         {
@@ -18,7 +18,7 @@
     {
       "key": "ai",
       "name": "@earendil-works/pi-ai",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "origin": "published",
       "entrypoints": [
         {
@@ -710,7 +710,7 @@
     {
       "key": "chord",
       "name": "@earendil-works/chord",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "origin": "source",
       "entrypoints": [
         {
@@ -758,7 +758,7 @@
     {
       "key": "codemode",
       "name": "@earendil-works/pi-codemode",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "origin": "published",
       "entrypoints": [
         {
@@ -790,7 +790,7 @@
     {
       "key": "coding-agent",
       "name": "@earendil-works/pi-coding-agent",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "origin": "published",
       "entrypoints": [
         {
@@ -806,7 +806,7 @@
     {
       "key": "durable",
       "name": "@earendil-works/pi-durable",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "origin": "source",
       "entrypoints": [
         {
@@ -886,7 +886,7 @@
     {
       "key": "env",
       "name": "@earendil-works/pi-env",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "origin": "source",
       "entrypoints": [
         {
@@ -898,14 +898,14 @@
     {
       "key": "evals",
       "name": "@earendil-works/pi-evals",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "origin": "source",
       "entrypoints": []
     },
     {
       "key": "mcp",
       "name": "@earendil-works/pi-mcp",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "origin": "published",
       "entrypoints": [
         {
@@ -925,7 +925,7 @@
     {
       "key": "schema",
       "name": "@earendil-works/pi-schema",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "origin": "published",
       "entrypoints": [
         {
@@ -941,7 +941,7 @@
     {
       "key": "telemetry",
       "name": "@earendil-works/pi-telemetry",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "origin": "published",
       "entrypoints": [
         {
@@ -961,7 +961,7 @@
     {
       "key": "tui",
       "name": "@earendil-works/pi-tui",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "origin": "published",
       "entrypoints": [
         {
@@ -44014,14 +44014,14 @@
       "kind": "variable",
       "shape": {
         "aliasTarget": "PI_AI_VERSION",
-        "type": "\"1.4.0\"",
+        "type": "\"1.5.0\"",
         "typeParameters": [],
         "calls": [],
         "constructs": [],
         "properties": [],
         "enumMembers": []
       },
-      "shapeHash": "sha256:17e7b4d4ab23cde200e579100798c4875cf8ad960f66b0f6abb4755c4fd0d15d",
+      "shapeHash": "sha256:85b37cd335f94073878559e2844fc02f908a987e75687c87c6bf30e1a6834144",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/utils/version.d.ts",
         "line": 1,
@@ -109925,14 +109925,14 @@
       "kind": "variable",
       "shape": {
         "aliasTarget": "PI_AI_VERSION",
-        "type": "\"1.4.0\"",
+        "type": "\"1.5.0\"",
         "typeParameters": [],
         "calls": [],
         "constructs": [],
         "properties": [],
         "enumMembers": []
       },
-      "shapeHash": "sha256:17e7b4d4ab23cde200e579100798c4875cf8ad960f66b0f6abb4755c4fd0d15d",
+      "shapeHash": "sha256:85b37cd335f94073878559e2844fc02f908a987e75687c87c6bf30e1a6834144",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/utils/version.d.ts",
         "line": 1,
@@ -152315,14 +152315,14 @@
       "kind": "variable",
       "shape": {
         "aliasTarget": "",
-        "type": "\"1.4.0\"",
+        "type": "\"1.5.0\"",
         "typeParameters": [],
         "calls": [],
         "constructs": [],
         "properties": [],
         "enumMembers": []
       },
-      "shapeHash": "sha256:da73cc73835fc7b09041e2edafe9bee709894f52e89836072dd50a34416d4371",
+      "shapeHash": "sha256:227206df1d6891ea129af3717c94b124076c54335314ab6a2e6d9969bbd255a7",
       "source": {
         "path": "node_modules/@earendil-works/pi-ai/dist/utils/version.d.ts",
         "line": 1,
@@ -247809,7 +247809,7 @@
       "shapeHash": "sha256:6642d5023f14a4477ba851509076e28804766e8965b87e8560084d49af0f4ec6",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 202,
+        "line": 209,
         "column": 1
       }
     },
@@ -247848,7 +247848,7 @@
       "shapeHash": "sha256:c553aed77924a7e9da29c118842f02b3fee88eecd98bc79dabcd2dea80749267",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 202,
+        "line": 209,
         "column": 1
       }
     },
@@ -247895,7 +247895,7 @@
       "shapeHash": "sha256:4701cd3d1479ca9f67132f7b807404cf9164c401391817ef9ecc8ad16e5b6a86",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 200,
+        "line": 207,
         "column": 1
       }
     },
@@ -247934,7 +247934,7 @@
       "shapeHash": "sha256:2ac1024748c09c7665455b6a093e6159be1e4c8dd0bc1489eadbc369e8098426",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 200,
+        "line": 207,
         "column": 1
       }
     },
@@ -326662,7 +326662,7 @@
       "shapeHash": "sha256:891416bdc9527e21177b189b0ddb22447995cc605eaab3cf6204af1d1a67fc72",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 222,
+        "line": 229,
         "column": 1
       }
     },
@@ -326697,7 +326697,7 @@
       "shapeHash": "sha256:c82dc7b6b986e05bace3787781d6efdb85783d80546c08ee12fc17db2302e041",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 255,
+        "line": 262,
         "column": 5
       }
     },
@@ -326724,7 +326724,7 @@
       "shapeHash": "sha256:98cb2ceb411ee33d889f3d0939d12f8e9684dd2a659518b130efcd539c586b6b",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 255,
+        "line": 262,
         "column": 5
       }
     },
@@ -326795,7 +326795,7 @@
       "shapeHash": "sha256:52b74a094d5a7ea13027ebf2972005ab0ad41d67fd1959f5224a4f94211e37ca",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 271,
+        "line": 278,
         "column": 5
       }
     },
@@ -326858,7 +326858,7 @@
       "shapeHash": "sha256:1c5d54f400b18fc40c09957178a0698a6df472eaca444098c136a64a724e3a59",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 271,
+        "line": 278,
         "column": 5
       }
     },
@@ -326899,7 +326899,7 @@
       "shapeHash": "sha256:b0a33594e618f6e548e566cb107da0344a48800d47d96334252a4e9a3efb75fb",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 288,
+        "line": 295,
         "column": 5
       }
     },
@@ -326932,7 +326932,7 @@
       "shapeHash": "sha256:bf6ad4a2eba16e83b567258298252d2fc1cb5df9d10d1b4eefb1ea4a1971eaa1",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 288,
+        "line": 295,
         "column": 5
       }
     },
@@ -326973,7 +326973,7 @@
       "shapeHash": "sha256:ca4dc7ebf30ea27db1e859b287caa0b6dad121bd9d52ff87233d064b627d81a2",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 273,
+        "line": 280,
         "column": 5
       }
     },
@@ -327006,7 +327006,7 @@
       "shapeHash": "sha256:2aa7e7f9f074b4f2cfbfcffd05f62a7db5d176c9c4390fae6a7dde8b464ba98d",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 273,
+        "line": 280,
         "column": 5
       }
     },
@@ -327065,7 +327065,7 @@
       "shapeHash": "sha256:43c4d1daecf6d863c9265c1bbb00062970dca1be43592d550e57f354b69e7464",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 286,
+        "line": 293,
         "column": 5
       }
     },
@@ -327116,7 +327116,7 @@
       "shapeHash": "sha256:abdbc4e4b3d7703f762b697dc3a2ad01c5a4691860fb65daa1100973e1d204bb",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 286,
+        "line": 293,
         "column": 5
       }
     },
@@ -327157,7 +327157,7 @@
       "shapeHash": "sha256:ad26983573d6f5d6f3d023a206cf324c951a913056d1182d3e8e8497089b8933",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 305,
+        "line": 312,
         "column": 5
       }
     },
@@ -327190,7 +327190,7 @@
       "shapeHash": "sha256:b202ad026164792607cd934c25c6e5c195e1f6c6670eb187a5505d56ad58f3ff",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 305,
+        "line": 312,
         "column": 5
       }
     },
@@ -327225,7 +327225,7 @@
       "shapeHash": "sha256:bd42568ca2892598223527c475d3cc39293e8feb9659cbd76e5bc0da3719fc05",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 263,
+        "line": 270,
         "column": 5
       }
     },
@@ -327252,7 +327252,7 @@
       "shapeHash": "sha256:9463202b5e04b45f373e4c54c28a7cdf1123ad9e327f457e1ef0c8d886ea34aa",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 263,
+        "line": 270,
         "column": 5
       }
     },
@@ -327293,7 +327293,7 @@
       "shapeHash": "sha256:33507365d0baa8a4ab763e12a24577aff63a74bad476447955a0031c1c6beec3",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 267,
+        "line": 274,
         "column": 5
       }
     },
@@ -327326,7 +327326,7 @@
       "shapeHash": "sha256:4c89d24523b46c8a1a984e36b6ed223bac87153bd83c988c94cec07cd8965108",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 267,
+        "line": 274,
         "column": 5
       }
     },
@@ -327361,7 +327361,7 @@
       "shapeHash": "sha256:bbf746937f4737de77e39a624290bf9145639b21ef20f9e8e72cb17bf290c8f2",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 275,
+        "line": 282,
         "column": 5
       }
     },
@@ -327388,7 +327388,7 @@
       "shapeHash": "sha256:259f42eae69e3720be5ce3afff4ed28490f8046448cd462ca10a4cc25282fa92",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 275,
+        "line": 282,
         "column": 5
       }
     },
@@ -327423,7 +327423,7 @@
       "shapeHash": "sha256:e5f0b9137058f106e755f91f1c079feeb0487f964ce3ecc3f43c26bda7ba9bea",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 265,
+        "line": 272,
         "column": 5
       }
     },
@@ -327450,7 +327450,7 @@
       "shapeHash": "sha256:9be96b46e80f56932ece935e77120cec6adeb4f58640da717442d7d55781e638",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 265,
+        "line": 272,
         "column": 5
       }
     },
@@ -327509,7 +327509,7 @@
       "shapeHash": "sha256:e56be3a777c489f0a6e884aabd94d97423197935245334cd7575c23fc828b194",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 269,
+        "line": 276,
         "column": 5
       }
     },
@@ -327560,7 +327560,7 @@
       "shapeHash": "sha256:8a5c67c088dc0fa5148db2c3fdb5495655f4c21c65f49f1bc6494b429c81a75b",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 269,
+        "line": 276,
         "column": 5
       }
     },
@@ -327595,7 +327595,7 @@
       "shapeHash": "sha256:5eb8c3bedd26c644d4adc5c7d9ae97e6b034c4c3bcdd2d23d9b17e43e13bda54",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 347,
+        "line": 354,
         "column": 5
       }
     },
@@ -327622,7 +327622,7 @@
       "shapeHash": "sha256:d74201f7687bd5cbcdef81835df46eaaecf2fc4c282b6f44b3835c47f6e3d274",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 347,
+        "line": 354,
         "column": 5
       }
     },
@@ -327681,7 +327681,7 @@
       "shapeHash": "sha256:487d7a6100af3d626a5fef8037e0e545e7c87f2fda3063ae80efd13878f269f8",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 359,
+        "line": 366,
         "column": 5
       }
     },
@@ -327732,7 +327732,7 @@
       "shapeHash": "sha256:d1b0dafd886b2dc64f9e38969a2d8fa305243b997730d3182bba78b31c07fb03",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 359,
+        "line": 366,
         "column": 5
       }
     },
@@ -327760,7 +327760,7 @@
       "shapeHash": "sha256:b1332105735d86df140d5a7fdfe1afb901588069a69ba19171eeeee37e1b8a15",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 316,
+        "line": 323,
         "column": 5
       }
     },
@@ -327780,7 +327780,7 @@
       "shapeHash": "sha256:6880f2649040b97a08e5ede788d5480da20d50ce9f297ecb63a016502ba9029d",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 316,
+        "line": 323,
         "column": 5
       }
     },
@@ -327808,7 +327808,7 @@
       "shapeHash": "sha256:0f1244256f8ca3dedb77246e532748fe28b567f970098508931d3d08e0ef79ff",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 322,
+        "line": 329,
         "column": 5
       }
     },
@@ -327828,7 +327828,7 @@
       "shapeHash": "sha256:efc6b372fd7b6aaaa53786c2ddf28b694e840d69d5889debc3b120f162c7a69c",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 322,
+        "line": 329,
         "column": 5
       }
     },
@@ -327856,7 +327856,7 @@
       "shapeHash": "sha256:45cf8eb027dabd12d03212bcc59132de1716acbceb1a32c552a3f3e00a305809",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 321,
+        "line": 328,
         "column": 5
       }
     },
@@ -327876,7 +327876,7 @@
       "shapeHash": "sha256:14cdd783640872d9e3730cf865756a5c834cfe2c982f870e13d28a75d42a3cd8",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 321,
+        "line": 328,
         "column": 5
       }
     },
@@ -327911,7 +327911,7 @@
       "shapeHash": "sha256:05bfdfa99770e6fb855d82e28c04846394ce6aecf4660c84d95a5f3d0ac9b844",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 365,
+        "line": 372,
         "column": 5
       }
     },
@@ -327938,7 +327938,7 @@
       "shapeHash": "sha256:4e9e5f73efe0aae227311030a1361fe32003b37e4896274ae5f7a14d0ee4529f",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 365,
+        "line": 372,
         "column": 5
       }
     },
@@ -327973,7 +327973,7 @@
       "shapeHash": "sha256:939d3b3ff7fc1720e32a7189bf187d3914e1f4f7a9b184ea8050f2141fa98628",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 311,
+        "line": 318,
         "column": 5
       }
     },
@@ -328000,7 +328000,7 @@
       "shapeHash": "sha256:b444412b7207e69742c41118f1584d8c83f9f48298f89dcae63601f5dc81bb18",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 311,
+        "line": 318,
         "column": 5
       }
     },
@@ -328035,7 +328035,7 @@
       "shapeHash": "sha256:222d9a158e8e96882a114e173b2d62a7c88f4d1b9170e9a002e4c3f3324b0e60",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 295,
+        "line": 302,
         "column": 5
       }
     },
@@ -328062,7 +328062,7 @@
       "shapeHash": "sha256:5df5630704caa797e250c51d4a7d487d9aaf248b67b62bbf4ad296aa6784fa23",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 295,
+        "line": 302,
         "column": 5
       }
     },
@@ -328090,7 +328090,7 @@
       "shapeHash": "sha256:72bbed50606d3809fa60451f1592ce2c3e70b7b0ed0809c0d8b5a214136723d8",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 243,
+        "line": 250,
         "column": 5
       }
     },
@@ -328110,7 +328110,7 @@
       "shapeHash": "sha256:9231ea69ae1121c895c1d3b2d307df795c874c1f1f85688b3ac32e9d1e7168c4",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 243,
+        "line": 250,
         "column": 5
       }
     },
@@ -328138,7 +328138,7 @@
       "shapeHash": "sha256:11986772b5fb2ba26257a2f4dedf71e675417e967ba0a4a27f27e8ade1aaa9a3",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 334,
+        "line": 341,
         "column": 5
       }
     },
@@ -328158,7 +328158,7 @@
       "shapeHash": "sha256:6880f2649040b97a08e5ede788d5480da20d50ce9f297ecb63a016502ba9029d",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 334,
+        "line": 341,
         "column": 5
       }
     },
@@ -328193,7 +328193,7 @@
       "shapeHash": "sha256:585a682c94a00bbb8bc8746f8f3760972e4e55f79f02a1f45e7b1dc22ba4a98d",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 291,
+        "line": 298,
         "column": 5
       }
     },
@@ -328220,7 +328220,7 @@
       "shapeHash": "sha256:2a31a3748a5a3f17778faa2e05fb49e180e4c5bd5a0121e3363fe8c3811ccaad",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 291,
+        "line": 298,
         "column": 5
       }
     },
@@ -328248,7 +328248,7 @@
       "shapeHash": "sha256:d94f254ce47eacbd048b247821882cb89c549f64e7e3ecc5e84474620f473226",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 328,
+        "line": 335,
         "column": 5
       }
     },
@@ -328268,7 +328268,7 @@
       "shapeHash": "sha256:3e0b081ebbd71e514bd05601ea038c0c56bc24b739bed58495893591b5062cba",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 328,
+        "line": 335,
         "column": 5
       }
     },
@@ -328296,7 +328296,7 @@
       "shapeHash": "sha256:ce34455835ef4a58d209d36790363b11eb6dbd57006dea6c01e1e22a52827952",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 326,
+        "line": 333,
         "column": 5
       }
     },
@@ -328316,7 +328316,7 @@
       "shapeHash": "sha256:65653e93a43e24555bf7b0e99401c6104c66da556bc74d1efedba972164329dd",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 326,
+        "line": 333,
         "column": 5
       }
     },
@@ -328351,7 +328351,7 @@
       "shapeHash": "sha256:6c32bc92cc45576053cc7e06cb5338b03226feb9264657f8d6f503c3f2bc291e",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 299,
+        "line": 306,
         "column": 5
       }
     },
@@ -328378,7 +328378,7 @@
       "shapeHash": "sha256:8b47ded2d7fd5001a519bce80f3b42252c6cbd2b26e6b8d099e6b0095499b44c",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 299,
+        "line": 306,
         "column": 5
       }
     },
@@ -328406,7 +328406,7 @@
       "shapeHash": "sha256:5c88dd9325f735cc792df5ff6f9e2ccb624aedda3d49a07c860230f538d07bec",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 290,
+        "line": 297,
         "column": 5
       }
     },
@@ -328426,7 +328426,7 @@
       "shapeHash": "sha256:9045fbdccb9bd0708c098ac59cd9bfef209a7fcbeb3ecc52ef1cf67bb6c66553",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 290,
+        "line": 297,
         "column": 5
       }
     },
@@ -328454,7 +328454,7 @@
       "shapeHash": "sha256:a826ff10028477344b3c21a31a53d8e5ce4e896219323262dbb7f8dc8ec6455c",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 289,
+        "line": 296,
         "column": 5
       }
     },
@@ -328474,7 +328474,7 @@
       "shapeHash": "sha256:e206de6290033b5035a767d8aece1fb7db6184e2be59014a06419b96db7c9067",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 289,
+        "line": 296,
         "column": 5
       }
     },
@@ -328502,7 +328502,7 @@
       "shapeHash": "sha256:ec2dcf97077d8cff376ecbbd3620e73b202064f2b8519320efa67098c7458858",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 244,
+        "line": 251,
         "column": 5
       }
     },
@@ -328522,7 +328522,7 @@
       "shapeHash": "sha256:9231ea69ae1121c895c1d3b2d307df795c874c1f1f85688b3ac32e9d1e7168c4",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 244,
+        "line": 251,
         "column": 5
       }
     },
@@ -328550,7 +328550,7 @@
       "shapeHash": "sha256:ee136784645c014042f9f66256e64c480fe01d473837d731fbac8296a49bcd76",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 247,
+        "line": 254,
         "column": 5
       }
     },
@@ -328570,7 +328570,7 @@
       "shapeHash": "sha256:913ff64a4c5a317f42cdad756cfea7b57a820ed19a3a268bbc3e523a6b89a7e0",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 247,
+        "line": 254,
         "column": 5
       }
     },
@@ -328598,7 +328598,7 @@
       "shapeHash": "sha256:bb4cd86bbe5c63fe4ef796fbaf4084a43f749918bff1b9f527fbdfa048e42f9b",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 246,
+        "line": 253,
         "column": 5
       }
     },
@@ -328618,7 +328618,7 @@
       "shapeHash": "sha256:9231ea69ae1121c895c1d3b2d307df795c874c1f1f85688b3ac32e9d1e7168c4",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 246,
+        "line": 253,
         "column": 5
       }
     },
@@ -328646,7 +328646,7 @@
       "shapeHash": "sha256:9a048a74902ff8033adef2513d1becebc5616d0e6b98832c8de86726bb2d5634",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 277,
+        "line": 284,
         "column": 5
       }
     },
@@ -328666,7 +328666,7 @@
       "shapeHash": "sha256:913ff64a4c5a317f42cdad756cfea7b57a820ed19a3a268bbc3e523a6b89a7e0",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 277,
+        "line": 284,
         "column": 5
       }
     },
@@ -328694,7 +328694,7 @@
       "shapeHash": "sha256:d6a84c6ba973b6b3a355a106930c8dd60e11bddb84f45afcbe51e3cc16e77082",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 340,
+        "line": 347,
         "column": 5
       }
     },
@@ -328714,7 +328714,7 @@
       "shapeHash": "sha256:099d36b70e368b2127805a7a2fd8b0ebaeac5e5ea3a8b660322923ef9ed02fd6",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 340,
+        "line": 347,
         "column": 5
       }
     },
@@ -328742,7 +328742,7 @@
       "shapeHash": "sha256:00fcf377ab25f4bfeb2a60b02f7b82b2fef6eb1fd37f36b55d9ef40b8165180d",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 242,
+        "line": 249,
         "column": 5
       }
     },
@@ -328762,7 +328762,7 @@
       "shapeHash": "sha256:62879721ba9c1348fc0dc70085c8bcc9ecc52f9b4a2d3b40f87dfa62ecde067c",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 242,
+        "line": 249,
         "column": 5
       }
     },
@@ -328797,7 +328797,7 @@
       "shapeHash": "sha256:2b6929c49dcf433a392ccb7487a54393e7e5d8292c382d1bb379798f97d7ff6a",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 238,
+        "line": 245,
         "column": 5
       }
     },
@@ -328824,7 +328824,7 @@
       "shapeHash": "sha256:8fe72c3a3837c7d07da99418f14727095933b8edb9abc72fd52cb955a7e30042",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 238,
+        "line": 245,
         "column": 5
       }
     },
@@ -328852,7 +328852,7 @@
       "shapeHash": "sha256:be1c1730b51ca21ec81320fe30f243727a72a897fc118a09ede4b5f5bc01416c",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 353,
+        "line": 360,
         "column": 5
       }
     },
@@ -328872,7 +328872,7 @@
       "shapeHash": "sha256:9ca6a314a982a3e688c5c5ffde6bd32f25f07554352674c9e2234fc7f4b40b92",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 353,
+        "line": 360,
         "column": 5
       }
     },
@@ -328907,7 +328907,7 @@
       "shapeHash": "sha256:e9ef6306736011202e5e3e93b85ca1423774423eeabae8e92197829c50bebc82",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 236,
+        "line": 243,
         "column": 5
       }
     },
@@ -328934,7 +328934,7 @@
       "shapeHash": "sha256:50a4c9dc112e5c90f142da25b8103d00e83295b244be280c441d7a067a118cd0",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 236,
+        "line": 243,
         "column": 5
       }
     },
@@ -328962,7 +328962,7 @@
       "shapeHash": "sha256:24f79088fa76dd71f427ed55629895b5c67c15184ca4096a44c2fec9bb55cfcc",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 245,
+        "line": 252,
         "column": 5
       }
     },
@@ -328982,7 +328982,7 @@
       "shapeHash": "sha256:62879721ba9c1348fc0dc70085c8bcc9ecc52f9b4a2d3b40f87dfa62ecde067c",
       "source": {
         "path": "dist/core/session-manager.d.ts",
-        "line": 245,
+        "line": 252,
         "column": 5
       }
     },

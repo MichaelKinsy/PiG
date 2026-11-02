@@ -4073,13 +4073,15 @@ function collectEntriesForBranchSummary(session, oldLeafId, targetId) {
   return { entries, commonAncestorId };
 }
 __name(collectEntriesForBranchSummary, "collectEntriesForBranchSummary");
-function getMessageFromEntry(entry) {
+function getMessageFromEntry(entry, edit) {
   switch (entry.type) {
     case "message":
       if (entry.message.role === "toolResult")
         return void 0;
-      return entry.message;
+      return edit ? projectContextEntry(entry, edit)[0] : entry.message;
     case "custom_message":
+      if (edit)
+        return projectContextEntry(entry, edit)[0];
       return createCustomMessage(entry.customType, entry.content, entry.display, entry.details, entry.timestamp);
     case "branch_summary":
       return createBranchSummaryMessage(entry.summary, entry.fromId, entry.timestamp);
@@ -4113,9 +4115,14 @@ function prepareBranchEntries(entries, tokenBudget = 0) {
       }
     }
   }
+  const edits = /* @__PURE__ */ new Map();
+  for (const entry of entries) {
+    if (entry.type === "context_edit")
+      edits.set(entry.targetId, entry);
+  }
   for (let i = entries.length - 1; i >= 0; i--) {
     const entry = entries[i];
-    const message = getMessageFromEntry(entry);
+    const message = getMessageFromEntry(entry, edits.get(entry.id));
     if (!message)
       continue;
     extractFileOpsFromMessage(message, fileOps);

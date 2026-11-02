@@ -2239,6 +2239,7 @@ pig_targets = [
 ]
 evidence = [
   "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+  "tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
 ]
@@ -2247,7 +2248,7 @@ evidence = [
 path = "packages/tui/src/components/markdown.ts"
 start = "\trender(width: number): string[] {"
 end = "\n\tprivate applyDefaultStyle("
-sha256 = "ad29bde2e7daca1517cca69f9721894ed57c418d9952047cd7bf3f404745351a"
+sha256 = "24b3cb6ccdfd0164e6512a5cc1f07d5c1695c5b52090877acb14a4c366bd53af"
 keybindings = []
 
 [[contract]]
@@ -2265,6 +2266,7 @@ evidence = [
   "tui/markdown_upstream_test.go#TestMarkdownRendersQuotesNestedDeeperThanTheWidthAllowsWithoutExploding",
   "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource",
   "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWidthFallbackMatchesPi",
+  "tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
 ]
@@ -2273,7 +2275,7 @@ evidence = [
 path = "packages/tui/src/components/markdown.ts"
 start = "\tprivate renderToken("
 end = "\n\tprivate renderInlineTokens("
-sha256 = "c8e1a62605fe4c946c2446237234ff9486a7618d138d43e7476c6468a54a0f2e"
+sha256 = "d839291b6cd3ce07a73d3270bd361577bb2ce97268e31c6742ed34f1d44071c9"
 keybindings = []
 
 [[contract]]
@@ -3637,6 +3639,7 @@ pig_targets = [
 ]
 evidence = [
   "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+  "internal/codingagent/code_highlighter_rows_norace_test.go#TestCompleteWriteRowReusesItsHighlightingAcrossRedraws",
   "test/parity/scenarios/tools/24-tool-cards.toml"
 ]
 
@@ -3644,7 +3647,7 @@ evidence = [
 path = "packages/coding-agent/src/core/tools/renderers/write.ts"
 start = "\trenderCall(args, theme, context) {"
 end = "\trenderResult(result, _options, theme, context) {"
-sha256 = "7024365a8df692d28578097b27bb9aa021f7a23a787b77a013054202b7d9bfc8"
+sha256 = "5527b7dcec4b048fdd53213b7f7e69e51adcc7f98a7d15547208b117d5c69944"
 keybindings = []
 
 [[contract]]
@@ -3926,13 +3929,14 @@ evidence = [
   "internal/codingagent/codemode_cards_oracle_test.go#TestCodemodeCardsMatchPi",
   "test/parity/scenarios/tools/25-codemode-cards.toml",
   "internal/codingagent/tool_codemode_timer_test.go#TestCodemodeRowShowsElapsedWhileRunningAndTookOnceFinished",
+  "internal/codingagent/code_highlighter_rows_norace_test.go#TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
 ]
 
 [contract.upstream]
 path = "packages/coding-agent/src/extensions/codemode/renderer.ts"
 start = "\trenderCall(args, theme, context) {"
 end = "\trenderResult(result, options, theme, context) {"
-sha256 = "867503f04c73c1579d54c3f7d126dafd8cb278bb3b3ba0fe75bc64bd222d0cc6"
+sha256 = "cecf94023ad6a5976430a281be7cf4fa8df636535012885fde715be76460b8b1"
 keybindings = []
 
 [[contract]]
