@@ -159,3 +159,58 @@ exit "$status"`
 		})
 	}
 }
+
+// rustup and cargo find the installed toolchain and its default through RUSTUP_HOME and CARGO_HOME, which default to directories of the caller's HOME. The wrapper
+// moves HOME, so a toolchain installed with `rustup default` there is not found by a validated program that builds Rust (the live-providers workflow's extension
+// transport tests failed with "rustup could not choose a version of cargo to run, because one wasn't specified explicitly, and no default is configured").
+// The wrapper pins both to the caller's directories before moving HOME, as it does the Go caches, and keeps an explicit value.
+func TestIsolatedPigHomeKeepsRustToolchainHomes(t *testing.T) {
+	goRootOutput, err := exec.CommandContext(t.Context(), "go", "env", "GOROOT").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	goRoot := strings.TrimSpace(string(goRootOutput))
+	const script = `printf '%s\n%s\n' "$RUSTUP_HOME" "$CARGO_HOME"`
+	for _, tc := range []struct {
+		name                              string
+		explicitRustup, explicitCargo     string
+		wantRustupSuffix, wantCargoSuffix string
+	}{
+		{name: "defaults follow the caller's home", wantRustupSuffix: ".rustup", wantCargoSuffix: ".cargo"},
+		{name: "explicit values are kept", explicitRustup: "toolchains-elsewhere", explicitCargo: "cargo-elsewhere", wantRustupSuffix: "toolchains-elsewhere", wantCargoSuffix: "cargo-elsewhere"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			parent := t.TempDir()
+			bash := testenv.Bash(t)
+			cmd := exec.CommandContext(t.Context(), bash, filepath.Join(repoRoot(t), "automation/ci/with-isolated-pig-home.sh"), bash, "-c", script)
+			testenv.VerbatimArgs(cmd)
+			environment := slices.DeleteFunc(os.Environ(), func(entry string) bool {
+				return strings.HasPrefix(entry, "RUSTUP_HOME=") || strings.HasPrefix(entry, "CARGO_HOME=")
+			})
+			// On Windows rustup's default is under USERPROFILE, so a HOME that differs from it must not decide the pin.
+			home := parent
+			if runtime.GOOS == "windows" {
+				home = filepath.Join(parent, "msys-home")
+			}
+			environment = append(environment, "HOME="+home, "USERPROFILE="+parent, "TMPDIR="+parent, "GOROOT="+goRoot)
+			want := map[string]string{"RUSTUP_HOME": filepath.Join(parent, tc.wantRustupSuffix), "CARGO_HOME": filepath.Join(parent, tc.wantCargoSuffix)}
+			if tc.explicitRustup != "" {
+				environment = append(environment, "RUSTUP_HOME="+filepath.Join(parent, tc.explicitRustup), "CARGO_HOME="+filepath.Join(parent, tc.explicitCargo))
+			}
+			cmd.Env = environment
+			output, err := cmd.Output()
+			if err != nil {
+				t.Fatal(err)
+			}
+			lines := strings.Split(strings.TrimSuffix(string(output), "\n"), "\n")
+			if len(lines) != 2 {
+				t.Fatalf("probe output = %q", output)
+			}
+			for i, key := range []string{"RUSTUP_HOME", "CARGO_HOME"} {
+				if filepath.Clean(lines[i]) != filepath.Clean(want[key]) {
+					t.Errorf("%s = %q, want %q", key, lines[i], want[key])
+				}
+			}
+		})
+	}
+}
