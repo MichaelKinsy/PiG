@@ -712,6 +712,28 @@
       ]
     },
     {
+      "id": "BF-06cb94f",
+      "title": "In the alt-screen, a wheel scroll reported in the legacy X10 mouse form (terminals without SGR mouse mode) no…",
+      "symptom": "In the alt-screen, a wheel scroll reported in the legacy X10 mouse form (terminals without SGR mouse mode) no longer shows up as typed text when the pointer is at column or row 95 or higher; the report is counted in UTF-16 units as Pi counts it, so it scrolls.",
+      "rootCause": "Without SGR mode 1006 a column or row of 95 or more is a byte of 0x80 or more. Pi's stdin.setEncoding(\"utf8\") makes it one U+FFFD, so parseWheelEvent and isMouseSequence see six units and read charCodeAt(3..5). PiG counted the three-byte U+FFFD as three bytes, so the report was typed as text instead of scrolling.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In the alt-screen, a wheel scroll reported in the legacy X10 mouse form (terminals without SGR mouse mode) no longer shows up as typed text when the pointer is at column or row 95 or higher; the report is counted in UTF-16 units as Pi counts it, so it scrolls.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "06cb94f85e",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "tui/tui_alt_screen_x10_units_test.go::TestLegacyX10MouseReportCountsUTF16Units"
+      ]
+    },
+    {
       "id": "BF-07151d0",
       "title": "In print and JSON mode, Node extensions in separate processes now keep Pi's order when a later extension's…",
       "symptom": "In print and JSON mode, Node extensions in separate processes now keep Pi's order when a later extension's `session_shutdown` or `agent_settled` handler awaits a timer, however busy the machine is.",
