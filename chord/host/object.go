@@ -16,8 +16,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/MichaelKinsy/PiG/internal/typebox"
 )
 
 // ─── Services ────────────────────────────────────────────────────────────────
@@ -2366,15 +2364,6 @@ func (object *ObjectImpl) guardOnLoop(ctx Ctx) error {
 	return object.admit(ctx)
 }
 
-// cleanArgs is Value.Clean(schema, Value.Clone(value)); a decoded token's schemas strip nothing.
-func cleanArgs(contract *Contract, schema Schema, value any) any {
-	cloned := typebox.Clone(value)
-	if contract.decoded {
-		return cloned
-	}
-	return typebox.Clean(schema, cloned)
-}
-
 // call calls a method of this object through reference, off the loop.
 func (object *ObjectImpl) call(ref *RefImpl, name string, args any, ctx *CtxImpl) (any, error) {
 	host := object.host
@@ -2443,14 +2432,13 @@ func (object *ObjectImpl) call(ref *RefImpl, name string, args any, ctx *CtxImpl
 		}
 		fn = method
 		direct := view == installed.implementation
-		schema, hasSchema, schemaContract := wanted, hasWanted, ref.contract
+		schema, hasSchema := wanted, hasWanted
 		if direct {
 			variant := LocalVariant
 			if kind != nil {
 				variant = *kind
 			}
-			schemaContract = installed.service.contract
-			schema, hasSchema = schemaContract.Description.member(variant, name)
+			schema, hasSchema = installed.service.contract.Description.member(variant, name)
 		}
 		var described *MemberDescription
 		if hasSchema && schema.Kind == MemberMethod {
@@ -2467,11 +2455,15 @@ func (object *ObjectImpl) call(ref *RefImpl, name string, args any, ctx *CtxImpl
 			// its schema knows: strip with both before validating.
 			sent := args
 			if remote && hasWanted && wanted.Kind == MemberMethod && wanted.Args != nil {
-				sent = cleanArgs(ref.contract, wanted.Args, args)
+				if sent, err = Cleaned(wanted.Args, args); err != nil {
+					return
+				}
 			}
 			input = sent
 			if validated != nil && validated.Args != nil {
-				input = cleanArgs(schemaContract, validated.Args, sent)
+				if input, err = Cleaned(validated.Args, sent); err != nil {
+					return
+				}
 				if err = assertValid("args", object.address+"."+name+" args", validated.Args, input); err != nil {
 					return
 				}

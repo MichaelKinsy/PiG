@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
-// Not upstream's (plugnode-differences.md, 7): the app's `telemetry` adapter is the Node host's. Pi's host gets the adapter and
+// Not upstream's (docs/plan/chord-plugins-node-evaluator.md, 10.6 #7): the app's `telemetry` adapter is the Node host's. Pi's host gets the adapter and
 // calls it in process; here the Node host builds a proxy TelemetryContext whose spans and metrics are ordered data events
 // that Go replays into the adapter, so a plugin's `ctx.telemetry` spans and counters land in the app's own recorder
 // (pi-telemetry's InMemoryTelemetryContext, ported as telemetry.InMemoryTelemetryContext, the recording adapter), each as

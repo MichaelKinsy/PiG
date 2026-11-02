@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/tui/src/tui-main-screen.ts (OSC133_ZONE_PREFIX, shared by the regular-mode renderer)
+
 import (
 	"math"
 	"slices"
@@ -297,6 +299,7 @@ func layoutHStack(context *layoutContext, component Component, node StackLayoutN
 		childY := y
 		switch node.Align {
 		case "center":
+			//portlint:allow numbers layout.ts:224 Math.floor((allocatedHeight - childHeight) / 2): childHeight is min(allocatedHeight, natural) or allocatedHeight, so the difference is never negative and truncation is floor
 			childY += (allocatedHeight - childHeight) / 2
 		case "end":
 			childY += allocatedHeight - childHeight
@@ -382,6 +385,7 @@ func getScrollbarGeometry(box *LayoutBox, includeHiddenAuto bool) *ScrollbarGeom
 	minThumbHeight := min(2, trackHeight)
 	thumbCandidate := trackHeight
 	if contentHeight > 0 {
+		//portlint:allow numbers layout.ts:291 Math.round((trackHeight * trackHeight) / contentHeight): contentHeight > 0 is checked and the quotient is non-negative, where math.Round and Math.round agree
 		thumbCandidate = int(math.Round(float64(trackHeight*trackHeight) / float64(contentHeight)))
 	}
 	thumbHeight := max(minThumbHeight, min(trackHeight, thumbCandidate))
@@ -389,6 +393,7 @@ func getScrollbarGeometry(box *LayoutBox, includeHiddenAuto bool) *ScrollbarGeom
 	maxThumbTop := trackHeight - thumbHeight
 	thumbOffset := 0
 	if maxScrollTop != 0 {
+		//portlint:allow numbers layout.ts:295 Math.round((scrollTop / maxScrollTop) * maxThumbTop): maxScrollTop != 0 and the factors are non-negative, where math.Round and Math.round agree
 		thumbOffset = int(math.Round(float64(box.ScrollView.ScrollTop()) / float64(maxScrollTop) * float64(maxThumbTop)))
 	}
 	column := box.Rect.X + box.Rect.Width - 1

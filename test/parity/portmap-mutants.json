@@ -11,6 +11,75 @@
    "new": "(httpsOnly && parsed.Protocol == \"https:\")"
   }
  ],
+ "packages/coding-agent/src/utils/syntax-highlight.ts": [
+  {
+   "file": "tui/highlight.go",
+   "old": "\t\tif !scope.defined {\n",
+   "new": "\t\tif scope.defined {\n"
+  },
+  {
+   "file": "tui/highlight.go",
+   "old": "\t\t\t\tif line != \"\" {\n",
+   "new": "\t\t\t\tif line == \"\" {\n"
+  }
+ ],
+ "packages/coding-agent/src/utils/sleep.ts": [
+  {
+   "file": "ai/assistant_retry.go",
+   "old": "\tcase <-ctx.Done():\n\t\treturn errRetrySleepAborted\n",
+   "new": "\tcase <-ctx.Done():\n\t\treturn nil\n"
+  },
+  {
+   "file": "ai/assistant_retry.go",
+   "old": "delayMs > 1<<31-1",
+   "new": "delayMs > 1<<41"
+  }
+ ],
+ "packages/coding-agent/src/utils/tools-manager.ts": [
+  {
+   "file": "internal/codingagent/tools/tools_manager.go",
+   "old": "|| !strings.Contains(location, \"/releases/tag/\")",
+   "new": "|| strings.Contains(location, \"/releases/tag/\")"
+  }
+ ],
+ "packages/coding-agent/src/utils/version-check.ts": [
+  {
+   "file": "internal/codingagent/selfupdate.go",
+   "old": "\t\tmaxRetries = 2\n",
+   "new": "\t\tmaxRetries = 1\n"
+  },
+  {
+   "file": "internal/codingagent/selfupdate.go",
+   "old": "return l.Compare(r), true",
+   "new": "return r.Compare(l), true"
+  }
+ ],
+ "packages/coding-agent/src/utils/windows-self-update.ts": [
+  {
+   "file": "internal/codingagent/windows_self_update.go",
+   "old": "strings.ToLower(filepath.Base(current)) == \"node_modules\"",
+   "new": "filepath.Base(current) == \"node_modules\""
+  },
+  {
+   "file": "internal/codingagent/windows_self_update.go",
+   "old": "copyQuarantinedImage(quarantinePath, loadedFile)",
+   "new": "error(nil)"
+  }
+ ],
+ "packages/coding-agent/src/utils/tool-result-images.ts": [
+  {
+   "file": "internal/imageprocessing/images.go",
+   "old": "mime == image.MimeType && hint == \"\")",
+   "new": "mime == image.MimeType && hint != \"\")"
+  }
+ ],
+ "packages/coding-agent/src/utils/text.ts": [
+  {
+   "file": "internal/text/text.go",
+   "old": "\tif strings.HasPrefix(content, bom) {\n",
+   "new": "\tif strings.HasSuffix(content, bom) {\n"
+  }
+ ],
  "packages/codemode/src/cloudflare.ts": [
   {
    "file": "codemode/cloudflare/cloudflare.go",
@@ -164,6 +233,13 @@
    "file": "internal/codingagent/output_guard.go",
    "old": "func IsStdoutTakenOver() bool {",
    "new": "func IsStdoutTakenOver() bool { return false\n"
+  }
+ ],
+ "packages/coding-agent/src/core/pi-ai-schemas.ts": [
+  {
+   "file": "internal/codingagent/configschema/pi_ai_schemas.go",
+   "old": "if o.K != \"required\" {",
+   "new": "if o.K == \"required\" {"
   }
  ],
  "packages/coding-agent/src/core/remote-catalog-provider.ts": [
@@ -434,6 +510,11 @@
    "file": "coding/cli/rpc_events.go",
    "old": "\t\tmessages, err := rpcAgentMessages(event.Messages)\n\t\tif err != nil {",
    "new": "\t\tmessages, err := rpcAgentMessages(event.Messages)\n\t\tif err == nil {"
+  },
+  {
+   "file": "coding/cli/rpc_events.go",
+   "old": "{\"delta\", event.Delta}}\n\tcase ai.ToolCallEndEvent:",
+   "new": "{\"delta\", event.Delta}, {\"partial\", event.Partial}}\n\tcase ai.ToolCallEndEvent:"
   }
  ],
  "packages/coding-agent/src/modes/rpc/jsonl.ts": [
@@ -550,6 +631,125 @@
    "new": "getenv(\"WSLENV\") == \"\""
   }
  ],
+ "packages/tui/src/word-navigation.ts": [
+  {
+   "file": "tui/word_navigation.go",
+   "old": "\tcase last.IsWordLike:\n",
+   "new": "\tcase !last.IsWordLike:\n"
+  },
+  {
+   "file": "tui/word_navigation.go",
+   "old": "\t\t\tinRun = true\n",
+   "new": "\t\t\tinRun = false\n"
+  },
+  {
+   "file": "tui/word_navigation.go",
+   "old": "strings.IndexAny(current.Segment, punctuationChars)",
+   "new": "strings.LastIndexAny(current.Segment, punctuationChars)"
+  }
+ ],
+ "packages/tui/src/kill-ring.ts": [
+  {
+   "file": "tui/kill_ring.go",
+   "old": "\t\t\t\treturn text + last\n",
+   "new": "\t\t\t\treturn last + text\n"
+  },
+  {
+   "file": "tui/kill_ring.go",
+   "old": "\tk.ring = append([]string{last}, k.ring[:len(k.ring)-1]...)",
+   "new": "\tk.ring = append([]string{last}, k.ring[1:]...)"
+  },
+  {
+   "file": "tui/kill_ring.go",
+   "old": "if accumulate && len(k.ring) > 0 {",
+   "new": "if accumulate && len(k.ring) > 1 {"
+  }
+ ],
+ "packages/tui/src/undo-stack.ts": [
+  {
+   "file": "tui/undo_stack.go",
+   "old": "\tu.stack = u.stack[:len(u.stack)-1]\n",
+   "new": "\tu.stack = u.stack[:0]\n"
+  },
+  {
+   "file": "tui/undo_stack.go",
+   "old": "\tu.stack = nil\n",
+   "new": "\tu.stack = u.stack[:len(u.stack)]\n"
+  }
+ ],
+ "packages/tui/src/components/alt-screen-flash.ts": [
+  {
+   "file": "tui/alt_screen_flash.go",
+   "old": "widthx.TruncateToWidth(\" \"+entry.message+\" \", width, \"\", false)",
+   "new": "widthx.TruncateToWidth(\" \"+entry.message, width, \"\", false)"
+  },
+  {
+   "file": "tui/alt_screen_flash.go",
+   "old": "\"\\x1b[7m\" + message + \"\\x1b[27m\"",
+   "new": "\"\\x1b[7m\" + message + \"\\x1b[0m\""
+  },
+  {
+   "file": "tui/alt_screen_flash.go",
+   "old": "\t\tif removed {\n",
+   "new": "\t\tif !removed {\n"
+  },
+  {
+   "file": "tui/alt_screen_flash.go",
+   "old": "c.entries = append(c.entries[:i], c.entries[i+1:]...)",
+   "new": "c.entries = c.entries[:i]"
+  }
+ ],
+ "packages/tui/src/layout-node.ts": [
+  {
+   "file": "tui/layout_node.go",
+   "old": "\t\treturn lc.LayoutNode()\n",
+   "new": "\t\tif _, scroll := lc.LayoutNode().(ScrollLayoutNode); scroll {\n\t\t\treturn nil\n\t\t}\n\t\treturn lc.LayoutNode()\n"
+  }
+ ],
+ "packages/tui/src/layout.ts": [
+  {
+   "file": "tui/layout.go",
+   "old": "\t\tif node.Align == \"stretch\" {\n\t\t\tchildHeight = allocatedHeight\n",
+   "new": "\t\tif node.Align == \"stretch\" {\n\t\t\tchildHeight = 0\n"
+  },
+  {
+   "file": "tui/layout.go",
+   "old": "layoutComponent(context, entry.Component, childX, childY, childWidth, &childHeight, box.Clip)",
+   "new": "layoutComponent(context, entry.Component, childX+1, childY, childWidth, &childHeight, box.Clip)"
+  },
+  {
+   "file": "tui/layout.go",
+   "old": "translateBox(childBox, previousScrollTop-node.State.ScrollTop())",
+   "new": "translateBox(childBox, previousScrollTop+node.State.ScrollTop())"
+  },
+  {
+   "file": "tui/layout.go",
+   "old": "\tif stack.Type == \"vstack\" {\n",
+   "new": "\tif stack.Type == \"hstack\" {\n"
+  }
+ ],
+ "packages/tui/src/alt-screen-search.ts": [
+  {
+   "file": "tui/alt_screen_search.go",
+   "old": "startCol = span.startCol + max(start, span.textStart) - span.textStart",
+   "new": "startCol = span.startCol + min(start, span.textStart) - span.textStart"
+  },
+  {
+   "file": "tui/alt_screen_search.go",
+   "old": "segments[n-1].Row == span.row && startCol <= segments[n-1].EndCol",
+   "new": "segments[n-1].Row == span.row && startCol < segments[n-1].EndCol"
+  },
+  {
+   "file": "tui/alt_screen_search.go",
+   "old": "changed = sourceChanged || i.normalizedQuery == nil || normalizedQuery != *i.normalizedQuery",
+   "new": "changed = true"
+  },
+  {
+   "file": "tui/alt_screen_search.go",
+   "old": "regexp.MustCompile(\"(?i)\" + regexp.QuoteMeta(normalizedQuery))",
+   "new": "regexp.MustCompile(regexp.QuoteMeta(normalizedQuery))"
+  }
+ ],
  "packages/durable/src/images/exif.ts": [
   {
    "file": "durable/images/exif.go",
@@ -593,6 +793,38 @@
    "file": "durable/timers.go",
    "old": "\t\treported = true\n",
    "new": "\t\treported = false\n"
+  }
+ ],
+ "packages/env/src/errors.ts": [
+  {
+   "file": "env/errors.go",
+   "old": "\tif ctx.Err() != nil {\n",
+   "new": "\tif ctx.Err() == nil {\n"
+  },
+  {
+   "file": "env/errors.go",
+   "old": "\tcase \"ENOENT\":\n\t\tcode = durableenv.FileErrorNotFound\n",
+   "new": "\tcase \"ENOENT\":\n\t\tcode = durableenv.FileErrorUnknown\n"
+  },
+  {
+   "file": "env/errors.go",
+   "old": "\tcase \"EACCES\", \"EPERM\":\n",
+   "new": "\tcase \"EACCES\":\n"
+  },
+  {
+   "file": "env/errors.go",
+   "old": "\tcase \"EINVAL\", \"SYMLINK\", \"NOT_REGULAR\":\n",
+   "new": "\tcase \"EINVAL\", \"SYMLINK\":\n"
+  },
+  {
+   "file": "env/errors.go",
+   "old": "\tif remote.Path != nil {\n",
+   "new": "\tif remote.Path != nil && *remote.Path != \"\" {\n"
+  },
+  {
+   "file": "env/errors.go",
+   "old": "\t\treturn fileError\n",
+   "new": "\t\treturn durableenv.NewFileError(fileError.Code, fileError.Message, fallbackPath, fileError)\n"
   }
  ],
  "packages/env/daemon/src/decode.rs": [
@@ -801,6 +1033,445 @@
    "file": "durable/harness/partial_changes.go",
    "old": "\t\t\tcall.changes = append(call.changes, change)\n",
    "new": "\t\t\tcall.changes = append(call.changes[:0], change)\n"
+  }
+ ],
+ "packages/chord/src/next/store/applier.ts": [
+  {
+   "file": "chord/next/store/applier.go",
+   "old": "if !IndexName.MatchString(write.Name) || exists {",
+   "new": "if !IndexName.MatchString(write.Name) || !exists {"
+  }
+ ],
+ "packages/chord/src/next/store/export.ts": [
+  {
+   "file": "chord/next/store/export.go",
+   "old": "&EndPart{Writes: parts.writes}",
+   "new": "&EndPart{Writes: parts.writes + 1}"
+  }
+ ],
+ "packages/chord/src/next/store/allocator.ts": [
+  {
+   "file": "chord/next/store/allocator.go",
+   "old": "ids.next = min(id+1, MaxSafeInteger)",
+   "new": "ids.next = min(id+2, MaxSafeInteger)"
+  }
+ ],
+ "packages/chord/src/next/store/catalog.ts": [
+  {
+   "file": "chord/next/store/catalog.go",
+   "old": "record.Version = int(integer)\n",
+   "new": "record.Version = int(integer) + 1\n"
+  }
+ ],
+ "packages/chord/src/next/store/evaluate.ts": [
+  {
+   "file": "chord/next/store/evaluate.go",
+   "old": "\t\tcase truthTrue:\n\t\t\treturn truthFalse\n\t\t}\n\t\treturn truthTrue",
+   "new": "\t\tcase truthTrue:\n\t\t\treturn truthTrue\n\t\t}\n\t\treturn truthTrue"
+  }
+ ],
+ "packages/chord/src/next/store/table-writes.ts": [
+  {
+   "file": "chord/next/store/table_writes.go",
+   "old": "write := &PutWrite{Table: table, Row: row.Row, Version: version, Columns: row.Columns}",
+   "new": "write := &PutWrite{Table: table, Row: row.Row, Version: version + 1, Columns: row.Columns}"
+  }
+ ],
+ "packages/chord/src/next/store/table-changes.ts": [
+  {
+   "file": "chord/next/store/table_changes.go",
+   "old": "if changes.bulk {",
+   "new": "if !changes.bulk {"
+  }
+ ],
+ "packages/chord/src/next/store/refusal.ts": [
+  {
+   "file": "chord/next/store/refusal.go",
+   "old": "return coded.Code() == sqliteConstraintCheck",
+   "new": "return coded.Code() != sqliteConstraintCheck"
+  }
+ ],
+ "packages/chord/src/next/store/table-history.ts": [
+  {
+   "file": "chord/next/store/table_history.go",
+   "old": "if version > definition.Version {",
+   "new": "if version >= definition.Version {"
+  }
+ ],
+ "packages/chord/src/next/store/table-migration.ts": [
+  {
+   "file": "chord/next/store/table_migration.go",
+   "old": "const MigrationChunk = 100\n",
+   "new": "const MigrationChunk = 101\n"
+  }
+ ],
+ "packages/chord/src/next/store/schema.ts": [
+  {
+   "file": "chord/next/store/schema.go",
+   "old": "VALUES (1, 0, 2, 0, 0)",
+   "new": "VALUES (1, 0, 3, 0, 0)"
+  }
+ ],
+ "packages/chord/src/next/documents/address-source.ts": [
+  {
+   "file": "chord/next/documents/address_source.go",
+   "old": "if prepared.Base() == before && !source.retired {",
+   "new": "if prepared.Base() != before && !source.retired {"
+  }
+ ],
+ "packages/chord/src/next/documents/documents.ts": [
+  {
+   "file": "chord/next/documents/documents.go",
+   "old": "if token.Sealed() || d.state != documentsOpen {",
+   "new": "if token.Sealed() && d.state != documentsOpen {"
+  }
+ ],
+ "packages/chord/src/next/documents/fence.ts": [
+  {
+   "file": "chord/next/documents/fence.go",
+   "old": "token.sealed.Store(true)",
+   "new": "token.sealed.Store(false)"
+  }
+ ],
+ "packages/chord/src/next/documents/keyed-slot.ts": [
+  {
+   "file": "chord/next/documents/keyed_slot.go",
+   "old": "slices.SortFunc(it.buffer, store.CompareText)",
+   "new": "slices.SortFunc(it.buffer, func(a, b string) int { return 0 })"
+  }
+ ],
+ "packages/chord/src/next/documents/line.ts": [
+  {
+   "file": "chord/next/documents/line.go",
+   "old": "\t<-place.previous\n",
+   "new": "\t_ = place.previous\n"
+  }
+ ],
+ "packages/chord/src/next/documents/persistence.ts": [
+  {
+   "file": "chord/next/documents/persistence.go",
+   "old": "if version > code {",
+   "new": "if version < code {"
+  }
+ ],
+ "packages/chord/src/next/documents/residency.ts": [
+  {
+   "file": "chord/next/documents/residency.go",
+   "old": "const granuleMs int64 = 1_000",
+   "new": "const granuleMs int64 = 2_000"
+  }
+ ],
+ "packages/chord/src/next/documents/slot.ts": [
+  {
+   "file": "chord/next/documents/slot.go",
+   "old": "if definition.Version < current.Version {",
+   "new": "if definition.Version > current.Version {"
+  }
+ ],
+ "packages/chord/src/next/documents/transaction.ts": [
+  {
+   "file": "chord/next/documents/transaction.go",
+   "old": "if tx.state != txCommitting || tx.token.Sealed() {",
+   "new": "if tx.state != txCommitting && tx.token.Sealed() {"
+  }
+ ],
+ "packages/chord/src/next/jobs/persisted.ts": [
+  {
+   "file": "chord/next/host/jobs_persisted.go",
+   "old": "store.RetireDocument(state.ID, state.Revision)",
+   "new": "store.RetireDocument(state.ID, state.Revision+1)"
+  }
+ ],
+ "packages/chord/src/next/jobs/records.ts": [
+  {
+   "file": "chord/next/host/jobs_records.go",
+   "old": "\t\tif reason == cutReload {\n",
+   "new": "\t\tif reason != cutReload {\n"
+  }
+ ],
+ "packages/chord/src/next/jobs/run-states.ts": [
+  {
+   "file": "chord/next/host/jobs_run_states.go",
+   "old": "each.deadline = min(each.deadline, addMillis(states.loop.Now(), change.WithinMs))",
+   "new": "each.deadline = max(each.deadline, addMillis(states.loop.Now(), change.WithinMs))"
+  }
+ ],
+ "packages/chord/src/next/jobs/stored.ts": [
+  {
+   "file": "chord/next/host/jobs_stored.go",
+   "old": "record.Set(\"finishFailures\", float64(finishFailures))",
+   "new": "record.Set(\"finishFailures\", float64(finishFailures+1))"
+  }
+ ],
+ "packages/chord/src/next/contracts/fingerprint.ts": [
+  {
+   "file": "chord/next/contracts/fingerprint.go",
+   "old": "slices.SortStableFunc(entries, func(a, b normalEntry) int { return compare16(a.name, b.name) })",
+   "new": "slices.SortStableFunc(entries, func(a, b normalEntry) int { return compare16(b.name, a.name) })"
+  }
+ ],
+ "packages/chord/src/next/contracts/history.ts": [
+  {
+   "file": "chord/next/contracts/history.go",
+   "old": "\t\t\t\tseen[name] = true\n",
+   "new": "\t\t\t\tseen[name] = false\n"
+  }
+ ],
+ "packages/chord/src/next/contracts/names.ts": [
+  {
+   "file": "chord/next/contracts/names.go",
+   "old": "c == '~'",
+   "new": "c == '!'"
+  }
+ ],
+ "packages/chord/src/next/contracts/params.ts": [
+  {
+   "file": "chord/next/contracts/params.go",
+   "old": "\"maxLength\", \"pattern\", \"format\"}",
+   "new": "\"maxLength\", \"format\"}"
+  }
+ ],
+ "packages/chord/src/next/contracts/snapshot.ts": [
+  {
+   "file": "chord/next/contracts/snapshot.go",
+   "old": "closed := node.Value(\"additionalProperties\") == false",
+   "new": "closed := node.Value(\"additionalProperties\") == true"
+  }
+ ],
+ "packages/chord/src/next/data/args.ts": [
+  {
+   "file": "chord/next/data/args.go",
+   "old": "accepted.Version == version && accepted.Fingerprint == fingerprint",
+   "new": "accepted.Version == version || accepted.Fingerprint == fingerprint"
+  }
+ ],
+ "packages/chord/src/next/data/params.ts": [
+  {
+   "file": "chord/next/data/params.go",
+   "old": "parts = append(parts, contract.Name, key)",
+   "new": "parts = append(parts, key, contract.Name)"
+  }
+ ],
+ "packages/chord/src/next/data/validator.ts": [
+  {
+   "file": "chord/next/data/validator.go",
+   "old": "\"chord.data.validations\"",
+   "new": "\"chord.data.validation\""
+  }
+ ],
+ "packages/chord/src/next/registries/contribution.ts": [
+  {
+   "file": "chord/next/registries/contribution.go",
+   "old": "if c.Version > version || (c.Version < version && adapter == nil) {",
+   "new": "if c.Version >= version || (c.Version < version && adapter == nil) {"
+  }
+ ],
+ "packages/chord/src/next/registries/internal.ts": [
+  {
+   "file": "chord/next/registries/internal.go",
+   "old": "value, err = nil, asError(recovered)",
+   "new": "value, err = nil, nil"
+  }
+ ],
+ "packages/chord/src/next/registries/record.ts": [
+  {
+   "file": "chord/next/registries/record.go",
+   "old": "return strings.Compare(left.Plugin, right.Plugin)",
+   "new": "return strings.Compare(right.Plugin, left.Plugin)"
+  }
+ ],
+ "packages/chord/src/next/registries/value.ts": [
+  {
+   "file": "chord/next/registries/value.go",
+   "old": "if mapped != nil && state.Identical(mapped.from, from) && mapped.provider == served {",
+   "new": "if mapped != nil && state.Identical(mapped.from, from) && mapped.provider != served {"
+  }
+ ],
+ "packages/chord/src/next/state/batch.ts": [
+  {
+   "file": "chord/next/state/batch.go",
+   "old": "for i := 0; i < len(b.flushes); i++ {",
+   "new": "for i := 0; i < len(b.flushes)-1; i++ {"
+  }
+ ],
+ "packages/chord/src/next/link/channel.ts": [
+  {
+   "file": "chord/next/link/channel.go",
+   "old": "silent >= ping && !c.pinged",
+   "new": "silent >= ping && c.pinged"
+  }
+ ],
+ "packages/chord/src/next/link/errors.ts": [
+  {
+   "file": "chord/next/link/errors.go",
+   "old": "if kind == \"chord\" {",
+   "new": "if kind == \"chard\" {"
+  }
+ ],
+ "packages/chord/src/next/link/values.ts": [
+  {
+   "file": "chord/next/link/values.go",
+   "old": "*segments = append(*segments, typed)",
+   "new": "*segments = append((*segments)[:0], typed)"
+  }
+ ],
+ "packages/chord/src/next/contracts/schema.ts": [
+  {
+   "file": "chord/next/contracts/schema.go",
+   "old": "delta.JsonObjectOf(\"^.*$\", value.Node)",
+   "new": "delta.JsonObjectOf(\"^.+$\", value.Node)"
+  }
+ ],
+ "packages/chord/src/next/host/backoff.ts": [
+  {
+   "file": "chord/next/host/host_backoff.go",
+   "old": "return min(previous*2, maxDelay)",
+   "new": "return min(previous*3, maxDelay)"
+  }
+ ],
+ "packages/chord/src/next/host/deadline.ts": [
+  {
+   "file": "chord/next/host/host_deadline.go",
+   "old": "d.remaining = max(0, d.remaining-time.Duration(d.loop.Now()-d.started)*time.Millisecond)",
+   "new": "d.remaining = max(0, d.remaining+time.Duration(d.loop.Now()-d.started)*time.Millisecond)"
+  }
+ ],
+ "packages/chord/src/next/host/uuid.ts": [
+  {
+   "file": "chord/next/host/host_uuid.go",
+   "old": "\t\tstate.sequence++\n",
+   "new": "\t\t_ = state.sequence\n"
+  }
+ ],
+ "packages/chord/src/next/host/unbound.ts": [
+  {
+   "file": "chord/next/host/host_unbound.go",
+   "old": "principal != nil && revoked(principal)",
+   "new": "principal != nil && !revoked(principal)"
+  }
+ ],
+ "packages/chord/src/next/host/retry-on.ts": [
+  {
+   "file": "chord/next/host/host_retry_on.go",
+   "old": "if call.Kind == chord.WatchCallValue {",
+   "new": "if call.Kind != chord.WatchCallValue {"
+  }
+ ],
+ "packages/chord/src/next/host/dependencies.ts": [
+  {
+   "file": "chord/next/host/host_dependencies.go",
+   "old": "|| err.Code == data.CodeForbidden",
+   "new": "|| err.Code == data.CodeUnavailable"
+  }
+ ],
+ "packages/chord/src/next/host/members.ts": [
+  {
+   "file": "chord/next/host/host_members.go",
+   "old": "fmt.Sprintf(\"derive #%d\", position+1)",
+   "new": "fmt.Sprintf(\"derive #%d\", position)"
+  }
+ ],
+ "packages/chord/src/next/host/destination.ts": [
+  {
+   "file": "chord/next/host/host_destination.go",
+   "old": "from.role == linkRoleParent ||",
+   "new": "from.role != linkRoleParent ||"
+  }
+ ],
+ "packages/chord/src/next/host/object.ts": [
+  {
+   "file": "chord/next/host/host_object.go",
+   "old": "if kind != objectLive || o.served.linger == 0 {",
+   "new": "if kind != objectLive || o.served.linger != 0 {"
+  }
+ ],
+ "packages/chord/src/next/host/adapted.ts": [
+  {
+   "file": "chord/next/host/host_adapted.go",
+   "old": "strconv.Itoa(version) + \" is not served here\"",
+   "new": "strconv.Itoa(version) + \" is not served\""
+  }
+ ],
+ "packages/chord/src/next/host/reference-keys.ts": [
+  {
+   "file": "chord/next/host/host_reference_keys.go",
+   "old": "if entry.holders > 0 {",
+   "new": "if entry.holders > 1 {"
+  }
+ ],
+ "packages/chord/src/next/host/reference-source.ts": [
+  {
+   "file": "chord/next/host/host_reference_source.go",
+   "old": "if current.failure == nil {",
+   "new": "if current.failure != nil {"
+  }
+ ],
+ "packages/chord/src/next/remote/hold.ts": [
+  {
+   "file": "chord/next/host/remote_hold.go",
+   "old": "message.RetryIn = link.Some(int(max(0, *shown.RetryAt",
+   "new": "message.RetryIn = link.Some(int(min(0, *shown.RetryAt"
+  }
+ ],
+ "packages/chord/src/next/remote/remote-object.ts": [
+  {
+   "file": "chord/next/host/remote_remote_object.go",
+   "old": "if _, twice := retirements[target]; twice {",
+   "new": "if _, twice := retirements[target]; !twice {"
+  }
+ ],
+ "packages/chord/src/next/remote/host-link.ts": [
+  {
+   "file": "chord/next/host/remote_host_link.go",
+   "old": "\"%s: an origin on a child link\"",
+   "new": "\"%s: an origin on a link\""
+  }
+ ],
+ "packages/chord/src/next/remote/path.ts": [
+  {
+   "file": "chord/next/host/remote_path.go",
+   "old": "if p.current != link {",
+   "new": "if p.current == link {"
+  }
+ ],
+ "packages/chord/src/next/remote/calls.ts": [
+  {
+   "file": "chord/next/host/remote_calls.go",
+   "old": "if w.inFlight >= w.limit {",
+   "new": "if w.inFlight > w.limit {"
+  }
+ ],
+ "packages/chord/src/next/remote/provider.ts": [
+  {
+   "file": "chord/next/host/remote_provider.go",
+   "old": "Code: data.CodeAborted, Message: fmt.Sprintf(\"call %d: aborted by its caller\", id)",
+   "new": "Code: data.CodeUnavailable, Message: fmt.Sprintf(\"call %d: aborted by its caller\", id)"
+  },
+  {
+   "file": "chord/next/host/remote_provider.go",
+   "old": "Code: data.CodeNotReady, Message: fmt.Sprintf(\"hold %d: not bound yet\", served.id)",
+   "new": "Code: data.CodeUnavailable, Message: fmt.Sprintf(\"hold %d: not bound yet\", served.id)"
+  }
+ ],
+ "packages/chord/src/next/remote/consumer.ts": [
+  {
+   "file": "chord/next/host/remote_consumer.go",
+   "old": "Message: \"the link closed\"}, nil)",
+   "new": "Message: \"the link is closed\"}, nil)"
+  }
+ ],
+ "packages/chord/src/next/remote/relay.ts": [
+  {
+   "file": "chord/next/host/remote_relay.go",
+   "old": "func (h *relayedHold) retry(message *link.RetryMessage) {\n\tif upstream := h.upstream; upstream != nil {\n\t\tupstream.link.send(link.WithOrigin(message, link.Some(upstream.origin)))",
+   "new": "func (h *relayedHold) retry(message *link.RetryMessage) {\n\tif upstream := h.upstream; upstream != nil {\n\t\tupstream.link.send(&link.RetryMessage{Origin: link.Some(upstream.origin), Hold: message.Hold, Hops: message.Hops - 1})"
+  }
+ ],
+ "packages/chord/src/next/remote/replica.ts": [
+  {
+   "file": "chord/next/host/remote_replica.go",
+   "old": "flagged := retired || r.retiredWhileFailed",
+   "new": "flagged := retired"
   }
  ],
  "packages/chord/src/next-node/compression.ts": [
@@ -1619,6 +2290,123 @@
    "new": "\t\t\tinput = Strings(\"text\")\n"
   }
  ],
+ "packages/tui/src/native-modifiers.ts": [
+  {
+   "file": "tui/native_modifiers.go",
+   "old": "return nativeplatform.IsModifierPressed(string(key))",
+   "new": "return !nativeplatform.IsModifierPressed(string(key))"
+  },
+  {
+   "file": "internal/nativeplatform/nativeplatform.go",
+   "old": "return isModifierPressed(name)",
+   "new": "return !isModifierPressed(name)"
+  },
+  {
+   "file": "internal/nativeplatform/modifiers_other.go",
+   "old": "bool { return false }",
+   "new": "bool { return true }"
+  }
+ ],
+ "packages/evals/src/cli.ts": [
+  {
+   "file": "internal/evals/cli.go",
+   "old": "slices.SortFunc(files, compareUTF16)",
+   "new": "slices.SortFunc(files, strings.Compare)"
+  },
+  {
+   "file": "internal/evals/cli.go",
+   "old": "if images.WithDocs.ID == images.WithoutDocs.ID {",
+   "new": "if images.WithDocs.ID != images.WithoutDocs.ID {"
+  },
+  {
+   "file": "cmd/pig-evals/main.go",
+   "old": "[]string{\"PI_PROVIDER\", \"PI_MODEL\", \"PI_EVAL_RUNS_PER_VARIANT\"}",
+   "new": "[]string{\"PI_PROVIDER\", \"PI_EVAL_RUNS_PER_VARIANT\"}"
+  }
+ ],
+ "packages/evals/src/docker.ts": [
+  {
+   "file": "internal/evals/docker.go",
+   "old": "{\"PI_EVAL_SANDBOX_UID\", \"65532\"}",
+   "new": "{\"PI_EVAL_SANDBOX_UID\", \"65533\"}"
+  },
+  {
+   "file": "internal/evals/docker.go",
+   "old": "if status != 0 || jsstring.Trim(stdout) == \"\" {",
+   "new": "if status != 0 {"
+  },
+  {
+   "file": "internal/evals/docker.go",
+   "old": "\"--read-only\", ",
+   "new": "\"--read-write\", "
+  },
+  {
+   "file": "internal/evals/docker.go",
+   "old": "if status != 0 {\n\t\treturn \"\", fmt.Errorf(\"%s eval discovery failed.\", variant)",
+   "new": "if status == 0 {\n\t\treturn \"\", fmt.Errorf(\"%s eval discovery failed.\", variant)"
+  }
+ ],
+ "packages/evals/src/harness.ts": [
+  {
+   "file": "internal/evals/harness.go",
+   "old": "provider, id = jsstring.Trim(provider), jsstring.Trim(id)",
+   "new": "provider, id = provider, jsstring.Trim(id)"
+  },
+  {
+   "file": "internal/evals/harness.go",
+   "old": "!strings.HasPrefix(name, \"PI_EVAL_\")",
+   "new": "!strings.HasPrefix(name, \"PI_EVAL_X\")"
+  },
+  {
+   "file": "internal/evals/harness.go",
+   "old": "!= *options.ExpectedPiDocumentation {",
+   "new": "== *options.ExpectedPiDocumentation {"
+  },
+  {
+   "file": "internal/evals/harness.go",
+   "old": "cwdStart < documentationEnd",
+   "new": "cwdStart > documentationEnd"
+  }
+ ],
+ "packages/evals/src/plan.ts": [
+  {
+   "file": "internal/evals/plan.go",
+   "old": "if runNumber%2 == 0 {",
+   "new": "if runNumber%2 == 1 {"
+  },
+  {
+   "file": "internal/evals/plan.go",
+   "old": "if identities[key] {",
+   "new": "if !identities[key] {"
+  },
+  {
+   "file": "internal/evals/plan.go",
+   "old": "if runsPerVariant < 1 {",
+   "new": "if runsPerVariant < 0 {"
+  }
+ ],
+ "packages/evals/src/report.ts": [
+  {
+   "file": "internal/evals/report.go",
+   "old": "caseResult.Status != assertion.Status",
+   "new": "caseResult.Status == assertion.Status"
+  },
+  {
+   "file": "internal/evals/report.go",
+   "old": "*run.Usage.Provider+\"/\"+*run.Usage.Model != task.Model",
+   "new": "*run.Usage.Provider+\"/\"+*run.Usage.Model == task.Model"
+  },
+  {
+   "file": "internal/evals/report.go",
+   "old": "*observation.Score >= 1",
+   "new": "*observation.Score > 1"
+  },
+  {
+   "file": "internal/evals/report.go",
+   "old": "*treatmentPassRate < *controlPassRate",
+   "new": "*treatmentPassRate <= *controlPassRate"
+  }
+ ],
  "packages/ai/scripts/check-model-data.ts": [
   {
    "file": "cmd/check-model-data/main.go",
@@ -1645,253 +2433,154 @@
    "new": "const hydrationGeneratedAt = \"1970-01-01T00:00:00.001Z\""
   }
  ],
- "packages/agent/src/agent.ts": [
+ "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.lazy.ts": [
   {
-   "file": "agent/queue.go",
-   "old": "\tif q.mode == QueueModeAll {\n",
-   "new": "\tif q.mode != QueueModeAll {\n"
+   "file": "internal/codingagent/interactive_easter_eggs.go",
+   "old": "\tif m.playPig3d() {\n",
+   "new": "\tif false && m.playPig3d() {\n"
   }
  ],
- "packages/ai/src/models.generated.ts": [
+ "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts": [
   {
-   "file": "ai/models_generated.go",
-   "old": "generatedRows[ref.row].Headers = generatedHeaders[ref.element]",
-   "new": "generatedRows[ref.row].Headers = nil"
+   "file": "internal/codingagent/pig_egg3d.go",
+   "old": "math.Sin(math.Pi*clamp01(u)) * 0.8)",
+   "new": "math.Sin(math.Pi*clamp01(u)) * 0.7)"
   }
  ],
- "packages/ai/src/models-store.ts": [
+ "packages/coding-agent/src/modes/interactive/components/first-time-setup.ts": [
   {
-   "file": "ai/models_store.go",
-   "old": "s.entries[providerID] = entry.Clone()",
-   "new": "s.entries[providerID] = entry"
+   "file": "internal/codingagent/first_time_setup.go",
+   "old": "\t\tconfirm = \"finish\"\n",
+   "new": "\t\tconfirm = \"finish!\"\n"
   }
  ],
- "packages/ai/src/model-catalog.ts": [
+ "packages/coding-agent/src/modes/interactive/components/session-selector-search.ts": [
   {
-   "file": "ai/model_catalog.go",
-   "old": "if _, ok := c.models[id]; !ok {",
-   "new": "if _, ok := c.models[id]; ok {"
+   "file": "internal/codingagent/session_selector.go",
+   "old": "sessionTierText  = 1 ",
+   "new": "sessionTierText  = 3 "
   }
  ],
- "packages/ai/src/providers/all.ts": [
+ "packages/coding-agent/src/modes/interactive/components/mermaid.ts": [
   {
-   "file": "ai/builtin_providers.go",
-   "old": "for _, image := range GetImageModels(BuiltinImageProvider(provider)) {",
-   "new": "for _, image := range GetImageModels(BuiltinImageProvider(provider))[:0] {"
+   "file": "internal/codingagent/mermaid_transform.go",
+   "old": "\t\tif mode == \"off\" ||\n",
+   "new": "\t\tif mode == \"off!\" ||\n"
   }
  ],
- "packages/ai/src/api/anthropic-messages.ts": [
+ "packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts": [
   {
-   "file": "ai/anthropic_client.go",
-   "old": "strings.Contains(apiKey, \"sk-ant-oat\")",
-   "new": "strings.Contains(apiKey, \"sk-ant-oaz\")"
+   "file": "internal/codingagent/radius_login_selector.go",
+   "old": "\"#f1be57\"",
+   "new": "\"#f1be58\""
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/themed-text.ts": [
+  {
+   "file": "tui/themed_text.go",
+   "old": "\t\tt.stale = false\n",
+   "new": ""
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/theme/system-theme.ts": [
+  {
+   "file": "tui/system_theme.go",
+   "old": "const systemTextMinimumWcagContrast = 4.5",
+   "new": "const systemTextMinimumWcagContrast = 3.0"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/model-catalog-refresh.ts": [
+  {
+   "file": "internal/codingagent/model_catalog_refresh.go",
+   "old": "\tif active == nil {\n",
+   "new": "\tif active == nil || true {\n"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/session-share.ts": [
+  {
+   "file": "internal/codingagent/session_share.go",
+   "old": "CustomType: \"pi.share\",",
+   "new": "CustomType: \"pi.shared\","
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/status-indicator.ts": [
+  {
+   "file": "tui/status_indicator.go",
+   "old": "line := strings.Repeat(\" \", max(0, width))",
+   "new": "line := strings.Repeat(\" \", max(0, width-1))"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/trust-selector.ts": [
+  {
+   "file": "internal/codingagent/trust_selector.go",
+   "old": "\"Current session: \"+current",
+   "new": "\"Current sessio: \"+current"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/theme/theme-controller.ts": [
+  {
+   "file": "internal/codingagent/startup_ui.go",
+   "old": "if ui.ConsumeTerminalColorResponse(chunk) {",
+   "new": "if false && ui.ConsumeTerminalColorResponse(chunk) {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/model-search.ts": [
+  {
+   "file": "tui/model_search.go",
+   "old": "return provider + \" \" + provider + \"/\" + id",
+   "new": "return id + \" \" + provider + \"/\" + id"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/custom-entry.ts": [
+  {
+   "file": "coding/extension/host/subprocess/render_proxy.go",
+   "old": "payloadKey: \"entry\",",
+   "new": "payloadKey: \"entry2\","
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/markdown-transform.ts": [
+  {
+   "file": "coding/extension/markdowntransform/markdowntransform.go",
+   "old": "\tout = transformer(markdown, ctx)\n",
+   "new": "\tout = markdown\n"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/bug-report.ts": [
+  {
+   "file": "internal/codingagent/slash_bug.go",
+   "old": "\"Description: %s\\nTranscript: %s",
+   "new": "\"Descriptio: %s\\nTranscript: %s"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/chat-viewport.ts": [
+  {
+   "file": "internal/codingagent/chat_viewport.go",
+   "old": "scrollbar = string(tui.ScrollbarAuto)",
+   "new": "scrollbar = string(tui.ScrollbarHidden)"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts": [
+  {
+   "file": "tui/select_submenu.go",
+   "old": "if value := s.CurrentValue(); value != \"\" {",
+   "new": "if value := s.CurrentValue(); value == \"\" {"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/tui-renderer.ts": [
+  {
+   "file": "internal/codingagent/clipboard_text.go",
+   "old": "\"\\x1b[200~\"",
+   "new": "\"\\x1b[201~\""
   },
   {
-   "file": "ai/anthropic.go",
-   "old": "r == '_' || r == '-'",
-   "new": "r == '_'"
-  }
- ],
- "packages/ai/src/api/constrained-sampling.ts": [
-  {
-   "file": "ai/constrained_sampling.go",
-   "old": "\t\"Too many strict tools (\",\n",
-   "new": "\t\"Too many strict toolz (\",\n"
-  }
- ],
- "packages/ai/src/api/mistral-conversations.ts": [
-  {
-   "file": "ai/mistral.go",
-   "old": "req.ReasoningEffort = \"high\"",
-   "new": "req.ReasoningEffort = \"low\""
-  }
- ],
- "packages/ai/src/auth/context.ts": [
-  {
-   "file": "ai/auth_resolve.go",
-   "old": "if !ok || trimJSWhitespace(value) == \"\" {",
-   "new": "if !ok {"
+   "file": "internal/codingagent/presentation_tui.go",
+   "old": "label += \" · \" + tui.FormatKeyText(",
+   "new": "label += \" - \" + tui.FormatKeyText("
   },
   {
-   "file": "ai/auth_resolve.go",
-   "old": "path = home + path[1:]",
-   "new": "path = home + path"
-  }
- ],
- "packages/ai/src/auth/helpers.ts": [
-  {
-   "file": "ai/auth_lazy.go",
-   "old": "l.once.Do(func() { l.loaded, l.err = l.load() })",
-   "new": "l.loaded, l.err = l.load()"
-  }
- ],
- "packages/ai/src/auth/resolve.ts": [
-  {
-   "file": "ai/auth_resolve.go",
-   "old": "defaultOAuthMinimumValidityMs = float64(5 * 60 * 1000)",
-   "new": "defaultOAuthMinimumValidityMs = float64(1)"
-  }
- ],
- "packages/ai/src/auth/types.ts": [
-  {
-   "file": "ai/auth.go",
-   "old": "json.Indent(&out, canonical, \"\", \"  \")",
-   "new": "json.Indent(&out, canonical, \"\", \"   \")"
-  }
- ],
- "packages/ai/src/auth/oauth/anthropic.ts": [
-  {
-   "file": "ai/oauth_anthropic.go",
-   "old": "\t\t\"refresh_token\": refreshToken,\n",
-   "new": "\t\t\"refresh_token\": refreshToken,\n\t\t\"scope\":         anthropicScopes,\n"
-  }
- ],
- "packages/ai/src/auth/oauth/device-code.ts": [
-  {
-   "file": "ai/oauth_device_code.go",
-   "old": "\t\t\tslowDownResponses++\n",
-   "new": "\t\t\tslowDownResponses += 0\n"
-  }
- ],
- "packages/ai/src/auth/oauth/github-copilot.ts": [
-  {
-   "file": "ai/copilot_verification_uri.go",
-   "old": "\"Untrusted verification_uri in device code response\"",
-   "new": "\"Untrusted verification_uri in device code respons\""
-  }
- ],
- "packages/ai/src/auth/oauth/load.ts": [
-  {
-   "file": "ai/oauth_registry.go",
-   "old": "\t\"xai\":            newXaiOAuthProvider(),\n",
-   "new": "\t\"xai-\":           newXaiOAuthProvider(),\n"
-  },
-  {
-   "file": "ai/oauth_registry.go",
-   "old": "\t\"meta\":           newMetaOAuthProvider(),\n",
-   "new": "\t\"meta-\":          newMetaOAuthProvider(),\n"
-  }
- ],
- "packages/ai/src/auth/oauth/kimi-coding.ts": [
-  {
-   "file": "ai/oauth_kimi.go",
-   "old": "\tcase \"slow_down\":\n",
-   "new": "\tcase \"slow_dowZ\":\n"
-  }
- ],
- "packages/ai/src/auth/oauth/openrouter.ts": [
-  {
-   "file": "ai/oauth_openrouter.go",
-   "old": "1<<53 - 1",
-   "new": "1<<53 - 2"
-  },
-  {
-   "file": "ai/oauth_openrouter.go",
-   "old": "\"S256\",\n\t})",
-   "new": "\"plain\",\n\t})"
-  }
- ],
- "packages/ai/src/auth/oauth/openai-codex.ts": [
-  {
-   "file": "ai/oauth_openai_codex.go",
-   "old": "float64(jsnumber.FromJSON(tok.ExpiresIn)*1000))",
-   "new": "float64(jsnumber.FromJSON(tok.ExpiresIn)*999))"
-  },
-  {
-   "file": "ai/oauth_openai_codex.go",
-   "old": "!accessOK || !refreshOK || !jsonNumberToken(tok.ExpiresIn)",
-   "new": "!accessOK || refreshOK || !jsonNumberToken(tok.ExpiresIn)"
-  }
- ],
- "packages/ai/src/auth/oauth/pkce.ts": [
-  {
-   "file": "ai/pkce.go",
-   "old": "make([]byte, 32)",
-   "new": "make([]byte, 31)"
-  }
- ],
- "packages/ai/src/auth/oauth/radius.ts": [
-  {
-   "file": "ai/oauth_radius.go",
-   "old": "\"gateway offline_access\"",
-   "new": "\"gateway\""
-  },
-  {
-   "file": "ai/oauth_radius.go",
-   "old": "= \"pi-gateway\"",
-   "new": "= \"pi-gatewayx\""
-  }
- ],
- "packages/ai/src/auth/oauth/xai.ts": [
-  {
-   "file": "ai/oauth_xai.go",
-   "old": "\"b1a00492-073a-47ea-816f-4c329264a828\"",
-   "new": "\"b1a00492-073a-47ea-816f-4c329264a829\""
-  },
-  {
-   "file": "ai/oauth_xai.go",
-   "old": "\"openid profile email offline_access grok-cli:access api:access\"",
-   "new": "\"openid profile email offline_access\""
-  }
- ],
- "packages/ai/src/compat/extension-oauth-types.ts": [
-  {
-   "file": "ai/oauth_types.go",
-   "old": "chatgptCredentialMembers      = append(slices.Clone(accessFirstCredentialMembers), \"clientId\", \"scopes\")",
-   "new": "chatgptCredentialMembers      = append(slices.Clone(accessFirstCredentialMembers), \"scopes\", \"clientId\")"
-  },
-  {
-   "file": "ai/oauth_types.go",
-   "old": "accessFirstCredentialMembers  = []string{\"type\", \"access\", \"refresh\", \"expires\"}",
-   "new": "accessFirstCredentialMembers  = []string{\"type\", \"refresh\", \"access\", \"expires\"}"
-  },
-  {
-   "file": "ai/oauth_types.go",
-   "old": "Access  string                     `json:\"access\"`",
-   "new": "Access  string                     `json:\"accessToken\"`"
-  }
- ],
- "packages/ai/src/providers/openai-codex.ts": [
-  {
-   "file": "ai/provider_constructors.go",
-   "old": "func OpenaiCodexProvider() *ModelsProvider { return builtinProvider(\"openai-codex\") }",
-   "new": "func OpenaiCodexProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
-  }
- ],
- "packages/ai/src/providers/openai.ts": [
-  {
-   "file": "ai/provider_constructors.go",
-   "old": "func OpenaiProvider() *ModelsProvider { return builtinProvider(\"openai\") }",
-   "new": "func OpenaiProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
-  }
- ],
- "packages/ai/src/utils/error-body.ts": [
-  {
-   "file": "ai/errors.go",
-   "old": "length-maxChars)\n",
-   "new": "length-maxChars+1)\n"
-  },
-  {
-   "file": "ai/errors.go",
-   "old": "return fmt.Sprintf(\"%d: %s\", *norm.Status, message)",
-   "new": "return fmt.Sprintf(\"%d %s\", *norm.Status, message)"
-  },
-  {
-   "file": "ai/errors.go",
-   "old": "const MaxProviderErrorBodyChars = 4000",
-   "new": "const MaxProviderErrorBodyChars = 3999"
-  }
- ],
- "packages/ai/src/utils/estimate.ts": [
-  {
-   "file": "ai/estimate.go",
-   "old": "charsPerToken       = 3.5",
-   "new": "charsPerToken       = 3.0"
-  },
-  {
-   "file": "ai/estimate.go",
-   "old": "estimatedImageChars = 4800",
-   "new": "estimatedImageChars = 4801"
+   "file": "internal/codingagent/presentation_tui.go",
+   "old": "opts.WheelScrollLines = tui.WheelScrollLines{Auto: true}",
+   "new": "opts.WheelScrollLines = tui.WheelScrollLines{Lines: 5}"
   }
  ],
  "packages/ai/src/providers/amazon-bedrock.models.ts": [
@@ -1999,6 +2688,13 @@
    "new": "\t\tID:                   \"k3\",\n\t\tProvider:             \"kimi-coding\",\n\t\tDisplayName:          \"Kimi K3!\",\n"
   }
  ],
+ "packages/ai/src/providers/meta.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"muse-spark-1.1\",\n\t\tProvider:             \"meta\",\n\t\tDisplayName:          \"Muse Spark 1.1\",\n",
+   "new": "\t\tID:                   \"muse-spark-1.1\",\n\t\tProvider:             \"meta\",\n\t\tDisplayName:          \"Muse Spark 1.1!\",\n"
+  }
+ ],
  "packages/ai/src/providers/minimax-cn.models.ts": [
   {
    "file": "ai/models_generated.go",
@@ -2086,13 +2782,6 @@
    "new": "\t\tID:                   \"~anthropic/claude-fable-latest\",\n\t\tProvider:             \"openrouter\",\n\t\tDisplayName:          \"Anthropic: Claude Fable Latest!\",\n"
   }
  ],
- "packages/ai/src/providers/qwen-token-plan.models.ts": [
-  {
-   "file": "ai/models_generated.go",
-   "old": "\t\tID:                   \"deepseek-v3.2\",\n\t\tProvider:             \"qwen-token-plan\",\n\t\tDisplayName:          \"DeepSeek V3.2\",\n",
-   "new": "\t\tID:                   \"deepseek-v3.2\",\n\t\tProvider:             \"qwen-token-plan\",\n\t\tDisplayName:          \"DeepSeek V3.2!\",\n"
-  }
- ],
  "packages/ai/src/providers/qwen-token-plan-cn.models.ts": [
   {
    "file": "ai/models_generated.go",
@@ -2100,11 +2789,39 @@
    "new": "\t\tID:                   \"deepseek-v3.2\",\n\t\tProvider:             \"qwen-token-plan-cn\",\n\t\tDisplayName:          \"DeepSeek V3.2!\",\n"
   }
  ],
+ "packages/ai/src/providers/qwen-token-plan-individual.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deepseek-v4-flash-0731\",\n\t\tProvider:             \"qwen-token-plan-individual\",\n\t\tDisplayName:          \"DeepSeek V4 Flash 0731\",\n",
+   "new": "\t\tID:                   \"deepseek-v4-flash-0731\",\n\t\tProvider:             \"qwen-token-plan-individual\",\n\t\tDisplayName:          \"DeepSeek V4 Flash 0731!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/qwen-token-plan.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deepseek-v3.2\",\n\t\tProvider:             \"qwen-token-plan\",\n\t\tDisplayName:          \"DeepSeek V3.2\",\n",
+   "new": "\t\tID:                   \"deepseek-v3.2\",\n\t\tProvider:             \"qwen-token-plan\",\n\t\tDisplayName:          \"DeepSeek V3.2!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/radius.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"balanced\",\n\t\tProvider:             \"radius\",\n\t\tDisplayName:          \"Balanced\",\n",
+   "new": "\t\tID:                   \"balanced\",\n\t\tProvider:             \"radius\",\n\t\tDisplayName:          \"Balanced!\",\n"
+  }
+ ],
  "packages/ai/src/providers/together.models.ts": [
   {
    "file": "ai/models_generated.go",
    "old": "\t\tID:                   \"deepseek-ai/DeepSeek-V4-Pro-0813\",\n\t\tProvider:             \"together\",\n\t\tDisplayName:          \"DeepSeek V4 Pro 0813\",\n",
    "new": "\t\tID:                   \"deepseek-ai/DeepSeek-V4-Pro-0813\",\n\t\tProvider:             \"together\",\n\t\tDisplayName:          \"DeepSeek V4 Pro 0813!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/typesafe.models.ts": [
+  {
+   "file": "ai/classifier_models_generated.go",
+   "old": "\t{ID: \"jev-latest\", Name: \"Jev\", API: ClassifierAPI(\"typesafe-system-one\"), Provider: \"typesafe\",",
+   "new": "\t{ID: \"jev-latest\", Name: \"Jev!\", API: ClassifierAPI(\"typesafe-system-one\"), Provider: \"typesafe\","
   }
  ],
  "packages/ai/src/providers/vercel-ai-gateway.models.ts": [
@@ -2184,20 +2901,6 @@
    "new": "func CloudflareAIGatewayProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
   }
  ],
- "packages/ai/src/providers/cloudflare-auth.ts": [
-  {
-   "file": "ai/auth_providers.go",
-   "old": "source := cloudflareAPIKey",
-   "new": "source := \"CLOUDFLARE_KEY\""
-  }
- ],
- "packages/ai/src/providers/cloudflare-stream.ts": [
-  {
-   "file": "ai/cloudflare_streams.go",
-   "old": "return stream(ctx, ResolveCloudflareModel(model, options.Env), transcript, options)",
-   "new": "return stream(ctx, model, transcript, options)"
-  }
- ],
  "packages/ai/src/providers/cloudflare-workers-ai.ts": [
   {
    "file": "ai/builtin_providers.go",
@@ -2217,13 +2920,6 @@
    "file": "ai/provider_constructors.go",
    "old": "func FireworksProvider() *ModelsProvider { return builtinProvider(\"fireworks\") }",
    "new": "func FireworksProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
-  }
- ],
- "packages/ai/src/providers/github-copilot.ts": [
-  {
-   "file": "ai/github_copilot_filter.go",
-   "old": "credential.Type != CredentialOAuth",
-   "new": "credential.Type == CredentialOAuth"
   }
  ],
  "packages/ai/src/providers/groq.ts": [
@@ -2282,6 +2978,20 @@
    "new": "func NvidiaProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
   }
  ],
+ "packages/ai/src/providers/openai-codex.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func OpenaiCodexProvider() *ModelsProvider { return builtinProvider(\"openai-codex\") }",
+   "new": "func OpenaiCodexProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/openai.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func OpenaiProvider() *ModelsProvider { return builtinProvider(\"openai\") }",
+   "new": "func OpenaiProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
  "packages/ai/src/providers/opencode-go.ts": [
   {
    "file": "ai/builtin_providers.go",
@@ -2296,20 +3006,6 @@
    "new": "func OpencodeProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
   }
  ],
- "packages/ai/src/providers/openrouter.ts": [
-  {
-   "file": "ai/openrouter_user_models.go",
-   "old": "request.Header.Set(\"authorization\", \"Bearer \"+key)",
-   "new": "request.Header.Set(\"authorization\", \"Basic \"+key)"
-  }
- ],
- "packages/ai/src/providers/qwen-token-plan.ts": [
-  {
-   "file": "ai/provider_constructors.go",
-   "old": "func QwenTokenPlanProvider() *ModelsProvider { return builtinProvider(\"qwen-token-plan\") }",
-   "new": "func QwenTokenPlanProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
-  }
- ],
  "packages/ai/src/providers/qwen-token-plan-cn.ts": [
   {
    "file": "ai/provider_constructors.go",
@@ -2317,11 +3013,11 @@
    "new": "func QwenTokenPlanCnProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
   }
  ],
- "packages/ai/src/providers/radius.ts": [
+ "packages/ai/src/providers/qwen-token-plan.ts": [
   {
-   "file": "ai/radius.go",
-   "old": "if gateway == NormalizeRadiusGatewayURL(DefaultRadiusGateway) {",
-   "new": "if gateway != NormalizeRadiusGatewayURL(DefaultRadiusGateway) {"
+   "file": "ai/provider_constructors.go",
+   "old": "func QwenTokenPlanProvider() *ModelsProvider { return builtinProvider(\"qwen-token-plan\") }",
+   "new": "func QwenTokenPlanProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
   }
  ],
  "packages/ai/src/providers/together.ts": [
@@ -2387,228 +3083,11 @@
    "new": "func ZaiProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
   }
  ],
- "packages/ai/src/api/lazy.ts": [
-  {
-   "file": "ai/provider_streams.go",
-   "old": "\tobservation.onEvent(event)\n\tobservation.onResult(message)\n",
-   "new": "\tobservation.onEvent(event)\n"
-  }
- ],
- "packages/agent/src/stream-fn.ts": [
-  {
-   "file": "agent/stream_fn.go",
-   "old": "\tdefaultStream.fn = fn\n",
-   "new": "\tdefaultStream.fn = nil\n"
-  }
- ],
- "packages/ai/src/session-resources.ts": [
-  {
-   "file": "ai/session_resources.go",
-   "old": "if len(errs) > 0 {",
-   "new": "if len(errs) > 1 {"
-  }
- ],
- "packages/ai/src/oauth.ts": [
-  {
-   "file": "ai/oauth_types.go",
-   "old": "return ok && subscription.IsSubscription()",
-   "new": "return !ok || subscription.IsSubscription()"
-  }
- ],
- "packages/ai/src/cli.ts": [
-  {
-   "file": "coding/cli/auth_commands.go",
-   "old": "fmt.Printf(\"\\nCredentials saved to %s\\n\", credentialPath)",
-   "new": "fmt.Printf(\"\\nCredentials saved to %s.\\n\", credentialPath)"
-  }
- ],
- "packages/ai/src/bedrock-provider.ts": [
-  {
-   "file": "ai/providers/bedrock/bedrock.go",
-   "old": "if isReservedBedrockHeader(name) {",
-   "new": "if !isReservedBedrockHeader(name) {"
-  }
- ],
- "packages/ai/src/api/openai-completions.ts": [
-  {
-   "file": "ai/openai.go",
-   "old": "req.PromptCacheRetention = new(\"24h\")",
-   "new": "req.PromptCacheRetention = new(\"1h\")"
-  }
- ],
- "packages/ai/src/api/openai-responses-shared.ts": [
-  {
-   "file": "ai/openai_responses.go",
-   "old": "Type: \"additional_tools\", Role: \"developer\"",
-   "new": "Type: \"additional_tools\", Role: \"user\""
-  }
- ],
- "packages/ai/src/api/openai-codex-responses.ts": [
-  {
-   "file": "ai/openai_codex_responses.go",
-   "old": "return raw + \"/codex/responses\"",
-   "new": "return raw + \"/codex/response\""
-  }
- ],
- "packages/ai/src/providers/anthropic.ts": [
-  {
-   "file": "ai/auth_providers.go",
-   "old": "Headers: ProviderHeaders{\"Authorization\": new(\"Bearer \" + token)}}, Source: AnthropicAuthTokenEnv",
-   "new": "Headers: ProviderHeaders{\"Authorization\": new(\"Token \" + token)}}, Source: AnthropicAuthTokenEnv"
-  }
- ],
  "packages/ai/src/providers/google.ts": [
   {
    "file": "ai/builtin_providers_google_openai_together.go",
    "old": "func GoogleProvider() *ModelsProvider { return builtinProvider(\"google\") }",
    "new": "func GoogleProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
-  }
- ],
- "packages/ai/src/providers/google-vertex.ts": [
-  {
-   "file": "ai/auth_providers.go",
-   "old": "source := \"gcloud application default credentials\"",
-   "new": "source := \"gcloud credentials\""
-  }
- ],
- "packages/ai/src/providers/amazon-bedrock.ts": [
-  {
-   "file": "ai/auth_providers.go",
-   "old": "return &AuthResult{Env: credentialEnv(credential), Source: \"AWS_PROFILE\"}, ctx.Err()",
-   "new": "return &AuthResult{Env: credentialEnv(credential), Source: \"AWS_PROFILE_ENV\"}, ctx.Err()"
-  }
- ],
- "packages/ai/src/api/cloudflare.ts": [
-  {
-   "file": "ai/cloudflare.go",
-   "old": "{CLOUDFLARE_ACCOUNT_ID}/ai\"",
-   "new": "{CLOUDFLARE_ACCOUNT_ID}/ai/\""
-  }
- ],
- "packages/ai/src/providers/azure.ts": [
-  {
-   "file": "ai/azure.go",
-   "old": "resolved.cfg.requestModel = ResolveAzureDeploymentName(p.cfg.Model, options)",
-   "new": "resolved.cfg.requestModel = p.cfg.Model"
-  }
- ],
- "packages/ai/src/providers/mistral.ts": [
-  {
-   "file": "ai/provider_constructors.go",
-   "old": "func MistralProvider() *ModelsProvider { return builtinProvider(\"mistral\") }",
-   "new": "func MistralProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
-  }
- ],
- "packages/ai/src/api/transform-messages.ts": [
-  {
-   "file": "ai/tool_flow.go",
-   "old": "ToolResultMessage{ToolCallID: call.ID, ToolName: call.Name,",
-   "new": "ToolResultMessage{ToolCallID: call.Name, ToolName: call.Name,"
-  }
- ],
- "packages/ai/src/api/openrouter-images.ts": [
-  {
-   "file": "ai/openrouter_images.go",
-   "old": "modalities = []string{\"image\", \"text\"}",
-   "new": "modalities = []string{\"image\"}"
-  }
- ],
- "packages/ai/src/images-api-registry.ts": [
-  {
-   "file": "ai/images.go",
-   "old": "imagesAPIProviderRegistry[provider.API] = entry",
-   "new": "imagesAPIProviderRegistry[provider.API+\"-x\"] = entry"
-  }
- ],
- "packages/ai/src/utils/hash.ts": [
-  {
-   "file": "ai/openai.go",
-   "old": "h1 = (h1 ^ ch) * 2654435761",
-   "new": "h1 = (h1 ^ ch) * 2654435760"
-  }
- ],
- "packages/ai/src/utils/headers.ts": [
-  {
-   "file": "ai/provider_response.go",
-   "old": "out[key] = strings.Join(values, \", \")",
-   "new": "out[key] = strings.Join(values, \",\")"
-  },
-  {
-   "file": "ai/provider_response.go",
-   "old": "out[key] = values[len(values)-1]",
-   "new": "out[key] = values[0]"
-  },
-  {
-   "file": "ai/classifier_http.go",
-   "old": "\t\t\tdelete(merged, normalized)\n",
-   "new": "\t\t\t_ = normalized\n"
-  }
- ],
- "packages/ai/src/utils/node-http-proxy.ts": [
-  {
-   "file": "ai/node_http_proxy.go",
-   "old": "case \"https\", \"wss\":\n\t\treturn 443",
-   "new": "case \"https\", \"wss\":\n\t\treturn 444"
-  },
-  {
-   "file": "ai/node_http_proxy.go",
-   "old": "hostname == host || strings.HasSuffix(hostname, \".\"+host)",
-   "new": "hostname == host"
-  },
-  {
-   "file": "ai/node_http_proxy.go",
-   "old": "if noProxy == \"*\" {",
-   "new": "if noProxy == \"-\" {"
-  }
- ],
- "packages/ai/src/utils/text.ts": [
-  {
-   "file": "ai/text.go",
-   "old": "\tsep := \"\\n\"\n",
-   "new": "\tsep := \" \"\n"
-  },
-  {
-   "file": "ai/transcript.go",
-   "old": "Removed system prompt section \\\"%s\\\"",
-   "new": "Removed prompt section \\\"%s\\\""
-  },
-  {
-   "file": "ai/estimate.go",
-   "old": "parts = append(parts, strings.Join(texts, \"\\n\"))",
-   "new": "parts = append(parts, strings.Join(texts, \"\\n\\n\"))"
-  }
- ],
- "packages/ai/src/utils/string-enum.ts": [
-  {
-   "file": "ai/string_enum.go",
-   "old": "\"type\": \"string\", \"enum\"",
-   "new": "\"type\": \"mutant\", \"enum\""
-  }
- ],
- "packages/ai/src/api/cloudflare-ai-binding.ts": [
-  {
-   "file": "ai/cloudflare_ai_binding.go",
-   "old": "the AI binding does not expose fetch()\"",
-   "new": "the AI binding does not expose fetch\""
-  }
- ],
- "packages/ai/src/auth/oauth/meta.ts": [
-  {
-   "file": "ai/oauth_meta.go",
-   "old": "\"1031625952748946\"",
-   "new": "\"1031625952748947\""
-  },
-  {
-   "file": "ai/oauth_meta.go",
-   "old": "Expires: p.now().Add(metaAPIKeyLifetime).UnixMilli(),",
-   "new": "Expires: p.now().Add(metaAPIKeyLifetime).UnixMilli() + 1,"
-  }
- ],
- "packages/ai/src/providers/meta.models.ts": [
-  {
-   "file": "ai/models_generated.go",
-   "old": "\t\tID:                   \"muse-spark-1.1\",\n\t\tProvider:             \"meta\",\n\t\tDisplayName:          \"Muse Spark 1.1\",\n",
-   "new": "\t\tID:                   \"muse-spark-1.1\",\n\t\tProvider:             \"meta\",\n\t\tDisplayName:          \"Muse Spark 1.1!\",\n"
   }
  ],
  "packages/ai/src/providers/meta.ts": [
@@ -2618,18 +3097,11 @@
    "new": "func MetaProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
   }
  ],
- "packages/ai/src/providers/opencode-headers.ts": [
+ "packages/ai/src/providers/mistral.ts": [
   {
-   "file": "ai/opencode_headers.go",
-   "old": "if options.SessionID == \"\" || hasProviderHeader(",
-   "new": "if hasProviderHeader("
-  }
- ],
- "packages/ai/src/providers/qwen-token-plan-individual.models.ts": [
-  {
-   "file": "ai/models_generated.go",
-   "old": "\t\tID:                   \"deepseek-v4-flash-0731\",\n\t\tProvider:             \"qwen-token-plan-individual\",\n\t\tDisplayName:          \"DeepSeek V4 Flash 0731\",\n",
-   "new": "\t\tID:                   \"deepseek-v4-flash-0731\",\n\t\tProvider:             \"qwen-token-plan-individual\",\n\t\tDisplayName:          \"DeepSeek V4 Flash 0731!\",\n"
+   "file": "ai/provider_constructors.go",
+   "old": "func MistralProvider() *ModelsProvider { return builtinProvider(\"mistral\") }",
+   "new": "func MistralProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
   }
  ],
  "packages/ai/src/providers/qwen-token-plan-individual.ts": [
@@ -2639,495 +3111,81 @@
    "new": "return builtinProvider(\"qwen-token-plan\")"
   }
  ],
- "packages/ai/src/providers/radius.models.ts": [
+ "packages/ai/src/providers/radius.ts": [
   {
-   "file": "ai/models_generated.go",
-   "old": "\t\tID:                   \"balanced\",\n\t\tProvider:             \"radius\",\n\t\tDisplayName:          \"Balanced\",\n",
-   "new": "\t\tID:                   \"balanced\",\n\t\tProvider:             \"radius\",\n\t\tDisplayName:          \"Balanced!\",\n"
+   "file": "ai/radius.go",
+   "old": "if gateway == NormalizeRadiusGatewayURL(DefaultRadiusGateway) {",
+   "new": "if gateway != NormalizeRadiusGatewayURL(DefaultRadiusGateway) {"
   }
  ],
- "packages/ai/src/utils/sleep.ts": [
+ "packages/ai/src/providers/opencode-headers.ts": [
   {
-   "file": "ai/abort_utils.go",
-   "old": "\tcase <-ctx.Done():\n\t\treturn context.Cause(ctx)\n\t}\n}\n\n// AbortReason",
-   "new": "\tcase <-ctx.Done():\n\t\treturn ctx.Err()\n\t}\n}\n\n// AbortReason"
-  },
-  {
-   "file": "ai/abort_utils.go",
-   "old": "math.IsNaN(ms) || ms < 1 || ms > nodeTimerMaxMs",
-   "new": "math.IsNaN(ms) || ms < 1 || ms > nodeTimerMaxMs*2"
-  }
- ],
- "packages/ai/src/auth/oauth/callback-server.ts": [
-  {
-   "file": "ai/oauth_callback_server.go",
-   "old": "http.StatusNotFound, OAuthErrorHTML(\"Callback route not found.\"",
-   "new": "http.StatusBadRequest, OAuthErrorHTML(\"Callback route not found.\""
-  }
- ],
- "packages/ai/src/auth/oauth/openai-chatgpt.ts": [
-  {
-   "file": "ai/oauth_openai_chatgpt.go",
-   "old": "\"chatgpt.tokens.use.direct\"",
-   "new": "\"chatgpt.tokens.use.indirect\""
-  },
-  {
-   "file": "ai/oauth_openai_chatgpt.go",
-   "old": "\"code_challenge_method\", \"S256\", \"nonce\"",
-   "new": "\"code_challenge_method\", \"plain\", \"nonce\""
-  }
- ],
- "packages/ai/src/providers/typesafe.models.ts": [
-  {
-   "file": "ai/classifier_models_generated.go",
-   "old": "\t{ID: \"jev-latest\", Name: \"Jev\", API: ClassifierAPI(\"typesafe-system-one\"), Provider: \"typesafe\",",
-   "new": "\t{ID: \"jev-latest\", Name: \"Jev!\", API: ClassifierAPI(\"typesafe-system-one\"), Provider: \"typesafe\","
-  }
- ],
- "packages/coding-agent/src/core/pi-ai-schemas.ts": [
-  {
-   "file": "internal/codingagent/configschema/pi_ai_schemas.go",
-   "old": "if o.K != \"required\" {",
-   "new": "if o.K == \"required\" {"
-  }
- ],
- "packages/chord/src/next/contracts/fingerprint.ts": [
-  {
-   "file": "chord/next/contracts/fingerprint.go",
-   "old": "slices.SortStableFunc(entries, func(a, b normalEntry) int { return compare16(a.name, b.name) })",
-   "new": "slices.SortStableFunc(entries, func(a, b normalEntry) int { return compare16(b.name, a.name) })"
-  }
- ],
- "packages/chord/src/next/contracts/history.ts": [
-  {
-   "file": "chord/next/contracts/history.go",
-   "old": "\t\t\t\tseen[name] = true\n",
-   "new": "\t\t\t\tseen[name] = false\n"
-  }
- ],
- "packages/chord/src/next/contracts/names.ts": [
-  {
-   "file": "chord/next/contracts/names.go",
-   "old": "c == '~'",
-   "new": "c == '!'"
-  }
- ],
- "packages/chord/src/next/contracts/params.ts": [
-  {
-   "file": "chord/next/contracts/params.go",
-   "old": "\"maxLength\", \"pattern\", \"format\"}",
-   "new": "\"maxLength\", \"format\"}"
-  }
- ],
- "packages/chord/src/next/contracts/schema.ts": [
-  {
-   "file": "chord/next/contracts/schema.go",
-   "old": "delta.JsonObjectOf(\"^.*$\", value.Node)",
-   "new": "delta.JsonObjectOf(\"^.+$\", value.Node)"
-  }
- ],
- "packages/chord/src/next/contracts/snapshot.ts": [
-  {
-   "file": "chord/next/contracts/snapshot.go",
-   "old": "closed := node.Value(\"additionalProperties\") == false",
-   "new": "closed := node.Value(\"additionalProperties\") == true"
-  }
- ],
- "packages/chord/src/next/data/args.ts": [
-  {
-   "file": "chord/next/data/args.go",
-   "old": "accepted.Version == version && accepted.Fingerprint == fingerprint",
-   "new": "accepted.Version == version || accepted.Fingerprint == fingerprint"
-  }
- ],
- "packages/chord/src/next/data/params.ts": [
-  {
-   "file": "chord/next/data/params.go",
-   "old": "parts = append(parts, contract.Name, key)",
-   "new": "parts = append(parts, key, contract.Name)"
-  }
- ],
- "packages/chord/src/next/data/validator.ts": [
-  {
-   "file": "chord/next/data/validator.go",
-   "old": "\"chord.data.validations\"",
-   "new": "\"chord.data.validation\""
-  }
- ],
- "packages/chord/src/next/registries/contribution.ts": [
-  {
-   "file": "chord/next/registries/contribution.go",
-   "old": "if c.Version > version || (c.Version < version && adapter == nil) {",
-   "new": "if c.Version >= version || (c.Version < version && adapter == nil) {"
-  }
- ],
- "packages/chord/src/next/registries/internal.ts": [
-  {
-   "file": "chord/next/registries/internal.go",
-   "old": "value, err = nil, asError(recovered)",
-   "new": "value, err = nil, nil"
-  }
- ],
- "packages/chord/src/next/registries/record.ts": [
-  {
-   "file": "chord/next/registries/record.go",
-   "old": "return strings.Compare(left.Plugin, right.Plugin)",
-   "new": "return strings.Compare(right.Plugin, left.Plugin)"
-  }
- ],
- "packages/chord/src/next/registries/value.ts": [
-  {
-   "file": "chord/next/registries/value.go",
-   "old": "if mapped != nil && state.Identical(mapped.from, from) && mapped.provider == served {",
-   "new": "if mapped != nil && state.Identical(mapped.from, from) && mapped.provider != served {"
-  }
- ],
- "packages/chord/src/next/state/batch.ts": [
-  {
-   "file": "chord/next/state/batch.go",
-   "old": "for i := 0; i < len(b.flushes); i++ {",
-   "new": "for i := 0; i < len(b.flushes)-1; i++ {"
-  }
- ],
- "packages/chord/src/next/link/channel.ts": [
-  {
-   "file": "chord/next/link/channel.go",
-   "old": "silent >= ping && !c.pinged",
-   "new": "silent >= ping && c.pinged"
-  }
- ],
- "packages/chord/src/next/link/errors.ts": [
-  {
-   "file": "chord/next/link/errors.go",
-   "old": "if kind == \"chord\" {",
-   "new": "if kind == \"chard\" {"
-  }
- ],
- "packages/chord/src/next/link/values.ts": [
-  {
-   "file": "chord/next/link/values.go",
-   "old": "*segments = append(*segments, typed)",
-   "new": "*segments = append((*segments)[:0], typed)"
-  }
- ],
- "packages/chord/src/next/store/table-writes.ts": [
-  {
-   "file": "chord/next/store/table_writes.go",
-   "old": "write := &PutWrite{Table: table, Row: row.Row, Version: version, Columns: row.Columns}",
-   "new": "write := &PutWrite{Table: table, Row: row.Row, Version: version + 1, Columns: row.Columns}"
-  }
- ],
- "packages/chord/src/next/store/table-changes.ts": [
-  {
-   "file": "chord/next/store/table_changes.go",
-   "old": "if changes.bulk {",
-   "new": "if !changes.bulk {"
-  }
- ],
- "packages/chord/src/next/store/applier.ts": [
-  {
-   "file": "chord/next/store/applier.go",
-   "old": "if !IndexName.MatchString(write.Name) || exists {",
-   "new": "if !IndexName.MatchString(write.Name) || !exists {"
-  }
- ],
- "packages/chord/src/next/store/export.ts": [
-  {
-   "file": "chord/next/store/export.go",
-   "old": "&EndPart{Writes: parts.writes}",
-   "new": "&EndPart{Writes: parts.writes + 1}"
-  }
- ],
- "packages/chord/src/next/store/allocator.ts": [
-  {
-   "file": "chord/next/store/allocator.go",
-   "old": "ids.next = min(id+1, MaxSafeInteger)",
-   "new": "ids.next = min(id+2, MaxSafeInteger)"
-  }
- ],
- "packages/chord/src/next/store/refusal.ts": [
-  {
-   "file": "chord/next/store/refusal.go",
-   "old": "return coded.Code() == sqliteConstraintCheck",
-   "new": "return coded.Code() != sqliteConstraintCheck"
-  }
- ],
- "packages/chord/src/next/store/catalog.ts": [
-  {
-   "file": "chord/next/store/catalog.go",
-   "old": "record.Version = int(integer)\n",
-   "new": "record.Version = int(integer) + 1\n"
-  }
- ],
- "packages/chord/src/next/store/evaluate.ts": [
-  {
-   "file": "chord/next/store/evaluate.go",
-   "old": "\t\tcase truthTrue:\n\t\t\treturn truthFalse\n\t\t}\n\t\treturn truthTrue",
-   "new": "\t\tcase truthTrue:\n\t\t\treturn truthTrue\n\t\t}\n\t\treturn truthTrue"
-  }
- ],
- "packages/chord/src/next/store/table-history.ts": [
-  {
-   "file": "chord/next/store/table_history.go",
-   "old": "if version > definition.Version {",
-   "new": "if version >= definition.Version {"
-  }
- ],
- "packages/chord/src/next/store/table-migration.ts": [
-  {
-   "file": "chord/next/store/table_migration.go",
-   "old": "const MigrationChunk = 100\n",
-   "new": "const MigrationChunk = 101\n"
-  }
- ],
- "packages/chord/src/next/store/schema.ts": [
-  {
-   "file": "chord/next/store/schema.go",
-   "old": "VALUES (1, 0, 2, 0, 0)",
-   "new": "VALUES (1, 0, 3, 0, 0)"
-  }
- ],
- "packages/chord/src/next/documents/address-source.ts": [
-  {
-   "file": "chord/next/documents/address_source.go",
-   "old": "if prepared.Base() == before && !source.retired {",
-   "new": "if prepared.Base() != before && !source.retired {"
-  }
- ],
- "packages/chord/src/next/documents/documents.ts": [
-  {
-   "file": "chord/next/documents/documents.go",
-   "old": "if token.Sealed() || d.state != documentsOpen {",
-   "new": "if token.Sealed() && d.state != documentsOpen {"
-  }
- ],
- "packages/chord/src/next/documents/fence.ts": [
-  {
-   "file": "chord/next/documents/fence.go",
-   "old": "token.sealed.Store(true)",
-   "new": "token.sealed.Store(false)"
-  }
- ],
- "packages/chord/src/next/documents/keyed-slot.ts": [
-  {
-   "file": "chord/next/documents/keyed_slot.go",
-   "old": "slices.SortFunc(it.buffer, store.CompareText)",
-   "new": "slices.SortFunc(it.buffer, func(a, b string) int { return 0 })"
-  }
- ],
- "packages/chord/src/next/documents/line.ts": [
-  {
-   "file": "chord/next/documents/line.go",
-   "old": "\t<-place.previous\n",
-   "new": "\t_ = place.previous\n"
-  }
- ],
- "packages/chord/src/next/documents/persistence.ts": [
-  {
-   "file": "chord/next/documents/persistence.go",
-   "old": "if version > code {",
-   "new": "if version < code {"
-  }
- ],
- "packages/chord/src/next/documents/residency.ts": [
-  {
-   "file": "chord/next/documents/residency.go",
-   "old": "const granuleMs int64 = 1_000",
-   "new": "const granuleMs int64 = 2_000"
-  }
- ],
- "packages/chord/src/next/documents/slot.ts": [
-  {
-   "file": "chord/next/documents/slot.go",
-   "old": "if definition.Version < current.Version {",
-   "new": "if definition.Version > current.Version {"
-  }
- ],
- "packages/chord/src/next/documents/transaction.ts": [
-  {
-   "file": "chord/next/documents/transaction.go",
-   "old": "if tx.state != txCommitting || tx.token.Sealed() {",
-   "new": "if tx.state != txCommitting && tx.token.Sealed() {"
-  }
- ],
- "packages/chord/src/next/host/backoff.ts": [
-  {
-   "file": "chord/next/host/host_backoff.go",
-   "old": "return min(previous*2, maxDelay)",
-   "new": "return min(previous*3, maxDelay)"
-  }
- ],
- "packages/chord/src/next/host/deadline.ts": [
-  {
-   "file": "chord/next/host/host_deadline.go",
-   "old": "d.remaining = max(0, d.remaining-time.Duration(d.loop.Now()-d.started)*time.Millisecond)",
-   "new": "d.remaining = max(0, d.remaining+time.Duration(d.loop.Now()-d.started)*time.Millisecond)"
-  }
- ],
- "packages/chord/src/next/host/uuid.ts": [
-  {
-   "file": "chord/next/host/host_uuid.go",
-   "old": "\t\tstate.sequence++\n",
-   "new": "\t\t_ = state.sequence\n"
-  }
- ],
- "packages/chord/src/next/host/unbound.ts": [
-  {
-   "file": "chord/next/host/host_unbound.go",
-   "old": "principal != nil && revoked(principal)",
-   "new": "principal != nil && !revoked(principal)"
-  }
- ],
- "packages/chord/src/next/host/retry-on.ts": [
-  {
-   "file": "chord/next/host/host_retry_on.go",
-   "old": "if call.Kind == chord.WatchCallValue {",
-   "new": "if call.Kind != chord.WatchCallValue {"
-  }
- ],
- "packages/chord/src/next/host/dependencies.ts": [
-  {
-   "file": "chord/next/host/host_dependencies.go",
-   "old": "|| err.Code == data.CodeForbidden",
-   "new": "|| err.Code == data.CodeUnavailable"
-  }
- ],
- "packages/chord/src/next/host/members.ts": [
-  {
-   "file": "chord/next/host/host_members.go",
-   "old": "fmt.Sprintf(\"derive #%d\", position+1)",
-   "new": "fmt.Sprintf(\"derive #%d\", position)"
-  }
- ],
- "packages/chord/src/next/host/destination.ts": [
-  {
-   "file": "chord/next/host/host_destination.go",
-   "old": "from.role == linkRoleParent ||",
-   "new": "from.role != linkRoleParent ||"
-  }
- ],
- "packages/chord/src/next/host/object.ts": [
-  {
-   "file": "chord/next/host/host_object.go",
-   "old": "if kind != objectLive || o.served.linger == 0 {",
-   "new": "if kind != objectLive || o.served.linger != 0 {"
+   "file": "ai/opencode_headers.go",
+   "old": "if options.SessionID == \"\" || hasProviderHeader(",
+   "new": "if hasProviderHeader("
   }
  ],
- "packages/chord/src/next/jobs/persisted.ts": [
+ "packages/ai/src/providers/all.ts": [
   {
-   "file": "chord/next/host/jobs_persisted.go",
-   "old": "store.RetireDocument(state.ID, state.Revision)",
-   "new": "store.RetireDocument(state.ID, state.Revision+1)"
+   "file": "ai/builtin_providers.go",
+   "old": "for _, image := range GetImageModels(BuiltinImageProvider(provider)) {",
+   "new": "for _, image := range GetImageModels(BuiltinImageProvider(provider))[:0] {"
   }
  ],
- "packages/chord/src/next/jobs/records.ts": [
+ "packages/ai/src/providers/amazon-bedrock.ts": [
   {
-   "file": "chord/next/host/jobs_records.go",
-   "old": "\t\tif reason == cutReload {\n",
-   "new": "\t\tif reason != cutReload {\n"
+   "file": "ai/auth_providers.go",
+   "old": "return &AuthResult{Env: credentialEnv(credential), Source: \"AWS_PROFILE\"}, ctx.Err()",
+   "new": "return &AuthResult{Env: credentialEnv(credential), Source: \"AWS_PROFILE_ENV\"}, ctx.Err()"
   }
  ],
- "packages/chord/src/next/jobs/run-states.ts": [
-  {
-   "file": "chord/next/host/jobs_run_states.go",
-   "old": "each.deadline = min(each.deadline, addMillis(states.loop.Now(), change.WithinMs))",
-   "new": "each.deadline = max(each.deadline, addMillis(states.loop.Now(), change.WithinMs))"
-  }
- ],
- "packages/chord/src/next/jobs/stored.ts": [
-  {
-   "file": "chord/next/host/jobs_stored.go",
-   "old": "record.Set(\"finishFailures\", float64(finishFailures))",
-   "new": "record.Set(\"finishFailures\", float64(finishFailures+1))"
-  }
- ],
- "packages/chord/src/next/remote/hold.ts": [
-  {
-   "file": "chord/next/host/remote_hold.go",
-   "old": "message.RetryIn = link.Some(int(max(0, *shown.RetryAt",
-   "new": "message.RetryIn = link.Some(int(min(0, *shown.RetryAt"
-  }
- ],
- "packages/chord/src/next/remote/remote-object.ts": [
-  {
-   "file": "chord/next/host/remote_remote_object.go",
-   "old": "if _, twice := retirements[target]; twice {",
-   "new": "if _, twice := retirements[target]; !twice {"
-  }
- ],
- "packages/chord/src/next/remote/host-link.ts": [
-  {
-   "file": "chord/next/host/remote_host_link.go",
-   "old": "\"%s: an origin on a child link\"",
-   "new": "\"%s: an origin on a link\""
-  }
- ],
- "packages/chord/src/next/remote/path.ts": [
-  {
-   "file": "chord/next/host/remote_path.go",
-   "old": "if p.current != link {",
-   "new": "if p.current == link {"
-  }
- ],
- "packages/chord/src/next/remote/calls.ts": [
-  {
-   "file": "chord/next/host/remote_calls.go",
-   "old": "if w.inFlight >= w.limit {",
-   "new": "if w.inFlight > w.limit {"
-  }
- ],
- "packages/chord/src/next/remote/provider.ts": [
-  {
-   "file": "chord/next/host/remote_provider.go",
-   "old": "Code: data.CodeAborted, Message: fmt.Sprintf(\"call %d: aborted by its caller\", id)",
-   "new": "Code: data.CodeUnavailable, Message: fmt.Sprintf(\"call %d: aborted by its caller\", id)"
-  },
+ "packages/ai/src/providers/google-vertex.ts": [
   {
-   "file": "chord/next/host/remote_provider.go",
-   "old": "Code: data.CodeNotReady, Message: fmt.Sprintf(\"hold %d: not bound yet\", served.id)",
-   "new": "Code: data.CodeUnavailable, Message: fmt.Sprintf(\"hold %d: not bound yet\", served.id)"
+   "file": "ai/auth_providers.go",
+   "old": "source := \"gcloud application default credentials\"",
+   "new": "source := \"gcloud credentials\""
   }
  ],
- "packages/chord/src/next/remote/consumer.ts": [
+ "packages/ai/src/providers/cloudflare-auth.ts": [
   {
-   "file": "chord/next/host/remote_consumer.go",
-   "old": "Message: \"the link closed\"}, nil)",
-   "new": "Message: \"the link is closed\"}, nil)"
+   "file": "ai/auth_providers.go",
+   "old": "source := cloudflareAPIKey",
+   "new": "source := \"CLOUDFLARE_KEY\""
   }
  ],
- "packages/chord/src/next/remote/relay.ts": [
+ "packages/ai/src/providers/cloudflare-stream.ts": [
   {
-   "file": "chord/next/host/remote_relay.go",
-   "old": "func (h *relayedHold) retry(message *link.RetryMessage) {\n\tif upstream := h.upstream; upstream != nil {\n\t\tupstream.link.send(link.WithOrigin(message, link.Some(upstream.origin)))",
-   "new": "func (h *relayedHold) retry(message *link.RetryMessage) {\n\tif upstream := h.upstream; upstream != nil {\n\t\tupstream.link.send(&link.RetryMessage{Origin: link.Some(upstream.origin), Hold: message.Hold, Hops: message.Hops - 1})"
+   "file": "ai/cloudflare_streams.go",
+   "old": "return stream(ctx, ResolveCloudflareModel(model, options.Env), transcript, options)",
+   "new": "return stream(ctx, model, transcript, options)"
   }
  ],
- "packages/chord/src/next/remote/replica.ts": [
+ "packages/ai/src/providers/azure.ts": [
   {
-   "file": "chord/next/host/remote_replica.go",
-   "old": "flagged := retired || r.retiredWhileFailed",
-   "new": "flagged := retired"
+   "file": "ai/azure.go",
+   "old": "resolved.cfg.requestModel = ResolveAzureDeploymentName(p.cfg.Model, options)",
+   "new": "resolved.cfg.requestModel = p.cfg.Model"
   }
  ],
- "packages/chord/src/next/host/adapted.ts": [
+ "packages/ai/src/providers/anthropic.ts": [
   {
-   "file": "chord/next/host/host_adapted.go",
-   "old": "strconv.Itoa(version) + \" is not served here\"",
-   "new": "strconv.Itoa(version) + \" is not served\""
+   "file": "ai/auth_providers.go",
+   "old": "Headers: ProviderHeaders{\"Authorization\": new(\"Bearer \" + token)}}, Source: AnthropicAuthTokenEnv",
+   "new": "Headers: ProviderHeaders{\"Authorization\": new(\"Token \" + token)}}, Source: AnthropicAuthTokenEnv"
   }
  ],
- "packages/chord/src/next/host/reference-keys.ts": [
+ "packages/ai/src/providers/github-copilot.ts": [
   {
-   "file": "chord/next/host/host_reference_keys.go",
-   "old": "if entry.holders > 0 {",
-   "new": "if entry.holders > 1 {"
+   "file": "ai/github_copilot_filter.go",
+   "old": "credential.Type != CredentialOAuth",
+   "new": "credential.Type == CredentialOAuth"
   }
  ],
- "packages/chord/src/next/host/reference-source.ts": [
+ "packages/ai/src/providers/openrouter.ts": [
   {
-   "file": "chord/next/host/host_reference_source.go",
-   "old": "if current.failure == nil {",
-   "new": "if current.failure != nil {"
+   "file": "ai/openrouter_user_models.go",
+   "old": "request.Header.Set(\"authorization\", \"Bearer \"+key)",
+   "new": "request.Header.Set(\"authorization\", \"Basic \"+key)"
   }
  ],
  "packages/schema/src/annotations.ts": [
@@ -3380,6 +3438,817 @@
    "file": "schema/shared.go",
    "old": "sharedRegexes.bySource[source] = weak.Make(re)",
    "new": "_ = weak.Make(re)"
+  }
+ ],
+ "packages/coding-agent/src/cli.ts": [
+  {
+   "file": "coding/cli/main.go",
+   "old": "printHelp(os.Stdout, chalkStdoutColor(), extensionHelpFlags(build.Extensions)...)",
+   "new": "printHelp(os.Stderr, chalkStdoutColor(), extensionHelpFlags(build.Extensions)...)"
+  }
+ ],
+ "packages/coding-agent/src/package-manager-cli.ts": [
+  {
+   "file": "coding/cli/package_commands.go",
+   "old": "\"Unknown option %s for %q.\"",
+   "new": "\"Unknown flag %s for %q.\""
+  },
+  {
+   "file": "coding/cli/package_commands.go",
+   "old": "\"Missing %s source.\"",
+   "new": "\"No %s source.\""
+  },
+  {
+   "file": "coding/cli/package_command_trust.go",
+   "old": "settings.SetProjectTrusted(decision != nil && *decision)",
+   "new": "settings.SetProjectTrusted(true)"
+  }
+ ],
+ "packages/coding-agent/src/cli/initial-message.ts": [
+  {
+   "file": "coding/cli/main.go",
+   "old": "return strings.Join(parts, \"\"), images, slices.Clone(messages)",
+   "new": "return strings.Join(parts, \"\\n\"), images, slices.Clone(messages)"
+  }
+ ],
+ "packages/coding-agent/src/cli/list-models.ts": [
+  {
+   "file": "coding/cli/model.go",
+   "old": "if slices.Contains(e.Input, \"image\") {",
+   "new": "if slices.Contains(e.Input, \"text\") {"
+  }
+ ],
+ "packages/coding-agent/src/cli/config-selector.ts": [
+  {
+   "file": "coding/cli/config_command.go",
+   "old": "if item.Inherited && item.Source != \"builtin\" && !slices.Contains(entries, pattern) {",
+   "new": "if item.Inherited && !slices.Contains(entries, pattern) {"
+  }
+ ],
+ "packages/coding-agent/src/cli/credential-print.ts": [
+  {
+   "file": "coding/cli/credential_print.go",
+   "old": "if kind == AuthCommandAPIKey && stored && credentialType == ai.CredentialOAuth {",
+   "new": "if kind == AuthCommandAPIKey && stored && credentialType != ai.CredentialOAuth {"
+  }
+ ],
+ "packages/coding-agent/src/cli/session-picker.ts": [
+  {
+   "file": "internal/codingagent/session_selector.go",
+   "old": "if s.deleteSession != nil {",
+   "new": "if s.deleteSession == nil {"
+  },
+  {
+   "file": "internal/codingagent/session_selector.go",
+   "old": "msg := \"Session deleted\"",
+   "new": "msg := \"Session removed\""
+  }
+ ],
+ "packages/coding-agent/src/cli/project-trust.ts": [
+  {
+   "file": "coding/cli/project_trust_context.go",
+   "old": "prompts:     hasUI && mode == appModeInteractive,",
+   "new": "prompts:     hasUI,"
+  },
+  {
+   "file": "coding/cli/project_trust_context.go",
+   "old": "message = codingagent.ChalkApply(\"\\x1b[31m\", \"\\x1b[39m\", message)",
+   "new": "message = codingagent.ChalkApply(\"\\x1b[32m\", \"\\x1b[39m\", message)"
+  }
+ ],
+ "packages/coding-agent/src/cli/startup-ui.ts": [
+  {
+   "file": "internal/codingagent/startup_ui.go",
+   "old": "retainStartupInput(dispatchStartupInput(component, input))",
+   "new": "dispatchStartupInput(component, input)"
+  },
+  {
+   "file": "internal/codingagent/startup_ui.go",
+   "old": "stopAndDrain(true)",
+   "new": "stopAndDrain(false)"
+  }
+ ],
+ "packages/coding-agent/src/cli/auth-check.ts": [
+  {
+   "file": "coding/cli/auth_check.go",
+   "old": "\tif refresh {\n\t\tresolved, err",
+   "new": "\tif !refresh {\n\t\tresolved, err"
+  }
+ ],
+ "packages/coding-agent/src/cli/auth-command.ts": [
+  {
+   "file": "coding/cli/auth_command.go",
+   "old": "if !strings.EqualFold(name, \"authorization\") {",
+   "new": "if !strings.EqualFold(name, \"authorization\") || name == \"AUTHORIZATION\" {"
+  }
+ ],
+ "packages/coding-agent/src/cli/setup.ts": [
+  {
+   "file": "coding/cli/setup_cli.go",
+   "old": "_ = os.Setenv(\"PI_CODING_AGENT\", \"true\")",
+   "new": "_ = os.Setenv(\"PI_CODING_AGENT\", \"false\")"
+  }
+ ],
+ "packages/coding-agent/src/extensions/index.ts": [
+  {
+   "file": "coding/cli/builtin_extensions.go",
+   "old": "\tinline := llamaInlineExtensions()\n\tfor _, entry := range builtin.All(options) {\n\t\tinline = append(inline, extension.NamedInlineExtension{Name: entry.Name, Factory: entry.Factory, Replaceable: entry.Replaceable, Builtin: true})\n\t}\n\treturn inline\n",
+   "new": "\tvar inline []extension.InlineExtension\n\tfor _, entry := range builtin.All(options) {\n\t\tinline = append(inline, extension.NamedInlineExtension{Name: entry.Name, Factory: entry.Factory, Replaceable: entry.Replaceable, Builtin: true})\n\t}\n\treturn append(inline, llamaInlineExtensions()...)\n"
+  }
+ ],
+ "packages/coding-agent/src/extensions/llama/client.ts": [
+  {
+   "file": "internal/codingagent/llama/client.go",
+   "old": "strings.TrimSuffix(strings.TrimRight(parsed.Pathname, \"/\"), \"/v1\")",
+   "new": "strings.TrimRight(parsed.Pathname, \"/\")"
+  },
+  {
+   "file": "internal/codingagent/llama/client.go",
+   "old": "\tif value >= 10 {\n",
+   "new": "\tif value >= 100 {\n"
+  }
+ ],
+ "packages/coding-agent/src/extensions/llama/huggingface.ts": [
+  {
+   "file": "internal/codingagent/llama/huggingface.go",
+   "old": "[2]string{\"limit\", \"20\"},",
+   "new": "[2]string{\"limit\", \"21\"},"
+  },
+  {
+   "file": "internal/codingagent/llama/huggingface.go",
+   "old": "[2]string{\"filter\", \"gguf\"},",
+   "new": "[2]string{\"filter\", \"gguff\"},"
+  }
+ ],
+ "packages/coding-agent/src/extensions/llama/index.ts": [
+  {
+   "file": "internal/codingagent/llama/index.go",
+   "old": "\ts.notify(\"Restoring previously loaded models\")",
+   "new": "\ts.notify(\"Restoring loaded models\")"
+  },
+  {
+   "file": "internal/codingagent/llama/index.go",
+   "old": "\ts.notify(\"Unloaded \" + model.ID)",
+   "new": "\ts.notify(\"Unloaded: \" + model.ID)"
+  }
+ ],
+ "packages/coding-agent/src/extensions/llama/provider.ts": [
+  {
+   "file": "internal/codingagent/llama/provider.go",
+   "old": "\t\tMaxTokens:     contextWindow,\n",
+   "new": "\t\tMaxTokens:     contextWindow / 2,\n"
+  },
+  {
+   "file": "internal/codingagent/llama/native_provider.go",
+   "old": "SupportsToolUse: true",
+   "new": "SupportsToolUse: false"
+  }
+ ],
+ "packages/coding-agent/src/extensions/llama/ui.ts": [
+  {
+   "file": "internal/codingagent/llama/ui.go",
+   "old": "\t\tdetails = append(details, \"loaded\")\n",
+   "new": "\t\tdetails = append(details, \"ready\")\n"
+  },
+  {
+   "file": "internal/codingagent/llama/ui.go",
+   "old": "const searchMaxVisible = 10",
+   "new": "const searchMaxVisible = 9"
+  }
+ ],
+ "packages/coding-agent/src/extensions/codemode/execute.ts": [
+  {
+   "file": "coding/extension/builtin/codemode/execute.go",
+   "old": "value == math.Trunc(value)",
+   "new": "value >= math.Trunc(value)"
+  },
+  {
+   "file": "coding/extension/builtin/codemode/execute.go",
+   "old": " && !math.IsInf(value, 0)",
+   "new": ""
+  },
+  {
+   "file": "coding/extension/builtin/codemode/execute.go",
+   "old": "entry.label = \"[Image saved to \" + path",
+   "new": "entry.label = \"[Image stored at \" + path"
+  }
+ ],
+ "packages/coding-agent/src/extensions/codemode/renderer.ts": [
+  {
+   "file": "internal/codingagent/tool_codemode_renderer.go",
+   "old": "\tcodemodeOutputPreview    = 5\n",
+   "new": "\tcodemodeOutputPreview    = 4\n"
+  },
+  {
+   "file": "internal/codingagent/tool_codemode_renderer.go",
+   "old": "\tif cost >= 0.01 {",
+   "new": "\tif cost >= 0.02 {"
+  }
+ ],
+ "packages/coding-agent/src/extensions/tool-search/tool.ts": [
+  {
+   "file": "coding/extension/builtin/toolsearch/toolsearch.go",
+   "old": "\treturn normalized == query || strings.HasSuffix(normalized, \"__\"+query)\n",
+   "new": "\treturn normalized == query\n"
+  },
+  {
+   "file": "coding/extension/builtin/toolsearch/toolsearch.go",
+   "old": "\t\t\treturn ranked[a].exact\n",
+   "new": "\t\t\treturn !ranked[a].exact\n"
+  }
+ ],
+ "packages/coding-agent/src/migrations.ts": [
+  {
+   "file": "internal/codingagent/migrations.go",
+   "old": "\tformatted.WriteByte('\\n')\n",
+   "new": "\n"
+  },
+  {
+   "file": "internal/codingagent/migrations.go",
+   "old": "[]string{\"fd\", \"rg\", \"fd.exe\", \"rg.exe\"}",
+   "new": "[]string{\"fd\", \"rg\", \"fd.exe\"}"
+  }
+ ],
+ "packages/coding-agent/src/extensions/mcp/cli.ts": [
+  {
+   "file": "coding/mcpext/cli.go",
+   "old": "editDistance(candidate, name) <= 2",
+   "new": "editDistance(candidate, name) <= 0"
+  }
+ ],
+ "packages/coding-agent/src/extensions/mcp/log.ts": [
+  {
+   "file": "coding/mcpext/log.go",
+   "old": "level := \"info\"",
+   "new": "level := \"notice\""
+  }
+ ],
+ "packages/coding-agent/src/extensions/mcp/oauth.ts": [
+  {
+   "file": "coding/mcpext/oauth.go",
+   "old": "challengeScope = oauth.StepUpScope(grantedScope, challengeScope)",
+   "new": "challengeScope = oauth.StepUpScope(grantedScope[:0], challengeScope)"
+  },
+  {
+   "file": "coding/mcpext/oauth.go",
+   "old": "\tif challenge.Error == \"insufficient_scope\" {\n\t\treturn oauth.NewMcpOAuthAuthorizationRequiredError()",
+   "new": "\tif challenge.Error == \"insufficient_scope_\" {\n\t\treturn oauth.NewMcpOAuthAuthorizationRequiredError()"
+  }
+ ],
+ "packages/coding-agent/src/extensions/mcp/resources.ts": [
+  {
+   "file": "coding/mcpext/resources.go",
+   "old": "localecompare.Compare(a.Name(), b.Name()) })",
+   "new": "localecompare.Compare(b.Name(), a.Name()) })"
+  }
+ ],
+ "packages/coding-agent/src/extensions/mcp/tools.ts": [
+  {
+   "file": "coding/mcpext/tools.go",
+   "old": "maxToolNameLength-len(hash)-1",
+   "new": "maxToolNameLength-len(hash)"
+  }
+ ],
+ "packages/coding-agent/src/extensions/mcp/ui.ts": [
+  {
+   "file": "coding/mcpext/manager.go",
+   "old": "\tcase StateConnected:\n\t\treturn 4",
+   "new": "\tcase StateConnected:\n\t\treturn -1"
+  }
+ ],
+ "packages/coding-agent/src/utils/image-process.ts": [
+  {
+   "file": "internal/imageprocessing/images.go",
+   "old": "if !autoResize {\n\t\treturn normalized, mime, conversionHint, nil",
+   "new": "if autoResize {\n\t\treturn normalized, mime, conversionHint, nil"
+  },
+  {
+   "file": "internal/imageprocessing/images.go",
+   "old": "from == \"\" || from == to || isUpstreamSupportedImageMIME(from)",
+   "new": "from == \"\" || from == to"
+  }
+ ],
+ "packages/coding-agent/src/utils/ansi.ts": [
+  {
+   "file": "internal/text/strip_ansi.go",
+   "old": "(?:\\x07|\\x1b\\\\|\\x{9c}))",
+   "new": "(?:\\x1b\\\\|\\x{9c}))"
+  },
+  {
+   "file": "internal/codingagent/tools/sanitize.go",
+   "old": "const maxPendingAnsiLength = 256",
+   "new": "const maxPendingAnsiLength = 255"
+  }
+ ],
+ "packages/coding-agent/src/utils/child-process.ts": [
+  {
+   "file": "internal/childwait/wait.go",
+   "old": "const Grace = 100 * time.Millisecond",
+   "new": "const Grace = 150 * time.Millisecond"
+  },
+  {
+   "file": "internal/crossspawn/crossspawn.go",
+   "old": "\tcmd.Dir = dir\n",
+   "new": "\tcmd.Dir = \"\"\n"
+  },
+  {
+   "file": "internal/crossspawn/windows_plan.go",
+   "old": "if executableFile.MatchString(file) {",
+   "new": "if !executableFile.MatchString(file) {"
+  }
+ ],
+ "packages/coding-agent/src/utils/exif-orientation.ts": [
+  {
+   "file": "internal/imageprocessing/images.go",
+   "old": "if value >= 1 && value <= 8 {",
+   "new": "if value >= 1 && value <= 7 {"
+  },
+  {
+   "file": "internal/imageprocessing/images.go",
+   "old": "data[tiffStart] == 0x49 && data[tiffStart+1] == 0x49",
+   "new": "data[tiffStart] == 0x4d && data[tiffStart+1] == 0x4d"
+  }
+ ],
+ "packages/coding-agent/src/utils/git.ts": [
+  {
+   "file": "coding/source/gitparse.go",
+   "old": "useHTTPSPrefix := !strings.HasPrefix(lowerRepo, \"http://\") &&",
+   "new": "useHTTPSPrefix := strings.HasPrefix(lowerRepo, \"http://\") &&"
+  },
+  {
+   "file": "coding/source/gitparse.go",
+   "old": "return buildGitSource(\"https://\"+repo, info.domain",
+   "new": "return buildGitSource(repo, info.domain"
+  }
+ ],
+ "packages/coding-agent/src/utils/html.ts": [
+  {
+   "file": "tui/highlight.go",
+   "old": "case \"lt\":\n\t\treturn \"<\", true",
+   "new": "case \"lt\":\n\t\treturn \">\", true"
+  },
+  {
+   "file": "tui/highlight.go",
+   "old": "len(jsstring.ToUTF16(html[index:semicolon])) > 16",
+   "new": "len(jsstring.ToUTF16(html[index:semicolon])) > 17"
+  }
+ ],
+ "packages/coding-agent/src/utils/paths.ts": [
+  {
+   "file": "internal/resolvepath/resolvepath.go",
+   "old": "return strings.ToUpper(match[1]) + `:\\` +",
+   "new": "return match[1] + `:\\` +"
+  },
+  {
+   "file": "internal/codingagent/paths.go",
+   "old": "\"http:\", \"https:\", \"ssh:\", BuiltinPathPrefix}",
+   "new": "\"http:\", \"https:\", BuiltinPathPrefix}"
+  }
+ ],
+ "packages/coding-agent/src/utils/management-http.ts": [
+  {
+   "file": "internal/managementhttp/managementhttp.go",
+   "old": "retryableStatusCodes[response.StatusCode] && attempt < maxRetries",
+   "new": "retryableStatusCodes[response.StatusCode] && attempt < 0"
+  },
+  {
+   "file": "internal/managementhttp/managementhttp.go",
+   "old": "var retryableStatusCodes = map[int]bool{408: true, 425: true, 429: true, 500: true, 502: true, 503: true, 504: true}",
+   "new": "var retryableStatusCodes = map[int]bool{408: true, 425: true, 429: true, 500: true, 502: true, 504: true}"
+  }
+ ],
+ "packages/agent/src/agent.ts": [
+  {
+   "file": "agent/queue.go",
+   "old": "\tif q.mode == QueueModeAll {\n",
+   "new": "\tif q.mode != QueueModeAll {\n"
+  }
+ ],
+ "packages/ai/src/models.generated.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "generatedRows[ref.row].Headers = generatedHeaders[ref.element]",
+   "new": "generatedRows[ref.row].Headers = nil"
+  }
+ ],
+ "packages/ai/src/models-store.ts": [
+  {
+   "file": "ai/models_store.go",
+   "old": "s.entries[providerID] = entry.Clone()",
+   "new": "s.entries[providerID] = entry"
+  }
+ ],
+ "packages/ai/src/model-catalog.ts": [
+  {
+   "file": "ai/model_catalog.go",
+   "old": "if _, ok := c.models[id]; !ok {",
+   "new": "if _, ok := c.models[id]; ok {"
+  }
+ ],
+ "packages/ai/src/api/anthropic-messages.ts": [
+  {
+   "file": "ai/anthropic_client.go",
+   "old": "strings.Contains(apiKey, \"sk-ant-oat\")",
+   "new": "strings.Contains(apiKey, \"sk-ant-oaz\")"
+  },
+  {
+   "file": "ai/anthropic.go",
+   "old": "r == '_' || r == '-'",
+   "new": "r == '_'"
+  }
+ ],
+ "packages/ai/src/api/constrained-sampling.ts": [
+  {
+   "file": "ai/constrained_sampling.go",
+   "old": "\t\"Too many strict tools (\",\n",
+   "new": "\t\"Too many strict toolz (\",\n"
+  }
+ ],
+ "packages/ai/src/api/mistral-conversations.ts": [
+  {
+   "file": "ai/mistral.go",
+   "old": "req.ReasoningEffort = \"high\"",
+   "new": "req.ReasoningEffort = \"low\""
+  }
+ ],
+ "packages/ai/src/auth/context.ts": [
+  {
+   "file": "ai/auth_resolve.go",
+   "old": "if !ok || trimJSWhitespace(value) == \"\" {",
+   "new": "if !ok {"
+  },
+  {
+   "file": "ai/auth_resolve.go",
+   "old": "path = home + path[1:]",
+   "new": "path = home + path"
+  }
+ ],
+ "packages/ai/src/auth/helpers.ts": [
+  {
+   "file": "ai/auth_lazy.go",
+   "old": "l.once.Do(func() { l.loaded, l.err = l.load() })",
+   "new": "l.loaded, l.err = l.load()"
+  }
+ ],
+ "packages/ai/src/auth/resolve.ts": [
+  {
+   "file": "ai/auth_resolve.go",
+   "old": "defaultOAuthMinimumValidityMs = float64(5 * 60 * 1000)",
+   "new": "defaultOAuthMinimumValidityMs = float64(1)"
+  }
+ ],
+ "packages/ai/src/auth/types.ts": [
+  {
+   "file": "ai/auth.go",
+   "old": "json.Indent(&out, canonical, \"\", \"  \")",
+   "new": "json.Indent(&out, canonical, \"\", \"   \")"
+  }
+ ],
+ "packages/ai/src/auth/oauth/anthropic.ts": [
+  {
+   "file": "ai/oauth_anthropic.go",
+   "old": "\t\t\"refresh_token\": refreshToken,\n",
+   "new": "\t\t\"refresh_token\": refreshToken,\n\t\t\"scope\":         anthropicScopes,\n"
+  }
+ ],
+ "packages/ai/src/auth/oauth/device-code.ts": [
+  {
+   "file": "ai/oauth_device_code.go",
+   "old": "\t\t\tslowDownResponses++\n",
+   "new": "\t\t\tslowDownResponses += 0\n"
+  }
+ ],
+ "packages/ai/src/auth/oauth/github-copilot.ts": [
+  {
+   "file": "ai/copilot_verification_uri.go",
+   "old": "\"Untrusted verification_uri in device code response\"",
+   "new": "\"Untrusted verification_uri in device code respons\""
+  }
+ ],
+ "packages/ai/src/auth/oauth/load.ts": [
+  {
+   "file": "ai/oauth_registry.go",
+   "old": "\t\"xai\":            newXaiOAuthProvider(),\n",
+   "new": "\t\"xai-\":           newXaiOAuthProvider(),\n"
+  },
+  {
+   "file": "ai/oauth_registry.go",
+   "old": "\t\"meta\":           newMetaOAuthProvider(),\n",
+   "new": "\t\"meta-\":          newMetaOAuthProvider(),\n"
+  }
+ ],
+ "packages/ai/src/auth/oauth/kimi-coding.ts": [
+  {
+   "file": "ai/oauth_kimi.go",
+   "old": "\tcase \"slow_down\":\n",
+   "new": "\tcase \"slow_dowZ\":\n"
+  }
+ ],
+ "packages/ai/src/auth/oauth/openrouter.ts": [
+  {
+   "file": "ai/oauth_openrouter.go",
+   "old": "1<<53 - 1",
+   "new": "1<<53 - 2"
+  },
+  {
+   "file": "ai/oauth_openrouter.go",
+   "old": "\"S256\",\n\t})",
+   "new": "\"plain\",\n\t})"
+  }
+ ],
+ "packages/ai/src/auth/oauth/openai-codex.ts": [
+  {
+   "file": "ai/oauth_openai_codex.go",
+   "old": "float64(jsnumber.FromJSON(tok.ExpiresIn)*1000))",
+   "new": "float64(jsnumber.FromJSON(tok.ExpiresIn)*999))"
+  },
+  {
+   "file": "ai/oauth_openai_codex.go",
+   "old": "!accessOK || !refreshOK || !jsonNumberToken(tok.ExpiresIn)",
+   "new": "!accessOK || refreshOK || !jsonNumberToken(tok.ExpiresIn)"
+  }
+ ],
+ "packages/ai/src/auth/oauth/pkce.ts": [
+  {
+   "file": "ai/pkce.go",
+   "old": "make([]byte, 32)",
+   "new": "make([]byte, 31)"
+  }
+ ],
+ "packages/ai/src/auth/oauth/radius.ts": [
+  {
+   "file": "ai/oauth_radius.go",
+   "old": "\"gateway offline_access\"",
+   "new": "\"gateway\""
+  },
+  {
+   "file": "ai/oauth_radius.go",
+   "old": "= \"pi-gateway\"",
+   "new": "= \"pi-gatewayx\""
+  }
+ ],
+ "packages/ai/src/auth/oauth/xai.ts": [
+  {
+   "file": "ai/oauth_xai.go",
+   "old": "\"b1a00492-073a-47ea-816f-4c329264a828\"",
+   "new": "\"b1a00492-073a-47ea-816f-4c329264a829\""
+  },
+  {
+   "file": "ai/oauth_xai.go",
+   "old": "\"openid profile email offline_access grok-cli:access api:access\"",
+   "new": "\"openid profile email offline_access\""
+  }
+ ],
+ "packages/ai/src/compat/extension-oauth-types.ts": [
+  {
+   "file": "ai/oauth_types.go",
+   "old": "chatgptCredentialMembers      = append(slices.Clone(accessFirstCredentialMembers), \"clientId\", \"scopes\")",
+   "new": "chatgptCredentialMembers      = append(slices.Clone(accessFirstCredentialMembers), \"scopes\", \"clientId\")"
+  },
+  {
+   "file": "ai/oauth_types.go",
+   "old": "accessFirstCredentialMembers  = []string{\"type\", \"access\", \"refresh\", \"expires\"}",
+   "new": "accessFirstCredentialMembers  = []string{\"type\", \"refresh\", \"access\", \"expires\"}"
+  },
+  {
+   "file": "ai/oauth_types.go",
+   "old": "Access  string                     `json:\"access\"`",
+   "new": "Access  string                     `json:\"accessToken\"`"
+  }
+ ],
+ "packages/ai/src/utils/error-body.ts": [
+  {
+   "file": "ai/errors.go",
+   "old": "length-maxChars)\n",
+   "new": "length-maxChars+1)\n"
+  },
+  {
+   "file": "ai/errors.go",
+   "old": "return fmt.Sprintf(\"%d: %s\", *norm.Status, message)",
+   "new": "return fmt.Sprintf(\"%d %s\", *norm.Status, message)"
+  },
+  {
+   "file": "ai/errors.go",
+   "old": "const MaxProviderErrorBodyChars = 4000",
+   "new": "const MaxProviderErrorBodyChars = 3999"
+  }
+ ],
+ "packages/ai/src/utils/estimate.ts": [
+  {
+   "file": "ai/estimate.go",
+   "old": "charsPerToken       = 3.5",
+   "new": "charsPerToken       = 3.0"
+  },
+  {
+   "file": "ai/estimate.go",
+   "old": "estimatedImageChars = 4800",
+   "new": "estimatedImageChars = 4801"
+  }
+ ],
+ "packages/ai/src/api/lazy.ts": [
+  {
+   "file": "ai/provider_streams.go",
+   "old": "\tobservation.onEvent(event)\n\tobservation.onResult(message)\n",
+   "new": "\tobservation.onEvent(event)\n"
+  }
+ ],
+ "packages/agent/src/stream-fn.ts": [
+  {
+   "file": "agent/stream_fn.go",
+   "old": "\tdefaultStream.fn = fn\n",
+   "new": "\tdefaultStream.fn = nil\n"
+  }
+ ],
+ "packages/ai/src/session-resources.ts": [
+  {
+   "file": "ai/session_resources.go",
+   "old": "if len(errs) > 0 {",
+   "new": "if len(errs) > 1 {"
+  }
+ ],
+ "packages/ai/src/oauth.ts": [
+  {
+   "file": "ai/oauth_types.go",
+   "old": "return ok && subscription.IsSubscription()",
+   "new": "return !ok || subscription.IsSubscription()"
+  }
+ ],
+ "packages/ai/src/cli.ts": [
+  {
+   "file": "coding/cli/auth_commands.go",
+   "old": "fmt.Printf(\"\\nCredentials saved to %s\\n\", credentialPath)",
+   "new": "fmt.Printf(\"\\nCredentials saved to %s.\\n\", credentialPath)"
+  }
+ ],
+ "packages/ai/src/bedrock-provider.ts": [
+  {
+   "file": "ai/providers/bedrock/bedrock.go",
+   "old": "if isReservedBedrockHeader(name) {",
+   "new": "if !isReservedBedrockHeader(name) {"
+  }
+ ],
+ "packages/ai/src/api/openai-completions.ts": [
+  {
+   "file": "ai/openai.go",
+   "old": "req.PromptCacheRetention = new(\"24h\")",
+   "new": "req.PromptCacheRetention = new(\"1h\")"
+  }
+ ],
+ "packages/ai/src/api/openai-responses-shared.ts": [
+  {
+   "file": "ai/openai_responses.go",
+   "old": "Type: \"additional_tools\", Role: \"developer\"",
+   "new": "Type: \"additional_tools\", Role: \"user\""
+  }
+ ],
+ "packages/ai/src/api/openai-codex-responses.ts": [
+  {
+   "file": "ai/openai_codex_responses.go",
+   "old": "return raw + \"/codex/responses\"",
+   "new": "return raw + \"/codex/response\""
+  }
+ ],
+ "packages/ai/src/api/cloudflare.ts": [
+  {
+   "file": "ai/cloudflare.go",
+   "old": "{CLOUDFLARE_ACCOUNT_ID}/ai\"",
+   "new": "{CLOUDFLARE_ACCOUNT_ID}/ai/\""
+  }
+ ],
+ "packages/ai/src/api/transform-messages.ts": [
+  {
+   "file": "ai/tool_flow.go",
+   "old": "ToolResultMessage{ToolCallID: call.ID, ToolName: call.Name,",
+   "new": "ToolResultMessage{ToolCallID: call.Name, ToolName: call.Name,"
+  }
+ ],
+ "packages/ai/src/api/openrouter-images.ts": [
+  {
+   "file": "ai/openrouter_images.go",
+   "old": "modalities = []string{\"image\", \"text\"}",
+   "new": "modalities = []string{\"image\"}"
+  }
+ ],
+ "packages/ai/src/images-api-registry.ts": [
+  {
+   "file": "ai/images.go",
+   "old": "imagesAPIProviderRegistry[provider.API] = entry",
+   "new": "imagesAPIProviderRegistry[provider.API+\"-x\"] = entry"
+  }
+ ],
+ "packages/ai/src/utils/hash.ts": [
+  {
+   "file": "ai/openai.go",
+   "old": "h1 = (h1 ^ ch) * 2654435761",
+   "new": "h1 = (h1 ^ ch) * 2654435760"
+  }
+ ],
+ "packages/ai/src/utils/headers.ts": [
+  {
+   "file": "ai/provider_response.go",
+   "old": "out[key] = strings.Join(values, \", \")",
+   "new": "out[key] = strings.Join(values, \",\")"
+  },
+  {
+   "file": "ai/provider_response.go",
+   "old": "out[key] = values[len(values)-1]",
+   "new": "out[key] = values[0]"
+  },
+  {
+   "file": "ai/classifier_http.go",
+   "old": "\t\t\tdelete(merged, normalized)\n",
+   "new": "\t\t\t_ = normalized\n"
+  }
+ ],
+ "packages/ai/src/utils/node-http-proxy.ts": [
+  {
+   "file": "ai/node_http_proxy.go",
+   "old": "case \"https\", \"wss\":\n\t\treturn 443",
+   "new": "case \"https\", \"wss\":\n\t\treturn 444"
+  },
+  {
+   "file": "ai/node_http_proxy.go",
+   "old": "hostname == host || strings.HasSuffix(hostname, \".\"+host)",
+   "new": "hostname == host"
+  },
+  {
+   "file": "ai/node_http_proxy.go",
+   "old": "if noProxy == \"*\" {",
+   "new": "if noProxy == \"-\" {"
+  }
+ ],
+ "packages/ai/src/utils/text.ts": [
+  {
+   "file": "ai/text.go",
+   "old": "\tsep := \"\\n\"\n",
+   "new": "\tsep := \" \"\n"
+  },
+  {
+   "file": "ai/transcript.go",
+   "old": "Removed system prompt section \\\"%s\\\"",
+   "new": "Removed prompt section \\\"%s\\\""
+  },
+  {
+   "file": "ai/estimate.go",
+   "old": "parts = append(parts, strings.Join(texts, \"\\n\"))",
+   "new": "parts = append(parts, strings.Join(texts, \"\\n\\n\"))"
+  }
+ ],
+ "packages/ai/src/utils/string-enum.ts": [
+  {
+   "file": "ai/string_enum.go",
+   "old": "\"type\": \"string\", \"enum\"",
+   "new": "\"type\": \"mutant\", \"enum\""
+  }
+ ],
+ "packages/ai/src/api/cloudflare-ai-binding.ts": [
+  {
+   "file": "ai/cloudflare_ai_binding.go",
+   "old": "the AI binding does not expose fetch()\"",
+   "new": "the AI binding does not expose fetch\""
+  }
+ ],
+ "packages/ai/src/auth/oauth/meta.ts": [
+  {
+   "file": "ai/oauth_meta.go",
+   "old": "\"1031625952748946\"",
+   "new": "\"1031625952748947\""
+  },
+  {
+   "file": "ai/oauth_meta.go",
+   "old": "Expires: p.now().Add(metaAPIKeyLifetime).UnixMilli(),",
+   "new": "Expires: p.now().Add(metaAPIKeyLifetime).UnixMilli() + 1,"
+  }
+ ],
+ "packages/ai/src/utils/sleep.ts": [
+  {
+   "file": "ai/abort_utils.go",
+   "old": "\tcase <-ctx.Done():\n\t\treturn context.Cause(ctx)\n\t}\n}\n\n// AbortReason",
+   "new": "\tcase <-ctx.Done():\n\t\treturn ctx.Err()\n\t}\n}\n\n// AbortReason"
+  },
+  {
+   "file": "ai/abort_utils.go",
+   "old": "math.IsNaN(ms) || ms < 1 || ms > nodeTimerMaxMs",
+   "new": "math.IsNaN(ms) || ms < 1 || ms > nodeTimerMaxMs*2"
+  }
+ ],
+ "packages/ai/src/auth/oauth/callback-server.ts": [
+  {
+   "file": "ai/oauth_callback_server.go",
+   "old": "http.StatusNotFound, OAuthErrorHTML(\"Callback route not found.\"",
+   "new": "http.StatusBadRequest, OAuthErrorHTML(\"Callback route not found.\""
+  }
+ ],
+ "packages/ai/src/auth/oauth/openai-chatgpt.ts": [
+  {
+   "file": "ai/oauth_openai_chatgpt.go",
+   "old": "\"chatgpt.tokens.use.direct\"",
+   "new": "\"chatgpt.tokens.use.indirect\""
+  },
+  {
+   "file": "ai/oauth_openai_chatgpt.go",
+   "old": "\"code_challenge_method\", \"S256\", \"nonce\"",
+   "new": "\"code_challenge_method\", \"plain\", \"nonce\""
   }
  ],
  "packages/agent/src/agent-loop.ts": [

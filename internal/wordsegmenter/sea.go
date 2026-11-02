@@ -5,6 +5,8 @@
 // ICU DictionaryBreakEngine, PossibleWord and Thai/Lao/Khmer/BurmeseBreakEngine translation.
 // See LICENSES/Unicode-3.0.txt and LICENSES/LicenseRef-ICU-SEA.txt.
 
+// Ports packages/tui/src/utils.ts (getWordSegmenter: the Thai, Lao, Khmer and Burmese dictionary engines of Intl.Segmenter)
+
 package wordsegmenter
 
 import (
@@ -31,6 +33,7 @@ var burmeseDictionary string
 type byteDictionary string
 
 func (d byteDictionary) uint32At(offset int) int {
+	//portlint:allow utf16units offset indexes the embedded little-endian ICU dictionary bytes, not a JS string; Pi's Intl.Segmenter (utils.ts:getWordSegmenter) has no such table
 	return int(binary.LittleEndian.Uint32([]byte(d[offset : offset+4])))
 }
 func (d byteDictionary) word(index int) string {

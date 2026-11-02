@@ -712,6 +712,28 @@
       ]
     },
     {
+      "id": "BF-06cb94f",
+      "title": "In the alt-screen, a wheel scroll reported in the legacy X10 mouse form (terminals without SGR mouse mode) no…",
+      "symptom": "In the alt-screen, a wheel scroll reported in the legacy X10 mouse form (terminals without SGR mouse mode) no longer shows up as typed text when the pointer is at column or row 95 or higher; the report is counted in UTF-16 units as Pi counts it, so it scrolls.",
+      "rootCause": "Without SGR mode 1006 a column or row of 95 or more is a byte of 0x80 or more. Pi's stdin.setEncoding(\"utf8\") makes it one U+FFFD, so parseWheelEvent and isMouseSequence see six units and read charCodeAt(3..5). PiG counted the three-byte U+FFFD as three bytes, so the report was typed as text instead of scrolling.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In the alt-screen, a wheel scroll reported in the legacy X10 mouse form (terminals without SGR mouse mode) no longer shows up as typed text when the pointer is at column or row 95 or higher; the report is counted in UTF-16 units as Pi counts it, so it scrolls.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "06cb94f85e",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "tui/tui_alt_screen_x10_units_test.go::TestLegacyX10MouseReportCountsUTF16Units"
+      ]
+    },
+    {
       "id": "BF-07151d0",
       "title": "In print and JSON mode, Node extensions in separate processes now keep Pi's order when a later extension's…",
       "symptom": "In print and JSON mode, Node extensions in separate processes now keep Pi's order when a later extension's `session_shutdown` or `agent_settled` handler awaits a timer, however busy the machine is.",
@@ -1188,6 +1210,25 @@
         "test/extension-conformance/provider_registration_diagnostic_test.go::TestProviderRegistrationFailureIsADiagnosticAcrossSDKs",
         "test/parity/scenarios/extensions-runtime/88-startup-provider-registration-failure.toml"
       ]
+    },
+    {
+      "id": "BF-0ae286c",
+      "title": "fix: blank-assign the encodeState.WriteByte results in the SDK json copy that go fix touched",
+      "symptom": "fix: blank-assign the encodeState.WriteByte results in the SDK json copy that go fix touched",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0ae286c4f4",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-0ae3fcf",
@@ -19541,6 +19582,28 @@
       ]
     },
     {
+      "id": "BF-7689b82",
+      "title": "An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor…",
+      "symptom": "An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor column now gets Pi's answer: the column counts back from the end of the line in UTF-16 units as `line.slice(0, col)` does, where it was treated as column 0.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor column now gets Pi's answer: the column counts back from the end of the line in UTF-16 units as `line.slice(0, col)` does, where it was treated as column 0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7689b82bf7",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/autocomplete_wrappers_test.go::TestShouldTriggerFileCompletionSlicesTheLineLikeJavaScript"
+      ]
+    },
+    {
       "id": "BF-76f780d",
       "title": "A tool call that streams many argument deltas no longer costs time and memory that grow with the square of…",
       "symptom": "A tool call that streams many argument deltas no longer costs time and memory that grow with the square of its text: every provider (Anthropic Messages, Bedrock Converse Stream, Mistral, OpenAI Completions and Responses, Pi messages), the faux provider and the proxy stream read each delta once.",
@@ -19715,6 +19778,54 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-776d60b",
+      "title": "An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a…",
+      "symptom": "An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a whole second, such as `1000.5`, now starts its countdown from the next second like Pi's `Math.ceil(timeoutMs / 1000)`; the countdown rounded the milliseconds down to whole milliseconds first and started one second short.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a whole second, such as `1000.5`, now starts its countdown from the next second like Pi's `Math.ceil(timeoutMs / 1000)`; the countdown rounded the milliseconds down to whole milliseconds first and started one second short.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "776d60b196",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/ext_ui_dialog_timeout_test.go::TestDialogTimeoutKeepsAFractionOfAMillisecondPastAWholeSecond",
+        "internal/codingagent/ext_ui_dialog_timeout_test.go::TestSubprocessOptionalInt64RejectsAValueBeyondInt64",
+        "tui/countdown_timer_parity_test.go::TestCountdownTimerParity_InitialTickMatchesCeil"
+      ]
+    },
+    {
+      "id": "BF-776d60b-2",
+      "title": "A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead…",
+      "symptom": "A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead of converting to the largest `int64` on arm64.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead of converting to the largest `int64` on arm64.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "776d60b196",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/ext_ui_dialog_timeout_test.go::TestDialogTimeoutKeepsAFractionOfAMillisecondPastAWholeSecond",
+        "internal/codingagent/ext_ui_dialog_timeout_test.go::TestSubprocessOptionalInt64RejectsAValueBeyondInt64",
+        "tui/countdown_timer_parity_test.go::TestCountdownTimerParity_InitialTickMatchesCeil"
+      ]
     },
     {
       "id": "BF-777e981",
@@ -27291,6 +27402,42 @@
       ]
     },
     {
+      "id": "BF-D220",
+      "title": "Markdown renders each paragraph with the inline state at its position, not with the lines of an earlier…",
+      "symptom": "not reported upstream. The repro is `TestMarkdownBlockReuseDiffersFromPi` (`tui/markdown_render_oracle_test.go`): both cases above, run against the pinned Pi, with the rows Pi and PiG render.",
+      "rootCause": "Replicating the Pi behavior makes the output depend on which identical blocks came earlier and on the history of the component (streaming order, edits before the block). Pi's own reference-link guard (`reuseBlocks`, `markdown.ts:373`) exists to avoid that property; it guards reference definitions and not the `inLink` and raw-block state. PiG keeps reuse of syntax highlighting by language and code (the rest of), which does not depend on inline state.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D220",
+      "removeWhen": "Pi stops reusing rendered Markdown blocks by token.raw across differing inline state (markdown.ts:381). Then the markers and this record go, and the cases of `TestMarkdownBlockReuseDiffersFromPi` become documents of `markdownRenderDocs`.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "97995f7e9d",
+          "date": "2026-11-01"
+        },
+        {
+          "hash": "a01ab6c8ef",
+          "date": "2026-11-01"
+        },
+        {
+          "hash": "bbb5a57a3f",
+          "date": "2026-11-01"
+        },
+        {
+          "hash": "e3e3e6843e",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "tui/markdown_render_oracle_test.go::TestMarkdownBlockReuseDiffersFromPi",
+        "tui/markdown_render_oracle_test.go::TestMarkdownRenderMatchesPi"
+      ]
+    },
+    {
       "id": "BF-D226",
       "title": "Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs",
       "symptom": "none.",
@@ -31089,6 +31236,56 @@
       ]
     },
     {
+      "id": "BF-bb70e6b",
+      "title": "When a shared extension cell fails to build or start, each member that then runs in its own process shows…",
+      "symptom": "A retry that succeeded used to hide why the members were not shared.",
+      "rootCause": "A cell build whose context had already ended failed with \"wait for cell build lock: context deadline exceeded\" while the lock was free, because the lock is never tried once its context is done. A go test run that used up its deadline made every later build fail that way within seconds, and the message sent the reader after a lock holder that did not exist. The error now says the context had ended before the build began.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When a shared extension cell fails to build or start, each member that then runs in its own process shows `packed cell failed:` and the error that ended the shared cell in `/reload --explain`. A retry that succeeded used to hide why the members were not shared.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bb70e6b139",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/runtimecell/cellcache_lock_test.go::TestCellcacheLockHolderProcess",
+        "coding/extension/host/runtimecell/cellcache_lock_test.go::TestPublishArtifactEndedContextIsNotReportedAsALockWait",
+        "coding/extension/host/runtimecell/cellcache_lock_test.go::TestPublishArtifactLockLeftByAnEndedBuildDoesNotBlock",
+        "coding/extension/host/subprocess/isolate_cell_failure_test.go::TestIsolateCellFailureReportsTheErrorThatEndedThePackedCell"
+      ]
+    },
+    {
+      "id": "BF-bb70e6b-2",
+      "title": "An extension build that began after its deadline or cancellation no longer fails with `wait for cell build…",
+      "symptom": "The error now says the context had ended before the build began.",
+      "rootCause": "A cell build whose context had already ended failed with \"wait for cell build lock: context deadline exceeded\" while the lock was free, because the lock is never tried once its context is done. A go test run that used up its deadline made every later build fail that way within seconds, and the message sent the reader after a lock holder that did not exist. The error now says the context had ended before the build began.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension build that began after its deadline or cancellation no longer fails with `wait for cell build lock: context deadline exceeded` while no lock was held. The error now says the context had ended before the build began.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bb70e6b139",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/runtimecell/cellcache_lock_test.go::TestCellcacheLockHolderProcess",
+        "coding/extension/host/runtimecell/cellcache_lock_test.go::TestPublishArtifactEndedContextIsNotReportedAsALockWait",
+        "coding/extension/host/runtimecell/cellcache_lock_test.go::TestPublishArtifactLockLeftByAnEndedBuildDoesNotBlock",
+        "coding/extension/host/subprocess/isolate_cell_failure_test.go::TestIsolateCellFailureReportsTheErrorThatEndedThePackedCell"
+      ]
+    },
+    {
       "id": "BF-bb888ae",
       "title": "The `/model` picker now keeps its model list when the catalog refresh times out, as in Pi",
       "symptom": "The `/model` picker now keeps its model list when the catalog refresh times out, as in Pi.",
@@ -32563,6 +32760,28 @@
       "tests": [
         "coding/cli/extension_send_message_binary_test.go::TestExtensionSendMessageTriggerTurnStartsTheRunAsPi",
         "coding/extension/host/subprocess/runtime_node_send_idle_test.go::TestNodeIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSendMessage"
+      ]
+    },
+    {
+      "id": "BF-c7b91e7",
+      "title": "Terminal input bytes decode as Node's StringDecoder does, as Pi's `stdin.setEncoding(\"utf8\")` reads them: a…",
+      "symptom": "Terminal input bytes decode as Node's StringDecoder does, as Pi's `stdin.setEncoding(\"utf8\")` reads them: a trailing C0, C1, F5-F7, or an E0, ED, F0 or F4 lead followed by an out-of-range byte is held until the next read instead of becoming U+FFFD at once, so a mouse report ending in such a byte is no longer taken as a wheel scroll.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Terminal input bytes decode as Node's StringDecoder does, as Pi's `stdin.setEncoding(\"utf8\")` reads them: a trailing C0, C1, F5-F7, or an E0, ED, F0 or F4 lead followed by an out-of-range byte is held until the next read instead of becoming U+FFFD at once, so a mouse report ending in such a byte is no longer taken as a wheel scroll.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c7b91e7cb9",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "tui/utf8_decoder_oracle_test.go::TestUTF8DecoderMatchesNodeStringDecoder"
       ]
     },
     {
@@ -39388,6 +39607,29 @@
       ]
     },
     {
+      "id": "BF-e5bfd24",
+      "title": "fix(chord): Arr, Map, Union, Keyed and NewMethod refuse opt(...); Check returns pi-schema's error; record and…",
+      "symptom": "fix(chord): Arr, Map, Union, Keyed and NewMethod refuse opt(...); Check returns pi-schema's error; record and tuple edge cases of cleaned",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e5bfd245d4",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/host/schema_upstream_test.go::TestCleanedKeepsAFieldOfARecordWhoseValueSchemaIsNull",
+        "chord/host/schema_upstream_test.go::TestNormalizeWritesATupleHoleAsNull",
+        "chord/next/data/validator_test.go::TestFailedChecks"
+      ]
+    },
+    {
       "id": "BF-e5f9fdd",
       "title": "The provider retry transport no longer replaces `Body` on the caller's request when it retries",
       "symptom": "The provider retry transport no longer replaces `Body` on the caller's request when it retries.",
@@ -40669,8 +40911,8 @@
         }
       ],
       "tests": [
-        "internal/codingagent/code_highlighter_rows_norace_test.go::TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
-        "internal/codingagent/code_highlighter_rows_norace_test.go::TestCompleteWriteRowReusesItsHighlightingAcrossRedraws",
+        "internal/codingagent/code_highlighter_rows_test.go::TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
+        "internal/codingagent/code_highlighter_rows_test.go::TestCompleteWriteRowReusesItsHighlightingAcrossRedraws",
         "tui/assistant_message_reuse_upstream_test.go::TestUpstreamAssistantMessageReusesItsMarkdownAcrossStreamingAndItsEnd",
         "tui/code_highlighter_test.go::TestCodeHighlighterReusesItsLastResultUntilTheCodeTheThemeOrTheGrammarsChange",
         "tui/markdown_block_reuse_upstream_test.go::TestMarkdownReusedHighlightingEqualsAFreshRender",
@@ -44574,6 +44816,28 @@
       ]
     },
     {
+      "id": "BF-fe4bd27",
+      "title": "`PI_TUI_ESC_TIMEOUT` now waits as Node's `setTimeout` does for the lone-Escape timer: a fractional value is…",
+      "symptom": "`PI_TUI_ESC_TIMEOUT` now waits as Node's `setTimeout` does for the lone-Escape timer: a fractional value is truncated, and a value under one millisecond or over 2147483647 waits one millisecond instead of that many nanoseconds or about a month.",
+      "rootCause": "PI_TUI_ESC_TIMEOUT reaches setTimeout in Pi's StdinBuffer, which truncates a fractional delay and waits 1ms for a sub-millisecond or above-2^31-1 one. The Go port converted the float to a Duration unguarded.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`PI_TUI_ESC_TIMEOUT` now waits as Node's `setTimeout` does for the lone-Escape timer: a fractional value is truncated, and a value under one millisecond or over 2147483647 waits one millisecond instead of that many nanoseconds or about a month.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fe4bd27863",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "tui/input_timer_escape_timeout_test.go::TestProcessStdinBufferEscapeTimeoutFollowsNodeSetTimeout"
+      ]
+    },
+    {
       "id": "BF-fe625bb",
       "title": "Mistral request bodies list their members in Pi's order (`model`, `stream`, `messages`, ..., then the renamed…",
       "symptom": "Mistral request bodies list their members in Pi's order (`model`, `stream`, `messages`, ..., then the renamed `max_tokens`, `tool_choice`, `reasoning_effort`, `prompt_mode`, `prompt_cache_key`; a tool result's `tool_call_id` last; thinking parts as `type`, `text`) instead of sorted, and the body is built about 3 times faster.",
@@ -45122,6 +45386,11 @@
     {
       "id": "D219",
       "title": "pi-schema regular expressions differ from V8 in four contrived cases"
+    },
+    {
+      "id": "D220",
+      "title": "Markdown renders each paragraph with the inline state at its position, not with the lines of an earlier…",
+      "entry": "BF-D220"
     },
     {
       "id": "D222",

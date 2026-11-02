@@ -1,5 +1,6 @@
 package tui
 
+// Ports packages/tui/src/tui-alt-screen.ts (TuiAltScreen.getExitRestorePrefix, getExitRestoreSuffix).
 // Ports packages/tui/src/terminal.ts (Terminal.restoreOnExit, ProcessTerminal.restoreOnExit),
 // packages/tui/src/tui.ts (TuiBase.getExitRestorePrefix, getExitRestoreSuffix, exitRestoreHandler) and
 // packages/tui/src/tui-alt-screen.ts (TuiAltScreen.getExitRestorePrefix, getExitRestoreSuffix) at 9df819de (#11170).
