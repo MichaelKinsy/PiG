@@ -255,6 +255,7 @@ func TestNodeExecArgvAreTheProcessesFlags(t *testing.T) {
 }
 
 func TestNodeLoadWithoutNodeNamesTheRequirement(t *testing.T) {
+	isolateNodeSearch(t)
 	t.Setenv("PATH", t.TempDir())
 	_, _, err := NewPluginRuntime(NodeOptions{}).Load(RuntimeLoad{Kind: "worker", Principal: workerPrincipal, Peer: serverPrincipal}, background)
 	if err == nil || !strings.Contains(err.Error(), "evaluating plugins needs Node.js 22.19.0 or newer; node was not found on PATH") {

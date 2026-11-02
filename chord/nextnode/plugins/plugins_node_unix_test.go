@@ -40,8 +40,9 @@ func TestNodeAFailedStartRemovesItsSocketDirectory(t *testing.T) {
 	}
 }
 
-// fakeNode puts a `node` on PATH (alone) that prints stdout, writes stderr and exits with code.
-func fakeNode(t *testing.T, stdout, stderr string, code int) {
+// writeFakeNode writes a `node` into dir (made if need be) that prints stdout, writes stderr and exits with code, and returns
+// its path.
+func writeFakeNode(t *testing.T, dir, stdout, stderr string, code int) string {
 	t.Helper()
 	script := "#!/bin/sh\n"
 	if stdout != "" {
@@ -51,11 +52,21 @@ func fakeNode(t *testing.T, stdout, stderr string, code int) {
 		script += "echo " + shellQuote(stderr) + " >&2\n"
 	}
 	script += "exit " + strconv.Itoa(code) + "\n"
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "node"), []byte(script), 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("PATH", dir)
+	path := filepath.Join(dir, "node")
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// fakeNode puts a `node` on PATH (alone, with no other place searched) that prints stdout, writes stderr and exits with code.
+func fakeNode(t *testing.T, stdout, stderr string, code int) {
+	t.Helper()
+	isolateNodeSearch(t)
+	t.Setenv("PATH", filepath.Dir(writeFakeNode(t, t.TempDir(), stdout, stderr, code)))
 }
 
 func shellQuote(text string) string { return "'" + strings.ReplaceAll(text, "'", `'\''`) + "'" }

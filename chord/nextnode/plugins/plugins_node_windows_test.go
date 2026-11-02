@@ -33,9 +33,9 @@ func processGone(pid int) bool {
 	return err == nil && event == windows.WAIT_OBJECT_0
 }
 
-// fakeNode puts a `node` on PATH (alone) that prints stdout, writes stderr and exits with code: a `node.cmd`, which
-// exec.LookPath finds through PATHEXT.
-func fakeNode(t *testing.T, stdout, stderr string, code int) {
+// writeFakeNode writes a `node.cmd` (which exec.LookPath finds through PATHEXT) into dir (made if need be) that prints stdout,
+// writes stderr and exits with code, and returns its path.
+func writeFakeNode(t *testing.T, dir, stdout, stderr string, code int) string {
 	t.Helper()
 	script := "@echo off\r\n"
 	if stdout != "" {
@@ -45,11 +45,21 @@ func fakeNode(t *testing.T, stdout, stderr string, code int) {
 		script += "echo " + stderr + " 1>&2\r\n"
 	}
 	script += "exit /b " + strconv.Itoa(code) + "\r\n"
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "node.cmd"), []byte(script), 0o644); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("PATH", dir)
+	path := filepath.Join(dir, "node.cmd")
+	if err := os.WriteFile(path, []byte(script), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// fakeNode puts a `node` on PATH (alone, with no other place searched) that prints stdout, writes stderr and exits with code.
+func fakeNode(t *testing.T, stdout, stderr string, code int) {
+	t.Helper()
+	isolateNodeSearch(t)
+	t.Setenv("PATH", filepath.Dir(writeFakeNode(t, t.TempDir(), stdout, stderr, code)))
 }
 
 // The address is a named pipe with an unguessable name, and only the current user is in its DACL (and the DACL does not

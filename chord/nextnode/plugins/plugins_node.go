@@ -21,8 +21,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"golang.org/x/mod/semver"
-
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
@@ -73,7 +71,9 @@ const (
 	NodeStderr NodeStream = "stderr"
 )
 
-// NodeOptions is how Node subprocesses are started.
+// NodeOptions is how Node subprocesses are started. The Node they run on is found by discoverNode: PIG_NODE, then `node` on
+// PATH, then the install locations of version managers and installers (see discoverNode for the order and the list), the
+// first that is Node 22.19.0 or newer.
 type NodeOptions struct {
 	// ExecArgv are Node's own flags for the subprocess (`--max-old-space-size=...`), after the one this component passes
 	// (`--disable-warning=ExperimentalWarning`).
@@ -219,37 +219,6 @@ func (exit *NodeExit) Unwrap() []error {
 		errs = append(errs, exit.Fatal)
 	}
 	return errs
-}
-
-// discoverNode finds Node as extension runtimes do: `node` on PATH, at least minimumNode.
-func discoverNode(ctx context.Context, command func(context.Context, string, ...string) *exec.Cmd) (string, error) {
-	if command == nil {
-		command = exec.CommandContext
-	}
-	requirement := fmt.Sprintf("evaluating plugins needs Node.js %s or newer", strings.TrimPrefix(minimumNode, "v"))
-	path, err := exec.LookPath("node")
-	if err != nil {
-		return "", fmt.Errorf("%s; node was not found on PATH", requirement)
-	}
-	output, err := command(ctx, path, "--version").CombinedOutput()
-	if err != nil {
-		if ctx.Err() != nil {
-			return "", context.Cause(ctx)
-		}
-		detail := strings.TrimSpace(string(output))
-		if detail == "" {
-			detail = err.Error()
-		}
-		return "", fmt.Errorf("%s; node --version failed: %s", requirement, detail)
-	}
-	found := strings.TrimSpace(string(output))
-	if !semver.IsValid(found) {
-		return "", fmt.Errorf("%s; node --version returned %q", requirement, found)
-	}
-	if semver.Compare(found, minimumNode) < 0 {
-		return "", fmt.Errorf("%s; found %s", requirement, found)
-	}
-	return path, nil
 }
 
 // completeMarker is the file extractNode writes last into a tree: its content is the hash the tree's directory is named for.

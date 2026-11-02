@@ -1965,3 +1965,30 @@ Remove when: Pi reports a configured local Package that does not exist, or PiG d
 
 Approval: owner comment on issue #389, 2026-10-30: "we'll take both of your other points too, so a package that can't load shows up in the session and `--validate-only` checks that each entry actually resolves."
 SCRUTINIZED:approved
+
+## D221 The plugins' Node subprocess finds Node beyond PATH
+
+Summary: Evaluating chord plugins starts Node from `PIG_NODE`, from `node` on PATH, or from a version manager's or installer's usual location, whichever first is Node 22.19.0 or newer.
+
+Audience: runtime
+
+Stock disposition: inert capability. Stock PiG discovers a Node that is already installed. It selects no Node for the user, ships none and installs none; a Package or Piglet that ships Node is not part of Stock (deferred to PiG Standard after 0.7.0).
+
+What: Pi evaluates plugins in the process that runs Pi, so it has no Node to find. PiG's plugins component (`chord/nextnode/plugins`) runs Pi's evaluator in a Node subprocess and finds Node in this order, running `--version` on each candidate and taking the first that is `22.19.0` or newer (Pi's `engines.node`):
+
+1. `PIG_NODE`, an executable. When it is set it is the only candidate: a value that is not an executable, does not run or is too old is the error.
+2. `node` on `PATH`.
+3. Unix: `$NVM_BIN`; the newest installs of `$NVM_DIR/versions/node` or `~/.nvm/versions/node`; fnm's `node-versions`; Volta's `bin`; asdf's and mise's `shims`; `/usr/local/bin`; `/opt/homebrew/bin`; `/usr/bin`. Windows: `%NVM_SYMLINK%`; the versions of `%NVM_HOME%` or `%APPDATA%\nvm`; fnm's `node-versions`; Volta's `bin`; `%ProgramFiles%\nodejs`; `%LOCALAPPDATA%\Programs\nodejs`.
+
+A candidate that is too old does not end the search. When none satisfies, the error names the requirement and the newest version found, or says that Node was not found on PATH or in the places searched. The TypeScript extension runtime slot ("TypeScript extension runtime slot" above) holds Bun and executable runtimes, not Node, so it is no source. The extension host's own Node check (`ensureNodeRuntime`) still reads PATH only.
+
+Why: a GUI or a service starts without the shell's PATH, where version managers put `node`; users with several versions need to name one. The plan is `docs/plan/chord-plugins-node-evaluator.md` sections 6 and 10.12 (owner decision (c), 2026-11-01).
+
+Call-site markers: `chord/nextnode/plugins/plugins_node_discover.go` (`discoverNode`).
+
+Locked by: `TestDiscoverNodeFindsNodeInEachPlaceAfterPATH`, `TestDiscoverNodeFindsNodeNamedByPIGNODE`, `TestDiscoverNodeWithAnUnusablePIGNODEIsAnErrorWhateverElseIsInstalled`, `TestDiscoverNodePrefersPATHToTheInstallLocationsAndEachPlaceToTheNext`, `TestDiscoverNodeSkipsATooOldCandidateForANewerLaterOne`, `TestDiscoverNodeWhenEveryNodeIsTooOldNamesTheNewestVersionFound`, `TestDiscoverNodeFindsNothingAndNamesTheRequirementAndWhereItLooked` and `TestDiscoverNodeTakesTheNewestInstalledVersionOfAVersionManager` (`chord/nextnode/plugins/plugins_node_discover_test.go`), each on fake `node` executables in a temporary tree.
+
+Remove when: Pi evaluates plugins in a runtime PiG does not start, or PiG Standard ships a Node and Stock drops the search.
+
+Approval: owner decision relayed 2026-11-01: option (c), discovery beyond PATH, for difference #10.
+SCRUTINIZED:approved

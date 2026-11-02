@@ -459,6 +459,7 @@ func TestNodeAFailedKeptSpareIsReportedAndTheNextLoadStartsItsOwn(t *testing.T) 
 	if err := runtime.Warm(background); err != nil {
 		t.Fatal(err)
 	}
+	isolateNodeSearch(t)
 	t.Setenv("PATH", t.TempDir())
 	loadEmpty(t, runtime)
 	select {
