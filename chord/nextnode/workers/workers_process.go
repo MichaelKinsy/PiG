@@ -65,7 +65,9 @@ type WorkerProcess struct {
 	cmd     *exec.Cmd
 	tree    *processTree
 	done    chan struct{}
-	exit    Exit
+	// doneOnce closes done once: a second end (Pi's `exit` after `error`) never panics.
+	doneOnce sync.Once
+	exit     Exit
 	// killed: Kill ended the process (its exit is reported by killedExit).
 	killed atomic.Bool
 
@@ -116,7 +118,7 @@ func NewWorkerProcess(options ForkOptions, events ProcessEvents) (*WorkerProcess
 		_ = stderr.Close()
 		// A fork that failed (no exit follows in Node's terms, so the `error` event ends it).
 		//portlint:allow golifetime the task ends once it has told the failed start's exit
-		go func() {
+		go func() { //portlint:allow asyncorder process.ts:81 child.once("error", ...) is an event of the failed fork with no ordering against other work; the exit handler runs inside it
 			parent.finish()
 			process.ended(Exit{}, events)
 		}()
@@ -134,7 +136,7 @@ func NewWorkerProcess(options ForkOptions, events ProcessEvents) (*WorkerProcess
 	process.pump(stderr, "stderr", options.OnOutput)
 	parent.start()
 	//portlint:allow golifetime the waiter returns when the leader exits
-	go func() {
+	go func() { //portlint:allow asyncorder process.ts:79 child.once("exit", ...) is an event of the child with no ordering against other work; the exit handler runs inside it
 		state, _ := cmd.Process.Wait()
 		process.ended(exitOf(state), events)
 	}()
@@ -190,6 +192,7 @@ func (p *WorkerProcess) keepStderr(chunk []byte) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.stderr += string(chunk)
+	//portlint:allow utf16units a UTF-16 unit count never exceeds the UTF-8 byte count (at most 1 unit per 1-3 bytes, 2 per 4), so bytes <= 4096 implies units <= 4096; the exact unit count follows below (process.ts:62 `.slice(-STDERR_TAIL)`)
 	if len(p.stderr) <= stderrTailUnits {
 		return
 	}
@@ -215,7 +218,7 @@ func (p *WorkerProcess) ended(exit Exit, events ProcessEvents) {
 	}
 	p.tree.close()
 	p.exit = exit
-	close(p.done)
+	p.doneOnce.Do(func() { close(p.done) })
 }
 
 // Exited is closed when the process ended (every process it spawned is killed then); Exit is its result.

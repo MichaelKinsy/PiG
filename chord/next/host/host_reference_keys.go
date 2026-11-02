@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
@@ -193,14 +194,14 @@ func (k *referenceKeys) pin(entry *keyEntry) *keyedPromise[struct{}] {
 	entry.source.hold()
 	loading := newKeyedPromise[struct{}](loop)
 	loop.Go(func() {
-		pin, err := goal.pinKey(entry.member, entry.key, version, context.Background())
+		pin, err := goal.pinKey(entry.member, entry.key, version, chordctx.Background())
 		loop.Run(func() {
 			if err != nil {
 				if entry.instance == instance {
 					entry.instance = nil
 					entry.loading = nil
 					failure := data.AsChordError(err, goal.label())
-					_ = batch.Within(func() error { entry.source.fail(failure, context.Background()); return nil }, context.Background())
+					_ = batch.Within(func() error { entry.source.fail(failure, chordctx.Background()); return nil }, chordctx.Background())
 				}
 				loading.reject(err)
 				return
@@ -212,7 +213,7 @@ func (k *referenceKeys) pin(entry *keyEntry) *keyedPromise[struct{}] {
 			}
 			previous := entry.pin
 			entry.pin = &pin
-			_ = batch.Within(func() error { entry.source.bind(pin.source); return nil }, context.Background())
+			_ = batch.Within(func() error { entry.source.bind(pin.source); return nil }, chordctx.Background())
 			if previous != nil {
 				previous.release()
 			}
@@ -246,7 +247,7 @@ func (k *referenceKeys) release(entry *keyEntry) {
 	}, nil)
 	end := func() { entry.source.end(released) }
 	if entry.source.inUse() {
-		_ = k.holder.keysBatch().Within(func() error { end(); return nil }, context.Background())
+		_ = k.holder.keysBatch().Within(func() error { end(); return nil }, chordctx.Background())
 	} else {
 		end()
 	}

@@ -40,3 +40,41 @@ func TestDependabotCoversMaintainedManifests(t *testing.T) {
 		}
 	}
 }
+
+// The evaluator Dockerfile pins its base images by digest on literal FROM lines
+// (the form Dependabot's docker ecosystem reads), so Dependabot must watch its
+// directory or the pins would never move. The Go release in the golang tag is
+// .go-version's: version bumps of golang are ignored.
+func TestDependabotRefreshesTheEvaluatorImageDigests(t *testing.T) {
+	root := repoRoot(t)
+	config, err := os.ReadFile(filepath.Join(root, ".github", "dependabot.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var docker string
+	for _, entry := range strings.Split(string(config), "\n  - package-ecosystem: ") {
+		if strings.HasPrefix(entry, "docker\n") {
+			docker = entry
+		}
+	}
+	if !strings.Contains(docker, "directory: /internal/evals/docker\n") {
+		t.Fatalf("dependabot has no docker entry for /internal/evals/docker:\n%s", docker)
+	}
+	if !strings.Contains(docker, "dependency-name: golang") {
+		t.Error("the docker entry does not ignore golang version bumps, which .go-version owns")
+	}
+	dockerfile, err := os.ReadFile(filepath.Join(root, "internal", "evals", "docker", "Dockerfile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(string(dockerfile), "\n") {
+		image, ok := strings.CutPrefix(line, "FROM ")
+		if !ok {
+			continue
+		}
+		// The variant stages build on the evaluator stage above them.
+		if name := strings.Fields(image)[0]; name != "evaluator" && !strings.Contains(name, "@sha256:") {
+			t.Errorf("%q is not pinned by digest", line)
+		}
+	}
+}

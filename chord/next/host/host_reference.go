@@ -438,7 +438,7 @@ func (b *binding) bind(goal target) {
 	goal.hold(b)
 	// `hold` may release it at once (a presence derive): `retarget` sees that. A batch only when members move.
 	if b.following() {
-		_ = batch.Within(func() error { b.retarget(); return nil }, context.Background())
+		_ = batch.Within(func() error { b.retarget(); return nil }, chordctx.Background())
 	} else {
 		b.retarget()
 	}
@@ -474,7 +474,7 @@ func (b *binding) retarget() {
 		b.attached = nil
 	}
 	if b.heldKeys != nil {
-		b.heldKeys.follow(context.Background())
+		b.heldKeys.follow(chordctx.Background())
 	}
 }
 
@@ -495,13 +495,13 @@ func (b *binding) removed(r removal) {
 			b.keepAll(b.attached)
 		}
 		for _, source := range b.sources.values() {
-			source.fail(cause, context.Background())
+			source.fail(cause, chordctx.Background())
 		}
 		if b.heldKeys != nil {
-			b.heldKeys.fail(cause, context.Background())
+			b.heldKeys.fail(cause, chordctx.Background())
 		}
 		return nil
-	}, context.Background())
+	}, chordctx.Background())
 	// Its last values taken: it keeps no node of that instance (GC).
 	b.attached = nil
 	b.state = bindingState{kind: bindingUnbound, batch: batch, dependent: dependent}
@@ -955,7 +955,7 @@ func (b *binding) end(err *data.ChordError) {
 			used = used || source.inUse()
 		}
 		if used {
-			_ = previous.batch.Within(func() error { end(); return nil }, context.Background())
+			_ = previous.batch.Within(func() error { end(); return nil }, chordctx.Background())
 		} else {
 			end()
 		}
@@ -1012,7 +1012,7 @@ func (b *binding) send(method string, args any, ctx context.Context) *parkedCall
 	// Only a bound reference is live.
 	goal := b.state.target
 	if b.calls == nil {
-		b.calls, b.abort = chordctx.WithCancel(context.Background())
+		b.calls, b.abort = chordctx.WithCancel(chordctx.Background())
 	}
 	linked := withLinkedAbortSignal(b.calls, ctx)
 	out := newParkedCallResult()
@@ -1380,7 +1380,7 @@ func place(source *referenceSource, found followed, attached attachable) {
 	case followedLive:
 		source.bind(found.source)
 	case followedLacking:
-		source.vanish(found.err, context.Background())
+		source.vanish(found.err, chordctx.Background())
 	case followedLoading:
 		if takesLast() {
 			source.bind(found.last)
@@ -1390,6 +1390,6 @@ func place(source *referenceSource, found followed, attached attachable) {
 		if takesLast() {
 			source.bind(found.last)
 		}
-		source.fail(found.err, context.Background())
+		source.fail(found.err, chordctx.Background())
 	}
 }

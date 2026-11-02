@@ -48,7 +48,7 @@ type EditorPayload struct {
 	Data            string   `json:"data,omitempty"`
 	Text            string   `json:"text,omitempty"`
 	Expanded        string   `json:"expanded,omitempty"`
-	Lines           []string `json:"lines,omitempty"`
+	Lines           []string `json:"lines,omitzero"`
 	Width           int      `json:"width,omitempty"`
 	Seq             uint64   `json:"seq,omitempty"`
 	WantsKeyRelease bool     `json:"wantsKeyRelease,omitempty"`

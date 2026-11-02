@@ -24,7 +24,7 @@
    #:ctx-send-message #:ctx-send-user-message #:ctx-append-entry #:ctx-set-session-name
    #:ctx-call-host
    #:ctx-set-active-tools #:ctx-get-commands #:ctx-get-context-usage #:ctx-get-system-prompt-options #:ctx-get-model-info
-   #:ctx-get-model-auth #:ctx-get-scoped-models #:ctx-set-model #:ctx-set-thinking-level #:ctx-set-label #:ctx-wait-for-idle
+   #:ctx-get-model-auth #:ctx-get-scoped-models #:ctx-set-model #:ctx-set-thinking-level #:ctx-set-label #:ctx-wait-for-idle #:ctx-yield #:ctx-sleep
    #:ctx-project-trusted-p #:ctx-get-session-id #:ctx-get-leaf-id #:ctx-get-all-themes #:ctx-get-theme #:ctx-set-theme
    #:ctx-on-width-change #:ctx-get-editor-text #:ctx-tools-expanded-p
    #:registry-find #:registry-get-provider-auth #:registry-refresh #:registry-get-available-of-type

@@ -39,6 +39,7 @@ func StoredText(text string, what string) (string, error) {
 func PrefixUpperBound(prefix string) (upper string, ok bool) {
 	for len(prefix) > 0 {
 		last, size := utf8.DecodeLastRuneInString(prefix)
+		//portlint:allow utf16units size is the UTF-8 length of the last code point, so this pops one whole code point as Pi's `points.pop()` of `[...prefix]` does (text.ts:42-44); no UTF-16 offset is involved
 		prefix = prefix[:len(prefix)-size]
 		if last == 0x10ffff {
 			continue

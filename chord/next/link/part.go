@@ -102,6 +102,7 @@ func OriginPart(json string, compression Compression, ctx context.Context) Part 
 	}
 	// Upstream hands back the text itself, unencoded, when three bytes per UTF-16 unit stay within the threshold; a Go
 	// string is UTF-8 already, so the bytes settle it and the units are counted only in the band the bytes leave open.
+	//portlint:allow utf16units len(json) counts UTF-8 bytes, never fewer than the UTF-16 units json.length counts (part.ts:82), so it only bounds the exact jsstring.Length(json)*3 test from above and below
 	if len(json) <= CompressAbove/3 || (len(json) <= CompressAbove && jsstring.Length(json)*3 <= CompressAbove) {
 		return Text(json)
 	}

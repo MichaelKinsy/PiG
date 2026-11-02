@@ -104,6 +104,11 @@ fn main() {
                 ));
                 replaced.send_user_message("reply with exactly: hello reply", "")?;
                 record(&format!("idle:{}", replaced.is_idle()?));
+                // Pi's `await sleep()` works in a withSession callback: the SDK's yield helper must answer on the replacement route too.
+                match replaced.sleep(std::time::Duration::from_millis(1)) {
+                    Ok(()) => record("yield:ok"),
+                    Err(error) => record(&format!("yield:{error}")),
+                }
                 record(&format!("model:{}", replaced.model()));
                 record(&format!("conversation:{}", conversation(replaced)));
                 Ok(())

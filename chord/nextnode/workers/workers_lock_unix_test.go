@@ -13,6 +13,7 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 )
 
+// pi: packages/chord/src/next-node/workers/lock.ts
 // A temporary directory too deep for sun_path does not break the lock: the socket goes to a private per-user directory under
 // /tmp (lock.ts `socketPath`).
 func TestASocketFileLockFallsBackToAPrivateDirectoryWhenTheTempDirIsTooLongForASocketPath(t *testing.T) {

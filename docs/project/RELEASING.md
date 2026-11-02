@@ -48,6 +48,8 @@ Dry-run prints the planned diff without writing or running consistency tests. An
 
 Before tagging, run `make bug-ledger-refresh` and commit the result. Day to day `make bug-ledger` keeps every committed entry whose fix commits are recorded, so a pull request changes only its own entries; the refresh recomputes every entry from the history, which also settles the fixed-in release and the commit lists of the release's entries.
 
+A commit that moves or renames a test a fix commit added to another file keeps that fix's guard in the ledger: `automation/ci/bugledger/moved-tests.txt` maps a moved or renamed test (`old-file::OldName new-file::NewName`, one line per test) and both `make bug-ledger` and the refresh read it; the refresh also follows a moved test that kept its name to the one file that declares it. `make bug-ledger-check` fails on a line whose new test does not exist or whose old test still does. Add the line in the commit that renames the test.
+
 ## Changelog fragments and the bug ledger
 
 Release notes are written as fragments in `changelog.d/<lane>-<sha>.md`; `make changelog-fold VERSION=x.y.z` appends them to the release and deletes them, and `make bug-ledger` builds `docs/bug-ledger.json` from the `### Fixed` bullets, the commit history and the divergence records. Both read the history of the release commit, so both need a full clone (`fetch-depth: 0` in CI).

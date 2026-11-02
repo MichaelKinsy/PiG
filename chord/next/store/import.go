@@ -395,12 +395,23 @@ func importEach(parts PartSource, ctx context.Context, take func(part any) error
 	defer func() {
 		// A stalled input is not awaited: the backend transaction ends now.
 		if !done {
+			//portlint:allow golifetime Pi's `void Promise.resolve(iterator.return?.()).catch(() => {})` (import.ts:297) is an unawaited close of a stalled input: the import must not wait for it
 			go func() { _ = parts.Close() }()
 		}
 	}()
 	for {
 		settled := make(chan importNext, 1)
 		go func() {
+			// A throwing input is a rejected `iterator.next()` in Pi (import.ts:281): the import fails with it.
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					thrown, ok := recovered.(error)
+					if !ok {
+						thrown = errors.New(fmt.Sprint(recovered))
+					}
+					settled <- importNext{err: thrown}
+				}
+			}()
 			value, ok, err := parts.Next(ctx)
 			settled <- importNext{value, ok, err}
 		}()

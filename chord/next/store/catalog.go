@@ -116,7 +116,8 @@ func TableRecordFromJSON(value any) (*TableRecord, error) {
 	record := &TableRecord{}
 	record.Table, _ = object.Value("table").(string)
 	version, _ := object.Value("version").(float64)
-	record.Version = int(version)
+	integer, _ := safeInteger(version)
+	record.Version = int(integer)
 	state, _ := object.Value("state").(string)
 	record.State = TableState(state)
 	record.Fingerprint, _ = object.Value("fingerprint").(string)

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -16,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
+// pi: packages/chord/src/next-node/workers/main.ts
 // Ports packages/chord/test/next-node/workers/main.test.ts: the worker's side: the start message, the lock, `started` on
 // `connect`, `ready`; shutdown during startup, the parent's disconnect and SIGTERM each run the closers and exit; `fatal`
 // redacted.
@@ -23,13 +25,31 @@ import (
 // lockSerial makes each started worker's lock name unique (Math.random() in Pi).
 var lockSerial atomic.Int64
 
-// startedWorker is `started(behaviour)`: the fixture worker forked and started with behaviour; its control messages and
-// exit collected.
+// startedWorker is `started(behaviour)`: the fixture worker forked and started with behaviour; its control messages, link
+// closing, output and exit collected.
 type startedWorker struct {
 	child   *WorkerProcess
 	mu      sync.Mutex
 	control []FromWorker
-	exit    *Exit
+	// events are what the server side saw, in the order it saw it: each control message's kind, and linkClosed.
+	events []string
+	output strings.Builder
+	exit   *Exit
+}
+
+// linkClosed is the event of the child closing its link to the server.
+const linkClosed = "link closed"
+
+func (w *startedWorker) seen() []string {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return slices.Clone(w.events)
+}
+
+func (w *startedWorker) printed(text string) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return strings.Contains(w.output.String(), text)
 }
 
 func (w *startedWorker) controlKinds() []FromWorkerKind {
@@ -62,15 +82,24 @@ func started(t *testing.T, behaviour workerBehaviour) *startedWorker {
 	t.Helper()
 	w := &startedWorker{}
 	child, err := NewWorkerProcess(
-		ForkOptions{Entry: fixtureEntry(t), Env: fixtureEnvironment("worker"), OnOutput: func(string, []byte) {}},
+		ForkOptions{Entry: fixtureEntry(t), Env: fixtureEnvironment("worker"), OnOutput: func(_ string, chunk []byte) {
+			w.mu.Lock()
+			defer w.mu.Unlock()
+			w.output.Write(chunk)
+		}},
 		ProcessEvents{
 			Control: func(message FromWorker) {
 				w.mu.Lock()
 				defer w.mu.Unlock()
 				w.control = append(w.control, message)
+				w.events = append(w.events, string(message.Kind))
 			},
-			LinkLost:   func() {},
-			LinkClosed: func() {},
+			LinkLost: func() {},
+			LinkClosed: func() {
+				w.mu.Lock()
+				defer w.mu.Unlock()
+				w.events = append(w.events, linkClosed)
+			},
 			Exited: func(value Exit) {
 				w.mu.Lock()
 				defer w.mu.Unlock()
@@ -122,6 +151,47 @@ func TestTheWorkersSideShutsDownDuringItsStartupAbortsItRunsTheClosersRegistered
 	}
 	if string(text) != "store\nhost\n" {
 		t.Fatalf("closers ran as %q, want %q (reverse order)", text, "store\nhost\n")
+	}
+}
+
+// A shutdown that finds a reload in flight in the NodeHost, whose event loop is blocked and answers nothing, closes the worker's
+// link to the server before the NodeHost ends and fails the reload (Pi's `#shutdown` runs the closers in reverse order, and the
+// host closer, registered last, closes the link: packages/chord/src/next-node/workers/main.ts, ipc.ts's close frame precedes the
+// `reloaded` reply). The NodeHost's close runs after the app's closers, those it registered before and after the load, so the
+// server reads the reload's failure after its link closed, where it settles the reload from `ended`
+// (TestTheRolloutStepListsAWorkerStoppedCleanlyDuringItAsStoppedAndOneThatCrashedWithItsError). The NodeHost stays blocked until
+// the server saw the link close: no timing decides the order the test asserts. Before the NodeHost's close ran last, it ran
+// first, ended the process the blocked loop left unanswered and failed the reload while the app's slow closers still ran.
+func TestTheWorkersSideClosesItsLinkToTheServerBeforeItsNodeHostFailsAReloadInFlightAtShutdown(t *testing.T) {
+	dir := t.TempDir()
+	log := filepath.Join(dir, "log")
+	release := filepath.Join(dir, "release")
+	worker := started(t, workerBehaviour{Log: log, CloseMs: 100, LateCloseMs: 100, BlockNode: release, ShutdownDuringReload: true})
+	until(t, func() bool { return worker.has(FromWorkerReady) })
+	until(t, func() bool { return worker.printed("node blocked") })
+	worker.child.Send(ToWorker{Kind: ToWorkerReload, Scripts: []plugins.PluginScript{}})
+	// The worker shuts itself down once the reload is in flight, and the NodeHost answers it once released: after the link
+	// closed, or at its own limit of 2 s (the case of the closers in the wrong order, whose link closes last).
+	until(t, func() bool { return slices.Contains(worker.seen(), linkClosed) || worker.exited() != nil }, 5_000)
+	if err := os.WriteFile(release, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	until(t, func() bool { return worker.exited() != nil })
+	if exit := worker.exited(); exit.Code == nil || *exit.Code != 0 || exit.Signal != nil {
+		t.Fatalf("exit = %+v, want {code: 0, signal: null}", exit)
+	}
+	events := worker.seen()
+	closed := slices.Index(events, linkClosed)
+	reloaded := slices.Index(events, string(FromWorkerReloaded))
+	if closed < 0 || (reloaded >= 0 && reloaded < closed) {
+		t.Fatalf("the server saw %v, want its link closed before any `reloaded`", events)
+	}
+	text, err := os.ReadFile(log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(text) != "late\nstore\nhost\n" {
+		t.Fatalf("closers ran as %q, want %q (the app's, reverse order)", text, "late\nstore\nhost\n")
 	}
 }
 

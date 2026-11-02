@@ -7,6 +7,8 @@
 // -notes <version> prints the draft release notes for a version from the same sources.
 //
 // A fix-titled commit that is not a product bug is listed with a category and a reason in automation/ci/bugledger/exempt.txt, or carries a "Bug-Ledger: exempt <category>: <reason>" trailer. A follow-up commit of an existing fix carries "Bug-Ledger: see <commit>".
+//
+// A fix commit's tests are the Go tests its diff adds or edits and the tests its message names, resolved against the tree. A test a later commit moved keeps its fix when it kept its name (the one file that declares it); a renamed test needs a line in automation/ci/bugledger/moved-tests.txt.
 package main
 
 import (
@@ -76,7 +78,11 @@ func runWith(root, since string, check, strict, refresh bool) error {
 	}
 	if !check && !refresh {
 		if prior, _, err := readCommitted(root); err == nil {
-			keepPrior(l, prior.Entries, root)
+			moved, err := loadMovedTests(root)
+			if err != nil {
+				return err
+			}
+			keepPrior(l, prior.Entries, root, moved)
 		}
 	}
 	canonical(l)

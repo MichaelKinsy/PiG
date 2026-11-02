@@ -68,6 +68,7 @@ func (h *Host) observeXref(conn *Conn) {
 		h.forgetLocalRealm(conn)
 		h.xref.closed(conn)
 		h.loopTurns.closed(conn)
+		h.syncRuns.closed(conn)
 	}
 }
 

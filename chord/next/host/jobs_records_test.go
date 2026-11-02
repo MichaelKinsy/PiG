@@ -589,7 +589,7 @@ func (db *nthTransactionDatabase) Transaction(callback func(transaction sqlite.S
 	db.mu.Unlock()
 	return db.SqliteDatabase.Transaction(func(transaction sqlite.SqliteExecutor) error {
 		if held != nil {
-			transaction = &gatedExecutor{SqliteExecutor: transaction, gate: held}
+			transaction = &heldExecutor{SqliteExecutor: transaction, gate: held}
 		}
 		return callback(transaction)
 	})

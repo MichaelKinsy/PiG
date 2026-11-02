@@ -320,6 +320,7 @@ func safeInteger(number float64) (int64, bool) {
 	if math.IsNaN(number) || math.IsInf(number, 0) || number != math.Trunc(number) || math.Abs(number) > float64(MaxSafeInteger) {
 		return 0, false
 	}
+	//portlint:allow numbers the guard above is Number.isSafeInteger (rows.ts:203): NaN, ±Inf, fractions and values beyond ±(2^53 - 1) returned already, so the conversion is exact
 	return int64(number), true
 }
 

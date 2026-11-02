@@ -607,7 +607,7 @@ type SendMessageOptions struct {
 	DeliverAs   string // "steer", "followUp", or "nextTurn"; empty: host default
 }
 
-// SendMessage injects a custom message into the conversation.
+// SendMessage injects a custom message into the conversation. With TriggerTurn the run it starts keeps [Context.IsIdle] busy until the handler yields ([Context.Yield], [Context.Sleep]) or returns; a handler that polls for that run with a raw time.Sleep stays busy.
 func (c Context) SendMessage(customType, content string, display bool, opts SendMessageOptions) error {
 	options := map[string]any{}
 	if opts.TriggerTurn != nil {
@@ -648,7 +648,10 @@ type CustomMessage struct {
 }
 
 // SendCustomMessage injects a custom message into the conversation, as
-// upstream pi.sendMessage does, with block content and details.
+// upstream pi.sendMessage does, with block content and details. With
+// TriggerTurn the run it starts keeps IsIdle busy until this handler yields
+// ([Context.Yield], [Context.Sleep], a call Pi awaits, or its return): a handler
+// that polls IsIdle for that run must use Sleep, not time.Sleep (D225).
 func (c Context) SendCustomMessage(msg CustomMessage, opts SendMessageOptions) error {
 	options := map[string]any{}
 	if opts.TriggerTurn != nil {
@@ -2318,7 +2321,7 @@ func (c Context) IsProjectTrusted() (bool, error) {
 	return hostRequired[bool](c, "isProjectTrusted", nil, "trusted")
 }
 
-// IsIdle returns whether the agent is currently idle (not streaming). A host or transport failure is returned rather than assumed idle.
+// IsIdle returns whether the agent is currently idle (not streaming). A host or transport failure is returned rather than assumed idle. After a SendMessage with TriggerTurn the session reads busy until the handler yields: a handler that waits for the run it started (a poll `for !idle { sleep }`) must use [Context.Sleep] or [Context.Yield]; a raw time.Sleep keeps the hold until the handler returns.
 func (c Context) IsIdle() (bool, error) {
 	return hostRequired[bool](c, "isIdle", nil, "idle")
 }
@@ -2428,6 +2431,21 @@ func decodeCancelledResult(result *callResultMsg) CancelledResult {
 func (c Context) WaitForIdle() error {
 	result, err := c.callHost("waitForIdle", nil)
 	return callResultError(result, err)
+}
+
+// Yield is the point where a handler's code gives control back to the host, standing for Pi's first `await`. Pi's `sendMessage(..., {triggerTurn: true})` keeps IsIdle busy until the sending code yields; a goroutine cannot await, so a handler that waits for the run it started (a poll `for !idle { ctx.Sleep(...) }`) must call Yield or Sleep. A raw time.Sleep keeps the hold until the handler returns. A host or transport failure is returned.
+func (c Context) Yield() error {
+	result, err := c.callHost("yield", map[string]any{})
+	return callResultError(result, err)
+}
+
+// Sleep yields (see [Context.Yield]) and then blocks for d. Use it instead of time.Sleep when polling IsIdle for a run the handler started with SendMessage. Like Pi's setTimeout it does not return early when the request is cancelled: select on Done() to stop earlier.
+func (c Context) Sleep(d time.Duration) error {
+	if err := c.Yield(); err != nil {
+		return err
+	}
+	time.Sleep(d)
+	return nil
 }
 
 // NewSession starts a new session. opts may hold "parentSession", a "setup" SetupFunc that seeds the new session through its SessionManager before it starts (types.ts:411), and a "withSession" WithSessionFunc.

@@ -156,7 +156,8 @@ func (s *server) runWatch(id uint32, request Object, ctl *control) (Object, *Fai
 	if err != nil {
 		return nil, watchFailure(err)
 	}
-	defer func() { _ = opened.Stop(context.Background()) }()
+	// ctx is cancelled by the time the deferred stop runs; the stop itself must still complete.
+	defer func() { _ = opened.Stop(context.WithoutCancel(ctx)) }()
 	send(Object{"kind": "ready", "mode": string(opened.Mode())})
 	<-ctx.Done()
 	return Object{}, nil

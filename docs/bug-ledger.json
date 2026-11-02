@@ -4116,6 +4116,34 @@
       ]
     },
     {
+      "id": "BF-2323d94",
+      "title": "`ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy…",
+      "symptom": "`ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi in every SDK, in print, JSON and RPC mode, isolated and packed: the Host answers busy for every extension from the send until the code that sent it yields, where a run that settled while the read was in flight made the Go, Python, Rust and Lisp SDKs report an idle session.",
+      "rootCause": "Pi's pi.sendMessage with triggerTurn awaits _startRun, which sets _isAgentRunActive before its first await (agent-session.ts:2404, 1895), and Pi's one event loop runs nothing else until the handler awaits or returns, so ctx.isIdle() on the handler's next statements is false whatever the run it started would do. The host runs that run concurrently with the extensions (print mode stages no run start, RPC holds it only for a command's handler), and ctx.isIdle() is a live host call in every SDK, so a run that settles while a read is in flight answers idle. The Node runtime held the answer itself since; the Go, Python, Rust and Lisp SDKs did not.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi in every SDK, in print, JSON and RPC mode, isolated and packed: the Host answers busy for every extension from the send until the code that sent it yields, where a run that settled while the read was in flight made the Go, Python, Rust and Lisp SDKs report an idle session. A Go, Python, Rust or Lisp handler yields when it returns or awaits a Promise-returning member (`registerProvider` and `addAutocompleteProvider` return nothing in Pi and no longer end the hold); the Node runtime reports its first microtask checkpoint after the send, so a send from a timer's or an I/O callback that runs after the handler returned holds the Session busy as well, as it does in Pi. The Node runtime's own hold is gone; a message sent from `agent_settled` still reads the Session's idle answer, and a send the Host fails holds nothing. A Go, Python, Rust or Lisp handler that waits for the run it started with `while !isIdle: sleep` uses the SDK's new yield helper (`ctx.Sleep`/`ctx.Yield`, `ctx.sleep`/`ctx.yield_now`, `pig:ctx-sleep`/`pig:ctx-yield`), the stand-in for Pi's `await`; a raw sleep keeps the hold until the handler returns (D225).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2323d94ce7",
+          "date": "2026-11-01"
+        },
+        {
+          "hash": "c3939f9670",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "coding/cli/extension_host_wiring_binary_test.go::TestSDKExtensionIsBusyThroughTheSynchronousPartAfterATriggeringSend",
+        "coding/extension/host/subprocess/runtime_node_send_idle_test.go::TestNodeIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSendMessage",
+        "test/extension-conformance/replicated_state_rw_test.go::TestReplicatedStateIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSend"
+      ]
+    },
+    {
       "id": "BF-234316d",
       "title": "On Windows, a Go extension's source hash no longer fails, or makes a build beside it fail, with `The process…",
       "symptom": "On Windows, a Go extension's source hash no longer fails, or makes a build beside it fail, with `The process cannot access the file because it is being used by another process`.",
@@ -5650,6 +5678,34 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-316eac6",
+      "title": "`pig status` and `pig status --json` no longer print the credentials of a configured Package source",
+      "symptom": "`pig status` and `pig status --json` no longer print the credentials of a configured Package source.",
+      "rootCause": "A configured Package source may carry credentials (a git URL with a user and token, or a secret query parameter), and the messages of the layers below name the source they failed on. pig status, whose report is meant to be pasted and piped, printed them in its JSON and text output. It now names a URL as Pi's bug report does (redactUrl): without credentials.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig status` and `pig status --json` no longer print the credentials of a configured Package source. A git URL with a user and token, or a secret query parameter, appeared in the Package errors and the resource items; status now names such a URL as Pi's bug report does, without them, and a settings syntax error no longer quotes the text of the file around it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "316eac6c4b",
+          "date": "2026-11-01"
+        },
+        {
+          "hash": "cf3c76d945",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "coding/cli/status_command_test.go::TestStatusRedactsAPasswordThatHoldsAQuote",
+        "coding/cli/status_command_test.go::TestStatusRedactsCredentialsInPackageSources",
+        "coding/cli/status_command_test.go::TestStatusSettingsSyntaxErrorQuotesNoFileText"
+      ]
     },
     {
       "id": "BF-31740ec",
@@ -28478,6 +28534,30 @@
       ]
     },
     {
+      "id": "BF-a9d41ed",
+      "title": "`chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a…",
+      "symptom": "`chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a proxy script for a Go core facet whose name has `\u003c`, `\u003e` or `\u0026` is written as `JSON.stringify` writes it.",
+      "rootCause": "The Node host owns the context of the work its process asks of the Go side (it ends with the process); a failed build's errors array is sent when it is empty; the bridged proxy script is written as JSON.stringify writes it. The remaining findings are allowed with the Pi line that does the same (build.ts:157, :399) or the lifetime that ends them.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a proxy script for a Go core facet whose name has `\u003c`, `\u003e` or `\u0026` is written as `JSON.stringify` writes it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a9d41edbb7",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeLifeContextEndsWithTheProcess",
+        "chord/nextnode/plugins/plugins_node_wire_test.go::TestBridgedProxyScriptWritesHTMLCharactersAsJSONStringifyDoes",
+        "chord/nextnode/plugins/plugins_node_wire_test.go::TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways"
+      ]
+    },
+    {
       "id": "BF-aa2003c",
       "title": "The edit tool's prepared arguments keep the members in the order the model sent them",
       "symptom": "A `tool_call` handler used to see the members sorted, with `\u003c`, `\u003e` and `\u0026` escaped.",
@@ -29580,6 +29660,38 @@
         "env/daemon_wire_oracle_test.go::TestDaemonOpensASocketLikePisDaemon",
         "env/daemon_wire_oracle_test.go::TestDaemonPoisonsAWriteHandleAfterAFailedChunkLikePisDaemon",
         "env/daemon_wire_oracle_test.go::TestDaemonStatReportsTheFilesIdentityLikePisDaemon"
+      ]
+    },
+    {
+      "id": "BF-b22120f",
+      "title": "A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into",
+      "symptom": "A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into.",
+      "rootCause": "untarNodeSources checked member and link names lexically, but the kernel resolves \"z/..\" against the tree being written: with z a link to \".\", each \"z/..\" climbs one directory more than its text says. Two such pairs let a link pass as a path inside the tree while it resolved to the directory above it, and a later member under that link was written there.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into. The extraction checked link names as text, but the kernel resolves `z/..` through a link `z`, so a link such as `z/../z/../..` passed the check while resolving above the directory, and a later archive member under it was written there. The extraction now writes through `os.Root`, refuses a member whose path passes through a link the archive wrote, and accepts only a link target that climbs (`..`) before it names anything; the check reads the tree on disk, so a file system that folds case cannot reach a link by another spelling, and a link target holding `:` is refused. `pig piglet build` refuses the same links instead of embedding them.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9155fc460c",
+          "date": "2026-11-01"
+        },
+        {
+          "hash": "b22120fdb8",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/cellpack/node_cell_test.go::TestUntarNodeSourcesKeepsLinksThatStayInsideTheTree",
+        "coding/extension/host/cellpack/node_cell_test.go::TestUntarNodeSourcesRefusesALinkReachedByAnotherSpellingOfItsName",
+        "coding/extension/host/cellpack/node_cell_test.go::TestUntarNodeSourcesRefusesWritesThroughSymbolicLinks",
+        "coding/pigletbuild/node_cell_test.go::TestBuildNodeCellNamesTheExtensionDirectoryForALinkThatLeavesIt",
+        "coding/pigletbuild/node_cell_test.go::TestBuildNodeCellRefusesALinkWithAParentStepAfterAName",
+        "internal/archivepath/archivepath_test.go::TestCheckLink",
+        "internal/archivepath/archivepath_test.go::TestMember"
       ]
     },
     {
@@ -32256,6 +32368,29 @@
         "tui/markdown_wrap_boundary_test.go::TestMarkdownStyledWordsAtTheWrapBoundaryPiCase",
         "tui/widthx/wrap_boundary_test.go::TestLineEndResetClosesStrikethrough",
         "tui/widthx/wrap_boundary_test.go::TestWrapTextWithAnsiStyledWordsAtTheWrapBoundaryPiCases"
+      ]
+    },
+    {
+      "id": "BF-c723782",
+      "title": "In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., {…",
+      "symptom": "In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi, where the started run cannot end before the handler awaits; a run that settled while the read was in flight made print mode report an idle session.",
+      "rootCause": "TestExtensionSendMessageTriggerTurnStartsTheRunAsPi failed under load with stderr \"idle=true\\n\", want \"idle=false\\n\": 6 to 9 runs in 384 with 48 concurrent loops (the first stress run: 1 in 144), none alone (5 and 40 runs green). A debug stack at every runState.active=false and at the host's isIdle answer showed, for a failing process, publishAgentSettled (the triggered run ended) 81 ms before the handler's isIdle read was answered, true.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi, where the started run cannot end before the handler awaits; a run that settled while the read was in flight made print mode report an idle session. The Host now holds that answer for every SDK and extension (`isidle-2323d94ce7`), and the runtime reports only where its handler awaits.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c7237820c1",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "coding/cli/extension_send_message_binary_test.go::TestExtensionSendMessageTriggerTurnStartsTheRunAsPi",
+        "coding/extension/host/subprocess/runtime_node_send_idle_test.go::TestNodeIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSendMessage"
       ]
     },
     {
@@ -39015,6 +39150,54 @@
       ]
     },
     {
+      "id": "BF-e5b8ad5",
+      "title": "`chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was…",
+      "symptom": "`chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was counted in UTF-16 units after non-ASCII text.",
+      "rootCause": "NodeMember.Value waits on the host's life without awaitAborted, so the exit is not joined with a cancellation nobody asked for. Pi's describe prints esbuild's `location.column`, which the JS API reports in bytes: the column is printed as esbuild gives it. builtWire is encoded by its struct tags.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was counted in UTF-16 units after non-ASCII text.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e5b8ad5546",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildColumnsAreBytesForErrorsAndUTF16CodeUnitsForGlobals",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeMemberValueInFlightWhenTheProcessDiesReturnsItsExitOnly",
+        "chord/nextnode/plugins/plugins_node_wire_test.go::TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways"
+      ]
+    },
+    {
+      "id": "BF-e5b8ad5-2",
+      "title": "`chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the…",
+      "symptom": "`chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the process's exit alone, not also a cancellation nobody asked for.",
+      "rootCause": "NodeMember.Value waits on the host's life without awaitAborted, so the exit is not joined with a cancellation nobody asked for. Pi's describe prints esbuild's `location.column`, which the JS API reports in bytes: the column is printed as esbuild gives it. builtWire is encoded by its struct tags.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the process's exit alone, not also a cancellation nobody asked for.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e5b8ad5546",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildColumnsAreBytesForErrorsAndUTF16CodeUnitsForGlobals",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeMemberValueInFlightWhenTheProcessDiesReturnsItsExitOnly",
+        "chord/nextnode/plugins/plugins_node_wire_test.go::TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways"
+      ]
+    },
+    {
       "id": "BF-e5f9fdd",
       "title": "The provider retry transport no longer replaces `Body` on the caller's request when it retries",
       "symptom": "The provider retry transport no longer replaces `Body` on the caller's request when it retries.",
@@ -40409,6 +40592,25 @@
       ]
     },
     {
+      "id": "BF-f051c65",
+      "title": "fix(extensions): a yield call on the withSession route answers empty; D225 marker at endSyncRunHold, docs of…",
+      "symptom": "fix(extensions): a yield call on the withSession route answers empty; D225 marker at endSyncRunHold, docs of the helper",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f051c65f8b",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-f06ab7e",
       "title": "A run that `sendMessage({ triggerTurn: true })` starts while idle emits `before_agent_start`, checks…",
       "symptom": "A run that `sendMessage({ triggerTurn: true })` starts while idle emits `before_agent_start`, checks compaction first, applies the handlers' result and delivers pending `nextTurn` messages.",
@@ -40755,6 +40957,32 @@
         "test/parity/scenarios/rpc/58-rpc-session-wrong-typed-members.toml",
         "test/perfgate/extension_turn_test.go::TestRPCExtensionTurnProcessGate",
         "test/perfgate/extension_turn_test.go::TestRPCNoExtensionTurnProcessGate"
+      ]
+    },
+    {
+      "id": "BF-f26dfe2",
+      "title": "fix(chord/nextnode/workers): a worker closes its link to the server before its NodeHost fails a reload in…",
+      "symptom": "fix(chord/nextnode/workers): a worker closes its link to the server before its NodeHost fails a reload in flight",
+      "rootCause": "WorkerPlugins.Load appended the NodeHost's closer to the worker's closers after the app's, and shutdown runs them in reverse, so the NodeHost closed first, ended the Node subprocess and failed the reload in flight, and the worker sent that `reloaded` failure before the app's host closer closed the link to the server. The server read it as the reload's own error whenever it arrived ahead of the link's close. Pi runs the host closer, which closes the parent link, first (packages/chord/src/next-node/workers/main.ts #shutdown, ipc.ts: the close frame precedes the `reloaded` reply), so the server's `ended` settles the reload as stopped.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f06ba8fd15",
+          "date": "2026-11-01"
+        },
+        {
+          "hash": "f26dfe2355",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_main_test.go::TestTheWorkersSideClosesItsLinkToTheServerBeforeItsNodeHostFailsAReloadInFlightAtShutdown",
+        "chord/nextnode/workers/workers_rollout_blocked_unix_test.go::TestTheRolloutStepListsAWorkerStoppedCleanlyDuringItAsStoppedAndOneThatCrashedWithItsError"
       ]
     },
     {
@@ -44689,6 +44917,10 @@
     {
       "id": "D222",
       "title": "A plugin input the build cannot read is reported at the import that names it, not at esbuild's library"
+    },
+    {
+      "id": "D225",
+      "title": "A thread-based SDK's wait for the run it started needs the SDK's yield helper"
     }
   ],
   "exemptCommits": {

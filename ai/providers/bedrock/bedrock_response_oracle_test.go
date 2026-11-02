@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -143,7 +144,7 @@ func bedrockFrames(rng *rand.Rand) [][2]string {
 func TestBedrockResponseStreamMatchesPi(t *testing.T) {
 	rng := rand.New(rand.NewSource(131))
 	var probes []bedrockResponseProbe
-	for range 1000 {
+	for range bedrockResponseProbeCount() {
 		p := bedrockResponseProbe{ModelID: "anthropic.claude-sonnet-4-5-20250929-v1:0", Reasoning: rng.Intn(2) == 0}
 		if rng.Intn(25) == 0 {
 			p.Status = []int{400, 403, 429, 500, 503}[rng.Intn(5)]
@@ -162,6 +163,7 @@ func TestBedrockResponseStreamMatchesPi(t *testing.T) {
 	}
 	cmd := exec.CommandContext(t.Context(), "node", "testdata/bedrock_response_oracle.mjs", pigversion.UpstreamPackageVersion)
 	cmd.Stdin = bytes.NewReader(input)
+	cmd.Env = withoutAWSEnvironment(os.Environ())
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	output, err := cmd.Output()
@@ -175,10 +177,8 @@ func TestBedrockResponseStreamMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(output, &want); err != nil {
 		t.Fatal(err)
 	}
+	clearAWSEnvironment(t)
 	t.Setenv("AWS_EC2_METADATA_DISABLED", "true")
-	t.Setenv("AWS_BEARER_TOKEN_BEDROCK", "")
-	t.Setenv("AWS_PROFILE", "")
-	t.Setenv("AWS_DEFAULT_PROFILE", "")
 	t.Setenv("AWS_CONFIG_FILE", filepath.Join(t.TempDir(), "config"))
 	t.Setenv("AWS_SHARED_CREDENTIALS_FILE", filepath.Join(t.TempDir(), "credentials"))
 	failures, answered := 0, 0
