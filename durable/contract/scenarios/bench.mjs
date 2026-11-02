@@ -17,7 +17,7 @@ import { appendFileSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context"
-import { Type } from "@earendil-works/pi-ai"
+import { num, obj, str } from "@earendil-works/pi-schema"
 import { createModels } from "@earendil-works/pi-ai/models"
 import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux"
 import { AssistantEntry, configure, createRegistry, defineExtension, defineTool, Harness, section } from "@earendil-works/pi-durable"
@@ -40,7 +40,7 @@ globalThis[Symbol.for("pig.contract.benchfp")] = messages => fingerprint(seenOf(
 // `content` would store the same tool result as Pi main and pass the W, X1 and H rows.
 const legacy = JSON.parse(readFileSync(join(process.env.PI_DURABLE_SOURCE_ROOT ?? join(process.cwd(), "..", ".."), "packages", "durable", "package.json"), "utf8")).version === "1.0.4"
 const result = blocks => (legacy ? { content: blocks } : { output: blocks })
-const lookup = defineTool({ name: "lookup", description: "Look up record number n", parameters: Type.Object({ n: Type.Number() }), execute: async ({ n }) => result([{ type: "text", text: payload(n, payloadKb) }]) })
+const lookup = defineTool({ name: "lookup", description: "Look up record number n", parameters: obj({ n: num() }), execute: async ({ n }) => result([{ type: "text", text: payload(n, payloadKb) }]) })
 const registry = createRegistry()
 registry.install(defineExtension({ name: "bench", tools: [lookup], sections: [section("preamble", () => SYSTEM, { tag: false })] }))
 // W4e: the foreground sub-agent tool of example 22. The child conversation is owned by the tool call's task; a rerun after a
@@ -50,7 +50,7 @@ const Subagent = defineExtension({
 	tools: [defineTool({
 		name: "subagent",
 		description: "Delegate a self-contained task to a subagent and get its answer back.",
-		parameters: Type.Object({ task: Type.String() }),
+		parameters: obj({ task: str() }),
 		replay: "safe",
 		execute: async (args, api, callContext) => {
 			const child = await api.commit(async tx => {

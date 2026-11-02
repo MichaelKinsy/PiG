@@ -73,6 +73,8 @@ const U = {
 	"system-order-cache-e2e": "loop", "tools-read-differential": "loop", "tools": "loop", "types": "store",
 	"codemode-imports": "loop", "harness-after-run": "loop", "harness-continue": "session", "harness-hook-reads": "loop", "harness-submit-in-commit": "session", "harness-tool-hooks": "loop",
 	"harness-turn-limit": "loop", "harness-registry-reader": "loop", "store-storage": "store",
+	"harness-context-range": "loop", "harness-group-commit": "session", "harness-idle-scopes": "session", "search": "loop", "session-cached-storage": "session",
+	"session-conversation-tails": "session", "session-group-commit": "session", "store-storage-commit": "store", "tool-args-typebox": "loop",
 }
 // Sources that gained, after Pi 5f312dac, what lane D-store of the follow ports (Durable on Chord's store and the registry: 14b4c56e,
 // 6eb99ad6). The row is pending, with the lane in its reason, until that lane lands: the candidates cannot pass it, and a row that
@@ -84,6 +86,7 @@ const LATER = {
 	"37-harness-registry": laneDStore("a Harness over a registry and host.root (6eb99ad6)"),
 	"harness-registry-reader": laneDStore("the registry reader (6eb99ad6)"),
 	"store-storage": laneDStore("StoreStorage, Durable's storage on Chord's store (14b4c56e)"),
+	"store-storage-commit": laneDStore("StoreStorage.commit over ChordStore.commitSeries (14b4c56e)"),
 	"harness-observers": laneDStore("a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"),
 	"session-observers": laneDStore("a Session close fails an observer (S1) and ends a watch ended (6eb99ad6)"),
 	"SC": laneDStore("it refuses a creation and a change of one document in one commit (14b4c56e)"),
@@ -101,7 +104,7 @@ emit(
 	"# status: ready (a runner exists and the reference capture is deterministic), pending (no candidate can run it yet, with the",
 	"# reason and the owner; `--strict` fails on it), skipped (nobody can run it here, with the reason).",
 	"",
-	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("e7a0df27c09d11bf4161d3605246cbf57a129cb2")}`, `release = ${q("1.0.4")}`,
+	"[pin]", `reference = ${q("earendil-works/pi")}`, `commit = ${q("b556cfe5b0300a91f39c7bc5369a65a25fb7fcd5")}`, `release = ${q("1.0.4")}`,
 )
 for (const f of readdirSync(join(pi, "packages/durable/test/examples")).filter(f => /^\d\d-.*\.ts$/.test(f)).sort()) {
 	const name = f.replace(/\.ts$/, "")
@@ -145,16 +148,8 @@ const REAL_TIME = {
 	],
 }
 // A row's measured value of an approved divergence (gate.mjs reads measured_*): the candidate fails the test with this failure, and only with it.
-const MEASURED = {
-	"harness-restart-failure": [
-		"# D206 (owner approved 2026-10-28): the core resolves HarnessOptions.settings from the snapshot the host sends before each event, so the",
-		"# test's count of the reads of `extensions` (Pi: 49 a round, one per resolution at each use) is the 6 agent resolutions of the host in a round.",
-		"# The candidate must fail this test with this failure: a pass means D206 is over (gate.mjs), another failure fails the row.",
-		`measured_test = ${q("the restart limit on the normal path (#11139) resolves the settings no more often than before: only a task that was cut off reads the limit")}`,
-		`measured_failure = "expected 6 to be 49"`,
-		`measured_divergence = "D206"`,
-	],
-}
+// No divergence is measured at present.
+const MEASURED = {}
 for (const f of readdirSync(join(pi, "packages/durable/test")).filter(f => f.endsWith(".test.ts")).sort()) {
 	const name = f.replace(/\.test\.ts$/, "")
 	const status = NOT_THE_CORE[name] ? [`status = "skipped"`, `reason = ${q(NOT_THE_CORE[name])}`] : LATER[name] ? [`status = "pending"`, `reason = ${q(LATER[name])}`] : [`status = "ready"`]
