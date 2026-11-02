@@ -219,7 +219,10 @@ fn shutdown_before_ready_answers_the_dispatches_before_it() {
     let mut answered = vec![host.response(), host.response()];
     answered.sort();
     // A listener that ran answers with no error: an unknown-handler reply, a refusal or a cancellation fails here.
-    assert_eq!(answered, [("d1".to_string(), None), ("d2".to_string(), None)]);
+    assert_eq!(
+        answered,
+        [("d1".to_string(), None), ("d2".to_string(), None)]
+    );
     assert!(
         host.conn.read_envelope().is_err(),
         "the extension closed its end, with no further answer"
