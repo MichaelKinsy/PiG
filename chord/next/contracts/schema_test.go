@@ -49,6 +49,7 @@ func TestSchemaHelpers(t *testing.T) {
 		sameJSON(t, contracts.Lit(true), `{"type":"boolean","const":true}`)
 		sameJSON(t, contracts.Str(contracts.Default("d")), `{"type":"string","default":"d"}`)
 		sameJSON(t, contracts.Int(contracts.Default(3.0)), `{"type":"integer","default":3}`)
+		sameJSON(t, contracts.Num(contracts.Default(1.5)), `{"type":"number","default":1.5}`)
 		sameJSON(t, contracts.Bool(contracts.Default(true)), `{"type":"boolean","default":true}`)
 	})
 
