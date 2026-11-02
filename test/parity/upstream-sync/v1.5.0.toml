@@ -1481,9 +1481,9 @@ rationale = "The release commit moves PI_AI_VERSION from 1.4.0 to 1.5.0 (b556cfe
 [[files]]
 path = "packages/chord/src/cell.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/host/cell_upstream_test.go#TestCellValidatesInitialAlwaysAndWritesInDevMode", "test:chord/host/cell_upstream_test.go#TestCellResetPublishesReset", "test:chord/host/cell_upstream_test.go#TestCellDependentChainAndExposedSchemas"]
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox) retypes the cell's schemas from TypeBox's TSchema to pi-schema's Schema (Source.schemas, Cell.schema, reset) and nothing else in the file; the checks stay assertValid, which now runs through pi-schema. Go: chord/host/cell.go holds the same Schema values and checks them with assertValid (chord/host/schema.go, no internal/typebox import); the cell tests drive the initial check, the dev-mode write check, the reset that installs a new schema and the exposed schemas."
 
 [[files]]
 path = "packages/chord/src/cluster.ts"
@@ -1509,9 +1509,9 @@ rationale = "Pi 92ab5360 reorders traceIn to (options, fn, context) so the Conte
 [[files]]
 path = "packages/chord/src/contract.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/host/contract_upstream_test.go#TestContractsTreatFormatAsAnAnnotation", "test:chord/host/contract_upstream_test.go#TestContractsNormalizeInputAndOmitDefaultsFromTheIdentity", "test:chord/host/contract_upstream_test.go#TestContractsFingerprintsAreStableAndDescriptionBased"]
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox): a v1 contract takes any JSON Schema (not only TypeBox's), normalize and the checks run through pi-schema, `format` is an annotation, so an input with format email accepts any string. Ported in chord/host/contract.go (the typebox import is gone) and schema.go; TestContractsTreatFormatAsAnAnnotation is Pi's contract.test.ts case, the other two hold that normalization, defaults omitted from the identity and fingerprints are unchanged by the switch."
 
 [[files]]
 path = "packages/chord/src/declare.ts"
@@ -1579,9 +1579,9 @@ rationale = "Pi 3daa2028..b06c1f2c changes this file only in commits PiG ports f
 [[files]]
 path = "packages/chord/src/host.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/host/links_review_upstream_test.go#TestLinksReviewAReleaseWhileTheRouteResolvesStillAdmitsTheResolvedWorker"]
+rationale = "Pi c09c98d7 (a relayed hold released, or its principal refused or revoked, while the route resolves): #resolve adds the resolved host's connection right after route.resolve and only then runs the revocation and authorize checks, so a host the route spawned is always admitted and its own upstream references go live instead of waiting out readyTimeout. Ported in chord/host/host.go resolveRoute (the connection is added before the second authorize and the revoked check; the checks only fail the relay). TestLinksReviewAReleaseWhileTheRouteResolvesStillAdmitsTheResolvedWorker is Pi's links-review.test.ts case: release the hold while the resolve is gated, open the gate, and the spawned worker's own Get of a type on the server resolves."
 
 [[files]]
 path = "packages/chord/src/index.ts"
@@ -1831,23 +1831,23 @@ rationale = "KeyedMapping, VersionMappings.Keyed, needs.keyed, checkKeyedMapping
 [[files]]
 path = "packages/chord/src/next/contracts/contract.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox) changes only types in this file (the schema member's TSchema becomes Schema) with no runtime change; Go already names the type contracts.Schema (8b770fe856) and chord/next/contracts/contract.go has nothing else to port (chord/next/contracts/contract_test.go#TestContractHandles still holds the handle)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/declare.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox) retypes the declaration's state, LocalMember and the method schemas from TSchema to Schema: TypeScript types only, no runtime statement changes. Go's declare.go already takes contracts.Schema (8b770fe856)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/evolve.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox) retypes every evolve step (args, result, method, state, addState, addMethod, keyed, addKeyed and the draft's #putState, #putKeyed, #changeMethod) from TSchema to Schema: TypeScript signatures only, no runtime change. Go's evolve.go already takes contracts.Schema (8b770fe856); chord/next/contracts/evolve_test.go keeps passing unchanged."
 
 [[files]]
 path = "packages/chord/src/next/contracts/fingerprint.ts"
@@ -1859,9 +1859,9 @@ rationale = "`Materialize`, `FingerprintOf`, `Hash64`, `NormalFormVersion` 2; pi
 [[files]]
 path = "packages/chord/src/next/contracts/history.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox) changes the type of the variant's state and keyed members from TSchema to Schema: TypeScript types only, no runtime statement changes. Go's history.go already uses contracts.Schema (8b770fe856)."
 
 [[files]]
 path = "packages/chord/src/next/contracts/host-kind.ts"
@@ -1873,9 +1873,9 @@ rationale = "`NewHostKind` (was `hostKind`), `(*HostKind).Address`, `Address{Kin
 [[files]]
 path = "packages/chord/src/next/contracts/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "PORT_MAP records this file n/a (re-export barrel; Go packages export names directly). Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox) only adds the Schema-typed exports (BooleanSchema, IntegerSchema, NullSchema, NumberSchema, Optional, Schema, StringSchema) in place of TSchema; the Go types are exported from chord/next/contracts/schema.go."
 
 [[files]]
 path = "packages/chord/src/next/contracts/internal.ts"
@@ -1894,30 +1894,30 @@ rationale = "`CheckName`. PiG: chord/next/contracts/names.go (lane D1)."
 [[files]]
 path = "packages/chord/src/next/contracts/params.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/params_test.go#TestParamsPolicy"]
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox): ParamSchema is a required str(), int(), bool() or oneOf(...) of strings with no default, and an optional field is refused before its schema is read (isOptional(schema) throws the `a param is a required str(), int(), bool() or oneOf(...) of strings` error). Ported in chord/next/contracts/params.go (an optional field is refused before its schema is read); TestParamsPolicy has the `refuses optional fields at declaration` case."
 
 [[files]]
 path = "packages/chord/src/next/contracts/schema.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/schema_test.go#TestSchemaHelpers", "test:chord/next/contracts/schema_test.go#TestSchemaBytes", "test:chord/next/contracts/schema_test.go#TestSchemaMethod", "test:chord/next/host/schema_switch_test.go#TestSchemaSwitchFixturesAreThoseOfPi", "test:chord/next/host/schema_switch_test.go#TestSchemaSwitchFingerprints", "test:chord/next/host/schema_switch_test.go#TestSchemaSwitchStoredData"]
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox): Chord's constructors (str, num, int, bool, nul, lit, oneOf, arr, obj, opt, map, union, unknown, bytes) are thin layers over pi-schema's builders with the same JSON, opt marks a schema Optional, the scalar types are interfaces told apart by `type`, and map(bytes()) works. Ported in chord/next/contracts/schema.go (Schema, Optional, the helpers, Arr, Map, Union, Keyed and NewMethod refuse opt(...) outside an object, as TypeScript rejects it at compile time); the helper tests cover the shapes and the schema-switch tests run Pi's declarations against Pi's recorded fingerprints, normal forms and a store written by the TypeBox code, byte for byte."
 
 [[files]]
 path = "packages/chord/src/next/contracts/snapshot.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/contracts/snapshot_test.go#TestSnapshotVocabulary", "test:chord/next/contracts/snapshot_test.go#TestSnapshots", "test:chord/next/contracts/snapshot_test.go#TestSnapshotBytes", "test:chord/next/contracts/snapshot_test.go#TestSnapshotClosedArguments"]
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox): a snapshot's schema is the node itself (JsonSchema), the TypeBox executable-feature refusal (~refine, ~codec, ~unsafe) is gone with TypeBox, and non-enumerable keys are refused as not data instead of skipped as TypeBox metadata. Ported in chord/next/contracts/snapshot.go (opt(...) outside an object is refused as `expected a schema`); a Go Schema holds its keys as data and its Optional flag is no key, so the non-enumerable case has no Go form (stated in snapshot_test.go)."
 
 [[files]]
 path = "packages/chord/src/next/data/args.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox) changes one line: the Validator type import moves from typebox/compile to pi-schema. A TypeScript type import; Go's data.Validator (chord/next/data/validator.go, ported in the validator.ts entry) is what args.go already uses."
 
 [[files]]
 path = "packages/chord/src/next/data/errors.ts"
@@ -1964,9 +1964,9 @@ rationale = "`PrincipalKey`, `CanonicalJson`; `Principal = *delta.JsonObject` (p
 [[files]]
 path = "packages/chord/src/next/data/validator.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/data/validator_test.go#TestFailedChecks", "test:chord/next/data/validator_test.go#TestValidators"]
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox): validators are compiled by pi-schema (format an annotation, no TypeBox build-state reset), a failed check reports the first error of validator.errors, a missing field at the field's own path (`missing`), an unknown field at its own path (`unknown field`), the value itself at `/`, and `~` and `/` in keys escaped as ~0 and ~1 in the JSON Pointer. Ported in chord/next/data/validator.go (fa79ff8c91); TestFailedChecks holds the unknown-field, missing-field and path-escape cases (`/tags/a~1b`)."
 
 [[files]]
 path = "packages/chord/src/next/documents/address-source.ts"
@@ -1978,9 +1978,9 @@ rationale = "AddressImpl.Owner and KeySource.Owner removed (SingletonSlot keeps 
 [[files]]
 path = "packages/chord/src/next/documents/definition.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/documents/definition_test.go#TestInitialIsCheckedAgainstTheSchemaOnceTheFirstTimeItIsUsed", "test:chord/next/documents/definition_test.go#TestMigrateMapsAnOlderValueAndChecksTheResultEachTimeItProducesOne"]
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox): StateDefinition's schema is a Schema (TypeScript type) and its initial and migrated values are checked with the pi-schema validator (`.check`). Ported in chord/next/documents/definition.go, which checks through data.Validator; the two tests drive the check of the initial value and of the migrated value."
 
 [[files]]
 path = "packages/chord/src/next/documents/documents.ts"
@@ -2286,9 +2286,9 @@ rationale = "aggregate barrel of every layer; Go imports the layer packages (lan
 [[files]]
 path = "packages/chord/src/next/jobs/definition.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox) changes only the generic bounds of defineJob and JobAccepts from TSchema to Schema: TypeScript types with no runtime statement. Go's jobs package takes contracts.Schema values already."
 
 [[files]]
 path = "packages/chord/src/next/jobs/index.ts"
@@ -2405,9 +2405,9 @@ rationale = "`Link`, `LinkEnd`, `MemoryLinkPair`/`MemoryLink` (+ `Flushed`: the 
 [[files]]
 path = "packages/chord/src/next/link/message.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi be039fb3 rebuilds the Message schema with pi-schema (the hold principal `obj({kind: str()}, {open: true})`, the chain `arr(incarnation, {max: CHAIN})`, parts and segments unknown) and checks it with validator.check: the same constraints as the TypeBox schema, whose Type.Object was open too. Go has no schema value for Message: chord/next/link/message.go CheckMessage hand-codes those constraints (kind, ids, uuid and fingerprint formats, a principal with a string kind and any other field, a chain of at most CHAIN incarnations, errors in the wire format), so the swap of the schema library has nothing to port; chord/next/link/message_test.go#TestMessages still holds the checks."
 
 [[files]]
 path = "packages/chord/src/next/link/part.ts"
@@ -2636,9 +2636,9 @@ rationale = "`ApplyBatch`; `checkCommit` through `CheckWrite` (archive.go); `rep
 [[files]]
 path = "packages/chord/src/next/store/archive.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/archive_test.go#TestArchivePartSchema"]
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox): the archive's versions, columns, row and key records are pi-schema maps (map(...)) instead of Type.Record(Type.String(), ...), and a part or write is checked with validator.check. Ported in chord/next/store/archive.go (checks through data.Validator); TestArchivePartSchema drives the part check."
 
 [[files]]
 path = "packages/chord/src/next/store/backend.ts"
@@ -2664,9 +2664,9 @@ rationale = "`assertTable`/`assertDocuments` -> `AssertTable`/`AssertDocuments`;
 [[files]]
 path = "packages/chord/src/next/store/columns.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/columns_test.go#TestColumnDescriptors", "test:chord/next/store/columns_test.go#TestColumnRecordFromJSONKeepsAnIntDefaultThatIsNoSafeInteger", "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreAColumnsOptionalRowType"]
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox): column schemas are StringSchema, IntegerSchema, NumberSchema, BooleanSchema or an Optional of one (isOptional, `column.schema`), where TypeBox marked optional with a non-enumerable `~optional`, and describeColumn reads the fields of the unwrapped schema. Ported in chord/next/store/columns.go (Optional is a flag of the Go Schema); the tests hold the descriptors of optional columns, defaults, and the Row type of an optional column."
 
 [[files]]
 path = "packages/chord/src/next/store/engine.ts"
@@ -2692,9 +2692,9 @@ rationale = "`StoreExport` (`Next`, `Close`), `NewStoreExport`, `ExportPage`, `P
 [[files]]
 path = "packages/chord/src/next/store/expression.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox) changes the type of the Row's optional key set from TOptional<TSchema> to Optional: TypeScript types only, no runtime statement."
 
 [[files]]
 path = "packages/chord/src/next/store/import.ts"
@@ -2713,9 +2713,9 @@ rationale = "export barrel: the Go package exports the names directly. Each expo
 [[files]]
 path = "packages/chord/src/next/store/json-column.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/json_column_test.go#TestJsonColumnDeclaration", "test:chord/next/store/json_column_test.go#TestReadingACell"]
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox): json(schema, options) returns a plain `{ json: JsonColumn }` typed as a Schema (not Type.Unsafe with a `json` field) and a migrated cell is checked with validator.check. Ported in chord/next/store/json_column.go; the tests hold the declaration and the cell read, which runs the check."
 
 [[files]]
 path = "packages/chord/src/next/store/jsonl.ts"
@@ -2790,9 +2790,9 @@ rationale = "`TableChanges` with `Put/Update/Delete/UpdateWhere/DeleteWhere/Get`
 [[files]]
 path = "packages/chord/src/next/store/table-evolve.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/next/store/table_evolve_test.go#TestEvolveEdits", "test:chord/next/store/table_evolve_test.go#TestEvolveChecks"]
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox): AddedColumn is an Optional or a column with a default, and addColumn tests isOptional(column) in place of Object.hasOwn(column, '~optional'). Ported in chord/next/store/table_evolve.go (Schema.Optional); TestEvolveChecks has `add a column without opt(...) or a default` and TestEvolveEdits adds optional and defaulted columns."
 
 [[files]]
 path = "packages/chord/src/next/store/table-handle.ts"
@@ -2853,9 +2853,9 @@ rationale = "A re-export barrel with no runtime code of its own, so Go has none;
 [[files]]
 path = "packages/chord/src/object.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/host/review_upstream_test.go#TestReviewArgumentsAreStrippedToWhatTheConsumerKnowsThenToWhatTheProviderKnows", "test:chord/host/schema_pi_oracle_test.go#TestCleanedMatchesPi"]
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox): MethodFunction's no-argument test uses NullSchema, and ObjectImpl.call strips arguments with cleaned(schema, args), pi-schema's replacement of TypeBox's Value.Clean(Value.Clone(args)), first to what the consumer's schema knows and then to what the provider's knows. Ported in chord/host/object.go (host.Cleaned replaces cleanArgs and typebox.Clean); TestCleanedMatchesPi pins Cleaned to Pi's outputs and the review test drives the two-step strip through a call."
 
 [[files]]
 path = "packages/chord/src/output.ts"
@@ -2888,16 +2888,16 @@ rationale = "aa9cf15b (state init for the cells a reload adds, at prepare and at
 [[files]]
 path = "packages/chord/src/remote.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/host/review_upstream_test.go#TestReviewArgumentsAreStrippedToWhatTheConsumerKnowsThenToWhatTheProviderKnows", "test:chord/host/schema_pi_oracle_test.go#TestCleanedMatchesPi"]
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox): RemoteBinding sends only what the consumer's own schema knows, now through cleaned(schema, args) instead of Value.Clean(Value.Clone(args)). Ported in chord/host/remote.go (host.Cleaned); the same two tests as object.ts: the strip through a call, and Cleaned against Pi's outputs."
 
 [[files]]
 path = "packages/chord/src/schema.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/host/schema_pi_oracle_test.go#TestAssertValidMatchesPi", "test:chord/host/schema_pi_oracle_test.go#TestAssertValidOverADecodedDescriptionKeepsTheDeclaredOrderLikePi", "test:chord/host/schema_pi_oracle_test.go#TestCleanedMatchesPi", "test:chord/host/schema_pi_oracle_test.go#TestNormalizeDefaultsMatchPi", "test:chord/host/schema_pi_oracle_test.go#TestCanonicalIdentityAndNormalizeMatchPi", "test:chord/host/schema_upstream_test.go#TestCleanedKeepsAFieldOfARecordWhoseValueSchemaIsNull", "test:chord/host/schema_upstream_test.go#TestNormalizeWritesATupleHoleAsNull"]
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox): assertValid, normalize and canonicalIdentity run on pi-schema's compiled validators (one per schema object, `format` an annotation, errors from validator.errors, at most the first three summarised as `path message`), and TypeBox's Value.Clean and Value.Default are replaced by Chord's own cleaned and withDefaults (allOf evaluation, anyOf branches, tuples, records, maps). Ported in chord/host/schema.go (assertValid, Normalize, Cleaned, withDefaults over pi-schema; internal/typebox is no longer imported). The oracle tests run the same inputs through Pi's schema.ts (testdata/pi_schema.mjs, recorded in pi_schema.json) and compare the output and the error text; the two unit tests hold the record-with-null-value and tuple-hole edge cases."
 
 [[files]]
 path = "packages/chord/src/sqlite/cloudflare.ts"
@@ -2986,9 +2986,9 @@ rationale = "aa9cf15b: the principal type is a parameter of AcceptWebSockets and
 [[files]]
 path = "packages/chord/src/wire.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:chord/host/wire_test.go#TestFrameSchemaIsPiFrameSchema", "test:chord/host/wire_test.go#TestIsFrameChecksErrorCodesAndContractTokens", "test:chord/host/wire_test.go#TestIsFrameChecksWithoutRecompilingTheFrameSchema", "test:chord/host/wire_test.go#TestIsFrameRejectsMalformedFrames"]
+rationale = "Pi be039fb3 (Chord v1 and v2 on pi-schema, drop TypeBox): the frame schema is built from pi-schema's builders (the same JSON as the TypeBox one) and isFrame checks with a compiled pi-schema validator, held once. Ported in chord/host/wire.go (typebox import gone, IsFrame checks with a checker held once); TestFrameSchemaIsPiFrameSchema compares the frame schema's hash with Pi's (testdata/pi_frame_schema_hash.mjs), the others check error codes, contract tokens, malformed frames, and that a check does not recompile the schema."
 
 [[files]]
 path = "packages/codemode/src/cloudflare-modules.d.ts"

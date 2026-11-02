@@ -3639,7 +3639,7 @@ pig_targets = [
 ]
 evidence = [
   "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
-  "internal/codingagent/code_highlighter_rows_norace_test.go#TestCompleteWriteRowReusesItsHighlightingAcrossRedraws",
+  "internal/codingagent/code_highlighter_rows_test.go#TestCompleteWriteRowReusesItsHighlightingAcrossRedraws",
   "test/parity/scenarios/tools/24-tool-cards.toml"
 ]
 
@@ -3929,7 +3929,7 @@ evidence = [
   "internal/codingagent/codemode_cards_oracle_test.go#TestCodemodeCardsMatchPi",
   "test/parity/scenarios/tools/25-codemode-cards.toml",
   "internal/codingagent/tool_codemode_timer_test.go#TestCodemodeRowShowsElapsedWhileRunningAndTookOnceFinished",
-  "internal/codingagent/code_highlighter_rows_norace_test.go#TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
+  "internal/codingagent/code_highlighter_rows_test.go#TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
 ]
 
 [contract.upstream]

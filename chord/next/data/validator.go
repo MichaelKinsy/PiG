@@ -33,13 +33,10 @@ type Validator struct {
 	compiled *schema.Validator
 }
 
-// Check reports whether value matches the schema.
-func (validator *Validator) Check(value any) bool {
-	ok, err := validator.compiled.Check(value)
-	if err != nil {
-		panic(err)
-	}
-	return ok
+// Check reports whether value matches the schema. The error is the one pi-schema raises where its `check` throws: a
+// part of the schema compiled on first use that is malformed or names nothing (`$dynamicRef`).
+func (validator *Validator) Check(value any) (bool, error) {
+	return validator.compiled.Check(value)
 }
 
 var validators struct {
@@ -89,7 +86,11 @@ func validatorFor[T any](owner *T, definition contracts.Schema, ctx context.Cont
 // upstream throws it. reason is ReasonArgs, ReasonParams or ReasonHostAddress.
 func Check(validator *Validator, value any, reason ChordErrorReason, ctx context.Context) error {
 	chordctx.Telemetry(ctx).Metrics().Counter("chord.data.validations", telemetry.InstrumentOptions{}).Add(1, nil)
-	if !validator.Check(value) {
+	ok, err := validator.Check(value)
+	if err != nil {
+		return err
+	}
+	if !ok {
 		return failedCheck(validator, value, reason, ctx)
 	}
 	return nil
@@ -98,13 +99,16 @@ func Check(validator *Validator, value any, reason ChordErrorReason, ctx context
 // failedCheck is the error of a failed check: the first error of the validator's explanation (counted: it walks the
 // schema). A missing field is reported at the field ("missing"), an unknown one at its own path ("unknown field"); the
 // value itself at `/`. A path is a JSON Pointer, `~` and `/` in keys escaped as `~0` and `~1`.
-func failedCheck(validator *Validator, value any, reason ChordErrorReason, ctx context.Context) *ChordError {
+func failedCheck(validator *Validator, value any, reason ChordErrorReason, ctx context.Context) error {
 	chordctx.Telemetry(ctx).Metrics().Counter("chord.data.walks", telemetry.InstrumentOptions{}).Add(1, nil)
 	explained, err := validator.compiled.Errors(value)
-	if err != nil || len(explained) == 0 {
-		// A value that failed the check has at least one error, and the explanation raises none for a vocabulary
-		// without `$dynamicRef`.
-		panic(fmt.Sprintf("data: a failed check explained nothing (%v)", err))
+	if err != nil {
+		// The explanation raises where pi-schema's `errors` throws: a subschema the check never compiled.
+		return err
+	}
+	if len(explained) == 0 {
+		// A value that failed the check has at least one error.
+		return fmt.Errorf("data: a failed check explained nothing")
 	}
 	path := explained[0].Path
 	if path == "" {

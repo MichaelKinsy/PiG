@@ -213,13 +213,6 @@ const (
 
 type TerminalTheme string
 
-// RgbColor preserves JavaScript numeric channels, including NaN when an overflowing channel is scaled by an infinite maximum.
-type RgbColor struct {
-	R float64
-	G float64
-	B float64
-}
-
 // GetFgAnsi returns the opening escape sequence of a foreground token; faint tokens include SGR 2, which "\x1b[22m" closes.
 // Mirrors upstream theme.getFgAnsi(tokenName).
 // Like upstream it panics with `Unknown theme color: <token>` for a token the theme does not define (theme.ts:tokenAnsi).
