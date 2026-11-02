@@ -15,12 +15,5 @@
    "pkg:chord/next#Compression::property:inflate": "chord/next/link/part.go#Compression",
    "pkg:chord/next#Compression::property:inflate::call:0": "chord/next/link/part.go#Compression"
   }
- },
- "packages/chord/src/next/link/link.ts": {
-  "reason": "next memoryLinkPair() is chord/next/link/link.go#MemoryLinkPair (a pair of *MemoryLink, each a link.Link); the ledger maps it to the chord v1 chord/host/link.go#MemoryLinkPair because the shape check resolves the name Link to chord v1's Link (member receive), not the next layer's (onMessage), so the correct target is a signature-mismatch gap there.",
-  "members": {
-   "pkg:chord/next#memoryLinkPair": "chord/next/link/link.go#MemoryLinkPair",
-   "pkg:chord/next#memoryLinkPair::call:0": "chord/next/link/link.go#MemoryLinkPair"
-  }
  }
 }

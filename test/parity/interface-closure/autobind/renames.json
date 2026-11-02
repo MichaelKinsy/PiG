@@ -641,6 +641,8 @@
  "pkg:chord/next#isChordError": "chord/next/data/errors.go#IsChordError",
  "pkg:chord/next#isChordError::call:0": "chord/next/data/errors.go#IsChordError",
  "pkg:chord/next#local": "chord/next/contracts/declare.go#Local",
+ "pkg:chord/next#memoryLinkPair": "chord/next/link/link.go#MemoryLinkPair",
+ "pkg:chord/next#memoryLinkPair::call:0": "chord/next/link/link.go#MemoryLinkPair",
  "pkg:chord/next#method": "chord/next/contracts/schema.go#NewMethod",
  "pkg:chord/next#num": "chord/next/contracts/schema.go#Num",
  "pkg:chord/next#query": "chord/next/store/query.go#NewQuery",

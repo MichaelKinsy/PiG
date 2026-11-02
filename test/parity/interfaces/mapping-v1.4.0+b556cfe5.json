@@ -120446,9 +120446,9 @@
       "id": "pkg:chord/next#memoryLinkPair",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:8b483ca90d8e77e39724b98f9c592d21edba119f54c4e57117f66ed54316bb54",
-      "rationale": "Derived by the interface gap detector: memoryLinkPair is Go chord/host/link.go#MemoryLinkPair (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: memoryLinkPair is Go chord/next/link/link.go#MemoryLinkPair (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/host/link.go#MemoryLinkPair"
+        "chord/next/link/link.go#MemoryLinkPair"
       ],
       "layers": {
         "behavior": "complete",
@@ -120456,21 +120456,21 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/host/link.go#MemoryLinkPair"
+        "call:chord/next/link/link.go#MemoryLinkPair"
       ],
       "evidence": [
-        "test:chord/host/bindings_upstream_test.go#TestBindingsIdentityNormalizedEqualInputsAndEqualPrincipalKeysShareOtherPrincipalsAndFingerprintsDoNot",
-        "test:chord/host/bindings_upstream_test.go#TestHydrationOverALinkNullEmptyAndUndefinedValuesHydrateAStateFreeVariantIsReadyAFailedSnapshotRejects",
-        "test:chord/host/bindings_upstream_test.go#TestOriginsAnOriginAClientSendsIsIgnoredTheServerStampsItsOwn"
+        "test:chord/next/host/host_channel_test.go#TestACodecMismatchFailsTheFirstHelloAsAProtocolErrorNamingTheExpectedCodec",
+        "test:chord/next/host/host_channel_test.go#TestTheHandshakeQueuesAConsumersMessagesUntilThePeersHelloAGetOverALinkThatNeverGreetsWaitsForItsDeadline",
+        "test:chord/next/host/host_channel_test.go#TestTheHeartbeatRunsOneTimerPerHostOnlyWhileItHasLinksNonePerMessage"
       ]
     },
     {
       "id": "pkg:chord/next#memoryLinkPair::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:6b3bdb3d05d749e4b720afd28795374af6c376b11f4ade9ab3ed3334bb95b656",
-      "rationale": "Derived by the interface gap detector: memoryLinkPair::call:0 is Go chord/host/link.go#MemoryLinkPair (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: memoryLinkPair::call:0 is Go chord/next/link/link.go#MemoryLinkPair (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "chord/host/link.go#MemoryLinkPair"
+        "chord/next/link/link.go#MemoryLinkPair"
       ],
       "layers": {
         "behavior": "complete",
@@ -120478,12 +120478,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/host/link.go#MemoryLinkPair"
+        "call:chord/next/link/link.go#MemoryLinkPair"
       ],
       "evidence": [
-        "test:chord/host/bindings_upstream_test.go#TestBindingsIdentityNormalizedEqualInputsAndEqualPrincipalKeysShareOtherPrincipalsAndFingerprintsDoNot",
-        "test:chord/host/bindings_upstream_test.go#TestHydrationOverALinkNullEmptyAndUndefinedValuesHydrateAStateFreeVariantIsReadyAFailedSnapshotRejects",
-        "test:chord/host/bindings_upstream_test.go#TestOriginsAnOriginAClientSendsIsIgnoredTheServerStampsItsOwn"
+        "test:chord/next/host/host_channel_test.go#TestACodecMismatchFailsTheFirstHelloAsAProtocolErrorNamingTheExpectedCodec",
+        "test:chord/next/host/host_channel_test.go#TestTheHandshakeQueuesAConsumersMessagesUntilThePeersHelloAGetOverALinkThatNeverGreetsWaitsForItsDeadline",
+        "test:chord/next/host/host_channel_test.go#TestTheHeartbeatRunsOneTimerPerHostOnlyWhileItHasLinksNonePerMessage"
       ]
     },
     {
