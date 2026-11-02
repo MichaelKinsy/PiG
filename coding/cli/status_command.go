@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/packagecontent"
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -297,8 +298,8 @@ func collectStatus() statusOutput {
 			}
 			status.Resources.Items = append(status.Resources.Items, statusResourceItem{
 				Kind: string(resource.ResourceType), Name: name, Path: canonicalStatusPath(resource.Path),
-				Scope: resource.Scope, Origin: resource.Origin, Source: resource.Source,
-				Enabled: enabled, Ignored: entry.ignored, Health: health,
+				Scope: resource.Scope, Origin: resource.Origin, Source: codingagent.RedactBugReportURL(resource.Source),
+				Enabled: enabled, Ignored: entry.ignored, Health: redactStatusText(health),
 			})
 			status.Resources.ByKind[string(resource.ResourceType)]++
 			switch {
@@ -332,6 +333,12 @@ func collectStatus() statusOutput {
 			}
 		}
 	}
+	for i, message := range status.Errors {
+		status.Errors[i] = redactStatusText(message)
+	}
+	for i, message := range status.Warnings {
+		status.Warnings[i] = redactStatusText(message)
+	}
 	status.Errors = deduplicateStatusErrors(status.Errors)
 	status.Warnings = deduplicateStatusErrors(status.Warnings)
 	status.Healthy = len(status.Errors) == 0
@@ -363,6 +370,16 @@ func renderStatus(status statusOutput) {
 	for _, message := range status.Warnings {
 		fmt.Printf("Warning: %s\n", message)
 	}
+}
+
+// statusURL finds the URLs in a message: a scheme, "://", and everything up to a space or a quote, which a %q-quoted source ends with.
+var statusURL = lazyregexp.New(`[A-Za-z][A-Za-z0-9+.-]*://[^\s"'<>]+`)
+
+// redactStatusText strips credentials from the URLs a status message names. A Package source is the user's own configuration and
+// may carry them (https://user:token@host/repo.git, ?access_token=...), and the messages of the layers below name the source they
+// failed on. The report is built to be pasted and piped, so it names a URL as Pi's bug report does (redactUrl): without credentials.
+func redactStatusText(message string) string {
+	return statusURL.ReplaceAllStringFunc(message, codingagent.RedactBugReportURL)
 }
 
 func canonicalStatusPath(path string) string {
