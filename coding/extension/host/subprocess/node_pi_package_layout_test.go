@@ -29,9 +29,7 @@ import (
 // listed fails. The compatibility corpus (pi-open-agents 0.1.27, @henryqw/pi-subagent 28.0.1, pi-subagents
 // 0.84.0) derives paths from the pi-coding-agent root only.
 // upstream: packages/*/package.json main, exports and bin; packages/coding-agent/package.json scripts.build:unbundled.
-var piLayoutGaps = map[string]string{
-	"@earendil-works/pi-ai": "served by shims/pi-ai.mjs (and pi-ai-oauth.mjs, pi-dist/pi-ai/sdk-bundle/providers.js), outside any package root; vendoring a root with package.json, dist/index.js and the dist subpaths is not done",
-}
+var piLayoutGaps = map[string]string{}
 
 // piLayoutAliases lists the specifiers Pi's extension loader serves as one module with another
 // (core/extensions/virtual-modules.ts:28-29 maps the pi-ai root and pi-ai/compat to the same extension view). They
