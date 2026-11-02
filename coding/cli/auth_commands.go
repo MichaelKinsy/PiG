@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
@@ -105,7 +106,7 @@ func runLoginCommand(args []string) int {
 	case authLogin:
 		provider, err := resolveLoginProvider(opts.provider, &contributions)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			fmt.Fprintln(os.Stderr, "Error:", err)
 			return 1
 		}
 		// Pi passes the installation's device ID to every login (interactive-mode.ts:6297).
@@ -120,6 +121,13 @@ func runLoginCommand(args []string) int {
 		if credentialStore, ok := provider.(ai.OAuthCredentialStore); ok {
 			credentialPath, err = credentialStore.StoreOAuthCredentials(cred)
 		} else {
+			// cli.ts saveAuth keeps OAuth tokens readable by their owner only: chmod covers a file an older version created.
+			if _, statErr := os.Stat(authPath); statErr == nil {
+				if err = os.Chmod(authPath, 0o600); err != nil {
+					fmt.Fprintln(os.Stderr, "Error:", err)
+					return 1
+				}
+			}
 			store, openErr := ai.NewAuthStorage(authPath)
 			if openErr != nil {
 				printCLIError("%v", openErr)
@@ -332,7 +340,6 @@ func runOAuthProviderLogin(provider ai.OAuthProviderInterface, noInput bool, get
 			if info.Instructions != "" {
 				fmt.Println(info.Instructions)
 			}
-			fmt.Println()
 		},
 		OnPrompt: func(prompt ai.OAuthPrompt) (string, error) {
 			if noInput {
@@ -367,22 +374,19 @@ func runOAuthProviderLogin(provider ai.OAuthProviderInterface, noInput bool, get
 			if noInput {
 				return "", fmt.Errorf("provider %s requires a selection; rerun without --no-input", provider.ID())
 			}
-			fmt.Println(prompt.Message)
+			fmt.Printf("\n%s\n", prompt.Message)
 			for i, opt := range prompt.Options {
-				fmt.Printf("  %d) %s\n", i+1, opt.Label)
+				fmt.Printf("  %d. %s\n", i+1, opt.Label)
 			}
-			fmt.Print("Choice [1]: ")
+			fmt.Printf("Enter number (1-%d): ", len(prompt.Options))
 			line, err := readLine(os.Stdin)
 			if err != nil {
 				return "", err
 			}
-			line = strings.TrimSpace(line)
-			if line == "" {
-				return prompt.Options[0].ID, nil
-			}
-			n, convErr := strconv.Atoi(line)
-			if convErr != nil || n < 1 || n > len(prompt.Options) {
-				return "", fmt.Errorf("invalid choice %q", line)
+			// cli.ts answerPrompt: Number.parseInt(answer, 10) - 1 indexes the options; anything else is "Invalid selection".
+			n, ok := jsParseInt(line)
+			if !ok || n < 1 || n > len(prompt.Options) {
+				return "", fmt.Errorf("Invalid selection")
 			}
 			return prompt.Options[n-1].ID, nil
 		},
@@ -414,6 +418,30 @@ func sortedOAuthProviders() []ai.OAuthProviderInterface {
 		return strings.Compare(a.Name(), b.Name())
 	})
 	return providers
+}
+
+// jsParseInt is Number.parseInt(text, 10): the leading digits after optional whitespace and a sign, ignoring whatever follows them.
+// It reports false for NaN, and for a value too large for an int, which no option list can index.
+func jsParseInt(text string) (int, bool) {
+	text = strings.TrimLeftFunc(text, unicode.IsSpace)
+	negative := false
+	if rest, ok := strings.CutPrefix(text, "-"); ok {
+		negative, text = true, rest
+	} else {
+		text = strings.TrimPrefix(text, "+")
+	}
+	end := 0
+	for end < len(text) && text[end] >= '0' && text[end] <= '9' {
+		end++
+	}
+	n, err := strconv.Atoi(text[:end])
+	if err != nil {
+		return 0, false
+	}
+	if negative {
+		n = -n
+	}
+	return n, true
 }
 
 func readLine(r io.Reader) (string, error) {
