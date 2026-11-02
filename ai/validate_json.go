@@ -1,7 +1,5 @@
 package ai
 
-// Ports packages/ai/src/utils/validation.ts (the JSON.stringify of the received arguments in the "Validation failed for tool" message).
-
 import (
 	"bytes"
 	"encoding/json"

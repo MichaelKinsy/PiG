@@ -131,6 +131,7 @@ packages/ai/src/providers/zai.ts
 packages/ai/src/session-resources.ts
 packages/ai/src/types.ts
 packages/ai/src/utils/event-stream.ts
+packages/ai/src/utils/validation.ts
 packages/codemode/src/wasm.ts
 packages/coding-agent/src/cli.ts
 packages/coding-agent/src/cli/auth-check.ts

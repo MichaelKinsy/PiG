@@ -313,8 +313,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/utils/uuid.ts` | `ai/uuid.go (UUIDv7, uuidv7Generator: the process-wide last-ordinary-timestamp and 41-bit sequence state with an injected clock and random source; internal/codingagent session ids, the Codex WebSocket request id, the compaction summary routing session id and the bug-report id call it)` | ✅ |
 | `packages/ai/src/utils/abort-signals.ts` | `(stdlib context.Context combines signals)` | n/a |
 | `packages/ai/src/utils/sanitize-unicode.ts` | `ai/sanitize_unicode.go` | ✅ |
-| `packages/ai/src/utils/string-enum.ts` | `ai/typebox_helpers.go (StringEnum, as a JSON-schema map; the pi-schema Schema type stays designed out; production caller internal/evals/evalsuites/audit.go)` | ✅ |
-| `packages/ai/src/utils/validation.ts` | `ai/validate.go + ai/validate_arguments.go + ai/validate_convert.go + ai/validate_errors.go + ai/validate_json.go` | ✅ |
+| `packages/ai/src/utils/string-enum.ts` | `ai/typebox_helpers.go (StringEnum, as a JSON-schema map; the pi-schema Schema type stays designed out; production caller the evals audit suite)` | ✅ |
+| `packages/ai/src/utils/validation.ts` | `ai/validate.go + ai/validate_arguments.go + ai/validate_convert.go + ai/validate_errors.go + internal/typebox/compiler.go + ai/validate_json.go` | ✅ |
 | `packages/ai/src/utils/version.ts` | `ai/user_agent.go (ProductVersion: PiG's composite release version stands for PI_AI_VERSION as the default version of a detailed User-Agent, D65; TestClientIdentityVersionDefaultsToTheProductVersion)` | ✅ |
 | `packages/ai/src/providers/baseten.models.ts` | `(not ported: Baseten provider declined)` | n/a |
 | `packages/ai/src/providers/baseten.ts` | `(not ported: Baseten provider declined)` | n/a |
