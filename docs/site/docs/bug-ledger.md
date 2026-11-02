@@ -359,6 +359,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4a0d619](#bf-4a0d619) | fix(durable/core): drop the reportWrap the RPT and TKS merges both declared | PiG's own defect | All platforms | Unreleased |
 | [BF-4ac21c8](#bf-4ac21c8) | fix(jsloop): run a tick whose tool call already ended at once, though no wait is open | PiG's own defect | All platforms | Unreleased |
 | [BF-4afdbac](#bf-4afdbac) | `ProjectTrustStore` reads entries in JavaScript order: `readTrustFile` named whichever invalid value Go's map… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-4b9f5f8](#bf-4b9f5f8) | `/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer | PiG's own defect | All platforms | Unreleased |
 | [BF-4bcc7da](#bf-4bcc7da) | `StreamProxy` merges the final tool call and reports abort and timeout as Pi does, and it no longer changes a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4c032a0](#bf-4c032a0) | A description decoded from the wire is written back with every schema member in the order it was declared in… | PiG's own defect | All platforms | Unreleased |
 | [BF-4c45afa](#bf-4c45afa) | fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns… | PiG's own defect | All platforms | Unreleased |
@@ -6206,6 +6207,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4afdbac644` (2026-10-10)
 - **Tests:** `internal/codingagent/trust_store_multi_oracle_test.go::TestProjectTrustStoreMultiEntryFilesMatchPi`
 - **Release note:** `ProjectTrustStore` reads entries in JavaScript order: `readTrustFile` named whichever invalid value Go's map iteration reached first, so a trust.json with several wrong-typed values reported a random key; Pi's `Object.entries` order (array-index keys, then insertion order) decides, and `read` now walks `orderedjson` keys. New live-Pi oracle `TestProjectTrustStoreMultiEntryFilesMatchPi` (`internal/codingagent/trust_store_multi_oracle_test.go`; 1,200 trust.json files x 1-5 get/getEntry/set/setMany operations; symlinked cwd, missing paths, astral and BMP-high keys); red before the fix (4-5 of 1,200, varying with map order); 8 mutations red (key order, null rejected, false-as-true, non-object check, UTF-16 key sort, null entry stops the ancestor walk, null delete, BOM). Extends `TestProjectTrustStoreMatchesPi`, which passed before the fix. Not compared: the V8 text after `Failed to read trust store <path>: `, file modes, cross-process locking.
+
+### BF-4b9f5f8
+
+**`/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer**
+
+- **Source:** PiG's own defect
+- **Symptom:** `/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4b9f5f800d` (2026-11-02)
+- **Tests:** `coding/session_branch_summary_upstream_test.go::TestNavigateTreeSummaryOmitsFailedRetriedAttempt`
+- **Release note:** `/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer. When a partial assistant reply failed and automatic retry succeeded, the branch summary still contained the failed attempt, and a context edit that replaced an entry's content was ignored. The summary input now applies each entry's latest context edit through the projection the live context and compaction use: an omission drops the entry and a replacement swaps its content (Pi d0fe21308).
 
 ### BF-4bcc7da
 

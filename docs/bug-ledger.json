@@ -9975,6 +9975,28 @@
       ]
     },
     {
+      "id": "BF-4b9f5f8",
+      "title": "`/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer",
+      "symptom": "`/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer. When a partial assistant reply failed and automatic retry succeeded, the branch summary still contained the failed attempt, and a context edit that replaced an entry's content was ignored. The summary input now applies each entry's latest context edit through the projection the live context and compaction use: an omission drops the entry and a replacement swaps its content (Pi d0fe21308).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4b9f5f800d",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/session_branch_summary_upstream_test.go::TestNavigateTreeSummaryOmitsFailedRetriedAttempt"
+      ]
+    },
+    {
       "id": "BF-4bcc7da",
       "title": "`StreamProxy` merges the final tool call and reports abort and timeout as Pi does, and it no longer changes a…",
       "symptom": "`StreamProxy` merges the final tool call and reports abort and timeout as Pi does, and it no longer changes a delivered message when the server sends more after the terminal event.",
