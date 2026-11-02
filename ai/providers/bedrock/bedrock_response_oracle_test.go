@@ -177,10 +177,8 @@ func TestBedrockResponseStreamMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(output, &want); err != nil {
 		t.Fatal(err)
 	}
+	clearAWSEnvironment(t)
 	t.Setenv("AWS_EC2_METADATA_DISABLED", "true")
-	t.Setenv("AWS_BEARER_TOKEN_BEDROCK", "")
-	t.Setenv("AWS_PROFILE", "")
-	t.Setenv("AWS_DEFAULT_PROFILE", "")
 	t.Setenv("AWS_CONFIG_FILE", filepath.Join(t.TempDir(), "config"))
 	t.Setenv("AWS_SHARED_CREDENTIALS_FILE", filepath.Join(t.TempDir(), "credentials"))
 	failures, answered := 0, 0

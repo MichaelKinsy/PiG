@@ -107,6 +107,7 @@ func TestBedrockRequestBodyMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(out, &want); err != nil {
 		t.Fatalf("oracle output %q: %v", out, err)
 	}
+	clearAWSEnvironment(t)
 	t.Setenv("AWS_BEDROCK_SKIP_AUTH", "1")
 	t.Setenv("AWS_REGION", "us-east-1")
 	t.Setenv("AWS_EC2_METADATA_DISABLED", "true")
