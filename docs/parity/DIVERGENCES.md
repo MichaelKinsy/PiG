@@ -2825,7 +2825,7 @@ SCRUTINIZED:approved
 
 ## D220 Markdown renders each paragraph with the inline state at its position, not with the lines of an earlier identical block
 
-What: Pi 0f21a331 (`fix(coding-agent,tui): reuse syntax highlighting and rendered Markdown blocks`) renders a top-level Markdown block again with the lines of a block of the same source (`blocks.get(token.raw) ?? previousBlocks?.get(token.raw)`, `packages/tui/src/components/markdown.ts:381`). The earlier block can come from the same render or from the previous render of the component, which `reuseBlocks` matches on text, width and the type of the next block only. marked's inline lexer carries state from block to block: an open raw `<a>` tag suppresses URL autolinks until its `</a>`. The same source therefore renders differently at different positions, and Pi keeps the lines of the other position. Two cases, observed against Pi b556cfe5:
+What: Pi 0f21a331 (`fix(coding-agent,tui): reuse syntax highlighting and rendered Markdown blocks`) renders a top-level Markdown block again with the lines of a block of the same source (`blocks.get(token.raw) ?? previousBlocks?.get(token.raw)`, `packages/tui/src/components/markdown.ts:381`). The earlier block can come from the same render or from the previous render of the component; the block is reused when its width and the type of the next block match too (`markdown.ts:383`). `reuseBlocks` (`markdown.ts:373`) turns the reuse off only for a text that defines reference links. marked's inline lexer carries state from block to block: an open raw `<a>` tag suppresses URL autolinks until its `</a>`. The same source therefore renders differently at different positions, and Pi keeps the lines of the other position. Two cases, observed against Pi b556cfe5:
 
 - Same render: Pi autolinks `http://a.b` in `"http://a.b\n\nx <a href=\"u\">open\n\nhttp://a.b\n\nclose</a>"` inside the open `<a>`, because an earlier identical paragraph was autolinked. With `http://a.c` in that place it is plain.
 - Previous render: after rendering `"a\n\nhttp://a.b\n\nz"`, `setText("x <a href=\"u\">a\n\nhttp://a.b\n\nz</a>")` keeps the autolinked `http://a.b` line. A fresh Pi component for the second text renders it plain.
@@ -2834,7 +2834,7 @@ PiG renders each block with the lexer state at its position, as Pi did before 0f
 
 Why: Replicating the Pi behavior makes the output depend on which identical blocks came earlier and on the history of the component (streaming order, edits before the block). Pi's own reference-link guard (`reuseBlocks`, `markdown.ts:373`) exists to avoid that property; it guards reference definitions and not the `inLink` and raw-block state. PiG keeps reuse of syntax highlighting by language and code (the rest of 0f21a331), which does not depend on inline state.
 
-Pi bug: reported as `handoffs/next/pi-issue-markdown-block-reuse.md`; the owner files it. Not filed yet.
+Pi bug: not reported upstream. The repro is `TestMarkdownBlockReuseDiffersFromPi` (`tui/markdown_render_oracle_test.go`): both cases above, run against the pinned Pi, with the rows Pi and PiG render.
 
 Scope: `tui.Markdown` rendering (`tui/markdown.go`, `renderBlocks`). Only a block that has a block of the same source and width in the same render or the previous one, and whose inline lexer state differs on entry (an open raw `<a>`, so a bare URL stays plain in PiG and is linked in Pi), renders differently. Every other document renders identically to Pi.
 
