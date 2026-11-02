@@ -1008,7 +1008,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/ids.ts` | `durable/ids.go` | ✅ |
 | `packages/durable/src/images/cloudflare.ts` | `durable/images/cloudflare/cloudflare.go` | ✅ |
 | `packages/durable/src/images/exif.ts` | `durable/images/exif.go` | ✅ |
-| `packages/durable/src/images/index.ts` | `durable/images/images.go + durable/images/lanczos.go` | ✅ |
+| `packages/durable/src/images/index.ts` | `durable/images/images.go` | ✅ |
 | `packages/durable/src/images/node.ts` | `durable/images/node/node.go` | ✅ |
 | `packages/durable/src/images/photon-wasm.d.ts` | `(TypeScript declaration of the WebAssembly import; Go has no compiled module to import)` | n/a |
 | `packages/durable/src/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
@@ -1028,6 +1028,12 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/storage/sqlite/node.ts` | `durable/storage/sqlite/node/node.go` (re-exports chord/sqlite/node; OpenNodeSqliteStorage) | ✅ |
 | `packages/durable/src/storage/sqlite/storage.ts` | `durable/storage/sqlite/storage.go` | ✅ |
 | `packages/durable/src/storage/sqlite/cloudflare.ts` | `durable/storage/sqlite/cloudflare/cloudflare.go` (re-exports chord/sqlite/cloudflare; OpenDurableObjectSqliteStorage) | ✅ |
+| `packages/durable/src/storage/store/commit.ts` | `durable/storage/store/commit.go` | ✅ |
+| `packages/durable/src/storage/store/documents.ts` | `durable/storage/store/documents.go` | ✅ |
+| `packages/durable/src/storage/store/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
+| `packages/durable/src/storage/store/queries.ts` | `durable/storage/store/queries.go` | ✅ |
+| `packages/durable/src/storage/store/storage.ts` | `durable/storage/store/storage.go` | ✅ |
+| `packages/durable/src/storage/store/tables.ts` | `durable/storage/store/tables.go` | ✅ |
 | `packages/durable/src/tasks.ts` | `durable/tasks.go` | ✅ |
 | `packages/durable/src/testing/assertions.ts` | `durable/durabletest/durabletest.go` | ✅ |
 | `packages/durable/src/testing/env-conformance.ts` | `durable/durabletest/env_conformance.go` | ✅ |
