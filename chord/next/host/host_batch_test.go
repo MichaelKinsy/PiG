@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"errors"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -187,11 +188,9 @@ func TestReentrancyClearsTheFlagAfterAThrowingCompute(t *testing.T) {
 	}
 }
 
-func TestDeliveryDeliversTheLaterFramesOfTheCommitAfterAFrameAPlainValueCouldNotDiffInUpstream(t *testing.T) {
-	// Upstream's `{ a: undefined }` is no JSON, so diffing it throws and the delivery is reported `delivery_failed`. A Go
-	// value cannot violate JSON that way (state/derive.go Deliver: diffing cannot fail), so the report of a failing
-	// delivery is tested on the Batch itself (state/batch_own_test.go TestBatchDelivery); here the commit still delivers
-	// the later frame of `other` after the derive's, and reports nothing.
+func TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit(t *testing.T) {
+	// Pi's `{ a: undefined }` is no JSON, so diffing it throws and the delivery is reported `delivery_failed`; the Go
+	// derive returns a value no JSON has (a channel), which diffing refuses the same way.
 	other, err := documents.DefineState("other", documents.StateOptions{
 		Schema:  contracts.Obj(contracts.Prop("n", contracts.Int())),
 		Version: 1,
@@ -207,7 +206,7 @@ func TestDeliveryDeliversTheLaterFramesOfTheCommitAfterAFrameAPlainValueCouldNot
 			num := stateOf(self, batchNum)
 			otherDoc := stateOf(self, other)
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
-				// `undefined` is no JSON: diffing it throws (a Go value no JSON has).
+				// `undefined` is no JSON: diffing it throws (here: a Go value no JSON has).
 				"bad": self.Derive([]any{num.Member()}, func(values []any) (delta.JsonValue, error) {
 					if values[0].(*delta.JsonObject).Value("n").(float64) == 0 {
 						return jsonObject("a", 0.0), nil
@@ -249,8 +248,8 @@ func TestDeliveryDeliversTheLaterFramesOfTheCommitAfterAFrameAPlainValueCouldNot
 	for _, reported := range errs.All() {
 		kinds = append(kinds, reported.Kind)
 	}
-	if len(kinds) != 0 {
-		t.Fatalf("error kinds = %v, want none: a Go value cannot make a diff throw", kinds)
+	if want := []HostErrorKind{"delivery_failed"}; !reflect.DeepEqual(kinds, want) {
+		t.Fatalf("error kinds = %v, want %v", kinds, want)
 	}
 	items := frames.Items()
 	if len(items) != 1 || !nexttest.JSONEqual(items[0].Value, jsonObject("n", 1.0)) {
