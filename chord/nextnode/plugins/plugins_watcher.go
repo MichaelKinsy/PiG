@@ -17,14 +17,14 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Ports packages/chord/src/next-node/plugins/watcher.ts. The watcher and its marks (slice 7c §5): a watch on every
-// directory of the plugin roots and the app's base code, `node_modules` and `.git` never watched (a directory appearing
-// later gets its watch), marks what changed and never applies it. A changed file dirties every plugin whose facets used it
-// (a copied contract every user) or whose directory contains it; a changed `package.json` asks for an install (and for its
-// metadata to be read again); a plugin directory or facet file added or removed asks for discovery again; a file of base
-// code asks the app to restart its hosts. The marks are a JSON watchable; each mark records the generation of its latest
-// change (generations only increase), so a change during a build keeps its mark, however late an older build's rollout
-// clears.
+// Ports packages/chord/src/next-node/plugins/watcher.ts. The watcher and its marks (slice 7c §5, slice 12 §4): a watch on
+// every directory of the plugin roots and the app's base code, `node_modules` and `.git` never watched (a directory
+// appearing later gets its watch), marks what changed and never applies it. A changed file dirties every plugin whose
+// facets used it (a copied contract every user), whose directory contains it or which is a single-file plugin of it; a
+// changed `package.json` asks for an install (and for its metadata to be read again); a plugin directory, a facet file or a
+// single-file plugin's file added or removed asks for discovery again; a file of base code asks the app to restart its
+// hosts. The marks are a JSON watchable; each mark records the generation of its latest change (generations only increase),
+// so a change during a build keeps its mark, however late an older build's rollout clears.
 //
 // Upstream's `fs.watch` is fsnotify here: one fsnotify.Watcher, one watch per directory (neither recurses, as `fs.watch`
 // does not on Linux), its events read by one goroutine the watcher owns. Every method runs in a section of the host, as
@@ -207,6 +207,20 @@ func (w *pluginWatcher) discoverySnapshot() DiscoverySnapshot {
 
 // know is the plugins discovery found: marks are for them (a removed one's install clears); the changes it had seen clear.
 func (w *pluginWatcher) know(discovery Discovery, seen DiscoverySnapshot) {
+	// A plugin whose files moved (a single file became a directory, a facet file came or went) is dirty.
+	generation := w.nextGeneration()
+	for _, plugin := range discovery.Plugins {
+		index := slices.IndexFunc(w.discovery.Plugins, func(each Plugin) bool { return each.Name == plugin.Name })
+		if index >= 0 && !SameFiles(w.discovery.Plugins[index], plugin) {
+			w.dirty[plugin.Name] = generation
+		}
+	}
+	// A plugin no longer discovered: what its builds read no longer dirties anything.
+	for key, user := range w.usedBy {
+		if !slices.ContainsFunc(discovery.Plugins, func(plugin Plugin) bool { return plugin.Name == user.plugin }) {
+			delete(w.usedBy, key)
+		}
+	}
 	w.discovery = discovery
 	if w.set == seen.Set {
 		w.set = 0
@@ -223,7 +237,7 @@ func (w *pluginWatcher) know(discovery Discovery, seen DiscoverySnapshot) {
 	// A plugin directory linked from outside the roots: a tree of its own (a symlink is not followed).
 	var linked []string
 	for _, plugin := range discovery.Plugins {
-		if !slices.ContainsFunc(w.roots, func(root string) bool { return inside(root, plugin.Dir) }) {
+		if plugin.Layout == LayoutDirectory && !slices.ContainsFunc(w.roots, func(root string) bool { return inside(root, plugin.Dir) }) {
 			linked = append(linked, plugin.Dir)
 		}
 	}
@@ -277,6 +291,12 @@ func (w *pluginWatcher) applied(names []string, snapshot MarkSnapshot) {
 	w.marksChanged()
 }
 
+// added is plugins were installed into a root: discovery runs at the next build (without waiting for the watch's events).
+func (w *pluginWatcher) added() {
+	w.set = w.nextGeneration()
+	w.marksChanged()
+}
+
 // installed is plugin name's dependencies were installed: its install mark clears and it is dirty (its packages changed).
 func (w *pluginWatcher) installed(name string) {
 	delete(w.install, name)
@@ -321,17 +341,22 @@ func (w *pluginWatcher) close() {
 func (w *pluginWatcher) join() { w.running.Wait() }
 
 // markPlugin handles a change under a root, at generation: in a plugin's directory, it dirties that plugin (and asks for
-// an install and a new reading of its metadata for its `package.json`, for discovery for a facet file at its top);
-// elsewhere under a root (a directory added or removed, a directory that is no plugin yet), discovery; every plugin whose
-// facets read the file is dirty too.
+// an install and a new reading of its metadata for its `package.json`, for discovery for a facet file at its top); a
+// single-file plugin's file dirties it (and asks for discovery when it is gone); elsewhere under a root (a directory or a
+// single-file plugin's file added or removed, a directory that is no plugin yet), discovery; every plugin whose facets read
+// the file is dirty too.
 func (w *pluginWatcher) markPlugin(path string, generation int) {
-	index := slices.IndexFunc(w.discovery.Plugins, func(each Plugin) bool { return each.Dir == path || inside(each.Dir, path) })
+	index := slices.IndexFunc(w.discovery.Plugins, func(each Plugin) bool { return owns(each, path) })
 	if index < 0 {
 		if slices.ContainsFunc(w.roots, func(root string) bool { return inside(root, path) }) {
 			w.set = generation
 		}
+	} else if plugin := w.discovery.Plugins[index]; plugin.Layout == LayoutFile {
+		if _, err := os.Stat(path); err != nil {
+			w.set = generation
+		}
+		w.dirty[plugin.Name] = generation
 	} else {
-		plugin := w.discovery.Plugins[index]
 		if path == filepath.Join(plugin.Dir, "package.json") {
 			w.install[plugin.Name] = struct{}{}
 			w.manifest = generation
@@ -349,10 +374,23 @@ func (w *pluginWatcher) markPlugin(path string, generation int) {
 	}
 }
 
+// owns reports whether path is plugin's: in its directory, or one of a single-file plugin's files.
+func owns(plugin Plugin, path string) bool {
+	if plugin.Layout == LayoutFile {
+		for _, file := range plugin.Facets {
+			if file == path {
+				return true
+			}
+		}
+		return false
+	}
+	return plugin.Dir == path || inside(plugin.Dir, path)
+}
+
 // isFacetFile reports whether file (at a plugin's top) is named as a facet file of one of the app's kinds.
 func (w *pluginWatcher) isFacetFile(file string) bool {
 	return slices.ContainsFunc(w.options.Kinds, func(kind string) bool {
-		return slices.ContainsFunc(facetExtensions, func(extension string) bool { return file == kind+extension })
+		return slices.ContainsFunc(FacetExtensions, func(extension string) bool { return file == kind+extension })
 	})
 }
 
