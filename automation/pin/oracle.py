@@ -542,6 +542,24 @@ def installed(modules: Path, pin: Pin) -> bool:
         return False
 
 
+def protect(modules: Path) -> None:
+    """Make every directory of a published node_modules unwritable. The trees that link it (`extensions/sdk-ts/node_modules`) are
+    one `npm ci` away from emptying it for all of them: npm ci removes the contents of node_modules, through a link too, so a
+    hint to "run npm ci in extensions/sdk-ts" destroyed the shared build and every later `make parity-deps` reused the empty
+    directory. With no write bit the npm ci fails (EACCES) and the build stays whole. `thaw` undoes it, to delete a build."""
+    if os.name == "nt":  # a directory's mode is not enforced there
+        return
+    for directory, _names, _files in os.walk(modules, topdown=False):  # children first, so the walk never needs a write bit
+        os.chmod(directory, os.stat(directory).st_mode & ~0o222)
+
+
+def thaw(tree: Path) -> None:
+    """Give the owner write access to every directory under `tree` again (the inverse of `protect`), so `shutil.rmtree` can delete it."""
+    for directory, _names, _files in os.walk(tree):
+        with contextlib.suppress(OSError):
+            os.chmod(directory, os.stat(directory).st_mode | 0o700)
+
+
 def reusable(pin: Pin, build: Path | None) -> bool:
     """Whether `build` is a stamped source build of the pin made with the frozen inputs of this tree (any, where none are frozen)."""
     if build is None or not (build / STAMP).is_file() or not installed(build / "node_modules", pin):
@@ -572,6 +590,7 @@ def ensure(pin: Pin, *, force: bool = False) -> Path:
             build.chmod(0o755)
             name = build_into(pin, build)
         except BaseException:
+            thaw(build)
             shutil.rmtree(build, ignore_errors=True)
             raise
         for ref in (name, "current"):
@@ -597,6 +616,7 @@ def build_into(pin: Pin, build: Path) -> str:
         shutil.rmtree(build / scratch, ignore_errors=True)
     closure_sha = closure_digest(closure)
     write_replacing(build / STAMP, (json.dumps({"commit": pin.commit, "package_version": pin.package_version, "version": pin.version, "source": "build", "provider_data_sha256": data_sha, "closure_sha256": closure_sha}) + "\n").encode())
+    protect(modules)
     return f"oracle-{identity(data_sha, closure_sha)}"
 
 
@@ -762,7 +782,10 @@ def pi_version(modules: Path) -> str:
     layout and npm's, on every platform (Windows cannot execute the script that .bin/pi names)."""
     env = {k: v for k, v in os.environ.items() if k.lower() not in {"https_proxy", "http_proxy", "all_proxy"}}
     agent = modules / "@earendil-works" / "pi-coding-agent"
-    manifest = json.loads((agent / "package.json").read_text(encoding="utf-8"))
+    try:
+        manifest = json.loads((agent / "package.json").read_text(encoding="utf-8"))
+    except FileNotFoundError as error:
+        raise PinError(f"no {AGENT} at {agent} (resolves to {os.path.realpath(agent)}): the oracle build behind {modules} is empty or was never installed. An `npm ci` in extensions/sdk-ts empties a shared build through its link; run `make parity-deps` to rebuild it") from error
     binary = manifest["bin"]["pi"] if isinstance(manifest["bin"], dict) else manifest["bin"]
     node = shutil.which("node") or "node"
     return subprocess.run([node, str(agent / binary), "--version"], check=True, capture_output=True, text=True, env=env, timeout=120).stdout.strip()

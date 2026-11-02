@@ -244,6 +244,6 @@ func copyUpstreamOwnDependencies(t *testing.T, root string) {
 	}
 	dependency := filepath.Join(repo, "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent", "node_modules", "ms")
 	if err := os.CopyFS(filepath.Join(root, "with-deps", "node_modules", "ms"), os.DirFS(dependency)); err != nil {
-		t.Fatalf("copy pinned ms dependency (run npm ci --prefix extensions/sdk-ts): %v", err)
+		t.Fatalf("copy pinned ms dependency (run make parity-deps): %v", err)
 	}
 }
