@@ -1737,6 +1737,56 @@
    "new": "return !ok || subscription.IsSubscription()"
   }
  ],
+ "packages/ai/src/auth/context.ts": [
+  {
+   "file": "ai/auth_resolve.go",
+   "old": "if !ok || trimJSWhitespace(value) == \"\" {",
+   "new": "if !ok {"
+  },
+  {
+   "file": "ai/auth_resolve.go",
+   "old": "path = home + path[1:]",
+   "new": "path = home + path"
+  }
+ ],
+ "packages/ai/src/auth/helpers.ts": [
+  {
+   "file": "ai/auth_lazy.go",
+   "old": "l.once.Do(func() { l.loaded, l.err = l.load() })",
+   "new": "l.loaded, l.err = l.load()"
+  }
+ ],
+ "packages/ai/src/auth/types.ts": [
+  {
+   "file": "ai/auth.go",
+   "old": "json.Indent(&out, canonical, \"\", \"  \")",
+   "new": "json.Indent(&out, canonical, \"\", \"   \")"
+  }
+ ],
+ "packages/ai/src/compat/extension-oauth-types.ts": [
+  {
+   "file": "ai/oauth_types.go",
+   "old": "codexCredentialMembers        = append(slices.Clone(accessFirstCredentialMembers), \"accountId\")",
+   "new": "codexCredentialMembers        = append(slices.Clone(accessFirstCredentialMembers), \"accountID\")"
+  },
+  {
+   "file": "ai/oauth_types.go",
+   "old": "accessFirstCredentialMembers  = []string{\"type\", \"access\", \"refresh\", \"expires\"}",
+   "new": "accessFirstCredentialMembers  = []string{\"type\", \"refresh\", \"access\", \"expires\"}"
+  },
+  {
+   "file": "ai/oauth_types.go",
+   "old": "Access  string                     `json:\"access\"`",
+   "new": "Access  string                     `json:\"accessToken\"`"
+  }
+ ],
+ "packages/ai/src/images-api-registry.ts": [
+  {
+   "file": "ai/images.go",
+   "old": "imagesAPIProviderRegistry[provider.API] = entry",
+   "new": "imagesAPIProviderRegistry[provider.API+\"-x\"] = entry"
+  }
+ ],
  "packages/ai/src/cli.ts": [
   {
    "file": "coding/cli/auth_commands.go",
