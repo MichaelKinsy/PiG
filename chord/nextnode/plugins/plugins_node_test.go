@@ -98,7 +98,7 @@ func acceptorOf(t testing.TB, node *NodeHost, principal data.Principal) host.Hos
 func handmade(t *testing.T, name, kind, source string) PluginScript {
 	t.Helper()
 	dir := t.TempDir()
-	plugin := Plugin{Name: name, Dir: dir, Facets: map[string]string{kind: filepath.Join(dir, kind+".ts")}, Dependencies: []string{}, External: []string{}}
+	plugin := Plugin{Name: name, Dir: dir, Root: dir, Layout: LayoutDirectory, Facets: map[string]string{kind: filepath.Join(dir, kind+".ts")}, Dependencies: []string{}, External: []string{}}
 	return PluginScript{Plugin: plugin, Built: BuiltFacet{Kind: BuiltFacetScript, Plugin: name, Facet: kind, Source: source, Digest: sha256Hex(source)}}
 }
 
