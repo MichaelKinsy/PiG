@@ -26,6 +26,25 @@ type halfCloseConn struct{ *net.UnixConn }
 
 func (c halfCloseConn) Close() error { return c.CloseWrite() }
 
+// listenTempDir is a short-path directory for a socket: the grouped test runner's scoped TMPDIR pushes a socket path past the 104-byte sun_path of macOS, so Unix hosts root it at /tmp.
+func listenTempDir(t *testing.T) string {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		return shortTempDir(t)
+	}
+	//portlint:allow hardtmp a socket path must stay under the 104-byte sun_path of macOS, which a scoped TMPDIR exceeds
+	dir, err := os.MkdirTemp("/tmp", "pig-listen-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Errorf("remove %s: %v", dir, err)
+		}
+	})
+	return dir
+}
+
 // listenServer is one `pig --mode rpc --listen` child.
 type listenServer struct {
 	t      *testing.T
@@ -81,7 +100,7 @@ func startListenServer(t *testing.T, env []string, args ...string) *listenServer
 
 func newListenServer(t *testing.T, extra ...string) *listenServer {
 	t.Helper()
-	return newListenServerIn(t, shortTempDir(t), extra...)
+	return newListenServerIn(t, listenTempDir(t), extra...)
 }
 
 // newListenServerIn runs the server over dir, whose path the system prompt carries: a comparison against another process uses one dir for both.
@@ -239,8 +258,33 @@ func runListenScript(p *rpcProcess) []rpcRecord {
 	return records
 }
 
+// The second connection is built through listenBuild, not the startup build the first connection takes: its records equal pig --mode rpc's (D201).
+func TestListenSecondConnectionMatchesPigModeRPC(t *testing.T) {
+	dir := listenTempDir(t)
+	env := listenEnv(t, dir)
+	child := startRPCProcess(t, env, "--model", "test-faux/echo", "--no-session")
+	want := runListenScript(child)
+	child.closeAndWait("equality script")
+
+	server := newListenServerIn(t, dir)
+	first := server.dial()
+	requestResponse(first, "ready", "get_state")
+	conn := server.dial()
+	got := runListenScript(conn)
+	conn.closeInput()
+	if !reflect.DeepEqual(got, want) {
+		gotJSON, _ := json.MarshalIndent(got, "", " ")
+		wantJSON, _ := json.MarshalIndent(want, "", " ")
+		t.Fatalf("second connection's records differ from pig --mode rpc\n--- connection\n%s\n--- process\n%s", gotJSON, wantJSON)
+	}
+	server.signal(syscall.SIGTERM)
+	if code := server.waitForExit(); code != 128+int(syscall.SIGTERM) {
+		t.Fatalf("exit %d, want %d\n%s", code, 128+int(syscall.SIGTERM), server.stderr())
+	}
+}
+
 func TestListenServesOneRPCSessionPerConnection(t *testing.T) {
-	dir := shortTempDir(t)
+	dir := listenTempDir(t)
 	env := listenEnv(t, dir)
 	child := startRPCProcess(t, env, "--model", "test-faux/echo", "--no-session")
 	want := runListenScript(child)
@@ -347,7 +391,7 @@ func TestListenHostsForgetsAClosedConnectionsHost(t *testing.T) {
 }
 
 func TestListenASecondSIGTERMEndsAServerWhoseSessionDisposeHangs(t *testing.T) {
-	dir := shortTempDir(t)
+	dir := listenTempDir(t)
 	report := filepath.Join(dir, "report")
 	fixture, err := filepath.Abs(filepath.Join("testdata", "listen-hang-shutdown.mjs"))
 	if err != nil {
@@ -421,7 +465,7 @@ func TestListenExitsOnSIGTERMWithEveryConnectionOpen(t *testing.T) {
 }
 
 func TestListenRefusesAnExistingPath(t *testing.T) {
-	dir := shortTempDir(t)
+	dir := listenTempDir(t)
 	path := filepath.Join(dir, "pig.sock")
 	if err := os.WriteFile(path, []byte("keep"), 0o600); err != nil {
 		t.Fatal(err)
@@ -450,9 +494,9 @@ func TestListenRefusesAPathTheOSRejects(t *testing.T) {
 	}
 }
 
-func TestListenDiscardsABuildWhoseConnectionClosed(t *testing.T) {
+func TestListenServesAfterAConnectionClosedBeforeItsSessionStarted(t *testing.T) {
 	server := newListenServer(t)
-	// The first connection takes the startup build; the second builds anew and closes before it is served.
+	// The first connection takes the startup build; the second builds anew and closes before it is served: the server logs nothing fatal and the next connection is served normally.
 	first := server.dial()
 	requestResponse(first, "ready", "get_state")
 	conn, err := net.Dial("unix", server.path)
@@ -471,20 +515,61 @@ func TestListenDiscardsABuildWhoseConnectionClosed(t *testing.T) {
 	server.requireSocketGone()
 }
 
+// waitForFile polls until path exists.
+func (s *listenServer) waitForFile(path, what string) {
+	s.t.Helper()
+	deadline := time.Now().Add(s.budget)
+	for {
+		if _, err := os.Stat(path); err == nil {
+			return
+		}
+		if time.Now().After(deadline) {
+			s.t.Fatalf("%s: %s never appeared\n%s", what, path, s.stderr())
+		}
+		select {
+		case <-s.exited:
+			s.t.Fatalf("%s: the server exited (%d) before %s appeared\n%s", what, s.code, path, s.stderr())
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+}
+
+// The second connection's build runs an extension factory that never returns; its marker proves the build is in flight when the signal lands. The shutdown cancels the build, so the first signal ends the server.
 func TestListenExitsOnSIGTERMDuringABuild(t *testing.T) {
-	server := newListenServer(t)
+	dir := listenTempDir(t)
+	marker := filepath.Join(dir, "building")
+	fixture, err := filepath.Abs(filepath.Join("testdata", "listen-hang-build.mjs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "pig.sock")
+	server := startListenServer(t, append(listenEnv(t, dir), "LISTEN_BUILD_COUNT="+filepath.Join(dir, "count"), "LISTEN_BUILD_MARKER="+marker),
+		"--mode", "rpc", "--listen", path, "--model", "test-faux/echo", "--no-session", "-e", fixture)
+	server.path = path
 	first := server.dial()
 	requestResponse(first, "ready", "get_state")
-	for range 5 {
-		conn, err := net.Dial("unix", server.path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _ = conn.Close() })
+	conn, err := net.Dial("unix", path)
+	if err != nil {
+		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = conn.Close() })
+	server.waitForFile(marker, "the second connection's build")
 	server.signal(syscall.SIGTERM)
 	if code := server.waitForExit(); code != 128+int(syscall.SIGTERM) {
 		t.Fatalf("exit %d, want %d\n%s", code, 128+int(syscall.SIGTERM), server.stderr())
+	}
+	server.requireSocketGone()
+}
+
+// Ctrl+C is a termination signal under --listen: the sessions shut down and the socket file is removed.
+func TestListenExitsOnSIGINT(t *testing.T) {
+	server := newListenServer(t)
+	conn := server.dial()
+	requestResponse(conn, "ready", "get_state")
+	server.signal(syscall.SIGINT)
+	conn.waitForEOF()
+	if code := server.waitForExit(); code != 128+int(syscall.SIGINT) {
+		t.Fatalf("exit %d, want %d\n%s", code, 128+int(syscall.SIGINT), server.stderr())
 	}
 	server.requireSocketGone()
 }

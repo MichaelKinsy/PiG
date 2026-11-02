@@ -18,6 +18,11 @@ export default function (pi) {
     const done = () => { clearInterval(timer); resolve(text("cancelled")); };
     if (signal?.aborted) done(); else signal?.addEventListener("abort", done, { once: true });
   }));
+  tool("confirm", "ask the user and log the answer", async (_id, _params, _signal, _update, ctx) => {
+    const answer = await ctx.ui.confirm("listen", "proceed?");
+    appendFileSync(process.env.LISTEN_FIXTURE_LOG + ".confirm", `${name}:${answer}\n`);
+    return text(String(answer));
+  });
   pi.on("session_shutdown", async () => {
     appendFileSync(process.env.LISTEN_FIXTURE_LOG, `${name}:${instance}\n`);
   });

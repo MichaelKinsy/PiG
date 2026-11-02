@@ -20,7 +20,7 @@ type listenProcess struct {
 	command string
 }
 
-// cellProcesses lists the descendants of serverPID that run the Node runtime and the Go cell binary. pig additive (D201).
+// cellProcesses lists the descendants of serverPID that run the Node runtime and the Go cell binary.
 func cellProcesses(t *testing.T, serverPID int) (nodeCells, goCells []listenProcess) {
 	t.Helper()
 	if runtime.GOOS == "windows" {
@@ -105,7 +105,7 @@ func requireCellCounts(t *testing.T, s *listenServer, wantNode, wantGo int, what
 // listenExtensionServer starts a server whose agent directory holds the Go and the Node counter fixtures, and returns it with the file the fixtures' session_shutdown handlers append to.
 func listenExtensionServer(t *testing.T) (*listenServer, string) {
 	t.Helper()
-	dir := shortTempDir(t)
+	dir := listenTempDir(t)
 	extensions := filepath.Join(dir, "agent", "extensions")
 	goDir := filepath.Join(extensions, "listen-counter-go")
 	nodeDir := filepath.Join(extensions, "listen-counter")
@@ -323,5 +323,62 @@ func TestListenSessionShutdownReachesEverySessionOnSIGTERM(t *testing.T) {
 	}
 	if lines := readShutdownLog(log); len(lines) != 4 {
 		t.Fatalf("session_shutdown lines = %q, want one per instance (4)", lines)
+	}
+}
+
+// closeDuringCall runs the tool in connection a until start reports it begun, closes a's input and returns once the server closed the connection and both of a's instances ran session_shutdown. b is a second session that keeps the shared processes.
+func closeDuringCall(t *testing.T, s *listenServer, log string, a, b *rpcProcess, tool string, started func(rpcRecord) bool) {
+	t.Helper()
+	for _, conn := range []*rpcProcess{a, b} {
+		if got := callTool(conn, "node_counter"); got != "1" {
+			t.Fatalf("node_counter = %q, want 1\n%s", got, s.stderr())
+		}
+	}
+	a.sendJSON(map[string]any{"id": "call", "type": "prompt", "message": "Run: ext tool " + tool})
+	a.await(tool+" started", started)
+	a.closeInput()
+	a.waitForEOF()
+	requireShutdownLines(t, s, log, 2)
+}
+
+// finishListenSession checks that nothing outlived the closed connection: the other session keeps working in the shared processes, they end with it, and the server still exits on a signal.
+func finishListenSession(t *testing.T, s *listenServer, log string, b *rpcProcess) {
+	t.Helper()
+	requireCellCounts(t, s, 1, 1, "after the connection closed during the call")
+	if got := callTool(b, "node_counter"); got != "2" {
+		t.Fatalf("the other session's node_counter = %q, want 2 from the surviving process\n%s", got, s.stderr())
+	}
+	b.closeInput()
+	b.waitForEOF()
+	requireShutdownLines(t, s, log, 4)
+	requireCellCounts(t, s, 0, 0, "after the last connection closed")
+	s.signal(syscall.SIGTERM)
+	if code := s.waitForExit(); code != 128+int(syscall.SIGTERM) {
+		t.Fatalf("exit %d, want %d\n%s", code, 128+int(syscall.SIGTERM), s.stderr())
+	}
+}
+
+// Closing a connection during a running tool call is that session's input end: the session shuts down (the call is cancelled), the other session keeps its instances, and no process, Host or connection outlives the close.
+func TestListenCloseDuringASlowToolCallEndsOnlyThatSession(t *testing.T) {
+	s, log := listenExtensionServer(t)
+	a, b := s.dial(), s.dial()
+	closeDuringCall(t, s, log, a, b, "node_slow", func(r rpcRecord) bool {
+		return r["type"] == "tool_execution_start" && r["toolName"] == "node_slow"
+	})
+	finishListenSession(t, s, log, b)
+}
+
+// Closing a connection during a ctx.ui.confirm dialog: the dialog is pending when the input ends. The unwind resolves it as cancelled, but whether the extension's handler resumes before its generation ends is a race, as it is in Pi when its process exits first: it never resumes with true, nothing outlives the close, and the other session is unaffected (D201).
+func TestListenCloseDuringAConfirmDialogLeavesNothingBehind(t *testing.T) {
+	s, log := listenExtensionServer(t)
+	a, b := s.dial(), s.dial()
+	closeDuringCall(t, s, log, a, b, "node_confirm", func(r rpcRecord) bool {
+		return r["type"] == "extension_ui_request" && r["method"] == "confirm"
+	})
+	finishListenSession(t, s, log, b)
+	for _, answer := range readShutdownLog(log + ".confirm") {
+		if !strings.HasSuffix(answer, ":false") {
+			t.Fatalf("the dialog of the closed connection was answered %q, want only cancelled (false)", answer)
+		}
 	}
 }
