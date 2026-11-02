@@ -25,6 +25,7 @@ const legacy = await import("@mariozechner/pi-ai/compat");
 const all = await import("@earendil-works/pi-ai/providers/all");
 const oracle = await import(pathToFileURL(process.argv[3]));
 const oracleAll = await import(pathToFileURL(process.argv[4]));
+const oracleCompat = await import(pathToFileURL(process.argv[5]));
 assert.deepEqual(Object.keys(ai),Object.keys(oracle),"public AI export inventory");
 assert.equal(ai,legacy);
 assert.equal(ai.getModel,all.getBuiltinModel);
@@ -32,14 +33,14 @@ assert.equal(ai.getModels,all.getBuiltinModels);
 assert.equal(ai.getProviders,all.getBuiltinProviders);
 const providers=ai.getProviders();
 assert.ok(providers.length>0);
-assert.deepEqual(providers,oracle.getProviders());
+assert.deepEqual(providers,oracleCompat.getProviders());
 const models=all.builtinModels();
 const oracleModels=oracleAll.builtinModels();
 for(const provider of providers) {
- assert.deepEqual(ai.getModels(provider),oracle.getModels(provider));
+ assert.deepEqual(ai.getModels(provider),oracleCompat.getModels(provider));
  for(const model of ai.getModels(provider)) {
   assert.equal(ai.getModel(provider,model.id),model);
-  const reference=oracle.getModel(provider,model.id);
+  const reference=oracleCompat.getModel(provider,model.id);
   assert.equal(models.getModel(provider,model.id)===model,oracleModels.getModel(provider,model.id)===reference,"catalog/provider identity: "+provider+"/"+model.id);
  }
 }
@@ -56,8 +57,11 @@ await assert.rejects(runtime.prepareRequest({provider:"not-registered",id:"none"
 	// Extensions import pi-ai through the coding agent's extension view (core/extensions/pi-ai-extension-view.ts): pi-ai's compat entry plus TypeBox's Type and StringEnum.
 	agent := filepath.Join(findModuleRoot(t), "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent")
 	oracle := filepath.Join(agent, "dist", "core", "extensions", "pi-ai-extension-view.js")
-	oracleAll := filepath.Join(agent, "node_modules", "@earendil-works", "pi-ai", "dist", "providers", "all.js")
-	cmd := exec.CommandContext(t.Context(), "node", "--import", registerLoaderURL(t, root), "--input-type=module", "-e", script, root, t.TempDir(), oracle, oracleAll)
+	// The catalog reads come from the pi-ai package's own compat entry, the module instance oracleAll belongs to: the extension view imports pi-ai through the coding agent's resolution, which can be a second instance, and object identity does not cross instances.
+	piAiDist := filepath.Join(agent, "node_modules", "@earendil-works", "pi-ai", "dist")
+	oracleAll := filepath.Join(piAiDist, "providers", "all.js")
+	oracleCompat := filepath.Join(piAiDist, "compat.js")
+	cmd := exec.CommandContext(t.Context(), "node", "--import", registerLoaderURL(t, root), "--input-type=module", "-e", script, root, t.TempDir(), oracle, oracleAll, oracleCompat)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("shared library bundles: %v\n%s", err, output)
 	}
