@@ -208,3 +208,8 @@ generator = "schema/internal/ecmaregex/gen/golden.mjs"
 paths = ["schema/testdata/errors-golden.json"]
 owner = "pi"
 generator = "schema/testdata/gen-errors.mjs"
+
+[[golden]]
+paths = ["schema/testdata/coerce-golden.json"]
+owner = "pi"
+generator = "schema/testdata/gen-coerce-golden.mjs"
