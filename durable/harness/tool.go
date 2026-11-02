@@ -165,9 +165,14 @@ func (checkpoint *ToolTaskCheckpoint) UnmarshalJSON(data []byte) error {
 	}
 	decoded := ToolTaskCheckpoint{Phase: wire.Phase, Replay: wire.Replay}
 	if len(wire.Arguments) > 0 && string(wire.Arguments) != "null" {
-		if err := json.Unmarshal(wire.Arguments, &decoded.Arguments); err != nil {
+		// The object's decode goes through a struct member, so the map is the struct's field, not an interface tree.
+		var object struct {
+			Arguments map[string]any `json:"arguments"`
+		}
+		if err := json.Unmarshal(data, &object); err != nil {
 			return err
 		}
+		decoded.Arguments = object.Arguments
 		decoded.argumentsJSON = wire.Arguments
 	}
 	*checkpoint = decoded
