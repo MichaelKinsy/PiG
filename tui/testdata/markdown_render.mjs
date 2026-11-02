@@ -15,6 +15,16 @@ const theme = {
 };
 const results = JSON.parse(input).map((probe) => {
   const md = new Markdown(probe.text, probe.paddingX, probe.paddingY, theme);
-  return probe.widths.map((width) => md.render(width));
+  return probe.widths.map((width) => {
+    if (!probe.then) return md.render(width);
+    // A component that rendered the text and is then given others, as the interactive mode streams an answer.
+    const streamed = new Markdown(probe.text, probe.paddingX, probe.paddingY, theme);
+    let rows = streamed.render(width);
+    for (const text of probe.then) {
+      streamed.setText(text);
+      rows = streamed.render(width);
+    }
+    return rows;
+  });
 });
 process.stdout.write(JSON.stringify(results));

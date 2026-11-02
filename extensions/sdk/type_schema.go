@@ -199,9 +199,7 @@ func update(current any, hidden map[string]any, enumerable TypeOptions) *TSchema
 	if result.hidden == nil {
 		result.hidden = map[string]any{}
 	}
-	for name, value := range hidden {
-		result.hidden[name] = value
-	}
+	maps.Copy(result.hidden, hidden)
 	if enumerable != nil {
 		for _, key := range enumerable.keys {
 			result.object.set(key, enumerable.values[key])

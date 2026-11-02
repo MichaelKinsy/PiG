@@ -224,6 +224,7 @@ func OneOf[V Literal](values ...V) Schema {
 
 // Union is any of the given schemas.
 func Union(schemas []Schema) Schema {
+	refuseOptional("Union", schemas...)
 	nodes := make([]any, len(schemas))
 	for i, schema := range schemas {
 		nodes[i] = schema.Node
@@ -253,6 +254,7 @@ func Obj(properties ...Property) Schema {
 
 // Arr is an array, with optional length bounds.
 func Arr(items Schema, opts ...Option) Schema {
+	refuseOptional("Arr", items)
 	o := read("Arr", lengthOptions, nil, opts)
 	node := delta.JsonObjectOf("type", "array", "items", items.Node)
 	setLimits(node, o, "minItems", "maxItems")
@@ -261,6 +263,7 @@ func Arr(items Schema, opts ...Option) Schema {
 
 // Map is a string-keyed record: one pattern property matching every key.
 func Map(value Schema) Schema {
+	refuseOptional("Map", value)
 	return Schema{Node: delta.JsonObjectOf("type", "object", "patternProperties", delta.JsonObjectOf("^.*$", value.Node))}
 }
 
@@ -299,7 +302,22 @@ type KeyedMember struct {
 func (*KeyedMember) localMember() {}
 
 // Keyed declares a keyed state member of a local contract: documents of schema by string key, each watchable.
-func Keyed(schema Schema) *KeyedMember { return &KeyedMember{Schema: schema} }
+func Keyed(schema Schema) *KeyedMember {
+	refuseOptional("Keyed", schema)
+	return &KeyedMember{Schema: schema}
+}
+
+// refuseOptional panics when a schema is opt(...): it marks an object property and is no schema anywhere else.
+// TypeScript rejects it where a Schema is expected (`arr`, `map`, `union`, `keyed`, `method`), and a snapshot refuses it
+// with `<path>: expected a schema`; Go has no compile-time check, so the constructor refuses it, as it refuses an option
+// that does not apply.
+func refuseOptional(constructor string, schemas ...Schema) {
+	for _, schema := range schemas {
+		if schema.Optional {
+			panic("contracts: " + constructor + ": opt(...) is no schema outside an object")
+		}
+	}
+}
 
 // NewMethod is `method(args?, result?)` (upstream's `method`, which Go cannot name beside the Method type): no side,
 // `args`, or `args, result`. A side that is the zero Schema is omitted, as `method(undefined, result)` omits the
@@ -308,6 +326,7 @@ func NewMethod(sides ...Schema) *Method {
 	if len(sides) > 2 {
 		panic("contracts: NewMethod takes at most an argument and a result schema")
 	}
+	refuseOptional("NewMethod", sides...)
 	method := &Method{Args: Nul(), Result: Nul()}
 	if len(sides) > 0 && sides[0].Node != nil {
 		method.Args = sides[0]

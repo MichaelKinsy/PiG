@@ -10,6 +10,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
+// Ports packages/mcp/src/transports/stdio.ts (killProcessTree: taskkill /T /F; no process groups on win32)
+
 //portlint:allow ctxbackground the server runs until the transport's Close ends it (stdio.go Start sets cmd.Cancel = nil), so no caller context bounds it
 func bgContext() context.Context { return context.Background() }
 
