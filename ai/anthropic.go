@@ -264,6 +264,9 @@ func (t anthTool) wire() (anthToolWire, error) {
 // anthLegacyInputSchemaOrder is the member order of the literal { type, properties, required } (anthropic-messages.ts:1589-1593, :207).
 var anthLegacyInputSchemaOrder = []string{"type", "properties", "required"}
 
+// anthLegacyDefinitionKeys are the root members the legacy literal appends after required, in order, when present (anthropic-messages.ts convertTools).
+var anthLegacyDefinitionKeys = []string{"$defs", "definitions"}
+
 // deferredToolPlaceholder mirrors upstream DEFERRED_TOOL_PLACEHOLDER: a stable
 // deferred tool declared whenever native tool changes are in use. Anthropic adds
 // hidden prompt scaffolding for mid-conversation tool changes; declaring the
@@ -865,9 +868,33 @@ func anthConvertTools(tools []ToolSchema, isOAuthToken, supportsEagerToolInputSt
 	return out, nil
 }
 
+// anthKeepsLegacySchemaOrder reports whether the object at path survives into the legacy input_schema: properties and the root definitions.
+func anthKeepsLegacySchemaOrder(path string) bool {
+	if anthIsOrIsUnder(path, "properties") {
+		return true
+	}
+	for _, key := range anthLegacyDefinitionKeys {
+		if anthIsOrIsUnder(path, key) {
+			return true
+		}
+	}
+	return false
+}
+
+// anthIsOrIsUnder reports whether path is the root member key or a path below it.
+func anthIsOrIsUnder(path, key string) bool {
+	rest, ok := strings.CutPrefix(path, "/")
+	if !ok {
+		return false
+	}
+	rest, ok = strings.CutPrefix(rest, key)
+	return ok && (rest == "" || rest[0] == '/')
+}
+
 // anthInputSchema builds a tool's input_schema and its member order as convertTools does (anthropic-messages.ts:1588-1600): the legacy
-// literal { type: "object", properties: schema.properties ?? {}, required: schema.required ?? [] }, which a strict schema follows
-// in a spread, so the literal's members overwrite the parameters' in place and append the ones the parameters lack.
+// literal { type: "object", properties: schema.properties ?? {}, required: schema.required ?? [], ...$defs, ...definitions }, where
+// $defs and definitions are present only when the parameters have them. A strict schema follows the literal in a spread, so the
+// literal's members overwrite the parameters' in place and append the ones the parameters lack.
 func anthInputSchema(parameters map[string]any, parameterOrder schemaObjectOrder, strict bool) (map[string]any, schemaObjectOrder) {
 	properties, required := parameters["properties"], parameters["required"]
 	if properties == nil {
@@ -888,12 +915,21 @@ func anthInputSchema(parameters map[string]any, parameterOrder schemaObjectOrder
 		}
 		order[""] = root
 	} else {
-		schema = make(map[string]any, len(anthLegacyInputSchemaOrder))
-		order[""] = anthLegacyInputSchemaOrder
+		// Shared definitions stay so property $refs resolve; other root keywords stay out because Anthropic rejects root
+		// anyOf/oneOf/allOf with a 400 (Pi 4a6a58eb5, #9557). A key the schema lacks is omitted, not written as null.
+		schema = make(map[string]any, len(anthLegacyInputSchemaOrder)+len(anthLegacyDefinitionKeys))
+		root := slices.Clone(anthLegacyInputSchemaOrder)
+		for _, key := range anthLegacyDefinitionKeys {
+			if definitions, ok := parameters[key]; ok {
+				schema[key] = definitions
+				root = append(root, key)
+			}
+		}
+		order[""] = root
 	}
 	schema["type"], schema["properties"], schema["required"] = "object", properties, required
 	for path, members := range parameterOrder {
-		if path == "" || !strict && path != "/properties" && !strings.HasPrefix(path, "/properties/") {
+		if path == "" || !strict && !anthKeepsLegacySchemaOrder(path) {
 			continue
 		}
 		order[path] = members
