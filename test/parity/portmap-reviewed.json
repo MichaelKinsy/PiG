@@ -7,34 +7,6 @@
    "pkg:codemode/portable#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions"
   }
  },
- "packages/chord/src/next/store/engine.ts": {
-  "reason": "Pi's DocumentPoint (number | \"current\") is chord/next/store/engine.go#DocumentPoint, a struct whose zero value is \"current\" (AtSeq(n) is the number). The ledger's durable/types.go#DocumentPoint is the chord v1 session type of the same name, not the implementation of this Pi file.",
-  "members": {
-   "pkg:chord/next#DocumentPoint": "chord/next/store/engine.go#DocumentPoint"
-  }
- },
- "packages/chord/src/watch.ts": {
-  "reason": "SingletonHandle declares no `value` or `watch` of its own: it extends Watchable<T> (watch.ts), so the ledger files these members under watch.ts. Their Go form is the Watchable interface of chord/watch.go (Value, Watch); chord/next/documents/handles.go's SingletonHandle declares the same two methods with the Go-forced difference that Value also returns an error (a read of a released handle refuses), and chord/next/documents/handles_test.go exercises them.",
-  "members": {
-   "pkg:chord/next#SingletonHandle::property:value": "chord/watch.go#Watchable.Value",
-   "pkg:chord/next#SingletonHandle::property:watch": "chord/watch.go#Watchable.Watch",
-   "pkg:chord/next#SingletonHandle::property:watch::call:0": "chord/watch.go#Watchable.Watch"
-  }
- },
- "packages/chord/src/next/data/errors.ts": {
-  "reason": "next isChordError(error, code?) is chord/next/data/errors.go#IsChordError (data.IsChordError and IsChordErrorCode); the ledger mapped it to the chord v1 chord/host/errors.go#IsChordError, which implements the v1 packages/chord/src/errors.ts isChordError, not this file.",
-  "members": {
-   "pkg:chord/next#isChordError": "chord/next/data/errors.go#IsChordError",
-   "pkg:chord/next#isChordError::call:0": "chord/next/data/errors.go#IsChordError"
-  }
- },
- "packages/chord/src/next/link/link.ts": {
-  "reason": "next memoryLinkPair() is chord/next/link/link.go#MemoryLinkPair (a pair of *MemoryLink); the ledger mapped it to the chord v1 chord/host/link.go#MemoryLinkPair, which implements the v1 packages/chord/src/link.ts.",
-  "members": {
-   "pkg:chord/next#memoryLinkPair": "chord/next/link/link.go#MemoryLinkPair",
-   "pkg:chord/next#memoryLinkPair::call:0": "chord/next/link/link.go#MemoryLinkPair"
-  }
- },
  "packages/chord/src/next/link/part.ts": {
   "reason": "Compression is declared in part.ts and part.go aliases it (link.Compression = nextnode.Compression) so the link package speaks the interface; its Deflate/Inflate methods live on the nextnode implementation, and part.go is the code that calls them (OriginPart deflates, OpenPart and InflateAsync inflate).",
   "members": {
@@ -44,33 +16,11 @@
    "pkg:chord/next#Compression::property:inflate::call:0": "chord/next/link/part.go#Compression"
   }
  },
- "packages/chord/src/next/contracts/schema.ts": {
-  "reason": "Pi's str, num, int and bool are Chord's schema constructors of contracts/schema.ts; the ledger's name rule bound them to the store column constructors of the same names (store/columns.go, which wrap them in a ColumnSchema) and method to the chord v1 Method type. The implementations of this Pi file are contracts.Str, Num, Int, Bool and NewMethod (Go cannot name a function method beside the Method type); the helpers of jsorder.go and namedmap.go are shared by every file of the package and are not cited.",
+ "packages/chord/src/next/link/link.ts": {
+  "reason": "next memoryLinkPair() is chord/next/link/link.go#MemoryLinkPair (a pair of *MemoryLink, each a link.Link); the ledger maps it to the chord v1 chord/host/link.go#MemoryLinkPair because the shape check resolves the name Link to chord v1's Link (member receive), not the next layer's (onMessage), so the correct target is a signature-mismatch gap there.",
   "members": {
-   "pkg:chord/next#str": "chord/next/contracts/schema.go#Str",
-   "pkg:chord/next#num": "chord/next/contracts/schema.go#Num",
-   "pkg:chord/next#int": "chord/next/contracts/schema.go#Int",
-   "pkg:chord/next#bool": "chord/next/contracts/schema.go#Bool",
-   "pkg:chord/next#method": "chord/next/contracts/schema.go#NewMethod"
-  }
- },
- "packages/chord/src/next/host/host.ts": {
-  "reason": "createHost is chord/next/host/host_host.go#CreateHost: the ledger's name rule N4 bound it to the v1 chord/host/host.go#CreateHost, but the Pi file next/host/host.ts is ported by the chord/next/host package (host_host.go, host_error.go).",
-  "members": {
-   "pkg:chord/next#createHost": "chord/next/host/host_host.go#CreateHost",
-   "pkg:chord/next#createHost::call:0": "chord/next/host/host_host.go#CreateHost"
-  }
- },
- "packages/chord/src/next/host/attempt.ts": {
-  "reason": "Pi's Factory type (a local or a remote factory by the contract's kind) is the LocalFactory and RemoteFactory function types of chord/next/host/host_attempt.go; the ledger's name rule N4 bound it to the v1 chord/host/object.go#Factory.",
-  "members": {
-   "pkg:chord/next#Factory": "chord/next/host/host_attempt.go#LocalFactory"
-  }
- },
- "packages/chord/src/next/host/root.ts": {
-  "reason": "RootOptions of next/host/root.ts is chord/next/host/host_root.go#RootOptions (Principal and Anonymous for Pi's explicit `principal: undefined`); the ledger's name rule N4 bound it to the v1 chord/host/host.go#RootOptions.",
-  "members": {
-   "pkg:chord/next#RootOptions": "chord/next/host/host_root.go#RootOptions"
+   "pkg:chord/next#memoryLinkPair": "chord/next/link/link.go#MemoryLinkPair",
+   "pkg:chord/next#memoryLinkPair::call:0": "chord/next/link/link.go#MemoryLinkPair"
   }
  }
 }

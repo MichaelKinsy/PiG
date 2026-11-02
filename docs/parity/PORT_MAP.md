@@ -744,7 +744,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/reload.ts` | `chord/host/reload.go (link protocol 4)` | ✅ |
 | `packages/chord/src/schema.ts` | `chord/host/schema.go` | ✅ |
 | `packages/chord/src/state.ts` | `chord/state.go` | ✅ |
-| `packages/chord/src/watch.ts` | `chord/watch.go WatchEnd, WatchEndReason, WatchHandle, Watchable, NativeWatchable (Durable's package re-exports them as type aliases, as Pi's durable index does); chord/watch_impl.go Watch, NativeWatch, NativeWatchHandle, DeliveryScheduler (the delivery goroutines that stand for queueMicrotask)` | ✅ |
+| `packages/chord/src/watch.ts` | `chord/watch.go WatchEnd, WatchEndReason, WatchHandle, Watchable, NativeWatchable (Durable's package re-exports them as type aliases, as Pi's durable index does); chord/watch_impl.go Watch, NativeWatch, NativeWatchHandle, DeliveryScheduler (the delivery goroutines that stand for queueMicrotask); chord/next/documents/handles.go SingletonHandle (Pi's `SingletonHandle<T> extends Watchable<T>`: its Value and Watch are the two members watch.ts's interface contributes to the next layer)` | ✅ |
 | `packages/chord/src/websocket.ts` | `chord/host/websocket.go (link protocol 4)` | ✅ |
 | `packages/chord/src/wire.ts` | `chord/host/wire.go (link protocol 4)` | ✅ |
 | `packages/chord/src/telemetry-sqlite/index.ts` | `chord/telemetrysqlite/index.go` | ✅ |

@@ -54,6 +54,8 @@ pkg:ai/providers/schema-builders#stringLiteral::call:0	ai	child-gap
 pkg:ai/providers/schema-builders#stringRecord	ai	no-go-symbol	
 pkg:ai/providers/schema-builders#stringRecord::call:0	ai	child-gap	
 pkg:chord/.#Description	chord	undecidable	chord/host/contract.go#Description
+pkg:chord/next#isChordError	chord	child-gap	chord/next/data/errors.go#IsChordError
+pkg:chord/next#isChordError::call:0	chord	signature-mismatch	chord/next/data/errors.go#IsChordError
 pkg:coding-agent/.#createBashTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateBashTool
 pkg:coding-agent/.#createBashTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateBashTool
 pkg:coding-agent/.#createEditTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateEditTool
