@@ -20,8 +20,8 @@ export const shims = new Map([
   // Pi's package.json "exports" names ./dist/index.js, so an extension that resolves the package (import.meta.resolve) and goes two directories up reaches the package root and finds the CLI at <root>/dist/cli.js (pi-open-agents resolvePiEntryPoint). The vendored package root, which getPackageDir() reports, has that layout: dist/index.js re-exports the barrel and dist/cli.js starts the harness.
   ["@mariozechner/pi-coding-agent", new URL("./shims/pi-dist/pi-coding-agent/dist/index.js", import.meta.url).href],
   ["@earendil-works/pi-coding-agent", new URL("./shims/pi-dist/pi-coding-agent/dist/index.js", import.meta.url).href],
-  ["@mariozechner/pi-tui", new URL("./shims/pi-tui.mjs", import.meta.url).href],
-  ["@earendil-works/pi-tui", new URL("./shims/pi-tui.mjs", import.meta.url).href],
+  ["@mariozechner/pi-tui", new URL("./shims/pi-dist/pi-tui/dist/index.js", import.meta.url).href],
+  ["@earendil-works/pi-tui", new URL("./shims/pi-dist/pi-tui/dist/index.js", import.meta.url).href],
   ["@mariozechner/pi-agent-core", new URL("./shims/pi-dist/pi-agent-core/dist/index.js", import.meta.url).href],
   ["@earendil-works/pi-agent-core", new URL("./shims/pi-dist/pi-agent-core/dist/index.js", import.meta.url).href],
   ["@mariozechner/pi-ai", new URL("./shims/pi-ai.mjs", import.meta.url).href],

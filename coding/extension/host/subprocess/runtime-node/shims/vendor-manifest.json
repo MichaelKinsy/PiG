@@ -15157,6 +15157,16 @@
       "sha256": "7b6e6f6e1fbb037f33a8238ab02ec9e6e5f65fe49029bb430acd59c40148bfa4"
     },
     {
+      "path": "pi-dist/pi-tui/dist/index.js",
+      "package": {
+        "name": "@earendil-works/pi-tui",
+        "version": "1.4.0",
+        "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
+      },
+      "sha256": "fd60c44f71d62edaebd4fbed4783d2d373531d7692cd1c0ed30bca0b55f56dbc",
+      "rewrite": "package root entry -> the runtime module that serves the package"
+    },
+    {
       "path": "pi-dist/pi-tui/editor-component.js",
       "package": {
         "name": "@earendil-works/pi-tui",
@@ -15497,6 +15507,17 @@
       "source": "dist/oklab.js",
       "sourceSha256": "9aa1e62e9770e7f6f81b204c9d0f039d5f0b5cef017920f6d3e5368520428bfe",
       "sha256": "9aa1e62e9770e7f6f81b204c9d0f039d5f0b5cef017920f6d3e5368520428bfe"
+    },
+    {
+      "path": "pi-dist/pi-tui/package.json",
+      "package": {
+        "name": "@earendil-works/pi-tui",
+        "version": "1.4.0",
+        "integrity": "sha512-4obPOjgOD7g4mGSlngIvxyujC1UPdmyI9zdVthbr8GufacFEX+Ce0+scPgHg++k2xj5+QjESM2d5TxvIuzCVmg=="
+      },
+      "source": "package.json",
+      "sourceSha256": "f21cdaa529e2d049e70a8408b2294b280eab7c24a8ca664ef8952018549a74f7",
+      "sha256": "f21cdaa529e2d049e70a8408b2294b280eab7c24a8ca664ef8952018549a74f7"
     },
     {
       "path": "pi-dist/pi-tui/program-status.js",

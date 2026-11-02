@@ -13,10 +13,11 @@ import (
 // automation/gen/vendor-pi-package-roots.mjs; the expected entries are written out here so a change of either shows.
 var vendoredPackageRootEntries = map[string]string{
 	"pi-agent-core/dist/index.js": "export * from \"../../../pi-agent-core.mjs\";\n",
+	"pi-tui/dist/index.js":        "export * from \"../../../pi-tui.mjs\";\n",
 }
 
 // vendoredPackageRoots names the pinned package each vendored package root takes its package.json from.
-var vendoredPackageRoots = []string{"pi-agent-core"}
+var vendoredPackageRoots = []string{"pi-agent-core", "pi-tui"}
 
 func TestVendoredPiPackageRootsMatchThePinnedPackages(t *testing.T) {
 	root := filepath.Join("runtime-node", "shims", "pi-dist")

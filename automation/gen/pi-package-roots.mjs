@@ -7,4 +7,5 @@
 // records them as generated.
 export const packageRoots = {
   "pi-agent-core": { "dist/index.js": "../../../pi-agent-core.mjs" },
+  "pi-tui": { "dist/index.js": "../../../pi-tui.mjs" },
 };
