@@ -117,7 +117,7 @@ func TestBranchDispatchEqualsTheJoinedExpression(t *testing.T) {
 		}, nil
 	})
 	t.Logf("%d positions compared, %d matchers without dispatch", checked.Load(), skipped.Load())
-	if checked.Load() < 100_000 {
+	if !t.Failed() && checked.Load() < 100_000 {
 		t.Fatalf("only %d positions compared", checked.Load())
 	}
 }

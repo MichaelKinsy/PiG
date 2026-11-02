@@ -29,7 +29,7 @@ func resumeCorpus(t *testing.T) []corpusSample {
 	return corpus
 }
 
-// parallelEach applies to every item, in order of items, the function a worker made by newWorker returns, on one worker per CPU. A worker owns the state newWorker builds, a Registry that serializes its calls among them, so workers share none; finish, when it is not nil, runs on a worker that has no item left, with the number of items it took. The work functions report a failure with t.Errorf, never t.Fatalf: they do not run on the test goroutine.
+// parallelEach applies to every item, in order of items, the function a worker made by newWorker returns, on one worker per CPU, never more than there are items. A worker owns the state newWorker builds, a Registry that serializes its calls among them, so workers share none; finish, when it is not nil, runs on a worker that has no item left, with the number of items it took. The work functions report a failure with t.Errorf, never t.Fatalf: they do not run on the test goroutine.
 func parallelEach[T any](t *testing.T, items []T, newWorker func() (do func(T), finish func(took int))) {
 	t.Helper()
 	work := make(chan T, len(items))
@@ -38,7 +38,7 @@ func parallelEach[T any](t *testing.T, items []T, newWorker func() (do func(T), 
 	}
 	close(work)
 	var wg sync.WaitGroup
-	for range runtime.GOMAXPROCS(0) {
+	for range min(runtime.GOMAXPROCS(0), len(items)) {
 		wg.Go(func() {
 			do, finish := newWorker()
 			took := 0
@@ -138,7 +138,7 @@ func TestHighlightResumableEqualsAFreshRun(t *testing.T) {
 		}
 	})
 	t.Logf("%d resume points checked, %d resumed, %d distinct runs", checked.Load(), resumed.Load(), distinct.Load())
-	if resumed.Load() < 500 {
+	if !t.Failed() && resumed.Load() < 500 {
 		t.Fatalf("only %d resumed runs: the corpus no longer exercises resumption", resumed.Load())
 	}
 }
@@ -246,7 +246,7 @@ func TestResumedRunCountsTheIterationsOfAWholeRun(t *testing.T) {
 			checked.Add(1)
 		}
 	})
-	if checked.Load() < 1000 {
+	if !t.Failed() && checked.Load() < 1000 {
 		t.Fatalf("only %d checkpoints checked", checked.Load())
 	}
 	t.Logf("%d checkpoints checked", checked.Load())

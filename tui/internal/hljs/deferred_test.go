@@ -251,7 +251,7 @@ func TestDeferredAutoDetectMatchesEagerLoad(t *testing.T) {
 				}
 			}
 	})
-	if want := len(samples); int(checked.Load()) != want || want < 65 {
+	if want := len(samples); !t.Failed() && (int(checked.Load()) != want || want < 65) {
 		t.Fatalf("%d of %d corpus samples auto-detected: the check proves nothing", checked.Load(), len(corpus))
 	}
 }
