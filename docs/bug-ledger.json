@@ -39039,6 +39039,54 @@
       ]
     },
     {
+      "id": "BF-e5b8ad5",
+      "title": "`chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was…",
+      "symptom": "`chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was counted in UTF-16 units after non-ASCII text.",
+      "rootCause": "NodeMember.Value waits on the host's life without awaitAborted, so the exit is not joined with a cancellation nobody asked for. Pi's describe prints esbuild's `location.column`, which the JS API reports in bytes: the column is printed as esbuild gives it. builtWire is encoded by its struct tags.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was counted in UTF-16 units after non-ASCII text.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e5b8ad5546",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildColumnsAreBytesForErrorsAndUTF16CodeUnitsForGlobals",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeMemberValueInFlightWhenTheProcessDiesReturnsItsExitOnly",
+        "chord/nextnode/plugins/plugins_node_wire_test.go::TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways"
+      ]
+    },
+    {
+      "id": "BF-e5b8ad5-2",
+      "title": "`chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the…",
+      "symptom": "`chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the process's exit alone, not also a cancellation nobody asked for.",
+      "rootCause": "NodeMember.Value waits on the host's life without awaitAborted, so the exit is not joined with a cancellation nobody asked for. Pi's describe prints esbuild's `location.column`, which the JS API reports in bytes: the column is printed as esbuild gives it. builtWire is encoded by its struct tags.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the process's exit alone, not also a cancellation nobody asked for.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e5b8ad5546",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildColumnsAreBytesForErrorsAndUTF16CodeUnitsForGlobals",
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeMemberValueInFlightWhenTheProcessDiesReturnsItsExitOnly",
+        "chord/nextnode/plugins/plugins_node_wire_test.go::TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways"
+      ]
+    },
+    {
       "id": "BF-e5f9fdd",
       "title": "The provider retry transport no longer replaces `Body` on the caller's request when it retries",
       "symptom": "The provider retry transport no longer replaces `Body` on the caller's request when it retries.",

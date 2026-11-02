@@ -1347,6 +1347,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e59f3f6](#bf-e59f3f6) | Fixed tool-call arguments losing a field and every field after it when the model wrote an invalid `\u` escape… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e5a345e](#bf-e5a345e) | An Anthropic request holds a mid-conversation system update until an assistant message that is actually sent… | A fix Pi shipped that PiG ported | All platforms | 0.5.3 |
 | [BF-e5aae63](#bf-e5aae63) | The editor now enters bash mode (bash border color, Escape clears it) when the text starts with `!` after any… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e5b8ad5](#bf-e5b8ad5) | `chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was… | PiG's own defect | All platforms | Unreleased |
+| [BF-e5b8ad5-2](#bf-e5b8ad5-2) | `chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the… | PiG's own defect | All platforms | Unreleased |
 | [BF-e5f9fdd](#bf-e5f9fdd) | The provider retry transport no longer replaces `Body` on the caller's request when it retries | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e63c61c](#bf-e63c61c) | fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209) | PiG's own defect | All platforms | Unreleased |
 | [BF-e64d2cf](#bf-e64d2cf) | fix(tui): a tool error result collapses like any other (Pi updateResult) | PiG's own defect | All platforms | Unreleased |
@@ -19879,6 +19881,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e5aae639c1` (2026-10-13)
 - **Tests:** `internal/codingagent/tool_codemode_timer_test.go::TestCodemodeRowShowsElapsedWhileRunningAndTookOnceFinished`, `tui/bash_execution_test.go::TestEditorBashModeTrimsTheWholeTextAsJavaScript`, `tui/terminal_image_test.go::TestHerdrWithGraphicsSignalRendersKittyImage`
 - **Release note:** The editor now enters bash mode (bash border color, Escape clears it) when the text starts with `!` after any JavaScript whitespace, including blank lines and non-breaking spaces, as in Pi. PiG looked only at spaces and tabs on the first line.
+
+### BF-e5b8ad5
+
+**`chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was counted in UTF-16 units after non-ASCII text.
+- **Root cause:** NodeMember.Value waits on the host's life without awaitAborted, so the exit is not joined with a cancellation nobody asked for. Pi's describe prints esbuild's `location.column`, which the JS API reports in bytes: the column is printed as esbuild gives it. builtWire is encoded by its struct tags.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e5b8ad5546` (2026-11-01)
+- **Tests:** `chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildColumnsAreBytesForErrorsAndUTF16CodeUnitsForGlobals`, `chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeMemberValueInFlightWhenTheProcessDiesReturnsItsExitOnly`, `chord/nextnode/plugins/plugins_node_wire_test.go::TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways`
+- **Release note:** `chord/nextnode/plugins`: a build error's column is esbuild's own (in bytes), as Pi prints it, where it was counted in UTF-16 units after non-ASCII text.
+
+### BF-e5b8ad5-2
+
+**`chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the process's exit alone, not also a cancellation nobody asked for.
+- **Root cause:** NodeMember.Value waits on the host's life without awaitAborted, so the exit is not joined with a cancellation nobody asked for. Pi's describe prints esbuild's `location.column`, which the JS API reports in bytes: the column is printed as esbuild gives it. builtWire is encoded by its struct tags.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e5b8ad5546` (2026-11-01)
+- **Tests:** `chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildColumnsAreBytesForErrorsAndUTF16CodeUnitsForGlobals`, `chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeMemberValueInFlightWhenTheProcessDiesReturnsItsExitOnly`, `chord/nextnode/plugins/plugins_node_wire_test.go::TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways`
+- **Release note:** `chord/nextnode/plugins`: a `NodeMember.Value` read that is waiting when the Node process dies returns the process's exit alone, not also a cancellation nobody asked for.
 
 ### BF-e5f9fdd
 
