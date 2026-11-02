@@ -98,15 +98,7 @@ packages/ai/src/providers/zai.models.ts
 packages/ai/src/providers/zai.ts
 packages/ai/src/session-resources.ts
 packages/ai/src/types.ts
-packages/ai/src/utils/error-body.ts
-packages/ai/src/utils/estimate.ts
 packages/ai/src/utils/event-stream.ts
-packages/ai/src/utils/hash.ts
-packages/ai/src/utils/headers.ts
-packages/ai/src/utils/node-http-proxy.ts
-packages/ai/src/utils/sleep.ts
-packages/ai/src/utils/text.ts
-packages/ai/src/utils/typebox-helpers.ts
 packages/ai/src/utils/validation.ts
 packages/codemode/src/wasm.ts
 packages/coding-agent/src/cli.ts

@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// Pi packages/ai/src/utils/typebox-helpers.ts:14-24: StringEnum is Type.Unsafe({ type: "string", enum, ...(description && { description }),
-// ...(default && { default }) }), the schema Google's API and providers without anyOf/const accept. An empty description or default is omitted
+// Pi packages/ai/src/utils/string-enum.ts:14-24: StringEnum returns { type: "string", enum, ...(description && { description }),
+// ...(default && { default }) }, the schema Google's API and providers without anyOf/const accept. An empty description or default is omitted
 // (JavaScript truthiness), and later changes to the caller's slice do not reach the schema.
 func TestStringEnumBuildsPiSchema(t *testing.T) {
 	cases := []struct {
