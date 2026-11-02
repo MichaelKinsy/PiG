@@ -783,7 +783,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/state/index.ts` | `(re-export barrel)` | n/a |
 | `packages/chord/src/next/state/internal.ts` | `(re-export barrel)` | n/a |
 | `packages/chord/src/next/state/native-source.ts` | `chord/next/state/native_source.go` | ✅ |
-| `packages/chord/src/next/state/watchable.ts` | `chord/next/state/watchable.go, chord/next/state/identical.go, chord/next/state/set.go` | ✅ |
+| `packages/chord/src/next/state/watchable.ts` | `chord/next/state/watchable.go, chord/next/state/set.go` | ✅ |
 | `packages/chord/src/next/state/writable.ts` | `chord/next/state/writable.go` | ✅ |
 | `packages/chord/src/next-node/compression.ts` | `chord/nextnode/compression.go` | ✅ |
 | `packages/chord/src/next/link/binary.ts` | `chord/next/link/binary.go` | ✅ |
