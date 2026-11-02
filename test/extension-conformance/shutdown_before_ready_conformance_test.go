@@ -1,7 +1,6 @@
 package extensionconformance
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -25,7 +24,7 @@ import (
 // The host here is a script on the wire. It answers the factory's host calls, reads the register frame, writes the shutdown with no ready and keeps its own end open, so the only thing that can end the connection is the extension acting on the frame. The extension's outcome is its exit status and stderr, or Run's return for the Go SDK in this process. The shutdown arrives at four points:
 //
 //   - after-register: after the register frame, proven alive by a ping answered first;
-//   - dispatches-before-shutdown: one write carries two events.dispatch requests and the shutdown, so each request is answered exactly once under its own ID, success or error, before the extension ends its side;
+//   - dispatches-before-shutdown: one write carries two events.dispatch requests and the shutdown, so each request is answered exactly once under its own ID with no error, and the listener's own value is there: it makes no host call (PureListenerEnv) and writes the payload's tag to a file named by its seq, so an unknown-handler reply, a refusal, a cancellation or a dropped dispatch fails the row;
 //   - during-subscription: while the factory's events.on call waits for its result, which the host answers right after the shutdown: the call returns, the extension registers, and then ends with nothing more on the wire;
 //   - during-factory-call: the same while the factory's own events.emit call waits (FactoryEmitEnv), a call that goes over the connection the factory dialled and the run later takes.
 //
@@ -44,7 +43,10 @@ type shutdownCase struct {
 	name string
 	// factoryEmit makes the factory emit, so it makes a host call of its own besides events.on.
 	factoryEmit bool
-	run         func(t *testing.T, conn net.Conn, node bool)
+	// pureListener makes the listener write a file instead of echoing over a host call; after then reads what it wrote.
+	pureListener bool
+	run          func(t *testing.T, conn net.Conn, node bool)
+	after        func(t *testing.T, listenerDir string)
 }
 
 var shutdownCases = []shutdownCase{
@@ -52,11 +54,11 @@ var shutdownCases = []shutdownCase{
 		readUntilRegister(t, conn, node)
 		requireShutdownEndsTheConnection(t, conn)
 	}},
-	{name: "dispatches-before-shutdown", run: func(t *testing.T, conn net.Conn, node bool) {
+	{name: "dispatches-before-shutdown", pureListener: true, run: func(t *testing.T, conn net.Conn, node bool) {
 		handlerID := readUntilRegister(t, conn, node)
 		frames := append(earlyDispatchFrames(t, handlerID, node), subprocess.Envelope{Type: subprocess.MsgShutdown, Shutdown: &subprocess.ShutdownPayload{Reason: "reload"}})
 		writeSDKBurst(t, conn, frames...)
-		responses := map[string]int{}
+		responses := map[string][]subprocess.Envelope{}
 		for {
 			env, err := tryReadSDKEnvelope(conn)
 			if err != nil {
@@ -67,21 +69,31 @@ var shutdownCases = []shutdownCase{
 			}
 			switch env.Type {
 			case subprocess.MsgResponse:
-				responses[env.ID]++
+				responses[env.ID] = append(responses[env.ID], env)
 			case subprocess.MsgCall:
-				// The listener's echo is a host call. The native SDKs end it with the shutdown, so an answer written to a connection they are about to close would make them reset it; a Node runtime blocks in the call and reads no shutdown until it is answered.
-				if node {
-					writeSDKEnvelope(t, conn, subprocess.Envelope{Type: subprocess.MsgCallResult, ID: env.ID, CallResult: &subprocess.CallResultPayload{Result: json.RawMessage(`{}`)}})
-				}
+				t.Fatalf("host call %+v after the shutdown: the pure listener makes none", env.Call)
 			}
 		}
+		// A listener that ran answers without an error, so an unknown-handler reply, a refusal or a cancellation fails here.
 		for _, id := range []string{"d1", "d2"} {
-			if responses[id] != 1 {
-				t.Errorf("answers under %s = %d, want exactly 1 (all: %v)", id, responses[id], responses)
+			if len(responses[id]) != 1 {
+				t.Errorf("answers under %s = %d, want exactly 1 (all: %v)", id, len(responses[id]), responses)
+				continue
+			}
+			if got := responses[id][0].Response; got == nil || got.Error != nil {
+				t.Errorf("answer under %s = %+v, want success", id, got)
 			}
 		}
 		if len(responses) != 2 {
 			t.Errorf("answers = %v, want only d1 and d2", responses)
+		}
+	}, after: func(t *testing.T, listenerDir string) {
+		// The value the listeners produced: each dispatch's own tag in the file its own seq names.
+		for seq, want := range map[string]string{"1": "first", "2": "second"} {
+			got, err := os.ReadFile(filepath.Join(listenerDir, seq))
+			if err != nil || string(got) != want {
+				t.Errorf("listener file %s = %q (%v), want %q", seq, got, err, want)
+			}
 		}
 	}},
 	{name: "during-subscription", run: func(t *testing.T, conn net.Conn, node bool) {
@@ -102,28 +114,24 @@ func TestShutdownBeforeReadyEndsTheRunCleanly(t *testing.T) {
 	data := filepath.Join(root, "test", "extension-conformance", "testdata")
 	type target struct {
 		name string
-		// start returns the extension's connection and how its run ended; env is added to the process's environment.
-		start func(t *testing.T, env []string) shutdownPeer
+		// start returns the extension's connection and how its run ended.
+		start func(t *testing.T) shutdownPeer
 		node  bool
 		// noFactoryConnection is set for a placement whose factory has no host connection to dial.
 		noFactoryConnection bool
 	}
-	isolated := func(command func(t *testing.T, env []string) func(string) *exec.Cmd, node bool) func(t *testing.T, env []string) shutdownPeer {
-		return func(t *testing.T, env []string) shutdownPeer {
-			conn, process := startSDKProcess(t, command(t, env), node)
+	isolated := func(command func(t *testing.T) func(string) *exec.Cmd, node bool) func(t *testing.T) shutdownPeer {
+		return func(t *testing.T) shutdownPeer {
+			conn, process := startSDKProcess(t, command(t), node)
 			return shutdownPeer{conn: conn, end: process.end}
 		}
 	}
-	withEnv := func(cmd *exec.Cmd, env []string) *exec.Cmd {
-		cmd.Env = append(cmd.Env, env...)
-		return cmd
-	}
 	targets := []target{
-		{name: "go", start: isolated(func(t *testing.T, env []string) func(string) *exec.Cmd {
+		{name: "go", start: isolated(func(t *testing.T) func(string) *exec.Cmd {
 			bin := buildEarlyDispatchGo(t)
-			return func(string) *exec.Cmd { return withEnv(exec.Command(bin), env) }
+			return func(string) *exec.Cmd { return exec.Command(bin) }
 		}, false)},
-		{name: "fused-go", noFactoryConnection: true, start: func(t *testing.T, _ []string) shutdownPeer {
+		{name: "fused-go", noFactoryConnection: true, start: func(t *testing.T) shutdownPeer {
 			extensionConn, hostConn := net.Pipe()
 			done := make(chan error, 1)
 			go func() { done <- earlydispatch.Extension().RunWithConn(extensionConn) }()
@@ -139,26 +147,26 @@ func TestShutdownBeforeReadyEndsTheRunCleanly(t *testing.T) {
 				}
 			}}
 		}},
-		{name: "rust", start: isolated(func(t *testing.T, env []string) func(string) *exec.Cmd {
+		{name: "rust", start: isolated(func(t *testing.T) func(string) *exec.Cmd {
 			bin, err := rustEarlyDispatchBinary.Do(t, buildRustEarlyDispatchBinary)
 			if err != nil {
 				t.Fatal(err)
 			}
-			return func(string) *exec.Cmd { return withEnv(exec.Command(bin), env) }
+			return func(string) *exec.Cmd { return exec.Command(bin) }
 		}, false)},
-		{name: "python", start: isolated(func(t *testing.T, env []string) func(string) *exec.Cmd {
+		{name: "python", start: isolated(func(t *testing.T) func(string) *exec.Cmd {
 			script := filepath.Join(data, "early-dispatch-python", "early.py")
-			return func(string) *exec.Cmd { return withEnv(exec.Command(testPythonExecutable(), script), env) }
+			return func(string) *exec.Cmd { return exec.Command(testPythonExecutable(), script) }
 		}, false)},
-		{name: "lisp", start: isolated(func(t *testing.T, env []string) func(string) *exec.Cmd {
+		{name: "lisp", start: isolated(func(t *testing.T) func(string) *exec.Cmd {
 			requireSBCL(t)
 			sbcl := toolchain.SBCLExecutable("", exec.LookPath)
 			script := filepath.Join(data, "early-dispatch-lisp", "early.lisp")
 			return func(string) *exec.Cmd {
-				return withEnv(exec.Command(sbcl, "--noinform", "--non-interactive", "--no-sysinit", "--no-userinit", "--disable-debugger", "--load", script), env)
+				return exec.Command(sbcl, "--noinform", "--non-interactive", "--no-sysinit", "--no-userinit", "--disable-debugger", "--load", script)
 			}
 		}, false)},
-		{name: "node", node: true, start: isolated(func(t *testing.T, env []string) func(string) *exec.Cmd {
+		{name: "node", node: true, start: isolated(func(t *testing.T) func(string) *exec.Cmd {
 			node := requireConformanceTool(t, "node")
 			entry := filepath.Join(data, "early-dispatch-node", "early.mjs")
 			cli := filepath.Join(root, "coding", "extension", "host", "subprocess", "runtime-node", "cli.mjs")
@@ -166,7 +174,7 @@ func TestShutdownBeforeReadyEndsTheRunCleanly(t *testing.T) {
 				cmd := exec.Command(node, cli, entry)
 				// A Node realm keeps pi.events in its own heap unless the Host routes the bus, as it does once a second realm joins.
 				cmd.Env = []string{"PIG_EVENT_BUS=routed"}
-				return withEnv(cmd, env)
+				return cmd
 			}
 		}, true)},
 	}
@@ -176,16 +184,23 @@ func TestShutdownBeforeReadyEndsTheRunCleanly(t *testing.T) {
 				if c.factoryEmit && target.noFactoryConnection {
 					t.Skip("the placement has no factory connection")
 				}
-				var env []string
+				// The fixtures read their switches from the environment, which every process and the fused extension inherit.
 				if c.factoryEmit {
-					env = []string{earlydispatch.FactoryEmitEnv + "=1"}
+					t.Setenv(earlydispatch.FactoryEmitEnv, "1")
 				}
-				peer := target.start(t, env)
+				listenerDir := t.TempDir()
+				if c.pureListener {
+					t.Setenv(earlydispatch.PureListenerEnv, listenerDir)
+				}
+				peer := target.start(t)
 				if err := peer.conn.SetDeadline(time.Now().Add(60 * time.Second)); err != nil {
 					t.Fatal(err)
 				}
 				c.run(t, peer.conn, target.node)
 				requireCleanEnd(t, peer.end(t))
+				if c.after != nil {
+					c.after(t, listenerDir)
+				}
 			})
 		}
 	}

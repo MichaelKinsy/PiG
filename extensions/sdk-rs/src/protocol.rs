@@ -334,7 +334,7 @@ pub struct RendererDef {
     pub custom_type: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct ReadyMsg {
     #[serde(default)]
     pub cwd: String,
@@ -769,7 +769,7 @@ pub struct Connection {
     closed: AtomicBool,
     /// Set for a connection a factory opened before `run` (host_helpers.rs): no reader thread serves it yet, so a call made on it reads the frames itself, and only the host calls the host answers before the extension registers are sent. `run` clears it when it takes the connection.
     loading: AtomicBool,
-    /// Set when a loading connection read the host's shutdown frame while a call waited: `run` then ends before it registers.
+    /// Set when a loading connection read the host's shutdown frame while a call waited: `run` then registers and ends.
     shutdown_read: AtomicBool,
     // One thread at a time reads a frame for a loading connection's calls; it does not hold the lock while a frame is served.
     pump: Mutex<()>,

@@ -1831,7 +1831,7 @@ impl Extension {
                     format!("expected ready, got {}", env.msg_type),
                 ));
             }
-            None => serde_json::from_value(serde_json::json!({})).map_err(io::Error::other)?,
+            None => ReadyMsg::default(),
         };
 
         // Build base context.

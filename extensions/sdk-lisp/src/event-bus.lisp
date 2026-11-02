@@ -102,8 +102,6 @@ that no listener handles, as EventEmitter throws."
 
 (def-notify "events.release" (ext args) (event-release ext (jget args "handlerId" "")))
 
-(defvar *helper-shutdown* '() "Connections a factory-time call read the host's shutdown frame on, which serve ends on once it has registered.")
-
 (defun event-load-call (ext method args)
   "One host call before the register frame, when the read loop has not started: this thread reads until the call's result arrives."
   (let ((conn (extension-conn ext)) (id (format nil "h~D" (incf (extension-call-counter ext)))))

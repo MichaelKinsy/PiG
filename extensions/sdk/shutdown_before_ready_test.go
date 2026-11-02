@@ -20,26 +20,23 @@ func TestShutdownBeforeReadyEndsTheRunWithoutError(t *testing.T) {
 // The listener dispatches the host sent before the shutdown are answered once each, under their own IDs, before the run ends.
 func TestShutdownBeforeReadyAnswersTheDispatchesBeforeIt(t *testing.T) {
 	ext := New("shutdown-dispatches")
-	if _, err := ext.Events().On("ch", func(Context, any) error { return nil }); err != nil {
-		t.Fatal(err)
-	}
+	heard := recordingListener(t, ext)
 	host, done := startBusExtension(t, ext)
 	on, _ := readBusCall(t, host, "events.on", "null")
 	for host.readEnvelope(t).Type != msgRegister {
 	}
-	host.writeEnvelope(t, dispatchFrame(t, "d1", on.HandlerID, `{"n":1}`))
-	host.writeEnvelope(t, dispatchFrame(t, "d2", on.HandlerID, `{"n":2}`))
+	host.writeEnvelope(t, dispatchFrame(t, "d1", on.HandlerID, `{"n":"d1"}`))
+	host.writeEnvelope(t, dispatchFrame(t, "d2", on.HandlerID, `{"n":"d2"}`))
 	host.writeEnvelope(t, envelope{Type: msgShutdown, Shutdown: &shutdownMsg{Reason: "test"}})
 	requireDispatchesAnsweredOnce(t, host, "d1", "d2")
 	requireRunEndedAndClosed(t, host, done)
+	requireHeard(t, heard, "d1", "d2")
 }
 
 // A shutdown the host sends while the factory's own listener subscription waits for its result does not end the wait: the call returns, the run registers, and then ends on the shutdown. The dispatches the host sent before it are answered too.
 func TestShutdownDuringTheFactorySubscriptionEndsTheRunAfterItRegisters(t *testing.T) {
 	ext := New("shutdown-during-subscription")
-	if _, err := ext.Events().On("ch", func(Context, any) error { return nil }); err != nil {
-		t.Fatal(err)
-	}
+	heard := recordingListener(t, ext)
 	host, done := startBusExtension(t, ext)
 	var call envelope
 	for call = host.readEnvelope(t); call.Type != msgCall; call = host.readEnvelope(t) {
@@ -48,7 +45,7 @@ func TestShutdownDuringTheFactorySubscriptionEndsTheRunAfterItRegisters(t *testi
 	if err := json.Unmarshal(call.Call.Args, &on); err != nil {
 		t.Fatal(err)
 	}
-	host.writeEnvelope(t, dispatchFrame(t, "d1", on.HandlerID, `{"n":1}`))
+	host.writeEnvelope(t, dispatchFrame(t, "d1", on.HandlerID, `{"n":"d1"}`))
 	host.writeEnvelope(t, envelope{Type: msgShutdown, Shutdown: &shutdownMsg{Reason: "test"}})
 	host.writeEnvelope(t, envelope{Type: msgCallResult, ID: call.ID, CallResult: &callResultMsg{}})
 	if env := host.readEnvelope(t); env.Type != msgRegister {
@@ -56,6 +53,7 @@ func TestShutdownDuringTheFactorySubscriptionEndsTheRunAfterItRegisters(t *testi
 	}
 	requireDispatchesAnsweredOnce(t, host, "d1")
 	requireRunEndedAndClosed(t, host, done)
+	requireHeard(t, heard, "d1")
 }
 
 // A shutdown the host sends while a factory-time host call waits (the call dialled the connection Run later takes) does not fail the call: it returns the host's result, and Run registers and then ends on the shutdown.
@@ -90,7 +88,41 @@ func TestShutdownDuringTheFactoryEndsTheRunAfterItRegisters(t *testing.T) {
 	requireRunEndedAndClosed(t, host, done)
 }
 
-// requireDispatchesAnsweredOnce reads until the extension's answers to the dispatches ids arrive, and requires one answer for each.
+// recordingListener subscribes a listener, as a factory does before Run, that makes no host call and keeps each payload it hears.
+func recordingListener(t *testing.T, ext *Extension) <-chan any {
+	t.Helper()
+	heard := make(chan any, 4)
+	if _, err := ext.Events().On("ch", func(_ Context, data any) error { heard <- data; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	return heard
+}
+
+// requireHeard requires that the listener heard exactly the payloads {"n": id} of ids, one each.
+func requireHeard(t *testing.T, heard <-chan any, ids ...string) {
+	t.Helper()
+	got := map[string]int{}
+	for range ids {
+		select {
+		case data := <-heard:
+			payload, _ := data.(map[string]any)
+			id, _ := payload["n"].(string)
+			got[id]++
+		default:
+			t.Fatalf("the listener heard %v, want one payload for each of %v", got, ids)
+		}
+	}
+	for _, id := range ids {
+		if got[id] != 1 {
+			t.Fatalf("the listener heard %v, want one payload for each of %v", got, ids)
+		}
+	}
+	if len(heard) != 0 {
+		t.Fatalf("the listener heard %d more payloads", len(heard))
+	}
+}
+
+// requireDispatchesAnsweredOnce reads until the extension's answers to the dispatches ids arrive, and requires one answer for each, with no error: a listener that ran answers with none, so an unknown-handler reply, a refusal or a cancellation fails.
 func requireDispatchesAnsweredOnce(t *testing.T, host *mockHost, ids ...string) {
 	t.Helper()
 	answered := map[string]int{}
@@ -98,6 +130,9 @@ func requireDispatchesAnsweredOnce(t *testing.T, host *mockHost, ids ...string) 
 		env := host.readEnvelope(t)
 		if env.Type != msgResponse {
 			continue
+		}
+		if env.Response == nil || env.Response.Error != nil {
+			t.Fatalf("answer under %s = %+v, want success", env.ID, env.Response)
 		}
 		answered[env.ID]++
 	}

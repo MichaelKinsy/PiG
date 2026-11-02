@@ -14,6 +14,7 @@ import struct
 import tempfile
 import threading
 from collections.abc import Callable
+from typing import Any
 
 import pytest
 
@@ -740,15 +741,16 @@ def _shutdown(conn: socket.socket) -> None:
 
 
 def _dispatch(conn: socket.socket, request_id: str, handler_id: str) -> None:
-    _write_frame(conn, {"type": "request", "id": request_id, "request": {"method": "events.dispatch", "args": {"handlerId": handler_id, "channel": "shutdown:ch", "json": {"id": request_id}}}})
+    _write_frame(conn, {"type": "request", "id": request_id, "request": {"method": "events.dispatch", "args": {"handlerId": handler_id, "channel": "shutdown:ch", "json": {"n": request_id}}}})
 
 
 def _expect_answers_once(conn: socket.socket, *ids: str) -> None:
-    """Read until every dispatch in ``ids`` has been answered, and require one answer each."""
+    """Read until every dispatch in ``ids`` has been answered, and require one answer each with no error: a listener that ran answers with none, so an unknown-handler reply, a refusal or a cancellation fails."""
     answered: dict[str, int] = {}
     while len(answered) < len(ids):
         env = _read_frame(conn)
         if env["type"] == "response":
+            assert not (env.get("response") or {}).get("error"), env
             answered[env["id"]] = answered.get(env["id"], 0) + 1
     assert answered == {request_id: 1 for request_id in ids}
 
@@ -762,15 +764,18 @@ def _expect_register_and_answers_once(conn: socket.socket, *ids: str) -> None:
         if env["type"] == "register":
             registered = True
         elif env["type"] == "response":
+            assert not (env.get("response") or {}).get("error"), env
             answered[env["id"]] = answered.get(env["id"], 0) + 1
     assert answered == {request_id: 1 for request_id in ids}
 
 
-def _listening_extension(name: str, monkeypatch: pytest.MonkeyPatch) -> pig_sdk.Extension:
+def _listening_extension(name: str, monkeypatch: pytest.MonkeyPatch) -> tuple[pig_sdk.Extension, list[Any]]:
+    """An extension whose listener makes no host call and keeps each payload it hears, with the list of them."""
     monkeypatch.delenv("PIG_EXT_SOCKET", raising=False)
     ext = pig_sdk.Extension(name)
-    ext.events.on("shutdown:ch", lambda ctx, data: None)
-    return ext
+    heard: list[Any] = []
+    ext.events.on("shutdown:ch", lambda ctx, data: heard.append(data))
+    return ext, heard
 
 
 def test_shutdown_before_ready_ends_the_run_cleanly() -> None:
@@ -796,7 +801,9 @@ def test_shutdown_before_ready_answers_the_dispatches_before_it(monkeypatch: pyt
         _shutdown(conn)
         _expect_answers_once(conn, "d1", "d2")
 
-    _run_until_shutdown_before_ready(_listening_extension("py-shutdown-dispatches", monkeypatch), script)
+    ext, heard = _listening_extension("py-shutdown-dispatches", monkeypatch)
+    _run_until_shutdown_before_ready(ext, script)
+    assert sorted(heard, key=lambda data: data["n"]) == [{"n": "d1"}, {"n": "d2"}]
 
 
 def test_shutdown_during_the_factory_subscription_ends_the_run_after_it_registers(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -810,7 +817,9 @@ def test_shutdown_during_the_factory_subscription_ends_the_run_after_it_register
         _write_frame(conn, {"type": "call_result", "id": call["id"], "call_result": {"result": None}})
         _expect_register_and_answers_once(conn, "d1")
 
-    _run_until_shutdown_before_ready(_listening_extension("py-shutdown-during-subscription", monkeypatch), script)
+    ext, heard = _listening_extension("py-shutdown-during-subscription", monkeypatch)
+    _run_until_shutdown_before_ready(ext, script)
+    assert heard == [{"n": "d1"}]
 
 
 def test_own_thinking_runs_register_payload() -> None:

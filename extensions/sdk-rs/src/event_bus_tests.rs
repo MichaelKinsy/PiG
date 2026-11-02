@@ -196,7 +196,14 @@ fn shutdown_before_ready_ends_the_run_cleanly() {
 fn shutdown_before_ready_answers_the_dispatches_before_it() {
     let _no_host = without_host();
     let ext = Extension::new("bus");
-    ext.events().on("ch", |_, _| Ok(())).unwrap();
+    let heard = Arc::new(Mutex::new(Vec::new()));
+    let sink = heard.clone();
+    ext.events()
+        .on("ch", move |_, data| {
+            sink.lock().unwrap().push(data.clone());
+            Ok(())
+        })
+        .unwrap();
     let host = Host::start("shutdown-dispatches", ext);
     let (on, _) = host.call("events.on", None);
     while host.next().msg_type != "register" {}
@@ -209,14 +216,18 @@ fn shutdown_before_ready_answers_the_dispatches_before_it() {
         );
     }
     host.send_shutdown();
-    let mut answered = vec![host.response().0, host.response().0];
+    let mut answered = vec![host.response(), host.response()];
     answered.sort();
-    assert_eq!(answered, ["d1", "d2"]);
+    // A listener that ran answers with no error: an unknown-handler reply, a refusal or a cancellation fails here.
+    assert_eq!(answered, [("d1".to_string(), None), ("d2".to_string(), None)]);
     assert!(
         host.conn.read_envelope().is_err(),
         "the extension closed its end, with no further answer"
     );
     host.thread.unwrap().join().unwrap().unwrap();
+    let mut heard = heard.lock().unwrap().clone();
+    heard.sort_by_key(|data| data["n"].as_str().unwrap_or_default().to_string());
+    assert_eq!(heard, [json!({"n": "d1"}), json!({"n": "d2"})]);
 }
 
 // A shutdown the host sends while the factory's own listener subscription waits for its result does not end the wait: the call returns, the run registers and then ends on the shutdown. The dispatch the host sent before it is answered too.
@@ -224,7 +235,14 @@ fn shutdown_before_ready_answers_the_dispatches_before_it() {
 fn shutdown_during_the_factory_subscription_ends_the_run_after_it_registers() {
     let _no_host = without_host();
     let ext = Extension::new("bus");
-    ext.events().on("ch", |_, _| Ok(())).unwrap();
+    let heard = Arc::new(Mutex::new(Vec::new()));
+    let sink = heard.clone();
+    ext.events()
+        .on("ch", move |_, data| {
+            sink.lock().unwrap().push(data.clone());
+            Ok(())
+        })
+        .unwrap();
     let host = Host::start("shutdown-during-subscription", ext);
     let call = loop {
         let env = host.next();
@@ -237,7 +255,7 @@ fn shutdown_during_the_factory_subscription_ends_the_run_after_it_registers() {
         "d1",
         "events.dispatch",
         None,
-        Some(json!({"handlerId": handler_id, "channel": "ch", "json": {}})),
+        Some(json!({"handlerId": handler_id, "channel": "ch", "json": {"n": "d1"}})),
     );
     host.send_shutdown();
     host.conn
@@ -252,12 +270,13 @@ fn shutdown_during_the_factory_subscription_ends_the_run_after_it_registers() {
         })
         .unwrap();
     while host.next().msg_type != "register" {}
-    assert_eq!(host.response().0, "d1");
+    assert_eq!(host.response(), ("d1".to_string(), None));
     assert!(
         host.conn.read_envelope().is_err(),
         "the extension closed its end"
     );
     host.thread.unwrap().join().unwrap().unwrap();
+    assert_eq!(*heard.lock().unwrap(), [json!({"n": "d1"})]);
 }
 
 // Dispatch runs the handler with the payload decoded from the JSON the Host sends and answers after the handler returns (event-bus.ts:19-25).

@@ -351,14 +351,21 @@
 (defun sbr-send-dispatch (conn id handler-id)
   (pig::send-frame conn (pig:obj "type" "request" "id" id
                                  "request" (pig:obj "method" "events.dispatch"
-                                                    "args" (pig:obj "handlerId" handler-id "channel" "ch" "json" (pig:obj "id" id))))))
+                                                    "args" (pig:obj "handlerId" handler-id "channel" "ch" "json" (pig:obj "n" id))))))
+
+(defun sbr-check-answer-succeeded (env)
+  "A listener that ran answers with no error: an unknown-handler reply, a refusal or a cancellation fails."
+  (let ((err (pig:jref env "response" "error")))
+    (check (or (null err) (eq err :null)) (format nil "answer ~S" env))))
 
 (defun sbr-check-answered-once (conn &rest ids)
-  "Read until every dispatch in IDS is answered, and require one answer each."
+  "Read until every dispatch in IDS is answered, and require one answer each with no error."
   (let ((answered '()))
     (loop until (= (length answered) (length ids))
           do (let ((env (pig::read-frame conn)))
-               (when (equal "response" (pig:jget env "type")) (push (pig:jget env "id") answered))))
+               (when (equal "response" (pig:jget env "type"))
+                 (sbr-check-answer-succeeded env)
+                 (push (pig:jget env "id") answered))))
     (check-equal (sort (copy-list ids) #'string<) (sort answered #'string<))))
 
 (defun sbr-check-registered-and-answered-once (conn &rest ids)
@@ -367,16 +374,20 @@
     (loop until (and registered (= (length answered) (length ids)))
           do (let* ((env (pig::read-frame conn)) (type (pig:jget env "type")))
                (cond ((equal type "register") (setf registered t))
-                     ((equal type "response") (push (pig:jget env "id") answered)))))
+                     ((equal type "response")
+                      (sbr-check-answer-succeeded env)
+                      (push (pig:jget env "id") answered)))))
     (check-equal (sort (copy-list ids) #'string<) (sort answered #'string<))))
 
 (defun sbr-answer-call (conn call result)
   (pig::send-frame conn (pig:obj "type" "call_result" "id" (pig:jget call "id") "call_result" (pig:obj "result" result))))
 
 (defun sbr-listening-extension (name)
-  (let ((ext (pig:make-extension name)))
-    (pig:events-on (pig:extension-events ext) "ch" (lambda (ctx data) (declare (ignore ctx data)) nil))
-    ext))
+  "An extension whose listener makes no host call and keeps each payload's n it hears, and as a second value the cell (a cons) holding them."
+  (let ((ext (pig:make-extension name)) (heard (list nil)))
+    (pig:events-on (pig:extension-events ext) "ch"
+                   (lambda (ctx data) (declare (ignore ctx)) (sb-ext:atomic-push (pig:jget data "n") (car heard))))
+    (values ext heard)))
 
 (deftest shutdown-before-ready-ends-the-run-cleanly
   (sbr-call-shutdown-before-ready (pig:make-extension "rt-shutdown")
@@ -386,9 +397,10 @@
 
 ;; The listener dispatches the host sent before the shutdown are answered once each, under their own IDs, before the run ends.
 (deftest shutdown-before-ready-answers-the-dispatches-before-it
-  (sbr-call-shutdown-before-ready
-   (sbr-listening-extension "rt-shutdown-dispatches")
-   (lambda (conn)
+  (multiple-value-bind (ext heard) (sbr-listening-extension "rt-shutdown-dispatches")
+    (sbr-call-shutdown-before-ready
+     ext
+     (lambda (conn)
      (let ((call (pig::read-frame conn)))
        (check-equal "call" (pig:jget call "type"))
        (sbr-answer-call conn call (pig:obj))
@@ -397,20 +409,23 @@
          (sbr-send-dispatch conn "d1" handler-id)
          (sbr-send-dispatch conn "d2" handler-id))
        (sbr-send-shutdown conn)
-       (sbr-check-answered-once conn "d1" "d2")))))
+       (sbr-check-answered-once conn "d1" "d2"))))
+    (check-equal '("d1" "d2") (sort (copy-list (car heard)) #'string<))))
 
 ;; A shutdown the host sends while the factory's own listener subscription waits for its result does not end the wait: the call returns, the run registers and then
 ;; ends on the shutdown. The dispatch the host sent before it is answered too.
 (deftest shutdown-during-the-factory-subscription-ends-the-run-after-it-registers
-  (sbr-call-shutdown-before-ready
-   (sbr-listening-extension "rt-shutdown-during-subscription")
-   (lambda (conn)
+  (multiple-value-bind (ext heard) (sbr-listening-extension "rt-shutdown-during-subscription")
+    (sbr-call-shutdown-before-ready
+     ext
+     (lambda (conn)
      (let ((call (pig::read-frame conn)))
        (check-equal "call" (pig:jget call "type"))
        (sbr-send-dispatch conn "d1" (pig:jref call "call" "args" "handlerId"))
        (sbr-send-shutdown conn)
        (sbr-answer-call conn call (pig:obj))
-       (sbr-check-registered-and-answered-once conn "d1")))))
+       (sbr-check-registered-and-answered-once conn "d1"))))
+    (check-equal '("d1") (car heard))))
 
 ;; A shutdown the host sends while a factory-time call waits does not fail the call: it returns the host's result, and the run that takes the connection registers
 ;; and then ends on the shutdown.

@@ -8,6 +8,7 @@
 (defvar *helper-dialled* '() "(path . conn): connections a factory-time call dialled, not yet taken by serve.")
 (defvar *helper-taken* '() "(conn . path): connections serve took over, so a running extension knows its socket.")
 (defvar *helper-running* '() "(ext . path-or-nil) of every extension that is serving.")
+(defvar *helper-shutdown* '() "Connections a factory-time call read the host's shutdown frame on, which serve ends on once it has registered.")
 (defvar *helper-sequence* 0)
 
 (defun helper-socket-path ()
