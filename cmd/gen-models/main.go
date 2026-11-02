@@ -765,7 +765,7 @@ func emit(path, src string, rows []modelRow) error {
 			catalogThinkingLevelMaps.assign(i, thinkingLevelPairs(r.ThinkingLevelMap))
 		}
 		if len(r.SamplingParams) > 0 {
-			catalogSamplingParams.assign(i, pairsLiteral(r.SamplingParams, func(v any) string { return fmt.Sprintf("%#v", v) }))
+			catalogSamplingParams.assign(i, pairsLiteral(r.SamplingParams, samplingValueLiteral))
 		}
 		if len(r.PromptCache) > 0 {
 			catalogPromptCaches.assign(i, pairsLiteral(r.PromptCache, func(v float64) string { return strconv.FormatFloat(v, 'g', -1, 64) }))
@@ -1260,8 +1260,11 @@ type catalogMapTable struct {
 	pointer bool
 	// field, keyType and valueType make the table one of maps: field is the row member a map is set on, and keyType and valueType spell the map's.
 	field, keyType, valueType string
-	index                     map[string]int
-	list                      []string
+	// own means each row that has a map of the table gets a map of its own, as a map literal on the row would give it; the others share one map for
+	// each distinct content, as Headers and ThinkingLevelMap do.
+	own   bool
+	index map[string]int
+	list  []string
 	// refs are the rows that have a map of the table, in row order, and the element each has.
 	refs []catalogMapRef
 }
@@ -1272,8 +1275,8 @@ type catalogMapRef struct{ row, element int }
 var (
 	catalogHeaderMaps        = &catalogMapTable{name: "generatedHeaders", doc: "the distinct Headers maps", field: "Headers", keyType: "string", valueType: "string"}
 	catalogThinkingLevelMaps = &catalogMapTable{name: "generatedThinkingLevelMaps", doc: "the distinct ThinkingLevelMap maps", field: "ThinkingLevelMap", keyType: "ModelThinkingLevel", valueType: "*string"}
-	catalogSamplingParams    = &catalogMapTable{name: "generatedSamplingParams", doc: "the distinct SamplingParams maps", field: "SamplingParams", keyType: "string", valueType: "any"}
-	catalogPromptCaches      = &catalogMapTable{name: "generatedPromptCaches", doc: "the distinct PromptCache maps", field: "PromptCache", keyType: "string", valueType: "float64"}
+	catalogSamplingParams    = &catalogMapTable{name: "generatedSamplingParams", doc: "the distinct SamplingParams maps", field: "SamplingParams", keyType: "string", valueType: "any", own: true}
+	catalogPromptCaches      = &catalogMapTable{name: "generatedPromptCaches", doc: "the distinct PromptCache maps", field: "PromptCache", keyType: "string", valueType: "float64", own: true}
 	catalogCompats           = &catalogMapTable{name: "generatedCompats", doc: "the distinct Compat values", elem: "ModelCompat", pointer: true}
 	catalogInputLimits       = &catalogMapTable{name: "generatedInputLimits", doc: "the distinct InputLimits values", elem: "ModelInputLimits", pointer: true}
 	catalogMapTables         = []*catalogMapTable{catalogHeaderMaps, catalogThinkingLevelMaps, catalogSamplingParams, catalogPromptCaches, catalogCompats, catalogInputLimits}
@@ -1318,8 +1321,12 @@ func (t *catalogMapTable) declaration() string {
 		b.WriteString("}\n")
 		return b.String()
 	}
-	fmt.Fprintf(&b, "\n// %s is %s the catalog refers to; generatedCatalog builds them from %sPairs.\nvar %s [%d]map[%s]%s\n", t.name, t.doc, t.name, t.name, len(t.list), t.keyType, t.valueType)
-	fmt.Fprintf(&b, "\nvar %sPairs = [...][]generatedPair[%s, %s]{\n", t.name, t.keyType, t.valueType)
+	if t.own {
+		fmt.Fprintf(&b, "\n// %sPairs is %s the catalog refers to; generatedCatalog builds a map of its own from one of them for each row.\n", t.name, t.doc)
+	} else {
+		fmt.Fprintf(&b, "\n// %s is %s the catalog refers to; generatedCatalog builds them from %sPairs.\nvar %s [%d]map[%s]%s\n\n", t.name, t.doc, t.name, t.name, len(t.list), t.keyType, t.valueType)
+	}
+	fmt.Fprintf(&b, "var %sPairs = [...][]generatedPair[%s, %s]{\n", t.name, t.keyType, t.valueType)
 	for _, literal := range t.list {
 		fmt.Fprintf(&b, "\t%s,\n", literal)
 	}
@@ -1340,7 +1347,9 @@ func catalogResolver() string {
 	var b strings.Builder
 	b.WriteString("\n// generatedCatalog sets the maps of generatedRows and returns them as the catalog.\nfunc generatedCatalog() []GeneratedModel {\n")
 	for _, table := range catalogMapTables {
-		if table.field != "" && len(table.list) > 0 {
+		if table.own && len(table.list) > 0 {
+			fmt.Fprintf(&b, "\tfor _, ref := range %sRefs {\n\t\tgeneratedRows[ref.row].%s = generatedMap(%sPairs[ref.element])\n\t}\n", table.name, table.field, table.name)
+		} else if table.field != "" && len(table.list) > 0 {
 			fmt.Fprintf(&b, "\tgeneratedBuildMaps(%s[:], %sPairs[:])\n\tfor _, ref := range %sRefs {\n\t\tgeneratedRows[ref.row].%s = %s[ref.element]\n\t}\n", table.name, table.name, table.name, table.field, table.name)
 		}
 	}
@@ -1377,6 +1386,21 @@ func pairsLiteral[V any](m map[string]V, literal func(V) string) string {
 		parts = append(parts, fmt.Sprintf("{%q, %s}", key, literal(m[key])))
 	}
 	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+// samplingValueLiteral spells a JSON sampling value as a Go value of type any: null is nil, and a number is a float64, as encoding/json decodes it.
+func samplingValueLiteral(v any) string {
+	switch v := v.(type) {
+	case nil:
+		return "nil"
+	case float64:
+		return "float64(" + strconv.FormatFloat(v, 'g', -1, 64) + ")"
+	case string:
+		return strconv.Quote(v)
+	case bool:
+		return strconv.FormatBool(v)
+	}
+	return fmt.Sprintf("%#v", v)
 }
 
 // thinkingLevelPairs spells a thinking level map as the pairs of a generatedPair list.
