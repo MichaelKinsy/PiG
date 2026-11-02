@@ -6,16 +6,13 @@ package ai_test
 // non-JSON constructs leave no mark), the arguments as JSON text and Pi's expected outcome. testdata/validation_probes_corpus.mjs regenerates it from the Pi test file.
 
 import (
-	_ "embed"
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
 )
-
-//go:embed testdata/validation-probes.json
-var validationProbeCorpus []byte
 
 type validationProbe struct {
 	Test     string `json:"test"`
@@ -27,8 +24,12 @@ type validationProbe struct {
 
 func loadValidationProbes(t testing.TB) []validationProbe {
 	t.Helper()
+	corpus, err := os.ReadFile("testdata/validation-probes.json")
+	if err != nil {
+		t.Fatal(err)
+	}
 	var probes []validationProbe
-	if err := json.Unmarshal(validationProbeCorpus, &probes); err != nil {
+	if err := json.Unmarshal(corpus, &probes); err != nil {
 		t.Fatal(err)
 	}
 	return probes
