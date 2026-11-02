@@ -650,3 +650,20 @@ func TestNodeTheDefaultStopGraceIsPisFiveSeconds(t *testing.T) {
 		t.Fatalf("stop grace with StopGrace set = %v, want %v", got, grace)
 	}
 }
+
+// The context of the work the process asked of this side (a bridged proxy's request, NodeMember.Value) lives as long as the
+// process does: it is not ended before and is ended once the process is.
+func TestNodeLifeContextEndsWithTheProcess(t *testing.T) {
+	_, node := probeNode(t, `echo: async (args) => args`, NodeOptions{OnOutput: func(NodeStream, []byte) {}}, nil)
+	if err := node.life.Err(); err != nil {
+		t.Fatalf("life ended while the process runs: %v", err)
+	}
+	if err := node.Close(background); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-node.life.Done():
+	case <-time.After(10 * time.Second):
+		t.Fatal("life did not end with the process")
+	}
+}

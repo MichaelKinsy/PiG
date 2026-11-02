@@ -493,7 +493,7 @@ type NodeMember struct {
 // there throws (`not_ready` before the first binding, the failure's error, `released`), as a *NodeError wrapping the
 // ChordError.
 func (m *NodeMember) Value() (delta.JsonValue, error) {
-	reply, err := m.reference.request("value", &memberRequest{Handle: m.reference.handle, Member: m.name}, context.Background())
+	reply, err := m.reference.request("value", &memberRequest{Handle: m.reference.handle, Member: m.name}, m.reference.node.life)
 	if err != nil {
 		return nil, err
 	}

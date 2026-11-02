@@ -1,7 +1,9 @@
 package plugins
 
 import (
+	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -82,4 +84,36 @@ func TestNodeGetPinsAKeyOfAKeyedMember(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = host.GetOptions{}
+}
+
+// Pi's BuiltFacet: a failed build has its `errors` array (there when it is empty too), a script has none.
+func TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways(t *testing.T) {
+	for _, each := range []struct {
+		name  string
+		built builtWire
+		want  string
+	}{
+		{"failed without errors", builtWire{Kind: BuiltFacetFailed, Plugin: "@a/b", Facet: "worker"}, `{"kind":"failed","plugin":"@a/b","facet":"worker","errors":[]}`},
+		{"failed", builtWire{Kind: BuiltFacetFailed, Plugin: "@a/b", Facet: "worker", Errors: []string{"x"}}, `{"kind":"failed","plugin":"@a/b","facet":"worker","errors":["x"]}`},
+		{"script", builtWire{Kind: BuiltFacetScript, Plugin: "@a/b", Facet: "worker", Source: "s", Digest: "d"}, `{"kind":"script","plugin":"@a/b","facet":"worker","source":"s","digest":"d"}`},
+	} {
+		got, err := json.Marshal(each.built)
+		if err != nil || string(got) != each.want {
+			t.Errorf("%s: %s, %v; want %s", each.name, got, err, each.want)
+		}
+	}
+}
+
+// The proxy script is JavaScript source: a facet named with <, > or & is written as JSON.stringify writes it, not as \u003c.
+func TestBridgedProxyScriptWritesHTMLCharactersAsJSONStringifyDoes(t *testing.T) {
+	if got := quoteJS("a<b>&c"); got != `"a<b>&c"` {
+		t.Fatalf("quoteJS = %s", got)
+	}
+	scripts, err := bridgedScripts("worker", []BridgedFacet{{Name: "core<&>"}})
+	if err != nil || len(scripts) != 1 {
+		t.Fatalf("bridgedScripts = %v, %v", scripts, err)
+	}
+	if source := scripts[0].Built.Source; !strings.Contains(source, `"name":"core<&>"`) || strings.Contains(source, `\u003c`) {
+		t.Fatalf("source = %s", source)
+	}
 }

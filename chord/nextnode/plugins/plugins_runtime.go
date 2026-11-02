@@ -168,13 +168,33 @@ type pluginWire struct {
 	External     []string          `json:"external"`
 }
 
+// builtWire is a BuiltFacet as Pi's data has it: a script has its source and digest, a failed build its errors, an array
+// that is there when it is empty too.
 type builtWire struct {
-	Kind   BuiltKind `json:"kind"`
-	Plugin string    `json:"plugin"`
-	Facet  string    `json:"facet"`
-	Source string    `json:"source,omitempty"`
-	Digest string    `json:"digest,omitempty"`
-	Errors []string  `json:"errors,omitempty"`
+	Kind   BuiltKind
+	Plugin string
+	Facet  string
+	Source string
+	Digest string
+	Errors []string
+}
+
+func (b builtWire) MarshalJSON() ([]byte, error) {
+	if b.Kind == BuiltFacetFailed {
+		return json.Marshal(struct {
+			Kind   BuiltKind `json:"kind"`
+			Plugin string    `json:"plugin"`
+			Facet  string    `json:"facet"`
+			Errors []string  `json:"errors"`
+		}{b.Kind, b.Plugin, b.Facet, nonNil(b.Errors)})
+	}
+	return json.Marshal(struct {
+		Kind   BuiltKind `json:"kind"`
+		Plugin string    `json:"plugin"`
+		Facet  string    `json:"facet"`
+		Source string    `json:"source"`
+		Digest string    `json:"digest"`
+	}{b.Kind, b.Plugin, b.Facet, b.Source, b.Digest})
 }
 
 func scriptsWire(scripts []PluginScript) []scriptWire {
