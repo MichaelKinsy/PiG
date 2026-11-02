@@ -1474,9 +1474,9 @@ rationale = "validateToolCall and validateToolArguments of validation.ts compile
 [[files]]
 path = "packages/ai/src/utils/version.ts"
 change = "added"
-disposition = "unchanged-observable"
-evidence = ["test:ai/identity_test.go#TestClientIdentityVersionDefaultsToTheProductVersion"]
-rationale = "The release commit moves PI_AI_VERSION from 1.4.0 to 1.5.0 (b556cfe5..v1.5.0). PiG does not carry the constant: ai/user_agent.go ProductVersion, PiG's composite release version (D65), stands for it as the default version of a detailed User-Agent, so no Go behavior changes with the number."
+disposition = "ported"
+evidence = ["test:ai/user_agent_version_oracle_test.go#TestUserAgentVersionFieldFollowsPi", "test:ai/user_agent_test.go#TestPiUserAgentFormat", "test:ai/identity_test.go#TestClientIdentityVersionDefaultsToTheProductVersion", "test:coding/cli/main_test.go#TestVersionStringIncludesPigAndUpstreamVersions", "test:coding/cli/main_test.go#TestVersionFlagsHonorPiFormatWithoutChangingDetailedVersion", "test:coding/extension/host/subprocess/runtime_node_product_version_test.go#TestNodeExtensionUserAgentNamesPiGAndItsVersion"]
+rationale = "The release commit moves PI_AI_VERSION from 1.4.0 to 1.5.0 (b556cfe5..v1.5.0), and the number reaches users: the User-Agent (pi/<ver>), `pi --version`, and PI_AI_VERSION as extensions read it. PiG does not carry the constant; ai/user_agent.go ProductVersion, PiG's composite release version (D65, pig/<ver>+<pi ver>), is the one version those three surfaces report. Ported as that value: TestUserAgentVersionFieldFollowsPi compares the User-Agent version field with Pi's PI_AI_VERSION default, TestPiUserAgentFormat and TestClientIdentityVersionDefaultsToTheProductVersion pin the User-Agent and the identity default, TestVersionStringIncludesPigAndUpstreamVersions and TestVersionFlagsHonorPiFormatWithoutChangingDetailedVersion pin `--version`, and TestNodeExtensionUserAgentNamesPiGAndItsVersion pins what a Node extension's getPiUserAgent reports."
 
 [[files]]
 path = "packages/chord/src/cell.ts"
