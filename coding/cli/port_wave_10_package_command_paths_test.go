@@ -1,5 +1,7 @@
 package cli
 
+// pi: packages/coding-agent/src/package-manager-cli.ts
+
 import (
 	"context"
 	"encoding/json"
