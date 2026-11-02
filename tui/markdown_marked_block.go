@@ -1,6 +1,7 @@
 package tui
 
 // Ports node_modules/marked@18.0.11/src/Tokenizer.ts:514-543,545-606 (html, def and table), node_modules/marked@18.0.11/src/helpers.ts:38-78,112-124 (splitCells, trimTrailingBlankLines) and the GFM block rules of node_modules/marked@18.0.11/src/rules.ts:106-244 that end a paragraph, define a link or open an HTML block or table.
+// Ports packages/tui/src/components/markdown.ts (its marked block lexer rules).
 
 import (
 	"slices"

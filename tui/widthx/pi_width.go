@@ -1,5 +1,7 @@
 package widthx
 
+// Ports packages/tui/src/utils.ts (graphemeWidth and the grapheme and word class lookups)
+
 // pi_width.go ports upstream pi-tui's per-grapheme width and grapheme
 // segmentation (packages/tui/src/utils.ts graphemeWidth + Intl.Segmenter)
 // onto tables generated from the same data Pi uses at runtime

@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/tui/src/components/markdown.ts (the LaTeX tokenizer extensions and render seams)
+
 import (
 	"strings"
 	"unicode/utf8"

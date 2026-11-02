@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/tui/src/tui-alt-screen.ts (SGR mouse and wheel handling)
+
 import (
 	"math"
 	"os"
