@@ -1082,5 +1082,12 @@
    "old": "*segments = append(*segments, typed)",
    "new": "*segments = append((*segments)[:0], typed)"
   }
+ ],
+ "packages/chord/src/next/contracts/schema.ts": [
+  {
+   "file": "chord/next/contracts/schema.go",
+   "old": "delta.JsonObjectOf(\"^.*$\", value.Node)",
+   "new": "delta.JsonObjectOf(\"^.+$\", value.Node)"
+  }
  ]
 }

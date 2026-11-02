@@ -760,7 +760,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/contracts/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
 | `packages/chord/src/next/contracts/names.ts` | `chord/next/contracts/names.go` | ✅ |
 | `packages/chord/src/next/contracts/params.ts` | `chord/next/contracts/params.go` | ✅ |
-| `packages/chord/src/next/contracts/schema.ts` | `chord/next/contracts/schema.go, chord/next/contracts/namedmap.go, chord/next/contracts/jsorder.go` | ✅ |
+| `packages/chord/src/next/contracts/schema.ts` | `chord/next/contracts/schema.go` | ✅ |
 | `packages/chord/src/next/contracts/snapshot.ts` | `chord/next/contracts/snapshot.go` | ✅ |
 | `packages/chord/src/next/data/args.ts` | `chord/next/data/args.go` | ✅ |
 | `packages/chord/src/next/data/errors.ts` | `chord/next/data/errors.go` | ✅ |
@@ -815,7 +815,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/store/claims.ts` | `chord/next/store/claims.go` | ✅ |
 | `packages/chord/src/next/store/refusal.ts` | `chord/next/store/refusal.go` | ✅ |
 | `packages/chord/src/next/store/columns.ts` | `chord/next/store/columns.go` | ✅ |
-| `packages/chord/src/next/store/json-column.ts` | `json_column.go` | ✅ |
+| `packages/chord/src/next/store/json-column.ts` | `chord/next/store/json_column.go` | ✅ |
 | `packages/chord/src/next/store/rows.ts` | `chord/next/store/rows.go` | ✅ |
 | `packages/chord/src/next/store/sql.ts` | `chord/next/store/sql.go` | ✅ |
 | `packages/chord/src/next/store/jsonl.ts` | `chord/next/store/jsonl.go` | ✅ |

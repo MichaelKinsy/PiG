@@ -43,5 +43,15 @@
    "pkg:chord/next#Compression::property:inflate": "chord/next/link/part.go#Compression",
    "pkg:chord/next#Compression::property:inflate::call:0": "chord/next/link/part.go#Compression"
   }
+ },
+ "packages/chord/src/next/contracts/schema.ts": {
+  "reason": "Pi's str, num, int and bool are Chord's schema constructors of contracts/schema.ts; the ledger's name rule bound them to the store column constructors of the same names (store/columns.go, which wrap them in a ColumnSchema) and method to the chord v1 Method type. The implementations of this Pi file are contracts.Str, Num, Int, Bool and NewMethod (Go cannot name a function method beside the Method type); the helpers of jsorder.go and namedmap.go are shared by every file of the package and are not cited.",
+  "members": {
+   "pkg:chord/next#str": "chord/next/contracts/schema.go#Str",
+   "pkg:chord/next#num": "chord/next/contracts/schema.go#Num",
+   "pkg:chord/next#int": "chord/next/contracts/schema.go#Int",
+   "pkg:chord/next#bool": "chord/next/contracts/schema.go#Bool",
+   "pkg:chord/next#method": "chord/next/contracts/schema.go#NewMethod"
+  }
  }
 }
