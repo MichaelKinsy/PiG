@@ -7,6 +7,7 @@ import (
 
 	"bytes"
 	"encoding/json"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -62,6 +63,7 @@ func TestBedrockUserAgentMatchesPi(t *testing.T) {
 		t.Fatal(err)
 	}
 	cmd := exec.CommandContext(t.Context(), "node", "-e", script, piCodingAgentPackage(t), string(encoded))
+	cmd.Env = withoutAWSEnvironment(os.Environ())
 	cmd.Stderr = new(bytes.Buffer)
 	out, err := cmd.Output()
 	if err != nil {

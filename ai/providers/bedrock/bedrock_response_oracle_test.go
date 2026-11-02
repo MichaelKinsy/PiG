@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -162,6 +163,7 @@ func TestBedrockResponseStreamMatchesPi(t *testing.T) {
 	}
 	cmd := exec.CommandContext(t.Context(), "node", "testdata/bedrock_response_oracle.mjs", pigversion.UpstreamPackageVersion)
 	cmd.Stdin = bytes.NewReader(input)
+	cmd.Env = withoutAWSEnvironment(os.Environ())
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	output, err := cmd.Output()
