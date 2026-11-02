@@ -18,16 +18,16 @@ import (
 // Go forms: "refuse" is StateMapping{Refuse: true} / MethodMapping{Refuse: true}; a remote table maps state in
 // VersionMappings.VariantState (variant, then member), a local one in VersionMappings.State (member).
 
-func notesWithNote(t testing.TB) (v1 *contracts.Contract, noteV2 func() contracts.TSchema) {
+func notesWithNote(t testing.TB) (v1 *contracts.Contract, noteV2 func() contracts.Schema) {
 	t.Helper()
-	note := func() contracts.TSchema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
+	note := func() contracts.Schema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
 	v1 = remote(t, "notes", 1, props(contracts.Prop("session", contracts.Str())),
 		variant("editor", state(contracts.Prop("notes", contracts.Arr(note())), contracts.Prop("count", contracts.Int())),
 			contracts.Meth("add", contracts.NewMethod(note(), contracts.Str())),
 			contracts.Meth("clear", contracts.NewMethod())),
 		variant("reader", state(contracts.Prop("notes", contracts.Arr(note()))),
 			contracts.Meth("add", contracts.NewMethod(note(), contracts.Str()))))
-	return v1, func() contracts.TSchema {
+	return v1, func() contracts.Schema {
 		return contracts.Obj(contracts.Prop("text", contracts.Str()), contracts.Prop("tag", contracts.Str()))
 	}
 }
@@ -129,7 +129,7 @@ func TestAcceptsStateMappings(t *testing.T) {
 	})
 
 	t.Run("is checked by edit, not by schema: a no-op edit and a reverted change still need mappings", func(t *testing.T) {
-		note := func() contracts.TSchema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
+		note := func() contracts.Schema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
 		noop := evolveWith(t, notes, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
 			return e.State("reader", "notes", contracts.Arr(note()))
 		})
@@ -329,8 +329,8 @@ func TestAcceptsVersions(t *testing.T) {
 }
 
 func TestAcceptsKeyedMappings(t *testing.T) {
-	note := func() contracts.TSchema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
-	noteV2 := func() contracts.TSchema {
+	note := func() contracts.Schema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
+	noteV2 := func() contracts.Schema {
 		return contracts.Obj(contracts.Prop("text", contracts.Str()), contracts.Prop("tag", contracts.Str()))
 	}
 	store := local(t, "store", 1, noParams(), contracts.Mem("notes", contracts.Keyed(note())), contracts.Mem("drafts", contracts.Keyed(note())))

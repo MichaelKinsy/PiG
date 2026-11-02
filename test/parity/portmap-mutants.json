@@ -803,6 +803,445 @@
    "new": "\t\t\tcall.changes = append(call.changes[:0], change)\n"
   }
  ],
+ "packages/chord/src/next/store/applier.ts": [
+  {
+   "file": "chord/next/store/applier.go",
+   "old": "if !IndexName.MatchString(write.Name) || exists {",
+   "new": "if !IndexName.MatchString(write.Name) || !exists {"
+  }
+ ],
+ "packages/chord/src/next/store/export.ts": [
+  {
+   "file": "chord/next/store/export.go",
+   "old": "&EndPart{Writes: parts.writes}",
+   "new": "&EndPart{Writes: parts.writes + 1}"
+  }
+ ],
+ "packages/chord/src/next/store/allocator.ts": [
+  {
+   "file": "chord/next/store/allocator.go",
+   "old": "ids.next = min(id+1, MaxSafeInteger)",
+   "new": "ids.next = min(id+2, MaxSafeInteger)"
+  }
+ ],
+ "packages/chord/src/next/store/catalog.ts": [
+  {
+   "file": "chord/next/store/catalog.go",
+   "old": "record.Version = int(integer)\n",
+   "new": "record.Version = int(integer) + 1\n"
+  }
+ ],
+ "packages/chord/src/next/store/evaluate.ts": [
+  {
+   "file": "chord/next/store/evaluate.go",
+   "old": "\t\tcase truthTrue:\n\t\t\treturn truthFalse\n\t\t}\n\t\treturn truthTrue",
+   "new": "\t\tcase truthTrue:\n\t\t\treturn truthTrue\n\t\t}\n\t\treturn truthTrue"
+  }
+ ],
+ "packages/chord/src/next/store/table-writes.ts": [
+  {
+   "file": "chord/next/store/table_writes.go",
+   "old": "write := &PutWrite{Table: table, Row: row.Row, Version: version, Columns: row.Columns}",
+   "new": "write := &PutWrite{Table: table, Row: row.Row, Version: version + 1, Columns: row.Columns}"
+  }
+ ],
+ "packages/chord/src/next/store/table-changes.ts": [
+  {
+   "file": "chord/next/store/table_changes.go",
+   "old": "if changes.bulk {",
+   "new": "if !changes.bulk {"
+  }
+ ],
+ "packages/chord/src/next/store/refusal.ts": [
+  {
+   "file": "chord/next/store/refusal.go",
+   "old": "return coded.Code() == sqliteConstraintCheck",
+   "new": "return coded.Code() != sqliteConstraintCheck"
+  }
+ ],
+ "packages/chord/src/next/store/table-history.ts": [
+  {
+   "file": "chord/next/store/table_history.go",
+   "old": "if version > definition.Version {",
+   "new": "if version >= definition.Version {"
+  }
+ ],
+ "packages/chord/src/next/store/table-migration.ts": [
+  {
+   "file": "chord/next/store/table_migration.go",
+   "old": "const MigrationChunk = 100\n",
+   "new": "const MigrationChunk = 101\n"
+  }
+ ],
+ "packages/chord/src/next/store/schema.ts": [
+  {
+   "file": "chord/next/store/schema.go",
+   "old": "VALUES (1, 0, 2, 0, 0)",
+   "new": "VALUES (1, 0, 3, 0, 0)"
+  }
+ ],
+ "packages/chord/src/next/documents/address-source.ts": [
+  {
+   "file": "chord/next/documents/address_source.go",
+   "old": "if prepared.Base() == before && !source.retired {",
+   "new": "if prepared.Base() != before && !source.retired {"
+  }
+ ],
+ "packages/chord/src/next/documents/documents.ts": [
+  {
+   "file": "chord/next/documents/documents.go",
+   "old": "if token.Sealed() || d.state != documentsOpen {",
+   "new": "if token.Sealed() && d.state != documentsOpen {"
+  }
+ ],
+ "packages/chord/src/next/documents/fence.ts": [
+  {
+   "file": "chord/next/documents/fence.go",
+   "old": "token.sealed.Store(true)",
+   "new": "token.sealed.Store(false)"
+  }
+ ],
+ "packages/chord/src/next/documents/keyed-slot.ts": [
+  {
+   "file": "chord/next/documents/keyed_slot.go",
+   "old": "slices.SortFunc(it.buffer, store.CompareText)",
+   "new": "slices.SortFunc(it.buffer, func(a, b string) int { return 0 })"
+  }
+ ],
+ "packages/chord/src/next/documents/line.ts": [
+  {
+   "file": "chord/next/documents/line.go",
+   "old": "\t<-place.previous\n",
+   "new": "\t_ = place.previous\n"
+  }
+ ],
+ "packages/chord/src/next/documents/persistence.ts": [
+  {
+   "file": "chord/next/documents/persistence.go",
+   "old": "if version > code {",
+   "new": "if version < code {"
+  }
+ ],
+ "packages/chord/src/next/documents/residency.ts": [
+  {
+   "file": "chord/next/documents/residency.go",
+   "old": "const granuleMs int64 = 1_000",
+   "new": "const granuleMs int64 = 2_000"
+  }
+ ],
+ "packages/chord/src/next/documents/slot.ts": [
+  {
+   "file": "chord/next/documents/slot.go",
+   "old": "if definition.Version < current.Version {",
+   "new": "if definition.Version > current.Version {"
+  }
+ ],
+ "packages/chord/src/next/documents/transaction.ts": [
+  {
+   "file": "chord/next/documents/transaction.go",
+   "old": "if tx.state != txCommitting || tx.token.Sealed() {",
+   "new": "if tx.state != txCommitting && tx.token.Sealed() {"
+  }
+ ],
+ "packages/chord/src/next/jobs/persisted.ts": [
+  {
+   "file": "chord/next/host/jobs_persisted.go",
+   "old": "store.RetireDocument(state.ID, state.Revision)",
+   "new": "store.RetireDocument(state.ID, state.Revision+1)"
+  }
+ ],
+ "packages/chord/src/next/jobs/records.ts": [
+  {
+   "file": "chord/next/host/jobs_records.go",
+   "old": "\t\tif reason == cutReload {\n",
+   "new": "\t\tif reason != cutReload {\n"
+  }
+ ],
+ "packages/chord/src/next/jobs/run-states.ts": [
+  {
+   "file": "chord/next/host/jobs_run_states.go",
+   "old": "each.deadline = min(each.deadline, addMillis(states.loop.Now(), change.WithinMs))",
+   "new": "each.deadline = max(each.deadline, addMillis(states.loop.Now(), change.WithinMs))"
+  }
+ ],
+ "packages/chord/src/next/jobs/stored.ts": [
+  {
+   "file": "chord/next/host/jobs_stored.go",
+   "old": "record.Set(\"finishFailures\", float64(finishFailures))",
+   "new": "record.Set(\"finishFailures\", float64(finishFailures+1))"
+  }
+ ],
+ "packages/chord/src/next/contracts/fingerprint.ts": [
+  {
+   "file": "chord/next/contracts/fingerprint.go",
+   "old": "slices.SortStableFunc(entries, func(a, b normalEntry) int { return compare16(a.name, b.name) })",
+   "new": "slices.SortStableFunc(entries, func(a, b normalEntry) int { return compare16(b.name, a.name) })"
+  }
+ ],
+ "packages/chord/src/next/contracts/history.ts": [
+  {
+   "file": "chord/next/contracts/history.go",
+   "old": "\t\t\t\tseen[name] = true\n",
+   "new": "\t\t\t\tseen[name] = false\n"
+  }
+ ],
+ "packages/chord/src/next/contracts/names.ts": [
+  {
+   "file": "chord/next/contracts/names.go",
+   "old": "c == '~'",
+   "new": "c == '!'"
+  }
+ ],
+ "packages/chord/src/next/contracts/params.ts": [
+  {
+   "file": "chord/next/contracts/params.go",
+   "old": "\"maxLength\", \"pattern\", \"format\"}",
+   "new": "\"maxLength\", \"format\"}"
+  }
+ ],
+ "packages/chord/src/next/contracts/snapshot.ts": [
+  {
+   "file": "chord/next/contracts/snapshot.go",
+   "old": "closed := node.Value(\"additionalProperties\") == false",
+   "new": "closed := node.Value(\"additionalProperties\") == true"
+  }
+ ],
+ "packages/chord/src/next/data/args.ts": [
+  {
+   "file": "chord/next/data/args.go",
+   "old": "accepted.Version == version && accepted.Fingerprint == fingerprint",
+   "new": "accepted.Version == version || accepted.Fingerprint == fingerprint"
+  }
+ ],
+ "packages/chord/src/next/data/params.ts": [
+  {
+   "file": "chord/next/data/params.go",
+   "old": "parts = append(parts, contract.Name, key)",
+   "new": "parts = append(parts, key, contract.Name)"
+  }
+ ],
+ "packages/chord/src/next/data/validator.ts": [
+  {
+   "file": "chord/next/data/validator.go",
+   "old": "\"chord.data.validations\"",
+   "new": "\"chord.data.validation\""
+  }
+ ],
+ "packages/chord/src/next/registries/contribution.ts": [
+  {
+   "file": "chord/next/registries/contribution.go",
+   "old": "if c.Version > version || (c.Version < version && adapter == nil) {",
+   "new": "if c.Version >= version || (c.Version < version && adapter == nil) {"
+  }
+ ],
+ "packages/chord/src/next/registries/internal.ts": [
+  {
+   "file": "chord/next/registries/internal.go",
+   "old": "value, err = nil, asError(recovered)",
+   "new": "value, err = nil, nil"
+  }
+ ],
+ "packages/chord/src/next/registries/record.ts": [
+  {
+   "file": "chord/next/registries/record.go",
+   "old": "return strings.Compare(left.Plugin, right.Plugin)",
+   "new": "return strings.Compare(right.Plugin, left.Plugin)"
+  }
+ ],
+ "packages/chord/src/next/registries/value.ts": [
+  {
+   "file": "chord/next/registries/value.go",
+   "old": "if mapped != nil && state.Identical(mapped.from, from) && mapped.provider == served {",
+   "new": "if mapped != nil && state.Identical(mapped.from, from) && mapped.provider != served {"
+  }
+ ],
+ "packages/chord/src/next/state/batch.ts": [
+  {
+   "file": "chord/next/state/batch.go",
+   "old": "for i := 0; i < len(b.flushes); i++ {",
+   "new": "for i := 0; i < len(b.flushes)-1; i++ {"
+  }
+ ],
+ "packages/chord/src/next/link/channel.ts": [
+  {
+   "file": "chord/next/link/channel.go",
+   "old": "silent >= ping && !c.pinged",
+   "new": "silent >= ping && c.pinged"
+  }
+ ],
+ "packages/chord/src/next/link/errors.ts": [
+  {
+   "file": "chord/next/link/errors.go",
+   "old": "if kind == \"chord\" {",
+   "new": "if kind == \"chard\" {"
+  }
+ ],
+ "packages/chord/src/next/link/values.ts": [
+  {
+   "file": "chord/next/link/values.go",
+   "old": "*segments = append(*segments, typed)",
+   "new": "*segments = append((*segments)[:0], typed)"
+  }
+ ],
+ "packages/chord/src/next/contracts/schema.ts": [
+  {
+   "file": "chord/next/contracts/schema.go",
+   "old": "delta.JsonObjectOf(\"^.*$\", value.Node)",
+   "new": "delta.JsonObjectOf(\"^.+$\", value.Node)"
+  }
+ ],
+ "packages/chord/src/next/host/backoff.ts": [
+  {
+   "file": "chord/next/host/host_backoff.go",
+   "old": "return min(previous*2, maxDelay)",
+   "new": "return min(previous*3, maxDelay)"
+  }
+ ],
+ "packages/chord/src/next/host/deadline.ts": [
+  {
+   "file": "chord/next/host/host_deadline.go",
+   "old": "d.remaining = max(0, d.remaining-time.Duration(d.loop.Now()-d.started)*time.Millisecond)",
+   "new": "d.remaining = max(0, d.remaining+time.Duration(d.loop.Now()-d.started)*time.Millisecond)"
+  }
+ ],
+ "packages/chord/src/next/host/uuid.ts": [
+  {
+   "file": "chord/next/host/host_uuid.go",
+   "old": "\t\tstate.sequence++\n",
+   "new": "\t\t_ = state.sequence\n"
+  }
+ ],
+ "packages/chord/src/next/host/unbound.ts": [
+  {
+   "file": "chord/next/host/host_unbound.go",
+   "old": "principal != nil && revoked(principal)",
+   "new": "principal != nil && !revoked(principal)"
+  }
+ ],
+ "packages/chord/src/next/host/retry-on.ts": [
+  {
+   "file": "chord/next/host/host_retry_on.go",
+   "old": "if call.Kind == chord.WatchCallValue {",
+   "new": "if call.Kind != chord.WatchCallValue {"
+  }
+ ],
+ "packages/chord/src/next/host/dependencies.ts": [
+  {
+   "file": "chord/next/host/host_dependencies.go",
+   "old": "|| err.Code == data.CodeForbidden",
+   "new": "|| err.Code == data.CodeUnavailable"
+  }
+ ],
+ "packages/chord/src/next/host/members.ts": [
+  {
+   "file": "chord/next/host/host_members.go",
+   "old": "fmt.Sprintf(\"derive #%d\", position+1)",
+   "new": "fmt.Sprintf(\"derive #%d\", position)"
+  }
+ ],
+ "packages/chord/src/next/host/destination.ts": [
+  {
+   "file": "chord/next/host/host_destination.go",
+   "old": "from.role == linkRoleParent ||",
+   "new": "from.role != linkRoleParent ||"
+  }
+ ],
+ "packages/chord/src/next/host/object.ts": [
+  {
+   "file": "chord/next/host/host_object.go",
+   "old": "if kind != objectLive || o.served.linger == 0 {",
+   "new": "if kind != objectLive || o.served.linger != 0 {"
+  }
+ ],
+ "packages/chord/src/next/host/adapted.ts": [
+  {
+   "file": "chord/next/host/host_adapted.go",
+   "old": "strconv.Itoa(version) + \" is not served here\"",
+   "new": "strconv.Itoa(version) + \" is not served\""
+  }
+ ],
+ "packages/chord/src/next/host/reference-keys.ts": [
+  {
+   "file": "chord/next/host/host_reference_keys.go",
+   "old": "if entry.holders > 0 {",
+   "new": "if entry.holders > 1 {"
+  }
+ ],
+ "packages/chord/src/next/host/reference-source.ts": [
+  {
+   "file": "chord/next/host/host_reference_source.go",
+   "old": "if current.failure == nil {",
+   "new": "if current.failure != nil {"
+  }
+ ],
+ "packages/chord/src/next/remote/hold.ts": [
+  {
+   "file": "chord/next/host/remote_hold.go",
+   "old": "message.RetryIn = link.Some(int(max(0, *shown.RetryAt",
+   "new": "message.RetryIn = link.Some(int(min(0, *shown.RetryAt"
+  }
+ ],
+ "packages/chord/src/next/remote/remote-object.ts": [
+  {
+   "file": "chord/next/host/remote_remote_object.go",
+   "old": "if _, twice := retirements[target]; twice {",
+   "new": "if _, twice := retirements[target]; !twice {"
+  }
+ ],
+ "packages/chord/src/next/remote/host-link.ts": [
+  {
+   "file": "chord/next/host/remote_host_link.go",
+   "old": "\"%s: an origin on a child link\"",
+   "new": "\"%s: an origin on a link\""
+  }
+ ],
+ "packages/chord/src/next/remote/path.ts": [
+  {
+   "file": "chord/next/host/remote_path.go",
+   "old": "if p.current != link {",
+   "new": "if p.current == link {"
+  }
+ ],
+ "packages/chord/src/next/remote/calls.ts": [
+  {
+   "file": "chord/next/host/remote_calls.go",
+   "old": "if w.inFlight >= w.limit {",
+   "new": "if w.inFlight > w.limit {"
+  }
+ ],
+ "packages/chord/src/next/remote/provider.ts": [
+  {
+   "file": "chord/next/host/remote_provider.go",
+   "old": "Code: data.CodeAborted, Message: fmt.Sprintf(\"call %d: aborted by its caller\", id)",
+   "new": "Code: data.CodeUnavailable, Message: fmt.Sprintf(\"call %d: aborted by its caller\", id)"
+  },
+  {
+   "file": "chord/next/host/remote_provider.go",
+   "old": "Code: data.CodeNotReady, Message: fmt.Sprintf(\"hold %d: not bound yet\", served.id)",
+   "new": "Code: data.CodeUnavailable, Message: fmt.Sprintf(\"hold %d: not bound yet\", served.id)"
+  }
+ ],
+ "packages/chord/src/next/remote/consumer.ts": [
+  {
+   "file": "chord/next/host/remote_consumer.go",
+   "old": "Message: \"the link closed\"}, nil)",
+   "new": "Message: \"the link is closed\"}, nil)"
+  }
+ ],
+ "packages/chord/src/next/remote/relay.ts": [
+  {
+   "file": "chord/next/host/remote_relay.go",
+   "old": "func (h *relayedHold) retry(message *link.RetryMessage) {\n\tif upstream := h.upstream; upstream != nil {\n\t\tupstream.link.send(link.WithOrigin(message, link.Some(upstream.origin)))",
+   "new": "func (h *relayedHold) retry(message *link.RetryMessage) {\n\tif upstream := h.upstream; upstream != nil {\n\t\tupstream.link.send(&link.RetryMessage{Origin: link.Some(upstream.origin), Hold: message.Hold, Hops: message.Hops - 1})"
+  }
+ ],
+ "packages/chord/src/next/remote/replica.ts": [
+  {
+   "file": "chord/next/host/remote_replica.go",
+   "old": "flagged := retired || r.retiredWhileFailed",
+   "new": "flagged := retired"
+  }
+ ],
  "packages/chord/src/next-node/compression.ts": [
   {
    "file": "chord/nextnode/compression.go",
@@ -1617,6 +2056,32 @@
    "file": "internal/modelgen/define.go",
    "old": "\t\t\tinput = Strings(\"text\", \"image\")\n",
    "new": "\t\t\tinput = Strings(\"text\")\n"
+  }
+ ],
+ "packages/ai/scripts/check-model-data.ts": [
+  {
+   "file": "cmd/check-model-data/main.go",
+   "old": "Model data is missing or stale.",
+   "new": "Model data is missing or stalZ."
+  }
+ ],
+ "packages/ai/scripts/model-data.ts": [
+  {
+   "file": "internal/modelgen/modeldata/model_data.go",
+   "old": "out.WriteString(\":{\")",
+   "new": "out.WriteString(\":[\")"
+  },
+  {
+   "file": "internal/modelgen/modeldata/model_data_json.go",
+   "old": "result == \"true\"",
+   "new": "result == \"truz\""
+  }
+ ],
+ "packages/ai/scripts/hydrate-model-catalog.ts": [
+  {
+   "file": "internal/modelgen/modeldata/hydrate.go",
+   "old": "const hydrationGeneratedAt = \"1970-01-01T00:00:00.000Z\"",
+   "new": "const hydrationGeneratedAt = \"1970-01-01T00:00:00.001Z\""
   }
  ],
  "packages/schema/src/annotations.ts": [

@@ -3,19 +3,14 @@ package data_test
 import (
 	"context"
 	"reflect"
-	"runtime"
 	"testing"
-	"weak"
 
-	chordctx "github.com/MichaelKinsy/PiG/chord/context"
-	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
-	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
 // Ports the type-level cases of packages/chord/test/next/data: args.test.ts "types a call replacement's arguments as
-// values", errors.test.ts "is a tagged union: a wrong pairing is a type error" and validator.test.ts "leave nothing in
-// TypeBox's build accumulators".
+// values", errors.test.ts "is a tagged union: a wrong pairing is a type error". Pi deleted validator.test.ts "leave nothing in
+// TypeBox's build accumulators" with the switch to pi-schema.
 
 func TestCallReplacementArgumentsAreValues(t *testing.T) {
 	var checked data.CheckedArgs
@@ -42,26 +37,4 @@ func TestChordErrorConstructorKeepsAWrongPairing(t *testing.T) {
 			t.Errorf("ChordErrorFromJson accepted the wrong pairing %+v", init)
 		}
 	}
-}
-
-// Compiling keeps no state outside the validator: two owners compiled in sequence are each collected, with their
-// validators, once dropped; the only module-level holder is the weak-keyed cache, which the owner's collection evicts.
-func TestValidatorCompileLeavesNoBuildState(t *testing.T) {
-	type refs struct {
-		owner     weak.Pointer[contracts.Snapshot]
-		validator weak.Pointer[data.Validator]
-	}
-	compileOne := func(schema contracts.TSchema) refs {
-		owner := argumentsSnapshot(t, schema, "m")
-		validator, err := data.ValidatorFor(owner, chordctx.Background())
-		if err != nil {
-			t.Fatal(err)
-		}
-		return refs{weak.Make(owner), weak.Make(validator)}
-	}
-	first := compileOne(contracts.Obj(contracts.Prop("blob", contracts.Bytes()), contracts.Prop("n", contracts.Int())))
-	second := compileOne(contracts.Obj(contracts.Prop("blob", contracts.Bytes())))
-	nexttest.ExpectCollected(t, first.owner, second.owner)
-	runtime.GC()
-	nexttest.ExpectCollected(t, first.validator, second.validator)
 }

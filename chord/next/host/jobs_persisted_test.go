@@ -6,6 +6,7 @@ import (
 	"errors"
 	"math"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -34,6 +35,10 @@ import (
 // used the replacement says which. A promise that never settles (`new Promise(() => {})`) is a run that waits for the
 // test's end. `RETENTION_MS` and `vi.spyOn(Residency.prototype, "touch")` are `documents.RetentionMs` on the host's
 // virtual loop and a check of what the run states are (the spy has no Go form).
+//
+// pi: packages/chord/src/next/jobs/persisted.ts
+// pi: packages/chord/src/next/jobs/run-states.ts
+// pi: packages/chord/src/next/jobs/stored.ts
 
 var jobImportProgress = mustDefineState(documents.DefineState("import.progress", documents.StateOptions{
 	Schema:  contracts.Obj(contracts.Prop("done", contracts.Int())),
@@ -1576,4 +1581,66 @@ func TestPersistedVersionsResolvedByAReloadAPersistedRunBlockedForItsVersionAtIt
 	eventually(t, "the record to be retired", func() bool { return record(t, st, run.ID()) == nil })
 	must(t, host.Close(background))
 	must(t, st.Close(background))
+}
+
+// run-states.ts has no test of its own in Pi: its deadline rule is what persisted.test.ts › deferred state (D8) shows
+// through the object's timer (a change held withinMs is stored by then), asserted here on the states themselves: the
+// deadline of a run's held changes is the earliest of them, a change with no finite withinMs holds none, and the owner is
+// told each finite deadline.
+func TestRunStatesTheDeadlineOfHeldChangesIsTheEarliestOfThem(t *testing.T) {
+	loop := newFakeLoop()
+	loop.Advance(1_000)
+	var told []int64
+	states := newRunStates(loop, jobImportProgress, runStatesOwner{held: func(deadline int64) { told = append(told, deadline) }}, nil)
+	states.create("run", jsonObject("done", 0.0), nil)
+	hold := func(withinMs float64, done float64) {
+		t.Helper()
+		prepared := states.trackers["run"].PrepareReplace(jsonObject("done", done))
+		states.hold("run", prepared, documents.StoredChange{Kind: documents.StoredHeld, WithinMs: withinMs})
+	}
+	if got := states.deadline("run"); got != noDeadline {
+		t.Fatalf("deadline before any held change = %d, want none", got)
+	}
+	hold(100, 1)
+	if got := states.deadline("run"); got != 1_100 {
+		t.Fatalf("deadline after a change held 100 ms = %d, want 1100", got)
+	}
+	hold(30, 2)
+	if got := states.deadline("run"); got != 1_030 {
+		t.Fatalf("deadline after a change held 30 ms more = %d, want the earlier, 1030", got)
+	}
+	hold(math.Inf(1), 3)
+	if got := states.deadline("run"); got != 1_030 {
+		t.Fatalf("deadline after a change held without a deadline = %d, want 1030 kept", got)
+	}
+	if want := []int64{1_100, 1_030, 1_030}; !slices.Equal(told, want) {
+		t.Fatalf("deadlines told to the owner = %v, want %v", told, want)
+	}
+}
+
+// stored.ts has no test of its own in Pi: its record is what persisted.test.ts reads back across a crash. The counters the
+// record keeps (restarts, finishFailures) are asserted here on the record itself: a run's own counters, or the ones a change
+// sets, round-trip through storedRun and recordOf, and a new run's are zero.
+func TestStoredRunKeepsTheCountersOfARunAndOfAChange(t *testing.T) {
+	read := func(run *jobRun, fields storedFields) StoredRun {
+		t.Helper()
+		record, err := recordOf(storedRun(run, fields))
+		must(t, err)
+		return record
+	}
+	fresh := &jobRun{version: 1, fingerprint: "fp", args: pathArgs("a"), phase: phasePending}
+	got := read(fresh, storedFields{})
+	if got.Version != 1 || got.Fingerprint != "fp" || got.Phase != phasePending || got.Restarts != 0 || got.FinishFailures != 0 {
+		t.Fatalf("a new run's record = %+v, want version 1, fingerprint fp, pending, no restarts, no finish failures", got)
+	}
+	worn := &jobRun{version: 2, fingerprint: "fp", args: pathArgs("a"), phase: phaseRunning, restarts: 3, finishFailures: 2}
+	got = read(worn, storedFields{})
+	if got.Restarts != 3 || got.FinishFailures != 2 {
+		t.Fatalf("a run's own counters = %d restarts, %d finish failures, want 3 and 2", got.Restarts, got.FinishFailures)
+	}
+	restarts, finishFailures := 4, 5
+	got = read(worn, storedFields{restarts: &restarts, finishFailures: &finishFailures})
+	if got.Restarts != 4 || got.FinishFailures != 5 {
+		t.Fatalf("a change's counters = %d restarts, %d finish failures, want 4 and 5", got.Restarts, got.FinishFailures)
+	}
 }

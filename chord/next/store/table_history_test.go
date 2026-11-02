@@ -6,6 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
+// pi: packages/chord/src/next/store/table-history.ts
 // Ports packages/chord/test/next/store/table-history.test.ts: a table's history (slice 6a §9): what an activation
 // does with the recorded version: create, use, migrate from there (resuming a `migrating` one), or refuse a version
 // the code cannot reach.
