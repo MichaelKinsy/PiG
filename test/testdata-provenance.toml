@@ -213,3 +213,8 @@ generator = "schema/testdata/gen-errors.mjs"
 paths = ["schema/testdata/coerce-golden.json"]
 owner = "pi"
 generator = "schema/testdata/gen-coerce-golden.mjs"
+
+[[golden]]
+paths = ["tui/testdata/utf8-decoder-oracle.json"]
+owner = "pi"
+generator = "tui/testdata/utf8-decoder-oracle.mjs"

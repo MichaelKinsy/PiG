@@ -32715,6 +32715,28 @@
       ]
     },
     {
+      "id": "BF-c7b91e7",
+      "title": "Terminal input bytes decode as Node's StringDecoder does, as Pi's `stdin.setEncoding(\"utf8\")` reads them: a…",
+      "symptom": "Terminal input bytes decode as Node's StringDecoder does, as Pi's `stdin.setEncoding(\"utf8\")` reads them: a trailing C0, C1, F5-F7, or an E0, ED, F0 or F4 lead followed by an out-of-range byte is held until the next read instead of becoming U+FFFD at once, so a mouse report ending in such a byte is no longer taken as a wheel scroll.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Terminal input bytes decode as Node's StringDecoder does, as Pi's `stdin.setEncoding(\"utf8\")` reads them: a trailing C0, C1, F5-F7, or an E0, ED, F0 or F4 lead followed by an out-of-range byte is held until the next read instead of becoming U+FFFD at once, so a mouse report ending in such a byte is no longer taken as a wheel scroll.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c7b91e7cb9",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "tui/utf8_decoder_oracle_test.go::TestUTF8DecoderMatchesNodeStringDecoder"
+      ]
+    },
+    {
       "id": "BF-c7ebb23",
       "title": "A cancelled prompt in a `config.oauth` login now rejects with Pi's `Login cancelled` in every SDK (it was…",
       "symptom": "A cancelled prompt in a `config.oauth` login now rejects with Pi's `Login cancelled` in every SDK (it was `oauth prompt cancelled`, and Node's `onSelect` resolved `undefined`), so `/login` returns to the menu instead of reporting a failed login.",
