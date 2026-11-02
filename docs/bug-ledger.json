@@ -7391,6 +7391,120 @@
       ]
     },
     {
+      "id": "BF-3b9bd16",
+      "title": "`chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node…",
+      "symptom": "`chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node process ends; a `Close` past its deadline still stops a starting spare; a process running its host's close is not killed before the host's `closeTimeout`.",
+      "rootCause": "The bridged references and watches are released when the Node process ends; the caller-free `value` request is gone. The stop grace is Pi's 5 s and a process running its host's close is not killed before the host's closeTimeout. Close past its deadline still stops a starting spare. Channel.Idle returns when the channel closes. The lazy-attach expectation change is recorded as a NOBEHAVIOR entry, and the additive records describe the new embedding API.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node process ends; a `Close` past its deadline still stops a starting spare; a process running its host's close is not killed before the host's `closeTimeout`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3b9bd165af",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/next/contracts/normalform_test.go::TestNormalFormOfALocalContractHasItsMembersAsASortedDictionary",
+        "chord/next/contracts/normalform_test.go::TestNormalFormOfARemoteContractIsWhatItsFingerprintHashes",
+        "chord/next/host/host_link_deliveries_test.go::TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt",
+        "chord/next/link/channel_idle_test.go::TestIdleReturnsAtOnceWhenNothingWaitsBehindAnAsynchronousHandling",
+        "chord/next/link/channel_idle_test.go::TestIdleReturnsWhenTheChannelClosedWithAMessageHeld",
+        "chord/next/link/channel_idle_test.go::TestIdleWaitsForTheHeldMessageAndForTheOnesBehindIt",
+        "chord/nextnode/plugins/plugins_node_bridged_test.go::TestBridgedTheProcessEndingReleasesTheGoReferencesAndWatchesItsProxiesHeld",
+        "chord/nextnode/plugins/plugins_node_discover_test.go::TestDiscoverNodeFindsFnmAtItsDefaultDirectoriesWithoutFNMDIR",
+        "chord/nextnode/plugins/plugins_node_discover_test.go::TestDiscoverNodeTakesAVersionPrintedWithoutTheVPrefix",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeNeverRunsVoltaOrMiseShimsAndFindsTheirInstalls",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeStopsAProbeThatDoesNotAnswerAndTriesTheNextCandidate",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeWithOnlyAHungCandidateSaysItDidNotAnswer",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestStartNodeBoundsFindingNodeByTheReadyTimeout",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseDoesNotKillAHostThatIsStillClosingWithinItsCloseTimeout",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseKillsAHostThatDoesNotAnswerWithinTheGrace",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeRuntimeClosePastItsDeadlineStillStopsTheSpareThatIsStarting",
+        "test/parity/cmd/testprune/testprune_test.go::TestCheckCoEditsLedgerEntryOutranksTheCommitsOwnCitation"
+      ]
+    },
+    {
+      "id": "BF-3b9bd16-2",
+      "title": "`chord/nextnode/plugins`: finding Node stops a version probe that does not answer (10 s) and ends at…",
+      "symptom": "`chord/nextnode/plugins`: finding Node stops a version probe that does not answer (10 s) and ends at `ReadyTimeout`; fnm's default directories (including `~/Library/Application Support/fnm` on macOS and `%APPDATA%\\fnm` on Windows), and Volta's and mise's installs, are searched, and their shims are never run (D221).",
+      "rootCause": "The bridged references and watches are released when the Node process ends; the caller-free `value` request is gone. The stop grace is Pi's 5 s and a process running its host's close is not killed before the host's closeTimeout. Close past its deadline still stops a starting spare. Channel.Idle returns when the channel closes. The lazy-attach expectation change is recorded as a NOBEHAVIOR entry, and the additive records describe the new embedding API.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows, macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`: finding Node stops a version probe that does not answer (10 s) and ends at `ReadyTimeout`; fnm's default directories (including `~/Library/Application Support/fnm` on macOS and `%APPDATA%\\fnm` on Windows), and Volta's and mise's installs, are searched, and their shims are never run (D221).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3b9bd165af",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/next/contracts/normalform_test.go::TestNormalFormOfALocalContractHasItsMembersAsASortedDictionary",
+        "chord/next/contracts/normalform_test.go::TestNormalFormOfARemoteContractIsWhatItsFingerprintHashes",
+        "chord/next/host/host_link_deliveries_test.go::TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt",
+        "chord/next/link/channel_idle_test.go::TestIdleReturnsAtOnceWhenNothingWaitsBehindAnAsynchronousHandling",
+        "chord/next/link/channel_idle_test.go::TestIdleReturnsWhenTheChannelClosedWithAMessageHeld",
+        "chord/next/link/channel_idle_test.go::TestIdleWaitsForTheHeldMessageAndForTheOnesBehindIt",
+        "chord/nextnode/plugins/plugins_node_bridged_test.go::TestBridgedTheProcessEndingReleasesTheGoReferencesAndWatchesItsProxiesHeld",
+        "chord/nextnode/plugins/plugins_node_discover_test.go::TestDiscoverNodeFindsFnmAtItsDefaultDirectoriesWithoutFNMDIR",
+        "chord/nextnode/plugins/plugins_node_discover_test.go::TestDiscoverNodeTakesAVersionPrintedWithoutTheVPrefix",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeNeverRunsVoltaOrMiseShimsAndFindsTheirInstalls",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeStopsAProbeThatDoesNotAnswerAndTriesTheNextCandidate",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeWithOnlyAHungCandidateSaysItDidNotAnswer",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestStartNodeBoundsFindingNodeByTheReadyTimeout",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseDoesNotKillAHostThatIsStillClosingWithinItsCloseTimeout",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseKillsAHostThatDoesNotAnswerWithinTheGrace",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeRuntimeClosePastItsDeadlineStillStopsTheSpareThatIsStarting",
+        "test/parity/cmd/testprune/testprune_test.go::TestCheckCoEditsLedgerEntryOutranksTheCommitsOwnCitation"
+      ]
+    },
+    {
+      "id": "BF-3b9bd16-3",
+      "title": "`chord/next/link`: `Channel.Idle` returns when the channel closes",
+      "symptom": "`chord/next/link`: `Channel.Idle` returns when the channel closes.",
+      "rootCause": "The bridged references and watches are released when the Node process ends; the caller-free `value` request is gone. The stop grace is Pi's 5 s and a process running its host's close is not killed before the host's closeTimeout. Close past its deadline still stops a starting spare. Channel.Idle returns when the channel closes. The lazy-attach expectation change is recorded as a NOBEHAVIOR entry, and the additive records describe the new embedding API.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/next/link`: `Channel.Idle` returns when the channel closes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3b9bd165af",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/next/contracts/normalform_test.go::TestNormalFormOfALocalContractHasItsMembersAsASortedDictionary",
+        "chord/next/contracts/normalform_test.go::TestNormalFormOfARemoteContractIsWhatItsFingerprintHashes",
+        "chord/next/host/host_link_deliveries_test.go::TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt",
+        "chord/next/link/channel_idle_test.go::TestIdleReturnsAtOnceWhenNothingWaitsBehindAnAsynchronousHandling",
+        "chord/next/link/channel_idle_test.go::TestIdleReturnsWhenTheChannelClosedWithAMessageHeld",
+        "chord/next/link/channel_idle_test.go::TestIdleWaitsForTheHeldMessageAndForTheOnesBehindIt",
+        "chord/nextnode/plugins/plugins_node_bridged_test.go::TestBridgedTheProcessEndingReleasesTheGoReferencesAndWatchesItsProxiesHeld",
+        "chord/nextnode/plugins/plugins_node_discover_test.go::TestDiscoverNodeFindsFnmAtItsDefaultDirectoriesWithoutFNMDIR",
+        "chord/nextnode/plugins/plugins_node_discover_test.go::TestDiscoverNodeTakesAVersionPrintedWithoutTheVPrefix",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeNeverRunsVoltaOrMiseShimsAndFindsTheirInstalls",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeStopsAProbeThatDoesNotAnswerAndTriesTheNextCandidate",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeWithOnlyAHungCandidateSaysItDidNotAnswer",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestStartNodeBoundsFindingNodeByTheReadyTimeout",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseDoesNotKillAHostThatIsStillClosingWithinItsCloseTimeout",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseKillsAHostThatDoesNotAnswerWithinTheGrace",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeRuntimeClosePastItsDeadlineStillStopsTheSpareThatIsStarting",
+        "test/parity/cmd/testprune/testprune_test.go::TestCheckCoEditsLedgerEntryOutranksTheCommitsOwnCitation"
+      ]
+    },
+    {
       "id": "BF-3ba74f2",
       "title": "fix(codingagent): wait for a read's rest on the route snapshot that found no modal",
       "symptom": "fix(codingagent): wait for a read's rest on the route snapshot that found no modal",

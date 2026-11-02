@@ -270,6 +270,9 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3b009a3](#bf-3b009a3) | `chord/host`: a child host forked by `ForkDriver` no longer inherits its parent's `CHORD2_LOCK` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3b3dba6](#bf-3b3dba6) | A streamed tool argument of `-0` is held as `0`, so the serialized arguments write `0` as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3b8aa66](#bf-3b8aa66) | A Piglet Binary that strips `bedrock-converse-stream` links the AWS SDK again: the Bedrock retry backoff… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-3b9bd16](#bf-3b9bd16) | `chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node… | PiG's own defect | All platforms | Unreleased |
+| [BF-3b9bd16-2](#bf-3b9bd16-2) | `chord/nextnode/plugins`: finding Node stops a version probe that does not answer (10 s) and ends at… | PiG's own defect | Windows, macOS | Unreleased |
+| [BF-3b9bd16-3](#bf-3b9bd16-3) | `chord/next/link`: `Channel.Idle` returns when the channel closes | PiG's own defect | All platforms | Unreleased |
 | [BF-3ba74f2](#bf-3ba74f2) | fix(codingagent): wait for a read's rest on the route snapshot that found no modal | PiG's own defect | All platforms | Unreleased |
 | [BF-3ca622b](#bf-3ca622b) | fix(durable/core): the tool round resumes one tick after runtime.outcomes, as Pi's #read does; drop the… | PiG's own defect | All platforms | Unreleased |
 | [BF-3cb7131](#bf-3cb7131) | fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns… | PiG's own defect | All platforms | Unreleased |
@@ -4962,6 +4965,48 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3b8aa66c74` (2026-10-11)
 - **Tests:** `coding/cli/extension_upgrade_analyze_off_test.go::TestUpgradeInAGoSDKStrippedBinaryNamesTheStrip`, `coding/cli/strip_providers_binary_test.go::TestStripBedrockConverseStreamBuildOmitsAWSSDK`, `coding/cli/strip_upgrade_link_test.go::TestStripExtensionSDKGoBuildOmitsTheUpgradeAnalysis`
 - **Release note:** A Piglet Binary that strips `bedrock-converse-stream` links the AWS SDK again: the Bedrock retry backoff (`ai/bedrock_retry_backoff.go`) had no `pig_strip_bedrock_converse_stream` build tag and imported `aws-sdk-go-v2` (27 packages). It carries the tag now, like the rest of the Bedrock provider.
+
+### BF-3b9bd16
+
+**`chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node process ends; a `Close` past its deadline still stops a starting spare; a process running its host's close is not killed before the host's `closeTimeout`.
+- **Root cause:** The bridged references and watches are released when the Node process ends; the caller-free `value` request is gone. The stop grace is Pi's 5 s and a process running its host's close is not killed before the host's closeTimeout. Close past its deadline still stops a starting spare. Channel.Idle returns when the channel closes. The lazy-attach expectation change is recorded as a NOBEHAVIOR entry, and the additive records describe the new embedding API.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3b9bd165af` (2026-11-01)
+- **Tests:** `chord/next/contracts/normalform_test.go::TestNormalFormOfALocalContractHasItsMembersAsASortedDictionary`, `chord/next/contracts/normalform_test.go::TestNormalFormOfARemoteContractIsWhatItsFingerprintHashes`, `chord/next/host/host_link_deliveries_test.go::TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt`, `chord/next/link/channel_idle_test.go::TestIdleReturnsAtOnceWhenNothingWaitsBehindAnAsynchronousHandling`, `chord/next/link/channel_idle_test.go::TestIdleReturnsWhenTheChannelClosedWithAMessageHeld`, `chord/next/link/channel_idle_test.go::TestIdleWaitsForTheHeldMessageAndForTheOnesBehindIt`, `chord/nextnode/plugins/plugins_node_bridged_test.go::TestBridgedTheProcessEndingReleasesTheGoReferencesAndWatchesItsProxiesHeld`, `chord/nextnode/plugins/plugins_node_discover_test.go::TestDiscoverNodeFindsFnmAtItsDefaultDirectoriesWithoutFNMDIR` and 9 more in docs/bug-ledger.json
+- **Release note:** `chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node process ends; a `Close` past its deadline still stops a starting spare; a process running its host's close is not killed before the host's `closeTimeout`.
+
+### BF-3b9bd16-2
+
+**`chord/nextnode/plugins`: finding Node stops a version probe that does not answer (10 s) and ends at…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `chord/nextnode/plugins`: finding Node stops a version probe that does not answer (10 s) and ends at `ReadyTimeout`; fnm's default directories (including `~/Library/Application Support/fnm` on macOS and `%APPDATA%\fnm` on Windows), and Volta's and mise's installs, are searched, and their shims are never run (D221).
+- **Root cause:** The bridged references and watches are released when the Node process ends; the caller-free `value` request is gone. The stop grace is Pi's 5 s and a process running its host's close is not killed before the host's closeTimeout. Close past its deadline still stops a starting spare. Channel.Idle returns when the channel closes. The lazy-attach expectation change is recorded as a NOBEHAVIOR entry, and the additive records describe the new embedding API.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows, macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `3b9bd165af` (2026-11-01)
+- **Tests:** `chord/next/contracts/normalform_test.go::TestNormalFormOfALocalContractHasItsMembersAsASortedDictionary`, `chord/next/contracts/normalform_test.go::TestNormalFormOfARemoteContractIsWhatItsFingerprintHashes`, `chord/next/host/host_link_deliveries_test.go::TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt`, `chord/next/link/channel_idle_test.go::TestIdleReturnsAtOnceWhenNothingWaitsBehindAnAsynchronousHandling`, `chord/next/link/channel_idle_test.go::TestIdleReturnsWhenTheChannelClosedWithAMessageHeld`, `chord/next/link/channel_idle_test.go::TestIdleWaitsForTheHeldMessageAndForTheOnesBehindIt`, `chord/nextnode/plugins/plugins_node_bridged_test.go::TestBridgedTheProcessEndingReleasesTheGoReferencesAndWatchesItsProxiesHeld`, `chord/nextnode/plugins/plugins_node_discover_test.go::TestDiscoverNodeFindsFnmAtItsDefaultDirectoriesWithoutFNMDIR` and 9 more in docs/bug-ledger.json
+- **Release note:** `chord/nextnode/plugins`: finding Node stops a version probe that does not answer (10 s) and ends at `ReadyTimeout`; fnm's default directories (including `~/Library/Application Support/fnm` on macOS and `%APPDATA%\fnm` on Windows), and Volta's and mise's installs, are searched, and their shims are never run (D221).
+
+### BF-3b9bd16-3
+
+**`chord/next/link`: `Channel.Idle` returns when the channel closes**
+
+- **Source:** PiG's own defect
+- **Symptom:** `chord/next/link`: `Channel.Idle` returns when the channel closes.
+- **Root cause:** The bridged references and watches are released when the Node process ends; the caller-free `value` request is gone. The stop grace is Pi's 5 s and a process running its host's close is not killed before the host's closeTimeout. Close past its deadline still stops a starting spare. Channel.Idle returns when the channel closes. The lazy-attach expectation change is recorded as a NOBEHAVIOR entry, and the additive records describe the new embedding API.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3b9bd165af` (2026-11-01)
+- **Tests:** `chord/next/contracts/normalform_test.go::TestNormalFormOfALocalContractHasItsMembersAsASortedDictionary`, `chord/next/contracts/normalform_test.go::TestNormalFormOfARemoteContractIsWhatItsFingerprintHashes`, `chord/next/host/host_link_deliveries_test.go::TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt`, `chord/next/link/channel_idle_test.go::TestIdleReturnsAtOnceWhenNothingWaitsBehindAnAsynchronousHandling`, `chord/next/link/channel_idle_test.go::TestIdleReturnsWhenTheChannelClosedWithAMessageHeld`, `chord/next/link/channel_idle_test.go::TestIdleWaitsForTheHeldMessageAndForTheOnesBehindIt`, `chord/nextnode/plugins/plugins_node_bridged_test.go::TestBridgedTheProcessEndingReleasesTheGoReferencesAndWatchesItsProxiesHeld`, `chord/nextnode/plugins/plugins_node_discover_test.go::TestDiscoverNodeFindsFnmAtItsDefaultDirectoriesWithoutFNMDIR` and 9 more in docs/bug-ledger.json
+- **Release note:** `chord/next/link`: `Channel.Idle` returns when the channel closes.
 
 ### BF-3ba74f2
 
