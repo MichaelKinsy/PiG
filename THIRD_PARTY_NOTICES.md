@@ -367,7 +367,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 The Node extension runtime serves TypeBox for the `typebox`, `typebox/value`, `typebox/compile`, and `@sinclair/typebox*` specifiers, as Pi does. `coding/extension/host/subprocess/runtime-node/shims/typebox*.mjs` are an esbuild bundle of the npm package `typebox@1.3.27` (integrity `sha512-zu+jc1pcy4UiNThxikUr36f0Rybk9PEeCg/NE6adeWr/SKsdNO4EzZHYRDlv2YCVAfj3Odq3dESSo/jNyoBXzA==`), produced by `automation/gen/vendor-typebox.sh`. The format checks of `schema/formats` (`schema/formats/typebox_*.go` and `schema/formats/internal/idna`) are Go translations of the format checks Pi's `packages/schema` adapted from TypeBox 1.3.27.
 
-The plugins component's Node subprocess (`chord/nextnode/plugins/node/pi/node_modules/typebox`) carries the same npm package, unbundled (its 691 `.mjs` modules, `package.json` and `license`), with the integrity checked by `automation/gen/vendor-chord-plugins-node.sh`. It does not reuse the bundle above: the bundle is served by the extension runtime's own loader hook, which aliases `typebox`, `typebox/value` and `typebox/compile` only, while Pi's chord sources (vendored there byte for byte) also import `typebox/error` and `typebox/schema` and resolve `typebox` as a package next to them, as Pi lays them out.
+The plugins component's Node subprocess carries no TypeBox: Pi's chord depends on `@earendil-works/pi-schema` (`packages/schema` of the Pi tree, whose validators are adapted from TypeBox 1.3.27), vendored byte for byte under `chord/nextnode/plugins/node/pi/schema` with its `package.json` and `LICENSES/typebox-LICENSE` (the TypeBox license above), by `automation/gen/vendor-chord-plugins-node.sh`.
 
 ```text
 The MIT License (MIT)

@@ -1965,3 +1965,56 @@ Remove when: Pi reports a configured local Package that does not exist, or PiG d
 
 Approval: owner comment on issue #389, 2026-10-30: "we'll take both of your other points too, so a package that can't load shows up in the session and `--validate-only` checks that each entry actually resolves."
 SCRUTINIZED:approved
+
+## D221 The plugins' Node subprocess finds Node beyond PATH
+
+Summary: Evaluating chord plugins starts Node from `PIG_NODE`, from `node` on PATH, or from a version manager's or installer's usual location, whichever first is Node 22.19.0 or newer.
+
+Audience: runtime
+
+Stock disposition: inert capability. Stock PiG discovers a Node that is already installed. It selects no Node for the user, ships none and installs none; a Package or Piglet that ships Node is not part of Stock (deferred to PiG Standard after 0.7.0).
+
+What: Pi evaluates plugins in the process that runs Pi, so it has no Node to find. PiG's plugins component (`chord/nextnode/plugins`) runs Pi's evaluator in a Node subprocess and finds Node in this order, running `--version` on each candidate (stopped after 10 s, so a candidate that hangs does not hold the search; the whole search stops at `NodeOptions.ReadyTimeout`) and taking the first that is `22.19.0` or newer (Pi's `engines.node`):
+
+1. `PIG_NODE`, an executable. When it is set it is the only candidate: a value that is not an executable, does not run or is too old is the error.
+2. `node` on `PATH`.
+3. Unix: `$NVM_BIN`; the newest installs of `$NVM_DIR/versions/node` or `~/.nvm/versions/node`; fnm's `node-versions` (in `$FNM_DIR`, else `$XDG_DATA_HOME/fnm`, `~/.local/share/fnm`, `~/.fnm` and, on macOS, the older `~/Library/Application Support/fnm`); the newest install of Volta (`tools/image/node`) and of mise (`installs/node`); asdf's `shims`; `/usr/local/bin`; `/opt/homebrew/bin`; `/usr/bin`. Windows: `%NVM_SYMLINK%`; the versions of `%NVM_HOME%` or `%APPDATA%\nvm`; fnm's `node-versions` (`%FNM_DIR%` or `%APPDATA%\fnm`); Volta's installs; `%ProgramFiles%\nodejs`; `%LOCALAPPDATA%\Programs\nodejs`. The shims of Volta and mise are not run: a shim downloads the Node a project pins, and the install directories hold the Nodes already there.
+
+A candidate that is too old does not end the search. When none satisfies, the error names the requirement and the newest version found, or says that Node was not found on PATH or in the places searched. The TypeScript extension runtime slot ("TypeScript extension runtime slot" above) holds Bun and executable runtimes, not Node, so it is no source. The extension host's own Node check (`ensureNodeRuntime`) still reads PATH only.
+
+Why: a GUI or a service starts without the shell's PATH, where version managers put `node`; users with several versions need to name one. The plan is `docs/plan/chord-plugins-node-evaluator.md` sections 6 and 10.12 (owner decision (c), 2026-11-01).
+
+Call-site markers: `chord/nextnode/plugins/plugins_node_discover.go` (`discoverNode`).
+
+Locked by: `TestDiscoverNodeFindsNodeInEachPlaceAfterPATH`, `TestDiscoverNodeFindsNodeNamedByPIGNODE`, `TestDiscoverNodeWithAnUnusablePIGNODEIsAnErrorWhateverElseIsInstalled`, `TestDiscoverNodePrefersPATHToTheInstallLocationsAndEachPlaceToTheNext`, `TestDiscoverNodeSkipsATooOldCandidateForANewerLaterOne`, `TestDiscoverNodeWhenEveryNodeIsTooOldNamesTheNewestVersionFound`, `TestDiscoverNodeFindsNothingAndNamesTheRequirementAndWhereItLooked` and `TestDiscoverNodeTakesTheNewestInstalledVersionOfAVersionManager`, `TestDiscoverNodeFindsFnmAtItsDefaultDirectoriesWithoutFNMDIR`, `TestDiscoverNodeTakesAVersionPrintedWithoutTheVPrefix` (`chord/nextnode/plugins/plugins_node_discover_test.go`), `TestDiscoverNodeStopsAProbeThatDoesNotAnswerAndTriesTheNextCandidate`, `TestStartNodeBoundsFindingNodeByTheReadyTimeout` and `TestDiscoverNodeNeverRunsVoltaOrMiseShimsAndFindsTheirInstalls` (`chord/nextnode/plugins/plugins_node_discover_unix_test.go`), each on fake `node` executables in a temporary tree.
+
+Remove when: Pi evaluates plugins in a runtime PiG does not start, or PiG Standard ships a Node and Stock drops the search.
+
+Approval: owner decision relayed 2026-11-01: option (c), discovery beyond PATH, for difference #10.
+SCRUTINIZED:approved
+
+## D223 The plugins' Node subprocess: a store, a spare process, exit details, and the link waits it needs
+
+Summary: A program that evaluates chord plugins can give them a SQLite store, keep a spare Node process warm, read why the process ended, and wait for a host to handle a link's deliveries.
+
+Audience: author
+
+Stock disposition: inert capability. Nothing selects a store, a spare process or a wait for the user: a program that embeds `chord/nextnode/plugins` sets them, and a host that takes a link calls `Taken` only for a link that asks to be told.
+
+What: Pi evaluates plugins in the process that runs it, so these have no Pi counterpart; each is the Go side of running Pi's evaluator in a subprocess.
+
+- `StoreOptions` (`RuntimeLoad.Store`, `PluginsLoad.Store`): the SQLite file the Node host's store lives in, opened in the subprocess by Pi's own `next/store` and closed after the host, as Pi's `createHost({ store })` apps do.
+- `NodeOptions.Warm`/`KeepWarm` (`PluginRuntime.Warm`) and `NodeOptions.StopGrace`: a spare process started ahead of a Load, so Load does not wait for Node to start; the grace (5 s, Pi's `GRACE` of `workers.ts`) is how long a process whose channel ended gets to exit before it is killed. A process running the close it was asked for (Pi ends every object at once, then drains and closes them one by one, each step bounded by `closeTimeout`) is not killed before one `closeTimeout` plus the grace has passed.
+- `NodeExit.Code`, `Signal` and `Reason`: how the process ended (`process.exit(n)`, the signal, and why the Go side killed it), where Pi's in-process plugin ends the app.
+- `host.DeliveryAwaiter` and `link.Channel.Idle`: a link to another process asks the host that takes it to wait until what the link handed it so far has been handled, as a host's own `Reload` waits before it returns its report; `Idle` returns when the channel is closed.
+
+Why: the plugins' evaluator is a Node subprocess with no shared loop with the Go host, so the app needs these to persist, to start quickly, to report a crash, and to order its requests with the link's deliveries. The plan is `docs/plan/chord-plugins-node-evaluator.md` sections 4 and 10.
+
+Call-site markers: `chord/nextnode/plugins/plugins_node_store.go` (`StoreOptions`), `chord/nextnode/plugins/plugins_node.go` (`NodeOptions.StopGrace`, `NodeExit`), `chord/nextnode/plugins/plugins_node_warm.go` (`PluginRuntime.Warm`), `chord/next/host/host_link_deliveries.go` (`DeliveryAwaiter`), `chord/next/link/channel.go` (`Channel.Idle`).
+
+Locked by: `TestStoreAPluginsPersistedDocumentsAndTableSurviveClosingTheNodeHost` (`chord/nextnode/plugins/plugins_node_store_test.go`), `TestNodeWarmStartsOneSpareTheNextLoadTakes`, `TestNodeRuntimeClosePastItsDeadlineStillStopsTheSpareThatIsStarting`, `TestNodeCloseDoesNotKillAHostThatIsStillClosingWithinItsCloseTimeout`, `TestNodeCloseKillsAHostThatDoesNotAnswerWithinTheGrace`, `TestNodeTheDefaultStopGraceIsPisFiveSeconds` and `TestNodeAPluginsProcessExitEndsOnlyTheHostWithItsCode` (`chord/nextnode/plugins/plugins_node_lifecycle_test.go`), `TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt` (`chord/next/host/host_link_deliveries_test.go`) and `TestIdleWaitsForTheHeldMessageAndForTheOnesBehindIt` (`chord/next/link/channel_idle_test.go`).
+
+Remove when: Pi evaluates plugins in a runtime PiG does not start, or the program embedding the evaluator drops them.
+
+Approval: owner decision relayed 2026-11-01 for the plugins' Node evaluator (plugfull lane), the same as D221.
+SCRUTINIZED:approved
