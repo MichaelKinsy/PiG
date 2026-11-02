@@ -282,6 +282,8 @@ func (e *Extension) serveLoadingEnvelope(c *conn, env envelope) {
 	case env.Type == msgNotify && env.Notify != nil && env.Notify.Method == notifyEventsRelease:
 		e.releaseEventListener(env.Notify.Args)
 		e.markNotifyHandled()
+	case env.Type == msgShutdown:
+		e.shutdownInFactory.Store(true)
 	case env.Type == msgRequest:
 		method := ""
 		if env.Request != nil {

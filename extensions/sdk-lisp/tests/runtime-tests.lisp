@@ -324,6 +324,135 @@
                  (check-equal '(1 2) (sort (sb-thread:with-mutex (lock) (copy-list seen)) #'<))))
           (stop-host host))))))
 
+;; A shutdown before ready ends the run with no error and closes the connection, as a shutdown after ready does: Pi's session shutdown never fails an extension
+;; (runner.ts emitSessionShutdownEvent), and the Node runtime, Go SDK, Rust SDK and Python SDK return.
+(defun sbr-call-shutdown-before-ready (ext script)
+  "Serve EXT against a fake host that runs SCRIPT with the connection, which ends by shutting the extension down with no ready, and require the run to end."
+  (let* ((path (format nil "/tmp/pig-lisp-test-shutdown-~D-~D.sock" (sb-posix:getpid) (random 1000000)))
+         (listener (make-instance 'sb-bsd-sockets:local-socket :type :stream)))
+    (ignore-errors (delete-file path))
+    (sb-bsd-sockets:socket-bind listener path)
+    (sb-bsd-sockets:socket-listen listener 4)
+    (let* ((thread (sb-thread:make-thread (lambda () (pig::serve ext (pig::connect-unix path))) :name "test-extension"))
+           (conn (pig::socket-conn (sb-bsd-sockets:socket-accept listener)))
+           (host (make-host :listener listener :conn conn :thread thread :ext ext :path path)))
+      (unwind-protect
+           (progn
+             (funcall script conn)
+             ;; a bounded wait, so a run that ignores the shutdown fails the test instead of hanging it
+             (check (eq t (sb-thread:join-thread thread :default :still-running :timeout 10))
+                    "the run ended with every handler stopped")
+             (check (eq :eof (handler-case (pig::read-frame conn) (error () :eof)))
+                    "the extension closed the connection"))
+        (stop-host host)))))
+
+(defun sbr-send-shutdown (conn) (pig::send-frame conn (pig:obj "type" "shutdown" "shutdown" (pig:obj "reason" "test"))))
+
+(defun sbr-send-dispatch (conn id handler-id)
+  (pig::send-frame conn (pig:obj "type" "request" "id" id
+                                 "request" (pig:obj "method" "events.dispatch"
+                                                    "args" (pig:obj "handlerId" handler-id "channel" "ch" "json" (pig:obj "n" id))))))
+
+(defun sbr-check-answer-succeeded (env)
+  "A listener that ran answers with no error: an unknown-handler reply, a refusal or a cancellation fails."
+  (let ((err (pig:jref env "response" "error")))
+    (check (or (null err) (eq err :null)) (format nil "answer ~S" env))))
+
+(defun sbr-check-answered-once (conn &rest ids)
+  "Read until every dispatch in IDS is answered, and require one answer each with no error."
+  (let ((answered '()))
+    (loop until (= (length answered) (length ids))
+          do (let ((env (pig::read-frame conn)))
+               (when (equal "response" (pig:jget env "type"))
+                 (sbr-check-answer-succeeded env)
+                 (push (pig:jget env "id") answered))))
+    (check-equal (sort (copy-list ids) #'string<) (sort answered #'string<))))
+
+(defun sbr-check-registered-and-answered-once (conn &rest ids)
+  "Read until the register frame and an answer for every dispatch in IDS have arrived, in either order, and require one answer each."
+  (let ((registered nil) (answered '()))
+    (loop until (and registered (= (length answered) (length ids)))
+          do (let* ((env (pig::read-frame conn)) (type (pig:jget env "type")))
+               (cond ((equal type "register") (setf registered t))
+                     ((equal type "response")
+                      (sbr-check-answer-succeeded env)
+                      (push (pig:jget env "id") answered)))))
+    (check-equal (sort (copy-list ids) #'string<) (sort answered #'string<))))
+
+(defun sbr-answer-call (conn call result)
+  (pig::send-frame conn (pig:obj "type" "call_result" "id" (pig:jget call "id") "call_result" (pig:obj "result" result))))
+
+(defun sbr-listening-extension (name)
+  "An extension whose listener makes no host call and keeps each payload's n it hears, and as a second value the cell (a cons) holding them."
+  (let ((ext (pig:make-extension name)) (heard (list nil)))
+    (pig:events-on (pig:extension-events ext) "ch"
+                   (lambda (ctx data) (declare (ignore ctx)) (sb-ext:atomic-push (pig:jget data "n") (car heard))))
+    (values ext heard)))
+
+(deftest shutdown-before-ready-ends-the-run-cleanly
+  (sbr-call-shutdown-before-ready (pig:make-extension "rt-shutdown")
+                              (lambda (conn)
+                                (check-equal "register" (pig:jget (pig::read-frame conn) "type"))
+                                (sbr-send-shutdown conn))))
+
+;; The listener dispatches the host sent before the shutdown are answered once each, under their own IDs, before the run ends.
+(deftest shutdown-before-ready-answers-the-dispatches-before-it
+  (multiple-value-bind (ext heard) (sbr-listening-extension "rt-shutdown-dispatches")
+    (sbr-call-shutdown-before-ready
+     ext
+     (lambda (conn)
+     (let ((call (pig::read-frame conn)))
+       (check-equal "call" (pig:jget call "type"))
+       (sbr-answer-call conn call (pig:obj))
+       (check-equal "register" (pig:jget (pig::read-frame conn) "type"))
+       (let ((handler-id (pig:jref call "call" "args" "handlerId")))
+         (sbr-send-dispatch conn "d1" handler-id)
+         (sbr-send-dispatch conn "d2" handler-id))
+       (sbr-send-shutdown conn)
+       (sbr-check-answered-once conn "d1" "d2"))))
+    (check-equal '("d1" "d2") (sort (copy-list (car heard)) #'string<))))
+
+;; A shutdown the host sends while the factory's own listener subscription waits for its result does not end the wait: the call returns, the run registers and then
+;; ends on the shutdown. The dispatch the host sent before it is answered too.
+(deftest shutdown-during-the-factory-subscription-ends-the-run-after-it-registers
+  (multiple-value-bind (ext heard) (sbr-listening-extension "rt-shutdown-during-subscription")
+    (sbr-call-shutdown-before-ready
+     ext
+     (lambda (conn)
+     (let ((call (pig::read-frame conn)))
+       (check-equal "call" (pig:jget call "type"))
+       (sbr-send-dispatch conn "d1" (pig:jref call "call" "args" "handlerId"))
+       (sbr-send-shutdown conn)
+       (sbr-answer-call conn call (pig:obj))
+       (sbr-check-registered-and-answered-once conn "d1"))))
+    (check-equal '("d1") (car heard))))
+
+;; A shutdown the host sends while a factory-time call waits does not fail the call: it returns the host's result, and the run that takes the connection registers
+;; and then ends on the shutdown.
+(deftest shutdown-read-during-a-factory-call-ends-the-run-after-it-registers
+  (let* ((path (format nil "/tmp/pig-lisp-test-factory-shutdown-~D-~D.sock" (sb-posix:getpid) (random 1000000)))
+         (listener (make-instance 'sb-bsd-sockets:local-socket :type :stream)))
+    (ignore-errors (delete-file path))
+    (sb-bsd-sockets:socket-bind listener path)
+    (sb-bsd-sockets:socket-listen listener 4)
+    (sb-posix:setenv "PIG_EXT_SOCKET" path 1)
+    (unwind-protect
+         (let* ((caller (sb-thread:make-thread (lambda () (pig::helper-call "factory-time" (pig:obj))) :name "test-factory"))
+                (conn (pig::socket-conn (sb-bsd-sockets:socket-accept listener)))
+                (call (pig::read-frame conn)))
+           (check-equal "call" (pig:jget call "type"))
+           (sbr-send-shutdown conn)
+           (sbr-answer-call conn call (pig:obj "answer" 7))
+           (check-equal 7 (pig:jget (sb-thread:join-thread caller :default nil :timeout 10) "answer")
+                        "the factory's call returned the host's result")
+           (check (eq t (pig:run-extension (pig:make-extension "rt-shutdown-factory") path)))
+           (check-equal "register" (pig:jget (pig::read-frame conn) "type"))
+           (check (eq :eof (handler-case (pig::read-frame conn) (error () :eof)))
+                  "the run closed the connection"))
+      (sb-posix:unsetenv "PIG_EXT_SOCKET")
+      (ignore-errors (sb-bsd-sockets:socket-close listener))
+      (ignore-errors (delete-file path)))))
+
 (deftest events-on-validates-its-arguments
   (let ((bus (pig:extension-events (pig:make-extension "rt-bus-args"))))
     (check-error simple-error (pig:events-on bus 3 #'identity))

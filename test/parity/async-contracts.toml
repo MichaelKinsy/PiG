@@ -2011,10 +2011,10 @@ rationale = "The Session-owned retry loop blocks in sleepContext until the timer
 
 [[files]]
 path = "packages/coding-agent/src/utils/syntax-highlight.ts"
-disposition = "pending"
-contracts = []
-evidence = []
-rationale = ""
+disposition = "translated"
+contracts = ["detached-owned", "ui-handoff"]
+evidence = ["test:internal/codingagent/highlight_languages_load_test.go#TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop", "test:internal/codingagent/highlight_languages_load_test.go#TestLoadRemainingHighlightLanguagesSkipsTheRepaintAfterStop", "test:tui/syntax_highlight_upstream_test.go#TestSyntaxHighlightRendererUpstream"]
+rationale = "loadAllHighlightLanguages memoizes one Promise that, after setImmediate, imports highlight.js/lib/index.js and resolves on success or failure, so the eager languages stay available either way; interactive-mode.ts init calls it unawaited after renderNow and, once it resolves and the mode is still initialized, invalidates and requests a render. Go links every grammar, so LoadAllHighlightLanguages is a sync.Once that registers them under the registry's lock and drops the memoized highlights; the interactive mode runs it on a background task owned by the mode's lifetime (joined at exit) and posts the invalidate and render to the owner loop, which a stopped mode never runs. Highlights requested meanwhile use the eager languages, as in Pi. The added getHighlightLanguageCount is synchronous (Pi 0f21a331; tui/highlight.go HighlightEpoch.generation) (lane RenderReuse)."
 
 [[files]]
 path = "packages/coding-agent/src/utils/tool-result-images.ts"

@@ -138,13 +138,9 @@ pub(crate) fn running_connection() -> io::Result<Arc<Connection>> {
 pub(crate) fn highlight_code_lines(
     code: &str,
     lang: &str,
-    markdown: bool,
     theme: Option<Value>,
 ) -> io::Result<Vec<String>> {
     let mut args = json!({"code": code, "lang": lang});
-    if markdown {
-        args["markdown"] = Value::Bool(true);
-    }
     if let Some(theme) = theme {
         args["theme"] = theme;
     }
