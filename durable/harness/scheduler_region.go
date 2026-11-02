@@ -27,7 +27,7 @@ import (
 // again. What a region read that had no unpublished writer gets none for the rest of the job, so its result stands while
 // the job applies it. s.mu is held on entry and on return.
 //
-// A gate it waits for is a wait of the Session (session.Wait): the delivery that runs it has entered, and ctx ends the wait.
+// A gate it waits for is a wait of the Session (session.Wait): the delivery that runs it has entered; ctx does not end the wait, as Pi's does not.
 func regionLocked[T any](ctx context.Context, s *TaskScheduler, decide func() (T, error), refresh func() error) (T, error) {
 	for {
 		keys := map[string]struct{}{}
@@ -60,10 +60,12 @@ func regionLocked[T any](ctx context.Context, s *TaskScheduler, decide func() (T
 }
 
 // waitGatesLocked releases s.mu while it waits for every gate to open (a wait of the Session: the delivery that calls it has
-// entered), then checks the Session is still healthy. ctx ends the wait with its cause.
+// entered), then checks the Session is still healthy. Pi's region awaits the gate without the caller's signal: a gate always opens,
+// by a publication or by the Session's failure, so the wait does not end with ctx (context.WithoutCancel keeps the Continuation ctx carries).
 func (s *TaskScheduler) waitGatesLocked(ctx context.Context, gates []<-chan struct{}) error {
 	s.mu.Unlock()
 	defer s.mu.Lock()
+	ctx = context.WithoutCancel(ctx)
 	for _, gate := range gates {
 		if err := session.Wait(ctx, gate); err != nil {
 			return err
@@ -85,7 +87,7 @@ func regionPlainLocked[T any](s *TaskScheduler, decide func() T, refresh func() 
 	return regionPlainCtxLocked(context.Background(), s, decide, refresh)
 }
 
-// regionPlainCtxLocked is regionPlainLocked for a region whose caller's ctx ends its wait for a gate.
+// regionPlainCtxLocked is regionPlainLocked for a region whose caller's ctx carries the Continuation its wait enters.
 func regionPlainCtxLocked[T any](ctx context.Context, s *TaskScheduler, decide func() T, refresh func() error) (T, error) {
 	return regionLocked(ctx, s, func() (T, error) { return decide(), nil }, refresh)
 }

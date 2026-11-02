@@ -125,7 +125,7 @@ func (h *Hooks) migrate(call *sqlhost.Call, p hookEffect) error {
 
 // afterRun runs one `afterRun` handler (generation.ts finish): the host checks the tasks it asks for, off the line, as the core
 // creates only checked ones: the kind must be an installed task that is not built in, its input JSON, and its definition's `initial()`
-// a JSON checkpoint of one of its phases. The answer is {tasks: [{task, version, input, checkpoint}], rejected?: [{name, message}]}.
+// a JSON checkpoint of one of its phases. The answer is {tasks: [{task, version, input, checkpoint}], rejected: [{name, message}]}: rejected is always sent, empty when none.
 func (h *Hooks) afterRun(ctx context.Context, call *sqlhost.Call, p hookEffect) error {
 	target, ok := h.Lookup(p.Handler)
 	if !ok {

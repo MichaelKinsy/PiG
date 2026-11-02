@@ -22,7 +22,7 @@ import (
 // endOfOne is the value the watch is advanced with at the publication of one's end.
 const endOfOne = 1
 
-func listenerAtTheEndOfOne(t *testing.T, act func(harness Harness, one, two durable.TaskId) error) error {
+func listenerAtTheEndOfOne(t *testing.T, act func(harness Harness, root Conversation, one, two durable.TaskId) error) error {
 	t.Helper()
 	fixtures := newGCFixtures()
 	store := newControlledStorage()
@@ -43,7 +43,7 @@ func listenerAtTheEndOfOne(t *testing.T, act func(harness Harness, one, two dura
 	var once sync.Once
 	watch.Start(func(ctx context.Context, call chord.WatchCall[int]) error {
 		if call.Kind == chord.WatchCallValue && call.Value == endOfOne {
-			once.Do(func() { acted <- act(harness, one, two) })
+			once.Do(func() { acted <- act(harness, root, one, two) })
 		}
 		return nil
 	})
@@ -75,7 +75,7 @@ func listenerAtTheEndOfOne(t *testing.T, act func(harness Harness, one, two dura
 
 func TestAListenerThatCallsTheHarnessAtOneOfTwoEndsOfACallDoesNotStallTheHop(t *testing.T) {
 	t.Run("WaitForTask of the task whose end is the call's next part", func(t *testing.T) {
-		err := listenerAtTheEndOfOne(t, func(harness Harness, _, two durable.TaskId) error {
+		err := listenerAtTheEndOfOne(t, func(harness Harness, _ Conversation, _, two durable.TaskId) error {
 			ctx, cancel := context.WithTimeout(testContext, gcTimeout)
 			defer cancel()
 			_, err := harness.WaitForTask(ctx, two)
@@ -86,13 +86,35 @@ func TestAListenerThatCallsTheHarnessAtOneOfTwoEndsOfACallDoesNotStallTheHop(t *
 		}
 	})
 	t.Run("Close", func(t *testing.T) {
-		err := listenerAtTheEndOfOne(t, func(harness Harness, _, _ durable.TaskId) error {
+		err := listenerAtTheEndOfOne(t, func(harness Harness, _ Conversation, _, _ durable.TaskId) error {
 			ctx, cancel := context.WithTimeout(testContext, gcTimeout)
 			defer cancel()
 			return harness.Close(ctx)
 		})
 		if err != nil {
 			t.Fatalf("Close = %v, want nil: the close settles the call the listener is a delivery of", err)
+		}
+	})
+	// The scheduler's waits for the Session's gates (scheduler_region.go): with nothing on the line before it, the listener's call waits
+	// for the commits admitted before it, and the next part of the call is one of them. Its wait enters the delivery, or the hop never
+	// publishes that part and the gate never opens.
+	t.Run("the region gate wait, scheduler.mu held (waitGatesLocked)", func(t *testing.T) {
+		err := listenerAtTheEndOfOne(t, func(harness Harness, _ Conversation, _, _ durable.TaskId) error {
+			scheduler := harness.(*harnessImpl).tasks
+			scheduler.mu.Lock()
+			defer scheduler.mu.Unlock()
+			return scheduler.publishedLocked()
+		})
+		if err != nil {
+			t.Fatalf("publishedLocked = %v, want nil: the next part of the call is published once the listener entered", err)
+		}
+	})
+	t.Run("the gate wait without scheduler.mu (published)", func(t *testing.T) {
+		err := listenerAtTheEndOfOne(t, func(harness Harness, _ Conversation, _, _ durable.TaskId) error {
+			return harness.(*harnessImpl).tasks.published()
+		})
+		if err != nil {
+			t.Fatalf("published = %v, want nil: the next part of the call is published once the listener entered", err)
 		}
 	})
 }
