@@ -14,7 +14,6 @@ import (
 	"strings"
 	"sync"
 	"unicode/utf16"
-	"unicode/utf8"
 
 	"github.com/evanw/esbuild/pkg/api"
 )
@@ -250,6 +249,7 @@ func freeGlobals(source string) ([]string, error) {
 		return nil, err
 	}
 	var errors []string
+	//portlint:allow pathseparators Pi's freeGlobals splits the built source on "\n" (build.ts:157): the source is esbuild's output, whose lines the source map counts
 	for line, text := range strings.Split(source, "\n") {
 		for _, match := range globalMarkerPattern.FindAllStringIndex(text, -1) {
 			entry, found := m.findEntry(line, utf16Length(text[:match[0]]))
@@ -400,6 +400,8 @@ func (rules *importRules) setup(builder api.PluginBuild) {
 		}
 		contents, err := os.ReadFile(args.Path)
 		if err != nil {
+			// pig divergence (D222): esbuild's Go API reports this error at the import that names the input; Pi's JavaScript API
+			// reports it at its own library's line (`lib/main.js:1552:22`), which PiG has no stack to produce.
 			return api.OnLoadResult{Errors: []api.Message{{Text: nodeReadError(err, args.Path)}}}, nil
 		}
 		sum := sha256.Sum256(contents)
@@ -608,12 +610,8 @@ func describe(plugin Plugin, message api.Message) string {
 			file = rest
 		}
 	}
-	// esbuild's Go API counts a column in bytes, its JavaScript API (which `build.ts` reads) in UTF-16 code units.
-	column := location.Column
-	if column <= len(location.LineText) && utf8.ValidString(location.LineText[:column]) {
-		column = utf16Length(location.LineText[:column])
-	}
-	return file + ":" + strconv.Itoa(location.Line) + ":" + strconv.Itoa(column+1) + ": " + text
+	// The column is esbuild's own, in bytes: its JavaScript API reports the same number (`location.column`, build.ts:399).
+	return file + ":" + strconv.Itoa(location.Line) + ":" + strconv.Itoa(location.Column+1) + ": " + text
 }
 
 // packageName is the package a bare specifier names: `@scope/name` or `name`, without a subpath (evaluate.ts).

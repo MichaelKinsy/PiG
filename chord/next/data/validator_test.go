@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
+// pi: packages/chord/src/next/data/validator.ts
 // Ports packages/chord/test/next/data/validator.test.ts.
 //
 // Designed out: "leave nothing in TypeBox's build accumulators" (pi-schema, and its Go port, keep no module-level build

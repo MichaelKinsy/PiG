@@ -429,7 +429,7 @@ func documentRecordOf(record *delta.JsonObject) DocumentRecord {
 		out.Key = &key
 	}
 	if retiredAt, present := record.Value("retiredAt").(float64); present {
-		at := int64(retiredAt)
+		at, _ := safeInteger(retiredAt)
 		out.RetiredAt = &at
 	}
 	if meta, present := record.Value("meta").(string); present {
@@ -465,7 +465,8 @@ func jsonText(object *delta.JsonObject, key string) string {
 // jsonInt is the integer member `key` of a checked object (0 when absent): the schema admits safe integers only.
 func jsonInt(object *delta.JsonObject, key string) int64 {
 	number, _ := object.Value(key).(float64)
-	return int64(number)
+	integer, _ := safeInteger(number)
+	return integer
 }
 
 // jsonOptionalVersion is the optional `version` of an update write.
@@ -474,7 +475,8 @@ func jsonOptionalVersion(object *delta.JsonObject) *int {
 	if !present {
 		return nil
 	}
-	version := int(number)
+	integer, _ := safeInteger(number)
+	version := int(integer)
 	return &version
 }
 

@@ -66,7 +66,7 @@ func TestComponentThemeMarkdownBoundToTheme(t *testing.T) {
 	if got, want := theme.HighlightCode("a\nb", ""), codeBlockLines("a\nb", th); !slices.Equal(got, want) {
 		t.Fatalf("HighlightCode = %q, want %q", got, want)
 	}
-	if got, want := theme.HighlightCode("x := 1", "go"), highlightCodeUncached(highlightRegistry(), "x := 1", "go", true, th); !slices.Equal(got, want) {
+	if got, want := theme.HighlightCode("x := 1", "go"), highlightCodeUncached(highlightRegistry(), "x := 1", "go", th); !slices.Equal(got, want) {
 		t.Fatalf("HighlightCode(go) = %q, want %q", got, want)
 	}
 	if slices.Equal(theme.HighlightCode("a", ""), codeBlockLines("a", builtinDarkTheme())) {
@@ -85,7 +85,7 @@ func TestComponentThemeDefaultMarkdownFollowsActiveTheme(t *testing.T) {
 	if got, want := markdownThemeStyles(theme), markdownThemeStyles(MarkdownThemeFor(ActiveTheme())); !slices.Equal(got, want) {
 		t.Fatalf("default %q != bound %q", got, want)
 	}
-	if got, want := theme.HighlightCode("a", ""), highlightMarkdownCode("a", ""); !slices.Equal(got, want) {
+	if got, want := theme.HighlightCode("a", ""), HighlightCode("a", ""); !slices.Equal(got, want) {
 		t.Fatalf("HighlightCode = %q, want %q", got, want)
 	}
 	override := componentThemeOverride(t)

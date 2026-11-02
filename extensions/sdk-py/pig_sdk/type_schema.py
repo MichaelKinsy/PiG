@@ -40,7 +40,7 @@ class TSchema(dict):
 
 class Refinement(NamedTuple):
     """One entry of a schema's hidden ``~refine`` list (TypeBox's ``{check, error}``): ``check(value)`` decides whether a value passes and ``error(value)`` words the failure (None is
-    TypeBox's "Refine Error"). TypeBox's own validation runs them, but a tool's arguments are validated as plain JSON Schema (Pi 0.7.0 validates with pi-schema), so nothing in a tool's
+    TypeBox's "Refine Error"). TypeBox's own validation runs them, but a tool's arguments are validated as plain JSON Schema (Pi 1.4.0+b556cfe5 validates with pi-schema: ai/CHANGELOG.md:25, coding-agent/docs/extensions.md:176), so nothing in a tool's
     registration or call consults the list: arguments a refinement would reject are accepted, and the constraint belongs in the tool's handler."""
 
     check: Callable[[Any], Any]
@@ -336,6 +336,7 @@ class _Type(_EngineMembers):
     def immutable(schema: Any) -> TSchema:
         return _update(schema, {"~immutable": True}, None)
 
+    # pig divergence (D226): the stored check is never run by any API; remove when every SDK serves TypeBox Value.Check.
     @staticmethod
     def refine(*args: Any) -> TSchema:
         """``Type.Refine(type, check)`` or ``(type, check, error)``: a copy of the schema whose hidden ``~refine`` list has the refinement appended; the schema's JSON does not change.

@@ -204,6 +204,7 @@ func ResolveSegments(value any, segments [][]byte) (any, error) {
 			if node.Len() != 1 || !isNumber || index < 0 || index != math.Trunc(index) || index >= float64(len(segments)) {
 				return nil, errors.New("payload: a malformed byte segment reference")
 			}
+			//portlint:allow numbers index was checked a non-negative integer below len(segments) at values.go:204, as the index check in values.ts:97-100, so int(index) is exact
 			return segments[int(index)], nil
 		}
 		for _, key := range node.Keys() {

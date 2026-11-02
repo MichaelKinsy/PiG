@@ -80,9 +80,9 @@ type HostHelpers struct {
 	// onUpdate are in this process, which peer reaches. The call has no Context, so a connection of its own would be any running extension's, which ends when that
 	// extension does, whichever made the call.
 	BuiltinToolExecute func(ctx context.Context, args []byte, peer BuiltinToolPeer) ([]byte, error)
-	// HighlightCode is highlightCode (markdown false) or getMarkdownTheme().highlightCode (markdown true), drawn with the palette of the theme initTheme installed, or with the
-	// host's active theme when palette is empty.
-	HighlightCode func(code, lang string, markdown bool, palette []byte) ([]string, error)
+	// HighlightCode is highlightCode, which getMarkdownTheme().highlightCode is too, drawn with the palette of the theme initTheme installed, or with the host's active
+	// theme when palette is empty.
+	HighlightCode func(code, lang string, palette []byte) ([]string, error)
 	// TypeEngine answers one type.engine request, `{"member": ..., "args": [...]}`, with the engine's reply (see type_engine.go); a fused extension runs TypeBox's type engine in the
 	// host's own process.
 	TypeEngine func(request []byte) []byte
@@ -607,19 +607,16 @@ func decodeResized(result *callResultMsg, err error) (*ResizedImage, error) {
 }
 
 // highlightCodeLines asks the host for highlight.js's lines of code in lang, drawn with the installed theme (see [InitTheme]) or the host's active one.
-func highlightCodeLines(code, lang string, markdown bool) ([]string, error) {
+func highlightCodeLines(code, lang string) ([]string, error) {
 	palette := installedThemePalette()
 	if hook := installedHelpers(); hook != nil && hook.HighlightCode != nil {
-		return hook.HighlightCode(code, lang, markdown, palette)
+		return hook.HighlightCode(code, lang, palette)
 	}
 	c, err := helperConnection()
 	if err != nil {
 		return nil, err
 	}
 	args := map[string]any{"code": code, "lang": lang}
-	if markdown {
-		args["markdown"] = true
-	}
 	if len(palette) > 0 {
 		args["theme"] = palette
 	}

@@ -90,11 +90,7 @@ func TestBedrockBearerTokenDivergencesFromPi(t *testing.T) {
 			maps.Copy(env, tc.env)
 
 			cmd := exec.CommandContext(t.Context(), "node", "-e", script, piCodingAgentPackage(t), modelID)
-			for _, entry := range os.Environ() {
-				if !strings.HasPrefix(entry, "AWS_") {
-					cmd.Env = append(cmd.Env, entry)
-				}
-			}
+			cmd.Env = withoutAWSEnvironment(os.Environ())
 			for k, v := range env {
 				cmd.Env = append(cmd.Env, k+"="+v)
 			}

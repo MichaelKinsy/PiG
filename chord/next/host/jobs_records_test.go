@@ -20,6 +20,8 @@ import (
 // Ports packages/chord/test/next/jobs/records.test.ts: a job's records on its object (slice 6a §1.2, §15 rule 5): runs
 // across attempts, cut off by an attempt's seal, finished on the next live attempt, and the keep-alive of runs waiting
 // for one. Go forms: jobs_job_test.go.
+//
+// pi: packages/chord/src/next/jobs/records.ts
 
 var jobWork = mustDefineJob(DefineJob("app.work", JobOptions{
 	Version: 1, Args: contracts.Obj(contracts.Prop("text", contracts.Str())), Result: contracts.Str(), State: jobProgress,
@@ -589,7 +591,7 @@ func (db *nthTransactionDatabase) Transaction(callback func(transaction sqlite.S
 	db.mu.Unlock()
 	return db.SqliteDatabase.Transaction(func(transaction sqlite.SqliteExecutor) error {
 		if held != nil {
-			transaction = &gatedExecutor{SqliteExecutor: transaction, gate: held}
+			transaction = &heldExecutor{SqliteExecutor: transaction, gate: held}
 		}
 		return callback(transaction)
 	})

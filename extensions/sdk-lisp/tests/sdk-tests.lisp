@@ -285,6 +285,8 @@ Returns the host and the register envelope."
         (check-call (lambda (c) (pig:ctx-set-thinking-level c "high")) "setThinkingLevel" (pig:obj "level" "high"))
         (check-call (lambda (c) (pig:ctx-set-label c "e1" "L")) "setLabel" (pig:obj "entryId" "e1" "label" "L"))
         (check-call (lambda (c) (pig:ctx-wait-for-idle c)) "waitForIdle" (pig:obj))
+        (check-call (lambda (c) (pig:ctx-yield c)) "yield" (pig:obj))
+        (check-call (lambda (c) (pig:ctx-sleep c 0.01)) "yield" (pig:obj))
         (check-call (lambda (c) (pig:ctx-project-trusted-p c)) "isProjectTrusted" (pig:obj) (pig:obj "trusted" t))
         (check-equal t *thunk-result*)
         (check-call (lambda (c) (pig:ctx-get-session-id c)) "getSessionID" (pig:obj) (pig:obj "sessionId" "s1"))

@@ -12,6 +12,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
+// pi: packages/chord/src/next/remote/replica.ts
+
 // Ports packages/chord/test/next/remote/replica.test.ts: replicas.
 
 // replicaOfN is a replica of `{ n }` on a fresh batch, with a derive over it attached.

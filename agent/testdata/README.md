@@ -22,9 +22,9 @@ Pi's own `validateToolArguments` (`packages/ai/src/utils/validation.ts`) is the 
 | Rule | Pi source |
 |---|---|
 | Validate `tool.parameters` itself, in its authored member order, with one compiled validator per schema | `packages/ai/src/utils/validation.ts:6-18` |
-| Coerce, then check, with pi-schema's `parse`; the arguments are a copy, so the call keeps its own | `packages/ai/src/utils/validation.ts:317-339` |
-| Report dotted paths (`/edits/0/oldText` is `edits.0.oldText`, `root` for the value itself), then `Received arguments` | `packages/ai/src/utils/validation.ts:20-27,340-349` |
-| A `$ref` that names nothing rejects only the values at its place | `packages/ai/src/utils/validation.ts:14-17` |
+| Coerce, then check, with pi-schema's `parse`; the arguments are a copy, so the call keeps its own | `packages/ai/src/utils/validation.ts:58-62` |
+| Report dotted paths (`/edits/0/oldText` is `edits.0.oldText`, `root` for the value itself), then `Received arguments` | `packages/ai/src/utils/validation.ts:20-28,64-68` |
+| A `$ref` that names nothing rejects only the values at its place | `packages/ai/src/utils/validation.ts:13-15` |
 | Give before-tool hooks and execution the returned arguments | `packages/agent/src/agent-loop.ts:726-732,767` |
 
 The stock Session path is `coding/session.go` → `agent/tool_execution.go` → `ai/validate.go`. Validation runs on the existing agent worker. It creates no goroutine, timer, or extension request. The compiled validators are cached by schema text, at most 256 of them (D112).

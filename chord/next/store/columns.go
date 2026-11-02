@@ -202,8 +202,10 @@ func ColumnRecordFromJSON(value any) (ColumnRecord, error) {
 	if fallback, present := object.Get("default"); present {
 		switch typed := fallback.(type) {
 		case float64:
-			if record.Type == ColInt {
-				record.Default = int64(typed)
+			// An int column's default is an int64 when it is a safe integer; any other number stays as stored, for the
+			// applier's check (Pi keeps the number).
+			if integer, safe := safeInteger(typed); safe && record.Type == ColInt {
+				record.Default = integer
 			} else {
 				record.Default = typed
 			}
@@ -212,8 +214,10 @@ func ColumnRecordFromJSON(value any) (ColumnRecord, error) {
 		}
 	}
 	if version, ok := object.Value("version").(float64); ok {
-		number := int(version)
-		record.Version = &number
+		if integer, safe := safeInteger(version); safe {
+			number := int(integer)
+			record.Version = &number
+		}
 	}
 	if fingerprint, ok := object.Value("fingerprint").(string); ok {
 		record.Fingerprint = fingerprint

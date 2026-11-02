@@ -11,6 +11,8 @@ import (
 	"github.com/MichaelKinsy/PiG/schema"
 )
 
+// pi: packages/chord/src/next/contracts/schema.ts
+
 // Ports packages/chord/test/next/contracts/schema.test.ts. The Static<> checks and expectTypeOf are type-level only
 // (designed out: a Go schema is data, values are JSON). pi-schema's `compile(schema).check(value)` is
 // schema.Compile(node, ...).Check(value); the bytes leaf is checked natively, as pi-schema checks a Uint8Array.
@@ -49,6 +51,7 @@ func TestSchemaHelpers(t *testing.T) {
 		sameJSON(t, contracts.Lit(true), `{"type":"boolean","const":true}`)
 		sameJSON(t, contracts.Str(contracts.Default("d")), `{"type":"string","default":"d"}`)
 		sameJSON(t, contracts.Int(contracts.Default(3.0)), `{"type":"integer","default":3}`)
+		sameJSON(t, contracts.Num(contracts.Default(1.5)), `{"type":"number","default":1.5}`)
 		sameJSON(t, contracts.Bool(contracts.Default(true)), `{"type":"boolean","default":true}`)
 	})
 

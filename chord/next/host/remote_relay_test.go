@@ -18,6 +18,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode"
 )
 
+// pi: packages/chord/src/next/remote/relay.ts
+
 // Ports packages/chord/test/next/remote/relay.test.ts: relayed holds, with a server routing to raw workers and a raw tab.
 
 // rawRelayHost is a server routing to raw workers, and a raw tab on a link it accepted.
@@ -1069,6 +1071,18 @@ func TestRelayLimitsAndCompression(t *testing.T) {
 			worker := workers.At(t, 0)
 			if held := worker.Next("hold").(*link.HoldMessage); held.Limit != link.Some(4096) {
 				t.Fatalf("upstream limit = %+v, want 4096", held.Limit)
+			}
+		})
+
+		// Go form: Pi's limit is a double and the wire field an integer; a limit past 2^53 bytes exceeds every part and is stamped as Number.MAX_SAFE_INTEGER, never an out-of-range conversion.
+		t.Run("stamp a decoded limit past 2^53 as the largest safe integer", func(t *testing.T) {
+			workers := newRawWorkers(t, rawWorkerOptions{})
+			rel := relay(t, relayedOptions{Resolve: workers.Resolve})
+			raw := rawTab(t, rel.Server, nil, link.PartLimits{Decoded: new(1e300)})
+			raw.Send(placedHold(t, 0, "S1"))
+			worker := workers.At(t, 0)
+			if held := worker.Next("hold").(*link.HoldMessage); held.Limit != link.Some(1<<53-1) {
+				t.Fatalf("upstream limit = %+v, want %d", held.Limit, int64(1<<53-1))
 			}
 		})
 

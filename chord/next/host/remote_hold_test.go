@@ -24,6 +24,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
+// pi: packages/chord/src/next/remote/hold.ts
+
 // Ports packages/chord/test/next/remote/hold.test.ts.
 //
 // Go forms (rows of the lane): `instancesOf(Hold, "start")`, `instancesOf(ChordObject, ...)` and the mocked Delta

@@ -3,7 +3,6 @@ package store
 import (
 	"errors"
 	"fmt"
-	"math"
 	"slices"
 	"sort"
 
@@ -718,8 +717,8 @@ func decodeScalar(raw any, what string) (Scalar, error) {
 	case string, bool:
 		return typed, nil
 	case float64:
-		if typed == math.Trunc(typed) && math.Abs(typed) <= MaxSafeInteger64 {
-			return int64(typed), nil
+		if integer, safe := safeInteger(typed); safe {
+			return integer, nil
 		}
 		return typed, nil
 	case int64:

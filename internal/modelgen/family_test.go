@@ -1,6 +1,10 @@
 package modelgen
 
-// pi: packages/ai/catalog/families/{anthropic,openai,deepseek,google,kimi}.ts
+// pi: packages/ai/catalog/families/anthropic.ts
+// pi: packages/ai/catalog/families/openai.ts
+// pi: packages/ai/catalog/families/deepseek.ts
+// pi: packages/ai/catalog/families/google.ts
+// pi: packages/ai/catalog/families/kimi.ts
 // No upstream test covers the family rules; the expectations are derived by reading the TypeScript tables.
 
 import "testing"

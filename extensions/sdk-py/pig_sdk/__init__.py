@@ -1302,6 +1302,10 @@ def _ensure_jsonable(value: Any, what: str) -> None:
         raise TypeError(f"{what} must be JSON-serializable") from exc
 
 
+class _ShutdownBeforeReady(Exception):
+    """The host's shutdown frame arrived while the extension loaded, before ready."""
+
+
 class HostCallError(RuntimeError):
     """Raised when the host returns an error for an extension→host call."""
 
@@ -3019,7 +3023,14 @@ class Context:
         optional, as upstream's are: None is sent as unset and the host applies
         upstream's default for the session's state. ``details`` is upstream's
         message ``details``, extension data kept with the message and not sent
-        to the model; None leaves it unset."""
+        to the model; None leaves it unset.
+
+        ``trigger_turn=True`` marks the session busy, and ``is_idle`` stays
+        busy until the code that sent it yields, as in Pi until its first
+        ``await``. A handler that waits for the run it started (a poll
+        ``while not ctx.is_idle(): ctx.sleep(0.01)``) must use ``ctx.sleep`` or
+        ``ctx.yield_now()``; a raw ``time.sleep`` keeps the hold until the
+        handler returns."""
         options: dict[str, Any] = {}
         if trigger_turn is not None:
             options["triggerTurn"] = trigger_turn
@@ -3753,6 +3764,15 @@ class Context:
         return bool(self._reply_field("isProjectTrusted", "trusted"))
 
     def is_idle(self) -> bool:
+        """``ctx.isIdle()``: whether the session is idle.
+
+        ``send_message(..., trigger_turn=True)`` marks the session busy, and the
+        host keeps ``is_idle`` busy until the code that sent it yields, as Pi
+        does until its handler reaches its first ``await``. A handler that waits
+        for the run it started (``while not ctx.is_idle(): ...``) must wait with
+        ``ctx.sleep(seconds)`` or call ``ctx.yield_now()`` first; a raw
+        ``time.sleep`` keeps the hold until the handler returns.
+        """
         return bool(self._reply_field("isIdle", "idle"))
 
     def abort(self) -> None:
@@ -3803,6 +3823,26 @@ class Context:
 
     def wait_for_idle(self) -> None:
         self._call("waitForIdle")
+
+    def yield_now(self) -> None:
+        """Stand for Pi's first ``await``: tell the host this handler yields.
+
+        The host holds ``is_idle`` busy after ``send_message(..., trigger_turn=True)``
+        until the sending code yields. Python has no ``await`` here, so this
+        call ends the hold. A host failure raises, as ``wait_for_idle`` does.
+        """
+        self._call("yield", {})
+
+    def sleep(self, seconds: float) -> None:
+        """Yield (``yield_now``), then block this thread for ``seconds``.
+
+        Use it instead of ``time.sleep`` in a poll such as
+        ``while not ctx.is_idle(): ctx.sleep(0.01)``; a raw ``time.sleep``
+        keeps the host's hold until the handler returns. Like Pi's ``setTimeout`` it does
+        not return early when the request is cancelled; check ``is_cancelled()`` to stop earlier.
+        """
+        self.yield_now()
+        time.sleep(seconds)
 
     def new_session(self, opts: dict[str, Any] | None = None) -> Any:
         """Start a new session. ``opts`` may hold ``parentSession``, a ``setup`` callable taking a SetupSessionManager that seeds the new session before it starts (types.ts:411), and a ``withSession`` callable taking a ReplacedSessionContext."""
@@ -4266,6 +4306,7 @@ class Extension:
         # The frontend flag, the image refs sent, and the live widget, header and footer views (D107).
         self._views = kit._ViewLedger()
         self._shutdown = ProviderSignal()
+        self._shutdown_noted = False
         # The replicated signal of the run in progress: (host run number, signal), None while no run is active (Context.signal).
         self._run_signal: tuple[int, ProviderSignal] | None = None
         self._run_signal_lock = threading.Lock()
@@ -4493,6 +4534,10 @@ class Extension:
         while not event.is_set():
             env = self._read_during_load(event)
             if env is not None:
+                if env.get("type") == "shutdown":
+                    # The call's result is still owed: the run ends on the shutdown once it has registered.
+                    self._shutdown_noted = True
+                    continue
                 raise RuntimeError(f"expected a {method} result, got {env.get('type')}")
         return self._wait_call(call_id, event, method)
 
@@ -5016,13 +5061,29 @@ class Extension:
                 pass
 
     def _serve(self) -> None:
+        try:
+            ready = self._register_and_wait_ready()
+        except _ShutdownBeforeReady:
+            # A shutdown before ready ends the run as one after ready does: no error, because Pi's session shutdown never fails an extension (runner.ts emitSessionShutdownEvent) and the Node runtime returns. The register frame is sent, and the dispatches read before the shutdown are answered while the request threads drain.
+            self._stop_runtime()
+            return
+        self._serve_ready(ready)
+
+    def _register_and_wait_ready(self) -> dict[str, Any]:
         self._bus.register_pending()
         with self._tool_registration_lock:
             self._send({"type": "register", "register": {"name": self._name, "tools": self._tools, "commands": self._commands, "shortcuts": self._shortcuts, "handlers": self._handlers, "flags": self._flags, "providers": self._providers, "message_renderers": self._renderers, "entry_renderers": self._entry_renderers, **({"markdown_transformer": True} if self._markdown_transformer is not None else {}), **({"owns_thinking_runs": True} if self._owns_thinking_runs else {}), **({"tool_renderers": len(self._tool_renderer_resolvers)} if self._tool_renderer_resolvers else {}), **({"mcp_servers": self._mcp_servers_pending} if self._mcp_servers_pending else {}), **({"virtual_models": self._virtual_models_pending} if self._virtual_models_pending else {}), **({"unregister_virtual_models": self._virtual_model_unregistrations} if self._virtual_model_unregistrations else {})}})
+            if self._shutdown_noted or host_helpers.take_shutdown(self._served_socket):
+                raise _ShutdownBeforeReady()
             ready = self._read_during_load()
+            if ready.get("type") == "shutdown":
+                raise _ShutdownBeforeReady()
             if ready.get("type") != "ready":
                 raise RuntimeError(f"expected ready, got {ready.get('type')}")
             self._tools_live = True
+        return ready
+
+    def _serve_ready(self, ready: dict[str, Any]) -> None:
         ready_data = ready.get("ready") or {}
         source_info = ready_data.get("sourceInfo")
         self._source_info = dict(source_info) if isinstance(source_info, dict) else None

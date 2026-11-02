@@ -122,7 +122,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/catalog/sources/models-dev.ts` | `internal/modelgen/models_dev.go` | ✅ |
 | `packages/ai/catalog/sources/openrouter.ts` | `internal/modelgen/source_openrouter.go (+ openRouterCost of src/providers/openrouter-api.ts, kept equal to ai.OpenRouterCost by internal/modelgen/crosscheck_test.go)` | ✅ |
 | `packages/ai/catalog/sources/vercel-ai-gateway.ts` | `internal/modelgen/source_vercel.go (replaces scripts/ai-gateway-pricing.ts)` | ✅ |
-| `packages/ai/catalog/README.md` | `internal/modelgen/README.md` | ✅ |
+| `packages/ai/catalog/README.md` | `internal/modelgen/README.md` (the build order it documents: `internal/modelgen/build.go`; the `ModelsDevModels` helper it documents: `internal/modelgen/define.go`) | ✅ |
 
 ## `packages/agent/src/`
 
@@ -146,6 +146,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/providers/all.ts` | `ai/registry.go + ai/register_builtins.go + ai/images_registry.go`, `ai/builtin_providers.go`, `ai/compat.go` | ✅ |
 | `packages/ai/src/providers/compat-schema.ts` | `internal/codingagent/configschema/compat_a.go + internal/codingagent/configschema/compat_b.go (schema trees; the typed Go compat structs carry the runtime shape); byte-equal to the pinned Pi package schemas by TestRenderedSchemasAreByteEqualToThePinnedPiPackage`, `ai/types.go`, `ai/openai.go`, `ai/types_unions.go`, `ai/system_one.go` | ✅ |
 | `packages/ai/src/providers/model-schema.ts` | `internal/codingagent/configschema/model.go (schema trees); TestRenderedSchemasAreByteEqualToThePinnedPiPackage`, `ai/types.go` | ✅ |
+| `packages/ai/src/providers/schema-builders.ts` | `internal/codingagent/configschema/pischema.go (OpenObject, StringLiteral, StringRecord; OneOf)` | ✅ |
 | `packages/ai/src/api/anthropic-messages.ts` | `ai/direct_simple.go + ai/anthropic.go + ai/anthropic_stream.go + ai/anthropic_client.go + ai/anthropic_federation.go + ai/provider_request_options.go + ai/constrained_sampling.go (createClient auth/header branches including the ai.FormatUserAgent(nil) default User-Agent from ai/user_agent.go (D65), betas, OAuth Claude Code identity, tool-name conversion, strict JSON-schema tools across current, initial, and deferred declarations, toolChoice, metadata.user_id, complete stop-reason and incomplete-stream errors, thinking_tokens usage, usage retention on error, explicit-zero temperature compatibility, managed mid-conversation effort with historical/current effort markers, adaptive drop-block binding, beta selection, and providerThinkingLevel, and native mid-conversation tool changes with tool_addition/tool_removal blocks, deferred placeholder/later tools, beta selection, and safe fallback to the current tool list; the executor-turn body pipeline with its Node 24.19/26.7 tick-order differential in ai/anthropic_microtask_trace_test.go and ai/anthropic_stream_test.go over coding/testdata/rpc33-observation/providers/anthropic-messages; upstream 0.99.2 workload identity federation in ai/anthropic_federation.go (getAnthropicFederation, token exchange, expiry refresh, the per-config federation client cache; ai/anthropic_federation_upstream_test.go, ai/anthropic_federation_sdk_upstream_test.go, ai/anthropic_token_cache_test.go) and the strict-tool keyword fallback (ai/anthropic.go anthropicStrictUnsupportedKeyword; ai/anthropic_strict_tool_schema_upstream_test.go, ai/anthropic_strict_keywords_test.go); tests in ai/anthropic_oauth_test.go, ai/anthropic_test.go, ai/anthropic_contract_0861_test.go, ai/anthropic_effort_strict_test.go, ai/constrained_sampling_test.go, ai/transcript_tool_changes_test.go, and agent/native_tool_changes_test.go); server-side fallback (allowedFallbackModels fallbacks param, server-side-fallback-2026-07-01 beta, fallback content block and cost) in ai/anthropic_fallback_request_upstream_test.go`, `ai/types.go`, `ai/compat.go` | ✅ |
 | `packages/ai/src/api/constrained-sampling.ts` | `ai/constrained_sampling.go + ai/schema_object_order.go (imported schema-key order;grammar + canonical JSON-schema strict constrained sampling; wired into Anthropic, OpenAI Completions, OpenAI Responses, Mistral, Bedrock, and Google request paths; unit and provider-wire tests in ai/constrained_sampling_test.go, ai/anthropic_test.go, ai/openai_test.go, ai/openai_responses_constrained_test.go, ai/mistral_test.go, ai/providers/bedrock/bedrock_test.go, and ai/google_test.go)` | ✅ |
 | `packages/ai/src/api/azure-openai-config.ts` | `ai/azure_config.go (ResolveAzureBaseURL, ResolveAzureConfig, ResolveAzureDeploymentName)`, `ai/types.go` | ✅ |
@@ -313,8 +314,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/utils/uuid.ts` | `ai/uuid.go (UUIDv7, uuidv7Generator: the process-wide last-ordinary-timestamp and 41-bit sequence state with an injected clock and random source; internal/codingagent session ids, the Codex WebSocket request id, the compaction summary routing session id and the bug-report id call it)` | ✅ |
 | `packages/ai/src/utils/abort-signals.ts` | `(stdlib context.Context combines signals)` | n/a |
 | `packages/ai/src/utils/sanitize-unicode.ts` | `ai/sanitize_unicode.go` | ✅ |
-| `packages/ai/src/utils/typebox-helpers.ts` | `ai/typebox_helpers.go (StringEnum only, as a JSON-schema map; the TypeBox runtime and type-level helpers stay designed out; production caller internal/evals/evalsuites/audit.go)` | ✅ |
-| `packages/ai/src/utils/validation.ts` | `ai/validate.go + ai/validate_arguments.go + ai/validate_convert.go + ai/validate_errors.go + internal/typebox/compiler.go + ai/validate_json.go` | ✅ |
+| `packages/ai/src/utils/string-enum.ts` | `ai/string_enum.go (StringEnum only, as a JSON-schema map; its production caller is the evals audit suite)` | ✅ |
+| `packages/ai/src/utils/validation.ts` | `ai/validate.go + ai/validate_arguments.go (pi-schema parse with coercion, errors and dotted paths)` | ✅ |
 | `packages/ai/src/utils/version.ts` | `ai/user_agent.go (ProductVersion: PiG's composite release version stands for PI_AI_VERSION as the default version of a detailed User-Agent, D65; TestClientIdentityVersionDefaultsToTheProductVersion)` | ✅ |
 | `packages/ai/src/providers/baseten.models.ts` | `(not ported: Baseten provider declined)` | n/a |
 | `packages/ai/src/providers/baseten.ts` | `(not ported: Baseten provider declined)` | n/a |
@@ -392,6 +393,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/core/keybindings-schema.ts` | `internal/codingagent/keybindings_schema.go (tui.TUIKeybindingOrder + KeybindingsManager.KeybindingIDs)` | ✅ |
 | `packages/coding-agent/src/core/messages.ts` | `agent/messages.go` | ✅ |
 | `packages/coding-agent/src/core/model-config.ts` | `internal/codingagent/model_registry.go` | ✅ |
+| `packages/coding-agent/src/core/pi-ai-schemas.ts` | `internal/codingagent/configschema/pi_ai_schemas.go (PartialModelCostSchema; the Type.Unsafe wrappers only change TypeBox's static type and are designed out)` | ✅ |
 | `packages/coding-agent/src/core/model-registry.ts` | `internal/codingagent/model_registry.go + internal/codingagent/extension_model_registry.go + coding/extension/host/subprocess/provider_object.go + internal/codingagent/native_model_runtime.go + coding/model_runtime_native.go + coding/model_registry_facade.go + internal/codingagent/registry_request_auth.go`, `coding/services.go`, `coding/model_runtime_classify.go`, `coding/model.go`, `internal/codingagent/model_catalog_data.go`, `coding/virtual_models.go` | ✅ |
 | `packages/coding-agent/src/core/model-runtime.ts` | `internal/codingagent/model_registry.go + internal/codingagent/provider_registration_validation.go + internal/codingagent/provider_registration_namespace.go + internal/codingagent/extension_model_registry.go + internal/codingagent/native_provider.go + coding/native_provider.go + internal/codingagent/native_model_runtime.go + internal/codingagent/native_credential_operations.go + coding/services.go + coding/model_availability.go + internal/codingagent/model_availability.go + internal/codingagent/model_refresh_background.go + internal/codingagent/model_tasks.go + coding/model_runtime_create.go + coding/model_catalog_backend.go + coding/registered_stream_provider.go + internal/codingagent/model_catalog_data.go + internal/codingagent/registry_request_auth.go + coding/model_runtime_native.go + coding/extension/host/subprocess/native_provider.go + internal/codingagent/interactive.go + internal/codingagent/request_auth_runtime.go (request-auth surface)`, `coding/model_runtime_classify.go`, `coding/model_runtime_typed.go`, `coding/model_runtime_members.go`, `coding/virtual_models.go`, `ai/auth_resolve.go` | ✅ |
 | `packages/coding-agent/src/core/models-store.ts` | `ai/models_store.go + ai/models_store_read.go + internal/pilock/lock.go (FileModelsStore; upstream read-cache cases and Pi directory-lock/concurrent-writer regressions) + internal/codingagent/model_registry.go + internal/codingagent/radius_models.go (<agentDir>/models-store.json)` | ✅ |
@@ -427,6 +429,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/core/extensions/loader.ts` | `coding/cli/extensions.go + coding/extension/provider_runtime.go (shared ordered provider queue and bind actions) + coding/extension/host/subprocess/builder_node.go + coding/extension/host/subprocess/runtime-node/jiti-loader.mjs + coding/extension/host/subprocess/runtime-node/runtime.mjs + coding/extension/host/subprocess/reload_cells.go + coding/extension/host/subprocess/reload_report.go (the reload's placement report) + coding/extension/host/subprocess/host.go + coding/extension/host/subprocess/tool_registration.go (synchronous late registration updates) + coding/extension/host/subprocess/ui_bridge.go (flag defaults, tool-schema and command validation, failed Node factory API rejection, factory-time action stubs and awaited exec, rollback and concurrent-provider preservation are covered by Pi-differential and mutation-checked tests (TestNodeLoadTimeActionsMatchPiLoader, TestUpstreamFactoryFailure*, TestNodeRunnerRejectsInvalidCommandRegistration); the module-level factory cache (loadExtensionsCached, clearExtensionCache) is the recorded divergence D70, and discoverAndLoadExtensions has no production caller in Pi, which discovers through the package manager (coding/packagecontent); reload and Session replacement re-invoke factories in the retained process: retention.go, runtime-node/generations.mjs)`, `coding/discover_extensions.go` | ✅ |
 | `packages/coding-agent/src/core/extensions/wrapper.ts` | `coding/extension_bridge.go + coding/session_tool_registry.go` | ✅ |
 | `packages/coding-agent/src/core/extensions/index.ts` | `(barrel)` | n/a |
+| `packages/coding-agent/src/core/extensions/pi-ai-extension-view.ts` | `coding/extension/host/subprocess/runtime-node/shims/pi-ai.mjs (compat plus TypeBox Type and TypeBox StringEnum, served to Node extensions); extensions/sdk/type_schema.go (Type in the Go SDK)` | 🟡 |
 | `packages/coding-agent/src/extensions/index.ts` | `coding/cli/llama.go + internal/codingagent/llama/host.go (built-in llama.cpp provider and /llama registered natively in every mode; Stock PiG has no inline-extension runtime)` | ✅ |
 | `packages/coding-agent/src/extensions/llama/client.ts` | `internal/codingagent/llama/client.go + internal/codingagent/llama/fetch.go` | ✅ |
 | `packages/coding-agent/src/extensions/llama/huggingface.ts` | `internal/codingagent/llama/huggingface.go` | ✅ |
@@ -460,7 +463,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/interactive/external-editor.ts` | `internal/codingagent/external_editor.go (opened by the interactive editor, the extension UI context and the session selectors)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/trust-selector.ts` | `internal/codingagent/trust_selector.go; internal/codingagent/slash_session_handlers.go (trustHandler)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/first-time-setup.ts` | `internal/codingagent/first_time_setup.go (FirstTimeSetupComponent; D88 adds the sprite step and the pig-head logo)` | ✅ |
-| `packages/coding-agent/src/modes/interactive/theme/theme.ts` | `tui/theme.go + tui/theme_loader.go + tui/theme_watcher.go (indexed-color load/var/ANSI/CSS/export coverage in TestLoadThemeFileIndexedColors; complete optional-color fallbacks and authored key order in scrollbar_theme_test.go) + exact pinned dark/light JSON; tui/component_themes.go (getMarkdownTheme, getSelectListTheme, getSettingsListTheme against an explicit theme); internal/codingagent/interactive_tui.go (foreground scrollbarThumb style); internal/codingagent/extension_diagnostics.go (getCustomThemeInfos availability)`, `tui/highlight.go`, `tui/markdown_style.go`, `tui/select_list.go`, `tui/settings_list.go`, `coding/cli/theme_init.go`, `tui/theme_tokens.go` | ✅ |
+| `packages/coding-agent/src/modes/interactive/theme/theme.ts` | `tui/theme.go + tui/theme_loader.go + tui/theme_watcher.go (indexed-color load/var/ANSI/CSS/export coverage in TestLoadThemeFileIndexedColors; complete optional-color fallbacks and authored key order in scrollbar_theme_test.go) + exact pinned dark/light JSON; tui/component_themes.go (getMarkdownTheme, getSelectListTheme, getSettingsListTheme against an explicit theme); internal/codingagent/interactive_tui.go (foreground scrollbarThumb style); internal/codingagent/extension_diagnostics.go (getCustomThemeInfos availability)`, `tui/highlight.go` (HighlightCode; CodeHighlighter reuses its last result until the code, theme or grammars change; Pi 0f21a331), `tui/markdown_style.go`, `tui/select_list.go`, `tui/settings_list.go`, `coding/cli/theme_init.go`, `tui/theme_tokens.go` | ✅ |
 | `packages/coding-agent/src/modes/interactive/theme/theme-controller.ts` | `internal/codingagent/presentation_theme.go + interactive_theme.go + interactive_theme_modal.go + startup_ui.go (terminal color query, live scheme notifications, selection, preview, persistence and lifecycle); theme_controller_native_upstream_test.go; interactive_theme_autoswitch_test.go; interactive-rendering/36–37` | ✅ |
 | `packages/coding-agent/src/modes/interactive/model-search.ts` | `tui/model_search.go (ModelSearchItem, GetModelSearchText, GetModelSelectorSearchText); GetModelSelectorSearchText feeds tui/model_select.go applyFilter over ModelSelectorItem.Name (raw model name), GetModelSearchText feeds tui/scoped_models_list.go refresh and internal/codingagent/interactive_commands.go modelArgCompletions. tui/model_search_test.go proxy-provider fixture (openrouter/vercel-ai-gateway openai/gpt-5 ids) asserts the upstream 0.99.1 fuzzyFilter order for both functions and the selector` | ✅ |
 | `packages/coding-agent/src/modes/print-mode.ts` | `coding/cli/print_mode.go (text) and coding/cli/json_mode.go (json): upstream runs both modes from one function, pig splits them by mode. json streams the session event stream as JSONL while the turn runs; text still prints only the final assistant message. Behavioral coverage: print/01-print-mode-arithmetic, json/01-json-mode-streams-events` | ✅ |
@@ -566,7 +569,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/core/tools/renderers/index.ts` | `tui/tool_renderers.go (createAllToolRenderers by name, withBuiltInRenderers fallback) + tui/tool_execution.go FormatBuiltinToolHeader + internal/codingagent/tool_render.go toolBodyRenderer` | ✅ |
 | `packages/coding-agent/src/core/tools/renderers/ls.ts` | `tui/tool_execution.go (FormatLsHeader) + internal/codingagent/tool_render_list.go` | ✅ |
 | `packages/coding-agent/src/core/tools/renderers/read.ts` | `internal/codingagent/tool_builtin_renderers.go (readRenderCall, readRenderResult) + tui/compact_read_header.go (compact read call for SKILL.md, AGENTS/CLAUDE files and Pi docs, line ranges, invalid-argument marker) + internal/codingagent/tool_render.go (renderReadLines, truncation warnings); TestBuiltInRenderersMatchPi104 compares 124 read cases, collapsed and expanded, row by row with the recorded output of Pi's built renderer (testdata/pi104-render-probe, recorded from the 1.0.4 build; read.ts is unchanged in 1.1.0)` | ✅ |
-| `packages/coding-agent/src/core/tools/renderers/write.ts` | `internal/codingagent/tool_builtin_renderers.go + internal/codingagent/write_highlight_cache.go (WriteHighlightCache: incremental highlight while the content streams) (writeRenderCall, writeRenderResult: the content preview while arguments stream, the invalid-content marker, error-only results) + tui/tool_execution.go (FormatWriteHeader) + internal/codingagent/tool_render.go (renderWriteContent); TestBuiltInRenderersMatchPi104 compares 50 write cases row by row with the recorded output of Pi's built renderer (testdata/pi104-render-probe, recorded from the 1.0.4 build; write.ts is unchanged in 1.1.0)` | ✅ |
+| `packages/coding-agent/src/core/tools/renderers/write.ts` | `internal/codingagent/tool_builtin_renderers.go + internal/codingagent/write_highlight_cache.go (WriteHighlightCache: incremental highlight while the content streams) (writeRenderCall, writeRenderResult: the content preview while arguments stream, the invalid-content marker, error-only results) + tui/tool_execution.go (FormatWriteHeader) + internal/codingagent/tool_render.go (renderWriteContent) + internal/codingagent/tool_builtin_renderers.go (builtInRenderState.highlighter: a complete call highlights through the row's tui.CodeHighlighter; reusableText keeps the row's *tui.Text; Pi 0f21a331); TestBuiltInRenderersMatchPi104 compares 50 write cases row by row with the recorded output of Pi's built renderer (testdata/pi104-render-probe, recorded from the 1.0.4 build; write.ts is unchanged in 1.1.0)` | ✅ |
 | `packages/coding-agent/src/experimental/source-resolver.ts` | `(Node-runtime-only: a node:module registerHooks resolve hook that maps tsconfig @earendil-works/* path aliases to .ts sources so internal processes run from a source checkout; Go links packages at build time)` | n/a |
 | `packages/coding-agent/src/modes/interactive/bug-report.ts` | `internal/codingagent/slash_bug.go, internal/codingagent/interactive_bug.go (consent flow, export-only; D62)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/chat-viewport.ts` | `internal/codingagent/chat_viewport.go (CreateChatViewport; mounted by buildChatViewport in internal/codingagent/interactive_tui.go)` | ✅ |
@@ -588,7 +591,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/extensions/codemode/execute.lazy.ts` | `(designed out: the sandbox is created on the first script by construction, coding/extension/builtin/codemode/execute.go)` | n/a |
 | `packages/coding-agent/src/extensions/codemode/execute.ts` | `coding/extension/builtin/codemode/execute.go + run.go (nested calls, discovery globals, store/load, output truncation, header, process-wide worker admission); models.* ported`, coding/extension/builtin/codemode/execute.go reserve/admit/release (scripts at the worker limit wait up to 60 s in arrival order; PI_CODEMODE_MAX_WORKERS; Pi 885a564b) + codemode/workerlauncher.go (a launch resuming after its result settled starts no worker) | ✅ |
 | `packages/coding-agent/src/extensions/codemode/index.ts` | `coding/extension/builtin/codemode/tool.go (Extension, settings-driven mode and budget) + coding/cli/builtin_extensions.go` | ✅ |
-| `packages/coding-agent/src/extensions/codemode/renderer.ts` | `internal/codingagent/tool_codemode_renderer.go (CodemodeRenderers, carried by the codemode tool definition)` | ✅ |
+| `packages/coding-agent/src/extensions/codemode/renderer.ts` | `internal/codingagent/tool_codemode_renderer.go (CodemodeRenderers, carried by the codemode tool definition; the script's tui.CodeHighlighter lives in builtInRenderState, as Pi's scriptHighlighter lives in context.state)` | ✅ |
 | `packages/coding-agent/src/extensions/codemode/tool.ts` | `coding/extension/builtin/codemode/{tool,description,description_text}.go (description catalog, loadout, definition)` | ✅ |
 | `packages/coding-agent/src/extensions/codemode/worker.ts` | `(designed out: the sandbox runs in-process on wazero, codemode/sandbox.go; there is no worker entry)` | n/a |
 | `packages/coding-agent/src/extensions/mcp/cli.lazy.ts` | `(lazy dynamic-import wrapper; Go links the command statically)` | n/a |
@@ -635,11 +638,11 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/tui/src/components/image.ts` | `tui/image.go` | ✅ |
 | `packages/tui/src/components/input.ts` | `tui/text_input.go (lossless UTF-16 via internal/jsstring)`, `tui/tui.go` | ✅ |
 | `packages/tui/src/components/loader.ts` | `tui/loader.go` | ✅ |
-| `packages/tui/src/components/markdown.ts` | `tui/markdown.go + tui/markdown_options.go + tui/markdown_style.go + tui/markdown_list.go + tui/markdown_marked.go + tui/markdown_marked_block.go (marked 18.0.11 lexer rules) + tui/markdown_cjk.go (marked-cjk-friendly 0.1.2 emStrong: the CJK class and the previous-character recovery; Pi b2d0da6f)`, tui/markdown_latex.go containsTableStart (display math never spans a GFM table; Pi 2ed3118b); markedURL CJK-punctuation cut (Pi fa168515) | ✅ |
+| `packages/tui/src/components/markdown.ts` | `tui/markdown.go + tui/markdown_options.go + tui/markdown_style.go + tui/markdown_list.go + tui/markdown_marked.go + tui/markdown_marked_block.go (marked 18.0.11 lexer rules) + tui/markdown_cjk.go (marked-cjk-friendly 0.1.2 emStrong: the CJK class and the previous-character recovery; Pi b2d0da6f)`, tui/markdown_latex.go containsTableStart (display math never spans a GFM table; Pi 2ed3118b); markedURL CJK-punctuation cut (Pi fa168515); tui/markdown_block_reuse_upstream_test.go (Pi 0f21a331 Block reuse: highlighting reused by language and code until Invalidate; rendered-block reuse keyed by raw is not ported, see its sync row) | ✅ |
 | `packages/tui/src/components/select-list.ts` | `tui/select_list.go (SelectList) + tui/select_filterable.go (shared row layout and truncation)`, `tui/select_submenu.go`, `tui/tui.go` | ✅ |
 | `packages/tui/src/components/settings-list.ts` | `tui/settings_list.go`, `tui/tui.go` | ✅ |
 | `packages/tui/src/components/spacer.ts` | `tui/spacer.go`, `tui/tui.go` | ✅ |
-| `packages/tui/src/components/text.ts` | `tui/text.go`, `tui/loader.go` | ✅ |
+| `packages/tui/src/components/text.ts` | `tui/text.go (SetText with the same text keeps the wrapped lines; tui/text_set_text_upstream_test.go)`, `tui/loader.go` | ✅ |
 | `packages/tui/src/components/truncated-text.ts` | `tui/truncated_text.go (D66 clamps horizontal padding when the full padding cannot fit instead of emitting a fatal over-wide row)`, `tui/tui.go` | ✅ |
 | `packages/tui/src/components/alt-screen-flash.ts` | `tui/alt_screen_flash.go (ported; default/explicit duration, timer removal, rendering, truncation, disposal, and ordering unit-tested in tui/alt_screen_flash_test.go, including TestAltScreenFlashExplicitNonPositiveDurationExpiresImmediately; composite-render wired in tui_alt_screen.go; flash("Copied!") production trigger wired via app.message.copy/Ctrl+X → confirmMessageCopied in interactive.go, unit-tested TestConfirmMessageCopied_FullscreenFlashesInsteadOfStatusLine)` | ✅ |
 | `packages/tui/src/components/h-stack.ts` | `tui/stack.go (HStack, ported + unit-tested side-by-side/align compositing; Stack-base parity)` | ✅ |
@@ -711,7 +714,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/index.ts` | `(re-export barrel: every runtime export has its Go counterpart in chord/host, chord/delta, chord/context and chord/json.go; each is mapped by its own source row)` | n/a |
 | `packages/chord/src/types.ts` | `chord/host/types.go (Context is context.Context; JsonRepresentation, RemoteServiceContract, IsAny are compile-time TypeScript machinery with no Go form, replaced by reflection classification at provide time)` | ✅ |
 | `packages/chord/src/json.ts` | `internal/chord/chordjson/chordjson.go:70 Copy, Stored, IsValue; chord/json.go:12`, `chord/delta/delta.go`, `durable/json.go CopyJson` | ✅ |
-| `packages/chord/src/context/index.ts` | `chord/context/chordctx.go Background, TODO, NewKey, WithValue, WithAbortSignal, WithoutAbortSignal, WithCancel, Await, Telemetry, WithTelemetry, TraceIn (Pi 92ab5360 moves traceIn's context last, traceIn(options, fn, context); TraceIn keeps the context first, as every Go function does)` | ✅ |
+| `packages/chord/src/context/index.ts` | `chord/context/chordctx.go Background, TODO, NewKey, WithValue, WithAbortSignal, WithoutAbortSignal, WithCancel, Await, Telemetry, WithTelemetry, TraceIn (Pi 92ab5360 moves traceIn's context last, traceIn(options, fn, context); TraceIn keeps the context first, as every Go function does)`, `chord/next/host/host_ctx.go` | ✅ |
 | `packages/chord/src/delta/index.ts` | `chord/delta/delta.go:317 AssertValidOpValue, apply.go:227 Apply, ApplyImmutable, apply.go:255 ApplyImmutableBatchesSeq, codec.go:17 Encoder/Decoder, overlap.go:17; ownedSlice is a V8 string-view detail that Go strings.Clone covers where an op or value keeps a cut of a larger string` | ✅ |
 | `packages/chord/src/delta/pending.ts` | `chord/delta/pending.go (PendingOps, PendingTake, MaxPendingOps; chord/delta/pending_test.go)` | ✅ |
 | `packages/chord/src/delta/diff.ts` | `chord/delta/diff.go:611 DiffRevisions` | ✅ |
@@ -744,7 +747,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/reload.ts` | `chord/host/reload.go (link protocol 4)` | ✅ |
 | `packages/chord/src/schema.ts` | `chord/host/schema.go` | ✅ |
 | `packages/chord/src/state.ts` | `chord/state.go` | ✅ |
-| `packages/chord/src/watch.ts` | `chord/watch.go WatchEnd, WatchEndReason, WatchHandle, Watchable, NativeWatchable (Durable's package re-exports them as type aliases, as Pi's durable index does); chord/watch_impl.go Watch, NativeWatch, NativeWatchHandle, DeliveryScheduler (the delivery goroutines that stand for queueMicrotask)` | ✅ |
+| `packages/chord/src/watch.ts` | `chord/watch.go WatchEnd, WatchEndReason, WatchHandle, Watchable, NativeWatchable (Durable's package re-exports them as type aliases, as Pi's durable index does); chord/watch_impl.go Watch, NativeWatch, NativeWatchHandle, DeliveryScheduler (the delivery goroutines that stand for queueMicrotask); chord/next/documents/handles.go SingletonHandle (Pi's `SingletonHandle<T> extends Watchable<T>`: its Value and Watch are the two members watch.ts's interface contributes to the next layer)` | ✅ |
 | `packages/chord/src/websocket.ts` | `chord/host/websocket.go (link protocol 4)` | ✅ |
 | `packages/chord/src/wire.ts` | `chord/host/wire.go (link protocol 4)` | ✅ |
 | `packages/chord/src/telemetry-sqlite/index.ts` | `chord/telemetrysqlite/index.go` | ✅ |
@@ -760,7 +763,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/contracts/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
 | `packages/chord/src/next/contracts/names.ts` | `chord/next/contracts/names.go` | ✅ |
 | `packages/chord/src/next/contracts/params.ts` | `chord/next/contracts/params.go` | ✅ |
-| `packages/chord/src/next/contracts/schema.ts` | `chord/next/contracts/schema.go, chord/next/contracts/namedmap.go, chord/next/contracts/jsorder.go` | ✅ |
+| `packages/chord/src/next/contracts/schema.ts` | `chord/next/contracts/schema.go` | ✅ |
 | `packages/chord/src/next/contracts/snapshot.ts` | `chord/next/contracts/snapshot.go` | ✅ |
 | `packages/chord/src/next/data/args.ts` | `chord/next/data/args.go` | ✅ |
 | `packages/chord/src/next/data/errors.ts` | `chord/next/data/errors.go` | ✅ |
@@ -783,7 +786,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/state/index.ts` | `(re-export barrel)` | n/a |
 | `packages/chord/src/next/state/internal.ts` | `(re-export barrel)` | n/a |
 | `packages/chord/src/next/state/native-source.ts` | `chord/next/state/native_source.go` | ✅ |
-| `packages/chord/src/next/state/watchable.ts` | `chord/next/state/watchable.go, chord/next/state/identical.go, chord/next/state/set.go` | ✅ |
+| `packages/chord/src/next/state/watchable.ts` | `chord/next/state/watchable.go, chord/next/state/set.go` | ✅ |
 | `packages/chord/src/next/state/writable.ts` | `chord/next/state/writable.go` | ✅ |
 | `packages/chord/src/next-node/compression.ts` | `chord/nextnode/compression.go` | ✅ |
 | `packages/chord/src/next/link/binary.ts` | `chord/next/link/binary.go` | ✅ |
@@ -811,22 +814,22 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/store/export.ts` | `chord/next/store/export.go` | ✅ |
 | `packages/chord/src/next/store/import.ts` | `chord/next/store/import.go` | ✅ |
 | `packages/chord/src/next/store/text.ts` | `chord/next/store/text.go` | ✅ |
-| `packages/chord/src/next/store/allocator.ts` | `allocator.go` | ✅ |
-| `packages/chord/src/next/store/claims.ts` | `claims.go` | ✅ |
-| `packages/chord/src/next/store/refusal.ts` | `refusal.go` | ✅ |
-| `packages/chord/src/next/store/columns.ts` | `columns.go` | ✅ |
-| `packages/chord/src/next/store/json-column.ts` | `json_column.go` | ✅ |
-| `packages/chord/src/next/store/rows.ts` | `rows.go` | ✅ |
-| `packages/chord/src/next/store/sql.ts` | `sql.go` | ✅ |
-| `packages/chord/src/next/store/jsonl.ts` | `jsonl.go` | ✅ |
-| `packages/chord/src/next/store/catalog.ts` | `catalog.go` | ✅ |
-| `packages/chord/src/next/store/expression.ts` | `expression.go` | ✅ |
-| `packages/chord/src/next/store/evaluate.ts` | `evaluate.go` | ✅ |
-| `packages/chord/src/next/store/query.ts` | `query.go` | ✅ |
-| `packages/chord/src/next/store/table.ts` | `table.go` | ✅ |
-| `packages/chord/src/next/store/table-history.ts` | `table_history.go` | ✅ |
-| `packages/chord/src/next/store/table-evolve.ts` | `table_evolve.go` | ✅ |
-| `packages/chord/src/next/store/table-migration.ts` | `table_migration.go` | ✅ |
+| `packages/chord/src/next/store/allocator.ts` | `chord/next/store/allocator.go` | ✅ |
+| `packages/chord/src/next/store/claims.ts` | `chord/next/store/claims.go` | ✅ |
+| `packages/chord/src/next/store/refusal.ts` | `chord/next/store/refusal.go` | ✅ |
+| `packages/chord/src/next/store/columns.ts` | `chord/next/store/columns.go` | ✅ |
+| `packages/chord/src/next/store/json-column.ts` | `chord/next/store/json_column.go` | ✅ |
+| `packages/chord/src/next/store/rows.ts` | `chord/next/store/rows.go` | ✅ |
+| `packages/chord/src/next/store/sql.ts` | `chord/next/store/sql.go` | ✅ |
+| `packages/chord/src/next/store/jsonl.ts` | `chord/next/store/jsonl.go` | ✅ |
+| `packages/chord/src/next/store/catalog.ts` | `chord/next/store/catalog.go` | ✅ |
+| `packages/chord/src/next/store/expression.ts` | `chord/next/store/expression.go` | ✅ |
+| `packages/chord/src/next/store/evaluate.ts` | `chord/next/store/evaluate.go` | ✅ |
+| `packages/chord/src/next/store/query.ts` | `chord/next/store/query.go`, `chord/next/store/expression.go` | ✅ |
+| `packages/chord/src/next/store/table.ts` | `chord/next/store/table.go` | ✅ |
+| `packages/chord/src/next/store/table-history.ts` | `chord/next/store/table_history.go` | ✅ |
+| `packages/chord/src/next/store/table-evolve.ts` | `chord/next/store/table_evolve.go` | ✅ |
+| `packages/chord/src/next/store/table-migration.ts` | `chord/next/store/table_migration.go` | ✅ |
 | `packages/chord/src/next/store/adapter.ts` | `chord/next/store/adapter.go` | ✅ |
 | `packages/chord/src/next/store/backend.ts` | `chord/next/store/backend.go` | ✅ |
 | `packages/chord/src/next/store/schema.ts` | `chord/next/store/schema.go` | ✅ |
@@ -868,7 +871,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/host/destination.ts` | `chord/next/host/host_destination.go` | ✅ |
 | `packages/chord/src/next/host/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above (Ctx, Facet, FacetHost, Host..., Sleep, UntilAborted, Presence, RefState, RevokedBy, RootOptions, RouteOptions, RoutineDeclarations, Native*, Follow*, GetOptions, HostError, Position; Host, HostOptions, LinkOptions, createHost, Factory, Self, StoreSelf, Held, Reference, RefIn are D5a's))` | n/a |
 | `packages/chord/src/next/host/internal.ts` | `(barrel for jobs/remote: one package, identifiers are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
-| `packages/chord/src/next/host/host.ts` | `chord/next/host/host_host.go, host_error.go` | ✅ |
+| `packages/chord/src/next/host/host.ts` | `chord/next/host/host_host.go, chord/next/host/host_error.go` | ✅ |
 | `packages/chord/src/next/host/attempt.ts` | `chord/next/host/host_attempt.go` | ✅ |
 | `packages/chord/src/next/host/object.ts` | `chord/next/host/host_object.go` | ✅ |
 | `packages/chord/src/next/host/reference.ts` | `chord/next/host/host_reference.go` | ✅ |
@@ -876,7 +879,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/jobs/persisted.ts` | `chord/next/host/jobs_persisted.go` | ✅ |
 | `packages/chord/src/next/jobs/records.ts` | `chord/next/host/jobs_records.go` | ✅ |
 | `packages/chord/src/next/jobs/run-states.ts` | `chord/next/host/jobs_run_states.go` | ✅ |
-| `packages/chord/src/next/jobs/run.ts` | `chord/next/host/jobs_run.go` | ✅ |
+| `packages/chord/src/next/jobs/run.ts` | `chord/next/host/jobs_run.go, chord/next/documents/job.go` | ✅ |
 | `packages/chord/src/next/jobs/running.ts` | `chord/next/host/jobs_running.go` | ✅ |
 | `packages/chord/src/next/jobs/stored.ts` | `chord/next/host/jobs_stored.go` | ✅ |
 | `packages/chord/src/next/jobs/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above: DefineJob, JobAccepts, JobDefinition, JobError, JobOptions, Outcome, JobCtx, JobHandle, JobImplementation, RunState, StartOptions, BlockedReason, Run; RunningEntry is type-level (jobs_running.go))` | n/a |
@@ -892,37 +895,37 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/remote/replica.ts` | `chord/next/host/remote_replica.go` | ✅ |
 | `packages/chord/src/next/remote/internal.ts` | `(barrel for Chord's own layers: Go imports the package; what it exported (Path, Upstream, HostLink, HoldRequest, actingFor, ...) is unexported in Go (DESIGN-go-layout.md section 2))` | n/a |
 | `packages/chord/src/next/jobs/job.ts` | `chord/next/host/jobs_job.go` | ✅ |
-| `packages/chord/test/next/examples/01-objects.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/02-documents.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/03-derives.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/04-watches.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/05-errors.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/06-natives.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/07-failures.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/08-remote.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/09-calls.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/10-drops.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/11-linger-and-retry.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/12-routes.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/13-relay.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/14-flow-control.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/15-revocation.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/16-presence-and-activity.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/17-limits-and-compression.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/18-routines.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/19-jobs.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/20-tables.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/21-persisted-documents.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/22-migrations.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/23-keyed-watches.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/24-keyed-members.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/25-export-import.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/28-persisted-jobs.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/29-registries.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/30-host-root.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/31-parked-dependencies.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/examples/32-startup.ts` | `chord/next/host/host_examples_test.go` | ✅ |
-| `packages/chord/test/next/support.ts` | `chord/next/host/host_next_support_test.go` | ✅ |
+| `packages/chord/test/next/examples/01-objects.ts` | `chord/next/host/host_example_01_test.go`, `chord/next/host/host_host.go`, `chord/next/host/host_object.go`, `chord/next/data/args.go` | ✅ |
+| `packages/chord/test/next/examples/02-documents.ts` | `chord/next/host/host_example_02_test.go`, `chord/next/documents/transaction.go`, `chord/next/documents/slot.go`, `chord/next/documents/handles.go` | ✅ |
+| `packages/chord/test/next/examples/03-derives.ts` | `chord/next/host/host_example_03_test.go`, `chord/next/state/derive.go` | ✅ |
+| `packages/chord/test/next/examples/04-watches.ts` | `chord/next/host/host_example_04_test.go`, `chord/next/state/derive.go`, `chord/next/documents/address_source.go` | ✅ |
+| `packages/chord/test/next/examples/05-errors.ts` | `chord/next/host/host_example_05_test.go`, `chord/next/host/host_dependencies.go`, `chord/next/host/host_unbound.go`, `chord/next/data/validator.go` | ✅ |
+| `packages/chord/test/next/examples/06-natives.ts` | `chord/next/host/host_example_06_test.go`, `chord/next/host/host_native.go` | ✅ |
+| `packages/chord/test/next/examples/07-failures.ts` | `chord/next/host/host_example_07_test.go`, `chord/next/host/host_backoff.go`, `chord/next/host/host_dependencies.go` | ✅ |
+| `packages/chord/test/next/examples/08-remote.ts` | `chord/next/host/host_example_08_test.go`, `chord/next/host/host_destination.go`, `chord/next/host/remote_remote_object.go`, `chord/next/host/remote_replica.go` | ✅ |
+| `packages/chord/test/next/examples/09-calls.ts` | `chord/next/host/host_example_09_test.go`, `chord/next/link/values.go`, `chord/next/link/errors.go`, `chord/next/host/host_ctx.go`, `chord/next/host/remote_consumer.go`, `chord/next/host/remote_provider.go` | ✅ |
+| `packages/chord/test/next/examples/10-drops.ts` | `chord/next/host/host_example_10_test.go`, `chord/next/host/host_parked.go`, `chord/next/host/host_reference_source.go`, `chord/next/host/host_reference.go` | ✅ |
+| `packages/chord/test/next/examples/11-linger-and-retry.ts` | `chord/next/host/host_example_11_test.go`, `chord/next/host/host_object.go`, `chord/next/host/host_backoff.go` | ✅ |
+| `packages/chord/test/next/examples/12-routes.ts` | `chord/next/host/host_example_12_test.go`, `chord/next/host/host_route.go`, `chord/next/host/host_ctx.go` | ✅ |
+| `packages/chord/test/next/examples/13-relay.ts` | `chord/next/host/host_example_13_test.go`, `chord/next/link/websocket.go`, `chord/next/link/ipc.go`, `chord/next/host/remote_relay.go` | ✅ |
+| `packages/chord/test/next/examples/14-flow-control.ts` | `chord/next/host/host_example_14_test.go`, `chord/next/host/remote_hold.go`, `chord/next/host/remote_provider.go` | ✅ |
+| `packages/chord/test/next/examples/15-revocation.ts` | `chord/next/host/host_example_15_test.go`, `chord/next/host/host_revocation.go`, `chord/next/host/host_host.go`, `chord/next/host/remote_host_link.go` | ✅ |
+| `packages/chord/test/next/examples/16-presence-and-activity.ts` | `chord/next/host/host_example_16_test.go`, `chord/next/host/host_activity.go`, `chord/next/host/host_presence.go` | ✅ |
+| `packages/chord/test/next/examples/17-limits-and-compression.ts` | `chord/next/host/host_example_17_test.go`, `chord/next/link/part.go`, `chord/nextnode/compression.go`, `chord/next/link/channel.go` | ✅ |
+| `packages/chord/test/next/examples/18-routines.ts` | `chord/next/host/host_example_18_test.go`, `chord/next/host/host_routines.go`, `chord/next/host/host_sleep.go` | ✅ |
+| `packages/chord/test/next/examples/19-jobs.ts` | `chord/next/host/host_example_19_test.go`, `chord/next/host/jobs_job.go`, `chord/next/host/jobs_run_states.go`, `chord/next/host/jobs_records.go`, `chord/next/host/jobs_running.go`, `chord/next/host/jobs_run.go` | ✅ |
+| `packages/chord/test/next/examples/20-tables.ts` | `chord/next/host/host_example_20_test.go`, `chord/next/store/query.go`, `chord/next/store/table_handle.go`, `chord/next/store/rows.go`, `chord/next/store/sql.go`, `chord/next/store/columns.go`, `chord/next/store/table_writes.go`, `chord/next/store/table_changes.go` | ✅ |
+| `packages/chord/test/next/examples/21-persisted-documents.ts` | `chord/next/host/host_example_21_test.go`, `chord/next/store/engine.go`, `chord/next/documents/persistence.go`, `chord/next/documents/keyed_slot.go` | ✅ |
+| `packages/chord/test/next/examples/22-migrations.ts` | `chord/next/host/host_example_22_test.go`, `chord/next/store/table_evolve.go`, `chord/next/store/table_migration.go`, `chord/next/store/catalog.go` | ✅ |
+| `packages/chord/test/next/examples/23-keyed-watches.ts` | `chord/next/host/host_example_23_test.go`, `chord/next/documents/keyed_slot.go`, `chord/next/documents/address_source.go` | ✅ |
+| `packages/chord/test/next/examples/24-keyed-members.ts` | `chord/next/host/host_example_24_test.go`, `chord/next/host/host_reference_keys.go`, `chord/next/host/host_members.go` | ✅ |
+| `packages/chord/test/next/examples/25-export-import.ts` | `chord/next/host/host_example_25_test.go`, `chord/next/store/export.go`, `chord/next/store/import.go`, `chord/next/store/jsonl.go`, `chord/next/store/applier.go`, `chord/next/store/archive.go` | ✅ |
+| `packages/chord/test/next/examples/28-persisted-jobs.ts` | `chord/next/host/host_example_28_test.go`, `chord/next/host/jobs_persisted.go`, `chord/next/host/jobs_stored.go`, `chord/next/host/jobs_run_states.go`, `chord/next/host/jobs_records.go` | ✅ |
+| `packages/chord/test/next/examples/29-registries.ts` | `chord/next/host/host_example_29_test.go`, `chord/next/registries/registry.go`, `chord/next/registries/contribution.go`, `chord/next/registries/value.go`, `chord/next/registries/entries.go`, `chord/next/registries/record.go` | ✅ |
+| `packages/chord/test/next/examples/30-host-root.ts` | `chord/next/host/host_example_30_test.go`, `chord/next/host/host_root.go`, `chord/next/host/host_ctx.go` | ✅ |
+| `packages/chord/test/next/examples/31-parked-dependencies.ts` | `chord/next/host/host_example_31_test.go`, `chord/next/host/host_dependencies.go`, `chord/next/host/host_unbound.go` | ✅ |
+| `packages/chord/test/next/examples/32-startup.ts` | `chord/next/host/host_example_32_test.go`, `chord/next/host/remote_remote_object.go`, `chord/next/host/host_host.go` | ✅ |
+| `packages/chord/test/next/support.ts` | `(Pi test scaffolding; ported as the shared helpers in chord/next/host/host_next_support_test.go, tested by host_next_support_helpers_test.go; its fidelity is evidenced by the ported slice and example tests built on it. Forced difference: holdNextCommit holds the next commit step at the statements that close its writes, since the store type is concrete)` | n/a |
 | `packages/chord/src/next-node/http/admission.ts` | `chord/nextnode/http/admission.go` | ✅ |
 | `packages/chord/src/next-node/http/authenticate.ts` | `chord/nextnode/http/authenticate.go` | ✅ |
 | `packages/chord/src/next-node/http/cookies.ts` | `chord/nextnode/http/cookies.go` | ✅ |
@@ -948,12 +951,12 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/host/adapted.ts` | `chord/next/host/host_adapted.go` | ✅ |
 | `packages/chord/src/next/host/reference-keys.ts` | `chord/next/host/host_reference_keys.go` | ✅ |
 | `packages/chord/src/next/host/reference-source.ts` | `chord/next/host/host_reference_source.go` | ✅ |
-| `packages/chord/src/next/host/staging.ts` | `chord/next/host/host_staging.go` | ✅ |
+| `packages/chord/src/next/host/staging.ts` | `chord/next/host/host_staging.go, chord/next/host/host_host.go` | ✅ |
 | `packages/chord/src/next-node/workers/control.ts` | `chord/nextnode/workers/workers_control.go` | ✅ |
 | `packages/chord/src/next-node/workers/index.ts` | `(re-export barrel; the exported set is the package's (CrossedError, ProcessLock, WorkerMain, WorkerStart, WorkerPlugins, WorkerResult, WorkerMainOptions, CreateWorkers, WorkerState, Workers, WorkersError, WorkersOptions))` | n/a |
-| `packages/chord/src/next-node/workers/lock.ts` | `chord/nextnode/workers/workers_lock.go, workers_lock_unix.go, workers_lock_windows.go` | ✅ |
+| `packages/chord/src/next-node/workers/lock.ts` | `chord/nextnode/workers/workers_lock.go, workers_lock_unix.go` (the Windows named-pipe variant workers_lock_windows is built only on Windows and is run by the native Windows CI job) | ✅ |
 | `packages/chord/src/next-node/workers/main.ts` | `chord/nextnode/workers/workers_main.go` | ✅ |
-| `packages/chord/src/next-node/workers/process.ts` | `chord/nextnode/workers/workers_process.go, workers_process_unix.go, workers_process_windows.go, workers_channel*.go` | ✅ |
+| `packages/chord/src/next-node/workers/process.ts` | `chord/nextnode/workers/workers_process.go, workers_process_unix.go, workers_channel.go, workers_channel_unix.go` (the Windows variants workers_process_windows and workers_channel_windows are built only on Windows and are run by the native Windows CI job) | ✅ |
 | `packages/chord/src/next-node/workers/workers.ts` | `chord/nextnode/workers/workers_workers.go, workers_outcome.go` | ✅ |
 
 ## `packages/protocol/src/`
@@ -1113,6 +1116,7 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 | `packages/schema/src/annotations.ts` | `schema/annotations.go` | ✅ |
 | `packages/schema/src/builders.ts` | `schema/builders.go` | ✅ |
 | `packages/schema/src/checks.ts` | `schema/checks.go` | ✅ |
+| `packages/schema/src/coerce.ts` | `schema/coerce.go (CompileCoercing returns the distinct type CoercingValidator where Pi has compile(schema, {coerce:true}))` | ✅ |
 | `packages/schema/src/compiler.ts` | `schema/compiler.go` | ✅ |
 | `packages/schema/src/explain.ts` | `schema/explain.go` | ✅ |
 | `packages/schema/src/formats/index.ts` | `schema/formats/index.go` | ✅ |
@@ -1137,16 +1141,19 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 | `packages/schema/src/formats/typebox/iri.ts` | `schema/formats/typebox_iri.go` | ✅ |
 | `packages/schema/src/formats/typebox/iri_reference.ts` | `schema/formats/typebox_iri_reference.go` | ✅ |
 | `packages/schema/src/formats/typebox/json_pointer.ts` | `schema/formats/typebox_json_pointer.go` | ✅ |
+| `packages/schema/src/formats/typebox/json_pointer_uri_fragment.ts` | `schema/formats/typebox_json_pointer_uri_fragment.go` | ✅ |
 | `packages/schema/src/formats/typebox/regex.ts` | `schema/formats/typebox_regex.go` | ✅ |
 | `packages/schema/src/formats/typebox/relative_json_pointer.ts` | `schema/formats/typebox_relative_json_pointer.go` | ✅ |
 | `packages/schema/src/formats/typebox/time.ts` | `schema/formats/typebox_time.go` | ✅ |
 | `packages/schema/src/formats/typebox/uri.ts` | `schema/formats/typebox_uri.go` | ✅ |
 | `packages/schema/src/formats/typebox/uri_reference.ts` | `schema/formats/typebox_uri_reference.go` | ✅ |
 | `packages/schema/src/formats/typebox/uri_template.ts` | `schema/formats/typebox_uri_template.go` | ✅ |
+| `packages/schema/src/formats/typebox/url.ts` | `schema/formats/typebox_url.go` | ✅ |
 | `packages/schema/src/formats/typebox/uuid.ts` | `schema/formats/typebox_uuid.go` | ✅ |
 | `packages/schema/src/index.ts` | `(re-export barrel: the Go exports are the package-level identifiers of schema)` | n/a |
 | `packages/schema/src/resolver.ts` | `schema/resolver.go` | ✅ |
 | `packages/schema/src/shared.ts` | `schema/shared.go, schema/internal/ecmaregex` | ✅ |
+| `packages/schema/src/typebox-static.ts` | `(type-level only: TypeBoxStatic has no value; Go has no type-level programming)` | n/a |
 | `packages/schema/src/types.ts` | `schema/types.go` | ✅ |
 | `packages/schema/src/validator.ts` | `schema/validator.go` | ✅ |
 

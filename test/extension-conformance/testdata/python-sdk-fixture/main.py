@@ -599,7 +599,7 @@ def new_extension() -> pig_sdk.Extension:
         "recordPattern": T.string({"description": T.record_pattern(T.record(s, n))}),
         "enumKeyRecord": T.record(T.enum(["x", "y"]), n),
     }, {"additionalProperties": False}), lambda ctx, args: "ok")
-    # refine-probe (TestConformance_RefinedToolArgumentsAreNotRefined): the schema of the probe tool; every predicate and message function logs its call, and the test asserts the log stays empty (Pi 0.7.0 never runs a refinement).
+    # refine-probe (TestConformance_RefinedToolArgumentsAreNotRefined): the schema of the probe tool; every predicate and message function logs its call, and the test asserts the log stays empty (Pi 1.4.0+b556cfe5 never runs a refinement).
     refine_log: list = []
 
     def checked(tag, check):
@@ -2188,6 +2188,60 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify("rw_idle_after_trigger=%s" % str(ctx.is_idle()).lower(), "info")
 
     ext.command("rw_idle_after_trigger", "Read isIdle after a message that starts a run", rw_idle_after_trigger)
+
+    def rw_idle_busy_until_yield(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        sync = [str(ctx.is_idle()).lower(), str(ctx.is_idle()).lower()]
+        ctx.wait_for_idle()
+        later = str(ctx.is_idle()).lower()
+        ctx.notify("rw_idle_busy_until_yield=sync:%s;later:%s" % (",".join(sync), later), "info")
+
+    ext.command("rw_idle_busy_until_yield", "Read isIdle after a message that starts a run, before and after a wait for the run", rw_idle_busy_until_yield)
+
+    def rw_idle_send_then_await(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        ctx.wait_for_idle()
+        awaited = str(ctx.is_idle()).lower()
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        second = str(ctx.is_idle()).lower()
+        ctx.wait_for_idle()
+        ctx.notify("rw_idle_send_then_await=awaited:%s;second:%s;awaited-again:%s" % (awaited, second, str(ctx.is_idle()).lower()), "info")
+
+    ext.command("rw_idle_send_then_await", "Await the run a message starts with no read in between, then read; again for a second message", rw_idle_send_then_await)
+
+    def rw_idle_blocking(ctx: pig_sdk.Context, _args: str) -> None:
+        before = str(ctx.is_idle()).lower()
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        time.sleep(0.3)
+        ctx.notify("rw_idle_blocking=before:%s;after:%s" % (before, str(ctx.is_idle()).lower()), "info")
+
+    ext.command("rw_idle_blocking", "Read isIdle after a message that starts a run and a wait that is no call", rw_idle_blocking)
+
+    def rw_idle_yield_poll(ctx: pig_sdk.Context, _args: str) -> None:
+        ctx.send_message("rw-trigger", "rw-trigger", True, True)
+        first = ctx.is_idle()
+        deadline = time.monotonic() + 5
+        while not ctx.is_idle() and time.monotonic() < deadline:
+            ctx.sleep(0.01)
+        final = ctx.is_idle()
+        ctx.notify("rw_idle_yield_poll=first:%s;final:%s" % (str(first).lower(), str(final).lower()), "info")
+
+    ext.command("rw_idle_yield_poll", "Poll isIdle after a message that starts a run, waiting with the SDK's yielding sleep", rw_idle_yield_poll)
+
+    def rw_idle_callback(ctx: pig_sdk.Context, _args: str) -> None:
+        before = str(ctx.is_idle()).lower()
+
+        def callback():
+            ctx.send_message("rw-trigger", "rw-trigger", True, True)
+            sync = [str(ctx.is_idle()).lower(), str(ctx.is_idle()).lower()]
+            ctx.wait_for_idle()
+            ctx.notify("rw_idle_callback=before:%s;sync:%s;later:%s" % (before, ",".join(sync), str(ctx.is_idle()).lower()), "info")
+
+        thread = threading.Thread(target=callback, daemon=True)
+        thread.start()
+        thread.join()
+
+    ext.command("rw_idle_callback", "Read isIdle after a message that starts a run, sent from a thread the handler waits for", rw_idle_callback)
     rw_settled_once = []
 
     def rw_idle_in_settled(ctx: pig_sdk.Context, _args: str) -> None:

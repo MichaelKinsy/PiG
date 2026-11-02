@@ -12,7 +12,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
-	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
@@ -98,14 +97,7 @@ func TestBedrockRequestBodyMatchesPi(t *testing.T) {
 		t.Fatal(err)
 	}
 	cmd := exec.CommandContext(t.Context(), "node", "-e", script, piCodingAgentPackage(t), string(encoded))
-	// The oracle sets the AWS variables it needs. An ambient one changes what Pi's client does: the AWS SDK selects bearer auth when
-	// AWS_BEARER_TOKEN_BEDROCK is merely present (@aws-sdk/core NODE_AUTH_SCHEME_PREFERENCE_OPTIONS, `key in env`), even empty, which a
-	// workflow that maps an unset secret to an empty variable exports; the request then fails signing before it is sent.
-	for _, entry := range os.Environ() {
-		if !strings.HasPrefix(entry, "AWS_") {
-			cmd.Env = append(cmd.Env, entry)
-		}
-	}
+	cmd.Env = withoutAWSEnvironment(os.Environ())
 	cmd.Stderr = new(bytes.Buffer)
 	out, err := cmd.Output()
 	if err != nil {
@@ -115,6 +107,7 @@ func TestBedrockRequestBodyMatchesPi(t *testing.T) {
 	if err := json.Unmarshal(out, &want); err != nil {
 		t.Fatalf("oracle output %q: %v", out, err)
 	}
+	clearAWSEnvironment(t)
 	t.Setenv("AWS_BEDROCK_SKIP_AUTH", "1")
 	t.Setenv("AWS_REGION", "us-east-1")
 	t.Setenv("AWS_EC2_METADATA_DISABLED", "true")

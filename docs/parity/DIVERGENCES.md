@@ -2520,15 +2520,17 @@ SCRUTINIZED:approved
 
 What: pi-ai's `Type` is TypeBox 1.3.27's builder namespace. The Go (`sdk.Type`), Rust (`pig_sdk::Type`) and Python (`pig_sdk.Type`) ports serve its schema constructors and guards, but not the six members that attach a JavaScript decode/encode callback pair to a schema (`Codec(type).Decode(f).Encode(g)`, `Decode(type, f)`, `Encode(type, g)`, the `DecodeBuilder` and `EncodeBuilder` classes, and the guard `IsCodec`). They are absent: a call fails to compile in Go and Rust and raises `AttributeError` in Python. The Node runtime serves TypeBox's own and behaves as in Pi.
 
-Why: a Codec's callbacks have no consumer outside `Value.Decode` and `Value.Encode` (`typebox/build/value/codec/callback.mjs`, the only reader of `~codec`), which pi-ai does not export (`ai/src/index.ts` exports `Static`, `TSchema` and `Type` from typebox) and no SDK serves. Pi's own tool-argument validation does not call them (`ai/src/utils/validation.ts` uses `Value.Convert` and `Compile(schema).Check`). A port could store the callbacks, but nothing in any SDK or in the host could ever call them, which is an inert member that accepts the call and does nothing.
+Why: a Codec's callbacks have no consumer outside `Value.Decode` and `Value.Encode` (`typebox/build/value/codec/callback.mjs`, the only reader of `~codec`), which pi-ai does not export (`ai/src/index.ts` exports `Static`, `TSchema` and `Type` from typebox) and no SDK serves. Pi's own tool-argument validation does not call them (at Pi b556cfe5, `ai/src/utils/validation.ts:15,59` compiles the schema with pi-schema and calls `parse`). A port could store the callbacks, but nothing in any SDK or in the host could ever call them, which is an inert member that accepts the call and does nothing.
 
 Pi bug: none.
 
 Scope: the six members above only, in `extensions/sdk/type_schema.go`, `extensions/sdk-py/pig_sdk/type_schema.py` and `extensions/sdk-rs/src/type_schema.rs`. Every other member of `Type` is ported and tested against Pi's own answers (`test/parity/sdk-vectors/pi-ai/Type.json`); the schemas `Type` builds are plain JSON on the wire, so a schema that a Node extension builds with a Codec registers the same JSON it would without one (`~codec` is a hidden member that JSON drops).
 
-Owner decision: approved by owner Michael Kinsy on 2026-10-24 (Codec family of `Type`: numbered divergence; `Refine` and `IsRefine` are not part of it: they are schema constructors the SDKs serve, whose refinements no validation runs).
+Owner decision: approved by owner Michael Kinsy on 2026-10-24 (Codec family of `Type`: numbered divergence; `Refine` and `IsRefine` are not part of it: the SDKs run an extension tool's refinements themselves).
 
 SCRUTINIZED:approved
+
+Amendment 2026-11-02 (owner decision of the same day): the approval above (2026-10-24) was given when the SDKs ran an extension tool's refinements themselves. Pi 1.5.0 no longer runs them (`ai/CHANGELOG.md:25`, `coding-agent/docs/extensions.md:176`: "`Type.Refine()` refinements are not run"), and this branch removed the SDK refinement round trip to match. `Refine` and `IsRefine` therefore stay schema constructors whose refinements no tool-argument validation runs, as in Pi. They are not part of D198: the owner approved a separate record for them, D226 (Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs).
 
 Remove when: an SDK serves `Value.Decode`/`Value.Encode` (or a host call runs a codec) so a stored callback pair has a consumer.
 
@@ -2822,3 +2824,65 @@ Parity allowance: `schema/internal/ecmaregex/golden_test.go` (`TestKnownGaps`) s
 Remove when: regexp2 gains Canonicalize-based case-insensitive backreference comparison, or PiG gets its own backtracking engine for the ECMAScript grammar. Then the markers, the rows of `knownGaps` and this record go.
 
 SCRUTINIZED:approved
+
+## D222 A plugin input the build cannot read is reported at the import that names it, not at esbuild's library
+
+What: Pi builds plugins with esbuild's JavaScript API. When a plugin's `onLoad` cannot read an input (`readFile` throws `EACCES`), esbuild's JavaScript library takes the error's location from the first readable frame of the JavaScript stack, which is its own `await callback(...)` in `lib/main.js`, and Pi prints `<path of esbuild's lib/main.js relative to the plugin's directory>:1552:22: EACCES: permission denied, open '<path>'` (esbuild 0.28.2). PiG builds on esbuild's Go API, which has no JavaScript stack: the location of an input that cannot be read is the position of the import that names it, so PiG prints `worker.ts:1:19: EACCES: permission denied, open '<path>'`. The text after the location is Node's, as Pi's.
+
+Why: the line Pi prints is a line of a JavaScript library that exists only where Pi's `node_modules` is, and nothing in PiG reads it; printing it would invent a file and a position. No Pi test or example asserts the location.
+
+Scope: `chord/nextnode/plugins` `BuildFacet`, the failure of an input that cannot be read (`ENOENT` and `EACCES` read errors). The build fails in both with one error whose text after the location is equal. Evidence of Pi's text: `handoffs/next/rows/plugfull-buildwin.md` (reproduced with esbuild 0.28.2 in Node).
+
+Owner decision: 2026-11-01, owner decided to keep PiG's location and record the difference (D222).
+
+Call-site marker: `chord/nextnode/plugins/plugins_build.go` (the `OnLoad` read failure).
+
+Evidence: `TestEsbuildBuildAForbiddenInputFailsTheBuildWithNodesText` (`chord/nextnode/plugins/plugins_node_unix_test.go`) states PiG's text with the import's location.
+
+Parity allowance: none needed; Pi's text names a file of Pi's installation, so no parity scenario can compare it byte for byte.
+
+Remove when: Pi reports the importing location.
+
+SCRUTINIZED:approved
+
+## D225 A thread-based SDK's wait for the run it started needs the SDK's yield helper
+
+What: Pi's `pi.sendMessage(..., { triggerTurn: true })` marks the Session busy before its first `await` (`agent-session.ts:2404`, `_startRun` sets `_isAgentRunActive` first, `1895`), and Pi's one event loop runs nothing else until the code that sent the message awaits or returns, so `ctx.isIdle()` reads busy in every extension until then. A handler that waits with `while (!ctx.isIdle()) await sleep(10)` sees the run end, because its `await` is where the loop turns. A Go, Rust, Python or Lisp handler has no `await`, and the Host runs the started run concurrently with the SDK's thread, so the Host cannot tell a raw sleep that stands for Pi's `await` from one that stands for Pi's synchronous wait. The Host answers `isIdle` busy for every extension from the send until the handler returns, calls a member whose Pi API returns a Promise (`waitForIdle`, `exec`, `setModel`, the dialogs and the rest of `returnsPromiseInPi`), or calls the SDK's yield helper (`ctx.Yield()` and `ctx.Sleep(d)` in Go, `ctx.yield_now()` and `ctx.sleep(...)` in Rust and Python, `pig:ctx-yield` and `pig:ctx-sleep` in Lisp), which stands for the `await`. A handler that polls `isIdle` with a raw sleep (`time.Sleep`, `thread::sleep`, `time.sleep`, `sleep`) and no helper keeps the hold and never sees idle until it returns; a send from a thread a handler started after its request returned holds nothing, because no event loop reports where that callback yields. The Node runtime has an event loop and reports its first microtask checkpoint after the send, so it needs no helper and has no difference.
+
+Why: the alternatives are observably worse. Releasing the hold when the triggered turn starts and the Session's busy flag takes over is no release at all, since the Session is busy from the send; it reinstates the defect that a run which ends while the handler still runs makes the next read idle where Pi reads busy. Releasing on a timer is nondeterministic. The helper is the only point where an SDK author can say what Pi's code says with `await`.
+
+Scope: `ctx.isIdle()` after a triggering `sendMessage` in the Go, Rust, Python and Lisp SDKs, isolated and packed, print, JSON and RPC mode. Not affected: a handler that returns, awaits a Promise-returning member or calls the helper; every Node extension.
+
+Owner decision: 2026-11-02, owner ruled "yield helper + divergence": every thread SDK gets the helper with the same interface and behavior, and the residual difference (raw sleep or poll without it, sends from detached threads) is recorded here.
+
+Call-site marker: `coding/extension/host/subprocess/sync_run_hold.go` (`holdAfterSend`, `endSyncRunHold`).
+
+Evidence: `TestReplicatedStateIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSend`: `rw_idle_yield_poll` (a `while !isIdle: sleep` poll with the helper sees idle and returns in every SDK) and `rw_idle_blocking` (a raw sleep keeps the hold while the run ends, against the Session's own answer: `after:true` without the hold). `TestSyncRunHoldEndsAtTheYieldCall`.
+
+Related: D224 (`chord.DeliveryEntered`) uses the same pattern for a watch listener's wait; the two mechanisms never meet, since D224 is a package function of Chord's Go packages and D225 a ctx method of a separate extension process.
+
+Parity allowance: none needed; the scenarios that poll with a helper match Pi, and the raw-sleep poll has no Pi counterpart that a thread SDK can express.
+
+Remove when: the thread-based SDKs can report where a handler's thread yields without an explicit call (for example a runtime-level scheduler of their own), or Pi gives `ctx.isIdle()` a definition that no longer depends on the loop's order.
+
+SCRUTINIZED:approved
+
+## D226 Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs
+
+What: `Type.Refine(type, check, error?)` is a schema constructor in the Go (`sdk.Type.Refine`), Rust (`Type::refine` and `Type::refine_value`, the form for a value that is not a `TSchema`), Python (`Type.refine`) and Lisp (`type-refine`) SDKs. It returns a copy of the schema with the check appended to a hidden `~refine` list, and the schema's JSON is unchanged. No API of these SDKs runs that list: a tool's arguments are validated as plain JSON Schema, and the SDKs serve no `Value.Check`.
+
+Why: Pi 1.5.0 validates tool arguments with `@earendil-works/pi-schema`, which runs no TypeBox refinement (`packages/ai/CHANGELOG.md:25`, `packages/coding-agent/docs/extensions.md:176`: "`Type.Refine()` refinements are not run"). Only TypeBox's own `Value.Check` runs them, and a Node extension can call that itself. The Go, Rust, Python and Lisp SDKs have no `Value.Check`, so a refinement they build can be checked by no one but the extension's own handler.
+
+Pi bug: none.
+
+Scope: the `Refine` constructors above (Go `Refine`, Python `refine`, Rust `refine` and `refine_value`, Lisp `type-refine`; the Node runtime uses TypeBox's own). A tool's argument behavior is at Pi parity: no refinement runs on the arguments of a tool in any SDK, Node included. An extension author sees the same thing in Pi and PiG for tool arguments (the arguments a refinement would reject are accepted); the difference is that TypeBox's `Value.Check(schema, value)` of a schema built with `Refine` runs the check in Node and has no counterpart in the other four SDKs.
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-02 (keep tool-argument behavior at Pi parity; `Value.Check` after 0.7.0).
+
+SCRUTINIZED:approved
+
+Remove when: every SDK serves TypeBox `Value.Check`, so a stored refinement has a consumer.
+
+Call-site markers: `extensions/sdk/type_schema_refine.go` (`Refine`), `extensions/sdk-py/pig_sdk/type_schema.py` (`refine`), `extensions/sdk-rs/src/type_schema.rs` (`Type::refine`, `Type::refine_value`), `extensions/sdk-lisp/src/type-schema.lisp` (`type-refine`).
+
+Evidence: `TestConformance_RefinedToolArgumentsAreNotRefined` (`test/extension-conformance/refine_arguments_test.go`) registers a tool whose schema carries refinements in every SDK and requires that the host runs none of them (a probe records every call of a predicate and a message function).

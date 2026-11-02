@@ -50,7 +50,7 @@ func TestHighlightCacheRetainsAtMostItsByteBudgetWhileACodeBlockStreams(t *testi
 	if peak == 0 {
 		t.Fatal("the memo never held an entry, so the bound was not exercised")
 	}
-	if want := highlightCodeUncached(highlightRegistry(), block, "", false, ActiveTheme()); !reflect.DeepEqual(HighlightCode(block, ""), want) {
+	if want := highlightCodeUncached(highlightRegistry(), block, "", ActiveTheme()); !reflect.DeepEqual(HighlightCode(block, ""), want) {
 		t.Fatal("the bounded memo changed the highlighted lines")
 	}
 }

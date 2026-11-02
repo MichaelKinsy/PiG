@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // Ports packages/chord/src/next-node/plugins/plugins.ts. The plugins component (slice 7c §4, §5; decision "Slice 7c's
@@ -149,7 +150,7 @@ type RolloutResult struct {
 // PluginsLoad is what Plugins.Load takes.
 type PluginsLoad struct {
 	Kind string
-	// Core are the app's own facets.
+	// Core are the app's own facets that are JavaScript (RuntimeLoad.Core); Go facets are Bridged.
 	Core []CoreFacet
 	// Modules are the host packages the scripts' imports are answered with, by specifier; kept for the host's reloads.
 	Modules HostPackages
@@ -163,6 +164,15 @@ type PluginsLoad struct {
 	CloseTimeout *time.Duration
 	ReadyTimeout *time.Duration
 	Compression  bool
+	// Store is the Node host's store (RuntimeLoad).
+	Store *StoreOptions
+	// GoPackages, Telemetry, PrincipalKey and RevokedBy are the app's callbacks the Node host calls (RuntimeLoad).
+	GoPackages   []GoPackage
+	Telemetry    telemetry.TelemetryContext
+	PrincipalKey *data.PrincipalKeyFunction
+	RevokedBy    host.RevokedBy[delta.JsonValue]
+	// Bridged are the app's Go core facets whose local types the plugins use (RuntimeLoad.Bridged).
+	Bridged []BridgedFacet
 }
 
 // CreatePlugins creates the plugins component (and its plugin runtime) and starts the watcher. Discovery runs at first use.
@@ -376,6 +386,9 @@ func (c *Plugins) Load(options PluginsLoad, ctx context.Context) (*NodeHost, hos
 		Kind: options.Kind, Core: options.Core, Scripts: scripts, Modules: options.Modules,
 		Address: options.Address, Principal: options.Principal, Peer: options.Peer, Heartbeat: options.Heartbeat,
 		CloseTimeout: options.CloseTimeout, ReadyTimeout: options.ReadyTimeout, Compression: options.Compression,
+		Store:      options.Store,
+		GoPackages: options.GoPackages, Telemetry: options.Telemetry, PrincipalKey: options.PrincipalKey, RevokedBy: options.RevokedBy,
+		Bridged: options.Bridged,
 	}, ctx)
 	if err != nil {
 		return nil, host.LoadReport{}, err
@@ -397,6 +410,9 @@ func (c *Plugins) kindOf(h *NodeHost, what string) (string, error) {
 func (c *Plugins) Reload(h *NodeHost, built *Built, ctx context.Context) (host.ReloadReport, error) {
 	kind, err := c.kindOf(h, "reload")
 	if err != nil {
+		return host.ReloadReport{}, err
+	}
+	if err := h.refuseSyncCallback(ctx); err != nil {
 		return host.ReloadReport{}, err
 	}
 	set, err := c.set(kind, ctx)
@@ -531,11 +547,18 @@ func (c *Plugins) InstallDependencies(name string, ctx context.Context) error {
 	return nil
 }
 
-// Close stops the watcher and waits for what it started. The hosts it loaded are their owners': it closes none.
+// Warm starts a spare Node process for the next Load (PluginRuntime.Warm).
+func (c *Plugins) Warm(ctx context.Context) error { return c.runtime.Warm(ctx) }
+
+// Close stops the watcher, closes the spare Node process of its runtime (PluginRuntime.Close) and waits for what it started.
+// The hosts it loaded are their owners': it closes none. The spare's close error is dropped: its process never loaded
+// anything, and Close, as Pi's `plugins.close()`, returns nothing.
 func (c *Plugins) Close() {
 	c.section(c.watcher.close)
 	c.watcher.join()
 	c.loop.Wait()
+	//portlint:allow ctxbackground Pi's plugins.close() takes no signal and returns nothing; the spare's close is bounded by the process's own stop grace
+	_ = c.runtime.Close(context.Background())
 }
 
 // discover discovers the plugins again; the changes of the plugin set and of `package.json`s seen until now clear.

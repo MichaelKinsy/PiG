@@ -10,6 +10,8 @@ import (
 	"github.com/MichaelKinsy/PiG/schema/formats"
 )
 
+// pi: packages/schema/src/formats/typebox/regex.ts
+
 // notFormatsTable are the format names of the official suite's optional/format files that Pi's `formats` table does not define. Pi compiles those files with the table and an unknown name is an annotation, so the suite's expectations for them are not format checks. Any other name missing from Formats() fails the test.
 var notFormatsTable = map[string]bool{"unknown": true}
 

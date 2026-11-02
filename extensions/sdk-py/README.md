@@ -158,6 +158,18 @@ def on_turn_start(event, ctx):
         signal.subscribe(stop_background_work)
 ```
 
+## Waiting for a run you started
+
+`ctx.send_message(..., trigger_turn=True)` marks the session busy, and `ctx.is_idle()` stays busy until the code that sent the message yields, as Pi's does until its handler reaches its first `await`. Python has no `await` in a handler, so the SDK has explicit helpers: `ctx.yield_now()` tells the host this handler yields, and `ctx.sleep(seconds)` yields and then blocks the thread. A handler that waits for the run it started must use one of them:
+
+```python
+ctx.send_message("note", "go", True, True)
+while not ctx.is_idle():
+    ctx.sleep(0.01)
+```
+
+A raw `time.sleep` keeps the hold until the handler returns, so such a poll would read busy for as long as the handler runs.
+
 ## Terminal strings
 
 `on_terminal_input` receives strings with the same UTF-16 units as Pi. A high or low surrogate can arrive without its partner. Python `str` retains that unit, and the SDK's JSON encoder sends it as a standard `\u` escape. Return it directly in `TerminalInputResult(data=...)`. Do not encode it to UTF-8 yourself or replace it with U+FFFD. Callback order and cancellation are unchanged.

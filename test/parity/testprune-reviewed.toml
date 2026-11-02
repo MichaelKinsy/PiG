@@ -365,20 +365,6 @@ cite = "packages/coding-agent/src/core/client-identity.ts:14"
 reason = "Pi adc5fa9f80 and 04a93bad8f make the session's client identity carry the attribution only while install telemetry is enabled (client-identity.ts:14: `attribution: isInstallTelemetryEnabled(settingsManager) ? PI_ATTRIBUTION : null`) and apply it through the ai package's request options (identity.ts:107, getAttributionHeaders) instead of a provider wrapper of the coding package: the model's provider type is the request-options provider, and the test of the install-telemetry gate on the wrapper is replaced by the identity's own gate."
 
 [[entry]]
-path = "coding/session_extension_hooks_test.go"
-commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
-class = "CITE"
-cite = "packages/ai/src/utils/identity.ts:130"
-reason = "Pi adc5fa9f80 and 04a93bad8f send the OpenCode session header through getOpenCodeSessionHeaders (identity.ts:130) from the ai package, instead of the attribution wrapper's x-opencode-client header, so the before-provider-headers hook (sdk.ts transformHeaders) sees x-opencode-session, and the hook that deletes a header deletes that one."
-
-[[entry]]
-path = "durable/harness/harness_tools_models_test.go"
-commit = "dcc5ef43ee75a3d4110b5159424fa0ab4d016428"
-class = "CITE"
-cite = "packages/durable/src/harness/harness.ts:193"
-reason = "Pi adc5fa9f80 and 04a93bad8f give the Harness a view of the host's Models that adds the Harness identity, withClientIdentity (harness.ts:193-197 currentModels; identity.ts:154), shared by the tools and the hooks (harness-tools.test.ts: seen[0] is seen[1]): the models a tool reads are no longer the host's own value, so the test expects a view that lists the same models and returns the same model for faux/faux-1."
-
-[[entry]]
 path = "durable/core/turn/live_test.go"
 commit = "42fc4e620ef0b4ccf6a3c4a7b1a1818a98955298"
 class = "CITE"
@@ -716,3 +702,95 @@ commit = "e4f8e357736b7eae9f16439a3ebd49daa6add1bf"
 class = "CITE"
 cite = "packages/ai/scripts/model-data.ts:1"
 reason = "Pi 44f6851b (#9534: scripts/generate-models.ts and scripts/openrouter-catalog.ts) deletes packages/ai/test/openrouter-cache-control-models.test.ts:12 (the commit's Pi-Behavior-Change trailer) and sends the OpenRouter ~anthropic/claude-*-latest aliases through the Anthropic Messages API with adaptive thinking, like the versioned Claude models. The Go port of that test now pins the new behavior (TestOpenRouterAnthropicLatestAliasesUseMessages), recorded under D217."
+
+[[entry]]
+path = "coding/extension/host/subprocess/runtime_node_send_idle_test.go"
+commit = "2323d94ce79cad45512f3e1bafe9e4e1cde84608"
+class = "CITE"
+cite = "packages/coding-agent/src/core/agent-session.ts:2404"
+reason = "Pi's sendCustomMessage with triggerTurn awaits _startRun (agent-session.ts:2404), which sets _isAgentRunActive before its first await (1895), so ctx.isIdle() is busy in every extension until the sending handler awaits or returns. The Host now holds that answer for every extension, so the test's handler reports its reads through setSessionName and covers a read by another extension while the sender has not yet yielded, and no longer polls a result file."
+
+[[entry]]
+path = "cmd/gen-models/emit_shares_test.go"
+commit = "875a364a714c18b5bcb69e5509f0f61b2e829531"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The expected text is the layout of the Go catalog file cmd/gen-models emits (PiG-original): the header, thinking-level, sampling and prompt-cache maps are built from pair lists the linker lays out instead of one map literal per model. The generated rows of every model, and the catalog Pi's build produces, are unchanged: regenerating from the pinned Pi build reproduces the committed file."
+
+[[entry]]
+path = "internal/minimatch/braceexpansion_test.go"
+commit = "875a364a714c18b5bcb69e5509f0f61b2e829531"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The test moved with the brace-expansion port from coding/packagecontent (glob_braces_npm_test.go) to internal/minimatch, which now has the single port; the recorded rows of Pi's npm minimatch are the same and only the called function is renamed (npmBraceExpand to braceExpand)."
+
+[[entry]]
+path = "schema/coerce_upstream_test.go"
+commit = "ac69278d213589e83736077a8396df4fddc9f757"
+class = "CITE"
+cite = "packages/schema/src/explain.ts:105"
+reason = "Pi 6536f801 (explain.ts walkRef, :105-130) keeps the errors of a $ref target per errors() call and reports a reference that names nothing as `unresolved reference <ref>` (keyword $ref), so Pi's coerce tests explain the depth-40 recursive union and assert that exact message; the Go test asserts both once explain.go ports walkRef."
+
+[[entry]]
+path = "coding/session_tool_validation_test.go"
+commit = "78e838b4cd342b3de4dafcfb94ef25ccd757af4c"
+class = "CITE"
+cite = "packages/ai/src/utils/validation.ts:59"
+reason = "Pi 6536f801 validates tool arguments as plain JSON Schema (validation.ts:59 parse of tool.parameters): TypeBox refinements are not run, so the argument schema of a tool is its parameters and a tool binding carries no separate validation parameters."
+
+[[entry]]
+path = "internal/codingagent/tools/argument_schema_test.go"
+commit = "3d980815b1ee3dbb3161ea830554cb30a57c33e2"
+class = "CITE"
+cite = "packages/ai/src/utils/validation.ts:15"
+reason = "Pi 6536f801 compiles every tool schema with pi-schema (validation.ts:15, formats, coerce: true, unresolvedRefs: reject): the declared parameters of a built-in tool are the plain JSON the validator reads (no ~kind marks), so the cached argument schema equals the declared parameters."
+
+[[entry]]
+path = "durable/harness/tool_structured_output_test.go"
+commit = "30940806a9688959174fb1b02b8b50d6cf8de24e"
+class = "CITE"
+cite = "packages/durable/src/harness/tool.ts:790"
+reason = "Pi 6536f801 checks a structured output with pi-schema (tool.ts:790 compile with formats and unresolvedRefs: reject), so invalid_structured_output messages carry pi-schema's wording (`expected number, got string`) instead of TypeBox's."
+
+[[entry]]
+path = "durable/tools/read_structured_output_test.go"
+commit = "30940806a9688959174fb1b02b8b50d6cf8de24e"
+class = "CITE"
+cite = "packages/durable/src/tools/read.ts:51"
+reason = "Pi 6536f801 builds the read tool's structured output schema with pi-schema (read.ts:51: obj({ type: lit(\"image\"), ... }, { open: true })), whose literal is a bare {\"const\":\"image\"}; the Go declaration emits the same JSON."
+
+[[entry]]
+path = "chord/delta/text_tails_test.go"
+commit = "e33dbb0ad0a613f339125390bd966dff79f1eadc"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The commit makes the tracker's weak text buffers observable to the test: the expected texts of each commit are now built apart from the tracker's strings (strings.Clone of an independently concatenated text), so a buffer the tracker reuses cannot change what the test expects. The values Pi's tracker.ts produces (every revision and op keeps its text while later appends grow the same buffer) are unchanged."
+
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_node_test.go"
+commit = "e0f6bd3215"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The commit's Pi-Behavior-Change trailer cites packages/chord/src/next-node/workers/main.ts:114, Pi's eager `new ParentLink(ipcLink(...))`, and Pi did not change that line: it is the line the Node host departs from. No Pi line governs the expectation change. The Node host connects its parent link at the first use of NodeHost.Link (an additive Go integration of the Node subprocess, not Pi behavior), so a host nothing attaches has no heartbeat and stays alive until Close, where the tests expected the heartbeat to end it. The tests' expectations moved to that behavior, and the test that pins it is headed \"Not Pi's\"."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_node_discover_test.go"
+commit = "3b9bd165af"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Pi evaluates plugins in its own process and has no Node to find. The expectations moved with PiG's own Node discovery (an additive Go integration of the Node subprocess): a too-old error names where the newest Node was found, and Volta's and mise's install directories, not their shims, are the candidates."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_node_start_test.go"
+commit = "3b9bd165af"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Pi evaluates plugins in its own process and has no Node to find. The expectations moved with PiG's own Node discovery (an additive Go integration of the Node subprocess): a too-old error names where the newest Node was found, and Volta's and mise's install directories, not their shims, are the candidates."
+
+[[entry]]
+path = "chord/nextnode/compression_test.go"
+commit = "ff5017db9e8dbbeef61da454b37d8e552500f19f"
+class = "CITE"
+cite = "packages/chord/src/next-node/compression.ts:17"
+reason = "Pi passes Math.max(1, Math.min(limit, buffer.MAX_LENGTH)) to inflateRawSync as maxOutputLength (compression.ts:17): Math.min and Math.max return NaN for a NaN limit, Node takes its default maximum for a NaN maxOutputLength, and the check `inflated.byteLength > limit` (:18) is false against NaN, so Pi returns the bytes. The NaN-limit expectation was corrupt and is the bytes."

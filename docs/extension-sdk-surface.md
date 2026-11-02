@@ -41,14 +41,14 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | Python | 31 | 0 | 0 |
 | Lisp | 31 | 0 | 0 |
 
-1637 package exports and class members, Node runtime:
+1639 package exports and class members, Node runtime:
 
 | Module | Pi's own code | bridged | stand-in | missing (all with a reviewed exception) |
 |---|---|---|---|---|
 | `pi-coding-agent` | 907 | 10 | 0 | 10 |
 | `pi-tui` | 368 | 1 | 0 | 1 |
-| `pi-ai` | 102 | 2 | 0 | 0 |
-| `pi-ai/compat` | 153 | 10 | 0 | 0 |
+| `pi-ai` | 102 | 3 | 0 | 0 |
+| `pi-ai/compat` | 153 | 11 | 0 | 0 |
 | `pi-ai/models` | 16 | 0 | 0 | 0 |
 | `pi-ai/providers/all` | 12 | 0 | 0 | 0 |
 | `pi-agent-core` | 45 | 0 | 0 | 0 |
@@ -2766,12 +2766,13 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai: StreamingJsonParser` | `class StreamingJsonParser` | Pi's own code |
 | `pi-ai: StreamingJsonParser.append` | `StreamingJsonParser.append` | Pi's own code |
 | `pi-ai: StreamingJsonParser.snapshot` | `StreamingJsonParser.snapshot` | Pi's own code |
-| `pi-ai: StringEnum` | `function StringEnum` | Pi's own code |
+| `pi-ai: StringEnum` | `function StringEnum` | bridged |
 | `pi-ai: ToolCallArgumentsStream` | `class ToolCallArgumentsStream` | Pi's own code |
 | `pi-ai: ToolCallArgumentsStream.append` | `ToolCallArgumentsStream.append` | Pi's own code |
 | `pi-ai: ToolCallArgumentsStream.finish` | `ToolCallArgumentsStream.finish` | Pi's own code |
 | `pi-ai: ToolCallArgumentsStream.replace` | `ToolCallArgumentsStream.replace` | Pi's own code |
 | `pi-ai: ToolCallArgumentsStream.text` | `ToolCallArgumentsStream.text` | Pi's own code |
+| `pi-ai: Type` | `external Type` | Pi's own code |
 | `pi-ai: appendAssistantMessageDiagnostic` | `function appendAssistantMessageDiagnostic` | Pi's own code |
 | `pi-ai: calculateCost` | `function calculateCost` | Pi's own code |
 | `pi-ai: clampThinkingLevel` | `function clampThinkingLevel` | Pi's own code |
@@ -2883,12 +2884,13 @@ Regenerate with `go run ./test/parity/cmd/sdksurface`; `make sdk-surface-drift` 
 | `pi-ai/compat: StreamingJsonParser` | `class StreamingJsonParser` | Pi's own code |
 | `pi-ai/compat: StreamingJsonParser.append` | `StreamingJsonParser.append` | Pi's own code |
 | `pi-ai/compat: StreamingJsonParser.snapshot` | `StreamingJsonParser.snapshot` | Pi's own code |
-| `pi-ai/compat: StringEnum` | `function StringEnum` | Pi's own code |
+| `pi-ai/compat: StringEnum` | `function StringEnum` | bridged |
 | `pi-ai/compat: ToolCallArgumentsStream` | `class ToolCallArgumentsStream` | Pi's own code |
 | `pi-ai/compat: ToolCallArgumentsStream.append` | `ToolCallArgumentsStream.append` | Pi's own code |
 | `pi-ai/compat: ToolCallArgumentsStream.finish` | `ToolCallArgumentsStream.finish` | Pi's own code |
 | `pi-ai/compat: ToolCallArgumentsStream.replace` | `ToolCallArgumentsStream.replace` | Pi's own code |
 | `pi-ai/compat: ToolCallArgumentsStream.text` | `ToolCallArgumentsStream.text` | Pi's own code |
+| `pi-ai/compat: Type` | `external Type` | Pi's own code |
 | `pi-ai/compat: anthropicMessagesApi` | `variable anthropicMessagesApi` | Pi's own code |
 | `pi-ai/compat: appendAssistantMessageDiagnostic` | `function appendAssistantMessageDiagnostic` | Pi's own code |
 | `pi-ai/compat: azureOpenAIResponsesApi` | `variable azureOpenAIResponsesApi` | Pi's own code |

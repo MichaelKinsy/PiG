@@ -5,6 +5,8 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strconv"
 	"sync"
 	"testing"
@@ -106,6 +108,7 @@ func settle(t *testing.T, plugins *Plugins) {
 	found, _ := settlers.LoadOrStore(plugins, &settler{dir: t.TempDir()})
 	barrier := found.(*settler)
 	var watching bool
+	var directories []string
 	plugins.section(func() {
 		fs := plugins.watcher.fs
 		if fs == nil {
@@ -114,9 +117,13 @@ func settle(t *testing.T, plugins *Plugins) {
 		watching = true
 		// A discovery drops the trees that are no root's, base's or linked plugin's: the barrier's is put back each time.
 		plugins.watcher.watchTree(barrier.dir)
+		directories = slices.Collect(maps.Keys(plugins.watcher.watched))
 	})
 	if !watching {
 		return
+	}
+	if runtime.GOOS == "windows" {
+		settleDirectoryStamps(directories)
 	}
 	barrier.count++
 	sentinel := filepath.Join(barrier.dir, "sentinel-"+strconv.Itoa(barrier.count))
@@ -128,4 +135,16 @@ func settle(t *testing.T, plugins *Plugins) {
 		plugins.section(func() { _, reached = plugins.watcher.watched[sentinel] })
 		return reached
 	})
+}
+
+// settleDirectoryStamps has Windows report, before the barrier's directory is made, the last-write time of the watched
+// directories whose entries changed. Windows reports it as a write of the directory to the watch of its parent (see
+// withoutDirectoryStamps), lazily, at a moment after the entry's own event that no barrier orders; opening and closing each
+// watched directory makes the report come then, so a case reads marks that already hold it.
+func settleDirectoryStamps(directories []string) {
+	for _, directory := range directories {
+		if file, err := os.Open(directory); err == nil {
+			_ = file.Close()
+		}
+	}
 }

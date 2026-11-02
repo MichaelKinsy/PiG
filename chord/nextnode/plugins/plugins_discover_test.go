@@ -1,5 +1,7 @@
 package plugins
 
+// pi: packages/chord/src/next-node/plugins/discover.ts
+
 import (
 	"errors"
 	"os"

@@ -371,7 +371,7 @@ func prepareToolCall(ctx context.Context, tools []AgentTool, hooks ToolCallHooks
 			args = prepared
 		}
 	}
-	// Pi validates tool.parameters itself, in the member order the tool authored them (validation.ts:317-353).
+	// Pi validates tool.parameters itself, in the member order the tool authored them (validation.ts:59: getValidator(tool.parameters).parse).
 	var parameters json.RawMessage
 	if schemaTool, ok := tool.(interface{ ArgumentSchema() json.RawMessage }); ok {
 		parameters = schemaTool.ArgumentSchema()

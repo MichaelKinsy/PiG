@@ -2503,35 +2503,35 @@
     {
       "path": "packages/chord/test/next-node/workers/control.test.ts",
       "upstreamTestHash": "sha256:5d2006929fe8401af3a5a37bee7ae973cb9b338c9236fc46ac2eefa9a0c27235",
-      "area": "chord",
+      "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..b556cfe5) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/next-node/workers/lock.test.ts",
       "upstreamTestHash": "sha256:8502579a80133ee57ae52c8d004a17cb24a6bed349d2a4eb230cf3991d053911",
-      "area": "chord",
+      "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..b556cfe5) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/next-node/workers/main.test.ts",
       "upstreamTestHash": "sha256:2890f06e49a87fa9e1a8fafadabe80368491c40612fdcbb41b1c4442bf91f573",
-      "area": "chord",
+      "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..b556cfe5) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/next-node/workers/process.test.ts",
       "upstreamTestHash": "sha256:274ad5cda267a1323f65dd362b22969c5a4e36dd15c2a62f4d222114ccf1d3f7",
-      "area": "chord",
+      "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..b556cfe5) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
     {
       "path": "packages/chord/test/next-node/workers/workers.test.ts",
       "upstreamTestHash": "sha256:d0747c5083fe0f9ea93c848fde8c262a1e81e0f6b03e0da26dc3a8e729205c60",
-      "area": "chord",
+      "area": "extensions",
       "tags": [],
       "rationale": "Chord v2 (Pi 93029a0f..b556cfe5) has no PiG product consumer outside chord/next, so it is not on a PiG product hot path."
     },
@@ -7746,7 +7746,10 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation."
+      "rationale": "Main Screen input, message/tool rendering, terminal integration, or selected presentation. SCRUTINIZED:approved by the owner (2026-11-01): Go's collector can clear a weak pointer between two streaming deltas, so PiG holds the memo strongly for one render and releases it on FinishStreaming, Invalidate and a theme or grammar change; reviewed, no lifetime bug.",
+      "designedOutCases": [
+        "Markdown component \u203a Block reuse \u203a holds rendered blocks weakly, so a full garbage collection releases them"
+      ]
     },
     {
       "path": "packages/tui/test/mouse-components.test.ts",

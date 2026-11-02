@@ -1,6 +1,6 @@
 package source
 
-import "encoding/json"
+import "github.com/MichaelKinsy/PiG/internal/jsstring"
 
 // SourceInfo mirrors core/source-info.ts SourceInfo: where a resource, tool or command came from.
 type SourceInfo struct {
@@ -16,7 +16,8 @@ type SourceInfo struct {
 // GetSourcePackageKey is core/source-info.ts getSourcePackageKey: the key under which per-package state, such as the last seen
 // extension changelog version, is stored. It is the JSON text of {source, scope}.
 func GetSourcePackageKey(source, scope string) string {
-	encoded, err := json.Marshal(struct {
+	// JSON.stringify leaves <, >, & and U+2028/U+2029 as they are; jsstring.MarshalJSON writes them so.
+	encoded, err := jsstring.MarshalJSON(struct {
 		Source string `json:"source"`
 		Scope  string `json:"scope"`
 	}{source, scope})

@@ -2,11 +2,6 @@ packages/agent/src/agent-loop.ts
 packages/agent/src/agent.ts
 packages/agent/src/stream-fn.ts
 packages/agent/src/types.ts
-packages/ai/scripts/check-model-data.ts
-packages/ai/scripts/hydrate-model-catalog.ts
-packages/ai/scripts/model-data.ts
-packages/ai/scripts/models-dev-reasoning-options.ts
-packages/ai/scripts/openrouter-reasoning-options.ts
 packages/ai/src/api/anthropic-messages.ts
 packages/ai/src/api/cloudflare-ai-binding.ts
 packages/ai/src/api/cloudflare.ts
@@ -140,8 +135,6 @@ packages/ai/src/utils/headers.ts
 packages/ai/src/utils/node-http-proxy.ts
 packages/ai/src/utils/sleep.ts
 packages/ai/src/utils/text.ts
-packages/ai/src/utils/typebox-helpers.ts
-packages/ai/src/utils/validation.ts
 packages/codemode/src/wasm.ts
 packages/coding-agent/src/cli.ts
 packages/coding-agent/src/cli/auth-check.ts

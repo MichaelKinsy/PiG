@@ -38,7 +38,7 @@ func decodeJSON(text []byte) (any, error) {
 
 // validateToolArgsSchema validates arguments against the JSON Schema rawSchema as Pi's validateToolArguments does: pi-schema's parse coerces them (a number sent as "42", one value for an array, null for an omitted
 // optional property), then checks the result. It returns the coerced arguments as JSON.stringify writes them, in the member order of args; when nothing changed and args is already what JSON.stringify writes
-// for them it returns args itself. A failure is Pi's message: pi-schema's errors, then the arguments received (validation.ts:317-353).
+// for them it returns args itself. A failure is Pi's message: pi-schema's errors, then the arguments received (validation.ts:54-69: parse at :59, the message at :64-68).
 func validateToolArgsSchema(toolName string, rawSchema, args json.RawMessage) (json.RawMessage, error) {
 	validator, err := toolArgumentValidators.entry(rawSchema).compiled()
 	if err != nil {
@@ -62,7 +62,7 @@ func validateToolArgsSchema(toolName string, rawSchema, args json.RawMessage) (j
 	return appendStringify(make([]byte, 0, len(args)+len(args)/8), result.Value), nil
 }
 
-// validationError is the error validateToolArguments throws for a failed validation (validation.ts:344-349).
+// validationError is the error validateToolArguments throws for a failed validation (validation.ts:64-68).
 func validationError(toolName string, failures []schema.ValidationError, args json.RawMessage) error {
 	var message strings.Builder
 	message.WriteString(`Validation failed for tool "`)
@@ -82,7 +82,7 @@ func validationError(toolName string, failures []schema.ValidationError, args js
 	return errors.New(message.String())
 }
 
-// validationPath turns a pi-schema error path (a JSON Pointer) into the dotted path the model sees: `/edits/0/oldText` is `edits.0.oldText` (validation.ts:20-27).
+// validationPath turns a pi-schema error path (a JSON Pointer) into the dotted path the model sees: `/edits/0/oldText` is `edits.0.oldText` (validation.ts:20-28: `~1` is decoded before `~0`).
 func validationPath(pointer string) string {
 	if pointer == "" {
 		return "root"

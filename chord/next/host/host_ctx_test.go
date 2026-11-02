@@ -3,8 +3,10 @@ package host
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sync"
 	"testing"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -430,4 +432,48 @@ func TestLinkedAbortSignalsIsTheCallsOwnSignalWithoutACallers(t *testing.T) {
 		t.Fatalf("reason = %v, want the call's", got)
 	}
 	linked.release()
+}
+
+// Mirrors ctx.test.ts's linked abort signals: without a caller's signal the call's context is the call's signal itself (Pi's
+// `withAbortSignal(signal, context)`, whose signal is `signal` and which has no listener), and its `release` does nothing.
+// The call's signal is the attempt's for every call it runs, so a listener per call, released or not, would accumulate until
+// the attempt ends.
+func TestLinkedAbortSignalsWithoutACallersListenToNothingOnTheCallsSignal(t *testing.T) {
+	callCtx, abortCall := newScopeCounting()
+	const calls = 1000
+	for range calls {
+		linked := withLinkedAbortSignal(callCtx, chordctx.Background())
+		if got := callCtx.count(); got != 0 {
+			t.Fatalf("listeners on the call's signal while a call runs = %d, want none", got)
+		}
+		linked.release()
+	}
+	running := withLinkedAbortSignal(callCtx, chordctx.Background())
+	abortCall(scopeReason("late"))
+	<-running.context.Done()
+	if got := context.Cause(running.context); got == nil || got.Error() != "late" {
+		t.Fatalf("reason = %v, want the call's", got)
+	}
+}
+
+// noSignalContext is a caller's context without a Done channel (as context.Background()), a distinct object per call so
+// that its collection tells whether anything of the call still holds it.
+type noSignalContext struct{ context.Context }
+
+func TestMethodCallsOfACallerWithoutASignalLeaveNothingOnTheAttemptWhenTheyEnd(t *testing.T) {
+	host, _, ref := desk(t)
+	const calls = 200
+	probes := make([]weak.Pointer[noSignalContext], 0, calls)
+	for range calls {
+		probe := &noSignalContext{Context: background}
+		probes = append(probes, weak.Make(probe))
+		if _, err := ref.Call("who", nil, probe); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The attempt's opening context and the reference's calls context are the signals of each call: a listener a call left
+	// on one keeps its caller's context, for as long as the host lives.
+	expectCollected(t, probes...)
+	runtime.KeepAlive(host)
+	runtime.KeepAlive(ref)
 }

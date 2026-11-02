@@ -169,7 +169,7 @@ precedence = "override"
 SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
 SPDX-License-Identifier = "MIT"
 
-# Verbatim copies of Pi's chord sources and the two packages they run on, run by the Node subprocess of the plugins
+# Verbatim copies of Pi's chord sources and the two packages they run on (pi-schema, pi-telemetry), run by the Node subprocess of the plugins
 # component (automation/gen/vendor-chord-plugins-node.sh).
 [[annotations]]
 path = "chord/nextnode/plugins/node/pi/chord/**"
@@ -184,7 +184,13 @@ SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
 SPDX-License-Identifier = "MIT"
 
 [[annotations]]
-path = "chord/nextnode/plugins/node/pi/node_modules/typebox/**"
+path = "chord/nextnode/plugins/node/pi/schema/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "chord/nextnode/plugins/node/pi/schema/LICENSES/typebox-LICENSE"
 precedence = "override"
 SPDX-FileCopyrightText = "Copyright (c) 2017-2026 Haydn Paterson"
 SPDX-License-Identifier = "MIT"

@@ -23,6 +23,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
+// pi: packages/chord/src/next/host/attempt.ts
 // Ports packages/chord/test/next/host/attempt.test.ts: attempts (§6, §13, §14, §15): the failure kinds of an activation, the
 // ending of an attempt (the seal fence, the drain), declarations, calls, remote variants, tables and eager migrations,
 // and attempts parked on their dependencies. Every case runs a real host; the cases Pi runs under `fakeTimers()` run on

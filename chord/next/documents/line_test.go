@@ -7,6 +7,7 @@ import (
 )
 
 // Ports packages/chord/test/next/documents/line.test.ts
+// pi: packages/chord/src/next/documents/line.ts
 
 // waitingIs waits until the line shows n holders that asked and wait: Pi's holders take their place at the call, which
 // a goroutine does once it is scheduled.
@@ -104,5 +105,31 @@ func TestTheLineReportsItsWaitingHoldersToTheHostsTests(t *testing.T) {
 	(<-handed)()
 	if got := line.WaitingHolders(); got != 0 {
 		t.Fatalf("WaitingHolders once every holder was handed the line = %d", got)
+	}
+}
+
+// Pi's residency calls `this.onLine(async () => sweep())` from the timer's callback, and onLine takes its place on the
+// line at that call (documents.ts `onLine` → `this.line.acquire()`): a holder asking after the callback queues behind it.
+func TestASweepTakesItsPlaceOnTheLineAtTheCallOfTheResidencyHook(t *testing.T) {
+	o := newObject(t, objectOptions{})
+	line := o.documents.Line()
+	first := line.Acquire(context.Background())
+	ran := make(chan string, 2)
+	o.documents.Residency().onLine(func() { ran <- "sweep" })
+	if got := line.WaitingHolders(); got != 1 {
+		t.Fatalf("WaitingHolders right after the hook returned = %d, want 1", got)
+	}
+	go func() {
+		release := line.Acquire(context.Background())
+		ran <- "later"
+		release()
+	}()
+	waitingIs(t, line, 2)
+	first()
+	if got := <-ran; got != "sweep" {
+		t.Fatalf("first to run = %q, want the sweep", got)
+	}
+	if got := <-ran; got != "later" {
+		t.Fatalf("second to run = %q, want the later holder", got)
 	}
 }

@@ -142,8 +142,10 @@ type Extension struct {
 	// loading is the connection the factory's first pi.events call opened before Run (loadingConnection), guarded by eventMu. Run adopts that connection and clears this.
 	loading *conn
 	// pump answers the host's dispatches on loading until Run takes the connection over; running is set from then until Run ends. Both are guarded by eventMu.
-	pump    *factoryPump
-	running bool
+	pump *factoryPump
+	// shutdownInFactory is set when the factory's pump read the host's shutdown, which Run acts on once it has registered.
+	shutdownInFactory atomic.Bool
+	running           bool
 
 	// run is the replicated signal of the run in progress (Context.Signal).
 	run runSignal
@@ -1197,6 +1199,10 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 		return fmt.Errorf("send register: %w", err)
 	}
 
+	// A shutdown the factory's pump read ends the run now, after the register frame, as one read below does.
+	if e.shutdownInFactory.Swap(false) {
+		return e.stopRequests()
+	}
 	// Wait for ready. A listener the Host dispatches to while the extension loads is served here, as a node runtime serves it during its factory.
 	var env envelope
 	for {
@@ -1222,6 +1228,10 @@ func (e *Extension) runWithConn(nc net.Conn, started *conn, sockPath string) err
 			continue
 		}
 		break
+	}
+	// A shutdown before ready ends the run as one after ready does: no error, because Pi's session shutdown never fails an extension (runner.ts emitSessionShutdownEvent) and the Node runtime returns. The register frame is already sent, and the listener dispatches read before the shutdown have been started and are answered by stopRequests.
+	if env.Type == msgShutdown {
+		return e.stopRequests()
 	}
 	if env.Type != msgReady || env.Ready == nil {
 		return fmt.Errorf("expected ready message, got %s", env.Type)

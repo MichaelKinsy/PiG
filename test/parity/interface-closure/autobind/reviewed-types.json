@@ -39,10 +39,6 @@
     "go": "ai/streaming_json_parser.go#StreamingJSONParser.Snapshot",
     "reason": "Pi snapshot(): JsonValue | undefined returns the value of the text read so far, or undefined before a value starts. Go cannot express an optional of any JSON value without a sentinel, so Snapshot() returns StreamingJSONSnapshot{Value, Defined, Order, Version}: Defined is false where Pi returns undefined, Value is the plain JSON value (nil, bool, float64, string, []any or map[string]any), Order carries the member order of objects whose keys are not sorted (a JavaScript object keeps insertion order itself) and Version changes when a fresh copy was made, so a caller can tell a changed snapshot where Pi compares identity. TestStreamingJSONParserMatchesPi compares the snapshot after every piece with Pi's."
   },
-  "pkg:ai/.#ThinkingTokenBudgetField": {
-    "go": "ai/types.go#ThinkingTokenBudgetField",
-    "reason": "42a3497d compat-schema.ts ThinkingTokenBudgetField is Static<typeof ThinkingTokenBudgetFieldSchema>, the closed union 'thinking_token_budget' | 'thinking_budget' | 'thinking_budget_tokens'. PiG's ai.ThinkingTokenBudgetField is a string type with exactly those three constants (ai/types.go); TestThinkingTokenBudgetFieldLiteralsMatchUpstream locks the literals and the compat schema accepts the same three (TestModelsJSONSchemaErrorsMatchPi)."
-  },
   "pkg:ai/.#Tool::property:constrainedSampling": {
     "go": "ai/types.go#ToolSchema.ConstrainedSampling",
     "reason": "Pi ai/src/types.ts:721 constrainedSampling?: false | ConstrainedSamplingConfig; utils/transcript.ts:128 keeps an explicit false in the serialized tool and api/constrained-sampling.ts:230,255 read the config. PiG carries the three states as ToolSchema.ConstrainedSampling (nil when absent or false) plus ToolSchema.ConstrainedSamplingDisabled (an explicit false, ai/types.go:380); ai/schema_object_order.go:247-279 decodes and encodes false on the wire and ai/constrained_sampling_false_test.go and coding/extension_bridge_test.go:87 lock all three states."
@@ -139,10 +135,6 @@
     "go": "ai/streaming_json_parser.go#StreamingJSONParser.Snapshot",
     "reason": "Pi snapshot(): JsonValue | undefined returns the value of the text read so far, or undefined before a value starts. Go cannot express an optional of any JSON value without a sentinel, so Snapshot() returns StreamingJSONSnapshot{Value, Defined, Order, Version}: Defined is false where Pi returns undefined, Value is the plain JSON value (nil, bool, float64, string, []any or map[string]any), Order carries the member order of objects whose keys are not sorted (a JavaScript object keeps insertion order itself) and Version changes when a fresh copy was made, so a caller can tell a changed snapshot where Pi compares identity. TestStreamingJSONParserMatchesPi compares the snapshot after every piece with Pi's."
   },
-  "pkg:ai/compat#ThinkingTokenBudgetField": {
-    "go": "ai/types.go#ThinkingTokenBudgetField",
-    "reason": "42a3497d compat-schema.ts ThinkingTokenBudgetField is Static<typeof ThinkingTokenBudgetFieldSchema>, the closed union 'thinking_token_budget' | 'thinking_budget' | 'thinking_budget_tokens'. PiG's ai.ThinkingTokenBudgetField is a string type with exactly those three constants (ai/types.go); TestThinkingTokenBudgetFieldLiteralsMatchUpstream locks the literals and the compat schema accepts the same three (TestModelsJSONSchemaErrorsMatchPi)."
-  },
   "pkg:ai/compat#Tool::property:constrainedSampling": {
     "go": "ai/types.go#ToolSchema.ConstrainedSampling",
     "reason": "Pi ai/src/types.ts:721 constrainedSampling?: false | ConstrainedSamplingConfig; utils/transcript.ts:128 keeps an explicit false in the serialized tool and api/constrained-sampling.ts:230,255 read the config. PiG carries the three states as ToolSchema.ConstrainedSampling (nil when absent or false) plus ToolSchema.ConstrainedSamplingDisabled (an explicit false, ai/types.go:380); ai/schema_object_order.go:247-279 decodes and encodes false on the wire and ai/constrained_sampling_false_test.go and coding/extension_bridge_test.go:87 lock all three states."
@@ -183,10 +175,6 @@
     "go": "ai/openai.go#OpenAICompat.OpenRouterRouting",
     "reason": "42a3497d compat-schema.ts OpenRouterRoutingSchema is an object of optional routing preferences (allow_fallbacks, order, only, sort, max_price, ...) that Pi forwards as the OpenRouter provider field of the request body. PiG's ai.OpenRouterRouting is map[string]any (ai/types_unions.go), forwarded the same way: the request body carries whatever the models.json object holds, and the models.json schema (internal/codingagent/configschema/validate.go) validates its known fields (TestModelsJSONSchemaErrorsMatchPi)."
   },
-  "pkg:ai/providers/compat-schema#ThinkingTokenBudgetField": {
-    "go": "ai/types.go#ThinkingTokenBudgetField",
-    "reason": "42a3497d compat-schema.ts ThinkingTokenBudgetField is Static<typeof ThinkingTokenBudgetFieldSchema>, the closed union 'thinking_token_budget' | 'thinking_budget' | 'thinking_budget_tokens'. PiG's ai.ThinkingTokenBudgetField is a string type with exactly those three constants (ai/types.go); TestThinkingTokenBudgetFieldLiteralsMatchUpstream locks the literals and the compat schema accepts the same three (TestModelsJSONSchemaErrorsMatchPi)."
-  },
   "pkg:ai/utils/identity#UserAgentMode": {
     "go": "ai/identity.go#UserAgentMode",
     "reason": "Pi utils/identity.ts:11 declares UserAgentMode = \"short\" | \"detailed\" | { custom: string }. Go has no sum type, so ai.UserAgentMode is a struct with an unexported kind and the three constructors/values UserAgentShort, UserAgentDetailed and UserAgentCustom(value), and encodes to exactly Pi's three JSON forms (`\"short\"`, `\"detailed\"`, `{\"custom\":...}`; MarshalJSON/UnmarshalJSON, TestClientIdentityJSON). FormatUserAgent switches on the mode as formatUserAgent does (TestFormatUserAgentForms), and ClientIdentity.UserAgent is a pointer so nil is the omitted `\"detailed\"` default."
@@ -222,6 +210,10 @@
   "pkg:chord/.#Ctx::property:get::call:0": {
     "go": "chord/host/types.go#Ctx.Get",
     "reason": "Pi chord/src/types.ts:33 Ctx.get<C extends AnyContract>(type, input: InputOf<C>, options?: GetOptions<P>): Promise<Ref<C>> types the input as Static of the contract's input schema, computed from the contract value; Go methods cannot be generic or compute types from values, so Get(*Contract, any, *GetOptions) (Ref, error) takes the input untyped and the host normalizes it against the contract's input schema at runtime as Pi's does (invalid/input), failing with the error Pi's promise rejects with. TestHostCtxGetActsAsTheRootPrincipalAtIngressAndAsTheHostInsideObjects (host.test.ts:508-531) and TestStateInitRunsInARootItCanCallOtherObjects."
+  },
+  "pkg:chord/.#Description": {
+    "go": "chord/host/contract.go#Description",
+    "reason": "Pi chord/src/contract.ts:151 declares Description = Static<typeof DescriptionSchema> (:139-150, an open object { name, scope, version, input, host?, variants: map(map(MemberDescriptionSchema)) }), the TypeBox-computed type of the schema that validates a reference's contract token (wire.ts hold frames) and that fingerprints hash. Go cannot compute a type from a schema value, so host.Description is the struct with those members (Name, Scope, Version, Input, Host, Variants of MemberDescription: kind method/state/opaque with args, result, schema, id), and descriptionSchema (contract.go) validates a token as DescriptionSchema does. TestDescriptionSchemaMatchesPi replays 1774 descriptions (a valid one of each shape and seeded edits) through Pi's isValid(DescriptionSchema, ...) under Node 24 (testdata/pi_description.mjs regenerates the verdicts from the pinned mirror) and Go agrees on each; TestContractsFingerprintsAreStableAndDescriptionBased and TestIsFrameChecksErrorCodesAndContractTokens exercise the struct (precedent: pkg:chord/.#Frame)."
   },
   "pkg:chord/.#Factory::call:0": {
     "go": "chord/host/object.go#Factory",
@@ -707,10 +699,6 @@
     "go": "coding/extension/events.go#CustomToolCallEvent.Input",
     "reason": "Pi agent-session.ts:651-662 builds every tool_call event as {type: \"tool_call\", toolCallId, toolName, input} with the call's arguments, the shape of CustomToolCallEvent (types.ts:1207-1210, input: Record<string, unknown>); the per-tool input types of types.ts:1166-1204 narrow it for a handler through isToolCallEventType (types.ts:1349). Go's production emitter builds CustomToolCallEvent (coding/session_extension_hooks.go:65) whose Input is a map[string]any with WireInput keeping the model's member order, and a subprocess handler receives the same JSON object; the typed per-tool structs are the Go form of the TS narrowing."
   },
-  "pkg:coding-agent/.#PackageSource": {
-    "go": "internal/codingagent/settings.go#PackageSource",
-    "reason": "Pi settings-schema.ts:467 PackageSource = Static<typeof PackageSourceSchema>: a string (load all resources) or an object { source, autoload?, extensions?, skills?, prompts?, themes? }. Go PackageSource is the struct with those members (Source, Autoload, Extensions, Skills, Prompts, Themes), and the string form decodes to the struct with only Source set. TestRenderedSchemasAreByteEqualToThePinnedPiPackage (internal/codingagent/configschema/render_test.go) proves the settings schema Pig renders is byte-equal to the one the pinned Pi package publishes. Lead assignment 2026-10-10."
-  },
   "pkg:coding-agent/.#PowerShellToolCallEvent::property:input": {
     "go": "coding/extension/events.go#CustomToolCallEvent.Input",
     "reason": "Pi agent-session.ts:651-662 builds every tool_call event as {type: \"tool_call\", toolCallId, toolName, input} with the call's arguments, the shape of CustomToolCallEvent (types.ts:1207-1210, input: Record<string, unknown>); the per-tool input types of types.ts:1166-1204 narrow it for a handler through isToolCallEventType (types.ts:1349). Go's production emitter builds CustomToolCallEvent (coding/session_extension_hooks.go:65) whose Input is a map[string]any with WireInput keeping the model's member order, and a subprocess handler receives the same JSON object; the typed per-tool structs are the Go form of the TS narrowing."
@@ -874,5 +862,13 @@
   "pkg:tui/.#StdinBuffer::property:removeListener::call:0": {
     "go": "tui/stdin_buffer_events.go#StdinBuffer.RemoveListener",
     "reason": "Pi StdinBuffer extends EventEmitter<StdinBufferEventMap> (stdin-buffer.ts) and its listener methods take (event, listener) where the listener receives the event's string payload. Go tui.StdinBuffer carries the listener surface in tui/stdin_buffer_events.go with the event as a typed StdinBufferEvent string and the listener as a *StdinBufferListener that gives a Go callback the identity a JavaScript function has (Off and ListenerCount find it by that identity). TestStdinBufferEventsMatchPi runs Pi's StdinBuffer and compares the events its listeners receive with PiG's. Lead ruling 2026-10-10: the rows are ported."
+  },
+  "pkg:chord/next#DocumentPoint": {
+    "go": "chord/next/store/engine.go#DocumentPoint",
+    "reason": "Pi chord/src/next/store/engine.ts DocumentPoint: `number | \"current\"` is a document's revision number or the current one. Go has no number-or-string union: store.DocumentPoint is a struct whose zero value is \"current\" and whose AtSeq(n) is the number (store/engine.go), so the alias is the one type that carries both arms. The ledger's durable/types.go#DocumentPoint is the chord v1 session type of the same name, not this one. Exercised by TestEngineHistoryRules (chord/next/store/engine_test.go)."
+  },
+  "pkg:chord/next#memoryLinkPair::call:0": {
+    "go": "chord/next/link/link.go#MemoryLinkPair",
+    "reason": "Pi chord/src/next/link/link.ts memoryLinkPair(): [Link, Link] returns the two ends of one in-memory link. Go returns the two *MemoryLink of link/link.go: each embeds LinkEnd and has Send, Close, OnMessage and OnClose, so it is a link.Link (the chord/next layer's own Link, pkg:chord/next#Link, bound to link/link.go#Link), and a concrete end where Pi names the interface. The rules find every member and report the pair undecidable only because the interface has its own Go form; the type of the result is the one the function documents. Exercised by TestMemoryLinks (chord/next/link/link_test.go)."
   }
 }

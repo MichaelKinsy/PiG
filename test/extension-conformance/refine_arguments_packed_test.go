@@ -1,7 +1,6 @@
 package extensionconformance
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,7 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 )
 
@@ -38,11 +40,33 @@ func TestConformance_PackedRefinedToolArgumentsAcrossSDKs(t *testing.T) {
 					t.Fatalf("%s: refine-packed is not registered", ext.Name)
 				}
 				assertNoRefinementProtocol(t, tool.Definition)
-				validated, err := ai.ValidateToolArgumentsJSON("t", tool.Definition.Parameters, json.RawMessage(`{"a":"x"}`))
+				// The call goes through the host as the agent loop issues it (validation, hooks, execution of the tool), so a host that ran a refinement or failed the call fails here.
+				tools, errs := coding.BridgeNewRunnerTools([]extension.RegisteredTool{tool})
+				if len(errs) != 0 {
+					t.Fatal(errs)
+				}
+				provider := ai.NewFauxProvider(ai.FauxConfig{})
+				provider.SetResponses([]ai.FauxResponseStep{
+					ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("refine-packed", map[string]any{"a": "x"}, &ai.FauxToolCallOptions{ID: "refine-packed-0"})}, StopReason: "toolUse"}),
+					ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}),
+				})
+				a := mustNewAgent(agent.AgentOptions{Model: &ai.Model{ID: "faux-1", Provider: provider}, Tools: tools})
+				sent, err := a.Send(t.Context(), "call the tool")
 				if err != nil {
-					t.Errorf("%s: %v, Pi accepts: it does not run refinements", ext.Name, err)
-				} else if string(validated) != `{"a":"x"}` {
-					t.Errorf("%s: validated to %s, want the arguments unchanged", ext.Name, validated)
+					t.Fatal(err)
+				}
+				answered := false
+				for _, message := range sent {
+					if message.ToolResult == nil {
+						continue
+					}
+					answered = true
+					if message.ToolResult.IsError || message.ToolResult.Text() != "ok" {
+						t.Errorf("%s: the tool answered %q (error=%v), want \"ok\": Pi accepts the arguments, it does not run refinements", ext.Name, message.ToolResult.Text(), message.ToolResult.IsError)
+					}
+				}
+				if !answered {
+					t.Errorf("%s: the tool call produced no result", ext.Name)
 				}
 				if err := ext.Commands["refine_log"].Handler(t.Context(), ""); err != nil {
 					t.Fatal(err)

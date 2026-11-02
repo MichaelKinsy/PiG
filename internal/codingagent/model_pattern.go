@@ -319,7 +319,7 @@ func withNamedRoutingVariants(pool []RuntimeModel, text string) []RuntimeModel {
 	lower := jsstring.ToLower(text)
 	var extended []RuntimeModel
 	for _, variant := range ai.OpenRouterRoutingVariants {
-		named := indexRoutingVariant(lower, variant)
+		named := indexVariantName(lower, variant)
 		if named < 0 {
 			continue
 		}
@@ -352,18 +352,18 @@ func withNamedRoutingVariants(pool []RuntimeModel, text string) []RuntimeModel {
 	return append(slices.Clip(pool), extended...)
 }
 
-// indexRoutingVariant is the index of the first ":<variant>" in lower, or -1: strings.Index(lower, ":"+variant) without building the needle.
-func indexRoutingVariant(lower, variant string) int {
-	for offset := 0; ; {
-		colon := strings.IndexByte(lower[offset:], ':')
+// indexVariantName is the index of ":"+variant in text, or -1, without building the joined string.
+func indexVariantName(text, variant string) int {
+	for from := 0; ; {
+		colon := strings.IndexByte(text[from:], ':')
 		if colon < 0 {
 			return -1
 		}
-		colon += offset
-		if strings.HasPrefix(lower[colon+1:], variant) {
+		colon += from
+		if strings.HasPrefix(text[colon+1:], variant) {
 			return colon
 		}
-		offset = colon + 1
+		from = colon + 1
 	}
 }
 
@@ -372,7 +372,7 @@ func fuzzyMatches(text string, models []RuntimeModel) []RuntimeModel {
 	var matches []RuntimeModel
 	for _, model := range models {
 		// pig divergence (D199): an OpenRouter routing variant is a partial-match candidate only when the text names it, so a partial text resolves as it does in Pi, which lists none.
-		if _, variant, ok := ai.OpenRouterRoutingVariant(model.Provider, model.ID); ok && indexRoutingVariant(lower, variant) < 0 {
+		if _, variant, ok := ai.OpenRouterRoutingVariant(model.Provider, model.ID); ok && indexVariantName(lower, variant) < 0 {
 			continue
 		}
 		if jsstring.LowerContains(model.ID, lower) || jsstring.LowerContains(model.Name, lower) {

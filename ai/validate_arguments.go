@@ -16,11 +16,11 @@ func ValidateToolCall(tools []ToolSchema, call ToolCall) (map[string]any, error)
 			return ValidateToolArguments(tool, call)
 		}
 	}
-	// validation.ts:305 interpolates the name unescaped (`Tool "${toolCall.name}" not found`); %q would escape it.
+	// validation.ts:40 interpolates the name unescaped (`Tool "${toolCall.name}" not found`); %q would escape it.
 	return nil, fmt.Errorf("Tool \"%s\" not found", call.Name)
 }
 
-// ValidateToolArguments coerces and validates the call's arguments against the tool's JSON Schema with pi-schema, without changing the provider call (validation.ts:317-353).
+// ValidateToolArguments coerces and validates the call's arguments against the tool's JSON Schema with pi-schema, without changing the provider call (validation.ts:54-69).
 // The arguments are read in the call's member order, as Pi's are, so the received arguments of a validation error list them in that order. The schema is
 // read in its authored member order (ParametersJSON), as Pi validates tool.parameters itself, so its errors follow that order.
 func ValidateToolArguments(tool ToolSchema, call ToolCall) (map[string]any, error) {
