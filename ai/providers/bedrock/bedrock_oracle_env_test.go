@@ -82,7 +82,7 @@ func TestBedrockOraclesIgnoreAmbientAWSEnvironment(t *testing.T) {
 		t.Run(ambient.name, func(t *testing.T) {
 			cmd := exec.CommandContext(t.Context(), executable, "-test.count=1", "-test.v", "-test.timeout", (2 * time.Minute).String(), "-test.run", "^("+strings.Join(oracles, "|")+")$")
 			cmd.Env = append(withoutAWSEnvironment(os.Environ()), ambient.environment...)
-			cmd.Env = append(cmd.Env, bedrockResponseProbeCountVariable+"=20")
+			cmd.Env = append(cmd.Env, bedrockResponseProbeCountVariable+"=20", keepAWSEnvironmentVariable+"=1")
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("oracle tests under the live-providers environment: %v\n%s", err, output)
@@ -91,6 +91,41 @@ func TestBedrockOraclesIgnoreAmbientAWSEnvironment(t *testing.T) {
 				if !strings.Contains(string(output), "--- PASS: "+name+" ") {
 					t.Errorf("%s did not run and pass in the child test binary:\n%s", name, output)
 				}
+			}
+		})
+	}
+}
+
+// keepAWSEnvironmentVariable tells TestMain to leave the process's AWS variables alone. The meta-test above sets it for its child so that the oracles
+// meet the workflow's environment, which TestMain would otherwise remove before they run.
+const keepAWSEnvironmentVariable = "PIG_TEST_BEDROCK_KEEP_AWS_ENVIRONMENT"
+
+// A package run starts without the caller's AWS variables (TestMain), so a configured AWS_BEARER_TOKEN_BEDROCK, profile or static keys cannot change what a
+// hermetic test does: under skip-auth over http:// PiG refuses to send a token (D196), and a wire test then waits for a request that never arrives.
+func TestBedrockPackageRunsWithoutAmbientAWSEnvironment(t *testing.T) {
+	if os.Getenv(keepAWSEnvironmentVariable) != "" {
+		t.Skip("the caller's AWS environment is kept on purpose")
+	}
+	for _, entry := range os.Environ() {
+		if strings.HasPrefix(entry, "AWS_") {
+			t.Errorf("%s is set in the test process", strings.SplitN(entry, "=", 2)[0])
+		}
+	}
+}
+
+// The same test in a child test binary that is started with every AWS variable the workflow can export, real-looking values included.
+func TestBedrockTestMainClearsConfiguredAWSEnvironment(t *testing.T) {
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ambient := range ambientAWSEnvironments {
+		t.Run(ambient.name, func(t *testing.T) {
+			cmd := exec.CommandContext(t.Context(), executable, "-test.count=1", "-test.v", "-test.timeout", (2 * time.Minute).String(), "-test.run", "^TestBedrockPackageRunsWithoutAmbientAWSEnvironment$")
+			cmd.Env = append(withoutAWSEnvironment(os.Environ()), ambient.environment...)
+			output, err := cmd.CombinedOutput()
+			if err != nil || !strings.Contains(string(output), "--- PASS: TestBedrockPackageRunsWithoutAmbientAWSEnvironment ") {
+				t.Fatalf("child test binary: %v\n%s", err, output)
 			}
 		})
 	}
