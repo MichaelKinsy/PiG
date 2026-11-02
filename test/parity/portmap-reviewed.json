@@ -20,5 +20,28 @@
    "pkg:chord/next#SingletonHandle::property:watch": "chord/watch.go#Watchable.Watch",
    "pkg:chord/next#SingletonHandle::property:watch::call:0": "chord/watch.go#Watchable.Watch"
   }
+ },
+ "packages/chord/src/next/data/errors.ts": {
+  "reason": "next isChordError(error, code?) is chord/next/data/errors.go#IsChordError (data.IsChordError and IsChordErrorCode); the ledger mapped it to the chord v1 chord/host/errors.go#IsChordError, which implements the v1 packages/chord/src/errors.ts isChordError, not this file.",
+  "members": {
+   "pkg:chord/next#isChordError": "chord/next/data/errors.go#IsChordError",
+   "pkg:chord/next#isChordError::call:0": "chord/next/data/errors.go#IsChordError"
+  }
+ },
+ "packages/chord/src/next/link/link.ts": {
+  "reason": "next memoryLinkPair() is chord/next/link/link.go#MemoryLinkPair (a pair of *MemoryLink); the ledger mapped it to the chord v1 chord/host/link.go#MemoryLinkPair, which implements the v1 packages/chord/src/link.ts.",
+  "members": {
+   "pkg:chord/next#memoryLinkPair": "chord/next/link/link.go#MemoryLinkPair",
+   "pkg:chord/next#memoryLinkPair::call:0": "chord/next/link/link.go#MemoryLinkPair"
+  }
+ },
+ "packages/chord/src/next/link/part.ts": {
+  "reason": "Compression is declared in part.ts and part.go aliases it (link.Compression = nextnode.Compression) so the link package speaks the interface; its Deflate/Inflate methods live on the nextnode implementation, and part.go is the code that calls them (OriginPart deflates, OpenPart and InflateAsync inflate).",
+  "members": {
+   "pkg:chord/next#Compression::property:deflate": "chord/next/link/part.go#Compression",
+   "pkg:chord/next#Compression::property:deflate::call:0": "chord/next/link/part.go#Compression",
+   "pkg:chord/next#Compression::property:inflate": "chord/next/link/part.go#Compression",
+   "pkg:chord/next#Compression::property:inflate::call:0": "chord/next/link/part.go#Compression"
+  }
  }
 }

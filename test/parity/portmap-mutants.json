@@ -970,5 +970,117 @@
    "old": "record.Set(\"finishFailures\", float64(finishFailures))",
    "new": "record.Set(\"finishFailures\", float64(finishFailures+1))"
   }
+ ],
+ "packages/chord/src/next/contracts/fingerprint.ts": [
+  {
+   "file": "chord/next/contracts/fingerprint.go",
+   "old": "slices.SortStableFunc(entries, func(a, b normalEntry) int { return compare16(a.name, b.name) })",
+   "new": "slices.SortStableFunc(entries, func(a, b normalEntry) int { return compare16(b.name, a.name) })"
+  }
+ ],
+ "packages/chord/src/next/contracts/history.ts": [
+  {
+   "file": "chord/next/contracts/history.go",
+   "old": "\t\t\t\tseen[name] = true\n",
+   "new": "\t\t\t\tseen[name] = false\n"
+  }
+ ],
+ "packages/chord/src/next/contracts/names.ts": [
+  {
+   "file": "chord/next/contracts/names.go",
+   "old": "c == '~'",
+   "new": "c == '!'"
+  }
+ ],
+ "packages/chord/src/next/contracts/params.ts": [
+  {
+   "file": "chord/next/contracts/params.go",
+   "old": "\"maxLength\", \"pattern\", \"format\"}",
+   "new": "\"maxLength\", \"format\"}"
+  }
+ ],
+ "packages/chord/src/next/contracts/snapshot.ts": [
+  {
+   "file": "chord/next/contracts/snapshot.go",
+   "old": "closed := node.Value(\"additionalProperties\") == false",
+   "new": "closed := node.Value(\"additionalProperties\") == true"
+  }
+ ],
+ "packages/chord/src/next/data/args.ts": [
+  {
+   "file": "chord/next/data/args.go",
+   "old": "accepted.Version == version && accepted.Fingerprint == fingerprint",
+   "new": "accepted.Version == version || accepted.Fingerprint == fingerprint"
+  }
+ ],
+ "packages/chord/src/next/data/params.ts": [
+  {
+   "file": "chord/next/data/params.go",
+   "old": "parts = append(parts, contract.Name, key)",
+   "new": "parts = append(parts, key, contract.Name)"
+  }
+ ],
+ "packages/chord/src/next/data/validator.ts": [
+  {
+   "file": "chord/next/data/validator.go",
+   "old": "\"chord.data.validations\"",
+   "new": "\"chord.data.validation\""
+  }
+ ],
+ "packages/chord/src/next/registries/contribution.ts": [
+  {
+   "file": "chord/next/registries/contribution.go",
+   "old": "if c.Version > version || (c.Version < version && adapter == nil) {",
+   "new": "if c.Version >= version || (c.Version < version && adapter == nil) {"
+  }
+ ],
+ "packages/chord/src/next/registries/internal.ts": [
+  {
+   "file": "chord/next/registries/internal.go",
+   "old": "value, err = nil, asError(recovered)",
+   "new": "value, err = nil, nil"
+  }
+ ],
+ "packages/chord/src/next/registries/record.ts": [
+  {
+   "file": "chord/next/registries/record.go",
+   "old": "return strings.Compare(left.Plugin, right.Plugin)",
+   "new": "return strings.Compare(right.Plugin, left.Plugin)"
+  }
+ ],
+ "packages/chord/src/next/registries/value.ts": [
+  {
+   "file": "chord/next/registries/value.go",
+   "old": "if mapped != nil && state.Identical(mapped.from, from) && mapped.provider == served {",
+   "new": "if mapped != nil && state.Identical(mapped.from, from) && mapped.provider != served {"
+  }
+ ],
+ "packages/chord/src/next/state/batch.ts": [
+  {
+   "file": "chord/next/state/batch.go",
+   "old": "for i := 0; i < len(b.flushes); i++ {",
+   "new": "for i := 0; i < len(b.flushes)-1; i++ {"
+  }
+ ],
+ "packages/chord/src/next/link/channel.ts": [
+  {
+   "file": "chord/next/link/channel.go",
+   "old": "silent >= ping && !c.pinged",
+   "new": "silent >= ping && c.pinged"
+  }
+ ],
+ "packages/chord/src/next/link/errors.ts": [
+  {
+   "file": "chord/next/link/errors.go",
+   "old": "if kind == \"chord\" {",
+   "new": "if kind == \"chard\" {"
+  }
+ ],
+ "packages/chord/src/next/link/values.ts": [
+  {
+   "file": "chord/next/link/values.go",
+   "old": "*segments = append(*segments, typed)",
+   "new": "*segments = append((*segments)[:0], typed)"
+  }
  ]
 }

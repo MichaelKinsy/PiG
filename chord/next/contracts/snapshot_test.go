@@ -9,6 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/typebox"
 )
 
+// pi: packages/chord/src/next/contracts/snapshot.ts
 // Ports packages/chord/test/next/contracts/snapshot.test.ts.
 //
 // Designed out (no Go input): TypeBox refinements, codecs and unsafe types (executable features a Go schema, which is
