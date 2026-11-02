@@ -1,5 +1,7 @@
 package cli
 
+// pi: packages/coding-agent/src/modes/interactive/components/config-selector.ts
+
 import (
 	"bytes"
 	"os"
