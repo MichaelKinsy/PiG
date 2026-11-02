@@ -266,10 +266,6 @@ packages/coding-agent/src/modes/interactive/theme/system-theme.ts
 packages/coding-agent/src/modes/interactive/theme/theme-controller.ts
 packages/coding-agent/src/modes/interactive/theme/theme.ts
 packages/coding-agent/src/modes/interactive/tui-renderer.ts
-packages/coding-agent/src/modes/json-event.ts
-packages/coding-agent/src/modes/print-mode.ts
-packages/coding-agent/src/modes/rpc/rpc-client.ts
-packages/coding-agent/src/modes/rpc/rpc-mode.ts
 packages/coding-agent/src/package-manager-cli.ts
 packages/coding-agent/src/utils/ansi.ts
 packages/coding-agent/src/utils/child-process.ts
