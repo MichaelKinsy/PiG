@@ -1,6 +1,6 @@
 // Package tools: edit-diff helpers.
 //
-// Mirrors upstream packages/coding-agent/src/core/tools/edit-diff.ts:
+// Ports packages/coding-agent/src/core/tools/edit-diff.ts:
 // line-ending detection, BOM stripping, fuzzy matching, and the
 // position-based multi-file edit application algorithm.
 package tools

@@ -164576,9 +164576,9 @@
       "id": "pkg:coding-agent/.#EditToolInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:47e2a8484e62eef82f82a5578cefc0a79aa7805cbfbf8d4fc28fec489f658635",
-      "rationale": "Derived by the interface gap detector: EditToolInput is Go coding/extension/opaque_types.go#EditToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: EditToolInput is Go coding/extension/tool_inputs.go#EditToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#EditToolInput"
+        "coding/extension/tool_inputs.go#EditToolInput"
       ],
       "layers": {
         "behavior": "complete",
@@ -164586,7 +164586,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/opaque_types.go#EditToolInput"
+        "public-api:coding/extension/tool_inputs.go#EditToolInput"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
@@ -181003,9 +181003,9 @@
       "id": "pkg:coding-agent/.#GrepToolInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:182c3c5944c0832eacbb5af6309b034953fab730d0e3dac7f0629acab353d619",
-      "rationale": "Derived by the interface gap detector: GrepToolInput is Go coding/extension/opaque_types.go#GrepToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: GrepToolInput is Go coding/extension/tool_inputs.go#GrepToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#GrepToolInput"
+        "coding/extension/tool_inputs.go#GrepToolInput"
       ],
       "layers": {
         "behavior": "complete",
@@ -181013,7 +181013,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/opaque_types.go#GrepToolInput"
+        "public-api:coding/extension/tool_inputs.go#GrepToolInput"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
@@ -185003,9 +185003,9 @@
       "id": "pkg:coding-agent/.#LsToolInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:104e0db7f5a3037fc135527a0e6181ac8fa95aa857367092c3670bd3072b97e6",
-      "rationale": "Derived by the interface gap detector: LsToolInput is Go coding/extension/opaque_types.go#LsToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: LsToolInput is Go coding/extension/tool_inputs.go#LsToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#LsToolInput"
+        "coding/extension/tool_inputs.go#LsToolInput"
       ],
       "layers": {
         "behavior": "complete",
@@ -185013,7 +185013,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/opaque_types.go#LsToolInput"
+        "public-api:coding/extension/tool_inputs.go#LsToolInput"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputOmitsAbsentOptionalMembers",
@@ -195158,9 +195158,9 @@
       "id": "pkg:coding-agent/.#ReadToolInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b43217218ee571fc076109bd3bbc87d23544def63c31ad12ea23c06b007082ea",
-      "rationale": "Derived by the interface gap detector: ReadToolInput is Go coding/extension/opaque_types.go#ReadToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ReadToolInput is Go coding/extension/tool_inputs.go#ReadToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ReadToolInput"
+        "coding/extension/tool_inputs.go#ReadToolInput"
       ],
       "layers": {
         "behavior": "complete",
@@ -195168,7 +195168,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/opaque_types.go#ReadToolInput"
+        "public-api:coding/extension/tool_inputs.go#ReadToolInput"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
@@ -223269,9 +223269,9 @@
       "id": "pkg:coding-agent/.#WriteToolInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:d5dd81c01d3771376b6a36bd87fe914778eb2ac3ed659f7aa0371127f4eacbea",
-      "rationale": "Derived by the interface gap detector: WriteToolInput is Go coding/extension/opaque_types.go#WriteToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: WriteToolInput is Go coding/extension/tool_inputs.go#WriteToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#WriteToolInput"
+        "coding/extension/tool_inputs.go#WriteToolInput"
       ],
       "layers": {
         "behavior": "complete",
@@ -223279,7 +223279,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/opaque_types.go#WriteToolInput"
+        "public-api:coding/extension/tool_inputs.go#WriteToolInput"
       ],
       "evidence": [
         "test:coding/extension/tool_input_json_test.go#TestToolInputsAreTypedAndKeepUndeclaredMembers",
