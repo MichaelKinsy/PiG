@@ -185,11 +185,7 @@ func prefixOverload(a, b callShape) bool { return rules.PrefixOverload(a, b) }
 
 // typeFor resolves an upstream interface, class or alias name to the Go type it stands for: a documented rename, a name rule, or a unique
 // shape match, in that order. It returns nil when the name does not resolve (or resolution is already in progress).
-func (d *detector) typeFor(pkg, name string) *types.TypeName { return d.typeForLayer(pkg, "", name) }
-
-// typeForLayer is typeFor for a row of the entry layer (chord's src/next, which declares names chord's own layer declares too,
-// such as Link): the declarations of that layer come first among those of the package.
-func (d *detector) typeForLayer(pkg, layer, name string) *types.TypeName {
+func (d *detector) typeFor(pkg, name string) *types.TypeName {
 	var rows []*upstreamEntry
 	for _, e := range d.l.entries {
 		if e.Name == name && e.Role == "" && (e.Kind == "interface" || e.Kind == "class" || e.Kind == "type-alias") {
@@ -200,9 +196,6 @@ func (d *detector) typeForLayer(pkg, layer, name string) *types.TypeName {
 		pi, pj := parseID(rows[i].ID).Pkg == pkg, parseID(rows[j].ID).Pkg == pkg
 		if pi != pj {
 			return pi
-		}
-		if li, lj := layer != "" && parseID(rows[i].ID).Entry == layer, layer != "" && parseID(rows[j].ID).Entry == layer; li != lj {
-			return li
 		}
 		return rows[i].ID < rows[j].ID
 	})
