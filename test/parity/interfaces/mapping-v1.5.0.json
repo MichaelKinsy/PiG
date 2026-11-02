@@ -95072,8 +95072,23 @@
     },
     {
       "id": "pkg:ai/providers/schema-builders#openObject",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:de78338a84fd62be4c8966368034d84ca3191eb895960d9c55767e7af53e9dae"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:de78338a84fd62be4c8966368034d84ca3191eb895960d9c55767e7af53e9dae",
+      "rationale": "Derived by the interface gap detector: openObject is Go internal/codingagent/configschema/pischema.go#OpenObject (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/configschema/pischema.go#OpenObject"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/configschema/pischema.go#OpenObject"
+      ],
+      "evidence": [
+        "test:internal/codingagent/configschema/pischema_test.go#TestOpenObjectBuildsAnObjectThatAllowsOtherProperties"
+      ]
     },
     {
       "id": "pkg:ai/providers/schema-builders#openObject::call:0",
@@ -95086,8 +95101,23 @@
     },
     {
       "id": "pkg:ai/providers/schema-builders#stringLiteral",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8b4faa711681df8be973d0eefcff9b23f69a5583f06ed3846684865706522139"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8b4faa711681df8be973d0eefcff9b23f69a5583f06ed3846684865706522139",
+      "rationale": "Derived by the interface gap detector: stringLiteral is Go internal/codingagent/configschema/pischema.go#StringLiteral (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/configschema/pischema.go#StringLiteral"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/configschema/pischema.go#StringLiteral"
+      ],
+      "evidence": [
+        "test:internal/codingagent/configschema/pischema_test.go#TestStringLiteralStringRecordAndOneOfBuildTheirPiSchemaShapes"
+      ]
     },
     {
       "id": "pkg:ai/providers/schema-builders#stringLiteral::call:0",
@@ -95100,8 +95130,23 @@
     },
     {
       "id": "pkg:ai/providers/schema-builders#stringRecord",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:e9c68692bab7d284483a3646f0dd3a57cee4090ab171cf8b9703839d4e19c2ef"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:e9c68692bab7d284483a3646f0dd3a57cee4090ab171cf8b9703839d4e19c2ef",
+      "rationale": "Derived by the interface gap detector: stringRecord is Go internal/codingagent/configschema/pischema.go#StringRecord (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "internal/codingagent/configschema/pischema.go#StringRecord"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:internal/codingagent/configschema/pischema.go#StringRecord"
+      ],
+      "evidence": [
+        "test:internal/codingagent/configschema/pischema_test.go#TestStringLiteralStringRecordAndOneOfBuildTheirPiSchemaShapes"
+      ]
     },
     {
       "id": "pkg:ai/providers/schema-builders#stringRecord::call:0",
@@ -114574,8 +114619,25 @@
     },
     {
       "id": "pkg:chord/next#arr",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:dcbdb1f8606b095a786bd1c50d3b00dd93ff15d2ca9bb627d2cfcbcedf6ccd93"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:dcbdb1f8606b095a786bd1c50d3b00dd93ff15d2ca9bb627d2cfcbcedf6ccd93",
+      "rationale": "Derived by the interface gap detector: arr is Go chord/next/contracts/schema.go#Arr (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Arr"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Arr"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsStateMappings",
+        "test:chord/next/contracts/declare_test.go#TestDeclarationChecks",
+        "test:chord/next/contracts/declare_test.go#TestDeclarationMembersAcrossVariants"
+      ]
     },
     {
       "id": "pkg:chord/next#arr::call:0",
@@ -114692,8 +114754,25 @@
     },
     {
       "id": "pkg:chord/next#bool",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:152b2ab6c2e8a8fa8265fbaf5d5d783adba93248e01fdec983a52ec1abf898ea"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:152b2ab6c2e8a8fa8265fbaf5d5d783adba93248e01fdec983a52ec1abf898ea",
+      "rationale": "Derived by the interface gap detector: bool is Go chord/next/contracts/schema.go#Bool (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Bool"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Bool"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/evolve_test.go#TestEvolveEdits",
+        "test:chord/next/contracts/params_test.go#TestParamsPolicy",
+        "test:chord/next/contracts/schema_test.go#TestSchemaHelpers"
+      ]
     },
     {
       "id": "pkg:chord/next#bool::call:0",
@@ -114795,8 +114874,25 @@
     },
     {
       "id": "pkg:chord/next#bytes",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:914e1b1db7bbe9c75304421e6e56f163e2d3a9c2acd5490834827f267325872b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:914e1b1db7bbe9c75304421e6e56f163e2d3a9c2acd5490834827f267325872b",
+      "rationale": "Derived by the interface gap detector: bytes is Go chord/next/contracts/schema.go#Bytes (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Bytes"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Bytes"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/derived_runtime_test.go#TestDerivedShapes",
+        "test:chord/next/contracts/params_test.go#TestParamsPolicy",
+        "test:chord/next/contracts/schema_test.go#TestSchemaBytes"
+      ]
     },
     {
       "id": "pkg:chord/next#bytes::call:0",
@@ -119023,8 +119119,25 @@
     },
     {
       "id": "pkg:chord/next#int",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:d973e0e8563ff76eddb4428527ac04f4eb13b1c7cee0ebc1970ed1b4e7d8972a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:d973e0e8563ff76eddb4428527ac04f4eb13b1c7cee0ebc1970ed1b4e7d8972a",
+      "rationale": "Derived by the interface gap detector: int is Go chord/next/contracts/schema.go#Int (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Int"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Int"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsMethodMappings",
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsStateMappings",
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsVersions"
+      ]
     },
     {
       "id": "pkg:chord/next#int::call:0",
@@ -121698,8 +121811,25 @@
     },
     {
       "id": "pkg:chord/next#nul",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:46d722a28a2a2683323e767b50767048c327ff400975ae43da29ae8b0fff5fe5"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:46d722a28a2a2683323e767b50767048c327ff400975ae43da29ae8b0fff5fe5",
+      "rationale": "Derived by the interface gap detector: nul is Go chord/next/contracts/schema.go#Nul (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Nul"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Nul"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsMethodMappings",
+        "test:chord/next/contracts/contract_test.go#TestContractTakesNoArgs",
+        "test:chord/next/contracts/derived_runtime_test.go#TestDerivedShapes"
+      ]
     },
     {
       "id": "pkg:chord/next#nul::call:0",
@@ -121739,8 +121869,25 @@
     },
     {
       "id": "pkg:chord/next#num",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:cbb8d537d74f1cd4bdc7bb0fc83937be6bf54daa9a49813bb10df9ccad890546"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:cbb8d537d74f1cd4bdc7bb0fc83937be6bf54daa9a49813bb10df9ccad890546",
+      "rationale": "Derived by the interface gap detector: num is Go chord/next/contracts/schema.go#Num (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Num"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Num"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/params_test.go#TestParamsPolicy",
+        "test:chord/next/contracts/schema_test.go#TestSchemaHelpers",
+        "test:chord/nextnode/plugins/plugins_node_contracts_test.go#TestContractDataIsTheNormalFormTheFingerprintHashes"
+      ]
     },
     {
       "id": "pkg:chord/next#num::call:0",
@@ -121789,8 +121936,25 @@
     },
     {
       "id": "pkg:chord/next#obj",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:8215d0948aa2ad9c71131e6a206a4abf38049a1d5e5473e32810798bcf0810b0"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:8215d0948aa2ad9c71131e6a206a4abf38049a1d5e5473e32810798bcf0810b0",
+      "rationale": "Derived by the interface gap detector: obj is Go chord/next/contracts/schema.go#Obj (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Obj"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Obj"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsKeyedMappings",
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsMethodMappings",
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsStateMappings"
+      ]
     },
     {
       "id": "pkg:chord/next#obj::call:0",
@@ -125343,8 +125507,25 @@
     },
     {
       "id": "pkg:chord/next#StateDefinition",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:5b410d34096e1aea243f838b371eecf8499d8e91aa427a388aeda3983875e0bb"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:5b410d34096e1aea243f838b371eecf8499d8e91aa427a388aeda3983875e0bb",
+      "rationale": "Derived by the interface gap detector: StateDefinition is Go chord/next/documents/definition.go#StateDefinition (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/documents/definition.go#StateDefinition"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/documents/definition.go#DefineState"
+      ],
+      "evidence": [
+        "test:chord/next/documents/definition_test.go#TestInitialIsCheckedAgainstTheSchemaOnceTheFirstTimeItIsUsed",
+        "test:chord/next/documents/definition_test.go#TestInitialRefusesAValueThatDoesNotMatchEveryTimeUntilOneDoes",
+        "test:chord/next/documents/definition_test.go#TestMigrateMapsAnOlderValueAndChecksTheResultEachTimeItProducesOne"
+      ]
     },
     {
       "id": "pkg:chord/next#StateDefinition::construct:0",
@@ -126988,8 +127169,25 @@
     },
     {
       "id": "pkg:chord/next#str",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:fefcc0e8832044c031b9b0fec4e8030c6efc4e853d18c7b27fff045ec4df2b22"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:fefcc0e8832044c031b9b0fec4e8030c6efc4e853d18c7b27fff045ec4df2b22",
+      "rationale": "Derived by the interface gap detector: str is Go chord/next/contracts/schema.go#Str (name rule N4), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/contracts/schema.go#Str"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/contracts/schema.go#Str"
+      ],
+      "evidence": [
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsKeyedMappings",
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsMethodMappings",
+        "test:chord/next/contracts/accepts_test.go#TestAcceptsStateMappings"
+      ]
     },
     {
       "id": "pkg:chord/next#str::call:0",
@@ -128925,13 +129123,43 @@
     },
     {
       "id": "pkg:chord/next#WebSocketLike",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:7bdb36ac1fb35f549901ea30d82542e03a1d529403be7f0e8418c2d6348ac666"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:7bdb36ac1fb35f549901ea30d82542e03a1d529403be7f0e8418c2d6348ac666",
+      "rationale": "Derived by the interface gap detector: WebSocketLike is Go chord/next/link/websocket.go#WebSocketLike (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/link/websocket.go#WebSocketLink"
+      ],
+      "evidence": [
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointCutsOffAClientThatStoppedReadingPast4MiBUnsentBeyondTheFrameBeingSent"
+      ]
     },
     {
       "id": "pkg:chord/next#WebSocketLike::property:addEventListener",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:2b75af7ad879385b7b2744c9bc47ba86e34b59acb045386ea8cf2324c21cc88b"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:2b75af7ad879385b7b2744c9bc47ba86e34b59acb045386ea8cf2324c21cc88b",
+      "rationale": "Derived by the interface gap detector: WebSocketLike::property:addEventListener is Go chord/next/link/websocket.go#WebSocketLike.AddEventListener (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "chord/next/link/websocket.go#WebSocketLike.AddEventListener"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:chord/next/link/websocket.go#WebSocketLink"
+      ],
+      "evidence": [
+        "reach:chord/next/link/websocket.go#WebSocketLink"
+      ]
     },
     {
       "id": "pkg:chord/next#WebSocketLike::property:addEventListener::call:0",
@@ -272949,8 +273177,25 @@
     },
     {
       "id": "pkg:schema/.#arr",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:f3df121252987c107f77252494fe4a2b40b8ff56ce928dccd16631a76b694481"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:f3df121252987c107f77252494fe4a2b40b8ff56ce928dccd16631a76b694481",
+      "rationale": "Derived by the interface gap detector: arr is Go schema/builders.go#Arr (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Arr"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Arr"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
+        "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics",
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+      ]
     },
     {
       "id": "pkg:schema/.#arr::call:0",
@@ -272993,8 +273238,23 @@
     },
     {
       "id": "pkg:schema/.#bytes",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ac1e86b8204c6cdae1684ce451e21c6405af569ade7688ddb27a7127c5a3542a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ac1e86b8204c6cdae1684ce451e21c6405af569ade7688ddb27a7127c5a3542a",
+      "rationale": "Derived by the interface gap detector: bytes is Go schema/builders.go#Bytes (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Bytes"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Bytes"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+      ]
     },
     {
       "id": "pkg:schema/.#bytes::call:0",
@@ -273047,8 +273307,25 @@
     },
     {
       "id": "pkg:schema/.#CoercingValidator",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:715178db76d01c0e8aa34cb3b0bd82023769567be3d0a9d0b7f1bb7055b95c79"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:715178db76d01c0e8aa34cb3b0bd82023769567be3d0a9d0b7f1bb7055b95c79",
+      "rationale": "Derived by the interface gap detector: CoercingValidator is Go schema/validator.go#CoercingValidator (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/validator.go#CoercingValidator"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:schema/validator.go#CompileCoercing"
+      ],
+      "evidence": [
+        "test:schema/coerce_oracle_test.go#TestCoerceMatchesPi",
+        "test:schema/coerce_typebox_upstream_test.go#TestCoerceTypeBoxUpstream",
+        "test:schema/shared_upstream_test.go#TestSharedChecks"
+      ]
     },
     {
       "id": "pkg:schema/.#CoercingValidator::construct:0",
@@ -273237,8 +273514,25 @@
     },
     {
       "id": "pkg:schema/.#compile",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4769267f088bca14d2c5bc773b2604cfd0be45e8ef3f0f2ad1ef3a224f6d0334"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4769267f088bca14d2c5bc773b2604cfd0be45e8ef3f0f2ad1ef3a224f6d0334",
+      "rationale": "Derived by the interface gap detector: compile is Go schema/validator.go#Compile (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/validator.go#Compile"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:schema/validator.go#Compile"
+      ],
+      "evidence": [
+        "test:schema/coerce_typebox_upstream_test.go#TestCoerceTypeBoxUpstream",
+        "test:schema/conformance_upstream_test.go#TestConformanceSuite",
+        "test:schema/validator_additions_upstream_test.go#TestUnresolvedReferences"
+      ]
     },
     {
       "id": "pkg:schema/.#compile::call:0",
@@ -273273,8 +273567,25 @@
     },
     {
       "id": "pkg:schema/.#CompileOptions",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:6b90bd001c0ba66ac69aed3f5256ccc04efad064229504f79c6ffe145b6bc103"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:6b90bd001c0ba66ac69aed3f5256ccc04efad064229504f79c6ffe145b6bc103",
+      "rationale": "Derived by the interface gap detector: CompileOptions is Go schema/types.go#CompileOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/types.go#CompileOptions"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:schema/compiler.go#newCompiler"
+      ],
+      "evidence": [
+        "test:schema/coerce_oracle_test.go#TestCoerceMatchesPi",
+        "test:schema/coerce_typebox_upstream_test.go#TestCoerceTypeBoxUpstream",
+        "test:schema/coerce_upstream_test.go#TestCoerceUnresolvedReferences"
+      ]
     },
     {
       "id": "pkg:schema/.#CompileOptions::property:coerce",
@@ -273416,8 +273727,25 @@
     },
     {
       "id": "pkg:schema/.#int",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:ef2a7fabe05201d6ebbb9fb6363c97958b1276b77b0c3558259866050bd2e775"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:ef2a7fabe05201d6ebbb9fb6363c97958b1276b77b0c3558259866050bd2e775",
+      "rationale": "Derived by the interface gap detector: int is Go schema/builders.go#Int (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Int"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Int"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
+        "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions",
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+      ]
     },
     {
       "id": "pkg:schema/.#int::call:0",
@@ -273600,8 +273928,25 @@
     },
     {
       "id": "pkg:schema/.#num",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:84a941aeb2cd7a572c5722f3535dbe160bc8ba20fa62c70323a4b5ceb32602c7"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:84a941aeb2cd7a572c5722f3535dbe160bc8ba20fa62c70323a4b5ceb32602c7",
+      "rationale": "Derived by the interface gap detector: num is Go schema/builders.go#Num (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Num"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Num"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
+        "test:schema/builders_upstream_test.go#TestBuildersNarrowValuesThroughACompiledCheck",
+        "test:schema/builders_upstream_test.go#TestBuildersProduceEveryLeaf"
+      ]
     },
     {
       "id": "pkg:schema/.#num::call:0",
@@ -273668,8 +274013,25 @@
     },
     {
       "id": "pkg:schema/.#obj",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:42ab7e8ec89f29374634ffd7de668552b1e557e811d6eb67f367ff2c4e64430e"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:42ab7e8ec89f29374634ffd7de668552b1e557e811d6eb67f367ff2c4e64430e",
+      "rationale": "Derived by the interface gap detector: obj is Go schema/builders.go#Obj (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Obj"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Obj"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions",
+        "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics",
+        "test:schema/builders_upstream_test.go#TestBuildersNarrowValuesThroughACompiledCheck"
+      ]
     },
     {
       "id": "pkg:schema/.#obj::call:0",
@@ -273828,8 +274190,25 @@
     },
     {
       "id": "pkg:schema/.#str",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:da313c423fc714e9d2800e52b6745460347e672832838b842b107ecaa3197e67"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:da313c423fc714e9d2800e52b6745460347e672832838b842b107ecaa3197e67",
+      "rationale": "Derived by the interface gap detector: str is Go schema/builders.go#Str (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "schema/builders.go#Str"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:schema/builders.go#Str"
+      ],
+      "evidence": [
+        "test:schema/builders_upstream_test.go#TestBuildersAcceptEveryAnnotationAndBound",
+        "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions",
+        "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics"
+      ]
     },
     {
       "id": "pkg:schema/.#str::call:0",
