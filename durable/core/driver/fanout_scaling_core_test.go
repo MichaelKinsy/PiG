@@ -3,6 +3,7 @@ package driver_test
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -21,8 +22,8 @@ type iterationTB struct {
 func (tb *iterationTB) Cleanup(f func()) { tb.cleanups = append(tb.cleanups, f) }
 
 func (tb *iterationTB) close() {
-	for i := len(tb.cleanups) - 1; i >= 0; i-- {
-		tb.cleanups[i]()
+	for _, v := range slices.Backward(tb.cleanups) {
+		v()
 	}
 	tb.cleanups = nil
 }
@@ -37,14 +38,12 @@ func coreFanout(tb testing.TB, calls int) func() {
 		nestedCoreTool("batch", func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			var wg sync.WaitGroup
 			for range calls {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
+				wg.Go(func() {
 					r, err := api.ExecuteTool(ctx, "echo", map[string]any{"text": "x"}, durable.NestedCallOptions{Progress: new(false)})
 					if err != nil || r.IsError {
 						failed.Add(1)
 					}
-				}()
+				})
 			}
 			wg.Wait()
 			return nestedCoreText("ok"), nil
