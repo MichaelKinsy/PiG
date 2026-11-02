@@ -45,13 +45,7 @@ func SettingsListThemeFor(th *Theme) SettingsListTheme {
 // MarkdownThemeFor is theme.ts getMarkdownTheme bound to th rather than the active theme
 // ([GetMarkdownTheme]).
 func MarkdownThemeFor(th *Theme) MarkdownTheme {
-	return markdownThemeReading(func() *Theme { return th }, func(code, lang string) []string {
-		if th == ActiveTheme() {
-			return highlightMarkdownCode(code, lang)
-		}
-		// The highlight memo holds the active theme's colors only.
-		return highlightCodeUncached(highlightRegistry(), code, lang, true, th)
-	})
+	return markdownThemeReading(func() *Theme { return th }, func(code, lang string) []string { return HighlightCodeFor(th, code, lang) })
 }
 
 // markdownThemeReading builds the Markdown theme reading its theme from theme on

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -795,6 +796,25 @@ func TestRouteGCHoldsReleasedWhileTheirResolveNeverSettlesAreNotKept(t *testing.
 		expectCollectedEventually(t, references...)
 		if server == nil {
 			t.Fatal("the server is gone")
+		}
+	})
+}
+
+// route.test.ts › resolve failures and re-resolves (no timer, slice 10 R2) › a rejected resolve fails its holders waiting
+// with its error: a `resolve` that ends its goroutine (runtime.Goexit, as testing.T.FailNow does) is the `resolve` that throws.
+func TestResolveFailuresAndReResolvesAResolveThatEndsItsGoroutineIsARejectedResolve(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		r := relay(t, relayedOptions{Resolve: func(contracts.Address, func() resolved, context.Context) (resolved, error) {
+			runtime.Goexit()
+			return resolved{}, nil
+		}})
+		notes, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
+		must(t, err)
+		r.Transported()
+		wantRouteWaiting(t, notes, "session|S1: "+errHandlerGoexit.Error())
+		scopeEventually(t, "the server reported the resolve failure", func() bool { return len(r.Errors.Server.All()) == 1 })
+		if errs := r.Errors.Server.All(); errs[0].Kind != ErrResolveFailed || errs[0].Address != "session|S1" {
+			t.Fatalf("error = %+v, want resolve_failed session|S1", errs[0])
 		}
 	})
 }

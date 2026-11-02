@@ -231,6 +231,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-33558f6](#bf-33558f6) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-33dc8a0](#bf-33dc8a0) | fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does | PiG's own defect | All platforms | Unreleased |
 | [BF-33ea9e4](#bf-33ea9e4) | fix(sdk): name the Go ModelRegistry.Find change in the upgrade rules; Node adoption survives an unbound leaf… | PiG's own defect | All platforms | Unreleased |
+| [BF-33efd9f](#bf-33efd9f) | `pi.exec` with a `maxBuffer` could keep a child's stderr bytes ahead of its stdout bytes under heavy CPU… | PiG's own defect | All platforms | Unreleased |
 | [BF-33fe10d](#bf-33fe10d) | `ModelsError` appends the cause detail the way Pi does: an Error cause with an empty message contributes its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-33fe10d-2](#bf-33fe10d-2) | Live-Pi oracles `TestExtensionSelectorMatchesPi` (4,320 probes) and `TestExtensionInputMatchesPi` (1,144… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3452432](#bf-3452432) | Escape cancels a running `!` or `!!` command again, as in Pi: the command stops and its block ends with… | PiG's own defect | All platforms | 0.5.0 |
@@ -405,6 +406,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-56f1d3c-2](#bf-56f1d3c-2) | `Submission.Wait`, `WaitForTask` and the idle waits return after every commit subscriber has run for the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-570f857](#bf-570f857) | Fixed interactive sessions leaving extension prompt sections, such as the MCP `mcp_servers` list, out of the… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-5732479](#bf-5732479) | `auth.json` keeps each credential's properties in the order they were read or returned by an extension's… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-576065f](#bf-576065f) | A stream of appends to one text costs the appended bytes instead of the whole text so far | PiG's own defect | All platforms | Unreleased |
+| [BF-576065f-2](#bf-576065f-2) | Several `AppendText` calls to one key in one change join their texts as JavaScript string concatenation does… | PiG's own defect | All platforms | Unreleased |
 | [BF-5774749](#bf-5774749) | A Piglet found by name in `<project>/.pig/piglets` now follows project trust: it is used only when the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-578804d](#bf-578804d) | fix(photonimage): the remaining if-else chains of the inflater are switches | PiG's own defect | All platforms | Unreleased |
 | [BF-578c1a3](#bf-578c1a3) | The "Applied use cases" page in the manual that ships inside PiG now links the Security page on the website | PiG's own defect | All platforms | 0.5.0 |
@@ -747,6 +750,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-844d215](#bf-844d215) | Repairing a partial tool-call arguments text follows partial-json's `obj["__proto__"] = value`: a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8476760](#bf-8476760) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-848836a](#bf-848836a) | fix(frontmatter): header starts one UTF-16 unit after the fence | PiG's own defect | All platforms | Unreleased |
+| [BF-84b2fca](#bf-84b2fca) | Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the… | PiG's own defect | All platforms | Unreleased |
 | [BF-852652e](#bf-852652e) | PiG no longer names documentation that does not exist | PiG's own defect | All platforms | 0.5.0 |
 | [BF-852f029](#bf-852f029) | Durable document, conversation-view and task-graph states report failing state listeners to the Session's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-854c355](#bf-854c355) | fix(durable/core): the facade Session reads persistWithinMs and documentRetentionMs live, not once through a… | PiG's own defect | All platforms | Unreleased |
@@ -919,6 +923,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-97cd675](#bf-97cd675) | fix(agent): nested records keep a message whatever the spelling of its numbers | PiG's own defect | All platforms | Unreleased |
 | [BF-97e178f](#bf-97e178f) | Tool-call arguments that arrive as incomplete or malformed JSON are now recovered exactly as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-983d651](#bf-983d651) | The bash truncation notice for a last line over 50 KB that ends with a newline reports the line's size… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-9841da6](#bf-9841da6) | A shutdown that reaches an extension after it registered and before the host marked it ready now ends its run… | PiG's own defect | All platforms | Unreleased |
 | [BF-985b5f9](#bf-985b5f9) | fix(coding): a resumed session takes its active tools from the transcript (pi-mono #10785) [SIGNOFF-PENDING] | PiG's own defect | All platforms | Unreleased |
 | [BF-98666df](#bf-98666df) | Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close… | PiG's own defect | All platforms | Unreleased |
 | [BF-98a21df](#bf-98a21df) | Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
@@ -1315,6 +1320,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e25a09f](#bf-e25a09f) | A tool argument or event payload with a number outside the double range (`1e400`), at any nesting depth, no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e2db931](#bf-e2db931) | On Windows, refreshing an MCP server's OAuth token no longer fails with `EPERM` when another `pig` process is… | PiG's own defect | Windows | 0.5.0 |
 | [BF-e32c60c](#bf-e32c60c) | A Piglet or Package installed under a symlinked agent directory keeps the origin integrity recorded in its… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e33dbb0](#bf-e33dbb0) | fix(chord/delta): textTails remembers buffers weakly so a released text costs nothing | PiG's own defect | All platforms | Unreleased |
 | [BF-e3f39b7](#bf-e3f39b7) | Automatic retry now triggers for the gateway error "Unable to forward upstream stream" | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e4252b4](#bf-e4252b4) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-e42ae82](#bf-e42ae82) | `SettingsManager` structured getters (settings-manager.ts getBranchSummarySettings, getRetrySettings… | PiG's own defect | All platforms | 0.5.0 |
@@ -1369,6 +1375,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-edb73db](#bf-edb73db) | fix(codingagent): one owner-overflow forwarder at a time; the drain test waits for it, not for the flag's… | PiG's own defect | All platforms | Unreleased |
 | [BF-edd287c](#bf-edd287c) | Migrating a version 1 session file that holds a line parsing to a number, string, array or `true` no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ededef9](#bf-ededef9) | `pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
+| [BF-edf1862](#bf-edf1862) | Tool rows and streamed answers no longer highlight the same code again on every redraw | PiG's own defect | All platforms | Unreleased |
 | [BF-ee96daf](#bf-ee96daf) | Unsubscribing an extension's event-bus subscription is now constant time, as deleting from Pi's `Set` of… | PiG's own defect | All platforms | Unreleased |
 | [BF-eeac307](#bf-eeac307) | Anthropic and Bedrock assistant messages write `providerThinkingLevel` after `model`, and write… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ef0f95a](#bf-ef0f95a) | OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models… | PiG's own defect | All platforms | 0.5.0 |
@@ -4413,6 +4420,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `33ea9e4573` (2026-10-20)
 - **Tests:** `extensions/sdk/upgrade/rules_test.go::TestModelRegistryFindChangeIsNamed`
 
+### BF-33efd9f
+
+**`pi.exec` with a `maxBuffer` could keep a child's stderr bytes ahead of its stdout bytes under heavy CPU…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pi.exec` with a `maxBuffer` could keep a child's stderr bytes ahead of its stdout bytes under heavy CPU load, though the child wrote stdout first and Node hands the two pipes to the cap in that order (about one run in two thousand with the host oversubscribed four times over).
+- **Root cause:** A reader of stderr decided whether it had to wait for stdout by reading stdout's reader flag and then peeking at the pipe. A stdout reader that claimed its turn and emptied the pipe between the two questions was seen by neither, and stderr was delivered first.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `33efd9f93f` (2026-11-01)
+- **Tests:** `coding/extension/exec_max_buffer_test.go::TestExecCommandCountsStdoutBeforeStderrWhenTheChildWroteItFirst`, `internal/childwait/pipe_unix_test.go::TestAwaitTurnWaitsForAnEarlierReaderThatTakesItsBytesWhileALaterReaderDecides`
+- **Release note:** `pi.exec` with a `maxBuffer` could keep a child's stderr bytes ahead of its stdout bytes under heavy CPU load, though the child wrote stdout first and Node hands the two pipes to the cap in that order (about one run in two thousand with the host oversubscribed four times over). The reader of stderr decided whether to wait for stdout from two answers taken one after the other, and a stdout reader that took its bytes between them was seen by neither; it now asks the pipe first and the reader second.
+
 ### BF-33fe10d
 
 **`ModelsError` appends the cause detail the way Pi does: an Error cause with an empty message contributes its…**
@@ -6803,6 +6824,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0ae4683246` (2026-10-08), `24ee26a82b` (2026-10-09), `26d302a2d7` (2026-10-09, #201), `5732479897` (2026-10-09), `a527291444` (2026-10-09), `a9956e80d8` (2026-10-09), `b88044ff8a` (2026-10-09), `c7ebb23d87` (2026-10-09)
 - **Tests:** `ai/auth_credential_payload_test.go::TestOAuthCredentialCustomJSONRetainsUTF16Payload`, `ai/credential_key_order_test.go::TestAuthStorageStoresALoginCredentialInItsOwnKeyOrder`, `ai/credential_key_order_test.go::TestAuthStorageWritesCredentialsInTheirDecodedKeyOrder`, `ai/credential_key_order_test.go::TestCredentialFromOAuthPlacesTheDiscriminatorAsPiDoes`, `ai/credential_key_order_test.go::TestCredentialInCodecOrderCarriesNoKeyOrder`, `coding/extension/host/subprocess/native_provider_login_test.go::TestDecodeNativeLoginCallback`, `coding/extension/host/subprocess/native_provider_login_test.go::TestNativeAuthInteractionAnswersTheLoginDialog`, `coding/extension/host/subprocess/native_provider_login_test.go::TestNativeProviderCarrierCarriesDeclaredLogins` and 15 more in docs/bug-ledger.json
 - **Release note:** `auth.json` keeps each credential's properties in the order they were read or returned by an extension's login, as Pi keeps the object it stores and writes it with `JSON.stringify`. Before, PiG rewrote every credential in a fixed key order whenever `auth.json` was saved, including credentials of providers that were not changed. A `config.oauth` login's credential gets its `type` after the flow's own properties, as Pi's `{ ...credential, type: "oauth" }` does. A credential that one of PiG's built-in logins creates still uses PiG's own key order, not the order of Pi's object literal.
+
+### BF-576065f
+
+**A stream of appends to one text costs the appended bytes instead of the whole text so far**
+
+- **Source:** PiG's own defect
+- **Symptom:** A stream of appends to one text costs the appended bytes instead of the whole text so far.
+- **Root cause:** Pi (appendText) and (PendingOps folds appends) rely on V8 ropes: an append, and the merge of two appends to one path, cost the appended text. A Go string is flat, so each AppendText copied the whole text twice (once into the draft, once when Prepare replays the append op) and each merged append in PendingOps copied the folded text again.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `576065f106` (2026-11-01)
+- **Tests:** `chord/delta/append_text_scaling_norace_test.go::TestScalingPendingOpsFoldAppends`, `chord/delta/append_text_scaling_norace_test.go::TestScalingTrackerAppendTextStream`, `chord/delta/text_tails_test.go::TestAppendTextJoinsSurrogateHalvesOfOneChange`, `chord/delta/text_tails_test.go::TestPendingOpsFoldedAppendsAreConcatenatedAndStayTaken`, `chord/delta/text_tails_test.go::TestSyncTextTailsConcurrentAppends`, `chord/delta/text_tails_test.go::TestTextTailsBranchesFromOneStringStayApart`, `chord/delta/text_tails_test.go::TestTextTailsConcatIsJSStringConcat`, `chord/delta/text_tails_test.go::TestTextTailsKeepsGrowingPastTheBound` and 4 more in docs/bug-ledger.json
+- **Release note:** A stream of appends to one text costs the appended bytes instead of the whole text so far. `delta.AppendText` and the preparation of the change that adopts it each copied the text into a new string for every append, and `delta.PendingOps` copied the folded text again for every merged append, as Go strings do where Pi's V8 ropes do not. The new revision's string now shares the bytes of the old one and the queue folds into one buffer. 10000 adopted 8-byte `AppendText` commits take 23 ms and 22 MB (they took 190 ms and 879 MB; the same number of commits that set a number take 23 ms and 18 MB), and 10000 appends to one path fold in `PendingOps` in 1.4 ms and 1 MB (they took 120 ms and 429 MB). The ops and values are unchanged.
+
+### BF-576065f-2
+
+**Several `AppendText` calls to one key in one change join their texts as JavaScript string concatenation does…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Several `AppendText` calls to one key in one change join their texts as JavaScript string concatenation does: a high surrogate that ends one text and a low surrogate that starts the next make one character in the op, as they already do in the new value.
+- **Root cause:** Pi (appendText) and (PendingOps folds appends) rely on V8 ropes: an append, and the merge of two appends to one path, cost the appended text. A Go string is flat, so each AppendText copied the whole text twice (once into the draft, once when Prepare replays the append op) and each merged append in PendingOps copied the folded text again.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `576065f106` (2026-11-01)
+- **Tests:** `chord/delta/append_text_scaling_norace_test.go::TestScalingPendingOpsFoldAppends`, `chord/delta/append_text_scaling_norace_test.go::TestScalingTrackerAppendTextStream`, `chord/delta/text_tails_test.go::TestAppendTextJoinsSurrogateHalvesOfOneChange`, `chord/delta/text_tails_test.go::TestPendingOpsFoldedAppendsAreConcatenatedAndStayTaken`, `chord/delta/text_tails_test.go::TestSyncTextTailsConcurrentAppends`, `chord/delta/text_tails_test.go::TestTextTailsBranchesFromOneStringStayApart`, `chord/delta/text_tails_test.go::TestTextTailsConcatIsJSStringConcat`, `chord/delta/text_tails_test.go::TestTextTailsKeepsGrowingPastTheBound` and 4 more in docs/bug-ledger.json
+- **Release note:** Several `AppendText` calls to one key in one change join their texts as JavaScript string concatenation does: a high surrogate that ends one text and a low surrogate that starts the next make one character in the op, as they already do in the new value.
 
 ### BF-5774749
 
@@ -11547,6 +11596,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `848836a581` (2026-10-10)
 - **Tests:** `internal/codingagent/frontmatter/pi_random_oracle_test.go::TestParseRandomDocumentsMatchesPi`
 
+### BF-84b2fca
+
+**Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the `mdCodeBlock` color in the Go, Rust, Python and Lisp extension SDKs when the host's highlighter fails or cannot be reached, and in the host for a theme that lacks a syntax color, where PiG panicked.
+- **Root cause:** Pi makes getMarkdownTheme().highlightCode the same function as highlightCode, and that function returns the code in the mdCodeBlock color when the highlight throws. PiG's highlightCode left such code unstyled, in the Go tui and in the Go, Rust, Python and Lisp extension SDKs, which told the two functions apart with a markdown member of the highlight.code host call. The member is gone: both functions take the code-block color, and the tui treats the Unknown theme color error of a theme with no color for a syntax token as the failed highlight it is in Pi instead of panicking.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `84b2fcadd1` (2026-11-01)
+- **Tests:** `test/extension-conformance/tui_theme_test.go::TestHighlightCodeThatFailsTakesTheCodeBlockColorAcrossSDKs`, `tui/highlight_failure_oracle_test.go::TestHighlightFailureMatchesPi`, `tui/highlight_test.go::TestHighlightCodeThatFailsTakesTheCodeBlockColor`
+- **Release note:** Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the `mdCodeBlock` color in the Go, Rust, Python and Lisp extension SDKs when the host's highlighter fails or cannot be reached, and in the host for a theme that lacks a syntax color, where PiG panicked. `getMarkdownTheme().highlightCode` is `highlightCode`, so the `highlight.code` host call no longer has a `markdown` member.
+
 ### BF-852652e
 
 **PiG no longer names documentation that does not exist**
@@ -13938,6 +14001,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `983d651097` (2026-10-09)
 - **Tests:** `internal/codingagent/tools/last_line_bytes_test.go::TestBashLongLastLineNoticeNamesTheLineSize`, `internal/codingagent/tools/last_line_bytes_test.go::TestOutputAccumulatorLastLineBytes`
 - **Release note:** The bash truncation notice for a last line over 50 KB that ends with a newline reports the line's size instead of `line is 0B` (Pi #10015).
+
+### BF-9841da6
+
+**A shutdown that reaches an extension after it registered and before the host marked it ready now ends its run…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A shutdown that reaches an extension after it registered and before the host marked it ready now ends its run the same way in every SDK.
+- **Root cause:** A shutdown frame between the register frame and ready made the Go, Rust and Python SDKs return an error (a packed runner then exited non-zero because a member's run failed) while the Lisp SDK read the frame and went on until the host closed the socket. The Node runtime returned. Pi has no failing path for it: an extension that has not finished loading is not on the runner, and a session shutdown never fails an extension.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9841da6f6d` (2026-11-01)
+- **Tests:** `extensions/sdk/shutdown_before_ready_test.go::TestShutdownBeforeReadyAnswersTheDispatchesBeforeIt`, `extensions/sdk/shutdown_before_ready_test.go::TestShutdownBeforeReadyEndsTheRunWithoutError`, `extensions/sdk/shutdown_before_ready_test.go::TestShutdownDuringTheFactoryEndsTheRunAfterItRegisters`, `extensions/sdk/shutdown_before_ready_test.go::TestShutdownDuringTheFactorySubscriptionEndsTheRunAfterItRegisters`, `test/extension-conformance/shutdown_before_ready_conformance_test.go::TestShutdownBeforeReadyEndsTheRunCleanly`
+- **Release note:** A shutdown that reaches an extension after it registered and before the host marked it ready now ends its run the same way in every SDK. The Go, Rust and Python SDKs returned an error (`expected ready message, got shutdown`), so an extension process exited non-zero and a packed runner failed because one member's run failed, and the Lisp SDK ignored the frame until the host closed the socket. All five SDKs, and the Node runtime that already did, answer the listener dispatches they read before the shutdown, close their end of the connection and return no error. A shutdown read while the factory's listener subscription or a factory-time host call waits no longer ends that call: the call returns, the extension registers and then ends.
 
 ### BF-985b5f9
 
@@ -19425,6 +19502,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/extension/host/subprocess/node_frame_buffer_test.go::TestNodeProviderSocketFrameCopyIsLinear`, `coding/piglet/origin_integrity_test.go::TestReadNPMOriginIntegrityResolvesLockfileKeys`, `env/watch_test.go::TestRemoteWatcherOpensAgainAfterALostConnectionAndReportsOverflow`, `test/ci-images/macos_shards_test.go::TestMacOSShardsTestTheMacOSSensitivePackages`
 - **Release note:** A Piglet or Package installed under a symlinked agent directory keeps the origin integrity recorded in its npm lockfile. Lockfile entries that npm writes relative to a symlinked install root were not found.
 
+### BF-e33dbb0
+
+**fix(chord/delta): textTails remembers buffers weakly so a released text costs nothing**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord/delta): textTails remembers buffers weakly so a released text costs nothing
+- **Root cause:** The tracker owner's textTails held every buffer it made strongly, for as long as the Tracker lived: a streamed text that was deleted or replaced stayed pinned (the current buffer, up to twice its size, and the replaced one behind its alias). 4096 adopted 1 KiB AppendText commits followed by a commit that deletes the key left 12.3 MiB after two collections.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e33dbb0ad0` (2026-11-01)
+- **Tests:** `chord/delta/append_text_retention_norace_test.go::TestTrackerAppendTextReleasesBuffersOfReleasedKeys`, `chord/delta/text_tails_test.go::TestTextTailsForgetCollectedBuffers`, `chord/delta/text_tails_test.go::TestTrackerAppendTextStreamKeepsEarlierRevisions`
+
 ### BF-e3f39b7
 
 **Automatic retry now triggers for the gateway error "Unable to forward upstream stream"**
@@ -20165,6 +20255,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ededef9928` (2026-10-30, #11536)
 - **Tests:** `coding/cli/package_batch_upstream_test.go::TestPackageBatchedConcurrentUpdatesOriginal`, `coding/cli/package_progress_warning_test.go::TestPackageProgressPrinterPrintsProgressEventsInYellow`, `internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged`
 - **Release note:** `pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a publish `npm view` can report the new version while `npm install` still resolves the old one, and `Updated packages` was printed with nothing updated. The warning names the package, the installed and the registry version, and is printed in yellow. Carried forward from Pi 0d23d534 (earendil-works/pi#11536), past the 1.4.0+b3a29f11 pin.
+
+### BF-edf1862
+
+**Tool rows and streamed answers no longer highlight the same code again on every redraw**
+
+- **Source:** PiG's own defect
+- **Symptom:** Tool rows and streamed answers no longer highlight the same code again on every redraw.
+- **Root cause:** A Markdown keeps the highlighted lines of the code blocks of its last render, keyed by language and code, until Invalidate, a theme change or a loaded grammar, so a streamed answer and a resize highlight each block once even with a highlighter tui does not know. A CodeHighlighter keeps a row's last highlighting; complete write rows and codemode rows use one, and the write row reuses its Text so SetText with unchanged text keeps the wrapped lines.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `edf18625cb` (2026-11-01)
+- **Tests:** `internal/codingagent/code_highlighter_rows_norace_test.go::TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws`, `internal/codingagent/code_highlighter_rows_norace_test.go::TestCompleteWriteRowReusesItsHighlightingAcrossRedraws`, `tui/assistant_message_reuse_upstream_test.go::TestUpstreamAssistantMessageReusesItsMarkdownAcrossStreamingAndItsEnd`, `tui/code_highlighter_test.go::TestCodeHighlighterReusesItsLastResultUntilTheCodeTheThemeOrTheGrammarsChange`, `tui/markdown_block_reuse_upstream_test.go::TestMarkdownReusedHighlightingEqualsAFreshRender`, `tui/markdown_block_reuse_upstream_test.go::TestUpstreamMarkdownBlockReuse`, `tui/text_set_text_upstream_test.go::TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain`
+- **Release note:** Tool rows and streamed answers no longer highlight the same code again on every redraw. A running codemode row highlighted its whole script on every progress update and timer tick, and a complete `write` row its whole file on every update and expand toggle. Rows now keep their last highlighting until the code, the theme or the loaded grammars change, a Markdown component keeps the highlighting of the code blocks it rendered until `Invalidate`, and `Text.SetText` with unchanged text keeps its wrapped lines (Pi #10971).
 
 ### BF-ee96daf
 

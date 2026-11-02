@@ -199,9 +199,11 @@ func TestExecCommandDefaultCapIs256MiB(t *testing.T) {
 	}
 }
 
-// Node's loop hands the bytes of a child that writes stdout and then stderr to the byte cap in that order (Pi's oracle gave the same
-// result in 20 of 20 runs), so a cap of 2 keeps "ab" of stdout and none of stderr every time. Reader goroutines that the scheduler orders freely would
-// sometimes keep the stderr bytes first.
+// exec.test.ts:55-63 "caps combined output at maxBuffer" asserts only the combined total, so it does not pin which stream's bytes the cap keeps. Node
+// does pin it for a child that writes stdout and then stderr: the kernel makes the pipes readable in that order and libuv hands them to 'data' listeners in
+// it, and 25600 of 25600 spawns of such a child delivered stdout first with the host oversubscribed four times over. A child that writes stderr first has no such
+// guarantee (4% of 25600 spawns delivered stdout first), so only the stdout-first case is asserted: a cap of 2 keeps "ab" of stdout and none of stderr every
+// time. Reader goroutines that the scheduler orders freely would sometimes keep the stderr bytes first.
 func TestExecCommandCountsStdoutBeforeStderrWhenTheChildWroteItFirst(t *testing.T) {
 	command, args := helper(t, "outerr")
 	for i := range 300 {

@@ -156,7 +156,8 @@ func updateWriteHighlightCacheIncremental(cache *writeHighlightCache, rawPath, f
 		cache.highlightedLines = append(cache.highlightedLines, pendingLine(segment))
 	}
 	// Once the lines grow past the leading block, the block's text no longer changes, and highlighting it again in the same
-	// epoch writes the lines it already holds.
+	// epoch writes the lines it already holds. write.ts refreshWriteHighlightPrefix reaches the same result through the row's
+	// CodeHighlighter, which returns its last lines for the same prefix, theme and grammars; prefixEpoch is that check here.
 	if lastIndex < writePartialFullHighlightLines || !cache.prefixFresh || cache.prefixEpoch != tui.CurrentHighlightEpoch() {
 		cache.refreshPrefix()
 	}

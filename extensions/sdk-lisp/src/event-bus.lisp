@@ -115,6 +115,9 @@ that no listener handles, as EventEmitter throws."
                  (let ((err (jref env "call_result" "error")))
                    (when (hash-table-p err) (error 'host-call-error :message (frame-error-message err)))
                    (return)))
+                ((equal type "shutdown") (pushnew conn *helper-shutdown*))
+                ((and (equal type "request") (equal (jget (or (jget env "request") (obj)) "method") "events.dispatch"))
+                 (push env (extension-early-dispatches ext)))
                 (t (error "expected a ~A result, got ~A" method type))))))))
 
 (def-register-contributor "event-bus" (ext payload)

@@ -1,0 +1,3 @@
+### Fixed
+
+- A shutdown that reaches an extension after it registered and before the host marked it ready now ends its run the same way in every SDK. The Go, Rust and Python SDKs returned an error (`expected ready message, got shutdown`), so an extension process exited non-zero and a packed runner failed because one member's run failed, and the Lisp SDK ignored the frame until the host closed the socket. All five SDKs, and the Node runtime that already did, answer the listener dispatches they read before the shutdown, close their end of the connection and return no error. A shutdown read while the factory's listener subscription or a factory-time host call waits no longer ends that call: the call returns, the extension registers and then ends. <!-- fix: 9841da6f6d -->

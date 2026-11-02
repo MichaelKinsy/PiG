@@ -3,8 +3,6 @@ package delta
 import (
 	"strconv"
 	"strings"
-
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // The pending queue: the ops a slow consumer of one state has not taken yet, folded while they wait. Ports packages/chord/src/delta/pending.ts.
@@ -38,6 +36,8 @@ type PendingOps struct {
 	ops []Op
 	// leaves is the path key of the last pending leaf op on each path, to its position in ops.
 	leaves map[string]int
+	// tails joins the texts of merged appends, so folding n appends to one path costs the appended bytes, not n times the text so far.
+	tails textTails
 }
 
 // Push queues the ops of one commit.
@@ -48,6 +48,7 @@ func (pending *PendingOps) Push(ops []Op) {
 	// A batch that starts with "r" (the tracker's and DiffRevisions's only place for it) drops everything pending, also an overflow, and is kept as received.
 	if ops[0][0] == "r" {
 		pending.kind, pending.ops, pending.leaves = pendingBatch, ops, nil
+		pending.tails.reset()
 		return
 	}
 	switch pending.kind {
@@ -80,6 +81,7 @@ func (pending *PendingOps) Size() int {
 func (pending *PendingOps) Take() PendingTake {
 	kind, ops := pending.kind, pending.ops
 	pending.kind, pending.ops, pending.leaves = pendingEmpty, nil, nil
+	pending.tails.reset()
 	if kind == pendingReplace {
 		return PendingTake{Replace: true}
 	}
@@ -93,6 +95,7 @@ func (pending *PendingOps) fold(ops []Op) bool {
 		case "r":
 			pending.ops = pending.ops[:0]
 			clear(pending.leaves)
+			pending.tails.reset()
 		case "a":
 			if pending.mergeLeaf(op) {
 				continue
@@ -113,6 +116,7 @@ func (pending *PendingOps) fold(ops []Op) bool {
 		pending.ops = append(pending.ops, op)
 		if len(pending.ops) > MaxPendingOps {
 			pending.kind, pending.ops, pending.leaves = pendingReplace, nil, nil
+			pending.tails.reset()
 			return false
 		}
 	}
@@ -132,7 +136,7 @@ func (pending *PendingOps) mergeLeaf(op Op) bool {
 	key := pendingPathKey(op[1])
 	if at, indexed := pending.leaves[key]; indexed {
 		// The index points at leaf ops only.
-		if merged, ok := mergeLeafOps(pending.ops[at], op); ok {
+		if merged, ok := pending.mergeLeafOps(pending.ops[at], op); ok {
 			pending.ops[at] = merged
 			return true
 		}
@@ -166,17 +170,17 @@ func pendingPathKey(path any) string {
 }
 
 // mergeLeafOps is next folded into previous (same path), or false when they do not fold.
-func mergeLeafOps(previous, next Op) (Op, bool) {
+func (pending *PendingOps) mergeLeafOps(previous, next Op) (Op, bool) {
 	if Verb(next) == "s" {
 		return next, true
 	}
 	appended, _ := next[2].(string)
 	if Verb(previous) == "a" {
-		return Op{"a", previous[1], jsstring.Concat(previous[2].(string), appended)}, true
+		return Op{"a", previous[1], pending.tails.concat(previous[2].(string), appended)}, true
 	}
 	// Only a string set takes an append; the tracker never appends to another primitive.
 	if before, isString := previous[2].(string); isString {
-		return Op{"s", previous[1], jsstring.Concat(before, appended)}, true
+		return Op{"s", previous[1], pending.tails.concat(before, appended)}, true
 	}
 	return nil, false
 }

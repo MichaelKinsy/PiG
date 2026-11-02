@@ -59,9 +59,9 @@ func (h *Host) handleParseFrontmatter(call *CallPayload) (*CallResultPayload, er
 	return &CallResultPayload{Result: data}, nil
 }
 
-// HighlightCodeLines is pi-coding-agent's highlightCode over the host's highlight.js port, or getMarkdownTheme().highlightCode when markdown is set. palette is the
+// HighlightCodeLines is pi-coding-agent's highlightCode (getMarkdownTheme().highlightCode is the same function) over the host's highlight.js port. palette is the
 // theme to draw with (see HighlightCodeArgs.Theme); empty draws with the host's active theme. The CallHighlightCode handler and the fused extensions' SDK hook share it.
-func HighlightCodeLines(code, lang string, markdown bool, palette []byte) (lines []string, err error) {
+func HighlightCodeLines(code, lang string, palette []byte) (lines []string, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			lines, err = nil, fmt.Errorf("highlight code: %v", recovered)
@@ -88,7 +88,7 @@ func HighlightCodeLines(code, lang string, markdown bool, palette []byte) (lines
 			return nil, err
 		}
 	}
-	return tui.HighlightCodeFor(theme, code, lang, markdown), nil
+	return tui.HighlightCodeFor(theme, code, lang), nil
 }
 
 // handleHighlightCode serves CallHighlightCode.
@@ -97,7 +97,7 @@ func (h *Host) handleHighlightCode(call *CallPayload) (*CallResultPayload, error
 	if err := json.Unmarshal(call.Args, &args); err != nil {
 		return nil, fmt.Errorf("decode %s: %w", call.Method, err)
 	}
-	lines, err := HighlightCodeLines(args.Code, args.Lang, args.Markdown, args.Theme)
+	lines, err := HighlightCodeLines(args.Code, args.Lang, args.Theme)
 	if err != nil {
 		return nil, err
 	}
