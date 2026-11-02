@@ -43,6 +43,7 @@ func EnvAPIKeyAuth(name string, envVars ...string) *APIKeyAuth {
 	}
 }
 
+// Ports packages/ai/src/providers/anthropic.ts anthropicApiKeyAuth: the stored credential, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_OAUTH_TOKEN and ANTHROPIC_API_KEY, then workload identity federation.
 func anthropicAPIKeyAuth() *APIKeyAuth {
 	return &APIKeyAuth{
 		Name: "Anthropic API key",

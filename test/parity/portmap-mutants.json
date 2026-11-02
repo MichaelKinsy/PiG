@@ -2108,5 +2108,26 @@
    "old": "func ZaiProvider() *ModelsProvider { return builtinProvider(\"zai\") }",
    "new": "func ZaiProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
   }
+ ],
+ "packages/ai/src/providers/anthropic.ts": [
+  {
+   "file": "ai/auth_providers.go",
+   "old": "Headers: ProviderHeaders{\"Authorization\": new(\"Bearer \" + token)}}, Source: AnthropicAuthTokenEnv",
+   "new": "Headers: ProviderHeaders{\"Authorization\": new(\"Token \" + token)}}, Source: AnthropicAuthTokenEnv"
+  }
+ ],
+ "packages/ai/src/providers/github-copilot.ts": [
+  {
+   "file": "ai/github_copilot_filter.go",
+   "old": "credential.Type != CredentialOAuth",
+   "new": "credential.Type == CredentialOAuth"
+  }
+ ],
+ "packages/ai/src/providers/openrouter.ts": [
+  {
+   "file": "ai/openrouter_user_models.go",
+   "old": "request.Header.Set(\"authorization\", \"Bearer \"+key)",
+   "new": "request.Header.Set(\"authorization\", \"Basic \"+key)"
+  }
  ]
 }
