@@ -2,6 +2,8 @@ package ai
 
 // Mirrors upstream .upstream/current/packages/ai/src/providers/anthropic.ts.
 
+// Ports packages/ai/src/api/anthropic-messages.ts (stream, buildParams, convertMessages, convertTools, mapStopReason and the strict-tool fallback).
+
 import (
 	"bytes"
 	"context"

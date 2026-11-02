@@ -39110,13 +39110,47 @@
     },
     {
       "id": "pkg:ai/api/constrained-sampling#makeStrictJsonSchema",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:b7b10a64c4b10b2d2dac2195f582976bcf33c745fe79ba7d87717811e577a183"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:b7b10a64c4b10b2d2dac2195f582976bcf33c745fe79ba7d87717811e577a183",
+      "rationale": "Derived by the interface gap detector: makeStrictJsonSchema is Go ai/constrained_sampling.go#MakeStrictJSONSchema (name rule N2), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/constrained_sampling.go#MakeStrictJSONSchema"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:ai/constrained_sampling.go#MakeStrictJSONSchema"
+      ],
+      "evidence": [
+        "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingUnsupportedSchemasUpstream",
+        "test:ai/utils_exports_upstream_test.go#TestMakeStrictJSONSchemaAppliesTheUnsupportedKeywordCheck",
+        "test:ai/constrained_sampling_test.go#TestMakeStrictJSONSchema"
+      ]
     },
     {
       "id": "pkg:ai/api/constrained-sampling#makeStrictJsonSchema::call:0",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:4cd015f97e7585154ad128da204c1db6ecee583f5f25ffaec2aa1c7f0f015bcf"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:4cd015f97e7585154ad128da204c1db6ecee583f5f25ffaec2aa1c7f0f015bcf",
+      "rationale": "Derived by the interface gap detector: makeStrictJsonSchema::call:0 is Go ai/constrained_sampling.go#MakeStrictJSONSchema (name rule N2), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/constrained_sampling.go#MakeStrictJSONSchema"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "public-api-tested",
+        "shape": "complete"
+      },
+      "production": [
+        "public-api:ai/constrained_sampling.go#MakeStrictJSONSchema"
+      ],
+      "evidence": [
+        "test:ai/constrained_sampling_upstream_test.go#TestConstrainedSamplingUnsupportedSchemasUpstream",
+        "test:ai/utils_exports_upstream_test.go#TestMakeStrictJSONSchemaAppliesTheUnsupportedKeywordCheck",
+        "test:ai/constrained_sampling_test.go#TestMakeStrictJSONSchema"
+      ]
     },
     {
       "id": "pkg:ai/api/constrained-sampling#prefersJsonSchemaStrictSampling",

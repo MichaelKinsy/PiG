@@ -2,6 +2,7 @@ package ai
 
 // Ports packages/ai/src/api/openai-responses.ts.
 // Ports packages/ai/src/api/openai-responses-shared.ts.
+// Ports packages/ai/src/api/openai-codex-responses.ts (buildRequestBody: the Codex request member order and reasoning).
 
 import (
 	"bytes"

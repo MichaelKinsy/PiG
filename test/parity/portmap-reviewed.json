@@ -6,5 +6,16 @@
    "pkg:codemode/cloudflare#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions",
    "pkg:codemode/portable#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions"
   }
+ },
+ "packages/ai/src/api/constrained-sampling.ts": {
+  "reason": "The ledger derives these Pi functions to the exported ai/provider_kit.go wrappers, which only let the ai/providers/bedrock package call them; the Go implementations of constrained-sampling.ts getJsonSchemaToolParameters, prefersJsonSchemaStrictSampling and resolveJsonSchemaStrictSampling are the unexported functions in ai/constrained_sampling.go, whose behavior the ai/constrained_sampling_oracle_test.go, constrained_sampling_upstream_test.go and constrained_sampling_test.go tests exercise.",
+  "members": {
+   "pkg:ai/api/constrained-sampling#getJsonSchemaToolParameters": "ai/constrained_sampling.go#getJSONSchemaToolParameters",
+   "pkg:ai/api/constrained-sampling#getJsonSchemaToolParameters::call:0": "ai/constrained_sampling.go#getJSONSchemaToolParameters",
+   "pkg:ai/api/constrained-sampling#prefersJsonSchemaStrictSampling": "ai/constrained_sampling.go#prefersJSONSchemaStrictSampling",
+   "pkg:ai/api/constrained-sampling#prefersJsonSchemaStrictSampling::call:0": "ai/constrained_sampling.go#prefersJSONSchemaStrictSampling",
+   "pkg:ai/api/constrained-sampling#resolveJsonSchemaStrictSampling": "ai/constrained_sampling.go#resolveJSONSchemaStrictSampling",
+   "pkg:ai/api/constrained-sampling#resolveJsonSchemaStrictSampling::call:0": "ai/constrained_sampling.go#resolveJSONSchemaStrictSampling"
+  }
  }
 }
