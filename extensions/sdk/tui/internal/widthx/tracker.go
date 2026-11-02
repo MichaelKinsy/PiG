@@ -1,6 +1,6 @@
 // Code generated from tui/widthx/tracker.go by tui/sdk_tui_copy_test.go; DO NOT EDIT.
 
-// Ports upstream `AnsiCodeTracker` (utils.ts:302).
+// Ports packages/tui/src/utils.ts (AnsiCodeTracker, utils.ts:302).
 //
 // Tracks active SGR attributes and OSC 8 hyperlink state so styling can be
 // preserved across line breaks (wrapTextWithAnsi) and across overlay splices
