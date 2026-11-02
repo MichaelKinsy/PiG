@@ -17,7 +17,6 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/procpolicy"
 )
 
-// Ports packages/coding-agent/src/index.ts: the SDK barrel (shims/pi-coding-agent.mjs) reaches an extension only through this tree.
 // materializeNodeRuntime publishes one immutable tree per runtime content and version. Each launcher keeps a self-contained hard-linked tree, so cache pruning and Piglet artifact copies never depend on a shared path surviving. Filesystems without hard links receive ordinary copies.
 func materializeNodeRuntime(ctx context.Context, cacheDir, destination string) (err error) {
 	// pig additive (D92): a Piglet that strips node-extensions has no runtime to publish.

@@ -1695,13 +1695,6 @@
    "new": "printHelp(os.Stderr, chalkStdoutColor(), extensionHelpFlags(build.Extensions)...)"
   }
  ],
- "packages/coding-agent/src/index.ts": [
-  {
-   "file": "coding/extension/host/subprocess/node_runtime_cache.go",
-   "old": "\t\tlinks = append(links, link{path, target})\n",
-   "new": "\t\tif filepath.Base(path) != \"pi-coding-agent.mjs\" {\n\t\t\tlinks = append(links, link{path, target})\n\t\t}\n"
-  }
- ],
  "packages/coding-agent/src/package-manager-cli.ts": [
   {
    "file": "coding/cli/package_commands.go",
@@ -1766,9 +1759,9 @@
    "new": "prompts:     hasUI,"
   },
   {
-   "file": "coding/cli/project_trust.go",
-   "old": "return decision == nil || *decision, nil",
-   "new": "return decision == nil, nil"
+   "file": "coding/cli/project_trust_context.go",
+   "old": "message = codingagent.ChalkApply(\"\\x1b[31m\", \"\\x1b[39m\", message)",
+   "new": "message = codingagent.ChalkApply(\"\\x1b[32m\", \"\\x1b[39m\", message)"
   }
  ],
  "packages/coding-agent/src/cli/startup-ui.ts": [
@@ -1881,6 +1874,11 @@
    "file": "coding/extension/builtin/codemode/execute.go",
    "old": " && !math.IsInf(value, 0)",
    "new": ""
+  },
+  {
+   "file": "coding/extension/builtin/codemode/execute.go",
+   "old": "entry.label = \"[Image saved to \" + path",
+   "new": "entry.label = \"[Image stored at \" + path"
   }
  ],
  "packages/coding-agent/src/extensions/codemode/renderer.ts": [
