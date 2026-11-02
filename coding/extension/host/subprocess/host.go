@@ -514,6 +514,8 @@ type Host struct {
 	settleTailHandler     func(suspended int)
 	// backgroundGate is the embedder's hold on calls no request started (SetBackgroundCallGate).
 	backgroundGate atomic.Pointer[func() <-chan struct{}]
+	// syncRuns holds the Session busy for every extension while a handler that sent a triggering message has not yet yielded (sync_run_hold.go).
+	syncRuns syncRunHolds
 
 	// widthFunc and heightFunc return the current terminal dimensions. Set by
 	// the wiring layer (interactive mode) so the host can pass real geometry
@@ -4806,6 +4808,10 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 				if h.noteRuntimeDrain(me, conn, env.Notify.Method, true) {
 					h.applyRuntimeDrain(me, env.Notify.Method)
 				}
+				continue
+			}
+			if env.Notify.Method == NotifyHandlerYielded {
+				h.endSyncRunHoldOf(conn, env.Notify.Args)
 				continue
 			}
 			if env.Notify.Method == NotifyEventLoopTurned {

@@ -686,6 +686,50 @@
                (lambda (ctx args) (declare (ignore args))
                  (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
                  (core-info ctx (format nil "rw_idle_after_trigger=~A" (if (pig:ctx-is-idle-p ctx) "true" "false")))))
+  (pig:command ext "rw_idle_busy_until_yield" "Read isIdle after a message that starts a run, before and after a wait for the run"
+               (lambda (ctx args) (declare (ignore args))
+                 (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
+                 (flet ((idle () (if (pig:ctx-is-idle-p ctx) "true" "false")))
+                   (let ((sync-a (idle)) (sync-b (idle)))
+                     (pig:ctx-wait-for-idle ctx)
+                     (core-info ctx (format nil "rw_idle_busy_until_yield=sync:~A,~A;later:~A" sync-a sync-b (idle)))))))
+  (pig:command ext "rw_idle_send_then_await" "Await the run a message starts with no read in between, then read; again for a second message"
+               (lambda (ctx args) (declare (ignore args))
+                 (flet ((idle () (if (pig:ctx-is-idle-p ctx) "true" "false")))
+                   (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
+                   (pig:ctx-wait-for-idle ctx)
+                   (let ((awaited (idle)))
+                     (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
+                     (let ((second (idle)))
+                       (pig:ctx-wait-for-idle ctx)
+                       (core-info ctx (format nil "rw_idle_send_then_await=awaited:~A;second:~A;awaited-again:~A" awaited second (idle))))))))
+  (pig:command ext "rw_idle_yield_poll" "Poll isIdle with the SDK sleep helper after a message that starts a run"
+               (lambda (ctx args) (declare (ignore args))
+                 (flet ((idle () (if (pig:ctx-is-idle-p ctx) "true" "false")))
+                   (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
+                   (let ((first (idle))
+                         (deadline (+ (get-internal-real-time) (* 5 internal-time-units-per-second))))
+                     (loop until (or (pig:ctx-is-idle-p ctx) (>= (get-internal-real-time) deadline))
+                           do (pig:ctx-sleep ctx 0.01))
+                     (core-info ctx (format nil "rw_idle_yield_poll=first:~A;final:~A" first (idle)))))))
+  (pig:command ext "rw_idle_blocking" "Read isIdle after a message that starts a run and a wait that is no call"
+               (lambda (ctx args) (declare (ignore args))
+                 (flet ((idle () (if (pig:ctx-is-idle-p ctx) "true" "false")))
+                   (let ((before (idle)))
+                     (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
+                     (sleep 0.3)
+                     (core-info ctx (format nil "rw_idle_blocking=before:~A;after:~A" before (idle)))))))
+  (pig:command ext "rw_idle_callback" "Read isIdle after a message that starts a run, sent from a thread the handler waits for"
+               (lambda (ctx args) (declare (ignore args))
+                 (flet ((idle () (if (pig:ctx-is-idle-p ctx) "true" "false")))
+                   (let ((before (idle)))
+                     (sb-thread:join-thread
+                      (sb-thread:make-thread
+                       (lambda ()
+                         (pig:ctx-send-message ctx "rw-trigger" "rw-trigger" :display t :trigger-turn t)
+                         (let ((sync-a (idle)) (sync-b (idle)))
+                           (pig:ctx-wait-for-idle ctx)
+                           (core-info ctx (format nil "rw_idle_callback=before:~A;sync:~A,~A;later:~A" before sync-a sync-b (idle)))))))))))
   (pig:command ext "rw_idle_background" "Poll isIdle from a background callback after agent_end"
                (lambda (ctx args) (declare (ignore ctx args))
                  (pig:on ext "agent_end"

@@ -4116,6 +4116,34 @@
       ]
     },
     {
+      "id": "BF-2323d94",
+      "title": "`ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy…",
+      "symptom": "`ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi in every SDK, in print, JSON and RPC mode, isolated and packed: the Host answers busy for every extension from the send until the code that sent it yields, where a run that settled while the read was in flight made the Go, Python, Rust and Lisp SDKs report an idle session.",
+      "rootCause": "Pi's pi.sendMessage with triggerTurn awaits _startRun, which sets _isAgentRunActive before its first await (agent-session.ts:2404, 1895), and Pi's one event loop runs nothing else until the handler awaits or returns, so ctx.isIdle() on the handler's next statements is false whatever the run it started would do. The host runs that run concurrently with the extensions (print mode stages no run start, RPC holds it only for a command's handler), and ctx.isIdle() is a live host call in every SDK, so a run that settles while a read is in flight answers idle. The Node runtime held the answer itself since; the Go, Python, Rust and Lisp SDKs did not.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi in every SDK, in print, JSON and RPC mode, isolated and packed: the Host answers busy for every extension from the send until the code that sent it yields, where a run that settled while the read was in flight made the Go, Python, Rust and Lisp SDKs report an idle session. A Go, Python, Rust or Lisp handler yields when it returns or awaits a Promise-returning member (`registerProvider` and `addAutocompleteProvider` return nothing in Pi and no longer end the hold); the Node runtime reports its first microtask checkpoint after the send, so a send from a timer's or an I/O callback that runs after the handler returned holds the Session busy as well, as it does in Pi. The Node runtime's own hold is gone; a message sent from `agent_settled` still reads the Session's idle answer, and a send the Host fails holds nothing. A Go, Python, Rust or Lisp handler that waits for the run it started with `while !isIdle: sleep` uses the SDK's new yield helper (`ctx.Sleep`/`ctx.Yield`, `ctx.sleep`/`ctx.yield_now`, `pig:ctx-sleep`/`pig:ctx-yield`), the stand-in for Pi's `await`; a raw sleep keeps the hold until the handler returns (D225).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2323d94ce7",
+          "date": "2026-11-01"
+        },
+        {
+          "hash": "c3939f9670",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "coding/cli/extension_host_wiring_binary_test.go::TestSDKExtensionIsBusyThroughTheSynchronousPartAfterATriggeringSend",
+        "coding/extension/host/subprocess/runtime_node_send_idle_test.go::TestNodeIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSendMessage",
+        "test/extension-conformance/replicated_state_rw_test.go::TestReplicatedStateIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSend"
+      ]
+    },
+    {
       "id": "BF-234316d",
       "title": "On Windows, a Go extension's source hash no longer fails, or makes a build beside it fail, with `The process…",
       "symptom": "On Windows, a Go extension's source hash no longer fails, or makes a build beside it fail, with `The process cannot access the file because it is being used by another process`.",
@@ -32352,7 +32380,7 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi, where the started run cannot end before the handler awaits; a run that settled while the read was in flight made print mode report an idle session.",
+      "releaseNote": "In the Node extension runtime, `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi, where the started run cannot end before the handler awaits; a run that settled while the read was in flight made print mode report an idle session. The Host now holds that answer for every SDK and extension (`isidle-2323d94ce7`), and the runtime reports only where its handler awaits.",
       "origin": "release note",
       "commits": [
         {
@@ -40564,6 +40592,25 @@
       ]
     },
     {
+      "id": "BF-f051c65",
+      "title": "fix(extensions): a yield call on the withSession route answers empty; D225 marker at endSyncRunHold, docs of…",
+      "symptom": "fix(extensions): a yield call on the withSession route answers empty; D225 marker at endSyncRunHold, docs of the helper",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f051c65f8b",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-f06ab7e",
       "title": "A run that `sendMessage({ triggerTurn: true })` starts while idle emits `before_agent_start`, checks…",
       "symptom": "A run that `sendMessage({ triggerTurn: true })` starts while idle emits `before_agent_start`, checks compaction first, applies the handlers' result and delivers pending `nextTurn` messages.",
@@ -44870,6 +44917,10 @@
     {
       "id": "D222",
       "title": "A plugin input the build cannot read is reported at the import that names it, not at esbuild's library"
+    },
+    {
+      "id": "D225",
+      "title": "A thread-based SDK's wait for the run it started needs the SDK's yield helper"
     }
   ],
   "exemptCommits": {

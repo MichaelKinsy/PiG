@@ -52,6 +52,8 @@
                     (log-line (format nil "stalePi:~A" (bool (not (succeeds-p (lambda () (pig:ctx-send-user-message old-ctx "stale message")))))))
                     (pig:ctx-send-user-message replaced "reply with exactly: hello reply")
                     (log-line (format nil "idle:~A" (bool (pig:ctx-is-idle-p replaced))))
+                    ;; Pi's `await sleep()` works in a withSession callback: the SDK's yield helper must answer on the replacement route too.
+                    (log-line (if (succeeds-p (lambda () (pig:ctx-sleep replaced 0.001))) "yield:ok" "yield:error"))
                     (log-line (format nil "model:~A" (pig:jget (pig:ctx-get-model-info replaced) "id")))
                     (log-line (concatenate 'string "conversation:" (conversation (pig:ctx-session-manager replaced)))))))))
     (pig:command
