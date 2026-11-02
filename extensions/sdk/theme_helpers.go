@@ -26,7 +26,7 @@ type MarkdownTheme struct {
 	Italic          func(text string) string
 	Underline       func(text string) string
 	Strikethrough   func(text string) string
-	// HighlightCode is getMarkdownTheme().highlightCode: [HighlightCode], with the mdCodeBlock color for a highlight that fails.
+	// HighlightCode is getMarkdownTheme().highlightCode, which is [HighlightCode].
 	HighlightCode func(code, lang string) []string
 }
 
@@ -113,8 +113,8 @@ func GetSettingsListTheme() SettingsListTheme {
 }
 
 // HighlightCode is pi-coding-agent's highlightCode: code highlighted for lang with the global theme, one string per line. Code in a language the host's highlight.js does
-// not support, with no language, or that highlight.js fails on, takes the mdCodeBlock color. The host's highlighter runs it; a host that cannot be reached
-// takes the mdCodeBlock color too, as a failed highlight does.
+// not support, or with no language, takes the mdCodeBlock color, and so does code highlight.js fails on, as Pi's catch returns. The host's highlighter runs it; a host
+// that cannot be reached fails the highlight.
 func HighlightCode(code, lang string) []string {
 	if lang == "" {
 		// No language: Pi highlights nothing, whatever the host would answer.

@@ -2823,29 +2823,22 @@ Remove when: regexp2 gains Canonicalize-based case-insensitive backreference com
 
 SCRUTINIZED:approved
 
-## D220 Markdown renders each paragraph with the inline state at its position, not with the lines of an earlier identical block
+## D222 A plugin input the build cannot read is reported at the import that names it, not at esbuild's library
 
-What: Pi 0f21a331 (`fix(coding-agent,tui): reuse syntax highlighting and rendered Markdown blocks`) renders a top-level Markdown block again with the lines of a block of the same source (`blocks.get(token.raw) ?? previousBlocks?.get(token.raw)`, `packages/tui/src/components/markdown.ts:381`). The earlier block can come from the same render or from the previous render of the component, which `reuseBlocks` matches on text, width and the type of the next block only. marked's inline lexer carries state from block to block: an open raw `<a>` tag suppresses URL autolinks until its `</a>`. The same source therefore renders differently at different positions, and Pi keeps the lines of the other position. Two cases, observed against Pi b556cfe5:
+What: Pi builds plugins with esbuild's JavaScript API. When a plugin's `onLoad` cannot read an input (`readFile` throws `EACCES`), esbuild's JavaScript library takes the error's location from the first readable frame of the JavaScript stack, which is its own `await callback(...)` in `lib/main.js`, and Pi prints `<path of esbuild's lib/main.js relative to the plugin's directory>:1552:22: EACCES: permission denied, open '<path>'` (esbuild 0.28.2). PiG builds on esbuild's Go API, which has no JavaScript stack: the location of an input that cannot be read is the position of the import that names it, so PiG prints `worker.ts:1:19: EACCES: permission denied, open '<path>'`. The text after the location is Node's, as Pi's.
 
-- Same render: Pi autolinks `http://a.b` in `"http://a.b\n\nx <a href=\"u\">open\n\nhttp://a.b\n\nclose</a>"` inside the open `<a>`, because an earlier identical paragraph was autolinked. With `http://a.c` in that place it is plain.
-- Previous render: after rendering `"a\n\nhttp://a.b\n\nz"`, `setText("x <a href=\"u\">a\n\nhttp://a.b\n\nz</a>")` keeps the autolinked `http://a.b` line. A fresh Pi component for the second text renders it plain.
+Why: the line Pi prints is a line of a JavaScript library that exists only where Pi's `node_modules` is, and nothing in PiG reads it; printing it would invent a file and a position. No Pi test or example asserts the location.
 
-PiG renders each block with the lexer state at its position, as Pi did before 0f21a331 and as Pi does when no block has the same source. A component given new text renders the same rows as a new component.
+Scope: `chord/nextnode/plugins` `BuildFacet`, the failure of an input that cannot be read (`ENOENT` and `EACCES` read errors). The build fails in both with one error whose text after the location is equal. Evidence of Pi's text: `handoffs/next/rows/plugfull-buildwin.md` (reproduced with esbuild 0.28.2 in Node).
 
-Why: Replicating the Pi behavior makes the output depend on which identical blocks came earlier and on the history of the component (streaming order, edits before the block). Pi's own reference-link guard (`reuseBlocks`, `markdown.ts:373`) exists to avoid that property; it guards reference definitions and not the `inLink` and raw-block state. PiG keeps reuse of syntax highlighting by language and code (the rest of 0f21a331), which does not depend on inline state.
+Owner decision: 2026-11-01, owner decided to keep PiG's location and record the difference (D222).
 
-Pi bug: reported as `handoffs/next/pi-issue-markdown-block-reuse.md`; the owner files it. Not filed yet.
+Call-site marker: `chord/nextnode/plugins/plugins_build.go` (the `OnLoad` read failure).
 
-Scope: `tui.Markdown` rendering (`tui/markdown.go`, `renderBlocks`). Only a block that has a block of the same source and width in the same render or the previous one, and whose inline lexer state differs on entry (an open raw `<a>`, so a bare URL stays plain in PiG and is linked in Pi), renders differently. Every other document renders identically to Pi.
+Evidence: `TestEsbuildBuildAForbiddenInputFailsTheBuildWithNodesText` (`chord/nextnode/plugins/plugins_node_unix_test.go`) states PiG's text with the import's location.
 
-Owner decision: 2026-11-01, owner approved recording this as a numbered divergence (D220).
+Parity allowance: none needed; Pi's text names a file of Pi's installation, so no parity scenario can compare it byte for byte.
 
-Call-site markers: `tui/markdown.go` (`renderBlocks`), `tui/markdown_render_oracle_test.go` (`TestMarkdownBlockReuseDiffersFromPi`).
-
-Parity allowance: `TestMarkdownBlockReuseDiffersFromPi` (`tui/markdown_render_oracle_test.go`) runs the pinned Pi for both cases and a control, and states both sides of each row: Pi autolinks the URL inside the open `<a>` and PiG does not. It fails when either side changes.
-
-Evidence: the same test, which needs the Pi oracle (`make install-oracle`); every other document is compared with Pi by `TestMarkdownRenderMatchesPi`.
-
-Remove when: Pi stops reusing rendered Markdown blocks by token.raw across differing inline state (markdown.ts:381). Then the markers and this record go, and the cases of `TestMarkdownBlockReuseDiffersFromPi` become documents of `markdownRenderDocs`.
+Remove when: Pi reports the importing location.
 
 SCRUTINIZED:approved

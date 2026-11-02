@@ -3,6 +3,7 @@ package tui
 // Ports packages/coding-agent/src/utils/syntax-highlight.ts and the highlightCode and getCliHighlightTheme helpers of packages/coding-agent/src/modes/interactive/theme/theme.ts.
 
 import (
+	"errors"
 	"math"
 	"slices"
 	"strings"
@@ -171,6 +172,13 @@ func throwHighlightThemeError(message string) HighlightFormatter {
 	return func(string) string { panic(highlightThemeError{message}) }
 }
 
+// isHighlightThemeThrow reports whether err is what a theme formatter throws: the TypeError of a formatter read from Object.prototype, or the Error of theme.fg for a token the theme lacks.
+func isHighlightThemeThrow(err error) bool {
+	var typeError highlightThemeError
+	var unknownColor unknownThemeColorError
+	return errors.As(err, &typeError) || errors.As(err, &unknownColor)
+}
+
 // highlightThemeError is the TypeError a theme formatter read from Object.prototype throws.
 type highlightThemeError struct{ message string }
 
@@ -245,8 +253,8 @@ func terminalText(text string) string {
 func renderHighlightedHTML(html string, theme HighlightTheme) (output string, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			thrown, ok := recovered.(highlightThemeError)
-			if !ok {
+			thrown, ok := recovered.(error)
+			if !ok || !isHighlightThemeThrow(thrown) {
 				panic(recovered)
 			}
 			err = thrown
@@ -439,7 +447,7 @@ func cliHighlightTheme(t *Theme) HighlightTheme {
 	return theme
 }
 
-// HighlightCode highlights code for the active theme and returns its lines, as theme.ts highlightCode does. Code in a language highlight.js does not support, and code highlight.js fails on, take the mdCodeBlock color (Pi 0f21a331: theme.ts styles a failed highlight too, and getMarkdownTheme().highlightCode is this function).
+// HighlightCode highlights code for the active theme and returns its lines, as theme.ts highlightCode does, which getMarkdownTheme().highlightCode is too. Code in a language highlight.js does not support, and code highlight.js fails on, take the mdCodeBlock color.
 func HighlightCode(code, lang string) []string {
 	return highlightCodeLines(code, lang)
 }
@@ -589,12 +597,8 @@ func highlightCodeUncached(registry highlightEngine, code, lang string, t *Theme
 		return codeBlockLines(code, t)
 	}
 	highlighted, err := highlightWith(registry, code, HighlightOptions{Language: lang, IgnoreIllegals: true, Theme: cliHighlightTheme(t)})
-	return highlightedLines(highlighted, err, code, t)
-}
-
-// highlightedLines is the lines of a highlight, or, when highlight.js threw, the code in the mdCodeBlock color (the catch of theme.ts highlightCode).
-func highlightedLines(highlighted string, err error, code string, t *Theme) []string {
 	if err != nil {
+		// theme.ts highlightCode: `catch { return code.split("\n").map((line) => theme.fg("mdCodeBlock", line)); }`.
 		return codeBlockLines(code, t)
 	}
 	return strings.Split(terminalText(highlighted), "\n")

@@ -31,7 +31,7 @@ pub struct MarkdownTheme {
     pub italic: StyleFn,
     pub underline: StyleFn,
     pub strikethrough: StyleFn,
-    /// `getMarkdownTheme().highlightCode`: [`highlight_code`], with the `mdCodeBlock` color for a highlight that fails.
+    /// `getMarkdownTheme().highlightCode`, which is [`highlight_code`].
     pub highlight_code: HighlightFn,
 }
 
@@ -128,16 +128,14 @@ pub fn get_settings_list_theme() -> SettingsListTheme {
 }
 
 /// pi-coding-agent's `highlightCode`: `code` highlighted for `lang` with the global theme, one string per line. Code in a language the host's highlight.js does not support,
-/// or with no language, or that highlight.js fails on, takes the `mdCodeBlock` color. The host's highlighter runs it; a host that cannot be reached takes the
-/// `mdCodeBlock` color too, as a failed highlight does.
+/// or with no language, takes the `mdCodeBlock` color, and so does code highlight.js fails on, as Pi's `catch` returns. The host's highlighter runs it; a host that cannot
+/// be reached fails the highlight.
 pub fn highlight_code(code: &str, lang: Option<&str>) -> Vec<String> {
     match lang.filter(|lang| !lang.is_empty()) {
         // No language: Pi highlights nothing, whatever the host would answer.
         None => code_block_lines(code),
-        Some(lang) => match highlight_code_lines(code, lang, installed_theme_palette()) {
-            Ok(lines) => lines,
-            Err(_) => code_block_lines(code),
-        },
+        Some(lang) => highlight_code_lines(code, lang, installed_theme_palette())
+            .unwrap_or_else(|_| code_block_lines(code)),
     }
 }
 

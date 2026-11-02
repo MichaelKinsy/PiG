@@ -352,7 +352,7 @@ type ParseDateResult struct {
 	Ms *float64 `json:"ms"`
 }
 
-// CallHighlightCode (ext→host) is pi-coding-agent's highlightCode (theme.ts, which getMarkdownTheme().highlightCode is too): the lines of code highlighted
+// CallHighlightCode (ext→host) is pi-coding-agent's highlightCode (theme.ts), which getMarkdownTheme().highlightCode is too: the lines of code highlighted
 // for lang by the host's highlight.js port and drawn with a theme. The args are a HighlightCodeArgs and the result a HighlightCodeResult. It reads no session or extension
 // state, so it may arrive before the register frame.
 const CallHighlightCode = "highlight.code"

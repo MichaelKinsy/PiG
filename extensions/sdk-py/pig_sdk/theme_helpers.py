@@ -17,7 +17,7 @@ SelectedStyleFn = Callable[[str, bool], str]
 @dataclass(frozen=True)
 class MarkdownTheme:
     """pi-tui's ``MarkdownTheme`` as ``getMarkdownTheme`` returns it: every style is a function of the global theme. ``highlight_code`` is
-    ``getMarkdownTheme().highlightCode``: :func:`highlight_code`, with the ``mdCodeBlock`` color for a highlight that fails."""
+    ``getMarkdownTheme().highlightCode``, which is :func:`highlight_code`."""
 
     heading: StyleFn
     link: StyleFn
@@ -121,12 +121,8 @@ def get_settings_list_theme() -> SettingsListTheme:
 
 def highlight_code(code: str, lang: Optional[str] = None) -> list[str]:
     """pi-coding-agent's ``highlightCode``: ``code`` highlighted for ``lang`` with the global theme, one string per line. Code in a language the host's
-    highlight.js does not support, with no language, or that highlight.js fails on, takes the ``mdCodeBlock`` color. The host's highlighter
-    runs it; a host that cannot be reached takes the ``mdCodeBlock`` color too, as a failed highlight does."""
-    return _highlight(code, lang)
-
-
-def _highlight(code: str, lang: Optional[str]) -> list[str]:
+    highlight.js does not support, or with no language, takes the ``mdCodeBlock`` color, and so does code highlight.js fails on, as Pi's catch returns. The
+    host's highlighter runs it; a host that cannot be reached fails the highlight."""
     if not lang:
         # No language: Pi highlights nothing, whatever the host would answer.
         return _code_block_lines(code)

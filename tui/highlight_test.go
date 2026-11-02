@@ -3,7 +3,7 @@
 package tui
 
 import (
-	"errors"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -86,6 +86,9 @@ func TestHighlightCode_ColorsEachLineOfPythonDocstringsIndependently(t *testing.
 	}
 	if got := HighlightCode(code, "python"); !slices.Equal(got, want) {
 		t.Errorf("HighlightCode = %q, want %q", got, want)
+	}
+	if got := HighlightCode(code, "python"); !slices.Equal(got, want) {
+		t.Errorf("markdown theme highlightCode = %q, want %q", got, want)
 	}
 }
 
@@ -202,18 +205,32 @@ func TestRenderHighlightedHtmlReadsObjectPrototypeMembers(t *testing.T) {
 	}
 }
 
-// theme.ts highlightCode (Pi 0f21a331): a highlight that throws takes the mdCodeBlock color, as code in a language highlight.js does not support does.
-func TestHighlightCodeStylesAFailedHighlightWithTheCodeBlockColor(t *testing.T) {
-	theme := ActiveTheme()
-	code := "a\n\nb"
-	want := []string{theme.Fg("mdCodeBlock", "a"), theme.Fg("mdCodeBlock", ""), theme.Fg("mdCodeBlock", "b")}
-	if got := highlightedLines("", errors.New("highlight.js threw"), code, theme); !slices.Equal(got, want) {
-		t.Errorf("a failed highlight = %q, want %q", got, want)
+// theme.ts highlightCode (Pi 0f21a331) wraps the highlight in `try { ... } catch { return code.split("\n").map((line) => theme.fg("mdCodeBlock", line)); }`, and
+// getMarkdownTheme().highlightCode is that same function, so a highlight that throws takes the mdCodeBlock color for both. A theme with no color for a syntax token is a
+// highlight that throws: the cli-highlight formatter calls theme.fg, and fg throws `Unknown theme color: <token>`.
+func TestHighlightCodeThatFailsTakesTheCodeBlockColor(t *testing.T) {
+	full := componentThemeOverride(t)
+	broken, err := NewThemeFromANSIPalette("broken", maps.Clone(full.fgAnsi), maps.Clone(full.bgAnsi), full.GetColorMode())
+	if err != nil {
+		t.Fatal(err)
 	}
-	if got := highlightedLines("x\ny", nil, code, theme); !slices.Equal(got, []string{"x", "y"}) {
-		t.Errorf("a highlight = %q, want its own lines", got)
+	delete(broken.fgAnsi, "syntaxKeyword")
+	code := "const answer = 42;\nreturn answer"
+	want := codeBlockLines(code, broken)
+	if slices.Equal(want, strings.Split(code, "\n")) {
+		t.Fatal("the mdCodeBlock color of the test theme draws nothing, so it cannot tell a styled fallback from an unstyled one")
 	}
-	if got := HighlightCode(code, "no-such-language"); !slices.Equal(got, want) {
-		t.Errorf("an unsupported language = %q, want %q", got, want)
+	if got := HighlightCodeFor(broken, code, "javascript"); !slices.Equal(got, want) {
+		t.Errorf("highlightCode of a failing highlight = %q, Pi gives %q", got, want)
+	}
+	if got := MarkdownThemeFor(broken).HighlightCode(code, "javascript"); !slices.Equal(got, want) {
+		t.Errorf("getMarkdownTheme().highlightCode of a failing highlight = %q, Pi gives %q", got, want)
+	}
+	// The active theme goes through the memo and the resumable highlighter: a failure is not a panic there either.
+	previous := activeTheme.Load()
+	t.Cleanup(func() { activeTheme.Store(previous) })
+	activeTheme.Store(broken)
+	if got := HighlightCode(code, "javascript"); !slices.Equal(got, want) {
+		t.Errorf("HighlightCode under the active theme = %q, Pi gives %q", got, want)
 	}
 }

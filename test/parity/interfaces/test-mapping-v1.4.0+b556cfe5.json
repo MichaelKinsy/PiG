@@ -9358,7 +9358,7 @@
     },
     {
       "path": "packages/tui/test/markdown.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:faee37fda4db30c32c7e66e49af33d0ae01d24d770bbc2380f696de4ea797764",
       "evidence": [
         "tui/markdown_upstream_test.go#TestUpstreamMarkdown",
@@ -9387,8 +9387,8 @@
         "tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
         "tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender"
       ],
-      "rationale": "101 of 102 upstream cases are ported: the 98 cases of the earlier pin keep their evidence and three of the four Pi 0f21a331 'Block reuse' cases run as TestUpstreamMarkdownBlockReuse subtests with the same inputs and expectations. The fourth ('holds rendered blocks weakly, so a full garbage collection releases them') checks a JavaScript WeakRef; PiG holds its memos strongly and releases them in FinishStreaming (subtest 'releases the reused highlighting when streaming finishes'). It stays missing until the owner approves it as designed out (lane RenderReuse).",
-      "missingCases": [
+      "rationale": "101 of 102 upstream cases are ported: the 98 cases of the earlier pin keep their evidence and three of the four Pi 0f21a331 'Block reuse' cases run as TestUpstreamMarkdownBlockReuse subtests with the same inputs and expectations. The designed-out case ('holds rendered blocks weakly, so a full garbage collection releases them') checks a JavaScript WeakRef: Go's collector can clear a weak pointer between two streaming deltas, so PiG holds the memo strongly for one render and FinishStreaming, Invalidate and a theme or grammar change release it (subtest 'releases the reused highlighting when streaming finishes'). SCRUTINIZED:approved by the owner (2026-11-01): reviewed, no lifetime bug (handoffs/next/reviews/render-reuse.md) (lane RenderReuse).",
+      "designedOutCases": [
         "Markdown component › Block reuse › holds rendered blocks weakly, so a full garbage collection releases them"
       ]
     },

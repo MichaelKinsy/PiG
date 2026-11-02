@@ -88,7 +88,7 @@ func TestMarkdownHighlightCodeLinesMatchPi(t *testing.T) {
 				t.Fatalf("%s: %v", c.Name, err)
 			}
 			if !reflect.DeepEqual(got, h.Lines) {
-				t.Errorf("%s: HighlightCodeLines(%q, %q) = %q\nPi %q", c.Name, h.Code, lang, got, h.Lines)
+				t.Errorf("%s: markdown HighlightCodeLines(%q, %q) = %q\nPi %q", c.Name, h.Code, lang, got, h.Lines)
 			}
 		}
 	}

@@ -30,7 +30,7 @@ type sectionLoop interface {
 	// Go runs fn as an owned background task (Loop.Go).
 	Go(fn func())
 	// Lend runs fn as the synchronous part of an async function inside the running section (Loop.Lend).
-	Lend(signal *parking.Signal, fn func())
+	Lend(signal *parking.Signal, fn func(abandoned bool))
 }
 
 // Ctx is a handler's context.
@@ -170,32 +170,23 @@ func settledRefusal(typ *contracts.Contract) error {
 	}, nil)
 }
 
-// linkedAbort is withLinkedAbortSignal's result: the child context, the release that detaches it, and abort, which
-// aborts the child at once (the signal the child follows is aborted by its owner, and `AbortSignal.any` aborts the child
-// in the same turn; a context.AfterFunc listener runs on a goroutine of its own, so the owner aborts the child itself as
-// well).
+// linkedAbort is withLinkedAbortSignal's result: the child context and the release that detaches it.
 type linkedAbort struct {
 	context context.Context
 	// release is the call's, run when it settles; it removes both listeners.
 	release func()
-	abort   func(cause error)
 }
 
 // withLinkedAbortSignal is a child of ctx aborted by signal and by the caller's signal (the caller's reason first) until
-// release(), which the call runs when it settles. Without a caller's signal (ctx has no Done channel) the child is
-// aborted by signal itself and release does nothing. Pi avoids AbortSignal.any because it keeps cleanup entries per call
-// for as long as its sources live; the Go form of the two listeners is two context.AfterFunc registrations, each removed
-// by its stop function, never context.WithCancel's parent registration (which stays until the parent ends).
+// release(), which the call runs when it settles. Without a caller's signal (ctx has no Done channel) the child is the
+// signal itself with ctx's values, as in Pi, and release does nothing: the child listens to nothing, so a signal that
+// outlives its calls (an attempt's, a reference's) keeps nothing of them. Pi avoids AbortSignal.any because it keeps
+// cleanup entries per call for as long as its sources live; the Go form of the two listeners is two context.AfterFunc
+// registrations, each removed by its stop function, never context.WithCancel's parent registration (which stays until the
+// parent ends).
 func withLinkedAbortSignal(signal context.Context, ctx context.Context) linkedAbort {
 	if ctx.Done() == nil {
-		child, abort := chordctx.WithCancel(ctx)
-		if signal.Err() != nil {
-			abort(context.Cause(signal))
-		} else {
-			stop := context.AfterFunc(signal, func() { abort(context.Cause(signal)) })
-			context.AfterFunc(child, func() { stop() })
-		}
-		return linkedAbort{context: child, release: func() {}, abort: abort}
+		return linkedAbort{context: chordctx.WithAbortSignal(ctx, signal), release: func() {}}
 	}
 	linked, abort := chordctx.WithCancel(chordctx.WithoutAbortSignal(ctx))
 	// The sources in Pi's order: the caller's first, so its reason wins a tie.
@@ -216,7 +207,7 @@ func withLinkedAbortSignal(signal context.Context, ctx context.Context) linkedAb
 	for _, source := range sources {
 		if source.Err() != nil {
 			abort(context.Cause(source))
-			return linkedAbort{context: linked, release: release, abort: abort}
+			return linkedAbort{context: linked, release: release}
 		}
 	}
 	mu.Lock()
@@ -229,7 +220,7 @@ func withLinkedAbortSignal(signal context.Context, ctx context.Context) linkedAb
 	// A source aborted while the listeners were added runs its listener on a goroutine of its own, which waits here for
 	// the stops.
 	mu.Unlock()
-	return linkedAbort{context: linked, release: release, abort: abort}
+	return linkedAbort{context: linked, release: release}
 }
 
 // linkedCause is the reason of the source that aborted first (`AbortSignal.any`): the listeners of the sources run on

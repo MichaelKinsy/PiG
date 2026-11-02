@@ -59,7 +59,7 @@ func (h *Host) handleParseFrontmatter(call *CallPayload) (*CallResultPayload, er
 	return &CallResultPayload{Result: data}, nil
 }
 
-// HighlightCodeLines is pi-coding-agent's highlightCode over the host's highlight.js port, (which getMarkdownTheme().highlightCode is too). palette is the
+// HighlightCodeLines is pi-coding-agent's highlightCode (getMarkdownTheme().highlightCode is the same function) over the host's highlight.js port. palette is the
 // theme to draw with (see HighlightCodeArgs.Theme); empty draws with the host's active theme. The CallHighlightCode handler and the fused extensions' SDK hook share it.
 func HighlightCodeLines(code, lang string, palette []byte) (lines []string, err error) {
 	defer func() {
