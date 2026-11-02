@@ -141,11 +141,12 @@ func TestToFileErrorAndAbortResultMatchPisErrorsModule(t *testing.T) {
 		if string(got.Code) != tc.Result.Code || got.Message != tc.Result.Message || got.Path != orEmpty(tc.Result.Path) || (got.Cause != nil) != tc.Result.HasCause {
 			t.Errorf("%s: got {%s %q %q cause=%v}, Pi {%s %q %q cause=%v}", label, got.Code, got.Message, got.Path, got.Cause != nil, tc.Result.Code, tc.Result.Message, orEmpty(tc.Result.Path), tc.Result.HasCause)
 		}
-		if tc.Kind == "file" && (got == nil || tc.Same != (got == input)) {
-			t.Errorf("%s: a FileError is returned as it is: same=%v, Pi %v", label, got == input, tc.Same)
-		}
-		if tc.Kind != "file" && tc.CauseIsInput != (got.Cause == input) {
-			t.Errorf("%s: the cause is the input error: %v, Pi %v", label, got.Cause == input, tc.CauseIsInput)
+		if tc.Kind == "file" {
+			if same := errors.Is(input, got); tc.Same != same {
+				t.Errorf("%s: a FileError is returned as it is: same=%v, Pi %v", label, same, tc.Same)
+			}
+		} else if isCause := errors.Is(got.Cause, input); tc.CauseIsInput != isCause {
+			t.Errorf("%s: the cause is the input error: %v, Pi %v", label, isCause, tc.CauseIsInput)
 		}
 	}
 	for _, tc := range golden.Abort {
