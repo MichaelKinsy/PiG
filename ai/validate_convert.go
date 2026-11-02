@@ -1,5 +1,7 @@
 package ai
 
+// Ports packages/ai/src/utils/validation.ts (the argument coercion validateToolArguments gets from pi-schema's compile({ coerce: true }).parse).
+
 import (
 	"encoding/json"
 	"math"

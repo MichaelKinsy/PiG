@@ -1,11 +1,11 @@
 [
  {
-  "upstream": "packages/ai/src/utils/typebox-helpers.ts",
+  "upstream": "packages/ai/src/utils/string-enum.ts",
   "package": "./ai",
   "tests": [
    "TestStringEnumBuildsPiSchema"
   ],
-  "upstream_reference": "packages/ai/src/utils/typebox-helpers.ts",
+  "upstream_reference": "packages/ai/src/utils/string-enum.ts",
   "mutation": "ai/typebox_helpers.go: replace '\"type\": \"string\"' with '\"type\": \"mutant\"'; compiling go test -overlay -run exact test -count=1 fails TestStringEnumBuildsPiSchema."
  },
  {

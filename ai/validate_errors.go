@@ -1,5 +1,7 @@
 package ai
 
+// Ports packages/ai/src/utils/validation.ts (the error list and dotted paths of the "Validation failed for tool" message in validateToolArguments).
+
 import (
 	"fmt"
 	"math"

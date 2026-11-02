@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// packages/ai/src/utils/typebox-helpers.ts:14-24 StringEnum: {type: "string", enum: values} plus `description` and `default` only when they are
+// packages/ai/src/utils/string-enum.ts:14-24 StringEnum: {type: "string", enum: values} plus `description` and `default` only when they are
 // truthy (an empty string is omitted, as `options?.description && {...}` does); the enum is a copy of the values.
 func TestStringEnumBuildsThePiSchema(t *testing.T) {
 	values := []string{"add", "subtract"}
