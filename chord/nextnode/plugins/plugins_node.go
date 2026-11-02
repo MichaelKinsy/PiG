@@ -46,8 +46,12 @@ const minimumNode = "v22.19.0"
 // defaultReadyTimeout is how long Load waits for the process to start and connect (chord/host's loader waits as long).
 const defaultReadyTimeout = 30 * time.Second
 
-// defaultStopGrace is NodeOptions.StopGrace's default.
-const defaultStopGrace = 3 * time.Second
+// defaultStopGrace is NodeOptions.StopGrace's default: Pi's workers' GRACE (workers.ts), 5 s.
+const defaultStopGrace = 5 * time.Second
+
+// defaultCloseTimeout is a Pi host's default `closeTimeout` (host README: 30 s), how long NodeHost.Close lets a host that is
+// running its close take when RuntimeLoad.CloseTimeout is not set.
+const defaultCloseTimeout = 30 * time.Second
 
 // stderrTail is how much of the last of the process's stderr an error keeps.
 const stderrTail = 8 << 10
@@ -71,16 +75,17 @@ const (
 	NodeStderr NodeStream = "stderr"
 )
 
-// NodeOptions is how Node subprocesses are started. The Node they run on is found by discoverNode: PIG_NODE, then `node` on
-// PATH, then the install locations of version managers and installers (see discoverNode for the order and the list), the
-// first that is Node 22.19.0 or newer.
+// NodeOptions is how Node subprocesses are started. The Node they run on is found by discoverNode (additive record D221): PIG_NODE,
+// then `node` on PATH, then the install locations of version managers and installers (see discoverNode for the order and
+// the list), the first that is Node 22.19.0 or newer.
 type NodeOptions struct {
 	// ExecArgv are Node's own flags for the subprocess (`--max-old-space-size=...`), after the one this component passes
 	// (`--disable-warning=ExperimentalWarning`).
 	ExecArgv []string
 	// CacheDir is where the embedded runtime is extracted (once per content): `pig` under os.UserCacheDir() by default.
 	CacheDir string
-	// ReadyTimeout is how long starting a process may take until it is connected; 30 s by default.
+	// ReadyTimeout is how long finding Node (each `--version` probe also stops at 10 s) and, after it, starting the process may
+	// each take, the second until it is connected and said it started; 30 s by default.
 	ReadyTimeout *time.Duration
 	// OnOutput gets what the process writes. Without it, the process's stdout and stderr go to this process's own.
 	OnOutput func(stream NodeStream, chunk []byte)
@@ -96,9 +101,12 @@ type NodeOptions struct {
 	// CommandContext by default. A platform that cannot execute a file in the app's data directory starts it through its own
 	// loader here; the chord packages know no platform.
 	Command func(ctx context.Context, name string, args ...string) *exec.Cmd
+	// pig additive (D223): the stop grace and the spare process (KeepWarm) are the embedding program's settings.
 	// StopGrace is how long a process whose channel ended, or that was told to close, gets to exit before it is killed (Pi's
-	// workers wait 3 s: workers.ts); 3 s by default. A process stalled in a loop cannot read its channel, so this is how long
-	// the Go side waits after it closed the link (a heartbeat that found the host silent, for one) before it kills it.
+	// workers wait GRACE = 5 s: workers.ts); 5 s by default. A process stalled in a loop cannot read its channel, so this is how
+	// long the Go side waits after it closed the link (a heartbeat that found the host silent, for one) before it kills it. A
+	// process that answers a Close with `closing` is running its host's close, which Pi bounds by `closeTimeout` (the app's
+	// store closes after it): Close then waits that long, RuntimeLoad.CloseTimeout or 30 s, plus this grace.
 	StopGrace *time.Duration
 	// KeepWarm makes the PluginRuntime start a spare process in the background each time a Load has taken its process, so
 	// the next Load finds one up (PluginRuntime.Warm). Close ends it.
@@ -172,6 +180,7 @@ func (err *NodeError) Unwrap() []error {
 	return errs
 }
 
+// pig additive (D223): how the subprocess ended; Pi's in-process plugins end the app instead.
 // NodeExit is why a subprocess ended before it was asked to: its exit, what it reported as fatal, and the last of its
 // stderr. Pi's plugins run in the app's process, where an uncaught exception ends the app with code 1, `process.exit(n)` with
 // n and a loop stalls it; here they end or stall only the subprocess, and the NodeExit is what Node's `exit` event
@@ -526,6 +535,11 @@ type NodeHost struct {
 	exit     error
 	fatal    *NodeError
 	activity host.ActivityCounts
+	// closeTimeout is how long the host's own close may take once it began (RuntimeLoad.CloseTimeout); closeBegun is closed
+	// when the process reported that it began it (`closing`).
+	closeTimeout time.Duration
+	closeBegun   chan struct{}
+	closeOnce    sync.Once
 	// killReason is why the Go side killed the process, if it did (NodeExit.Reason).
 	killReason string
 	// killed is whether Process.Kill ended it: Windows has no signal in an exit status, and Node reports a process its
@@ -602,7 +616,13 @@ func (f forwardWriter) Write(chunk []byte) (int, error) {
 
 // startNode starts the subprocess and returns once it is connected and said it started.
 func startNode(options NodeOptions, ctx context.Context) (*NodeHost, error) {
-	nodePath, err := discoverNode(ctx, options.Command)
+	timeout := defaultReadyTimeout
+	if options.ReadyTimeout != nil {
+		timeout = *options.ReadyTimeout
+	}
+	finding, stopFinding := context.WithTimeoutCause(ctx, timeout, fmt.Errorf("finding a Node.js executable did not finish within %s", timeout))
+	nodePath, err := discoverNode(finding, options.Command)
+	stopFinding()
 	if err != nil {
 		return nil, err
 	}
@@ -624,7 +644,7 @@ func startNode(options NodeOptions, ctx context.Context) (*NodeHost, error) {
 		}
 	}()
 
-	h := &NodeHost{options: options, started: make(chan struct{}), reaped: make(chan struct{}), exited: make(chan struct{}), pending: map[int]*nodeCall{}}
+	h := &NodeHost{options: options, started: make(chan struct{}), reaped: make(chan struct{}), exited: make(chan struct{}), closeBegun: make(chan struct{}), closeTimeout: defaultCloseTimeout, pending: map[int]*nodeCall{}}
 	output := options.OnOutput
 	if output == nil {
 		output = func(stream NodeStream, chunk []byte) {
@@ -651,10 +671,6 @@ func startNode(options NodeOptions, ctx context.Context) (*NodeHost, error) {
 	}
 	go h.wait()
 
-	timeout := defaultReadyTimeout
-	if options.ReadyTimeout != nil {
-		timeout = *options.ReadyTimeout
-	}
 	deadline := time.NewTimer(timeout)
 	defer deadline.Stop()
 	type accepted struct {
@@ -756,15 +772,23 @@ func (h *NodeHost) wait() {
 }
 
 // channelEnded is the reader's end: the channel is gone, so the process has nothing to serve; it exits by itself, or is
-// killed after the grace. Its exit settles the pending requests (wait), so they fail with how it ended.
+// killed after the grace. A process that began the close it was asked for (`closing`: its host ends the channel while it
+// drains and closes its natives, then closes the app's store) has its closeTimeout first. Its exit settles the pending
+// requests (wait), so they fail with how it ended.
 func (h *NodeHost) channelEnded() {
-	timer := time.NewTimer(h.stopGrace())
+	wait := h.stopGrace()
+	select {
+	case <-h.closeBegun:
+		wait += h.closeTimeout
+	default:
+	}
+	timer := time.NewTimer(wait)
 	defer timer.Stop()
 	select {
 	case <-h.exited:
 	case <-timer.C:
 		h.mu.Lock()
-		h.killReason = fmt.Sprintf("its link closed and it did not exit within %s", h.stopGrace())
+		h.killReason = fmt.Sprintf("its link closed and it did not exit within %s", wait)
 		h.mu.Unlock()
 		h.kill()
 	}
@@ -940,6 +964,8 @@ func (h *NodeHost) control(payload []byte) {
 		h.callbackEvent(message.Event, payload)
 	case "started":
 		h.startOne.Do(func() { close(h.started) })
+	case "closing":
+		h.closeOnce.Do(func() { close(h.closeBegun) })
 	case "activity":
 		var event struct {
 			Counts struct {
@@ -1039,8 +1065,9 @@ func (w *hostErrorWire) decode() NodeHostError {
 	return out
 }
 
-// Close asks the process to close its host and exit, and waits for it (killing it after the grace, or when ctx ends). It
-// returns the exit that was a crash, if the process ended that way before.
+// Close asks the process to close its host and exit, and waits for it. A process that does not answer within the stop grace
+// is killed, as is one still running its close after its closeTimeout and the grace, or when ctx ends. It returns the exit
+// that was a crash, if the process ended that way before.
 func (h *NodeHost) Close(ctx context.Context) error {
 	if err := h.refuseSyncCallback(ctx); err != nil {
 		return err
@@ -1056,19 +1083,28 @@ func (h *NodeHost) Close(ctx context.Context) error {
 	h.closing = true
 	h.mu.Unlock()
 	_ = h.port.Load().control(map[string]any{"op": "close"})
-	timer := time.NewTimer(h.stopGrace())
-	defer timer.Stop()
-	select {
-	case <-h.exited:
-	case <-timer.C:
-		h.kill()
-		<-h.exited
-	case <-ctx.Done():
-		h.kill()
-		<-h.exited
-		return context.Cause(ctx)
+	grace := h.stopGrace()
+	deadline := time.NewTimer(grace)
+	defer deadline.Stop()
+	begun := h.closeBegun
+	for {
+		select {
+		case <-h.exited:
+			return h.Err()
+		case <-begun:
+			// The host is running its close, which ends with the app's store: it has its closeTimeout, then the grace.
+			begun = nil
+			deadline.Reset(h.closeTimeout + grace)
+		case <-deadline.C:
+			h.kill()
+			<-h.exited
+			return h.Err()
+		case <-ctx.Done():
+			h.kill()
+			<-h.exited
+			return context.Cause(ctx)
+		}
 	}
-	return h.Err()
 }
 
 // wireError is an error as host.mjs sends it: Cause is its `cause`, itself a wire error.

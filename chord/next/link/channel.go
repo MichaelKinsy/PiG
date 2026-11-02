@@ -386,11 +386,12 @@ func (c *Channel) release() {
 // Idle blocks until every message the channel received was handled: none waits behind a message that is handled
 // asynchronously (an inflate). A message the link hands over meanwhile is waited for too. It returns the cause of ctx when
 // ctx ends the wait; a channel that closes ends it (what it held is dropped).
+// pig additive (D223): Idle serves DeliveryAwaiter.
 func (c *Channel) Idle(ctx context.Context) error {
 	for {
 		c.mu.Lock()
 		var done chan struct{}
-		if c.held != nil {
+		if c.held != nil && c.state != channelClosed {
 			done = c.heldDone
 		}
 		c.mu.Unlock()
@@ -408,10 +409,22 @@ func (c *Channel) Idle(ctx context.Context) error {
 // failed is a protocol error: reported, and the link closes.
 func (c *Channel) failed(err error) {
 	if c.Closed() {
+		c.dropHeld()
 		return
 	}
 	c.report(err)
 	c.Close()
+}
+
+// dropHeld ends the wait of Idle for messages a closed channel will never handle: a message that was held after the link
+// closed (it passed the closed check first) has no one to release it.
+func (c *Channel) dropHeld() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.held != nil {
+		close(c.heldDone)
+		c.held = nil
+	}
 }
 
 // decode is a message from its bytes, checked against the message schema unless the link is trusted.

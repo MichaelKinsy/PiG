@@ -50,6 +50,8 @@ export default defineFacet((host) => {
 	const things = host.references(Thing);
 	host.serve(Audit, (_params, self) => ({ things: self.derive([things], ([list]) => list.length) }));
 	host.serve(Thing, ({ id }, self) => {
+		// The object "gated" never becomes live: a get of it waits, holding the reference that the audit counts.
+		if (id === "gated") self.open(() => new Promise(() => {}), () => {});
 		const doc = self.state(Count);
 		const notes = self.state(Notes);
 		return {
@@ -82,6 +84,10 @@ export default defineFacet((host) => {
 			echoBytes: async (value) => value,
 			echoAny: async (value) => value,
 			wait: async (ctx) => {
+				// The count -1 tells the test the call runs and waits.
+				await doc.change((draft) => {
+					draft.n = -1;
+				}, ctx);
 				await new Promise((_, reject) => ctx.abortSignal.addEventListener("abort", () => reject(ctx.abortSignal.reason)));
 			},
 		};
@@ -448,13 +454,14 @@ func TestNodeGetAbortsWhenItsContextDoes(t *testing.T) {
 	ctx, cancel := context.WithCancel(background)
 	result := make(chan error, 1)
 	go func() {
-		ref, err := node.Get(ctx, rfMissing, delta.NewJsonObject(0), host.GetOptions{ReadyTimeout: &long})
+		ref, err := node.Get(ctx, rfThing, rfParams("gated"), host.GetOptions{ReadyTimeout: &long})
 		if err == nil {
 			ref.Release()
 		}
 		result <- err
 	}()
-	time.Sleep(200 * time.Millisecond)
+	// The Node host holds the waiting get's reference: the request is running when the abort is sent.
+	rfReferences(t, node, 1)
 	cancel()
 	select {
 	case err := <-result:
@@ -477,7 +484,7 @@ func TestNodeGetACallAbortsWhenItsContextDoes(t *testing.T) {
 		_, err := ref.Call("wait", nil, ctx)
 		result <- err
 	}()
-	time.Sleep(200 * time.Millisecond)
+	eventually(t, 15*time.Second, "the method to run and wait", func() bool { return rfRead(t, ref, "count") == float64(-1) })
 	cancel()
 	select {
 	case err := <-result:

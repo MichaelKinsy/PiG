@@ -7,7 +7,7 @@
 // it, so the Go host and this one speak the pinned link wire); kind 1 is one control message, a JSON object. Control
 // requests are `{ id, op, ... }` and are answered by one `{ id, ok: true, result }` or `{ id, ok: false, error }`; `attach`,
 // `abort` and `close` have no answer (a closed host ends this process's channel, and the process exits). Unrequested:
-// `{ event: "started" }`, `{ event: "activity", counts }` (the host's keep-alive counts), `{ event: "error", error }` (the host's onError) and `{ event: "fatal", error }` (an uncaught
+// `{ event: "started" }`, `{ event: "closing" }` (the host began the close a `close` asked for), `{ event: "activity", counts }` (the host's keep-alive counts), `{ event: "error", error }` (the host's onError) and `{ event: "fatal", error }` (an uncaught
 // exception or rejection; the process exits with code 1, after the exception was printed on stderr as Node prints it).
 // The notifications of bridge.mjs (`unwatch`, `release`) have no answer either; its events are `frame`, `watchEnd` and `state`, and it serves the
 // requests that hold a local type of the plugins for the Go side (`get`, `value`, `watch`, `call`) and contracts as data (`describe`).
@@ -301,6 +301,8 @@ port.on("message", (message) => {
 	if (message.op === "close") {
 		// The host's close ends its links, this process's channel with them; the app's store is closed after the host, as
 		// Pi's apps do (a host that failed to close still lets the store close); the process ends once both are closed.
+		// `closing` tells the Go side the loop is alive and the close under way: it waits the host's closeTimeout for the exit.
+		port.control({ event: "closing" });
 		(hosted?.host.close(BACKGROUND_CONTEXT) ?? Promise.resolve())
 			.finally(() => hosted?.store?.close(BACKGROUND_CONTEXT))
 			.finally(() => process.exit(0));

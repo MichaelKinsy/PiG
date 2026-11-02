@@ -206,7 +206,10 @@ func TestBridgedAPluginNeedingAGoCoreTypeBindsReadsCallsAndWatchesIt(t *testing.
 	// Release is exact: the proxy holds the Go object while the plugin's object lives, and releases it with it. The Go
 	// object ends (its native closes) when its last reference goes: the test's own first, then the proxy's.
 	goRef.Release()
-	time.Sleep(300 * time.Millisecond)
+	// A round trip through the Go host's loop and through the proxy runs after the release the line above queued, so a close
+	// it caused would have happened before the check below.
+	bgBarrier(t, goHost)
+	bgRead(t, out, "count")
 	if got := bgClosed.Load(); got != 0 {
 		t.Fatalf("the Go object closed %d times while the plugin's object holds it", got)
 	}
@@ -424,5 +427,63 @@ module.exports = { default: defineFacet((host) => host.serve(Out, (_params, self
 	t.Cleanup(out.Release)
 	if got, err := out.Call("bump", 3.0, background); err != nil || got != 63.0 {
 		t.Fatalf("bump(3) = %v, %v; want 63 (twice 6, the core's count 3)", got, err)
+	}
+}
+
+// bgBarrier is a Go host's get of the core facet's object a, live and released: every turn the host's loop had queued
+// before it has run.
+func bgBarrier(t *testing.T, goHost host.Host) {
+	t.Helper()
+	ref, err := goHost.Get(background, bgCore, delta.JsonObjectOf("id", "a"), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ref.Member("count").Value(); err != nil {
+		t.Fatal(err)
+	}
+	ref.Release()
+}
+
+// Pi ends the holds of a host's objects when the host closes. The proxies' holds are the Go host's own references and
+// watches, so a Go host that outlives the NodeHost must not keep them: after the process ended (closed, or killed) every
+// Go reference the proxies held is released, so its object's native closes, and every watch is stopped.
+func TestBridgedTheProcessEndingReleasesTheGoReferencesAndWatchesItsProxiesHeld(t *testing.T) {
+	for _, mode := range []string{"close", "kill"} {
+		t.Run(mode, func(t *testing.T) {
+			bgClosed.Store(0)
+			goHost := bgGoHost(t, host.HostFacet{Name: "@app/core", Facet: bgFacet(bgCore)})
+			node := bgNode(t, []BridgedFacet{{Name: "@app/core", Host: goHost, Contracts: []*contracts.Contract{bgCore}}}, bgPlugin(t, 1, "p1"))
+			out, err := node.Get(background, bgOut, delta.JsonObjectOf("id", "a"), host.GetOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := bgRead(t, out, "count"); got != 0.0 {
+				t.Fatalf("count = %v", got)
+			}
+			served := node.serving()
+			served.mu.Lock()
+			held, watching := len(served.references), len(served.watches)
+			served.mu.Unlock()
+			if held == 0 || watching == 0 {
+				t.Fatalf("before the end the proxies hold %d references and %d watches, want some of each", held, watching)
+			}
+			if got := bgClosed.Load(); got != 0 {
+				t.Fatalf("the Go object closed %d times while the plugin's object holds it", got)
+			}
+			if mode == "close" {
+				if err := node.Close(background); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				node.kill()
+			}
+			eventually(t, 15*time.Second, "the Go object's native to close with the process", func() bool { return bgClosed.Load() == 1 })
+			served.mu.Lock()
+			held, watching = len(served.references), len(served.watches)
+			served.mu.Unlock()
+			if held != 0 || watching != 0 {
+				t.Fatalf("after the end the proxies still hold %d references and %d watches", held, watching)
+			}
+		})
 	}
 }

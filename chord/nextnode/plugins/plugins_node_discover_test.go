@@ -56,7 +56,7 @@ func nodePlaces() []nodePlace {
 			envPlace("nvm-home", "NVM_HOME", "v22.19.0"),
 			envPlace("appdata", "APPDATA", "nvm", "v22.19.0"),
 			envPlace("fnm", "FNM_DIR", "node-versions", "v22.19.0", "installation"),
-			envPlace("volta", "VOLTA_HOME", "bin"),
+			envPlace("volta", "VOLTA_HOME", "tools", "image", "node", "22.19.0"),
 			envPlace("program-files", "ProgramFiles", "nodejs"),
 			envPlace("local-app-data", "LOCALAPPDATA", "Programs", "nodejs"),
 		}
@@ -70,9 +70,9 @@ func nodePlaces() []nodePlace {
 			return filepath.Join(root, "nvm-home-dir", ".nvm", "versions", "node", "v24.0.0", "bin")
 		}},
 		envPlace("fnm", "FNM_DIR", "node-versions", "v22.19.0", "installation", "bin"),
-		envPlace("volta", "VOLTA_HOME", "bin"),
+		envPlace("volta", "VOLTA_HOME", "tools", "image", "node", "22.19.0", "bin"),
 		envPlace("asdf", "ASDF_DATA_DIR", "shims"),
-		envPlace("mise", "MISE_DATA_DIR", "shims"),
+		envPlace("mise", "MISE_DATA_DIR", "installs", "node", "22.19.0", "bin"),
 		{name: "system", setup: func(t *testing.T, root string) string {
 			dir := filepath.Join(root, "system", "bin")
 			setSystemNodeDirs(t, dir)
@@ -189,10 +189,10 @@ func TestDiscoverNodeWhenEveryNodeIsTooOldNamesTheNewestVersionFound(t *testing.
 	old := writeFakeNode(t, t.TempDir(), "v22.1.0", "", 0)
 	t.Setenv("PATH", filepath.Dir(old))
 	places := nodePlaces()
-	writeFakeNode(t, places[0].setup(t, t.TempDir()), "v22.18.0", "", 0)
+	newest := writeFakeNode(t, places[0].setup(t, t.TempDir()), "v22.18.0", "", 0)
 	writeFakeNode(t, places[1].setup(t, t.TempDir()), "v20.9.0", "", 0)
 	_, err := discoverFake(t)
-	want := "evaluating plugins needs Node.js 22.19.0 or newer; found v22.18.0"
+	want := "evaluating plugins needs Node.js 22.19.0 or newer; found v22.18.0 at " + newest
 	if err == nil || err.Error() != want {
 		t.Fatalf("error = %v, want %q", err, want)
 	}
@@ -257,4 +257,95 @@ func TestDiscoverNodeTakesTheNewestInstalledVersionOfAVersionManager(t *testing.
 	if got, err := discoverFake(t); err != nil || got != want {
 		t.Fatalf("discoverNode = %q, %v; want %q", got, err, want)
 	}
+}
+
+// A Node that prints its version without the `v` is a version (the extension host's own check adds it too).
+func TestDiscoverNodeTakesAVersionPrintedWithoutTheVPrefix(t *testing.T) {
+	isolateNodeSearch(t)
+	want := writeFakeNode(t, t.TempDir(), "22.19.0", "", 0)
+	t.Setenv("PATH", filepath.Dir(want))
+	if got, err := discoverFake(t); err != nil || got != want {
+		t.Fatalf("discoverNode = %q, %v; want %q", got, err, want)
+	}
+	old := writeFakeNode(t, t.TempDir(), "22.18.0", "", 0)
+	t.Setenv("PATH", filepath.Dir(old))
+	_, err := discoverFake(t)
+	if wanted := "found v22.18.0 at " + old; err == nil || !strings.HasSuffix(err.Error(), wanted) {
+		t.Fatalf("error = %v, want it to end with %q", err, wanted)
+	}
+}
+
+// fnm's base directory without $FNM_DIR is its own default: the XDG data directory, then ~/.fnm, and on macOS the place fnm
+// used before 1.37 (Library/Application Support); on Windows %APPDATA%\fnm. Each is searched; the first that has a Node wins.
+func TestDiscoverNodeFindsFnmAtItsDefaultDirectoriesWithoutFNMDIR(t *testing.T) {
+	type place struct {
+		name string
+		// base is fnm's base directory below the home (or APPDATA on Windows).
+		base []string
+	}
+	var places []place
+	switch runtime.GOOS {
+	case "windows":
+		places = []place{{"appdata", []string{"fnm"}}}
+	case "darwin":
+		places = []place{{"xdg default", []string{".local", "share", "fnm"}}, {"dot fnm", []string{".fnm"}}, {"library", []string{"Library", "Application Support", "fnm"}}}
+	default:
+		places = []place{{"xdg default", []string{".local", "share", "fnm"}}, {"dot fnm", []string{".fnm"}}}
+	}
+	install := func(t *testing.T, base []string, version string) string {
+		home := os.Getenv("HOME")
+		if runtime.GOOS == "windows" {
+			home = os.Getenv("APPDATA")
+		}
+		dir := filepath.Join(append([]string{home}, base...)...)
+		dir = filepath.Join(dir, "node-versions", version, "installation")
+		if runtime.GOOS != "windows" {
+			dir = filepath.Join(dir, "bin")
+		}
+		return writeFakeNode(t, dir, version, "", 0)
+	}
+	setup := func(t *testing.T) {
+		isolateNodeSearch(t)
+		t.Setenv("PATH", t.TempDir())
+		if runtime.GOOS == "windows" {
+			t.Setenv("APPDATA", t.TempDir())
+		}
+	}
+	for _, each := range places {
+		t.Run(each.name, func(t *testing.T) {
+			setup(t)
+			want := install(t, each.base, "v22.19.0")
+			if got, err := discoverFake(t); err != nil || got != want {
+				t.Fatalf("discoverNode = %q, %v; want %q", got, err, want)
+			}
+		})
+	}
+	t.Run("the first default that has a Node wins", func(t *testing.T) {
+		setup(t)
+		var installed []string
+		for _, each := range places {
+			installed = append(installed, install(t, each.base, "v22.19.0"))
+		}
+		if got, err := discoverFake(t); err != nil || got != installed[0] {
+			t.Fatalf("discoverNode = %q, %v; want %q", got, err, installed[0])
+		}
+	})
+	t.Run("FNM_DIR replaces the defaults", func(t *testing.T) {
+		setup(t)
+		install(t, places[0].base, "v22.19.0")
+		other := t.TempDir()
+		t.Setenv("FNM_DIR", other)
+		if got, err := discoverFake(t); err == nil {
+			t.Fatalf("discoverNode = %q, want it to look only at FNM_DIR", got)
+		}
+		want := writeFakeNode(t, filepath.Join(other, "node-versions", "v22.19.0", "installation", func() string {
+			if runtime.GOOS == "windows" {
+				return ""
+			}
+			return "bin"
+		}()), "v22.19.0", "", 0)
+		if got, err := discoverFake(t); err != nil || got != want {
+			t.Fatalf("discoverNode = %q, %v; want %q", got, err, want)
+		}
+	})
 }

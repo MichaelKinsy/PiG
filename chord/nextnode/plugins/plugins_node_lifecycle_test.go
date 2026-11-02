@@ -169,14 +169,32 @@ func TestNodeAnUnhandledRejectionIsAnUncaughtExceptionAsNodesDefaultMakesIt(t *t
 }
 
 // `process.exit(7)` in a plugin ends the Node host with code 7 and the app goes on (Pi: it would end the app with code 7):
-// Exited closes, the NodeExit has the code and no signal, and the Go host's link to it closes. The exit comes 250 ms after the
-// facet's activation: with none, the process of a slow machine (Windows) ended before it sent the load's report, and the load
-// failed with the exit instead.
+// Exited closes, the NodeExit has the code and no signal, and the Go host's link to it closes. The plugin exits once a Go
+// function it awaits returns, which the test lets happen after Load returned: with no such order, the process of a slow
+// machine (Windows) ended before it sent the load's report, and the load failed with the exit instead.
 func TestNodeAPluginsProcessExitEndsOnlyTheHostWithItsCode(t *testing.T) {
 	script := handmade(t, "@test/p", "worker", `(function (require, module, exports) {
-		module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => { setTimeout(() => { process.exit(7); }, 250); }) };
+		const go = require("@acme/go");
+		module.exports = { default: require("@earendil-works/chord/next").defineFacet(() => { go.gate().then(() => { process.exit(7); }); }) };
 	})`)
-	node := loadLifecycle(t, NodeOptions{OnOutput: func(NodeStream, []byte) {}}, script)
+	gate := make(chan struct{})
+	node, _, err := NewPluginRuntime(NodeOptions{OnOutput: func(NodeStream, []byte) {}}).Load(RuntimeLoad{
+		Kind: "worker", Scripts: []PluginScript{script}, Principal: workerPrincipal, Peer: serverPrincipal,
+		GoPackages: []GoPackage{{Specifier: "@acme/go", Exports: map[string]GoExport{
+			"gate": GoFunc(func(ctx context.Context, _ delta.JsonValue) (delta.JsonValue, error) {
+				select {
+				case <-gate:
+				case <-ctx.Done():
+				}
+				return nil, nil
+			}),
+		}}},
+	}, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = node.Close(background) })
+	close(gate)
 	exit := exitOf(t, node)
 	if exit.Code != 7 || exit.Signal != "" || exit.Fatal != nil || exit.Reason != "" {
 		t.Fatalf("exit = %+v, want code 7, no signal, no fatal, no reason", exit)
@@ -413,22 +431,77 @@ func TestNodeRuntimeCloseClosesTheSpareAndRefusesLaterLoads(t *testing.T) {
 	}
 }
 
+// startingSpare waits until the runtime has registered a spare, and returns it: its start may be under way.
+func startingSpare(t *testing.T, runtime *PluginRuntime) *spare {
+	t.Helper()
+	var found *spare
+	eventually(t, 15*time.Second, "the runtime to register its spare", func() bool {
+		runtime.warm.mu.Lock()
+		defer runtime.warm.mu.Unlock()
+		found = runtime.warm.spare
+		return found != nil
+	})
+	return found
+}
+
+// processEnded waits until the process of a spare whose start settled ended; a start that failed has none.
+func processEnded(t *testing.T, s *spare) {
+	t.Helper()
+	select {
+	case <-s.done:
+	case <-time.After(30 * time.Second):
+		t.Fatal("the spare's start did not settle")
+	}
+	if s.err != nil {
+		return
+	}
+	select {
+	case <-s.node.Exited():
+	case <-time.After(30 * time.Second):
+		t.Fatal("the spare's process is still running after Close")
+	}
+}
+
 // Close while the background spare is still starting cancels and joins that start: no process is left, nothing is reported.
 func TestNodeRuntimeCloseWhileTheKeptSpareIsStartingLeavesNoProcess(t *testing.T) {
 	reported := make(chan NodeHostError, 1)
 	runtime := warmRuntime(t, NodeOptions{KeepWarm: true, OnError: func(err NodeHostError) { reported <- err }})
 	loadEmpty(t, runtime)
+	kept := startingSpare(t, runtime)
 	if err := runtime.Close(background); err != nil {
 		t.Fatal(err)
 	}
 	if spareOf(runtime) != nil {
 		t.Fatal("a spare is left after Close")
 	}
+	processEnded(t, kept)
 	select {
 	case err := <-reported:
 		t.Fatalf("Close reported %+v for the start it cancelled", err)
 	default:
 	}
+}
+
+// A Close whose ctx ends while a Warm the caller started is still starting returns the cause, and the process that start
+// finishes is stopped, not left running until the Go process exits (a Node host no Load took has no heartbeat to end it).
+func TestNodeRuntimeClosePastItsDeadlineStillStopsTheSpareThatIsStarting(t *testing.T) {
+	runtime := warmRuntime(t, NodeOptions{})
+	warmed := make(chan error, 1)
+	go func() { warmed <- runtime.Warm(background) }()
+	starting := startingSpare(t, runtime)
+	expired, cancel := context.WithCancelCause(background)
+	cancel(errors.New("the deadline passed"))
+	if err := runtime.Close(expired); err == nil {
+		select {
+		case <-starting.done:
+		default:
+			t.Fatal("Close returned nil while the spare was still starting")
+		}
+	}
+	if err := <-warmed; err != nil {
+		t.Fatalf("Warm = %v", err)
+	}
+	processEnded(t, starting)
 }
 
 // A spare whose process ended meanwhile is not handed out: the Load starts a process of its own.
@@ -506,5 +579,62 @@ func TestPluginsWarmStartsTheSpareLoadTakesAndCloseClosesAnUntakenOne(t *testing
 	case <-untaken.Exited():
 	default:
 		t.Fatal("Plugins.Close left the spare running")
+	}
+}
+
+// Close is Pi's close of the host: the calls drain and the natives close, each up to the host's closeTimeout, and then the app's
+// store closes. A process that is running that close (it answered `closing`) is not killed when the stop grace passes: here
+// a call that needs 2 s to finish drains while the grace is 200 ms, and Close returns with no exit.
+func TestNodeCloseDoesNotKillAHostThatIsStillClosingWithinItsCloseTimeout(t *testing.T) {
+	grace := 200 * time.Millisecond
+	started := make(chan struct{})
+	var once sync.Once
+	options := NodeOptions{StopGrace: &grace, OnOutput: func(_ NodeStream, chunk []byte) {
+		if strings.Contains(string(chunk), "slow call running") {
+			once.Do(func() { close(started) })
+		}
+	}}
+	_, node := probeNode(t, `slow: async () => { console.log("slow call running"); await new Promise((resolve) => setTimeout(resolve, 2000)); return "finished"; }`, options, nil)
+	p := probeOn(t, serverFor(t, workerRoute(node)))
+	result := make(chan error, 1)
+	go func() {
+		_, err := p.call("slow", nil)
+		result <- err
+	}()
+	select {
+	case <-started:
+	case <-time.After(30 * time.Second):
+		t.Fatal("the call never started")
+	}
+	if err := node.Close(background); err != nil {
+		t.Fatalf("Close = %v, want nil: the host was closing within its closeTimeout", err)
+	}
+	if exit, ok := errors.AsType[*NodeExit](node.Err()); ok {
+		t.Fatalf("the process ended with %+v, want a clean exit", exit)
+	}
+	<-result
+}
+
+// A process that never answers the close (its loop is stalled) is killed once the grace passed, as before.
+func TestNodeCloseKillsAHostThatDoesNotAnswerWithinTheGrace(t *testing.T) {
+	grace := 200 * time.Millisecond
+	started := make(chan struct{})
+	var once sync.Once
+	options := NodeOptions{StopGrace: &grace, OnOutput: func(_ NodeStream, chunk []byte) {
+		if strings.Contains(string(chunk), "spinning") {
+			once.Do(func() { close(started) })
+		}
+	}}
+	_, node := probeNode(t, `spin: async () => { console.log("spinning"); for (;;) {} }`, options, nil)
+	p := probeOn(t, serverFor(t, workerRoute(node)))
+	go func() { _, _ = p.call("spin", nil) }()
+	select {
+	case <-started:
+	case <-time.After(30 * time.Second):
+		t.Fatal("the call never started")
+	}
+	err := node.Close(background)
+	if exit, ok := errors.AsType[*NodeExit](err); !ok || exit.Signal != "SIGKILL" {
+		t.Fatalf("Close = %v, want the SIGKILL exit of a process that did not answer", err)
 	}
 }

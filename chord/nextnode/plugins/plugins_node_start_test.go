@@ -3,6 +3,7 @@ package plugins
 import (
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -91,9 +92,9 @@ func TestNodeAStartThatDoesNotConnectInTimeKillsTheProcess(t *testing.T) {
 func TestNodeOlderThanTheMinimumNamesTheRequirementAndTheVersionFound(t *testing.T) {
 	fakeNode(t, "v22.18.0", "", 0)
 	_, _, err := NewPluginRuntime(NodeOptions{CacheDir: t.TempDir()}).Load(RuntimeLoad{Kind: "worker", Principal: workerPrincipal, Peer: serverPrincipal}, background)
-	want := "evaluating plugins needs Node.js 22.19.0 or newer; found v22.18.0"
-	if err == nil || err.Error() != want {
-		t.Fatalf("error = %v, want %q", err, want)
+	want := "evaluating plugins needs Node.js 22.19.0 or newer; found v22.18.0 at "
+	if path, lookErr := exec.LookPath("node"); lookErr != nil || err == nil || err.Error() != want+path {
+		t.Fatalf("error = %v, want %q followed by the path of the node found", err, want)
 	}
 }
 

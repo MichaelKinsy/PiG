@@ -2,6 +2,7 @@ package plugins
 
 import "errors"
 
+// pig additive (D223): the Node host's store; Stock PiG gives none unless the embedding program sets it.
 // StoreOptions gives a Node host the store its persisted documents and tables live in: Pi's `createHost({ store })`, where
 // the app opens `openStore(sqliteBackend(await openNodeSqliteDatabase(path)))` over its own SQLite file and closes it after
 // the host. The subprocess opens that store itself, with Pi's own `next/store` over `node:sqlite` (Pi's

@@ -270,6 +270,9 @@ func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHos
 		return nil, host.LoadReport{}, err
 	}
 	h.kind = options.Kind
+	if options.CloseTimeout != nil {
+		h.closeTimeout = *options.CloseTimeout
+	}
 	request.callbacksWire = h.enableCallbacks(options, packages)
 	// Set before `load` is sent: the Node host's proxies may ask for their Go objects as soon as they activate.
 	h.bridge.bridged = slices.Clone(options.Bridged)

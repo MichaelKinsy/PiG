@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"golang.org/x/mod/semver"
 )
@@ -21,6 +22,19 @@ const nodeEnvVar = "PIG_NODE"
 // version: the newest ones, because a directory of versions is searched newest first and an older one cannot satisfy the
 // minimum when the newest does not.
 const versionsPerSource = 3
+
+// nodeProbeTimeout bounds one `node --version`: it answers in milliseconds, so a candidate that has not answered by then (a
+// shim that waits on a lock or the network, a hung mount) is a problem of that candidate, not of the search. nodeProbeKillDelay
+// is how long a killed probe may keep the output pipes open before Wait gives up on them: a shim leaves its child holding them.
+const (
+	nodeProbeTimeout   = 10 * time.Second
+	nodeProbeKillDelay = time.Second
+)
+
+// nodeProbe is the limits of one `--version` probe.
+type nodeProbe struct{ timeout, killDelay time.Duration }
+
+var defaultNodeProbe = nodeProbe{nodeProbeTimeout, nodeProbeKillDelay}
 
 // systemNodeDirs are the directories of a unix whose `node` is a package manager's or an installer's, after PATH. A test
 // replaces them; a background start may be reading them then, so they are read atomically.
@@ -37,16 +51,25 @@ var systemNodeDirs = func() *atomic.Pointer[[]string] {
 //  2. `node` on PATH.
 //  3. The installs of version managers and installers that PATH may not reach (a GUI or a service starts without the
 //     shell's PATH): nvm ($NVM_BIN, then the newest of $NVM_DIR/versions/node or ~/.nvm/versions/node), fnm (the newest of
-//     its node-versions directory), Volta (~/.volta/bin), asdf (~/.asdf/shims), mise (~/.local/share/mise/shims), then
-//     /usr/local/bin, /opt/homebrew/bin and /usr/bin; on Windows %NVM_SYMLINK%, the versions of %NVM_HOME% or
-//     %APPDATA%\nvm, fnm's, Volta's (%LOCALAPPDATA%\Volta\bin), %ProgramFiles%\nodejs and %LOCALAPPDATA%\Programs\nodejs.
+//     the node-versions directory of $FNM_DIR, $XDG_DATA_HOME/fnm, ~/.local/share/fnm, ~/.fnm and, on macOS, fnm's older
+//     ~/Library/Application Support/fnm), Volta (the newest of its tools/image/node versions), asdf (~/.asdf/shims), mise
+//     (the newest of its installs/node versions), then /usr/local/bin, /opt/homebrew/bin and /usr/bin; on Windows
+//     %NVM_SYMLINK%, the versions of %NVM_HOME% or %APPDATA%\nvm, fnm's ($FNM_DIR or %APPDATA%\fnm), Volta's
+//     (%LOCALAPPDATA%\Volta tools\image\node), %ProgramFiles%\nodejs and %LOCALAPPDATA%\Programs\nodejs. Volta's and mise's
+//     shims are not run: a shim can download the Node a project pins, so their install directories are the candidates.
 //
-// Each candidate runs `--version` through command; the first that prints minimumNode or newer wins. A candidate that is too
-// old does not end the search; when none satisfies, the error names the newest version found.
+// Each candidate runs `--version` through command, for at most nodeProbeTimeout; the first that prints minimumNode or newer
+// wins. A candidate that is too old, or does not answer, does not end the search; when none satisfies, the error names the
+// newest version found and where.
 //
 // Stock PiG selects no Node runtime for plugins other than these: the TypeScript extension runtime slot holds Bun and
 // executable runtimes that host extensions, not Node, so it is no source here.
 func discoverNode(ctx context.Context, command func(context.Context, string, ...string) *exec.Cmd) (string, error) {
+	return discoverNodeProbing(ctx, command, defaultNodeProbe)
+}
+
+// discoverNodeProbing is discoverNode with the limits of each probe.
+func discoverNodeProbing(ctx context.Context, command func(context.Context, string, ...string) *exec.Cmd, probe nodeProbe) (string, error) {
 	// pig additive (D221): Node discovery beyond PATH (PIG_NODE and the install locations of version managers); Stock PiG
 	// finds an existing Node and selects, ships and installs none.
 	if command == nil {
@@ -58,7 +81,7 @@ func discoverNode(ctx context.Context, command func(context.Context, string, ...
 		if err != nil {
 			return "", fmt.Errorf("%s; %s=%q is not an executable: %w", requirement, nodeEnvVar, explicit, err)
 		}
-		_, problem, err := checkNodeVersion(ctx, command, path)
+		_, problem, err := checkNodeVersion(ctx, command, path, probe)
 		if err != nil {
 			return "", err
 		}
@@ -68,7 +91,7 @@ func discoverNode(ctx context.Context, command func(context.Context, string, ...
 		return path, nil
 	}
 
-	var newest, firstProblem string
+	var newest, newestAt, firstProblem string
 	seen := map[string]bool{}
 	try := func(path string) (bool, error) {
 		path = filepath.Clean(path)
@@ -76,7 +99,7 @@ func discoverNode(ctx context.Context, command func(context.Context, string, ...
 			return false, nil
 		}
 		seen[path] = true
-		version, problem, err := checkNodeVersion(ctx, command, path)
+		version, problem, err := checkNodeVersion(ctx, command, path, probe)
 		if err != nil {
 			return false, err
 		}
@@ -85,7 +108,7 @@ func discoverNode(ctx context.Context, command func(context.Context, string, ...
 			return true, nil
 		case version != "":
 			if newest == "" || semver.Compare(version, newest) > 0 {
-				newest = version
+				newest, newestAt = version, path
 			}
 		case firstProblem == "":
 			firstProblem = problem
@@ -111,21 +134,29 @@ func discoverNode(ctx context.Context, command func(context.Context, string, ...
 	}
 	switch {
 	case newest != "":
-		return "", fmt.Errorf("%s; found %s", requirement, newest)
+		return "", fmt.Errorf("%s; found %s at %s", requirement, newest, newestAt)
 	case firstProblem != "":
 		return "", fmt.Errorf("%s; %s", requirement, firstProblem)
 	}
 	return "", fmt.Errorf("%s; node was not found on PATH or in %s; set %s to the path of a Node executable to use another", requirement, strings.Join(places, ", "), nodeEnvVar)
 }
 
-// checkNodeVersion runs `path --version`. problem is empty when the version satisfies minimumNode; otherwise it says why not, and
-// version is the parsed version of a Node that is too old. err is the context's cause when it ended the probe.
-func checkNodeVersion(ctx context.Context, command func(context.Context, string, ...string) *exec.Cmd, path string) (version, problem string, err error) {
-	output, runErr := command(ctx, path, "--version").CombinedOutput()
+// checkNodeVersion runs `path --version`, for at most limits.timeout. problem is empty when the version satisfies minimumNode;
+// otherwise it says why not, and version is the parsed version of a Node that is too old. err is the cause of ctx when ctx
+// ended the probe.
+func checkNodeVersion(ctx context.Context, command func(context.Context, string, ...string) *exec.Cmd, path string, limits nodeProbe) (version, problem string, err error) {
+	probe, cancel := context.WithTimeout(ctx, limits.timeout)
+	defer cancel()
+	cmd := command(probe, path, "--version")
+	cmd.WaitDelay = limits.killDelay
+	output, runErr := cmd.CombinedOutput()
+	if ctx.Err() != nil {
+		return "", "", context.Cause(ctx)
+	}
+	if probe.Err() != nil {
+		return "", fmt.Sprintf("node --version did not answer within %s", limits.timeout), nil
+	}
 	if runErr != nil {
-		if ctx.Err() != nil {
-			return "", "", context.Cause(ctx)
-		}
 		detail := strings.TrimSpace(string(output))
 		if detail == "" {
 			detail = runErr.Error()
@@ -133,13 +164,17 @@ func checkNodeVersion(ctx context.Context, command func(context.Context, string,
 		return "", "node --version failed: " + detail, nil
 	}
 	found := strings.TrimSpace(string(output))
-	if !semver.IsValid(found) {
+	normalized := found
+	if !strings.HasPrefix(normalized, "v") {
+		normalized = "v" + normalized
+	}
+	if !semver.IsValid(normalized) {
 		return "", fmt.Sprintf("node --version returned %q", found), nil
 	}
-	if semver.Compare(found, minimumNode) < 0 {
-		return found, "found " + found, nil
+	if semver.Compare(normalized, minimumNode) < 0 {
+		return normalized, "found " + normalized, nil
 	}
-	return found, "", nil
+	return normalized, "", nil
 }
 
 // nodeSource is a place Node may be installed: dir is what an error names, paths are the executables in it that exist, in
@@ -192,8 +227,8 @@ func nodeSources() []nodeSource {
 			one(dir)
 		}
 		versions(first(os.Getenv("NVM_HOME"), joinIf(os.Getenv("APPDATA"), "nvm")))
-		versions(first(joinIf(os.Getenv("FNM_DIR"), "node-versions"), joinIf(os.Getenv("LOCALAPPDATA"), "fnm", "node-versions")), "installation")
-		one(first(joinIf(os.Getenv("VOLTA_HOME"), "bin"), joinIf(os.Getenv("LOCALAPPDATA"), "Volta", "bin")))
+		versions(first(joinIf(os.Getenv("FNM_DIR"), "node-versions"), joinIf(os.Getenv("APPDATA"), "fnm", "node-versions")), "installation")
+		versions(first(joinIf(os.Getenv("VOLTA_HOME"), "tools", "image", "node"), joinIf(os.Getenv("LOCALAPPDATA"), "Volta", "tools", "image", "node")))
 		one(joinIf(os.Getenv("ProgramFiles"), "nodejs"))
 		one(joinIf(os.Getenv("LOCALAPPDATA"), "Programs", "nodejs"))
 		return sources
@@ -201,14 +236,22 @@ func nodeSources() []nodeSource {
 
 	one(os.Getenv("NVM_BIN"))
 	versions(first(joinIf(os.Getenv("NVM_DIR"), "versions", "node"), under(".nvm", "versions", "node")), "bin")
-	fnmDefault := under(".local", "share", "fnm", "node-versions")
-	if runtime.GOOS == "darwin" {
-		fnmDefault = under("Library", "Application Support", "fnm", "node-versions")
+	// fnm's base directory: $FNM_DIR, else (fnm's own order) the XDG data directory, then ~/.fnm, then on macOS the place fnm
+	// used before 1.37. All of them are searched, as the one an older install left may be the only one with a Node.
+	if fnmDir := os.Getenv("FNM_DIR"); fnmDir != "" {
+		versions(filepath.Join(fnmDir, "node-versions"), "installation", "bin")
+	} else {
+		bases := []string{joinIf(os.Getenv("XDG_DATA_HOME"), "fnm"), under(".local", "share", "fnm"), under(".fnm")}
+		if runtime.GOOS == "darwin" {
+			bases = append(bases, under("Library", "Application Support", "fnm"))
+		}
+		for _, base := range bases {
+			versions(joinIf(base, "node-versions"), "installation", "bin")
+		}
 	}
-	versions(first(joinIf(os.Getenv("FNM_DIR"), "node-versions"), joinIf(os.Getenv("XDG_DATA_HOME"), "fnm", "node-versions"), fnmDefault), "installation", "bin")
-	one(first(joinIf(os.Getenv("VOLTA_HOME"), "bin"), under(".volta", "bin")))
+	versions(first(joinIf(os.Getenv("VOLTA_HOME"), "tools", "image", "node"), under(".volta", "tools", "image", "node")), "bin")
 	one(first(joinIf(os.Getenv("ASDF_DATA_DIR"), "shims"), under(".asdf", "shims")))
-	one(first(joinIf(os.Getenv("MISE_DATA_DIR"), "shims"), joinIf(os.Getenv("XDG_DATA_HOME"), "mise", "shims"), under(".local", "share", "mise", "shims")))
+	versions(first(joinIf(os.Getenv("MISE_DATA_DIR"), "installs", "node"), joinIf(os.Getenv("XDG_DATA_HOME"), "mise", "installs", "node"), under(".local", "share", "mise", "installs", "node")), "bin")
 	for _, dir := range *systemNodeDirs.Load() {
 		one(dir)
 	}

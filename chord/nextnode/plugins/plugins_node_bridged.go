@@ -27,7 +27,7 @@ import (
 // plugin that needs a type of a Go core facet old when that facet's new code failed (it is shipped as a failed build), and
 // `adopt` keeps the proxy's loaded facet.
 //
-// Async contract of the Node host's requests to the Go host (`get`, `value`, `watch`, `bridgeCall`): each runs in its own
+// Async contract of the Node host's requests to the Go host (`get`, `watch`, `bridgeCall`): each runs in its own
 // goroutine, concurrently with the others, with a context that ends when the request's `abort` arrives or the process ends
 // and answers with one `bridgeAnswer` (a ChordError crosses as data). The names are the bridge's own: a Go function call
 // of the callbacks (`call`, answered by `answer`, plugins_node_callbacks.go) has its own ids, and the two share the channel. A `watch` lives until its `unwatch`, the end of its source
@@ -205,24 +205,43 @@ func (h *NodeHost) serving() *bridgedServing {
 	defer h.bridge.mu.Unlock()
 	if h.bridge.served == nil {
 		life, cancel := context.WithCancel(context.Background())
-		h.bridge.served = &bridgedServing{
+		served := &bridgedServing{
 			life: life, references: map[int]*host.Reference{}, watches: map[int]chord.WatchHandle[delta.JsonValue]{}, running: map[int]context.CancelFunc{},
 		}
+		h.bridge.served = served
 		//portlint:allow golifetime ends with the process: the context of every request the Node host made ends with it
 		go func() {
 			<-h.exited
 			cancel()
+			served.releaseAll()
 		}()
 	}
 	return h.bridge.served
 }
 
-// bridgedEvent handles an event of the Node host that is a request to the Go host (`get`, `value`, `watch`, `bridgeCall`: each
+// releaseAll ends the holds the proxies had when the process ended, as Pi ends a host's holds when the host closes: each
+// Go reference is released and each watch stopped, so a Go host that outlives the Node host keeps nothing for it. The
+// context of `life` is already done, so a request still running releases what it acquires after this ran.
+func (served *bridgedServing) releaseAll() {
+	served.mu.Lock()
+	references, watches := served.references, served.watches
+	served.references = map[int]*host.Reference{}
+	served.watches = map[int]chord.WatchHandle[delta.JsonValue]{}
+	served.mu.Unlock()
+	for _, watch := range watches {
+		_, _ = watch.Stop()
+	}
+	for _, reference := range references {
+		reference.Release()
+	}
+}
+
+// bridgedEvent handles an event of the Node host that is a request to the Go host (`get`, `watch`, `bridgeCall`: each
 // answered), or a notification of it (`unwatch`, `release`, `abort`). It runs on the goroutine that reads the channel: the
 // work of a request runs on a goroutine of its own, so a request never delays another or the reading.
 func (h *NodeHost) bridgedEvent(event string, payload []byte) {
 	switch event {
-	case "get", "value", "watch", "bridgeCall":
+	case "get", "watch", "bridgeCall":
 		var request struct {
 			ID     int             `json:"id"`
 			Facet  string          `json:"facet"`
@@ -256,8 +275,6 @@ func (h *NodeHost) bridgedEvent(event string, payload []byte) {
 			switch event {
 			case "get":
 				result, err = h.bridgedGet(ctx, request.Facet, request.Type, request.Params)
-			case "value":
-				result, err = h.bridgedValue(request.Handle, request.Member)
 			case "watch":
 				result, start, err = h.bridgedWatch(ctx, request.Handle, request.Member, request.Watch)
 			case "bridgeCall":
@@ -406,19 +423,6 @@ func (h *NodeHost) bridgedMember(handle int, name string) (*host.ReferenceMember
 		return nil, fmt.Errorf("%s: not a state member of the reference", name)
 	}
 	return member, nil
-}
-
-// bridgedValue is the current value of a state member of a held Go reference.
-func (h *NodeHost) bridgedValue(handle int, name string) (any, error) {
-	member, err := h.bridgedMember(handle, name)
-	if err != nil {
-		return nil, err
-	}
-	value, err := member.Value()
-	if err != nil {
-		return nil, err
-	}
-	return map[string]any{"value": wireEncode(value)}, nil
 }
 
 // bridgedWatch watches a state member of a held Go reference: the answer is its value, then its frames and its end are sent

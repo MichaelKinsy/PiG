@@ -201,6 +201,7 @@ func exEdit(t *testing.T, dir, file, from, to string) {
 	if !strings.Contains(string(text), from) {
 		t.Fatalf("%s has no %q", file, from)
 	}
+	exTouch(t, filepath.Dir(path))
 	if err := os.WriteFile(path, []byte(strings.Replace(string(text), from, to, 1)), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -209,6 +210,7 @@ func exEdit(t *testing.T, dir, file, from, to string) {
 // exWrite writes a whole file (`writeFile`).
 func exWrite(t *testing.T, path, text string) {
 	t.Helper()
+	exTouch(t, filepath.Dir(path))
 	if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -247,31 +249,73 @@ func exMarks(t *testing.T, plugins *Plugins, want PluginsState) {
 		want.Install = []string{}
 	}
 	if runtime.GOOS == "windows" {
-		got = withoutDirectoryStamps(got, want)
+		got = withoutDirectoryStamps(t, got, want)
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("marks = %+v, want %+v", got, want)
 	}
 }
 
+// exTouched is the directories each test changed an entry of, by name: only they can report their own last-write time.
+var exTouched = struct {
+	sync.Mutex
+	dirs map[*testing.T][]string
+}{dirs: map[*testing.T][]string{}}
+
+// exTouch records that the test changes an entry of dir.
+func exTouch(t *testing.T, dir string) {
+	t.Helper()
+	exTouched.Lock()
+	defer exTouched.Unlock()
+	if _, ok := exTouched.dirs[t]; !ok {
+		t.Cleanup(func() {
+			exTouched.Lock()
+			defer exTouched.Unlock()
+			delete(exTouched.dirs, t)
+		})
+	}
+	exTouched.dirs[t] = append(exTouched.dirs[t], filepath.Base(dir))
+}
+
+func exTouchedBy(t *testing.T) []string {
+	exTouched.Lock()
+	defer exTouched.Unlock()
+	return slices.Clone(exTouched.dirs[t])
+}
+
+// exStamp is whether the mark of a plugin is what Windows adds when its directory's entries changed: a directory the test
+// changed an entry of (the plugin's directory is named as the last segment of its name).
+func exStamp(touched []string, plugin string) bool {
+	_, dir, _ := strings.Cut(plugin, "/")
+	if dir == "" {
+		dir = plugin
+	}
+	return slices.Contains(touched, dir)
+}
+
 // withoutDirectoryStamps is got without what Windows adds to the marks of a plugin directory whose entries changed: the OS
 // reports the directory's own last-write time as a change of it (Node's `fs.watch` reports it as `change`, which Pi's watcher
 // marks too), at a moment no test can bound: the set is marked and the plugin dirty, though only the entry's own change was
-// made. Only marks want does not have are dropped; one it has and got lacks still fails.
-func withoutDirectoryStamps(got, want PluginsState) PluginsState {
-	if !want.Set {
+// made. Only the marks of a directory the test changed an entry of, and that want does not have, are dropped (the set's only
+// when the test changed some entry); an unrelated plugin that is dirty, or a mark want has and got lacks, still fails.
+func withoutDirectoryStamps(t *testing.T, got, want PluginsState) PluginsState {
+	touched := exTouchedBy(t)
+	if !want.Set && len(touched) > 0 {
 		got.Set = false
 	}
-	got.Dirty = slices.DeleteFunc(slices.Clone(got.Dirty), func(name string) bool { return !slices.Contains(want.Dirty, name) })
+	got.Dirty = slices.DeleteFunc(slices.Clone(got.Dirty), func(name string) bool {
+		return !slices.Contains(want.Dirty, name) && exStamp(touched, name)
+	})
 	return got
 }
 
 // exDirtyOf is the plugins the marks say to build, as the case expects them (want): on Windows the plugins whose directory
 // saw an entry come or go are dirty too (see withoutDirectoryStamps), and are not built here.
-func exDirtyOf(plugins *Plugins, want ...string) []string {
+func exDirtyOf(t *testing.T, plugins *Plugins, want ...string) []string {
 	dirty := plugins.Marks().Dirty
 	if runtime.GOOS == "windows" {
-		dirty = slices.DeleteFunc(slices.Clone(dirty), func(name string) bool { return !slices.Contains(want, name) })
+		touched := exTouchedBy(t)
+		dirty = slices.DeleteFunc(slices.Clone(dirty), func(name string) bool { return !slices.Contains(want, name) && exStamp(touched, name) })
 	}
 	return dirty
 }
@@ -449,7 +493,7 @@ func TestExample35PluginsLoadEditMarkBuildRollOut(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	built := exBuild(t, plugins, exDirtyOf(plugins, "@example/notes"))
+	built := exBuild(t, plugins, exDirtyOf(t, plugins, "@example/notes"))
 	var builtLines []string
 	for _, facet := range built.Facets {
 		builtLines = append(builtLines, facet.Plugin+"/"+facet.Facet+": "+string(facet.Kind))
@@ -868,6 +912,8 @@ func TestExample38WatchAndRollout(t *testing.T) {
 		t.Fatal(err)
 	}
 	exMarks(t, plugins, PluginsState{Dirty: all})
+	exTouch(t, root)
+	exTouch(t, filepath.Join(root, "tags"))
 	if err := os.CopyFS(filepath.Join(root, "extra"), os.DirFS(incoming)); err != nil {
 		t.Fatal(err)
 	}

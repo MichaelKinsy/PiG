@@ -43,6 +43,7 @@ func newWarmState() *warmState {
 // path; a Load that finds the spare still starting waits for it, which is no longer than starting its own. There is at most
 // one spare: Warm with one (or one starting) waits for it and returns nil. A failed start returns its error and leaves no
 // spare. The spare is the runtime's until a Load takes it: Close closes it. A Warm after Close returns an error.
+// pig additive (D223): a spare process started ahead of a Load.
 func (r *PluginRuntime) Warm(ctx context.Context) error {
 	r.warm.mu.Lock()
 	if r.warm.closed {
@@ -150,8 +151,8 @@ func (r *PluginRuntime) keepWarm() {
 }
 
 // Close closes the runtime's spare process, and ends and joins the starts it made on its own. The hosts that Loads returned
-// are their callers': Close does not close them. It waits for the spare's process to end (killing it when ctx ends) and
-// returns the error of closing it. After Close, Load and Warm return an error. It is safe to call more than once.
+// are their callers': Close does not close them. It waits for the spare's process to end and returns the error of closing it; when ctx ends first it returns the cause, and
+// the process, a start still under way included, is killed as soon as it is up. After Close, Load and Warm return an error. It is safe to call more than once.
 func (r *PluginRuntime) Close(ctx context.Context) error {
 	r.warm.mu.Lock()
 	r.warm.closed = true
@@ -166,6 +167,14 @@ func (r *PluginRuntime) Close(ctx context.Context) error {
 	select {
 	case <-s.done:
 	case <-ctx.Done():
+		// A Warm the caller started is still starting this process, and no one else owns it: it is stopped as soon as it is up.
+		//portlint:allow golifetime ends when the start settles, which NodeOptions.ReadyTimeout and the Warm's own ctx bound
+		go func() {
+			<-s.done
+			if s.err == nil {
+				s.node.stop()
+			}
+		}()
 		return context.Cause(ctx)
 	}
 	if s.err != nil {
