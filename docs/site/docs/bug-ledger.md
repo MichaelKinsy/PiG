@@ -702,6 +702,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-773a868](#bf-773a868) | RPC mode no longer hangs when a Node extension command calls `pi.sendMessage(..., { triggerTurn: true })`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-773a868-2](#bf-773a868-2) | RPC mode no longer hangs when a Node extension command calls `pi.appendEntry` and then `pi.setSessionName`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7744a0b](#bf-7744a0b) | `--model <provider>/<id>` now resolves when the provider id itself contains a `/`, such as a URL-derived id… | PiG's own defect | All platforms | Unreleased |
+| [BF-776588b](#bf-776588b) | A stream header or metadata value changed in place on the settings object a Durable `Harness` returns from… | PiG's own defect | All platforms | Unreleased |
 | [BF-7768bea](#bf-7768bea) | fix(ai): tool-call arguments are written as JSON.stringify writes them, and keep a lone surrogate | PiG's own defect | All platforms | Unreleased |
 | [BF-776b600](#bf-776b600) | fix(durable/core): the scheduler's reconcile and drain microtasks run behind the host listeners' dispatch of… | PiG's own defect | All platforms | Unreleased |
 | [BF-776d60b](#bf-776d60b) | An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a… | PiG's own defect | All platforms | Unreleased |
@@ -10974,6 +10975,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/model_reference_upstream_test.go::TestResolveModelReferenceMatchesUpstream`, `internal/codingagent/model_resolver_oracle_test.go::TestModelResolverMatchesPi`
 - **Release note:** `--model <provider>/<id>` now resolves when the provider id itself contains a `/`, such as a URL-derived id like `llama-server=http://host:10800`. Before, the reference was split at its first `/`, so the prefix never named a provider and resolution ended in "not found". The longest matching provider id wins.
 
+### BF-776588b
+
+**A stream header or metadata value changed in place on the settings object a Durable `Harness` returns from…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The core kept the settings it had encoded last when the new value compared equal to a stored copy that shared the same map.
+- **Root cause:** settingsText cached the encoded settings and compared a stored copy with the resolved settings before every event. The resolved Stream shares its header and metadata maps with the settings object the host returns, so the stored copy aliased them: a header added to the map in place compared equal and the core kept the old text. Pi has no cache and resolves the settings at every read (packages/durable/src/harness/harness.ts:236). The cache is gone; the host still compares the text before it resends it (sqlhost syncSettings), so the core receives settings only when they changed.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `776588b309` (2026-11-02)
+- **Tests:** `durable/core/driver/settings_text_test.go::TestSettingsTextFollowsTheSettingsTheHostReturns`
+- **Release note:** A stream header or metadata value changed in place on the settings object a Durable `Harness` returns from its settings callback now reaches the core with the next event, as it does in Pi, which re-reads the settings at every use. The core kept the settings it had encoded last when the new value compared equal to a stored copy that shared the same map.
+
 ### BF-7768bea
 
 **fix(ai): tool-call arguments are written as JSON.stringify writes them, and keep a lone surrogate**
@@ -14329,7 +14344,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `9883d4b247` (2026-11-02)
-- **Tests:** `durable/core/ctxread_test.go::TestContextBoundsOfAConversationNotKnownReadStorageOnce`, `durable/core/ctxread_test.go::TestContextBoundsOfACutoffInTheKeptRangeReadNoEntry`, `durable/core/ctxread_test.go::TestContextBoundsOfAnInvisibleCutoffFail`, `durable/core/ctxread_test.go::TestContextBoundsOfWhatTheSessionWroteReadNothing`, `durable/core/ctxread_test.go::TestRangeCurrentOnlyOfAReadAtTheNewestEntryOrTheUnchangedRange`, `durable/core/driver/doc_replica_test.go::TestDocReplicaCatchesUpWithTheOperationsTheCoreSent`, `durable/core/driver/doc_replica_test.go::TestDocReplicasKeepOnlyAnswersTheCoreNamedAndAFewDocuments`, `durable/core/driver/fanout_scaling_norace_test.go::TestScalingCoreNestedCallFanout` and 61 more in docs/bug-ledger.json
+- **Tests:** `durable/core/ctxread_test.go::TestContextBoundsOfAConversationNotKnownReadStorageOnce`, `durable/core/ctxread_test.go::TestContextBoundsOfACutoffInTheKeptRangeReadNoEntry`, `durable/core/ctxread_test.go::TestContextBoundsOfAnInvisibleCutoffFail`, `durable/core/ctxread_test.go::TestContextBoundsOfWhatTheSessionWroteReadNothing`, `durable/core/ctxread_test.go::TestRangeCurrentOnlyOfAReadAtTheNewestEntryOrTheUnchangedRange`, `durable/core/driver/doc_replica_test.go::TestDocReplicaCatchesUpWithTheOperationsTheCoreSent`, `durable/core/driver/doc_replica_test.go::TestDocReplicasKeepOnlyAnswersTheCoreNamedAndAFewDocuments`, `durable/core/driver/fanout_scaling_norace_test.go::TestScalingCoreNestedCallFanout` and 60 more in docs/bug-ledger.json
 - **Release note:** Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends the operations since the revision the host holds, and arrays that are only appended to are tracked as a tail. 1000 nested calls take 2.05 s instead of 4.94 s and 4000 calls 8.5 s instead of 49.3 s, with allocations per call flat.
 
 ### BF-98a21df
