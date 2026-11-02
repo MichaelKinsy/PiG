@@ -12,6 +12,12 @@
 # be sent as a second turn, which the faux provider answers with
 # "test-faux: unhandled request".
 
+# Upstream evidence (Pi 1.4.0+b556cfe5 oracle, parity harness, 2026-11-02, 100x35 tmux, test-faux):
+#   TUI_LIVE_STREAM_PAUSE, wait LIVE-STREAM-03, "queued steer text" Enter (shows
+#   "Steering: queued steer text"), send ESC p, wait for the turn to settle.
+#   Pi shows "Restored 1 queued message to editor", puts the text in the editor
+#   and does not send it; PiG's pane was identical in 3 of 3 pairs.
+
 name = "58-alt-up-dequeues-queued-message"
 description = "Alt+Up restores a queued steering message to the editor and the turn ends without sending it"
 covers = [
@@ -65,7 +71,7 @@ both_reach_ready = true
 both_contain = ["LIVE-STREAM-24", "queued steer text"]
 both_not_contain = ["Steering: queued steer text", "test-faux: unhandled request", "panic:", "goroutine "]
 output_normalized_equal = true
-runs = 1
+runs = 3
 
 # normalize-rationale: Only the Working spinner phase varies at capture time; the border, editor text, status row and transcript stay compared.
 [[assert.normalize_replace]]
