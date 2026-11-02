@@ -4200,8 +4200,8 @@
   },
   {
    "file": "internal/codingagent/file_lock.go",
-   "old": "*err = releaseErr",
-   "new": "_ = releaseErr"
+   "old": "return lease.Release, nil",
+   "new": "return func() error { _ = lease; return nil }, nil"
   }
  ],
  "packages/coding-agent/src/core/session-manager.ts": [
