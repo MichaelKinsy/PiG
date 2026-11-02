@@ -35,6 +35,10 @@
     "go": "ai/types.go#StreamOptions",
     "reason": "Pi ai/src/types.ts:241 is StreamOptions & Record<string, unknown>: the open record is the per-provider extension slot. LEAD-ANSWERS-ledger #2 maps per-provider options to typed Go fields by json tag, so the Go struct carries the StreamOptions members and each provider option; A7 never reads an open record operand, so this is reviewed rather than ruled. lg-decide reviewed exception (lead order: close the last rows by rules or reviewed exceptions)."
   },
+  "pkg:ai/.#ResolvedGoogleThinkingLevel": {
+    "go": "ai/google.go#ResolvedGoogleThinkingLevel",
+    "reason": "Pi google-shared.ts:37 declares ResolvedGoogleThinkingLevel = Exclude<ThinkingLevel, \"xhigh\" | \"max\">, and ThinkingLevel is the closed union \"minimal\" | \"low\" | \"medium\" | \"high\" | \"xhigh\" | \"max\" (model-schema.ts:16, :22, :104), so the type is exactly \"minimal\" | \"low\" | \"medium\" | \"high\" (the four values resolveGoogleThinkingLevel returns, google-shared.ts:54-59). PiG's ai.ResolvedGoogleThinkingLevel is a string type with exactly those four constants (ai/google.go); TestResolveGoogleThinkingLevelUpstream asserts each resolved value and the unsupported-mapping error, and TestToGoogleThinkingLevelUpstream maps each of the four constants through ToGoogleThinkingLevel."
+  },
   "pkg:ai/.#StreamingJsonParser::property:snapshot::call:0": {
     "go": "ai/streaming_json_parser.go#StreamingJSONParser.Snapshot",
     "reason": "Pi snapshot(): JsonValue | undefined returns the value of the text read so far, or undefined before a value starts. Go cannot express an optional of any JSON value without a sentinel, so Snapshot() returns StreamingJSONSnapshot{Value, Defined, Order, Version}: Defined is false where Pi returns undefined, Value is the plain JSON value (nil, bool, float64, string, []any or map[string]any), Order carries the member order of objects whose keys are not sorted (a JavaScript object keeps insertion order itself) and Version changes when a fresh copy was made, so a caller can tell a changed snapshot where Pi compares identity. TestStreamingJSONParserMatchesPi compares the snapshot after every piece with Pi's."
@@ -78,6 +82,10 @@
   "pkg:ai/api/constrained-sampling#getJsonSchemaToolParameters::call:0": {
     "go": "ai/provider_kit.go#GetJSONSchemaToolParameters",
     "reason": "Pi constrained-sampling.ts:142-144 getJsonSchemaToolParameters returns the TSchema JSON object (tool.parameters, or the strict copy), whose member order JSON.stringify keeps in every request body. The Go form of TSchema is map[string]any (representations.json ai:TSchema), which has no order, so Go returns jsonSchemaToolParameters: that map as Schema plus the member order of its objects, and its MarshalJSON writes the schema in Pi's order. The exported GetJSONSchemaToolParameters (provider_kit.go) is the one function the ai/providers/bedrock package calls into ai/constrained_sampling.go getJSONSchemaToolParameters, and every provider sends the result that way (openai.go, openai_responses.go, mistral.go, anthropic.go, google.go, ai/providers/bedrock/bedrock.go convertTools). Locked by the Pi-oracle body tests TestOpenAICompletionsRequestKeysFollowPiAssignmentOrder, TestAnthropicToolsFollowPiMemberOrder, TestGoogleToolDeclarationsFollowPiMemberOrder, TestGoogleRequestBodyMatchesPi and TestBedrockRequestBodyMatchesPi, and by constrained_sampling_oracle_test.go."
+  },
+  "pkg:ai/api/google-shared#ResolvedGoogleThinkingLevel": {
+    "go": "ai/google.go#ResolvedGoogleThinkingLevel",
+    "reason": "Pi google-shared.ts:37 declares ResolvedGoogleThinkingLevel = Exclude<ThinkingLevel, \"xhigh\" | \"max\">, and ThinkingLevel is the closed union \"minimal\" | \"low\" | \"medium\" | \"high\" | \"xhigh\" | \"max\" (model-schema.ts:16, :22, :104), so the type is exactly \"minimal\" | \"low\" | \"medium\" | \"high\" (the four values resolveGoogleThinkingLevel returns, google-shared.ts:54-59). PiG's ai.ResolvedGoogleThinkingLevel is a string type with exactly those four constants (ai/google.go); TestResolveGoogleThinkingLevelUpstream asserts each resolved value and the unsupported-mapping error, and TestToGoogleThinkingLevelUpstream maps each of the four constants through ToGoogleThinkingLevel."
   },
   "pkg:ai/api/openai-responses#OpenAIResponsesOptions::property:toolChoice": {
     "go": "ai/types.go#StreamOptions.ToolChoice",
@@ -134,6 +142,10 @@
   "pkg:ai/compat#ProviderStreamOptions": {
     "go": "ai/types.go#StreamOptions",
     "reason": "Pi ai/src/types.ts:241 is StreamOptions & Record<string, unknown>: the open record is the per-provider extension slot. LEAD-ANSWERS-ledger #2 maps per-provider options to typed Go fields by json tag, so the Go struct carries the StreamOptions members and each provider option; A7 never reads an open record operand, so this is reviewed rather than ruled. lg-decide reviewed exception (lead order: close the last rows by rules or reviewed exceptions)."
+  },
+  "pkg:ai/compat#ResolvedGoogleThinkingLevel": {
+    "go": "ai/google.go#ResolvedGoogleThinkingLevel",
+    "reason": "Pi google-shared.ts:37 declares ResolvedGoogleThinkingLevel = Exclude<ThinkingLevel, \"xhigh\" | \"max\">, and ThinkingLevel is the closed union \"minimal\" | \"low\" | \"medium\" | \"high\" | \"xhigh\" | \"max\" (model-schema.ts:16, :22, :104), so the type is exactly \"minimal\" | \"low\" | \"medium\" | \"high\" (the four values resolveGoogleThinkingLevel returns, google-shared.ts:54-59). PiG's ai.ResolvedGoogleThinkingLevel is a string type with exactly those four constants (ai/google.go); TestResolveGoogleThinkingLevelUpstream asserts each resolved value and the unsupported-mapping error, and TestToGoogleThinkingLevelUpstream maps each of the four constants through ToGoogleThinkingLevel."
   },
   "pkg:ai/compat#StreamingJsonParser::property:snapshot::call:0": {
     "go": "ai/streaming_json_parser.go#StreamingJSONParser.Snapshot",
@@ -770,6 +782,10 @@
   "pkg:coding-agent/.#WriteToolCallEvent::property:input": {
     "go": "coding/extension/events.go#CustomToolCallEvent.Input",
     "reason": "Pi agent-session.ts:651-662 builds every tool_call event as {type: \"tool_call\", toolCallId, toolName, input} with the call's arguments, the shape of CustomToolCallEvent (types.ts:1207-1210, input: Record<string, unknown>); the per-tool input types of types.ts:1166-1204 narrow it for a handler through isToolCallEventType (types.ts:1349). Go's production emitter builds CustomToolCallEvent (coding/session_extension_hooks.go:65) whose Input is a map[string]any with WireInput keeping the model's member order, and a subprocess handler receives the same JSON object; the typed per-tool structs are the Go form of the TS narrowing."
+  },
+  "pkg:coding-agent/.#createFindTool::call:0": {
+    "go": "internal/codingagent/tools/tools.go#CreateFindTool",
+    "reason": "Pi find.ts:315-317 createFindTool returns wrapToolDefinition(createFindToolDefinition(cwd, options)), a TypeBoxAgentTool whose prepareArguments is optional and which createFindToolDefinition never sets (find.ts:69-313 returns an object of name, label, description, promptSnippet, parameters and execute and no prepareArguments), so the wrapped tool's prepareArguments is undefined for find. PiG's tools.CreateFindTool (internal/codingagent/tools/tools.go) returns *tools.FindTool, whose methods are the agent.Tool surface of the wrapped tool (Name, Label, Schema, Execute); FindTool implements no ArgumentPreparer, which is the undefined prepareArguments. TestCreateToolFactoriesBindTheirCwdAndOptions (create_tool_factories_test.go) asserts the factory's options reach the tool and that the bare call yields no operations."
   },
   "pkg:durable/.#AnyTask": {
     "go": "durable/tasks.go#AnyTask",
