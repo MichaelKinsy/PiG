@@ -615,6 +615,8 @@ func writeSessionRecords(path string, mode, bufferSize int, fill func(emit func(
 		return nil
 	})
 	if err != nil {
+		// Pi writes each record as it goes (session-manager.ts _rewriteFile), so the file holds every record emitted before the error.
+		_ = w.Flush()
 		return err
 	}
 	if err := w.Flush(); err != nil {
