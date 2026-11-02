@@ -168,7 +168,7 @@ func recordOf(value *delta.JsonObject) (StoredRun, error) {
 	if !ok {
 		return StoredRun{}, errors.New("a stored run: version is not a number")
 	}
-	//portlint:allow numbers version is RUN_RECORD.version, the integer 1 that Chord's own record documents carry (stored.ts:42), written by storedRun, so the conversion is exact
+	//portlint:allow numbers version is the job definition's version that storedRun writes (stored.ts:56 `const { version, … } = run`, records.ts:350), a validated integer of at least 1, so the conversion is exact
 	record.Version = int(version)
 	record.Fingerprint, _ = value.Value("fingerprint").(string)
 	if key, ok := value.Value("key").(string); ok {

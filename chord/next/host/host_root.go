@@ -124,7 +124,7 @@ func (r *rootScopes) close(reason error) {
 	for _, open := range slices.Clone(r.open) {
 		open.seal(reason)
 		open.closeReason = reason
-		//portlint:allow doubleclose seal deletes the scope from r.open (root.ts:50 `if (!this.#open.delete(open)) return`) and close walks r.open, so a scope is closed once inside a section; Pi's close rejects each open scope once (root.ts:80-82)
+		//portlint:allow doubleclose seal deletes the scope from r.open (root.ts:50 `if (!this.#open.delete(open)) return`) and close walks r.open, so a scope is closed once inside a section; Pi's close rejects each open scope once (root.ts:79-82)
 		close(open.closed)
 	}
 }

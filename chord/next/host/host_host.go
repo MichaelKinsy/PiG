@@ -946,7 +946,7 @@ func (h *chordHost) publish() {
 		return
 	}
 	h.publishedOnce = true
-	//portlint:allow doubleclose the publishedOnce flag above returns first inside a section, so the close runs once; Pi's `#publication` is a Promise.withResolvers resolved at the first publication (host.ts:459)
+	//portlint:allow doubleclose the publishedOnce flag above returns first inside a section, so the close runs once; Pi's `#publication` is a Promise.withResolvers resolved at the first publication (declared host.ts:459, resolved in publish host.ts:532 and #close host.ts:1375)
 	close(h.publication)
 }
 

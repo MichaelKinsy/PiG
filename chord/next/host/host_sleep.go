@@ -20,7 +20,7 @@ type systemLoop struct{}
 
 func (systemLoop) Now() int64 { return time.Now().UnixMilli() }
 func (systemLoop) Queue(job func()) {
-	//portlint:allow golifetime the goroutine runs one callback and returns, as a queueMicrotask/setTimeout callback in sleep.ts:23 is owned by no one; sleepOn's wake-up closes a channel and never blocks
+	//portlint:allow golifetime Queue is the eventLoop method sleepOn never calls (it uses only AfterFunc, as sleep.ts:23 uses only setTimeout); the plain-process form runs one callback on a goroutine that returns, owned by no one, as a Node microtask is
 	go job()
 }
 func (systemLoop) AfterFunc(d time.Duration, job func()) Timer {
