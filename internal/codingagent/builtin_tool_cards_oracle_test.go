@@ -1,5 +1,21 @@
 package codingagent
 
+// pi: packages/coding-agent/src/core/tools/renderers/read.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/write.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/edit.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/bash.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/grep.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/find.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/ls.ts
+
+// pi: packages/coding-agent/src/core/tools/renderers/index.ts
+
 import (
 	"bytes"
 	"context"
@@ -218,7 +234,7 @@ func builtinToolCardProbes(t *testing.T) ([]toolCardProbe, []string) {
 	var names []string
 	add := func(name, tool string, args map[string]any, result *toolCardResult) {
 		// Pi's bash tool reports an empty partial result as soon as it starts (bash.ts:318-319), which is what shows the elapsed time.
-		partial := result == nil && tool == "bash"
+		partial := result == nil && (tool == "bash" || tool == "powershell")
 		if partial {
 			result = &toolCardResult{Content: cardText("")[:0]}
 		}
@@ -248,6 +264,13 @@ func builtinToolCardProbes(t *testing.T) ([]toolCardProbe, []string) {
 	add("bash error", "bash", map[string]any{"command": "false"}, &toolCardResult{Content: cardText("boom\n\nCommand exited with code 1"), IsError: true})
 	add("bash timeout arg", "bash", map[string]any{"command": "sleep 1", "timeout": 5}, &toolCardResult{Content: cardText("")})
 	add("bash truncated", "bash", map[string]any{"command": "yes"}, &toolCardResult{Content: cardText(lines(5, "y")), Details: map[string]any{"truncation": truncated, "fullOutputPath": "/tmp/full.log"}})
+	// createAllToolRenderers keys powershell to createShellRenderers("PS>"): the same card with the other prompt.
+	add("powershell pending", "powershell", map[string]any{"command": "Get-ChildItem"}, nil)
+	add("powershell ok", "powershell", map[string]any{"command": "Get-Date"}, &toolCardResult{Content: cardText("Monday")})
+	add("powershell long", "powershell", map[string]any{"command": "1..40"}, &toolCardResult{Content: cardText(lines(40, "n"))})
+	add("powershell error", "powershell", map[string]any{"command": "throw"}, &toolCardResult{Content: cardText("boom\n\nCommand exited with code 1"), IsError: true})
+	add("powershell timeout arg", "powershell", map[string]any{"command": "Start-Sleep 1", "timeout": 5}, &toolCardResult{Content: cardText("")})
+	add("powershell truncated", "powershell", map[string]any{"command": "yes"}, &toolCardResult{Content: cardText(lines(5, "y")), Details: map[string]any{"truncation": truncated, "fullOutputPath": "/tmp/full.log"}})
 	add("grep ok", "grep", map[string]any{"pattern": "needle", "path": "src"}, &toolCardResult{Content: cardText(lines(4, "src/a.go:1: needle"))})
 	add("grep long", "grep", map[string]any{"pattern": "needle", "glob": "*.go", "limit": 100}, &toolCardResult{Content: cardText(lines(30, "m"))})
 	add("grep limit", "grep", map[string]any{"pattern": "x"}, &toolCardResult{Content: cardText(lines(5, "g")), Details: map[string]any{"matchLimitReached": 100, "linesTruncated": true}})
@@ -354,9 +377,9 @@ func renderBuiltinToolCards(t *testing.T, probes []toolCardProbe) [][]string {
 		tui.SetTheme(probe.Theme)
 		installCardBindings(t, probe)
 		raw, _ := json.Marshal(probe.Args)
-		// A session registers bash, grep, find and ls as tool definitions; bindToolCard gives read, write and edit their built-in definitions.
+		// A session registers bash, powershell, grep, find and ls as tool definitions; bindToolCard gives read, write and edit their built-in definitions.
 		var definition *extension.ToolDefinition
-		if slices.Contains([]string{"bash", "grep", "find", "ls"}, probe.Tool) {
+		if slices.Contains([]string{"bash", "powershell", "grep", "find", "ls"}, probe.Tool) {
 			base := baseToolDefinition(probe.Tool)
 			definition = &base
 		}
@@ -440,7 +463,7 @@ func TestBuiltinToolCardsRandomMatchPi(t *testing.T) {
 		}
 		return strings.Join(out, "\n")
 	}
-	tools := []string{"read", "write", "edit", "bash", "grep", "find", "ls"}
+	tools := []string{"read", "write", "edit", "bash", "powershell", "grep", "find", "ls"}
 	var probes []toolCardProbe
 	var names []string
 	for i := range 500 {
@@ -486,7 +509,7 @@ func TestBuiltinToolCardsRandomMatchPi(t *testing.T) {
 				result.Details = details
 			}
 		}
-		partial := result == nil && tool == "bash"
+		partial := result == nil && (tool == "bash" || tool == "powershell")
 		if partial {
 			result = &toolCardResult{Content: cardText("")[:0]}
 		}

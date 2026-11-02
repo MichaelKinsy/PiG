@@ -1,5 +1,7 @@
 package export
 
+// pi: packages/coding-agent/src/core/export-html/tool-renderer.ts
+
 import (
 	"bytes"
 	"encoding/json"
