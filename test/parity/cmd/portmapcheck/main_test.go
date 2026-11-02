@@ -894,7 +894,8 @@ func TestRowsThatNameTheSameTestsButMapDifferentFilesDoNotShareARecord(t *testin
 	if d.of(onA, nil) == d.of(onB, nil) {
 		t.Fatal("rows that map different cited files share one digest, so one row's coverage record would judge the other")
 	}
-	if d.of(onA, nil) != d.of(onA, nil) {
+	first, second := d.of(onA, nil), d.of(onA, nil)
+	if first != second {
 		t.Fatal("the digest of one row is not stable")
 	}
 }
