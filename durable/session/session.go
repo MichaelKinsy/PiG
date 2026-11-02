@@ -436,7 +436,7 @@ func (session *SessionImpl) admitSlot(admit, fenced bool) (*slot, error) {
 			// line ticket (the Harness scheduler's seal and kick).
 			session.lineMu.Unlock()
 			if listenersRan != nil {
-				<-listenersRan
+				await(listenersRan)
 			}
 			return nil, err
 		}
@@ -452,20 +452,6 @@ func (session *SessionImpl) releaseLine(s *slot) {
 	session.lineJobs--
 	session.lineMu.Unlock()
 	close(s.done)
-}
-
-// await blocks until done is closed. A wait that only the Session's own goroutines can end is a wait of the Session: a watch
-// delivery that goes on to it has entered (chord.DeliveryEntered), as an upstream listener's first await ends the synchronous part
-// the publication of the next part of a call waits for. Every blocking point of the Session a listener can reach goes through it, so
-// a listener that uses the Session does not stall the publication it is a delivery of.
-func await(done <-chan struct{}) {
-	select {
-	case <-done:
-		return
-	default:
-	}
-	chord.DeliveryEntered()
-	<-done
 }
 
 // onLine runs work as job s holds the line, after its predecessor, and releases the line when work returned.
@@ -525,13 +511,8 @@ func runFenced[T any](session *SessionImpl, s *slot, exempt bool, call lineCall,
 			}
 		}()
 		if s.previous != nil {
-			select {
-			case <-s.previous:
-			default:
-				// Waiting for the line is a wait of the Session: a continuation, and a watch delivery, that goes on to it has entered.
-				call.continuation.Entered()
-				chord.DeliveryEntered()
-			}
+			// Waiting for the line is a wait of the Session: a continuation, and a watch delivery, that goes on to it has entered.
+			block(call.continuation, s.previous, nil)
 		}
 		result, err = onLine(session, s, func(index int) (ran[T], error) {
 			session.waitRoom()
@@ -556,13 +537,7 @@ func runFenced[T any](session *SessionImpl, s *slot, exempt bool, call lineCall,
 		session.delivered(s.index, false)
 		final = session.poison(s.index, outcome)
 	} else {
-		select {
-		case <-delivery.released:
-		default:
-			call.continuation.Entered()
-			chord.DeliveryEntered()
-			<-delivery.released
-		}
+		block(call.continuation, delivery.released, nil)
 		delivery.resume()
 		final = delivery.final
 	}
@@ -614,6 +589,7 @@ func (session *SessionImpl) kickDeliver() {
 	session.delivering = true
 	// The delivery goroutine ends by itself once the head of the fence is not ready; the fence's own state tells when none runs.
 	session.fenceMu.Unlock()
+	//portlint:allow golifetime deliverLoop is the drain of Pi's #fence chain (session.ts:1630-1641): it clears session.delivering and broadcasts idle when the head is not ready, which awaitDeliveriesIdle and awaitFenceEmpty (Close) wait for
 	go session.deliverLoop()
 }
 
@@ -734,6 +710,7 @@ func maintain[T any](session *SessionImpl, work func(index int) (T, error)) (T, 
 // any job queued later, and runs on its own goroutine once the earlier jobs settled.
 func (session *SessionImpl) enqueueDetached(job func(index int)) {
 	s, _ := session.admitSlot(false, false)
+	//portlint:allow golifetime the job is a line job: it runs once the earlier jobs settled and releases its slot (onLine), which every later job and Close wait for, as Pi's #tail promise chain does (session.ts:258)
 	go func() {
 		_, _ = onLine(session, s, func(index int) (struct{}, error) {
 			job(index)
@@ -749,7 +726,7 @@ func (session *SessionImpl) enqueueDetached(job func(index int)) {
 func (session *SessionImpl) assertUsable() error {
 	listenersRan, err := session.usable()
 	if listenersRan != nil {
-		<-listenersRan
+		await(listenersRan)
 	}
 	return err
 }
@@ -935,14 +912,7 @@ func (session *SessionImpl) AwaitTouch(ctx context.Context, key string) error {
 	if gate == nil {
 		return nil
 	}
-	select {
-	case <-gate:
-	default:
-		// A continuation, or a watch delivery, that goes on to wait for a gate has entered.
-		continuationOf(ctx).Entered()
-		chord.DeliveryEntered()
-		<-gate
-	}
+	block(continuationOf(ctx), gate, nil)
 	return session.assertHealthy()
 }
 
@@ -1151,7 +1121,7 @@ func (session *SessionImpl) TakeLineTicket() *LineTicket {
 func (ticket *LineTicket) Release() {
 	s := ticket.slot
 	if s.previous != nil {
-		<-s.previous
+		await(s.previous)
 	}
 	// Nothing to deliver: the position stays in the fence only so that the deliveries after it are not held up by it.
 	delivery := s.delivery
@@ -1469,14 +1439,12 @@ func (session *SessionImpl) Close(ctx context.Context) error {
 	if ctx.Err() != nil {
 		return context.Cause(ctx)
 	}
-	select {
-	case <-closing:
-		session.mu.Lock()
-		defer session.mu.Unlock()
-		return session.closeErr
-	case <-ctx.Done():
-		return context.Cause(ctx)
+	if err := Wait(ctx, closing); err != nil {
+		return err
 	}
+	session.mu.Lock()
+	defer session.mu.Unlock()
+	return session.closeErr
 }
 
 // beginClose seals admission and runs the close listeners synchronously the first time it is called, and starts the

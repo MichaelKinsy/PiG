@@ -399,7 +399,7 @@ func (watch typedWatch[T]) Value() T {
 // A listener that blocks on something the host cannot see before it returns (a channel send or receive, a mutex, network I/O, a
 // child process) holds back every wait that follows its delivery until it returns: the Harness waits, and the Session's
 // publication of the next commit of a call, which waits for the synchronous part of each listener (pig divergence (D224): Pi's
-// listener awaits, which ends its synchronous part, and nothing waits for it). Such a listener calls DeliveryEntered before it
+// listener awaits, which ends its synchronous part, and nothing waits for it). Such a listener calls chord.DeliveryEntered before it
 // blocks, or does the blocking on a goroutine of its own and returns.
 func (watch typedWatch[T]) Start(listener func(ctx context.Context, call WatchCall[T]) error) {
 	watch.WatchHandle.Start(func(ctx context.Context, call WatchCall[JsonObject]) error {

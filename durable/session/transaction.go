@@ -148,7 +148,7 @@ func (result *future[T]) resolve(value T, err error) {
 }
 
 func (result *future[T]) wait() (T, error) {
-	<-result.done
+	await(result.done)
 	return result.value, result.err
 }
 

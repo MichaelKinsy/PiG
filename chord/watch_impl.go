@@ -21,6 +21,9 @@ type NativeWatchHandle[T any] interface {
 	// Value is the acquisition value before Start and the latest delivered value afterward (a failed call keeps it).
 	Value() T
 	// Start installs the sole asynchronous listener. It never invokes it inline.
+	// pig divergence (D224): a listener that blocks on something the host cannot see (a channel, a lock, I/O) calls DeliveryEntered
+	// first, or blocks on a goroutine of its own: the waits and the publications that follow its delivery wait until its call returns
+	// or it has entered (see DeliveryEntered).
 	Start(listener func(ctx context.Context, call NativeWatchCall[T]) error)
 	// Stop idempotently stops future callbacks and returns this watch's terminal result.
 	Stop() (WatchEnd, error)

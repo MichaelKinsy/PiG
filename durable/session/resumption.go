@@ -30,8 +30,6 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
-
-	"github.com/MichaelKinsy/PiG/chord"
 )
 
 type continuationKey struct{}
@@ -130,9 +128,7 @@ func (session *SessionImpl) Park(ctx context.Context, done <-chan struct{}) *Par
 		return nil
 	default:
 	}
-	continuationOf(ctx).Entered()
-	// A watch delivery that waits here has run the synchronous part of its listener.
-	chord.DeliveryEntered()
+	enter(continuationOf(ctx))
 	parked := &Parked{resumption: newResumption(continuationOf(ctx)), session: session, done: done}
 	// A wait stays registered until it is acknowledged, not only until it resumed: the acknowledgement of one that belongs to a
 	// Continuation is given when the continuation has entered, and a publication that looks for the waits it readied after the

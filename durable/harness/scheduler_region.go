@@ -14,6 +14,7 @@
 package harness
 
 import (
+	"context"
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/durable"
@@ -25,7 +26,9 @@ import (
 // result, or its error, is dropped: once that writer is published, refresh reloads what the region needs and it runs
 // again. What a region read that had no unpublished writer gets none for the rest of the job, so its result stands while
 // the job applies it. s.mu is held on entry and on return.
-func regionLocked[T any](s *TaskScheduler, decide func() (T, error), refresh func() error) (T, error) {
+//
+// A gate it waits for is a wait of the Session (session.Wait): the delivery that runs it has entered, and ctx ends the wait.
+func regionLocked[T any](ctx context.Context, s *TaskScheduler, decide func() (T, error), refresh func() error) (T, error) {
 	for {
 		keys := map[string]struct{}{}
 		s.reading = keys
@@ -42,7 +45,7 @@ func regionLocked[T any](s *TaskScheduler, decide func() (T, error), refresh fun
 		if len(gates) == 0 {
 			return value, err
 		}
-		failure := s.waitGatesLocked(gates)
+		failure := s.waitGatesLocked(ctx, gates)
 		if failure != nil {
 			var zero T
 			return zero, failure
@@ -56,12 +59,15 @@ func regionLocked[T any](s *TaskScheduler, decide func() (T, error), refresh fun
 	}
 }
 
-// waitGatesLocked releases s.mu while it waits for every gate to open, then checks the Session is still healthy.
-func (s *TaskScheduler) waitGatesLocked(gates []<-chan struct{}) error {
+// waitGatesLocked releases s.mu while it waits for every gate to open (a wait of the Session: the delivery that calls it has
+// entered), then checks the Session is still healthy. ctx ends the wait with its cause.
+func (s *TaskScheduler) waitGatesLocked(ctx context.Context, gates []<-chan struct{}) error {
 	s.mu.Unlock()
 	defer s.mu.Lock()
 	for _, gate := range gates {
-		<-gate
+		if err := session.Wait(ctx, gate); err != nil {
+			return err
+		}
 	}
 	return s.options.Session.AssertHealthy()
 }
@@ -76,7 +82,12 @@ func (s *TaskScheduler) withoutLock(f func() error) error {
 
 // regionPlainLocked is a region whose decision cannot fail.
 func regionPlainLocked[T any](s *TaskScheduler, decide func() T, refresh func() error) (T, error) {
-	return regionLocked(s, func() (T, error) { return decide(), nil }, refresh)
+	return regionPlainCtxLocked(context.Background(), s, decide, refresh)
+}
+
+// regionPlainCtxLocked is regionPlainLocked for a region whose caller's ctx ends its wait for a gate.
+func regionPlainCtxLocked[T any](ctx context.Context, s *TaskScheduler, decide func() T, refresh func() error) (T, error) {
+	return regionLocked(ctx, s, func() (T, error) { return decide(), nil }, refresh)
 }
 
 // publishedLocked waits, on the line, until every commit admitted before is published: for a decision that reads what
@@ -87,7 +98,7 @@ func (s *TaskScheduler) publishedLocked() error {
 	if gate == nil {
 		return nil
 	}
-	return s.waitGatesLocked([]<-chan struct{}{gate})
+	return s.waitGatesLocked(context.Background(), []<-chan struct{}{gate})
 }
 
 // published is publishedLocked for a caller that does not hold s.mu.
@@ -96,7 +107,9 @@ func (s *TaskScheduler) published() error {
 	if gate == nil {
 		return nil
 	}
-	<-gate
+	if err := session.Wait(context.Background(), gate); err != nil {
+		return err
+	}
 	return s.options.Session.AssertHealthy()
 }
 
@@ -251,7 +264,7 @@ func (s *TaskScheduler) chainKeysLocked(start treeNode, staged *overlay, add fun
 		record, found := staged.tasks[id]
 		if !found {
 			if gate := s.options.Session.Touch(session.TaskKey(id)); gate != nil {
-				if err := s.waitGatesLocked([]<-chan struct{}{gate}); err != nil {
+				if err := s.waitGatesLocked(context.Background(), []<-chan struct{}{gate}); err != nil {
 					return nil, err
 				}
 				// It may have ended meanwhile, and its node been swept: load the chain above it again.

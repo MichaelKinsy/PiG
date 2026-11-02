@@ -2147,6 +2147,8 @@ func (h *chordHost) reloadReport(started []startedFate, committed CommittedReloa
 	// not for a listener to finish a wait of its own: a listener may call `Reload` itself (its own delivery is entered and
 	// skipped), and ctx's abort ends the wait (`aborted`, as the wait for the checks).
 	h.enter(func() {})
+	// pig divergence (D224): a listener that blocks on something the host cannot see, without calling chord.DeliveryEntered, holds
+	// this wait back; Pi's listener awaits.
 	if err := h.scheduler.AwaitEntered(ctx); err != nil {
 		return nil, committedAborted(committed)
 	}

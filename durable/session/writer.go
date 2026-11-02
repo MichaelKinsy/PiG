@@ -245,13 +245,15 @@ func (writer *Writer) pump() {
 	writer.queue = nil
 	writer.running.Add(1)
 	writer.mu.Unlock()
-	go writer.flush(parts)
+	go func() {
+		defer writer.running.Done()
+		writer.flush(parts)
+	}()
 }
 
 // flush sends and publishes parts, then what was admitted meanwhile. A panic the writer did not expect fails the Session and
 // settles the parts (abandon), so no outcome or gate is stranded.
 func (writer *Writer) flush(parts []*Part) {
-	defer writer.running.Done()
 	for len(parts) > 0 {
 		writer.sendGuarded(parts)
 		writer.mu.Lock()

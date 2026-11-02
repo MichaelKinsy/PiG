@@ -219,7 +219,7 @@ func (h *Hooks) afterRun(ctx context.Context, call *sqlhost.Call, p hookEffect) 
 	}
 	body, err := json.Marshal(struct {
 		Tasks    []preparedWire `json:"tasks"`
-		Rejected []rejectedWire `json:"rejected,omitempty"`
+		Rejected []rejectedWire `json:"rejected"`
 	}{tasks, rejected})
 	if err != nil {
 		return fmt.Errorf("hook afterRun result: %w", err)

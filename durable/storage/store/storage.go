@@ -116,6 +116,7 @@ func cursorID(cursor durable.Cursor) (int64, bool, error) {
 		if typed != math.Trunc(typed) || math.Abs(typed) > maxSafeInteger {
 			return 0, false, scan.ErrInvalidCursor
 		}
+		//portlint:allow numbers typed is whole and within ±(2^53-1) by the check above, which is Number.isSafeInteger (storage.ts cursorId)
 		after = int64(typed)
 	default:
 		return 0, false, scan.ErrInvalidCursor
@@ -495,7 +496,15 @@ func (storage *StoreStorage) Close(ctx context.Context) error {
 		if storage.underway > 0 {
 			storage.drained = make(chan struct{})
 		}
-		go storage.finishClose(storage.closing, storage.drained)
+		closing, drained := storage.closing, storage.drained
+		go func() {
+			// The calls underway settle first, then the claims go; Close's wait on closing is the join.
+			defer close(closing)
+			if drained != nil {
+				<-drained
+			}
+			storage.store.Claims.Release(storage.claimant)
+		}()
 	}
 	closing := storage.closing
 	storage.mu.Unlock()
@@ -505,15 +514,6 @@ func (storage *StoreStorage) Close(ctx context.Context) error {
 	case <-ctx.Done():
 		return context.Cause(ctx)
 	}
-}
-
-// finishClose waits for the calls underway, then releases the claims.
-func (storage *StoreStorage) finishClose(closing chan struct{}, drained chan struct{}) {
-	defer close(closing)
-	if drained != nil {
-		<-drained
-	}
-	storage.store.Claims.Release(storage.claimant)
 }
 
 // enter runs one commit or mint of this storage: refused once it closed, counted until leave (Close waits).

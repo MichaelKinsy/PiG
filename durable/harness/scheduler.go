@@ -837,6 +837,8 @@ func (s *TaskScheduler) Abort(ctx context.Context, id durable.TaskId, keepRestar
 		if ctx.Err() != nil {
 			return "", context.Cause(ctx)
 		}
+		// The run ends on goroutines the Session's publications may be waiting for: a delivery that calls Abort has entered.
+		session.Enter(ctx)
 		select {
 		case <-result.run.done:
 		case <-s.options.Session.Failed():
@@ -857,6 +859,8 @@ func (s *TaskScheduler) WaitForTask(ctx context.Context, id durable.TaskId) (dur
 	if err != nil {
 		return settled, err
 	}
+	// pig divergence (D224): the wait for the listeners of earlier batches to enter waits for a listener that blocks on something the
+	// host cannot see until it calls chord.DeliveryEntered; Pi's listener awaits.
 	if err := s.options.Session.AwaitDeliveriesEntered(ctx); err != nil {
 		return anyTaskRecord{}, err
 	}
@@ -875,7 +879,7 @@ func (s *TaskScheduler) waitForTask(ctx context.Context, id durable.TaskId) (dur
 			s.mu.Unlock()
 			return found{}, closedError(s.options.Session)
 		}
-		live, err := regionPlainLocked(s, func() bool { _, live := s.liveRecordLocked(id); return live }, nil)
+		live, err := regionPlainCtxLocked(ctx, s, func() bool { _, live := s.liveRecordLocked(id); return live }, nil)
 		var waiter *Waiter[durable.SettledTask[durable.JsonValue]]
 		closing := s.sealing.Load()
 		if err == nil && !closing && live {
@@ -917,6 +921,7 @@ func (s *TaskScheduler) WaitForIdle(ctx context.Context, conversationId *durable
 	if err := s.waitForIdle(ctx, conversationId); err != nil {
 		return err
 	}
+	// pig divergence (D224): as WaitForTask, a listener that blocks without calling chord.DeliveryEntered holds this wait back.
 	return s.options.Session.AwaitDeliveriesEntered(ctx)
 }
 
@@ -3680,7 +3685,7 @@ func gated[T any](ctx context.Context, runtime *taskRuntime, change func(tx *ses
 			scheduler.mu.Unlock()
 			return zero, closedError(scheduler.options.Session)
 		}
-		found, err := regionLocked(scheduler, func() (anyTaskRecord, error) {
+		found, err := regionLocked(context.Background(), scheduler, func() (anyTaskRecord, error) {
 			found, ok := scheduler.liveRecordLocked(taskId)
 			if !ok {
 				return found, fmt.Errorf("Task %d is terminal", taskId)
@@ -3988,10 +3993,11 @@ func (s *TaskScheduler) publishWake(asOf float64, firstWake *Wake) {
 		due := false
 		if s.enabled {
 			at = s.earliestSleepLocked(asOf)
-			// A sleep that came due after the last pass dropped it, and at or before asOf, is no longer ahead, so the timer
-			// armed for it goes with this recomputation, and nothing else would make it a candidate. Upstream's microtask runs
-			// in the turn of its change, in which the clock does not move past a sleep the pass found ahead; here it runs
-			// later. Such a sleep is handed to a pass instead.
+			// A sleep that came due after the last pass dropped it is no longer ahead, so the timer armed for it goes with this
+			// recomputation, and nothing else would make it a candidate. earliestSleepLocked skips the sleeps due at asOf, the
+			// clock of the change; wakeDueLocked reads the clock now (Now()), which is later or equal, so it also hands a pass a
+			// sleep that came due between asOf and now. Upstream's microtask runs in the turn of its change, in which the clock
+			// does not move past a sleep the pass found ahead; here it runs later.
 			due = s.wakeDueLocked()
 		}
 		s.armTimerLocked(at)

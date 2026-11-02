@@ -200,6 +200,8 @@ func (submissions *Submissions) Wait(ctx context.Context, id durable.SubmissionI
 	if err != nil {
 		return record, err
 	}
+	// pig divergence (D224): a listener that blocks on something the host cannot see, without calling chord.DeliveryEntered, holds
+	// this wait back; Pi's listener awaits.
 	if err := submissions.line.AwaitDeliveriesEntered(ctx); err != nil {
 		return durable.SubmissionRecord{}, err
 	}
