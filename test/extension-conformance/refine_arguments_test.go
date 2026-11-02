@@ -73,17 +73,17 @@ func TestConformance_RefinedToolArgumentsAreNotRefined(t *testing.T) {
 			if len(errs) != 0 {
 				t.Fatal(errs)
 			}
-			calls := make([]ai.FauxContentBlock, len(refineRejectedCalls))
+			probeCalls := make([]ai.FauxContentBlock, len(refineRejectedCalls))
 			for i, arguments := range refineRejectedCalls {
 				var input map[string]any
 				if err := json.Unmarshal([]byte(arguments), &input); err != nil {
 					t.Fatal(err)
 				}
-				calls[i] = ai.FauxToolCall("refine-probe", input, &ai.FauxToolCallOptions{ID: fmt.Sprintf("refine-%d", i)})
+				probeCalls[i] = ai.FauxToolCall("refine-probe", input, &ai.FauxToolCallOptions{ID: fmt.Sprintf("refine-%d", i)})
 			}
 			provider := ai.NewFauxProvider(ai.FauxConfig{})
 			provider.SetResponses([]ai.FauxResponseStep{
-				ai.FauxStaticStep(ai.FauxResponse{Content: calls, StopReason: "toolUse"}),
+				ai.FauxStaticStep(ai.FauxResponse{Content: probeCalls, StopReason: "toolUse"}),
 				ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}),
 			})
 			a := mustNewAgent(agent.AgentOptions{Model: &ai.Model{ID: "faux-1", Provider: provider}, Tools: tools})

@@ -166,6 +166,13 @@
    "new": "func IsStdoutTakenOver() bool { return false\n"
   }
  ],
+ "packages/coding-agent/src/core/pi-ai-schemas.ts": [
+  {
+   "file": "internal/codingagent/configschema/pi_ai_schemas.go",
+   "old": "if o.K != \"required\" {",
+   "new": "if o.K == \"required\" {"
+  }
+ ],
  "packages/coding-agent/src/core/remote-catalog-provider.ts": [
   {
    "file": "internal/codingagent/remote_catalog_provider.go",
@@ -2098,6 +2105,13 @@
    "new": "func never(any) bool  { return true }"
   }
  ],
+ "packages/schema/src/coerce.ts": [
+  {
+   "file": "schema/coerce.go",
+   "old": "\t\t\tcase \"true\":\n\t\t\t\treturn true",
+   "new": "\t\t\tcase \"true\":\n\t\t\t\treturn false"
+  }
+ ],
  "packages/schema/src/compiler.ts": [
   {
    "file": "schema/compiler.go",
@@ -2252,6 +2266,13 @@
    "new": "bool { return !jsonPointerRE.MatchString(value) }"
   }
  ],
+ "packages/schema/src/formats/typebox/json_pointer_uri_fragment.ts": [
+  {
+   "file": "schema/formats/typebox_json_pointer_uri_fragment.go",
+   "old": "bool { return jsonPointerUriFragmentRE.MatchString(value) }",
+   "new": "bool { return !jsonPointerUriFragmentRE.MatchString(value) }"
+  }
+ ],
  "packages/schema/src/formats/typebox/regex.ts": [
   {
    "file": "schema/formats/typebox_regex.go",
@@ -2292,6 +2313,13 @@
    "file": "schema/formats/typebox_uri_template.go",
    "old": "bool { return uriTemplateRE.MatchString(value) }",
    "new": "bool { return !uriTemplateRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/url.ts": [
+  {
+   "file": "schema/formats/typebox_url.go",
+   "old": "_, err := nodeurl.ParseURL(jsstring.StreamText(value))\n\treturn err == nil",
+   "new": "_, err := nodeurl.ParseURL(jsstring.StreamText(value))\n\treturn err != nil"
   }
  ],
  "packages/schema/src/formats/typebox/uuid.ts": [

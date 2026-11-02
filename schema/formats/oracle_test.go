@@ -21,11 +21,13 @@ import (
 // pi: packages/schema/src/formats/typebox/iri.ts
 // pi: packages/schema/src/formats/typebox/iri_reference.ts
 // pi: packages/schema/src/formats/typebox/json_pointer.ts
+// pi: packages/schema/src/formats/typebox/json_pointer_uri_fragment.ts
 // pi: packages/schema/src/formats/typebox/relative_json_pointer.ts
 // pi: packages/schema/src/formats/typebox/time.ts
 // pi: packages/schema/src/formats/typebox/uri.ts
 // pi: packages/schema/src/formats/typebox/uri_reference.ts
 // pi: packages/schema/src/formats/typebox/uri_template.ts
+// pi: packages/schema/src/formats/typebox/url.ts
 // pi: packages/schema/src/formats/typebox/uuid.ts
 // pi: packages/schema/src/formats/typebox/idna/format/bidi.ts
 // pi: packages/schema/src/formats/typebox/idna/format/puny.ts

@@ -1,5 +1,6 @@
 package schema_test
 
+// pi: packages/schema/src/coerce.ts
 // Ports packages/schema/test/coerce.test.ts (Pi b556cfe5): CompileCoercing, Coerce and Parse, the three coercion passes (optional nulls, TypeBox's conversion rules, primitive coercion by type), their order where they conflict, and the guarantees around them. Ports pi-ai's tool argument coercion tests.
 //
 // Go forms of what the TypeScript tests express differently:
