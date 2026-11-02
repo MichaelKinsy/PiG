@@ -409,6 +409,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-54a5bf6](#bf-54a5bf6) | The host answers a parsed frontmatter with `<`, `>`, `&` and U+2028 as they are (as `JSON.stringify` writes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-54dc372](#bf-54dc372) | fix(release): carry main's PigVersion 0.5.3 and the post-bump goldens and pins | PiG's own defect | All platforms | Unreleased |
 | [BF-54e3983](#bf-54e3983) | fix(packagemanager): npm gets Node's realpathSync of the install root, and the npm tests expect it | PiG's own defect | All platforms | Unreleased |
+| [BF-5528b09](#bf-5528b09) | A sleeping task that came due in the millisecond between a reservation pass that found it ahead and the next… | PiG's own defect | All platforms | Unreleased |
 | [BF-55573f4](#bf-55573f4) | fix(sdk): Rust and Python fuzzy match score contiguous occurrences (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-5654e71](#bf-5654e71) | MCP OAuth discovery and resource selection now read URLs the way Node's `URL` does (default ports, dot… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5654e71-2](#bf-5654e71-2) | A JSON-RPC request or notification with a malformed `error` member is no longer rejected, and a `method` that… | PiG's own defect | All platforms | 0.5.0 |
@@ -6906,6 +6907,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `54e3983c76` (2026-10-26)
 - **Tests:** `internal/codingagent/canonical_path_relative_test.go::TestRealPathSyncMatchesNodeRealpathSync`
+
+### BF-5528b09
+
+**A sleeping task that came due in the millisecond between a reservation pass that found it ahead and the next…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A sleeping task that came due in the millisecond between a reservation pass that found it ahead and the next wake recomputation is run instead of left asleep with no timer armed; a reopened Harness waiting on such a task no longer hangs.
+- **Root cause:** The recomputation of the built-in timer reads the clock of the change that scheduled it, which can be the millisecond the sleep comes due: the sleep is then left out of the wake, the timer armed for it is disarmed, and no pass had it as a candidate. It now makes such a sleep a candidate and kicks a pass (TestExample12Recovery hung on it).
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5528b09988` (2026-11-01)
+- **Tests:** `durable/examples/task_examples_test.go::TestExample12Recovery`, `durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterPassDroppedSleepThatCameDueRunsIt`
+- **Release note:** A sleeping task that came due in the millisecond between a reservation pass that found it ahead and the next wake recomputation is run instead of left asleep with no timer armed; a reopened Harness waiting on such a task no longer hangs.
 
 ### BF-55573f4
 

@@ -11602,6 +11602,29 @@
       ]
     },
     {
+      "id": "BF-5528b09",
+      "title": "A sleeping task that came due in the millisecond between a reservation pass that found it ahead and the next…",
+      "symptom": "A sleeping task that came due in the millisecond between a reservation pass that found it ahead and the next wake recomputation is run instead of left asleep with no timer armed; a reopened Harness waiting on such a task no longer hangs.",
+      "rootCause": "The recomputation of the built-in timer reads the clock of the change that scheduled it, which can be the millisecond the sleep comes due: the sleep is then left out of the wake, the timer armed for it is disarmed, and no pass had it as a candidate. It now makes such a sleep a candidate and kicks a pass (TestExample12Recovery hung on it).",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A sleeping task that came due in the millisecond between a reservation pass that found it ahead and the next wake recomputation is run instead of left asleep with no timer armed; a reopened Harness waiting on such a task no longer hangs.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5528b09988",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "durable/examples/task_examples_test.go::TestExample12Recovery",
+        "durable/harness/scheduler_wake_clock_test.go::TestWakeRecomputedAfterPassDroppedSleepThatCameDueRunsIt"
+      ]
+    },
+    {
       "id": "BF-55573f4",
       "title": "fix(sdk): Rust and Python fuzzy match score contiguous occurrences (Pi)",
       "symptom": "fix(sdk): Rust and Python fuzzy match score contiguous occurrences (Pi)",
