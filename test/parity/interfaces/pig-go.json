@@ -232898,6 +232898,17 @@
       "shapeHash": "sha256:57179946cef7df4d918e29b424f6d9096a9653a12925304bcb5da9ee7ff359ee"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#highlightCodeTarget",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
+      "name": "highlightCodeTarget",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func() *regexp.Regexp"
+      },
+      "shapeHash": "sha256:21787f1fb3e3c248949f1cbb62f58e39220aca70eca91cd918b41dcefd3a8917"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/upgrade#hunk",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/upgrade",
       "name": "hunk",
@@ -358705,6 +358716,17 @@
       "shapeHash": "sha256:d35bffbecc0e605efc18011512e7a0d478d1c116259159506b6e84db4139b1a9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#isLegacyMouseReport",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "isLegacyMouseReport",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data string) bool"
+      },
+      "shapeHash": "sha256:a25ca2dde16f4c7d179d915d26f5bd6051f9838d4ab17973d556130a94b5407e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#isLocalWindowsTerminalSession",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "isLocalWindowsTerminalSession",
@@ -360067,6 +360089,17 @@
         "type": "func(context *layoutContext, component Component, node StackLayoutNode, x int, y int, safeWidth int, height *int, clip LayoutRect) *LayoutBox"
       },
       "shapeHash": "sha256:4c7c8872059693f05e71d8dd6935e89b10889b60f1d2627d236451a3c1bb0183"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#legacyMouseUnits",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "legacyMouseUnits",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data string) (units [3]uint16, ok bool)"
+      },
+      "shapeHash": "sha256:d2ee31dc6fac3e2a24cd4729981623dfb4330521e69f7d26445fb43306fb3fcf"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#levelTarget",
