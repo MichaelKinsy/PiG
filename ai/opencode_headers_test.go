@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/providers/opencode-headers.ts
+
 import (
 	"context"
 	"testing"
@@ -47,5 +49,49 @@ func TestWithOpenCodeSessionHeaderLikeUpstream(t *testing.T) {
 	}
 	if len(caller) != 1 {
 		t.Fatalf("caller headers mutated: %v", caller)
+	}
+}
+
+// Ported from opencode-provider-headers.test.ts "maps sessionId for %s requests even without cache retention" (stream and streamSimple), "preserves a case-insensitive caller override" (a string value and an explicit null) and "does not fabricate a session header when sessionId is absent".
+func TestWithOpenCodeSessionHeaderPiCases(t *testing.T) {
+	var seen []StreamOptions
+	record := func(_ context.Context, _ *Model, _ TranscriptContext, options StreamOptions) (*AssistantMessageEventStream, error) {
+		seen = append(seen, options)
+		return nil, nil
+	}
+	wrapped := WithOpenCodeSessionHeader(&ProviderStreams{Stream: record, StreamSimple: record})
+	calls := map[string]func(context.Context, *Model, TranscriptContext, StreamOptions) (*AssistantMessageEventStream, error){"stream": wrapped.Stream, "streamSimple": wrapped.StreamSimple}
+	callerValue := "caller-value"
+	custom := "value"
+	for method, call := range calls {
+		seen = nil
+		if _, err := call(context.Background(), nil, TranscriptContext{}, StreamOptions{SessionID: "conversation-1", CacheRetention: CacheRetentionNone}); err != nil {
+			t.Fatal(err)
+		}
+		if headers := seen[0].Headers; len(headers) != 1 || headers[openCodeSessionHeader] == nil || *headers[openCodeSessionHeader] != "conversation-1" {
+			t.Fatalf("%s: headers = %v, want only %s: conversation-1", method, headers, openCodeSessionHeader)
+		}
+	}
+	for name, headers := range map[string]ProviderHeaders{
+		"string value": {"X-OpenCode-Session": &callerValue},
+		"null value":   {"X-OpenCode-Session": nil},
+	} {
+		seen = nil
+		if _, err := wrapped.StreamSimple(context.Background(), nil, TranscriptContext{}, StreamOptions{SessionID: "generated-value", Headers: headers}); err != nil {
+			t.Fatal(err)
+		}
+		got := seen[0].Headers
+		value, present := got["X-OpenCode-Session"]
+		want := headers["X-OpenCode-Session"]
+		if len(got) != 1 || !present || (value == nil) != (want == nil) || (want != nil && *value != *want) {
+			t.Fatalf("%s: headers = %v, want the caller's %v untouched", name, got, headers)
+		}
+	}
+	seen = nil
+	if _, err := wrapped.StreamSimple(context.Background(), nil, TranscriptContext{}, StreamOptions{Headers: ProviderHeaders{"x-custom": &custom}}); err != nil {
+		t.Fatal(err)
+	}
+	if headers := seen[0].Headers; len(headers) != 1 || headers["x-custom"] == nil || *headers["x-custom"] != "value" {
+		t.Fatalf("absent sessionId: headers = %v, want only x-custom", headers)
 	}
 }
