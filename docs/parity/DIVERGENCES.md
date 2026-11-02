@@ -2822,3 +2822,23 @@ Parity allowance: `schema/internal/ecmaregex/golden_test.go` (`TestKnownGaps`) s
 Remove when: regexp2 gains Canonicalize-based case-insensitive backreference comparison, or PiG gets its own backtracking engine for the ECMAScript grammar. Then the markers, the rows of `knownGaps` and this record go.
 
 SCRUTINIZED:approved
+
+## D224 A watch listener that blocks on a wait the host cannot see holds back the waits and publications that follow its delivery
+
+What: Pi runs a watch's drain as a microtask: a listener runs up to its first `await`, and the code that awaited a Harness wait's promise, and the Session's macrotask hop between two commits of one storage call, resume only after that (`packages/chord/src/watch.ts` `#schedule`/`#drain`, `packages/durable/src/session/session.ts` `onJobEnd`, the hop of `writer.ts`). A listener's `await` ends its synchronous part, so nothing ever waits for a listener's own blocking. A Go listener is a blocking call with no await point: PiG's `chord.DeliveryScheduler.AwaitEntered` waits until each earlier delivery's current call returned, or went on to a wait the host provides (the Session's `Park`/`Await`, the line, gate and writer waits, the host loop's park), or ended. A listener that blocks on something the host cannot see (a channel send or receive, a mutex, network I/O, a child process) before it returns has not entered: every Harness wait that follows its delivery (`WaitForTask`, `WaitForIdle`, `Submission.Wait`, `Conversation.WaitForIdle`) and the Session's hop, and with the hop every later publication of that Session, wait until it returns. A listener that sends on an unbuffered channel the test reads only after `WaitForTask` returns stalls `WaitForTask` until its context ends.
+
+Why: Go cannot observe a goroutine's first suspension. The ordering Pi guarantees (a listener sees one call per published part, and its synchronous part ran before the waiting code resumes) needs the delivery to say it went on to a wait; the earlier mechanism that read every goroutine's state gave the order up above 128 goroutines and cost a stack dump per wait. A hop that did not wait for listeners would let a drain fold the frames of several parts into one call, which Pi never does.
+
+Scope: every watch listener (`chord.Watch.Start`, `chord.NativeWatch.Start`, `durable.WatchHandle.Start`, the Harness's conversation, task graph and registry watches), and the waits that call `Session.AwaitDeliveriesEntered` and the Session's `Hop`. The contract: a listener that blocks on a wait the host cannot see calls `chord.DeliveryEntered()` first, or does the blocking on a goroutine of its own and returns. Forgetting the call does not fail; the waits behind that delivery do not return. A listener that only uses the Session's, the Harness's or the host's own calls needs nothing: each of their blocking points calls it.
+
+Owner decision: 2026-11-02, owner approved keeping the deterministic handshake and recording the contract as one numbered divergence (D224).
+
+Call-site markers: `chord/watch_impl.go` (`DeliveryEntered`, `awaitEntered`), `durable/session/session.go` (`Hop`, `AwaitDeliveriesEntered`), `durable/session/writer.go` (the hop between two parts).
+
+Evidence: `TestAListenerThatBlocksOnAChannelStallsHarnessWaitForTaskUntilItCallsDeliveryEntered` (`durable/harness/harness_delivery_contract_test.go`) states both sides on a settled chat: the unmarked listener holds `WaitForTask` until its context ends, the marked one does not. The ports of three Pi tests carry the call because their listener awaits a promise, which Go blocks on: example 21 (`durable/examples/lifecycle_examples_test.go`, the UI listener that awaits `settled`), `TestTaskDocuments/a watch busy in an earlier call when its task ends fails with the Harness before its retirement call` and the other users of `deferredGate.wait` (`durable/harness/task_support_test.go`).
+
+Parity allowance: the harness tests that port Pi's waits and listeners (`durable/harness/wait_deliveries_test.go`, `durable/harness/harness_group_commit_test.go`) run Pi's cases unchanged except for the marked awaits above; `TestAwaitEnteredSeesEveryFrameOfARunningDrain` and `TestGroupCommitTheHopWaitsForTheSynchronousPartOfAListener` state Pi's one call per part.
+
+Remove when: Go can observe a listener's first suspension (a blocked goroutine reports what it waits for to the host without a call of the listener's), or Pi's drain stops running a listener's synchronous part ahead of the code that awaits the commit.
+
+SCRUTINIZED:approved
