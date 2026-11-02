@@ -1769,5 +1769,105 @@
    "old": "\t\t\tinput = Strings(\"text\", \"image\")\n",
    "new": "\t\t\tinput = Strings(\"text\")\n"
   }
+ ],
+ "packages/evals/src/cli.ts": [
+  {
+   "file": "internal/evals/cli.go",
+   "old": "slices.SortFunc(files, compareUTF16)",
+   "new": "slices.SortFunc(files, strings.Compare)"
+  },
+  {
+   "file": "internal/evals/cli.go",
+   "old": "if images.WithDocs.ID == images.WithoutDocs.ID {",
+   "new": "if images.WithDocs.ID != images.WithoutDocs.ID {"
+  },
+  {
+   "file": "cmd/pig-evals/main.go",
+   "old": "[]string{\"PI_PROVIDER\", \"PI_MODEL\", \"PI_EVAL_RUNS_PER_VARIANT\"}",
+   "new": "[]string{\"PI_PROVIDER\", \"PI_EVAL_RUNS_PER_VARIANT\"}"
+  }
+ ],
+ "packages/evals/src/docker.ts": [
+  {
+   "file": "internal/evals/docker.go",
+   "old": "{\"PI_EVAL_SANDBOX_UID\", \"65532\"}",
+   "new": "{\"PI_EVAL_SANDBOX_UID\", \"65533\"}"
+  },
+  {
+   "file": "internal/evals/docker.go",
+   "old": "if status != 0 || jsstring.Trim(stdout) == \"\" {",
+   "new": "if status != 0 {"
+  },
+  {
+   "file": "internal/evals/docker.go",
+   "old": "\"--read-only\", ",
+   "new": "\"--read-write\", "
+  },
+  {
+   "file": "internal/evals/docker.go",
+   "old": "if status != 0 {\n\t\treturn \"\", fmt.Errorf(\"%s eval discovery failed.\", variant)",
+   "new": "if status == 0 {\n\t\treturn \"\", fmt.Errorf(\"%s eval discovery failed.\", variant)"
+  }
+ ],
+ "packages/evals/src/harness.ts": [
+  {
+   "file": "internal/evals/harness.go",
+   "old": "provider, id = jsstring.Trim(provider), jsstring.Trim(id)",
+   "new": "provider, id = provider, jsstring.Trim(id)"
+  },
+  {
+   "file": "internal/evals/harness.go",
+   "old": "!strings.HasPrefix(name, \"PI_EVAL_\")",
+   "new": "!strings.HasPrefix(name, \"PI_EVAL_X\")"
+  },
+  {
+   "file": "internal/evals/harness.go",
+   "old": "!= *options.ExpectedPiDocumentation {",
+   "new": "== *options.ExpectedPiDocumentation {"
+  },
+  {
+   "file": "internal/evals/harness.go",
+   "old": "cwdStart < documentationEnd",
+   "new": "cwdStart > documentationEnd"
+  }
+ ],
+ "packages/evals/src/plan.ts": [
+  {
+   "file": "internal/evals/plan.go",
+   "old": "if runNumber%2 == 0 {",
+   "new": "if runNumber%2 == 1 {"
+  },
+  {
+   "file": "internal/evals/plan.go",
+   "old": "if identities[key] {",
+   "new": "if !identities[key] {"
+  },
+  {
+   "file": "internal/evals/plan.go",
+   "old": "if runsPerVariant < 1 {",
+   "new": "if runsPerVariant < 0 {"
+  }
+ ],
+ "packages/evals/src/report.ts": [
+  {
+   "file": "internal/evals/report.go",
+   "old": "caseResult.Status != assertion.Status",
+   "new": "caseResult.Status == assertion.Status"
+  },
+  {
+   "file": "internal/evals/report.go",
+   "old": "*run.Usage.Provider+\"/\"+*run.Usage.Model != task.Model",
+   "new": "*run.Usage.Provider+\"/\"+*run.Usage.Model == task.Model"
+  },
+  {
+   "file": "internal/evals/report.go",
+   "old": "*observation.Score >= 1",
+   "new": "*observation.Score > 1"
+  },
+  {
+   "file": "internal/evals/report.go",
+   "old": "*treatmentPassRate < *controlPassRate",
+   "new": "*treatmentPassRate <= *controlPassRate"
+  }
  ]
 }
