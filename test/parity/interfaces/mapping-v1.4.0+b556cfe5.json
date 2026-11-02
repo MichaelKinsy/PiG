@@ -6742,7 +6742,7 @@
       ],
       "evidence": [
         "test:ai/cloudflare_auth_upstream_test.go#TestCloudflareAuthLoginPromptsForKeyAccountAndGateway",
-        "test:ai/provider_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
         "test:ai/provider_auth_upstream_test.go#TestProvidersOwnedCloudLoginUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -14127,7 +14127,7 @@
         "call:ai/auth_providers.go#EnvAPIKeyAuth"
       ],
       "evidence": [
-        "test:ai/provider_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
         "test:ai/providers_login_upstream_test.go#TestEnvAPIKeyAuthLoginUpstream",
         "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream"
       ]
@@ -14149,7 +14149,7 @@
         "call:ai/auth_providers.go#EnvAPIKeyAuth"
       ],
       "evidence": [
-        "test:ai/provider_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
         "test:ai/providers_login_upstream_test.go#TestEnvAPIKeyAuthLoginUpstream",
         "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream"
       ]
@@ -49863,7 +49863,7 @@
       ],
       "evidence": [
         "test:ai/cloudflare_auth_upstream_test.go#TestCloudflareAuthLoginPromptsForKeyAccountAndGateway",
-        "test:ai/provider_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
         "test:ai/provider_auth_upstream_test.go#TestProvidersOwnedCloudLoginUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -57655,7 +57655,7 @@
         "call:ai/auth_providers.go#EnvAPIKeyAuth"
       ],
       "evidence": [
-        "test:ai/provider_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
         "test:ai/providers_login_upstream_test.go#TestEnvAPIKeyAuthLoginUpstream",
         "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream"
       ]
@@ -57677,7 +57677,7 @@
         "call:ai/auth_providers.go#EnvAPIKeyAuth"
       ],
       "evidence": [
-        "test:ai/provider_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
         "test:ai/providers_login_upstream_test.go#TestEnvAPIKeyAuthLoginUpstream",
         "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream"
       ]
