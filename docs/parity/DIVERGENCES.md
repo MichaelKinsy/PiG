@@ -2530,7 +2530,7 @@ Owner decision: approved by owner Michael Kinsy on 2026-10-24 (Codec family of `
 
 SCRUTINIZED:approved
 
-Amendment 2026-11-02 (pending owner): the approval above (2026-10-24) was given when the SDKs ran an extension tool's refinements themselves. Pi b556cfe5 no longer runs them (`ai/CHANGELOG.md:25`, `coding-agent/docs/extensions.md:176`: "`Type.Refine()` refinements are not run"), and this branch removed the SDK refinement round trip to match. `Refine` and `IsRefine` therefore stay schema constructors whose refinements no tool-argument validation runs, as in Pi. Whether D198 should also cover them (Go, Rust, Python and Lisp keep a `Refine` callback that nothing can call, the same inert member this record excludes for Codecs) is the owner's decision; it is listed in `handoffs/next/owner/schema-decisions.md` and is not decided here.
+Amendment 2026-11-02 (owner decision of the same day): the approval above (2026-10-24) was given when the SDKs ran an extension tool's refinements themselves. Pi 1.5.0 no longer runs them (`ai/CHANGELOG.md:25`, `coding-agent/docs/extensions.md:176`: "`Type.Refine()` refinements are not run"), and this branch removed the SDK refinement round trip to match. `Refine` and `IsRefine` therefore stay schema constructors whose refinements no tool-argument validation runs, as in Pi. They are not part of D198: the owner approved a separate record for them, D226 (Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs).
 
 Remove when: an SDK serves `Value.Decode`/`Value.Encode` (or a host call runs a codec) so a stored callback pair has a consumer.
 
@@ -2866,3 +2866,23 @@ Parity allowance: none needed; the scenarios that poll with a helper match Pi, a
 Remove when: the thread-based SDKs can report where a handler's thread yields without an explicit call (for example a runtime-level scheduler of their own), or Pi gives `ctx.isIdle()` a definition that no longer depends on the loop's order.
 
 SCRUTINIZED:approved
+
+## D226 Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs
+
+What: `Type.Refine(type, check, error?)` is a schema constructor in the Go (`sdk.Type.Refine`), Rust (`Type::refine`), Python (`Type.refine`) and Lisp (`type-refine`) SDKs. It returns a copy of the schema with the check appended to a hidden `~refine` list, and the schema's JSON is unchanged. No API of these SDKs runs that list: a tool's arguments are validated as plain JSON Schema, and the SDKs serve no `Value.Check`.
+
+Why: Pi 1.5.0 validates tool arguments with `@earendil-works/pi-schema`, which runs no TypeBox refinement (`packages/ai/CHANGELOG.md:25`, `packages/coding-agent/docs/extensions.md:176`: "`Type.Refine()` refinements are not run"). Only TypeBox's own `Value.Check` runs them, and a Node extension can call that itself. The Go, Rust, Python and Lisp SDKs have no `Value.Check`, so a refinement they build can be checked by no one but the extension's own handler.
+
+Pi bug: none.
+
+Scope: the four `Refine` constructors above. A tool's argument behavior is at Pi parity: no refinement runs on the arguments of a tool in any SDK, Node included. An extension author sees the same thing in Pi and PiG for tool arguments (the arguments a refinement would reject are accepted); the difference is that TypeBox's `Value.Check(schema, value)` of a schema built with `Refine` runs the check in Node and has no counterpart in the other four SDKs.
+
+Owner decision: approved by owner Michael Kinsy on 2026-11-02 (keep tool-argument behavior at Pi parity; `Value.Check` after 0.7.0).
+
+SCRUTINIZED:approved
+
+Remove when: every SDK serves TypeBox `Value.Check`, so a stored refinement has a consumer.
+
+Call-site markers: `extensions/sdk/type_schema_refine.go` (`Refine`), `extensions/sdk-py/pig_sdk/type_schema.py` (`refine`), `extensions/sdk-rs/src/type_schema.rs` (`Type::refine`), `extensions/sdk-lisp/src/type-schema.lisp` (`type-refine`).
+
+Evidence: `TestConformance_RefinedToolArgumentsAreNotRefined` (`test/extension-conformance/refine_arguments_test.go`) registers a tool whose schema carries refinements in every SDK and requires that the host runs none of them (a probe records every call of a predicate and a message function).
