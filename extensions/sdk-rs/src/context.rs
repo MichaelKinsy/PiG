@@ -4630,7 +4630,8 @@ impl Context {
     }
 
     /// `yield_now`, then blocks the thread for `duration`. Use it instead of `std::thread::sleep`
-    /// in a poll on `is_idle`.
+    /// in a poll on `is_idle`. Like Pi's `setTimeout` it does not return early when the request is
+    /// cancelled: check `is_cancelled()` to stop earlier.
     pub fn sleep(&self, duration: Duration) -> io::Result<()> {
         self.yield_now()?;
         thread::sleep(duration);
@@ -4722,7 +4723,9 @@ impl Context {
 
     /// Upstream `pi.sendMessage(message, options)`: injects a custom message
     /// whose content may be a string or content blocks, with optional
-    /// details.
+    /// details. With `trigger_turn` the run it starts keeps `is_idle` busy until this
+    /// handler yields (`yield_now`, `sleep`, a call Pi awaits, or its return): a handler that
+    /// polls `is_idle` for that run must use `sleep`, not `std::thread::sleep` (D225).
     pub fn send_custom_message(
         &self,
         message: &CustomMessage,

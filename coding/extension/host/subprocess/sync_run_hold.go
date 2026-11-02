@@ -131,6 +131,8 @@ func returnsPromiseInPi(method string) bool {
 	return startsAsync(method)
 }
 
+// pig divergence (D225): only a call Pi awaits (returnsPromiseInPi) or the SDK's explicit yield ends a thread-based handler's hold; a raw sleep does not.
+//
 // endSyncRunHold ends the hold of the thread-based SDK's handler that made call when call awaits in Pi. A runtime with an event loop reports its
 // own yields.
 func (h *Host) endSyncRunHold(conn *Conn, call *CallPayload) {

@@ -649,7 +649,10 @@ type CustomMessage struct {
 }
 
 // SendCustomMessage injects a custom message into the conversation, as
-// upstream pi.sendMessage does, with block content and details.
+// upstream pi.sendMessage does, with block content and details. With
+// TriggerTurn the run it starts keeps IsIdle busy until this handler yields
+// ([Context.Yield], [Context.Sleep], a call Pi awaits, or its return): a handler
+// that polls IsIdle for that run must use Sleep, not time.Sleep (D225).
 func (c Context) SendCustomMessage(msg CustomMessage, opts SendMessageOptions) error {
 	options := map[string]any{}
 	if opts.TriggerTurn != nil {
@@ -2437,7 +2440,7 @@ func (c Context) Yield() error {
 	return callResultError(result, err)
 }
 
-// Sleep yields (see [Context.Yield]) and then blocks for d. Use it instead of time.Sleep when polling IsIdle for a run the handler started with SendMessage.
+// Sleep yields (see [Context.Yield]) and then blocks for d. Use it instead of time.Sleep when polling IsIdle for a run the handler started with SendMessage. Like Pi's setTimeout it does not return early when the request is cancelled: select on Done() to stop earlier.
 func (c Context) Sleep(d time.Duration) error {
 	if err := c.Yield(); err != nil {
 		return err

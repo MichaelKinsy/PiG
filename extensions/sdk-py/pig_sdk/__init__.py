@@ -3838,7 +3838,8 @@ class Context:
 
         Use it instead of ``time.sleep`` in a poll such as
         ``while not ctx.is_idle(): ctx.sleep(0.01)``; a raw ``time.sleep``
-        keeps the host's hold until the handler returns.
+        keeps the host's hold until the handler returns. Like Pi's ``setTimeout`` it does
+        not return early when the request is cancelled; check ``is_cancelled()`` to stop earlier.
         """
         self.yield_now()
         time.sleep(seconds)

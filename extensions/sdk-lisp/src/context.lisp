@@ -411,7 +411,7 @@ function of the call's input (a hash-table) returning \"all\" or the words that 
   "Stand for Pi's first `await`: end the host's busy hold for this request (host call \"yield\")."
   (ctx-call-host ctx "yield" (obj)) nil)
 (defun ctx-sleep (ctx seconds)
-  "ctx-yield, then block the thread for SECONDS."
+  "ctx-yield, then block the thread for SECONDS. Like Pi's setTimeout it does not return early when the request is cancelled; use ctx-wait-cancelled to stop earlier."
   (ctx-yield ctx)
   (sleep seconds)
   nil)
