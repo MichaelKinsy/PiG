@@ -702,7 +702,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/codemode/src/runtime/worker.ts` | `(no worker thread: QuickJS runs on wazero in the host process, codemode/engine.go)` | n/a |
 | `packages/codemode/src/source.ts` | `codemode/source.go` | ✅ |
 | `packages/codemode/src/types.ts` | `codemode/types.go`, `codemode/sandbox.go`, `codemode/run.go`, `codemode/remote.go` | ✅ |
-| `packages/codemode/src/wasm.ts` | `codemode/assets.go`, `codemode/wasm.go` | ✅ |
+| `packages/codemode/src/wasm.ts` | `codemode/assets_quickjs.go`, `codemode/wasm.go` | ✅ |
 
 ## `packages/chord/src/`
 
@@ -1065,7 +1065,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 
 | Upstream | PiG | Status |
 |---|---|---|
-| `packages/env/src/connection.ts` | `env/connection.go + env/frame_json.go` | ✅ |
+| `packages/env/src/connection.ts` | `env/connection.go` | ✅ |
 | `packages/env/src/errors.ts` | `env/errors.go` | ✅ |
 | `packages/env/src/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/env/src/remote-env.ts` | `env/remote_env.go + env/paths.go` | ✅ |

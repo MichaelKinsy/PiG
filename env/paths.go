@@ -12,6 +12,8 @@ import (
 )
 
 // remotePaths is Node's path rules of the remote system: path.win32 or path.posix.
+//
+// Ports packages/env/src/remote-env.ts (remotePath, RemoteExecutionEnv.#resolve)
 type remotePaths struct{ windows bool }
 
 func (p remotePaths) join(parts ...string) string {
