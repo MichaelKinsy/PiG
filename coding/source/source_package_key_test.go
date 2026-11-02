@@ -13,6 +13,14 @@ func TestGetSourcePackageKey(t *testing.T) {
 	}
 }
 
+// JSON.stringify leaves <, > and & unescaped.
+func TestGetSourcePackageKeyDoesNotEscapeHTML(t *testing.T) {
+	got := GetSourcePackageKey("git:a&b<c>", "user")
+	if want := `{"source":"git:a&b<c>","scope":"user"}`; got != want {
+		t.Fatalf("GetSourcePackageKey = %s, want %s", got, want)
+	}
+}
+
 func TestSourceInfoCarriesChangelogPathOnlyWhenSet(t *testing.T) {
 	if got := mustJSON(t, SourceInfo{Path: "p", Source: "s", Scope: "user", Origin: "package"}); got != `{"path":"p","source":"s","scope":"user","origin":"package"}` {
 		t.Errorf("without a changelog: %s", got)

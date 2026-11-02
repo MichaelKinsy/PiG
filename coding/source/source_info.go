@@ -1,6 +1,10 @@
 package source
 
-import "encoding/json"
+import (
+	"bytes"
+	"encoding/json"
+	"strings"
+)
 
 // SourceInfo mirrors core/source-info.ts SourceInfo: where a resource, tool or command came from.
 type SourceInfo struct {
@@ -16,13 +20,16 @@ type SourceInfo struct {
 // GetSourcePackageKey is core/source-info.ts getSourcePackageKey: the key under which per-package state, such as the last seen
 // extension changelog version, is stored. It is the JSON text of {source, scope}.
 func GetSourcePackageKey(source, scope string) string {
-	encoded, err := json.Marshal(struct {
+	// JSON.stringify leaves <, > and & as they are, so the encoder must not escape them.
+	var encoded bytes.Buffer
+	encoder := json.NewEncoder(&encoded)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(struct {
 		Source string `json:"source"`
 		Scope  string `json:"scope"`
-	}{source, scope})
-	if err != nil {
+	}{source, scope}); err != nil {
 		// Two strings always encode.
 		panic(err)
 	}
-	return string(encoded)
+	return strings.TrimSuffix(encoded.String(), "\n")
 }
