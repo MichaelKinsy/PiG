@@ -372,7 +372,7 @@ func (commit *DurableCommit) checkIds(step *chordstore.Step) (map[int64]RecordTy
 	claimed := map[int64]RecordType{}
 	for _, each := range commit.claims {
 		if !read[each.id] {
-			row, err := commit.tables.RecordIds.Get(step, []sqlite.SqliteValue{each.id}, commit.ctx)
+			row, err := commit.tables.RecordIds.Get(commit.ctx, step, []sqlite.SqliteValue{each.id})
 			if err != nil {
 				return nil, err
 			}
