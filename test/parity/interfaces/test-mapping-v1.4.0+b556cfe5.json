@@ -2545,8 +2545,18 @@
     },
     {
       "path": "packages/chord/test/next/contracts/declare.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:bcd7a7ca7e641272520ba52d31ae1e14a3bd79c7f6f3b8d6fc83ae9914afb878"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:bcd7a7ca7e641272520ba52d31ae1e14a3bd79c7f6f3b8d6fc83ae9914afb878",
+      "evidence": [
+        "chord/next/contracts/declare_test.go#TestDeclarationChecks",
+        "chord/next/contracts/declare_test.go#TestDeclarationMembersAcrossVariants",
+        "chord/next/contracts/declare_test.go#TestReservedMemberNames",
+        "chord/next/contracts/declare_test.go#TestKeyedMembers"
+      ],
+      "rationale": "Eleven of the 12 upstream cases run in declare_test.go (lane D1); the twelfth, the keyed member refused in a remote contract, is designed out under the owner class approval recorded in the release policy (the compiler refuses it: *KeyedMember is no Schema). 'refuse a remote declaration without a host address at the type level' runs as the 'a missing host address' row, because upstream asserts the runtime throw. Inside the three it.each tables every row a typed Go declaration can hold is ported; the rows whose input a Go declaration cannot hold are not: remote 'name not a string', 'unknown declaration key', 'a host address that is no function', 'unknown variant key', 'a method under state' and 'a schema under methods' (its Go form is a nil *Method, ported as 'a nil method under methods'), local 'unknown key' and 'a host address' (LocalDeclaration has no such fields).",
+      "designedOutCases": [
+        "keyed members (slice 6a \u00a712) \u203a refuse a keyed member in a remote contract, at the type level and at declaration"
+      ]
     },
     {
       "path": "packages/chord/test/next/contracts/evolve.test.ts",
@@ -2593,8 +2603,18 @@
     },
     {
       "path": "packages/chord/test/next/data/args.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:c47d01ec738ca47873d1fc7a5bdbe9f0a5c2e6f9de9e0f9579a1ba3a3d990499"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:c47d01ec738ca47873d1fc7a5bdbe9f0a5c2e6f9de9e0f9579a1ba3a3d990499",
+      "evidence": [
+        "chord/next/data/args_test.go#TestBindProvider",
+        "chord/next/data/args_test.go#TestCheckArgs",
+        "chord/next/data/args_test.go#TestMemory",
+        "chord/next/data/typelevel_test.go#TestCallReplacementArgumentsAreValues"
+      ],
+      "rationale": "Thirteen of the 14 upstream cases run in args_test.go (lane D1); the fourteenth, \"types a call replacement's arguments as values\", is designed out under the owner class approval recorded in the release policy: CheckedArgs.Call is the contracts.CallFunc field, so a call with other argument types does not compile, and TestCallReplacementArgumentsAreValues pins the field type by reflection. Two assertions inside ported cases have no Go form and are not ported: the expectTypeOf lines of \"returns current-version arguments as passed\" (CheckedArgs and ArgsOf are Value in Go), and the WeakRef of the mapping function in \"memory\" (a Go func value has no weak reference; the test holds the contract, the provider and a value the mapping closure captures through weak pointers and requires all three collected).",
+      "designedOutCases": [
+        "checkArgs \u203a types a call replacement's arguments as values"
+      ]
     },
     {
       "path": "packages/chord/test/next/data/errors.test.ts",

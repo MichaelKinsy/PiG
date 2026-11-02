@@ -273351,7 +273351,7 @@
       "evidence": [
         "test:schema/coerce_typebox_upstream_test.go#TestCoerceTypeBoxUpstream",
         "test:schema/shared_upstream_test.go#TestSharedChecks",
-        "test:schema/errors_golden_test.go#TestHandWrittenCaseErrorsMatchPi"
+        "test:chord/next/contracts/schema_test.go#TestSchemaBytes"
       ]
     },
     {
@@ -273373,7 +273373,7 @@
       "evidence": [
         "test:schema/coerce_typebox_upstream_test.go#TestCoerceTypeBoxUpstream",
         "test:schema/shared_upstream_test.go#TestSharedChecks",
-        "test:schema/errors_golden_test.go#TestHandWrittenCaseErrorsMatchPi"
+        "test:chord/next/contracts/schema_test.go#TestSchemaBytes"
       ]
     },
     {
@@ -273610,9 +273610,9 @@
         "call:schema/resolver.go#newResolver"
       ],
       "evidence": [
+        "test:schema/coerce_oracle_test.go#TestCoerceMatchesPi",
         "test:schema/conformance_upstream_test.go#TestConformanceSuite",
-        "test:schema/validator_upstream_test.go#TestOptions",
-        "test:schema/errors_golden_test.go#TestErrorsMatchPi"
+        "test:schema/validator_upstream_test.go#TestOptions"
       ]
     },
     {
@@ -273632,9 +273632,9 @@
         "call:schema/compiler.go#newCompiler"
       ],
       "evidence": [
-        "test:schema/conformance_upstream_test.go#TestConformanceSuite",
-        "test:schema/types_upstream_test.go#TestFormatCheckIsTheCheckOfAFormatName",
-        "test:schema/validator_upstream_test.go#TestOptions"
+        "test:schema/coerce_oracle_test.go#TestCoerceMatchesPi",
+        "test:schema/coerce_typebox_upstream_test.go#TestCoerceTypeBoxUpstream",
+        "test:schema/conformance_upstream_test.go#TestConformanceSuite"
       ]
     },
     {
@@ -273766,7 +273766,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:schema/compiler.go#newCompiler"
+        "call:schema/coerce.go#newCoercer"
       ],
       "evidence": [
         "test:schema/validator_upstream_test.go#TestOptions",
@@ -274345,7 +274345,7 @@
       "evidence": [
         "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions",
         "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics",
-        "test:schema/validator_upstream_test.go#TestErrors"
+        "test:schema/coerce_upstream_test.go#TestCoerceUnresolvedReferences"
       ]
     },
     {
@@ -274367,7 +274367,7 @@
       "evidence": [
         "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions",
         "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics",
-        "test:schema/validator_upstream_test.go#TestErrors"
+        "test:schema/coerce_upstream_test.go#TestCoerceUnresolvedReferences"
       ]
     },
     {
@@ -274389,7 +274389,7 @@
       "evidence": [
         "test:schema/builders_upstream_test.go#TestBuildersAreDeterministicForTagUnions",
         "test:schema/builders_upstream_test.go#TestBuildersCompileIntoChecksWithTheDeclaredSemantics",
-        "test:schema/validator_upstream_test.go#TestErrors"
+        "test:schema/coerce_upstream_test.go#TestCoerceUnresolvedReferences"
       ]
     },
     {
@@ -274406,13 +274406,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:schema/validator.go#Compile"
+        "call:schema/validator.go#CoercingValidator.Parse"
       ],
       "evidence": [
         "test:schema/coerce_typebox_upstream_test.go#TestCoerceTypeBoxUpstream",
         "test:schema/shared_upstream_test.go#TestSharedChecks",
-        "test:chord/next/contracts/schema_test.go#TestSchemaBytes",
-        "test:chord/next/contracts/snapshot_test.go#TestSnapshots"
+        "test:schema/coerce_upstream_test.go#TestCoerceUpstream"
       ]
     },
     {
@@ -274441,9 +274440,9 @@
         "call:schema/validator.go#Validator.Check"
       ],
       "evidence": [
+        "test:schema/coerce_typebox_upstream_test.go#TestCoerceTypeBoxUpstream",
         "test:schema/shared_upstream_test.go#TestSharedChecks",
-        "test:chord/next/contracts/schema_test.go#TestSchemaBytes",
-        "test:chord/next/contracts/snapshot_test.go#TestSnapshots"
+        "test:chord/next/contracts/schema_test.go#TestSchemaBytes"
       ]
     },
     {
@@ -274463,9 +274462,9 @@
         "call:schema/validator.go#Validator.Check"
       ],
       "evidence": [
+        "test:schema/coerce_typebox_upstream_test.go#TestCoerceTypeBoxUpstream",
         "test:schema/shared_upstream_test.go#TestSharedChecks",
-        "test:chord/next/contracts/schema_test.go#TestSchemaBytes",
-        "test:chord/next/contracts/snapshot_test.go#TestSnapshots"
+        "test:chord/next/contracts/schema_test.go#TestSchemaBytes"
       ]
     },
     {
