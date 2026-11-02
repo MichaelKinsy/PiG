@@ -269,7 +269,7 @@ func (s *Scheduler) abortHandler(r *reservation, rt *Runtime, current *jv.Object
 func (s *Scheduler) step(inv *invocation, st stepper) {
 	j := &stepJob{s: s, inv: inv, st: st, span: inv.span, trace: inv.carrier()}
 	j.rn = j
-	s.loop.QueueAfterTail(&j.job)
+	s.loop.QueueInternal(&j.job)
 }
 
 // stepper is what a step decides and does next: decide runs inside the step's commit, and after once the commit is done (with the
@@ -293,7 +293,8 @@ type stepJob struct {
 	fault  error
 }
 
-func (j *stepJob) runJob() error {
+// RunJob is the step's commit.
+func (j *stepJob) RunJob() error {
 	_, err := j.s.sess.RunCommit(j.change, TxScope{Span: j.span, Trace: j.trace})
 	if err == nil {
 		j.s.loop.OnComplete(j.reportFault)
@@ -314,6 +315,14 @@ func (j *stepJob) change(tx *Tx) error {
 	s, inv := j.s, j.inv
 	j.result = nil
 	j.fault = nil
+	// The decision reads the task's record and the cancellation intent above it in a region: what an unpublished commit wrote makes the job wait.
+	s.beginRegion()
+	if rec, ok := s.liveRecord(inv.taskID); ok && taskStatus(rec) == StatusRunning && !getBool(rec, "background") {
+		s.belowCancelled(parentOf(nodeOf(rec)))
+	}
+	if err := s.endRegionPlain(tx); err != nil {
+		return err
+	}
 	found, ok := s.live.get(inv.taskID)
 	var current *jv.Object
 	if ok && taskStatus(found) == StatusRunning {
@@ -344,7 +353,8 @@ func (j *stepJob) change(tx *Tx) error {
 	return nil
 }
 
-func (j *stepJob) doneJob(err error) {
+// DoneJob continues the step once its commit is done.
+func (j *stepJob) DoneJob(err error) {
 	if err != nil {
 		j.s.endInvocation(j.inv)
 		j.s.failSession(err)
@@ -357,10 +367,19 @@ func (j *stepJob) doneJob(err error) {
 // terminate settles a task with a scheduler-written outcome: completing while
 // owned work is live, else terminal with the harness settlement.
 func (s *Scheduler) terminate(tx *Tx, rec *jv.Object, outcome *jv.Object) error {
-	if _, err := s.loadScopes(false); err != nil {
+	_, awaits, err := s.loadScopesAwaiting(false)
+	if err != nil {
 		return err
 	}
-	if s.hasOwnedLive(mustInt(rec, "id"), overlayOf(tx), nil) {
+	// `await this.#loadScopes(false)`, the region's await, and the caller's await of #terminate's own return.
+	tx.charge(awaits + 1)
+	s.beginRegion()
+	owns := s.hasOwnedLive(mustInt(rec, "id"), overlayOf(tx), nil)
+	if err := s.endRegion(tx); err != nil {
+		return err
+	}
+	defer tx.charge(1)
+	if owns {
 		return tx.stageFresh(withState(rec, obj("status", StatusCompleting, "outcome", outcome)))
 	}
 	if err := tx.stageFresh(withState(rec, obj("status", StatusTerminal, "outcome", outcome))); err != nil {
@@ -394,7 +413,12 @@ func (s *Scheduler) commitState(tx *Tx, inv *invocation, current *jv.Object, nex
 				return err
 			}
 		}
-		if s.hasOwnedLive(mustInt(current, "id"), o, nil) {
+		s.beginRegion()
+		owns := s.hasOwnedLive(mustInt(current, "id"), o, nil)
+		if err := s.endRegion(tx); err != nil {
+			return err
+		}
+		if owns {
 			outcome, _ := next.Get("outcome")
 			outcome = shared(&s.sess.lastOutcome, outcome)
 			return tx.stageFresh(withState(progressed(current), obj("status", StatusCompleting, "outcome", outcome)))
@@ -420,13 +444,30 @@ func (s *Scheduler) validateWait(tx *Tx, inv *invocation, current *jv.Object, on
 	if inv.abortMode {
 		return errorf("Abort handler of task %d cannot wait", id)
 	}
+	// Owned work is found by walks down, which need the chains of every live task loaded.
+	_, awaits, err := s.loadScopesAwaiting(false)
+	if err != nil {
+		return err
+	}
+	s.beginRegion()
+	derr := s.checkWait(tx, inv, current, on, next)
+	if err := s.endRegion(tx); err != nil {
+		return err
+	}
+	s.stateAwaits = awaits
+	return derr
+}
+
+// checkWait is the decision region of validateWait: why the wait is refused, nil when it may be stored.
+func (s *Scheduler) checkWait(tx *Tx, inv *invocation, current *jv.Object, on []ID, next *jv.Object) error {
+	id := mustInt(current, "id")
 	o := overlayOf(tx)
 	policy, _ := getStr(next, "policy")
 	var targets []ID
 	for _, m := range on {
 		member := o.tasks[m]
 		if member == nil {
-			member, _ = s.live.get(m)
+			member, _ = s.liveRecord(m)
 		}
 		if member == nil {
 			var err error
@@ -448,11 +489,7 @@ func (s *Scheduler) validateWait(tx *Tx, inv *invocation, current *jv.Object, on
 			targets = append(targets, m)
 		}
 	}
-	// `await this.#validateWait(...)` (scheduler.ts #commitState): a wait on tasks the caller owns, or that ended, returns at once, one tick
-	// for the await; a wait on others awaits #waitCycle too (the model keeps the one more tick it has measured).
-	s.stateAwaits = 1
 	if len(targets) == 0 {
-		s.stateAwaits = 0
 		return nil
 	}
 	cycle, err := s.waitCycle(id, targets, o)
@@ -474,10 +511,6 @@ func (s *Scheduler) validateWait(tx *Tx, inv *invocation, current *jv.Object, on
 // not abort-marked, or Y is live ordinary owned work of X, which holds X as completing. Each task is visited once and each
 // subtree walked once, so a check is bounded by the live work it reaches.
 func (s *Scheduler) waitCycle(task ID, on []ID, o *overlay) ([]ID, error) {
-	// Owned work is found by walks down, which need the chains of every live task loaded.
-	if _, err := s.loadScopes(false); err != nil {
-		return nil, err
-	}
 	// from maps each reached task to the task whose edge reached it; the members of on map to 0, which no task has.
 	from := map[ID]ID{}
 	walked := map[ID]bool{}
@@ -505,7 +538,7 @@ func (s *Scheduler) waitCycle(task ID, on []ID, o *overlay) ([]ID, error) {
 		}
 		record := o.tasks[id]
 		if record == nil {
-			record, _ = s.live.get(id)
+			record, _ = s.liveRecord(id)
 		}
 		if record == nil || taskStatus(record) == StatusTerminal {
 			continue

@@ -46,6 +46,9 @@ export function documentRetentionWire(settings: any): number | undefined {
   return ms === 600_000 ? undefined : Number.isFinite(ms) ? ms : Number.MAX_VALUE
 }
 
+/** harness/agent.ts DEFAULT_RESTART_LIMIT: the restarts a task is allowed before it is parked. */
+export const DEFAULT_RESTART_LIMIT = 5
+
 /** A restart limit as given when it is a number of restarts, 1 or more, rounded down; else the default (harness/agent.ts restartLimit). */
 export function restartLimit(limit: unknown): number {
   return typeof limit === "number" && limit >= 1 ? Math.floor(limit) : 5

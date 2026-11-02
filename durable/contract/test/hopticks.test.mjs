@@ -7,5 +7,5 @@ import test from "node:test"
 
 test("durable/core/session/hopcost/testdata/ticks.json is what the reference's Storage adapters measure", () => {
 	const out = execFileSync(process.execPath, ["--conditions=source", "--experimental-strip-types", "--no-warnings", join(import.meta.dirname, "..", "tools", "gen-hopticks.mjs"), "--check"], { encoding: "utf8" })
-	assert.match(out, /ticks\.json is current/)
+	assert.match(out, /ticks\.json and session_ticks\.json are current/)
 })

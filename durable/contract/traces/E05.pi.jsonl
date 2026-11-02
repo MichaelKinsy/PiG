@@ -1,6 +1,6 @@
-{"k":">","name":"harness.root","tick":200}
-{"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":418,"begin":349}
-{"k":">","name":"harness.snapshot","tick":427}
-{"k":">","name":"harness.snapshot","tick":428}
-{"k":">","name":"harness.root().agent","tick":429}
-{"k":">","name":"harness.close","tick":431}
+{"k":">","name":"harness.root","tick":188}
+{"k":"#","seq":1,"summary":"conversations:i document_revisions:i documents:i","tick":437,"begin":344}
+{"k":">","name":"harness.snapshot","tick":449}
+{"k":">","name":"harness.snapshot","tick":450}
+{"k":">","name":"harness.root().agent","tick":451}
+{"k":">","name":"harness.close","tick":453}

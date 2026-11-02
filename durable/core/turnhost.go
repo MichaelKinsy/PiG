@@ -49,6 +49,13 @@ func (h *handler) newTurnHost() *turn.Host {
 			e, _, err := h.mir.Entry(id)
 			return e, err
 		},
+		KeptEntry: func(conv, id turn.ID) *jv.Object {
+			if h.sched == nil || !h.sched.KeptEntry(session.ID(conv), session.ID(id)) {
+				return nil
+			}
+			e, _, _ := h.mir.EntryIn(session.ID(conv), session.ID(id))
+			return e
+		},
 		AddTools: docs.AddTools,
 		PrepareArguments: func(tool string, args *jv.Object, then func(any, string, error)) {
 			h.checkArguments("prepareArguments", tool, nil, args, then)
@@ -519,6 +526,7 @@ func (h *handler) stream(req *turn.StreamRequest, onPartial func(jv.Raw), cancel
 	h.keepPayload(out)
 	var remove func()
 	finished := false
+	ms := &modelStream{h: h, req: req, onPartial: onPartial, then: then}
 	id := h.startEffect(abi.EffectModelContext, out, &pending{progress: func(ev *abi.Event) bool {
 		actions, err := streamActions(ev.Payload)
 		if err != nil {
@@ -527,16 +535,11 @@ func (h *handler) stream(req *turn.StreamRequest, onPartial func(jv.Raw), cancel
 			return true
 		}
 		for _, a := range actions {
-			switch a.kind {
-			case actPartial:
-				h.loop.Defer(func() { onPartial(a.partial) })
-			case actDone, actError:
+			a.effect = ev.ID
+			if a.kind != actPartial && a.kind != actPayload {
 				finished = true
-				h.loop.Defer(func() { then(a.message, nil) })
-			case actFault:
-				finished = true
-				h.loop.Defer(func() { then(nil, errors.New(a.text)) })
 			}
+			h.loop.DeferResumer(&streamDelivery{ms: ms, a: a})
 		}
 		if finished && remove != nil {
 			remove()
@@ -551,6 +554,57 @@ func (h *handler) stream(req *turn.StreamRequest, onPartial func(jv.Raw), cancel
 	}
 }
 
+// modelStream is the request of one stream call, which every action of its model_event batches is delivered to.
+type modelStream struct {
+	h         *handler
+	req       *turn.StreamRequest
+	onPartial func(jv.Raw)
+	then      func(*jv.Object, error)
+}
+
+// streamDelivery is one action of a model_event batch, delivered as a microtask.
+type streamDelivery struct {
+	ms *modelStream
+	a  streamAction
+}
+
+// Resume hands the action to the request.
+func (d *streamDelivery) Resume() {
+	a, ms := d.a, d.ms
+	switch a.kind {
+	case actPartial:
+		ms.onPartial(a.partial)
+	case actPayload:
+		ms.h.providerPayload(ms.req, a)
+	case actDone, actError:
+		ms.then(a.message, nil)
+	case actFault:
+		ms.then(nil, errors.New(a.text))
+	}
+}
+
+// providerPayload runs the beforeProviderRequest chain over the body the provider built (action a of its model request effect) and
+// answers the host's open onPayload with the body to send (the host hook modelPayload). A chain that ends with an error is the
+// invocation's abort: the host fails onPayload the way the aborted signal fails it in Pi.
+func (h *handler) providerPayload(req *turn.StreamRequest, a streamAction) {
+	req.PayloadHook.BeforeProviderRequest(a.body, func(payload any, sent bool, err error) {
+		out := append(h.payloadBuffer(256), `{"effect":`...)
+		out = jv.AppendNumber(out, float64(a.effect))
+		out = append(out, `,"call":`...)
+		out = jv.AppendNumber(out, a.call)
+		switch {
+		case err != nil:
+			out = append(out, `,"aborted":true`...)
+		case sent:
+			out = append(out, `,"payload":`...)
+			out = jv.Append(out, payload)
+		}
+		out = append(out, '}')
+		h.keepPayload(out)
+		h.hookEffect("modelPayload", 0, 0, 0, jv.Raw(out), nil, func(any, error) {})
+	})
+}
+
 // streamActionKind is what one pi-ai event of a model_event batch asks of the request.
 type streamActionKind uint8
 
@@ -559,6 +613,7 @@ const (
 	actDone                                // the request ended with a message
 	actError                               // the request ended with an error message
 	actFault                               // the host could not hand the final message over as strict JSON
+	actPayload                             // the provider built a request body: the beforeProviderRequest chain runs over it
 )
 
 // streamAction is one thing a batch does, in event order: a partial's text, the terminal message, or the fault's text.
@@ -567,6 +622,10 @@ type streamAction struct {
 	partial jv.Raw
 	message *jv.Object
 	text    string
+	// call and body are an actPayload's call number and body: the host holds the provider's onPayload open for the answer.
+	call   float64
+	body   any
+	effect uint32
 }
 
 // streamActions reads a model_event batch, a JSON array of pi-ai AssistantMessageEvents (types.ts). An event that is an object
@@ -580,7 +639,7 @@ func streamActions(payload []byte) ([]streamAction, error) {
 	}
 	var actions []streamAction
 	for _, members := range events {
-		var partial, typ, message, failure jv.Raw
+		var partial, typ, message, failure, call, body jv.Raw
 		for _, m := range members { // a member named twice counts at its last value, as in the parsed object
 			switch m.Key {
 			case "partial":
@@ -591,6 +650,10 @@ func streamActions(payload []byte) ([]streamAction, error) {
 				message = m.Raw
 			case "error":
 				failure = m.Raw
+			case "call":
+				call = m.Raw
+			case "payload":
+				body = m.Raw
 			}
 		}
 		if isObjectText(partial) {
@@ -603,6 +666,8 @@ func streamActions(payload []byte) ([]streamAction, error) {
 			actions = append(actions, streamAction{kind: actError, message: objectOf(failure)})
 		case "fault":
 			actions = append(actions, streamAction{kind: actFault, text: textOf(message)})
+		case "payload":
+			actions = append(actions, streamAction{kind: actPayload, call: numberOf(call), body: parsedValue(body)})
 		}
 	}
 	return actions, nil
@@ -619,6 +684,19 @@ func objectOf(raw []byte) *jv.Object {
 	v, _ := jv.Parse(raw)
 	o, _ := v.(*jv.Object)
 	return o
+}
+
+// parsedValue is the value that raw, the text of a JSON value, parses to; nil when it is not JSON.
+func parsedValue(raw []byte) any {
+	v, _ := jv.Parse(raw)
+	return v
+}
+
+// numberOf is the number that raw, the text of a JSON value Parse accepts, parses to; 0 when the value is not a number.
+func numberOf(raw []byte) float64 {
+	v, _ := jv.Parse(raw)
+	n, _ := v.(float64)
+	return n
 }
 
 // textOf is the string that raw, the text of a JSON value Parse accepts, parses to; "" when the value is not a string.

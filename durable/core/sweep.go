@@ -8,50 +8,16 @@ import (
 
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
-	"github.com/MichaelKinsy/PiG/durable/core/session"
 )
 
-// The Session's document sweep (session/retention.go) runs as a job on the Session line. In Harness mode that line is the Loop. A
-// Session-mode core has no Loop: its line is the host's transactions, so a sweep waits for the open transaction and runs at the end
-// of the step, as the job Pi queues behind the commit that holds the line.
+// The Session's document sweep (session/retention.go) runs as a job on the Session line, the Loop.
 
-// sweepMicrotask runs fn as a microtask: on the Loop in Harness mode, at the end of the step otherwise.
-func (h *handler) sweepMicrotask(fn func()) {
-	if h.loop != nil {
-		h.loop.Defer(fn)
-		return
-	}
-	h.microtasks = append(h.microtasks, fn)
-}
+// sweepMicrotask runs fn as a microtask of the Loop.
+func (h *handler) sweepMicrotask(fn func()) { h.loop.Defer(fn) }
 
-// enqueueSweep queues job on the Session line. A job that returns a *session.NeedGate (the store of held changes, while the
-// host's Storage holds the commit) runs again from the start once the host answered: the Loop reruns a line job, and a
-// Session-mode core keeps it first in its queue (runSessionSweeps).
-func (h *handler) enqueueSweep(job func() error) {
-	if h.loop != nil {
-		h.loop.LineAfterTail(job, nil)
-		return
-	}
-	h.sweeps = append(h.sweeps, job)
-}
-
-// runSessionSweeps runs the sweeps a Session-mode core queued, unless a host transaction holds the line.
-func (h *handler) runSessionSweeps() {
-	for (len(h.microtasks) > 0 || len(h.sweeps) > 0) && h.holder == 0 {
-		if len(h.microtasks) > 0 {
-			fn := h.microtasks[0]
-			h.microtasks = h.microtasks[1:]
-			fn()
-			continue
-		}
-		if err := h.sweeps[0](); session.IsNeedGate(err) {
-			// The host's Storage holds the commit the job made: it runs again, first, once the Storage answered.
-			h.cg.retry = retrySweeps
-			return
-		}
-		h.sweeps = h.sweeps[1:]
-	}
-}
+// enqueueSweep queues job on the Session line (session.ts #maintain). A job that returns a *session.NeedPublication (the store of held
+// changes, while the part that writes them is in the writer) runs again from the start once it is published.
+func (h *handler) enqueueSweep(job func() error) { h.loop.LineMaintain(job) }
 
 // publishDocCache tells the host the size of the document cache when it changed: the host's documentCacheSizes is a
 // synchronous getter (session.ts) and replicates this state. It runs after every event and does nothing in nearly every step:
@@ -69,6 +35,7 @@ func (h *handler) publishDocCache() {
 	sweeps := h.sess.SweepJobs
 	attached := h.sess.DocumentsAttached()
 	held := h.sess.HeldDocuments()
+	taskDocuments, tails := h.sess.TaskDocumentsSize(), h.sess.TailsSize()
 	// The documents whose value the host holds and the cache dropped: the host forgets that value (tx.go sentValues), and the core sends the
 	// value of the next change.
 	var dropped []byte
@@ -77,15 +44,17 @@ func (h *handler) publishDocCache() {
 		dropped = strconv.AppendInt(append(dropped, `,{"id":`...), int64(doc.ID), 10)
 		dropped = append(jv.AppendString(append(dropped, `,"address":`...), doc.Address), '}')
 	}
-	if h.cacheSent && h.cacheSizes == [5]int{cached, idle, attached, sweeps, held} && dropped == nil {
+	if h.cacheSent && h.cacheSizes == [7]int{cached, idle, attached, sweeps, held, taskDocuments, tails} && dropped == nil {
 		return
 	}
-	h.cacheSent, h.cacheSizes = true, [5]int{cached, idle, attached, sweeps, held}
+	h.cacheSent, h.cacheSizes = true, [7]int{cached, idle, attached, sweeps, held, taskDocuments, tails}
 	body := append([]byte(`{"cached":`), strconv.Itoa(cached)...)
 	body = append(append(body, `,"idle":`...), strconv.Itoa(idle)...)
 	body = append(append(body, `,"attached":`...), strconv.Itoa(attached)...)
 	body = append(append(body, `,"sweeps":`...), strconv.Itoa(sweeps)...)
 	body = append(append(body, `,"held":`...), strconv.Itoa(held)...)
+	body = append(append(body, `,"taskDocuments":`...), strconv.Itoa(taskDocuments)...)
+	body = append(append(body, `,"tails":`...), strconv.Itoa(tails)...)
 	if dropped != nil {
 		body = append(append(append(body, `,"dropped":[`...), dropped[1:]...), ']')
 	}
@@ -102,13 +71,13 @@ func (h *handler) publishIndexSizes() {
 		return
 	}
 	z := h.sched.IndexSizes()
-	sizes := [7]int{z.Live, z.Settled, z.Edges, z.Below, z.Roots, z.Unloaded, z.DropQueue}
+	sizes := [8]int{z.Live, z.Settled, z.Edges, z.Below, z.Roots, z.Unloaded, z.DropQueue, z.Pins}
 	if h.indexSent && h.indexSizes == sizes {
 		return
 	}
 	h.indexSent, h.indexSizes = true, sizes
 	body := []byte(`{`)
-	for i, name := range [7]string{"live", "settled", "edges", "below", "roots", "unloaded", "dropQueue"} {
+	for i, name := range [8]string{"live", "settled", "edges", "below", "roots", "unloaded", "dropQueue", "pins"} {
 		if i > 0 {
 			body = append(body, ',')
 		}

@@ -57,12 +57,6 @@ func TestStepStartReleasesEntriesStorageHas(t *testing.T) {
 	}
 	m.entries.put(8, 1, 5, true, big)
 	m.nextID = 9
-	h.held = []abi.Commit{{Seq: 5}}
-	h.StepStart()
-	if !m.entries.has(8) || m.storedBelow() != 7 {
-		t.Fatal("an entry whose commit still waits for its COMMIT hop was released")
-	}
-	h.held = nil
 	h.StepStart()
 	if m.entries.has(7) || m.entries.has(8) || m.storedBelow() != 9 {
 		t.Fatalf("the applied entries are still held (stored below %d)", m.storedBelow())

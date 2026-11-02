@@ -79,7 +79,7 @@ test("the TinyGo core has no function body over 16 KiB: a giant tiers up to Turb
 const HOT: [name: string, limit: number, inlinedInto?: string][] = [
   ["core.Session).Step", 2048],
   ["core.Session).dispatch", 2048],
-  ["core.adapter).Commit", 2048],
+  ["core.adapter).store", 2048],
   ["session.Session).Finish", 2048],
   ["session.Tx).settleSuccess", 2048, "session.Session).Finish"],
   ["core.handler).StepStart", 2048],

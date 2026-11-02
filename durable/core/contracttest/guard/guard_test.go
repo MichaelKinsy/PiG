@@ -60,6 +60,18 @@ func TestARequestThatRunsTooLongTripsTheGuardWithItsStacks(t *testing.T) {
 	}
 }
 
+// A request begun with BeginRequest is named by its fields in the report, as the label the corenative server used to format per request.
+func TestARequestBegunByFieldsIsNamedByThemInTheReport(t *testing.T) {
+	g, c := start(t, Options{Step: 30 * time.Millisecond})
+	g.BeginRequest(4, 1, 9, 123)
+	if code := exitCode(t, c); code != ExitBound {
+		t.Fatalf("exit %d, want %d", code, ExitBound)
+	}
+	if out, want := c.text(), "request op 4 handle 1 kind 9 (123 payload bytes) ran"; !strings.Contains(out, want) {
+		t.Fatalf("report lacks %q:\n%s", want, out)
+	}
+}
+
 // A finished request is not timed.
 func TestAFinishedRequestDoesNotTripTheGuard(t *testing.T) {
 	g, c := start(t, Options{Step: 20 * time.Millisecond})

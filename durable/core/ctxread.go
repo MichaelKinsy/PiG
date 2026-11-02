@@ -19,10 +19,11 @@ import (
 // entries after the kept tail when it grew, and no scan otherwise. A Storage that overrides those reads sees them; the
 // kept range and its retention timer exist in every case (session.Scheduler.KeepContext).
 
-// shadowReads are the host Storage reads (hook storageRead) issued while the core ran a line job, a host transaction operation or
-// an api request: the core answers from its own state at once, and the completion of what ran (the job's publication, line
-// release and done, or the operation's answer) waits until the host's Storage has finished every read, so a Storage that
-// holds, counts or fails them sees Pi's reads and the line stays held for as long as Pi's would.
+// A host Storage read of a line job (hook storageRead) is an await of Pi's callback: the job parks like a *session.NeedRead, and its body
+// runs again from the start once the host's Storage answered, the reads answered so far returning their answers at once (gateReads). The
+// read of an api request outside a line job, and of a host transaction operation, is answered on the spot from the core's state; the
+// request completes once the host's Storage has finished every read it issued (shadowReads), so a Storage that holds, counts or fails them
+// sees Pi's reads.
 type shadowReads struct {
 	n       int
 	waiters []func()
@@ -31,18 +32,65 @@ type shadowReads struct {
 // after runs fn once no read is in flight.
 func (s *shadowReads) after(fn func()) { s.waiters = append(s.waiters, fn) }
 
-// gateRead asks the host's Storage to run one Pi Storage read. Methods the host's Storage does not override are not asked.
+// gateReads are the host Storage reads of the running line job: how many its body made in this run, the answers of the reads asked in
+// earlier runs, and whether one is in flight.
+type gateReads struct {
+	n       int
+	results []error
+	asking  bool
+	// finishing: the asking read was made by a host transaction's end, which is finished again once it answered.
+	finishing bool
+}
+
+// beginGateReads is the start of a run of a line job's body.
+func (h *handler) beginGateReads() { h.gating.n = 0 }
+
+// endGateReads is the end of a line job: its next run is another job's.
+func (h *handler) endGateReads() { h.gating = gateReads{results: h.gating.results[:0]} }
+
+// needHostRead is the error of a body that waits for a read of the host's Storage.
+//
+//go:noinline
+func needHostRead() error { return &session.NeedRead{} }
+
+// gateRead asks the host's Storage to run one Pi Storage read. Methods the host's Storage does not override are not asked. A line
+// job's body gets a *session.NeedRead until the Storage answered, then the Storage's error or nil.
 func (h *handler) gateRead(method string, args ...any) error {
 	if h.inTxOp || !h.gated(method) {
 		return nil
 	}
-	h.shadow.n++
 	body := jv.NewObject()
 	body.Set("name", "storageRead")
 	body.Set("handler", float64(0))
 	body.Set("conversationId", float64(0))
 	body.Set("taskId", float64(0))
 	body.Set("payload", jobj("method", method, "args", append([]any(nil), args...)))
+	if h.sess.InJob() || h.finishing {
+		g := &h.gating
+		n := g.n
+		g.n++
+		if n < len(g.results) {
+			return g.results[n]
+		}
+		if g.asking {
+			return needHostRead()
+		}
+		g.asking = true
+		// A host transaction's end that waits for the read is finished again once it answered; a line job's body runs again.
+		g.finishing = h.finishing
+		h.startEffect(abi.EffectHook, jv.Append(nil, body), &pending{done: func(outcome uint8, payload []byte) {
+			g.asking = false
+			g.results = append(g.results, answerErr(outcome, payload))
+			if g.finishing {
+				g.finishing = false
+				h.finishAgain()
+				return
+			}
+			h.resumeWait = true
+		}})
+		return needHostRead()
+	}
+	h.shadow.n++
 	h.startEffect(abi.EffectHook, jv.Append(nil, body), &pending{done: func(outcome uint8, payload []byte) {
 		h.shadow.n--
 		if h.shadow.n > 0 {
@@ -76,7 +124,7 @@ func (h *handler) gatesContextReads() bool {
 // is not a running invocation's, which the plain api serves.
 func (h *handler) runtimeContext(reqID uint32, req *jv.Object) bool {
 	rt := h.runtimes[session.ID(numOf(req, "taskId"))]
-	if h.sched == nil || h.loop == nil || (rt == nil && !h.gatesContextReads()) {
+	if h.sched == nil || (rt == nil && !h.gatesContextReads()) {
 		return false
 	}
 	conv, at := session.ID(numOf(req, "conversationId")), session.ID(numOf(req, "at"))
@@ -87,86 +135,41 @@ func (h *handler) runtimeContext(reqID uint32, req *jv.Object) bool {
 		return true
 	}
 	// readContextFrom receives the kept range as an argument when runtime.context is called, before its bounds job.
-	keptHead, keptTail, kept := h.sched.KeptContext(conv)
-	var tail, head session.ID
-	var hasBounds bool
+	prev := h.keptRange(turn.ID(conv))
+	var b ctxBounds
 	bounds := func() error {
-		h.job.readLine = true
-		hasBounds, tail, head = false, 0, 0
-		// The bounds probe (scanEntries limit 1, or entry for an `at`) and the head marker read (context.ts captureContextBounds).
-		if at == 0 {
-			h.read(hopcost.ReadScanEntries)
-		} else {
-			h.read(hopcost.ReadEntryIn)
-		}
-		h.read(hopcost.ReadHeadMarker)
-		var marker *jv.Object
-		if at == 0 {
-			if err := h.gateRead("scanEntries", jobj("conversationId", float64(conv)), float64(1), nil); err != nil {
-				return err
-			}
-			page, err := h.mir.ScanEntries(session.EntryQuery{ConversationID: conv}, 1, 0)
-			if err != nil {
-				return err
-			}
-			if len(page.Items) == 0 {
-				return nil
-			}
-			tail = session.ID(numOf(page.Items[0], "id"))
-		} else {
-			if err := h.gateRead("entry", float64(conv), float64(at)); err != nil {
-				return err
-			}
-			found, _, err := h.mir.EntryIn(conv, at)
-			if err != nil {
-				return err
-			}
-			if found == nil {
-				return entryNotVisible("Entry " + itoa(int64(at)) + " is not visible from conversation " + itoa(int64(conv)))
-			}
-			tail = at
-		}
-		if err := h.gateRead("findLatestHeadMarker", float64(conv), float64(tail)); err != nil {
-			return err
-		}
-		marker, err := h.mir.LatestHeadMarker(conv, tail)
-		if err != nil {
-			return err
-		}
-		if marker != nil {
-			head = session.ID(numOf(marker, "id"))
-		}
-		hasBounds = true
-		return nil
+		var err error
+		b, err = h.captureBounds(conv, at, prev, true)
+		return err
 	}
 	finish := func() {
-		if hasBounds {
-			h.sched.KeepContext(conv, head, tail, ended())
+		if b.has {
+			h.sched.KeepContext(conv, session.ContextRange{Head: b.head, From: b.from, Tail: b.tail, Current: rangeCurrent(at, b.head, b.tail, prev)}, ended())
 		}
-		h.apiOK(reqID, contextAnswer{int64(conv), int64(head), int64(tail), hasBounds})
+		h.apiOK(reqID, contextAnswer{int64(conv), int64(b.head), int64(b.tail), b.has})
 	}
 	afterBounds := func(err error) {
 		if err != nil {
 			h.apiError(reqID, err)
 			return
 		}
-		if !hasBounds {
+		if !b.has {
 			finish()
 			return
 		}
 		query := jobj("conversationId", float64(conv))
 		switch {
-		case !kept || keptHead != head:
-			if head != 0 {
-				h.rangeMin(query, head)
+		case !prev.Ok || prev.Head != b.head:
+			if b.head != 0 {
+				query.Set("minEntryId", float64(b.from))
 			}
-			query.Set("maxEntryId", float64(tail))
-		case tail <= keptTail:
+			query.Set("maxEntryId", float64(b.tail))
+		case b.tail <= prev.Tail:
 			finish()
 			return
 		default:
-			query.Set("minEntryId", float64(keptTail+1))
-			query.Set("maxEntryId", float64(tail))
+			query.Set("minEntryId", float64(prev.Tail+1))
+			query.Set("maxEntryId", float64(b.tail))
 		}
 		if !h.gated("scanEntries") {
 			// The range scan runs off the line: scanRange awaits the Storage scan and returns (context.ts:75-90). The api's
@@ -187,71 +190,126 @@ func (h *handler) runtimeContext(reqID uint32, req *jv.Object) bool {
 	return true
 }
 
-// rangeMin sets the lower bound of a range scan to the head marker's head: the entry the marker keeps from.
-func (h *handler) rangeMin(query *jv.Object, marker session.ID) {
-	if e := h.mir.entry(marker); e != nil {
-		query.Set("minEntryId", numOf(e, "head"))
-	}
+// ctxBounds are the bounds of a context read: the head marker entry (0: none), the entry the context starts from, and the newest entry
+// it reads (context.ts ContextBounds); has is false for a conversation without entries.
+type ctxBounds struct {
+	head, from, tail session.ID
+	has              bool
 }
 
-// entryNotVisible is the Error context.ts captureContextBounds throws for an entry the conversation cannot see.
-type entryNotVisible string
+// captureBounds captures the bounds of the context of a conversation, or of the context cut off at entry at, as a readOnLine job
+// (context.ts captureContextBounds). The newest entry and head marker come from what the Session knows of its commits, and cost no
+// Storage read; an entry of the range kept as the read was called is visible without one. gate asks the host's Storage for the reads
+// the core makes. A cut off at an entry the conversation cannot see is a history.NotVisibleError.
+func (h *handler) captureBounds(conv, at session.ID, prev turn.KeptRange, gate bool) (ctxBounds, error) {
+	var b ctxBounds
+	if at == 0 {
+		if known, ok := h.sess.LookupLatestEntryID(conv); ok {
+			h.job.change += hopcost.KnownTail
+			b.tail = known
+		} else {
+			h.read(hopcost.ReadScanEntries)
+			h.job.change += h.sess.ColdEntryAwaits()
+			if gate {
+				if err := h.gateRead("scanEntries", jobj("conversationId", float64(conv)), float64(1), nil); err != nil {
+					return b, err
+				}
+			}
+			page, err := h.mir.ScanEntries(session.EntryQuery{ConversationID: conv}, 1, 0)
+			if err != nil {
+				return b, err
+			}
+			if len(page.Items) != 0 {
+				b.tail = session.ID(numOf(page.Items[0], "id"))
+			}
+			h.sess.NoteLatestEntryID(conv, b.tail)
+		}
+		if b.tail == 0 {
+			return b, nil
+		}
+	} else {
+		visible := false
+		if prev.Ok && at >= prev.From && at <= prev.Tail {
+			found, _, err := h.mir.EntryIn(conv, at)
+			if err != nil {
+				return b, err
+			}
+			visible = found != nil
+		}
+		if !visible {
+			h.read(hopcost.ReadEntryIn)
+			if gate {
+				if err := h.gateRead("entry", float64(conv), float64(at)); err != nil {
+					return b, err
+				}
+			}
+			found, _, err := h.mir.EntryIn(conv, at)
+			if err != nil {
+				return b, err
+			}
+			if found == nil {
+				return b, &history.NotVisibleError{Entry: int64(at), Conv: int64(conv)}
+			}
+		}
+		b.tail = at
+	}
+	marker, known := h.sess.LookupHeadMarker(conv, b.tail)
+	if known {
+		h.job.change += hopcost.KnownTail
+	} else {
+		h.read(hopcost.ReadHeadMarker)
+		h.job.change += h.sess.ColdMarkerAwaits()
+		if gate {
+			if err := h.gateRead("findLatestHeadMarker", float64(conv), float64(b.tail)); err != nil {
+				return b, err
+			}
+		}
+		var err error
+		if marker, err = h.mir.LatestHeadMarker(conv, b.tail); err != nil {
+			return b, err
+		}
+		h.sess.NoteHeadMarker(conv, b.tail, marker)
+	}
+	if marker != nil {
+		b.head, b.from = session.ID(numOf(marker, "id")), session.ID(numOf(marker, "head"))
+	}
+	b.has = true
+	return b, nil
+}
 
-func (e entryNotVisible) Error() string { return string(e) }
+// rangeCurrent is whether the range a read returned is kept current (context.ts readContextFrom): a read at the newest entry is; one
+// cut off at an entry is only the range it started from, returned unchanged.
+func rangeCurrent(at, head, tail session.ID, prev turn.KeptRange) bool {
+	return at == 0 || (prev.Ok && prev.Head == head && prev.Tail == tail && prev.Current)
+}
 
 // turnContext is runtime.context for the built-in tasks (generation, compaction). Like the task runtime's read it captures
 // the bounds on the Session line (a readOnLine job charged the bounds probe and the head marker read) and scans the range
 // off the line when the kept range cannot serve it (context.ts readContextFrom). It returns the view and the hops from the end
 // of the bounds job until the caller resumes (contextReturnHops).
 func (h *handler) turnContext(conv, at turn.ID, prev turn.KeptRange) (*history.View, int, func(bool) error, error) {
-	h.chargeBounds(at)
+	b, err := h.captureBounds(session.ID(conv), session.ID(at), prev, false)
+	if err != nil {
+		return nil, 0, nil, err
+	}
 	view, err := h.contextView(int64(conv), int64(at))
 	if err != nil {
 		return nil, 0, nil, err
 	}
-	var tail, head session.ID
-	if at == 0 {
-		page, perr := h.mir.ScanEntries(session.EntryQuery{ConversationID: session.ID(conv)}, 1, 0)
-		if perr != nil {
-			return view, 0, nil, perr
-		}
-		if len(page.Items) == 0 {
-			// No bounds: readContextFrom returns the empty view at once, through the kept range's return (context.ts :76).
-			return view, keptReturnHops, nil, nil
-		}
-		tail = session.ID(numOf(page.Items[0], "id"))
-	} else {
-		tail = session.ID(at)
+	if !b.has {
+		// No bounds: readContextFrom returns the empty view at once, through the kept range's return (context.ts :76).
+		return view, keptReturnHops, nil, nil
 	}
-	marker, merr := h.mir.LatestHeadMarker(session.ID(conv), tail)
-	if merr != nil {
-		return nil, 0, nil, merr
-	}
-	if marker != nil {
-		head = session.ID(numOf(marker, "id"))
-	}
-	scan, keep := h.keepRange(conv, at, head, tail, prev, view)
+	scan, keep := h.keepRange(conv, at, b, prev, view)
 	return view, scan, keep, nil
-}
-
-// chargeBounds charges the bounds capture of a built-in task's runtime.context as a readOnLine job: the bounds probe
-// (scanEntries limit 1, or entry for an `at`) and the head marker read (context.ts captureContextBounds).
-func (h *handler) chargeBounds(at turn.ID) {
-	h.job.readLine = true
-	if at == 0 {
-		h.read(hopcost.ReadScanEntries)
-	} else {
-		h.read(hopcost.ReadEntryIn)
-	}
-	h.read(hopcost.ReadHeadMarker)
 }
 
 // keepRange is the part of a built-in task's runtime.context that follows the bounds job: the hops of the scan the range
 // needs, when the range kept as the read was called cannot serve the bounds, and of the return of the read to the caller
 // (contextReturnHops). keep stores the range once the read returns, after
 // the scan (scheduler.ts:1231-1252).
-func (h *handler) keepRange(conv, at turn.ID, head, tail session.ID, prev turn.KeptRange, view *history.View) (int, func(bool) error) {
-	scan := contextReturnHops(prev, head, tail, h.readHops(hopcost.ReadScanEntries))
+func (h *handler) keepRange(conv, at turn.ID, b ctxBounds, prev turn.KeptRange, view *history.View) (int, func(bool) error) {
+	scan := contextReturnHops(prev, b.head, b.tail, h.readHops(hopcost.ReadScanEntries))
 	return scan, func(ended bool) error {
 		// The scan hops let the scheduler drop this conversation's kept range (Release) or the store reset a chain the view
 		// reads, as the retention timer or another run's commit fires; Pi's read holds its own arrays, so derive them again.
@@ -262,15 +320,15 @@ func (h *handler) keepRange(conv, at turn.ID, head, tail session.ID, prev turn.K
 			}
 			*view = *fresh
 		}
-		h.sched.KeepContext(session.ID(conv), head, tail, ended)
+		h.sched.KeepContext(session.ID(conv), session.ContextRange{Head: b.head, From: b.from, Tail: b.tail, Current: rangeCurrent(session.ID(at), b.head, b.tail, prev)}, ended)
 		return nil
 	}
 }
 
 // keptRange is the range the scheduler keeps for the conversation as runtime.context is called (turn.Host.KeptRange).
 func (h *handler) keptRange(conv turn.ID) turn.KeptRange {
-	head, tail, ok := h.sched.KeptContext(session.ID(conv))
-	return turn.KeptRange{Head: head, Tail: tail, Ok: ok}
+	r, ok := h.sched.KeptContext(session.ID(conv))
+	return turn.KeptRange{Head: r.Head, From: r.From, Tail: r.Tail, Current: r.Current, Ok: ok}
 }
 
 // contextReturnHops is the hops from the end of runtime.context's bounds job until its caller resumes, given the range the
@@ -301,43 +359,21 @@ func (h *handler) requestContext(conv, at turn.ID, prev turn.KeptRange) (turn.Re
 		}
 		return turn.ViewContext{View: view}, scan, keep, nil
 	}
-	h.chargeBounds(at)
-	var tail, head session.ID
-	var headFrom int64
-	if at == 0 {
-		page, err := h.mir.ScanEntries(session.EntryQuery{ConversationID: session.ID(conv)}, 1, 0)
-		if err != nil {
-			return nil, 0, nil, err
-		}
-		if len(page.Items) == 0 {
-			ctx, _ := h.hostContextOf(int64(conv), 0, 0, 0, false)
-			// No bounds: readContextFrom returns the empty view at once, through the kept range's return (context.ts :76).
-			return ctx, keptReturnHops, nil, nil
-		}
-		tail = session.ID(numOf(page.Items[0], "id"))
-	} else {
-		found, _, err := h.mir.EntryIn(session.ID(conv), session.ID(at))
-		if err != nil {
-			return nil, 0, nil, err
-		}
-		if found == nil {
-			return nil, 0, nil, &history.NotVisibleError{Entry: int64(at), Conv: int64(conv)}
-		}
-		tail = session.ID(at)
-	}
-	marker, err := h.mir.LatestHeadMarker(session.ID(conv), tail)
+	b, err := h.captureBounds(session.ID(conv), session.ID(at), prev, false)
 	if err != nil {
 		return nil, 0, nil, err
 	}
-	if marker != nil {
-		head, headFrom = session.ID(numOf(marker, "id")), int64(numOf(marker, "head"))
+	if !b.has {
+		ctx, _ := h.hostContextOf(int64(conv), 0, 0, 0, false)
+		// No bounds: readContextFrom returns the empty view at once, through the kept range's return (context.ts :76).
+		return ctx, keptReturnHops, nil, nil
 	}
 	compaction, _ := boolOf(objOf(objOf(h.open, "settings"), "compaction"), "enabled")
-	ctx, ok := h.hostContextOf(int64(conv), int64(tail), int64(head), headFrom, compaction)
+	ctx, ok := h.hostContextOf(int64(conv), int64(b.tail), int64(b.head), int64(b.from), compaction)
 	if !ok {
 		return nil, 0, nil, h.mir.lazy.err
 	}
-	scan, keep := h.keepRange(conv, at, head, tail, prev, nil)
+	scan, keep := h.keepRange(conv, at, b, prev, nil)
 	return ctx, scan, keep, nil
 }
 

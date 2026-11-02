@@ -11,7 +11,7 @@ const schedScanPage = 256
 // Read-only: assigned once at initialization.
 var liveStatuses = [...]string{StatusPending, StatusRunning, StatusWaiting, StatusSleeping, StatusCompleting}
 
-// abortResumer signals the run of its invocation once the hops chain Scheduler.abortLater parked it on ends (Loop.Hops); it lives in the invocation.
+// abortResumer signals the run of its invocation one tick after the publication of the abort mark (Scheduler.abortLater, Loop.Wait); it lives in the invocation.
 type abortResumer struct{ inv *invocation }
 
 func (a *abortResumer) of(inv *invocation) *abortResumer { a.inv = inv; return a }
@@ -202,6 +202,9 @@ type Scheduler struct {
 	dirtyTasks map[ID]struct{}
 	// chainInstalled is set while loadChain walks when it installed a node or an edge, for the check after it.
 	chainInstalled bool
+	// loadTicks is the ticks of the Storage reads loadChain made through the Session's cache (hopcost.RecordRead), summed since it was last cleared:
+	// the awaits of the commit's membershipKeys.
+	loadTicks int
 	// unknownsChanged is set when an idle check has to cover every scope after a chain load that stopped early.
 	unknownsChanged bool
 	// fullIdleChecks counts the idle checks that covered every scope (a diagnostic for tests).
@@ -269,8 +272,13 @@ type Scheduler struct {
 	closing            bool
 	dirty              bool
 	draining           bool
-	reserveSkip        uint8 // the decision of the reservation job's first run, which a later run of the same job keeps (reserve)
-	stateAwaits        int   // the `await #loadChain` calls of #loadScopes in the terminal #commitState just staged (runtime.go commitStateTicks)
+	// reading is set while a decision region records the keys it reads (sched_region.go); pins are the nodes a job's chain loads installed.
+	reading     bool
+	regionKeys  []string
+	regionSeen  map[string]struct{}
+	pins        map[treeNode]int
+	reserveSkip uint8 // the decision of the reservation job's first run, which a later run of the same job keeps (reserve)
+	stateAwaits int   // the `await #loadChain` calls of #loadScopes in the terminal #commitState just staged (runtime.go commitStateTicks)
 
 	// observing is set while the commit observer runs (it runs inside the Storage's adopt).
 	observing bool
@@ -286,6 +294,7 @@ func NewScheduler(sess *Session, loop *Loop, env Env) *Scheduler {
 		below: map[treeNode]*orderedSet[treeNode]{}, roots: newOrderedSet[ID](), unloaded: newOrderedSet[ID](), intent: newOrderedSet[ID](), runnable: newOrderedSet[ID](), finalizeChecks: newOrderedSet[ID](), waiters: map[ID]*orderedSet[ID]{}, sleeping: newOrderedSet[ID](), dropQueue: newOrderedSet[treeNode](), abandoned: newOrderedSet[ID](),
 	}
 	sess.OnFail = func(err error) { s.report(err, obj("kind", "storage_failed")) }
+	sess.MembershipKeys = s.membershipKeys
 	return s
 }
 
@@ -308,7 +317,7 @@ func (s *Scheduler) failSession(err error) {
 // closedErr is what a wait rejects with when the Harness closes: SessionFailed when the Session failed.
 func (s *Scheduler) closedErr() error {
 	if s.sess.failure != nil {
-		return &FailedError{Cause: s.sess.failure}
+		return s.sess.writer.sessionFailed(s.sess.failure)
 	}
 	return ErrHarnessClosed
 }
@@ -398,10 +407,18 @@ func (s *Scheduler) commitQueued(late bool, change func(tx *Tx) error, scope TxS
 	s.commitJob(s.loop.LineAfterTail, nil, change, scope, then)
 }
 
+// commitInternal is commit for a commit of the scheduler's own whose outcome goes only to scheduler code (session.ts commitInternal).
+func (s *Scheduler) commitInternal(change func(tx *Tx) error, scope TxScope, then func(error)) {
+	s.commitJob(s.loop.LineInternal, nil, change, scope, then)
+}
+
 func (s *Scheduler) commitJob(line func(func() error, func(error)), cancel *Cancel, change func(tx *Tx) error, scope TxScope, then func(error)) {
 	line(func() error {
-		if err := cancel.Err(); err != nil {
-			return err
+		// The check is the job's start: a body that runs again (after a publication wait) is not rejected by a signal that aborted meanwhile.
+		if !s.loop.Restarted() {
+			if err := cancel.Err(); err != nil {
+				return err
+			}
 		}
 		_, err := s.sess.RunCommit(change, scope)
 		return err
@@ -430,6 +447,9 @@ func (s *Scheduler) Open(done func(error)) {
 	s.sess.SubscribeCommits(s.observe)
 	s.sess.SubscribeClose(s.Seal)
 	s.commit(func(tx *Tx) error {
+		if err := s.published(tx); err != nil {
+			return err
+		}
 		var scans [][]*jv.Object
 		for _, st := range liveStatuses {
 			recs, err := s.scanAllTasks(tx, TaskQuery{Status: st})
@@ -557,10 +577,17 @@ func (s *Scheduler) Abort(id ID, keepRestart bool, cancel *Cancel, then func(res
 			return nil
 		}
 		if inv == nil && taskStatus(current) != StatusCompleting {
-			if _, err := s.loadScopes(false); err != nil {
+			_, awaits, err := s.loadScopesAwaiting(false)
+			if err != nil {
 				return err
 			}
-			if !s.hasOwnedLive(id, nil, nil) {
+			tx.charge(awaits + 1)
+			s.beginRegion()
+			owns := s.hasOwnedLive(id, nil, nil)
+			if err := s.endRegion(tx); err != nil {
+				return err
+			}
+			if !owns {
 				res := s.resolve(current, s.env.Snapshot())
 				if res.blocked != "" {
 					if err := s.terminate(tx, current, obj("status", "orphaned", "reason", res.blocked)); err != nil {
@@ -613,10 +640,10 @@ func (s *Scheduler) awaitInvocation(inv *invocation, cancel *Cancel, then func(e
 	}
 	// scheduler.ts abort: Promise.race([run.done, session.failed]); an invocation that ignores its signal can outlive a failed Session.
 	if s.sess.failure != nil {
-		fire(&FailedError{Cause: s.sess.failure})
+		fire(s.sess.writer.sessionFailed(s.sess.failure))
 		return
 	}
-	unfail := s.sess.OnFailed(func(cause error) { fire(&FailedError{Cause: cause}) })
+	unfail := s.sess.OnFailed(func(cause error) { fire(s.sess.writer.sessionFailed(cause)) })
 	inv.doneWaiters = append(inv.doneWaiters, func() { fire(nil) })
 	var unabort func()
 	remove = func() {
@@ -633,43 +660,95 @@ func (s *Scheduler) awaitInvocation(inv *invocation, cancel *Cancel, then func(e
 // WaitForTask calls then with the task's terminal record. A task that is not
 // live is read from the store on the line.
 func (s *Scheduler) WaitForTask(id ID, cancel *Cancel, then func(rec *jv.Object, err error)) {
-	s.WaitForTaskFound(id, cancel, func(rec *jv.Object, err error, _ bool) { then(rec, err) })
+	w := &foundWait{s: s, id: id, cancel: cancel, plain: then}
+	s.loop.ReadLine(w.run, w.done)
 }
 
 // WaitForTaskFound is WaitForTask for a host caller: a read job on the line (readOnLine, scheduler.ts :306-316) whose caller
-// resumes at the job's run and returns `found.promise`. then reports whether the record came from a waiter the job registered
+// returns `found.promise`. then reports whether the record came from a waiter the job registered
 // (a live task, resolved by the terminal publication) or from the store (an already settled promise).
 func (s *Scheduler) WaitForTaskFound(id ID, cancel *Cancel, then func(rec *jv.Object, err error, waited bool)) {
-	var found *jv.Object
-	var wait bool
-	s.loop.ClientReadLine(func() error {
-		found, wait = nil, false
-		if s.closing {
-			return s.closedErr()
-		}
-		if _, live := s.live.get(id); live {
-			wait = true
-			return nil
-		}
-		rec, err := s.sess.store.Task(id)
-		if err != nil {
-			return err
-		}
-		if rec == nil {
-			return errorf("Task %d does not exist", id)
-		}
-		found = rec
+	w := &foundWait{s: s, id: id, cancel: cancel, then: then}
+	s.loop.ReadLine(w.run, w.done)
+}
+
+// foundWait is one WaitForTask: the read job on the line and what its caller sees. The waiter of a live task is registered on the line,
+// in the job's body, so no terminal publication falls between the check and the registration (scheduler.ts waitForTask); the caller sees
+// it when the job's outcome is delivered, settled when it resolved meanwhile.
+type foundWait struct {
+	s      *Scheduler
+	id     ID
+	cancel *Cancel
+	// then is the caller's answer with whether it came from a waiter; plain, when then is nil, is the answer without.
+	then  func(rec *jv.Object, err error, waited bool)
+	plain func(rec *jv.Object, err error)
+
+	found *jv.Object
+	wait  bool
+	// settled is set when the waiter resolved before the job's outcome was delivered, with rec and err; wired once it was.
+	settled bool
+	rec     *jv.Object
+	err     error
+	wired   bool
+}
+
+func (w *foundWait) answer(rec *jv.Object, err error, waited bool) {
+	if w.then != nil {
+		w.then(rec, err, waited)
+		return
+	}
+	w.plain(rec, err)
+}
+
+// run is the job's body.
+func (w *foundWait) run() error {
+	s := w.s
+	w.found, w.wait = nil, false
+	if s.closing {
+		return s.closedErr()
+	}
+	s.beginRegion()
+	_, live := s.liveRecord(w.id)
+	if err := s.endRegionPlain(nil); err != nil {
+		return err
+	}
+	if live {
+		w.wait = true
+		s.addTaskWaiter(w.id, w.cancel, w.resolved)
 		return nil
-	}, func(err error) {
-		switch {
-		case err != nil:
-			then(nil, err, false)
-		case wait:
-			s.addTaskWaiter(id, cancel, func(rec *jv.Object, err error) { then(rec, err, true) })
-		default:
-			then(found, nil, false)
-		}
-	})
+	}
+	rec, err := s.sess.store.Task(w.id)
+	if err != nil {
+		return err
+	}
+	if rec == nil {
+		return errorf("Task %d does not exist", w.id)
+	}
+	w.found = rec
+	return nil
+}
+
+// resolved is the waiter of a live task.
+func (w *foundWait) resolved(rec *jv.Object, err error) {
+	if w.wired {
+		w.answer(rec, err, true)
+		return
+	}
+	w.settled, w.rec, w.err = true, rec, err
+}
+
+// done is the delivery of the job's outcome.
+func (w *foundWait) done(err error) {
+	switch {
+	case err != nil:
+		w.answer(nil, err, false)
+	case w.wait && w.settled:
+		w.answer(w.rec, w.err, false)
+	case w.wait:
+		w.wired = true
+	default:
+		w.answer(w.found, nil, false)
+	}
 }
 
 func (s *Scheduler) addTaskWaiter(id ID, cancel *Cancel, then func(*jv.Object, error)) {
@@ -783,6 +862,9 @@ func (s *Scheduler) AbortConversation(conversationID ID, background bool, cancel
 	var reached []ID
 	s.commitWith(cancel, func(tx *Tx) error {
 		reached = nil
+		if err := s.published(tx); err != nil {
+			return err
+		}
 		queued, err := s.loadScopes(true)
 		if err != nil {
 			return err
@@ -902,8 +984,8 @@ func (s *Scheduler) CloseWrites() []*jv.Object {
 	return records
 }
 
-// WriteBack writes the records CloseWrites returned; a *NeedGate error means the host's Storage holds the commit, and the job
-// that called it runs again after the answer.
+// WriteBack writes the records CloseWrites returned; a *NeedPublication error means the writer has not published what the job waits for,
+// and the job that called it runs again after it did.
 func (s *Scheduler) WriteBack(records []*jv.Object) error { return s.sess.WriteTasks(records) }
 
 // signalInvocations aborts the signal of every running invocation, in task order (scheduler.ts join).
