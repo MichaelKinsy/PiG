@@ -159337,6 +159337,7 @@
       ],
       "evidence": [
         "test:internal/codingagent/mcp_tool_renderers_10285_export_test.go#TestRegression10285RendersThemInHTMLExportsToo",
+        "test:internal/codingagent/mcp_tool_renderers_10285_export_test.go#TestRegression10285SlashExportRendersThemInHTMLExports",
         "test:internal/codingagent/mcp_tool_renderers_10285_test.go#TestRegression10285RendersCallsToMCPToolsThatAreNotRegistered"
       ]
     },
@@ -159358,6 +159359,7 @@
       ],
       "evidence": [
         "test:internal/codingagent/mcp_tool_renderers_10285_export_test.go#TestRegression10285RendersThemInHTMLExportsToo",
+        "test:internal/codingagent/mcp_tool_renderers_10285_export_test.go#TestRegression10285SlashExportRendersThemInHTMLExports",
         "test:internal/codingagent/mcp_tool_renderers_10285_test.go#TestRegression10285RendersCallsToMCPToolsThatAreNotRegistered"
       ]
     },
@@ -163130,9 +163132,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.Resolve"
       ],
       "evidence": [
+        "test:internal/packagemanager/malformed_manifest_upstream_test.go#TestResolveIgnoresInvalidManifestResourceFieldsWithoutDroppingValidFields",
         "test:internal/packagemanager/resolve_oracle_test.go#TestResolveMatchesPiOnRandomFixtures",
-        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption",
-        "test:internal/packagemanager/managed_root_cwd_test.go#TestEmptyAgentDirNeverWritesIntoTheProcessDirectory"
+        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -163153,9 +163155,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.Resolve"
       ],
       "evidence": [
+        "test:internal/packagemanager/malformed_manifest_upstream_test.go#TestResolveIgnoresInvalidManifestResourceFieldsWithoutDroppingValidFields",
         "test:internal/packagemanager/resolve_oracle_test.go#TestResolveMatchesPiOnRandomFixtures",
-        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption",
-        "test:internal/packagemanager/managed_root_cwd_test.go#TestEmptyAgentDirNeverWritesIntoTheProcessDirectory"
+        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -192026,9 +192028,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.Resolve"
       ],
       "evidence": [
+        "test:internal/packagemanager/malformed_manifest_upstream_test.go#TestResolveIgnoresInvalidManifestResourceFieldsWithoutDroppingValidFields",
         "test:internal/packagemanager/resolve_oracle_test.go#TestResolveMatchesPiOnRandomFixtures",
-        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption",
-        "test:internal/packagemanager/managed_root_cwd_test.go#TestEmptyAgentDirNeverWritesIntoTheProcessDirectory"
+        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -192049,9 +192051,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.Resolve"
       ],
       "evidence": [
+        "test:internal/packagemanager/malformed_manifest_upstream_test.go#TestResolveIgnoresInvalidManifestResourceFieldsWithoutDroppingValidFields",
         "test:internal/packagemanager/resolve_oracle_test.go#TestResolveMatchesPiOnRandomFixtures",
-        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption",
-        "test:internal/packagemanager/managed_root_cwd_test.go#TestEmptyAgentDirNeverWritesIntoTheProcessDirectory"
+        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -196218,9 +196220,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.Resolve"
       ],
       "evidence": [
+        "test:internal/packagemanager/malformed_manifest_upstream_test.go#TestResolveIgnoresInvalidManifestResourceFieldsWithoutDroppingValidFields",
         "test:internal/packagemanager/resolve_oracle_test.go#TestResolveMatchesPiOnRandomFixtures",
-        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption",
-        "test:internal/packagemanager/changelog_path_test.go#TestResolveExtensionSourcesExposesThePackageChangelogPath"
+        "test:internal/packagemanager/builtin_extensions_test.go#TestResolveReportsTheBuiltinExtensionsOption"
       ]
     },
     {
@@ -196284,9 +196286,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.Resolve"
       ],
       "evidence": [
+        "test:internal/packagemanager/malformed_manifest_upstream_test.go#TestResolveIgnoresInvalidManifestResourceFieldsWithoutDroppingValidFields",
         "test:internal/packagemanager/resolve_oracle_test.go#TestResolveMatchesPiOnRandomFixtures",
-        "test:internal/packagemanager/manifest_glob_test.go#TestManifestGlobThrowFollowsPiCallers",
-        "test:internal/packagemanager/manifest_glob_test.go#TestManifestGlobThrowOrderAndKinds"
+        "test:internal/packagemanager/manifest_glob_test.go#TestManifestGlobThrowFollowsPiCallers"
       ]
     },
     {
@@ -196306,9 +196308,9 @@
         "call:internal/packagemanager/resolve.go#PackageManager.Resolve"
       ],
       "evidence": [
+        "test:internal/packagemanager/malformed_manifest_upstream_test.go#TestResolveIgnoresInvalidManifestResourceFieldsWithoutDroppingValidFields",
         "test:internal/packagemanager/resolve_oracle_test.go#TestResolveMatchesPiOnRandomFixtures",
-        "test:internal/packagemanager/manifest_glob_test.go#TestManifestGlobThrowFollowsPiCallers",
-        "test:internal/packagemanager/package_filters_test.go#TestPackageFiltersFollowMinimatch"
+        "test:internal/packagemanager/manifest_glob_test.go#TestManifestGlobThrowFollowsPiCallers"
       ]
     },
     {
