@@ -2,6 +2,7 @@ package delta
 
 import (
 	"math/rand/v2"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -124,16 +125,16 @@ func TestSyncTextTailsConcurrentAppends(t *testing.T) {
 	wg.Wait()
 }
 
-// Every revision, and every op a commit emitted, keeps its text while later appends grow the same buffer, also past the surrogate halves a split append leaves open.
+// Every revision, and every op a commit emitted, keeps its text while later appends grow the same buffer, also past the surrogate halves a split append leaves open. The expected texts are built apart from the tracker, and cloned so they share no bytes with it.
 func TestTrackerAppendTextStreamKeepsEarlierRevisions(t *testing.T) {
 	deltas := []string{"ab", "héllo", highSurrogate, lowSurrogate + "x", "😀", strings.Repeat("long", 30), "z"}
 	tracker := Track(JsonObjectOf("text", ""))
 	type commit struct {
-		revision string
-		op       string
+		revision, op string // the tracker's strings
+		want, wantOp string // the independent expectation
 	}
 	var commits []commit
-	text := ""
+	expected := ""
 	for index := range 400 {
 		piece := deltas[index%len(deltas)]
 		change := tracker.BeginChange()
@@ -144,26 +145,26 @@ func TestTrackerAppendTextStreamKeepsEarlierRevisions(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		text = jsstring.Concat(text, piece)
-		if got := prepared.Value().Value("text"); got != text {
-			t.Fatalf("commit %d: text %q, want %q", index, got, text)
+		expected = jsstring.Concat(expected, piece)
+		revision := prepared.Value().Value("text").(string)
+		if revision != expected {
+			t.Fatalf("commit %d: text %q, want %q", index, revision, expected)
 		}
 		if err := tracker.Adopt(prepared); err != nil {
 			t.Fatal(err)
 		}
-		if got := prepared.Ops()[0][2]; got != piece {
-			t.Fatalf("commit %d: op text %q, want %q", index, got, piece)
+		op := prepared.Ops()[0][2].(string)
+		if op != piece {
+			t.Fatalf("commit %d: op text %q, want %q", index, op, piece)
 		}
-		commits = append(commits, commit{text, prepared.Ops()[0][2].(string)})
+		commits = append(commits, commit{revision, op, strings.Clone(expected), strings.Clone(piece)})
 	}
-	want := ""
 	for index, entry := range commits {
-		want = jsstring.Concat(want, deltas[index%len(deltas)])
-		if entry.revision != want {
-			t.Fatalf("revision %d changed to %q, was %q", index, entry.revision, want)
+		if entry.revision != entry.want {
+			t.Fatalf("revision %d changed to %q, was %q", index, entry.revision, entry.want)
 		}
-		if entry.op != deltas[index%len(deltas)] {
-			t.Fatalf("op %d changed to %q, was %q", index, entry.op, deltas[index%len(deltas)])
+		if entry.op != entry.wantOp {
+			t.Fatalf("op %d changed to %q, was %q", index, entry.op, entry.wantOp)
 		}
 	}
 }
@@ -243,5 +244,33 @@ func TestAppendTextJoinsSurrogateHalvesOfOneChange(t *testing.T) {
 	}
 	if got, want := prepared.Value().Value("text"), "a"+joined; got != want {
 		t.Fatalf("value %q, want %q", got, want)
+	}
+}
+
+// Buffers a textTails remembers are held weakly: texts made, dropped and collected, with their addresses reused by later buffers, never make a string find another text's buffer.
+func TestTextTailsForgetCollectedBuffers(t *testing.T) {
+	var tails textTails
+	var keep []string
+	for round := range 300 {
+		word := strings.Repeat(string(rune('a'+round%26)), 1+round%7)
+		text := ""
+		for range 6 {
+			text = tails.concat(text, word)
+		}
+		if want := strings.Repeat(word, 6); text != want {
+			t.Fatalf("round %d: %q, want %q", round, text, want)
+		}
+		if round%3 == 0 {
+			keep = append(keep, text)
+		}
+		if round%10 == 0 {
+			runtime.GC()
+		}
+	}
+	for index, text := range keep {
+		round := index * 3
+		if want := strings.Repeat(strings.Repeat(string(rune('a'+round%26)), 1+round%7), 6); text != want {
+			t.Fatalf("kept text %d changed to %q, was %q", index, text, want)
+		}
 	}
 }
