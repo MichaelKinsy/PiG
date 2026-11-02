@@ -1618,5 +1618,75 @@
    "old": "\t\t\tinput = Strings(\"text\", \"image\")\n",
    "new": "\t\t\tinput = Strings(\"text\")\n"
   }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.lazy.ts": [
+  {
+   "file": "internal/codingagent/interactive_easter_eggs.go",
+   "old": "\tif m.playPig3d() {\n",
+   "new": "\tif false && m.playPig3d() {\n"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts": [
+  {
+   "file": "internal/codingagent/pig_egg3d.go",
+   "old": "math.Sin(math.Pi*clamp01(u)) * 0.8)",
+   "new": "math.Sin(math.Pi*clamp01(u)) * 0.7)"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/first-time-setup.ts": [
+  {
+   "file": "internal/codingagent/first_time_setup.go",
+   "old": "\t\tconfirm = \"finish\"\n",
+   "new": "\t\tconfirm = \"finish!\"\n"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/session-selector-search.ts": [
+  {
+   "file": "internal/codingagent/session_selector.go",
+   "old": "sessionTierText  = 1 ",
+   "new": "sessionTierText  = 3 "
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/mermaid.ts": [
+  {
+   "file": "internal/codingagent/mermaid_transform.go",
+   "old": "\t\tif mode == \"off\" ||\n",
+   "new": "\t\tif mode == \"off!\" ||\n"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts": [
+  {
+   "file": "internal/codingagent/radius_login_selector.go",
+   "old": "\"#f1be57\"",
+   "new": "\"#f1be58\""
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/components/themed-text.ts": [
+  {
+   "file": "tui/themed_text.go",
+   "old": "\t\tt.stale = false\n",
+   "new": ""
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/theme/system-theme.ts": [
+  {
+   "file": "tui/system_theme.go",
+   "old": "const systemTextMinimumWcagContrast = 4.5",
+   "new": "const systemTextMinimumWcagContrast = 3.0"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/model-catalog-refresh.ts": [
+  {
+   "file": "internal/codingagent/model_catalog_refresh.go",
+   "old": "\tif active == nil {\n",
+   "new": "\tif active == nil || true {\n"
+  }
+ ],
+ "packages/coding-agent/src/modes/interactive/session-share.ts": [
+  {
+   "file": "internal/codingagent/session_share.go",
+   "old": "CustomType: \"pi.share\",",
+   "new": "CustomType: \"pi.shared\","
+  }
  ]
 }
