@@ -802,5 +802,73 @@
    "old": "\t\t\tcall.changes = append(call.changes, change)\n",
    "new": "\t\t\tcall.changes = append(call.changes[:0], change)\n"
   }
+ ],
+ "packages/chord/src/next/remote/hold.ts": [
+  {
+   "file": "chord/next/host/remote_hold.go",
+   "old": "message.RetryIn = link.Some(int(max(0, *shown.RetryAt",
+   "new": "message.RetryIn = link.Some(int(min(0, *shown.RetryAt"
+  }
+ ],
+ "packages/chord/src/next/remote/remote-object.ts": [
+  {
+   "file": "chord/next/host/remote_remote_object.go",
+   "old": "if _, twice := retirements[target]; twice {",
+   "new": "if _, twice := retirements[target]; !twice {"
+  }
+ ],
+ "packages/chord/src/next/remote/host-link.ts": [
+  {
+   "file": "chord/next/host/remote_host_link.go",
+   "old": "\"%s: an origin on a child link\"",
+   "new": "\"%s: an origin on a link\""
+  }
+ ],
+ "packages/chord/src/next/remote/path.ts": [
+  {
+   "file": "chord/next/host/remote_path.go",
+   "old": "if p.current != link {",
+   "new": "if p.current == link {"
+  }
+ ],
+ "packages/chord/src/next/remote/calls.ts": [
+  {
+   "file": "chord/next/host/remote_calls.go",
+   "old": "if w.inFlight >= w.limit {",
+   "new": "if w.inFlight > w.limit {"
+  }
+ ],
+ "packages/chord/src/next/remote/provider.ts": [
+  {
+   "file": "chord/next/host/remote_provider.go",
+   "old": "Code: data.CodeAborted, Message: fmt.Sprintf(\"call %d: aborted by its caller\", id)",
+   "new": "Code: data.CodeUnavailable, Message: fmt.Sprintf(\"call %d: aborted by its caller\", id)"
+  },
+  {
+   "file": "chord/next/host/remote_provider.go",
+   "old": "Code: data.CodeNotReady, Message: fmt.Sprintf(\"hold %d: not bound yet\", served.id)",
+   "new": "Code: data.CodeUnavailable, Message: fmt.Sprintf(\"hold %d: not bound yet\", served.id)"
+  }
+ ],
+ "packages/chord/src/next/remote/consumer.ts": [
+  {
+   "file": "chord/next/host/remote_consumer.go",
+   "old": "Message: \"the link closed\"}, nil)",
+   "new": "Message: \"the link is closed\"}, nil)"
+  }
+ ],
+ "packages/chord/src/next/remote/relay.ts": [
+  {
+   "file": "chord/next/host/remote_relay.go",
+   "old": "func (h *relayedHold) retry(message *link.RetryMessage) {\n\tif upstream := h.upstream; upstream != nil {\n\t\tupstream.link.send(link.WithOrigin(message, link.Some(upstream.origin)))",
+   "new": "func (h *relayedHold) retry(message *link.RetryMessage) {\n\tif upstream := h.upstream; upstream != nil {\n\t\tupstream.link.send(&link.RetryMessage{Origin: link.Some(upstream.origin), Hold: message.Hold, Hops: message.Hops - 1})"
+  }
+ ],
+ "packages/chord/src/next/remote/replica.ts": [
+  {
+   "file": "chord/next/host/remote_replica.go",
+   "old": "flagged := retired || r.retiredWhileFailed",
+   "new": "flagged := retired"
+  }
  ]
 }
