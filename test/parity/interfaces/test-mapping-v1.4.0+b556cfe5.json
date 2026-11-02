@@ -1615,7 +1615,7 @@
         "ai/api_key_providers_test.go#TestAPIKeyProvidersStable",
         "ai/provider_auth_upstream_test.go#TestProvidersOwnedCloudLoginUpstream",
         "ai/provider_auth_upstream_test.go#TestProvidersCloudEnvironmentAuthUpstream",
-        "ai/provider_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
         "ai/providers_dispatch_upstream_test.go#TestLazyAPIOnlyDeclaredDeferredCapabilitiesUpstream",
         "ai/models_collection_upstream_test.go",
         "ai/models_provider_test.go#TestProviderMissingAPIImplementationUpstream",
