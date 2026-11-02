@@ -12,7 +12,7 @@ import (
 
 // watcher.ts "reports a failure to watch once and stops watching": a directory the watcher cannot watch (one its user cannot
 // read: inotify and kqueue refuse it), as upstream's `fs.watch` throws for it. The root is the one that fails, so nothing is
-// watched.
+// watched. Unix only: on Windows `os.Chmod` only toggles the read-only attribute, which cannot deny a directory to its owner.
 func TestTheWatcherReportsAFailureToWatchOnceAndStopsWatching(t *testing.T) {
 	root := realOf(t, tempRoot(t))
 	base := realOf(t, tempRoot(t))

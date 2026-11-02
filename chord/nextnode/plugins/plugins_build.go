@@ -400,6 +400,8 @@ func (rules *importRules) setup(builder api.PluginBuild) {
 		}
 		contents, err := os.ReadFile(args.Path)
 		if err != nil {
+			// pig divergence (D222): esbuild's Go API reports this error at the import that names the input; Pi's JavaScript API
+			// reports it at its own library's line (`lib/main.js:1552:22`), which PiG has no stack to produce.
 			return api.OnLoadResult{Errors: []api.Message{{Text: nodeReadError(err, args.Path)}}}, nil
 		}
 		sum := sha256.Sum256(contents)
