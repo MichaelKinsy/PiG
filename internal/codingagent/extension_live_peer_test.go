@@ -29,7 +29,7 @@ func (f livePeerFrame) kind() string {
 // livePeer is the extension end of a net.Pipe connection, reading from the moment the host starts the connection.
 //
 // A net.Pipe has no buffer, so a frame the host queues stays outstanding work until the peer reads it. A peer that reads only after the host
-// finished its own work leaves the first frame unwritten for as long as that work takes. The host's liveness check (pig divergence D56)
+// finished its own work leaves the first frame unwritten for as long as that work takes. The host's liveness check (pig divergence (D56))
 // pings after 2s of outstanding work and fails the connection after 5s more without write progress, which a loaded machine reaches while it builds
 // a catalog of more than 1 MB. A live runtime reads concurrently and answers each ping, so livePeer does too, and the frames it records are the
 // host's own: a heartbeat ping is transport, not something the host published.
