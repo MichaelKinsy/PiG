@@ -251,7 +251,7 @@ func (s *coreSession) settingsText() []byte {
 	st.Extensions = nil
 	s.settingsMu.Lock()
 	defer s.settingsMu.Unlock()
-	if s.sentText != nil && slices.Equal(names, s.sentNames) && reflect.DeepEqual(st, s.sentSettings) {
+	if s.sentText != nil && slices.Equal(names, s.sentNames) && reflect.DeepEqual(st, s.sentSettings) { //perf:ok this comparison is the cache: the marshal below runs only when the settings changed since the last event, not per event
 		return s.sentText
 	}
 	//portlint:allow mapkeyorder driver-to-core wire (durable/core/host/PROTOCOL.md): the core reads the settings members by name, as open's

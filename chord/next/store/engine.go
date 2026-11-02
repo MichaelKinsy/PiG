@@ -111,11 +111,14 @@ type DocumentContent struct {
 }
 
 // MarshalJSON is the content in Pi's key order.
-func (content DocumentContent) MarshalJSON() ([]byte, error) {
+func (content DocumentContent) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(content) }
+
+// AppendStringify appends the content's JSON.stringify text, which the stringify encoder splices.
+func (content DocumentContent) AppendStringify(dst []byte) ([]byte, error) {
 	if content.Kind == ContentBase {
-		return jsstring.MarshalJSON(delta.JsonObjectOf("kind", ContentBase, "version", content.Version, "fingerprint", content.Fingerprint, "value", content.Value))
+		return jsstring.AppendMarshalJSON(dst, delta.JsonObjectOf("kind", ContentBase, "version", content.Version, "fingerprint", content.Fingerprint, "value", content.Value))
 	}
-	return jsstring.MarshalJSON(delta.JsonObjectOf("kind", content.Kind, "version", content.Version, "ops", opsOrEmpty(content.Ops)))
+	return jsstring.AppendMarshalJSON(dst, delta.JsonObjectOf("kind", content.Kind, "version", content.Version, "ops", opsOrEmpty(content.Ops)))
 }
 
 // RevisionContent is a stored revision's content: a base's value (Kind "base": Version, Value) or a delta's ops (Kind
@@ -128,11 +131,14 @@ type RevisionContent struct {
 }
 
 // MarshalJSON is the content in Pi's key order.
-func (content RevisionContent) MarshalJSON() ([]byte, error) {
+func (content RevisionContent) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(content) }
+
+// AppendStringify appends the content's JSON.stringify text, which the stringify encoder splices.
+func (content RevisionContent) AppendStringify(dst []byte) ([]byte, error) {
 	if content.Kind == ContentBase {
-		return jsstring.MarshalJSON(delta.JsonObjectOf("kind", ContentBase, "version", content.Version, "value", content.Value))
+		return jsstring.AppendMarshalJSON(dst, delta.JsonObjectOf("kind", ContentBase, "version", content.Version, "value", content.Value))
 	}
-	return jsstring.MarshalJSON(delta.JsonObjectOf("kind", content.Kind, "version", content.Version, "ops", opsOrEmpty(content.Ops)))
+	return jsstring.AppendMarshalJSON(dst, delta.JsonObjectOf("kind", content.Kind, "version", content.Version, "ops", opsOrEmpty(content.Ops)))
 }
 
 func opsOrEmpty(ops []delta.Op) []delta.Op {
@@ -166,8 +172,11 @@ type documentCreateJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *DocumentCreate) MarshalJSON() ([]byte, error) {
-	return jsstring.MarshalJSON(documentCreateJSON{"document.create", write.Record, write.Base})
+func (write *DocumentCreate) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(write) }
+
+// AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
+func (write *DocumentCreate) AppendStringify(dst []byte) ([]byte, error) {
+	return jsstring.AppendMarshalJSON(dst, documentCreateJSON{"document.create", write.Record, write.Base})
 }
 
 // DocumentChange is the `document.change` write: a change of document ID prepared on Revision.
@@ -188,8 +197,11 @@ type documentChangeJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *DocumentChange) MarshalJSON() ([]byte, error) {
-	return jsstring.MarshalJSON(documentChangeJSON{"document.change", write.ID, write.Revision, write.Content})
+func (write *DocumentChange) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(write) }
+
+// AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
+func (write *DocumentChange) AppendStringify(dst []byte) ([]byte, error) {
+	return jsstring.AppendMarshalJSON(dst, documentChangeJSON{"document.change", write.ID, write.Revision, write.Content})
 }
 
 // DocumentRetire is the `document.retire` write.
@@ -208,8 +220,11 @@ type documentRetireJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *DocumentRetire) MarshalJSON() ([]byte, error) {
-	return jsstring.MarshalJSON(documentRetireJSON{"document.retire", write.ID, write.Revision})
+func (write *DocumentRetire) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(write) }
+
+// AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
+func (write *DocumentRetire) AppendStringify(dst []byte) ([]byte, error) {
+	return jsstring.AppendMarshalJSON(dst, documentRetireJSON{"document.retire", write.ID, write.Revision})
 }
 
 // DocumentRevisionWrite is the `document.revision` part of an archive: Pi's `{ kind } & DocumentRevision`.
@@ -230,8 +245,11 @@ type documentRevisionJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *DocumentRevisionWrite) MarshalJSON() ([]byte, error) {
-	return jsstring.MarshalJSON(documentRevisionJSON{"document.revision", write.ID, write.Seq, write.Content})
+func (write *DocumentRevisionWrite) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(write) }
+
+// AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
+func (write *DocumentRevisionWrite) AppendStringify(dst []byte) ([]byte, error) {
+	return jsstring.AppendMarshalJSON(dst, documentRevisionJSON{"document.revision", write.ID, write.Seq, write.Content})
 }
 
 // StoredDocument is a loaded document: its record and its value (a base plus deltas applied once) at a point.

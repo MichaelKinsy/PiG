@@ -58,8 +58,11 @@ type manifestJSON struct {
 }
 
 // MarshalJSON is the manifest in Pi's key order.
-func (part *ManifestPart) MarshalJSON() ([]byte, error) {
-	return jsstring.MarshalJSON(manifestJSON{"manifest", part.Format, part.Schema, part.LastSeq, part.NextID})
+func (part *ManifestPart) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(part) }
+
+// AppendStringify appends the manifest's JSON.stringify text to dst.
+func (part *ManifestPart) AppendStringify(dst []byte) ([]byte, error) {
+	return jsstring.AppendMarshalJSON(dst, manifestJSON{"manifest", part.Format, part.Schema, part.LastSeq, part.NextID})
 }
 
 // EndPart is the last part: the count of the parts between the manifest and it.
@@ -76,8 +79,11 @@ type endJSON struct {
 }
 
 // MarshalJSON is the end part in Pi's key order.
-func (part *EndPart) MarshalJSON() ([]byte, error) {
-	return jsstring.MarshalJSON(endJSON{"end", part.Writes})
+func (part *EndPart) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(part) }
+
+// AppendStringify appends the end part's JSON.stringify text to dst.
+func (part *EndPart) AppendStringify(dst []byte) ([]byte, error) {
+	return jsstring.AppendMarshalJSON(dst, endJSON{"end", part.Writes})
 }
 
 // safe is an integer from min up to 2^53 - 1: seqs, ids, versions and counts stay exact (a seq after 2^53 would
@@ -302,7 +308,7 @@ func jsonForm(value any) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		return delta.DecodeJson(text)
+		return delta.DecodeJson(text) //perf:ok runs on archive import and outbox-batch replay (CheckPart, CheckWrite at a trust boundary), once per imported part or replayed write, never per request; a typed part has no JsonObject builder, so its JSON text is what the schema check reads
 	}
 	return value, nil
 }

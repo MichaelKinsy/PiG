@@ -133,21 +133,23 @@ func (records ColumnRecords) Names() []string {
 }
 
 // MarshalJSON is the JSON object of the records, in order (what JSON.stringify gives).
-func (records ColumnRecords) MarshalJSON() ([]byte, error) {
-	out := []byte{'{'}
+func (records ColumnRecords) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(records) }
+
+// AppendStringify appends the records' JSON.stringify text to dst.
+func (records ColumnRecords) AppendStringify(dst []byte) ([]byte, error) {
+	dst = append(dst, '{')
 	for index, entry := range records {
 		if index > 0 {
-			out = append(out, ',')
+			dst = append(dst, ',')
 		}
-		out = jsstring.AppendString(out, entry.Name)
-		out = append(out, ':')
-		text, err := jsstring.MarshalJSON(entry.Record)
-		if err != nil {
+		dst = jsstring.AppendString(dst, entry.Name)
+		dst = append(dst, ':')
+		var err error
+		if dst, err = jsstring.AppendMarshalJSON(dst, entry.Record); err != nil {
 			return nil, err
 		}
-		out = append(out, text...)
 	}
-	return append(out, '}'), nil
+	return append(dst, '}'), nil
 }
 
 // UnmarshalJSON reads a JSON object of records in key order.
