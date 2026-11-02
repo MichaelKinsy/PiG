@@ -434,6 +434,11 @@
    "file": "coding/cli/rpc_events.go",
    "old": "\t\tmessages, err := rpcAgentMessages(event.Messages)\n\t\tif err != nil {",
    "new": "\t\tmessages, err := rpcAgentMessages(event.Messages)\n\t\tif err == nil {"
+  },
+  {
+   "file": "coding/cli/rpc_events.go",
+   "old": "{\"delta\", event.Delta}}\n\tcase ai.ToolCallEndEvent:",
+   "new": "{\"delta\", event.Delta}, {\"partial\", event.Partial}}\n\tcase ai.ToolCallEndEvent:"
   }
  ],
  "packages/coding-agent/src/modes/rpc/jsonl.ts": [
