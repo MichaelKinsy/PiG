@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -34,9 +35,10 @@ import (
 // as the plugins, and the worker's Go code reads `Busy` directly, as a local type of its own host.
 //
 // Forced Go differences. A worker is the test binary run again (TestMain, fixtureEnv "worker"). `process.exit` is
-// exitProcess in Go code and the NodeHost's own in `Control.crash` (the worker exits with its code). `Control.block` and
-// `blockThenCrash` (a busy loop that blocks the event loop) are not ported: a Go worker has no single thread to block, and the
-// tests that need an unresponsive worker stop its process from outside (freezeWorker, SIGSTOP). `Control.fatal` is not ported:
+// exitProcess in Go code and the NodeHost's own in `Control.crash` (the worker exits with its code). `Control.blockThenCrash`
+// is not ported: a Go worker has no single thread to block, and the tests that need an unresponsive worker stop its process from
+// outside (freezeWorker, SIGSTOP). `Control.block` takes the path of a file instead of a duration and blocks the NodeHost's event
+// loop until the file exists (for 2 s at most), so a test decides when the NodeHost answers again. `Control.fatal` is not ported:
 // no test calls it. Every message the worker sends to the server (frame or control) is counted by wrapping its port;
 // `Control.localCalls` is called by the worker itself, whose Go code reports how many messages it sent to the server between
 // the calls' two lines.
@@ -54,6 +56,7 @@ var (
 		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
 			contracts.Meth("crash", contracts.NewMethod(contracts.Int())),
 			contracts.Meth("busy", contracts.NewMethod(contracts.Int())),
+			contracts.Meth("block", contracts.NewMethod(contracts.Str())),
 			contracts.Meth("localCalls", contracts.NewMethod(contracts.Int(), contracts.Int())),
 		}})},
 	}))
@@ -118,6 +121,12 @@ type workerBehaviour struct {
 	Log string
 	// CloseMs is how long the second closer takes.
 	CloseMs int
+	// LateCloseMs is how long a closer takes that the app registers after the plugins load (`late` in the log).
+	LateCloseMs int
+	// BlockNode: 300 ms after its load, blocks the NodeHost's event loop until this file exists (`node blocked` on stdout).
+	BlockNode string
+	// ShutdownDuringReload: shuts down the moment a reload of the server's is being applied (taken off the queue, in flight).
+	ShutdownDuringReload bool
 	// DisconnectAndBlock: after its load, closes its IPC channel and blocks, alive (the server must reap it).
 	DisconnectAndBlock bool
 	// LocalCalls: 300 ms after its load, this many sequential local calls, then `local calls sent <n>` on stdout.
@@ -148,6 +157,15 @@ func (b workerBehaviour) json() *delta.JsonObject {
 	}
 	if b.CloseMs != 0 {
 		object.Set("closeMs", float64(b.CloseMs))
+	}
+	if b.LateCloseMs != 0 {
+		object.Set("lateCloseMs", float64(b.LateCloseMs))
+	}
+	if b.BlockNode != "" {
+		object.Set("blockNode", b.BlockNode)
+	}
+	if b.ShutdownDuringReload {
+		object.Set("shutdownDuringReload", true)
 	}
 	if b.DisconnectAndBlock {
 		object.Set("disconnectAndBlock", true)
@@ -184,6 +202,11 @@ func behaviourOf(value delta.JsonValue) workerBehaviour {
 	if ms, ok := object.Value("closeMs").(float64); ok {
 		b.CloseMs = int(ms)
 	}
+	if ms, ok := object.Value("lateCloseMs").(float64); ok {
+		b.LateCloseMs = int(ms)
+	}
+	b.BlockNode, _ = object.Value("blockNode").(string)
+	b.ShutdownDuringReload, _ = object.Value("shutdownDuringReload").(bool)
 	b.DisconnectAndBlock, _ = object.Value("disconnectAndBlock").(bool)
 	if calls, ok := object.Value("localCalls").(float64); ok {
 		b.LocalCalls = int(calls)
@@ -344,6 +367,15 @@ func runWorkerFixture() {
 		}, ctx); err != nil {
 			return nil, err
 		}
+		if behaviour.LateCloseMs != 0 {
+			start.OnClose(func(context.Context) error {
+				time.Sleep(time.Duration(behaviour.LateCloseMs) * time.Millisecond)
+				if behaviour.Log != "" {
+					appendLog(behaviour.Log, "late\n")
+				}
+				return nil
+			})
+		}
 		id, _ := start.Address.Params.Value("id").(string)
 		if behaviour.DisconnectAndBlock {
 			time.AfterFunc(300*time.Millisecond, func() {
@@ -364,6 +396,35 @@ func runWorkerFixture() {
 					fmt.Fprintln(os.Stderr, err)
 				}
 			})
+		}
+		if release := behaviour.BlockNode; release != "" {
+			time.AfterFunc(300*time.Millisecond, func() {
+				control, err := worker.Get(chordctx.Background(), fixtureControl, delta.JsonObjectOf("id", id), host.GetOptions{})
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					return
+				}
+				// Held until the process exits: a release is a message to the NodeHost, which is blocked once the call returns.
+				if _, err := control.Call("block", release, chordctx.Background()); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				}
+			})
+		}
+		if behaviour.ShutdownDuringReload {
+			w := start.Plugins.worker
+			applying := make(chan struct{})
+			var once sync.Once
+			w.mu.Lock()
+			w.reloadApplying = func() { once.Do(func() { close(applying) }) }
+			w.mu.Unlock()
+			//portlint:allow golifetime the wait ends with the worker's context, which the shutdown it makes aborts
+			go func() {
+				select {
+				case <-applying:
+					w.shutdown()
+				case <-ctx.Done():
+				}
+			}()
 		}
 		// The app's keep-alive counts are a local type of this Go host: read directly, no hold of the NodeHost's objects.
 		busy, err := worker.Get(ctx, fixtureBusy, delta.NewJsonObject(0), host.GetOptions{})

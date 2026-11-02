@@ -1631,7 +1631,11 @@ class RuntimeContext {
 
   // Pi's runner.ts:createContext reads the Session live, including from I/O
   // callbacks after the last subscribed event's busy snapshot.
-  isIdle() { this.runtime.extensionRuntime.assertActive(); return this.runtime.callSync("isIdle")?.idle === true; }
+  isIdle() {
+    this.runtime.extensionRuntime.assertActive();
+    if (this.runtime.busyHeld) return false;
+    return this.runtime.callSync("isIdle")?.idle === true;
+  }
   isProjectTrusted() { this.runtime.extensionRuntime.assertActive(); return this.runtime.state.projectTrusted; }
   abort() { this.runtime.extensionRuntime.assertActive(); this.runtime.abortRun(); }
   // Pi's hasPendingMessages is a live getter (agent-session.js:2728, `pendingMessageCount > 0`),
@@ -2348,7 +2352,10 @@ export class Runtime {
             return;
           }
           if (this.activeRequest()?.event === "agent_settled") this.state.isIdle = this.callSync("isIdle")?.idle === true;
-          else if (idle) this.state.isIdle = false;
+          else {
+            if (idle) this.state.isIdle = false;
+            this.holdBusyThroughSynchronousRun();
+          }
           return;
         }
         try { this.writeSync("sendMessage", { message, options }); }
@@ -5692,6 +5699,13 @@ export class Runtime {
       if (request) request.windowSettled = new Promise((resolve) => { request.settleWindow = resolve; });
       this.conn.requestState(id, "blocked", "external_io");
     });
+  }
+
+  // holdBusyThroughSynchronousRun keeps ctx.isIdle() busy until the code that sent a triggering message awaits or returns. Pi's sendCustomMessage marks the Session busy (_startRun sets _isAgentRunActive before its first await) and its one event loop runs nothing else until the handler's next await, so no run can end before the handler's next statement. The host runs the started run concurrently with this process, which a live read would then see ended (a run that settles while the handler's read is in flight); the first microtask checkpoint, where Pi's loop can run the run's own continuations, ends the hold and reads are live again.
+  holdBusyThroughSynchronousRun() {
+    if (this.busyHeld) return;
+    this.busyHeld = true;
+    queueMicrotask(() => { this.busyHeld = false; });
   }
 
   // reportCommandYield follows a send from an RPC command's handler. The host holds the run the send starts while the handler runs, as Pi's run starts only once the handler that sent it awaits or returns (agent-session.ts:2129, 2293 sendCustomMessage); a handler still unsettled at the next event-loop turn has awaited, so the command reports its suspension then.
