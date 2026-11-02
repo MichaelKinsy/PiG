@@ -60,6 +60,7 @@ var versionLiteralAllowlist = []allowedVersionLiteral{
 	{"automation/ci/seed-ci-image-bases.sh", "1.45.1", "local tag of the digest-pinned syft image; the digest on the line above is the pin"},
 	{"automation/ci/seed-ci-image-bases.sh", "0.20.6", "go-containerregistry release; the sha256 on the next line is the pin"},
 	{"automation/gen/vendor-typebox.sh", "1.3.27", "the typebox release the script vendors; its integrity hash is the next line"},
+	{"automation/gen/vendor-chord-plugins-node.sh", "1.3.27", "the typebox release Pi's chord pins and the script vendors, checked against packages/chord/package.json before it fetches; its integrity hash is the next line"},
 	{"automation/gen/vendor-typebox.sh", "0.25.10", "the esbuild release the script bundles with"},
 	{".github/workflows/npm-publish.yml", "11.5.1", "the npm release that added trusted publishing, a registry feature floor and not a pin"},
 	{"Makefile", "0.7.4", "the version of Pi-Bolt, a different product from Pi"},
