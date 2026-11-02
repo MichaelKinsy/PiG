@@ -854,9 +854,9 @@
  ],
  "packages/ai/catalog/generate.ts": [
   {
-   "file": "cmd/gen-models/fixtures.go",
-   "old": "\"url\"",
-   "new": "\"urZ\""
+   "file": "cmd/gen-models/generate.go",
+   "old": "\"providers.json\"",
+   "new": "\"providerZ.json\""
   }
  ],
  "packages/ai/catalog/providers/amazon-bedrock.ts": [
