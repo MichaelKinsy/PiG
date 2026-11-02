@@ -8450,8 +8450,19 @@
     },
     {
       "path": "packages/durable/test/harness-storage-failure.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:cbbcb8dca65ff8fd97abd51afe8298760fe407dac9f9ef97cc8aa577e937fd2c"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:cbbcb8dca65ff8fd97abd51afe8298760fe407dac9f9ef97cc8aa577e937fd2c",
+      "evidence": [
+        "durable/harness/harness_storage_failure_test.go",
+        "durable/harness/harness_storage_failure_test.go#TestAFailedStorageCall",
+        "durable/core/driver/listener_reports_core_test.go#TestCoreReportsAFailingWatchListenerAndEndsTheWatch"
+      ],
+      "rationale": "All 21 upstream cases run in the evidence files (lane C); 3 type-level cases are designed out. Re-recorded at Pi b556cfe5: the file changed from the earlier record in one appended entry of the case \"fails it from a read off the Session line\" (ported: sfAppendNote before the failing scanRange, harness_storage_failure_test.go).",
+      "designedOutCases": [
+        "listener and report errors › reports a listener or onReport whose promise rejects, without an unhandled rejection",
+        "listener and report errors › contains a fulfilled thenable that calls only its fulfillment handler",
+        "listener and report errors › contains a rejected promise from another realm"
+      ]
     },
     {
       "path": "packages/durable/test/harness-structured-output.test.ts",
@@ -8499,8 +8510,43 @@
     },
     {
       "path": "packages/durable/test/harness-telemetry.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2221b035579538d1dd3a3d6029d93e0e224682ae2793ab5e0ca84ea0d6003652"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2221b035579538d1dd3a3d6029d93e0e224682ae2793ab5e0ca84ea0d6003652",
+      "evidence": [
+        "durable/harness/harness_telemetry_test.go",
+        "durable/harness/harness_telemetry_admission_test.go",
+        "durable/harness/harness_telemetry_events_test.go",
+        "durable/harness/harness_telemetry_options_test.go",
+        "durable/harness/harness_telemetry_support_test.go",
+        "durable/harness/harness_telemetry_test.go#TestDurableTelemetryRecordsContentFreeSubmitAndPhaseSpans",
+        "durable/harness/harness_telemetry_test.go#TestDurableTelemetryRecordsAttributesInPisKeyOrder",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryReturnsAdmissionResultsWithoutRereadingRecordsOrProbingRootLinkTargets",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryInheritsOmittedOrUndefinedTaskTracesAndStoresNoCarrierForAnExplicitRoot",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryRecordsCheckpointsOnlyWhenTheRunningPhaseChanges",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryStartsEachQueuedInputsRunInItsAdmissionTraceAndLinksInputRootsToTheirCaller",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryLinksTheOtherQueuedInputsToTheFirstInvocationOfTheirSharedRun",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryLinksASteerAdmissionToTheCurrentRunWithoutMovingItsWorkIntoTheSteersTrace",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryKeepsAPublicWriteAdmissionOpenThroughCommitAsAChildOfItsCaller",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryLinksAnInputSubmittedInsideATurnToTheCallingPhaseWithoutParentingIt",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryParentsBackgroundCompactionToThePreparePhaseThatCreatesIt",
+        "durable/harness/harness_telemetry_admission_test.go#TestDurableTelemetryMarksOnlyTheFirstInvocationAfterReopenResumedRetainingItsStoredParent",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryEmitsEntryAndSettlementEventsOnlyAfterSuccessfulStorageCommits",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryRecordsInternalCompactionAdmissionsAsPhaseEventsWithoutASubmitSpan",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryRecordsAFixedCategoryAndABoundedDiagnostic",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryKeepsBothInterruptedRunsAndExplicitAbortHandlersAtStatusOk",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryMirrorsRuntimeReportsAsFixedFieldPhaseEventsAndTypeOnlyCounters",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryReportsHookFailuresOnThePhaseAndClockFailuresWithoutAPhaseContext",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryCountsAnOutsideSpanSessionFailureWithoutStartingASpan",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryCountsReportsRaisedWithANoopSpanWithoutCreatingARoot",
+        "durable/harness/harness_telemetry_events_test.go#TestDurableTelemetryAttachesSynchronousCommitListenerReportsToTheActiveSubmissionSpan",
+        "durable/codemode/telemetry_replay_test.go#TestDurableTelemetryEmitsReplayForACodemodeJournalResultWithoutRerunningItsNestedTool",
+        "durable/storage/record_carriers_test.go#TestStorageKeepsTaskAndSubmissionTelemetryCarriers",
+        "durable/record_carriers_wire_test.go#TestRecordCarriersAreOptionalPlainJsonMembers"
+      ],
+      "rationale": "All 23 upstream cases run in the evidence files (lane C); 1 type-level cases are designed out. Re-recorded at Pi b556cfe5: the file changed only in the tool parameter builders (TypeBox Type.Object to pi-schema obj); the Go tests declare their tool parameters as Go schemas, so the cases are unchanged.",
+      "designedOutCases": [
+        "Durable telemetry › preserves async listener error containment and report counting"
+      ]
     },
     {
       "path": "packages/durable/test/harness-tool-hooks.test.ts",
@@ -8625,8 +8671,17 @@
     },
     {
       "path": "packages/durable/test/session-document-retention.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:6f565e4b984119711b89eb6fdaea86faae24da4bc33e7ef5e39778f048bc66ac"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:6f565e4b984119711b89eb6fdaea86faae24da4bc33e7ef5e39778f048bc66ac",
+      "evidence": [
+        "durable/session/session_document_retention_test.go#TestSessionDocumentCacheRetention",
+        "durable/harness/document_retention_test.go#TestHarnessDocumentRetentionFollowsSettings",
+        "durable/harness/document_retention_test.go#TestTheViewsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept"
+      ],
+      "rationale": "Follows Pi 5f312dac; the case 'keeps no timer where timers cannot be unreferenced, and evicts on commits' stays designed out (Node unreferenced-timer mechanics; approved by the tern lead ruling 2026-10-13, tests-120-b; case and approval carried from the b3a29f11 mapping). Lane C2. Re-recorded at Pi b556cfe5: the file changed only in the tool parameter builders and in the writes recorder (it wraps Storage.commit with batches and a receive callback); the Go port reads the writes through the test storage's AdmittedCommits, so the cases are unchanged.",
+      "designedOutCases": [
+        "document cache retention › keeps no timer where timers cannot be unreferenced, and evicts on commits"
+      ]
     },
     {
       "path": "packages/durable/test/session-documents.test.ts",
