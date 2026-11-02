@@ -74,9 +74,9 @@ func TestNodeCompression(t *testing.T) {
 
 func TestNodeCompressionInflateLimitEdges(t *testing.T) {
 	deflated := nextnode.NodeCompression.Deflate([]byte("abc"))
-	// zlib refuses a NaN maxOutputLength: corrupt, never an unbounded inflate.
-	if got := nextnode.NodeCompression.Inflate(deflated, math.NaN()); got.Kind != nextnode.InflatedCorrupt {
-		t.Fatalf("NaN limit kind = %q, want corrupt", got.Kind)
+	// Node takes its default max for a NaN maxOutputLength and `len > NaN` is false: the bytes come back.
+	if got := nextnode.NodeCompression.Inflate(deflated, math.NaN()); got.Kind != nextnode.InflatedBytes || string(got.Bytes) != "abc" {
+		t.Fatalf("NaN limit = %+v, want bytes abc", got)
 	}
 	// A negative or infinite-below limit is past by one byte, like a limit of 0.
 	if got := nextnode.NodeCompression.Inflate(deflated, math.Inf(-1)); got.Kind != nextnode.InflatedTooLarge {

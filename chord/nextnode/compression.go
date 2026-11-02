@@ -70,16 +70,12 @@ func (nodeCompression) Deflate(input []byte) []byte {
 // Inflate inflates raw deflate data, reading at most limit+1 bytes so a decompression bomb never inflates past the
 // bound. Data that is no raw deflate stream, or ends early, is corrupt.
 func (nodeCompression) Inflate(input []byte, limit float64) Inflated {
-	if math.IsNaN(limit) {
-		// zlib refuses a NaN `maxOutputLength` (ERR_OUT_OF_RANGE, not ERR_BUFFER_TOO_LARGE): corrupt.
-		return Inflated{Kind: InflatedCorrupt, Error: errors.New("inflate: the limit is NaN")}
-	}
 	reader := flate.NewReader(bytes.NewReader(input))
 	var source io.Reader = reader
 	if limit < math.MaxInt64 {
 		// One byte past the limit proves the output is larger; zlib refuses a bound of 0 (`Math.max(1, ...)`), and one
 		// byte is past a limit of 0 or less. The bound is in [1, MaxInt64), so the conversion is exact.
-		//portlint:allow numbers the bound is clamped to [1, MaxInt64) first, as compression.ts:17 clamps maxOutputLength with Math.max(1, Math.min(limit, buffer.MAX_LENGTH)); NaN returned above
+		//portlint:allow numbers the bound is clamped to [1, MaxInt64) first, as compression.ts:17 clamps maxOutputLength with Math.max(1, Math.min(limit, buffer.MAX_LENGTH)); a NaN limit fails the comparison, so it reads unbounded as Node's default max does
 		source = io.LimitReader(reader, int64(math.Max(1, limit))+1)
 	}
 	inflated, err := io.ReadAll(source)

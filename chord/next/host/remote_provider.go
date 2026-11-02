@@ -426,9 +426,7 @@ func (p *providerSide) hold(message *link.HoldMessage) error {
 		limit = math.Min(limit, float64(message.Limit.Value))
 	}
 	if !math.IsInf(limit, 1) {
-		// A part's size is a whole byte count, so `size > limit` holds for exactly the same sizes against floor(limit); a limit past 2^53 bytes exceeds every part.
-		//portlint:allow numbers the wire limit is an integer in Go's Request (link Optional[int]); floor(limit) capped at Number.MAX_SAFE_INTEGER rejects the same sizes as Pi's float limit (provider.ts:331-335, link/part.go `float64(size) > limits.Decoded`)
-		request.Limit = link.Some(int(math.Min(math.Floor(limit), 1<<53-1)))
+		request.Limit = link.Some(int(limit))
 	}
 	limits := l.limits
 	if limit != l.limits.Decoded {
