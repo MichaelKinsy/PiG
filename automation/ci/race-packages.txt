@@ -61,5 +61,5 @@ libs  ./piglets/standard
 libs  ./durable/images
 libs  ./internal/nodefs
 libs  ./internal/nativeplatform
-# The highlight.js port shares a Registry behind a mutex and compiled patterns behind package-level caches, and its tests run registries on one worker per CPU. It has its own group because it is CPU-bound under -race: one run of the package takes about 17 minutes on 4 CPUs and 10 on 16.
+# The highlight.js port shares a Registry behind a mutex and compiled patterns behind package-level caches, and its tests run registries on one worker per CPU. It has its own group because it is CPU-bound under -race: one run of the package takes about 16 minutes on 4 CPUs and 10 on 16.
 hljs  ./tui/internal/hljs
