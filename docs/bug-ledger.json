@@ -44433,6 +44433,28 @@
       ]
     },
     {
+      "id": "BF-fe4bd27",
+      "title": "`PI_TUI_ESC_TIMEOUT` now waits as Node's `setTimeout` does for the lone-Escape timer: a fractional value is…",
+      "symptom": "`PI_TUI_ESC_TIMEOUT` now waits as Node's `setTimeout` does for the lone-Escape timer: a fractional value is truncated, and a value under one millisecond or over 2147483647 waits one millisecond instead of that many nanoseconds or about a month.",
+      "rootCause": "PI_TUI_ESC_TIMEOUT reaches setTimeout in Pi's StdinBuffer, which truncates a fractional delay and waits 1ms for a sub-millisecond or above-2^31-1 one. The Go port converted the float to a Duration unguarded.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`PI_TUI_ESC_TIMEOUT` now waits as Node's `setTimeout` does for the lone-Escape timer: a fractional value is truncated, and a value under one millisecond or over 2147483647 waits one millisecond instead of that many nanoseconds or about a month.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fe4bd27863",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "tui/input_timer_escape_timeout_test.go::TestProcessStdinBufferEscapeTimeoutFollowsNodeSetTimeout"
+      ]
+    },
+    {
       "id": "BF-fe625bb",
       "title": "Mistral request bodies list their members in Pi's order (`model`, `stream`, `messages`, ..., then the renamed…",
       "symptom": "Mistral request bodies list their members in Pi's order (`model`, `stream`, `messages`, ..., then the renamed `max_tokens`, `tool_choice`, `reasoning_effort`, `prompt_mode`, `prompt_cache_key`; a tool result's `tool_call_id` last; thinking parts as `type`, `text`) instead of sorted, and the body is built about 3 times faster.",

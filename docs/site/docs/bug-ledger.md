@@ -1519,6 +1519,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-fdbd6ca](#bf-fdbd6ca) | Automatic `fd` and `rg` downloads no longer fetch x86-64 binaries on ARM32 and other architectures without a… | PiG's own defect | All platforms | Unreleased |
 | [BF-fdfb748](#bf-fdfb748) | A surrogate pair split across two concatenated string halves is written as its character in session files… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fe16108](#bf-fe16108) | Provider request bodies (OpenAI Completions, OpenAI Responses, Codex, Anthropic, Google and Mistral) write… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-fe4bd27](#bf-fe4bd27) | `PI_TUI_ESC_TIMEOUT` now waits as Node's `setTimeout` does for the lone-Escape timer: a fractional value is… | PiG's own defect | All platforms | Unreleased |
 | [BF-fe625bb](#bf-fe625bb) | Mistral request bodies list their members in Pi's order (`model`, `stream`, `messages`, ..., then the renamed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fe625bb-2](#bf-fe625bb-2) | When an extension's `before_provider_request` handler returns a replacement body for OpenAI Completions… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ff225d2](#bf-ff225d2) | fix(durable/core/host/cf): the report spans carry task_interrupted's reason, as Pi 's safeReport does | PiG's own defect | All platforms | Unreleased |
@@ -22288,6 +22289,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f29e906cb3` (2026-10-10), `fe16108cc7` (2026-10-10)
 - **Tests:** `ai/anthropic_messages_payload_oracle_test.go::TestAnthropicMessagesPayloadMatchesPi`, `ai/openai_request_key_order_oracle_test.go::TestOpenAICompletionsRequestKeysFollowPiAssignmentOrder`, `ai/openai_responses_request_key_order_oracle_test.go::TestOpenAIResponsesRequestKeysFollowPiAssignmentOrder`, `ai/perf_gate_norace_test.go::TestProviderRequestHistoryAllocationGate`, `ai/request_body_escaping_test.go::TestProviderRequestBodiesWriteCharactersAsJSONStringifyDoes`, `internal/jsstring/unescape_stringify_test.go::TestUnescapeForStringifyRewritesOnlyRealEscapes`
 - **Release note:** Provider request bodies (OpenAI Completions, OpenAI Responses, Codex, Anthropic, Google and Mistral) write `<`, `>`, `&`, U+2028 and U+2029 as they are, as Pi's `JSON.stringify` does, instead of as `\u` escapes.
+
+### BF-fe4bd27
+
+**`PI_TUI_ESC_TIMEOUT` now waits as Node's `setTimeout` does for the lone-Escape timer: a fractional value is…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `PI_TUI_ESC_TIMEOUT` now waits as Node's `setTimeout` does for the lone-Escape timer: a fractional value is truncated, and a value under one millisecond or over 2147483647 waits one millisecond instead of that many nanoseconds or about a month.
+- **Root cause:** PI_TUI_ESC_TIMEOUT reaches setTimeout in Pi's StdinBuffer, which truncates a fractional delay and waits 1ms for a sub-millisecond or above-2^31-1 one. The Go port converted the float to a Duration unguarded.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `fe4bd27863` (2026-11-02)
+- **Tests:** `tui/input_timer_escape_timeout_test.go::TestProcessStdinBufferEscapeTimeoutFollowsNodeSetTimeout`
+- **Release note:** `PI_TUI_ESC_TIMEOUT` now waits as Node's `setTimeout` does for the lone-Escape timer: a fractional value is truncated, and a value under one millisecond or over 2147483647 waits one millisecond instead of that many nanoseconds or about a month.
 
 ### BF-fe625bb
 
