@@ -78,9 +78,20 @@ export function createLazySession(storage: Storage, options: { now?: () => numbe
   const methods = {
     closed: ended.promise,
     /** Internal: run a read-only job on the mutation line (session.ts readOnLine): a commit that writes nothing holds the line for it. */
-    readOnLine: async <T>(job: () => Promise<T>): Promise<T> => (await open()).readOnLine(job),
+    readOnLine: async <T>(job: (storage: Storage) => Promise<T>): Promise<T> => (await open()).readOnLine(job),
+    /** Internal (session.ts touch): called by a job on the line, which has opened the core. */
+    touch: (key: string) => harness!.touch(key),
+    /** Internal, on the line (session.ts latestEntryId, latestHeadMarker): the newest entry and head marker of a conversation, known from the commits after the first read. */
+    latestEntryId: (conversationId: number, context: Context) => harness!.latestEntryId(conversationId, context),
+    latestHeadMarker: (conversationId: number, atOrBefore: number | undefined, context: Context) => harness!.latestHeadMarker(conversationId, atOrBefore, context),
+    /** Internal (session.ts knownLatestEntryId): what the Session's commits know of a conversation's newest entry right now; nothing before it opened. */
+    knownLatestEntryId: (conversationId: number) => harness?.knownLatestEntryId(conversationId),
+    /** session.ts failure: the first error a Storage call threw, once the Session failed. */
+    get failure() { return harness?.failure },
     /** Internal, for tests: the document cache sizes the core last reported. */
-    get documentCacheSizes() { return harness?.documentCacheSizes ?? { cached: 0, idle: 0, attached: 0, sweeps: 0, held: 0 } },
+    get documentCacheSizes() { return harness?.documentCacheSizes ?? { cached: 0, idle: 0, attached: 0, sweeps: 0, held: 0, taskDocuments: 0, tails: 0 } },
+    /** Internal, for tests that bound memory (session.ts lineSizes): the line's outstanding jobs, keys with an unpublished writer, and record reads in flight. */
+    get lineSizes() { return harness?.lineSizes ?? { outstanding: 0, unpublished: 0, reads: 0 } },
     commit: async <T>(change: (tx: never) => T | Promise<T>, context: Context, commitOptions?: unknown): Promise<T> => (await open()).commit(change as never, context, commitOptions as never),
     // Closing a Session nobody used must not cold-open the core just to seal it.
     close: async (context: Context) => { if (opened) await (await opened).close(context); else ended.resolve({ kind: "closed" }) },

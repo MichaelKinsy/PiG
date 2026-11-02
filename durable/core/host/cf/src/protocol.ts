@@ -84,7 +84,7 @@ export type DocAddress = { scope: "session" | "conversation" | "task"; definitio
 export type ApiAnswer = { ok: unknown } | { error: WireError }
 
 /** tx_result bodies (ABI section 8): the line is held (`ready`), queued (`waiting`), an operation's answer, or Pi's rejection. */
-export type TxAnswer = { ready: true; current?: unknown } | { waiting: true } | { gated: true } | { result: unknown } | { rejected: WireError }
+export type TxAnswer = { ready: true; current?: unknown } | { waiting: true } | { result: unknown } | { rejected: WireError }
 
 export type PublishedNotice = {
   submissions?: { id?: number; requestId: string; status: string }[]
