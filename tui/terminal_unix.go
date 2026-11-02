@@ -116,7 +116,7 @@ func (w *terminalInputWaiter) close() {
 	_ = w.cancelWrite.Close()
 }
 
-// isEINTR reports whether a read error is an interrupted syscall worth retrying.
+// isEINTR reports whether a read, poll or termios ioctl error is an interrupted syscall worth retrying.
 func isEINTR(err error) bool { return errors.Is(err, unix.EINTR) }
 
 // startResizeWatcher installs a SIGWINCH handler that calls onResize on resize,

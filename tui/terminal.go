@@ -372,12 +372,34 @@ var (
 	restoreTerminal = term.Restore
 )
 
+// makeRaw puts fd into raw mode and returns the state to restore. It retries the ioctl while it fails with EINTR, as libuv's
+// uv_tty_set_mode and uv__tcsetattr do (deps/uv/src/unix/tty.c): setRawMode returns after the process was stopped inside the call
+// and continued, where a plain ioctl fails with EINTR on macOS and ended the session on `fg` (#397).
+func makeRaw(fd int) (*term.State, error) {
+	for {
+		state, err := makeRawTerminal(fd)
+		if !isEINTR(err) {
+			return state, err
+		}
+	}
+}
+
+// restoreCooked hands fd back in the mode state captured, retrying EINTR as makeRaw does.
+func restoreCooked(fd int, state *term.State) error {
+	for {
+		err := restoreTerminal(fd, state)
+		if !isEINTR(err) {
+			return err
+		}
+	}
+}
+
 func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err error) {
 	if t.stdin == nil || t.out == nil {
 		return nil, fmt.Errorf("terminal raw mode requires stdin/stdout")
 	}
 	fd := int(t.stdin.Fd())
-	state, err := makeRawTerminal(fd)
+	state, err := makeRaw(fd)
 	if err != nil {
 		return nil, err
 	}
@@ -391,7 +413,7 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 	// The process-exit restore (RestoreTerminalOnExit) owns the terminal from here until restore runs, as Pi's exit handler
 	// owns it from start() to stop(). It also hands the terminal back in cooked mode, which libuv does when Node exits.
 	registerExitRestoreTerminal(t, func() {
-		_ = restoreTerminal(fd, state)
+		_ = restoreCooked(fd, state)
 		vtRestore()
 	})
 	return func() {
@@ -408,7 +430,7 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 		if drainOnRestore {
 			_ = t.DrainInput(time.Second, 50*time.Millisecond)
 		}
-		_ = restoreTerminal(fd, state)
+		_ = restoreCooked(fd, state)
 		vtRestore()
 		t.protocolQueried = false
 	}, nil
