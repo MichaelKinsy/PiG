@@ -55,6 +55,8 @@ type owner struct {
 	tracker     weak.Pointer[Tracker]
 	competitors map[weak.Pointer[overlay]]struct{} // open changes other than the most recent; made by the first demotion
 	pruneBudget int
+	// texts joins the strings that AppendText and the preparation of an append op extend, so a text that grows one append per change costs the appended bytes.
+	texts syncTextTails
 }
 
 // pruneBudget is tracker.ts's #pruneBudget: demotions between sweeps of reclaimed changes.
@@ -327,7 +329,7 @@ func (change *Change) Prepare() (*Prepared, error) {
 	}
 	value := base
 	if len(ops) > 0 {
-		applied, err := ApplyImmutable(base, ops)
+		applied, err := applyImmutableBatches(base, slices.Values([][]Op{ops}), context.owner.texts.concat)
 		if err != nil {
 			context.status = statusAborted
 			return nil, err
