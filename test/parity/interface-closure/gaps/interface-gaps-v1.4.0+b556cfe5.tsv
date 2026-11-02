@@ -13,8 +13,6 @@ pkg:ai/.#ModelThinkingLevel	ai	undecidable	ai/types.go#ModelThinkingLevel
 pkg:ai/.#SessionAffinityFormat	ai	undecidable	ai/types.go#SessionAffinityFormat
 pkg:ai/.#ThinkingLevel	ai	undecidable	ai/types.go#ThinkingLevel
 pkg:ai/.#ThinkingLevelMap	ai	undecidable	ai/types.go#ThinkingLevelMap
-pkg:ai/api/constrained-sampling#makeStrictJsonSchema	ai	child-gap	ai/constrained_sampling.go#MakeStrictJSONSchema
-pkg:ai/api/constrained-sampling#makeStrictJsonSchema::call:0	ai	undecidable	ai/constrained_sampling.go#MakeStrictJSONSchema
 pkg:ai/compat#CacheRetention	ai	undecidable	ai/types.go#CacheRetention
 pkg:ai/compat#ChatTemplateKwargValue	ai	undecidable	ai/types_unions.go#ChatTemplateKwargValue
 pkg:ai/compat#ModelCost	ai	undecidable	ai/types.go#ModelCost
