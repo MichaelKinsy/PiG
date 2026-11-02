@@ -783,9 +783,37 @@
     "go": "coding/extension/events.go#CustomToolCallEvent.Input",
     "reason": "Pi agent-session.ts:651-662 builds every tool_call event as {type: \"tool_call\", toolCallId, toolName, input} with the call's arguments, the shape of CustomToolCallEvent (types.ts:1207-1210, input: Record<string, unknown>); the per-tool input types of types.ts:1166-1204 narrow it for a handler through isToolCallEventType (types.ts:1349). Go's production emitter builds CustomToolCallEvent (coding/session_extension_hooks.go:65) whose Input is a map[string]any with WireInput keeping the model's member order, and a subprocess handler receives the same JSON object; the typed per-tool structs are the Go form of the TS narrowing."
   },
+  "pkg:coding-agent/.#createBashTool::call:0": {
+    "go": "internal/codingagent/tools/tools.go#CreateBashTool",
+    "reason": "Pi bash.ts:433 createBashTool returns the TypeBoxAgentTool wrapToolDefinition(createBashToolDefinition(cwd, options)): the name, label, description, parameters and execute of the definition (wrapToolDefinition copies prepareArguments too, but this definition never sets it, which rule T12u proves from the Pi source). PiG's tools.CreateBashTool(cwd, options) returns *tools.BashTool, the agent.Tool of the wrapped definition, with cwd and the options bound as fields; TestCreateToolFactoriesBindTheirCwdAndOptions asserts the factory binds both. The upstream generic AgentTool type has no Go counterpart of its own, so T9 cannot compare them."
+  },
   "pkg:coding-agent/.#createEditTool::call:0": {
     "go": "internal/codingagent/tools/tools.go#CreateEditTool",
     "reason": "Pi edit.ts:215-217 createEditTool returns wrapToolDefinition(createEditToolDefinition(cwd, options)), a TypeBoxAgentTool whose members are the name, label, description, parameters and execute of the definition plus prepareArguments: prepareEditArguments (edit.ts:155), which the wrapper copies (tool-definition-wrapper.ts:38). PiG's tools.CreateEditTool returns *tools.EditTool, the agent.Tool of the wrapped tool, and EditTool.PrepareArguments (edit.go) is the optional agent.ArgumentPreparer that carries prepareEditArguments; TestEditPrepareArgumentsUpstreamCases asserts it on Pi's cases and TestCreateToolFactoriesBindTheirCwdAndOptions asserts the factory's options reach the tool. Rule T12u does not close this row: the factory's definition sets prepareArguments, so the source proof refuses."
+  },
+  "pkg:coding-agent/.#createFindTool::call:0": {
+    "go": "internal/codingagent/tools/tools.go#CreateFindTool",
+    "reason": "Pi find.ts:311-315 createFindTool returns the TypeBoxAgentTool wrapToolDefinition(createFindToolDefinition(cwd, options)): the name, label, description, parameters and execute of the definition (wrapToolDefinition copies prepareArguments too, but this definition never sets it, which rule T12u proves from the Pi source). PiG's tools.CreateFindTool(cwd, options) returns *tools.FindTool, the agent.Tool of the wrapped definition, with cwd and the options bound as fields; TestCreateToolFactoriesBindTheirCwdAndOptions asserts the factory binds both. The upstream generic AgentTool type has no Go counterpart of its own, so T9 cannot compare them."
+  },
+  "pkg:coding-agent/.#createGrepTool::call:0": {
+    "go": "internal/codingagent/tools/tools.go#CreateGrepTool",
+    "reason": "Pi grep.ts:322 createGrepTool returns the TypeBoxAgentTool wrapToolDefinition(createGrepToolDefinition(cwd, options)): the name, label, description, parameters and execute of the definition (wrapToolDefinition copies prepareArguments too, but this definition never sets it, which rule T12u proves from the Pi source). PiG's tools.CreateGrepTool(cwd, options) returns *tools.GrepTool, the agent.Tool of the wrapped definition, with cwd and the options bound as fields; TestCreateToolFactoriesBindTheirCwdAndOptions asserts the factory binds both. The upstream generic AgentTool type has no Go counterpart of its own, so T9 cannot compare them."
+  },
+  "pkg:coding-agent/.#createLsTool::call:0": {
+    "go": "internal/codingagent/tools/tools.go#CreateLsTool",
+    "reason": "Pi ls.ts:172 createLsTool returns the TypeBoxAgentTool wrapToolDefinition(createLsToolDefinition(cwd, options)): the name, label, description, parameters and execute of the definition (wrapToolDefinition copies prepareArguments too, but this definition never sets it, which rule T12u proves from the Pi source). PiG's tools.CreateLsTool(cwd, options) returns *tools.LsTool, the agent.Tool of the wrapped definition, with cwd and the options bound as fields; TestCreateToolFactoriesBindTheirCwdAndOptions asserts the factory binds both. The upstream generic AgentTool type has no Go counterpart of its own, so T9 cannot compare them."
+  },
+  "pkg:coding-agent/.#createPowerShellTool::call:0": {
+    "go": "internal/codingagent/tools/tools.go#CreatePowerShellTool",
+    "reason": "Pi powershell.ts:59 createPowerShellTool returns the TypeBoxAgentTool wrapToolDefinition(createPowerShellToolDefinition(cwd, options)): the name, label, description, parameters and execute of the definition (wrapToolDefinition copies prepareArguments too, but this definition never sets it, which rule T12u proves from the Pi source). PiG's tools.CreatePowerShellTool(cwd, options) returns *tools.PowerShellTool, the agent.Tool of the wrapped definition, with cwd and the options bound as fields; TestCreateToolFactoriesBindTheirCwdAndOptions asserts the factory binds both. The upstream generic AgentTool type has no Go counterpart of its own, so T9 cannot compare them."
+  },
+  "pkg:coding-agent/.#createReadTool::call:0": {
+    "go": "internal/codingagent/tools/tools.go#CreateReadTool",
+    "reason": "Pi read.ts:221 createReadTool returns the TypeBoxAgentTool wrapToolDefinition(createReadToolDefinition(cwd, options)): the name, label, description, parameters and execute of the definition (wrapToolDefinition copies prepareArguments too, but this definition never sets it, which rule T12u proves from the Pi source). PiG's tools.CreateReadTool(cwd, options) returns *tools.ReadTool, the agent.Tool of the wrapped definition, with cwd and the options bound as fields; TestCreateToolFactoriesBindTheirCwdAndOptions asserts the factory binds both. The upstream generic AgentTool type has no Go counterpart of its own, so T9 cannot compare them."
+  },
+  "pkg:coding-agent/.#createWriteTool::call:0": {
+    "go": "internal/codingagent/tools/tools.go#CreateWriteTool",
+    "reason": "Pi write.ts:94 createWriteTool returns the TypeBoxAgentTool wrapToolDefinition(createWriteToolDefinition(cwd, options)): the name, label, description, parameters and execute of the definition (wrapToolDefinition copies prepareArguments too, but this definition never sets it, which rule T12u proves from the Pi source). PiG's tools.CreateWriteTool(cwd, options) returns *tools.WriteTool, the agent.Tool of the wrapped definition, with cwd and the options bound as fields; TestCreateToolFactoriesBindTheirCwdAndOptions asserts the factory binds both. The upstream generic AgentTool type has no Go counterpart of its own, so T9 cannot compare them."
   },
   "pkg:durable/.#AnyTask": {
     "go": "durable/tasks.go#AnyTask",
