@@ -1,7 +1,6 @@
 package ai
 
 // pi: packages/ai/src/oauth.ts
-// pi: packages/ai/src/auth/oauth/load.ts
 
 import (
 	"go/ast"

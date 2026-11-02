@@ -22,6 +22,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
@@ -406,6 +407,7 @@ func exchangeAnthropicFederationToken(ctx context.Context, client *http.Client, 
 		return anthropicAccessToken{}, err
 	}
 	if length := utf16Length(jwt); length > anthropicMaxIdentityTokenChars {
+		//portlint:allow numbers Math.ceil(jwt.length / 1024) of oidc-federation.ts:63: length is a positive UTF-16 code-unit count above 16384, so (length+1023)/1024 is exact integer ceiling division
 		return anthropicAccessToken{}, fmt.Errorf("Identity token is %d KiB, exceeds the 16 KiB assertion limit", (length+1023)/1024)
 	}
 	body, err := json.Marshal(struct {
@@ -644,26 +646,4 @@ func jsonAsJSString(raw json.RawMessage) string {
 }
 
 // jsNumberFromJSON is Number(value) for the JSON value of a token response member; an absent member is NaN.
-func jsNumberFromJSON(raw json.RawMessage) float64 {
-	switch trimmed := string(bytes.TrimSpace(raw)); trimmed {
-	case "":
-		return math.NaN()
-	case "null", "false":
-		return 0
-	case "true":
-		return 1
-	}
-	if number, ok := finiteNumberOf(raw); ok {
-		return number
-	}
-	if text, ok := jsonStringOf(raw); ok {
-		text = trimJSWhitespace(text)
-		if text == "" {
-			return 0
-		}
-		if number, err := strconv.ParseFloat(text, 64); err == nil {
-			return number
-		}
-	}
-	return math.NaN()
-}
+func jsNumberFromJSON(raw json.RawMessage) float64 { return jsnumber.FromJSON(raw) }

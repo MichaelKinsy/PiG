@@ -61,13 +61,16 @@ func replaceCloudflarePlaceholder(input, placeholder, replacement string) string
 	var result strings.Builder
 	offset := 0
 	for {
+		//portlint:allow utf16units offsets are byte indexes of the ASCII placeholder in this same string, so they sit on code-point boundaries and the copied text matches JS replaceAll (cloudflare-stream.ts:10-13) for non-BMP input too
 		index := strings.Index(input[offset:], placeholder)
 		if index < 0 {
+			//portlint:allow utf16units offsets are byte indexes of the ASCII placeholder in this same string, so they sit on code-point boundaries and the copied text matches JS replaceAll (cloudflare-stream.ts:10-13) for non-BMP input too
 			result.WriteString(input[offset:])
 			return result.String()
 		}
 		start := offset + index
 		end := start + len(placeholder)
+		//portlint:allow utf16units offsets are byte indexes of the ASCII placeholder in this same string, so they sit on code-point boundaries and the copied text matches JS replaceAll (cloudflare-stream.ts:10-13) for non-BMP input too
 		result.WriteString(input[offset:start])
 		for i := 0; i < len(replacement); i++ {
 			if replacement[i] == '$' && i+1 < len(replacement) {

@@ -19,13 +19,18 @@ func TestDefaultProviderAuthContextMatchesPi(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(home, "dir"), 0o700); err != nil {
 		t.Fatal(err)
 	}
+	// "~sib" is not "~/sib": Pi joins homedir() and the rest of the path with no separator, so it names a sibling of the home directory.
+	if err := os.WriteFile(home+"sib", nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Remove(home + "sib") })
 	env := map[string]string{
 		"PIG_CTX_SET":   "  value \n",
 		"PIG_CTX_BLANK": " \t\u00a0\ufeff\n",
 		"PIG_CTX_EMPTY": "",
 	}
 	names := []string{"PIG_CTX_SET", "PIG_CTX_BLANK", "PIG_CTX_EMPTY", "PIG_CTX_UNSET_ENTIRELY"}
-	paths := []string{filepath.Join(home, "token"), "~/token", "~/dir", "~/missing", filepath.Join(home, "missing"), "token"}
+	paths := []string{filepath.Join(home, "token"), "~/token", "~/dir", "~/missing", filepath.Join(home, "missing"), "token", "~sib", "~nosuch"}
 	type answer struct {
 		Env    map[string]*string `json:"env"`
 		Exists map[string]bool    `json:"exists"`

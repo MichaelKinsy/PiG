@@ -1763,8 +1763,13 @@
  "packages/ai/src/auth/oauth/load.ts": [
   {
    "file": "ai/oauth_registry.go",
-   "old": "float64(nowMillis()) >= creds.ExpiresMillis()",
-   "new": "float64(nowMillis()) < creds.ExpiresMillis()"
+   "old": "\t\"xai\":            newXaiOAuthProvider(),\n",
+   "new": "\t\"xai-\":           newXaiOAuthProvider(),\n"
+  },
+  {
+   "file": "ai/oauth_registry.go",
+   "old": "\t\"meta\":           newMetaOAuthProvider(),\n",
+   "new": "\t\"meta-\":          newMetaOAuthProvider(),\n"
   }
  ],
  "packages/ai/src/auth/oauth/kimi-coding.ts": [
@@ -1832,8 +1837,8 @@
  "packages/ai/src/compat/extension-oauth-types.ts": [
   {
    "file": "ai/oauth_types.go",
-   "old": "codexCredentialMembers        = append(slices.Clone(accessFirstCredentialMembers), \"accountId\")",
-   "new": "codexCredentialMembers        = append(slices.Clone(accessFirstCredentialMembers), \"accountID\")"
+   "old": "chatgptCredentialMembers      = append(slices.Clone(accessFirstCredentialMembers), \"clientId\", \"scopes\")",
+   "new": "chatgptCredentialMembers      = append(slices.Clone(accessFirstCredentialMembers), \"scopes\", \"clientId\")"
   },
   {
    "file": "ai/oauth_types.go",

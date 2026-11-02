@@ -12,10 +12,10 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
 type loginCommand string
@@ -384,11 +384,11 @@ func runOAuthProviderLogin(provider ai.OAuthProviderInterface, noInput bool, get
 				return "", err
 			}
 			// cli.ts answerPrompt: Number.parseInt(answer, 10) - 1 indexes the options; anything else is "Invalid selection".
-			n, ok := jsParseInt(line)
-			if !ok || n < 1 || n > len(prompt.Options) {
+			n := jsnumber.ParseInt(line)
+			if !(n >= 1 && n <= float64(len(prompt.Options))) { // NaN fails both comparisons
 				return "", fmt.Errorf("Invalid selection")
 			}
-			return prompt.Options[n-1].ID, nil
+			return prompt.Options[int(n)-1].ID, nil
 		},
 	}
 	if parityHarnessEnabled() {
@@ -418,30 +418,6 @@ func sortedOAuthProviders() []ai.OAuthProviderInterface {
 		return strings.Compare(a.Name(), b.Name())
 	})
 	return providers
-}
-
-// jsParseInt is Number.parseInt(text, 10): the leading digits after optional whitespace and a sign, ignoring whatever follows them.
-// It reports false for NaN, and for a value too large for an int, which no option list can index.
-func jsParseInt(text string) (int, bool) {
-	text = strings.TrimLeftFunc(text, unicode.IsSpace)
-	negative := false
-	if rest, ok := strings.CutPrefix(text, "-"); ok {
-		negative, text = true, rest
-	} else {
-		text = strings.TrimPrefix(text, "+")
-	}
-	end := 0
-	for end < len(text) && text[end] >= '0' && text[end] <= '9' {
-		end++
-	}
-	n, err := strconv.Atoi(text[:end])
-	if err != nil {
-		return 0, false
-	}
-	if negative {
-		n = -n
-	}
-	return n, true
 }
 
 func readLine(r io.Reader) (string, error) {

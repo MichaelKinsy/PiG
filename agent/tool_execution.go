@@ -642,6 +642,7 @@ func (f finalizedToolCall) durationMs() *int64 {
 	if !f.executed {
 		return nil
 	}
+	//portlint:allow numbers agent-loop.ts:826-852 Math.round(durationMs): a time.Duration is a finite non-negative nanosecond count, so the quotient is finite and in int64 range, and math.Round equals Math.round off negative halves
 	return new(int64(math.Round(float64(f.duration) / float64(time.Millisecond))))
 }
 
