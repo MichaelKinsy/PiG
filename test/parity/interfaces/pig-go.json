@@ -28067,6 +28067,39 @@
       "shapeHash": "sha256:52cf33c13011ba0e455bc80dd54ca6e80183823b84b9ea3e772497ff5d64dbc8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#anthIsOrIsUnder",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "anthIsOrIsUnder",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string, key string) bool"
+      },
+      "shapeHash": "sha256:1241be4b725b1d64a17335cfb1280d7275de92e1bd7859d19026ea86db9c6d38"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#anthKeepsLegacySchemaOrder",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "anthKeepsLegacySchemaOrder",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string) bool"
+      },
+      "shapeHash": "sha256:3669eb7349cb8bcae461655862e7429d36ba1b77f74bc7b6eea72428d185bbe8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#anthLegacyDefinitionKeys",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "anthLegacyDefinitionKeys",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[]string"
+      },
+      "shapeHash": "sha256:a1c330895d4124c2ac5e7956eaa7a61082b08546669578b38030562429ad3b1e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#anthLegacyInputSchemaOrder",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "anthLegacyInputSchemaOrder",
