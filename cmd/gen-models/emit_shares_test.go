@@ -43,3 +43,37 @@ func TestEmitSharesEqualCatalogMaps(t *testing.T) {
 		t.Fatalf("a row sets a map the linker cannot lay out:\n%s", src)
 	}
 }
+
+// PromptCache and SamplingParams maps are not shared: a row that has one gets a map of its own, as it did when each row spelled a map literal, so a
+// write through one row of the exported catalog cannot change another. A JSON null sampling value is spelled nil, not fmt's <nil>, which does not compile.
+func TestEmitGivesEachRowItsOwnPromptCacheAndSamplingMap(t *testing.T) {
+	rows := []modelRow{
+		{Provider: "p", ID: "a", PromptCache: map[string]float64{"ttl": 5}, SamplingParams: map[string]any{"top_p": 0.5, "stop": nil, "mode": "x", "on": true}},
+		{Provider: "p", ID: "b", PromptCache: map[string]float64{"ttl": 5}, SamplingParams: map[string]any{"top_p": 0.5, "stop": nil, "mode": "x", "on": true}},
+	}
+	output := filepath.Join(t.TempDir(), "models.go")
+	if err := emit(output, "rows", rows); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(raw)
+	for _, want := range []string{
+		"var generatedPromptCachesPairs = [...][]generatedPair[string, float64]{\n\t{{\"ttl\", 5}},\n}\n",
+		"var generatedPromptCachesRefs = [...]generatedMapRef{{0, 0}, {1, 0}}\n",
+		"for _, ref := range generatedPromptCachesRefs {\n\t\tgeneratedRows[ref.row].PromptCache = generatedMap(generatedPromptCachesPairs[ref.element])\n\t}\n",
+		"var generatedSamplingParamsPairs = [...][]generatedPair[string, any]{\n\t{{\"mode\", \"x\"}, {\"on\", true}, {\"stop\", nil}, {\"top_p\", float64(0.5)}},\n}\n",
+		"generatedRows[ref.row].SamplingParams = generatedMap(generatedSamplingParamsPairs[ref.element])\n",
+	} {
+		if !strings.Contains(src, want) {
+			t.Fatalf("generated catalog lacks %q:\n%s", want, src)
+		}
+	}
+	for _, shared := range []string{"var generatedPromptCaches [", "var generatedSamplingParams [", "generatedBuildMaps(generatedPromptCaches", "generatedBuildMaps(generatedSamplingParams"} {
+		if strings.Contains(src, shared) {
+			t.Fatalf("generated catalog shares an owned map (%q):\n%s", shared, src)
+		}
+	}
+}

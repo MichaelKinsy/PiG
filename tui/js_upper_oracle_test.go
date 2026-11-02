@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
@@ -35,5 +36,14 @@ func TestJSUpperFirstUnitMatchesNode(t *testing.T) {
 	}
 	if bad > 8 {
 		t.Errorf("%d of %d inputs differ", bad, len(inputs))
+	}
+}
+
+// A lone surrogate first unit has no case, so the string is unchanged (Node 24: "\ud800b".charAt(0).toUpperCase() + "\ud800b".slice(1) is "\ud800b").
+func TestJSUpperFirstUnitKeepsALoneSurrogate(t *testing.T) {
+	for _, s := range []string{jsstring.FromUTF16([]uint16{0xD800, 'b'}), jsstring.FromUTF16([]uint16{0xDC00, 'b'}), jsstring.FromUTF16([]uint16{0xD800})} {
+		if got := jsUpperFirstUnit(s); got != s {
+			t.Errorf("jsUpperFirstUnit(%q) = %q, want it unchanged", s, got)
+		}
 	}
 }
