@@ -30622,6 +30622,29 @@
       "tests": []
     },
     {
+      "id": "BF-d3f6c2b",
+      "title": "Anthropic non-strict tool schemas keep the root `$defs` and `definitions`, so property `$ref`s resolve",
+      "symptom": "Anthropic non-strict tool schemas keep the root `$defs` and `definitions`, so property `$ref`s resolve.",
+      "rootCause": "The legacy input_schema kept only type/properties/required, so property $refs into root $defs or definitions pointed at nothing. Keep them after required, in that order, when present; root anyOf/oneOf/allOf stay out because Anthropic rejects them with a 400. The strict path is unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Anthropic non-strict tool schemas keep the root `$defs` and `definitions`, so property `$ref`s resolve. They were dropped, which left the `$ref`s pointing at nothing, made Claude produce wrong arguments for such tools (common in MCP servers), for example a JSON string instead of an object, and made some Anthropic-compatible gateways reject the request. Root `anyOf`, `oneOf` and `allOf` stay out, because Anthropic rejects them with a 400. Matches Pi 4a6a58eb5 ([#9557](https://github.com/earendil-works/pi/issues/9557)).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d3f6c2b6ff",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicRequestBodyKeepsRootDefsInLegacyToolSchema",
+        "ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicStrictToolSchemas"
+      ]
+    },
+    {
       "id": "BF-d409922",
       "title": "A host that crashes during a model request no longer resends it forever, adding an aborted entry each time…",
       "symptom": "A host that crashes during a model request no longer resends it forever, adding an aborted entry each time: the interrupted request is a failed attempt under the retry policy, and the run ends with `runFailure` reason `interrupted` once no retry is left; other work cut off `settings.restartLimit` times ends instead of keeping its conversation busy.",
