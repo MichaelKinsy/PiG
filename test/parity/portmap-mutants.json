@@ -2263,5 +2263,165 @@
    "old": "return current.Diagnostics",
    "new": "return nil"
   }
+ ],
+ "packages/coding-agent/src/core/tools/renderers/bash.ts": [
+  {
+   "file": "tui/shell_renderers.go",
+   "old": "\" (timeout \"+jsTemplateString(timeout)+\"s)\"",
+   "new": "\" (timeout \"+jsTemplateString(timeout)+\"ms)\""
+  },
+  {
+   "file": "tui/shell_renderers.go",
+   "old": "if minutes < 60 {",
+   "new": "if minutes < 61 {"
+  },
+  {
+   "file": "internal/codingagent/tool_render_shell.go",
+   "old": "MaxVisualLines: bashPreviewLines,",
+   "new": "MaxVisualLines: bashPreviewLines + 1,"
+  },
+  {
+   "file": "internal/codingagent/tool_render_shell.go",
+   "old": "\"Truncated: showing \"",
+   "new": "\"Truncated showing \""
+  }
+ ],
+ "packages/coding-agent/src/core/tools/renderers/edit.ts": [
+  {
+   "file": "internal/codingagent/tool_builtin_renderers.go",
+   "old": "\tcase previewFailed:\n\t\ttoken = \"toolErrorBg\"\n",
+   "new": "\tcase previewFailed:\n\t\ttoken = \"toolSuccessBg\"\n"
+  },
+  {
+   "file": "internal/codingagent/tool_builtin_renderers.go",
+   "old": "|| value.Text() == previewError",
+   "new": "|| value.Text() == previewError+\"x\""
+  },
+  {
+   "file": "tui/tool_execution.go",
+   "old": "toolTitleText(\"edit\")",
+   "new": "toolTitleText(\"edits\")"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/renderers/find.ts": [
+  {
+   "file": "internal/codingagent/tool_render_list.go",
+   "old": "tools.FormatJSNumber(d.ResultLimitReached)+\" results limit\"",
+   "new": "tools.FormatJSNumber(d.ResultLimitReached)+\" result limit\""
+  },
+  {
+   "file": "tui/tool_execution.go",
+   "old": "toolTitleText(\"find\") + \" \" + listPatternText(args[\"pattern\"], false)",
+   "new": "toolTitleText(\"find\") + \" \" + listPatternText(args[\"pattern\"], true)"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/renderers/grep.ts": [
+  {
+   "file": "internal/codingagent/tool_render_list.go",
+   "old": "\t\treturn 15\n",
+   "new": "\t\treturn 14\n"
+  },
+  {
+   "file": "tui/tool_execution.go",
+   "old": "\" limit \"+jsTemplateString(limit))",
+   "new": "\" limits \"+jsTemplateString(limit))"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/renderers/index.ts": [
+  {
+   "file": "tui/tool_renderers.go",
+   "old": "return \"PS>\", true",
+   "new": "return \"PS$\", true"
+  },
+  {
+   "file": "tui/tool_execution.go",
+   "old": "return FormatLsHeader(args, cwd)",
+   "new": "return FormatFindHeader(args)"
+  },
+  {
+   "file": "internal/codingagent/tool_render.go",
+   "old": "case \"grep\", \"find\", \"ls\":",
+   "new": "case \"grep\", \"find\":"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/renderers/ls.ts": [
+  {
+   "file": "internal/codingagent/tool_render_list.go",
+   "old": "tools.FormatJSNumber(d.EntryLimitReached)+\" entries limit\"",
+   "new": "tools.FormatJSNumber(d.EntryLimitReached)+\" entry limit\""
+  },
+  {
+   "file": "tui/tool_execution.go",
+   "old": "header += renderToolPath(\".\", cwd)",
+   "new": "header += renderToolPath(\"..\", cwd)"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/renderers/read.ts": [
+  {
+   "file": "tui/compact_read_header.go",
+   "old": "end := start + count - 1",
+   "new": "end := start + count"
+  },
+  {
+   "file": "internal/codingagent/tool_builtin_renderers.go",
+   "old": "\" line limit)]\"",
+   "new": "\" lines limit)]\""
+  },
+  {
+   "file": "internal/codingagent/tool_builtin_renderers.go",
+   "old": "display = lines[:builtInPreviewLines]",
+   "new": "display = lines[:builtInPreviewLines-1]"
+  },
+  {
+   "file": "internal/codingagent/tool_render.go",
+   "old": "return strings.ReplaceAll(s, \"\\t\", \"   \")",
+   "new": "return strings.ReplaceAll(s, \"\\t\", \"  \")"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/renderers/write.ts": [
+  {
+   "file": "internal/codingagent/tool_builtin_renderers.go",
+   "old": "\"[invalid content arg - expected string]\")",
+   "new": "\"[invalid content arg expected string]\")"
+  },
+  {
+   "file": "internal/codingagent/tool_builtin_renderers.go",
+   "old": "\" more lines, \" + strconv.Itoa(total)",
+   "new": "\" more line, \" + strconv.Itoa(total)"
+  },
+  {
+   "file": "tui/tool_execution.go",
+   "old": "toolTitleText(\"write\")",
+   "new": "toolTitleText(\"writes\")"
+  }
+ ],
+ "packages/coding-agent/src/core/export-html/tool-renderer.ts": [
+  {
+   "file": "internal/codingagent/slash_session_handlers.go",
+   "old": "tools = sc.ToolRenderers()",
+   "new": "tools = nil"
+  },
+  {
+   "file": "internal/codingagent/export/tool_renderer.go",
+   "old": "for end > start && isBlankRenderedLine(lines[end-1]) {",
+   "new": "for end > start && isBlankRenderedLine(lines[end-1]) && false {"
+  },
+  {
+   "file": "internal/codingagent/export/ansi_html.go",
+   "old": "<div class=\"ansi-line\">",
+   "new": "<div class=\"ansi-lines\">"
+  }
+ ],
+ "packages/coding-agent/src/core/export-html/index.ts": [
+  {
+   "file": "internal/codingagent/export/export.go",
+   "old": "out = jsReplace(out, \"{{MARKED_CJK_FRIENDLY_JS}}\", markedCjkFriendly)",
+   "new": "out = jsReplace(out, \"{{MARKED_CJK_FRIENDLY_JS}}\", \"\")"
+  },
+  {
+   "file": "internal/codingagent/export/export.go",
+   "old": "RenderCustomTools(&sd, getToolRenderers, cwd, 100)",
+   "new": "RenderCustomTools(&sd, nil, cwd, 100)"
+  }
  ]
 }
