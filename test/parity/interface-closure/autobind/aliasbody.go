@@ -11,6 +11,7 @@ import (
 // Alias-body rules for an upstream `type X = <body>` whose body is not a string-literal union or one named type:
 //
 //	A6 an object literal body is a Go struct with a field for every member (T12), members of type never excluded
+//	A6m an object literal body whose members are all optional with one type is a Go map (T6) when the Go type is a map
 //	A7s an intersection of an AbortSignal-only operand and U is the Go type for U when every consumer takes a context.Context
 //	A7 an intersection is one Go struct that has a field for every member of every operand, an operand being an object literal or a
 //	   named upstream interface or class whose properties the inventory records; an operand with no recorded properties (a mapped or
@@ -128,8 +129,14 @@ func (d *detector) structuralAlias(body string, tn *types.TypeName, chk *checker
 		return chk.agree(body, tn.Type()), true // U7 keyof T; a record literal is a Go map (T6)
 	}
 	if strings.HasPrefix(body, "{") && strings.HasSuffix(body, "}") {
-		if _, ok := literalMembers(body); !ok {
+		members, ok := literalMembers(body)
+		if !ok {
 			return verdict{}, false
+		}
+		if _, isMap := tn.Type().Underlying().(*types.Map); isMap {
+			if record, ok := optionalRecord(members); ok {
+				return chk.agree(record, tn.Type()), true // A6m: an object of optional members of one type is a Go map
+			}
 		}
 		if _, ok := tn.Type().Underlying().(*types.Struct); !ok {
 			return noV("A6: upstream alias is an object literal, Go type is %s", typeLabel(tn.Type())), true
@@ -137,6 +144,22 @@ func (d *detector) structuralAlias(body string, tn *types.TypeName, chk *checker
 		return chk.agree(body, tn.Type()), true
 	}
 	return verdict{}, false
+}
+
+// optionalRecord returns Partial<Record<keys, T>> for an object literal whose members, at least two, are all optional with the one type
+// T: TypeScript treats the two alike, and a Go map holds the keys of either. ok is false for any other member list.
+func optionalRecord(members []param) (string, bool) {
+	if len(members) < 2 {
+		return "", false
+	}
+	keys := make([]string, len(members))
+	for i, m := range members {
+		if !m.Optional || m.Type != members[0].Type {
+			return "", false
+		}
+		keys[i] = strconv.Quote(m.Name)
+	}
+	return "Partial<Record<" + strings.Join(keys, " | ") + ", " + members[0].Type + ">>", true
 }
 
 // brandRe matches the one member of a unique-symbol brand object: { readonly [xBrand]: ... }.
