@@ -626,8 +626,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/tui/src/terminal-image.ts` | `tui/terminal_image.go`, Rex reports Kitty images (Pi 396ecd7b) | ✅ |
 | `packages/tui/src/undo-stack.ts` | `tui/undo_stack.go` | ✅ |
 | `packages/tui/src/native-modifiers.ts` | `tui/native_modifiers.go (isNativeModifierPressed) over internal/nativeplatform/modifiers_darwin.go (CGO-free lazy dlopen of CoreGraphics CGEventSourceFlagsState via libSystem trampolines), modifiers_windows.go (user32 GetAsyncKeyState), and modifiers_other.go` | ✅ |
-| `packages/tui/src/word-navigation.ts` | `tui/word_navigation.go + internal/wordsegmenter + tui/editor_segments.go (shared UTF-16 word helpers; ICU 78.3 CJK and Southeast Asian dictionary engines and rule tailoring; Node differential corpus and byte-exact Editor scenario)` | ✅ |
-| `packages/tui/src/utils.ts` | `tui/widthx/*.go + internal/wordsegmenter/segments.go + internal/wordsegmenter/cjk.go + internal/wordsegmenter/sea.go + internal/wordsegmenter/word_rules.go (shared ICU word dependency)` | ✅ |
+| `packages/tui/src/word-navigation.ts` | `tui/word_navigation.go + internal/wordsegmenter (shared UTF-16 word helpers; ICU 78.3 CJK and Southeast Asian dictionary engines and rule tailoring; Node differential corpus and byte-exact Editor scenario)` | ✅ |
+| `packages/tui/src/utils.ts` | `tui/widthx/grapheme_range.go + tui/widthx/slice.go + tui/widthx/truncate.go + tui/widthx/widthx.go + tui/widthx/wrap.go + tui/widthx/tracker.go + tui/widthx/grapheme_iter.go + tui/widthx/pi_width.go + internal/wordsegmenter/segments.go + internal/wordsegmenter/cjk.go + internal/wordsegmenter/sea.go + internal/wordsegmenter/word_rules.go (shared ICU word dependency)` | ✅ |
 | `packages/tui/src/index.ts` | `coding/extension/host/subprocess/runtime-node/shims/pi-tui.mjs re-exports pinned pi-tui/index.js; TestPiTuiPublicExportsAreRealImplementations checks the exact runtime namespace and restored exports; the Go package exports Pi's names (CompositeTuiLine, IsKeyRepeat, GetFocusedComponent, ShowOverlay, the input-listener and color-scheme methods); native Windows and macOS execution is covered with native-platform.ts and terminal.ts` | ✅ |
 | `packages/tui/src/components/box.ts` | `tui/box.go`, `tui/mouse.go` | ✅ |
 | `packages/tui/src/components/cancellable-loader.ts` | `tui/cancellable_loader.go` | ✅ |
@@ -657,7 +657,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/tui/src/native-platform.ts` | `tui/native_platform.go + internal/nativeplatform/clipboard*.go + coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-tui/native-platform.js and native/ (pinned Node helpers); Linux clipboard behavior is covered in Go and the shipped Node helper; the Windows and macOS helpers run the upstream cases, a text round trip (non-ASCII, empty, repeated writes) and an image round trip on the CI native jobs (internal/nativeplatform TestNativeClipboardTextRoundTrip, TestNativeClipboardImageRoundTrip, native_platform_upstream_windows_test.go, modifiers_darwin_test.go)` | ✅ |
 | `packages/tui/src/colors.ts` | `tui/colors.go` | ✅ |
 | `packages/tui/src/oklab.ts` | `tui/oklab.go` | ✅ |
-| `packages/tui/src/wheel-scroll.ts` | `tui/wheel_scroll.go + tui/tui_alt_screen.go (alt-screen wiring)` | ✅ |
+| `packages/tui/src/wheel-scroll.ts` | `tui/wheel_scroll.go (the alt-screen wiring is part of tui-alt-screen.ts)` | ✅ |
 
 ## `packages/mcp/src/`
 

@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/tui/src/tui-alt-screen.ts (viewport input and search focus handling)
+
 import (
 	"slices"
 	"sort"

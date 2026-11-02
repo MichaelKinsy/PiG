@@ -1,6 +1,7 @@
 package tui
 
 // Ports node_modules/marked@18.0.11/src/Lexer.ts:340-531 (inlineTokens), node_modules/marked@18.0.11/src/Tokenizer.ts:14-50,649-1001 (outputLink and the inline tokenizers) and the GFM inline rules of node_modules/marked@18.0.11/src/rules.ts:283-534, the lexer packages/tui/package.json pins for packages/tui/src/components/markdown.ts.
+// Ports packages/tui/src/components/markdown.ts (its marked inline lexer).
 
 import (
 	"slices"

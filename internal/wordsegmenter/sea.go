@@ -5,6 +5,8 @@
 // ICU DictionaryBreakEngine, PossibleWord and Thai/Lao/Khmer/BurmeseBreakEngine translation.
 // See LICENSES/Unicode-3.0.txt and LICENSES/LicenseRef-ICU-SEA.txt.
 
+// Ports packages/tui/src/utils.ts (getWordSegmenter: the Thai, Lao, Khmer and Burmese dictionary engines of Intl.Segmenter)
+
 package wordsegmenter
 
 import (

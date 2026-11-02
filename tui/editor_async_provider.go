@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/tui/src/components/editor.ts (the autocomplete provider request and completion lifecycle)
+
 import (
 	"context"
 	"errors"

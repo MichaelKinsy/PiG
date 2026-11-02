@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/tui/src/tui-main-screen.ts (OSC133_ZONE_PREFIX, shared by the regular-mode renderer)
+
 import (
 	"math"
 	"slices"

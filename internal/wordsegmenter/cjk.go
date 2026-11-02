@@ -4,6 +4,8 @@
 // Copyright (C) 2006-2016, International Business Machines Corporation and others.
 // ICU CjkBreakEngine translation; see LICENSES/Unicode-3.0.txt and LICENSES/LicenseRef-ICU-CJK.txt.
 
+// Ports packages/tui/src/utils.ts (getWordSegmenter: the CJK dictionary engine of Intl.Segmenter)
+
 package wordsegmenter
 
 import (

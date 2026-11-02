@@ -2,6 +2,8 @@
 // Copyright (C) 2002-2016, International Business Machines Corporation and others.
 // ICU word.txt rule tailoring; see LICENSES/Unicode-3.0.txt.
 
+// Ports packages/tui/src/utils.ts (getWordSegmenter: the word.txt rules of Intl.Segmenter)
+
 package wordsegmenter
 
 import (
