@@ -31,6 +31,7 @@ libs  ./chord/host
 libs  ./chord/output
 libs  ./chord/telemetrysqlite
 libs  ./chord/internal/parking
+libs  ./internal/chord/winpipe
 libs  ./chord/next/documents
 libs  ./chord/next/host
 libs  ./chord/next/link
