@@ -40,7 +40,6 @@ packages/ai/src/models-store.ts
 packages/ai/src/models.generated.ts
 packages/ai/src/models.ts
 packages/ai/src/oauth.ts
-packages/ai/src/providers/all.ts
 packages/ai/src/session-resources.ts
 packages/ai/src/types.ts
 packages/ai/src/utils/error-body.ts
