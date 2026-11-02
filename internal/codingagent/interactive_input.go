@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -51,8 +52,10 @@ func (m *InteractiveMode) exitIfDeadTerminal(err error) {
 // shutdown finishes. The returned call removes it.
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (registerSignalHandlers terminalErrorHandler).
 func (m *InteractiveMode) exitOnDeadTerminalWrite() (remove func()) {
+	// The exit's own restore writes fail on the same terminal and come back here; only the first failure runs the exit.
+	var exiting atomic.Bool
 	return tui.OnTerminalWriteError(func(err error) {
-		if isDeadTerminalError(err) {
+		if isDeadTerminalError(err) && exiting.CompareAndSwap(false, true) {
 			m.emergencyTerminalExit("terminal gone: " + err.Error())
 		}
 	})

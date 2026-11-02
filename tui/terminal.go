@@ -780,7 +780,11 @@ func (t *ProcessTerminal) write(data string) {
 	if t.out == nil || t.exitRestored.Load() {
 		return
 	}
-	_, _ = io.WriteString(t.out, data)
+	if _, err := io.WriteString(t.out, data); err != nil {
+		if handler := terminalWriteErrorHandler.Load(); handler != nil {
+			(*handler)(err)
+		}
+	}
 }
 
 // Columns returns the terminal width, falling back to COLUMNS or 80 when unavailable.
