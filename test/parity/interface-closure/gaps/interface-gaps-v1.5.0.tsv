@@ -18,10 +18,9 @@ pkg:chord/.#RemoteContract::property:description	chord	type-mismatch	chord/host/
 pkg:chord/.#RemoteContract::property:input	chord	type-mismatch	chord/host/contract.go#Contract.Input
 pkg:chord/.#coverage	chord	child-gap	chord/host/contract.go#Coverage
 pkg:chord/.#coverage::call:0	chord	signature-mismatch	chord/host/contract.go#Coverage
-pkg:durable/.#CommitResult	durable	no-go-symbol	
 pkg:durable/.#GenerationHooks	durable	child-gap	durable/harness/types.go#GenerationHooks
-pkg:durable/.#GenerationHooks::property:beforeProviderRequest	durable	member-missing	durable/harness/types.go#GenerationHooks
-pkg:durable/.#GenerationHooks::property:beforeProviderRequest::call:0	durable	member-missing	durable/harness/types.go#GenerationHooks
+pkg:durable/.#GenerationHooks::property:beforeProviderRequest	durable	not-exercised	durable/harness/types.go#GenerationHooks.BeforeProviderRequest
+pkg:durable/.#GenerationHooks::property:beforeProviderRequest::call:0	durable	not-exercised	durable/harness/types.go#GenerationHooks.BeforeProviderRequest
 pkg:durable/.#MemoryStorage	durable	child-gap	durable/storage/memory.go#MemoryStorage
 pkg:durable/.#MemoryStorage::property:commit	durable	child-gap	durable/storage/memory.go#MemoryStorage.Commit
 pkg:durable/.#MemoryStorage::property:commit::call:0	durable	signature-mismatch	durable/storage/memory.go#MemoryStorage.Commit

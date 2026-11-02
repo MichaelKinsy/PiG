@@ -114595,8 +114595,8 @@
       ],
       "evidence": [
         "test:chord/next/data/args_test.go#TestCheckArgs",
-        "test:chord/next/data/errors_test.go#TestChordError",
-        "test:chord/next/data/errors_test.go#TestErrorHelpers"
+        "test:chord/next/data/error_marshal_test.go#TestChordErrorMarshalIsTheStringifiedToJSON",
+        "test:chord/next/data/errors_test.go#TestChordError"
       ]
     },
     {
@@ -117043,8 +117043,8 @@
       ],
       "evidence": [
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/store/engine_test.go#TestEngineHistoryRules",
-        "test:chord/next/store/evidence_storeA_test.go#TestEvidenceStoreABatchSeqGap"
+        "test:chord/next/store/write_marshal_golden_test.go#TestWriteMarshalGolden",
+        "test:chord/next/store/engine_test.go#TestEngineHistoryRules"
       ]
     },
     {
@@ -224615,8 +224615,25 @@
     },
     {
       "id": "pkg:durable/.#CommitResult",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:a23d9f57919105d2c1495cc4dee37502cbf52fe217f07d9320100835094df31f"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:a23d9f57919105d2c1495cc4dee37502cbf52fe217f07d9320100835094df31f",
+      "rationale": "Derived by the interface gap detector: CommitResult is Go durable/core/session/store.go#CommitResult (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "durable/core/session/store.go#CommitResult"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:durable/core/session/session.go#Session.commitBatches"
+      ],
+      "evidence": [
+        "test:durable/core/session/writer_fanout_test.go#TestAPartAfterAFailureBetweenTwoPublicationsRejectsWithSessionFailed",
+        "test:durable/core/session/writer_fanout_test.go#TestARejectedCallWithoutAnOwnPartDoesNotPanic",
+        "test:durable/core/session/writer_fanout_test.go#TestThePartsAfterARefusedBatchRejectWithSessionFailedAndTheRefusal"
+      ]
     },
     {
       "id": "pkg:durable/.#CommonDocDefinition",
@@ -237309,8 +237326,8 @@
       ],
       "evidence": [
         "test:durable/examples/agent_examples_test.go#TestExample25CodingAgent",
-        "test:durable/examples/harness_examples_test.go#TestExample06Configuration",
-        "test:durable/examples/task_runtime_test.go#TestTaskRuntimeReadsHarnessState"
+        "test:durable/core/driver/settings_text_test.go#TestSettingsTextIsEncodedOnlyWhenTheSettingsChange",
+        "test:durable/examples/harness_examples_test.go#TestExample06Configuration"
       ]
     },
     {
