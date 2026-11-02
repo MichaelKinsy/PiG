@@ -334,6 +334,33 @@
    "new": "retryMaxRetries: 4,"
   }
  ],
+ "packages/coding-agent/src/core/tools/bash.ts": [
+  {
+   "file": "internal/codingagent/tools/bash.go",
+   "old": "commandPrefix:            t.CommandPrefix,",
+   "new": "commandPrefix:            \"\","
+  },
+  {
+   "file": "internal/codingagent/tools/shell_tool.go",
+   "old": "\"Command timed out after \"",
+   "new": "\"Command timed-out after \""
+  },
+  {
+   "file": "internal/codingagent/tools/shell_tool.go",
+   "old": "\"Command exited with code %d\"",
+   "new": "\"Command exit code %d\""
+  },
+  {
+   "file": "internal/codingagent/tools/shell_tool.go",
+   "old": "\"Command aborted\"",
+   "new": "\"Command cancelled\""
+  },
+  {
+   "file": "internal/codingagent/tools/bash_operations.go",
+   "old": "*timeout <= 0 {",
+   "new": "*timeout < 0 {"
+  }
+ ],
  "packages/coding-agent/src/core/tools/edit-diff.ts": [
   {
    "file": "internal/codingagent/tools/edit_diff.go",
@@ -439,6 +466,33 @@
    "file": "internal/codingagent/tools/path_utils.go",
    "old": "strings.ReplaceAll(filePath, \"'\", \"\\u2019\")",
    "new": "strings.ReplaceAll(filePath, \"'\", \"\\u2018\")"
+  }
+ ],
+ "packages/coding-agent/src/core/tools/powershell.ts": [
+  {
+   "file": "internal/codingagent/tools/powershell.go",
+   "old": "\"-ExecutionPolicy\", \"Bypass\", \"-Command\"",
+   "new": "\"-ExecutionPolicy\", \"RemoteSigned\", \"-Command\""
+  },
+  {
+   "file": "internal/codingagent/tools/powershell.go",
+   "old": "[System.Text.Encoding]::UTF8 }",
+   "new": "[System.Text.Encoding]::ASCII }"
+  },
+  {
+   "file": "internal/codingagent/tools/powershell.go",
+   "old": "shellToolSchema(\"powershell\", \"PowerShell\", !t.HideSessionEnvironment)",
+   "new": "shellToolSchema(\"powershell\", \"PowerShell\", t.HideSessionEnvironment)"
+  },
+  {
+   "file": "internal/codingagent/tools/powershell.go",
+   "old": "tempFilePrefix:           \"pi-powershell\",",
+   "new": "tempFilePrefix:           \"pi-bash\","
+  },
+  {
+   "file": "internal/codingagent/tools/powershell.go",
+   "old": "lookPath(\"pwsh.exe\")",
+   "new": "lookPath(\"pwsh7.exe\")"
   }
  ],
  "packages/coding-agent/src/core/tools/read.ts": [
