@@ -443,7 +443,7 @@ func TestTestsOfCommitNamesAnEditedTestNotATrailingHelper(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := testsOfCommit(repo{root: r.root}, idx, hash, "Fix an edge")
+	got, err := testsOfCommit(repo{root: r.root}, idx, nil, hash, "Fix an edge")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1708,5 +1708,148 @@ func TestPreviousRelease(t *testing.T) {
 		if got := previousRelease(text, target); got != want {
 			t.Errorf("previousRelease(%q) = %q, want %q", target, got, want)
 		}
+	}
+}
+
+// movedTestsFixture is a repository whose fix commit adds TestMoved and TestRenamed to a_test.go, and whose later commit moves
+// both out of it: TestMoved keeps its name, TestRenamed becomes TestRenamedNow.
+func movedTestsFixture(t *testing.T) testRepo {
+	t.Helper()
+	fixedGitDates(t)
+	r := newFixture(t)
+	r.write("a.go", "package x\n")
+	r.write("a_test.go", "package x\n\nfunc TestMoved(t *testing.T) {}\n\nfunc TestRenamed(t *testing.T) {}\n")
+	r.commit("Fix a crash in a", "a.go", "a_test.go")
+	r.run("rm", "-q", "a_test.go")
+	r.write("pkg/b_test.go", "package pkg\n\nfunc TestMoved(t *testing.T) {}\n\nfunc TestRenamedNow(t *testing.T) {}\n")
+	r.commit("Move the tests of a", "pkg/b_test.go")
+	return r
+}
+
+func ledgerTests(t *testing.T, root string) []string {
+	t.Helper()
+	l, _, err := readCommitted(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range l.Entries {
+		if strings.Contains(e.Title, "crash in a") {
+			return e.Tests
+		}
+	}
+	t.Fatalf("no entry for the crash in a: %+v", l.Entries)
+	return nil
+}
+
+// A fix commit adds its tests to a file a later commit deletes. A test that moved keeps its name, so the one file that declares it
+// now is where the fix's test is; a refresh, which recomputes every entry from the history, keeps it instead of dropping it.
+// Before: the entry named no test, because the diff's file no longer declares it.
+func TestARefreshFollowsATestThatMovedAndKeptItsName(t *testing.T) {
+	r := movedTestsFixture(t)
+	if err := runWith(r.root, "0.4.1", false, false, true); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"pkg/b_test.go::TestMoved"}
+	if got := ledgerTests(t, r.root); !slices.Equal(got, want) {
+		t.Fatalf("tests = %v, want %v (TestRenamed has no declaration to follow)", got, want)
+	}
+}
+
+// A renamed test is mapped by a line of moved-tests.txt, and the check fails on a line that says nothing true.
+func TestMovedTestsMapARenamedTestAndTheCheckFailsOnAStaleLine(t *testing.T) {
+	r := movedTestsFixture(t)
+	r.write(movedTestsPath, "# TestRenamed became TestRenamedNow when the tests moved.\na_test.go::TestRenamed pkg/b_test.go::TestRenamedNow\n")
+	r.commit("Map the renamed test", movedTestsPath)
+	if err := runWith(r.root, "0.4.1", false, false, true); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"pkg/b_test.go::TestMoved", "pkg/b_test.go::TestRenamedNow"}
+	if got := ledgerTests(t, r.root); !slices.Equal(got, want) {
+		t.Fatalf("tests = %v, want %v", got, want)
+	}
+	r.commit("Add the ledger", jsonPath, pagePath)
+	if err := run(r.root, "0.4.1", true, true); err != nil {
+		t.Fatalf("a refreshed ledger with a true line must verify strictly: %v", err)
+	}
+
+	for _, c := range []struct{ name, line, want string }{
+		{"new test missing", "a_test.go::TestRenamed pkg/b_test.go::TestRenamedGone\n", "TestRenamedGone, which does not exist"},
+		{"old test still declared", "pkg/b_test.go::TestMoved pkg/b_test.go::TestRenamedNow\n", "still exists"},
+		{"mapped twice", "a_test.go::TestRenamed pkg/b_test.go::TestRenamedNow\na_test.go::TestRenamed pkg/b_test.go::TestMoved\n", "is mapped twice"},
+		{"malformed", "a_test.go::TestRenamed\n", "must be"},
+	} {
+		r.write(movedTestsPath, c.line)
+		err := run(r.root, "0.4.1", true, false)
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("%s: check = %v, want a problem containing %q", c.name, err, c.want)
+		}
+	}
+}
+
+// A committed entry that records a test a later commit moved follows moved-tests.txt to the test it became, where it used to be
+// dropped: the rows of the lane that moved the tests reach the ledger through the generator, not through a hand edit.
+func TestRegenerationFollowsAMovedTestsLineForACommittedEntry(t *testing.T) {
+	fixedGitDates(t)
+	r := newFixture(t)
+	r.write("a.go", "package x\n")
+	r.write("a_test.go", "package x\n\nfunc TestMoved(t *testing.T) {}\n\nfunc TestRenamed(t *testing.T) {}\n")
+	r.commit("Fix a crash in a", "a.go", "a_test.go")
+	if err := run(r.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	r.commit("Add the ledger", jsonPath, pagePath)
+	if got := ledgerTests(t, r.root); !slices.Equal(got, []string{"a_test.go::TestMoved", "a_test.go::TestRenamed"}) {
+		t.Fatalf("tests before the move = %v", got)
+	}
+	r.run("rm", "-q", "a_test.go")
+	r.write("pkg/b_test.go", "package pkg\n\nfunc TestMoved(t *testing.T) {}\n\nfunc TestRenamedNow(t *testing.T) {}\n")
+	r.write(movedTestsPath, "a_test.go::TestRenamed pkg/b_test.go::TestRenamedNow\n")
+	r.commit("Move the tests of a", "pkg/b_test.go", movedTestsPath)
+	if err := run(r.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	// TestMoved has no line: make bug-ledger drops it as before (a refresh follows it by its name).
+	want := []string{"pkg/b_test.go::TestRenamedNow"}
+	if got := ledgerTests(t, r.root); !slices.Equal(got, want) {
+		t.Fatalf("tests after make bug-ledger = %v, want %v", got, want)
+	}
+	if err := run(r.root, "0.4.1", true, false); err != nil {
+		t.Fatalf("the regenerated ledger must verify: %v", err)
+	}
+}
+
+// An entry a squash landing keeps (its fix commits are not in this history, so its tests cannot be recomputed) follows the line too.
+func TestASquashLandingFollowsAMovedTestsLine(t *testing.T) {
+	dev := newFixture(t)
+	release := dev.run("rev-parse", "HEAD")
+	dev.write("a.go", "package x\n")
+	dev.write("a_test.go", "package x\n\nfunc TestRenamed(t *testing.T) {}\n")
+	dev.commit("Fix a crash in a", "a.go", "a_test.go")
+	if err := run(dev.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	dev.commit("Add the ledger", jsonPath, pagePath)
+
+	pub := squash(t, dev, release)
+	pub.write("a_test.go", "package x\n\nfunc TestRenamedNow(t *testing.T) {}\n")
+	pub.write(movedTestsPath, "a_test.go::TestRenamed a_test.go::TestRenamedNow\n")
+	if err := run(pub.root, "0.4.1", false, false); err != nil {
+		t.Fatal(err)
+	}
+	if got := ledgerTests(t, pub.root); !slices.Equal(got, []string{"a_test.go::TestRenamedNow"}) {
+		t.Fatalf("tests = %v, want the renamed test", got)
+	}
+}
+
+// Two files that declare the name leave the move ambiguous: the ledger names no test rather than guess one.
+func TestATestNameTwoFilesDeclareIsNotGuessedAfterAMove(t *testing.T) {
+	r := movedTestsFixture(t)
+	r.write("other/c_test.go", "package other\n\nfunc TestMoved(t *testing.T) {}\n")
+	r.commit("Add another TestMoved", "other/c_test.go")
+	if err := runWith(r.root, "0.4.1", false, false, true); err != nil {
+		t.Fatal(err)
+	}
+	if got := ledgerTests(t, r.root); len(got) != 0 {
+		t.Fatalf("tests = %v, want none", got)
 	}
 }

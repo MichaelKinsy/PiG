@@ -52,11 +52,13 @@ func exemptions(root string) (map[string]string, error) {
 }
 
 type builder struct {
-	r       repo
-	root    string
-	since   string
-	base    string
-	idx     testIndex
+	r     repo
+	root  string
+	since string
+	base  string
+	idx   testIndex
+	// moved maps the tests a fix commit adds to where a later commit moved or renamed them; see moved-tests.txt.
+	moved   movedTests
 	order   map[string]int
 	entries []*Entry
 	rank    map[*Entry]int
@@ -89,11 +91,8 @@ func (b *builder) inherit(match func(Entry) bool) *Entry {
 		}
 		e := p
 		e.Commits = slices.Clone(p.Commits)
-		// A test the tree no longer declares (a port that renamed or retired it) cannot be recomputed from history either, so the entry drops it instead of failing the check on a guard that was replaced.
-		e.Tests = slices.DeleteFunc(slices.Clone(p.Tests), func(t string) bool { return !testExists(b.r.root, t) })
-		if e.Tests == nil {
-			e.Tests = []string{}
-		}
+		// A test the tree no longer declares (a port that renamed or retired it) cannot be recomputed from history either, so the entry follows moved-tests.txt to the test it became, or drops it instead of failing the check on a guard that was replaced.
+		e.Tests = recordedTests(b.r.root, b.moved, p.Tests)
 		return &e
 	}
 	return nil
@@ -142,7 +141,7 @@ func (b *builder) testsOf(entry *Entry, hash, message string) ([]string, error) 
 	if t, ok := b.tests[hash]; ok {
 		return slices.Clone(t), nil
 	}
-	t, err := testsOfCommit(b.r, b.idx, hash, message)
+	t, err := testsOfCommit(b.r, b.idx, b.moved, hash, message)
 	if err != nil {
 		return nil, err
 	}
@@ -220,6 +219,9 @@ func build(root, since string) (*Ledger, error) {
 	}
 	b := &builder{r: r, root: root, since: since, base: base, rank: map[*Entry]int{}, kept: map[*Entry]bool{}, anchor: map[*Entry]string{}, tests: map[string][]string{}, files: map[string]int{}, lanes: map[string][]laneCommit{}}
 	if b.idx, err = buildTestIndex(root); err != nil {
+		return nil, err
+	}
+	if b.moved, err = loadMovedTests(root); err != nil {
 		return nil, err
 	}
 	if prior, _, err := readCommitted(root); err == nil {
