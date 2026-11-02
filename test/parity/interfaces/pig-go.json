@@ -147131,6 +147131,17 @@
       "shapeHash": "sha256:e1f115e555f8cbc6264eebe8bb65d9b00629a371ea4eaf2415b9f0ca6ff702d2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#packedCellFailedReason",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "packedCellFailedReason",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#packedConfigsKey",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "packedConfigsKey",
@@ -358210,17 +358221,6 @@
       "shapeHash": "sha256:94f62f205f49a50ca42535c4910107f8bb35206c676412f6b17774822c700716"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#incompleteUTF8Suffix",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "incompleteUTF8Suffix",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(data []byte) int"
-      },
-      "shapeHash": "sha256:0026adb3e3b3c50e95c494d159b71e8d028a7276b98b5a2da0079d35ff9158b9"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#indent",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "indent",
@@ -373278,6 +373278,50 @@
         "type": "func(s string) int"
       },
       "shapeHash": "sha256:2d54f34d6d9edb2f01d7606099f6fec545b0463378cec9cc94244c330f4d6fbc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#utf8Decoder",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "utf8Decoder",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "utf8Decoder"
+      },
+      "shapeHash": "sha256:cb62543809ee30bd35858bad8e51c7b4968df84d964d16fc330a0882e3c30b44"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#utf8Decoder.holdTrailing",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "utf8Decoder.holdTrailing",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data []byte)"
+      },
+      "shapeHash": "sha256:02d7808853047b3d3c42e91dbdd7be2510d31e85686b7636148ed6d4a0ea6175"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#utf8Decoder.reset",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "utf8Decoder.reset",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#utf8Decoder.write",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "utf8Decoder.write",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data []byte) (text string, ok bool)"
+      },
+      "shapeHash": "sha256:f317fef5236949f98ff6511af1648fced17beb3cba2e79287f4731166034a352"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#validAutocompleteCompletion",
