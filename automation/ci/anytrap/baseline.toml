@@ -544,6 +544,13 @@ dest = "*T"
 count = 1
 
 [[hit]]
+file = "durable/storage/store/tables.go"
+func = "parseJSON"
+call = "sdkjson.Unmarshal"
+dest = "*T"
+count = 1
+
+[[hit]]
 file = "durable/tools/edit.go"
 func = "prepareEditArguments"
 call = "json.Unmarshal"

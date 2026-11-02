@@ -88,7 +88,7 @@ test("candidate alias: a directory laid out like durable/src replaces the refere
 		"export class MemoryStorage {",
 		"	constructor() {",
 		'		const ready = globalThis[Symbol.for("pig.contract")].openDatabase(":memory:").then((db) => SqliteStorage.open(db));',
-		'		return new Proxy({}, { get: (_, prop) => (prop === "then" ? undefined : async (...args) => (await ready)[prop](...args)) });',
+		'		return new Proxy({}, { get: (_, prop) => (prop === "then" || prop === "publishing" ? undefined : async (...args) => (await ready)[prop](...args)) });',
 		"	}",
 		"}",
 	].join("\n") + "\n")
@@ -101,13 +101,13 @@ test("candidate alias: a directory laid out like durable/src replaces the refere
 test("crash switch: SIGKILL after the commit that consumed the requested seq, the WAL keeps it, a second run recovers", async () => {
 	const fixture = join(process.env.DURABLE_CONTRACT_CACHE ?? join(import.meta.dirname, "..", ".cache"), "fixtures", "pi-main-50.sqlite")
 	assert.ok(existsSync(fixture), "run `contract fixtures 50` first")
-	const first = await runBench("pi", { store: fixture, out, name: "crash1", turns: 1, crashAfter: 570 })
+	const first = await runBench("pi", { store: fixture, out, name: "crash1", turns: 1, crashAfter: 486 })
 	assert.equal(first.signal, "SIGKILL")
 	const seqs = readTrace(first.trace).filter(l => l.t === "commit").map(l => l.seq)
-	assert.equal(seqs.at(-1), 570)
+	assert.equal(seqs.at(-1), 486)
 	const second = await runBench("pi", { store: first.stores[0], out, name: "crash2", recover: true })
 	assert.equal(second.code, 0, second.stderr)
-	assert.equal(readTrace(second.trace).find(l => l.t === "commit" && l.seq !== undefined).seq, 571)
+	assert.equal(readTrace(second.trace).find(l => l.t === "commit" && l.seq !== undefined).seq, 487)
 })
 
 test("SC: the reference passes the storage conformance suite, and a provider that drops commits fails it", async () => {
@@ -126,7 +126,7 @@ test("SC: the reference passes the storage conformance suite, and a provider tha
 		'	const real = await openNodeSqliteStorage(join(await mkdtemp(join(tmpdir(), "bad-sc-")), "s.sqlite"));',
 		"	// A write encoder that loses every commit but the first.",
 		"	let n = 0;",
-		'	await use(new Proxy(real, { get: (t, p) => (p === "commit" ? (w, c) => (n++ ? Promise.resolve(n) : t.commit(w, c)) : typeof t[p] === "function" ? t[p].bind(t) : t[p]) }));',
+		'	await use(new Proxy(real, { get: (t, p) => (p === "commit" ? (b, r, c) => (n++ ? Promise.resolve({ stored: 0 }) : t.commit(b, r, c)) : typeof t[p] === "function" ? t[p].bind(t) : t[p]) }));',
 		"}",
 	].join("\n") + "\n")
 	const bad = await runScRow({}, { name: "bad", vitest: true, candidateDir: dir }, ctx)
@@ -144,13 +144,13 @@ test("replay: the statements of a reference trace, replayed onto the fixture, re
 	// What a native candidate writes: statements only.
 	const native = trace.map(l => (l.t === "commit" ? { t: "commit", store: l.store, seq: l.seq, stmts: l.stmts } : l)).filter(l => l.t !== "final")
 	const r = replay(native, fixture, join(out, "replayed"))
-	assert.equal(r.commits, 77)
+	assert.equal(r.commits, 68)
 	assert.equal(diffCommits(trace, r.trace), undefined)
 	const [a, cleanA] = settled(ref.stores[0])
 	assert.equal(diffStores(a, r.store), undefined)
 	cleanA()
 	// A statement that differs shows up in the replayed changes.
-	const mutated = native.map(l => (l.t === "commit" && l.seq === 560 ? { ...l, stmts: l.stmts.map(s => (s.p.some(p => typeof p === "string" && p.includes('"kind":"pi.')) ? { ...s, p: s.p.map(p => (typeof p === "string" ? p.replace('"kind":"pi.', '"kind":"xx.') : p)) } : s)) } : l))
+	const mutated = native.map(l => (l.t === "commit" && l.seq === 476 ? { ...l, stmts: l.stmts.map(s => (s.p.some(p => typeof p === "string" && p.includes('"kind":"pi.')) ? { ...s, p: s.p.map(p => (typeof p === "string" ? p.replace('"kind":"pi.', '"kind":"xx.') : p)) } : s)) } : l))
 	assert.notEqual(diffCommits(trace, replay(mutated, fixture, join(out, "replayed-bad")).trace), undefined)
 })
 
@@ -163,7 +163,7 @@ test("native path: a Go process writes the store through modernc SQLite and is k
 	const exe = join(out, "replayhost")
 	execFileSync("go", ["build", "-o", exe, "./durable/core/contracttest/cmd/replayhost"], { cwd: join(import.meta.dirname, "..", "..", ".."), env: { ...process.env, GOWORK: "" } })
 	const control = await runBench("pi", { store: fixture, out, name: "native-control", turns: 1 })
-	for (const k of [560, 590, 620]) {
+	for (const k of [476, 506, 536]) {
 		const crashed = await runBench("pi", { store: fixture, out, name: `native-c1-${k}`, turns: 1, crashAfter: k })
 		const recovered = await runBench("pi", { store: crashed.stores[0], out, name: `native-c2-${k}`, recover: true })
 		const host = await runNative({ exe, extraArgs: ["--script", control.trace], o: { store: fixture, out, name: `native-x1-${k}`, turns: 1, crashAfter: k } })
@@ -224,6 +224,6 @@ test("facade candidate: the bench scenario runs through a candidate_dir whose st
 	const d = diffTraces(readTrace(ref.trace), readTrace(got.trace), { storesA: [a], storesB: [b], contexts: ["bench"] })
 	ca(); cb()
 	assert.deepEqual(d, { equal: true, reports: [] })
-	assert.equal(readTrace(got.trace).filter(l => l.t === "commit").length, 77)
+	assert.equal(readTrace(got.trace).filter(l => l.t === "commit").length, 68)
 	assert.equal(readFileSync(join(got.storeDir ?? join(out, "facade-got.stores"), "setup.txt"), "utf8"), "1:core.wasm")
 })

@@ -167,6 +167,12 @@ func (o *Obj) Delete(key string) {
 	}
 }
 
+// Modified reports whether the draft was edited, whatever the edits came to.
+func (o *Obj) Modified() bool {
+	o.n.open()
+	return o.n.modified()
+}
+
 // Snapshot returns a detached copy of the draft's present content.
 func (o *Obj) Snapshot() *jv.Object {
 	o.n.open()
@@ -177,19 +183,17 @@ func (o *Obj) Snapshot() *jv.Object {
 // Len returns the array length.
 func (a *Arr) Len() int {
 	a.n.open()
-	a.n.ensureEntries()
-	return len(a.n.entries)
+	return a.n.arrayLen()
 }
 
 // Get returns the element at index, or nil when out of range.
 func (a *Arr) Get(index int) any {
 	a.n.open()
 	n := a.n
-	n.ensureEntries()
-	if index < 0 || index >= len(n.entries) {
+	if index < 0 || index >= n.arrayLen() {
 		return nil
 	}
-	return handle(n.entryValue(n.entries[index]))
+	return handle(n.entryValue(n.entryAt(index)))
 }
 
 // Obj returns the object handle at index, or nil.
@@ -215,11 +219,11 @@ var errNotArrayIndex = errors.New("Only array indices and length can be written"
 func (a *Arr) Set(index int, value any) error {
 	a.n.open()
 	n := a.n
-	n.ensureEntries()
 	if index < 0 {
 		return errNotArrayIndex
 	}
-	if index > len(n.entries) {
+	length := n.arrayLen()
+	if index > length {
 		return ErrSparseArray
 	}
 	stored, err := n.place(value)
@@ -229,29 +233,28 @@ func (a *Arr) Set(index int, value any) error {
 	if !n.attached() {
 		return nil
 	}
-	if index == len(n.entries) {
-		n.entries = append(n.entries, n.newEntry(stored))
-		n.structural = true
-	} else {
-		e := n.entries[index]
-		if !isContainer(stored) {
-			// Writing the value a slot already holds changes nothing; writing a base element's own value back drops its override (tracker.ts setArrayIndex).
-			if current := n.entryValue(e); !isContainer(current) && current == stored {
-				return nil
-			}
-			if e.index >= 0 && n.base.([]any)[e.index] == stored {
-				e.set, e.value, e.setSeq = false, nil, 0
-				n.markChanged()
-				return nil
-			}
-		}
-		e.value = n.wrap(stored, "", e)
-		if !e.set {
-			n.ctx.writeSeq++
-			e.setSeq = n.ctx.writeSeq
-		}
-		e.set = true
+	if index == length {
+		n.splice(length, 0, stored)
+		return nil
 	}
+	e := n.entryAt(index)
+	if !isContainer(stored) {
+		// Writing the value a slot already holds changes nothing; writing a base element's own value back drops its override (tracker.ts setArrayIndex).
+		if current := n.entryValue(e); !isContainer(current) && current == stored {
+			return nil
+		}
+		if e.index >= 0 && n.base.([]any)[e.index] == stored {
+			e.set, e.value, e.setSeq = false, nil, 0
+			n.markChanged()
+			return nil
+		}
+	}
+	e.value = n.wrap(stored, "", e)
+	if !e.set {
+		n.ctx.writeSeq++
+		e.setSeq = n.ctx.writeSeq
+	}
+	e.set = true
 	n.markChanged()
 	return nil
 }
@@ -269,18 +272,30 @@ func (n *node) placeAll(values []any) ([]any, error) {
 }
 
 // splice removes and inserts entries and returns the removed values.
-func (n *node) splice(start, remove int, stored []any) []any {
-	n.ensureEntries()
-	length := len(n.entries)
+func (n *node) splice(start, remove int, stored ...any) []any {
+	length := n.arrayLen()
 	start = min(max(start, 0), length)
 	remove = min(max(remove, 0), length-start)
 	removed := make([]any, remove)
+	if n.entries == nil && start+remove == length {
+		n.removeTail(start, removed)
+		t := n.tailOf()
+		for _, value := range stored {
+			t.appended = append(t.appended, n.newEntry(value))
+		}
+		if remove > 0 || len(stored) > 0 {
+			n.structural = true
+			n.markChanged()
+		}
+		return removed
+	}
+	n.ensureEntries()
 	for offset := range remove {
 		e := n.entries[start+offset]
 		removed[offset] = storedCurrent(n.entryValue(e))
 		e.live = false
 	}
-	inserted := make([]*entry, len(stored))
+	inserted := makeEntries(len(stored), len(stored))
 	for index, value := range stored {
 		inserted[index] = n.newEntry(value)
 	}
@@ -298,52 +313,48 @@ func (n *node) splice(start, remove int, stored []any) []any {
 func (a *Arr) Push(values ...any) (int, error) {
 	a.n.open()
 	n := a.n
-	n.ensureEntries()
 	stored, err := n.placeAll(values)
 	if err != nil {
-		return len(n.entries), err
+		return n.arrayLen(), err
 	}
 	if n.attached() {
-		n.splice(len(n.entries), 0, stored)
+		n.splice(n.arrayLen(), 0, stored...)
 	}
-	return len(n.entries), nil
+	return n.arrayLen(), nil
 }
 
 // Unshift inserts validated clones at the front and returns the new length.
 func (a *Arr) Unshift(values ...any) (int, error) {
 	a.n.open()
 	n := a.n
-	n.ensureEntries()
 	stored, err := n.placeAll(values)
 	if err != nil {
-		return len(n.entries), err
+		return n.arrayLen(), err
 	}
 	if n.attached() {
-		n.splice(0, 0, stored)
+		n.splice(0, 0, stored...)
 	}
-	return len(n.entries), nil
+	return n.arrayLen(), nil
 }
 
 // Pop removes and returns a detached copy of the last element's present value.
 func (a *Arr) Pop() any {
 	a.n.open()
 	n := a.n
-	n.ensureEntries()
-	if len(n.entries) == 0 || !n.attached() {
+	if n.arrayLen() == 0 || !n.attached() {
 		return nil
 	}
-	return jv.Clone(n.splice(len(n.entries)-1, 1, nil)[0])
+	return jv.Clone(n.splice(n.arrayLen()-1, 1)[0])
 }
 
 // Shift removes and returns a detached copy of the first element's present value.
 func (a *Arr) Shift() any {
 	a.n.open()
 	n := a.n
-	n.ensureEntries()
-	if len(n.entries) == 0 || !n.attached() {
+	if n.arrayLen() == 0 || !n.attached() {
 		return nil
 	}
-	return jv.Clone(n.splice(0, 1, nil)[0])
+	return jv.Clone(n.splice(0, 1)[0])
 }
 
 // Splice removes remove elements at start, inserts validated clones of items,
@@ -351,7 +362,6 @@ func (a *Arr) Shift() any {
 func (a *Arr) Splice(start, remove int, items ...any) ([]any, error) {
 	a.n.open()
 	n := a.n
-	n.ensureEntries()
 	stored, err := n.placeAll(items)
 	if err != nil {
 		return nil, err
@@ -360,9 +370,9 @@ func (a *Arr) Splice(start, remove int, items ...any) ([]any, error) {
 		return []any{}, nil
 	}
 	if start < 0 {
-		start = max(len(n.entries)+start, 0)
+		start = max(n.arrayLen()+start, 0)
 	}
-	removed := n.splice(start, remove, stored)
+	removed := n.splice(start, remove, stored...)
 	for index, value := range removed {
 		removed[index] = jv.Clone(value)
 	}
@@ -373,15 +383,14 @@ func (a *Arr) Splice(start, remove int, items ...any) ([]any, error) {
 func (a *Arr) SetLen(length int) {
 	a.n.open()
 	n := a.n
-	n.ensureEntries()
 	if !n.attached() || length < 0 {
 		return
 	}
-	if length < len(n.entries) {
-		n.splice(length, len(n.entries)-length, nil)
+	if length < n.arrayLen() {
+		n.splice(length, n.arrayLen()-length)
 		return
 	}
-	n.splice(len(n.entries), 0, make([]any, length-len(n.entries)))
+	n.splice(n.arrayLen(), 0, make([]any, length-n.arrayLen())...)
 }
 
 // Snapshot returns a detached copy of the present content.

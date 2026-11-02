@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
 	"github.com/MichaelKinsy/PiG/durable/session"
@@ -39,20 +40,33 @@ func (s *coreSession) commitNotice(n abi.Notice) {
 		WatchID *uint32           `json:"watchId"`
 		Seq     durable.Seq       `json:"seq"`
 		Changes []json.RawMessage `json:"changes"`
-		// Memory marks a deferred commit held in memory (session/held.go): it reaches the commit listeners once it is stored.
+		// Observed is the commit's own changes when the storage transaction also stored held changes (session.ts #publish `observed`).
+		Observed []json.RawMessage `json:"observed"`
+		// Memory marks a deferred commit held in memory (session/held.go): it reaches the commit listeners once it is stored, and
+		// only gives the values of the documents it changes.
 		Memory bool `json:"memory"`
 	}
-	if json.Unmarshal(n.Payload, &p) != nil || p.WatchID != nil || p.Memory || p.Changes == nil {
+	if json.Unmarshal(n.Payload, &p) != nil || p.WatchID != nil || p.Changes == nil {
 		return
+	}
+	// The commit's own changes first: a document the storage transaction also stored held changes of has its value (current) after them.
+	for _, raw := range p.Observed {
+		if _, err := s.decodeCommitChange(raw); err != nil {
+			s.reportListener(err)
+			return
+		}
 	}
 	publication := durable.CommitPublication{Seq: p.Seq}
 	for _, raw := range p.Changes {
-		change, err := decodeCommitChange(raw)
+		change, err := s.decodeCommitChange(raw)
 		if err != nil {
 			s.reportListener(err)
 			return
 		}
 		publication.Changes = append(publication.Changes, change)
+	}
+	if p.Memory {
+		return
 	}
 	s.mu.Lock()
 	subs := make([]*commitSub, 0, len(s.commits.ids))
@@ -66,7 +80,10 @@ func (s *coreSession) commitNotice(n abi.Notice) {
 	s.deliverCommits(subs, publication)
 }
 
-func decodeCommitChange(raw json.RawMessage) (durable.CommitChange, error) {
+// decodeCommitChange decodes one change of a publication. The core leaves out the value of a document change when the host holds
+// the document's previous value (a notice carried it): the operations apply to it, or `current` says it is the value held (host/cf
+// facade harness.ts restoreValue). Every document change, also of a commit held in memory, keeps the value held.
+func (s *coreSession) decodeCommitChange(raw json.RawMessage) (durable.CommitChange, error) {
 	var head struct {
 		Type string `json:"type"`
 	}
@@ -104,16 +121,25 @@ func decodeCommitChange(raw json.RawMessage) (durable.CommitChange, error) {
 			Record         durable.DocumentRecord  `json:"record"`
 			ConversationID *durable.ConversationId `json:"conversationId"`
 			Version        int                     `json:"version"`
-			Value          durable.JsonObject      `json:"value"`
-			Ops            []durable.Op            `json:"ops"`
+			Value          json.RawMessage         `json:"value"`
+			Current        bool                    `json:"current"`
+			// Ops decode through chord's JSON, so an object an operation carries keeps its key order and the applier can traverse it.
+			Ops delta.Ops `json:"ops"`
 		}
 		if err := json.Unmarshal(raw, &c); err != nil {
 			return nil, err
 		}
 		switch c.Kind {
 		case "change":
-			return durable.DocumentChange{Record: c.Record, ConversationId: c.ConversationID, Version: c.Version, Value: c.Value, Ops: c.Ops}, nil
+			value, err := s.restoreValue(c.Record.Id, c.Value, c.Current, c.Ops)
+			if err != nil {
+				return nil, err
+			}
+			return durable.DocumentChange{Record: c.Record, ConversationId: c.ConversationID, Version: c.Version, Value: value, Ops: c.Ops}, nil
 		case "retire":
+			s.mu.Lock()
+			delete(s.documentValues, c.Record.Id)
+			s.mu.Unlock()
 			return durable.DocumentRetireChange{Record: c.Record, ConversationId: c.ConversationID}, nil
 		}
 		return nil, fmt.Errorf("the core published a document change of unknown kind %q", c.Kind)
@@ -140,6 +166,45 @@ func decodeCommitChange(raw json.RawMessage) (durable.CommitChange, error) {
 		return durable.DocumentCopyChange{Record: c.Record, ConversationId: c.ConversationID, Source: durable.DocumentCopySource{Id: c.Source.ID, At: at}}, nil
 	}
 	return nil, fmt.Errorf("the core published a change of unknown type %q", head.Type)
+}
+
+// restoreValue is the value of a document after a change: the one the change carries, the one held when it is the current one, or the
+// one held with the change's operations applied.
+func (s *coreSession) restoreValue(id durable.DocumentId, carried json.RawMessage, current bool, ops delta.Ops) (durable.JsonObject, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(carried) > 0 && !current {
+		value, err := delta.DecodeJson(carried)
+		if err != nil {
+			return nil, err
+		}
+		object, err := jsonObject(value)
+		if err != nil {
+			return nil, err
+		}
+		if s.documentValues == nil {
+			s.documentValues = map[durable.DocumentId]durable.JsonObject{}
+		}
+		s.documentValues[id] = object
+		return object, nil
+	}
+	before, held := s.documentValues[id]
+	if !held {
+		return nil, fmt.Errorf("the core left out the value of document %d, which the host does not hold", id)
+	}
+	if current {
+		return before, nil
+	}
+	next, err := delta.ApplyImmutable(before, ops)
+	if err != nil {
+		return nil, err
+	}
+	object, err := jsonObject(next)
+	if err != nil {
+		return nil, err
+	}
+	s.documentValues[id] = object
+	return object, nil
 }
 
 // commitSub is a host's CommitObserver as session.ts guardObserver does: a panic of its Advance is reported,

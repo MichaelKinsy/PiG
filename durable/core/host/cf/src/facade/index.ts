@@ -13,6 +13,7 @@ import * as documents from "./documents.ts"
 import * as entries from "./entries.ts"
 import { Harness as Core, ROOT_CONVERSATION_ID as ROOT } from "./harness.ts"
 import { createRegistry as createHostRegistry } from "./registry.ts"
+import { registryReader as hostRegistryReader } from "./registry-reader.ts"
 import { createSession as createSessionOver } from "./session/session.ts"
 import * as storage from "./storage.ts"
 import { ConversationTranscript as HostConversationTranscript } from "./transcript.ts"
@@ -29,6 +30,7 @@ export const configure = agent.configure as unknown as typeof P.configure
 export const DEFAULT_COMPACTION_POLICY = agent.DEFAULT_COMPACTION_POLICY as typeof P.DEFAULT_COMPACTION_POLICY
 export const DEFAULT_PROGRESS_POLICY = agent.DEFAULT_PROGRESS_POLICY as typeof P.DEFAULT_PROGRESS_POLICY
 export const DEFAULT_RETRY_POLICY = agent.DEFAULT_RETRY_POLICY as typeof P.DEFAULT_RETRY_POLICY
+export const DEFAULT_RESTART_LIMIT = agent.DEFAULT_RESTART_LIMIT as typeof P.DEFAULT_RESTART_LIMIT
 
 export const defineExtension = define.defineExtension as unknown as typeof P.defineExtension
 export const defineTool = define.defineTool as unknown as typeof P.defineTool
@@ -59,6 +61,7 @@ export const SystemEntry = entries.SystemEntry as unknown as typeof P.SystemEntr
 export const ToolResultEntry = entries.ToolResultEntry as unknown as typeof P.ToolResultEntry
 export const UserEntry = entries.UserEntry as unknown as typeof P.UserEntry
 
+export const registryReader = hostRegistryReader as typeof P.registryReader
 export const createRegistry = createHostRegistry as unknown as typeof P.createRegistry
 export const MemoryStorage = storage.MemoryStorage as unknown as typeof P.MemoryStorage
 

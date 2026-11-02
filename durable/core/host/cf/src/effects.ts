@@ -156,7 +156,22 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
     try {
       // Each request gets its own copy of the list, as Pi's generation does (generation.ts streamSimple call): the kept list grows
       // in place when a later request of the conversation extends it.
-      const stream = rt.models.streamSimple(model, { messages: [...messages] }, withSignal(p.options, signal, contextOf(signal, p.span).telemetry))
+      const options = withSignal(p.options, signal, contextOf(signal, p.span).telemetry)
+      if (p.onPayload) {
+        // generation.ts's last option: pi-ai calls it with each request body it builds, and the core answers with the beforeProviderRequest chain's result.
+        let next = 0
+        const calls = new Map<number, { resolve: (payload: unknown) => void; reject: (reason: unknown) => void }>()
+        payloadCalls.set(effect.id, calls)
+        options.onPayload = (body: unknown) => new Promise<unknown>((resolve, reject) => {
+          if (signal.aborted) return reject(signal.reason)
+          const call = next++
+          calls.set(call, { resolve, reject })
+          signal.addEventListener("abort", () => reject(signal.reason), { once: true })
+          batch.flush()
+          host.modelEvents(effect.id, [{ type: "payload", call, payload: body }])
+        })
+      }
+      const stream = rt.models.streamSimple(model, { messages: [...messages] }, options)
       let terminal = false
       // Pi stores the final message through a strict-JSON copy in the answer commit; one that is not JSON faults the run there.
       const checked = (event: any): unknown => {
@@ -179,6 +194,8 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
     } catch (error) {
       batch.flush()
       if (!signal.aborted) fail((error as Error)?.message ?? errorMessage(error))
+    } finally {
+      payloadCalls.delete(effect.id)
     }
   }
 
@@ -320,9 +337,22 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
     return tasks.length === 0 && rejected.length === 0 ? null : { tasks, ...(rejected.length === 0 ? {} : { rejected }) }
   }
 
+  // The provider's open onPayload calls of the generation requests in flight, by effect and call number: the core's `modelPayload` hook answers them.
+  const payloadCalls = new Map<number, Map<number, { resolve: (payload: unknown) => void; reject: (reason: unknown) => void }>>()
+
   const hook: EffectHandler = async (effect, { host, signal }) => {
     const p = parse<HookEffect>(effect)
     const context = contextOf(signal, p.span)
+    if (p.name === "modelPayload") {
+      // The core's answer to an onPayload call (generation.ts providerPayload): the body to send, or the abort that ended the chain.
+      const answer = p.payload as { effect: number; call: number; payload?: unknown; aborted?: boolean }
+      const calls = payloadCalls.get(answer.effect)
+      const call = calls?.get(answer.call)
+      calls?.delete(answer.call)
+      if (call !== undefined) { if (answer.aborted) call.reject(new DOMException("This operation was aborted", "AbortError")); else call.resolve(answer.payload) }
+      host.hookDone(effect.id, 0, null)
+      return
+    }
     const own = rt.hostHooks?.[p.name]
     if (own) {
       // A host hook that returns its answer answers in the tick it was asked: the core's caller is Pi code that runs the same
@@ -339,7 +369,7 @@ export function createEffectHandlers(rt: EffectRuntime): Partial<Record<number, 
     if (!argumentsOf) throw new Error(`hook effect ${effect.id} names unknown hook ${p.name}`)
     const fn = rt.registry.at<(...args: unknown[]) => unknown>(p.handler)
     if (typeof fn !== "function") throw new Error(`hook effect ${effect.id}: handler ${p.handler} of ${p.name} is not a function`)
-    const args = argumentsOf(p.payload)
+    const args = argumentsOf(p.payload, rt.models)
     const api = invocationApi(rt.hostApi, { taskId: p.taskId, conversationId: p.conversationId })
     try {
       const value = await fn(...args, { taskId: api.taskId, conversationId: api.conversationId, get models() { return rt.models }, memo: api.memo, snapshot: api.snapshot, snapshotAsOf: api.snapshotAsOf, entry: api.entry, entries: api.entries }, context)

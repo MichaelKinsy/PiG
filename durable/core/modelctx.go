@@ -56,7 +56,11 @@ func (h *handler) modelContextPayload(req *turn.StreamRequest) []byte {
 			out = jv.Append(out, m)
 		}
 	}
-	out = append(out, `]},"options":`...)
+	out = append(out, `]},`...)
+	if req.PayloadHook != nil {
+		out = append(out, `"onPayload":true,`...)
+	}
+	out = append(out, `"options":`...)
 	out = jv.Append(out, req.Options)
 	r.SetText(append(out, '}'))
 	return r.Bytes()
