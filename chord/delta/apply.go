@@ -39,9 +39,15 @@ func identityOf(value any) (identity, bool) {
 }
 
 // scope tracks the containers one immutable application call has copied, so each touched container is copied once. It keeps every owned container reachable, so an address is never reused for a different container during the call.
-type scope struct{ owned map[identity]any }
+type scope struct {
+	owned map[identity]any
+	// concat joins the strings an append op extends; jsstring.Concat when nil.
+	concat func(a, b string) string
+}
 
-func newScope() *scope { return &scope{owned: map[identity]any{}} }
+func newScope(concat func(a, b string) string) *scope {
+	return &scope{owned: map[identity]any{}, concat: concat}
+}
 
 func (s *scope) adopt(value any) {
 	if key, tracked := identityOf(value); tracked {
@@ -255,8 +261,13 @@ func ApplyImmutableBatches(target JsonValue, batches [][]Op) (JsonValue, error) 
 
 // ApplyImmutableBatchesSeq is Pi's applyImmutableBatches: it applies decoded batches as one final-result-only replay. Containers copied for an earlier batch may be mutated while applying a later one, so no intermediate revision is exposed or safe to retain. A failure, from validation or from a batch source that panics, leaves the target untouched.
 func ApplyImmutableBatchesSeq(target JsonValue, batches iter.Seq[[]Op]) (JsonValue, error) {
+	return applyImmutableBatches(target, batches, nil)
+}
+
+// applyImmutableBatches is ApplyImmutableBatchesSeq with concat joining the strings an append op extends (jsstring.Concat when nil).
+func applyImmutableBatches(target JsonValue, batches iter.Seq[[]Op], concat func(a, b string) string) (JsonValue, error) {
 	root := target
-	sc := newScope()
+	sc := newScope(concat)
 	var failure error
 	for ops := range batches {
 		for _, op := range ops {
@@ -437,7 +448,7 @@ func applyLeaf(root any, path Path, op Op, sc *scope) (any, error) {
 	case "d":
 		object.Delete(name)
 	default:
-		text, err := rewriteText(object.Value(name), op, path)
+		text, err := rewriteText(object.Value(name), op, path, sc)
 		if err != nil {
 			return root, err
 		}
@@ -464,7 +475,7 @@ func applyArrayLeaf(root any, parentPath Path, items []any, at int, path Path, o
 		if at < len(items) {
 			current = items[at]
 		}
-		text, err := rewriteText(current, op, path)
+		text, err := rewriteText(current, op, path, sc)
 		if err != nil {
 			return root, err
 		}
@@ -481,12 +492,15 @@ func grow(root any, parentPath Path, next []any, sc *scope) (any, error) {
 }
 
 // rewriteText applies "a" or "t" to the string at path.
-func rewriteText(current any, op Op, path Path) (any, error) {
+func rewriteText(current any, op Op, path Path, sc *scope) (any, error) {
 	text, ok := current.(string)
 	if !ok {
 		return nil, NewPathError(path)
 	}
 	if Verb(op) == "a" {
+		if sc != nil && sc.concat != nil {
+			return sc.concat(text, op[2].(string)), nil
+		}
 		return jsstring.Concat(text, op[2].(string)), nil
 	}
 	count, _ := index(op[2])

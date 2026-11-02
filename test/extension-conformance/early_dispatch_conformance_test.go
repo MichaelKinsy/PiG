@@ -126,50 +126,12 @@ var earlyDispatchPayloads = map[string]map[string]any{
 
 func runEarlyDispatchScript(t *testing.T, peer net.Conn, node, release bool) {
 	t.Helper()
-	// The factory's own host calls come first: the listener's events.on is made before the register frame. The script answers them and remembers the handler.
-	handlerID := ""
-	for {
-		env := readSDKEnvelope(t, peer)
-		if env.Type == subprocess.MsgRegister {
-			break
-		}
-		if node && env.Type == subprocess.MsgCall && env.Call != nil && env.Call.Method == "xref.hello" {
-			writeSDKEnvelope(t, peer, subprocess.Envelope{Type: subprocess.MsgCallResult, ID: env.ID, CallResult: &subprocess.CallResultPayload{Result: json.RawMessage(`{}`)}})
-			continue
-		}
-		if env.Type != subprocess.MsgCall || env.Call == nil || env.Call.Method != "events.on" {
-			t.Fatalf("before register: frame %s %+v, want events.on", env.Type, env.Call)
-		}
-		var on struct {
-			Channel   string `json:"channel"`
-			HandlerID string `json:"handlerId"`
-		}
-		if err := json.Unmarshal(env.Call.Args, &on); err != nil {
-			t.Fatal(err)
-		}
-		if on.Channel != earlydispatch.Channel || on.HandlerID == "" {
-			t.Fatalf("events.on = %+v, want channel %s and a handler ID", on, earlydispatch.Channel)
-		}
-		handlerID = on.HandlerID
-		writeSDKEnvelope(t, peer, subprocess.Envelope{Type: subprocess.MsgCallResult, ID: env.ID, CallResult: &subprocess.CallResultPayload{Result: json.RawMessage(`{}`)}})
-	}
+	handlerID := readUntilRegister(t, peer, node)
 	if handlerID == "" {
 		t.Fatal("the extension registered without subscribing its listener")
 	}
 
-	var burst bytes.Buffer
-	frames := []subprocess.Envelope{}
-	for _, id := range []string{"d1", "d2"} {
-		wire := map[string]any{"handlerId": handlerID, "channel": earlydispatch.Channel, "json": earlyDispatchPayloads[id]}
-		if node {
-			wire = map[string]any{"handlerId": handlerID, "channel": earlydispatch.Channel, "data": map[string]any{"$x": "json", "v": earlyDispatchPayloads[id]}}
-		}
-		args, err := json.Marshal(wire)
-		if err != nil {
-			t.Fatal(err)
-		}
-		frames = append(frames, subprocess.Envelope{Type: subprocess.MsgRequest, ID: id, Request: &subprocess.RequestPayload{Method: "events.dispatch", Args: args}})
-	}
+	frames := earlyDispatchFrames(t, handlerID, node)
 	if release {
 		// The Host releases a listener once its last dispatch snapshot ends, and a load-time dispatch can end before ready. The listener here is still subscribed, which a release leaves alone.
 		args, err := json.Marshal(map[string]any{"handlerId": handlerID})
@@ -179,19 +141,7 @@ func runEarlyDispatchScript(t *testing.T, peer net.Conn, node, release bool) {
 		frames = append(frames, subprocess.Envelope{Type: subprocess.MsgNotify, Notify: &subprocess.NotifyPayload{Method: "events.release", Args: args}})
 	}
 	frames = append(frames, subprocess.Envelope{Type: subprocess.MsgReady, Ready: &subprocess.ReadyPayload{Cwd: "/fixture", Width: 80, Height: 24, State: &subprocess.StatePayload{HasUI: true}}})
-	for _, frame := range frames {
-		body, err := json.Marshal(frame)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var header [4]byte
-		binary.BigEndian.PutUint32(header[:], uint32(len(body)))
-		burst.Write(header[:])
-		burst.Write(body)
-	}
-	if _, err := peer.Write(burst.Bytes()); err != nil {
-		t.Fatal(err)
-	}
+	writeSDKBurst(t, peer, frames...)
 
 	responses := map[string]int{}
 	echoed := map[string][]any{}
@@ -259,6 +209,87 @@ func runEarlyDispatchScript(t *testing.T, peer net.Conn, node, release bool) {
 		if _, ok := earlyDispatchPayloads[id]; !ok {
 			t.Errorf("an echo from request %q, which no request carried", id)
 		}
+	}
+}
+
+// writeSDKBurst writes the frames in ONE write, so the extension has all of them before it acts on the first and nothing in the order depends on timing.
+func writeSDKBurst(t *testing.T, conn net.Conn, frames ...subprocess.Envelope) {
+	t.Helper()
+	var burst bytes.Buffer
+	for _, frame := range frames {
+		body, err := json.Marshal(frame)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var header [4]byte
+		binary.BigEndian.PutUint32(header[:], uint32(len(body)))
+		burst.Write(header[:])
+		burst.Write(body)
+	}
+	if _, err := conn.Write(burst.Bytes()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// earlyDispatchFrames are the two events.dispatch requests of the row, d1 and d2, for the listener handlerID names.
+func earlyDispatchFrames(t *testing.T, handlerID string, node bool) []subprocess.Envelope {
+	t.Helper()
+	var frames []subprocess.Envelope
+	for _, id := range []string{"d1", "d2"} {
+		wire := map[string]any{"handlerId": handlerID, "channel": earlydispatch.Channel, "json": earlyDispatchPayloads[id]}
+		if node {
+			wire = map[string]any{"handlerId": handlerID, "channel": earlydispatch.Channel, "data": map[string]any{"$x": "json", "v": earlyDispatchPayloads[id]}}
+		}
+		args, err := json.Marshal(wire)
+		if err != nil {
+			t.Fatal(err)
+		}
+		frames = append(frames, subprocess.Envelope{Type: subprocess.MsgRequest, ID: id, Request: &subprocess.RequestPayload{Method: "events.dispatch", Args: args}})
+	}
+	return frames
+}
+
+// readUntilRegister answers the factory's own host calls and reads up to the register frame. The factory's listener subscribes with events.on before the register frame, and the script remembers its handler ID: the Node runtime says hello first. It returns the handler ID, empty when the factory made no events.on call.
+func readUntilRegister(t *testing.T, peer net.Conn, node bool) string {
+	t.Helper()
+	return readUntilRegisterShuttingDown(t, peer, node, "")
+}
+
+// readUntilRegisterShuttingDown is readUntilRegister for a host that writes its shutdown just before it answers the factory's first host call of method shutdownAt, none when it is empty. A factory that emits (FactoryEmitEnv) makes an events.emit call after its events.on.
+func readUntilRegisterShuttingDown(t *testing.T, peer net.Conn, node bool, shutdownAt string) string {
+	t.Helper()
+	handlerID := ""
+	for {
+		env := readSDKEnvelope(t, peer)
+		if env.Type == subprocess.MsgRegister {
+			return handlerID
+		}
+		if env.Type != subprocess.MsgCall || env.Call == nil {
+			t.Fatalf("before register: frame %s, want a host call", env.Type)
+		}
+		method := env.Call.Method
+		if shutdownAt == method {
+			writeSDKEnvelope(t, peer, subprocess.Envelope{Type: subprocess.MsgShutdown, Shutdown: &subprocess.ShutdownPayload{Reason: "reload"}})
+			shutdownAt = ""
+		}
+		switch {
+		case node && method == "xref.hello", method == "events.emit":
+		case method == "events.on":
+			var on struct {
+				Channel   string `json:"channel"`
+				HandlerID string `json:"handlerId"`
+			}
+			if err := json.Unmarshal(env.Call.Args, &on); err != nil {
+				t.Fatal(err)
+			}
+			if on.Channel != earlydispatch.Channel || on.HandlerID == "" {
+				t.Fatalf("events.on = %+v, want channel %s and a handler ID", on, earlydispatch.Channel)
+			}
+			handlerID = on.HandlerID
+		default:
+			t.Fatalf("before register: host call %s, want events.on", method)
+		}
+		writeSDKEnvelope(t, peer, subprocess.Envelope{Type: subprocess.MsgCallResult, ID: env.ID, CallResult: &subprocess.CallResultPayload{Result: json.RawMessage(`{}`)}})
 	}
 }
 

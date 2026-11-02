@@ -145,7 +145,7 @@ impl Host {
         }
     }
 
-    fn stop(mut self) {
+    fn send_shutdown(&self) {
         self.conn
             .write_envelope(&Envelope {
                 msg_type: "shutdown".into(),
@@ -153,6 +153,10 @@ impl Host {
                 ..Default::default()
             })
             .unwrap();
+    }
+
+    fn stop(mut self) {
+        self.send_shutdown();
         self.thread.take().unwrap().join().unwrap().unwrap();
     }
 }
@@ -171,6 +175,111 @@ fn factory_listener_is_registered_before_register() {
     assert_eq!(parent, None);
     host.ready();
     host.stop();
+}
+
+// A shutdown before ready ends the run with no error and closes the connection, as a shutdown after ready does: Pi's session shutdown never fails an extension (runner.ts emitSessionShutdownEvent), and the Node runtime returns. The Go, Python and Lisp SDKs do the same.
+#[test]
+fn shutdown_before_ready_ends_the_run_cleanly() {
+    let _no_host = without_host();
+    let host = Host::start("shutdown-before-ready", Extension::new("bus"));
+    while host.next().msg_type != "register" {}
+    host.send_shutdown();
+    assert!(
+        host.conn.read_envelope().is_err(),
+        "the extension closed its end"
+    );
+    host.thread.unwrap().join().unwrap().unwrap();
+}
+
+// The listener dispatches the host sent before the shutdown are answered once each, under their own IDs, before the run ends.
+#[test]
+fn shutdown_before_ready_answers_the_dispatches_before_it() {
+    let _no_host = without_host();
+    let ext = Extension::new("bus");
+    let heard = Arc::new(Mutex::new(Vec::new()));
+    let sink = heard.clone();
+    ext.events()
+        .on("ch", move |_, data| {
+            sink.lock().unwrap().push(data.clone());
+            Ok(())
+        })
+        .unwrap();
+    let host = Host::start("shutdown-dispatches", ext);
+    let (on, _) = host.call("events.on", None);
+    while host.next().msg_type != "register" {}
+    for id in ["d1", "d2"] {
+        host.request(
+            id,
+            "events.dispatch",
+            None,
+            Some(json!({"handlerId": on["handlerId"], "channel": "ch", "json": {"n": id}})),
+        );
+    }
+    host.send_shutdown();
+    let mut answered = vec![host.response(), host.response()];
+    answered.sort();
+    // A listener that ran answers with no error: an unknown-handler reply, a refusal or a cancellation fails here.
+    assert_eq!(
+        answered,
+        [("d1".to_string(), None), ("d2".to_string(), None)]
+    );
+    assert!(
+        host.conn.read_envelope().is_err(),
+        "the extension closed its end, with no further answer"
+    );
+    host.thread.unwrap().join().unwrap().unwrap();
+    let mut heard = heard.lock().unwrap().clone();
+    heard.sort_by_key(|data| data["n"].as_str().unwrap_or_default().to_string());
+    assert_eq!(heard, [json!({"n": "d1"}), json!({"n": "d2"})]);
+}
+
+// A shutdown the host sends while the factory's own listener subscription waits for its result does not end the wait: the call returns, the run registers and then ends on the shutdown. The dispatch the host sent before it is answered too.
+#[test]
+fn shutdown_during_the_factory_subscription_ends_the_run_after_it_registers() {
+    let _no_host = without_host();
+    let ext = Extension::new("bus");
+    let heard = Arc::new(Mutex::new(Vec::new()));
+    let sink = heard.clone();
+    ext.events()
+        .on("ch", move |_, data| {
+            sink.lock().unwrap().push(data.clone());
+            Ok(())
+        })
+        .unwrap();
+    let host = Host::start("shutdown-during-subscription", ext);
+    let call = loop {
+        let env = host.next();
+        if env.msg_type == "call" {
+            break env;
+        }
+    };
+    let handler_id = call.call.as_ref().unwrap().args.as_ref().unwrap()["handlerId"].clone();
+    host.request(
+        "d1",
+        "events.dispatch",
+        None,
+        Some(json!({"handlerId": handler_id, "channel": "ch", "json": {"n": "d1"}})),
+    );
+    host.send_shutdown();
+    host.conn
+        .write_envelope(&Envelope {
+            msg_type: "call_result".into(),
+            id: call.id.clone(),
+            call_result: Some(CallResultMsg {
+                result: None,
+                error: None,
+            }),
+            ..Default::default()
+        })
+        .unwrap();
+    while host.next().msg_type != "register" {}
+    assert_eq!(host.response(), ("d1".to_string(), None));
+    assert!(
+        host.conn.read_envelope().is_err(),
+        "the extension closed its end"
+    );
+    host.thread.unwrap().join().unwrap().unwrap();
+    assert_eq!(*heard.lock().unwrap(), [json!({"n": "d1"})]);
 }
 
 // Dispatch runs the handler with the payload decoded from the JSON the Host sends and answers after the handler returns (event-bus.ts:19-25).
@@ -647,6 +756,31 @@ mod factory_emit {
             vec!["events.on", "events.off"]
         );
         assert_eq!(peer.calls[0].1["handlerId"], peer.calls[1].1["handlerId"]);
+    }
+
+    /// A shutdown the host sends while a factory-time call waits does not fail the call: it returns the host's result, and the run that takes the connection registers and then ends on the shutdown.
+    #[test]
+    fn a_shutdown_read_during_a_factory_call_ends_the_run_after_it_registers() {
+        let host = FactoryHost::new("fe-shutdown");
+        let ext = Extension::new("bus");
+        let served = host.serve(|peer| {
+            let call = peer.next_call();
+            peer.conn
+                .write_envelope(&Envelope {
+                    msg_type: "shutdown".into(),
+                    ..Default::default()
+                })
+                .unwrap();
+            peer.reply(&call, None);
+        });
+        ext.events().on("ch", |_, _| Ok(())).unwrap();
+        let peer = served.join().unwrap();
+        ext.run_with_socket(&host.path).unwrap();
+        assert_eq!(peer.conn.read_envelope().unwrap().msg_type, "register");
+        assert!(
+            peer.conn.read_envelope().is_err(),
+            "the run ended and closed the connection"
+        );
     }
 
     /// An emit on "error" that the host reports nobody heard fails, as EventEmitter throws it. The host holds the factory's own listeners too, so its flag is the only verdict.
