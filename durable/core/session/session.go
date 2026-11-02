@@ -186,6 +186,9 @@ func New(store Store, nextID ID, now func() float64) *Session {
 // earlier ones left. It stops at the first batch a check refuses (the batches before it are durable) and at the first error of the Store
 // (an unknown outcome); receive is called for every durable batch, in order.
 func (s *Session) commitBatches(parts []*Part, nextID ID, receive func(index int, seq Seq)) (CommitResult, error) {
+	if c, ok := s.raw.(callStarter); ok {
+		c.BeginCall()
+	}
 	for i, p := range parts {
 		seq, err := s.raw.Commit(p.Writes, nextID)
 		if err != nil {

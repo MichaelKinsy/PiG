@@ -62,7 +62,7 @@ type handler struct {
 	refs       originRefs
 	pinned     []uint32
 	bareOrigin uint32
-	// joinNext marks the next commit of the writer's Storage call as joined to the one before it (adapter.Commit).
+	// joinNext marks the next commit of the writer's Storage call as joined to the one before it in the call (adapter.Commit); adapter.BeginCall clears it.
 	joinNext bool
 	// endingTx is the host transaction whose callback ended: its job's duration is Pi's less the passes the host's callback spent (elapsed).
 	endingTx *hostTx
@@ -453,6 +453,10 @@ func (a *adapter) Commit(writes []session.Write, nextID session.ID) (session.Seq
 	a.h.joinNext = err == nil
 	return seq, err
 }
+
+// BeginCall is the start of a Storage call (session.callStarter): its first commit is not joined to the commit before it in the step,
+// which belongs to another call.
+func (a *adapter) BeginCall() { a.h.joinNext = false }
 
 // store is one batch of a Storage call: checked against the state the earlier batches left, emitted as one commit (joined: the
 // same Storage call as the commit before it in the step, ABI section 4.4) and applied to the mirror.

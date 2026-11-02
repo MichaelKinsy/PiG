@@ -171,6 +171,10 @@ type Write struct {
 	Source DocCopySource
 }
 
+// callStarter is implemented by a Store whose commits of one Storage call share a transaction (Pi's Storage.commit runs its batches in one):
+// the Session tells it where a call begins, so the first commit of a call is never joined to the last of the call before it.
+type callStarter interface{ BeginCall() }
+
 // Store is the committed state a Session reads and the place it commits to.
 //
 // Every read returns a nil record for an absent one. A read the loaded state
