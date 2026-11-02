@@ -196,6 +196,12 @@ func TestProcessTerminalQueriesProgramStatusOnceNoSessionShowsIt(t *testing.T) {
 func TestSurfaceRendersAnEditorBeforeAnythingAsksForItsTerminal(t *testing.T) {
 	recorder := newRecordingSession()
 	surface := NewTuiSurface(recorder, nil)
+	// The test reads the session's frames from its own goroutine after Start
+	// returns, so Start's frame must be the only one: a frame the surface
+	// scheduled for itself (SetLayout requests one) could be computed first
+	// on a timer goroutine, and its Apply would write the frames while the
+	// test reads them.
+	renderOnlyWhenAsked(surface)
 	editor := NewEditorWithTUI(surface, EditorTheme{}, EditorOptions{})
 	editor.SetText("hello\nworld")
 	surface.SetHooks(SurfaceHooks{Editor: func() *Editor { return editor }})
