@@ -44,13 +44,8 @@ packages/ai/src/models.generated.ts
 packages/ai/src/models.ts
 packages/ai/src/oauth.ts
 packages/ai/src/providers/all.ts
-packages/ai/src/providers/amazon-bedrock.ts
 packages/ai/src/providers/anthropic.ts
-packages/ai/src/providers/azure.ts
-packages/ai/src/providers/cloudflare-auth.ts
-packages/ai/src/providers/cloudflare-stream.ts
 packages/ai/src/providers/github-copilot.ts
-packages/ai/src/providers/google-vertex.ts
 packages/ai/src/providers/openrouter.ts
 packages/ai/src/session-resources.ts
 packages/ai/src/types.ts
