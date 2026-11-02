@@ -2041,5 +2041,110 @@
    "old": "Name: \"skill:\" + skill.Name,",
    "new": "Name: skill.Name,"
   }
+ ],
+ "packages/coding-agent/src/core/defaults.ts": [
+  {
+   "file": "internal/codingagent/defaults.go",
+   "old": "const DefaultThinkingLevel = \"medium\"",
+   "new": "const DefaultThinkingLevel = \"high\""
+  }
+ ],
+ "packages/coding-agent/src/core/experimental.ts": [
+  {
+   "file": "internal/codingagent/experimental.go",
+   "old": "if os.Getenv(\"PI_EXPERIMENTAL\") == \"1\" {",
+   "new": "if os.Getenv(\"PI_EXPERIMENTAL\") != \"1\" {"
+  }
+ ],
+ "packages/coding-agent/src/core/timings.ts": [
+  {
+   "file": "internal/codingagent/timings/timings.go",
+   "old": "if t.ms >= 0 {",
+   "new": "if t.ms > 0 {"
+  }
+ ],
+ "packages/coding-agent/src/core/session-export.ts": [
+  {
+   "file": "internal/codingagent/session_export.go",
+   "old": "Version: CurrentSessionVersion, ID",
+   "new": "Version: CurrentSessionVersion + 1, ID"
+  }
+ ],
+ "packages/coding-agent/src/core/session-cwd.ts": [
+  {
+   "file": "internal/codingagent/session_cwd.go",
+   "old": "if _, err := os.Stat(session.CWD()); err == nil {",
+   "new": "if _, err := os.Stat(session.CWD()); err != nil {"
+  },
+  {
+   "file": "coding/runtime_replacement.go",
+   "old": "AssertSessionCwdExists(options.SessionManager, options.CWD); err != nil {",
+   "new": "AssertSessionCwdExists(options.SessionManager, options.CWD); err == nil {"
+  }
+ ],
+ "packages/coding-agent/src/core/settings-diagnostics.ts": [
+  {
+   "file": "internal/codingagent/settings_diagnostics.go",
+   "old": "if settingsError.Path != \"\" {",
+   "new": "if settingsError.Path == \"\" {"
+  },
+  {
+   "file": "coding/cli/cli_runtime_build.go",
+   "old": "build.StartupDiagnostics = codingagent.DeduplicateDiagnostics(append(slices.Clone(b.settingsDiagnostics), codingagent.CollectSettingsDiagnostics(services.SettingsManager())...))",
+   "new": "build.StartupDiagnostics = append(slices.Clone(b.settingsDiagnostics), codingagent.CollectSettingsDiagnostics(services.SettingsManager())...)"
+  }
+ ],
+ "packages/coding-agent/src/core/telemetry.ts": [
+  {
+   "file": "internal/codingagent/settings.go",
+   "old": "case \"1\", \"true\", \"yes\":",
+   "new": "case \"1\", \"true\":"
+  },
+  {
+   "file": "internal/codingagent/install_telemetry.go",
+   "old": "return sm != nil && sm.IsInstallTelemetryEnabled()",
+   "new": "return sm != nil"
+  }
+ ],
+ "packages/coding-agent/src/core/settings-manager.ts": [
+  {
+   "file": "internal/codingagent/settings.go",
+   "old": "readMerged(sm, func(s *Settings) string { return s.TuiMode }) == string(tui.TuiModeRegular)",
+   "new": "readMerged(sm, func(s *Settings) string { return s.TuiMode }) != string(tui.TuiModeRegular)"
+  },
+  {
+   "file": "internal/codingagent/settings.go",
+   "old": "if v == DefaultProjectTrustAlways || v == DefaultProjectTrustNever {",
+   "new": "if v == DefaultProjectTrustAlways {"
+  },
+  {
+   "file": "internal/codingagent/file_lock.go",
+   "old": "*err = releaseErr",
+   "new": "_ = releaseErr"
+  }
+ ],
+ "packages/coding-agent/src/core/session-manager.ts": [
+  {
+   "file": "internal/codingagent/session_context.go",
+   "old": "leaf := entries[len(entries)-1]",
+   "new": "leaf := entries[0]"
+  },
+  {
+   "file": "internal/codingagent/session_manager.go",
+   "old": "s = strings.NewReplacer(\"/\", \"-\", `\\`, \"-\", \":\", \"-\").Replace(s)",
+   "new": "s = strings.NewReplacer(\"/\", \"-\", `\\`, \"-\").Replace(s)"
+  }
+ ],
+ "packages/coding-agent/src/core/source-info.ts": [
+  {
+   "file": "internal/codingagent/resource_source_info.go",
+   "old": "\t\treturn \"builtin\"\n",
+   "new": "\t\treturn \"builtins\"\n"
+  },
+  {
+   "file": "internal/codingagent/resource_source_info.go",
+   "old": "return \"temporary\"",
+   "new": "return \"inline\""
+  }
  ]
 }
