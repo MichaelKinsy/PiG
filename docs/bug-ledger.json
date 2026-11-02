@@ -3573,6 +3573,32 @@
       ]
     },
     {
+      "id": "BF-1f2f940",
+      "title": "The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the…",
+      "symptom": "The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the Anthropic SDK does.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the Anthropic SDK does. A response that sent the lifetime as a string such as `\"0x10\"`, `\"0b11\"` or `[5]` was rejected as missing required fields although `Number()` accepts it, and one such as `\"1_0\"`, `\"inf\"` or `\"0x1p3\"` was accepted as a finite lifetime although `Number()` yields NaN and Pi rejects the response.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1f2f94065d",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_federation_number_oracle_test.go::TestFederationExpiresInNumberMatchesJS",
+        "ai/auth_context_oracle_test.go::TestDefaultProviderAuthContextMatchesPi",
+        "ai/cloudflare_stream_upstream_test.go::TestResolveCloudflareModelMatchesPiOnNonBMPBaseURLs",
+        "ai/oauth_credential_order_test.go::TestOAuthCredentialMembersFollowPiFlowLiterals",
+        "ai/oauth_load_oracle_test.go::TestOAuthFlowLoadersMatchPi"
+      ]
+    },
+    {
       "id": "BF-1f7fa2f",
       "title": "In print and JSON mode, an extension in its own Node process no longer runs its callbacks with a stale ctx…",
       "symptom": "In print and JSON mode, an extension in its own Node process no longer runs its callbacks with a stale ctx when a later extension's handler awaits a timer or I/O.",
