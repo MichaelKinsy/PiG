@@ -1,5 +1,7 @@
 package plugins
 
+// pi: packages/chord/src/next-node/plugins/install.ts
+
 import (
 	"errors"
 	"fmt"

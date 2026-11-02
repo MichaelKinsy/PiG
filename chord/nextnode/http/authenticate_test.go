@@ -1,5 +1,7 @@
 package http
 
+// pi: packages/chord/src/next-node/http/authenticate.ts
+
 import (
 	"context"
 	"errors"

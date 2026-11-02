@@ -11,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
+// pi: packages/chord/src/next-node/workers/control.ts
 // Ports packages/chord/test/next-node/workers/control.test.ts: the control channel's crossings: errors cross as
 // `{ message, code?, reason? }` and back, and a control message is told from anything else on the channel.
 

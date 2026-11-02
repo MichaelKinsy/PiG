@@ -1,5 +1,36 @@
 package host
 
+// pi: packages/chord/test/next/examples/01-objects.ts
+// pi: packages/chord/test/next/examples/02-documents.ts
+// pi: packages/chord/test/next/examples/03-derives.ts
+// pi: packages/chord/test/next/examples/04-watches.ts
+// pi: packages/chord/test/next/examples/05-errors.ts
+// pi: packages/chord/test/next/examples/06-natives.ts
+// pi: packages/chord/test/next/examples/07-failures.ts
+// pi: packages/chord/test/next/examples/08-remote.ts
+// pi: packages/chord/test/next/examples/09-calls.ts
+// pi: packages/chord/test/next/examples/10-drops.ts
+// pi: packages/chord/test/next/examples/11-linger-and-retry.ts
+// pi: packages/chord/test/next/examples/12-routes.ts
+// pi: packages/chord/test/next/examples/13-relay.ts
+// pi: packages/chord/test/next/examples/14-flow-control.ts
+// pi: packages/chord/test/next/examples/15-revocation.ts
+// pi: packages/chord/test/next/examples/16-presence-and-activity.ts
+// pi: packages/chord/test/next/examples/17-limits-and-compression.ts
+// pi: packages/chord/test/next/examples/18-routines.ts
+// pi: packages/chord/test/next/examples/19-jobs.ts
+// pi: packages/chord/test/next/examples/20-tables.ts
+// pi: packages/chord/test/next/examples/21-persisted-documents.ts
+// pi: packages/chord/test/next/examples/22-migrations.ts
+// pi: packages/chord/test/next/examples/23-keyed-watches.ts
+// pi: packages/chord/test/next/examples/24-keyed-members.ts
+// pi: packages/chord/test/next/examples/25-export-import.ts
+// pi: packages/chord/test/next/examples/28-persisted-jobs.ts
+// pi: packages/chord/test/next/examples/29-registries.ts
+// pi: packages/chord/test/next/examples/30-host-root.ts
+// pi: packages/chord/test/next/examples/31-parked-dependencies.ts
+// pi: packages/chord/test/next/examples/32-startup.ts
+
 import (
 	"context"
 	"encoding/binary"

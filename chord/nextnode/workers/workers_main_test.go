@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 )
 
+// pi: packages/chord/src/next-node/workers/main.ts
 // Ports packages/chord/test/next-node/workers/main.test.ts: the worker's side: the start message, the lock, `started` on
 // `connect`, `ready`; shutdown during startup, the parent's disconnect and SIGTERM each run the closers and exit; `fatal`
 // redacted.
