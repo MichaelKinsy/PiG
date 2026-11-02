@@ -2637,17 +2637,17 @@ var openObjectRe = regexp.MustCompile(`^\{\s*(?:readonly\s+)?\[\s*\w+\s*:\s*stri
 
 // keywordObject applies T12i: an upstream object whose only member is a string index signature (pi-schema's Schema, a JSON Schema
 // node) is the repository's JSON object: the ordered chordjson.Object (the Go form of a pi-schema schema, schema.Object), or a Go map
-// from string to a type the signature's value type agrees with (map[string]any for unknown). It reports ok false for any other shape.
+// from string to a type unknown agrees with (map[string]any). Only the unknown or any value type is judged here. It reports ok false for any other shape.
 func (c *checker) keywordObject(up string, t types.Type) (verdict, bool) {
 	m := openObjectRe.FindStringSubmatch(stripTypeNoise(up))
 	if m == nil {
 		return verdict{}, false
 	}
+	if v := strings.TrimSpace(m[1]); v != "unknown" && v != "any" {
+		return verdict{}, false // a typed index signature keeps its own rules (and reviewed decisions)
+	}
 	if n := namedOf(t); n != nil && n.Obj().Name() == "Object" && n.Obj().Pkg() != nil && strings.HasSuffix(n.Obj().Pkg().Path(), "/internal/chord/chordjson") {
-		if v := strings.TrimSpace(m[1]); v == "unknown" || v == "any" {
-			return yesV(), true
-		}
-		return verdict{}, false
+		return yesV(), true
 	}
 	if mt, ok := t.Underlying().(*types.Map); ok && basicInfo(mt.Key())&types.IsString != 0 {
 		return c.agree(m[1], mt.Elem()), true
