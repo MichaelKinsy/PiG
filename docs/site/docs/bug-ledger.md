@@ -280,6 +280,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3b9bd16-2](#bf-3b9bd16-2) | `chord/nextnode/plugins`: finding Node stops a version probe that does not answer (10 s) and ends at… | PiG's own defect | Windows, macOS | Unreleased |
 | [BF-3b9bd16-3](#bf-3b9bd16-3) | `chord/next/link`: `Channel.Idle` returns when the channel closes | PiG's own defect | All platforms | Unreleased |
 | [BF-3ba74f2](#bf-3ba74f2) | fix(codingagent): wait for a read's rest on the route snapshot that found no modal | PiG's own defect | All platforms | Unreleased |
+| [BF-3c2dde4](#bf-3c2dde4) | A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC… | PiG's own defect | All platforms | Unreleased |
 | [BF-3ca622b](#bf-3ca622b) | fix(durable/core): the tool round resumes one tick after runtime.outcomes, as Pi's #read does; drop the… | PiG's own defect | All platforms | Unreleased |
 | [BF-3cb7131](#bf-3cb7131) | fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns… | PiG's own defect | All platforms | Unreleased |
 | [BF-3ce6bcb](#bf-3ce6bcb) | fix(changelog,source): /i scheme tests fold as JavaScript does, not as RE2's (?i) | PiG's own defect | All platforms | Unreleased |
@@ -5135,6 +5136,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `3ba74f2827` (2026-10-13)
 - **Tests:** None recorded.
+
+### BF-3c2dde4
+
+**A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC timer, as in Pi, where Node emits no data event for it.
+- **Root cause:** Node emits no data event for a read that decodes to the empty string, so Pi's StdinBuffer.process() neither restarts nor clears its timeout (terminal.ts:281-283, stdin-buffer.ts:321-325).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3c2dde4146` (2026-11-02)
+- **Tests:** `tui/terminal_input_esc_timer_test.go::TestTerminalInputHeldUTF8ReadLeavesEscTimerAlone`
+- **Release note:** A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC timer, as in Pi, where Node emits no data event for it. ESC, then the two bytes of é arriving 5 ms and 11 ms later, is Escape followed by é, not Alt+é.
 
 ### BF-3ca622b
 
