@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -26,8 +28,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
-// Ports packages/chord/test/next/examples/35-plugins, 36-plugin-failures, 37-plugin-imports, 38-watch-and-rollout and
-// 39-browser-build. Pi's examples are scripts that print what they observe; each Go test runs the same scenario, with the
+// Ports packages/chord/test/next/examples/35-plugins, 36-plugin-failures, 37-plugin-imports, 38-watch-and-rollout,
+// 39-browser-build, 49-plugin-api, 50-plugin-imports and 51-single-file-plugin. Pi's examples are scripts that print what they observe; each Go test runs the same scenario, with the
 // same edits, on the REAL esbuild build and REAL Node hosts (the example's own plugin directories, byte for byte, under
 // testdata/examples/<example>), and asserts what the script prints as structured values. What the script reads with
 // `host.get` of a LOCAL type (Index, Clock, Greeting...) lives on the Node host, so it is read through the probe
@@ -140,13 +142,22 @@ func (e *exErrors) none(t *testing.T) {
 func exComponent(t *testing.T, roots []string, cache string, kinds []KindDefinition, edit func(*PluginsOptions)) (*Plugins, *exErrors) {
 	t.Helper()
 	collected := &exErrors{}
-	options := PluginsOptions{Roots: roots, Kinds: kinds, OnError: collected.add, Node: NodeOptions{CacheDir: cache}}
+	options := PluginsOptions{Roots: exRoots(roots), Kinds: kinds, OnError: collected.add, Node: NodeOptions{CacheDir: cache}}
 	if edit != nil {
 		edit(&options)
 	}
 	plugins := CreatePlugins(options, background)
 	t.Cleanup(plugins.Close)
 	return plugins, collected
+}
+
+// exRoots are the roots as Pi's examples give them as plain paths: not required.
+func exRoots(paths []string) []PluginRoot {
+	roots := make([]PluginRoot, len(paths))
+	for i, path := range paths {
+		roots[i] = PluginRoot{Path: path}
+	}
+	return roots
 }
 
 func exNodeKind(name string, packages ...string) KindDefinition {
@@ -1167,4 +1178,461 @@ func TestExample39BrowserBuildEvaluatedOnAPage(t *testing.T) {
 	if got := page.read("example.gallery", "logo", "str"); got != want {
 		t.Fatalf("4. the gallery's logo on the page: %v, want %q", got, want)
 	}
+}
+
+// The slice-12 examples (49 to 51) build against example 49's `app/`: the app's versioned API, whose modules are the host
+// packages `@acme/app/v3`, `@acme/app/v3/server`, `@acme/app/v3/web` and `@acme/app/v2`. The app imports Chord by a relative
+// path from where Pi keeps it (`app/v3.ts`: `../../../../../src/next/index.ts`), so the app is staged where that path reaches
+// the Chord the Node host runs: under the extracted tree's `pi/chord/test/next/examples/49-plugin-api/app`, next to its `src`
+// (the modules then share the host's own instances of Chord, as Pi's example imports the app's modules in the host's
+// process).
+
+// exAcmeApi is the app's API of 49 to 51: its name and, per example, the versions it lists.
+const exAcmeApi = "@acme/app"
+
+// exAcmeKinds are the kinds of the app of 49 to 51: `server` (Node) and `web` (browser), each with the API's shared module
+// and its own, plus the versions' modules the example lists. Chord is no host package of either.
+func exAcmeKinds(versions ...string) []KindDefinition {
+	var server, web []string
+	for _, version := range versions {
+		server = append(server, exAcmeApi+"/"+version)
+		web = append(web, exAcmeApi+"/"+version)
+		if version == "v3" {
+			server = append(server, exAcmeApi+"/v3/server")
+			web = append(web, exAcmeApi+"/v3/web")
+		}
+	}
+	return []KindDefinition{
+		{Name: "server", Platform: PlatformNode, HostPackages: server},
+		{Name: "web", Platform: PlatformBrowser, HostPackages: web},
+	}
+}
+
+// exAcmeApp stages example 49's `app/` for the Node host started with cache and returns its directory.
+func exAcmeApp(t *testing.T, cache string) string {
+	t.Helper()
+	tree, err := extractNode(cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(tree, "pi", "chord", "test", "next", "examples", "49-plugin-api", "app")
+	if _, err := os.Stat(dir); err == nil {
+		return dir
+	}
+	if err := os.CopyFS(dir, os.DirFS(filepath.Join("testdata", "examples", "49-plugin-api", "app"))); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+// exAcmeModules are the app's modules as the server (`modules`) or the web page gives them, by specifier: the shared v3
+// module, the kind's own, and v2's when the example lists v2.
+func exAcmeModules(app, kind string, v2 bool) HostPackages {
+	modules := HostPackages{
+		exAcmeApi + "/v3":         filepath.Join(app, "v3.ts"),
+		exAcmeApi + "/v3/" + kind: filepath.Join(app, "v3", kind+".ts"),
+	}
+	if v2 {
+		modules[exAcmeApi+"/v2"] = filepath.Join(app, "v2.ts")
+	}
+	return modules
+}
+
+// exAcmeComponent is the example's `createPlugins` with the app's API.
+func exAcmeComponent(t *testing.T, roots []PluginRoot, cache string, versions []string, edit func(*PluginsOptions)) (*Plugins, *exErrors) {
+	t.Helper()
+	collected := &exErrors{}
+	options := PluginsOptions{
+		Roots: roots, Api: &AppApi{Name: exAcmeApi, Versions: versions}, Kinds: exAcmeKinds(versions...),
+		OnError: collected.add, Node: NodeOptions{CacheDir: cache},
+	}
+	if edit != nil {
+		edit(&options)
+	}
+	plugins := CreatePlugins(options, background)
+	t.Cleanup(plugins.Close)
+	return plugins, collected
+}
+
+// exFileOps are the probe ops of 51: `hold` holds `example.hello` and answers its text, `held` reads it again (after a reload),
+// `release` is the example's `hello.release()`.
+const exFileOps = `
+hold: async (_args, { ctx }) => {
+	const Hello = next.local("example.hello", { version: 1, params: {}, members: { text: next.str() } });
+	globalThis.exHello = await ctx.get(Hello, {});
+	return globalThis.exHello.text.value;
+},
+held: async () => globalThis.exHello.text.value,
+release: async () => globalThis.exHello.release(),
+`
+
+// exAcmeStart loads kind's plugins on a new Node host of the app (the example's `plugins.load(host, { kind, core, modules })`)
+// with the probe, and returns the host with the load's error: nil, or the *PluginError a required root's failure makes, with the
+// host loaded as the load settled it.
+func exAcmeStart(t *testing.T, plugins *Plugins, cache, kind string, modules HostPackages, core []CoreFacet, imports, setup, ops string) (*exNode, error) {
+	t.Helper()
+	probed := probeCoreSetup(t, cache, imports, setup, exOps+exFileOps+ops)
+	address := workerKind.Address(nil)
+	node, report, err := plugins.Load(PluginsLoad{
+		Kind: kind, Core: append(slices.Clone(core), probed), Modules: modules,
+		Address: &address, Principal: serverPrincipal, Peer: workerPrincipal,
+	}, background)
+	if node == nil {
+		t.Fatalf("load: %v", err)
+	}
+	t.Cleanup(func() { _ = node.Close(background) })
+	if _, ok := errors.AsType[*PluginError](err); err != nil && !ok {
+		t.Fatalf("load: %v", err)
+	}
+	started := &exNode{node: node, report: report}
+	started.h = serverFor(t, nodeRoute{kind: workerKind, node: node, principal: serverPrincipal})
+	started.probe = probeOn(t, started.h)
+	return started, err
+}
+
+// exRefused is what an example prints of a failed plugin: its build errors, one per line after the first, joined by `; `.
+func exRefused(failure host.PluginFailure) string {
+	_, rest, _ := strings.Cut(failure.Error.Error(), "\n")
+	return strings.Join(strings.Split(rest, "\n"), "; ")
+}
+
+// Ports examples/49-plugin-api/main.ts: the app's versioned API. A v3 plugin and a v2 plugin (a thin layer over v3) load; a v1
+// plugin, a facet mixing v2 and v3, a direct import of Chord and a server facet importing the web's module are refused at
+// build, each with its error; the panel plugin's web facet builds, and a page evaluates and loads it. What the script reads
+// of the hosts it created itself (the server's `Greetings` registry; a page host with the web's modules) is read through the
+// probe: a registry read declared in the probe's own object, and an op that makes the page in the Node process.
+func TestExample49PluginAPI(t *testing.T) {
+	cache := t.TempDir()
+	app := exAcmeApp(t, cache)
+	root, err := filepath.Abs(filepath.Join("testdata", "examples", "49-plugin-api", "plugins"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	root = realOf(t, root)
+	// 1. The component with the app's API.
+	plugins, collected := exAcmeComponent(t, []PluginRoot{{Path: root}}, cache, []string{"v3", "v2"}, nil)
+
+	// 2. The server's modules and its own start-data facet, base code: it serves the `Greetings` registry, composing the lines
+	// in plugin-name order.
+	v3 := fileURL(filepath.Join(app, "v3.ts"))
+	tree, err := extractNode(cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := "file://" + filepath.ToSlash(filepath.Join(tree, "pi", "chord", "src")) + "/"
+	coreModule := filepath.Join(t.TempDir(), "core.mjs")
+	if err := os.WriteFile(coreModule, []byte(`import { defineFacet } from "`+src+`next/host/index.ts";
+import * as v3 from "`+v3+`";
+export default defineFacet((host) => host.serve(v3.Greetings, { compose: (table) => table.map(({ value }) => value) }));
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	web := exAcmeModules(app, "web", true)
+	ops := `
+greetings: async (_args, { held }) => held.greetings.value,
+panels: async (a, { ctx }) => {
+	const { evaluateFacet } = evaluate;
+	const v2 = await import(a.v2), v3 = await import(a.v3), v3web = await import(a.v3web);
+	const panels = next.defineFacet((h) => h.serve(v3web.Panels, { compose: (table) => table.map(({ value }) => value.title) }));
+	const page = next.createHost({ onError: () => {} });
+	const facet = evaluateFacet(a.script.built, { hostPackages: { "@acme/app/v3": v3, "@acme/app/v3/web": v3web, "@acme/app/v2": v2 }, plugin: a.script.plugin });
+	await page.load([{ name: "@acme/page", facet: panels }, { name: "@acme/panel", facet }], ctx);
+	const titles = (await page.registry(v3web.Panels, ctx)).value.join(", ");
+	await page.close(ctx);
+	return titles;
+},
+`
+	server, err := exAcmeStart(t, plugins, cache, "server", exAcmeModules(app, "server", true), []CoreFacet{{Name: "@acme/core", Module: coreModule}},
+		`import { Greetings } from "`+v3+`";`, "held.greetings = self.registry(Greetings);", ops)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 3. Who loaded, and who was refused (each build error names the file, line and rule).
+	var printed []string
+	printed = append(printed, "1. greetings:")
+	for _, line := range server.probe.must("greetings", nil).([]any) {
+		printed = append(printed, "   "+line.(string))
+	}
+	printed = append(printed, "2. refused at build:")
+	for _, failure := range server.report.Failed {
+		printed = append(printed, "   "+failure.Plugin+": "+exRefused(failure))
+	}
+
+	// 4. The web kind provides `/v3/web`: the panel plugin's web facet builds, and a page (a host in the Node process, given
+	// the web's modules) evaluates and loads it.
+	built := exBuild(t, plugins, []string{"@acme/panel"})
+	var facets []string
+	for _, facet := range built.Facets {
+		facets = append(facets, facet.Facet+" "+string(facet.Kind))
+	}
+	printed = append(printed, "3. the panel plugin: "+strings.Join(facets, ", "))
+	for _, facet := range built.Facets {
+		if facet.Facet != "web" || facet.Kind != BuiltFacetScript {
+			continue
+		}
+		args := map[string]any{
+			"script": scriptsWire([]PluginScript{{Plugin: built.Plugins["@acme/panel"], Built: facet}})[0],
+			"v2":     fileURL(web[exAcmeApi+"/v2"]), "v3": fileURL(web[exAcmeApi+"/v3"]), "v3web": fileURL(web[exAcmeApi+"/v3/web"]),
+		}
+		printed = append(printed, "   panels on the page: "+server.probe.must("panels", args).(string))
+	}
+
+	want := []string{
+		"1. greetings:",
+		"   hello from a v3 plugin on the acme server",
+		"   hello from a v2 plugin",
+		"2. refused at build:",
+		`   @acme/ancient: server.ts:3:40: "@acme/app/v1": @acme/app/v1 is not available: this app provides v3, v2`,
+		`   @acme/direct: server.ts:3:29: "@earendil-works/chord/next": plugins import Chord through the app's API ("@acme/app/v3"), never directly`,
+		"   @acme/mixed: one facet imports one version of @acme/app: this one imports @acme/app/v2 (server.ts) and @acme/app/v3 (server.ts)",
+		`   @acme/panel: server.ts:5:24: "@acme/app/v3/web": not available to server facets`,
+		"3. the panel plugin: server failed, web script",
+		"   panels on the page: word count",
+	}
+	if !slices.Equal(printed, want) {
+		t.Fatalf("printed:\n%s\nwant:\n%s", strings.Join(printed, "\n"), strings.Join(want, "\n"))
+	}
+	collected.none(t)
+}
+
+// Ports examples/50-plugin-imports/main.ts: imports between plugins. Plugins of one root import each other's contract files by
+// relative path (copied into the importer's script); a per-kind contract file (`contract.web.ts`) is for its kind only, also
+// through a helper; a relative path out of the plugin's root is refused; a plugin of another repository takes its dependency
+// pinned to a git commit (`words/` committed twice in a local repository, no network), inlined at the installed commit. The
+// app's root is required: the load rejects with a PluginError once it settled.
+func TestExample50PluginImports(t *testing.T) {
+	// npm 12 refuses git dependencies unless allowed (`EALLOWGIT`); the example's dependency is one.
+	t.Setenv("npm_config_allow_git", "all")
+	for _, tool := range []string{"git", "npm"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Fatalf("example 50 runs %s: %v", tool, err)
+		}
+	}
+	cache := t.TempDir()
+	app := exAcmeApp(t, cache)
+	// The example installs into a plugin: it works on a dir of its directories.
+	dir := exCopy(t, "50-plugin-imports", "plugins", "user", "words")
+
+	// 1. `@bob/words` in its own git repository: version 1 committed, then version 2. Bob pinned the first commit.
+	git := func(dir string, args ...string) string {
+		t.Helper()
+		command := exec.Command("git", append([]string{"-c", "user.email=bob@example.com", "-c", "user.name=bob"}, args...)...)
+		command.Dir = dir
+		out, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+		return string(out)
+	}
+	words := filepath.Join(dir, "words")
+	git(words, "init", "--quiet")
+	git(words, "add", "--all")
+	git(words, "commit", "--quiet", "--message", "words 1")
+	pinned := strings.TrimSpace(git(words, "rev-parse", "HEAD"))
+	source, err := os.ReadFile(filepath.Join(words, "words.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(words, "words.ts"), []byte(strings.Replace(string(source), `VERSION = "1"`, `VERSION = "2"`, 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git(words, "commit", "--quiet", "--all", "--message", "words 2")
+	git(dir, "clone", "--quiet", "--bare", words, filepath.Join(dir, "words.git"))
+	stats := filepath.Join(dir, "user", "stats", "package.json")
+	text, err := os.ReadFile(stats)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest struct {
+		Name         string            `json:"name"`
+		Private      bool              `json:"private"`
+		Type         string            `json:"type"`
+		Dependencies map[string]string `json:"dependencies"`
+	}
+	if err := json.Unmarshal(text, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	manifest.Dependencies["@bob/words"] = "git+file://" + filepath.Join(dir, "words.git") + "#" + pinned
+	text, err = json.MarshalIndent(manifest, "", "\t")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(stats, text, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	printed := []string{"1. @bob/stats depends on " + strings.Replace(manifest.Dependencies["@bob/words"], dir, "…", 1)}
+
+	// 2. The component: the app's root required, the user's not; the app's API (example 49's) for both kinds.
+	plugins, collected := exAcmeComponent(t, []PluginRoot{{Path: filepath.Join(dir, "plugins"), Required: true}, {Path: filepath.Join(dir, "user")}}, cache, []string{"v3"}, nil)
+
+	// 3. Bob's dependencies, installed by npm into his plugin's node_modules (a git dependency at a ref is npm's own).
+	if err := plugins.InstallDependencies("@bob/stats", background); err != nil {
+		t.Fatal(err)
+	}
+
+	// 4. The server loads both roots. The peek plugin of the app's root fails: so the required root's load rejects (a
+	// PluginError, after the load settled: the others are loaded), and the app decides (here: it reports and goes on).
+	server, err := exAcmeStart(t, plugins, cache, "server", exAcmeModules(app, "server", false), nil, "", "", "")
+	pluginError, ok := errors.AsType[*PluginError](err)
+	if !ok {
+		t.Fatalf("load error = %v, want a *PluginError", err)
+	}
+	var required []string
+	for _, failure := range pluginError.Required {
+		required = append(required, failure.Plugin)
+	}
+	printed = append(printed, "2. the load rejects: PluginError for "+strings.Join(required, ", "))
+	for _, failure := range pluginError.Failed {
+		printed = append(printed, "   "+failure.Plugin+": "+exRefused(failure))
+	}
+	printed = append(printed, fmt.Sprintf("3. search hits: %v", server.read("acme.search", "hits", "int")))
+	printed = append(printed, fmt.Sprintf("   stats: %v", server.read("bob.stats", "text", "str")))
+
+	// 5. The search plugin's builds: what each copied from the notes plugin (its server facet the shared file, its web facet
+	// the web file).
+	built := exBuild(t, plugins, []string{"@acme/search"})
+	for _, facet := range built.Facets {
+		if facet.Kind != BuiltFacetScript {
+			continue
+		}
+		var copied []string
+		for _, file := range facet.Copied {
+			copied = append(copied, filepath.ToSlash(strings.TrimPrefix(file, dir+string(filepath.Separator))))
+		}
+		printed = append(printed, "4. @acme/search "+facet.Facet+" copied: "+strings.Join(copied, ", "))
+	}
+
+	want := []string{
+		"1. @bob/stats depends on git+file://…/words.git#" + pinned,
+		"2. the load rejects: PluginError for @acme/peek",
+		`   @acme/peek: view.ts:3:28: "../notes/contract.web.ts": a web file, imported into a server facet (server.ts → view.ts → ../notes/contract.web.ts)`,
+		`   @bob/reach: server.ts:5:23: "../../plugins/notes/contract.ts": outside the plugin's root (base code is reached through the app's API ("@acme/app/v3"), other repositories' plugins through dependencies)`,
+		"3. search hits: 3",
+		"   stats: 4 words (@bob/words 1)",
+		"4. @acme/search server copied: plugins/notes/contract.ts",
+		"4. @acme/search web copied: plugins/notes/contract.web.ts",
+	}
+	if !slices.Equal(printed, want) {
+		t.Fatalf("printed:\n%s\nwant:\n%s", strings.Join(printed, "\n"), strings.Join(want, "\n"))
+	}
+	collected.none(t)
+}
+
+// Ports examples/51-single-file-plugin/main.ts: a file named `<name>.<kind>.ts` at a root's top is a facet of the plugin
+// `<name>`; `bad` imports another file and is refused; then `hello` becomes a directory with a helper file: the watcher marks
+// the root, a build and a reload change the plugin `hello` in place (what the example holds of `hello` is read through the
+// probe: the reference is held on the Node host).
+func TestExample51SingleFilePlugin(t *testing.T) {
+	cache := t.TempDir()
+	app := exAcmeApp(t, cache)
+	// The example turns a file into a directory: it works on a copy of `plugins/`.
+	root := filepath.Join(exCopy(t, "51-single-file-plugin", "plugins"), "plugins")
+
+	// 1. The component, the server loaded: discovery found three single-file plugins; `bad` fails its build.
+	plugins, collected := exAcmeComponent(t, []PluginRoot{{Path: root}}, cache, []string{"v3"}, nil)
+	server, err := exAcmeStart(t, plugins, cache, "server", exAcmeModules(app, "server", false), nil, "", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var printed []string
+	for _, plugin := range plugins.Discovery().Plugins {
+		var files []string
+		for _, kind := range []string{"server", "web"} {
+			if file, ok := plugin.Facets[kind]; ok {
+				files = append(files, strings.TrimPrefix(file, root+string(filepath.Separator)))
+			}
+		}
+		printed = append(printed, "1. "+plugin.Name+" ("+string(plugin.Layout)+"): "+strings.Join(files, ", "))
+	}
+	for _, failure := range server.report.Failed {
+		printed = append(printed, "   "+failure.Plugin+" refused: "+exRefused(failure))
+	}
+	hello := server.probe.must("hold", nil)
+	printed = append(printed, fmt.Sprintf("2. hello: %v | clock: %v", hello, server.read("example.clock", "text", "str")))
+
+	// 2. `hello` needs a second file: it becomes the directory `hello/` (a package.json named `hello`), its files removed.
+	if err := os.Mkdir(filepath.Join(root, "hello"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	exTouch(t, root)
+	exWrite(t, filepath.Join(root, "hello", "package.json"), `{"name":"hello","type":"module"}`)
+	exWrite(t, filepath.Join(root, "hello", "greeting.ts"), "export const greeting = \"hello from a directory\";\n")
+	exWrite(t, filepath.Join(root, "hello", "server.ts"), strings.Join([]string{
+		`import { constant, defineFacet, local, str } from "@acme/app/v3";`,
+		`import { greeting } from "./greeting.ts";`,
+		`const Hello = local("example.hello", { version: 1, params: {}, members: { text: str() } });`,
+		"export default defineFacet((host) => host.serve(Hello, () => ({ text: constant(greeting) })));",
+	}, "\n"))
+	exTouch(t, root)
+	for _, file := range []string{"hello.server.ts", "hello.web.ts"} {
+		if err := os.Remove(filepath.Join(root, file)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	exUntil(t, plugins, "the root marked and hello dirty", func(marks PluginsState) bool {
+		return marks.Set && slices.Contains(marks.Dirty, "hello")
+	})
+	marks := plugins.Marks()
+	exMarks(t, plugins, PluginsState{Dirty: []string{"bad", "clock", "hello"}, Set: true})
+	printed = append(printed, "3. marks: "+exMarksJSON(marks))
+
+	// 3. A build discovers again; the reload changes `hello` in place (the same plugin, its object swapped), a holder sees the
+	// new text.
+	built := exBuild(t, plugins, marks.Dirty)
+	report, err := plugins.Reload(server.node, built, background)
+	if err != nil {
+		t.Fatal(err)
+	}
+	printed = append(printed, "4. reload: "+exMarksPlugins(report)+" | hello: "+server.probe.must("held", nil).(string))
+	var layout PluginLayout
+	for _, plugin := range plugins.Discovery().Plugins {
+		if plugin.Name == "hello" {
+			layout = plugin.Layout
+		}
+	}
+	printed = append(printed, "   hello is now: "+string(layout))
+	server.probe.must("release", nil)
+
+	want := []string{
+		"1. bad (file): bad.server.ts",
+		"1. clock (file): clock.server.ts",
+		"1. hello (file): hello.server.ts, hello.web.ts",
+		`   bad refused: bad.server.ts:4:24: "./helper.ts": a single-file plugin imports only host packages (the app's API); make it a directory "bad/" with a package.json`,
+		"2. hello: hello from one file | clock: ticking on the acme server",
+		`3. marks: {"dirty":["bad","clock","hello"],"install":[],"set":true,"base":false}`,
+		`4. reload: {"added":[],"changed":["hello"],"removed":[]} | hello: hello from a directory`,
+		"   hello is now: directory",
+	}
+	if !slices.Equal(printed, want) {
+		t.Fatalf("printed:\n%s\nwant:\n%s", strings.Join(printed, "\n"), strings.Join(want, "\n"))
+	}
+	collected.none(t)
+}
+
+// exMarksJSON is `JSON.stringify(plugins.state.value)`: the marks' fields in the order the component gives them.
+func exMarksJSON(marks PluginsState) string {
+	text, err := json.Marshal(struct {
+		Dirty   []string `json:"dirty"`
+		Install []string `json:"install"`
+		Set     bool     `json:"set"`
+		Base    bool     `json:"base"`
+	}{exList(marks.Dirty), exList(marks.Install), marks.Set, marks.Base})
+	if err != nil {
+		panic(err)
+	}
+	return string(text)
+}
+
+// exMarksPlugins is `JSON.stringify(report.plugins)`: `{"added":[],"changed":[],"removed":[]}`.
+func exMarksPlugins(report host.ReloadReport) string {
+	text, err := json.Marshal(struct {
+		Added   []string `json:"added"`
+		Changed []string `json:"changed"`
+		Removed []string `json:"removed"`
+	}{exList(report.Plugins.Added), exList(report.Plugins.Changed), exList(report.Plugins.Removed)})
+	if err != nil {
+		panic(err)
+	}
+	return string(text)
 }

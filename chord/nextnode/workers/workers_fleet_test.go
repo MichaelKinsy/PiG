@@ -398,7 +398,7 @@ func newPlugins(t testing.TB, root string) *plugins.Plugins {
 		t.Fatal(err)
 	}
 	component := plugins.CreatePlugins(plugins.PluginsOptions{
-		Roots:   []string{root},
+		Roots:   []plugins.PluginRoot{{Path: root}},
 		Kinds:   []plugins.KindDefinition{{Name: "worker", Platform: plugins.PlatformNode, HostPackages: []string{"@earendil-works/chord/next"}}},
 		OnError: func(plugins.PluginsError) {},
 	}, background)

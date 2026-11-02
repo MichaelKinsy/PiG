@@ -36,6 +36,15 @@ var probeContract = mustContract(contracts.Remote("test.probe", contracts.Remote
 // object literal: `name: async (args, { ctx, self }) => value, ...`.
 func probeCore(t *testing.T, cacheDir, ops string) CoreFacet {
 	t.Helper()
+	return probeCoreSetup(t, cacheDir, "", "", ops)
+}
+
+// probeCoreSetup is probeCore for a case whose Pi test holds something of the host's own while the probe's object is being
+// made (a registry read, `self.registry(R)`, is a declaration of that object): imports is module-level JavaScript (the
+// imports the setup and the ops use), setup is statements of the object's factory (`self` in scope) that put what the ops
+// read into `held`, which the ops get next to `ctx` and `self`.
+func probeCoreSetup(t *testing.T, cacheDir, imports, setup, ops string) CoreFacet {
+	t.Helper()
 	tree, err := extractNode(cacheDir)
 	if err != nil {
 		t.Fatal(err)
@@ -44,6 +53,7 @@ func probeCore(t *testing.T, cacheDir, ops string) CoreFacet {
 	module := `import * as next from "` + src + `next/index.ts";
 import * as evaluate from "` + src + `next-node/plugins/evaluate.ts";
 import * as stack from "` + src + `next-node/plugins/stack.ts";
+` + imports + `
 const { defineFacet, remote, method, str, hostKind } = next;
 const Worker = hostKind("test.worker");
 const Probe = remote("test.probe", {
@@ -54,15 +64,19 @@ const Probe = remote("test.probe", {
 });
 const ops = { ` + ops + ` };
 export default defineFacet((host) =>
-	host.serve(Probe, (_params, _principal, self) => ({
-		variant: "main",
-		members: {
-			call: async (request, ctx) => {
-				const { op, args } = JSON.parse(request);
-				return JSON.stringify((await ops[op](args, { ctx, self })) ?? null);
+	host.serve(Probe, (_params, _principal, self) => {
+		const held = {};
+		` + setup + `
+		return {
+			variant: "main",
+			members: {
+				call: async (request, ctx) => {
+					const { op, args } = JSON.parse(request);
+					return JSON.stringify((await ops[op](args, { ctx, self, held })) ?? null);
+				},
 			},
-		},
-	})),
+		};
+	}),
 );
 `
 	file := filepath.Join(t.TempDir(), "probe.mjs")
