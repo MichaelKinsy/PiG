@@ -338333,6 +338333,17 @@
       "shapeHash": "sha256:0b108dd1d479e4132d1a85f5c3d0f8288600354e8e0b1d9ac202925ec36ac9e2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#StdinBuffer.decodeTerminalBytes",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "StdinBuffer.decodeTerminalBytes",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data []byte) (text string, ok bool)"
+      },
+      "shapeHash": "sha256:f317fef5236949f98ff6511af1648fced17beb3cba2e79287f4731166034a352"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#StdinBuffer.dropAt",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "StdinBuffer.dropAt",
