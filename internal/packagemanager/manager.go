@@ -601,9 +601,11 @@ func fileCheckoutSegments(repoPath string) []string {
 // localhost file URL with a drive becomes the equivalent file:///C:/....
 func GitCloneRepo(goos, repo string) string {
 	const localhost = "file://localhost/"
+	//portlint:allow utf16units PiG-only Windows clone fix with no Pi counterpart; the prefix is ASCII, and EqualFold can only accept the first 17 bytes when they are ASCII (the only non-ASCII fold to a prefix letter is U+017F for s, which takes 2 bytes for one letter and so cannot fill 17 bytes with 17 letters), so the slice ends on a character boundary
 	if goos != "windows" || len(repo) < len(localhost) || !strings.EqualFold(repo[:len(localhost)], localhost) {
 		return repo
 	}
+	//portlint:allow utf16units the first len(localhost) bytes matched the ASCII prefix above, so this offset is a character boundary
 	rest := repo[len(localhost):]
 	drive, _, _ := strings.Cut(rest, "/")
 	if !IsDriveSegment(drive) {
@@ -614,6 +616,7 @@ func GitCloneRepo(goos, repo string) string {
 
 // IsDriveSegment reports whether segment is a Windows drive such as C:.
 func IsDriveSegment(segment string) bool {
+	//portlint:allow utf16units PiG-only drive check: a segment of 2 bytes whose bytes are an ASCII letter and a colon is exactly a 2-unit string of those characters, and any non-ASCII segment fails the byte tests and has more than 2 bytes or a non-letter first byte
 	return len(segment) == 2 && segment[1] == ':' && ('A' <= segment[0] && segment[0] <= 'Z' || 'a' <= segment[0] && segment[0] <= 'z')
 }
 

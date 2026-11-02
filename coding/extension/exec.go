@@ -47,6 +47,7 @@ func execMaxBuffer(opts *ExecOptions) (int64, error) {
 	if value != math.Trunc(value) || value < 0 || value > float64(execMaxStringLength) {
 		return 0, fmt.Errorf("maxBuffer must be an integer between 0 and %d bytes", execMaxStringLength)
 	}
+	//portlint:allow numbers value is finite, integral and within [0, 536870888] after the check above (NaN fails value != Trunc(value), infinities fail the upper bound), so int64(value) is exact like JS
 	return int64(value), nil
 }
 
@@ -319,5 +320,6 @@ func NodeTimerDelay(ms float64) time.Duration {
 	if !(ms >= 1 && ms <= 2147483647) {
 		return time.Millisecond
 	}
+	//portlint:allow numbers ms is within [1, 2147483647] here (NaN and out-of-range returned above), so int64(ms) is the truncation Node applies and cannot overflow
 	return time.Duration(int64(ms)) * time.Millisecond
 }
