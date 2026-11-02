@@ -180,6 +180,7 @@ func LoadPromptTemplates(cwd, agentDir string, extraPaths ...string) LoadPromptT
 
 // DedupePromptTemplates keeps the first template of each name, in order, and reports each later one as a collision with the first.
 //
+// Ports packages/coding-agent/src/core/resource-loader.ts (dedupePrompts).
 // upstream: resource-loader.ts:1156-1181 (dedupePrompts)
 func DedupePromptTemplates(templates []PromptTemplate) ([]PromptTemplate, []extension.ResourceDiagnostic) {
 	var kept []PromptTemplate

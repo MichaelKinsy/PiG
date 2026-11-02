@@ -6,5 +6,14 @@
    "pkg:codemode/cloudflare#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions",
    "pkg:codemode/portable#InlineCodemodeSandboxOptions::property:wasm": "codemode/inline.go#InlineSandboxOptions"
   }
+ },
+ "packages/coding-agent/src/core/slash-commands.ts": {
+  "reason": "The four SlashCommandInfo fields are declared once in the SlashCommandInfo struct of coding/extension/opaque_types.go, a file whose only function body belongs to CompactionResult; no slash-command evidence can execute a statement there. internal/codingagent/extension_host_info.go aliases that struct (SlashCommandInfo = extension.SlashCommandInfo) and is where Go builds every command info Pi's getCommands returns, which TestSlashCommandCatalogListsPromptAndSkillSources and the get_commands tests drive.",
+  "members": {
+   "pkg:coding-agent/.#SlashCommandInfo::property:description": "internal/codingagent/extension_host_info.go#SlashCommandInfo",
+   "pkg:coding-agent/.#SlashCommandInfo::property:name": "internal/codingagent/extension_host_info.go#SlashCommandInfo",
+   "pkg:coding-agent/.#SlashCommandInfo::property:source": "internal/codingagent/extension_host_info.go#SlashCommandInfo",
+   "pkg:coding-agent/.#SlashCommandInfo::property:sourceInfo": "internal/codingagent/extension_host_info.go#SlashCommandInfo"
+  }
  }
 }

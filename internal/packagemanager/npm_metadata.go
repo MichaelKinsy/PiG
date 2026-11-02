@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
+// Ports packages/coding-agent/src/core/package-manager.ts (getNpmVersionRange, installedNpmMatchesConfiguredVersion, getInstalledNpmVersion).
 // GetNpmVersionRange is Pi's getNpmVersionRange: the node-semver range a selector denotes, or "" when it is absent or not a valid npm range, such as a dist tag.
 func GetNpmVersionRange(version string) string {
 	if version == "" {

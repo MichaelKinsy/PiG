@@ -31,6 +31,7 @@ type ConfiguredPackage struct {
 }
 
 // GetGitDependencyInstallArgs selects the install arguments of a Git package's dependencies from the package manager the npmCommand names, without auto-installing peer dependencies.
+// Ports packages/coding-agent/src/core/package-manager.ts (getGitDependencyInstallArgs).
 // Ports .upstream/v0.99.1/packages/coding-agent/src/core/package-manager.ts:1821-1838 (getGitDependencyInstallArgs).
 func GetGitDependencyInstallArgs(sm *codingagent.SettingsManager, opts ...InstallOption) ([]string, error) {
 	manager, err := PackageManagerName(DefaultNpmCommand(sm))

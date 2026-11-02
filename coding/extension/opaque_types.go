@@ -322,6 +322,7 @@ type AutocompleteSuggestions struct {
 }
 
 // SlashCommandInfo mirrors core/slash-commands.SlashCommandInfo, one entry of getCommands: an extension command, prompt template or skill.
+// Ports packages/coding-agent/src/core/slash-commands.ts (SlashCommandInfo).
 type SlashCommandInfo struct {
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`

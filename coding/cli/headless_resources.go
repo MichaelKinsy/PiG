@@ -6,6 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
+// Ports packages/coding-agent/src/core/resource-loader.ts (the getSkills, getAgentsFiles, getSystemPrompt and getAppendSystemPrompt state a Session reads).
 // extensionPromptSkills is the Skill shape Pi hands extensions in systemPromptOptions.skills (skills.ts Skill).
 func extensionPromptSkills(skills []*codingagent.SkillDef) []extension.SystemPromptSkill {
 	return codingagent.SystemPromptSkills(skills)

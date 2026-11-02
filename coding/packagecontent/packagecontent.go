@@ -1730,6 +1730,7 @@ func normalizeJSONC(data []byte) ([]byte, error) {
 }
 
 // Collect expands files or conventional resource directories for kind.
+// Ports packages/coding-agent/src/core/package-manager.ts (collectFiles, collectAutoSkillEntries, collectAutoPromptEntries, collectAutoThemeEntries, collectAutoExtensionEntries, applyPatterns, isEnabledByOverrides).
 func Collect(paths []string, kind Kind) []string {
 	files := make([]string, 0)
 	for _, resourcePath := range paths {
