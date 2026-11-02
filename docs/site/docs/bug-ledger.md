@@ -1072,7 +1072,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b341a82](#bf-b341a82) | `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again | PiG's own defect | All platforms | 0.5.2 |
 | [BF-b3543f8](#bf-b3543f8) | Fixed MCP stdio servers staying alive after PiG exited because the terminal closed, it crashed, or it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b368be5](#bf-b368be5) | `pig install --validate-only [--json]` with no source now checks every local-path entry of `packages[]` (user… | PiG's own defect | All platforms | Unreleased |
-| [BF-b369ab5](#bf-b369ab5) | A cross-harness agent plugin skill whose `description` is long in bytes but at most 1024 characters (for… | PiG's own defect | All platforms | Unreleased |
+| [BF-f08ffe9](#bf-f08ffe9) | A cross-harness agent plugin skill whose `description` is long in bytes but at most 1024 characters (for… | PiG's own defect | All platforms | Unreleased |
 | [BF-b430c7a](#bf-b430c7a) | Extension widgets now appear in the order they were set when Node or other extension-process widgets and Go… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b4504dd](#bf-b4504dd) | Amazon Bedrock request bodies match Pi's: PiG writes the ConverseStream body itself in the member order Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b47b6bc](#bf-b47b6bc) | fix(tui): number the editor wrap divergence D159 (lead block), cite Pi's measured RangeError; add… | PiG's own defect | All platforms | Unreleased |
@@ -16103,7 +16103,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** None recorded.
 - **Release note:** `pig install --validate-only [--json]` with no source now checks every local-path entry of `packages[]` (user and trusted project settings): it names each one whose directory does not exist with the path it resolved to and the `pig remove` command that drops it, and exits 1 when any is missing. Before, a Package whose folder was gone passed unnoticed (D216, #389).
 
-### BF-b369ab5
+### BF-f08ffe9
 
 **A cross-harness agent plugin skill whose `description` is long in bytes but at most 1024 characters (for…**
 
@@ -16113,7 +16113,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `b369ab5d32` (2026-11-02)
+- **Fix commits:** `f08ffe97f4` (2026-11-02)
 - **Tests:** `coding/packagecontent/packagecontent_test.go::TestAgentPluginsV1DescriptionLimitCountsUTF16Units`
 - **Release note:** A cross-harness agent plugin skill whose `description` is long in bytes but at most 1024 characters (for example 600 CJK characters) is no longer dropped from the package's skills. The limit counts UTF-16 units like Pi's skill validation, so 513 astral characters are over it.
 

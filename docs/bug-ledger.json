@@ -30009,7 +30009,7 @@
       "tests": []
     },
     {
-      "id": "BF-b369ab5",
+      "id": "BF-f08ffe9",
       "title": "A cross-harness agent plugin skill whose `description` is long in bytes but at most 1024 characters (for…",
       "symptom": "A cross-harness agent plugin skill whose `description` is long in bytes but at most 1024 characters (for example 600 CJK characters) is no longer dropped from the package's skills.",
       "rootCause": "validAgentPluginSkills compared len(description) (bytes) with 1024; Pi's validateDescription compares description.length (UTF-16 units), so a 600-character CJK description (1800 bytes) was dropped and 513 astral characters (2052 bytes, 1026 units) are now rejected only by units. Now jsstring.Length. Test: TestAgentPluginsV1DescriptionLimitCountsUTF16Units (red before the fix).",
@@ -30022,7 +30022,7 @@
       "origin": "release note",
       "commits": [
         {
-          "hash": "b369ab5d32",
+          "hash": "f08ffe97f4",
           "date": "2026-11-02"
         }
       ],
