@@ -15,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/cellpack"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/archivepath"
 )
 
 // buildNodeCell packs the sources of a Node cell's members into one tar
@@ -142,13 +143,17 @@ func writeArchiveFile(writer *tar.Writer, name, source string, info fs.FileInfo)
 // writeArchiveLink keeps a symbolic link whose relative target stays inside
 // the member's directory or names the directory itself, such as a package
 // manager's node_modules link or a package's link to itself. A link that
-// leaves the directory cannot be embedded.
+// leaves the directory, or that the extraction at startup would refuse
+// (archivepath.CheckLink), cannot be embedded.
 func writeArchiveLink(writer *tar.Writer, name, root, current string) error {
 	target, err := os.Readlink(current)
 	if err != nil {
 		return err
 	}
 	slashTarget := filepath.ToSlash(target)
+	if err := archivepath.CheckLink(name, slashTarget); err != nil {
+		return fmt.Errorf("symbolic link %s: %w", current, err)
+	}
 	member, _, _ := strings.Cut(name, "/")
 	//portlint:allow pathseparators tar member and link names are slash paths by the tar format, not host paths
 	resolved := path.Join(path.Dir(name), slashTarget)

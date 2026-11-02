@@ -156,3 +156,17 @@ func TestBuildNodeCellRefusesALinkOutsideTheExtension(t *testing.T) {
 		t.Fatalf("build error = %v", err)
 	}
 }
+
+// A symbolic link that the Binary's startup extraction would refuse is refused
+// at build, with the reason, rather than shipped: its target names a directory
+// and then climbs out of it, and the named directory may itself be a link.
+func TestBuildNodeCellRefusesALinkWithAParentStepAfterAName(t *testing.T) {
+	member := filepath.Join(t.TempDir(), "narrow")
+	writeFiles(t, map[string]string{filepath.Join(member, "index.ts"): "", filepath.Join(member, "lib", "x.ts"): ""})
+	testenv.Symlink(t, "lib/../index.ts", filepath.Join(member, "alias.ts"))
+	cell := subprocess.CellSpec{Key: "packed-node:abc", Strategy: subprocess.CellStrategyPackedNode, Language: "node", Extensions: []subprocess.ExtConfig{{Name: "narrow", Source: member}}}
+	_, err := buildNodeCell(cell, t.TempDir(), Target{OS: runtime.GOOS, Arch: runtime.GOARCH})
+	if err == nil || !strings.Contains(err.Error(), "climbs after naming a directory") {
+		t.Fatalf("build error = %v", err)
+	}
+}
