@@ -90756,6 +90756,17 @@
       "shapeHash": "sha256:502874fecdda1f5cff39021c1cd38f472a7dd5624c5926b81f3c15fbb2326ff5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#dropJSONSnippet",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "dropJSONSnippet",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(message string) string"
+      },
+      "shapeHash": "sha256:7f58715fb0a7d87451fa2d7b670f29a84ef4c8fc1ebcfe7432c87ac02a22313e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#droppedBinaryMembers",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "droppedBinaryMembers",
@@ -92679,6 +92690,17 @@
         "type": "func() (*sync.poolLocal, int)"
       },
       "shapeHash": "sha256:8e29662471c87a624090b974d35b3745c7898061975b31c44125e4b0ffd679b2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#jsonSnippet",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "jsonSnippet",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
+      },
+      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#linkDiagnostics",
@@ -95253,6 +95275,17 @@
         "type": "func(ctx context.Context, err error)"
       },
       "shapeHash": "sha256:798c6961f0335f47604605b29c5355f65ebffd9dd438c572e0ee201500953c9d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#redactStatusText",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "redactStatusText",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(message string) string"
+      },
+      "shapeHash": "sha256:7f58715fb0a7d87451fa2d7b670f29a84ef4c8fc1ebcfe7432c87ac02a22313e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#refreshModelCatalogs",
@@ -100929,6 +100962,17 @@
         "type": "statusResources"
       },
       "shapeHash": "sha256:a5cbf866e11638ac0635b33d869064cfa4b423f9403e81680e8350f889e106fa"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#statusURL",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "statusURL",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Regexp"
+      },
+      "shapeHash": "sha256:b2bada16c90e0a1f7a12c5d87c11865788ab6be78d85f83e367aec2254fdade4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#stdoutQueue",
@@ -117937,17 +117981,6 @@
       "shapeHash": "sha256:cbb2b2e00386f8aa1c452bfaf1d8e95e46017407b22b4cb9c514ca9134926725"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/cellpack#archiveMemberPath",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/cellpack",
-      "name": "archiveMemberPath",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(name string) (string, error)"
-      },
-      "shapeHash": "sha256:0fb6e6c1c7b9b2d75b58963aa780baf82c8aa0ad8e693b5adabd5055fcbd850c"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/cellpack#atomicWriteFile",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/cellpack",
       "name": "atomicWriteFile",
@@ -118221,6 +118254,17 @@
         "type": "func(oldpath string, newpath string) error"
       },
       "shapeHash": "sha256:2b6b36160a4610d7a1f2726b884a6f96dd6a6cf9dd3ca16200afd1356dcd016e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/cellpack#requireRealFolders",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/cellpack",
+      "name": "requireRealFolders",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(tree *os.Root, real map[string]struct{}, name string, includeName bool) error"
+      },
+      "shapeHash": "sha256:30d202c37121eba0366f3f0891e1f1ee959b08a88a7981ab931ed2473fd90e7a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/cellpack#untarNodeSources",
@@ -277974,6 +278018,17 @@
         "type": "indexProbe"
       },
       "shapeHash": "sha256:e9fc1c0306b24a343523d14f02ef563605a3f7179fd9525dfb6164e5a4b02f86"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#indexVariantName",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "indexVariantName",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(text string, variant string) int"
+      },
+      "shapeHash": "sha256:21e429299f219ce146e4af1d493b370795ee7520a66481b7d20fb8033abd6df3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#inferCopilotInitiatorProbe",
