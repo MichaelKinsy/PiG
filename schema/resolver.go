@@ -299,6 +299,7 @@ func ownMember(node any, key string) (any, bool) {
 		if key == "length" {
 			return float64(len(list)), true
 		}
+		//portlint:allow numbers Atoi plus the Itoa round trip accepts only canonical array indices, the own index keys of Object.hasOwn(node, key) in resolver.ts pointer()
 		if index, err := strconv.Atoi(key); err == nil && index >= 0 && index < len(list) && strconv.Itoa(index) == key {
 			return list[index], true
 		}
