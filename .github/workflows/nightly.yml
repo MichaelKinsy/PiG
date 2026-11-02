@@ -27,7 +27,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-15]
-        group: [ai, rest, host, coding, libs]
+        group: [ai, rest, host, coding, libs, hljs]
         include:
           - {os: ubuntu-24.04, group: cli, shard: 1/4}
           - {os: ubuntu-24.04, group: cli, shard: 2/4}

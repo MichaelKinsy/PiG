@@ -3,6 +3,7 @@ package hljs
 import (
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -197,7 +198,6 @@ func TestDeferredHighlightMatchesEagerLoad(t *testing.T) {
 
 func TestDeferredAutoDetectMatchesEagerLoad(t *testing.T) {
 	reference := eagerRegistry()
-	lazy := loadedRegistry()
 	corpus := resumeCorpus(t)
 	subset := []string{"yaml", "sql", "xml", "markdown"}
 	partial := loadedRegistry()
@@ -214,32 +214,44 @@ func TestDeferredAutoDetectMatchesEagerLoad(t *testing.T) {
 	if partial.deferred == nil || len(partial.deferred.roots) < len(reference.order)-40 {
 		t.Fatal("auto-detection among a few languages decoded most of the full set")
 	}
-	checked := 0
 	// Every sample takes about a minute of eager and lazy auto-detection; -short keeps one in ten.
 	stride := 1
 	if testing.Short() {
 		stride = 10
 	}
+	var samples []corpusSample
 	for i, c := range corpus {
-		if i%stride != 0 {
-			continue
+		if i%stride == 0 {
+			samples = append(samples, c)
 		}
-		got, err := lazy.HighlightAuto(c.Code, nil)
-		want, wantErr := reference.HighlightAuto(c.Code, nil)
-		if got != want || (err == nil) != (wantErr == nil) {
-			t.Errorf("auto-detection of %s differs from the eager load", c.ID)
-		}
-		checked++
 	}
-	if want := (len(corpus) + stride - 1) / stride; checked != want || want < 65 {
-		t.Fatalf("%d of %d corpus samples auto-detected: the check proves nothing", checked, len(corpus))
-	}
-	if lazy.deferred != nil {
-		t.Fatal("auto-detection over every language left languages undecoded")
-	}
-	for _, name := range reference.Languages() {
-		if lazy.languages[name] == nil {
-			t.Fatalf("%s is not registered after auto-detection", name)
-		}
+	// Each worker auto-detects with a lazy registry of its own against an eager one of its own, so its first sample decodes the languages the lazy registry has not decoded yet, and every later one runs on what that left.
+	var checked atomic.Int64
+	parallelEach(t, samples, func() (func(corpusSample), func(int)) {
+		reference := eagerRegistry()
+		lazy := loadedRegistry()
+		return func(c corpusSample) {
+				got, err := lazy.HighlightAuto(c.Code, nil)
+				want, wantErr := reference.HighlightAuto(c.Code, nil)
+				if got != want || (err == nil) != (wantErr == nil) {
+					t.Errorf("auto-detection of %s differs from the eager load", c.ID)
+				}
+				checked.Add(1)
+			}, func(took int) {
+				if took == 0 {
+					return
+				}
+				if lazy.deferred != nil {
+					t.Error("auto-detection over every language left languages undecoded")
+				}
+				for _, name := range reference.Languages() {
+					if lazy.languages[name] == nil {
+						t.Errorf("%s is not registered after auto-detection", name)
+					}
+				}
+			}
+	})
+	if want := len(samples); int(checked.Load()) != want || want < 65 {
+		t.Fatalf("%d of %d corpus samples auto-detected: the check proves nothing", checked.Load(), len(corpus))
 	}
 }

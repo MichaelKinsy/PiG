@@ -4,6 +4,7 @@ import (
 	"math/bits"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -38,55 +39,86 @@ func matchersOf(language *Mode) []*multiRegex {
 
 const dispatchProbeText = "é中😀 \u2028\t\r\n# \"'`\\${}()[]<>=+-*/%&|^~!?:;,.@_0aZ 12 x\n"
 
+// dispatchShards is the parts one text's matchers are split into, so the matchers of the few longest samples run on every worker; the matchers of a language are the same in every registry and in the same order.
+const dispatchShards = 16
+
 // TestBranchDispatchEqualsTheJoinedExpression: at every position of every corpus sample (and of a text of punctuation and non-ASCII units), the matcher of every mode of the sample's language finds, with the dispatch, the match the joined regular expression finds: the same index, the same groups, the same branch.
 func TestBranchDispatchEqualsTheJoinedExpression(t *testing.T) {
-	r := NewRegistry()
-	r.LoadAllLanguages()
-	checked, skipped := 0, 0
+	type job struct {
+		c     corpusSample
+		text  string
+		shard int
+	}
+	known := NewRegistry()
+	known.LoadAllLanguages()
+	var jobs []job
 	probed := map[string]bool{}
-	for _, c := range resumeCorpus(t) {
-		if !r.SupportsLanguage(c.Lang) {
+	for _, c := range distinctSamples(t) {
+		if !known.SupportsLanguage(c.Lang) {
 			continue
 		}
-		language := compileLanguage(r.getLanguage(c.Lang))
 		texts := []string{c.Code}
 		if !probed[c.Lang] {
 			probed[c.Lang] = true
 			texts = append(texts, dispatchProbeText)
 		}
 		for _, text := range texts {
-			units := stringToUnits(text)
-			for _, m := range matchersOf(language) {
+			for shard := range dispatchShards {
+				jobs = append(jobs, job{c, text, shard})
+			}
+		}
+	}
+	var checked, skipped atomic.Int64
+	parallelEach(t, jobs, func() (func(job), func(int)) {
+		r := NewRegistry()
+		r.LoadAllLanguages()
+		matchers := map[string][]*multiRegex{}
+		return func(j job) {
+			c := j.c
+			if matchers[c.Lang] == nil {
+				matchers[c.Lang] = matchersOf(compileLanguage(r.getLanguage(c.Lang)))
+			}
+			units := stringToUnits(j.text)
+			for i, m := range matchers[c.Lang] {
+				if i%dispatchShards != j.shard {
+					continue
+				}
 				if m.dispatch == nil {
-					skipped++
+					skipped.Add(1)
 					continue
 				}
 				// Scan the way the highlighter does: from each match to the next. Every match, and the gap before it, is compared; so is every 97th start.
-				compare := func(p int) *jsMatch {
+				compare := func(p int) (match *jsMatch, ok bool) {
 					want := m.matcherRe.exec(units, p)
 					got := m.dispatch.exec(m.matcherRe, units, p, m.matchAt-1)
-					checked++
+					checked.Add(1)
 					if (want == nil) != (got == nil) || want != nil && (want.index != got.index || !slices.Equal(want.spans, got.spans)) {
-						t.Fatalf("%s %s from %d: joined %+v, dispatch %+v\nmatcher %s", c.ID, c.Lang, p, want, got, m.matcherRe.source)
+						t.Errorf("%s %s from %d: joined %+v, dispatch %+v\nmatcher %s", c.ID, c.Lang, p, want, got, m.matcherRe.source)
+						return nil, false
 					}
-					return want
+					return want, true
 				}
 				for p := 0; p <= len(units); {
-					match := compare(p)
+					match, ok := compare(p)
+					if !ok {
+						return
+					}
 					if match == nil {
 						break
 					}
 					p = match.index + 1
 				}
 				for p := 0; p <= len(units); p += 97 {
-					compare(p)
+					if _, ok := compare(p); !ok {
+						return
+					}
 				}
 			}
-		}
-	}
-	t.Logf("%d positions compared, %d matchers without dispatch", checked, skipped)
-	if checked < 100_000 {
-		t.Fatalf("only %d positions compared", checked)
+		}, nil
+	})
+	t.Logf("%d positions compared, %d matchers without dispatch", checked.Load(), skipped.Load())
+	if checked.Load() < 100_000 {
+		t.Fatalf("only %d positions compared", checked.Load())
 	}
 }
 
