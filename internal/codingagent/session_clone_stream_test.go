@@ -18,8 +18,8 @@ func cloneLines(t *testing.T, clone *Session) string {
 	lines := strings.Split(strings.TrimSuffix(string(data), "\n"), "\n")[1:]
 	var labelIDs []string
 	for _, line := range lines {
-		if strings.HasPrefix(line, `{"type":"label","id":"`) {
-			labelIDs = append(labelIDs, strings.SplitN(strings.TrimPrefix(line, `{"type":"label","id":"`), `"`, 2)[0])
+		if after, ok := strings.CutPrefix(line, `{"type":"label","id":"`); ok {
+			labelIDs = append(labelIDs, strings.SplitN(after, `"`, 2)[0])
 		}
 	}
 	joined := strings.Join(lines, "\n")
