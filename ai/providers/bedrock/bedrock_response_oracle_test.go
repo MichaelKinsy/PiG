@@ -144,7 +144,7 @@ func bedrockFrames(rng *rand.Rand) [][2]string {
 func TestBedrockResponseStreamMatchesPi(t *testing.T) {
 	rng := rand.New(rand.NewSource(131))
 	var probes []bedrockResponseProbe
-	for range 1000 {
+	for range bedrockResponseProbeCount() {
 		p := bedrockResponseProbe{ModelID: "anthropic.claude-sonnet-4-5-20250929-v1:0", Reasoning: rng.Intn(2) == 0}
 		if rng.Intn(25) == 0 {
 			p.Status = []int{400, 403, 429, 500, 503}[rng.Intn(5)]

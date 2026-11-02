@@ -187,7 +187,12 @@ func TestIsolatedPigHomeKeepsRustToolchainHomes(t *testing.T) {
 			environment := slices.DeleteFunc(os.Environ(), func(entry string) bool {
 				return strings.HasPrefix(entry, "RUSTUP_HOME=") || strings.HasPrefix(entry, "CARGO_HOME=")
 			})
-			environment = append(environment, "HOME="+parent, "USERPROFILE="+parent, "TMPDIR="+parent, "GOROOT="+goRoot)
+			// On Windows rustup's default is under USERPROFILE, so a HOME that differs from it must not decide the pin.
+			home := parent
+			if runtime.GOOS == "windows" {
+				home = filepath.Join(parent, "msys-home")
+			}
+			environment = append(environment, "HOME="+home, "USERPROFILE="+parent, "TMPDIR="+parent, "GOROOT="+goRoot)
 			want := map[string]string{"RUSTUP_HOME": filepath.Join(parent, tc.wantRustupSuffix), "CARGO_HOME": filepath.Join(parent, tc.wantCargoSuffix)}
 			if tc.explicitRustup != "" {
 				environment = append(environment, "RUSTUP_HOME="+filepath.Join(parent, tc.explicitRustup), "CARGO_HOME="+filepath.Join(parent, tc.explicitCargo))
