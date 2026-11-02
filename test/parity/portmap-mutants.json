@@ -1774,5 +1774,26 @@
    "old": "\"code_challenge_method\", \"S256\", \"nonce\"",
    "new": "\"code_challenge_method\", \"plain\", \"nonce\""
   }
+ ],
+ "packages/agent/src/agent.ts": [
+  {
+   "file": "agent/queue.go",
+   "old": "\tif q.mode == QueueModeAll {\n",
+   "new": "\tif q.mode != QueueModeAll {\n"
+  }
+ ],
+ "packages/agent/src/stream-fn.ts": [
+  {
+   "file": "agent/stream_fn.go",
+   "old": "\tdefaultStream.fn = fn\n",
+   "new": "\tdefaultStream.fn = nil\n"
+  }
+ ],
+ "packages/ai/src/api/transform-messages.ts": [
+  {
+   "file": "ai/tool_flow.go",
+   "old": "ToolResultMessage{ToolCallID: call.ID, ToolName: call.Name,",
+   "new": "ToolResultMessage{ToolCallID: call.Name, ToolName: call.Name,"
+  }
  ]
 }
