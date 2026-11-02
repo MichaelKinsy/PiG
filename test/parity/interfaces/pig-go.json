@@ -28067,6 +28067,39 @@
       "shapeHash": "sha256:52cf33c13011ba0e455bc80dd54ca6e80183823b84b9ea3e772497ff5d64dbc8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#anthIsOrIsUnder",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "anthIsOrIsUnder",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string, key string) bool"
+      },
+      "shapeHash": "sha256:1241be4b725b1d64a17335cfb1280d7275de92e1bd7859d19026ea86db9c6d38"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#anthKeepsLegacySchemaOrder",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "anthKeepsLegacySchemaOrder",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string) bool"
+      },
+      "shapeHash": "sha256:3669eb7349cb8bcae461655862e7429d36ba1b77f74bc7b6eea72428d185bbe8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#anthLegacyDefinitionKeys",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "anthLegacyDefinitionKeys",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[]string"
+      },
+      "shapeHash": "sha256:a1c330895d4124c2ac5e7956eaa7a61082b08546669578b38030562429ad3b1e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#anthLegacyInputSchemaOrder",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "anthLegacyInputSchemaOrder",
@@ -230962,6 +230995,17 @@
       "shapeHash": "sha256:4449a88b752360c93f3e8d4033e9a37f2ae74c94f2f72d2e71c487c0598a80af"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring#appendCodePoint",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring",
+      "name": "appendCodePoint",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(out []byte, r rune) []byte"
+      },
+      "shapeHash": "sha256:ec8435ff711b5a54d69732325d0d3476280174cf9add64a3b5410d642011b3c5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring#asciiLowerPrefix",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring",
       "name": "asciiLowerPrefix",
@@ -230982,6 +231026,17 @@
         "type": "func(text string, n int) (int, bool)"
       },
       "shapeHash": "sha256:a663eb77e9d34a24cfdccebddf48c171faadeb35f7c7c5a398d534b000391a56"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring#codePoints",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring",
+      "name": "codePoints",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(s string) []rune"
+      },
+      "shapeHash": "sha256:39df08c877b6c0171c1ce90d465bd186a839395087612f5ac7033e329e192577"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring#decodeNonASCII",
@@ -364997,6 +365052,17 @@
       "shapeHash": "sha256:191a15d930e24f72e35908f3f1785b2665762f179266a58f642f739ad4375487"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#nodeTimerDelay",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "nodeTimerDelay",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(milliseconds float64) time.Duration"
+      },
+      "shapeHash": "sha256:5892c68e060e16e6ad0524e0ba99a02199f9507d78afe81be999f597a7b95bae"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#nodesEqual",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "nodesEqual",
@@ -370814,17 +370880,6 @@
         "type": "string"
       },
       "shapeHash": "sha256:00404e686415370f1711c4d7acfa2905444d3cf23cef2e10c47d445ebe690f96"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#terminalColorQueryDelay",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "terminalColorQueryDelay",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(milliseconds float64) time.Duration"
-      },
-      "shapeHash": "sha256:5892c68e060e16e6ad0524e0ba99a02199f9507d78afe81be999f597a7b95bae"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#terminalColorReplyCount",
