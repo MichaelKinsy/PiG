@@ -53,6 +53,7 @@ const (
 	EffectDeferred
 	EffectCallback
 	EffectHops
+	EffectMacrotask
 )
 
 // NoticeKind is the kind of a notice a step publishes (ABI section 7).

@@ -829,3 +829,10 @@ commit = "761f5a208c95d475896b10bb47f8ed0cb04d2563"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The changed literal is the failure message of an allocation ceiling, not an expectation: the ceiling (6.0 allocated bytes per source byte of the branch) and the assertion are unchanged. Pi holds every entry decoded and has no such test. The commit makes SessionManager.Clone stream each record from the source to the clone's file and open that file as a resume does, instead of rewriting every record member by member, canonicalizing it and decoding it again, so the message no longer names the cost that exceeded the ceiling."
+
+[[entry]]
+path = "durable/core/driver/harness_provider_request_core_test.go"
+commit = "e6e85cd392"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Pi's onPayload answer is whatever JSON.parse read; PiG's core driver hands the providers that answer as validated JSON text (a json.RawMessage, which the providers already take through payloadReplacement) instead of a decoded any, so it keeps the member order the chain wrote. Only the Go representation the test compares changed (sent holds the chain's text, not decoded maps); no Pi behavior changed."

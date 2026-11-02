@@ -112,17 +112,16 @@ func TestQueueScanBehindRead(t *testing.T) {
 	}
 }
 
-// ReadOnLine: E23 measures 7 for readOnLine(() => storage.conversation(id)) (a direct 5-tick read) and 25 for readContextFrom's
-// bounds (22); an async arrow that awaits nothing is still one tick of its own (scheduler.ts :308 waitForTask's read job is
-// 4 ticks on Pi).
-func TestReadOnLineCountsAJobThatAwaitsNothing(t *testing.T) {
+// ReadReturn: readOnLine wraps the job in an async arrow whose `await job(...)` resumes a tick after the job settles (session.ts :536-546): a
+// direct 5-tick read returns its work at 5, the bounds read of 22 ticks at 23, and an arrow that awaits nothing is still one tick of its own.
+func TestReadReturnCountsAJobThatAwaitsNothing(t *testing.T) {
 	for _, c := range []struct {
 		body   int
 		direct bool
 		want   int
-	}{{5, true, 7}, {22, false, 25}, {0, false, 4}, {0, true, 3}} {
-		if got := ReadOnLine(c.body, c.direct); got != c.want {
-			t.Errorf("ReadOnLine(%d, %v) = %d, want %d", c.body, c.direct, got, c.want)
+	}{{5, true, 5}, {22, false, 23}, {0, false, 1}} {
+		if got := ReadReturn(c.body, c.direct); got != c.want {
+			t.Errorf("ReadReturn(%d, %v) = %d, want %d", c.body, c.direct, got, c.want)
 		}
 	}
 }

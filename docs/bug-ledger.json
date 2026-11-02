@@ -4103,7 +4103,7 @@
         }
       ],
       "tests": [
-        "durable/core/hops_host_commit_test.go::TestAHostCommitIsAnsweredEarlyEnoughForItsCallerToResumeAtThePiJobEnd",
+        "durable/core/hops_host_answer_test.go::TestAHostCommitIsAnsweredHostAnswerLeadTicksBeforeItsCallerResumes",
         "durable/core/session/sched_restart_test.go::TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit"
       ]
     },
@@ -8588,7 +8588,7 @@
       ],
       "tests": [
         "durable/core/host/cf/test/settimer-timers.test.ts",
-        "durable/core/session/sched_close_reserve_test.go::TestAGatedReservationCommitLandsWhenCloseSealsWhileTheStorageHoldsIt"
+        "durable/core/session/sched_close_reserve_test.go::TestAReservationJobThatRunsAgainAfterACommitKeepsTheDecisionOfItsFirstRun"
       ]
     },
     {
@@ -26090,6 +26090,96 @@
       ],
       "tests": [
         "durable/core/driver/harness_read_only_core_test.go::TestReadOnlyHarnessCore"
+      ]
+    },
+    {
+      "id": "BF-9883d4b",
+      "title": "Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends…",
+      "symptom": "Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends the operations since the revision the host holds, and arrays that are only appended to are tracked as a tail.",
+      "rootCause": "- session: Writer (admission, batched Storage calls, refusal, rejection after receipts, SessionFailed), Loop with host-supplied durations, decision regions with the keys each decision read (scheduler.ts #region, membershipKeys, #loadChain, pins), tails/taskdocs (CachedStorage shape: conversation tails 4096, ended tasks 256, submissions 256), the scheduler kick as one microtask after the publication, waitForTask registered in the job body, maintain jobs exempt from admission. - hopcost: tick model re-derived at (multi-batch Commit, ReceiveTail, record cache, JobTicks); ticks.json regenerated. - core and host ABI: joined commits (flags byte), macrotask effect, receive/ publish/touch ops…",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends the operations since the revision the host holds, and arrays that are only appended to are tracked as a tail. 1000 nested calls take 2.05 s instead of 4.94 s and 4000 calls 8.5 s instead of 49.3 s, with allocations per call flat.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9883d4b247",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "durable/core/ctxread_test.go::TestContextBoundsOfAConversationNotKnownReadStorageOnce",
+        "durable/core/ctxread_test.go::TestContextBoundsOfACutoffInTheKeptRangeReadNoEntry",
+        "durable/core/ctxread_test.go::TestContextBoundsOfAnInvisibleCutoffFail",
+        "durable/core/ctxread_test.go::TestContextBoundsOfWhatTheSessionWroteReadNothing",
+        "durable/core/ctxread_test.go::TestRangeCurrentOnlyOfAReadAtTheNewestEntryOrTheUnchangedRange",
+        "durable/core/driver/doc_replica_test.go::TestDocReplicaCatchesUpWithTheOperationsTheCoreSent",
+        "durable/core/driver/doc_replica_test.go::TestDocReplicasKeepOnlyAnswersTheCoreNamedAndAFewDocuments",
+        "durable/core/driver/fanout_scaling_norace_test.go::TestScalingCoreNestedCallFanout",
+        "durable/core/driver/settings_text_test.go::TestSettingsTextIsEncodedOnlyWhenTheSettingsChange",
+        "durable/core/group_commit_test.go::TestACallThatRejectsAfterItsReceiptsPublishesThenRejects",
+        "durable/core/group_commit_test.go::TestAReadOfAKeyAnUnpublishedCommitWritesWaitsForItsPublication",
+        "durable/core/group_commit_test.go::TestARefusedBatchRejectsWithTheRefusalAndFailsTheSession",
+        "durable/core/group_commit_test.go::TestCloseDrainsTheCallInFlight",
+        "durable/core/group_commit_test.go::TestCommitsAdmittedDuringACallLeaveInOneCall",
+        "durable/core/group_commit_test.go::TestEachPartIsPublishedInsideTheStoragesScope",
+        "durable/core/group_commit_test.go::TestThePartsOfOneCallArePublishedAMacrotaskApart",
+        "durable/core/hops_tick_test.go::TestTwoPartsOfOneCallArePublishedAMacrotaskApart",
+        "durable/core/internal/delta/tracker_scaling_norace_test.go::TestScalingTrackerAppendToALongArray",
+        "durable/core/internal/delta/tracker_scaling_norace_test.go::TestScalingTrackerReadsOfALongArray",
+        "durable/core/internal/delta/tracker_tail_test.go::TestTailOverlayMatchesTheEntryList",
+        "durable/core/session/gc_ticks_test.go::TestLineTicksMatchPi",
+        "durable/core/session/hopcost/gated_ticks_test.go::TestGatedWrappers",
+        "durable/core/session/hopcost/gated_ticks_test.go::TestRuntimeCommitMatchesPi",
+        "durable/core/session/hopcost/hopcost_test.go::TestCommitTailIsWithinTheCommit",
+        "durable/core/session/hopcost/hopcost_test.go::TestRecordReads",
+        "durable/core/session/hopcost/queue_test.go::TestReadReturnCountsAJobThatAwaitsNothing",
+        "durable/core/session/hopcost/session_ticks_test.go::TestPairedCommitsMatchPi",
+        "durable/core/session/hopcost/session_ticks_test.go::TestSessionModelMatchesTheMeasuredSession",
+        "durable/core/session/hopcost/ticks_test.go::TestCommitCall",
+        "durable/core/session/hopcost/ticks_test.go::TestCommitCallMemory",
+        "durable/core/session/host_since_test.go::TestHostDocGivesTheOperationsSinceAHeldRevision",
+        "durable/core/session/host_since_test.go::TestHostDocGivesTheValueWhenItCannotContinueFromTheHeldRevision",
+        "durable/core/session/loop_block_test.go::TestLoopHeldJobReleasesTheLineBeforeItsCallerResumes",
+        "durable/core/session/loop_block_test.go::TestLoopHostJobHoldsTheLineUntilTheHostEndsIt",
+        "durable/core/session/loop_block_test.go::TestLoopHostJobNotGrantedTakesNothing",
+        "durable/core/session/loop_block_test.go::TestLoopJobThatWaitsForAPublicationHoldsTheLineAndRunsAgain",
+        "durable/core/session/loop_block_test.go::TestLoopMaintainJobRunsAfterAdmissionClosed",
+        "durable/core/session/loop_host_test.go::TestLoopHostJobAnswersItsCallerAheadOfItsResumption",
+        "durable/core/session/loop_host_test.go::TestWriterPublishesInTheHostStoragesScope",
+        "durable/core/session/loop_queue_test.go::TestAJobStartsWhenTheLineIsFreeAndOutcomesFollowInLineOrder",
+        "durable/core/session/loop_queue_test.go::TestAQueuedJobIsNoLargerThanItsLineState",
+        "durable/core/session/recordcache_test.go::TestAReadOnlySessionKeepsNothing",
+        "durable/core/session/recordcache_test.go::TestAnEndedTaskAWaiterNamesStaysUntilItMovedOn",
+        "durable/core/session/recordcache_test.go::TestConversationsAreKeptWhenWrittenOrReadAndBounded",
+        "durable/core/session/recordcache_test.go::TestSubmissionsAreKeptOnlyAsWritten",
+        "durable/core/session/recordcache_test.go::TestTasksAreLiveUntilTheyEndThenBounded",
+        "durable/core/session/recordcache_test.go::TestTheLiveSetIsBoundedOnceTheCachesAreFull",
+        "durable/core/session/recordcache_ticks_test.go::TestReadsChargeTheCacheOrStorage",
+        "durable/core/session/sched_abort_ticks_test.go::TestAbortMarkSignalsTheRunOneTickAfterItsPublication",
+        "durable/core/session/sched_close_reserve_test.go::TestAReservationCommitLandsWhenCloseSealsWhileTheStorageHoldsIt",
+        "durable/core/session/sched_context_test.go::TestAKeptContextRangeAdvancesWithTheEntriesOfLaterCommits",
+        "durable/core/session/sched_context_test.go::TestAKeptContextRangeCutOffAtAnEarlierEntryIsNotAdvanced",
+        "durable/core/session/sched_context_test.go::TestAKeptContextRangeThatMissedACommitIsNotCurrent",
+        "durable/core/session/sched_context_test.go::TestAnEntryOfTheKeptRangeIsKnownWithoutAStorageRead",
+        "durable/core/session/sched_context_test.go::TestAnIdleKeptContextRangePastItsRetentionIsDroppedByTheNextEntry",
+        "durable/core/session/sched_inspect_test.go::TestInspectJobChargesTheTickOfAwaitingPublished",
+        "durable/core/session/sched_scale_test.go::TestAFinalizeJobThatRunsAgainFinalizesTheChain",
+        "durable/core/session/sched_scale_test.go::TestAStartedChainOfHeldTasksKeepsBoundedBytesPerTask",
+        "durable/core/session/sched_scenario_test.go::TestSchedulerMatchesPiDurable",
+        "durable/core/session/tails_test.go::TestEndingATaskAnotherSessionCreatedScansItsDocuments",
+        "durable/core/session/tails_test.go::TestEndingATaskTheSessionCreatedRetiresItsDocumentsWithoutAScan",
+        "durable/core/session/tails_test.go::TestTailsAnswerACutoffFromTheNewestMarkerOnlyAtOrAfterIt",
+        "durable/core/session/tails_test.go::TestTailsKeepABoundedNumberOfConversationsFewerWithMarkers",
+        "durable/core/session/tails_test.go::TestTailsKnowANewRootConversationIsEmptyAndAForkOnlyOnceReadOrWritten",
+        "durable/core/session/tails_test.go::TestTailsReadOnceThenFollowTheCommits",
+        "durable/core/sqlhost/mailbox_test.go::TestMailboxKeepsOrderAndItsBackingArray",
+        "durable/core/turn/commit_progress_test.go::TestGenerationAttemptIsStoredWithTheNextCommit",
+        "durable/core/turn/commit_progress_test.go::TestSafeToolRerunShowsTheSlotRunning",
+        "durable/core/turn/commit_progress_test.go::TestToolRunningStatusIsStoredWithTheNextCommit"
       ]
     },
     {

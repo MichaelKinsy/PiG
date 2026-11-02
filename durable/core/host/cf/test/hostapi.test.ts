@@ -28,7 +28,7 @@ import { invocationBinding } from "../src/facade/hostapi.ts"
 
 test("an invocation's reads reject as 'invocation has ended' once it ended, including a wait the core cancelled for it", async () => {
   let fail!: (error: Error) => void
-  const client = { api: (_op: string) => new Promise((_, reject) => { fail = reject }) } as never
+  const client = { api: (_op: string) => new Promise((_, reject) => { fail = reject }), awaitWait: (promise: Promise<unknown>) => promise } as never
   const { binding, end } = invocationBinding(7, undefined)
   const api = invocationApi({ client }, { taskId: 7, conversationId: 3 }, binding)
   const waiting = api.waitForTask(9, BACKGROUND_CONTEXT)

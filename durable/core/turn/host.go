@@ -139,6 +139,15 @@ type StreamRequest struct {
 	Options *jv.Object
 	// Span is the host's handle of the span of the phase making the request: its Context.telemetry.
 	Span uint32
+	// PayloadHook runs generation.ts providerPayload: the beforeProviderRequest chain over one provider request body, each time the
+	// provider builds one. A request without it, as a compaction request, sets no onPayload.
+	PayloadHook PayloadHook
+}
+
+// PayloadHook is the beforeProviderRequest chain of a request. then receives the body to send; sent is false when the chain's
+// last result had no payload (the provider then keeps its own body); err is the abort that ended the chain.
+type PayloadHook interface {
+	BeforeProviderRequest(payload any, then func(payload any, sent bool, err error))
 }
 
 // CompleteRequest is a non-streaming model request (completeSimple): the compaction summarizer.
@@ -148,10 +157,12 @@ type CompleteRequest struct {
 	Context, Options *jv.Object
 }
 
-// KeptRange is the head marker entry (0: none) and newest entry of a kept context range; Ok is false when none is kept.
+// KeptRange is the bounds of a kept context range: the head marker entry (0: none), the entry its context starts from (0: the
+// first), the newest entry, and whether the range is kept current as commits append (session.ContextRange); Ok is false when none
+// is kept.
 type KeptRange struct {
-	Head, Tail ID
-	Ok         bool
+	Head, From, Tail ID
+	Current, Ok      bool
 }
 
 // Host is what the built-in tasks need of the surrounding Harness: the clock, settings, agent and model resolution,
@@ -219,6 +230,9 @@ type Host struct {
 	SnapshotLoaded func(def *session.DocDef, conversation ID) bool
 	// Entry reads one committed entry record, or nil.
 	Entry func(id ID) (*jv.Object, error)
+	// KeptEntry is the entry of the conversation that its kept context range holds, which is committed and visible from the
+	// conversation: runtime.entry answers it from the range, without a Storage read or a line job. nil when the range does not hold it.
+	KeptEntry func(conversation, id ID) *jv.Object
 	// AddTools adds tools to the agent's loadout in this commit (agent.ts addTools), for a tool result's addTools control.
 	AddTools func(tx *session.Tx, conversation ID, added []any) error
 	// After arms a volatile timer; the returned function cancels it.

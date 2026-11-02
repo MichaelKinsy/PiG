@@ -23,7 +23,7 @@ function line(handler: (ev: Seen, txOps: { op: string; [k: string]: any }[]) => 
       const op = ev.body
       if (op.op === "begin") return { notices: [txResult(ev.id!, { ready: true })] }
       if (op.op === "end") { log.push(op); return { notices: [txResult(ev.id!, { result: null })] } }
-      if (op.op === "abort") { log.push(op); return undefined }
+      if (op.op === "abort") { log.push(op); return { notices: [txResult(ev.id!, { result: null })] } }
       log.push(op)
       const answer = handler(ev, log) as any
       return { notices: [txResult(ev.id!, { result: answer && "result" in answer ? answer.result : null })] }
@@ -199,7 +199,6 @@ test("a submit(tx, draft) after a table write is Pi's ReadAfterWrite, which name
     if (ev.kind !== EVENT.tx) return undefined
     if (ev.body.op === "begin") return { notices: [txResult(ev.id!, { ready: true })] }
     if (ev.body.op === "submit") return { notices: [txResult(ev.id!, { rejected: { name: "ReadAfterWrite", message: "submit(tx, draft) cannot read tables after the first table write" } })] }
-    if (ev.body.op === "abort") return undefined
     return { notices: [txResult(ev.id!, { result: null })] }
   }
   const c = new Conversation(h, 1)

@@ -5,7 +5,7 @@
 // wait is a tick or a detenv virtual timer. Run by lib/run.mjs under the hooks.
 import { join } from "node:path"
 import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context"
-import { Type } from "@earendil-works/pi-ai"
+import { obj } from "@earendil-works/pi-schema"
 import { createModels } from "@earendil-works/pi-ai/models"
 import { fauxAssistantMessage, fauxProvider, fauxToolCall } from "@earendil-works/pi-ai/providers/faux"
 import { createRegistry, defineExtension, defineTool, Harness } from "@earendil-works/pi-durable"
@@ -26,7 +26,7 @@ const respond = transcript => {
 }
 faux.setResponses([respond])
 const streamer = defineTool({
-	name: "streamer", description: "streams one chunk, waits, returns", parameters: Type.Object({}), replay: "safe",
+	name: "streamer", description: "streams one chunk, waits, returns", parameters: obj({}), replay: "safe",
 	execute: async (_args, api) => {
 		mark = passes; counting = true; queueMicrotask(spin)
 		api.output("chunk 0\n")

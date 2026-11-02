@@ -943,6 +943,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9841da6](#bf-9841da6) | A shutdown that reaches an extension after it registered and before the host marked it ready now ends its run… | PiG's own defect | All platforms | Unreleased |
 | [BF-985b5f9](#bf-985b5f9) | fix(coding): a resumed session takes its active tools from the transcript (pi-mono #10785) [SIGNOFF-PENDING] | PiG's own defect | All platforms | Unreleased |
 | [BF-98666df](#bf-98666df) | Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close… | PiG's own defect | All platforms | Unreleased |
+| [BF-9883d4b](#bf-9883d4b) | Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends… | PiG's own defect | All platforms | Unreleased |
 | [BF-98a21df](#bf-98a21df) | Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-992f3cb](#bf-992f3cb) | A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-99a06cf](#bf-99a06cf) | Interactive startup paints the editor and footer first and adds the startup header once the terminal reports… | PiG's own defect | All platforms | 0.5.0 |
@@ -3424,7 +3425,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `228dbea36a` (2026-10-27)
-- **Tests:** `durable/core/hops_host_commit_test.go::TestAHostCommitIsAnsweredEarlyEnoughForItsCallerToResumeAtThePiJobEnd`, `durable/core/session/sched_restart_test.go::TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit`
+- **Tests:** `durable/core/hops_host_answer_test.go::TestAHostCommitIsAnsweredHostAnswerLeadTicksBeforeItsCallerResumes`, `durable/core/session/sched_restart_test.go::TestTheAbortStepIsEnqueuedAbortReturnHopsAfterTheHandlerCommit`
 
 ### BF-2309604
 
@@ -5546,7 +5547,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `432775653a` (2026-10-27)
-- **Tests:** `durable/core/host/cf/test/settimer-timers.test.ts`, `durable/core/session/sched_close_reserve_test.go::TestAGatedReservationCommitLandsWhenCloseSealsWhileTheStorageHoldsIt`
+- **Tests:** `durable/core/host/cf/test/settimer-timers.test.ts`, `durable/core/session/sched_close_reserve_test.go::TestAReservationJobThatRunsAgainAfterACommitKeepsTheDecisionOfItsFirstRun`
 - **Release note:** Durable core: a Harness opened through the TypeScript host honours `HarnessOptions.setTimer` and `onWake` (sleeping tasks arm host timers or wake the host once per change, a background timer the host declines is dropped, a foreground one it declines or throws on falls back to `setTimeout` and is reported once, `TaskRuntime.setTimer` timers end with their invocation) and `settings.restartLimit` (including `Infinity`) reaches the core, so a crash-looping task parks. A reservation commit that the host's Storage holds while `close()` seals the Harness now lands and is written back as pending instead of being dropped, and a `sleepUntil` of `NaN` or an infinity is rejected as Pi rejects it.
 
 ### BF-432ab7f
@@ -14318,6 +14319,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `98666dfd10` (2026-10-27)
 - **Tests:** `durable/core/driver/harness_read_only_core_test.go::TestReadOnlyHarnessCore`
 - **Release note:** Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close stopped fails, for example because another process advanced the store. Pi catches that write and the Session reports the failure, so the close resolves.
+
+### BF-9883d4b
+
+**Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends the operations since the revision the host holds, and arrays that are only appended to are tracked as a tail.
+- **Root cause:** - session: Writer (admission, batched Storage calls, refusal, rejection after receipts, SessionFailed), Loop with host-supplied durations, decision regions with the keys each decision read (scheduler.ts #region, membershipKeys, #loadChain, pins), tails/taskdocs (CachedStorage shape: conversation tails 4096, ended tasks 256, submissions 256), the scheduler kick as one microtask after the publication, waitForTask registered in the job body, maintain jobs exempt from admission. - hopcost: tick model re-derived at (multi-batch Commit, ReceiveTail, record cache, JobTicks); ticks.json regenerated. - core and host ABI: joined commits (flags byte), macrotask effect, receive/ publish/touch ops…
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9883d4b247` (2026-11-02)
+- **Tests:** `durable/core/ctxread_test.go::TestContextBoundsOfAConversationNotKnownReadStorageOnce`, `durable/core/ctxread_test.go::TestContextBoundsOfACutoffInTheKeptRangeReadNoEntry`, `durable/core/ctxread_test.go::TestContextBoundsOfAnInvisibleCutoffFail`, `durable/core/ctxread_test.go::TestContextBoundsOfWhatTheSessionWroteReadNothing`, `durable/core/ctxread_test.go::TestRangeCurrentOnlyOfAReadAtTheNewestEntryOrTheUnchangedRange`, `durable/core/driver/doc_replica_test.go::TestDocReplicaCatchesUpWithTheOperationsTheCoreSent`, `durable/core/driver/doc_replica_test.go::TestDocReplicasKeepOnlyAnswersTheCoreNamedAndAFewDocuments`, `durable/core/driver/fanout_scaling_norace_test.go::TestScalingCoreNestedCallFanout` and 61 more in docs/bug-ledger.json
+- **Release note:** Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends the operations since the revision the host holds, and arrays that are only appended to are tracked as a tail. 1000 nested calls take 2.05 s instead of 4.94 s and 4000 calls 8.5 s instead of 49.3 s, with allocations per call flat.
 
 ### BF-98a21df
 
