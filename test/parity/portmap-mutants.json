@@ -2150,5 +2150,47 @@
    "old": "if options.SessionID == \"\" || hasProviderHeader(",
    "new": "if hasProviderHeader("
   }
+ ],
+ "packages/ai/src/providers/all.ts": [
+  {
+   "file": "ai/builtin_providers.go",
+   "old": "for _, image := range GetImageModels(BuiltinImageProvider(provider)) {",
+   "new": "for _, image := range GetImageModels(BuiltinImageProvider(provider))[:0] {"
+  }
+ ],
+ "packages/ai/src/providers/amazon-bedrock.ts": [
+  {
+   "file": "ai/auth_providers.go",
+   "old": "return &AuthResult{Env: credentialEnv(credential), Source: \"AWS_PROFILE\"}, ctx.Err()",
+   "new": "return &AuthResult{Env: credentialEnv(credential), Source: \"AWS_PROFILE_ENV\"}, ctx.Err()"
+  }
+ ],
+ "packages/ai/src/providers/google-vertex.ts": [
+  {
+   "file": "ai/auth_providers.go",
+   "old": "source := \"gcloud application default credentials\"",
+   "new": "source := \"gcloud credentials\""
+  }
+ ],
+ "packages/ai/src/providers/cloudflare-auth.ts": [
+  {
+   "file": "ai/auth_providers.go",
+   "old": "source := cloudflareAPIKey",
+   "new": "source := \"CLOUDFLARE_KEY\""
+  }
+ ],
+ "packages/ai/src/providers/cloudflare-stream.ts": [
+  {
+   "file": "ai/cloudflare_streams.go",
+   "old": "return stream(ctx, ResolveCloudflareModel(model, options.Env), transcript, options)",
+   "new": "return stream(ctx, model, transcript, options)"
+  }
+ ],
+ "packages/ai/src/providers/azure.ts": [
+  {
+   "file": "ai/azure.go",
+   "old": "resolved.cfg.requestModel = ResolveAzureDeploymentName(p.cfg.Model, options)",
+   "new": "resolved.cfg.requestModel = p.cfg.Model"
+  }
  ]
 }
