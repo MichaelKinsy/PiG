@@ -23,12 +23,12 @@ func TestReadToolDeclarationMatchesUpstream(t *testing.T) {
 	}
 	const parameters = `{
 		"type": "object",
-		"required": ["path"],
 		"properties": {
 			"path": {"type": "string", "description": "Path to the file to read (relative or absolute)"},
 			"offset": {"type": "number", "description": "Line number to start reading from (1-indexed)"},
 			"limit": {"type": "number", "description": "Maximum number of lines to read"}
-		}
+		},
+		"required": ["path"]
 	}`
 	var want map[string]any
 	if err := json.Unmarshal([]byte(parameters), &want); err != nil {

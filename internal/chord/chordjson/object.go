@@ -174,6 +174,27 @@ func (object *Object) Clone() *Object {
 
 // Keys returns the keys in own-key order.
 func (object *Object) Keys() []string {
+	return object.AppendKeys(make([]string, 0, object.Len()))
+}
+
+// AppendKeys appends the keys in own-key order to dst and returns it, so a caller that walks many objects can reuse one buffer.
+func (object *Object) AppendKeys(dst []string) []string {
+	if object == nil {
+		return dst
+	}
+	if !object.indexKeys {
+		for at := range object.entries {
+			if entry := &object.entries[at]; entry.live {
+				dst = append(dst, entry.key)
+			}
+		}
+		return dst
+	}
+	return append(dst, object.indexOrderedKeys()...)
+}
+
+// indexOrderedKeys is Keys for an object with array-index keys, which are ordered first.
+func (object *Object) indexOrderedKeys() []string {
 	keys := make([]string, 0, object.Len())
 	for key := range object.All() {
 		keys = append(keys, key)

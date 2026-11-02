@@ -2,9 +2,10 @@ package configschema
 
 import "testing"
 
-// Ports packages/ai/test/compat-schema.test.ts. Compile(schema).Default({}) fills each property that carries a `default` keyword, so the
-// defaults a schema assigns are the properties with that keyword. "preserves property types in the provider superset" is a TypeScript
-// type-level assertion (expectTypeOf); the property types of the Go compat structs are checked by the compiler.
+// Ports packages/ai/test/compat-schema.test.ts. Pi reads the `default` annotation of each property of the object schema (its `defaults(schema)`
+// helper: `Object.entries(schema.properties)` with a defined `default`), which is what defaultsOf does with the Go tree. "preserves property
+// types in the provider superset" is a TypeScript type-level assertion (expectTypeOf); the property types of the Go compat structs are checked
+// by the compiler.
 
 func defaultsOf(t *testing.T, s *Schema) map[string]any {
 	t.Helper()

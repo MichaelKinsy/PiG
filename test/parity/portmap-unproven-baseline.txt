@@ -51,8 +51,6 @@ packages/ai/src/utils/headers.ts
 packages/ai/src/utils/node-http-proxy.ts
 packages/ai/src/utils/sleep.ts
 packages/ai/src/utils/text.ts
-packages/ai/src/utils/typebox-helpers.ts
-packages/ai/src/utils/validation.ts
 packages/codemode/src/wasm.ts
 packages/coding-agent/src/cli.ts
 packages/coding-agent/src/cli/auth-check.ts

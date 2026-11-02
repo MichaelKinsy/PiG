@@ -75,7 +75,7 @@
                (pig:obj "additionalProperties" :false))
               (lambda (ctx args) (declare (ignore ctx args)) "ok"))))
 
-;;; refine-probe (TestConformance_RefinedToolArgumentsAgreeAcrossSDKs): the schema of the "probe" cases of validateToolArguments.json; every
+;;; refine-probe (TestConformance_RefinedToolArgumentsAreNotRefined): the schema of the "probe" cases of validateToolArguments.json; every
 ;;; predicate and message function logs its call
 (def-fixture "types-refine-probe" (ext)
   (let ((log '()))

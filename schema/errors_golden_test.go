@@ -47,6 +47,8 @@ func equalErrors(a, b []schema.ValidationError) bool {
 	return true
 }
 
+// pi: packages/schema/src/explain.ts
+
 func TestErrorsMatchPi(t *testing.T) {
 	golden := readJSON(t, filepath.Join(fixtureRoot, "errors-golden.json")).(*schema.Object)
 	schemas := suiteSchemas(t)
