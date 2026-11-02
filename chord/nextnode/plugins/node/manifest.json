@@ -1,6 +1,7 @@
 {
-	"commit": "f9a26365568127461c47a07a37dcb42c140a3ac5",
+	"commit": "9823079ad98d39f3587286c8d9f29556dfb3687b",
 	"pin": "f9a26365568127461c47a07a37dcb42c140a3ac5",
+	"catchup": "9823079ad98d39f3587286c8d9f29556dfb3687b",
 	"piSchema": "1.5.0",
 	"piTelemetry": "1.5.0",
 	"files": [
@@ -38,11 +39,11 @@
 		},
 		{
 			"path": "pi/chord/src/next-node/plugins/evaluate.ts",
-			"sha256": "539017d262388d8b7052e71b52fefcb7bf9ec00563cd47070c2948a81b7820ce"
+			"sha256": "ee4765d841eff1db90010496e22ea7c268226b1394c3ce9f20697bb0fe71b270"
 		},
 		{
 			"path": "pi/chord/src/next-node/plugins/runtime.ts",
-			"sha256": "338fb3bc9d294b1815bdafcf2efeb1c463d8f75bdf6654c4cdc0d70081cdc48a"
+			"sha256": "fb546b048a4358f5d0685faf2cdbd2ddc349385d1db498a7b98313406a1e11f1"
 		},
 		{
 			"path": "pi/chord/src/next-node/plugins/stack.ts",
@@ -222,7 +223,7 @@
 		},
 		{
 			"path": "pi/chord/src/next/host/host.ts",
-			"sha256": "49a85794784eb8f39955fcb97dd6920ff505430c2153f3e0355f3ccbe14065d5"
+			"sha256": "8381b71c62edf92ed3c8dbfd2a8e4a9bd258220784f00601f4bb90d2fc39909e"
 		},
 		{
 			"path": "pi/chord/src/next/host/index.ts",
@@ -242,7 +243,7 @@
 		},
 		{
 			"path": "pi/chord/src/next/host/object.ts",
-			"sha256": "0c5daec753b34682b5406300e3e2debe64ca44f35c166222ee64d2f19a5148b0"
+			"sha256": "2d0f481da8171b6fec835f12257cfe11643e4f74f4017bc22b98bd0a421982ab"
 		},
 		{
 			"path": "pi/chord/src/next/host/parked.ts",
@@ -298,7 +299,7 @@
 		},
 		{
 			"path": "pi/chord/src/next/host/unbound.ts",
-			"sha256": "84fc2f8b27d240ef41dd6c3853bab396a67b6047529383bf3bfb43a04719d66d"
+			"sha256": "9813a6f692a2533950b84bbe8624ef062a34e9a0da83d6ef8099537e8827a014"
 		},
 		{
 			"path": "pi/chord/src/next/host/uuid.ts",
@@ -414,7 +415,7 @@
 		},
 		{
 			"path": "pi/chord/src/next/registries/record.ts",
-			"sha256": "53f1f5a8fffaea0703c6191aa650bf9f74575a2284b5f25da12e26199b58976d"
+			"sha256": "c5740166c05814ce7b2bbfe32dd8e782eb9481ffa99376d6fa257f9b8f5268cf"
 		},
 		{
 			"path": "pi/chord/src/next/registries/registry.ts",
