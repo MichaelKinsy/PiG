@@ -477,8 +477,13 @@ type orderedEntry[K comparable, V any] struct {
 	live  bool
 }
 
-// minTombstones is the tombstone count under which compacting a map is not worth its walk.
-const minTombstones = 8
+const (
+	// minTombstones is the tombstone count under which compacting a map is not worth its walk.
+	minTombstones = 8
+	// retainedEntries is the capacity of the entry slice that a map keeps when it empties or shrinks: a map that
+	// grew beyond it gives its memory back, so a link that once queued thousands of slots does not hold them.
+	retainedEntries = 64
+)
 
 func newOrderedMap[K comparable, V any]() *orderedMap[K, V] {
 	return &orderedMap[K, V]{positions: map[K]int{}}
@@ -536,8 +541,13 @@ func (entries *orderedMap[K, V]) DeleteFunc(remove func(key K, value V) bool) {
 func (entries *orderedMap[K, V]) settle() {
 	live := len(entries.positions)
 	if live == 0 {
-		entries.entries = entries.entries[:0]
 		entries.first = 0
+		if cap(entries.entries) > retainedEntries {
+			entries.entries = nil
+			entries.positions = map[K]int{}
+		} else {
+			entries.entries = entries.entries[:0]
+		}
 		return
 	}
 	for !entries.entries[entries.first].live {
@@ -548,7 +558,21 @@ func (entries *orderedMap[K, V]) settle() {
 	}
 }
 
+// compact moves the live entries to the front. When the slice is then mostly free it, and the index, are rebuilt at the
+// live size with room to double, so the walk that compaction costs also pays for the allocation.
 func (entries *orderedMap[K, V]) compact() {
+	if live := len(entries.positions); cap(entries.entries) > retainedEntries && cap(entries.entries) > 4*live {
+		kept := make([]orderedEntry[K, V], 0, 2*live)
+		positions := make(map[K]int, live)
+		for _, entry := range entries.entries[entries.first:] {
+			if entry.live {
+				positions[entry.key] = len(kept)
+				kept = append(kept, entry)
+			}
+		}
+		entries.entries, entries.positions, entries.first = kept, positions, 0
+		return
+	}
 	kept := 0
 	for _, entry := range entries.entries[entries.first:] {
 		if !entry.live {

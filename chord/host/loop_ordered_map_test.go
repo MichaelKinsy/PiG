@@ -2,6 +2,7 @@ package host
 
 import (
 	"math/rand/v2"
+	"runtime"
 	"slices"
 	"testing"
 )
@@ -190,4 +191,75 @@ func TestOrderedMapQueueStaysBounded(t *testing.T) {
 	if capacity := cap(entries.entries); capacity > 8*live {
 		t.Fatalf("a queue of %d live entries holds %d slots", live, capacity)
 	}
+}
+
+// A map that held many entries and shrank gives their memory back: the entry slice follows the live size once the
+// tombstones are compacted away, and an emptied map keeps no large backing array. A link that once queued thousands
+// of slots would otherwise keep them zeroed for its lifetime.
+func TestOrderedMapReleasesWhatItGrewTo(t *testing.T) {
+	const peak = 10_000
+	fill := func() *orderedMap[int, *int] {
+		entries := newOrderedMap[int, *int]()
+		for key := range peak {
+			entries.Set(key, new(int))
+		}
+		return entries
+	}
+	drain := func(entries *orderedMap[int, *int]) {
+		for entries.Len() > 0 {
+			first, _, _ := entries.First()
+			entries.Delete(first)
+		}
+	}
+	t.Run("drained", func(t *testing.T) {
+		entries := fill()
+		drain(entries)
+		if capacity := cap(entries.entries); capacity > retainedEntries {
+			t.Fatalf("an empty map that held %d entries keeps %d slots", peak, capacity)
+		}
+	})
+	t.Run("deleted by DeleteFunc", func(t *testing.T) {
+		entries := fill()
+		entries.DeleteFunc(func(int, *int) bool { return true })
+		if capacity := cap(entries.entries); capacity > retainedEntries {
+			t.Fatalf("an empty map that held %d entries keeps %d slots", peak, capacity)
+		}
+	})
+	t.Run("shrunk", func(t *testing.T) {
+		entries := fill()
+		const live = 100
+		for key := range peak - live {
+			entries.Delete(key)
+		}
+		if capacity := cap(entries.entries); capacity > 8*live {
+			t.Fatalf("a map of %d live entries that held %d keeps %d slots", live, peak, capacity)
+		}
+		for key := peak - live; key < peak; key++ {
+			if _, ok := entries.Get(key); !ok {
+				t.Fatalf("key %d lost by compaction", key)
+			}
+		}
+		keys := entries.Keys()
+		if len(keys) != live || keys[0] != peak-live || keys[live-1] != peak-1 {
+			t.Fatalf("order after compaction: %d keys from %d to %d", len(keys), keys[0], keys[len(keys)-1])
+		}
+	})
+	t.Run("heap", func(t *testing.T) {
+		heap := func() uint64 {
+			runtime.GC()
+			runtime.GC()
+			var stats runtime.MemStats
+			runtime.ReadMemStats(&stats)
+			return stats.HeapAlloc
+		}
+		before := heap()
+		entries := fill()
+		drain(entries)
+		after := heap()
+		runtime.KeepAlive(entries)
+		// Kept, the entry slice and the index of 10000 keys are several hundred KiB.
+		if retained := int64(after) - int64(before); retained > 128<<10 {
+			t.Fatalf("a drained map retains %d bytes", retained)
+		}
+	})
 }

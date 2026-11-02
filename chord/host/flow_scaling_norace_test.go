@@ -23,9 +23,9 @@ func TestScalingFlushWaitingSlots(t *testing.T) {
 	}})
 }
 
-// Holds that end one after another while slots wait forget their slot without allocating, as Pi's dropHoldState walks its Map and deletes in place.
+// Holds that end one after another while slots wait forget their slot in place, as Pi's dropHoldState walks its Map and deletes: the map allocates only the smaller storage it moves to as it drains (halving, so linear in all), never a snapshot of its keys per hold (which allocates bytes that grow with the square of the slots).
 func TestScalingDropHoldStateOfWaitingSlots(t *testing.T) {
-	testscaling.Check(t, testscaling.Case{Name: "dropHoldState of every waiting slot", Size: 500, Bound: testscaling.Constant, Prepare: func(n int) func() {
+	testscaling.Check(t, testscaling.Case{Name: "dropHoldState of every waiting slot", Size: 500, Bound: testscaling.Linear, Prepare: func(n int) func() {
 		connection := waitingConnection(1 << 20)
 		fillWaiting(connection, n)
 		return func() {
