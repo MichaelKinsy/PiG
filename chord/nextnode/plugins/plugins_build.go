@@ -14,7 +14,6 @@ import (
 	"strings"
 	"sync"
 	"unicode/utf16"
-	"unicode/utf8"
 
 	"github.com/evanw/esbuild/pkg/api"
 )
@@ -611,13 +610,8 @@ func describe(plugin Plugin, message api.Message) string {
 			file = rest
 		}
 	}
-	// esbuild's Go API counts a column in bytes, its JavaScript API (which `build.ts` reads) in UTF-16 code units.
-	column := location.Column
-	//portlint:allow utf16units this converts esbuild's byte column to the UTF-16 units of the JS API's `location.column`, which Pi's describe prints (build.ts:399)
-	if column <= len(location.LineText) && utf8.ValidString(location.LineText[:column]) {
-		column = utf16Length(location.LineText[:column]) //portlint:allow utf16units the same conversion (build.ts:399)
-	}
-	return file + ":" + strconv.Itoa(location.Line) + ":" + strconv.Itoa(column+1) + ": " + text
+	// The column is esbuild's own, in bytes: its JavaScript API reports the same number (`location.column`, build.ts:399).
+	return file + ":" + strconv.Itoa(location.Line) + ":" + strconv.Itoa(location.Column+1) + ": " + text
 }
 
 // packageName is the package a bare specifier names: `@scope/name` or `name`, without a subpath (evaluate.ts).

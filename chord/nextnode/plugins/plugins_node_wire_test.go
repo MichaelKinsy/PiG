@@ -90,14 +90,14 @@ func TestNodeGetPinsAKeyOfAKeyedMember(t *testing.T) {
 func TestWireABuiltFacetHasErrorsOnlyWhenItFailedAndThenAlways(t *testing.T) {
 	for _, each := range []struct {
 		name  string
-		built builtWire
+		built BuiltFacet
 		want  string
 	}{
-		{"failed without errors", builtWire{Kind: BuiltFacetFailed, Plugin: "@a/b", Facet: "worker"}, `{"kind":"failed","plugin":"@a/b","facet":"worker","errors":[]}`},
-		{"failed", builtWire{Kind: BuiltFacetFailed, Plugin: "@a/b", Facet: "worker", Errors: []string{"x"}}, `{"kind":"failed","plugin":"@a/b","facet":"worker","errors":["x"]}`},
-		{"script", builtWire{Kind: BuiltFacetScript, Plugin: "@a/b", Facet: "worker", Source: "s", Digest: "d"}, `{"kind":"script","plugin":"@a/b","facet":"worker","source":"s","digest":"d"}`},
+		{"failed without errors", BuiltFacet{Kind: BuiltFacetFailed, Plugin: "@a/b", Facet: "worker"}, `{"kind":"failed","plugin":"@a/b","facet":"worker","errors":[]}`},
+		{"failed", BuiltFacet{Kind: BuiltFacetFailed, Plugin: "@a/b", Facet: "worker", Errors: []string{"x"}}, `{"kind":"failed","plugin":"@a/b","facet":"worker","errors":["x"]}`},
+		{"script", BuiltFacet{Kind: BuiltFacetScript, Plugin: "@a/b", Facet: "worker", Source: "s", Digest: "d"}, `{"kind":"script","plugin":"@a/b","facet":"worker","source":"s","digest":"d"}`},
 	} {
-		got, err := json.Marshal(each.built)
+		got, err := json.Marshal(scriptsWire([]PluginScript{{Built: each.built}})[0].Built)
 		if err != nil || string(got) != each.want {
 			t.Errorf("%s: %s, %v; want %s", each.name, got, err, each.want)
 		}

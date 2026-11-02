@@ -169,32 +169,14 @@ type pluginWire struct {
 }
 
 // builtWire is a BuiltFacet as Pi's data has it: a script has its source and digest, a failed build its errors, an array
-// that is there when it is empty too.
+// that is there when it is empty too (omitzero drops only the nil one: a failed build sets it, see scriptsWire).
 type builtWire struct {
-	Kind   BuiltKind
-	Plugin string
-	Facet  string
-	Source string
-	Digest string
-	Errors []string
-}
-
-func (b builtWire) MarshalJSON() ([]byte, error) {
-	if b.Kind == BuiltFacetFailed {
-		return json.Marshal(struct {
-			Kind   BuiltKind `json:"kind"`
-			Plugin string    `json:"plugin"`
-			Facet  string    `json:"facet"`
-			Errors []string  `json:"errors"`
-		}{b.Kind, b.Plugin, b.Facet, nonNil(b.Errors)})
-	}
-	return json.Marshal(struct {
-		Kind   BuiltKind `json:"kind"`
-		Plugin string    `json:"plugin"`
-		Facet  string    `json:"facet"`
-		Source string    `json:"source"`
-		Digest string    `json:"digest"`
-	}{b.Kind, b.Plugin, b.Facet, b.Source, b.Digest})
+	Kind   BuiltKind `json:"kind"`
+	Plugin string    `json:"plugin"`
+	Facet  string    `json:"facet"`
+	Source string    `json:"source,omitempty"`
+	Digest string    `json:"digest,omitempty"`
+	Errors []string  `json:"errors,omitzero"`
 }
 
 func scriptsWire(scripts []PluginScript) []scriptWire {
@@ -210,6 +192,9 @@ func scriptsWire(scripts []PluginScript) []scriptWire {
 				Kind: script.Built.Kind, Plugin: script.Built.Plugin, Facet: script.Built.Facet,
 				Source: script.Built.Source, Digest: script.Built.Digest, Errors: script.Built.Errors,
 			},
+		}
+		if script.Built.Kind == BuiltFacetFailed {
+			wire[i].Built.Errors = nonNil(script.Built.Errors)
 		}
 	}
 	return wire
