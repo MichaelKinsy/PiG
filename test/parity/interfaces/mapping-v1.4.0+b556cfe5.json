@@ -31045,8 +31045,25 @@
     },
     {
       "id": "pkg:ai/.#ResolvedGoogleThinkingLevel",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1aeba1453437212e524ea5944797f60906d29518c3def9414c34eabd022ed70a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1aeba1453437212e524ea5944797f60906d29518c3def9414c34eabd022ed70a",
+      "rationale": "Derived by the interface gap detector: ResolvedGoogleThinkingLevel is Go ai/google.go#ResolvedGoogleThinkingLevel (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/google.go#ResolvedGoogleThinkingLevel"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/google.go#ToGoogleThinkingLevel"
+      ],
+      "evidence": [
+        "test:ai/google_thinking_level_map_upstream_test.go#TestToGoogleSdkThinkingLevelUpstream",
+        "test:ai/google_thinking_level_map_upstream_test.go#TestToGoogleThinkingLevelUpstream",
+        "test:ai/lower_sites_regex_test.go#TestGoogleThinkingLevelMappingLowerCasesLikeJS"
+      ]
     },
     {
       "id": "pkg:ai/.#resolveTranscript",
@@ -40409,8 +40426,25 @@
     },
     {
       "id": "pkg:ai/api/google-shared#ResolvedGoogleThinkingLevel",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:31d2eb7d70a70d89d96007bcd8eff3c800d9533179d23bd611a0d523b408ef49"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:31d2eb7d70a70d89d96007bcd8eff3c800d9533179d23bd611a0d523b408ef49",
+      "rationale": "Derived by the interface gap detector: ResolvedGoogleThinkingLevel is Go ai/google.go#ResolvedGoogleThinkingLevel (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/google.go#ResolvedGoogleThinkingLevel"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/google.go#ToGoogleThinkingLevel"
+      ],
+      "evidence": [
+        "test:ai/google_thinking_level_map_upstream_test.go#TestToGoogleSdkThinkingLevelUpstream",
+        "test:ai/google_thinking_level_map_upstream_test.go#TestToGoogleThinkingLevelUpstream",
+        "test:ai/lower_sites_regex_test.go#TestGoogleThinkingLevelMappingLowerCasesLikeJS"
+      ]
     },
     {
       "id": "pkg:ai/api/google-shared#resolveGoogleFunctionCallingMode",
@@ -75606,8 +75640,25 @@
     },
     {
       "id": "pkg:ai/compat#ResolvedGoogleThinkingLevel",
-      "disposition": "pending",
-      "upstreamShapeHash": "sha256:1aeba1453437212e524ea5944797f60906d29518c3def9414c34eabd022ed70a"
+      "disposition": "ported",
+      "upstreamShapeHash": "sha256:1aeba1453437212e524ea5944797f60906d29518c3def9414c34eabd022ed70a",
+      "rationale": "Derived by the interface gap detector: ResolvedGoogleThinkingLevel is Go ai/google.go#ResolvedGoogleThinkingLevel (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "pigTargets": [
+        "ai/google.go#ResolvedGoogleThinkingLevel"
+      ],
+      "layers": {
+        "behavior": "complete",
+        "production": "complete",
+        "shape": "complete"
+      },
+      "production": [
+        "call:ai/google.go#ToGoogleThinkingLevel"
+      ],
+      "evidence": [
+        "test:ai/google_thinking_level_map_upstream_test.go#TestToGoogleSdkThinkingLevelUpstream",
+        "test:ai/google_thinking_level_map_upstream_test.go#TestToGoogleThinkingLevelUpstream",
+        "test:ai/lower_sites_regex_test.go#TestGoogleThinkingLevelMappingLowerCasesLikeJS"
+      ]
     },
     {
       "id": "pkg:ai/compat#resolveTranscript",
@@ -112728,8 +112779,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchRetainsNeitherItsSourceNorItsListenerOnceEnded",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
+        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR"
       ]
     },
     {
@@ -112750,8 +112801,8 @@
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchRetainsNeitherItsSourceNorItsListenerOnceEnded",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
+        "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR"
       ]
     },
     {
@@ -112771,9 +112822,9 @@
         "call:chord/delta/pending.go#PendingOps.Push"
       ],
       "evidence": [
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
         "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize"
+        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
       ]
     },
     {
@@ -112793,9 +112844,9 @@
         "call:chord/delta/pending.go#PendingOps.Push"
       ],
       "evidence": [
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
         "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize"
+        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
       ]
     },
     {
@@ -112837,9 +112888,9 @@
         "call:chord/delta/pending.go#PendingOps.Take"
       ],
       "evidence": [
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
         "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize"
+        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
       ]
     },
     {
@@ -112859,9 +112910,9 @@
         "call:chord/delta/pending.go#PendingOps.Take"
       ],
       "evidence": [
+        "test:chord/delta/append_text_scaling_norace_test.go#TestScalingPendingOpsFoldAppends",
         "test:chord/delta/pending_test.go#TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding",
-        "test:chord/delta/pending_test.go#TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize"
+        "test:chord/delta/pending_test.go#TestPendingOpsCapCountsOpsAfterFolding"
       ]
     },
     {
@@ -180043,9 +180094,9 @@
         "call:tui/markdown_style.go#GetMarkdownTheme"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_theme_oracle_test.go#TestGetMarkdownThemeMatchesPi",
-        "test:tui/branch_summary_test.go#TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme",
-        "test:tui/compaction_summary_test.go#TestCompactionSummaryMessageComponentUsesTheInjectedMarkdownTheme"
+        "test:tui/branch_summary_test.go#TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme"
       ]
     },
     {
@@ -180065,9 +180116,9 @@
         "call:tui/markdown_style.go#GetMarkdownTheme"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_theme_oracle_test.go#TestGetMarkdownThemeMatchesPi",
-        "test:tui/branch_summary_test.go#TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme",
-        "test:tui/compaction_summary_test.go#TestCompactionSummaryMessageComponentUsesTheInjectedMarkdownTheme"
+        "test:tui/branch_summary_test.go#TestBranchSummaryMessageComponentTakesItsPadAndMarkdownTheme"
       ]
     },
     {
@@ -286207,9 +286258,9 @@
         "call:tui/assistant_message_block.go#AssistantMessageComponent.Dispose"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
-        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
-        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle"
+        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse"
       ]
     },
     {
@@ -286229,9 +286280,9 @@
         "call:tui/markdown_options.go#NewMarkdownWithOptions"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
-        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
-        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle"
+        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse"
       ]
     },
     {
@@ -286295,9 +286346,9 @@
         "call:tui/markdown.go#Markdown.Render"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
-        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
-        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle"
+        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse"
       ]
     },
     {
@@ -286317,9 +286368,9 @@
         "call:tui/markdown.go#Markdown.Render"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
-        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
-        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle"
+        "test:tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse"
       ]
     },
     {
@@ -286488,9 +286539,9 @@
         "call:tui/assistant_message_block.go#NewAssistantMessageComponent"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_theme_oracle_test.go#TestGetMarkdownThemeMatchesPi",
-        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle",
-        "test:tui/markdown_latex_random_oracle_test.go#TestMarkdownInlineMathRandomMatchesPiOracle"
+        "test:tui/markdown_latex_oracle_test.go#TestMarkdownLatexHeuristicsMatchPiOracle"
       ]
     },
     {
@@ -286752,9 +286803,9 @@
         "call:tui/component_themes.go#markdownThemeReading"
       ],
       "evidence": [
+        "test:tui/highlight_failure_oracle_test.go#TestHighlightFailureMatchesPi",
         "test:tui/markdown_theme_oracle_test.go#TestGetMarkdownThemeMatchesPi",
-        "test:tui/component_themes_test.go#TestComponentThemeDefaultMarkdownFollowsActiveTheme",
-        "test:tui/component_themes_test.go#TestComponentThemeMarkdownBoundToTheme"
+        "test:tui/component_themes_test.go#TestComponentThemeDefaultMarkdownFollowsActiveTheme"
       ]
     },
     {
@@ -295952,9 +296003,9 @@
         "call:tui/colors.go#BackgroundAnsi"
       ],
       "evidence": [
+        "test:test/extension-conformance/tui_theme_test.go#TestHighlightCodeThatFailsTakesTheCodeBlockColorAcrossSDKs",
         "test:tui/theme_load_random_oracle_test.go#TestLoadThemeFromPathOnRandomColorsMatchesPi",
-        "test:tui/theme_tokens_metadata_oracle_test.go#TestOmittedOptionalThemeTokensFallBackAsInPi",
-        "test:tui/theme_tokens_oracle_test.go#TestBuiltinThemeTokensMatchPi"
+        "test:tui/theme_tokens_metadata_oracle_test.go#TestOmittedOptionalThemeTokensFallBackAsInPi"
       ]
     },
     {

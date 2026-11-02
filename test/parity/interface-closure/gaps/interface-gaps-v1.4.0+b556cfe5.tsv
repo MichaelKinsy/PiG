@@ -10,13 +10,11 @@ pkg:ai/.#ModelInputLimits	ai	undecidable	ai/types.go#ModelInputLimits
 pkg:ai/.#ModelInputModality	ai	undecidable	ai/types.go#ModelInputModality
 pkg:ai/.#ModelPromptCache	ai	undecidable	ai/types.go#ModelPromptCache
 pkg:ai/.#ModelThinkingLevel	ai	undecidable	ai/types.go#ModelThinkingLevel
-pkg:ai/.#ResolvedGoogleThinkingLevel	ai	undecidable	ai/google.go#ResolvedGoogleThinkingLevel
 pkg:ai/.#SessionAffinityFormat	ai	undecidable	ai/types.go#SessionAffinityFormat
 pkg:ai/.#ThinkingLevel	ai	undecidable	ai/types.go#ThinkingLevel
 pkg:ai/.#ThinkingLevelMap	ai	undecidable	ai/types.go#ThinkingLevelMap
 pkg:ai/api/constrained-sampling#makeStrictJsonSchema	ai	child-gap	ai/constrained_sampling.go#MakeStrictJSONSchema
 pkg:ai/api/constrained-sampling#makeStrictJsonSchema::call:0	ai	undecidable	ai/constrained_sampling.go#MakeStrictJSONSchema
-pkg:ai/api/google-shared#ResolvedGoogleThinkingLevel	ai	undecidable	ai/google.go#ResolvedGoogleThinkingLevel
 pkg:ai/compat#CacheRetention	ai	undecidable	ai/types.go#CacheRetention
 pkg:ai/compat#ChatTemplateKwargValue	ai	undecidable	ai/types_unions.go#ChatTemplateKwargValue
 pkg:ai/compat#ModelCost	ai	undecidable	ai/types.go#ModelCost
@@ -28,7 +26,6 @@ pkg:ai/compat#ModelInputLimits	ai	undecidable	ai/types.go#ModelInputLimits
 pkg:ai/compat#ModelInputModality	ai	undecidable	ai/types.go#ModelInputModality
 pkg:ai/compat#ModelPromptCache	ai	undecidable	ai/types.go#ModelPromptCache
 pkg:ai/compat#ModelThinkingLevel	ai	undecidable	ai/types.go#ModelThinkingLevel
-pkg:ai/compat#ResolvedGoogleThinkingLevel	ai	undecidable	ai/google.go#ResolvedGoogleThinkingLevel
 pkg:ai/compat#SessionAffinityFormat	ai	undecidable	ai/types.go#SessionAffinityFormat
 pkg:ai/compat#ThinkingLevel	ai	undecidable	ai/types.go#ThinkingLevel
 pkg:ai/compat#ThinkingLevelMap	ai	undecidable	ai/types.go#ThinkingLevelMap
