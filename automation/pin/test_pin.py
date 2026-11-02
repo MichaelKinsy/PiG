@@ -259,6 +259,62 @@ class TarballTests(unittest.TestCase):
         self.assertEqual(open_at_download, [], "the mkstemp descriptor is still open while curl writes and os.replace renames")
 
 
+class UpstreamDeltaMirrorTests(unittest.TestCase):
+    """`make upstream-delta` audits against the exact earlier pin its manifest names, whose mirror it builds."""
+
+    def test_sync_from_is_the_earlier_pin_of_the_pins_manifest(self):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        (root / "test/parity/upstream-sync").mkdir(parents=True)
+        (root / "test/parity/upstream-sync" / f"v{COMMIT.version}.toml").write_text(f'from = "1.0.0+aaaaaaaa"\nto = "{COMMIT.version}"\n')
+        out = io.StringIO()
+        with (
+            mock.patch.object(pin_tool, "ROOT", root),
+            mock.patch.object(pinlib, "effective", lambda: (COMMIT, False)),
+            contextlib.redirect_stdout(out),
+        ):
+            pin_tool.cmd_sync_from(None)
+        self.assertEqual(out.getvalue().strip(), "1.0.0+aaaaaaaa")
+
+    def test_a_missing_manifest_is_an_error_not_an_empty_from(self):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        with mock.patch.object(pin_tool, "ROOT", root), mock.patch.object(pinlib, "effective", lambda: (COMMIT, False)):
+            with self.assertRaises(pinlib.PinError):
+                pin_tool.cmd_sync_from(None)
+
+    def test_mirror_spec_names_a_commit_build_only(self):
+        for version in ("1.4.0", "1.4.0+zzzz"):
+            with self.subTest(version=version), self.assertRaises(pinlib.PinError):
+                pin_tool.cmd_mirror_spec(mock.Mock(version=version))
+
+    def test_mirror_spec_checks_the_tarball_is_the_named_build(self):
+        commit = "b556cfe5" + "0" * 32
+        with (
+            mock.patch.object(pinlib, "full_commit", lambda short: commit),
+            mock.patch.object(pinlib, "tarball", lambda ref, tag: Path("/cache/x.tar.gz")),
+            mock.patch.object(pinlib, "tarball_identity", lambda path: (commit, "1.3.0")),
+        ):
+            with self.assertRaises(pinlib.PinError):
+                pin_tool.cmd_mirror_spec(mock.Mock(version="1.4.0+b556cfe5"))
+        out = io.StringIO()
+        with (
+            mock.patch.object(pinlib, "full_commit", lambda short: commit),
+            mock.patch.object(pinlib, "tarball", lambda ref, tag: Path("/cache/x.tar.gz")),
+            mock.patch.object(pinlib, "tarball_identity", lambda path: (commit, "1.4.0")),
+            contextlib.redirect_stdout(out),
+        ):
+            pin_tool.cmd_mirror_spec(mock.Mock(version="1.4.0+b556cfe5"))
+        self.assertEqual(out.getvalue().split(), [commit, "1.4.0", "/cache/x.tar.gz"])
+
+    def test_the_make_target_builds_the_from_mirror_before_the_audit(self):
+        recipe = (pinlib.ROOT / "automation/make/parity.mk").read_text(encoding="utf-8")
+        target = recipe[recipe.index("\nupstream-delta:"):]
+        target = target[: target.index("\n\n")]
+        self.assertLess(target.index("mirror-upstream.sh --version"), target.index("upstreamdelta"))
+        self.assertIn("sync-from", target)
+
+
 class SourceBuildTests(unittest.TestCase):
     def source(self):
         root = Path(tempfile.mkdtemp())

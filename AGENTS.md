@@ -17,7 +17,7 @@ Source of truth:
   `mapping-v<version>.json` records each Pig disposition and closure evidence. Generated inventory drift and strict mapping
   are Foundation gates. PORT_MAP remains the file navigation roll-up until
   Foundation I finishes generating its statuses from these ledgers.
-- `test/parity/upstream-sync/v<version>.toml` accounts for every changed tracked source file in a version leap.
+- `test/parity/upstream-sync/v<version>.toml` accounts for every changed tracked source file between the exact earlier pin it names (`from`) and the pin. `make upstream-delta` mirrors the earlier pin's source and fails when that mirror is absent.
 - `test/parity/async-contracts.toml` accounts for Promise/async semantics across the complete pinned upstream source tree.
 - `test/parity/coverage.md` and the generated block below report verification.
 - `docs/parity/DIVERGENCES.md` records intentional differences.
@@ -409,7 +409,7 @@ A surface is done only when:
 7. pure unit tests and caller-path tests exist for cross-layer bugs;
 8. `go test ./...` and the relevant parity gate pass.
 
-9. for an upstream leap, `make upstream-delta` proves every changed tracked source file has a non-pending disposition and durable evidence.
+9. for an upstream leap, `make upstream-delta` proves every changed tracked source file between the earlier pin and the pin has a non-pending disposition and durable evidence.
 
 10. `make interface-inventory-drift` proves the public package export graph and
     exact published declaration inventory are current, and
