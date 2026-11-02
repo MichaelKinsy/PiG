@@ -149,8 +149,7 @@ func requireRealFolders(tree *os.Root, real map[string]struct{}, name string, in
 		if _, ok := real[folder]; ok {
 			continue
 		}
-		//perf:ok one Lstat per new folder of an extracted cell entry, the symbolic-link check itself; extraction runs once per install
-		info, err := tree.Lstat(filepath.FromSlash(folder))
+		info, err := tree.Lstat(filepath.FromSlash(folder)) //perf:ok once per distinct folder of a Node cell archive being unpacked at install, memoised in real
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil
 		}

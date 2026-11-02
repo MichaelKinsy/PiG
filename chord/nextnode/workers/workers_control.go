@@ -393,12 +393,11 @@ func scriptsJSON(scripts []plugins.PluginScript) any {
 	if scripts == nil {
 		scripts = []plugins.PluginScript{}
 	}
-	text, err := json.Marshal(scripts)
+	text, err := json.Marshal(scripts) //perf:ok once per worker start or reload message (a process lifecycle event, not per request)
 	if err != nil {
 		return []any{}
 	}
-	//perf:ok once per worker start or plugin reload; the control message carries scripts as plain data, and PluginScript has no hand-written wire mapping to replace the JSON form
-	value, err := delta.DecodeJson(text)
+	value, err := delta.DecodeJson(text) //perf:ok once per worker start or reload message (a process lifecycle event, not per request)
 	if err != nil {
 		return []any{}
 	}
@@ -407,13 +406,12 @@ func scriptsJSON(scripts []plugins.PluginScript) any {
 
 // scriptsFromJSON is the scripts that crossed as value.
 func scriptsFromJSON(value any) ([]plugins.PluginScript, error) {
-	text, err := chordjson.Marshal(value)
+	text, err := chordjson.Marshal(value) //perf:ok once per worker start or reload message (a process lifecycle event, not per request)
 	if err != nil {
 		return nil, err
 	}
 	var scripts []plugins.PluginScript
-	//perf:ok once per worker start or plugin reload; the inverse of scriptsJSON
-	if err := json.Unmarshal(text, &scripts); err != nil {
+	if err := json.Unmarshal(text, &scripts); err != nil { //perf:ok once per worker start or reload message (a process lifecycle event, not per request)
 		return nil, err
 	}
 	return scripts, nil

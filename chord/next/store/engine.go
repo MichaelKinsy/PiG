@@ -113,7 +113,7 @@ type DocumentContent struct {
 // MarshalJSON is the content in Pi's key order.
 func (content DocumentContent) MarshalJSON() ([]byte, error) { return content.AppendStringify(nil) }
 
-// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+// AppendStringify appends the content's JSON.stringify text, which the stringify encoder splices.
 func (content DocumentContent) AppendStringify(dst []byte) ([]byte, error) {
 	if content.Kind == ContentBase {
 		return jsstring.AppendMarshalJSON(dst, delta.JsonObjectOf("kind", ContentBase, "version", content.Version, "fingerprint", content.Fingerprint, "value", content.Value))
@@ -133,7 +133,7 @@ type RevisionContent struct {
 // MarshalJSON is the content in Pi's key order.
 func (content RevisionContent) MarshalJSON() ([]byte, error) { return content.AppendStringify(nil) }
 
-// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+// AppendStringify appends the content's JSON.stringify text, which the stringify encoder splices.
 func (content RevisionContent) AppendStringify(dst []byte) ([]byte, error) {
 	if content.Kind == ContentBase {
 		return jsstring.AppendMarshalJSON(dst, delta.JsonObjectOf("kind", ContentBase, "version", content.Version, "value", content.Value))
@@ -174,7 +174,7 @@ type documentCreateJSON struct {
 // MarshalJSON is the write in Pi's key order.
 func (write *DocumentCreate) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
 
-// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+// AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
 func (write *DocumentCreate) AppendStringify(dst []byte) ([]byte, error) {
 	return jsstring.AppendMarshalJSON(dst, documentCreateJSON{"document.create", write.Record, write.Base})
 }
@@ -199,7 +199,7 @@ type documentChangeJSON struct {
 // MarshalJSON is the write in Pi's key order.
 func (write *DocumentChange) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
 
-// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+// AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
 func (write *DocumentChange) AppendStringify(dst []byte) ([]byte, error) {
 	return jsstring.AppendMarshalJSON(dst, documentChangeJSON{"document.change", write.ID, write.Revision, write.Content})
 }
@@ -222,7 +222,7 @@ type documentRetireJSON struct {
 // MarshalJSON is the write in Pi's key order.
 func (write *DocumentRetire) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
 
-// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+// AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
 func (write *DocumentRetire) AppendStringify(dst []byte) ([]byte, error) {
 	return jsstring.AppendMarshalJSON(dst, documentRetireJSON{"document.retire", write.ID, write.Revision})
 }
@@ -247,7 +247,7 @@ type documentRevisionJSON struct {
 // MarshalJSON is the write in Pi's key order.
 func (write *DocumentRevisionWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
 
-// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+// AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
 func (write *DocumentRevisionWrite) AppendStringify(dst []byte) ([]byte, error) {
 	return jsstring.AppendMarshalJSON(dst, documentRevisionJSON{"document.revision", write.ID, write.Seq, write.Content})
 }

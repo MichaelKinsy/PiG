@@ -18,7 +18,7 @@ import (
 // PI_PACKAGE_DIR; the user's explicit command is the one owner of the update, selected before any tier.
 func ConfiguredSelfUpdateArgv(setting []string) []string {
 	for _, name := range []string{"PIG_SELF_UPDATE_COMMAND", "PI_SELF_UPDATE_COMMAND"} {
-		//perf:ok once per self-update check or command, never per event
+		//perf:ok read once when an explicit self-update runs, never on a request or event path
 		if argv := strings.FieldsFunc(os.Getenv(name), isJSWhitespace); len(argv) > 0 {
 			return argv
 		}

@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Ports packages/chord/src/next/data/errors.ts.
@@ -135,9 +136,11 @@ func (err *ChordError) ToJSON() *delta.JsonObject {
 }
 
 // MarshalJSON is JSON.stringify's call of toJSON: the wire form, so a ChordError marshals without stack or cause.
-func (err *ChordError) MarshalJSON() ([]byte, error) {
-	//perf:ok a ChordError is encoded once, when it crosses as a failure; its wire object is built by ToJSON
-	return err.ToJSON().MarshalJSON()
+func (err *ChordError) MarshalJSON() ([]byte, error) { return err.AppendStringify(nil) }
+
+// AppendStringify appends the wire form's JSON.stringify text, which the stringify encoder splices.
+func (err *ChordError) AppendStringify(dst []byte) ([]byte, error) {
+	return jsstring.AppendMarshalJSON(dst, err.ToJSON())
 }
 
 // IsChordError reports whether err is a ChordError and returns it. It is upstream's `instanceof`: an error that wraps

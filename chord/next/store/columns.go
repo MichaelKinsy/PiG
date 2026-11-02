@@ -135,9 +135,8 @@ func (records ColumnRecords) Names() []string {
 // MarshalJSON is the JSON object of the records, in order (what JSON.stringify gives).
 func (records ColumnRecords) MarshalJSON() ([]byte, error) { return records.AppendStringify(nil) }
 
-// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+// AppendStringify appends the records' JSON.stringify text to dst.
 func (records ColumnRecords) AppendStringify(dst []byte) ([]byte, error) {
-	start := len(dst)
 	dst = append(dst, '{')
 	for index, entry := range records {
 		if index > 0 {
@@ -147,7 +146,7 @@ func (records ColumnRecords) AppendStringify(dst []byte) ([]byte, error) {
 		dst = append(dst, ':')
 		var err error
 		if dst, err = jsstring.AppendMarshalJSON(dst, entry.Record); err != nil {
-			return dst[:start], err
+			return nil, err
 		}
 	}
 	return append(dst, '}'), nil

@@ -60,7 +60,7 @@ type manifestJSON struct {
 // MarshalJSON is the manifest in Pi's key order.
 func (part *ManifestPart) MarshalJSON() ([]byte, error) { return part.AppendStringify(nil) }
 
-// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+// AppendStringify appends the manifest's JSON.stringify text to dst.
 func (part *ManifestPart) AppendStringify(dst []byte) ([]byte, error) {
 	return jsstring.AppendMarshalJSON(dst, manifestJSON{"manifest", part.Format, part.Schema, part.LastSeq, part.NextID})
 }
@@ -81,7 +81,7 @@ type endJSON struct {
 // MarshalJSON is the end part in Pi's key order.
 func (part *EndPart) MarshalJSON() ([]byte, error) { return part.AppendStringify(nil) }
 
-// AppendStringify appends the JSON.stringify text of MarshalJSON's output to dst (json.StringifyAppender).
+// AppendStringify appends the end part's JSON.stringify text to dst.
 func (part *EndPart) AppendStringify(dst []byte) ([]byte, error) {
 	return jsstring.AppendMarshalJSON(dst, endJSON{"end", part.Writes})
 }
@@ -308,8 +308,7 @@ func jsonForm(value any) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		//perf:ok once per typed part the archive schema checks, on export, import and commit recording; the schema validates a decoded tree and the typed values have no tree form
-		return delta.DecodeJson(text)
+		return delta.DecodeJson(text) //perf:ok runs on archive import and outbox-batch replay (CheckPart, CheckWrite at a trust boundary), once per imported part or replayed write, never per request; a typed part has no JsonObject builder, so its JSON text is what the schema check reads
 	}
 	return value, nil
 }
