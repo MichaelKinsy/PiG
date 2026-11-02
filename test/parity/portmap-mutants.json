@@ -2227,6 +2227,16 @@
    "file": "internal/codingagent/clipboard_text.go",
    "old": "\"\\x1b[200~\"",
    "new": "\"\\x1b[201~\""
+  },
+  {
+   "file": "internal/codingagent/presentation_tui.go",
+   "old": "label += \" · \" + tui.FormatKeyText(",
+   "new": "label += \" - \" + tui.FormatKeyText("
+  },
+  {
+   "file": "internal/codingagent/presentation_tui.go",
+   "old": "opts.WheelScrollLines = tui.WheelScrollLines{Auto: true}",
+   "new": "opts.WheelScrollLines = tui.WheelScrollLines{Lines: 5}"
   }
  ]
 }
