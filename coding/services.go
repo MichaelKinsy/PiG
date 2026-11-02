@@ -258,7 +258,7 @@ func newConfiguredServices(cwd, agentDir string, auth *ai.AuthStorage, credentia
 	}
 	services.modelRuntime = modelRuntime
 	services.registry = NewModelRegistry(modelRuntime)
-	if os.Getenv("PIG_TEST_FAUX") == "1" { //perf:ok once per Services construction, test-only registration
+	if TestFauxProviderEnabled() {
 		if err := registerHarnessTestFaux(reg); err != nil {
 			return nil, err
 		}

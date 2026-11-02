@@ -10,7 +10,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"slices"
 	"strings"
 
@@ -290,7 +289,7 @@ func selectSessionOptionModel(rt *startupModelRuntime, modelRuntime *coding.Mode
 // the startup allocation ceilings (TestStartupAllocationBudget, test/perfgate), which only move down, are measured with it: the registry
 // resolution adds about 6,100 allocations and 380 KB to the warm first prompt.
 func testFauxCLIModel(options startupModelOptions) (*codingagent.RuntimeModel, string, bool) {
-	if os.Getenv("PIG_TEST_FAUX") != "1" {
+	if !coding.TestFauxProviderEnabled() {
 		return nil, "", false
 	}
 	spec := options.CLIModel

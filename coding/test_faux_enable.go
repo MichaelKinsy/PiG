@@ -20,6 +20,12 @@ func EnableTestFauxProvider() {
 	testFauxProviderFactory.Store(&factory)
 }
 
+// TestFauxProviderEnabled reports whether this program serves the test-faux provider: EnableTestFauxProvider ran and PIG_TEST_FAUX=1. The model registry lists test-faux, the model build accepts it and the pig command selects it under this one condition.
+func TestFauxProviderEnabled() bool {
+	//perf:ok once per Services construction, model build or startup model selection, never per event
+	return testFauxProviderFactory.Load() != nil && os.Getenv("PIG_TEST_FAUX") == "1"
+}
+
 var errTestFauxNotEnabled = errors.New("coding: BuildModel: test-faux is not enabled in this program: call coding.EnableTestFauxProvider before building it")
 
 // newTestFauxProvider builds the test-faux provider, or reports that EnableTestFauxProvider did not run.

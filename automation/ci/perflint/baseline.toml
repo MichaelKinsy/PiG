@@ -1212,14 +1212,6 @@ count = 2
 class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
 
 [[hit]]
-file = "coding/cli/startup_model.go"
-func = "testFauxCLIModel"
-pattern = "env-stat"
-detail = "os.Getenv"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
 file = "coding/cli/startup_session.go"
 func = "readSessionCWD"
 pattern = "env-stat"

@@ -404,7 +404,7 @@ An extension that constructs a `TuiAltScreen` (Pi's alternate-screen TUI) draws 
 
 ### The test-only test-faux provider
 
-The `pig` command can serve a deterministic test provider, `test-faux`, when `PIG_TEST_FAUX=1`; the parity harness and the command's tests use it, and `PIG_TEST_FAUX_SCENARIO` picks its scenario. The command enables it with `coding.EnableTestFauxProvider()` where it starts. A program that never serves it does not call it, and the provider and its scenario classifier are not linked. A program that builds the model through `coding.BuildModel` with `PIG_TEST_FAUX=1` calls `coding.EnableTestFauxProvider()` once first. Until then the build fails with an error that names the call.
+The `pig` command can serve a deterministic test provider, `test-faux`, when `PIG_TEST_FAUX=1`; the parity harness and the command's tests use it, and `PIG_TEST_FAUX_SCENARIO` picks its scenario. The command enables it with `coding.EnableTestFauxProvider()` where it starts. A program that never serves it does not call it, and the provider and its scenario classifier are not linked. The model registry lists `test-faux` and `coding.BuildModel` builds it only when both the call ran and `PIG_TEST_FAUX=1` is set; `coding.TestFauxProviderEnabled()` reports that condition. A program that builds the model through `coding.BuildModel` with `PIG_TEST_FAUX=1` calls `coding.EnableTestFauxProvider()` once first. Until then the registry does not list it and the build fails with an error that names the call.
 
 ### Size gate
 

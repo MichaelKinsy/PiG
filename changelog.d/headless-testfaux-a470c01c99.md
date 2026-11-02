@@ -1,6 +1,6 @@
 ### Upgrading
 
-- **Breaking (Go API, test-only):** `coding`: building the test-only `test-faux` provider under `PIG_TEST_FAUX=1` needs `coding.EnableTestFauxProvider()`, which the `pig` command calls where it starts. A program that serves `test-faux` through `coding.BuildModel` calls it once first; until then the build fails with an error that names the call. A program that never serves it needs no change.
+- **Breaking (Go API, test-only):** `coding`: building the test-only `test-faux` provider under `PIG_TEST_FAUX=1` needs `coding.EnableTestFauxProvider()`, which the `pig` command calls where it starts. A program that serves `test-faux` through `coding.BuildModel` calls it once first; until then the build fails with an error that names the call. The registry lists `test-faux` only once that call ran; `coding.TestFauxProviderEnabled()` reports whether it did and `PIG_TEST_FAUX=1` is set. A program that never serves it needs no change.
 
 ### Changed
 
