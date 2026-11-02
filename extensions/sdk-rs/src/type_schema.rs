@@ -14,8 +14,8 @@ type RefineCheck = Arc<dyn Fn(&Value) -> Result<bool, String> + Send + Sync>;
 pub(crate) type RefineError = dyn Fn(&Value) -> Result<String, String> + Send + Sync;
 
 /// One entry of a schema's hidden `~refine` list (TypeBox's `{check, error}`): `check` decides whether a value passes and `error` words the failure (`None` is TypeBox's
-/// "Refine Error"). Pi runs them while it validates a tool call's arguments; an extension tool's refinements run in this process when the host asks for them. An `Err` is what a
-/// thrown JavaScript error is: it ends the validation and the tool call fails with its message.
+/// "Refine Error"). TypeBox's own validation runs them, but a tool's arguments are validated as plain JSON Schema (Pi 1.4.0+b556cfe5 validates with pi-schema: ai/CHANGELOG.md:25, coding-agent/docs/extensions.md:176), so nothing in a tool's
+/// registration or call consults the list: arguments a refinement would reject are accepted, and the constraint belongs in the tool's handler.
 #[derive(Clone)]
 pub struct Refinement {
     pub check: RefineCheck,
@@ -32,13 +32,6 @@ impl PartialEq for Refinement {
     fn eq(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.check, &other.check)
     }
-}
-
-/// A schema node that carries refinements: its path in the schema (the keywords that lead to it: `/properties/a`, `/anyOf/1`, `/items`) and the refinements in the order added.
-#[derive(Clone, Debug, PartialEq)]
-pub struct RefinementSite {
-    pub path: String,
-    pub refinements: Vec<Refinement>,
 }
 
 /// What JSON.stringify throws for a bigint (a V8 TypeError). A schema that holds one fails with it where Pi's value fails: when it is written as JSON.
@@ -248,37 +241,6 @@ impl TSchema {
         ))
     }
 
-    /// The schema as the host validates arguments with it: the JSON with TypeBox's `~kind` appended to every node that has one (the Node runtime sends the same form as
-    /// `validation_parameters`). Panics when a [`BigInt`] is a member, as [`TSchema::to_value`] does.
-    pub fn to_validation_value(&self) -> Value {
-        fn convert(value: &TValue) -> Value {
-            match value {
-                TValue::Schema(schema) => schema.to_validation_value(),
-                TValue::List(items) => Value::Array(items.iter().map(convert).collect()),
-                TValue::Object(pairs) => Value::Object(
-                    pairs
-                        .iter()
-                        .map(|(key, member)| (key.clone(), convert(member)))
-                        .collect(),
-                ),
-                TValue::Json(value) => value.clone(),
-                TValue::BigInt(_) => panic!("{BIGINT_STRINGIFY_ERROR}"),
-            }
-        }
-        if let Some(items) = &self.items {
-            return Value::Array(items.iter().map(convert).collect());
-        }
-        let mut object: Map<String, Value> = self
-            .fields
-            .iter()
-            .map(|(key, value)| (key.clone(), convert(value)))
-            .collect();
-        if let Some(kind) = self.hidden.get("~kind") {
-            object.insert("~kind".into(), kind.clone());
-        }
-        Value::Object(object)
-    }
-
     /// What JSON.stringify of the TypeBox value writes: the members in order, numbers as JavaScript prints them (`1e21`, `1e-7`, `0` for -0) through the SDK's one JavaScript
     /// number formatter, and only the escapes JSON.stringify writes.
     /// Panics with "Do not know how to serialize a BigInt" when a [`BigInt`] is a member, as `JSON.stringify` throws ([`TSchema::try_to_json`] returns the message as an error).
@@ -315,32 +277,6 @@ impl TSchema {
     /// The refinements, in the order they were added.
     pub fn refinements(&self) -> &[Refinement] {
         &self.refine
-    }
-
-    /// How many refinements the schema has anywhere: more than [`TSchema::refinement_sites`] finds means a refinement sits under a keyword whose refinements the host does not run.
-    pub fn refinement_count(&self) -> usize {
-        fn count_value(value: &TValue) -> usize {
-            match value {
-                TValue::Schema(schema) => schema.refinement_count(),
-                TValue::List(items) => items.iter().map(count_value).sum(),
-                TValue::Object(pairs) => pairs.iter().map(|(_, member)| count_value(member)).sum(),
-                TValue::Json(_) | TValue::BigInt(_) => 0,
-            }
-        }
-        self.refine.len()
-            + self
-                .fields
-                .iter()
-                .map(|(_, value)| count_value(value))
-                .sum::<usize>()
-            + self.items.iter().flatten().map(count_value).sum::<usize>()
-    }
-
-    /// The nodes of the schema that carry refinements, in the order they are found, with the path of each.
-    pub fn refinement_sites(&self) -> Vec<RefinementSite> {
-        let mut sites = Vec::new();
-        visit_refinements(self, "", &mut sites);
-        sites
     }
 
     /// Every hidden member, by name.
@@ -635,69 +571,6 @@ fn flatten_union(any_of: Option<TValue>) -> Vec<TValue> {
     out
 }
 
-const KEYWORDS_WITH_CHILD: [&str; 11] = [
-    "additionalProperties",
-    "additionalItems",
-    "contains",
-    "propertyNames",
-    "not",
-    "if",
-    "then",
-    "else",
-    "items",
-    "unevaluatedItems",
-    "unevaluatedProperties",
-];
-const KEYWORDS_WITH_MEMBERS: [&str; 6] = [
-    "properties",
-    "patternProperties",
-    "dependentSchemas",
-    "dependencies",
-    "$defs",
-    "definitions",
-];
-const KEYWORDS_WITH_LIST: [&str; 5] = ["allOf", "anyOf", "oneOf", "prefixItems", "items"];
-
-fn pointer_segment(key: &str) -> String {
-    key.replace('~', "~0").replace('/', "~1")
-}
-
-fn visit_refinements(schema: &TSchema, path: &str, sites: &mut Vec<RefinementSite>) {
-    if !schema.refine.is_empty() {
-        sites.push(RefinementSite {
-            path: path.to_string(),
-            refinements: schema.refine.clone(),
-        });
-    }
-    for (key, value) in &schema.fields {
-        let key = key.as_str();
-        match value {
-            TValue::Object(members) if KEYWORDS_WITH_MEMBERS.contains(&key) => {
-                for (name, member) in members {
-                    if let TValue::Schema(child) = member {
-                        visit_refinements(
-                            child,
-                            &format!("{path}/{key}/{}", pointer_segment(name)),
-                            sites,
-                        );
-                    }
-                }
-            }
-            TValue::List(members) if KEYWORDS_WITH_LIST.contains(&key) => {
-                for (index, member) in members.iter().enumerate() {
-                    if let TValue::Schema(child) = member {
-                        visit_refinements(child, &format!("{path}/{key}/{index}"), sites);
-                    }
-                }
-            }
-            TValue::Schema(child) if KEYWORDS_WITH_CHILD.contains(&key) => {
-                visit_refinements(child, &format!("{path}/{key}"), sites)
-            }
-            _ => {}
-        }
-    }
-}
-
 /// What `Type.Literal` takes: a string, a boolean, a number or a [`BigInt`].
 #[derive(Clone, Debug, PartialEq)]
 pub enum LiteralValue {
@@ -908,8 +781,9 @@ impl Type {
         mark(schema.into(), "~immutable")
     }
     /// `Type.Optional(value)` of a value that is not a [`TSchema`]: a plain JSON object, or a list (whose copy loses the marker, see [`Type::unsafe_`]). Any other value is an error.
-    /// `Type.Refine(type, check, error?)`: a copy of the schema whose hidden `~refine` list has the refinement appended; the schema's JSON does not change. The refinements run when
-    /// the host validates a tool call's arguments (see [`crate::Extension::tool`]).
+    /// `Type.Refine(type, check, error?)`: a copy of the schema whose hidden `~refine` list has the refinement appended; the schema's JSON does not change. The refinements are
+    /// not run: a tool's arguments are validated as plain JSON Schema, so check such constraints in the handler.
+    /// pig divergence (D226): the stored check is never run by any API; remove when every SDK serves TypeBox Value.Check.
     pub fn refine(
         schema: impl Into<TSchema>,
         check: impl Fn(&Value) -> Result<bool, String> + Send + Sync + 'static,
@@ -924,6 +798,7 @@ impl Type {
     }
 
     /// `Type.Refine(value, check, error?)` of a value that is not a [`TSchema`]: a plain JSON object or a list. Any other value is an error.
+    /// pig divergence (D226): the stored check is never run by any API; remove when every SDK serves TypeBox Value.Check.
     pub fn refine_value(
         value: impl Into<TValue>,
         check: impl Fn(&Value) -> Result<bool, String> + Send + Sync + 'static,

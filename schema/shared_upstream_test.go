@@ -34,6 +34,8 @@ func mustCompileMap(t *testing.T, s map[string]any) *Validator {
 	return v
 }
 
+// pi: packages/schema/src/shared.ts
+
 func TestSharedChecks(t *testing.T) {
 	// The check of a bare type is a module-level function, so equal bare types share it.
 	t.Run("share the module-level check of a bare type", func(t *testing.T) {

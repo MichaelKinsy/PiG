@@ -19,6 +19,7 @@ const (
 
 // IsAcePrefixed reports whether value starts with "xn--" in any letter case.
 func IsAcePrefixed(value string) bool {
+	//portlint:allow utf16units puny.ts IsAcePrefixed `value.toLowerCase().startsWith("xn--")`: the four prefix units are ASCII, so byte and UTF-16 offsets agree, and no non-ASCII character lowercases to x, n or -
 	return len(value) >= 4 && value[2] == '-' && value[3] == '-' && (value[0] == 'x' || value[0] == 'X') && (value[1] == 'n' || value[1] == 'N')
 }
 
@@ -26,6 +27,7 @@ func IsAcePrefixed(value string) bool {
 func LowerAceBody(value string) (string, bool) {
 	var body strings.Builder
 	body.Grow(len(value) - 4)
+	//portlint:allow utf16units callers pass a value IsAcePrefixed accepted (label_puny.go, format_bidi.go): its first four units are ASCII, so byte 4 is code unit 4 of puny.ts `value.toLowerCase().slice(4)`
 	for _, r := range value[4:] {
 		switch {
 		case r >= 'A' && r <= 'Z':
@@ -50,6 +52,7 @@ func toInt32(x float64) int32 {
 	if m < 0 {
 		m += 4294967296
 	}
+	//portlint:allow numbers m is Mod(Trunc(x), 2^32) shifted into [0, 2^32): an exact integer, so uint32(m) then int32 wraps as ToInt32 does
 	return int32(uint32(m))
 }
 
@@ -132,6 +135,7 @@ func Decode(value string) ([]rune, bool) {
 		i = math.Mod(i, outLen)
 		at := 0
 		if !math.IsNaN(i) {
+			//portlint:allow numbers i is Mod(i, outLen) of an integral float, so 0 <= i < outLen is an exact index; NaN takes the branch above, as splice(NaN, 0, n) inserts at 0 (puny.ts Decode)
 			at = int(i)
 		}
 		output = append(output, 0)
@@ -144,6 +148,7 @@ func Decode(value string) ([]rune, bool) {
 		if math.IsNaN(cp) || cp < 0 || cp > 0x10ffff || cp != math.Floor(cp) {
 			return nil, false
 		}
+		//portlint:allow numbers the guard above rejects NaN, non-integers and values outside 0..0x10ffff, where String.fromCodePoint(...output) throws RangeError (puny.ts Decode)
 		units = append(units, rune(cp))
 	}
 	return mergeSurrogates(units), true
@@ -216,9 +221,11 @@ func encode(codePoints []rune) string {
 						break
 					}
 					result = append(result, digitToChar(t+(q-t)%(punycodeBase-t)))
+					//portlint:allow numbers q >= t here, so (q-t) is non-negative and integer division equals puny.ts Encode's Math.floor((q - t) / (PUNYCODE_BASE - t))
 					q = (q - t) / (punycodeBase - t)
 				}
 				result = append(result, digitToChar(q))
+				//portlint:allow numbers adapt returns an integral finite float (a sum of Math.floor results and multiples of 36), so int() is exact for puny.ts Encode's `bias = Adapt(...)`
 				bias = int(adapt(float64(delta), float64(handledCPCount+1), handledCPCount == basicLength))
 				delta = 0
 				handledCPCount++

@@ -151,6 +151,5 @@ func (h *Host) endSyncRunHoldOf(conn *Conn, args json.RawMessage) {
 
 // busyIsIdleResult is the isIdle answer while the code that sent a triggering message has not yielded.
 func busyIsIdleResult() *CallResultPayload {
-	result, _ := json.Marshal(map[string]any{"idle": false})
-	return &CallResultPayload{Result: result}
+	return &CallResultPayload{Result: json.RawMessage(`{"idle":false}`)}
 }

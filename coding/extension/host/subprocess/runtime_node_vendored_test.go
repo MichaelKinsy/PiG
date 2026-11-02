@@ -61,16 +61,14 @@ var vendoredImportRewrites = map[string][2]string{
 		`import { Marked, Tokenizer } from "../../../marked/lib/marked.esm.js";`},
 	"pi-ai/utils/json-parse.js": {`import { parse as partialParse } from "partial-json";`,
 		`import { parse as partialParse } from "../../../partial-json/dist/index.js";`},
-	"pi-ai/providers/compat-schema.js": {`import { Type } from "typebox";`,
-		`import { Type } from "../../../typebox.mjs";`},
-	"pi-ai/providers/model-schema.js": {`import { Type } from "typebox";`,
-		`import { Type } from "../../../typebox.mjs";`},
-	"pi-ai/utils/typebox-helpers.js": {`import { Type } from "typebox";`,
-		`import { Type } from "../../../typebox.mjs";`},
+	"pi-ai/providers/schema-builders.js": {`import { obj, } from "@earendil-works/pi-schema";`,
+		`import { obj, } from "../../pi-schema/index.js";`},
+	"pi-ai/providers/compat-schema.js": {`import { arr, bool, nul, num, opt, str, union, } from "@earendil-works/pi-schema";`,
+		`import { arr, bool, nul, num, opt, str, union, } from "../../pi-schema/index.js";`},
+	"pi-ai/providers/model-schema.js": {`import { arr, int, nul, num, oneOf, opt, str, union, } from "@earendil-works/pi-schema";`,
+		`import { arr, int, nul, num, oneOf, opt, str, union, } from "../../pi-schema/index.js";`},
 	"pi-ai/telemetry.js": {`import { createTypedMetrics, createTypedSpanStarter, defineTelemetrySchema, NOOP_TELEMETRY_CONTEXT, NOOP_TELEMETRY_METRICS, } from "@earendil-works/pi-telemetry";`,
 		`import { createTypedMetrics, createTypedSpanStarter, defineTelemetrySchema, NOOP_TELEMETRY_CONTEXT, NOOP_TELEMETRY_METRICS, } from "../pi-telemetry/index.js";`},
-	"pi-ai/index.js": {`export { Type } from "typebox";`,
-		`export { Type } from "../../typebox.mjs";`},
 	"pi-coding-agent/utils/shell.js": {`import { getBinDir } from "../config.js";`,
 		`import { getBinDir } from "../../../pig-config.mjs";`},
 	"pi-coding-agent/utils/frontmatter.js": {`import { parse } from "yaml";`,
@@ -104,10 +102,10 @@ var vendoredBridgeStubs = func() map[string]string {
 	return stubs
 }()
 
-// validation.js rewrites two imports.
+// validation.js rewrites its two pi-schema imports.
 var vendoredValidationRewrites = [][2]string{
-	{`import { Compile } from "typebox/compile";`, `import { Compile } from "../../../typebox-compile.mjs";`},
-	{`import { Value } from "typebox/value";`, `import { Value } from "../../../typebox-value.mjs";`},
+	{`import { compile } from "@earendil-works/pi-schema";`, `import { compile } from "../../pi-schema/index.js";`},
+	{`import { formats } from "@earendil-works/pi-schema/formats";`, `import { formats } from "../../pi-schema/formats/index.js";`},
 }
 
 // pinnedPackageDist is where each vendored package's dist/ lives in the
@@ -121,6 +119,7 @@ var pinnedPackageDist = map[string][]string{
 	"pi-codemode":     {"node_modules", "@earendil-works", "pi-codemode", "dist"},
 	"pi-mcp":          {"node_modules", "@earendil-works", "pi-mcp", "dist"},
 	"pi-telemetry":    {"node_modules", "@earendil-works", "pi-telemetry", "dist"},
+	"pi-schema":       {"node_modules", "@earendil-works", "pi-schema", "dist"},
 }
 
 // closureVendoredPackages are copied as the module graph reachable from

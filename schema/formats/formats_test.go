@@ -12,7 +12,7 @@ import (
 // piFormatNames are the keys of the `formats` object in Pi's packages/schema/src/formats/index.ts.
 var piFormatNames = []string{
 	"date", "date-time", "duration", "email", "hostname", "idn-email", "idn-hostname", "ipv4", "ipv6", "iri", "iri-reference",
-	"json-pointer", "regex", "relative-json-pointer", "time", "uri", "uri-reference", "uri-template", "uuid",
+	"json-pointer", "json-pointer-uri-fragment", "regex", "relative-json-pointer", "time", "uri", "uri-reference", "uri-template", "url", "uuid",
 }
 
 func TestFormatsNames(t *testing.T) {

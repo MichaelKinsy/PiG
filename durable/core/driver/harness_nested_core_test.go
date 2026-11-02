@@ -413,7 +413,7 @@ func TestCoreABrokenStructuredOutputOfAModelIssuedCallIsReported(t *testing.T) {
 	nestedCoreWait(t, sub, durable.SubmissionDone)
 	mu.Lock()
 	defer mu.Unlock()
-	if len(reports) != 1 || reports[0] != "Tool batch returned structuredOutput that does not match its schema: n: must be number" {
+	if len(reports) != 1 || reports[0] != "Tool batch returned structuredOutput that does not match its schema: n: expected number, got string" {
 		t.Fatalf("reports = %q", reports)
 	}
 	page, err := root.Entries(t.Context(), durable.EntryQuery{}, 100, nil)

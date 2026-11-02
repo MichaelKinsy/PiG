@@ -223,6 +223,7 @@ func decimal(x float64) (*big.Int, int) {
 	coefficient, _ := new(big.Int).SetString(strings.Replace(mantissa, ".", "", 1), 10)
 	power := 0
 	if exponent != "" {
+		//portlint:allow numbers exponent is the tail of Number#toString's "e+21"/"e-7" form, a signed decimal integer that Atoi reads as checks.ts decimal's Number(exponent) does
 		power, _ = strconv.Atoi(exponent)
 	}
 	return coefficient, power - fraction

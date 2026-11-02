@@ -25,6 +25,11 @@ var knownFailures = map[string]bool{
 	"draft7/optional/content > validation of binary-encoded media type documents > an invalid base64 string that is valid JSON": true,
 }
 
+// pi: packages/schema/src/annotations.ts
+// pi: packages/schema/src/checks.ts
+// pi: packages/schema/src/compiler.ts
+// pi: packages/schema/src/resolver.ts
+
 func TestConformanceSuite(t *testing.T) {
 	schemas := suiteSchemas(t)
 	files := suiteFiles(t)
