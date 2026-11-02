@@ -1,5 +1,7 @@
 package subprocess
 
+// pi: packages/coding-agent/src/index.ts
+
 import (
 	"path/filepath"
 	"slices"

@@ -1618,5 +1618,121 @@
    "old": "\t\t\tinput = Strings(\"text\", \"image\")\n",
    "new": "\t\t\tinput = Strings(\"text\")\n"
   }
+ ],
+ "packages/coding-agent/src/cli.ts": [
+  {
+   "file": "coding/cli/main.go",
+   "old": "printHelp(os.Stdout, chalkStdoutColor(), extensionHelpFlags(build.Extensions)...)",
+   "new": "printHelp(os.Stderr, chalkStdoutColor(), extensionHelpFlags(build.Extensions)...)"
+  }
+ ],
+ "packages/coding-agent/src/index.ts": [
+  {
+   "file": "coding/extension/host/subprocess/node_runtime_cache.go",
+   "old": "\t\tlinks = append(links, link{path, target})\n",
+   "new": "\t\tif filepath.Base(path) != \"pi-coding-agent.mjs\" {\n\t\t\tlinks = append(links, link{path, target})\n\t\t}\n"
+  }
+ ],
+ "packages/coding-agent/src/package-manager-cli.ts": [
+  {
+   "file": "coding/cli/package_commands.go",
+   "old": "\"Unknown option %s for %q.\"",
+   "new": "\"Unknown flag %s for %q.\""
+  },
+  {
+   "file": "coding/cli/package_commands.go",
+   "old": "\"Missing %s source.\"",
+   "new": "\"No %s source.\""
+  },
+  {
+   "file": "coding/cli/package_command_trust.go",
+   "old": "settings.SetProjectTrusted(decision != nil \u0026\u0026 *decision)",
+   "new": "settings.SetProjectTrusted(true)"
+  }
+ ],
+ "packages/coding-agent/src/cli/initial-message.ts": [
+  {
+   "file": "coding/cli/main.go",
+   "old": "return strings.Join(parts, \"\"), images, slices.Clone(messages)",
+   "new": "return strings.Join(parts, \"\\n\"), images, slices.Clone(messages)"
+  }
+ ],
+ "packages/coding-agent/src/cli/list-models.ts": [
+  {
+   "file": "coding/cli/model.go",
+   "old": "if slices.Contains(e.Input, \"image\") {",
+   "new": "if slices.Contains(e.Input, \"text\") {"
+  }
+ ],
+ "packages/coding-agent/src/cli/config-selector.ts": [
+  {
+   "file": "coding/cli/config_command.go",
+   "old": "if item.Inherited \u0026\u0026 item.Source != \"builtin\" \u0026\u0026 !slices.Contains(entries, pattern) {",
+   "new": "if item.Inherited \u0026\u0026 !slices.Contains(entries, pattern) {"
+  }
+ ],
+ "packages/coding-agent/src/cli/credential-print.ts": [
+  {
+   "file": "coding/cli/credential_print.go",
+   "old": "if kind == AuthCommandAPIKey \u0026\u0026 stored \u0026\u0026 credentialType == ai.CredentialOAuth {",
+   "new": "if kind == AuthCommandAPIKey \u0026\u0026 stored \u0026\u0026 credentialType != ai.CredentialOAuth {"
+  }
+ ],
+ "packages/coding-agent/src/cli/session-picker.ts": [
+  {
+   "file": "internal/codingagent/session_selector.go",
+   "old": "if s.deleteSession != nil {",
+   "new": "if s.deleteSession == nil {"
+  },
+  {
+   "file": "internal/codingagent/session_selector.go",
+   "old": "msg := \"Session deleted\"",
+   "new": "msg := \"Session removed\""
+  }
+ ],
+ "packages/coding-agent/src/cli/project-trust.ts": [
+  {
+   "file": "coding/cli/project_trust_context.go",
+   "old": "prompts:     hasUI \u0026\u0026 mode == appModeInteractive,",
+   "new": "prompts:     hasUI,"
+  },
+  {
+   "file": "coding/cli/project_trust.go",
+   "old": "return decision == nil || *decision, nil",
+   "new": "return decision == nil, nil"
+  }
+ ],
+ "packages/coding-agent/src/cli/startup-ui.ts": [
+  {
+   "file": "internal/codingagent/startup_ui.go",
+   "old": "retainStartupInput(dispatchStartupInput(component, input))",
+   "new": "dispatchStartupInput(component, input)"
+  },
+  {
+   "file": "internal/codingagent/startup_ui.go",
+   "old": "stopAndDrain(true)",
+   "new": "stopAndDrain(false)"
+  }
+ ],
+ "packages/coding-agent/src/cli/auth-check.ts": [
+  {
+   "file": "coding/cli/auth_check.go",
+   "old": "\tif refresh {\n\t\tresolved, err",
+   "new": "\tif !refresh {\n\t\tresolved, err"
+  }
+ ],
+ "packages/coding-agent/src/cli/auth-command.ts": [
+  {
+   "file": "coding/cli/auth_command.go",
+   "old": "if !strings.EqualFold(name, \"authorization\") {",
+   "new": "if !strings.EqualFold(name, \"authorization\") || name == \"AUTHORIZATION\" {"
+  }
+ ],
+ "packages/coding-agent/src/cli/setup.ts": [
+  {
+   "file": "coding/cli/setup_cli.go",
+   "old": "_ = os.Setenv(\"PI_CODING_AGENT\", \"true\")",
+   "new": "_ = os.Setenv(\"PI_CODING_AGENT\", \"false\")"
+  }
  ]
 }
