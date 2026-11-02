@@ -4818,6 +4818,38 @@
       ]
     },
     {
+      "id": "BF-27e9bc8",
+      "title": "`@earendil-works/pi-agent-core`, `pi-tui` and `pi-ai` (and `pi-ai/models`, `pi-ai/oauth`…",
+      "symptom": "`@earendil-works/pi-agent-core`, `pi-tui` and `pi-ai` (and `pi-ai/models`, `pi-ai/oauth`, `pi-ai/providers/all`) now resolve, in an extension, to files of a package root laid out like Pi's: a `package.json` named for the package above the entry, the entry at the path Pi's `main` or `exports` gives (`dist/index.js` and the like), and `pi-ai`'s `dist/cli.js`.",
+      "rootCause": "The runtime served @earendil-works/pi-agent-core from shims/pi-agent-core.mjs, outside any package root, so an extension that resolves the package and walks up to its package.json, or reads ../package.json beside its entry, found no package. The package now resolves to shims/pi-dist/pi-agent-core/dist/index.js, Pi's main entry, which re-exports the same module; shims/pi-dist/pi-agent-core/package.json is the pinned package's.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`@earendil-works/pi-agent-core`, `pi-tui` and `pi-ai` (and `pi-ai/models`, `pi-ai/oauth`, `pi-ai/providers/all`) now resolve, in an extension, to files of a package root laid out like Pi's: a `package.json` named for the package above the entry, the entry at the path Pi's `main` or `exports` gives (`dist/index.js` and the like), and `pi-ai`'s `dist/cli.js`. An extension that resolves one of these packages and walks up to its `package.json`, reads `../package.json` beside the entry, or computes a `dist/` file from the root found nothing in the runtime's shim directory before.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "27e9bc8860",
+          "date": "2026-11-02"
+        },
+        {
+          "hash": "5b6dce98de",
+          "date": "2026-11-02"
+        },
+        {
+          "hash": "fa330d4b2d",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_pi_package_layout_test.go::TestNodeServesEachPiPackageWithPisLayout",
+        "coding/extension/host/subprocess/runtime_node_package_roots_test.go::TestVendoredPiPackageRootsMatchThePinnedPackages",
+        "coding/extension/host/subprocess/runtime_node_vendored_test.go::TestVendoredPiDistMatchesThePinnedPackage"
+      ]
+    },
+    {
       "id": "BF-27f3324",
       "title": "The npm release packer reads `npm pack --json` output from npm 12, which keys the result by package name, as…",
       "symptom": "The npm release packer reads `npm pack --json` output from npm 12, which keys the result by package name, as well as npm 11's array (Pi 6fb2e781).",
