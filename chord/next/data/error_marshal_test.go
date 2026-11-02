@@ -1,31 +1,33 @@
 package data
 
 import (
-	"bytes"
-	"encoding/json"
+	"math"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// directEncoder is ChordError's previous MarshalJSON: the wire object's own encoder.
-type directEncoder struct{ err *ChordError }
-
-func (d directEncoder) MarshalJSON() ([]byte, error) { return d.err.ToJSON().MarshalJSON() }
-
-// TestChordErrorMarshalMatchesWireObject pins that a ChordError encoded by encoding/json or by JSON.stringify's encoder is byte-identical to its wire object encoded through the old MarshalJSON.
-func TestChordErrorMarshalMatchesWireObject(t *testing.T) {
-	for _, message := range []string{"a<b>&\u2028\u2029é", "bad\xffutf", "\xed\xa0\x80lone", "plain"} {
-		err := &ChordError{Code: "x", Message: message, Reason: "r"}
-		want, wantErr := json.Marshal(struct{ E any }{directEncoder{err}})
-		got, gotErr := json.Marshal(struct{ E any }{err})
-		if (wantErr == nil) != (gotErr == nil) || !bytes.Equal(want, got) {
-			t.Errorf("json.Marshal(%q): got %s (%v), want %s (%v)", message, got, gotErr, want, wantErr)
+// TestChordErrorMarshalIsTheStringifiedToJSON pins ChordError's JSON to Pi's JSON.stringify of toJSON (packages/chord/src/next/data/errors.ts:57): code, reason, message and details in that order, `<`, `>`, `&` and U+2028/U+2029 written literally, and a negative zero in details as 0.
+func TestChordErrorMarshalIsTheStringifiedToJSON(t *testing.T) {
+	cases := []struct {
+		name string
+		err  *ChordError
+		want string
+	}{
+		{"plain", &ChordError{Code: "x", Message: "plain", Reason: "r"}, `{"code":"x","reason":"r","message":"plain"}`},
+		{"html and separators", &ChordError{Code: "x", Message: "a<b>&\u2028\u2029é"}, "{\"code\":\"x\",\"message\":\"a<b>&\u2028\u2029é\"}"},
+		{"negative zero in details", &ChordError{Code: "x", Message: "m", HasDetails: true, Details: delta.JsonObjectOf("n", math.Copysign(0, -1), "list", []any{math.Copysign(0, -1), 1.5})}, `{"code":"x","message":"m","details":{"n":0,"list":[0,1.5]}}`},
+		{"separators in details", &ChordError{Code: "x", Message: "m", HasDetails: true, Details: delta.JsonObjectOf("k\u2028", "v\u2029")}, "{\"code\":\"x\",\"message\":\"m\",\"details\":{\"k\u2028\":\"v\u2029\"}}"},
+	}
+	for _, test := range cases {
+		direct, err := test.err.MarshalJSON()
+		if err != nil || string(direct) != test.want {
+			t.Errorf("%s: MarshalJSON got %q, %v; want %q", test.name, direct, err, test.want)
 		}
-		wantJS, wantJSErr := jsstring.MarshalJSON(struct{ E any }{directEncoder{err}})
-		gotJS, gotJSErr := jsstring.MarshalJSON(struct{ E any }{err})
-		if (wantJSErr == nil) != (gotJSErr == nil) || !bytes.Equal(wantJS, gotJS) {
-			t.Errorf("jsstring.MarshalJSON(%q): got %s (%v), want %s (%v)", message, gotJS, gotJSErr, wantJS, wantJSErr)
+		wrapped, err := jsstring.MarshalJSON(struct{ E any }{test.err})
+		if want := `{"E":` + test.want + `}`; err != nil || string(wrapped) != want {
+			t.Errorf("%s: JSON.stringify got %q, %v; want %q", test.name, wrapped, err, want)
 		}
 	}
 }

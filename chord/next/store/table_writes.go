@@ -53,7 +53,7 @@ type tableWriteJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *TableDefinitionWrite) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(write) }
+func (write *TableDefinitionWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
 
 // AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
 func (write *TableDefinitionWrite) AppendStringify(dst []byte) ([]byte, error) {
@@ -85,7 +85,7 @@ type indexWriteJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *IndexWrite) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(write) }
+func (write *IndexWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
 
 // AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
 func (write *IndexWrite) AppendStringify(dst []byte) ([]byte, error) {
@@ -108,7 +108,7 @@ type dropIndexWriteJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *DropIndexWrite) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(write) }
+func (write *DropIndexWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
 
 // AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
 func (write *DropIndexWrite) AppendStringify(dst []byte) ([]byte, error) {
@@ -139,7 +139,7 @@ func editJSON(edit TableEdit) *delta.JsonObject {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *AlterWrite) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(write) }
+func (write *AlterWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
 
 // AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
 func (write *AlterWrite) AppendStringify(dst []byte) ([]byte, error) {
@@ -167,7 +167,7 @@ type putWriteJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *PutWrite) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(write) }
+func (write *PutWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
 
 // AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
 func (write *PutWrite) AppendStringify(dst []byte) ([]byte, error) {
@@ -200,7 +200,7 @@ type updateWriteJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *UpdateWrite) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(write) }
+func (write *UpdateWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
 
 // AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
 func (write *UpdateWrite) AppendStringify(dst []byte) ([]byte, error) {
@@ -225,7 +225,7 @@ type deleteWriteJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *DeleteWrite) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(write) }
+func (write *DeleteWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
 
 // AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
 func (write *DeleteWrite) AppendStringify(dst []byte) ([]byte, error) {
@@ -257,7 +257,7 @@ type updateWhereWriteJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *UpdateWhereWrite) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(write) }
+func (write *UpdateWhereWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
 
 // AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
 func (write *UpdateWhereWrite) AppendStringify(dst []byte) ([]byte, error) {
@@ -282,7 +282,7 @@ type deleteWhereWriteJSON struct {
 }
 
 // MarshalJSON is the write in Pi's key order.
-func (write *DeleteWhereWrite) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(write) }
+func (write *DeleteWhereWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
 
 // AppendStringify appends the write's JSON.stringify text, which the stringify encoder splices.
 func (write *DeleteWhereWrite) AppendStringify(dst []byte) ([]byte, error) {

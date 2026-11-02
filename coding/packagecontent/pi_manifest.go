@@ -101,7 +101,7 @@ func ResolvePackageChangelogPath(packageRoot string) string {
 	if filepath.IsAbs(changelogPath) {
 		resolved = filepath.Clean(changelogPath)
 	}
-	info, err := os.Stat(resolved) //perf:ok once per package whose changelog is shown or listed, a manifest-load path
+	info, err := os.Stat(resolved) //perf:ok once per package extension config at each resource load, not per request or event
 	if err != nil {
 		return ""
 	}

@@ -62,7 +62,7 @@ func (write *UnknownWrite) StoreWriteKind() string {
 }
 
 // MarshalJSON is the element as it was parsed.
-func (write *UnknownWrite) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(write) }
+func (write *UnknownWrite) MarshalJSON() ([]byte, error) { return write.AppendStringify(nil) }
 
 // AppendStringify appends the element's JSON.stringify text to dst.
 func (write *UnknownWrite) AppendStringify(dst []byte) ([]byte, error) {

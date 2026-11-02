@@ -58,7 +58,7 @@ type manifestJSON struct {
 }
 
 // MarshalJSON is the manifest in Pi's key order.
-func (part *ManifestPart) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(part) }
+func (part *ManifestPart) MarshalJSON() ([]byte, error) { return part.AppendStringify(nil) }
 
 // AppendStringify appends the manifest's JSON.stringify text to dst.
 func (part *ManifestPart) AppendStringify(dst []byte) ([]byte, error) {
@@ -79,7 +79,7 @@ type endJSON struct {
 }
 
 // MarshalJSON is the end part in Pi's key order.
-func (part *EndPart) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(part) }
+func (part *EndPart) MarshalJSON() ([]byte, error) { return part.AppendStringify(nil) }
 
 // AppendStringify appends the end part's JSON.stringify text to dst.
 func (part *EndPart) AppendStringify(dst []byte) ([]byte, error) {

@@ -670,7 +670,7 @@ func (node WhereNode) JSON() any {
 }
 
 // MarshalJSON is the node as JSON.stringify writes Pi's.
-func (node WhereNode) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(node) }
+func (node WhereNode) MarshalJSON() ([]byte, error) { return node.AppendStringify(nil) }
 
 // AppendStringify appends the node's JSON.stringify text to dst.
 func (node WhereNode) AppendStringify(dst []byte) ([]byte, error) {
@@ -698,7 +698,7 @@ func (node ExprNode) JSON() any {
 }
 
 // MarshalJSON is the node as JSON.stringify writes Pi's.
-func (node ExprNode) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(node) }
+func (node ExprNode) MarshalJSON() ([]byte, error) { return node.AppendStringify(nil) }
 
 // AppendStringify appends the node's JSON.stringify text to dst.
 func (node ExprNode) AppendStringify(dst []byte) ([]byte, error) {
@@ -715,7 +715,7 @@ func (set SetNode) JSON() any {
 }
 
 // MarshalJSON is the set as JSON.stringify writes Pi's.
-func (set SetNode) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(set) }
+func (set SetNode) MarshalJSON() ([]byte, error) { return set.AppendStringify(nil) }
 
 // AppendStringify appends the set's JSON.stringify text to dst.
 func (set SetNode) AppendStringify(dst []byte) ([]byte, error) {

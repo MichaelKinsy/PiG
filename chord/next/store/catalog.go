@@ -48,7 +48,7 @@ func (records IndexRecords) Get(name string) ([]string, bool) {
 }
 
 // MarshalJSON is the JSON object of the indexes, in order.
-func (records IndexRecords) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(records) }
+func (records IndexRecords) MarshalJSON() ([]byte, error) { return records.AppendStringify(nil) }
 
 // AppendStringify appends the indexes' JSON.stringify text to dst.
 func (records IndexRecords) AppendStringify(dst []byte) ([]byte, error) {

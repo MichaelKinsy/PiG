@@ -614,7 +614,7 @@ func (r *run) popKeys(keys []string) {
 // keyBuffer is a run's stack of key lists. Runs borrow one from keyBuffers, so walking objects allocates nothing once the pool is warm.
 type keyBuffer struct{ stack []string }
 
-// maxPooledKeyStack bounds the key stack a returned buffer keeps pooled, so one deeply nested value does not stay pinned (golang/go#23199).
+// maxPooledKeyStack bounds the key stack a returned buffer keeps pooled: the stack holds the live keys of every object being walked, so one value with many keys does not stay pinned (golang/go#23199).
 const maxPooledKeyStack = 1 << 10
 
 var keyBuffers = sync.Pool{New: func() any { return new(keyBuffer) }}

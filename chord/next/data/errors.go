@@ -136,7 +136,7 @@ func (err *ChordError) ToJSON() *delta.JsonObject {
 }
 
 // MarshalJSON is JSON.stringify's call of toJSON: the wire form, so a ChordError marshals without stack or cause.
-func (err *ChordError) MarshalJSON() ([]byte, error) { return jsstring.MarshalJSON(err) }
+func (err *ChordError) MarshalJSON() ([]byte, error) { return err.AppendStringify(nil) }
 
 // AppendStringify appends the wire form's JSON.stringify text, which the stringify encoder splices.
 func (err *ChordError) AppendStringify(dst []byte) ([]byte, error) {
