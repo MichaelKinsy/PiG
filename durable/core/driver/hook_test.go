@@ -191,7 +191,8 @@ func TestAPanickingHookIsAThrownOutcome(t *testing.T) {
 
 // Pi source: packages/durable/src/harness/generation.ts (finish, the afterRun answer) and durable/core/host/PROTOCOL.md (hook afterRun).
 // The answer carries `rejected` only when a request was rejected, and then as the full list: an empty list is not sent, and a
-// one-element list is not dropped (an `omitempty` tag or an always-written `[]` fails one of the two rows).
+// one-element list is not dropped (an always-written `[]` fails the first row, a never-written member the second; an `omitempty` tag
+// writes the same bytes as the conditional encoding, so the portlint emptydrop check is what keeps that tag out).
 // mutation-checked: writing `rejected` always, or never, fails it
 func TestAfterRunAnswersCarryRejectedOnlyWhenARequestWasRejected(t *testing.T) {
 	for _, tc := range []struct {
