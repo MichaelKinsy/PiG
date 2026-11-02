@@ -2110,6 +2110,26 @@
    "file": "durable/storage/store/tables.go",
    "old": "\"id\": int64(value.Id), \"owner_conversation_id\"",
    "new": "\"id\": int64(value.Id) + 1, \"owner_conversation_id\""
+  },
+  {
+   "file": "durable/storage/store/tables.go",
+   "old": "\tif value {\n\t\treturn 1\n\t}",
+   "new": "\tif !value {\n\t\treturn 1\n\t}"
+  },
+  {
+   "file": "durable/storage/store/tables.go",
+   "old": "string(value.State.Status),",
+   "new": "string(value.State.Status) + \"x\","
+  },
+  {
+   "file": "durable/storage/store/tables.go",
+   "old": "string(value.Status),",
+   "new": "string(value.Status) + \"x\","
+  },
+  {
+   "file": "durable/storage/store/tables.go",
+   "old": "return string(encoded)",
+   "new": "return string(encoded) + \" \""
   }
  ]
 }
