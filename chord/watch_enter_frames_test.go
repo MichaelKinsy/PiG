@@ -40,7 +40,9 @@ func TestAwaitEnteredSeesEveryFrameOfARunningDrain(t *testing.T) {
 		}
 		if got := calls.Load(); got != frames {
 			wrong.Add(1)
-			first.Do(func() { t.Errorf("round %d: %d listener calls after %d awaited publications, want %d", round, got, frames, frames) })
+			first.Do(func() {
+				t.Errorf("round %d: %d listener calls after %d awaited publications, want %d", round, got, frames, frames)
+			})
 		}
 		scheduler.Wait()
 	}

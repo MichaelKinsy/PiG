@@ -46,9 +46,9 @@ type pending struct {
 // entered is closed once the call's synchronous part ran (the call returned), the listener reached a wait of the host that
 // said so (DeliveryEntered), or the call will not be made; done once the delivery is complete.
 type delivery struct {
-	entered chan struct{}
-	enter   sync.Once
-	done    chan struct{}
+	entered  chan struct{}
+	enter    sync.Once
+	done     chan struct{}
 	complete sync.Once
 	// root is the first delivery of the goroutine that makes this call: the calls of one drain follow each other on one goroutine,
 	// so a listener that awaits the deliveries cannot wait for a later call of its own drain.
