@@ -582,8 +582,8 @@ func TestPluginsWarmStartsTheSpareLoadTakesAndCloseClosesAnUntakenOne(t *testing
 	}
 }
 
-// Close is Pi's close of the host: the calls drain and the natives close, each up to the host's closeTimeout, and then the app's
-// store closes. A process that is running that close (it answered `closing`) is not killed when the stop grace passes: here
+// Close is Pi's close of the host: every object ends at once, then each drains and closes in turn, each step up to the host's
+// closeTimeout, and then the app's store closes. A process that is running that close (it answered `closing`) is not killed when the stop grace passes: here
 // a call that needs 2 s to finish drains while the grace is 200 ms, and Close returns with no exit.
 func TestNodeCloseDoesNotKillAHostThatIsStillClosingWithinItsCloseTimeout(t *testing.T) {
 	grace := 200 * time.Millisecond
@@ -636,5 +636,17 @@ func TestNodeCloseKillsAHostThatDoesNotAnswerWithinTheGrace(t *testing.T) {
 	err := node.Close(background)
 	if exit, ok := errors.AsType[*NodeExit](err); !ok || exit.Signal != "SIGKILL" {
 		t.Fatalf("Close = %v, want the SIGKILL exit of a process that did not answer", err)
+	}
+}
+
+// A process that does not exit when its channel ended or it was told to close is killed after the same 5 s grace Pi's workers
+// give a worker (`GRACE = 5_000` in packages/chord/src/next-node/workers/workers.ts:182); NodeOptions.StopGrace replaces it.
+func TestNodeTheDefaultStopGraceIsPisFiveSeconds(t *testing.T) {
+	if got := (&NodeHost{}).stopGrace(); got != 5*time.Second {
+		t.Fatalf("default stop grace = %v, want 5s (Pi workers.ts:182 GRACE)", got)
+	}
+	grace := 200 * time.Millisecond
+	if got := (&NodeHost{options: NodeOptions{StopGrace: &grace}}).stopGrace(); got != grace {
+		t.Fatalf("stop grace with StopGrace set = %v, want %v", got, grace)
 	}
 }

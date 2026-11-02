@@ -105,8 +105,9 @@ type NodeOptions struct {
 	// StopGrace is how long a process whose channel ended, or that was told to close, gets to exit before it is killed (Pi's
 	// workers wait GRACE = 5 s: workers.ts); 5 s by default. A process stalled in a loop cannot read its channel, so this is how
 	// long the Go side waits after it closed the link (a heartbeat that found the host silent, for one) before it kills it. A
-	// process that answers a Close with `closing` is running its host's close, which Pi bounds by `closeTimeout` (the app's
-	// store closes after it): Close then waits that long, RuntimeLoad.CloseTimeout or 30 s, plus this grace.
+	// process that answers a Close with `closing` is running its host's close: Pi ends every object at once, then drains and
+	// closes them one by one, each step bounded by `closeTimeout`, and the app's store closes after it. Close then waits one
+	// closeTimeout (RuntimeLoad.CloseTimeout or 30 s) plus this grace for the exit, not one per object.
 	StopGrace *time.Duration
 	// KeepWarm makes the PluginRuntime start a spare process in the background each time a Load has taken its process, so
 	// the next Load finds one up (PluginRuntime.Warm). Close ends it.
