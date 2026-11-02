@@ -1853,3 +1853,41 @@ func TestATestNameTwoFilesDeclareIsNotGuessedAfterAMove(t *testing.T) {
 		t.Fatalf("tests = %v, want none", got)
 	}
 }
+
+// A fix that replaces the approach of an earlier fix names it with a "see" trailer, and exempt.txt joins the earlier commit to the
+// correction. Before, the two commits had no entry to join and the build failed; the entry now carries the correction's title.
+func TestACorrectionAndTheCommitItReplacesShareTheCorrectionsEntry(t *testing.T) {
+	fixedGitDates(t)
+	r := newFixture(t)
+	r.write("b.go", "package x\n")
+	first := r.commit("Fix a crash in b by hiding it", "b.go")
+	r.write("b.go", "package x\n\n// cause\n")
+	second := r.commit("Fix a crash in b at its cause\n\nBug-Ledger: see "+first[:10], "b.go")
+	r.write("automation/ci/bugledger/exempt.txt", first[:10]+" see "+second[:10]+"\n")
+	l, err := build(r.root, "0.4.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(l.Entries) != 1 || !strings.Contains(l.Entries[0].Title, "at its cause") {
+		t.Fatalf("entries = %+v, want one titled after the correction", l.Entries)
+	}
+	var hashes []string
+	for _, c := range l.Entries[0].Commits {
+		hashes = append(hashes, c.Hash)
+	}
+	want := []string{first[:10], second[:10]}
+	slices.Sort(hashes)
+	slices.Sort(want)
+	if !slices.Equal(hashes, want) {
+		t.Fatalf("commits = %v, want %v", hashes, want)
+	}
+	// Without the line the correction joins the entry of the commit it names, which keeps that commit's title.
+	r.write("automation/ci/bugledger/exempt.txt", "")
+	l, err = build(r.root, "0.4.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(l.Entries) != 1 || !strings.Contains(l.Entries[0].Title, "by hiding it") {
+		t.Fatalf("entries = %+v, want one titled after the first commit", l.Entries)
+	}
+}

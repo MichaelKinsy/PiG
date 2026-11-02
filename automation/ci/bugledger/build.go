@@ -887,7 +887,7 @@ func (b *builder) commitEntries() (map[string]int, error) {
 			counts[strings.TrimSpace(category)]++
 			continue
 		}
-		if target, ok := seeTrailer(msg); ok {
+		if target, ok := seeTrailer(msg); ok && !b.supersedes(exempt, target, c.hash) {
 			links = append(links, link{target, c.hash})
 			continue
 		}
@@ -972,6 +972,20 @@ func exemptReason(exempt map[string]string, hash, msg string) string {
 		}
 	}
 	return ""
+}
+
+// supersedes reports whether the commit hash corrects the commit target its "Bug-Ledger: see" trailer names, and exempt.txt joins target to hash in return ("<target> see <hash>"). Two commits that name each other have no entry to join, so the correction, which says what the fix is, becomes the entry and the earlier commit joins it: an entry is not titled by an approach the correction replaced.
+func (b *builder) supersedes(exempt map[string]string, target, hash string) bool {
+	full, ok := b.r.resolve(target)
+	if !ok {
+		return false
+	}
+	for prefix, reason := range exempt {
+		if followed, ok := strings.CutPrefix(reason, "see "); ok && strings.HasPrefix(full, prefix) && strings.HasPrefix(hash, strings.TrimSpace(followed)) {
+			return true
+		}
+	}
+	return false
 }
 
 // seeTrailer returns the commit a "Bug-Ledger: see <commit>" trailer names.
