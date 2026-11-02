@@ -2,10 +2,8 @@ package codingagent
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"io"
 	"maps"
 	"net"
 	"os"
@@ -43,15 +41,23 @@ func (b unbatchedModelCatalogBridge) SetModelCatalog(getModels func() []json.Raw
 
 func captureModelPublications(t testing.TB, legacy bool, catalog func() []*ai.Model, registry *ModelRegistry) [][]byte {
 	t.Helper()
-	return captureModelPublicationsVia(t, legacy, false, catalog, registry)
+	frames, err := captureModelPublicationsVia(t, legacy, false, catalog, registry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return frames
 }
 
-func captureModelPublicationsVia(t testing.TB, legacy, unbatched bool, catalog func() []*ai.Model, registry *ModelRegistry) [][]byte {
+// captureModelPublicationsVia wires the model operations over one connection and returns the frames the host queued before a fence, or the reason
+// it could not. It returns the error rather than failing t: testing.Benchmark discards the output of a failed benchmark and reports it as zero
+// iterations and zero allocations, so a caller measuring under it has to carry the failure out itself.
+func captureModelPublicationsVia(t testing.TB, legacy, unbatched bool, catalog func() []*ai.Model, registry *ModelRegistry) ([][]byte, error) {
 	t.Helper()
 	server, client := net.Pipe()
 	conn := subprocess.NewConn("catalog", server)
 	conn.Start(t.Context())
-	defer func() { _ = client.Close(); _ = conn.Close("test done") }()
+	peer := newLivePeer(client)
+	defer func() { peer.close(); _ = conn.Close("test done") }()
 	bridge := subprocess.NewUIBridge(nil)
 	bridge.RegisterExtConn("catalog", conn, true)
 	var target ModelOperationBridge = bridge
@@ -64,33 +70,25 @@ func captureModelPublicationsVia(t testing.TB, legacy, unbatched bool, catalog f
 	detach := WireModelOperations(target, ModelOperationBindings{ModelCatalog: func(...string) []*ai.Model { return catalog() }, Registry: registry})
 	defer detach()
 	if err := conn.Send(&subprocess.Envelope{Type: subprocess.MsgNotify, Notify: &subprocess.NotifyPayload{Method: "test-catalog-fence"}}); err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
-	var frames [][]byte
-	for {
-		var header [4]byte
-		if _, err := io.ReadFull(client, header[:]); err != nil {
-			t.Fatal(err)
-		}
-		frame := make([]byte, binary.BigEndian.Uint32(header[:]))
-		if _, err := io.ReadFull(client, frame); err != nil {
-			t.Fatal(err)
-		}
-		var envelope subprocess.Envelope
-		if err := json.Unmarshal(frame, &envelope); err != nil {
-			t.Fatal(err)
-		}
-		if envelope.Notify != nil && envelope.Notify.Method == "test-catalog-fence" {
-			break
-		}
-		frames = append(frames, frame)
+	published, err := peer.untilNotify("test-catalog-fence")
+	if err != nil {
+		return nil, err
+	}
+	frames := make([][]byte, len(published))
+	kinds := make([]string, len(published))
+	for i, frame := range published {
+		frames[i], kinds[i] = frame.raw, frame.kind()
 	}
 	// Registration plus one publication of the finished binding: the binding's steps publish together when it returns. Without batching
-	// each of its three publishing steps sends its own snapshot.
-	if want := map[bool]int{false: 2, true: 4}[unbatched]; len(frames) != want {
-		t.Fatalf("got %d frames before the queue fence; want %d", len(frames), want)
+	// each of its three publishing steps sends its own snapshot. Every one of them is a model_registry_update; the host's heartbeat pings are
+	// answered by the peer and are not among the frames.
+	want := map[bool]int{false: 2, true: 4}[unbatched]
+	if len(frames) != want || slices.ContainsFunc(kinds, func(kind string) bool { return kind != "notify:model_registry_update" }) {
+		return nil, fmt.Errorf("got %d frames before the queue fence, %v; want %d notify:model_registry_update", len(frames), kinds, want)
 	}
-	return frames
+	return frames, nil
 }
 
 func TestModelCatalogBindingKeepsRegistrationOrdering(t *testing.T) {
@@ -185,36 +183,23 @@ func replicaRegistry(t *testing.T) (*ModelRegistry, ModelOperationBindings, *ato
 }
 
 // registryUpdates counts the model_registry_update notifies queued on conn
-// before a fence, reading its peer end.
-func registryUpdates(t *testing.T, conn *subprocess.Conn, peer net.Conn) int {
+// before a fence, as read by its live peer.
+func registryUpdates(t *testing.T, conn *subprocess.Conn, peer *livePeer) int {
 	t.Helper()
 	if err := conn.Send(&subprocess.Envelope{Type: subprocess.MsgNotify, Notify: &subprocess.NotifyPayload{Method: "test-registry-fence"}}); err != nil {
 		t.Fatal(err)
 	}
+	frames, err := peer.untilNotify("test-registry-fence")
+	if err != nil {
+		t.Fatal(err)
+	}
 	updates := 0
-	for {
-		var header [4]byte
-		if _, err := io.ReadFull(peer, header[:]); err != nil {
-			t.Fatal(err)
-		}
-		frame := make([]byte, binary.BigEndian.Uint32(header[:]))
-		if _, err := io.ReadFull(peer, frame); err != nil {
-			t.Fatal(err)
-		}
-		var envelope subprocess.Envelope
-		if err := json.Unmarshal(frame, &envelope); err != nil {
-			t.Fatal(err)
-		}
-		if envelope.Notify == nil {
-			continue
-		}
-		switch envelope.Notify.Method {
-		case "test-registry-fence":
-			return updates
-		case "model_registry_update":
+	for _, frame := range frames {
+		if frame.kind() == "notify:model_registry_update" {
 			updates++
 		}
 	}
+	return updates
 }
 
 // pig additive (D19): only a runtime that declared
@@ -225,13 +210,14 @@ func registryUpdates(t *testing.T, conn *subprocess.Conn, peer net.Conn) int {
 func TestModelCatalogReachesOnlyRegistryReplicas(t *testing.T) {
 	_, bindings, builds := replicaRegistry(t)
 	bridge := subprocess.NewUIBridge(func() {})
-	open := func(name string, replicates bool) (*subprocess.Conn, net.Conn) {
+	open := func(name string, replicates bool) (*subprocess.Conn, *livePeer) {
 		server, client := net.Pipe()
 		conn := subprocess.NewConn(name, server)
 		conn.Start(t.Context())
-		t.Cleanup(func() { _ = client.Close(); _ = conn.Close("test done") })
+		peer := newLivePeer(client)
+		t.Cleanup(func() { peer.close(); _ = conn.Close("test done") })
 		bridge.RegisterExtConn(name, conn, replicates)
-		return conn, client
+		return conn, peer
 	}
 	reader, readerPeer := open("reader", false)
 	detach := WireModelOperations(bridge, bindings)
