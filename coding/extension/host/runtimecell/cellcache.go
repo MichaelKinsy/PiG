@@ -279,6 +279,10 @@ func publishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, 
 		lockCtx, cancel = context.WithTimeout(ctx, cellBuildTimeout())
 		defer cancel()
 	}
+	// TryLockContext never tries a lock once its context is done, so a build whose context ended before it began fails here with the
+	// lock free. No holder was waited for, and the error must not say so: a package run that used up its deadline starves every
+	// build that starts after it, and a message about a lock sends the reader after a holder that does not exist.
+	startedLate := ctx.Err() != nil
 	// pig additive (D20): packed cells poll a process-shared build lock.
 	locked, err := lock.TryLockContext(lockCtx, 50*time.Millisecond)
 	if err != nil || !locked {
@@ -291,6 +295,9 @@ func publishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, 
 			if cachedErr, ok := cachedBuildFailure(finalDir, inputDigest, language); ok {
 				return PublishedEntry{}, cachedErr
 			}
+		}
+		if startedLate {
+			return PublishedEntry{}, fmt.Errorf("build cell %s: its context had ended before the build began: %w", filepath.Base(finalDir), err)
 		}
 		if err != nil {
 			return PublishedEntry{}, fmt.Errorf("wait for cell build lock: %w", filelock.Explain(parent, err))

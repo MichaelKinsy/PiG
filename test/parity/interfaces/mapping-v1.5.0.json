@@ -183713,9 +183713,9 @@
         "public-api:coding/rpcclient/types.go#JsonAgentSessionEvent"
       ],
       "evidence": [
+        "test:coding/rpcclient/json_event_upstream_test.go#TestJsonAgentSessionEventIsTheCompleteJSONRecordInJSONEventShape",
         "test:coding/rpcclient/rpc_client_upstream_wire_test.go#TestRpcClientEventHelpersStderrAndStop",
-        "test:coding/rpcclient/jsonl_test.go#TestRpcClientReadStdoutDrainsAfterCallbacksStop",
-        "test:coding/rpcclient/jsonl_test.go#TestRpcClientReadStdoutParsesSplitInvalidBlankAndUnterminatedRecords"
+        "test:coding/rpcclient/jsonl_test.go#TestRpcClientReadStdoutDrainsAfterCallbacksStop"
       ]
     },
     {

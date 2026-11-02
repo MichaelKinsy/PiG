@@ -39,11 +39,10 @@ for (const name of ["no-model", "no-auth"]) {
   });
  } finally { if(previousPackageDir===undefined)delete process.env.PI_PACKAGE_DIR;else process.env.PI_PACKAGE_DIR=previousPackageDir;h.cleanup(); }
 }
-// The bearer boundary counts how often one summary request resolves its auth, which depends on the stream function: with the session createAgentSession builds
-// (sdk.ts:420-430 streamFn into modelRuntime.streamSimple) the request resolves its auth in _getSummarizationRequestAuth (agent-session.ts:591-597) and again in
-// the model runtime (model-runtime.ts:671 prepareRequest, :723-747 streamSimple; resolve.ts:56-67 and :193-204 call the provider's resolve even when the request
-// carries an apiKey), so resolved=2. upstream's harness hands its Agent `streamFn: streamSimple` (harness.ts:193-195), which agent-session.ts:591 treats as the
-// stock stream, and the request never reaches the model runtime: resolved=1, which no Pi session ever does. The other boundaries here do not depend on it.
+// The bearer boundary counts how often one summary request resolves its auth, which depends on the stream function. The session createAgentSession builds
+// (sdk.ts streamFn into modelRuntime.streamSimple) is marked with markRuntimeStreamFunction since Pi 6fed3cfb (#11520), so _getSummarizationRequestAuth
+// (agent-session.ts:603-608) skips pre-resolution and the runtime resolves once: resolved=1 (resolved=2 through Pi 1.4.0). Upstream's harness hands its Agent
+// `streamFn: streamSimple`, a different path; the SDK harness is what a Pi user's session is. The other boundaries here do not depend on it.
 const bearer = await createSdkHarness({ withConfiguredAuth: false });
 try {
  let resolved = 0;
