@@ -497,6 +497,7 @@ var (
 	Op Opts
 	H  Hello
 	A  any
+	Sm map[string]any
 	Ns struct{ Kind struct{ Name string } }
 	TI TaskID
 	Gs func(id ...string) string
@@ -516,6 +517,8 @@ var (
 	}{
 		{"{ /** the id */ readonly id: string; readonly count: number }", "D", yes},
 		{"{ id: string; count: number; missing: string }", "D", no},
+		{"{ readonly [keyword: string]: unknown }", "Sm", yes},                  // T12i: an index signature is a Go map from string to the value type
+		{"{ readonly [keyword: string]: unknown }", "D", no},                    // a struct is not an index signature's Go form
 		{"{ id: string; count: number; readonly [rowBrand]: true }", "D", yes},  // T12k: a unique-symbol brand is no field
 		{"{ id: string; count: number; readonly [rowBrand]: string }", "D", no}, // only the boolean tag is a brand
 		{"{ id: string; count: number; readonly [rowKey]: true }", "D", no},     // any other computed key is a member
