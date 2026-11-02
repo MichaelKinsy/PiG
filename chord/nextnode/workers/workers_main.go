@@ -9,12 +9,14 @@ import (
 	"os/signal"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
@@ -57,9 +59,15 @@ type WorkerStart struct {
 // no address of its own, which the route would not reach) and loads the Go host.
 type WorkerLoad struct {
 	Kind string
-	// Core is the app's own facets: JavaScript modules whose default export is the facet, loaded into the NodeHost before the
-	// plugins (they import Pi's chord by its package name, `@earendil-works/chord/next`).
+	// Core is the app's own facets that are JavaScript: modules whose default export is the facet, loaded into the NodeHost
+	// before the plugins (they import Pi's chord by its package name, `@earendil-works/chord/next`).
 	Core []plugins.CoreFacet
+	// GoCore are the app's own facets that are Go: they load on the worker's Go host, and the local types the NodeHost's
+	// facets use are named by Bridged.
+	GoCore []host.HostFacet
+	// Bridged are the Go core facets whose local types the NodeHost's core facets and plugins use (plugins.BridgedFacet): the
+	// NodeHost loads a proxy facet of each, in the same closure as the plugins. A BridgedFacet without a Host is the worker's.
+	Bridged []plugins.BridgedFacet
 	// HostKind is the kind of the worker's address, the one the server routes to this worker.
 	HostKind *contracts.HostKind
 	// Principal is who the NodeHost acts as, and how the worker's Go host stamps it; Peer is who the worker's Go host is for
@@ -315,38 +323,59 @@ var nodeHeartbeat = host.HeartbeatOptions{Ping: new(maxTimer), Close: new(maxTim
 
 const maxTimer = time.Duration(1<<31-1) * time.Millisecond
 
-// Load starts the NodeHost of the worker's address with the start message's scripts of Kind and Core, routes the worker's
-// address kind to its link on h (a host without an address, not loaded yet) and loads h. The report is the NodeHost's. When the
-// NodeHost ends before the worker is told to stop, the worker ends with it: it exits with its exit code, or sends `fatal` with
-// the exception it died of. Its close is the worker's last: shutdown closes it after the app's closers, those registered after
+// Load loads the app's Go core facets (options.GoCore) on h (a host without an address, not loaded yet), routes the worker's
+// address kind to the link of the NodeHost on h (`Route`, before `Load` of h), starts the NodeHost of the worker's address with
+// the start message's scripts of Kind, the JavaScript Core and a proxy for each of options.Bridged (the Go core facets whose local types
+// the NodeHost's facets use; a BridgedFacet without a Host is h's), and returns the NodeHost's report. The Go host is loaded
+// first: the proxies ask for their Go objects as they activate, inside the NodeHost's own load. When the NodeHost ends before
+// the worker is told to stop, the worker ends with it: it exits with its exit code, or sends `fatal` with the exception it
+// died of. Its close is the worker's last: shutdown closes it after the app's closers, those registered after
 // Load too, so the app's host closes the link to the server before the NodeHost ends and fails a reload in flight (Pi's host
 // closer closes the link before its reload rejects).
 func (p *WorkerPlugins) Load(h host.Host, options WorkerLoad, ctx context.Context) (host.LoadReport, error) {
 	address := p.message.Address
+	ready := make(chan struct{})
+	var nodeLink atomic.Pointer[plugins.NodeHost]
+	if _, err := h.Route(options.HostKind, host.RouteOptions{
+		// The server authorized the hold before it reached this worker.
+		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
+		Resolve: func(_ contracts.Address, resolving context.Context) (host.ResolvedLink, error) {
+			// The host resolves a route in a section it lends to this function: waiting for the NodeHost, which needs the host's
+			// loop (its proxies get the Go core facets' objects), parks first.
+			parking.Park(resolving)
+			select {
+			case <-ready:
+			case <-resolving.Done():
+				return host.ResolvedLink{}, context.Cause(resolving)
+			}
+			return host.ResolvedLink{Link: nodeLink.Load().Link(), Principal: options.Principal, Trusted: true}, nil
+		},
+	}, ctx); err != nil {
+		return host.LoadReport{}, err
+	}
+	if _, err := h.Load(options.GoCore, ctx); err != nil {
+		return host.LoadReport{}, err
+	}
+	bridged := slices.Clone(options.Bridged)
+	for i := range bridged {
+		if bridged[i].Host == nil {
+			bridged[i].Host = h
+		}
+	}
 	node, report, err := p.runtime.Load(plugins.RuntimeLoad{
 		Kind: options.Kind, Core: options.Core, Scripts: p.message.Scripts, Modules: p.worker.options.HostPackages,
-		Address: &address, Principal: options.Principal, Peer: options.Peer, Heartbeat: &nodeHeartbeat,
+		Address: &address, Principal: options.Principal, Peer: options.Peer, Heartbeat: &nodeHeartbeat, Bridged: bridged,
 	}, ctx)
 	if err != nil {
 		return host.LoadReport{}, err
 	}
+	nodeLink.Store(node)
+	close(ready)
 	p.worker.mu.Lock()
 	p.worker.loaded = &loadedHost{host: h, node: node, runtime: p.runtime}
 	p.worker.nodes = append(p.worker.nodes, node)
 	p.worker.mu.Unlock()
 	go p.worker.watchNode(node)
-	if _, err := h.Route(options.HostKind, host.RouteOptions{
-		// The server authorized the hold before it reached this worker.
-		Authorize: func(data.Principal, contracts.Address) (bool, error) { return true, nil },
-		Resolve: func(contracts.Address, context.Context) (host.ResolvedLink, error) {
-			return host.ResolvedLink{Link: node.Link(), Principal: options.Principal, Trusted: true}, nil
-		},
-	}, ctx); err != nil {
-		return host.LoadReport{}, err
-	}
-	if _, err := h.Load(nil, ctx); err != nil {
-		return host.LoadReport{}, err
-	}
 	*p.report = report
 	return report, nil
 }

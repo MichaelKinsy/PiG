@@ -1,0 +1,8 @@
+### Fixed
+
+- Lower- and upper-casing in `tui`, `internal/codingagent` and `internal/nodespawn` keeps a lone UTF-16 surrogate unchanged, as JavaScript's `toLowerCase` and `toUpperCase` do. `"a\uD800b"` stays `"a\uD800b"` instead of gaining three U+FFFD, so two environment names that differ only in a lone surrogate are no longer merged by the Windows environment-name dedupe, and a Σ beside a lone surrogate is lowered as beside any other non-letter. <!-- fix: d71c4e2361a786ef887fe84b9d68fd1674b6942a -->
+- A glob filter, model scope or other `internal/minimatch` pattern with a numeric brace range beyond 2^53 expands as Pi's brace-expansion 5.0.12 does, in JavaScript number arithmetic: `x{99999999999999999999..99999999999999999999}` matches `x100000000000000000000` and no longer `x57`, and `x{9007199254740993..9007199254740995}` matches `x9007199254740992`. <!-- fix: d71c4e2361a786ef887fe84b9d68fd1674b6942a -->
+
+### Changed
+
+- The embedded Node runtime archive no longer carries any README.md outside `shims/pi-dist` (the package READMEs of undici, quickjs-wasi, semver, minimatch, lru-cache, chalk and others, and nested ones such as undici's `types/README.md`), which no code opens: `runtime-node.pack` shrinks from 4,719,013 to 4,649,723 bytes, under the 4,700,000-byte budget, which is unchanged. Pi's own READMEs under `shims/pi-dist` stay.
