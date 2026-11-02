@@ -4,4 +4,4 @@
 
 ### Fixed
 
-- A JSONL commit whose file path fails to resolve after its batch applied in memory now poisons the storage, as every failure after that point does, instead of leaving memory ahead of the files.
+- A JSONL commit whose file path fails to resolve after its batch applied in memory now poisons the storage, as every failure after that point does, instead of leaving memory ahead of the files. <!-- fix: 875c5c04b3 -->
