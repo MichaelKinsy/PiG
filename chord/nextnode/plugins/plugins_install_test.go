@@ -20,30 +20,26 @@ import (
 // Ports packages/chord/test/next-node/plugins/install.test.ts. Tests of installing a plugin's dependencies (slice 7c §5):
 // the npm arguments, run in the plugin's real directory, the command overridable; a failure and an abort reject.
 
-// fakeNpm is a fake npm (a shell script) that records its directory and arguments, one per line, in dir/record.txt, and
-// then exits with code, or, with hang, waits to be stopped. Upstream's is a Node script; a shell script is what a test
-// container always has.
+// fakeNpm is a fake npm (a Node script, as upstream's is) that records its directory and arguments, one per line, in
+// dir/record.txt, and then exits with code, or, with hang, waits to be stopped.
 func fakeNpm(t *testing.T, dir string, code int, hang bool) []string {
 	t.Helper()
-	script := filepath.Join(dir, "fake-npm.sh")
-	record := filepath.Join(dir, "record.txt")
+	script := filepath.Join(dir, "fake-npm.mjs")
 	lines := []string{
-		"#!/bin/sh",
-		fmt.Sprintf("{ pwd -P; for arg in \"$@\"; do echo \"$arg\"; done; } > %q", record),
+		`import { writeFileSync } from "node:fs";`,
+		`import { join } from "node:path";`,
+		`writeFileSync(join(import.meta.dirname, "record.txt"), [process.cwd(), ...process.argv.slice(2)].join("\n") + "\n");`,
 	}
 	if hang {
-		lines = append(lines, "exec sleep 30")
+		lines = append(lines, "setTimeout(() => {}, 30000);")
 	} else {
 		if code != 0 {
-			lines = append(lines, `echo "npm said no" >&2`)
+			lines = append(lines, `console.error("npm said no");`)
 		}
-		lines = append(lines, fmt.Sprintf("exit %d", code))
+		lines = append(lines, fmt.Sprintf("process.exit(%d);", code))
 	}
-	writeFiles(t, dir, map[string]string{"fake-npm.sh": strings.Join(lines, "\n") + "\n"})
-	if err := os.Chmod(script, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	return []string{script}
+	writeFiles(t, dir, map[string]string{"fake-npm.mjs": strings.Join(lines, "\n") + "\n"})
+	return []string{pcNode(t), script}
 }
 
 func TestInstallDependenciesRunsNpmInstallWithoutDevDependenciesPeersScriptsAuditOrFundingInThePluginsRealDirectory(t *testing.T) {

@@ -83,6 +83,35 @@ func TestProcessLockStopsWaitingWhenTheWaitersContextAborts(t *testing.T) {
 	}
 }
 
+// A holder's Release returns after a waiter's abort, every time: a Windows pipe listener's Close waited forever for the
+// accepting goroutine in one of a few thousand of these (internal/chord/winpipe).
+func TestProcessLockReleaseReturnsAfterAWaitersAbortEveryTime(t *testing.T) {
+	for round := range 2000 {
+		name := fmt.Sprintf("chord-test-lock-rounds-%d-%d-%d", os.Getpid(), time.Now().UnixNano(), round)
+		held, err := ProcessLock(name, chordctx.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		abort, cancel := chordctx.WithCancel(chordctx.Background())
+		var waiting sync.WaitGroup
+		waiting.Go(func() { _, _ = ProcessLock(name, abort) })
+		// The abort comes at every stage of the waiter's dial.
+		time.Sleep(time.Duration(round%40) * 25 * time.Microsecond)
+		cancel(errors.New("gave up"))
+		waiting.Wait()
+		released := make(chan error, 1)
+		go func() { released <- held.Release() }()
+		select {
+		case err := <-released:
+			if err != nil {
+				t.Fatal(err)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatalf("round %d: Release did not return", round)
+		}
+	}
+}
+
 // A waiter that gives up (or dies) closes its connection: the holder forgets it then (`socket.once("close", () =>
 // waiters.delete(socket))`), not at its own release.
 func TestProcessLockForgetsAWaiterWhoseConnectionClosedBeforeItsOwnRelease(t *testing.T) {
