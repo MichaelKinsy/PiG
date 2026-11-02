@@ -1851,6 +1851,35 @@
    "new": "Access  string                     `json:\"accessToken\"`"
   }
  ],
+ "packages/ai/src/utils/error-body.ts": [
+  {
+   "file": "ai/errors.go",
+   "old": "length-maxChars)\n",
+   "new": "length-maxChars+1)\n"
+  },
+  {
+   "file": "ai/errors.go",
+   "old": "return fmt.Sprintf(\"%d: %s\", *norm.Status, message)",
+   "new": "return fmt.Sprintf(\"%d %s\", *norm.Status, message)"
+  },
+  {
+   "file": "ai/errors.go",
+   "old": "const MaxProviderErrorBodyChars = 4000",
+   "new": "const MaxProviderErrorBodyChars = 3999"
+  }
+ ],
+ "packages/ai/src/utils/estimate.ts": [
+  {
+   "file": "ai/estimate.go",
+   "old": "charsPerToken       = 3.5",
+   "new": "charsPerToken       = 3.0"
+  },
+  {
+   "file": "ai/estimate.go",
+   "old": "estimatedImageChars = 4800",
+   "new": "estimatedImageChars = 4801"
+  }
+ ],
  "packages/ai/src/api/lazy.ts": [
   {
    "file": "ai/provider_streams.go",
@@ -1914,11 +1943,88 @@
    "new": "imagesAPIProviderRegistry[provider.API+\"-x\"] = entry"
   }
  ],
+ "packages/ai/src/utils/hash.ts": [
+  {
+   "file": "ai/openai.go",
+   "old": "h1 = (h1 ^ ch) * 2654435761",
+   "new": "h1 = (h1 ^ ch) * 2654435760"
+  }
+ ],
+ "packages/ai/src/utils/headers.ts": [
+  {
+   "file": "ai/provider_response.go",
+   "old": "out[key] = strings.Join(values, \", \")",
+   "new": "out[key] = strings.Join(values, \",\")"
+  },
+  {
+   "file": "ai/provider_response.go",
+   "old": "out[key] = values[len(values)-1]",
+   "new": "out[key] = values[0]"
+  },
+  {
+   "file": "ai/classifier_http.go",
+   "old": "\t\t\tdelete(merged, normalized)\n",
+   "new": "\t\t\t_ = normalized\n"
+  }
+ ],
+ "packages/ai/src/utils/node-http-proxy.ts": [
+  {
+   "file": "ai/node_http_proxy.go",
+   "old": "case \"https\", \"wss\":\n\t\treturn 443",
+   "new": "case \"https\", \"wss\":\n\t\treturn 444"
+  },
+  {
+   "file": "ai/node_http_proxy.go",
+   "old": "hostname == host || strings.HasSuffix(hostname, \".\"+host)",
+   "new": "hostname == host"
+  },
+  {
+   "file": "ai/node_http_proxy.go",
+   "old": "if noProxy == \"*\" {",
+   "new": "if noProxy == \"-\" {"
+  }
+ ],
+ "packages/ai/src/utils/text.ts": [
+  {
+   "file": "ai/text.go",
+   "old": "\tsep := \"\\n\"\n",
+   "new": "\tsep := \" \"\n"
+  },
+  {
+   "file": "ai/transcript.go",
+   "old": "Removed system prompt section \\\"%s\\\"",
+   "new": "Removed prompt section \\\"%s\\\""
+  },
+  {
+   "file": "ai/estimate.go",
+   "old": "parts = append(parts, strings.Join(texts, \"\\n\"))",
+   "new": "parts = append(parts, strings.Join(texts, \"\\n\\n\"))"
+  }
+ ],
+ "packages/ai/src/utils/string-enum.ts": [
+  {
+   "file": "ai/typebox_helpers.go",
+   "old": "\"type\": \"string\", \"enum\"",
+   "new": "\"type\": \"mutant\", \"enum\""
+  }
+ ],
  "packages/ai/src/api/cloudflare-ai-binding.ts": [
   {
    "file": "ai/cloudflare_ai_binding.go",
    "old": "the AI binding does not expose fetch()\"",
    "new": "the AI binding does not expose fetch\""
+  }
+ ],
+ "packages/ai/src/utils/sleep.ts": [
+  {
+   "file": "ai/abort_utils.go",
+   "old": "\tcase <-ctx.Done():\n\t\treturn context.Cause(ctx)\n\t}\n}\n\n// AbortReason",
+   "new": "\tcase <-ctx.Done():\n\t\treturn ctx.Err()\n\t}\n}\n\n// AbortReason"
+  },
+  {
+   "file": "ai/abort_utils.go",
+   "old": "math.IsNaN(ms) || ms < 1 || ms > nodeTimerMaxMs",
+   "new": "math.IsNaN(ms) || ms < 1 || ms > nodeTimerMaxMs*2"
   }
  ]
 }
