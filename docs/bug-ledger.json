@@ -40496,27 +40496,6 @@
       ]
     },
     {
-      "id": "BF-f06ba8f",
-      "title": "fix(chord/nextnode/workers): a reload that fails while the worker shuts down is answered by its exit, so a…",
-      "symptom": "fix(chord/nextnode/workers): a reload that fails while the worker shuts down is answered by its exit, so a stop lists it as stopped",
-      "rootCause": "TestTheRolloutStepListsAWorkerStoppedCleanlyDuringItAsStoppedAndOneThatCrashedWithItsError failed 8 runs in 30 with hosts [\"session|S1 the node subprocess ended\" ...], want \"session|S1 stopped\".",
-      "rootCauseSource": "commit",
-      "userImpact": "An operation failed or was rejected",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "f06ba8fd15",
-          "date": "2026-11-01"
-        }
-      ],
-      "tests": [
-        "chord/nextnode/workers/workers_rollout_blocked_unix_test.go::TestTheRolloutStepListsAWorkerStoppedCleanlyDuringItAsStoppedAndOneThatCrashedWithItsError"
-      ]
-    },
-    {
       "id": "BF-f07d033",
       "title": "A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144…",
       "symptom": "A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144, Pi #10697).",
@@ -40827,6 +40806,32 @@
         "test/parity/scenarios/rpc/58-rpc-session-wrong-typed-members.toml",
         "test/perfgate/extension_turn_test.go::TestRPCExtensionTurnProcessGate",
         "test/perfgate/extension_turn_test.go::TestRPCNoExtensionTurnProcessGate"
+      ]
+    },
+    {
+      "id": "BF-f26dfe2",
+      "title": "fix(chord/nextnode/workers): a worker closes its link to the server before its NodeHost fails a reload in…",
+      "symptom": "fix(chord/nextnode/workers): a worker closes its link to the server before its NodeHost fails a reload in flight",
+      "rootCause": "WorkerPlugins.Load appended the NodeHost's closer to the worker's closers after the app's, and shutdown runs them in reverse, so the NodeHost closed first, ended the Node subprocess and failed the reload in flight, and the worker sent that `reloaded` failure before the app's host closer closed the link to the server. The server read it as the reload's own error whenever it arrived ahead of the link's close. Pi runs the host closer, which closes the parent link, first (packages/chord/src/next-node/workers/main.ts #shutdown, ipc.ts: the close frame precedes the `reloaded` reply), so the server's `ended` settles the reload as stopped.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f06ba8fd15",
+          "date": "2026-11-01"
+        },
+        {
+          "hash": "f26dfe2355",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_main_test.go::TestTheWorkersSideClosesItsLinkToTheServerBeforeItsNodeHostFailsAReloadInFlightAtShutdown",
+        "chord/nextnode/workers/workers_rollout_blocked_unix_test.go::TestTheRolloutStepListsAWorkerStoppedCleanlyDuringItAsStoppedAndOneThatCrashedWithItsError"
       ]
     },
     {

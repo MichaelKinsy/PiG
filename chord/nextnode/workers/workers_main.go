@@ -28,7 +28,7 @@ import (
 // message, takes the address's lock, makes the link to the server (`started` goes out when the app's host listens on it),
 // runs the app's function with a plugin runtime over the shipped scripts, reports `ready` and each idle flip, applies
 // reloads, and on `shutdown`, the parent's disconnect, `SIGTERM` or `SIGINT` aborts its context, runs the app's closers in
-// reverse order and exits.
+// reverse order, then closes its NodeHost, and exits.
 //
 // Forced Go differences. `workerMain` returns at once in Node, whose event loop keeps the process alive until it exits;
 // `WorkerMain` blocks, because a Go program ends when its main returns, and the process ends through exitProcess like
@@ -141,15 +141,21 @@ type worker struct {
 	abort   func(cause error)
 	started chan ToWorker
 
-	mu      sync.Mutex
+	mu sync.Mutex
+	// closers are the app's (WorkerStart.OnClose); nodes are the NodeHosts WorkerPlugins.Load started, which shutdown closes
+	// after every closer of the app, whenever each was registered.
 	closers []func(ctx context.Context) error
+	nodes   []*plugins.NodeHost
 	lock    *ProcessLockHandle
 	// reloads arrived, applied one after another once fn returned.
 	reloads   [][]plugins.PluginScript
 	loaded    *loadedHost
 	ready     bool
 	reloading bool
-	busy      BusyWatchable
+	// reloadApplying, when set (a test's seam; nil in the process of an app), is called, without the lock, each time a reload
+	// was taken off the queue and is about to be applied.
+	reloadApplying func()
+	busy           BusyWatchable
 	// activity is the keep-alive counts of the NodeHost, as it last reported them (NodeOptions.OnActivity).
 	activity host.ActivityCounts
 	// held is the app's own holds on the NodeHost's objects (WorkerResult.Held).
@@ -323,7 +329,9 @@ const maxTimer = time.Duration(1<<31-1) * time.Millisecond
 // the NodeHost's facets use; a BridgedFacet without a Host is h's), and returns the NodeHost's report. The Go host is loaded
 // first: the proxies ask for their Go objects as they activate, inside the NodeHost's own load. When the NodeHost ends before
 // the worker is told to stop, the worker ends with it: it exits with its exit code, or sends `fatal` with the exception it
-// died of. Its close is a closer of the worker.
+// died of. Its close is the worker's last: shutdown closes it after the app's closers, those registered after
+// Load too, so the app's host closes the link to the server before the NodeHost ends and fails a reload in flight (Pi's host
+// closer closes the link before its reload rejects).
 func (p *WorkerPlugins) Load(h host.Host, options WorkerLoad, ctx context.Context) (host.LoadReport, error) {
 	address := p.message.Address
 	ready := make(chan struct{})
@@ -365,7 +373,7 @@ func (p *WorkerPlugins) Load(h host.Host, options WorkerLoad, ctx context.Contex
 	close(ready)
 	p.worker.mu.Lock()
 	p.worker.loaded = &loadedHost{host: h, node: node, runtime: p.runtime}
-	p.worker.closers = append(p.worker.closers, func(ctx context.Context) error { return node.Close(ctx) })
+	p.worker.nodes = append(p.worker.nodes, node)
 	p.worker.mu.Unlock()
 	go p.worker.watchNode(node)
 	*p.report = report
@@ -518,7 +526,11 @@ func (w *worker) applyReloads() {
 		}
 		scripts := w.reloads[0]
 		w.reloads = w.reloads[1:]
+		applying := w.reloadApplying
 		w.mu.Unlock()
+		if applying != nil {
+			applying()
+		}
 		if loaded == nil {
 			failure := CrossedError{Message: "worker: plugins.load was never called"}
 			w.send(FromWorker{Kind: FromWorkerReloaded, Error: &failure})
@@ -530,12 +542,6 @@ func (w *worker) applyReloads() {
 			report, reloadErr = loaded.runtime.Reload(loaded.node, scripts, w.context)
 			return reloadErr
 		})
-		if err != nil && w.isStopping() {
-			// A reload that fails while the worker shuts down is answered by its exit: the server ends it as stopped. Pi's
-			// worker closes its link to the server before the reload rejects (its host closer), so the server never reads the
-			// failure; here the NodeHost's closer runs first and fails the reload, so the reply stays unsent.
-			continue
-		}
 		if err != nil {
 			failure := crossed(err)
 			w.send(FromWorker{Kind: FromWorkerReloaded, Error: &failure})
@@ -547,8 +553,9 @@ func (w *worker) applyReloads() {
 }
 
 // shutdown stops the worker: `stopping` and the abort take effect before the next message is handled (as Pi's `#shutdown`
-// runs up to its first await), then the closers run in reverse order and the process exits (forced after 3 s). The closers
-// run on a goroutine of their own: they may wait for frames this call's caller (the channel's reader) delivers.
+// runs up to its first await), then the closers run in reverse order, the NodeHosts' after them, and the process exits
+// (forced after 3 s). The closers run on a goroutine of their own: they may wait for frames this call's caller (the
+// channel's reader) delivers.
 func (w *worker) shutdown() {
 	w.mu.Lock()
 	if w.stopping {
@@ -557,10 +564,15 @@ func (w *worker) shutdown() {
 	}
 	w.stopping = true
 	closers := slices.Clone(w.closers)
+	nodes := slices.Clone(w.nodes)
 	w.mu.Unlock()
 	w.abort(errShuttingDown)
 	time.AfterFunc(forcedExit, func() { exitProcess(0) })
 	slices.Reverse(closers)
+	slices.Reverse(nodes)
+	for _, node := range nodes {
+		closers = append(closers, func(ctx context.Context) error { return node.Close(ctx) })
+	}
 	//portlint:allow golifetime the closers end with the process, which exitProcess ends
 	go func() {
 		for _, closer := range closers {

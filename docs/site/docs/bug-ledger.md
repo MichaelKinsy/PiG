@@ -1395,7 +1395,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f00bf6c](#bf-f00bf6c) | fix(childwait): call PeekNamedPipe through kernel32 | PiG's own defect | All platforms | Unreleased |
 | [BF-f02269c](#bf-f02269c) | When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f06ab7e](#bf-f06ab7e) | A run that `sendMessage({ triggerTurn: true })` starts while idle emits `before_agent_start`, checks… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-f06ba8f](#bf-f06ba8f) | fix(chord/nextnode/workers): a reload that fails while the worker shuts down is answered by its exit, so a… | PiG's own defect | All platforms | Unreleased |
 | [BF-f07d033](#bf-f07d033) | A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f12896b](#bf-f12896b) | Interactive startup writes the terminal color query before its first frame, as Pi does: starting the renderer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f193c36](#bf-f193c36) | The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode | A fix Pi shipped that PiG ported | All platforms | Unreleased |
@@ -1406,6 +1405,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f24a8ee](#bf-f24a8ee) | Fixed Markdown links not being clickable in Herdr: `TERM_PROGRAM=herdr` is now detected as supporting OSC 8… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f24a8ee-2](#bf-f24a8ee-2) | Fixed the fullscreen text selection and multi-click state surviving a session switch or other transcript… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f25348f](#bf-f25348f) | A `turn_end` or `agent_before_settle` handler in an extension process receives each… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f26dfe2](#bf-f26dfe2) | fix(chord/nextnode/workers): a worker closes its link to the server before its NodeHost fails a reload in… | PiG's own defect | All platforms | Unreleased |
 | [BF-f2790f9](#bf-f2790f9) | A `tui` input listener or light/dark listener that is added while input is dispatched now sees that input… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f288d69](#bf-f288d69) | MCP OAuth token and client registration responses keep empty lists, read `expires_in` like JavaScript's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f288d69-2](#bf-f288d69-2) | On Windows, an npm self-update no longer fails when a virus scanner or indexer holds `pig.exe` open for a… | A Pi defect that PiG fixed first | Windows | 0.5.0 |
@@ -20542,19 +20542,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `agent/abort_before_first_request_test.go::TestAbortBeforeTheFirstRequestSendsNoProviderRequest`, `coding/session_pi_bugs_test.go::TestCustomRunStartThatLosesTheClaimRejectsWithTheAgentError`, `coding/session_preflight_test.go::TestAbandonedRunStartReturnsTheSessionToIdle`, `coding/session_preflight_test.go::TestPromptRunStartClaimsTheSessionBeforePreparation`, `coding/session_prompt_abort_starting_upstream_test.go::TestUpstreamSessionPromptAbortWhileBeforeAgentStartRuns`, `coding/session_prompt_custom_run_upstream_test.go::TestUpstreamSessionPromptRunsStartedByACustomMessage`, `coding/session_prompt_start_run_test.go::TestUserPromptRunIsBusyWhileItStarts`
 - **Release note:** A run that `sendMessage({ triggerTurn: true })` starts while idle emits `before_agent_start`, checks compaction first, applies the handlers' result and delivers pending `nextTurn` messages. The event carries `messageType` (`"user"` or `"custom"`) and, for a custom run, `message`. A user prompt's run, like a custom one, is busy from its start, as in Pi 1.2.0: a message sent while its compaction check and `before_agent_start` handlers run joins it, a prompt or `sendUserMessage` sent meanwhile must name `streamingBehavior`/`deliverAs`, bash results recorded meanwhile are appended after the handlers, and an abort aborts the run at `agent_start` instead of letting its request complete (Pi #5581, Pi PR #10739).
 
-### BF-f06ba8f
-
-**fix(chord/nextnode/workers): a reload that fails while the worker shuts down is answered by its exit, so a…**
-
-- **Source:** PiG's own defect
-- **Symptom:** fix(chord/nextnode/workers): a reload that fails while the worker shuts down is answered by its exit, so a stop lists it as stopped
-- **Root cause:** TestTheRolloutStepListsAWorkerStoppedCleanlyDuringItAsStoppedAndOneThatCrashedWithItsError failed 8 runs in 30 with hosts ["session|S1 the node subprocess ended" ...], want "session|S1 stopped".
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `f06ba8fd15` (2026-11-01)
-- **Tests:** `chord/nextnode/workers/workers_rollout_blocked_unix_test.go::TestTheRolloutStepListsAWorkerStoppedCleanlyDuringItAsStoppedAndOneThatCrashedWithItsError`
-
 ### BF-f07d033
 
 **A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144…**
@@ -20698,6 +20685,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6a6fffa638` (2026-10-10), `34f7594aa5` (2026-10-11), `f25348fcf6` (2026-10-11)
 - **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `coding/extension/host/inproc/boundary_test.go::TestEmitBoundaryDecodesSourcesOnlyForHandlersThatReadGoValues`, `coding/extension/host/subprocess/boundary_wire_test.go::TestBoundaryEventWireEncodesAsTheEvent`, `coding/extension/host/subprocess/boundary_wire_test.go::TestBoundaryWireCacheSharesOnlyAcrossUnchangedInputs`, `coding/extension/host/subprocess/boundary_wire_test.go::TestBoundaryWireEncodesEachSourceAsItsRecord` and 15 more in docs/bug-ledger.json
 - **Release note:** A `turn_end` or `agent_before_settle` handler in an extension process receives each `context.contextEntries[].sourceEntry` with its members in the order the session wrote them, as in Pi, instead of sorted by name.
+
+### BF-f26dfe2
+
+**fix(chord/nextnode/workers): a worker closes its link to the server before its NodeHost fails a reload in…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord/nextnode/workers): a worker closes its link to the server before its NodeHost fails a reload in flight
+- **Root cause:** WorkerPlugins.Load appended the NodeHost's closer to the worker's closers after the app's, and shutdown runs them in reverse, so the NodeHost closed first, ended the Node subprocess and failed the reload in flight, and the worker sent that `reloaded` failure before the app's host closer closed the link to the server. The server read it as the reload's own error whenever it arrived ahead of the link's close. Pi runs the host closer, which closes the parent link, first (packages/chord/src/next-node/workers/main.ts #shutdown, ipc.ts: the close frame precedes the `reloaded` reply), so the server's `ended` settles the reload as stopped.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f06ba8fd15` (2026-11-01), `f26dfe2355` (2026-11-01)
+- **Tests:** `chord/nextnode/workers/workers_main_test.go::TestTheWorkersSideClosesItsLinkToTheServerBeforeItsNodeHostFailsAReloadInFlightAtShutdown`, `chord/nextnode/workers/workers_rollout_blocked_unix_test.go::TestTheRolloutStepListsAWorkerStoppedCleanlyDuringItAsStoppedAndOneThatCrashedWithItsError`
 
 ### BF-f2790f9
 
