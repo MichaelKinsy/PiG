@@ -1626,6 +1626,13 @@
    "new": "generatedRows[ref.row].Headers = nil"
   }
  ],
+ "packages/ai/src/models-store.ts": [
+  {
+   "file": "ai/models_store.go",
+   "old": "s.entries[providerID] = entry.Clone()",
+   "new": "s.entries[providerID] = entry"
+  }
+ ],
  "packages/ai/src/model-catalog.ts": [
   {
    "file": "ai/model_catalog.go",
@@ -1730,6 +1737,13 @@
    "new": "\"openid profile email offline_access\""
   }
  ],
+ "packages/ai/src/session-resources.ts": [
+  {
+   "file": "ai/session_resources.go",
+   "old": "if len(errs) > 0 {",
+   "new": "if len(errs) > 1 {"
+  }
+ ],
  "packages/ai/src/oauth.ts": [
   {
    "file": "ai/oauth_types.go",
@@ -1742,6 +1756,13 @@
    "file": "coding/cli/auth_commands.go",
    "old": "fmt.Printf(\"\\nCredentials saved to %s\\n\", credentialPath)",
    "new": "fmt.Printf(\"\\nCredentials saved to %s.\\n\", credentialPath)"
+  }
+ ],
+ "packages/ai/src/bedrock-provider.ts": [
+  {
+   "file": "ai/providers/bedrock/bedrock.go",
+   "old": "if isReservedBedrockHeader(name) {",
+   "new": "if !isReservedBedrockHeader(name) {"
   }
  ],
  "packages/ai/src/auth/oauth/meta.ts": [
