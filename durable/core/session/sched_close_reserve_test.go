@@ -148,3 +148,93 @@ func TestOwnedTasksCreatedTogetherShareEqualCheckpoints(t *testing.T) {
 		t.Fatal("a checkpoint with its members in another order shares the object of one in the first order")
 	}
 }
+
+// The reservation job that waits for a commit in flight runs again from its start once that commit is published, and Pi's callback does not:
+// it decided at its start (scheduler.ts #reserve). A Seal that arrives between the two runs (close begins while the Storage holds a commit
+// the job's decision read) does not make the second run reserve nothing, so the reservation lands, no handler starts, and close writes the
+// task back as pending (the bug of the gated reservation, 432775653a, with the writer's wait for a publication as the rerun).
+func TestAReservationJobThatRunsAgainAfterACommitKeepsTheDecisionOfItsFirstRun(t *testing.T) {
+	mem := sessiontest.New()
+	s := newSession(mem, mem.NextID())
+	def := &session.TaskDef{Name: "t.never", Version: 1, Initial: func(any) any { return jv.NewObject() }}
+	var id session.ID
+	if _, err := s.Commit(func(tx *session.Tx) error {
+		root, err := tx.CreateRootConversation()
+		if err != nil {
+			return err
+		}
+		id, err = tx.CreateTask(def, nil, session.TaskOptions{ConversationID: idOf(root)})
+		return err
+	}, session.TxScope{}); err != nil {
+		t.Fatal(err)
+	}
+	ran := false
+	registry := snap{"t.never": {Def: *def, Phase: func(*session.Runtime, *jv.Object, func(error)) { ran = true }}}
+	loop := bound(s)
+	var sched *session.Scheduler
+	passes, held := 0, 0
+	sealed, armed := false, false
+	env := session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return 1 }}
+	// The first run of the reservation job begins: close begins with it.
+	env.ReadTicks = func() int {
+		if !armed {
+			return 0
+		}
+		passes++
+		if !sealed {
+			sealed = true
+			sched.Seal()
+		}
+		return 0
+	}
+	sched = session.NewScheduler(s, loop, env)
+	sched.Open(func(err error) {
+		if err != nil {
+			t.Error(err)
+		}
+	})
+	if err := loop.Run(); err != nil {
+		t.Fatal(err)
+	}
+	armed = true
+	// A commit that writes the task is in flight when the reservation job runs: the job waits for its publication and runs again.
+	loop.StoreTicks = func(batches [][]session.Write) (int, int, int) {
+		for _, w := range batches[0] {
+			if w.Kind == session.WriteTask && held == 0 {
+				held++
+				sched.Resume()
+			}
+		}
+		return 0, 0, 6
+	}
+	loop.Line(func() error {
+		rec, err := mem.Task(id)
+		if err != nil {
+			return err
+		}
+		changed := rec.Shallow()
+		changed.Set("note", "c0")
+		_, err = s.Commit(func(tx *session.Tx) error { return tx.SetTask(changed) }, session.TxScope{})
+		return err
+	}, func(err error) {
+		if err != nil {
+			t.Error(err)
+		}
+	})
+	if err := loop.Run(); err != nil {
+		t.Fatal(err)
+	}
+	if held != 1 || passes < 1 {
+		t.Fatalf("the reservation job did not run while the commit was in flight (commits held %d, passes %d)", held, passes)
+	}
+	rec, err := mem.Task(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := taskStatusOf(rec); got != session.StatusRunning {
+		t.Fatalf("the reservation landed as %s, want running (passes %d)", got, passes)
+	}
+	if ran {
+		t.Fatal("the handler started while closing")
+	}
+}

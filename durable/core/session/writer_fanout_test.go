@@ -146,7 +146,7 @@ func TestThePartsAfterARefusedBatchRejectWithSessionFailedAndTheRefusal(t *testi
 				before := storedBefore(stored, i)
 				switch {
 				case stored[i] && before == k:
-					if !errors.Is(p.Err(), refusal) || published {
+					if !errors.Is(p.Err(), refusal) || errors.Is(p.Err(), session.ErrSessionFailed) || published {
 						t.Errorf("the refused part %d ended with %v (published %v), want the refusal", i, p.Err(), published)
 					}
 				case before < k || !stored[i] && before == k:
@@ -186,12 +186,12 @@ func TestThePartsAfterARejectedCallsLastReceiptRejectWithItsError(t *testing.T) 
 				before := storedBefore(stored, i)
 				switch {
 				case stored[i]:
-					if !errors.Is(p.Err(), lost) || published != (before < k) {
+					if !errors.Is(p.Err(), lost) || errors.Is(p.Err(), session.ErrSessionFailed) || published != (before < k) {
 						t.Errorf("stored part %d ended with %v (published %v), want the call's error, published only with a receipt (%v)", i, p.Err(), published, before < k)
 					}
 				case before <= k:
 					// A part published while its call rejected is durable but rejects (spec section 10.1).
-					if !errors.Is(p.Err(), lost) || !published {
+					if !errors.Is(p.Err(), lost) || errors.Is(p.Err(), session.ErrSessionFailed) || !published {
 						t.Errorf("held part %d ended with %v (published %v), want it published, then the call's error", i, p.Err(), published)
 					}
 				default:
