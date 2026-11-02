@@ -7,7 +7,6 @@ package nextnode
 import (
 	"bytes"
 	"compress/flate"
-	"errors"
 	"io"
 	"math"
 )
