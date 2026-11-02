@@ -690,6 +690,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-75c6ccb](#bf-75c6ccb) | fix(codingagent): context edits leave system messages unchanged | PiG's own defect | All platforms | Unreleased |
 | [BF-7633906](#bf-7633906) | On arm64, `tool_search` and `searchTools()` scores use the same natural logarithm as Pi running on Node for… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7662334](#bf-7662334) | An extension that writes a large amount to stderr no longer grows its diagnostic log without limit | PiG's own defect | All platforms | 0.5.0 |
+| [BF-7689b82](#bf-7689b82) | An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor… | PiG's own defect | All platforms | Unreleased |
 | [BF-76f780d](#bf-76f780d) | A tool call that streams many argument deltas no longer costs time and memory that grow with the square of… | PiG's own defect | All platforms | Unreleased |
 | [BF-76f780d-2](#bf-76f780d-2) | A grammar (custom) tool input no longer copies the whole input so far on every delta | PiG's own defect | All platforms | Unreleased |
 | [BF-773a868](#bf-773a868) | RPC mode no longer hangs when a Node extension command calls `pi.sendMessage(..., { triggerTurn: true })`… | PiG's own defect | All platforms | 0.5.0 |
@@ -10791,6 +10792,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `766233435b` (2026-10-09)
 - **Tests:** `coding/extension/host/subprocess/conn_framing_test.go::TestConnAllocationBudgets`, `coding/extension/host/subprocess/conn_framing_test.go::TestLargeFrameChunksArriveIntact`, `coding/extension/host/subprocess/conn_framing_test.go::TestSendAllocatesNothingInSteadyState`, `coding/extension/host/subprocess/conn_framing_test.go::TestSmallFrameIsOneSocketWrite`, `coding/extension/host/subprocess/stderr_bound_test.go::TestFloodingChildNeitherBlocksNorFillsTheDisk`, `coding/extension/host/subprocess/stderr_bound_test.go::TestHelperFloodStderr`, `coding/extension/host/subprocess/stderr_bound_test.go::TestStderrLogKeepsHeadAndTail`, `coding/extension/host/subprocess/stderr_bound_test.go::TestStderrLogUnderTheBoundIsVerbatim` and 4 more in docs/bug-ledger.json
 - **Release note:** An extension that writes a large amount to stderr no longer grows its diagnostic log without limit. The log keeps the first 1 MiB and the last 64 KiB of the output and says how many bytes it dropped, so a startup failure and a crash line both survive a flood.
+
+### BF-7689b82
+
+**An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor column now gets Pi's answer: the column counts back from the end of the line in UTF-16 units as `line.slice(0, col)` does, where it was treated as column 0.
+- **Root cause:** Not recorded.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7689b82bf7` (2026-11-02)
+- **Tests:** `internal/codingagent/autocomplete_wrappers_test.go::TestShouldTriggerFileCompletionSlicesTheLineLikeJavaScript`
+- **Release note:** An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor column now gets Pi's answer: the column counts back from the end of the line in UTF-16 units as `line.slice(0, col)` does, where it was treated as column 0.
 
 ### BF-76f780d
 

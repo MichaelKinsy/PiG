@@ -19447,6 +19447,28 @@
       ]
     },
     {
+      "id": "BF-7689b82",
+      "title": "An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor…",
+      "symptom": "An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor column now gets Pi's answer: the column counts back from the end of the line in UTF-16 units as `line.slice(0, col)` does, where it was treated as column 0.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that calls the base autocomplete provider's `shouldTriggerFileCompletion` with a negative cursor column now gets Pi's answer: the column counts back from the end of the line in UTF-16 units as `line.slice(0, col)` does, where it was treated as column 0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7689b82bf7",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/autocomplete_wrappers_test.go::TestShouldTriggerFileCompletionSlicesTheLineLikeJavaScript"
+      ]
+    },
+    {
       "id": "BF-76f780d",
       "title": "A tool call that streams many argument deltas no longer costs time and memory that grow with the square of…",
       "symptom": "A tool call that streams many argument deltas no longer costs time and memory that grow with the square of its text: every provider (Anthropic Messages, Bedrock Converse Stream, Mistral, OpenAI Completions and Responses, Pi messages), the faux provider and the proxy stream read each delta once.",
