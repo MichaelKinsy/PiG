@@ -419,7 +419,7 @@ def test_yield_now_sends_the_yield_call_with_the_request_parent() -> None:
     assert [c["call"]["method"] for c in calls] == ["yield"]
     assert calls[0]["call"]["args"] == {}
     assert calls[0]["call"]["parent_request_id"] == "r1"
-    assert "error" not in response["response"]
+    assert response["response"].get("error") is None
 
 
 def test_sleep_yields_before_it_sleeps(monkeypatch: pytest.MonkeyPatch) -> None:
