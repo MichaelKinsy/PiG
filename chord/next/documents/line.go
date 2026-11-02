@@ -32,19 +32,37 @@ func NewLine() *Line {
 // handler's ctx parks the handler once its place is taken (Pi's `await line.acquire()` takes the place in the section that
 // calls it and resumes after it): ctx is the caller's; context.Background() for a caller that is no handler.
 func (line *Line) Acquire(ctx context.Context) (release func()) {
+	return line.reserve().wait(ctx)
+}
+
+// linePlace is a holder's place on the line, taken and not yet waited for.
+type linePlace struct {
+	line     *Line
+	previous <-chan struct{}
+	done     chan struct{}
+}
+
+// reserve takes this holder's place at the call, as Pi's `line.acquire()` does when it is called: the order of the holders
+// is the order of the calls that reach reserve. wait is the rest of Acquire.
+func (line *Line) reserve() linePlace {
 	done := make(chan struct{})
 	line.mu.Lock()
 	previous := line.tail
 	line.tail = done
 	line.waiting++
 	line.mu.Unlock()
+	return linePlace{line: line, previous: previous, done: done}
+}
+
+// wait parks a handler's ctx, blocks until every earlier holder released and returns this holder's release.
+func (place linePlace) wait(ctx context.Context) (release func()) {
 	parking.Park(ctx)
-	<-previous
-	line.mu.Lock()
-	line.waiting--
-	line.mu.Unlock()
+	<-place.previous
+	place.line.mu.Lock()
+	place.line.waiting--
+	place.line.mu.Unlock()
 	var once sync.Once
-	return func() { once.Do(func() { close(done) }) }
+	return func() { once.Do(func() { close(place.done) }) }
 }
 
 // waitingHolders is the number of holders that asked and have not been handed the line yet.

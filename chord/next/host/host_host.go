@@ -946,6 +946,7 @@ func (h *chordHost) publish() {
 		return
 	}
 	h.publishedOnce = true
+	//portlint:allow doubleclose the publishedOnce flag above returns first inside a section, so the close runs once; Pi's `#publication` is a Promise.withResolvers resolved at the first publication (host.ts:459)
 	close(h.publication)
 }
 
@@ -1367,6 +1368,7 @@ func (h *chordHost) startTicking() {
 	ticking := &heartbeatTimer{}
 	h.ticking = ticking
 	ping, shut := h.heartbeat.ping, h.heartbeat.close
+	//portlint:allow numbers min(ping, shut) is a time.Duration in whole nanoseconds: the /10 drops under 1 ns, below nodeDelay's whole-millisecond truncation, so the armed delay equals Pi's Math.min(ping, close) / 10 (host.ts:1319)
 	interval := min(ping, shut) / 10
 	tick := func() {
 		if ticking.stopped {
@@ -1546,6 +1548,7 @@ func (h *chordHost) runClose() *closePromise {
 			}
 			closing.err = fmt.Errorf("host.close: %d native close(s) threw: %w", len(failures), errors.Join(errs...))
 		}
+		//portlint:allow doubleclose runClose runs once per host: closeOnce starts it only while h.closer is nil (Pi host.ts:984 `this.#closing ??= this.#close()`), and this closePromise is private to that run
 		close(closing.done)
 	})
 	return closing

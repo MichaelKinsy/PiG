@@ -168,6 +168,7 @@ func recordOf(value *delta.JsonObject) (StoredRun, error) {
 	if !ok {
 		return StoredRun{}, errors.New("a stored run: version is not a number")
 	}
+	//portlint:allow numbers version is RUN_RECORD.version, the integer 1 that Chord's own record documents carry (stored.ts:42), written by storedRun, so the conversion is exact
 	record.Version = int(version)
 	record.Fingerprint, _ = value.Value("fingerprint").(string)
 	if key, ok := value.Value("key").(string); ok {
@@ -182,8 +183,10 @@ func recordOf(value *delta.JsonObject) (StoredRun, error) {
 	phase, _ := value.Value("phase").(string)
 	record.Phase = Phase(phase)
 	restarts, _ := value.Value("restarts").(float64)
+	//portlint:allow numbers restarts is a counter storedRun writes as an integer (stored.ts:31 `readonly restarts: number`, incremented by one per restart), so the conversion is exact
 	record.Restarts = int(restarts)
 	finishFailures, _ := value.Value("finishFailures").(float64)
+	//portlint:allow numbers finishFailures is a counter storedRun writes as an integer (stored.ts:32 `readonly finishFailures: number`, incremented by one per failed finish), so the conversion is exact
 	record.FinishFailures = int(finishFailures)
 	record.Abort, _ = value.Value("abort").(bool)
 	if blocked, ok := value.Value("blocked").(string); ok {
@@ -222,6 +225,7 @@ func storedOutcomeFrom(object *delta.JsonObject) (storedOutcome, error) {
 		stored.reason = AbortReason(reason)
 	case JobRestartLimit:
 		restarts, _ := failure.Value("restarts").(float64)
+		//portlint:allow numbers the restart_limit failure's restarts is the run's integer restart counter at the limit (stored.ts:16 `restarts: number`), so the conversion is exact
 		stored.restarts = int(restarts)
 	default:
 		return storedOutcome{}, fmt.Errorf("a stored run: unknown failure %q", kind)

@@ -98,12 +98,16 @@ func clipped(text string, length int) string {
 // rootMessage is the root cause in a "waiting for X: root" message: past every leading "waiting for …: ".
 func rootMessage(message string) string {
 	rest := message
-	for strings.HasPrefix(rest, waitingPrefix) {
-		end := strings.Index(rest[len(waitingPrefix):], waitingSeparator)
-		if end < 0 {
+	for {
+		tail, ok := strings.CutPrefix(rest, waitingPrefix)
+		if !ok {
 			break
 		}
-		rest = rest[len(waitingPrefix)+end+len(waitingSeparator):]
+		_, after, found := strings.Cut(tail, waitingSeparator)
+		if !found {
+			break
+		}
+		rest = after
 	}
 	return rest
 }

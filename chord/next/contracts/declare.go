@@ -201,6 +201,7 @@ func declare(kind Kind, name string, version float64, params Params, variants *N
 	if err != nil {
 		return nil, err
 	}
+	//portlint:allow numbers version is checked a positive safe integer at declare.go:186, as Number.isSafeInteger(version) at declare.ts:169, so int(version) is exact
 	first, err := Materialize(kind, paramsData, int(version), variants, nil)
 	if err != nil {
 		return nil, err

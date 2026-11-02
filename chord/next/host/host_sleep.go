@@ -18,8 +18,11 @@ const maxTimer = time.Duration(1<<31-1) * time.Millisecond
 // systemLoop is the clock and timers of Sleep for app code: the process's, with no host section around the wake-up.
 type systemLoop struct{}
 
-func (systemLoop) Now() int64       { return time.Now().UnixMilli() }
-func (systemLoop) Queue(job func()) { go job() }
+func (systemLoop) Now() int64 { return time.Now().UnixMilli() }
+func (systemLoop) Queue(job func()) {
+	//portlint:allow golifetime the goroutine runs one callback and returns, as a queueMicrotask/setTimeout callback in sleep.ts:23 is owned by no one; sleepOn's wake-up closes a channel and never blocks
+	go job()
+}
 func (systemLoop) AfterFunc(d time.Duration, job func()) Timer {
 	return systemTimer{time.AfterFunc(nodeDelay(d), job)}
 }

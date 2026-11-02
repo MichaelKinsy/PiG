@@ -3,6 +3,7 @@ package nextnode_test
 import (
 	"bytes"
 	"encoding/json"
+	"math"
 	"strings"
 	"testing"
 
@@ -69,4 +70,19 @@ func TestNodeCompression(t *testing.T) {
 			t.Fatalf("inflate = %+v, want corrupt with an error", inflated)
 		}
 	})
+}
+
+func TestNodeCompressionInflateLimitEdges(t *testing.T) {
+	deflated := nextnode.NodeCompression.Deflate([]byte("abc"))
+	// zlib refuses a NaN maxOutputLength: corrupt, never an unbounded inflate.
+	if got := nextnode.NodeCompression.Inflate(deflated, math.NaN()); got.Kind != nextnode.InflatedCorrupt {
+		t.Fatalf("NaN limit kind = %q, want corrupt", got.Kind)
+	}
+	// A negative or infinite-below limit is past by one byte, like a limit of 0.
+	if got := nextnode.NodeCompression.Inflate(deflated, math.Inf(-1)); got.Kind != nextnode.InflatedTooLarge {
+		t.Fatalf("-Inf limit kind = %q, want too_large", got.Kind)
+	}
+	if got := nextnode.NodeCompression.Inflate(deflated, -5); got.Kind != nextnode.InflatedTooLarge {
+		t.Fatalf("-5 limit kind = %q, want too_large", got.Kind)
+	}
 }

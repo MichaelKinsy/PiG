@@ -139,6 +139,7 @@ func (queue *memoryQueue) post(job func()) {
 	queue.running = true
 	queue.mu.Unlock()
 	if start {
+		//portlint:allow golifetime memoryQueue owns this goroutine: running stays true until drain finds jobs empty, broadcasts idle and returns; the queue's flush waits on that Cond (queueMicrotask in link.ts:92 has no handle either)
 		go queue.drain()
 	}
 }
