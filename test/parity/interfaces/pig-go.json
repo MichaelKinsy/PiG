@@ -364062,6 +364062,17 @@
       "shapeHash": "sha256:191a15d930e24f72e35908f3f1785b2665762f179266a58f642f739ad4375487"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#nodeTimerDelay",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "nodeTimerDelay",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(milliseconds float64) time.Duration"
+      },
+      "shapeHash": "sha256:5892c68e060e16e6ad0524e0ba99a02199f9507d78afe81be999f597a7b95bae"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#nodesEqual",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "nodesEqual",
@@ -369879,17 +369890,6 @@
         "type": "string"
       },
       "shapeHash": "sha256:00404e686415370f1711c4d7acfa2905444d3cf23cef2e10c47d445ebe690f96"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#terminalColorQueryDelay",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "terminalColorQueryDelay",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(milliseconds float64) time.Duration"
-      },
-      "shapeHash": "sha256:5892c68e060e16e6ad0524e0ba99a02199f9507d78afe81be999f597a7b95bae"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#terminalColorReplyCount",

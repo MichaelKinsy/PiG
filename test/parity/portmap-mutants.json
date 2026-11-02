@@ -626,6 +626,125 @@
    "new": "getenv(\"WSLENV\") == \"\""
   }
  ],
+ "packages/tui/src/word-navigation.ts": [
+  {
+   "file": "tui/word_navigation.go",
+   "old": "\tcase last.IsWordLike:\n",
+   "new": "\tcase !last.IsWordLike:\n"
+  },
+  {
+   "file": "tui/word_navigation.go",
+   "old": "\t\t\tinRun = true\n",
+   "new": "\t\t\tinRun = false\n"
+  },
+  {
+   "file": "tui/word_navigation.go",
+   "old": "strings.IndexAny(current.Segment, punctuationChars)",
+   "new": "strings.LastIndexAny(current.Segment, punctuationChars)"
+  }
+ ],
+ "packages/tui/src/kill-ring.ts": [
+  {
+   "file": "tui/kill_ring.go",
+   "old": "\t\t\t\treturn text + last\n",
+   "new": "\t\t\t\treturn last + text\n"
+  },
+  {
+   "file": "tui/kill_ring.go",
+   "old": "\tk.ring = append([]string{last}, k.ring[:len(k.ring)-1]...)",
+   "new": "\tk.ring = append([]string{last}, k.ring[1:]...)"
+  },
+  {
+   "file": "tui/kill_ring.go",
+   "old": "if accumulate && len(k.ring) > 0 {",
+   "new": "if accumulate && len(k.ring) > 1 {"
+  }
+ ],
+ "packages/tui/src/undo-stack.ts": [
+  {
+   "file": "tui/undo_stack.go",
+   "old": "\tu.stack = u.stack[:len(u.stack)-1]\n",
+   "new": "\tu.stack = u.stack[:0]\n"
+  },
+  {
+   "file": "tui/undo_stack.go",
+   "old": "\tu.stack = nil\n",
+   "new": "\tu.stack = u.stack[:len(u.stack)]\n"
+  }
+ ],
+ "packages/tui/src/components/alt-screen-flash.ts": [
+  {
+   "file": "tui/alt_screen_flash.go",
+   "old": "widthx.TruncateToWidth(\" \"+entry.message+\" \", width, \"\", false)",
+   "new": "widthx.TruncateToWidth(\" \"+entry.message, width, \"\", false)"
+  },
+  {
+   "file": "tui/alt_screen_flash.go",
+   "old": "\"\\x1b[7m\" + message + \"\\x1b[27m\"",
+   "new": "\"\\x1b[7m\" + message + \"\\x1b[0m\""
+  },
+  {
+   "file": "tui/alt_screen_flash.go",
+   "old": "\t\tif removed {\n",
+   "new": "\t\tif !removed {\n"
+  },
+  {
+   "file": "tui/alt_screen_flash.go",
+   "old": "c.entries = append(c.entries[:i], c.entries[i+1:]...)",
+   "new": "c.entries = c.entries[:i]"
+  }
+ ],
+ "packages/tui/src/layout-node.ts": [
+  {
+   "file": "tui/layout_node.go",
+   "old": "\t\treturn lc.LayoutNode()\n",
+   "new": "\t\tif _, scroll := lc.LayoutNode().(ScrollLayoutNode); scroll {\n\t\t\treturn nil\n\t\t}\n\t\treturn lc.LayoutNode()\n"
+  }
+ ],
+ "packages/tui/src/layout.ts": [
+  {
+   "file": "tui/layout.go",
+   "old": "\t\tif node.Align == \"stretch\" {\n\t\t\tchildHeight = allocatedHeight\n",
+   "new": "\t\tif node.Align == \"stretch\" {\n\t\t\tchildHeight = 0\n"
+  },
+  {
+   "file": "tui/layout.go",
+   "old": "layoutComponent(context, entry.Component, childX, childY, childWidth, &childHeight, box.Clip)",
+   "new": "layoutComponent(context, entry.Component, childX+1, childY, childWidth, &childHeight, box.Clip)"
+  },
+  {
+   "file": "tui/layout.go",
+   "old": "translateBox(childBox, previousScrollTop-node.State.ScrollTop())",
+   "new": "translateBox(childBox, previousScrollTop+node.State.ScrollTop())"
+  },
+  {
+   "file": "tui/layout.go",
+   "old": "\tif stack.Type == \"vstack\" {\n",
+   "new": "\tif stack.Type == \"hstack\" {\n"
+  }
+ ],
+ "packages/tui/src/alt-screen-search.ts": [
+  {
+   "file": "tui/alt_screen_search.go",
+   "old": "startCol = span.startCol + max(start, span.textStart) - span.textStart",
+   "new": "startCol = span.startCol + min(start, span.textStart) - span.textStart"
+  },
+  {
+   "file": "tui/alt_screen_search.go",
+   "old": "segments[n-1].Row == span.row && startCol <= segments[n-1].EndCol",
+   "new": "segments[n-1].Row == span.row && startCol < segments[n-1].EndCol"
+  },
+  {
+   "file": "tui/alt_screen_search.go",
+   "old": "changed = sourceChanged || i.normalizedQuery == nil || normalizedQuery != *i.normalizedQuery",
+   "new": "changed = true"
+  },
+  {
+   "file": "tui/alt_screen_search.go",
+   "old": "regexp.MustCompile(\"(?i)\" + regexp.QuoteMeta(normalizedQuery))",
+   "new": "regexp.MustCompile(regexp.QuoteMeta(normalizedQuery))"
+  }
+ ],
  "packages/durable/src/images/exif.ts": [
   {
    "file": "durable/images/exif.go",
@@ -669,6 +788,38 @@
    "file": "durable/timers.go",
    "old": "\t\treported = true\n",
    "new": "\t\treported = false\n"
+  }
+ ],
+ "packages/env/src/errors.ts": [
+  {
+   "file": "env/errors.go",
+   "old": "\tif ctx.Err() != nil {\n",
+   "new": "\tif ctx.Err() == nil {\n"
+  },
+  {
+   "file": "env/errors.go",
+   "old": "\tcase \"ENOENT\":\n\t\tcode = durableenv.FileErrorNotFound\n",
+   "new": "\tcase \"ENOENT\":\n\t\tcode = durableenv.FileErrorUnknown\n"
+  },
+  {
+   "file": "env/errors.go",
+   "old": "\tcase \"EACCES\", \"EPERM\":\n",
+   "new": "\tcase \"EACCES\":\n"
+  },
+  {
+   "file": "env/errors.go",
+   "old": "\tcase \"EINVAL\", \"SYMLINK\", \"NOT_REGULAR\":\n",
+   "new": "\tcase \"EINVAL\", \"SYMLINK\":\n"
+  },
+  {
+   "file": "env/errors.go",
+   "old": "\tif remote.Path != nil {\n",
+   "new": "\tif remote.Path != nil && *remote.Path != \"\" {\n"
+  },
+  {
+   "file": "env/errors.go",
+   "old": "\t\treturn fileError\n",
+   "new": "\t\treturn durableenv.NewFileError(fileError.Code, fileError.Message, fallbackPath, fileError)\n"
   }
  ],
  "packages/env/daemon/src/decode.rs": [
@@ -2132,6 +2283,123 @@
    "file": "internal/modelgen/define.go",
    "old": "\t\t\tinput = Strings(\"text\", \"image\")\n",
    "new": "\t\t\tinput = Strings(\"text\")\n"
+  }
+ ],
+ "packages/tui/src/native-modifiers.ts": [
+  {
+   "file": "tui/native_modifiers.go",
+   "old": "return nativeplatform.IsModifierPressed(string(key))",
+   "new": "return !nativeplatform.IsModifierPressed(string(key))"
+  },
+  {
+   "file": "internal/nativeplatform/nativeplatform.go",
+   "old": "return isModifierPressed(name)",
+   "new": "return !isModifierPressed(name)"
+  },
+  {
+   "file": "internal/nativeplatform/modifiers_other.go",
+   "old": "bool { return false }",
+   "new": "bool { return true }"
+  }
+ ],
+ "packages/evals/src/cli.ts": [
+  {
+   "file": "internal/evals/cli.go",
+   "old": "slices.SortFunc(files, compareUTF16)",
+   "new": "slices.SortFunc(files, strings.Compare)"
+  },
+  {
+   "file": "internal/evals/cli.go",
+   "old": "if images.WithDocs.ID == images.WithoutDocs.ID {",
+   "new": "if images.WithDocs.ID != images.WithoutDocs.ID {"
+  },
+  {
+   "file": "cmd/pig-evals/main.go",
+   "old": "[]string{\"PI_PROVIDER\", \"PI_MODEL\", \"PI_EVAL_RUNS_PER_VARIANT\"}",
+   "new": "[]string{\"PI_PROVIDER\", \"PI_EVAL_RUNS_PER_VARIANT\"}"
+  }
+ ],
+ "packages/evals/src/docker.ts": [
+  {
+   "file": "internal/evals/docker.go",
+   "old": "{\"PI_EVAL_SANDBOX_UID\", \"65532\"}",
+   "new": "{\"PI_EVAL_SANDBOX_UID\", \"65533\"}"
+  },
+  {
+   "file": "internal/evals/docker.go",
+   "old": "if status != 0 || jsstring.Trim(stdout) == \"\" {",
+   "new": "if status != 0 {"
+  },
+  {
+   "file": "internal/evals/docker.go",
+   "old": "\"--read-only\", ",
+   "new": "\"--read-write\", "
+  },
+  {
+   "file": "internal/evals/docker.go",
+   "old": "if status != 0 {\n\t\treturn \"\", fmt.Errorf(\"%s eval discovery failed.\", variant)",
+   "new": "if status == 0 {\n\t\treturn \"\", fmt.Errorf(\"%s eval discovery failed.\", variant)"
+  }
+ ],
+ "packages/evals/src/harness.ts": [
+  {
+   "file": "internal/evals/harness.go",
+   "old": "provider, id = jsstring.Trim(provider), jsstring.Trim(id)",
+   "new": "provider, id = provider, jsstring.Trim(id)"
+  },
+  {
+   "file": "internal/evals/harness.go",
+   "old": "!strings.HasPrefix(name, \"PI_EVAL_\")",
+   "new": "!strings.HasPrefix(name, \"PI_EVAL_X\")"
+  },
+  {
+   "file": "internal/evals/harness.go",
+   "old": "!= *options.ExpectedPiDocumentation {",
+   "new": "== *options.ExpectedPiDocumentation {"
+  },
+  {
+   "file": "internal/evals/harness.go",
+   "old": "cwdStart < documentationEnd",
+   "new": "cwdStart > documentationEnd"
+  }
+ ],
+ "packages/evals/src/plan.ts": [
+  {
+   "file": "internal/evals/plan.go",
+   "old": "if runNumber%2 == 0 {",
+   "new": "if runNumber%2 == 1 {"
+  },
+  {
+   "file": "internal/evals/plan.go",
+   "old": "if identities[key] {",
+   "new": "if !identities[key] {"
+  },
+  {
+   "file": "internal/evals/plan.go",
+   "old": "if runsPerVariant < 1 {",
+   "new": "if runsPerVariant < 0 {"
+  }
+ ],
+ "packages/evals/src/report.ts": [
+  {
+   "file": "internal/evals/report.go",
+   "old": "caseResult.Status != assertion.Status",
+   "new": "caseResult.Status == assertion.Status"
+  },
+  {
+   "file": "internal/evals/report.go",
+   "old": "*run.Usage.Provider+\"/\"+*run.Usage.Model != task.Model",
+   "new": "*run.Usage.Provider+\"/\"+*run.Usage.Model == task.Model"
+  },
+  {
+   "file": "internal/evals/report.go",
+   "old": "*observation.Score >= 1",
+   "new": "*observation.Score > 1"
+  },
+  {
+   "file": "internal/evals/report.go",
+   "old": "*treatmentPassRate < *controlPassRate",
+   "new": "*treatmentPassRate <= *controlPassRate"
   }
  ],
  "packages/ai/scripts/check-model-data.ts": [
