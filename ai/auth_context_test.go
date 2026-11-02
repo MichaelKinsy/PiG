@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/auth/context.ts
+
 import (
 	"os"
 	"path/filepath"

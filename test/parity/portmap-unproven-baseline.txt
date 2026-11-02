@@ -4,7 +4,6 @@ packages/ai/scripts/check-model-data.ts
 packages/ai/scripts/hydrate-model-catalog.ts
 packages/ai/scripts/model-data.ts
 packages/ai/src/compat.ts
-packages/ai/src/compat/extension-oauth-types.ts
 packages/ai/src/models.ts
 packages/ai/src/providers/all.ts
 packages/ai/src/providers/amazon-bedrock.models.ts
