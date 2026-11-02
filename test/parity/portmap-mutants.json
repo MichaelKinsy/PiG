@@ -1618,5 +1618,22 @@
    "old": "\t\t\tinput = Strings(\"text\", \"image\")\n",
    "new": "\t\t\tinput = Strings(\"text\")\n"
   }
+ ],
+ "packages/tui/src/native-modifiers.ts": [
+  {
+   "file": "tui/native_modifiers.go",
+   "old": "return nativeplatform.IsModifierPressed(string(key))",
+   "new": "return !nativeplatform.IsModifierPressed(string(key))"
+  },
+  {
+   "file": "internal/nativeplatform/nativeplatform.go",
+   "old": "return isModifierPressed(name)",
+   "new": "return !isModifierPressed(name)"
+  },
+  {
+   "file": "internal/nativeplatform/modifiers_other.go",
+   "old": "bool { return false }",
+   "new": "bool { return true }"
+  }
  ]
 }
