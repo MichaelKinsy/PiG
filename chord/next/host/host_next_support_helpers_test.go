@@ -1,7 +1,5 @@
 package host
 
-// pi: packages/chord/test/next/support.ts
-
 import (
 	"context"
 	"errors"
@@ -14,8 +12,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
-// Ports packages/chord/test/next/support.ts. Pi's support module is test scaffolding the slice tests share, and has no
-// test of its own: these tests assert what its helpers document, through the host and the store they drive (the
+// The helpers of packages/chord/test/next/support.ts, ported in host_next_support_test.go. Pi's support module is test
+// scaffolding the slice tests share and has no test of its own: these tests assert what its helpers document, through the host and the store they drive (the
 // `restartable` runner's fail, retry and restart; `loaded`'s collected errors and failed plugins; `failures`; the
 // `faultyStore`'s injected statement failure and held commit; `memoryStore`), so that a test built on them can trust
 // what they do.
