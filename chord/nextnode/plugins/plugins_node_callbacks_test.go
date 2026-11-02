@@ -15,7 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
-// Not upstream's (plugnode-differences.md, 4): Pi's `HostPackages` are module instances of the app's own process; here the
+// Not upstream's (docs/plan/chord-plugins-node-evaluator.md, 10.4 #4): Pi's `HostPackages` are module instances of the app's own process; here the
 // app offers Go functions and JSON values (GoPackage), which the plugins `require` as they require a host package. The
 // plugin of these tests is a handwritten script (`handmade`) that serves `test.probe`, whose `call` runs the op the test names,
 // so every case runs in the real Node subprocess and reads its result through the Go host's hold.

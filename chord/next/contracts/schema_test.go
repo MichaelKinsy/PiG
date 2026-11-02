@@ -1,7 +1,9 @@
 package contracts_test
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -83,6 +85,27 @@ func TestSchemaHelpers(t *testing.T) {
 			t.Fatalf("optional = %v, plain = %v", optional.Optional, plain.Optional)
 		}
 		sameJSON(t, optional, `{"type":"integer"}`)
+	})
+
+	t.Run("opt() outside an object is refused, where TypeScript rejects it at compile time (Arr, Map, Union, Keyed, NewMethod)", func(t *testing.T) {
+		optional := contracts.Opt(contracts.Str())
+		for name, build := range map[string]func(){
+			"Arr":               func() { contracts.Arr(optional) },
+			"Map":               func() { contracts.Map(optional) },
+			"Union":             func() { contracts.Union([]contracts.Schema{contracts.Int(), optional}) },
+			"Keyed":             func() { contracts.Keyed(optional) },
+			"NewMethod(args)":   func() { contracts.NewMethod(optional) },
+			"NewMethod(result)": func() { contracts.NewMethod(contracts.Nul(), optional) },
+		} {
+			func() {
+				defer func() {
+					if got := recover(); got == nil || !strings.Contains(fmt.Sprint(got), "opt(...) is no schema outside an object") {
+						t.Errorf("%s: recovered %v, want a refusal of opt(...)", name, got)
+					}
+				}()
+				build()
+			}()
+		}
 	})
 
 	t.Run("Static gives the values' type; pi-schema's compiler checks them", func(t *testing.T) {

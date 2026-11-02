@@ -1,7 +1,5 @@
 package ai
 
-// pi: packages/coding-agent/src/utils/sleep.ts
-
 import (
 	"context"
 	"errors"

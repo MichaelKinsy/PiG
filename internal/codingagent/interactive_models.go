@@ -1,5 +1,7 @@
 package codingagent
 
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (showModelSelector, showModelsSelector, cycleModel).
+
 import (
 	"context"
 	"errors"

@@ -18,7 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
-// Go-only regression tests of the lane review (handoffs/next/rows/nhttp.md, "Review round"): each fails on the code before its
+// Go-only regression tests of the lane review: each fails on the code before its
 // fix. They have no upstream test file.
 
 // delayedHandler is a listener's handler whose answers are written a little late: the window between a request's answer and its

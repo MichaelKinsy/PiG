@@ -2,7 +2,7 @@ package tui
 
 // diff_component.go: diff display component.
 //
-// Ports upstream components/diff.ts (147 LOC) as a Component wrapper
+// Ports packages/coding-agent/src/modes/interactive/components/diff.ts (147 LOC) as a Component wrapper
 // around the existing RenderDiff function in diff_render.go.
 
 import (

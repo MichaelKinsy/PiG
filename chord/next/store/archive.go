@@ -284,7 +284,11 @@ func checkedValue(value any, ctx context.Context, owner *contracts.ParamsData, r
 		// A value JSON.stringify cannot encode is no part.
 		return nil, refused()
 	}
-	if !validator.Check(json) {
+	ok, err := validator.Check(json)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
 		return nil, refused()
 	}
 	return json, nil

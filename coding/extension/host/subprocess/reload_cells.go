@@ -34,9 +34,18 @@ func (h *Host) markCellExtensions(cell CellSpec, phase string) {
 	}
 }
 
+// packedCellFailedReason starts the reason of a member that runs in its own process because the packed cell it was planned into failed to
+// build or start. The reason carries the error that ended the packed cell: the retry reports only a member that fails in isolation too, so
+// without it a member that survives its retry shows a placement the plan does not explain.
+// pig additive (D21): the reload report and /reload --explain are PiG diagnostics, shown only on request.
+const packedCellFailedReason = "packed cell failed"
+
 func reasonFor(cell CellSpec) string {
 	switch cell.Strategy {
 	case CellStrategyIsolated:
+		if strings.HasPrefix(cell.Isolation, packedCellFailedReason) {
+			return cell.Isolation
+		}
 		if len(cell.Extensions) == 1 {
 			cfg := cell.Extensions[0]
 			switch {
@@ -102,8 +111,9 @@ func (h *Host) isolateCellFailure(ctx context.Context, cell CellSpec, oldByName 
 	}
 	outcomes := []stageOutcome{outcome}
 	var failures []cellFailure
+	reason := packedCellFailedReason + ": " + strings.Join(strings.Fields(err.Error()), " ")
 	for _, cfg := range cell.Extensions {
-		member, memberErr := h.stageCell(ctx, isolatedCell(cfg, "packed cell failed"), oldByName)
+		member, memberErr := h.stageCell(ctx, isolatedCell(cfg, reason), oldByName)
 		outcomes = append(outcomes, member)
 		if memberErr != nil {
 			failures = append(failures, cellFailure{cfg: cfg, err: memberErr})

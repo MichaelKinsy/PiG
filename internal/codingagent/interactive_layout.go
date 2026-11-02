@@ -1,5 +1,7 @@
 package codingagent
 
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (working loader, status container and extension dialog layout).
+
 import (
 	"context"
 	"runtime"
