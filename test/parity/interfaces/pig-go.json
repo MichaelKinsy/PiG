@@ -230698,6 +230698,17 @@
       "shapeHash": "sha256:4449a88b752360c93f3e8d4033e9a37f2ae74c94f2f72d2e71c487c0598a80af"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring#appendCodePoint",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring",
+      "name": "appendCodePoint",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(out []byte, r rune) []byte"
+      },
+      "shapeHash": "sha256:ec8435ff711b5a54d69732325d0d3476280174cf9add64a3b5410d642011b3c5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring#asciiLowerPrefix",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring",
       "name": "asciiLowerPrefix",
@@ -230718,6 +230729,17 @@
         "type": "func(text string, n int) (int, bool)"
       },
       "shapeHash": "sha256:a663eb77e9d34a24cfdccebddf48c171faadeb35f7c7c5a398d534b000391a56"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring#codePoints",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring",
+      "name": "codePoints",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(s string) []rune"
+      },
+      "shapeHash": "sha256:39df08c877b6c0171c1ce90d465bd186a839395087612f5ac7033e329e192577"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/jsstring#decodeNonASCII",
