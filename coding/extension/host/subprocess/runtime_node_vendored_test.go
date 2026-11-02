@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -202,6 +203,9 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 		if file, ok := strings.CutPrefix(rel, "pi-coding-agent/"); ok {
 			checkCodingAgentVendor(t, root, file, got)
 			continue
+		}
+		if _, ok := vendoredPackageRootEntries[rel]; ok || slices.Contains(vendoredPackageRoots, strings.TrimSuffix(rel, "/package.json")) {
+			continue // TestVendoredPiPackageRootsMatchThePinnedPackages checks these.
 		}
 		if stub, ok := vendoredBridgeStubs[rel]; ok {
 			// The pinned implementation imports a vendor SDK; PiG's host runs

@@ -10,10 +10,10 @@ process.emitWarning = () => {};
 
 // shimModules loads each module the shims map serves, by the runtime-tree specifier runtime-modules.mjs lists.
 const shimModules = new Map([
-  ["./shims/pi-agent-core.mjs", () => runtimeRequire("./shims/pi-agent-core.mjs")],
   ["./shims/pi-ai.mjs", () => runtimeRequire("./shims/pi-ai.mjs")],
   ["./shims/pi-ai-models.mjs", () => runtimeRequire("./shims/pi-ai-models.mjs")],
   ["./shims/pi-ai-oauth.mjs", () => runtimeRequire("./shims/pi-ai-oauth.mjs")],
+  ["./shims/pi-dist/pi-agent-core/dist/index.js", () => runtimeRequire("./shims/pi-dist/pi-agent-core/dist/index.js")],
   ["./shims/pi-dist/pi-ai/sdk-bundle/providers.js", () => runtimeRequire("./shims/pi-dist/pi-ai/sdk-bundle/providers.js")],
   ["./shims/pi-dist/pi-coding-agent/dist/index.js", () => runtimeRequire("./shims/pi-dist/pi-coding-agent/dist/index.js")],
   ["./shims/pi-tui.mjs", () => runtimeRequire("./shims/pi-tui.mjs")],

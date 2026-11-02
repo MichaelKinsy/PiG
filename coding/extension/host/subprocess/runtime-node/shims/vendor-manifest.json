@@ -6423,6 +6423,16 @@
       "rewrite": "module specifiers"
     },
     {
+      "path": "pi-dist/pi-agent-core/dist/index.js",
+      "package": {
+        "name": "@earendil-works/pi-agent-core",
+        "version": "1.4.0",
+        "integrity": "sha512-PoKY84SKUwnt7S5QBZaGUqfNO1kjP3KHpHUA9QpFTj4cOjaVWMYIcBPJ6FDRCdE8Zen9OSECQUd0uUfVgtSmgA=="
+      },
+      "sha256": "27372779f3db636aa3b5e8b65bf1a24a0cd9f077d46fa95a91972b630f5d8bda",
+      "rewrite": "package root entry -> the runtime module that serves the package"
+    },
+    {
       "path": "pi-dist/pi-agent-core/index.js",
       "package": {
         "name": "@earendil-works/pi-agent-core",
@@ -6432,6 +6442,17 @@
       "source": "dist/index.js",
       "sourceSha256": "40cb358d7f05594e9b67845a78ae50ad05e8375f0cfa8cee8a74801556c09afd",
       "sha256": "40cb358d7f05594e9b67845a78ae50ad05e8375f0cfa8cee8a74801556c09afd"
+    },
+    {
+      "path": "pi-dist/pi-agent-core/package.json",
+      "package": {
+        "name": "@earendil-works/pi-agent-core",
+        "version": "1.4.0",
+        "integrity": "sha512-PoKY84SKUwnt7S5QBZaGUqfNO1kjP3KHpHUA9QpFTj4cOjaVWMYIcBPJ6FDRCdE8Zen9OSECQUd0uUfVgtSmgA=="
+      },
+      "source": "package.json",
+      "sourceSha256": "d4c7f5d637f2091503aadf9db2cc3af417387d764e0f707347a3233ccc993585",
+      "sha256": "d4c7f5d637f2091503aadf9db2cc3af417387d764e0f707347a3233ccc993585"
     },
     {
       "path": "pi-dist/pi-agent-core/proxy.js",

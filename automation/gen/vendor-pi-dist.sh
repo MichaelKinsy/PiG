@@ -170,6 +170,7 @@ done
 rm -rf "$shims/photon-node"
 node "$root/automation/gen/vendor-node-dependencies.mjs" "$agent/node_modules/@silvia-odwyer/photon-node/package.json" "$shims/photon-node"
 node "$root/automation/gen/vendor-pi-session-seams.mjs" "$agent" "$dist/pi-coding-agent"
+node "$root/automation/gen/vendor-pi-package-roots.mjs" "$shims" "$agent"
 node "$root/automation/gen/vendor-pi-startup-seams.mjs" "$dist/pi-coding-agent"
 # PiG's product identity for Pi's outbound identity literals and hosted endpoints (D26); the same values the Go host sends.
 node "$root/automation/gen/pi-identity-patches.mjs" "$dist"
