@@ -864,3 +864,66 @@ commit = "ff5017db9e8dbbeef61da454b37d8e552500f19f"
 class = "CITE"
 cite = "packages/chord/src/next-node/compression.ts:17"
 reason = "Pi passes Math.max(1, Math.min(limit, buffer.MAX_LENGTH)) to inflateRawSync as maxOutputLength (compression.ts:17): Math.min and Math.max return NaN for a NaN limit, Node takes its default maximum for a NaN maxOutputLength, and the check `inflated.byteLength > limit` (:18) is false against NaN, so Pi returns the bytes. The NaN-limit expectation was corrupt and is the bytes."
+
+[[entry]]
+path = "durable/storage/jsonl/reclamation_planning_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/src/storage/jsonl/storage.ts:324-325,346"
+reason = "Pi e5c6182b makes JsonlStorage.commit store several batches (storage.ts:285-325): memory runs ahead of the file once a batch applied, so any failure after that (a sidecar path join failing included) poisons the storage with that failure as the cause instead of leaving it usable; a reopened storage has no record of the batch. The path-join test expects the poisoned error and the absent document."
+
+[[entry]]
+path = "durable/harness/context_extend_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-context.test.ts:452"
+reason = "Pi e5c6182b group commit lets the Session know each committed entry, so a task's kept context range takes the entries as they were committed: harness-context.test.ts:452 expects the extended read to scan 0 rows (expect(extended.rows).toBe(0)); the earlier Go test expected the 3 new ones. The expected value (0) is Pi's."
+
+[[entry]]
+path = "durable/harness/harness_context_ranges_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-context.test.ts:452,458,736,746"
+reason = "Pi e5c6182b: the kept range takes each committed entry and the Session knows the bounds, so only a first read scans: harness-context.test.ts:452 and :458 expect the extension and the edit read to scan 0 rows, :736 and :746 the repeated reads 0. The earlier Go counts (4, 2) were the pre-group-commit scans. The expected values (0) are Pi's."
+
+[[entry]]
+path = "durable/harness/harness_deferred_progress_upstream_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-deferred-progress.test.ts:164-165"
+reason = "Pi defers a generation attempt like the partials (harness-deferred-progress.test.ts:164: the attempt is presentation, deferred: none of it was stored; :165 expects the stored live document has no generation). The earlier Go test expected the stored attempt 1. The expected value (none stored) is Pi's."
+
+[[entry]]
+path = "durable/harness/harness_idle_scopes_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-idle-scopes.test.ts:184"
+reason = "New port of harness-idle-scopes.test.ts (Pi 35dfa757): the file is added in this commit, and its expected values are Pi's (:184, :189 and the cases between), checked against a full recompute of the idle state."
+
+[[entry]]
+path = "durable/harness/harness_live_deltas_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-live-deltas.test.ts:117"
+reason = "Pi observeCommits (harness-live-deltas.test.ts:117, :341, :384) sees a held (deferred) pi.live operation as part of the stored commit that takes it, first; the Go test collects the same operations through observeStoredLiveOps. The expected operations are Pi's."
+
+[[entry]]
+path = "durable/harness/harness_restart_failure_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-restart-failure.test.ts:775-776"
+reason = "Pi e5c6182b: harness-restart-failure.test.ts:775-776 expects the retention checks of a generation round to be at most 49 per round (group commit coalesces some reconcile passes), no lower bound; the Go test keeps Pi's upper bound and drops the lower one that counted the pre-group-commit passes."
+
+[[entry]]
+path = "durable/harness/harness_task_graph_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/harness-task-graph.test.ts:387"
+reason = "Pi e5c6182b publishes a commit after Storage stored it, not inside the adopt: harness-task-graph.test.ts:387 expects [\"graph adopting=false\", \"view adopting=false\"] (the test is renamed 'at the publication of the one commit that changes both', :368). The earlier Go test expected adopting=true. The expected value (false) is Pi's."
+
+[[entry]]
+path = "durable/session/session_adoption_test.go"
+commit = "b2b58d7fed3a746f4f3aff3969fd72aa8a7ad49b"
+class = "CITE"
+cite = "packages/durable/test/session-adoption.test.ts:47"
+reason = "Pi e5c6182b: Storage.commit takes batches and a receive callback that gives the Session's durability receipt (session-adoption.test.ts:47, :57); the Session adopts and publishes once Storage resolved. The Go test follows the same order logs. The expected order is Pi's."
