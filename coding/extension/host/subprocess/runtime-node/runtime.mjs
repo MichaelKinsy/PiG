@@ -68,10 +68,19 @@ function siblingToolPending() {
 }
 const xrefRealm = new Realm(() => {
   const preferred = currentRuntime();
-  // pig additive (D201): a payload crosses to a connection of the requesting runtime's group before any other.
-  const sameGroup = preferred ? [...liveRuntimes].filter((runtime) => runtime.group === preferred.group) : [];
-  for (const runtime of preferred ? [preferred, ...sameGroup, ...liveRuntimes] : liveRuntimes) {
-    const connection = runtime?.connection();
+  // pig additive (D201): a payload crosses to a connection of the requesting runtime's group before any other, and never to another group's when the requester has a group; a group-less process keeps the unfiltered order.
+  if (preferred && preferred.group !== "") {
+    for (const runtime of [preferred, ...liveRuntimes]) {
+      if (runtime.group !== preferred.group) continue;
+      const connection = runtime.connection();
+      if (connection && !connection.closed) return runtime.xrefTransport;
+    }
+    return undefined;
+  }
+  const first = preferred?.connection();
+  if (first && !first.closed) return preferred.xrefTransport;
+  for (const runtime of liveRuntimes) {
+    const connection = runtime.connection();
     if (connection && !connection.closed) return runtime.xrefTransport;
   }
   return undefined;
@@ -987,6 +996,16 @@ function drainFor(group) {
   }
   return drain;
 }
+// releaseGroup drops the bus and the drain of a group whose last runtime left. pig additive (D201): a long-lived shared process serves many Hosts one after another, so their per-group state must not accumulate. A bus that still holds a listener, or a drain that still holds a runtime, stays until it empties.
+function releaseGroup(group) {
+  if (!group) return;
+  for (const runtime of liveRuntimes) if (runtime.group === group) return;
+  const drain = groupDrains.get(group);
+  if (drain && drain.runtimes.size === 0) groupDrains.delete(group);
+  const bus = groupBuses.get(group);
+  if (bus && bus.stats().handlers === 0) groupBuses.delete(group);
+}
+
 // drainOf is the drain of the group a request's connection serves.
 function drainOf(request) {
   return drainFor(request.connection?.owner?.group);
@@ -1152,10 +1171,16 @@ function reportQuitExit(method, drain) {
   }
 }
 
+let beforeExitInstalled = false;
 function listenForQuitDrain(drain) {
   if (drain.listening) return;
   drain.listening = true;
-  process.on("beforeExit", () => drainQuitRequests(drain));
+  // pig additive (D201): one process-wide listener serves every group's drain, so a long-lived shared process adds no listener per Host.
+  if (beforeExitInstalled) return;
+  beforeExitInstalled = true;
+  process.on("beforeExit", () => {
+    for (const live of [quitDrain, ...groupDrains.values()]) if (live.listening) drainQuitRequests(live);
+  });
 }
 
 function enterQuitDrain(drain) {
@@ -2988,6 +3013,7 @@ export class Runtime {
     drainFor(this.group).runtimes.delete(this);
     busFor(this.group).disposeRuntime(this);
     liveRuntimes.delete(this);
+    releaseGroup(this.group);
   }
 
   attachConnection(socket) {
@@ -3200,6 +3226,7 @@ export class Runtime {
       this.extensionRuntime.invalidate();
       this.hostReady = false;
       liveRuntimes.delete(this);
+      releaseGroup(this.group);
       this.providerTransport.abort(new Error("Provider connection closed"));
       this.autocomplete.dispose();
       for (const [id, entry] of this.nativeProviderObjects) {
@@ -5770,4 +5797,4 @@ export function reportLoadFailure(sockPath, failure) {
 }
 
 // pig additive (D201): the per-group state the shared-process tests read.
-export { busFor, drainFor, xrefRealm, liveRuntimes };
+export { busFor, drainFor, xrefRealm, liveRuntimes, groupBuses, groupDrains, releaseGroup };

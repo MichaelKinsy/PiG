@@ -18,7 +18,7 @@ func nodeGroupScript(t *testing.T, body string) {
 	}
 	script := fmt.Sprintf(`import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { Runtime, busFor, drainFor, xrefRealm } from %q;
+import { Runtime, busFor, drainFor, xrefRealm, groupBuses, groupDrains, liveRuntimes, releaseGroup } from %q;
 import { runWithRuntime } from %q;
 // member is a runtime joined to the process (attachConnection registers it) over a connection no Host answers; connected false leaves it without one.
 const member = (name, group, connected = true) => {
@@ -84,5 +84,49 @@ const a2 = member("a2", "g1", false);
 const chosen = runWithRuntime(a2, () => xrefRealm.transport());
 assert.equal(chosen, a1.xrefTransport, "a member without a connection crosses to its own Host's connection, not another Host's");
 assert.notEqual(busFor("g1"), busFor("g2"));
+`)
+}
+
+func TestSharedNodeCellDropsAGroupsStateWhenItsLastRuntimeLeaves(t *testing.T) {
+	nodeGroupScript(t, `
+const a = member("a", "g1");
+const a2 = member("a2", "g1");
+busFor("g1");
+assert.ok(groupBuses.has("g1") && groupDrains.has("g1"));
+// a leaves: a2 still serves the group, so its bus and drain stay.
+drainFor("g1").runtimes.delete(a);
+liveRuntimes.delete(a);
+releaseGroup("g1");
+assert.ok(groupBuses.has("g1") && groupDrains.has("g1"), "the group still has a live runtime");
+drainFor("g1").runtimes.delete(a2);
+liveRuntimes.delete(a2);
+releaseGroup("g1");
+assert.ok(!groupBuses.has("g1") && !groupDrains.has("g1"), "the last runtime left");
+releaseGroup("");
+assert.ok(drainFor("") && busFor(""), "the group-less state is never dropped");
+`)
+}
+
+func TestSharedNodeCellKeepsAGroupsBusWhileAListenerRemains(t *testing.T) {
+	nodeGroupScript(t, `
+const a = member("a", "g1");
+const off = busFor("g1").on(a, "ch", () => {});
+drainFor("g1").runtimes.delete(a);
+liveRuntimes.delete(a);
+releaseGroup("g1");
+assert.ok(groupBuses.has("g1"), "a factory-time listener keeps the bus of a group whose runtime has not attached");
+off();
+releaseGroup("g1");
+assert.ok(!groupBuses.has("g1"));
+`)
+}
+
+func TestSharedNodeCellNeverCrossesAPayloadToAForeignGroup(t *testing.T) {
+	nodeGroupScript(t, `
+const other = member("other", "g2");
+const lone = member("lone", "g1", false);
+assert.equal(runWithRuntime(lone, () => xrefRealm.transport()), undefined, "a requester with a group never falls back to another group's connection");
+const plain = member("plain", "", false);
+assert.equal(runWithRuntime(plain, () => xrefRealm.transport()), other.xrefTransport, "a group-less process keeps the unfiltered order");
 `)
 }

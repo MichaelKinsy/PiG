@@ -7,6 +7,7 @@ export default function (pi) {
   pi.registerTool({ name: "counter", label: "counter", description: "this instance's call count", parameters: { type: "object", properties: {} }, async execute() { return text(String(++calls)); } });
   pi.registerTool({ name: "ping", label: "ping", description: "emit on the event bus", parameters: { type: "object", properties: { name: { type: "string" } }, required: ["name"] }, async execute(_id, params) { pi.events.emit("shared-cells", { from: params.name }); return text("pinged"); } });
   pi.registerTool({ name: "received", label: "received", description: "what this instance heard", parameters: { type: "object", properties: {} }, async execute() { return text("received=" + heard.join(",")); } });
+  pi.registerTool({ name: "listeners", label: "listeners", description: "the process's beforeExit listener count", parameters: { type: "object", properties: {} }, async execute() { return text("beforeExit=" + process.listenerCount("beforeExit")); } });
   pi.registerTool({ name: "virtual", label: "virtual", description: "register shared/<name>", parameters: { type: "object", properties: { name: { type: "string" } }, required: ["name"] }, async execute(_id, params) {
     pi.registerVirtualModel({ provider: "shared", id: params.name, name: params.name, route: () => ({ model: { provider: "p", id: "m" }, thinkingLevel: "off" }) });
     return text("registered");

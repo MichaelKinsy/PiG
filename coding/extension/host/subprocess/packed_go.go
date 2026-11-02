@@ -82,6 +82,8 @@ type processShare struct {
 	admitMu sync.Mutex
 	admit   io.WriteCloser
 	killed  sync.Once
+	// onLast runs when the last reference releases; the cell registry sets it to forget the entry. pig additive (D201).
+	onLast func()
 }
 
 func newProcessShare(key string, origin any, exit <-chan struct{}, admit io.WriteCloser, kill func()) *processShare {
@@ -111,6 +113,9 @@ func (s *processShare) release() bool {
 	s.killed.Do(func() {
 		if s.kill != nil {
 			s.kill()
+		}
+		if s.onLast != nil {
+			s.onLast()
 		}
 		s.admitMu.Lock()
 		if s.admit != nil {
@@ -321,11 +326,19 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 	// pig additive (D19): a Node cell whose first member failed to start on a slot runtime, before any member's result was
 	// published, starts again, whole, on the next runtime, ending on Node (startGoPackedCellOnce decides under per-member
 	// admission). A later member's failure stays this launch's load error, because a retry would run the earlier factories twice.
+	joinRetried := false
 	for {
-		if _, next := errors.AsType[*errStartOnNextRuntime](err); !next {
-			break
+		if _, next := errors.AsType[*errStartOnNextRuntime](err); next {
+			staged, registered, err = h.startGoPackedCellOnce(ctx, cell)
+			continue
 		}
-		staged, registered, err = h.startGoPackedCellOnce(ctx, cell)
+		// pig additive (D201): a process joined through the cell registry can end between the lookup and the admission, because its runner exits when its last generation ends; the cell starts once more, on a fresh process the registry then offers to the other Hosts.
+		if _, gone := errors.AsType[*errJoinedProcessGone](err); gone && !joinRetried {
+			joinRetried = true
+			staged, registered, err = h.startGoPackedCellOnce(ctx, cell)
+			continue
+		}
+		break
 	}
 	if cell != nil {
 		h.rememberNodeOnly(cell.Key, err)
@@ -339,6 +352,28 @@ type admissionWriteError struct{ err error }
 
 func (e *admissionWriteError) Error() string { return e.err.Error() }
 func (e *admissionWriteError) Unwrap() error { return e.err }
+
+// errJoinedProcessGone is startGoPackedCellOnce's error when the process it joined through the cell registry ended before it served the first admission. pig additive (D201).
+type errJoinedProcessGone struct{ err error }
+
+func (e *errJoinedProcessGone) Error() string { return e.err.Error() }
+func (e *errJoinedProcessGone) Unwrap() error { return e.err }
+
+// joinedProcessGone reports whether err, a failure to admit or accept the first member of a registry-joined cell, comes from a process that has ended.
+func joinedProcessGone(processState *packedProcessState, err error) bool {
+	if errors.Is(err, errNodeCellExitedBeforeAdmission) {
+		return true
+	}
+	if _, write := errors.AsType[*admissionWriteError](err); write {
+		return true
+	}
+	select {
+	case <-processState.startWait():
+		return true
+	default:
+		return false
+	}
+}
 
 // errNodeCellExitedBeforeAdmission is a Node cell member's error when the cell's process exited before the host admitted it.
 var errNodeCellExitedBeforeAdmission = errors.New("Node cell exited before member admission")
@@ -430,12 +465,14 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 	defer closePendingListeners(pendingExts)
 
 	var retained *packedProcessState
+	joined := false
 	share := h.claimRetainedProcess(ctx, cell.BinaryPath, nodeRuntime)
 	if share == nil && h.sharesCells(ctx) {
 		// pig additive (D201): without a parked process of its own, a Host that joined a CellRegistry admits into the live process another Host runs for this cell; it holds the key's start lock until the cell it spawns is registered.
 		if key := h.cellRegistryKey(h.retentionKey(ctx, cell.BinaryPath, nodeRuntime)); key != "" {
 			defer h.cells.startLock(key)()
 			share = h.cells.lookup(key)
+			joined = share != nil
 		}
 	}
 	if share != nil {
@@ -533,6 +570,12 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 		// The runner starts every member's factory together, as a fresh runner does at spawn. The reload pass tells the Python runner when to re-import an edited extension.
 		for i := range pendingExts {
 			if err := processState.share.send(factoryAdmission{Name: pendingExts[i].me.config.Name, Socket: pendingExts[i].address, ReloadPass: reloadPass(ctx), Group: h.Group()}); err != nil {
+				if joined {
+					// pig additive (D201): the joined process ended; the caller starts the cell again.
+					processState.share.dead.Store(true)
+					processState.stopAndReap()
+					return nil, nil, &errJoinedProcessGone{err: err}
+				}
 				processState.stop()
 				return nil, nil, newLoadError(cell.Key, "spawn", "admit_failed", fmt.Errorf("admit %s to the running packed process: %w", pendingExts[i].me.config.Name, err))
 			}
@@ -577,6 +620,13 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 			processState.factoryOwner.Store(nil)
 		} else if _, factoryFailure := errors.AsType[*FactoryLoadError](err); factoryFailure {
 			processState.factoryOwner.Store(nil)
+		}
+		if err != nil && i == 0 && joined && joinedProcessGone(processState, err) {
+			// pig additive (D201): no factory ran in a process that was already gone, so the cell starts again, whole, on a fresh process.
+			h.stopFailedPackedMember(me)
+			processState.share.dead.Store(true)
+			processState.stopAndReap()
+			return nil, nil, &errJoinedProcessGone{err: err}
 		}
 		if err != nil && i == 0 && admission != nil && h.retryOnNextRuntime(ctx, cell.Key, err) {
 			h.stopFailedPackedMember(me)
