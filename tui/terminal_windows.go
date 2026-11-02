@@ -2,6 +2,8 @@
 
 package tui
 
+// Ports packages/tui/src/terminal.ts (ProcessTerminal on Windows: console input and the terminal size).
+
 import (
 	"context"
 	"encoding/binary"

@@ -4009,12 +4009,6 @@ snippet = "ms = max(0, int(math.Ceil(float64(time.Until(deadline))/float64(time.
 
 [[hit]]
 check = "numbers"
-file = "tui/terminal_color_query.go"
-func = "terminalColorQueryDelay"
-snippet = "return time.Duration(milliseconds) * time.Millisecond"
-
-[[hit]]
-check = "numbers"
 file = "tui/terminal_colors.go"
 func = "ParseOscColorResponse"
 snippet = "index, _ := strconv.Atoi(match[2])"

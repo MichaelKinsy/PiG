@@ -1,5 +1,7 @@
 package codingagent
 
+// pi: packages/coding-agent/src/utils/paths.ts
+
 import (
 	"bytes"
 	"encoding/json"

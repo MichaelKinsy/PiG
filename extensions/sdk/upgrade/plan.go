@@ -159,7 +159,7 @@ func (s *Session) Plan() (*Result, error) {
 	created := map[string]bool{}
 	var skipped []Skipped
 	packages := s.initial
-	for pass := 0; pass < maxPasses; pass++ {
+	for range maxPasses {
 		edited := false
 		skipped = nil
 		for _, pkg := range packages {

@@ -790,8 +790,8 @@ func TestRootSignal(t *testing.T) {
 	}
 }
 
-// host.ts:848-872: a route authorizes before resolving and again after; a refusal is forbidden, and a request no
-// longer current is gone.
+// host.ts:848-872: a route authorizes before resolving and again after (once the resolved host is admitted); a refusal is
+// forbidden, and a request no longer current is gone.
 func TestResolveRouteAuthorization(t *testing.T) {
 	host := CreateHost(HostOptions{Self: kindHost()})
 	principal := chordjson.ObjectOf("user", "u1")
@@ -812,6 +812,7 @@ func TestResolveRouteAuthorization(t *testing.T) {
 			resolved++
 			return &fakeLink{}, nil
 		},
+		Principal: func(string) Principal { return chordjson.ObjectOf("kind", "host") },
 	}
 	// resolveRoute starts on the loop and settles a promise (its continuations come back to the loop).
 	resolve := func(still func() bool) (*Connection, error) {
@@ -835,9 +836,11 @@ func TestResolveRouteAuthorization(t *testing.T) {
 	if !IsChordError(err, CodeGone) || messageOf(err) != "gone: principal invalidated while resolving" || resolved != 1 {
 		t.Fatalf("revoked: %v, resolved %d", err, resolved)
 	}
+	// The host the route resolved is admitted before the second check (host.ts #resolve, c09c98d7): the refusal fails the
+	// relay only, and a link nobody reads would leave the spawned host's own upstream references waiting.
 	host.run(func() {
-		if host.connections.Len() != 0 {
-			t.Errorf("refused routes added %d connections", host.connections.Len())
+		if host.connections.Len() != 1 {
+			t.Errorf("the resolved host's link was added %d times, want once", host.connections.Len())
 		}
 	})
 }

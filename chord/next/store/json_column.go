@@ -95,7 +95,11 @@ func (column *JsonColumn) Read(text string, version int, what string, ctx contex
 	if err != nil {
 		return nil, err
 	}
-	if !validator.Check(migrated) {
+	ok, err := validator.Check(migrated)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
 		return nil, refused(fmt.Sprintf("%s: migrate from version %d does not match the schema", what, version), nil)
 	}
 	return migrated, nil

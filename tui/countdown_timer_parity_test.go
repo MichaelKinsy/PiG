@@ -41,6 +41,8 @@ func TestCountdownTimerParity_InitialTickMatchesCeil(t *testing.T) {
 		{"999ms ceils to 1s", 999 * time.Millisecond, 1},
 		{"1000ms is 1s", 1000 * time.Millisecond, 1},
 		{"1001ms ceils to 2s", 1001 * time.Millisecond, 2},
+		{"1000.5ms ceils to 2s", 1000500 * time.Microsecond, 2},
+		{"1ns past 1s ceils to 2s", time.Second + 1, 2},
 		{"5500ms ceils to 6s", 5500 * time.Millisecond, 6},
 		{"30000ms is 30s", 30 * time.Second, 30},
 	}

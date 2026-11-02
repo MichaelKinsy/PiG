@@ -512,8 +512,8 @@ func (p *filePlanner) zeroValue(t types.Type) string {
 // enclosingResults returns the results of the function that holds the node at
 // the end of stack.
 func (p *filePlanner) enclosingResults(stack []ast.Node) *types.Tuple {
-	for i := len(stack) - 1; i >= 0; i-- {
-		switch node := stack[i].(type) {
+	for _, s := range slices.Backward(stack) {
+		switch node := s.(type) {
 		case *ast.FuncLit:
 			if sig, ok := p.pkg.Info.Types[node].Type.(*types.Signature); ok {
 				return sig.Results()
