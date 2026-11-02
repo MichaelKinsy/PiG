@@ -674,6 +674,51 @@ classification = "upstream"
 rationale = "pi-chord packages/chord/src/next/store/table-writes.ts updateWriteJSON.version: the version the application declares or the stored record carries for its own data; Pi owns the meaning, the port carries the number unchanged and reads no format from it."
 
 [[fields]]
+id = "chord/nextnode/plugins/plugins_node.go#NodeHostError.Version:go:-"
+path = "chord/nextnode/plugins/plugins_node.go"
+owner = "NodeHostError"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "The version of the contribution a registry error names (pi-chord next/registries/record.ts RegistryError.version), carried from the Node host unchanged; Pi owns the meaning."
+
+[[fields]]
+id = "chord/nextnode/plugins/plugins_node.go#hostErrorWire.Version:json:version"
+path = "chord/nextnode/plugins/plugins_node.go"
+owner = "hostErrorWire"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "The wire form of NodeHostError.Version as the Node host (pi-chord's own host.mjs run) sends it: the version of the contribution a registry error names; Pi owns the meaning."
+
+[[fields]]
+id = "chord/nextnode/plugins/plugins_node_contracts.go#ContractData.Version:json:version"
+path = "chord/nextnode/plugins/plugins_node_contracts.go"
+owner = "ContractData"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-chord next/contracts/contract.ts Contract.version, the version the application declares for a contract, handed to the Node host which rebuilds the contract and checks its fingerprint; the application owns it."
+
+[[fields]]
+id = "chord/nextnode/plugins/plugins_node_contracts.go#ContractDescription.Version:json:version"
+path = "chord/nextnode/plugins/plugins_node_contracts.go"
+owner = "ContractDescription"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "pi-chord next/contracts/contract.ts Contract.version as the Node host rebuilt it from ContractData; the application owns it."
+
+[[fields]]
+id = "chord/nextnode/plugins/plugins_node_discover.go#const.versionsPerSource:go:-"
+path = "chord/nextnode/plugins/plugins_node_discover.go"
+owner = "<package>"
+field = "versionsPerSource"
+wire_name = "-"
+classification = "external"
+rationale = "A count of installed Node versions of one version manager read when discovering a Node executable, not a format version; the version managers own the installed names."
+
+[[fields]]
 id = "chord/sqlite/migrations.go#SqliteMigration.Version:go:-"
 path = "chord/sqlite/migrations.go"
 owner = "SqliteMigration"
