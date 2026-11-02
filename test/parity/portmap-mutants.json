@@ -1618,5 +1618,64 @@
    "old": "\t\t\tinput = Strings(\"text\", \"image\")\n",
    "new": "\t\t\tinput = Strings(\"text\")\n"
   }
+ ],
+ "packages/coding-agent/src/extensions/mcp/cli.ts": [
+  {
+   "file": "coding/mcpext/cli.go",
+   "old": "editDistance(candidate, name) <= 2",
+   "new": "editDistance(candidate, name) <= 0"
+  }
+ ],
+ "packages/coding-agent/src/extensions/mcp/log.ts": [
+  {
+   "file": "coding/mcpext/log.go",
+   "old": "level := \"info\"",
+   "new": "level := \"notice\""
+  }
+ ],
+ "packages/coding-agent/src/extensions/mcp/oauth.ts": [
+  {
+   "file": "coding/mcpext/oauth.go",
+   "old": "challengeScope = oauth.StepUpScope(grantedScope, challengeScope)",
+   "new": "challengeScope = oauth.StepUpScope(grantedScope[:0], challengeScope)"
+  },
+  {
+   "file": "coding/mcpext/oauth.go",
+   "old": "\tif challenge.Error == \"insufficient_scope\" {\n\t\treturn oauth.NewMcpOAuthAuthorizationRequiredError()",
+   "new": "\tif challenge.Error == \"insufficient_scope_\" {\n\t\treturn oauth.NewMcpOAuthAuthorizationRequiredError()"
+  }
+ ],
+ "packages/coding-agent/src/extensions/mcp/resources.ts": [
+  {
+   "file": "coding/mcpext/resources.go",
+   "old": "localecompare.Compare(a.Name(), b.Name()) })",
+   "new": "localecompare.Compare(b.Name(), a.Name()) })"
+  }
+ ],
+ "packages/coding-agent/src/extensions/mcp/tools.ts": [
+  {
+   "file": "coding/mcpext/tools.go",
+   "old": "maxToolNameLength-len(hash)-1",
+   "new": "maxToolNameLength-len(hash)"
+  }
+ ],
+ "packages/coding-agent/src/extensions/mcp/ui.ts": [
+  {
+   "file": "coding/mcpext/manager.go",
+   "old": "\tcase StateConnected:\n\t\treturn 4",
+   "new": "\tcase StateConnected:\n\t\treturn -1"
+  }
+ ],
+ "packages/coding-agent/src/migrations.ts": [
+  {
+   "file": "internal/codingagent/migrations.go",
+   "old": "\tformatted.WriteByte('\\n')\n",
+   "new": "\n"
+  },
+  {
+   "file": "internal/codingagent/migrations.go",
+   "old": "[]string{\"fd\", \"rg\", \"fd.exe\", \"rg.exe\"}",
+   "new": "[]string{\"fd\", \"rg\", \"fd.exe\"}"
+  }
  ]
 }
