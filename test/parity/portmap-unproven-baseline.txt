@@ -140,7 +140,6 @@ packages/ai/src/utils/sleep.ts
 packages/ai/src/utils/text.ts
 packages/ai/src/utils/typebox-helpers.ts
 packages/ai/src/utils/validation.ts
-packages/codemode/src/wasm.ts
 packages/coding-agent/src/cli.ts
 packages/coding-agent/src/cli/auth-check.ts
 packages/coding-agent/src/cli/auth-command.ts
@@ -302,15 +301,11 @@ packages/durable/src/tools/file-mutation-queue.ts
 packages/durable/src/tools/image.ts
 packages/durable/src/tools/path-utils.ts
 packages/durable/src/truncate.ts
-packages/env/src/connection.ts
-packages/env/src/errors.ts
-packages/env/src/remote-env.ts
 packages/evals/src/cli.ts
 packages/evals/src/docker.ts
 packages/evals/src/harness.ts
 packages/evals/src/plan.ts
 packages/evals/src/report.ts
-packages/mcp/src/transports/stdio.ts
 packages/tui/src/index.ts
 packages/tui/src/keys.ts
 packages/tui/src/native-modifiers.ts
