@@ -716,11 +716,11 @@ func formatTokens(n int) string {
 	case n < 10_000:
 		return jsstring.ToFixed(float64(n)/1_000, 1) + "k"
 	case n < 1_000_000:
-		return strconv.Itoa(int(jsnumber.Round(float64(n)/1_000))) + "k"
+		return strconv.Itoa(int(jsnumber.Round(float64(n)/1_000))) + "k" //portlint:allow numbers n is an int in [10_000,1_000_000) (or >=10_000_000), so the rounded quotient is finite and below 2^63: int() is exact (node differential over 39062 counts incl. rounding boundaries and 2^53)
 	case n < 10_000_000:
 		return jsstring.ToFixed(float64(n)/1_000_000, 1) + "M"
 	default:
-		return strconv.Itoa(int(jsnumber.Round(float64(n)/1_000_000))) + "M"
+		return strconv.Itoa(int(jsnumber.Round(float64(n)/1_000_000))) + "M" //portlint:allow numbers n is an int in [10_000,1_000_000) (or >=10_000_000), so the rounded quotient is finite and below 2^63: int() is exact (node differential over 39062 counts incl. rounding boundaries and 2^53)
 	}
 }
 
