@@ -9,7 +9,7 @@ The core is correct when pi-durable, run through the same scenario with the same
 | item | value |
 |---|---|
 | reference | `packages/durable`, `packages/ai` and `packages/chord` of Pi at the upstream commit below, run from source (`make durable-contract-setup` checks it out; `durable/contract/PIN`) |
-| upstream commit | `e7a0df27c09d11bf4161d3605246cbf57a129cb2` (Pi 1.4.0+e7a0df27; `durable/contract/PIN` `main`, `durable/contract/corpus.toml` `[pin]`): the reference of every row, tick rows included (F-ticks-\*, F-split-\*) and of the Storage hop tables |
+| upstream commit | `e7a0df27c09d11bf4161d3605246cbf57a129cb2` (Pi 1.5.0+e7a0df27; `durable/contract/PIN` `main`, `durable/contract/corpus.toml` `[pin]`): the reference of every row, tick rows included (F-ticks-\*, F-split-\*) and of the Storage hop tables |
 | normative spec | `packages/durable/docs/spec.md`, sha256 prefix `62f887f2481c22c7`, 5,912 lines |
 | storage conformance | `packages/durable/src/testing/storage-conformance.ts`, sha256 prefix `32b9064e91388750` |
 | scenarios | `packages/durable/test/examples/00-*.ts` through `31-*.ts` (32 programs) |
