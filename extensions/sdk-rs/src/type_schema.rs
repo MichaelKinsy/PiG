@@ -798,6 +798,7 @@ impl Type {
     }
 
     /// `Type.Refine(value, check, error?)` of a value that is not a [`TSchema`]: a plain JSON object or a list. Any other value is an error.
+    /// pig divergence (D226): the stored check is never run by any API; remove when every SDK serves TypeBox Value.Check.
     pub fn refine_value(
         value: impl Into<TValue>,
         check: impl Fn(&Value) -> Result<bool, String> + Send + Sync + 'static,
