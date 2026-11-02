@@ -1824,5 +1824,85 @@
    "old": "const hydrationGeneratedAt = \"1970-01-01T00:00:00.000Z\"",
    "new": "const hydrationGeneratedAt = \"1970-01-01T00:00:00.001Z\""
   }
+ ],
+ "packages/coding-agent/src/core/package-manager.ts": [
+  {
+   "file": "internal/packagemanager/package_manager.go",
+   "old": "\t\tif current[index].Source == normalized {\n\t\t\treturn false, nil\n\t\t}",
+   "new": "\t\tif current[index].Source == normalized {\n\t\t\treturn true, nil\n\t\t}"
+  },
+  {
+   "file": "internal/packagemanager/package_manager.go",
+   "old": "\tif len(next) == len(current) {\n\t\treturn false, nil\n\t}",
+   "new": "\tif len(next) == len(current) {\n\t\treturn true, nil\n\t}"
+  },
+  {
+   "file": "internal/packagemanager/resolve.go",
+   "old": "fromPackages.Themes = append(fromPackages.Themes, resource)",
+   "new": "fromPackages.Themes = append(fromPackages.Prompts, resource)"
+  },
+  {
+   "file": "internal/packagemanager/npm_metadata.go",
+   "old": "return versionRange == \"\" || nodesemver.Satisfies(installed, versionRange)",
+   "new": "return versionRange == \"\" || !nodesemver.Satisfies(installed, versionRange)"
+  }
+ ],
+ "packages/coding-agent/src/core/resource-loader.ts": [
+  {
+   "file": "coding/resource_loader.go",
+   "old": "\t\tif source != \"\" {\n\t\t\tappended = append(appended, icodingagent.ResolvePromptInput(source, \"append system prompt\"))",
+   "new": "\t\tif source == \"\" {\n\t\t\tappended = append(appended, icodingagent.ResolvePromptInput(source, \"append system prompt\"))"
+  },
+  {
+   "file": "internal/codingagent/context_files.go",
+   "old": "ancestors = append([]ContextFile{*cf}, ancestors...)",
+   "new": "ancestors = append(ancestors, *cf)"
+  },
+  {
+   "file": "internal/codingagent/prompt_templates.go",
+   "old": "WinnerPath: winner.FilePath, LoserPath: template.FilePath}",
+   "new": "WinnerPath: template.FilePath, LoserPath: winner.FilePath}"
+  },
+  {
+   "file": "coding/resource_loader_extend.go",
+   "old": "\t\tmerged, err := l.mergePaths(l.lastPromptPaths, extensionPathList(promptPaths))",
+   "new": "\t\tmerged, err := l.mergePaths(l.lastPromptPaths, nil)"
+  }
+ ],
+ "packages/coding-agent/src/core/pi-manifest.ts": [
+  {
+   "file": "coding/packagecontent/pi_manifest.go",
+   "old": "bytes.TrimPrefix(data, utf8BOM)",
+   "new": "bytes.TrimPrefix(data, nil)"
+  },
+  {
+   "file": "coding/packagecontent/pi_manifest.go",
+   "old": "\t\tif !ok {\n\t\t\treturn nil, false\n\t\t}\n\t\tentries = append(entries, entry)",
+   "new": "\t\tif !ok {\n\t\t\tcontinue\n\t\t}\n\t\tentries = append(entries, entry)"
+  }
+ ],
+ "packages/coding-agent/src/core/system-prompt.ts": [
+  {
+   "file": "internal/codingagent/prompts/coding.go",
+   "old": "add(\"Be concise in your responses\")",
+   "new": "add(\"Be concise in your response\")"
+  },
+  {
+   "file": "internal/codingagent/prompts/custom_sections.go",
+   "old": "section.Name == \"preamble\"",
+   "new": "section.Name == \"preambles\""
+  }
+ ],
+ "packages/coding-agent/src/core/slash-commands.ts": [
+  {
+   "file": "internal/codingagent/slash_commands.go",
+   "old": "Description: \"Open settings menu\"",
+   "new": "Description: \"Open settings menus\""
+  },
+  {
+   "file": "internal/codingagent/extension_host_info.go",
+   "old": "Name: \"skill:\" + skill.Name,",
+   "new": "Name: skill.Name,"
+  }
  ]
 }
