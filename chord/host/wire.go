@@ -444,6 +444,7 @@ func opt(schema Schema) optional { return optional{schema} }
 
 // object is `obj(properties, { open: true })`: the properties are name and schema (or opt(schema)) pairs, in order.
 func object(properties ...any) Schema {
+	//portlint:allow numbers an integer capacity hint for the object's backing slice: allocation only, no JS equivalent and no observable effect
 	props := chordjson.NewObject(len(properties) / 2)
 	var required []any
 	for index := 0; index < len(properties); index += 2 {
