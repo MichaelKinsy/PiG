@@ -2,6 +2,7 @@ package harness
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -117,4 +118,25 @@ func TestAListenerThatCallsTheHarnessAtOneOfTwoEndsOfACallDoesNotStallTheHop(t *
 			t.Fatalf("published = %v, want nil: the next part of the call is published once the listener entered", err)
 		}
 	})
+}
+
+// Pi's region awaits the Session's gate without the caller's signal (packages/durable/src/harness/scheduler.ts:1389 `await Promise.all(gates)`,
+// :2918 `await gate` in #published): a gate always opens, by a publication or by the Session's failure. The Go wait does not end with a
+// cancelled ctx either (waitGatesLocked: context.WithoutCancel).
+func TestTheRegionGateWaitIgnoresACancelledContextAsPiDoes(t *testing.T) {
+	err := listenerAtTheEndOfOne(t, func(harness Harness, _ Conversation, _, _ durable.TaskId) error {
+		scheduler := harness.(*harnessImpl).tasks
+		cancelled, cancel := context.WithCancelCause(testContext)
+		cancel(errors.New("the caller gave up"))
+		gate := scheduler.options.Session.Touch(session.AllKeys)
+		if gate == nil {
+			return errors.New("no gate: the call's next part is not published yet, so the fixture does not hold the wait")
+		}
+		scheduler.mu.Lock()
+		defer scheduler.mu.Unlock()
+		return scheduler.waitGatesLocked(cancelled, []<-chan struct{}{gate})
+	})
+	if err != nil {
+		t.Fatalf("waitGatesLocked with a cancelled ctx = %v, want nil: Pi's region awaits the gate without the caller's signal", err)
+	}
 }
