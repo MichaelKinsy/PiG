@@ -46,6 +46,18 @@ func (m *InteractiveMode) exitIfDeadTerminal(err error) {
 	}
 }
 
+// exitOnDeadTerminalWrite makes a terminal write that fails because the terminal is gone (EIO, EPIPE, ENOTCONN, ENOTTY) end the process as
+// emergencyTerminalExit does. Pi's registerSignalHandlers adds this "error" listener to process.stdout and process.stderr and keeps it until
+// shutdown finishes. The returned call removes it.
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (registerSignalHandlers terminalErrorHandler).
+func (m *InteractiveMode) exitOnDeadTerminalWrite() (remove func()) {
+	return tui.OnTerminalWriteError(func(err error) {
+		if isDeadTerminalError(err) {
+			m.emergencyTerminalExit("terminal gone: " + err.Error())
+		}
+	})
+}
+
 // emergencyTerminalExit exits without the normal teardown: the terminal is gone, so TUI and extension cleanup would write
 // restore sequences and fail again. Pi's process.exit(129) still runs the TUI's exit handler, which writes the mode resets
 // synchronously and swallows the write errors (9df819de, #11170); tui.RestoreTerminalOnExit does the same here.
