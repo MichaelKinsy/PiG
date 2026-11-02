@@ -151,7 +151,6 @@ func runPiAICLI(t *testing.T, c aiCLICase) aiCLIOutcome {
 	if err != nil {
 		t.Fatal(err)
 	}
-	//nolint:gosec // G204 (class a): program is literal node; args are repository paths and a literal case provider id.
 	cmd := exec.CommandContext(t.Context(), "node", "--disable-warning=ExperimentalWarning",
 		"--import", filepath.Join(testdata, "ai_cli_oracle_hooks.mjs"),
 		filepath.Join(root, ".upstream", "current", "packages", "ai", "src", "cli.ts"), "login", c.provider)
