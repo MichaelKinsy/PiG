@@ -76,3 +76,31 @@ func TestAListenerThatAwaitsDeliveriesDoesNotWaitForTheNextFrameOfItsOwnDrain(t 
 		t.Fatalf("%d calls, want 2", calls.Load())
 	}
 }
+
+// A call that suspended in a wait of the host (DeliveryEntered) does not hold the awaiting code back for the frame behind it: Pi's
+// drain runs that frame when the listener's await resumes, after the macrotask that awaits the deliveries. A frame published behind
+// the suspended call is registered, but nothing that awaits the deliveries waits for it.
+func TestAwaitEnteredDoesNotWaitForTheFrameBehindASuspendedCall(t *testing.T) {
+	scheduler := NewDeliveryScheduler()
+	suspended, release := make(chan struct{}), make(chan struct{})
+	var calls atomic.Int32
+	watch := startedWatch(scheduler, func(context.Context) error {
+		if calls.Add(1) == 1 {
+			DeliveryEntered()
+			close(suspended)
+			<-release
+		}
+		return nil
+	})
+	watch.Advance(context.Background(), 1)
+	<-suspended
+	watch.Advance(context.Background(), 2)
+	if err := returns(t, scheduler, context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	close(release)
+	scheduler.Wait()
+	if calls.Load() != 2 {
+		t.Fatalf("%d calls, want 2", calls.Load())
+	}
+}
