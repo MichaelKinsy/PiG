@@ -10862,7 +10862,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `761f5a208c` (2026-11-02)
 - **Tests:** `internal/codingagent/session_branched_file_oracle_test.go::TestCreateBranchedSessionCompactionBoundariesMatchPiOracle`, `internal/codingagent/session_branched_file_oracle_test.go::TestCreateBranchedSessionMatchesPiOracle`, `internal/codingagent/session_clone_export_alloc_test.go::TestCloneAndExportCostAFewBytesPerSourceByte`, `internal/codingagent/session_clone_stream_test.go::TestCloneKeepsTheFileItWroteWhenItFails`, `internal/codingagent/session_clone_stream_test.go::TestCloneReadsNoSourceEntryBackToDecodeIt`, `internal/codingagent/session_clone_stream_test.go::TestCloneReadsRecordsFromCompressedBlocks`, `internal/codingagent/session_clone_stream_test.go::TestCloneWritesTheSameFileFromResidentAndFileBackedSources`
-- **Release note:** `/fork` and `/clone` of a very long session no longer decode and rewrite every record of the branch in memory. Forking a 427 MB session peaked at 4.8-5.1 GB and now peaks at about 280 MB (settling at about 190 MB); Pi peaks at about 1.2 GB for the same file. The new file is byte-for-byte what it was.
+- **Release note:** `/fork` and `/clone` of a very long session no longer decode and rewrite every record of the branch in memory. Forking a 427 MB session peaked at 4.8-5.1 GB and now peaks at about 280 MB (settling at about 190 MB); Pi peaks at about 1.2 GB for the same file. The new file holds the same bytes as before and as Pi writes.
 
 ### BF-7633906
 

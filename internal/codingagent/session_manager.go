@@ -259,7 +259,7 @@ func (sm *SessionManager) Clone(source *Session, leafID string) (*Session, error
 			return nil, fmt.Errorf("Session file is not a valid pi session: %s", path)
 		}
 	} else {
-		records := []FileEntry{sessionentry.DecodeFileEntry(headerJSON)}
+		records := []FileEntry{header}
 		err = source.writeBranchedSession(plan, func(parts ...[]byte) error {
 			records = append(records, sessionentry.DecodeFileEntry(slices.Concat(parts...)))
 			return nil
