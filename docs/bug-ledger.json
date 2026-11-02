@@ -160,6 +160,25 @@
       ]
     },
     {
+      "id": "BF-0225926",
+      "title": "fix: symlink callers, changelog fragment name, behavior contract hash at the new pin, interface extractor…",
+      "symptom": "fix: symlink callers, changelog fragment name, behavior contract hash at the new pin, interface extractor cache keyed by the package list, generated patterns",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0225926a0a",
+          "date": "2026-10-31"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-0225a43",
       "title": "A device-attributes reply delivered in slow reads no longer reaches the editor as input: an `ESC[?` prefix…",
       "symptom": "A device-attributes reply delivered in slow reads no longer reaches the editor as input: an `ESC[?` prefix waits for its final byte (D143, Pi #10657).",
