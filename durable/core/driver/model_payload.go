@@ -63,11 +63,12 @@ func (m *Models) onPayload(ctx context.Context, call *sqlhost.Call) func(any, *a
 			if !a.sent {
 				return nil, nil
 			}
-			var next any
-			if err := json.Unmarshal(a.payload, &next); err != nil {
-				return nil, fmt.Errorf("model_context %d payload answer: %w", call.ID, err)
+			// Pi's hook returns what JSON.parse read from the core's answer and the provider sends JSON.stringify of it; the providers
+			// take JSON text as that value (payloadReplacement), so the answer stays text.
+			if !json.Valid(a.payload) {
+				return nil, fmt.Errorf("model_context %d payload answer: not JSON", call.ID)
 			}
-			return next, nil
+			return a.payload, nil
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}

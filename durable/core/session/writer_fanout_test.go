@@ -2,6 +2,7 @@ package session_test
 
 import (
 	"errors"
+	"slices"
 	"strconv"
 	"testing"
 
@@ -97,12 +98,7 @@ func (f *fanout) secondCall(stored []bool) (*fanoutCall, []*session.Part) {
 }
 
 func (f *fanout) wasPublished(n int) bool {
-	for _, p := range f.published {
-		if p == n {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(f.published, n)
 }
 
 // sessionFailedWith reports whether err is SessionFailed with cause as its cause.

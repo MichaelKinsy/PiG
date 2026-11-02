@@ -5,6 +5,7 @@ package driver_test
 
 import (
 	"context"
+	"encoding/json"
 	"maps"
 	"path/filepath"
 	"reflect"
@@ -89,7 +90,9 @@ func TestCoreHarnessChainsBeforeProviderRequestOverEveryProviderRequestBody(t *t
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	wantSent := []any{map[string]any{"body": 1.0, "first": true, "last": true}, map[string]any{"body": 2.0, "first": true, "last": true}}
+	// The core's answer reaches the provider as JSON text (the providers take it as what JSON.parse read, payloadReplacement), in the order
+	// the chain wrote its members.
+	wantSent := []any{json.RawMessage(`{"body":1,"first":true,"last":true}`), json.RawMessage(`{"body":2,"first":true,"last":true}`)}
 	if !reflect.DeepEqual(sent, wantSent) {
 		t.Fatalf("sent %v, want %v", sent, wantSent)
 	}
