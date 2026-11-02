@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"math/bits"
+	"path"
 	"runtime"
 	"strings"
 	"sync"
@@ -190,11 +191,18 @@ func uvarint(s string) (uint64, int) {
 //   - shims/pi-dist/pi-coding-agent/docs/images/: the screenshots the package docs embed. The documentation Pi's system prompt advertises is its Markdown (docs/*.md, README.md and examples/), which stays; PiG's own documentation bundle (internal/pigdocs) carries no images either.
 //   - shims/pi-dist/pi-coding-agent/modes/interactive/assets/clankolas.png: the announcement image of Pi's Node InteractiveMode, which PiG never runs (its own copy is embedded by internal/codingagent); the loader reads it in a try/catch and shows the announcement without the picture when it is missing.
 //   - shims/undici/docs/: undici's API documentation (Markdown) that its npm package ships. undici's code never opens it, and no Pi documentation links to it.
+//   - any README.md outside shims/pi-dist (shims/<package>/README.md, and nested ones such as shims/undici/types/README.md): the package page npm shows, which no code opens. pi-dist's own READMEs stay: Pi's getReadmePath reads shims/pi-dist/pi-coding-agent/README.md, and the documentation Pi's system prompt advertises includes the others.
 func UnreadAtRuntime(relative string) bool {
 	return strings.HasSuffix(relative, ".map") ||
 		strings.HasSuffix(relative, ".d.ts") ||
 		relative == "shims/vendor-manifest.json" ||
 		strings.HasPrefix(relative, "shims/pi-dist/pi-coding-agent/docs/images/") ||
 		relative == "shims/pi-dist/pi-coding-agent/modes/interactive/assets/clankolas.png" ||
-		strings.HasPrefix(relative, "shims/undici/docs/")
+		strings.HasPrefix(relative, "shims/undici/docs/") ||
+		unreadVendoredReadme(relative)
+}
+
+// unreadVendoredReadme reports any README.md, in any letter case and at any depth, outside shims/pi-dist, whose packages keep theirs.
+func unreadVendoredReadme(relative string) bool {
+	return strings.HasPrefix(relative, "shims/") && !strings.HasPrefix(relative, "shims/pi-dist/") && strings.EqualFold(path.Base(relative), "readme.md")
 }
