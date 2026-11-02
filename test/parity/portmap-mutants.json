@@ -827,8 +827,8 @@
  "packages/chord/src/next/store/catalog.ts": [
   {
    "file": "chord/next/store/catalog.go",
-   "old": "record.Version = int(version)\n",
-   "new": "record.Version = int(version) + 1\n"
+   "old": "record.Version = int(integer)\n",
+   "new": "record.Version = int(integer) + 1\n"
   }
  ],
  "packages/chord/src/next/store/evaluate.ts": [
@@ -911,8 +911,8 @@
  "packages/chord/src/next/documents/line.ts": [
   {
    "file": "chord/next/documents/line.go",
-   "old": "\t<-previous\n",
-   "new": "\t_ = previous\n"
+   "old": "\t<-place.previous\n",
+   "new": "\t_ = place.previous\n"
   }
  ],
  "packages/chord/src/next/documents/persistence.ts": [
