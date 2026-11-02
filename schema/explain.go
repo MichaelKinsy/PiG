@@ -19,6 +19,14 @@ type explainer struct {
 	schema any
 	// rests holds, per schema with `unevaluated*` keywords, the schema without them, so its annotating check is built once.
 	rests map[nodeKey]*Object
+	// memo holds the errors of `$ref` targets for container values within one errors call: a recursive union explains each branch to pick the one to blame, and every branch would explain the same children again, exponentially in the depth.
+	memo map[nodeKey]map[valueKey]refErrors
+}
+
+// refErrors are the errors of one value at one path.
+type refErrors struct {
+	path   string
+	errors []ValidationError
 }
 
 func newExplainer(c *compiler, schema any) *explainer {
@@ -37,6 +45,7 @@ func (e *explainer) errors(value any) (result []ValidationError, err error) {
 		}
 	}()
 	var out []ValidationError
+	defer func() { e.memo = nil }()
 	e.walk(e.schema, e.c.r.rootBase, value, "", &out)
 	if len(out) == 0 {
 		out = append(out, ValidationError{Path: "", Keyword: "schema", Message: "invalid"})
@@ -71,8 +80,7 @@ func (e *explainer) walk(node any, base string, v any, path string, out *[]Valid
 	pushHere := func(keyword, message string) { push(keyword, message, path) }
 	if e.c.draft == Draft7 {
 		if ref, ok := o.stringMember("$ref"); ok {
-			target := e.c.r.resolve(ref, b)
-			e.walk(target.node, target.base, v, path, out)
+			e.walkRef(ref, b, v, path, out)
 			return
 		}
 	}
@@ -104,7 +112,7 @@ func (e *explainer) walk(node any, base string, v any, path string, out *[]Valid
 		}
 	}
 	if list, ok := o.arrayMember("enum"); ok && !enumCheck(list)(v) {
-		pushHere("enum", "expected one of "+jsonStringify(list))
+		pushHere("enum", "expected one of "+listValues(list))
 	}
 	if value, ok := o.get("const"); ok && !constCheck(value)(v) {
 		pushHere("const", "expected "+jsonStringify(value))
@@ -149,8 +157,7 @@ func (e *explainer) walk(node any, base string, v any, path string, out *[]Valid
 		}
 	}
 	if ref, ok := o.stringMember("$ref"); ok {
-		target := e.c.r.resolve(ref, b)
-		e.walk(target.node, target.base, v, path, out)
+		e.walkRef(ref, b, v, path, out)
 	}
 	if len(*out) == start && (o.has("unevaluatedProperties") || o.has("unevaluatedItems")) {
 		e.walkUnevaluated(o, b, v, path, out)
@@ -158,6 +165,72 @@ func (e *explainer) walk(node any, base string, v any, path string, out *[]Valid
 	if _, ok := o.stringMember("$dynamicRef"); ok && len(*out) == start {
 		pushHere("$dynamicRef", "does not match the dynamically referenced schema")
 	}
+}
+
+// walkRef explains v against the schema ref names. A reference that names nothing (UnresolvedRefsReject) is one error; the errors of a container value at one path are kept for the rest of the call.
+func (e *explainer) walkRef(ref, base string, v any, path string, out *[]ValidationError) {
+	target := e.c.r.resolve(ref, base)
+	if target.node == false && e.c.r.isUnresolved(ref, base) {
+		*out = append(*out, ValidationError{Path: path, Keyword: "$ref", Message: "unresolved reference " + ref})
+		return
+	}
+	node, isNode := isSchemaObject(target.node)
+	key, isContainerValue := explainKey(v)
+	if !isNode || !isContainerValue {
+		e.walk(target.node, target.base, v, path, out)
+		return
+	}
+	if e.memo == nil {
+		e.memo = map[nodeKey]map[valueKey]refErrors{}
+	}
+	values := e.memo[node.identity()]
+	if known, ok := values[key]; ok && known.path == path {
+		*out = append(*out, known.errors...)
+		return
+	}
+	var errors []ValidationError
+	e.walk(target.node, target.base, v, path, &errors)
+	if values == nil {
+		values = map[valueKey]refErrors{}
+		e.memo[node.identity()] = values
+	}
+	values[key] = refErrors{path: path, errors: errors}
+	*out = append(*out, errors...)
+}
+
+// explainKey is the identity of an object or array value, which the errors memo is keyed on; a primitive and an empty array have none and are explained again.
+func explainKey(v any) (valueKey, bool) {
+	key := identityOf(v, false)
+	if key.kind == kindObject || key.kind == kindArray && key.ptr != nil {
+		return key, true
+	}
+	return valueKey{}, false
+}
+
+// listValues is values as JSON, at most listedValues of them, then how many more there are: an enum of thousands stays readable.
+func listValues(values []any) string {
+	const listedValues = 20
+	if len(values) <= listedValues {
+		return jsonStringify(values)
+	}
+	listed := jsonStringify(values[:listedValues])
+	return listed[:len(listed)-1] + ", ... and " + strconv.Itoa(len(values)-listedValues) + " more]"
+}
+
+func containsMessage(min, max float64) string {
+	plural := func(n float64) string {
+		if n == 1 {
+			return "item"
+		}
+		return "items"
+	}
+	if math.IsInf(max, 1) {
+		return "expected at least " + numberString(min) + " matching " + plural(min)
+	}
+	if min == 0 {
+		return "expected at most " + numberString(max) + " matching " + plural(max)
+	}
+	return "expected between " + numberString(min) + " and " + numberString(max) + " matching items"
 }
 
 func (e *explainer) walkString(node jsonObject, v string, push func(keyword, message string)) {
@@ -350,7 +423,7 @@ func (e *explainer) walkArray(node jsonObject, b string, v []any, path string, o
 			}
 		}
 		if !containsCheck(e.c.check(contains, b), min, max)(v) {
-			push("contains", "expected between "+numberString(min)+" and "+numberString(max)+" matching items")
+			push("contains", containsMessage(min, max))
 		}
 	}
 }
@@ -373,12 +446,12 @@ func (e *explainer) walkUnion(branches []any, b string, v any, path string, out 
 		*out = append(*out, ValidationError{Path: path, Keyword: keyword, Message: "matches more than one alternative"})
 		return
 	}
-	// A tagged union reports the branch its tag selects; otherwise the branch whose first error is deepest.
+	// A tagged union reports the branch its tag selects; otherwise an object is blamed on the branch that declares most of its properties (the one it was most likely meant for), then on the branch whose first error is deepest.
 	if key, values, ok := e.tagOf(branches, b); ok {
 		if vo, isObj := asObject(v); isObj {
 			index := slices.IndexFunc(values, func(x any) bool { return strictEquals(x, vo.value(key)) && vo.has(key) })
 			if index < 0 {
-				*out = append(*out, ValidationError{Path: pointer(path, key), Keyword: keyword, Message: "expected one of " + jsonStringify(values)})
+				*out = append(*out, ValidationError{Path: pointer(path, key), Keyword: keyword, Message: "expected one of " + listValues(values)})
 			} else {
 				e.walk(branches[index], b, v, path, out)
 			}
@@ -386,17 +459,51 @@ func (e *explainer) walkUnion(branches []any, b string, v any, path string, out 
 		}
 	}
 	var best []ValidationError
+	bestDeclared := 0
+	vo, isObj := asObject(v)
 	for _, s := range branches {
 		var errors []ValidationError
 		e.walk(s, b, v, path, &errors)
-		if len(errors) > 0 && (best == nil || utf16Len(errors[0].Path) > utf16Len(best[0].Path)) {
-			best = errors
+		if len(errors) == 0 {
+			continue
+		}
+		declared := 0
+		if isObj {
+			declared = e.declaredKeys(s, b, vo)
+		}
+		if best == nil || declared > bestDeclared || (declared == bestDeclared && utf16Len(errors[0].Path) > utf16Len(best[0].Path)) {
+			best, bestDeclared = errors, declared
 		}
 	}
 	if best == nil {
 		best = []ValidationError{{Path: path, Keyword: keyword, Message: "matches no alternative"}}
 	}
 	*out = append(*out, best...)
+}
+
+// declaredKeys is how many of the keys of v the branch s (through a `$ref`) declares in `properties`.
+func (e *explainer) declaredKeys(s any, b string, v jsonObject) int {
+	node := s
+	if o, ok := isSchemaObject(s); ok {
+		if ref, ok := o.stringMember("$ref"); ok {
+			node = e.c.r.resolve(ref, b).node
+		}
+	}
+	o, ok := isSchemaObject(node)
+	if !ok {
+		return 0
+	}
+	properties, ok := o.objectMember("properties")
+	if !ok {
+		return 0
+	}
+	n := 0
+	for _, k := range v.keys() {
+		if properties.has(k) {
+			n++
+		}
+	}
+	return n
 }
 
 // tagOf is the key and tag values of a union whose branches carry a distinct primitive const on one property of the first branch.

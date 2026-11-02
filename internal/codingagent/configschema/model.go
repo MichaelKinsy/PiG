@@ -12,18 +12,24 @@ var (
 	modelPromptCacheRetentions = []string{"short", "long"}
 )
 
-func ThinkingLevelSchema() *Schema      { return Enum(thinkingLevels) }
-func ModelThinkingLevelSchema() *Schema { return Enum(modelThinkingLevels) }
-func ModelInputModalitySchema() *Schema { return Enum(modelInputModalities) }
-func CacheRetentionSchema() *Schema     { return Enum(cacheRetentions) }
+func ThinkingLevelSchema() *Schema      { return OneOf(thinkingLevels) }
+func ModelThinkingLevelSchema() *Schema { return OneOf(modelThinkingLevels) }
+func ModelInputModalitySchema() *Schema { return OneOf(modelInputModalities) }
+func CacheRetentionSchema() *Schema     { return OneOf(cacheRetentions) }
 
+// ThinkingLevelMapSchema lists the seven levels as optional properties of one openObject, each a string or null.
 func ThinkingLevelMapSchema() *Schema {
 	value := Union([]*Schema{String(), Null()})
-	return Partial(RecordOf(modelThinkingLevels, value), D("Provider value sent for each thinking level. null marks a level unsupported. Levels the model does not map use the provider's default value through high; xhigh and max are unsupported."))
+	props := make([]Prop, len(modelThinkingLevels))
+	for i, level := range modelThinkingLevels {
+		props[i] = Optional(level, value)
+	}
+	return OpenObject(props, D("Provider value sent for each thinking level. null marks a level unsupported. Levels the model does not map use the provider's default value through high; xhigh and max are unsupported."))
 }
 
 func ModelPromptCacheSchema() *Schema {
-	return Partial(RecordOf(modelPromptCacheRetentions, Number(Opt{"exclusiveMinimum", 0})), D("Best-effort prompt cache lifetime in seconds for the short and long retention tiers. Pi warms only tiers with a known lifetime."))
+	lifetime := Number(Opt{"exclusiveMinimum", 0})
+	return OpenObject([]Prop{Optional("short", lifetime), Optional("long", lifetime)}, D("Best-effort prompt cache lifetime in seconds for the short and long retention tiers. Pi warms only tiers with a known lifetime."))
 }
 
 func modelCostRates() []Prop {
@@ -35,20 +41,20 @@ func modelCostRates() []Prop {
 	}
 }
 
-func ModelCostRatesSchema() *Schema { return Object(modelCostRates()) }
+func ModelCostRatesSchema() *Schema { return OpenObject(modelCostRates()) }
 
 func ModelCostTierSchema() *Schema {
 	props := []Prop{P("inputTokensAbove", Number(D("Use this tier when total request input exceeds this token count.")))}
-	return Object(append(props, modelCostRates()...))
+	return OpenObject(append(props, modelCostRates()...))
 }
 
 func ModelCostSchema() *Schema {
 	props := modelCostRates()
-	return Object(append(props, Optional("tiers", Array(ModelCostTierSchema(), D("Request-wide pricing tiers. The highest matching input threshold applies to the full request.")))))
+	return OpenObject(append(props, Optional("tiers", Array(ModelCostTierSchema(), D("Request-wide pricing tiers. The highest matching input threshold applies to the full request.")))))
 }
 
 func modelImageResizeOptions(opts ...Opt) *Schema {
-	return Object([]Prop{
+	return OpenObject([]Prop{
 		Optional("maxWidth", Integer(Opt{"minimum", 1})),
 		Optional("maxHeight", Integer(Opt{"minimum", 1})),
 		Optional("maxBytes", Integer(Opt{"minimum", 1}, D("Maximum base64-encoded payload size in bytes."))),
@@ -59,7 +65,7 @@ func modelImageResizeOptions(opts ...Opt) *Schema {
 func ModelImageResizeOptionsSchema() *Schema { return modelImageResizeOptions() }
 
 func ModelImageInputLimitsSchema() *Schema {
-	return Object([]Prop{
+	return OpenObject([]Prop{
 		Optional("resize", modelImageResizeOptions(D("Cache-safe resize profile applied before a new image enters conversation history."))),
 		Optional("maxPerMessage", Integer(Opt{"minimum", 1}, D("Maximum images accepted in one provider message."))),
 		Optional("maxPerRequest", Integer(Opt{"minimum", 1}, D("Maximum images accepted across one provider request."))),
@@ -67,7 +73,7 @@ func ModelImageInputLimitsSchema() *Schema {
 }
 
 func ModelInputLimitsSchema() *Schema {
-	return Object([]Prop{
+	return OpenObject([]Prop{
 		Optional("maxRequestBytes", Integer(Opt{"minimum", 1}, D("Maximum serialized provider request size in bytes."))),
 		Optional("images", ModelImageInputLimitsSchema()),
 	})

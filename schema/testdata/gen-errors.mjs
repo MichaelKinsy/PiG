@@ -1,5 +1,5 @@
 // Generates schema/testdata/errors-golden.json: for every group and test of the vendored JSON-Schema-Test-Suite, Pi's
-// check result and errors (packages/schema at Pi commit 8ffea8a1), plus the speed cases of test/bench/cases.ts.
+// check result and errors (packages/schema at Pi commit b556cfe5), plus the speed cases of test/bench/cases.ts.
 // Run through Node 24 against a checkout of Pi: node gen-errors.mjs <pi>/packages/schema <out.json>
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";

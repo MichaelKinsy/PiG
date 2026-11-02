@@ -165,7 +165,7 @@ pub use session_context::{SessionLeaf, build_session_context};
 mod type_engine;
 mod type_schema;
 pub use type_engine::ExtendsResult;
-pub use type_schema::{BigInt, LiteralValue, Refinement, RefinementSite, TSchema, TValue, Type};
+pub use type_schema::{BigInt, LiteralValue, Refinement, TSchema, TValue, Type};
 mod stored_credential;
 #[cfg(test)]
 mod type_schema_tests;

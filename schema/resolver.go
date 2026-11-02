@@ -35,6 +35,9 @@ type resolver struct {
 	registry       map[string]JsonSchema
 	resources      map[string]any
 	anchors        map[string]any
+	// rejectUnresolved compiles a reference that names nothing as `false` (UnresolvedRefsReject); unresolved holds the URIs of those references.
+	rejectUnresolved bool
+	unresolved       map[string]struct{}
 }
 
 func newResolver(root JsonSchema, options CompileOptions) *resolver {
@@ -47,7 +50,9 @@ func newResolver(root JsonSchema, options CompileOptions) *resolver {
 		registry:       map[string]JsonSchema{},
 		resources:      map[string]any{},
 		anchors:        map[string]any{},
+		unresolved:     map[string]struct{}{},
 	}
+	r.rejectUnresolved = options.UnresolvedRefs == UnresolvedRefsReject
 	if options.Draft == Draft7 {
 		r.draft = Draft7
 	}
@@ -99,9 +104,40 @@ func (r *resolver) ensureIndexed() {
 	r.index(r.root, defaultBase)
 }
 
-// resolve returns the schema a reference names, with the base URI it compiles under. It fails the compile if it names nothing.
+// resolve returns the schema a reference names, with the base URI it compiles under. It fails the compile if it names nothing, or, with UnresolvedRefsReject, resolves to `false`, the schema no value passes.
 func (r *resolver) resolve(ref, base string) resolved {
 	r.ensureIndexed()
+	if !r.rejectUnresolved {
+		return r.find(ref, base)
+	}
+	target, ok := r.tryFind(ref, base)
+	if !ok {
+		r.unresolved[resolveUri(ref, base)] = struct{}{}
+		return resolved{node: false, base: base}
+	}
+	return target
+}
+
+// isUnresolved reports whether ref, from base, named nothing and resolved to `false`.
+func (r *resolver) isUnresolved(ref, base string) bool {
+	_, ok := r.unresolved[resolveUri(ref, base)]
+	return ok
+}
+
+// tryFind is find with the compile failure of a reference that names nothing as ok == false.
+func (r *resolver) tryFind(ref, base string) (target resolved, ok bool) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			if _, isCompileError := recovered.(compileError); !isCompileError {
+				panic(recovered)
+			}
+			ok = false
+		}
+	}()
+	return r.find(ref, base), true
+}
+
+func (r *resolver) find(ref, base string) resolved {
 	uri := resolveUri(ref, base)
 	doc := documentOf(uri)
 	fragment := ""

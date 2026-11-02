@@ -98,7 +98,6 @@ impl Host {
             msg_type: "request".into(),
             id: Some(id.into()),
             request: Some(RequestMsg {
-                refine: None,
                 child_session: None,
                 terminal_input: None,
                 stream: None,

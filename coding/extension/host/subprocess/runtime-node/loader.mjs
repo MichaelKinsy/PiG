@@ -14,7 +14,7 @@ process.emitWarning = () => {};
 
 // Specifiers Pi's extension loader serves from its own bundle
 // (core/extensions/virtual-modules.ts). Pi resolves the pi-ai root to its
-// compat entry point, so both names share one shim here. pi-ai/models is its own entry (shims/pi-ai-models.mjs). The pi-ai/oauth entry
+// extension view (compat entry point plus TypeBox's Type and StringEnum), so both names share one shim here. pi-ai/models is its own entry (shims/pi-ai-models.mjs). The pi-ai/oauth entry
 // point is type-only; pi-ai/providers/all and pi-agent-core are Pi's own modules.
 export const shims = new Map([
   ["@mariozechner/pi-coding-agent", new URL("./shims/pi-coding-agent.mjs", import.meta.url).href],
