@@ -2,8 +2,6 @@
 
 package cli
 
-// pi: packages/coding-agent/src/core/extensions/loader.ts
-
 import (
 	"context"
 	"os/exec"

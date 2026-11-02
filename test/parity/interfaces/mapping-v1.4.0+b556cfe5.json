@@ -165117,9 +165117,9 @@
       "id": "pkg:coding-agent/.#ExecOptions",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b79c39927e8e2a420aca547ff3be4266192b2cf4b1756b50a95567465536fae4",
-      "rationale": "Derived by the interface gap detector: ExecOptions is Go coding/extension/opaque_types.go#ExecOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecOptions is Go coding/extension/exec.go#ExecOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecOptions"
+        "coding/extension/exec.go#ExecOptions"
       ],
       "layers": {
         "behavior": "complete",
@@ -165140,9 +165140,9 @@
       "id": "pkg:coding-agent/.#ExecOptions::property:cwd",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:8917738321feec342fd3ede55652fb9fca4ef44c59ff896107b4cb466dd771f2",
-      "rationale": "Derived by the interface gap detector: ExecOptions::property:cwd is Go coding/extension/opaque_types.go#ExecOptions.CWD (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecOptions::property:cwd is Go coding/extension/exec.go#ExecOptions.CWD (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecOptions.CWD"
+        "coding/extension/exec.go#ExecOptions.CWD"
       ],
       "layers": {
         "behavior": "complete",
@@ -165162,9 +165162,9 @@
       "id": "pkg:coding-agent/.#ExecOptions::property:maxBuffer",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:a443be02d6f89e146ee782da4e9d9f74c71f3370cc3460c656023161413eefa9",
-      "rationale": "Derived by the interface gap detector: ExecOptions::property:maxBuffer is Go coding/extension/opaque_types.go#ExecOptions.MaxBuffer (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecOptions::property:maxBuffer is Go coding/extension/exec.go#ExecOptions.MaxBuffer (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecOptions.MaxBuffer"
+        "coding/extension/exec.go#ExecOptions.MaxBuffer"
       ],
       "layers": {
         "behavior": "complete",
@@ -165184,9 +165184,9 @@
       "id": "pkg:coding-agent/.#ExecOptions::property:signal",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:8a3599829b340aade9210d2ba01342ddd4b904b85132d7d569005701d05ab3be",
-      "rationale": "Derived by the interface gap detector: ExecOptions::property:signal is Go coding/extension/opaque_types.go#ExecOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecOptions::property:signal is Go coding/extension/exec.go#ExecOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecOptions"
+        "coding/extension/exec.go#ExecOptions"
       ],
       "layers": {
         "behavior": "complete",
@@ -165207,9 +165207,9 @@
       "id": "pkg:coding-agent/.#ExecOptions::property:timeout",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:181c63a8edc1037921e482360ec21d541239f0808377eecb006ae6e27b9e7aea",
-      "rationale": "Derived by the interface gap detector: ExecOptions::property:timeout is Go coding/extension/opaque_types.go#ExecOptions.Timeout (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecOptions::property:timeout is Go coding/extension/exec.go#ExecOptions.Timeout (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecOptions.Timeout"
+        "coding/extension/exec.go#ExecOptions.Timeout"
       ],
       "layers": {
         "behavior": "complete",
@@ -165229,9 +165229,9 @@
       "id": "pkg:coding-agent/.#ExecResult",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3f930705eeab6b99aa49a8af54bf474e14050cd35499fdef543a071e206bed2a",
-      "rationale": "Derived by the interface gap detector: ExecResult is Go coding/extension/opaque_types.go#ExecResult (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecResult is Go coding/extension/exec.go#ExecResult (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecResult"
+        "coding/extension/exec.go#ExecResult"
       ],
       "layers": {
         "behavior": "complete",
@@ -165251,9 +165251,9 @@
       "id": "pkg:coding-agent/.#ExecResult::property:code",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:68a65ce1e6c8f22ebdeb03a2b2a3c394006c4efed559e3b6862b7a10cac956bc",
-      "rationale": "Derived by the interface gap detector: ExecResult::property:code is Go coding/extension/opaque_types.go#ExecResult.Code (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecResult::property:code is Go coding/extension/exec.go#ExecResult.Code (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecResult.Code"
+        "coding/extension/exec.go#ExecResult.Code"
       ],
       "layers": {
         "behavior": "complete",
@@ -165273,9 +165273,9 @@
       "id": "pkg:coding-agent/.#ExecResult::property:killed",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e84a11a6784dbac8856a936e1a728fae9e3142ce701247b2c32c7e43882a5380",
-      "rationale": "Derived by the interface gap detector: ExecResult::property:killed is Go coding/extension/opaque_types.go#ExecResult.Killed (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecResult::property:killed is Go coding/extension/exec.go#ExecResult.Killed (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecResult.Killed"
+        "coding/extension/exec.go#ExecResult.Killed"
       ],
       "layers": {
         "behavior": "complete",
@@ -165295,9 +165295,9 @@
       "id": "pkg:coding-agent/.#ExecResult::property:stderr",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:906788dcfef1c4f2b898e90830b2b5659fdc6eb43689f46172dbc54d97f01b5a",
-      "rationale": "Derived by the interface gap detector: ExecResult::property:stderr is Go coding/extension/opaque_types.go#ExecResult.Stderr (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecResult::property:stderr is Go coding/extension/exec.go#ExecResult.Stderr (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecResult.Stderr"
+        "coding/extension/exec.go#ExecResult.Stderr"
       ],
       "layers": {
         "behavior": "complete",
@@ -165317,9 +165317,9 @@
       "id": "pkg:coding-agent/.#ExecResult::property:stdout",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:11552d5606c5b7e647da0da01ca706797c29b535f913e112776eebaf6e941e51",
-      "rationale": "Derived by the interface gap detector: ExecResult::property:stdout is Go coding/extension/opaque_types.go#ExecResult.Stdout (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecResult::property:stdout is Go coding/extension/exec.go#ExecResult.Stdout (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecResult.Stdout"
+        "coding/extension/exec.go#ExecResult.Stdout"
       ],
       "layers": {
         "behavior": "complete",
@@ -165339,9 +165339,9 @@
       "id": "pkg:coding-agent/.#ExecResult::property:truncated",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:921f7b2c3674238a40fd72df904db912b44321eb4b4b9dd035f6bfb89ad661e0",
-      "rationale": "Derived by the interface gap detector: ExecResult::property:truncated is Go coding/extension/opaque_types.go#ExecResult.Truncated (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExecResult::property:truncated is Go coding/extension/exec.go#ExecResult.Truncated (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#ExecResult.Truncated"
+        "coding/extension/exec.go#ExecResult.Truncated"
       ],
       "layers": {
         "behavior": "complete",

@@ -746,6 +746,8 @@ func boldWarning(s string) string {
 func stripANSI(s string) string { return widthx.StripAnsi(s) }
 
 // resolveGitBranchFromPaths reads the bound HEAD, asking Git only for a reftable placeholder, as FooterDataProvider.resolveGitBranchSync does.
+//
+// Ports packages/coding-agent/src/core/footer-data-provider.ts (resolveGitBranchSync and resolveBranchWithGitSync).
 func resolveGitBranchFromPaths(paths gitPaths) string {
 	content, err := os.ReadFile(paths.headPath)
 	if err != nil {
