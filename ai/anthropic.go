@@ -870,17 +870,31 @@ func anthConvertTools(tools []ToolSchema, isOAuthToken, supportsEagerToolInputSt
 
 // anthKeepsLegacySchemaOrder reports whether the object at path survives into the legacy input_schema: properties and the root definitions.
 func anthKeepsLegacySchemaOrder(path string) bool {
-	for _, key := range append([]string{"properties"}, anthLegacyDefinitionKeys...) {
-		if path == "/"+key || strings.HasPrefix(path, "/"+key+"/") {
+	if anthIsOrIsUnder(path, "properties") {
+		return true
+	}
+	for _, key := range anthLegacyDefinitionKeys {
+		if anthIsOrIsUnder(path, key) {
 			return true
 		}
 	}
 	return false
 }
 
+// anthIsOrIsUnder reports whether path is the root member key or a path below it.
+func anthIsOrIsUnder(path, key string) bool {
+	rest, ok := strings.CutPrefix(path, "/")
+	if !ok {
+		return false
+	}
+	rest, ok = strings.CutPrefix(rest, key)
+	return ok && (rest == "" || rest[0] == '/')
+}
+
 // anthInputSchema builds a tool's input_schema and its member order as convertTools does (anthropic-messages.ts:1588-1600): the legacy
-// literal { type: "object", properties: schema.properties ?? {}, required: schema.required ?? [] }, which a strict schema follows
-// in a spread, so the literal's members overwrite the parameters' in place and append the ones the parameters lack.
+// literal { type: "object", properties: schema.properties ?? {}, required: schema.required ?? [], ...$defs, ...definitions }, where
+// $defs and definitions are present only when the parameters have them. A strict schema follows the literal in a spread, so the
+// literal's members overwrite the parameters' in place and append the ones the parameters lack.
 func anthInputSchema(parameters map[string]any, parameterOrder schemaObjectOrder, strict bool) (map[string]any, schemaObjectOrder) {
 	properties, required := parameters["properties"], parameters["required"]
 	if properties == nil {
