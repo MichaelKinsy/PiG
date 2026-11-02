@@ -1,9 +1,20 @@
-// The input types of upstream's read, edit, write, grep and ls tools (core/tools/*.ts). The file declares no function body: a type has no
+// The input types of upstream's bash, powershell, read, edit, write, grep and ls tools (core/tools/*.ts). The file declares no function body: a type has no
 // statement to execute, and the JSON methods of these types live in tool_input_json.go.
 
 package extension
 
 import "encoding/json"
+
+// BashToolInput is upstream's BashToolInput (bash.ts bashSchema).
+type BashToolInput struct {
+	Command string   `json:"command"`
+	Timeout *float64 `json:"timeout,omitempty"`
+	// Extra holds members the schema does not declare; upstream's input is a plain object that keeps them.
+	Extra map[string]json.RawMessage `json:"-"`
+}
+
+// PowerShellToolInput is the bash input shape (upstream powershell.ts).
+type PowerShellToolInput = BashToolInput
 
 // ReadToolInput is upstream's ReadToolInput (read.ts readSchema).
 type ReadToolInput struct {

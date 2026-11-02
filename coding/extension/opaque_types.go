@@ -2,7 +2,6 @@ package extension
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -240,22 +239,9 @@ type TreePreparation struct {
 	Label string `json:"label,omitempty"`
 }
 
-// ─── Per-tool input values ────────────────────────────────────────────────
+// ─── Per-tool result details ──────────────────────────────────────────────
 
-// These types mirror the tool-specific input values of upstream core/tools.
-// Tool result details with concrete wire shapes are defined in events.go.
-
-// BashToolInput is upstream's BashToolInput (bash.ts bashSchema).
-type BashToolInput struct {
-	Command string   `json:"command"`
-	Timeout *float64 `json:"timeout,omitempty"`
-	// Extra holds members the schema does not declare; upstream's input is a plain object that keeps them.
-	Extra map[string]json.RawMessage `json:"-"`
-}
-
-// PowerShellToolInput is the bash input shape (upstream powershell.ts).
-type PowerShellToolInput = BashToolInput
-
+// The tool-specific input values of upstream core/tools are in tool_inputs.go.
 // Per-tool result Details structs (BashToolDetails, ReadToolDetails,
 // GrepToolDetails, FindToolDetails, LsToolDetails) and the shared
 // TruncationResult wire shape are defined in events.go next to the typed

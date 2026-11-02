@@ -151789,9 +151789,9 @@
       "id": "pkg:coding-agent/.#BashToolInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:5b62d191b17d8dc012a8170d2cad133085f48325d642ca13f08a51adc2402bd1",
-      "rationale": "Derived by the interface gap detector: BashToolInput is Go coding/extension/opaque_types.go#BashToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: BashToolInput is Go coding/extension/tool_inputs.go#BashToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#BashToolInput"
+        "coding/extension/tool_inputs.go#BashToolInput"
       ],
       "layers": {
         "behavior": "complete",
@@ -151799,7 +151799,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/opaque_types.go#BashToolInput"
+        "public-api:coding/extension/tool_inputs.go#BashToolInput"
       ],
       "evidence": [
         "test:coding/extension/widget_placement_test.go#TestPowerShellToolInputIsTheBashInputShape",
@@ -192881,9 +192881,9 @@
       "id": "pkg:coding-agent/.#PowerShellToolInput",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2d0abd99745d83b22e2b41bb56ca01a8e43f20d36e97d18a0476fc28ed4a1bb8",
-      "rationale": "Derived by the interface gap detector: PowerShellToolInput is Go coding/extension/opaque_types.go#PowerShellToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: PowerShellToolInput is Go coding/extension/tool_inputs.go#PowerShellToolInput (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/opaque_types.go#PowerShellToolInput"
+        "coding/extension/tool_inputs.go#PowerShellToolInput"
       ],
       "layers": {
         "behavior": "complete",
@@ -192891,7 +192891,7 @@
         "shape": "complete"
       },
       "production": [
-        "public-api:coding/extension/opaque_types.go#PowerShellToolInput"
+        "public-api:coding/extension/tool_inputs.go#PowerShellToolInput"
       ],
       "evidence": [
         "test:coding/extension/widget_placement_test.go#TestPowerShellToolInputIsTheBashInputShape",
