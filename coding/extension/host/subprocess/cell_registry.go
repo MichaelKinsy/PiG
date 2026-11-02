@@ -75,7 +75,17 @@ func (r *CellRegistry) register(key string, share *processShare) {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	share.onLast = func() { r.forget(key, share) }
 	r.procs[key] = share
+}
+
+// forget deletes the entry for key when it still names share, so the registry does not keep a process nobody references. pig additive (D201).
+func (r *CellRegistry) forget(key string, share *processShare) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.procs[key] == share {
+		delete(r.procs, key)
+	}
 }
 
 // group returns a new id unique in the registry: "g<seq>".
