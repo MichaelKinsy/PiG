@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
+// pi: packages/chord/src/next/host/adapted.ts
 // Ports packages/chord/test/next/host/adapted.test.ts (Q10, §22, slice 7b §7): consumers bound at an older version a provider
 // accepts read its state mapped (diffs per commit), call it with mapped arguments and results or its replacement of a
 // removed method, read keyed members mapped per key, and are refused a member the provider refuses. Every describe of the
@@ -427,7 +428,7 @@ var adaptedRowsDoc = func() *documents.StateDefinition {
 }()
 
 // adaptedKeyedType is a local type with the keyed member `member` of schema and `set` taking an int (plus the extras).
-func adaptedKeyedType(name, member string, schema contracts.TSchema) *contracts.Contract {
+func adaptedKeyedType(name, member string, schema contracts.Schema) *contracts.Contract {
 	return mustContract(declareLocal(name, contracts.LocalDeclaration{
 		Version: 1, Params: contracts.Params{},
 		Members: []contracts.LocalEntry{contracts.Mem(member, contracts.Keyed(schema)), contracts.Mem("set", contracts.NewMethod(contracts.Int()))},

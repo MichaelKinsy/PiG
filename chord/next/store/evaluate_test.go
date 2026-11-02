@@ -15,6 +15,8 @@ import (
 // Ports packages/chord/test/next/store/evaluate.test.ts: the evaluator of the table vocabulary, and that it agrees
 // with SQLite on the same nodes.
 //
+// pi: packages/chord/src/next/store/evaluate.ts
+//
 // Go forms: an absent column (JavaScript `undefined`) is an absent map key; cells are str string, int int64, num
 // float64, bool bool. The Node SQLite facade is blocking, so the Pi `async` bodies are plain.
 

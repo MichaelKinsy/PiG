@@ -297,11 +297,11 @@ func TestEvolveLongHistories(t *testing.T) {
 }
 
 func TestEvolveKeyedEdits(t *testing.T) {
-	note := func() contracts.TSchema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
+	note := func() contracts.Schema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
 	store := func(t testing.TB) *contracts.Contract {
 		return local(t, "store", 1, noParams(), contracts.Mem("notes", contracts.Keyed(note())), contracts.Mem("n", contracts.Int()))
 	}
-	noteTagged := func() contracts.TSchema {
+	noteTagged := func() contracts.Schema {
 		return contracts.Obj(contracts.Prop("text", contracts.Str()), contracts.Prop("tag", contracts.Str()))
 	}
 

@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
+// pi: packages/chord/src/next/host/root.ts
 // Ports packages/chord/test/next/host/root.test.ts: `host.root` on a host (createHost, loaded), its scopes sealed when fn
 // settles, when its context aborts and at the host's close.
 
@@ -349,7 +350,7 @@ func TestHostRootRefusesAnAnonymousScopeARemoteTypeServedHereForbiddenALocalOneI
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
 		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
-			contracts.Meth("read", contracts.NewMethod(contracts.TSchema{}, contracts.Str())),
+			contracts.Meth("read", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
 		}})},
 	}))
 	address := serverAddress()

@@ -24,6 +24,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-006a496](#bf-006a496) | The faux provider no longer counts newly cached prompt tokens as input as well as cache writes: with a… | PiG's own defect | All platforms | Unreleased |
 | [BF-007c91d](#bf-007c91d) | Go, Python and Rust extensions: in a `before_agent_start` handler, the event's `systemPrompt` and the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-00933e5](#bf-00933e5) | `mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load… | PiG's own defect | Windows | 0.5.2 |
+| [BF-016a19a](#bf-016a19a) | A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the… | PiG's own defect | All platforms | Unreleased |
 | [BF-02114ff](#bf-02114ff) | fix(tui): filterable list drops the label when no cell remains (Pi select-list) | PiG's own defect | All platforms | Unreleased |
 | [BF-0225926](#bf-0225926) | fix: symlink callers, changelog fragment name, behavior contract hash at the new pin, interface extractor… | PiG's own defect | All platforms | Unreleased |
 | [BF-0225a43](#bf-0225a43) | A device-attributes reply delivered in slow reads no longer reaches the editor as input: an `ESC[?` prefix… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -1217,6 +1218,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d3aa996](#bf-d3aa996) | A durable session no longer has a data race between a call to `DeferUntilPublished` from another goroutine (a… | PiG's own defect | All platforms | Unreleased |
 | [BF-d3adcfe](#bf-d3adcfe) | A Piglet's tool scope now bounds the Session's tool registry, not only its active tools | PiG's own defect | All platforms | Unreleased |
 | [BF-d3b3618](#bf-d3b3618) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-d3f6c2b](#bf-d3f6c2b) | Anthropic non-strict tool schemas keep the root `$defs` and `definitions`, so property `$ref`s resolve | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-d409922](#bf-d409922) | A host that crashes during a model request no longer resends it forever, adding an aborted entry each time… | PiG's own defect | All platforms | Unreleased |
 | [BF-d42aebb](#bf-d42aebb) | `ai.ValidateToolArguments` and `ai.ValidateToolCall` list a failed validation's errors in the order the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d449f74](#bf-d449f74) | `tool_search` and the Durable `searchTools()` ranker compute the same BM25 scores as Pi on arm64: the length… | PiG's own defect | All platforms | 0.5.0 |
@@ -1365,6 +1367,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e79c70e](#bf-e79c70e) | fix(ai): Codex WebSocket, OpenRouter images, pi-messages and replaced Anthropic bodies write JSON.stringify… | PiG's own defect | All platforms | Unreleased |
 | [BF-e7b494a](#bf-e7b494a) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-e8489d4](#bf-e8489d4) | A key hint for an app action the user unbound shows no key, as in Pi, instead of the action's default key | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e8a5d2e](#bf-e8a5d2e) | The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message… | PiG's own defect | All platforms | Unreleased |
 | [BF-e90ac19](#bf-e90ac19) | Very long streamed answers no longer slow down with their length: each streamed frame renders only the last… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e90f6c8-2](#bf-e90f6c8-2) | Paths under a directory whose name merely starts with the home directory's (`/users/bob2/x` with home… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-e9332c8](#bf-e9332c8) | fix(codingagent): session search re: reads patterns as V8 does | PiG's own defect | All platforms | Unreleased |
@@ -1594,6 +1597,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `00933e586a` (2026-10-20)
 - **Tests:** `coding/mcpext/config_test.go::TestMCPConfigReadsAndEditsMcpJSONFilesThatStartWithAUTF8BOM`, `internal/codingagent/radius_login_mcp_offer_upstream_test.go::TestRadiusMcpServerConfigReadsAMcpJSONThatStartsWithAUTF8BOM`
 - **Release note:** `mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load their MCP servers again, and `pig mcp add` and `pig mcp remove` work on them (Pi bdd9f039, #11191).
+
+### BF-016a19a
+
+**A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The derive's watchers used to receive the non-JSON frame without any report.
+- **Root cause:** Deliver assumed that diffing could not fail in Go because delta.DiffRevisions takes JSON, but nothing checked that the derive's value was JSON, so the batch had no failure to report.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `016a19ac68` (2026-11-02)
+- **Tests:** `chord/next/host/host_batch_test.go::TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit`
+- **Release note:** A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the host reports as `delivery_failed` while the later frames of the commit are still delivered, as Pi's batch does when diffing throws. The derive's watchers used to receive the non-JSON frame without any report.
 
 ### BF-02114ff
 
@@ -18089,6 +18106,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d3b36181ab` (2026-10-21)
 - **Tests:** None recorded.
 
+### BF-d3f6c2b
+
+**Anthropic non-strict tool schemas keep the root `$defs` and `definitions`, so property `$ref`s resolve**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** Anthropic non-strict tool schemas keep the root `$defs` and `definitions`, so property `$ref`s resolve.
+- **Root cause:** The legacy input_schema kept only type/properties/required, so property $refs into root $defs or definitions pointed at nothing. Keep them after required, in that order, when present; root anyOf/oneOf/allOf stay out because Anthropic rejects them with a 400. The strict path is unchanged.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d3f6c2b6ff` (2026-11-02)
+- **Tests:** `ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicRequestBodyKeepsRootDefsInLegacyToolSchema`, `ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicStrictToolSchemas`
+- **Release note:** Anthropic non-strict tool schemas keep the root `$defs` and `definitions`, so property `$ref`s resolve. They were dropped, which left the `$ref`s pointing at nothing, made Claude produce wrong arguments for such tools (common in MCP servers), for example a JSON string instead of an object, and made some Anthropic-compatible gateways reject the request. Root `anyOf`, `oneOf` and `allOf` stay out, because Anthropic rejects them with a 400. Ports Pi's fix 4a6a58eb5 ([#9557](https://github.com/earendil-works/pi/issues/9557)).
+
 ### BF-d409922
 
 **A host that crashes during a model request no longer resends it forever, adding an aborted entry each time…**
@@ -20135,6 +20166,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e8489d4003` (2026-10-11), `fac470319e` (2026-10-11)
 - **Tests:** `internal/codingagent/extension_editor_test.go::TestExtensionEditorHandleInputMatchesPi`
 - **Release note:** A key hint for an app action the user unbound shows no key, as in Pi, instead of the action's default key. For example, the extension editor dialog showed `ctrl+g external editor` after `app.editor.external` was bound to `[]`; it now shows ` external editor` (`tui/keybinding_hints.go` AppKeyText, keybinding-hints.ts keyText; probe in `TestExtensionEditorHandleInputMatchesPi`, red before).
+
+### BF-e8a5d2e
+
+**The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message effort (`supportsMidConvoEffort`), as Pi's generator does since 9ee7586a9 (#10954).
+- **Root cause:** OpenCode Go rejected replayed thinking with a 400 because the requests carried no `drop_block` binding after the tool list or system prompt changed.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e8a5d2ef7e` (2026-11-02)
+- **Tests:** `ai/opencode_dropblock_catalog_test.go::TestOpencodeClaudeCatalogCompatReachesTheAnthropicPayload`, `internal/modelgen/providers/opencode_dropblock_test.go::TestOpencodeClaudeMidConvoEffort`
+- **Release note:** The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message effort (`supportsMidConvoEffort`), as Pi's generator does since 9ee7586a9 (#10954). Their `anthropic-messages` requests then carry per-message effort markers and `thinking.block_binding: drop_block` like the Anthropic provider. OpenCode Go rejected replayed thinking with a 400 because the requests carried no `drop_block` binding after the tool list or system prompt changed. The bundled catalog is converted from the published Pi package and carries the flag once the pin moves to a Pi version that includes that commit. Until then the remote catalog overlay can deliver the flag: pi-in-go.dev (D64) serves the overlay that `withRemoteCatalog` reads, as pi.dev does for released Pi.
 
 ### BF-e90ac19
 

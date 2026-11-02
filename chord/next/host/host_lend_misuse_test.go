@@ -26,8 +26,8 @@ var lendDesk = mustContract(declareLocal("app.lend-desk", contracts.LocalDeclara
 	Members: []contracts.LocalEntry{
 		contracts.Mem("exit", contracts.NewMethod()),
 		contracts.Mem("exitParked", contracts.NewMethod()),
-		contracts.Mem("startedSuspend", contracts.NewMethod(contracts.TSchema{}, contracts.Str())),
-		contracts.Mem("who", contracts.NewMethod(contracts.TSchema{}, contracts.Str())),
+		contracts.Mem("startedSuspend", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
+		contracts.Mem("who", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
 	},
 }))
 
@@ -122,7 +122,7 @@ func TestMethodHandlerThatEndsItsGoroutineLeavesTheHandlerThatCalledItRunning(t 
 	}))
 	desk := mustContract(declareLocal("app.lend-caller", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
-		Members: []contracts.LocalEntry{contracts.Mem("through", contracts.NewMethod(contracts.TSchema{}, contracts.Str()))},
+		Members: []contracts.LocalEntry{contracts.Mem("through", contracts.NewMethod(contracts.Schema{}, contracts.Str()))},
 	}))
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		if err := h.Serve(callee, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
