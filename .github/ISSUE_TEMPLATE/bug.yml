@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 
 name: Bug report
-description: Report a reproducible PiG defect
+description: Report something PiG got wrong
 title: "bug: "
 labels:
   - bug
@@ -9,68 +9,48 @@ body:
   - type: markdown
     attributes:
       value: |
+        Thanks for reporting. Only the first box is required; everything else helps if you have it.
         Do not report an undisclosed vulnerability here. Follow .github/SECURITY.md instead.
         Do not include credentials, customer data, private configuration, or internal-only endpoints.
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: Paste the error or describe what went wrong. `/bug` fills this in and attaches its report archive.
+    validations:
+      required: true
   - type: input
     id: version
     attributes:
       label: PiG and upstream Pi versions
-      description: Run `pig version` and provide both reported versions.
-    validations:
-      required: true
+      description: Output of `pig version`, if you have it.
   - type: input
     id: platform
     attributes:
       label: Platform
-      description: Provide the operating system, architecture, terminal, and installation method.
-    validations:
-      required: true
+      description: Operating system, architecture, terminal and how you installed PiG, if you know them.
   - type: textarea
     id: reproduction
     attributes:
-      label: Reproduction
-      description: Provide the smallest deterministic sequence that reproduces the problem.
-    validations:
-      required: true
+      label: Steps to reproduce
+      description: If you can make it happen again, how.
   - type: textarea
     id: expected
     attributes:
       label: Expected result
-      description: State the observable contract or expected upstream Pi behavior.
-    validations:
-      required: true
-  - type: textarea
-    id: actual
-    attributes:
-      label: Actual result
-      description: Include sanitized output and exact errors. Do not include secrets.
-    validations:
-      required: true
+      description: What you expected instead, or what Pi does.
   - type: textarea
     id: upstream
     attributes:
       label: Upstream comparison
-      description: State whether the same input was tested with the pinned Pi version and provide the result.
-    validations:
-      required: true
+      description: If you tried the same thing in Pi, what it did.
   - type: textarea
     id: divergence
     attributes:
       label: Divergence and parity evidence
-      description: Identify any relevant docs/parity/DIVERGENCES.md entry or parity scenario. State “None found” when applicable.
-    validations:
-      required: true
+      description: Any related entry in docs/parity/DIVERGENCES.md or parity scenario. Leave empty if you don't know.
   - type: textarea
     id: boundaries
     attributes:
       label: Boundary and failure cases
-      description: Describe related invalid, empty, cancellation, persistence, or error-path behavior.
-  - type: checkboxes
-    id: safety
-    attributes:
-      label: Submission checks
-      options:
-        - label: I removed credentials, customer data, private configuration, and internal-only information.
-          required: true
-        - label: I searched for an existing issue and relevant divergence record.
-          required: true
+      description: Related invalid, empty, cancellation, persistence or error-path behavior.
