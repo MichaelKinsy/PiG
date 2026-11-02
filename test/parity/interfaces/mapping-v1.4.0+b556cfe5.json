@@ -5943,9 +5943,9 @@
         "call:ai/anthropic.go#anthropicProvider.buildParams"
       ],
       "evidence": [
+        "test:ai/anthropic_strict_tool_schema_upstream_test.go#TestAnthropicRequestBodyKeepsRootDefsInLegacyToolSchema",
         "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
-        "test:ai/anthropic_effort_strict_test.go#TestAnthropicManagedEffortAndStrictTools",
-        "test:ai/anthropic_test.go#TestAnthropicStrictEmptyToolWireRequiredArray"
+        "test:ai/anthropic_effort_strict_test.go#TestAnthropicManagedEffortAndStrictTools"
       ]
     },
     {
@@ -6742,7 +6742,7 @@
       ],
       "evidence": [
         "test:ai/cloudflare_auth_upstream_test.go#TestCloudflareAuthLoginPromptsForKeyAccountAndGateway",
-        "test:ai/provider_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
         "test:ai/provider_auth_upstream_test.go#TestProvidersOwnedCloudLoginUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -8365,8 +8365,8 @@
       ],
       "evidence": [
         "test:ai/auth_lazy_upstream_test.go#TestLazyOAuthLoadsOnFirstUseOnceAndDelegates",
-        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream",
-        "test:ai/login_agent_name_oracle_test.go#TestLoginAgentNameMatchesPi"
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream"
       ]
     },
     {
@@ -8470,8 +8470,8 @@
       ],
       "evidence": [
         "test:ai/auth_lazy_upstream_test.go#TestLazyOAuthLoadsOnFirstUseOnceAndDelegates",
-        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream",
-        "test:ai/login_agent_name_oracle_test.go#TestLoginAgentNameMatchesPi"
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream"
       ]
     },
     {
@@ -8492,8 +8492,8 @@
       ],
       "evidence": [
         "test:ai/auth_lazy_upstream_test.go#TestLazyOAuthLoadsOnFirstUseOnceAndDelegates",
-        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream",
-        "test:ai/login_agent_name_oracle_test.go#TestLoginAgentNameMatchesPi"
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream"
       ]
     },
     {
@@ -8515,7 +8515,7 @@
       "evidence": [
         "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
         "test:ai/cloudflare_auth_upstream_test.go#TestCloudflareAuthLoginPromptsForKeyAccountAndGateway",
-        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream"
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -8538,7 +8538,7 @@
       "evidence": [
         "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
         "test:ai/cloudflare_auth_upstream_test.go#TestCloudflareAuthLoginPromptsForKeyAccountAndGateway",
-        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream"
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -8626,7 +8626,7 @@
       "evidence": [
         "test:ai/providers_login_upstream_test.go#TestEnvAPIKeyAuthLoginUpstream",
         "test:ai/cloudflare_auth_upstream_test.go#TestCloudflareAuthLoginPromptsForKeyAccountAndGateway",
-        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream"
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream"
       ]
     },
     {
@@ -11270,9 +11270,9 @@
         "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
       ],
       "evidence": [
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestModelsClassifyChecksImageInputBeforeTheProvider"
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ]
     },
     {
@@ -14127,7 +14127,7 @@
         "call:ai/auth_providers.go#EnvAPIKeyAuth"
       ],
       "evidence": [
-        "test:ai/provider_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
         "test:ai/providers_login_upstream_test.go#TestEnvAPIKeyAuthLoginUpstream",
         "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream"
       ]
@@ -14149,7 +14149,7 @@
         "call:ai/auth_providers.go#EnvAPIKeyAuth"
       ],
       "evidence": [
-        "test:ai/provider_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
         "test:ai/providers_login_upstream_test.go#TestEnvAPIKeyAuthLoginUpstream",
         "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream"
       ]
@@ -17975,9 +17975,9 @@
         "call:ai/model_types.go#ImageModel.ProviderID"
       ],
       "evidence": [
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
         "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
-        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/model_operations_upstream_test.go#TestModelOperationsUpstream"
+        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi"
       ]
     },
     {
@@ -21351,9 +21351,9 @@
         "call:ai/models_runtime_auth.go#Models.GetAvailable"
       ],
       "evidence": [
+        "test:ai/github_copilot_catalog_upstream_test.go#TestCopilotRefreshAccountCatalogUpstream",
         "test:ai/models_available_scope_upstream_test.go#TestModelsAvailabilityScopesCredentialReadsUpstream",
-        "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream",
-        "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+        "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -21374,9 +21374,9 @@
         "call:ai/models_runtime_auth.go#Models.GetAvailable"
       ],
       "evidence": [
+        "test:ai/github_copilot_catalog_upstream_test.go#TestCopilotRefreshAccountCatalogUpstream",
         "test:ai/models_available_scope_upstream_test.go#TestModelsAvailabilityScopesCredentialReadsUpstream",
-        "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream",
-        "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+        "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -23531,9 +23531,9 @@
         "call:ai/models_runtime_auth.go#Models.GetAvailable"
       ],
       "evidence": [
+        "test:ai/github_copilot_catalog_upstream_test.go#TestCopilotRefreshAccountCatalogUpstream",
         "test:ai/models_available_scope_upstream_test.go#TestModelsAvailabilityScopesCredentialReadsUpstream",
-        "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream",
-        "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+        "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -23554,9 +23554,9 @@
         "call:ai/models_runtime_auth.go#Models.GetAvailable"
       ],
       "evidence": [
+        "test:ai/github_copilot_catalog_upstream_test.go#TestCopilotRefreshAccountCatalogUpstream",
         "test:ai/models_available_scope_upstream_test.go#TestModelsAvailabilityScopesCredentialReadsUpstream",
-        "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream",
-        "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+        "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -24474,7 +24474,7 @@
       "evidence": [
         "test:ai/auth_lazy_upstream_test.go#TestLazyOAuthLoadsOnFirstUseOnceAndDelegates",
         "test:ai/oauth_auth_upstream_test.go#TestOAuthAuthAdaptersUpstream",
-        "test:coding/model_runtime_auth_options_upstream_test.go#TestExtensionOAuthOnlyProviderHasNoAPIKeyMethodUpstream"
+        "test:ai/oauth_load_oracle_test.go#TestOAuthFlowLoadersMatchPi"
       ]
     },
     {
@@ -30109,8 +30109,8 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:internal/codingagent/cache_warmer_oracle_test.go#TestCachePromptTTLAndReplayableMatchPi",
-        "test:ai/anthropic_federation_sdk_upstream_test.go#TestAnthropicFederationExchangeErrors"
+        "test:ai/cloudflare_stream_upstream_test.go#TestResolveCloudflareModelMatchesPiOnNonBMPBaseURLs",
+        "test:internal/codingagent/cache_warmer_oracle_test.go#TestCachePromptTTLAndReplayableMatchPi"
       ]
     },
     {
@@ -48560,9 +48560,9 @@
         "call:ai/auth_env_keys.go#getAPIKeyEnvVars"
       ],
       "evidence": [
+        "test:ai/anthropic_oauth_test.go#TestAnthropicAuthTokenEnvResolution",
         "test:ai/auth_env_keys_test.go#TestEnvAPIKeysAnthropicAuthTokenIsReportedButNotAnAPIKey",
-        "test:ai/interface_ledger_test.go#TestUpstreamLiteralConstants",
-        "test:coding/audit_992_federation_red_test.go#TestAudit992FederationEnvConfiguresAnthropic"
+        "test:ai/interface_ledger_test.go#TestUpstreamLiteralConstants"
       ]
     },
     {
@@ -49064,9 +49064,9 @@
         "call:ai/anthropic.go#anthropicProvider.buildParams"
       ],
       "evidence": [
+        "test:ai/anthropic_strict_tool_schema_upstream_test.go#TestAnthropicRequestBodyKeepsRootDefsInLegacyToolSchema",
         "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
-        "test:ai/anthropic_effort_strict_test.go#TestAnthropicManagedEffortAndStrictTools",
-        "test:ai/anthropic_test.go#TestAnthropicStrictEmptyToolWireRequiredArray"
+        "test:ai/anthropic_effort_strict_test.go#TestAnthropicManagedEffortAndStrictTools"
       ]
     },
     {
@@ -49863,7 +49863,7 @@
       ],
       "evidence": [
         "test:ai/cloudflare_auth_upstream_test.go#TestCloudflareAuthLoginPromptsForKeyAccountAndGateway",
-        "test:ai/provider_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
         "test:ai/provider_auth_upstream_test.go#TestProvidersOwnedCloudLoginUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -51706,8 +51706,8 @@
       ],
       "evidence": [
         "test:ai/auth_lazy_upstream_test.go#TestLazyOAuthLoadsOnFirstUseOnceAndDelegates",
-        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream",
-        "test:ai/login_agent_name_oracle_test.go#TestLoginAgentNameMatchesPi"
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream"
       ]
     },
     {
@@ -51811,8 +51811,8 @@
       ],
       "evidence": [
         "test:ai/auth_lazy_upstream_test.go#TestLazyOAuthLoadsOnFirstUseOnceAndDelegates",
-        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream",
-        "test:ai/login_agent_name_oracle_test.go#TestLoginAgentNameMatchesPi"
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream"
       ]
     },
     {
@@ -51833,8 +51833,8 @@
       ],
       "evidence": [
         "test:ai/auth_lazy_upstream_test.go#TestLazyOAuthLoadsOnFirstUseOnceAndDelegates",
-        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream",
-        "test:ai/login_agent_name_oracle_test.go#TestLoginAgentNameMatchesPi"
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream"
       ]
     },
     {
@@ -51856,7 +51856,7 @@
       "evidence": [
         "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
         "test:ai/cloudflare_auth_upstream_test.go#TestCloudflareAuthLoginPromptsForKeyAccountAndGateway",
-        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream"
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -51879,7 +51879,7 @@
       "evidence": [
         "test:coding/model_runtime_native_upstream_test.go#TestModelRuntimeNativeCompatibilityUpstream",
         "test:ai/cloudflare_auth_upstream_test.go#TestCloudflareAuthLoginPromptsForKeyAccountAndGateway",
-        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream"
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -51947,7 +51947,7 @@
       "evidence": [
         "test:ai/providers_login_upstream_test.go#TestEnvAPIKeyAuthLoginUpstream",
         "test:ai/cloudflare_auth_upstream_test.go#TestCloudflareAuthLoginPromptsForKeyAccountAndGateway",
-        "test:ai/github_copilot_oauth_upstream_test.go#TestCopilotStopsPoliciesWhenDelayExceedsBudgetUpstream"
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream"
       ]
     },
     {
@@ -54708,9 +54708,9 @@
         "call:ai/builtin_providers.go#GetBuiltinClassifierModels"
       ],
       "evidence": [
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
         "test:ai/classifier_answers_oracle_test.go#TestClassifierAnswersMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi",
-        "test:ai/classifier_images_oracle_test.go#TestModelsClassifyChecksImageInputBeforeTheProvider"
+        "test:ai/classifier_images_oracle_test.go#TestClassifierImagesMatchPi"
       ]
     },
     {
@@ -57655,7 +57655,7 @@
         "call:ai/auth_providers.go#EnvAPIKeyAuth"
       ],
       "evidence": [
-        "test:ai/provider_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
         "test:ai/providers_login_upstream_test.go#TestEnvAPIKeyAuthLoginUpstream",
         "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream"
       ]
@@ -57677,7 +57677,7 @@
         "call:ai/auth_providers.go#EnvAPIKeyAuth"
       ],
       "evidence": [
-        "test:ai/provider_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
+        "test:ai/env_api_key_auth_upstream_test.go#TestEnvAPIKeyAuthUpstream",
         "test:ai/providers_login_upstream_test.go#TestEnvAPIKeyAuthLoginUpstream",
         "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream"
       ]
@@ -60297,9 +60297,9 @@
         "call:ai/registry.go#ListProviders"
       ],
       "evidence": [
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
         "test:ai/known_provider_upstream_test.go#TestKnownProviderConstantsMatchTheUpstreamUnionAndTheCatalog",
-        "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe",
-        "test:ai/providers_runtime_upstream_test.go#TestBuiltinModelsRuntimeRegistersCatalog"
+        "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe"
       ]
     },
     {
@@ -60319,9 +60319,9 @@
         "call:ai/registry.go#ListProviders"
       ],
       "evidence": [
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
         "test:ai/known_provider_upstream_test.go#TestKnownProviderConstantsMatchTheUpstreamUnionAndTheCatalog",
-        "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe",
-        "test:ai/providers_runtime_upstream_test.go#TestBuiltinModelsRuntimeRegistersCatalog"
+        "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe"
       ]
     },
     {
@@ -62195,9 +62195,9 @@
         "call:ai/model_types.go#ImageModel.ProviderID"
       ],
       "evidence": [
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
         "test:ai/fetch_option_upstream_test.go#TestFetchOptionUpstream",
-        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi",
-        "test:ai/model_operations_upstream_test.go#TestModelOperationsUpstream"
+        "test:ai/identity_images_oracle_test.go#TestOpenRouterImagesHeadersMatchPi"
       ]
     },
     {
@@ -65761,9 +65761,9 @@
         "call:ai/models_runtime_auth.go#Models.GetAvailable"
       ],
       "evidence": [
+        "test:ai/github_copilot_catalog_upstream_test.go#TestCopilotRefreshAccountCatalogUpstream",
         "test:ai/models_available_scope_upstream_test.go#TestModelsAvailabilityScopesCredentialReadsUpstream",
-        "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream",
-        "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+        "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -65784,9 +65784,9 @@
         "call:ai/models_runtime_auth.go#Models.GetAvailable"
       ],
       "evidence": [
+        "test:ai/github_copilot_catalog_upstream_test.go#TestCopilotRefreshAccountCatalogUpstream",
         "test:ai/models_available_scope_upstream_test.go#TestModelsAvailabilityScopesCredentialReadsUpstream",
-        "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream",
-        "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+        "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -67958,9 +67958,9 @@
         "call:ai/models_runtime_auth.go#Models.GetAvailable"
       ],
       "evidence": [
+        "test:ai/github_copilot_catalog_upstream_test.go#TestCopilotRefreshAccountCatalogUpstream",
         "test:ai/models_available_scope_upstream_test.go#TestModelsAvailabilityScopesCredentialReadsUpstream",
-        "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream",
-        "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+        "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -67981,9 +67981,9 @@
         "call:ai/models_runtime_auth.go#Models.GetAvailable"
       ],
       "evidence": [
+        "test:ai/github_copilot_catalog_upstream_test.go#TestCopilotRefreshAccountCatalogUpstream",
         "test:ai/models_available_scope_upstream_test.go#TestModelsAvailabilityScopesCredentialReadsUpstream",
-        "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream",
-        "test:ai/models_typed_upstream_test.go#TestModelTypesUpstream"
+        "test:ai/models_runtime_auth_upstream_test.go#TestModelsRuntimeAuthUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -68911,7 +68911,7 @@
       "evidence": [
         "test:ai/auth_lazy_upstream_test.go#TestLazyOAuthLoadsOnFirstUseOnceAndDelegates",
         "test:ai/oauth_auth_upstream_test.go#TestOAuthAuthAdaptersUpstream",
-        "test:coding/model_runtime_auth_options_upstream_test.go#TestExtensionOAuthOnlyProviderHasNoAPIKeyMethodUpstream"
+        "test:ai/oauth_load_oracle_test.go#TestOAuthFlowLoadersMatchPi"
       ]
     },
     {
@@ -74722,8 +74722,8 @@
       ],
       "evidence": [
         "test:ai/anthropic_messages_compat_options_oracle_test.go#TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi",
-        "test:internal/codingagent/cache_warmer_oracle_test.go#TestCachePromptTTLAndReplayableMatchPi",
-        "test:ai/anthropic_federation_sdk_upstream_test.go#TestAnthropicFederationExchangeErrors"
+        "test:ai/cloudflare_stream_upstream_test.go#TestResolveCloudflareModelMatchesPiOnNonBMPBaseURLs",
+        "test:internal/codingagent/cache_warmer_oracle_test.go#TestCachePromptTTLAndReplayableMatchPi"
       ]
     },
     {
@@ -86352,9 +86352,9 @@
         "call:ai/registry.go#ListProviders"
       ],
       "evidence": [
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
         "test:ai/known_provider_upstream_test.go#TestKnownProviderConstantsMatchTheUpstreamUnionAndTheCatalog",
-        "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe",
-        "test:ai/providers_runtime_upstream_test.go#TestBuiltinModelsRuntimeRegistersCatalog"
+        "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe"
       ]
     },
     {
@@ -86374,9 +86374,9 @@
         "call:ai/registry.go#ListProviders"
       ],
       "evidence": [
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogRecordsFollowTheBarrelProviderOrder",
         "test:ai/known_provider_upstream_test.go#TestKnownProviderConstantsMatchTheUpstreamUnionAndTheCatalog",
-        "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe",
-        "test:ai/providers_runtime_upstream_test.go#TestBuiltinModelsRuntimeRegistersCatalog"
+        "test:ai/lazy_module_load_upstream_test.go#TestLazyModuleLoadProbe"
       ]
     },
     {
@@ -87885,9 +87885,9 @@
         "call:ai/anthropic.go#anthropicProvider.buildParams"
       ],
       "evidence": [
+        "test:ai/anthropic_strict_tool_schema_upstream_test.go#TestAnthropicRequestBodyKeepsRootDefsInLegacyToolSchema",
         "test:ai/providers_upstream_test.go#TestBuiltinProvidersUpstream",
-        "test:ai/anthropic_effort_strict_test.go#TestAnthropicManagedEffortAndStrictTools",
-        "test:ai/anthropic_test.go#TestAnthropicStrictEmptyToolWireRequiredArray"
+        "test:ai/anthropic_effort_strict_test.go#TestAnthropicManagedEffortAndStrictTools"
       ]
     },
     {
@@ -91278,6 +91278,7 @@
         "call:ai/provider_constructors.go#GithubCopilotProvider"
       ],
       "evidence": [
+        "test:ai/github_copilot_catalog_upstream_test.go#TestCopilotRefreshAccountCatalogUpstream",
         "test:ai/provider_constructors_test.go#TestProviderConstructorsMatchCatalog"
       ]
     },
@@ -91298,6 +91299,7 @@
         "call:ai/provider_constructors.go#GithubCopilotProvider"
       ],
       "evidence": [
+        "test:ai/github_copilot_catalog_upstream_test.go#TestCopilotRefreshAccountCatalogUpstream",
         "test:ai/provider_constructors_test.go#TestProviderConstructorsMatchCatalog"
       ]
     },
@@ -93527,7 +93529,8 @@
         "call:ai/opencode_headers.go#WithOpenCodeSessionHeader"
       ],
       "evidence": [
-        "test:ai/opencode_headers_test.go#TestWithOpenCodeSessionHeaderLikeUpstream"
+        "test:ai/opencode_headers_test.go#TestWithOpenCodeSessionHeaderLikeUpstream",
+        "test:ai/opencode_headers_test.go#TestWithOpenCodeSessionHeaderPiCases"
       ]
     },
     {
@@ -93547,7 +93550,8 @@
         "call:ai/opencode_headers.go#WithOpenCodeSessionHeader"
       ],
       "evidence": [
-        "test:ai/opencode_headers_test.go#TestWithOpenCodeSessionHeaderLikeUpstream"
+        "test:ai/opencode_headers_test.go#TestWithOpenCodeSessionHeaderLikeUpstream",
+        "test:ai/opencode_headers_test.go#TestWithOpenCodeSessionHeaderPiCases"
       ]
     },
     {
