@@ -39510,13 +39510,13 @@
       "id": "BF-e8a5d2e",
       "title": "The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message…",
       "symptom": "The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message effort (`supportsMidConvoEffort`), as Pi's generator does since 9ee7586a9 (#10954).",
-      "rootCause": "finalizeOpencodeModel enables per-message effort for the Claude models that support it, as Pi's catalog generator does at. OpenCode Go rejected replayed thinking with a 400 after the tool list or system prompt changed.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
+      "rootCause": "OpenCode Go rejected replayed thinking with a 400 because the requests carried no `drop_block` binding after the tool list or system prompt changed.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message effort (`supportsMidConvoEffort`), as Pi's generator does since 9ee7586a9 (#10954). Their `anthropic-messages` requests then carry per-message effort markers and `thinking.block_binding: drop_block` like the Anthropic provider, so OpenCode Go no longer rejects replayed thinking with a 400 after the tool list or system prompt changed. The bundled catalog is converted from the published Pi package and carries the flag once the pin moves to a release that includes that commit.",
+      "releaseNote": "The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message effort (`supportsMidConvoEffort`), as Pi's generator does since 9ee7586a9 (#10954). Their `anthropic-messages` requests then carry per-message effort markers and `thinking.block_binding: drop_block` like the Anthropic provider. OpenCode Go rejected replayed thinking with a 400 because the requests carried no `drop_block` binding after the tool list or system prompt changed. The bundled catalog is converted from the published Pi package and carries the flag once the pin moves to a Pi version that includes that commit. Until then the remote catalog overlay can deliver the flag: pi-in-go.dev (D64) serves the overlay that `withRemoteCatalog` reads, as pi.dev does for released Pi.",
       "origin": "release note",
       "commits": [
         {
