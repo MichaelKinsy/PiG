@@ -4904,9 +4904,9 @@ rationale = "PORT_MAP records this file n/a with the reason: (Go archive/zip, us
 [[files]]
 path = "packages/durable/src/codemode/codemode.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/codemode/tool_declarations_pi_oracle_test.go#TestToolDeclarationsMatchPi", "test:durable/codemode/search_limit_test.go#TestSearchToolsSearchesNamespaceInstructions", "test:durable/codemode/search_limit_test.go#TestSearchToolsReturnsEightMatchesWithoutALimit"]
+rationale = "Whole file ported in durable/codemode/call.go, tool.go, docs.go. The 1.5.0 delta over the earlier port is Pi 6536f8012 (code tool schema built with pi-schema obj/str, open) and c7372af42 (searchTools ranks the tool's sample text apart from the namespace name, description and instructions). Both are ported: TestToolDeclarationsMatchPi compares the declarations with Pi's own, TestSearchToolsSearchesNamespaceInstructions pins the namespace text."
 
 [[files]]
 path = "packages/durable/src/codemode/describe.ts"
@@ -4925,9 +4925,9 @@ rationale = "New in Pi 1.2.0: a re-export barrel for codemode.ts and describe.ts
 [[files]]
 path = "packages/durable/src/codemode/models.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/codemode/tool_declarations_pi_oracle_test.go#TestToolDeclarationsMatchPi", "test:durable/codemode/models_test.go"]
+rationale = "Whole file ported in durable/codemode/models.go. The 1.5.0 delta is Pi 6536f8012: ModelCallParameters is obj({model, context}, open) and the structured output schema unknown(), instead of TypeBox. The declarations the models tools show are compared with Pi's in TestToolDeclarationsMatchPi; the Go registration has no schema library to switch."
 
 [[files]]
 path = "packages/durable/src/codemode/output.ts"
@@ -5009,30 +5009,30 @@ rationale = "only the `pi.live` v3 tests changed. PiG: durable/harness/compactio
 [[files]]
 path = "packages/durable/src/harness/context.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/context_kept_range_test.go#TestKeptContextRanges", "test:durable/harness/context_range_test.go"]
+rationale = "Whole file ported in durable/harness/context.go. The group-commit delta is Pi e5c6182ba: the kept context range reads its bounds from Session.latestEntryId/latestHeadMarker instead of a storage read. Ported in durable/harness/context.go; TestKeptContextRanges drives the kept range."
 
 [[files]]
 path = "packages/durable/src/harness/define.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "unchanged-observable"
+evidence = ["test:durable/harness/tool_structured_output_test.go#TestStructuredOutputErrorUsesPiSchema", "test:durable/harness/harness_after_run_test.go"]
+rationale = "Whole file ported in durable/harness/define.go. The delta since the first port is Pi 6536f8012, which widens defineTool's parameter bound from TSchema to object (a type-level change on an identity function with no Go counterpart), and 7e15f9601 (runEndTask), which Go has as RunEndTaskOf (harness_after_run_test.go). No other behavior reaches a caller."
 
 [[files]]
 path = "packages/durable/src/harness/generation.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_tools_test.go#TestGenerationHooks", "test:durable/harness/harness_generation_test.go#TestGeneration"]
+rationale = "Whole file ported in durable/harness/generation.go. The group-commit delta is Pi e5c6182ba (the generation attempt rides the next commit; the cutoff is read from tx.latestEntryId) and d280e1ff (beforeProviderRequest). Ported in durable/harness/generation.go, tested by TestGenerationHooks."
 
 [[files]]
 path = "packages/durable/src/harness/harness.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_generation_test.go#TestGeneration"]
+rationale = "Whole file ported in durable/harness/harness.go. The 1.5.0 delta is Pi e5c6182ba: the Harness hands components no Storage, they read through Session.readOnLine, and the Session gets the MembershipKeys hook. Ported in durable/harness/harness.go."
 
 [[files]]
 path = "packages/durable/src/harness/inbox.ts"
@@ -5079,9 +5079,9 @@ rationale = "PORT_MAP row is ✅ ported (durable/harness/provider.go). coverage.
 [[files]]
 path = "packages/durable/src/harness/registry-reader.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/registry_reader_upstream_test.go", "test:durable/harness/registry_reader_test.go"]
+rationale = "Whole file ported in durable/harness/registry_reader.go. PORT_MAP records the row partial: the file is unchanged by the 1.5.0 delta, the Go tests cover its documented reads, and behavioral closure is not yet reviewed."
 
 [[files]]
 path = "packages/durable/src/harness/registry.ts"
@@ -5093,23 +5093,23 @@ rationale = "PORT_MAP row is ✅ ported (durable/harness/registry.go). coverage.
 [[files]]
 path = "packages/durable/src/harness/scheduler.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_group_commit_test.go#TestGroupCommitSchedulerRegions", "test:durable/harness/harness_tasks_group_commit_test.go#TestTaskPhasesGroupCommit", "test:durable/harness/harness_idle_scopes_test.go#TestIdleWaitersByScope", "test:durable/harness/scheduler_retention_chains_test.go"]
+rationale = "Whole file ported in durable/harness/scheduler.go and types.go. The group-commit delta is Pi e5c6182ba (decision regions: one commit per scheduler decision, group commit) and 35dfa757 (idle scopes). Ported in durable/harness/scheduler.go, scheduler_region.go and scheduler_idle.go; TestGroupCommitSchedulerRegions and TestTaskPhasesGroupCommit run the regions and the task phases through the group-commit Session, TestIdleWaitersByScope the idle scopes, scheduler_retention_chains_test.go the retention chains Pi changed."
 
 [[files]]
 path = "packages/durable/src/harness/submissions.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_submissions_test.go"]
+rationale = "Whole file ported in durable/harness/submissions.go. The 1.5.0 delta is Pi e5c6182ba: Submissions loses its Storage parameter and reads through the Session. Ported in durable/harness/submissions.go."
 
 [[files]]
 path = "packages/durable/src/harness/task-graph.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_task_graph_test.go"]
+rationale = "Whole file ported in durable/harness/task_graph.go. The 1.5.0 delta is Pi e5c6182ba: TaskGraphView takes no Storage and advances with the conversation view at the publication of the commit that changes both. Ported in durable/harness/task_graph.go."
 
 [[files]]
 path = "packages/durable/src/harness/telemetry.ts"
@@ -5121,9 +5121,9 @@ rationale = "span description, `continue` value. PiG: durable/harness/telemetry.
 [[files]]
 path = "packages/durable/src/harness/tool.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_live_deltas_test.go", "test:durable/harness/harness_tools_test.go"]
+rationale = "Whole file ported in durable/harness/tool.go. The 1.5.0 delta is Pi e5c6182ba (the running tool slot and nested arguments ride a progress commit) and 6536f8012 (pi-schema). Ported in durable/harness/tool.go."
 
 [[files]]
 path = "packages/durable/src/harness/transcript.ts"
@@ -5135,9 +5135,9 @@ rationale = "New in Pi f3255de7: ConversationTranscript, TranscriptItem (entry, 
 [[files]]
 path = "packages/durable/src/harness/types.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_tools_test.go#TestGenerationHooks"]
+rationale = "Whole file ported in durable/harness/types.go. The 1.5.0 delta is Pi d280e1ff (ProviderRequest, GenerationHooks.beforeProviderRequest) and 6536f8012 (pi-schema ToolRegistration). Ported in durable/harness/types.go."
 
 [[files]]
 path = "packages/durable/src/harness/usage.ts"
@@ -5156,9 +5156,9 @@ rationale = "`conversationEntries`. PiG: durable/harness/util.go (lane C)."
 [[files]]
 path = "packages/durable/src/harness/view.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/harness/harness_view_test.go"]
+rationale = "Whole file ported in durable/harness/view.go. The 1.5.0 delta is Pi e5c6182ba: ConversationViews takes no Storage and reads through the Session. Ported in durable/harness/view.go."
 
 [[files]]
 path = "packages/durable/src/ids.ts"
@@ -5212,30 +5212,30 @@ rationale = "Declares Photon's WebAssembly import for TypeScript. The Go process
 [[files]]
 path = "packages/durable/src/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Re-export barrel: the exports are the Go package surface (PORT_MAP records the row n/a: Go has no barrel exports). The group-commit delta is one line, `type CommitResult`, which is Go's durable.CommitResult in durable/types.go, added with Storage.Commit(batches, receive)."
 
 [[files]]
 path = "packages/durable/src/search.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/internal/search/search_pi_oracle_test.go#TestTokenizeAndRankDocumentsMatchPiOnSeededInputs", "test:durable/internal/search/search_test.go", "test:durable/internal/search/search_carried_test.go"]
+rationale = "Whole file ported in durable/internal/search/search.go. The 1.5.0 delta is Pi 79006f061 (#11037, Unicode word segmentation in tokenize) and c7372af42 (#11631, BM25 with separate name and namespace fields, coverage ordering, exact-name queries, full-name bonus). Both are ported; TestTokenizeAndRankDocumentsMatchPiOnSeededInputs compares tokenize and rankDocuments with Pi's own answers on seeded inputs."
 
 [[files]]
 path = "packages/durable/src/session/cached-storage.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/session/cached_storage_test.go#TestCachedStorageKeepsEndedTasksATaskWaitsOnUntilItMovedOnFromItsWait"]
+rationale = "New file of Pi e5c6182ba: the Session's read cache with write-through at publication. Ported in durable/session/cached_storage.go;"
 
 [[files]]
 path = "packages/durable/src/session/conversation-tails.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/session/conversation_tails_test.go#TestConversationTailsAnswersCutoffFromNewestMarkerOnlyAtOrAfterIt"]
+rationale = "New file of Pi e5c6182ba: the bounded cache of conversation tails. Ported in durable/session/conversation_tails.go;"
 
 [[files]]
 path = "packages/durable/src/session/forks.ts"
@@ -5247,37 +5247,37 @@ rationale = "PORT_MAP row is ✅ ported (durable/session/forks.go). coverage.md 
 [[files]]
 path = "packages/durable/src/session/keys.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/session/keys_test.go#TestGatedStorageReadsTouchTheirKeysFirst"]
+rationale = "New file of Pi e5c6182ba: the keys a commit touches and the gated storage reads. Ported in durable/session/keys.go;"
 
 [[files]]
 path = "packages/durable/src/session/session.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/session/session_group_commit_test.go#TestGroupCommitBatching", "test:durable/session/session_adoption_test.go", "test:durable/session/session_line_api_test.go"]
+rationale = "Whole file ported in durable/session/session.go. The group-commit delta is Pi e5c6182ba: a Writer owns commits (parts, per-part outcomes), an unpublished write set per key, MAX_OUTSTANDING, outcome fences, and the read cache writes through at publication. Ported in durable/session/session.go, guard.go, held.go, retention.go and woken.go."
 
 [[files]]
 path = "packages/durable/src/session/transaction.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/session/session_group_commit_test.go#TestGroupCommitBatching", "test:durable/session/session_adoption_test.go"]
+rationale = "Whole file ported in durable/session/transaction.go. The group-commit delta is Pi e5c6182ba: Tx.latestEntryId, the host's touch/taskDocuments/latestHeadMarker and gated retirement scans. Ported in durable/session/transaction.go."
 
 [[files]]
 path = "packages/durable/src/session/writer.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/session/session_group_commit_test.go#TestGroupCommitBatching"]
+rationale = "New file of Pi e5c6182ba: the Writer that owns a Session's commits (parts, per-part outcomes, publication). Ported in durable/session/writer.go;"
 
 [[files]]
 path = "packages/durable/src/storage/indexeddb.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Browser-only Storage over window IndexedDB: the file opens with /// <reference lib=\"dom\" /> and drives IDBDatabase/IDBTransaction, which exist only in a browser; PiG has no browser or WebAssembly build, so no caller can reach it. The Storage contract it implements is the one memory, jsonl, sqlite and the Cloudflare SQLite driver satisfy. PORT_MAP records the row n/a with this reason; the 1.5.0 delta (Storage.commit(batches, receive), Pi e5c6182ba) changes only the browser implementation."
 
 [[files]]
 path = "packages/durable/src/storage/jsonl/index.ts"
@@ -5296,16 +5296,16 @@ rationale = "PORT_MAP row is ✅ ported (durable/storage/jsonl/node/node.go). co
 [[files]]
 path = "packages/durable/src/storage/jsonl/storage.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches"]
+rationale = "Whole file ported in durable/storage/jsonl/storage.go. The 1.5.0 delta is Pi e5c6182ba: commit(batches, receive) checks each batch against memory, appends all markers in one write, and poisons the storage when an append fails after batches applied. Ported in durable/storage/jsonl/storage.go."
 
 [[files]]
 path = "packages/durable/src/storage/memory.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/memory_storage_test.go#TestMemoryStorageConformance"]
+rationale = "Whole file ported in durable/storage/memory.go. The group-commit delta is Pi e5c6182ba: commit(batches, receive) applies each batch, stops at the first refusal and delivers one receipt per stored batch under the storage lock. Ported in durable/storage/memory.go; TestMemoryStorageConformance runs the suite that checks the batch and receipt semantics."
 
 [[files]]
 path = "packages/durable/src/storage/scan.ts"
@@ -5359,51 +5359,51 @@ rationale = "Pi 4c25119f (replicate storages as a commit log) changes this file 
 [[files]]
 path = "packages/durable/src/storage/sqlite/storage.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches"]
+rationale = "Whole file ported in durable/storage/sqlite/storage.go. The 1.5.0 delta is Pi e5c6182ba: commit(batches, receive) runs the batches in one transaction and commits the prefix before the first refusal. Ported in durable/storage/sqlite/storage.go."
 
 [[files]]
 path = "packages/durable/src/storage/store/commit.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/store/store_storage_commit_test.go#TestStoreStorageRefusals"]
+rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): . Ported in durable/storage/store/commit.go;"
 
 [[files]]
 path = "packages/durable/src/storage/store/documents.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageArchives"]
+rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): . Ported in durable/storage/store/documents.go;"
 
 [[files]]
 path = "packages/durable/src/storage/store/index.ts"
 change = "added"
-disposition = "pending"
+disposition = "designed-out"
 evidence = []
-rationale = ""
+rationale = "Re-export barrel: the exports are the Go package surface (PORT_MAP records the row n/a). The package it re-exports is ported in durable/storage/store/, whose package doc is durable/storage/store/index.go; the rows of the six store files record the files."
 
 [[files]]
 path = "packages/durable/src/storage/store/queries.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageReviewRegressions"]
+rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): . Ported in durable/storage/store/queries.go;"
 
 [[files]]
 path = "packages/durable/src/storage/store/storage.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageClaimsAndClose"]
+rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): . Ported in durable/storage/store/storage.go;"
 
 [[files]]
 path = "packages/durable/src/storage/store/tables.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/store/store_storage_test.go#TestStoreStorageHeadMarkers"]
+rationale = "Whole file of the Pi Durable store Storage (D-store, over chord's store): . Ported in durable/storage/store/tables.go;"
 
 [[files]]
 path = "packages/durable/src/tasks.ts"
@@ -5422,9 +5422,9 @@ rationale = "PORT_MAP row is ✅ ported (durable/durabletest/durabletest.go). co
 [[files]]
 path = "packages/durable/src/testing/commit-writes.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/memory_storage_test.go#TestMemoryStorageConformance"]
+rationale = "New file of Pi e5c6182ba: commitWrites(storage, writes) commits one batch and returns its seq. Ported in durable/durabletest/commit_writes.go;"
 
 [[files]]
 path = "packages/durable/src/testing/env-conformance.ts"
@@ -5436,9 +5436,9 @@ rationale = "Pi 5f312dac: covers() by kind and 'watch stops reporting once stopp
 [[files]]
 path = "packages/durable/src/testing/index.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream"]
+rationale = "The group-commit delta is one line: the barrel exports commitWrites. The Go package surface is durable/durabletest; CommitWrites is in durable/durabletest/commit_writes.go."
 
 [[files]]
 path = "packages/durable/src/testing/runner.ts"
@@ -5450,16 +5450,16 @@ rationale = "PORT_MAP row is ✅ ported (durable/durabletest/durabletest.go + du
 [[files]]
 path = "packages/durable/src/testing/storage-benchmark.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/storage/storage_write_benchmark_test.go"]
+rationale = "Whole file ported in durable/durabletest/storage_benchmark.go. The 1.5.0 delta is Pi e5c6182ba: every seed and write goes through commitWrites. Ported in durable/durabletest/storage_benchmark.go."
 
 [[files]]
 path = "packages/durable/src/testing/storage-conformance.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream"]
+rationale = "Whole file ported in durable/durabletest/storage_conformance.go. The 1.5.0 delta is Pi e5c6182ba: the receive-order checks (checkReceipts) and four new cases for batches in order, the prefix before a refusal, a malformed later batch and a batched copy. Ported in durable/durabletest/storage_conformance.go."
 
 [[files]]
 path = "packages/durable/src/testing/types.ts"
@@ -5485,16 +5485,16 @@ rationale = "New in Pi 1.2.0: a re-export barrel for tool-search.ts. The Go pack
 [[files]]
 path = "packages/durable/src/tool-search/tool-search.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/toolsearch/toolsearch_pi_oracle_test.go#TestToolSearchMatchesPiOnSeededDeferredTools", "test:durable/toolsearch/toolsearch_carried_test.go"]
+rationale = "Whole file ported in durable/toolsearch/toolsearch.go. The 1.5.0 delta is Pi 6536f8012 (pi-schema declaration of tool_search) and c7372af42 (search text is the description and parameter text; the ranker reads the name). Both are ported; TestToolSearchMatchesPiOnSeededDeferredTools compares the ranking with Pi's."
 
 [[files]]
 path = "packages/durable/src/tools/bash.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/tools/tool_declarations_upstream_test.go#TestWriteEditAndShellToolDeclarationsMatchUpstream", "test:durable/tools/tool_declarations_pi_oracle_test.go#TestBuiltInToolDeclarationsMatchPi"]
+rationale = "Whole file ported in durable/tools/bash.go. The 1.5.0 delta is Pi 6536f8012: the bash tool's parameters are declared with pi-schema (members in pi-schema order, open object). durable/tools/bash.go declares the same schema; TestBuiltInToolDeclarationsMatchPi and TestWriteEditAndShellToolDeclarationsMatchUpstream compare the declarations with Pi's."
 
 [[files]]
 path = "packages/durable/src/tools/edit-diff.ts"
@@ -5506,9 +5506,9 @@ rationale = "PORT_MAP row is ✅ ported (durable/tools/diff_string.go + durable/
 [[files]]
 path = "packages/durable/src/tools/edit.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/tools/tool_declarations_upstream_test.go#TestWriteEditAndShellToolDeclarationsMatchUpstream", "test:durable/tools/tool_declarations_pi_oracle_test.go#TestBuiltInToolDeclarationsMatchPi"]
+rationale = "Whole file ported in durable/tools/edit.go. The 1.5.0 delta is Pi 6536f8012: the edit tool's parameters are declared with pi-schema (members in pi-schema order, open object). durable/tools/edit.go declares the same schema; TestBuiltInToolDeclarationsMatchPi and TestWriteEditAndShellToolDeclarationsMatchUpstream compare the declarations with Pi's."
 
 [[files]]
 path = "packages/durable/src/tools/env.ts"
@@ -5555,16 +5555,16 @@ rationale = "PORT_MAP row is ✅ ported (durable/tools/path_utils.go). coverage.
 [[files]]
 path = "packages/durable/src/tools/read.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/tools/read_structured_output_test.go#TestReadReturnsAnImageBlockAsStructuredOutput", "test:durable/tools/read_structured_output_test.go#TestReadDeclaresTheTextOrImageStructuredOutputSchema", "test:durable/tools/read_structured_output_test.go#TestReadReturnsTheShownTextAsStructuredOutput", "test:durable/tools/tool_declarations_pi_oracle_test.go#TestBuiltInToolDeclarationsMatchPi"]
+rationale = "Whole file ported in durable/tools/read.go and read_image.go. The 1.5.0 delta is Pi 044148392 (#11606: read returns the text, or the image block, as structuredOutput and declares readStructuredOutputSchema, so Code Mode scripts get the image) and 6536f8012 (pi-schema declaration). Both are ported; the three structured-output tests drive them."
 
 [[files]]
 path = "packages/durable/src/tools/write.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/tools/tool_declarations_upstream_test.go#TestWriteEditAndShellToolDeclarationsMatchUpstream", "test:durable/tools/tool_declarations_pi_oracle_test.go#TestBuiltInToolDeclarationsMatchPi"]
+rationale = "Whole file ported in durable/tools/write.go. The 1.5.0 delta is Pi 6536f8012: the write tool's parameters are declared with pi-schema (members in pi-schema order, open object). durable/tools/write.go declares the same schema; TestBuiltInToolDeclarationsMatchPi and TestWriteEditAndShellToolDeclarationsMatchUpstream compare the declarations with Pi's."
 
 [[files]]
 path = "packages/durable/src/truncate.ts"
@@ -5576,9 +5576,9 @@ rationale = "PORT_MAP row is ✅ ported (durable/truncate.go). coverage.md repor
 [[files]]
 path = "packages/durable/src/types.ts"
 change = "added"
-disposition = "pending"
-evidence = []
-rationale = ""
+disposition = "ported"
+evidence = ["test:durable/record_carriers_wire_test.go#TestRecordCarriersAreOptionalPlainJsonMembers", "test:durable/storage/record_carriers_test.go#TestStorageKeepsTaskAndSubmissionTelemetryCarriers", "test:durable/storage/memory_storage_test.go#TestMemoryStorageConformance"]
+rationale = "Whole file ported in durable/types.go. The group-commit delta is Pi e5c6182ba: Storage.commit takes batches and a receive callback and returns CommitResult, and an optional Storage.publishing. Ported as durable.CommitResult, PublishingStorage and Storage.Commit(ctx, batches, receive) in durable/types.go; the memory Storage conformance run exercises the contract."
 
 [[files]]
 path = "packages/env/src/connection.ts"
