@@ -12,7 +12,7 @@ import (
 // block instead of "".
 
 func TestReadDeclaresTheTextOrImageStructuredOutputSchema(t *testing.T) {
-	const want = `{"anyOf":[{"type":"string"},{"type":"object","required":["type","data","mimeType"],"properties":{"type":{"const":"image","type":"string"},"data":{"type":"string"},"mimeType":{"type":"string"}}}]}`
+	const want = `{"anyOf":[{"type":"string"},{"type":"object","properties":{"type":{"const":"image"},"data":{"type":"string"},"mimeType":{"type":"string"}},"required":["type","data","mimeType"]}]}`
 	var schema any
 	if err := json.Unmarshal([]byte(want), &schema); err != nil {
 		t.Fatal(err)

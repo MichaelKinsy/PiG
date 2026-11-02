@@ -807,6 +807,9 @@ func (c *checker) single(up string, t types.Type) verdict {
 		if types.IsInterface(t) || isByteSlice(t) {
 			return yesV() // T4
 		}
+		if m, ok := t.Underlying().(*types.Map); ok && up == "object" && basicInfo(m.Key())&types.IsString != 0 && types.IsInterface(m.Elem()) {
+			return yesV() // T4o: an upstream object (a JSON Schema in Pi's tool parameters) is the Go map from string to any
+		}
 		return unknownV("T4: upstream %s, Go type is %s", up, typeLabel(t))
 	case up == "AbortSignal":
 		if isContext(t) {

@@ -87,28 +87,6 @@ shareDecodedFrames((envelope) => envelope?.type === "notify" && envelope.notify?
 // Marks the renderers of a definition from Pi's create<Tool>ToolDefinition
 // (shims/builtin-tools.mjs): the host draws those halves with its built-in
 // renderers for the named tool.
-// The nodes of a tool's parameter schema that carry TypeBox refinements (the hidden ~refine list of Type.Refine), by the path of each node ("/properties/a", "/anyOf/1", "/items"): the
-// Host asks for each predicate call with tool_refine_arguments while it validates the arguments (ai/validate_refine.go).
-const refinementWithMembers = ["properties", "patternProperties", "dependentSchemas", "dependencies", "$defs", "definitions"];
-const refinementWithList = ["allOf", "anyOf", "oneOf", "prefixItems", "items"];
-const refinementWithChild = ["additionalProperties", "additionalItems", "contains", "propertyNames", "not", "if", "then", "else", "items", "unevaluatedItems", "unevaluatedProperties"];
-function refinementSites(schema) {
-  const sites = [];
-  const visit = (node, path) => {
-    if (!node || typeof node !== "object" || Array.isArray(node)) return;
-    const list = node["~refine"];
-    if (Array.isArray(list) && list.length > 0) sites.push({ path, refinements: list });
-    for (const key of Object.keys(node)) {
-      const value = node[key];
-      if (refinementWithMembers.includes(key) && value && typeof value === "object") for (const name of Object.keys(value)) visit(value[name], `${path}/${key}/${name.replaceAll("~", "~0").replaceAll("/", "~1")}`);
-      else if (refinementWithList.includes(key) && Array.isArray(value)) value.forEach((member, index) => visit(member, `${path}/${key}/${index}`));
-      else if (refinementWithChild.includes(key)) visit(value, `${path}/${key}`);
-    }
-  };
-  visit(schema, "");
-  return sites;
-}
-
 const builtInToolRenderer = Symbol.for("pig.builtInToolRenderer");
 
 // A host call the runtime cancels (its parent request was cancelled, or its connection closed on shutdown, reload or session replacement) rejects with an error made here. Pi never rejects a host call that way: its calls are in-process and outlive the command that started them (interactive-mode.ts showExtensionCustom 2858-2940 settles only through done() or a factory failure). An extension that dropped the call's promise, as pi-mcp-adapter drops ctx.ui.custom's, owns nothing that can observe this rejection, so it must not end the process, which a packed cell shares with the successor generation of a reload. Every other unhandled rejection keeps Node's default (lib/internal/process/promises.js, --unhandled-rejections=throw): an extension listener handles it, and with none it raises as an uncaught exception, as in Pi, whose process the extension shares.
@@ -2750,27 +2728,11 @@ export class Runtime {
   }
 
   toolDeclaration(tool) {
-    const refinements = refinementSites(tool.parameters).map((site) => ({ path: site.path, count: site.refinements.length }));
     return {
-      refinements: refinements.length > 0 ? refinements : undefined,
       name: tool.name,
       label: tool.label,
       description: tool.description || "",
       parameters: tool.parameters,
-      // TypeBox kinds are non-enumerable and remain host-only validation metadata.
-      validation_parameters: JSON.parse(JSON.stringify(tool.parameters || {}, (_key, value) => {
-        if (value && typeof value === "object" && !Array.isArray(value) && value["~kind"]) {
-          const copy = { ...value, "~kind": value["~kind"] };
-          if (["Intersect", "Enum", "TemplateLiteral"].includes(value["~kind"])) {
-            const { Evaluate, Instantiate } = requireModule("./shims/typebox.mjs");
-            copy["~convert"] = Evaluate(value["~kind"] === "Intersect" ? Instantiate({}, value) : value);
-          }
-          if (value === tool.parameters && Object.getOwnPropertySymbols(value).includes(Symbol.for("TypeBox.Kind"))) copy["~skipCoercion"] = true;
-          return copy;
-        }
-        if (value === tool.parameters && Object.getOwnPropertySymbols(value).includes(Symbol.for("TypeBox.Kind"))) return { ...value, "~skipCoercion": true };
-        return value;
-      })),
       constrained_sampling: tool.constrainedSampling,
       execution_mode: tool.executionMode,
       prompt_snippet: tool.promptSnippet,
@@ -4888,18 +4850,6 @@ export class Runtime {
           const tool = this.tools.get(request.tool);
           if (typeof tool?.prepareArguments !== "function") throw new Error(`tool ${request.tool} has no prepareArguments`);
           await this.respond(id, tool.prepareArguments(request.args || {}));
-          return;
-        }
-        case "tool_refine_arguments": {
-          // validation.ts validateToolArguments: TypeBox calls a refinement's check (and error) while it validates; the Host's traversal asks for each call here.
-          const refine = request.refine ?? {};
-          const site = refinementSites(this.tools.get(request.tool)?.parameters).find((candidate) => candidate.path === refine.path);
-          const refinement = site?.refinements[refine.index];
-          if (!refinement) throw new Error(`tool ${request.tool} has no refinement ${refine.index} at "${refine.path}"`);
-          const ok = !!refinement.check(refine.value);
-          const result = { ok };
-          if (!ok && refine.with_message) result.message = refinement.error(refine.value);
-          await this.respond(id, result);
           return;
         }
         case "tool_prepare_loadout": {

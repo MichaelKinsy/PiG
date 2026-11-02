@@ -213,12 +213,12 @@ out when there are none. Keys that are array indexes come first and ascending, a
 
 (defstruct (type-refinement (:constructor make-type-refinement (check message)))
   "One entry of a schema's hidden ~refine list: (funcall CHECK value) decides whether a value passes and (funcall MESSAGE value) words the
-failure (NIL is TypeBox's \"Refine Error\"). Pi runs them while it validates a tool call's arguments."
+failure (NIL is TypeBox's \"Refine Error\"). TypeBox's own validation runs them, but a tool's arguments are validated as plain JSON Schema (Pi 0.7.0 validates with pi-schema), so nothing consults the list: arguments a refinement would reject are accepted and the constraint belongs in the tool's handler."
   check message)
 
 (defun type-refine (&rest arguments)
   "Type.Refine (schema check) or (schema check error): a copy of the schema whose hidden ~refine list has the refinement appended; the schema's
-JSON does not change. The refinements run when the host validates a tool call's arguments (see TOOL). TypeBox matches the arguments by count, so
+JSON does not change. The refinements are not run: a tool's arguments are validated as plain JSON Schema, so check such constraints in the handler. TypeBox matches the arguments by count, so
 any other count signals TYPE-SCHEMA-ERROR \"Invalid Arguments\", as Pi's does."
   (unless (<= 2 (length arguments) 3) (ts-fail "Invalid Arguments"))
   (destructuring-bind (schema check &optional message) arguments

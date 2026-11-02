@@ -403,37 +403,18 @@ encoder writes something that reads back as the same schema."
       (pig:tool ext "refine-probe" "Arguments checked by refinements" probe (lambda (ctx args) (declare (ignore ctx args)) "ok"))
       ext)))
 
-(deftest a-refined-tool-declares-its-sites-and-answers-the-hosts-refinement-requests
+(deftest a-refined-tool-declares-no-refinements-and-never-runs-them
+  ;; Pi 0.7.0 validates a tool's arguments as plain JSON Schema: Type.refine data stays in this process and no predicate is ever called.
   (let* ((log (list '())) (ext (tt-refine-extension log)))
     (with-host (host ext register)
       (let ((declaration (aref (pig:jget (pig:jget register "register") "tools") 0)))
-        (check-equal "[{\"path\":\"\",\"count\":1},{\"path\":\"/properties/name\",\"count\":1},{\"path\":\"/properties/qty\",\"count\":1},{\"path\":\"/properties/boom\",\"count\":1}]"
-                     (pig:to-json (pig:jget declaration "refinements")))
-        (check-equal "Object" (pig:jget (pig:jget declaration "validation_parameters") "~kind"))
-        (check-equal "String" (pig:jget (pig:jref (pig:jget declaration "validation_parameters") "properties" "name") "~kind"))
+        (check (not (nth-value 1 (gethash "refinements" declaration))))
+        (check (not (nth-value 1 (gethash "validation_parameters" declaration))))
         (check (not (nth-value 1 (gethash "~kind" (pig:jget declaration "parameters"))))))
-      (flet ((refine (path index value &optional with-message)
-               (request host "r" "tool_refine_arguments" "tool" "refine-probe"
-                        "refine" (pig:obj "path" path "index" index "value" value "with_message" (if with-message t :false)))
-               (hread-type host "response")))
-        (let ((response (pig:jget (refine "/properties/name" 0 "ab" t) "response")))
-          (check-equal "{\"ok\":false,\"message\":\"name is too short\"}" (pig:to-json (pig:jget response "result"))))
-        (let ((response (pig:jget (refine "/properties/name" 0 "abcd") "response")))
-          (check-equal "{\"ok\":true}" (pig:to-json (pig:jget response "result"))))
-        (let ((response (pig:jget (refine "/properties/qty" 0 3 t) "response")))
-          (check-equal "{\"ok\":false,\"message\":\"qty must be even, got 3\"}" (pig:to-json (pig:jget response "result"))))
-        (let ((response (pig:jget (refine "" 0 :null t) "response")))
-          (check-equal "{\"ok\":true}" (pig:to-json (pig:jget response "result"))))
-        (check-equal "kaboom" (pig:jget (pig:jget (pig:jget (refine "/properties/boom" 0 "x") "response") "error") "message") "a throwing check fails the request")
-        (check-equal "tool \"refine-probe\" has no refinement 5 at \"/properties/name\""
-                     (pig:jget (pig:jget (pig:jget (refine "/properties/name" 5 "x") "response") "error") "message"))
-        (check-equal '("check:len" "error:lenmsg" "check:len" "check:even" "error:evenmsg" "check:root" "check:boom") (reverse (car log)))))))
+      (check (null (car log))))))
 
-(deftest a-refinement-the-host-does-not-run-fails-registration
+(deftest a-refinement-under-any-keyword-registers
   (let ((ext (pig:make-extension "stranded")))
-    (check-equal "Tool \"t\" registered by extension \"stranded\" has a refinement under a schema keyword whose refinements the host does not run (it runs them under properties, patternProperties, additionalProperties, items, prefixItems, additionalItems, allOf, anyOf, oneOf, not, if, then, else and $defs)."
-                 (handler-case (progn (pig:tool ext "t" "d" (pig:type-object (pig:obj) (pig:obj "x-extra" (pig:type-refine (pig:type-string) (lambda (v) v))))
-                                                (lambda (ctx args) (declare (ignore ctx args)) "ok"))
-                                      nil)
-                   (error (e) (princ-to-string e))))
-    (check (null (pig::extension-tools ext)))))
+    (pig:tool ext "t" "d" (pig:type-object (pig:obj) (pig:obj "x-extra" (pig:type-refine (pig:type-string) (lambda (v) v))))
+              (lambda (ctx args) (declare (ignore ctx args)) "ok"))
+    (check (= 1 (length (pig::extension-tools ext))))))

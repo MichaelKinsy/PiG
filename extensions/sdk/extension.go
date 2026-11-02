@@ -1529,15 +1529,6 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		prepared, err := prepare(params)
 		_ = e.conn.respond(id, prepared, err)
 
-	case "tool_refine_arguments":
-		// validation.ts validateToolArguments: TypeBox calls a refinement's check (and error) while it validates; the host's traversal asks for each call here.
-		if req.Refine == nil {
-			_ = e.conn.respond(id, nil, fmt.Errorf("tool_refine_arguments names no refinement"))
-			return
-		}
-		result, err := e.runRefinement(req.Tool, req.Refine)
-		_ = e.conn.respond(id, result, err)
-
 	case requestWithSession:
 		_ = e.conn.respond(id, nil, e.dispatchWithSession(ctx, req.Args))
 

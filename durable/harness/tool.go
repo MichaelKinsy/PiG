@@ -1106,35 +1106,6 @@ func finalResult(ctx context.Context, runtime toolRuntime, input ToolTaskInput, 
 	return final, nil
 }
 
-// StructuredOutputError is why a result's structuredOutput breaks the tool's contract, or "" when it keeps it
-// (tool.ts structuredOutputError): the schema's strict check, without conversion or coercion.
-func StructuredOutputError(tool *durable.ToolRegistration, result durable.ToolExecutionResult) string {
-	if tool.StructuredOutputSchema == nil {
-		if !result.HasStructuredOutput {
-			return ""
-		}
-		return fmt.Sprintf("Tool %s returned structuredOutput but declares no structuredOutputSchema", tool.Name)
-	}
-	if !result.HasStructuredOutput {
-		if result.IsError != nil && *result.IsError {
-			return ""
-		}
-		return fmt.Sprintf("Tool %s returned no structuredOutput", tool.Name)
-	}
-	encoded, err := json.Marshal(result.StructuredOutput)
-	if err != nil {
-		return fmt.Sprintf("Tool %s returned structuredOutput that does not match its schema: root: %v", tool.Name, err)
-	}
-	path, message, ok, err := ai.CheckSchemaValue(tool.StructuredOutputSchema, encoded)
-	if err != nil {
-		return fmt.Sprintf("Tool %s returned structuredOutput that does not match its schema: root: %v", tool.Name, err)
-	}
-	if ok {
-		return ""
-	}
-	return fmt.Sprintf("Tool %s returned structuredOutput that does not match its schema: %s: %s", tool.Name, path, message)
-}
-
 // sameContent is upstream's identity comparison of the content array: the same first element and length.
 func sameContent(left, right []ai.ToolResultMessageContent) bool {
 	if len(left) != len(right) {

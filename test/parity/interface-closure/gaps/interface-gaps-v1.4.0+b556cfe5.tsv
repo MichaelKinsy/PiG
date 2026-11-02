@@ -1,58 +1,3 @@
-pkg:agent/.#AgentToolParams	agent	no-go-symbol	
-pkg:ai/.#CacheRetention	ai	undecidable	ai/types.go#CacheRetention
-pkg:ai/.#ChatTemplateKwargValue	ai	undecidable	ai/types_unions.go#ChatTemplateKwargValue
-pkg:ai/.#ModelCost	ai	undecidable	ai/types.go#ModelCost
-pkg:ai/.#ModelCostRates	ai	undecidable	ai/types.go#ModelCost
-pkg:ai/.#ModelCostTier	ai	undecidable	ai/types.go#CostTier
-pkg:ai/.#ModelImageInputLimits	ai	undecidable	ai/types.go#ModelImageInputLimits
-pkg:ai/.#ModelImageResizeOptions	ai	undecidable	ai/types.go#ModelImageResizeOptions
-pkg:ai/.#ModelInputLimits	ai	undecidable	ai/types.go#ModelInputLimits
-pkg:ai/.#ModelInputModality	ai	undecidable	ai/types.go#ModelInputModality
-pkg:ai/.#ModelPromptCache	ai	undecidable	ai/types.go#ModelPromptCache
-pkg:ai/.#ModelThinkingLevel	ai	undecidable	ai/types.go#ModelThinkingLevel
-pkg:ai/.#ResolvedGoogleThinkingLevel	ai	undecidable	ai/google.go#ResolvedGoogleThinkingLevel
-pkg:ai/.#SessionAffinityFormat	ai	undecidable	ai/types.go#SessionAffinityFormat
-pkg:ai/.#ThinkingLevel	ai	undecidable	ai/types.go#ThinkingLevel
-pkg:ai/.#ThinkingLevelMap	ai	undecidable	ai/types.go#ThinkingLevelMap
-pkg:ai/api/constrained-sampling#makeStrictJsonSchema	ai	child-gap	ai/constrained_sampling.go#MakeStrictJSONSchema
-pkg:ai/api/constrained-sampling#makeStrictJsonSchema::call:0	ai	undecidable	ai/constrained_sampling.go#MakeStrictJSONSchema
-pkg:ai/api/google-shared#ResolvedGoogleThinkingLevel	ai	undecidable	ai/google.go#ResolvedGoogleThinkingLevel
-pkg:ai/compat#CacheRetention	ai	undecidable	ai/types.go#CacheRetention
-pkg:ai/compat#ChatTemplateKwargValue	ai	undecidable	ai/types_unions.go#ChatTemplateKwargValue
-pkg:ai/compat#ModelCost	ai	undecidable	ai/types.go#ModelCost
-pkg:ai/compat#ModelCostRates	ai	undecidable	ai/types.go#ModelCost
-pkg:ai/compat#ModelCostTier	ai	undecidable	ai/types.go#CostTier
-pkg:ai/compat#ModelImageInputLimits	ai	undecidable	ai/types.go#ModelImageInputLimits
-pkg:ai/compat#ModelImageResizeOptions	ai	undecidable	ai/types.go#ModelImageResizeOptions
-pkg:ai/compat#ModelInputLimits	ai	undecidable	ai/types.go#ModelInputLimits
-pkg:ai/compat#ModelInputModality	ai	undecidable	ai/types.go#ModelInputModality
-pkg:ai/compat#ModelPromptCache	ai	undecidable	ai/types.go#ModelPromptCache
-pkg:ai/compat#ModelThinkingLevel	ai	undecidable	ai/types.go#ModelThinkingLevel
-pkg:ai/compat#ResolvedGoogleThinkingLevel	ai	undecidable	ai/google.go#ResolvedGoogleThinkingLevel
-pkg:ai/compat#SessionAffinityFormat	ai	undecidable	ai/types.go#SessionAffinityFormat
-pkg:ai/compat#ThinkingLevel	ai	undecidable	ai/types.go#ThinkingLevel
-pkg:ai/compat#ThinkingLevelMap	ai	undecidable	ai/types.go#ThinkingLevelMap
-pkg:ai/providers/compat-schema#ChatTemplateKwargValue	ai	undecidable	ai/types_unions.go#ChatTemplateKwargValue
-pkg:ai/providers/compat-schema#ProviderCompat	ai	undecidable	internal/codingagent/model_registry.go#providerCompat
-pkg:ai/providers/compat-schema#SessionAffinityFormat	ai	undecidable	ai/types.go#SessionAffinityFormat
-pkg:ai/providers/model-schema#CacheRetention	ai	undecidable	ai/types.go#CacheRetention
-pkg:ai/providers/model-schema#ModelCost	ai	undecidable	ai/types.go#ModelCost
-pkg:ai/providers/model-schema#ModelCostRates	ai	undecidable	ai/types.go#ModelCost
-pkg:ai/providers/model-schema#ModelCostTier	ai	undecidable	ai/types.go#CostTier
-pkg:ai/providers/model-schema#ModelImageInputLimits	ai	undecidable	ai/types.go#ModelImageInputLimits
-pkg:ai/providers/model-schema#ModelImageResizeOptions	ai	undecidable	ai/types.go#ModelImageResizeOptions
-pkg:ai/providers/model-schema#ModelInputLimits	ai	undecidable	ai/types.go#ModelInputLimits
-pkg:ai/providers/model-schema#ModelInputModality	ai	undecidable	ai/types.go#ModelInputModality
-pkg:ai/providers/model-schema#ModelPromptCache	ai	undecidable	ai/types.go#ModelPromptCache
-pkg:ai/providers/model-schema#ModelThinkingLevel	ai	undecidable	ai/types.go#ModelThinkingLevel
-pkg:ai/providers/model-schema#ThinkingLevel	ai	undecidable	ai/types.go#ThinkingLevel
-pkg:ai/providers/model-schema#ThinkingLevelMap	ai	undecidable	ai/types.go#ThinkingLevelMap
-pkg:ai/providers/schema-builders#openObject	ai	no-go-symbol	
-pkg:ai/providers/schema-builders#openObject::call:0	ai	child-gap	
-pkg:ai/providers/schema-builders#stringLiteral	ai	no-go-symbol	
-pkg:ai/providers/schema-builders#stringLiteral::call:0	ai	child-gap	
-pkg:ai/providers/schema-builders#stringRecord	ai	no-go-symbol	
-pkg:ai/providers/schema-builders#stringRecord::call:0	ai	child-gap	
 pkg:chord/.#Description	chord	undecidable	chord/host/contract.go#Description
 pkg:chord/next#BooleanSchema	chord	no-go-symbol	
 pkg:chord/next#BooleanSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
@@ -118,22 +63,6 @@ pkg:chord/next#union	chord	child-gap	chord/next/contracts/schema.go#Union
 pkg:chord/next#union::call:0	chord	signature-mismatch	chord/next/contracts/schema.go#Union
 pkg:chord/next#unknown	chord	child-gap	chord/next/contracts/schema.go#Unknown
 pkg:chord/next#unknown::call:0	chord	signature-mismatch	chord/next/contracts/schema.go#Unknown
-pkg:coding-agent/.#createBashTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateBashTool
-pkg:coding-agent/.#createBashTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateBashTool
-pkg:coding-agent/.#createEditTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateEditTool
-pkg:coding-agent/.#createEditTool::call:0	coding-agent	undecidable	internal/codingagent/tools/tools.go#CreateEditTool
-pkg:coding-agent/.#createFindTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateFindTool
-pkg:coding-agent/.#createFindTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateFindTool
-pkg:coding-agent/.#createGrepTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateGrepTool
-pkg:coding-agent/.#createGrepTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateGrepTool
-pkg:coding-agent/.#createLsTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateLsTool
-pkg:coding-agent/.#createLsTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateLsTool
-pkg:coding-agent/.#createPowerShellTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreatePowerShellTool
-pkg:coding-agent/.#createPowerShellTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreatePowerShellTool
-pkg:coding-agent/.#createReadTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateReadTool
-pkg:coding-agent/.#createReadTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateReadTool
-pkg:coding-agent/.#createWriteTool	coding-agent	child-gap	internal/codingagent/tools/tools.go#CreateWriteTool
-pkg:coding-agent/.#createWriteTool::call:0	coding-agent	signature-mismatch	internal/codingagent/tools/tools.go#CreateWriteTool
 pkg:durable/.#CommitResult	durable	no-go-symbol	
 pkg:durable/.#GenerationHooks	durable	child-gap	durable/harness/types.go#GenerationHooks
 pkg:durable/.#GenerationHooks::property:beforeProviderRequest	durable	member-missing	durable/harness/types.go#GenerationHooks
@@ -145,11 +74,9 @@ pkg:durable/.#Storage	durable	child-gap	durable/types.go#Storage
 pkg:durable/.#Storage::property:commit	durable	child-gap	durable/types.go#Storage.Commit
 pkg:durable/.#Storage::property:commit::call:0	durable	signature-mismatch	durable/types.go#Storage.Commit
 pkg:durable/.#Storage::property:publishing	durable	member-missing	durable/types.go#Storage
-pkg:durable/.#ToolRegistration	durable	undecidable	durable/harness_types.go#ToolRegistration
 pkg:durable/.#Tx	durable	child-gap	durable/types.go#Tx
 pkg:durable/.#Tx::property:latestEntryId	durable	member-missing	durable/types.go#Tx
 pkg:durable/.#Tx::property:latestEntryId::call:0	durable	member-missing	durable/types.go#Tx
-pkg:durable/codemode#CodemodeToolInput	durable	undecidable	durable/codemode/tool.go#ToolInput
 pkg:durable/storage/indexeddb#IndexedDbStorage	durable	no-go-symbol	
 pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit	durable	child-gap	
 pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit::call:0	durable	child-gap	
@@ -203,36 +130,3 @@ pkg:durable/storage/store#StoreStorage::property:task	durable	child-gap
 pkg:durable/storage/store#StoreStorage::property:task::call:0	durable	child-gap	
 pkg:durable/testing#commitWrites	durable	no-go-symbol	
 pkg:durable/testing#commitWrites::call:0	durable	child-gap	
-pkg:durable/tools#BashToolInput	durable	undecidable	durable/tools/bash.go#BashToolInput
-pkg:durable/tools#EditToolInput	durable	undecidable	durable/tools/edit.go#EditToolInput
-pkg:durable/tools#PowerShellToolInput	durable	undecidable	durable/tools/bash.go#PowerShellToolInput
-pkg:durable/tools#ReadToolInput	durable	undecidable	durable/tools/read.go#ReadToolInput
-pkg:durable/tools#WriteToolInput	durable	undecidable	durable/tools/write.go#WriteToolInput
-pkg:schema/.#CoercingValidator	schema	no-go-symbol	
-pkg:schema/.#CoercingValidator::construct:0	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:check	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:check::call:0	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:coerce	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:coerce::call:0	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:errors	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:errors::call:0	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:parse	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:parse::call:0	schema	child-gap	
-pkg:schema/.#CompileOptions	schema	child-gap	schema/types.go#CompileOptions
-pkg:schema/.#CompileOptions::property:coerce	schema	member-missing	schema/types.go#CompileOptions
-pkg:schema/.#CompileOptions::property:unresolvedRefs	schema	member-missing	schema/types.go#CompileOptions
-pkg:schema/.#ParseResult	schema	no-go-symbol	
-pkg:schema/.#arr	schema	child-gap	schema/builders.go#Arr
-pkg:schema/.#arr::call:0	schema	signature-mismatch	schema/builders.go#Arr
-pkg:schema/.#bytes	schema	child-gap	schema/builders.go#Bytes
-pkg:schema/.#bytes::call:0	schema	signature-mismatch	schema/builders.go#Bytes
-pkg:schema/.#compile	schema	child-gap	schema/validator.go#Compile
-pkg:schema/.#compile::call:0	schema	signature-mismatch	schema/validator.go#Compile
-pkg:schema/.#int	schema	child-gap	schema/builders.go#Int
-pkg:schema/.#int::call:0	schema	signature-mismatch	schema/builders.go#Int
-pkg:schema/.#num	schema	child-gap	schema/builders.go#Num
-pkg:schema/.#num::call:0	schema	signature-mismatch	schema/builders.go#Num
-pkg:schema/.#obj	schema	child-gap	schema/builders.go#Obj
-pkg:schema/.#obj::call:0	schema	signature-mismatch	schema/builders.go#Obj
-pkg:schema/.#str	schema	child-gap	schema/builders.go#Str
-pkg:schema/.#str::call:0	schema	signature-mismatch	schema/builders.go#Str
