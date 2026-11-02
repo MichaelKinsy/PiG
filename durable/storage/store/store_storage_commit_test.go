@@ -1,5 +1,8 @@
 package store
 
+// pi: packages/durable/src/storage/store/tables.ts
+// The refusals below run through EncodeIndexed, which no public entry point of Pi exports; its mutant in portmap-mutants.json fails them.
+
 // Ports packages/durable/test/store-storage-commit.test.ts
 //
 // StoreStorage's commit path (`Storage.Commit` over `ChordStore.CommitSeries`), p3's primary storage: per call one

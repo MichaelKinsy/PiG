@@ -802,5 +802,33 @@
    "old": "\t\t\tcall.changes = append(call.changes, change)\n",
    "new": "\t\t\tcall.changes = append(call.changes[:0], change)\n"
   }
+ ],
+ "packages/durable/src/storage/store/commit.ts": [
+  {
+   "file": "durable/storage/store/commit.go",
+   "old": "\t\t\tif existing != \"\" {\n",
+   "new": "\t\t\tif existing != \"\" && false {\n"
+  }
+ ],
+ "packages/durable/src/storage/store/documents.ts": [
+  {
+   "file": "durable/storage/store/documents.go",
+   "old": "at.Seq < *record.RetiredAt",
+   "new": "at.Seq <= *record.RetiredAt"
+  }
+ ],
+ "packages/durable/src/storage/store/queries.ts": [
+  {
+   "file": "durable/storage/store/queries.go",
+   "old": "Direction: \"desc\"}",
+   "new": "Direction: \"asc\"}"
+  }
+ ],
+ "packages/durable/src/storage/store/tables.ts": [
+  {
+   "file": "durable/storage/store/tables.go",
+   "old": "\"id\": int64(value.Id), \"owner_conversation_id\"",
+   "new": "\"id\": int64(value.Id) + 1, \"owner_conversation_id\""
+  }
  ]
 }
