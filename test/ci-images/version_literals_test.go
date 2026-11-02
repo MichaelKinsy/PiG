@@ -48,6 +48,7 @@ var versionLiteralAllowlist = []allowedVersionLiteral{
 	{"automation/images/ci-parity/Dockerfile", "1.27.3", "ARG GO_VERSION; make compliance checks it against .go-version"},
 	{"automation/images/ci-parity/metadata.env", "1.27.3", "IMAGE_TAG; make compliance checks it against .go-version"},
 	{"automation/images/ci-parity/Dockerfile", "1.5.0", "ARG PI_VERSION; make pin-sync writes it from .upstream/pin and make compliance checks it"},
+	{"automation/images/ci-parity/metadata.env", "1.5.0", "IMAGE_TAG; make pin-sync writes it from .upstream/pin and make compliance checks it"},
 	{"automation/images/ci-parity/Dockerfile", "12.1.0", "the image's npm check; make compliance checks it against NPM_VERSION"},
 
 	// Pins of tools that are not a Pi, Go, Node, Rust or npm release, kept beside the digest that pins the tool.
