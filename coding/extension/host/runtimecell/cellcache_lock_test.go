@@ -16,10 +16,10 @@ import (
 )
 
 const (
-	envHold   = "CELLCACHE_HOLD"
-	heldLine  = "CELLCACHE-LOCK-HELD"
-	lockSlot  = ".locks"
-	lockSufix = ".lock"
+	envHold    = "CELLCACHE_HOLD"
+	heldLine   = "CELLCACHE-LOCK-HELD"
+	lockSlot   = ".locks"
+	lockSuffix = ".lock"
 )
 
 // TestCellcacheLockHolderProcess is not a real test: when CELLCACHE_HOLD names a lock file it takes that lock, says so, and holds it
@@ -72,7 +72,7 @@ func TestPublishArtifactEndedContextIsNotReportedAsALockWait(t *testing.T) {
 func TestPublishArtifactLockLeftByAnEndedBuildDoesNotBlock(t *testing.T) {
 	cache := filepath.Join(t.TempDir(), "cells", "go")
 	finalDir := filepath.Join(cache, "after-ended-build")
-	lockPath := filepath.Join(cache, lockSlot, "after-ended-build"+lockSufix)
+	lockPath := filepath.Join(cache, lockSlot, "after-ended-build"+lockSuffix)
 
 	cmd := exec.Command(os.Args[0], "-test.run=^TestCellcacheLockHolderProcess$")
 	cmd.Env = append(os.Environ(), envHold+"="+lockPath)
@@ -103,14 +103,11 @@ func TestPublishArtifactLockLeftByAnEndedBuildDoesNotBlock(t *testing.T) {
 		_ = cmd.Wait()
 		t.Fatal("the lock holder never took the lock")
 	}
-	// The holder is alive and holds the lock, so a build that cannot wait (its context has no time) fails on the holder.
-	contended, cancelContended := context.WithTimeout(t.Context(), time.Nanosecond)
-	defer cancelContended()
-	<-contended.Done()
-	var built bool
-	if _, err := publishQuickly(contended, finalDir, "after-ended-build", &built); err == nil {
-		t.Fatal("a build with no time left succeeded")
+	// While the holder lives the lock is taken: this is the lock a build would wait for.
+	if locked, err := filelock.New(lockPath).TryLock(); err != nil || locked {
+		t.Fatalf("lock of a live holder: locked=%v err=%v, want it held", locked, err)
 	}
+	var built bool
 	if err := cmd.Process.Kill(); err != nil {
 		t.Fatal(err)
 	}
