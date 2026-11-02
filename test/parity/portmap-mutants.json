@@ -11,6 +11,75 @@
    "new": "(httpsOnly && parsed.Protocol == \"https:\")"
   }
  ],
+ "packages/coding-agent/src/utils/syntax-highlight.ts": [
+  {
+   "file": "tui/highlight.go",
+   "old": "\t\tif !scope.defined {\n",
+   "new": "\t\tif scope.defined {\n"
+  },
+  {
+   "file": "tui/highlight.go",
+   "old": "\t\t\t\tif line != \"\" {\n",
+   "new": "\t\t\t\tif line == \"\" {\n"
+  }
+ ],
+ "packages/coding-agent/src/utils/sleep.ts": [
+  {
+   "file": "ai/assistant_retry.go",
+   "old": "\tcase <-ctx.Done():\n\t\treturn errRetrySleepAborted\n",
+   "new": "\tcase <-ctx.Done():\n\t\treturn nil\n"
+  },
+  {
+   "file": "ai/assistant_retry.go",
+   "old": "delayMs > 1<<31-1",
+   "new": "delayMs > 1<<41"
+  }
+ ],
+ "packages/coding-agent/src/utils/tools-manager.ts": [
+  {
+   "file": "internal/codingagent/tools/tools_manager.go",
+   "old": "|| !strings.Contains(location, \"/releases/tag/\")",
+   "new": "|| strings.Contains(location, \"/releases/tag/\")"
+  }
+ ],
+ "packages/coding-agent/src/utils/version-check.ts": [
+  {
+   "file": "internal/codingagent/selfupdate.go",
+   "old": "\t\tmaxRetries = 2\n",
+   "new": "\t\tmaxRetries = 1\n"
+  },
+  {
+   "file": "internal/codingagent/selfupdate.go",
+   "old": "return l.Compare(r), true",
+   "new": "return r.Compare(l), true"
+  }
+ ],
+ "packages/coding-agent/src/utils/windows-self-update.ts": [
+  {
+   "file": "internal/codingagent/windows_self_update.go",
+   "old": "strings.ToLower(filepath.Base(current)) == \"node_modules\"",
+   "new": "filepath.Base(current) == \"node_modules\""
+  },
+  {
+   "file": "internal/codingagent/windows_self_update.go",
+   "old": "copyQuarantinedImage(quarantinePath, loadedFile)",
+   "new": "error(nil)"
+  }
+ ],
+ "packages/coding-agent/src/utils/tool-result-images.ts": [
+  {
+   "file": "internal/imageprocessing/images.go",
+   "old": "mime == image.MimeType && hint == \"\")",
+   "new": "mime == image.MimeType && hint != \"\")"
+  }
+ ],
+ "packages/coding-agent/src/utils/text.ts": [
+  {
+   "file": "internal/text/text.go",
+   "old": "\tif strings.HasPrefix(content, bom) {\n",
+   "new": "\tif strings.HasSuffix(content, bom) {\n"
+  }
+ ],
  "packages/codemode/src/cloudflare.ts": [
   {
    "file": "codemode/cloudflare/cloudflare.go",
