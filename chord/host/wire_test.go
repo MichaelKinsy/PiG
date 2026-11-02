@@ -9,12 +9,12 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
-// frameSchema is the JSON Schema TypeBox builds for wire.ts FrameSchema: Pi b45e0ebc gives
-// hash64(canonicalJson(FrameSchema)) = 678648a861625402 over 7361 characters (typebox 1.3.27).
+// frameSchema is the JSON Schema pi-schema's builders give wire.ts FrameSchema: Pi b556cfe5 gives
+// hash64(canonicalJson(FrameSchema)) = 9099e6ed9ca2a058 over 6765 characters (testdata/pi_frame_schema_hash.mjs).
 func TestFrameSchemaIsPiFrameSchema(t *testing.T) {
 	text := CanonicalJSON(frameSchema)
-	if got := Hash64(text); got != "678648a861625402" || len(text) != 7361 {
-		t.Fatalf("frame schema hash %s length %d, Pi 678648a861625402 7361", got, len(text))
+	if got := Hash64(text); got != "9099e6ed9ca2a058" || len(text) != 6765 {
+		t.Fatalf("frame schema hash %s length %d, Pi 9099e6ed9ca2a058 6765", got, len(text))
 	}
 }
 
@@ -141,7 +141,7 @@ func TestIsFrameRejectsMalformedFrames(t *testing.T) {
 			t.Fatalf("accepted %s", text)
 		}
 	}
-	// Unknown extra fields are allowed: TypeBox objects are open.
+	// Unknown extra fields are allowed: frame objects are open.
 	if _, err := DecodeFrame([]byte(`{"t":"ping","n":1,"x":2}`)); err != nil {
 		t.Fatal(err)
 	}

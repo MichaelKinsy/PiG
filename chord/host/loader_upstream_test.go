@@ -26,12 +26,12 @@ import (
 func fileURL(path string) string { return nodeurl.PathToFileURL(path, runtime.GOOS == "windows") }
 
 // nodeLoaderEnv is what the Pi fixture reads from its own package: the Chord source it imports (src/index.ts) and
-// the typebox it resolves from the package's node_modules. The mirror is read-only, so the plugin files under a
+// the pi-schema it resolves from the package's node_modules. The mirror is read-only, so the plugin files under a
 // temporary directory name both by file URL (the fixture writes its plugin files under the package instead).
 type nodeLoaderEnv struct {
-	chord   string // the Chord package directory
-	chordJS string // src/index.ts as a file URL
-	typebox string // typebox's entry as a file URL
+	chord    string // the Chord package directory
+	chordJS  string // src/index.ts as a file URL
+	piSchema string // pi-schema's source entry (src/index.ts) as a file URL
 }
 
 func requireNodeLoaderEnv(t *testing.T) nodeLoaderEnv {
@@ -46,33 +46,23 @@ func requireNodeLoaderEnv(t *testing.T) nodeLoaderEnv {
 	if _, err := os.Stat(filepath.Join(chord, "src", "index.ts")); err != nil {
 		t.Skip("the Pi mirror has no packages/chord/src/index.ts")
 	}
-	var typebox string
+	var piSchema string
 	for directory := chord; ; directory = filepath.Dir(directory) {
-		manifest, err := os.ReadFile(filepath.Join(directory, "node_modules", "typebox", "package.json"))
+		entry, err := filepath.EvalSymlinks(filepath.Join(directory, "node_modules", "@earendil-works", "pi-schema", "src", "index.ts"))
 		if err == nil {
-			var parsed struct {
-				Exports map[string]any `json:"exports"`
-			}
-			if err := json.Unmarshal(manifest, &parsed); err != nil {
-				t.Fatal(err)
-			}
-			entry, _ := parsed.Exports["."].(map[string]any)
-			target, _ := entry["import"].(string)
-			if target == "" {
-				t.Fatalf("typebox exports no import entry: %s", manifest)
-			}
-			typebox = fileURL(filepath.Join(directory, "node_modules", "typebox", target))
+			piSchema = fileURL(entry)
 			break
 		}
 		if filepath.Dir(directory) == directory {
-			t.Skip("typebox is not installed above the Pi mirror's chord package")
+			t.Skip("@earendil-works/pi-schema is not installed above the Pi mirror's chord package")
 		}
 	}
-	return nodeLoaderEnv{chord: chord, chordJS: fileURL(filepath.Join(chord, "src", "index.ts")), typebox: typebox}
+	return nodeLoaderEnv{chord: chord, chordJS: fileURL(filepath.Join(chord, "src", "index.ts")), piSchema: piSchema}
 }
 
 func (env nodeLoaderEnv) loader() *NodeLoaderImpl {
-	return NewNodeLoader(NodeLoaderOptions{Chord: filepath.Join(env.chord, "src", "index.ts")})
+	// The mirror holds sources only: pi-schema resolves to its source entry, as the Pi fixture's test runner resolves it.
+	return NewNodeLoader(NodeLoaderOptions{Chord: filepath.Join(env.chord, "src", "index.ts"), ExecArgv: []string{"--conditions=source"}})
 }
 
 func (env nodeLoaderEnv) write(t *testing.T, path, source string) {
@@ -80,7 +70,7 @@ func (env nodeLoaderEnv) write(t *testing.T, path, source string) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	source = strings.ReplaceAll(source, `"typebox"`, `"`+env.typebox+`"`)
+	source = strings.ReplaceAll(source, `"@earendil-works/pi-schema"`, `"`+env.piSchema+`"`)
 	if err := os.WriteFile(path, []byte(source), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -101,14 +91,14 @@ var nodeLoaderHello = Local("t.hello", LocalDef{
 // facetSource is the fixture's facetSource.
 func (env nodeLoaderEnv) facetSource() string {
 	return `
-import { Type } from "typebox";
+import { obj, str } from "@earendil-works/pi-schema";
 import { defineFacet, local, method } from ` + jsLiteral(env.chordJS) + `;
 import { greeting } from "./greeting.ts";
 
 const Hello = local("t.hello", {
 	version: 1,
-	input: Type.Object({}),
-	members: { greet: method(Type.String(), Type.String()) },
+	input: obj({}, { open: true }),
+	members: { greet: method(str(), str()) },
 });
 
 export default defineFacet((host) => {
@@ -178,8 +168,8 @@ func TestNodeLoaderLoadsFacetModulesAndReloadsThemWithFreshCopiesOfTheirRelative
 	env.write(t, plugins+"b/facet.ts",
 		"import { defineFacet } from "+jsLiteral(env.chordJS)+";\nimport { state } from \"./state.ts\";\nexport const own = state;\nexport default defineFacet(() => {});\n")
 	env.write(t, plugins+"a/facet.ts",
-		`import { Type } from "typebox";`+"\nimport { defineFacet, local, method } from "+jsLiteral(env.chordJS)+";\nimport { state } from \"../b/state.ts\";\n"+
-			`const Shared = local("t.shared", { version: 1, input: Type.Object({}), members: { same: method(undefined, Type.Boolean()) } });`+"\n"+
+		`import { bool, obj } from "@earendil-works/pi-schema";`+"\nimport { defineFacet, local, method } from "+jsLiteral(env.chordJS)+";\nimport { state } from \"../b/state.ts\";\n"+
+			`const Shared = local("t.shared", { version: 1, input: obj({}, { open: true }), members: { same: method(undefined, bool()) } });`+"\n"+
 			`export default defineFacet((host) => host.serve(Shared, () => ({ same: async () => (await import(new URL("../b/facet.ts", import.meta.url).href)).own === state })));`+"\n")
 	ordered := CreateHost(HostOptions{Self: kindHost(), Loader: loader.Load, OnError: func(error) {}})
 	t.Cleanup(func() { _ = ordered.Close() })
@@ -239,13 +229,13 @@ func TestNodeLoaderCarriesErrorsAndAbortsAcrossTheProcessBoundary(t *testing.T) 
 	dir := t.TempDir() + "/"
 	marker, started := dir+"aborted", dir+"started"
 	env.write(t, dir+"facet.ts", `
-import { Type } from "typebox";
+import { obj } from "@earendil-works/pi-schema";
 import { writeFileSync } from "node:fs";
 import { defineFacet, forbidden, local, method } from `+jsLiteral(env.chordJS)+`;
 
 const Probe = local("t.probe", {
 	version: 1,
-	input: Type.Object({}),
+	input: obj({}, { open: true }),
 	members: { refuse: method(), wait: method() },
 });
 
@@ -323,9 +313,9 @@ func TestNodeLoaderRefusesFacetsThatServeNonMethodMembers(t *testing.T) {
 	env := requireNodeLoaderEnv(t)
 	dir := t.TempDir() + "/"
 	env.write(t, dir+"facet.ts", `
-import { Type } from "typebox";
+import { num, obj } from "@earendil-works/pi-schema";
 import { defineFacet, local } from `+jsLiteral(env.chordJS)+`;
-const Counter = local("t.counter", { version: 1, input: Type.Object({}), members: { count: Type.Number() } });
+const Counter = local("t.counter", { version: 1, input: obj({}, { open: true }), members: { count: num() } });
 export default defineFacet((host) => host.serve(Counter, () => ({})));
 `)
 	loader := env.loader()
