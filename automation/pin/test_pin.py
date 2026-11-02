@@ -483,6 +483,25 @@ class SharedStoreTests(unittest.TestCase):
         self.assertEqual(len(set(results)), 1)
         self.assertEqual(self.label_of(results[0]), "first")
 
+    def test_a_cached_build_without_the_oracle_package_is_rebuilt_not_reused(self):
+        held = oracle.ensure(COMMIT)
+        shutil.rmtree(held)
+        held.mkdir()
+        rebuilt = oracle.ensure(COMMIT)
+        self.assertNotEqual(rebuilt.resolve(), held.resolve())
+        self.assertEqual(self.label_of(rebuilt), "first")
+        self.assertTrue((rebuilt / "@earendil-works" / "pi-coding-agent" / "cli.js").is_file())
+        self.assertEqual(self.builds, 2)
+
+    def test_a_cached_build_of_another_package_version_is_rebuilt_not_reused(self):
+        held = oracle.ensure(COMMIT)
+        manifest = held / "@earendil-works" / "pi-coding-agent" / "package.json"
+        manifest.write_text(json.dumps({**json.loads(manifest.read_text()), "version": "0.0.1"}))
+        rebuilt = oracle.ensure(COMMIT)
+        self.assertNotEqual(rebuilt.resolve(), held.resolve())
+        self.assertEqual(json.loads((rebuilt / "@earendil-works" / "pi-coding-agent" / "package.json").read_text())["version"], "1.1.0")
+        self.assertEqual(self.builds, 2)
+
     def test_a_forced_rebuild_publishes_a_new_directory_and_keeps_the_held_one(self):
         held = oracle.ensure(COMMIT)
         rebuilt = oracle.ensure(COMMIT, force=True)
