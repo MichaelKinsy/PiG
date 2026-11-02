@@ -5,6 +5,8 @@ import (
 	"sync"
 )
 
+// Ports packages/chord/src/next/state/watchable.ts (the Sets of its Source: dependents, watches and subscribers).
+
 // orderedSet is JavaScript's Set for the collections a source keeps: insertion ordered, each member once. Iteration is
 // over Snapshot, which is never mutated, so a member may leave the set while it is walked (a watch ending as it is
 // advanced) and a walk allocates nothing; adding and removing copy, which is rare next to walking. The mutex guards the

@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
+// pi: packages/chord/src/next/data/validator.ts
 // Ports packages/chord/test/next/data/validator.test.ts.
 //
 // Ported in typelevel_test.go: "leave nothing in TypeBox's build accumulators" asserts that typebox's module-level GetExternal and
