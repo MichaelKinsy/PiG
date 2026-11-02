@@ -241,6 +241,11 @@
    "file": "coding/extension/api.go",
    "old": "orderedjson.UnmarshalFields(data, (*plain)(p), \"details\")",
    "new": "orderedjson.UnmarshalFields(data, (*plain)(p), \"detailz\")"
+  },
+  {
+   "file": "coding/extension/opaque_types.go",
+   "old": "orderedjson.UnmarshalFields(data, (*plain)(r), \"details\")",
+   "new": "orderedjson.UnmarshalFields(data, (*plain)(r), \"detailz\")"
   }
  ],
  "packages/coding-agent/src/core/extensions/virtual-modules.ts": [

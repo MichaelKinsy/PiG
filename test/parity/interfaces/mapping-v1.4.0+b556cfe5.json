@@ -172026,9 +172026,9 @@
       "id": "pkg:coding-agent/.#ExtensionEvent",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:33338c9cb83a8def17a80d6ac16d3e9d6b4c2b00b89505c88d457b41c20fe2c3",
-      "rationale": "Derived by the interface gap detector: ExtensionEvent is Go coding/extension/extension_event.go#ExtensionEvent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ExtensionEvent is Go coding/extension/events.go#ExtensionEvent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "coding/extension/extension_event.go#ExtensionEvent"
+        "coding/extension/events.go#ExtensionEvent"
       ],
       "layers": {
         "behavior": "complete",

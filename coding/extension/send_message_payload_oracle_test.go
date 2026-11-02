@@ -58,3 +58,47 @@ process.stdout.write(JSON.stringify(out));`
 		}
 	}
 }
+
+// types.ts:1472 SessionBeforeCompactResult.compaction is a CompactionResult whose `details` is the extension's own JavaScript object
+// (core/compaction/compaction.ts:105): decoding the extension's result must enumerate `details` as Node does.
+func TestCompactionResultDetailsEnumerateLikeAJavaScriptObject(t *testing.T) {
+	inputs := []string{
+		`{"summary":"s","firstKeptEntryId":"e1","tokensBefore":10,"details":{"b":1,"2":2,"a":3,"1":4}}`,
+		`{"summary":"s","firstKeptEntryId":"e1","tokensBefore":10,"estimatedTokensAfter":4,"details":{"readFiles":["a","b"],"7":{"y":1,"3":2},"modifiedFiles":[]}}`,
+	}
+	const script = `
+const out = JSON.parse(require("fs").readFileSync(0, "utf8")).map((text) => JSON.stringify(JSON.parse(text).details));
+process.stdout.write(JSON.stringify(out));`
+	input, err := json.Marshal(inputs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(t.Context(), "node", "-e", script)
+	cmd.Stdin = bytes.NewReader(input)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	output, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Node oracle: %v\n%s", err, stderr.String())
+	}
+	var want []string
+	if err := json.Unmarshal(output, &want); err != nil {
+		t.Fatalf("Node oracle output %q: %v", output, err)
+	}
+	if len(want) != len(inputs) {
+		t.Fatalf("Node oracle returned %d results for %d inputs", len(want), len(inputs))
+	}
+	for i, in := range inputs {
+		var result extension.CompactionResult
+		if err := json.Unmarshal([]byte(in), &result); err != nil {
+			t.Fatalf("input %d: %v", i, err)
+		}
+		got, err := json.Marshal(result.Details)
+		if err != nil {
+			t.Fatalf("input %d: %v", i, err)
+		}
+		if string(got) != want[i] {
+			t.Errorf("input %d details = %s, want %s (Node)", i, got, want[i])
+		}
+	}
+}
