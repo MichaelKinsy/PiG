@@ -3296,6 +3296,27 @@
       ]
     },
     {
+      "id": "BF-1c1b349",
+      "title": "A write to a terminal that went away (`EIO` after a hang-up, `EPIPE`, `ENOTCONN`, `ENOTTY`) now ends the…",
+      "symptom": "A write to a terminal that went away (`EIO` after a hang-up, `EPIPE`, `ENOTCONN`, `ENOTTY`) now ends the session with exit 129, as Pi's stdout error listener does, instead of being discarded while the session keeps running (#397).",
+      "rootCause": "Pi adds an error listener to process.stdout and process.stderr that exits 129 through emergencyTerminalExit when the error is EIO, EPIPE, ENOTCONN or ENOTTY. ProcessTerminal.write discarded its error, so a session on a hung-up or revoked terminal kept running. The handler runs the exit once: the exit's own restore writes fail on the same terminal.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A write to a terminal that went away (`EIO` after a hang-up, `EPIPE`, `ENOTCONN`, `ENOTTY`) now ends the session with exit 129, as Pi's stdout error listener does, instead of being discarded while the session keeps running (#397).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1c1b349dbd",
+          "date": "2026-11-02",
+          "pr": "397"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-1c6b864",
       "title": "A Session that an extension creates with `createAgentSession`, or that `coding.CreateAgentSession` returns…",
       "symptom": "A Session that an extension creates with `createAgentSession`, or that `coding.CreateAgentSession` returns, now reports `entry_appended` to its listeners when an extension that its resource loader loaded calls `pi.appendEntry`, as Pi does.",
@@ -18374,6 +18395,27 @@
       ]
     },
     {
+      "id": "BF-6f165a2",
+      "title": "After Ctrl+Z, `bg` and `fg`, the session returns to the terminal instead of ending with `Error: interrupted…",
+      "symptom": "After Ctrl+Z, `bg` and `fg`, the session returns to the terminal instead of ending with `Error: interrupted system call`: raw-mode entry and exit retry an ioctl that a stop and continue interrupted, as Node's libuv does (#397).",
+      "rootCause": "Raw-mode entry and exit retry EINTR as libuv's uv__tcsetattr does (deps/uv/src/unix/tty.c). Without it a stop and continue inside the ioctl ended the session with \"interrupted system call\" where the kernel reports EINTR to the continued call (macOS).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After Ctrl+Z, `bg` and `fg`, the session returns to the terminal instead of ending with `Error: interrupted system call`: raw-mode entry and exit retry an ioctl that a stop and continue interrupted, as Node's libuv does (#397).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6f165a205c",
+          "date": "2026-11-02",
+          "pr": "397"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-6f26a84",
       "title": "Xiaomi MiMo models send only the thinking on/off toggle (no `reasoning_effort`) and expose only the `off` and…",
       "symptom": "Xiaomi MiMo models send only the thinking on/off toggle (no `reasoning_effort`) and expose only the `off` and `high` thinking levels, fixing the 400 at `minimal`.",
@@ -30668,6 +30710,37 @@
       "tests": [
         "coding/cli/startup_physical_cwd_test.go::TestStartupWorkingDirectoryIsThePhysicalPath",
         "internal/codingagent/file_processor_oracle_test.go::TestProcessCLIFileArgumentsMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-b65e288",
+      "title": "A suspended session that receives SIGCONT while its process group does not own the terminal (`bg`, or `kill…",
+      "symptom": "A suspended session that receives SIGCONT while its process group does not own the terminal (`bg`, or `kill -CONT` from elsewhere) no longer re-enters raw mode and draws into the shell's terminal; it stops again and waits for `fg`.",
+      "rootCause": "A SIGCONT that reaches a process group that does not own the terminal stops the session again with SIGTSTP before raw mode and before a frame, and waits for the SIGCONT that fg sends. A terminal that went away answers the tcgetpgrp check with EIO or ENOTTY and ends the session through the dead-terminal exit (129). Pi restarts its UI on any SIGCONT (interactive-mode.ts handleCtrlZ). Numbered divergence D227, owner approved.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D227",
+      "removeWhen": "Pi checks the foreground process group before it restarts the UI on SIGCONT, or an equivalent that keeps a background resume from touching the terminal.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A suspended session that receives SIGCONT while its process group does not own the terminal (`bg`, or `kill -CONT` from elsewhere) no longer re-enters raw mode and draws into the shell's terminal; it stops again and waits for `fg`. A terminal that went away while the session was stopped now ends it with the dead-terminal exit (129) instead of an `interrupted system call` error (#396, #397, D227).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b65e288aca",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/suspend_foreground_test.go::TestSuspendedSessionResumedInTheBackgroundStaysParkedUntilFg",
+        "internal/codingagent/suspend_foreground_test.go::TestSuspendedSessionWhoseTerminalIsGoneDoesNotRestart",
+        "internal/codingagent/suspend_foreground_unix_test.go::TestSuspendWaiterKeepsWaitingAfterAParkedContinuation",
+        "internal/codingagent/suspend_return_review_test.go::TestPairReview4SuspendReturnsBeforeContinue",
+        "internal/codingagent/suspend_upstream_test.go::TestInteractiveSuspendUpstream",
+        "internal/codingagent/suspend_upstream_test.go::TestSuspendCancellationCleansUpWithoutRestart",
+        "tui/terminal_foreground_pty_test.go::TestStdinForegroundHelper",
+        "tui/terminal_foreground_pty_test.go::TestStdinInForegroundFollowsTheTerminalProcessGroup"
       ]
     },
     {
@@ -45446,6 +45519,11 @@
       "id": "D226",
       "title": "Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs",
       "entry": "BF-D226"
+    },
+    {
+      "id": "D227",
+      "title": "A suspended session resumed in the background stays parked until `fg`",
+      "entry": "BF-b65e288"
     }
   ],
   "exemptCommits": {

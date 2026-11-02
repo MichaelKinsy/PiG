@@ -130,6 +130,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1b5540a](#bf-1b5540a) | `client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1b9718b](#bf-1b9718b) | fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon | PiG's own defect | All platforms | Unreleased |
 | [BF-1c1887a](#bf-1c1887a) | Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time | PiG's own defect | Windows | Unreleased |
+| [BF-1c1b349](#bf-1c1b349) | A write to a terminal that went away (`EIO` after a hang-up, `EPIPE`, `ENOTCONN`, `ENOTTY`) now ends the… | PiG's own defect | All platforms | Unreleased |
 | [BF-1c6b864](#bf-1c6b864) | A Session that an extension creates with `createAgentSession`, or that `coding.CreateAgentSession` returns… | PiG's own defect | All platforms | Unreleased |
 | [BF-1ca0e2f](#bf-1ca0e2f) | fix(codingagent): the terminal reader yields to the main loop it readied before it polls again | PiG's own defect | All platforms | Unreleased |
 | [BF-1cc7519](#bf-1cc7519) | fix(sdk): a command, shortcut, flag or renderer registered after load reaches the host in every SDK | PiG's own defect | All platforms | Unreleased |
@@ -657,6 +658,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6dfa6bf](#bf-6dfa6bf) | `go install github.com/MichaelKinsy/PiG/cmd/pig@<version>` downloads a root module of 181 MB instead of 304 MB | PiG's own defect | All platforms | 0.5.2 |
 | [BF-6e6a0dd](#bf-6e6a0dd) | A session message with a member of another JSON type than Pi writes is now kept, as Pi keeps it | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6ee6eae](#bf-6ee6eae) | A Session delivers each event to its listeners the way Pi's `AgentSession` does | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6f165a2](#bf-6f165a2) | After Ctrl+Z, `bg` and `fg`, the session returns to the terminal instead of ending with `Error: interrupted… | PiG's own defect | All platforms | Unreleased |
 | [BF-6f26a84](#bf-6f26a84) | Xiaomi MiMo models send only the thinking on/off toggle (no `reasoning_effort`) and expose only the `off` and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6f4a82f](#bf-6f4a82f) | Validation errors for `propertyNames` name the failing member in their path, `contains` reports only "must… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6fb1307](#bf-6fb1307) | openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before… | PiG's own defect | All platforms | 0.5.0 |
@@ -1089,6 +1091,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b5ebeb5](#bf-b5ebeb5) | A resumed session draws its `!` and `!!` command blocks, as Pi does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b5fb4aa](#bf-b5fb4aa) | fix(tui): a streamed Markdown is not resumed past a paragraph that a later LaTeX closer clips; keep wraps… | PiG's own defect | All platforms | Unreleased |
 | [BF-b607c35](#bf-b607c35) | Started from a directory reached through a symlink (a `$PWD` naming a link), pig now uses the physical… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-b65e288](#bf-b65e288) | A suspended session that receives SIGCONT while its process group does not own the terminal (`bg`, or `kill… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-b684b81](#bf-b684b81) | RPC and session JSON write an assistant message's members in the order Pi's providers assign them… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b6c65b3](#bf-b6c65b3) | `!` command and RPC `bash` output no longer keeps fragments of color codes, such as a stray `m`, when an… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-b6d8ab0](#bf-b6d8ab0) | Fix changelog fragment and bug ledger naming the pre-squash commit of #307 (#317) | PiG's own defect | All platforms | Unreleased |
@@ -3066,6 +3069,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1c1887a562` (2026-10-23, #298)
 - **Tests:** `ai/openrouter_cost_test.go::TestOpenAICompletionsOpenRouterReportedTotalWithoutCatalogRates`, `ai/transcript_tool_changes_test.go::TestTranscriptToolChangesAnthropicHoldsUpdatePastAssistantThatConvertsToNoBlocks`, `ai/usage_json_test.go::TestUsageCostTotalFromProviderWire`, `automation/ci/bugledger/bugledger_test.go::TestARetiredDivergenceEndsTheAheadOfPiClassOfAKeptNote`, `chord/host/close_queued_hold_test.go::TestCloseDropsAHoldQueuedBeforeItsLinkClosed`, `chord/state_source_test.go::TestConformanceReplicatedStateSourceContract`, `durable/core/driver/watch_test.go::TestConversationWatchFollowsCommits`, `durable/core/driver/watch_test.go::TestDocumentWatchValueFollowsCommitsUntilStopped` and 34 more in docs/bug-ledger.json
 - **Release note:** Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time. A frame the link had handed to the host loop before it closed could run after Close took its last look at the host's objects and after the connection had released what it held, so it created an object nothing disposed or released, and Close waited for that object's resource open for good (seen as a 30 minute `chord/host` test timeout on Windows after a `ready_timeout` get). A connection now ignores frames once its link closed, as Pi's link delivers none.
+
+### BF-1c1b349
+
+**A write to a terminal that went away (`EIO` after a hang-up, `EPIPE`, `ENOTCONN`, `ENOTTY`) now ends the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A write to a terminal that went away (`EIO` after a hang-up, `EPIPE`, `ENOTCONN`, `ENOTTY`) now ends the session with exit 129, as Pi's stdout error listener does, instead of being discarded while the session keeps running (#397).
+- **Root cause:** Pi adds an error listener to process.stdout and process.stderr that exits 129 through emergencyTerminalExit when the error is EIO, EPIPE, ENOTCONN or ENOTTY. ProcessTerminal.write discarded its error, so a session on a hung-up or revoked terminal kept running. The handler runs the exit once: the exit's own restore writes fail on the same terminal.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1c1b349dbd` (2026-11-02, #397)
+- **Tests:** None recorded.
+- **Release note:** A write to a terminal that went away (`EIO` after a hang-up, `EPIPE`, `ENOTCONN`, `ENOTTY`) now ends the session with exit 129, as Pi's stdout error listener does, instead of being discarded while the session keeps running (#397).
 
 ### BF-1c6b864
 
@@ -10351,6 +10368,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/codemode_session_upstream_test.go::TestUpstreamCodemodeModels`, `coding/session_boundaries_drafts_upstream_test.go::TestUpstreamSessionBoundariesDrafts`, `coding/session_event_listener_upstream_test.go::TestSessionNotifyListenersWalksTheLiveListenerListAsPi`, `coding/session_event_listener_upstream_test.go::TestSessionSubscribeNotifiesEveryListenerInOrderAndUnsubscribeLeavesTheOthers`, `coding/session_sections_test.go::TestSessionDefaultSectionsReachEventsProviderAndPersistenceOnce`, `mcp/errors_abort_test.go::TestMcpAbortErrorHasPiDefaultsNameAndNoCause`, `mcp/mcptest/inmemory_test.go::TestInMemoryTransportDropsQueuedMessagesOfAClosedEndAndReportsPlacement`, `mcp/oauth/callback_server_options_test.go::TestOAuthCallbackServerNamesTheRedirectMixUpAndReturnsTheContextCause` and 2 more in docs/bug-ledger.json
 - **Release note:** A Session delivers each event to its listeners the way Pi's `AgentSession` does. A listener that unsubscribes itself or another listener during delivery changes which listeners that delivery still reaches, and a listener subscribed during delivery receives the same event. Before, every delivery used the list as it was when the delivery began.
 
+### BF-6f165a2
+
+**After Ctrl+Z, `bg` and `fg`, the session returns to the terminal instead of ending with `Error: interrupted…**
+
+- **Source:** PiG's own defect
+- **Symptom:** After Ctrl+Z, `bg` and `fg`, the session returns to the terminal instead of ending with `Error: interrupted system call`: raw-mode entry and exit retry an ioctl that a stop and continue interrupted, as Node's libuv does (#397).
+- **Root cause:** Raw-mode entry and exit retry EINTR as libuv's uv__tcsetattr does (deps/uv/src/unix/tty.c). Without it a stop and continue inside the ioctl ended the session with "interrupted system call" where the kernel reports EINTR to the continued call (macOS).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6f165a205c` (2026-11-02, #397)
+- **Tests:** None recorded.
+- **Release note:** After Ctrl+Z, `bg` and `fg`, the session returns to the terminal instead of ending with `Error: interrupted system call`: raw-mode entry and exit retry an ioctl that a stop and continue interrupted, as Node's libuv does (#397).
+
 ### BF-6f26a84
 
 **Xiaomi MiMo models send only the thinking on/off toggle (no `reasoning_effort`) and expose only the `off` and…**
@@ -16343,6 +16374,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b607c35564` (2026-10-13)
 - **Tests:** `coding/cli/startup_physical_cwd_test.go::TestStartupWorkingDirectoryIsThePhysicalPath`, `internal/codingagent/file_processor_oracle_test.go::TestProcessCLIFileArgumentsMatchesPi`
 - **Release note:** Started from a directory reached through a symlink (a `$PWD` naming a link), pig now uses the physical working directory as Pi does, so `@file` arguments are named by their physical path.
+
+### BF-b65e288
+
+**A suspended session that receives SIGCONT while its process group does not own the terminal (`bg`, or `kill…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D227)
+- **Symptom:** A suspended session that receives SIGCONT while its process group does not own the terminal (`bg`, or `kill -CONT` from elsewhere) no longer re-enters raw mode and draws into the shell's terminal; it stops again and waits for `fg`.
+- **Root cause:** A SIGCONT that reaches a process group that does not own the terminal stops the session again with SIGTSTP before raw mode and before a frame, and waits for the SIGCONT that fg sends. A terminal that went away answers the tcgetpgrp check with EIO or ENOTTY and ends the session through the dead-terminal exit (129). Pi restarts its UI on any SIGCONT (interactive-mode.ts handleCtrlZ). Numbered divergence D227, owner approved.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi checks the foreground process group before it restarts the UI on SIGCONT, or an equivalent that keeps a background resume from touching the terminal.
+- **Fix commits:** `b65e288aca` (2026-11-02)
+- **Tests:** `internal/codingagent/suspend_foreground_test.go::TestSuspendedSessionResumedInTheBackgroundStaysParkedUntilFg`, `internal/codingagent/suspend_foreground_test.go::TestSuspendedSessionWhoseTerminalIsGoneDoesNotRestart`, `internal/codingagent/suspend_foreground_unix_test.go::TestSuspendWaiterKeepsWaitingAfterAParkedContinuation`, `internal/codingagent/suspend_return_review_test.go::TestPairReview4SuspendReturnsBeforeContinue`, `internal/codingagent/suspend_upstream_test.go::TestInteractiveSuspendUpstream`, `internal/codingagent/suspend_upstream_test.go::TestSuspendCancellationCleansUpWithoutRestart`, `tui/terminal_foreground_pty_test.go::TestStdinForegroundHelper`, `tui/terminal_foreground_pty_test.go::TestStdinInForegroundFollowsTheTerminalProcessGroup`
+- **Release note:** A suspended session that receives SIGCONT while its process group does not own the terminal (`bg`, or `kill -CONT` from elsewhere) no longer re-enters raw mode and draws into the shell's terminal; it stops again and waits for `fg`. A terminal that went away while the session was stopped now ends it with the dead-terminal exit (129) instead of an `interrupted system call` error (#396, #397, D227).
 
 ### BF-b684b81
 
@@ -22689,6 +22736,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D222 | A plugin input the build cannot read is reported at the import that names it, not at esbuild's library | deliberate difference |
 | D225 | A thread-based SDK's wait for the run it started needs the SDK's yield helper | deliberate difference |
 | D226 | Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs | [BF-D226](#bf-d226) |
+| D227 | A suspended session resumed in the background stays parked until `fg` | [BF-b65e288](#bf-b65e288) |
 
 ## Fix-titled commits that are not bugs in a release
 
