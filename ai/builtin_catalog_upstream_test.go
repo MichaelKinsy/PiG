@@ -179,6 +179,26 @@ func checkChatCatalog(t *testing.T, provider string, want map[string]map[string]
 		if upstreamHeaders, has := upstream["headers"]; has != (len(model.Headers) != 0) || has && !sameJSON(t, model.Headers, upstreamHeaders) {
 			t.Errorf("%s/%s: headers %v vs %v", provider, model.ID, model.Headers, upstreamHeaders)
 		}
+		// Every other member Pi's chat catalog entry carries: the compat bag, prompt-cache lifetimes, the thinking-level map and
+		// the gateway fields (enabled, lab, providers). Absent upstream means absent here, not an empty value.
+		if upstreamCompat, has := upstream["compat"]; has != (model.Compat != nil) || has && !sameJSON(t, model.Compat, upstreamCompat) {
+			t.Errorf("%s/%s: compat %+v vs %v", provider, model.ID, model.Compat, upstreamCompat)
+		}
+		if upstreamCache, has := upstream["promptCache"]; has != (model.PromptCache != nil) || has && !sameJSON(t, model.PromptCache, upstreamCache) {
+			t.Errorf("%s/%s: promptCache %v vs %v", provider, model.ID, model.PromptCache, upstreamCache)
+		}
+		if upstreamLevels, has := upstream["thinkingLevelMap"]; has != (model.ThinkingLevelMap != nil) || has && !sameJSON(t, model.ThinkingLevelMap, upstreamLevels) {
+			t.Errorf("%s/%s: thinkingLevelMap %v vs %v", provider, model.ID, model.ThinkingLevelMap, upstreamLevels)
+		}
+		if upstreamEnabled, has := upstream["enabled"]; has != (model.Enabled != nil) || has && !sameJSON(t, model.Enabled, upstreamEnabled) {
+			t.Errorf("%s/%s: enabled %v vs %v", provider, model.ID, model.Enabled, upstreamEnabled)
+		}
+		if upstreamLab, has := upstream["lab"]; has != (model.Lab != "") || has && model.Lab != upstreamLab {
+			t.Errorf("%s/%s: lab %q vs %v", provider, model.ID, model.Lab, upstreamLab)
+		}
+		if upstreamProviders, has := upstream["providers"]; has != (len(model.Providers) != 0) || has && !sameJSON(t, model.Providers, upstreamProviders) {
+			t.Errorf("%s/%s: providers %v vs %v", provider, model.ID, model.Providers, upstreamProviders)
+		}
 	}
 }
 

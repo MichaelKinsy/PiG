@@ -148,10 +148,10 @@ func bedrockAuth() *APIKeyAuth {
 
 const vertexADCPath = "~/.config/gcloud/application_default_credentials.json"
 
-// Ports packages/ai/src/providers/google-vertex.ts (the vertexAuth login and resolve).
-//
 // vertexAuth accepts an explicit API key or Application Default Credentials
 // with a project and location.
+//
+// Ports packages/ai/src/providers/google-vertex.ts (the vertexAuth login and resolve).
 func vertexAuth() *APIKeyAuth {
 	return &APIKeyAuth{
 		Name:  "Google Cloud credentials",

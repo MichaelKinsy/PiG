@@ -1785,6 +1785,16 @@
    "file": "ai/models_generated.go",
    "old": "\t\tID:                   \"chat-latest\",\n\t\tProvider:             \"openai\",\n\t\tDisplayName:          \"Chat Latest\",\n",
    "new": "\t\tID:                   \"chat-latest\",\n\t\tProvider:             \"openai\",\n\t\tDisplayName:          \"Chat Latest!\",\n"
+  },
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tAPI:                  \"openai-responses\",\n\t\tBaseURL:              \"https://api.openai.com/v1\",\n\t\tCompat:               &generatedCompats[0],\n\t\tInputLimits:          &generatedInputLimits[5],\n\t\tContextWindow:        400000,\n",
+   "new": "\t\tAPI:                  \"openai-responses\",\n\t\tBaseURL:              \"https://api.openai.com/v1\",\n\t\tInputLimits:          &generatedInputLimits[5],\n\t\tContextWindow:        400000,\n"
+  },
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tgeneratedRows[ref.row].PromptCache = generatedMap(generatedPromptCachesPairs[ref.element])",
+   "new": "\t\t_ = generatedMap(generatedPromptCachesPairs[ref.element])"
   }
  ],
  "packages/ai/src/providers/opencode-go.models.ts": [
@@ -1846,8 +1856,8 @@
  "packages/ai/src/providers/typesafe.models.ts": [
   {
    "file": "ai/classifier_models_generated.go",
-   "old": "\t{ID: \"jev-1.13\", Name: \"Jev 1.13\",",
-   "new": "\t{ID: \"jev-1.13\", Name: \"Jev 1.13!\","
+   "old": "\t{ID: \"jev-latest\", Name: \"Jev\", API: ClassifierAPI(\"typesafe-system-one\"), Provider: \"typesafe\",",
+   "new": "\t{ID: \"jev-latest\", Name: \"Jev!\", API: ClassifierAPI(\"typesafe-system-one\"), Provider: \"typesafe\","
   }
  ],
  "packages/ai/src/providers/vercel-ai-gateway.models.ts": [
