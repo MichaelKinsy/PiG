@@ -1052,7 +1052,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d39069d](#bf-d39069d) | Tool cards rebuilt when a session is resumed now follow the `showImages` and `imageWidthCells` settings | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d3adcfe](#bf-d3adcfe) | A Piglet's tool scope now bounds the Session's tool registry, not only its active tools | PiG's own defect | All platforms | Unreleased |
 | [BF-d3b3618](#bf-d3b3618) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
-| [BF-d3f6c2b](#bf-d3f6c2b) | Anthropic non-strict tool schemas keep the root `$defs` and `definitions`, so property `$ref`s resolve | PiG's own defect | All platforms | Unreleased |
+| [BF-d3f6c2b](#bf-d3f6c2b) | Anthropic non-strict tool schemas keep the root `$defs` and `definitions`, so property `$ref`s resolve | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-d409922](#bf-d409922) | A host that crashes during a model request no longer resends it forever, adding an aborted entry each time… | PiG's own defect | All platforms | Unreleased |
 | [BF-d42aebb](#bf-d42aebb) | `ai.ValidateToolArguments` and `ai.ValidateToolCall` list a failed validation's errors in the order the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d449f74](#bf-d449f74) | `tool_search` and the Durable `searchTools()` ranker compute the same BM25 scores as Pi on arm64: the length… | PiG's own defect | All platforms | 0.5.0 |
@@ -15654,7 +15654,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 **Anthropic non-strict tool schemas keep the root `$defs` and `definitions`, so property `$ref`s resolve**
 
-- **Source:** PiG's own defect
+- **Source:** A fix Pi shipped that PiG ported
 - **Symptom:** Anthropic non-strict tool schemas keep the root `$defs` and `definitions`, so property `$ref`s resolve.
 - **Root cause:** The legacy input_schema kept only type/properties/required, so property $refs into root $defs or definitions pointed at nothing. Keep them after required, in that order, when present; root anyOf/oneOf/allOf stay out because Anthropic rejects them with a 400. The strict path is unchanged.
 - **User impact:** Wrong output or ordering
@@ -15662,7 +15662,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `d3f6c2b6ff` (2026-11-02)
 - **Tests:** `ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicRequestBodyKeepsRootDefsInLegacyToolSchema`, `ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicStrictToolSchemas`
-- **Release note:** Anthropic non-strict tool schemas keep the root `$defs` and `definitions`, so property `$ref`s resolve. They were dropped, which left the `$ref`s pointing at nothing, made Claude produce wrong arguments for such tools (common in MCP servers), for example a JSON string instead of an object, and made some Anthropic-compatible gateways reject the request. Root `anyOf`, `oneOf` and `allOf` stay out, because Anthropic rejects them with a 400. Matches Pi 4a6a58eb5 ([#9557](https://github.com/earendil-works/pi/issues/9557)).
+- **Release note:** Anthropic non-strict tool schemas keep the root `$defs` and `definitions`, so property `$ref`s resolve. They were dropped, which left the `$ref`s pointing at nothing, made Claude produce wrong arguments for such tools (common in MCP servers), for example a JSON string instead of an object, and made some Anthropic-compatible gateways reject the request. Root `anyOf`, `oneOf` and `allOf` stay out, because Anthropic rejects them with a 400. Ports Pi's fix 4a6a58eb5 ([#9557](https://github.com/earendil-works/pi/issues/9557)).
 
 ### BF-d409922
 
