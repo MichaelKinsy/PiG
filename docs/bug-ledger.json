@@ -27221,6 +27221,41 @@
       ]
     },
     {
+      "id": "BF-D226",
+      "title": "Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs",
+      "symptom": "none.",
+      "rootCause": "Only TypeBox's own `Value.Check` runs them, and a Node extension can call that itself. The Go, Rust, Python and Lisp SDKs have no `Value.Check`, so a refinement they build can be checked by no one but the extension's own handler.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D226",
+      "removeWhen": "every SDK serves TypeBox `Value.Check`, so a stored refinement has a consumer.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "24d55ab3f0",
+          "date": "2026-11-02"
+        },
+        {
+          "hash": "4a7c33c707",
+          "date": "2026-11-02"
+        },
+        {
+          "hash": "82fd316d04",
+          "date": "2026-11-02"
+        },
+        {
+          "hash": "e27164c914",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/refine_arguments_test.go::TestConformance_RefinedToolArgumentsAreNotRefined"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -45025,6 +45060,11 @@
     {
       "id": "D225",
       "title": "A thread-based SDK's wait for the run it started needs the SDK's yield helper"
+    },
+    {
+      "id": "D226",
+      "title": "Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs",
+      "entry": "BF-D226"
     }
   ],
   "exemptCommits": {
