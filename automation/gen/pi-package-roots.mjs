@@ -8,4 +8,12 @@
 export const packageRoots = {
   "pi-agent-core": { "dist/index.js": "../../../pi-agent-core.mjs" },
   "pi-tui": { "dist/index.js": "../../../pi-tui.mjs" },
+  // The pi-ai root and pi-ai/compat are one module in Pi's extension loader (core/extensions/virtual-modules.ts:28-29), so both resolve to dist/index.js.
+  "pi-ai": {
+    "dist/index.js": "../../../pi-ai.mjs",
+    "dist/models.js": "../../../pi-ai-models.mjs",
+    "dist/oauth.js": "../../../pi-ai-oauth.mjs",
+    "dist/providers/all.js": "../../sdk-bundle/providers.js",
+    "dist/cli.js": "../cli.js",
+  },
 };

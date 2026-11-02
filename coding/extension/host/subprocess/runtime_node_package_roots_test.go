@@ -14,10 +14,15 @@ import (
 var vendoredPackageRootEntries = map[string]string{
 	"pi-agent-core/dist/index.js": "export * from \"../../../pi-agent-core.mjs\";\n",
 	"pi-tui/dist/index.js":        "export * from \"../../../pi-tui.mjs\";\n",
+	"pi-ai/dist/index.js":         "export * from \"../../../pi-ai.mjs\";\n",
+	"pi-ai/dist/models.js":        "export * from \"../../../pi-ai-models.mjs\";\n",
+	"pi-ai/dist/oauth.js":         "export * from \"../../../pi-ai-oauth.mjs\";\n",
+	"pi-ai/dist/providers/all.js": "export * from \"../../sdk-bundle/providers.js\";\n",
+	"pi-ai/dist/cli.js":           "import \"../cli.js\";\n",
 }
 
 // vendoredPackageRoots names the pinned package each vendored package root takes its package.json from.
-var vendoredPackageRoots = []string{"pi-agent-core", "pi-tui"}
+var vendoredPackageRoots = []string{"pi-agent-core", "pi-tui", "pi-ai"}
 
 func TestVendoredPiPackageRootsMatchThePinnedPackages(t *testing.T) {
 	root := filepath.Join("runtime-node", "shims", "pi-dist")

@@ -24,13 +24,9 @@ import (
 // modules; this test checks every @earendil-works specifier loader.mjs serves against the pinned Pi packages,
 // so a Pi package that is served from the wrong place fails here before an extension finds out.
 //
-// piLayoutGaps lists the packages whose shim is not yet under a package root laid out like Pi's. The list may
-// only shrink: a package that conforms must leave it, and a served package that is neither conforming nor
-// listed fails. The compatibility corpus (pi-open-agents 0.1.27, @henryqw/pi-subagent 28.0.1, pi-subagents
-// 0.84.0) derives paths from the pi-coding-agent root only.
+// A served package that does not conform fails: there is no list of known gaps. The compatibility corpus
+// (pi-open-agents 0.1.27, @henryqw/pi-subagent 28.0.1, pi-subagents 0.84.0) derives paths from the pi-coding-agent root.
 // upstream: packages/*/package.json main, exports and bin; packages/coding-agent/package.json scripts.build:unbundled.
-var piLayoutGaps = map[string]string{}
-
 // piLayoutAliases lists the specifiers Pi's extension loader serves as one module with another
 // (core/extensions/virtual-modules.ts:28-29 maps the pi-ai root and pi-ai/compat to the same extension view). They
 // must resolve to the same file as the specifier they alias, because the namespace of a module is its identity.
@@ -38,7 +34,7 @@ var piLayoutAliases = map[string]string{
 	"@earendil-works/pi-ai/compat": "@earendil-works/pi-ai",
 }
 
-func TestNodeServesEachPiPackageWithPisLayoutOrRecordsTheGap(t *testing.T) {
+func TestNodeServesEachPiPackageWithPisLayout(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
 		t.Fatalf("node is required: %v", err)
@@ -205,17 +201,8 @@ func TestNodeServesEachPiPackageWithPisLayoutOrRecordsTheGap(t *testing.T) {
 	}
 
 	for pkg := range served {
-		gap, listed := piLayoutGaps[pkg]
-		switch {
-		case len(problems[pkg]) > 0 && !listed:
-			t.Errorf("%s is served without Pi's package layout and is not in piLayoutGaps:\n  %s", pkg, strings.Join(problems[pkg], "\n  "))
-		case len(problems[pkg]) == 0 && listed:
-			t.Errorf("%s conforms to Pi's package layout: remove it from piLayoutGaps (%s)", pkg, gap)
-		}
-	}
-	for pkg := range piLayoutGaps {
-		if !served[pkg] {
-			t.Errorf("piLayoutGaps lists %s, which loader.mjs does not serve", pkg)
+		if len(problems[pkg]) > 0 {
+			t.Errorf("%s is served without Pi's package layout:\n  %s", pkg, strings.Join(problems[pkg], "\n  "))
 		}
 	}
 }
