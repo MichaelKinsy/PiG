@@ -35,7 +35,7 @@ import (
 // socket. Ports packages/chord/test/next-node/http/upgrades.test.ts.
 //
 // The revocation tests drive the router with `host.Reload` as Pi's do. A router change reaches the connections on a task of its own
-// (design note 2, rows/nhttp.md), where Pi's watch listener runs before `reload` resolves: after a reload the tests wait for
+// (the router change is applied on the connection's own task), where Pi's watch listener runs before `reload` resolves: after a reload the tests wait for
 // what Pi's checks at once (a scope's seal, a connection ended by the server) before they check or write.
 //
 

@@ -138,20 +138,6 @@ dest = "*any"
 count = 1
 
 [[hit]]
-file = "ai/validate.go"
-func = "parseArgumentSchema"
-call = "json.Unmarshal"
-dest = "*any"
-count = 1
-
-[[hit]]
-file = "ai/validate.go"
-func = "decodeSchemaInstance"
-call = "sdkjson.Unmarshal"
-dest = "*any"
-count = 1
-
-[[hit]]
 file = "ai/validate_arguments.go"
 func = "ValidateToolArguments"
 call = "sdkjson.Unmarshal"

@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/tui/src/tui-main-screen.ts (doRender over-wide row crash)
+
 import (
 	"fmt"
 	"os"

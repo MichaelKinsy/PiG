@@ -437,6 +437,9 @@ Stock disposition: product-neutral diagnostics. Keep this in Stock PiG because i
 
 What: Pig records the latest subprocess reload decision for `/reload --explain`.
 The report contains placement, cache, build, replacement, and quarantine facts.
+A member that runs in its own process because the packed cell it was planned
+into failed to build or start carries that error in its reason, so a retry that
+succeeds does not hide why the plan was not kept.
 `LastReloadReport` returns a copy for the interactive command.
 
 Why: Pi loads extensions in process and has no runtime-cell placement report.

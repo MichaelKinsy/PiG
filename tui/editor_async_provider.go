@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/tui/src/components/editor.ts (the autocomplete provider request and completion lifecycle)
+
 import (
 	"context"
 	"errors"
@@ -109,6 +111,7 @@ func (e *Editor) acceptAsyncAutocomplete(done func(bool)) {
 }
 
 func validAutocompleteCompletion(lines []string, line, col int) error {
+	//portlint:allow utf16units Go-only guard on the byte cursor column the Go AutocompleteProvider returns; editor.ts applyCompletion has no check, and the Go editor stores byte columns
 	if line < 0 || line >= len(lines) || col < 0 || col > len(lines[line]) {
 		return errors.New("autocomplete provider returned an invalid cursor")
 	}
@@ -124,6 +127,7 @@ func autocompleteTriggered(before string, characters []string) bool {
 	triggers := []rune{'@', '#'}
 	for _, character := range characters {
 		r, size := utf8.DecodeRuneInString(character)
+		//portlint:allow utf16units editor.ts setAutocompleteTriggerCharacters skips a trigger whose length !== 1: size == len(character) is exactly one rune and r <= 0xffff makes it one UTF-16 unit
 		if size > 0 && size == len(character) && r <= 0xffff && r != '/' && !widthx.IsJSSpace(r) && !slices.Contains(triggers, r) {
 			triggers = append(triggers, r)
 		}
@@ -131,6 +135,7 @@ func autocompleteTriggered(before string, characters []string) bool {
 	previousBoundary := true
 	for offset, r := range before {
 		if previousBoundary && slices.Contains(triggers, r) {
+			//portlint:allow utf16units offset is the byte offset the range loop gives for the rune r, so the slice is the text after the trigger, as editor.ts autocompleteTriggerPattern's suffix; the suffix is only scanned for separators
 			suffix := before[offset+utf8.RuneLen(r):]
 			if r == '@' && strings.HasPrefix(suffix, "\"") && !strings.Contains(suffix[1:], "\"") {
 				return true

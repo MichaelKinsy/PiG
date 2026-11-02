@@ -184050,9 +184050,9 @@
         "public-api:coding/rpcclient/types.go#JsonAgentSessionEvent"
       ],
       "evidence": [
+        "test:coding/rpcclient/json_event_upstream_test.go#TestJsonAgentSessionEventIsTheCompleteJSONRecordInJSONEventShape",
         "test:coding/rpcclient/rpc_client_upstream_wire_test.go#TestRpcClientEventHelpersStderrAndStop",
-        "test:coding/rpcclient/jsonl_test.go#TestRpcClientReadStdoutDrainsAfterCallbacksStop",
-        "test:coding/rpcclient/jsonl_test.go#TestRpcClientReadStdoutParsesSplitInvalidBlankAndUnterminatedRecords"
+        "test:coding/rpcclient/jsonl_test.go#TestRpcClientReadStdoutDrainsAfterCallbacksStop"
       ]
     },
     {
@@ -293307,7 +293307,7 @@
       "upstreamShapeHash": "sha256:1c079f8249fcb443027f31e35f4f567d3fbb8d71e884f0e8920f5143cb5208e9",
       "rationale": "colors.ts RgbColor {r, g, b}: Go RgbColor {R, G, B float64}.",
       "pigTargets": [
-        "tui/theme.go#RgbColor"
+        "tui/terminal_colors.go#RgbColor"
       ],
       "layers": {
         "shape": "complete",
@@ -293348,7 +293348,7 @@
       "upstreamShapeHash": "sha256:a38185094004b21ddfd9868c68d70fb984fa475d54a8dcd75c0c43d3f358ba66",
       "rationale": "colors.ts RgbColor {r, g, b}: Go RgbColor {R, G, B float64}.",
       "pigTargets": [
-        "tui/theme.go#RgbColor.B"
+        "tui/terminal_colors.go#RgbColor.B"
       ],
       "layers": {
         "shape": "complete",
@@ -293368,7 +293368,7 @@
       "upstreamShapeHash": "sha256:85661e12c3c24131b3df655bc487e2b9100ed461fadc6e5f1ad1a840e57dc403",
       "rationale": "colors.ts RgbColor {r, g, b}: Go RgbColor {R, G, B float64}.",
       "pigTargets": [
-        "tui/theme.go#RgbColor.G"
+        "tui/terminal_colors.go#RgbColor.G"
       ],
       "layers": {
         "shape": "complete",
@@ -293388,7 +293388,7 @@
       "upstreamShapeHash": "sha256:d111643c2ac5a6ce293f932665350aac632c5d50eedfe9501f3284026b2cbfc1",
       "rationale": "colors.ts RgbColor {r, g, b}: Go RgbColor {R, G, B float64}.",
       "pigTargets": [
-        "tui/theme.go#RgbColor.R"
+        "tui/terminal_colors.go#RgbColor.R"
       ],
       "layers": {
         "shape": "complete",

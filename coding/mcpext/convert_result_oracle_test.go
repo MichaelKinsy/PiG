@@ -1,5 +1,7 @@
 package mcpext
 
+// pi: packages/coding-agent/src/extensions/mcp/tools.ts
+
 import (
 	"bytes"
 	"crypto/sha256"

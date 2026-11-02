@@ -385,6 +385,7 @@ The Go SDK changes that the upgrade reports since 0.4.1:
 - `ProviderStreamOptions` has `OnProviderStreamEvent` and no longer has `TransformHeaders`.
 - `Context.SetEditorComponent` takes an `sdk.EditorFactory` instead of `any`.
 - `Context.ConfigHome` returns `(string, error)`.
+- `HostHelpers.HighlightCode` has no `markdown` parameter: `getMarkdownTheme().highlightCode` is `highlightCode`.
 
 `make sdk-apidiff` fails an incompatible change to an extension SDK package that has no upgrade rule or release note.
 

@@ -52,7 +52,7 @@ func TestDependabotRefreshesTheEvaluatorImageDigests(t *testing.T) {
 		t.Fatal(err)
 	}
 	var docker string
-	for _, entry := range strings.Split(string(config), "\n  - package-ecosystem: ") {
+	for entry := range strings.SplitSeq(string(config), "\n  - package-ecosystem: ") {
 		if strings.HasPrefix(entry, "docker\n") {
 			docker = entry
 		}
@@ -67,7 +67,7 @@ func TestDependabotRefreshesTheEvaluatorImageDigests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, line := range strings.Split(string(dockerfile), "\n") {
+	for line := range strings.SplitSeq(string(dockerfile), "\n") {
 		image, ok := strings.CutPrefix(line, "FROM ")
 		if !ok {
 			continue
