@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"math"
 	"os"
 	"slices"
 	"strings"
@@ -832,9 +833,10 @@ func subprocessOptionalInt64(object map[string]any, key, path string) (int64, er
 	}
 	switch number := value.(type) {
 	case float64:
-		if number != float64(int64(number)) {
+		if number < -(1<<63) || number >= 1<<63 || number != math.Trunc(number) {
 			return 0, fmt.Errorf("%s.%s must be an integer", path, key)
 		}
+		//portlint:allow numbers the range and integrality checks above make the conversion exact
 		return int64(number), nil
 	case int:
 		return int64(number), nil

@@ -34,6 +34,7 @@ func (m *InteractiveMode) pruneAutocompleteFactories() {
 
 func utf16Column(text string, byteColumn int) int {
 	column := 0
+	//portlint:allow utf16units byteColumn is a Go byte offset taken from ApplyCompletion; this loop converts it to the UTF-16 column Pi reports
 	for _, r := range text[:min(max(byteColumn, 0), len(text))] {
 		column++
 		if r > 0xffff {
@@ -146,6 +147,7 @@ func (m *InteractiveMode) baseAutocompleteProvider(base tui.AutocompleteProvider
 	// Pi CombinedAutocompleteProvider.shouldTriggerFileCompletion only rejects the slash-command-name context.
 	provider.ShouldTriggerFileCompletion = func(_ context.Context, lines []string, line, col int) (bool, error) {
 		before := autocompleteLine(lines, line)
+		//portlint:allow utf16units byteColumn maps Pi's UTF-16 column to the byte offset of the same text, so this is slice(0, col); a column inside a surrogate pair does not change the "/" and " " tests below
 		before = jsTrim(before[:byteColumn(before, col)])
 		return !strings.HasPrefix(before, "/") || strings.Contains(before, " "), nil
 	}

@@ -1022,6 +1022,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			case "cache-miss-notices":
 				m.rebuildChatFromSession()
 			case "http-idle-timeout":
+				//portlint:allow numbers value is the millisecond string of a fixed HTTP_IDLE_TIMEOUT_CHOICES entry (settings-selector.ts:524-529), all ASCII digits, where parseInt and Atoi agree
 				if timeoutMs, err := strconv.Atoi(value); err == nil {
 					_ = ai.ConfigureHTTPDispatcher(timeoutMs)
 				}
@@ -1094,10 +1095,12 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 					m.statusContainer.Clear()
 				}
 			case "editor-padding":
+				//portlint:allow numbers value is one of the fixed digit options of the editor-padding item (settings-selector.ts:964), where parseInt(value, 10) and Atoi agree
 				if padding, err := strconv.Atoi(value); err == nil {
 					m.editor.SetPaddingX(padding)
 				}
 			case "output-padding":
+				//portlint:allow numbers value is "0" or "1", the fixed options of the output-padding item (settings-selector.ts:841-846), where parseInt and Atoi agree
 				if padding, err := strconv.Atoi(value); err == nil {
 					m.outputPad = max(0, min(1, padding))
 					// Every chat and pending-message child, and a queued `!` block, that has setOutputPad takes the new padding in place; nothing is
@@ -1105,6 +1108,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 					m.applyOutputPad()
 				}
 			case "autocomplete-max-visible":
+				//portlint:allow numbers value is one of the fixed digit options "3".."20" of the autocomplete-max-visible item (settings-selector.ts:853-857), where parseInt(value, 10) and Atoi agree
 				if maxVisible, err := strconv.Atoi(value); err == nil {
 					m.editor.SetAutocompleteMaxVisible(maxVisible)
 				}
