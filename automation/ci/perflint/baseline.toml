@@ -716,46 +716,6 @@ count = 2
 class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
 
 [[hit]]
-file = "ai/validate.go"
-func = "argumentSchema.list"
-pattern = "loop-format"
-detail = "fmt.Sprintf"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "ai/validate.go"
-func = "typeboxPropertyNameMatcher"
-pattern = "compile-in-func"
-detail = "regexp.Compile"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "ai/validate_convert.go"
-func = "argumentSchema.convert"
-pattern = "compile-in-func"
-detail = "regexp.Compile"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "ai/validate_errors.go"
-func = "argumentPatternMatches"
-pattern = "compile-in-func"
-detail = "regexp.Compile"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "ai/validate_errors.go"
-func = "argumentSchema.argumentErrorsAt"
-pattern = "loop-format"
-detail = "fmt.Sprintf"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
 file = "bench/k8s/cmd/k8sbench/render.go"
 func = "renderJob"
 pattern = "compile-in-func"
