@@ -360,6 +360,7 @@ func indexVariantName(text, variant string) int {
 			return -1
 		}
 		colon += from
+		//portlint:allow utf16units D199 routing-variant lookup has no Pi counterpart (model-resolver.ts lists no variants); the offset only indexes back into the same Go string and is never a JS length
 		if strings.HasPrefix(text[colon+1:], variant) {
 			return colon
 		}

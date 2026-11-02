@@ -31,8 +31,6 @@ THE SOFTWARE.
 package formats
 
 import (
-	"strconv"
-
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
@@ -51,14 +49,14 @@ func IsTimeWithZone(value string, strictTimeZone bool) bool {
 	if strictTimeZone && matches[4] == "" && matches[5] == "" {
 		return false
 	}
-	hr, _ := strconv.Atoi(matches[1])
-	minute, _ := strconv.Atoi(matches[2])
-	sec, _ := strconv.Atoi(matches[3])
+	hr := plusDigits(matches[1])
+	minute := plusDigits(matches[2])
+	sec := plusDigits(matches[3])
 	if hr > 23 || minute > 59 || sec > 60 {
 		return false
 	}
-	tzH, _ := strconv.Atoi(matches[6])
-	tzM, _ := strconv.Atoi(matches[7])
+	tzH := plusDigits(matches[6])
+	tzM := plusDigits(matches[7])
 	if matches[5] != "" && (tzH > 23 || tzM > 59) {
 		return false
 	}

@@ -31,8 +31,6 @@ THE SOFTWARE.
 package formats
 
 import (
-	"strconv"
-
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
@@ -50,9 +48,9 @@ func IsDate(value string) bool {
 	if matches == nil {
 		return false
 	}
-	year, _ := strconv.Atoi(matches[1])
-	month, _ := strconv.Atoi(matches[2])
-	day, _ := strconv.Atoi(matches[3])
+	year := plusDigits(matches[1])
+	month := plusDigits(matches[2])
+	day := plusDigits(matches[3])
 	if month < 1 || month > 12 {
 		return false
 	}

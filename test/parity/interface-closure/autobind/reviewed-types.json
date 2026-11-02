@@ -577,7 +577,7 @@
   },
   "pkg:chord/next#oneOf::call:0": {
     "go": "chord/next/contracts/schema.go#OneOf",
-    "reason": "Pi chord/src/next/contracts/schema.ts:76 oneOf::call:0: Pi's TUnion is a TypeBox schema type (Type.TUnion) the builder returns; Go's builders return contracts.TSchema (contracts/schema.go:37), the one schema value whose JSON is the same schema node. Go: chord/next/contracts/schema.go#OneOf. Exercised by TestParamsPolicy (chord/next/contracts/params_test.go)."
+    "reason": "Pi chord/src/next/contracts/schema.ts:76 oneOf::call:0: Pi's TUnion is a TypeBox schema type (Type.TUnion) the builder returns; Go's builders return contracts.Schema (contracts/schema.go:37), the one schema value whose JSON is the same schema node. Go: chord/next/contracts/schema.go#OneOf. Exercised by TestParamsPolicy (chord/next/contracts/params_test.go)."
   },
   "pkg:chord/next#opt::call:0": {
     "go": "chord/next/store/columns.go#Opt",

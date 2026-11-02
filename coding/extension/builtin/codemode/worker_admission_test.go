@@ -1,5 +1,7 @@
 package codemode
 
+// pi: packages/coding-agent/src/extensions/codemode/execute.ts
+
 import (
 	"context"
 	"encoding/json"

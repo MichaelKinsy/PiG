@@ -712,6 +712,28 @@
       ]
     },
     {
+      "id": "BF-06cb94f",
+      "title": "In the alt-screen, a wheel scroll reported in the legacy X10 mouse form (terminals without SGR mouse mode) no…",
+      "symptom": "In the alt-screen, a wheel scroll reported in the legacy X10 mouse form (terminals without SGR mouse mode) no longer shows up as typed text when the pointer is at column or row 95 or higher; the report is counted in UTF-16 units as Pi counts it, so it scrolls.",
+      "rootCause": "Without SGR mode 1006 a column or row of 95 or more is a byte of 0x80 or more. Pi's stdin.setEncoding(\"utf8\") makes it one U+FFFD, so parseWheelEvent and isMouseSequence see six units and read charCodeAt(3..5). PiG counted the three-byte U+FFFD as three bytes, so the report was typed as text instead of scrolling.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In the alt-screen, a wheel scroll reported in the legacy X10 mouse form (terminals without SGR mouse mode) no longer shows up as typed text when the pointer is at column or row 95 or higher; the report is counted in UTF-16 units as Pi counts it, so it scrolls.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "06cb94f85e",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "tui/tui_alt_screen_x10_units_test.go::TestLegacyX10MouseReportCountsUTF16Units"
+      ]
+    },
+    {
       "id": "BF-07151d0",
       "title": "In print and JSON mode, Node extensions in separate processes now keep Pi's order when a later extension's…",
       "symptom": "In print and JSON mode, Node extensions in separate processes now keep Pi's order when a later extension's `session_shutdown` or `agent_settled` handler awaits a timer, however busy the machine is.",
@@ -1188,6 +1210,25 @@
         "test/extension-conformance/provider_registration_diagnostic_test.go::TestProviderRegistrationFailureIsADiagnosticAcrossSDKs",
         "test/parity/scenarios/extensions-runtime/88-startup-provider-registration-failure.toml"
       ]
+    },
+    {
+      "id": "BF-0ae286c",
+      "title": "fix: blank-assign the encodeState.WriteByte results in the SDK json copy that go fix touched",
+      "symptom": "fix: blank-assign the encodeState.WriteByte results in the SDK json copy that go fix touched",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0ae286c4f4",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-0ae3fcf",
@@ -12291,6 +12332,28 @@
         "internal/execfile/execfile_unix_test.go::TestStartAfterWriteIsNeverBusy",
         "internal/execfile/execfile_unix_test.go::TestWriteLeavesNoDescriptorOpen",
         "test/extension-conformance/model_types_test.go::TestModelTypesVirtualModelsAcrossSDKs"
+      ]
+    },
+    {
+      "id": "BF-5af3a18",
+      "title": "On Windows, a session replacement whose working directory differs from the previous one only in letter case…",
+      "symptom": "On Windows, a session replacement whose working directory differs from the previous one only in letter case (`c:\\work\\proj` after `C:\\Work\\Proj`) keeps the loaded Node extension factories instead of dropping them and re-running every module, as Pi does (#11588).",
+      "rootCause": "Pi (#11588) loader.ts useExtensionCacheCwd clears the factory cache when !pathsEqual(extensionCacheCwd, resolvedCwd), and pathsEqual compares the platform's resolved path lower-cased on Windows only. Generations.prepareCache compared the resolved strings, so a session replacement whose cwd differed from the first only in case lost its factory cache on Windows. The helper reads process.platform at call time, as Pi's, and the test drives it with a simulated win32 platform and with a case-sensitive one.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, a session replacement whose working directory differs from the previous one only in letter case (`c:\\work\\proj` after `C:\\Work\\Proj`) keeps the loaded Node extension factories instead of dropping them and re-running every module, as Pi does (#11588).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5af3a1803d",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_cache_cwd_case_test.go::TestPrepareCacheComparesTheCwdAsPiDoesOnWindows"
       ]
     },
     {
@@ -27221,6 +27284,42 @@
       ]
     },
     {
+      "id": "BF-D220",
+      "title": "Markdown renders each paragraph with the inline state at its position, not with the lines of an earlier…",
+      "symptom": "not reported upstream. The repro is `TestMarkdownBlockReuseDiffersFromPi` (`tui/markdown_render_oracle_test.go`): both cases above, run against the pinned Pi, with the rows Pi and PiG render.",
+      "rootCause": "Replicating the Pi behavior makes the output depend on which identical blocks came earlier and on the history of the component (streaming order, edits before the block). Pi's own reference-link guard (`reuseBlocks`, `markdown.ts:373`) exists to avoid that property; it guards reference definitions and not the `inLink` and raw-block state. PiG keeps reuse of syntax highlighting by language and code (the rest of), which does not depend on inline state.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D220",
+      "removeWhen": "Pi stops reusing rendered Markdown blocks by token.raw across differing inline state (markdown.ts:381). Then the markers and this record go, and the cases of `TestMarkdownBlockReuseDiffersFromPi` become documents of `markdownRenderDocs`.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "97995f7e9d",
+          "date": "2026-11-01"
+        },
+        {
+          "hash": "a01ab6c8ef",
+          "date": "2026-11-01"
+        },
+        {
+          "hash": "bbb5a57a3f",
+          "date": "2026-11-01"
+        },
+        {
+          "hash": "e3e3e6843e",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "tui/markdown_render_oracle_test.go::TestMarkdownBlockReuseDiffersFromPi",
+        "tui/markdown_render_oracle_test.go::TestMarkdownRenderMatchesPi"
+      ]
+    },
+    {
       "id": "BF-D226",
       "title": "Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs",
       "symptom": "none.",
@@ -39318,6 +39417,29 @@
       ]
     },
     {
+      "id": "BF-e5bfd24",
+      "title": "fix(chord): Arr, Map, Union, Keyed and NewMethod refuse opt(...); Check returns pi-schema's error; record and…",
+      "symptom": "fix(chord): Arr, Map, Union, Keyed and NewMethod refuse opt(...); Check returns pi-schema's error; record and tuple edge cases of cleaned",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "e5bfd245d4",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/host/schema_upstream_test.go::TestCleanedKeepsAFieldOfARecordWhoseValueSchemaIsNull",
+        "chord/host/schema_upstream_test.go::TestNormalizeWritesATupleHoleAsNull",
+        "chord/next/data/validator_test.go::TestFailedChecks"
+      ]
+    },
+    {
       "id": "BF-e5f9fdd",
       "title": "The provider retry transport no longer replaces `Body` on the caller's request when it retries",
       "symptom": "The provider retry transport no longer replaces `Body` on the caller's request when it retries.",
@@ -40599,8 +40721,8 @@
         }
       ],
       "tests": [
-        "internal/codingagent/code_highlighter_rows_norace_test.go::TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
-        "internal/codingagent/code_highlighter_rows_norace_test.go::TestCompleteWriteRowReusesItsHighlightingAcrossRedraws",
+        "internal/codingagent/code_highlighter_rows_test.go::TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
+        "internal/codingagent/code_highlighter_rows_test.go::TestCompleteWriteRowReusesItsHighlightingAcrossRedraws",
         "tui/assistant_message_reuse_upstream_test.go::TestUpstreamAssistantMessageReusesItsMarkdownAcrossStreamingAndItsEnd",
         "tui/code_highlighter_test.go::TestCodeHighlighterReusesItsLastResultUntilTheCodeTheThemeOrTheGrammarsChange",
         "tui/markdown_block_reuse_upstream_test.go::TestMarkdownReusedHighlightingEqualsAFreshRender",
@@ -44504,6 +44626,28 @@
       ]
     },
     {
+      "id": "BF-fe4bd27",
+      "title": "`PI_TUI_ESC_TIMEOUT` now waits as Node's `setTimeout` does for the lone-Escape timer: a fractional value is…",
+      "symptom": "`PI_TUI_ESC_TIMEOUT` now waits as Node's `setTimeout` does for the lone-Escape timer: a fractional value is truncated, and a value under one millisecond or over 2147483647 waits one millisecond instead of that many nanoseconds or about a month.",
+      "rootCause": "PI_TUI_ESC_TIMEOUT reaches setTimeout in Pi's StdinBuffer, which truncates a fractional delay and waits 1ms for a sub-millisecond or above-2^31-1 one. The Go port converted the float to a Duration unguarded.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`PI_TUI_ESC_TIMEOUT` now waits as Node's `setTimeout` does for the lone-Escape timer: a fractional value is truncated, and a value under one millisecond or over 2147483647 waits one millisecond instead of that many nanoseconds or about a month.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fe4bd27863",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "tui/input_timer_escape_timeout_test.go::TestProcessStdinBufferEscapeTimeoutFollowsNodeSetTimeout"
+      ]
+    },
+    {
       "id": "BF-fe625bb",
       "title": "Mistral request bodies list their members in Pi's order (`model`, `stream`, `messages`, ..., then the renamed…",
       "symptom": "Mistral request bodies list their members in Pi's order (`model`, `stream`, `messages`, ..., then the renamed `max_tokens`, `tool_choice`, `reasoning_effort`, `prompt_mode`, `prompt_cache_key`; a tool result's `tool_call_id` last; thinking parts as `type`, `text`) instead of sorted, and the body is built about 3 times faster.",
@@ -45052,6 +45196,11 @@
     {
       "id": "D219",
       "title": "pi-schema regular expressions differ from V8 in four contrived cases"
+    },
+    {
+      "id": "D220",
+      "title": "Markdown renders each paragraph with the inline state at its position, not with the lines of an earlier…",
+      "entry": "BF-D220"
     },
     {
       "id": "D222",

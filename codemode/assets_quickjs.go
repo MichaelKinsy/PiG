@@ -11,6 +11,8 @@ import (
 	"sync"
 )
 
+// Ports packages/codemode/src/wasm.ts (the quickjs.wasm module bytes that loadQuickJSWasm compiles)
+
 // The binary carries the module gzip-compressed (287 KB, not 637 KB); assets/quickjs.wasm is the same bytes uncompressed, the file the oracle tests and the refresh steps in assets/PROVENANCE.md read.
 //
 //go:generate sh -c "gzip -9nc assets/quickjs.wasm > assets/quickjs.wasm.gz"

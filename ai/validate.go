@@ -59,6 +59,7 @@ func validateToolArgsSchema(toolName string, rawSchema, args json.RawMessage) (j
 	if sameValue(result.Value, instance) && jsonstringify.IsCanonical(args) {
 		return args, nil
 	}
+	//portlint:allow numbers a capacity hint for the output buffer, never observable: Pi's validateToolArguments (validation.ts) returns the structuredClone, with no size arithmetic
 	return appendStringify(make([]byte, 0, len(args)+len(args)/8), result.Value), nil
 }
 

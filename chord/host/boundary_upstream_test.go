@@ -1,9 +1,10 @@
 package host
 
-// Ports packages/chord/test/boundary.test.ts: Chord does not depend on Pi packages other than pi-telemetry, or on files
-// outside Chord. The Go form: every module package that chord/... links is Chord itself, telemetry (pi-telemetry, the one
-// allowed Pi package: a leaf without dependencies, needed for Context.telemetry) or a product-neutral helper (JSON,
-// numbers, strings, paths, the TypeBox value engine and the JSON Schema validator), never another Pi port.
+// Ports packages/chord/test/boundary.test.ts: Chord does not depend on Pi packages other than pi-telemetry and pi-schema,
+// or on files outside Chord. The Go form: every module package that chord/... links is Chord itself, telemetry
+// (pi-telemetry: a leaf without dependencies, needed for Context.telemetry), schema (pi-schema, for schemas: decision "A
+// schema package beneath pi-ai and Chord") or a product-neutral helper (JSON, numbers, strings, paths and the JSON Schema
+// validator), never another Pi port.
 
 import (
 	"os/exec"
@@ -29,12 +30,12 @@ var chordHelpers = []string{
 	"internal/jsparity",
 	"internal/jsstring",
 	"internal/lazyregexp",
+	"internal/linkerexec", // starts Node for the plugins worker and checks its version (chord/nextnode/plugins)
 	"internal/nodepath",
 	"internal/nodeurl",
-	"internal/typebox",
-	"telemetry", // pi-telemetry, the dependency of Context.telemetry (chord/context)
-	"third_party/jsonschema",
-	"third_party/jsonschema/kind",
+	"schema",                    // pi-schema, the schema builders and validators of contracts and frames
+	"schema/internal/ecmaregex", // pi-schema's ECMAScript regular expressions
+	"telemetry",                 // pi-telemetry, the dependency of Context.telemetry (chord/context)
 }
 
 func TestPackageBoundaryDoesNotDependOnPiPackagesOrFilesOutsideChord(t *testing.T) {

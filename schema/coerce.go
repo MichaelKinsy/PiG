@@ -1239,9 +1239,11 @@ func safeBigInt(value string) (float64, bool) {
 	default:
 		digits = text
 	}
+	//portlint:allow utf16units digits passed canonicalInteger, so it is ASCII and its byte length is its code-unit length; 16 digits or fewer, and at most 9007199254740991, is coerce.ts tryNumber's big <= MAX_BIGINT && big >= MIN_BIGINT with MAX_BIGINT = BigInt(Number.MAX_SAFE_INTEGER)
 	if !canonicalInteger(digits) || len(digits) > 16 || len(digits) == 16 && digits > "9007199254740991" {
 		return 0, false
 	}
+	//portlint:allow numbers digits is 1 to 16 ASCII digits without a leading zero (checked above), so ParseUint is BigInt(digits) of coerce.ts bigIntOfString and cannot overflow
 	magnitude, err := strconv.ParseUint(digits, 10, 64)
 	if err != nil {
 		return 0, false
