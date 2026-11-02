@@ -21,6 +21,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
+// pi: packages/chord/src/next/remote/remote-object.ts
+
 // Ports packages/chord/test/next/remote/remote-object.test.ts.
 //
 // Go forms: see remote_hold_test.go (rhSync is `await transported()`; rhVirtual is `fakeTimers()`; a started Promise is

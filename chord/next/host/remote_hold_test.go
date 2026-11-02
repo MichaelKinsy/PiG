@@ -24,6 +24,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
+// pi: packages/chord/src/next/remote/hold.ts
+
 // Ports packages/chord/test/next/remote/hold.test.ts.
 //
 // Go forms (rows of the lane): `instancesOf(Hold, "start")`, `instancesOf(ChordObject, ...)` and the mocked Delta
@@ -62,7 +64,7 @@ func rhEqual(t testing.TB, what string, got, want any) {
 
 func rhCreate(t testing.TB, options HostOptions) Host { return newHost(t, options) }
 
-func rhProp(name string, schema contracts.TSchema) contracts.Property {
+func rhProp(name string, schema contracts.Schema) contracts.Property {
 	return contracts.Prop(name, schema)
 }
 

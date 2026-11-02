@@ -20,7 +20,7 @@ var (
 	metaV2 = contracts.Obj(contracts.Prop("tags", contracts.Str()), contracts.Prop("n", contracts.Int()))
 )
 
-func jsonColumnOf(t *testing.T, schema contracts.TSchema, version int) *JsonColumn {
+func jsonColumnOf(t *testing.T, schema contracts.Schema, version int) *JsonColumn {
 	t.Helper()
 	column := Json(schema, JsonColumnOptions{Version: version}).Json
 	if column == nil {

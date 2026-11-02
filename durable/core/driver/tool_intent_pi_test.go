@@ -115,7 +115,7 @@ func TestCoreToolRefusesANonObjectPreparedResultAsInvalidArguments(t *testing.T)
 				t.Fatal("the tool executed with arguments that failed validation")
 			default:
 			}
-			want := "<harness>\n[error] Validation failed for tool \"count\":\n  - root: must be object\n\nReceived arguments:\n" + tc.received + "\n</harness>"
+			want := "<harness>\n[error] Validation failed for tool \"count\":\n  - root: expected object, got array\n\nReceived arguments:\n" + tc.received + "\n</harness>"
 			var texts []string
 			for _, entry := range chatEntries(t, root) {
 				if entry.Kind != durable.ToolResultEntry.Kind {

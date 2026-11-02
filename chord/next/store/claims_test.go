@@ -9,9 +9,10 @@ import (
 // per table and per document namespace"): a table by its SQL name and documents by owner and namespace, once per
 // store; released by their claimant's end; none taken while a batch applies.
 //
-// Pending: the third case ("an object claims its tables and documents when it declares them, and releases them at its
-// end") runs a Chord host (`loaded`, `host.serve`, `self.state`, `self.table`), which is outside this package; it is
-// ported with the host layer.
+// The third case ("an object claims its tables and documents when it declares them, and releases them at its end")
+// runs a Chord host, which is outside this package: it is chord/next/host/host_store_claims_test.go.
+//
+// pi: packages/chord/src/next/store/claims.ts
 
 func claimFails(t *testing.T, err error, want string) {
 	t.Helper()

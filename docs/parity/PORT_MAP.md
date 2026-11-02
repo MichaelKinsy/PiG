@@ -143,9 +143,10 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/models.ts` | `ai/models_runtime*.go + ai/models_provider.go + ai/models_catalog_codec.go + ai/models_options.go + ai/model_utils.go (native provider collection, auth, publication, streams and model helpers; complete models-runtime.test.ts cases)`, `ai/classifier.go`, `ai/types.go` | ✅ |
 | `packages/ai/src/models-store.ts` | `ai/models_store.go (ModelsStoreEntry, ModelsStore, InMemoryModelsStore; ai/models_store_test.go, ai/radius_test.go TestRadiusProviderRestoresStoredCatalogOffline) + internal/codingagent/model_registry.go (dynamic provider/model store analogue)`, `ai/operation_options.go` | ✅ |
 | `packages/ai/src/model-catalog.ts` | `ai/model_catalog.go (ChatModelCatalog, ImageModelCatalog and ClassifierModelCatalog, the ordered per-provider records) + cmd/gen-models/main.go (collectRows: the flatten of the API-grouped catalog, run at generation time into models_generated.go where upstream runs flattenModelCatalog per provider at module load; the Go catalog holds the same records in the same order); cmd/gen-models/main_test.go (TestCollectCatalogSplitsTypesInBarrelOrder, TestCollectCatalogOrdersNumericIDsLikeObjectFromEntries, TestCollectCatalogListsEveryBarrelProviderInBarrelOrder) and ai/builtin_catalog_upstream_test.go (TestBuiltinCatalogsMatchPinnedProviderDataModules compares every generated record with the pinned provider data)` | ✅ |
-| `packages/ai/src/providers/all.ts` | `ai/registry.go + ai/register_builtins.go + ai/images_registry.go`, `ai/builtin_providers.go`, `ai/compat.go` | ✅ |
+| `packages/ai/src/providers/all.ts` | `ai/builtin_providers.go` (builtinModels, builtinProviders, getBuiltinModels, getAllBuiltinModels, getBuiltinClassifierModel and getBuiltinClassifierModels), `ai/images_registry.go` (getBuiltinImageModel and getBuiltinImageModels), `ai/compat.go` (getBuiltinModel), `ai/registry.go` (getBuiltinProviders and getBuiltinModelDataGeneratedAt); the radiusProvider re-export is ai/radius NewRadiusProvider and the register_builtins wiring holds no member of this file | ✅ |
 | `packages/ai/src/providers/compat-schema.ts` | `internal/codingagent/configschema/compat_a.go + internal/codingagent/configschema/compat_b.go (schema trees; the typed Go compat structs carry the runtime shape); byte-equal to the pinned Pi package schemas by TestRenderedSchemasAreByteEqualToThePinnedPiPackage`, `ai/types.go`, `ai/openai.go`, `ai/types_unions.go`, `ai/system_one.go` | ✅ |
 | `packages/ai/src/providers/model-schema.ts` | `internal/codingagent/configschema/model.go (schema trees); TestRenderedSchemasAreByteEqualToThePinnedPiPackage`, `ai/types.go` | ✅ |
+| `packages/ai/src/providers/schema-builders.ts` | `internal/codingagent/configschema/pischema.go (OpenObject, StringLiteral, StringRecord; OneOf)` | ✅ |
 | `packages/ai/src/api/anthropic-messages.ts` | `ai/direct_simple.go + ai/anthropic.go + ai/anthropic_stream.go + ai/anthropic_client.go + ai/anthropic_federation.go + ai/provider_request_options.go + ai/constrained_sampling.go (createClient auth/header branches including the ai.FormatUserAgent(nil) default User-Agent from ai/user_agent.go (D65), betas, OAuth Claude Code identity, tool-name conversion, strict JSON-schema tools across current, initial, and deferred declarations, toolChoice, metadata.user_id, complete stop-reason and incomplete-stream errors, thinking_tokens usage, usage retention on error, explicit-zero temperature compatibility, managed mid-conversation effort with historical/current effort markers, adaptive drop-block binding, beta selection, and providerThinkingLevel, and native mid-conversation tool changes with tool_addition/tool_removal blocks, deferred placeholder/later tools, beta selection, and safe fallback to the current tool list; the executor-turn body pipeline with its Node 24.19/26.7 tick-order differential in ai/anthropic_microtask_trace_test.go and ai/anthropic_stream_test.go over coding/testdata/rpc33-observation/providers/anthropic-messages; upstream 0.99.2 workload identity federation in ai/anthropic_federation.go (getAnthropicFederation, token exchange, expiry refresh, the per-config federation client cache; ai/anthropic_federation_upstream_test.go, ai/anthropic_federation_sdk_upstream_test.go, ai/anthropic_token_cache_test.go) and the strict-tool keyword fallback (ai/anthropic.go anthropicStrictUnsupportedKeyword; ai/anthropic_strict_tool_schema_upstream_test.go, ai/anthropic_strict_keywords_test.go); tests in ai/anthropic_oauth_test.go, ai/anthropic_test.go, ai/anthropic_contract_0861_test.go, ai/anthropic_effort_strict_test.go, ai/constrained_sampling_test.go, ai/transcript_tool_changes_test.go, and agent/native_tool_changes_test.go); server-side fallback (allowedFallbackModels fallbacks param, server-side-fallback-2026-07-01 beta, fallback content block and cost) in ai/anthropic_fallback_request_upstream_test.go`, `ai/types.go`, `ai/compat.go` | ✅ |
 | `packages/ai/src/api/constrained-sampling.ts` | `ai/constrained_sampling.go + ai/schema_object_order.go (imported schema-key order;grammar + canonical JSON-schema strict constrained sampling; wired into Anthropic, OpenAI Completions, OpenAI Responses, Mistral, Bedrock, and Google request paths; unit and provider-wire tests in ai/constrained_sampling_test.go, ai/anthropic_test.go, ai/openai_test.go, ai/openai_responses_constrained_test.go, ai/mistral_test.go, ai/providers/bedrock/bedrock_test.go, and ai/google_test.go)` | ✅ |
 | `packages/ai/src/api/azure-openai-config.ts` | `ai/azure_config.go (ResolveAzureBaseURL, ResolveAzureConfig, ResolveAzureDeploymentName)`, `ai/types.go` | ✅ |
@@ -185,84 +186,84 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/compat.ts` | `ai/types.go`, `ai/compat.go`, `ai/builtin_providers.go`, `ai/registry.go`, `ai/faux.go` | ✅ |
 | `packages/ai/src/compat/extension-oauth-types.ts` | `ai/oauth_types.go + coding/extension/provider.go (type-only legacy OAuth callback and prompt contracts; runtime OAuth behavior belongs to the auth/provider rows)` | ✅ |
 | `packages/ai/src/legacy-api-aliases.ts` | `ai/api_streams.go (all 16 deprecated streamX/streamSimpleX aliases as exported Go functions, bound to their API; ai/compat_registry_test.go TestLegacyAPIAliasesAreBoundToTheirAPI. A setup failure such as a missing API key ends the returned stream with an error event as lazy.ts lazyStream does (TestLegacyAPIAliasesDeliverSetupFailuresOnTheStream); an alias builds its own API's request from the model's fields with no model.api check (TestLegacyAPIAliasesSendTheirAPIsRequestWhateverTheModelsApi); the plain and simple forms differ by the model token limit (TestAPIStreamsSendPlainAndSimpleOptions); the reply carries the model's api for the anthropic, mistral, openai-completions, openai-responses and pi-messages modules and the module's own api for azure, google, google-vertex, bedrock and codex (apiModuleOutputAPI; TestLegacyAPIAliasesStampTheReplyLikeTheirModule))` | ✅ |
-| `packages/ai/src/providers/openai-codex.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (OpenAI Codex provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/openai.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (OpenAI provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
+| `packages/ai/src/providers/openai-codex.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/openai.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
 | `packages/ai/src/utils/error-body.ts` | `ai/errors.go + ai/openai_error.go + ai/openai.go + ai/openai_responses.go + ai/providers/bedrock/bedrock.go + internal/jsonstringify/json.go (shared normalization, SDK extraction, bounded text and JSON fallback; ai/error_body_upstream_test.go + ai/openai_error_test.go)` | ✅ |
 | `packages/ai/src/utils/estimate.ts` | `ai/estimate.go (EstimateContextTokens, EstimateMessageTokens, CalculateContextTokens; estimate_test.go) + ai/simple_options.go (ClampMaxTokensToContext)`, `agent/context_tokens.go` | ✅ |
 | `packages/ai/src/utils/retry.ts` | `ai/assistant_retry.go (RetryAssistantCall, RetryDelayMs, IsRetryableAssistantError; assistant_retry_test.go)` | ✅ |
 | `packages/ai/src/utils/provider-retry.ts` | `ai/provider_retry.go` | ✅ |
 | `packages/ai/src/utils/openrouter-cost.ts` | `ai/openrouter_cost.go (isOpenRouterModel, validOpenRouterCost for isValidCost, applyOpenRouterReportedCost; ai/openrouter_cost_test.go)` | ✅ |
-| `packages/ai/src/providers/amazon-bedrock.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/ant-ling.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/anthropic.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/azure.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/cerebras.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/cloudflare-ai-gateway.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/cloudflare-workers-ai.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/deepseek.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/fireworks.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/github-copilot.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/google-vertex.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/google.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/groq.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/huggingface.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/kimi-coding.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/minimax-cn.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/minimax.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/mistral.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/moonshotai-cn.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/moonshotai.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/nvidia.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/openai-codex.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/openai.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/opencode-go.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/opencode.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/openrouter.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/qwen-token-plan.models.ts` | `ai/models_generated.go (0.81 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/qwen-token-plan-cn.models.ts` | `ai/models_generated.go (0.81 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/together.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/vercel-ai-gateway.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/xai.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/xiaomi-token-plan-ams.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/xiaomi-token-plan-cn.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/xiaomi-token-plan-sgp.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/xiaomi.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/zai-coding-cn.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/zai.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/ant-ling.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/cerebras.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/cloudflare-ai-gateway.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/cloudflare-auth.ts` | `ai/auth_providers.go + ai/provider_login.go + ai/models_generated.go + internal/codingagent/model_registry.go (provider auth, login prompts, metadata/catalog registration)` | ✅ |
-| `packages/ai/src/providers/cloudflare-stream.ts` | `ai/cloudflare_streams.go (ResolveCloudflareModel, CloudflareStreams: wraps the cloudflare-workers-ai and cloudflare-ai-gateway API streams via builtinStreamWrappers) + ai/cloudflare.go (resolveCloudflarePlaceholders, shared substitution) + ai/provider_wrap.go (WrapBuiltinProvider: applies the same builtinStreamWrappers to the per-model providers the coding runtime builds) + ai/system_one.go (CloudflareClassifier)` | ✅ |
-| `packages/ai/src/providers/cloudflare-workers-ai.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/builtin_providers.go` | ✅ |
+| `packages/ai/src/providers/amazon-bedrock.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/ant-ling.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/anthropic.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/azure.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/cerebras.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/cloudflare-ai-gateway.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/cloudflare-workers-ai.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/deepseek.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/fireworks.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/github-copilot.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/google-vertex.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/google.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/groq.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/huggingface.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/kimi-coding.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/minimax-cn.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/minimax.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/mistral.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/moonshotai-cn.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/moonshotai.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/nvidia.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/openai-codex.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/openai.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/opencode-go.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/opencode.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/openrouter.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/qwen-token-plan.models.ts` | `ai/models_generated.go (0.81 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/qwen-token-plan-cn.models.ts` | `ai/models_generated.go (0.81 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/together.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/vercel-ai-gateway.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/xai.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/xiaomi-token-plan-ams.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/xiaomi-token-plan-cn.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/xiaomi-token-plan-sgp.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/xiaomi.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/zai-coding-cn.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/zai.models.ts` | `ai/models_generated.go (0.80 catalog shard input)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/ant-ling.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/cerebras.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/cloudflare-ai-gateway.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/cloudflare-auth.ts` | `ai/auth_providers.go` (cloudflareWorkersAIAuth and cloudflareAIGatewayAuth: key, account and gateway resolution per field, login prompts); the login prompt plumbing (provider_login), catalog metadata (models_generated) and runtime registration (codingagent model_registry) are consumers, not ports of this file | ✅ |
+| `packages/ai/src/providers/cloudflare-stream.ts` | `ai/cloudflare_streams.go` (ResolveCloudflareModel, CloudflareStreams: wraps the cloudflare-workers-ai and cloudflare-ai-gateway API streams via builtinStreamWrappers) + `ai/system_one.go` (CloudflareClassifier); provider_wrap (WrapBuiltinProvider) applies the same wrappers to the per-model providers the coding runtime builds | ✅ |
+| `packages/ai/src/providers/cloudflare-workers-ai.ts` | `ai/builtin_providers.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
 | `packages/ai/src/providers/data-json.d.ts` | `(TypeScript JSON import declaration only)` | n/a |
-| `packages/ai/src/providers/deepseek.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/fireworks.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/github-copilot.ts` | `ai/models_generated.go + ai/github_copilot_filter.go (filterModels) + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/groq.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/huggingface.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/builtin_providers.go` | ✅ |
-| `packages/ai/src/providers/kimi-coding.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/minimax-cn.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/minimax.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/moonshotai-cn.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/moonshotai.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/nvidia.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/opencode-go.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/builtin_providers.go` | ✅ |
-| `packages/ai/src/providers/opencode.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/openrouter.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go`, `ai/openrouter_user_models.go` | ✅ |
-| `packages/ai/src/providers/qwen-token-plan.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/qwen-token-plan-cn.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/radius-config.ts` | `ai/radius_config.go (ai/radius_config_test.go; test/parity/scenarios/model-runtime-store-catalog/11-radius-metadata-import.toml)`, `ai/auth.go` | ✅ |
-| `packages/ai/src/providers/radius.ts` | `ai/radius.go + internal/codingagent/radius_models.go + internal/codingagent/radius_composition.go (ai/radius_test.go, internal/codingagent/radius_models_test.go, internal/codingagent/radius_composition_test.go, coding/radius_composition_test.go, coding/model_test.go; test/parity/scenarios/model-runtime-store-catalog/11-radius-metadata-import.toml)` | ✅ |
-| `packages/ai/src/providers/together.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/builtin_providers_google_openai_together.go` | ✅ |
-| `packages/ai/src/providers/vercel-ai-gateway.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/xai.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/xiaomi-token-plan-ams.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/xiaomi-token-plan-cn.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/xiaomi-token-plan-sgp.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/xiaomi.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/builtin_providers.go` | ✅ |
-| `packages/ai/src/providers/zai-coding-cn.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/zai.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
+| `packages/ai/src/providers/deepseek.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/fireworks.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/github-copilot.ts` | `ai/github_copilot_filter.go (filterModels)` (provider metadata and catalog from the generated model table ai/models_generated, registered through the coding-agent model registry internal/codingagent/model_registry), `ai/provider_constructors.go` | ✅ |
+| `packages/ai/src/providers/groq.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/huggingface.ts` | `ai/builtin_providers.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/kimi-coding.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/minimax-cn.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/minimax.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/moonshotai-cn.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/moonshotai.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/nvidia.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/opencode-go.ts` | `ai/builtin_providers.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/opencode.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/openrouter.ts` | (provider metadata and catalog from the generated model table ai/models_generated, registered through the coding-agent model registry internal/codingagent/model_registry), `ai/provider_constructors.go`, `ai/openrouter_user_models.go` | ✅ |
+| `packages/ai/src/providers/qwen-token-plan.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/qwen-token-plan-cn.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/radius-config.ts` | `ai/radius_config.go (TestNormalizeRadiusGatewayURL, TestSanitizeRadiusGatewayConfigKeepsOnlyUpstreamShapedModels, TestGetRadiusModelsBindsLegacyCredentialCatalog and the TestLoadRadiusGatewayConfig* tests; test/parity/scenarios/model-runtime-store-catalog/11-radius-metadata-import.toml)`, `ai/auth.go` | ✅ |
+| `packages/ai/src/providers/radius.ts` | `ai/radius.go (NewRadiusProvider, RadiusProviderOptions: id/name/gateway defaults, the shipped catalog for the default gateway, refreshed and stored catalogs replacing it; radius-provider.test.ts cases: TestRadiusProviderShipsPublicCatalogForDefaultGateway, TestRadiusProviderCustomGatewayHasNoPublicCatalog, TestRadiusProviderOverlaysRefreshedModels, TestRadiusProviderExposesNoModelsWhenTheOrganizationDisabledAll, TestRadiusProviderRestoresStoredCatalogOffline; the coding-agent composition of models.json Radius gateways belongs to the model-runtime and provider-composer rows)` | ✅ |
+| `packages/ai/src/providers/together.ts` | `ai/builtin_providers_google_openai_together.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/vercel-ai-gateway.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/xai.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/xiaomi-token-plan-ams.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/xiaomi-token-plan-cn.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/xiaomi-token-plan-sgp.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/xiaomi.ts` | `ai/builtin_providers.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/zai-coding-cn.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
+| `packages/ai/src/providers/zai.ts` | `ai/provider_constructors.go` (provider metadata; the catalog rows come from the generated model table and register through the coding-agent model registry) | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/easter-egg-3d.lazy.ts` | `internal/codingagent/pig_logo_animation_play.go + internal/codingagent/startup_header.go + internal/codingagent/interactive_easter_eggs.go (header click and fullscreen /arminsayshi; D87: PiG's pig models; the dynamic import is designed out, Go links the module)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/easter-egg-3d.ts` | `internal/codingagent/pig_egg3d.go + internal/codingagent/pig_logo_animation.go + internal/codingagent/pig_logo_animation_play.go (D87: the Pi-logo kind with the pig of the PiG mark and its running pig; the Armin kind with the sprite's pig head)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts` | `internal/codingagent/radius_login_selector.go (Radius top-level login option shimmer; static rows proven by oauth/27-28, shimmer frames compared with the pinned Pi by TestRadiusLoginMenuRendersLikePi)` | ✅ |
@@ -283,14 +284,14 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/api/openai-codex-responses.ts` | `ai/direct_simple.go + ai/openai_codex_responses.go + ai/openai_codex_http.go + ai/openai_codex_frames.go + ai/openai_codex_websocket.go + ai/openai_responses.go (native retries, source response observation and pointer timeouts, selected-model metadata and pricing, account/session scoped continuation; all 30 streaming case sites/39 rows, Model Runtime caller tests and exact Pi scenarios; live cache-affinity acceptance remains credential-gated)`, `ai/types.go`, `ai/compat.go` | ✅ |
 | `packages/ai/src/api/openai-prompt-cache.ts` | `ai/openai_prompt_cache.go` | ✅ |
 | `packages/ai/src/api/pi-messages.ts` | `ai/pi_messages.go + ai/pi_messages_events.go + ai/pi_messages_reader.go (ai/pi_messages_test.go, ai/pi_messages_oracle_test.go, ai/pi_messages_ticks_test.go, coding/cli/rpc_pi_messages_oracle_test.go, coding/model_test.go TestPiMessagesModelsJSONProviderStreamsThroughModelRuntime)`, `ai/types.go`, `ai/compat.go`, `ai/direct_simple.go` | ✅ |
-| `packages/ai/src/providers/anthropic.ts` | `ai/anthropic.go + ai/anthropic_client.go + ai/anthropic_federation.go + ai/oauth_anthropic.go + ai/auth_providers.go + ai/auth_env_keys.go + internal/codingagent/model_registry.go + coding/model.go + coding/cli/model.go (catalog; the ai resolver (ai/auth_providers.go anthropicAPIKeyAuth) reads ANTHROPIC_AUTH_TOKEN as an Authorization bearer header, then ANTHROPIC_OAUTH_TOKEN, then ANTHROPIC_API_KEY, then upstream 0.99.2 workload identity federation from the five ANTHROPIC_* federation variables (ai/auth_env_keys.go, exchanged by ai/anthropic_federation.go); subscription OAuth login; stored OAuth and api_key credentials outrank ambient auth and reach serialized requests on both SDK and CLI model paths; tests in ai/anthropic_oauth_test.go, ai/anthropic_federation_upstream_test.go, internal/codingagent/anthropic_env_auth_test.go, coding/anthropic_auth_test.go, coding/cli/model_anthropic_auth_test.go); federation-only env counts as anthropic auth on the registry and CLI paths and in the Node builtin-API bridge (TestHasEnvAuthAnthropicFederation, TestProviderAuthStatusAnthropicFederation, TestNodeBridgeFederationGate)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/google.ts` | `ai/google.go`, `ai/builtin_providers_google_openai_together.go` | ✅ |
+| `packages/ai/src/providers/anthropic.ts` | `ai/auth_providers.go (anthropicAPIKeyAuth resolver)` (catalog and request paths ai/anthropic, ai/anthropic_client, ai/oauth_anthropic, internal/codingagent/model_registry, coding/model, coding/cli/model; the ai resolver (ai/auth_providers.go anthropicAPIKeyAuth) reads ANTHROPIC_AUTH_TOKEN as an Authorization bearer header, then ANTHROPIC_OAUTH_TOKEN, then ANTHROPIC_API_KEY, then upstream 0.99.2 workload identity federation from the five ANTHROPIC_* federation variables (ai/auth_env_keys, exchanged by ai/anthropic_federation); subscription OAuth login; stored OAuth and api_key credentials outrank ambient auth and reach serialized requests on both SDK and CLI model paths; tests TestAnthropicAuthTokenEnvResolution, TestAnthropicRequestAuthShapes, TestAnthropicEnvAuthStatus, TestAnthropicWorkloadIdentityFederation, TestAnthropicAuthTreatsEmptyContextValuesAsAbsent, TestAnthropicEnvAuthResolution, TestAnthropicEnvAuthAbsent, TestBuildModelAnthropicEnvAuthRequestShapes, TestBuildModelAnthropicAuthRequestShapes); federation-only env counts as anthropic auth on the registry and CLI paths and in the Node builtin-API bridge (TestHasEnvAuthAnthropicFederation, TestProviderAuthStatusAnthropicFederation, TestNodeBridgeFederationGate), `ai/provider_constructors.go` | ✅ |
+| `packages/ai/src/providers/google.ts` | `ai/builtin_providers_google_openai_together.go` (GoogleProvider: id, name, base URL, Gemini API key auth, google-generative-ai catalog; compared with the pinned module by TestBuiltinProvidersMatchPinnedProviderModules) | ✅ |
 | `packages/ai/src/api/google-shared.ts` | `ai/google.go` | ✅ |
-| `packages/ai/src/providers/google-vertex.ts` | `ai/auth_providers.go + ai/google_vertex.go + ai/provider_login.go`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/amazon-bedrock.ts` | `ai/auth_providers.go + ai/providers/bedrock/bedrock.go + ai/provider_login.go`, `ai/provider_constructors.go` | ✅ |
+| `packages/ai/src/providers/google-vertex.ts` | `ai/auth_providers.go` (vertexAuth: API key or ADC login and resolution), `ai/provider_constructors.go` (GoogleVertexProvider); the Vertex stream implementation (google_vertex) ports packages/ai/src/api/google-vertex.ts, not this file | ✅ |
+| `packages/ai/src/providers/amazon-bedrock.ts` | `ai/auth_providers.go` (bedrockAuth: bearer token, AWS profile or credential-chain login and resolution), `ai/provider_constructors.go` (AmazonBedrockProvider); the Converse stream implementation (providers/bedrock) ports packages/ai/src/api/bedrock-converse-stream.ts, not this file | ✅ |
 | `packages/ai/src/api/cloudflare.ts` | `ai/cloudflare.go` | ✅ |
-| `packages/ai/src/providers/azure.ts` | `ai/azure.go (Azure Chat Completions endpoint and deployment resolution over the shared OpenAI provider) + ai/azure_openai_responses.go`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/mistral.ts` | `ai/mistral.go`, `ai/provider_constructors.go` | ✅ |
+| `packages/ai/src/providers/azure.ts` | `ai/azure.go` (azureStreams: Azure Chat Completions endpoint and deployment resolution over the shared OpenAI provider), `ai/provider_constructors.go` (AzureProvider); the Responses api (azure_openai_responses) ports packages/ai/src/api/azure-openai-responses.ts | ✅ |
+| `packages/ai/src/providers/mistral.ts` | `ai/provider_constructors.go` (MistralProvider: id, name, base URL, Mistral API key auth, mistral-conversations catalog; compared with the pinned module by TestBuiltinProvidersMatchPinnedProviderModules) | ✅ |
 | `packages/ai/src/api/github-copilot-headers.ts` | `ai/githubcopilot.go` | ✅ |
 | `packages/ai/src/providers/faux.ts` | `ai/faux.go + ai/faux_deferred.go (queued streaming, canonical models, model-aware factories, caller-supplied timestamps, cache and deferred submit/fetch/cancel, fauxAssistantMessage and the cost and input-limit model options)`, `ai/faux_core.go` | ✅ |
 | `packages/ai/src/api/transform-messages.ts` | `ai/transcript.go + agent/transform.go + ai/tool_flow.go + ai/transform_messages.go (shared provider tool-flow pass and OpenAI replay normalization; Agent retains D48 recovery)` | ✅ |
@@ -313,20 +314,20 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/utils/uuid.ts` | `ai/uuid.go (UUIDv7, uuidv7Generator: the process-wide last-ordinary-timestamp and 41-bit sequence state with an injected clock and random source; internal/codingagent session ids, the Codex WebSocket request id, the compaction summary routing session id and the bug-report id call it)` | ✅ |
 | `packages/ai/src/utils/abort-signals.ts` | `(stdlib context.Context combines signals)` | n/a |
 | `packages/ai/src/utils/sanitize-unicode.ts` | `ai/sanitize_unicode.go` | ✅ |
-| `packages/ai/src/utils/typebox-helpers.ts` | `ai/typebox_helpers.go (StringEnum only, as a JSON-schema map; the TypeBox runtime and type-level helpers stay designed out; production caller internal/evals/evalsuites/audit.go)` | ✅ |
-| `packages/ai/src/utils/validation.ts` | `ai/validate.go + ai/validate_arguments.go + ai/validate_convert.go + ai/validate_errors.go + internal/typebox/compiler.go + ai/validate_json.go` | ✅ |
+| `packages/ai/src/utils/string-enum.ts` | `ai/string_enum.go (StringEnum only, as a JSON-schema map; its production caller is the evals audit suite)` | ✅ |
+| `packages/ai/src/utils/validation.ts` | `ai/validate.go + ai/validate_arguments.go (pi-schema parse with coercion, errors and dotted paths)` | ✅ |
 | `packages/ai/src/utils/version.ts` | `ai/user_agent.go (ProductVersion: PiG's composite release version stands for PI_AI_VERSION as the default version of a detailed User-Agent, D65; TestClientIdentityVersionDefaultsToTheProductVersion)` | ✅ |
 | `packages/ai/src/providers/baseten.models.ts` | `(not ported: Baseten provider declined)` | n/a |
 | `packages/ai/src/providers/baseten.ts` | `(not ported: Baseten provider declined)` | n/a |
 | `packages/ai/src/utils/abort.ts` | `(AbortSignal/Promise racing: raceWithAbortSignal/operationSignal; pig uses context.Context cancellation + select (D3): runtime mechanics, designed out)` | n/a |
 | `packages/ai/src/api/cloudflare-ai-binding.ts` | `ai/cloudflare_ai_binding.go (AIBinding, CreateAIBindingFetch and the auth sentinel as a library fetch adapter; no PiG product path builds a Workers binding, so it has no in-product caller; cloudflare-ai-binding.test.ts cases in ai/cloudflare_ai_binding_test.go; HTTPS AI Gateway stays in ai/cloudflare.go)` | ✅ |
 | `packages/ai/src/auth/oauth/meta.ts` | `ai/oauth_meta.go (device flow + Muse Code key mint, registered in ai/oauth_registry.go; meta-oauth.test.ts cases in ai/oauth_meta_test.go)` | ✅ |
-| `packages/ai/src/providers/meta.models.ts` | `ai/models_generated.go (0.87.1 catalog shard; ai/meta_provider_test.go)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/meta.ts` | `ai/models_generated.go + ai/openai_responses.go + ai/oauth_meta.go + ai/auth_env_keys.go (catalog, openai-responses request shape, Muse subscription OAuth, META_API_KEY discovery; ai/meta_provider_test.go + internal/codingagent/model_registry_test.go)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/opencode-headers.ts` | `ai/opencode_headers.go (WithOpenCodeSessionHeader, case-insensitive caller override); the request path sends the same header through ai/identity.go GetOpenCodeSessionHeaders (ai/models_runtime_stream.go; coding/model.go for a coding-agent model that points at OpenCode); coding/opencode_headers_0871_test.go, ai/identity_test.go TestGetOpenCodeSessionHeaders`, `ai/opencode_headers.go` | ✅ |
-| `packages/ai/src/providers/qwen-token-plan-individual.models.ts` | `ai/models_generated.go (0.87.1 catalog shard; qwen-token-plan-models.test.ts cases in ai/qwen_token_plan_models_test.go)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
-| `packages/ai/src/providers/qwen-token-plan-individual.ts` | `ai/models_generated.go + ai/openai.go + ai/auth_env_keys.go (catalog base URL, openai-completions, qwen enable_thinking + reasoning_effort payload; shared QWEN_TOKEN_PLAN_API_KEY discovery tested in ai/auth_env_keys_test.go + internal/codingagent/model_registry_test.go)`, `ai/provider_constructors.go` | ✅ |
-| `packages/ai/src/providers/radius.models.ts` | `ai/models_generated.go (0.87.1 radius shard, served for the default gateway by ai/radius.go: ai/registry_test.go TestRuntimeDiscoveryIncludesRadiusCatalog, ai/radius_test.go TestRadiusProviderShipsPublicCatalogForDefaultGateway)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
+| `packages/ai/src/providers/meta.models.ts` | `ai/models_generated.go (0.87.1 catalog shard; TestMetaCatalogMatchesPinnedProviderDefinition)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/meta.ts` | `ai/provider_constructors.go` (MetaProvider: id, name, base URL, META_API_KEY auth, Muse subscription OAuth, openai-responses catalog; TestMetaCatalogMatchesPinnedProviderDefinition, TestBuiltinProviderAuthMetaAndRadiusMethods and the pinned module comparison TestBuiltinProvidersMatchPinnedProviderModules) | ✅ |
+| `packages/ai/src/providers/opencode-headers.ts` | `ai/opencode_headers.go` (WithOpenCodeSessionHeader: x-opencode-session from StreamOptions.SessionID for stream and streamSimple, case-insensitive caller override incl. null; opencode-provider-headers.test.ts cases: TestWithOpenCodeSessionHeaderPiCases, TestWithOpenCodeSessionHeaderLikeUpstream; the coding-agent model path adds the same header in its request-options wrapper, TestOpenCodeSessionHeaderMapsSessionIDWithoutCacheRetention) | ✅ |
+| `packages/ai/src/providers/qwen-token-plan-individual.models.ts` | `ai/models_generated.go (0.87.1 catalog shard; qwen-token-plan-models.test.ts cases: TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels, TestQwenTokenPlanExposesTextModelsAndOmitsImageModels)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
+| `packages/ai/src/providers/qwen-token-plan-individual.ts` | `ai/provider_constructors.go` (QwenTokenPlanIndividualProvider: id, name, base URL, QWEN_TOKEN_PLAN_API_KEY auth, openai-completions catalog; qwen-token-plan-models.test.ts cases: TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels, TestQwenTokenPlanExposesTextModelsAndOmitsImageModels, and the pinned module comparison TestBuiltinProvidersMatchPinnedProviderModules) | ✅ |
+| `packages/ai/src/providers/radius.models.ts` | `ai/models_generated.go (0.87.1 radius shard, served for the default gateway by the radius provider: ai/registry_test.go TestRuntimeDiscoveryIncludesRadiusCatalog, ai/radius_test.go TestRadiusProviderShipsPublicCatalogForDefaultGateway)`, `ai/builtin_providers.go`, `ai/images_registry.go` | ✅ |
 | `packages/ai/src/utils/identity.ts` | `ai/identity.go (ClientIdentity, UserAgentMode, ClientAttribution, MergeClientIdentity, FormatUserAgent, GetAttributionHeaders, GetOpenCodeSessionHeaders, PiAttribution) and ai/identity_models.go (WithClientIdentity over ClientIdentityModels: Go has no Proxy); every API module applies the identity headers below model and request headers (Bedrock adds the product to the AWS SDK user agent); PiG's product and attribution values are D65 and D26 (the release in the user agent comes from uname on unix and RtlGetVersion on Windows); ai/identity_test.go, ai/identity_oracle_test.go TestProviderIdentityHeadersMatchPi and ai/identity_images_oracle_test.go TestOpenRouterImagesHeadersMatchPi compare the headers with the pinned Pi; every identity.test.ts case is ported (test-mapping-v1.3.0+bd3c9b82.json)` | ✅ |
 | `packages/coding-agent/src/core/client-identity.ts` | `coding/client_identity.go (getClientIdentity: PiG's attribution while install telemetry is on, none otherwise; set per request in Session.buildRequestOptions); coding/client_identity_test.go, sdk-client-identity.test.ts ported (D26)` | ✅ |
 | `packages/ai/src/utils/sleep.ts` | `ai/provider_retry.go abortableSleep (context-cancelled timer: immediate rejection when already aborted, rejection on abort mid-wait; ai/sleep_test.go)`, `ai/abort_utils.go` | ✅ |
@@ -343,7 +344,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/api/typesafe-system-one.ts` | `ai/system_one.go (typesafe system-one classifier API)` | ✅ |
 | `packages/ai/src/auth/oauth/callback-server.ts` | `ai/oauth_callback_server.go` | ✅ |
 | `packages/ai/src/auth/oauth/openai-chatgpt.ts` | `ai/oauth_openai_chatgpt.go` | ✅ |
-| `packages/ai/src/providers/typesafe.models.ts` | `ai/classifier_models_generated.go (the generated jev-latest classifier shard)`, `ai/builtin_providers.go`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
+| `packages/ai/src/providers/typesafe.models.ts` | `ai/classifier_models_generated.go (the generated jev-latest classifier shard)`, `ai/images_registry.go`, `ai/registry.go` | ✅ |
 | `packages/ai/src/providers/typesafe.ts` | `ai/builtin_providers.go (TypesafeProvider)` | ✅ |
 | `packages/ai/src/utils/model-operations.ts` | `ai/model_types.go (ModelType and the per-type Models operations)`, `ai/model_operations_export.go` | ✅ |
 | `packages/ai/src/utils/models-error.ts` | `ai/auth_resolve.go (ModelsErrorCode, ModelsError, NewModelsError)` | ✅ |
@@ -392,6 +393,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/core/keybindings-schema.ts` | `internal/codingagent/keybindings_schema.go (tui.TUIKeybindingOrder + KeybindingsManager.KeybindingIDs)` | ✅ |
 | `packages/coding-agent/src/core/messages.ts` | `agent/messages.go` | ✅ |
 | `packages/coding-agent/src/core/model-config.ts` | `internal/codingagent/model_registry.go` | ✅ |
+| `packages/coding-agent/src/core/pi-ai-schemas.ts` | `internal/codingagent/configschema/pi_ai_schemas.go (PartialModelCostSchema; the Type.Unsafe wrappers only change TypeBox's static type and are designed out)` | ✅ |
 | `packages/coding-agent/src/core/model-registry.ts` | `internal/codingagent/model_registry.go + internal/codingagent/extension_model_registry.go + coding/extension/host/subprocess/provider_object.go + internal/codingagent/native_model_runtime.go + coding/model_runtime_native.go + coding/model_registry_facade.go + internal/codingagent/registry_request_auth.go`, `coding/services.go`, `coding/model_runtime_classify.go`, `coding/model.go`, `internal/codingagent/model_catalog_data.go`, `coding/virtual_models.go` | ✅ |
 | `packages/coding-agent/src/core/model-runtime.ts` | `internal/codingagent/model_registry.go + internal/codingagent/provider_registration_validation.go + internal/codingagent/provider_registration_namespace.go + internal/codingagent/extension_model_registry.go + internal/codingagent/native_provider.go + coding/native_provider.go + internal/codingagent/native_model_runtime.go + internal/codingagent/native_credential_operations.go + coding/services.go + coding/model_availability.go + internal/codingagent/model_availability.go + internal/codingagent/model_refresh_background.go + internal/codingagent/model_tasks.go + coding/model_runtime_create.go + coding/model_catalog_backend.go + coding/registered_stream_provider.go + internal/codingagent/model_catalog_data.go + internal/codingagent/registry_request_auth.go + coding/model_runtime_native.go + coding/extension/host/subprocess/native_provider.go + internal/codingagent/interactive.go + internal/codingagent/request_auth_runtime.go (request-auth surface)`, `coding/model_runtime_classify.go`, `coding/model_runtime_typed.go`, `coding/model_runtime_members.go`, `coding/virtual_models.go`, `ai/auth_resolve.go` | ✅ |
 | `packages/coding-agent/src/core/models-store.ts` | `ai/models_store.go + ai/models_store_read.go + internal/pilock/lock.go (FileModelsStore; upstream read-cache cases and Pi directory-lock/concurrent-writer regressions) + internal/codingagent/model_registry.go + internal/codingagent/radius_models.go (<agentDir>/models-store.json)` | ✅ |
@@ -427,6 +429,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/core/extensions/loader.ts` | `coding/cli/extensions.go + coding/extension/provider_runtime.go (shared ordered provider queue and bind actions) + coding/extension/host/subprocess/builder_node.go + coding/extension/host/subprocess/runtime-node/jiti-loader.mjs + coding/extension/host/subprocess/runtime-node/runtime.mjs + coding/extension/host/subprocess/reload_cells.go + coding/extension/host/subprocess/reload_report.go (the reload's placement report) + coding/extension/host/subprocess/host.go + coding/extension/host/subprocess/tool_registration.go (synchronous late registration updates) + coding/extension/host/subprocess/ui_bridge.go (flag defaults, tool-schema and command validation, failed Node factory API rejection, factory-time action stubs and awaited exec, rollback and concurrent-provider preservation are covered by Pi-differential and mutation-checked tests (TestNodeLoadTimeActionsMatchPiLoader, TestUpstreamFactoryFailure*, TestNodeRunnerRejectsInvalidCommandRegistration); the module-level factory cache (loadExtensionsCached, clearExtensionCache) is the recorded divergence D70, and discoverAndLoadExtensions has no production caller in Pi, which discovers through the package manager (coding/packagecontent); reload and Session replacement re-invoke factories in the retained process: retention.go, runtime-node/generations.mjs)`, `coding/discover_extensions.go` | ✅ |
 | `packages/coding-agent/src/core/extensions/wrapper.ts` | `coding/extension_bridge.go + coding/session_tool_registry.go` | ✅ |
 | `packages/coding-agent/src/core/extensions/index.ts` | `(barrel)` | n/a |
+| `packages/coding-agent/src/core/extensions/pi-ai-extension-view.ts` | `coding/extension/host/subprocess/runtime-node/shims/pi-ai.mjs (compat plus TypeBox Type and TypeBox StringEnum, served to Node extensions); extensions/sdk/type_schema.go (Type in the Go SDK)` | 🟡 |
 | `packages/coding-agent/src/extensions/index.ts` | `coding/cli/llama.go + internal/codingagent/llama/host.go (built-in llama.cpp provider and /llama registered natively in every mode; Stock PiG has no inline-extension runtime)` | ✅ |
 | `packages/coding-agent/src/extensions/llama/client.ts` | `internal/codingagent/llama/client.go + internal/codingagent/llama/fetch.go` | ✅ |
 | `packages/coding-agent/src/extensions/llama/huggingface.ts` | `internal/codingagent/llama/huggingface.go` | ✅ |
@@ -744,7 +747,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/reload.ts` | `chord/host/reload.go (link protocol 4)` | ✅ |
 | `packages/chord/src/schema.ts` | `chord/host/schema.go` | ✅ |
 | `packages/chord/src/state.ts` | `chord/state.go` | ✅ |
-| `packages/chord/src/watch.ts` | `chord/watch.go WatchEnd, WatchEndReason, WatchHandle, Watchable, NativeWatchable (Durable's package re-exports them as type aliases, as Pi's durable index does); chord/watch_impl.go Watch, NativeWatch, NativeWatchHandle, DeliveryScheduler (the delivery goroutines that stand for queueMicrotask)` | ✅ |
+| `packages/chord/src/watch.ts` | `chord/watch.go WatchEnd, WatchEndReason, WatchHandle, Watchable, NativeWatchable (Durable's package re-exports them as type aliases, as Pi's durable index does); chord/watch_impl.go Watch, NativeWatch, NativeWatchHandle, DeliveryScheduler (the delivery goroutines that stand for queueMicrotask); chord/next/documents/handles.go SingletonHandle (Pi's `SingletonHandle<T> extends Watchable<T>`: its Value and Watch are the two members watch.ts's interface contributes to the next layer)` | ✅ |
 | `packages/chord/src/websocket.ts` | `chord/host/websocket.go (link protocol 4)` | ✅ |
 | `packages/chord/src/wire.ts` | `chord/host/wire.go (link protocol 4)` | ✅ |
 | `packages/chord/src/telemetry-sqlite/index.ts` | `chord/telemetrysqlite/index.go` | ✅ |
@@ -760,7 +763,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/contracts/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
 | `packages/chord/src/next/contracts/names.ts` | `chord/next/contracts/names.go` | ✅ |
 | `packages/chord/src/next/contracts/params.ts` | `chord/next/contracts/params.go` | ✅ |
-| `packages/chord/src/next/contracts/schema.ts` | `chord/next/contracts/schema.go, chord/next/contracts/namedmap.go, chord/next/contracts/jsorder.go` | ✅ |
+| `packages/chord/src/next/contracts/schema.ts` | `chord/next/contracts/schema.go` | ✅ |
 | `packages/chord/src/next/contracts/snapshot.ts` | `chord/next/contracts/snapshot.go` | ✅ |
 | `packages/chord/src/next/data/args.ts` | `chord/next/data/args.go` | ✅ |
 | `packages/chord/src/next/data/errors.ts` | `chord/next/data/errors.go` | ✅ |
@@ -783,7 +786,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/state/index.ts` | `(re-export barrel)` | n/a |
 | `packages/chord/src/next/state/internal.ts` | `(re-export barrel)` | n/a |
 | `packages/chord/src/next/state/native-source.ts` | `chord/next/state/native_source.go` | ✅ |
-| `packages/chord/src/next/state/watchable.ts` | `chord/next/state/watchable.go, chord/next/state/identical.go, chord/next/state/set.go` | ✅ |
+| `packages/chord/src/next/state/watchable.ts` | `chord/next/state/watchable.go, chord/next/state/set.go` | ✅ |
 | `packages/chord/src/next/state/writable.ts` | `chord/next/state/writable.go` | ✅ |
 | `packages/chord/src/next-node/compression.ts` | `chord/nextnode/compression.go` | ✅ |
 | `packages/chord/src/next/link/binary.ts` | `chord/next/link/binary.go` | ✅ |
@@ -811,22 +814,22 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/store/export.ts` | `chord/next/store/export.go` | ✅ |
 | `packages/chord/src/next/store/import.ts` | `chord/next/store/import.go` | ✅ |
 | `packages/chord/src/next/store/text.ts` | `chord/next/store/text.go` | ✅ |
-| `packages/chord/src/next/store/allocator.ts` | `allocator.go` | ✅ |
-| `packages/chord/src/next/store/claims.ts` | `claims.go` | ✅ |
-| `packages/chord/src/next/store/refusal.ts` | `refusal.go` | ✅ |
-| `packages/chord/src/next/store/columns.ts` | `columns.go` | ✅ |
-| `packages/chord/src/next/store/json-column.ts` | `json_column.go` | ✅ |
-| `packages/chord/src/next/store/rows.ts` | `rows.go` | ✅ |
-| `packages/chord/src/next/store/sql.ts` | `sql.go` | ✅ |
-| `packages/chord/src/next/store/jsonl.ts` | `jsonl.go` | ✅ |
-| `packages/chord/src/next/store/catalog.ts` | `catalog.go` | ✅ |
-| `packages/chord/src/next/store/expression.ts` | `expression.go` | ✅ |
-| `packages/chord/src/next/store/evaluate.ts` | `evaluate.go` | ✅ |
-| `packages/chord/src/next/store/query.ts` | `query.go` | ✅ |
-| `packages/chord/src/next/store/table.ts` | `table.go` | ✅ |
-| `packages/chord/src/next/store/table-history.ts` | `table_history.go` | ✅ |
-| `packages/chord/src/next/store/table-evolve.ts` | `table_evolve.go` | ✅ |
-| `packages/chord/src/next/store/table-migration.ts` | `table_migration.go` | ✅ |
+| `packages/chord/src/next/store/allocator.ts` | `chord/next/store/allocator.go` | ✅ |
+| `packages/chord/src/next/store/claims.ts` | `chord/next/store/claims.go` | ✅ |
+| `packages/chord/src/next/store/refusal.ts` | `chord/next/store/refusal.go` | ✅ |
+| `packages/chord/src/next/store/columns.ts` | `chord/next/store/columns.go` | ✅ |
+| `packages/chord/src/next/store/json-column.ts` | `chord/next/store/json_column.go` | ✅ |
+| `packages/chord/src/next/store/rows.ts` | `chord/next/store/rows.go` | ✅ |
+| `packages/chord/src/next/store/sql.ts` | `chord/next/store/sql.go` | ✅ |
+| `packages/chord/src/next/store/jsonl.ts` | `chord/next/store/jsonl.go` | ✅ |
+| `packages/chord/src/next/store/catalog.ts` | `chord/next/store/catalog.go` | ✅ |
+| `packages/chord/src/next/store/expression.ts` | `chord/next/store/expression.go` | ✅ |
+| `packages/chord/src/next/store/evaluate.ts` | `chord/next/store/evaluate.go` | ✅ |
+| `packages/chord/src/next/store/query.ts` | `chord/next/store/query.go`, `chord/next/store/expression.go` | ✅ |
+| `packages/chord/src/next/store/table.ts` | `chord/next/store/table.go` | ✅ |
+| `packages/chord/src/next/store/table-history.ts` | `chord/next/store/table_history.go` | ✅ |
+| `packages/chord/src/next/store/table-evolve.ts` | `chord/next/store/table_evolve.go` | ✅ |
+| `packages/chord/src/next/store/table-migration.ts` | `chord/next/store/table_migration.go` | ✅ |
 | `packages/chord/src/next/store/adapter.ts` | `chord/next/store/adapter.go` | ✅ |
 | `packages/chord/src/next/store/backend.ts` | `chord/next/store/backend.go` | ✅ |
 | `packages/chord/src/next/store/schema.ts` | `chord/next/store/schema.go` | ✅ |
@@ -868,7 +871,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/host/destination.ts` | `chord/next/host/host_destination.go` | ✅ |
 | `packages/chord/src/next/host/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above (Ctx, Facet, FacetHost, Host..., Sleep, UntilAborted, Presence, RefState, RevokedBy, RootOptions, RouteOptions, RoutineDeclarations, Native*, Follow*, GetOptions, HostError, Position; Host, HostOptions, LinkOptions, createHost, Factory, Self, StoreSelf, Held, Reference, RefIn are D5a's))` | n/a |
 | `packages/chord/src/next/host/internal.ts` | `(barrel for jobs/remote: one package, identifiers are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
-| `packages/chord/src/next/host/host.ts` | `chord/next/host/host_host.go, host_error.go` | ✅ |
+| `packages/chord/src/next/host/host.ts` | `chord/next/host/host_host.go, chord/next/host/host_error.go` | ✅ |
 | `packages/chord/src/next/host/attempt.ts` | `chord/next/host/host_attempt.go` | ✅ |
 | `packages/chord/src/next/host/object.ts` | `chord/next/host/host_object.go` | ✅ |
 | `packages/chord/src/next/host/reference.ts` | `chord/next/host/host_reference.go` | ✅ |
@@ -876,7 +879,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/jobs/persisted.ts` | `chord/next/host/jobs_persisted.go` | ✅ |
 | `packages/chord/src/next/jobs/records.ts` | `chord/next/host/jobs_records.go` | ✅ |
 | `packages/chord/src/next/jobs/run-states.ts` | `chord/next/host/jobs_run_states.go` | ✅ |
-| `packages/chord/src/next/jobs/run.ts` | `chord/next/host/jobs_run.go` | ✅ |
+| `packages/chord/src/next/jobs/run.ts` | `chord/next/host/jobs_run.go, chord/next/documents/job.go` | ✅ |
 | `packages/chord/src/next/jobs/running.ts` | `chord/next/host/jobs_running.go` | ✅ |
 | `packages/chord/src/next/jobs/stored.ts` | `chord/next/host/jobs_stored.go` | ✅ |
 | `packages/chord/src/next/jobs/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above: DefineJob, JobAccepts, JobDefinition, JobError, JobOptions, Outcome, JobCtx, JobHandle, JobImplementation, RunState, StartOptions, BlockedReason, Run; RunningEntry is type-level (jobs_running.go))` | n/a |
@@ -948,7 +951,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/host/adapted.ts` | `chord/next/host/host_adapted.go` | ✅ |
 | `packages/chord/src/next/host/reference-keys.ts` | `chord/next/host/host_reference_keys.go` | ✅ |
 | `packages/chord/src/next/host/reference-source.ts` | `chord/next/host/host_reference_source.go` | ✅ |
-| `packages/chord/src/next/host/staging.ts` | `chord/next/host/host_staging.go` | ✅ |
+| `packages/chord/src/next/host/staging.ts` | `chord/next/host/host_staging.go, chord/next/host/host_host.go` | ✅ |
 | `packages/chord/src/next-node/workers/control.ts` | `chord/nextnode/workers/workers_control.go` | ✅ |
 | `packages/chord/src/next-node/workers/index.ts` | `(re-export barrel; the exported set is the package's (CrossedError, ProcessLock, WorkerMain, WorkerStart, WorkerPlugins, WorkerResult, WorkerMainOptions, CreateWorkers, WorkerState, Workers, WorkersError, WorkersOptions))` | n/a |
 | `packages/chord/src/next-node/workers/lock.ts` | `chord/nextnode/workers/workers_lock.go, workers_lock_unix.go` (the Windows named-pipe variant workers_lock_windows is built only on Windows and is run by the native Windows CI job) | ✅ |
@@ -1113,6 +1116,7 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 | `packages/schema/src/annotations.ts` | `schema/annotations.go` | ✅ |
 | `packages/schema/src/builders.ts` | `schema/builders.go` | ✅ |
 | `packages/schema/src/checks.ts` | `schema/checks.go` | ✅ |
+| `packages/schema/src/coerce.ts` | `schema/coerce.go (CompileCoercing returns the distinct type CoercingValidator where Pi has compile(schema, {coerce:true}))` | ✅ |
 | `packages/schema/src/compiler.ts` | `schema/compiler.go` | ✅ |
 | `packages/schema/src/explain.ts` | `schema/explain.go` | ✅ |
 | `packages/schema/src/formats/index.ts` | `schema/formats/index.go` | ✅ |
@@ -1137,16 +1141,19 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 | `packages/schema/src/formats/typebox/iri.ts` | `schema/formats/typebox_iri.go` | ✅ |
 | `packages/schema/src/formats/typebox/iri_reference.ts` | `schema/formats/typebox_iri_reference.go` | ✅ |
 | `packages/schema/src/formats/typebox/json_pointer.ts` | `schema/formats/typebox_json_pointer.go` | ✅ |
+| `packages/schema/src/formats/typebox/json_pointer_uri_fragment.ts` | `schema/formats/typebox_json_pointer_uri_fragment.go` | ✅ |
 | `packages/schema/src/formats/typebox/regex.ts` | `schema/formats/typebox_regex.go` | ✅ |
 | `packages/schema/src/formats/typebox/relative_json_pointer.ts` | `schema/formats/typebox_relative_json_pointer.go` | ✅ |
 | `packages/schema/src/formats/typebox/time.ts` | `schema/formats/typebox_time.go` | ✅ |
 | `packages/schema/src/formats/typebox/uri.ts` | `schema/formats/typebox_uri.go` | ✅ |
 | `packages/schema/src/formats/typebox/uri_reference.ts` | `schema/formats/typebox_uri_reference.go` | ✅ |
 | `packages/schema/src/formats/typebox/uri_template.ts` | `schema/formats/typebox_uri_template.go` | ✅ |
+| `packages/schema/src/formats/typebox/url.ts` | `schema/formats/typebox_url.go` | ✅ |
 | `packages/schema/src/formats/typebox/uuid.ts` | `schema/formats/typebox_uuid.go` | ✅ |
 | `packages/schema/src/index.ts` | `(re-export barrel: the Go exports are the package-level identifiers of schema)` | n/a |
 | `packages/schema/src/resolver.ts` | `schema/resolver.go` | ✅ |
 | `packages/schema/src/shared.ts` | `schema/shared.go, schema/internal/ecmaregex` | ✅ |
+| `packages/schema/src/typebox-static.ts` | `(type-level only: TypeBoxStatic has no value; Go has no type-level programming)` | n/a |
 | `packages/schema/src/types.ts` | `schema/types.go` | ✅ |
 | `packages/schema/src/validator.ts` | `schema/validator.go` | ✅ |
 

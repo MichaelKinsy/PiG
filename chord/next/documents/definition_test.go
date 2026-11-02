@@ -126,7 +126,7 @@ func TestInitialRefusesAValueThatDoesNotMatchEveryTimeUntilOneDoes(t *testing.T)
 }
 
 func TestFingerprintsAreComputedOnceFromTheSchemasStructure(t *testing.T) {
-	make := func(schema contracts.TSchema) string {
+	make := func(schema contracts.Schema) string {
 		return mustDefine(t, "doc", StateOptions{
 			Schema: schema, Version: 1, Initial: func() *JsonObject { return obj("n", 0.0) },
 		}).Fingerprint

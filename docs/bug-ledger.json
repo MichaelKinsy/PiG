@@ -138,6 +138,28 @@
       ]
     },
     {
+      "id": "BF-016a19a",
+      "title": "A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the…",
+      "symptom": "The derive's watchers used to receive the non-JSON frame without any report.",
+      "rootCause": "Deliver assumed that diffing could not fail in Go because delta.DiffRevisions takes JSON, but nothing checked that the derive's value was JSON, so the batch had no failure to report.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the host reports as `delivery_failed` while the later frames of the commit are still delivered, as Pi's batch does when diffing throws. The derive's watchers used to receive the non-JSON frame without any report.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "016a19ac68",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_batch_test.go::TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit"
+      ]
+    },
+    {
       "id": "BF-02114ff",
       "title": "fix(tui): filterable list drops the label when no cell remains (Pi select-list)",
       "symptom": "fix(tui): filterable list drops the label when no cell remains (Pi select-list)",
@@ -5131,6 +5153,28 @@
       ]
     },
     {
+      "id": "BF-2b8731a",
+      "title": "A `models.json` number that is not an integer and also below the minimum of an integer field (for example…",
+      "symptom": "A `models.json` number that is not an integer and also below the minimum of an integer field (for example `inputLimits.images.resize.maxBytes: 0.5`) is now reported with both errors, `must be integer` and `must be \u003e= 1`, as Pi's TypeBox validation lists them.",
+      "rootCause": "pi-ai's compat and model schemas are built with pi-schema (openObject, stringLiteral, stringRecord, oneOf): type, properties, required, then the annotations and an explicit additionalProperties last, so schemas/models.schema.json lists every pi-ai object's required after its properties, as Pi's does. The coding agent's override cost is PartialModelCostSchema (pi-ai-schemas.ts). models.json validation reports the minimum of a non-integer number too (0.5 for an integer of minimum 1), as TypeBox does. ai/typebox_helpers.go is ai/string_enum.go (Pi renamed it).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `models.json` number that is not an integer and also below the minimum of an integer field (for example `inputLimits.images.resize.maxBytes: 0.5`) is now reported with both errors, `must be integer` and `must be \u003e= 1`, as Pi's TypeBox validation lists them. Pig listed only `must be integer`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2b8731afaf",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/configschema/pischema_test.go::TestStringLiteralStringRecordAndOneOfBuildTheirPiSchemaShapes"
+      ]
+    },
+    {
       "id": "BF-2b97688",
       "title": "The `env` daemon reports a watch `change` whose path list would not fit in a frame (16 MiB less 64 KiB) as an…",
       "symptom": "An oversized list used to make the frame writer fail and end the daemon's only output writer, leaving every request hanging until the client's 30 s silence limit.",
@@ -7738,6 +7782,33 @@
         "tui/extension_dialog_bindings_test.go::TestExtensionDialogCountdownMatchesPi",
         "tui/extension_dialog_bindings_test.go::TestExtensionDialogsMatchPiBindingsAndPalette",
         "tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownRendersAgainAfterHyperlinksOrColorChange"
+      ]
+    },
+    {
+      "id": "BF-3d98081",
+      "title": "Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no…",
+      "symptom": "Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no longer takes exponential time: the call is rejected with its errors at once.",
+      "rootCause": "validateToolArguments compiles the tool's JSON Schema with schema.CompileCoercing (formats, unresolvedRefs reject) and parses the arguments; a failure is pi-schema's errors then the arguments received.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no longer takes exponential time: the call is rejected with its errors at once.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3d980815b1",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "agent/validate_oracle_test.go::TestToolArgumentValidationMatchesPi",
+        "ai/validate_cache_test.go::TestToolArgumentSchemaCacheIsBounded",
+        "ai/validate_cache_test.go::TestToolArgumentSchemaEvictionDoesNotChangeOutcomes",
+        "ai/validate_passthrough_equivalence_test.go::TestValidateToolArgumentsPassthroughMatchesReencoding",
+        "ai/validate_vectors_test.go::TestValidateToolArgumentsMatchesPiVectors",
+        "internal/codingagent/tools/argument_schema_test.go::TestBuiltinArgumentSchemaIsTheDeclaredParameters"
       ]
     },
     {
@@ -17040,8 +17111,6 @@
         }
       ],
       "tests": [
-        "ai/validate_equality_oracle_test.go::TestValidateToolArgumentsComparesNumbersAndStringsLikePi",
-        "ai/validate_wrapped_order_lifetime_test.go::TestValidateToolArgumentsDoesNotKeepWrappedObjectsInTheCachedSchema",
         "third_party/jsonschema/equals_number_test.go::TestEqualsDoesNotEquateANumberWithAString"
       ]
     },
@@ -18301,7 +18370,6 @@
       ],
       "tests": [
         "ai/streaming_json_oracle_test.go::TestStreamingJSONMatchesPiOnSeededInput",
-        "ai/validate_tool_args_oracle_test.go::TestValidateToolArgumentsMatchesPiOnSeededSchemas",
         "chord/delta/own_key_order_test.go::TestDiffRevisionsVisitsArrayIndexKeysFirstInNumericOrder",
         "internal/chord/chordjson/own_key_order_test.go::TestCopyFollowsPisKeyOrderAndMessages",
         "internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes",
@@ -27153,6 +27221,41 @@
       ]
     },
     {
+      "id": "BF-D226",
+      "title": "Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs",
+      "symptom": "none.",
+      "rootCause": "Only TypeBox's own `Value.Check` runs them, and a Node extension can call that itself. The Go, Rust, Python and Lisp SDKs have no `Value.Check`, so a refinement they build can be checked by no one but the extension's own handler.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D226",
+      "removeWhen": "every SDK serves TypeBox `Value.Check`, so a stored refinement has a consumer.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "24d55ab3f0",
+          "date": "2026-11-02"
+        },
+        {
+          "hash": "4a7c33c707",
+          "date": "2026-11-02"
+        },
+        {
+          "hash": "82fd316d04",
+          "date": "2026-11-02"
+        },
+        {
+          "hash": "e27164c914",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/refine_arguments_test.go::TestConformance_RefinedToolArgumentsAreNotRefined"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -32115,7 +32218,6 @@
         }
       ],
       "tests": [
-        "ai/validate_formats_oracle_test.go::TestTypeboxFormatsMatchPiOnSeededStrings",
         "chord/host/boundary_upstream_test.go::TestPackageBoundaryDoesNotDependOnPiPackagesOrFilesOutsideChord",
         "chord/host/contract_upstream_test.go::TestContractsBindOtherVersionsOnlyThroughAcceptsAdapters",
         "chord/host/contract_upstream_test.go::TestContractsCompareOpaqueMembersByNameVersionAndFunctionMembersStructurally",
@@ -32786,9 +32888,7 @@
           "date": "2026-10-11"
         }
       ],
-      "tests": [
-        "ai/validate_wrapped_order_oracle_test.go::TestValidateToolArgumentsKeepsTheSourceOrderOfWrappedObjectsLikePi"
-      ]
+      "tests": []
     },
     {
       "id": "BF-ca27ba6",
@@ -34465,6 +34565,29 @@
       "tests": []
     },
     {
+      "id": "BF-d3f6c2b",
+      "title": "Anthropic non-strict tool schemas keep the root `$defs` and `definitions`, so property `$ref`s resolve",
+      "symptom": "Anthropic non-strict tool schemas keep the root `$defs` and `definitions`, so property `$ref`s resolve.",
+      "rootCause": "The legacy input_schema kept only type/properties/required, so property $refs into root $defs or definitions pointed at nothing. Keep them after required, in that order, when present; root anyOf/oneOf/allOf stay out because Anthropic rejects them with a 400. The strict path is unchanged.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Anthropic non-strict tool schemas keep the root `$defs` and `definitions`, so property `$ref`s resolve. They were dropped, which left the `$ref`s pointing at nothing, made Claude produce wrong arguments for such tools (common in MCP servers), for example a JSON string instead of an object, and made some Anthropic-compatible gateways reject the request. Root `anyOf`, `oneOf` and `allOf` stay out, because Anthropic rejects them with a 400. Ports Pi's fix 4a6a58eb5 ([#9557](https://github.com/earendil-works/pi/issues/9557)).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d3f6c2b6ff",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicRequestBodyKeepsRootDefsInLegacyToolSchema",
+        "ai/anthropic_strict_tool_schema_upstream_test.go::TestAnthropicStrictToolSchemas"
+      ]
+    },
+    {
       "id": "BF-d409922",
       "title": "A host that crashes during a model request no longer resends it forever, adding an aborted entry each time…",
       "symptom": "A host that crashes during a model request no longer resends it forever, adding an aborted entry each time: the interrupted request is a failed attempt under the retry policy, and the run ends with `runFailure` reason `interrupted` once no retry is left; other work cut off `settings.restartLimit` times ends instead of keeping its conversation busy.",
@@ -34558,9 +34681,7 @@
           "date": "2026-10-09"
         }
       ],
-      "tests": [
-        "ai/validate_tool_args_oracle_test.go::TestValidateToolArgumentsMatchesPiOnSeededSchemas"
-      ]
+      "tests": []
     },
     {
       "id": "BF-d4ddb14",
@@ -35269,7 +35390,6 @@
         }
       ],
       "tests": [
-        "ai/validate_value_test.go::TestCheckSchemaValue",
         "automation/pin/test_pin.py",
         "durable/core/docs/addtools_test.go::TestAddToolsExtendsModelToolsAsWell",
         "durable/core/driver/tool_structured_test.go::TestRetainedOutputIsTheOutputKeptSoFar",
@@ -39485,6 +39605,29 @@
       ]
     },
     {
+      "id": "BF-e8a5d2e",
+      "title": "The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message…",
+      "symptom": "The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message effort (`supportsMidConvoEffort`), as Pi's generator does since 9ee7586a9 (#10954).",
+      "rootCause": "OpenCode Go rejected replayed thinking with a 400 because the requests carried no `drop_block` binding after the tool list or system prompt changed.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message effort (`supportsMidConvoEffort`), as Pi's generator does since 9ee7586a9 (#10954). Their `anthropic-messages` requests then carry per-message effort markers and `thinking.block_binding: drop_block` like the Anthropic provider. OpenCode Go rejected replayed thinking with a 400 because the requests carried no `drop_block` binding after the tool list or system prompt changed. The bundled catalog is converted from the published Pi package and carries the flag once the pin moves to a Pi version that includes that commit. Until then the remote catalog overlay can deliver the flag: pi-in-go.dev (D64) serves the overlay that `withRemoteCatalog` reads, as pi.dev does for released Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e8a5d2ef7e",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "ai/opencode_dropblock_catalog_test.go::TestOpencodeClaudeCatalogCompatReachesTheAnthropicPayload",
+        "internal/modelgen/providers/opencode_dropblock_test.go::TestOpencodeClaudeMidConvoEffort"
+      ]
+    },
+    {
       "id": "BF-e90ac19",
       "title": "Very long streamed answers no longer slow down with their length: each streamed frame renders only the last…",
       "symptom": "Very long streamed answers no longer slow down with their length: each streamed frame renders only the last blocks of the message that can still change instead of lexing, wrapping and laying out all of it, so a 60,000-character answer costs about 5% of the CPU it did, with the same output.",
@@ -42585,8 +42728,6 @@
         "ai/error_body_oracle_test.go::TestErrorBodyHelpersMatchPiOnSeededProbes",
         "ai/radius_config_oracle_test.go::TestRadiusConfigMatchesPiOnSeededProbes",
         "ai/service_urls_oracle_test.go::TestProviderServiceURLsMatchPiOnSeededProbes",
-        "ai/validate_formats_oracle_test.go::TestTypeboxFormatsMatchPiOnSeededStrings",
-        "ai/validate_tool_args_oracle_test.go::TestValidateToolArgumentsMatchesPiOnSeededSchemas",
         "chord/delta/own_key_order_test.go::TestDiffRevisionsVisitsArrayIndexKeysFirstInNumericOrder",
         "internal/chord/chordjson/own_key_order_test.go::TestCopyFollowsPisKeyOrderAndMessages",
         "internal/evals/report_oracle_test.go::TestEvalReportMatchesPiOnSeededDesigns"
@@ -42652,8 +42793,6 @@
       "tests": [
         "ai/node_http_proxy_oracle_test.go::TestResolveHTTPProxyURLForTargetMatchesPiOracle",
         "ai/overflow_oracle_test.go::TestContextOverflowMatchesPiOnSeededMessages",
-        "ai/validate_formats_oracle_test.go::TestTypeboxFormatsMatchPiOnSeededStrings",
-        "ai/validate_tool_args_oracle_test.go::TestValidateToolArgumentsMatchesPiOnSeededSchemas",
         "internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes"
       ]
     },
@@ -44921,6 +45060,11 @@
     {
       "id": "D225",
       "title": "A thread-based SDK's wait for the run it started needs the SDK's yield helper"
+    },
+    {
+      "id": "D226",
+      "title": "Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs",
+      "entry": "BF-D226"
     }
   ],
   "exemptCommits": {

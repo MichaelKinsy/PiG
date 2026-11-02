@@ -166,6 +166,13 @@
    "new": "func IsStdoutTakenOver() bool { return false\n"
   }
  ],
+ "packages/coding-agent/src/core/pi-ai-schemas.ts": [
+  {
+   "file": "internal/codingagent/configschema/pi_ai_schemas.go",
+   "old": "if o.K != \"required\" {",
+   "new": "if o.K == \"required\" {"
+  }
+ ],
  "packages/coding-agent/src/core/remote-catalog-provider.ts": [
   {
    "file": "internal/codingagent/remote_catalog_provider.go",
@@ -801,6 +808,445 @@
    "file": "durable/harness/partial_changes.go",
    "old": "\t\t\tcall.changes = append(call.changes, change)\n",
    "new": "\t\t\tcall.changes = append(call.changes[:0], change)\n"
+  }
+ ],
+ "packages/chord/src/next/store/applier.ts": [
+  {
+   "file": "chord/next/store/applier.go",
+   "old": "if !IndexName.MatchString(write.Name) || exists {",
+   "new": "if !IndexName.MatchString(write.Name) || !exists {"
+  }
+ ],
+ "packages/chord/src/next/store/export.ts": [
+  {
+   "file": "chord/next/store/export.go",
+   "old": "&EndPart{Writes: parts.writes}",
+   "new": "&EndPart{Writes: parts.writes + 1}"
+  }
+ ],
+ "packages/chord/src/next/store/allocator.ts": [
+  {
+   "file": "chord/next/store/allocator.go",
+   "old": "ids.next = min(id+1, MaxSafeInteger)",
+   "new": "ids.next = min(id+2, MaxSafeInteger)"
+  }
+ ],
+ "packages/chord/src/next/store/catalog.ts": [
+  {
+   "file": "chord/next/store/catalog.go",
+   "old": "record.Version = int(integer)\n",
+   "new": "record.Version = int(integer) + 1\n"
+  }
+ ],
+ "packages/chord/src/next/store/evaluate.ts": [
+  {
+   "file": "chord/next/store/evaluate.go",
+   "old": "\t\tcase truthTrue:\n\t\t\treturn truthFalse\n\t\t}\n\t\treturn truthTrue",
+   "new": "\t\tcase truthTrue:\n\t\t\treturn truthTrue\n\t\t}\n\t\treturn truthTrue"
+  }
+ ],
+ "packages/chord/src/next/store/table-writes.ts": [
+  {
+   "file": "chord/next/store/table_writes.go",
+   "old": "write := &PutWrite{Table: table, Row: row.Row, Version: version, Columns: row.Columns}",
+   "new": "write := &PutWrite{Table: table, Row: row.Row, Version: version + 1, Columns: row.Columns}"
+  }
+ ],
+ "packages/chord/src/next/store/table-changes.ts": [
+  {
+   "file": "chord/next/store/table_changes.go",
+   "old": "if changes.bulk {",
+   "new": "if !changes.bulk {"
+  }
+ ],
+ "packages/chord/src/next/store/refusal.ts": [
+  {
+   "file": "chord/next/store/refusal.go",
+   "old": "return coded.Code() == sqliteConstraintCheck",
+   "new": "return coded.Code() != sqliteConstraintCheck"
+  }
+ ],
+ "packages/chord/src/next/store/table-history.ts": [
+  {
+   "file": "chord/next/store/table_history.go",
+   "old": "if version > definition.Version {",
+   "new": "if version >= definition.Version {"
+  }
+ ],
+ "packages/chord/src/next/store/table-migration.ts": [
+  {
+   "file": "chord/next/store/table_migration.go",
+   "old": "const MigrationChunk = 100\n",
+   "new": "const MigrationChunk = 101\n"
+  }
+ ],
+ "packages/chord/src/next/store/schema.ts": [
+  {
+   "file": "chord/next/store/schema.go",
+   "old": "VALUES (1, 0, 2, 0, 0)",
+   "new": "VALUES (1, 0, 3, 0, 0)"
+  }
+ ],
+ "packages/chord/src/next/documents/address-source.ts": [
+  {
+   "file": "chord/next/documents/address_source.go",
+   "old": "if prepared.Base() == before && !source.retired {",
+   "new": "if prepared.Base() != before && !source.retired {"
+  }
+ ],
+ "packages/chord/src/next/documents/documents.ts": [
+  {
+   "file": "chord/next/documents/documents.go",
+   "old": "if token.Sealed() || d.state != documentsOpen {",
+   "new": "if token.Sealed() && d.state != documentsOpen {"
+  }
+ ],
+ "packages/chord/src/next/documents/fence.ts": [
+  {
+   "file": "chord/next/documents/fence.go",
+   "old": "token.sealed.Store(true)",
+   "new": "token.sealed.Store(false)"
+  }
+ ],
+ "packages/chord/src/next/documents/keyed-slot.ts": [
+  {
+   "file": "chord/next/documents/keyed_slot.go",
+   "old": "slices.SortFunc(it.buffer, store.CompareText)",
+   "new": "slices.SortFunc(it.buffer, func(a, b string) int { return 0 })"
+  }
+ ],
+ "packages/chord/src/next/documents/line.ts": [
+  {
+   "file": "chord/next/documents/line.go",
+   "old": "\t<-place.previous\n",
+   "new": "\t_ = place.previous\n"
+  }
+ ],
+ "packages/chord/src/next/documents/persistence.ts": [
+  {
+   "file": "chord/next/documents/persistence.go",
+   "old": "if version > code {",
+   "new": "if version < code {"
+  }
+ ],
+ "packages/chord/src/next/documents/residency.ts": [
+  {
+   "file": "chord/next/documents/residency.go",
+   "old": "const granuleMs int64 = 1_000",
+   "new": "const granuleMs int64 = 2_000"
+  }
+ ],
+ "packages/chord/src/next/documents/slot.ts": [
+  {
+   "file": "chord/next/documents/slot.go",
+   "old": "if definition.Version < current.Version {",
+   "new": "if definition.Version > current.Version {"
+  }
+ ],
+ "packages/chord/src/next/documents/transaction.ts": [
+  {
+   "file": "chord/next/documents/transaction.go",
+   "old": "if tx.state != txCommitting || tx.token.Sealed() {",
+   "new": "if tx.state != txCommitting && tx.token.Sealed() {"
+  }
+ ],
+ "packages/chord/src/next/jobs/persisted.ts": [
+  {
+   "file": "chord/next/host/jobs_persisted.go",
+   "old": "store.RetireDocument(state.ID, state.Revision)",
+   "new": "store.RetireDocument(state.ID, state.Revision+1)"
+  }
+ ],
+ "packages/chord/src/next/jobs/records.ts": [
+  {
+   "file": "chord/next/host/jobs_records.go",
+   "old": "\t\tif reason == cutReload {\n",
+   "new": "\t\tif reason != cutReload {\n"
+  }
+ ],
+ "packages/chord/src/next/jobs/run-states.ts": [
+  {
+   "file": "chord/next/host/jobs_run_states.go",
+   "old": "each.deadline = min(each.deadline, addMillis(states.loop.Now(), change.WithinMs))",
+   "new": "each.deadline = max(each.deadline, addMillis(states.loop.Now(), change.WithinMs))"
+  }
+ ],
+ "packages/chord/src/next/jobs/stored.ts": [
+  {
+   "file": "chord/next/host/jobs_stored.go",
+   "old": "record.Set(\"finishFailures\", float64(finishFailures))",
+   "new": "record.Set(\"finishFailures\", float64(finishFailures+1))"
+  }
+ ],
+ "packages/chord/src/next/contracts/fingerprint.ts": [
+  {
+   "file": "chord/next/contracts/fingerprint.go",
+   "old": "slices.SortStableFunc(entries, func(a, b normalEntry) int { return compare16(a.name, b.name) })",
+   "new": "slices.SortStableFunc(entries, func(a, b normalEntry) int { return compare16(b.name, a.name) })"
+  }
+ ],
+ "packages/chord/src/next/contracts/history.ts": [
+  {
+   "file": "chord/next/contracts/history.go",
+   "old": "\t\t\t\tseen[name] = true\n",
+   "new": "\t\t\t\tseen[name] = false\n"
+  }
+ ],
+ "packages/chord/src/next/contracts/names.ts": [
+  {
+   "file": "chord/next/contracts/names.go",
+   "old": "c == '~'",
+   "new": "c == '!'"
+  }
+ ],
+ "packages/chord/src/next/contracts/params.ts": [
+  {
+   "file": "chord/next/contracts/params.go",
+   "old": "\"maxLength\", \"pattern\", \"format\"}",
+   "new": "\"maxLength\", \"format\"}"
+  }
+ ],
+ "packages/chord/src/next/contracts/snapshot.ts": [
+  {
+   "file": "chord/next/contracts/snapshot.go",
+   "old": "closed := node.Value(\"additionalProperties\") == false",
+   "new": "closed := node.Value(\"additionalProperties\") == true"
+  }
+ ],
+ "packages/chord/src/next/data/args.ts": [
+  {
+   "file": "chord/next/data/args.go",
+   "old": "accepted.Version == version && accepted.Fingerprint == fingerprint",
+   "new": "accepted.Version == version || accepted.Fingerprint == fingerprint"
+  }
+ ],
+ "packages/chord/src/next/data/params.ts": [
+  {
+   "file": "chord/next/data/params.go",
+   "old": "parts = append(parts, contract.Name, key)",
+   "new": "parts = append(parts, key, contract.Name)"
+  }
+ ],
+ "packages/chord/src/next/data/validator.ts": [
+  {
+   "file": "chord/next/data/validator.go",
+   "old": "\"chord.data.validations\"",
+   "new": "\"chord.data.validation\""
+  }
+ ],
+ "packages/chord/src/next/registries/contribution.ts": [
+  {
+   "file": "chord/next/registries/contribution.go",
+   "old": "if c.Version > version || (c.Version < version && adapter == nil) {",
+   "new": "if c.Version >= version || (c.Version < version && adapter == nil) {"
+  }
+ ],
+ "packages/chord/src/next/registries/internal.ts": [
+  {
+   "file": "chord/next/registries/internal.go",
+   "old": "value, err = nil, asError(recovered)",
+   "new": "value, err = nil, nil"
+  }
+ ],
+ "packages/chord/src/next/registries/record.ts": [
+  {
+   "file": "chord/next/registries/record.go",
+   "old": "return strings.Compare(left.Plugin, right.Plugin)",
+   "new": "return strings.Compare(right.Plugin, left.Plugin)"
+  }
+ ],
+ "packages/chord/src/next/registries/value.ts": [
+  {
+   "file": "chord/next/registries/value.go",
+   "old": "if mapped != nil && state.Identical(mapped.from, from) && mapped.provider == served {",
+   "new": "if mapped != nil && state.Identical(mapped.from, from) && mapped.provider != served {"
+  }
+ ],
+ "packages/chord/src/next/state/batch.ts": [
+  {
+   "file": "chord/next/state/batch.go",
+   "old": "for i := 0; i < len(b.flushes); i++ {",
+   "new": "for i := 0; i < len(b.flushes)-1; i++ {"
+  }
+ ],
+ "packages/chord/src/next/link/channel.ts": [
+  {
+   "file": "chord/next/link/channel.go",
+   "old": "silent >= ping && !c.pinged",
+   "new": "silent >= ping && c.pinged"
+  }
+ ],
+ "packages/chord/src/next/link/errors.ts": [
+  {
+   "file": "chord/next/link/errors.go",
+   "old": "if kind == \"chord\" {",
+   "new": "if kind == \"chard\" {"
+  }
+ ],
+ "packages/chord/src/next/link/values.ts": [
+  {
+   "file": "chord/next/link/values.go",
+   "old": "*segments = append(*segments, typed)",
+   "new": "*segments = append((*segments)[:0], typed)"
+  }
+ ],
+ "packages/chord/src/next/contracts/schema.ts": [
+  {
+   "file": "chord/next/contracts/schema.go",
+   "old": "delta.JsonObjectOf(\"^.*$\", value.Node)",
+   "new": "delta.JsonObjectOf(\"^.+$\", value.Node)"
+  }
+ ],
+ "packages/chord/src/next/host/backoff.ts": [
+  {
+   "file": "chord/next/host/host_backoff.go",
+   "old": "return min(previous*2, maxDelay)",
+   "new": "return min(previous*3, maxDelay)"
+  }
+ ],
+ "packages/chord/src/next/host/deadline.ts": [
+  {
+   "file": "chord/next/host/host_deadline.go",
+   "old": "d.remaining = max(0, d.remaining-time.Duration(d.loop.Now()-d.started)*time.Millisecond)",
+   "new": "d.remaining = max(0, d.remaining+time.Duration(d.loop.Now()-d.started)*time.Millisecond)"
+  }
+ ],
+ "packages/chord/src/next/host/uuid.ts": [
+  {
+   "file": "chord/next/host/host_uuid.go",
+   "old": "\t\tstate.sequence++\n",
+   "new": "\t\t_ = state.sequence\n"
+  }
+ ],
+ "packages/chord/src/next/host/unbound.ts": [
+  {
+   "file": "chord/next/host/host_unbound.go",
+   "old": "principal != nil && revoked(principal)",
+   "new": "principal != nil && !revoked(principal)"
+  }
+ ],
+ "packages/chord/src/next/host/retry-on.ts": [
+  {
+   "file": "chord/next/host/host_retry_on.go",
+   "old": "if call.Kind == chord.WatchCallValue {",
+   "new": "if call.Kind != chord.WatchCallValue {"
+  }
+ ],
+ "packages/chord/src/next/host/dependencies.ts": [
+  {
+   "file": "chord/next/host/host_dependencies.go",
+   "old": "|| err.Code == data.CodeForbidden",
+   "new": "|| err.Code == data.CodeUnavailable"
+  }
+ ],
+ "packages/chord/src/next/host/members.ts": [
+  {
+   "file": "chord/next/host/host_members.go",
+   "old": "fmt.Sprintf(\"derive #%d\", position+1)",
+   "new": "fmt.Sprintf(\"derive #%d\", position)"
+  }
+ ],
+ "packages/chord/src/next/host/destination.ts": [
+  {
+   "file": "chord/next/host/host_destination.go",
+   "old": "from.role == linkRoleParent ||",
+   "new": "from.role != linkRoleParent ||"
+  }
+ ],
+ "packages/chord/src/next/host/object.ts": [
+  {
+   "file": "chord/next/host/host_object.go",
+   "old": "if kind != objectLive || o.served.linger == 0 {",
+   "new": "if kind != objectLive || o.served.linger != 0 {"
+  }
+ ],
+ "packages/chord/src/next/host/adapted.ts": [
+  {
+   "file": "chord/next/host/host_adapted.go",
+   "old": "strconv.Itoa(version) + \" is not served here\"",
+   "new": "strconv.Itoa(version) + \" is not served\""
+  }
+ ],
+ "packages/chord/src/next/host/reference-keys.ts": [
+  {
+   "file": "chord/next/host/host_reference_keys.go",
+   "old": "if entry.holders > 0 {",
+   "new": "if entry.holders > 1 {"
+  }
+ ],
+ "packages/chord/src/next/host/reference-source.ts": [
+  {
+   "file": "chord/next/host/host_reference_source.go",
+   "old": "if current.failure == nil {",
+   "new": "if current.failure != nil {"
+  }
+ ],
+ "packages/chord/src/next/remote/hold.ts": [
+  {
+   "file": "chord/next/host/remote_hold.go",
+   "old": "message.RetryIn = link.Some(int(max(0, *shown.RetryAt",
+   "new": "message.RetryIn = link.Some(int(min(0, *shown.RetryAt"
+  }
+ ],
+ "packages/chord/src/next/remote/remote-object.ts": [
+  {
+   "file": "chord/next/host/remote_remote_object.go",
+   "old": "if _, twice := retirements[target]; twice {",
+   "new": "if _, twice := retirements[target]; !twice {"
+  }
+ ],
+ "packages/chord/src/next/remote/host-link.ts": [
+  {
+   "file": "chord/next/host/remote_host_link.go",
+   "old": "\"%s: an origin on a child link\"",
+   "new": "\"%s: an origin on a link\""
+  }
+ ],
+ "packages/chord/src/next/remote/path.ts": [
+  {
+   "file": "chord/next/host/remote_path.go",
+   "old": "if p.current != link {",
+   "new": "if p.current == link {"
+  }
+ ],
+ "packages/chord/src/next/remote/calls.ts": [
+  {
+   "file": "chord/next/host/remote_calls.go",
+   "old": "if w.inFlight >= w.limit {",
+   "new": "if w.inFlight > w.limit {"
+  }
+ ],
+ "packages/chord/src/next/remote/provider.ts": [
+  {
+   "file": "chord/next/host/remote_provider.go",
+   "old": "Code: data.CodeAborted, Message: fmt.Sprintf(\"call %d: aborted by its caller\", id)",
+   "new": "Code: data.CodeUnavailable, Message: fmt.Sprintf(\"call %d: aborted by its caller\", id)"
+  },
+  {
+   "file": "chord/next/host/remote_provider.go",
+   "old": "Code: data.CodeNotReady, Message: fmt.Sprintf(\"hold %d: not bound yet\", served.id)",
+   "new": "Code: data.CodeUnavailable, Message: fmt.Sprintf(\"hold %d: not bound yet\", served.id)"
+  }
+ ],
+ "packages/chord/src/next/remote/consumer.ts": [
+  {
+   "file": "chord/next/host/remote_consumer.go",
+   "old": "Message: \"the link closed\"}, nil)",
+   "new": "Message: \"the link is closed\"}, nil)"
+  }
+ ],
+ "packages/chord/src/next/remote/relay.ts": [
+  {
+   "file": "chord/next/host/remote_relay.go",
+   "old": "func (h *relayedHold) retry(message *link.RetryMessage) {\n\tif upstream := h.upstream; upstream != nil {\n\t\tupstream.link.send(link.WithOrigin(message, link.Some(upstream.origin)))",
+   "new": "func (h *relayedHold) retry(message *link.RetryMessage) {\n\tif upstream := h.upstream; upstream != nil {\n\t\tupstream.link.send(&link.RetryMessage{Origin: link.Some(upstream.origin), Hold: message.Hold, Hops: message.Hops - 1})"
+  }
+ ],
+ "packages/chord/src/next/remote/replica.ts": [
+  {
+   "file": "chord/next/host/remote_replica.go",
+   "old": "flagged := retired || r.retiredWhileFailed",
+   "new": "flagged := retired"
   }
  ],
  "packages/chord/src/next-node/compression.ts": [
@@ -1617,6 +2063,889 @@
    "file": "internal/modelgen/define.go",
    "old": "\t\t\tinput = Strings(\"text\", \"image\")\n",
    "new": "\t\t\tinput = Strings(\"text\")\n"
+  }
+ ],
+ "packages/ai/scripts/check-model-data.ts": [
+  {
+   "file": "cmd/check-model-data/main.go",
+   "old": "Model data is missing or stale.",
+   "new": "Model data is missing or stalZ."
+  }
+ ],
+ "packages/ai/scripts/model-data.ts": [
+  {
+   "file": "internal/modelgen/modeldata/model_data.go",
+   "old": "out.WriteString(\":{\")",
+   "new": "out.WriteString(\":[\")"
+  },
+  {
+   "file": "internal/modelgen/modeldata/model_data_json.go",
+   "old": "result == \"true\"",
+   "new": "result == \"truz\""
+  }
+ ],
+ "packages/ai/scripts/hydrate-model-catalog.ts": [
+  {
+   "file": "internal/modelgen/modeldata/hydrate.go",
+   "old": "const hydrationGeneratedAt = \"1970-01-01T00:00:00.000Z\"",
+   "new": "const hydrationGeneratedAt = \"1970-01-01T00:00:00.001Z\""
+  }
+ ],
+ "packages/ai/src/providers/amazon-bedrock.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"amazon.nova-2-lite-v1:0\",\n\t\tProvider:             \"amazon-bedrock\",\n\t\tDisplayName:          \"Nova 2 Lite\",\n",
+   "new": "\t\tID:                   \"amazon.nova-2-lite-v1:0\",\n\t\tProvider:             \"amazon-bedrock\",\n\t\tDisplayName:          \"Nova 2 Lite!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/ant-ling.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"Ling-2.6-1T\",\n\t\tProvider:             \"ant-ling\",\n\t\tDisplayName:          \"Ling 2.6 1T\",\n",
+   "new": "\t\tID:                   \"Ling-2.6-1T\",\n\t\tProvider:             \"ant-ling\",\n\t\tDisplayName:          \"Ling 2.6 1T!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/anthropic.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"claude-fable-5\",\n\t\tProvider:             \"anthropic\",\n\t\tDisplayName:          \"Claude Fable 5\",\n",
+   "new": "\t\tID:                   \"claude-fable-5\",\n\t\tProvider:             \"anthropic\",\n\t\tDisplayName:          \"Claude Fable 5!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/azure.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"chat-latest\",\n\t\tProvider:             \"azure\",\n\t\tDisplayName:          \"Chat Latest\",\n",
+   "new": "\t\tID:                   \"chat-latest\",\n\t\tProvider:             \"azure\",\n\t\tDisplayName:          \"Chat Latest!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/cerebras.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"gpt-oss-120b\",\n\t\tProvider:             \"cerebras\",\n\t\tDisplayName:          \"GPT OSS 120B\",\n",
+   "new": "\t\tID:                   \"gpt-oss-120b\",\n\t\tProvider:             \"cerebras\",\n\t\tDisplayName:          \"GPT OSS 120B!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/cloudflare-ai-gateway.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"claude-fable-5\",\n\t\tProvider:             \"cloudflare-ai-gateway\",\n\t\tDisplayName:          \"Claude Fable 5\",\n",
+   "new": "\t\tID:                   \"claude-fable-5\",\n\t\tProvider:             \"cloudflare-ai-gateway\",\n\t\tDisplayName:          \"Claude Fable 5!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/cloudflare-workers-ai.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"@cf/deepseek-ai/deepseek-v4-flash-0731\",\n\t\tProvider:             \"cloudflare-workers-ai\",\n\t\tDisplayName:          \"DeepSeek V4 Flash 0731\",\n",
+   "new": "\t\tID:                   \"@cf/deepseek-ai/deepseek-v4-flash-0731\",\n\t\tProvider:             \"cloudflare-workers-ai\",\n\t\tDisplayName:          \"DeepSeek V4 Flash 0731!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/deepseek.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deepseek-flash\",\n\t\tProvider:             \"deepseek\",\n\t\tDisplayName:          \"DeepSeek V4.1 Flash\",\n",
+   "new": "\t\tID:                   \"deepseek-flash\",\n\t\tProvider:             \"deepseek\",\n\t\tDisplayName:          \"DeepSeek V4.1 Flash!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/fireworks.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"accounts/fireworks/models/deepseek-v4p1-flash\",\n\t\tProvider:             \"fireworks\",\n\t\tDisplayName:          \"DeepSeek V4.1 Flash\",\n",
+   "new": "\t\tID:                   \"accounts/fireworks/models/deepseek-v4p1-flash\",\n\t\tProvider:             \"fireworks\",\n\t\tDisplayName:          \"DeepSeek V4.1 Flash!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/github-copilot.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"claude-fable-5\",\n\t\tProvider:             \"github-copilot\",\n\t\tDisplayName:          \"Claude Fable 5\",\n",
+   "new": "\t\tID:                   \"claude-fable-5\",\n\t\tProvider:             \"github-copilot\",\n\t\tDisplayName:          \"Claude Fable 5!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/google-vertex.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"gemini-2.5-flash\",\n\t\tProvider:             \"google-vertex\",\n\t\tDisplayName:          \"Gemini 2.5 Flash\",\n",
+   "new": "\t\tID:                   \"gemini-2.5-flash\",\n\t\tProvider:             \"google-vertex\",\n\t\tDisplayName:          \"Gemini 2.5 Flash!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/google.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deep-research-max-preview-04-2026\",\n\t\tProvider:             \"google\",\n\t\tDisplayName:          \"Deep Research Max Preview (Apr-21-2026)\",\n",
+   "new": "\t\tID:                   \"deep-research-max-preview-04-2026\",\n\t\tProvider:             \"google\",\n\t\tDisplayName:          \"Deep Research Max Preview (Apr-21-2026)!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/groq.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"llama-3.1-8b-instant\",\n\t\tProvider:             \"groq\",\n\t\tDisplayName:          \"Llama 3.1 8B\",\n",
+   "new": "\t\tID:                   \"llama-3.1-8b-instant\",\n\t\tProvider:             \"groq\",\n\t\tDisplayName:          \"Llama 3.1 8B!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/huggingface.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deepseek-ai/DeepSeek-R1\",\n\t\tProvider:             \"huggingface\",\n\t\tDisplayName:          \"DeepSeek-R1\",\n",
+   "new": "\t\tID:                   \"deepseek-ai/DeepSeek-R1\",\n\t\tProvider:             \"huggingface\",\n\t\tDisplayName:          \"DeepSeek-R1!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/kimi-coding.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"k3\",\n\t\tProvider:             \"kimi-coding\",\n\t\tDisplayName:          \"Kimi K3\",\n",
+   "new": "\t\tID:                   \"k3\",\n\t\tProvider:             \"kimi-coding\",\n\t\tDisplayName:          \"Kimi K3!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/meta.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"muse-spark-1.1\",\n\t\tProvider:             \"meta\",\n\t\tDisplayName:          \"Muse Spark 1.1\",\n",
+   "new": "\t\tID:                   \"muse-spark-1.1\",\n\t\tProvider:             \"meta\",\n\t\tDisplayName:          \"Muse Spark 1.1!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/minimax-cn.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"MiniMax-M2.7\",\n\t\tProvider:             \"minimax-cn\",\n\t\tDisplayName:          \"MiniMax-M2.7\",\n",
+   "new": "\t\tID:                   \"MiniMax-M2.7!\",\n\t\tProvider:             \"minimax-cn\",\n\t\tDisplayName:          \"MiniMax-M2.7!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/minimax.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"MiniMax-M2.7\",\n\t\tProvider:             \"minimax\",\n\t\tDisplayName:          \"MiniMax-M2.7\",\n",
+   "new": "\t\tID:                   \"MiniMax-M2.7!\",\n\t\tProvider:             \"minimax\",\n\t\tDisplayName:          \"MiniMax-M2.7!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/mistral.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"codestral-2508\",\n\t\tProvider:             \"mistral\",\n\t\tDisplayName:          \"Codestral 25.08\",\n",
+   "new": "\t\tID:                   \"codestral-2508\",\n\t\tProvider:             \"mistral\",\n\t\tDisplayName:          \"Codestral 25.08!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/moonshotai-cn.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"kimi-k2.6\",\n\t\tProvider:             \"moonshotai-cn\",\n\t\tDisplayName:          \"Kimi K2.6\",\n",
+   "new": "\t\tID:                   \"kimi-k2.6\",\n\t\tProvider:             \"moonshotai-cn\",\n\t\tDisplayName:          \"Kimi K2.6!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/moonshotai.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"kimi-k2.6\",\n\t\tProvider:             \"moonshotai\",\n\t\tDisplayName:          \"Kimi K2.6\",\n",
+   "new": "\t\tID:                   \"kimi-k2.6\",\n\t\tProvider:             \"moonshotai\",\n\t\tDisplayName:          \"Kimi K2.6!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/nvidia.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deepseek-ai/deepseek-v4.1-flash\",\n\t\tProvider:             \"nvidia\",\n\t\tDisplayName:          \"DeepSeek V4.1 Flash\",\n",
+   "new": "\t\tID:                   \"deepseek-ai/deepseek-v4.1-flash\",\n\t\tProvider:             \"nvidia\",\n\t\tDisplayName:          \"DeepSeek V4.1 Flash!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/openai-codex.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"gpt-5.6-luna\",\n\t\tProvider:             \"openai-codex\",\n\t\tDisplayName:          \"GPT-5.6 Luna\",\n",
+   "new": "\t\tID:                   \"gpt-5.6-luna\",\n\t\tProvider:             \"openai-codex\",\n\t\tDisplayName:          \"GPT-5.6 Luna!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/openai.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"chat-latest\",\n\t\tProvider:             \"openai\",\n\t\tDisplayName:          \"Chat Latest\",\n",
+   "new": "\t\tID:                   \"chat-latest\",\n\t\tProvider:             \"openai\",\n\t\tDisplayName:          \"Chat Latest!\",\n"
+  },
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tAPI:                  \"openai-responses\",\n\t\tBaseURL:              \"https://api.openai.com/v1\",\n\t\tCompat:               &generatedCompats[0],\n\t\tInputLimits:          &generatedInputLimits[5],\n\t\tContextWindow:        400000,\n",
+   "new": "\t\tAPI:                  \"openai-responses\",\n\t\tBaseURL:              \"https://api.openai.com/v1\",\n\t\tInputLimits:          &generatedInputLimits[5],\n\t\tContextWindow:        400000,\n"
+  },
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tgeneratedRows[ref.row].PromptCache = generatedMap(generatedPromptCachesPairs[ref.element])",
+   "new": "\t\t_ = generatedMap(generatedPromptCachesPairs[ref.element])"
+  }
+ ],
+ "packages/ai/src/providers/opencode-go.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"claude-haiku-5-5\",\n\t\tProvider:             \"opencode-go\",\n\t\tDisplayName:          \"Claude Haiku 5.5\",\n",
+   "new": "\t\tID:                   \"claude-haiku-5-5\",\n\t\tProvider:             \"opencode-go\",\n\t\tDisplayName:          \"Claude Haiku 5.5!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/opencode.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"claude-fable-5\",\n\t\tProvider:             \"opencode\",\n\t\tDisplayName:          \"Claude Fable 5\",\n",
+   "new": "\t\tID:                   \"claude-fable-5\",\n\t\tProvider:             \"opencode\",\n\t\tDisplayName:          \"Claude Fable 5!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/openrouter.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"~anthropic/claude-fable-latest\",\n\t\tProvider:             \"openrouter\",\n\t\tDisplayName:          \"Anthropic: Claude Fable Latest\",\n",
+   "new": "\t\tID:                   \"~anthropic/claude-fable-latest\",\n\t\tProvider:             \"openrouter\",\n\t\tDisplayName:          \"Anthropic: Claude Fable Latest!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/qwen-token-plan-cn.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deepseek-v3.2\",\n\t\tProvider:             \"qwen-token-plan-cn\",\n\t\tDisplayName:          \"DeepSeek V3.2\",\n",
+   "new": "\t\tID:                   \"deepseek-v3.2\",\n\t\tProvider:             \"qwen-token-plan-cn\",\n\t\tDisplayName:          \"DeepSeek V3.2!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/qwen-token-plan-individual.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deepseek-v4-flash-0731\",\n\t\tProvider:             \"qwen-token-plan-individual\",\n\t\tDisplayName:          \"DeepSeek V4 Flash 0731\",\n",
+   "new": "\t\tID:                   \"deepseek-v4-flash-0731\",\n\t\tProvider:             \"qwen-token-plan-individual\",\n\t\tDisplayName:          \"DeepSeek V4 Flash 0731!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/qwen-token-plan.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deepseek-v3.2\",\n\t\tProvider:             \"qwen-token-plan\",\n\t\tDisplayName:          \"DeepSeek V3.2\",\n",
+   "new": "\t\tID:                   \"deepseek-v3.2\",\n\t\tProvider:             \"qwen-token-plan\",\n\t\tDisplayName:          \"DeepSeek V3.2!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/radius.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"balanced\",\n\t\tProvider:             \"radius\",\n\t\tDisplayName:          \"Balanced\",\n",
+   "new": "\t\tID:                   \"balanced\",\n\t\tProvider:             \"radius\",\n\t\tDisplayName:          \"Balanced!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/together.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"deepseek-ai/DeepSeek-V4-Pro-0813\",\n\t\tProvider:             \"together\",\n\t\tDisplayName:          \"DeepSeek V4 Pro 0813\",\n",
+   "new": "\t\tID:                   \"deepseek-ai/DeepSeek-V4-Pro-0813\",\n\t\tProvider:             \"together\",\n\t\tDisplayName:          \"DeepSeek V4 Pro 0813!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/typesafe.models.ts": [
+  {
+   "file": "ai/classifier_models_generated.go",
+   "old": "\t{ID: \"jev-latest\", Name: \"Jev\", API: ClassifierAPI(\"typesafe-system-one\"), Provider: \"typesafe\",",
+   "new": "\t{ID: \"jev-latest\", Name: \"Jev!\", API: ClassifierAPI(\"typesafe-system-one\"), Provider: \"typesafe\","
+  }
+ ],
+ "packages/ai/src/providers/vercel-ai-gateway.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"alibaba/qwen-3-14b\",\n\t\tProvider:             \"vercel-ai-gateway\",\n\t\tDisplayName:          \"Qwen3-14B\",\n",
+   "new": "\t\tID:                   \"alibaba/qwen-3-14b\",\n\t\tProvider:             \"vercel-ai-gateway\",\n\t\tDisplayName:          \"Qwen3-14B!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/xai.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"grok-4.3\",\n\t\tProvider:             \"xai\",\n\t\tDisplayName:          \"Grok 4.3\",\n",
+   "new": "\t\tID:                   \"grok-4.3\",\n\t\tProvider:             \"xai\",\n\t\tDisplayName:          \"Grok 4.3!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/xiaomi-token-plan-ams.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"mimo-v2.6-flash\",\n\t\tProvider:             \"xiaomi-token-plan-ams\",\n\t\tDisplayName:          \"MiMo-V2.6-Flash\",\n",
+   "new": "\t\tID:                   \"mimo-v2.6-flash\",\n\t\tProvider:             \"xiaomi-token-plan-ams\",\n\t\tDisplayName:          \"MiMo-V2.6-Flash!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/xiaomi-token-plan-cn.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"mimo-v2.6-flash\",\n\t\tProvider:             \"xiaomi-token-plan-cn\",\n\t\tDisplayName:          \"MiMo-V2.6-Flash\",\n",
+   "new": "\t\tID:                   \"mimo-v2.6-flash\",\n\t\tProvider:             \"xiaomi-token-plan-cn\",\n\t\tDisplayName:          \"MiMo-V2.6-Flash!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/xiaomi-token-plan-sgp.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"mimo-v2.6-flash\",\n\t\tProvider:             \"xiaomi-token-plan-sgp\",\n\t\tDisplayName:          \"MiMo-V2.6-Flash\",\n",
+   "new": "\t\tID:                   \"mimo-v2.6-flash\",\n\t\tProvider:             \"xiaomi-token-plan-sgp\",\n\t\tDisplayName:          \"MiMo-V2.6-Flash!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/xiaomi.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"mimo-v2.6-flash\",\n\t\tProvider:             \"xiaomi\",\n\t\tDisplayName:          \"MiMo-V2.6-Flash\",\n",
+   "new": "\t\tID:                   \"mimo-v2.6-flash\",\n\t\tProvider:             \"xiaomi\",\n\t\tDisplayName:          \"MiMo-V2.6-Flash!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/zai-coding-cn.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"glm-4.6v\",\n\t\tProvider:             \"zai-coding-cn\",\n\t\tDisplayName:          \"GLM-4.6V\",\n",
+   "new": "\t\tID:                   \"glm-4.6v\",\n\t\tProvider:             \"zai-coding-cn\",\n\t\tDisplayName:          \"GLM-4.6V!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/zai.models.ts": [
+  {
+   "file": "ai/models_generated.go",
+   "old": "\t\tID:                   \"glm-4.7\",\n\t\tProvider:             \"zai\",\n\t\tDisplayName:          \"GLM-4.7\",\n",
+   "new": "\t\tID:                   \"glm-4.7\",\n\t\tProvider:             \"zai\",\n\t\tDisplayName:          \"GLM-4.7!\",\n"
+  }
+ ],
+ "packages/ai/src/providers/ant-ling.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func AntLingProvider() *ModelsProvider { return builtinProvider(\"ant-ling\") }",
+   "new": "func AntLingProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/cerebras.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func CerebrasProvider() *ModelsProvider { return builtinProvider(\"cerebras\") }",
+   "new": "func CerebrasProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/cloudflare-ai-gateway.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func CloudflareAIGatewayProvider() *ModelsProvider { return builtinProvider(\"cloudflare-ai-gateway\") }",
+   "new": "func CloudflareAIGatewayProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/cloudflare-workers-ai.ts": [
+  {
+   "file": "ai/builtin_providers.go",
+   "old": "func CloudflareWorkersAIProvider() *ModelsProvider { return builtinProvider(\"cloudflare-workers-ai\") }",
+   "new": "func CloudflareWorkersAIProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/deepseek.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func DeepseekProvider() *ModelsProvider { return builtinProvider(\"deepseek\") }",
+   "new": "func DeepseekProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/fireworks.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func FireworksProvider() *ModelsProvider { return builtinProvider(\"fireworks\") }",
+   "new": "func FireworksProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/groq.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func GroqProvider() *ModelsProvider { return builtinProvider(\"groq\") }",
+   "new": "func GroqProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/huggingface.ts": [
+  {
+   "file": "ai/builtin_providers.go",
+   "old": "func HuggingFaceProvider() *ModelsProvider { return builtinProvider(\"huggingface\") }",
+   "new": "func HuggingFaceProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/kimi-coding.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func KimiCodingProvider() *ModelsProvider { return builtinProvider(\"kimi-coding\") }",
+   "new": "func KimiCodingProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/minimax-cn.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func MinimaxCnProvider() *ModelsProvider { return builtinProvider(\"minimax-cn\") }",
+   "new": "func MinimaxCnProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/minimax.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func MinimaxProvider() *ModelsProvider { return builtinProvider(\"minimax\") }",
+   "new": "func MinimaxProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/moonshotai-cn.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func MoonshotaiCnProvider() *ModelsProvider { return builtinProvider(\"moonshotai-cn\") }",
+   "new": "func MoonshotaiCnProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/moonshotai.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func MoonshotaiProvider() *ModelsProvider { return builtinProvider(\"moonshotai\") }",
+   "new": "func MoonshotaiProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/nvidia.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func NvidiaProvider() *ModelsProvider { return builtinProvider(\"nvidia\") }",
+   "new": "func NvidiaProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/openai-codex.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func OpenaiCodexProvider() *ModelsProvider { return builtinProvider(\"openai-codex\") }",
+   "new": "func OpenaiCodexProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/openai.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func OpenaiProvider() *ModelsProvider { return builtinProvider(\"openai\") }",
+   "new": "func OpenaiProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/opencode-go.ts": [
+  {
+   "file": "ai/builtin_providers.go",
+   "old": "func OpenCodeGoProvider() *ModelsProvider { return builtinProvider(\"opencode-go\") }",
+   "new": "func OpenCodeGoProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/opencode.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func OpencodeProvider() *ModelsProvider { return builtinProvider(\"opencode\") }",
+   "new": "func OpencodeProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/qwen-token-plan-cn.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func QwenTokenPlanCnProvider() *ModelsProvider { return builtinProvider(\"qwen-token-plan-cn\") }",
+   "new": "func QwenTokenPlanCnProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/qwen-token-plan.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func QwenTokenPlanProvider() *ModelsProvider { return builtinProvider(\"qwen-token-plan\") }",
+   "new": "func QwenTokenPlanProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/together.ts": [
+  {
+   "file": "ai/builtin_providers_google_openai_together.go",
+   "old": "func TogetherProvider() *ModelsProvider { return builtinProvider(\"together\") }",
+   "new": "func TogetherProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/vercel-ai-gateway.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func VercelAIGatewayProvider() *ModelsProvider { return builtinProvider(\"vercel-ai-gateway\") }",
+   "new": "func VercelAIGatewayProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/xai.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func XaiProvider() *ModelsProvider { return builtinProvider(\"xai\") }",
+   "new": "func XaiProvider() *ModelsProvider { return builtinProvider(\"groq\") }"
+  }
+ ],
+ "packages/ai/src/providers/xiaomi-token-plan-ams.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func XiaomiTokenPlanAmsProvider() *ModelsProvider { return builtinProvider(\"xiaomi-token-plan-ams\") }",
+   "new": "func XiaomiTokenPlanAmsProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/xiaomi-token-plan-cn.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func XiaomiTokenPlanCnProvider() *ModelsProvider { return builtinProvider(\"xiaomi-token-plan-cn\") }",
+   "new": "func XiaomiTokenPlanCnProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/xiaomi-token-plan-sgp.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func XiaomiTokenPlanSgpProvider() *ModelsProvider { return builtinProvider(\"xiaomi-token-plan-sgp\") }",
+   "new": "func XiaomiTokenPlanSgpProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/xiaomi.ts": [
+  {
+   "file": "ai/builtin_providers.go",
+   "old": "func XiaomiProvider() *ModelsProvider { return builtinProvider(\"xiaomi\") }",
+   "new": "func XiaomiProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/zai-coding-cn.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func ZaiCodingCnProvider() *ModelsProvider { return builtinProvider(\"zai-coding-cn\") }",
+   "new": "func ZaiCodingCnProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/zai.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func ZaiProvider() *ModelsProvider { return builtinProvider(\"zai\") }",
+   "new": "func ZaiProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/google.ts": [
+  {
+   "file": "ai/builtin_providers_google_openai_together.go",
+   "old": "func GoogleProvider() *ModelsProvider { return builtinProvider(\"google\") }",
+   "new": "func GoogleProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/meta.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func MetaProvider() *ModelsProvider { return builtinProvider(\"meta\") }",
+   "new": "func MetaProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/mistral.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "func MistralProvider() *ModelsProvider { return builtinProvider(\"mistral\") }",
+   "new": "func MistralProvider() *ModelsProvider { return builtinProvider(\"xai\") }"
+  }
+ ],
+ "packages/ai/src/providers/qwen-token-plan-individual.ts": [
+  {
+   "file": "ai/provider_constructors.go",
+   "old": "return builtinProvider(\"qwen-token-plan-individual\")",
+   "new": "return builtinProvider(\"qwen-token-plan\")"
+  }
+ ],
+ "packages/ai/src/providers/radius.ts": [
+  {
+   "file": "ai/radius.go",
+   "old": "if gateway == NormalizeRadiusGatewayURL(DefaultRadiusGateway) {",
+   "new": "if gateway != NormalizeRadiusGatewayURL(DefaultRadiusGateway) {"
+  }
+ ],
+ "packages/ai/src/providers/opencode-headers.ts": [
+  {
+   "file": "ai/opencode_headers.go",
+   "old": "if options.SessionID == \"\" || hasProviderHeader(",
+   "new": "if hasProviderHeader("
+  }
+ ],
+ "packages/ai/src/providers/all.ts": [
+  {
+   "file": "ai/builtin_providers.go",
+   "old": "for _, image := range GetImageModels(BuiltinImageProvider(provider)) {",
+   "new": "for _, image := range GetImageModels(BuiltinImageProvider(provider))[:0] {"
+  }
+ ],
+ "packages/ai/src/providers/amazon-bedrock.ts": [
+  {
+   "file": "ai/auth_providers.go",
+   "old": "return &AuthResult{Env: credentialEnv(credential), Source: \"AWS_PROFILE\"}, ctx.Err()",
+   "new": "return &AuthResult{Env: credentialEnv(credential), Source: \"AWS_PROFILE_ENV\"}, ctx.Err()"
+  }
+ ],
+ "packages/ai/src/providers/google-vertex.ts": [
+  {
+   "file": "ai/auth_providers.go",
+   "old": "source := \"gcloud application default credentials\"",
+   "new": "source := \"gcloud credentials\""
+  }
+ ],
+ "packages/ai/src/providers/cloudflare-auth.ts": [
+  {
+   "file": "ai/auth_providers.go",
+   "old": "source := cloudflareAPIKey",
+   "new": "source := \"CLOUDFLARE_KEY\""
+  }
+ ],
+ "packages/ai/src/providers/cloudflare-stream.ts": [
+  {
+   "file": "ai/cloudflare_streams.go",
+   "old": "return stream(ctx, ResolveCloudflareModel(model, options.Env), transcript, options)",
+   "new": "return stream(ctx, model, transcript, options)"
+  }
+ ],
+ "packages/ai/src/providers/azure.ts": [
+  {
+   "file": "ai/azure.go",
+   "old": "resolved.cfg.requestModel = ResolveAzureDeploymentName(p.cfg.Model, options)",
+   "new": "resolved.cfg.requestModel = p.cfg.Model"
+  }
+ ],
+ "packages/ai/src/providers/anthropic.ts": [
+  {
+   "file": "ai/auth_providers.go",
+   "old": "Headers: ProviderHeaders{\"Authorization\": new(\"Bearer \" + token)}}, Source: AnthropicAuthTokenEnv",
+   "new": "Headers: ProviderHeaders{\"Authorization\": new(\"Token \" + token)}}, Source: AnthropicAuthTokenEnv"
+  }
+ ],
+ "packages/ai/src/providers/github-copilot.ts": [
+  {
+   "file": "ai/github_copilot_filter.go",
+   "old": "credential.Type != CredentialOAuth",
+   "new": "credential.Type == CredentialOAuth"
+  }
+ ],
+ "packages/ai/src/providers/openrouter.ts": [
+  {
+   "file": "ai/openrouter_user_models.go",
+   "old": "request.Header.Set(\"authorization\", \"Bearer \"+key)",
+   "new": "request.Header.Set(\"authorization\", \"Basic \"+key)"
+  }
+ ],
+ "packages/schema/src/annotations.ts": [
+  {
+   "file": "schema/annotations.go",
+   "old": "a.allProps = a.allProps || b.allProps",
+   "new": "a.allProps = a.allProps && b.allProps"
+  }
+ ],
+ "packages/schema/src/checks.ts": [
+  {
+   "file": "schema/checks.go",
+   "old": "func never(any) bool  { return false }",
+   "new": "func never(any) bool  { return true }"
+  }
+ ],
+ "packages/schema/src/coerce.ts": [
+  {
+   "file": "schema/coerce.go",
+   "old": "\t\t\tcase \"true\":\n\t\t\t\treturn true",
+   "new": "\t\t\tcase \"true\":\n\t\t\t\treturn false"
+  }
+ ],
+ "packages/schema/src/compiler.ts": [
+  {
+   "file": "schema/compiler.go",
+   "old": "\tif exactlyOne {\n\t\treturn oneCheck(checks)\n\t}\n\treturn anyCheck(checks)",
+   "new": "\tif !exactlyOne {\n\t\treturn oneCheck(checks)\n\t}\n\treturn anyCheck(checks)"
+  }
+ ],
+ "packages/schema/src/explain.ts": [
+  {
+   "file": "schema/explain.go",
+   "old": "return path + \"/\" + strings.ReplaceAll(strings.ReplaceAll(key, \"~\", \"~0\"), \"/\", \"~1\")",
+   "new": "return path + \"/\" + key"
+  }
+ ],
+ "packages/schema/src/formats/typebox/date.ts": [
+  {
+   "file": "schema/formats/typebox_date.go",
+   "old": "return day >= 1 && day <= limit",
+   "new": "return !(day >= 1 && day <= limit)"
+  }
+ ],
+ "packages/schema/src/formats/typebox/date_time.ts": [
+  {
+   "file": "schema/formats/typebox_date_time.go",
+   "old": "return IsDate(value[:at]) && IsTime(value[at+1:])",
+   "new": "return !(IsDate(value[:at]) && IsTime(value[at+1:]))"
+  }
+ ],
+ "packages/schema/src/formats/typebox/duration.ts": [
+  {
+   "file": "schema/formats/typebox_duration.go",
+   "old": "bool { return durationRE.MatchString(value) }",
+   "new": "bool { return !durationRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/email.ts": [
+  {
+   "file": "schema/formats/typebox_email.go",
+   "old": "bool { return emailRE.MatchString(value) }",
+   "new": "bool { return !emailRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/hostname.ts": [
+  {
+   "file": "schema/formats/typebox_hostname.go",
+   "old": "bool { return idna.IsHostname(value) }",
+   "new": "bool { return !idna.IsHostname(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idn_email.ts": [
+  {
+   "file": "schema/formats/typebox_idn_email.go",
+   "old": "return idnEmailRE.MatchString(norm.NFC.String(jsstring.Canonical(value)))",
+   "new": "return !idnEmailRE.MatchString(norm.NFC.String(jsstring.Canonical(value)))"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idn_hostname.ts": [
+  {
+   "file": "schema/formats/typebox_idn_hostname.go",
+   "old": "bool { return idna.IsIdnHostname(value) }",
+   "new": "bool { return !idna.IsIdnHostname(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idna/format/bidi.ts": [
+  {
+   "file": "schema/formats/internal/idna/format_bidi.go",
+   "old": "return !isRtl || !sawEN || !sawAN",
+   "new": "return !isRtl || !sawEN && !sawAN"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idna/format/puny.ts": [
+  {
+   "file": "schema/formats/internal/idna/format_puny.go",
+   "old": "(value[0] == 'x' || value[0] == 'X')",
+   "new": "(value[0] == 'x')"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idna/hostname.ts": [
+  {
+   "file": "schema/formats/internal/idna/hostname.go",
+   "old": "n > 253",
+   "new": "n > 254"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idna/idn-hostname.ts": [
+  {
+   "file": "schema/formats/internal/idna/idn_hostname.go",
+   "old": "r == 0xff61:",
+   "new": "r == 0xff62:"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idna/label/ascii.ts": [
+  {
+   "file": "schema/formats/internal/idna/label_ascii.go",
+   "old": "&& ReAsciiLdh(value)",
+   "new": "|| ReAsciiLdh(value)"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idna/label/puny.ts": [
+  {
+   "file": "schema/formats/internal/idna/label_puny.go",
+   "old": "if !hasNonAscii {",
+   "new": "if hasNonAscii {"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idna/label/unicode.ts": [
+  {
+   "file": "schema/formats/internal/idna/label_unicode.go",
+   "old": "if ReCombiningMark(chars[0]) {",
+   "new": "if !ReCombiningMark(chars[0]) {"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idna/pattern/pattern.ts": [
+  {
+   "file": "schema/formats/internal/idna/pattern.go",
+   "old": "c != '-'",
+   "new": "c != '+'"
+  }
+ ],
+ "packages/schema/src/formats/typebox/ipv4.ts": [
+  {
+   "file": "schema/formats/typebox_ipv4.go",
+   "old": "bool { return ipv4RE.MatchString(value) }",
+   "new": "bool { return !ipv4RE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/ipv6.ts": [
+  {
+   "file": "schema/formats/typebox_ipv6.go",
+   "old": "bool { return ipv6RE.MatchString(value) }",
+   "new": "bool { return !ipv6RE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/iri.ts": [
+  {
+   "file": "schema/formats/typebox_iri.go",
+   "old": "_, err := nodeurl.ParseURL(jsstring.StreamText(narrowIpvFuture(value)))\n\treturn err == nil",
+   "new": "_, err := nodeurl.ParseURL(jsstring.StreamText(narrowIpvFuture(value)))\n\treturn err != nil"
+  }
+ ],
+ "packages/schema/src/formats/typebox/iri_reference.ts": [
+  {
+   "file": "schema/formats/typebox_iri_reference.go",
+   "old": "\treturn err == nil\n}",
+   "new": "\treturn err != nil\n}"
+  }
+ ],
+ "packages/schema/src/formats/typebox/json_pointer.ts": [
+  {
+   "file": "schema/formats/typebox_json_pointer.go",
+   "old": "bool { return jsonPointerRE.MatchString(value) }",
+   "new": "bool { return !jsonPointerRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/json_pointer_uri_fragment.ts": [
+  {
+   "file": "schema/formats/typebox_json_pointer_uri_fragment.go",
+   "old": "bool { return jsonPointerUriFragmentRE.MatchString(value) }",
+   "new": "bool { return !jsonPointerUriFragmentRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/regex.ts": [
+  {
+   "file": "schema/formats/typebox_regex.go",
+   "old": "bool { return ecmaregex.Valid(value) }",
+   "new": "bool { return !ecmaregex.Valid(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/relative_json_pointer.ts": [
+  {
+   "file": "schema/formats/typebox_relative_json_pointer.go",
+   "old": "bool { return relativeJsonPointerRE.MatchString(value) }",
+   "new": "bool { return !relativeJsonPointerRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/time.ts": [
+  {
+   "file": "schema/formats/typebox_time.go",
+   "old": "\tif sec < 60 {\n\t\treturn true\n\t}",
+   "new": "\tif sec < 60 {\n\t\treturn false\n\t}"
+  }
+ ],
+ "packages/schema/src/formats/typebox/uri.ts": [
+  {
+   "file": "schema/formats/typebox_uri.go",
+   "old": "bool { return uriRE.MatchString(value) }",
+   "new": "bool { return !uriRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/uri_reference.ts": [
+  {
+   "file": "schema/formats/typebox_uri_reference.go",
+   "old": "bool { return uriReferenceRE.MatchString(value) }",
+   "new": "bool { return !uriReferenceRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/uri_template.ts": [
+  {
+   "file": "schema/formats/typebox_uri_template.go",
+   "old": "bool { return uriTemplateRE.MatchString(value) }",
+   "new": "bool { return !uriTemplateRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/url.ts": [
+  {
+   "file": "schema/formats/typebox_url.go",
+   "old": "_, err := nodeurl.ParseURL(jsstring.StreamText(value))\n\treturn err == nil",
+   "new": "_, err := nodeurl.ParseURL(jsstring.StreamText(value))\n\treturn err != nil"
+  }
+ ],
+ "packages/schema/src/formats/typebox/uuid.ts": [
+  {
+   "file": "schema/formats/typebox_uuid.go",
+   "old": "bool { return uuidRE.MatchString(value) }",
+   "new": "bool { return !uuidRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/resolver.ts": [
+  {
+   "file": "schema/resolver.go",
+   "old": "if strings.HasPrefix(fragment, \"/\") {",
+   "new": "if strings.HasPrefix(fragment, \"//\") {"
+  }
+ ],
+ "packages/schema/src/shared.ts": [
+  {
+   "file": "schema/shared.go",
+   "old": "sharedRegexes.bySource[source] = weak.Make(re)",
+   "new": "_ = weak.Make(re)"
   }
  ]
 }

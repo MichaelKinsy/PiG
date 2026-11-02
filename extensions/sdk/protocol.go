@@ -126,11 +126,6 @@ type toolDef struct {
 	PreparesLoadout bool             `json:"prepares_loadout,omitempty"`
 	// PreparesArguments reports that the tool defines PrepareArguments; the host asks for it with tool_prepare_arguments before it validates the arguments.
 	PreparesArguments bool `json:"prepares_arguments,omitempty"`
-	// ValidationParameters is Parameters with TypeBox's `~kind` on its nodes, which the host validates arguments with (Value.Convert reads the kinds); set when the schema was built with Type.
-	ValidationParameters json.RawMessage `json:"validation_parameters,omitempty"`
-	// Refinements lists the nodes of Parameters that carry refinements; the host asks for them with tool_refine_arguments.
-	Refinements []refinementDecl `json:"refinements,omitempty"`
-	refineSites []refinementSite
 
 	// ReachesTools reports that the tool defines ReachesTools; the host asks for it with tool_reaches_tools.
 	ReachesTools bool `json:"reaches_tools,omitempty"`
@@ -190,27 +185,6 @@ type readyMsg struct {
 	SourceInfo *SourceInfo `json:"sourceInfo,omitempty"`
 }
 
-// refinementDecl is a node of a tool's parameter schema that carries refinements (Type.Refine): the node's path and how many refinements it has. The host asks for each predicate call with
-// tool_refine_arguments while it validates the arguments.
-type refinementDecl struct {
-	Path  string `json:"path"`
-	Count int    `json:"count"`
-}
-
-// refineMsg is the payload of tool_refine_arguments: run refinement Index of the node at Path on Value; WithMessage asks for the error message when it fails.
-type refineMsg struct {
-	Path        string          `json:"path"`
-	Index       int             `json:"index"`
-	Value       json.RawMessage `json:"value"`
-	WithMessage bool            `json:"with_message,omitempty"`
-}
-
-// refineResult answers tool_refine_arguments.
-type refineResult struct {
-	OK      bool   `json:"ok"`
-	Message string `json:"message,omitempty"`
-}
-
 type requestMsg struct {
 	Method     string          `json:"method"` // "tool_call", "event", "command", "shortcut", "render_message", "render_entry", "render_tool"
 	Tool       string          `json:"tool,omitempty"`
@@ -223,8 +197,6 @@ type requestMsg struct {
 	Batch string `json:"batch,omitempty"`
 	// ChildSession names the child agent session whose customTools define Tool (tool_call, tool_prepare_arguments).
 	ChildSession string `json:"child_session,omitempty"`
-	// Refine, on tool_refine_arguments, names the refinement to run.
-	Refine *refineMsg `json:"refine,omitempty"`
 	// ToolCallIndex, on tool_call, is the call's position in its assistant message's batch (Context.ToolCallIndex).
 	ToolCallIndex *int `json:"tool_call_index,omitempty"`
 

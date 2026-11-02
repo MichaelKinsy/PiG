@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
+// pi: packages/chord/src/next/registries/value.ts
 // Ports the registry-layer behavior of packages/chord/test/next/registries/value.test.ts that does not need a host,
 // driven on RegistryRecord.Value(version) as `host.registry` and `self.registry` read it.
 //

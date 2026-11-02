@@ -43,6 +43,7 @@ func EnvAPIKeyAuth(name string, envVars ...string) *APIKeyAuth {
 	}
 }
 
+// Ports packages/ai/src/providers/anthropic.ts anthropicApiKeyAuth: the stored credential, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_OAUTH_TOKEN and ANTHROPIC_API_KEY, then workload identity federation.
 func anthropicAPIKeyAuth() *APIKeyAuth {
 	return &APIKeyAuth{
 		Name: "Anthropic API key",
@@ -103,6 +104,8 @@ func anthropicAPIKeyAuth() *APIKeyAuth {
 }
 
 // bedrockAuth accepts a bearer token or the AWS default credential chain.
+//
+// Ports packages/ai/src/providers/amazon-bedrock.ts (the bedrockAuth login and resolve).
 func bedrockAuth() *APIKeyAuth {
 	return &APIKeyAuth{
 		Name:  "AWS credentials or bearer token",
@@ -147,6 +150,8 @@ const vertexADCPath = "~/.config/gcloud/application_default_credentials.json"
 
 // vertexAuth accepts an explicit API key or Application Default Credentials
 // with a project and location.
+//
+// Ports packages/ai/src/providers/google-vertex.ts (the vertexAuth login and resolve).
 func vertexAuth() *APIKeyAuth {
 	return &APIKeyAuth{
 		Name:  "Google Cloud credentials",
