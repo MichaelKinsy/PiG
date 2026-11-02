@@ -243,6 +243,7 @@ func releaseStartupHeap() {
 // slowly. One release is queued at a time; a switch that arrives while it runs is covered by it or by the idle collection.
 // pig additive (D172): the same heap return as the one at start, which ran before any switch.
 func (m *InteractiveMode) releaseSwitchHeap() {
+	m.switchHeapReleases.Add(1)
 	if !m.switchHeapRelease.CompareAndSwap(false, true) {
 		return
 	}
