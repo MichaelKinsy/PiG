@@ -163,3 +163,8 @@ generator = "automation/gen/generate-sdk-vectors.mjs"
 paths = ["codemode/cloudflare/testdata/pi-golden.json"]
 owner = "pi"
 generator = "codemode/cloudflare/testdata/oracle.mjs"
+
+[[golden]]
+paths = ["tui/testdata/utf8-decoder-oracle.json"]
+owner = "pi"
+generator = "tui/testdata/utf8-decoder-oracle.mjs"
