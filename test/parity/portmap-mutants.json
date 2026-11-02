@@ -550,6 +550,108 @@
    "new": "getenv(\"WSLENV\") == \"\""
   }
  ],
+ "packages/tui/src/kill-ring.ts": [
+  {
+   "file": "tui/kill_ring.go",
+   "old": "\t\t\t\treturn text + last\n",
+   "new": "\t\t\t\treturn last + text\n"
+  },
+  {
+   "file": "tui/kill_ring.go",
+   "old": "\tk.ring = append([]string{last}, k.ring[:len(k.ring)-1]...)",
+   "new": "\tk.ring = append(k.ring[1:], k.ring[0])"
+  },
+  {
+   "file": "tui/kill_ring.go",
+   "old": "if accumulate && len(k.ring) > 0 {",
+   "new": "if accumulate && len(k.ring) > 1 {"
+  }
+ ],
+ "packages/tui/src/undo-stack.ts": [
+  {
+   "file": "tui/undo_stack.go",
+   "old": "\tu.stack = u.stack[:len(u.stack)-1]\n",
+   "new": "\tu.stack = u.stack[:0]\n"
+  },
+  {
+   "file": "tui/undo_stack.go",
+   "old": "\tu.stack = nil\n",
+   "new": "\tu.stack = u.stack[:len(u.stack)]\n"
+  }
+ ],
+ "packages/tui/src/components/alt-screen-flash.ts": [
+  {
+   "file": "tui/alt_screen_flash.go",
+   "old": "widthx.TruncateToWidth(\" \"+entry.message+\" \", width, \"\", false)",
+   "new": "widthx.TruncateToWidth(\" \"+entry.message, width, \"\", false)"
+  },
+  {
+   "file": "tui/alt_screen_flash.go",
+   "old": "\"\\x1b[7m\" + message + \"\\x1b[27m\"",
+   "new": "\"\\x1b[7m\" + message + \"\\x1b[0m\""
+  },
+  {
+   "file": "tui/alt_screen_flash.go",
+   "old": "\t\tif removed {\n",
+   "new": "\t\tif !removed {\n"
+  },
+  {
+   "file": "tui/alt_screen_flash.go",
+   "old": "c.entries = append(c.entries[:i], c.entries[i+1:]...)",
+   "new": "c.entries = c.entries[:i]"
+  }
+ ],
+ "packages/tui/src/layout-node.ts": [
+  {
+   "file": "tui/layout_node.go",
+   "old": "\t\treturn lc.LayoutNode()\n",
+   "new": "\t\tif _, scroll := lc.LayoutNode().(ScrollLayoutNode); scroll {\n\t\t\treturn nil\n\t\t}\n\t\treturn lc.LayoutNode()\n"
+  }
+ ],
+ "packages/tui/src/layout.ts": [
+  {
+   "file": "tui/layout.go",
+   "old": "\t\tif node.Align == \"stretch\" {\n\t\t\tchildHeight = allocatedHeight\n",
+   "new": "\t\tif node.Align == \"stretch\" {\n\t\t\tchildHeight = 0\n"
+  },
+  {
+   "file": "tui/layout.go",
+   "old": "\t\tif childWidth == 0 {\n",
+   "new": "\t\tif childWidth == -1 {\n"
+  },
+  {
+   "file": "tui/layout.go",
+   "old": "translateBox(childBox, previousScrollTop-node.State.ScrollTop())",
+   "new": "translateBox(childBox, previousScrollTop+node.State.ScrollTop())"
+  },
+  {
+   "file": "tui/layout.go",
+   "old": "\tif stack.Type == \"vstack\" {\n",
+   "new": "\tif stack.Type == \"hstack\" {\n"
+  }
+ ],
+ "packages/tui/src/alt-screen-search.ts": [
+  {
+   "file": "tui/alt_screen_search.go",
+   "old": "startCol = span.startCol + max(start, span.textStart) - span.textStart",
+   "new": "startCol = span.startCol + min(start, span.textStart) - span.textStart"
+  },
+  {
+   "file": "tui/alt_screen_search.go",
+   "old": "segments[n-1].Row == span.row && startCol <= segments[n-1].EndCol",
+   "new": "segments[n-1].Row == span.row && startCol < segments[n-1].EndCol"
+  },
+  {
+   "file": "tui/alt_screen_search.go",
+   "old": "changed = sourceChanged || i.normalizedQuery == nil || normalizedQuery != *i.normalizedQuery",
+   "new": "changed = true"
+  },
+  {
+   "file": "tui/alt_screen_search.go",
+   "old": "regexp.MustCompile(\"(?i)\" + regexp.QuoteMeta(normalizedQuery))",
+   "new": "regexp.MustCompile(regexp.QuoteMeta(normalizedQuery))"
+  }
+ ],
  "packages/durable/src/images/exif.ts": [
   {
    "file": "durable/images/exif.go",
