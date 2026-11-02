@@ -576,7 +576,7 @@
   {
    "file": "tui/kill_ring.go",
    "old": "\tk.ring = append([]string{last}, k.ring[:len(k.ring)-1]...)",
-   "new": "\tk.ring = append(k.ring[1:], k.ring[0])"
+   "new": "\tk.ring = append([]string{last}, k.ring[1:]...)"
   },
   {
    "file": "tui/kill_ring.go",
@@ -633,8 +633,8 @@
   },
   {
    "file": "tui/layout.go",
-   "old": "\t\tif childWidth == 0 {\n",
-   "new": "\t\tif childWidth == -1 {\n"
+   "old": "layoutComponent(context, entry.Component, childX, childY, childWidth, &childHeight, box.Clip)",
+   "new": "layoutComponent(context, entry.Component, childX+1, childY, childWidth, &childHeight, box.Clip)"
   },
   {
    "file": "tui/layout.go",
