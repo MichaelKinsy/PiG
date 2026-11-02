@@ -444,6 +444,18 @@ func renderBuiltinToolCards(t *testing.T, probes []toolCardProbe) [][]string {
 		f.mode.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: f.id, ToolName: f.name, Args: raw})
 		if probe.Settle {
 			f.card.SetArgsComplete()
+			// As the Pi probe does, wait for the preview before the result lands. A result drawn first would start the preview inside the event handler,
+			// and its request could arrive before the drain below, which then waits for a repaint that already happened.
+			select {
+			case <-watcher.requests:
+			default:
+			}
+			f.card.Render(probe.Width)
+			select {
+			case <-watcher.requests:
+			case <-waitCtx.Done():
+				t.Fatalf("probe %d: the edit preview never asked for a repaint: %v", i, context.Cause(waitCtx))
+			}
 		}
 		cardClock.Store(toolCardClockStart + probe.ElapsedMs)
 		if r := probe.Result; r != nil {
@@ -469,22 +481,7 @@ func renderBuiltinToolCards(t *testing.T, probes []toolCardProbe) [][]string {
 			f.card.SetShowImages(false)
 		}
 		f.card.SetExpanded(probe.Expanded)
-		if watcher != nil {
-			// Every request so far came from this goroutine. The first draw below starts the preview, whose request is the next one.
-			select {
-			case <-watcher.requests:
-			default:
-			}
-		}
 		out[i] = f.card.Render(probe.Width)
-		if watcher != nil {
-			select {
-			case <-watcher.requests:
-			case <-waitCtx.Done():
-				t.Fatalf("probe %d: the edit preview never asked for a repaint: %v", i, context.Cause(waitCtx))
-			}
-			out[i] = f.card.Render(probe.Width)
-		}
 		if probe.Result == nil || probe.Partial {
 			// A running bash card ticks its elapsed time until a final result renders (Pi's bash.ts setInterval); finish the card so its ticker does not outlive the test.
 			t.Cleanup(func() {
