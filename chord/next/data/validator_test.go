@@ -13,14 +13,14 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
+// pi: packages/chord/src/next/data/validator.ts
 // Ports packages/chord/test/next/data/validator.test.ts.
 //
-// Ported in typelevel_test.go: "leave nothing in TypeBox's build accumulators" asserts that typebox's module-level GetExternal and
-// GetFunctions accumulators are empty after a build. The Go validator compiles through a per-call jsonschema compiler
-// and keeps no module-level build state, so there is nothing to reset; "are collected with their schema owner" below
-// covers the observable half (nothing retains the owner or its validator).
+// Designed out: "leave nothing in TypeBox's build accumulators" (pi-schema, and its Go port, keep no module-level build
+// state; Pi deleted the case). "are collected with their schema owner, the check function too": a Go func has no weak
+// reference, so the check function is held only by the *schema.Validator whose weak pointer the test waits on.
 
-func argumentsSnapshot(t testing.TB, schema contracts.TSchema, path string) *contracts.Snapshot {
+func argumentsSnapshot(t testing.TB, schema contracts.Schema, path string) *contracts.Snapshot {
 	t.Helper()
 	snapshot, err := contracts.SnapshotArguments(schema, path)
 	if err != nil {
@@ -115,21 +115,21 @@ func TestFailedChecks(t *testing.T) {
 		}
 	})
 
-	t.Run("report TypeBox's first error with its JSON Pointer path", func(t *testing.T) {
+	t.Run("report the first error with its JSON Pointer path", func(t *testing.T) {
 		failed := failure(t, validWith("text", 1.0))
-		if failed == nil || failed.Reason != data.ReasonArgs || failed.Message != "args/text: must be string" {
+		if failed == nil || failed.Reason != data.ReasonArgs || failed.Message != "args/text: expected string, got integer" {
 			t.Fatalf("failure = %+v", failed)
 		}
 		nexttest.RequireJSONEqual(t, failed.Details, delta.JsonObjectOf("path", "/text"))
 		requirePath(t, validWith("items", []any{delta.JsonObjectOf("n", "x")}), "/items/0/n")
 		failed = failure(t, nil)
-		if failed == nil || failed.Reason != data.ReasonArgs || failed.Message != "args: must be object" {
+		if failed == nil || failed.Reason != data.ReasonArgs || failed.Message != "args: expected object, got null" {
 			t.Fatalf("failure(null) = %+v", failed)
 		}
 		nexttest.RequireJSONEqual(t, failed.Details, delta.JsonObjectOf("path", "/"))
 	})
 
-	t.Run("report a missing field at its own path (TypeBox reports it at the parent)", func(t *testing.T) {
+	t.Run("report a missing field at its own path", func(t *testing.T) {
 		requireMessage(t, validWithout("text"), "args/text: missing")
 		requirePath(t, validWithout("text"), "/text")
 		requirePath(t, validWith("items", []any{delta.NewJsonObject(0)}), "/items/0/n")
@@ -145,19 +145,31 @@ func TestFailedChecks(t *testing.T) {
 	})
 
 	t.Run("check bytes by type and length", func(t *testing.T) {
-		requireMessage(t, validWith("blob", []any{1.0}), "args/blob: expected bytes of the declared length")
+		requireMessage(t, validWith("blob", []any{1.0}), "args/blob: expected bytes, got array")
+		requireMessage(t, validWith("blob", make([]byte, 3)), "args/blob: expected at most 2 bytes")
 		requirePath(t, validWith("blob", make([]byte, 3)), "/blob")
-		requireMessage(t, validWith("blob", "text"), "args/blob: expected bytes of the declared length")
-		requireMessage(t, validWith("blob", delta.NewJsonObject(0)), "args/blob: expected bytes of the declared length")
+		requireMessage(t, validWith("blob", "text"), "args/blob: expected bytes, got string")
+		requireMessage(t, validWith("blob", delta.NewJsonObject(0)), "args/blob: expected bytes, got object")
 	})
 
 	t.Run("a data object cannot pass as bytes", func(t *testing.T) {
 		forged := delta.JsonObjectOf("\x00chord:bytes", 1.0)
-		requireMessage(t, validWith("blob", forged), "args/blob: expected bytes of the declared length")
+		requireMessage(t, validWith("blob", forged), "args/blob: expected bytes, got object")
 	})
 
-	t.Run("leave keys containing `/` or `~` unescaped (TypeBox's instance path, ambiguous)", func(t *testing.T) {
-		requirePath(t, validWith("tags", delta.JsonObjectOf("a/b", 1.0)), "/tags/a/b")
+	t.Run("treat `format` as an annotation: no format is checked", func(t *testing.T) {
+		owner := argumentsSnapshot(t, contracts.Obj(contracts.Prop("mail", contracts.Schema{Node: delta.JsonObjectOf("type", "string", "format", "email")})), "m")
+		validator, err := data.ValidatorFor(owner, chordctx.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !validator.Check(delta.JsonObjectOf("mail", "a@b.c")) || !validator.Check(delta.JsonObjectOf("mail", "nope")) {
+			t.Fatal("a format was checked")
+		}
+	})
+
+	t.Run("escape `~` and `/` in keys (JSON Pointer), so a path names one place", func(t *testing.T) {
+		requirePath(t, validWith("tags", delta.JsonObjectOf("a/b", 1.0, "c~d", "x")), "/tags/a~1b")
 	})
 }
 
@@ -192,9 +204,9 @@ func TestValidators(t *testing.T) {
 		}
 	})
 
-	t.Run("are collected with their schema owner", func(t *testing.T) {
+	t.Run("are collected with their schema owner, the check function too", func(t *testing.T) {
 		ownerRef, validatorRef := func() (weak.Pointer[contracts.Snapshot], weak.Pointer[data.Validator]) {
-			owner := argumentsSnapshot(t, contracts.Obj(contracts.Prop("blob", contracts.Bytes())), "m")
+			owner := argumentsSnapshot(t, contracts.Obj(contracts.Prop("blob", contracts.Bytes()), contracts.Prop("n", contracts.Int())), "m")
 			validator, err := data.ValidatorFor(owner, chordctx.Background())
 			if err != nil {
 				t.Fatal(err)

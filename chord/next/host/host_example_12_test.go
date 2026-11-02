@@ -23,12 +23,12 @@ func TestExample12Routes(t *testing.T) {
 			State: []contracts.Property{exProp("notes", exArr(exStr()))},
 			Methods: []contracts.MethodEntry{
 				contracts.Meth("add", contracts.NewMethod(exObj(exProp("text", exStr())), exInt())),
-				contracts.Meth("whoami", contracts.NewMethod(contracts.TSchema{}, exStr())),
+				contracts.Meth("whoami", contracts.NewMethod(contracts.Schema{}, exStr())),
 			},
 		}),
 		contracts.Var("reader", contracts.VariantDeclaration{
 			State:   []contracts.Property{exProp("notes", exArr(exStr()))},
-			Methods: []contracts.MethodEntry{contracts.Meth("whoami", contracts.NewMethod(contracts.TSchema{}, exStr()))},
+			Methods: []contracts.MethodEntry{contracts.Meth("whoami", contracts.NewMethod(contracts.Schema{}, exStr()))},
 		}))
 	lobby := exRemote("example.lobby", contracts.Params{}, exServerAddress, contracts.Var("visitor", contracts.VariantDeclaration{
 		Methods: []contracts.MethodEntry{contracts.Meth("peek", contracts.NewMethod(exObj(exProp("session", exStr())), exStr()))},

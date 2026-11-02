@@ -174,13 +174,13 @@ func (d *detector) typeParamsOf(pkg, name string) []string {
 
 func (d *detector) checker(e *upstreamEntry) *checker {
 	id := parseID(e.ID)
-	srcPkg := ""
+	srcPkg, layer := "", ""
 	if id.Entry == nextEntry {
-		srcPkg = id.Pkg + "/" + nextEntry
+		srcPkg, layer = id.Pkg+"/"+nextEntry, nextEntry
 	}
 	return &checker{renames: d.typeRen, generics: d.generics(e), aliases: d.aliases, pkg: id.Pkg, srcPkg: srcPkg, bags: d.signalBag, reps: d.reps,
 		resolve: func(name string) *types.TypeName { return d.typeFor(parseID(e.ID).Pkg, name) }, propNames: d.propNames,
-		discriminates: d.writesLiteral, forms: d.forms, narrow: d.narrowAccepts, props: func(name string) []propShape { return d.propShapes(parseID(e.ID).Pkg, name) },
+		discriminates: d.writesLiteral, forms: d.forms, narrow: d.narrowAccepts, props: func(name string) []propShape { return d.propShapesDepth(parseID(e.ID).Pkg, layer, name, 0) },
 		ctxConsumers: d.ix.ctxConsumers, typeParams: func(name string) []string { return d.typeParamsOf(parseID(e.ID).Pkg, name) }}
 }
 

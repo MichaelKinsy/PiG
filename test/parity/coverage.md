@@ -1,14 +1,14 @@
 # PORT_MAP coverage report
 
-Generated from `1018` PORT_MAP entries and `832` parity scenarios.
+Generated from `1012` PORT_MAP entries and `832` parity scenarios.
 
 ## Status
 
-- **Porting:** 910 / 917 intended-portable entries ✅ (99.2%).
-- **Behavior verification:** 837 / 910 ported entries (92.0%); 0 weak-only, 73 untested.
+- **Porting:** 905 / 912 intended-portable entries ✅ (99.2%).
+- **Behavior verification:** 837 / 905 ported entries (92.5%); 0 weak-only, 68 untested.
 - **Upstream test porting:** 753 ported / 15 partial / 118 pending (5 other dispositions; [file mapping](interfaces/test-mapping-v1.4.0+b556cfe5.json)). Of the partial/pending files, 0 deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v1.4.0+b556cfe5.json) (`deferred-0.3.x`).
 
-Raw PORT_MAP rows: 1018. Breakdown: 101 n/a (designed out) · 7 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
+Raw PORT_MAP rows: 1012. Breakdown: 100 n/a (designed out) · 7 🟡 partial. See docs/parity/DIVERGENCES.md for the documented exceptions.
 
 ## Packages
 
@@ -19,7 +19,7 @@ Raw PORT_MAP rows: 1018. Breakdown: 101 n/a (designed out) · 7 🟡 partial. Se
 | `chord` | 247 | 28 | 219 | 213 | 6 | 0 | 97.3% | 86.9% |
 | `codemode` | 17 | 4 | 13 | 13 | 0 | 0 | 100.0% | 100.0% |
 | `coding-agent` | 254 | 27 | 227 | 227 | 0 | 0 | 100.0% | 100.0% |
-| `durable` | 91 | 10 | 81 | 81 | 0 | 0 | 100.0% | 92.6% |
+| `durable` | 85 | 9 | 76 | 76 | 0 | 0 | 100.0% | 98.7% |
 | `env` | 23 | 3 | 20 | 19 | 1 | 0 | 95.0% | 100.0% |
 | `evals` | 5 | 0 | 5 | 5 | 0 | 0 | 100.0% | 100.0% |
 | `mcp` | 18 | 3 | 15 | 15 | 0 | 0 | 100.0% | 100.0% |
@@ -29,8 +29,8 @@ Raw PORT_MAP rows: 1018. Breakdown: 101 n/a (designed out) · 7 🟡 partial. Se
 
 - **Four core packages (agent, ai, coding-agent, tui):** 520 / 520 intended-portable files ✅ (100.0%) from 570 rows; 518 behavioral (99.6%), 0 weak-only, 2 untested.
 - **Shipped surface (agent, ai, codemode, coding-agent, mcp, schema, telemetry, tui; coding-agent without ):** 592 / 592 intended-portable files ✅ (100.0%) from 652 rows; 553 behavioral (93.4%), 0 weak-only, 39 untested.
-- **Whole monorepo (12 packages):** 910 / 917 intended-portable files ✅ (99.2%) from 1018 rows; 837 behavioral (92.0%), 0 weak-only, 73 untested.
-- **Interface closure:** 14315 of 14469 semantic interface IDs closed (330 designed-out, 154 pending, 13985 ported). A file-level ✅ does not close an interface ID.
+- **Whole monorepo (12 packages):** 905 / 912 intended-portable files ✅ (99.2%) from 1012 rows; 837 behavioral (92.5%), 0 weak-only, 68 untested.
+- **Interface closure:** 14315 of 14469 semantic interface IDs closed (380 designed-out, 154 pending, 13935 ported). A file-level ✅ does not close an interface ID.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
 
@@ -941,12 +941,6 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/durable/src/storage/sqlite/node.ts` | ✅ | 0 | 4 (unit:./durable/storage/sqlite/node:TestNewNodeSqliteDatabaseAdaptsADatabaseSync, unit:./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, unit:./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, unit:./durable/storage/sqlite:TestDurableSQLiteMigrations) | not run | ./durable/storage/sqlite/node:TestNewNodeSqliteDatabaseAdaptsADatabaseSync, ./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, ./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, ./durable/storage/sqlite:TestDurableSQLiteMigrations |
 | `packages/durable/src/storage/sqlite/storage.ts` | ✅ | 0 | 7 (unit:./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, unit:./durable/storage/sqlite:TestSqliteStorageConformance, unit:./durable/storage/sqlite:TestSqliteStorageConformance, unit:./durable/storage/sqlite:TestSqliteStorageLookupsAndScansReadCommittedRecords, unit:./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, unit:./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, unit:./durable/storage:TestStorageBenchmarkExpectations) | not run | ./durable/storage/sqlite/node:TestPortableSQLiteFacadeSettlement, ./durable/storage/sqlite:TestSqliteStorageConformance, ./durable/storage/sqlite:TestSqliteStorageConformance, ./durable/storage/sqlite:TestSqliteStorageLookupsAndScansReadCommittedRecords, ./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, ./durable/storage/sqlite:TestSqliteStorageReadApiMirrorsPisStorageContract, ./durable/storage:TestStorageBenchmarkExpectations |
 | `packages/durable/src/storage/sqlite/cloudflare.ts` | ✅ | 0 | 4 (unit:./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteAdapter, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteAdapter, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectStorageConformance, unit:./durable/storage/sqlite/cloudflare:TestDurableObjectStorageConformance) | not run | ./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteAdapter, ./durable/storage/sqlite/cloudflare:TestDurableObjectSqliteAdapter, ./durable/storage/sqlite/cloudflare:TestDurableObjectStorageConformance, ./durable/storage/sqlite/cloudflare:TestDurableObjectStorageConformance |
-| `packages/durable/src/storage/store/commit.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/durable/src/storage/store/documents.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/durable/src/storage/store/index.ts` | n/a | 0 | 0 | not run |  |
-| `packages/durable/src/storage/store/queries.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/durable/src/storage/store/storage.ts` | ✅ | **0 (untested)** | **0** | not run |  |
-| `packages/durable/src/storage/store/tables.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/durable/src/tasks.ts` | ✅ | 0 | 2 (unit:./durable/harness:TestHarnessInspect, unit:./durable:TestErasedPhasesRunTheTypedTask) | not run | ./durable/harness:TestHarnessInspect, ./durable:TestErasedPhasesRunTheTypedTask |
 | `packages/durable/src/testing/assertions.ts` | ✅ | 0 | 9 (unit:./durable/durabletest:TestEnvConformanceCasesPassForNodeEnvAndFailForBrokenEnv, unit:./durable/durabletest:TestRegisterStorageConformanceUsesTheProviderOncePerCase, unit:./durable/durabletest:TestStorageConformanceAssertionsPassAndFail, unit:./durable/durabletest:TestStorageConformanceAssertionsPassAndFail, unit:./durable/durabletest:TestStorageConformanceCasesPassForMemoryStorageAndFailForBrokenStorage, unit:./durable/durabletest:TestStorageConformanceOptionsSupplyAssertionsAndFreshStoragePerCase, unit:./durable/storage/jsonl:TestJsonlStorageConformance, unit:./durable/storage/sqlite:TestSqliteStorageConformance, unit:./durable/storage:TestMemoryStorageConformance) | not run | ./durable/durabletest:TestEnvConformanceCasesPassForNodeEnvAndFailForBrokenEnv, ./durable/durabletest:TestRegisterStorageConformanceUsesTheProviderOncePerCase, ./durable/durabletest:TestStorageConformanceAssertionsPassAndFail, ./durable/durabletest:TestStorageConformanceAssertionsPassAndFail, ./durable/durabletest:TestStorageConformanceCasesPassForMemoryStorageAndFailForBrokenStorage, ./durable/durabletest:TestStorageConformanceOptionsSupplyAssertionsAndFreshStoragePerCase, ./durable/storage/jsonl:TestJsonlStorageConformance, ./durable/storage/sqlite:TestSqliteStorageConformance, ./durable/storage:TestMemoryStorageConformance |
 | `packages/durable/src/testing/env-conformance.ts` | ✅ | 0 | 3 (unit:./durable/durabletest:TestCreateEnvConformanceCasesMatchUpstream, unit:./durable/durabletest:TestRegisterEnvConformanceOptionsReachTheCases, unit:./durable/env/node:TestNodeExecutionEnvConformance) | not run | ./durable/durabletest:TestCreateEnvConformanceCasesMatchUpstream, ./durable/durabletest:TestRegisterEnvConformanceOptionsReachTheCases, ./durable/env/node:TestNodeExecutionEnvConformance |

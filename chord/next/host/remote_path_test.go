@@ -7,6 +7,8 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
+// pi: packages/chord/src/next/remote/path.ts
+
 // Ports packages/chord/test/next/remote/path.test.ts.
 
 // recordingHolder records where it was held and what it was told, as `name@link` and `name dropped`: the path calls only

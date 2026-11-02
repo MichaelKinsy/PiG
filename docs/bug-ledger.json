@@ -138,6 +138,28 @@
       ]
     },
     {
+      "id": "BF-016a19a",
+      "title": "A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the…",
+      "symptom": "The derive's watchers used to receive the non-JSON frame without any report.",
+      "rootCause": "Deliver assumed that diffing could not fail in Go because delta.DiffRevisions takes JSON, but nothing checked that the derive's value was JSON, so the batch had no failure to report.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the host reports as `delivery_failed` while the later frames of the commit are still delivered, as Pi's batch does when diffing throws. The derive's watchers used to receive the non-JSON frame without any report.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "016a19ac68",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_batch_test.go::TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit"
+      ]
+    },
+    {
       "id": "BF-02114ff",
       "title": "fix(tui): filterable list drops the label when no cell remains (Pi select-list)",
       "symptom": "fix(tui): filterable list drops the label when no cell remains (Pi select-list)",

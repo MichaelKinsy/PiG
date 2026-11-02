@@ -20,7 +20,7 @@ import (
 func TestExample16PresenceAndActivity(t *testing.T) {
 	doc := exRemote("example.doc", contracts.Params{exProp("id", exStr())}, exServerAddress, contracts.Var("v", contracts.VariantDeclaration{
 		State:   []contracts.Property{exProp("viewers", exInt())},
-		Methods: []contracts.MethodEntry{contracts.Meth("think", contracts.NewMethod(contracts.TSchema{}, exInt()))},
+		Methods: []contracts.MethodEntry{contracts.Meth("think", contracts.NewMethod(contracts.Schema{}, exInt()))},
 	}))
 	userOf := func(name string) data.Principal { return jsonObject("kind", "user", "name", name) }
 	thinking := make(chan struct{})

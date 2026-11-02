@@ -382,7 +382,7 @@ var libraryEntries = map[string][]string{
 	"durable:./storage/sqlite/node":       {"./durable/storage/sqlite/node"},
 	"durable:./storage/sqlite/cloudflare": {"./durable/storage/sqlite/cloudflare"},
 	"durable:./storage/store":             {"./durable/storage/store"},
-	"chord:.":                             {"./chord", "./chord/context", "./chord/delta", "./chord/host", "./chord/next/host", "./durable", "./durable/core/internal/delta"},
+	"chord:.":                             {"./chord", "./chord/context", "./chord/delta", "./chord/host", "./chord/next/documents", "./chord/next/host", "./durable", "./durable/core/internal/delta"},
 	"chord:./next":                        {"./chord", "./chord/next/contracts", "./chord/next/data", "./chord/next/documents", "./chord/next/host", "./chord/next/link", "./chord/next/registries", "./chord/next/state", "./chord/next/store"},
 	"chord:./context":                     {"./chord/context", "./chord/next/host"},
 	"chord:./delta":                       {"./chord", "./chord/delta", "./durable", "./durable/core/internal/delta"},

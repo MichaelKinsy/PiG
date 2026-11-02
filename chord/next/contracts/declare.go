@@ -119,7 +119,7 @@ func Local(name string, declaration LocalDeclaration) (*Contract, error) {
 				return nil, err
 			}
 			variant.Keyed.Set(entry.Name, snapshot)
-		case TSchema:
+		case Schema:
 			snapshot, err := SnapshotSchema(member, path)
 			if err != nil {
 				return nil, err
