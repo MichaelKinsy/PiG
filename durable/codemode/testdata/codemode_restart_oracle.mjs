@@ -30,6 +30,7 @@ module.registerHooks({
 const load = (path) => import(pathToFileURL(`${packages}${path}`).href);
 const { CodemodeSandbox } = await import("@earendil-works/pi-codemode");
 const { fauxAssistantMessage, fauxText, fauxToolCall } = await import("@earendil-works/pi-ai");
+const { num, obj, opt, str } = await import("@earendil-works/pi-schema");
 const { defineTool, ToolResultEntry, ToolTask } = await import("@earendil-works/pi-durable");
 const codemode = await load("durable/src/codemode/codemode.ts");
 const { chatSetup, openChat, allEntries } = await load("durable/test/chat-support.ts");
@@ -119,7 +120,7 @@ class QueuedStorage extends ControlledStorage {
 	}
 }
 
-const Parameters = { type: "object", properties: { text: { type: "string" }, id: { type: "number" } } };
+const Parameters = obj({ text: opt(str()), id: opt(num()) });
 const tool = (name, execute, replay = "unsafe") => defineTool({ name, description: name, parameters: Parameters, execute, replay });
 const DONE = () => fauxAssistantMessage([fauxText("done")]);
 const script = (code) => fauxAssistantMessage([fauxToolCall("codemode", { code }, { id: "s1" })], { stopReason: "toolUse" });

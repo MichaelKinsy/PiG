@@ -21,7 +21,7 @@ import (
 // OrderColumn) is designed out; a row is `Row = map[string]any` (str string, int int64, num float64, bool bool, json
 // delta.JsonValue; an absent key is NULL). A table's columns are an ordered slice of ColumnProp (Go maps have no
 // order), built with Col. Pi's `describeColumns` reads each schema as unknown data, so that every runtime check is
-// kept: the ColumnSchema of any contracts.TSchema is accepted and refused when it is not a column schema.
+// kept: the ColumnSchema of any contracts.Schema is accepted and refused when it is not a column schema.
 
 // Row is a row as reads return it and `put` takes it: str string, int int64, num float64, bool bool, json
 // delta.JsonValue; an `opt(...)` column that is NULL is absent.
@@ -30,7 +30,7 @@ type Row = map[string]any
 // ColumnSchema is a schema a table column takes: a scalar one (Str Int Num Bool), a Json column, or either wrapped in
 // Opt. Schema is a scalar column's contracts schema (its type and default); Json is set for a `json(...)` column.
 type ColumnSchema struct {
-	Schema   contracts.TSchema
+	Schema   contracts.Schema
 	Optional bool
 	Json     *JsonColumn
 }

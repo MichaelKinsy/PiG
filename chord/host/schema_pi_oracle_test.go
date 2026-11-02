@@ -45,6 +45,17 @@ type piSchemaOracle struct {
 		Value  json.RawMessage `json:"value"`
 		Expect string          `json:"expect"`
 	} `json:"identities"`
+	Cleans []struct {
+		Schema string `json:"schema"`
+		Value  string `json:"value"`
+		Expect string `json:"expect"`
+	} `json:"cleans"`
+	Defaults []struct {
+		Schema string `json:"schema"`
+		Value  string `json:"value"`
+		OK     bool   `json:"ok"`
+		Expect string `json:"expect"`
+	} `json:"defaults"`
 	Normalizes []struct {
 		Schema json.RawMessage `json:"schema"`
 		What   string          `json:"what"`
@@ -67,13 +78,16 @@ func loadPiSchemaOracle(t *testing.T) piSchemaOracle {
 	return oracle
 }
 
-// schemaOf reads a schema as TypeBox hands it over: a map of JSON values, or a boolean schema.
+// schemaOf reads a schema as JSON.parse does, its objects in the order they were written: an object, or a boolean schema.
 func schemaOf(t *testing.T, raw json.RawMessage) any {
 	t.Helper()
-	var schema any
-	if err := json.Unmarshal(raw, &schema); err != nil {
-		t.Fatal(err)
-	}
+	return decodeChordJSON(t, raw)
+}
+
+// objectSchemaOf is schemaOf for a schema that is an object.
+func objectSchemaOf(t *testing.T, raw json.RawMessage) Schema {
+	t.Helper()
+	schema, _ := schemaOf(t, raw).(Schema)
 	return schema
 }
 
@@ -119,13 +133,13 @@ func TestFitsMatchesPi(t *testing.T) {
 func TestCanonicalIdentityAndNormalizeMatchPi(t *testing.T) {
 	oracle := loadPiSchemaOracle(t)
 	for _, item := range oracle.Identities {
-		schema := asSchema(schemaOf(t, item.Schema))
+		schema := objectSchemaOf(t, item.Schema)
 		if got := CanonicalIdentity(schema, decodeChordJSON(t, item.Value)); got != item.Expect {
 			t.Errorf("canonicalIdentity(%s) = %s, Pi %s", item.Value, got, item.Expect)
 		}
 	}
 	for _, item := range oracle.Normalizes {
-		schema := asSchema(schemaOf(t, item.Schema))
+		schema := objectSchemaOf(t, item.Schema)
 		got, err := Normalize(schema, decodeChordJSON(t, item.Value), item.What)
 		if item.OK {
 			if err != nil {
@@ -158,16 +172,15 @@ func TestCanonicalIdentityAndNormalizeMatchPi(t *testing.T) {
 	}
 }
 
-// assertValid throws invalid with the first three TypeBox errors of the value as details, whole: keyword, schemaPath,
-// instancePath, params and message.
+// assertValid throws invalid with the first three pi-schema errors of the value as details, whole: path, keyword and message.
 func TestAssertValidMatchesPi(t *testing.T) {
 	oracle := loadPiSchemaOracle(t)
 	if len(oracle.Assertions) < 70 {
 		t.Fatalf("Pi oracle has %d assertion cases", len(oracle.Assertions))
 	}
 	for _, item := range oracle.Assertions {
-		// The schema is decoded in order too: TypeBox visits the properties of a schema in its declaration order, which a Go
-		// map cannot keep.
+		// The schema is decoded in order too: pi-schema visits the properties of a schema in its declaration order, which a
+		// Go map cannot keep.
 		err := assertValid("state", "state thing", decodeChordJSON(t, item.Schema), decodeChordJSON(t, item.Value))
 		if item.OK {
 			if err != nil {
@@ -190,7 +203,7 @@ func TestAssertValidMatchesPi(t *testing.T) {
 }
 
 // A schema that arrives in a wire description, from a Node child or in a hold token, is decoded by Description's
-// UnmarshalJSON: the errors of its properties must come in the order it declared them, as TypeBox's do. The details are
+// UnmarshalJSON: the errors of its properties must come in the order it declared them, as pi-schema's do. The details are
 // compared in order: errors are a list, and each error's members keep Pi's order.
 func TestAssertValidOverADecodedDescriptionKeepsTheDeclaredOrderLikePi(t *testing.T) {
 	oracle := loadPiSchemaOracle(t)
@@ -262,6 +275,58 @@ func TestNormalizeOverADecodedDescriptionKeepsPiMemberOrder(t *testing.T) {
 		}
 		if gotText, want := OrderedJSON(got), OrderedJSON(decodeChordJSON(t, item.Expect)); gotText != want {
 			t.Errorf("normalize(%s)\n  go %s\n  pi %s", item.Value, gotText, want)
+		}
+	}
+}
+
+// orderedText is a JSON text as Go writes its decoded value: objects in the order they were written, as JSON.stringify
+// writes them.
+func orderedText(t *testing.T, text string) string {
+	t.Helper()
+	return OrderedJSON(decodeChordJSON(t, []byte(text)))
+}
+
+// cleaned strips unknown fields over every kind of schema Chord meets, pi-schema's (open objects, maps, prefixItems),
+// TypeBox's (records, tuples, allOf) and plain ones, key order included.
+func TestCleanedMatchesPi(t *testing.T) {
+	oracle := loadPiSchemaOracle(t)
+	if len(oracle.Cleans) < 300 {
+		t.Fatalf("Pi oracle has %d cleaned cases", len(oracle.Cleans))
+	}
+	for index, item := range oracle.Cleans {
+		got, err := Cleaned(objectSchemaOf(t, json.RawMessage(item.Schema)), decodeChordJSON(t, []byte(item.Value)))
+		if err != nil {
+			t.Errorf("case %d: cleaned(%s, %s) failed: %v", index, item.Schema, item.Value, err)
+			continue
+		}
+		if text, want := OrderedJSON(got), orderedText(t, item.Expect); text != want {
+			t.Errorf("case %d: cleaned(%s, %s) = %s, Pi %s", index, item.Schema, item.Value, text, want)
+		}
+	}
+}
+
+// normalize applies defaults to missing values and fields (a missing optional field never takes one), then cleans and
+// validates: the value Pi returns, or the message it throws.
+func TestNormalizeDefaultsMatchPi(t *testing.T) {
+	oracle := loadPiSchemaOracle(t)
+	if len(oracle.Defaults) < 300 {
+		t.Fatalf("Pi oracle has %d normalize cases", len(oracle.Defaults))
+	}
+	for index, item := range oracle.Defaults {
+		got, err := Normalize(objectSchemaOf(t, json.RawMessage(item.Schema)), decodeChordJSON(t, []byte(item.Value)), "input of thing")
+		if !item.OK {
+			chordError, ok := err.(*ChordError) //nolint:errorlint // normalize returns the ChordError itself
+			if !ok || chordError.Message != item.Expect {
+				t.Errorf("case %d: normalize(%s, %s) = %v, Pi threw %q", index, item.Schema, item.Value, err, item.Expect)
+			}
+			continue
+		}
+		if err != nil {
+			t.Errorf("case %d: normalize(%s, %s) failed: %v, Pi %s", index, item.Schema, item.Value, err, item.Expect)
+			continue
+		}
+		if text, want := OrderedJSON(got), orderedText(t, item.Expect); text != want {
+			t.Errorf("case %d: normalize(%s, %s) = %s, Pi %s", index, item.Schema, item.Value, text, want)
 		}
 	}
 }

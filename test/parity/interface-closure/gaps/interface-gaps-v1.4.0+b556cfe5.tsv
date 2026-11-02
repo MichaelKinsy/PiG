@@ -1,119 +1,3 @@
-pkg:agent/.#AgentToolParams	agent	no-go-symbol	
-pkg:ai/.#CacheRetention	ai	undecidable	ai/types.go#CacheRetention
-pkg:ai/.#ChatTemplateKwargValue	ai	undecidable	ai/types_unions.go#ChatTemplateKwargValue
-pkg:ai/.#ModelCost	ai	undecidable	ai/types.go#ModelCost
-pkg:ai/.#ModelCostRates	ai	undecidable	ai/types.go#ModelCost
-pkg:ai/.#ModelCostTier	ai	undecidable	ai/types.go#CostTier
-pkg:ai/.#ModelImageInputLimits	ai	undecidable	ai/types.go#ModelImageInputLimits
-pkg:ai/.#ModelImageResizeOptions	ai	undecidable	ai/types.go#ModelImageResizeOptions
-pkg:ai/.#ModelInputLimits	ai	undecidable	ai/types.go#ModelInputLimits
-pkg:ai/.#ModelInputModality	ai	undecidable	ai/types.go#ModelInputModality
-pkg:ai/.#ModelPromptCache	ai	undecidable	ai/types.go#ModelPromptCache
-pkg:ai/.#ModelThinkingLevel	ai	undecidable	ai/types.go#ModelThinkingLevel
-pkg:ai/.#SessionAffinityFormat	ai	undecidable	ai/types.go#SessionAffinityFormat
-pkg:ai/.#ThinkingLevel	ai	undecidable	ai/types.go#ThinkingLevel
-pkg:ai/.#ThinkingLevelMap	ai	undecidable	ai/types.go#ThinkingLevelMap
-pkg:ai/api/constrained-sampling#makeStrictJsonSchema	ai	child-gap	ai/constrained_sampling.go#MakeStrictJSONSchema
-pkg:ai/api/constrained-sampling#makeStrictJsonSchema::call:0	ai	undecidable	ai/constrained_sampling.go#MakeStrictJSONSchema
-pkg:ai/compat#CacheRetention	ai	undecidable	ai/types.go#CacheRetention
-pkg:ai/compat#ChatTemplateKwargValue	ai	undecidable	ai/types_unions.go#ChatTemplateKwargValue
-pkg:ai/compat#ModelCost	ai	undecidable	ai/types.go#ModelCost
-pkg:ai/compat#ModelCostRates	ai	undecidable	ai/types.go#ModelCost
-pkg:ai/compat#ModelCostTier	ai	undecidable	ai/types.go#CostTier
-pkg:ai/compat#ModelImageInputLimits	ai	undecidable	ai/types.go#ModelImageInputLimits
-pkg:ai/compat#ModelImageResizeOptions	ai	undecidable	ai/types.go#ModelImageResizeOptions
-pkg:ai/compat#ModelInputLimits	ai	undecidable	ai/types.go#ModelInputLimits
-pkg:ai/compat#ModelInputModality	ai	undecidable	ai/types.go#ModelInputModality
-pkg:ai/compat#ModelPromptCache	ai	undecidable	ai/types.go#ModelPromptCache
-pkg:ai/compat#ModelThinkingLevel	ai	undecidable	ai/types.go#ModelThinkingLevel
-pkg:ai/compat#SessionAffinityFormat	ai	undecidable	ai/types.go#SessionAffinityFormat
-pkg:ai/compat#ThinkingLevel	ai	undecidable	ai/types.go#ThinkingLevel
-pkg:ai/compat#ThinkingLevelMap	ai	undecidable	ai/types.go#ThinkingLevelMap
-pkg:ai/providers/compat-schema#ChatTemplateKwargValue	ai	undecidable	ai/types_unions.go#ChatTemplateKwargValue
-pkg:ai/providers/compat-schema#ProviderCompat	ai	undecidable	internal/codingagent/model_registry.go#providerCompat
-pkg:ai/providers/compat-schema#SessionAffinityFormat	ai	undecidable	ai/types.go#SessionAffinityFormat
-pkg:ai/providers/model-schema#CacheRetention	ai	undecidable	ai/types.go#CacheRetention
-pkg:ai/providers/model-schema#ModelCost	ai	undecidable	ai/types.go#ModelCost
-pkg:ai/providers/model-schema#ModelCostRates	ai	undecidable	ai/types.go#ModelCost
-pkg:ai/providers/model-schema#ModelCostTier	ai	undecidable	ai/types.go#CostTier
-pkg:ai/providers/model-schema#ModelImageInputLimits	ai	undecidable	ai/types.go#ModelImageInputLimits
-pkg:ai/providers/model-schema#ModelImageResizeOptions	ai	undecidable	ai/types.go#ModelImageResizeOptions
-pkg:ai/providers/model-schema#ModelInputLimits	ai	undecidable	ai/types.go#ModelInputLimits
-pkg:ai/providers/model-schema#ModelInputModality	ai	undecidable	ai/types.go#ModelInputModality
-pkg:ai/providers/model-schema#ModelPromptCache	ai	undecidable	ai/types.go#ModelPromptCache
-pkg:ai/providers/model-schema#ModelThinkingLevel	ai	undecidable	ai/types.go#ModelThinkingLevel
-pkg:ai/providers/model-schema#ThinkingLevel	ai	undecidable	ai/types.go#ThinkingLevel
-pkg:ai/providers/model-schema#ThinkingLevelMap	ai	undecidable	ai/types.go#ThinkingLevelMap
-pkg:ai/providers/schema-builders#openObject	ai	no-go-symbol	
-pkg:ai/providers/schema-builders#openObject::call:0	ai	child-gap	
-pkg:ai/providers/schema-builders#stringLiteral	ai	no-go-symbol	
-pkg:ai/providers/schema-builders#stringLiteral::call:0	ai	child-gap	
-pkg:ai/providers/schema-builders#stringRecord	ai	no-go-symbol	
-pkg:ai/providers/schema-builders#stringRecord::call:0	ai	child-gap	
-pkg:chord/next#BooleanSchema	chord	no-go-symbol	
-pkg:chord/next#BooleanSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
-pkg:chord/next#BooleanSchema::property:type	chord	child-gap	
-pkg:chord/next#IntegerSchema	chord	no-go-symbol	
-pkg:chord/next#IntegerSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
-pkg:chord/next#IntegerSchema::property:type	chord	child-gap	
-pkg:chord/next#JsonColumnSchema	chord	no-go-symbol	
-pkg:chord/next#JsonColumnSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
-pkg:chord/next#JsonColumnSchema::property:json	chord	child-gap	
-pkg:chord/next#NullSchema	chord	no-go-symbol	
-pkg:chord/next#NullSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
-pkg:chord/next#NullSchema::property:type	chord	child-gap	
-pkg:chord/next#NumberSchema	chord	no-go-symbol	
-pkg:chord/next#NumberSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
-pkg:chord/next#NumberSchema::property:type	chord	child-gap	
-pkg:chord/next#Optional	chord	child-gap	chord/next/link/message.go#Optional
-pkg:chord/next#Optional::construct:0	chord	no-go-symbol	chord/next/link/message.go#Optional
-pkg:chord/next#Optional::property:schema	chord	member-missing	chord/next/link/message.go#Optional
-pkg:chord/next#Schema	chord	type-mismatch	chord/host/schema.go#Schema
-pkg:chord/next#StateDefinition	chord	child-gap	chord/next/documents/definition.go#StateDefinition
-pkg:chord/next#StateDefinition::construct:0	chord	no-go-symbol	chord/next/documents/definition.go#StateDefinition
-pkg:chord/next#StateDefinition::property:schema	chord	type-mismatch	chord/next/documents/definition.go#StateDefinition.Schema
-pkg:chord/next#Static	chord	no-go-symbol	
-pkg:chord/next#StringSchema	chord	no-go-symbol	
-pkg:chord/next#StringSchema::property:%5BSymbol.STATIC%5D	chord	child-gap	
-pkg:chord/next#StringSchema::property:type	chord	child-gap	
-pkg:chord/next#WebSocketLike	chord	child-gap	chord/next/link/websocket.go#WebSocketLike
-pkg:chord/next#WebSocketLike::property:addEventListener	chord	child-gap	chord/next/link/websocket.go#WebSocketLike.AddEventListener
-pkg:chord/next#WebSocketLike::property:addEventListener::call:0	chord	signature-mismatch	chord/next/link/websocket.go#WebSocketLike.AddEventListener
-pkg:chord/next#WebSocketLike::property:removeEventListener	chord	member-missing	chord/next/link/websocket.go#WebSocketLike
-pkg:chord/next#WebSocketLike::property:removeEventListener::call:0	chord	member-missing	chord/next/link/websocket.go#WebSocketLike
-pkg:chord/next#arr	chord	child-gap	chord/next/contracts/schema.go#Arr
-pkg:chord/next#arr::call:0	chord	signature-mismatch	chord/next/contracts/schema.go#Arr
-pkg:chord/next#bool	chord	child-gap	chord/next/store/columns.go#Bool
-pkg:chord/next#bool::call:0	chord	signature-mismatch	chord/next/store/columns.go#Bool
-pkg:chord/next#bool::call:1	chord	signature-mismatch	chord/next/store/columns.go#Bool
-pkg:chord/next#bytes	chord	child-gap	chord/next/contracts/schema.go#Bytes
-pkg:chord/next#bytes::call:0	chord	signature-mismatch	chord/next/contracts/schema.go#Bytes
-pkg:chord/next#int	chord	child-gap	chord/next/store/columns.go#Int
-pkg:chord/next#int::call:0	chord	signature-mismatch	chord/next/store/columns.go#Int
-pkg:chord/next#int::call:1	chord	signature-mismatch	chord/next/store/columns.go#Int
-pkg:chord/next#lit	chord	child-gap	chord/next/contracts/schema.go#Lit
-pkg:chord/next#lit::call:0	chord	signature-mismatch	chord/next/contracts/schema.go#Lit
-pkg:chord/next#map	chord	child-gap	chord/next/contracts/schema.go#Map
-pkg:chord/next#map::call:0	chord	signature-mismatch	chord/next/contracts/schema.go#Map
-pkg:chord/next#method	chord	child-gap	chord/host/contract.go#Method
-pkg:chord/next#method::call:0	chord	undecidable	chord/host/contract.go#Method
-pkg:chord/next#method::call:1	chord	signature-mismatch	chord/host/contract.go#Method
-pkg:chord/next#method::call:2	chord	signature-mismatch	chord/host/contract.go#Method
-pkg:chord/next#method::call:3	chord	signature-mismatch	chord/host/contract.go#Method
-pkg:chord/next#nul	chord	child-gap	chord/next/contracts/schema.go#Nul
-pkg:chord/next#nul::call:0	chord	signature-mismatch	chord/next/contracts/schema.go#Nul
-pkg:chord/next#num	chord	child-gap	chord/next/store/columns.go#Num
-pkg:chord/next#num::call:0	chord	signature-mismatch	chord/next/store/columns.go#Num
-pkg:chord/next#num::call:1	chord	signature-mismatch	chord/next/store/columns.go#Num
-pkg:chord/next#obj	chord	child-gap	chord/next/contracts/schema.go#Obj
-pkg:chord/next#obj::call:0	chord	signature-mismatch	chord/next/contracts/schema.go#Obj
-pkg:chord/next#str	chord	child-gap	chord/next/store/columns.go#Str
-pkg:chord/next#str::call:0	chord	signature-mismatch	chord/next/store/columns.go#Str
-pkg:chord/next#str::call:1	chord	signature-mismatch	chord/next/store/columns.go#Str
-pkg:chord/next#union	chord	child-gap	chord/next/contracts/schema.go#Union
-pkg:chord/next#union::call:0	chord	signature-mismatch	chord/next/contracts/schema.go#Union
-pkg:chord/next#unknown	chord	child-gap	chord/next/contracts/schema.go#Unknown
-pkg:chord/next#unknown::call:0	chord	signature-mismatch	chord/next/contracts/schema.go#Unknown
 pkg:durable/.#CommitResult	durable	no-go-symbol	
 pkg:durable/.#GenerationHooks	durable	child-gap	durable/harness/types.go#GenerationHooks
 pkg:durable/.#GenerationHooks::property:beforeProviderRequest	durable	member-missing	durable/harness/types.go#GenerationHooks
@@ -125,11 +9,9 @@ pkg:durable/.#Storage	durable	child-gap	durable/types.go#Storage
 pkg:durable/.#Storage::property:commit	durable	child-gap	durable/types.go#Storage.Commit
 pkg:durable/.#Storage::property:commit::call:0	durable	signature-mismatch	durable/types.go#Storage.Commit
 pkg:durable/.#Storage::property:publishing	durable	member-missing	durable/types.go#Storage
-pkg:durable/.#ToolRegistration	durable	undecidable	durable/harness_types.go#ToolRegistration
 pkg:durable/.#Tx	durable	child-gap	durable/types.go#Tx
 pkg:durable/.#Tx::property:latestEntryId	durable	member-missing	durable/types.go#Tx
 pkg:durable/.#Tx::property:latestEntryId::call:0	durable	member-missing	durable/types.go#Tx
-pkg:durable/codemode#CodemodeToolInput	durable	undecidable	durable/codemode/tool.go#ToolInput
 pkg:durable/storage/indexeddb#IndexedDbStorage	durable	no-go-symbol	
 pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit	durable	child-gap	
 pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit::call:0	durable	child-gap	
@@ -183,36 +65,3 @@ pkg:durable/storage/store#StoreStorage::property:task	durable	child-gap
 pkg:durable/storage/store#StoreStorage::property:task::call:0	durable	child-gap	
 pkg:durable/testing#commitWrites	durable	no-go-symbol	
 pkg:durable/testing#commitWrites::call:0	durable	child-gap	
-pkg:durable/tools#BashToolInput	durable	undecidable	durable/tools/bash.go#BashToolInput
-pkg:durable/tools#EditToolInput	durable	undecidable	durable/tools/edit.go#EditToolInput
-pkg:durable/tools#PowerShellToolInput	durable	undecidable	durable/tools/bash.go#PowerShellToolInput
-pkg:durable/tools#ReadToolInput	durable	undecidable	durable/tools/read.go#ReadToolInput
-pkg:durable/tools#WriteToolInput	durable	undecidable	durable/tools/write.go#WriteToolInput
-pkg:schema/.#CoercingValidator	schema	no-go-symbol	
-pkg:schema/.#CoercingValidator::construct:0	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:check	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:check::call:0	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:coerce	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:coerce::call:0	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:errors	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:errors::call:0	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:parse	schema	child-gap	
-pkg:schema/.#CoercingValidator::property:parse::call:0	schema	child-gap	
-pkg:schema/.#CompileOptions	schema	child-gap	schema/types.go#CompileOptions
-pkg:schema/.#CompileOptions::property:coerce	schema	member-missing	schema/types.go#CompileOptions
-pkg:schema/.#CompileOptions::property:unresolvedRefs	schema	member-missing	schema/types.go#CompileOptions
-pkg:schema/.#ParseResult	schema	no-go-symbol	
-pkg:schema/.#arr	schema	child-gap	schema/builders.go#Arr
-pkg:schema/.#arr::call:0	schema	signature-mismatch	schema/builders.go#Arr
-pkg:schema/.#bytes	schema	child-gap	schema/builders.go#Bytes
-pkg:schema/.#bytes::call:0	schema	signature-mismatch	schema/builders.go#Bytes
-pkg:schema/.#compile	schema	child-gap	schema/validator.go#Compile
-pkg:schema/.#compile::call:0	schema	signature-mismatch	schema/validator.go#Compile
-pkg:schema/.#int	schema	child-gap	schema/builders.go#Int
-pkg:schema/.#int::call:0	schema	signature-mismatch	schema/builders.go#Int
-pkg:schema/.#num	schema	child-gap	schema/builders.go#Num
-pkg:schema/.#num::call:0	schema	signature-mismatch	schema/builders.go#Num
-pkg:schema/.#obj	schema	child-gap	schema/builders.go#Obj
-pkg:schema/.#obj::call:0	schema	signature-mismatch	schema/builders.go#Obj
-pkg:schema/.#str	schema	child-gap	schema/builders.go#Str
-pkg:schema/.#str::call:0	schema	signature-mismatch	schema/builders.go#Str

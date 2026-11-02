@@ -1,5 +1,7 @@
 package childwait
 
+// pi: packages/coding-agent/src/utils/child-process.ts
+
 import (
 	"io"
 	"os"

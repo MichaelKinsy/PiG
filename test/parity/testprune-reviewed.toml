@@ -725,6 +725,41 @@ cite = ""
 reason = "The test moved with the brace-expansion port from coding/packagecontent (glob_braces_npm_test.go) to internal/minimatch, which now has the single port; the recorded rows of Pi's npm minimatch are the same and only the called function is renamed (npmBraceExpand to braceExpand)."
 
 [[entry]]
+path = "schema/coerce_upstream_test.go"
+commit = "ac69278d213589e83736077a8396df4fddc9f757"
+class = "CITE"
+cite = "packages/schema/src/explain.ts:105"
+reason = "Pi 6536f801 (explain.ts walkRef, :105-130) keeps the errors of a $ref target per errors() call and reports a reference that names nothing as `unresolved reference <ref>` (keyword $ref), so Pi's coerce tests explain the depth-40 recursive union and assert that exact message; the Go test asserts both once explain.go ports walkRef."
+
+[[entry]]
+path = "coding/session_tool_validation_test.go"
+commit = "78e838b4cd342b3de4dafcfb94ef25ccd757af4c"
+class = "CITE"
+cite = "packages/ai/src/utils/validation.ts:59"
+reason = "Pi 6536f801 validates tool arguments as plain JSON Schema (validation.ts:59 parse of tool.parameters): TypeBox refinements are not run, so the argument schema of a tool is its parameters and a tool binding carries no separate validation parameters."
+
+[[entry]]
+path = "internal/codingagent/tools/argument_schema_test.go"
+commit = "3d980815b1ee3dbb3161ea830554cb30a57c33e2"
+class = "CITE"
+cite = "packages/ai/src/utils/validation.ts:15"
+reason = "Pi 6536f801 compiles every tool schema with pi-schema (validation.ts:15, formats, coerce: true, unresolvedRefs: reject): the declared parameters of a built-in tool are the plain JSON the validator reads (no ~kind marks), so the cached argument schema equals the declared parameters."
+
+[[entry]]
+path = "durable/harness/tool_structured_output_test.go"
+commit = "30940806a9688959174fb1b02b8b50d6cf8de24e"
+class = "CITE"
+cite = "packages/durable/src/harness/tool.ts:790"
+reason = "Pi 6536f801 checks a structured output with pi-schema (tool.ts:790 compile with formats and unresolvedRefs: reject), so invalid_structured_output messages carry pi-schema's wording (`expected number, got string`) instead of TypeBox's."
+
+[[entry]]
+path = "durable/tools/read_structured_output_test.go"
+commit = "30940806a9688959174fb1b02b8b50d6cf8de24e"
+class = "CITE"
+cite = "packages/durable/src/tools/read.ts:51"
+reason = "Pi 6536f801 builds the read tool's structured output schema with pi-schema (read.ts:51: obj({ type: lit(\"image\"), ... }, { open: true })), whose literal is a bare {\"const\":\"image\"}; the Go declaration emits the same JSON."
+
+[[entry]]
 path = "chord/delta/text_tails_test.go"
 commit = "e33dbb0ad0a613f339125390bd966dff79f1eadc"
 class = "NOBEHAVIOR"
@@ -759,3 +794,31 @@ commit = "ff5017db9e8dbbeef61da454b37d8e552500f19f"
 class = "CITE"
 cite = "packages/chord/src/next-node/compression.ts:17"
 reason = "Pi passes Math.max(1, Math.min(limit, buffer.MAX_LENGTH)) to inflateRawSync as maxOutputLength (compression.ts:17): Math.min and Math.max return NaN for a NaN limit, Node takes its default maximum for a NaN maxOutputLength, and the check `inflated.byteLength > limit` (:18) is false against NaN, so Pi returns the bytes. The NaN-limit expectation was corrupt and is the bytes."
+
+[[entry]]
+path = "coding/extension/host/subprocess/host_helpers_highlight_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
+
+[[entry]]
+path = "tui/component_themes_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
+
+[[entry]]
+path = "tui/highlight_cache_bytes_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
+
+[[entry]]
+path = "tui/highlight_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."

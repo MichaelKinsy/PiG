@@ -308,7 +308,7 @@ var refFlaky = mustContract(contracts.Local("app.flaky", contracts.LocalDeclarat
 	Params:  contracts.Params{contracts.Prop("id", contracts.Int())},
 	Members: []contracts.LocalEntry{
 		contracts.Mem("n", contracts.Int()),
-		contracts.Mem("get", contracts.NewMethod(contracts.TSchema{}, contracts.Int())),
+		contracts.Mem("get", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
 	},
 }))
 

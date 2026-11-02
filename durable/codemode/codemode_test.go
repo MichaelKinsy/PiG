@@ -971,7 +971,7 @@ func TestDurableCodeMode(t *testing.T) {
 		opened, root := f.setup.open(t, openSqlite(t, filepath.Join(t.TempDir(), "session.sqlite")))
 		mustSubmitDone(t, root)
 		text, isError := resultText(t, root)
-		expectText(t, text, isError, "Validation failed for tool \"echo\":\n  - root: must be object\n\nReceived arguments:\n[\n  1\n]", false)
+		expectText(t, text, isError, "Validation failed for tool \"echo\":\n  - root: expected object, got array\n\nReceived arguments:\n[\n  1\n]", false)
 		if got := nestedCount(t, opened); got != 0 {
 			t.Fatalf("%d nested calls, want 0", got)
 		}

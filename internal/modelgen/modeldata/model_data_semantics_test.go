@@ -10,7 +10,7 @@ import (
 )
 
 func TestModelDataStructureHashJavaScriptOrdering(t *testing.T) {
-	// Oracle: modelDataStructureHash in .upstream/v0.87.1/packages/ai/scripts/model-data.ts:121; exact fixture below.
+	// Oracle: modelDataStructureHash in .upstream/v1.4.0+b556cfe5/packages/ai/scripts/model-data.ts:122; exact fixture below.
 	structure := ModelDataStructure{"10": {"2": "api2", "10": "api10", "a": "a"}, "2": {"<>&\u2028": "z", "\ue000": "y", "😀": "x"}}
 	const want = "fd8b67241b59568ba2d26a5833a9a066f2e5fe55017f38cb8257ed04b615388d"
 	if got := ModelDataStructureHash(structure); got != want {

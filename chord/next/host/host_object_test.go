@@ -21,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 )
 
+// pi: packages/chord/src/next/host/object.ts
 // Ports packages/chord/test/next/host/object.test.ts: objects (§6): identity and lifetime, retries, attempts parked on
 // dependencies, cycle checks, collection, `ref.retry()`, linger, cycles across hosts, a failed activation's cleanup and a
 // live object failing. Every case runs a real host; the cases Pi runs under `fakeTimers()` run on the scopeLoop and move the

@@ -51,3 +51,15 @@ test/parity/testdata/catalog-generation/equivalence.sh compare build/catalog-fix
 `go test ./cmd/gen-models -run TestCatalogGenerationMatchesPi` holds the Go generator to the sha256 of what Pi's generator wrote for
 a pruned set of recorded responses (`cmd/gen-models/testdata/catalog-generation`). After a pin bump, re-record, prune
 (`prune.mjs`), and refresh the golden file with `equivalence.sh golden`.
+
+The golden file holds the sha256 of Pi's generator at the pin (`b556cfe5`) with Pi 9ee7586a9 applied (OpenCode Zen and Go Claude models get
+per-message effort, #10954; it changes only `catalog/providers/opencode.ts`). Pi v1.5.0 comes before that commit, so the first pin that
+contains it is the move to Pi main. Until then a re-record from the mirrored pin produces the old golden and fails eight checksums
+(`models.json`, `models.all.json`, `catalog/providers/opencode*.json`, `data/opencode*.json`). Apply the commit's change to the mirror first:
+
+```sh
+git -C <pi checkout> diff b556cfe5 9ee7586a9 -- packages/ai/catalog/providers/opencode.ts | git apply --directory=.upstream/v1.4.0+b556cfe5 -
+```
+
+`.upstream/v1.4.0+b556cfe5` is the mirror directory of the pin (`.upstream/current` points at it); the patch paths start at `packages/ai`. The
+pin bump that reaches 9ee7586a9 re-records the golden from the mirror without this step.

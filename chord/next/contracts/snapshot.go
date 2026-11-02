@@ -14,18 +14,18 @@ import (
 // Ports packages/chord/src/next/contracts/snapshot.ts (schema snapshots: one schema-aware walk checks an app schema
 // against Chord's vocabulary and produces a Chord-owned copy and its normal form, the fingerprint input).
 //
-// Designed out: the refusal of TypeBox refinements, codecs and unsafe types, of symbol keys and of accessors (a Go
-// schema is JSON data and cannot carry them), and withBytesCheck (the bytes marker is checked by CheckBytes).
+// Designed out: the refusal of symbol keys, accessors and non-enumerable keys (a Go schema is JSON data: it has none of
+// them, and its `Optional` flag is no key), and withBytesCheck (deleted upstream: a bytes leaf is plain data).
 
 // Snapshot is a Chord-owned copy of an app schema, its normal form, and whether it has a `bytes()` leaf (values
 // crossing a link then carry raw byte segments); immutable by convention. Contract data holds snapshots by pointer.
 type Snapshot struct {
-	Schema TSchema
+	Schema Schema
 	Normal delta.JsonValue
 	Bytes  bool
 }
 
-// SnapshotSchema is the snapshot of a state, result or params schema. source is a TSchema, an ordered
+// SnapshotSchema is the snapshot of a state, result or params schema. source is a Schema, an ordered
 // *delta.JsonObject, a map[string]any or a bool; the error names path for anything outside the vocabulary.
 func SnapshotSchema(source any, path string) (*Snapshot, error) {
 	return snapshotOf(source, path, objectsOpen)
@@ -38,14 +38,18 @@ func SnapshotArguments(source any, path string) (*Snapshot, error) {
 }
 
 func snapshotOf(source any, path string, objects objectsPolicy) (*Snapshot, error) {
-	if schema, ok := source.(TSchema); ok {
+	if schema, ok := source.(Schema); ok {
+		// `opt(...)` is no schema outside an object: only an object field takes it.
+		if schema.Optional {
+			return nil, fail("%s: expected a schema", path)
+		}
 		source = schema.Node
 	}
 	walked, err := walk(source, path, objects, map[uintptr]struct{}{})
 	if err != nil {
 		return nil, err
 	}
-	return &Snapshot{Schema: TSchema{Node: walked.schema}, Normal: walked.normal, Bytes: walked.bytes}, nil
+	return &Snapshot{Schema: Schema{Node: walked.schema}, Normal: walked.normal, Bytes: walked.bytes}, nil
 }
 
 // objectsPolicy says whether object schemas must set `additionalProperties: false`.

@@ -3073,12 +3073,6 @@ snippet = "if data, err := json.Marshal(d); err == nil && json.Unmarshal(data, &
 
 [[hit]]
 check = "mapkeyorder"
-file = "internal/codingagent/tools/argument_schema.go"
-func = "nativeSchemaJSON"
-snippet = "encoded, err := json.Marshal(document)"
-
-[[hit]]
-check = "mapkeyorder"
 file = "mcp/oauth/flow.go"
 func = "registrationBody"
 snippet = "return json.Marshal(fields)"
@@ -4012,12 +4006,6 @@ check = "numbers"
 file = "tui/terminal.go"
 func = "ProcessTerminal.forwardInputFrom"
 snippet = "ms = max(0, int(math.Ceil(float64(time.Until(deadline))/float64(time.Millisecond))))"
-
-[[hit]]
-check = "numbers"
-file = "tui/terminal_color_query.go"
-func = "terminalColorQueryDelay"
-snippet = "return time.Duration(milliseconds) * time.Millisecond"
 
 [[hit]]
 check = "numbers"

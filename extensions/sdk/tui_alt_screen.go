@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -279,9 +280,7 @@ func goroutineID() uint64 {
 
 func (s *TuiAltScreen) call(op string, fields map[string]any, out any) error {
 	args := map[string]any{"id": s.id, "op": op}
-	for k, v := range fields {
-		args[k] = v
-	}
+	maps.Copy(args, fields)
 	args["terminal"] = map[string]any{"columns": s.terminal.Columns(), "rows": s.terminal.Rows(), "kitty": s.terminal.KittyProtocolActive()}
 	result, err := s.ext.tuiAlt.callContext(s.ext).callHost("tui.alt", args)
 	if err := callResultError(result, err); err != nil {
@@ -747,9 +746,7 @@ func (s *TuiAltScreen) QueryTerminalColors(timeoutMs float64, onLateReply func(T
 
 func (h *TuiOverlayHandle) control(action string, fields map[string]any) (*tuiOverlayState, error) {
 	args := map[string]any{"key": h.key, "action": action}
-	for k, v := range fields {
-		args[k] = v
-	}
+	maps.Copy(args, fields)
 	var state tuiOverlayState
 	err := h.screen.call("overlay", args, &state)
 	return &state, err

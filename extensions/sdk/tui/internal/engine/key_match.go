@@ -2,6 +2,8 @@
 
 package engine
 
+// Ports packages/tui/src/keys.ts
+
 // key_match.go: Dynamic key matching, ported from upstream Pi's keys.ts.
 //
 // matchesKeyDynamic resolves any KeyID string (e.g. "ctrl+shift+left")
@@ -193,6 +195,7 @@ type parsedKey struct {
 // (DecodeKittyPrintable). Returns nil if data is not CSI-u.
 func parseCSIu(data string) *parsedKey {
 	// The pattern is anchored: ESC [ ... u. Most input is not that, and the regular expression allocates for each match attempt.
+	//portlint:allow utf16units keys.ts parseKittySequence's csiUMatch is anchored ESC [ ... u over ASCII digits and punctuation; the length and byte checks only reject non-matches early
 	if len(data) < 4 || data[0] != '\x1b' || data[1] != '[' || data[len(data)-1] != 'u' {
 		return nil
 	}
@@ -216,6 +219,7 @@ func parseCSIu(data string) *parsedKey {
 
 // keyNumber is parseInt(digits, 10) for a run of ASCII digits that a keys.ts sequence pattern captured. The value is a float64, as in JavaScript, so a run too long for an int still parses.
 func keyNumber(digits string) float64 {
+	//portlint:allow numbers keys.ts parseInt(digits, 10) on a run of ASCII digits a sequence regex captured: ParseFloat reads the same value, range overflow is the float JS yields
 	value, err := strconv.ParseFloat(digits, 64)
 	if err != nil && !errors.Is(err, strconv.ErrRange) {
 		return math.NaN()
@@ -232,6 +236,7 @@ func jsInt32(value float64) int {
 	if wrapped < 0 {
 		wrapped += 1 << 32
 	}
+	//portlint:allow numbers keys.ts ToInt32 of a parsed modifier: NaN and Infinity return 0 above, and the value is wrapped into 32 bits before the conversion
 	return int(int32(uint32(wrapped)))
 }
 
@@ -239,6 +244,7 @@ func jsInt32(value float64) int {
 // from 2^62 up is a multiple of 1024, so its low 16 bits name no key, and one sentinel above every key codepoint stands for all of them.
 func keyCodepoint(value float64) int {
 	if value < 1<<62 {
+		//portlint:allow numbers keys.ts parsed codepoint: keyNumber yields a float64 from ASCII digits (never NaN), and values from 2^62 up take the sentinel above
 		return int(value)
 	}
 	return 1 << 62
@@ -411,15 +417,19 @@ func parseModifiedFunc(data string) *parsedKey {
 		return nil
 	}
 	num := keyNumber(numText)
+	//portlint:allow numbers keys.ts funcKeyCodes[keyNum]: num came from ASCII digits, so it is not NaN, and the guard on the same line bounds it to the table
 	if num >= float64(len(funcKeyCodes)) || funcKeyCodes[int(num)] == 0 {
 		return nil
 	}
+	//portlint:allow numbers keys.ts funcKeyCodes[keyNum]: num is bounded by len(funcKeyCodes) one line above
 	return &parsedKey{codepoint: int(funcKeyCodes[int(num)]), modifier: jsInt32(modValue-1) &^ lockMask}
 }
 
 // parseBareFKey parses the unmodified F1, F2 and F4 forms \x1b[P, \x1b[Q and \x1b[S; keys.ts's [PQS] pattern takes the modified forms through parseModifiedArrow.
 func parseBareFKey(data string) *parsedKey {
+	//portlint:allow utf16units keys.ts parseKittySequence fKeyMatch needs ESC [ plus one of P Q S: a three-unit string with this ASCII prefix is three bytes
 	if len(data) == 3 && data[:2] == "\x1b[" {
+		//portlint:allow utf16units keys.ts parseKittySequence fKeyMatch: the third byte of a three-byte ESC [ x string is the [PQS] final
 		if cp, ok := fKeyFinal(data[2]); ok {
 			return &parsedKey{codepoint: cp}
 		}
@@ -501,7 +511,9 @@ func resolveKeyCodepoint(baseKey string) (cp int, ok bool) {
 		return entry.cp, true
 	}
 	// Function keys: f1 to f12.
+	//portlint:allow utf16units key id f1..f12 (keys.ts KeyId): only ASCII digits parse, and a non-ASCII id has no function key whichever unit it is counted in
 	if n, isNum := strings.CutPrefix(baseKey, "f"); isNum && len(n) <= 2 && n != "" && n[0] >= '1' && n[0] <= '9' {
+		//portlint:allow numbers key id f1..f12: n is one or two ASCII digits starting 1..9 (checked above), which parseInt and Atoi read alike
 		if num, err := strconv.Atoi(n); err == nil && num >= 1 && num <= 12 {
 			return cpF1 - (num - 1), true
 		}
@@ -852,6 +864,7 @@ func matchesLegacy(data, baseKey string, expectedCP, expectedMod int) bool {
 		}
 
 		// Alt+letter → ESC followed by letter in legacy mode only.
+		//portlint:allow utf16units keys.ts matchesKey legacy alt branch compares data[1] with an ASCII letter key; ASCII data is the same in bytes and units, and non-ASCII data matches neither
 		if expectedMod == modAlt && !IsKittyProtocolActive() && len(data) == 2 && data[0] == '\x1b' {
 			return data[1] == ch
 		}
@@ -859,6 +872,7 @@ func matchesLegacy(data, baseKey string, expectedCP, expectedMod int) bool {
 		// Ctrl+Alt+letter → ESC followed by a control character in legacy mode only.
 		if expectedMod == modCtrl|modAlt && !IsKittyProtocolActive() {
 			if rc := rawCtrlChar(ch); rc != 0 {
+				//portlint:allow utf16units keys.ts matchesKey legacy ctrl+alt branch compares data[1] with an ASCII control character; ASCII data is the same in bytes and units
 				return len(data) == 2 && data[0] == '\x1b' && data[1] == rc
 			}
 		}

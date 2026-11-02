@@ -288,17 +288,18 @@ func (t *preparingEditTool) PrepareArguments(raw json.RawMessage) (json.RawMessa
 	return json.Marshal(map[string]any{"edits": edits})
 }
 
-// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:541
+// packages/agent/test/agent-loop.test.ts "should prepare tool arguments for validation" (Pi 6536f801: replaceSchema = obj({ oldText: str(), newText: str() }), toolSchema = obj({ edits: arr(replaceSchema) }), closed objects)
 // upstream: "should prepare tool arguments for validation"
 func TestAgentLoop_PreparesToolArgumentsForValidation(t *testing.T) {
 	replace := map[string]any{"type": "object", "properties": map[string]any{
 		"oldText": map[string]any{"type": "string"}, "newText": map[string]any{"type": "string"},
-	}, "required": []any{"oldText", "newText"}}
+	}, "required": []any{"oldText", "newText"}, "additionalProperties": false}
 	var executed []string
 	tool := &preparingEditTool{scriptTool{name: "edit", params: map[string]any{
-		"type":       "object",
-		"properties": map[string]any{"edits": map[string]any{"type": "array", "items": replace}},
-		"required":   []any{"edits"},
+		"type":                 "object",
+		"properties":           map[string]any{"edits": map[string]any{"type": "array", "items": replace}},
+		"required":             []any{"edits"},
+		"additionalProperties": false,
 	}, execute: func(_ context.Context, _ string, args json.RawMessage, _ ToolUpdateCallback) (AgentToolResult, error) {
 		executed = append(executed, string(args))
 		return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "edited 1"}}}, nil

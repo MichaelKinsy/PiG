@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/tui/src/tui-alt-screen.ts (text selection)
+
 import (
 	"encoding/base64"
 	"fmt"

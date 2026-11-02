@@ -70,7 +70,8 @@ export const Job = defineTask({
 const note = defineTool({
 	name: "note",
 	description: "Appends a line to the conversation's notes and starts a job",
-	parameters: { type: "object", properties: { text: { type: "string" } }, required: ["text"] },
+	// What pi-schema's obj({ text: str() }) builds: a closed object (pi-ai no longer exports TypeBox's Type).
+	parameters: { type: "object", properties: { text: { type: "string" } }, required: ["text"], additionalProperties: false },
 	execute: async (args, api, callContext) => {
 		const job = await api.commit(async (tx) => {
 			(await tx.doc(Notes, api.conversationId)).lines.push(args.text);
@@ -89,7 +90,7 @@ const note = defineTool({
 const spawn = defineTool({
 	name: "spawn",
 	description: "Runs a child conversation",
-	parameters: { type: "object", properties: { task: { type: "string" } }, required: ["task"] },
+	parameters: { type: "object", properties: { task: { type: "string" } }, required: ["task"], additionalProperties: false },
 	replay: "safe",
 	execute: async (args, api, callContext) => {
 		const child = await api.commit(async (tx) => {
