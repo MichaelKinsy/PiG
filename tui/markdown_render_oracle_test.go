@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os/exec"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -183,9 +184,18 @@ func TestMarkdownBlockReuseDiffersFromPi(t *testing.T) {
 		// With no earlier block of that source, Pi renders the block as PiG does.
 		{name: "no block has the same source", text: inOpenTag("http://a.c"), row: 4, pi: "http://a.c", pig: "http://a.c"},
 	}
-	probes := make([]markdownRenderProbe, len(cases), len(cases)+1)
+	probes := make([]markdownRenderProbe, len(cases), 2*len(cases)+1)
 	for i, c := range cases {
 		probes[i] = markdownRenderProbe{Text: c.text, Widths: []int{80}, Then: c.then}
+	}
+	// A fresh Pi component for the text a case ends on, which has no earlier block to reuse: the control that the rows above differ because of the earlier render.
+	fresh := make([]int, len(cases))
+	for i, c := range cases {
+		fresh[i] = -1
+		if len(c.then) > 0 {
+			fresh[i] = len(probes)
+			probes = append(probes, markdownRenderProbe{Text: c.then[len(c.then)-1], Widths: []int{80}})
+		}
 	}
 	// The document TestMarkdownRenderMatchesPi leaves out renders differently in Pi and PiG.
 	probes = append(probes, markdownRenderProbe{Text: markdownOpenLinkRepeatDoc, Widths: []int{80}})
@@ -197,6 +207,21 @@ func TestMarkdownBlockReuseDiffersFromPi(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			if got := strings.TrimRight(expected[i][0][c.row], " "); got != c.pi {
 				t.Errorf("Pi row %d = %q, want %q: Pi renders it differently now, so D220 may be removable", c.row, got, c.pi)
+			}
+			if f := fresh[i]; f >= 0 {
+				if got := strings.TrimRight(expected[f][0][c.row], " "); got != c.pig {
+					t.Errorf("a fresh Pi component renders row %d as %q, want %q", c.row, got, c.pig)
+				}
+				// The component that was given the text renders the fresh component's rows except the reused one; a probe that ignores the later text renders its first text and differs everywhere.
+				var differing []int
+				for row := range max(len(expected[i][0]), len(expected[f][0])) {
+					if row >= len(expected[i][0]) || row >= len(expected[f][0]) || expected[i][0][row] != expected[f][0][row] {
+						differing = append(differing, row)
+					}
+				}
+				if !slices.Equal(differing, []int{c.row}) {
+					t.Errorf("the Pi component given the later text differs from a fresh one in rows %v, want only row %d", differing, c.row)
+				}
 			}
 			md := NewMarkdownWithOptions(c.text, 0, 0, &theme, nil, nil)
 			md.Render(80)
@@ -210,7 +235,7 @@ func TestMarkdownBlockReuseDiffersFromPi(t *testing.T) {
 	}
 	t.Run("the document the comparison leaves out", func(t *testing.T) {
 		pig := NewMarkdownWithOptions(markdownOpenLinkRepeatDoc, 0, 0, &theme, nil, nil).Render(80)
-		if reflect.DeepEqual(nonNil(pig), nonNil(expected[len(cases)][0])) {
+		if reflect.DeepEqual(nonNil(pig), nonNil(expected[len(probes)-1][0])) {
 			t.Error("Pi and PiG render markdownOpenLinkRepeatDoc alike: compare it in TestMarkdownRenderMatchesPi and remove D220")
 		}
 	})
