@@ -9,6 +9,8 @@ import (
 
 	"github.com/Microsoft/go-winio"
 	"golang.org/x/sys/windows"
+
+	"github.com/MichaelKinsy/PiG/internal/chord/winpipe"
 )
 
 // platformLockLocation is `processLock`'s choice on Windows: a named pipe.
@@ -22,7 +24,7 @@ func platformListenLock(location lockLocation) (net.Listener, error) {
 	if location.kind == lockFile {
 		return net.Listen("unix", location.address)
 	}
-	return winio.ListenPipe(location.address, &winio.PipeConfig{})
+	return winpipe.Listen(location.address, &winio.PipeConfig{})
 }
 
 func platformDialLock(location lockLocation, ctx context.Context) (net.Conn, error) {
