@@ -9,6 +9,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/typebox"
 )
 
+// pi: packages/chord/src/next/contracts/schema.ts
+
 // Ports packages/chord/test/next/contracts/schema.test.ts. The Static<> checks and expectTypeOf are type-level only
 // (designed out: a Go schema is data, values are JSON). TypeBox's compiler is typebox.Check over the schema node;
 // the bytes leaf is checked natively by contracts.CheckBytes.
