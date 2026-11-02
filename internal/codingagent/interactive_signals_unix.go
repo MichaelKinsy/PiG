@@ -6,6 +6,7 @@ package codingagent
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/signal"
 	"syscall"
@@ -109,6 +110,14 @@ func (m *InteractiveMode) suspendOperations() suspendOperations {
 			}
 		},
 		kill: func(pid int) error { return syscall.Kill(pid, syscall.SIGTSTP) },
+		foreground: func() (bool, error) {
+			// pig divergence (D227): the foreground check that Pi's SIGCONT handler lacks.
+			foreground, err := tui.StdinInForeground()
+			if err != nil {
+				m.exitIfDeadTerminal(err)
+			}
+			return foreground, err
+		},
 	}
 }
 
@@ -126,28 +135,42 @@ func (m *InteractiveMode) onSuspendContinue(onContinue func() error, onCancel fu
 	signal.Notify(continued, syscall.SIGCONT)
 	m.backgroundTasks.Go(func() {
 		defer signal.Stop(continued)
-		select {
-		case <-ctx.Done():
-			onCancel()
-		case <-continued:
-			applied := make(chan struct{})
-			if err := m.postToMain(ctx, func() {
-				defer close(applied)
-				if ctx.Err() != nil {
+		for {
+			select {
+			case <-ctx.Done():
+				onCancel()
+				return
+			case <-continued:
+				applied := make(chan struct{})
+				parked := false
+				if err := m.postToMain(ctx, func() {
+					defer close(applied)
+					if ctx.Err() != nil {
+						onCancel()
+						return
+					}
+					err := onContinue()
+					// pig divergence (D227): a parked continuation keeps the waiter for the SIGCONT that fg sends.
+					if errors.Is(err, errSuspendParked) {
+						parked = true
+						return
+					}
+					if err != nil {
+						m.inputLoopErr = err
+					}
+				}); err != nil {
 					onCancel()
 					return
 				}
-				if err := onContinue(); err != nil {
-					m.inputLoopErr = err
+				select {
+				case <-applied:
+				case <-ctx.Done():
+					onCancel()
+					return
 				}
-			}); err != nil {
-				onCancel()
-				return
-			}
-			select {
-			case <-applied:
-			case <-ctx.Done():
-				onCancel()
+				if !parked {
+					return
+				}
 			}
 		}
 	})

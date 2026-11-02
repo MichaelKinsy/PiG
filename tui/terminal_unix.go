@@ -39,6 +39,25 @@ func terminalHungUp(file *os.File) bool {
 	}
 }
 
+// inForeground is tcgetpgrp on stdin compared with this process's group: whether the group may use the terminal without a SIGTTOU or SIGTTIN
+// stop. A terminal that went away reports its error (EIO, ENOTTY), which a caller treats as a dead terminal.
+func (t *ProcessTerminal) inForeground() (bool, error) {
+	if t.stdin == nil {
+		return false, syscall.ENOTTY
+	}
+	fd := int(t.stdin.Fd())
+	for {
+		pgrp, err := unix.IoctlGetInt(fd, unix.TIOCGPGRP)
+		if isEINTR(err) {
+			continue
+		}
+		if err != nil {
+			return false, err
+		}
+		return pgrp == syscall.Getpgrp(), nil
+	}
+}
+
 // pollReadable waits up to ms milliseconds for fd to become readable. It
 // returns n>0 when readable, 0 on timeout. EINTR is retried internally so the
 // caller never observes it. Mirrors the original DrainInput poll loop.

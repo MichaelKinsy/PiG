@@ -19,7 +19,7 @@ type suspendOperations struct {
 	foreground      func() (bool, error)
 }
 
-// errSuspendParked is what a continuation returns when SIGCONT reached a process group that does not own the terminal. The waiter keeps waiting for the SIGCONT that fg sends.
+// errSuspendParked is what a continuation returns when SIGCONT reached a process group that does not own the terminal and the session stopped again. The waiter keeps waiting for the SIGCONT that fg sends (pig divergence (D227)).
 var errSuspendParked = errors.New("suspended session resumed in the background")
 
 // suspendTerminal registers continuation before stopping the UI and returns when signal delivery returns. Only the later SIGCONT callback restarts the UI; cancellation and failure release temporary ownership without restarting it.
@@ -50,6 +50,23 @@ func suspendTerminal(ctx context.Context, platform string, showStatus func(strin
 		return cleaned
 	}
 	stopContinue = ops.continued(func() error {
+		if ctx.Err() == nil {
+			// pig divergence (D227): Pi calls ui.start() on any SIGCONT. A group that does not own the terminal stops again here, before raw mode and before a frame, and waits for the SIGCONT that fg sends.
+			foreground, err := ops.foreground()
+			if err != nil {
+				if cleanup() {
+					return err
+				}
+				return nil
+			}
+			if !foreground {
+				if err := ops.kill(0); err != nil {
+					cleanup()
+					return err
+				}
+				return errSuspendParked
+			}
+		}
 		if !cleanup() || ctx.Err() != nil {
 			return nil
 		}

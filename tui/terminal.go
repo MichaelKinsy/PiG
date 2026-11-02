@@ -355,6 +355,12 @@ func EnterRawModeWithDrain() (restore func(), drain func() error, err error) {
 	return restore, func() error { return processTerminal.DrainInput(time.Second, 50*time.Millisecond) }, nil
 }
 
+// StdinInForeground reports whether this process's group is the foreground process group of the terminal on stdin (tcgetpgrp). A terminal
+// that went away returns its error (EIO, ENOTTY).
+func StdinInForeground() (bool, error) {
+	return processTerminal.inForeground()
+}
+
 // EnterRawModeForHandoff enters raw mode with a restore closure that leaves unread input for the next terminal owner. The caller must join its reader before restoring and drain late releases separately on final shutdown.
 func EnterRawModeForHandoff() (restore func(), err error) {
 	return processTerminal.enterRawMode(false)
