@@ -380,3 +380,31 @@ func TestModelCatalogProtocolWithTheCurrentClient(t *testing.T) {
 		t.Fatalf("provider request URL = %v, want path %s", providerURL, want)
 	}
 }
+
+// Ports scripts/model-catalog-protocol.test.ts "serves Pi user agents the catalog for their version" (62752fd4c).
+// The stand-in must answer a Pi User-Agent with the catalog for its version, never a redirect to a pi-version URL.
+func TestModelCatalogProtocolServesPiUserAgentsTheirVersion(t *testing.T) {
+	version := "0.84.4"
+	typed := parseModelCatalogRequest(mustParseURL(t, "https://pi.dev/api/models/providers/openrouter?types=chat%2Cimage"), "pi/0.84.4 (linux; node/v22.0.0; x64)")
+	if typed.kind != "catalog" || typed.piVersion == nil || *typed.piVersion != version || typed.representation != "typed" {
+		t.Fatalf("typed request = %+v, want catalog for %s, typed", typed, version)
+	}
+	legacy := parseModelCatalogRequest(mustParseURL(t, "https://pi.dev/api/models"), "pi/0.84.4")
+	if legacy.kind != "catalog" || legacy.piVersion == nil || *legacy.piVersion != version || legacy.representation != "legacy" {
+		t.Fatalf("legacy request = %+v, want catalog for %s, legacy", legacy, version)
+	}
+	// An explicit pi-version wins over the User-Agent version.
+	explicit := parseModelCatalogRequest(mustParseURL(t, "https://pi.dev/api/models?pi-version=0.83.0"), "pi/0.85.1 (linux; node/v22.0.0; x64)")
+	if explicit.kind != "catalog" || explicit.piVersion == nil || *explicit.piVersion != "0.83.0" || explicit.representation != "legacy" {
+		t.Fatalf("explicit request = %+v, want catalog for 0.83.0, legacy", explicit)
+	}
+}
+
+func mustParseURL(t *testing.T, raw string) *url.URL {
+	t.Helper()
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return parsed
+}
