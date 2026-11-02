@@ -235,6 +235,8 @@ Some actions use a different key on each platform, because the terminal or the o
 
 On native Windows, `app.suspend` has no default because Windows terminals do not support Unix job control. If you assign it, PiG shows a status message instead of suspending.
 
+After `ctrl+z`, `bg` leaves the session stopped: PiG does not take the terminal back from the shell, and `fg` returns to it. Pi restarts its UI on `bg` and stops when its first terminal call fails (divergence D227).
+
 ## Actions with no default key
 
 These actions exist but have no key until you assign one. Reach them with their slash command, or bind them in `keybindings.json`.
