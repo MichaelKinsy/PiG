@@ -150,7 +150,6 @@ packages/coding-agent/src/cli/session-picker.ts
 packages/coding-agent/src/cli/setup.ts
 packages/coding-agent/src/cli/startup-ui.ts
 packages/coding-agent/src/config.ts
-packages/coding-agent/src/core/extensions/types.ts
 packages/coding-agent/src/extensions/codemode/execute.ts
 packages/coding-agent/src/extensions/codemode/index.ts
 packages/coding-agent/src/extensions/codemode/renderer.ts
