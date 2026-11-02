@@ -1,3 +1,3 @@
 module github.com/MichaelKinsy/PiG/extensions/sdk
 
-go 1.26.0
+go 1.26
