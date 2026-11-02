@@ -14,6 +14,7 @@ import (
 )
 
 // Ports packages/chord/test/next/documents/slot.test.ts
+// pi: packages/chord/src/next/documents/slot.ts
 //
 // Pi's `restartable(objects, factory)` host is the harness's object + attempt: `restart()` is the failed attempt
 // failing (attempt.Fail) and the next attempt running its factory and activating (object.restart); `retry()` after a
@@ -108,7 +109,7 @@ func slotDefine(t *testing.T, name string, options StateOptions) *StateDefinitio
 	return definition
 }
 
-func slotListSchema() contracts.TSchema {
+func slotListSchema() contracts.Schema {
 	return contracts.Obj(contracts.Prop("items", contracts.Arr(contracts.Str())))
 }
 

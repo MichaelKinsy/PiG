@@ -82,7 +82,7 @@ func (part *EndPart) MarshalJSON() ([]byte, error) {
 
 // safe is an integer from min up to 2^53 - 1: seqs, ids, versions and counts stay exact (a seq after 2^53 would
 // repeat).
-func safe(min int64) contracts.TSchema {
+func safe(min int64) contracts.Schema {
 	return contracts.Int(contracts.Min(float64(min)), contracts.Max(float64(MaxSafeInteger)))
 }
 
@@ -90,11 +90,11 @@ var (
 	archiveVersion = safe(1)
 
 	archiveColumn = contracts.Obj(
-		contracts.Prop("type", contracts.Union([]contracts.TSchema{
+		contracts.Prop("type", contracts.Union([]contracts.Schema{
 			contracts.Lit("str"), contracts.Lit("int"), contracts.Lit("num"), contracts.Lit("bool"), contracts.Lit("json"),
 		})),
 		contracts.Prop("optional", contracts.Opt(contracts.Lit(true))),
-		contracts.Prop("default", contracts.Opt(contracts.Union([]contracts.TSchema{contracts.Str(), contracts.Num(), contracts.Bool()}))),
+		contracts.Prop("default", contracts.Opt(contracts.Union([]contracts.Schema{contracts.Str(), contracts.Num(), contracts.Bool()}))),
 		contracts.Prop("version", contracts.Opt(archiveVersion)),
 		contracts.Prop("fingerprint", contracts.Opt(contracts.Str())),
 	)
@@ -105,7 +105,7 @@ var (
 		contracts.Prop("kind", contracts.Lit("table")),
 		contracts.Prop("table", contracts.Str()),
 		contracts.Prop("version", archiveVersion),
-		contracts.Prop("state", contracts.Union([]contracts.TSchema{contracts.Lit("ready"), contracts.Lit("migrating")})),
+		contracts.Prop("state", contracts.Union([]contracts.Schema{contracts.Lit("ready"), contracts.Lit("migrating")})),
 		contracts.Prop("columns", contracts.Map(archiveColumn)),
 		contracts.Prop("key", contracts.Arr(contracts.Str())),
 		contracts.Prop("fingerprint", contracts.Str()),
@@ -133,7 +133,7 @@ var (
 		contracts.Prop("kind", contracts.Str()),
 		// Absent for a singleton.
 		contracts.Prop("key", contracts.Opt(contracts.Str())),
-		contracts.Prop("history", contracts.Union([]contracts.TSchema{contracts.Lit("none"), contracts.Lit("latest"), contracts.Lit("rewindable")})),
+		contracts.Prop("history", contracts.Union([]contracts.Schema{contracts.Lit("none"), contracts.Lit("latest"), contracts.Lit("rewindable")})),
 		contracts.Prop("createdAt", safe(1)),
 		contracts.Prop("retiredAt", contracts.Opt(safe(1))),
 		contracts.Prop("meta", contracts.Opt(contracts.Str())),
@@ -155,13 +155,13 @@ var (
 		contracts.Prop("kind", contracts.Lit("document.revision")),
 		contracts.Prop("id", safe(1)),
 		contracts.Prop("seq", safe(1)),
-		contracts.Prop("content", contracts.Union([]contracts.TSchema{
+		contracts.Prop("content", contracts.Union([]contracts.Schema{
 			contracts.Obj(contracts.Prop("kind", contracts.Lit("base")), contracts.Prop("version", archiveVersion), contracts.Prop("value", contracts.Unknown())),
 			contracts.Obj(contracts.Prop("kind", contracts.Lit("delta")), contracts.Prop("version", archiveVersion), contracts.Prop("ops", archiveOps)),
 		})),
 	)
 
-	archivePartSchema = contracts.Union([]contracts.TSchema{
+	archivePartSchema = contracts.Union([]contracts.Schema{
 		contracts.Obj(
 			contracts.Prop("kind", contracts.Lit("manifest")),
 			contracts.Prop("format", safe(1)),
@@ -179,17 +179,17 @@ var (
 
 	archiveCount = safe(0)
 
-	archiveEdit = contracts.Union([]contracts.TSchema{
+	archiveEdit = contracts.Union([]contracts.Schema{
 		contracts.Obj(contracts.Prop("kind", contracts.Lit("rename")), contracts.Prop("from", contracts.Str()), contracts.Prop("to", contracts.Str())),
 		contracts.Obj(contracts.Prop("kind", contracts.Lit("add")), contracts.Prop("name", contracts.Str()), contracts.Prop("column", archiveColumn)),
 		contracts.Obj(contracts.Prop("kind", contracts.Lit("drop")), contracts.Prop("name", contracts.Str())),
 		contracts.Obj(contracts.Prop("kind", contracts.Lit("json")), contracts.Prop("name", contracts.Str()), contracts.Prop("column", archiveColumn)),
 	})
 
-	archiveKey = contracts.Map(contracts.Union([]contracts.TSchema{contracts.Str(), contracts.Num(), contracts.Bool()}))
+	archiveKey = contracts.Map(contracts.Union([]contracts.Schema{contracts.Str(), contracts.Num(), contracts.Bool()}))
 
 	// archiveWrite is one recorded write of a commit (a batch's); `where` and `set` nodes are checked by the applier.
-	archiveWrite = contracts.Union([]contracts.TSchema{
+	archiveWrite = contracts.Union([]contracts.Schema{
 		archiveTable,
 		archivePut,
 		archiveIndex,
@@ -220,7 +220,7 @@ var (
 			contracts.Prop("kind", contracts.Lit("document.change")),
 			contracts.Prop("id", safe(1)),
 			contracts.Prop("revision", safe(1)),
-			contracts.Prop("content", contracts.Union([]contracts.TSchema{
+			contracts.Prop("content", contracts.Union([]contracts.Schema{
 				contracts.Obj(contracts.Prop("kind", contracts.Lit("base")), contracts.Prop("version", archiveVersion), contracts.Prop("fingerprint", contracts.Str()), contracts.Prop("value", contracts.Unknown())),
 				contracts.Obj(contracts.Prop("kind", contracts.Lit("delta")), contracts.Prop("version", archiveVersion), contracts.Prop("ops", archiveOps)),
 			})),

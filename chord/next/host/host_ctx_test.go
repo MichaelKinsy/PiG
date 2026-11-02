@@ -29,10 +29,10 @@ var (
 	ctxDesk = mustContract(declareLocal("app.desk", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
 		Members: []contracts.LocalEntry{
-			contracts.Mem("use", contracts.NewMethod(contracts.TSchema{}, contracts.Int())),
+			contracts.Mem("use", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
 			contracts.Mem("leak", contracts.NewMethod()),
 			contracts.Mem("late", contracts.NewMethod()),
-			contracts.Mem("who", contracts.NewMethod(contracts.TSchema{}, contracts.Str())),
+			contracts.Mem("who", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
 		},
 	}))
 )
@@ -330,14 +330,14 @@ func TestCtxALocalHandlersPrincipalIsTheHostsItsIncarnationThisHosts(t *testing.
 func TestLocalHandlersActAsTheHostALocalObjectCalledFromARemoteHandlersCtxGetRunsAsTheHost(t *testing.T) {
 	store := mustContract(declareLocal("app.local-store", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
-		Members: []contracts.LocalEntry{contracts.Mem("who", contracts.NewMethod(contracts.TSchema{}, contracts.Str()))},
+		Members: []contracts.LocalEntry{contracts.Mem("who", contracts.NewMethod(contracts.Schema{}, contracts.Str()))},
 	}))
 	gate := mustContract(declareRemote("app.gate", contracts.RemoteDeclaration{
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
 		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
-			contracts.Meth("who", contracts.NewMethod(contracts.TSchema{}, contracts.Str())),
-			contracts.Meth("through", contracts.NewMethod(contracts.TSchema{}, contracts.Str())),
+			contracts.Meth("who", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
+			contracts.Meth("through", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
 		}})},
 	}))
 	l := linked(t, func(h FacetHost) error {

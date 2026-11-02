@@ -69,13 +69,13 @@ func EditWith[E comparable](editor E, edit func(E) E, what string) error {
 type RemoteEditor struct{ d *draft }
 
 // State changes a state member of a variant.
-func (e *RemoteEditor) State(variant, member string, schema TSchema) *RemoteEditor {
+func (e *RemoteEditor) State(variant, member string, schema Schema) *RemoteEditor {
 	e.d.run(func() error { return e.d.state(variant, member, schema) })
 	return e
 }
 
 // AddState adds a state member to a variant.
-func (e *RemoteEditor) AddState(variant, member string, schema TSchema) *RemoteEditor {
+func (e *RemoteEditor) AddState(variant, member string, schema Schema) *RemoteEditor {
 	e.d.run(func() error { return e.d.addState(variant, member, schema) })
 	return e
 }
@@ -87,25 +87,25 @@ func (e *RemoteEditor) RemoveState(variant, member string) *RemoteEditor {
 }
 
 // AddMethod adds a method to a variant.
-func (e *RemoteEditor) AddMethod(variant, member string, args, result TSchema) *RemoteEditor {
+func (e *RemoteEditor) AddMethod(variant, member string, args, result Schema) *RemoteEditor {
 	e.d.run(func() error { return e.d.addMethod(variant, member, args, result) })
 	return e
 }
 
 // Args changes the arguments of a method in every variant that has it.
-func (e *RemoteEditor) Args(member string, args TSchema) *RemoteEditor {
+func (e *RemoteEditor) Args(member string, args Schema) *RemoteEditor {
 	e.d.run(func() error { return e.d.changeMethod(member, &args, nil) })
 	return e
 }
 
 // Result changes the result of a method in every variant that has it.
-func (e *RemoteEditor) Result(member string, result TSchema) *RemoteEditor {
+func (e *RemoteEditor) Result(member string, result Schema) *RemoteEditor {
 	e.d.run(func() error { return e.d.changeMethod(member, nil, &result) })
 	return e
 }
 
 // Method changes both sides of a method in every variant that has it.
-func (e *RemoteEditor) Method(member string, args, result TSchema) *RemoteEditor {
+func (e *RemoteEditor) Method(member string, args, result Schema) *RemoteEditor {
 	e.d.run(func() error { return e.d.changeMethod(member, &args, &result) })
 	return e
 }
@@ -120,13 +120,13 @@ func (e *RemoteEditor) RemoveMethod(member string) *RemoteEditor {
 type LocalEditor struct{ d *draft }
 
 // State changes a state member.
-func (e *LocalEditor) State(member string, schema TSchema) *LocalEditor {
+func (e *LocalEditor) State(member string, schema Schema) *LocalEditor {
 	e.d.run(func() error { return e.d.state(LocalVariant, member, schema) })
 	return e
 }
 
 // AddState adds a state member.
-func (e *LocalEditor) AddState(member string, schema TSchema) *LocalEditor {
+func (e *LocalEditor) AddState(member string, schema Schema) *LocalEditor {
 	e.d.run(func() error { return e.d.addState(LocalVariant, member, schema) })
 	return e
 }
@@ -138,25 +138,25 @@ func (e *LocalEditor) RemoveState(member string) *LocalEditor {
 }
 
 // AddMethod adds a method.
-func (e *LocalEditor) AddMethod(member string, args, result TSchema) *LocalEditor {
+func (e *LocalEditor) AddMethod(member string, args, result Schema) *LocalEditor {
 	e.d.run(func() error { return e.d.addMethod(LocalVariant, member, args, result) })
 	return e
 }
 
 // Args changes the arguments of a method.
-func (e *LocalEditor) Args(member string, args TSchema) *LocalEditor {
+func (e *LocalEditor) Args(member string, args Schema) *LocalEditor {
 	e.d.run(func() error { return e.d.changeMethod(member, &args, nil) })
 	return e
 }
 
 // Result changes the result of a method.
-func (e *LocalEditor) Result(member string, result TSchema) *LocalEditor {
+func (e *LocalEditor) Result(member string, result Schema) *LocalEditor {
 	e.d.run(func() error { return e.d.changeMethod(member, nil, &result) })
 	return e
 }
 
 // Method changes both sides of a method.
-func (e *LocalEditor) Method(member string, args, result TSchema) *LocalEditor {
+func (e *LocalEditor) Method(member string, args, result Schema) *LocalEditor {
 	e.d.run(func() error { return e.d.changeMethod(member, &args, &result) })
 	return e
 }
@@ -168,13 +168,13 @@ func (e *LocalEditor) RemoveMethod(member string) *LocalEditor {
 }
 
 // Keyed changes keyed member member's schema (slice 7b: an older consumer reads each key mapped, or is refused).
-func (e *LocalEditor) Keyed(member string, schema TSchema) *LocalEditor {
+func (e *LocalEditor) Keyed(member string, schema Schema) *LocalEditor {
 	e.d.run(func() error { return e.d.keyed(LocalVariant, member, schema) })
 	return e
 }
 
 // AddKeyed adds a keyed member.
-func (e *LocalEditor) AddKeyed(member string, schema TSchema) *LocalEditor {
+func (e *LocalEditor) AddKeyed(member string, schema Schema) *LocalEditor {
 	e.d.run(func() error { return e.d.addKeyed(LocalVariant, member, schema) })
 	return e
 }
@@ -233,7 +233,7 @@ func (d *draft) next() (ContractData, error) {
 	return next, nil
 }
 
-func (d *draft) state(variant, member string, schema TSchema) error {
+func (d *draft) state(variant, member string, schema Schema) error {
 	found, err := d.variant(variant)
 	if err != nil {
 		return err
@@ -244,7 +244,7 @@ func (d *draft) state(variant, member string, schema TSchema) error {
 	return d.putState(variant, member, schema)
 }
 
-func (d *draft) addState(variant, member string, schema TSchema) error {
+func (d *draft) addState(variant, member string, schema Schema) error {
 	if err := d.refuseDeclared(variant, member, MemberKindState); err != nil {
 		return err
 	}
@@ -262,7 +262,7 @@ func (d *draft) removeState(variant, member string) error {
 	return nil
 }
 
-func (d *draft) addMethod(variant, member string, args, result TSchema) error {
+func (d *draft) addMethod(variant, member string, args, result Schema) error {
 	if err := d.refuseDeclared(variant, member, MemberKindMethod); err != nil {
 		return err
 	}
@@ -276,7 +276,7 @@ func (d *draft) addMethod(variant, member string, args, result TSchema) error {
 	return d.checked()
 }
 
-func (d *draft) keyed(variant, member string, schema TSchema) error {
+func (d *draft) keyed(variant, member string, schema Schema) error {
 	found, err := d.variant(variant)
 	if err != nil {
 		return err
@@ -287,7 +287,7 @@ func (d *draft) keyed(variant, member string, schema TSchema) error {
 	return d.putKeyed(variant, member, schema)
 }
 
-func (d *draft) addKeyed(variant, member string, schema TSchema) error {
+func (d *draft) addKeyed(variant, member string, schema Schema) error {
 	if err := d.refuseDeclared(variant, member, MemberKindKeyed); err != nil {
 		return err
 	}
@@ -317,7 +317,7 @@ func (d *draft) removeMethod(member string) error {
 	return nil
 }
 
-func (d *draft) putState(variant, member string, schema TSchema) error {
+func (d *draft) putState(variant, member string, schema Schema) error {
 	snapshot, err := SnapshotSchema(schema, d.memberPath(variant, member, MemberKindState))
 	if err != nil {
 		return err
@@ -328,7 +328,7 @@ func (d *draft) putState(variant, member string, schema TSchema) error {
 	return d.checked()
 }
 
-func (d *draft) putKeyed(variant, member string, schema TSchema) error {
+func (d *draft) putKeyed(variant, member string, schema Schema) error {
 	snapshot, err := SnapshotSchema(schema, d.memberPath(variant, member, MemberKindKeyed))
 	if err != nil {
 		return err
@@ -340,7 +340,7 @@ func (d *draft) putKeyed(variant, member string, schema TSchema) error {
 }
 
 // changeMethod changes the given sides of a method in every variant that has it.
-func (d *draft) changeMethod(member string, args, result *TSchema) error {
+func (d *draft) changeMethod(member string, args, result *Schema) error {
 	variants, err := d.variantsWith(member)
 	if err != nil {
 		return err

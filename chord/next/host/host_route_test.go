@@ -635,7 +635,7 @@ func TestARoutesContextIsTheParentOfItsResolvesAndOfTheWorkArrivingOnItsLinks(t 
 			Params:      contracts.Params{},
 			HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverAddress(), nil },
 			Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{
-				Methods: []contracts.MethodEntry{contracts.Meth("app", contracts.NewMethod(contracts.TSchema{}, contracts.Str()))},
+				Methods: []contracts.MethodEntry{contracts.Meth("app", contracts.NewMethod(contracts.Schema{}, contracts.Str()))},
 			})},
 		}))
 		var mu sync.Mutex

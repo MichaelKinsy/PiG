@@ -744,7 +744,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/reload.ts` | `chord/host/reload.go (link protocol 4)` | ✅ |
 | `packages/chord/src/schema.ts` | `chord/host/schema.go` | ✅ |
 | `packages/chord/src/state.ts` | `chord/state.go` | ✅ |
-| `packages/chord/src/watch.ts` | `chord/watch.go WatchEnd, WatchEndReason, WatchHandle, Watchable, NativeWatchable (Durable's package re-exports them as type aliases, as Pi's durable index does); chord/watch_impl.go Watch, NativeWatch, NativeWatchHandle, DeliveryScheduler (the delivery goroutines that stand for queueMicrotask)` | ✅ |
+| `packages/chord/src/watch.ts` | `chord/watch.go WatchEnd, WatchEndReason, WatchHandle, Watchable, NativeWatchable (Durable's package re-exports them as type aliases, as Pi's durable index does); chord/watch_impl.go Watch, NativeWatch, NativeWatchHandle, DeliveryScheduler (the delivery goroutines that stand for queueMicrotask); chord/next/documents/handles.go SingletonHandle (Pi's `SingletonHandle<T> extends Watchable<T>`: its Value and Watch are the two members watch.ts's interface contributes to the next layer)` | ✅ |
 | `packages/chord/src/websocket.ts` | `chord/host/websocket.go (link protocol 4)` | ✅ |
 | `packages/chord/src/wire.ts` | `chord/host/wire.go (link protocol 4)` | ✅ |
 | `packages/chord/src/telemetry-sqlite/index.ts` | `chord/telemetrysqlite/index.go` | ✅ |
@@ -760,7 +760,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/contracts/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
 | `packages/chord/src/next/contracts/names.ts` | `chord/next/contracts/names.go` | ✅ |
 | `packages/chord/src/next/contracts/params.ts` | `chord/next/contracts/params.go` | ✅ |
-| `packages/chord/src/next/contracts/schema.ts` | `chord/next/contracts/schema.go, chord/next/contracts/namedmap.go, chord/next/contracts/jsorder.go` | ✅ |
+| `packages/chord/src/next/contracts/schema.ts` | `chord/next/contracts/schema.go` | ✅ |
 | `packages/chord/src/next/contracts/snapshot.ts` | `chord/next/contracts/snapshot.go` | ✅ |
 | `packages/chord/src/next/data/args.ts` | `chord/next/data/args.go` | ✅ |
 | `packages/chord/src/next/data/errors.ts` | `chord/next/data/errors.go` | ✅ |
@@ -783,7 +783,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/state/index.ts` | `(re-export barrel)` | n/a |
 | `packages/chord/src/next/state/internal.ts` | `(re-export barrel)` | n/a |
 | `packages/chord/src/next/state/native-source.ts` | `chord/next/state/native_source.go` | ✅ |
-| `packages/chord/src/next/state/watchable.ts` | `chord/next/state/watchable.go, chord/next/state/identical.go, chord/next/state/set.go` | ✅ |
+| `packages/chord/src/next/state/watchable.ts` | `chord/next/state/watchable.go, chord/next/state/set.go` | ✅ |
 | `packages/chord/src/next/state/writable.ts` | `chord/next/state/writable.go` | ✅ |
 | `packages/chord/src/next-node/compression.ts` | `chord/nextnode/compression.go` | ✅ |
 | `packages/chord/src/next/link/binary.ts` | `chord/next/link/binary.go` | ✅ |
@@ -811,22 +811,22 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/store/export.ts` | `chord/next/store/export.go` | ✅ |
 | `packages/chord/src/next/store/import.ts` | `chord/next/store/import.go` | ✅ |
 | `packages/chord/src/next/store/text.ts` | `chord/next/store/text.go` | ✅ |
-| `packages/chord/src/next/store/allocator.ts` | `allocator.go` | ✅ |
-| `packages/chord/src/next/store/claims.ts` | `claims.go` | ✅ |
-| `packages/chord/src/next/store/refusal.ts` | `refusal.go` | ✅ |
-| `packages/chord/src/next/store/columns.ts` | `columns.go` | ✅ |
-| `packages/chord/src/next/store/json-column.ts` | `json_column.go` | ✅ |
-| `packages/chord/src/next/store/rows.ts` | `rows.go` | ✅ |
-| `packages/chord/src/next/store/sql.ts` | `sql.go` | ✅ |
-| `packages/chord/src/next/store/jsonl.ts` | `jsonl.go` | ✅ |
-| `packages/chord/src/next/store/catalog.ts` | `catalog.go` | ✅ |
-| `packages/chord/src/next/store/expression.ts` | `expression.go` | ✅ |
-| `packages/chord/src/next/store/evaluate.ts` | `evaluate.go` | ✅ |
-| `packages/chord/src/next/store/query.ts` | `query.go` | ✅ |
-| `packages/chord/src/next/store/table.ts` | `table.go` | ✅ |
-| `packages/chord/src/next/store/table-history.ts` | `table_history.go` | ✅ |
-| `packages/chord/src/next/store/table-evolve.ts` | `table_evolve.go` | ✅ |
-| `packages/chord/src/next/store/table-migration.ts` | `table_migration.go` | ✅ |
+| `packages/chord/src/next/store/allocator.ts` | `chord/next/store/allocator.go` | ✅ |
+| `packages/chord/src/next/store/claims.ts` | `chord/next/store/claims.go` | ✅ |
+| `packages/chord/src/next/store/refusal.ts` | `chord/next/store/refusal.go` | ✅ |
+| `packages/chord/src/next/store/columns.ts` | `chord/next/store/columns.go` | ✅ |
+| `packages/chord/src/next/store/json-column.ts` | `chord/next/store/json_column.go` | ✅ |
+| `packages/chord/src/next/store/rows.ts` | `chord/next/store/rows.go` | ✅ |
+| `packages/chord/src/next/store/sql.ts` | `chord/next/store/sql.go` | ✅ |
+| `packages/chord/src/next/store/jsonl.ts` | `chord/next/store/jsonl.go` | ✅ |
+| `packages/chord/src/next/store/catalog.ts` | `chord/next/store/catalog.go` | ✅ |
+| `packages/chord/src/next/store/expression.ts` | `chord/next/store/expression.go` | ✅ |
+| `packages/chord/src/next/store/evaluate.ts` | `chord/next/store/evaluate.go` | ✅ |
+| `packages/chord/src/next/store/query.ts` | `chord/next/store/query.go`, `chord/next/store/expression.go` | ✅ |
+| `packages/chord/src/next/store/table.ts` | `chord/next/store/table.go` | ✅ |
+| `packages/chord/src/next/store/table-history.ts` | `chord/next/store/table_history.go` | ✅ |
+| `packages/chord/src/next/store/table-evolve.ts` | `chord/next/store/table_evolve.go` | ✅ |
+| `packages/chord/src/next/store/table-migration.ts` | `chord/next/store/table_migration.go` | ✅ |
 | `packages/chord/src/next/store/adapter.ts` | `chord/next/store/adapter.go` | ✅ |
 | `packages/chord/src/next/store/backend.ts` | `chord/next/store/backend.go` | ✅ |
 | `packages/chord/src/next/store/schema.ts` | `chord/next/store/schema.go` | ✅ |
@@ -868,7 +868,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/host/destination.ts` | `chord/next/host/host_destination.go` | ✅ |
 | `packages/chord/src/next/host/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above (Ctx, Facet, FacetHost, Host..., Sleep, UntilAborted, Presence, RefState, RevokedBy, RootOptions, RouteOptions, RoutineDeclarations, Native*, Follow*, GetOptions, HostError, Position; Host, HostOptions, LinkOptions, createHost, Factory, Self, StoreSelf, Held, Reference, RefIn are D5a's))` | n/a |
 | `packages/chord/src/next/host/internal.ts` | `(barrel for jobs/remote: one package, identifiers are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
-| `packages/chord/src/next/host/host.ts` | `chord/next/host/host_host.go, host_error.go` | ✅ |
+| `packages/chord/src/next/host/host.ts` | `chord/next/host/host_host.go, chord/next/host/host_error.go` | ✅ |
 | `packages/chord/src/next/host/attempt.ts` | `chord/next/host/host_attempt.go` | ✅ |
 | `packages/chord/src/next/host/object.ts` | `chord/next/host/host_object.go` | ✅ |
 | `packages/chord/src/next/host/reference.ts` | `chord/next/host/host_reference.go` | ✅ |
@@ -876,7 +876,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/jobs/persisted.ts` | `chord/next/host/jobs_persisted.go` | ✅ |
 | `packages/chord/src/next/jobs/records.ts` | `chord/next/host/jobs_records.go` | ✅ |
 | `packages/chord/src/next/jobs/run-states.ts` | `chord/next/host/jobs_run_states.go` | ✅ |
-| `packages/chord/src/next/jobs/run.ts` | `chord/next/host/jobs_run.go` | ✅ |
+| `packages/chord/src/next/jobs/run.ts` | `chord/next/host/jobs_run.go, chord/next/documents/job.go` | ✅ |
 | `packages/chord/src/next/jobs/running.ts` | `chord/next/host/jobs_running.go` | ✅ |
 | `packages/chord/src/next/jobs/stored.ts` | `chord/next/host/jobs_stored.go` | ✅ |
 | `packages/chord/src/next/jobs/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above: DefineJob, JobAccepts, JobDefinition, JobError, JobOptions, Outcome, JobCtx, JobHandle, JobImplementation, RunState, StartOptions, BlockedReason, Run; RunningEntry is type-level (jobs_running.go))` | n/a |
@@ -948,7 +948,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/host/adapted.ts` | `chord/next/host/host_adapted.go` | ✅ |
 | `packages/chord/src/next/host/reference-keys.ts` | `chord/next/host/host_reference_keys.go` | ✅ |
 | `packages/chord/src/next/host/reference-source.ts` | `chord/next/host/host_reference_source.go` | ✅ |
-| `packages/chord/src/next/host/staging.ts` | `chord/next/host/host_staging.go` | ✅ |
+| `packages/chord/src/next/host/staging.ts` | `chord/next/host/host_staging.go, chord/next/host/host_host.go` | ✅ |
 | `packages/chord/src/next-node/workers/control.ts` | `chord/nextnode/workers/workers_control.go` | ✅ |
 | `packages/chord/src/next-node/workers/index.ts` | `(re-export barrel; the exported set is the package's (CrossedError, ProcessLock, WorkerMain, WorkerStart, WorkerPlugins, WorkerResult, WorkerMainOptions, CreateWorkers, WorkerState, Workers, WorkersError, WorkersOptions))` | n/a |
 | `packages/chord/src/next-node/workers/lock.ts` | `chord/nextnode/workers/workers_lock.go, workers_lock_unix.go` (the Windows named-pipe variant workers_lock_windows is built only on Windows and is run by the native Windows CI job) | ✅ |

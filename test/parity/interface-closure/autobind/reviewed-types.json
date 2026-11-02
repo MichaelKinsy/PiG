@@ -922,5 +922,13 @@
   "pkg:tui/.#StdinBuffer::property:removeListener::call:0": {
     "go": "tui/stdin_buffer_events.go#StdinBuffer.RemoveListener",
     "reason": "Pi StdinBuffer extends EventEmitter<StdinBufferEventMap> (stdin-buffer.ts) and its listener methods take (event, listener) where the listener receives the event's string payload. Go tui.StdinBuffer carries the listener surface in tui/stdin_buffer_events.go with the event as a typed StdinBufferEvent string and the listener as a *StdinBufferListener that gives a Go callback the identity a JavaScript function has (Off and ListenerCount find it by that identity). TestStdinBufferEventsMatchPi runs Pi's StdinBuffer and compares the events its listeners receive with PiG's. Lead ruling 2026-10-10: the rows are ported."
+  },
+  "pkg:chord/next#DocumentPoint": {
+    "go": "chord/next/store/engine.go#DocumentPoint",
+    "reason": "Pi chord/src/next/store/engine.ts DocumentPoint: `number | \"current\"` is a document's revision number or the current one. Go has no number-or-string union: store.DocumentPoint is a struct whose zero value is \"current\" and whose AtSeq(n) is the number (store/engine.go), so the alias is the one type that carries both arms. The ledger's durable/types.go#DocumentPoint is the chord v1 session type of the same name, not this one. Exercised by TestEngineHistoryRules (chord/next/store/engine_test.go)."
+  },
+  "pkg:chord/next#memoryLinkPair::call:0": {
+    "go": "chord/next/link/link.go#MemoryLinkPair",
+    "reason": "Pi chord/src/next/link/link.ts memoryLinkPair(): [Link, Link] returns the two ends of one in-memory link. Go returns the two *MemoryLink of link/link.go: each embeds LinkEnd and has Send, Close, OnMessage and OnClose, so it is a link.Link (the chord/next layer's own Link, pkg:chord/next#Link, bound to link/link.go#Link), and a concrete end where Pi names the interface. The rules find every member and report the pair undecidable only because the interface has its own Go form; the type of the result is the one the function documents. Exercised by TestMemoryLinks (chord/next/link/link_test.go)."
   }
 }

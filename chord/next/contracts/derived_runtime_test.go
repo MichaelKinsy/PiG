@@ -75,8 +75,8 @@ func TestDerivedShapes(t *testing.T) {
 		}
 		counts := local(t, "counts", 1, noParams(),
 			contracts.Mem("reset", contracts.NewMethod()),
-			contracts.Mem("total", contracts.NewMethod(contracts.TSchema{}, contracts.Int())),
-			contracts.Mem("maybe", contracts.NewMethod(contracts.Union([]contracts.TSchema{contracts.Nul(), contracts.Str()}))))
+			contracts.Mem("total", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
+			contracts.Mem("maybe", contracts.NewMethod(contracts.Union([]contracts.Schema{contracts.Nul(), contracts.Str()}))))
 		methods := currentVariants(t, counts).Value(contracts.LocalVariant).Methods
 		sameAs(t, methods.Value("total").Result.Normal, js(t, `{"type":"integer"}`))
 		sameAs(t, methods.Value("reset").Result.Normal, js(t, `{"type":"null"}`))
