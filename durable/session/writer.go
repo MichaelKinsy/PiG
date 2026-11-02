@@ -82,7 +82,7 @@ type Part struct {
 // Wait blocks until the part is published, which returns nil, or will never be: the error it rejects with. A part rejects
 // also after publication when its storage call rejected or the Session failed meanwhile.
 func (part *Part) Wait() error {
-	<-part.outcome
+	await(part.outcome)
 	part.mu.Lock()
 	defer part.mu.Unlock()
 	return part.err
@@ -375,7 +375,8 @@ func (writer *Writer) publish(parts []*Part, seqs []durable.Seq, received []bool
 		if index >= 0 {
 			seq = seqs[index]
 		}
-		// A hop between two parts: what the first resolves runs before the second is published.
+		// A hop between two parts: what the first resolves runs before the second is published. pig divergence (D224): the hop waits
+		// for the listeners of the part before it, which a listener that blocks on a wait the host cannot see holds up (WriterHost.Hop).
 		if published > 0 {
 			writer.host.Hop()
 		}

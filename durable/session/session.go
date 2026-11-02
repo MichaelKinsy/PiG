@@ -388,6 +388,10 @@ func (host writerHost) Publishing(publish func(), ctx context.Context) <-chan st
 // Hop is the macrotask between two publications of a call: it returns once the callers of the commits published so far have
 // been released in line order and have resumed, and the watch deliveries scheduled by the publications have run the synchronous
 // part of their listeners (entered, see AwaitDeliveriesEntered), so a listener sees one call per part as in Pi.
+//
+// pig divergence (D224): a listener that blocks on a wait the host cannot see (a channel, a lock, I/O) without calling
+// chord.DeliveryEntered holds this hop, and with it every later publication of the Session, until it returns; Pi's listener awaits and
+// nothing waits for it.
 func (host writerHost) Hop() {
 	session := host.session
 	session.awaitDeliveriesIdle()
@@ -450,10 +454,24 @@ func (session *SessionImpl) releaseLine(s *slot) {
 	close(s.done)
 }
 
+// await blocks until done is closed. A wait that only the Session's own goroutines can end is a wait of the Session: a watch
+// delivery that goes on to it has entered (chord.DeliveryEntered), as an upstream listener's first await ends the synchronous part
+// the publication of the next part of a call waits for. Every blocking point of the Session a listener can reach goes through it, so
+// a listener that uses the Session does not stall the publication it is a delivery of.
+func await(done <-chan struct{}) {
+	select {
+	case <-done:
+		return
+	default:
+	}
+	chord.DeliveryEntered()
+	<-done
+}
+
 // onLine runs work as job s holds the line, after its predecessor, and releases the line when work returned.
 func onLine[T any](session *SessionImpl, s *slot, work func(index int) (T, error)) (T, error) {
 	if s.previous != nil {
-		<-s.previous
+		await(s.previous)
 	}
 	session.jobMu.Lock()
 	session.current = s.job
@@ -662,7 +680,7 @@ func (session *SessionImpl) waitRoom() {
 		}
 		room := session.room
 		session.fenceMu.Unlock()
-		<-room
+		await(room)
 	}
 }
 
@@ -935,7 +953,7 @@ func (session *SessionImpl) Drained() <-chan struct{} { return session.writer.Dr
 // awaitDrained blocks until every part admitted so far is published or never will be: the `*` barrier.
 func (session *SessionImpl) awaitDrained() {
 	if drained := session.writer.Drained(); drained != nil {
-		<-drained
+		await(drained)
 	}
 }
 
@@ -1732,8 +1750,9 @@ func (session *SessionImpl) WaitDeliveries() { session.scheduler.Wait() }
 // caller calls it, as upstream's drain microtask runs the listener up to its first await before the code awaiting the wait's
 // promise resumes. A call from inside a delivery (a listener that waits for the Harness) enters that delivery and does not
 // wait for it. A listener blocked on a plain lock or channel the Session cannot see has not entered until it returns: if the
-// caller holds that lock the wait does not return, the one gap Go has where upstream, with no locks, has none. It returns
-// the cause of ctx when ctx ends the wait.
+// caller holds that lock the wait does not return, the one gap Go has where upstream, with no locks, has none
+// (pig divergence (D224); the listener calls chord.DeliveryEntered before such a block). It returns the cause of ctx when ctx
+// ends the wait.
 func (session *SessionImpl) AwaitDeliveriesEntered(ctx context.Context) error {
 	return session.scheduler.AwaitEntered(ctx)
 }

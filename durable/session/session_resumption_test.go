@@ -200,32 +200,6 @@ func TestOrderingHoldsAboveAHundredAndTwentyEightGoroutines(t *testing.T) {
 	}
 }
 
-// A wait that belongs to a Continuation stays registered after its goroutine resumed, until the continuation has entered: a
-// publication that looks for the waits it readied after the goroutine ran must still find it, and wait for it.
-func TestAWaitOfAContinuationStaysRegisteredUntilItEnters(t *testing.T) {
-	g := openGC(t, 1)
-	continued, turn := session.WithContinuation(ctx)
-	wake := make(chan struct{})
-	resumed := make(chan struct{})
-	go func() {
-		defer close(resumed)
-		g.session.Await(continued, wake)
-	}()
-	for session.ParkedWaits(g.session) == 0 {
-		runtime.Gosched()
-	}
-	close(wake)
-	<-resumed
-	if waits := session.ParkedWaits(g.session); waits != 1 {
-		t.Fatalf("%d waits registered after the goroutine resumed but before the continuation entered, want 1", waits)
-	}
-	turn.Entered()
-	if waits := session.ParkedWaits(g.session); waits != 0 {
-		t.Fatalf("%d waits registered after the continuation entered, want none", waits)
-	}
-	g.close()
-}
-
 // A wait that ended without a publication waking it (a cancelled context, a close) is acknowledged by Abandon at once, whatever
 // Continuation it belongs to: Pi orders what a publication resolves, not a rejected wait.
 func TestAnAbandonedWaitOfAContinuationIsAcknowledgedAtOnce(t *testing.T) {

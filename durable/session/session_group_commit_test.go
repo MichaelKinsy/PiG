@@ -1367,3 +1367,74 @@ func TestGroupCommitRandomizedInterleavings(t *testing.T) {
 		})
 	}
 }
+
+// A listener that uses the Session blocks on waits only the Session's goroutines end: Pi's listener awaits, so its synchronous part
+// ends there and the next part of the call is published. A Go listener that blocks must say so (chord.DeliveryEntered), or the hop
+// that waits for its synchronous part waits for a publication that waits for the hop (round 3 review, R3). UnloadDocuments is a job
+// on the line: it waits for the job before it (onLine) and for every part admitted before it to be published (awaitDrained).
+func TestGroupCommitAListenerThatUnloadsDocumentsDoesNotStallTheHop(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		behindRead bool
+		withHold   bool
+	}{
+		{name: "the parts behind the listener's own"},
+		{name: "a job on the line that waits for the parts to be published", behindRead: true},
+		{name: "a held document it stores through the writer behind the parts", withHold: true},
+	} {
+		behindRead := tc.behindRead
+		t.Run(tc.name, func(t *testing.T) {
+			g := openGC(t, 5)
+			a, b, c, d := g.ids[0], g.ids[1], g.ids[2], g.ids[3]
+			if tc.withHold {
+				// A deferred commit of another document stays in memory until something stores it.
+				mustBump(t, g.bump(g.ids[4], deferredForever))
+			}
+			var published atomic.Int64
+			allPublished := make(chan struct{})
+			unloaded := make(chan error, 1)
+			var once sync.Once
+			watch := session.NewSessionWatch(g.session, 0, func() {})
+			watch.Start(func(context.Context, durable.WatchCall[int]) error {
+				// The first publication this listener sees is part 2 of a call of three parts.
+				once.Do(func() { unloaded <- g.session.UnloadDocuments() })
+				return nil
+			})
+			g.session.FollowCommits(func(callCtx context.Context, commit session.ObservedCommit) {
+				n := published.Add(1)
+				if n > 1 {
+					watch.Advance(callCtx, durable.WatchCall[int]{Kind: durable.WatchCallValue, Value: int(commit.Seq)})
+				}
+				if n == 4 {
+					close(allPublished)
+				}
+			})
+			held := g.storage.hold()
+			first := g.bump(a)
+			<-held.Entered()
+			second := g.bump(b)
+			third := g.bump(c)
+			fourth := g.bump(d)
+			calls := []*call{first, second, third, fourth}
+			if behindRead {
+				// A job holds the line before UnloadDocuments until the last part is published, so UnloadDocuments waits for the line.
+				calls = append(calls, g.readAsync(func(durable.Storage) (any, error) { <-allPublished; return nil, nil }))
+			}
+			g.awaitQueued(3)
+			held.Release()
+			for _, call := range calls[:4] {
+				mustBump(t, call)
+			}
+			select {
+			case err := <-unloaded:
+				if err != nil {
+					t.Fatal(err)
+				}
+			case <-time.After(10 * time.Second):
+				t.Fatal("UnloadDocuments from a listener never returned: the hop waits for the listener, which waits for the parts behind it")
+			}
+			g.session.WaitDeliveries()
+			g.close()
+		})
+	}
+}
