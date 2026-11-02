@@ -94,6 +94,9 @@ func newHostLink(host *chordHost, made link.Link, options hostLinkOptions, ctx c
 		return l
 	}
 	l.channel = channel
+	if taker, ok := made.(DeliveryAwaiter); ok {
+		taker.Taken(l.awaitDeliveries)
+	}
 	// Last: a link closed already calls `Closed` at once.
 	channel.Start()
 	return l

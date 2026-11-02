@@ -2823,6 +2823,26 @@ Remove when: regexp2 gains Canonicalize-based case-insensitive backreference com
 
 SCRUTINIZED:approved
 
+## D222 A plugin input the build cannot read is reported at the import that names it, not at esbuild's library
+
+What: Pi builds plugins with esbuild's JavaScript API. When a plugin's `onLoad` cannot read an input (`readFile` throws `EACCES`), esbuild's JavaScript library takes the error's location from the first readable frame of the JavaScript stack, which is its own `await callback(...)` in `lib/main.js`, and Pi prints `<path of esbuild's lib/main.js relative to the plugin's directory>:1552:22: EACCES: permission denied, open '<path>'` (esbuild 0.28.2). PiG builds on esbuild's Go API, which has no JavaScript stack: the location of an input that cannot be read is the position of the import that names it, so PiG prints `worker.ts:1:19: EACCES: permission denied, open '<path>'`. The text after the location is Node's, as Pi's.
+
+Why: the line Pi prints is a line of a JavaScript library that exists only where Pi's `node_modules` is, and nothing in PiG reads it; printing it would invent a file and a position. No Pi test or example asserts the location.
+
+Scope: `chord/nextnode/plugins` `BuildFacet`, the failure of an input that cannot be read (`ENOENT` and `EACCES` read errors). The build fails in both with one error whose text after the location is equal. Evidence of Pi's text: `handoffs/next/rows/plugfull-buildwin.md` (reproduced with esbuild 0.28.2 in Node).
+
+Owner decision: 2026-11-01, owner decided to keep PiG's location and record the difference (D222).
+
+Call-site marker: `chord/nextnode/plugins/plugins_build.go` (the `OnLoad` read failure).
+
+Evidence: `TestEsbuildBuildAForbiddenInputFailsTheBuildWithNodesText` (`chord/nextnode/plugins/plugins_node_unix_test.go`) states PiG's text with the import's location.
+
+Parity allowance: none needed; Pi's text names a file of Pi's installation, so no parity scenario can compare it byte for byte.
+
+Remove when: Pi reports the importing location.
+
+SCRUTINIZED:approved
+
 ## D224 A watch listener that blocks on a wait the host cannot see holds back the waits and publications that follow its delivery
 
 What: Pi runs a watch's drain as a microtask: a listener runs up to its first `await`, and the code that awaited a Harness wait's promise, and the Session's macrotask hop between two commits of one storage call, resume only after that (`packages/chord/src/watch.ts` `#schedule`/`#drain`, `packages/durable/src/session/session.ts` `onJobEnd`, the hop of `writer.ts`). A listener's `await` ends its synchronous part, so nothing ever waits for a listener's own blocking. A Go listener is a blocking call with no await point: PiG's `chord.DeliveryScheduler.AwaitEntered` waits until each earlier delivery's current call returned, or went on to a wait the host provides (the Session's `Park`/`Await`, the line, gate and writer waits, the host loop's park), or ended. A listener that blocks on something the host cannot see (a channel send or receive, a mutex, network I/O, a child process) before it returns has not entered: every Harness wait that follows its delivery (`WaitForTask`, `WaitForIdle`, `Submission.Wait`, `Conversation.WaitForIdle`) and the Session's hop, and with the hop every later publication of that Session, wait until it returns. A listener that sends on an unbuffered channel the test reads only after `WaitForTask` returns stalls `WaitForTask` until its context ends.

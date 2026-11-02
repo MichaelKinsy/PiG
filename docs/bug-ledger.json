@@ -2047,6 +2047,28 @@
       ]
     },
     {
+      "id": "BF-1239dac",
+      "title": "fix(chord/nextnode/plugins): the Node host resolves pi-schema, and example 37's shapes file imports it as…",
+      "symptom": "fix(chord/nextnode/plugins): the Node host resolves pi-schema, and example 37's shapes file imports it as Pi's does",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "1239dac51b",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_examples_test.go::TestExample37PluginImports",
+        "chord/nextnode/plugins/plugins_runtime_test.go::TestRuntimeLoadsNoEsbuildAWorkerThatOnlyEvaluatesNeverImportsIt"
+      ]
+    },
+    {
       "id": "BF-1268115",
       "title": "fix(model runtime): a cancelled request to a caller-owned provider the runtime does not know is aborted, not…",
       "symptom": "fix(model runtime): a cancelled request to a caller-owned provider the runtime does not know is aborted, not a setup error",
@@ -7473,6 +7495,120 @@
         "coding/cli/extension_upgrade_analyze_off_test.go::TestUpgradeInAGoSDKStrippedBinaryNamesTheStrip",
         "coding/cli/strip_providers_binary_test.go::TestStripBedrockConverseStreamBuildOmitsAWSSDK",
         "coding/cli/strip_upgrade_link_test.go::TestStripExtensionSDKGoBuildOmitsTheUpgradeAnalysis"
+      ]
+    },
+    {
+      "id": "BF-3b9bd16",
+      "title": "`chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node…",
+      "symptom": "`chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node process ends; a `Close` past its deadline still stops a starting spare; a process running its host's close (Pi ends every object at once, then drains and closes them one by one, each step bounded by `closeTimeout`) is not killed before one `closeTimeout` plus the grace has passed.",
+      "rootCause": "The bridged references and watches are released when the Node process ends; the caller-free `value` request is gone. The stop grace is Pi's 5 s and a process running its host's close is not killed before the host's closeTimeout. Close past its deadline still stops a starting spare. Channel.Idle returns when the channel closes. The lazy-attach expectation change is recorded as a NOBEHAVIOR entry, and the additive records describe the new embedding API.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`: the references and watches held for the bridged proxies are released when the Node process ends; a `Close` past its deadline still stops a starting spare; a process running its host's close (Pi ends every object at once, then drains and closes them one by one, each step bounded by `closeTimeout`) is not killed before one `closeTimeout` plus the grace has passed.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3b9bd165af",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/next/contracts/normalform_test.go::TestNormalFormOfALocalContractHasItsMembersAsASortedDictionary",
+        "chord/next/contracts/normalform_test.go::TestNormalFormOfARemoteContractIsWhatItsFingerprintHashes",
+        "chord/next/host/host_link_deliveries_test.go::TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt",
+        "chord/next/link/channel_idle_test.go::TestIdleReturnsAtOnceWhenNothingWaitsBehindAnAsynchronousHandling",
+        "chord/next/link/channel_idle_test.go::TestIdleReturnsWhenTheChannelClosedWithAMessageHeld",
+        "chord/next/link/channel_idle_test.go::TestIdleWaitsForTheHeldMessageAndForTheOnesBehindIt",
+        "chord/nextnode/plugins/plugins_node_bridged_test.go::TestBridgedTheProcessEndingReleasesTheGoReferencesAndWatchesItsProxiesHeld",
+        "chord/nextnode/plugins/plugins_node_discover_test.go::TestDiscoverNodeFindsFnmAtItsDefaultDirectoriesWithoutFNMDIR",
+        "chord/nextnode/plugins/plugins_node_discover_test.go::TestDiscoverNodeTakesAVersionPrintedWithoutTheVPrefix",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeNeverRunsVoltaOrMiseShimsAndFindsTheirInstalls",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeStopsAProbeThatDoesNotAnswerAndTriesTheNextCandidate",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeWithOnlyAHungCandidateSaysItDidNotAnswer",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestStartNodeBoundsFindingNodeByTheReadyTimeout",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseDoesNotKillAHostThatIsStillClosingWithinItsCloseTimeout",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseKillsAHostThatDoesNotAnswerWithinTheGrace",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeRuntimeClosePastItsDeadlineStillStopsTheSpareThatIsStarting",
+        "test/parity/cmd/testprune/testprune_test.go::TestCheckCoEditsLedgerEntryOutranksTheCommitsOwnCitation"
+      ]
+    },
+    {
+      "id": "BF-3b9bd16-2",
+      "title": "`chord/nextnode/plugins`: finding Node stops a version probe that does not answer (10 s) and ends at…",
+      "symptom": "`chord/nextnode/plugins`: finding Node stops a version probe that does not answer (10 s) and ends at `ReadyTimeout`; fnm's default directories (including `~/Library/Application Support/fnm` on macOS and `%APPDATA%\\fnm` on Windows), and Volta's and mise's installs, are searched, and their shims are never run (D221).",
+      "rootCause": "The bridged references and watches are released when the Node process ends; the caller-free `value` request is gone. The stop grace is Pi's 5 s and a process running its host's close is not killed before the host's closeTimeout. Close past its deadline still stops a starting spare. Channel.Idle returns when the channel closes. The lazy-attach expectation change is recorded as a NOBEHAVIOR entry, and the additive records describe the new embedding API.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows, macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/plugins`: finding Node stops a version probe that does not answer (10 s) and ends at `ReadyTimeout`; fnm's default directories (including `~/Library/Application Support/fnm` on macOS and `%APPDATA%\\fnm` on Windows), and Volta's and mise's installs, are searched, and their shims are never run (D221).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3b9bd165af",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/next/contracts/normalform_test.go::TestNormalFormOfALocalContractHasItsMembersAsASortedDictionary",
+        "chord/next/contracts/normalform_test.go::TestNormalFormOfARemoteContractIsWhatItsFingerprintHashes",
+        "chord/next/host/host_link_deliveries_test.go::TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt",
+        "chord/next/link/channel_idle_test.go::TestIdleReturnsAtOnceWhenNothingWaitsBehindAnAsynchronousHandling",
+        "chord/next/link/channel_idle_test.go::TestIdleReturnsWhenTheChannelClosedWithAMessageHeld",
+        "chord/next/link/channel_idle_test.go::TestIdleWaitsForTheHeldMessageAndForTheOnesBehindIt",
+        "chord/nextnode/plugins/plugins_node_bridged_test.go::TestBridgedTheProcessEndingReleasesTheGoReferencesAndWatchesItsProxiesHeld",
+        "chord/nextnode/plugins/plugins_node_discover_test.go::TestDiscoverNodeFindsFnmAtItsDefaultDirectoriesWithoutFNMDIR",
+        "chord/nextnode/plugins/plugins_node_discover_test.go::TestDiscoverNodeTakesAVersionPrintedWithoutTheVPrefix",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeNeverRunsVoltaOrMiseShimsAndFindsTheirInstalls",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeStopsAProbeThatDoesNotAnswerAndTriesTheNextCandidate",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeWithOnlyAHungCandidateSaysItDidNotAnswer",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestStartNodeBoundsFindingNodeByTheReadyTimeout",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseDoesNotKillAHostThatIsStillClosingWithinItsCloseTimeout",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseKillsAHostThatDoesNotAnswerWithinTheGrace",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeRuntimeClosePastItsDeadlineStillStopsTheSpareThatIsStarting",
+        "test/parity/cmd/testprune/testprune_test.go::TestCheckCoEditsLedgerEntryOutranksTheCommitsOwnCitation"
+      ]
+    },
+    {
+      "id": "BF-3b9bd16-3",
+      "title": "`chord/next/link`: `Channel.Idle` returns when the channel closes",
+      "symptom": "`chord/next/link`: `Channel.Idle` returns when the channel closes.",
+      "rootCause": "The bridged references and watches are released when the Node process ends; the caller-free `value` request is gone. The stop grace is Pi's 5 s and a process running its host's close is not killed before the host's closeTimeout. Close past its deadline still stops a starting spare. Channel.Idle returns when the channel closes. The lazy-attach expectation change is recorded as a NOBEHAVIOR entry, and the additive records describe the new embedding API.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/next/link`: `Channel.Idle` returns when the channel closes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3b9bd165af",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/next/contracts/normalform_test.go::TestNormalFormOfALocalContractHasItsMembersAsASortedDictionary",
+        "chord/next/contracts/normalform_test.go::TestNormalFormOfARemoteContractIsWhatItsFingerprintHashes",
+        "chord/next/host/host_link_deliveries_test.go::TestDeliveryAwaiterIsTakenOnceBeforeTheHostSendsOnTheLinkOrListensToIt",
+        "chord/next/link/channel_idle_test.go::TestIdleReturnsAtOnceWhenNothingWaitsBehindAnAsynchronousHandling",
+        "chord/next/link/channel_idle_test.go::TestIdleReturnsWhenTheChannelClosedWithAMessageHeld",
+        "chord/next/link/channel_idle_test.go::TestIdleWaitsForTheHeldMessageAndForTheOnesBehindIt",
+        "chord/nextnode/plugins/plugins_node_bridged_test.go::TestBridgedTheProcessEndingReleasesTheGoReferencesAndWatchesItsProxiesHeld",
+        "chord/nextnode/plugins/plugins_node_discover_test.go::TestDiscoverNodeFindsFnmAtItsDefaultDirectoriesWithoutFNMDIR",
+        "chord/nextnode/plugins/plugins_node_discover_test.go::TestDiscoverNodeTakesAVersionPrintedWithoutTheVPrefix",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeNeverRunsVoltaOrMiseShimsAndFindsTheirInstalls",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeStopsAProbeThatDoesNotAnswerAndTriesTheNextCandidate",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestDiscoverNodeWithOnlyAHungCandidateSaysItDidNotAnswer",
+        "chord/nextnode/plugins/plugins_node_discover_unix_test.go::TestStartNodeBoundsFindingNodeByTheReadyTimeout",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseDoesNotKillAHostThatIsStillClosingWithinItsCloseTimeout",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeCloseKillsAHostThatDoesNotAnswerWithinTheGrace",
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeRuntimeClosePastItsDeadlineStillStopsTheSpareThatIsStarting",
+        "test/parity/cmd/testprune/testprune_test.go::TestCheckCoEditsLedgerEntryOutranksTheCommitsOwnCitation"
       ]
     },
     {
@@ -19856,6 +19992,25 @@
       "tests": []
     },
     {
+      "id": "BF-7a5e7d1",
+      "title": "fix(chord/nextnode/plugins): the bridged proxies' Go get takes the context first, as the merged host does",
+      "symptom": "fix(chord/nextnode/plugins): the bridged proxies' Go get takes the context first, as the merged host does",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "7a5e7d1d8b",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-7b0f5d7",
       "title": "A native extension provider's `filterAllModels` receives the models its `getAllModels` (or `getModels`)…",
       "symptom": "A native extension provider's `filterAllModels` receives the models its `getAllModels` (or `getModels`) returned, with their members in the order the provider wrote them, instead of copies with members sorted by name.",
@@ -26255,6 +26410,28 @@
       ]
     },
     {
+      "id": "BF-9acb844",
+      "title": "fix(chord/nextnode/plugins): the pipe to the Node subprocess buffers writes, so a process's last frame…",
+      "symptom": "fix(chord/nextnode/plugins): the pipe to the Node subprocess buffers writes, so a process's last frame survives its exit",
+      "rootCause": "With the pipe's buffer forced back to 0, -count=10 of that test: 3 of 10 fail the same way (31.66s to 33.10s), 7 pass; with 64 KiB, 10 of 10 pass (1.6s). TestListenNodeAWriteCompletesWhileThePeerDoesNotRead writes 1 byte to 64 KiB to a pipe whose peer never reads: with no buffer every size blocks (`write BLOCKED without a read`, sizes 1, 64, 256, 1024, 2048, 4096, 8192 and 65536), and the test fails `the write did not complete while the peer did not read` after 5.01s; with 64 KiB every size completes.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9acb844c62",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_test.go::TestNodeAFatalReadAfterTheProcessWasWaitedForIsInTheExit",
+        "chord/nextnode/plugins/plugins_node_windows_test.go::TestListenNodeAWriteCompletesWhileThePeerDoesNotRead"
+      ]
+    },
+    {
       "id": "BF-9af407c",
       "title": "fix(ai): race builds read provider sockets through syscall.Read",
       "symptom": "fix(ai): race builds read provider sockets through syscall.Read",
@@ -26883,6 +27060,27 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-9dc3adc",
+      "title": "fix(chord/nextnode/plugins): the proxies' requests to Go and the callbacks' calls have names of their own on…",
+      "symptom": "fix(chord/nextnode/plugins): the proxies' requests to Go and the callbacks' calls have names of their own on the control channel",
+      "rootCause": "Both features used the event `call` and the answer `answer` with separate id spaces. host.mjs gave every `answer` to the callbacks, so a proxy's `get` was never answered and its object never became live; Go took the proxies' `call` for a callback call. The bridge's requests are now `get`/`value`/`watch`/`bridgeCall`, answered by `bridgeAnswer`.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9dc3adc1ea",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_bridged_test.go::TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer"
+      ]
     },
     {
       "id": "BF-9df8c5c",
@@ -29386,6 +29584,27 @@
       "tests": []
     },
     {
+      "id": "BF-ae79485",
+      "title": "fix(chord/nextnode/plugins): the stop grace default is pinned and the close wording follows Pi",
+      "symptom": "fix(chord/nextnode/plugins): the stop grace default is pinned and the close wording follows Pi",
+      "rootCause": "Pi ends every object of a host at once, then drains and closes them one by one, each step bounded by closeTimeout, and the app's store closes after it. The bridge comment no longer lists value among the proxies' own requests to Go.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ae79485d82",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeTheDefaultStopGraceIsPisFiveSeconds"
+      ]
+    },
+    {
       "id": "BF-aeaaf97",
       "title": "Model requests reuse their HTTP connection",
       "symptom": "Every provider build used to create its own transport, so each request and tool round trip opened a new TCP (and TLS, and proxy CONNECT) connection and left an idle socket with its goroutines for two minutes.",
@@ -29582,21 +29801,13 @@
       "tests": [
         "chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildAnInputThatCannotBeReadIsNodesErrorText",
         "chord/nextnode/plugins/plugins_endtoend_test.go::TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost",
-        "chord/nextnode/plugins/plugins_endtoend_test.go::TestEndToEndTheAppsGoHostCannotGetALocalTypeAPluginServes",
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeAFatalReadAfterTheProcessWasWaitedForIsInTheExit",
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeALinkAttachedAfterLoadAndOtherRequestsStillCarriesTheHost",
-        "chord/nextnode/plugins/plugins_node_test.go::TestNodeALinkNotAttachedWithinTheHeartbeatEndsTheProcessAndTheLink",
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeASendAfterTheChannelEndedReturnsTheProcessesExit",
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeConcurrentExtractionsShareOneCompleteTree",
         "chord/nextnode/plugins/plugins_node_test.go::TestNodeTreeIsRepairedWhenItIsPartialOrHasNoMarker",
         "chord/nextnode/plugins/plugins_node_unix_test.go::TestEsbuildBuildAForbiddenInputFailsTheBuildWithNodesText",
-        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeAFailedStartRemovesItsSocketDirectory",
-        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeAStartThatDoesNotConnectInTimeKillsTheProcess",
-        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeAbortedStartWhileTheProcessRunsKillsItAndReturnsTheCause",
-        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeOlderThanTheMinimumNamesTheRequirementAndTheVersionFound",
-        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeThatFailsItsVersionNamesWhatItSaid",
-        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeWhoseVersionIsNoVersionIsRefused",
-        "chord/nextnode/plugins/plugins_runtime_test.go::TestRuntimeAFacetWithAPersistedDocumentFailsToActivateTheHostHasNoStore"
+        "chord/nextnode/plugins/plugins_node_unix_test.go::TestNodeAFailedStartRemovesItsSocketDirectory"
       ]
     },
     {
@@ -29717,6 +29928,30 @@
         "ai/streaming_tool_arguments_norace_test.go::TestCustomToolInputStreamsInMemoryLinearInItsLength",
         "chord/delta/append_text_test.go::TestAppendTextRejectsWhatACallerCanGetWrong",
         "chord/delta/apply_immutable_upstream_test.go::TestImmutableContainerCopiesKeepAnOwnProtoMemberAsData"
+      ]
+    },
+    {
+      "id": "BF-b182cbc",
+      "title": "fix(chord/nextnode): the Windows pipe listeners close through internal/chord/winpipe, whose Close always…",
+      "symptom": "fix(chord/nextnode): the Windows pipe listeners close through internal/chord/winpipe, whose Close always returns",
+      "rootCause": "-count=3000 of that test hangs the same way every run. With go-winio's source traced (printing what the aborted connect returned): `WD close seen in connect`, `WD Close sent`, `WD aborted connect err=The I/O operation has been aborted because of either a thread exit or an application request.` (the raw ERROR_OPERATION_ABORTED), `WD responding err=` the same, `WD responded`, then no more: the routine is back at its select with the request consumed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "b182cbce76",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_lock_test.go::TestProcessLockReleaseReturnsAfterAWaitersAbortEveryTime",
+        "chord/nextnode/workers/workers_lock_test.go::TestProcessLockStopsWaitingWhenTheWaitersContextAborts",
+        "internal/chord/winpipe/winpipe_windows_test.go::TestCloseEndsAWaitingAcceptAndFreesTheName",
+        "internal/chord/winpipe/winpipe_windows_test.go::TestCloseReturnsWhileAClientDialsAndGivesUp"
       ]
     },
     {
@@ -30874,6 +31109,27 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-ba80002",
+      "title": "fix(chord/nextnode/plugins): a process the Go side killed ends with SIGKILL on Windows too",
+      "symptom": "fix(chord/nextnode/plugins): a process the Go side killed ends with SIGKILL on Windows too",
+      "rootCause": "plugins_node_lifecycle_test.go:223: exit = node subprocess exited: exit status 1: its link closed and it did not exit within 200ms, want SIGKILL, code -1 and a reason that names the link --- FAIL: TestNodeAPluginsInfiniteLoopEndsWithTheGoHostsHeartbeatOnTheLink (1.44s)",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "ba80002634",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_lifecycle_test.go::TestNodeAPluginsInfiniteLoopEndsWithTheGoHostsHeartbeatOnTheLink"
+      ]
     },
     {
       "id": "BF-ba8b6b7",
@@ -41659,6 +41915,27 @@
       ]
     },
     {
+      "id": "BF-f3ea39b",
+      "title": "fix(chord/nextnode/plugins): the driver ends its socket after the frames it wrote are out",
+      "symptom": "fix(chord/nextnode/plugins): the driver ends its socket after the frames it wrote are out",
+      "rootCause": "FramedPort.disconnect called socket.end() at once. With a write in flight (Windows pipes complete writes asynchronously) the write failed with ERR_STREAM_WRITE_AFTER_END and its frame was lost: a host that reports `storage_failed` and then closes (host.close ends the parent link) wrote its `error` event and ended the socket one millisecond later, and the Go side never got the event. disconnect now ends the socket once every payload write has completed (a count of the writes in flight).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f3ea39b0ec",
+          "date": "2026-11-01"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/plugins/plugins_node_store_test.go::TestStoreAFailedStoreReachesOnErrorOnceAndClosesTheHost"
+      ]
+    },
+    {
       "id": "BF-f474c30",
       "title": "fix(evals): drop an unused import from the prompt-template eval",
       "symptom": "fix(evals): drop an unused import from the prompt-template eval",
@@ -44984,6 +45261,10 @@
     {
       "id": "D219",
       "title": "pi-schema regular expressions differ from V8 in four contrived cases"
+    },
+    {
+      "id": "D222",
+      "title": "A plugin input the build cannot read is reported at the import that names it, not at esbuild's library"
     },
     {
       "id": "D224",
