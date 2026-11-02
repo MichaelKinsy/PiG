@@ -3073,12 +3073,6 @@ snippet = "if data, err := json.Marshal(d); err == nil && json.Unmarshal(data, &
 
 [[hit]]
 check = "mapkeyorder"
-file = "internal/codingagent/tools/argument_schema.go"
-func = "nativeSchemaJSON"
-snippet = "encoded, err := json.Marshal(document)"
-
-[[hit]]
-check = "mapkeyorder"
 file = "mcp/oauth/flow.go"
 func = "registrationBody"
 snippet = "return json.Marshal(fields)"

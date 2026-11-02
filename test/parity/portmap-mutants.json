@@ -166,6 +166,13 @@
    "new": "func IsStdoutTakenOver() bool { return false\n"
   }
  ],
+ "packages/coding-agent/src/core/pi-ai-schemas.ts": [
+  {
+   "file": "internal/codingagent/configschema/pi_ai_schemas.go",
+   "old": "if o.K != \"required\" {",
+   "new": "if o.K == \"required\" {"
+  }
+ ],
  "packages/coding-agent/src/core/remote-catalog-provider.ts": [
   {
    "file": "internal/codingagent/remote_catalog_provider.go",
@@ -2687,6 +2694,258 @@
    "file": "ai/openrouter_user_models.go",
    "old": "request.Header.Set(\"authorization\", \"Bearer \"+key)",
    "new": "request.Header.Set(\"authorization\", \"Basic \"+key)"
+  }
+ ],
+ "packages/schema/src/annotations.ts": [
+  {
+   "file": "schema/annotations.go",
+   "old": "a.allProps = a.allProps || b.allProps",
+   "new": "a.allProps = a.allProps && b.allProps"
+  }
+ ],
+ "packages/schema/src/checks.ts": [
+  {
+   "file": "schema/checks.go",
+   "old": "func never(any) bool  { return false }",
+   "new": "func never(any) bool  { return true }"
+  }
+ ],
+ "packages/schema/src/coerce.ts": [
+  {
+   "file": "schema/coerce.go",
+   "old": "\t\t\tcase \"true\":\n\t\t\t\treturn true",
+   "new": "\t\t\tcase \"true\":\n\t\t\t\treturn false"
+  }
+ ],
+ "packages/schema/src/compiler.ts": [
+  {
+   "file": "schema/compiler.go",
+   "old": "\tif exactlyOne {\n\t\treturn oneCheck(checks)\n\t}\n\treturn anyCheck(checks)",
+   "new": "\tif !exactlyOne {\n\t\treturn oneCheck(checks)\n\t}\n\treturn anyCheck(checks)"
+  }
+ ],
+ "packages/schema/src/explain.ts": [
+  {
+   "file": "schema/explain.go",
+   "old": "return path + \"/\" + strings.ReplaceAll(strings.ReplaceAll(key, \"~\", \"~0\"), \"/\", \"~1\")",
+   "new": "return path + \"/\" + key"
+  }
+ ],
+ "packages/schema/src/formats/typebox/date.ts": [
+  {
+   "file": "schema/formats/typebox_date.go",
+   "old": "return day >= 1 && day <= limit",
+   "new": "return !(day >= 1 && day <= limit)"
+  }
+ ],
+ "packages/schema/src/formats/typebox/date_time.ts": [
+  {
+   "file": "schema/formats/typebox_date_time.go",
+   "old": "return IsDate(value[:at]) && IsTime(value[at+1:])",
+   "new": "return !(IsDate(value[:at]) && IsTime(value[at+1:]))"
+  }
+ ],
+ "packages/schema/src/formats/typebox/duration.ts": [
+  {
+   "file": "schema/formats/typebox_duration.go",
+   "old": "bool { return durationRE.MatchString(value) }",
+   "new": "bool { return !durationRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/email.ts": [
+  {
+   "file": "schema/formats/typebox_email.go",
+   "old": "bool { return emailRE.MatchString(value) }",
+   "new": "bool { return !emailRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/hostname.ts": [
+  {
+   "file": "schema/formats/typebox_hostname.go",
+   "old": "bool { return idna.IsHostname(value) }",
+   "new": "bool { return !idna.IsHostname(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idn_email.ts": [
+  {
+   "file": "schema/formats/typebox_idn_email.go",
+   "old": "return idnEmailRE.MatchString(norm.NFC.String(jsstring.Canonical(value)))",
+   "new": "return !idnEmailRE.MatchString(norm.NFC.String(jsstring.Canonical(value)))"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idn_hostname.ts": [
+  {
+   "file": "schema/formats/typebox_idn_hostname.go",
+   "old": "bool { return idna.IsIdnHostname(value) }",
+   "new": "bool { return !idna.IsIdnHostname(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idna/format/bidi.ts": [
+  {
+   "file": "schema/formats/internal/idna/format_bidi.go",
+   "old": "return !isRtl || !sawEN || !sawAN",
+   "new": "return !isRtl || !sawEN && !sawAN"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idna/format/puny.ts": [
+  {
+   "file": "schema/formats/internal/idna/format_puny.go",
+   "old": "(value[0] == 'x' || value[0] == 'X')",
+   "new": "(value[0] == 'x')"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idna/hostname.ts": [
+  {
+   "file": "schema/formats/internal/idna/hostname.go",
+   "old": "n > 253",
+   "new": "n > 254"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idna/idn-hostname.ts": [
+  {
+   "file": "schema/formats/internal/idna/idn_hostname.go",
+   "old": "r == 0xff61:",
+   "new": "r == 0xff62:"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idna/label/ascii.ts": [
+  {
+   "file": "schema/formats/internal/idna/label_ascii.go",
+   "old": "&& ReAsciiLdh(value)",
+   "new": "|| ReAsciiLdh(value)"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idna/label/puny.ts": [
+  {
+   "file": "schema/formats/internal/idna/label_puny.go",
+   "old": "if !hasNonAscii {",
+   "new": "if hasNonAscii {"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idna/label/unicode.ts": [
+  {
+   "file": "schema/formats/internal/idna/label_unicode.go",
+   "old": "if ReCombiningMark(chars[0]) {",
+   "new": "if !ReCombiningMark(chars[0]) {"
+  }
+ ],
+ "packages/schema/src/formats/typebox/idna/pattern/pattern.ts": [
+  {
+   "file": "schema/formats/internal/idna/pattern.go",
+   "old": "c != '-'",
+   "new": "c != '+'"
+  }
+ ],
+ "packages/schema/src/formats/typebox/ipv4.ts": [
+  {
+   "file": "schema/formats/typebox_ipv4.go",
+   "old": "bool { return ipv4RE.MatchString(value) }",
+   "new": "bool { return !ipv4RE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/ipv6.ts": [
+  {
+   "file": "schema/formats/typebox_ipv6.go",
+   "old": "bool { return ipv6RE.MatchString(value) }",
+   "new": "bool { return !ipv6RE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/iri.ts": [
+  {
+   "file": "schema/formats/typebox_iri.go",
+   "old": "_, err := nodeurl.ParseURL(jsstring.StreamText(narrowIpvFuture(value)))\n\treturn err == nil",
+   "new": "_, err := nodeurl.ParseURL(jsstring.StreamText(narrowIpvFuture(value)))\n\treturn err != nil"
+  }
+ ],
+ "packages/schema/src/formats/typebox/iri_reference.ts": [
+  {
+   "file": "schema/formats/typebox_iri_reference.go",
+   "old": "\treturn err == nil\n}",
+   "new": "\treturn err != nil\n}"
+  }
+ ],
+ "packages/schema/src/formats/typebox/json_pointer.ts": [
+  {
+   "file": "schema/formats/typebox_json_pointer.go",
+   "old": "bool { return jsonPointerRE.MatchString(value) }",
+   "new": "bool { return !jsonPointerRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/json_pointer_uri_fragment.ts": [
+  {
+   "file": "schema/formats/typebox_json_pointer_uri_fragment.go",
+   "old": "bool { return jsonPointerUriFragmentRE.MatchString(value) }",
+   "new": "bool { return !jsonPointerUriFragmentRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/regex.ts": [
+  {
+   "file": "schema/formats/typebox_regex.go",
+   "old": "bool { return ecmaregex.Valid(value) }",
+   "new": "bool { return !ecmaregex.Valid(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/relative_json_pointer.ts": [
+  {
+   "file": "schema/formats/typebox_relative_json_pointer.go",
+   "old": "bool { return relativeJsonPointerRE.MatchString(value) }",
+   "new": "bool { return !relativeJsonPointerRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/time.ts": [
+  {
+   "file": "schema/formats/typebox_time.go",
+   "old": "\tif sec < 60 {\n\t\treturn true\n\t}",
+   "new": "\tif sec < 60 {\n\t\treturn false\n\t}"
+  }
+ ],
+ "packages/schema/src/formats/typebox/uri.ts": [
+  {
+   "file": "schema/formats/typebox_uri.go",
+   "old": "bool { return uriRE.MatchString(value) }",
+   "new": "bool { return !uriRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/uri_reference.ts": [
+  {
+   "file": "schema/formats/typebox_uri_reference.go",
+   "old": "bool { return uriReferenceRE.MatchString(value) }",
+   "new": "bool { return !uriReferenceRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/uri_template.ts": [
+  {
+   "file": "schema/formats/typebox_uri_template.go",
+   "old": "bool { return uriTemplateRE.MatchString(value) }",
+   "new": "bool { return !uriTemplateRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/formats/typebox/url.ts": [
+  {
+   "file": "schema/formats/typebox_url.go",
+   "old": "_, err := nodeurl.ParseURL(jsstring.StreamText(value))\n\treturn err == nil",
+   "new": "_, err := nodeurl.ParseURL(jsstring.StreamText(value))\n\treturn err != nil"
+  }
+ ],
+ "packages/schema/src/formats/typebox/uuid.ts": [
+  {
+   "file": "schema/formats/typebox_uuid.go",
+   "old": "bool { return uuidRE.MatchString(value) }",
+   "new": "bool { return !uuidRE.MatchString(value) }"
+  }
+ ],
+ "packages/schema/src/resolver.ts": [
+  {
+   "file": "schema/resolver.go",
+   "old": "if strings.HasPrefix(fragment, \"/\") {",
+   "new": "if strings.HasPrefix(fragment, \"//\") {"
+  }
+ ],
+ "packages/schema/src/shared.ts": [
+  {
+   "file": "schema/shared.go",
+   "old": "sharedRegexes.bySource[source] = weak.Make(re)",
+   "new": "_ = weak.Make(re)"
   }
  ]
 }

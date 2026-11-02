@@ -146,7 +146,6 @@ mod tests {
 
     fn request(seq: u64, base: u64, args: Option<Value>, ops: Option<Value>) -> RequestMsg {
         RequestMsg {
-            refine: None,
             method: "event".into(),
             tool: None,
             event: Some("message_update".into()),
