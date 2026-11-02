@@ -1618,5 +1618,108 @@
    "old": "\t\t\tinput = Strings(\"text\", \"image\")\n",
    "new": "\t\t\tinput = Strings(\"text\")\n"
   }
+ ],
+ "packages/coding-agent/src/extensions/index.ts": [
+  {
+   "file": "coding/cli/builtin_extensions.go",
+   "old": "\tinline := llamaInlineExtensions()\n\tfor _, entry := range builtin.All(options) {\n\t\tinline = append(inline, extension.NamedInlineExtension{Name: entry.Name, Factory: entry.Factory, Replaceable: entry.Replaceable, Builtin: true})\n\t}\n\treturn inline\n",
+   "new": "\tvar inline []extension.InlineExtension\n\tfor _, entry := range builtin.All(options) {\n\t\tinline = append(inline, extension.NamedInlineExtension{Name: entry.Name, Factory: entry.Factory, Replaceable: entry.Replaceable, Builtin: true})\n\t}\n\treturn append(inline, llamaInlineExtensions()...)\n"
+  }
+ ],
+ "packages/coding-agent/src/extensions/llama/client.ts": [
+  {
+   "file": "internal/codingagent/llama/client.go",
+   "old": "strings.TrimSuffix(strings.TrimRight(parsed.Pathname, \"/\"), \"/v1\")",
+   "new": "strings.TrimRight(parsed.Pathname, \"/\")"
+  },
+  {
+   "file": "internal/codingagent/llama/client.go",
+   "old": "\tif value >= 10 {\n",
+   "new": "\tif value >= 100 {\n"
+  }
+ ],
+ "packages/coding-agent/src/extensions/llama/huggingface.ts": [
+  {
+   "file": "internal/codingagent/llama/huggingface.go",
+   "old": "[2]string{\"limit\", \"20\"},",
+   "new": "[2]string{\"limit\", \"21\"},"
+  },
+  {
+   "file": "internal/codingagent/llama/huggingface.go",
+   "old": "[2]string{\"filter\", \"gguf\"},",
+   "new": "[2]string{\"filter\", \"gguff\"},"
+  }
+ ],
+ "packages/coding-agent/src/extensions/llama/index.ts": [
+  {
+   "file": "internal/codingagent/llama/index.go",
+   "old": "\ts.notify(\"Restoring previously loaded models\")",
+   "new": "\ts.notify(\"Restoring loaded models\")"
+  },
+  {
+   "file": "internal/codingagent/llama/index.go",
+   "old": "\ts.notify(\"Unloaded \" + model.ID)",
+   "new": "\ts.notify(\"Unloaded: \" + model.ID)"
+  }
+ ],
+ "packages/coding-agent/src/extensions/llama/provider.ts": [
+  {
+   "file": "internal/codingagent/llama/provider.go",
+   "old": "\t\tMaxTokens:     contextWindow,\n",
+   "new": "\t\tMaxTokens:     contextWindow / 2,\n"
+  },
+  {
+   "file": "internal/codingagent/llama/native_provider.go",
+   "old": "SupportsToolUse: true",
+   "new": "SupportsToolUse: false"
+  }
+ ],
+ "packages/coding-agent/src/extensions/llama/ui.ts": [
+  {
+   "file": "internal/codingagent/llama/ui.go",
+   "old": "\t\tdetails = append(details, \"loaded\")\n",
+   "new": "\t\tdetails = append(details, \"ready\")\n"
+  },
+  {
+   "file": "internal/codingagent/llama/ui.go",
+   "old": "const searchMaxVisible = 10",
+   "new": "const searchMaxVisible = 9"
+  }
+ ],
+ "packages/coding-agent/src/extensions/codemode/execute.ts": [
+  {
+   "file": "coding/extension/builtin/codemode/execute.go",
+   "old": "value == math.Trunc(value)",
+   "new": "value >= math.Trunc(value)"
+  },
+  {
+   "file": "coding/extension/builtin/codemode/execute.go",
+   "old": " && !math.IsInf(value, 0)",
+   "new": ""
+  }
+ ],
+ "packages/coding-agent/src/extensions/codemode/renderer.ts": [
+  {
+   "file": "internal/codingagent/tool_codemode_renderer.go",
+   "old": "\tcodemodeOutputPreview    = 5\n",
+   "new": "\tcodemodeOutputPreview    = 4\n"
+  },
+  {
+   "file": "internal/codingagent/tool_codemode_renderer.go",
+   "old": "\tif cost >= 0.01 {",
+   "new": "\tif cost >= 0.02 {"
+  }
+ ],
+ "packages/coding-agent/src/extensions/tool-search/tool.ts": [
+  {
+   "file": "coding/extension/builtin/toolsearch/toolsearch.go",
+   "old": "\treturn normalized == query || strings.HasSuffix(normalized, \"__\"+query)\n",
+   "new": "\treturn normalized == query\n"
+  },
+  {
+   "file": "coding/extension/builtin/toolsearch/toolsearch.go",
+   "old": "\t\t\treturn ranked[a].exact\n",
+   "new": "\t\t\treturn !ranked[a].exact\n"
+  }
  ]
 }
