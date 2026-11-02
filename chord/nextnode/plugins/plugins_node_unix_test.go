@@ -72,7 +72,7 @@ func fakeNode(t *testing.T, stdout, stderr string, code int) {
 func shellQuote(text string) string { return "'" + strings.ReplaceAll(text, "'", `'\''`) + "'" }
 
 // A file the plugin imports and the build cannot read (here: forbidden) fails the build with Node's text, as Pi's build does
-// (its `readFile`): `EACCES: permission denied, open '<path>'`, after the position of the import. (A user that can read every file reads this one too.) Unix only: on Windows `os.Chmod` only
+// (its `readFile`): `EACCES: permission denied, open '<path>'`, after the position of the import, where Pi puts the line of esbuild's own library (D222). (A user that can read every file reads this one too.) Unix only: on Windows `os.Chmod` only
 // toggles the read-only attribute, which does not make a file unreadable.
 func TestEsbuildBuildAForbiddenInputFailsTheBuildWithNodesText(t *testing.T) {
 	root := tempRoot(t)
