@@ -879,5 +879,96 @@
    "old": "VALUES (1, 0, 2, 0, 0)",
    "new": "VALUES (1, 0, 3, 0, 0)"
   }
+ ],
+ "packages/chord/src/next/documents/address-source.ts": [
+  {
+   "file": "chord/next/documents/address_source.go",
+   "old": "if prepared.Base() == before && !source.retired {",
+   "new": "if prepared.Base() != before && !source.retired {"
+  }
+ ],
+ "packages/chord/src/next/documents/documents.ts": [
+  {
+   "file": "chord/next/documents/documents.go",
+   "old": "if token.Sealed() || d.state != documentsOpen {",
+   "new": "if token.Sealed() && d.state != documentsOpen {"
+  }
+ ],
+ "packages/chord/src/next/documents/fence.ts": [
+  {
+   "file": "chord/next/documents/fence.go",
+   "old": "token.sealed.Store(true)",
+   "new": "token.sealed.Store(false)"
+  }
+ ],
+ "packages/chord/src/next/documents/keyed-slot.ts": [
+  {
+   "file": "chord/next/documents/keyed_slot.go",
+   "old": "slices.SortFunc(it.buffer, store.CompareText)",
+   "new": "slices.SortFunc(it.buffer, func(a, b string) int { return 0 })"
+  }
+ ],
+ "packages/chord/src/next/documents/line.ts": [
+  {
+   "file": "chord/next/documents/line.go",
+   "old": "\t<-previous\n",
+   "new": "\t_ = previous\n"
+  }
+ ],
+ "packages/chord/src/next/documents/persistence.ts": [
+  {
+   "file": "chord/next/documents/persistence.go",
+   "old": "if version > code {",
+   "new": "if version < code {"
+  }
+ ],
+ "packages/chord/src/next/documents/residency.ts": [
+  {
+   "file": "chord/next/documents/residency.go",
+   "old": "const granuleMs int64 = 1_000",
+   "new": "const granuleMs int64 = 2_000"
+  }
+ ],
+ "packages/chord/src/next/documents/slot.ts": [
+  {
+   "file": "chord/next/documents/slot.go",
+   "old": "if definition.Version < current.Version {",
+   "new": "if definition.Version > current.Version {"
+  }
+ ],
+ "packages/chord/src/next/documents/transaction.ts": [
+  {
+   "file": "chord/next/documents/transaction.go",
+   "old": "if tx.state != txCommitting || tx.token.Sealed() {",
+   "new": "if tx.state != txCommitting && tx.token.Sealed() {"
+  }
+ ],
+ "packages/chord/src/next/jobs/persisted.ts": [
+  {
+   "file": "chord/next/host/jobs_persisted.go",
+   "old": "store.RetireDocument(state.ID, state.Revision)",
+   "new": "store.RetireDocument(state.ID, state.Revision+1)"
+  }
+ ],
+ "packages/chord/src/next/jobs/records.ts": [
+  {
+   "file": "chord/next/host/jobs_records.go",
+   "old": "\t\tif reason == cutReload {\n",
+   "new": "\t\tif reason != cutReload {\n"
+  }
+ ],
+ "packages/chord/src/next/jobs/run-states.ts": [
+  {
+   "file": "chord/next/host/jobs_run_states.go",
+   "old": "each.deadline = min(each.deadline, addMillis(states.loop.Now(), change.WithinMs))",
+   "new": "each.deadline = max(each.deadline, addMillis(states.loop.Now(), change.WithinMs))"
+  }
+ ],
+ "packages/chord/src/next/jobs/stored.ts": [
+  {
+   "file": "chord/next/host/jobs_stored.go",
+   "old": "record.Set(\"finishFailures\", float64(finishFailures))",
+   "new": "record.Set(\"finishFailures\", float64(finishFailures+1))"
+  }
  ]
 }
