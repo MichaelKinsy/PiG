@@ -43,7 +43,7 @@ func jobsKeyedState(t *testing.T) *documents.StateDefinition {
 	return definition
 }
 
-func jobArgs() contracts.TSchema { return contracts.Obj(contracts.Prop("command", contracts.Str())) }
+func jobArgs() contracts.Schema { return contracts.Obj(contracts.Prop("command", contracts.Str())) }
 
 func expectDefineError(t *testing.T, name string, options JobOptions, want string) {
 	t.Helper()
@@ -104,7 +104,7 @@ func TestDefineJobRefusesABadNameVersionOrConcurrency(t *testing.T) {
 
 // definition.test.ts: defineJob requires closed JSON args, as a method's: open objects and bytes are refused; records are fine
 func TestDefineJobRequiresClosedJSONArgs(t *testing.T) {
-	open := contracts.TSchema{Node: delta.JsonObjectOf("type", "object", "properties", delta.JsonObjectOf("a", contracts.Str().Node))}
+	open := contracts.Schema{Node: delta.JsonObjectOf("type", "object", "properties", delta.JsonObjectOf("a", contracts.Str().Node))}
 	expectDefineError(t, "j", JobOptions{Version: 1, Args: open, Result: contracts.Int()}, "argument objects must be closed")
 	expectDefineError(t, "j", JobOptions{Version: 1, Args: contracts.Obj(contracts.Prop("data", contracts.Bytes())), Result: contracts.Int()},
 		"j.args: job arguments are JSON")

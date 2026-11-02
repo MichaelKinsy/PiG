@@ -64,7 +64,7 @@ func rhEqual(t testing.TB, what string, got, want any) {
 
 func rhCreate(t testing.TB, options HostOptions) Host { return newHost(t, options) }
 
-func rhProp(name string, schema contracts.TSchema) contracts.Property {
+func rhProp(name string, schema contracts.Schema) contracts.Property {
 	return contracts.Prop(name, schema)
 }
 

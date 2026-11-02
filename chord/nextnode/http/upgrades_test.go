@@ -44,7 +44,7 @@ var who = must(contracts.Remote("test.who", contracts.RemoteDeclaration{
 	Version: 1, Params: contracts.Params{},
 	HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return serverKind.Address(nil), nil },
 	Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{
-		Methods: []contracts.MethodEntry{contracts.Meth("who", contracts.NewMethod(contracts.TSchema{}, contracts.Str()))},
+		Methods: []contracts.MethodEntry{contracts.Meth("who", contracts.NewMethod(contracts.Schema{}, contracts.Str()))},
 	})},
 }))
 

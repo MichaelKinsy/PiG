@@ -817,7 +817,7 @@ func TestAttemptCallsTakeAPlainValueOrASynchronousThrowFromAHandlerThatIsNoAsync
 	plain := mustContract(contracts.Local("app.plain", contracts.LocalDeclaration{Params: contracts.Params{},
 		Version: 1,
 		Members: []contracts.LocalEntry{
-			contracts.Mem("value", contracts.NewMethod(contracts.TSchema{}, contracts.Int())),
+			contracts.Mem("value", contracts.NewMethod(contracts.Schema{}, contracts.Int())),
 			contracts.Mem("fail", contracts.NewMethod()),
 		},
 	}))

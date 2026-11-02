@@ -350,7 +350,7 @@ func TestHostRootRefusesAnAnonymousScopeARemoteTypeServedHereForbiddenALocalOneI
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
 		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
-			contracts.Meth("read", contracts.NewMethod(contracts.TSchema{}, contracts.Str())),
+			contracts.Meth("read", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
 		}})},
 	}))
 	address := serverAddress()

@@ -828,7 +828,7 @@ func exBlocked(onAbort func(cause error)) contracts.MethodFunction {
 
 func TestExample06Natives(t *testing.T) {
 	clock := exLocal("example.clock", contracts.Params{exProp("zone", exStr())},
-		contracts.Mem("zone", exStr()), contracts.Mem("now", contracts.NewMethod(contracts.TSchema{}, exStr())))
+		contracts.Mem("zone", exStr()), contracts.Mem("now", contracts.NewMethod(contracts.Schema{}, exStr())))
 	leaky := exLocal("example.leaky", contracts.Params{}, contracts.Mem("n", exInt()))
 	var logs exCollector
 	var ticks sync.Map
@@ -1193,7 +1193,7 @@ func TestExample08Remote(t *testing.T) {
 func TestExample09Calls(t *testing.T) {
 	files := exRemote("example.files", contracts.Params{}, exServerAddress, contracts.Var("owner", contracts.VariantDeclaration{
 		Methods: []contracts.MethodEntry{
-			contracts.Meth("whoami", contracts.NewMethod(contracts.TSchema{}, exStr())),
+			contracts.Meth("whoami", contracts.NewMethod(contracts.Schema{}, exStr())),
 			// A `bytes()` leaf: the argument and result travel as raw segments, never base64.
 			contracts.Meth("upload", contracts.NewMethod(exObj(exProp("name", exStr()), exProp("data", exBytes())), exInt())),
 			contracts.Meth("download", contracts.NewMethod(exObj(exProp("name", exStr())), exBytes())),
@@ -1594,12 +1594,12 @@ func TestExample12Routes(t *testing.T) {
 			State: []contracts.Property{exProp("notes", exArr(exStr()))},
 			Methods: []contracts.MethodEntry{
 				contracts.Meth("add", contracts.NewMethod(exObj(exProp("text", exStr())), exInt())),
-				contracts.Meth("whoami", contracts.NewMethod(contracts.TSchema{}, exStr())),
+				contracts.Meth("whoami", contracts.NewMethod(contracts.Schema{}, exStr())),
 			},
 		}),
 		contracts.Var("reader", contracts.VariantDeclaration{
 			State:   []contracts.Property{exProp("notes", exArr(exStr()))},
-			Methods: []contracts.MethodEntry{contracts.Meth("whoami", contracts.NewMethod(contracts.TSchema{}, exStr()))},
+			Methods: []contracts.MethodEntry{contracts.Meth("whoami", contracts.NewMethod(contracts.Schema{}, exStr()))},
 		}))
 	lobby := exRemote("example.lobby", contracts.Params{}, exServerAddress, contracts.Var("visitor", contracts.VariantDeclaration{
 		Methods: []contracts.MethodEntry{contracts.Meth("peek", contracts.NewMethod(exObj(exProp("session", exStr())), exStr()))},
@@ -2408,7 +2408,7 @@ func TestExample15Revocation(t *testing.T) {
 func TestExample16PresenceAndActivity(t *testing.T) {
 	doc := exRemote("example.doc", contracts.Params{exProp("id", exStr())}, exServerAddress, contracts.Var("v", contracts.VariantDeclaration{
 		State:   []contracts.Property{exProp("viewers", exInt())},
-		Methods: []contracts.MethodEntry{contracts.Meth("think", contracts.NewMethod(contracts.TSchema{}, exInt()))},
+		Methods: []contracts.MethodEntry{contracts.Meth("think", contracts.NewMethod(contracts.Schema{}, exInt()))},
 	}))
 	userOf := func(name string) data.Principal { return jsonObject("kind", "user", "name", name) }
 	thinking := make(chan struct{})

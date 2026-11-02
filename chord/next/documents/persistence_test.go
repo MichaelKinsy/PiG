@@ -18,7 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
-func noteSchema() contracts.TSchema {
+func noteSchema() contracts.Schema {
 	return contracts.Obj(contracts.Prop("title", contracts.Str()), contracts.Prop("n", contracts.Int()))
 }
 

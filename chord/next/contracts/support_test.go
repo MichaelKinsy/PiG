@@ -11,8 +11,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// Shared helpers of the contracts tests. The TypeBox constructors the upstream tests call (Type.Object, Type.Tuple, ...)
-// have no Go counterpart in the package; the tests build the schema data TypeBox 1.3.27 emits for them.
+// Shared helpers of the contracts tests. The upstream tests write schemas pi-schema has no builder for (an open object,
+// a tuple) as plain object literals; the Go tests build the same data (raw, tbObject).
 
 // must returns value, panicking on err: the test binary then fails with the error and its stack.
 func must[T any](value T, err error) T {
@@ -48,9 +48,9 @@ func js(t testing.TB, text string) delta.JsonValue {
 }
 
 // raw is a schema built from JSON text, as a JavaScript caller's plain object schema.
-func raw(t testing.TB, text string) contracts.TSchema {
+func raw(t testing.TB, text string) contracts.Schema {
 	t.Helper()
-	return contracts.TSchema{Node: js(t, text)}
+	return contracts.Schema{Node: js(t, text)}
 }
 
 // stringify is JSON.stringify.
@@ -81,7 +81,7 @@ func sorted(value any) any {
 			out[i] = sorted(item)
 		}
 		return out
-	case contracts.TSchema:
+	case contracts.Schema:
 		return sorted(typed.Node)
 	}
 	return value
@@ -105,8 +105,8 @@ func sameJSON(t testing.TB, got any, want string) {
 	}
 }
 
-// tbObject is Type.Object(properties): TypeBox's open object, `required` left out when empty.
-func tbObject(properties ...contracts.Property) contracts.TSchema {
+// tbObject is the open object `{ type: "object", properties, required }` (a schema a JavaScript caller writes by hand), `required` left out when empty.
+func tbObject(properties ...contracts.Property) contracts.Schema {
 	props := delta.NewJsonObject(len(properties))
 	var required []any
 	for _, property := range properties {
@@ -120,14 +120,7 @@ func tbObject(properties ...contracts.Property) contracts.TSchema {
 		node.Set("required", required)
 	}
 	node.Set("properties", props)
-	return contracts.TSchema{Node: node}
-}
-
-// tbClosedObject is Type.Object(properties, { additionalProperties: false }), which obj() makes.
-func tbClosedObject(properties ...contracts.Property) contracts.TSchema {
-	schema := tbObject(properties...)
-	schema.Node.(*delta.JsonObject).Set("additionalProperties", false)
-	return schema
+	return contracts.Schema{Node: node}
 }
 
 // server is the host kind of the upstream tests' `Server`.

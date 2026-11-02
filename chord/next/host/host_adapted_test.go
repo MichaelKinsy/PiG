@@ -428,7 +428,7 @@ var adaptedRowsDoc = func() *documents.StateDefinition {
 }()
 
 // adaptedKeyedType is a local type with the keyed member `member` of schema and `set` taking an int (plus the extras).
-func adaptedKeyedType(name, member string, schema contracts.TSchema) *contracts.Contract {
+func adaptedKeyedType(name, member string, schema contracts.Schema) *contracts.Contract {
 	return mustContract(declareLocal(name, contracts.LocalDeclaration{
 		Version: 1, Params: contracts.Params{},
 		Members: []contracts.LocalEntry{contracts.Mem(member, contracts.Keyed(schema)), contracts.Mem("set", contracts.NewMethod(contracts.Int()))},

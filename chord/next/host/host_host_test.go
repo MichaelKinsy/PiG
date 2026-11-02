@@ -1239,13 +1239,13 @@ var (
 		Members: []contracts.LocalEntry{contracts.Mem("who", contracts.Str())},
 	}))
 	principalDesk = mustContract(declareLocal("app.desk", contracts.LocalDeclaration{Params: contracts.Params{},
-		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("who", contracts.NewMethod(contracts.TSchema{}, contracts.Str()))},
+		Version: 1, Members: []contracts.LocalEntry{contracts.Mem("who", contracts.NewMethod(contracts.Schema{}, contracts.Str()))},
 	}))
 	principalGate = mustContract(declareRemote("app.gate", contracts.RemoteDeclaration{
 		Version:     1,
 		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
 		Variants: []contracts.VariantEntry{contracts.Var("v", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
-			contracts.Meth("who", contracts.NewMethod(contracts.TSchema{}, contracts.Str())),
+			contracts.Meth("who", contracts.NewMethod(contracts.Schema{}, contracts.Str())),
 		}})},
 	}))
 )
