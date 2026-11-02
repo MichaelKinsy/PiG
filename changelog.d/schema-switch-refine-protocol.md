@@ -1,6 +1,6 @@
 ### Changed
 
-- `Type.Refine()` refinements are no longer run when a tool's arguments are validated, as in Pi 0.7.0, which validates tool arguments as plain JSON Schema: arguments a refinement would reject are accepted, and the constraint belongs in the tool's handler. The Go, Rust, Python, Lisp and Node extension runtimes no longer declare a tool's refinements or answer the host's `tool_refine_arguments` request, which no longer exists. `Type.Refine` and `Type.IsRefine` stay as schema constructors in the Go, Rust and Python SDKs (Lisp `type-refine`), and the schema's JSON is unchanged.
+- `Type.Refine()` refinements are no longer run when a tool's arguments are validated, as in Pi 1.4.0+b556cfe5, which validates tool arguments as plain JSON Schema: arguments a refinement would reject are accepted, and the constraint belongs in the tool's handler. The Go, Rust, Python, Lisp and Node extension runtimes no longer declare a tool's refinements or answer the host's `tool_refine_arguments` request, which no longer exists. `Type.Refine` and `Type.IsRefine` stay as schema constructors in the Go, Rust and Python SDKs (Lisp `type-refine`), and the schema's JSON is unchanged.
 
 ### Removed
 

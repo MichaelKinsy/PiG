@@ -404,7 +404,7 @@ encoder writes something that reads back as the same schema."
       ext)))
 
 (deftest a-refined-tool-declares-no-refinements-and-never-runs-them
-  ;; Pi 0.7.0 validates a tool's arguments as plain JSON Schema: Type.refine data stays in this process and no predicate is ever called.
+  ;; Pi 1.4.0+b556cfe5 validates a tool's arguments as plain JSON Schema: Type.refine data stays in this process and no predicate is ever called.
   (let* ((log (list '())) (ext (tt-refine-extension log)))
     (with-host (host ext register)
       (let ((declaration (aref (pig:jget (pig:jget register "register") "tools") 0)))

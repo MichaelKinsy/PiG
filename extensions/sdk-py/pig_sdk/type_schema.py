@@ -40,7 +40,7 @@ class TSchema(dict):
 
 class Refinement(NamedTuple):
     """One entry of a schema's hidden ``~refine`` list (TypeBox's ``{check, error}``): ``check(value)`` decides whether a value passes and ``error(value)`` words the failure (None is
-    TypeBox's "Refine Error"). TypeBox's own validation runs them, but a tool's arguments are validated as plain JSON Schema (Pi 0.7.0 validates with pi-schema), so nothing in a tool's
+    TypeBox's "Refine Error"). TypeBox's own validation runs them, but a tool's arguments are validated as plain JSON Schema (Pi 1.4.0+b556cfe5 validates with pi-schema: ai/CHANGELOG.md:25, coding-agent/docs/extensions.md:176), so nothing in a tool's
     registration or call consults the list: arguments a refinement would reject are accepted, and the constraint belongs in the tool's handler."""
 
     check: Callable[[Any], Any]

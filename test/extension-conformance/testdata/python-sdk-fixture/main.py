@@ -599,7 +599,7 @@ def new_extension() -> pig_sdk.Extension:
         "recordPattern": T.string({"description": T.record_pattern(T.record(s, n))}),
         "enumKeyRecord": T.record(T.enum(["x", "y"]), n),
     }, {"additionalProperties": False}), lambda ctx, args: "ok")
-    # refine-probe (TestConformance_RefinedToolArgumentsAreNotRefined): the schema of the probe tool; every predicate and message function logs its call, and the test asserts the log stays empty (Pi 0.7.0 never runs a refinement).
+    # refine-probe (TestConformance_RefinedToolArgumentsAreNotRefined): the schema of the probe tool; every predicate and message function logs its call, and the test asserts the log stays empty (Pi 1.4.0+b556cfe5 never runs a refinement).
     refine_log: list = []
 
     def checked(tag, check):

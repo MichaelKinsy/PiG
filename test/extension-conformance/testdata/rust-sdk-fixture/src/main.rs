@@ -1038,7 +1038,7 @@ fn main() {
         );
     }
     {
-        // refine-probe (TestConformance_RefinedToolArgumentsAreNotRefined): the schema of the probe tool; every predicate and message function logs its call, and the test asserts the log stays empty (Pi 0.7.0 never runs a refinement).
+        // refine-probe (TestConformance_RefinedToolArgumentsAreNotRefined): the schema of the probe tool; every predicate and message function logs its call, and the test asserts the log stays empty (Pi 1.4.0+b556cfe5 never runs a refinement).
         use pig_sdk::Type;
         use std::sync::{Arc, Mutex};
         let log: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));

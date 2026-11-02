@@ -77,4 +77,8 @@ add("a root null", { type: "object", properties: {} }, null);
 add("a root list", { type: "object", properties: {} }, []);
 add("a root string", { type: "string" }, "x");
 add("an empty schema", {}, { a: 1 });
+// formatValidationPath (validation.ts:21-28) decodes `~1` before `~0`: the property "a~1" is the pointer /a~01, which reads back as "a~1"; decoding `~0` first would read it as "a/".
+add("a property named a~1 is reported under its own name", { type: "object", properties: { "a~1": { type: "string" } } }, { "a~1": [1] });
+add("a property named a/b is reported under its own name", { type: "object", properties: { "a/b": { type: "string" } } }, { "a/b": [1] });
+add("a property named ~01 under a property named ~1", { type: "object", properties: { "~1": { type: "object", properties: { "~01": { type: "string" } } } } }, { "~1": { "~01": [1] } });
 export { cases };

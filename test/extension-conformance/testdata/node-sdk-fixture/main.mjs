@@ -44,7 +44,7 @@ export default function (pi) {
       generic: Type.Generic([Type.Parameter("T", S, S)], Type.Array(Type.Ref("T"))), recordKey: Type.RecordKey(Type.Record(S, N)), recordValue: Type.RecordValue(Type.Record(S, N)),
       recordPattern: Type.String({ description: Type.RecordPattern(Type.Record(S, N)) }), enumKeyRecord: Type.Record(Type.Enum(["x", "y"]), N),
     }, { additionalProperties: false }), execute: async () => ({ content: [{ type: "text", text: "ok" }] }) }); }
-  { // refine-probe (TestConformance_RefinedToolArgumentsAreNotRefined): Pi's own Type.Refine; every predicate and message function logs its call, and the test asserts the log stays empty (Pi 0.7.0 never runs a refinement).
+  { // refine-probe (TestConformance_RefinedToolArgumentsAreNotRefined): Pi's own Type.Refine; every predicate and message function logs its call, and the test asserts the log stays empty (Pi 1.4.0+b556cfe5 never runs a refinement).
     const Type = piAi.Type, log = [];
     const checked = (tag, check) => (value) => { log.push(`check:${tag}`); return check(value); };
     const worded = (tag, message) => (value) => { log.push(`error:${tag}`); return message(value); };

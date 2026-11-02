@@ -213,7 +213,7 @@ out when there are none. Keys that are array indexes come first and ascending, a
 
 (defstruct (type-refinement (:constructor make-type-refinement (check message)))
   "One entry of a schema's hidden ~refine list: (funcall CHECK value) decides whether a value passes and (funcall MESSAGE value) words the
-failure (NIL is TypeBox's \"Refine Error\"). TypeBox's own validation runs them, but a tool's arguments are validated as plain JSON Schema (Pi 0.7.0 validates with pi-schema), so nothing consults the list: arguments a refinement would reject are accepted and the constraint belongs in the tool's handler."
+failure (NIL is TypeBox's \"Refine Error\"). TypeBox's own validation runs them, but a tool's arguments are validated as plain JSON Schema (Pi 1.4.0+b556cfe5 validates with pi-schema: ai/CHANGELOG.md:25, coding-agent/docs/extensions.md:176), so nothing consults the list: arguments a refinement would reject are accepted and the constraint belongs in the tool's handler."
   check message)
 
 (defun type-refine (&rest arguments)
