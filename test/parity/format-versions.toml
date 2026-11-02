@@ -275,7 +275,7 @@ owner = "<package>"
 field = "ProtocolVersion"
 wire_name = "-"
 classification = "upstream"
-rationale = "Exact value of PROTOCOL_VERSION in pinned packages/chord/src/next/data/errors.ts: the data protocol number; Pi owns it, a change there is a change of the fingerprint."
+rationale = "Exact value of PROTOCOL_VERSION in pinned packages/chord/src/next/data/errors.ts: the data protocol number; Pi owns it."
 
 [[fields]]
 id = "chord/next/data/errors.go#const.ReasonVersion:go:-"
@@ -563,7 +563,7 @@ owner = "<package>"
 field = "RowVersion"
 wire_name = "-"
 classification = "upstream"
-rationale = "Exact value of ROW_VERSION in pinned packages/chord/src/next/store/rows.ts: the reserved row column name $v; Pi owns it, a change there is a change of the fingerprint."
+rationale = "Exact value of ROW_VERSION in pinned packages/chord/src/next/store/rows.ts: the reserved row column name $v; Pi owns it."
 
 [[fields]]
 id = "chord/next/store/table.go#TableDefinition.Version:go:-"
@@ -1498,7 +1498,7 @@ path = "internal/codingagent/interactive_changelog.go"
 owner = "extensionChangelogUpdate"
 field = "Version"
 wire_name = "-"
-classification = "upstream"
+classification = "release-content"
 rationale = "The extension package's package.json version, stored per package as Pi's interactive-mode.ts does for settings.extensionChangelogVersions; a release identity, not a format discriminator."
 
 [[fields]]

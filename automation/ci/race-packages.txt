@@ -31,7 +31,7 @@ libs  ./chord/host
 libs  ./chord/output
 libs  ./chord/telemetrysqlite
 libs  ./chord/internal/parking
-libs  ./internal/chord/winpipe
+exempt ./internal/chord/winpipe Windows-only tests; the nightly race matrix has no Windows job
 libs  ./chord/next/documents
 libs  ./chord/next/host
 libs  ./chord/next/link
