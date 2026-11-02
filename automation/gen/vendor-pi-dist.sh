@@ -170,7 +170,6 @@ done
 rm -rf "$shims/photon-node"
 node "$root/automation/gen/vendor-node-dependencies.mjs" "$agent/node_modules/@silvia-odwyer/photon-node/package.json" "$shims/photon-node"
 node "$root/automation/gen/vendor-pi-session-seams.mjs" "$agent" "$dist/pi-coding-agent"
-node "$root/automation/gen/vendor-pi-package-roots.mjs" "$shims" "$agent"
 node "$root/automation/gen/vendor-pi-startup-seams.mjs" "$dist/pi-coding-agent"
 # PiG's product identity for Pi's outbound identity literals and hosted endpoints (D26); the same values the Go host sends.
 node "$root/automation/gen/pi-identity-patches.mjs" "$dist"
@@ -236,6 +235,8 @@ done
 
 node "$root/automation/gen/bundle-pi-libraries.mjs" "$shims"
 node "$root/automation/gen/bundle-pi-sdk.mjs" "$shims"
+# After the bundles: a package root entry may forward to a bundled module.
+node "$root/automation/gen/vendor-pi-package-roots.mjs" "$shims" "$agent"
 node "$root/automation/gen/vendor-node-manifest.mjs" "$shims" "$agent"
 
 version() { node -p "require('$1/package.json').version"; }
