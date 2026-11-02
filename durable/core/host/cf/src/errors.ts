@@ -68,16 +68,25 @@ export function errorMessage(error: unknown): string {
   try { return String(error) } catch { return Object.prototype.toString.call(error) }
 }
 
+/** The Storage failure that failed the Session: the value its Storage threw, which is not always an Error (`undefined`, `null`). */
+export type StorageFailure = { error: unknown }
+
+/** The {name, message} the core carries for a thrown value. */
+export const wireError = (error: unknown): { name: string; message: string } => error instanceof Error ? { name: error.name, message: error.message } : { name: "Error", message: errorMessage(error) }
+
 /**
  * Rebuild the error Pi would have thrown from its wire form. `failure` is the Storage error that failed the Session, which the host
- * still holds as the object its Storage threw: the call that hit it rejects with that error itself, and `SessionFailed` carries it
+ * still holds as the value its Storage threw: the call that hit it rejects with that value itself, and `SessionFailed` carries it
  * as its cause.
  */
-export function reviveError(body: WireErrorBody, failure?: Error): Error {
+export function reviveError(body: WireErrorBody, failure?: StorageFailure): any {
   const message = body.message ?? ""
   let error: Error
-  if (failure !== undefined && body.name === "SessionFailed") return new SessionFailed(failure)
-  if (failure !== undefined && (body.name ?? "Error") === failure.name && message === failure.message) return failure
+  if (failure !== undefined && body.name === "SessionFailed") return new SessionFailed(failure.error)
+  if (failure !== undefined) {
+    const wire = wireError(failure.error)
+    if ((body.name ?? "Error") === wire.name && message === wire.message) return failure.error
+  }
   switch (body.name) {
     case "ConversationBusy": {
       error = new ConversationBusy(body.conversationId ?? /\d+/.exec(message)?.[0] ?? "")

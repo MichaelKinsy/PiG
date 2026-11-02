@@ -55,12 +55,11 @@ func TestTheReconcileChargesATickForEachChainLoadItAwaits(t *testing.T) {
 
 	reads := 0
 	s := newSession(readCountingStore{MemStore: mem, ticks: &reads}, mem.NextID())
-	loop := &session.Loop{}
+	loop := bound(s)
 	var jobs []int
-	loop.Hold = func(release func()) bool {
-		jobs = append(jobs, s.TakeTicks())
-		loop.Defer(release)
-		return true
+	loop.Elapsed = func(e session.Ended) (int, int) {
+		jobs = append(jobs, e.Ticks.Change)
+		return 0, 0
 	}
 	registry := snap{}
 	sched := session.NewScheduler(s, loop, session.Env{
@@ -81,10 +80,11 @@ func TestTheReconcileChargesATickForEachChainLoadItAwaits(t *testing.T) {
 	if err := loop.Run(); err != nil {
 		t.Fatal(err)
 	}
-	// Two base awaits, one conversation read, the two #loadChain calls and scanAll.
-	want := 2 + perRead + 2 + 1
+	// #loadScopes' return, one conversation read, the two #loadChain calls and scanAll; `await #marks()` (its region and its return), the withdrawn
+	// inputs' region, and `await #finalize` (its region and its return).
+	want := 1 + perRead + 2 + 1 + 2 + 1 + 2
 	if slices.Contains(jobs, want) {
 		return
 	}
-	t.Fatalf("transaction ticks of the jobs after reopen %v, want a reconcile of %d (2 awaits, a %d-tick read, 2 #loadChain calls, scanAll)", jobs, want, perRead)
+	t.Fatalf("transaction ticks of the jobs after reopen %v, want a reconcile of %d (a %d-tick read, 2 #loadChain calls, scanAll and the regions' awaits)", jobs, want, perRead)
 }

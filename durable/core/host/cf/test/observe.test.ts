@@ -319,7 +319,7 @@ test("recordings of the production native run replay through the Wasm core with 
   for (const { abiId, events } of [seeded, reopened]) {
     assert.equal(abiId, new WasmCore(module, { log: () => {} }).abiId)
     assert.ok(events.length > 100)
-    const observer = new FlightRecorder({ events: events.length + 1 })
+    const observer = new FlightRecorder({ events: events.length + 1, steps: events.length + 1 })
     const out = replayEvents(module, events, { recorder: observer })
     assert.equal(out.trap, undefined)
     assert.equal(out.steps.length, events.length)

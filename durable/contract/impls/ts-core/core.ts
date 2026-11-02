@@ -100,7 +100,6 @@ const generationDelta = (generation: Rec) => `[["s",["generation"],${JSON.string
 const INTERRUPTED_REQUEST = (attempt: number) => `The host stopped while the model was answering, on attempt ${attempt}`
 /** settings.retry's defaults (harness/agent.ts): enabled, three retries, a base delay of 2 s that doubles with each attempt (generation.ts retryDelayMs). */
 const RETRY = { maxRetries: 3, baseDelayMs: 2000 }
-const TOOL_RUNNING_DELTA = `[["s",["tools",0,"status"],"running"]]`
 const ceil4 = (n: number) => Math.ceil(n / 4)
 
 export class CoreError extends Error {}
@@ -363,15 +362,16 @@ export class Core {
   private begin() { this.commits = [] }
   private finish(effect: number, arg = 0): Step { const commits = this.commits; this.commits = []; return { commits, effect, arg } }
 
-  /** The three commits that take a pending generation to a model request. */
+  /** The two commits that take a pending generation to a model request. */
   private runGeneration() {
     const g = this.gen(this.t.gen)
     this.commit(() => this.putTask(g, { status: "running", checkpoint: { phase: "prepare", attempt: 1 } }))
     this.commit(() => this.putTask(g, { status: "running", checkpoint: this.requestCheckpoint() }))
-    this.commit(seq => { this.live.generation = { attempt: 1 }; this.putRevision(this.liveDoc, seq, "delta", ATTEMPT_DELTA) })
+    // The attempt (`generation: { attempt: 1 }`) rides with the document's next write (harness/generation.ts, PROGRESS_COMMIT): no commit of its own.
+    this.live.generation = { attempt: 1 }
   }
 
-  /** The input event. Four commits, then the model effect. */
+  /** The input event. Three commits, then the model effect. */
   submit(reqId: string, text: string, now: number): Step {
     this.begin()
     now = this.now = Math.max(now, this.notBefore)
@@ -446,15 +446,15 @@ export class Core {
       this.putBase(this.usageDoc, seq, this.usage)
     })
     this.commit(() => this.putTask(this.tool(), { status: "running", checkpoint: { phase: "call" } }))
-    this.commit(seq => this.executeTool(seq))
+    this.commit(() => this.executeTool())
     return this.finish(EFFECT_TOOL, call)
   }
 
-  /** The tool task reaches its execute phase, and the live document records it running (a delta). */
-  private executeTool(seq: number) {
+  /** The tool task reaches its execute phase, and the live document holds its slot running. */
+  private executeTool() {
     this.putTask(this.tool(), { status: "running", checkpoint: { phase: "execute", arguments: { n: this.t.call }, replay: "unsafe" } })
+    // The slot's `running` status rides with the document's next write (harness/tool.ts): no delta of its own.
     this.live.tools[0].status = "running"
-    this.putRevision(this.liveDoc, seq, "delta", TOOL_RUNNING_DELTA)
   }
 
   /** Pi's recordUsage (src/harness/usage.ts): a new bucket entry is a copy of the usage, an existing one has it added. */
@@ -466,7 +466,7 @@ export class Core {
     total.cost.input += add.cost.input; total.cost.output += add.cost.output; total.cost.cacheRead += add.cost.cacheRead; total.cost.cacheWrite += add.cost.cacheWrite; total.cost.total += add.cost.total
   }
 
-  /** The tool effect's result text. Six commits, then the next model effect. */
+  /** The tool effect's result text. Five commits, then the next model effect. */
   toolResult(text: string, now: number, durationMs?: number): Step {
     if (!this.t.active) throw new CoreError("no active turn")
     this.begin()
@@ -493,7 +493,7 @@ export class Core {
     })
   }
 
-  /** A generation whose tool has settled goes to its next model request: it wakes, finishes, and the next one runs prepare, request and the attempt delta. A generation persisted as running restarts first. */
+  /** A generation whose tool has settled goes to its next model request: it wakes, finishes, and the next one runs prepare and request. A generation persisted as running restarts first. */
   private afterTool(resumed: boolean) {
     const t = this.t
     const g = this.gen(t.gen)
@@ -605,7 +605,7 @@ export class Core {
       if (tool.state.status === "running") reset(tool)
       if (tool.state.checkpoint?.phase === "call") {
         run(tool)
-        this.commit(seq => this.executeTool(seq))
+        this.commit(() => this.executeTool())
         return this.finish(EFFECT_TOOL, call)
       }
       run(tool)

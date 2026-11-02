@@ -17,14 +17,6 @@ import (
 
 // hostTx is one extension transaction (ABI section 8): a Session transaction whose callback runs in the host, one
 // operation per tx event, from begin to end or abort.
-// lineWait is one waiter of the Session line in Session mode (no Loop): a host transaction, or a read job that waits its turn
-// behind the transactions queued before it (session.ts #enqueue is one FIFO).
-type lineWait struct {
-	tx  uint32
-	api uint32 // the request ID of a queued api request (read job), 0 for a transaction
-	req *jv.Object
-}
-
 type hostTx struct {
 	id    uint32
 	scope session.TxScope
@@ -44,6 +36,9 @@ type hostTx struct {
 	// abandoned is set when the host aborted the transaction before it held the line (a caller that stopped waiting for it): the
 	// transaction still takes its turn in the line's order, which grant then gives up at once.
 	abandoned bool
+	// job is the transaction's job on the Session line; aborted is set when the host's callback threw, which the host knows.
+	job     *session.HostJob
+	aborted bool
 }
 
 // hostDoc is the definition of a document a host transaction opened, with the values the host computed for it.
@@ -107,13 +102,18 @@ func (h *handler) onTx(ev *abi.Event) error {
 		t.elapsed = int(numOf(op, "elapsed"))
 		return h.txEnd(t, objOf(op, "state"))
 	case "abort":
+		// The host's callback threw: nothing is staged, and the job ends with its error, which the host knows.
 		e := objOf(op, "error")
+		err := errors.New(strOf(e, "message"))
+		t.elapsed = int(numOf(op, "elapsed"))
 		if t.rt != nil {
-			t.rt.AbandonHost(t.tx, errors.New(strOf(e, "message")))
+			t.rt.AbandonHost(t.tx, err)
 		} else {
-			h.sess.Abandon(t.tx, errors.New(strOf(e, "message")))
+			h.sess.Abandon(t.tx, err)
 		}
-		h.release(t)
+		t.tx, t.aborted = nil, true
+		h.endingTx = t
+		t.job.End(err)
 		return nil
 	}
 	h.txRun(t, name, op)
@@ -137,10 +137,10 @@ func (h *handler) txRun(t *hostTx, name string, op *jv.Object) {
 		return
 	}
 	t.mintDone, t.convDone = false, false
-	if session.IsNeedGate(err) {
-		// The operation stored held changes (session/held.go) and the host's Storage holds that commit: it runs again, from the
-		// start, once the Storage answered.
-		h.cg.retry, h.cg.retryTx, h.cg.retryName, h.cg.retryOp = retryTx, t, name, op
+	if np, ok := needPublication(err); ok {
+		// A key the operation touches has an unpublished writer: the operation waits for its publication and runs again, as Pi's callback
+		// continues after its `await gate` (session.ts touch).
+		h.txWait(t, name, op, np)
 		return
 	}
 	if err != nil {
@@ -253,28 +253,21 @@ func (h *handler) txBegin(id uint32, op *jv.Object) error {
 		}
 	}
 	h.txs[id] = t
-	if h.loop != nil {
-		// The transaction takes its turn on the Session line behind the jobs already queued (session.ts #enqueue is one FIFO).
-		if h.holder != 0 || h.loop.Busy() {
-			h.txAnswer(id, []byte(`{"waiting":true}`))
-		}
-		h.loop.LineBare(func() error { return h.grant(t) })
-		return nil
-	}
-	if h.holder != 0 {
-		h.queue = append(h.queue, lineWait{tx: id})
+	// The transaction takes its turn on the Session line behind the jobs already queued (session.ts #enqueue is one FIFO).
+	if h.loop.Busy() {
 		h.txAnswer(id, []byte(`{"waiting":true}`))
-		return nil
 	}
-	return h.grant(t)
+	t.scope.Host = true
+	t.job = h.loop.LineHostLead(func() error { return h.grant(t) }, func(err error) { h.txDone(t, err) }, hostAnswerLead)
+	return nil
 }
 
 // grant gives the Session line to a transaction and tells the host it is ready. A transaction the host abandoned while it waited
-// takes nothing.
+// takes nothing; one the Session refuses ends with the error, which txDone answers.
 func (h *handler) grant(t *hostTx) error {
 	if t.abandoned {
 		delete(h.txs, t.id)
-		return nil
+		return session.ErrHostNotGranted
 	}
 	var tx *session.Tx
 	var err error
@@ -284,15 +277,12 @@ func (h *handler) grant(t *hostTx) error {
 		tx, err = h.sess.Begin(t.scope)
 	}
 	if err != nil {
-		delete(h.txs, t.id)
-		h.txRejected(t.id, err)
-		return nil
+		return err
 	}
 	if t.scope.Deferred {
 		tx.DeferWithin(t.scope.WithinMs)
 	}
 	t.tx = tx
-	h.holder = t.id
 	if t.current != nil {
 		// A transaction of a task invocation also answers the task record it read as it took the line: the `current` of
 		// Runtime.commit's callback.
@@ -303,171 +293,82 @@ func (h *handler) grant(t *hostTx) error {
 	return nil
 }
 
-// release frees the line and grants it to the next waiting transaction.
-func (h *handler) release(t *hostTx) {
-	delete(h.txs, t.id)
-	if h.holder == t.id {
-		h.holder = 0
-	}
-	if h.loop != nil {
-		// The Loop starts the next job, a transaction's turn included, once the line is free.
-		h.loop.Kick()
-		return
-	}
-	for h.holder == 0 && len(h.queue) != 0 {
-		next := h.queue[0]
-		h.queue = h.queue[1:]
-		if next.req != nil {
-			_ = h.answerDirect(next.api, next.req)
-		} else if t := h.txs[next.tx]; t != nil {
-			_ = h.grant(t)
-		}
-	}
-}
+// hostAnswerLead is the ticks the facade needs from the core's answer of a transaction's end to its caller's resumption
+// (host/cf/src/client.ts end, facade/tx.ts runCommit): the core answers that many ticks before Pi's caller resumes.
+const hostAnswerLead = hopcost.Delivery
 
+// txEnd is the end of the host's callback: the Session settles the transaction and admits its writes to the writer, and the job's
+// outcome follows from the Loop (txDone).
 func (h *handler) txEnd(t *hostTx, state *jv.Object) error {
-	held := h.loop != nil
-	if held {
-		h.sess.HoldPublications()
-	}
+	tx := t.tx
 	var err error
+	h.finishing = true
+	h.beginGateReads()
 	if t.rt != nil {
-		_, err = t.rt.FinishHost(t.tx, t.current, state)
+		_, err = t.rt.FinishHost(tx, t.current, state)
 	} else {
-		_, err = h.sess.Finish(t.tx)
+		_, err = h.sess.Finish(tx)
 	}
-	var pubs []*session.Publication
-	if held {
-		pubs = h.sess.HeldPublications()
-	}
-	if session.IsNeedGate(err) {
-		// The host's Storage holds the commit: the transaction keeps the line, and its end is answered when the Storage
-		// accepts or refuses the writes (gate.go).
-		h.cg.resume = func() { h.txEndSettled(t) }
-		h.txAnswer(t.id, []byte(`{"gated":true}`))
+	h.finishing = false
+	if need, ok := session.IsNeedRead(err); ok && len(need.Reads) == 0 {
+		// The settle's chain load reads through the host's Storage: it waits for the answer and settles again.
+		h.finishTx, h.finishState = t, state
 		return nil
 	}
-	if err != nil {
-		// A refused commit ends no held job: its Transaction ticks (Session.Finish) must not become the next line job's change.
-		h.sess.TakeTicks()
-		h.release(t)
-		return &Rejection{errorName(err), errorMessage(err)}
+	h.endGateReads()
+	if np, ok := needPublication(err); ok {
+		// The settle read a key an unpublished commit writes: it waits for its publication and settles again.
+		np.Gate.Wait(func() { _ = h.txEnd(t, state) })
+		return nil
 	}
-	h.txCommitted(t, pubs)
+	t.tx = nil
+	h.endingTx = t
+	t.job.End(err)
 	return nil
 }
 
-// txEndSettled commits the transaction whose commit the host's Storage held, and answers its end.
-func (h *handler) txEndSettled(t *hostTx) {
-	held := h.loop != nil
-	if held {
-		h.sess.HoldPublications()
-	}
-	var err error
-	if t.rt != nil {
-		_, err = t.rt.FinishHostSettled(t.tx)
-	} else {
-		_, err = h.sess.FinishSettled(t.tx)
-	}
-	var pubs []*session.Publication
-	if held {
-		pubs = h.sess.HeldPublications()
-	}
-	if err != nil {
-		h.sess.TakeTicks()
-		h.release(t)
-		h.txRejected(t.id, err)
-		return
-	}
-	if h.cg.state == gateApplied {
-		// The Storage adopted the batch: the commit is published inside the adoption, and the end is answered when the call settles.
-		for _, pub := range pubs {
-			h.sess.Publish(pub)
-		}
-		h.cg.applied = t
-		return
-	}
-	h.txCommitted(t, pubs)
+// finishAgain is txEnd once the host's Storage answered the read the settle waited for.
+func (h *handler) finishAgain() {
+	t, state := h.finishTx, h.finishState
+	h.finishTx, h.finishState = nil, nil
+	_ = h.txEnd(t, state)
 }
 
-// txAnswered ends the transaction whose adopted commit the Storage's call has now settled; a call that failed after adopting fails the
-// Session, and the transaction with it.
-func (h *handler) txAnswered(t *hostTx, err error) {
-	if err != nil {
-		h.sess.Fail(err)
-		h.sess.TakeTicks()
-		h.release(t)
-		h.txRejected(t.id, err)
-		return
-	}
-	h.txCommitted(t, nil)
-}
-
-// txCommitted ends a committed transaction. The commit resolves at the end of Pi's job (the change's awaits, settle,
-// storage, #runCommit's return): in Harness mode its publication, the release of the line and the {result: null} answer
-// that resolves the host's end() wait for that duration (ABI section 5.3), as for the core's own line jobs.
-func (h *handler) txCommitted(t *hostTx, pubs []*session.Publication) {
-	t.tx = nil
-	total := max(h.jobHops()-t.elapsed, 0)
-	h.job = jobStats{mintStart: h.sess.NextID()}
-	answer := func() {
-		// The host's end() returns to the task: a task that ended for crashes is reported (scheduler.ts runtime.commit).
-		if t.rt != nil {
-			t.rt.ReportEnded()
-		}
+// txDone is the outcome of the transaction's job, delivered in line order: where Pi's `await commit(...)` resumes. It answers the end.
+func (h *handler) txDone(t *hostTx, err error) {
+	delete(h.txs, t.id)
+	if t.aborted {
+		// The host's callback threw: the caller's promise settles with its own error once the job's outcome is delivered.
 		h.txResult(t.id, nil)
-	}
-	publish := func() {
-		for _, pub := range pubs {
-			h.sess.Publish(pub)
-		}
-	}
-	end := func() { h.release(t) }
-	if h.loop == nil {
-		publish()
-		end()
-		answer()
 		return
 	}
-	adoptTail := hopcost.AdoptTail(h.hopProfile())
-	if memoryOnly(pubs) {
-		// A deferred commit held in memory publishes as #runCommit returns: there is no Storage adoption to wait for.
-		adoptTail = 0
+	if err != nil {
+		h.txRejected(t.id, err)
+		return
 	}
-	s := hostCommitSchedule(total, adoptTail)
-	steps := []holdStep{{s.publish, publish}, {s.answer, answer}}
-	if !h.holdSteps(s.release, steps, end) {
-		end()
+	// The host's end() returns to the task: a task that ended for crashes is reported (scheduler.ts runtime.commit).
+	if t.rt != nil {
+		t.rt.ReportEnded()
 	}
+	h.txResult(t.id, nil)
 }
 
-// memoryOnly reports whether every publication is a deferred commit held in memory.
-func memoryOnly(pubs []*session.Publication) bool {
-	for _, pub := range pubs {
-		if !pub.Memory {
-			return false
-		}
-	}
-	return len(pubs) != 0
+// txWait runs a transaction operation again once the part that writes the key it touched is published.
+func (h *handler) txWait(t *hostTx, name string, op *jv.Object, np *session.NeedPublication) {
+	np.Gate.Wait(func() {
+		h.loop.Wait(hopcost.GateResume+np.Extra, txRetry{h, t, name, op})
+	})
 }
 
-// hostCommitSchedule is when, in hops after the transaction's last host operation, the core publishes a host-driven commit, answers its end and frees the
-// line, for a Pi job whose run settles total hops later (jobHops less the passes the host's callback already spent). The publication is the Storage's
-// adoption, pubBeforeEnd + adoptTail (hopcost.AdoptTail) hops before the job's run settles, as for a core line job (publishAt; session.ts #runCommit under
-// #enqueue). Measured on Pi e7a0df27 with F-ticks-runtime-drift (a custom task's terminal commit: the job starts at pass 78, its change ends at 83, the
-// adoption is at 114 = 83 + total - 5 with total 36) and with a root create (adoption 151). The facade needs hostAnswerTicks passes from the core's answer
-// to its caller, so the answer goes out that much earlier. The line is freed total-1 hops after the last host operation: the F-ticks rows bind it (a release
-// at total+1 moves F-ticks-{node,gate} and F-ticks-runtime-drift-{node,gate} two passes late).
-type hostCommitHops struct{ publish, answer, release int }
-
-func hostCommitSchedule(total, adoptTail int) hostCommitHops {
-	release := max(total-1, 0)
-	return hostCommitHops{publish: max(total-pubBeforeEnd-adoptTail, 0), answer: max(total-hostAnswerTicks, 0), release: release}
+// txRetry is the continuation of an operation that waited at a gate.
+type txRetry struct {
+	h    *handler
+	t    *hostTx
+	name string
+	op   *jv.Object
 }
 
-// hostAnswerTicks is the microtask passes the facade spends from the core's tx_result to its caller's resumption: end()'s one reaction and the adoption of
-// its promise by runCommit's return, which the caller then awaits (host/cf/src/client.ts end, facade/tx.ts runCommit).
-const hostAnswerTicks = 3
+func (r txRetry) Resume() { r.h.txRun(r.t, r.name, r.op) }
 
 // publish emits the published notice of one commit (durable/core/host/PROTOCOL.md, Notices). The notice is written an
 // item at a time into abi.Chunks, so a 20,000-task commit's (megabytes) needs no block of its size.
@@ -539,11 +440,13 @@ func (h *handler) publish(pub *session.Publication) {
 		out.Append(append(item[:0], ']'))
 	}
 	if h.changes {
-		out.Append(h.appendChanges(append(item[:0], `,"changes":`...), pub.StoredChanges(), storedMode(pub)))
+		// The host restores `observed` before `changes` (harness.ts onNotice), so it is rendered first: the sent set takes this commit's own
+		// values before a stored change of the same document is left out as one the host holds.
 		if pub.Stored != nil {
 			// The Session's own observers see this commit's own changes only (session.ts #publish `observed`); a deadline's store shows them none.
 			out.Append(h.appendChanges(append(item[:0], `,"observed":`...), pub.Changes, valueFromOps))
 		}
+		out.Append(h.appendChanges(append(item[:0], `,"changes":`...), pub.StoredChanges(), storedMode(pub)))
 	}
 	out.Append(append(item[:0], '}'))
 	h.b.NoticeChunks(abi.NoticePublished, out)
@@ -674,7 +577,13 @@ func (h *handler) txOp(t *hostTx, name string, op *jv.Object) (any, error) {
 	case "task":
 		return nilRec(tx.Task(id))
 	case "latestHeadMarker":
-		return nilRec(tx.LatestHeadMarker(session.ID(numOf(op, "conversationId"))))
+		return nilRec(tx.LatestHeadMarkerAt(session.ID(numOf(op, "conversationId")), session.ID(numOf(op, "at"))))
+	case "latestEntryId":
+		latest, err := tx.LatestEntryID(session.ID(numOf(op, "conversationId")))
+		if err != nil || latest == 0 {
+			return nil, err
+		}
+		return float64(latest), nil
 	case "submissionByRequest":
 		return nilRec(tx.SubmissionByRequest(session.ID(numOf(op, "conversationId")), strOf(op, "requestId")))
 	case "scanConversations", "scanEntries", "scanTasks":
@@ -729,6 +638,9 @@ func (h *handler) txOp(t *hostTx, name string, op *jv.Object) (any, error) {
 		return nil, tx.SettleSubmission(id, objOf(op, "settlement"))
 	case "placeSubmission":
 		return nil, tx.PlaceSubmission(id, session.ID(numOf(op, "entry")))
+	case "touch":
+		// session.ts touch of the host's own read on the line: it waits while the key has an unpublished writer.
+		return nil, h.sess.Touch(strOf(op, "key"))
 	case "doc":
 		return h.txDoc(t, op)
 	case "doc.write":
@@ -962,7 +874,13 @@ func (h *handler) txDoc(t *hostTx, op *jv.Object) (any, error) {
 	}
 	def.CheckpointWhen = func(*jv.Object, []delta.Op, int) bool { return hd.checkpoint }
 	hd.def = def
-	value, deltas, loaded, err := t.tx.HostDoc(def, args)
+	var have session.DocRevision
+	holds := has(op, "revisions")
+	if holds {
+		held := objOf(op, "revisions")
+		have = session.DocRevision{Epoch: uint64(numOf(held, "epoch")), Adopted: int(numOf(held, "adopted"))}
+	}
+	host, err := t.tx.HostDoc(def, args, have, holds)
 	if waitMint {
 		h.txStorageRead(t, "doc", op, "mintId", jv.NewObject(), func() { t.mintDone = true })
 		return nil, errTxWaiting
@@ -974,14 +892,25 @@ func (h *handler) txDoc(t *hostTx, op *jv.Object) (any, error) {
 		return nil, err
 	}
 	out := jv.NewObject()
-	out.Set("value", value)
-	out.Set("entry", float64(t.tx.DocEntry(def, args)))
-	if loaded {
-		out.Set("id", float64(t.tx.DocRecordID(def, args)))
-		out.Set("deltasSinceBase", float64(deltas))
+	if host.Incremental {
+		out.Set("ops", delta.OpsValue(host.Ops))
+	} else {
+		out.Set("value", host.Value)
+	}
+	if host.Tracked {
+		setNumber(out, "epoch", float64(host.Revision.Epoch))
+		setNumber(out, "adopted", float64(host.Revision.Adopted))
+	}
+	setNumber(out, "entry", float64(t.tx.DocEntry(def, args)))
+	if host.Loaded {
+		setNumber(out, "id", float64(t.tx.DocRecordID(def, args)))
+		setNumber(out, "deltasSinceBase", float64(host.DeltasSinceBase))
 	}
 	return out, nil
 }
+
+// setNumber sets a number member: the one place a document answer boxes one.
+func setNumber(out *jv.Object, key string, value float64) { out.Set(key, value) }
 
 // txDocWrite takes a draft's operations (Chord Op[]) and the host's checkpointWhen verdict.
 func (h *handler) txDocWrite(t *hostTx, op *jv.Object) (any, error) {

@@ -17,8 +17,8 @@ import (
 // Core mapping decisions:
 //   - The host validates withinMs (a TypeError) before it begins the transaction; TxScope.WithinMs is the window, or negative
 //     for the Session's default (PersistWithin).
-//   - The core's Storage commit is synchronous or returns a *NeedGate, after which the job runs again from the start (loop.go).
-//     takeHeld therefore only reads the held operations (PendingOps.Peek); release empties them once the Storage took the batch.
+//   - A job that waits (for a gate, or for the host's reads) runs again from the start (loop.go). takeHeld therefore only reads the held
+//     operations (PendingOps.Peek); release empties them once the commit that took them is published.
 //   - The deadline's store is a detached job on the Session line (EnqueueSweep), as the document sweep is.
 
 // DefaultPersistWithinMs is the default window of a deferred commit, settings.progress.persistWithinMs (session.ts
@@ -111,7 +111,7 @@ func (tx *Tx) adoptHeld() ([]Change, error) {
 			c.prepared.Abort()
 			continue
 		}
-		if err := c.tracker.Adopt(c.prepared); err != nil {
+		if err := c.loaded.adopt(c.prepared); err != nil {
 			return nil, err
 		}
 		out = append(out, Change{Kind: ChangeDocument, Record: c.loaded.record, ConversationID: p.convID, Version: c.version, Value: c.prepared.Value(), Ops: c.prepared.Ops()})
@@ -127,8 +127,8 @@ type heldPlan struct {
 }
 
 // takeHeld is Transaction.takeHeld: store the held changes of every incarnation this commit reads or writes in front of its own,
-// so a stored document never misses an operation its later ones build on. Called right before Storage admission, after every
-// fallible step. The queues stay until release: a Storage that holds the commit (*NeedGate) runs the job again.
+// so a stored document never misses an operation its later ones build on. Called right before the commit's admission to the writer,
+// after every fallible step. The queues stay until release, at the commit's publication.
 func (tx *Tx) takeHeld(writes []Write) []Write {
 	if len(tx.s.holdOrder) == 0 {
 		return writes
@@ -213,9 +213,10 @@ func storeHeld(l *loadedDoc, ops []delta.Op, value *jv.Object, version int, id I
 	return Write{Kind: WriteDocChange, ID: id, Version: version, Ops: taken.Ops}, taken.Ops
 }
 
-// hold is Session #hold: hold a deferred commit. It adopts it in memory, queues its changes per document, pinned, by the earliest
-// deadline of the document's held commits, and shows it to the Session's own observers.
-func (s *Session) hold(tx *Tx) (*Publication, error) {
+// publishHold is Session #hold at the publication of a deferred commit: it adopts it in memory, queues its changes per document, pinned, by
+// the earliest deadline of the document's held commits, and shows it to the Session's own observers. An error is memory behind what the
+// commit meant: nothing can repair it, and the writer fails the Session.
+func (s *Session) publishHold(tx *Tx, part *Part) error {
 	within := tx.scope.WithinMs
 	if within < 0 {
 		within = s.persistWithin()
@@ -245,55 +246,83 @@ func (s *Session) hold(tx *Tx) (*Publication, error) {
 	}
 	docs, err := tx.adoptHeld()
 	if err != nil {
-		// Memory is behind what the commit meant: nothing can repair it.
-		s.fail(err)
-		return nil, err
+		return err
 	}
 	s.armHoldTimer()
-	pub := s.emitPublication(Publication{Memory: true, Changes: docs})
-	s.sweepDocuments()
-	return pub, nil
+	part.pub = s.emitPublication(Publication{Memory: true, Changes: docs})
+	return nil
 }
 
-// StoreHolds is Session #storeHolds over every hold: it stores the held changes of every held document in one Storage transaction,
-// on the line. Memory already has them, so only the Storage listeners see it, published as the Storage adopts it. A *NeedGate means
-// the host's Storage holds the commit and the job runs again; any other failure has failed the Session.
-func (s *Session) StoreHolds() error {
-	// A copy: the store releases the holds it stored, which edits holdOrder.
-	return s.storeHolds(append(s.scratchHolds[:0], s.holdOrder...))
-}
+// StoreHolds is Session #storeHolds over every hold: it stores the held changes of every held document in one Storage transaction, through
+// the writer, on the line. It is a barrier: the holds are selected once every commit admitted before is published, and the call returns
+// a *NeedPublication while it waits for that and for its own part, which runs the job again. Memory already has the changes, so only the
+// Storage listeners see it, published as the writer publishes it. A failure fails the Session, as every Storage failure does.
+func (s *Session) StoreHolds() error { return s.storeHolds(nil) }
 
-func (s *Session) storeHolds(holds []*loadedDoc) error {
+// storeHolds stores the held changes of every held document, or of only one (a drop of its tracker) when only is not nil.
+func (s *Session) storeHolds(only *loadedDoc) error {
+	if g := s.writer.Drained(); g != nil {
+		return s.needPublication(g)
+	}
+	// The run before this one admitted the store and waited for it: its outcome is this call's (`await ...outcome`).
+	if err, ok := s.HoldsOutcome(); ok {
+		return err
+	}
+	holds := s.scratchHolds[:0]
+	if only == nil {
+		holds = append(holds, s.holdOrder...)
+	} else if only.isHeld {
+		holds = append(holds, only)
+	}
 	if len(holds) == 0 {
 		return nil
 	}
 	var writes []Write
 	var changes []Change
+	var keys []string
 	for _, loaded := range holds {
 		record := loaded.record
 		value := loaded.tracker.Value()
 		content, ops := storeHeld(loaded, nil, value, loaded.valueVersion, mustInt(record, "id"))
 		writes = append(writes, content)
+		keys = append(keys, DocumentKey(loaded.addressID), IncarnationKey(mustInt(record, "id")))
 		// Held documents are conversation documents.
 		changes = append(changes, Change{Kind: ChangeDocument, Record: record, ConversationID: mustInt(getObj(record, "scope"), "conversationId"), Version: loaded.valueVersion, Value: value, Ops: ops})
 	}
-	seq, err := s.store.Commit(writes, s.nextID)
-	if err != nil {
-		if IsNeedGate(err) {
-			return err
-		}
-		s.fail(err)
-		return err
+	part := s.newPart(partHolds, writes, keys, nil)
+	part.holds, part.changes = holds, changes
+	s.writer.Admit(part)
+	s.holdsPart = part
+	return s.waitFor(part)
+}
+
+// HoldsOutcome is the outcome of the store of held changes the job's earlier run admitted and waited for (a *NeedPublication runs the job
+// again from the start): the error that settled it, nil when it was published, and false when this job admitted none. A job that guards
+// its store with the Session's health calls it first, so a store that failed the Session is the job's error, as `await #storeHolds` rejects.
+func (s *Session) HoldsOutcome() (error, bool) {
+	part := s.holdsPart
+	if part == nil || !part.gate.opened {
+		return nil, false
 	}
-	for i, loaded := range holds {
-		if writes[i].Base {
+	s.holdsPart = nil
+	// Outside a line job no earlier run of this call exists: a part left by an earlier call is not its outcome.
+	if !s.inJob || part.Index != s.jobIndex() {
+		return nil, false
+	}
+	return part.err, true
+}
+
+// publishHolds is the publication of the part that stored the held changes: the documents' delta counters, and the holds released.
+func (s *Session) publishHolds(part *Part, seq Seq) error {
+	for i, loaded := range part.holds {
+		if part.Writes[i].Base {
 			loaded.deltasSinceBase = 0
 		} else {
 			loaded.deltasSinceBase++
 		}
 	}
-	s.release(holds)
-	s.emitPublication(Publication{Seq: seq, Stored: changes})
+	s.release(part.holds)
+	part.pub = s.emitPublication(Publication{Seq: seq, Stored: part.changes})
 	return nil
 }
 
@@ -364,12 +393,7 @@ func (s *Session) holdJob() error {
 
 // dropHeld is the part of a drop of a tracker that holds changes: they are stored first (session.ts loadDocument, unloadDocuments),
 // so the reload finds what memory holds.
-func (s *Session) dropHeld(cached *loadedDoc) error {
-	if cached.isHeld {
-		return s.storeHolds(append(s.scratchHolds[:0], cached))
-	}
-	return nil
-}
+func (s *Session) dropHeld(cached *loadedDoc) error { return s.storeHolds(cached) }
 
 // closeHolds is Session close's last step: it forgets the holds once they were stored, the timer with them.
 func (s *Session) closeHolds() {

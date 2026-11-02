@@ -11,5 +11,5 @@ package sqlhost
 func (h *Host) QueuedPosts() int {
 	h.box.mu.Lock()
 	defer h.box.mu.Unlock()
-	return len(h.box.items)
+	return len(h.box.items) - h.box.head
 }

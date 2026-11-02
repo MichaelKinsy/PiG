@@ -62,8 +62,10 @@ type handler struct {
 	refs       originRefs
 	pinned     []uint32
 	bareOrigin uint32
-	// held are the statements of the line job that just ran, kept until Pi's COMMIT hop (hops.go holdJob).
-	held []abi.Commit
+	// joinNext marks the next commit of the writer's Storage call as joined to the one before it in the call (adapter.Commit); adapter.BeginCall clears it.
+	joinNext bool
+	// endingTx is the host transaction whose callback ended: its job's duration is Pi's less the passes the host's callback spent (elapsed).
+	endingTx *hostTx
 	// hopArena holds the payloads of the hops effects of the step being built; StepStart reuses it once the step was encoded.
 	hopArena []byte
 	// invocations maps a host-run task's running invocation to the ID of its latest phase effect: the host keeps one
@@ -78,26 +80,21 @@ type handler struct {
 	changes bool
 	opened  bool
 	mode    string // "harness" or "session"
-	// sweeps are the Session-mode sweep jobs waiting for the end of the step (sweep.go); cacheSent and cacheSizes are the last
-	// document cache sizes published.
-	sweeps     []func() error
-	microtasks []func()
+	// cacheSent and cacheSizes are the last document cache sizes published.
 	// stepNo numbers the steps the handler ran; hops chains carry the number of the step that opened them.
 	stepNo     uint64
 	cacheSent  bool
-	cacheSizes [5]int
+	cacheSizes [7]int
 	indexSent  bool
-	indexSizes [7]int
+	indexSizes [8]int
 	open       *jv.Object
 	mir        *mirror
 	sess       *session.Session
 
-	txs    map[uint32]*hostTx
-	holder uint32             // the transaction that holds the Session line; 0 when free
-	queue  []lineWait         // Session mode: the transactions and line jobs waiting for the line, in arrival order
-	loop   *session.Loop      // Harness mode: the Session line's job queue
-	sched  *session.Scheduler // Harness mode: the task scheduler
-	snap   *registrySnapshot
+	txs   map[uint32]*hostTx
+	loop  *session.Loop      // the Session line's job queue
+	sched *session.Scheduler // Harness mode: the task scheduler
+	snap  *registrySnapshot
 	// snapAsk is the state of the step job's registry snapshot request (freshSnapshot); resumeWait reports that the
 	// answer came and the parked job runs again.
 	snapAsk    uint8
@@ -117,19 +114,33 @@ type handler struct {
 	watches map[uint32]*docWatch
 	views   map[uint32]*viewWatch
 
-	effects map[uint32]*pending // started effects by ID (effects.go)
-	hops    []parkedHops        // the work parked on each open hops chain (hops.go)
-	q       *hopcost.Queue      // the gate profiles' capsql statement queue (capsql.go); nil in every other profile
-	vnow    int                 // the virtual tick of the last hops chain that ended (capsql.go)
-	qInit   bool                // q was decided
-	scans   int                 // the off-line context scans in flight, which a line job's statements queue behind (capsql.go)
-	job     jobStats            // what the running line job read and wrote
-	closed  bool                // the Session finished closing (finishClose)
-	gate    map[string]bool     // the Pi Storage methods the host's Storage overrides (gate.go)
-	inTxOp  bool                // a host transaction operation runs: it reads the host's Storage itself (tx.go)
-	shadow  shadowReads         // the host Storage reads the running job or request issued (ctxread.go)
-	cg      commitGate          // the commit waiting for the host's Storage.commit
+	effects     map[uint32]*pending // started effects by ID (effects.go)
+	heldDone    session.HeldAdopter // the writer's call parked on the host's adoption of a held commit (gate.go)
+	heldPending pending             // its effect's continuation
+	hops        []parkedHops        // the work parked on each open hops chain (hops.go)
+	q           *hopcost.Queue      // the gate profiles' capsql statement queue (capsql.go); nil in every other profile
+	vnow        int                 // the virtual tick of the last hops chain that ended (capsql.go)
+	qInit       bool                // q was decided
+	timed       bool                // the profile's Storage runs statements through a serial queue (capsql.go): vnow follows the hops chains
+	busy        hopcost.Busy        // the transaction of the Storage call in flight holds that queue until its COMMIT (storeTicks)
+	scans       int                 // the off-line context scans in flight, which a line job's statements queue behind (capsql.go)
+	job         jobStats            // what the running line job read and wrote
+	closed      bool                // the Session finished closing (finishClose)
+	gate        map[string]bool     // the Pi Storage methods the host's Storage overrides (gate.go)
+	inTxOp      bool                // a host transaction operation runs: it reads the host's Storage itself (tx.go)
+	shadow      shadowReads         // the host Storage reads the running job or request issued (ctxread.go)
+	call        commitCall          // the Storage call waiting for the host's Storage.commit (gate.go)
+	// publishFn is the publication of the part the host's Storage.publishing scope waits to run (gate.go).
+	publishFn func()
+	gating    gateReads // the host Storage reads of the running line job (ctxread.go)
+	// finishing is set while a host transaction's end settles it (txEnd): its Storage reads wait like a line job's, and the end is run
+	// again (finishAgain) from finishTx and finishState once the host's Storage answered.
+	finishing   bool
+	finishTx    *hostTx
+	finishState *jv.Object
 
+	// cancels are the signals of the submits and aborts whose context can abort, by request, until they are answered (bound).
+	cancels     map[uint32]*session.Cancel
 	lateAnswers []lateAnswer // the answers deferAnswer queued as microtasks that have not run (submit.go)
 	// openDone, openErr and openWaiters are how the scheduler's open ended and the "opened" requests waiting for it.
 	openDone    bool
@@ -173,7 +184,6 @@ func (h *handler) handleEvent(ev *abi.Event) error {
 	}
 	// What is left to do belongs to no host call.
 	h.setOrigin(0)
-	h.runSessionSweeps()
 	h.publishDocCache()
 	return h.readFailed(err)
 }
@@ -206,18 +216,14 @@ func (h *handler) handle(ev *abi.Event) error {
 		h.sess.Seal()
 		return nil
 	case abi.EventClose:
-		// Pi's close enqueues the Session's close behind the line (session.ts close): admitted jobs, the commit that was in
-		// storage and the publications of both settle first. The api_result of request 0 reports the close.
+		// Pi's close enqueues the Session's close behind the line (session.ts close): admitted jobs, the commits in the writer and their
+		// publications settle first. The api_result of request 0 reports the close.
 		// Close writes the tasks it stopped back as pending, on the line after the commits admitted before the seal (session.ts
-		// writeAtClose, read when its job runs); a Storage that holds the commit holds the job, which runs again after the answer.
-		// The close follows the job's completion: its statements are on a hops chain until then.
-		switch {
-		case h.loop == nil && h.sess.HeldDocuments() > 0 && h.sess.Failure() == nil:
-			h.closeSession()
-		case h.loop != nil && (h.loop.Busy() || (h.sched != nil && len(h.sched.CloseWrites()) > 0) || (h.sess.HeldDocuments() > 0 && h.sess.Failure() == nil)):
-			// A bare job: the write-back takes no job duration of its own, and its statements go out with the close.
-			h.loop.LineBare(h.closeJob)
-		default:
+		// writeAtClose, read when its job runs), then the held changes of deferred commits; a part still in the writer holds the job,
+		// which runs again once it is published.
+		if h.loop.Busy() || h.sess.Writer().Busy() || (h.sched != nil && len(h.sched.CloseWrites()) > 0) || (h.sess.HeldDocuments() > 0 && h.sess.Failure() == nil) {
+			h.loop.LineMaintain(h.closeJob)
+		} else {
 			h.closeWhenQuiet()
 		}
 		return nil
@@ -249,38 +255,36 @@ func (h *handler) handle(ev *abi.Event) error {
 }
 
 // closeJob is the close's line job: the write-back of the tasks it stopped, then the held changes of deferred commits, which Pi
-// stores last, after the writes at close and while the trackers are still here (session.ts close, #storeHolds). Each is a Storage
-// commit the host's Storage may hold (a *NeedGate runs the job again from the start), so closeStage remembers what was done. A
-// failed Session writes nothing; a failing store fails it and still ends the close, which then rejects with that error.
+// stores last, after the writes at close and while the trackers are still here (session.ts close, #storeHolds), then the writer's
+// last publication. Each is a Storage commit through the writer: a *NeedPublication runs the job again from the start once the part
+// is published, so closeStage remembers what was done. A failed Session writes nothing; a failing store fails it and still ends the
+// close, which then rejects with that error.
 func (h *handler) closeJob() error {
 	if h.closeStage == 0 {
 		if h.sched != nil && h.sess.Failure() == nil {
-			if err := h.sched.WriteBack(h.sched.CloseWrites()); err != nil && session.IsNeedGate(err) {
+			if err := h.sched.WriteBack(h.sched.CloseWrites()); err != nil && session.IsNeedPublication(err) {
 				return err
 			}
 		}
 		h.closeStage = 1
-		h.flushHeld()
 	}
-	if h.sess.HeldDocuments() > 0 && h.sess.Failure() == nil {
+	// A store the job's earlier run admitted: it failed the Session while the job waited for it (#storeHolds rejects).
+	if err, ok := h.sess.HoldsOutcome(); ok {
+		h.closeErr = err
+	} else if h.sess.HeldDocuments() > 0 && h.sess.Failure() == nil {
 		err := h.sess.StoreHolds()
-		if session.IsNeedGate(err) {
+		if session.IsNeedPublication(err) {
 			return err
 		}
 		if err != nil {
 			h.closeErr = err
 		}
-		h.flushHeld()
+	}
+	if err := h.sess.Touch(session.AllKeys); err != nil {
+		return err
 	}
 	h.closeWhenQuiet()
 	return nil
-}
-
-// closeSession is closeJob for a core with no Loop (Session mode), run again when the host's Storage answered the commit it held.
-func (h *handler) closeSession() {
-	if err := h.closeJob(); session.IsNeedGate(err) {
-		h.cg.retry = retryClose
-	}
 }
 
 // closeWhenQuiet closes once every hops chain the core parked has run: a line job's statements (and its completion) wait on one
@@ -359,6 +363,8 @@ func (h *handler) onOpen(ev *abi.Event) error {
 	// HarnessOptions.readOnly: the Session refuses commits with writes, and the scheduler loads live tasks as committed and runs nothing.
 	h.sess.ReadOnly, _ = boolOf(h.open, "readOnly")
 	h.sess.SubscribeCommits(h.publish)
+	h.startLine()
+	h.syncGate()
 	h.opened = true
 	h.mintNext = live.NextID
 	if h.mode == "harness" {
@@ -373,7 +379,7 @@ func (h *handler) onOpen(ev *abi.Event) error {
 type adapter struct{ h *handler }
 
 func (a *adapter) Conversation(id session.ID) (*jv.Object, error) {
-	a.h.read(hopcost.ReadRow)
+	a.h.readRecord(hopcost.RecordConversation, id)
 	return a.h.mir.Conversation(id)
 }
 func (a *adapter) ScanConversations(q session.ConversationQuery, limit int, after session.ID) (session.Page, error) {
@@ -397,15 +403,19 @@ func (a *adapter) ScanEntries(q session.EntryQuery, limit int, after session.ID)
 	return a.h.mir.ScanEntries(q, limit, after)
 }
 func (a *adapter) Task(id session.ID) (*jv.Object, error) {
-	a.h.read(hopcost.ReadRow)
-	return a.h.mir.Task(id)
+	hit := a.h.readRecord(hopcost.RecordTask, id)
+	t, err := a.h.mir.Task(id)
+	if err == nil && t != nil && hit == hopcost.CacheMiss {
+		a.h.sess.KeepRecord(hopcost.RecordTask, id, t)
+	}
+	return t, err
 }
 func (a *adapter) ScanTasks(q session.TaskQuery, limit int, after session.ID) (session.Page, error) {
 	a.h.read(hopcost.ReadRow)
 	return a.h.mir.ScanTasks(q, limit, after)
 }
 func (a *adapter) Submission(id session.ID) (*jv.Object, error) {
-	a.h.read(hopcost.ReadRow)
+	a.h.readRecord(hopcost.RecordSubmission, id)
 	return a.h.mir.Submission(id)
 }
 func (a *adapter) ScanSubmissions(q session.SubmissionQuery, limit int, after session.ID) (session.Page, error) {
@@ -435,31 +445,38 @@ func (a *adapter) ScanDocuments(scope session.Scope, at session.Point, kind stri
 	return a.h.mir.ScanDocuments(scope, at, kind, limit, after)
 }
 
-// Commit emits the writes as one Pi commit and applies them to the mirror. A store rejection changes nothing; like any
-// failed commit it fails the Session.
+// Commit is the Store's per-batch primitive of the writer's Storage call (Session.commitBatches): it emits the writes as one Pi
+// commit, joined to the call's earlier batches, and applies them to the mirror. A batch Durable's own checks refuse is a
+// *session.RefusedError and changes nothing; any other failure is an unknown outcome, which fails the Session.
 func (a *adapter) Commit(writes []session.Write, nextID session.ID) (session.Seq, error) {
-	if a.h.gated("commit") {
-		if err := a.h.gateCommit(writes); err != nil {
-			return 0, err
-		}
-	}
+	seq, err := a.store(writes, nextID, a.h.joinNext)
+	a.h.joinNext = err == nil
+	return seq, err
+}
+
+// BeginCall is the start of a Storage call (session.callStarter): its first commit is not joined to the commit before it in the step,
+// which belongs to another call.
+func (a *adapter) BeginCall() { a.h.joinNext = false }
+
+// store is one batch of a Storage call: checked against the state the earlier batches left, emitted as one commit (joined: the
+// same Storage call as the commit before it in the step, ABI section 4.4) and applied to the mirror.
+func (a *adapter) store(writes []session.Write, nextID session.ID, joined bool) (session.Seq, error) {
 	m := a.h.mir
 	if err := m.checkCopies(writes); err != nil {
-		return 0, err
+		return 0, refusal(err)
 	}
 	resolved := m.resolveCopies(writes)
 	// The mirror holds every record ID (Pi's record_ids), so it validates the batch before the store emits it.
 	if err := m.checkGlobalIDs(resolved); err != nil {
-		return 0, err
+		return 0, refusal(err)
 	}
 	actions, order, err := m.prepareDocActions(resolved)
 	if err != nil {
-		return 0, err
+		return 0, refusal(err)
 	}
 	if err := m.checkDocActions(actions, order); err != nil {
-		return 0, err
+		return 0, refusal(err)
 	}
-	a.h.jobCommit(writes, actions, order)
 	tx := a.h.st.Begin()
 	// scratch is the array stageWrite encodes each record text in before it copies the text to its own length. It lives for
 	// this commit only: kept on the handler, the largest record of the session (an entry of kilobytes) stayed live for good.
@@ -470,22 +487,18 @@ func (a *adapter) Commit(writes []session.Write, nextID session.ID) (session.Seq
 		}
 	}
 	a.h.st.ObserveNextID(nextID)
-	if !a.h.sess.InJob() {
-		a.h.flushHeld() // a commit outside a line job must not overtake the statements of a job still waiting for its COMMIT hop
-	}
 	seq, err := a.h.st.Commit(a.h.b, tx)
 	if err != nil {
 		return 0, err
 	}
-	if a.h.sess.InJob() {
-		a.h.held = append(a.h.held, a.h.b.DetachCommit())
+	if joined {
+		a.h.b.JoinLast()
 	}
 	mseq, err := m.Commit(writes, nextID, tx)
 	if err != nil {
 		return 0, err
 	}
-	// The Storage adopted the batch at the sequence the commit takes (types.ts Storage: adopt(seq) names the committed sequence).
-	if mseq != seq || (a.h.cg.state == gateApplied && a.h.cg.seq != seq) {
+	if mseq != seq {
 		return 0, errors.New("core: the mirror and the store disagree on the commit sequence")
 	}
 	if err := a.h.observeCommit(writes, seq); err != nil {
@@ -493,6 +506,11 @@ func (a *adapter) Commit(writes []session.Write, nextID session.ID) (session.Seq
 	}
 	return seq, nil
 }
+
+// refusal is the error of a batch Durable's own checks refuse (session.RefusedError): one allocation site for the checks of store.
+//
+//go:noinline
+func refusal(err error) error { return &session.RefusedError{Err: err} }
 
 // errorName is the name Pi gives an error the Session returns.
 func errorName(err error) string {
@@ -609,9 +627,9 @@ func (h *handler) StepStart() {
 	}
 	h.payloadUsed = h.payloadUsed[:0]
 	h.hopArena = h.hopArena[:0]
-	if h.mir != nil && len(h.held) == 0 {
-		// ABI section 3 rule 2: the host applied every commit of the previous steps before this Step, and no line job's
-		// statements wait for a COMMIT hop, so storage has every record the mirror holds.
+	if h.mir != nil {
+		// ABI section 3 rule 2: the host applied every commit of the previous steps before this Step, so storage has every record the
+		// mirror holds.
 		h.mir.releaseApplied()
 		if h.hist != nil {
 			h.hist.Evict()

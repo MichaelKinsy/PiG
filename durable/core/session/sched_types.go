@@ -151,12 +151,10 @@ type Env struct {
 	// hops ran: a reconcile a chain load schedules after its read starts when Pi's microtask does, not at the job's start.
 	ReadTicks func() int
 	// GateRead asks the host's Storage to run the Pi Storage read of method (task, conversation) that a chain load makes, so a Storage that
-	// counts, holds or fails it sees it (scheduler.ts #loadChain); nil asks nothing.
-	GateRead func(method string, id ID)
+	// counts, holds or fails it sees it (scheduler.ts #loadChain); nil asks nothing. A line job that asked is told to wait for the answer
+	// (*NeedRead) and runs again once the Storage answered; the Storage's own error is the chain load's.
+	GateRead func(method string, id ID) error
 	After    func(n int, then func())
-	// CommitListeners, when set, tells whether the host has `subscribeCommits` listeners: a microtask the scheduler queues in its commit
-	// observer then runs behind their dispatch (Scheduler.microtask).
-	CommitListeners *bool
 }
 
 // taskNode is the part of a task the ownership walk needs.

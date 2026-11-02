@@ -1,6 +1,6 @@
 // Vitest setup file for the interleaving trace of U rows (CONTRACT section 5.8; cli/trace.mjs record-u / check-u). With
 // CONTRACT_VITEST_TRACE=<file> every test of the run writes, to that file, a `test` marker, the API calls it makes on the Harness and
-// on what the Harness returns (lib/apitrace.mjs), and each `commit(writes)` its storage receives: `commit` when the call starts and
+// on what the Harness returns (lib/apitrace.mjs), and each `commit(batches, receive, context)` its storage receives: `commit` when the call starts and
 // `commit-end` when it settles, with the microtask tick. The reference's ControlledStorage calls commit as Pi's Session commits;
 // the candidate's core hands each commit to the same method before it applies it (PROTOCOL.md, "Storage gate"), so both sides give the same token.
 import { appendFileSync, writeFileSync } from "node:fs"
@@ -29,10 +29,11 @@ if (file) {
 		Object.defineProperty(storage, "__traced", { value: true })
 		Object.defineProperty(storage, "commit", {
 			configurable: true, writable: true,
-			value(writes, ...rest) {
-				const summary = [...new Set(writes.map(w => w.type))].sort().join(" ")
+			value(batches, ...rest) {
+				// A call carries the batches the writer admitted together (Storage.commit(batches, receive, context)): one summary per batch, joined by a comma.
+				const summary = batches.map(writes => [...new Set(writes.map(w => w.type))].sort().join(" ")).join(",")
 				line({ t: "storage", phase: "commit", summary, tick: globalThis.__contractTick() })
-				const result = Reflect.apply(original, this, [writes, ...rest])
+				const result = Reflect.apply(original, this, [batches, ...rest])
 				const end = () => line({ t: "storage", phase: "commit-end", summary, tick: globalThis.__contractTick() })
 				if (result && typeof result.then === "function") result.then(end, end)
 				else end()

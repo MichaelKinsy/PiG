@@ -72,7 +72,7 @@ test("a host that retains 64 MiB per turn fails W1-50 with the growth, an unchan
 	const { gate } = await import("../lib/gate.mjs")
 	const [good] = await gate({ impl: "ok", ids: ["W1-50"], out: join(work, "out-ok"), concurrency: 1 })
 	assert.equal(good.status, "pass", JSON.stringify(good).slice(0, 900))
-	assert.match(good.detail, /770 commits; [+-]\d+\.\d MiB\/turn rss \d+ MiB over 10 turns/)
+	assert.match(good.detail, /680 commits; [+-]\d+\.\d MiB\/turn rss \d+ MiB over 10 turns/)
 	const [bad] = await gate({ impl: "leaky", ids: ["W1-50"], out: join(work, "out-leaky"), concurrency: 1 })
 	assert.equal(bad.status, "fail", JSON.stringify(bad).slice(0, 500))
 	assert.match(bad.detail.problem, /memory grows 64\.\d MiB per measured turn \(rss: /)

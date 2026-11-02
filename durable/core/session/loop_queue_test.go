@@ -7,6 +7,7 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"unsafe"
 )
 
 // The microtask queue drains and refills from the front of its array: a loop that runs the same few microtasks again and again
@@ -106,28 +107,24 @@ func TestMicrotaskQueueKeepsItsOrderAcrossACompaction(t *testing.T) {
 	}
 }
 
-// IsNeedRead and IsNeedGate run for every job, almost always with a nil error: that answer allocates nothing.
+// IsNeedRead and IsNeedPublication run for every job, almost always with a nil error: that answer allocates nothing.
 func TestIsNeedOfNoErrorAllocatesNothing(t *testing.T) {
 	if allocs := testing.AllocsPerRun(100, func() {
 		if _, ok := IsNeedRead(nil); ok {
 			t.Fatal("nil is a NeedRead")
 		}
-		if IsNeedGate(nil) {
-			t.Fatal("nil is a NeedGate")
+		if IsNeedPublication(nil) {
+			t.Fatal("nil is a NeedPublication")
 		}
 	}); allocs != 0 {
 		t.Fatalf("%v allocations", allocs)
 	}
 }
 
-// A job on the line takes its Hold, Tail and Begin releases from closures that capture only the loop, and its completion from the
-// job and error the loop keeps while the line is held: the only allocation per job is the job itself. Each job used to allocate
-// its completion closure with the captured job and error, the method value of runJob in kickLine, and a release closure per Tail
-// and Begin: five allocations on a commit job's crossing for a job that does nothing.
+// A job on the line takes the steps after its body (the line's release, the fence and the delivery of its outcome) from stages the job
+// itself holds, so the only allocation per job is the job itself, whether the microtask queue counts the ticks or a host's hops do.
 func TestAJobOnTheLineAllocatesOnlyItself(t *testing.T) {
 	l := &Loop{}
-	park := func(release func()) bool { l.Defer(release); return true }
-	l.Hold, l.Tail, l.Begin = park, park, park
 	run := func() error { return nil }
 	order := 0
 	done := func(error) { order++ }
@@ -148,44 +145,20 @@ func TestAJobOnTheLineAllocatesOnlyItself(t *testing.T) {
 	}
 }
 
-// A job queued while another's completion waits for Hold does not start before the release, and the completion that runs is the
-// first job's own: its done receives its error, then the second job runs with its own (the loop keeps one finishing job and error
-// at a time because holding keeps the next job from starting).
-func TestACompletionHeldByHoldIsTheOwnerJobsAndBlocksTheNext(t *testing.T) {
+// A job queued while another's work has not returned does not start before the line's release, which is LineRelease ticks after the
+// return of the first job's work; its caller resumes after that, a tick later than the second job starts, and both callers resume in line
+// order.
+func TestAJobStartsWhenTheLineIsFreeAndOutcomesFollowInLineOrder(t *testing.T) {
 	l := &Loop{}
-	var release func()
-	l.Hold = func(r func()) bool { release = r; return true }
-	errA, errB := errors.New("a"), errors.New("b")
 	var events []string
+	l.Elapsed = func(Ended) (int, int) { return 0, 2 }
+	errA, errB := errors.New("a"), errors.New("b")
 	l.Line(func() error { events = append(events, "run a"); return errA }, func(err error) { events = append(events, "done a "+err.Error()) })
-	if err := l.Run(); err != nil {
-		t.Fatal(err)
-	}
-	if release == nil {
-		t.Fatal("Hold was not asked about the first job")
-	}
 	l.Line(func() error { events = append(events, "run b"); return errB }, func(err error) { events = append(events, "done b "+err.Error()) })
 	if err := l.Run(); err != nil {
 		t.Fatal(err)
 	}
-	if want := []string{"run a"}; !slices.Equal(events, want) {
-		t.Fatalf("before the release: %v, want %v", events, want)
-	}
-	first := release
-	release = nil
-	first()
-	if err := l.Run(); err != nil {
-		t.Fatal(err)
-	}
-	if release == nil {
-		t.Fatal("Hold was not asked about the second job")
-	}
-	second := release
-	second()
-	if err := l.Run(); err != nil {
-		t.Fatal(err)
-	}
-	if want := []string{"run a", "done a a", "run b", "done b b"}; !slices.Equal(events, want) {
+	if want := []string{"run a", "run b", "done a a", "done b b"}; !slices.Equal(events, want) {
 		t.Fatalf("events %v, want %v", events, want)
 	}
 }
@@ -194,18 +167,19 @@ func TestACompletionHeldByHoldIsTheOwnerJobsAndBlocksTheNext(t *testing.T) {
 // O(n). Moving the queue down by one on each pop made draining n jobs O(n^2) (200,000 queued jobs: 5.1 s instead of 22 ms).
 func TestStartingALineJobMovesNoWaitingJob(t *testing.T) {
 	l := &Loop{}
-	var release func()
-	l.Hold = func(r func()) bool { release = r; return true }
+	var held Resumer
+	l.Hops = func(n int, r Resumer) bool { held = r; return true }
 	run := func() error { return nil }
 	for range 4 {
 		l.Line(run, nil)
 	}
 	slot := len(l.jobs) - 1
 	last := l.jobs[slot]
+	l.Elapsed = func(Ended) (int, int) { return 0, 1 }
 	if err := l.Run(); err != nil {
 		t.Fatal(err)
 	}
-	if release == nil || l.waiting() != 3 {
+	if held == nil || l.waiting() != 3 {
 		t.Fatalf("the first job did not start and hold (%d waiting)", l.waiting())
 	}
 	if slot >= len(l.jobs) || l.jobs[slot] != last {
@@ -249,5 +223,12 @@ func TestLineJobsStayTheSizeOfWhatWaitsAndKeepTheirOrder(t *testing.T) {
 	}
 	if most > 16 {
 		t.Fatalf("the line's array grew to %d for 3 waiting jobs", most)
+	}
+}
+
+// A queued job holds its place in the line and nothing of a running one (jobRun): a task graph queues 20,000 of them at once.
+func TestAQueuedJobIsNoLargerThanItsLineState(t *testing.T) {
+	if size := unsafe.Sizeof(job{}); size > 112 {
+		t.Fatalf("a job is %d bytes, more than 112", size)
 	}
 }

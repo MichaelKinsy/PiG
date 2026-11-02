@@ -4,6 +4,7 @@
 package core
 
 import (
+	"errors"
 	"math"
 
 	"github.com/MichaelKinsy/PiG/durable/core/abi"
@@ -48,27 +49,25 @@ func (h *handler) tracked(impl *session.TaskImpl) *session.TaskImpl {
 	return &wrapped
 }
 
-// startScheduler builds the Harness mode machinery on the Session: the Loop that serializes line jobs behind host
-// transactions, and the task scheduler of harness/scheduler.ts, opened over the live tasks.
-func (h *handler) startScheduler() error {
+// startLine makes the Session line of the handle: the Loop that runs the line's jobs, the host's transactions among them, keeps Pi's
+// durations of them in ticks (hops.go), and drives the Session's writer (group commit, ABI section 5.5).
+func (h *handler) startLine() {
 	h.loop = &session.Loop{
-		Blocked: func() bool { return h.holder != 0 },
-		Admit:   h.sess.Admit,
-		Session: h.sess,
-		Started: func() { h.job = jobStats{mintStart: h.sess.NextID()}; h.sess.TakeTicks() },
-		Hold:    h.holdJob,
-		Adopted: h.adoptedRun,
-		Tail: func(release func()) bool {
-			if h.loop.Answered {
-				return h.holdFor(2, release)
-			}
-			return h.holdFor(tailHops, release)
-		},
-		Begin:   func(start func()) bool { return h.holdFor(1, start) },
-		Hops:    func(n int, r session.Resumer) bool { return h.holdLate(n, resumeHop, 0, r) },
-		Retain:  h.holdOrigin,
-		Release: h.dropOrigin,
+		Admit:      h.sess.Admit,
+		Started:    func() { h.job = jobStats{mintStart: h.sess.NextID()}; h.sess.TakeTicks(); h.beginGateReads() },
+		Elapsed:    h.elapsed,
+		StoreTicks: h.storeTicks,
+		Hops:       func(n int, r session.Resumer) bool { return h.holdLate(n, resumeHop, 0, r) },
+		Macro:      h.macrotask,
+		Retain:     h.holdOrigin,
+		Release:    h.dropOrigin,
 	}
+	h.loop.Bind(h.sess)
+}
+
+// startScheduler builds the Harness mode machinery on the Session: the task scheduler of harness/scheduler.ts, opened over the live
+// tasks.
+func (h *handler) startScheduler() error {
 	h.runtimes = map[session.ID]*session.Runtime{}
 	h.loadRegistry(objOf(h.open, "registry"))
 	env := session.Env{
@@ -86,9 +85,8 @@ func (h *handler) startScheduler() error {
 		SettleOutcome:      turn.SettleSchedulerOutcome,
 		WithdrawInputs:     inbox.WithdrawQueued,
 		ReadTicks:          func() int { return h.job.change },
-		GateRead:           func(method string, id session.ID) { _ = h.gateRead(method, float64(id)) },
+		GateRead:           func(method string, id session.ID) error { return h.gateRead(method, float64(id)) },
 		After:              h.hopsThen,
-		CommitListeners:    &h.changes,
 	}
 	// HarnessOptions.telemetry: the core tells the host what to record (telemetry.go).
 	if on, _ := boolOf(h.open, "telemetry"); on {
@@ -132,8 +130,8 @@ func (h *handler) openFinished(err error) {
 
 // openedReturnHops is the hops from the end of the scheduler's open job to Harness.open resolving: `await commitWith` in the scheduler's
 // open (1), `await harness.openTasks()` in Harness.open (1) and the caller's await of Harness.open (1) (scheduler.ts open, harness.ts
-// Harness.open). Measured on Pi e7a0df27 with the cut-off tests of host/cf/test/cutoff-ticks.test.ts: Harness.open 56 passes over an
-// idle store's recovery commit.
+// Harness.open). Measured on Pi with the cut-off tests of host/cf/test/cutoff-ticks.test.ts: Harness.open 68 passes over a crashed store's
+// recovery commit.
 const openedReturnHops = 3
 
 func (h *handler) answerOpened(id uint32) {
@@ -197,7 +195,6 @@ const (
 // pump runs the Loop until it has nothing to do: after every event, and after the line is released. A job parked on a
 // host answer (a *NeedRead with no reads) waits for it; the answer's continuation resumes the job.
 func (h *handler) pump() error {
-	defer h.flushHeld() // statements of a job that no hold parked (a bare job, a refused hold) leave with the step
 	if h.loop == nil {
 		return nil
 	}
@@ -233,9 +230,31 @@ func (h *handler) onTimer(ev *abi.Event) error {
 // report forwards a non-fatal failure to HarnessOptions.onReport as a report notice: {name, message, info}, info being the
 // ReportInfo of types.ts (kind, and task, extension, reason, callback or conversationId where they apply).
 func (h *handler) report(err error, info *jv.Object) {
+	// The host that failed the Session keeps its error and reports it itself.
+	if _, ok := errors.AsType[hostFailed](err); ok {
+		return
+	}
 	body := errorJSON(err)
 	body = append(body[:len(body)-1], `,"info":`...)
 	body = jv.Append(body, info)
+	if strOf(info, "kind") == "storage_failed" {
+		// The api answers the core already settled and holds on hops chains: Pi's waiters resolved before the failure, and stay resolved.
+		first := true
+		for i := range h.hops {
+			if rid := h.hops[i].rid; rid != 0 && h.hops[i].fn != nil {
+				if first {
+					body = append(body, `,"answered":[`...)
+				} else {
+					body = append(body, ',')
+				}
+				body = jv.AppendNumber(body, float64(rid))
+				first = false
+			}
+		}
+		if !first {
+			body = append(body, ']')
+		}
+	}
 	// The scheduler's report under a span's Context (scheduler.ts #report's context): the host records the report event there.
 	if h.sched != nil {
 		if span := h.sched.ReportSpan(); span != 0 {
@@ -278,6 +297,7 @@ func (h *handler) onRegistry(ev *abi.Event) error {
 	if list, ok := req.Get("storageGate"); ok && h.open != nil {
 		h.open.Set("storageGate", list)
 		h.gate = nil
+		h.syncGate()
 		return nil
 	}
 	// Harness settings are live in Pi (resolveSettings(options.settings) at each read): the host sends them again when

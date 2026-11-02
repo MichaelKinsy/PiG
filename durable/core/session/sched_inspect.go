@@ -39,8 +39,12 @@ func (s *Scheduler) BlockedReason(rec *jv.Object) string {
 
 // Inspect is scheduler.ts inspect: the scheduling state and every live task with its derived state. It runs no task
 // code: a pending migration shows as pending with Migrates, and only a migration the scheduler already tried, or one that
-// cannot exist, shows as failed.
+// cannot exist, shows as failed. It first waits for every commit admitted before to be published (`await this.#published()`:
+// the job runs again once they are, and the await of the settled promise costs one tick), then loads the scopes.
 func (s *Scheduler) Inspect(snapshot Snapshot) (scheduling string, tasks []TaskInspection, err error) {
+	if err = s.published(nil); err != nil {
+		return "", nil, err
+	}
 	if _, err = s.loadScopes(false); err != nil {
 		return "", nil, err
 	}

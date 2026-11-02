@@ -225,7 +225,7 @@ test("a transaction whose end trapped before its commit fails with RecycledError
     if (ev.kind === EVENT.tx && ev.body.op === "begin") return { notices: [txResult(ev.id!, { ready: true })] }
     if (n === 0 && ev.kind === EVENT.tx && ev.body.op === "end") trap()
     // The reopened core reconciles live work as it opens: that commit is not the transaction's.
-    if (n === 1 && ev.kind === EVENT.open) return { commits: [{ seq: 9, stmts: [] }] }
+    if (n === 1 && ev.kind === EVENT.open) return { commits: [{ seq: 9, joined: false, stmts: [] }] }
     return undefined
   })
   host.sendJSON(EVENT.open, {})
@@ -290,7 +290,7 @@ test("a transaction that had not taken the line when the handle was replaced ask
     if (n === 0 && ev.kind === EVENT.tx && ev.body.op === "begin") return { notices: [] }
     if (n === 0 && ev.kind === EVENT.abort) trap()
     if (n === 1 && ev.kind === EVENT.tx && ev.body.op === "begin") return { notices: [txResult(ev.id!, { ready: true })] }
-    if (n === 1 && ev.kind === EVENT.tx && ev.body.op === "end") return { commits: [{ seq: 1, stmts: [] }], notices: [txResult(ev.id!, { result: null })] }
+    if (n === 1 && ev.kind === EVENT.tx && ev.body.op === "end") return { commits: [{ seq: 1, joined: false, stmts: [] }], notices: [txResult(ev.id!, { result: null })] }
     return undefined
   })
   host.sendJSON(EVENT.open, {})
@@ -339,7 +339,7 @@ test("a trap in the rows that answer a step's reads runs the event that began th
 const u32le = (n: number) => { const b = new Uint8Array(4); new DataView(b.buffer).setUint32(0, n, true); return b }
 const hopsEffect = (id: number, n: number, at = 0, ...commits: Uint8Array[]) => ({ id, kind: EFFECT.hops, payload: Uint8Array.of(...u32le(n), ...u32le(at), ...commits.flatMap(c => [...c])) })
 const heldCommit = (seq: number) => {
-  const body = new Uint8Array(10)
+  const body = new Uint8Array(11)   // i64 seq, u8 flags, u16 nStmts
   new DataView(body.buffer).setBigInt64(0, BigInt(seq), true)
   const out = new Uint8Array(4 + body.length)
   new DataView(out.buffer).setUint32(0, body.length, true); out.set(body, 4)
