@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
@@ -122,9 +123,8 @@ func parseWheelEvent(data string) (wheelEvent, bool) {
 	var button, x, y int
 	if m := altSgrMousePattern.FindStringSubmatch(data); m != nil {
 		button, x, y = atoiDigits(m[1]), atoiDigits(m[2])-1, atoiDigits(m[3])-1
-	} else if len(data) == 6 && strings.HasPrefix(data, "\x1b[M") { //portlint:allow utf16units tui-alt-screen.ts parseWheelEvent legacy X10 report: ESC [ M plus three coordinate bytes below 0x80 (Pi enables SGR mode 1006); bytes and units agree there
-		//portlint:allow utf16units tui-alt-screen.ts parseWheelEvent charCodeAt(3..5) of an X10 report, whose coordinate bytes are below 0x80, so byte and unit agree
-		button, x, y = int(data[3])-32, int(data[4])-33, int(data[5])-33
+	} else if units, ok := legacyMouseUnits(data); ok {
+		button, x, y = int(units[0])-32, int(units[1])-33, int(units[2])-33
 	} else {
 		return wheelEvent{}, false
 	}
@@ -141,8 +141,22 @@ func parseWheelEvent(data string) (wheelEvent, bool) {
 // isMouseSequence reports whether data is any mouse report, so unhandled
 // reports are consumed rather than typed. Mirrors upstream isMouseSequence.
 func isMouseSequence(data string) bool {
-	//portlint:allow utf16units tui-alt-screen.ts isMouseSequence legacy X10 report: ESC [ M plus three coordinate bytes below 0x80; bytes and units agree there
-	return altSgrMousePattern.MatchString(data) || (len(data) == 6 && strings.HasPrefix(data, "\x1b[M"))
+	return altSgrMousePattern.MatchString(data) || isLegacyMouseReport(data)
+}
+
+// legacyMouseUnits is the X10 test and decode of tui-alt-screen.ts parseWheelEvent: data.length === 6 && data.startsWith("\x1b[M"), then
+// charCodeAt(3..5). Without SGR mode 1006 a coordinate of 95 or more is a byte of 0x80 or more, which stdin.setEncoding("utf8") turns
+// into U+FFFD, so the units are counted in UTF-16 and not in bytes.
+func legacyMouseUnits(data string) (units [3]uint16, ok bool) {
+	if !strings.HasPrefix(data, "\x1b[M") || jsstring.Length(data) != 6 {
+		return units, false
+	}
+	return [3]uint16(jsstring.ToUTF16(data)[3:6]), true
+}
+
+// isLegacyMouseReport is the X10 half of tui-alt-screen.ts isMouseSequence.
+func isLegacyMouseReport(data string) bool {
+	return strings.HasPrefix(data, "\x1b[M") && jsstring.Length(data) == 6
 }
 
 func atoiDigits(s string) int {
