@@ -530,9 +530,21 @@ def typescript_version() -> str:
     return json.loads((SDK_TS / "package.json").read_text())["devDependencies"]["typescript"]
 
 
+def installed(modules: Path, pin: Pin) -> bool:
+    """Whether `modules` holds the oracle package of the pin: its manifest is readable, names the pin's version and its `pi` bin
+    file exists, so `pi_version` can run it. An empty or partial node_modules (an interrupted or pruned build) is not an oracle."""
+    agent = modules / "@earendil-works" / "pi-coding-agent"
+    try:
+        manifest = json.loads((agent / "package.json").read_text(encoding="utf-8"))
+        binary = manifest["bin"]["pi"] if isinstance(manifest["bin"], dict) else manifest["bin"]
+        return manifest.get("version") == pin.package_version and (agent / binary).is_file()
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 def reusable(pin: Pin, build: Path | None) -> bool:
     """Whether `build` is a stamped source build of the pin made with the frozen inputs of this tree (any, where none are frozen)."""
-    if build is None or not (build / STAMP).is_file() or not (build / "node_modules").is_dir():
+    if build is None or not (build / STAMP).is_file() or not installed(build / "node_modules", pin):
         return False
     data = json.loads((build / STAMP).read_text())
     return data.get("commit") == pin.commit and data.get("package_version") == pin.package_version and data.get("source") == "build" and data.get("provider_data_sha256", "") == (frozen_digest(pin) or data.get("provider_data_sha256", "")) and data.get("closure_sha256", "") == (frozen_closure_digest(pin) or data.get("closure_sha256", ""))
