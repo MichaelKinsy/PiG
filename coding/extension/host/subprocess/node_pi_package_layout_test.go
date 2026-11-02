@@ -30,7 +30,6 @@ import (
 // 0.84.0) derives paths from the pi-coding-agent root only.
 // upstream: packages/*/package.json main, exports and bin; packages/coding-agent/package.json scripts.build:unbundled.
 var piLayoutGaps = map[string]string{
-	"@earendil-works/pi-agent-core": "served by shims/pi-agent-core.mjs, outside any package root; vendoring a root with package.json and dist/index.js is not done",
 	"@earendil-works/pi-ai":         "served by shims/pi-ai.mjs (and pi-ai-oauth.mjs, pi-dist/pi-ai/sdk-bundle/providers.js), outside any package root; vendoring a root with package.json, dist/index.js and the dist subpaths is not done",
 	"@earendil-works/pi-tui":        "served by shims/pi-tui.mjs, outside any package root; vendoring a root with package.json and dist/index.js is not done",
 }
