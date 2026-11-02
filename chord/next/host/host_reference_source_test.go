@@ -20,10 +20,11 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
-// Tests of packages/chord/test/next/host/reference-source.test.ts. Every case of the upstream file serves objects through a
-// whole host (`loaded`, `serve`, `ChordObject` attempts, `failLive`, `defineState` documents, `createHost` with links), so
-// none is ported yet: they are `missing` for the host core. The tests below are own tests of referenceSource over documents
-// and derives of the state package; each names the upstream case whose behavior it mirrors.
+// pi: packages/chord/src/next/host/reference-source.ts
+// Ports packages/chord/test/next/host/reference-source.test.ts. The TestHostReferenceSource... tests are its cases, in its
+// order, on whole hosts (`loaded`, `serve`, `ChordObject` attempts, `failLive`, `defineState` documents, `createHost` with
+// links); the other tests are own tests of referenceSource over documents and derives of the state package, each naming
+// the upstream case whose behavior it mirrors.
 
 // memberCountOf is the `n` of a test value {n}.
 func memberCountOf(value delta.JsonValue) float64 {

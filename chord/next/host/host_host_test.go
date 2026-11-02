@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -130,6 +131,7 @@ func constant(value delta.JsonValue) chord.Watchable[delta.JsonValue] {
 	return Expose(state.NewConstant(value))
 }
 
+// pi: packages/chord/src/next/host/host.ts
 // --- host.test.ts ---------------------------------------------------------------------------------------------------
 
 var (
@@ -2730,5 +2732,61 @@ func TestHostReloadAnAbortWhileStagingDoesNotCommitWhenTheContextIsAbortedByTheS
 	ref.Release()
 	if actual != float64(1) {
 		t.Fatalf("n = %v, want 1", actual)
+	}
+}
+
+// Own test of host.ts's wiring (`new Batch((error) => this.report(error))` and `new RegistryRecord(name, batch, (error) =>
+// this.report(error))`): a watch listener that fails is reported to `onError` as the batch's `listener_error`, and a
+// registry whose `compose` fails as the registry's `registry_failed`, each with its own error and fields, once.
+func TestHostReportsABatchAndARegistryFailureToOnErrorWithTheirOwnFields(t *testing.T) {
+	boom := errors.New("listener failed")
+	composeBoom := errors.New("compose failed")
+	names, err := registries.DefineRegistry[string, string]("app.names", registries.DefineRegistryOptions{Version: 1})
+	must(t, err)
+	errs := &hostErrors{}
+	host := newHost(t, HostOptions{OnError: errs.push})
+	defer closeHosts(t, host)
+	registry := DefineFacet(func(h FacetHost, self FacetSelf) error {
+		failing := registries.RegistryProvider[string, string]{
+			Compose: func(registries.RegistryTable[string], registries.ComposeContext) (string, error) {
+				return "", composeBoom
+			},
+		}
+		if err := h.Serve(registries.Registry[any, any](names), failing.Erase(), ServeOptions{}); err != nil {
+			return err
+		}
+		return self.Contribute(registries.Registry[any, any](names), "own")
+	})
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: infoFacet("a")}, {Name: "@app/names", Facet: registry}}, background))
+
+	info := mustGet(t, host, hostInfo, jsonObject())
+	watch, err := info.Member("title").Watch(background)
+	must(t, err)
+	watch.Start(func(context.Context, chord.WatchCall[delta.JsonValue]) error { return boom })
+	// The reload changes the title: its frame is the one the failing listener gets.
+	_, err = host.Reload([]HostFacet{{Name: "@app/info", Facet: infoFacet("b")}, {Name: "@app/names", Facet: registry}}, background, ReloadOptions{})
+	must(t, err)
+	_, _ = host.Registry(background, registries.Registry[any, any](names), GetOptions{})
+
+	eventually(t, "a listener_error and a registry_failed are reported", func() bool {
+		var kinds []HostErrorKind
+		for _, reported := range errs.All() {
+			kinds = append(kinds, reported.Kind)
+		}
+		return slices.Contains(kinds, HostErrorKind(state.BatchListenerError)) && slices.Contains(kinds, HostErrorKind(registries.ErrorRegistryFailed))
+	})
+	for _, reported := range errs.All() {
+		switch reported.Kind {
+		case HostErrorKind(state.BatchListenerError):
+			if reported.Batch == nil || reported.Batch.Kind != state.BatchListenerError || !errors.Is(reported.Error, boom) || !errors.Is(reported.Batch.Error, boom) {
+				t.Fatalf("listener_error = %+v, want the batch's report of %v", reported, boom)
+			}
+		case HostErrorKind(registries.ErrorRegistryFailed):
+			if reported.Registry == nil || reported.Registry.Registry != "app.names" || !errors.Is(reported.Error, composeBoom) {
+				t.Fatalf("registry_failed = %+v, want app.names failing with %v", reported, composeBoom)
+			}
+		default:
+			t.Fatalf("unexpected report %+v", reported)
+		}
 	}
 }

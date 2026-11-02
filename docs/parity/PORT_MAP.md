@@ -868,7 +868,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/host/destination.ts` | `chord/next/host/host_destination.go` | ✅ |
 | `packages/chord/src/next/host/index.ts` | `(barrel: Go imports the package (DESIGN-go-layout.md section 2); what it exports is exported by the files above (Ctx, Facet, FacetHost, Host..., Sleep, UntilAborted, Presence, RefState, RevokedBy, RootOptions, RouteOptions, RoutineDeclarations, Native*, Follow*, GetOptions, HostError, Position; Host, HostOptions, LinkOptions, createHost, Factory, Self, StoreSelf, Held, Reference, RefIn are D5a's))` | n/a |
 | `packages/chord/src/next/host/internal.ts` | `(barrel for jobs/remote: one package, identifiers are unexported where Pi keeps them out of index.ts (DESIGN-go-layout.md sections 1-2))` | n/a |
-| `packages/chord/src/next/host/host.ts` | `chord/next/host/host_host.go, host_error.go` | ✅ |
+| `packages/chord/src/next/host/host.ts` | `chord/next/host/host_host.go, chord/next/host/host_error.go` | ✅ |
 | `packages/chord/src/next/host/attempt.ts` | `chord/next/host/host_attempt.go` | ✅ |
 | `packages/chord/src/next/host/object.ts` | `chord/next/host/host_object.go` | ✅ |
 | `packages/chord/src/next/host/reference.ts` | `chord/next/host/host_reference.go` | ✅ |
@@ -948,7 +948,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/next/host/adapted.ts` | `chord/next/host/host_adapted.go` | ✅ |
 | `packages/chord/src/next/host/reference-keys.ts` | `chord/next/host/host_reference_keys.go` | ✅ |
 | `packages/chord/src/next/host/reference-source.ts` | `chord/next/host/host_reference_source.go` | ✅ |
-| `packages/chord/src/next/host/staging.ts` | `chord/next/host/host_staging.go` | ✅ |
+| `packages/chord/src/next/host/staging.ts` | `chord/next/host/host_staging.go, chord/next/host/host_host.go` | ✅ |
 | `packages/chord/src/next-node/workers/control.ts` | `chord/nextnode/workers/workers_control.go` | ✅ |
 | `packages/chord/src/next-node/workers/index.ts` | `(re-export barrel; the exported set is the package's (CrossedError, ProcessLock, WorkerMain, WorkerStart, WorkerPlugins, WorkerResult, WorkerMainOptions, CreateWorkers, WorkerState, Workers, WorkersError, WorkersOptions))` | n/a |
 | `packages/chord/src/next-node/workers/lock.ts` | `chord/nextnode/workers/workers_lock.go, workers_lock_unix.go, workers_lock_windows.go` | ✅ |
