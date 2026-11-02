@@ -11,6 +11,20 @@
    "new": "(httpsOnly && parsed.Protocol == \"https:\")"
   }
  ],
+ "packages/ai/src/auth/resolve.ts": [
+  {
+   "file": "ai/auth_resolve.go",
+   "old": "defaultOAuthMinimumValidityMs = float64(5 * 60 * 1000)",
+   "new": "defaultOAuthMinimumValidityMs = float64(1)"
+  }
+ ],
+ "packages/ai/src/oauth.ts": [
+  {
+   "file": "ai/oauth_types.go",
+   "old": "return ok && subscription.IsSubscription()",
+   "new": "return !ok || subscription.IsSubscription()"
+  }
+ ],
  "packages/codemode/src/cloudflare.ts": [
   {
    "file": "codemode/cloudflare/cloudflare.go",

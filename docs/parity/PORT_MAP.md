@@ -165,11 +165,11 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/api/openai-responses.lazy.ts` | `(lazy dynamic-import wrapper; Go providers are statically linked)` | n/a |
 | `packages/ai/src/api/openrouter-images.lazy.ts` | `(lazy dynamic-import wrapper; Go providers are statically linked)` | n/a |
 | `packages/ai/src/api/pi-messages.lazy.ts` | `(lazy dynamic-import wrapper; Go providers are statically linked)` | n/a |
-| `packages/ai/src/auth/context.ts` | `ai/auth.go + ai/auth_store.go + ai/auth_resolve.go + ai/auth_providers.go + ai/oauth_*.go` | ✅ |
+| `packages/ai/src/auth/context.ts` | `ai/auth_resolve.go` | ✅ |
 | `packages/ai/src/auth/credential-store.ts` | `ai/in_memory_credential_store.go (literal credentials, insertion order, per-provider mutation chains and independent cancellation)` | ✅ |
-| `packages/ai/src/auth/helpers.ts` | `ai/auth_login.go + ai/auth.go + ai/auth_store.go + ai/auth_resolve.go + ai/auth_providers.go + ai/auth_native_login.go + ai/oauth_*.go`, `ai/auth_lazy.go` | ✅ |
-| `packages/ai/src/auth/resolve.ts` | `ai/auth.go + ai/auth_store.go + ai/auth_resolve.go + ai/auth_providers.go + ai/oauth_*.go` | ✅ |
-| `packages/ai/src/auth/types.ts` | `ai/auth.go + ai/auth_store.go + ai/auth_resolve.go + ai/auth_interaction.go + ai/auth_providers.go + ai/credential_json.go + ai/oauth_*.go`, `ai/operation_options.go` | ✅ |
+| `packages/ai/src/auth/helpers.ts` | `ai/auth_login.go + ai/auth_providers.go`, `ai/auth_lazy.go` | ✅ |
+| `packages/ai/src/auth/resolve.ts` | `ai/auth_resolve.go` | ✅ |
+| `packages/ai/src/auth/types.ts` | `ai/auth.go + ai/auth_store.go + ai/auth_resolve.go + ai/auth_interaction.go + ai/credential_json.go + ai/oauth_types.go`, `ai/operation_options.go` | ✅ |
 | `packages/ai/src/auth/oauth/anthropic.ts` | `ai/oauth_anthropic.go` | ✅ |
 | `packages/ai/src/auth/oauth/device-code.ts` | `ai/oauth_device_code.go` | ✅ |
 | `packages/ai/src/auth/oauth/github-copilot.ts` | `ai/githubcopilot.go + ai/copilot_verification_uri.go + ai/oauth_registry.go + ai/auth_providers.go (device notifications, shared RFC 8628 polling, account catalog refresh and enterprise credential routing)` | ✅ |
@@ -182,8 +182,8 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/auth/oauth/trusted-url.ts` | `ai/oauth_trusted_url.go trustedHTTPURL (shared by ai/githubcopilot.go via ai/copilot_verification_uri.go, ai/oauth_kimi.go, ai/oauth_meta.go and ai/oauth_radius.go; ai/trusted_url_oracle_test.go compares it with Pi's trustedHttpUrl over the verification-URI corpus)` | ✅ |
 | `packages/ai/src/auth/oauth/xai.ts` | `ai/oauth_xai.go (device-code login, polling, refresh, response validation, and owner-context cancellation; ai/oauth_xai_test.go including LoginContext/RefreshTokenContext cancellation, coding/cli/model_oauth_refresh_test.go caller cancellation, oauth/09 behavioral scenario)` | ✅ |
 | `packages/ai/src/bun-oauth.ts` | `(Bun-only OAuth flow registration; Go links OAuth implementations directly)` | n/a |
-| `packages/ai/src/compat.ts` | `ai/types.go`, `ai/compat.go`, `ai/builtin_providers.go`, `ai/registry.go`, `ai/faux.go` | ✅ |
-| `packages/ai/src/compat/extension-oauth-types.ts` | `ai/oauth_types.go + coding/extension/provider.go (type-only legacy OAuth callback and prompt contracts; runtime OAuth behavior belongs to the auth/provider rows)` | ✅ |
+| `packages/ai/src/compat.ts` | `ai/compat.go`, `ai/builtin_providers.go`, `ai/registry.go`, `ai/faux.go` | ✅ |
+| `packages/ai/src/compat/extension-oauth-types.ts` | `ai/oauth_types.go (type-only legacy OAuth callback and prompt contracts; runtime OAuth behavior belongs to the auth/provider rows)` | ✅ |
 | `packages/ai/src/legacy-api-aliases.ts` | `ai/api_streams.go (all 16 deprecated streamX/streamSimpleX aliases as exported Go functions, bound to their API; ai/compat_registry_test.go TestLegacyAPIAliasesAreBoundToTheirAPI. A setup failure such as a missing API key ends the returned stream with an error event as lazy.ts lazyStream does (TestLegacyAPIAliasesDeliverSetupFailuresOnTheStream); an alias builds its own API's request from the model's fields with no model.api check (TestLegacyAPIAliasesSendTheirAPIsRequestWhateverTheModelsApi); the plain and simple forms differ by the model token limit (TestAPIStreamsSendPlainAndSimpleOptions); the reply carries the model's api for the anthropic, mistral, openai-completions, openai-responses and pi-messages modules and the module's own api for azure, google, google-vertex, bedrock and codex (apiModuleOutputAPI; TestLegacyAPIAliasesStampTheReplyLikeTheirModule))` | ✅ |
 | `packages/ai/src/providers/openai-codex.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (OpenAI Codex provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
 | `packages/ai/src/providers/openai.ts` | `ai/models_generated.go + internal/codingagent/model_registry.go (OpenAI provider metadata/catalog registration)`, `ai/provider_constructors.go` | ✅ |
@@ -301,7 +301,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/utils/provider-env.ts` | `ai/provider_env.go (Bun empty process.env /proc fallback n/a in Go)` | ✅ |
 | `packages/ai/src/images.ts` | `ai/images.go` | ✅ |
 | `packages/ai/src/image-models.ts` | `ai/images_registry.go` | ✅ |
-| `packages/ai/src/images-api-registry.ts` | `ai/images.go + ai/images_registry.go` | ✅ |
+| `packages/ai/src/images-api-registry.ts` | `ai/images.go` | ✅ |
 | `packages/ai/src/utils/hash.ts` | `ai/openai.go shortHash32 (UTF-16 code units with uint32 Math.imul wrap), used by ai/openai.go normalizeCompletionsToolCallID, ai/openai_responses.go foreign fc_ ids, and ai/mistral.go deriveMistralToolCallID (upstream oracles in ai/openai_responses_foreign_toolcall_test.go and ai/mistral_test.go)` | ✅ |
 | `packages/ai/src/utils/headers.ts` | `ai/githubcopilot.go + ai/provider_response.go`, `ai/classifier_http.go` | ✅ |
 | `packages/ai/src/utils/json-parse.ts` | `ai/json_repair.go (repairJSON, ParseJSONWithRepair) + ai/streaming_json.go (ParseStreamingJson; ai/json_parse_upstream_test.go)` | ✅ |
