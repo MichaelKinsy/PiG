@@ -404,30 +404,33 @@ func TestANewConversationWithNoWorkBelowItIsSweptAtOnce(t *testing.T) {
 	}
 }
 
-// gateOnTerminal makes the commit that writes the terminal record of one task wait for the host's Storage once: the line job
-// returns a *NeedGate and runs again from its start after the answer (handler.gateCommit).
-type gateOnTerminal struct {
+// rerunOnce makes the first read of one task by a line job wait for a commit the test admits: the job returns a *NeedPublication for it and
+// runs again from its start once it is published, as a job that touches a key an unpublished commit writes does.
+type rerunOnce struct {
 	*sessiontest.MemStore
+	sess  *session.Session
 	task  session.ID
+	armed bool
 	asked bool
 }
 
-func (g *gateOnTerminal) Commit(writes []session.Write, nextID session.ID) (session.Seq, error) {
-	for _, w := range writes {
-		if w.Kind == session.WriteTask && !g.asked && idOf(w.Record) == g.task && taskStatusOf(w.Record) == session.StatusTerminal {
-			g.asked = true
-			return 0, &session.NeedGate{}
-		}
+func (g *rerunOnce) Task(id session.ID) (*jv.Object, error) {
+	if g.armed && !g.asked && id == g.task {
+		g.asked = true
+		part := &session.Part{Writes: []session.Write{{Kind: session.WriteConversation, Record: obj("id", 99.0)}}, Keys: []string{"conv:99"}}
+		g.sess.Writer().Admit(part)
+		return nil, &session.NeedPublication{Gate: part.Gate()}
 	}
-	return g.MemStore.Commit(writes, nextID)
+	return g.MemStore.Task(id)
 }
 
-// The finalize pass takes the held owners to check once, as Pi's callback does: a commit that waits for the host's Storage
-// runs the job again from its start, and the second run still finalizes the chain the first one found.
-func TestAGatedFinalizeCommitFinalizesTheChainWhenItRunsAgain(t *testing.T) {
+// The finalize pass takes the held owners to check once, as Pi's callback does: a job that waits for a publication runs again from its
+// start, and the second run still finalizes the chain the first one found.
+func TestAFinalizeJobThatRunsAgainFinalizesTheChain(t *testing.T) {
 	mem := sessiontest.New()
-	gated := &gateOnTerminal{MemStore: mem}
+	gated := &rerunOnce{MemStore: mem}
 	s := newSession(gated, mem.NextID())
+	gated.sess = s
 	runtimes := map[session.ID]*session.Runtime{}
 	def := &session.TaskDef{Name: "t.hold", Version: 1, Initial: func(any) any { return jv.NewObject() }}
 	var top, middle, leaf session.ID
@@ -449,7 +452,7 @@ func TestAGatedFinalizeCommitFinalizesTheChainWhenItRunsAgain(t *testing.T) {
 	}
 	gated.task = middle
 	registry := snap{"t.hold": {Def: *def, Phase: func(rt *session.Runtime, rec *jv.Object, _ func(error)) { runtimes[idOf(rec)] = rt }}}
-	loop := &session.Loop{}
+	loop := bound(s)
 	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return 1 }})
 	sched.Open(func(err error) {
 		if err != nil {
@@ -460,6 +463,7 @@ func TestAGatedFinalizeCommitFinalizesTheChainWhenItRunsAgain(t *testing.T) {
 	if err := loop.Run(); err != nil {
 		t.Fatal(err)
 	}
+	gated.armed = true
 	for _, id := range []session.ID{top, middle, leaf} {
 		runtimes[id].Commit(func(*session.Tx, *jv.Object) (*jv.Object, error) {
 			return obj("status", session.StatusTerminal, "outcome", obj("status", "completed")), nil
@@ -475,12 +479,8 @@ func TestAGatedFinalizeCommitFinalizesTheChainWhenItRunsAgain(t *testing.T) {
 			break
 		}
 	}
-	if !gated.asked || !loop.Busy() {
-		t.Fatalf("the finalize commit did not wait for the Storage (asked %v, busy %v)", gated.asked, loop.Busy())
-	}
-	loop.Ungate()
-	if err := loop.Run(); err != nil {
-		t.Fatal(err)
+	if !gated.asked {
+		t.Fatal("no job waited for a publication")
 	}
 	for _, id := range []session.ID{top, middle, leaf} {
 		rec, err := mem.Task(id)
@@ -490,5 +490,57 @@ func TestAGatedFinalizeCommitFinalizesTheChainWhenItRunsAgain(t *testing.T) {
 		if got := taskStatusOf(rec); got != session.StatusTerminal {
 			t.Fatalf("task %d is %s, want terminal", id, got)
 		}
+	}
+}
+
+// A started graph of held tasks keeps a bounded number of bytes per task (U-harness-scheduler-retention's 20,000-deep chain ran the 96 MiB
+// TinyGo core out of memory when a queued line job carried the state of a running one and a region's record outlived it). The test measures
+// the live heap after the chain's creation commit and after the scheduler started every task.
+func TestAStartedChainOfHeldTasksKeepsBoundedBytesPerTask(t *testing.T) {
+	const depth = 5_000
+	live := func() uint64 {
+		runtime.GC()
+		runtime.GC()
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		return m.HeapAlloc
+	}
+	base := live()
+	mem := sessiontest.New()
+	s := newSession(mem, mem.NextID())
+	def := &session.TaskDef{Name: "t.hold", Version: 1, Initial: func(any) any { return jv.NewObject() }}
+	if _, err := s.Commit(func(tx *session.Tx) error {
+		root, err := tx.CreateRootConversation()
+		if err != nil {
+			return err
+		}
+		owner, err := tx.CreateTask(def, nil, session.TaskOptions{ConversationID: idOf(root)})
+		for range depth {
+			if err == nil {
+				owner, err = tx.CreateTask(def, nil, session.TaskOptions{OwnerTask: owner})
+			}
+		}
+		return err
+	}, session.TxScope{}); err != nil {
+		t.Fatal(err)
+	}
+	registry := snap{"t.hold": {Def: *def, Phase: func(*session.Runtime, *jv.Object, func(error)) {}}}
+	loop := &session.Loop{}
+	sched := session.NewScheduler(s, loop, session.Env{Snapshot: func() session.Snapshot { return registry }, Report: func(error, *jv.Object) {}, Now: func() float64 { return 1 }})
+	sched.Open(func(err error) {
+		if err != nil {
+			t.Error(err)
+		}
+	})
+	sched.Resume()
+	if err := loop.Run(); err != nil {
+		t.Fatal(err)
+	}
+	perTask := (live() - base) / depth
+	runtime.KeepAlive(mem)
+	runtime.KeepAlive(sched)
+	// 2,568 bytes measured (2,509 before the Session's task index and record cache): a queued job or a region record that outlives its use shows here.
+	if perTask > 2_700 {
+		t.Fatalf("a started chain of %d held tasks keeps %d bytes per task, more than 2,700", depth, perTask)
 	}
 }

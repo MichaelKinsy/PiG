@@ -75,7 +75,7 @@ func (h *handler) apiTasks(id uint32, op string, req *jv.Object) (handled bool) 
 		// The caller's `await readOnLine(...)` resumes at the job's run, then `return found.promise` of an async function adopts it:
 		// an already settled promise answers three hops later, a waiter's promise one hop after it resolves (scheduler.ts :306-316).
 		then := func(record *jv.Object, err error, waited bool) {
-			hops := 3
+			hops := 2
 			if waited {
 				hops = 1
 			}

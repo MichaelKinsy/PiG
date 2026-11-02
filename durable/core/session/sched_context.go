@@ -11,10 +11,21 @@ import (
 // decides which Storage reads Pi makes: the head marker and the tail of the range, and when the conversation first looked
 // idle. It is derived, never persisted, dropped at the first idle check after contextRetentionMs of idleness, and at seal.
 
+// ContextRange is the bounds of a kept context range: the entries from From (0: the first) to Tail visible from the conversation,
+// under the head marker Head (0: none), whose head is From. A range that is Current reached the conversation's newest entry when
+// it was read, so the entries of later commits extend it at their publication (advanceContexts); one cut off at an earlier entry
+// is not.
+type ContextRange struct {
+	Head, From, Tail ID
+	Current          bool
+}
+
 type keptContext struct {
-	head, tail ID // head marker entry (0: none) and newest entry of the range
-	idleSince  float64
-	hasIdle    bool
+	ContextRange
+	idleSince float64
+	// expiresAt is when the idle period that began at idleSince ends, fixed when it began.
+	expiresAt float64
+	hasIdle   bool
 }
 
 func (s *Scheduler) retention() float64 {
@@ -24,35 +35,50 @@ func (s *Scheduler) retention() float64 {
 	return s.env.ContextRetentionMs()
 }
 
-// KeptContext returns the head marker and tail of the range kept for the conversation.
-func (s *Scheduler) KeptContext(conversationID ID) (head, tail ID, ok bool) {
+// KeptContext returns the bounds of the range kept for the conversation.
+func (s *Scheduler) KeptContext(conversationID ID) (ContextRange, bool) {
 	kept := s.contexts[conversationID]
 	if kept == nil {
-		return 0, 0, false
+		return ContextRange{}, false
 	}
-	return kept.head, kept.tail, true
+	return kept.ContextRange, true
+}
+
+// KeptEntry reports whether entry id lies within the range kept for the conversation: such an entry is committed and visible from
+// it (scheduler.ts runtime.entry reads it from the kept range, rangeEntry).
+func (s *Scheduler) KeptEntry(conversationID, id ID) bool {
+	kept := s.contexts[conversationID]
+	return kept != nil && id >= kept.From && id <= kept.Tail
 }
 
 // KeepContext keeps the range a runtime read returned unless the invocation ended, the Harness is closing, or a concurrent
 // read already kept a newer range. A read of another, idle conversation starts or continues its retention period.
-func (s *Scheduler) KeepContext(conversationID, head, tail ID, invocationEnded bool) {
+//
+// A range that is Current stays so only if the Session knows its tail as the conversation's newest entry now: a commit published since the
+// read returned was not seen by advanceContexts, so a range that missed it must not be advanced.
+func (s *Scheduler) KeepContext(conversationID ID, r ContextRange, invocationEnded bool) {
 	if s.closing || invocationEnded {
 		return
 	}
+	if newest, known := s.sess.KnownLatestEntryID(conversationID); r.Current && (!known || newest != r.Tail) {
+		r.Current = false
+	}
 	kept := s.contexts[conversationID]
-	if kept != nil && kept.tail > tail {
+	if kept != nil && kept.Tail > r.Tail {
 		return
 	}
 	if !s.idle(conversationID) {
-		s.contexts[conversationID] = &keptContext{head: head, tail: tail}
+		s.contexts[conversationID] = &keptContext{ContextRange: r}
 		s.idleOrder.Delete(conversationID)
 		s.deferIdleIfUnloaded(conversationID)
 		return
 	}
 	if s.retention() > 0 {
-		next := &keptContext{head: head, tail: tail, idleSince: s.env.Now(), hasIdle: true}
+		// An idle period that already started keeps its expiry; a new one starts now.
+		next := &keptContext{ContextRange: r, idleSince: s.env.Now(), hasIdle: true}
+		next.expiresAt = next.idleSince + s.retention()
 		if kept != nil && kept.hasIdle {
-			next.idleSince = kept.idleSince
+			next.idleSince, next.expiresAt = kept.idleSince, kept.expiresAt
 		}
 		s.contexts[conversationID] = next
 		// An idle period that already started keeps its place in the expiry order; a new one starts now.
@@ -60,6 +86,44 @@ func (s *Scheduler) KeepContext(conversationID, head, tail ID, invocationEnded b
 			s.markIdle(conversationID, next.idleSince)
 		}
 		s.scheduleExpiry()
+	}
+}
+
+// advanceContexts extends each kept context range with the entries a stored commit appended to its conversation, so a later read
+// needs no Storage scan (scheduler.ts #advanceContexts, context.ts advanceRange). Entries are published in ID order. An idle range
+// past its retention is dropped here too: entry-only commits do not run settleIdle, and a host may decline the expiry timer.
+func (s *Scheduler) advanceContexts(pub *Publication) {
+	if len(s.contexts) == 0 {
+		return
+	}
+	for i := range pub.Changes {
+		ch := &pub.Changes[i]
+		if ch.Kind != ChangeTable || ch.Table != WriteEntry {
+			continue
+		}
+		conversationID := mustInt(ch.Record, "conversationId")
+		kept := s.contexts[conversationID]
+		if kept == nil {
+			continue
+		}
+		if kept.hasIdle && kept.expiresAt <= s.env.Now() {
+			s.dropContext(conversationID)
+			continue
+		}
+		if !kept.Current {
+			continue
+		}
+		kept.Tail = mustInt(ch.Record, "id")
+		if !ch.Record.Has("head") {
+			continue
+		}
+		// Heads only move forward: compaction keeps a later entry, a reset starts at itself, an older head is stale.
+		from := mustInt(ch.Record, "head")
+		if kept.Head != 0 && from < kept.From {
+			s.dropContext(conversationID)
+			continue
+		}
+		kept.Head, kept.From = mustInt(ch.Record, "id"), from
 	}
 }
 
@@ -194,7 +258,7 @@ func (s *Scheduler) settleIdle(scopes idleScopes) {
 		case retention <= 0:
 			s.dropContext(id)
 		case !kept.hasIdle:
-			kept.idleSince, kept.hasIdle = now, true
+			kept.idleSince, kept.expiresAt, kept.hasIdle = now, now+retention, true
 			s.markIdle(id, now)
 		}
 	}

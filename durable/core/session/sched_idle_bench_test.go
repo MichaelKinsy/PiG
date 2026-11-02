@@ -116,7 +116,7 @@ func BenchmarkTaskCycleWithKeptContexts(b *testing.B) {
 		b.Run(itoa(contexts), func(b *testing.B) {
 			f := newIdleFixture(b)
 			for range contexts {
-				f.sched.KeepContext(f.conversation(), 0, 5, false)
+				f.sched.KeepContext(f.conversation(), session.ContextRange{Tail: 5}, false)
 			}
 			b.ReportAllocs()
 			for b.Loop() {
