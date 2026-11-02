@@ -42,16 +42,27 @@ type pending struct {
 	held  []func()
 }
 
-// delivery is one scheduled delivery goroutine. entered is closed once the delivery has run the synchronous part of its first listener
-// call (the call returned), reached a wait of the host that said so (DeliveryEntered), or ended; done once the goroutine ended.
+// delivery is one listener call a watch owes: the first call of a delivery goroutine, or a frame a running drain takes next.
+// entered is closed once the call's synchronous part ran (the call returned), the listener reached a wait of the host that
+// said so (DeliveryEntered), or the call will not be made; done once the delivery is complete.
 type delivery struct {
 	entered chan struct{}
 	enter   sync.Once
 	done    chan struct{}
+	complete sync.Once
+	// root is the first delivery of the goroutine that makes this call: the calls of one drain follow each other on one goroutine,
+	// so a listener that awaits the deliveries cannot wait for a later call of its own drain.
+	root *delivery
 }
 
 // MarkEntered closes entered, once.
 func (d *delivery) MarkEntered() { d.enter.Do(func() { close(d.entered) }) }
+
+// finish marks the delivery entered and complete.
+func (d *delivery) finish() {
+	d.MarkEntered()
+	d.complete.Do(func() { close(d.done) })
+}
 
 // DeliveryEntered says that the watch delivery running on the calling goroutine, if there is one, has entered: its listener
 // went on to wait for something the host knows (a wait of the Durable Session, a park of the host loop, a call that awaits the
@@ -131,23 +142,33 @@ func (tracker *pending) holding(start func()) bool {
 
 // schedule runs job off the caller's goroutine, as upstream's queueMicrotask runs it outside the publishing call. job calls
 // d.MarkEntered once the synchronous part of its listener ran; awaitEntered waits for that.
-func (tracker *pending) schedule(job func(d *delivery)) {
-	d := &delivery{entered: make(chan struct{}), done: make(chan struct{})}
+func (tracker *pending) schedule(job func(d *delivery)) *delivery {
+	d := tracker.register(nil)
 	tracker.begin()
-	tracker.mu.Lock()
-	tracker.deliveries = append(slices.DeleteFunc(tracker.deliveries, (*delivery).finished), d)
-	tracker.mu.Unlock()
 	//portlint:allow asyncorder joined by pending.wait (begin/end count); watch frames are taken under watch.mu in publish order and one runs at a time, as watch.ts #schedule/#drain
 	go func() {
 		unregister := watchentered.Register(d)
 		defer func() {
 			unregister()
-			d.MarkEntered()
-			close(d.done)
+			d.finish()
 			tracker.end()
 		}()
 		job(d)
 	}()
+	return d
+}
+
+// register records a listener call the caller owes, so that awaitEntered waits for it until it is entered. root is the first
+// delivery of the drain that will make the call, nil for a call that starts a drain.
+func (tracker *pending) register(root *delivery) *delivery {
+	d := &delivery{entered: make(chan struct{}), done: make(chan struct{}), root: root}
+	if root == nil {
+		d.root = d
+	}
+	tracker.mu.Lock()
+	tracker.deliveries = append(slices.DeleteFunc(tracker.deliveries, (*delivery).finished), d)
+	tracker.mu.Unlock()
+	return d
 }
 
 // awaitEntered blocks until every delivery scheduled before the call has entered: the synchronous part of its listener ran (the
@@ -172,7 +193,7 @@ func (tracker *pending) awaitEntered(ctx context.Context) error {
 	scheduled := slices.DeleteFunc(slices.Clone(tracker.deliveries), (*delivery).finished)
 	tracker.mu.Unlock()
 	for _, d := range scheduled {
-		if d == own {
+		if own != nil && d.root == own.root {
 			continue
 		}
 		// A cancelled ctx ends the wait whether or not the delivery entered.
@@ -267,6 +288,10 @@ type watchLifecycle[T, L any] struct {
 	started   bool
 	scheduled bool
 	running   bool
+	// root is the first delivery of the drain that runs; queued is the registered call the running drain makes next, set while
+	// a frame waits behind the running call, so that awaitEntered sees every call that is not yet entered.
+	root   *delivery
+	queued *delivery
 	// holdQueued is set while a delivery waits for the release of a Hold.
 	holdQueued bool
 	// ending is set by EndAfterDelivery: the source sends nothing more, and the watch ends ended once it delivered the rest.
@@ -388,7 +413,15 @@ func (watch *watchLifecycle[T, L]) open() bool { return watch.end == nil && !wat
 // caller resumes, so the frame is taken into delivery before advance returns to the publishing commit; a later Stop
 // prevents only frames behind it. The listener itself runs on a delivery goroutine, never inline.
 func (watch *watchLifecycle[T, L]) deliverLocked() {
-	if watch.running || watch.end != nil || !watch.hasPending() {
+	if watch.end != nil || !watch.hasPending() {
+		return
+	}
+	if watch.running {
+		// The running drain takes this frame itself after its call returns: register the call now, as the drain microtask a
+		// publication queues is visible to the code that awaits the commit before the drain runs it.
+		if watch.queued == nil {
+			watch.queued = watch.scheduler.register(watch.root)
+		}
 		return
 	}
 	if !watch.holdQueued && watch.scheduler.holding(watch.deliverHeld) {
@@ -399,7 +432,7 @@ func (watch *watchLifecycle[T, L]) deliverLocked() {
 		return
 	}
 	frame, listener := watch.takeLocked()
-	watch.scheduler.schedule(func(d *delivery) { watch.drain(d, frame, listener) })
+	watch.root = watch.scheduler.schedule(func(d *delivery) { watch.drain(d, frame, listener) })
 }
 
 // deliverHeld starts the delivery a Hold postponed, with the frames advanced since folded.
@@ -416,7 +449,7 @@ func (watch *watchLifecycle[T, L]) scheduleLocked() {
 		return
 	}
 	watch.scheduled = true
-	watch.scheduler.schedule(func(d *delivery) {
+	watch.root = watch.scheduler.schedule(func(d *delivery) {
 		watch.mu.Lock()
 		watch.scheduled = false
 		if watch.running || watch.end != nil || !watch.started || !watch.hasPending() {
@@ -454,7 +487,7 @@ func (watch *watchLifecycle[T, L]) drain(d *delivery, frame watchFrame[T], liste
 		watch.mu.Unlock()
 		err := callWatchListener(invoke, *listener, frame)
 		// The synchronous part of the call the delivery was scheduled for ran: the code that awaited it may resume.
-		d.MarkEntered()
+		d.finish()
 		watch.mu.Lock()
 		if err != nil {
 			if watch.end == nil {
@@ -479,6 +512,20 @@ func (watch *watchLifecycle[T, L]) drain(d *delivery, frame watchFrame[T], liste
 			break
 		}
 		frame, listener = watch.takeLocked()
+		// The call for this frame was registered when it was published (deliverLocked), or is registered now: either way
+		// before mu is released, so awaitEntered sees it.
+		d = watch.queued
+		watch.queued = nil
+		if d == nil {
+			d = watch.scheduler.register(watch.root)
+		}
+		watchentered.Register(d)
+	}
+	d.finish()
+	if queued := watch.queued; queued != nil {
+		// The frame it stood for will be delivered by a new drain or not at all.
+		watch.queued = nil
+		queued.finish()
 	}
 	watch.running = false
 	if watch.end == nil && watch.hasPending() {
