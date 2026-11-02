@@ -63,7 +63,7 @@ func (p *TerminalInput) Process(data []byte) {
 	if p.closed {
 		return
 	}
-	text, ok := p.buffer.DecodeTerminalBytes(data)
+	text, ok := p.buffer.decodeTerminalBytes(data)
 	if !ok {
 		// Pi: terminal.ts:281-283 runs process() per data event, and Node emits none for a read decoded to "".
 		return
