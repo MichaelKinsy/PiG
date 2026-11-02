@@ -171,7 +171,10 @@ type Options struct {
 	OnCommitted func(c abi.Commit, sql []string)
 }
 
-// Host is one core session and its SQLite connection.
+// Host is one core session and its SQLite connection: the native Go host of the Session that the Durable core runs through
+// the core ABI. Close seals it as Session.close does, and a failed commit poisons it as Session's runCommit does.
+//
+// Ports packages/durable/src/session/session.ts
 type Host struct {
 	opts   Options
 	box    *mailbox
