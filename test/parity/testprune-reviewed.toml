@@ -716,3 +716,31 @@ commit = "875a364a714c18b5bcb69e5509f0f61b2e829531"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The test moved with the brace-expansion port from coding/packagecontent (glob_braces_npm_test.go) to internal/minimatch, which now has the single port; the recorded rows of Pi's npm minimatch are the same and only the called function is renamed (npmBraceExpand to braceExpand)."
+
+[[entry]]
+path = "coding/extension/host/subprocess/host_helpers_highlight_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
+
+[[entry]]
+path = "tui/component_themes_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
+
+[[entry]]
+path = "tui/highlight_cache_bytes_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."
+
+[[entry]]
+path = "tui/highlight_test.go"
+commit = "97995f7e9dcd1676c40922423fe87afe01b8b15f"
+class = "CITE"
+cite = "packages/coding-agent/src/modes/interactive/theme/theme.ts:952"
+reason = "Pi 0f21a331 makes getMarkdownTheme().highlightCode equal highlightCode and styles a failed highlight with mdCodeBlock (theme.ts:952): the host call highlight.code and the SDK helpers lose their markdown flag, so the expected values of the calls that passed it (HighlightCodeLines, highlightCodeUncached, hlFindResume, highlightCodeLines) lose that argument and the markdown column of the digest comparison is the same result."

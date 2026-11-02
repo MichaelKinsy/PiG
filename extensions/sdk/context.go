@@ -318,8 +318,7 @@ func (c Context) CancellationReason() string {
 	if c.ctx == nil {
 		return ""
 	}
-	var reason cancelReason
-	if errors.As(context.Cause(c.ctx), &reason) {
+	if reason, ok := errors.AsType[cancelReason](context.Cause(c.ctx)); ok {
 		return string(reason)
 	}
 	return ""

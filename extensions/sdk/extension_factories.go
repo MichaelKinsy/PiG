@@ -4,6 +4,8 @@ package sdk
 // cannot cross the process boundary, so these return a reference to the compiled-in extension of that name: pass it in [DefaultResourceLoaderOptions].ExtensionFactories and the host runs its own factory of that name, with the same options, for
 // the extensions the loader loads.
 
+import "maps"
+
 // ExtensionFactory is a reference to a compiled-in extension of the host, which [NewDefaultResourceLoader] takes in its ExtensionFactories option.
 type ExtensionFactory struct {
 	builtin string
@@ -92,9 +94,7 @@ func extensionFactoriesWire(c Context, factories []any) ([]map[string]any, error
 		}
 		// The option object is built for each loader: a function is named to the host in the connection's table once per loader it is passed to.
 		options := make(map[string]any, len(reference.options)+5)
-		for name, value := range reference.options {
-			options[name] = value
-		}
+		maps.Copy(options, reference.options)
 		reference.mcp.register(c, options)
 		wire = append(wire, map[string]any{"builtin": reference.builtin, "options": options})
 	}
