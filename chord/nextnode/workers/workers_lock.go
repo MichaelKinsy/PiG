@@ -42,6 +42,7 @@ type lockLocation struct {
 // returns what listening returns besides "in use", and for a stale socket file (macOS, the BSDs) an error naming it.
 func ProcessLock(name string, ctx context.Context) (*ProcessLockHandle, error) {
 	sum := sha256.Sum256([]byte(name))
+	//portlint:allow utf16units the slice is of a hex digest, ASCII only, so bytes are UTF-16 units; lock.ts:27 `.digest("hex").slice(0, 32)`
 	key := hex.EncodeToString(sum[:])[:32]
 	location, err := platformLockLocation(key)
 	if err != nil {
@@ -84,7 +85,7 @@ func lockAt(location lockLocation, ctx context.Context) (*ProcessLockHandle, err
 		})
 	}
 	//portlint:allow golifetime the accept loop returns when Release closes the listener, and Release joins it
-	go lock.accept()
+	go lock.accept() //portlint:allow asyncorder the accept loop is lock.ts:45 createServer((socket) => ...) connection callback, an event source with no caller to order against; Release joins it
 	return lock, nil
 }
 
@@ -123,7 +124,7 @@ func (lock *ProcessLockHandle) accept() {
 		lock.waiting.Add(1)
 		lock.mu.Unlock()
 		//portlint:allow golifetime the reader ends with its connection, which its waiter or Release closes, and Release joins it
-		go lock.watch(conn)
+		go lock.watch(conn) //portlint:allow asyncorder the reader is lock.ts:48 socket.once("close", () => waiters.delete(socket)), an event with no ordering against other work; Release joins it
 	}
 }
 

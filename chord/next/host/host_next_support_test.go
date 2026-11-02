@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -386,7 +387,8 @@ const (
 	failRollback = "ROLLBACK"
 )
 
-// transactionGate holds a transaction inside its backend transaction, at its first statement.
+// transactionGate holds a transaction inside its backend transaction: a commit step at the statement that follows its
+// writes (faultyStore's holdNextCommit), or a transaction at its first statement (heldExecutor).
 type transactionGate struct {
 	entered chan struct{}
 	release chan struct{}
@@ -403,44 +405,95 @@ func (gate *transactionGate) hit() {
 	<-gate.release
 }
 
-// Entered is closed when the held transaction reached its first statement.
+// Entered is closed when the held transaction reached its hold.
 func (gate *transactionGate) Entered() <-chan struct{} { return gate.entered }
 
 // Release lets the held transaction go on.
 func (gate *transactionGate) Release() { gate.freed.Do(func() { close(gate.release) }) }
 
-type gatedExecutor struct {
+// heldExecutor is a transaction's executor that holds the transaction at its first statement, for a test that picks
+// the transaction by its position (nthTransactionDatabase).
+type heldExecutor struct {
 	sqlite.SqliteExecutor
 	gate *transactionGate
 }
 
-func (e *gatedExecutor) Exec(sql string) error {
+func (e *heldExecutor) Exec(sql string) error {
 	e.gate.hit()
 	return e.SqliteExecutor.Exec(sql)
 }
 
-func (e *gatedExecutor) Run(sql string, params ...sqlite.SqliteValue) error {
+func (e *heldExecutor) Run(sql string, params ...sqlite.SqliteValue) error {
 	e.gate.hit()
 	return e.SqliteExecutor.Run(sql, params...)
 }
 
-func (e *gatedExecutor) RunCounted(sql string, params ...sqlite.SqliteValue) (int64, error) {
+func (e *heldExecutor) RunCounted(sql string, params ...sqlite.SqliteValue) (int64, error) {
 	e.gate.hit()
 	return e.SqliteExecutor.RunCounted(sql, params...)
 }
 
-func (e *gatedExecutor) Get(sql string, params ...sqlite.SqliteValue) (sqlite.SqliteRow, error) {
+func (e *heldExecutor) Get(sql string, params ...sqlite.SqliteValue) (sqlite.SqliteRow, error) {
 	e.gate.hit()
 	return e.SqliteExecutor.Get(sql, params...)
 }
 
-func (e *gatedExecutor) All(sql string, params ...sqlite.SqliteValue) ([]sqlite.SqliteRow, error) {
+func (e *heldExecutor) All(sql string, params ...sqlite.SqliteValue) ([]sqlite.SqliteRow, error) {
 	e.gate.hit()
 	return e.SqliteExecutor.All(sql, params...)
 }
 
+// closesWrites reports whether sql is a statement a commit step runs after all its writes: the catalog records
+// (WriteCatalog), the outbox row and the metadata (writeMeta) that close it.
+func closesWrites(sql string) bool {
+	return strings.HasPrefix(sql, "INSERT OR REPLACE INTO "+store.TableTables+" ") ||
+		strings.HasPrefix(sql, "INSERT INTO "+store.TableOutbox+" ") ||
+		strings.HasPrefix(sql, "UPDATE "+store.TableMeta+" ")
+}
+
+// gatedExecutor is a transaction's executor that holds the commit step the database's pending gate is for at the
+// statement that follows its writes.
+type gatedExecutor struct {
+	sqlite.SqliteExecutor
+	db *faultyDatabase
+}
+
+func (e *gatedExecutor) hold(sql string) {
+	if !closesWrites(sql) {
+		return
+	}
+	if gate := e.db.takeGate(); gate != nil {
+		gate.hit()
+	}
+}
+
+func (e *gatedExecutor) Exec(sql string) error {
+	e.hold(sql)
+	return e.SqliteExecutor.Exec(sql)
+}
+
+func (e *gatedExecutor) Run(sql string, params ...sqlite.SqliteValue) error {
+	e.hold(sql)
+	return e.SqliteExecutor.Run(sql, params...)
+}
+
+func (e *gatedExecutor) RunCounted(sql string, params ...sqlite.SqliteValue) (int64, error) {
+	e.hold(sql)
+	return e.SqliteExecutor.RunCounted(sql, params...)
+}
+
+func (e *gatedExecutor) Get(sql string, params ...sqlite.SqliteValue) (sqlite.SqliteRow, error) {
+	e.hold(sql)
+	return e.SqliteExecutor.Get(sql, params...)
+}
+
+func (e *gatedExecutor) All(sql string, params ...sqlite.SqliteValue) ([]sqlite.SqliteRow, error) {
+	e.hold(sql)
+	return e.SqliteExecutor.All(sql, params...)
+}
+
 // faultyDatabase is a Node SQLite facade on `:memory:` whose next statement of a transaction throws, once per fail
-// (the D4 matrix: a failed `BEGIN`, `COMMIT` or `ROLLBACK`); it can also hold the next transaction (holdNextCommit).
+// (the D4 matrix: a failed `BEGIN`, `COMMIT` or `ROLLBACK`); it can also hold the next commit step (holdNextCommit).
 // Go forced difference (as store/support_test.go): Go's facade runs its transaction statements on an unexported
 // connection, so the wrapper injects the failures around Transaction.
 type faultyDatabase struct {
@@ -477,12 +530,8 @@ func (db *faultyDatabase) Transaction(callback func(transaction sqlite.SqliteExe
 	if db.take(failBegin) {
 		return errors.New("injected: BEGIN IMMEDIATE failed")
 	}
-	gate := db.takeGate()
 	err := db.SqliteDatabase.Transaction(func(transaction sqlite.SqliteExecutor) error {
-		if gate != nil {
-			transaction = &gatedExecutor{SqliteExecutor: transaction, gate: gate}
-		}
-		if err := callback(transaction); err != nil {
+		if err := callback(&gatedExecutor{SqliteExecutor: transaction, db: db}); err != nil {
 			return err
 		}
 		if db.take(failCommit) {
@@ -498,8 +547,11 @@ func (db *faultyDatabase) Transaction(callback func(transaction sqlite.SqliteExe
 
 // faultyStore is a store over a faultyDatabase, its fail and its holdNextCommit: Pi's `faultyStore` plus
 // `holdNextCommit(store)`. holdNextCommit holds the store's next commit step inside its backend transaction after its
-// admission: Entered is closed there, Release lets it finish; later commits run as usual (Go forced difference: Pi
-// replaces `store.commit` for one call; Go holds the next backend transaction at its first statement).
+// admission: Entered is closed there, Release lets it finish; later commits run as usual. Pi replaces `store.commit`
+// for one call and appends a held write last in the write phase, so the commit stops after all its writes and before
+// the catalog, outbox and metadata statements that close it; Go holds the next commit step that reaches those
+// statements (Go forced difference: the store type is concrete, so the hold is at the statements, and the
+// `dropIndex x/y` write Pi's held write records in the outbox is not added).
 func faultyStore(t testing.TB, outbox ...bool) (st *store.ChordStore, fail func(statement string), holdNextCommit func() *transactionGate) {
 	t.Helper()
 	var db *faultyDatabase

@@ -31,6 +31,7 @@ func (p *keyedPromise[T]) settle(value T, err error) {
 		return
 	}
 	p.settled, p.value, p.err = true, value, err
+	//portlint:allow doubleclose the p.settled check above returns before this line inside a loop section, so done closes once; a Promise settles once
 	close(p.done)
 	callbacks := p.callbacks
 	p.callbacks = nil

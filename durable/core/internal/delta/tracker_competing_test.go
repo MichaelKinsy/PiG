@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/durable/core/jv"
 )
 
+// pi: packages/chord/src/delta/tracker.ts
 // Ports the "delta tracker competing changes" cases of packages/chord/test/delta-tracker/tracker.test.ts and the
 // "abandoned-draft-released" and "tracker-with-open-draft" scenarios of retention.worker.ts (Pi a9228305) onto the durable
 // tracker. Go mapping: Pi registers open drafts with the tracker so adopting one makes the others stale at once. This

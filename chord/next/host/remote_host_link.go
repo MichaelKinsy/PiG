@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
@@ -68,7 +69,7 @@ type hostLink struct {
 	channel   *link.Channel
 	// closing is cancelled when the link closes: stops its asynchronous inflates at once.
 	closing       context.Context
-	closingCancel context.CancelFunc
+	closingCancel func(cause error)
 }
 
 var _ link.ChannelHandler = (*hostLink)(nil)
@@ -79,7 +80,7 @@ func newHostLink(host *chordHost, made link.Link, options hostLinkOptions, ctx c
 		host: host, role: options.role, principal: options.principal, trusted: options.trusted, limits: options.limits,
 		context: ctx,
 	}
-	l.closing, l.closingCancel = context.WithCancel(context.Background())
+	l.closing, l.closingCancel = chordctx.WithCancel(chordctx.Background())
 	l.consumer = newConsumerSide(l)
 	report := func(err error) { host.report(HostError{Kind: ErrProtocolError, Error: err}) }
 	channel, err := link.NewChannel(made, l, link.ChannelOptions{
@@ -90,7 +91,7 @@ func newHostLink(host *chordHost, made link.Link, options hostLinkOptions, ctx c
 		// A `hello` the codec cannot write: nothing was started; the link is closed.
 		report(err)
 		made.Close()
-		l.closingCancel()
+		l.closingCancel(nil)
 		return l
 	}
 	l.channel = channel
@@ -249,7 +250,7 @@ func (l *hostLink) revokeUnbound(revoked func(principal data.Principal) bool, er
 // Closed implements link.ChannelHandler: the link closed, from either end.
 func (l *hostLink) Closed() {
 	l.host.loop().Run(func() {
-		l.closingCancel()
+		l.closingCancel(nil)
 		for _, provider := range l.providers.values() {
 			provider.closed()
 		}

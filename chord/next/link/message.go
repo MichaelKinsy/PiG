@@ -547,12 +547,15 @@ func isLowerHex(text string) bool {
 	return true
 }
 
+//portlint:allow utf16units a 16-byte string passes only when every byte is a lowercase hex ASCII character, where bytes equal UTF-16 units; a non-ASCII string fails isLowerHex either way (pattern "^[0-9a-f]{16}$", message.ts:69)
 func isHex16(text string) bool { return len(text) == 16 && isLowerHex(text) }
 
 // isUUID is the incarnation pattern `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`.
 func isUUID(text string) bool {
+	//portlint:allow utf16units a 36-byte string passes only when every byte is ASCII hex or '-', where bytes equal UTF-16 units; any non-ASCII string fails the checks either way (incarnation pattern, message.ts:48)
 	if len(text) != 36 || text[8] != '-' || text[13] != '-' || text[18] != '-' || text[23] != '-' {
 		return false
 	}
+	//portlint:allow utf16units the length check above admits only ASCII text here, so byte offsets are UTF-16 offsets (incarnation pattern, message.ts:48)
 	return isLowerHex(text[:8]) && isLowerHex(text[9:13]) && isLowerHex(text[14:18]) && isLowerHex(text[19:23]) && isLowerHex(text[24:])
 }

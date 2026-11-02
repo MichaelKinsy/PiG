@@ -524,6 +524,12 @@ type NodeHost struct {
 	kind  string
 	owner *Plugins
 
+	// life is the context of the work the process asked of this side (the bridged proxies' requests, NodeMember.Value): it
+	// ends once the process ended and its pending requests settled. It carries the values of the context that started the
+	// host, not its cancellation.
+	life    context.Context
+	endLife context.CancelFunc
+
 	started chan struct{}
 	// reaped is closed when the process was waited for; exited, once its channel was read to the end too.
 	reaped chan struct{}
@@ -645,7 +651,8 @@ func startNode(options NodeOptions, ctx context.Context) (*NodeHost, error) {
 		}
 	}()
 
-	h := &NodeHost{options: options, started: make(chan struct{}), reaped: make(chan struct{}), exited: make(chan struct{}), closeBegun: make(chan struct{}), closeTimeout: defaultCloseTimeout, pending: map[int]*nodeCall{}}
+	life, endLife := context.WithCancel(context.WithoutCancel(ctx))
+	h := &NodeHost{options: options, life: life, endLife: endLife, started: make(chan struct{}), reaped: make(chan struct{}), exited: make(chan struct{}), closeBegun: make(chan struct{}), closeTimeout: defaultCloseTimeout, pending: map[int]*nodeCall{}}
 	output := options.OnOutput
 	if output == nil {
 		output = func(stream NodeStream, chunk []byte) {
@@ -670,6 +677,7 @@ func startNode(options NodeOptions, ctx context.Context) (*NodeHost, error) {
 	if err := h.cmd.Start(); err != nil {
 		return nil, fmt.Errorf("starting node: %w", err)
 	}
+	//portlint:allow golifetime ends with the process: wait returns once cmd.Wait does, which the process's exit, Close and stop bring about
 	go h.wait()
 
 	deadline := time.NewTimer(timeout)
@@ -705,6 +713,7 @@ func startNode(options NodeOptions, ctx context.Context) (*NodeHost, error) {
 	h.port.Store(port)
 	// Made before the first frame is read: none is lost before the app attaches the link.
 	h.link = newNodeLink(h, link.IpcLink(port))
+	//portlint:allow golifetime ends with the process's channel: read returns when the socket closes, which the process's exit, Close and stop bring about
 	go func() {
 		port.read()
 		h.channelEnded()
@@ -770,6 +779,7 @@ func (h *NodeHost) wait() {
 	if port := h.port.Load(); port != nil {
 		port.ended()
 	}
+	h.endLife()
 }
 
 // channelEnded is the reader's end: the channel is gone, so the process has nothing to serve; it exits by itself, or is

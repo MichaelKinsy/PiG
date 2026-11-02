@@ -319,7 +319,7 @@ type imageSettingsWire struct {
 // settingsWire mirrors upstream settings JSON.
 type settingsWire struct {
 	LastChangelogVersion       string                  `json:"lastChangelogVersion,omitempty"`
-	ExtensionChangelogVersions map[string]string       `json:"extensionChangelogVersions,omitempty"`
+	ExtensionChangelogVersions map[string]string       `json:"extensionChangelogVersions,omitzero"`
 	DefaultProvider            *string                 `json:"defaultProvider,omitempty"`
 	DefaultModel               *string                 `json:"defaultModel,omitempty"`
 	DefaultThinkingLevel       string                  `json:"defaultThinkingLevel,omitempty"`
@@ -569,7 +569,7 @@ type Settings struct {
 	LastChangelogVersion string `json:"lastChangelogVersion,omitempty"`
 	// ExtensionChangelogVersions records the last changelog version seen per extension package, keyed by GetSourcePackageKey.
 	// Mirrors upstream settings.extensionChangelogVersions (settings-schema.ts).
-	ExtensionChangelogVersions map[string]string `json:"extensionChangelogVersions,omitempty"`
+	ExtensionChangelogVersions map[string]string `json:"extensionChangelogVersions,omitzero"`
 
 	// Compaction mirrors upstream settings.compaction (settings-manager.ts:74).
 	// Nested to match upstream JSON schema:
@@ -762,7 +762,7 @@ type Settings struct {
 	// and {installSpec} placeholders. Only the global settings file is read for it, so a project cannot inject a
 	// command; PI_SELF_UPDATE_COMMAND takes precedence.
 	// Mirrors upstream settings.selfUpdateCommand (settings-schema.ts).
-	SelfUpdateCommand []string `json:"selfUpdateCommand,omitempty"`
+	SelfUpdateCommand []string `json:"selfUpdateCommand,omitzero"`
 
 	// Markdown holds markdown rendering settings.
 	// Mirrors upstream settings.markdown (settings-manager.ts:965).

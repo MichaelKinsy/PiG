@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
@@ -93,4 +94,23 @@ func TestColumnDescriptors(t *testing.T) {
 		describeFails(t, column(Int(contracts.Default(1.5))), "not a int value")
 		describeFails(t, column(Str(contracts.Default("a\x00"))), "NUL")
 	})
+}
+
+// A decoded int column's default stays the number it was stored as unless it is a safe integer (Pi keeps the number, and
+// the applier's check refuses a fractional default of an int column).
+func TestColumnRecordFromJSONKeepsAnIntDefaultThatIsNoSafeInteger(t *testing.T) {
+	whole, err := ColumnRecordFromJSON(delta.JsonObjectOf("type", "int", "default", float64(7)))
+	if err != nil {
+		t.Fatalf("ColumnRecordFromJSON(7): %v", err)
+	}
+	if whole.Default != int64(7) {
+		t.Fatalf("default of 7 = %#v, want int64(7)", whole.Default)
+	}
+	fractional, err := ColumnRecordFromJSON(delta.JsonObjectOf("type", "int", "default", 1.5))
+	if err != nil {
+		t.Fatalf("ColumnRecordFromJSON(1.5): %v", err)
+	}
+	if fractional.Default != 1.5 {
+		t.Fatalf("default of 1.5 = %#v, want float64(1.5)", fractional.Default)
+	}
 }
