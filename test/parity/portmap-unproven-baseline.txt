@@ -301,4 +301,3 @@ packages/durable/src/tools/file-mutation-queue.ts
 packages/durable/src/tools/image.ts
 packages/durable/src/tools/path-utils.ts
 packages/durable/src/truncate.ts
-packages/tui/src/native-module-path.ts
