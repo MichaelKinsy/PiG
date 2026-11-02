@@ -1394,6 +1394,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ef0f95a](#bf-ef0f95a) | OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f00bf6c](#bf-f00bf6c) | fix(childwait): call PeekNamedPipe through kernel32 | PiG's own defect | All platforms | Unreleased |
 | [BF-f02269c](#bf-f02269c) | When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f051c65](#bf-f051c65) | fix(extensions): a yield call on the withSession route answers empty; D225 marker at endSyncRunHold, docs of… | PiG's own defect | All platforms | Unreleased |
 | [BF-f06ab7e](#bf-f06ab7e) | A run that `sendMessage({ triggerTurn: true })` starts while idle emits `before_agent_start`, checks… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f07d033](#bf-f07d033) | A response stream dropped mid-run now reports `terminated (cause: ...)` instead of a bare `terminated` (D144… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f12896b](#bf-f12896b) | Interactive startup writes the terminal color query before its first frame, as Pi does: starting the renderer… | PiG's own defect | All platforms | 0.5.0 |
@@ -20527,6 +20528,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f02269c6e1` (2026-10-10)
 - **Tests:** `ai/anthropic_replaced_payload_order_oracle_test.go::TestAnthropicReplacedPayloadKeepsPiMemberOrder`
 - **Release note:** When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket request carries raw JSON, nested values are written as Pi's `JSON.stringify` writes them after `JSON.parse`: `\u00e9` becomes `é`, and a nested object's repeated key keeps its first place with its last value. PiG copied the replacement's text unchanged.
+
+### BF-f051c65
+
+**fix(extensions): a yield call on the withSession route answers empty; D225 marker at endSyncRunHold, docs of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extensions): a yield call on the withSession route answers empty; D225 marker at endSyncRunHold, docs of the helper
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f051c65f8b` (2026-11-02)
+- **Tests:** None recorded.
 
 ### BF-f06ab7e
 
