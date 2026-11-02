@@ -214,16 +214,39 @@ func TestDeferredAutoDetectMatchesEagerLoad(t *testing.T) {
 	if partial.deferred == nil || len(partial.deferred.roots) < len(reference.order)-40 {
 		t.Fatal("auto-detection among a few languages decoded most of the full set")
 	}
+	checkAutoDetectCorpus(t, 0)
+}
+
+// autoDetectParts is the parts the corpus samples are split into. Each part is a top-level test of its own, so that the shard placement of automation/ci/test-shard-pattern.sh spreads the work over go test processes, each under its own package timeout.
+const autoDetectParts = 8
+
+// TestDeferredAutoDetectMatchesEagerLoadPartN, with TestDeferredAutoDetectMatchesEagerLoad as part 1, auto-detect the samples of one part of the corpus against the eager load.
+func TestDeferredAutoDetectMatchesEagerLoadPart2(t *testing.T) { checkAutoDetectCorpus(t, 1) }
+func TestDeferredAutoDetectMatchesEagerLoadPart3(t *testing.T) { checkAutoDetectCorpus(t, 2) }
+func TestDeferredAutoDetectMatchesEagerLoadPart4(t *testing.T) { checkAutoDetectCorpus(t, 3) }
+func TestDeferredAutoDetectMatchesEagerLoadPart5(t *testing.T) { checkAutoDetectCorpus(t, 4) }
+func TestDeferredAutoDetectMatchesEagerLoadPart6(t *testing.T) { checkAutoDetectCorpus(t, 5) }
+func TestDeferredAutoDetectMatchesEagerLoadPart7(t *testing.T) { checkAutoDetectCorpus(t, 6) }
+func TestDeferredAutoDetectMatchesEagerLoadPart8(t *testing.T) { checkAutoDetectCorpus(t, 7) }
+
+// checkAutoDetectCorpus auto-detects, with every language, the corpus samples whose index among the samples taken is part modulo autoDetectParts.
+func checkAutoDetectCorpus(t *testing.T, part int) {
+	t.Helper()
+	corpus := resumeCorpus(t)
 	// Every sample takes about a minute of eager and lazy auto-detection; -short keeps one in ten.
 	stride := 1
 	if testing.Short() {
 		stride = 10
 	}
-	var samples []corpusSample
+	var all, samples []corpusSample
 	for i, c := range corpus {
-		if i%stride == 0 {
+		if i%stride != 0 {
+			continue
+		}
+		if len(all)%autoDetectParts == part {
 			samples = append(samples, c)
 		}
+		all = append(all, c)
 	}
 	// Each worker auto-detects with a lazy registry of its own against an eager one of its own, so its first sample decodes the languages the lazy registry has not decoded yet, and every later one runs on what that left.
 	var checked atomic.Int64
@@ -251,7 +274,7 @@ func TestDeferredAutoDetectMatchesEagerLoad(t *testing.T) {
 				}
 			}
 	})
-	if want := len(samples); !t.Failed() && (int(checked.Load()) != want || want < 65) {
-		t.Fatalf("%d of %d corpus samples auto-detected: the check proves nothing", checked.Load(), len(corpus))
+	if !t.Failed() && (int(checked.Load()) != len(samples) || len(all) < 65) {
+		t.Fatalf("%d of %d samples of part %d auto-detected, %d samples of the corpus taken: the check proves nothing", checked.Load(), len(samples), part+1, len(all))
 	}
 }
