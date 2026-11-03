@@ -44,9 +44,16 @@ func TestTelemetrySchemaDefinitionRegistrationKeepsMetricsThroughDefineAndJSONRo
 	adapter := telemetry.NewInMemoryTelemetryContext()
 	typed := telemetry.CreateTypedMetrics(adapter, &decoded)
 	typed.Counter("network.bytes").Add(5, nil)
+	typed.Histogram("network.latency").Record(7, nil, nil)
 	measurements := adapter.GetMetrics()
-	if len(measurements) != 1 || measurements[0].Description == nil || *measurements[0].Description != "Encoded bytes" ||
-		measurements[0].Unit == nil || *measurements[0].Unit != "By" {
-		t.Fatalf("measurements = %+v, want the schema's description and unit", measurements)
+	if len(measurements) != 2 {
+		t.Fatalf("measurements = %+v, want the counter's and the histogram's", measurements)
+	}
+	if counter := measurements[0]; counter.Description == nil || *counter.Description != "Encoded bytes" || counter.Unit == nil || *counter.Unit != "By" {
+		t.Fatalf("counter measurement = %+v, want the schema's description and unit", counter)
+	}
+	if histogram := measurements[1]; histogram.Description == nil || *histogram.Description != "Round trip time" ||
+		histogram.Unit == nil || *histogram.Unit != "ms" || !reflect.DeepEqual(histogram.Boundaries, []float64{1, 10, 100}) {
+		t.Fatalf("histogram measurement = %+v, want the schema's description, unit and boundaries {1, 10, 100}", histogram)
 	}
 }

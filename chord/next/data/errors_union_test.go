@@ -1,51 +1,51 @@
 package data_test
 
-// Exhaustive handling of the ChordErrorCode union (errors.ts CHORD_ERROR_REASONS): every code errors.go declares is listed
+// Exhaustive handling of the ChordErrorCode union (errors.ts CHORD_ERROR_REASONS): every code the package declares is listed
 // by ChordErrorCodes, known to ChordErrorReasons and accepted by ChordErrorFromJson with a reason of its own. A code
-// added to errors.go without all three fails.
+// added to the package without all three fails.
 
 import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
 func TestChordErrorCodeUnionExhaustiveEveryDeclaredCodeIsListedKnownAndDecoded(t *testing.T) {
-	file, err := parser.ParseFile(token.NewFileSet(), "errors.go", nil, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
 	var declared []data.ChordErrorCode
-	for _, declaration := range file.Decls {
-		general, ok := declaration.(*ast.GenDecl)
-		if !ok || general.Tok != token.CONST {
-			continue
-		}
-		for _, spec := range general.Specs {
-			value, ok := spec.(*ast.ValueSpec)
-			if !ok || len(value.Values) != 1 {
+	for _, file := range parsedSources(t) {
+		for _, declaration := range file.Decls {
+			general, ok := declaration.(*ast.GenDecl)
+			if !ok || general.Tok != token.CONST {
 				continue
 			}
-			if typ, ok := value.Type.(*ast.Ident); !ok || typ.Name != "ChordErrorCode" {
-				continue
+			for _, spec := range general.Specs {
+				value, ok := spec.(*ast.ValueSpec)
+				if !ok || len(value.Values) != 1 {
+					continue
+				}
+				if typ, ok := value.Type.(*ast.Ident); !ok || typ.Name != "ChordErrorCode" {
+					continue
+				}
+				text, err := strconv.Unquote(value.Values[0].(*ast.BasicLit).Value)
+				if err != nil {
+					t.Fatal(err)
+				}
+				declared = append(declared, data.ChordErrorCode(text))
 			}
-			text, err := strconv.Unquote(value.Values[0].(*ast.BasicLit).Value)
-			if err != nil {
-				t.Fatal(err)
-			}
-			declared = append(declared, data.ChordErrorCode(text))
 		}
 	}
 	listed := data.ChordErrorCodes()
 	slices.Sort(declared)
 	slices.Sort(listed)
 	if !slices.Equal(declared, listed) {
-		t.Fatalf("errors.go declares the codes %v, ChordErrorCodes lists %v", declared, listed)
+		t.Fatalf("the package declares the codes %v, ChordErrorCodes lists %v", declared, listed)
 	}
 	for _, code := range declared {
 		reasons, known := data.ChordErrorReasons(code)
@@ -69,4 +69,26 @@ func TestChordErrorCodeUnionExhaustiveEveryDeclaredCodeIsListedKnownAndDecoded(t
 			}
 		}
 	}
+}
+
+// parsedSources are the package's non-test Go files, parsed.
+func parsedSources(t *testing.T) []*ast.File {
+	t.Helper()
+	names, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var files []*ast.File
+	fileSet := token.NewFileSet()
+	for _, name := range names {
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(fileSet, name, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files = append(files, file)
+	}
+	return files
 }

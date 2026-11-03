@@ -1,36 +1,36 @@
 package host
 
-// Exhaustive handling of the Frame union (wire.ts Frame): every frame variant the source declares is built by the
-// samples below, encodes under its own "t", and decodes back to the same variant. A variant added to wire.go without
+// Exhaustive handling of the Frame union (wire.ts Frame): every frame variant the package declares is built by the
+// samples below, encodes under its own "t", and decodes back to the same variant. A variant added anywhere in the package without
 // a sample fails the first check; one without a decode case or a frame schema entry fails the second.
 
 import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"path/filepath"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 )
 
-// declaredFrameVariants are the types wire.go gives a T() method: the variants of Frame.
+// declaredFrameVariants are the types the package's non-test files give a T() method: the variants of Frame.
 func declaredFrameVariants(t *testing.T) []string {
 	t.Helper()
-	file, err := parser.ParseFile(token.NewFileSet(), "wire.go", nil, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
 	var names []string
-	for _, declaration := range file.Decls {
-		function, ok := declaration.(*ast.FuncDecl)
-		if !ok || function.Recv == nil || function.Name.Name != "T" || len(function.Recv.List) != 1 {
-			continue
-		}
-		if receiver, ok := function.Recv.List[0].Type.(*ast.Ident); ok {
-			names = append(names, receiver.Name)
+	for _, file := range parsedSources(t) {
+		for _, declaration := range file.Decls {
+			function, ok := declaration.(*ast.FuncDecl)
+			if !ok || function.Recv == nil || function.Name.Name != "T" || len(function.Recv.List) != 1 {
+				continue
+			}
+			if receiver, ok := function.Recv.List[0].Type.(*ast.Ident); ok {
+				names = append(names, receiver.Name)
+			}
 		}
 	}
 	slices.Sort(names)
@@ -74,8 +74,14 @@ func TestFrameUnionExhaustiveEveryVariantEncodesAndDecodesUnderItsOwnDiscriminan
 		seen[sample.T()] = sampled[index]
 	}
 	slices.Sort(sampled)
-	if declared := declaredFrameVariants(t); !slices.Equal(declared, sampled) {
-		t.Fatalf("wire.go declares the Frame variants %v, the samples cover %v: a variant needs a sample, a decode case and a schema entry", declared, sampled)
+	// MalformedFrame (link.go) is no variant: Pi delivers any JSON object with a string "t" and its connection rejects what
+	// fails isFrame; a Go Frame carries only valid frames, so the rest arrives as this value. It is never a valid frame.
+	declared := slices.DeleteFunc(declaredFrameVariants(t), func(name string) bool { return name == "MalformedFrame" })
+	if _, malformed := frameOfValue(chordjson.ObjectOf("t", "hello")).(MalformedFrame); !malformed {
+		t.Fatal("an invalid hello frame was not delivered as a MalformedFrame")
+	}
+	if !slices.Equal(declared, sampled) {
+		t.Fatalf("the package declares the Frame variants %v, the samples cover %v: a variant needs a sample, a decode case and a schema entry", declared, sampled)
 	}
 	for _, sample := range samples {
 		data, err := EncodeFrame(sample)
@@ -90,4 +96,26 @@ func TestFrameUnionExhaustiveEveryVariantEncodesAndDecodesUnderItsOwnDiscriminan
 			t.Fatalf("%s decoded as %T, want %T", data, decoded, sample)
 		}
 	}
+}
+
+// parsedSources are the package's non-test Go files, parsed.
+func parsedSources(t *testing.T) []*ast.File {
+	t.Helper()
+	names, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var files []*ast.File
+	fileSet := token.NewFileSet()
+	for _, name := range names {
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(fileSet, name, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files = append(files, file)
+	}
+	return files
 }

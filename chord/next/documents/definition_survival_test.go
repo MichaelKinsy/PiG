@@ -31,13 +31,13 @@ func TestStateDefinitionRegistrationKeepsEveryOption(t *testing.T) {
 			return info.DeltasSinceBase >= 3 && value != nil && len(ops) == 0
 		},
 	}
-	registered := map[string]*StateDefinition{}
-	for _, name := range []string{"survive.doc", "survive.other"} {
-		registered[name] = mustDefine(t, name, options)
+	definition := mustDefine(t, "survive.doc", options)
+	// readBack is the declaration a definition stands for: DefineState's options come back from the definition.
+	readBack := func(d *StateDefinition) StateOptions {
+		return StateOptions{Schema: d.Schema, Version: d.Version, Keyed: d.Keyed, Persist: d.Persist}
 	}
-	definition := registered["survive.doc"]
-	if registered["survive.other"] == definition {
-		t.Fatal("two declarations share one definition")
+	if got := readBack(definition); !reflect.DeepEqual(got, StateOptions{Schema: schema, Version: 4, Keyed: true, Persist: true}) {
+		t.Fatalf("the definition reads back as %+v", got)
 	}
 
 	if definition.Name != "survive.doc" || definition.Version != 4 || !definition.Keyed || !definition.Persist {

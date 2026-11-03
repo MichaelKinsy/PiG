@@ -1,13 +1,12 @@
 package host
 
-// Exhaustive handling of the ChordErrorCode union (errors.ts ChordErrorCode): every code errors.go declares is listed in
+// Exhaustive handling of the ChordErrorCode union (errors.ts ChordErrorCode): every code the package declares is listed in
 // chordErrorCodes, is a valid code on the wire and in a facet host's error, and has its retryability decided here. A code
-// added to errors.go without any of those fails.
+// added anywhere in the package without any of those fails.
 
 import (
 	"errors"
 	"go/ast"
-	"go/parser"
 	"go/token"
 	"slices"
 	"strconv"
@@ -18,29 +17,27 @@ import (
 
 func declaredChordErrorCodes(t *testing.T) []ChordErrorCode {
 	t.Helper()
-	file, err := parser.ParseFile(token.NewFileSet(), "errors.go", nil, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
 	var codes []ChordErrorCode
-	for _, declaration := range file.Decls {
-		general, ok := declaration.(*ast.GenDecl)
-		if !ok || general.Tok != token.CONST {
-			continue
-		}
-		for _, spec := range general.Specs {
-			value, ok := spec.(*ast.ValueSpec)
-			if !ok || len(value.Values) != 1 {
+	for _, file := range parsedSources(t) {
+		for _, declaration := range file.Decls {
+			general, ok := declaration.(*ast.GenDecl)
+			if !ok || general.Tok != token.CONST {
 				continue
 			}
-			if typ, ok := value.Type.(*ast.Ident); !ok || typ.Name != "ChordErrorCode" {
-				continue
+			for _, spec := range general.Specs {
+				value, ok := spec.(*ast.ValueSpec)
+				if !ok || len(value.Values) != 1 {
+					continue
+				}
+				if typ, ok := value.Type.(*ast.Ident); !ok || typ.Name != "ChordErrorCode" {
+					continue
+				}
+				text, err := strconv.Unquote(value.Values[0].(*ast.BasicLit).Value)
+				if err != nil {
+					t.Fatal(err)
+				}
+				codes = append(codes, ChordErrorCode(text))
 			}
-			text, err := strconv.Unquote(value.Values[0].(*ast.BasicLit).Value)
-			if err != nil {
-				t.Fatal(err)
-			}
-			codes = append(codes, ChordErrorCode(text))
 		}
 	}
 	slices.Sort(codes)
@@ -59,7 +56,7 @@ func TestChordErrorCodeUnionExhaustiveEveryDeclaredCodeIsListedOnTheWireAndDecid
 	listed := slices.Clone(chordErrorCodes)
 	slices.Sort(listed)
 	if !slices.Equal(declared, listed) {
-		t.Fatalf("errors.go declares the codes %v, chordErrorCodes lists %v", declared, listed)
+		t.Fatalf("the package declares the codes %v, chordErrorCodes lists %v", declared, listed)
 	}
 	for _, code := range declared {
 		want, decided := retryable[code]

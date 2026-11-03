@@ -10,10 +10,11 @@ func TestTableDefinitionRegistrationKeepsSchemasByNameIndexesRefsColumnAndEvolut
 	columns := tableColumns()
 	indexes := IndexRecords{{Name: "by_path", Columns: []string{"path", "at"}}, {Name: "by_at", Columns: []string{"at"}}}
 	base := qDefine(t, "survive.edits", TableOptions{Version: 3, Columns: columns, Key: []string{"id"}, Indexes: indexes})
-	registered := map[string]*TableDefinition{base.Name: base}
-	if registered["survive.edits"] != base {
-		t.Fatal("the declared table is not the one registered by its name")
+	// readBack is the declaration a definition stands for: DefineTable's options come back from the definition.
+	readBack := func(d *TableDefinition) TableOptions {
+		return TableOptions{Version: d.Version, Columns: d.Schemas, Key: d.Key, Indexes: d.Indexes}
 	}
+	qEqual(t, readBack(base), TableOptions{Version: 3, Columns: columns, Key: []string{"id"}, Indexes: indexes})
 
 	// Schemas are the columns as declared, in declaration order; a copy, not the caller's slice.
 	qEqual(t, base.Schemas, columns)

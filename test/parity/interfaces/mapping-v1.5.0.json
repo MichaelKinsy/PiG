@@ -127443,9 +127443,9 @@
         "call:chord/next/store/adapter.go#OwnerTable.notJson"
       ],
       "evidence": [
-        "test:chord/next/store/table_survival_test.go#TestTableDefinitionRegistrationKeepsSchemasByNameIndexesRefsColumnAndEvolution",
         "test:chord/next/store/table_test.go#TestDefineTable",
-        "test:chord/next/store/apply_batch_test.go#TestApplyBatch"
+        "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
+        "test:chord/next/store/catalog_test.go#TestCatalog"
       ]
     },
     {
@@ -278446,7 +278446,8 @@
         "call:telemetry/metrics.go#TypedTelemetryMetrics.Histogram"
       ],
       "evidence": [
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream",
+        "test:telemetry/schema_survival_test.go#TestTelemetrySchemaDefinitionRegistrationKeepsMetricsThroughDefineAndJSONRoundTrip"
       ]
     },
     {
@@ -278466,7 +278467,8 @@
         "call:telemetry/metrics.go#TypedTelemetryMetrics.Histogram"
       ],
       "evidence": [
-        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream"
+        "test:telemetry/metrics_upstream_test.go#TestMetricsUpstream",
+        "test:telemetry/schema_survival_test.go#TestTelemetrySchemaDefinitionRegistrationKeepsMetricsThroughDefineAndJSONRoundTrip"
       ]
     },
     {
