@@ -119,8 +119,8 @@ func TestEINTRAuditCoversTheWholeRepository(t *testing.T) {
 // the user's terminal, with the reason. Each entry must say why; an empty reason fails the test.
 var eintrAuditExcluded = map[string]string{
 	"bench/sessionscale/cmd/sessionscale/run.go": "a benchmark driver's ioctls (TIOCSPTLCK, TIOCGPTN, TIOCSWINSZ) on a pty master it opened for the session it measures; not the user's terminal and never stopped by job control",
-	"env/daemon/pty_unix.go":  "ioctls and reads on a pty master the environment daemon allocated for its own child; a stop and continue of the user's terminal never interrupts them",
-	"env/daemon/pty_linux.go": "ioctls (TIOCGPTN, TIOCSPTLCK) on a pty master the environment daemon allocated for its own child, not the user's terminal",
+	"env/daemon/pty_unix.go":                     "ioctls and reads on a pty master the environment daemon allocated for its own child; a stop and continue of the user's terminal never interrupts them",
+	"env/daemon/pty_linux.go":                    "ioctls (TIOCGPTN, TIOCSPTLCK) on a pty master the environment daemon allocated for its own child, not the user's terminal",
 }
 
 // touchesUserTerminal reports whether file imports x/term or x/sys/unix and names a standard stream, a tty path or an Fd call: the files whose
