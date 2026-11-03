@@ -1608,6 +1608,7 @@ evidence = [
   "tui/user_message_selector_oracle_test.go#TestUserMessageSelectorInputMatchesPi",
   "test/parity/scenarios/interactive-rendering/16-user-message-selector.toml",
   "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage",
+  "tui/user_message_selector_contract_test.go#TestUserMessageSelectorPageKeyOverlapsMatchPi",
 ]
 
 [contract.upstream]
@@ -1840,6 +1841,7 @@ pig_targets = ["internal/codingagent/first_time_setup.go#HandleInput"]
 evidence = [
   "internal/codingagent/first_time_setup_oracle_test.go#TestFirstTimeSetupMatchesPi",
   "internal/codingagent/first_time_setup_test.go",
+  "internal/codingagent/first_time_setup_contract_test.go#TestFirstTimeSetupBindingOverlapsMatchPi",
 ]
 
 [contract.upstream]
@@ -3237,7 +3239,8 @@ pig_targets = [
 evidence = [
   "tui/layout_frame_oracle_test.go#TestRenderLayoutFrameMatchesPi",
   "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml",
-  "test/parity/scenarios/tui-components/17-layout-sparse-billion-rows.toml"
+  "test/parity/scenarios/tui-components/17-layout-sparse-billion-rows.toml",
+  "tui/alt_screen_render_contract_test.go#TestRenderLayoutFrameClampsTheViewportToOneCell",
 ]
 
 [contract.upstream]
@@ -4830,7 +4833,8 @@ pig_targets = [
 ]
 evidence = [
   "tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-  "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml"
+  "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml",
+  "tui/alt_screen_render_contract_test.go#TestAltScreenFrameAndExitDumpDropZonePrefixes",
 ]
 
 [contract.upstream]
@@ -4853,7 +4857,8 @@ pig_targets = [
 ]
 evidence = [
   "tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
-  "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml"
+  "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml",
+  "tui/alt_screen_render_contract_test.go#TestAltScreenImplicitDocumentRendersTheScreensChildren",
 ]
 
 [contract.upstream]
@@ -4881,6 +4886,8 @@ evidence = [
   "tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
   "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml",
   "tui/fake_cursor_test.go#TestAltScreenKeepsTheSelectionHighlightAfterAFakeCursorCell",
+  "tui/alt_screen_render_contract_test.go#TestAltScreenDoesNotDrawWhileInactive",
+  "tui/alt_screen_render_contract_test.go#TestRenderLayoutFrameClampsTheViewportToOneCell",
 ]
 
 [contract.upstream]
@@ -5322,6 +5329,8 @@ evidence = [
   "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
   "test/parity/scenarios/interactive-rendering/10-edit-tool-diff.toml",
   "test/parity/scenarios/interactive-rendering/03-tool-execution-bash.toml",
+  "tui/tool_execution_render_contract_test.go#TestSelfShellCardDrawsBlankRowComponentsThenImages",
+  "tui/tool_execution_render_contract_test.go#TestToolCardAppliesStreamedArgumentsAtRender",
 ]
 
 [contract.upstream]
@@ -5472,6 +5481,12 @@ evidence = [
   "tui/tui_alt_screen_test.go#TestAltScreenScrollToPromptJumpsToOsc133Marker",
   "test/parity/scenarios/fullscreen/02-keyboard-navigation-fullscreen.toml",
   "tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList",
+  "tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysScrollByTheirAmounts",
+  "tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeyBoundToTwoActionsRunsTheEarlierOne",
+  "tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportSearchKeysNeedTheFocusedSearchBox",
+  "tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportNavigationDefersToCapturingFocusAndOverlays",
+  "tui/alt_screen_focus_out_contract_test.go#TestAltScreenFocusOutEndsPointerGestures",
+  "tui/alt_screen_focus_out_contract_test.go#TestAltScreenFocusOutRestartsClickCounts",
 ]
 
 [contract.upstream]
