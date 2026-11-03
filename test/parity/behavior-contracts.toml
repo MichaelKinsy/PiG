@@ -168,6 +168,7 @@ evidence = [
   "test/parity/scenarios/model-resolver-selector/11-model-picker-arrow-wrap.toml",
   "tui/select_page_keys_upstream_test.go#TestUpstreamModelSelectorMovesByOnePageWithRemappedSelectionPageKeys",
   "test/parity/scenarios/model-resolver-selector/24-fullscreen-model-picker-page-keys-reach-selector.toml",
+  "tui/model_selector_contract_test.go#TestModelSelectorOverlappingBindingsMatchPi",
 ]
 
 [contract.upstream]
@@ -208,6 +209,7 @@ evidence = [
   "test/parity/scenarios/model-resolver-selector/18-model-picker-save-default-scope-order.toml",
   "tui/select_page_keys_upstream_test.go#TestUpstreamModelSelectorMovesByOnePageWithRemappedSelectionPageKeys",
   "test/parity/scenarios/model-resolver-selector/24-fullscreen-model-picker-page-keys-reach-selector.toml",
+  "tui/model_selector_contract_test.go#TestModelSelectorOverlappingBindingsMatchPi",
 ]
 
 [contract.upstream]
@@ -622,7 +624,7 @@ id = "coding-agent/scoped-models/input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts#ScopedModelsSelectorComponent.handleInput"
 family = "model-resolver-selector"
 kind = "selector-input-state-machine"
-claim = "scoped-model input preserves wrap navigation, fuzzy search, filtered bulk actions, unavailable IDs, provider toggles, bounded reorder, session-only dirty/save state, configurable action bindings, explicit cancellation, and key-order precedence when bindings overlap; tui.select.pageUp and tui.select.pageDown move the selection by one visible page, clamped to the list bounds, and are ignored on an empty list"
+claim = "scoped-model input preserves wrap navigation, fuzzy search, filtered bulk actions, unavailable IDs, provider toggles, bounded reorder, session-only dirty/save state, configurable action bindings, explicit cancellation, and key-order precedence when bindings overlap; tui.select.pageUp and tui.select.pageDown move the selection by one visible page, clamped to the list bounds, and are ignored on an empty list; when one key is bound to two actions, or Escape or Ctrl+C is bound to an action, Pi's branch order decides (compared with Pi over every pair of the eleven actions and over both cancel keys); a key delivered after the selector cancelled changes nothing"
 status = "ported"
 pig_targets = [
   "tui/scoped_models_list.go#HandleInput",
@@ -639,6 +641,8 @@ evidence = [
   "test/parity/scenarios/model-resolver-selector/08-scoped-models-selector.toml",
   "test/parity/scenarios/model-resolver-selector/13-scoped-models-fuzzy-filter.toml",
   "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage",
+  "internal/codingagent/scoped_models_contract_test.go#TestScopedModelsOverlappingBindingsMatchPi",
+  "internal/codingagent/scoped_models_contract_test.go#TestScopedModelsIgnoreKeysAfterTheyCancel",
 ]
 
 [contract.upstream]
@@ -665,7 +669,7 @@ id = "coding-agent/model-selector/input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.handleInput"
 family = "model-resolver-selector"
 kind = "selector-input-state-machine"
-claim = "model picker preserves scope toggle guards, fuzzy Input editing whose own submit selects the highlighted model, filter re-anchoring, wrapped arrows, selection, cancellation, the save binding and configured TUI action bindings"
+claim = "model picker preserves scope toggle guards, fuzzy Input editing whose own submit selects the highlighted model, filter re-anchoring, wrapped arrows, selection, cancellation, the save binding and configured TUI action bindings; when one key is bound to two actions the first branch in the order tab, up, down, page keys, confirm, cancel, save, search Input runs (compared with Pi over every pair of the eight actions, with and without the default callback, over a scoped list, a single match and an empty filter result)"
 status = "ported"
 pig_targets = [
   "tui/model_select.go#HandleInput",
@@ -681,6 +685,7 @@ evidence = [
   "test/parity/scenarios/model-resolver-selector/14-model-picker-fuzzy-filter.toml",
   "tui/select_page_keys_upstream_test.go#TestUpstreamModelSelectorMovesByOnePageWithRemappedSelectionPageKeys",
   "test/parity/scenarios/model-resolver-selector/24-fullscreen-model-picker-page-keys-reach-selector.toml",
+  "tui/model_selector_contract_test.go#TestModelSelectorOverlappingBindingsMatchPi",
 ]
 
 [contract.upstream]
@@ -1164,7 +1169,7 @@ id = "tui/settings-list/search-input-delegation"
 upstream_id = "input:packages/tui/src/components/settings-list.ts#SettingsList.handleInput"
 family = "settings"
 kind = "boundary-transition"
-claim = "an open submenu receives every key; otherwise up and down wrap, empty lists ignore them, up, down, confirm or space (when search is off or empty) and cancel are tested in that order, with the selection page keys moving by one visible page between down and confirm, and every other key goes to the search Input and refilters, returning the selection to the first match"
+claim = "an open submenu receives every key; otherwise up and down wrap, empty lists ignore them, up, down, confirm or space (when search is off or empty) and cancel are tested in that order, with the selection page keys moving by one visible page between down and confirm, and every other key goes to the search Input and refilters, returning the selection to the first match; the selection page keys rank between down and confirm, clamp at both ends and ignore an empty list; up, down, the page keys, confirm and cancel are read through the keybinding manager, so a remapped cancel stops the default Escape from cancelling; navigation acts on the filtered rows (a single match does not wrap, an empty filter ignores every key); an open submenu, including one without an input handler, owns every key and the search text and selection survive its closing"
 status = "ported"
 pig_targets = ["tui/settings_list.go#HandleInput", "tui/settings_list.go#applyFilter"]
 evidence = [
@@ -1176,6 +1181,11 @@ evidence = [
   "tui/settings_list_keys_test.go#TestSettingsListPageAndHomeEndKeysFollowSearchState",
   "test/parity/scenarios/settings/08-settings-search-editing.toml",
   "tui/select_page_keys_upstream_test.go#TestUpstreamSettingsListMovesByOneVisiblePageWithSelectionPageKeys",
+  "tui/settings_list_contract_test.go#TestSettingsListPageKeysRankBetweenDownAndConfirm",
+  "tui/settings_list_contract_test.go#TestSettingsListPageKeysClampAndIgnoreEmptyLists",
+  "tui/settings_list_contract_test.go#TestSettingsListCancelFollowsTheKeybindingManager",
+  "tui/settings_list_contract_test.go#TestSettingsListNavigationActsOnTheFilteredRows",
+  "tui/settings_list_contract_test.go#TestSettingsListSubmenuOwnsInputAndTheListStateSurvivesIt",
 ]
 
 [contract.upstream]
@@ -1700,13 +1710,14 @@ id = "coding-agent/select-submenu/input-state-machine"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/components/settings-submenu.ts#SelectSubmenu.handleInput"
 family = "settings"
 kind = "selector-input-state-machine"
-claim = "navigation keys go to the select list and fire selection-change on every up or down over a non-empty list, other keys edit the optional search input and rebuild the fuzzy-filtered list; the search input never holds focus, so it emits no hardware cursor marker; the selection page keys also go to the select list"
+claim = "navigation keys go to the select list and fire selection-change on every up or down over a non-empty list, other keys edit the optional search input and rebuild the fuzzy-filtered list; the search input never holds focus, so it emits no hardware cursor marker; the selection page keys also go to the select list; the selection page keys are read through the keybinding manager, reach the list instead of the search Input, report the moved selection once and report nothing on a single-item list"
 status = "ported"
 pig_targets = ["tui/select_submenu.go#HandleInput"]
 evidence = [
   "internal/codingagent/settings_submenu_oracle_test.go#TestSettingsSubmenusMatchPi",
   "test/parity/scenarios/settings/08-settings-model-thinking-empty-search.toml",
   "tui/select_page_keys_upstream_test.go#TestUpstreamSelectSubmenuPagesWithSelectionPageKeys",
+  "tui/select_submenu_contract_test.go#TestSelectSubmenuPageKeysFollowTheKeybindingManager",
 ]
 
 [contract.upstream]
@@ -5091,7 +5102,7 @@ id = "coding-agent/interactive/render-current-session-state"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderCurrentSessionState"
 family = "interactive-input"
 kind = "state-reset-repaint"
-claim = "a Session replacement clears the loaded resources, the transcript and the pending messages, drops the compaction queue, forgets the streaming assistant component and the pending tool cards, and repaints the current Session through renderInitialMessages (entries, then the trust warning and the compaction count)"
+claim = "a Session replacement clears the loaded resources, the transcript and the pending messages, drops the compaction queue, forgets the streaming assistant component and the pending tool cards, and repaints the current Session through renderInitialMessages (entries, then the trust warning and the compaction count); the repaint fills the editor history from the rendered user messages and reports the compaction count"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_rebind.go#renderCurrentSessionState",
@@ -5102,6 +5113,8 @@ evidence = [
   "internal/codingagent/render_initial_messages_test.go#TestRepaintAfterReplacementOrNavigationShowsTheTrustWarning",
   "internal/codingagent/interactive_resume_bash_test.go#TestResumedSessionRendersPersistedBashExecutionBlocks",
   "test/parity/scenarios/project-trust/21-new-session-repaints-trust-warning.toml",
+  "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionEntriesPopulatesTheEditorHistoryOnlyWhenAsked",
+  "internal/codingagent/render_session_items_contract_test.go#TestRenderCurrentSessionStateShowsTheCompactionCount",
 ]
 
 [contract.upstream]
@@ -5116,7 +5129,7 @@ id = "coding-agent/interactive/session-info-render"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderInfo"
 family = "interactive-input"
 kind = "render-layout"
-claim = "/session snapshots the statistics, name, usage breakdown, cache-warming mode and status and the selected model, and adds Spacer(1) and ThemedText(renderInfo, 1, 0): the Session Info, Messages, Tokens (cached/uncached split), Cache Warming and Cost sections are rebuilt on every render, so they follow theme changes and format the cache-warming status as of that render; the text equals Pi byte for byte over generated sessions"
+claim = "/session snapshots the statistics, name, usage breakdown, cache-warming mode and status and the selected model, and adds Spacer(1) and ThemedText(renderInfo, 1, 0): the Session Info, Messages, Tokens (cached/uncached split), Cache Warming and Cost sections are rebuilt on every render, so they follow theme changes and format the cache-warming status as of that render; the text equals Pi byte for byte over generated sessions; the Cost section shows for a re-billed miss even when the cost is zero, the cache-warming status is the snapshot taken when the command ran, and a missing model compares usage keys with undefined/undefined"
 status = "ported"
 pig_targets = [
   "internal/codingagent/slash_commands.go#sessionInfoRenderer",
@@ -5127,6 +5140,9 @@ evidence = [
   "internal/codingagent/session_accounting_oracle_test.go#TestSessionInfoCommandMatchesPi",
   "internal/codingagent/session_info_themed_test.go#TestSessionCommandBlockFollowsThemeChanges",
   "test/parity/scenarios/slash-commands/08-session-info-populated-all-entries.toml",
+  "internal/codingagent/session_info_contract_test.go#TestSessionInfoShowsTheCostSectionForAMissWithoutCost",
+  "internal/codingagent/session_info_contract_test.go#TestSessionInfoSnapshotsTheCacheWarmingStatusWhenItRuns",
+  "internal/codingagent/session_info_contract_test.go#TestSessionInfoWithoutAModelHidesAnUndefinedUsageKey",
 ]
 
 [contract.upstream]
@@ -5164,7 +5180,7 @@ id = "coding-agent/interactive/render-session-entries"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderSessionEntries"
 family = "interactive-input"
 kind = "render-layout"
-claim = "rendering session entries drops the fullscreen text selection first, renders custom and cache_warm usage entries as themselves, message, custom_message, branch_summary (non-empty) and compaction entries as their context messages (each message carries its entry id and timestamp into the Markdown transformer context), and adds the compaction or branch-summary cost notice after a summary with usage"
+claim = "rendering session entries drops the fullscreen text selection first, renders custom and cache_warm usage entries as themselves, message, custom_message, branch_summary (non-empty) and compaction entries as their context messages (each message carries its entry id and timestamp into the Markdown transformer context), and adds the compaction or branch-summary cost notice after a summary with usage; an empty branch summary renders nothing, not even its cost notice, a custom entry renders only through a registered renderer, a custom message with display off renders nothing, and the cost notices follow the cache-miss notice setting"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_transcript.go#renderSessionEntryListWithHistory",
@@ -5176,6 +5192,11 @@ evidence = [
   "internal/codingagent/interactive_cache_warming_test.go#TestRebuildRendersPersistedCacheWarmingUsage",
   "internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity",
   "test/parity/scenarios/interactive-rendering/52-resumed-bash-execution.toml",
+  "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionEntriesPopulatesTheEditorHistoryOnlyWhenAsked",
+  "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsRendersCustomEntriesOnlyWithARegisteredRenderer",
+  "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsCompactionAndBranchSummaryCostNotices",
+  "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsDropsAnEmptyBranchSummaryAndItsCostNotice",
+  "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionEntriesRefreshesTheFooterSessionName",
 ]
 
 [contract.upstream]
@@ -5190,7 +5211,7 @@ id = "coding-agent/interactive/render-session-items"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderSessionItems"
 family = "interactive-input"
 kind = "render-layout"
-claim = "session items render in order: assistant messages with one tool card per tool call (expanded per the toggle; an aborted or error stop settles each card with the abort or error text, otherwise the card stays pending until its toolResult), toolResults update only their pending card, cache-miss notices derived from every session entry in file order follow non-aborted assistant messages, the remaining pending cards stay live, and each user or assistant message is added with its entry id and timestamp"
+claim = "session items render in order: assistant messages with one tool card per tool call (expanded per the toggle; an aborted or error stop settles each card with the abort or error text, otherwise the card stays pending until its toolResult), toolResults update only their pending card, cache-miss notices derived from every session entry in file order follow non-aborted assistant messages, the remaining pending cards stay live, and each user or assistant message is added with its entry id and timestamp; an aborted card shows Operation aborted or the retry count, an error card the error message or Error, a call without a result stays pending, an error result puts the card in the error state, and a user message without text is skipped; cache-miss notices follow only non-aborted, non-error responses and the setting"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_transcript.go#renderSessionEntryListWithHistory",
@@ -5201,6 +5222,11 @@ evidence = [
   "internal/codingagent/interactive_cache_miss_entries_test.go#TestRebuiltCacheMissNoticesScanEveryEntryInFileOrder",
   "internal/codingagent/markdown_message_meta_test.go#TestMarkdownTransformContextCarriesPersistedEntryIdentity",
   "test/parity/scenarios/interactive-rendering/24-resume-file-tool-previews.toml",
+  "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsSettlesEachToolCardByTheStopReason",
+  "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsLeavesAnAnsweredCallPendingUntilItsResult",
+  "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsExpandsCardsLikeTheToolToggle",
+  "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsCacheMissNoticesFollowTheStopReasonAndTheSetting",
+  "internal/codingagent/render_session_items_contract_test.go#TestRenderSessionItemsSkipsAUserMessageWithoutText",
 ]
 
 [contract.upstream]
@@ -5215,7 +5241,7 @@ id = "coding-agent/interactive/render-widgets"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderWidgets"
 family = "interactive-input"
 kind = "render-layout"
-claim = "extension widgets render above the editor (always after a blank row) and below it (no spacer), each side in the order the widgets were set across the extension processes and the host process; a replaced or moved widget moves to the end"
+claim = "extension widgets render above the editor (always after a blank row) and below it (no spacer), each side in the order the widgets were set across the extension processes and the host process; a replaced or moved widget moves to the end; widgets first seen together keep the bridge order, a widget moved to the other side and back takes the end of each side, a key is one namespace across the hosts (the replaced host widget is disposed), and a change requests a render"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_extensions.go#renderWidgetsLocked",
@@ -5225,6 +5251,10 @@ evidence = [
   "internal/codingagent/widget_layout_test.go#TestWidgetsFollowTheOrderTheyWereSetAcrossExtensionHosts",
   "internal/codingagent/widget_layout_test.go#TestAboveEditorWidgetSpacerPrecedesWidgets",
   "test/parity/scenarios/extensions-runtime/17-subprocess-widget-factory.toml",
+  "internal/codingagent/widget_contract_test.go#TestWidgetsFirstSeenTogetherKeepTheBridgeOrder",
+  "internal/codingagent/widget_contract_test.go#TestMovedBridgeWidgetTakesTheEndOfItsSide",
+  "internal/codingagent/widget_contract_test.go#TestWidgetKeysAreOneNamespaceAcrossHosts",
+  "internal/codingagent/widget_contract_test.go#TestSettingAWidgetRequestsARender",
 ]
 
 [contract.upstream]
@@ -5239,7 +5269,7 @@ id = "coding-agent/interactive/render-widget-container"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderWidgetContainer"
 family = "interactive-input"
 kind = "render-layout"
-claim = "a widget container is cleared, then holds only Spacer(1) when empty and spacerWhenEmpty, otherwise the leading spacer when requested and the widgets in set order"
+claim = "a widget container is cleared, then holds only Spacer(1) when empty and spacerWhenEmpty, otherwise the leading spacer when requested and the widgets in set order; the above side is a blank row when empty and the below side has no rows or spacer"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_extensions.go#renderWidgetsLocked",
@@ -5249,6 +5279,8 @@ evidence = [
   "internal/codingagent/host_ui_commands_test.go#TestHostSpacerSurvivesEditorReplacementAndWidgetClear",
   "internal/codingagent/widget_layout_test.go#TestWidgetsFollowTheOrderTheyWereSetAcrossExtensionHosts",
   "test/parity/scenarios/extensions-runtime/69-sdk-string-widget-python.toml",
+  "internal/codingagent/widget_contract_test.go#TestEmptyAndBelowWidgetSidesHaveTheUpstreamSpacers",
+  "internal/codingagent/widget_contract_test.go#TestWidgetSetBeforeTheContainersExistDoesNotPanic",
 ]
 
 [contract.upstream]
