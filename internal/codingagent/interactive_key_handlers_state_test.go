@@ -4,6 +4,7 @@ package codingagent
 
 import (
 	"context"
+	"io"
 	"reflect"
 	"strings"
 	"testing"
@@ -242,22 +243,33 @@ func TestSetupKeyHandlersRegistrationOrderDecidesOverlappingBindings(t *testing.
 
 // handleDequeue (interactive-mode.ts:4467-4474) restores every queued message to the editor and says how many, or that none were queued.
 func TestSetupKeyHandlersDequeueReportsTheRestoredCount(t *testing.T) {
+	steer, followUp := compactionQueueSteer, compactionQueueFollowUp
+	type queued struct {
+		text string
+		mode compactionQueueMode
+	}
 	for _, c := range []struct {
-		queued     []string
+		queued     []queued
+		editor     string
 		wantEditor string
 		wantStatus string
 	}{
-		{nil, "", "No queued messages to restore"},
-		{[]string{"one"}, "one", "Restored 1 queued message to editor"},
-		{[]string{"one", "two"}, "one\n\ntwo", "Restored 2 queued messages to editor"},
+		{nil, "", "", "No queued messages to restore"},
+		{nil, "keep", "keep", "No queued messages to restore"},
+		{[]queued{{"one", steer}}, "", "one", "Restored 1 queued message to editor"},
+		{[]queued{{"one", steer}, {"two", steer}}, "", "one\n\ntwo", "Restored 2 queued messages to editor"},
+		{[]queued{{"b", followUp}, {"a", steer}, {"c", steer}}, "", "a\n\nc\n\nb", "Restored 3 queued messages to editor"},
+		{[]queued{{"one", steer}}, "draft", "one\n\ndraft", "Restored 1 queued message to editor"},
+		{[]queued{{"one", steer}}, "  ", "one", "Restored 1 queued message to editor"},
 	} {
 		r := newKeyRig(t, nil)
-		for _, text := range c.queued {
-			r.m.compactionQueue = append(r.m.compactionQueue, compactionQueuedMessage{text: text, mode: compactionQueueSteer})
+		for _, q := range c.queued {
+			r.m.compactionQueue = append(r.m.compactionQueue, compactionQueuedMessage{text: q.text, mode: q.mode})
 		}
+		r.m.editor.SetText(c.editor)
 		r.press(t, "\x1b[1;3A")
 		if w := r.snapshot(); w.Editor != c.wantEditor || w.Status != c.wantStatus || len(r.m.compactionQueue) != 0 {
-			t.Errorf("%d queued: editor %q, status %q, queue %d; want %q, %q, 0", len(c.queued), w.Editor, w.Status, len(r.m.compactionQueue), c.wantEditor, c.wantStatus)
+			t.Errorf("%+v: editor %q, status %q, queue %d; want %q, %q, 0", c.queued, w.Editor, w.Status, len(r.m.compactionQueue), c.wantEditor, c.wantStatus)
 		}
 	}
 }
@@ -350,6 +362,38 @@ func TestSetupKeyHandlersBashModeFollowsTheEditorText(t *testing.T) {
 		r.m.editor.SetText(text)
 		if border() != want {
 			t.Errorf("text %q: border %q, want %q", text, border(), want)
+		}
+	}
+}
+
+// app.message.copy runs handleCopyCommand({ flashConfirmation: true, preferSelection: true }) (interactive-mode.ts:3090-3093): the fullscreen renderer flashes
+// "Copied!" and the status line stays empty, and every other renderer shows the status line.
+func TestSetupKeyHandlersCopyConfirmsWithAFlashOnlyInFullscreen(t *testing.T) {
+	for _, fullscreen := range []bool{false, true} {
+		mode := &InteractiveMode{
+			editor:        tui.NewEditor(),
+			keybindings:   DefaultKeybindingsManager(),
+			isIdle:        true,
+			opts:          InteractiveModeOptions{SessionHandle: &recordingCompactHandle{lastAssistant: new("answer")}},
+			chatContainer: tui.NewContainer(),
+			copyClipboard: func(string) error { return nil },
+		}
+		if fullscreen {
+			renderer := tui.NewTuiAltScreenWithOutput(io.Discard, 40, 6, tui.TuiAltScreenOptions{})
+			renderer.SetCopyOnSelect(false)
+			mode.tuiInst, mode.altScreen = renderer, renderer
+		} else {
+			mode.tuiInst = tui.NewWithOutput(io.Discard, 40, 6)
+		}
+		if err := mode.dispatchKey(context.Background(), "\x18"); err != nil {
+			t.Fatal(err)
+		}
+		want := "Copied last agent message to clipboard"
+		if fullscreen {
+			want = ""
+		}
+		if mode.lastStatusMessage != want {
+			t.Errorf("fullscreen %v: status %q, want %q", fullscreen, mode.lastStatusMessage, want)
 		}
 	}
 }

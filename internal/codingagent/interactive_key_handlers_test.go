@@ -26,6 +26,7 @@ type keyWorld struct {
 	Status          string
 	SigintArmed     bool
 	Exit            bool
+	ModelSelector   bool
 	EscapeArmed     bool
 	Suspends        int
 	ToolsExpanded   bool
@@ -46,6 +47,8 @@ type keyRig struct {
 	launched string
 	// bashCancels counts the cancellations of the running `!` command.
 	bashCancels int
+	// editorLaunchable is true for the rig that expects the external editor to start; a key that starts it in any other rig fails the test.
+	editorLaunchable bool
 	// summaryCancels counts the cancellations of the running branch summary.
 	summaryCancels int
 }
@@ -75,6 +78,8 @@ func newKeyRig(t *testing.T, bindings map[string]string) *keyRig {
 		cycleResults:  []*ModelCycleResult{{Model: other}},
 		lastAssistant: &last,
 	}
+	t.Setenv("VISUAL", "")
+	t.Setenv("EDITOR", fakeEditor(t, "capture")+" "+filepath.Join(t.TempDir(), "capture.json"))
 	agentDir := t.TempDir()
 	sm := NewSettingsManager(t.TempDir(), agentDir)
 	m := newSwitchTuiProbeWithOptions(t, InteractiveModeOptions{CWD: t.TempDir(), Model: model, AgentDir: agentDir, Settings: Settings{TuiMode: "regular"}, SettingsManager: sm, SessionHandle: handle})
@@ -111,6 +116,11 @@ func newKeyRig(t *testing.T, bindings map[string]string) *keyRig {
 
 // settle joins the background work a key started and runs the owner-loop tasks it posted.
 func (r *keyRig) settle() {
+	if r.world.Suspends > 0 {
+		// The suspend continue waiter ends only with the mode's context: drain what is queued and leave it to the cleanup.
+		r.drain()
+		return
+	}
 	done := make(chan struct{})
 	go func() {
 		r.m.backgroundTasks.Wait()
@@ -122,14 +132,20 @@ func (r *keyRig) settle() {
 		case task := <-r.m.uiTaskCh:
 			task()
 		case <-done:
-			for {
-				select {
-				case task := <-r.m.uiTaskCh:
-					task()
-				default:
-					return
-				}
-			}
+			r.drain()
+			return
+		}
+	}
+}
+
+// drain runs the owner-loop tasks that are queued now.
+func (r *keyRig) drain() {
+	for {
+		select {
+		case task := <-r.m.uiTaskCh:
+			task()
+		default:
+			return
 		}
 	}
 }
@@ -162,10 +178,43 @@ func (r *keyRig) snapshot() keyWorld {
 	return w
 }
 
+// dispatch presses key through the editor input path and returns when the mode has handled it.
+func (r *keyRig) dispatch(t *testing.T, key string) {
+	t.Helper()
+	// A key that opens the model selector blocks the owner loop in the selector's input loop, which also runs queued tasks: the probe task shows that
+	// the loop is running, and Escape closes the selector.
+	done := make(chan error, 1)
+	go func() { done <- r.m.dispatchKey(r.m.runCtx, key) }()
+	type probe struct{ selector, input bool }
+	probed := make(chan probe, 1)
+	r.m.uiTaskCh <- func() {
+		_, selector := r.m.tuiInst.GetFocusedComponent().(*tui.ModelSelectorComponent)
+		input, _ := r.m.modalRoute()
+		probed <- probe{selector, input != nil}
+	}
+	var err error
+	select {
+	case err = <-done:
+	case p := <-probed:
+		if p.input {
+			input, _ := r.m.modalRoute()
+			input <- []byte("\x1b")
+			r.world.ModelSelector = p.selector
+		}
+		err = <-done
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func (r *keyRig) press(t *testing.T, key string) {
 	t.Helper()
-	if err := r.m.dispatchKey(r.m.runCtx, key); err != nil {
-		t.Fatal(err)
+	r.dispatch(t, key)
+	if !r.editorLaunchable && r.m.externalEditorActive {
+		// The editor's completion callback enters raw mode, which a test has no terminal for: join the editor and leave the callback queued.
+		r.m.backgroundTasks.Wait()
+		t.Fatalf("key %q started the external editor", key)
 	}
 	r.settle()
 }
@@ -203,6 +252,7 @@ var keyHandlerCases = []keyHandlerCase{
 		want: func(w *keyWorld) { w.Editor = "pasted text" }},
 	{action: "app.model.cycleForward", letter: 'd', key: "\x10", want: func(w *keyWorld) { w.CycleDirections = []string{"forward"}; w.Status = "Switched to other" }},
 	{action: "app.model.cycleBackward", letter: 'e', key: "\x1b[112;6u", want: func(w *keyWorld) { w.CycleDirections = []string{"backward"}; w.Status = "Switched to other" }},
+	{action: "app.model.select", letter: 'p', key: "\x0c", want: func(w *keyWorld) { w.ModelSelector = true }},
 	{action: "app.tools.expand", letter: 'f', key: "\x0f", want: func(w *keyWorld) { w.ToolsExpanded = true; w.Status = "Tool output: expanded" }},
 	{action: "app.thinking.toggle", letter: 'g', key: "\x14", want: func(w *keyWorld) { w.HideThinking = true; w.HideSetting = true; w.Status = "Thinking blocks: hidden" }},
 	{action: "app.editor.external", letter: 'h', key: "\x07", noSettle: true,
@@ -211,6 +261,7 @@ var keyHandlerCases = []keyHandlerCase{
 			capture := filepath.Join(t.TempDir(), "capture.json")
 			t.Setenv("EDITOR", fakeEditor(t, "capture")+" "+capture)
 			r.launched = capture
+			r.editorLaunchable = true
 			r.m.editor.SetText("seed")
 		},
 		want: func(w *keyWorld) { w.Editor = "seed"; w.EditorLaunches = 1 }},
@@ -252,9 +303,7 @@ func pressCase(t *testing.T, c keyHandlerCase, bindings map[string]string, key s
 	before = r.snapshot()
 	if c.noSettle {
 		// The external editor's completion callback enters raw mode, which a test has no terminal for: it stays queued on the owner loop and never runs.
-		if err := r.m.dispatchKey(context.Background(), key); err != nil {
-			t.Fatal(err)
-		}
+		r.dispatch(t, key)
 		after = r.snapshot()
 		if r.launched != "" && after.EditorLaunches == 1 {
 			r.m.backgroundTasks.Wait()
