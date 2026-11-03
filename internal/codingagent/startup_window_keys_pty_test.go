@@ -113,3 +113,38 @@ func TestInitBindsOnlyTheClearAndExitKeysDuringStartupChild(t *testing.T) {
 		childFatalf(t, "%v", err)
 	}
 }
+
+// A quit the startup keys request ends init() once the startup window closes: the session is not bound and run() takes the exit.
+func TestInitEndsWhenAStartupKeyQuits(t *testing.T) {
+	runInitPTYChild(t, "TestInitEndsWhenAStartupKeyQuitsChild", startupQuitChildEnv)
+}
+
+const startupQuitChildEnv = "PIG_TEST_STARTUP_QUIT_CHILD"
+
+func TestInitEndsWhenAStartupKeyQuitsChild(t *testing.T) {
+	report := os.Getenv(startupQuitChildEnv)
+	if report == "" {
+		t.Skip("runs only as the pty child of TestInitEndsWhenAStartupKeyQuits")
+	}
+	t.Cleanup(func() {
+		if t.Failed() {
+			_ = os.WriteFile(report, []byte(childFailure), 0o600)
+		}
+	})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), AgentDir: t.TempDir(), NoThemes: true})
+	m.opts.StartupMark = func(label string) {
+		if label == "terminal-colors-ready" {
+			m.handleStartupInput(inputChunk{data: []byte("\x04")}, false)
+		}
+	}
+	// Without a SessionHandle a started bind fails, so a nil result shows the bind never began.
+	if err := m.Init(t.Context()); err != nil {
+		childFatalf(t, "Init after a quit key = %v, want it to end without binding the session", err)
+	}
+	if m.slashRegistry != nil || !m.requestExit.Load() {
+		childFatalf(t, "slash registry %v, exit requested %v: Init went on past the quit", m.slashRegistry != nil, m.requestExit.Load())
+	}
+	if err := m.Stop(); err != nil {
+		childFatalf(t, "%v", err)
+	}
+}
