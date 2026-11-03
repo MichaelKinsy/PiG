@@ -292,15 +292,6 @@ func markdownContractCallsAmong(got, want [][]string) bool {
 	return true
 }
 
-// markdownContractRowsOf is the rows of every render.
-func markdownContractRowsOf(renders []markdownContractRender) [][]string {
-	rows := make([][]string, len(renders))
-	for i, render := range renders {
-		rows[i] = render.Rows
-	}
-	return rows
-}
-
 // markdownContractTextAt is the text of the component at the n-th render of a probe.
 func markdownContractTextAt(probe markdownContractProbe, n int) string {
 	text := probe.Text

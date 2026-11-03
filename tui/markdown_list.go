@@ -196,7 +196,7 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 			}
 			ni, _, _, nested := parseMarkdownListItem(line)
 			// A bullet four or more spaces past the content indent is indented code, not a nested list. A line the hr rule matches ('- - -') starts no list (Tokenizer.list stops at it), so it stays item content and lexes as a rule.
-			if nested && len(ni) >= contentIndent && len(ni)-contentIndent <= 3 && !isMarkedHr(line[contentIndent:]) && !(strings.TrimRight(line, " \t") == ni+"-" && !afterBlank && widthx.JSTrim(previous) != "" && markdownIsTextLine(previous, beforeLast(pending))) {
+			if nested && len(ni) >= contentIndent && len(ni)-contentIndent <= 3 && !isMarkedHr(line[contentIndent:]) && (strings.TrimRight(line, " \t") != ni+"-" || afterBlank || widthx.JSTrim(previous) == "" || !markdownIsTextLine(previous, beforeLast(pending))) {
 				endRun(false)
 				flush()
 				child, next := parseMarkdownList(lines, j, append(slices.Clone(outer), contentIndent))
