@@ -521,7 +521,6 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		m.tuiInst.Render()
 
 	case agent.AutoRetryEndEvent:
-		m.retryEscapeHandler = false
 		m.clearStatusIndicator("retry")
 		// Mirrors upstream auto_retry_end: only a final failure, including a
 		// cancelled retry, is shown, as a persistent transcript error.

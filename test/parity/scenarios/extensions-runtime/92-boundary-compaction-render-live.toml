@@ -6,6 +6,9 @@
 # compaction summary, then the entries after the compaction; the custom message's own event is skipped (entriesRenderedByBoundaryCompaction), so it
 # is drawn once. PiG ignored the compaction entry, so the summary appeared only after a resume.
 #
+#
+# The crop ends at the custom message, so the unit test (TestHandleEventEntryAppendedCompactionRebuildsTheTranscript) proves it is drawn once.
+#
 # Upstream evidence (Pi 1.5.0 oracle, parity harness, 2026-11-03, 100x35 tmux, test-faux): the transcript after the turn shows the reply,
 # the compaction summary line and the custom message once.
 name = "92-boundary-compaction-render-live"
