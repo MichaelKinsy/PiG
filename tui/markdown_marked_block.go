@@ -21,7 +21,8 @@ const (
 	markedFencesInterrupt    = " {0,3}(?:`{3,}(?=[^`\\n]*(?:\\n|$))|~~~)[^\\n]*(?:\\n|$)"
 	markedHTMLInterrupt      = `<\/?(?:` + markedHTMLTagNames + `)(?: +|\n|\/?>)|<(?:script|pre|style|textarea|!--)`
 	markedGfmTableBody       = ` *([^\n ].*)\n {0,3}((?:\| *)?:?-+:? *(?:\| *:?-+:? *)*(?:\| *)?)(?:\n((?:(?! *\n|` + markedBlockHrRule + `|` + markedHeadingInterrupt + `|` + markedBlockquoteStart + "|(?: {4}| {0,3}\t)[^\\n]|" + markedFencesInterrupt + `| {0,3}(?:[*+-]|1[.)])[ \t]|` + markedHTMLInterrupt + `).*(?:\n|$))*)\n*|$)`
-	markedParagraphInterrupt = markedBlockHrRule + `|` + markedHeadingInterrupt + `|` + markedBlockquoteStart + `|` + markedFencesInterrupt + `| {0,3}(?:[*+-]|1[.)])[ \t]+[^ \t\n]|` + markedHTMLInterrupt + `|` + markedGfmTableBody + `|[ \t]+\n`
+	markedParagraphInterruptNoTable = markedBlockHrRule + `|` + markedHeadingInterrupt + `|` + markedBlockquoteStart + `|` + markedFencesInterrupt + `| {0,3}(?:[*+-]|1[.)])[ \t]+[^ \t\n]|` + markedHTMLInterrupt
+	markedParagraphInterrupt        = markedBlockHrRule + `|` + markedHeadingInterrupt + `|` + markedBlockquoteStart + `|` + markedFencesInterrupt + `| {0,3}(?:[*+-]|1[.)])[ \t]+[^ \t\n]|` + markedHTMLInterrupt + `|` + markedGfmTableBody + `|[ \t]+\n`
 	// markedQuoteInterrupt is the paragraph rule inside a blockquote (Ae's Me): the GFM interrupts without lheading and table, and a list item of any start number.
 	markedQuoteInterrupt       = markedBlockHrRule + `|` + markedHeadingInterrupt + `|` + markedBlockquoteStart + `|` + markedFencesInterrupt + `| {0,3}(?:[*+-]|\d{1,9}[.)])(?:[ \t]|\n|$)|` + markedHTMLInterrupt + `|[ \t]+\n`
 	markedBlockHTMLSource      = "^ {0,3}(?:<(script|pre|style|textarea)[\\s>][\\s\\S]*?(?:<\\/\\1>[^\\n]*\\n*|$)|<!--(?:-?>|[\\s\\S]*?(?:-->|$))[^\\n]*(\\n+|$)|<\\?[\\s\\S]*?(?:\\?>[^\\n]*\\n*|$)|<![A-Z][\\s\\S]*?(?:>[^\\n]*\\n*|$)|<!\\[CDATA\\[[\\s\\S]*?(?:\\]\\]>[^\\n]*\\n*|$)|<\\/?(" + markedHTMLTagNames + ")(?: +|\\n|\\/?>)[\\s\\S]*?(?:(?:\\n[ \t]*)+\\n|$)|<(?!script|pre|style|textarea)([a-z][\\w-]*)(?: +[a-zA-Z:_][\\w.:-]*(?: *= *\"[^\"\\n]*\"| *= *'[^'\\n]*'| *= *[^\\s\"'=<>`]+)?)*? *\\/?>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ \t]*)+\\n|$)|<\\/(?!script|pre|style|textarea)[a-z][\\w-]*\\s*>(?=[ \\t]*(?:\\n|$))[\\s\\S]*?(?:(?:\\n[ \t]*)+\\n|$))"
@@ -38,6 +39,8 @@ var (
 	markedBlockDef = newAnchoredMarkedRegexp(`^ {0,3}\[((?!\s*\])(?:\\[\s\S]|[^\[\]\\])+)\]: *(?:\n[ \t]*)?([^<\s][^\s]*|<.*?>)(?:(?: +(?:\n[ \t]*)?| *\n[ \t]*)((?:"(?:\\"?|[^"\\])*"|'[^'\n]*(?:\n[^'\n]+)*\n?'|\([^()]*\))))? *(?:\n+|$)`, false)
 	// markedParagraphInterruptAt is the lookahead of the GFM paragraph rule: a line it matches ends the paragraph before it.
 	markedParagraphInterruptAt = newAnchoredMarkedRegexp(`^(?:`+markedParagraphInterrupt+`)`, false)
+	// markedParagraphInterruptNoTableAt is markedParagraphInterruptAt without its table lookahead, on one line.
+	markedParagraphInterruptNoTableAt = newAnchoredMarkedRegexp(`^(?:`+markedParagraphInterruptNoTable+`)`, false)
 	markedQuoteInterruptAt     = newAnchoredMarkedRegexp(`^(?:`+markedQuoteInterrupt+`)`, false)
 )
 
@@ -138,6 +141,21 @@ func (s *markdownBlockSource) paragraphInterrupted(index int) bool {
 		return markedParagraphInterruptAt.exec([]rune(window)) != nil
 	}
 	return false
+}
+
+// tableLookaheadOnly reports that lines[index] ends a paragraph only through the table lookahead of the paragraph rule, which does not count the cells of the two rows: the lexer then finds no table, no heading and no HTML block there, and what it lexes is a paragraph.
+func (s *markdownBlockSource) tableLookaheadOnly(index int) bool {
+	line := s.lines[index]
+	if index+1 >= len(s.lines) || strings.Trim(line, " \t") == "" || s.text || slices.Contains(s.breaks, index) || slices.Contains(s.groups, index) || !s.paragraphInterrupted(index) {
+		return false
+	}
+	if markedParagraphInterruptNoTableAt.exec([]rune(line)) != nil {
+		return false
+	}
+	if _, _, ok := s.table(index); ok {
+		return false
+	}
+	return !s.startsHTMLBlock(index)
 }
 
 // quoteLazyInterrupted reports whether lines[index] ends a blockquote's paragraph, so that it is not a lazy line of the quote: the paragraph rule without table or lheading.

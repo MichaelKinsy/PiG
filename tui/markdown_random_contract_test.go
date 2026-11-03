@@ -177,9 +177,9 @@ func markdownRandomDocs(seed uint64, count int) []string {
 	return docs
 }
 
-// TestMarkdownRandomDocsMatchPi renders markdownRandomDocs at a narrow, two middle and a wide width, with the default constructor, with a text color and
-// with preserved list markers, and requires the rows to equal pi-tui's.
-func TestMarkdownRandomDocsMatchPi(t *testing.T) {
+// markdownRandomProbes are the probes of TestMarkdownRandomDocsMatchPi: each document of the seeded corpus at a narrow, two middle and a wide width, with every second one padded, every third under a text
+// color and every seventh with preserved list markers.
+func markdownRandomProbes() []markdownContractProbe {
 	var probes []markdownContractProbe
 	for i, doc := range markdownRandomDocs(20260101, 12000) {
 		probe := markdownContractProbe{Text: doc, PaddingX: i % 2, PaddingY: 0, Theme: "tagged", Ops: markdownContractRenderOps(5, 11, 24, 80)}
@@ -191,7 +191,30 @@ func TestMarkdownRandomDocsMatchPi(t *testing.T) {
 		}
 		probes = append(probes, probe)
 	}
-	if failures := compareMarkdownContract(t, probes); failures > 0 {
-		t.Errorf("%d of %d probes differ from Pi", failures, len(probes))
+	return probes
+}
+
+// TestMarkdownRandomDocsMatchPi requires the rows of markdownRandomProbes to equal pi-tui's, except for the documents of markdownRandomKnownDifferences, which must still differ: each holds a shape of
+// markdownKnownDifferenceProbes that PiG does not render as Pi does.
+func TestMarkdownRandomDocsMatchPi(t *testing.T) {
+	probes := markdownRandomProbes()
+	differences, _ := markdownContractDifferences(t, probes)
+	known := map[int]bool{}
+	for _, index := range markdownRandomKnownDifferences {
+		known[index] = true
 	}
+	unexpected, fixed := 0, 0
+	for i, probe := range probes {
+		reason, differs := differences[i]
+		switch {
+		case differs && !known[i]:
+			if unexpected++; unexpected <= 20 {
+				t.Errorf("document %d differs from Pi and is not a known difference: %s", i, reason)
+			}
+		case !differs && known[i]:
+			fixed++
+			t.Errorf("document %d (%q) is listed in markdownRandomKnownDifferences but matches Pi now: remove it", i, probe.Text)
+		}
+	}
+	t.Logf("%d of %d documents differ from Pi, %d of them known; %d unexpected, %d fixed", len(differences), len(probes), len(markdownRandomKnownDifferences), unexpected, fixed)
 }

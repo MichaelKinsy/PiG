@@ -145,7 +145,8 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 			// Blank lines stay in the fence only while a line at the content indent follows them: a lazy line after a blank line ends the item (Tokenizer.ts list: `if (blankLine) break`).
 			if inFence && (widthx.JSTrim(line) == "" && markdownBlankRunContinues(lines, j, contentIndent) || widthx.JSTrim(line) != "" && markdownIndent(line) >= contentIndent) {
 				if widthx.JSTrim(line) == "" {
-					pending = append(pending, "")
+					// A line of spaces keeps what is left of it after the content indent as a line of the code.
+					pending = append(pending, jsstring.Slice(strings.ReplaceAll(line, "\t", "    "), contentIndent))
 					j++
 					continue
 				}
@@ -244,7 +245,11 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 				raw := value
 				// An indented line that continues the item's paragraph is merged by marked's code tokenizer with up to four spaces removed (Tokenizer.code, codeRemoveIndent).
 				// The code token takes the following indented lines too, blank lines between them included.
-				isMerged := markdownIndent(value) >= 4 && (mergedRun || !afterBlank && widthx.JSTrim(previous) != "" && markdownIndent(previous) < 4 && markdownIsTextLine(previous, beforeLast(pending)))
+				before := previous
+				if len(pending) > 0 {
+					before = pending[len(pending)-1]
+				}
+				isMerged := markdownIndent(value) >= 4 && (mergedRun || !afterBlank && widthx.JSTrim(before) != "" && markdownIndent(before) < 4 && markdownIsTextLine(before, beforeLast(pending)))
 				if isMerged {
 					value = value[min(markdownIndent(value), 4):]
 					for q := len(pending) - 1; afterBlank && q >= 0 && pending[q] == ""; q-- {
@@ -276,7 +281,11 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 				stripped := markdownStripOuterIndent(line, outer)
 				// A lazy line indented four spaces or more is an indented code chunk that marked's code tokenizer merges into the text before it, with up to four spaces removed.
 				value := stripped
-				isMerged := markdownIndent(value) >= 4 && (mergedRun || widthx.JSTrim(previous) != "" && markdownIndent(previous) < 4 && markdownIsTextLine(previous, beforeLast(pending)))
+				before := previous
+				if len(pending) > 0 {
+					before = pending[len(pending)-1]
+				}
+				isMerged := markdownIndent(value) >= 4 && (mergedRun || widthx.JSTrim(before) != "" && markdownIndent(before) < 4 && markdownIsTextLine(before, beforeLast(pending)))
 				if isMerged {
 					value = value[min(markdownIndent(value), 4):]
 					merged = append(merged, len(pending))

@@ -637,6 +637,8 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 	// codeIndent is the indent of a backtick fence, which the fence removes from its code lines.
 	codeIndent, codeOpenIndent := 0, 0
 	var codeLines []string
+	// codeLastLine is the last line of the code as the text has it, before the fence's indent leaves it.
+	codeLastLine := ""
 	theme := m.markdownTheme()
 
 	for i := 0; i < len(lines); i++ {
@@ -662,6 +664,7 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 				continue
 			}
 			codeLines = append(codeLines, indentCodeCompensation(line, codeIndent))
+			codeLastLine = line
 			continue
 		}
 		// marked's indented code rule precedes fences; a paragraph has already absorbed an indented line it cannot be interrupted by.
@@ -689,7 +692,7 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 				codeIndent = codeOpenIndent
 			}
 			codeLang = lang
-			codeLines = nil
+			codeLines, codeLastLine = nil, ""
 			continue
 		}
 
@@ -758,16 +761,26 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 			quoted := make([]string, 0, 4)
 			var lazyUnderlines, lazyLines, lazyIndented, lazyBreaks, lazyGroups, lazyListEnds []int
 			// swallowing is set after a quoted line that ends in an empty nested quote: marked's blockquote tokenizer hands the lines that follow to that nested quote, whose own tokenizer drops them.
-			swallowing, lazyAfterList := false, false
+			swallowing, swallowLazy, lazyAfterList, lazyAfterNested := false, true, false, false
 			// lazyCodeRun is set while the lazy lines since the quoted line are an indented run that marked's code tokenizer joined to the quoted paragraph.
 			lazyCodeRun, lazyCodeNewline := false, false
 			for j < len(lines) {
 				current := lines[j]
 				switch {
-				case swallowing && (isBlockquoteLine(current) || !source.quoteLazyInterrupted(j)):
+				case swallowing && (isBlockquoteLine(current) || swallowLazy && !source.quoteLazyInterrupted(j)):
+					// A quote line with nothing after its marker ends the paragraph the lazy lines continued, so lazy lines after it are no part of the quote.
+					swallowLazy = !isBlockquoteLine(current) || stripBlockquotePrefix(current) != ""
 				case j > i && isBlockquoteLine(lines[j-1]) && !source.quoteLazyInterrupted(j) && markdownQuoteEndsInEmptyQuote(quoted):
 					swallowing = true
+				case lazyAfterList && isBlockquoteLine(current) && markdownIndent(current) >= markdownQuoteListContentIndent(quoted):
+					// The lazy lines are lexed again with the list, whose item takes a line indented to its content, a quote marker included, as its own content.
+					lazyLines = append(lazyLines, len(quoted))
+					quoted = append(quoted, current)
+				case lazyAfterNested && isBlockquoteLine(current) && markdownQuoteInterruptsNested(stripBlockquotePrefix(current)):
+					// A quote line that the nested quote's paragraph rule refuses is handed to that nested quote with the lazy lines, and dropped.
+					swallowing = true
 				case isBlockquoteLine(current):
+					lazyAfterList = false
 					content := stripBlockquotePrefix(current)
 					if lazyCodeRun {
 						lazyIndented = append(lazyIndented, len(quoted))
@@ -776,8 +789,10 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 							content = content[min(markdownIndent(content), 4):]
 							lazyCodeNewline = false
 						} else {
-							// The run ends with a newline that the next quoted line joins to the paragraph as an empty row.
-							quoted = append(quoted, "")
+							// The run ends with a newline that the next quoted line joins to the paragraph as an empty row; a line of spaces is read into the code's raw instead.
+							if !markedBlankLine(content) {
+								quoted = append(quoted, "")
+							}
 							lazyCodeRun = false
 						}
 					}
@@ -789,7 +804,7 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 					}
 					// An indented-code line cannot interrupt the quoted paragraph; marked's blockquote tokenizer removes up to four of its leading spaces (codeRemoveIndent) when it joins it.
 					indented := false
-					if markdownIndent(current) >= 4 && (isBlockquoteLine(lines[j-1]) && markdownQuoteEndsInText(quoted) && markdownQuoteLastToken(quoted) != markdownQuoteNested && markdownQuoteLastToken(quoted) != markdownQuoteList || lazyCodeRun) {
+					if markdownIndent(current) >= 4 && (isBlockquoteLine(lines[j-1]) && markdownQuoteEndsInText(quoted) && !markdownQuoteEndsInLatex(quoted) && markdownQuoteLastToken(quoted) != markdownQuoteNested && markdownQuoteLastToken(quoted) != markdownQuoteList || lazyCodeRun) {
 						current = current[min(markdownIndent(current), 4):]
 						indented = true
 					}
@@ -811,11 +826,20 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 						}
 					}
 					if markdownQuoteListEndsInSpaces(quoted) {
+						// The list's raw, which an item's own lines join, was trimmed of those spaces.
+						if markdownIndent(current) >= markdownQuoteListContentIndent(quoted) {
+							quoted[len(quoted)-1] = strings.TrimRight(quoted[len(quoted)-1], " \t")
+						}
 						quoted = append(quoted, "")
 					}
 					// A setext underline after a lazy line would close a heading in the lazy run, so marked's blockquote tokenizer joins it to the quoted paragraph indented by four spaces. A list lexes the lazy lines as they are.
 					if isBlockquoteLine(lines[j-1]) {
 						lazyAfterList = markdownQuoteEndsInList(quoted)
+						lazyAfterNested = markdownQuoteLastToken(quoted) == markdownQuoteNested
+					}
+					// The list ends before a lazy line that starts a block in its item (an HTML tag, a fence, a heading), and the lines after it are lexed apart from the list.
+					if lazyAfterList && markedListInterrupts(current, markdownQuoteListContentIndent(quoted)) {
+						lazyAfterList = false
 					}
 					if !indented && !lazyCodeRun && !lazyAfterList && !isBlockquoteLine(lines[j-1]) && setextUnderlinePattern.MatchString(current) {
 						current = "    " + strings.TrimLeft(current, " ")
@@ -876,7 +900,7 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 					silentEnd = len(out)
 				}
 				// A lazy last line of spaces is a space token inside the quote, which adds an empty row of its own.
-				if last := lines[len(lines)-1]; j == len(lines) && len(last) > 1 && strings.Trim(last, " \t") == "" {
+				if last := lines[len(lines)-1]; j == len(lines) && len(last) > 1 && strings.Trim(last, " \t") == "" && !(lazyAfterNested && len(quoted) >= 2 && !isBlockquoteLine(quoted[len(quoted)-2])) {
 					out = append(out, "")
 					silentEnd = len(out)
 					listSpaceEnd = len(out)
@@ -1045,7 +1069,7 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 		// marked's GFM paragraph runs until a line its rule says interrupts it; the latex block extension also clips it. Soft line breaks stay inside the paragraph until styling and wrapping.
 		j := i + 1
 		// A list item lexes text rather than a paragraph, so every line gets the chance to start an HTML block (Lexer.ts blockTokens with top false).
-		for j < len(lines) && !source.paragraphInterrupted(j) && !m.setextAtGroup(lines, j) && (slices.Contains(m.lazyIndented, j) || !markdownLatexBlockAt(lines[:markdownNextBreak(m.lazyGroups, j, len(lines))], j)) && (!m.suppressBlockSpacing || slices.Contains(m.lazyIndented, j) || !source.startsHTMLBlock(j)) {
+		for j < len(lines) && (!source.paragraphInterrupted(j) || m.mergesClippedParagraph(source, lines, i, j)) && !m.setextAtGroup(lines, j) && (slices.Contains(m.lazyIndented, j) || !markdownLatexBlockAt(lines[:markdownNextBreak(m.lazyGroups, j, len(lines))], j)) && (!m.suppressBlockSpacing || slices.Contains(m.lazyIndented, j) || !source.startsHTMLBlock(j)) {
 			// A lazy line whose four leading spaces the quote removed was merged into the paragraph as code, which no block extension sees.
 			if !slices.Contains(m.lazyIndented, j) && blockLatexStart(lines[j]) {
 				pieces, latexRest := clipLatex(j)
@@ -1100,7 +1124,7 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 	// Unclosed code block
 	if inCode {
 		// marked's fence rule ends an unterminated block with the newline before the end of the text, so the empty last line that newline splits off is not a code line.
-		endsInNewline := len(codeLines) >= 2 && codeLines[len(codeLines)-1] == ""
+		endsInNewline := len(codeLines) >= 2 && codeLastLine == ""
 		if endsInNewline {
 			codeLines = codeLines[:len(codeLines)-1]
 		}
@@ -1137,9 +1161,23 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 	return loopOut, out, finalBase
 }
 
-// setextAtGroup reports that a setext heading starts at the first line of a group of a quote's lazy lines: marked lexes that group apart from the lines before it, so its heading is no part of their paragraph.
+// mergesClippedParagraph reports that the line that the table lookahead ended the paragraph before it, which began at lines[start], starts a paragraph that Lexer.blockTokens merges into it: every paragraph is lexed from a source that holds the rest of the text, and the display-math extension's start() matches a later line of it, so lastParagraphClipped is set whatever ended the paragraph.
+func (m *Markdown) mergesClippedParagraph(source *markdownBlockSource, lines []string, start, index int) bool {
+	if m.suppressBlockSpacing || !source.tableLookaheadOnly(index) {
+		return false
+	}
+	for _, line := range lines[start+1 : markdownNextBreak(m.lazyGroups, start, len(lines))] {
+		if blockLatexStart(line) {
+			return true
+		}
+	}
+	return false
+}
+
+// setextAtGroup reports that a setext heading starts at lines[index] where the lexer starts a token: the first line of a group of a quote's lazy lines, which marked lexes apart from the lines before it, a display-math start that cuts the paragraph, or any line of a list item's text.
 func (m *Markdown) setextAtGroup(lines []string, index int) bool {
-	if !slices.Contains(m.lazyGroups, index) {
+	// A list item's text is lexed line by line (no paragraph rule), and the setext rule is tried at each; a display-math start cuts a paragraph before its line, where a new lexing begins.
+	if !m.suppressBlockSpacing && !slices.Contains(m.lazyGroups, index) && !blockLatexStart(lines[index]) {
 		return false
 	}
 	_, _, ok := setextHeadingEnd(lines[:markdownNextBreak(m.lazyGroups, index, len(lines))], index, m.lazyUnderlines)
@@ -1177,6 +1215,38 @@ func markdownQuoteEndsInEmptyQuote(quoted []string) bool {
 		last = stripBlockquotePrefix(last)
 	}
 	return last == ""
+}
+
+// markdownQuoteInterruptsNested reports that a quoted line cannot continue the paragraph of the nested quote that the lazy lines before it were handed to: it is empty or starts a block.
+func markdownQuoteInterruptsNested(content string) bool {
+	return !isBlockquoteLine(content) && (content == "" || (&markdownBlockSource{lines: []string{content}}).quoteLazyInterrupted(0))
+}
+
+// markdownQuoteListContentIndent is the content indent of the last list item line of the quoted lines.
+func markdownQuoteListContentIndent(quoted []string) int {
+	for i := len(quoted) - 1; i >= 0; i-- {
+		if indent, marker, body, ok := parseMarkdownListItem(quoted[i]); ok {
+			spacing := markdownIndent(quoted[i][len(indent)+len(marker):])
+			if spacing == 0 || spacing > 4 && body != "" {
+				spacing = 1
+			}
+			return len(indent) + len(marker) + spacing
+		}
+	}
+	return 2
+}
+
+// markdownQuoteEndsInLatex reports that the last token of the quoted lines is display math, which an indented lazy line cannot join.
+func markdownQuoteEndsInLatex(quoted []string) bool {
+	for k, line := range quoted {
+		if !blockLatexStart(line) {
+			continue
+		}
+		if tok, ok := tokenizeBlockLatex(strings.Join(quoted[k:], "\n")); ok && k+strings.Count(strings.TrimSuffix(tok.raw, "\n"), "\n") >= len(quoted)-1 {
+			return true
+		}
+	}
+	return false
 }
 
 // markdownTrailingLazyRun is the number of lines at the end of a quote's quoted lines that are lazy continuations.
