@@ -1,6 +1,0 @@
-### Fixed
-
-- The terminal progress indicator and the working status start at the run's first turn, as in Pi, so a run writes the progress sequence once, and Escape in a retried run aborts the run.
-- A queue change, a thinking-level change and the end of a run now update the pending messages, the editor border and the footer from the session events, and an extension's `ctx.shutdown()` during a run ends the session when the run settles instead of mid-run.
-- Custom entries, displayed custom messages and compactions that an extension appends at a turn boundary now draw in the transcript as they do in Pi.
-- A finished response shows the thinking-drop notice before the cache-miss notice, an aborted or failed response shows neither, and a message update or end that arrives with no streaming message draws nothing.
