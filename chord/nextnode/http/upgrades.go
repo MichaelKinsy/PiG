@@ -29,6 +29,13 @@ import (
 //   - A handler returns an error where Pi's throws or rejects; reading its socket's frames starts when it returned.
 //   - Pi's timers are setTimeout; `afterFunc` is the clock a test replaces (time.AfterFunc by default).
 //   - `ws`'s `WebSocketServer` per upgrade is gorilla's Upgrader, made per upgrade and dropped with it.
+//   - Pi's hand-out (the router check, `links.options`, `handleUpgrade`, `#keep`) is one synchronous step, so a router change
+//     never falls between the check and the keep; here it can, and `revoke`'s snapshot would lack the connection kept after
+//     it. A hand-out notes the routers delivered before its router check (`admitting`); a revoke ends only a connection whose
+//     check came before that delivery, and a connection kept after a delivery since its check is ended when the newest router
+//     no longer admits it (`recheck`), as Pi's revoke at that delivery would have.
+//   - Pi's `once` (Node's EventEmitter) arms its wrapper as it registers it; WebSocket.once builds its listener whole before
+//     attaching it, so a close on another goroutine cannot reach it first.
 
 // UpgradeAdmission is what admitted an upgrade: the allowed host or the relay it came through (local: neither), and its
 // principal.
@@ -72,6 +79,8 @@ type upgraded struct {
 	handler *HttpSocket
 	// seal ends its work at once: the link closed, or the handler's scope sealed.
 	seal func()
+	// seen is the deliveries counted before its upgrade's router check: the deliveries after it are the ones that revoke it.
+	seen uint64
 }
 
 // defaultLinkPayload is a link socket's largest frame unless `links.options` says otherwise: 1 MiB.
@@ -88,36 +97,74 @@ type Upgrades struct {
 	closing bool
 	pending int
 	drained chan struct{}
+	// deliveries counts the routers the follower delivered and newest is the last one: both change in one critical section, on
+	// the delivery, before any revoke of it runs.
+	deliveries uint64
+	newest     *Router
+}
+
+// delivered counts a router the follower delivered, the newest from now on, and returns its number.
+func (u *Upgrades) delivered(router *Router) uint64 {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	u.deliveries++
+	u.newest = router
+	return u.deliveries
+}
+
+// admitting is the deliveries counted so far: read by an upgrade before its router check, it is the delivery its connection
+// is checked against from (a router delivered before the check is no later than the one the check read).
+func (u *Upgrades) admitting() uint64 {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	return u.deliveries
+}
+
+// recheck ends connection, kept just now, when a router was delivered since its upgrade's check (connection.seen) and the newest
+// one no longer admits it: the revoke of that delivery may have taken its snapshot before the keep. A router that was delivered
+// and replaced by one that admits the connection ends nothing: Pi's revoke of the first ran before the upgrade read the second.
+func (u *Upgrades) recheck(connection *upgraded) {
+	u.mu.Lock()
+	newest := u.newest
+	changed := u.deliveries != connection.seen
+	u.mu.Unlock()
+	if changed && connection.gone(newest) {
+		end(connection)
+	}
 }
 
 // NewUpgrades is an empty set of connections.
 func NewUpgrades() *Upgrades { return &Upgrades{open: map[*upgraded]struct{}{}, after: realAfter} }
 
 // Link upgrades request to the links endpoint: `host.accept` over the socket (its output capped) as the admitted principal,
-// with options' limits; ctx is the parent of the work on the link.
-func (u *Upgrades) Link(w nethttp.ResponseWriter, request *nethttp.Request, admission UpgradeAdmission, options LinkOptions, h host.Host, ctx context.Context) {
+// with options' limits; ctx is the parent of the work on the link. seen is what `admitting` returned before the router check.
+func (u *Upgrades) Link(w nethttp.ResponseWriter, request *nethttp.Request, admission UpgradeAdmission, options LinkOptions, h host.Host, ctx context.Context, seen uint64) {
 	maxPayload := options.MaxPayload
 	if maxPayload == 0 {
 		maxPayload = defaultLinkPayload
 	}
 	upgrade(w, request, maxPayload, func(socket *WebSocket) {
 		end := link.WebSocketLink(limitedSocket(socket))
-		u.keep(&upgraded{socket: socket, allowed: admission.Allowed, relay: admission.Relay, seal: end.Close})
+		connection := &upgraded{socket: socket, allowed: admission.Allowed, relay: admission.Relay, seal: end.Close, seen: seen}
+		u.keep(connection)
 		if err := h.Accept(end, host.LinkOptions{Principal: admission.Principal, Limits: options.Limits}, ctx); err != nil {
 			socket.Terminate()
 		}
 		socket.Start()
+		u.recheck(connection)
 	})
 }
 
 // Socket upgrades request to the plugin socket match: its handler gets the socket and request in a `host.root` scope acting
-// as the admitted principal that lasts until the socket closes; a handler that fails is reported and closes it (1011).
-func (u *Upgrades) Socket(w nethttp.ResponseWriter, r *nethttp.Request, admission UpgradeAdmission, match *SocketMatch, request HttpRequest, h host.Host, ctx context.Context, failed func(SocketFailure)) {
+// as the admitted principal that lasts until the socket closes; a handler that fails is reported and closes it (1011). seen is
+// what `admitting` returned before the router check.
+func (u *Upgrades) Socket(w nethttp.ResponseWriter, r *nethttp.Request, admission UpgradeAdmission, match *SocketMatch, request HttpRequest, h host.Host, ctx context.Context, failed func(SocketFailure), seen uint64) {
 	upgrade(w, r, match.MaxPayload, func(socket *WebSocket) {
 		closedCtx, closeSocket := chordctx.WithCancel(chordctx.Background())
 		seal := func() { closeSocket(errors.New("http: the socket closed")) }
 		socket.OnceClose(func(CloseEvent) { seal() })
-		u.keep(&upgraded{socket: socket, allowed: admission.Allowed, relay: admission.Relay, handler: match.Handler, seal: seal})
+		connection := &upgraded{socket: socket, allowed: admission.Allowed, relay: admission.Relay, handler: match.Handler, seal: seal, seen: seen}
+		u.keep(connection)
 		u.heartbeat(socket)
 		scope := chordctx.WithAbortSignal(chordctx.WithoutAbortSignal(ctx), closedCtx)
 		run := func(callCtx host.Ctx) (any, error) {
@@ -136,6 +183,7 @@ func (u *Upgrades) Socket(w nethttp.ResponseWriter, r *nethttp.Request, admissio
 		}
 		// The scope sealed (its socket closed, the host closing) is no failure of the handler.
 		go func() { _, _ = h.Root(run, scope, host.RootOptions{Principal: admission.Principal}) }()
+		u.recheck(connection)
 	})
 }
 
@@ -145,23 +193,30 @@ func tryHandler(handler *HttpSocket, socket *WebSocket, request HttpRequest, ctx
 }
 
 // revoke: the router changed: connections through a host or a relay no longer there, and plugin sockets whose handler left,
-// are terminated at once and their scopes sealed (no close handshake a peer could ignore).
-func (u *Upgrades) revoke(router *Router) {
+// are terminated at once and their scopes sealed (no close handshake a peer could ignore). Only a connection whose upgrade
+// checked before delivery number delivery is revoked by it: in Pi the revoke runs at the delivery, so a connection admitted
+// by a later router is never ended by an earlier one that a lagging revoke task reaches now.
+func (u *Upgrades) revoke(router *Router, delivery uint64) {
 	for _, each := range u.snapshot() {
-		relayLeft := false
-		if each.relay != nil {
-			relayLeft = !slices.Contains(router.Relays, each.relay)
-		}
-		gone := (each.allowed != "" && !router.Hosts.Has(each.allowed)) || relayLeft
-		if each.handler != nil {
-			if _, ok := router.SocketHandlers[each.handler]; !ok {
-				gone = true
-			}
-		}
-		if gone {
+		if delivery > each.seen && each.gone(router) {
 			end(each)
 		}
 	}
+}
+
+// gone is whether what admitted the connection (its allowed host, its relay, its socket handler) left router.
+func (connection *upgraded) gone(router *Router) bool {
+	relayLeft := false
+	if connection.relay != nil {
+		relayLeft = !slices.Contains(router.Relays, connection.relay)
+	}
+	gone := (connection.allowed != "" && !router.Hosts.Has(connection.allowed)) || relayLeft
+	if connection.handler != nil {
+		if _, ok := router.SocketHandlers[connection.handler]; !ok {
+			gone = true
+		}
+	}
+	return gone
 }
 
 // reserve admits an upgrade that is about to be handed out, false once Close ran: it is then refused (503). Every successful
