@@ -1,3 +1,5 @@
+// Ports packages/coding-agent/src/core/tools/truncate.ts: truncateTail, kept as a stream.
+
 package truncate
 
 import "strings"

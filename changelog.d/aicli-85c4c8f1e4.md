@@ -1,0 +1,3 @@
+### Fixed
+
+- `pig login <provider>` now prints what Pi's `packages/ai/src/cli.ts` prints and keeps `auth.json` private. It left a blank line after every authorization URL, listed a provider's select options as `1) label` and took the first option for an empty answer, and printed an unknown provider without the `Error:` prefix that every other login failure has. Pi asks `Enter number (1-N): ` for a select option, lists `1. label`, and fails an answer that is not a listed number with `Invalid selection`. An existing `auth.json` keeps the permissions an older version gave it while the new OAuth tokens are written into it; login now sets it to owner-only (`0600`) before it saves, as `cli.ts` does. <!-- fix: 85c4c8f1e4 -->

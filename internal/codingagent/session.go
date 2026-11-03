@@ -584,15 +584,40 @@ func createSessionFile(path string, lines [][]byte) error {
 }
 
 func writeSessionFile(path string, lines [][]byte, mode int) error {
+	return writeSessionRecords(path, mode, sessionWriteBufferFor(lines), func(emit func(...[]byte) error) error {
+		for _, line := range lines {
+			if err := emit(line); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// writeSessionRecords opens path as writeSessionFile does and passes fill an emit that writes one record, the concatenation of its parts, and
+// its newline through a buffer of bufferSize bytes. fill's error ends the write and is returned as it is; the file stays as written so far.
+func writeSessionRecords(path string, mode, bufferSize int, fill func(emit func(parts ...[]byte) error) error) error {
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|mode, 0o644)
 	if err != nil {
 		return sessionPersistenceError(err, "open", path)
 	}
 	defer func() { _ = f.Close() }()
-	w := bufio.NewWriterSize(f, sessionWriteBufferFor(lines))
-	for _, line := range lines {
-		_, _ = w.Write(line)
-		_ = w.WriteByte('\n')
+	w := bufio.NewWriterSize(f, bufferSize)
+	err = fill(func(parts ...[]byte) error {
+		for _, part := range parts {
+			if _, err := w.Write(part); err != nil {
+				return sessionPersistenceError(err, "write", "")
+			}
+		}
+		if err := w.WriteByte('\n'); err != nil {
+			return sessionPersistenceError(err, "write", "")
+		}
+		return nil
+	})
+	if err != nil {
+		// Pi writes each record as it goes (session-manager.ts _rewriteFile), so the file holds every record emitted before the error.
+		_ = w.Flush()
+		return err
 	}
 	if err := w.Flush(); err != nil {
 		return sessionPersistenceError(err, "write", "")
@@ -1201,6 +1226,37 @@ func (s *Session) GetBranch(fromID ...string) []SessionEntry {
 		return nil
 	}
 	return s.pathToLocked(*s.leafID)
+}
+
+// EntryReads is how many entries the Session has read back from its records and decoded since it opened (a resident entry costs none). A
+// test or diagnostic that bounds what a path reads compares it before and after the path.
+func (s *Session) EntryReads() int64 { return s.slotReads.Load() }
+
+// GetBranchSystemMessages returns the system messages of the branch ending at the current leaf, in branch order: the messages of the
+// entries GetBranch returns whose message is a system message, read without reading or decoding any other entry. Pi's
+// _restoreToolsFromTranscript (agent-session.ts:1815-1844) filters getBranch() the same way, where every entry is already decoded; here a
+// branch of 90,000 entries would be read and decoded whole for the few system messages it holds.
+//
+// pig additive (D112): the split between resident and file-backed entries is a Go memory choice; the result is Pi's.
+func (s *Session) GetBranchSystemMessages() []agent.AgentMessage {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.leafID == nil {
+		return nil
+	}
+	var systems []int32
+	for _, idx := range s.pathIndexesLocked(*s.leafID) {
+		if slot := &s.slots[idx]; slot.typ() == typeMessage && slot.role() == "system" {
+			systems = append(systems, idx)
+		}
+	}
+	var messages []agent.AgentMessage
+	for _, entry := range s.entriesAtLocked(systems) {
+		if message, ok := asMessage(entry); ok && message.Message.System != nil {
+			messages = append(messages, message.Message)
+		}
+	}
+	return messages
 }
 
 // branchHandles is GetBranch with each message entry that is not resident a sessionentry.LazyEntry, for this module's whole-history

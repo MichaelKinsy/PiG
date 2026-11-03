@@ -24,7 +24,7 @@ type sabotagedStorage struct {
 	order    []string
 }
 
-func (sabotaged *sabotagedStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (sabotaged *sabotagedStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(int, durable.Seq)) (durable.CommitResult, error) {
 	sabotaged.mu.Lock()
 	sabotage := sabotaged.sabotage
 	sabotaged.sabotage = nil
@@ -32,16 +32,16 @@ func (sabotaged *sabotagedStorage) Commit(ctx context.Context, writes []durable.
 	if sabotage != nil {
 		sabotage()
 	}
-	seq, err := sabotaged.MemoryStorage.Commit(ctx, writes, func(committed durable.Seq) {
+	result, err := sabotaged.MemoryStorage.Commit(ctx, batches, func(index int, committed durable.Seq) {
 		sabotaged.record("adopt")
-		adopt(committed)
+		receive(index, committed)
 		sabotaged.record("adopted")
 	})
 	if err != nil {
-		return 0, err
+		return durable.CommitResult{}, err
 	}
 	sabotaged.record("resolve")
-	return seq, nil
+	return result, nil
 }
 
 func (sabotaged *sabotagedStorage) record(step string) {

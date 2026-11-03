@@ -4289,6 +4289,59 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/interactive-rendering/59-up-recalls-queued-message-copy-tip.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "(?m)^(── )[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]( Working ─*)$",
+          "with": "${1}<SPINNER>${2}",
+          "reason": "Capture timing selects the spinner phase; preserve the Working label and every border cell."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "(?m)^ ↳ That.s a copy\\. The queued message still sends\\. .*\\n(?: .*\\n)*? ?.*Profiles > Keyboard\\.[ \\t]*\\n",
+          "with": "",
+          "reason": "D228 adds the one-time copy tip, wrapped over two rows because it ends with the Terminal.app mapping hint under TERM_PROGRAM=tmux."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: Plain Up with an empty editor and a queued steering message recalls history as in Pi; PiG adds one copy tip under the editor",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Steering: queued steer text",
+            "capture_end": "(auto)"
+          },
+          "reason": "Owned visible surface: Plain Up with an empty editor and a queued steering message recalls history as in Pi; PiG adds one copy tip under the editor",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/60-terminal-app-up-dequeues-queued-message.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "LIVE-TOOL-24",
+            "capture_end": "(auto)"
+          },
+          "reason": "Owned visible surface: In Terminal.app plain Up restores the queued steering message to the editor in PiG; Pi recalls history and still sends it",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/json/01-json-mode-streams-events.toml",
       "transforms": [
         {

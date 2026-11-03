@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
+// pi: packages/coding-agent/src/core/model-config.ts
 // model-config.ts ModelConfig.load: the text a models.json that fails the schema reports (typebox's localized errors,
 // formatted by formatValidationPath), against the pinned Pi. Documents are curated mistakes plus seeded corruptions of
 // a valid document; a document Pi accepts must load in Pig too.

@@ -70,7 +70,7 @@ export const Job = defineTask({
 const note = defineTool({
 	name: "note",
 	description: "Appends a line to the conversation's notes and starts a job",
-	// What pi-schema's obj({ text: str() }) builds: a closed object (pi-ai no longer exports TypeBox's Type).
+	// What pi-schema's obj({ text: str() }) builds: a closed object (pi-ai no longer exports TypeBox's Type); app_test.go declares the same schema.
 	parameters: { type: "object", properties: { text: { type: "string" } }, required: ["text"], additionalProperties: false },
 	execute: async (args, api, callContext) => {
 		const job = await api.commit(async (tx) => {

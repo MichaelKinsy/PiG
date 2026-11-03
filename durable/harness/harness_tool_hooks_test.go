@@ -20,6 +20,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
 
@@ -42,11 +43,11 @@ func (store *thKillable) hangs() bool {
 	return true
 }
 
-func (store *thKillable) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(seq durable.Seq)) (durable.Seq, error) {
+func (store *thKillable) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
 	if store.hangs() {
-		return 0, errThKilled
+		return durable.CommitResult{}, errThKilled
 	}
-	return store.Storage.Commit(ctx, writes, adopt)
+	return store.Storage.Commit(ctx, batches, receive)
 }
 
 func (store *thKillable) Conversation(ctx context.Context, id durable.ConversationId) (*durable.ConversationRecord, error) {
@@ -1087,7 +1088,7 @@ func TestCallsToToolsTheRequestDidNotOffer(t *testing.T) {
 					t.Fatalf("task %d: %v %v", generation, record, err)
 				}
 				record.Version = 1
-				if _, err := store.Commit(testContext, []durable.StorageWrite{durable.TaskWrite{Value: *record}}, func(durable.Seq) {}); err != nil {
+				if _, err := durabletest.CommitWrites(testContext, store, []durable.StorageWrite{durable.TaskWrite{Value: *record}}); err != nil {
 					t.Fatal(err)
 				}
 				if err := store.Close(testContext); err != nil {

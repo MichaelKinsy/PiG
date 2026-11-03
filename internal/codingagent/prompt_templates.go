@@ -104,7 +104,7 @@ func SubstitutePromptArgs(content string, args []string) string {
 			var value string
 			if defaultTarget == "@" || defaultTarget == "ARGUMENTS" {
 				value = allArgs
-			} else if n, err := strconv.Atoi(defaultTarget); err == nil && n >= 1 && n <= len(args) {
+			} else if n, err := strconv.Atoi(defaultTarget); err == nil && n >= 1 && n <= len(args) { //portlint:allow numbers the group is \d+ (ASCII digits in RE2 and JS): Atoi differs from parseInt only on overflow (error, saturated max vs a huge float), and both exceed len(args) and take the same out-of-range branch (node differential, 798 cases)
 				value = args[n-1]
 			}
 			if value == "" {
@@ -114,6 +114,7 @@ func SubstitutePromptArgs(content string, args []string) string {
 		}
 
 		if sliceStart != "" {
+			//portlint:allow numbers the group is \d+ (ASCII digits in RE2 and JS): Atoi differs from parseInt only on overflow (error, saturated max vs a huge float), and both exceed len(args) and take the same out-of-range branch (node differential, 798 cases)
 			start, _ := strconv.Atoi(sliceStart)
 			start-- // 1-indexed -> 0-indexed
 			if start < 0 {
@@ -123,6 +124,7 @@ func SubstitutePromptArgs(content string, args []string) string {
 				return ""
 			}
 			if sliceLength != "" {
+				//portlint:allow numbers the group is \d+ (ASCII digits in RE2 and JS): Atoi differs from parseInt only on overflow (error, saturated max vs a huge float), and both exceed len(args) and take the same out-of-range branch (node differential, 798 cases)
 				length, _ := strconv.Atoi(sliceLength)
 				// args.slice(start, start + length): a length past the end (up to Atoi's saturated maximum) takes the rest without overflowing.
 				end := len(args)
@@ -137,6 +139,7 @@ func SubstitutePromptArgs(content string, args []string) string {
 		if simple == "ARGUMENTS" || simple == "@" {
 			return allArgs
 		}
+		//portlint:allow numbers the group is \d+ (ASCII digits in RE2 and JS): Atoi differs from parseInt only on overflow (error, saturated max vs a huge float), and both exceed len(args) and take the same out-of-range branch (node differential, 798 cases)
 		if n, err := strconv.Atoi(simple); err == nil && n >= 1 && n <= len(args) {
 			return args[n-1]
 		}
@@ -180,6 +183,7 @@ func LoadPromptTemplates(cwd, agentDir string, extraPaths ...string) LoadPromptT
 
 // DedupePromptTemplates keeps the first template of each name, in order, and reports each later one as a collision with the first.
 //
+// Ports packages/coding-agent/src/core/resource-loader.ts (dedupePrompts).
 // upstream: resource-loader.ts:1156-1181 (dedupePrompts)
 func DedupePromptTemplates(templates []PromptTemplate) ([]PromptTemplate, []extension.ResourceDiagnostic) {
 	var kept []PromptTemplate

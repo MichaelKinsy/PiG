@@ -3,8 +3,13 @@ package timings
 // pi: packages/coding-agent/src/core/timings.ts
 
 import (
+	"bytes"
+	"encoding/json"
+	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
 // setup enables the recorder against a fake clock and a captured stderr, then restores the package state.
@@ -101,5 +106,73 @@ func TestFirstMarkOfAnUnresetNamespaceIsZero(t *testing.T) {
 	want := "\n--- Startup Timings: extensions ---\n  a: 0ms\n  b: 7ms\n  TOTAL: 7ms\n" + strings.Repeat("-", len("Startup Timings: extensions")+8) + "\n\n"
 	if out.String() != want {
 		t.Fatalf("report =\n%q\nwant\n%q", out.String(), want)
+	}
+}
+
+// timingStep is one call of the recorder: reset, time, print, or a move of the clock.
+type timingStep struct {
+	Op        string `json:"op"`
+	Ms        int64  `json:"ms,omitempty"`
+	Label     string `json:"label,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
+}
+
+// Pi's timings.ts, installed, against the same call sequences: the report it writes through console.error is the report PrintTimings writes to stderr.
+func TestTimingsReportMatchesPiOracle(t *testing.T) {
+	scenarios := [][]timingStep{
+		{{Op: "reset"}, {Op: "advance", Ms: 12}, {Op: "time", Label: "parseArgs"}, {Op: "advance", Ms: 30}, {Op: "time", Label: "createRuntime"}, {Op: "print"}},
+		{
+			{Op: "advance", Ms: 5}, {Op: "time", Label: "first", Namespace: "extensions"}, {Op: "advance", Ms: 7}, {Op: "time", Label: "second", Namespace: "extensions"},
+			{Op: "reset", Namespace: "main"}, {Op: "advance", Ms: 3}, {Op: "time", Label: "main mark"},
+			{Op: "reset", Namespace: "extensions"}, {Op: "advance", Ms: 4}, {Op: "time", Label: "after reset", Namespace: "extensions"},
+			{Op: "advance", Ms: -10}, {Op: "time", Label: "clock went back", Namespace: "extensions"}, {Op: "print"},
+		},
+		{{Op: "advance", Ms: 9}, {Op: "time", Label: "a", Namespace: "extensions"}, {Op: "advance", Ms: 7}, {Op: "time", Label: "b", Namespace: "extensions"}, {Op: "print"}},
+		{{Op: "reset"}, {Op: "print"}},
+		{{Op: "advance", Ms: -1}, {Op: "reset"}, {Op: "advance", Ms: -4}, {Op: "time", Label: "only negative"}, {Op: "print"}},
+		{{Op: "reset", Namespace: "extensions"}, {Op: "reset"}, {Op: "advance", Ms: 2}, {Op: "time", Label: "m"}, {Op: "advance", Ms: 6}, {Op: "time", Label: "e", Namespace: "extensions"}, {Op: "print"}},
+	}
+	input, err := json.Marshal(scenarios)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(t.Context(), "node", "testdata/timings_report.mjs", pigversion.UpstreamPackageVersion)
+	cmd.Stdin = bytes.NewReader(input)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	output, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Pi oracle: %v\n%s", err, &stderr)
+	}
+	var want []string
+	if err := json.Unmarshal(output, &want); err != nil {
+		t.Fatal(err)
+	}
+	for i, scenario := range scenarios {
+		clock, out := setup(t, true)
+		*clock = 1000
+		for _, step := range scenario {
+			switch step.Op {
+			case "advance":
+				*clock += step.Ms
+			case "reset":
+				if step.Namespace == "" {
+					ResetTimings()
+				} else {
+					ResetTimings(Label(step.Namespace))
+				}
+			case "time":
+				if step.Namespace == "" {
+					Time(step.Label)
+				} else {
+					Time(step.Label, Label(step.Namespace))
+				}
+			case "print":
+				PrintTimings()
+			}
+		}
+		if out.String() != want[i] {
+			t.Errorf("scenario %d: PrintTimings wrote\n%q\nPi wrote\n%q", i, out.String(), want[i])
+		}
 	}
 }

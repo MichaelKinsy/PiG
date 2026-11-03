@@ -166,7 +166,7 @@ func replay(t *testing.T, initial ConversationView, frames []viewFrame) any {
 // drained lets watch callbacks, which run after the commit, catch up: a line job queued now runs after every commit already on the line has published, and the deliveries those publications scheduled then drain.
 func drained(harness Harness) {
 	impl := harness.(*harnessImpl)
-	_, _ = impl.ReadOnLine(func() (any, error) { return nil, nil })
+	_, _ = impl.ReadOnLine(func(durable.Storage) (any, error) { return nil, nil })
 	impl.WaitDeliveries()
 }
 
@@ -277,8 +277,9 @@ func TestConversationView(t *testing.T) {
 		}
 		drained(harness)
 		frames := recorded.snapshot()
-		if len(frames) != touching.value() {
-			t.Fatalf("%d frames, %d touching commits", len(frames), touching.value())
+		// One frame per stored commit, and one for the attempt, a deferred commit stored with the answer.
+		if len(frames) != touching.value()+1 {
+			t.Fatalf("%d frames, %d touching commits and the attempt", len(frames), touching.value())
 		}
 		expectSameJSON(t, replay(t, recorded.initial, frames), committed(t, harness, root, recorded.initial.Conversation, len(lastView(frames, recorded.initial).Entries)))
 		containsOp := func(ops []durable.Op, match func(op any) bool) bool {
@@ -537,9 +538,9 @@ func TestConversationView(t *testing.T) {
 		release, blocking := hold()
 		cancelled, cancel := cancelledContext(errors.New("cancelled"))
 		var acquiring *future[struct{}]
-		queueOnLine(t, harness, func() <-chan struct{} {
+		queueOnLineAdmittedFrom(t, cancelled, func(ctx context.Context) <-chan struct{} {
 			acquiring = asyncErr(func() error {
-				_, err := root.Watch(cancelled, nil)
+				_, err := root.Watch(ctx, nil)
 				return err
 			})
 			return acquiring.done
@@ -554,14 +555,18 @@ func TestConversationView(t *testing.T) {
 
 		release, blocking = hold()
 		var closedWhileQueued *future[struct{}]
-		queueOnLine(t, harness, func() <-chan struct{} {
+		queueOnLineAdmitted(t, func(ctx context.Context) <-chan struct{} {
 			closedWhileQueued = asyncErr(func() error {
-				_, err := root.Watch(testContext, nil)
+				_, err := root.Watch(ctx, nil)
 				return err
 			})
 			return closedWhileQueued.done
 		})
+		// The queued acquisition must start after the seal: release only once close began.
+		closeBegan := deferred()
+		harness.SubscribeClose(closeBegan.resolve)
 		closing := asyncErr(func() error { return harness.Close(testContext) })
+		_ = closeBegan.wait(testContext)
 		release()
 		if err := <-blocking; err != nil {
 			t.Fatal(err)

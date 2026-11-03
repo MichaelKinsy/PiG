@@ -1,6 +1,6 @@
 package ai
 
-// Mirrors upstream .upstream/current/packages/ai/src/providers/anthropic.ts.
+// Ports packages/ai/src/api/anthropic-messages.ts (stream, buildParams, convertMessages, convertTools, mapStopReason and the strict-tool fallback).
 
 import (
 	"bytes"
@@ -324,13 +324,16 @@ type anthBlockIndex struct {
 }
 
 func (index *anthBlockIndex) UnmarshalJSON(raw []byte) error {
+	//portlint:allow numbers `b.index === event.index` (anthropic-messages.ts content_block_delta): a content block index is a small integer; Atoi reads the plain spelling and the fallback below reads 1e0 and 1.0 as JS numbers, and a string, null, or fractional index matches no block
 	value, err := strconv.Atoi(string(raw))
 	if err != nil {
 		// A spelling such as 1e0 is the number 1 in JS; a non-integer or a non-number matches no block.
+		//portlint:allow numbers raw is valid JSON: ParseFloat reads a number token as JSON.parse does and rejects strings, null, booleans, objects and arrays, none of which equals a block's numeric index
 		number, floatErr := strconv.ParseFloat(string(raw), 64)
 		if floatErr != nil || number != math.Trunc(number) || math.Abs(number) > 1<<53 {
 			return nil
 		}
+		//portlint:allow numbers number is finite, integral and within 2^53 by the check above
 		value = int(number)
 	}
 	*index = anthBlockIndex{value: value, present: true}

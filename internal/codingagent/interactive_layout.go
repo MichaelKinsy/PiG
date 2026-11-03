@@ -240,6 +240,21 @@ func releaseStartupHeap() {
 	debug.FreeOSMemory()
 }
 
+// releaseSwitchHeap returns the heap a Session replacement or a tree navigation left free to the OS, on a task the mode owns after the new
+// transcript is painted: the replaced Session's entries and the load's buffers are garbage by then, and the runtime's scavenger returns them
+// slowly. One release is queued at a time; a switch that arrives while it runs is covered by it or by the idle collection.
+// pig additive (D172): the same heap return as the one at start, which ran before any switch.
+func (m *InteractiveMode) releaseSwitchHeap() {
+	m.switchHeapReleases.Add(1)
+	if !m.switchHeapRelease.CompareAndSwap(false, true) {
+		return
+	}
+	m.backgroundTasks.Go(func() {
+		defer m.switchHeapRelease.Store(false)
+		releaseStartupHeap()
+	})
+}
+
 func (m *InteractiveMode) tickStatusIndicators(now time.Time) {
 	if m.isIdle && m.activeStatusIndicator == nil {
 		return

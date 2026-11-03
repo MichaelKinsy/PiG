@@ -17,7 +17,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/storage"
-	sqlitenode "github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
 )
 
 type graphParentState struct {
@@ -276,13 +275,7 @@ func TestTaskGraphView(t *testing.T) {
 				})
 			},
 		})
-		openSqlite := func() durable.Storage {
-			store, err := sqlitenode.OpenNodeSqliteStorage(path, sqlitenode.NodeSqliteStorageOptions{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			return store
-		}
+		openSqlite := func() durable.Storage { return openNodeSqliteStorage(t, path) }
 		firstHarness, _, _ := openTasks(t, openSqlite(), []durable.AnyTask{work.Erased()})
 		firstRoot := mustRoot(t, firstHarness, nil)
 		type created struct {
@@ -481,9 +474,9 @@ func TestTaskGraphView(t *testing.T) {
 		_ = held.entered.wait(testContext)
 		cancelled, cancel := cancelledContext(errors.New("cancelled"))
 		var attaching *future[struct{}]
-		queueOnLine(t, harness, func() <-chan struct{} {
+		queueOnLineAdmittedFrom(t, cancelled, func(ctx context.Context) <-chan struct{} {
 			attaching = asyncErr(func() error {
-				_, err := harness.WatchTaskGraph(cancelled)
+				_, err := harness.WatchTaskGraph(ctx)
 				return err
 			})
 			return attaching.done
@@ -581,8 +574,8 @@ func TestTaskGraphView(t *testing.T) {
 	})
 }
 
-// harness-task-graph.test.ts "advances with the conversation view inside the one storage commit that changes both".
-func TestTaskGraphViewAdvancesWithTheConversationViewInsideTheOneStorageCommitThatChangesBoth(t *testing.T) {
+// harness-task-graph.test.ts "advances with the conversation view at the publication of the one commit that changes both".
+func TestTaskGraphViewAdvancesWithTheConversationViewAtThePublicationOfTheOneCommitThatChangesBoth(t *testing.T) {
 	store := newControlledStorage()
 	parentTask, childTask := graphFamily(graphGates{child: deferred(), late: deferred()})
 	harness, _, _ := openTasks(t, store, []durable.AnyTask{parentTask.Erased(), childTask.Erased()})
@@ -610,11 +603,11 @@ func TestTaskGraphViewAdvancesWithTheConversationViewInsideTheOneStorageCommitTh
 	}); err != nil {
 		t.Fatal(err)
 	}
-	// Both inside the one adopt, in no promised order.
+	// Both at the one publication, after Storage stored it, in no promised order.
 	mu.Lock()
 	sorted := slices.Sorted(slices.Values(seen))
 	mu.Unlock()
-	if !reflect.DeepEqual(sorted, []string{"graph adopting=true", "view adopting=true"}) {
+	if !reflect.DeepEqual(sorted, []string{"graph adopting=false", "view adopting=false"}) {
 		t.Fatalf("seen %v", sorted)
 	}
 	view.Detach()

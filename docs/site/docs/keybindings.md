@@ -13,7 +13,7 @@ Each entry maps one action to one key or a list of keys. To change a binding, wr
 
 A binding in the file replaces the default for that action. It does not add to it. Bindings you do not name keep their defaults. Set an action to `[]` to leave the action with no key.
 
-For validation and completion in your editor, add `"$schema": "https://pi.dev/schemas/keybindings.schema.json"` to the file. PiG ignores the `$schema` key when it loads the bindings. Pi 1.5.0 added this schema.
+For validation and completion in your editor, add `"$schema": "https://pi.dev/schemas/keybindings.schema.json"` to the file. PiG ignores the `$schema` key when it loads the bindings. Pi 1.2.0 added this schema.
 
 Set `PIG_CODING_AGENT_DIR` to read the file from a different directory. After you edit the file, run `/reload` to apply the change to the running session.
 
@@ -88,6 +88,13 @@ The keys below are the macOS defaults. Platform differences are listed after the
 | `app.message.copy` | `ctrl+x` | Copy the selected message in `/tree`. In fullscreen mode with `fullscreenCopyOnSelect` set to `false`, copy the active selection. Otherwise copy the last assistant message. On OAuth sign-in screens, copy the sign-in URL |
 | `app.message.dequeue` | `alt+up` | Restore queued messages |
 | `app.message.followUp` | `alt+enter` | Queue follow-up message |
+
+macOS Terminal.app sends Option+Up as plain Up in its default profile, so `app.message.dequeue` (`alt+up`) never arrives there. Pi treats that Up as history recall: the queued message appears in the editor as a copy, stays queued, and is still sent. PiG differs in two ways (D228):
+
+- In Terminal.app (`TERM_PROGRAM=Apple_Terminal`), when the editor is empty, a message is queued and `app.message.dequeue` is bound to `alt+up`, plain Up runs `app.message.dequeue`. The queued-message hint then names `Up`. In every other state Up keeps Pi's behavior.
+- Everywhere else, when Up recalls history while a message is queued, PiG shows one dim line under the editor, once per run: `That's a copy. The queued message still sends. <key> edits the queue.` Here `<key>` is the key bound to `app.message.dequeue`. In tmux, over ssh, or in a terminal PiG does not know, the line also says how to map Option+Up to `\033[1;3A` in Terminal Settings > Profiles > Keyboard. Do not enable "Use Option as Meta key" for this: it makes Option+Up send Esc and then Up, and Esc aborts the turn.
+
+Both differences apply to PiG's own editor only. An extension's custom editor keeps Pi's Up (D228).
 
 Clipboard image helper commands reject stdout larger than 50 MiB. PiG cancels and joins an oversized helper instead of retaining its output. Unsupported image formats such as BMP are converted to PNG; a failed conversion produces no image.
 

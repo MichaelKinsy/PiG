@@ -42,6 +42,10 @@ copy() {
   done
 }
 
+# The oracle builds are read-only, and cp keeps their modes: make what an earlier run copied owner-writable so rm can remove it.
+for stale in "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/marked-cjk-friendly" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"; do
+  if [ -e "$stale" ]; then chmod -R u+w "$stale"; fi
+done
 rm -rf "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/marked-cjk-friendly" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
 mkdir -p "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json/dist" "$shims/marked/lib" "$shims/marked-cjk-friendly/dist" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
 printf '{\n  "type": "module"\n}\n' >"$dist/package.json"
@@ -190,6 +194,7 @@ cp -R "$jiti/lib" "$jiti/dist" "$shims/jiti/"
 cp "$jiti/package.json" "$jiti/LICENSE" "$shims/jiti/"
 cp "$ignore/index.js" "$ignore/package.json" "$ignore/LICENSE-MIT" "$shims/ignore/"
 cp -R "$jsdiff/libesm" "$shims/diff/libesm"
+chmod -R u+w "$shims/diff" # the copy of a read-only oracle build is read-only
 find "$shims/diff/libesm" -name '*.d.ts' -delete -o -name '*.d.ts.map' -delete
 cp "$jsdiff/package.json" "$jsdiff/LICENSE" "$shims/diff/"
 
@@ -235,7 +240,12 @@ done
 
 node "$root/automation/gen/bundle-pi-libraries.mjs" "$shims"
 node "$root/automation/gen/bundle-pi-sdk.mjs" "$shims"
+# After the bundles: a package root entry may forward to a bundled module.
+node "$root/automation/gen/vendor-pi-package-roots.mjs" "$shims" "$agent"
 node "$root/automation/gen/vendor-node-manifest.mjs" "$shims" "$agent"
+
+# Leave the copies owner-writable too, so the next run (and a checkout cleanup) can remove them; u+w changes no content.
+chmod -R u+w "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/marked-cjk-friendly" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
 
 version() { node -p "require('$1/package.json').version"; }
 echo "vendored Pi $(version "$agent") dist modules, yaml $(version "$yaml"), get-east-asian-width $(version "$eaw"), partial-json $(version "$pjson"), marked $(version "$marked"), marked-cjk-friendly $(version "$markedCjk"), highlight.js $(version "$hljs"), jiti $(version "$jiti"), ignore $(version "$ignore") and diff $(version "$jsdiff") into $shims"

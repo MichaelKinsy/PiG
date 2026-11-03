@@ -1,11 +1,5 @@
 package coding
 
-// pi: packages/coding-agent/src/core/sdk.ts
-
-// pi: packages/coding-agent/src/core/agent-session.ts
-
-// pi: packages/coding-agent/src/core/agent-session-runtime.ts
-
 import (
 	"context"
 	"encoding/json"

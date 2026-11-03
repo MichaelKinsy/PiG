@@ -8,8 +8,7 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
-	"github.com/MichaelKinsy/PiG/internal/entered"
-	"github.com/MichaelKinsy/PiG/internal/goroutineid"
+	"github.com/MichaelKinsy/PiG/internal/watchentered"
 )
 
 // Ports packages/chord/src/watch.ts (Watch, NativeWatch, NativeWatchHandle and their shared lifecycle).
@@ -22,6 +21,9 @@ type NativeWatchHandle[T any] interface {
 	// Value is the acquisition value before Start and the latest delivered value afterward (a failed call keeps it).
 	Value() T
 	// Start installs the sole asynchronous listener. It never invokes it inline.
+	// pig divergence (D224): a listener that blocks on something the host cannot see (a channel, a lock, I/O) calls DeliveryEntered
+	// first, or blocks on a goroutine of its own: the waits and the publications that follow its delivery wait until its call returns
+	// or it has entered (see DeliveryEntered).
 	Start(listener func(ctx context.Context, call NativeWatchCall[T]) error)
 	// Stop idempotently stops future callbacks and returns this watch's terminal result.
 	Stop() (WatchEnd, error)
@@ -43,12 +45,63 @@ type pending struct {
 	held  []func()
 }
 
-// delivery is one scheduled delivery goroutine. started is closed once id is set; done once the goroutine ended.
+// delivery is one listener call a watch owes: the first call of a delivery goroutine, or a frame a running drain takes next.
+// entered is closed once the call's synchronous part ran (the call returned), the listener reached a wait of the host that
+// said so (DeliveryEntered), or the call will not be made; done once the delivery is complete.
 type delivery struct {
-	id      uint64
-	started chan struct{}
-	done    chan struct{}
+	entered  chan struct{}
+	enter    sync.Once
+	done     chan struct{}
+	complete sync.Once
+	// root is the first delivery of the goroutine that makes this call: the calls of one drain follow each other on one goroutine,
+	// so a listener that awaits the deliveries cannot wait for a later call of its own drain.
+	root *delivery
+	// behind is the call of the same drain this one follows, nil for the first. ret is closed once a call returned (or will not be
+	// made); a call entered without it is suspended in a wait of the host, and the call behind it waits for it to resume, as the
+	// next frame of Pi's drain does for a listener that awaits: nothing that awaits the deliveries waits for that call.
+	behind  *delivery
+	ret     chan struct{}
+	retOnce sync.Once
 }
+
+// returned reports whether the call returned, or will not be made.
+func (d *delivery) returned() bool {
+	select {
+	case <-d.ret:
+		return true
+	default:
+		return false
+	}
+}
+
+// MarkEntered closes entered, once.
+func (d *delivery) MarkEntered() { d.enter.Do(func() { close(d.entered) }) }
+
+// hasEntered reports whether the call entered.
+func (d *delivery) hasEntered() bool {
+	select {
+	case <-d.entered:
+		return true
+	default:
+		return false
+	}
+}
+
+// finish marks the delivery returned, entered and complete.
+func (d *delivery) finish() {
+	d.retOnce.Do(func() { close(d.ret) })
+	d.MarkEntered()
+	d.complete.Do(func() { close(d.done) })
+}
+
+// DeliveryEntered says that the watch delivery running on the calling goroutine, if there is one, has entered: its listener
+// went on to wait for something the host knows (a wait of the Durable Session, a park of the host loop, a call that awaits the
+// deliveries of earlier batches), as an upstream listener's first await ends the synchronous part DeliveryScheduler.AwaitEntered
+// orders. A wait that the host cannot see (a plain lock or channel of the listener's) does not call it, so the listener calls it
+// first when it blocks on one: the contract of every watch listener (pig divergence (D224)).
+//
+// pig divergence (D224): Go has no await point, so a listener's first suspension is observable only by a call like this one.
+func DeliveryEntered() { watchentered.Entered() }
 
 func (d *delivery) finished() bool {
 	select {
@@ -120,50 +173,98 @@ func (tracker *pending) holding(start func()) bool {
 	return true
 }
 
-// schedule runs job off the caller's goroutine, as upstream's queueMicrotask runs it outside the publishing call.
-// awaitEntered waits for what it scheduled.
-func (tracker *pending) schedule(job func()) {
-	d := &delivery{started: make(chan struct{}), done: make(chan struct{})}
+// schedule runs job off the caller's goroutine, as upstream's queueMicrotask runs it outside the publishing call. job calls
+// d.MarkEntered once the synchronous part of its listener ran; awaitEntered waits for that.
+func (tracker *pending) schedule(job func(d *delivery)) *delivery {
+	d := tracker.register(nil)
 	tracker.begin()
+	//portlint:allow asyncorder joined by pending.wait (begin/end count); watch frames are taken under watch.mu in publish order and one runs at a time, as watch.ts #schedule/#drain
+	go func() { //portlint:allow golifetime the pending count (begin/end) is the join: pending.wait returns once every scheduled drain ended (watch.ts #schedule/#drain)
+		unregister := watchentered.Register(d)
+		defer func() {
+			unregister()
+			d.finish()
+			tracker.end()
+		}()
+		job(d)
+	}()
+	return d
+}
+
+// register records a listener call the caller owes, so that awaitEntered waits for it until it is entered. behind is the call
+// of the drain that makes it which it follows, nil for a call that starts a drain.
+func (tracker *pending) register(behind *delivery) *delivery {
+	d := &delivery{entered: make(chan struct{}), done: make(chan struct{}), ret: make(chan struct{}), behind: behind}
+	if behind == nil {
+		d.root = d
+	} else {
+		d.root = behind.root
+	}
 	tracker.mu.Lock()
 	tracker.deliveries = append(slices.DeleteFunc(tracker.deliveries, (*delivery).finished), d)
 	tracker.mu.Unlock()
-	//portlint:allow asyncorder joined by pending.wait (begin/end count); watch frames are taken under watch.mu in publish order and one runs at a time, as watch.ts #schedule/#drain
-	go func() {
-		d.id = goroutineid.Current()
-		close(d.started)
-		defer close(d.done)
-		defer tracker.end()
-		job()
-	}()
+	return d
 }
 
-// awaitEntered blocks until every delivery scheduled before the call has entered: its callback returned or is parked in a
-// wait or blocked behind a lock (internal/entered.AwaitBlocked), never until it finishes a wait of its own. Upstream's
-// drain microtask enters the listener, up to the listener's first await, before the code that awaited a commit's promise
-// resumes; a Go caller that resumes on another goroutine awaits the deliveries it would otherwise outrun. A Go listener
-// that waits for a lock is the analogue of an upstream listener's await, and the caller may be the holder: it is not
-// waited for. A delivery on the caller's own goroutine is skipped, and a listener that waits for the Harness is parked
-// in that wait, so waiting listeners never wait for each other. It returns the cause of ctx when ctx ends the wait.
+// awaitEntered blocks until every delivery scheduled before the call has entered: the synchronous part of its listener ran (the
+// call returned), or the listener went on to wait for something the host knows (DeliveryEntered), or the delivery ended. Upstream's
+// drain microtask runs a listener up to its first await before the code that awaited a commit's promise resumes, and before the
+// Session's macrotask hop to the next publication of a call; a Go caller that resumes on another goroutine awaits the deliveries
+// it would otherwise outrun.
+//
+// pig divergence (D224): a listener that blocks on a wait the host cannot see holds this wait back until it returns; Pi's listener
+// awaits and nothing waits for it. The listener's contract is DeliveryEntered's.
+//
+// A call made from inside a delivery (a listener that waits for the Harness) is itself such a wait: it marks its own delivery
+// entered and does not wait for it, so listeners that wait for the Harness do not wait for each other. A listener that blocks
+// on a plain lock or channel the host cannot see is not entered until it returns: if the caller holds that lock the wait does
+// not return (upstream has no locks; the listener's other blocking calls go through the Session's waits, which are marked). It
+// reads no goroutine state beyond the caller's own ID: one channel receive per delivery, whatever the number of goroutines. It
+// returns the cause of ctx when ctx ends the wait.
 func (tracker *pending) awaitEntered(ctx context.Context) error {
+	var own *delivery
+	if d, ok := watchentered.Current(); ok {
+		own, _ = d.(*delivery)
+		d.MarkEntered()
+	}
 	tracker.mu.Lock()
 	scheduled := slices.DeleteFunc(slices.Clone(tracker.deliveries), (*delivery).finished)
 	tracker.mu.Unlock()
-	if len(scheduled) == 0 {
-		return nil
-	}
-	self := goroutineid.Current()
 	for _, d := range scheduled {
-		select {
-		case <-d.started:
-		case <-ctx.Done():
-			return context.Cause(ctx)
-		}
-		if d.id == self {
+		if own != nil && d.root == own.root {
 			continue
 		}
-		if err := entered.AwaitBlocked(ctx, d.id, d.done); err != nil {
-			return err
+		// A delivery that entered is entered for a caller whose ctx ended since, as an awaited promise that resolved; a cancelled ctx
+		// ends the wait for one that has not.
+		if d.hasEntered() {
+			continue
+		}
+		if ctx.Err() != nil {
+			return context.Cause(ctx)
+		}
+		if behind := d.behind; behind != nil {
+			select {
+			case <-d.entered:
+				continue
+			case <-behind.entered:
+			case <-ctx.Done():
+				if d.hasEntered() {
+					continue
+				}
+				return context.Cause(ctx)
+			}
+			if !behind.returned() {
+				// The call before it is suspended in a wait of the host: this one starts when that resumes, not before the code
+				// that awaits the deliveries.
+				continue
+			}
+		}
+		select {
+		case <-d.entered:
+		case <-ctx.Done():
+			if !d.hasEntered() {
+				return context.Cause(ctx)
+			}
 		}
 	}
 	return nil
@@ -204,8 +305,10 @@ func (s *DeliveryScheduler) Busy() bool {
 // once.
 func (s *DeliveryScheduler) Hold() (release func()) { return s.pending.hold() }
 
-// AwaitEntered blocks until every delivery scheduled before the call has entered its listener, up to the listener's
-// first wait; it returns the cause of ctx when ctx ends the wait.
+// AwaitEntered blocks until every delivery scheduled before the call has entered: the synchronous part of its listener ran (the
+// call returned), or the listener went on to a wait the host knows (DeliveryEntered), or the delivery ended. A call made from inside
+// a delivery enters that delivery and does not wait for it. A listener blocked on a plain lock or channel the host cannot see has
+// not entered until it returns. It returns the cause of ctx when ctx ends the wait.
 func (s *DeliveryScheduler) AwaitEntered(ctx context.Context) error {
 	return s.pending.awaitEntered(ctx)
 }
@@ -246,6 +349,10 @@ type watchLifecycle[T, L any] struct {
 	started   bool
 	scheduled bool
 	running   bool
+	// current is the call the running drain makes, or will make first; queued is the registered call it makes next, set while a
+	// frame waits behind the running call, so that awaitEntered sees every call that is not yet entered.
+	current *delivery
+	queued  *delivery
 	// holdQueued is set while a delivery waits for the release of a Hold.
 	holdQueued bool
 	// ending is set by EndAfterDelivery: the source sends nothing more, and the watch ends ended once it delivered the rest.
@@ -367,7 +474,15 @@ func (watch *watchLifecycle[T, L]) open() bool { return watch.end == nil && !wat
 // caller resumes, so the frame is taken into delivery before advance returns to the publishing commit; a later Stop
 // prevents only frames behind it. The listener itself runs on a delivery goroutine, never inline.
 func (watch *watchLifecycle[T, L]) deliverLocked() {
-	if watch.running || watch.end != nil || !watch.hasPending() {
+	if watch.end != nil || !watch.hasPending() {
+		return
+	}
+	if watch.running {
+		// The running drain takes this frame itself after its call returns: register the call now, as the drain microtask a
+		// publication queues is visible to the code that awaits the commit before the drain runs it.
+		if watch.queued == nil {
+			watch.queued = watch.scheduler.register(watch.current)
+		}
 		return
 	}
 	if !watch.holdQueued && watch.scheduler.holding(watch.deliverHeld) {
@@ -378,7 +493,7 @@ func (watch *watchLifecycle[T, L]) deliverLocked() {
 		return
 	}
 	frame, listener := watch.takeLocked()
-	watch.scheduler.schedule(func() { watch.drain(frame, listener) })
+	watch.current = watch.scheduler.schedule(func(d *delivery) { watch.drain(d, frame, listener) })
 }
 
 // deliverHeld starts the delivery a Hold postponed, with the frames advanced since folded.
@@ -395,7 +510,7 @@ func (watch *watchLifecycle[T, L]) scheduleLocked() {
 		return
 	}
 	watch.scheduled = true
-	watch.scheduler.schedule(func() {
+	watch.current = watch.scheduler.schedule(func(d *delivery) {
 		watch.mu.Lock()
 		watch.scheduled = false
 		if watch.running || watch.end != nil || !watch.started || !watch.hasPending() {
@@ -405,7 +520,7 @@ func (watch *watchLifecycle[T, L]) scheduleLocked() {
 		}
 		frame, listener := watch.takeLocked()
 		watch.mu.Unlock()
-		watch.drain(frame, listener)
+		watch.drain(d, frame, listener)
 	})
 }
 
@@ -426,12 +541,33 @@ func (watch *watchLifecycle[T, L]) takeLocked() (watchFrame[T], *L) {
 }
 
 // drain delivers frame, which takeLocked took, then every frame buffered behind it until the watch ends.
-func (watch *watchLifecycle[T, L]) drain(frame watchFrame[T], listener *L) {
+func (watch *watchLifecycle[T, L]) drain(d *delivery, frame watchFrame[T], listener *L) {
+	completed := false
+	defer func() {
+		if completed {
+			return
+		}
+		// The goroutine ended inside a listener (runtime.Goexit, as t.FailNow does) with the call in flight, so the deliveries this
+		// drain registered are finished here, as a thrown error ends the watch upstream: nothing that awaits them waits for ever.
+		watch.mu.Lock()
+		defer watch.mu.Unlock()
+		d.finish()
+		if queued := watch.queued; queued != nil {
+			watch.queued = nil
+			queued.finish()
+		}
+		watch.running = false
+		if watch.end == nil {
+			watch.terminateLocked(WatchEnd{Kind: WatchListenerError, Error: errors.New("a watch listener ended its goroutine")})
+		}
+	}()
 	watch.mu.Lock()
 	for listener != nil {
 		invoke := watch.invoke
 		watch.mu.Unlock()
 		err := callWatchListener(invoke, *listener, frame)
+		// The synchronous part of the call the delivery was scheduled for ran: the code that awaited it may resume.
+		d.finish()
 		watch.mu.Lock()
 		if err != nil {
 			if watch.end == nil {
@@ -456,12 +592,29 @@ func (watch *watchLifecycle[T, L]) drain(frame watchFrame[T], listener *L) {
 			break
 		}
 		frame, listener = watch.takeLocked()
+		// The call for this frame was registered when it was published (deliverLocked), or is registered now: either way
+		// before mu is released, so awaitEntered sees it.
+		previous := d
+		d = watch.queued
+		watch.queued = nil
+		if d == nil {
+			d = watch.scheduler.register(previous)
+		}
+		watch.current = d
+		watchentered.Register(d)
+	}
+	d.finish()
+	if queued := watch.queued; queued != nil {
+		// The frame it stood for will be delivered by a new drain or not at all.
+		watch.queued = nil
+		queued.finish()
 	}
 	watch.running = false
 	if watch.end == nil && watch.hasPending() {
 		watch.scheduleLocked()
 	}
 	watch.finishIfReadyLocked()
+	completed = true
 	watch.mu.Unlock()
 }
 
@@ -588,6 +741,12 @@ func (watch *Watch[T]) On(scheduler *DeliveryScheduler) *Watch[T] {
 
 // Start installs the sole asynchronous listener; it never invokes it inline. It panics when the watch is started or
 // stopped, as upstream throws.
+//
+// A listener that blocks on something the host cannot see before it returns (a channel send or receive, a mutex, network I/O, a
+// child process) holds back every wait that follows its delivery until it returns: the Harness waits, and the Session's
+// publication of the next commit of a call, which waits for the synchronous part of each listener (pig divergence (D224): Pi's
+// listener awaits, which ends its synchronous part, and nothing waits for it). Such a listener calls DeliveryEntered before it
+// blocks, or does the blocking on a goroutine of its own and returns.
 func (watch *Watch[T]) Start(listener func(ctx context.Context, call WatchCall[T]) error) {
 	watch.start(listener)
 }
@@ -727,6 +886,12 @@ func (watch *NativeWatch[T]) On(scheduler *DeliveryScheduler) *NativeWatch[T] {
 
 // Start installs the sole asynchronous listener; it never invokes it inline. It panics when the watch is started or
 // stopped, as upstream throws.
+//
+// A listener that blocks on something the host cannot see before it returns (a channel send or receive, a mutex, network I/O, a
+// child process) holds back every wait that follows its delivery until it returns: the Harness waits, and the Session's
+// publication of the next commit of a call, which waits for the synchronous part of each listener (pig divergence (D224): Pi's
+// listener awaits, which ends its synchronous part, and nothing waits for it). Such a listener calls DeliveryEntered before it
+// blocks, or does the blocking on a goroutine of its own and returns.
 func (watch *NativeWatch[T]) Start(listener func(ctx context.Context, call NativeWatchCall[T]) error) {
 	watch.start(listener)
 }

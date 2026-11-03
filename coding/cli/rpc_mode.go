@@ -279,8 +279,7 @@ func runRPCMode(ctx context.Context, flags Args, activePiglet *piglet.Piglet, re
 	// and extension host.
 	builder, initial := resources.Builder, resources.Build
 	// RPC refreshes dynamic model catalogs (Radius, llama.cpp) in the background, as
-	// upstream main.ts does for RPC mode unless offline.
-	// upstream: packages/coding-agent/src/main.ts:main aborts the RPC refresh after 15_000 ms.
+	// upstream main.ts does for RPC mode unless offline (15 s timeout).
 	if codingagent.ModelNetworkEnabled() {
 		registry := initial.Services.Registry()
 		registry.StartModelTask(ctx, func(taskContext context.Context) {

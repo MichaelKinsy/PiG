@@ -107,6 +107,11 @@ type SessionBeforeForkResult struct {
 	SkipConversationRestore bool `json:"skipConversationRestore,omitempty"`
 }
 
+// ExtensionEvent is the union of every event an extension handler receives (types.ts:1377 ExtensionEvent). It is a closed union: only the
+// event types of this package implement it (extension_event.go), which is what the Pi union lists; the tool_call and tool_result members are
+// the sealed ToolCallEvent and ToolResultEvent unions, whose variants implement it as well.
+type ExtensionEvent interface{ extensionEvent() }
+
 // SessionBeforeCompactEvent: upstream types.ts SessionBeforeCompactEvent.
 //
 // Signal carries the upstream AbortSignal through Go's context.Context.

@@ -63,7 +63,7 @@ async function stepOp(session, step, convs, tasks) {
 async function runProgram(program) {
 	const storage = new MemoryStorage();
 	const session = createSession(storage);
-	const live = await new TaskGraphView(session, storage, blocking).watch(ctx);
+	const live = await new TaskGraphView(session, blocking).watch(ctx);
 	// Each step reports the operations of the frames the long-lived watch's listener received: a commit that changes nothing in the graph delivers nothing.
 	let deliveries = [];
 	live.start(async ({ ops }) => {
@@ -83,7 +83,7 @@ async function runProgram(program) {
 			result = { err: error?.message ?? String(error) };
 		}
 		await flush();
-		const fresh = await new TaskGraphView(session, storage, blocking).watch(ctx);
+		const fresh = await new TaskGraphView(session, blocking).watch(ctx);
 		results.push({ index, ...result, live: live.value, fresh: fresh.value, deliveries });
 		deliveries = [];
 		await fresh.stop();

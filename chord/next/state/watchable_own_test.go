@@ -44,20 +44,21 @@ func TestSourceWatches(t *testing.T) {
 		watch := watchOf(t, doc)
 		var frames nexttest.Collector[nexttest.Frame[delta.JsonValue]]
 		release := make(chan struct{})
+		busy := make(chan struct{})
 		watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
 			if call.Kind != chord.WatchCallValue {
 				return nil
 			}
 			// The first call stays busy until the test lets it return.
 			if frames.Append(nexttest.Frame[delta.JsonValue]{Value: call.Value, Ops: call.Ops}) == 1 {
+				close(busy)
 				<-release
 			}
 			return nil
 		})
 		mustSet(t, doc, num(1))
-		if err := h.scheduler.AwaitEntered(background); err != nil {
-			t.Fatal(err)
-		}
+		// The listener says it is busy: a delivery's start is all AwaitEntered guarantees.
+		<-busy
 		mustSet(t, doc, num(2))
 		mustSet(t, doc, num(3))
 		close(release)
