@@ -206,6 +206,8 @@ func TestAwaitEnteredReturnsWhenAListenerEndsItsGoroutineOnALaterFrame(t *testin
 	// The second frame is published while the first call runs: its delivery is registered behind the first.
 	watch.Advance(context.Background(), 2)
 	close(release)
+	// Wait until the drain's goroutine ended inside the second call: nothing is running, so only a delivery never finished is left.
+	scheduler.Wait()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := scheduler.AwaitEntered(ctx); err != nil {
