@@ -282,7 +282,10 @@ func expectRestartUnanswered(t *testing.T, settled durable.SubmissionRecord, rea
 func expectRestartRunFailure(t *testing.T, live harness.LiveState, want harness.RunFailure) {
 	t.Helper()
 	// Pi 7e15f960: a failed run records its run.first, any entry ID (`first: expect.any(Number)`).
-	if live.RunFailure != nil && live.RunFailure.First != nil && want.First == nil {
+	if live.RunFailure != nil && want.First == nil {
+		if live.RunFailure.First == nil {
+			t.Fatalf("pi.live runFailure has no first entry: %s", restartJSON(t, live))
+		}
 		want.First = live.RunFailure.First
 	}
 	if !reflect.DeepEqual(live, harness.LiveState{RunFailure: &want}) {
