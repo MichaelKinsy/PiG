@@ -314,7 +314,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/ai/src/utils/uuid.ts` | `ai/uuid.go (UUIDv7, uuidv7Generator: the process-wide last-ordinary-timestamp and 41-bit sequence state with an injected clock and random source; internal/codingagent session ids, the Codex WebSocket request id, the compaction summary routing session id and the bug-report id call it)` | ✅ |
 | `packages/ai/src/utils/abort-signals.ts` | `(stdlib context.Context combines signals)` | n/a |
 | `packages/ai/src/utils/sanitize-unicode.ts` | `ai/sanitize_unicode.go` | ✅ |
-| `packages/ai/src/utils/string-enum.ts` | `ai/string_enum.go (StringEnum only, as a JSON-schema map; its production caller is the evals audit suite)` | ✅ |
+| `packages/ai/src/utils/string-enum.ts` | `ai/string_enum.go (StringEnum only, as an ordered pi-schema object; its production caller is the evals audit suite)` | ✅ |
 | `packages/ai/src/utils/validation.ts` | `ai/validate.go + ai/validate_arguments.go (pi-schema parse with coercion, errors and dotted paths)` | ✅ |
 | `packages/ai/src/utils/version.ts` | `ai/user_agent.go (ProductVersion: PiG's composite release version stands for PI_AI_VERSION as the default version of a detailed User-Agent, D65; TestClientIdentityVersionDefaultsToTheProductVersion)` | ✅ |
 | `packages/ai/src/providers/baseten.models.ts` | `(not ported: Baseten provider declined)` | n/a |

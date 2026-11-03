@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/chord/chordjson"
 	"github.com/MichaelKinsy/PiG/internal/evals"
 	"github.com/MichaelKinsy/PiG/internal/evals/bridge"
 	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
@@ -25,14 +26,16 @@ func submitAudit() evals.CustomTool {
 			Name: auditToolName, Label: "Submit documentation audit",
 			Description:   "Submit the final verdict after completing the documentation investigation.",
 			PromptSnippet: "Submit the final documentation audit as validated structured data",
-			Parameters: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"verdict":     ai.StringEnum([]string{"match", "mismatch", "inconclusive"}, nil),
-					"explanation": map[string]any{"type": "string", "minLength": 1, "maxLength": 2000},
-				},
-				"required": []string{"verdict", "explanation"}, "additionalProperties": false,
-			},
+			// TypeBox's Type.Object writes type, required, properties, then the options.
+			Parameters: chordjson.ObjectOf(
+				"type", "object",
+				"required", []string{"verdict", "explanation"},
+				"properties", chordjson.ObjectOf(
+					"verdict", ai.StringEnum([]string{"match", "mismatch", "inconclusive"}, nil),
+					"explanation", chordjson.ObjectOf("type", "string", "minLength", 1, "maxLength", 2000),
+				),
+				"additionalProperties", false,
+			),
 			ConstrainedSampling: &bridge.ConstrainedSampling{Type: "json_schema", Strict: "prefer"},
 		},
 		Execute: func(_ context.Context, _ string, params map[string]any) (evals.CustomToolResult, error) {

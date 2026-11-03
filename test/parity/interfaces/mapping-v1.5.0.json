@@ -35858,7 +35858,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -35880,7 +35880,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -37342,7 +37342,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -37364,7 +37364,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -38200,7 +38200,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -38222,7 +38222,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -40247,7 +40247,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -40269,7 +40269,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -41663,7 +41663,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -41685,7 +41685,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -42957,7 +42957,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -42979,7 +42979,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -44124,7 +44124,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -44146,7 +44146,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -44898,7 +44898,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -44920,7 +44920,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -46322,7 +46322,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -46344,7 +46344,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -47285,7 +47285,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -47307,7 +47307,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -77204,7 +77204,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
@@ -77226,7 +77226,7 @@
       "evidence": [
         "test:ai/compat_registry_test.go#TestCompatDispatchErrors",
         "test:ai/faux_register_test.go#TestRegisterFauxProviderRegistersItsAPIUntilUnregistered",
-        "test:test/pipeline-diff/diff_test.go#TestAIPipelineMatchesPi"
+        "test:ai/tool_schema_wire_order_test.go#TestToolSchemaKeepsAuthoredOrderInProviderRequests"
       ]
     },
     {
