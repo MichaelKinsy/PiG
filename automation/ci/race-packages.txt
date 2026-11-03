@@ -12,6 +12,7 @@ rest  ./internal/codingagent
 rest  ./durable/harness
 rest  ./durable/core/driver
 rest  ./durable/core/sqlhost
+rest  ./durable/storage/store
 rest  ./coding/extension/host/subprocess
 host  ./coding/extension
 host  ./coding/extension/host/inproc
