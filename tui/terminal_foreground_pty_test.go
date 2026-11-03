@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -129,11 +130,15 @@ func TestStdinInForegroundFollowsTheTerminalProcessGroup(t *testing.T) {
 	if err := leader.Wait(); err != nil {
 		t.Fatalf("helper: %v (last line %q)", err, last)
 	}
-	// Linux reports EIO for the hung-up controlling terminal, which the driver takes as a dead terminal (Pi's EIO). Where the hang-up leaves the
-	// process without a controlling terminal (ENOTTY, as on a revoked macOS tty) the check reports foreground and the restart's raw-mode call
-	// meets the dead terminal, as in Pi.
-	if last != "hung-up foreground=false errno=input/output error" && last != "hung-up foreground=true errno=<nil>" {
-		t.Fatalf("after the master closed the helper reported %q, want EIO or the no-controlling-terminal answer", last)
+	// Linux reports EIO for the hung-up controlling terminal: not foreground, with the error for the driver's dead-terminal exit (Pi's EIO).
+	// Counting EIO as foreground would restart a dead session. Where the hang-up leaves the process without a controlling terminal (ENOTTY, as on
+	// a revoked macOS tty) the check reports foreground and the restart's raw-mode call meets the dead terminal, as in Pi.
+	wantHungUp := "hung-up foreground=false errno=input/output error"
+	if runtime.GOOS != "linux" && last == "hung-up foreground=true errno=<nil>" {
+		wantHungUp = last
+	}
+	if last != wantHungUp {
+		t.Fatalf("after the master closed the helper reported %q, want %q", last, wantHungUp)
 	}
 }
 

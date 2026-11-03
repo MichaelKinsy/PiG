@@ -110,15 +110,18 @@ func (m *InteractiveMode) suspendOperations() suspendOperations {
 			}
 		},
 		kill: func(pid int) error { return syscall.Kill(pid, syscall.SIGTSTP) },
-		foreground: func() (bool, error) {
-			// pig divergence (D227): the foreground check that Pi's SIGCONT handler lacks.
-			foreground, err := tui.StdinInForeground()
-			if err != nil {
-				m.exitIfDeadTerminal(err)
-			}
-			return foreground, err
-		},
+		foreground: func() (bool, error) { return m.foregroundOrExit(tui.StdinInForeground) },
 	}
+}
+
+// foregroundOrExit runs the foreground probe and ends the process through the dead-terminal exit (129) when the probe fails because the terminal went away.
+// pig divergence (D227): the foreground check that Pi's SIGCONT handler lacks.
+func (m *InteractiveMode) foregroundOrExit(probe func() (bool, error)) (bool, error) {
+	foreground, err := probe()
+	if err != nil {
+		m.exitIfDeadTerminal(err)
+	}
+	return foreground, err
 }
 
 // onSuspendContinue owns one signal waiter in the mode's joined background scope. SIGCONT uses backpressured owner dispatch; canceled or failed operations cannot restart a stopped mode.
