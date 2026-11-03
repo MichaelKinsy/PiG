@@ -17,7 +17,8 @@ import (
 //
 //   - x/term's MakeRaw, Restore and SetState issue the termios setting ioctls (TCSETS, TIOCSETA), which wait for output to drain and stop a
 //     background group with SIGTTOU. Only the seam variables in terminal.go may name them; everything else calls makeRaw and restoreCooked.
-//   - x/sys/unix's Poll, Select, Read and Ioctl* calls must sit in a function that handles EINTR.
+//   - x/sys/unix's Poll, Select, Read and Ioctl* calls, and calls through those seams, must sit in a loop that goes round again on EINTR; a
+//     function that only names EINTR, or returns on it, does not count.
 //
 // GetSize, GetState and IsTerminal are queries that never sleep and so never see EINTR; they are not audited.
 func TestTerminalSyscallsThatCanSleepRetryEINTR(t *testing.T) {
@@ -78,16 +79,21 @@ func auditEINTR(fset *token.FileSet, path string, file *ast.File) []string {
 	}
 	for _, decl := range file.Decls {
 		allowedSeam := seamVar(decl)
-		handlesEINTR := false
+		var retryLoops []*ast.ForStmt
 		if fn, ok := decl.(*ast.FuncDecl); ok && fn.Body != nil {
 			ast.Inspect(fn.Body, func(node ast.Node) bool {
-				if ident, ok := node.(*ast.Ident); ok && (ident.Name == "EINTR" || ident.Name == "isEINTR") {
-					handlesEINTR = true
+				if loop, ok := node.(*ast.ForStmt); ok && retriesEINTR(loop) {
+					retryLoops = append(retryLoops, loop)
 				}
 				return true
 			})
 		}
 		ast.Inspect(decl, func(node ast.Node) bool {
+			if call, ok := node.(*ast.CallExpr); ok {
+				if fn, ok := call.Fun.(*ast.Ident); ok && (fn.Name == "makeRawTerminal" || fn.Name == "restoreTerminal") && !insideAny(retryLoops, call.Pos()) {
+					report(call.Pos(), fn.Name+" outside a loop that retries on EINTR")
+				}
+			}
 			selector, ok := node.(*ast.SelectorExpr)
 			if !ok {
 				return true
@@ -107,8 +113,8 @@ func auditEINTR(fset *token.FileSet, path string, file *ast.File) []string {
 			case "golang.org/x/sys/unix":
 				name := selector.Sel.Name
 				sleeps := name == "Poll" || name == "Select" || name == "Read" || (strings.HasPrefix(name, "Ioctl") && name != "IoctlFileClone")
-				if sleeps && !handlesEINTR {
-					report(selector.Pos(), "unix."+name+" in a function that never handles EINTR")
+				if sleeps && !insideAny(retryLoops, selector.Pos()) {
+					report(selector.Pos(), "unix."+name+" outside a loop that retries on EINTR")
 				}
 			}
 			return true
@@ -120,7 +126,7 @@ func auditEINTR(fset *token.FileSet, path string, file *ast.File) []string {
 // The audit must demand the retry, not the mention: a function that names isEINTR and then returns on it, or a loop that returns on EINTR,
 // still hands EINTR to its caller.
 func TestEINTRAuditRequiresTheRetryNotTheMention(t *testing.T) {
-	const header = "package p\nimport \"golang.org/x/sys/unix\"\nfunc isEINTR(error) bool { return false }\nvar _ = unix.EINTR\n"
+	const header = "package p\nimport \"golang.org/x/sys/unix\"\nfunc isEINTR(error) bool { return false }\nvar _ = unix.EINTR\nvar makeRawTerminal = func(int) error { return nil }\n"
 	for _, tc := range []struct {
 		name, body string
 		flagged    bool
@@ -130,6 +136,8 @@ func TestEINTRAuditRequiresTheRetryNotTheMention(t *testing.T) {
 		{"mutant: returns on EINTR", "n, err := unix.Poll(nil, 0)\n if isEINTR(err) { return 0, err }\n return n, err", true},
 		{"mutant: names EINTR and loops but returns on it", "for {\n n, err := unix.Poll(nil, 0)\n if isEINTR(err) { return 0, err }\n if err == nil { return n, nil }\n}", true},
 		{"mutant: no check at all", "return unix.Poll(nil, 0)", true},
+		{"seam call in a retry loop", "for {\n err := makeRawTerminal(0)\n if !isEINTR(err) { return 0, err }\n}", false},
+		{"mutant: seam call that returns on EINTR", "err := makeRawTerminal(0)\n if isEINTR(err) { return 0, err }\n return 0, err", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fset := token.NewFileSet()
@@ -142,4 +150,48 @@ func TestEINTRAuditRequiresTheRetryNotTheMention(t *testing.T) {
 			}
 		})
 	}
+}
+
+// retriesEINTR reports whether loop goes round again on EINTR: it holds an if on isEINTR or EINTR that continues (the interrupted case), or an
+// if on the negation that leaves the loop (the interrupted case falls through to the next iteration). An if that returns on EINTR is no retry.
+func retriesEINTR(loop *ast.ForStmt) bool {
+	retries := false
+	ast.Inspect(loop.Body, func(node ast.Node) bool {
+		stmt, ok := node.(*ast.IfStmt)
+		if !ok || !namesEINTR(stmt.Cond) {
+			return true
+		}
+		if not, ok := stmt.Cond.(*ast.UnaryExpr); ok && not.Op == token.NOT {
+			retries = true
+			return false
+		}
+		ast.Inspect(stmt.Body, func(inner ast.Node) bool {
+			if branch, ok := inner.(*ast.BranchStmt); ok && branch.Tok == token.CONTINUE {
+				retries = true
+			}
+			return true
+		})
+		return true
+	})
+	return retries
+}
+
+func namesEINTR(expr ast.Expr) bool {
+	found := false
+	ast.Inspect(expr, func(node ast.Node) bool {
+		if ident, ok := node.(*ast.Ident); ok && (ident.Name == "EINTR" || ident.Name == "isEINTR") {
+			found = true
+		}
+		return true
+	})
+	return found
+}
+
+func insideAny(loops []*ast.ForStmt, pos token.Pos) bool {
+	for _, loop := range loops {
+		if loop.Pos() <= pos && pos < loop.End() {
+			return true
+		}
+	}
+	return false
 }

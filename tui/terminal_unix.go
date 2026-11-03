@@ -40,7 +40,9 @@ func terminalHungUp(file *os.File) bool {
 }
 
 // inForeground is tcgetpgrp on stdin compared with this process's group: whether the group may use the terminal without a SIGTTOU or SIGTTIN
-// stop. A terminal that went away reports its error (EIO, ENOTTY), which a caller treats as a dead terminal.
+// stop. Job control applies only to the controlling terminal: ENOTTY means stdin is a terminal that is not this process's controlling terminal,
+// so nothing can stop the process there and it counts as foreground, as Pi's SIGCONT handler restarts the UI there. Any other error, EIO of a
+// hung-up terminal first, is returned for the caller to treat as a dead terminal.
 func (t *ProcessTerminal) inForeground() (bool, error) {
 	if t.stdin == nil {
 		return false, syscall.ENOTTY
@@ -50,6 +52,9 @@ func (t *ProcessTerminal) inForeground() (bool, error) {
 		pgrp, err := unix.IoctlGetInt(fd, unix.TIOCGPGRP)
 		if isEINTR(err) {
 			continue
+		}
+		if errors.Is(err, unix.ENOTTY) {
+			return true, nil
 		}
 		if err != nil {
 			return false, err

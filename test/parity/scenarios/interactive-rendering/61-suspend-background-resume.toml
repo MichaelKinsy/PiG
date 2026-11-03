@@ -3,7 +3,7 @@
 # terminal (D227). The shell's stop reason differs, so the probe asserts the process state (stopped after bg) and the resumed Session, not the
 # shell's job message. Before #397 was fixed a macOS PiG ended with "interrupted system call" on this fg.
 # Same driver, private tmux session and job-control shell as 40-suspend-resume-session; its comments explain the harness.
-name = "58-suspend-background-resume"
+name = "61-suspend-background-resume"
 description = "A session resumed in the background stops again, and fg returns to it with its draft."
 covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
 tags = ["hermetic", "tui", "posix-signals"]

@@ -129,10 +129,13 @@ func TestStdinInForegroundFollowsTheTerminalProcessGroup(t *testing.T) {
 	if err := leader.Wait(); err != nil {
 		t.Fatalf("helper: %v (last line %q)", err, last)
 	}
-	// EIO and ENOTTY are the errors Pi's DEAD_TERMINAL_ERROR_CODES names for a terminal that went away.
-	if last != "hung-up foreground=false errno=input/output error" && last != "hung-up foreground=false errno=inappropriate ioctl for device" {
-		t.Fatalf("after the master closed the helper reported %q, want EIO or ENOTTY", last)
+	// Linux reports EIO for the hung-up controlling terminal, which the driver takes as a dead terminal (Pi's EIO). Where the hang-up leaves the
+	// process without a controlling terminal (ENOTTY, as on a revoked macOS tty) the check reports foreground and the restart's raw-mode call
+	// meets the dead terminal, as in Pi.
+	if last != "hung-up foreground=false errno=input/output error" && last != "hung-up foreground=true errno=<nil>" {
+		t.Fatalf("after the master closed the helper reported %q, want EIO or the no-controlling-terminal answer", last)
 	}
+}
 }
 
 // runForegroundCycle is the shell in TestRawModeEntryFromABackgroundGroupSurvivesTheStopAndFg: the session leader that starts a job in its own

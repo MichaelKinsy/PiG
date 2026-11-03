@@ -355,8 +355,8 @@ func EnterRawModeWithDrain() (restore func(), drain func() error, err error) {
 	return restore, func() error { return processTerminal.DrainInput(time.Second, 50*time.Millisecond) }, nil
 }
 
-// StdinInForeground reports whether this process's group is the foreground process group of the terminal on stdin (tcgetpgrp). A terminal
-// that went away returns its error (EIO, ENOTTY).
+// StdinInForeground reports whether this process's group is the foreground process group of the terminal on stdin (tcgetpgrp). A terminal that
+// is not the controlling terminal counts as foreground; a terminal that went away returns its error (EIO).
 func StdinInForeground() (bool, error) {
 	return processTerminal.inForeground()
 }
