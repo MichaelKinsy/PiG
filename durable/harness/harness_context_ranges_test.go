@@ -14,6 +14,7 @@ package harness
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"reflect"
 	"slices"
@@ -24,6 +25,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/internal/detach"
 	"github.com/MichaelKinsy/PiG/durable/storage"
 )
 
@@ -32,6 +34,19 @@ import (
 type countingStorage struct {
 	durable.Storage
 	scan *scanCount
+}
+
+// copyingStorage hands out a fresh deep copy of every entry a scan returns, as upstream's structuredClone proxy does.
+type copyingStorage struct{ durable.Storage }
+
+func (s copyingStorage) ScanEntries(ctx context.Context, query durable.EntryQuery, limit int, cursor durable.Cursor) (durable.Page[durable.EntryRecord, durable.Cursor], error) {
+	page, err := s.Storage.ScanEntries(ctx, query, limit, cursor)
+	items := make([]durable.EntryRecord, len(page.Items))
+	for index, item := range page.Items {
+		items[index] = detach.Entry(item)
+	}
+	page.Items = items
+	return page, err
 }
 
 type scanCount struct {
@@ -116,7 +131,7 @@ func openCounting(t *testing.T, tasks []durable.AnyTask, settings *HarnessSettin
 	}
 	first := appendTo(user("first"))
 	for index := range 20 {
-		appendTo(assistant("old " + string(rune('a'+index))))
+		appendTo(assistant(fmt.Sprintf("old %d", index)))
 	}
 	return countingSetup{opened: opened, scan: scan, first: first, clock: clock}
 }
@@ -284,7 +299,7 @@ func TestTaskContextRanges(t *testing.T) {
 			appendTo(root.Id(), durable.EntryDraft{Kind: "pi.system", Model: []ai.Message{system(ai.PromptSection{Name: "plan", Value: new("Plan.")})}})
 			messages, rows := read(root)
 			expectRows("root", rows)
-			expectStrings(t, messages[:3], []string{"system:plan", "user:first", "assistant:old a"})
+			expectStrings(t, messages[:3], []string{"system:plan", "user:first", "assistant:old 0"})
 
 			// A system message the cached range already has keeps a later first `pi.system` entry in place.
 			forked := fork()
@@ -471,8 +486,15 @@ func TestTaskContextRanges(t *testing.T) {
 					return durable.EntryDraft{Kind: "message", Model: []ai.Message{toolResult(id)}}
 				}
 				if pick < 9 {
-					seen["system"]++
-					return durable.EntryDraft{Kind: "message", Model: []ai.Message{system(ai.PromptSection{Name: "s", Value: new(label("v"))})}}
+					// `pi.system` entries can be the baseline that leads the context (#10904).
+					kind := "message"
+					if random(2) == 0 {
+						kind = "pi.system"
+						seen["baseline system"]++
+					} else {
+						seen["system"]++
+					}
+					return durable.EntryDraft{Kind: kind, Model: []ai.Message{system(ai.PromptSection{Name: "s", Value: new(label("v"))})}}
 				}
 				if pick < 10 {
 					seen["note"]++
@@ -530,6 +552,16 @@ func TestTaskContextRanges(t *testing.T) {
 				if !same("step "+string(rune('0'+step/100))+string(rune('0'+step/10%10))+string(rune('0'+step%10)), view, err, root) {
 					return nil
 				}
+				whole := ctxContextOf(t, root)
+				var contributed []ai.Message
+				for _, contribution := range whole.Contributions {
+					contributed = append(contributed, contribution...)
+				}
+				first := slices.IndexFunc(contributed, func(message ai.Message) bool { _, ok := message.(ai.SystemMessage); return ok })
+				if first > 0 && len(whole.Messages) > 0 && reflect.DeepEqual(whole.Messages[0], contributed[first]) &&
+					slices.ContainsFunc(contributed[:first], func(message ai.Message) bool { _, ok := message.(ai.AssistantMessage); return ok }) {
+					seen["baseline past assistant"]++
+				}
 				if step%10 == 9 {
 					// Overlapping reads, one with an earlier cutoff, share the kept range.
 					at := written[random(len(written))].Id
@@ -560,7 +592,7 @@ func TestTaskContextRanges(t *testing.T) {
 		})
 		setup = openCounting(t, []durable.AnyTask{steps.Erased()}, nil)
 		ctxRunTask(t, setup, steps.Erased())
-		for _, category := range []string{"user", "assistant", "aborted", "error", "deferred", "result", "stray result", "system", "note", "omit", "replace", "head"} {
+		for _, category := range []string{"user", "assistant", "aborted", "error", "deferred", "result", "stray result", "system", "baseline system", "baseline past assistant", "note", "omit", "replace", "head"} {
 			if seen[category] == 0 {
 				t.Errorf("the transcript never had a %s entry", category)
 			}
@@ -687,6 +719,8 @@ func TestTaskContextRanges(t *testing.T) {
 			if err != nil {
 				return err
 			}
+			// A deep copy taken before any change, so damage that reached the kept range cannot reach the expectation too.
+			pristine := detach.ContextView(view)
 			view.Messages = view.Messages[:0]
 			view.Entries = view.Entries[:len(view.Entries)-1]
 			damageView(view)
@@ -694,7 +728,7 @@ func TestTaskContextRanges(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			if want := ctxContextOf(t, setup.opened.root); !reflect.DeepEqual(again, want) {
+			if want := ctxContextOf(t, setup.opened.root); !reflect.DeepEqual(again, want) || !reflect.DeepEqual(again, pristine) {
 				t.Error("a handler's changes to its view reached a later read")
 			}
 			return tkComplete(ctx, runtime)
@@ -713,6 +747,51 @@ func TestTaskContextRanges(t *testing.T) {
 		}
 		ctxRunTask(t, setup, mutate.Erased())
 		mustClose(t, setup.opened.harness)
+	})
+
+	// harness-context.test.ts "freezes kept entries deeply even when storage freezes them shallowly": a Storage that
+	// hands out fresh copies of its records, as upstream's structuredClone proxy does, and a view whose messages the handler
+	// changes in place. A Go value cannot be frozen, so the observable is that nothing the handler changes reaches a later read.
+	t.Run("freezes kept entries deeply even when storage freezes them shallowly", func(t *testing.T) {
+		var pristine, again durable.ContextView
+		mutate := tkOneStep("test.context-shallow", func(ctx context.Context, _ stepRecord, runtime stepRuntime) error {
+			view, err := runtime.Context(ctx, runtime.ConversationId(), nil)
+			if err != nil {
+				return err
+			}
+			pristine = detach.ContextView(view)
+			damageView(view)
+			if again, err = runtime.Context(ctx, runtime.ConversationId(), nil); err != nil {
+				return err
+			}
+			return tkComplete(ctx, runtime)
+		})
+		opened := tkOpenRoot(t, []durable.AnyTask{mutate.Erased()}, tkOptions{storage: copyingStorage{Storage: storage.NewMemoryStorage()}})
+		for _, model := range []ai.Message{
+			ai.UserMessage{Content: ai.UserText("hello"), Timestamp: 1},
+			ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "calling"}, ai.ToolCall{ID: "c1", Name: "lookup", Arguments: ai.JsonObject{"n": 1.0}}}, StopReason: ai.StopReasonToolUse, Timestamp: 2},
+		} {
+			if _, err := durable.Commit(testContext, opened.root, func(tx durable.Tx) (durable.EntryRecord, error) {
+				return tx.AppendEntry(opened.root.Id(), durable.EntryDraft{Kind: "message", Model: []ai.Message{model}})
+			}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		id := tkStart(t, opened.root, mutate.Erased())
+		opened.harness.Resume()
+		if outcome := tkWaitOutcome(t, opened.harness, id); outcome.Status != durable.OutcomeCompleted {
+			t.Fatalf("task outcome %+v, want completed", outcome)
+		}
+		if len(pristine.Entries) != 2 {
+			t.Fatalf("the task read %d entries, want 2", len(pristine.Entries))
+		}
+		if !reflect.DeepEqual(again, pristine) {
+			t.Error("a handler's changes to its view reached a later read")
+		}
+		if want := ctxContextOf(t, opened.root); !reflect.DeepEqual(want, pristine) {
+			t.Error("a handler's changes to its view reached the conversation's read")
+		}
+		mustClose(t, opened.harness)
 	})
 
 	t.Run("does not keep a read that finishes after its task ended", func(t *testing.T) {

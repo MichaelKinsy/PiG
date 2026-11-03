@@ -364,7 +364,11 @@ func TestLiveDeltas(t *testing.T) {
 		mu.Unlock()
 		bases, deltas := 0, 0
 		for seq, kind := range written {
-			if (kind == "base") != nothingRuns(observed[seq]) {
+			value, seen := observed[seq]
+			if !seen {
+				t.Fatalf("commit %d wrote pi.live as a %s but published no pi.live value", seq, kind)
+			}
+			if (kind == "base") != nothingRuns(value) {
 				t.Fatalf("commit %d wrote a %s for %s", seq, kind, jsonText(t, observed[seq]))
 			}
 			if kind == "base" {

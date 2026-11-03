@@ -8229,7 +8229,7 @@
         "durable/harness/harness_after_run_test.go#TestAfterRun",
         "durable/harness/harness_after_run_test.go#TestEndRun"
       ],
-      "rationale": "All 29 upstream cases are subtests of TestAfterRun and TestEndRun under Pi's names (lane C, Pi 7e15f960). Pi 1.5.0 changes the file from e7a0df27 only in imports (Type.Object becomes obj from pi-schema, a TypeScript schema builder; Go tool schemas are JSON-schema maps), so no case input or expectation changed. The Go mappings of the file header (killableStorage for the Proxy crash, no 'not-a-list' cast) are unchanged."
+      "rationale": "All 29 upstream cases are subtests of TestAfterRun and TestEndRun under Pi's names (lane C, Pi 7e15f960). Pi 1.5.0 changes the file from e7a0df27 only in imports (Type.Object becomes obj from pi-schema, a TypeScript schema builder; Go tool schemas are JSON-schema maps), so no case input or expectation changed. Every body was compared with Go line by line (v1.5.0 bodies equal e7a0df27's); the only Go-inexpressible fragment is the 'not-a-list' extension of 'reports broken requests and hooks and creates the rest' (`{ tasks: \"x\" as unknown as RunEndTask[] }`): RunEndTasks.Tasks is a slice of RunEndTask, so the type system rejects it and the case runs with the other broken request and hook (two reports, five AggregateError messages, hook failed, empty live doc); the third extension_error info has no Go counterpart. killableStorage stands in for the Proxy crash."
     },
     {
       "path": "packages/durable/test/harness-blocked.test.ts",
@@ -8239,7 +8239,7 @@
         "durable/core/driver/harness_blocked_core_test.go#TestBlockedTasks",
         "durable/harness/harness_blocked_test.go#TestBlockedTasksOnTheReference"
       ],
-      "rationale": "All 12 cases stay ported (10 subtests of TestBlockedTasks over the reference Harness and the core, 2 in TestBlockedTasksOnTheReference). Pi b3a29f11 to 1.5.0 changes: Harness.closed reports {kind} instead of {reason} (Go: End().Kind == SessionEndFailed, harness_blocked_test.go), the task graph state of a restored task is 'pending' instead of 'ready' (TaskInspectionPending, harness_blocked_core_test.go), the report info is {kind: task_faulted} instead of {type} (ReportTaskFaulted, same file), and seeding commits go through commitWrites (Go Storage.Commit takes the batches directly)."
+      "rationale": "All 12 cases stay ported (10 subtests of TestBlockedTasks over the reference Harness and the core, 2 in TestBlockedTasksOnTheReference). Pi b3a29f11 to 1.5.0 changes: Harness.closed reports {kind} instead of {reason} (Go: End().Kind == SessionEndFailed, harness_blocked_test.go), the task graph state of a restored task is 'pending' instead of 'ready' (TaskInspectionPending, harness_blocked_core_test.go), the report info is {kind: task_faulted} instead of {type} (ReportTaskFaulted, same file; the inspection state is matched exactly as {kind pending, migrates false} and the faulted outcome has no result or reason beyond the one-key detail restart_limit), and seeding commits go through commitWrites (Go Storage.Commit takes the batches directly)."
     },
     {
       "path": "packages/durable/test/harness-callers.test.ts",
@@ -8294,7 +8294,7 @@
         "durable/core/driver/compaction_failure_core_test.go#TestCorePerModelCompactionOverrideSetsTheBlockingThreshold",
         "durable/core/driver/compaction_failure_core_test.go#TestCoreACompactionFailureIsVisibleUntilASummaryIsProduced"
       ],
-      "rationale": "98 it() sites (6 parameterized: three orders, five failures, three policies, three preparations, two clocks, two responses), all ported under Pi's names across the Test functions of harness_compaction_test.go, with the variant lists equal to Pi's. Pi b3a29f11 to 1.5.0: pi.live compactions and compactionFailure carry `trigger` instead of `reason` (the Go expectations read Trigger / \"trigger\"); Harness.closed is {kind: failed} (End().Kind, the blocking-compaction-fault case); the two new 'pi.live migrations' cases (a version 1 value read with `reason` as `trigger` and stored migrated on its next write, a version 2 run without turns counted as 0) are the subtests of TestPiLiveMigrations; imports change Type.Object to obj only."
+      "rationale": "98 it() sites (6 parameterized: three orders, five failures, three policies, three preparations, two clocks, two responses), all ported under Pi's names across the Test functions of harness_compaction_test.go, with the variant lists equal to Pi's. Pi b3a29f11 to 1.5.0: pi.live compactions and compactionFailure carry `trigger` instead of `reason` (the Go expectations read Trigger / \"trigger\"); Harness.closed is {kind: failed} (End().Kind, the blocking-compaction-fault case); the two new 'pi.live migrations' cases (a version 1 value read with `reason` as `trigger` and stored migrated on its next write, a version 2 run without turns counted as 0) are the subtests of TestPiLiveMigrations; imports change Type.Object to obj only. Bodies compared line by line; three cases keep a Go form with the same assertions: the blocking-compaction fault of 'fails the run when its blocking compaction faults' uses a NaN-cost strict-JSON fault because a Go provider stream cannot throw Pi's 'no credentials' (the unanswered/model_error, 'Compaction failed: ...' detail, compactionFailure and no-request assertions are Pi's), the 300 ms wall-clock race of the background summary through retry backoff holds the Harness clock, and the retry-backoff and overflow-after-reopen cases queue their responses before the reopen because Go's resume runs pending work at once."
     },
     {
       "path": "packages/durable/test/harness-context-range.test.ts",
@@ -8313,7 +8313,7 @@
         "durable/harness/context_shared_test.go#TestTaskRuntimeContextIsDetachedFromLaterReads",
         "durable/harness/context_lead_test.go#TestTaskRuntimeContextLeadsWithTheSystemMessage"
       ],
-      "rationale": "Every case is ported. Pi b3a29f11 to 1.5.0: the Session knows the bounds and the kept range takes each committed entry, so extended reads scan 0 rows instead of 4/2/1 and the probes scan {parent 21, child 0, after 0, idle 0, expired 22}, {probe 21}, {first 21, second 21} (TestTaskContextRanges asserts Pi's new counts). The #10904 case 'finds the baseline among the entries an extended read adds' (a baseline added after a cached range without one, a fork keeping a later first pi.system in place, an omitted host.system still ruling a baseline out, an empty first pi.system leaving none; each extended read scanning 0 rows and equal to the conversation's view) is the subtest of that name in TestTaskContextRanges, added with the 1.5.0 re-record. 'freezes kept entries deeply' has no Go form: Go has no Object.freeze, so a handed-out view is a deep copy and the detached-view tests prove a handler's changes never reach a later read."
+      "rationale": "Every case is ported. Pi b3a29f11 to 1.5.0: the Session knows the bounds and the kept range takes each committed entry, so extended reads scan 0 rows instead of 4/2/1 and the probes scan {parent 21, child 0, after 0, idle 0, expired 22}, {probe 21}, {first 21, second 21} (TestTaskContextRanges asserts Pi's new counts). The #10904 case 'finds the baseline among the entries an extended read adds' (a baseline added after a cached range without one, a fork keeping a later first pi.system in place, an omitted host.system still ruling a baseline out, an empty first pi.system leaving none; each extended read scanning 0 rows and equal to the conversation's view) is the subtest of that name in TestTaskContextRanges, added with the 1.5.0 re-record. 'freezes kept entries deeply even when storage freezes them shallowly' has no Object.freeze form in Go: a storage handing out deep copies of its records stands in for Pi's structuredClone proxy, and the subtest of that name asserts that a handler's mutations of a view never reach a later read or the conversation's read; 'keeps returned views and kept ranges apart' compares against a deep copy taken before the mutations. 'derives the same view from extended reads as from whole reads' draws Pi's random sequence and requires all 14 categories including the baseline ones."
     },
     {
       "path": "packages/durable/test/harness-continue.test.ts",
@@ -8322,7 +8322,7 @@
       "evidence": [
         "durable/harness/harness_continue_test.go#TestContinue"
       ],
-      "rationale": "All 13 upstream cases are subtests of TestContinue under Pi's names (lane C, #11043). Pi 1.5.0 changes the file from e7a0df27 only in imports (Type.Object becomes obj from pi-schema); no case input or expectation changed."
+      "rationale": "All 13 upstream cases are subtests of TestContinue under Pi's names (lane C, #11043). Pi 1.5.0 changes the file from e7a0df27 only in imports (Type.Object becomes obj from pi-schema); no case input or expectation changed. Bodies compared line by line (the submit span's link must carry no attributes, as Pi's {context, attributes: {}})."
     },
     {
       "path": "packages/durable/test/harness-conversations.test.ts",
@@ -8360,7 +8360,7 @@
         "durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint",
         "durable/harness/harness_deferred_progress_upstream_test.go#TestAHeldDeferredPollIsResumedAfterACrash"
       ],
-      "rationale": "All 11 cases stay ported (the three Pi names not matched by a subtest are the top-level tests TestAHeldDeferredPollIsResumedAfterACrash, TestACompactionCutOffByACrashRerunsFromItsCheckpoint and TestReadingPiLiveInACommitStoresTheHeldPartial). Pi b3a29f11 to 1.5.0: commit observers take {advance, end} and document changes carry a kind, and the request's attempt is presentation deferred like the partials, so the crash case asserts that none of pi.live.generation was stored (harness_deferred_progress_upstream_test.go: \"The attempt is presentation, deferred like the partials\")."
+      "rationale": "All 11 cases stay ported (the three Pi names not matched by a subtest are the top-level tests TestAHeldDeferredPollIsResumedAfterACrash, TestACompactionCutOffByACrashRerunsFromItsCheckpoint and TestReadingPiLiveInACommitStoresTheHeldPartial). Pi b3a29f11 to 1.5.0: commit observers take {advance, end} and document changes carry a kind, and the request's attempt is presentation deferred like the partials, so the crash case asserts that none of pi.live.generation was stored (harness_deferred_progress_upstream_test.go: \"The attempt is presentation, deferred like the partials\"). Bodies compared line by line: the replica replays ops for every change after the creation, and the compaction crash case runs Pi's own setup (default chatSetup with the manual compaction policy, three turns of label + 'word ' x100, a summary step that waits for the abort)."
     },
     {
       "path": "packages/durable/test/harness-failed-run-inbox.test.ts",
@@ -8391,7 +8391,7 @@
         "durable/harness/harness_generation_test.go#attributes model requests by default and merges the Harness identity over it",
         "durable/harness/harness_run_failure_test.go#TestRunFailure"
       ],
-      "rationale": "All 26 cases stay in TestGeneration under Pi's names. Pi b3a29f11 to 1.5.0: every runFailure carries `first`, the entry id the run started from (aborted x4, no_model, faulted, model_error: arFirstUser / failure.First in the Go expectations); the orphaning case seeds a run task of GenerationTask.Definition.Version + 1 with run turns 0; the 'stores partials as deltas' case sets progress.persistWithinMs 100 so deferred partials reach Storage before the answer (harness_generation_test.go, 'stores partials as deltas')."
+      "rationale": "All 26 cases stay in TestGeneration under Pi's names. Pi b3a29f11 to 1.5.0: every runFailure carries `first`, the entry id the run started from (aborted x4, no_model, faulted, model_error: arFirstUser / failure.First in the Go expectations); the orphaning case seeds a run task of GenerationTask.Definition.Version + 1 with run turns 0; the 'stores partials as deltas' case sets progress.persistWithinMs 100 so deferred partials reach Storage before the answer (harness_generation_test.go, 'stores partials as deltas'). Bodies compared line by line; 'faults a run task' asserts the whole live document (a non-zero taskId and nothing but runFailure) and its detail reads 'is not strict JSON' where Pi's cast function reads 'non-JSON function'."
     },
     {
       "path": "packages/durable/test/harness-group-commit.test.ts",
@@ -8440,9 +8440,10 @@
         "durable/harness/harness_input_entries_test.go#TestInputEntries",
         "durable/harness/harness_input_entries_test.go#TestDataOnlyWrites",
         "durable/core/inbox/inbox_test.go#TestAQueuedInputCarriesItsEntryAndABoundaryPlacesItAsThatEntry",
-        "durable/core/inbox/inbox_test.go#TestAnUntypedCallersInputEntryGivesOnlyItsKindAndData"
+        "durable/core/inbox/inbox_test.go#TestAnUntypedCallersInputEntryGivesOnlyItsKindAndData",
+        "durable/core/inbox/inbox_test.go#TestAnInputEntryWhoseKindIsNotANonEmptyStringOutsidePiIsATypeErrorThatWritesNothing"
       ],
-      "rationale": "11/11 cases stay ported. Pi b3a29f11 to 1.5.0: the live runFailure of 'appends a data-only write while idle after a failed run' carries `first` (the Go test matches `first` against the failed submission's entry), and imports change Type.Object to obj. :138 (an untyped caller's extra fields) has no typed harness form: Go InputEntry holds only Kind and Data; ported with Pi's exact inputs on the core draft path (TestAnUntypedCallersInputEntryGivesOnlyItsKindAndData)."
+      "rationale": "11/11 cases stay ported. Pi b3a29f11 to 1.5.0: the live runFailure of 'appends a data-only write while idle after a failed run' carries `first` (the Go test matches `first` against the failed submission's entry), and imports change Type.Object to obj. :138 (an untyped caller's extra fields) has no typed harness form: Go InputEntry holds only Kind and Data; ported with Pi's exact inputs on the core draft path (TestAnUntypedCallersInputEntryGivesOnlyItsKindAndData, idle and queued). The numeric kind 123 of the kind-validation case has no typed form: the harness subtest covers \"\", pi.user and pi.compaction, and TestAnInputEntryWhoseKindIsNotANonEmptyStringOutsidePiIsATypeErrorThatWritesNothing covers 123 and null on the JSON path."
     },
     {
       "path": "packages/durable/test/harness-inspect.test.ts",
@@ -8475,7 +8476,7 @@
         "durable/harness/harness_lifecycle_test.go#TestRegistryChangesBeforeResume",
         "durable/harness/harness_lifecycle_test.go#TestSchedulingOnAPausedHarness"
       ],
-      "rationale": "14/14 cases stay ported. Pi b3a29f11 to 1.5.0: onReport receives {error} (OnReport in TestHarnessOpen), the graph, document and view watches end with {kind: ended} (WatchEnded, TestHarnessClose), an extension's task is inspected as 'pending' instead of 'ready' (TaskInspectionPending, TestRegistryChangesBeforeResume), and seeding goes through commitWrites; imports change Type.Object to obj."
+      "rationale": "14/14 cases stay ported. Pi b3a29f11 to 1.5.0: onReport receives {error} (OnReport in TestHarnessOpen), the graph, document and view watches end with {kind: ended} (WatchEnded, TestHarnessClose), an extension's task is inspected as 'pending' instead of 'ready' (TaskInspectionPending, TestRegistryChangesBeforeResume), and seeding goes through commitWrites; imports change Type.Object to obj. Bodies compared line by line; identity checks (toBe, not.toBe) become structural comparisons and Pi's followCommits wrap is CommitSubscriptions()."
     },
     {
       "path": "packages/durable/test/harness-live-deltas.test.ts",
@@ -8484,7 +8485,7 @@
       "evidence": [
         "durable/harness/harness_live_deltas_test.go#TestLiveDeltas"
       ],
-      "rationale": "11/11 cases stay ported in TestLiveDeltas. Pi b3a29f11 to 1.5.0: the generation/tool handover commit sequence is the new one (run {taskId, inputs, turns 0, first}; the request's attempt stored with the tools handover, its held operation first, and run.turns 1; the running status folded into the result commit; the second request's attempt first in the answer's commit; commits[3] has two operations), the Storage-kind case sets progress.persistWithinMs 50 and records the commit kind per received batch (recordingStorage.Commit), and the unoffered-call case expects a flagged pending task slot ({taskId, status pending, unoffered true}) instead of a done slot without an entry (all in harness_live_deltas_test.go)."
+      "rationale": "11/11 cases stay ported in TestLiveDeltas. Pi b3a29f11 to 1.5.0: the generation/tool handover commit sequence is the new one (run {taskId, inputs, turns 0, first}; the request's attempt stored with the tools handover, its held operation first, and run.turns 1; the running status folded into the result commit; the second request's attempt first in the answer's commit; commits[3] has two operations), the Storage-kind case sets progress.persistWithinMs 50 and records the commit kind per received batch (recordingStorage.Commit), and the unoffered-call case expects a flagged pending task slot ({taskId, status pending, unoffered true}) instead of a done slot without an entry (all in harness_live_deltas_test.go). Bodies compared line by line; the faulted-tool case uses math.NaN() for Pi's non-JSON function (a Go value cannot hold a function) and 'stores a complete base exactly in the commits where nothing runs' fails when a commit wrote pi.live without publishing a value, as Pi's values.get(seq)! throws."
     },
     {
       "path": "packages/durable/test/harness-nested-tools-restart.test.ts",

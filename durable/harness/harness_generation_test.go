@@ -986,6 +986,13 @@ func TestGeneration(t *testing.T) {
 		if failure == nil || failure.Reason != RunFaulted || !slices.Equal(failure.Inputs, []durable.SubmissionId{submission.Id()}) || failure.Detail == nil || !strings.Contains(*failure.Detail, "is not strict JSON") || failure.First == nil {
 			t.Fatalf("runFailure = %+v, want faulted with the strict JSON failure", failure)
 		}
+		// Pi's toEqual: the live document holds the runFailure and nothing else, with a task ID.
+		if failure.TaskId == 0 {
+			t.Fatal("runFailure has no task ID")
+		}
+		onlyFailure := *live(t, harness, root)
+		onlyFailure.RunFailure = nil
+		expectEqualJSON(t, onlyFailure, `{}`)
 		state := conversationTasks(t, harness, root)[0].State
 		if state.Status != durable.TaskTerminal || state.Outcome.Status != durable.OutcomeFaulted {
 			t.Fatalf("state = %s", jsonText(t, state))

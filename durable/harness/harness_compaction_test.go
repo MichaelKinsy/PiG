@@ -671,11 +671,12 @@ func TestManualCompaction(t *testing.T) {
 		gate.resolve()
 		expectSettled(t, must(input.Wait(testContext)), durable.SubmissionDone, "")
 		// The continuation request starts with the new baseline, then the summary, ahead of the kept tool call (#10904).
-		if _, ok := chat.faux.lastAgentRequest().messages[0].(ai.SystemMessage); !ok {
+		continuation := chat.faux.lastAgentRequest().messages
+		if _, ok := continuation[0].(ai.SystemMessage); !ok {
 			t.Fatalf("continuation does not start with the baseline")
 		}
-		if first := firstUserText(chat.faux.lastAgentRequest().messages); !strings.Contains(first, "<summary>\nSUMMARY\n</summary>") {
-			t.Fatalf("continuation starts with %q", first)
+		if second := userText(continuation[1]); !strings.Contains(second, "<summary>\nSUMMARY\n</summary>") {
+			t.Fatalf("continuation[1] = %q, want the summary", second)
 		}
 		expectEqualJSON(t, lastN(chat.kinds(t), 4), `["pi.tool-result","pi.compaction","pi.system","pi.assistant"]`)
 		chat.close(t)
@@ -1585,16 +1586,21 @@ func TestOverflowCompaction(t *testing.T) {
 			t.Fatalf("attempt = %d, want 1", attempt)
 		}
 		expectEqualJSON(t, lastN(chat.kinds(t), 5), `["pi.user","pi.assistant","pi.compaction","pi.system","pi.assistant"]`)
+		compactions := []durable.EntryRecord{}
 		for _, record := range allEntries(t, chat.root) {
 			if record.Kind == "pi.compaction" {
-				expectMatch(t, record, `{"data":{"reason":"overflow"}}`)
+				compactions = append(compactions, record)
 			}
 		}
+		if len(compactions) == 0 {
+			t.Fatal("no pi.compaction entry")
+		}
+		expectMatch(t, compactions[0], `{"data":{"reason":"overflow"}}`)
 		retry := chat.faux.lastAgentRequest().messages
 		if _, ok := retry[0].(ai.SystemMessage); !ok {
 			t.Fatalf("retry does not start with the baseline")
 		}
-		if !strings.Contains(firstUserText(retry), "SUMMARY") || slices.ContainsFunc(retry, func(message ai.Message) bool {
+		if !strings.Contains(userText(retry[1]), "SUMMARY") || slices.ContainsFunc(retry, func(message ai.Message) bool {
 			assistant, ok := message.(ai.AssistantMessage)
 			return ok && assistant.StopReason == ai.StopReasonError
 		}) {
@@ -2226,6 +2232,10 @@ func TestCompactionRecovery(t *testing.T) {
 			values := []any{}
 			for _, message := range messages {
 				value := must(jsonValue(jsonText(t, message))).(map[string]any)
+				// The resent request carries a numeric timestamp (expect.any(Number) upstream); it is the only difference.
+				if _, ok := value["timestamp"].(float64); !ok {
+					t.Fatalf("message %s has no numeric timestamp", jsonText(t, message))
+				}
 				delete(value, "timestamp")
 				values = append(values, value)
 			}
@@ -2550,8 +2560,9 @@ func TestCompactionEdgeCases(t *testing.T) {
 		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
 		chat.history(t)
 		chat.setPolicy(blockingPolicy())
-		// Upstream replaces Models.completeSimple with a throwing function. Go's CompleteSimple has no throw path, so the
-		// summarization answers a value that is not strict JSON and the compaction's commit faults the task instead.
+		// Upstream replaces Models.completeSimple with a throwing function. Go's CompleteSimple has no throw path (a panic in a
+		// provider's stream goroutine crashes the process), so the summarization answers a value that is not strict JSON and
+		// the compaction's commit faults the task instead.
 		original := *chat.setup.Faux.Provider()
 		withProvider(chat.setup, func(provider *ai.ModelsProvider) {
 			provider.StreamSimple = func(ctx context.Context, model *ai.Model, request ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
@@ -2768,7 +2779,9 @@ func TestCompactionEdgeCasesLater(t *testing.T) {
 		if task := must(store.Task(testContext, id)); task == nil || task.State.Status == durable.TaskTerminal {
 			t.Fatalf("task = %s, want live", jsonText(t, task))
 		}
-		reopened := openCompaction(t, compactionOptions{storage: store})
+		// Upstream reopens with openChat and no resume(): the live compaction task must not run again here.
+		reopenedHarness, reopenedRoot := openChat(t, store, chat.setup)
+		reopened := &compactionChat{harness: reopenedHarness, root: reopenedRoot, setup: chat.setup, faux: chat.faux}
 		if usage(reopened.harness, reopened.root) != before || slices.Contains(reopened.kinds(t), "pi.compaction") {
 			t.Fatal("a failed classifying commit left usage or a summary")
 		}
