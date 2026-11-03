@@ -229776,7 +229776,7 @@
       "evidence": [
         "test:durable/examples/inbox_override_examples_test.go#TestExample19Inbox",
         "test:durable/harness/harness_input_entries_test.go#TestInputEntries",
-        "test:durable/harness/checkpoint_decode_differential_test.go#TestRawCheckpointPredicatesFailLikeTheTypedDecode"
+        "test:durable/harness/checkpoint_decode_differential_test.go#TestRawCheckpointPredicateChecksTheOperationsInsideAPartialMessage"
       ]
     },
     {
@@ -229881,7 +229881,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/checkpoint_decode.go#checkDecodes"
+        "call:durable/checkpoint_decode.go#checkAssistantOps"
       ],
       "evidence": [
         "test:durable/doc_token_definition_upstream_test.go#TestDocTokensCarryTheirDefinitionAndValidateTheVersion",
@@ -231188,9 +231188,9 @@
         "call:durable/harness/harness.go#harnessImpl.conversationCreated"
       ],
       "evidence": [
+        "test:durable/harness/checkpoint_decode_differential_test.go#TestRawCheckpointPredicateChecksTheOperationsInsideAPartialMessage",
         "test:durable/harness/checkpoint_decode_differential_test.go#TestRawCheckpointPredicatesFailLikeTheTypedDecode",
-        "test:durable/harness/harness_compaction_test.go#TestCompactionOutcomes",
-        "test:durable/harness/harness_compaction_test.go#TestManualCompaction"
+        "test:durable/harness/harness_compaction_test.go#TestCompactionOutcomes"
       ]
     },
     {
@@ -231210,9 +231210,9 @@
         "call:durable/harness/provider.go#ensureProviderSessionId"
       ],
       "evidence": [
+        "test:durable/harness/checkpoint_decode_differential_test.go#TestRawCheckpointPredicateChecksTheOperationsInsideAPartialMessage",
         "test:durable/harness/checkpoint_decode_differential_test.go#TestRawCheckpointPredicatesFailLikeTheTypedDecode",
-        "test:durable/harness/harness_compaction_test.go#TestCompactionOutcomes",
-        "test:durable/harness/harness_compaction_test.go#TestManualCompaction"
+        "test:durable/harness/harness_compaction_test.go#TestCompactionOutcomes"
       ]
     },
     {

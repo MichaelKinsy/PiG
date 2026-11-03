@@ -55,7 +55,7 @@ func (setup *chatState) SetNow(now func() float64) {
 }
 
 // chatSetup registers a faux provider (pi-ai fauxProvider(options)) on fresh models.
-func chatSetup(t *testing.T, config ...ai.FauxConfig) *chatState {
+func chatSetup(t testing.TB, config ...ai.FauxConfig) *chatState {
 	t.Helper()
 	var options ai.FauxConfig
 	if len(config) > 0 {
@@ -96,7 +96,7 @@ type openChatOptions struct {
 }
 
 // openChat opens a Harness over storage and returns its root, configured with the faux model on first creation.
-func openChat(t *testing.T, storage durable.Storage, setup *chatState, options ...openChatOptions) (Harness, Conversation) {
+func openChat(t testing.TB, storage durable.Storage, setup *chatState, options ...openChatOptions) (Harness, Conversation) {
 	t.Helper()
 	var option openChatOptions
 	if len(options) > 0 {
