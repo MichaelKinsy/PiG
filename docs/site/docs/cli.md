@@ -11,7 +11,7 @@ pig [options] [prompt]
 | Verb | Purpose |
 |---|---|
 | `pig` | Start interactive TUI in current directory. |
-| `pig --print <prompt>`, `pig -p <prompt>` | One-shot: send prompt, print response, exit. When the model stops at its output token limit, PiG prints the partial text, writes `Response was truncated: the model reached its output token limit.` to stderr and exits 1. Pi 1.5.0 added this; Pi 1.1.0 exited 0 without a warning. |
+| `pig --print <prompt>`, `pig -p <prompt>` | One-shot: send prompt, print response, exit. When the model stops at its output token limit, PiG prints the partial text, writes `Response was truncated: the model reached its output token limit.` to stderr and exits 1. Pi 1.2.0 added this; Pi 1.1.0 exited 0 without a warning. |
 | `pig --mode json <prompt>` | One-shot: write JSONL events to stdout, then exit. See [JSON event stream](json.md). |
 | `pig --model <provider/model>` | Override model for this run. |
 | `pig -e <path>` (repeatable) | Load an extension file or directory, or a built-in extension such as `builtin:mcp`. |
