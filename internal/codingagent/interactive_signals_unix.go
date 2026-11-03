@@ -109,7 +109,7 @@ func (m *InteractiveMode) suspendOperations() suspendOperations {
 				m.tuiInst.Render()
 			}
 		},
-		kill: func(pid int) error { return syscall.Kill(pid, syscall.SIGTSTP) },
+		kill:       func(pid int) error { return syscall.Kill(pid, syscall.SIGTSTP) },
 		foreground: func() (bool, error) { return m.foregroundOrExit(tui.StdinInForeground) },
 	}
 }
