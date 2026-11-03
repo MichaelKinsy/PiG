@@ -8,7 +8,8 @@ package harness
 import (
 	"context"
 	"fmt"
-	"math/rand/v2"
+	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -712,8 +713,30 @@ func TestIdleKeptContextRanges(t *testing.T) {
 	})
 }
 
+// idleSeeded is Pi's `seeded` (harness-idle-scopes.test.ts), bit for bit: the state is a float64 and the step is computed in
+// IEEE doubles, which is inexact from the second draw on (the product is above 2^53), and math.Mod is `%` on doubles. The product is
+// rounded on its own, as the conversion says, so no fused multiply-add changes the result.
+func idleSeeded(seed float64) func() float64 {
+	state := seed
+	return func() float64 {
+		state = math.Mod(float64(state*1_103_515_245)+12_345, 2_147_483_648)
+		return state / 2_147_483_648
+	}
+}
+
+// The draws of Pi's generator for seed 42, taken from running it (node 24).
+func TestIdleSeededIsPisGenerator(t *testing.T) {
+	next := idleSeeded(42)
+	for position, want := range []float64{0.5823075897060335, 0.5198186635971069, 0.9149397611618042, 0.6987155675888062, 0.753081202507019, 0.6894334554672241} {
+		if got := next(); got != want {
+			t.Fatalf("draw %d = %v, want %v", position, got, want)
+		}
+	}
+}
+
 func TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork(t *testing.T) {
-	random := rand.New(rand.NewPCG(42, 42))
+	next := idleSeeded(42)
+	pick := func(size int) int { return int(math.Floor(next() * float64(size))) }
 	env := openIdle(t, idleEnvOptions{})
 	// A context range keeps entries: every conversation gets one.
 	env.addEntries(env.root, 1)
@@ -723,10 +746,15 @@ func TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWor
 		conversation Conversation
 	}
 	live := map[string]liveTask{}
+	// The live tasks in the order they were added: Pi picks from a Map's entries.
 	var names []string
+	forget := func(name string) {
+		delete(live, name)
+		names = slices.DeleteFunc(names, func(each string) bool { return each == name })
+	}
 	count := 0
 	for step := range 200 {
-		action := random.Float64()
+		action := next()
 		name := fmt.Sprintf("t%d", count)
 		count++
 		switch {
@@ -734,26 +762,23 @@ func TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWor
 			conversations = append(conversations, env.conversation(1))
 		case action < 0.45 || len(live) == 0:
 			// A task in any conversation, also one whose owner chain ended and was swept; it may read a context.
-			into := conversations[random.IntN(len(conversations))]
+			into := conversations[pick(len(conversations))]
 			var read durable.ConversationId
-			if random.Float64() < 0.6 {
-				read = conversations[random.IntN(len(conversations))].Id()
+			if next() < 0.6 {
+				read = conversations[pick(len(conversations))].Id()
 			}
-			background := random.Float64() < 0.15
+			background := next() < 0.15
 			live[name] = liveTask{id: env.start(name, into, read, background), conversation: into}
 			names = append(names, name)
 		case action < 0.6:
 			// Work a live task owns: a child task, or an owned conversation with a task that reads it.
-			ownerName := names[random.IntN(len(names))]
-			owner, ok := live[ownerName]
-			if !ok {
-				continue
-			}
+			ownerName := names[pick(len(names))]
+			owner := live[ownerName]
 			if state := tkTaskRecord(t, env.harness, owner.id).State.Status; state == durable.TaskTerminal || state == durable.TaskCompleting {
-				delete(live, ownerName)
+				forget(ownerName)
 				continue
 			}
-			asConversation := random.Float64() < 0.5
+			asConversation := next() < 0.5
 			type made struct {
 				id           durable.TaskId
 				conversation durable.ConversationId
@@ -790,11 +815,8 @@ func TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWor
 			live[name] = liveTask{id: created.id, conversation: intoConversation}
 			names = append(names, name)
 		default:
-			ended := names[random.IntN(len(names))]
-			if _, ok := live[ended]; !ok {
-				continue
-			}
-			delete(live, ended)
+			ended := names[pick(len(names))]
+			forget(ended)
 			env.gates.gate(ended).resolve()
 		}
 		env.quiet()

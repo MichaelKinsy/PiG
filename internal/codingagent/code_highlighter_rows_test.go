@@ -86,3 +86,39 @@ func TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws(t *testing.T) {
 	code := replaceTabs(jsstring.TrimEnd(strings.ReplaceAll(script.String(), "\r", "")))
 	requireRowKeepsItsHighlighting(t, context, code, "javascript", draw)
 }
+
+// Ports the streaming half of "write highlights unchanged first lines and a complete file only once": a 60-line file
+// grows by text on its last line, and the update highlights exactly one thing, that last line; the lines before it, the
+// leading block included, are not highlighted again. Pi spies on its highlight function; writeHighlightCode is the one
+// place the write cache highlights code here. The complete file's single highlighting is
+// TestCompleteWriteRowReusesItsHighlightingAcrossRedraws.
+func TestWriteRowStreamingHighlightsOnlyTheChangedLastLine(t *testing.T) {
+	lines := make([]string, 60)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("const v%d = %d;", i, i)
+	}
+	content := strings.Join(lines, "\n")
+	var highlighted []string
+	real := writeHighlightCode
+	writeHighlightCode = func(code, lang string) []string {
+		highlighted = append(highlighted, code)
+		return real(code, lang)
+	}
+	t.Cleanup(func() { writeHighlightCode = real })
+	state := map[string]any{}
+	draw := func(text string) {
+		args, err := json.Marshal(map[string]string{"path": "a.ts", "content": text})
+		if err != nil {
+			t.Fatal(err)
+		}
+		strings.Join(writeRenderCall(args, nil, extension.ToolRenderContext{State: state, Cwd: "/", IsPartial: true, Expanded: true}).Render(80), "\n")
+	}
+	draw(content)
+	draw(content + " //")
+	highlighted = nil
+	draw(content + " // more")
+	want := lines[59] + " // more"
+	if len(highlighted) != 1 || highlighted[0] != want {
+		t.Fatalf("the update highlighted %q, want only the changed last line %q", highlighted, want)
+	}
+}

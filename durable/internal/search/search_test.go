@@ -34,6 +34,32 @@ func TestTokenizeMatchesPi(t *testing.T) {
 	}
 }
 
+// Ports packages/durable/test/search.test.ts "tokenize" › "segments Unicode words in %s" (each) at Pi 1.5.0.
+func TestTokenizeSegmentsUnicodeWords(t *testing.T) {
+	for _, c := range []struct {
+		text string
+		want []string
+	}{
+		{"搜索仓库问题", []string{"搜索", "仓库", "问题"}},
+		{"文書を検索", []string{"文書", "を", "検索"}},
+		{"문서 검색", []string{"문서", "검색"}},
+		{"ค้นหาเอกสาร", []string{"ค้นหา", "เอกสาร"}},
+		{"Поиск документов", []string{"поиск", "документов"}},
+		{"البحث عن الملفات", []string{"البحث", "عن", "الملفات"}},
+		{"फ़ाइल खोजें", []string{"फ़ाइल", "खोजें"}},
+		{"Éléments cafés", []string{"éléments", "cafés"}},
+	} {
+		t.Run(c.text, func(t *testing.T) {
+			if stripsDictionaries() && usesDictionary(c.text) {
+				t.Skip("a Binary without the word dictionaries (D92) keeps dictionary scripts whole")
+			}
+			if got := searchtext.Tokenize(c.text); !slices.Equal(got, c.want) {
+				t.Errorf("tokenize(%q) = %v, want %v", c.text, got, c.want)
+			}
+		})
+	}
+}
+
 func doc(name, text string, namespaceText ...string) Document {
 	d := Document{Name: name, Text: text}
 	if len(namespaceText) > 0 {
