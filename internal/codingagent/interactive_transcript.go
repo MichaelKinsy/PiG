@@ -604,6 +604,9 @@ func (m *InteractiveMode) addBranchSummary(summary string, usage *ai.Usage) {
 // before the first message that is not one, starts a turn from that message, and queues the rest into the started turn. turnActive marks the interval in
 // which a run goroutine exists to drain the queues; isIdle is reset through a queued runOnMain and reads stale-false right after a turn ends, which is
 // what auto-compaction at the end of a turn leaves behind.
+//
+// Each message is awaited like Pi's `await this.session.prompt(...)`: the messages behind an extension command are handled once its handler returned
+// (runFlushSteps).
 func (m *InteractiveMode) flushCompactionQueue(ctx context.Context, willRetry bool) {
 	if len(m.compactionQueue) == 0 {
 		return
@@ -626,24 +629,32 @@ func (m *InteractiveMode) flushCompactionQueue(ctx context.Context, willRetry bo
 		m.showError(fmt.Sprintf("Failed to send queued message%s: %s", plural, err.Error()))
 	})
 
+	// Pi awaits each message of the flush: an extension command runs through prompt(), whose handler is awaited, before the next message is handled.
+	// step handles one queued message and returns the channel that closes when the extension command it started returns, nil when it started none.
+	step := func(msg compactionQueuedMessage, handle func(compactionQueuedMessage) <-chan struct{}) func() <-chan struct{} {
+		return func() <-chan struct{} {
+			if failed {
+				return nil
+			}
+			return handle(msg)
+		}
+	}
+	var steps []func() <-chan struct{}
 	if willRetry {
 		for _, msg := range queued {
-			if failed {
-				return
-			}
-			m.queueCompactionMessage(ctx, msg)
+			steps = append(steps, step(msg, func(msg compactionQueuedMessage) <-chan struct{} { return m.queueCompactionMessage(ctx, msg) }))
 		}
+		m.runFlushSteps(steps)
 		return
 	}
 	// A run still settling receives each message through upstream's steer()/followUp(), input handlers and expansion included; extension commands run
 	// immediately.
+	deliver := func(msg compactionQueuedMessage) <-chan struct{} { return m.deliverCompactionQueued(ctx, msg) }
 	if m.runStreaming() {
 		for _, msg := range queued {
-			if failed {
-				return
-			}
-			m.deliverCompactionQueued(ctx, msg)
+			steps = append(steps, step(msg, deliver))
 		}
+		m.runFlushSteps(steps)
 		return
 	}
 
@@ -656,49 +667,69 @@ func (m *InteractiveMode) flushCompactionQueue(ctx context.Context, willRetry bo
 	m.abortCtx, m.abortFn = context.WithCancel(m.runCtx)
 
 	firstIdx := slices.IndexFunc(queued, func(msg compactionQueuedMessage) bool { return !m.isExtensionCommand(msg.text) })
+	command := func(msg compactionQueuedMessage) <-chan struct{} { return m.dispatchExtensionCommand(ctx, msg.text) }
 	if firstIdx == -1 {
 		// All extension commands: run each; none starts a turn.
 		for _, msg := range queued {
-			m.dispatchSlash(ctx, msg.text)
+			steps = append(steps, step(msg, command))
 		}
+		m.runFlushSteps(steps)
 		return
 	}
 	// Run the extension commands before the first prompt.
 	for _, msg := range queued[:firstIdx] {
-		m.dispatchSlash(ctx, msg.text)
+		steps = append(steps, step(msg, command))
 	}
-	// The first prompt keeps its delivery mode: a live run receives it through its requested queue, and the idle agent starts a turn.
+	// The first prompt keeps its delivery mode: a live run, such as one a command started, receives it through its requested queue, and the idle agent
+	// starts a turn.
 	first := queued[firstIdx]
-	m.promptUserInput(ctx, first.text, first.images, first.mode == compactionQueueFollowUp, extension.InputSourceUser, true)
+	steps = append(steps, step(first, func(first compactionQueuedMessage) <-chan struct{} {
+		m.promptUserInput(ctx, first.text, first.images, first.mode == compactionQueueFollowUp, extension.InputSourceUser, true)
+		return nil
+	}))
 	// The remaining messages keep their queued mode; a later extension command still runs immediately. A message that finds the run already
 	// settled starts the next turn instead of waiting in a drained queue.
 	for _, msg := range queued[firstIdx+1:] {
-		if failed {
-			return
+		steps = append(steps, step(msg, deliver))
+	}
+	m.runFlushSteps(steps)
+}
+
+// runFlushSteps runs the steps in order on the owner loop. The steps behind one that started an extension command run on the owner loop once the command
+// returned, as flushCompactionQueue awaits each session.prompt().
+func (m *InteractiveMode) runFlushSteps(steps []func() <-chan struct{}) {
+	for i, step := range steps {
+		returned := step()
+		if returned == nil {
+			continue
 		}
-		m.deliverCompactionQueued(ctx, msg)
+		if rest := steps[i+1:]; len(rest) > 0 {
+			m.afterExtensionCommand(returned, func() { m.runFlushSteps(rest) })
+		}
+		return
 	}
 }
 
 // queueCompactionMessage hands one message queued during compaction to the retry turn: an extension command runs, any other message is queued with its
-// mode through the input handlers and prompt expansion (upstream prompt(), steer() and followUp()).
-func (m *InteractiveMode) queueCompactionMessage(ctx context.Context, msg compactionQueuedMessage) {
+// mode through the input handlers and prompt expansion (upstream prompt(), steer() and followUp()). It returns the channel of the command it started.
+func (m *InteractiveMode) queueCompactionMessage(ctx context.Context, msg compactionQueuedMessage) <-chan struct{} {
 	if m.isExtensionCommand(msg.text) {
-		m.dispatchSlash(ctx, msg.text)
-		return
+		return m.dispatchExtensionCommand(ctx, msg.text)
 	}
 	m.queueUserInput(ctx, msg.text, msg.images, msg.mode == compactionQueueFollowUp, extension.InputSourceUser)
+	return nil
 }
 
 // deliverCompactionQueued hands one message queued during compaction to the
 // active run with its queued mode, as upstream's flushCompactionQueue does
 // through prompt() for extension commands and steer()/followUp() otherwise.
-func (m *InteractiveMode) deliverCompactionQueued(ctx context.Context, msg compactionQueuedMessage) {
+// It returns the channel of the command it started.
+func (m *InteractiveMode) deliverCompactionQueued(ctx context.Context, msg compactionQueuedMessage) <-chan struct{} {
 	if m.isExtensionCommand(msg.text) {
-		m.dispatchSlash(ctx, msg.text)
-		return
+		return m.dispatchExtensionCommand(ctx, msg.text)
 	}
 	m.promptUserInput(ctx, msg.text, msg.images, msg.mode == compactionQueueFollowUp, extension.InputSourceUser, true)
+	return nil
 }
 
 // enqueueIfTurnActive runs enqueue and reports true when a run is active (a

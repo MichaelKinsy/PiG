@@ -1,0 +1,115 @@
+//go:build linux
+
+package codingagent
+
+import (
+	"os"
+	"slices"
+	"testing"
+)
+
+const startupWindowKeysChildEnv = "PIG_TEST_STARTUP_WINDOW_KEYS_CHILD"
+
+// interactive-mode.ts:1013-1018 init() binds app.clear to the Ctrl-C handler, Ctrl-D to the exit handler and submit to handleStartupSubmit on the default editor
+// before the UI starts, and setupKeyHandlers binds the remaining app actions only after the startup header and managed-tool setup (1017-1028). Until then the
+// CustomEditor passes every other key to the editor, so Ctrl-O does not expand the tools. Init needs a terminal for raw mode, so the check feeds the real Init's
+// startup input in a child on a pseudo-terminal.
+func TestInitBindsOnlyTheClearAndExitKeysDuringStartup(t *testing.T) {
+	runInitPTYChild(t, "TestInitBindsOnlyTheClearAndExitKeysDuringStartupChild", startupWindowKeysChildEnv)
+}
+
+func TestInitBindsOnlyTheClearAndExitKeysDuringStartupChild(t *testing.T) {
+	report := os.Getenv(startupWindowKeysChildEnv)
+	if report == "" {
+		t.Skip("runs only as the pty child of TestInitBindsOnlyTheClearAndExitKeysDuringStartup")
+	}
+	t.Cleanup(func() {
+		if t.Failed() {
+			_ = os.WriteFile(report, []byte(childFailure), 0o600)
+		}
+	})
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: t.TempDir(), AgentDir: t.TempDir(), NoThemes: true})
+	feed := func(keys ...string) {
+		for _, key := range keys {
+			m.handleStartupInput(inputChunk{data: []byte(key)}, false)
+		}
+	}
+	var marks []string
+	m.opts.StartupMark = func(label string) {
+		if marks = append(marks, label); label != "tui-started" {
+			return
+		}
+		if m.editor.OnSubmit == nil {
+			childFatalf(t, "the editor has no submit handler once the UI started")
+		}
+		feed("d", "r", "a", "f", "t")
+		if got := m.editor.Text(); got != "draft" {
+			childFatalf(t, "typed text = %q, want draft", got)
+		}
+		// Ctrl-D leaves a non-empty editor to the editor (custom-editor.ts: delete-char-forward) and never exits.
+		feed("\x04")
+		if m.requestExit.Load() || m.editor.Text() != "draft" {
+			childFatalf(t, "Ctrl-D with text: exit requested %v, text %q, want neither", m.requestExit.Load(), m.editor.Text())
+		}
+		// Ctrl-O is the tools-expand action, which setupKeyHandlers binds later: the startup editor ignores it.
+		m.toolMu.Lock()
+		expanded := m.toolsExpanded
+		m.toolMu.Unlock()
+		feed("\x0f")
+		m.toolMu.Lock()
+		changed := m.toolsExpanded != expanded
+		m.toolMu.Unlock()
+		if changed || m.editor.Text() != "draft" {
+			childFatalf(t, "Ctrl-O during startup changed the tools expansion (%v) or the text (%q); setupKeyHandlers has not bound it yet", changed, m.editor.Text())
+		}
+		// app.clear: the first Ctrl-C clears the draft and does not exit.
+		feed("\x03")
+		if m.editor.Text() != "" || m.requestExit.Load() {
+			childFatalf(t, "first Ctrl-C: text %q, exit requested %v, want the draft cleared and no exit", m.editor.Text(), m.requestExit.Load())
+		}
+		// The release of the key, which the Kitty keyboard protocol reports, never acts (tui.ts isKeyRelease).
+		feed("\x1b[99;5:3u")
+		if m.requestExit.Load() {
+			childFatalf(t, "the release of Ctrl-C acted as a second Ctrl-C")
+		}
+		// A second Ctrl-C within 500 ms exits (handleCtrlC).
+		feed("\x03")
+		if !m.requestExit.Load() {
+			childFatalf(t, "a second Ctrl-C right after the first did not request the exit")
+		}
+		m.requestExit.Store(false)
+		// app.exit on the empty editor exits (handleCtrlD).
+		feed("\x04")
+		if !m.requestExit.Load() {
+			childFatalf(t, "Ctrl-D with an empty editor did not request the exit")
+		}
+		m.requestExit.Store(false)
+	}
+	if err := m.Init(t.Context()); err == nil {
+		childFatalf(t, "Init without a SessionHandle succeeded")
+	}
+	if !slices.Contains(marks, "tui-started") {
+		childFatalf(t, "marks %q: the UI never started", marks)
+	}
+	// Startup completed: the remaining app actions are bound and the editor takes the application keys as before.
+	for _, action := range []AppKeybinding{AppClear, AppToolsExpand, AppThinkingCycle, AppModelSelect} {
+		if _, ok := m.customEditor.ActionHandler(action); !ok {
+			childFatalf(t, "the default editor has no handler for %s after startup", action)
+		}
+	}
+	m.toolMu.Lock()
+	expanded := m.toolsExpanded
+	m.toolMu.Unlock()
+	if err := m.handleCustomEditorKey(t.Context(), "\x0f"); err != nil {
+		childFatalf(t, "%v", err)
+	}
+	m.toolMu.Lock()
+	changed := m.toolsExpanded != expanded
+	m.toolMu.Unlock()
+	if !changed {
+		childFatalf(t, "Ctrl-O after startup did not toggle the tools expansion")
+	}
+	if err := m.Stop(); err != nil {
+		childFatalf(t, "%v", err)
+	}
+}

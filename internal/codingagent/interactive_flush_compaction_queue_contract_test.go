@@ -253,13 +253,14 @@ func TestFlushCompactionQueueRunsExtensionCommands(t *testing.T) {
 }
 
 // An idle agent runs the extension commands ahead of the first message that is not one, starts its turn from that message, and sends the later
-// messages through their queued modes, an extension command among them running at once instead of being queued.
+// messages through their queued modes, an extension command among them running at once instead of being queued. The flush awaits each command, so a
+// message behind /cmdb would reach a turn this fake provider has already ended; the follow-up precedes it.
 func TestFlushCompactionQueueIdleRunsCommandsThenStartsTheFirstPrompt(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		m, handle, log := flushCommandMode(t)
 		m.compactionQueue = []compactionQueuedMessage{
 			{text: "/cmda one", mode: compactionQueueSteer}, {text: "prompt", mode: compactionQueueFollowUp},
-			{text: "/cmdb two", mode: compactionQueueSteer}, {text: "tail", mode: compactionQueueFollowUp},
+			{text: "tail", mode: compactionQueueFollowUp}, {text: "/cmdb two", mode: compactionQueueSteer},
 		}
 		m.flushCompactionQueue(t.Context(), false)
 		settleSubmissions(m)

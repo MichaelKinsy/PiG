@@ -502,19 +502,120 @@ func (m *InteractiveMode) settleTurnWithPrompt(ctx context.Context, err error, f
 	}
 }
 
+// promptLoopSubmit is run()'s `await this.session.prompt(text)` for one text of the prompt loop (the initial messages and the main loop). It submits the text
+// like handleSubmit; an extension command the text starts is the one the loop awaits: it takes no further prompt until the command returned.
+func (m *InteractiveMode) promptLoopSubmit(ctx context.Context, text string, images []ai.ImageContent) {
+	m.takeStartedCommand()
+	m.handleSubmitWithImages(ctx, text, images)
+	returned := m.takeStartedCommand()
+	if returned == nil {
+		return
+	}
+	m.queueMu.Lock()
+	m.promptCommand = returned
+	m.queueMu.Unlock()
+	// Wakes the owner loop, which takes the next prompt only after it saw the command return.
+	m.afterExtensionCommand(returned, func() {})
+}
+
+// startExtensionCommand runs an extension command, off the owner loop because its handler may wait on the user and its IPC must not block the loop that
+// routes the user's keys. It uses the runner's command context and error channel, as Session command dispatch does. The caller that awaits the command, as
+// Pi awaits session.prompt() on one, takes the channel that closes when it returns with takeStartedCommand.
+func (m *InteractiveMode) startExtensionCommand(runner *inproc.Runner, name, args string) {
+	baseCtx := m.runCtx
+	if baseCtx == nil {
+		baseCtx = context.Background()
+	}
+	returned := make(chan struct{})
+	m.queueMu.Lock()
+	m.startedCommand = returned
+	m.queueMu.Unlock()
+	go func() {
+		defer close(returned)
+		runner.ExecuteCommand(baseCtx, name, args)
+	}()
+}
+
+// takeStartedCommand returns the channel that closes when the extension command started last returns, nil when none was started since the last call.
+func (m *InteractiveMode) takeStartedCommand() <-chan struct{} {
+	m.queueMu.Lock()
+	defer m.queueMu.Unlock()
+	returned := m.startedCommand
+	m.startedCommand = nil
+	return returned
+}
+
+// dispatchExtensionCommand runs text as a slash command and returns the channel that closes when the extension command it started returns, nil when it
+// started none.
+func (m *InteractiveMode) dispatchExtensionCommand(ctx context.Context, text string) <-chan struct{} {
+	m.takeStartedCommand()
+	m.dispatchSlash(ctx, text)
+	return m.takeStartedCommand()
+}
+
+// afterExtensionCommand runs fn on the owner loop once the extension command whose channel is returned has returned. It runs nothing when the mode stops first.
+func (m *InteractiveMode) afterExtensionCommand(returned <-chan struct{}, fn func()) {
+	ctx := m.backgroundCtx
+	if ctx == nil {
+		ctx = m.runCtx
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	m.backgroundTasks.Go(func() {
+		select {
+		case <-returned:
+			m.runOnMain(ctx, fn)
+		case <-ctx.Done():
+		}
+	})
+}
+
+// promptCommandPending reports whether the extension command the prompt loop submitted is still running.
+func (m *InteractiveMode) promptCommandPending() bool {
+	m.queueMu.Lock()
+	returned := m.promptCommand
+	m.queueMu.Unlock()
+	if returned == nil {
+		return false
+	}
+	select {
+	case <-returned:
+		return false
+	default:
+		return true
+	}
+}
+
+// waitForPromptCommand blocks until the extension command the prompt loop submitted has returned, or ctx ends.
+func (m *InteractiveMode) waitForPromptCommand(ctx context.Context) error {
+	m.queueMu.Lock()
+	returned := m.promptCommand
+	m.queueMu.Unlock()
+	if returned == nil {
+		return nil
+	}
+	select {
+	case <-returned:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
 // submitInitialMessages sends each message as its own prompt after the
-// previous run settles, as upstream awaits session.prompt for every entry of
-// initialMessages before the interactive loop. It runs off the owner loop and
-// stops when ctx ends.
+// previous run settles and the previous extension command returns, as upstream
+// awaits session.prompt for every entry of initialMessages before the
+// interactive loop. It runs off the owner loop and stops when ctx ends.
 func (m *InteractiveMode) submitInitialMessages(ctx context.Context, messages []string) {
 	for _, message := range messages {
-		if m.waitForIdle(ctx) != nil {
+		if m.waitForPromptCommand(ctx) != nil || m.waitForIdle(ctx) != nil {
 			return
 		}
 		submitted := make(chan struct{})
 		if m.postToMain(ctx, func() {
 			defer close(submitted)
-			m.handleSubmit(ctx, message)
+			m.promptLoopSubmit(ctx, message, nil)
 		}) != nil {
 			return
 		}
