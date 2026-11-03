@@ -878,5 +878,9 @@
   "pkg:chord/next#memoryLinkPair::call:0": {
     "go": "chord/next/link/link.go#MemoryLinkPair",
     "reason": "Pi chord/src/next/link/link.ts memoryLinkPair(): [Link, Link] returns the two ends of one in-memory link. Go returns the two *MemoryLink of link/link.go: each embeds LinkEnd and has Send, Close, OnMessage and OnClose, so it is a link.Link (the chord/next layer's own Link, pkg:chord/next#Link, bound to link/link.go#Link), and a concrete end where Pi names the interface. The rules find every member and report the pair undecidable only because the interface has its own Go form; the type of the result is the one the function documents. Exercised by TestMemoryLinks (chord/next/link/link_test.go)."
+  },
+  "pkg:chord/next#SetOf": {
+    "go": "chord/next/store/expression.go#SetOf",
+    "reason": "Pi packages/chord/src/next/store/expression.ts:90-94 `SetOf<C, K>` is the mapped type `{ readonly [P in Exclude<keyof C & string, K[number]>]?: C[P] extends TOptional<TSchema> ? ValueOf<C[P]> | Expression<...> : ... }`: the `set` of a table, new values of the non-key columns, each a value or an expression. Go's store.SetOf (chord/next/store/expression.go:197-199, `[]SetProp`, built with Assign) is that value, ordered because Go maps have no order, and is what UpdateStep.Set (table_evolve.go:28) and the Rows patch (table_history.go:116) take. The rules find the type undecidable only because a mapped type has no struct form; the per-column typing of each value is the type-level part, noted at expression.go:24-30. probe: read expression.ts:85-100 and expression.go:190-205. Exercised by TestCompilingSets (chord/next/store/expression_test.go)."
   }
 }
