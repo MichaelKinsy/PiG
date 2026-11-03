@@ -906,6 +906,7 @@ class = "NOBEHAVIOR"
 cite = ""
 reason = "The test's expectation is unchanged: it still compares jsnumber.FromJSON with Number(JSON.parse(text)) on the same inputs. The commit deletes the one-line jsNumberFromJSON alias, so the test calls internal/jsnumber.FromJSON directly and its failure messages and comment name that function; the comment also drops the \"inf\" example, which was never accepted (the infinite result was rejected by the finiteness check)."
 
+[[entry]]
 path = "test/parity/cmd/upstreamdelta/main_test.go"
 commit = "0c8f09f42d"
 class = "NOBEHAVIOR"

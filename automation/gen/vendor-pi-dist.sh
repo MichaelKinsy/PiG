@@ -194,6 +194,7 @@ cp -R "$jiti/lib" "$jiti/dist" "$shims/jiti/"
 cp "$jiti/package.json" "$jiti/LICENSE" "$shims/jiti/"
 cp "$ignore/index.js" "$ignore/package.json" "$ignore/LICENSE-MIT" "$shims/ignore/"
 cp -R "$jsdiff/libesm" "$shims/diff/libesm"
+chmod -R u+w "$shims/diff" # the copy of a read-only oracle build is read-only
 find "$shims/diff/libesm" -name '*.d.ts' -delete -o -name '*.d.ts.map' -delete
 cp "$jsdiff/package.json" "$jsdiff/LICENSE" "$shims/diff/"
 
