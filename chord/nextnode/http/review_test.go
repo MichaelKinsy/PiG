@@ -816,3 +816,75 @@ func TestReviewAHostRemovedAndRestoredBetweenAnUpgradesCheckAndItsKeepEndsTheCon
 	}
 	receive(t, got.socket.closed, "the server ending the connection at the removal of its host")
 }
+
+// serverSideSocket is a WebSocket over a connection to a server that upgrades and idles.
+func serverSideSocket(t *testing.T) *WebSocket {
+	t.Helper()
+	upgrader := websocket.Upgrader{CheckOrigin: func(*nethttp.Request) bool { return true }}
+	server := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
+		_, _ = upgrader.Upgrade(w, r, nil)
+	}))
+	t.Cleanup(server.Close)
+	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http"), nil) //nolint:bodyclose // the dialer documents its handshake response body as needing no close
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	return newWebSocket(conn)
+}
+
+// An upgrade counts the deliveries (V0) before it reads its router; V1 (host gone) is delivered meanwhile and V2 (host back) is
+// what the check read. Pi's revoke of V1 ran before that check read V2, so it ends nothing; had the check read V0, V1's revoke
+// ends the connection at its delivery.
+func TestReviewAnUpgradeIsJudgedOnlyByTheRoutersDeliveredAfterTheRouterItRead(t *testing.T) {
+	withHost := func() *Router { return &Router{Hosts: NewStringSet("t.example"), SocketHandlers: map[*HttpSocket]struct{}{}} }
+	for _, read := range []string{"V0", "V2"} {
+		t.Run("the check read "+read, func(t *testing.T) {
+			u := NewUpgrades()
+			v0, v1, v2 := withHost(), &Router{Hosts: NewStringSet(), SocketHandlers: map[*HttpSocket]struct{}{}}, withHost()
+			u.delivered(v0)
+			seen := u.admitting()
+			defer u.settled(seen)
+			u.delivered(v1)
+			u.delivered(v2)
+			socket := serverSideSocket(t)
+			connection := &upgraded{socket: socket, allowed: "t.example", seal: func() {}, seen: seen}
+			checked := map[string]*Router{"V0": v0, "V2": v2}[read]
+			u.keep(connection, checked)
+			u.recheck(connection)
+			if ended := socket.ReadyState() == WebSocketClosedState; ended != (read == "V0") {
+				t.Fatalf("after reading %s the connection ended = %v", read, ended)
+			}
+		})
+	}
+}
+
+// The count of a keep that finds the router its check read in the deliveries is that router's number: the identity the
+// component's reads and the follower's deliveries must share.
+func TestReviewTheRouterTheComponentReadsIsTheOneTheFollowerDelivers(t *testing.T) {
+	var last atomic.Pointer[Router]
+	gone := make(chan struct{}, 8)
+	tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
+	server := serving(t, []plugin{tunnel}, servedOptions{
+		noListen: true,
+		revokeHook: func(router *Router) {
+			last.Store(router)
+			if !router.Hosts.Has("t.example") {
+				gone <- struct{}{}
+			}
+		},
+	})
+	if status := httpStatus(server, "/x", httpLoopback); status != 404 {
+		t.Fatalf("status = %d", status)
+	}
+	server.reload(t)
+	receive(t, gone, "the revoke against the router without the host")
+	server.http.revokeTasks.Wait()
+	set, err := server.http.registriesNow()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := set.router.Value().(*Router); got != last.Load() {
+		t.Fatal("the router the component reads is not the one the follower delivered")
+	}
+}

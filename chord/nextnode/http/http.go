@@ -654,6 +654,7 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 	}
 	// The deliveries before the router check: a change delivered after it that misses the connection is seen once it is kept.
 	seen := c.upgrades.admitting()
+	defer c.upgrades.settled(seen)
 	// The router now: a host, a relay or a socket removed while authenticating refuses the upgrade.
 	router := registrySet.router.Value().(*Router)
 	if (admitted.Allowed != "" && !router.Hosts.Has(admitted.Allowed)) || (admitted.Relay != nil && !containsRelay(router.Relays, admitted.Relay)) {
@@ -677,7 +678,7 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 			return
 		}
 		defer c.upgrades.release()
-		c.upgrades.Link(w, r, admission2, options, c.host, c.ctx, seen)
+		c.upgrades.Link(w, r, admission2, options, c.host, c.ctx, checkedAt{seen, router})
 		return
 	}
 	match, status := router.Socket(webRequest.Path())
@@ -698,7 +699,7 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 		return
 	}
 	defer c.upgrades.release()
-	c.upgrades.Socket(w, r, admission2, match, webRequest, c.host, c.ctx, failed, seen)
+	c.upgrades.Socket(w, r, admission2, match, webRequest, c.host, c.ctx, failed, checkedAt{seen, router})
 }
 
 func containsRelay(relays []*HttpRelay, relay *HttpRelay) bool {
