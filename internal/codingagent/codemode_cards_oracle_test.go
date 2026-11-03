@@ -143,6 +143,7 @@ func codemodeCardProbes(t *testing.T) ([]toolCardProbe, []string) {
 	add("empty calls", "x", &toolCardResult{Content: cardText(header + "z"), Details: calls()})
 	add("error without header", "x", &toolCardResult{Content: cardText("Script rejected"), IsError: true})
 
+	probes, names = appendCodemodeBoundaryProbes(probes, names)
 	return rebindExpandCards(probes, names)
 }
 
@@ -162,6 +163,7 @@ func renderCodemodeCards(t *testing.T, probes []toolCardProbe) [][]string {
 	definition := extension.ToolDefinition{Name: "codemode", RenderCall: CodemodeRenderers.RenderCall, RenderResult: CodemodeRenderers.RenderResult}
 	out := make([][]string, len(probes))
 	for i, probe := range probes {
+		tui.SetCapabilities(tui.TerminalCapabilities{TrueColor: true, Images: tui.ImageProtocol(probe.Images)})
 		installCardBindings(t, probe)
 		raw, _ := json.Marshal(probe.Args)
 		cardClock.Store(toolCardClockStart)
@@ -171,16 +173,34 @@ func renderCodemodeCards(t *testing.T, probes []toolCardProbe) [][]string {
 		if r := probe.Result; r != nil {
 			var content []ai.ToolResultMessageContent
 			for _, block := range r.Content {
+				if block["type"] == "image" {
+					content = append(content, ai.ImageContent{Data: block["data"].(string), MimeType: block["mimeType"].(string)})
+					continue
+				}
 				content = append(content, ai.TextContent{Text: block["text"].(string)})
 			}
 			var details any
 			if r.Details != nil {
 				details = r.Details
 			}
-			f.mode.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: f.id, ToolName: f.name, IsError: r.IsError, Result: agent.AgentToolResult{Content: content, Details: details, IsError: r.IsError}})
+			if probe.Partial {
+				f.mode.handleAgentEvent(agent.ToolExecutionUpdateEvent{ToolCallID: f.id, ToolName: f.name, PartialResult: agent.AgentToolResult{Content: content, Details: details}})
+			} else {
+				f.mode.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: f.id, ToolName: f.name, IsError: r.IsError, Result: agent.AgentToolResult{Content: content, Details: details, IsError: r.IsError}})
+			}
+		}
+		if probe.NoImages {
+			f.card.SetShowImages(false)
 		}
 		f.card.SetExpanded(probe.Expanded)
 		out[i] = f.card.Render(probe.Width)
+		if probe.Result == nil || probe.Partial {
+			// A running card ticks its elapsed time until a final result renders; finish it so the ticker does not outlive the test.
+			t.Cleanup(func() {
+				f.mode.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: f.id, ToolName: f.name, Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{}}})
+				f.card.Render(probe.Width)
+			})
+		}
 	}
 	return out
 }

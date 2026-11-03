@@ -57,10 +57,12 @@ type toolCardProbe struct {
 	Result   *toolCardResult `json:"result"`
 	Partial  bool            `json:"partial"`
 	NoImages bool            `json:"noImages"`
-	Expanded bool            `json:"expanded"`
-	Width    int             `json:"width"`
-	Theme    string          `json:"theme"`
-	CWD      string          `json:"cwd"`
+	// Images is the terminal image protocol the card sees ("" shows image fallback text only).
+	Images   string `json:"images,omitempty"`
+	Expanded bool   `json:"expanded"`
+	Width    int    `json:"width"`
+	Theme    string `json:"theme"`
+	CWD      string `json:"cwd"`
 	// Hyperlinks is the terminal's OSC 8 support, which the path in a call header links through (renderToolPath).
 	Hyperlinks bool `json:"hyperlinks,omitempty"`
 	// DocsPage names a page of the documentation root (README.md, docs/x.md); the Pi oracle reads it from Pi's package and Args holds PiG's page.
