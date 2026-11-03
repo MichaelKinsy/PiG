@@ -247,6 +247,10 @@ func TestEINTRAuditRequiresTheRetryNotTheMention(t *testing.T) {
 		{"mutant: a second unguarded call beside a guarded one in the function", "for {\n n, err := unix.Poll(nil, 0)\n if isEINTR(err) { continue }\n if err != nil { return n, err }\n break\n}\n return unix.Poll(nil, 0)", true},
 		{"mutant: a second unguarded call inside the same retry loop", "for {\n n, err := unix.Poll(nil, 0)\n if isEINTR(err) { continue }\n m, err2 := unix.Poll(nil, 0)\n return n + m, err2\n}", true},
 		{"two guarded calls", "for {\n n, err := unix.Poll(nil, 0)\n if isEINTR(err) { continue }\n return n, err\n}\n for {\n m, err := unix.Poll(nil, 0)\n if !isEINTR(err) { return m, err }\n}", false},
+		{"mutant: a second unguarded call that reuses err in the same retry loop", "for {\n n, err := unix.Poll(nil, 0)\n if isEINTR(err) { continue }\n _, err = unix.Read(0, nil)\n return n, err\n}", true},
+		{"mutant: an unguarded call in a closure inside a retry loop", "for {\n n, err := unix.Poll(nil, 0)\n if isEINTR(err) { continue }\n read := func() error { _, err := unix.Read(0, nil); return err }\n return n, read()\n}", true},
+		{"mutant: a negated EINTR test whose body does not leave the loop", "for {\n n, err := unix.Poll(nil, 0)\n if !isEINTR(err) { println(err) }\n _ = n\n}", true},
+		{"two calls each guarded in the same loop", "for {\n n, err := unix.Poll(nil, 0)\n if isEINTR(err) { continue }\n if err != nil { return n, err }\n _, err = unix.Read(0, nil)\n if isEINTR(err) { continue }\n return n, err\n}", false},
 		{"mutant: seam call that returns on EINTR", "err := makeRawTerminal(0)\n if isEINTR(err) { return 0, err }\n return 0, err", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
