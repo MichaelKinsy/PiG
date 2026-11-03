@@ -397,3 +397,40 @@ func TestSetupKeyHandlersCopyConfirmsWithAFlashOnlyInFullscreen(t *testing.T) {
 		}
 	}
 }
+
+// An extension's editor component (ctx.ui.setEditorComponent) receives the keys through classifyKeyWithBindings, which names the app action each
+// binding has; the base CustomEditor behavior of that action then runs through handleEditorAction.
+func TestSetupKeyHandlersClassifyNamesEachActionForItsDefaultAndRemappedKey(t *testing.T) {
+	restoreTUIKeybindings(t)
+	actions := map[string]keyAction{
+		"app.clear": actionClearEditor, "app.suspend": actionSuspend, "app.thinking.cycle": actionCycleThinking,
+		"app.interrupt": actionInterrupt, "app.exit": actionExit, "app.clipboard.pasteImage": actionPasteImage,
+		"app.model.cycleForward": actionCycleModelForward, "app.model.cycleBackward": actionCycleModelBackward,
+		"app.model.select": actionModelPicker, "app.tools.expand": actionToggleTools, "app.thinking.toggle": actionToggleThinking,
+		"app.editor.external": actionExternalEditor, "app.message.copy": actionMessageCopy, "app.message.followUp": actionFollowUp,
+		"app.message.dequeue": actionDequeue, "app.session.new": actionSessionNew, "app.session.tree": actionSessionTree,
+		"app.session.fork": actionSessionFork, "app.session.resume": actionSessionResume,
+	}
+	for _, c := range keyHandlerCases {
+		want, ok := actions[c.action]
+		if !ok {
+			t.Fatalf("no key action for %s", c.action)
+		}
+		id, wire := remapKey(c.letter)
+		remapped := NewKeybindingsManagerFromBindings(map[string][]KeyID{c.action: {KeyID(id)}}, "")
+		tui.SetKeybindings(remapped.merged)
+		if got := classifyKeyWithBindings(wire, remapped); got != want {
+			t.Errorf("%s remapped to %s: classified %d, want %d", c.action, id, got, want)
+		}
+		if c.key != "" {
+			if got := classifyKeyWithBindings(c.key, remapped); got == want {
+				t.Errorf("%s: its default key still classifies as the action after the remap", c.action)
+			}
+			defaults := NewKeybindingsManagerFromBindings(nil, "")
+			tui.SetKeybindings(defaults.merged)
+			if got := classifyKeyWithBindings(c.key, defaults); got != want {
+				t.Errorf("%s default key %q: classified %d, want %d", c.action, c.key, got, want)
+			}
+		}
+	}
+}
