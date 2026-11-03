@@ -210,9 +210,11 @@ func validateOAuth(entry map[string]json.RawMessage, options McpServerConfigOpti
 	port, hasPort := 0, false
 	if v, ok := oauth["callbackPort"]; ok {
 		var n float64
+		//portlint:allow numbers a JSON number is finite, and a value outside the int range converts to a different float, so the check still rejects it like Number.isInteger (config.ts validateOAuth)
 		if err := json.Unmarshal(v, &n); err != nil || len(v) == 0 || v[0] == '"' || n != float64(int(n)) || n < 1 || n > 65535 {
 			return "oauth.callbackPort must be a port number"
 		}
+		//portlint:allow numbers n is an integer from 1 to 65535 here (config.ts validateOAuth)
 		port, hasPort = int(n), true
 	}
 	callbackURL := ""
@@ -221,6 +223,7 @@ func validateOAuth(entry map[string]json.RawMessage, options McpServerConfigOpti
 			return "oauth.callbackUrl must be an http URI on localhost, 127.0.0.1, or [::1] without query or fragment"
 		}
 		u, _ := nodeurl.ParseHTTPURL(callbackURL)
+		//portlint:allow numbers u.Port is the serialized port of a parsed URL: at most five decimal digits, or empty (config.ts validateOAuth)
 		if urlPort, err := strconv.Atoi(u.Port); err == nil && hasPort && urlPort != port {
 			return "oauth.callbackUrl and oauth.callbackPort name different ports"
 		}
