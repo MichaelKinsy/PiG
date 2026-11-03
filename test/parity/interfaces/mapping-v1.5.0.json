@@ -118020,9 +118020,9 @@
         "call:chord/next/host/host_follow.go#followSource.attach"
       ],
       "evidence": [
+        "test:chord/next/host/host_follow_hold_test.go#TestFollowObserverSectionHoldsTheDeliverySchedulerSoTwoCommitsOfOneSectionAreOneCall",
         "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds",
-        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds",
-        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchAnEndBeforeTheAttachmentResolvedKeepsTheAttachmentsValueOnTheSource"
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds"
       ]
     },
     {
@@ -118042,9 +118042,9 @@
         "public-api:chord/next/host/host_follow.go#FollowObserver"
       ],
       "evidence": [
+        "test:chord/next/host/host_follow_hold_test.go#TestFollowObserverSectionHoldsTheDeliverySchedulerSoTwoCommitsOfOneSectionAreOneCall",
         "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds",
-        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds",
-        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchAnEndBeforeTheAttachmentResolvedKeepsTheAttachmentsValueOnTheSource"
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds"
       ]
     },
     {
