@@ -238,6 +238,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-32ce7ad](#bf-32ce7ad) | The Termux page shows the `[Context]` line as PiG prints it, `~/.pig/agent/AGENTS.md` | PiG's own defect | Android and Termux | 0.5.0 |
 | [BF-32e86a8](#bf-32e86a8) | Go, Python and Rust SDK: `theme.bold`, `italic`, `underline`, `inverse` and `strikethrough` now draw as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-32fe8c4](#bf-32fe8c4) | The Durable core's Session opens a document watch, a conversation view and the task graph as a job on the… | PiG's own defect | All platforms | Unreleased |
+| [BF-331ab59](#bf-331ab59) | `pig status` reports the agent and project directories by the same resolved path before and after a run… | PiG's own defect | macOS | Unreleased |
 | [BF-333229c](#bf-333229c) | An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-334bb4b](#bf-334bb4b) | A Gemini or Mistral stream chunk with a member of an unexpected type no longer sorts the members of a tool… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3351167](#bf-3351167) | The OAuth callback server reads an absolute-form request target with a scheme other than http or https, a… | PiG's own defect | All platforms | 0.5.0 |
@@ -1091,6 +1092,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-afa1dd5](#bf-afa1dd5) | Amazon Bedrock `requestMetadata` keeps its keys' insertion order on the wire, as Pi's AWS SDK writes the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-afa1dd5-2](#bf-afa1dd5-2) | `make port-lint` has three more checks: `regexpinfunc` (a constant pattern compiled inside a function)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-afb14da](#bf-afb14da) | fix(chord/nextnode/plugins): the Node host is the child of the Go side, as Pi's forked worker is of its server | PiG's own defect | All platforms | Unreleased |
+| [BF-aff6631](#bf-aff6631) | A code mode script in a loop can no longer freeze the whole process | PiG's own defect | All platforms | Unreleased |
 | [BF-affc944](#bf-affc944) | Bedrock requests that fail with `The pending stream has been canceled` after a stalled HTTP/2 connection are… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-b02876b](#bf-b02876b) | `chord/host`: a link that is already closed when a host accepts or routes to it is no longer kept as a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b0608a9](#bf-b0608a9) | OpenRouter generated-image data URLs are matched exactly as Pi does (`^data:([^;]+);base64,(.+)$`): a URL… | PiG's own defect | All platforms | 0.5.0 |
@@ -1155,6 +1157,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bd3e8ab](#bf-bd3e8ab) | On arm64 and other CPUs with a fused multiply-add, Kimi, Radius and xAI OAuth credentials store the `expires`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd3e8ab-2](#bf-bd3e8ab-2) | On arm64 and other CPUs with a fused multiply-add, the cache-warming expected savings (shown by `/session`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bdb7ad8](#bf-bdb7ad8) | A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-be2920a](#bf-be2920a) | A tool with JSON-schema constrained sampling `strict: "require"` now fails an OpenAI Chat Completions request… | PiG's own defect | All platforms | Unreleased |
 | [BF-be6803c](#bf-be6803c) | The /tree "Summarize branch?" selector and "Custom summarization instructions" editor, the /import… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-bede0f0](#bf-bede0f0) | `pig status` no longer lists the resources of an untrusted project as enabled | PiG's own defect | All platforms | Unreleased |
 | [BF-bede0f0-2](#bf-bede0f0-2) | `pig diagnose` no longer reports the `defaultModel` of an untrusted project, which the session does not use | PiG's own defect | All platforms | Unreleased |
@@ -1450,6 +1453,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-edf1862](#bf-edf1862) | Tool rows and streamed answers no longer highlight the same code again on every redraw | PiG's own defect | All platforms | Unreleased |
 | [BF-ee96daf](#bf-ee96daf) | Unsubscribing an extension's event-bus subscription is now constant time, as deleting from Pi's `Set` of… | PiG's own defect | All platforms | Unreleased |
 | [BF-eeac307](#bf-eeac307) | Anthropic and Bedrock assistant messages write `providerThinkingLevel` after `model`, and write… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-eeee29b](#bf-eeee29b) | `chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still… | PiG's own defect | All platforms | Unreleased |
 | [BF-ef0f95a](#bf-ef0f95a) | OpenCode Zen and OpenCode Go use the `opencode.ai/inference` endpoints, which fixes OpenCode Go Gemini models… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f00bf6c](#bf-f00bf6c) | fix(childwait): call PeekNamedPipe through kernel32 | PiG's own defect | All platforms | Unreleased |
 | [BF-f02269c](#bf-f02269c) | When an extension's `before_provider_request` handler replaces an Anthropic request, or a Codex WebSocket… | PiG's own defect | All platforms | 0.5.0 |
@@ -4598,6 +4602,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `32fe8c41e7` (2026-10-27)
 - **Tests:** `durable/core/driver/docs_core_watches_test.go::TestCoreWatchOpenWaitsBehindTheTransactionHoldingTheLine`
 - **Release note:** The Durable core's Session opens a document watch, a conversation view and the task graph as a job on the Session line, so an attachment made after a commit was queued starts at that commit's value; `watchDoc` and `observeDoc` reject on a closed Session with `Session is closed`; a watch keeps its Session alive while it runs and, once stopped or retired, no earlier incarnation's value; a Session subclass's `report(error, info)` receives the reports of its watches and observers.
+
+### BF-331ab59
+
+**`pig status` reports the agent and project directories by the same resolved path before and after a run…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig status` reports the agent and project directories by the same resolved path before and after a run creates them.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `331ab59c12` (2026-11-03)
+- **Tests:** None recorded.
+- **Release note:** `pig status` reports the agent and project directories by the same resolved path before and after a run creates them. It resolved symbolic links only once a directory existed, so on macOS, where the temporary directory is `/var/...` and resolves to `/private/var/...`, the paths changed between the first run and the next.
 
 ### BF-333229c
 
@@ -16420,6 +16438,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `afb14da124` (2026-10-31)
 - **Tests:** `chord/nextnode/plugins/plugins_build_test.go::TestEsbuildBuildAnInputThatCannotBeReadIsNodesErrorText`, `chord/nextnode/plugins/plugins_endtoend_test.go::TestEndToEndAGoHostThatHasAParentRoutesItsKindToANodeHost`, `chord/nextnode/plugins/plugins_node_start_test.go::TestNodeAStartThatDoesNotConnectInTimeKillsTheProcess`, `chord/nextnode/plugins/plugins_node_start_test.go::TestNodeAbortedStartWhileTheProcessRunsKillsItAndReturnsTheCause`, `chord/nextnode/plugins/plugins_node_start_test.go::TestNodeOlderThanTheMinimumNamesTheRequirementAndTheVersionFound`, `chord/nextnode/plugins/plugins_node_start_test.go::TestNodeThatFailsItsVersionNamesWhatItSaid`, `chord/nextnode/plugins/plugins_node_start_test.go::TestNodeWhoseVersionIsNoVersionIsRefused`, `chord/nextnode/plugins/plugins_node_test.go::TestNodeAFatalReadAfterTheProcessWasWaitedForIsInTheExit` and 6 more in docs/bug-ledger.json
 
+### BF-aff6631
+
+**A code mode script in a loop can no longer freeze the whole process**
+
+- **Source:** PiG's own defect
+- **Symptom:** A code mode script in a loop can no longer freeze the whole process.
+- **Root cause:** Go cannot stop the world for a garbage collection while compiled guest code runs without calling Go, so a script that never reached the JavaScript engine's interrupt check (a native string or regular-expression loop, or a loop in a custom WebAssembly module) blocked every timer, including the one that stops it, and hung small machines (2 CPUs or fewer) for minutes.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `aff6631677` (2026-11-03)
+- **Tests:** `codemode/haltcheck_test.go::TestHaltIsDeliveredToAGuestLoopWhileTheRuntimeStopsTheWorld`, `codemode/haltcheck_test.go::TestInstrumentHaltPollsRepeatedlyAcrossALongLoop`, `codemode/haltcheck_test.go::TestInstrumentHaltTrapsALoopWhenTheGlobalIsSet`
+- **Release note:** A code mode script in a loop can no longer freeze the whole process. Go cannot stop the world for a garbage collection while compiled guest code runs without calling Go, so a script that never reached the JavaScript engine's interrupt check (a native string or regular-expression loop, or a loop in a custom WebAssembly module) blocked every timer, including the one that stops it, and hung small machines (2 CPUs or fewer) for minutes. Every guest loop, including the QuickJS loops that run JavaScript loops and recursion, now reaches Go at least every 1024 iterations, as Pi's worker `terminate()` reaches a runaway script, so the hard stop runs on time. A custom WebAssembly module that recurses without any loop still never reaches Go, as before.
+
 ### BF-affc944
 
 **Bedrock requests that fail with `The pending stream has been canceled` after a stalled HTTP/2 connection are…**
@@ -17303,6 +17335,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `bdb7ad8292` (2026-10-09), `c715193fab` (2026-10-09)
 - **Tests:** `ai/sse_long_line_test.go::TestSSEDecoderAcceptsALineLargerThan32MiB`, `ai/sse_long_line_test.go::TestSSEDecoderBoundsALine`, `ai/sse_long_line_test.go::TestSSELineLimitIsNodesMaxStringLength`
 - **Release note:** A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the stream with `token too long` on the providers that use PiG's SSE decoder. A line is now bounded where Pi's runtime bounds it, at Node's maximum string length (512 MiB), so a server that never ends a line cannot exhaust memory (D134).
+
+### BF-be2920a
+
+**A tool with JSON-schema constrained sampling `strict: "require"` now fails an OpenAI Chat Completions request…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A tool with JSON-schema constrained sampling `strict: "require"` now fails an OpenAI Chat Completions request with `Tool "<name>" requires JSON-schema constrained sampling, but strict tools are unsupported.` when the model's compat does not enable strict mode, as under Pi.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `be2920a2f3` (2026-11-02)
+- **Tests:** `ai/openai_completions_strict_require_test.go::TestCompletionsConvertToolsStrictPreferUnsupportedPlain`, `ai/openai_completions_strict_require_test.go::TestCompletionsConvertToolsStrictRequireUnsupported`, `ai/openai_completions_strict_require_test.go::TestCompletionsStreamStrictRequireUnsupportedFailsBeforeRequest`
+- **Release note:** A tool with JSON-schema constrained sampling `strict: "require"` now fails an OpenAI Chat Completions request with `Tool "<name>" requires JSON-schema constrained sampling, but strict tools are unsupported.` when the model's compat does not enable strict mode, as under Pi. It was sent as an ordinary function tool instead. `prefer` is unchanged.
 
 ### BF-be6803c
 
@@ -21380,6 +21426,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2309604d80` (2026-10-10), `c10cde302d` (2026-10-10), `eeac307095` (2026-10-10), `f29e906cb3` (2026-10-10)
 - **Tests:** `agent/assistant_member_order_oracle_test.go::TestAssistantLateMembersFollowPiCreationOrder`, `ai/constrained_sampling_oracle_test.go::TestConstrainedSamplingMatchesPi`, `ai/openai_request_key_order_oracle_test.go::TestOpenAICompletionsRequestKeysFollowPiAssignmentOrder`, `ai/openai_responses_request_key_order_oracle_test.go::TestOpenAIResponsesRequestKeysFollowPiAssignmentOrder`, `coding/cli/rpc_assistant_member_order_test.go::TestRPCAssistantMessageMembersMatchTheSessionLineOrder`, `coding/cli/rpc_model_type_binary_test.go::TestRPCModelObjectsCarryTheRegistryModelType`, `coding/codemode_session_upstream_test.go::TestUpstreamCodemodeModels`, `coding/session_boundaries_drafts_upstream_test.go::TestUpstreamSessionBoundariesDrafts`
 - **Release note:** Anthropic and Bedrock assistant messages write `providerThinkingLevel` after `model`, and write `cacheWrite1h` and `reasoning` after `cost` in `usage`, as Pi does.
+
+### BF-eeee29b
+
+**`chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still starting no longer leaves a `chord-plugins-*` socket directory in the temp directory; the server removes what the worker's process left once it has ended.
+- **Root cause:** A worker that is shut down, or killed, while its NodeHost is still starting has no host to close: the process ends (os.Exit skips startNode's defer; a kill gives it no chance at all) and its chord-plugins-* socket directory stays in the temp directory. Pi evaluates plugins in-process, so it has no such directory to port; its only temp file, the lock, goes with `process.once("exit")`.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `eeee29b9a8` (2026-11-03)
+- **Tests:** `chord/nextnode/workers/workers_workers_test.go::TestAWorkerKilledWhileItsNodeHostIsStartingLeavesNoSocketDirectory`, `chord/nextnode/workers/workers_workers_test.go::TestCloseLeavesNoSocketDirectoryOfAWorkersNodeHostThatWasStillStarting`
+- **Release note:** `chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still starting no longer leaves a `chord-plugins-*` socket directory in the temp directory; the server removes what the worker's process left once it has ended.
 
 ### BF-ef0f95a
 

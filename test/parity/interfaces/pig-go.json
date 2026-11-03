@@ -95101,6 +95101,17 @@
       "shapeHash": "sha256:fce28be58ea92f4ef675fa373f2dd97b7d1d55f1db44bdff72bd9f224a5782d6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#resolveExistingPrefix",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "resolveExistingPrefix",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string) string"
+      },
+      "shapeHash": "sha256:864bd81dd802775a1a082d7f99fe261c8f3185dea2a3f45bbeae79e27ef91e07"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#resolveLoginProvider",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "resolveLoginProvider",
@@ -332624,6 +332635,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.disableKeyboardProtocolLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ProcessTerminal.disableKeyboardProtocolLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(wait bool)"
+      },
+      "shapeHash": "sha256:0558f32bc44851ac62dcf2bd0945629606bfc33b276bf46b7c3552bf8c4f9b29"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.disableModifyOtherKeys",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ProcessTerminal.disableModifyOtherKeys",
@@ -353370,6 +353392,17 @@
       "shapeHash": "sha256:d4373dd24787e9c6bae892a2b8f1d8c4f7024d40d64fc4038b48c34e5d75bdf1"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#WriteToTerminal",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "WriteToTerminal",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(out io.Writer, data string)"
+      },
+      "shapeHash": "sha256:a291e1e4aa75f521f2c82b837ab8e05fbb62a8a2f44a18ab113fd88691d1a83c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#absoluteListEnd",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "absoluteListEnd",
@@ -367569,6 +367602,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.disableKeyboardProtocolLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "rendererTerminal.disableKeyboardProtocolLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(wait bool)"
+      },
+      "shapeHash": "sha256:0558f32bc44851ac62dcf2bd0945629606bfc33b276bf46b7c3552bf8c4f9b29"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.disableModifyOtherKeys",

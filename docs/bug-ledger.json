@@ -6471,6 +6471,26 @@
       ]
     },
     {
+      "id": "BF-331ab59",
+      "title": "`pig status` reports the agent and project directories by the same resolved path before and after a run…",
+      "symptom": "`pig status` reports the agent and project directories by the same resolved path before and after a run creates them.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig status` reports the agent and project directories by the same resolved path before and after a run creates them. It resolved symbolic links only once a directory existed, so on macOS, where the temporary directory is `/var/...` and resolves to `/private/var/...`, the paths changed between the first run and the next.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "331ab59c12",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-333229c",
       "title": "An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead…",
       "symptom": "An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead of showing a raw API error.",
@@ -30683,6 +30703,30 @@
       ]
     },
     {
+      "id": "BF-aff6631",
+      "title": "A code mode script in a loop can no longer freeze the whole process",
+      "symptom": "A code mode script in a loop can no longer freeze the whole process.",
+      "rootCause": "Go cannot stop the world for a garbage collection while compiled guest code runs without calling Go, so a script that never reached the JavaScript engine's interrupt check (a native string or regular-expression loop, or a loop in a custom WebAssembly module) blocked every timer, including the one that stops it, and hung small machines (2 CPUs or fewer) for minutes.",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A code mode script in a loop can no longer freeze the whole process. Go cannot stop the world for a garbage collection while compiled guest code runs without calling Go, so a script that never reached the JavaScript engine's interrupt check (a native string or regular-expression loop, or a loop in a custom WebAssembly module) blocked every timer, including the one that stops it, and hung small machines (2 CPUs or fewer) for minutes. Every guest loop, including the QuickJS loops that run JavaScript loops and recursion, now reaches Go at least every 1024 iterations, as Pi's worker `terminate()` reaches a runaway script, so the hard stop runs on time. A custom WebAssembly module that recurses without any loop still never reaches Go, as before.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "aff6631677",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "codemode/haltcheck_test.go::TestHaltIsDeliveredToAGuestLoopWhileTheRuntimeStopsTheWorld",
+        "codemode/haltcheck_test.go::TestInstrumentHaltPollsRepeatedlyAcrossALongLoop",
+        "codemode/haltcheck_test.go::TestInstrumentHaltTrapsALoopWhenTheGlobalIsSet"
+      ]
+    },
+    {
       "id": "BF-affc944",
       "title": "Bedrock requests that fail with `The pending stream has been canceled` after a stalled HTTP/2 connection are…",
       "symptom": "Bedrock requests that fail with `The pending stream has been canceled` after a stalled HTTP/2 connection are retried.",
@@ -32531,6 +32575,30 @@
         "ai/sse_long_line_test.go::TestSSEDecoderAcceptsALineLargerThan32MiB",
         "ai/sse_long_line_test.go::TestSSEDecoderBoundsALine",
         "ai/sse_long_line_test.go::TestSSELineLimitIsNodesMaxStringLength"
+      ]
+    },
+    {
+      "id": "BF-be2920a",
+      "title": "A tool with JSON-schema constrained sampling `strict: \"require\"` now fails an OpenAI Chat Completions request…",
+      "symptom": "A tool with JSON-schema constrained sampling `strict: \"require\"` now fails an OpenAI Chat Completions request with `Tool \"\u003cname\u003e\" requires JSON-schema constrained sampling, but strict tools are unsupported.` when the model's compat does not enable strict mode, as under Pi.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A tool with JSON-schema constrained sampling `strict: \"require\"` now fails an OpenAI Chat Completions request with `Tool \"\u003cname\u003e\" requires JSON-schema constrained sampling, but strict tools are unsupported.` when the model's compat does not enable strict mode, as under Pi. It was sent as an ordinary function tool instead. `prefer` is unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "be2920a2f3",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "ai/openai_completions_strict_require_test.go::TestCompletionsConvertToolsStrictPreferUnsupportedPlain",
+        "ai/openai_completions_strict_require_test.go::TestCompletionsConvertToolsStrictRequireUnsupported",
+        "ai/openai_completions_strict_require_test.go::TestCompletionsStreamStrictRequireUnsupportedFailsBeforeRequest"
       ]
     },
     {
@@ -42131,6 +42199,29 @@
         "coding/cli/rpc_model_type_binary_test.go::TestRPCModelObjectsCarryTheRegistryModelType",
         "coding/codemode_session_upstream_test.go::TestUpstreamCodemodeModels",
         "coding/session_boundaries_drafts_upstream_test.go::TestUpstreamSessionBoundariesDrafts"
+      ]
+    },
+    {
+      "id": "BF-eeee29b",
+      "title": "`chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still…",
+      "symptom": "`chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still starting no longer leaves a `chord-plugins-*` socket directory in the temp directory; the server removes what the worker's process left once it has ended.",
+      "rootCause": "A worker that is shut down, or killed, while its NodeHost is still starting has no host to close: the process ends (os.Exit skips startNode's defer; a kill gives it no chance at all) and its chord-plugins-* socket directory stays in the temp directory. Pi evaluates plugins in-process, so it has no such directory to port; its only temp file, the lock, goes with `process.once(\"exit\")`.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`chord/nextnode/workers`: a worker that ended (was stopped or killed) while its Node plugin host was still starting no longer leaves a `chord-plugins-*` socket directory in the temp directory; the server removes what the worker's process left once it has ended.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "eeee29b9a8",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_workers_test.go::TestAWorkerKilledWhileItsNodeHostIsStartingLeavesNoSocketDirectory",
+        "chord/nextnode/workers/workers_workers_test.go::TestCloseLeavesNoSocketDirectoryOfAWorkersNodeHostThatWasStillStarting"
       ]
     },
     {
