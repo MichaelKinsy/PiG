@@ -638,7 +638,7 @@ func TestHostLinkPartsCompressionAndLimits(t *testing.T) {
 				addNote(t, hosts.Server, "S1", strings.Repeat("x", 200_000))
 				addNote(t, hosts.Server, "S2", "small")
 				_, err := hosts.Client.Get(background, Notes, jsonObject("session", "S1"), GetOptions{})
-				chordErr, ok := data.IsChordErrorCode(err, data.CodeTooLarge)
+				chordErr, ok := data.IsChordError(err, data.CodeTooLarge)
 				if !ok || chordErr.Reason != data.ReasonPart {
 					t.Fatalf("get = %v, want too_large/part", err)
 				}

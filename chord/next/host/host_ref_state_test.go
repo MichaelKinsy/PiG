@@ -271,7 +271,7 @@ func TestRefStateAWatchInsideACommitIsRefused(t *testing.T) {
 	}, chordctx.Background()); err != nil {
 		t.Fatalf("Commit: %v", err)
 	}
-	if chordErr, ok := data.IsChordErrorCode(watchErr, data.CodeInvalid); !ok || chordErr.Reason != data.ReasonReentrant {
+	if chordErr, ok := data.IsChordError(watchErr, data.CodeInvalid); !ok || chordErr.Reason != data.ReasonReentrant {
 		t.Fatalf("watch inside a commit = %v, want invalid/reentrant", watchErr)
 	}
 }

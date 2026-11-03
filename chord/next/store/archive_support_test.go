@@ -173,7 +173,7 @@ func partTexts(t testing.TB, parts []ArchivePart) []string {
 
 // archiveIsCode reports whether err is a ChordError of code.
 func archiveIsCode(err error, code data.ChordErrorCode) bool {
-	_, ok := data.IsChordErrorCode(err, code)
+	_, ok := data.IsChordError(err, code)
 	return ok
 }
 

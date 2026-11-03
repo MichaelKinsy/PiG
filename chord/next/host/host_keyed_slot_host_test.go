@@ -276,7 +276,7 @@ func TestKeyedSlotColdKeyedLoadsARetirementCutByItsAttemptsSealWhileItFindsTheDo
 	run.Retry()
 	release()
 	err := receive(t, retired)
-	if chordErr, ok := data.IsChordErrorCode(err, data.CodeReleased); !ok {
+	if chordErr, ok := data.IsChordError(err, data.CodeReleased); !ok {
 		t.Fatalf("retire = %v (%v), want a released rejection", err, chordErr)
 	}
 	turn(run.Host)
@@ -324,7 +324,7 @@ func TestKeyedSlotColdKeyedLoadsAKeyWhoseMigrateFailsFailsItsOwnerBrokenTheGetRe
 	var notes handles
 	run := persistedOver(t, chordStore, v2, &notes)
 	_, err := notes.at(0).Get(background, "a")
-	if _, ok := data.IsChordErrorCode(err, data.CodeUnavailable); !ok || !hasText(err.Error(), "cannot migrate") {
+	if _, ok := data.IsChordError(err, data.CodeUnavailable); !ok || !hasText(err.Error(), "cannot migrate") {
 		t.Fatalf("get = %v, want an unavailable rejection containing cannot migrate", err)
 	}
 	failedBroken(t, run)

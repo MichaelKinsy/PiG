@@ -275,7 +275,7 @@ func (c *consumerSide) bound(holds []link.BoundEntry) error {
 		}
 		adopt, err := holder.prepareBound(entry, c.link)
 		if err != nil {
-			tooLarge, ok := data.IsChordErrorCode(err, data.CodeTooLarge)
+			tooLarge, ok := data.IsChordError(err, data.CodeTooLarge)
 			if !ok {
 				return err
 			}
@@ -316,7 +316,7 @@ func (c *consumerSide) state(holds []link.StateEntry) error {
 		}
 		adopt, err := holder.prepare(entry, c.link)
 		if err != nil {
-			tooLarge, ok := data.IsChordErrorCode(err, data.CodeTooLarge)
+			tooLarge, ok := data.IsChordError(err, data.CodeTooLarge)
 			if !ok {
 				return err
 			}
@@ -423,7 +423,7 @@ func (c *consumerSide) reply(id int, reply link.Message, value link.Part, segmen
 		}
 		return nil, nil
 	}
-	if _, ok := data.IsChordErrorCode(err, data.CodeTooLarge); ok {
+	if _, ok := data.IsChordError(err, data.CodeTooLarge); ok {
 		call.reject(err)
 		return nil, nil
 	}

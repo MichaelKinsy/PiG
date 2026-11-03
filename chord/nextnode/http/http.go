@@ -477,7 +477,7 @@ func (c *HttpComponent) failure(err error, match *RouteMatch) HttpResponse {
 		return HttpResponse{Kind: KindError, Status: failure.Status}
 	}
 	// Chord refused the caller (an anonymous scope's remote object, a route's `authorize`): no failure of the route.
-	if _, ok := data.IsChordErrorCode(by.cause, data.CodeForbidden); ok {
+	if _, ok := data.IsChordError(by.cause, data.CodeForbidden); ok {
 		return HttpResponse{Kind: KindError, Status: 403}
 	}
 	if by.route {

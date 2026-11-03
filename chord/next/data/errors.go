@@ -118,6 +118,9 @@ func NewChordError(init ChordErrorInit, cause error) *ChordError {
 // Error returns the message.
 func (err *ChordError) Error() string { return err.Message }
 
+// Name is upstream's `name`, "ChordError" (D103: the inherited name is the error type's Name method).
+func (*ChordError) Name() string { return "ChordError" }
+
 // Unwrap returns the cause.
 func (err *ChordError) Unwrap() error { return err.Cause }
 
@@ -143,17 +146,12 @@ func (err *ChordError) AppendStringify(dst []byte) ([]byte, error) {
 	return jsstring.AppendMarshalJSON(dst, err.ToJSON())
 }
 
-// IsChordError reports whether err is a ChordError and returns it. It is upstream's `instanceof`: an error that wraps
-// a ChordError (with %w, or as Broken's cause) is not one; AsChordError and OpenFailure read the causes they own.
-func IsChordError(err error) (*ChordError, bool) {
+// IsChordError is upstream's `isChordError(error, code?)`: whether err is a ChordError, with the given code when one is
+// passed, and the ChordError itself. It is upstream's `instanceof`: an error that wraps a ChordError (with %w, or as
+// Broken's cause) is not one; AsChordError and OpenFailure read the causes they own.
+func IsChordError(err error, code ...ChordErrorCode) (*ChordError, bool) {
 	chordErr, ok := err.(*ChordError) //nolint:errorlint // upstream's instanceof: a wrapper of a ChordError is not one
-	return chordErr, ok && chordErr != nil
-}
-
-// IsChordErrorCode is IsChordError with the given code.
-func IsChordErrorCode(err error, code ChordErrorCode) (*ChordError, bool) {
-	chordErr, ok := IsChordError(err)
-	if !ok || chordErr.Code != code {
+	if !ok || chordErr == nil || (len(code) > 0 && chordErr.Code != code[0]) {
 		return nil, false
 	}
 	return chordErr, true
@@ -179,6 +177,9 @@ func NewPluginError(code, message string, details ...delta.JsonValue) *PluginErr
 
 // Error returns the message.
 func (err *PluginError) Error() string { return err.Message }
+
+// Name is upstream's `name`, "PluginError" (D103: the inherited name is the error type's Name method).
+func (*PluginError) Name() string { return "PluginError" }
 
 // Invalid returns an `invalid` error with the given reason; details is optional.
 func Invalid(reason ChordErrorReason, message string, details ...delta.JsonValue) *ChordError {

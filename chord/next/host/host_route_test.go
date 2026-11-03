@@ -233,7 +233,7 @@ func TestRouteAdmissionFailsAHoldBrokenInvalidHostAddressForAnAddressWhoseParams
 		}))
 		r := relay(t, relayedOptions{})
 		_, err := r.Tab.Get(background, misplaced, jsonObject("n", float64(1)), GetOptions{})
-		chordErr, ok := data.IsChordErrorCode(err, data.CodeInvalid)
+		chordErr, ok := data.IsChordError(err, data.CodeInvalid)
 		if !ok || chordErr.Reason != data.ReasonHostAddress {
 			t.Fatalf("get = %v, want invalid/host_address", err)
 		}

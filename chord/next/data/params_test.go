@@ -64,7 +64,7 @@ func refusal(t *testing.T, contract *contracts.Contract, raw any) *checkFailure 
 	if err == nil {
 		t.Fatal("expected a refusal")
 	}
-	chordErr, ok := data.IsChordErrorCode(err, data.CodeInvalid)
+	chordErr, ok := data.IsChordError(err, data.CodeInvalid)
 	if !ok {
 		t.Fatalf("unexpected error %v", err)
 	}

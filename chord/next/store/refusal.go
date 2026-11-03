@@ -35,10 +35,10 @@ const sqliteConstraintCheck = 275
 // RefusalOf is the refusal behind err, a store commit's rejection; nil when it is the store's own (`released` at
 // admission or after close, `unavailable/storage_failed` once stopped), which the owner rethrows as it is.
 func RefusalOf(err error, label string) *Refusal {
-	if _, released := data.IsChordErrorCode(err, data.CodeReleased); released {
+	if _, released := data.IsChordError(err, data.CodeReleased); released {
 		return nil
 	}
-	if chordErr, ok := data.IsChordErrorCode(err, data.CodeUnavailable); ok && chordErr.Reason == data.ReasonStorageFailed {
+	if chordErr, ok := data.IsChordError(err, data.CodeUnavailable); ok && chordErr.Reason == data.ReasonStorageFailed {
 		return nil
 	}
 	message := err.Error()

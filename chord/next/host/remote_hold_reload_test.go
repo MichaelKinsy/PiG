@@ -215,7 +215,7 @@ func TestHoldsAcrossAReload(t *testing.T) {
 		rhLinks(t, s)
 		rhFailedState(t, shown, data.CodeContractMismatch)
 		_, err := shown.Call("bump", nil, background)
-		if _, ok := data.IsChordErrorCode(err, data.CodeContractMismatch); !ok {
+		if _, ok := data.IsChordError(err, data.CodeContractMismatch); !ok {
 			t.Fatalf("bump error = %v, want contract_mismatch", err)
 		}
 		rhReload(t, s.Server, func(h FacetHost) error { return rhServeShownV2(h, "v3", true) })

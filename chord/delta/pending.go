@@ -12,9 +12,19 @@ const MaxPendingOps = 10_000
 
 // PendingTake is what PendingOps.Take hands over: the pending ops, folded, or Replace after an overflow, which the owner of the queue turns into a root replacement with the current value.
 type PendingTake struct {
-	Replace bool
-	Ops     []Op
+	Kind PendingTakeKind
+	Ops  []Op // Kind PendingTakeOps
 }
+
+// PendingTakeKind is the `kind` of a PendingTake.
+type PendingTakeKind string
+
+const (
+	// PendingTakeOps is a take of the pending ops.
+	PendingTakeOps PendingTakeKind = "ops"
+	// PendingTakeReplace is a take after an overflow: a root replacement with the current value.
+	PendingTakeReplace PendingTakeKind = "replace"
+)
 
 type pendingKind uint8
 
@@ -83,9 +93,9 @@ func (pending *PendingOps) Take() PendingTake {
 	pending.kind, pending.ops, pending.leaves = pendingEmpty, nil, nil
 	pending.tails.reset()
 	if kind == pendingReplace {
-		return PendingTake{Replace: true}
+		return PendingTake{Kind: PendingTakeReplace}
 	}
-	return PendingTake{Ops: ops}
+	return PendingTake{Kind: PendingTakeOps, Ops: ops}
 }
 
 // fold folds ops into the queue; false once it overflowed into replace.

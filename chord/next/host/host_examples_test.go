@@ -196,7 +196,7 @@ func exOpenHost(t *testing.T, options loadedOptions, setup func(host FacetHost, 
 // exCode asserts that err is a ChordError of code (and reason when not empty).
 func exCode(t testing.TB, err error, code data.ChordErrorCode, reason data.ChordErrorReason) *data.ChordError {
 	t.Helper()
-	chordErr, ok := data.IsChordErrorCode(err, code)
+	chordErr, ok := data.IsChordError(err, code)
 	if !ok {
 		t.Fatalf("err = %v, want a ChordError %s/%s", err, code, reason)
 	}

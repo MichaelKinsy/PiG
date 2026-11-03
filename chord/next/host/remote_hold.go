@@ -208,7 +208,7 @@ func (h *hold) start(request holdRequest) {
 		}
 		if err != nil {
 			// Past its limits: the hold's `too_large/part`. No JSON: a protocol error, reported, and the link closes.
-			if _, tooLarge := data.IsChordErrorCode(err, data.CodeTooLarge); tooLarge {
+			if _, tooLarge := data.IsChordError(err, data.CodeTooLarge); tooLarge {
 				failure = err
 				return
 			}
@@ -542,7 +542,7 @@ func (h *hold) pendingEntry(ctx context.Context) link.StateEntry {
 		}
 		taken := member.pending.Take()
 		ops := taken.Ops
-		if taken.Replace {
+		if taken.Kind == delta.PendingTakeReplace {
 			value, _ := member.source.Value()
 			ops = []delta.Op{{"r", value}}
 		}

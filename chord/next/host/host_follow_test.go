@@ -351,7 +351,7 @@ func TestFollowActivationAnAbsentAddressFailsAndAFailedActivationDetachesWhatAtt
 		t.Fatalf("attach a: %v", err)
 	}
 	err := right.source.attach(memberBackground)
-	chordErr, ok := data.IsChordErrorCode(err, data.CodeUnavailable)
+	chordErr, ok := data.IsChordError(err, data.CodeUnavailable)
 	if !ok || chordErr.Message != "app.view(): follow #2: the followed address is absent" {
 		t.Fatalf("attach b = %v, want unavailable: the followed address is absent", err)
 	}
@@ -367,7 +367,7 @@ func TestFollowValueBeforeItAttachedIsNotReady(t *testing.T) {
 	h := newMemberHarness(t)
 	left := h.follow(newFollowRuntime(h.loop), "app.view(): follow #1")
 	_, err := left.source.Value()
-	chordErr, ok := data.IsChordErrorCode(err, data.CodeNotReady)
+	chordErr, ok := data.IsChordError(err, data.CodeNotReady)
 	if !ok || chordErr.Message != "app.view(): follow #1: a followed source read before it attached" {
 		t.Fatalf("value = %v, want not_ready", err)
 	}

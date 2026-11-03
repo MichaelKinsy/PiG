@@ -211,7 +211,7 @@ func TestOlderReadersWithoutAValueMappingAndForAReaderNewerThanTheProviderParkRe
 	}))
 	for _, registry := range []registries.Registry[any, any]{rvSumV1, rvSumV3} {
 		_, err := host.Registry(background, registry, rvWithin(5*time.Millisecond))
-		if chordErr, ok := data.IsChordErrorCode(err, data.CodeContractMismatch); !ok {
+		if chordErr, ok := data.IsChordError(err, data.CodeContractMismatch); !ok {
 			t.Fatalf("host.registry(v%d) = %v, want contract_mismatch (%v)", registry.Version, err, chordErr)
 		}
 	}
@@ -360,7 +360,7 @@ func TestReadersActivateOnceTheRegistryHasAValueAReaderOfARegistryNobodyServesPa
 		t.Fatalf("state = %+v (%+v), want failed waiting: %s", state, state.Cause.Error, wantMessage)
 	}
 	_, err := host.Registry(background, rvSum, rvWithin(5*time.Millisecond))
-	if chordErr, ok := data.IsChordErrorCode(err, data.CodeUnavailable); !ok || chordErr.Reason != data.ReasonUndeclared {
+	if chordErr, ok := data.IsChordError(err, data.CodeUnavailable); !ok || chordErr.Reason != data.ReasonUndeclared {
 		t.Fatalf("host.registry = %v, want unavailable/undeclared", err)
 	}
 	must(t, host.Close(background))

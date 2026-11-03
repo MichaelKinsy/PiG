@@ -316,7 +316,7 @@ func TestReferenceSourceAMemberTheNewAttemptsVariantLacksFailsItsWatchGetsOneFai
 	if len(got) != 1 || got[0].Kind != chord.WatchCallFailed {
 		t.Fatalf("calls = %#v, want one failure call", got)
 	}
-	if err, ok := data.IsChordErrorCode(got[0].Error, data.CodeInvalid); !ok || err.Reason != data.ReasonMember {
+	if err, ok := data.IsChordError(got[0].Error, data.CodeInvalid); !ok || err.Reason != data.ReasonMember {
 		t.Fatalf("failure = %v, want invalid/member", got[0].Error)
 	}
 	if _, err := h.value(m); err == nil || err.Error() != `app.two (variant view) has no state member "n"` {
@@ -346,7 +346,7 @@ func TestReferenceSourceAnEndedObjectsMembersMarkTheDerivesOverThemAndEndTheirWa
 	released := data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonEnded, Message: "app.paged(1): ended"}, nil)
 	h.within(t, func() { m.end(released) })
 	_, err := h.value(twice)
-	if _, ok := data.IsChordErrorCode(err, data.CodeReleased); !ok {
+	if _, ok := data.IsChordError(err, data.CodeReleased); !ok {
 		t.Fatalf("read = %v, want released", err)
 	}
 	<-watch.Closed()
@@ -1228,7 +1228,7 @@ func TestHostReferenceSourceAnEndedObjectsMembersMarkTheDerivesOverThemAConsumer
 	})
 	if _, err := reader.Member("twice").Value(); err == nil {
 		t.Fatalf("twice read after the object ended, want it to throw released")
-	} else if chordErr, ok := data.IsChordErrorCode(err, data.CodeReleased); !ok || chordErr == nil {
+	} else if chordErr, ok := data.IsChordError(err, data.CodeReleased); !ok || chordErr == nil {
 		t.Fatalf("twice = %v, want released", err)
 	}
 	must(t, host.Close(background))

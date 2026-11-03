@@ -201,7 +201,7 @@ func TestOpeningAPart(t *testing.T) {
 			t.Fatalf("bomb bytes = %d", len(bomb.Bytes))
 		}
 		_, err := link.OpenPart(bomb, link.Limits{Part: 1_000_000, Decoded: 1024 * 1024}, nextnode.NodeCompression, meter.Context)
-		chordErr, ok := data.IsChordErrorCode(err, data.CodeTooLarge)
+		chordErr, ok := data.IsChordError(err, data.CodeTooLarge)
 		if !ok || chordErr.Reason != data.ReasonPart {
 			t.Fatalf("error = %v", err)
 		}
@@ -211,7 +211,7 @@ func TestOpeningAPart(t *testing.T) {
 		meter := nexttest.Metered(t)
 		part := deflated(t, []byte(jsonOf(100_000)))
 		_, err := link.OpenPart(part, link.Limits{Part: 10, Decoded: 1_000_000}, nextnode.NodeCompression, meter.Context)
-		if _, ok := data.IsChordErrorCode(err, data.CodeTooLarge); !ok {
+		if _, ok := data.IsChordError(err, data.CodeTooLarge); !ok {
 			t.Fatalf("error = %v", err)
 		}
 		requireErrorContains(t, err, "wire limit")

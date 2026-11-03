@@ -1618,7 +1618,7 @@ func putContentWrite(writes []durable.StorageWrite, id durable.DocumentId, repla
 func storeHeld(hold *heldDocument, ops []durable.Op, value durable.JsonObject, version int) (durable.DocumentContent, []durable.Op) {
 	hold.pending.Push(ops)
 	taken := hold.pending.Take()
-	if taken.Replace {
+	if taken.Kind == delta.PendingTakeReplace {
 		return durable.DocumentContent{Version: version, Kind: durable.ContentBase, Value: value}, []durable.Op{{"r", value}}
 	}
 	if hold.base {

@@ -30,7 +30,7 @@ import (
 
 func requireCode(t *testing.T, err error, code data.ChordErrorCode, reason data.ChordErrorReason) {
 	t.Helper()
-	chordErr, ok := data.IsChordErrorCode(err, code)
+	chordErr, ok := data.IsChordError(err, code)
 	if !ok || chordErr.Reason != reason {
 		t.Fatalf("error = %#v, want a ChordError %s/%s", err, code, reason)
 	}

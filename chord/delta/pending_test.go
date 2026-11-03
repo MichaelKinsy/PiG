@@ -343,7 +343,7 @@ func checkPendingSequence(t *testing.T, sequence pendingSequence, r *pendingRand
 	decoded := roundTripPending(t, encoder, decoder, nil, []Op{{"r", copyTrusted(sequence.initial)}})
 	for _, take := range takes {
 		batch := take.batch.Ops
-		if take.batch.Replace {
+		if take.batch.Kind == PendingTakeReplace {
 			batch = []Op{{"r", take.value}}
 		}
 		folded += len(batch)
@@ -450,7 +450,7 @@ func foldOneByOne(t *testing.T, initial any, ops []Op) []Op {
 		queue.Push([]Op{op})
 	}
 	batch := queue.Take()
-	if batch.Replace {
+	if batch.Kind == PendingTakeReplace {
 		t.Fatal("unexpected overflow")
 	}
 	expected := mustApplyImmutable(t, clone(t, initial), ops)
@@ -563,17 +563,17 @@ func TestPendingOpsCapKeepsMaxPendingOpsPendingOpsAndReplacesPastThem(t *testing
 	var queue PendingOps
 	queue.Push(nil)
 	queue.Push(distinctPendingSets(MaxPendingOps, 0))
-	if exact := queue.Take(); exact.Replace || len(exact.Ops) != MaxPendingOps {
-		t.Fatalf("exact take %v ops, replace %v", len(exact.Ops), exact.Replace)
+	if exact := queue.Take(); exact.Kind == PendingTakeReplace || len(exact.Ops) != MaxPendingOps {
+		t.Fatalf("exact take %v ops, replace %v", len(exact.Ops), exact.Kind == PendingTakeReplace)
 	}
 	queue.Push(distinctPendingSets(MaxPendingOps/2, 0))
 	queue.Push(distinctPendingSets(MaxPendingOps/2, MaxPendingOps/2))
-	if full := queue.Take(); full.Replace || len(full.Ops) != MaxPendingOps {
-		t.Fatalf("full take %v ops, replace %v", len(full.Ops), full.Replace)
+	if full := queue.Take(); full.Kind == PendingTakeReplace || len(full.Ops) != MaxPendingOps {
+		t.Fatalf("full take %v ops, replace %v", len(full.Ops), full.Kind == PendingTakeReplace)
 	}
 	queue.Push(distinctPendingSets(MaxPendingOps/2, 0))
 	queue.Push(distinctPendingSets(MaxPendingOps/2+1, MaxPendingOps/2))
-	if over := queue.Take(); !over.Replace {
+	if over := queue.Take(); over.Kind != PendingTakeReplace {
 		t.Fatalf("over take = %v, want replace", over)
 	}
 }
@@ -584,8 +584,8 @@ func TestPendingOpsCapCountsOpsAfterFolding(t *testing.T) {
 		queue.Push([]Op{{"a", []any{"text"}, "x"}})
 	}
 	taken := queue.Take()
-	if want := []Op{{"a", []any{"text"}, strings.Repeat("x", 3*MaxPendingOps)}}; taken.Replace || !reflect.DeepEqual(taken.Ops, want) {
-		t.Fatalf("take = %d ops, replace %v", len(taken.Ops), taken.Replace)
+	if want := []Op{{"a", []any{"text"}, strings.Repeat("x", 3*MaxPendingOps)}}; taken.Kind == PendingTakeReplace || !reflect.DeepEqual(taken.Ops, want) {
+		t.Fatalf("take = %d ops, replace %v", len(taken.Ops), taken.Kind == PendingTakeReplace)
 	}
 }
 
@@ -594,10 +594,10 @@ func TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWi
 	queue.Push(distinctPendingSets(1, 0))
 	queue.Push(distinctPendingSets(MaxPendingOps+1, 0))
 	queue.Push(distinctPendingSets(3, 0))
-	if taken := queue.Take(); !taken.Replace {
+	if taken := queue.Take(); taken.Kind != PendingTakeReplace {
 		t.Fatalf("take = %v, want replace", taken)
 	}
-	if taken := queue.Take(); taken.Replace || len(taken.Ops) != 0 {
+	if taken := queue.Take(); taken.Kind == PendingTakeReplace || len(taken.Ops) != 0 {
 		t.Fatalf("second take = %v, want nothing", taken)
 	}
 
@@ -605,13 +605,13 @@ func TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWi
 	queue.Push(distinctPendingSets(MaxPendingOps+1, 0))
 	fresh := []Op{{"r", chordjson.ObjectOf("k", []any{float64(0)})}}
 	queue.Push(fresh)
-	if taken := queue.Take(); taken.Replace || &taken.Ops[0] != &fresh[0] {
+	if taken := queue.Take(); taken.Kind == PendingTakeReplace || &taken.Ops[0] != &fresh[0] {
 		t.Fatalf("take = %v, want the fresh batch by identity", taken)
 	}
 	queue.Push(distinctPendingSets(1, 0))
 	queue.Push(fresh)
 	queue.Push([]Op{{"s", []any{"n"}, float64(1)}})
-	if taken := queue.Take(); taken.Replace || !reflect.DeepEqual(taken.Ops, append(slices.Clone(fresh), Op{"s", []any{"n"}, float64(1)})) {
+	if taken := queue.Take(); taken.Kind == PendingTakeReplace || !reflect.DeepEqual(taken.Ops, append(slices.Clone(fresh), Op{"s", []any{"n"}, float64(1)})) {
 		t.Fatalf("take = %v", taken)
 	}
 }
@@ -620,12 +620,12 @@ func TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize(t *testing.T) {
 	var queue PendingOps
 	batch := distinctPendingSets(MaxPendingOps+1, 0)
 	queue.Push(batch)
-	if taken := queue.Take(); taken.Replace || &taken.Ops[0] != &batch[0] {
+	if taken := queue.Take(); taken.Kind == PendingTakeReplace || &taken.Ops[0] != &batch[0] {
 		t.Fatal("the batch was not handed over as received")
 	}
 	queue.Push(batch)
 	queue.Push([]Op{{"s", []any{"n"}, float64(1)}})
-	if taken := queue.Take(); !taken.Replace {
+	if taken := queue.Take(); taken.Kind != PendingTakeReplace {
 		t.Fatalf("take = %v, want replace", taken)
 	}
 }
@@ -669,7 +669,7 @@ func TestPendingOpsSizeCountsPendingOpsAfterFoldingTheReplacementOnceOverflowedA
 	expectSize(MaxPendingOps)
 	queue.Push([]Op{{"s", []any{"n"}, float64(1)}})
 	expectSize(1)
-	if taken := queue.Take(); !taken.Replace {
+	if taken := queue.Take(); taken.Kind != PendingTakeReplace {
 		t.Fatalf("take = %v", taken)
 	}
 	expectSize(0)
@@ -682,8 +682,8 @@ func TestPendingOpsKeepsOneOpPerLeafPathHoweverManyCommitsWriteIt(t *testing.T) 
 	}
 	taken := queue.Take()
 	want := []Op{{"a", []any{"entries", 0, "text"}, strings.Repeat("tok ", 50_000)}, {"s", []any{"meta", "tokens"}, float64(49_999)}}
-	if taken.Replace || !reflect.DeepEqual(taken.Ops, want) {
-		t.Fatalf("take = %d ops, replace %v", len(taken.Ops), taken.Replace)
+	if taken.Kind == PendingTakeReplace || !reflect.DeepEqual(taken.Ops, want) {
+		t.Fatalf("take = %d ops, replace %v", len(taken.Ops), taken.Kind == PendingTakeReplace)
 	}
 }
 

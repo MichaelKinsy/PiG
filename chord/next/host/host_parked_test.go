@@ -121,7 +121,7 @@ func parkedResultOf(t *testing.T, result *parkedCallResult) (any, error) {
 
 func parkTimeoutOf(t *testing.T, err error) *data.ChordError {
 	t.Helper()
-	chordErr, ok := data.IsChordErrorCode(err, data.CodeUnavailable)
+	chordErr, ok := data.IsChordError(err, data.CodeUnavailable)
 	if !ok || chordErr.Reason != data.ReasonParkTimeout {
 		t.Fatalf("error = %v, want unavailable/park_timeout", err)
 	}

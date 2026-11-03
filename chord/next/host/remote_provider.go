@@ -527,7 +527,7 @@ func (p *providerSide) call(message *link.CallMessage) (*link.Handling, error) {
 	if part != nil {
 		json, err := p.link.openPart(part, served.limits, p.link.context)
 		if err != nil {
-			if tooLarge, ok := data.IsChordErrorCode(err, data.CodeTooLarge); ok {
+			if tooLarge, ok := data.IsChordError(err, data.CodeTooLarge); ok {
 				p.refuse(message.Call, tooLarge)
 				return nil, nil
 			}

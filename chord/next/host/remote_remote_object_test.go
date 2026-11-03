@@ -797,7 +797,7 @@ func TestRemoteObjectReHoldsAfterADrop(t *testing.T) {
 			rhWaitCalls(t, labels, 1)
 			vanished := func(call chord.WatchCall[delta.JsonValue]) {
 				t.Helper()
-				chordErr, ok := data.IsChordErrorCode(call.Error, data.CodeInvalid)
+				chordErr, ok := data.IsChordError(call.Error, data.CodeInvalid)
 				if call.Kind != chord.WatchCallFailed || !ok || chordErr.Reason != data.ReasonMember {
 					t.Fatalf("call = %+v, want failed invalid/member", call)
 				}

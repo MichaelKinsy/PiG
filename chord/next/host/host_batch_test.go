@@ -136,7 +136,7 @@ func batchAttemptsOf(ctx context.Context) func(host Host, self *Reference, chang
 func requireAllReentrant(t *testing.T, attempts batchAttempts) {
 	t.Helper()
 	for operation, err := range attempts {
-		if chordErr, ok := data.IsChordErrorCode(err, data.CodeInvalid); !ok || chordErr.Reason != data.ReasonReentrant {
+		if chordErr, ok := data.IsChordError(err, data.CodeInvalid); !ok || chordErr.Reason != data.ReasonReentrant {
 			t.Errorf("%s: err = %v, want invalid/reentrant", operation, err)
 		}
 	}

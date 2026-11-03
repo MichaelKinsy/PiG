@@ -42,7 +42,7 @@ func membersHeld(t *testing.T) *Reference {
 // wantMembersNotServed fails the test unless err is the failure a read of membersHeld's member fails with.
 func wantMembersNotServed(t *testing.T, err error) {
 	t.Helper()
-	chordErr, ok := data.IsChordErrorCode(err, data.CodeUnavailable)
+	chordErr, ok := data.IsChordError(err, data.CodeUnavailable)
 	if !ok || chordErr == nil {
 		t.Fatalf("error = %v, want the not-served failure of the held reference", err)
 	}

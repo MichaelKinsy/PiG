@@ -220,7 +220,7 @@ func TestWritable(t *testing.T) {
 		released := data.NewChordError(data.ChordErrorInit{Code: data.CodeReleased, Reason: data.ReasonClosed, Message: "app.counter: ended"}, nil)
 		c.writable.Detach(released)
 		err := c.writable.Set(9)
-		if chordErr, ok := data.IsChordErrorCode(err, data.CodeReleased); !ok || chordErr != released {
+		if chordErr, ok := data.IsChordError(err, data.CodeReleased); !ok || chordErr != released {
 			t.Fatalf("Set = %v, want released", err)
 		}
 	})

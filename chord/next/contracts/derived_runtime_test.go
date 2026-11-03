@@ -104,7 +104,7 @@ func TestDerivedShapes(t *testing.T) {
 			"an extra field":      delta.JsonObjectOf("session", "s", "page", 1.0, "extra", 1.0),
 		} {
 			_, err := data.CheckParams(notes, bad, ctx)
-			if chordErr, ok := data.IsChordErrorCode(err, data.CodeInvalid); !ok || chordErr.Reason != data.ReasonParams {
+			if chordErr, ok := data.IsChordError(err, data.CodeInvalid); !ok || chordErr.Reason != data.ReasonParams {
 				t.Errorf("%s: error = %v, want invalid/params", name, err)
 			}
 		}
@@ -137,7 +137,7 @@ func TestHostAddressParams(t *testing.T) {
 		address, err := dataOf(t, contract).HostAddress(delta.JsonObjectOf("session", "s"))
 		wantNoError(t, err)
 		_, err = data.CheckAddress("session", kindParams, address.Params, chordctx.Background())
-		if chordErr, ok := data.IsChordErrorCode(err, data.CodeInvalid); !ok || chordErr.Reason != data.ReasonHostAddress {
+		if chordErr, ok := data.IsChordError(err, data.CodeInvalid); !ok || chordErr.Reason != data.ReasonHostAddress {
 			t.Fatalf("error = %v, want invalid/host_address", err)
 		}
 		// The declared param routes.

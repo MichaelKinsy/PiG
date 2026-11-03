@@ -27,7 +27,7 @@ func TestErrorsCrossAsMessageCodeAndReasonNeverAStackOrCauseComeBackAsChordError
 		t.Fatalf("crossed(text) = %+v", got)
 	}
 	back := uncrossed(CrossedError{Message: "gone", Code: "released", Reason: "closed"})
-	released, ok := data.IsChordErrorCode(back, data.CodeReleased)
+	released, ok := data.IsChordError(back, data.CodeReleased)
 	if !ok || released.Reason != data.ReasonClosed {
 		t.Fatalf("uncrossed = %#v, want a released/closed ChordError", back)
 	}

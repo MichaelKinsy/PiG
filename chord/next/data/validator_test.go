@@ -78,7 +78,7 @@ func failure(t *testing.T, value any) *checkFailure {
 	if err == nil {
 		return nil
 	}
-	if chordErr, ok := data.IsChordErrorCode(err, data.CodeInvalid); ok {
+	if chordErr, ok := data.IsChordError(err, data.CodeInvalid); ok {
 		return &checkFailure{Reason: chordErr.Reason, Message: chordErr.Message, Details: chordErr.Details}
 	}
 	t.Fatalf("unexpected error %v", err)

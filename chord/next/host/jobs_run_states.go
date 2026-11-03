@@ -377,7 +377,7 @@ func heldOps(each *heldState) *documents.Held {
 		return &documents.Held{Base: true}
 	}
 	taken := each.pending.Take()
-	if taken.Replace {
+	if taken.Kind == delta.PendingTakeReplace {
 		each.base = true
 		return &documents.Held{Base: true}
 	}

@@ -808,7 +808,7 @@ func (watch *Watch[T]) nextDelivery() (watchFrame[T], bool) {
 	watch.retired = false
 	taken := watch.ops.Take()
 	ops := taken.Ops
-	if taken.Replace {
+	if taken.Kind == delta.PendingTakeReplace {
 		// Values of a JSON watch are JSON; T is the source's narrower or wider view of them (a typed document).
 		var payload any = newest.value
 		ops = []delta.Op{{"r", payload}}

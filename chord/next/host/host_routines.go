@@ -628,7 +628,7 @@ func (o *onRoutine) invocation(value any) func(ctx Ctx) *Handled {
 	taken := o.pendingOps.Take()
 	// A JSON source's values are JSON.
 	var ops []delta.Op
-	if o.basis == basisNone || taken.Replace {
+	if o.basis == basisNone || taken.Kind == delta.PendingTakeReplace {
 		ops = []delta.Op{{"r", value}}
 	} else if ops = taken.Ops; ops == nil {
 		ops = []delta.Op{}

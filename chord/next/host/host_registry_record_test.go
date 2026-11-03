@@ -157,7 +157,7 @@ func TestContributionsACatchesARingThroughADeriveAndOneDeclaredWithinOneFactoryT
 			continue
 		}
 		cut++
-		if chordErr, ok := data.IsChordErrorCode(reported.Registry.Error, data.CodeInvalid); !ok || chordErr.Reason != data.ReasonCycle {
+		if chordErr, ok := data.IsChordError(reported.Registry.Error, data.CodeInvalid); !ok || chordErr.Reason != data.ReasonCycle {
 			t.Fatalf("contribution_failed error = %v, want invalid/cycle", reported.Registry.Error)
 		}
 	}

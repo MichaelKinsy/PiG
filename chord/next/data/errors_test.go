@@ -136,11 +136,11 @@ func TestErrorHelpers(t *testing.T) {
 		if _, ok := data.IsChordError(err); !ok {
 			t.Error("IsChordError(invalid) = false")
 		}
-		if _, ok := data.IsChordErrorCode(err, data.CodeInvalid); !ok {
-			t.Error("IsChordErrorCode(invalid, invalid) = false")
+		if _, ok := data.IsChordError(err, data.CodeInvalid); !ok {
+			t.Error("IsChordError(invalid, invalid) = false")
 		}
-		if _, ok := data.IsChordErrorCode(err, data.CodeGone); ok {
-			t.Error("IsChordErrorCode(invalid, gone) = true")
+		if _, ok := data.IsChordError(err, data.CodeGone); ok {
+			t.Error("IsChordError(invalid, gone) = true")
 		}
 		if _, ok := data.IsChordError(errors.New("x")); ok {
 			t.Error("IsChordError(plain error) = true")

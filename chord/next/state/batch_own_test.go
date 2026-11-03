@@ -27,7 +27,7 @@ func (source *listed) Deliver(context.Context) error {
 
 func requireReentrant(t *testing.T, what string, err error) {
 	t.Helper()
-	chordErr, ok := data.IsChordErrorCode(err, data.CodeInvalid)
+	chordErr, ok := data.IsChordError(err, data.CodeInvalid)
 	if !ok || chordErr.Reason != data.ReasonReentrant {
 		t.Fatalf("%s: err = %v, want invalid/reentrant", what, err)
 	}

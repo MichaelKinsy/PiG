@@ -66,7 +66,7 @@ func TestPayloads(t *testing.T) {
 
 	t.Run("marked as carrying bytes refuse the reserved key $bytes with invalid/args", func(t *testing.T) {
 		_, err := link.PayloadPart(object("meta", object("$bytes", 0.0), "data", []byte{0}), true)
-		chordErr, ok := data.IsChordErrorCode(err, data.CodeInvalid)
+		chordErr, ok := data.IsChordError(err, data.CodeInvalid)
 		if !ok || chordErr.Reason != data.ReasonArgs {
 			t.Fatalf("error = %v", err)
 		}

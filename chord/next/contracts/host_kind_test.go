@@ -105,7 +105,7 @@ func TestHostKinds(t *testing.T) {
 			"null":     nil,
 		} {
 			_, err := data.CheckAddress("session", params, bad, ctx)
-			chordErr, ok := data.IsChordErrorCode(err, data.CodeInvalid)
+			chordErr, ok := data.IsChordError(err, data.CodeInvalid)
 			if !ok || chordErr.Reason != data.ReasonHostAddress {
 				t.Errorf("%s: error = %v, want invalid/host_address", name, err)
 			}

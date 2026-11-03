@@ -977,7 +977,7 @@ func TestKeyedStateMembersAWatchKeySettlingAfterItsReferenceWasReleasedIsEndedAt
 	storeRef.Release()
 	gate.Release()
 	err := <-result
-	if chordErr, ok := data.IsChordErrorCode(err, data.CodeReleased); !ok || chordErr == nil {
+	if chordErr, ok := data.IsChordError(err, data.CodeReleased); !ok || chordErr == nil {
 		t.Fatalf("watch = %v, want it to reject released", err)
 	}
 	scopeEventually(t, "the key's source is dropped", func() bool {

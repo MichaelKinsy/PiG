@@ -251,7 +251,7 @@ func TestNativeAnOpenThatStartsAfterItsCloseOpensNothing(t *testing.T) {
 			if got, want := nativeReadText[string](native), "released/closed: app.res(1) native #1: closed"; got != want {
 				t.Fatalf("value after the open = %q, want %q", got, want)
 			}
-			if chordErr, ok := data.IsChordErrorCode(err, data.CodeReleased); !ok || chordErr.Reason != data.ReasonClosed {
+			if chordErr, ok := data.IsChordError(err, data.CodeReleased); !ok || chordErr.Reason != data.ReasonClosed {
 				t.Fatalf("open = %v, want released/closed", err)
 			}
 			if got := opens.Load(); got != 0 {
@@ -351,7 +351,7 @@ func TestNativeReportsACloseStillRunningAfterItsCloseTimeoutAndAbortsItsContext(
 		t.Fatalf("reports = %+v, want %+v", got, want)
 	}
 	cause := context.Cause(closeCtx)
-	chordErr, ok := data.IsChordErrorCode(cause, data.CodeAborted)
+	chordErr, ok := data.IsChordError(cause, data.CodeAborted)
 	if !ok || chordErr.Message != "app.res(1) native #2: close timed out" {
 		t.Fatalf("close context cause = %v, want aborted: app.res(1) native #2: close timed out", cause)
 	}
