@@ -4972,3 +4972,1154 @@ start = "\tprivate handleViewportInput(data: string): { consume?: boolean } | un
 end = "\n\tprivate decodeMouseButton("
 sha256 = "7691a35123fd4d5ce35058153abc67dd79801087078ed1548f1055c7fcbed6b9"
 keybindings = ["tui.altScreen.bottom", "tui.altScreen.halfPageDown", "tui.altScreen.halfPageUp", "tui.altScreen.lineDown", "tui.altScreen.lineUp", "tui.altScreen.nextPrompt", "tui.altScreen.pageDown", "tui.altScreen.pageUp", "tui.altScreen.previousPrompt", "tui.altScreen.search", "tui.altScreen.searchClose", "tui.altScreen.searchNext", "tui.altScreen.searchPrevious", "tui.altScreen.top"]
+
+[[contract]]
+id = "tui/editor/handle-input/jump-mode"
+upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "while a character jump is pending, either jump key cancels it and consumes the key, a printable key (a decoded CSI-u or modifyOtherKeys character, or any literal input whose first code is 32 or more, a space included) jumps in the pending direction, clears the mode and consumes the key, and any other control input clears the mode and is handled as a normal key in the same call; the pending mode survives nothing else"
+status = "ported"
+pig_targets = [
+  "tui/editor.go#HandleInput",
+  "tui/editor.go#jumpToChar",
+]
+evidence = [
+  "tui/editor_character_jump_oracle_test.go#TestEditorCharacterJumpMatchesPi",
+  "tui/editor_jump_keys_upstream_test.go#TestEditorCharacterJumpIsCancelledByAJumpKeyOrAControlKey",
+  "tui/editor_jump_keys_upstream_test.go#TestEditorCharacterJumpFollowsRebinding",
+  "tui/editor_oracle_test.go#TestEditorMatchesPiOracle",
+  "tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi",
+  "tui/editor_handle_input_contract_test.go#TestEditorSharedKeysResolveInPiOrder",
+  "test/parity/scenarios/tui-components/39-editor-shared-key-order.toml",
+  "test/parity/scenarios/tui-components/38-editor-rebinding-submit.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\t\t// Handle character jump mode (awaiting next character to jump to)"
+end = "\t\t// Handle bracketed paste mode"
+sha256 = "8305f4756fae254437f42d5345f8b73e809add56f1410eb81642df54da518d71"
+keybindings = [
+  "matchesKey:\"shift+backspace\"",
+  "matchesKey:\"shift+delete\"",
+  "matchesKey:\"shift+space\"",
+  "tui.editor.cursorDown",
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorUp",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.historyNext",
+  "tui.editor.historyPrevious",
+  "tui.editor.jumpBackward",
+  "tui.editor.jumpForward",
+  "tui.editor.pageDown",
+  "tui.editor.pageUp",
+  "tui.editor.undo",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.input.copy",
+  "tui.input.newLine",
+  "tui.input.submit",
+  "tui.input.tab",
+  "tui.select.cancel",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.pageDown",
+  "tui.select.pageUp",
+  "tui.select.up",
+]
+
+[[contract]]
+id = "tui/editor/handle-input/bracketed-paste"
+upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "a chunk carrying the paste start marker begins a paste, discards the earlier buffer and drops the first marker; while a paste is open every chunk is buffered and nothing else handles it; the end marker, possibly split across chunks, inserts the buffered content once (an empty paste inserts nothing), closes the paste and replays any text after the marker as ordinary input"
+status = "ported"
+pig_targets = [
+  "tui/editor.go#HandleInput",
+  "tui/editor.go#handlePasteFlush",
+]
+evidence = [
+  "tui/components_test.go#TestEditor_BracketedPaste_SingleChunk",
+  "tui/components_test.go#TestEditor_BracketedPaste_SplitAcrossInputs",
+  "tui/components_test.go#TestEditor_BracketedPaste_EndMarkerSplitAcrossInputs",
+  "tui/components_test.go#TestEditor_BracketedPaste_ContentBeforeAndAfter",
+  "tui/editor_sticky_paste_upstream_test.go#TestUpstreamEditorPasteMarkerAtomicBehavior",
+  "tui/editor_oracle_test.go#TestEditorMatchesPiOracle",
+  "tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi",
+  "tui/editor_handle_input_contract_test.go#TestEditorSharedKeysResolveInPiOrder",
+  "test/parity/scenarios/tui-components/20-editor-word-and-paste-segments.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\t\t// Handle bracketed paste mode"
+end = "\t\t// Ctrl+C - let parent handle (exit/clear)"
+sha256 = "19cde976c267c1858dfb7dba4793e94468611dddcc4737cd8961ddb6f995ddac"
+keybindings = [
+  "matchesKey:\"shift+backspace\"",
+  "matchesKey:\"shift+delete\"",
+  "matchesKey:\"shift+space\"",
+  "tui.editor.cursorDown",
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorUp",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.historyNext",
+  "tui.editor.historyPrevious",
+  "tui.editor.jumpBackward",
+  "tui.editor.jumpForward",
+  "tui.editor.pageDown",
+  "tui.editor.pageUp",
+  "tui.editor.undo",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.input.copy",
+  "tui.input.newLine",
+  "tui.input.submit",
+  "tui.input.tab",
+  "tui.select.cancel",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.pageDown",
+  "tui.select.pageUp",
+  "tui.select.up",
+]
+
+[[contract]]
+id = "tui/editor/handle-input/copy-undo"
+upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "tui.input.copy is left to the parent and changes nothing; tui.editor.undo comes next, before every autocomplete action, and a key bound to both runs only the undo, which restores the last snapshot (an empty stack changes nothing) and leaves history browsing"
+status = "ported"
+pig_targets = [
+  "tui/editor.go#HandleInput",
+  "tui/editor.go#undo",
+]
+evidence = [
+  "tui/editor_input_copy_pi_test.go#TestEditorInputCopyKeyIsLeftToTheParent",
+  "tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo",
+  "tui/components_test.go#TestEditor_CtrlSlash_Undo",
+  "tui/editor_oracle_test.go#TestEditorMatchesPiOracle",
+  "tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi",
+  "tui/editor_handle_input_contract_test.go#TestEditorSharedKeysResolveInPiOrder",
+  "test/parity/scenarios/tui-components/08-undo-stack-kill-restore.toml",
+  "test/parity/scenarios/tui-components/39-editor-shared-key-order.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\t\t// Ctrl+C - let parent handle (exit/clear)"
+end = "\t\t// Handle autocomplete mode"
+sha256 = "2ca3a53b71621343caabca09fe76346c00154b7a74c59bcce8139ab43e48772a"
+keybindings = [
+  "matchesKey:\"shift+backspace\"",
+  "matchesKey:\"shift+delete\"",
+  "matchesKey:\"shift+space\"",
+  "tui.editor.cursorDown",
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorUp",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.historyNext",
+  "tui.editor.historyPrevious",
+  "tui.editor.jumpBackward",
+  "tui.editor.jumpForward",
+  "tui.editor.pageDown",
+  "tui.editor.pageUp",
+  "tui.editor.undo",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.input.copy",
+  "tui.input.newLine",
+  "tui.input.submit",
+  "tui.input.tab",
+  "tui.select.cancel",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.pageDown",
+  "tui.select.pageUp",
+  "tui.select.up",
+]
+
+[[contract]]
+id = "tui/editor/handle-input/autocomplete"
+upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "with a popup open the editor checks tui.select.cancel (closes it), then up, down, pageUp and pageDown (moved in the popup, wrapping at both ends for up and down and clamped to a page for the page keys), then Tab (accepts the selected item and reports the change), then tui.select.confirm (accepts it; a slash-command completion then falls through to the newline and submit branches, any other completion ends there); the popup applied is the one last shown, at the current cursor, without asking the provider again, and a result the host has not yet published is published first; newline, history and submit close it; keys bound to two of these actions run the first in that order"
+status = "ported"
+pig_targets = [
+  "tui/editor.go#HandleInput",
+  "tui/editor.go#AutocompleteAccept",
+  "tui/editor.go#AutocompleteMove",
+  "tui/editor.go#AutocompleteCancel",
+]
+evidence = [
+  "tui/editor_handle_input_contract_test.go#TestEditorAutocompleteKeysResolveInPiOrder",
+  "tui/editor_handle_input_contract_test.go#TestEditorAutocompleteSequencesMatchPi",
+  "tui/editor_handle_input_contract_test.go#TestEditorAutocompleteBoundariesMatchPi",
+  "tui/editor_autocomplete_render_oracle_test.go#TestEditorAutocompleteRenderMatchesPi",
+  "tui/select_page_keys_upstream_test.go#TestUpstreamEditorForwardsRemappedPageKeysToTheAutocompleteMenu",
+  "tui/select_page_keys_upstream_test.go#TestUpstreamEditorMovesTheAutocompleteSelectionWithSelectionPageKeys",
+  "tui/autocomplete_accept_stale_test.go#TestAutocompleteAcceptRejectsStaleQueryAfterFastKeystrokeBurst",
+  "test/parity/scenarios/tui-components/36-editor-autocomplete-render.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\t\t// Handle autocomplete mode"
+end = "\t\t// Tab - trigger completion"
+sha256 = "e4688cbff568592b3683b78e3e09d41af8a826aabee742c8c7deab6cb6fb39f7"
+keybindings = [
+  "matchesKey:\"shift+backspace\"",
+  "matchesKey:\"shift+delete\"",
+  "matchesKey:\"shift+space\"",
+  "tui.editor.cursorDown",
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorUp",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.historyNext",
+  "tui.editor.historyPrevious",
+  "tui.editor.jumpBackward",
+  "tui.editor.jumpForward",
+  "tui.editor.pageDown",
+  "tui.editor.pageUp",
+  "tui.editor.undo",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.input.copy",
+  "tui.input.newLine",
+  "tui.input.submit",
+  "tui.input.tab",
+  "tui.select.cancel",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.pageDown",
+  "tui.select.pageUp",
+  "tui.select.up",
+]
+
+[[contract]]
+id = "tui/editor/handle-input/tab"
+upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "tui.input.tab with no popup open always ends the handler: a leading slash word requests a slash-command popup, anything else requests a forced file completion when the provider allows it, and the key is never handled as another action"
+status = "ported"
+pig_targets = [
+  "tui/editor.go#HandleInput",
+  "tui/editor.go#forceFileAutocomplete",
+]
+evidence = [
+  "tui/file_autocomplete_test.go#TestEditorTabAcceptsShallowFileAutocompleteMatch",
+  "tui/should_trigger_file_completion_upstream_test.go#TestEditorTabDoesNotFileCompleteInsideLeadingSlashWord",
+  "tui/combined_provider_trigger_test.go#TestEditorTabHonoursCombinedProviderShouldTriggerFileCompletion",
+  "tui/editor_handle_input_contract_test.go#TestEditorAutocompleteKeysResolveInPiOrder",
+  "test/parity/scenarios/tui-components/36-editor-autocomplete-render.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\t\t// Tab - trigger completion"
+end = "\t\t// Deletion actions"
+sha256 = "9048c04d30029814f6c489e6c34ef38659820638faf837bf2da671f3856ac553"
+keybindings = [
+  "matchesKey:\"shift+backspace\"",
+  "matchesKey:\"shift+delete\"",
+  "matchesKey:\"shift+space\"",
+  "tui.editor.cursorDown",
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorUp",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.historyNext",
+  "tui.editor.historyPrevious",
+  "tui.editor.jumpBackward",
+  "tui.editor.jumpForward",
+  "tui.editor.pageDown",
+  "tui.editor.pageUp",
+  "tui.editor.undo",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.input.copy",
+  "tui.input.newLine",
+  "tui.input.submit",
+  "tui.input.tab",
+  "tui.select.cancel",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.pageDown",
+  "tui.select.pageUp",
+  "tui.select.up",
+]
+
+[[contract]]
+id = "tui/editor/handle-input/deletions"
+upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "deleteToLineEnd, deleteToLineStart, deleteWordBackward, deleteWordForward, deleteCharBackward (or Shift+Backspace) and deleteCharForward (or Shift+Delete) are checked in that order after undo and the popup; each deletes, feeds or resets the kill ring and undo coalescing as Pi does, and a backward or forward character delete refreshes an open popup"
+status = "ported"
+pig_targets = [
+  "tui/editor.go#HandleInput",
+  "tui/editor.go#deleteToLineEnd",
+  "tui/editor.go#deleteToLineStart",
+  "tui/editor.go#deleteWordBackward",
+  "tui/editor.go#deleteWordForward",
+  "tui/editor.go#backspace",
+  "tui/editor.go#forwardDelete",
+]
+evidence = [
+  "tui/editor_shift_delete_pi_test.go#TestEditorShiftBackspaceAndShiftDeleteDeleteACharacter",
+  "tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorKillRing",
+  "tui/editor_kill_keeps_autocomplete_test.go#TestKillCommandsKeepAutocompleteMatchesPi",
+  "tui/editor_oracle_test.go#TestEditorMatchesPiOracle",
+  "tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi",
+  "tui/editor_handle_input_contract_test.go#TestEditorSharedKeysResolveInPiOrder",
+  "test/parity/scenarios/tui-components/07-kill-ring-kill-yank.toml",
+  "test/parity/scenarios/tui-components/25-editor-edit-state.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\t\t// Deletion actions"
+end = "\t\t// Kill ring actions"
+sha256 = "2f246b1c31612e852fe84266a4f01055508f58c2cf935f92e84de5feeda243e4"
+keybindings = [
+  "matchesKey:\"shift+backspace\"",
+  "matchesKey:\"shift+delete\"",
+  "matchesKey:\"shift+space\"",
+  "tui.editor.cursorDown",
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorUp",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.historyNext",
+  "tui.editor.historyPrevious",
+  "tui.editor.jumpBackward",
+  "tui.editor.jumpForward",
+  "tui.editor.pageDown",
+  "tui.editor.pageUp",
+  "tui.editor.undo",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.input.copy",
+  "tui.input.newLine",
+  "tui.input.submit",
+  "tui.input.tab",
+  "tui.select.cancel",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.pageDown",
+  "tui.select.pageUp",
+  "tui.select.up",
+]
+
+[[contract]]
+id = "tui/editor/handle-input/kill-ring"
+upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "tui.editor.yank inserts the newest kill-ring entry (an empty ring does nothing) and marks a yank; tui.editor.yankPop acts only directly after a yank or yank-pop with at least two entries: it removes the text just yanked, rotates the ring and inserts the new newest entry, so repeated pops cycle through the ring and wrap; typing or moving between a yank and a pop ends the sequence"
+status = "ported"
+pig_targets = [
+  "tui/editor.go#HandleInput",
+  "tui/editor.go#deleteYankedText",
+]
+evidence = [
+  "tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorKillRing",
+  "tui/editor_handle_input_contract_test.go#TestEditorHandleInputBoundariesMatchPi",
+  "tui/editor_oracle_test.go#TestEditorMatchesPiOracle",
+  "tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi",
+  "tui/editor_handle_input_contract_test.go#TestEditorSharedKeysResolveInPiOrder",
+  "test/parity/scenarios/tui-components/07-kill-ring-kill-yank.toml",
+  "test/parity/scenarios/tui-components/25-editor-edit-state.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\t\t// Kill ring actions"
+end = "\t\t// Dedicated history actions always browse entries instead of moving the cursor."
+sha256 = "278be8ac1a321487c57b54a129c29b85c7e858dcfd0d5c5496461841b9aa4917"
+keybindings = [
+  "matchesKey:\"shift+backspace\"",
+  "matchesKey:\"shift+delete\"",
+  "matchesKey:\"shift+space\"",
+  "tui.editor.cursorDown",
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorUp",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.historyNext",
+  "tui.editor.historyPrevious",
+  "tui.editor.jumpBackward",
+  "tui.editor.jumpForward",
+  "tui.editor.pageDown",
+  "tui.editor.pageUp",
+  "tui.editor.undo",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.input.copy",
+  "tui.input.newLine",
+  "tui.input.submit",
+  "tui.input.tab",
+  "tui.select.cancel",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.pageDown",
+  "tui.select.pageUp",
+  "tui.select.up",
+]
+
+[[contract]]
+id = "tui/editor/handle-input/history"
+upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "tui.editor.historyPrevious and historyNext are checked after the kill ring and before cursor movement, always browse history entries instead of moving the cursor (the first entry stays at the oldest end and the draft returns at the newest) and close an open popup"
+status = "ported"
+pig_targets = [
+  "tui/editor.go#HandleInput",
+  "tui/editor.go#navigateHistory",
+]
+evidence = [
+  "tui/editor_history_test.go#TestEditorHistoryBindingsBrowseWithoutMovingTheCursor",
+  "tui/editor_history_test.go#TestEditorHistoryUpCyclesEntries",
+  "tui/editor_handle_input_contract_test.go#TestEditorAutocompleteBoundariesMatchPi",
+  "tui/editor_oracle_test.go#TestEditorMatchesPiOracle",
+  "tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi",
+  "tui/editor_handle_input_contract_test.go#TestEditorSharedKeysResolveInPiOrder",
+  "test/parity/scenarios/tui-components/12-editor-wrapped-history-navigation.toml",
+  "test/parity/scenarios/tui-components/19-editor-history-submission-whitespace.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\t\t// Dedicated history actions always browse entries instead of moving the cursor."
+end = "\t\t// Cursor movement actions"
+sha256 = "991096f468727dcd9c14df9b751d7fe75552c1196ca99818dc30cb14ccb6bcf1"
+keybindings = [
+  "matchesKey:\"shift+backspace\"",
+  "matchesKey:\"shift+delete\"",
+  "matchesKey:\"shift+space\"",
+  "tui.editor.cursorDown",
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorUp",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.historyNext",
+  "tui.editor.historyPrevious",
+  "tui.editor.jumpBackward",
+  "tui.editor.jumpForward",
+  "tui.editor.pageDown",
+  "tui.editor.pageUp",
+  "tui.editor.undo",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.input.copy",
+  "tui.input.newLine",
+  "tui.input.submit",
+  "tui.input.tab",
+  "tui.select.cancel",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.pageDown",
+  "tui.select.pageUp",
+  "tui.select.up",
+]
+
+[[contract]]
+id = "tui/editor/handle-input/line-word-movement"
+upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "cursorLineStart, cursorLineEnd, cursorWordLeft and cursorWordRight are checked in that order after the history actions; each moves within or across logical lines through the shared word helpers with atomic paste markers, ends kill accumulation and resets the sticky column, and leaves an open popup as it was"
+status = "ported"
+pig_targets = [
+  "tui/editor.go#HandleInput",
+  "tui/editor.go#cursorWordBackward",
+  "tui/editor.go#cursorWordForward",
+]
+evidence = [
+  "tui/editor_word_segments_upstream_test.go#TestUpstreamEditorWordNavigation",
+  "tui/editor_segments_regression_test.go#TestEditorWordMovementResetsKillAndStickyState",
+  "tui/editor_oracle_test.go#TestEditorMatchesPiOracle",
+  "tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi",
+  "tui/editor_handle_input_contract_test.go#TestEditorSharedKeysResolveInPiOrder",
+  "test/parity/scenarios/tui-components/20-editor-word-and-paste-segments.toml",
+  "test/parity/scenarios/tui-components/21-editor-terminal-word-and-paste-navigation.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\t\t// Cursor movement actions"
+end = "\t\t// New line"
+sha256 = "5d54b6355c629c2d1ee0257a2f72d648e205712d7ceb39a676ef3c2f7921dfe4"
+keybindings = [
+  "matchesKey:\"shift+backspace\"",
+  "matchesKey:\"shift+delete\"",
+  "matchesKey:\"shift+space\"",
+  "tui.editor.cursorDown",
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorUp",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.historyNext",
+  "tui.editor.historyPrevious",
+  "tui.editor.jumpBackward",
+  "tui.editor.jumpForward",
+  "tui.editor.pageDown",
+  "tui.editor.pageUp",
+  "tui.editor.undo",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.input.copy",
+  "tui.input.newLine",
+  "tui.input.submit",
+  "tui.input.tab",
+  "tui.select.cancel",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.pageDown",
+  "tui.select.pageUp",
+  "tui.select.up",
+]
+
+[[contract]]
+id = "tui/editor/handle-input/newline"
+upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "tui.input.newLine, a chunk starting with LF and longer than one character, ESC+CR, the CSI 13;2~ sequence, any longer chunk holding both ESC and CR, and a lone LF insert a newline and close an open popup, unless shouldSubmitOnBackslashEnter holds, in which case the backslash is removed and the text is submitted; the branch is checked before submit and after the cursor-movement actions"
+status = "ported"
+pig_targets = [
+  "tui/editor.go#HandleInput",
+  "tui/editor.go#matchesEditorNewLine",
+  "tui/editor.go#shouldSubmitOnBackslashEnter",
+]
+evidence = [
+  "tui/editor_newline_test.go#TestEditorHardcodedNewlineEncodings",
+  "tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi",
+  "tui/editor_handle_input_contract_test.go#TestEditorAutocompleteBoundariesMatchPi",
+  "test/parity/scenarios/tui-components/22-editor-remapped-submit-with-key-diagnostics.toml",
+  "test/parity/scenarios/tui-components/38-editor-rebinding-submit.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\t\t// New line"
+end = "\t\t// Submit (Enter)"
+sha256 = "4f78bb3133e1d6e0286cdf09aca7e32cf72d18e805cacca9eba7ffdb077d376d"
+keybindings = [
+  "matchesKey:\"shift+backspace\"",
+  "matchesKey:\"shift+delete\"",
+  "matchesKey:\"shift+space\"",
+  "tui.editor.cursorDown",
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorUp",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.historyNext",
+  "tui.editor.historyPrevious",
+  "tui.editor.jumpBackward",
+  "tui.editor.jumpForward",
+  "tui.editor.pageDown",
+  "tui.editor.pageUp",
+  "tui.editor.undo",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.input.copy",
+  "tui.input.newLine",
+  "tui.input.submit",
+  "tui.input.tab",
+  "tui.select.cancel",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.pageDown",
+  "tui.select.pageUp",
+  "tui.select.up",
+]
+
+[[contract]]
+id = "tui/editor/handle-input/submit"
+upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "tui.input.submit does nothing when submission is disabled; with a backslash before the cursor it removes the backslash and inserts a newline (closing an open popup) instead; otherwise it submits the trimmed, paste-expanded text once; the branch follows newline and precedes the arrow keys"
+status = "ported"
+pig_targets = [
+  "tui/editor.go#HandleInput",
+  "tui/editor.go#submitValue",
+]
+evidence = [
+  "tui/editor_literal_input_upstream_test.go#TestEditorHistoryAndSubmissionUseJavaScriptTrim",
+  "tui/editor_handle_input_contract_test.go#TestEditorAutocompleteBoundariesMatchPi",
+  "tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi",
+  "test/parity/scenarios/tui-components/19-editor-history-submission-whitespace.toml",
+  "test/parity/scenarios/tui-components/22-editor-remapped-submit-with-key-diagnostics.toml",
+  "test/parity/scenarios/tui-components/38-editor-rebinding-submit.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\t\t// Submit (Enter)"
+end = "\t\t// Arrow key navigation (with history support)"
+sha256 = "68fd24bc4b5d478940697eafa1843d9e8b276d4996c4a6a1ef27e697a3c4e16f"
+keybindings = [
+  "matchesKey:\"shift+backspace\"",
+  "matchesKey:\"shift+delete\"",
+  "matchesKey:\"shift+space\"",
+  "tui.editor.cursorDown",
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorUp",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.historyNext",
+  "tui.editor.historyPrevious",
+  "tui.editor.jumpBackward",
+  "tui.editor.jumpForward",
+  "tui.editor.pageDown",
+  "tui.editor.pageUp",
+  "tui.editor.undo",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.input.copy",
+  "tui.input.newLine",
+  "tui.input.submit",
+  "tui.input.tab",
+  "tui.select.cancel",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.pageDown",
+  "tui.select.pageUp",
+  "tui.select.up",
+]
+
+[[contract]]
+id = "tui/editor/handle-input/arrows"
+upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "cursorUp browses history when the cursor is on the first visual line and the editor is empty, history is being browsed or the cursor is at column zero, jumps to the line start on the first visual line otherwise, and moves one visual line elsewhere; cursorDown browses forward while history is browsed on the last visual line, jumps to the line end on the last visual line, and moves one visual line elsewhere; cursorRight and cursorLeft move by one grapheme and wrap across lines"
+status = "ported"
+pig_targets = [
+  "tui/editor.go#HandleInput",
+  "tui/editor.go#moveCursor",
+]
+evidence = [
+  "tui/editor_cursor_down_right_upstream_test.go#TestEditorCursorDownMovesJumpsToTheLineEndAndWalksHistoryForward",
+  "tui/editor_cursor_down_right_upstream_test.go#TestEditorCursorRightMovesByGraphemeWrapsAndStopsAtTheEnd",
+  "tui/editor_cursor_down_right_upstream_test.go#TestEditorCursorDownAndRightFollowRebinding",
+  "tui/editor_sticky_paste_upstream_test.go#TestUpstreamEditorStickyColumn",
+  "tui/editor_handle_input_contract_test.go#TestEditorHandleInputBoundariesMatchPi",
+  "tui/editor_oracle_test.go#TestEditorMatchesPiOracle",
+  "tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi",
+  "tui/editor_handle_input_contract_test.go#TestEditorSharedKeysResolveInPiOrder",
+  "test/parity/scenarios/tui-components/12-editor-wrapped-history-navigation.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\t\t// Arrow key navigation (with history support)"
+end = "\t\t// Page up/down - scroll by page and move cursor"
+sha256 = "73b387b35dba35429a98be78f741b90e53d3931df29be4fb87be7826827aa396"
+keybindings = [
+  "matchesKey:\"shift+backspace\"",
+  "matchesKey:\"shift+delete\"",
+  "matchesKey:\"shift+space\"",
+  "tui.editor.cursorDown",
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorUp",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.historyNext",
+  "tui.editor.historyPrevious",
+  "tui.editor.jumpBackward",
+  "tui.editor.jumpForward",
+  "tui.editor.pageDown",
+  "tui.editor.pageUp",
+  "tui.editor.undo",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.input.copy",
+  "tui.input.newLine",
+  "tui.input.submit",
+  "tui.input.tab",
+  "tui.select.cancel",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.pageDown",
+  "tui.select.pageUp",
+  "tui.select.up",
+]
+
+[[contract]]
+id = "tui/editor/handle-input/page-jump-triggers"
+upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "pageUp and pageDown scroll by one page and move the cursor; the two character-jump keys start a pending jump in their direction; both follow the arrow keys and precede text insertion"
+status = "ported"
+pig_targets = [
+  "tui/editor.go#HandleInput",
+  "tui/editor.go#pageScroll",
+]
+evidence = [
+  "tui/editor_jump_keys_upstream_test.go#TestEditorCharacterJumpFollowsRebinding",
+  "tui/editor_character_jump_oracle_test.go#TestEditorCharacterJumpMatchesPi",
+  "tui/editor_oracle_test.go#TestEditorMatchesPiOracle",
+  "tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi",
+  "tui/editor_handle_input_contract_test.go#TestEditorSharedKeysResolveInPiOrder",
+  "test/parity/scenarios/tui-components/24-editor-wrap-scroll.toml",
+  "test/parity/scenarios/tui-components/38-editor-rebinding-submit.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\t\t// Page up/down - scroll by page and move cursor"
+end = "\t\t// Shift+Space - insert regular space"
+sha256 = "e888b19e6cbd705a1573417a0b81bf66955ef4d5892feee263569ab1dd6817e1"
+keybindings = [
+  "matchesKey:\"shift+backspace\"",
+  "matchesKey:\"shift+delete\"",
+  "matchesKey:\"shift+space\"",
+  "tui.editor.cursorDown",
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorUp",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.historyNext",
+  "tui.editor.historyPrevious",
+  "tui.editor.jumpBackward",
+  "tui.editor.jumpForward",
+  "tui.editor.pageDown",
+  "tui.editor.pageUp",
+  "tui.editor.undo",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.input.copy",
+  "tui.input.newLine",
+  "tui.input.submit",
+  "tui.input.tab",
+  "tui.select.cancel",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.pageDown",
+  "tui.select.pageUp",
+  "tui.select.up",
+]
+
+[[contract]]
+id = "tui/editor/handle-input/text-insertion"
+upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "Shift+Space in any spelling (including the CSI-u form carrying a shifted key, which would otherwise decode to another character) inserts a space; then a decoded CSI-u or modifyOtherKeys printable inserts its character, then any input whose first code is 32 or more inserts as typed text, refreshing an open popup; other control input inserts nothing"
+status = "ported"
+pig_targets = [
+  "tui/editor.go#HandleInput",
+  "tui/editor.go#insertCharacter",
+]
+evidence = [
+  "tui/editor_handle_input_contract_test.go#TestEditorHandleInputBoundariesMatchPi",
+  "tui/editor_handle_input_contract_test.go#TestEditorAutocompleteBoundariesMatchPi",
+  "tui/editor_oracle_test.go#TestEditorMatchesPiOracle",
+  "tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi",
+  "tui/editor_handle_input_contract_test.go#TestEditorSharedKeysResolveInPiOrder",
+  "test/parity/scenarios/tui-components/25-editor-edit-state.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\t\t// Shift+Space - insert regular space"
+end = "\n\tprivate layoutText("
+sha256 = "2b8c70c2e75f42666da1f0c839ce666fb926ef3915f88ea36ea220a426dd1969"
+keybindings = [
+  "matchesKey:\"shift+backspace\"",
+  "matchesKey:\"shift+delete\"",
+  "matchesKey:\"shift+space\"",
+  "tui.editor.cursorDown",
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorUp",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.historyNext",
+  "tui.editor.historyPrevious",
+  "tui.editor.jumpBackward",
+  "tui.editor.jumpForward",
+  "tui.editor.pageDown",
+  "tui.editor.pageUp",
+  "tui.editor.undo",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.input.copy",
+  "tui.input.newLine",
+  "tui.input.submit",
+  "tui.input.tab",
+  "tui.select.cancel",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.pageDown",
+  "tui.select.pageUp",
+  "tui.select.up",
+]
+
+[[contract]]
+id = "tui/editor/handle-input/action-order"
+upstream_id = "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "the editor checks, in this order: pending character jump, bracketed paste, input.copy, undo, the popup actions (cancel, up, down, pageUp, pageDown, tab, confirm), Tab, deleteToLineEnd, deleteToLineStart, deleteWordBackward, deleteWordForward, deleteCharBackward, deleteCharForward, yank, yankPop, historyPrevious, historyNext, cursorLineStart, cursorLineEnd, cursorWordLeft, cursorWordRight, newline, submit, cursorUp, cursorDown, cursorRight, cursorLeft, pageUp, pageDown, jumpForward, jumpBackward, Shift+Space, printable and literal text; a key bound to two actions performs the earlier one, proven over every pair of the 27 editor and input actions on five shared keys in ten editor states, and over every pair of a popup action with an editor action in six popup states, against Pi's Editor"
+status = "ported"
+pig_targets = [
+  "tui/editor.go#HandleInput",
+]
+evidence = [
+  "tui/editor_oracle_test.go#TestEditorMatchesPiOracle",
+  "tui/editor_bindings_oracle_test.go#TestEditorRebindingsMatchPi",
+  "tui/editor_handle_input_contract_test.go#TestEditorSharedKeysResolveInPiOrder",
+  "tui/editor_handle_input_contract_test.go#TestEditorAutocompleteKeysResolveInPiOrder",
+  "tui/editor_handle_input_contract_test.go#TestEditorAutocompleteSequencesMatchPi",
+  "test/parity/scenarios/tui-components/39-editor-shared-key-order.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/editor.ts"
+start = "\thandleInput(data: string): void {\n\t\tconst kb = getKeybindings();"
+end = "\n\tprivate layoutText("
+sha256 = "a5578ee4fc84e81d540e7fd79621095567c944ce4b1f1d76e05614e7f39a25ba"
+keybindings = [
+  "matchesKey:\"shift+backspace\"",
+  "matchesKey:\"shift+delete\"",
+  "matchesKey:\"shift+space\"",
+  "tui.editor.cursorDown",
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorUp",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.historyNext",
+  "tui.editor.historyPrevious",
+  "tui.editor.jumpBackward",
+  "tui.editor.jumpForward",
+  "tui.editor.pageDown",
+  "tui.editor.pageUp",
+  "tui.editor.undo",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.input.copy",
+  "tui.input.newLine",
+  "tui.input.submit",
+  "tui.input.tab",
+  "tui.select.cancel",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.pageDown",
+  "tui.select.pageUp",
+  "tui.select.up",
+]
+
+[[contract]]
+id = "tui/select-list/handle-input-order"
+upstream_id = "input:packages/tui/src/components/select-list.ts#SelectList.handleInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "up wraps from the first item to the last and down from the last to the first (an empty list steps to index -1 and 0 and reports no change), the page keys move by one visible page clamped to the list and do nothing on an empty list or when the index would not change, confirm calls onSelect only with a selected item and a handler, cancel calls onCancel only with a handler; the branches are checked in the order up, down, page, confirm, cancel, so a key bound to two of them performs the earlier one, proven over every pair of the six actions on four shared keys, over empty, single, one-page and longer lists with the selection at the start, in the middle and at the end, against Pi's SelectList"
+status = "ported"
+pig_targets = [
+  "tui/select_list.go#HandleInput",
+]
+evidence = [
+  "tui/select_list_contract_test.go#TestSelectListSharedKeysResolveInPiOrder",
+  "tui/select_list_oracle_test.go#TestSelectListInputMatchesPi",
+  "tui/select_page_keys_upstream_test.go#TestUpstreamSelectListMovesByOneVisiblePageWithSelectionPageKeys",
+  "test/parity/scenarios/tui-components/11-select-list-input-state.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/select-list.ts"
+start = "\thandleInput(keyData: string): void {"
+end = "\n\tprivate renderItem("
+sha256 = "aafcdd39cc354e6e362e42e4a6a5419ac5b0672e94863bcff5156cc7a9906781"
+keybindings = [
+  "tui.select.cancel",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.up",
+]
+
+[[contract]]
+id = "tui/terminal/keyboard-protocol-negotiation-handler"
+upstream_id = "input:packages/tui/src/terminal.ts#ProcessTerminal.handleKeyboardProtocolNegotiationSequence"
+family = "tui-components"
+kind = "terminal-capability-negotiation"
+claim = "a Kitty flags reply (a whole reply only) with non-zero flags disables modifyOtherKeys and activates the Kitty protocol, with zero flags enables the modifyOtherKeys fallback, and neither settles a device attributes reply; a device attributes reply is consumed only while one is owed to a keyboard protocol query (otherwise it is forwarded as input), settles one owed reply, ends the pending program status query when the last owed reply arrives, and enables the modifyOtherKeys fallback unless Kitty is active; every other sequence, or a reply with trailing bytes, is not consumed"
+status = "ported"
+pig_targets = [
+  "tui/terminal.go#handleKeyboardProtocolNegotiationSequence",
+  "tui/terminal.go#consumeOwedDeviceAttributesReply",
+  "tui/terminal.go#enableModifyOtherKeys",
+  "tui/terminal.go#disableModifyOtherKeys",
+]
+evidence = [
+  "tui/terminal_negotiation_upstream_test.go#TestUpstreamTerminalNegotiation",
+  "tui/terminal_program_status_upstream_test.go#TestUpstreamTerminalProgramStatus",
+  "tui/terminal_negotiation_contract_test.go#TestKeyboardProtocolNegotiationConsumesOnlyWholeReplies",
+  "tui/raw_mode_test.go#TestAC50KeyboardProtocolNegotiationMatchesPi083",
+  "tui/raw_mode_test.go#TestKeyboardProtocolNegotiationUsesDeviceAttributesFallback",
+  "test/parity/scenarios/tui-components/14-terminal-negotiation-framing.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/terminal.ts"
+start = "\tprivate handleKeyboardProtocolNegotiationSequence("
+end = "\n\n\t/** Returns the parsed negotiation reply"
+sha256 = "b8bce754f633af25586d360cc12471e9827b278a7fdddc93c1336511171a1b1d"
+keybindings = [
+]
+
+[[contract]]
+id = "tui/terminal-image/detect-capabilities-branch-order"
+upstream_id = "input:packages/tui/src/terminal-image.ts#<module>.detectCapabilities"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "detectCapabilitiesFromEnvironment tests tmux (environment variable or TERM prefix), screen, herdr, rex, orca with ORCA_IMAGE_PROTOCOL=kitty, kitty, ghostty, wezterm, Warp, iTerm, Windows Terminal, alacritty/vscode/zed, JetBrains JediTerm and the Windows console in that order, so an environment matching two of them takes the first; every environment, every pair of the 28 trigger environments (Orca with and without its protocol variable included), each with the tmux probe answering both ways, on Linux and on a Windows console, matches Pi's detectCapabilities"
+status = "ported"
+pig_targets = [
+  "tui/terminal_image.go#detectCapabilitiesFromEnvironment",
+]
+evidence = [
+  "tui/color_detection_pi_test.go#TestColorDetectionMatchesPi",
+  "tui/terminal_image_detect_contract_test.go#detectCapabilitiesBranchOrderCases",
+  "test/parity/scenarios/tui-components/37-terminal-capability-detection.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/terminal-image.ts"
+start = "function detectCapabilitiesFromEnvironment(tmuxForwardsHyperlink: () => boolean): TerminalCapabilities {"
+end = "export function getCapabilities(): TerminalCapabilities {"
+sha256 = "bc783ced6bbc5d452d144b55df1d9ec8a883f4dde21f92e285d257b3d18b0d85"
+keybindings = [
+]
+
+[[contract]]
+id = "tui/terminal-image/detect-capabilities-overrides"
+upstream_id = "input:packages/tui/src/terminal-image.ts#<module>.detectCapabilities"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "PI_HYPERLINKS (exactly 1 or 0) replaces the tmux hyperlink probe and the detected hyperlinks, PI_IMAGE_PROTOCOL (case-insensitive kitty, iterm2, none, 0; any other value changes nothing) replaces the detected image protocol, and PI_TRUE_COLOR (exactly 1 or 0) replaces the detected truecolor flag, each over every detected environment"
+status = "ported"
+pig_targets = [
+  "tui/terminal_image.go#DetectCapabilities",
+  "tui/terminal_image.go#parseBooleanCapabilityOverride",
+]
+evidence = [
+  "tui/color_detection_pi_test.go#TestColorDetectionMatchesPi",
+  "test/parity/scenarios/tui-components/37-terminal-capability-detection.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/terminal-image.ts"
+start = "export function detectCapabilities("
+end = "\n\n/** Override the cached capabilities."
+sha256 = "37726c99b7bddeb147f19f62537a8236bc105255b0d910b12f43b677c603c5c6"
+keybindings = [
+]
+
+[[contract]]
+id = "tui/terminal-input/handle-terminal-input-order"
+upstream_id = "input:packages/tui/src/tui.ts#TuiBase.handleTerminalInput"
+family = "tui-components"
+kind = "boundary-transition"
+claim = "the cell-size reply is consumed only after the input listeners and only if no listener consumed the input or emptied it, and it is matched on the data the listeners returned; the debug key is matched after that; the focused component then receives the input and the immediate render is requested after its handler returned, and only when a component with a handler received it; the focus flag moves with the overlay focus restoration done before delivery"
+status = "ported"
+pig_targets = [
+  "tui/tui_input.go#HandleTerminalInput",
+  "tui/tui_input.go#DispatchFocusedInput",
+  "tui/tui_input.go#RunInputListeners",
+  "tui/tui.go#ActiveOverlay",
+]
+evidence = [
+  "tui/tui_input_contract_test.go#TestHandleTerminalInputCellSizeReplyFollowsTheInputListeners",
+  "tui/tui_input_contract_test.go#TestHandleTerminalInputRequestsNoRenderWithoutAnInputHandler",
+  "tui/tui_input_contract_test.go#TestHandleTerminalInputRendersAfterTheFocusedComponentHandledTheKey",
+  "tui/tui_input_contract_test.go#TestHandleTerminalInputMovesTheFocusFlagWhenTheOverlayHides",
+  "tui/tui_input_contract_test.go#TestHandleTerminalInputRestoresTheFocusToAnOverlayThatIsVisibleAgain",
+  "tui/tui_input_pipeline_test.go#TestHandleTerminalInputRedirectsFromAnOverlayThatBecameInvisible",
+  "test/parity/scenarios/tui-components/26-terminal-input-pipeline.toml",
+  "test/parity/scenarios/tui-components/14-overlay-input-restoration.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/tui.ts"
+start = "\tprivate handleTerminalInput(data: string): void {"
+end = "\n\tprivate consumeTerminalColorResponse("
+sha256 = "be2869f917b41d5795bed90190543a223cb428163d762052cf15632cc35f5e6c"
+keybindings = [
+  "matchesKey:\"shift+ctrl+d\"",
+]
+
+[[contract]]
+id = "tui/tui-base/render-now-state"
+upstream_id = "render:packages/tui/src/tui.ts#TuiBase.renderNow"
+family = "tui-components"
+kind = "render-scheduling"
+claim = "renderNow(force) resets the differential render state only when forced, clears the pending request, cancels the scheduled frame so it neither renders nor blocks the next request, records the render time so a request within 16 ms of it waits for the rest of the interval, and draws once synchronously"
+status = "ported"
+pig_targets = [
+  "tui/tui.go#RenderNow",
+  "tui/tui.go#cancelPendingRenderLocked",
+]
+evidence = [
+  "tui/tui_render_now_contract_test.go#TestRenderNowCancelsTheScheduledFrameAndTheRequest",
+  "tui/tui_render_now_contract_test.go#TestRenderNowRecordsTheRenderTime",
+  "tui/tui_render_now_contract_test.go#TestRenderNowForceResetsTheRenderState",
+  "test/parity/scenarios/fullscreen/03-main-screen-history-redraw.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/tui.ts"
+start = "\trenderNow(force = false): void {"
+end = "\n\n\trequestRender(force = false): void {"
+sha256 = "a41d73a127962410af68ce65abee17a1c1530e3b348359d240dbb9179ca569d2"
+keybindings = [
+]

@@ -86,6 +86,7 @@ func colorDetectionCases() []piColorCase {
 	for _, value := range []string{"", "15;0", "0;15", "0;15suffix", "15;0suffix", "0;  +15.5", "15;256;invalid", "0;255", "15;-1", "0;1e2", "0;0xF"} {
 		add("linux", map[string]string{"COLORFGBG": value})
 	}
+	cases = append(cases, detectCapabilitiesBranchOrderCases()...)
 	return cases
 }
 
@@ -119,7 +120,7 @@ func runColorDetectionCases(t *testing.T, cases []piColorCase, input []byte) {
 	oldOS, previous := capabilityDetectGOOS, ActiveTheme()
 	t.Cleanup(func() { capabilityDetectGOOS = oldOS; ResetCapabilitiesCache(); activeTheme.Store(previous) })
 	// Empty all variables used by either detector; each case is hermetic.
-	keys := []string{"TERM_PROGRAM", "TERMINAL_EMULATOR", "TERM", "COLORTERM", "TMUX", "KITTY_WINDOW_ID", "GHOSTTY_RESOURCES_DIR", "WEZTERM_PANE", "WARP_SESSION_ID", "WARP_TERMINAL_SESSION_UUID", "ITERM_SESSION_ID", "WT_SESSION", "PI_TRUE_COLOR", "PI_HYPERLINKS", "PI_IMAGE_PROTOCOL", "HERDR_ENV", "HERDR_KITTY_GRAPHICS", "COLORFGBG", "SSH_TTY", "SSH_CONNECTION", "NO_COLOR", "FORCE_COLOR", "CI"}
+	keys := []string{"TERM_PROGRAM", "TERMINAL_EMULATOR", "TERM", "COLORTERM", "TMUX", "KITTY_WINDOW_ID", "GHOSTTY_RESOURCES_DIR", "WEZTERM_PANE", "WARP_SESSION_ID", "WARP_TERMINAL_SESSION_UUID", "ITERM_SESSION_ID", "WT_SESSION", "PI_TRUE_COLOR", "PI_HYPERLINKS", "PI_IMAGE_PROTOCOL", "HERDR_ENV", "HERDR_KITTY_GRAPHICS", "ORCA_IMAGE_PROTOCOL", "COLORFGBG", "SSH_TTY", "SSH_CONNECTION", "NO_COLOR", "FORCE_COLOR", "CI"}
 	for i, tc := range cases {
 		t.Run(fmt.Sprintf("%d/%s/%v", i, tc.Platform, tc.Env), func(t *testing.T) {
 			for _, key := range keys {
@@ -162,7 +163,7 @@ func runColorDetectionCases(t *testing.T, cases []piColorCase, input []byte) {
 }
 
 // colorDetectionKeys are the variables either detector reads; each case sets them all.
-var colorDetectionKeys = []string{"TERM_PROGRAM", "TERMINAL_EMULATOR", "TERM", "COLORTERM", "TMUX", "KITTY_WINDOW_ID", "GHOSTTY_RESOURCES_DIR", "WEZTERM_PANE", "WARP_SESSION_ID", "WARP_TERMINAL_SESSION_UUID", "ITERM_SESSION_ID", "WT_SESSION", "PI_TRUE_COLOR", "PI_HYPERLINKS", "PI_IMAGE_PROTOCOL", "HERDR_ENV", "HERDR_KITTY_GRAPHICS", "COLORFGBG", "SSH_TTY", "SSH_CONNECTION", "NO_COLOR", "FORCE_COLOR", "CI"}
+var colorDetectionKeys = []string{"TERM_PROGRAM", "TERMINAL_EMULATOR", "TERM", "COLORTERM", "TMUX", "KITTY_WINDOW_ID", "GHOSTTY_RESOURCES_DIR", "WEZTERM_PANE", "WARP_SESSION_ID", "WARP_TERMINAL_SESSION_UUID", "ITERM_SESSION_ID", "WT_SESSION", "PI_TRUE_COLOR", "PI_HYPERLINKS", "PI_IMAGE_PROTOCOL", "HERDR_ENV", "HERDR_KITTY_GRAPHICS", "ORCA_IMAGE_PROTOCOL", "COLORFGBG", "SSH_TTY", "SSH_CONNECTION", "NO_COLOR", "FORCE_COLOR", "CI"}
 
 // TestColorDetectionProbesDump prints the environments for the Pi side of the tui-components/37 parity scenario.
 func TestColorDetectionProbesDump(t *testing.T) {

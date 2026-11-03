@@ -34,7 +34,7 @@ for (const probe of JSON.parse(input)) {
         return items.length > 0 ? { items, prefix: before } : null;
       }
       if (!options.force) return null;
-      const token = before.match(/\S*$/)[0];
+      const token = before.match(/\S*$/)[0].replace(/\\+$/, "");
       const items = files.filter((f) => f.startsWith(token)).map((f) => ({ value: f, label: f }));
       return items.length > 0 ? { items, prefix: token } : null;
     },

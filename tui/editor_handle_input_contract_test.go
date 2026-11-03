@@ -39,10 +39,8 @@ var editorSharedKeyStates = [][]string{
 	{"hello world", "\x1b[D", "\x1b[D"},
 }
 
-// TestEditorSharedKeysResolveInPiOrder binds every pair of handleInput actions to one key and sends that key in each prepared editor state.
-// editor.ts checks the actions in one fixed order, so the first action in that order wins; Pi's Editor is the oracle for the winner.
-func TestEditorSharedKeysResolveInPiOrder(t *testing.T) {
-	sharedKeys := []struct{ id, data string }{{"ctrl+q", "\x11"}, {"enter", "\r"}, {"tab", "\t"}, {"up", "\x1b[A"}, {"backspace", "\x7f"}}
+// editorSharedKeyProbes binds every pair of handleInput actions to each of the shared keys and sends that key in each prepared editor state.
+func editorSharedKeyProbes(sharedKeys []editorSharedKey) []editorBindingsProbe {
 	var probes []editorBindingsProbe
 	for _, shared := range sharedKeys {
 		for first := range editorHandleInputActions {
@@ -61,7 +59,62 @@ func TestEditorSharedKeysResolveInPiOrder(t *testing.T) {
 			}
 		}
 	}
-	compareEditorProbesWithPi(t, probes)
+	return probes
+}
+
+type editorSharedKey struct{ id, data string }
+
+// TestEditorSharedKeysResolveInPiOrder runs the shared-key probes through Pi's Editor and Pig's.
+// editor.ts checks the actions in one fixed order, so the first action in that order wins; Pi's Editor is the oracle for the winner.
+func TestEditorSharedKeysResolveInPiOrder(t *testing.T) {
+	compareEditorProbesWithPi(t, editorSharedKeyProbes([]editorSharedKey{{"ctrl+q", "\x11"}, {"enter", "\r"}, {"tab", "\t"}, {"up", "\x1b[A"}, {"backspace", "\x7f"}}))
+}
+
+// TestEditorSharedKeyProbesDump prints the shared-key corpus for the Pi side of the tui-components/39 parity scenario.
+func TestEditorSharedKeyProbesDump(t *testing.T) {
+	line, err := json.Marshal(editorSharedKeyProbes([]editorSharedKey{{"ctrl+q", "\x11"}}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("editor-probes:%s\n", line)
+}
+
+// TestEditorSharedKeyProbesParity prints PiG's editor log of each shared-key probe as one JSON line, in the shape Pi's oracle logs, for the tui-components/39 parity scenario.
+func TestEditorSharedKeyProbesParity(t *testing.T) {
+	printEditorProbeObservations(t, editorSharedKeyProbes([]editorSharedKey{{"ctrl+q", "\x11"}}))
+}
+
+func printEditorProbeObservations(t *testing.T, probes []editorBindingsProbe) {
+	t.Helper()
+	type cursor struct {
+		Line int `json:"line"`
+		Col  int `json:"col"`
+	}
+	type entry struct {
+		Text      string      `json:"text"`
+		Expanded  string      `json:"expanded"`
+		Cursor    cursor      `json:"cursor"`
+		Lines     []string    `json:"lines"`
+		Callbacks [][2]string `json:"callbacks"`
+		Rendered  []string    `json:"rendered"`
+	}
+	for _, probe := range probes {
+		var entries []entry
+		for _, log := range pigEditorLog(t, probe) {
+			callbacks := log.Callbacks
+			if callbacks == nil {
+				callbacks = [][2]string{}
+			}
+			entries = append(entries, entry{Text: log.Text, Expanded: log.Expanded, Cursor: cursor{log.Cursor.Line, log.Cursor.Col}, Lines: log.Lines, Callbacks: callbacks, Rendered: log.Rendered})
+		}
+		var out bytes.Buffer
+		encoder := json.NewEncoder(&out)
+		encoder.SetEscapeHTML(false)
+		if err := encoder.Encode(entries); err != nil {
+			t.Fatal(err)
+		}
+		fmt.Printf("editor-observation:%s", out.String())
+	}
 }
 
 type editorAutocompleteBindingsOp struct {
@@ -78,7 +131,7 @@ type editorAutocompleteBindingsProbe struct {
 }
 
 type editorAutocompleteBindingsLog struct {
-	Text      string      `json:"text"`
+	Text      string `json:"text"`
 	Cursor    struct{ Line, Col int }
 	Lines     []string    `json:"lines"`
 	Callbacks [][2]string `json:"callbacks"`
@@ -86,7 +139,7 @@ type editorAutocompleteBindingsLog struct {
 }
 
 // editorAutocompleteBindingsProvider is the provider testdata/editor_autocomplete_bindings.mjs defines for Pi: "/" followed by non-space characters offers the commands with that prefix;
-// otherwise only a forced request (Tab) offers the file names starting with the word before the cursor.
+// otherwise only a forced request (Tab) offers the file names starting with the word before the cursor, ignoring trailing backslashes (a popup then survives typing one).
 type editorAutocompleteBindingsProvider struct{}
 
 var (
@@ -111,7 +164,7 @@ func (editorAutocompleteBindingsProvider) GetSuggestions(_ context.Context, line
 	if !options.Force {
 		return nil
 	}
-	token := before[strings.LastIndexAny(before, " \t")+1:]
+	token := strings.TrimRight(before[strings.LastIndexAny(before, " \t")+1:], "\\")
 	var items []AutocompleteItem
 	for _, name := range editorAutocompleteFiles {
 		if strings.HasPrefix(name, token) {
@@ -308,6 +361,103 @@ func TestEditorAutocompleteSequencesMatchPi(t *testing.T) {
 				}
 			}
 			probes = append(probes, probe)
+		}
+	}
+	compareEditorAutocompleteProbesWithPi(t, probes)
+}
+
+// TestEditorHandleInputBoundariesMatchPi runs scripted boundary sequences through Pi's Editor and Pig's: a kill ring of three entries cycled by yank-pop past its first entry and
+// then broken by typing, history browsing from both ends with the cursor at the start, in the middle and at the end of a line, Up and Down on the first and last line, and the Shift+Space
+// spellings that decodePrintableKey would turn into a different character.
+func TestEditorHandleInputBoundariesMatchPi(t *testing.T) {
+	keys := func(list ...string) []editorBindingsOp {
+		var ops []editorBindingsOp
+		for _, key := range list {
+			ops = append(ops, editorBindingsOp{Keys: new(key)})
+		}
+		return append(ops, editorBindingsOp{Render: new(30)})
+	}
+	left, right, up, down := "\x1b[D", "\x1b[C", "\x1b[A", "\x1b[B"
+	killWord, yank, yankPop, killEnd, home, end := "\x17", "\x19", "\x1by", "\x0b", "\x01", "\x05"
+	var probes []editorBindingsProbe
+	add := func(history []string, ops ...[]editorBindingsOp) {
+		probe := editorBindingsProbe{}
+		for _, entry := range history {
+			probe.Ops = append(probe.Ops, editorBindingsOp{History: new(entry)})
+		}
+		for _, list := range ops {
+			probe.Ops = append(probe.Ops, list...)
+		}
+		probes = append(probes, probe)
+	}
+	// Kill ring.
+	three := []string{"aa bb cc dd", killWord, left, killWord, left, killWord}
+	add(nil, keys(append(three, yank)...))
+	add(nil, keys(append(three, yank, yankPop)...))
+	add(nil, keys(append(three, yank, yankPop, yankPop)...))
+	add(nil, keys(append(three, yank, yankPop, yankPop, yankPop)...))
+	add(nil, keys(append(three, yank, yankPop, yankPop, yankPop, yankPop)...))
+	add(nil, keys(append(three, yank, "x", yankPop)...))
+	add(nil, keys(append(three, yankPop)...))
+	add(nil, keys(append(three, yank, left, yankPop)...))
+	add(nil, keys(append(three, yank, yankPop, "\x1f", yankPop)...))
+	add(nil, keys("ab cd", killEnd, yank, yankPop), keys("\x1f", "\x1f", "\x1f", "\x1f"))
+	add(nil, keys(yank, yankPop, "\x1f", killEnd, killWord))
+	// History browsing and the first and last line.
+	histories := [][]string{{"one"}, {"one", "two\nlines", "three"}}
+	for _, history := range histories {
+		add(history, keys(up, up, up, up, down, down, down, down, down))
+		add(history, keys(up, end, up, home, up, down, right, down, down))
+		add(history, keys(up, left, left, up, up, down, down, down))
+		add(history, keys("typed", up, up, down, down))
+		add(history, keys("typed", home, up, down, "x", up, down))
+		add(history, keys("typed", "\x1b\r", "second", up, up, down, down, down))
+		add(history, keys("typed", "\x1b\r", "second", home, up, up, up, down, down, down, down))
+		add(history, keys(up, "x", up, down, down))
+		add(history, keys(up, "\x1f", up, up, down))
+		add(history, keys(up, up, "\r", up, up))
+	}
+	// Shift+Space: the CSI-u forms carrying a shifted key, an event type, lock modifiers and the modifyOtherKeys form.
+	for _, space := range []string{"\x1b[32;2u", "\x1b[32:33;2u", "\x1b[32:95;2u", "\x1b[32;2:1u", "\x1b[32;2:2u", "\x1b[32;2:3u", "\x1b[32;66u", "\x1b[32;130u", "\x1b[27;2;32~", "\x1b[32;1u", "\x1b[32u", "\x1b[32;3u", "\x1b[32;5u"} {
+		add(nil, keys("a", space, "b"), keys(space, space), keys("\x1b[97:65;2u", "\x1b[27;2;66~"))
+	}
+	compareEditorProbesWithPi(t, probes)
+}
+
+// TestEditorAutocompleteBoundariesMatchPi runs scripted autocomplete boundary sequences through Pi's Editor and Pig's: the dedicated history keys with a popup open close it, and Enter after a
+// backslash with a popup open (left by cursor movement) turns into a newline and closes it.
+func TestEditorAutocompleteBoundariesMatchPi(t *testing.T) {
+	var probes []editorAutocompleteBindingsProbe
+	add := func(bindings map[string][]string, disableSubmit bool, history []string, keys ...string) {
+		probe := editorAutocompleteBindingsProbe{Bindings: bindings, DisableSubmit: disableSubmit}
+		for _, entry := range history {
+			probe.Ops = append(probe.Ops, editorAutocompleteBindingsOp{History: new(entry)})
+		}
+		for _, key := range keys {
+			probe.Ops = append(probe.Ops, editorAutocompleteBindingsOp{Keys: new(key)})
+		}
+		probes = append(probes, probe)
+	}
+	historyKeys := map[string][]string{"tui.editor.historyPrevious": {"ctrl+p"}, "tui.editor.historyNext": {"ctrl+n"}}
+	for _, history := range [][]string{nil, {"first"}, {"first", "second"}} {
+		add(historyKeys, false, history, "/", "a", "\x10", "\x10", "\x0e", "\x0e")
+		add(historyKeys, false, history, "x al", "\t", "\x10", "\x0e", "\x10")
+		add(historyKeys, false, history, "\x10", "/", "a", "\x0e", "\x10")
+		add(historyKeys, false, history, "/", "\x10", "\x1b[B")
+	}
+	// Printable keys that arrive as CSI-u or modifyOtherKeys sequences refresh an open popup like typed text.
+	add(nil, false, nil, "/", "\x1b[97u", "\x1b[108u", "\x1b[32;2u", "\x7f", "\x7f")
+	add(nil, false, nil, "/", "\x1b[27;1;97~", "\x1b[98:66;2u", "\x1b[108u")
+	left := "\x1b[D"
+	for _, bindings := range []map[string][]string{nil, {"tui.input.submit": {"shift+enter"}, "tui.input.newLine": {"alt+enter"}}, {"tui.input.submit": {"enter", "shift+enter"}}} {
+		for _, disabled := range []bool{false, true} {
+			for _, enter := range []string{"\r", "\n", "\x1b\r"} {
+				add(bindings, disabled, nil, "q\\", " ", "al", "\t", left, left, left, enter, "x")
+				add(bindings, disabled, nil, "q\\", " ", "al", "\t", left, left, enter, "x")
+				add(bindings, disabled, nil, "/a", left, "\\", left, enter, "x")
+				add(bindings, disabled, nil, "q al", "\t", "\\", enter, "x")
+				add(bindings, disabled, nil, "q al", "\t", "\\", "\\", enter, "x")
+			}
 		}
 	}
 	compareEditorAutocompleteProbesWithPi(t, probes)
