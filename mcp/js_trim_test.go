@@ -40,13 +40,21 @@ func record(events *TransportEvents) *recordedEvents {
 // JSON.parse("\u0085") throws `Unexpected token '\u0085', "\u0085" is not valid JSON` (Node 24).
 const nelSyntaxError = "Unexpected token '\u0085', \"\u0085\" is not valid JSON"
 
+// newTestLineReader is a line reader that reports to events, with the given message limit.
+func newTestLineReader(events *TransportEvents, maxMessageBytes int) *jsonRPCLineReader {
+	return newJSONRPCLineReader(jsonRPCLineReaderOptions{
+		maxMessageBytes: maxMessageBytes,
+		onMessage:       events.EmitMessage,
+		onError:         events.EmitError,
+	})
+}
+
 func TestStdioTransportSkipsOnlyLinesThatAreBlankToJavaScriptTrim(t *testing.T) {
-	transport := &StdioTransport{}
-	recorded := record(&transport.TransportEvents)
-	var lines lineSplitter
-	lines.write([]byte("\uFEFF\n \t\uFEFF\r\n\u0085\n{\"jsonrpc\":\"2.0\",\"method\":\"ping\"}\n"))
-	transport.drainLines(&lines, DefaultMaxMessageBytes)
-	rest := lines.pending()
+	var events TransportEvents
+	recorded := record(&events)
+	reader := newTestLineReader(&events, DefaultMaxMessageBytes)
+	reader.readStdout([]byte("\uFEFF\n \t\uFEFF\r\n\u0085\n{\"jsonrpc\":\"2.0\",\"method\":\"ping\"}\n"))
+	rest := reader.lines.pending()
 	if len(rest) != 0 {
 		t.Fatalf("rest = %q", rest)
 	}
@@ -67,9 +75,11 @@ func TestStdioTransportReportsAnIncompleteMessageOnlyWhenTheRemainderIsNotBlankT
 		{"\u0085", true},
 		{"{\"jsonrpc\"", true},
 	} {
-		transport := &StdioTransport{stdoutRemainder: []byte(test.rest)}
-		recorded := record(&transport.TransportEvents)
-		transport.finishStdout()
+		var events TransportEvents
+		recorded := record(&events)
+		reader := newTestLineReader(&events, 0)
+		reader.readStdout([]byte(test.rest))
+		reader.end()
 		want := []string(nil)
 		if test.reported {
 			want = []string{"MCP stdio server closed with an incomplete JSON-RPC message"}

@@ -6,7 +6,7 @@ This document records the boundary of PiG's native Model Context Protocol suppor
 
 | Go package | Upstream | Contents |
 |---|---|---|
-| `mcp` | `packages/mcp/src` | `Client`, `Transport`, `StdioTransport`, `StreamableHTTPTransport`, `ConsumeSSEStream`, `ToLLMContent` |
+| `mcp` | `packages/mcp/src` | `Client`, `Transport`, `StdioTransport`, `PipeTransport`, `StreamableHTTPTransport`, `ConsumeSSEStream`, `ToLLMContent` |
 | `mcp/mcptest` | `packages/mcp/src/testing` | in-memory transport pair |
 | `mcp/oauth` | `packages/mcp/src/oauth` | discovery, PKCE authorization code flow, dynamic client registration, refresh, `McpOAuthProvider`, `OAuthCallbackServer` |
 | `coding/mcpext` | `packages/coding-agent/src/extensions/mcp` | `mcp.json` loading and editing, server connections, tool and resource tools, OAuth credentials and sign-in, the extension's event handlers |

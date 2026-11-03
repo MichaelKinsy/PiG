@@ -77,9 +77,9 @@ func timeStdioFrame(t *testing.T, line []byte) time.Duration {
 
 // The transport delivers a message spanning many reads whole.
 func TestStdioTransportDeliversALargeMessageSpanningManyReads(t *testing.T) {
-	transport := &StdioTransport{options: StdioTransportOptions{MaxMessageBytes: 64 << 20}}
-	recorded := record(&transport.TransportEvents)
-	transport.readStdout(&chunkReader{data: largeStdioLine(4 << 20), sizes: fixedChunks(4096)})
+	var events TransportEvents
+	recorded := record(&events)
+	newTestLineReader(&events, 64<<20).copyStdout(&chunkReader{data: largeStdioLine(4 << 20), sizes: fixedChunks(4096)})
 	if len(recorded.messages) != 1 || len(recorded.errors) != 0 {
 		t.Fatalf("messages = %d, errors = %q", len(recorded.messages), recorded.errors)
 	}
@@ -102,15 +102,16 @@ type stdioOutcome struct {
 }
 
 func runStdioChunks(stream []byte, sizes func() int, maxBytes int) stdioOutcome {
-	transport := &StdioTransport{options: StdioTransportOptions{MaxMessageBytes: maxBytes}}
-	recorded := record(&transport.TransportEvents)
-	transport.readStdout(&chunkReader{data: stream, sizes: sizes})
+	var events TransportEvents
+	recorded := record(&events)
+	reader := newTestLineReader(&events, maxBytes)
+	reader.copyStdout(&chunkReader{data: stream, sizes: sizes})
 	var out stdioOutcome
 	for _, m := range recorded.messages {
 		out.messages = append(out.messages, m.Method+"|"+string(m.Params))
 	}
 	out.errors = recorded.errors
-	out.remainder = string(transport.stdoutRemainder)
+	out.remainder = string(reader.lines.pending())
 	return out
 }
 

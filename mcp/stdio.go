@@ -1,11 +1,9 @@
 package mcp
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -15,18 +13,14 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/crossspawn"
-	"github.com/MichaelKinsy/PiG/internal/jsonparse"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
-// Ports packages/mcp/src/transports/stdio.ts.
+// Ports packages/mcp/src/transports/stdio.ts. The framing and the stderr tail are in lines.go.
 
 const (
-	defaultMaxStderrBytes  = 64 * 1024
 	defaultCloseTimeoutMs  = 2_000
 	stdinCloseGraceMs      = 500 // how long a server gets to exit on its own after stdin closes, before SIGTERM
-	stdoutReadChunkBytes   = 64 * 1024
 	forcedPipeCloseTimeout = time.Second
 )
 
@@ -65,19 +59,25 @@ type StdioTransport struct {
 	stdinClosed bool
 	stdout      io.ReadCloser
 	stderrPipe  io.ReadCloser
-	stderr      []byte
+	lines       *jsonRPCLineReader
 	started     bool
 	closed      bool
 	exited      chan struct{}
 	writeMu     sync.Mutex
-
-	stdoutRemainder []byte
 }
 
 // NewStdioTransport returns a transport that has not started its process.
 func NewStdioTransport(options StdioTransportOptions) *StdioTransport {
 	options.Args = slices.Clone(options.Args)
-	return &StdioTransport{options: options}
+	t := &StdioTransport{options: options}
+	t.lines = newJSONRPCLineReader(jsonRPCLineReaderOptions{
+		maxMessageBytes: options.MaxMessageBytes,
+		maxStderrBytes:  options.MaxStderrBytes,
+		onStderr:        options.OnStderr,
+		onMessage:       t.EmitMessage,
+		onError:         t.EmitError,
+	})
+	return t
 }
 
 // Options returns the transport's options.
@@ -94,11 +94,7 @@ func (t *StdioTransport) PID() int {
 }
 
 // Stderr is the tail of the server's stderr.
-func (t *StdioTransport) Stderr() string {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return jsstring.FromUTF8(t.stderr)
-}
+func (t *StdioTransport) Stderr() string { return t.lines.stderrTail() }
 
 func (t *StdioTransport) environment() []nodespawn.EnvProperty {
 	var properties []nodespawn.EnvProperty
@@ -171,11 +167,11 @@ func (t *StdioTransport) Start() error {
 
 	var readers sync.WaitGroup
 	readers.Go(func() {
-		t.readStdout(stdout)
+		t.lines.copyStdout(stdout)
 	})
 	if stderrPipe != nil {
 		readers.Go(func() {
-			t.readStderr(stderrPipe)
+			t.lines.copyStderr(stderrPipe)
 		})
 	}
 	go func() {
@@ -183,7 +179,7 @@ func (t *StdioTransport) Start() error {
 		readers.Wait()
 		_ = cmd.Wait()
 		untrackProcessGroup(pid)
-		t.finishStdout()
+		t.lines.end()
 		t.mu.Lock()
 		t.cmd = nil
 		t.mu.Unlock()
@@ -310,152 +306,5 @@ func (t *StdioTransport) closePipes() {
 	}
 	if stderr != nil {
 		_ = stderr.Close()
-	}
-}
-
-// readStdout frames stdout into lines. A chunk that leaves a partial line
-// longer than the limit is dropped with an error.
-func (t *StdioTransport) readStdout(r io.Reader) {
-	buf := make([]byte, stdoutReadChunkBytes)
-	var lines lineSplitter
-	maxBytes := t.options.MaxMessageBytes
-	if maxBytes == 0 {
-		maxBytes = DefaultMaxMessageBytes
-	}
-	for {
-		n, err := r.Read(buf)
-		if n > 0 {
-			lines.write(buf[:n])
-			t.drainLines(&lines, maxBytes)
-		}
-		if err != nil {
-			t.mu.Lock()
-			t.stdoutRemainder = lines.pending()
-			t.mu.Unlock()
-			return
-		}
-	}
-}
-
-func (t *StdioTransport) drainLines(lines *lineSplitter, maxBytes int) {
-	for {
-		line, ok := lines.next()
-		if !ok {
-			if lines.pendingLen() > maxBytes {
-				t.EmitError(fmt.Errorf("MCP stdio message exceeds %d bytes", maxBytes))
-				lines.reset()
-			}
-			return
-		}
-		if len(line) > maxBytes {
-			t.EmitError(fmt.Errorf("MCP stdio message exceeds %d bytes", maxBytes))
-			continue
-		}
-		line = bytes.TrimSuffix(line, []byte{'\r'})
-		// bytes.TrimFunc decodes runes as strings.TrimFunc does, so this is
-		// jsstring.Trim(text) == "" without copying the line.
-		if len(bytes.TrimFunc(line, jsstring.IsSpace)) == 0 {
-			continue
-		}
-		// The line aliases the splitter's buffer; parsing copies what it keeps.
-		message, err := parseWireMessage(line)
-		if err != nil {
-			t.EmitError(err)
-			continue
-		}
-		t.EmitMessage(message)
-	}
-}
-
-// lineSplitter frames "\n"-terminated lines from appended reads. It remembers
-// how far the pending bytes were searched, so a line spanning many reads is
-// searched once, and it compacts consumed bytes only when they outweigh the
-// pending ones, so copying stays linear too.
-type lineSplitter struct {
-	buf     []byte
-	start   int // first pending byte
-	scanned int // bytes before scanned hold no '\n'
-}
-
-func (s *lineSplitter) write(p []byte) {
-	if s.start > 0 && s.start >= len(s.buf)-s.start {
-		n := copy(s.buf, s.buf[s.start:])
-		s.buf = s.buf[:n]
-		s.scanned -= s.start
-		s.start = 0
-	}
-	s.buf = append(s.buf, p...)
-}
-
-// next returns the next line without its "\n". The line aliases the buffer
-// and is valid until the next write.
-func (s *lineSplitter) next() ([]byte, bool) {
-	i := bytes.IndexByte(s.buf[s.scanned:], '\n')
-	if i < 0 {
-		s.scanned = len(s.buf)
-		return nil, false
-	}
-	end := s.scanned + i
-	line := s.buf[s.start:end]
-	s.start, s.scanned = end+1, end+1
-	return line, true
-}
-
-func (s *lineSplitter) pendingLen() int { return len(s.buf) - s.start }
-
-// pending returns the unterminated tail, or nil when there is none.
-func (s *lineSplitter) pending() []byte {
-	if s.start == len(s.buf) {
-		return nil
-	}
-	return s.buf[s.start:]
-}
-
-func (s *lineSplitter) reset() { s.buf, s.start, s.scanned = s.buf[:0], 0, 0 }
-
-// parseWireMessage parses JSON text and validates it as a JSON-RPC message.
-// A syntax error carries the message JSON.parse throws.
-func parseWireMessage(text []byte) (JSONRPCMessage, error) {
-	if !json.Valid(text) {
-		if err := jsonparse.Validate(text); err != nil {
-			return JSONRPCMessage{}, err
-		}
-	}
-	return ParseJSONRPCMessage(text)
-}
-
-func (t *StdioTransport) finishStdout() {
-	t.mu.Lock()
-	rest := t.stdoutRemainder
-	t.stdoutRemainder = nil
-	t.mu.Unlock()
-	if jsstring.Trim(string(rest)) != "" {
-		t.EmitError(errors.New("MCP stdio server closed with an incomplete JSON-RPC message"))
-	}
-}
-
-func (t *StdioTransport) readStderr(r io.Reader) {
-	buf := make([]byte, 4096)
-	maxBytes := t.options.MaxStderrBytes
-	if maxBytes == 0 {
-		maxBytes = defaultMaxStderrBytes
-	}
-	for {
-		n, err := r.Read(buf)
-		if n > 0 {
-			chunk := append([]byte(nil), buf[:n]...)
-			t.mu.Lock()
-			t.stderr = append(t.stderr, chunk...)
-			if len(t.stderr) > maxBytes {
-				t.stderr = t.stderr[len(t.stderr)-maxBytes:]
-			}
-			t.mu.Unlock()
-			if t.options.OnStderr != nil {
-				t.options.OnStderr(jsstring.FromUTF8(chunk))
-			}
-		}
-		if err != nil {
-			return
-		}
 	}
 }

@@ -2,7 +2,9 @@
 // not depend on an MCP SDK or on other PiG packages.
 //
 // The package provides a transport-neutral client core, stdio and Streamable
-// HTTP transports, and an in-memory transport for tests (package mcptest).
+// HTTP transports, a stdio transport over a pipe to a program started
+// elsewhere ([PipeTransport]), and an in-memory transport for tests (package
+// mcptest).
 // A transport owns framing and I/O and delivers individual JSON-RPC messages
 // to [Client]; the client owns request correlation, initialization, timeouts,
 // cancellation, server requests, and protocol-level helpers.

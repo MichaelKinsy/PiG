@@ -8,6 +8,10 @@ All notable public changes to PiG will be recorded in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Go API `mcp`: `PipeTransport`, MCP's stdio transport over a program the caller starts through an `McpPipe` (`Write`, `CloseStdin`, `Close`, `Exited`), as in Pi. `StdioTransport` and `PipeTransport` share the newline-delimited framing and the stderr tail.
+
 ### Changed
 
 - Package filters, manifest `!`/`+`/`-` overrides, settings resource patterns, model scopes and built-in extension overrides follow minimatch 11.0.3, as in Pi: a path portion is matched by a state machine (`@isaacs/nonrecursive-glob-match`) instead of a regular expression. An empty path portion matches only an empty pattern portion (so `""` no longer matches `*(a)`), `*\.5` matches `gpt-5.5`, case folds one code point at a time with Unicode simple case folding, and a pattern that minimatch 10.2.6 could not compile (a POSIX class beside an escaped `,`, as in `[[:alpha:]]*,md`) now compiles; only a pattern over 65,536 UTF-16 units still fails.
