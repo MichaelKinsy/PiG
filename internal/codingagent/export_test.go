@@ -146,6 +146,19 @@ func (h *TestHarness) PendingDisplay() string {
 	return text
 }
 
+// BelowEditor returns the rows under the editor as plain text.
+func (h *TestHarness) BelowEditor() string {
+	var text string
+	h.Do(func() {
+		lines := h.m.widgetContainerBelow.Render(100)
+		for i, line := range lines {
+			lines[i] = widthx.StripAnsi(line)
+		}
+		text = strings.Join(lines, "\n")
+	})
+	return text
+}
+
 // SetEditorText replaces the editor's text. Call it on the owner loop.
 func (h *TestHarness) SetEditorText(text string) { h.m.editor.SetText(text) }
 
