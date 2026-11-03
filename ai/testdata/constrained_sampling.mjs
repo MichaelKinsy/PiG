@@ -1,6 +1,6 @@
 // Run Pi's constrained-sampling.ts (imported as-is, types stripped) over probes from stdin.
 // usage: node constrained_sampling.mjs <constrained-sampling.ts>
-// {op: "strict"|"resolveStrict"|"grammar"|"input"|"delta", tool, supports, check, args, steps}. Results: {ok: value} or {err: message}; undefined is {ok: null, undef: true}.
+// {op: "strict"|"parameters"|"prefers"|"resolveStrict"|"grammar"|"input"|"delta", tool, strict, supports, check, args, steps}. Results: {ok: value} or {err: message}; undefined is {ok: null, undef: true}.
 import { pathToFileURL } from "node:url";
 const sampling = await import(pathToFileURL(process.argv[2]).href);
 const check = (key) => key === "format" || key === "pattern";
@@ -23,6 +23,10 @@ process.stdout.write(
 					return settle(() => sampling.getJsonSchemaToolParameters(p.tool, true));
 				case "resolveStrict":
 					return settle(() => sampling.resolveJsonSchemaStrictSampling(p.tool, p.supports, p.check ? check : undefined));
+				case "prefers":
+					return settle(() => sampling.prefersJsonSchemaStrictSampling(p.tool));
+				case "parameters":
+					return settle(() => sampling.getJsonSchemaToolParameters(p.tool, p.strict ?? undefined));
 				case "grammar":
 					return settle(() => sampling.resolveGrammarConstrainedSampling(p.tool, p.supports));
 				case "input":

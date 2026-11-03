@@ -34032,7 +34032,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -34052,7 +34053,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -34072,7 +34074,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -34092,7 +34095,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -34112,7 +34116,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Replace"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -34132,7 +34137,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Replace"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -45491,7 +45497,8 @@
         "call:ai/openai_responses.go#GetResponsesToolSupport"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestGetResponsesToolSupportFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestGetResponsesToolSupportFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -45511,7 +45518,8 @@
         "call:ai/openai_responses.go#GetResponsesToolSupport"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestGetResponsesToolSupportFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestGetResponsesToolSupportFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -48150,7 +48158,8 @@
         "call:ai/anthropic.go#anthConvertMessagesDetailed"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestSplitErrorToolResultImagesFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestSplitErrorToolResultImagesFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -48170,7 +48179,8 @@
         "call:ai/anthropic.go#anthConvertMessagesDetailed"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestSplitErrorToolResultImagesFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestSplitErrorToolResultImagesFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -48190,7 +48200,8 @@
         "call:ai/anthropic.go#anthConvertMessagesDetailed"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestSplitErrorToolResultImagesFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestSplitErrorToolResultImagesFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -48210,7 +48221,8 @@
         "call:ai/anthropic.go#anthConvertMessagesDetailed"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestSplitErrorToolResultImagesFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestSplitErrorToolResultImagesFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -48230,7 +48242,8 @@
         "call:ai/transform_messages.go#SplitErrorToolResultImages"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestSplitErrorToolResultImagesFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestSplitErrorToolResultImagesFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -48250,7 +48263,8 @@
         "call:ai/transform_messages.go#SplitErrorToolResultImages"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestSplitErrorToolResultImagesFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestSplitErrorToolResultImagesFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -79679,7 +79693,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -79699,7 +79714,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -79719,7 +79735,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -79739,7 +79756,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -79759,7 +79777,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Replace"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -79779,7 +79798,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Replace"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -100401,7 +100421,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -100421,7 +100442,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Append"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -100441,7 +100463,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -100461,7 +100484,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Finish"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -100481,7 +100505,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Replace"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {
@@ -100501,7 +100526,8 @@
         "call:ai/streaming_json_parser.go#ToolCallArgumentsStream.Replace"
       ],
       "evidence": [
-        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi"
+        "test:ai/strict_sampling_exports_test.go#TestToolCallArgumentsStreamFinishFollowsPi",
+        "test:ai/strict_sampling_exports_oracle_test.go#TestStrictSamplingExportsMatchPi"
       ]
     },
     {

@@ -27,6 +27,7 @@ type samplingProbe struct {
 	Tool     json.RawMessage `json:"tool,omitempty"`
 	Supports bool            `json:"supports,omitempty"`
 	Check    bool            `json:"check,omitempty"`
+	Strict   *bool           `json:"strict,omitempty"`
 	Args     json.RawMessage `json:"args,omitempty"`
 	Property string          `json:"property,omitempty"`
 	Steps    []samplingStep  `json:"steps,omitempty"`
@@ -116,6 +117,16 @@ func samplingProbes() []samplingProbe {
 		probes = append(probes, samplingProbe{Op: "strict", Tool: tool}, samplingProbe{Op: "resolveStrict", Tool: tool, Supports: g.random.Intn(4) != 0, Check: g.random.Intn(2) == 0})
 		grammarTool := json.RawMessage(g.tool(g.grammarParameters()))
 		probes = append(probes, samplingProbe{Op: "grammar", Tool: grammarTool, Supports: g.random.Intn(5) != 0})
+	}
+	for _, tool := range strictSamplingFixedTools() {
+		raw := json.RawMessage(tool)
+		probes = append(probes, samplingProbe{Op: "prefers", Tool: raw}, samplingProbe{Op: "strict", Tool: raw},
+			samplingProbe{Op: "parameters", Tool: raw}, samplingProbe{Op: "parameters", Tool: raw, Strict: new(false)}, samplingProbe{Op: "parameters", Tool: raw, Strict: new(true)})
+		for _, supports := range []bool{true, false} {
+			for _, check := range []bool{true, false} {
+				probes = append(probes, samplingProbe{Op: "resolveStrict", Tool: raw, Supports: supports, Check: check})
+			}
+		}
 	}
 	inputs := []string{"", "a", "ab", "a\"b", "a\nb", "<>&", "\u2028x", "\u007f", "é", "😀", "😀x", "\\", "a\u0000b", "x y"}
 	for range 1500 {
@@ -236,6 +247,24 @@ func TestConstrainedSamplingMatchesPi(t *testing.T) {
 			if message != nil {
 				lastGot = *message
 			}
+		case "prefers":
+			encoded, undef, message := settleSampling(prefersJSONSchemaStrictSampling(tool), nil, true)
+			ok, label = sameSampling(t, "prefers", encoded, undef, message, want), "prefers"
+			outcomes[fmt.Sprintf("prefers-%s", encoded)]++
+		case "parameters":
+			toolParameters, err := getJSONSchemaToolParameters(tool, probe.Strict)
+			encoded, undef, message := settleSampling(toolParameters.Schema, err, true)
+			ok, label = sameSampling(t, "parameters", encoded, undef, message, want), "parameters"
+			if ok && message == nil {
+				ordered, err := marshalToolParameters(toolParameters.Schema, toolParameters.order)
+				if err != nil {
+					t.Fatal(err)
+				}
+				ok = bytes.Equal(ordered, want.OK)
+				encoded = ordered
+			}
+			outcomes[fmt.Sprintf("parameters-%v-%v", probe.Strict != nil && *probe.Strict, message == nil)]++
+			lastGot = string(encoded)
 		case "resolveStrict":
 			var keyword UnsupportedStrictSchemaKeywordCheck
 			if probe.Check {
@@ -305,6 +334,12 @@ func TestConstrainedSamplingMatchesPi(t *testing.T) {
 	for _, key := range []string{"strict-true", "strict-false", "resolveStrict-true-true", "resolveStrict-false-true", "resolveStrict-false-false", "grammar-true-true", "grammar-false-true", "grammar-false-false", "delta-emitted", "delta-error"} {
 		if outcomes[key] < 10 {
 			t.Errorf("probes are one-sided: %s = %d", key, outcomes[key])
+		}
+	}
+	// The fixed tools of strict_sampling_exports_test.go: each answer of prefersJsonSchemaStrictSampling and getJsonSchemaToolParameters occurs on both sides.
+	for _, key := range []string{"prefers-true", "prefers-false", "parameters-true-true", "parameters-true-false", "parameters-false-true"} {
+		if outcomes[key] < 3 {
+			t.Errorf("fixed probes are one-sided: %s = %d", key, outcomes[key])
 		}
 	}
 }

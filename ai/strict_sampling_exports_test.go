@@ -2,6 +2,7 @@ package ai
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -299,4 +300,35 @@ func TestToolCallArgumentsStreamFinishFollowsPi(t *testing.T) {
 	if message != "" || !reflect.DeepEqual(arguments, JsonObject{"fresh": float64(2)}) {
 		t.Fatalf("Finish after Replace = %#v, %q", arguments, message)
 	}
+}
+
+// strictSamplingFixedTools are the tools of this file's expectations as JSON, for the Pi oracles that re-check them: json_schema tools that ask for
+// strict sampling (prefer and require) over a schema that converts, over one that cannot, and over a provider-keyword case; a plain tool; a grammar tool.
+func strictSamplingFixedTools() []string {
+	tool := func(parameters, config string) string {
+		return `{"name":"lookup","description":"d","parameters":` + parameters + config + `}`
+	}
+	jsonSchema := func(strict string) string {
+		return `,"constrainedSampling":{"type":"json_schema","strict":"` + strict + `"}`
+	}
+	const withFormat = `{"type":"object","properties":{"a":{"type":"string","format":"uri"}},"required":["a"]}`
+	return []string{
+		tool(strictLookupParams, jsonSchema("prefer")), tool(strictLookupParams, jsonSchema("require")), tool(strictLookupParams, ""),
+		tool(strictLookupParams, `,"constrainedSampling":{"type":"json_schema"}`),
+		tool(strictLookupParams, `,"constrainedSampling":{"type":"grammar","variants":{"openai_lark":"start: x"}}`),
+		tool(refLookupParams, jsonSchema("prefer")), tool(refLookupParams, jsonSchema("require")),
+		tool(withFormat, jsonSchema("prefer")), tool(withFormat, jsonSchema("require")),
+		tool(`{"type":"object","properties":{"a":{"type":"array","items":[{"type":"string"}]}}}`, jsonSchema("require")),
+		tool(`{"type":"string"}`, jsonSchema("prefer")),
+		tool(`{"type":"object","additionalProperties":true}`, jsonSchema("require")),
+	}
+}
+
+// strictSamplingFixedToolSets groups strictSamplingFixedTools one tool at a time, by index, for the Responses tool builder oracle.
+func strictSamplingFixedToolSets() map[string]string {
+	sets := map[string]string{}
+	for i, tool := range strictSamplingFixedTools() {
+		sets[fmt.Sprintf("tool%d", i)] = tool
+	}
+	return sets
 }
