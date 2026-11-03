@@ -1,0 +1,872 @@
+[
+ {
+  "upstream": "packages/chord/src/watch.ts",
+  "package": "./chord",
+  "tests": [
+   "TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
+   "TestWatchDiscardsARetirementStillPendingWhenTheSourceEnds",
+   "TestWatchFailureCallsFoldsPendingValuesFollowedByAFailureIntoTheFailure",
+   "TestWatchKeepsTheAcquisitionValueUntilStartThenDeliversTheFramesSinceInOneCall",
+   "TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext"
+  ],
+  "upstream_reference": "packages/chord/src/watch.ts (NativeWatchable.Watch, Watchable.Watch, NewWatch, Watch)",
+  "mutation": "chord/watch_impl.go: replace `watch.value = value watch.closed = make(chan struct{})` with `watch.closed = make(chan struct{})`; the unmutated -run set passes and the mutant compiles; FAIL: TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext, TestWatchDiscardsARetirementStillPendingWhenTheSourceEnds, TestWatchFailureCallsFoldsPendingValuesFollowedByAFailureIntoTheFailure, TestWatchKeepsTheAcquisitionValueUntilStartThenDeliversTheFramesSinceInOneCall, TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext."
+ },
+ {
+  "upstream": "packages/chord/src/watch.ts",
+  "package": "./chord",
+  "tests": [
+   "TestNativeWatchCollapses101PendingValuesToTheNewest",
+   "TestNativeWatchCollapses101PendingValuesToTheValueOfReplace",
+   "TestNativeWatchDeliversABacklogThatNeverDrainsInOrder",
+   "TestNativeWatchDeliversAFailureAsACallStaysOpenAndFoldsItWithTheValuesAroundIt",
+   "TestNativeWatchDeliversValuesByIdentityInOrderWithAContextNeverInline",
+   "TestNativeWatchEndAfterDeliveryDeliversWhatIsPendingThenEndsEnded",
+   "TestNativeWatchHandleInterface",
+   "TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext"
+  ],
+  "upstream_reference": "packages/chord/src/watch.ts (NativeWatchable.Watch, NativeWatch, NewNativeWatch)",
+  "mutation": "chord/watch_impl.go: replace `NativeWatchCall[T]{Kind: WatchCallValue, Value: frame.value})` with `NativeWatchCall[T]{Kind: WatchCallValue})`; the unmutated -run set passes and the mutant compiles; FAIL: TestNativeWatchCollapses101PendingValuesToTheNewest, TestNativeWatchCollapses101PendingValuesToTheValueOfReplace, TestNativeWatchDeliversABacklogThatNeverDrainsInOrder, TestNativeWatchDeliversAFailureAsACallStaysOpenAndFoldsItWithTheValuesAroundIt, TestNativeWatchDeliversValuesByIdentityInOrderWithAContextNeverInline, TestNativeWatchEndAfterDeliveryDeliversWhatIsPendingThenEndsEnded, TestNativeWatchHandleInterface, TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext."
+ },
+ {
+  "upstream": "packages/chord/src/watch.ts",
+  "package": "./chord",
+  "tests": [
+   "TestWatchCallObjectsCarryPlainDataOnlyTheFoldedChangeBuiltByTheWatch",
+   "TestWatchEndAfterDeliveryTakesNoMoreFramesDeliversWhatIsPendingThenEndsEndedAndOnlyThenDetaches",
+   "TestWatchFailureCallsFoldsAPendingFailureFollowedByValuesIntoOneRootReplacementWithTheNewestValue",
+   "TestWatchFoldsARetirementAndTheFramesAroundItIntoOneCallThatReportsIt",
+   "TestWatchKeepsReportingTheRetirementPastAnOverflow",
+   "TestWatchReportsARetirementInTheNextCallWithTheValueTheSourceGivesAndGoesOn"
+  ],
+  "upstream_reference": "packages/chord/src/watch.ts (Watch.Advance)",
+  "mutation": "chord/watch_impl.go: replace `if call.Retired { watch.retired = true }` with `if call.Retired { watch.retired = false }`; the unmutated -run set passes and the mutant compiles; FAIL: TestWatchCallObjectsCarryPlainDataOnlyTheFoldedChangeBuiltByTheWatch, TestWatchEndAfterDeliveryTakesNoMoreFramesDeliversWhatIsPendingThenEndsEndedAndOnlyThenDetaches, TestWatchFailureCallsFoldsAPendingFailureFollowedByValuesIntoOneRootReplacementWithTheNewestValue, TestWatchFoldsARetirementAndTheFramesAroundItIntoOneCallThatReportsIt, TestWatchKeepsReportingTheRetirementPastAnOverflow, TestWatchReportsARetirementInTheNextCallWithTheValueTheSourceGivesAndGoesOn."
+ },
+ {
+  "upstream": "packages/chord/src/watch.ts",
+  "package": "./chord",
+  "tests": [
+   "TestNativeWatchCollapses101PendingValuesToTheNewest",
+   "TestNativeWatchCollapses101PendingValuesToTheValueOfReplace"
+  ],
+  "upstream_reference": "packages/chord/src/watch.ts (NativeWatch.Advance)",
+  "mutation": "chord/watch_impl.go: replace `len(watch.values) < maxPendingNativeValues` with `len(watch.values) <= maxPendingNativeValues`; the unmutated -run set passes and the mutant compiles; FAIL: TestNativeWatchCollapses101PendingValuesToTheNewest, TestNativeWatchCollapses101PendingValuesToTheValueOfReplace."
+ },
+ {
+  "upstream": "packages/chord/src/watch.ts",
+  "package": "./chord",
+  "tests": [
+   "TestNativeWatchDeliversAFailureAsACallStaysOpenAndFoldsItWithTheValuesAroundIt"
+  ],
+  "upstream_reference": "packages/chord/src/watch.ts (NativeWatch.Advance)",
+  "mutation": "chord/watch_impl.go: replace `watch.failure = nil if len(watch.values) < maxPendingNativeValues {` with `if len(watch.values) < maxPendingNativeValues {`; the unmutated -run set passes and the mutant compiles; FAIL: TestNativeWatchDeliversAFailureAsACallStaysOpenAndFoldsItWithTheValuesAroundIt."
+ },
+ {
+  "upstream": "packages/chord/src/watch.ts",
+  "package": "./chord",
+  "tests": [
+   "TestWatchFailureCallsDeliversAFailureAsACallStaysOpenKeepsTheLastValueAndReplacesTheRootOnRecovery",
+   "TestWatchFailureCallsDeliversAFailureThatArrivesDuringACallAfterItThenTheRecovery",
+   "TestWatchFailureCallsFoldsPendingValuesFollowedByAFailureIntoTheFailure"
+  ],
+  "upstream_reference": "packages/chord/src/watch.ts (Watch.Fail)",
+  "mutation": "chord/watch_impl.go: replace `watch.replace = true if watch.started {` with `watch.replace = false if watch.started {`; the unmutated -run set passes and the mutant compiles; FAIL: TestWatchFailureCallsDeliversAFailureAsACallStaysOpenKeepsTheLastValueAndReplacesTheRootOnRecovery, TestWatchFailureCallsDeliversAFailureThatArrivesDuringACallAfterItThenTheRecovery, TestWatchFailureCallsFoldsPendingValuesFollowedByAFailureIntoTheFailure."
+ },
+ {
+  "upstream": "packages/chord/src/watch.ts",
+  "package": "./chord",
+  "tests": [
+   "TestWatchFailureCallsDeliversAFailureAsACallStaysOpenKeepsTheLastValueAndReplacesTheRootOnRecovery",
+   "TestWatchFailureCallsDeliversAFailureThatArrivesDuringACallAfterItThenTheRecovery",
+   "TestWatchFailureCallsFoldsPendingValuesFollowedByAFailureIntoTheFailure"
+  ],
+  "upstream_reference": "packages/chord/src/watch.ts (Watch.Fail)",
+  "mutation": "chord/watch_impl.go: replace `watch.failure = &watchFailure{err: err, ctx: ctx}` with `watch.failure = &watchFailure{ctx: ctx}`; the unmutated -run set passes and the mutant compiles; FAIL: TestWatchFailureCallsDeliversAFailureAsACallStaysOpenKeepsTheLastValueAndReplacesTheRootOnRecovery, TestWatchFailureCallsDeliversAFailureThatArrivesDuringACallAfterItThenTheRecovery, TestWatchFailureCallsFoldsPendingValuesFollowedByAFailureIntoTheFailure."
+ },
+ {
+  "upstream": "packages/chord/src/watch.ts",
+  "package": "./chord",
+  "tests": [
+   "TestNativeWatchDeliversAFailureAsACallStaysOpenAndFoldsItWithTheValuesAroundIt"
+  ],
+  "upstream_reference": "packages/chord/src/watch.ts (NativeWatch.Fail)",
+  "mutation": "chord/watch_impl.go: replace `&watchFrame[T]{ctx: ctx, failed: true, err: err}` with `&watchFrame[T]{ctx: ctx, failed: true}`; the unmutated -run set passes and the mutant compiles; FAIL: TestNativeWatchDeliversAFailureAsACallStaysOpenAndFoldsItWithTheValuesAroundIt."
+ },
+ {
+  "upstream": "packages/chord/src/watch.ts",
+  "package": "./chord",
+  "tests": [
+   "TestNativeWatchDeliversAFailureAsACallStaysOpenAndFoldsItWithTheValuesAroundIt"
+  ],
+  "upstream_reference": "packages/chord/src/watch.ts (NativeWatch.Fail)",
+  "mutation": "chord/watch_impl.go: replace `watch.values = watch.values[:0] watch.failure = &watchFrame[T]{` with `watch.failure = &watchFrame[T]{`; the unmutated -run set passes and the mutant compiles; FAIL: TestNativeWatchDeliversAFailureAsACallStaysOpenAndFoldsItWithTheValuesAroundIt."
+ },
+ {
+  "upstream": "packages/chord/src/watch.ts",
+  "package": "./chord",
+  "tests": [
+   "TestWatchStopsIdempotentlyAndRejectsARepeatedOrLateStart"
+  ],
+  "upstream_reference": "packages/chord/src/watch.ts (NativeWatch.Start, NativeWatchHandle.Start, Watch.Start)",
+  "mutation": "chord/watch_impl.go: replace `if watch.started { panic(errors.New(\"Watch is already started\"))` with `if watch.started && false { panic(errors.New(\"Watch is already started\"))`; the unmutated -run set passes and the mutant compiles; FAIL: TestWatchStopsIdempotentlyAndRejectsARepeatedOrLateStart."
+ },
+ {
+  "upstream": "packages/chord/src/watch.ts",
+  "package": "./chord",
+  "tests": [
+   "TestWatchEndAfterDeliveryEndsANeverStartedWatchAtItsSourcesEndDroppingWhatIsPending",
+   "TestWatchStopsIdempotentlyAndRejectsARepeatedOrLateStart"
+  ],
+  "upstream_reference": "packages/chord/src/watch.ts (NativeWatch.Start, NativeWatchHandle.Start, Watch.Start)",
+  "mutation": "chord/watch_impl.go: replace `if watch.end != nil { panic(errors.New(\"Watch is stopped\"))` with `if watch.end != nil && false { panic(errors.New(\"Watch is stopped\"))`; the unmutated -run set passes and the mutant compiles; FAIL: TestWatchEndAfterDeliveryEndsANeverStartedWatchAtItsSourcesEndDroppingWhatIsPending, TestWatchStopsIdempotentlyAndRejectsARepeatedOrLateStart."
+ },
+ {
+  "upstream": "packages/chord/src/watch.ts",
+  "package": "./chord",
+  "tests": [
+   "TestNativeWatchDeliversValuesByIdentityInOrderWithAContextNeverInline",
+   "TestNativeWatchEndsWithEveryReasonOfItsLifecycle",
+   "TestNativeWatchHandleInterface",
+   "TestWatchEndAfterDeliveryEndsStoppedWhenStoppedWhileEndingWithoutAwaitingTheRunningCall",
+   "TestWatchReportsARetirementInTheNextCallWithTheValueTheSourceGivesAndGoesOn",
+   "TestWatchStopsFutureDeliveryWithoutAbortingOrAwaitingAnInFlightCallback",
+   "TestWatchStopsIdempotentlyAndRejectsARepeatedOrLateStart",
+   "TestWatchTreatsANullValueAsAValueNeverAsARetirement"
+  ],
+  "upstream_reference": "packages/chord/src/watch.ts (NativeWatchHandle.Stop, watchLifecycle.Stop)",
+  "mutation": "chord/watch_impl.go: replace `watch.terminate(WatchEnd{Kind: WatchStopped})` with `watch.terminate(WatchEnd{Kind: WatchAborted})`; the unmutated -run set passes and the mutant compiles; FAIL: TestNativeWatchDeliversValuesByIdentityInOrderWithAContextNeverInline, TestNativeWatchEndsWithEveryReasonOfItsLifecycle, TestNativeWatchHandleInterface, TestWatchEndAfterDeliveryEndsStoppedWhenStoppedWhileEndingWithoutAwaitingTheRunningCall, TestWatchReportsARetirementInTheNextCallWithTheValueTheSourceGivesAndGoesOn, TestWatchStopsFutureDeliveryWithoutAbortingOrAwaitingAnInFlightCallback, TestWatchStopsIdempotentlyAndRejectsARepeatedOrLateStart, TestWatchTreatsANullValueAsAValueNeverAsARetirement."
+ },
+ {
+  "upstream": "packages/chord/src/watch.ts",
+  "package": "./chord",
+  "tests": [
+   "TestNativeWatchEndsWithEveryReasonOfItsLifecycle",
+   "TestWatchEndsAbortedWhenItsAcquisitionContextEndsAlsoWhenAlreadyDone"
+  ],
+  "upstream_reference": "packages/chord/src/watch.ts (watchLifecycle.ObserveAbort)",
+  "mutation": "chord/watch_impl.go: replace `watch.terminate(WatchEnd{Kind: WatchAborted})` with `watch.terminate(WatchEnd{Kind: WatchStopped})`; the unmutated -run set passes and the mutant compiles; FAIL: TestNativeWatchEndsWithEveryReasonOfItsLifecycle, TestWatchEndsAbortedWhenItsAcquisitionContextEndsAlsoWhenAlreadyDone."
+ },
+ {
+  "upstream": "packages/chord/src/watch.ts",
+  "package": "./chord",
+  "tests": [
+   "TestWatchEndsAbortedWhenItsAcquisitionContextEndsAlsoWhenAlreadyDone"
+  ],
+  "upstream_reference": "packages/chord/src/watch.ts (watchLifecycle.ObserveAbort)",
+  "mutation": "chord/watch_impl.go: replace `if watch.stopAfter != nil { watch.mu.Unlock() panic(errors.New(\"Watch abort is already installed\")) }` with `(nothing)`; the unmutated -run set passes and the mutant compiles; FAIL: TestWatchEndsAbortedWhenItsAcquisitionContextEndsAlsoWhenAlreadyDone."
+ },
+ {
+  "upstream": "packages/chord/src/watch.ts",
+  "package": "./chord",
+  "tests": [
+   "TestNativeWatchEndsWithEveryReasonOfItsLifecycle",
+   "TestWatchEndAfterDeliveryEndsANeverStartedWatchAtItsSourcesEndDroppingWhatIsPending",
+   "TestWatchEndsEndedOrFailedFromItsSourceDroppingPendingFrames"
+  ],
+  "upstream_reference": "packages/chord/src/watch.ts (watchLifecycle.EndWith)",
+  "mutation": "chord/watch_impl.go: replace `func (watch *watchLifecycle[T, L]) EndWith(end WatchEnd) { watch.terminate(end)` with `func (watch *watchLifecycle[T, L]) EndWith(end WatchEnd) { watch.terminate(WatchEnd{Kind: WatchEnded})`; the unmutated -run set passes and the mutant compiles; FAIL: TestNativeWatchEndsWithEveryReasonOfItsLifecycle, TestWatchEndAfterDeliveryEndsANeverStartedWatchAtItsSourcesEndDroppingWhatIsPending, TestWatchEndsEndedOrFailedFromItsSourceDroppingPendingFrames."
+ },
+ {
+  "upstream": "packages/chord/src/watch.ts",
+  "package": "./chord",
+  "tests": [
+   "TestWatchEndAfterDeliveryWaitsForStartToDeliverAndEndsAtOnceWithNothingPending"
+  ],
+  "upstream_reference": "packages/chord/src/watch.ts (watchLifecycle.EndAfterDelivery)",
+  "mutation": "chord/watch_impl.go: replace `if !watch.running && !watch.hasPending() { watch.terminateLocked(WatchEnd{Kind: WatchEnded})` with `if !watch.running && !watch.hasPending() { watch.terminateLocked(WatchEnd{Kind: WatchStopped})`; the unmutated -run set passes and the mutant compiles; FAIL: TestWatchEndAfterDeliveryWaitsForStartToDeliverAndEndsAtOnceWithNothingPending."
+ },
+ {
+  "upstream": "packages/chord/src/delta/pending.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
+   "TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize",
+   "TestPendingOpsCapKeepsMaxPendingOpsPendingOpsAndReplacesPastThem",
+   "TestPendingOpsSizeCountsPendingOpsAfterFoldingTheReplacementOnceOverflowedAndNothingOnceTaken"
+  ],
+  "upstream_reference": "packages/chord/src/delta/pending.ts (PendingOps, PendingOps.Take)",
+  "mutation": "chord/delta/pending.go: replace `return PendingTake{Replace: true} } return PendingTake{Ops: ops}` with `return PendingTake{} } return PendingTake{Ops: ops}`; the unmutated -run set passes and the mutant compiles; FAIL: TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR, TestPendingOpsCapHandsOneBatchOverAsReceivedWhateverItsSize, TestPendingOpsCapKeepsMaxPendingOpsPendingOpsAndReplacesPastThem, TestPendingOpsSizeCountsPendingOpsAfterFoldingTheReplacementOnceOverflowedAndNothingOnceTaken."
+ },
+ {
+  "upstream": "packages/chord/src/delta/pending.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR",
+   "TestPendingOpsFoldedAppendsAreConcatenatedAndStayTaken",
+   "TestPendingOpsFoldingIsInvisibleToAReplicaARootArray",
+   "TestPendingOpsFoldingIsInvisibleToAReplicaDiffRevisionsBetweenArbitraryValues",
+   "TestPendingOpsFoldingIsInvisibleToAReplicaLeafEditsOfListElementsBetweenSplicesAndReordersOfTheList",
+   "TestPendingOpsFoldingIsInvisibleToAReplicaTrackerEditsAnywhereAppendTextSplicesAndReorders",
+   "TestPendingOpsOwnershipHandsOverAReceivedBatchByIdentityAndNeverMutatesBatchesOrOpTuples",
+   "TestPendingOpsReleasesWhatItHandedOverAndWhatItFoldedOver",
+   "TestPendingOpsSizeCountsPendingOpsAfterFoldingTheReplacementOnceOverflowedAndNothingOnceTaken"
+  ],
+  "upstream_reference": "packages/chord/src/delta/pending.ts (PendingOps, PendingOps.Take)",
+  "mutation": "chord/delta/pending.go: replace `pending.kind, pending.ops, pending.leaves = pendingEmpty, nil, nil pending.tails.reset() if kind == pendingReplace {` with `pending.tails.reset() if kind == pendingReplace {`; the unmutated -run set passes and the mutant compiles; FAIL: TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR, TestPendingOpsFoldedAppendsAreConcatenatedAndStayTaken, TestPendingOpsFoldingIsInvisibleToAReplicaARootArray, TestPendingOpsFoldingIsInvisibleToAReplicaDiffRevisionsBetweenArbitraryValues, TestPendingOpsFoldingIsInvisibleToAReplicaLeafEditsOfListElementsBetweenSplicesAndReordersOfTheList, TestPendingOpsFoldingIsInvisibleToAReplicaTrackerEditsAnywhereAppendTextSplicesAndReorders, TestPendingOpsOwnershipHandsOverAReceivedBatchByIdentityAndNeverMutatesBatchesOrOpTuples, TestPendingOpsReleasesWhatItHandedOverAndWhatItFoldedOver, TestPendingOpsSizeCountsPendingOpsAfterFoldingTheReplacementOnceOverflowedAndNothingOnceTaken."
+ },
+ {
+  "upstream": "packages/chord/src/delta/pending.ts",
+  "package": "./chord/delta",
+  "tests": [
+   "TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR"
+  ],
+  "upstream_reference": "packages/chord/src/delta/pending.ts (PendingOps)",
+  "mutation": "chord/delta/pending.go: replace `if ops[0][0] == \"r\" {` with `if ops[0][0] == \"R\" {`; the unmutated -run set passes and the mutant compiles; FAIL: TestPendingOpsCapAccumulatesNothingOnceReplacedUntilTakenOrABatchStartingWithR."
+ },
+ {
+  "upstream": "packages/chord/src/cell.ts",
+  "package": "./chord/host",
+  "tests": [
+   "TestSourceValidateChecksSchemaInDevMode"
+  ],
+  "upstream_reference": "packages/chord/src/cell.ts (Source.Validate)",
+  "mutation": "chord/host/cell.go: replace `if !source.options.Dev { return nil } for _, schema := range source.own() {` with `if source.options.Dev { return nil } for _, schema := range source.own() {`; the unmutated -run set passes and the mutant compiles; FAIL: TestSourceValidateChecksSchemaInDevMode."
+ },
+ {
+  "upstream": "packages/chord/src/host.ts",
+  "package": "./chord/host",
+  "tests": [
+   "TestFacetLoaderLoadsModuleRefs"
+  ],
+  "upstream_reference": "packages/chord/src/host.ts (FacetLoader)",
+  "mutation": "chord/host/host.go: replace `loaded, err = host.loader(modules); err != nil` with `loaded, err = host.loader(modules[:0]); err != nil`; the unmutated -run set passes and the mutant compiles; FAIL: TestFacetLoaderLoadsModuleRefs."
+ },
+ {
+  "upstream": "packages/chord/src/link.ts",
+  "package": "./chord/host",
+  "tests": [
+   "TestPiIpcChannelMembersDrivenByIpcLink"
+  ],
+  "upstream_reference": "packages/chord/src/link.ts (IpcChannel.Off)",
+  "mutation": "chord/host/link.go: replace `link.channel.Off(\"message\", link.onMessage)` with `(nothing)`; the unmutated -run set passes and the mutant compiles; FAIL: TestPiIpcChannelMembersDrivenByIpcLink."
+ },
+ {
+  "upstream": "packages/chord/src/link.ts",
+  "package": "./chord/host",
+  "tests": [
+   "TestPiIpcChannelMembersDrivenByIpcLink"
+  ],
+  "upstream_reference": "packages/chord/src/link.ts (IpcChannel.Off)",
+  "mutation": "chord/host/link.go: replace `link.channel.Off(\"disconnect\", link.onDisconnect)` with `(nothing)`; the unmutated -run set passes and the mutant compiles; FAIL: TestPiIpcChannelMembersDrivenByIpcLink."
+ },
+ {
+  "upstream": "packages/chord/src/manager.ts",
+  "package": "./chord/host",
+  "tests": [
+   "TestHostManagerSpawnsThroughTheDriverAndListensForControl"
+  ],
+  "upstream_reference": "packages/chord/src/manager.ts (Driver.Spawn)",
+  "mutation": "chord/host/manager.go: replace `manager.status = HostManagerStopped manager.booting = false manager.mu.Unlock() return nil, err` with `manager.booting = false manager.mu.Unlock() return nil, err`; the unmutated -run set passes and the mutant compiles; FAIL: TestHostManagerSpawnsThroughTheDriverAndListensForControl."
+ },
+ {
+  "upstream": "packages/chord/src/manager.ts",
+  "package": "./chord/host",
+  "tests": [
+   "TestHostManagerSendsShutdownAndKillsTheTreePastTheGrace"
+  ],
+  "upstream_reference": "packages/chord/src/manager.ts (Instance.KillTree)",
+  "mutation": "chord/host/manager.go: replace `if !graceful { current.KillTree() }` with `if !graceful { current.KillTree() current.KillTree() }`; the unmutated -run set passes and the mutant compiles; FAIL: TestHostManagerSendsShutdownAndKillsTheTreePastTheGrace."
+ },
+ {
+  "upstream": "packages/chord/src/manager.ts",
+  "package": "./chord/host",
+  "tests": [
+   "TestHostManagerSendsShutdownAndKillsTheTreePastTheGrace"
+  ],
+  "upstream_reference": "packages/chord/src/manager.ts (Instance.KillTree)",
+  "mutation": "chord/host/manager.go: replace `current.KillTree() <-current.Exited() <-handled return nil, err` with `current.KillTree() current.KillTree() <-current.Exited() <-handled return nil, err`; the unmutated -run set passes and the mutant compiles; FAIL: TestHostManagerSendsShutdownAndKillsTheTreePastTheGrace."
+ },
+ {
+  "upstream": "packages/chord/src/manager.ts",
+  "package": "./chord/host",
+  "tests": [
+   "TestHostManagerSendsShutdownAndKillsTheTreePastTheGrace",
+   "TestHostManagerSpawnsThroughTheDriverAndListensForControl"
+  ],
+  "upstream_reference": "packages/chord/src/manager.ts (Instance.OnControl)",
+  "mutation": "chord/host/manager.go: replace `case ControlReady: settle(nil)` with `case ControlReady: settle(NewChordError(CodeUnavailable, \"mutant\", ChordErrorOptions{}))`; the unmutated -run set passes and the mutant compiles; FAIL: TestHostManagerSendsShutdownAndKillsTheTreePastTheGrace, TestHostManagerSpawnsThroughTheDriverAndListensForControl."
+ },
+ {
+  "upstream": "packages/chord/src/next/data/principal.ts",
+  "package": "./chord/next/data",
+  "tests": [
+   "TestPrincipalKey"
+  ],
+  "upstream_reference": "packages/chord/src/next/data/principal.ts (PrincipalKeyFunction)",
+  "mutation": "chord/next/data/principal.go: replace `key = customKey.key(principal)` with `key = CanonicalJson(principal, ctx)`; the unmutated -run set passes and the mutant compiles; FAIL: TestPrincipalKey."
+ },
+ {
+  "upstream": "packages/chord/src/next/documents/handles.ts",
+  "package": "./chord/next/documents",
+  "tests": [
+   "TestKeyedSlotAPersistedKeyIsLoadedBeforeTheObjectGoesLiveAndStaysPinnedUntilTheNextFactoryReturns",
+   "TestKeyedSlotAtKeyIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag"
+  ],
+  "upstream_reference": "packages/chord/src/next/documents/handles.ts (KeyedHandle.At)",
+  "mutation": "chord/next/documents/handles.go: replace `handle.declarer.At(handle.Slot, key) }` with `handle.declarer.At(handle.Slot, key+\"x\") }`; the unmutated -run set passes and the mutant compiles; FAIL: TestKeyedSlotAPersistedKeyIsLoadedBeforeTheObjectGoesLiveAndStaysPinnedUntilTheNextFactoryReturns, TestKeyedSlotAtKeyIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag."
+ },
+ {
+  "upstream": "packages/chord/src/next/host/attempt.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestAttemptDeclarationsAreValidOnlyWhileTheFactoryRuns"
+  ],
+  "upstream_reference": "packages/chord/src/next/host/attempt.ts (Self.RetryOn)",
+  "mutation": "chord/next/host/host_attempt.go: replace `a.assertDeclaring(\"retryOn\")` with `(nothing)`; the unmutated -run set passes and the mutant compiles; FAIL: TestAttemptDeclarationsAreValidOnlyWhileTheFactoryRuns."
+ },
+ {
+  "upstream": "packages/chord/src/next/host/attempt.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestRetryOnRefusesSourcesThatEndWithAnAttemptAReferencesMemberItsOwnWritableRefState"
+  ],
+  "upstream_reference": "packages/chord/src/next/host/attempt.ts (Self.RetryOn)",
+  "mutation": "chord/next/host/host_attempt.go: replace `if err != nil { panic(err) } declarations.retrySources` with `if err != nil { continue } declarations.retrySources`; the unmutated -run set passes and the mutant compiles; FAIL: TestRetryOnRefusesSourcesThatEndWithAnAttemptAReferencesMemberItsOwnWritableRefState."
+ },
+ {
+  "upstream": "packages/chord/src/next/jobs/definition.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestPersistedVersionsARunStoredByAnotherVersionOrFingerprintIsBlockedKeptAsStoredNeverRunListedBlocked"
+  ],
+  "upstream_reference": "packages/chord/src/next/jobs/definition.ts (JobDefinition)",
+  "mutation": "chord/next/host/jobs_definition.go: replace `Fingerprint: contracts.Hash64(string(text)),` with `Fingerprint: contracts.Hash64(string(text)[:1]),`; the unmutated -run set passes and the mutant compiles; FAIL: TestPersistedVersionsARunStoredByAnotherVersionOrFingerprintIsBlockedKeptAsStoredNeverRunListedBlocked."
+ },
+ {
+  "upstream": "packages/chord/src/next/registries/entries.ts",
+  "package": "./chord/next/registries",
+  "tests": [
+   "TestOrderedEntries"
+  ],
+  "upstream_reference": "packages/chord/src/next/registries/entries.ts (OrderedEntries)",
+  "mutation": "chord/next/registries/entries.go: replace `difference := orderOf(a.Value) - orderOf(b.Value)` with `difference := orderOf(b.Value) - orderOf(a.Value)`; the unmutated -run set passes and the mutant compiles; FAIL: TestOrderedEntries."
+ },
+ {
+  "upstream": "packages/chord/src/output.ts",
+  "package": "./chord/output",
+  "tests": [
+   "TestOutputBufferPush"
+  ],
+  "upstream_reference": "packages/chord/src/output.ts (OutputBuffer.Push)",
+  "mutation": "chord/output/output.go: replace `return false, errors.New(\"OutputBuffer chunk must be a string or bytes\")` with `return false, nil`; the unmutated -run set passes and the mutant compiles; FAIL: TestOutputBufferPush."
+ },
+ {
+  "upstream": "packages/chord/src/sqlite/node.ts",
+  "package": "./chord/sqlite/node",
+  "tests": [
+   "TestNodeSqliteStatementCache"
+  ],
+  "upstream_reference": "packages/chord/src/sqlite/node.ts (NewNodeSqliteDatabase)",
+  "mutation": "chord/sqlite/node/node.go: replace `const statementCacheLimit = 256` with `const statementCacheLimit = 512`; the unmutated -run set passes and the mutant compiles; FAIL: TestNodeSqliteStatementCache."
+ },
+ {
+  "upstream": "packages/chord/src/telemetry-sqlite/index.ts",
+  "package": "./chord/telemetrysqlite",
+  "tests": [
+   "TestAttributesKeepInsertionOrderInRowsAndReads",
+   "TestUsesTwoSpanQueriesForAPageNotOnePerTrace"
+  ],
+  "upstream_reference": "packages/chord/src/telemetry-sqlite/index.ts (SqliteTelemetry.FindTraces)",
+  "mutation": "chord/telemetrysqlite/index.go: replace `return findTraces(recorder.db, query)` with `return findTraces(recorder.db, telemetry.TraceQuery{})`; the unmutated -run set passes and the mutant compiles; FAIL: TestAttributesKeepInsertionOrderInRowsAndReads, TestUsesTwoSpanQueriesForAPageNotOnePerTrace."
+ },
+ {
+  "upstream": "packages/chord/src/telemetry-sqlite/index.ts",
+  "package": "./chord/telemetrysqlite",
+  "tests": [
+   "TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved",
+   "TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose"
+  ],
+  "upstream_reference": "packages/chord/src/telemetry-sqlite/index.ts (SqliteTelemetry.GetTrace)",
+  "mutation": "chord/telemetrysqlite/index.go: replace `return getTrace(recorder.db, traceID)` with `return getTrace(recorder.db, traceID+\"x\")`; the unmutated -run set passes and the mutant compiles; FAIL: TestKeepsSurvivingDescendantsDiscoverableAfterAStoredParentIsRemoved, TestReadsCommittedRowsWithoutImplicitlyFlushingIncludingAfterClose."
+ },
+ {
+  "upstream": "packages/chord/src/json.ts",
+  "package": "./durable",
+  "tests": [
+   "TestCopyJsonDetachesAndRejectsNonFiniteNumbers"
+  ],
+  "upstream_reference": "packages/chord/src/json.ts (CopyJson)",
+  "mutation": "durable/json.go: replace `return ToJsonValue(value) }  // unmarshalOrdered` with `return value, nil }  // unmarshalOrdered`; the unmutated -run set passes and the mutant compiles; FAIL: TestCopyJsonDetachesAndRejectsNonFiniteNumbers."
+ },
+ {
+  "upstream": "packages/chord/src/next/state/watchable.ts",
+  "package": "./chord/next/state",
+  "tests": [
+   "TestConstantOf"
+  ],
+  "upstream_reference": "packages/chord/src/next/state/watchable.ts (ConstantOf)",
+  "mutation": "chord/next/state/watchable.go: replace `(chord.WatchHandle[T], error) { watch := chord.NewWatch(c.value,` with `(chord.WatchHandle[T], error) { watch := chord.NewWatch(*new(T),`; the unmutated -run set passes and the mutant compiles; FAIL: TestConstantOf."
+ },
+ {
+  "upstream": "packages/chord/src/cell.ts",
+  "package": "./chord/host",
+  "tests": [
+   "TestCellInitializeSetsTheFirstValueOfACellAwaitingInitValidatedAndOnlyOnce"
+  ],
+  "upstream_reference": "packages/chord/src/cell.ts (Cell.Initialize)",
+  "mutation": "chord/host/cell.go: replace `if cell.initialized { return fmt.Errorf(\"state %s is already initialized\", cell.Key) }` with `if cell.initialized && false { return fmt.Errorf(\"state %s is already initialized\", cell.Key) }`; the unmutated -run set passes and the mutant compiles; FAIL: TestCellInitializeSetsTheFirstValueOfACellAwaitingInitValidatedAndOnlyOnce."
+ },
+ {
+  "upstream": "packages/chord/src/cell.ts",
+  "package": "./chord/host",
+  "tests": [
+   "TestCellInitializeSetsTheFirstValueOfACellAwaitingInitValidatedAndOnlyOnce"
+  ],
+  "upstream_reference": "packages/chord/src/cell.ts (Cell.Initialize)",
+  "mutation": "chord/host/cell.go: replace `if err := assertValid(\"state\", \"initial value of state \"+cell.Key, cell.Schema, value); err != nil { return err }` with `(nothing)`; the unmutated -run set passes and the mutant compiles; FAIL: TestCellInitializeSetsTheFirstValueOfACellAwaitingInitValidatedAndOnlyOnce."
+ },
+ {
+  "upstream": "packages/chord/src/loader.ts",
+  "package": "./chord/host",
+  "tests": [
+   "TestNodeLoaderIsAFacetLoaderThatLoadsNothingForNoModulesAndFailsForAMissingOne"
+  ],
+  "upstream_reference": "packages/chord/src/loader.ts (NodeLoader)",
+  "mutation": "chord/host/loader.go: replace `{ return defaultNodeLoader.Load(modules) }` with `{ return defaultNodeLoader.Load(modules[:0]) }`; the unmutated -run set passes and the mutant compiles; FAIL: TestNodeLoaderIsAFacetLoaderThatLoadsNothingForNoModulesAndFailsForAMissingOne."
+ },
+ {
+  "upstream": "packages/chord/src/next/contracts/schema.ts",
+  "package": "./chord/next/contracts",
+  "tests": [
+   "TestKeyedMemberHoldsTheSchemaItWasDeclaredWithAndIsALocalMember"
+  ],
+  "upstream_reference": "packages/chord/src/next/contracts/schema.ts (KeyedMember)",
+  "mutation": "chord/next/contracts/schema.go: replace `return &KeyedMember{Schema: schema}` with `return &KeyedMember{}`; the unmutated -run set passes and the mutant compiles; FAIL: TestKeyedMemberHoldsTheSchemaItWasDeclaredWithAndIsALocalMember."
+ },
+ {
+  "upstream": "packages/chord/src/next/host/follow.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestFollowAttachGivesTheSourceItsValueAndAnAbsentOrRejectedAttachmentFailsTheActivation"
+  ],
+  "upstream_reference": "packages/chord/src/next/host/follow.ts (FollowAttach)",
+  "mutation": "chord/next/host/host_follow.go: replace `s.value, s.hasValue = attached.Value, true` with `s.value, s.hasValue = delta.JsonValue(nil), true`; the unmutated -run set passes and the mutant compiles; FAIL: TestFollowAttachGivesTheSourceItsValueAndAnAbsentOrRejectedAttachmentFailsTheActivation."
+ },
+ {
+  "upstream": "packages/chord/src/next/host/follow.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestFollowAttachGivesTheSourceItsValueAndAnAbsentOrRejectedAttachmentFailsTheActivation"
+  ],
+  "upstream_reference": "packages/chord/src/next/host/follow.ts (FollowAttach)",
+  "mutation": "chord/next/host/host_follow.go: replace `Code:    data.CodeUnavailable, Message: s.owner.label + \": the followed address is absent\",` with `Code:    data.CodeNotReady, Message: s.owner.label + \": the followed address is absent\",`; the unmutated -run set passes and the mutant compiles; FAIL: TestFollowAttachGivesTheSourceItsValueAndAnAbsentOrRejectedAttachmentFailsTheActivation."
+ },
+ {
+  "upstream": "packages/chord/src/next/host/follow.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestFollowAttachGivesTheSourceItsValueAndAnAbsentOrRejectedAttachmentFailsTheActivation"
+  ],
+  "upstream_reference": "packages/chord/src/next/host/follow.ts (FollowAttach)",
+  "mutation": "chord/next/host/host_follow.go: replace `attached, err := s.attachFn(followObserverOf{source: s}, ctx) if err != nil { return err }` with `attached, err := s.attachFn(followObserverOf{source: s}, ctx) if err != nil { return nil }`; the unmutated -run set passes and the mutant compiles; FAIL: TestFollowAttachGivesTheSourceItsValueAndAnAbsentOrRejectedAttachmentFailsTheActivation."
+ },
+ {
+  "upstream": "packages/chord/src/next/link/websocket.ts",
+  "package": "./chord/next/link",
+  "tests": [
+   "TestWebSocketLinkRegistersItsListenersWithAddEventListenerAndRemovesThemWhenItEnds"
+  ],
+  "upstream_reference": "packages/chord/src/next/link/websocket.ts (WebSocketLike.AddEventListener)",
+  "mutation": "chord/next/link/websocket.go: replace `if end.connectingSet { end.removeOpen =` with `if true { end.removeOpen =`; the unmutated -run set passes and the mutant compiles; FAIL: TestWebSocketLinkRegistersItsListenersWithAddEventListenerAndRemovesThemWhenItEnds."
+ },
+ {
+  "upstream": "packages/chord/src/output.ts",
+  "package": "./chord/output",
+  "tests": [
+   "TestUtf8ByteLengthMatchesPi"
+  ],
+  "upstream_reference": "packages/chord/src/output.ts (Utf8ByteLength)",
+  "mutation": "chord/output/output.go: replace `return len(content)` with `return len([]rune(content))`; the unmutated -run set passes and the mutant compiles; FAIL: TestUtf8ByteLengthMatchesPi."
+ },
+ {
+  "upstream": "packages/chord/src/output.ts",
+  "package": "./chord/output",
+  "tests": [
+   "TestOutputBufferPushMatchesPiThroughTheGenericChunkAndSkippedArguments"
+  ],
+  "upstream_reference": "packages/chord/src/output.ts (OutputBuffer, OutputBuffer.Push)",
+  "mutation": "chord/output/output.go: replace `return buffer.PushBytesSkipping(value, *skipped)` with `return buffer.PushBytesSkipping(value, OutputSkip{})`; the unmutated -run set passes and the mutant compiles; FAIL: TestOutputBufferPushMatchesPiThroughTheGenericChunkAndSkippedArguments."
+ },
+ {
+  "upstream": "packages/chord/src/output.ts",
+  "package": "./chord/output",
+  "tests": [
+   "TestOutputBufferPushMatchesPiThroughTheGenericChunkAndSkippedArguments"
+  ],
+  "upstream_reference": "packages/chord/src/output.ts (OutputBuffer, OutputBuffer.Push)",
+  "mutation": "chord/output/output.go: replace `return buffer.PushStringSkipping(value, *skipped)` with `return buffer.PushStringSkipping(value, OutputSkip{})`; the unmutated -run set passes and the mutant compiles; FAIL: TestOutputBufferPushMatchesPiThroughTheGenericChunkAndSkippedArguments."
+ },
+ {
+  "upstream": "packages/chord/src/state.ts",
+  "package": "./chord",
+  "tests": [
+   "TestAttachReplicatedStateSourceAttachesThenReadsTheSnapshotThenActivatesTheSoleListener",
+   "TestAttachReplicatedStateSourceDisposesAnAttachmentWhoseActivateFails"
+  ],
+  "upstream_reference": "packages/chord/src/state.ts (ReplicatedStateSourceAttachment.Activate)",
+  "mutation": "chord/state.go: replace `attachment.Activate(state.receive); err != nil` with `error(nil); err != nil`; the unmutated -run set passes and the mutant compiles; FAIL: TestAttachReplicatedStateSourceAttachesThenReadsTheSnapshotThenActivatesTheSoleListener, TestAttachReplicatedStateSourceDisposesAnAttachmentWhoseActivateFails."
+ },
+ {
+  "upstream": "packages/chord/src/state.ts",
+  "package": "./chord",
+  "tests": [
+   "TestAttachReplicatedStateSourceDisposesAnAttachmentWhoseActivateFails"
+  ],
+  "upstream_reference": "packages/chord/src/state.ts (ReplicatedStateSource.Attach)",
+  "mutation": "chord/state.go: replace `attachment, err := source.Attach() if err != nil { return nil, err }` with `attachment, err := source.Attach() if err != nil { return nil, nil }`; the unmutated -run set passes and the mutant compiles; FAIL: TestAttachReplicatedStateSourceDisposesAnAttachmentWhoseActivateFails."
+ },
+ {
+  "upstream": "packages/chord/src/cell.ts",
+  "package": "./chord/host",
+  "tests": [
+   "TestCellInitializeSetsTheFirstValueOfACellAwaitingInitValidatedAndOnlyOnce"
+  ],
+  "upstream_reference": "packages/chord/src/cell.ts (Cell.Initialize)",
+  "mutation": "chord/host/cell.go: replace `cell.tracker = delta.Track(delta.JsonObjectOf(\"v\", value)) cell.initialized = true return nil` with `cell.tracker = delta.Track(delta.JsonObjectOf(\"v\", value)) return nil`; the unmutated -run set passes and the mutant compiles; FAIL: TestCellInitializeSetsTheFirstValueOfACellAwaitingInitValidatedAndOnlyOnce."
+ },
+ {
+  "upstream": "packages/chord/src/next/link/websocket.ts",
+  "package": "./chord/next/link",
+  "tests": [
+   "TestWebSocketLinkRegistersItsListenersWithAddEventListenerAndRemovesThemWhenItEnds"
+  ],
+  "upstream_reference": "packages/chord/src/next/link/websocket.ts (WebSocketLike.AddEventListener)",
+  "mutation": "chord/next/link/websocket.go: replace `if removeMessage != nil { removeMessage() }` with `_ = removeMessage`; the unmutated -run set passes and the mutant compiles; FAIL: TestWebSocketLinkRegistersItsListenersWithAddEventListenerAndRemovesThemWhenItEnds."
+ },
+ {
+  "upstream": "packages/chord/src/next/link/websocket.ts",
+  "package": "./chord/next/link",
+  "tests": [
+   "TestWebSocketLinkRegistersItsListenersWithAddEventListenerAndRemovesThemWhenItEnds"
+  ],
+  "upstream_reference": "packages/chord/src/next/link/websocket.ts (WebSocketLike.AddEventListener)",
+  "mutation": "chord/next/link/websocket.go: replace `removeClose() removeError()` with `removeClose() _ = removeError`; the unmutated -run set passes and the mutant compiles; FAIL: TestWebSocketLinkRegistersItsListenersWithAddEventListenerAndRemovesThemWhenItEnds."
+ },
+ {
+  "upstream": "packages/chord/src/state.ts",
+  "package": "./chord",
+  "tests": [
+   "TestAttachReplicatedStateSourceDisposesAnAttachmentWhoseActivateFails"
+  ],
+  "upstream_reference": "packages/chord/src/state.ts (ReplicatedStateSourceAttachment.Activate)",
+  "mutation": "chord/state.go: replace `if disposeErr := disposeAttachment(attachment); disposeErr != nil { return nil, NewAggregateError(\"Failed to attach` with `if disposeErr := error(nil); disposeErr != nil { return nil, NewAggregateError(\"Failed to attach`; the unmutated -run set passes and the mutant compiles; FAIL: TestAttachReplicatedStateSourceDisposesAnAttachmentWhoseActivateFails."
+ },
+ {
+  "upstream": "packages/chord/src/telemetry-sqlite/store.ts",
+  "package": "./chord/telemetrysqlite",
+  "tests": [
+   "TestSqliteTelemetryFindMetricsFiltersByIntervalBoundsAndAttributesInIntervalOrder"
+  ],
+  "upstream_reference": "packages/chord/src/telemetry-sqlite/store.ts (SqliteTelemetry.FindMetrics)",
+  "mutation": "chord/telemetrysqlite/store.go: replace `ORDER BY interval_ms, series_key\"` with `ORDER BY interval_ms DESC, series_key\"`; the unmutated -run set passes and the mutant compiles; FAIL: TestSqliteTelemetryFindMetricsFiltersByIntervalBoundsAndAttributesInIntervalOrder."
+ },
+ {
+  "upstream": "packages/chord/src/telemetry-sqlite/store.ts",
+  "package": "./chord/telemetrysqlite",
+  "tests": [
+   "TestSqliteTelemetryFindMetricsFiltersByIntervalBoundsAndAttributesInIntervalOrder"
+  ],
+  "upstream_reference": "packages/chord/src/telemetry-sqlite/store.ts (SqliteTelemetry.FindMetrics)",
+  "mutation": "chord/telemetrysqlite/store.go: replace `\"interval_ms >= ?\"` with `\"interval_ms > ?\"`; the unmutated -run set passes and the mutant compiles; FAIL: TestSqliteTelemetryFindMetricsFiltersByIntervalBoundsAndAttributesInIntervalOrder."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/store.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFNewChordStoreTakesItsStateFromTheMetaRowAndCatalog"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/store.ts (NewChordStore)",
+  "mutation": "chord/next/store/store.go: replace `lastSeq:         meta.LastSeq,` with `lastSeq:         0,`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFNewChordStoreTakesItsStateFromTheMetaRowAndCatalog."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/store.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFNewChordStoreTakesItsStateFromTheMetaRowAndCatalog"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/store.ts (NewChordStore)",
+  "mutation": "chord/next/store/store.go: replace `NewOutbox(store, meta.OutboxFloor)` with `NewOutbox(store, 0)`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFNewChordStoreTakesItsStateFromTheMetaRowAndCatalog."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/store.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFAnnounceTableWithdrawsOnlyItsOwnAnnouncement",
+   "TestProofFTableVersionIsTheRecordedOrAnnouncedVersion"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/store.ts (ChordStore.TableVersion)",
+  "mutation": "chord/next/store/store.go: replace `return announced, true }` with `return record.Version, true }`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFAnnounceTableWithdrawsOnlyItsOwnAnnouncement, TestProofFTableVersionIsTheRecordedOrAnnouncedVersion."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/store.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFTableVersionIsTheRecordedOrAnnouncedVersion"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/store.ts (ChordStore.TableVersion)",
+  "mutation": "chord/next/store/store.go: replace `record != nil && record.Version >= announced` with `record != nil && record.Version > announced+5`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFTableVersionIsTheRecordedOrAnnouncedVersion."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/store.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFAnnounceTableWithdrawsOnlyItsOwnAnnouncement"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/store.ts (ChordStore.AnnounceTable)",
+  "mutation": "chord/next/store/store.go: replace `ok && announced == version {` with `ok && announced != version+100 {`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFAnnounceTableWithdrawsOnlyItsOwnAnnouncement."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/store.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFAnnounceTableWithdrawsOnlyItsOwnAnnouncement",
+   "TestProofFTableVersionIsTheRecordedOrAnnouncedVersion"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/store.ts (ChordStore.AnnounceTable)",
+  "mutation": "chord/next/store/store.go: replace `store.announced[name] = version store.mu.Unlock()` with `store.mu.Unlock()`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFAnnounceTableWithdrawsOnlyItsOwnAnnouncement, TestProofFTableVersionIsTheRecordedOrAnnouncedVersion."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/store.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFReplayAppliesInATransactionAndTakesWhatItReturns",
+   "TestProofFReplayIsRefusedWhileAnOwnerHoldsAClaim"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/store.ts (ChordStore.Replay)",
+  "mutation": "chord/next/store/store.go: replace `store.lastSeq = replayed.LastSeq store.committedNextID = replayed.NextID if len(replayed.Tables)` with `store.committedNextID = replayed.NextID if len(replayed.Tables)`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFReplayAppliesInATransactionAndTakesWhatItReturns, TestProofFReplayIsRefusedWhileAnOwnerHoldsAClaim."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/store.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFReplayRefusalRollsBackAndMarksDivergence"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/store.ts (ChordStore.Replay)",
+  "mutation": "chord/next/store/store.go: replace `if isDivergence(err) { store.mu.Lock() store.diverged = true store.mu.Unlock() }` with `_ = isDivergence`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFReplayRefusalRollsBackAndMarksDivergence."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/store.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFReplayIsRefusedWhileAnOwnerHoldsAClaim"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/store.ts (ChordStore.Replay)",
+  "mutation": "chord/next/store/store.go: replace `if store.Claims.Held() { return data.Invalid(data.ReasonArgs, \"store: an owner holds claims;` with `if false { return data.Invalid(data.ReasonArgs, \"store: an owner holds claims;`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFReplayIsRefusedWhileAnOwnerHoldsAClaim."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/store.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFReplayAppliesInATransactionAndTakesWhatItReturns"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/store.ts (ChordStore.Replay)",
+  "mutation": "chord/next/store/store.go: replace `store.catalog = withTables(store.catalog, replayed.Tables) } store.mu.Unlock() store.ids.Raise` with `store.catalog = replayed.Tables } store.mu.Unlock() store.ids.Raise`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFReplayAppliesInATransactionAndTakesWhatItReturns."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/store.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFReplayStopsTheStoreWhenTheBackendFails"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/store.ts (ChordStore.Replay)",
+  "mutation": "chord/next/store/store.go: replace `if thrown == nil || !sameError(err, thrown) { return store.fail(err) }` with `if thrown == nil || !sameError(err, thrown) { return err }`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFReplayStopsTheStoreWhenTheBackendFails."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/expression.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFExpressionCompilesIntoDataForEveryOperation"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/expression.ts (Expression)",
+  "mutation": "chord/next/store/expression.go: replace `e.Op != ExprCol || len(e.Args) != 1` with `e.Op != ExprCol`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFExpressionCompilesIntoDataForEveryOperation."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/expression.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFExpressionCompilesIntoDataForEveryOperation"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/expression.ts (Expression)",
+  "mutation": "chord/next/store/expression.go: replace `nullable: a.nullable && b.nullable}, nil` with `nullable: a.nullable || b.nullable}, nil`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFExpressionCompilesIntoDataForEveryOperation."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/expression.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFExpressionCompilesIntoDataForEveryOperation"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/expression.ts (Expression)",
+  "mutation": "chord/next/store/expression.go: replace `From: from.(string), To: to.(string)}` with `From: to.(string), To: from.(string)}`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFExpressionCompilesIntoDataForEveryOperation."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/outbox.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFNewOutboxStartsAfterItsFloor"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/outbox.ts (NewOutbox)",
+  "mutation": "chord/next/store/outbox.go: replace `return &Outbox{store: store, floor: floor, tail: settled}` with `return &Outbox{store: store, floor: 0, tail: settled}`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFNewOutboxStartsAfterItsFloor."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/adapter.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFStoreOwnerTablesDeclareClaimAndPrepareEachTable"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/adapter.ts (StoreOwnerTables)",
+  "mutation": "chord/next/store/adapter.go: replace `NewOwnerTable(definition, TableSqlName(owned.Owner, definition.Name))` with `NewOwnerTable(definition, TableSqlName(\"x\", definition.Name))`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFStoreOwnerTablesDeclareClaimAndPrepareEachTable."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/adapter.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFStoreOwnerTablesDeclareClaimAndPrepareEachTable"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/adapter.ts (StoreOwnerTables)",
+  "mutation": "chord/next/store/adapter.go: replace `tables[index] = DeclaredTable{Definition: table.Definition, Table: table.Sql.Table} }` with `tables[index] = DeclaredTable{Definition: table.Definition, Table: table.Sql.Table} } tables = tables[:1]`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFStoreOwnerTablesDeclareClaimAndPrepareEachTable."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/adapter.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFOwnerTableWritesStampedRowsAndReadsThemBack"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/adapter.ts (OwnerTable)",
+  "mutation": "chord/next/store/adapter.go: replace `stamped := encoded.Row.Clone()` with `stamped := encoded.Row`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFOwnerTableWritesStampedRowsAndReadsThemBack."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/adapter.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFOwnerTableWritesStampedRowsAndReadsThemBack"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/adapter.ts (OwnerTable)",
+  "mutation": "chord/next/store/adapter.go: replace `sql = before + \"LIMIT 1\"` with `sql = before + \"LIMIT 2\"`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFOwnerTableWritesStampedRowsAndReadsThemBack."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/adapter.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFOwnerTableWritesStampedRowsAndReadsThemBack"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/adapter.ts (OwnerTable)",
+  "mutation": "chord/next/store/adapter.go: replace `Row: stamped, Version: version, Columns: encoded.Columns}, nil` with `Row: stamped, Version: version + 1, Columns: encoded.Columns}, nil`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFOwnerTableWritesStampedRowsAndReadsThemBack."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/query.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFQueryChainsWhereAndOrderIntoWhatARunReturns"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/query.ts (Query)",
+  "mutation": "chord/next/store/query.go: replace `WhereNode{Op: WhereAnd, Nodes: []WhereNode{*query.Condition, compiled}}` with `WhereNode{Op: WhereOr, Nodes: []WhereNode{*query.Condition, compiled}}`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFQueryChainsWhereAndOrderIntoWhatARunReturns."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/query.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFQueryChainsWhereAndOrderIntoWhatARunReturns"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/query.ts (Query)",
+  "mutation": "chord/next/store/query.go: replace `if !slices.Contains(query.orderBy, column) { columns = append(columns, column) }` with `columns = append(columns, column)`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFQueryChainsWhereAndOrderIntoWhatARunReturns."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/query.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFQueryChainsWhereAndOrderIntoWhatARunReturns"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/query.ts (Query)",
+  "mutation": "chord/next/store/query.go: replace `return &Query{Table: table, Condition: query.Condition, orderBy: orderBy, direction: direction}` with `return &Query{Table: table, Condition: query.Condition, orderBy: orderBy, direction: \"asc\"}`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFQueryChainsWhereAndOrderIntoWhatARunReturns."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/step.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFStepRunCountedReturnsTheRowsChangedAndCountsTheStatement"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/step.ts (Step.RunCounted)",
+  "mutation": "chord/next/store/step.go: replace `step.Statements++ return step.Executor.RunCounted(sql, params...)` with `return step.Executor.RunCounted(sql, params...)`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFStepRunCountedReturnsTheRowsChangedAndCountsTheStatement."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/step.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFStepRunCountedReturnsTheRowsChangedAndCountsTheStatement"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/step.ts (Step.RunCounted)",
+  "mutation": "chord/next/store/step.go: replace `step.Statements++ return step.Executor.RunCounted(sql, params...)` with `step.Statements++ _, err := step.Executor.RunCounted(sql, params...) return 1, err`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFStepRunCountedReturnsTheRowsChangedAndCountsTheStatement."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/engine.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFFindDocumentEntryByAddressNowAndAtAPoint"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/engine.ts (FindDocumentEntry)",
+  "mutation": "chord/next/store/engine.go: replace `findEntryAtSQL, address.Owner, address.Namespace, address.Kind, addressKey(address), at.Seq, at.Seq)` with `findEntryAtSQL, address.Owner, address.Namespace, address.Kind, addressKey(address), at.Seq+1, at.Seq)`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFFindDocumentEntryByAddressNowAndAtAPoint."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/engine.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFFindDocumentEntryByAddressNowAndAtAPoint"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/engine.ts (FindDocumentEntry)",
+  "mutation": "chord/next/store/engine.go: replace `WHERE owner = ? AND namespace = ? AND kind = ? AND key = ? AND retired_at IS NULL`  const findEntryAtSQL` with `WHERE owner = ? AND namespace = ? AND kind = ? AND key = ?`  const findEntryAtSQL`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFFindDocumentEntryByAddressNowAndAtAPoint."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/engine.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFListDocumentEntriesByScopeAndPoint"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/engine.ts (ListDocumentEntries)",
+  "mutation": "chord/next/store/engine.go: replace `columns = \"meta, retired_at\" } sql := `SELECT ` + columns` with `columns = \"meta\" } sql := `SELECT ` + columns`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFListDocumentEntriesByScopeAndPoint."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/engine.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFListDocumentEntriesByScopeAndPoint"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/engine.ts (ListDocumentEntries)",
+  "mutation": "chord/next/store/engine.go: replace `sql := `SELECT ` + columns + ` FROM ` + TableDocuments + ` WHERE owner = ? AND namespace = ? AND id > ?` params := []sqlite.SqliteValue{scope.Owner, scope.Namespace, after} if scope.Kind != nil { sql += ` AND kind = ?` params = append(params, *scope.Kind) }` with `sql := `SELECT ` + columns + ` FROM ` + TableDocuments + ` WHERE owner = ? AND namespace = ? AND id > ?` params := []sqlite.SqliteValue{scope.Owner, scope.Namespace, after}`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFListDocumentEntriesByScopeAndPoint."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/engine.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFLoadContentIsTheBasePlusTheDeltasAfterIt"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/engine.ts (LoadContent)",
+  "mutation": "chord/next/store/engine.go: replace `if version != baseVersion {` with `if version != baseVersion && false {`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFLoadContentIsTheBasePlusTheDeltasAfterIt."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/engine.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFLoadContentIsTheBasePlusTheDeltasAfterIt"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/engine.ts (LoadContent)",
+  "mutation": "chord/next/store/engine.go: replace `Version: baseVersion, DeltasSinceBase: len(deltas)}, nil` with `Version: baseVersion, DeltasSinceBase: len(deltas) + 1}, nil`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFLoadContentIsTheBasePlusTheDeltasAfterIt."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/engine.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFReadDocumentEntryReadsMetaRetirementAndOwnership"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/engine.ts (ReadDocumentEntry)",
+  "mutation": "chord/next/store/engine.go: replace `History: DocumentHistory(history)}, nil` with `History: HistoryNone + DocumentHistory(history[:0])}, nil`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFReadDocumentEntryReadsMetaRetirementAndOwnership."
+ },
+ {
+  "upstream": "packages/chord/src/next/store/engine.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestProofFReadDocumentEntryReadsMetaRetirementAndOwnership"
+  ],
+  "upstream_reference": "packages/chord/src/next/store/engine.ts (ReadDocumentEntry)",
+  "mutation": "chord/next/store/engine.go: replace `DocumentEntry: entry, Owner: owner, Namespace` with `DocumentEntry: entry, Owner: owner + \"x\", Namespace`; the unmutated -run set passes and the mutant compiles; FAIL: TestProofFReadDocumentEntryReadsMetaRetirementAndOwnership."
+ }
+]
