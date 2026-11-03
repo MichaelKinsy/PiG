@@ -949,9 +949,10 @@ func TestGeneration(t *testing.T) {
 		withProvider(setup, func(provider *ai.ModelsProvider) {
 			provider.StreamSimple = func(context.Context, *ai.Model, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 				// The final message is not strict JSON, so the classification commit fails and the scheduler faults the
-				// task. A Go message cannot hold a function, so a non-finite number stands for upstream's function.
+				// task. Upstream's final message carries a function member (`invalid: () => {}`); a Go message holds one
+				// in a diagnostic's Details, the only free-form member.
 				final := fauxMessage("final", ai.StopReasonStop)
-				final.Usage.Cost.Total = math.NaN()
+				final.Diagnostics = []ai.AssistantMessageDiagnostic{{Type: "probe", Details: map[string]any{"invalid": func() {}}}}
 				return streamOf(fauxMessage("partial", ai.StopReasonPending), 300*time.Millisecond, final), nil
 			}
 		})
@@ -961,8 +962,8 @@ func TestGeneration(t *testing.T) {
 		submission := submitInput(t, root, "hi")
 		settled := must(submission.Wait(testContext))
 		expectSettled(t, settled, durable.SubmissionUnanswered, "faulted")
-		if detail, _ := settled.Detail.(string); !strings.Contains(detail, "is not strict JSON") {
-			t.Fatalf("detail = %v, want the strict JSON failure", settled.Detail)
+		if detail, _ := settled.Detail.(string); !strings.Contains(detail, "non-JSON function") {
+			t.Fatalf("detail = %v, want the non-JSON function failure", settled.Detail)
 		}
 		if !values.some(func(value LiveState) bool {
 			if value.Generation == nil {
@@ -983,8 +984,8 @@ func TestGeneration(t *testing.T) {
 			t.Fatalf("converted text = %q, want partial", got)
 		}
 		failure := live(t, harness, root).RunFailure
-		if failure == nil || failure.Reason != RunFaulted || !slices.Equal(failure.Inputs, []durable.SubmissionId{submission.Id()}) || failure.Detail == nil || !strings.Contains(*failure.Detail, "is not strict JSON") || failure.First == nil {
-			t.Fatalf("runFailure = %+v, want faulted with the strict JSON failure", failure)
+		if failure == nil || failure.Reason != RunFaulted || !slices.Equal(failure.Inputs, []durable.SubmissionId{submission.Id()}) || failure.Detail == nil || !strings.Contains(*failure.Detail, "non-JSON function") || failure.First == nil {
+			t.Fatalf("runFailure = %+v, want faulted with the non-JSON function failure", failure)
 		}
 		// Pi's toEqual: the live document holds the runFailure and nothing else, with a task ID.
 		if failure.TaskId == 0 {

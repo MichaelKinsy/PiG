@@ -136,6 +136,15 @@ func openCounting(t *testing.T, tasks []durable.AnyTask, settings *HarnessSettin
 	return countingSetup{opened: opened, scan: scan, first: first, clock: clock}
 }
 
+// expectStringsFromTask is expectStrings for a task handler's goroutine: t.Fatalf there ends the handler with
+// runtime.Goexit, which the scheduler does not recover, so it would rerun the handler instead of failing the test.
+func expectStringsFromTask(t *testing.T, got, want []string) {
+	t.Helper()
+	if !slices.Equal(got, want) {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
 func ctxCommit(ctx context.Context, runtime stepRuntime, change func(tx durable.Tx) error) error {
 	return runtime.Commit(ctx, func(tx durable.Tx, _ stepRecord) (*durable.NextTaskState[stepState, durable.JsonValue], error) {
 		return nil, change(tx)
@@ -240,7 +249,7 @@ func TestTaskContextRanges(t *testing.T) {
 			write(durable.EntryDraft{Kind: "reset", HeadSelf: true, Model: []ai.Message{user("fresh")}})
 			reset, _ := read(nil)
 			expectSame("reset", reset)
-			expectStrings(t, describeMessages(reset.Messages), []string{"user:fresh"})
+			expectStringsFromTask(t, describeMessages(reset.Messages), []string{"user:fresh"})
 			return tkComplete(ctx, runtime)
 		})
 		setup = openCounting(t, []durable.AnyTask{reads.Erased()}, nil)
@@ -293,24 +302,24 @@ func TestTaskContextRanges(t *testing.T) {
 			}
 
 			// The cached range has answers and no system message; the baseline arrives in a later read.
-			if messages, _ := read(root); messages[0] != "user:first" {
+			if messages, _ := read(root); !slices.Contains(messages[:min(1, len(messages))], "user:first") {
 				t.Errorf("first read = %v, want it to lead with user:first", messages)
 			}
 			appendTo(root.Id(), durable.EntryDraft{Kind: "pi.system", Model: []ai.Message{system(ai.PromptSection{Name: "plan", Value: new("Plan.")})}})
 			messages, rows := read(root)
 			expectRows("root", rows)
-			expectStrings(t, messages[:3], []string{"system:plan", "user:first", "assistant:old 0"})
+			expectStringsFromTask(t, messages[:min(3, len(messages))], []string{"system:plan", "user:first", "assistant:old 0"})
 
 			// A system message the cached range already has keeps a later first `pi.system` entry in place.
 			forked := fork()
 			appendTo(forked.Id(), durable.EntryDraft{Kind: "message", Model: []ai.Message{assistant("answer")}})
 			appendTo(forked.Id(), durable.EntryDraft{Kind: "host.system", Model: []ai.Message{system(ai.PromptSection{Name: "note", Value: new("Note.")})}})
 			messages, _ = read(forked)
-			expectStrings(t, messages, []string{"user:first", "assistant:answer", "system:note"})
+			expectStringsFromTask(t, messages, []string{"user:first", "assistant:answer", "system:note"})
 			appendTo(forked.Id(), durable.EntryDraft{Kind: "pi.system", Model: []ai.Message{system(ai.PromptSection{Name: "note"})}})
 			messages, rows = read(forked)
 			expectRows("fork", rows)
-			expectStrings(t, messages, []string{"user:first", "assistant:answer", "system:note", "system:note"})
+			expectStringsFromTask(t, messages, []string{"user:first", "assistant:answer", "system:note", "system:note"})
 
 			// An omitted system message still rules out a later baseline; the extended read keeps that.
 			omitted := fork()
@@ -318,22 +327,22 @@ func TestTaskContextRanges(t *testing.T) {
 			host := appendTo(omitted.Id(), durable.EntryDraft{Kind: "host.system", Model: []ai.Message{system(ai.PromptSection{Name: "legacy", Value: new("Legacy.")})}})
 			appendTo(omitted.Id(), durable.EntryDraft{Kind: "edit", Edits: []durable.ContextEdit{{Target: host.Id, Action: durable.EditOmit}}})
 			messages, _ = read(omitted)
-			expectStrings(t, messages, []string{"user:first", "assistant:answer"})
+			expectStringsFromTask(t, messages, []string{"user:first", "assistant:answer"})
 			appendTo(omitted.Id(), durable.EntryDraft{Kind: "pi.system", Model: []ai.Message{system(ai.PromptSection{Name: "legacy"})}})
 			messages, rows = read(omitted)
 			expectRows("omitted", rows)
-			expectStrings(t, messages, []string{"user:first", "assistant:answer", "system:legacy"})
+			expectStringsFromTask(t, messages, []string{"user:first", "assistant:answer", "system:legacy"})
 
 			// A first `pi.system` entry without a system message leaves no baseline for a later one to take.
 			empty := fork()
 			appendTo(empty.Id(), durable.EntryDraft{Kind: "pi.system"})
 			appendTo(empty.Id(), durable.EntryDraft{Kind: "message", Model: []ai.Message{assistant("answer")}})
 			messages, _ = read(empty)
-			expectStrings(t, messages, []string{"user:first", "assistant:answer"})
+			expectStringsFromTask(t, messages, []string{"user:first", "assistant:answer"})
 			appendTo(empty.Id(), durable.EntryDraft{Kind: "pi.system", Model: []ai.Message{system(ai.PromptSection{Name: "s", Value: new("Delta.")})}})
 			messages, rows = read(empty)
 			expectRows("empty", rows)
-			expectStrings(t, messages, []string{"user:first", "assistant:answer", "system:s"})
+			expectStringsFromTask(t, messages, []string{"user:first", "assistant:answer", "system:s"})
 			return tkComplete(ctx, runtime)
 		})
 		setup = openCounting(t, []durable.AnyTask{steps.Erased()}, nil)

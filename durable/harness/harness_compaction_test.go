@@ -5,7 +5,6 @@ package harness
 import (
 	"context"
 	"errors"
-	"math"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -2556,40 +2555,32 @@ func TestCompactionEdgeCases(t *testing.T) {
 	})
 
 	t.Run("fails the run when its blocking compaction faults, and records the fault", func(t *testing.T) {
-		// upstream: packages/durable/test/harness-compaction.test.ts:1954
-		chat := openCompaction(t, compactionOptions{contextWindow: 1000})
+		// upstream: packages/durable/test/harness-compaction.test.ts:1979
+		// Upstream replaces Models.completeSimple with a function that throws; here CompleteSimple of the Harness's models
+		// panics, which the scheduler turns into a task fault as an uncaught throw faults a task upstream.
+		setup := chatSetup(t, ai.FauxConfig{Models: []ai.FauxModelDefinition{{ID: "faux-1", ContextWindow: 1000, MaxTokens: 900}}})
+		models := &throwingModels{Models: setup.Models}
+		setup.HarnessModels = models
+		chat := openCompaction(t, compactionOptions{setup: setup})
 		chat.history(t)
 		chat.setPolicy(blockingPolicy())
-		// Upstream replaces Models.completeSimple with a throwing function. Go's CompleteSimple has no throw path (a panic in a
-		// provider's stream goroutine crashes the process), so the summarization answers a value that is not strict JSON and
-		// the compaction's commit faults the task instead.
-		original := *chat.setup.Faux.Provider()
-		withProvider(chat.setup, func(provider *ai.ModelsProvider) {
-			provider.StreamSimple = func(ctx context.Context, model *ai.Model, request ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
-				if isSummaryRequest(request.Messages()) {
-					final := fauxMessage("SUMMARY", ai.StopReasonStop)
-					final.Usage.Cost.Total = math.NaN()
-					return streamOf(fauxMessage("", ai.StopReasonPending), 0, final), nil
-				}
-				return original.StreamSimple(ctx, model, request, options)
-			}
-		})
+		models.throw(errors.New("no credentials"))
 		requests := len(chat.faux.agentRequestsCopy())
 		settled := must(submitInput(t, chat.root, sized("u4", 200)).Wait(testContext))
-		chat.setup.Models.SetProvider(&original)
+		models.throw(nil)
 		expectSettled(t, settled, durable.SubmissionUnanswered, "model_error")
-		state := chat.live(t)
-		if state.Compactions != nil || slices.Contains(chat.kinds(t), "pi.compaction") {
-			t.Fatal("a faulted compaction left a summary or a status")
+		expectEqualJSON(t, settled.Detail, jsonText(t, "Compaction failed: no credentials"))
+		if slices.Contains(chat.kinds(t), "pi.compaction") {
+			t.Fatal("a faulted compaction left a summary")
 		}
-		// The fault's message is the commit's strict-JSON rejection; Pi's is the thrown "no credentials". Either way the run's detail
-		// and pi.live.compactionFailure carry the same fault message.
-		const fault = "Value contains a non-finite number and is not strict JSON"
+		state := chat.live(t)
+		if state.Compactions != nil {
+			t.Fatalf("a faulted compaction stayed listed: %+v", state.Compactions)
+		}
 		failure := state.CompactionFailure
-		if failure == nil || failure.Trigger != "threshold" || failure.Error != fault {
+		if failure == nil || failure.Trigger != "threshold" || failure.Error != "no credentials" {
 			t.Fatalf("compactionFailure = %+v", failure)
 		}
-		expectEqualJSON(t, settled.Detail, jsonText(t, "Compaction failed: "+fault))
 		if got := len(chat.faux.agentRequestsCopy()); got != requests {
 			t.Fatalf("agent requests = %d, want %d", got, requests)
 		}
@@ -2636,6 +2627,27 @@ func TestCompactionEdgeCases(t *testing.T) {
 		}
 		chat.close(t)
 	})
+}
+
+// throwingModels is Models whose CompleteSimple panics with the error set by throw, as Pi's replaced completeSimple throws.
+type throwingModels struct {
+	*ai.Models
+	thrown atomic.Pointer[error]
+}
+
+func (models *throwingModels) throw(err error) {
+	if err == nil {
+		models.thrown.Store(nil)
+		return
+	}
+	models.thrown.Store(&err)
+}
+
+func (models *throwingModels) CompleteSimple(ctx context.Context, model *ai.Model, request ai.Context, options ...ai.StreamOptions) *ai.AssistantMessage {
+	if err := models.thrown.Load(); err != nil {
+		panic(*err)
+	}
+	return models.Models.CompleteSimple(ctx, model, request, options...)
 }
 
 func TestCompactionEdgeCasesLater(t *testing.T) {
