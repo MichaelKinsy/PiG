@@ -886,7 +886,7 @@ func TestReviewTheRouterTheComponentReadsIsTheOneTheFollowerDelivers(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := set.router.Value().(*Router); got != last.Load() {
+	if got := set.routerNow(); got != last.Load() {
 		t.Fatal("the router the component reads is not the one the follower delivered")
 	}
 }
