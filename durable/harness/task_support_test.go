@@ -65,14 +65,17 @@ func abortedBy(signal context.Context) error {
 // flush is session-support.ts flush(): let pending work run for one scheduling turn.
 func flush() { time.Sleep(time.Millisecond) }
 
-// eventually flushes scheduling turns until check holds (200 attempts, as upstream).
+// eventually is task-support.ts eventually: it checks, then flushes a turn, up to 200 times. A turn is awaitQuiescent, the barrier
+// that stands for `await flush()`: it returns once every other goroutine has run up to a wait, so the work a check waits for
+// (a reopen, a resume, a delivery) has finished or is parked before the next attempt, however slowly the scheduler runs it. The
+// bound counts turns of the work, never a duration, so a starved scheduler cannot exhaust it while the work is still pending.
 func eventually(t *testing.T, check func() bool) {
 	t.Helper()
 	for range 200 {
 		if check() {
 			return
 		}
-		flush()
+		awaitQuiescent(t)
 	}
 	t.Fatal("Condition was not reached")
 }
