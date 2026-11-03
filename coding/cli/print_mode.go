@@ -273,21 +273,19 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	go func() {
 		select {
 		case sig := <-intCh:
+			// pig divergence (D231): a repeated signal exits at once, without waiting for the disposal the first one started (print-mode.ts signalCount > 1). The watcher starts before anything that can wait on that disposal.
+			go func() {
+				select {
+				case again := <-intCh:
+					if againSig, againOK := again.(syscall.Signal); againOK {
+						tools.KillTrackedDetachedChildren()
+						exitOnSignal(againSig)
+					}
+				case <-ctx.Done():
+				}
+			}()
 			sysSig, ok := noteTerminationSignal(sig)
 			tools.KillTrackedDetachedChildren()
-			// pig divergence (D231): a repeated signal exits at once, without waiting for the disposal the first one started (print-mode.ts signalCount > 1).
-			if ok {
-				go func() {
-					select {
-					case again := <-intCh:
-						if againSig, againOK := again.(syscall.Signal); againOK {
-							tools.KillTrackedDetachedChildren()
-							exitOnSignal(againSig)
-						}
-					case <-ctx.Done():
-					}
-				}()
-			}
 			disposeFromSignal()
 			// Then process.exit(128+signum): the aborted run's remaining work (tool hooks, turn boundaries, extension errors) never runs.
 			if ok {
