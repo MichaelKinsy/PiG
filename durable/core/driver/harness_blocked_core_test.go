@@ -283,8 +283,8 @@ func TestBlockedTasks(t *testing.T) {
 					inspected = task.State
 				}
 			}
-			if inspected.Kind != harness.TaskInspectionPending || inspected.Migrates {
-				t.Fatalf("inspection %+v, want ready", inspected)
+			if !reflect.DeepEqual(inspected, harness.TaskInspectionState{Kind: harness.TaskInspectionPending}) {
+				t.Fatalf("inspection %+v, want exactly {kind: pending, migrates: false}", inspected)
 			}
 			if !h.Wake().Active {
 				t.Fatalf("wake %+v, want active", h.Wake())
@@ -292,11 +292,12 @@ func TestBlockedTasks(t *testing.T) {
 			h.Resume()
 			outcome := waitFinished2(t, h, id).State.Outcome
 			wantMessage := fmt.Sprintf("Task %d (test.crash-loop) was cut off 3 times without progress", id)
-			if outcome == nil || outcome.Status != durable.OutcomeFaulted || outcome.Error == nil || outcome.Error.Message != wantMessage {
+			// Pi's toEqual: nothing but status, message and the one-key detail.
+			if outcome == nil || outcome.Status != durable.OutcomeFaulted || outcome.Error == nil || outcome.Error.Message != wantMessage || outcome.Result != nil || outcome.Reason != nil {
 				t.Fatalf("outcome %+v, want faulted with %q", outcome, wantMessage)
 			}
-			if detail, ok := outcome.Error.Detail.(durable.JsonObject); !ok || mustGet(detail, "reason") != "restart_limit" {
-				t.Fatalf("outcome detail %+v, want reason restart_limit", outcome.Error.Detail)
+			if detail, ok := outcome.Error.Detail.(durable.JsonObject); !ok || detail.Len() != 1 || mustGet(detail, "reason") != "restart_limit" {
+				t.Fatalf("outcome detail %+v, want exactly {reason: restart_limit}", outcome.Error.Detail)
 			}
 			if _, started := state.get(); started != 3 {
 				t.Fatalf("the task started again: %d starts, want 3", started)

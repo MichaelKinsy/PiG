@@ -224850,7 +224850,7 @@
       "evidence": [
         "test:durable/commit_change_test.go#TestDocumentCommitChangeVariantsCarryTheirDiscriminators",
         "test:durable/harness/view_incarnation_test.go#TestAdvanceViewFollowsOnlyTheMountedIncarnation",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestAHeldDeferredPollIsResumedAfterACrash"
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint"
       ]
     },
     {
@@ -229051,9 +229051,9 @@
         "call:durable/harness/agent.go#ResolveSettings"
       ],
       "evidence": [
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint",
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestAHeldDeferredPollIsResumedAfterACrash",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials",
-        "test:durable/core/driver/compaction_failure_core_test.go#TestCorePerModelCompactionOverrideSetsTheBlockingThreshold"
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials"
       ]
     },
     {
@@ -234497,9 +234497,9 @@
         "call:durable/harness/harness.go#boundConversation.Submit"
       ],
       "evidence": [
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint",
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestAHeldDeferredPollIsResumedAfterACrash",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials",
-        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredToolOutput"
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -234634,9 +234634,9 @@
         "call:durable/harness/harness.go#boundSubmission.Wait"
       ],
       "evidence": [
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint",
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials",
-        "test:durable/harness/settled_submission_record_upstream_test.go#TestSettledSubmissionRecordWaitsOutAPlacedInputUpstream",
-        "test:coding/model_runtime_durable_models_test.go#TestModelRuntimeAnswersDurableHarnessGeneration"
+        "test:durable/harness/settled_submission_record_upstream_test.go#TestSettledSubmissionRecordWaitsOutAPlacedInputUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -234657,9 +234657,9 @@
         "call:durable/harness/harness.go#boundSubmission.Wait"
       ],
       "evidence": [
+        "test:durable/harness/harness_deferred_progress_upstream_test.go#TestACompactionCutOffByACrashRerunsFromItsCheckpoint",
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestDeferredGenerationPartials",
-        "test:durable/harness/settled_submission_record_upstream_test.go#TestSettledSubmissionRecordWaitsOutAPlacedInputUpstream",
-        "test:coding/model_runtime_durable_models_test.go#TestModelRuntimeAnswersDurableHarnessGeneration"
+        "test:durable/harness/settled_submission_record_upstream_test.go#TestSettledSubmissionRecordWaitsOutAPlacedInputUpstream"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
