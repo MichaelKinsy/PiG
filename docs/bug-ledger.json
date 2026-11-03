@@ -32828,32 +32828,6 @@
     },
     {
       "id": "BF-c80895b",
-      "title": "Switching to a long session with `/resume`, `/fork` or `/tree` no longer leaves memory the replaced session…",
-      "symptom": "Switching to a long session with `/resume`, `/fork` or `/tree` no longer leaves memory the replaced session used: the heap is returned to the OS once the new transcript is painted, as it is at start.",
-      "rootCause": "An entry decoded from a joined file read kept a slice of the read (up to 8 MiB), pinning the gaps between the records while it was resident: read together, 415 entries retained 2.34 x what the same entries read one at a time do. Each entry now owns its record.",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Switching to a long session with `/resume`, `/fork` or `/tree` no longer leaves memory the replaced session used: the heap is returned to the OS once the new transcript is painted, as it is at start. A 375 MB session resumed from inside PiG held 2.2 GB until exit; it now holds about 100 MB.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "c80895bd4f",
-          "date": "2026-11-02"
-        },
-        {
-          "hash": "7fae0d4832",
-          "date": "2026-11-02"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/switch_heap_release_test.go::TestSessionSwitchesRequestAHeapRelease"
-      ]
-    },
-    {
-      "id": "BF-c80895b-2",
       "title": "An entry read from a long session's file no longer keeps the whole shared read (up to 8 MiB) alive: each…",
       "symptom": "An entry read from a long session's file no longer keeps the whole shared read (up to 8 MiB) alive: each entry owns its record, so a context built from scattered records retains what it holds and not the gaps between them.",
       "rootCause": "An entry decoded from a joined file read kept a slice of the read (up to 8 MiB), pinning the gaps between the records while it was resident: read together, 415 entries retained 2.34 x what the same entries read one at a time do. Each entry now owns its record.",
@@ -32871,7 +32845,36 @@
         }
       ],
       "tests": [
+        "coding/session_replay_reads_test.go::TestReplayedTranscriptAllocatesAFractionOfTheSessionFile",
         "internal/codingagent/session_run_buffer_retention_test.go::TestEntriesDecodedFromAJoinedReadDoNotPinTheRead"
+      ]
+    },
+    {
+      "id": "BF-c80895b-2",
+      "title": "Switching to a long session with `/resume`, `/fork` or `/tree` no longer leaves memory the replaced session…",
+      "symptom": "Switching to a long session with `/resume`, `/fork` or `/tree` no longer leaves memory the replaced session used: the heap is returned to the OS once the new transcript is painted, as it is at start.",
+      "rootCause": "An entry decoded from a joined file read kept a slice of the read (up to 8 MiB), pinning the gaps between the records while it was resident: read together, 415 entries retained 2.34 x what the same entries read one at a time do. Each entry now owns its record.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Switching to a long session with `/resume`, `/fork` or `/tree` no longer leaves memory the replaced session used: the heap is returned to the OS once the new transcript is painted, as it is at start. A 375 MB session resumed from inside PiG held 2.2 GB until exit; it now holds about 100 MB.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7fae0d4832",
+          "date": "2026-11-02"
+        },
+        {
+          "hash": "c80895bd4f",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "coding/session_replay_reads_test.go::TestReplayedTranscriptAllocatesAFractionOfTheSessionFile",
+        "internal/codingagent/session_run_buffer_retention_test.go::TestEntriesDecodedFromAJoinedReadDoNotPinTheRead",
+        "internal/codingagent/switch_heap_release_test.go::TestSessionSwitchesRequestAHeapRelease"
       ]
     },
     {
