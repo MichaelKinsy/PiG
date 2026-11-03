@@ -254,6 +254,7 @@ func TestTheDependencyCheckSettlesAWaitingRingAcrossHostsAfterOneRound(t *testin
 	})
 	defer closeHosts(t, r.Tab, r.Server)
 	scopeEventually(t, "the server's host object started the worker", func() bool { return r.Worker("session|S1") != nil })
+	r.WorkerLoaded(t, "session|S1")
 	r.Transported()
 	worker := r.Worker("session|S1")
 	held, err := worker.Hold(background, b, jsonObject(), GetOptions{})
