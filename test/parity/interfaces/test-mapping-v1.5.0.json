@@ -8688,7 +8688,7 @@
         "durable/session/session_adoption_jsonl_test.go#TestPublishesAJsonlCommitOnceTheStorageReclaimedItsSidecarAndResolved",
         "durable/session/session_adoption_internal_test.go#TestSessionFailsWithItsOwnAdoptionErrorWhichNeverReachesStorage"
       ],
-      "rationale": "Pi v1.5.0 re-record: every case runs in the evidence files; the case that a Session fails with its own adoption error, which never reaches Storage, runs on an internal Session and the JSONL sidecar case on a JSONL storage. Pi's `throw of its own observers` is the Go panic of its own observers."
+      "rationale": "Pi v1.5.0 re-record: every case runs in the evidence files; the case that a Session fails with its own adoption error, which never reaches Storage, runs on an internal Session and the JSONL sidecar case on a JSONL storage. Pi's `throw of its own observers` is the Go panic of its own observers. The two assertions on a spy of Transaction.prototype.discard (not called after adoption; called once before it) have no Go counterpart, as Go cannot patch a method: the failed Session and the storage order are asserted instead."
     },
     {
       "path": "packages/durable/test/session-cached-storage.test.ts",
@@ -8879,7 +8879,7 @@
         "durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches",
         "durable/storage/backend_reads_test.go#TestBackendReadsAgreeWithMemory"
       ],
-      "rationale": "Pi v1.5.0 re-record: the conformance suite, the pico storage, the record key order, the batches and the reads agreeing with memory run in the evidence files."
+      "rationale": "Pi v1.5.0 re-record: the conformance suite, the pico storage, the record key order, the batches and the reads agreeing with memory run in the evidence files; the six upstream cases of SqliteStorage batches run as TestSqliteStorageBatches with each failure mode of the check read: Error, primitive and undefined rejections become the error the read returns (a message, a bare string, an empty one) and the synchronous throw its panic, each rejecting the whole call with nothing received or stored."
     },
     {
       "path": "packages/durable/test/storage-runtime-boundary.test.ts",
@@ -8907,7 +8907,7 @@
         "durable/storage/store/store_storage_host_test.go#TestStoreStorageViewsAsChordSources",
         "durable/storage/store/store_storage_host_test.go#TestStoreStorageGC"
       ],
-      "rationale": "Pi v1.5.0 re-record: every case runs in the evidence files: the conformance suite on :memory: and across reopen, claims and close, the store's semantics, archives, head markers, reads and commits in store_storage_test.go, and on a Chord host and a Harness the commits published inside the host's batch, the derive over the conversation view and the task graph, the deferred then immediate Durable commit, and the collected closed StoreStorage (weak pointer and runtime.GC in place of WeakRef and gc())."
+      "rationale": "Pi v1.5.0 re-record: every case runs in the evidence files: the conformance suite on :memory: and across reopen, claims and close, the store's semantics, archives, head markers, reads and commits in store_storage_test.go, and on a Chord host and a Harness the commits published inside the host's batch, the derive over the conversation view and the task graph, the deferred then immediate Durable commit (n is 2 and seen last after one 20 ms sleep, as upstream), the archive with an object's persisted memo document set to 2 through a host, and the collected closed StoreStorage (weak pointer and runtime.GC in place of WeakRef and gc())."
     },
     {
       "path": "packages/durable/test/system-order-cache-e2e.test.ts",
