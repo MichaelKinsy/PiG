@@ -19752,6 +19752,28 @@
       ]
     },
     {
+      "id": "BF-776588b",
+      "title": "A stream header or metadata value changed in place on the settings object a Durable `Harness` returns from…",
+      "symptom": "The core kept the settings it had encoded last when the new value compared equal to a stored copy that shared the same map.",
+      "rootCause": "settingsText cached the encoded settings and compared a stored copy with the resolved settings before every event. The resolved Stream shares its header and metadata maps with the settings object the host returns, so the stored copy aliased them: a header added to the map in place compared equal and the core kept the old text. Pi has no cache and resolves the settings at every read (packages/durable/src/harness/harness.ts:236). The cache is gone; the host still compares the text before it resends it (sqlhost syncSettings), so the core receives settings only when they changed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A stream header or metadata value changed in place on the settings object a Durable `Harness` returns from its settings callback now reaches the core with the next event, as it does in Pi, which re-reads the settings at every use. The core kept the settings it had encoded last when the new value compared equal to a stored copy that shared the same map.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "776588b309",
+          "date": "2026-11-02"
+        }
+      ],
+      "tests": [
+        "durable/core/driver/settings_text_test.go::TestSettingsTextFollowsTheSettingsTheHostReturns"
+      ]
+    },
+    {
       "id": "BF-7768bea",
       "title": "fix(ai): tool-call arguments are written as JSON.stringify writes them, and keep a lone surrogate",
       "symptom": "fix(ai): tool-call arguments are written as JSON.stringify writes them, and keep a lone surrogate",
@@ -26135,7 +26157,6 @@
         "durable/core/driver/doc_replica_test.go::TestDocReplicaCatchesUpWithTheOperationsTheCoreSent",
         "durable/core/driver/doc_replica_test.go::TestDocReplicasKeepOnlyAnswersTheCoreNamedAndAFewDocuments",
         "durable/core/driver/fanout_scaling_norace_test.go::TestScalingCoreNestedCallFanout",
-        "durable/core/driver/settings_text_test.go::TestSettingsTextIsEncodedOnlyWhenTheSettingsChange",
         "durable/core/group_commit_test.go::TestACallThatRejectsAfterItsReceiptsPublishesThenRejects",
         "durable/core/group_commit_test.go::TestAReadOfAKeyAnUnpublishedCommitWritesWaitsForItsPublication",
         "durable/core/group_commit_test.go::TestARefusedBatchRejectsWithTheRefusalAndFailsTheSession",
