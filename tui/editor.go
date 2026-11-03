@@ -1771,7 +1771,6 @@ func (e *Editor) HandleInput(data string) {
 		return
 	}
 	if kb.Matches(data, KBEditorUndo) {
-		e.lastAction = ""
 		e.undo()
 		return
 	}

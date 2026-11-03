@@ -1,0 +1,29 @@
+# Behavior family: tui-components (editor handleInput action order)
+# Pi probe: the pi-tui Editor (editor.ts handleInput) with every pair of its 27 keybinding actions bound to one shared key (ctrl+q), over ten prepared editor states (empty with history, kill ring and yank,
+# multi-line with the cursor in the middle, a trailing backslash, a pending character jump, a browsed history entry, word and line movement). editor.ts checks the actions in one fixed order, so the first action in
+# that order performs; after every op the editor's text, expanded text, cursor, lines, callbacks and rendering are compared, one JSON line per probe. The Go test TestEditorSharedKeysResolveInPiOrder runs the same
+# probes (and four more shared keys) against the installed Pi; this scenario compares the two printed streams.
+name = "39-editor-shared-key-order"
+description = "A key bound to two editor actions performs the action Pi's editor checks first."
+covers = ["packages/tui/src/components/editor.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/editor-shared-key-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/editor-shared-key-pi.mjs"]
+pig_go_tests = ["./tui"]
+pi_go_tests = ["./tui"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 240
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"cursor":{"line":1,"col":0}', '"callbacks":[]', '"rendered":["']
+runs = 2
