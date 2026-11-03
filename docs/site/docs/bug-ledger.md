@@ -449,6 +449,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5c9d23f](#bf-5c9d23f) | A provider object's OAuth login receives Pi's login options, as `oauth.login(interaction, options)` does in Pi | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5cc630e](#bf-5cc630e) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-5d36a58](#bf-5d36a58) | fix(agent): end the tool flow at custom user messages and hold system messages mid-flow | PiG's own defect | All platforms | Unreleased |
+| [BF-5d4c432](#bf-5d4c432) | A tool schema built with `ai.StringEnum`, and the schemas of the eval harness's custom tools, reach every… | PiG's own defect | All platforms | Unreleased |
 | [BF-5d6bb25](#bf-5d6bb25) | The request-string walk that splices cached strings into a request body finds a cycle by the pointer, map or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5d8eda1](#bf-5d8eda1) | `pig auth check` and `pig auth print-api-key` no longer reject `--api-key` that another option takes as its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5dbfed1](#bf-5dbfed1) | A scripted faux response can carry `DurationMs` | PiG's own defect | All platforms | 0.5.0 |
@@ -7456,6 +7457,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `5d36a5821d` (2026-10-09)
 - **Tests:** `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `coding/session_tree_wire_oracle_test.go::TestNavigateTreeEveryPointSendsValidToolFlow`
+
+### BF-5d4c432
+
+**A tool schema built with `ai.StringEnum`, and the schemas of the eval harness's custom tools, reach every…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A tool schema built with `ai.StringEnum`, and the schemas of the eval harness's custom tools, reach every provider with their members in the order the author wrote them, as Pi sends them: `{"type":"string","enum":[...]}` and properties in declaration order, where PiG sorted them by name for the Anthropic, OpenAI (completions and responses), Azure, Mistral, Google and Bedrock requests.
+- **Root cause:** ai.StringEnum returned a Go map, so every provider wrote `{"enum":[...],"type":"string"}` where Pi's StringEnum gives `{"type":"string","enum":[...]}` and a property object sorted by name where Pi keeps insertion order. StringEnum now returns an ordered pi-schema object whose enum is the caller's slice, as Pi's is the caller's array.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5d4c43241b` (2026-11-02)
+- **Tests:** `ai/providers/bedrock/bedrock_tool_schema_order_test.go::TestBedrockToolConfigKeepsTheAuthoredSchemaOrder`, `ai/string_enum_test.go::TestStringEnumSharesTheCallersValues`, `ai/string_enum_test.go::TestStringEnumWritesTheMembersInPiOrder`, `ai/tool_schema_wire_order_test.go::TestToolSchemaKeepsAuthoredOrderInProviderRequests`, `internal/evals/evalsuites/audit_tool_test.go::TestSubmitAuditParametersKeepTheirAuthoredOrder`, `internal/evals/harness_run_test.go::TestRunPiCodingAgentCustomToolSchemaKeepsAuthoredOrderToTheModel`, `internal/evals/harness_run_test.go::TestRunPiCodingAgentServesCustomToolsThroughTheBridge`, `test/pipeline-diff/tool_schema_test.go::TestToolSchemaBytesMatchPi`
+- **Release note:** A tool schema built with `ai.StringEnum`, and the schemas of the eval harness's custom tools, reach every provider with their members in the order the author wrote them, as Pi sends them: `{"type":"string","enum":[...]}` and properties in declaration order, where PiG sorted them by name for the Anthropic, OpenAI (completions and responses), Azure, Mistral, Google and Bedrock requests. `ai.StringEnum` returns an ordered schema object and shares the caller's enum slice, as Pi does.
 
 ### BF-5d6bb25
 
