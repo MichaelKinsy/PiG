@@ -21,13 +21,13 @@ import (
 )
 
 type handleEventStep struct {
-	Name         string          `json:"name"`
-	Event        *handleEventIn  `json:"event"`
-	Op           string          `json:"op"`
-	Steering     []string        `json:"steering"`
-	FollowUp     []string        `json:"followUp"`
-	Level        string          `json:"level"`
-	Visible      bool            `json:"visible"`
+	Name     string         `json:"name"`
+	Event    *handleEventIn `json:"event"`
+	Op       string         `json:"op"`
+	Steering []string       `json:"steering"`
+	FollowUp []string       `json:"followUp"`
+	Level    string         `json:"level"`
+	Visible  bool           `json:"visible"`
 }
 
 type handleEventIn struct {
@@ -329,5 +329,5 @@ func TestHandleEventProbe(t *testing.T) {
 	if err := encoder.Encode(traces); err != nil {
 		t.Fatal(err)
 	}
-	os.Stdout.WriteString("HANDLE_EVENT " + out.String())
+	_, _ = os.Stdout.WriteString("HANDLE_EVENT " + out.String())
 }

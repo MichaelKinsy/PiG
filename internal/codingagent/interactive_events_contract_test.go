@@ -272,7 +272,7 @@ func TestEventToolExecutionLifecycle(t *testing.T) {
 		t.Fatalf("a partial result is shown and is not an error: %q", got)
 	}
 	p.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: "a", ToolName: "read", IsError: true, Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "FINAL"}}}})
-	if got := p.chat(); !strings.Contains(got, "FINAL") || !(card.State == tui.ToolStateError) || len(p.toolByID) != 0 || len(p.toolStarts) != 0 || len(p.toolFileCalls) != 0 {
+	if got := p.chat(); !strings.Contains(got, "FINAL") || card.State != tui.ToolStateError || len(p.toolByID) != 0 || len(p.toolStarts) != 0 || len(p.toolFileCalls) != 0 {
 		t.Fatalf("the end settles the card as an error and forgets the call: %q", got)
 	}
 	p.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: "a", ToolName: "read", Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "AGAIN"}}}})
