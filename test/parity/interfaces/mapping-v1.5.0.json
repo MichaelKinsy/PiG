@@ -123850,7 +123850,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/registry_reader.go#chordRegistryReader.Subscribe"
+        "call:durable/harness/registry_reader.go#NewRegistryReader"
       ],
       "evidence": [
         "test:chord/next/registries/value_test.go#TestRegistryValue",
@@ -123871,7 +123871,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/registry_reader.go#chordRegistryReader.Subscribe"
+        "call:durable/harness/registry_reader.go#NewRegistryReader"
       ],
       "evidence": [
         "test:chord/next/registries/value_test.go#TestRegistryValue",
