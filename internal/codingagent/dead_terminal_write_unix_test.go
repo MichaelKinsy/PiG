@@ -4,10 +4,10 @@ package codingagent
 
 import (
 	"errors"
-	"io"
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/tui"
@@ -81,7 +81,7 @@ func TestDeadRemoteEditorWriteChild(t *testing.T) {
 	case "between-frames":
 		m.writeTerminal("data")
 	case "set-title":
-		m.tuiInst = tui.NewWithOutput(io.Discard, 80, 24)
+		m.tuiInst = tui.NewTuiMainScreen(tui.NewProcessTerminal(slave, slave), nil, "")
 		(&ExtUIContext{m: m}).SetTitle("title")
 	case "osc52":
 		hostClipboardCopier().emitOSC52("text")
@@ -107,6 +107,59 @@ func TestRemoteEditorTerminalWriteToAHungUpTerminalExits129(t *testing.T) {
 			}
 			if code != 129 || strings.Contains(string(output), "survived") {
 				t.Fatalf("exit code %d, want 129 without carrying on\n%s", code, output)
+			}
+		})
+	}
+}
+
+const otherTerminalWriteChildEnv = "PIG_OTHER_TERMINAL_WRITE_CHILD"
+
+type failingTerminalWriter struct{ err error }
+
+func (w failingTerminalWriter) Write([]byte) (int, error) { return 0, w.err }
+
+// TestOtherTerminalWriteChild writes to a terminal whose write fails with the errno in the env var.
+func TestOtherTerminalWriteChild(t *testing.T) {
+	name := os.Getenv(otherTerminalWriteChildEnv)
+	if name == "" {
+		t.Skip("child process only")
+	}
+	errno := map[string]syscall.Errno{"EINVAL": syscall.EINVAL, "EIO": syscall.EIO}[name]
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: os.Getenv("PIG_DEAD_TERMINAL_AGENT_DIR"), AppVersion: "9.9.9"})
+	_ = m.exitOnDeadTerminalWrite()
+	tui.NewProcessTerminalWithOutput(nil, nil, failingTerminalWriter{&os.PathError{Op: "write", Path: "/dev/pts/9", Err: errno}}).Write("frame")
+	_, _ = os.Stdout.WriteString("survived\n")
+	os.Exit(0)
+}
+
+// Pi's terminalErrorHandler exits through emergencyTerminalExit only for DEAD_TERMINAL_ERROR_CODES and rethrows every other error
+// (interactive-mode.ts:4510), which uncaughtCrash turns into a crash record and exit 1 (:4448). EIO is the dead terminal (129, no record).
+func TestTerminalWriteErrorOutsideTheDeadTerminalCodesCrashesLikePi(t *testing.T) {
+	for _, tc := range []struct {
+		errno       string
+		code        int
+		crashCount  int
+		wantSurvive bool
+	}{
+		{"EINVAL", 1, 1, false},
+		{"EIO", 129, 0, false},
+	} {
+		t.Run(tc.errno, func(t *testing.T) {
+			agentDir := t.TempDir()
+			cmd := exec.Command(os.Args[0], "-test.run=^TestOtherTerminalWriteChild$")
+			cmd.Env = append(os.Environ(), otherTerminalWriteChildEnv+"="+tc.errno, "PIG_DEAD_TERMINAL_AGENT_DIR="+agentDir, "PIG_HOME="+t.TempDir())
+			output, err := cmd.CombinedOutput()
+			code := 0
+			if exit, ok := errors.AsType[*exec.ExitError](err); ok {
+				code = exit.ExitCode()
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			if code != tc.code || strings.Contains(string(output), "survived") {
+				t.Fatalf("exit code %d, want %d without carrying on\n%s", code, tc.code, output)
+			}
+			if n := len(ReadCrashLog(CrashLogPath(agentDir))); n != tc.crashCount {
+				t.Errorf("crash records = %d, want %d\n%s", n, tc.crashCount, output)
 			}
 		})
 	}
