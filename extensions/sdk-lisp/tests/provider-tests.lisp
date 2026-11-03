@@ -1,5 +1,5 @@
 ;;;; SPDX-License-Identifier: MIT
-;;;; Lane P: providers, OAuth, renderers, virtual models and MCP registration against the in-process fake host.
+;;;; Providers, OAuth, renderers, virtual models and MCP registration against the in-process fake host.
 (in-package #:pig-tests)
 
 (defun pt-run (host id method responder &rest members)

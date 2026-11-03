@@ -1,5 +1,5 @@
 ;;;; SPDX-License-Identifier: MIT
-;;;; Lane C: conversation helpers: convertToLlm, serializeConversation, branch summarization, session entry messages and buildSessionContext.
+;;;; Conversation helpers: convertToLlm, serializeConversation, branch summarization, session entry messages and buildSessionContext.
 ;;;; Messages and entries are decoded JSON (hash-tables, vectors); a malformed one signals js-type-error with Pi's message.
 
 (in-package #:pig)

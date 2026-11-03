@@ -1,5 +1,5 @@
 ;;;; SPDX-License-Identifier: MIT
-;;;; Lane C: output truncation helpers (core/tools/truncate.ts) and truncateToVisualLines. Two independent limits, a line count and a UTF-8 byte count; the first hit wins.
+;;;; Output truncation helpers (core/tools/truncate.ts) and truncateToVisualLines. Two independent limits, a line count and a UTF-8 byte count; the first hit wins.
 
 (in-package #:pig)
 

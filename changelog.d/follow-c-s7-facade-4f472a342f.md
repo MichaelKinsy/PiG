@@ -4,4 +4,4 @@
 
 ### Changed
 
-- The conformance corpus runs rows E32 to E34 and the lane C unit rows against the candidates; their golden traces are recorded (`durable/contract/traces`). A commit listener receives its caller's own `Context`.
+- The conformance corpus runs rows E32 to E34 and the unit rows against the candidates; their golden traces are recorded (`durable/contract/traces`). A commit listener receives its caller's own `Context`.

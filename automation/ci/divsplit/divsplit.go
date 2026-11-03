@@ -29,7 +29,7 @@ const (
 var (
 	recordFileRE   = regexp.MustCompile(`^D([1-9][0-9]*)\.md$`)
 	activeFirstRE  = regexp.MustCompile(`^## D([1-9][0-9]*) \S`)
-	retiredFirstRE = regexp.MustCompile(`^- D([1-9][0-9]*) — \S`)
+	retiredFirstRE = regexp.MustCompile(`^- D([1-9][0-9]*): \S`)
 )
 
 type record struct {
@@ -93,7 +93,7 @@ func Generate(dir string) ([]byte, error) {
 }
 
 // parseRecord checks that a record file holds one record of its own number: an active section that starts with its
-// "## D<N> title" heading, or one retired "- D<N> — ..." line.
+// "## D<N> title" heading, or one retired "- D<N>: ..." line.
 func parseRecord(name string, number int, text string) (record, error) {
 	text = strings.TrimRight(text, "\n")
 	first, _, _ := strings.Cut(text, "\n")
@@ -117,7 +117,7 @@ func parseRecord(name string, number int, text string) (record, error) {
 		}
 		return record{number: number, text: text, retired: true}, nil
 	}
-	return record{}, fmt.Errorf("%s must start with \"## D%d <title>\" (active) or \"- D%d — <text>\" (retired)", name, number, number)
+	return record{}, fmt.Errorf("%s must start with \"## D%d <title>\" (active) or \"- D%d: <text>\" (retired)", name, number, number)
 }
 
 func run(args []string) error {

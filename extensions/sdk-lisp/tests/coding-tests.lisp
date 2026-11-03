@@ -1,5 +1,5 @@
 ;;;; SPDX-License-Identifier: MIT
-;;;; Lane C: the pi-coding-agent helpers. The Pi vectors (test/parity/sdk-vectors/pi-coding-agent/<export>.json) are what the pinned package's own functions
+;;;; The pi-coding-agent helpers. The Pi vectors (test/parity/sdk-vectors/pi-coding-agent/<export>.json) are what the pinned package's own functions
 ;;;; return; every case of every file is run. Host-served helpers run against a fake host that answers the call the SDK makes.
 (in-package #:pig-tests)
 

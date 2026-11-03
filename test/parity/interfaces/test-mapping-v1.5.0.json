@@ -689,7 +689,7 @@
       "evidence": [
         "cmd/gen-models/fireworks_model_generation_test.go#TestFireworksModelGeneration"
       ],
-      "rationale": "Four cases of Pi 2e0f175b's catalog generation for Fireworks, through the recorded-fetch generator subprocess helper (lane B1)."
+      "rationale": "Four cases of Pi 2e0f175b's catalog generation for Fireworks, through the recorded-fetch generator subprocess helper."
     },
     {
       "path": "packages/ai/test/fireworks-models.test.ts",
@@ -709,7 +709,7 @@
       "evidence": [
         "cmd/gen-models/generate_models_strict_test.go#TestGenerateModelsStrict"
       ],
-      "rationale": "Strict generation rejects on a failed source and leaves the data directory untouched (lane B1)."
+      "rationale": "Strict generation rejects on a failed source and leaves the data directory untouched."
     },
     {
       "path": "packages/ai/test/github-copilot-anthropic.test.ts",
@@ -872,7 +872,7 @@
       "evidence": [
         "internal/modelgen/source_openrouter_test.go#TestOpenRouterCatalogParsing"
       ],
-      "rationale": "Image-model catalog parsing cases, now over catalog/sources/openrouter.ts (lane B1)."
+      "rationale": "Image-model catalog parsing cases, now over catalog/sources/openrouter.ts."
     },
     {
       "path": "packages/ai/test/image-tool-result.test.ts",
@@ -1556,7 +1556,7 @@
         "ai/model_runtime_thinking_map_test.go#TestModelRuntimeForwardsConfiguredThinkingMap",
         "test/parity/scenarios/providers-faux-streaming/18-unset-and-configured-reasoning.toml"
       ],
-      "rationale": "getOpenRouterThinkingLevelMap cases in catalog/sources/openrouter.ts; the payload cases are unchanged (lane B1)."
+      "rationale": "getOpenRouterThinkingLevelMap cases in catalog/sources/openrouter.ts; the payload cases are unchanged."
     },
     {
       "path": "packages/ai/test/openrouter-user-models.test.ts",
@@ -1579,7 +1579,7 @@
         "ai/overflow_upstream_test.go#TestOverflowRequestSizeUpstream",
         "ai/overflow_oracle_test.go#TestContextOverflowMatchesPiOnSeededMessages"
       ],
-      "rationale": "Pi d3398f82 adds the LiteLLM pre-call ContextWindowExceededError row; ported as the LiteLLM row of the overflow table (lane B2)."
+      "rationale": "Pi d3398f82 adds the LiteLLM pre-call ContextWindowExceededError row; ported as the LiteLLM row of the overflow table."
     },
     {
       "path": "packages/ai/test/pi-messages.test.ts",
@@ -1716,7 +1716,7 @@
         "internal/modelgen/reasoning_test.go#TestGetEffortThinkingLevelMap",
         "test/parity/scenarios/providers-faux-streaming/18-unset-and-configured-reasoning.toml"
       ],
-      "rationale": "getEffortThinkingLevelMap cases in catalog/reasoning.ts (lane B1)."
+      "rationale": "getEffortThinkingLevelMap cases in catalog/reasoning.ts."
     },
     {
       "path": "packages/ai/test/responseid.test.ts",
@@ -2217,7 +2217,7 @@
       "evidence": [
         "chord/delta/retention_upstream_test.go#TestDeltaTrackerRetentionAcrossGCJobs"
       ],
-      "rationale": "Retention across GC jobs after the Pi a9228305 tracker (abandoned-draft-released, tracker-with-open-draft, adopted-changes-flat) (lane D0)."
+      "rationale": "Retention across GC jobs after the Pi a9228305 tracker (abandoned-draft-released, tracker-with-open-draft, adopted-changes-flat)."
     },
     {
       "path": "packages/chord/test/delta-tracker/tracker.test.ts",
@@ -2263,7 +2263,7 @@
         "chord/delta/tracker_upstream_test.go#TestTrackerStringOperationFormsAndArgumentSideEffects",
         "chord/delta/tracker_upstream_test.go#TestTrackerSupportsSelfOverlappingFillAndCopyWithinByValue"
       ],
-      "rationale": "The 'delta tracker competing changes' cases follow Pi a9228305: WeakRef counts become weak-registration counts of the one-open-change tracker (lane D0)."
+      "rationale": "The 'delta tracker competing changes' cases follow Pi a9228305: WeakRef counts become weak-registration counts of the one-open-change tracker."
     },
     {
       "path": "packages/chord/test/delta.test.ts",
@@ -2361,7 +2361,7 @@
       "evidence": [
         "chord/nextnode/compression_test.go"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (lane D1)."
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/http/admission.test.ts",
@@ -2370,7 +2370,7 @@
       "evidence": [
         "chord/nextnode/http/admission_test.go"
       ],
-      "rationale": "All 6 upstream cases run in the evidence files (lane nhttp)."
+      "rationale": "All 6 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/http/authenticate.test.ts",
@@ -2379,7 +2379,7 @@
       "evidence": [
         "chord/nextnode/http/authenticate_test.go"
       ],
-      "rationale": "All 3 upstream cases run in the evidence files (lane nhttp)."
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/http/cookies.test.ts",
@@ -2388,7 +2388,7 @@
       "evidence": [
         "chord/nextnode/http/cookies_test.go"
       ],
-      "rationale": "All 3 upstream cases run in the evidence files (lane nhttp)."
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/http/file.test.ts",
@@ -2397,7 +2397,7 @@
       "evidence": [
         "chord/nextnode/http/file_test.go"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (lane nhttp)."
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/http/headers.test.ts",
@@ -2406,7 +2406,7 @@
       "evidence": [
         "chord/nextnode/http/headers_test.go"
       ],
-      "rationale": "All 6 upstream cases run in the evidence files (lane nhttp)."
+      "rationale": "All 6 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/http/http.test.ts",
@@ -2416,7 +2416,7 @@
         "chord/nextnode/http/http_test.go",
         "chord/nextnode/http/review_test.go"
       ],
-      "rationale": "All 32 upstream cases run in the evidence files (lane nhttp)."
+      "rationale": "All 32 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/http/node.test.ts",
@@ -2425,7 +2425,7 @@
       "evidence": [
         "chord/nextnode/http/node_test.go"
       ],
-      "rationale": "6 of 7 upstream cases are ported (lane nhttp); the designed-out case checks that a lazy Web `Request` is made only when something reads it; the Go request is one `nodeIncoming` shape for the listener and Fetch with no lazy Web Request object. SCRUTINIZED:approved by the owner (2026-11-01): Go's net/http parses the request before any handler runs, so there is no lazy Request construction to observe; responses and admission results are identical.",
+      "rationale": "6 of 7 upstream cases are ported; the designed-out case checks that a lazy Web `Request` is made only when something reads it; the Go request is one `nodeIncoming` shape for the listener and Fetch with no lazy Web Request object. SCRUTINIZED:approved by the owner (2026-11-01): Go's net/http parses the request before any handler runs, so there is no lazy Request construction to observe; responses and admission results are identical.",
       "designedOutCases": [
         "Web requests › makes a Web Request only when something reads the headers or the body (here: no authenticator does)"
       ]
@@ -2437,7 +2437,7 @@
       "evidence": [
         "chord/nextnode/http/request_test.go"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (lane nhttp)."
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/http/response.test.ts",
@@ -2446,7 +2446,7 @@
       "evidence": [
         "chord/nextnode/http/response_test.go"
       ],
-      "rationale": "All 10 upstream cases run in the evidence files (lane nhttp)."
+      "rationale": "All 10 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/http/router.test.ts",
@@ -2455,7 +2455,7 @@
       "evidence": [
         "chord/nextnode/http/router_test.go"
       ],
-      "rationale": "All 12 upstream cases run in the evidence files (lane nhttp)."
+      "rationale": "All 12 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/http/upgrades.test.ts",
@@ -2464,7 +2464,7 @@
       "evidence": [
         "chord/nextnode/http/upgrades_test.go"
       ],
-      "rationale": "All 17 upstream cases run in the evidence file (lane nhttp). The case that a closed socket keeps no `ws` server object is TestGCKeepsNoUpgradeOnceItsLinkSocketClosed: weak pointers to the upgraded record and its WebSocket, bounded GC cycles (Pi's ws-server GC spy case); TestGCKeepsNothingOfAClosedPluginSocket covers the plugin socket."
+      "rationale": "All 17 upstream cases run in the evidence file. The case that a closed socket keeps no `ws` server object is TestGCKeepsNoUpgradeOnceItsLinkSocketClosed: weak pointers to the upgraded record and its WebSocket, bounded GC cycles (Pi's ws-server GC spy case); TestGCKeepsNothingOfAClosedPluginSocket covers the plugin socket."
     },
     {
       "path": "packages/chord/test/next-node/plugins/build.test.ts",
@@ -2474,7 +2474,7 @@
         "chord/nextnode/plugins/plugins_build_test.go",
         "chord/nextnode/plugins/plugins_sourcemap_test.go"
       ],
-      "rationale": "All 11 upstream cases run in the evidence files (lane plugnode), against the real esbuild Go API and the real Node subprocess running Pi's own build.ts; each test comment names its case and any process-boundary adaptation."
+      "rationale": "All 11 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own build.ts; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/next-node/plugins/discover.test.ts",
@@ -2483,7 +2483,7 @@
       "evidence": [
         "chord/nextnode/plugins/plugins_discover_test.go"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/plugins/evaluate.test.ts",
@@ -2492,7 +2492,7 @@
       "evidence": [
         "chord/nextnode/plugins/plugins_evaluate_test.go"
       ],
-      "rationale": "All 8 upstream cases run in the evidence files (lane plugnode), against the real esbuild Go API and the real Node subprocess running Pi's own evaluate.ts; each test comment names its case and any process-boundary adaptation."
+      "rationale": "All 8 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own evaluate.ts; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/next-node/plugins/install.test.ts",
@@ -2501,7 +2501,7 @@
       "evidence": [
         "chord/nextnode/plugins/plugins_install_test.go"
       ],
-      "rationale": "All 2 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/plugins/plugins.test.ts",
@@ -2512,7 +2512,7 @@
         "chord/nextnode/plugins/plugins_endtoend_test.go",
         "chord/nextnode/plugins/plugins_examples_test.go"
       ],
-      "rationale": "All 20 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 20 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/plugins/runtime.test.ts",
@@ -2521,7 +2521,7 @@
       "evidence": [
         "chord/nextnode/plugins/plugins_runtime_test.go"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (lane plugnode), against the real esbuild Go API and the real Node subprocess running Pi's own runtime.ts; each test comment names its case and any process-boundary adaptation."
+      "rationale": "All 4 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own runtime.ts; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/next-node/plugins/stack.test.ts",
@@ -2530,7 +2530,7 @@
       "evidence": [
         "chord/nextnode/plugins/plugins_stack_test.go"
       ],
-      "rationale": "All 5 upstream cases run in the evidence files (lane plugnode), against the real esbuild Go API and the real Node subprocess running Pi's own stack.ts; each test comment names its case and any process-boundary adaptation."
+      "rationale": "All 5 upstream cases run in the evidence files, against the real esbuild Go API and the real Node subprocess running Pi's own stack.ts; each test comment names its case and any process-boundary adaptation."
     },
     {
       "path": "packages/chord/test/next-node/plugins/watcher.test.ts",
@@ -2540,7 +2540,7 @@
         "chord/nextnode/plugins/plugins_watcher_test.go",
         "chord/nextnode/plugins/plugins_watcher_linux_test.go"
       ],
-      "rationale": "All 11 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 11 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/workers/control.test.ts",
@@ -2549,7 +2549,7 @@
       "evidence": [
         "chord/nextnode/workers/workers_control_test.go"
       ],
-      "rationale": "All 3 upstream cases run in the evidence files (lane nwork)."
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/workers/lock.test.ts",
@@ -2558,7 +2558,7 @@
       "evidence": [
         "chord/nextnode/workers/workers_lock_test.go"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (lane nwork)."
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/workers/main.test.ts",
@@ -2567,7 +2567,7 @@
       "evidence": [
         "chord/nextnode/workers/workers_main_test.go"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (lane nwork)."
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/workers/process.test.ts",
@@ -2576,7 +2576,7 @@
       "evidence": [
         "chord/nextnode/workers/workers_process_test.go"
       ],
-      "rationale": "All 1 upstream cases run in the evidence files (lane nwork)."
+      "rationale": "All 1 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next-node/workers/workers.test.ts",
@@ -2591,7 +2591,7 @@
         "chord/nextnode/workers/workers_rollout_blocked_unix_test.go",
         "chord/nextnode/workers/workers_signal_unix_test.go"
       ],
-      "rationale": "All 31 upstream cases run in the evidence files (lane nwork)."
+      "rationale": "All 31 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/contracts/accepts.test.ts",
@@ -2600,7 +2600,7 @@
       "evidence": [
         "chord/next/contracts/accepts_test.go"
       ],
-      "rationale": "All 16 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 16 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/contracts/contract.test.ts",
@@ -2609,7 +2609,7 @@
       "evidence": [
         "chord/next/contracts/contract_test.go"
       ],
-      "rationale": "All 7 upstream cases run in the evidence files (lane D1)."
+      "rationale": "All 7 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/contracts/declare.test.ts",
@@ -2621,7 +2621,7 @@
         "chord/next/contracts/declare_test.go#TestReservedMemberNames",
         "chord/next/contracts/declare_test.go#TestKeyedMembers"
       ],
-      "rationale": "Eleven of the 12 upstream cases run in declare_test.go (lane D1); the twelfth, the keyed member refused in a remote contract, is designed out under the owner class approval recorded in the release policy (the compiler refuses it: *KeyedMember is no Schema). 'refuse a remote declaration without a host address at the type level' runs as the 'a missing host address' row, because upstream asserts the runtime throw. Inside the three it.each tables every row a typed Go declaration can hold is ported; the rows whose input a Go declaration cannot hold are not: remote 'name not a string', 'unknown declaration key', 'a host address that is no function', 'unknown variant key', 'a method under state' and 'a schema under methods' (its Go form is a nil *Method, ported as 'a nil method under methods'), local 'unknown key' and 'a host address' (LocalDeclaration has no such fields).",
+      "rationale": "Eleven of the 12 upstream cases run in declare_test.go; the twelfth, the keyed member refused in a remote contract, is designed out under the owner class approval recorded in the release policy (the compiler refuses it: *KeyedMember is no Schema). 'refuse a remote declaration without a host address at the type level' runs as the 'a missing host address' row, because upstream asserts the runtime throw. Inside the three it.each tables every row a typed Go declaration can hold is ported; the rows whose input a Go declaration cannot hold are not: remote 'name not a string', 'unknown declaration key', 'a host address that is no function', 'unknown variant key', 'a method under state' and 'a schema under methods' (its Go form is a nil *Method, ported as 'a nil method under methods'), local 'unknown key' and 'a host address' (LocalDeclaration has no such fields).",
       "designedOutCases": [
         "keyed members (slice 6a \u00a712) \u203a refuse a keyed member in a remote contract, at the type level and at declaration"
       ]
@@ -2643,7 +2643,7 @@
       "evidence": [
         "chord/next/contracts/history_test.go"
       ],
-      "rationale": "All 3 upstream cases run in the evidence files (lane D1)."
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/contracts/host-kind.test.ts",
@@ -2652,7 +2652,7 @@
       "evidence": [
         "chord/next/contracts/host_kind_test.go"
       ],
-      "rationale": "All 6 upstream cases run in the evidence files (lane D1)."
+      "rationale": "All 6 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/contracts/params.test.ts",
@@ -2679,7 +2679,7 @@
         "chord/next/data/args_test.go#TestMemory",
         "chord/next/data/typelevel_test.go#TestCallReplacementArgumentsAreValues"
       ],
-      "rationale": "Thirteen of the 14 upstream cases run in args_test.go (lane D1); the fourteenth, \"types a call replacement's arguments as values\", is designed out under the owner class approval recorded in the release policy: CheckedArgs.Call is the contracts.CallFunc field, so a call with other argument types does not compile, and TestCallReplacementArgumentsAreValues pins the field type by reflection. Two assertions inside ported cases have no Go form and are not ported: the expectTypeOf lines of \"returns current-version arguments as passed\" (CheckedArgs and ArgsOf are Value in Go), and the WeakRef of the mapping function in \"memory\" (a Go func value has no weak reference; the test holds the contract, the provider and a value the mapping closure captures through weak pointers and requires all three collected).",
+      "rationale": "Thirteen of the 14 upstream cases run in args_test.go; the fourteenth, \"types a call replacement's arguments as values\", is designed out under the owner class approval recorded in the release policy: CheckedArgs.Call is the contracts.CallFunc field, so a call with other argument types does not compile, and TestCallReplacementArgumentsAreValues pins the field type by reflection. Two assertions inside ported cases have no Go form and are not ported: the expectTypeOf lines of \"returns current-version arguments as passed\" (CheckedArgs and ArgsOf are Value in Go), and the WeakRef of the mapping function in \"memory\" (a Go func value has no weak reference; the test holds the contract, the provider and a value the mapping closure captures through weak pointers and requires all three collected).",
       "designedOutCases": [
         "checkArgs \u203a types a call replacement's arguments as values"
       ]
@@ -2691,7 +2691,7 @@
       "evidence": [
         "chord/next/data/errors_test.go"
       ],
-      "rationale": "All 10 upstream cases run in the evidence files (lane D1)."
+      "rationale": "All 10 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/data/failure.test.ts",
@@ -2700,7 +2700,7 @@
       "evidence": [
         "chord/next/data/failure_test.go"
       ],
-      "rationale": "All 9 upstream cases run in the evidence files (lane D1)."
+      "rationale": "All 9 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/data/params.test.ts",
@@ -2714,7 +2714,7 @@
       "evidence": [
         "chord/next/data/principal_test.go"
       ],
-      "rationale": "All 8 upstream cases run in the evidence files (lane D1)."
+      "rationale": "All 8 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/data/validator.test.ts",
@@ -2728,7 +2728,7 @@
       "evidence": [
         "chord/next/documents/address_source_test.go"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/documents/definition.test.ts",
@@ -2737,7 +2737,7 @@
       "evidence": [
         "chord/next/documents/definition_test.go"
       ],
-      "rationale": "All 7 upstream cases run in the evidence files (lane D4D5b)."
+      "rationale": "All 7 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/documents/documents.test.ts",
@@ -2746,7 +2746,7 @@
       "evidence": [
         "chord/next/documents/documents_test.go"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (lane D4D5b)."
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/documents/fence.test.ts",
@@ -2755,7 +2755,7 @@
       "evidence": [
         "chord/next/documents/fence_test.go"
       ],
-      "rationale": "All 1 upstream cases run in the evidence files (lane D4D5b)."
+      "rationale": "All 1 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/documents/handles.test.ts",
@@ -2764,7 +2764,7 @@
       "evidence": [
         "chord/next/documents/handles_test.go"
       ],
-      "rationale": "All 2 upstream cases run in the evidence files (lane D4D5b)."
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/documents/keyed-slot.test.ts",
@@ -2773,7 +2773,7 @@
       "evidence": [
         "chord/next/host/host_keyed_slot_host_test.go"
       ],
-      "rationale": "All 13 upstream cases run in the evidence files (lane D5a)."
+      "rationale": "All 13 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/documents/line.test.ts",
@@ -2782,7 +2782,7 @@
       "evidence": [
         "chord/next/documents/line_test.go"
       ],
-      "rationale": "All 2 upstream cases run in the evidence files (lane D4D5b)."
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/documents/persistence.test.ts",
@@ -2791,7 +2791,7 @@
       "evidence": [
         "chord/next/documents/persistence_test.go"
       ],
-      "rationale": "All 8 upstream cases run in the evidence files (lane D4D5b)."
+      "rationale": "All 8 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/documents/residency.test.ts",
@@ -2800,7 +2800,7 @@
       "evidence": [
         "chord/next/documents/residency_test.go"
       ],
-      "rationale": "All 3 upstream cases run in the evidence files (lane D4D5b)."
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/documents/slot.test.ts",
@@ -2809,7 +2809,7 @@
       "evidence": [
         "chord/next/host/host_documents_host_test.go"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (lane D5a)."
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/documents/transaction.test.ts",
@@ -2818,7 +2818,7 @@
       "evidence": [
         "chord/next/host/host_documents_host_test.go"
       ],
-      "rationale": "All 1 upstream cases run in the evidence files (lane D5a)."
+      "rationale": "All 1 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/activity.test.ts",
@@ -2827,7 +2827,7 @@
       "evidence": [
         "chord/next/host/host_activity_test.go"
       ],
-      "rationale": "All 9 upstream cases run in the evidence files (lane D5a)."
+      "rationale": "All 9 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/adapted.test.ts",
@@ -2836,7 +2836,7 @@
       "evidence": [
         "chord/next/host/host_adapted_test.go"
       ],
-      "rationale": "All 39 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 39 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/attempt.test.ts",
@@ -2845,7 +2845,7 @@
       "evidence": [
         "chord/next/host/host_attempt_test.go"
       ],
-      "rationale": "All 31 upstream cases run in the evidence files (lane kfold); 1 type-level cases are designed out.",
+      "rationale": "All 31 upstream cases run in the evidence files; 1 type-level cases are designed out.",
       "designedOutCases": [
         "the call path's cost › makes at most 19 promises per local call (a guard: the drain and the cleanups share one reaction)"
       ]
@@ -2857,7 +2857,7 @@
       "evidence": [
         "chord/next/host/host_backoff_test.go"
       ],
-      "rationale": "All 7 upstream cases run in the evidence files (lane D5a)."
+      "rationale": "All 7 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/ctx.test.ts",
@@ -2866,7 +2866,7 @@
       "evidence": [
         "chord/next/host/host_ctx_test.go"
       ],
-      "rationale": "All 10 upstream cases run in the evidence files (lane D5a)."
+      "rationale": "All 10 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/deadline.test.ts",
@@ -2875,7 +2875,7 @@
       "evidence": [
         "chord/next/host/host_deadline_test.go"
       ],
-      "rationale": "All 3 upstream cases run in the evidence files (lane D5a)."
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/dependencies.test.ts",
@@ -2884,7 +2884,7 @@
       "evidence": [
         "chord/next/host/host_dependencies_test.go"
       ],
-      "rationale": "All 13 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 13 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/facet.test.ts",
@@ -2893,7 +2893,7 @@
       "evidence": [
         "chord/next/host/host_facet_test.go"
       ],
-      "rationale": "All 2 upstream cases run in the evidence files (lane kfold); 2 type-level cases are designed out.",
+      "rationale": "All 2 upstream cases run in the evidence files; 2 type-level cases are designed out.",
       "designedOutCases": [
         "facets › only declare: a setup takes the host and a self that only contributes; no documents, routines or natives",
         "facets › are typed by exactly the app's principal type"
@@ -2906,7 +2906,7 @@
       "evidence": [
         "chord/next/host/host_follow_test.go"
       ],
-      "rationale": "All 15 upstream cases run in the evidence files (lane D5a); 1 type-level cases are designed out.",
+      "rationale": "All 15 upstream cases run in the evidence files; 1 type-level cases are designed out.",
       "designedOutCases": [
         "types › infers the value type from the attachment, without a type argument"
       ]
@@ -2919,7 +2919,7 @@
         "chord/next/host/host_host_test.go",
         "chord/next/host/host_examples_test.go"
       ],
-      "rationale": "All 74 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 74 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/members.test.ts",
@@ -2928,7 +2928,7 @@
       "evidence": [
         "chord/next/host/host_members_test.go"
       ],
-      "rationale": "All 2 upstream cases run in the evidence files (lane D5a)."
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/native.test.ts",
@@ -2937,7 +2937,7 @@
       "evidence": [
         "chord/next/host/host_native_test.go"
       ],
-      "rationale": "All 8 upstream cases run in the evidence files (lane D5a); 1 type-level cases are designed out.",
+      "rationale": "All 8 upstream cases run in the evidence files; 1 type-level cases are designed out.",
       "designedOutCases": [
         "facets › cannot open natives"
       ]
@@ -2951,7 +2951,7 @@
         "chord/next/host/host_object_reload_test.go",
         "chord/next/host/host_object_cycles_test.go"
       ],
-      "rationale": "All 66 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 66 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/parked.test.ts",
@@ -2960,7 +2960,7 @@
       "evidence": [
         "chord/next/host/host_parked_test.go"
       ],
-      "rationale": "10 of 11 upstream cases are ported (lane D5a); the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "rationale": "10 of 11 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
       "missingCases": [
         "calls on a loading local reference › stop being sent when one's handler releases the reference: the rest reject released (race 15)"
       ]
@@ -2972,7 +2972,7 @@
       "evidence": [
         "chord/next/host/host_presence_test.go"
       ],
-      "rationale": "All 11 upstream cases run in the evidence files (lane D5a)."
+      "rationale": "All 11 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/ref-state.test.ts",
@@ -2981,7 +2981,7 @@
       "evidence": [
         "chord/next/host/host_ref_state_test.go"
       ],
-      "rationale": "All 8 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 8 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/reference-keys.test.ts",
@@ -2990,7 +2990,7 @@
       "evidence": [
         "chord/next/host/host_reference_keys_test.go"
       ],
-      "rationale": "All 13 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 13 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/reference-source.test.ts",
@@ -2999,7 +2999,7 @@
       "evidence": [
         "chord/next/host/host_reference_source_test.go"
       ],
-      "rationale": "All 18 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 18 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/reference.test.ts",
@@ -3008,7 +3008,7 @@
       "evidence": [
         "chord/next/host/host_reference_test.go"
       ],
-      "rationale": "All 27 upstream cases run in the evidence files (lane kfold); 2 type-level cases are designed out.",
+      "rationale": "All 27 upstream cases run in the evidence files; 2 type-level cases are designed out.",
       "designedOutCases": [
         "remote reference types › narrow on variant; RefIn picks variants",
         "remote reference types › a held reference's variant may be undefined (before its first binding) and still narrows"
@@ -3021,7 +3021,7 @@
       "evidence": [
         "chord/next/host/host_retry_on_test.go"
       ],
-      "rationale": "All 8 upstream cases run in the evidence files (lane D5a)."
+      "rationale": "All 8 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/revocation.test.ts",
@@ -3030,7 +3030,7 @@
       "evidence": [
         "chord/next/host/host_revocation_test.go"
       ],
-      "rationale": "All 19 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 19 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/root.test.ts",
@@ -3040,7 +3040,7 @@
         "chord/next/host/host_root_test.go",
         "chord/next/host/host_root_anonymous_test.go"
       ],
-      "rationale": "All 12 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 12 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/route.test.ts",
@@ -3049,7 +3049,7 @@
       "evidence": [
         "chord/next/host/host_route_test.go"
       ],
-      "rationale": "All 23 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 23 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/routines.test.ts",
@@ -3059,7 +3059,7 @@
         "chord/next/host/host_routines_test.go",
         "chord/next/host/remote_host_link_test.go"
       ],
-      "rationale": "40 of 41 upstream cases are ported (lane D5a); the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "rationale": "40 of 41 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
       "designedOutCases": [
         "routines and the end › type their handler by the source's kind: ops and retired for a JSON watchable, the value alone for a native one"
       ],
@@ -3074,7 +3074,7 @@
       "evidence": [
         "chord/next/host/host_sleep_test.go"
       ],
-      "rationale": "All 5 upstream cases run in the evidence files (lane D5a)."
+      "rationale": "All 5 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/staging.test.ts",
@@ -3083,7 +3083,7 @@
       "evidence": [
         "chord/next/host/host_staging_test.go"
       ],
-      "rationale": "All 15 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 15 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/host/unbound.test.ts",
@@ -3092,7 +3092,7 @@
       "evidence": [
         "chord/next/host/host_unbound_test.go"
       ],
-      "rationale": "All 8 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 8 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/jobs/definition.test.ts",
@@ -3101,7 +3101,7 @@
       "evidence": [
         "chord/next/host/jobs_definition_test.go"
       ],
-      "rationale": "All 8 upstream cases run in the evidence files (lane D5a)."
+      "rationale": "All 8 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/jobs/job.test.ts",
@@ -3112,7 +3112,7 @@
         "chord/next/host/jobs_job_runs_test.go",
         "chord/next/host/jobs_job_end_test.go"
       ],
-      "rationale": "All 54 upstream cases run in the evidence files (lane D5a)."
+      "rationale": "All 54 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/jobs/persisted.test.ts",
@@ -3121,7 +3121,7 @@
       "evidence": [
         "chord/next/host/jobs_persisted_test.go"
       ],
-      "rationale": "All 33 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 33 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/jobs/records.test.ts",
@@ -3130,7 +3130,7 @@
       "evidence": [
         "chord/next/host/jobs_records_test.go"
       ],
-      "rationale": "All 10 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 10 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/jobs/run.test.ts",
@@ -3139,7 +3139,7 @@
       "evidence": [
         "chord/next/host/jobs_run_test.go"
       ],
-      "rationale": "All 2 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/jobs/running.test.ts",
@@ -3148,7 +3148,7 @@
       "evidence": [
         "chord/next/host/jobs_running_test.go"
       ],
-      "rationale": "All 5 upstream cases run in the evidence files (lane D5a)."
+      "rationale": "All 5 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/link/channel.test.ts",
@@ -3157,7 +3157,7 @@
       "evidence": [
         "chord/next/link/channel_test.go"
       ],
-      "rationale": "14 of 19 upstream cases are ported (lane D2); the 5 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases. The GC case 'keeps no held message once the link closed' holds a 64-byte call message and waits on an AddCleanup signal instead of Pi's release message: a 3-byte message sits in a Go tiny-allocation block kept alive by its neighbours, so retention of the message cannot be observed (a Go forced difference; a negative control proves the test still catches retention) (lane D2b).",
+      "rationale": "14 of 19 upstream cases are ported; the 5 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases. The GC case 'keeps no held message once the link closed' holds a 64-byte call message and waits on an AddCleanup signal instead of Pi's release message: a 3-byte message sits in a Go tiny-allocation block kept alive by its neighbours, so retention of the message cannot be observed (a Go forced difference; a negative control proves the test still catches retention).",
       "missingCases": [
         "the handshake › queues a consumer's messages until the peer's hello; a get over a link that never greets waits for its deadline",
         "the heartbeat › pings a silent link after 15 s and closes it after 30 s without an answer: references go loading",
@@ -3173,7 +3173,7 @@
       "evidence": [
         "chord/next/link/errors_test.go"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (lane D2)."
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/link/ipc.test.ts",
@@ -3182,7 +3182,7 @@
       "evidence": [
         "chord/next/link/ipc_test.go"
       ],
-      "rationale": "All 5 upstream cases run in the evidence files (lane D2)."
+      "rationale": "All 5 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/link/link.test.ts",
@@ -3191,7 +3191,7 @@
       "evidence": [
         "chord/next/link/link_test.go"
       ],
-      "rationale": "5 of 6 upstream cases are ported (lane D2); the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "rationale": "5 of 6 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
       "missingCases": [
         "a closed memory link › keeps no listener set after its close: accepting it keeps no host"
       ]
@@ -3204,7 +3204,7 @@
         "chord/next/link/message_test.go",
         "chord/next/link/oracle_test.go"
       ],
-      "rationale": "All 33 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 33 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/link/part.test.ts",
@@ -3213,7 +3213,7 @@
       "evidence": [
         "chord/next/link/part_test.go"
       ],
-      "rationale": "All 16 upstream cases run in the evidence files (lane D2)."
+      "rationale": "All 16 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/link/values.test.ts",
@@ -3222,7 +3222,7 @@
       "evidence": [
         "chord/next/link/values_test.go"
       ],
-      "rationale": "All 7 upstream cases run in the evidence files (lane D2)."
+      "rationale": "All 7 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/link/websocket.test.ts",
@@ -3231,7 +3231,7 @@
       "evidence": [
         "chord/next/link/websocket_test.go"
       ],
-      "rationale": "4 of 6 upstream cases are ported (lane D2); the 2 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "rationale": "4 of 6 upstream cases are ported; the 2 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
       "missingCases": [
         "WebSocket links over a loopback ws server › carry a live reference both ways; the client's hello waits for open",
         "WebSocket links over a loopback ws server › close the connection on a frame above maxPayload (1009): references go loading (race 28)"
@@ -3244,7 +3244,7 @@
       "evidence": [
         "chord/next/registries/entries_test.go"
       ],
-      "rationale": "All 3 upstream cases run in the evidence files (lane D1)."
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/registries/record.test.ts",
@@ -3253,7 +3253,7 @@
       "evidence": [
         "chord/next/registries/record_test.go"
       ],
-      "rationale": "17 of 22 upstream cases are ported (lane kfold); the 5 missing cases exercise registry behavior through a loaded host (load, host.registry reads, objects contributing) that no Go test reproduces yet; their record-level analogs are in the evidence and the cases are listed in missingCases.",
+      "rationale": "17 of 22 upstream cases are ported; the 5 missing cases exercise registry behavior through a loaded host (load, host.registry reads, objects contributing) that no Go test reproduces yet; their record-level analogs are in the evidence and the cases are listed in missingCases.",
       "missingCases": [
         "compose › before any good composition, `.value` throws the error and `host.registry` rejects with it at its readyTimeout",
         "contributions › catches a ring through a derive, and one declared within one factory, the same way (audit A2)",
@@ -3269,7 +3269,7 @@
       "evidence": [
         "chord/next/registries/registry_test.go"
       ],
-      "rationale": "1 of 5 upstream cases are ported (lane kfold); the 4 missing cases exercise registry behavior through a loaded host (load, host.registry reads, objects contributing) that no Go test reproduces yet; their record-level analogs are in the evidence and the cases are listed in missingCases.",
+      "rationale": "1 of 5 upstream cases are ported; the 4 missing cases exercise registry behavior through a loaded host (load, host.registry reads, objects contributing) that no Go test reproduces yet; their record-level analogs are in the evidence and the cases are listed in missingCases.",
       "missingCases": [
         "providers › one per host: a second serve leaves its plugin out at load, reported",
         "providers › a provider without compose leaves its plugin out at load (plugin code is not type-checked)",
@@ -3284,7 +3284,7 @@
       "evidence": [
         "chord/next/registries/value_test.go"
       ],
-      "rationale": "9 of 17 upstream cases are ported (lane kfold); the 8 missing cases exercise registry behavior through a loaded host (load, host.registry reads, objects contributing) that no Go test reproduces yet; their record-level analogs are in the evidence and the cases are listed in missingCases.",
+      "rationale": "9 of 17 upstream cases are ported; the 8 missing cases exercise registry behavior through a loaded host (load, host.registry reads, objects contributing) that no Go test reproduces yet; their record-level analogs are in the evidence and the cases are listed in missingCases.",
       "missingCases": [
         "older readers (S2) › never hands out a mapped native whose contributor failed and closed it (fix round 1, Sol 2)",
         "readers (S3) › activate once the registry has a value; a reader of a registry nobody serves parks failed { waiting }, `load` waits for nothing",
@@ -3303,7 +3303,7 @@
       "evidence": [
         "chord/next/host/remote_calls_test.go"
       ],
-      "rationale": "All 5 upstream cases run in the evidence files (lane D5a)."
+      "rationale": "All 5 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/remote/consumer.test.ts",
@@ -3312,7 +3312,7 @@
       "evidence": [
         "chord/next/host/remote_consumer_test.go"
       ],
-      "rationale": "All 37 upstream cases run in the evidence files (lane D5a)."
+      "rationale": "All 37 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/remote/hold.test.ts",
@@ -3322,7 +3322,7 @@
         "chord/next/host/remote_hold_test.go",
         "chord/next/host/remote_hold_reload_test.go"
       ],
-      "rationale": "All 35 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 35 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/remote/host-link.test.ts",
@@ -3331,7 +3331,7 @@
       "evidence": [
         "chord/next/host/remote_host_link_test.go"
       ],
-      "rationale": "All 21 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 21 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/remote/path.test.ts",
@@ -3340,7 +3340,7 @@
       "evidence": [
         "chord/next/host/remote_path_test.go"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/remote/provider.test.ts",
@@ -3349,7 +3349,7 @@
       "evidence": [
         "chord/next/host/remote_provider_test.go"
       ],
-      "rationale": "All 45 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 45 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/remote/relay.test.ts",
@@ -3358,7 +3358,7 @@
       "evidence": [
         "chord/next/host/remote_relay_test.go"
       ],
-      "rationale": "All 25 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 25 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/remote/remote-object.test.ts",
@@ -3367,7 +3367,7 @@
       "evidence": [
         "chord/next/host/remote_remote_object_test.go"
       ],
-      "rationale": "All 30 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 30 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/remote/replica.test.ts",
@@ -3376,7 +3376,7 @@
       "evidence": [
         "chord/next/host/remote_replica_test.go"
       ],
-      "rationale": "All 5 upstream cases run in the evidence files (lane D5a)."
+      "rationale": "All 5 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/schema/schema-switch.test.ts",
@@ -3397,7 +3397,7 @@
         "chord/next/state/batch_own_test.go",
         "chord/next/state/batch_test.go"
       ],
-      "rationale": "1 of 5 upstream cases are ported (lane D1); the 4 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "rationale": "1 of 5 upstream cases are ported; the 4 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
       "missingCases": [
         "reentrancy › refuses watch (ref.state too), release, get, load, close and a transaction in a commit's derive computes",
         "reentrancy › refuses them in a lazy compute outside a commit",
@@ -3414,7 +3414,7 @@
         "chord/next/state/derive_sources_own_test.go",
         "chord/next/state/derive_test.go"
       ],
-      "rationale": "3 of 18 upstream cases are ported (lane D1); the 15 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "rationale": "3 of 18 upstream cases are ported; the 15 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
       "missingCases": [
         "derives across objects › update in the batch of the commit that changed their source's object",
         "the pull model › computes a diamond's derives once each per batch",
@@ -3446,7 +3446,7 @@
         "chord/next/state/watchable_own_test.go",
         "chord/next/state/watchable_test.go"
       ],
-      "rationale": "1 of 6 upstream cases are ported (lane D1); the 5 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "rationale": "1 of 6 upstream cases are ported; the 5 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
       "missingCases": [
         "watches › start from the value at acquisition; a listener that keeps up gets each commit",
         "watches › give a busy listener one call with the newest value and the folded ops",
@@ -3467,7 +3467,7 @@
       "evidence": [
         "chord/next/store/allocator_test.go"
       ],
-      "rationale": "All 2 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/applier.test.ts",
@@ -3476,7 +3476,7 @@
       "evidence": [
         "chord/next/store/applier_test.go"
       ],
-      "rationale": "All 2 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/apply-batch.test.ts",
@@ -3485,7 +3485,7 @@
       "evidence": [
         "chord/next/store/apply_batch_test.go"
       ],
-      "rationale": "All 10 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 10 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/archive.test.ts",
@@ -3495,7 +3495,7 @@
         "chord/next/store/archive_support_test.go",
         "chord/next/store/archive_test.go"
       ],
-      "rationale": "All 2 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/catalog.test.ts",
@@ -3504,7 +3504,7 @@
       "evidence": [
         "chord/next/store/catalog_test.go"
       ],
-      "rationale": "All 2 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/claims.test.ts",
@@ -3513,7 +3513,7 @@
       "evidence": [
         "chord/next/store/claims_test.go"
       ],
-      "rationale": "2 of 3 upstream cases are ported (lane D3); the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "rationale": "2 of 3 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
       "missingCases": [
         "claims › an object claims its tables and documents when it declares them, and releases them at its end"
       ]
@@ -3525,7 +3525,7 @@
       "evidence": [
         "chord/next/store/columns_test.go"
       ],
-      "rationale": "All 3 upstream cases run in the evidence files (lane D3); 1 type-level cases are designed out.",
+      "rationale": "All 3 upstream cases run in the evidence files; 1 type-level cases are designed out.",
       "designedOutCases": [
         "row types › types rows with optional opt(...) fields and puts with optional defaulted fields"
       ]
@@ -3537,7 +3537,7 @@
       "evidence": [
         "chord/next/store/engine_test.go"
       ],
-      "rationale": "All 10 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 10 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/evaluate.test.ts",
@@ -3546,7 +3546,7 @@
       "evidence": [
         "chord/next/store/evaluate_test.go"
       ],
-      "rationale": "All 7 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 7 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/export.test.ts",
@@ -3555,7 +3555,7 @@
       "evidence": [
         "chord/next/store/export_test.go"
       ],
-      "rationale": "All 12 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 12 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/expression.test.ts",
@@ -3564,7 +3564,7 @@
       "evidence": [
         "chord/next/store/expression_test.go"
       ],
-      "rationale": "All 7 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 7 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/import.test.ts",
@@ -3573,7 +3573,7 @@
       "evidence": [
         "chord/next/store/import_test.go"
       ],
-      "rationale": "All 8 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 8 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/json-column.test.ts",
@@ -3582,7 +3582,7 @@
       "evidence": [
         "chord/next/store/json_column_test.go"
       ],
-      "rationale": "All 5 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 5 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/jsonl.test.ts",
@@ -3591,7 +3591,7 @@
       "evidence": [
         "chord/next/store/jsonl_test.go"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/outbox.test.ts",
@@ -3601,7 +3601,7 @@
         "chord/next/store/outbox_decode_test.go",
         "chord/next/store/outbox_test.go"
       ],
-      "rationale": "All 6 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 6 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/query.test.ts",
@@ -3610,7 +3610,7 @@
       "evidence": [
         "chord/next/store/query_test.go"
       ],
-      "rationale": "All 5 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 5 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/refusal.test.ts",
@@ -3620,7 +3620,7 @@
         "chord/next/store/refusal_check_code_test.go",
         "chord/next/store/refusal_test.go"
       ],
-      "rationale": "1 of 2 upstream cases are ported (lane D3); the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
+      "rationale": "1 of 2 upstream cases are ported; the 1 missing cases need the host, jobs, remote or store layers of later Chord v2 lanes and are listed in missingCases.",
       "missingCases": [
         "Chord's owners › an int out of range fails only its transaction; the object stays live"
       ]
@@ -3632,7 +3632,7 @@
       "evidence": [
         "chord/next/store/rows_test.go"
       ],
-      "rationale": "All 7 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 7 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/sql.test.ts",
@@ -3641,7 +3641,7 @@
       "evidence": [
         "chord/next/store/sql_test.go"
       ],
-      "rationale": "All 6 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 6 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/store.test.ts",
@@ -3650,7 +3650,7 @@
       "evidence": [
         "chord/next/store/store_test.go"
       ],
-      "rationale": "All 26 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 26 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/table-changes.test.ts",
@@ -3659,7 +3659,7 @@
       "evidence": [
         "chord/next/store/table_changes_test.go"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/table-evolve.test.ts",
@@ -3668,7 +3668,7 @@
       "evidence": [
         "chord/next/store/table_evolve_test.go"
       ],
-      "rationale": "All 8 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 8 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/table-handle.test.ts",
@@ -3677,7 +3677,7 @@
       "evidence": [
         "chord/next/store/table_handle_test.go"
       ],
-      "rationale": "All 8 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 8 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/table-history.test.ts",
@@ -3686,7 +3686,7 @@
       "evidence": [
         "chord/next/store/table_history_test.go"
       ],
-      "rationale": "All 3 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/table-migration.test.ts",
@@ -3697,7 +3697,7 @@
         "chord/next/store/evidence_storeB_test.go#TestMigrationYieldsBetweenChunksOfAThreeChunkMigration",
         "chord/next/store/evidence_storeB_test.go#TestMigrationRunsADueCallbackBetweenChunksOfATenChunkMigration"
       ],
-      "rationale": "All 13 upstream cases run in the evidence files; the two \"the chunk yield\" cases (JS timer mechanics) are ported as deterministic tests through an unexported yield seam (prepareTables(..., yield); PrepareTables passes runtime.Gosched), red with the yield removed (lane evidence). The owner rejected a timer-mechanics design-out (2026-10-30)."
+      "rationale": "All 13 upstream cases run in the evidence files; the two \"the chunk yield\" cases (JS timer mechanics) are ported as deterministic tests through an unexported yield seam (prepareTables(..., yield); PrepareTables passes runtime.Gosched), red with the yield removed. The owner rejected a timer-mechanics design-out (2026-10-30)."
     },
     {
       "path": "packages/chord/test/next/store/table-writes.test.ts",
@@ -3706,7 +3706,7 @@
       "evidence": [
         "chord/next/store/table_writes_test.go"
       ],
-      "rationale": "All 9 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 9 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/table.test.ts",
@@ -3721,7 +3721,7 @@
         "chord/next/store/table_test.go",
         "chord/next/store/table_writes_test.go"
       ],
-      "rationale": "All 3 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 3 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/next/store/text.test.ts",
@@ -3730,7 +3730,7 @@
       "evidence": [
         "chord/next/store/text_test.go"
       ],
-      "rationale": "All 7 upstream cases run in the evidence files (lane D3)."
+      "rationale": "All 7 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/output-skip.test.ts",
@@ -3750,7 +3750,7 @@
         "chord/output/output_test.go",
         "chord/output/output_sanitize_golden_test.go"
       ],
-      "rationale": "All 22 upstream cases run in the evidence files (lane kfold)."
+      "rationale": "All 22 upstream cases run in the evidence files."
     },
     {
       "path": "packages/chord/test/placement.test.ts",
@@ -3796,7 +3796,7 @@
         "chord/replicated_state_upstream_test.go#TestAuthoritativeReplicatedStateSources",
         "chord/replicated_state_upstream_test.go#TestTransactionalReplicatedState"
       ],
-      "rationale": "15/16 cases ported (land-chord2-s1). Designed out: :46 'rejects PromiseLike callbacks and aborts their draft'. A Go change callback returns an error and cannot return a PromiseLike, so the case is a JavaScript language mechanic. SCRUTINIZED:approved by the tern lead ruling 2026-10-13 (tests-120-b).",
+      "rationale": "15/16 cases ported (land-chord2-s1). Designed out: :46 'rejects PromiseLike callbacks and aborts their draft'. A Go change callback returns an error and cannot return a PromiseLike, so the case is a JavaScript language mechanic. SCRUTINIZED:approved by the owner ruling 2026-10-13 (tests-120-b).",
       "designedOutCases": [
         "transactional replicated state › rejects PromiseLike callbacks and aborts their draft"
       ]
@@ -3820,7 +3820,7 @@
         "chord/sqlite/cloudflare/transaction_outcome_test.go#TestDurableObjectSqliteTransactionOutcome",
         "chord/sqlite/cloudflare/store_check_test.go#TestStoreOnDurableObjectTellsCheckByMessage"
       ],
-      "rationale": "Pi c268154c moved the Durable Object driver cases of durable/test/sqlite-cloudflare.test.ts here. The eight cases (BLOB bytes, the cursor's first row for get, the safe-integer bigint bound, close after a transaction, an uncontended statement run before returning, rollback and handle rejection, another adapter's operations outside the rollback, direct underlying calls inside a transaction) are subtests of TestDurableObjectSqliteDriver over the native-connection stand-in. Delta at Pi 8025c414: the new case 'reports the rows a statement changed, without index writes' is a subtest of TestDurableObjectSqliteDriver over sqlitetest.RunChanges (the port of helpers.ts runChanges and RUN_CHANGES) and a RunCounted inside a transaction. Pi 14b4c56e adds the transaction-outcome case (ported, lane D0) and \"a store on it tells a CHECK refusal by its message\", which needs chord/next/store (lane D3); at Pi v1.5.0 the case is 'a store on it tells a CHECK refusal by its message, its error having no extended code' and chord/next/store is ported: the Go subtest of that name in TestStoreOnDurableObjectTellsCheckByMessage opens a store over a message-only storage, refuses an insert violating a CHECK, and expects refusal kind check and a working store afterwards."
+      "rationale": "Pi c268154c moved the Durable Object driver cases of durable/test/sqlite-cloudflare.test.ts here. The eight cases (BLOB bytes, the cursor's first row for get, the safe-integer bigint bound, close after a transaction, an uncontended statement run before returning, rollback and handle rejection, another adapter's operations outside the rollback, direct underlying calls inside a transaction) are subtests of TestDurableObjectSqliteDriver over the native-connection stand-in. Delta at Pi 8025c414: the new case 'reports the rows a statement changed, without index writes' is a subtest of TestDurableObjectSqliteDriver over sqlitetest.RunChanges (the port of helpers.ts runChanges and RUN_CHANGES) and a RunCounted inside a transaction. Pi 14b4c56e adds the transaction-outcome case (ported) and \"a store on it tells a CHECK refusal by its message\", which needs chord/next/store; at Pi v1.5.0 the case is 'a store on it tells a CHECK refusal by its message, its error having no extended code' and chord/next/store is ported: the Go subtest of that name in TestStoreOnDurableObjectTellsCheckByMessage opens a store over a message-only storage, refuses an insert violating a CHECK, and expects refusal kind check and a working store afterwards."
     },
     {
       "path": "packages/chord/test/sqlite/migrations.test.ts",
@@ -3842,7 +3842,7 @@
         "chord/sqlite/node/statement_cache_test.go#TestNodeSqliteStatementCache",
         "chord/sqlite/node/transaction_outcome_test.go#TestNodeSqliteTransactionOutcome"
       ],
-      "rationale": "Pi c268154c moved the Node driver cases of durable/test/sqlite-facade.test.ts here. The eight cases (connection defaults, commit and idempotent close, serialized transactions, call order, queueing behind a transaction, synchronous calls from a transaction, a settled handle rejected, rollback failure not preserving the callback error) are subtests of TestNodeSqliteDriver and the two contract tests, moved with the driver to chord/sqlite/node. Pi 89e30958 removed the exclusive() cases with the method; the Go exclusive tests went with Exclusive. Delta at Pi 8025c414: the case 'reports the rows a statement changed, without index writes' is a subtest of TestNodeSqliteDriver over sqlitetest.RunChanges. Delta at Pi db14038b: the case 'keeps the most recently used prepared statements and prepares evicted ones again' is TestNodeSqliteStatementCache (the DatabaseSync.prepare spy is ObservePrepare); the 300-statement count is the Pi input. Pi 14b4c56e adds the four-case \"the outcome of a transaction (slice 6b D4)\" group; ported in chord/sqlite/node/transaction_outcome_test.go (lane D0)."
+      "rationale": "Pi c268154c moved the Node driver cases of durable/test/sqlite-facade.test.ts here. The eight cases (connection defaults, commit and idempotent close, serialized transactions, call order, queueing behind a transaction, synchronous calls from a transaction, a settled handle rejected, rollback failure not preserving the callback error) are subtests of TestNodeSqliteDriver and the two contract tests, moved with the driver to chord/sqlite/node. Pi 89e30958 removed the exclusive() cases with the method; the Go exclusive tests went with Exclusive. Delta at Pi 8025c414: the case 'reports the rows a statement changed, without index writes' is a subtest of TestNodeSqliteDriver over sqlitetest.RunChanges. Delta at Pi db14038b: the case 'keeps the most recently used prepared statements and prepares evicted ones again' is TestNodeSqliteStatementCache (the DatabaseSync.prepare spy is ObservePrepare); the 300-statement count is the Pi input. Pi 14b4c56e adds the four-case \"the outcome of a transaction (slice 6b D4)\" group; ported in chord/sqlite/node/transaction_outcome_test.go."
     },
     {
       "path": "packages/chord/test/state-diff.test.ts",
@@ -4234,7 +4234,7 @@
         "internal/codingagent/tools/sanitize_test.go#TestStripANSI_UpstreamCases",
         "internal/codingagent/tools/sanitize_input_contract_test.go#TestStripANSIRejectsNonTextAtCompileTime"
       ],
-      "rationale": "Pi b5fc6dc8: private-parameter CSI stripping, bare ESC keypad-mode digits, splitIncompleteAnsiSuffix holding back unfinished private CSI (lane A2)."
+      "rationale": "Pi b5fc6dc8: private-parameter CSI stripping, bare ESC keypad-mode digits, splitIncompleteAnsiSuffix holding back unfinished private CSI."
     },
     {
       "path": "packages/coding-agent/test/args.test.ts",
@@ -4261,7 +4261,7 @@
         "tui/assistant_mouse_upstream_test.go#TestAssistantThinkingClicksThroughTerminal",
         "tui/assistant_message_reuse_upstream_test.go#TestUpstreamAssistantMessageReusesItsMarkdownAcrossStreamingAndItsEnd"
       ],
-      "rationale": "The complete pinned upstream case set is reviewed in gate-close-08 and its delivered tests are composed from e503bb258. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations. Delta at Pi a6a7bac8 (#11402): the two added cases are ported as TestAssistantMessageUpstream subtests with the same inputs and expectations (\"renders nothing for hidden thinking with an empty label\": no rows before a tool call, a spacer and the answer before text; \"keeps label row and spacing for hidden thinking with a label\": a spacer, Thinking..., a spacer, the answer). PiG's constructor reads an empty label as the default, so the empty label is set with SetHiddenThinkingLabel(\"\"), the call ctx.ui.setHiddenThinkingLabel(\"\") makes; one more case pins that a skipped run adds no spacing between text blocks. Red on the unfixed code: the empty-label case rendered the blank label row and the skipped-run case rendered two extra blank rows. Delta at Pi 0f21a331: the case 'reuses its Markdown across streaming and its end, and renders like a new component after a theme change' runs with a counting Markdown-theme highlighter in place of the highlight.js spy (lane RenderReuse)."
+      "rationale": "The complete pinned upstream case set is reviewed in gate-close-08 and its delivered tests are composed from e503bb258. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not unrelated partial or live-service obligations. Delta at Pi a6a7bac8 (#11402): the two added cases are ported as TestAssistantMessageUpstream subtests with the same inputs and expectations (\"renders nothing for hidden thinking with an empty label\": no rows before a tool call, a spacer and the answer before text; \"keeps label row and spacing for hidden thinking with a label\": a spacer, Thinking..., a spacer, the answer). PiG's constructor reads an empty label as the default, so the empty label is set with SetHiddenThinkingLabel(\"\"), the call ctx.ui.setHiddenThinkingLabel(\"\") makes; one more case pins that a skipped run adds no spacing between text blocks. Red on the unfixed code: the empty-label case rendered the blank label row and the skipped-run case rendered two extra blank rows. Delta at Pi 0f21a331: the case 'reuses its Markdown across streaming and its end, and renders like a new component after a theme change' runs with a counting Markdown-theme highlighter in place of the highlight.js spy."
     },
     {
       "path": "packages/coding-agent/test/auth-check.test.ts",
@@ -4690,7 +4690,7 @@
         "coding/cli/self_update_prefix_upstream_test.go",
         "internal/installchange/installchange_test.go#TestDetectInstallChangeReportsARemovedInstallInsteadOfReadingAFileFurtherUp"
       ],
-      "rationale": "All 21 upstream cases run in the evidence files (lane nfixca)."
+      "rationale": "All 21 upstream cases run in the evidence files."
     },
     {
       "path": "packages/coding-agent/test/crash-log.test.ts",
@@ -4719,7 +4719,7 @@
         "internal/codingagent/custom_editor_keybindings_test.go#TestCustomEditorExplicitHistoryBindingBeatsModelCycling",
         "internal/codingagent/custom_editor_keybindings_test.go#TestPR7680AutocompletePageKeysWinOverTheImagePasteShortcut"
       ],
-      "rationale": "Replaces the deleted custom-editor-history-keybindings test: explicit history binding beats model cycling, autocomplete page keys beat the image-paste shortcut (lane A1)."
+      "rationale": "Replaces the deleted custom-editor-history-keybindings test: explicit history binding beats model cycling, autocomplete page keys beat the image-paste shortcut."
     },
     {
       "path": "packages/coding-agent/test/custom-message.test.ts",
@@ -4759,7 +4759,7 @@
         "coding/cli/deleted_cwd_unix_test.go#TestMainReportsDeletedWorkingDirectory",
         "coding/cli/deleted_cwd_unix_test.go#TestMainHandlesCwdErrors"
       ],
-      "rationale": "Both cases: a child process that deletes its own cwd (--version, --help, print mode), and the processCwd seam for 'rethrows unrelated cwd errors' (lane A2b)."
+      "rationale": "Both cases: a child process that deletes its own cwd (--version, --help, print mode), and the processCwd seam for 'rethrows unrelated cwd errors'."
     },
     {
       "path": "packages/coding-agent/test/documentation.test.ts",
@@ -4797,7 +4797,7 @@
         "coding/extension/exec_max_buffer_test.go#TestExecCommandDefaultCapFollowsTheRuntimeStringLimit",
         "coding/extension/exec_max_buffer_test.go#TestExecCommandDefaultCapIs256MiB"
       ],
-      "rationale": "All 2 upstream cases run in the evidence files (lane F)."
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/coding-agent/test/exec-utf8-chunks.test.ts",
@@ -4806,7 +4806,7 @@
       "evidence": [
         "coding/extension/exec_utf8_chunks_test.go#TestExecCommandDiscardsPendingUTF8WhenAStreamExceedsTheCap"
       ],
-      "rationale": "All 1 upstream cases run in the evidence files (lane F)."
+      "rationale": "All 1 upstream cases run in the evidence files."
     },
     {
       "path": "packages/coding-agent/test/exec.test.ts",
@@ -4825,7 +4825,7 @@
         "coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
         "test/extension-conformance/exec_limits_test.go#TestExecLimitsAcrossSDKs"
       ],
-      "rationale": "All 11 upstream cases run in the evidence files (lane F)."
+      "rationale": "All 11 upstream cases run in the evidence files."
     },
     {
       "path": "packages/coding-agent/test/experimental.test.ts",
@@ -5099,7 +5099,7 @@
       "evidence": [
         "coding/extension/host/subprocess/upstream_examples_test.go#TestGitMergeAndResolveExample"
       ],
-      "rationale": "All 9 upstream cases run in the evidence files (lane F)."
+      "rationale": "All 9 upstream cases run in the evidence files."
     },
     {
       "path": "packages/coding-agent/test/git-ssh-url.test.ts",
@@ -5165,7 +5165,7 @@
         "internal/imageprocessing/image_processing_upstream_test.go#TestResizeImagePicksJPEGOverLargerPNGForPhotos",
         "internal/imageprocessing/resize_format_oracle_test.go#TestResizeFormatChoiceMatchesPiOnRealisticImages"
       ],
-      "rationale": "The complete pinned upstream case set is reviewed in gate-close-08 and its delivered tests are composed from e503bb258. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not ... Pi e7a0df27 adds the \"pick JPEG over a larger PNG when resizing a photo\" case (lane A2/A2b) and the format choice is compared byte for byte against Pi (lane photon-jpeg: TestResizeFormatChoiceMatchesPiOnRealisticImages). Photon's JPEG and WebP decoders are ported byte for byte (internal/photonimage, lanes photon-jpeg and photon-decode)."
+      "rationale": "The complete pinned upstream case set is reviewed in gate-close-08 and its delivered tests are composed from e503bb258. All named added evidence passes on the release union with Go 1.27.1, -race and -count=1; original upstream hashes and existing evidence are retained. This closes the test file, not ... Pi e7a0df27 adds the \"pick JPEG over a larger PNG when resizing a photo\" case and the format choice is compared byte for byte against Pi (TestResizeFormatChoiceMatchesPiOnRealisticImages). Photon's JPEG and WebP decoders are ported byte for byte (internal/photonimage)."
     },
     {
       "path": "packages/coding-agent/test/image-resize-callers.test.ts",
@@ -5196,7 +5196,7 @@
       "evidence": [
         "coding/extension/host/subprocess/upstream_examples_test.go#TestInputTransformStreamingExample"
       ],
-      "rationale": "All 6 upstream cases run in the evidence files (lane F)."
+      "rationale": "All 6 upstream cases run in the evidence files."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-anthropic-warning.test.ts",
@@ -5476,7 +5476,7 @@
         "coding/mcpext/cli_upstream_test.go#TestMcpCommandListsServersWithTheirStateToolsAndErrors",
         "coding/mcpext/cli_upstream_test.go"
       ],
-      "rationale": "All 11 upstream cases run in the evidence files (lane nfixca)."
+      "rationale": "All 11 upstream cases run in the evidence files."
     },
     {
       "path": "packages/coding-agent/test/mcp-extension.test.ts",
@@ -5496,7 +5496,7 @@
         "internal/codingagent/radius_login_mcp_offer_upstream_test.go#TestRadiusMcpServerConfigReadsAMcpJSONThatStartsWithAUTF8BOM",
         "coding/mcpext/oauth_cimd_test.go"
       ],
-      "rationale": "All 30 upstream cases run in the evidence files (lane nfixca)."
+      "rationale": "All 30 upstream cases run in the evidence files."
     },
     {
       "path": "packages/coding-agent/test/mcp-manager-view.test.ts",
@@ -5527,7 +5527,7 @@
         "coding/mcpext/oauth_cimd_test.go#TestMCPOAuthCIMDFailsInsteadOfRegisteringWhenTheServerDoesNotSupportDocuments",
         "coding/mcpext/oauth_cimd_test.go"
       ],
-      "rationale": "All 14 upstream cases run in the evidence files (lane nfixca)."
+      "rationale": "All 14 upstream cases run in the evidence files."
     },
     {
       "path": "packages/coding-agent/test/mcp-oauth-store.test.ts",
@@ -5799,7 +5799,7 @@
         "internal/codingagent/selfupdate_test.go#TestSelfReplaceAtWithCommitRestoresPreviousExecutable",
         "coding/cli/self_update_configured_test.go"
       ],
-      "rationale": "All 39 upstream cases run in the evidence files (lane nfixca)."
+      "rationale": "All 39 upstream cases run in the evidence files."
     },
     {
       "path": "packages/coding-agent/test/package-distribution.test.ts",
@@ -6627,7 +6627,7 @@
         "internal/codingagent/settings_selector_upstream_test.go#TestAutomaticThemeSubmenuCancelRestoresPendingPair",
         "internal/codingagent/session_share_destination_test.go#TestSettingsSelectorOmitsShareDestination"
       ],
-      "rationale": "Pages a searchable submenu with selection page keys (Pi 3bae8527); SelectSubmenu lives in tui/ (lane A1)."
+      "rationale": "Pages a searchable submenu with selection page keys (Pi 3bae8527); SelectSubmenu lives in tui/."
     },
     {
       "path": "packages/coding-agent/test/shell-kill-process-tree.test.ts",
@@ -7880,7 +7880,7 @@
         "internal/codingagent/prompts/hidden_tools_upstream_test.go#TestUpstreamSystemPromptHiddenTools",
         "internal/codingagent/prompts/system_prompt_second_half_upstream_test.go"
       ],
-      "rationale": "All 16 upstream cases run in the evidence files (lane nfixca)."
+      "rationale": "All 16 upstream cases run in the evidence files."
     },
     {
       "path": "packages/coding-agent/test/system-theme.test.ts",
@@ -8244,7 +8244,7 @@
       "evidence": [
         "durable/codemode/imports_test.go"
       ],
-      "rationale": "All 1 upstream cases run in the evidence files (lane C)."
+      "rationale": "All 1 upstream cases run in the evidence files."
     },
     {
       "path": "packages/durable/test/codemode-models.test.ts",
@@ -8278,7 +8278,7 @@
         "durable/harness/conversation_transcript_test.go#TestConversationTranscriptLoads",
         "durable/harness/conversation_transcript_test.go#TestConversationTranscriptOverAHarness"
       ],
-      "rationale": "All 16 upstream cases run in the evidence files (lane C)."
+      "rationale": "All 16 upstream cases run in the evidence files."
     },
     {
       "path": "packages/durable/test/env-line-scan.test.ts",
@@ -8492,7 +8492,7 @@
         "durable/harness/harness_generation_recovery_test.go",
         "durable/harness/harness_generation_recovery_test.go#TestGenerationRecovery"
       ],
-      "rationale": "All 9 upstream cases run in the evidence files (lane C)."
+      "rationale": "All 9 upstream cases run in the evidence files."
     },
     {
       "path": "packages/durable/test/harness-generation.test.ts",
@@ -8526,7 +8526,7 @@
       "evidence": [
         "durable/harness/harness_hook_reads_test.go"
       ],
-      "rationale": "All 2 upstream cases run in the evidence files (lane C)."
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/durable/test/harness-host-inputs.test.ts",
@@ -8583,7 +8583,7 @@
         "durable/harness/harness_inspect_test.go",
         "durable/harness/harness_inspect_test.go#TestHarnessInspect"
       ],
-      "rationale": "All 2 upstream cases run in the evidence files (lane C)."
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/durable/test/harness-json.test.ts",
@@ -8754,7 +8754,7 @@
         "durable/harness/harness_read_only_test.go",
         "durable/harness/harness_read_only_test.go#TestReadOnlyHarness"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (lane C)."
+      "rationale": "All 4 upstream cases run in the evidence files."
     },
     {
       "path": "packages/durable/test/harness-registry-reader.test.ts",
@@ -8858,7 +8858,7 @@
         "durable/harness/harness_storage_failure_test.go#TestAFailedStorageCall",
         "durable/core/driver/listener_reports_core_test.go#TestCoreReportsAFailingWatchListenerAndEndsTheWatch"
       ],
-      "rationale": "All 21 upstream cases run in the evidence files (lane C); 3 type-level cases are designed out. Re-recorded at Pi b556cfe5: the file changed from the earlier record in one appended entry of the case \"fails it from a read off the Session line\" (ported: sfAppendNote before the failing scanRange, harness_storage_failure_test.go).",
+      "rationale": "All 21 upstream cases run in the evidence files; 3 type-level cases are designed out. Re-recorded at Pi b556cfe5: the file changed from the earlier record in one appended entry of the case \"fails it from a read off the Session line\" (ported: sfAppendNote before the failing scanRange, harness_storage_failure_test.go).",
       "designedOutCases": [
         "listener and report errors › reports a listener or onReport whose promise rejects, without an unhandled rejection",
         "listener and report errors › contains a fulfilled thenable that calls only its fulfillment handler",
@@ -9042,7 +9042,7 @@
         "durable/storage/record_carriers_test.go#TestStorageKeepsTaskAndSubmissionTelemetryCarriers",
         "durable/record_carriers_wire_test.go#TestRecordCarriersAreOptionalPlainJsonMembers"
       ],
-      "rationale": "All 23 upstream cases run in the evidence files (lane C); 1 type-level cases are designed out. Re-recorded at Pi b556cfe5: the file changed only in the tool parameter builders (TypeBox Type.Object to pi-schema obj); the Go tests declare their tool parameters as Go schemas, so the cases are unchanged.",
+      "rationale": "All 23 upstream cases run in the evidence files; 1 type-level cases are designed out. Re-recorded at Pi b556cfe5: the file changed only in the tool parameter builders (TypeBox Type.Object to pi-schema obj); the Go tests declare their tool parameters as Go schemas, so the cases are unchanged.",
       "designedOutCases": [
         "Durable telemetry › preserves async listener error containment and report counting"
       ]
@@ -9107,7 +9107,7 @@
         "durable/harness/partial_object_test.go#TestPartialObjectEqualsTheEncodedPartial",
         "durable/harness/streamed_partials_memory_test.go"
       ],
-      "rationale": "All 13 upstream cases are ported (the first also asserts Run.First is set, harness-view-run.test.ts:111). The two V8 heap measurements are measured on Go's heap in streamed_partials_memory_test.go (bytes allocated, runtime.MemStats.TotalAlloc, for GCProfiler; the heap in use after a collection for getHeapStatistics). The cost case (:547) has Pi's bounds: large.commits > 5 * small.commits (:576) and a bytes-per-commit ratio < 2 (:578). A commit of the in-flight partial costs the new text: the partial is built without encoding its text, thinking and tracked arguments (partial_changes.go BindPartial), and the commit's decode check (checkDecodes) decodes only the touched content blocks and members of the message and nothing for an append to a text, thinking or argument string (checkpoint_decode.go checkAssistantOps; differential and mutation-checked in checkpoint_decode_differential_test.go). Measured in tern-ci:v7 with BenchmarkStreamedPartials: 40 KB 186 commits and 16.8 MB (90 KB per commit), 400 KB 1733 commits and 170.9 MB (99 KB per commit): 9.3x the commits and 1.09x the bytes per commit; before, 2.7x the commits and 6.7x the bytes per commit (80.4 MB over 94.8 commits, 1428 MB over 252.8)."
+      "rationale": "All 13 upstream cases are ported (the first also asserts Run.First is set, harness-view-run.test.ts:111). The two V8 heap measurements are measured on Go's heap in streamed_partials_memory_test.go (bytes allocated, runtime.MemStats.TotalAlloc, for GCProfiler; the heap in use after a collection for getHeapStatistics). The cost case (:547) has Pi's bounds: large.commits > 5 * small.commits (:576) and a bytes-per-commit ratio < 2 (:578). A commit of the in-flight partial costs the new text: the partial is built without encoding its text, thinking and tracked arguments (partial_changes.go BindPartial), and the commit's decode check (checkDecodes) decodes only the touched content blocks and members of the message and nothing for an append to a text, thinking or argument string (checkpoint_decode.go checkAssistantOps; differential and mutation-checked in checkpoint_decode_differential_test.go). Measured in the Linux amd64 CI image with BenchmarkStreamedPartials: 40 KB 186 commits and 16.8 MB (90 KB per commit), 400 KB 1733 commits and 170.9 MB (99 KB per commit): 9.3x the commits and 1.09x the bytes per commit; before, 2.7x the commits and 6.7x the bytes per commit (80.4 MB over 94.8 commits, 1428 MB over 252.8)."
     },
     {
       "path": "packages/durable/test/harness-view.test.ts",
@@ -9230,7 +9230,7 @@
         "durable/session/session_checkpoints_migrations_test.go#TestSessionHistoricalDocumentSnapshots",
         "durable/session/session_checkpoints_migrations_test.go#TestSessionTrackerCacheAcrossDefinitionVersions"
       ],
-      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
+      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests."
     },
     {
       "path": "packages/durable/test/session-conversation-tails.test.ts",
@@ -9261,7 +9261,7 @@
         "durable/session/session_deferred_commits_upstream_test.go#TestAHeldDocumentIsPinned",
         "durable/session/session_deferred_commits_upstream_test.go#TestACrashLeavesStorageAtTheLastStoredState"
       ],
-      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
+      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests."
     },
     {
       "path": "packages/durable/test/session-definitions.test.ts",
@@ -9281,7 +9281,7 @@
         "durable/harness/document_retention_test.go#TestHarnessDocumentRetentionFollowsSettings",
         "durable/harness/document_retention_test.go#TestTheViewsAreTheSameWithDocumentsEvictedRightAfterUseAsWithDocumentsKept"
       ],
-      "rationale": "Follows Pi 5f312dac; the case 'keeps no timer where timers cannot be unreferenced, and evicts on commits' stays designed out (Node unreferenced-timer mechanics; approved by the tern lead ruling 2026-10-13, tests-120-b; case and approval carried from the b3a29f11 mapping). Lane C2. Re-recorded at Pi b556cfe5: the file changed only in the tool parameter builders and in the writes recorder (it wraps Storage.commit with batches and a receive callback); the Go port reads the writes through the test storage's AdmittedCommits, so the cases are unchanged.",
+      "rationale": "Follows Pi 5f312dac; the case 'keeps no timer where timers cannot be unreferenced, and evicts on commits' stays designed out (Node unreferenced-timer mechanics; approved by the owner ruling 2026-10-13, tests-120-b; case and approval carried from the b3a29f11 mapping). Lane C2. Re-recorded at Pi b556cfe5: the file changed only in the tool parameter builders and in the writes recorder (it wraps Storage.commit with batches and a receive callback); the Go port reads the writes through the test storage's AdmittedCommits, so the cases are unchanged.",
       "designedOutCases": [
         "document cache retention › keeps no timer where timers cannot be unreferenced, and evicts on commits"
       ]
@@ -9308,7 +9308,7 @@
         "durable/core/driver/docs_core_test.go#TestCoreCloseListenersRunOnceAndSupportUnsubscription",
         "durable/core/driver/docs_core_test.go#TestCoreCloseSettlesAdmittedCommitsAndRejectsLaterAdmission"
       ],
-      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
+      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests."
     },
     {
       "path": "packages/durable/test/session-forks.test.ts",
@@ -9331,7 +9331,7 @@
         "durable/core/driver/docs_core_test.go#TestCoreForkCopiesEveryFamilyMemberAcrossScanPages",
         "durable/core/driver/docs_core_test.go#TestCoreARejectedForkCommitFailsTheSessionAndLeavesNoEffect"
       ],
-      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
+      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests."
     },
     {
       "path": "packages/durable/test/session-group-commit.test.ts",
@@ -9386,7 +9386,7 @@
         "durable/session/session_tables_test.go",
         "durable/session/session_tables_test.go#TestSessionTransactionTables"
       ],
-      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
+      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests."
     },
     {
       "path": "packages/durable/test/session-watches.test.ts",
@@ -9398,7 +9398,7 @@
         "chord/watch_upstream_test.go#TestWatchRetainsNeitherItsSourceNorItsListenerOnceEnded",
         "durable/core/driver/docs_core_watches_test.go#TestCoreWatchFoldsPendingCommitsOfOneFieldIntoOneSet"
       ],
-      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests (lane C2)."
+      "rationale": "Follows Pi 5f312dac (observeCommits, WatchCall/WatchEnd observers, retirement as DocumentRetireChange); same-stem Go tests."
     },
     {
       "path": "packages/durable/test/spec-usage.test.ts",
@@ -9539,7 +9539,7 @@
         "durable/images/node/tools_images_test.go#TestCreateNodePhotonImages",
         "internal/photonimage/png_test.go#TestEncodePhotonPNGWritesPhotonsBytes"
       ],
-      "rationale": "All 26 Pi 1.2.0 case sites are ported as subtests named by their Pi titles and cited with their 1.2.0 lines (the orientation loop :403 runs eight times): the no-processor cases :221 :230 :239 :249 :257 :280 :295 :441 in durable/tools/tools_images_test.go (replacing read_images_changes_pi_test.go), the Photon cases :265 :273 :305 :312 :322 :336 :341 :346 :355 :361 :368 :403 :424 :434 :497 :524 :537 in durable/images/node/tools_images_test.go, and toBase64 :488 in read_images_test.go. Pixel data and the noisy-PNG generator are Pi's (JavaScript float arithmetic reproduced; checked against node). Source fix, red then green: ':322 re-encodes a PNG too large for the byte limit as JPEG at its size, and shrinks it when that is not enough' failed with mimeType = \"image/png\" because Go's png.Encode compressed the noise far below Photon's size; durable/images/png.go now ports Photon's PNG encoder (png 0.17.14 Compression::Fast with adaptive filtering over fdeflate 0.3.6), byte-identical to Photon (TestEncodePhotonPNGWritesPhotonsBytes), and the JPEG encoder and the resampler were ported next (internal/photonimage). Adapted: ':497 prepares in a worker thread, leaving the event loop free' measures Node event-loop blocking (over 200 ms inline, under 100 ms with the worker); Go has no event loop for a preparation to block, so the subtest checks that both processors prepare the photo, the plain one on the caller's goroutine and the worker one on the worker's goroutine. The adaptation keeps Pi's intent that preparing an image does not block the caller's loop. SCRUTINIZED:approved by the tern lead ruling 2026-10-13 (tests-120-b). Pi 3daa2028→b06c1f2c: Pi b0429971 adds the 8 KiB chunk edges to the remainder lengths (ported in TestToBase64MatchesTheStandardEncodingForEveryRemainder) and 'encodes a 3 MiB image within a 128 MB heap', a V8 heap bound on the JavaScript encoder. Go encoding/base64 builds one output buffer without string-concatenation trees, so that case is designed out."
+      "rationale": "All 26 Pi 1.2.0 case sites are ported as subtests named by their Pi titles and cited with their 1.2.0 lines (the orientation loop :403 runs eight times): the no-processor cases :221 :230 :239 :249 :257 :280 :295 :441 in durable/tools/tools_images_test.go (replacing read_images_changes_pi_test.go), the Photon cases :265 :273 :305 :312 :322 :336 :341 :346 :355 :361 :368 :403 :424 :434 :497 :524 :537 in durable/images/node/tools_images_test.go, and toBase64 :488 in read_images_test.go. Pixel data and the noisy-PNG generator are Pi's (JavaScript float arithmetic reproduced; checked against node). Source fix, red then green: ':322 re-encodes a PNG too large for the byte limit as JPEG at its size, and shrinks it when that is not enough' failed with mimeType = \"image/png\" because Go's png.Encode compressed the noise far below Photon's size; durable/images/png.go now ports Photon's PNG encoder (png 0.17.14 Compression::Fast with adaptive filtering over fdeflate 0.3.6), byte-identical to Photon (TestEncodePhotonPNGWritesPhotonsBytes), and the JPEG encoder and the resampler were ported next (internal/photonimage). Adapted: ':497 prepares in a worker thread, leaving the event loop free' measures Node event-loop blocking (over 200 ms inline, under 100 ms with the worker); Go has no event loop for a preparation to block, so the subtest checks that both processors prepare the photo, the plain one on the caller's goroutine and the worker one on the worker's goroutine. The adaptation keeps Pi's intent that preparing an image does not block the caller's loop. SCRUTINIZED:approved by the owner ruling 2026-10-13 (tests-120-b). Pi 3daa2028→b06c1f2c: Pi b0429971 adds the 8 KiB chunk edges to the remainder lengths (ported in TestToBase64MatchesTheStandardEncodingForEveryRemainder) and 'encodes a 3 MiB image within a 128 MB heap', a V8 heap bound on the JavaScript encoder. Go encoding/base64 builds one output buffer without string-concatenation trees, so that case is designed out."
     },
     {
       "path": "packages/durable/test/tools-read-differential.test.ts",
@@ -9651,7 +9651,7 @@
         "env/list_files_test.go#TestListFilesIsNotSupportedByDaemonsReleasedBeforeIt",
         "env/list_files_test.go#TestListFilesCancelsAListingInTheDaemon"
       ],
-      "rationale": "Watch hunks of Pi 5f312dac (lane C2) and the daemon-kill hunk (lane E, TestConnectionCloseKillsRunningCommands)."
+      "rationale": "Watch hunks of Pi 5f312dac and the daemon-kill hunk (lane E, TestConnectionCloseKillsRunningCommands)."
     },
     {
       "path": "packages/env/test/ssh-external.test.ts",
@@ -9705,13 +9705,13 @@
         "internal/evals/comparison_upstream_test.go",
         "internal/evals/comparison_upstream_test.go#TestComparisonUpstream"
       ],
-      "rationale": "Pi 9628c848 touches the totalMs and estimatedCostUsd cases; internal/evals/comparison_upstream_test.go already asserts both (lane E)."
+      "rationale": "Pi 9628c848 touches the totalMs and estimatedCostUsd cases; internal/evals/comparison_upstream_test.go already asserts both."
     },
     {
       "path": "packages/evals/test/configured-runtime.test.ts",
       "disposition": "designed-out",
       "upstreamTestHash": "sha256:3d34e219b07fabdbcaeedf54098ba5fab536383ad75b0441cae68e17c09add41",
-      "rationale": "Pi 9628c848 moved loadConfiguredModelRuntime into the test because its evals read session.modelRuntime; a PiG Session lives in a pig process, so evalsuites still needs the exported loader and the Go tests are unchanged (lane E)."
+      "rationale": "Pi 9628c848 moved loadConfiguredModelRuntime into the test because its evals read session.modelRuntime; a PiG Session lives in a pig process, so evalsuites still needs the exported loader and the Go tests are unchanged."
     },
     {
       "path": "packages/evals/test/harness.test.ts",
@@ -9738,7 +9738,7 @@
       "evidence": [
         "internal/evals/report_upstream_test.go#TestReportUpstream"
       ],
-      "rationale": "Changed cases and the new 'selects the requested case when a sibling case is skipped' case; the classifyCaseStatus cases are replaced by the skipped/todo/disabled readTaskObservation cases, as upstream (lane E)."
+      "rationale": "Changed cases and the new 'selects the requested case when a sibling case is skipped' case; the classifyCaseStatus cases are replaced by the skipped/todo/disabled readTaskObservation cases, as upstream."
     },
     {
       "path": "packages/mcp/test/client.test.ts",
@@ -9827,7 +9827,7 @@
       "evidence": [
         "schema/builders_upstream_test.go"
       ],
-      "rationale": "All 4 upstream cases run in the evidence files (lane nschema); 1 type-level cases are designed out.",
+      "rationale": "All 4 upstream cases run in the evidence files; 1 type-level cases are designed out.",
       "designedOutCases": [
         "builders › carry the static type of valid values"
       ]
@@ -9877,7 +9877,7 @@
       "evidence": [
         "schema/conformance_upstream_test.go"
       ],
-      "rationale": "All 1 upstream cases run in the evidence files (lane nschema)."
+      "rationale": "All 1 upstream cases run in the evidence files."
     },
     {
       "path": "packages/schema/test/shared.test.ts",
@@ -9886,7 +9886,7 @@
       "evidence": [
         "schema/shared_upstream_test.go"
       ],
-      "rationale": "All 2 upstream cases run in the evidence files (lane nschema)."
+      "rationale": "All 2 upstream cases run in the evidence files."
     },
     {
       "path": "packages/schema/test/typebox-static.test.ts",
@@ -10074,7 +10074,7 @@
         "tui/fake_cursor_test.go#TestMainScreenDrawsTheFocusedFakeCursorAndOmitsItWhenTheHardwareCursorIsShown",
         "tui/editor_oracle_test.go#TestEditorMatchesPiOracle"
       ],
-      "rationale": "Pi 3bae8527 'moves the autocomplete selection with selection page keys (#7629)' (lane A1)."
+      "rationale": "Pi 3bae8527 'moves the autocomplete selection with selection page keys (#7629)'."
     },
     {
       "path": "packages/tui/test/exit-restore.test.ts",
@@ -10199,7 +10199,7 @@
         "tui/markdown_block_reuse_upstream_test.go#TestUpstreamMarkdownBlockReuse",
         "tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender"
       ],
-      "rationale": "101 of 102 upstream cases are ported: the 98 cases of the earlier pin keep their evidence and three of the four Pi 0f21a331 'Block reuse' cases run as TestUpstreamMarkdownBlockReuse subtests with the same inputs and expectations. The designed-out case ('holds rendered blocks weakly, so a full garbage collection releases them') checks a JavaScript WeakRef: Go's collector can clear a weak pointer between two streaming deltas, so PiG holds the memo strongly for one render and FinishStreaming, Invalidate and a theme or grammar change release it (subtest 'releases the reused highlighting when streaming finishes'). SCRUTINIZED:approved by the owner (2026-11-01): reviewed, no lifetime bug: the memo is replaced every render and released by FinishStreaming, Invalidate and a theme or grammar change; TestMarkdownReusedHighlightingEqualsAFreshRender and the 'releases the reused highlighting when streaming finishes' subtest pin it (lane RenderReuse).",
+      "rationale": "101 of 102 upstream cases are ported: the 98 cases of the earlier pin keep their evidence and three of the four Pi 0f21a331 'Block reuse' cases run as TestUpstreamMarkdownBlockReuse subtests with the same inputs and expectations. The designed-out case ('holds rendered blocks weakly, so a full garbage collection releases them') checks a JavaScript WeakRef: Go's collector can clear a weak pointer between two streaming deltas, so PiG holds the memo strongly for one render and FinishStreaming, Invalidate and a theme or grammar change release it (subtest 'releases the reused highlighting when streaming finishes'). SCRUTINIZED:approved by the owner (2026-11-01): reviewed, no lifetime bug: the memo is replaced every render and released by FinishStreaming, Invalidate and a theme or grammar change; TestMarkdownReusedHighlightingEqualsAFreshRender and the 'releases the reused highlighting when streaming finishes' subtest pin it.",
       "designedOutCases": [
         "Markdown component › Block reuse › holds rendered blocks weakly, so a full garbage collection releases them"
       ]
@@ -10343,7 +10343,7 @@
         "tui/select_page_keys_upstream_test.go#TestUpstreamSelectListMovesByOneVisiblePageWithSelectionPageKeys",
         "tui/select_filterable_test.go"
       ],
-      "rationale": "Pi 3bae8527 'moves by one visible page with selection page keys (#7629)' (lane A1)."
+      "rationale": "Pi 3bae8527 'moves by one visible page with selection page keys (#7629)'."
     },
     {
       "path": "packages/tui/test/settings-list.test.ts",
@@ -10353,7 +10353,7 @@
         "tui/select_page_keys_upstream_test.go#TestUpstreamSettingsListMovesByOneVisiblePageWithSelectionPageKeys",
         "tui/settings_list_upstream_test.go#TestUpstreamSettingsList"
       ],
-      "rationale": "Pi 3bae8527 same case for the settings list (lane A1)."
+      "rationale": "Pi 3bae8527 same case for the settings list."
     },
     {
       "path": "packages/tui/test/stdin-buffer.test.ts",
@@ -10482,7 +10482,7 @@
         "tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageWhosePlaceholderRowsContainText",
         "tui/tui_alt_screen_kitty_cache_test.go#TestAltScreenCropsAKittyImageInAPaddedColoredBoxWhoseFirstLineIsAboveTheViewport"
       ],
-      "rationale": "Pi 3bae8527 'defers viewport keys to a focused list' and 'gives viewport keys back when autocomplete closes' (lane A1)."
+      "rationale": "Pi 3bae8527 'defers viewport keys to a focused list' and 'gives viewport keys back when autocomplete closes'."
     },
     {
       "path": "packages/tui/test/tui-cell-size-input.test.ts",
@@ -10520,7 +10520,7 @@
         "tui/fake_cursor_test.go#TestMainScreenOmitsAFocusedFakeCursorWhoseEndMarkerTruncationDropped",
         "tui/fake_cursor_test.go#TestMainScreenKeepsTheCursorWhenAnOverlayEndsDirectlyLeftOfIt"
       ],
-      "rationale": "Pi 19ce8059 'does not write OSC 133 prompt markers to the terminal' (lane A1)."
+      "rationale": "Pi 19ce8059 'does not write OSC 133 prompt markers to the terminal'."
     },
     {
       "path": "packages/tui/test/tui-shrink.test.ts",

@@ -37,11 +37,11 @@ func (Bytes) isPart()         {}
 func (*DeflatedPart) isPart() {}
 
 // Inflated is what inflating a deflated part gave: its JSON bytes, more than the decoded limit, or data that is no
-// raw deflate. It is the type of lane D1's nextnode package, which cannot import this one.
+// raw deflate. It is the type of the nextnode package, which cannot import this one.
 type Inflated = nextnode.Inflated
 
 // Compression is a synchronous compressor (`createHost({ compression })`; nextnode.NodeCompression). It is the type
-// of lane D1's nextnode package, which cannot import this one.
+// of the nextnode package, which cannot import this one.
 type Compression = nextnode.Compression
 
 // DeflatedPart is a JSON part deflated (raw deflate) by its origin. A host without a synchronous compressor inflates

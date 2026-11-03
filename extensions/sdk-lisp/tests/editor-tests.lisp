@@ -1,5 +1,5 @@
 ;;;; SPDX-License-Identifier: MIT
-;;;; Lane U2: editor components, autocomplete providers and terminal input against the in-process fake host (sdk-tests.lisp's host).
+;;;; Editor components, autocomplete providers and terminal input against the in-process fake host (sdk-tests.lisp's host).
 (in-package #:pig-tests)
 
 ;;; ---------------------------------------------------------------- a host that logs every frame and answers calls
