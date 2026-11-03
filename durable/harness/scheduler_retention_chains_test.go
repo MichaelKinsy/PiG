@@ -346,6 +346,9 @@ func TestSchedulerRetentionBelowAForgottenConversation(t *testing.T) {
 		ownBusy(t, child, tree.keep)
 		// Queued while nothing cancels: no withdrawal scan.
 		queued := ownSubmit(t, child, ownInput("later"))
+		// Pi's sweep runs inside the commit that ends the tasks, so its baseline already excludes what it dropped; the Go
+		// scheduler's sweep is asynchronous (scheduler.go dropQueue), so wait for the queue to drain before measuring: the sizes
+		// compared below then start from the same settled index as Pi's.
 		ownWaitUntil(t, func() bool { return retentionSizes(opened.harness).dropQueue == 0 })
 		// P fails while its child runs: it holds the failed outcome, which is cancellation intent.
 		retentionRawTask(t, opened.root, tree.p, func(record *durable.TaskRecord[durable.JsonValue, durable.JsonValue, durable.JsonValue]) {

@@ -147,6 +147,9 @@ func TestSchedulerRetention(t *testing.T) {
 		fixtures.open("a", "completed")
 		fixtures.open("b", "completed")
 		ownExpectOutcome(t, opened.harness, tree.b, durable.OutcomeCompleted)
+		// Pi's sweep runs inside the commit that ends the tasks, so its baseline already excludes what it dropped; the Go
+		// scheduler's sweep is asynchronous (scheduler.go dropQueue), so wait for the queue to drain before measuring: the sizes
+		// compared below then start from the same settled index as Pi's.
 		ownWaitUntil(t, func() bool { return retentionSizes(opened.harness).dropQueue == 0 })
 		before := retentionSizes(opened.harness)
 		late := ownConversation(t, opened.harness, tree.conversation)
@@ -162,6 +165,9 @@ func TestSchedulerRetention(t *testing.T) {
 		fixtures.open("d", "completed")
 		ownExpectOutcome(t, opened.harness, d, durable.OutcomeCompleted)
 		ownExpectOutcome(t, opened.harness, tree.p, durable.OutcomeCompleted)
+		// Pi's sweep runs inside the commit that ends the tasks, so its baseline already excludes what it dropped; the Go
+		// scheduler's sweep is asynchronous (scheduler.go dropQueue), so wait for the queue to drain before measuring: the sizes
+		// compared below then start from the same settled index as Pi's.
 		ownWaitUntil(t, func() bool { return retentionSizes(opened.harness).dropQueue == 0 })
 		if got := retentionSizes(opened.harness); got.settled > before.settled {
 			t.Fatalf("settled %d after the work ended, want at most %d", got.settled, before.settled)
@@ -319,6 +325,9 @@ func TestSchedulerRetention(t *testing.T) {
 		if err := opened.harness.WaitForIdle(testContext); err != nil {
 			t.Fatal(err)
 		}
+		// Pi's sweep runs inside the commit that ends the tasks, so its baseline already excludes what it dropped; the Go
+		// scheduler's sweep is asynchronous (scheduler.go dropQueue), so wait for the queue to drain before measuring: the sizes
+		// compared below then start from the same settled index as Pi's.
 		ownWaitUntil(t, func() bool { return retentionSizes(opened.harness).dropQueue == 0 })
 		ended := retentionSizes(opened.harness)
 		mustClose(t, opened.harness)
@@ -388,6 +397,9 @@ func TestSchedulerRetention(t *testing.T) {
 		}
 		fixtures.open("b", "completed")
 		ownExpectOutcome(t, opened.harness, tree.b, durable.OutcomeCompleted)
+		// Pi's sweep runs inside the commit that ends the tasks, so its baseline already excludes what it dropped; the Go
+		// scheduler's sweep is asynchronous (scheduler.go dropQueue), so wait for the queue to drain before measuring: the sizes
+		// compared below then start from the same settled index as Pi's.
 		ownWaitUntil(t, func() bool { return retentionSizes(opened.harness).dropQueue == 0 })
 		before := store.queued.Load()
 		if _, err := ownConversation(t, opened.harness, tree.conversation).Submit(testContext, durable.SubmissionDraft{Type: durable.SubmissionTypeInput, Content: ai.UserText("queued")}); err != nil {

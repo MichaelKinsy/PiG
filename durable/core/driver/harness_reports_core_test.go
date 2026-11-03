@@ -60,7 +60,7 @@ func findReport(log *infoLog, message string) (reported, bool) {
 }
 
 func TestReports(t *testing.T) {
-	// harness-reports.test.ts:728 "say which task reported a failure or faulted"
+	// harness-reports.test.ts:48 "say which task reported a failure or faulted"
 	t.Run("say which task reported a failure or faulted", func(t *testing.T) {
 		eachEngine(t, func(t *testing.T, core bool) {
 			faulty := durable.DefineTask(durable.TaskDefinition[durable.JsonValue, loopState, durable.JsonValue, any]{
@@ -99,7 +99,7 @@ func TestReports(t *testing.T) {
 		})
 	})
 
-	// harness-reports.test.ts:760 "name the extension whose definition ran, also after another one replaced it"
+	// harness-reports.test.ts:79 "name the extension whose definition ran, also after another one replaced it"
 	t.Run("name the extension whose definition ran, also after another one replaced it", func(t *testing.T) {
 		eachEngine(t, func(t *testing.T, core bool) {
 			gate, started := make(chan struct{}), make(chan struct{})
@@ -150,7 +150,7 @@ func TestReports(t *testing.T) {
 		})
 	})
 
-	// harness-reports.test.ts:798 "name the extension of a failing section or hook, and tell them from a failing environment builder"
+	// harness-reports.test.ts:117 "name the extension of a failing section or hook, and tell them from a failing environment builder"
 	t.Run("name the extension of a failing section or hook, and tell them from a failing environment builder", func(t *testing.T) {
 		eachEngine(t, func(t *testing.T, core bool) {
 			faux := ai.NewFauxProvider(ai.FauxConfig{Models: []ai.FauxModelDefinition{{ID: "faux-1"}}})
@@ -201,7 +201,7 @@ func TestReports(t *testing.T) {
 		})
 	})
 
-	// harness-reports.test.ts:846 "tell extension, listener, wake, and timer failures from a failed Session"
+	// harness-reports.test.ts:165 "tell extension, listener, wake, and timer failures from a failed Session"
 	t.Run("tell extension, listener, wake, and timer failures from a failed Session", func(t *testing.T) {
 		eachEngine(t, func(t *testing.T, core bool) {
 			sleeper := durable.DefineTask(durable.TaskDefinition[durable.JsonValue, loopState, durable.JsonValue, any]{

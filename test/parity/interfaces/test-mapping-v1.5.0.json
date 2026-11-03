@@ -8604,23 +8604,106 @@
     },
     {
       "path": "packages/durable/test/harness-nested-tools-restart.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:cc501b613d2845d187c3b382fd967351b87d19326ce2dcf9761da67b76cfcb17"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:cc501b613d2845d187c3b382fd967351b87d19326ce2dcf9761da67b76cfcb17",
+      "evidence": [
+        "durable/harness/tool_nested_restart_test.go#TestANestedCallAnEarlierAttemptLeftRunningAndTheRerunNeverMadeAgainIsAborted",
+        "durable/core/driver/tool_nested_restart_core_test.go#TestCoreAbandonedNestedCallsAfterARestartSettleInterruptedOrAbandoned",
+        "durable/harness/tool_nested_records_test.go#TestNestedCallsAndChildTasksOfACallerThatNeverResumesAreAbandonedOnRestart",
+        "durable/harness/tool_nested_records_test.go#TestARunningNestedCallSlotKeepsPiMemberOrder",
+        "durable/harness/tool_nested_restart_test.go#TestAReopenedHarnessThatNeverStartsSchedulingMarksNothing",
+        "durable/harness/tool_nested_restart_test.go#TestAReplaySafeCallerReattachesByDefaultAndExplicitKeysAndARerunThatCallsDifferentlyIsRejected",
+        "durable/harness/tool_nested_restart_test.go#TestAReplaySafeCallersUnfinishedNestedCallsRecoverAndTheRerunReattachesByKey",
+        "durable/harness/tool_nested_restart_test.go#TestAReplayUnsafeCallersUnfinishedNestedCallsAreAbandonedBeforeTheyRunAgain",
+        "durable/harness/tool_nested_restart_test.go#TestAnAbandonedTaskWhoseDefinitionIsMissingIsOrphanedOnceAnAbortIsRequested",
+        "durable/harness/tool_nested_restart_test.go#TestAnAbandonedTaskWhoseDefinitionIsMissingWaitsUntilItIsInstalledThenRunsItsAbort",
+        "durable/harness/tool_nested_restart_test.go#TestBackgroundWorkUnderAnAbandonedNestedCallKeepsRunningAndTheRunSettlesWithoutIt",
+        "durable/harness/tool_nested_restart_test.go#TestTheChildTasksAReplayUnsafeToolCreatedAndAwaitedInMemoryAreAbandoned",
+        "durable/harness/tool_nested_restart_test.go#TestTheSlotsOfNestedCallsAnEarlierAttemptFinishedAreClearedWhenTheRerunMakesNone",
+        "durable/harness/tool_nested_restart_test.go#TestTheWorkAnAbandonedNestedCallOwnsIsAbandonedAndNeverRunsAPhaseAgain",
+        "durable/harness/promise_all_test.go"
+      ],
+      "rationale": "Pi f3255de7 replaces the collectEnds helper (watchEvents tool_execution_end events) with a view history and the nested-results recorder of live-support.ts (nestedResultOf reads a nested call's result from the caller's NestedCallDoc): all 11 cases stay ported, and the Go tests read the result through viewHistory and nestedResults of live_support_test.go (core: live_support_core_test.go). TestCoreAbandonedNestedCallsAfterARestartSettleInterruptedOrAbandoned runs the abandoned-after-restart cases over both engines. Pi v1.5.0: 11 cases (v1.4.0+b3a29f11 -\u003e v1.5.0: 11). Body changes in 1.5.0: the commit listener becomes observeCommits({advance, end}) and reads a pi.live change by `kind === \"change\"`; Type.* becomes the pi-schema helpers. Go reads the same slots-after-caller value through ObserveCommits (tool_nested_restart_test.go); the assertion is unchanged."
     },
     {
       "path": "packages/durable/test/harness-nested-tools.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f1c2addbcc26058da2591ca8cd7dcb7afb98fecea8ff7935e9ffc789c1d0d06a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f1c2addbcc26058da2591ca8cd7dcb7afb98fecea8ff7935e9ffc789c1d0d06a",
+      "evidence": [
+        "durable/harness/tool_nested_test.go#TestARunningNestedCallIsAbortedWhenItsCallerThrows",
+        "durable/core/driver/harness_nested_core_test.go#TestCoreNestedCallsAreListedInTheViewWithTheirParent",
+        "durable/harness/tool_nested_records_test.go#TestARunningNestedCallSlotKeepsPiMemberOrder",
+        "durable/core/driver/harness_nested_slots_core_test.go#TestCoreAFinishedNestedCallIsADoneSlotWithItsSummaryUntilItsCallerSettles",
+        "durable/core/driver/harness_nested_slots_core_test.go#TestCoreANestedCallMadeWithProgressFalseCommitsOnlyItsStatus",
+        "durable/core/driver/harness_nested_slots_core_test.go#TestCoreANestedSlotShowsTheArgumentsTheCallRunsWith",
+        "durable/core/driver/harness_nested_slots_core_test.go#TestCoreFindsEachNestedSlotAfterSlotsInTheMiddleWereRemoved",
+        "durable/harness/tool_nested_calls_doc_test.go#TestANestedCallOfAnAbortedCallerRejectsAndLeavesNoDocumentForIt",
+        "durable/harness/tool_nested_calls_doc_test.go#TestOneDocumentPerNestedCallKeyedByItsKey",
+        "durable/harness/tool_nested_records_test.go#TestACallerGetsAFallbackResultForANestedCallTheSchedulerFaulted",
+        "durable/harness/tool_nested_records_test.go#TestANestedCallWhoseAdmissionWasCommittingWhenItsCallerReturnedIsAborted",
+        "durable/harness/tool_nested_records_test.go#TestNestedCallsAndChildTasksOfACallerThatNeverResumesAreAbandonedOnRestart",
+        "durable/harness/tool_nested_records_test.go#TestNestedErrorResultsAndStructuredOutput",
+        "durable/harness/tool_nested_test.go#TestACallerGetsWhatASchemaLessToolStreamedBeforeItFailed",
+        "durable/harness/tool_nested_test.go#TestACallerThatReturnsAbortsTheNestedCallsItLeftRunning",
+        "durable/harness/tool_nested_test.go#TestAFinishedNestedCallIsADoneSlotWithItsSummaryUntilItsCallerSettles",
+        "durable/harness/tool_nested_test.go#TestANestedCallAfterItsCallerSettledIsRejected",
+        "durable/harness/tool_nested_test.go#TestANestedCallIsItsOwnToolTaskAndItsResultGoesToTheCaller",
+        "durable/harness/tool_nested_test.go#TestANestedCallSlotShowsTheArgumentsItRunsWith",
+        "durable/harness/tool_nested_test.go#TestANestedCallToAnUnavailableToolOrWithInvalidArgumentsIsAnErrorResult",
+        "durable/harness/tool_nested_test.go#TestANestedCallWithoutProgressCommitsOnlyItsStatus",
+        "durable/harness/tool_nested_test.go#TestANestedCallsRepairedArgumentsMayLeaveAnOptionalPropertyOut",
+        "durable/harness/tool_nested_test.go#TestANestedCallsUsageIsRecordedUnderItsTool",
+        "durable/harness/tool_nested_test.go#TestANestedKeyReturnsItsCallAndRejectsAnotherCall",
+        "durable/harness/tool_nested_test.go#TestAReplaySafeCallerReattachesToTheNestedCallsItMadeBeforeARestart",
+        "durable/harness/tool_nested_test.go#TestAReusedNestedKeyMatchesArgumentsRegardlessOfKeyOrder",
+        "durable/harness/tool_nested_test.go#TestARunningNestedCallIsInTheLiveNestedToolSlots",
+        "durable/harness/tool_nested_test.go#TestAnAbortedNestedCallWithoutProgressLosesItsRunningOutput",
+        "durable/harness/tool_nested_test.go#TestCancellingTheWaitForANestedCallStopsOnlyTheWait",
+        "durable/harness/tool_nested_test.go#TestConcurrentCallsWithOneKeyAdmitOneNestedCall",
+        "durable/harness/tool_nested_test.go#TestEachNestedCallHasItsOwnTaskAndCallId",
+        "durable/harness/tool_nested_test.go#TestEachNestedCallsSlotIsFoundAfterSlotsInTheMiddleWereRemoved",
+        "durable/harness/tool_nested_test.go#TestEveryNestedCallLeftRunningIsAbortedBeforeAnyIsWaitedFor",
+        "durable/harness/tool_nested_test.go#TestExplicitNestedKeysAreChecked",
+        "durable/harness/tool_nested_test.go#TestNestedCallsAreAbortedWithTheirCaller",
+        "durable/harness/tool_nested_test.go#TestNestedCallsOfNestedCallsEndChildrenFirst",
+        "durable/harness/tool_nested_test.go#TestSeveralRunningNestedCallsReportTheirOutputAndShowToALateSubscriber",
+        "durable/harness/tool_nested_test.go#TestTheLeftRunningNestedCallsOfACallerInterruptedWhileItCleanedThemUpAreAborted",
+        "durable/harness/tool_nested_test.go#TestToolHookCallsCarryTheToolCallType",
+        "durable/harness/tool_nested_test.go#TestToolHooksSeeTheParentOfANestedCall",
+        "durable/harness/tool_nested_test.go#TestToolTaskMigratesVersion1InputToAModelIssuedCall",
+        "durable/harness/tool_task_v1_records_test.go#TestAPendingVersion1ToolTaskMigratesAndRunsAsAModelIssuedCall",
+        "durable/harness/tool_task_v1_records_test.go#TestAVersion1ToolTaskInterruptedAfterIntentSettlesInterrupted",
+        "durable/harness/promise_all_test.go",
+        "durable/harness/tool_task_v2_test.go#TestToolTaskKeepsVersion2InputAsItIs",
+        "durable/harness/tool_task_v1_records_test.go#TestAVersion2ToolTaskIsReservedUnderVersion3AndRunsAsAModelIssuedCall"
+      ],
+      "rationale": "Pi f3255de7 rewrites 164 lines: the watchEvents streams become view histories with nestedResultOf, so 'reports nested calls in pi.live.nestedTools and as tool events with their parent' becomes 'reports nested calls in pi.live.nestedTools with their parent', a nested call's result is read from the caller's document, and a caller that was aborted leaves runFailure reason aborted in pi.live. The 33 cases stay ported (tool_nested_test.go and the nested records and docs tests); TestCoreNestedCallsAreListedInTheViewWithTheirParent runs the listing over both engines. Pi v1.5.0 (Go asserts the migrated input exactly: {kind: model, assistant: \u003cnumber\u003e, callId: c1} for version 2, kind and callId for version 1, and the outcome's status and model result as maps, where Pi's toMatchObject does): 35 cases (v1.4.0+b3a29f11 -\u003e v1.5.0: 33 -\u003e 35). New in 1.5.0 (#11043): `keeps version 2 tool task input as it is` (tool_task_v2_test.go TestToolTaskKeepsVersion2InputAsItIs migrates the version 2 model and nested inputs and expects them unchanged) and `reserves a stored version 2 task under version 3 and runs it as a model-issued call` (tool_task_v1_records_test.go TestAVersion2ToolTaskIsReservedUnderVersion3AndRunsAsAModelIssuedCall: stored version 2, settles at version 3 with input {kind: model, assistant, callId: c1}, one run, result `echo old`); the two version 1 cases now settle at version 3 (TestAPendingVersion1ToolTaskMigratesAndRunsAsAModelIssuedCall, TestAVersion1ToolTaskInterruptedAfterIntentSettlesInterrupted assert Version 3). commitWrites, onValue and the storage commit(batches, receive) shape change only how the test observes writes."
     },
     {
       "path": "packages/durable/test/harness-observers.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:8c0156ac3177fede9c642204996e1bb311d3d0fa7087500af8e6b24aefacc116"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:8c0156ac3177fede9c642204996e1bb311d3d0fa7087500af8e6b24aefacc116",
+      "evidence": [
+        "durable/harness/harness_observers_test.go#TestObserveConversationAndObserveTaskGraph",
+        "durable/core/driver/watch_test.go#TestSessionCloseFailsObserversAndEndsWatches",
+        "durable/core/driver/watch_test.go#TestObserveCommitsFailsSessionClosedAtCloseAndNeverAfterDetach"
+      ],
+      "rationale": "Pi 8b0caefc: Harness.observeConversation and observeTaskGraph; the cases of harness-observers.test.ts are ported in harness_observers_test.go. Pi v1.5.0: 15 cases (v1.4.0+b3a29f11 -\u003e v1.5.0: 15). 1.5.0 (Pi 5f312dac, decision S1) changes what a Session's close and an observer's calls look like: observer ends are `{kind: failed | ended | listener_error}`; an observer is advanced at the commit's publication, outside Storage's call (adopting false); a Session's close fails a synchronous observer with `session closed` and ends a watch `ended`. Go: TestObserveConversationAndObserveTaskGraph asserts the graph observer ends failed with `session closed` and a graph watch opened beside it ends ended (red 5c59d5bd1d against the old ended-for-all close; fixed in session.CloseEnds, the view and task-graph close hooks, the commit and document observers, and the core driver, whose TestSessionCloseFailsObserversAndEndsWatches and TestObserveCommitsFailsSessionClosedAtCloseAndNeverAfterDetach assert the same). The renamed cases `start at the current value and advance at the publication ...` and `an observer gets the retirement, then its end, at the publication ...` assert adopting false; listener_error and watch `ended` kinds are asserted by the unchanged-name cases."
     },
     {
       "path": "packages/durable/test/harness-ownership.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:87388689767d16e67003ff4ef04f34685e17f3b72559bb9ef71e36fd995041df"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:87388689767d16e67003ff4ef04f34685e17f3b72559bb9ef71e36fd995041df",
+      "evidence": [
+        "durable/harness/harness_ownership_tools_test.go#TestOwnedConversationsFromTools",
+        "durable/harness/harness_ownership_test.go#TestOwnership",
+        "durable/harness/scheduler_scale_test.go#TestSchedulerScaling",
+        "durable/harness/harness_ownership_ended_test.go#TestOwnershipBelowEndedTasks",
+        "durable/harness/harness_ownership_ended_test.go#TestOwnershipFailedCascadeCommits",
+        "durable/harness/harness_ownership_ended_test.go#keeps ownership queries off finished subtrees",
+        "durable/harness/harness_ownership_ended_test.go#finalizes many held siblings that end together in one pass"
+      ],
+      "rationale": "Pi f3255de7 changes one expectation: the owned child's pi.live after an abort is {runFailure: {reason: aborted}} instead of {} (harness-ownership.test.ts:1197). harness_ownership_tools_test.go asserts it through expectOnlyRunFailure(RunAborted); the other 37 cases are unchanged. Pi v1.5.0: 37 cases (v1.4.0+b3a29f11 -\u003e v1.5.0: 37, the 1.4.0 case `rejects a handle operation queued on the line when the invocation ends before it runs` is replaced by `runs a handle operation queued behind the abort mark before the mark's publication, and the cascade aborts it`). Go harness_ownership_tools_test.go ports the replacement with Pi's inputs: the abort mark's storage call is held (holdMarkStorage), the tool's submit starts while it is in flight and lands, the mark's cascade aborts the run it started (status unanswered, reason aborted), the child holds only its pi.user entry and no submission of it remains. `run` documents now carry `turns: 0` (LiveRun.Turns has no omitempty); `closed` is `{kind: failed}` ; the refused-batch storages follow the batches shape."
     },
     {
       "path": "packages/durable/test/harness-partial-changes.test.ts",
@@ -8639,8 +8722,14 @@
     },
     {
       "path": "packages/durable/test/harness-prompt.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:a504193a9194c59b1e13124d70aea11aed45ac48406991e023e77725d265b988"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a504193a9194c59b1e13124d70aea11aed45ac48406991e023e77725d265b988",
+      "evidence": [
+        "durable/harness/harness_prompt_test.go#TestSystemPromptPreparation",
+        "durable/harness/harness_prompt_plan_test.go#TestSystemPromptPreparationPlans",
+        "durable/harness/harness_prompt_plan_test.go#TestToolLoadoutPreparation"
+      ],
+      "rationale": "9 cases: :72, :111, :121 in harness_prompt_test.go TestSystemPromptPreparation; :141, :152, :169, :194 in TestSystemPromptPreparationPlans; :240, :258 in TestToolLoadoutPreparation, all under Pi's names. Unchanged from 1.0.4 to 1.1.0. Pi 1.2.0 only adds callable: [] and deferred: [] to the shared PromptInput fixture's agent (types.ts Agent gained both lists); no assertion reads them. The Go fixture promptInput sets durable.Agent Callable and Deferred to empty lists likewise. All 9 pass. Pi v1.5.0: 9 cases (unchanged v1.4.0+b3a29f11 -\u003e v1.5.0). The only change is `Type.Object({})` becoming `obj({})` for the tool declarations; Go declarations are unchanged."
     },
     {
       "path": "packages/durable/test/harness-read-only.test.ts",
@@ -8654,46 +8743,87 @@
     },
     {
       "path": "packages/durable/test/harness-registry-reader.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:4b53c3cbeea9d414bf159641293e3a5edc60834a624beaca15b0496e047d053c",
       "evidence": [
-        "durable/harness/registry_reader_test.go"
+        "durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
+        "durable/harness/registry_reader_host_test.go#TestDurablesViewsFromOtherObjects",
+        "durable/harness/registry_reader_test.go#TestRegistryReader"
       ],
-      "rationale": "TestRegistryReader ports the scheduler-wake case over a registries.RegistryValue stand-in that publishes on every install, because Go chord/next/host has no createHost, host.serve or self.contribute yet. The stand-in also covers registryReader's own logic: Snapshot reads the composition, the listener runs inside the publication, a failed composition wakes nothing, and Subscribe fails with the error Observe returns. When chord/next/host has createHost, host.serve and self.contribute, port the three cases on that setup (a facet that does host.serve(Extensions, {compose}) and host.serve(Plugin, ...) with self.contribute(Extensions, extension); NewRegistryReader(ctx, host.Registry(Extensions))); the scheduler-wake case then replaces the compositionValue stand-in in registry_reader_test.go, and the first case adds the reentrant refusal inside the listener (a Chord call there fails with invalid/reentrant) and the observation context detaching it. The missing cases need the Chord host: its batch (the reentrant refusal inside the listener, the observation context detaching it) and the contributed Harness a Viewer follows.",
-      "missingCases": [
-        "registryReader › reads the composed snapshot; a listener is called synchronously, inside the batch that composed",
-        "Durable's views from other objects (slice 8 §5, S1) › a follower of a contributed Harness fails when that Harness's Session closes, and follows the next one"
-      ]
+      "rationale": "3 cases (new in v1.4.0+e7a0df27; v1.5.0: 3). All three are ported on a Chord host (registry_reader_host_test.go: TestRegistryReaderOnAChordHost for `reads the composed snapshot; a listener is called synchronously, inside the batch that composed` (a listener's Chord call is refused `reentrant`, the snapshot then holds app.done) and `wakes a Harness's scheduler: a task blocked on its missing definition runs once a contribution brings it`, TestDurablesViewsFromOtherObjects for `a follower of a contributed Harness fails when that Harness's Session closes, and follows the next one`: the Durable object's close call fails with `session closed`, the viewer fails transient, a retry opens the next Harness, the viewer is live without app.first and shows app.second), each on loaded facets that host.Serve the registry and contribute from objects, with NewRegistryReader over host.Registry. The host cases found three production faults, each red first: (1) the reader's observer held a func and Chord detaches an observer by interface comparison, which panics, so NewRegistryReader attaches a pointer; (2) the Harness read the registry record from its own goroutines off the host's batch (a -race failure), so the reader serves its snapshot from an observer that records each composition inside the batch, and a reader made with a done context (Chord ends its observer before Observe returns) reads the value itself (TestRegistryReaderWithACancelledContextReadsTheValueItself); (3) Pi's `durable.close()` always rejects with `session closed` (Pi :186), but Go's follow observer ended the object outside a host section and the aborted call's reason reached the call only through a goroutine of its own, so the call's nil result often settled first (152 of 300 runs): Chord's FollowObserver calls now enter a section of the host's loop (TestFollowObserverCallsFromAnotherGoroutineEnterASectionOfTheLoop), and a call whose attempt was aborted before its handler returned reads the abort from its sources at once (TestLinkedAbortSignalsReportAnAbortOfASourceAtOnce); TestDurablesViewsFromOtherObjects passes 1000 of 1000 runs without -race and 200 of 200 with it. The handlers call chordctx.Suspend before they wait for the Harness, as the handler contract asks. registry_reader_test.go keeps the stand-in cases for registryReader's own logic (a failed composition wakes nothing, Subscribe panics with the error Observe returns). The follow observer's own section entry groups nothing across calls: Pi publishes one commit to every observer in one step of its one thread, and Chord's follow.ts relies on it to compute a derive over two views of a commit once. Go's Durable publishes from its Session writer goroutine, so an adapter gives the Harness a Storage whose publication scope (durable.PublishingStorage, Pi's `Storage.publishing`) is Host.Section, a section of the host; TestOneCommitChangingTwoFollowedViewsReachesADeriveAsOneBatch (one commit that adds an entry and a task, a watched derive over the view and the task graph) asserts one compute and one frame (1,1), and fails 30 of 30 with the torn frame (0,1) on a Storage without the scope."
     },
     {
       "path": "packages/durable/test/harness-registry.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:be2e2ec5b3bd216182bd0357bc000d25088360a570061271992a4659373c146f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:be2e2ec5b3bd216182bd0357bc000d25088360a570061271992a4659373c146f",
+      "evidence": [
+        "durable/core/driver/harness_registry_core_test.go#TestCoreRegistryAnswersACallToAFilteredOutToolWithoutExecutingIt",
+        "durable/core/driver/harness_registry_core_test.go#TestCoreRegistryOrdersAndWrapsPromptSectionsInTheRecordedSystemEntry",
+        "durable/core/driver/harness_registry_core_test.go#TestCoreRegistryRunsTheHooksOfTheSelectedExtensionsInSelectionOrder",
+        "durable/harness/harness_registry_test.go#TestAgentResolution",
+        "durable/harness/harness_registry_test.go#TestRegistry",
+        "durable/harness/harness_registry_test.go#TestSettingsKeepTheDefaultOfAProgressIntervalGivenAsUndefined"
+      ],
+      "rationale": "10/10 cases ported against 1.2.0 (tool results now use output). Pi 5ba1cbaf: agentHooks lists each handler table with the name of its extension (:288) and the report callback takes the extension name; TestAgentResolution asserts both. Delta at Pi 38ff9917: Pi 6c2fd73b0 adds persistWithinMs 1000 to the resolved progress policy: TestSettingsKeepTheDefaultOfAProgressIntervalGivenAsUndefined and the default-policy tests check it. Pi v1.5.0: 10 cases (unchanged v1.4.0+b3a29f11 -\u003e v1.5.0). The only change is `Type.Object({})` becoming `obj({})` for the tool declarations."
     },
     {
       "path": "packages/durable/test/harness-reports.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:f23056ef240df76fb954870a397975cd4ccd62fab343a90647c70b13617f2ccd"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:f23056ef240df76fb954870a397975cd4ccd62fab343a90647c70b13617f2ccd",
+      "evidence": [
+        "durable/core/driver/harness_reports_core_test.go#TestReports",
+        "durable/harness/harness_reports_test.go#TestAFailedSessionIsReportedAsSessionFailed"
+      ],
+      "rationale": "Pi 440a5fcd (OnReport takes a ReportInfo): all 4 cases are subtests of TestReports under Pi's names, over the reference Harness and the core: the task of a failure or fault, the extension whose definition ran also after a replacement, the extension of a failing section or hook against a failing environment builder, and extension, listener, wake and timer failures told from a failed Session. The reference-only Session failure report is TestAFailedSessionIsReportedAsSessionFailed. Pi v1.5.0: 4 cases (unchanged v1.4.0+b3a29f11 -\u003e v1.5.0). 1.5.0 renames the report discriminator from `type` to `kind`, hands the listener a `{error, ...info}` record, tells a failed Session by `storage_failed` where 1.4.0 had `session_failed`, and attaches the throwing commit listener with observeCommits. Go asserts durable.ReportInfo{Kind: ReportStorageFailed} and ReportListenerError (harness_reports_test.go, harness_reports_core_test.go over both engines)."
     },
     {
       "path": "packages/durable/test/harness-restart-failure.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2f6731390f40740cadba373337fb5e01e89c34b9a4139bd6bb3a28f1a5711223"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2f6731390f40740cadba373337fb5e01e89c34b9a4139bd6bb3a28f1a5711223",
+      "evidence": [
+        "durable/core/driver/harness_restart_failure_core_test.go#TestCoreAGenerationInterruptedWhileTheModelAnswers",
+        "durable/core/driver/harness_restart_failure_core_test.go#TestCoreOtherTasksCutOffRestartLimitTimesInARow",
+        "durable/core/driver/harness_restart_failure_core_test.go#TestCoreCrashEdges",
+        "durable/core/driver/harness_restart_failure_core_test.go#TestCoreReportsOfWorkCrashesEnded",
+        "durable/core/driver/harness_restart_failure_core_test.go#TestCoreTheRestartLimitOnTheNormalPath",
+        "durable/harness/harness_restart_failure_test.go#TestTheRestartLimitOnTheNormalPath"
+      ],
+      "rationale": "New in Pi b3a29f11 (#11139): the 18 cases run over both engines in the core driver: a generation interrupted while the model answers is charged an attempt of the retry policy (the aborted entry, the backoff in pi.live.generation.retry, the same deferred handle polled again, runFailure interrupted with no retry left), other tasks cut off restartLimit times in a row end visibly (a tool error result, compactionFailure, runFailure restart_limit, faulted extension tasks), the crash edges (close resends, a charge that is itself cut off), and the task_interrupted and task_faulted reports. Difference (D206): Pi's 'resolves the settings no more often than before on the normal path' counts the reads of `extensions` of a round: 49. Go's TestTheRestartLimitOnTheNormalPath checks that CutOffTooOften reads the settings only for a task that was cut off and counts the reference Harness's resolutions of a round (15 outside the idle settlements, about 34 inside them, as Pi's 49). The core resolves the settings from the snapshot the host sends before each event (D206), so TestCoreTheRestartLimitOnTheNormalPath asserts its measured 9 calls of the settings source a round, and the contract row U-harness-restart-failure states the cf host's measured value for Pi's own test (`expected 6 to be 49`: the host's 6 agent resolutions). Pi's Runtime.commit-wide reporting is the built-in tasks' terminal commits in the core, not a generic hook. Pi v1.5.0: 18 cases (v1.4.0+b3a29f11 -\u003e v1.5.0: 18). Body changes in 1.5.0: every `pi.live.runFailure` carries `first: expect.any(Number)` (expectRestartRunFailure in harness_restart_failure_core_test.go fails when runFailure has no first, over both engines); `compactionFailure` names `trigger` where 1.4.0 had `reason` (harness_restart_failure_core_test.go asserts CompactionFailure{Trigger: CompactionManual}); the report info is `{kind: task_interrupted | task_faulted}`; the settings-resolution count is `\u003c= 49` per round where 1.4.0 pinned 49 (Go asserts at most Pi's 34 retention checks a round, harness_restart_failure_test.go); the restart counter is set with commitWrites (Go: rig.setRestarts). The crash setups still end the host by a crash, not a clean close."
     },
     {
       "path": "packages/durable/test/harness-run-failure.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1338233d6d4e22748dd2bb4b36ad4c0aa9ae93edb63810353fc161a57bd3b632"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1338233d6d4e22748dd2bb4b36ad4c0aa9ae93edb63810353fc161a57bd3b632",
+      "evidence": [
+        "durable/harness/harness_run_failure_test.go#TestRunFailure"
+      ],
+      "rationale": "New in Pi f3255de7: all 5 cases are ported in TestRunFailure under Pi's titles: a model error with its text that a later run clears, a missing model with which one, an abort, a reset that cut the run before an answer (kept by the run its queued input starts), and the failure kept while a run continues the queue in the same commit and replaced by the next. The Durable core writes runFailure too (the restart-failure and view-run core cases assert it on both engines). Pi v1.5.0: 5 cases (v1.4.0+b3a29f11 -\u003e v1.5.0: 5). Body change in 1.5.0: `runFailure` carries `first: expect.any(Number)` in the model-error and abort cases; harness_run_failure_test.go asserts failure.First != nil in both."
     },
     {
       "path": "packages/durable/test/harness-scheduler-indexes.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b198d3e8d2070f0fd7e81c450576c34c3eba59b23bc0e0dbec98a10917a0e33b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b198d3e8d2070f0fd7e81c450576c34c3eba59b23bc0e0dbec98a10917a0e33b",
+      "evidence": [
+        "durable/harness/harness_cancellation_barrier_test.go#TestACascadeTakesItsReasonFromTheNearestCancellingOwner",
+        "durable/harness/harness_cancellation_barrier_test.go#TestWorkBelowACancelledOwner",
+        "durable/harness/scheduler_indexes_test.go#TestSchedulerIndexes",
+        "durable/harness/scheduler_owned_tasks_test.go#TestOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen",
+        "durable/harness/scheduler_owned_tasks_test.go#TestOwnedTasksRejectsOnceItsInvocationHasEnded"
+      ],
+      "rationale": "5/5 cases ported (new in 1.2.0); :82 on SQLite with close and reopen as Pi. Re-reviewed at Pi 92ab5360 (Durable storage adopt callback): this file changes only the Storage commit signature, commit(writes, adopt, context); the Go tests pass the adopt callback at every Storage.Commit with the same inputs and expected results. Pi v1.5.0: 5 cases (unchanged v1.4.0+b3a29f11 -\u003e v1.5.0). The recording storages follow the commit(batches, receive) shape: the terminal-record count is per batch (`commits++` for each batch), which commitCounter in scheduler_indexes_test.go reproduces (Go's Storage.Commit takes the same batches)."
     },
     {
       "path": "packages/durable/test/harness-scheduler-retention.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:0536b4ed6ec7b80223115a7dc0e999b4b17d2ff0b810b3ee8ab30950c65be6c9"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:0536b4ed6ec7b80223115a7dc0e999b4b17d2ff0b810b3ee8ab30950c65be6c9",
+      "evidence": [
+        "durable/harness/scheduler_retention_test.go#TestSchedulerRetention",
+        "durable/harness/scheduler_retention_chains_test.go#TestSchedulerRetentionBelowAForgottenConversation",
+        "durable/harness/scheduler_retention_test.go#holds a live owner for work later created in a forgotten conversation, loading its chain again",
+        "durable/harness/scheduler_retention_test.go#does not scan queued submissions for an input when nothing cancels",
+        "durable/harness/scheduler_retention_test.go#lets a task wait on a forgotten ended owner"
+      ],
+      "rationale": "New in Pi 1.2.0: neither 1.0.4 nor 1.1.0 has the file. It has 14 cases at v1.5.0 (Pi lines 163, 178, 207, 236, 265, 292, 335, 374, 399, 429, 465, 489, 508, 535), all ported under Pi's names: 8 in TestSchedulerRetention (scheduler_retention_test.go: Pi :163, :178, :374, :399, :465, :489, :508, :535) and 6 in TestSchedulerRetentionBelowAForgottenConversation (scheduler_retention_chains_test.go: Pi :207, :236, :265, :292, :335, :429). Sizes are read through TaskScheduler.indexSizes, Pi's SCHEDULER_INDEX_SIZES. The wait-cycle rule changes :535 'lets a task wait on a forgotten ended owner': a wait on an ended task closes no cycle and resumes at once, and the Go subtest expects completed (6d0ec024f2). :508 is Pi's scenario (busy root, input queued there, no queued-submission scan); the earlier forgotten-conversation variant stays as a Go-only subtest, red when an input queued with no cancellation intent marks a cascade pending. Pi opens SQLite storage by default; the Go cases use MemoryStorage except where Pi reopens, and the scheduler sees the same records either way. Pi v1.5.0 (v1.4.0+b3a29f11 -\u003e v1.5.0: 14 cases, unchanged count). Body changes in 1.5.0: (1) `keeps a scope busy while the chain of new work below a forgotten conversation loads` becomes `loads the chain of new work below a forgotten conversation before admitting it, and keeps the scope busy` (:292): the harness is closed and reopened so B is in no cache, the read of B is held, the creating commit must wait for it, then WaitForIdle stays pending until d ends; Go scheduler_retention_chains_test.go reopens the memory storage (MemoryStorage.Reopen) and holds the task read of B (taskRead). (2) :178 `holds a live owner for work later created in a forgotten conversation, loading its chain again` no longer counts storage reads (Pi v1.5.0 removed countReads); Go asserts what remains of it (P completing for D, both complete). (3) busy `run` documents carry `turns: 0`; LiveRun.Turns has no omitempty, so the Go documents carry it too. Go waits for the scheduler's asynchronous drop queue to empty before it takes the settled-size baselines of :178, :335 and :489 (a comment at each says why); Pi's sweep runs inside the commit."
     },
     {
       "path": "packages/durable/test/harness-sleep.test.ts",
@@ -8722,13 +8852,41 @@
     },
     {
       "path": "packages/durable/test/harness-structured-output.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:2bc348749188c049cf43fffeb31a5d5f2f7fec71f5ceea9047c1db8a2b80a7ce"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:2bc348749188c049cf43fffeb31a5d5f2f7fec71f5ceea9047c1db8a2b80a7ce",
+      "evidence": [
+        "durable/harness/tool_nested_records_test.go#TestANestedCallsBrokenStructuredOutputIsAnErrorResult",
+        "durable/core/driver/tool_structured_callers_core_test.go#TestCoreCallersGetASchemaToolsValidatedStructuredOutput",
+        "durable/core/driver/tool_structured_callers_core_test.go#TestCoreCallersGetASchemaLessToolsOutputOneTextAsAStringOneImageAsItselfElseTheList",
+        "durable/core/driver/tool_structured_callers_core_test.go#TestCoreCallersGetTheBoundedOutputWithoutTheRenderedDiagnostics",
+        "durable/core/driver/tool_structured_callers_core_test.go#TestCoreStructuredOutputSurvivesAnAfterToolThatReplacesTheOutputAndAReplacedOneIsValidated",
+        "durable/harness/tool_nested_records_test.go#TestACallerGetsAFallbackResultForANestedCallTheSchedulerFaulted",
+        "durable/harness/tool_nested_records_test.go#TestNestedErrorResultsAndStructuredOutput",
+        "durable/harness/tool_structured_bash_test.go#TestCallersOfBashGetItsRetainedOutputAndExitCodeAlsoForANonzeroExit",
+        "durable/harness/tool_structured_callers_test.go#TestCallersGetASchemaLessToolsOutputOneTextAsAStringOneImageAsItselfElseTheList",
+        "durable/harness/tool_structured_callers_test.go#TestCallersGetASchemaToolsValidatedStructuredOutputWhichTheTranscriptDoesNotStore",
+        "durable/harness/tool_structured_callers_test.go#TestCallersGetTheBoundedOutputAsTheModelSeesItWithoutTheRenderedDiagnostics",
+        "durable/harness/tool_structured_callers_test.go#TestStructuredOutputSurvivesAnAfterToolThatReplacesTheOutputAndAReplacedOneIsValidated",
+        "durable/harness/tool_structured_callers_test.go#TestTheHarnessStoresExactlyWhatCallersAndEventsGetAndKeepsAStoredNull"
+      ],
+      "rationale": "Pi f3255de7 removes the tool_execution_end events from the case that compared a live caller's nested results with the events ('A client reads a live caller's nested results from the same documents'): the watchEvents stream and the ends comparison are gone, the received results are the assertion. The 10 cases stay ported in the nested records tests and on both engines in tool_structured_callers_core_test.go. Pi v1.5.0: 10 cases (unchanged v1.4.0+b3a29f11 -\u003e v1.5.0). Body changes in 1.5.0: pi-schema helpers replace Type.*; the stored-result probe attaches with observeCommits and reads a document change by `kind === \"change\"`. Go reads the same per-commit nested result (tool_structured_callers_test.go uses ObserveCommits)."
     },
     {
       "path": "packages/durable/test/harness-structured.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:fc2444604a5178ad867537c303bb69e38cd9f9e13af761cc2e6311110d346298"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:fc2444604a5178ad867537c303bb69e38cd9f9e13af761cc2e6311110d346298",
+      "evidence": [
+        "durable/harness/harness_structured_test.go#TestTaskOwnership",
+        "durable/harness/harness_structured_test.go#TestWaiting",
+        "durable/harness/harness_structured_test.go#TestCompleting",
+        "durable/core/driver/tool_structured_callers_core_test.go#TestCoreShowsAToolCallsSlotFromPendingThroughItsRunningOutputToItsResultEntry",
+        "durable/harness/harness_structured_test.go#rejects the wait that closes a cycle",
+        "durable/harness/harness_structured_test.go#rejects a cycle of a hold and two waits that each look reasonable",
+        "durable/harness/harness_structured_test.go#follows no wait of an abort-marked task, which waits only for its owned work",
+        "durable/harness/harness_structured_test.go#keeps run control with a faulted generation until its owned work drains, and fails the Harness on a failed final commit",
+        "durable/harness/harness_structured_test.go#fails the Harness on a failed finalization, which reopening applies"
+      ],
+      "rationale": "Pi f3255de7 rewrites 142 lines for the windowed view: the 'tool rounds and events' group becomes 'tool rounds as the view shows them' (a call's slot from pending through its running output to its result entry, read from view histories instead of tool events), 'ends a turn at the generation's hold, before its successor's turn starts' becomes 'hands run control to the successor while the generation holds, and keeps it in the graph until it ends', the per-generation turn_end case becomes 'shows a held generation as completing to an observer attached while it holds', the faulted tool's task_failed becomes its graph node, and the aborted-run cases leave runFailure {taskId, inputs, reason aborted} in pi.live. The 56 cases stay ported under Pi's names in harness_structured_test.go, with the tool-round cases on both engines in tool_structured_callers_core_test.go (TestCoreEndsACallThatNeverRunsAndAToolAbortedWithItsGeneration among them). Pi v1.5.0: 56 cases (v1.4.0+b3a29f11 -\u003e v1.5.0: 56). Body changes in 1.5.0: aborted and faulted `runFailure` carry `first: expect.any(Number)` (harness_structured_test.go asserts it: the abort case compares first with the user entry, the faulted case failure.First != nil); the refusing storages refuse one batch of the batches form (Go's controlled storage refuses the commit that writes the mark); `closed` is `{kind: failed}`."
     },
     {
       "path": "packages/durable/test/harness-submissions.test.ts",

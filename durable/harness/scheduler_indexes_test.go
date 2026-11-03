@@ -61,7 +61,7 @@ func (store *conversationRead) Conversation(ctx context.Context, id durable.Conv
 }
 
 func TestSchedulerIndexes(t *testing.T) {
-	// harness-scheduler-indexes.test.ts:125 it("finalizes a chain of held owners in the commit that frees the last one")
+	// harness-scheduler-indexes.test.ts:132 it("finalizes a chain of held owners in the commit that frees the last one")
 	t.Run("finalizes a chain of held owners in the commit that frees the last one", func(t *testing.T) {
 		fixtures := newOwnFixtures()
 		store := &commitCounter{Storage: openSqlite(t, filepath.Join(t.TempDir(), "session.sqlite")), endedIn: map[durable.TaskId]int{}}
@@ -95,7 +95,7 @@ func TestSchedulerIndexes(t *testing.T) {
 		mustClose(t, opened.harness)
 	})
 
-	// harness-scheduler-indexes.test.ts:160 it("keeps a scope busy after reopen for work below an ended task whose chain is not loaded yet")
+	// harness-scheduler-indexes.test.ts:170 it("keeps a scope busy after reopen for work below an ended task whose chain is not loaded yet")
 	t.Run("keeps a scope busy after reopen for work below an ended task whose chain is not loaded yet", func(t *testing.T) {
 		fixtures := newOwnFixtures()
 		path := filepath.Join(t.TempDir(), "session.sqlite")
