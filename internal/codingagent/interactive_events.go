@@ -5,6 +5,7 @@ package codingagent
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -111,8 +112,13 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		if m.opts.Settings.GetShowTerminalProgress() {
 			setTerminalProgress(false)
 		}
-		// Stop working loader. Mirrors upstream streaming_stopped.
-		m.stopWorkingLoader()
+		m.clearStatusIndicator("working")
+		// Pi removes a message still streaming when the run ends (interactive-mode.ts agent_end).
+		if m.evCurrentBlock != nil {
+			m.chatContainer.Remove(m.evCurrentBlock)
+			m.assistantBlocks = slices.DeleteFunc(m.assistantBlocks, func(block *tui.AssistantMessageComponent) bool { return block == m.evCurrentBlock })
+			m.evCurrentBlock = nil
+		}
 		// Finalize any tool still mid-execution when the turn ended (an
 		// aborted run emits no ToolExecutionEnd, so its component would stay
 		// ToolStateRunning and its live "Elapsed X.Xs" footer would keep
@@ -256,6 +262,10 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		m.tuiInst.RequestRender()
 
 	case agent.MessageEndEvent:
+		// Pi ends message_end for a user message without rendering or touching the pending tools (interactive-mode.ts handleEvent).
+		if e.Message.User != nil {
+			break
+		}
 		defer m.refreshFooterContextUsage()
 		finished := e.Message.Assistant
 		if finished != nil && finished.StopReason == ai.StopReasonAborted {
@@ -323,7 +333,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			m.evCurrentBlock.FinishStreaming() // its last delta arrived; keep no memos for the next one
 		}
 		m.evCurrentBlock = nil
-		m.tuiInst.CancelPendingRender()
+		m.tuiInst.RequestRender()
 
 	case agent.ToolExecutionStartEvent:
 		// A call another tool made through ctx.executeTool(), for example from a codemode script, is shown inside its

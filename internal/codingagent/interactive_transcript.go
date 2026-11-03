@@ -678,7 +678,18 @@ func (m *InteractiveMode) flushCompactionQueue(ctx context.Context, startTurn bo
 	// it instead of starting a concurrent turn. turnActive is the same boundary
 	// in PiG; the idle path starts a new prompt, while a live run receives the
 	// message through its requested queue.
-	m.handleSubmitWithImages(ctx, queued[firstIdx].text, queued[firstIdx].images)
+	// upstream: interactive-mode.ts flushCompactionQueue restoreQueue, run when the first prompt is rejected.
+	restoreQueue := func(err error) {
+		m.agent.ClearAllQueues()
+		m.compactionQueue = queued
+		m.updatePendingMessagesDisplay()
+		plural := ""
+		if len(queued) > 1 {
+			plural = "s"
+		}
+		m.showError(fmt.Sprintf("Failed to send queued message%s: %s", plural, err.Error()))
+	}
+	m.handleSubmitWithImages(withPromptRejection(ctx, restoreQueue), queued[firstIdx].text, queued[firstIdx].images)
 	// Remaining messages preserve their queued mode; later extension commands
 	// still dispatch immediately (deliverCompactionQueued). A message that finds the run already
 	// settled starts the next turn instead of waiting in a drained queue.

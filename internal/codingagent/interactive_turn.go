@@ -358,7 +358,7 @@ func (m *InteractiveMode) startTurn(ctx context.Context, prompt string, images [
 				rejected = true
 				_ = m.settleTurn(runCtx, err)
 				if runCtx.Err() == nil {
-					m.runOnMain(m.runCtx, func() { m.showError(err.Error()) })
+					m.runOnMain(m.runCtx, func() { m.rejectPrompt(ctx, err) })
 				}
 				return
 			}
@@ -397,7 +397,11 @@ func (m *InteractiveMode) startTurn(ctx context.Context, prompt string, images [
 		// Only the run's own cancellation (Esc or shutdown) is silent; any
 		// other error, a deadline from elsewhere included, is shown.
 		if err != nil && runCtx.Err() == nil {
-			m.showTurnError(err)
+			if rejected {
+				m.runOnMain(m.runCtx, func() { m.rejectPrompt(ctx, err) })
+			} else {
+				m.showTurnError(err)
+			}
 		}
 		m.runOnMain(m.runCtx, func() { m.tuiInst.Render() })
 	}()
@@ -533,15 +537,20 @@ func waitForSessionIdle(ctx context.Context, settled <-chan struct{}, session In
 // showTurnError surfaces a failed run on the main loop.
 func (m *InteractiveMode) showTurnError(err error) {
 	// Upstream shows the error text through showError; it never starts a login from it.
-	message := err.Error()
-	if errors.Is(err, agent.ErrNoModelSelected) {
-		// prompt() throws formatNoModelSelectedMessage(), with login and /model guidance, instead of a bare error.
-		message = FormatNoModelSelectedMessage()
-	}
+	message := turnErrorMessage(err)
 	m.runOnMain(m.runCtx, func() {
 		m.showError(message)
 		m.tuiInst.Render()
 	})
+}
+
+// turnErrorMessage is the text of a prompt's error.
+func turnErrorMessage(err error) string {
+	if errors.Is(err, agent.ErrNoModelSelected) {
+		// prompt() throws formatNoModelSelectedMessage(), with login and /model guidance, instead of a bare error.
+		return FormatNoModelSelectedMessage()
+	}
+	return err.Error()
 }
 
 // handleBashCommand owns the awaited user_bash dispatch, execution and persistence off the input loop. UI mutations return to the owner loop; hook failure never falls back to local execution.

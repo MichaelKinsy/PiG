@@ -159,8 +159,8 @@ func (m *InteractiveMode) finishPreflight(submission inputPreflight, result inpu
 		// to the old one.
 	case result.err != nil:
 		// Upstream prompt() rejects and the input is not sent; the error is
-		// shown.
-		m.showError(result.err.Error())
+		// shown, or handed to the caller that submitted the prompt.
+		m.rejectPrompt(submission.ctx, result.err)
 	case !result.handled:
 		text := result.text
 		if submission.expand {
