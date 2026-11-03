@@ -4336,14 +4336,14 @@
     {
       "id": "BF-23841dc",
       "title": "The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does…",
-      "symptom": "The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does, a union of the three literals (`anyOf` of `{\"type\":\"string\",\"const\":...}`), where PiG sent a string enum; the whole schema is byte for byte what Pi's TypeBox writes.",
+      "symptom": "The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does, a union of the three literals (`anyOf` of `{\"type\":\"string\",\"const\":...}`), where PiG sent a string enum; the whole schema is exactly what Pi's TypeBox writes.",
       "rootCause": "documentation-audit.eval.ts:15-21 writes `verdict: Type.Union([Type.Literal(\"match\"), Type.Literal(\"mismatch\"), Type.Literal(\"inconclusive\")])`, which TypeBox serializes as `{\"anyOf\":[{\"type\":\"string\",\"const\":\"match\"},...]}`. The Go port used ai.StringEnum, so the model saw `{\"type\":\"string\",\"enum\":[...]}`.",
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does, a union of the three literals (`anyOf` of `{\"type\":\"string\",\"const\":...}`), where PiG sent a string enum; the whole schema is byte for byte what Pi's TypeBox writes.",
+      "releaseNote": "The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does, a union of the three literals (`anyOf` of `{\"type\":\"string\",\"const\":...}`), where PiG sent a string enum; the whole schema is exactly what Pi's TypeBox writes.",
       "origin": "release note",
       "commits": [
         {

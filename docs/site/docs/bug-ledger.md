@@ -3575,14 +3575,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 **The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does…**
 
 - **Source:** PiG's own defect
-- **Symptom:** The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does, a union of the three literals (`anyOf` of `{"type":"string","const":...}`), where PiG sent a string enum; the whole schema is byte for byte what Pi's TypeBox writes.
+- **Symptom:** The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does, a union of the three literals (`anyOf` of `{"type":"string","const":...}`), where PiG sent a string enum; the whole schema is exactly what Pi's TypeBox writes.
 - **Root cause:** documentation-audit.eval.ts:15-21 writes `verdict: Type.Union([Type.Literal("match"), Type.Literal("mismatch"), Type.Literal("inconclusive")])`, which TypeBox serializes as `{"anyOf":[{"type":"string","const":"match"},...]}`. The Go port used ai.StringEnum, so the model saw `{"type":"string","enum":[...]}`.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `23841dce31` (2026-11-02)
 - **Tests:** `internal/evals/evalsuites/audit_tool_test.go::TestSubmitAuditParametersKeepTheirAuthoredOrder`
-- **Release note:** The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does, a union of the three literals (`anyOf` of `{"type":"string","const":...}`), where PiG sent a string enum; the whole schema is byte for byte what Pi's TypeBox writes.
+- **Release note:** The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does, a union of the three literals (`anyOf` of `{"type":"string","const":...}`), where PiG sent a string enum; the whole schema is exactly what Pi's TypeBox writes.
 
 ### BF-23ee6e1
 
