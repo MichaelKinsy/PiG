@@ -280,11 +280,19 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/first-time-setup.ts#FirstTimeSetupComponent.handleInput",
       "ownerFamily": "startup",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
-      "divergence": "",
+      "disposition": "divergence",
+      "pigTargets": [
+        "internal/codingagent/first_time_setup.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/first_time_setup_contract_test.go#TestFirstTimeSetupBindingOverlapsMatchPi",
+        "internal/codingagent/first_time_setup_oracle_test.go#TestFirstTimeSetupMatchesPi",
+        "internal/codingagent/first_time_setup_test.go"
+      ],
+      "contracts": [
+        "coding-agent/first-time-setup/input-state-machine"
+      ],
+      "divergence": "D88",
       "rationale": ""
     },
     {
@@ -611,10 +619,19 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/user-message-selector.ts#UserMessageList.handleInput",
       "ownerFamily": "interactive-rendering",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/user_message_selector.go#HandleInput"
+      ],
+      "evidence": [
+        "test/parity/scenarios/interactive-rendering/16-user-message-selector.toml",
+        "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage",
+        "tui/user_message_selector_contract_test.go#TestUserMessageSelectorPageKeyOverlapsMatchPi",
+        "tui/user_message_selector_oracle_test.go#TestUserMessageSelectorInputMatchesPi"
+      ],
+      "contracts": [
+        "coding-agent/user-message-selector/input-state-machine"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -1071,10 +1088,28 @@
     {
       "id": "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput",
       "ownerFamily": "fullscreen",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tui_alt_screen_input.go#HandleViewportInput",
+        "tui/tui_alt_screen_mouse.go#handleWheel"
+      ],
+      "evidence": [
+        "test/parity/scenarios/fullscreen/02-keyboard-navigation-fullscreen.toml",
+        "tui/alt_screen_focus_out_contract_test.go#TestAltScreenFocusOutEndsPointerGestures",
+        "tui/alt_screen_focus_out_contract_test.go#TestAltScreenFocusOutRestartsClickCounts",
+        "tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeyBoundToTwoActionsRunsTheEarlierOne",
+        "tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportKeysScrollByTheirAmounts",
+        "tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportNavigationDefersToCapturingFocusAndOverlays",
+        "tui/alt_screen_viewport_input_contract_test.go#TestAltScreenViewportSearchKeysNeedTheFocusedSearchBox",
+        "tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList",
+        "tui/tui_alt_screen_test.go#TestAltScreenKeyboardPageAndEdgeScroll",
+        "tui/tui_alt_screen_test.go#TestAltScreenScrollToPromptJumpsToOsc133Marker",
+        "tui/tui_alt_screen_v087_test.go#TestAltScreenFocusedOverlayOwnsViewportKeys",
+        "tui/tui_alt_screen_v087_test.go#TestAltScreenScrollsOnWheelAFocusedOverlayDoesNotHandle"
+      ],
+      "contracts": [
+        "tui/tui-alt-screen/viewport-input"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -1972,10 +2007,17 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/assistant-message.ts#AssistantMessageComponent.render",
       "ownerFamily": "interactive-rendering",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/assistant_message_block.go#Render"
+      ],
+      "evidence": [
+        "test/parity/scenarios/interactive-rendering/01-assistant-message-text.toml",
+        "tui/assistant_message_render_oracle_test.go#TestAssistantMessageComponentRenderMatchesPi"
+      ],
+      "contracts": [
+        "coding-agent/assistant-message/render"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -2336,10 +2378,22 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/tool-execution.ts#ToolExecutionComponent.render",
       "ownerFamily": "interactive-rendering",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tool_execution.go#Render",
+        "tui/tool_execution_definition.go#renderSelfShell"
+      ],
+      "evidence": [
+        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+        "test/parity/scenarios/interactive-rendering/03-tool-execution-bash.toml",
+        "test/parity/scenarios/interactive-rendering/10-edit-tool-diff.toml",
+        "tui/tool_execution_definition_test.go#TestDefinitionCardSelfShell",
+        "tui/tool_execution_render_contract_test.go#TestSelfShellCardDrawsBlankRowComponentsThenImages",
+        "tui/tool_execution_render_contract_test.go#TestToolCardAppliesStreamedArgumentsAtRender"
+      ],
+      "contracts": [
+        "coding-agent/tool-execution/render"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -2462,10 +2516,17 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/user-message.ts#UserMessageComponent.render",
       "ownerFamily": "interactive-rendering",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/user_message_block.go#Render"
+      ],
+      "evidence": [
+        "test/parity/scenarios/interactive-rendering/02-user-message-box.toml",
+        "tui/user_message_render_oracle_test.go#TestUserMessageComponentRenderMatchesPi"
+      ],
+      "contracts": [
+        "coding-agent/user-message/render"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -3115,10 +3176,19 @@
     {
       "id": "render:packages/tui/src/layout.ts#<module>.renderLayoutFrame",
       "ownerFamily": "fullscreen",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/layout.go#RenderLayoutFrame"
+      ],
+      "evidence": [
+        "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml",
+        "test/parity/scenarios/tui-components/17-layout-sparse-billion-rows.toml",
+        "tui/alt_screen_render_contract_test.go#TestRenderLayoutFrameClampsTheViewportToOneCell",
+        "tui/layout_frame_oracle_test.go#TestRenderLayoutFrameMatchesPi"
+      ],
+      "contracts": [
+        "tui/layout/render-layout-frame"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -3135,30 +3205,62 @@
     {
       "id": "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.doRender",
       "ownerFamily": "fullscreen",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tui.go#resolveFakeCursors",
+        "tui/tui_alt_screen.go#compositeFlashes",
+        "tui/tui_alt_screen.go#compositeOverlays",
+        "tui/tui_alt_screen.go#doRender",
+        "tui/tui_alt_screen.go#prepareKittyScreen"
+      ],
+      "evidence": [
+        "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml",
+        "tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+        "tui/alt_screen_render_contract_test.go#TestAltScreenDoesNotDrawWhileInactive",
+        "tui/alt_screen_render_contract_test.go#TestRenderLayoutFrameClampsTheViewportToOneCell",
+        "tui/fake_cursor_test.go#TestAltScreenKeepsTheSelectionHighlightAfterAFakeCursorCell"
+      ],
+      "contracts": [
+        "tui/tui-alt-screen/doRender"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.implicitDocument.render",
       "ownerFamily": "fullscreen",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tui_alt_screen.go#NewTuiAltScreenWithOutput",
+        "tui/tui_alt_screen.go#renderBorrowed"
+      ],
+      "evidence": [
+        "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml",
+        "tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+        "tui/alt_screen_render_contract_test.go#TestAltScreenImplicitDocumentRendersTheScreensChildren"
+      ],
+      "contracts": [
+        "tui/tui-alt-screen/implicit-document-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.render",
       "ownerFamily": "fullscreen",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tui_alt_screen.go#StopWithOptions",
+        "tui/tui_alt_screen.go#renderDocument"
+      ],
+      "evidence": [
+        "test/parity/scenarios/fullscreen/01-conversation-fullscreen.toml",
+        "tui/alt_screen_oracle_test.go#TestAltScreenFramesMatchPiOracle",
+        "tui/alt_screen_render_contract_test.go#TestAltScreenFrameAndExitDumpDropZonePrefixes"
+      ],
+      "contracts": [
+        "tui/tui-alt-screen/render"
+      ],
       "divergence": "",
       "rationale": ""
     },
