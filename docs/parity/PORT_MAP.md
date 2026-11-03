@@ -1109,6 +1109,12 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 | `packages/evals/src/plan.ts` | `internal/evals/plan.go` | ✅ |
 | `packages/evals/src/report.ts` | `internal/evals/report.go` | ✅ |
 
+## `packages/evals/evals/`
+
+| Upstream | PiG | Status |
+|---|---|---|
+| `packages/evals/evals/documentation-audit.eval.ts` | `internal/evals/evalsuites/audit.go` | ✅ |
+
 ## `packages/schema/src/`
 
 | Upstream | PiG | Status |

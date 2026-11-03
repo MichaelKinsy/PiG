@@ -28,7 +28,8 @@ Combined PORT_MAP-rule figure: before **8 / 11 files ✅ = 72.7%** (telemetry 6/
 |---|---|---|---|
 | `evals/evals/acme-server.ts` | `internal/evals/acme_server.go` | ✅ | `acme_server.go:1-262`; bytes pinned by `TestAcmeServerStreamsUpstreamBytes`. |
 | `evals/evals/configured-runtime.ts` | `internal/evals/configured_runtime.go` | ✅ | `configured_runtime.go:1-178`. |
-| `evals/evals/smoke.eval.ts`, `models.docs.eval.ts`, `documentation-audit.eval.ts`, `extensions.docs.eval.ts`, `custom-provider.docs.eval.ts`, `openai-provider.docs.eval.ts`, `tui.docs.eval.ts` | none | ⬜ x7 | Vitest-evals suites; they run the agent Session through `createPiCodingAgentHarness`. |
+| `evals/evals/documentation-audit.eval.ts` | `internal/evals/evalsuites/audit.go` | ✅ | `TestSubmitAuditParametersKeepTheirAuthoredOrder` compares the submit_documentation_audit schema with Pi's TypeBox output. |
+| `evals/evals/smoke.eval.ts`, `models.docs.eval.ts`, `extensions.docs.eval.ts`, `custom-provider.docs.eval.ts`, `openai-provider.docs.eval.ts`, `tui.docs.eval.ts` | none | ⬜ x6 | Vitest-evals suites; they run the agent Session through `createPiCodingAgentHarness`. |
 | `evals/docker/entrypoint.ts` | none | ⬜ | container entry point. |
 | `evals/docker/install-runtime.mjs`, `docker/Dockerfile`, `docker/Dockerfile.dockerignore` | none | ⬜ x3 | image build. |
 | `evals/vitest.evals.config.ts`, `vitest.test.config.ts`, `tsconfig.json`, `.gitignore`, `package.json`, `README.md` | none | n/a | Vitest and TypeScript tooling configuration; Go uses `go test` and the Go toolchain. |

@@ -829,9 +829,3 @@ commit = "e6e85cd392"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "Pi's onPayload answer is whatever JSON.parse read; PiG's core driver hands the providers that answer as validated JSON text (a json.RawMessage, which the providers already take through payloadReplacement) instead of a decoded any, so it keeps the member order the chain wrote. Only the Go representation the test compares changed (sent holds the chain's text, not decoded maps); no Pi behavior changed."
-
-[[entry]]
-path = "internal/evals/evalsuites/audit_tool_test.go"
-commit = "23841dce314e781a2fc68c9e498a8475ca5ca374"
-class = "NOBEHAVIOR"
-reason = "The expected schema of submit_documentation_audit follows documentation-audit.eval.ts:15-21, where the verdict is a Type.Union of Type.Literal (anyOf of type and const) and not a string enum; the same test compares the Go schema with the installed Pi comparator's TypeBox output byte for byte. The eval suites of packages/evals/evals are tracked in docs/parity/gap-closure/gap-telemetry-evals.md and not in PORT_MAP, so no inventory names the Pi file the trailer would cite."
