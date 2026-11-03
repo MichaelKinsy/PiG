@@ -235,8 +235,9 @@ paths = [
 
 [[record]]
 version = "1.4.0"
-reason = "Entries that record the release a change or a divergence was reviewed or fixed against. A changelog fragment, a bug-ledger entry (generated from the fix commits) and a divergence row name the Pi release the reviewer compared with. Pi 1.5.0 changes three tracked sources (branch-summarization.ts, session-manager.ts, ai/utils/version.ts), none of which a listed divergence describes, so the 1.4.0 comparison stands; rewriting history in them would claim a review that did not happen."
+reason = "Entries that record the release a change or a divergence was reviewed or fixed against. A changelog fragment, a bug-ledger entry (generated from the fix commits) and a divergence row name the Pi release the reviewer compared with. Pi 1.5.0 changes three tracked sources (branch-summarization.ts, session-manager.ts, ai/utils/version.ts), none of which a listed divergence describes, so the 1.4.0 comparison stands; rewriting history in them would claim a review that did not happen. KNOWN-GAPS-0.3.x.md is listed because its generated block still names the 1.4.0 build until `make known-gaps` can regenerate it (it stops at the durable harness-storage-failure release-policy red); delete the entry then."
 paths = [
+  "docs/parity/KNOWN-GAPS-0.3.x.md",
   "changelog.d/",
   "docs/parity/DIVERGENCES.md",
   "docs/parity/divergences/",
@@ -257,4 +258,13 @@ version = "0.7.0"
 reason = "D198 states what the Pi release it was reviewed against (0.7.0) validated; the bundled divergence page copies that row."
 paths = [
   "internal/pigdocs/content/divergences.md",
+]
+
+[[record]]
+version = "1.2.0"
+reason = "Pages that date a feature to the Pi release that added it. Pi's CHANGELOG puts the -p truncation warning, the keybindings $schema and the strict theme schema in [1.2.0]; the pages are checked for any other release number against the pin."
+paths = [
+  "docs/site/docs/cli.md",
+  "docs/site/docs/keybindings.md",
+  "docs/site/docs/themes.md",
 ]

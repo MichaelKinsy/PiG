@@ -7,6 +7,8 @@
 // upstream: coding-agent/src/core/exec.ts
 package extension
 
+// Ports packages/coding-agent/src/core/exec.ts.
+
 import (
 	"context"
 	"errors"
@@ -45,7 +47,35 @@ func execMaxBuffer(opts *ExecOptions) (int64, error) {
 	if value != math.Trunc(value) || value < 0 || value > float64(execMaxStringLength) {
 		return 0, fmt.Errorf("maxBuffer must be an integer between 0 and %d bytes", execMaxStringLength)
 	}
+	//portlint:allow numbers value is finite, integral and within [0, 536870888] after the check above (NaN fails value != Trunc(value), infinities fail the upper bound), so int64(value) is exact like JS
 	return int64(value), nil
+}
+
+// ExecOptions configures a shell command execution.
+//
+// upstream: core/exec.ts ExecOptions
+type ExecOptions struct {
+	// Timeout in milliseconds. Pi's timeout is a JavaScript number: a positive value starts a timer and anything else starts none.
+	Timeout float64 `json:"timeout,omitempty"`
+	// CWD overrides the working directory. Empty uses the extension's CWD.
+	CWD string `json:"cwd,omitempty"`
+	// MaxBuffer is the byte limit of stdout and stderr together; exceeding it terminates the command with Truncated set. nil is undefined: the default, 256 MiB capped by the runtime string limit. Pi's maxBuffer is a JavaScript number that must be an integer from 0 to the runtime string limit, so a fraction, a negative value, NaN or an infinity fails the call (a RangeError upstream); the pointer keeps 0 distinct from undefined.
+	MaxBuffer *float64 `json:"maxBuffer,omitempty"`
+	// Signal is upstream's options.signal: when it is done the command ends as when ExecCommand's own context ends, with SIGTERM to the command alone. It does not cross the wire; a subprocess extension's signal reaches the host as the call's own cancellation.
+	Signal AbortSignal `json:"-"`
+}
+
+// ExecResult is the outcome of a shell command execution.
+//
+// upstream: core/exec.ts ExecResult
+type ExecResult struct {
+	Stdout string `json:"stdout"`
+	Stderr string `json:"stderr"`
+	Code   int    `json:"code"`
+	// Killed reports that pi terminated the command: timeout, abort, or output over MaxBuffer.
+	Killed bool `json:"killed"`
+	// Truncated reports that output exceeded MaxBuffer: Stdout and Stderr are incomplete and Code is nonzero.
+	Truncated bool `json:"truncated"`
 }
 
 // execDrainHooksKey carries the childwait hooks that a test installs on the
@@ -290,5 +320,6 @@ func NodeTimerDelay(ms float64) time.Duration {
 	if !(ms >= 1 && ms <= 2147483647) {
 		return time.Millisecond
 	}
+	//portlint:allow numbers ms is within [1, 2147483647] here (NaN and out-of-range returned above), so int64(ms) is the truncation Node applies and cannot overflow
 	return time.Duration(int64(ms)) * time.Millisecond
 }

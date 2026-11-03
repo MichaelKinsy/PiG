@@ -1,5 +1,7 @@
 package coding
 
+// Ports packages/coding-agent/src/core/sdk.ts (the createAgentSession tool options: initialActiveToolNames, excludedToolNames, noTools).
+
 import (
 	"context"
 	"fmt"

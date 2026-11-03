@@ -1,5 +1,7 @@
 package coding
 
+// pi: packages/coding-agent/src/core/cache-stats.ts
+
 import (
 	"math"
 	"testing"
@@ -9,6 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
+// The "accumulates missed tokens and cost across turns" case of cache-stats.test.ts (same three turns, 105000 missed tokens, 0.36225 missed cost) with the cache-read price a registered model gives the Session instead of the test's stub price source.
 func TestSessionCacheWasteUsesRegisteredModelPrice(t *testing.T) {
 	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {

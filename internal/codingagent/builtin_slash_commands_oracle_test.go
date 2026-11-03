@@ -9,6 +9,8 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
+// pi: packages/coding-agent/src/core/slash-commands.ts
+
 // core/slash-commands.ts BUILTIN_SLASH_COMMANDS against pinned Pi: the same commands in the same order with the same descriptions and
 // argument hints, which /help and the autocomplete popup show. /share (D64) and /bug (D62) differ on purpose.
 func TestBuiltinSlashCommandsMatchPi(t *testing.T) {

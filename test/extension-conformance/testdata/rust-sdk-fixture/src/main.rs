@@ -3678,7 +3678,9 @@ fn main() {
                 thread_ctx.wait_for_idle()?;
                 let later = thread_ctx.is_idle()?;
                 thread_ctx.notify(
-                    &format!("rw_idle_callback=before:{before};sync:{first},{second};later:{later}"),
+                    &format!(
+                        "rw_idle_callback=before:{before};sync:{first},{second};later:{later}"
+                    ),
                     "info",
                 );
                 Ok(())

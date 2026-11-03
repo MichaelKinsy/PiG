@@ -1,0 +1,3 @@
+### Fixed
+
+- `@earendil-works/pi-agent-core`, `pi-tui` and `pi-ai` (and `pi-ai/models`, `pi-ai/oauth`, `pi-ai/providers/all`) now resolve, in an extension, to files of a package root laid out like Pi's: a `package.json` named for the package above the entry, the entry at the path Pi's `main` or `exports` gives (`dist/index.js` and the like), and `pi-ai`'s `dist/cli.js`. An extension that resolves one of these packages and walks up to its `package.json`, reads `../package.json` beside the entry, or computes a `dist/` file from the root found nothing in the runtime's shim directory before. <!-- fix: 27e9bc8860, fa330d4b2d, 5b6dce98de -->

@@ -94,7 +94,7 @@ The process returns the prompt error as its exit status. A consumer must read st
 
 ## Worked example
 
-This example runs one prompt that makes the model call the `bash` tool, then reads the stream three ways. The provider is a scripted test server that answers with one `bash` call and then a short sentence, so the model's wording is illustrative. The record types, their order and the tool fields are what PiG printed. Pi 1.1.0 printed the same record types and field names for the same prompt, and Pi 1.5.0 did not change the event types.
+This example runs one prompt that makes the model call the `bash` tool, then reads the stream three ways. The provider is a scripted test server that answers with one `bash` call and then a short sentence, so the model's wording is illustrative. The record types, their order and the tool fields are what PiG printed. Pi 1.1.0 printed the same record types and field names for the same prompt, and no later Pi release changed the event types.
 
 ```bash
 pig --mode json --no-session --model mock/mock-1 "Run: echo out; exit 3" \

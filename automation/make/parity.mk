@@ -595,7 +595,10 @@ coverage-strict:
 	    -scenarios test/parity/scenarios \
 	    -strict -out - >/dev/null
 
+# The audit compares the pin with the exact earlier pin its manifest names (`from`): that mirror is built here, from the
+# source alone, because the audit fails closed without it.
 upstream-delta: ## Audit every changed source file in the pinned upstream leap
+	@./automation/gen/mirror-upstream.sh --version "v$$($(PIN_TOOL) sync-from)" --sources-only
 	@go run ./test/parity/cmd/upstreamdelta
 
 # Honest gap ledger: reconcile the upstream interface inventory against PORT_MAP

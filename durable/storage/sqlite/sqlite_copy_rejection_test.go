@@ -7,6 +7,7 @@ import (
 
 	chorddelta "github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
+	"github.com/MichaelKinsy/PiG/durable/durabletest"
 	"github.com/MichaelKinsy/PiG/durable/storage/sqlite/node"
 )
 
@@ -27,7 +28,7 @@ func TestSqliteStorageRejectsAnUnresolvableDocumentCopyBeforeAnyEffect(t *testin
 
 	expectRejected := func(name string, writes []durable.StorageWrite, message string, hasCause bool) {
 		t.Helper()
-		_, err := storage.Commit(testContext, writes, func(durable.Seq) {})
+		_, err := durabletest.CommitWrites(testContext, storage, writes)
 		if err == nil {
 			t.Fatalf("%s: no error, want a rejected document copy", name)
 		}

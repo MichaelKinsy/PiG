@@ -84,6 +84,7 @@ func collectThemePaths(cwd, agentDir string, sm *codingagent.SettingsManager, fl
 	return dedupStrings(paths)
 }
 
+// Ports packages/coding-agent/src/core/package-manager.ts (getHomeDir, resolvePath and applyPatterns over configured package resources).
 // packageManagerHomeDir is Pi's getHomeDir (package-manager.ts), which throws where no home directory can be found.
 func packageManagerHomeDir() (string, error) { return codingagent.PackageManagerHomeDir() }
 

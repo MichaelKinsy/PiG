@@ -129,6 +129,7 @@ func (m *InteractiveMode) repaintInitialMessages() {
 	m.rebuildChat(true)
 	m.renderProjectTrustWarningIfNeeded()
 	m.showSessionCompactedStatus()
+	m.releaseSwitchHeap()
 }
 
 // renderSessionEntries refreshes the footer name before painting the current Session, including an unnamed fork. Pi's footer.ts:124-128 reads the current SessionManager name rather than retaining the source name.
@@ -766,6 +767,8 @@ func (m *InteractiveMode) updatePendingMessagesDisplay() {
 	steeringTexts, followUpTexts := collectQueuedTexts(steering, followUps, m.compactionQueue)
 
 	if len(steeringTexts) == 0 && len(followUpTexts) == 0 {
+		// pig divergence (D228): the copy tip describes a queued message, so it goes with the queue.
+		m.clearQueueCopyTip()
 		m.tuiInst.Render()
 		return
 	}
@@ -780,8 +783,8 @@ func (m *InteractiveMode) updatePendingMessagesDisplay() {
 		m.pendingMessagesContainer.Add(tui.NewTruncatedText(theme.Fg("dim", "Follow-up: "+text), 1, 0))
 	}
 	// upstream: interactive-mode.ts:4736 getAppKeyDisplay is keyDisplayText: every key bound to the action, capitalized and joined by "/".
-	hint := tui.ActionKeyDisplayText("app.message.dequeue")
-	m.pendingMessagesContainer.Add(tui.NewTruncatedText(theme.Fg("dim", "↳ "+hint+" to edit all queued messages"), 1, 0))
+	// pig divergence (D228): in Terminal.app with an empty editor the row names Up, the key that dequeues there.
+	m.pendingMessagesContainer.Add(queueHintLine{m})
 	m.tuiInst.Render()
 }
 

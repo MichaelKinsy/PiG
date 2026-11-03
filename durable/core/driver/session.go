@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"maps"
 	"math"
-	"reflect"
 	"slices"
 	"sync"
 	"time"
@@ -65,23 +64,18 @@ type SessionConfig struct {
 // core, and every public call below is a request on a channel of the ABI (event, api request, transaction) or a read of Pi's
 // own tables on the owner's connection (CONTRACT section 3.10).
 type coreSession struct {
-	cfg    SessionConfig
-	host   *sqlhost.Host
-	client *Client
-	table  *handlerTable
-	// settingsMu guards the settings last encoded for the host: settingsText compares the resolved settings with them.
-	settingsMu   sync.Mutex
-	sentSettings durable.Settings
-	sentNames    []string
-	sentText     []byte
-	settings     durable.Settings
-	envs         *Envs
-	models       *Models
-	tasks        *taskRuntimes
-	timers       durable.Timers
-	unsub        func()
-	watches      *watchHub
-	commits      commitListeners
+	cfg      SessionConfig
+	host     *sqlhost.Host
+	client   *Client
+	table    *handlerTable
+	settings durable.Settings
+	envs     *Envs
+	models   *Models
+	tasks    *taskRuntimes
+	timers   durable.Timers
+	unsub    func()
+	watches  *watchHub
+	commits  commitListeners
 
 	mu sync.Mutex
 	// documentValues are the values of the documents the core published, which it leaves out of a change when the host holds them (commits.go).
@@ -243,20 +237,15 @@ func (s *coreSession) resolveSettings() durable.Settings {
 	return harness.ResolveSettings(s.cfg.Harness.Settings())
 }
 
-// settingsText is the settings the host compares before every event: the resolved settings as JSON, encoded again only when
-// they differ from the ones last encoded, so an event that finds them unchanged costs a comparison, not a marshal.
+// settingsText is the settings the host compares before every event: the resolved settings as JSON, read afresh each time as Pi
+// reads them (packages/durable/src/harness/harness.ts:236 `settings = () => resolveSettings(hostSettings())`). The resolved Stream holds the maps the host's
+// settings own (headers, metadata), so a copy of the settings cannot tell that one changed in place; the host compares the text.
 func (s *coreSession) settingsText() []byte {
 	st := s.resolveSettings()
 	names := extensionNames(st)
 	st.Extensions = nil
-	s.settingsMu.Lock()
-	defer s.settingsMu.Unlock()
-	if s.sentText != nil && slices.Equal(names, s.sentNames) && reflect.DeepEqual(st, s.sentSettings) { //perf:ok this comparison is the cache: the marshal below runs only when the settings changed since the last event, not per event
-		return s.sentText
-	}
 	//portlint:allow mapkeyorder driver-to-core wire (durable/core/host/PROTOCOL.md): the core reads the settings members by name, as open's
 	text, _ := json.Marshal(settingsMap(st, names))
-	s.sentText, s.sentNames, s.sentSettings = text, names, st
 	return text
 }
 

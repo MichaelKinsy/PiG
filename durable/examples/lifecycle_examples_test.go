@@ -303,6 +303,8 @@ func subagentForeground(t *testing.T, attachAfterSettled bool) {
 		attached[id] = true
 		mu.Unlock()
 		if attachAfterSettled && id != root.Id() {
+			// The UI awaits the parent's settling in its listener, as upstream's `await settled` does: the synchronous part ran.
+			chord.DeliveryEntered()
 			<-settled
 		}
 		watch := must(must(opened.Conversation(background, id)).Watch(background, nil))

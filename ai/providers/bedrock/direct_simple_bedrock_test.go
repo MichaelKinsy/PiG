@@ -2,6 +2,8 @@
 
 package bedrock
 
+// pi: packages/ai/src/bedrock-provider.ts
+
 import (
 	"github.com/MichaelKinsy/PiG/ai"
 

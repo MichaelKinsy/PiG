@@ -11,6 +11,7 @@ import (
 // Mirrors upstream PathMetadata / SourceInfo flow used by resource-loader.ts
 // and interactive-mode.ts to annotate startup context and collision
 // diagnostics with package origin + scope.
+// Ports packages/coding-agent/src/core/source-info.ts
 type ResourceSourceInfo struct {
 	Path         string
 	ResourceType string // "extensions" | "skills" | "prompts" | "themes"

@@ -2,14 +2,6 @@ package tui
 
 // pi: packages/coding-agent/src/modes/interactive/components/tool-execution.ts
 
-// pi: packages/coding-agent/src/core/tools/renderers/ls.ts
-
-// pi: packages/coding-agent/src/core/tools/renderers/grep.ts
-
-// pi: packages/coding-agent/src/core/tools/renderers/find.ts
-
-// pi: packages/coding-agent/src/core/tools/renderers/bash.ts
-
 import (
 	"encoding/json"
 	"fmt"

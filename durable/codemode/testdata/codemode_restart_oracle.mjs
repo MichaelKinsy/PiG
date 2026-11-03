@@ -55,14 +55,14 @@ async function eventually(check) {
 }
 
 /**
- * Storage whose commits a scenario controls: after `queue()`, each Storage call waits in order until `release()` lets the oldest
- * go (and fail, when given a message); `entered` counts the calls that reached storage since.
+ * Storage whose commits a scenario controls: after `queue()`, each commit waits in order until `release()` lets the oldest
+ * go (and fail, when given a message); `entered` counts the commits that reached storage since.
  */
 class QueuedStorage extends ControlledStorage {
 	queueing = false;
 	marked = false;
 	entered = 0;
-	/** For each batch (Storage.commit takes the commits admitted together, one call) since the mark that changed the journal, `entries appended|result numbers whose count it recorded` (0: the script's first run). */
+	/** For each commit since the mark that changed the journal, `entries appended|result numbers whose count it recorded` (0: the script's first run). */
 	pushes = [];
 	waiting = [];
 	failure;
@@ -89,21 +89,21 @@ class QueuedStorage extends ControlledStorage {
 		this.failure = new Error(message);
 	}
 	async commit(batches, receive, commitContext) {
+		// One call is one commit here, as the Go queuedStorage counts it: its batches' writes together.
+		const writes = batches.flat();
 		this.entered++;
 		if (this.marked) {
-			for (const writes of batches) {
-				let appended = 0;
-				const acks = [];
-				for (const write of writes) {
-					if (write.type !== "document.change") continue;
-					for (const [verb, path, , , items] of write.content.ops ?? []) {
-						if (verb === "p" && path.length === 1 && path[0] === "entries") appended += items.length;
-						if (verb === "s" && path.length === 1 && path[0] === "firstIssued") acks.push(0);
-						if (verb === "s" && path.length === 3 && path[0] === "entries" && path[2] === "issuedAfter") acks.push(path[1] + 1);
-					}
+			let appended = 0;
+			const acks = [];
+			for (const write of writes) {
+				if (write.type !== "document.change") continue;
+				for (const [verb, path, , , items] of write.content.ops ?? []) {
+					if (verb === "p" && path.length === 1 && path[0] === "entries") appended += items.length;
+					if (verb === "s" && path.length === 1 && path[0] === "firstIssued") acks.push(0);
+					if (verb === "s" && path.length === 3 && path[0] === "entries" && path[2] === "issuedAfter") acks.push(path[1] + 1);
 				}
-				if (appended > 0 || acks.length > 0) this.pushes.push(`${appended}|${acks.join(",")}`);
 			}
+			if (appended > 0 || acks.length > 0) this.pushes.push(`${appended}|${acks.join(",")}`);
 		}
 		if (this.queueing) {
 			const entry = { gate: deferred(), failure: undefined };
@@ -120,7 +120,7 @@ class QueuedStorage extends ControlledStorage {
 	}
 }
 
-const Parameters = obj({ text: opt(str()), id: opt(num()) });
+const Parameters = obj({ text: opt(str()), id: opt(num()) }, { open: true });
 const tool = (name, execute, replay = "unsafe") => defineTool({ name, description: name, parameters: Parameters, execute, replay });
 const DONE = () => fauxAssistantMessage([fauxText("done")]);
 const script = (code) => fauxAssistantMessage([fauxToolCall("codemode", { code }, { id: "s1" })], { stopReason: "toolUse" });

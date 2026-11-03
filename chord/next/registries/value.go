@@ -409,6 +409,8 @@ func (typed typedHandle[V]) Value() V {
 	return value
 }
 
+// Start installs the sole listener, as chord.NativeWatch.Start does, with the same contract for a listener that blocks on something
+// the host cannot see (chord.DeliveryEntered, pig divergence (D224)).
 func (typed typedHandle[V]) Start(listener func(ctx context.Context, call chord.NativeWatchCall[V]) error) {
 	typed.handle.Start(func(ctx context.Context, call chord.NativeWatchCall[any]) error {
 		return listener(ctx, typedCall[V](call, typed.name))

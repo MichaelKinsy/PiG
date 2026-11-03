@@ -202,17 +202,37 @@ func closeBegun(t *testing.T, h harness.Harness) <-chan error {
 	return closing
 }
 
-// closeBegunFree is closeBegun for an owner that is not held: the seal is consumed at once, so the test waits for the admission seal,
-// which Close sets before it posts the scheduler seal.
+// deliveredAbove is queuedAbove for an owner that is not held: it reports whether the core stepped more than n events of kind, the
+// caller's request or completion having reached it.
+func deliveredAbove(h harness.Harness, kind abi.EventKind, n int) bool {
+	for deadline := time.Now().Add(15 * time.Second); time.Now().Before(deadline); time.Sleep(time.Millisecond) {
+		if driver.Delivered(h, kind) > n {
+			return true
+		}
+	}
+	return false
+}
+
+// waitDelivered is deliveredAbove for a test goroutine: it waits until the core stepped an event of kind.
+func waitDelivered(t *testing.T, h harness.Harness, kind abi.EventKind) {
+	t.Helper()
+	if !deliveredAbove(h, kind, 0) {
+		t.Fatalf("the core never stepped an event of kind %d", kind)
+	}
+}
+
+// closeBegunFree is closeBegun for an owner that is not held (a Session line held by a commit callback, holdLine): the owner takes
+// the seal at once, so the test waits until the core has stepped it. Close seals admission before it posts the scheduler seal, and
+// the commit the line is held by ends behind that seal in the owner's queue only once the seal is posted.
 func closeBegunFree(t *testing.T, h harness.Harness) <-chan error {
 	t.Helper()
 	closing := make(chan error, 1)
 	go func() { closing <- h.Close(context.Background()) }()
 	for deadline := time.Now().Add(15 * time.Second); time.Now().Before(deadline); time.Sleep(time.Millisecond) {
-		if h.(*driver.Session).CloseBegan() {
+		if driver.Delivered(h, abi.EventSeal) > 0 {
 			return closing
 		}
 	}
-	t.Fatal("Close never sealed admission")
+	t.Fatal("the core never took the scheduler seal")
 	return closing
 }

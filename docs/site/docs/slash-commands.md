@@ -86,7 +86,7 @@ Each example shows what you type, what PiG prints and where the behaviour comes 
  Status: Inactive (cache lifetime unavailable)
 ```
 
-`File:` reads `In-memory` under `--no-session`. Pi 1.1.0 showed an identical screen, and Pi 1.5.0 did not change `/session`.
+`File:` reads `In-memory` under `--no-session`. Pi 1.1.0 showed an identical screen, and no later Pi release changed `/session`.
 
 **`/name <text>`** sets the session's display name, shown in the footer and in `/resume`:
 

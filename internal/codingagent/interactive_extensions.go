@@ -478,6 +478,10 @@ func (m *InteractiveMode) renderWidgetsLocked() {
 			above = append(above, entry.component)
 		}
 	}
+	// pig divergence (D228): the one-time copy tip sits under the editor, after the below-editor widgets.
+	if m.queueCopyTip != nil {
+		below = append(below, m.queueCopyTip)
+	}
 	m.widgetContainer.SetChildren(above...)
 	if m.widgetContainerBelow != nil {
 		m.widgetContainerBelow.SetChildren(below...)

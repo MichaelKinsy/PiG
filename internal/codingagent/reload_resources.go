@@ -203,6 +203,7 @@ func (m *InteractiveMode) refreshToolsAfterReload() []error {
 	return append(errs, m.refreshAgentTools()...)
 }
 
+// Ports packages/coding-agent/src/core/resource-loader.ts (reload, updateSkillsFromPaths, extendResources).
 // reloadSkillsFromPaths loads the paths already selected by the resolver, including explicit paths when automatic discovery is disabled.
 func (m *InteractiveMode) reloadSkillsFromPaths() {
 	m.opts.SkillDiagnostics = nil

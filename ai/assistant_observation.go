@@ -5,6 +5,8 @@ import (
 	"unsafe"
 )
 
+// Ports packages/ai/src/utils/event-stream.ts (the partial-message reference EventStream.push queues).
+// Ports packages/agent/src/agent-loop.ts (the shallow message views the Agent loop takes of a streaming partial, ShallowCopy).
 // assistantMessageCell publishes producer-owned state without sharing mutable construction data with readers.
 // Upstream queues the same partial reference (packages/ai/src/utils/event-stream.ts:44-91).
 type assistantMessageCell struct {

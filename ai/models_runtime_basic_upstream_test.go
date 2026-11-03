@@ -257,6 +257,15 @@ func TestModelsRuntimeBasicUpstream(t *testing.T) {
 			t.Fatalf("result=%+v", result)
 		}
 	})
+	// models.ts:873 (no models-runtime.test.ts case): a provider whose auth resolves to nothing settles the request as an auth ModelsError.
+	t.Run("produces an error stream for a provider that is not configured", func(t *testing.T) {
+		models := CreateModels()
+		models.SetProvider(modelsRuntimeProvider(modelsRuntimeProviderInput{id: "p1", auth: &ProviderAuth{APIKey: modelsRuntimeEnvKey("")}}))
+		result := models.CompleteSimple(t.Context(), modelsRuntimeModel("p1", "model-a"), modelsRuntimeContext())
+		if result.StopReason != StopReasonError || result.ErrorMessage != "Provider is not configured: p1" {
+			t.Fatalf("result=%+v", result)
+		}
+	})
 	// .upstream/v0.87.1/packages/ai/test/models-runtime.test.ts:1145
 	t.Run("streams through the provider", func(t *testing.T) {
 		models := CreateModels()
