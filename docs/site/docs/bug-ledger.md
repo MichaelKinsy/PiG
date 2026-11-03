@@ -96,6 +96,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-121ba35](#bf-121ba35) | fix(durable/core): observers of one conversation view share its mount, and a bad window is a RangeError (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-1239dac](#bf-1239dac) | fix(chord/nextnode/plugins): the Node host resolves pi-schema, and example 37's shapes file imports it as… | PiG's own defect | All platforms | Unreleased |
 | [BF-1268115](#bf-1268115) | fix(model runtime): a cancelled request to a caller-owned provider the runtime does not know is aborted, not… | PiG's own defect | All platforms | Unreleased |
+| [BF-12d5c56](#bf-12d5c56) | A Chord HTTP request or upgrade no longer reads the router and the authenticators from its own goroutine… | PiG's own defect | All platforms | Unreleased |
 | [BF-1356aae](#bf-1356aae) | fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture… | PiG's own defect | All platforms | Unreleased |
 | [BF-1364791](#bf-1364791) | Stopping a codemode script or reaching its deadline no longer waits up to half a second for a built-in that… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-136dab0](#bf-136dab0) | fix(chord/next/host): a route's Resolve calls carry their place in the order of the calls | PiG's own defect | All platforms | Unreleased |
@@ -2639,6 +2640,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `1268115b91` (2026-10-10)
 - **Tests:** `coding/model_runtime_setup_abort_upstream_test.go::TestCancelledRequestToAnUnregisteredCallerProviderIsAborted`, `test/parity/scenarios/providers-faux-streaming/14-provider-immediate-abort.toml`, `test/parity/scenarios/rpc/55-rpc-abort-during-tool-next-request.toml`
+
+### BF-12d5c56
+
+**A Chord HTTP request or upgrade no longer reads the router and the authenticators from its own goroutine…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Chord HTTP request or upgrade no longer reads the router and the authenticators from its own goroutine while a reload composes them.
+- **Root cause:** Not recorded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `12d5c56025` (2026-11-03)
+- **Tests:** `chord/nextnode/http/review_test.go::TestReviewTheRouterTheComponentReadsIsTheOneTheFollowerDelivers`
+- **Release note:** A Chord HTTP request or upgrade no longer reads the router and the authenticators from its own goroutine while a reload composes them. The read recomposed a changed registry beside the commit that changed it: data races, and a reload that failed with "reload inside a commit or a derive compute" (2 of 5 runs of a reload loop beside readers). Pi reads `registries.router.value` on its one JavaScript thread, between the turns of the host's loop; the reads are now sections of the host's loop, which give the same interleaving.
 
 ### BF-1356aae
 
