@@ -250,6 +250,7 @@ func TestObserveDoc(t *testing.T) {
 	})
 
 	t.Run("ends each close's observers with an error of that close, not one shared by every Session", func(t *testing.T) {
+		// Pi makes a new Error per close; Go gives every close the one session.ClosedSession sentinel, which errors.Is reads.
 		var errs []error
 		for range 2 {
 			opened := openObserving()
@@ -263,7 +264,7 @@ func TestObserveDoc(t *testing.T) {
 				}
 			}
 		}
-		if len(errs) != 2 || errs[0] == nil || errs[1] == nil || errs[0].Error() != "session closed" || errs[1].Error() != "session closed" || errs[0] == errs[1] {
+		if len(errs) != 2 || errs[0] == nil || errs[1] == nil || errs[0].Error() != "session closed" || errs[1].Error() != "session closed" || !errors.Is(errs[0], session.ClosedSession) || !errors.Is(errs[1], session.ClosedSession) {
 			t.Fatalf("errors %v", errs)
 		}
 	})
