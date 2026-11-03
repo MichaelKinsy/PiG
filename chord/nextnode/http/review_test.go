@@ -966,3 +966,46 @@ func TestReviewAnUpgradeIsSettledWhetherItWasHandedOutOrRefused(t *testing.T) {
 		return len(server.http.upgrades.inflight) == 0 && len(server.http.upgrades.history) == 1
 	})
 }
+
+// Pi's HTTP component reads the router and the authenticators (`registries.router.value`) on the one JavaScript thread, between
+// the turns of the host's loop, so a read never meets a reload composing the registry. Requests and upgrades here run on
+// goroutines of their own: their reads must be sections of the host's loop too, or they recompose the registry beside a commit
+// (data races, and a reload that fails with "reload inside a commit or a derive compute").
+func TestReviewRequestsAndUpgradesReadTheRegistriesWhileReloadsComposeThem(t *testing.T) {
+	sockets := plugin{"@app/sockets", contributing(HttpContribution{Sockets: []HttpSocketEntry{{Pattern: "/echo", Handler: noopSocket()}}})}
+	tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
+	server := serving(t, []plugin{sockets, tunnel}, servedOptions{})
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	running := func() bool {
+		select {
+		case <-stop:
+			return false
+		default:
+			return true
+		}
+	}
+	for range 4 {
+		wg.Go(func() {
+			for running() {
+				_ = server.http.Fetch(loopback("/x"), loopbackConnection).Body.Close()
+			}
+		})
+	}
+	wg.Go(func() {
+		for running() {
+			if socket, err := socketTo(server.port, "/echo", owner, 0); err == nil {
+				socket.Close(0, "")
+			}
+		}
+	})
+	for i := range 40 {
+		if i%2 == 0 {
+			server.reload(t)
+		} else {
+			server.reload(t, sockets, tunnel)
+		}
+	}
+	close(stop)
+	wg.Wait()
+}
