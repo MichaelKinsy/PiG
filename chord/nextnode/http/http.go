@@ -180,6 +180,7 @@ type HttpComponent struct {
 	// latest is the router the follower saw last, revoking whether a task is revoking against it, revokeTasks joins that task;
 	// revokeHook (a test's) sees each router the task revokes against.
 	latest        *Router
+	latestNumber  uint64
 	revoking      bool
 	revokeTasks   sync.WaitGroup
 	revokeHook    func(*Router)
@@ -556,6 +557,7 @@ func (c *HttpComponent) follow(router *Router) {
 		return
 	}
 	c.latest = router
+	c.latestNumber = c.upgrades.delivered(router)
 	if c.revoking {
 		return
 	}
@@ -564,7 +566,7 @@ func (c *HttpComponent) follow(router *Router) {
 	c.revokeTasks.Go(func() {
 		for {
 			c.mu.Lock()
-			next := c.latest
+			next, number := c.latest, c.latestNumber
 			c.latest = nil
 			if next == nil || c.isClosing() {
 				c.revoking = false
@@ -575,7 +577,7 @@ func (c *HttpComponent) follow(router *Router) {
 			if c.revokeHook != nil {
 				c.revokeHook(next)
 			}
-			c.upgrades.revoke(next)
+			c.upgrades.revoke(next, number)
 		}
 	})
 }
@@ -650,7 +652,7 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 		refuse(w, 403)
 		return
 	}
-	// The revocations before the router check: a change after it that misses the connection is seen once it is kept.
+	// The deliveries before the router check: a change delivered after it that misses the connection is seen once it is kept.
 	seen := c.upgrades.admitting()
 	// The router now: a host, a relay or a socket removed while authenticating refuses the upgrade.
 	router := registrySet.router.Value().(*Router)
