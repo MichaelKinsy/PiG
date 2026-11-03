@@ -76,7 +76,7 @@ func TestCallersGetASchemaLessToolsOutputOneTextAsAStringOneImageAsItselfElseThe
 	}
 }
 
-// harness-structured-output.test.ts:118 it("gives callers the bounded output, as the model sees it, without the rendered diagnostics")
+// harness-structured-output.test.ts:117 it("gives callers the bounded output, as the model sees it, without the rendered diagnostics")
 func TestCallersGetTheBoundedOutputAsTheModelSeesItWithoutTheRenderedDiagnostics(t *testing.T) {
 	setup := chatSetup(t)
 	addTool(t, setup.Registry, returningTool("long", durable.ToolExecutionResult{

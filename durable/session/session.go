@@ -779,6 +779,22 @@ func (session *SessionImpl) failure() error {
 // Failure returns the first error that failed the Session, or nil.
 func (session *SessionImpl) Failure() error { return session.failure() }
 
+// ErrSessionClosedEnd is the error a synchronous observer fails with when the Session closes without having failed (session.ts
+// closeEnds: "session closed"); an adapter following the Session reads it as a reason to follow the next one. Each close
+// makes its own error wrapping it, as Pi makes a new Error per close.
+var ErrSessionClosedEnd = errors.New("session closed")
+
+// CloseEnds is how a Session's close ends what follows it (session.ts closeEnds, decision "Slice 8 S1"), made once per close.
+// An app's watch ends ended; a synchronous observer (an adapter following the Session, which may open it again) fails with
+// ErrSessionClosedEnd, so it follows the next Session. A failed Session ends both failed with its error.
+func CloseEnds(failure error) (watch, observer durable.WatchEnd) {
+	if failure != nil {
+		failed := durable.WatchEnd{Kind: durable.WatchFailed, Error: failure}
+		return failed, failed
+	}
+	return durable.WatchEnd{Kind: durable.WatchEnded}, durable.WatchEnd{Kind: durable.WatchFailed, Error: fmt.Errorf("%w", ErrSessionClosedEnd)}
+}
+
 // Failed returns a channel closed the moment the Session fails, before work underway has ended.
 func (session *SessionImpl) Failed() <-chan struct{} { return session.failed }
 
@@ -1510,10 +1526,7 @@ func (session *SessionImpl) beginClose(ctx context.Context) <-chan struct{} {
 				clear(session.taskDocuments)
 				session.mu.Unlock()
 				// After the last publication: the commits admitted before the seal have settled, held changes are stored.
-				end := durable.WatchEnd{Kind: durable.WatchEnded}
-				if failure := session.failure(); failure != nil {
-					end = durable.WatchEnd{Kind: durable.WatchFailed, Error: failure}
-				}
+				_, end := CloseEnds(session.failure())
 				for _, listener := range observers {
 					listener.observer.End(end)
 				}
@@ -2021,13 +2034,19 @@ func (session *SessionImpl) publish(ctx context.Context, seq durable.Seq, writes
 	}
 	// The commit is durable: a failing observer neither fails the commit nor skips the others.
 	var failure error
+	// One synchronous turn, as Pi's publication is: the followed views (chord follow.ts) the observers advance are told
+	// together, when the loop ends, and reach their host as one batch. Only the Session's own observers get the step's
+	// context; a host listener (notifyHosts) gets the commit's own.
+	stepCtx, endStep := chordctx.WithStep(ctx)
+	defer endStep()
 	for _, listener := range internal {
-		contained(func() { listener.listener(ctx, commit) }, func(err error) {
+		contained(func() { listener.listener(stepCtx, commit) }, func(err error) {
 			if failure == nil {
 				failure = err
 			}
 		})
 	}
+	endStep()
 	return failure
 }
 
@@ -2236,11 +2255,12 @@ func (session *SessionImpl) observeDocument(
 	}
 	closer, err := session.subscribeClose(func() {
 		detach()
-		end := durable.WatchEnd{Kind: durable.WatchEnded}
-		if failure := session.failure(); failure != nil {
-			end = durable.WatchEnd{Kind: durable.WatchFailed, Error: failure}
+		watch, other := CloseEnds(session.failure())
+		if _, follows := observer.(watchObserver); follows {
+			observer.End(watch)
+		} else {
+			observer.End(other)
 		}
-		observer.End(end)
 	})
 	if err != nil {
 		commit()
