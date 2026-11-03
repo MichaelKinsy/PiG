@@ -4,8 +4,8 @@ package codingagent
 
 import (
 	"errors"
-	"os"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"

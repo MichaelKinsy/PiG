@@ -37,6 +37,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 	"github.com/MichaelKinsy/PiG/internal/text"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // ExternalEditorFailure is the error of an editor that did not complete: it could not be started, exited non-zero, or was signaled. Message is the status text Pi shows for it. Error keeps the longer text of the underlying failure.
@@ -95,7 +96,7 @@ func OpenExternalEditor(ctx context.Context, initial string, configuredEditor st
 	args := append([]string{}, parts[1:]...)
 	args = append(args, tmpPath)
 
-	_, _ = fmt.Fprintf(os.Stdout, "Launching external editor: %s\nPi will resume when the editor exits.\n", editorCmd)
+	tui.WriteToTerminal(os.Stdout, fmt.Sprintf("Launching external editor: %s\nPi will resume when the editor exits.\n", editorCmd))
 
 	// spawn(editor, args) throws before it starts anything when the editor is empty (a command with a leading space splits to an empty
 	// first element) or an argument has a NUL, with or without shell: true; cmd.exe would otherwise run a line whose first word it trims.

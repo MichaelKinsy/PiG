@@ -189,7 +189,7 @@ func (c clipboardCopier) emitOSC52(text string) bool {
 	if len(encoded) > maxOSC52EncodedLength {
 		return false
 	}
-	_, _ = io.WriteString(c.stdout, "\x1b]52;c;"+encoded+"\x07")
+	tui.WriteToTerminal(c.stdout, "\x1b]52;c;"+encoded+"\x07")
 	return true
 }
 

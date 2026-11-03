@@ -693,7 +693,7 @@ func (m *InteractiveMode) setBuiltInHeader(expanded bool) {
 
 func (u *ExtUIContext) SetTitle(title string) {
 	if u.m.tuiInst != nil {
-		_, _ = fmt.Fprintf(os.Stdout, "\033]0;%s\007", title)
+		tui.WriteToTerminal(os.Stdout, fmt.Sprintf("\033]0;%s\007", title))
 	}
 }
 
