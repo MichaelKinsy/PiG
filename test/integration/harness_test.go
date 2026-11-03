@@ -3,11 +3,18 @@
 package integration
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
+	"fmt"
+	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -19,12 +26,18 @@ type harness struct {
 	t       *testing.T
 	session string
 	bin     string
+	// pane is the process ID of the session's pane shell. tmux starts each pane's shell as the leader of a terminal session, so the program a test launches and everything that program starts belong to terminal session pane until one of them calls setsid.
+	pane int
+	// livePaneProcesses lists the processes of terminal session pane that have not exited. A test replaces it to see when kill begins to wait.
+	livePaneProcesses func(session int) ([]int, error)
 }
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
 	requireTmux(t)
 	bin := buildBinary(t)
+	// The first TempDir call registers the removal of the test's temporary directories, and cleanups run last in, first out. Calling it before registering kill makes kill run before that removal even when the test creates its first directory only after newHarness.
+	_ = t.TempDir()
 	id := randID()
 	session := "pig-it-" + id
 	cmd := tmuxCommand("new-session", "-d", "-s", session, "-x", "130", "-y", "36")
@@ -46,7 +59,17 @@ func newHarness(t *testing.T) *harness {
 		}
 		t.Logf("tmux has no extended-keys-format option (tmux 3.5+); using its default key format")
 	}
-	h := &harness{t: t, session: session, bin: bin}
+	out, err := tmuxCommand("list-panes", "-t", session, "-F", "#{pane_pid}").Output()
+	if err != nil {
+		_ = tmuxCommand("kill-session", "-t", session).Run()
+		t.Fatalf("tmux list-panes: %v", err)
+	}
+	pane, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	if err != nil {
+		_ = tmuxCommand("kill-session", "-t", session).Run()
+		t.Fatalf("tmux pane_pid %q: %v", out, err)
+	}
+	h := &harness{t: t, session: session, bin: bin, pane: pane, livePaneProcesses: livePaneProcesses}
 	t.Cleanup(h.kill)
 	return h
 }
@@ -120,6 +143,64 @@ func TestHarnessUntrustedProjectStillPrompts(t *testing.T) {
 	h := newHarness(t)
 	h.startArgsWithProjectTrust(nil, false)
 	h.expectContains(startupReadyWait, "Trust project folder?")
+}
+
+// hangupShutdownScript stands in for pig's shutdown after a terminal hangup: the hangup starts a shutdown that outlives tmux kill-session, and the shutdown ends by appending to exit.log in the agent directory, creating the directory when it is gone (internal/codingagent appendExitLog does both). The shutdown waits for the release file before it writes, so the test decides when it can finish. Arguments: ready file, release file, agent directory, finished file.
+const hangupShutdownScript = `ready=$1 release=$2 agent=$3 finished=$4
+trap 'until [ -e "$release" ]; do sleep 0.1; done; mkdir -p "$agent" && echo SIGHUP >> "$agent/exit.log"; : > "$finished"; exit 0' HUP
+: > "$ready"
+while :; do sleep 0.1; done
+`
+
+// TestHarnessCleanupWaitsForHangupShutdown pins the order of a harness test's cleanup. A process in the pane must have finished its hangup shutdown before the test's temporary directories are removed. Otherwise pig's exit record races the removal and the test fails with "TempDir RemoveAll cleanup: directory not empty" (TestExt_StartupWithoutConfig). The fixture shutdown cannot finish until the harness has started waiting for it, so nothing here depends on timing.
+func TestHarnessCleanupWaitsForHangupShutdown(t *testing.T) {
+	requireTmux(t)
+	shared := t.TempDir()
+	script := filepath.Join(shared, "hangup-shutdown.sh")
+	if err := os.WriteFile(script, []byte(hangupShutdownScript), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ready := filepath.Join(shared, "ready")
+	release := filepath.Join(shared, "release")
+	finished := filepath.Join(shared, "finished")
+	// A kill that never waits never reaches the release below; release the shutdown after the checks so it does not outlive the test.
+	t.Cleanup(func() {
+		if err := os.WriteFile(release, nil, 0o600); err != nil {
+			t.Errorf("release hangup shutdown: %v", err)
+		}
+	})
+
+	var home string
+	t.Run("pane", func(t *testing.T) {
+		h := newHarness(t)
+		// The test's first TempDir call comes after newHarness, as in a test that lets the harness choose its PIG_HOME.
+		home = t.TempDir()
+		listed := h.livePaneProcesses
+		var releaseOnce sync.Once
+		var releaseErr error
+		h.livePaneProcesses = func(sid int) ([]int, error) {
+			// kill has hung the pane up and is now waiting for its processes: let the shutdown finish.
+			releaseOnce.Do(func() { releaseErr = os.WriteFile(release, nil, 0o600) })
+			if releaseErr != nil {
+				return nil, releaseErr
+			}
+			return listed(sid)
+		}
+		h.send(fmt.Sprintf("sh %s %s %s %s %s\r", script, ready, release, filepath.Join(home, "agent"), finished))
+		if !waitFor(startupReadyWait, func() bool {
+			_, err := os.Stat(ready)
+			return err == nil
+		}) {
+			t.Fatal("hangup shutdown fixture never started")
+		}
+	})
+
+	if _, err := os.Stat(finished); err != nil {
+		t.Errorf("kill returned before the pane's process finished its hangup shutdown: %v", err)
+	}
+	if _, err := os.Stat(home); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("the pane's process wrote into %s after the test's temporary directories were removed (stat error: %v)", home, err)
+	}
 }
 
 func (h *harness) send(s string) {
@@ -201,8 +282,60 @@ func (h *harness) expectContains(timeout time.Duration, needles ...string) strin
 	return pane
 }
 
+// paneExitWait bounds how long kill waits for the session's processes to exit after tmux hangs them up. Pig exits within seconds of a hangup, so a process still running after this is a hung shutdown.
+const paneExitWait = 30 * time.Second
+
+// kill ends the session and returns once every process in it has exited. tmux kill-session returns when its server has dropped the session; it hangs the pane's terminal up and does not wait for anything the pane started. Pig handles the hangup as a termination signal, and before it exits it writes its exit record into the agent directory, so a test that removes its PIG_HOME right after kill-session races that write and fails with "directory not empty".
 func (h *harness) kill() {
 	_ = tmuxCommand("kill-session", "-t", h.session).Run()
+	var live []int
+	var err error
+	if !waitFor(paneExitWait, func() bool {
+		live, err = h.livePaneProcesses(h.pane)
+		return err != nil || len(live) == 0
+	}) {
+		h.t.Errorf("processes %v of tmux session %s still running %s after kill-session", live, h.session, paneExitWait)
+	}
+	if err != nil {
+		h.t.Errorf("list processes of tmux session %s: %v", h.session, err)
+	}
+}
+
+// livePaneProcesses lists the processes of terminal session sid that have not exited. A zombie has exited and writes nothing more; it stays in the process table until its parent reaps it, which on a loaded host can lag the exit by seconds, so it does not count.
+func livePaneProcesses(sid int) ([]int, error) {
+	members, err := exec.Command("pgrep", "-s", strconv.Itoa(sid)).Output()
+	if err != nil {
+		if exit, ok := errors.AsType[*exec.ExitError](err); ok && exit.ExitCode() == 1 {
+			return nil, nil // pgrep exits 1 when no process matches.
+		}
+		return nil, fmt.Errorf("pgrep -s %d: %w", sid, err)
+	}
+	var stderr bytes.Buffer
+	states := exec.Command("ps", "-o", "pid=,stat=", "-p", strings.Join(strings.Fields(string(members)), ","))
+	states.Stderr = &stderr
+	out, err := states.Output()
+	if err != nil {
+		// ps exits 1 without a word when every listed process has gone since pgrep listed it.
+		if exit, ok := errors.AsType[*exec.ExitError](err); ok && exit.ExitCode() == 1 && stderr.Len() == 0 {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("ps: %w: %s", err, stderr.String())
+	}
+	var live []int
+	for line := range strings.Lines(string(out)) {
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			return nil, fmt.Errorf("ps reported %q, want a process ID and a state", line)
+		}
+		pid, err := strconv.Atoi(fields[0])
+		if err != nil {
+			return nil, fmt.Errorf("ps process ID %q: %w", fields[0], err)
+		}
+		if !strings.HasPrefix(fields[1], "Z") {
+			live = append(live, pid)
+		}
+	}
+	return live, nil
 }
 
 // buildBinary returns the cached path to a built ./cmd/pig binary.
