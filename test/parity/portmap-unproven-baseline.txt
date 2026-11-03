@@ -1,2 +1,1 @@
-packages/coding-agent/src/core/extensions/types.ts
 packages/coding-agent/src/index.ts
