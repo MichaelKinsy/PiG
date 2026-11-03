@@ -1,6 +1,7 @@
 package harness
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -53,7 +54,7 @@ func TestPartialObjectEqualsTheEncodedPartial(t *testing.T) {
 			}
 			gotText, _ := json.Marshal(got)
 			wantText, _ := json.Marshal(want)
-			if string(gotText) != string(wantText) {
+			if !bytes.Equal(gotText, wantText) {
 				t.Fatalf("partial object differs\n got %.300s\nwant %.300s", gotText, wantText)
 			}
 		})
