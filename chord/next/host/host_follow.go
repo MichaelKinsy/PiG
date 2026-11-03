@@ -18,7 +18,14 @@ import (
 // views of one commit computes once with both changes.
 
 // FollowObserver is the observer a followed runtime is given: Chord's watch shapes (Durable's `Observer`). Both calls
-// run inside a section of the host's loop (the runtime's commit step is one).
+// may come from any goroutine: each enters a section of the host's loop, inline when the caller is in one (the runtime's
+// commit step is). Calls from outside a section are one batch each; to have the calls one commit makes to several
+// followed sources reach a derive as one batch, the runtime publishes the commit inside one section (Host.Section, from
+// Durable's `Storage.publishing` scope).
+//
+// A method handler that waits for the followed runtime, directly or for any work that commits to it, calls
+// chordctx.Suspend(ctx) first: otherwise the runtime's calls wait for the section the handler holds, and both block
+// forever.
 type FollowObserver[T any] interface {
 	// Advance is one change, synchronously and quickly: Chord only records it.
 	Advance(call chord.WatchCall[T], ctx context.Context)
@@ -129,11 +136,15 @@ func (s *followSource) Value() (delta.JsonValue, error) {
 // followObserverOf is the observer a followed source gives its runtime.
 type followObserverOf struct{ source *followSource }
 
+// Advance and End enter a section of the host's loop themselves (Loop.Run: inline when the caller is on it). Pi's observers
+// run inside the runtime's synchronous commit step, on the one thread that is also the host's; a Go runtime calls from its own
+// goroutines (a Harness's close, its line), where the source's state, the batch and the attempt it fails belong to a section.
+// So the end of a followed Session fails its object, and with it the calls in flight, before the call that closed the Session returns.
 func (o followObserverOf) Advance(call chord.WatchCall[delta.JsonValue], _ context.Context) {
-	o.source.advance(call)
+	o.source.loop.Run(func() { o.source.advance(call) })
 }
 
-func (o followObserverOf) End(end chord.WatchEnd) { o.source.end(end) }
+func (o followObserverOf) End(end chord.WatchEnd) { o.source.loop.Run(func() { o.source.end(end) }) }
 
 // attach attaches (activation, after the natives opened): the calls that came meanwhile apply on the attachment's value,
 // and an end that came meanwhile takes effect then (the value stays). A rejected attachment, or nil (an absent address),

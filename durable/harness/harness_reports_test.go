@@ -1,4 +1,4 @@
-// Ports the end of packages/durable/test/harness-reports.test.ts:901-905 (Pi 482c1381a0): the error that fails the Session is
+// Ports the end of packages/durable/test/harness-reports.test.ts:220-227 (Pi 482c1381a0): the error that fails the Session is
 // reported as storage_failed. It needs a Storage whose next commit fails, which the core's own store cannot give; the other
 // expectations of that case run over both engines in durable/core/driver (harness_reports_core_test.go).
 
@@ -21,7 +21,7 @@ func TestAFailedSessionIsReportedAsSessionFailed(t *testing.T) {
 		return tx.CreateConversation(durable.CreateConversationOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnerless}})
 	})
 	<-harness.Closed()
-	// harness-reports.test.ts:905: expect(infoOf("disk gone")).toEqual({ type: "storage_failed" })
+	// harness-reports.test.ts:227: expect(infoOf("disk gone")).toEqual({ kind: "storage_failed" })
 	for index, report := range reports.all() {
 		if report.Error() == "disk gone" {
 			if info := reports.allInfos()[index]; info != (durable.ReportInfo{Kind: durable.ReportStorageFailed}) {

@@ -448,12 +448,20 @@ func (s *coreSession) Close(ctx context.Context) error {
 	}
 }
 
+// failure is the error that failed the Session, nil while it has not failed.
+func (s *coreSession) failure() error {
+	if fatal := s.client.poisoned.Load(); fatal != nil {
+		return fatal
+	}
+	return nil
+}
+
 // finishClose ends the watches, seals the core and closes the store, once nothing admitted is in flight.
 func (s *coreSession) finishClose(ctx context.Context) error {
 	if s.unsub != nil {
 		s.unsub()
 	}
-	s.watches.closeSession()
+	s.watches.closeSession(s.failure())
 	s.endAllCommits()
 	// The handlers join while the core still takes events: a run's end is reported to the core, which ends its invocation and
 	// answers the abort that joined it (scheduler.ts abort awaits run.done; close joins every invocation before it closes Storage).
