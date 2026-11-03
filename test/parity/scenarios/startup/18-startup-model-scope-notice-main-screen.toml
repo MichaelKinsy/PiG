@@ -1,0 +1,40 @@
+# Behavior family: startup
+# Surface: init() prints the model scope notice to stdout before the terminal UI starts, unless the renderer is fullscreen.
+#
+# Upstream evidence (Pi 1.5.0 interactive-mode.ts:983-988): `if (this.renderer.mode !== "fullscreen") { const modelScopeNotice = this.getModelScopeNotice(); if (modelScopeNotice) console.log(modelScopeNotice); }`.
+# With settings.json tuiMode="regular" and `--models fixture/model-two` the notice is printed above the UI as
+#
+#   Model scope: model-two (Ctrl+P to cycle)
+#
+# The crop is that line; both binaries must print it byte-identically with SGR preserved. The fullscreen counterpart is fullscreen/14.
+
+name = "18-startup-model-scope-notice-main-screen"
+description = "The main-screen renderer prints the model scope notice before the UI starts, as pi does."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent-model-scope-main"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-model-scope-main", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--models", "fixture/model-two", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--models", "fixture/model-two", "--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 30
+settle_seconds = 1
+capture_start = "Model scope:"
+capture_end = "to cycle)"
+
+[assert]
+both_reach_ready = true
+both_contain = ["Model scope: model-two (Ctrl+P to cycle)"]
+both_not_contain = ["panic:", "goroutine ", "No matching models"]
+escaped_output_equal = true
+runs = 3

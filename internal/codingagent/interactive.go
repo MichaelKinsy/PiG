@@ -1829,28 +1829,14 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	}
 	mark("post-emit-session-start")
 
-	// Loaded resources follow the built-in or extension-supplied header.
-	m.showLoadedResources(false, true)
-	// Quiet startup suppresses help and resource listings, not the initial editor and footer.
+	// rebindCurrentSession showed the loaded resources after the built-in or extension-supplied header. Quiet startup suppresses help and resource
+	// listings, not the initial editor and footer.
 	m.tuiInst.Render()
 	mark("first-render-done")
-
-	m.showInitNotices()
-	m.showCrashNotice()
-	if m.frontendStartupWarning != "" {
-		m.showWarning(m.frontendStartupWarning)
-	}
-
-	m.renderInitialMessages()
-	m.tuiInst.Render()
-	m.loadRemainingHighlightLanguages()
-
-	// Show "what's new" on fresh sessions (no prior messages) when the
-	// binary version differs from the last recorded version, and send the
-	// install-telemetry ping on the same two occasions upstream does: a
-	// fresh install and an update with new changelog entries.
-	// Mirrors upstream getChangelogForDisplay + showStartupNoticesIfNeeded
-	// (interactive-mode.ts:816-843, 487-522, 1265-1307).
+	// Upstream's rebindCurrentSession shows the startup changelog notice after the loaded resources (showStartupNoticesIfNeeded, interactive-mode.ts
+	// bindCurrentSessionExtensions), before init() renders the initial messages. A fresh session (no prior messages) shows "what's new" when the binary
+	// version differs from the last recorded version, and the install-telemetry ping goes out on the same two occasions upstream sends it: a fresh
+	// install and an update with new changelog entries (getChangelogForDisplay).
 	if m.opts.SettingsManager != nil && m.opts.ResumePath == "" {
 		var newEntries []ChangelogEntry
 		if m.opts.AppVersion != "" {
@@ -1858,9 +1844,19 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 		}
 		if extensionUpdates := m.getExtensionChangelogUpdates(); len(newEntries) > 0 || len(extensionUpdates) > 0 {
 			m.showStartupChangelog(newEntries, extensionUpdates)
-			m.tuiInst.Render()
 		}
 	}
+
+	m.renderInitialMessages()
+	// upstream: interactive-mode.ts run() shows the startup diagnostics, migrated credentials, the models.json error, the model fallback message and the
+	// crash notice once init() has rendered the initial messages.
+	m.showInitNotices()
+	m.showCrashNotice()
+	if m.frontendStartupWarning != "" {
+		m.showWarning(m.frontendStartupWarning)
+	}
+	m.tuiInst.Render()
+	m.loadRemainingHighlightLanguages()
 
 	return nil
 }

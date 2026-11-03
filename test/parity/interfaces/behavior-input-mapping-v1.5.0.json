@@ -797,10 +797,28 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.init",
       "ownerFamily": "startup",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/interactive.go#Init",
+        "internal/codingagent/startup_header.go#mountStartupHeader",
+        "internal/codingagent/startup_input.go#beginStartupSubmitWindow",
+        "internal/codingagent/startup_input.go#endStartupSubmitWindow",
+        "internal/codingagent/settings_diagnostics.go#showInitNotices"
+      ],
+      "evidence": [
+        "internal/codingagent/startup_header_test.go#TestVerboseHeaderExpansionAndRestoration",
+        "internal/codingagent/startup_init_contract_test.go#TestInitReturnsWithoutWorkOnceInitialized",
+        "internal/codingagent/startup_visibility_contract_test.go#TestStartupHeaderAndDetailsVisibilityFollowVerboseAndQuietStartup",
+        "test/parity/scenarios/startup/16-startup-clear-key-before-session-start-completes.toml",
+        "test/parity/scenarios/startup/18-startup-model-scope-notice-main-screen.toml",
+        "test/parity/scenarios/startup/19-startup-notices-follow-the-resumed-transcript.toml"
+      ],
+      "contracts": [
+        "coding-agent/startup/init-header-construction",
+        "coding-agent/startup/init-lifecycle-order",
+        "coding-agent/startup/init-post-header-order",
+        "coding-agent/startup/verbose-header-collapse"
+      ],
       "divergence": "",
       "rationale": ""
     },
