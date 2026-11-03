@@ -1154,7 +1154,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-beeb36a](#bf-beeb36a) | Running with no home directory now fails the way Pi's package manager does, instead of reading the project's… | PiG's own defect | All platforms | Unreleased |
 | [BF-bf45320](#bf-bf45320) | Go embedding hosts can bind extension appends through `coding.Session.AppendExtensionEntry`, retaining… | PiG's own defect | All platforms | Unreleased |
 | [BF-bf73e77](#bf-bf73e77) | fix(durable/core): join split surrogates through jv.AppendConcat, not byte slices | PiG's own defect | All platforms | Unreleased |
-| [BF-bf89558](#bf-bf89558) | A run whose model answer holds a function now faults with the text `Value contains a non-JSON function… | PiG's own defect | All platforms | Unreleased |
+| [BF-bf89558](#bf-bf89558) | A run whose model answer holds a value that is not strict JSON, a function or a non-finite number (`NaN`… | PiG's own defect | All platforms | Unreleased |
 | [BF-bf9911e](#bf-bf9911e) | Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a… | PiG's own defect | All platforms | Unreleased |
 | [BF-bfae6a0](#bf-bfae6a0) | Fullscreen double-click selection no longer splits paths and tokens at `~`, `.`, `\`, `+` and `_`: the word… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1055c4](#bf-c1055c4) | Package manifest globs match as Node's `fs.globSync` does in Pi: brace sets and sequences, extglobs such as… | PiG's own defect | Windows, macOS | 0.5.0 |
@@ -17278,17 +17278,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-bf89558
 
-**A run whose model answer holds a function now faults with the text `Value contains a non-JSON function…**
+**A run whose model answer holds a value that is not strict JSON, a function or a non-finite number (`NaN`…**
 
 - **Source:** PiG's own defect
-- **Symptom:** It used to report Go's `json: unsupported type: func()`.
+- **Symptom:** It used to report Go's `json: ... unsupported type: func()` or `unsupported value: NaN`.
 - **Root cause:** Pi's copyJson reports a function as 'Value contains a non-JSON function; expected strict JSON' (packages/chord/src/json.ts:42), the detail of a faulted run's submission and of pi.live.runFailure. The Go session encoded the assembled entry with encoding/json and reported 'json: unsupported type: func()'. The strict encoding moves to durable/internal/strictjson, which maps a function (as it already mapped a non-finite number) to chord's text, and the session's entry copy uses it.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `bf89558136` (2026-11-03)
-- **Tests:** `durable/harness/harness_compaction_test.go::TestCompactionEdgeCases`, `durable/harness/harness_context_ranges_test.go::TestTaskContextRanges`, `durable/harness/harness_generation_test.go::TestGeneration`, `durable/harness/harness_live_deltas_test.go::TestLiveDeltas`, `durable/internal/strictjson/strictjson_test.go::TestMarshalLeavesAPlainValueAndOtherFailuresAlone`, `durable/internal/strictjson/strictjson_test.go::TestMarshalReportsAFunctionAsChordsNonJSONFunction`, `durable/internal/strictjson/strictjson_test.go::TestMarshalReportsANonFiniteNumberAsChordsStrictJSONError`
-- **Release note:** A run whose model answer holds a function now faults with the text `Value contains a non-JSON function; expected strict JSON`, as in Pi, in the submission's `detail` and in `pi.live.runFailure.detail`. It used to report Go's `json: unsupported type: func()`.
+- **Fix commits:** `bf89558136` (2026-11-03), `de985c5719` (2026-11-03)
+- **Tests:** `durable/harness/harness_compaction_test.go::TestCompactionEdgeCases`, `durable/harness/harness_context_ranges_test.go::TestTaskContextRanges`, `durable/harness/harness_generation_test.go::TestGeneration`, `durable/harness/harness_live_deltas_test.go::TestLiveDeltas`, `durable/internal/strictjson/strictjson_test.go::TestMarshalLeavesAPlainValueAndOtherFailuresAlone`, `durable/internal/strictjson/strictjson_test.go::TestMarshalReportsAFunctionAsChordsNonJSONFunction`, `durable/internal/strictjson/strictjson_test.go::TestMarshalReportsANonFiniteNumberAsChordsStrictJSONError`, `durable/session/entry_strict_json_test.go::TestAnEntryWhoseMessageIsNotStrictJSONFailsWithChordsText`
+- **Release note:** A run whose model answer holds a value that is not strict JSON, a function or a non-finite number (`NaN`, `Infinity`), now faults with Pi's text, `Value contains a non-JSON function; expected strict JSON` or `Value contains a non-finite number and is not strict JSON`, in the submission's `detail` and in `pi.live.runFailure.detail`. It used to report Go's `json: ... unsupported type: func()` or `unsupported value: NaN`.
 
 ### BF-bf9911e
 
