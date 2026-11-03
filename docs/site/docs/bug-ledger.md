@@ -287,6 +287,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3ba74f2](#bf-3ba74f2) | fix(codingagent): wait for a read's rest on the route snapshot that found no modal | PiG's own defect | All platforms | Unreleased |
 | [BF-3c2dde4](#bf-3c2dde4) | A terminal read that ends inside a UTF-8 character and holds every byte of it no longer restarts the ESC… | PiG's own defect | All platforms | Unreleased |
 | [BF-3ca622b](#bf-3ca622b) | fix(durable/core): the tool round resumes one tick after runtime.outcomes, as Pi's #read does; drop the… | PiG's own defect | All platforms | Unreleased |
+| [BF-3ca9095](#bf-3ca9095) | The session picker reads its tab, sort, path, delete, rename and key-hint bindings from the process-wide… | PiG's own defect | All platforms | Unreleased |
+| [BF-3ca9095-2](#bf-3ca9095-2) | A selected session row with no text no longer draws an empty bold span | PiG's own defect | All platforms | Unreleased |
 | [BF-3cb7131](#bf-3cb7131) | fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns… | PiG's own defect | All platforms | Unreleased |
 | [BF-3ce6bcb](#bf-3ce6bcb) | fix(changelog,source): /i scheme tests fold as JavaScript does, not as RE2's (?i) | PiG's own defect | All platforms | Unreleased |
 | [BF-3cf03c0](#bf-3cf03c0) | A faux provider error message that carries a response id writes `responseId` after `errorMessage` in session… | PiG's own defect | All platforms | 0.5.0 |
@@ -1013,6 +1015,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
+| [BF-a0b2fa3](#bf-a0b2fa3) | The `/tree` key-hint rows keep Pi's one-cell wrapped rows in a zero-width terminal instead of drawing empty… | PiG's own defect | All platforms | Unreleased |
 | [BF-a110f68](#bf-a110f68) | fix(tui,codingagent): owner-loop frame deadline and reader-side input routing (TU-T11, TU-T12) | PiG's own defect | All platforms | Unreleased |
 | [BF-a11fc08](#bf-a11fc08) | fix(durable): list D206 in the docs bundle; the cut-off tool case types its task id; the retry delay product… | PiG's own defect | All platforms | Unreleased |
 | [BF-a13bae4](#bf-a13bae4) | A `read` result shown in the transcript no longer keeps the file text a second time as its structured content | PiG's own defect | All platforms | 0.5.0 |
@@ -5265,6 +5268,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `3ca622b27a` (2026-10-29)
 - **Tests:** None recorded.
+
+### BF-3ca9095
+
+**The session picker reads its tab, sort, path, delete, rename and key-hint bindings from the process-wide…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The session picker reads its tab, sort, path, delete, rename and key-hint bindings from the process-wide keybindings and only the named-filter binding from the manager the component was built with, as Pi does.
+- **Root cause:** Pi reads getKeybindings() for tab, sort, path, delete, rename and noninvasive delete and for every hint, and the manager given to the component only for the named filter. PiG read the component's manager for all app.session.* actions and hints, so a component built with a manager that differs from the process-wide one acted on the wrong keys. A selected row whose text is empty drew an empty bold span; chalk leaves an empty string unstyled, so PiG now does too.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3ca9095d0b` (2026-11-02)
+- **Tests:** `internal/codingagent/session_selector_contract_test.go::TestSessionListHandleInputContractsMatchPi`, `internal/codingagent/session_selector_contract_test.go::TestSessionSelectorComponentHandleInputContractsMatchPi`, `internal/codingagent/session_selector_contract_test.go::TestSessionSelectorDeleteOutcomeReportsInTheHeader`, `internal/codingagent/session_selector_contract_test.go::TestSessionSelectorKeybindingSourcesMatchPi`, `internal/codingagent/session_selector_contract_test.go::TestSessionSelectorSharedKeysFollowRebinding`, `internal/codingagent/session_selector_render_contract_test.go::TestSessionHeaderRenderMatchesPi`, `internal/codingagent/session_selector_render_contract_test.go::TestSessionListRenderMatchesPi`
+- **Release note:** The session picker reads its tab, sort, path, delete, rename and key-hint bindings from the process-wide keybindings and only the named-filter binding from the manager the component was built with, as Pi does.
+
+### BF-3ca9095-2
+
+**A selected session row with no text no longer draws an empty bold span**
+
+- **Source:** PiG's own defect
+- **Symptom:** A selected session row with no text no longer draws an empty bold span.
+- **Root cause:** Pi reads getKeybindings() for tab, sort, path, delete, rename and noninvasive delete and for every hint, and the manager given to the component only for the named filter. PiG read the component's manager for all app.session.* actions and hints, so a component built with a manager that differs from the process-wide one acted on the wrong keys. A selected row whose text is empty drew an empty bold span; chalk leaves an empty string unstyled, so PiG now does too.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3ca9095d0b` (2026-11-02)
+- **Tests:** `internal/codingagent/session_selector_contract_test.go::TestSessionListHandleInputContractsMatchPi`, `internal/codingagent/session_selector_contract_test.go::TestSessionSelectorComponentHandleInputContractsMatchPi`, `internal/codingagent/session_selector_contract_test.go::TestSessionSelectorDeleteOutcomeReportsInTheHeader`, `internal/codingagent/session_selector_contract_test.go::TestSessionSelectorKeybindingSourcesMatchPi`, `internal/codingagent/session_selector_contract_test.go::TestSessionSelectorSharedKeysFollowRebinding`, `internal/codingagent/session_selector_render_contract_test.go::TestSessionHeaderRenderMatchesPi`, `internal/codingagent/session_selector_render_contract_test.go::TestSessionListRenderMatchesPi`
+- **Release note:** A selected session row with no text no longer draws an empty bold span.
 
 ### BF-3cb7131
 
@@ -15338,6 +15369,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a09da26616` (2026-10-13)
 - **Tests:** `coding/session_settings_json_test.go::TestSessionSettingsJSONIsTheEncodingOfGetSettings`, `internal/codingagent/settings_extension_json_test.go::TestExtensionSettingsJSONEncodesOncePerSettingsGeneration`, `internal/codingagent/settings_extension_json_test.go::TestExtensionSettingsJSONKeepsPiMemberOrder`, `internal/codingagent/settings_shared_read_test.go::TestSettingsReadHonorsPiWriterLock`, `internal/codingagent/tool_render_shell_details_test.go::TestShellCardIgnoresACaseVariantTruncatedBy`, `internal/codingagent/tool_render_shell_details_test.go::TestShellDetailsFromReadsTheExactKeys`
 - **Release note:** A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a member such as `TRUNCATEDBY` no longer stands in for `truncatedBy`.
+
+### BF-a0b2fa3
+
+**The `/tree` key-hint rows keep Pi's one-cell wrapped rows in a zero-width terminal instead of drawing empty…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The `/tree` key-hint rows keep Pi's one-cell wrapped rows in a zero-width terminal instead of drawing empty rows.
+- **Root cause:** The tree help rows were truncated to the terminal width after wrapping, which turned the one-cell rows Pi draws at width 0 into empty rows. Pi's TreeHelp returns the wrapped rows as they are.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a0b2fa3e31` (2026-11-02)
+- **Tests:** `internal/codingagent/tree_selector_contract_test.go::TestTreeListHandleInputContractsMatchPi`, `internal/codingagent/tree_selector_contract_test.go::TestTreeListRemappedKeysMatchPi`, `internal/codingagent/tree_selector_label_contract_test.go::TestTreeLabelInputAndRoutingContractsMatchPi`, `internal/codingagent/tree_selector_label_contract_test.go::TestTreeSavedLabelCarriesTheSaveTimeAndRemovalClearsIt`, `internal/codingagent/tree_selector_label_contract_test.go::TestTreeSearchLineTakesNoInput`, `internal/codingagent/tree_selector_label_contract_test.go::TestTreeSelectorCapturesViewportInputExceptWhileLabelling`, `internal/codingagent/tree_selector_render_contract_test.go::TestTreeHelpRenderMatchesPi`, `internal/codingagent/tree_selector_render_contract_test.go::TestTreeHorizontalViewportMatchesPiAtEveryWidth` and 4 more in docs/bug-ledger.json
+- **Release note:** The `/tree` key-hint rows keep Pi's one-cell wrapped rows in a zero-width terminal instead of drawing empty rows.
 
 ### BF-a110f68
 

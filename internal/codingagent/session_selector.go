@@ -158,7 +158,7 @@ func (s *SessionSelectorComponent) buildBaseLayout() {
 		panel.Add(tui.NewSpacer(1))
 		panel.Add(s.renameInput)
 		panel.Add(tui.NewSpacer(1))
-		hint := sessionFg(tui.ActiveTheme().Muted, sessionKeyText(s, tui.KBSelectConfirm)+" to save · "+sessionKeyText(s, tui.KBSelectCancel)+" to cancel")
+		hint := sessionFg(tui.ActiveTheme().Muted, sessionKeyText(tui.KBSelectConfirm)+" to save · "+sessionKeyText(tui.KBSelectCancel)+" to cancel")
 		panel.Add(tui.NewPaddedText(hint, 1, 0, nil))
 		s.Add(panel)
 	} else {
@@ -183,9 +183,9 @@ func (s *SessionSelectorComponent) renderList(width int) []string {
 		var msg string
 		switch {
 		case s.nameFilter == sessionNameNamed && s.scope == sessionScopeAll:
-			msg = "  No named sessions found. Press " + sessionKeyText(s, "app.session.toggleNamedFilter") + " to show all."
+			msg = "  No named sessions found. Press " + sessionKeyText("app.session.toggleNamedFilter") + " to show all."
 		case s.nameFilter == sessionNameNamed:
-			msg = "  No named sessions in current folder. Press " + sessionKeyText(s, "app.session.toggleNamedFilter") + " to show all, or Tab to view all."
+			msg = "  No named sessions in current folder. Press " + sessionKeyText("app.session.toggleNamedFilter") + " to show all, or Tab to view all."
 		case s.scope == sessionScopeAll:
 			msg = "  No sessions found"
 		default:
@@ -235,7 +235,7 @@ func sessionSelectorHeader(s *SessionSelectorComponent, width int) []string {
 
 	switch {
 	case s.confirmDelete != "":
-		hint := "Delete session? " + sessionKeyHint(s, tui.KBSelectConfirm, "confirm") + " · " + sessionKeyHint(s, tui.KBSelectCancel, "cancel")
+		hint := "Delete session? " + sessionKeyHint(tui.KBSelectConfirm, "confirm") + " · " + sessionKeyHint(tui.KBSelectCancel, "cancel")
 		return []string{line1, sessionFg(th.Error, widthx.TruncateToWidth(hint, width, "…", false)), ""}
 	case s.statusState.message != "":
 		color := th.Accent
@@ -245,19 +245,19 @@ func sessionSelectorHeader(s *SessionSelectorComponent, width int) []string {
 		return []string{line1, sessionFg(color, widthx.TruncateToWidth(s.statusState.message, width, "…", false)), ""}
 	}
 	sep := sessionFg(th.Muted, " · ")
-	hint1 := sessionKeyHint(s, tui.KBInputTab, "scope") + sep + sessionFg(th.Muted, `re:<pattern> regex · "phrase" exact`)
+	hint1 := sessionKeyHint(tui.KBInputTab, "scope") + sep + sessionFg(th.Muted, `re:<pattern> regex · "phrase" exact`)
 	pathState := "(off)"
 	if s.showPath {
 		pathState = "(on)"
 	}
 	parts := []string{
-		sessionKeyHint(s, "app.session.toggleSort", "sort"),
-		sessionKeyHint(s, "app.session.toggleNamedFilter", "named"),
-		sessionKeyHint(s, "app.session.delete", "delete"),
-		sessionKeyHint(s, "app.session.togglePath", "path "+pathState),
+		sessionKeyHint("app.session.toggleSort", "sort"),
+		sessionKeyHint("app.session.toggleNamedFilter", "named"),
+		sessionKeyHint("app.session.delete", "delete"),
+		sessionKeyHint("app.session.togglePath", "path "+pathState),
 	}
 	if s.showRenameHint {
-		parts = append(parts, sessionKeyHint(s, "app.session.rename", "rename"))
+		parts = append(parts, sessionKeyHint("app.session.rename", "rename"))
 	}
 	return []string{
 		line1,
@@ -266,23 +266,15 @@ func sessionSelectorHeader(s *SessionSelectorComponent, width int) []string {
 	}
 }
 
-// sessionKeyText mirrors upstream keyText: the bound keys, not capitalized.
-func sessionKeyText(s *SessionSelectorComponent, action string) string {
-	var keys []string
-	if strings.HasPrefix(action, "app.") && s.keybindings != nil {
-		for _, key := range s.keybindings.GetKeys(action) {
-			keys = append(keys, string(key))
-		}
-	} else {
-		keys = tui.GetTUIKeybindings().GetKeys(action)
-	}
-	return tui.FormatKeyText(strings.Join(keys, "/"), false)
+// sessionKeyText mirrors upstream keyText: the keys the process-wide keybindings bind to the action, not capitalized.
+func sessionKeyText(action string) string {
+	return tui.FormatKeyText(strings.Join(tui.GetTUIKeybindings().GetKeys(action), "/"), false)
 }
 
 // sessionKeyHint mirrors upstream keyHint: dim keys, muted description.
-func sessionKeyHint(s *SessionSelectorComponent, action, description string) string {
+func sessionKeyHint(action, description string) string {
 	th := tui.ActiveTheme()
-	return sessionFg(th.Dim, sessionKeyText(s, action)) + sessionFg(th.Muted, " "+description)
+	return sessionFg(th.Dim, sessionKeyText(action)) + sessionFg(th.Muted, " "+description)
 }
 
 func sessionFg(color, text string) string {
@@ -292,7 +284,8 @@ func sessionFg(color, text string) string {
 	return color + text + tui.FgClose(color)
 }
 
-func sessionBold(text string) string { return "\x1b[1m" + text + tui.SGRBoldDimReset }
+// sessionBold is theme.bold: chalk leaves an empty string unstyled.
+func sessionBold(text string) string { return tui.ActiveTheme().Bold(text) }
 
 // CapturesViewportInput is session-selector.ts capturesViewportInput: the list takes the fullscreen viewport keys except while renaming.
 func (s *SessionSelectorComponent) CapturesViewportInput() bool { return !s.renameMode }
@@ -342,26 +335,28 @@ func (s *SessionSelectorComponent) HandleInput(data string) {
 		}
 	}
 
+	// Pi reads the process-wide keybindings (getKeybindings) for every action but the named filter, which it reads from the manager the component was given.
+	kb := tui.GetTUIKeybindings()
 	switch {
-	case tui.GetTUIKeybindings().Matches(data, tui.KBInputTab):
+	case kb.Matches(data, tui.KBInputTab):
 		s.toggleScope()
 		return
-	case s.keybindings.Matches(data, "app.session.toggleSort"):
+	case kb.Matches(data, "app.session.toggleSort"):
 		s.toggleSortMode()
 		return
 	case s.keybindings.Matches(data, "app.session.toggleNamedFilter"):
 		s.toggleNameFilter()
 		return
-	case s.keybindings.Matches(data, "app.session.togglePath"):
+	case kb.Matches(data, "app.session.togglePath"):
 		s.showPath = !s.showPath
 		return
-	case s.keybindings.Matches(data, "app.session.delete"):
+	case kb.Matches(data, "app.session.delete"):
 		s.startDeleteConfirmation()
 		return
-	case s.keybindings.Matches(data, "app.session.rename"):
+	case kb.Matches(data, "app.session.rename"):
 		s.enterRenameMode()
 		return
-	case s.keybindings.Matches(data, "app.session.deleteNoninvasive"):
+	case kb.Matches(data, "app.session.deleteNoninvasive"):
 		if s.searchInput.Text() != "" {
 			s.searchInput.HandleInput(data)
 			s.refilter()
@@ -372,7 +367,7 @@ func (s *SessionSelectorComponent) HandleInput(data string) {
 	}
 	// session-selector.ts handleInput sets selectionTouched before the first list action and checks the list actions in this order.
 	s.selectionTouched = true
-	switch kb := tui.GetTUIKeybindings(); {
+	switch {
 	case kb.Matches(data, tui.KBSelectUp):
 		s.move(-1)
 	case kb.Matches(data, tui.KBSelectDown):
