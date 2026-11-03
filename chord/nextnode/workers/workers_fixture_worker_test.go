@@ -128,6 +128,8 @@ type workerBehaviour struct {
 	// HoldNodeStart: the NodeHost's Node subprocess is not started until this file exists (or 20 s passed), so the worker is
 	// in the middle of starting its host, its socket directory made and nothing connected, for as long as the test wants.
 	HoldNodeStart string
+	// SpawnProbe: at its start, a program the worker spawns prints the owner variable it sees (`owner seen by a spawned program: <value>` on stdout).
+	SpawnProbe bool
 	// BlockNode: 300 ms after its load, blocks the NodeHost's event loop until this file exists (`node blocked` on stdout).
 	BlockNode string
 	// ShutdownDuringReload: shuts down the moment a reload of the server's is being applied (taken off the queue, in flight).
@@ -168,6 +170,9 @@ func (b workerBehaviour) json() *delta.JsonObject {
 	}
 	if b.BlockNode != "" {
 		object.Set("blockNode", b.BlockNode)
+	}
+	if b.SpawnProbe {
+		object.Set("spawnProbe", true)
 	}
 	if b.HoldNodeStart != "" {
 		object.Set("holdNodeStart", b.HoldNodeStart)
@@ -214,6 +219,7 @@ func behaviourOf(value delta.JsonValue) workerBehaviour {
 		b.LateCloseMs = int(ms)
 	}
 	b.BlockNode, _ = object.Value("blockNode").(string)
+	b.SpawnProbe, _ = object.Value("spawnProbe").(bool)
 	b.HoldNodeStart, _ = object.Value("holdNodeStart").(string)
 	b.ShutdownDuringReload, _ = object.Value("shutdownDuringReload").(bool)
 	b.DisconnectAndBlock, _ = object.Value("disconnectAndBlock").(bool)
@@ -340,6 +346,13 @@ func runWorkerFixture() {
 		behaviour := behaviourOf(start.Start)
 		if behaviour.HoldNodeStart != "" {
 			holdNodeGate.Store(&behaviour.HoldNodeStart)
+		}
+		if behaviour.SpawnProbe {
+			seen, err := exec.Command("/bin/sh", "-c", `printf %s "${`+plugins.SocketOwnerEnv+`-unset}"`).Output()
+			if err != nil {
+				return nil, err
+			}
+			fmt.Fprintf(os.Stdout, "owner seen by a spawned program: %s\n", seen)
 		}
 		if behaviour.Exit != nil {
 			exitProcess(*behaviour.Exit)

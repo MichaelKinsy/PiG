@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"crypto/rand"
 	"os"
 	"os/exec"
 	"slices"
@@ -86,7 +85,7 @@ func NewWorkerProcess(options ForkOptions, events ProcessEvents) (*WorkerProcess
 	//nolint:gosec // G204 (class b): the program is the app's own worker entry and its arguments, with no shell.
 	cmd := exec.Command(options.Entry, options.ExecArgv...)
 	// Unique to this start: what the worker's NodeHosts leave of their socket directories is named by it (SocketOwnerEnv).
-	owner := rand.Text()
+	owner := plugins.NewSocketOwner()
 	cmd.Env = append(environment(options.Env), plugins.SocketOwnerEnv+"="+owner)
 	detach(cmd)
 	parent, afterStart, fail, err := prepareChannel(cmd)

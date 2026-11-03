@@ -47,7 +47,7 @@ func listenNode() (listener net.Listener, address string, cleanup func(), err er
 
 // listenNodeIn is listenNode with its directory made in tempDir ("" is the process's).
 func listenNodeIn(tempDir string) (listener net.Listener, address string, cleanup func(), err error) {
-	dir, err := os.MkdirTemp(tempDir, socketDirPrefix(os.Getenv(SocketOwnerEnv)))
+	dir, err := os.MkdirTemp(tempDir, socketDirPrefix(currentSocketOwner()))
 	if err != nil {
 		return nil, "", nil, err
 	}

@@ -562,6 +562,32 @@ func TestCloseLeavesNoSocketDirectoryOfAWorkersNodeHostThatWasStillStarting(t *t
 	}
 }
 
+// The owner variable is the server's to tell the worker who started it: the worker takes it out of its environment at start, as
+// it does the channel's, so no program it spawns sees it.
+func TestAWorkerDoesNotPassItsSocketOwnerToTheProgramsItSpawns(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the probe is a /bin/sh program")
+	}
+	f := newFleet(t, fleetOptions{})
+	f.behaviours.set("S1", workerBehaviour{SpawnProbe: true})
+	notes := f.hold(fixtureNotes, "S1")
+	defer notes.Release()
+	const prefix = "session|S1 owner seen by a spawned program: "
+	var line string
+	until(t, func() bool {
+		for _, output := range f.output.all() {
+			if strings.HasPrefix(output, prefix) {
+				line = output
+				return true
+			}
+		}
+		return false
+	})
+	if line != prefix+"unset" {
+		t.Fatalf("output = %q, want the variable unset", line)
+	}
+}
+
 // The same for a worker that is killed (Pi's `child.process.kill()` of a failed start, a crash, the start timeout), which has no
 // chance to clean up at all: the server removes what its process left, once it is gone.
 func TestAWorkerKilledWhileItsNodeHostIsStartingLeavesNoSocketDirectory(t *testing.T) {

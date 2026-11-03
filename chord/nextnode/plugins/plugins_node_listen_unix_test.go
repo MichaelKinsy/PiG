@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -20,13 +21,14 @@ func TestRemoveSocketDirsOfRemovesOnlyTheDirectoriesOfItsOwner(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(root) })
-	t.Setenv(SocketOwnerEnv, "dead")
+	setSocketOwner("dead")
+	t.Cleanup(func() { setSocketOwner("") })
 	left, address, _, err := listenNodeIn(root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	_ = left.Close()
-	t.Setenv(SocketOwnerEnv, "live")
+	setSocketOwner("live")
 	live, liveAddress, _, err := listenNodeIn(root)
 	if err != nil {
 		t.Fatal(err)
@@ -46,5 +48,31 @@ func TestRemoveSocketDirsOfRemovesOnlyTheDirectoriesOfItsOwner(t *testing.T) {
 	RemoveSocketDirsOf(root, "")
 	if _, err := os.Stat(filepath.Dir(liveAddress)); err != nil {
 		t.Fatalf("no owner removed the live directory: %v", err)
+	}
+}
+
+// A worker's socket path is short enough for a unix address (104 bytes on macOS) under a long temporary directory: 8 characters
+// of owner, not the 26 of a random text, which made every path 18 bytes longer and failed `bind: invalid argument` from a
+// temporary directory of about 50 bytes.
+func TestASocketUnderALongTemporaryDirectoryBindsWithTheOwnerAWorkerGets(t *testing.T) {
+	tmp := os.TempDir()
+	pad := 60 - len(tmp) - 1
+	if pad < 1 {
+		t.Skipf("the temporary directory %q is already 60 bytes", tmp)
+	}
+	root := filepath.Join(tmp, strings.Repeat("d", pad))
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(root) })
+	setSocketOwner(NewSocketOwner())
+	t.Cleanup(func() { setSocketOwner("") })
+	listener, address, _, err := listenNodeIn(root)
+	if err != nil {
+		t.Fatalf("a %d-byte temporary directory: %v", len(root), err)
+	}
+	_ = listener.Close()
+	if len(address) > 103 {
+		t.Fatalf("socket path of %d bytes, past what macOS binds", len(address))
 	}
 }
