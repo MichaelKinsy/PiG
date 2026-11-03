@@ -184,7 +184,7 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 				// An item whose first line is empty ends at a blank line that follows it (Tokenizer.list), so a bullet indented as far as the item's content is the next item of the list.
 				endsEmpty := firstBlank && j == i+1 && body == ""
 				// An item that starts with an empty line takes one blank line and ends there (Tokenizer.list: `blankLine && rules.other.blankLine.test(nextLine)`), so a second blank line ends the list.
-				if nested && !(endsEmpty && k-j > 1) && (len(ni) < contentIndent || endsEmpty && len(ni) <= 3) && markdownSiblingIndent(len(ni), outer) && markdownOrdered(nm) == list.ordered && nm[len(nm)-1] == delimiter && !isMarkedHr(lines[k]) {
+				if nested && (!endsEmpty || k-j <= 1) && (len(ni) < contentIndent || endsEmpty && len(ni) <= 3) && markdownSiblingIndent(len(ni), outer) && markdownOrdered(nm) == list.ordered && nm[len(nm)-1] == delimiter && !isMarkedHr(lines[k]) {
 					// Tokenizer.ts:372-374: the blank lines stay in the item's text; only the last item's text is trimmed, so an indented code block keeps one trailing blank line.
 					for n := j; n < k; n++ {
 						if len(pending) > 0 {
@@ -304,11 +304,12 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 		if n := len(entry.blocks); len(pending) == 0 && n > 0 && entry.blocks[n-1].list != nil {
 			// The lexer reads what follows the nested list's trimmed raw (its last line's trailing whitespace, then the newline and blank lines that end the item's text) as a space token when it is longer than one newline, which marked folds into the list's raw.
 			block := &entry.blocks[n-1]
-			residue := strings.Repeat(" ", block.tail)
+			var residue strings.Builder
+			residue.WriteString(strings.Repeat(" ", block.tail))
 			for _, line := range lines[block.end:min(j, len(lines))] {
-				residue += "\n" + jsstring.Slice(strings.ReplaceAll(line, "\t", "    "), contentIndent)
+				residue.WriteString("\n" + jsstring.Slice(strings.ReplaceAll(line, "\t", "    "), contentIndent))
 			}
-			block.endSpace = utf8.RuneCountInString(residue) > 1
+			block.endSpace = utf8.RuneCountInString(residue.String()) > 1
 		}
 		flush()
 		list.items = append(list.items, entry)

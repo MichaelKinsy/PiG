@@ -900,7 +900,7 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 					silentEnd = len(out)
 				}
 				// A lazy last line of spaces is a space token inside the quote, which adds an empty row of its own.
-				if last := lines[len(lines)-1]; j == len(lines) && len(last) > 1 && strings.Trim(last, " \t") == "" && !(lazyAfterNested && len(quoted) >= 2 && !isBlockquoteLine(quoted[len(quoted)-2])) {
+				if last := lines[len(lines)-1]; j == len(lines) && len(last) > 1 && strings.Trim(last, " \t") == "" && (!lazyAfterNested || len(quoted) < 2 || isBlockquoteLine(quoted[len(quoted)-2])) {
 					out = append(out, "")
 					silentEnd = len(out)
 					listSpaceEnd = len(out)
@@ -1166,12 +1166,7 @@ func (m *Markdown) mergesClippedParagraph(source *markdownBlockSource, lines []s
 	if m.suppressBlockSpacing || !source.tableLookaheadOnly(index) {
 		return false
 	}
-	for _, line := range lines[start+1 : markdownNextBreak(m.lazyGroups, start, len(lines))] {
-		if blockLatexStart(line) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(lines[start+1:markdownNextBreak(m.lazyGroups, start, len(lines))], blockLatexStart)
 }
 
 // setextAtGroup reports that a setext heading starts at lines[index] where the lexer starts a token: the first line of a group of a quote's lazy lines, which marked lexes apart from the lines before it, a display-math start that cuts the paragraph, or any line of a list item's text.
@@ -1224,9 +1219,9 @@ func markdownQuoteInterruptsNested(content string) bool {
 
 // markdownQuoteListContentIndent is the content indent of the last list item line of the quoted lines.
 func markdownQuoteListContentIndent(quoted []string) int {
-	for i := len(quoted) - 1; i >= 0; i-- {
-		if indent, marker, body, ok := parseMarkdownListItem(quoted[i]); ok {
-			spacing := markdownIndent(quoted[i][len(indent)+len(marker):])
+	for _, q := range slices.Backward(quoted) {
+		if indent, marker, body, ok := parseMarkdownListItem(q); ok {
+			spacing := markdownIndent(q[len(indent)+len(marker):])
 			if spacing == 0 || spacing > 4 && body != "" {
 				spacing = 1
 			}
