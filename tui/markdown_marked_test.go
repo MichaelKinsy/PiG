@@ -263,9 +263,6 @@ func TestMarkedHandEvaluatedRulesMatchRegexps(t *testing.T) {
 		if textEnd, end, _ := markedStrictStrikethroughMatch(src); textEnd != wantText || end != wantEnd {
 			t.Fatalf("strikethrough %q: (%d, %d), want (%d, %d)", str, textEnd, end, wantText, wantEnd)
 		}
-		if line, _, _ := strings.Cut(str, "\n"); isMarkedHr(line) != (markedBlockHr.exec([]rune(line)) != nil) {
-			t.Fatalf("hr %q: %t", line, isMarkedHr(line))
-		}
 		var want strings.Builder
 		last := 0
 		for m := markedAnyPunctuation.exec(src); m != nil; m = markedAnyPunctuation.next(m) {
@@ -288,15 +285,6 @@ func TestMarkedHandEvaluatedRulesMatchRegexps(t *testing.T) {
 			if !rules.nolink && markedInlineNolink.exec(src[k:]) != nil {
 				t.Fatalf("nolink reach rejects %q at %d, which the nolink rule matches", str, k)
 			}
-		}
-	}
-}
-
-// TestMarkedHrMatchesRegexp compares the hand-evaluated hr rule with marked's pattern on the indentation and spacing boundaries the generated sources rarely reach.
-func TestMarkedHrMatchesRegexp(t *testing.T) {
-	for _, line := range []string{"---", "   ---", "    ---", "     ***", " - - -", "*\t*\t*", "___ ", "**", "-_-", "- - - x", "***---", "", "  "} {
-		if got, want := isMarkedHr(line), markedBlockHr.exec([]rune(line)) != nil; got != want {
-			t.Errorf("hr %q: %t, want %t", line, got, want)
 		}
 	}
 }

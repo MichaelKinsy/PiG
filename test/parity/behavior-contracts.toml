@@ -2242,7 +2242,8 @@ claim = "a cached frame of the same text and width is returned until the text ch
 status = "divergence"
 pig_targets = [
   "tui/markdown.go#Render",
-  "tui/markdown.go#renderBlocks"
+  "tui/markdown_blocks.go#renderBlocks",
+  "tui/markdown_marked_lexer.go#blockTokens"
 ]
 evidence = [
   "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
@@ -2255,6 +2256,10 @@ evidence = [
   "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
   "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
   "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
+  "tui/markdown_block_edge_contract_test.go#TestMarkdownBlockEdgeDocsMatchPi",
+  "tui/markdown_commonmark_contract_test.go#TestMarkdownCommonmarkDocsMatchPi",
+  "tui/markdown_residual_contract_test.go#TestMarkdownResidualDocsMatchPi",
+  "tui/markdown_marked_lexer_rules_test.go#TestMarkedBlockRulesEqualTheirPatterns",
   "tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
@@ -2305,7 +2310,8 @@ kind = "markdown-render"
 claim = "each block (heading with its depth styling, paragraph, fenced and indented code, block quote, rule, list, table, definition, space) renders as Pi does, including the blank row after a block when another block follows, the rows a quote or a code border adds (a quote narrower than three columns renders its blocks without a border and without wrapping them again, Pi 8a2ebd385), and the rows reference definitions leave Display math whose rendered layout has a row wider than the content width renders as its raw source, wrapped, because a two-dimensional layout cannot be wrapped row by row (Pi cd1ea342)."
 status = "ported"
 pig_targets = [
-  "tui/markdown.go#renderContent"
+  "tui/markdown_blocks.go#renderToken",
+  "tui/markdown_blocks.go#renderQuote"
 ]
 evidence = [
   "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
@@ -2372,7 +2378,7 @@ kind = "markdown-render"
 claim = "unordered and ordered (renumbered or preserved) lists, task items, nested lists and loose items render with their markers, depth indentation and continuation rows as Pi does"
 status = "ported"
 pig_targets = [
-  "tui/markdown_list.go#renderList"
+  "tui/markdown_blocks.go#renderList"
 ]
 evidence = [
   "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
