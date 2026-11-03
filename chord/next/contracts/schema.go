@@ -3,6 +3,7 @@ package contracts
 import (
 	"fmt"
 	"math"
+	"reflect"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 )
@@ -103,15 +104,15 @@ func stringKind(value any) (any, bool) {
 }
 
 func numberKind(value any) (any, bool) {
-	switch typed := value.(type) {
-	case float64:
-		return typed, !math.IsNaN(typed) && !math.IsInf(typed, 0)
-	case int:
-		return float64(typed), true
-	case int64:
-		return float64(typed), true
-	case int32:
-		return float64(typed), true
+	reflected := reflect.ValueOf(value)
+	switch {
+	case reflected.CanInt():
+		return float64(reflected.Int()), true
+	case reflected.CanUint():
+		return float64(reflected.Uint()), true
+	case reflected.CanFloat():
+		number := reflected.Float()
+		return number, !math.IsNaN(number) && !math.IsInf(number, 0)
 	}
 	return nil, false
 }
@@ -190,24 +191,19 @@ type Literal interface {
 	~string | ~bool | ~int | ~int64 | ~float64
 }
 
-// literalSchema is `{ type: typeof value, const: value }`: a literal with its JSON type.
+// literalSchema is `{ type: typeof value, const: value }`: a literal with its JSON type. A named type is its underlying kind.
 func literalSchema[V Literal](value V) Schema {
-	switch typed := any(value).(type) {
-	case string:
-		return Schema{Node: delta.JsonObjectOf("type", "string", "const", typed)}
-	case bool:
-		return Schema{Node: delta.JsonObjectOf("type", "boolean", "const", typed)}
+	reflected := reflect.ValueOf(value)
+	switch reflected.Kind() { //nolint:exhaustive // Literal admits only these kinds
+	case reflect.String:
+		return Schema{Node: delta.JsonObjectOf("type", "string", "const", reflected.String())}
+	case reflect.Bool:
+		return Schema{Node: delta.JsonObjectOf("type", "boolean", "const", reflected.Bool())}
+	case reflect.Float64:
+		return Schema{Node: delta.JsonObjectOf("type", "number", "const", reflected.Float())}
+	default:
+		return Schema{Node: delta.JsonObjectOf("type", "number", "const", float64(reflected.Int()))}
 	}
-	var number float64
-	switch typed := any(value).(type) {
-	case int:
-		number = float64(typed)
-	case int64:
-		number = float64(typed)
-	case float64:
-		number = typed
-	}
-	return Schema{Node: delta.JsonObjectOf("type", "number", "const", number)}
 }
 
 // Lit is exactly the given value.
