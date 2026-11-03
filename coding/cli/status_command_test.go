@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestStatusJSONReportsHealthyEmptyState(t *testing.T) {
@@ -383,9 +384,7 @@ func TestCanonicalStatusPathResolvesTheExistingPartOfAMissingPath(t *testing.T) 
 	if err := os.Mkdir(real, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(real, link); err != nil {
-		t.Skipf("symbolic links unavailable: %v", err)
-	}
+	testenv.RequireDirectoryLink(t, real, link)
 	canonicalReal := canonicalStatusPath(real)
 	missing := filepath.Join(link, "agent", ".pig")
 	if got, want := canonicalStatusPath(missing), filepath.Join(canonicalReal, "agent", ".pig"); got != want {
