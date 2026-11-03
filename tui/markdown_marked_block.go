@@ -52,6 +52,19 @@ type markdownBlockSource struct {
 	indented []int
 	// breaks are the lazy lines that start a block of their own: they end the paragraph before them.
 	breaks []int
+	// groups are the first lazy lines after quoted lines: the source a block rule reads ends before each, where marked's blockquote tokenizer lexes a group of lines on its own.
+	groups []int
+	// text is set for the text of a list item, which Lexer.blockTokens lexes with no paragraph rule.
+	text bool
+}
+
+// fromGroup is from for the block rules that read ahead: it ends where the group of the line ends.
+func (s *markdownBlockSource) fromGroup(line int) []rune {
+	rest := s.from(line)
+	if end := markdownNextBreak(s.groups, line, len(s.lines)); end < len(s.lines) {
+		return rest[:s.offsets[end]-s.offsets[line]-1]
+	}
+	return rest
 }
 
 func (s *markdownBlockSource) from(line int) []rune {
@@ -85,12 +98,30 @@ func (s *markdownBlockSource) paragraphInterrupted(index int) bool {
 		return false
 	}
 	line := s.lines[index]
+	if slices.Contains(s.groups, index) && line != "" && strings.Trim(line, " \t") != "" {
+		// A group's first line starts the source of a lexing of its own, so only the table rule, which counts the cells of its two rows, can end the paragraph there.
+		_, _, ok := s.table(index)
+		return ok
+	}
+	if !s.text && blockLatexStart(line) {
+		// The display-math start clips the paragraph before this line (Lexer.ts blockTokens), so the line begins the source of a new lexing, where only the table rule, which counts the cells of its two rows, can end a paragraph.
+		_, _, ok := s.table(index)
+		return ok
+	}
 	if line == "" {
 		return true
 	}
 	if strings.Trim(line, " \t") == "" {
 		// [ \t]+\n: a whitespace-only line ends the paragraph only when a newline follows it. A quote's lazy line is lexed apart from the quoted lines, so no newline follows the quoted line before it (`> q`, `>  `, `x` is one paragraph).
 		return index+1 < len(s.lines) && !slices.Contains(s.lazy, index+1)
+	}
+	if s.text {
+		// A list item's text has no paragraph: its lines are text tokens, and every one is first tried as the start of a block, a table only when its two rows have as many cells.
+		if s.quoteLazyInterrupted(index) {
+			return true
+		}
+		_, _, ok := s.table(index)
+		return ok
 	}
 	// Every other alternative needs one of these starts, or a delimiter row next for a table.
 	trimmed := strings.TrimLeft(line, " ")
@@ -163,7 +194,7 @@ func (s *markdownBlockSource) htmlBlock(index int) (raw string, next int, ok boo
 	if !strings.HasPrefix(strings.TrimLeft(s.lines[index], " "), "<") {
 		return "", index, false
 	}
-	match := markedBlockHTML.exec(s.from(index))
+	match := markedBlockHTML.exec(s.fromGroup(index))
 	if match == nil {
 		return "", index, false
 	}
@@ -176,7 +207,7 @@ func (s *markdownBlockSource) def(index int) (tag, href string, next int, ok boo
 	if !markedDefCandidate(s.lines[index]) {
 		return "", "", index, false
 	}
-	match := markedBlockDef.exec(s.from(index))
+	match := markedBlockDef.exec(s.fromGroup(index))
 	if match == nil {
 		return "", "", index, false
 	}
@@ -286,7 +317,7 @@ func (s *markdownBlockSource) table(index int) (table markdownTable, next int, o
 	if index+1 >= len(s.lines) || !markedDelimiterRowShape(s.lines[index+1]) || slices.Contains(s.lazy, index+1) && !slices.Contains(s.lazy, index) {
 		return markdownTable{}, index, false
 	}
-	match := markedBlockTable.exec(s.from(index))
+	match := markedBlockTable.exec(s.fromGroup(index))
 	if match == nil {
 		return markdownTable{}, index, false
 	}
@@ -366,13 +397,37 @@ func markedSplitCells(row string, count int) []string {
 	return cells
 }
 
+// Kinds of the last token of a quote's quoted lines.
+const (
+	markdownQuoteOther = iota
+	markdownQuoteParagraph
+	markdownQuoteList
+	markdownQuoteCode
+	markdownQuoteNested
+)
+
 // markdownQuoteEndsInCode reports that the last token of a quote's quoted lines is a code token, which a lazy line cannot continue: marked's blockquote tokenizer breaks out when the last token is code (`if (lastToken?.type === 'code') break`), and the lazy line starts a block after the quote.
 func markdownQuoteEndsInCode(quoted []string) bool {
+	return markdownQuoteLastToken(quoted) == markdownQuoteCode
+}
+
+// markdownQuoteEndsInList reports that the last token of a quote's quoted lines is a list, which marked's blockquote tokenizer lexes again with the lazy lines that follow it (`lastToken?.type === 'list'`) unless a hard break ends its last line and keeps them in the item's paragraph.
+func markdownQuoteEndsInList(quoted []string) bool {
+	n := len(quoted)
+	for n > 0 && quoted[n-1] == "" {
+		n--
+	}
+	return n > 0 && markdownQuoteLastToken(quoted) == markdownQuoteList && !strings.HasSuffix(quoted[n-1], "  ")
+}
+
+// markdownQuoteLastToken classifies the last token of a quote's quoted lines from their shape.
+func markdownQuoteLastToken(quoted []string) int {
 	const (
-		other = iota
-		paragraph
-		list
-		code
+		other     = markdownQuoteOther
+		paragraph = markdownQuoteParagraph
+		list      = markdownQuoteList
+		code      = markdownQuoteCode
+		nested    = markdownQuoteNested
 	)
 	kind := other
 	var fence byte
@@ -389,11 +444,14 @@ func markdownQuoteEndsInCode(quoted []string) bool {
 		}
 		indent := markdownIndent(line)
 		switch {
-		case kind == list && indent >= 2:
+		case kind == nested && !(&markdownBlockSource{lines: []string{line}}).quoteLazyInterrupted(0):
+			// A line that interrupts no paragraph is a lazy line of the nested quote.
+		case kind == list && (indent >= 2 || !markedListInterrupts(line, 2)):
+			// The item takes a line that starts no block as a lazy continuation of its paragraph.
 		case indent >= 4 && kind != paragraph:
 			kind = code
 		case isBlockquoteLine(line):
-			kind = other
+			kind = nested
 		default:
 			if f, n, _, ok := parseMarkdownFenceOpen(line); ok {
 				fence, fenceLen, inFence, kind = f, n, true, code
@@ -404,7 +462,7 @@ func markdownQuoteEndsInCode(quoted []string) bool {
 			}
 		}
 	}
-	return kind == code
+	return kind
 }
 
 // markdownTextEndsAt reports that no token follows the lines before index: the rest is empty or the one newline that ends the text (a blank line before the end is a space token).

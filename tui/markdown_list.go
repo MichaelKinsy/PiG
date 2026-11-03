@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
@@ -31,6 +32,9 @@ type markdownListBlock struct {
 	list *markdownList
 	// merged are the indexes of the text's lines that marked's code tokenizer merged into the paragraph before them, four leading spaces removed: they are text whatever they now look like.
 	merged []int
+	// For a nested list: tail is the number of spaces and tabs that end its last source line, which Tokenizer.list trims from the list's raw so that the lexer reads them as the start of a space token; end is the index after its last line; endSpace reports that the whitespace that follows it up to the end of its item is a space token.
+	tail, end int
+	endSpace  bool
 }
 
 // markdownLatexBlockAt reports whether a block LaTeX token starts at lines[index]; pi-tui's latexBlock extension start() clips a paragraph there.
@@ -110,7 +114,12 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 		fence, fenceLength, _, inFence := parseMarkdownFenceOpen(body)
 		flush := func() {
 			if len(pending) > 0 {
-				entry.blocks = append(entry.blocks, markdownListBlock{text: strings.Join(pending, "\n"), merged: merged})
+				text := strings.Join(pending, "\n")
+				// The blank lines after a nested list are, with the newline that ends its last line, one space token of at least two characters, whatever their number, which the lexer reads before the block that follows them.
+				if n := len(entry.blocks); n > 0 && entry.blocks[n-1].list != nil && widthx.JSTrim(text) == "" {
+					text = "\n"
+				}
+				entry.blocks = append(entry.blocks, markdownListBlock{text: text, merged: merged})
 				pending, merged = nil, nil
 			}
 		}
@@ -123,7 +132,7 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 		if nestedIndent, _, _, nested := parseMarkdownListItem(body); nested && len(nestedIndent) <= 3 && !inFence && !isMarkedHr(body) {
 			shifted := append([]string{strings.Repeat(" ", contentIndent) + body}, lines[i+1:]...)
 			child, next := parseMarkdownList(shifted, 0, append(slices.Clone(outer), contentIndent))
-			entry.blocks = append(entry.blocks, markdownListBlock{list: child})
+			entry.blocks = append(entry.blocks, markdownNestedListBlock(child, lines, i+next))
 			pending = nil
 			j = i + next
 		}
@@ -173,13 +182,18 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 				ni, nm, _, nested := parseMarkdownListItem(lines[k])
 				// An item whose first line is empty ends at a blank line that follows it (Tokenizer.list), so a bullet indented as far as the item's content is the next item of the list.
 				endsEmpty := firstBlank && j == i+1 && body == ""
-				if nested && (len(ni) < contentIndent || endsEmpty && len(ni) <= 3) && markdownSiblingIndent(len(ni), outer) && markdownOrdered(nm) == list.ordered && nm[len(nm)-1] == delimiter && !isMarkedHr(lines[k]) {
+				// An item that starts with an empty line takes one blank line and ends there (Tokenizer.list: `blankLine && rules.other.blankLine.test(nextLine)`), so a second blank line ends the list.
+				if nested && !(endsEmpty && k-j > 1) && (len(ni) < contentIndent || endsEmpty && len(ni) <= 3) && markdownSiblingIndent(len(ni), outer) && markdownOrdered(nm) == list.ordered && nm[len(nm)-1] == delimiter && !isMarkedHr(lines[k]) {
 					// Tokenizer.ts:372-374: the blank lines stay in the item's text; only the last item's text is trimmed, so an indented code block keeps one trailing blank line.
 					for n := j; n < k; n++ {
 						if len(pending) > 0 {
 							// A line of spaces keeps what is left of it after the content indent, which makes a space token of its own when it is not empty.
 							pending = append(pending, jsstring.Slice(strings.ReplaceAll(lines[n], "\t", "    "), contentIndent))
 						}
+					}
+					// The indented code tokenizer takes one blank line after a merged line into the paragraph's text, which then ends in a newline; two or more it trims, and they make a space token.
+					if mergedRun && k-j == 1 && len(pending) > 0 {
+						merged = append(merged, len(pending)-1)
 					}
 					list.loose = true
 					j = k
@@ -200,7 +214,7 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 				endRun(false)
 				flush()
 				child, next := parseMarkdownList(lines, j, append(slices.Clone(outer), contentIndent))
-				entry.blocks = append(entry.blocks, markdownListBlock{list: child})
+				entry.blocks = append(entry.blocks, markdownNestedListBlock(child, lines, next))
 				// The nested list's last line is the item's last line, which decides whether a lazy line may continue the item.
 				previous = jsstring.Slice(lines[next-1], contentIndent)
 				j = next
@@ -252,7 +266,12 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 				afterBlank = false
 				continue
 			}
-			if (!firstBlank || j != i+1) && !afterBlank && (!nested || len(ni)-markdownInnermostOuter(outer) > 3) && widthx.JSTrim(line) != "" && !markedListInterrupts(line, contentIndent) && markdownLazyLineMayContinue(previous, contentIndent) && markdownOuterMayContinue(line, lines[j-1], outer) {
+			// The line is tested as the item that holds this list cut it: from its content indent, so it ends this item when it starts a block there.
+			interrupted := markedListInterrupts(line, contentIndent)
+			if innermost := markdownInnermostOuter(outer); innermost > 0 && leading >= innermost {
+				interrupted = markedListInterrupts(line[innermost:], contentIndent-innermost)
+			}
+			if (!firstBlank || j != i+1) && !afterBlank && (!nested || len(ni)-markdownInnermostOuter(outer) > 3) && widthx.JSTrim(line) != "" && !interrupted && markdownLazyLineMayContinue(previous, contentIndent) && markdownOuterMayContinue(line, lines[j-1], outer) {
 				// Tokenizer.ts list: a lazy line joins the item's text as written, indentation included, after the item that holds this list took the indent of its own content off every line that reaches it.
 				stripped := markdownStripOuterIndent(line, outer)
 				// A lazy line indented four spaces or more is an indented code chunk that marked's code tokenizer merges into the text before it, with up to four spaces removed.
@@ -273,17 +292,36 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 			}
 			break
 		}
+		if n := len(entry.blocks); len(pending) == 0 && n > 0 && entry.blocks[n-1].list != nil {
+			// The lexer reads what follows the nested list's trimmed raw (its last line's trailing whitespace, then the newline and blank lines that end the item's text) as a space token when it is longer than one newline, which marked folds into the list's raw.
+			block := &entry.blocks[n-1]
+			residue := strings.Repeat(" ", block.tail)
+			for _, line := range lines[block.end:min(j, len(lines))] {
+				residue += "\n" + jsstring.Slice(strings.ReplaceAll(line, "\t", "    "), contentIndent)
+			}
+			block.endSpace = utf8.RuneCountInString(residue) > 1
+		}
 		flush()
 		list.items = append(list.items, entry)
 		i = j
 	}
 	// Tokenizer.list trims the end of the last item's text.
 	if n := len(list.items); n > 0 {
-		if blocks := list.items[n-1].blocks; len(blocks) > 0 && blocks[len(blocks)-1].list == nil {
-			blocks[len(blocks)-1].text = widthx.JSTrimEnd(blocks[len(blocks)-1].text)
+		if blocks := list.items[n-1].blocks; len(blocks) > 0 {
+			if last := &blocks[len(blocks)-1]; last.list == nil {
+				last.text = widthx.JSTrimEnd(last.text)
+			} else {
+				last.endSpace = false
+			}
 		}
 	}
 	return list, i
+}
+
+// markdownNestedListBlock is the item block of the nested list that parseMarkdownList read up to lines[end-1].
+func markdownNestedListBlock(list *markdownList, lines []string, end int) markdownListBlock {
+	last := lines[end-1]
+	return markdownListBlock{list: list, end: end, tail: len(last) - len(strings.TrimRight(last, " \t"))}
 }
 
 // beforeLast is the line before the last of lines, or "" when there is none.
@@ -414,14 +452,21 @@ func (m *Markdown) renderList(list *markdownList, depth, width int) []string {
 		continuation := indent + strings.Repeat(" ", widthx.VisibleWidth(marker))
 		itemWidth := max(1, width-widthx.VisibleWidth(first))
 		rendered := false
-		emptyTail := false
+		// spaceRow is the row of a space token, which renderToken gives the item's continuation prefix.
+		spaceRow := func() {
+			prefix := continuation
+			if !rendered {
+				prefix = first
+			}
+			out = append(out, prefix)
+			rendered = true
+		}
 		for blockIndex, block := range blocks {
 			notLast := m.keepPartialFence || index < len(list.items)-1 || blockIndex < len(blocks)-1
-			// A nested list whose last item is empty ends with a newline in its raw that the item's text then lexes as a space token.
-			if emptyTail && block.list == nil && !strings.HasPrefix(block.text, "\n") && block.text != "" {
-				out = append(out, "")
+			// The whitespace that ends a nested list's last line is, with the newline after it, a space token before the block that follows; text that starts with a blank line is that token itself.
+			if blockIndex > 0 && blocks[blockIndex-1].list != nil && blocks[blockIndex-1].tail > 0 && (block.list != nil || block.text != "" && !strings.HasPrefix(block.text, "\n")) {
+				spaceRow()
 			}
-			emptyTail = block.list != nil && markdownListEndsEmpty(block.list)
 			if block.list != nil {
 				// An item whose first line is empty and whose next line starts a nested list has the text "\n- b": the leading newline is a space token, which renders the bullet with an empty row.
 				if !rendered && blockIndex == 1 && blocks[0].list == nil && blocks[0].text == "" {
@@ -437,6 +482,9 @@ func (m *Markdown) renderList(list *markdownList, depth, width int) []string {
 				out = append(out, m.renderList(block.list, depth+1, width)...)
 				m.keepPartialFence = keep
 				rendered = true
+				if block.endSpace {
+					spaceRow()
+				}
 				continue
 			}
 			text := block.text
@@ -526,23 +574,6 @@ func markdownTaskMarkerStripped(list *markdownList) (taskHeading, stripped []boo
 		stripped[index] = true
 	}
 	return taskHeading, stripped
-}
-
-// markdownListEndsEmpty reports that the list's last item has no content but spaces after its marker, which is what leaves a newline for a following space token.
-func markdownListEndsEmpty(list *markdownList) bool {
-	if len(list.items) == 0 {
-		return false
-	}
-	last := list.items[len(list.items)-1]
-	if !last.spacedEmpty {
-		return false
-	}
-	for _, block := range last.blocks {
-		if block.list != nil || block.text != "" {
-			return false
-		}
-	}
-	return true
 }
 
 // markedListInterruptions are the six rules Tokenizer.list tests every following line against (rules.other.nextBulletRegex, hrRegex, fencesBeginRegex, headingBeginRegex, htmlBeginRegex, blockquoteBeginRegex), indexed by the indent they allow, min(3, contentIndent-1) clamped at 0. `.` is any character but a line terminator.
