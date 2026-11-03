@@ -16,7 +16,6 @@ func infoSession(t *testing.T, provider, model string, usages ...ai.Usage) *Sess
 	t.Helper()
 	session := NewSession("info-contract", t.TempDir())
 	for i, usage := range usages {
-		usage := usage
 		message := &agent.AssistantMessage{Role: "assistant", Provider: provider, ModelID: model, Timestamp: int64(i + 1), StopReason: ai.StopReasonStop, Usage: &usage}
 		if _, err := session.AppendMessage(agent.AgentMessage{Assistant: message}); err != nil {
 			t.Fatal(err)
