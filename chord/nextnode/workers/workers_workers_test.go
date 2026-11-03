@@ -487,9 +487,6 @@ func TestCloseStopsWaitingWhenItsContextEndsAnAppHookThatIgnoresItsContextKeepsR
 	notes := f.hold(fixtureNotes, "S1")
 	defer notes.Release()
 	<-reached
-	// The worker's plugin host is up once the worker is running: Close then stops a loaded worker, which closes its Node
-	// host. Closing while the worker is still starting one ends the process with the host's socket directory left behind.
-	until(t, func() bool { state := f.stateOf("S1"); return state != nil && state.Status == WorkerRunning })
 	ctx, cancel := context.WithTimeout(background, 100*time.Millisecond)
 	defer cancel()
 	done := make(chan error, 1)
@@ -501,6 +498,69 @@ func TestCloseStopsWaitingWhenItsContextEndsAnAppHookThatIgnoresItsContextKeepsR
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("Close ignores its context: it waits for an app hook that never returns")
+	}
+}
+
+// socketDirsIn is a worker's TMPDIR for a test and a lister of the NodeHost socket directories left in it. The directory is
+// short: the socket's path inside it must fit a unix address (t.TempDir's does not).
+func socketDirsIn(t *testing.T) func() []string {
+	t.Helper()
+	scratch, err := os.MkdirTemp("", "w")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(scratch) })
+	t.Setenv("TMPDIR", scratch)
+	return func() []string {
+		found, err := filepath.Glob(filepath.Join(scratch, "chord-plugins-*"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return found
+	}
+}
+
+// Not upstream's: Pi evaluates plugins in-process, so it has no socket directory to leave behind. PiG's NodeHost listens on a
+// socket in a directory of its own, and a worker that ends while that host is still starting (stopped by Close here) has no
+// host to close it: the directory must not outlive the worker. Close comes once the directory exists, which the NodeHost's
+// start (Node booting, connecting) outlasts.
+func TestCloseLeavesNoSocketDirectoryOfAWorkersNodeHostThatWasStillStarting(t *testing.T) {
+	socketDirs := socketDirsIn(t)
+	f := newFleet(t, fleetOptions{})
+	notes := f.hold(fixtureNotes, "S1")
+	defer notes.Release()
+	until(t, func() bool { return len(socketDirs()) > 0 })
+	if err := f.workers.Close(background); err != nil {
+		t.Fatal(err)
+	}
+	if left := socketDirs(); len(left) != 0 {
+		t.Fatalf("left behind by the stopped worker: %v", left)
+	}
+}
+
+// The same for a worker that is killed (Pi's `child.process.kill()` of a failed start, a crash, the start timeout), which has no
+// chance to clean up at all: the server removes what its process left, once it is gone.
+func TestAWorkerKilledWhileItsNodeHostIsStartingLeavesNoSocketDirectory(t *testing.T) {
+	socketDirs := socketDirsIn(t)
+	f := newFleet(t, fleetOptions{})
+	notes := f.hold(fixtureNotes, "S1")
+	defer notes.Release()
+	until(t, func() bool { return len(socketDirs()) > 0 })
+	state := f.stateOf("S1")
+	if state == nil {
+		t.Fatal("no worker")
+	}
+	process, err := os.FindProcess(state.Pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	// The server's state follows the exit, which comes after the removal.
+	until(t, func() bool { state := f.stateOf("S1"); return state != nil && state.Status == WorkerFailed })
+	if left := socketDirs(); len(left) != 0 {
+		t.Fatalf("left behind by the killed worker: %v", left)
 	}
 }
 
