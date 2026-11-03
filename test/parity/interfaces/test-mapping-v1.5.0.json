@@ -8134,8 +8134,15 @@
     },
     {
       "path": "packages/durable/test/codemode-describe.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:dbcd0ca6a05773f3af8e8cf83ef4f9303a25e9ff0a470c598d6c3843635afaea"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:dbcd0ca6a05773f3af8e8cf83ef4f9303a25e9ff0a470c598d6c3843635afaea",
+      "evidence": [
+        "durable/codemode/describe_test.go",
+        "durable/codemode/describe_test.go#TestDescribeKeepsTheToolDescriptionTheSameForEveryConversation",
+        "durable/codemode/describe_test.go#TestDescribeListsWhatFitsTheBudgetEveryNamespaceBeforeAnyIsCompleteAndSaysWhatIsLeftOut",
+        "durable/codemode/describe_test.go#TestDescribeRendersTheSectionFromTheConversationsCallableToolsIntoTheSystemPrompt"
+      ],
+      "rationale": "Pi v1.5.0 re-record: every case runs in durable/codemode/describe_test.go: the stable tool description, declarations grouped by namespace, the budget rounds, the longest namespace prefix, the cheapest-first catalog selection, the rendered system prompt section and a default with its authored member order."
     },
     {
       "path": "packages/durable/test/codemode-imports.test.ts",
@@ -8157,8 +8164,16 @@
     },
     {
       "path": "packages/durable/test/codemode.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:5b176b07a22cb794b15dd5ea17cd59cc5fd7d68521a5fbbc85da0835bff1d417"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:5b176b07a22cb794b15dd5ea17cd59cc5fd7d68521a5fbbc85da0835bff1d417",
+      "evidence": [
+        "durable/codemode/codemode_test.go",
+        "durable/codemode/codemode_test.go#TestDurableCodeMode",
+        "durable/codemode/output_tool_test.go",
+        "durable/codemode/output_tool_test.go#TestDurableCodeModeOutputAndToolSearch",
+        "durable/codemode/output_tool_test.go#TestDiscoveryGlobalsCheckTheirArguments"
+      ],
+      "rationale": "Pi v1.5.0 re-record: the durable code mode cases (including the one of #11015) and the output and tool search cases run in the evidence files."
     },
     {
       "path": "packages/durable/test/conversation-transcript.test.ts",
@@ -8624,13 +8639,28 @@
     },
     {
       "path": "packages/durable/test/jsonl-storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:d668d28507023fe498e47bea0e9b67e479d100f8f09ca88aa813ce483334437b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:d668d28507023fe498e47bea0e9b67e479d100f8f09ca88aa813ce483334437b",
+      "evidence": [
+        "durable/storage/jsonl/jsonl_storage_test.go",
+        "durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageConformance",
+        "durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStoragePoisonsWhenAnAppendFailsAfterItsBatchesApplied",
+        "durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches",
+        "durable/storage/backend_reads_test.go#TestBackendReadsAgreeWithMemory"
+      ],
+      "rationale": "Pi v1.5.0 re-record: the storage conformance suite, the pico publication and recovery cases, the record key order, the poisoned storage after an append failed once its batches applied, the batches and the reads agreeing with memory run in the evidence files with Pi's inputs and expectations."
     },
     {
       "path": "packages/durable/test/memory-storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:ee3a342966cb1439df7388f886c46f74ba7d5cb56d77af9390285948f3f279c0"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:ee3a342966cb1439df7388f886c46f74ba7d5cb56d77af9390285948f3f279c0",
+      "evidence": [
+        "durable/storage/memory_storage_test.go",
+        "durable/storage/memory_storage_test.go#TestMemoryStorageConformance",
+        "durable/storage/memory_storage_test.go#TestMemoryStorageDeliversTheReceiptsOfTheBatchesAppliedBeforeOneWhoseApplyThrowsThenRejects",
+        "durable/storage/backend_reads_test.go#TestBackendReadsAgreeWithMemory"
+      ],
+      "rationale": "Pi v1.5.0 re-record: the conformance suite, the retained state a prepared commit does not expose, and the new case of the receipts delivered for the batches applied before one whose apply throws (the commit then rejects) run in the evidence files."
     },
     {
       "path": "packages/durable/test/provider-session-cache-e2e.test.ts",
@@ -8649,8 +8679,16 @@
     },
     {
       "path": "packages/durable/test/session-adoption.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:42ae98d7a94b167283c399dca83468825816e9366ae7a08101db882fe34ab76b"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:42ae98d7a94b167283c399dca83468825816e9366ae7a08101db882fe34ab76b",
+      "evidence": [
+        "durable/session/session_adoption_test.go",
+        "durable/session/session_adoption_test.go#TestSessionAdoptionAfterStorageStoredACommit",
+        "durable/session/session_adoption_test.go#TestPublicationAfterStorage",
+        "durable/session/session_adoption_jsonl_test.go#TestPublishesAJsonlCommitOnceTheStorageReclaimedItsSidecarAndResolved",
+        "durable/session/session_adoption_internal_test.go#TestSessionFailsWithItsOwnAdoptionErrorWhichNeverReachesStorage"
+      ],
+      "rationale": "Pi v1.5.0 re-record: every case runs in the evidence files; the case that a Session fails with its own adoption error, which never reaches Storage, runs on an internal Session and the JSONL sidecar case on a JSONL storage. Pi's `throw of its own observers` is the Go panic of its own observers."
     },
     {
       "path": "packages/durable/test/session-cached-storage.test.ts",
@@ -8767,8 +8805,19 @@
     },
     {
       "path": "packages/durable/test/session-observers.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:05486dae2e157903cc932069e84df2313ab75f9239d3e8b6ef5333907144cd8e"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:05486dae2e157903cc932069e84df2313ab75f9239d3e8b6ef5333907144cd8e",
+      "evidence": [
+        "durable/session/session_observers_test.go",
+        "durable/session/session_observers_test.go#TestObserveDoc",
+        "durable/session/session_observers_test.go#TestObserveCommits",
+        "durable/session/session_observers_test.go#TestObserveDocDetachedDuringACommit",
+        "durable/session/session_observers_test.go#TestObserveDocKeepsNothingAlive"
+      ],
+      "rationale": "Pi v1.5.0 re-record: the cases run in the evidence files, the two WeakRef/gc cases on Go weak pointers and runtime.GC (TestObserveDocKeepsNothingAlive), and the end of an observer at the Session's close is `failed` with `session closed`, a watch's `ended` (Pi session.ts closeEnds). One case is designed out under the owner's class approval of Promise/thenable mechanics (owner 2026-10-29): the case \"reports an observer whose call returns a rejected promise, then detaches it and ends it `listener_error`\" tests a rejected promise; a Go observer's Advance returns no value and one that panics is reported, detached and ended listener_error, asserted by TestObserveDoc (\"reports a throwing observer, detaches it and ends it with the error\").",
+      "designedOutCases": [
+        "observeDoc throwing asynchronously › reports an observer whose call returns a rejected promise, then detaches it and ends it `listener_error`"
+      ]
     },
     {
       "path": "packages/durable/test/session-tables.test.ts",
@@ -8794,8 +8843,16 @@
     },
     {
       "path": "packages/durable/test/spec-usage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:b4fc2d6f2c57ea699054f986ca4028d5f1ea6e362720ea1840470b7c7bc2d49f"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:b4fc2d6f2c57ea699054f986ca4028d5f1ea6e362720ea1840470b7c7bc2d49f",
+      "evidence": [
+        "durable/spec_usage_upstream_test.go#TestSpecUsageCompilesTheRootExamples",
+        "durable/examples/spec_usage_upstream_test.go",
+        "durable/examples/spec_usage_upstream_test.go#TestSpecUsageCompilesTheHarnessExamples",
+        "durable/examples/spec_usage_upstream_test.go#TestSpecUsageHostSequenceRuns",
+        "durable/examples/spec_usage_upstream_test.go#TestSpecUsageRevokedLiveDraftPanics"
+      ],
+      "rationale": "Pi v1.5.0 re-record: the root-package examples compile in durable, the harness and tools examples compile and the host sequence runs in durable/examples; the revoked live draft panics."
     },
     {
       "path": "packages/durable/test/sqlite-cloudflare.test.ts",
@@ -8814,8 +8871,15 @@
     },
     {
       "path": "packages/durable/test/sqlite-storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:543f793d04c64455b24b1fc7cb0b05c3db9e1f0be29c2cb7e1f6e81846e239f8"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:543f793d04c64455b24b1fc7cb0b05c3db9e1f0be29c2cb7e1f6e81846e239f8",
+      "evidence": [
+        "durable/storage/sqlite/sqlite_storage_test.go",
+        "durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageConformance",
+        "durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches",
+        "durable/storage/backend_reads_test.go#TestBackendReadsAgreeWithMemory"
+      ],
+      "rationale": "Pi v1.5.0 re-record: the conformance suite, the pico storage, the record key order, the batches and the reads agreeing with memory run in the evidence files."
     },
     {
       "path": "packages/durable/test/storage-runtime-boundary.test.ts",
@@ -8832,13 +8896,28 @@
     },
     {
       "path": "packages/durable/test/store-storage.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:1c13c21282bbf46e11f942b1b8ac01c24991d9f3825446f3a9e5128df9216e6a"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:1c13c21282bbf46e11f942b1b8ac01c24991d9f3825446f3a9e5128df9216e6a",
+      "evidence": [
+        "durable/storage/store/store_storage_test.go",
+        "durable/storage/store/store_storage_test.go#TestStoreStorageConformance",
+        "durable/storage/store/store_storage_test.go#TestStoreStorageCommits",
+        "durable/storage/store/store_storage_host_test.go",
+        "durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch",
+        "durable/storage/store/store_storage_host_test.go#TestStoreStorageViewsAsChordSources",
+        "durable/storage/store/store_storage_host_test.go#TestStoreStorageGC"
+      ],
+      "rationale": "Pi v1.5.0 re-record: every case runs in the evidence files: the conformance suite on :memory: and across reopen, claims and close, the store's semantics, archives, head markers, reads and commits in store_storage_test.go, and on a Chord host and a Harness the commits published inside the host's batch, the derive over the conversation view and the task graph, the deferred then immediate Durable commit, and the collected closed StoreStorage (weak pointer and runtime.GC in place of WeakRef and gc())."
     },
     {
       "path": "packages/durable/test/system-order-cache-e2e.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:63729aa1281bb151cb5de3ffe8dc34f201a13cb26eb8a96687b785d0b25bc2fd"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:63729aa1281bb151cb5de3ffe8dc34f201a13cb26eb8a96687b785d0b25bc2fd",
+      "evidence": [
+        "durable/harness/system_order_cache_e2e_test.go#TestCommittedOrderPutsTheLeadingSystemMessageBehindTheLeadingUsers",
+        "durable/harness/system_order_cache_e2e_live_test.go#TestSystemMessageOrderCacheE2ELive"
+      ],
+      "rationale": "Pi v1.5.0 re-record: the committed order that puts the leading system message behind the leading users runs offline; the live cache case runs where a provider key is set."
     },
     {
       "path": "packages/durable/test/tool-args-typebox.test.ts",
@@ -8847,8 +8926,14 @@
     },
     {
       "path": "packages/durable/test/tool-search.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:4a8fbef1199bb5ce44288365e9981abfb45c383c8716e30ec8288ee1d4f9dd12"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:4a8fbef1199bb5ce44288365e9981abfb45c383c8716e30ec8288ee1d4f9dd12",
+      "evidence": [
+        "durable/toolsearch/toolsearch_test.go",
+        "durable/toolsearch/toolsearch_test.go#TestOffersADeferredToolOnlyOnceToolSearchLoadsItByAppendingItsDeclaration",
+        "durable/toolsearch/toolsearch_test.go#TestToolSearchToolDeclarationMatchesPi"
+      ],
+      "rationale": "Pi v1.5.0 re-record: every case runs in durable/toolsearch/toolsearch_test.go: deferred tools offered once loaded, loads in order, loads recorded by name, loaded tools kept when an extension is gone, kept per branch and across a reset, nothing found for an unrelated query, and Pi's tool declaration."
     },
     {
       "path": "packages/durable/test/tools-images.test.ts",
@@ -8869,8 +8954,14 @@
     },
     {
       "path": "packages/durable/test/tools-read-differential.test.ts",
-      "disposition": "pending",
-      "upstreamTestHash": "sha256:84b1d1aa23065f106d0f72bb76bdf185ee07808fdaad7fb174905cd2d8afab58"
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:84b1d1aa23065f106d0f72bb76bdf185ee07808fdaad7fb174905cd2d8afab58",
+      "evidence": [
+        "durable/tools/read_differential_test.go",
+        "durable/tools/read_differential_test.go#TestReadToolReturnsExactlyWhatReadingTheWholeFileReturned",
+        "durable/tools/read_differential_test.go#TestReadToolDetectsAnimatedPNGsWhoseAcTLChunkLiesFarBeyondTheHeader"
+      ],
+      "rationale": "Pi v1.5.0 re-record: the read tool returns exactly what reading the whole file returned, including the structured output, and detects an animated PNG whose acTL chunk lies far beyond the header."
     },
     {
       "path": "packages/durable/test/tools.test.ts",

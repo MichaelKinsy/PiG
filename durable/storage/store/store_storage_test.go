@@ -12,9 +12,8 @@ package store
 // is its own: claims and close, owners sharing a store, the store's semantics for a refused commit, the allocator,
 // archives, head markers, reads, commits.
 //
-// Not ported here (rows: pending): "publishes each commit of a Session inside the attached host's batch" (a
-// SessionImpl), "a derive over the conversation view and the task graph ..." and "a deferred Durable commit, then an
-// immediate one ..." (Harness over a host); designed out: the two GC tests (WeakRef/gc has no Go counterpart).
+// The cases that need a Chord host or a Harness (commits inside the host's batch, Durable's views as Chord sources,
+// the collected closed StoreStorage) are in store_storage_host_test.go.
 
 import (
 	"context"
