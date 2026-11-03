@@ -13,7 +13,7 @@ import (
 )
 
 // Issue #402. Terminal.app (default profile, Option-as-Meta off) sends Option+Up as plain Up, ESC [ A. Pi reads that as history recall, so a
-// queued message appears in the editor as a copy and is still sent after the tool. pig divergence D228 makes plain Up dequeue in Terminal.app
+// queued message appears in the editor as a copy and is still sent after the tool. Divergence D228 makes plain Up dequeue in Terminal.app
 // with an empty editor and a queued message, and says once, elsewhere, that the recalled text is a copy.
 
 // holdTool blocks in Execute until release closes, so a message typed meanwhile is queued as a steering message.

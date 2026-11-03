@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
-// pig divergence D228 tests: the queued-message row and the copy tip name the configured dequeue key (Pi interactive-mode.ts:4696
+// D228 tests: the queued-message row and the copy tip name the configured dequeue key (Pi interactive-mode.ts:4696
 // getAppKeyDisplay), so a rebinding shows correctly.
 
 func queuedHintRow(m *InteractiveMode) string {
