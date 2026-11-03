@@ -2694,7 +2694,7 @@ func (t *tuiBase) HideCursor() {
 // WriteRaw writes data to the terminal as is, as upstream's
 // terminal.write does for a component that drives the terminal itself.
 func (t *tuiBase) WriteRaw(data string) {
-	_, _ = io.WriteString(t.out, data)
+	WriteToTerminal(t.out, data)
 }
 
 // ShowCursor shows the terminal cursor.
