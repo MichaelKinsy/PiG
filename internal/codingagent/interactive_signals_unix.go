@@ -49,6 +49,9 @@ func (m *InteractiveMode) ignoreSuspendInterrupt() func() {
 	return func() { m.suspended.Store(false) }
 }
 
+// suspendKill sends SIGTSTP to the process group of pid 0, as Pi's process.kill(0, "SIGTSTP"); a test replaces it so a key press does not stop the test binary and the processes that share its group.
+var suspendKill = func(pid int) error { return syscall.Kill(pid, syscall.SIGTSTP) }
+
 // handleSuspend stops the terminal and returns after signal delivery. SIGCONT restores the terminal on the owner loop without cancelling Session work.
 func (m *InteractiveMode) handleSuspend() error {
 	ctx := m.runCtx
@@ -108,7 +111,7 @@ func (m *InteractiveMode) suspendOperations() suspendOperations {
 				m.tuiInst.Render()
 			}
 		},
-		kill: func(pid int) error { return syscall.Kill(pid, syscall.SIGTSTP) },
+		kill: suspendKill,
 	}
 }
 
