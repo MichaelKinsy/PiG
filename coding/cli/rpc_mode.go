@@ -403,13 +403,11 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	runner := func() *inproc.Runner { return rt.Session().ExtensionRunner() }
 	commandCatalog := func() headlessCommandCatalog { return host.admission.Load().catalog }
 
-	// Upstream shutdown() runs once, on stdin end, ctx.shutdown(), or a
-	// termination signal (rpc-mode.ts:728-744). It removes the signal
-	// handlers, stops writing Session events, and awaits runtimeHost.dispose():
-	// session_shutdown, then AgentSession.dispose, while the Session still runs.
-	// It then flushes stdout, unless the signal is SIGTERM, and exits without
-	// joining the remaining work: dialogs stdin can no longer answer stay
-	// pending, and their commands never respond.
+	// Upstream shutdown() runs once, on stdin end, ctx.shutdown(), or the first termination signal (rpc-mode.ts:728-744). It stops writing
+	// Session events and awaits runtimeHost.dispose(): session_shutdown, then AgentSession.dispose, while the Session still runs. It then
+	// flushes stdout, unless the signal is SIGTERM, and exits without joining the remaining work: dialogs stdin can no longer answer stay
+	// pending, and their commands never respond. pig divergence (D231): follows Pi main ace560c30. A trigger after shutdown started does
+	// nothing and the signal handlers stay until exit; a repeated signal exits at once (rpcShutdown).
 	// The extension host of any Session reaches the process controls of every host the process started.
 	terminateProcesses := func() {
 		if extensionHost, _ := rpcExtensionHost(sess()); extensionHost != nil {
@@ -428,12 +426,6 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		// Upstream process.exit does not wait for providers or suspended extension callbacks.
 		os.Exit(code)
 	}
-	forceSignal := func(sig os.Signal) {
-		terminateProcesses()
-		dieBySignal(sig)
-	}
-	var forced atomic.Pointer[forcedTermination]
-	defer func() { forced.Load().Stop() }()
 	var shutdown *rpcShutdown
 	shutdownInvoked := make(chan struct{})
 	// A termination signal holds the run from the moment it arrives, before anything is killed: Pi's handler kills
@@ -457,7 +449,6 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	//portlint:allow ctxmapping Pi's shutdown awaits runtimeHost.dispose() with no signal (rpc-mode.ts:726-744), and it runs after the mode's ctx ends, so it cannot derive from it
 	shutdownContext := handleryield.With(invocation.WithAcknowledgment(context.Background(), func() { close(shutdownInvoked) }), release)
 	shutdown = newRPCShutdown(
-		func() { forced.Store(watchForcedTermination(shutdown.forceDie)) },
 		func() {
 			// Upstream writes each Session event when it is published, so the
 			// events already published reach stdout before it unsubscribes.
@@ -511,7 +502,6 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			_ = sess().WaitForIdle(settleCtx)
 		},
 		exitRPC,
-		forceSignal,
 	)
 	host.drain = shutdown.drained
 	// pig additive (D19): the host waits in-process for the commands Pi answers before it reads stdin's end, because their runtimes are other processes whose frames race the shutdown's own writes.
@@ -554,7 +544,15 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		},
 	)
 	host.afterSettled = shutdownGate.Check
-	setTerminationShutdownHook(func() { shutdown.signal(syscall.Signal(receivedTerminationSignal.Load())) })
+	// pig divergence (D231): follows Pi main ace560c30 ahead of the v1.5.0 pin. Main's handler takes the first signal; the watcher takes the repeated ones.
+	repeated := watchRepeatedTermination(shutdown.repeatedSignal)
+	defer repeated.Stop()
+	setTerminationShutdownHook(func() {
+		if !shutdown.signal(syscall.Signal(receivedTerminationSignal.Load())) {
+			// A shutdown is already running and a single signal does not interrupt it. Main cancels the root context, which owns the extension processes, once this hook returns, so it waits for the exit.
+			<-ctx.Done()
+		}
+	})
 	defer setTerminationShutdownHook(nil)
 
 	rt.SetRebindSession(func(ctx context.Context, session *coding.Session) error {
