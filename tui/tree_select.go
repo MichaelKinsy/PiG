@@ -1086,14 +1086,9 @@ type treeSection func(width int) []string
 func (s treeSection) Render(width int) []string { return s(max(width, 0)) }
 func (treeSection) Invalidate()                 {}
 
-// renderHelp draws the key hint rows; the header stays visible while label input replaces the tree rows (TreeHelp).
+// renderHelp draws the key hint rows; the header stays visible while label input replaces the tree rows (TreeHelp). The rows are already wrapped to the width, which is never below one cell.
 func (t *TreeSelectorComponent) renderHelp(width int) []string {
-	headerHint := treeHelpLines(width)
-	lines := make([]string, 0, len(headerHint))
-	for _, line := range headerHint {
-		lines = append(lines, widthx.TruncateToWidth(line, width, "...", false))
-	}
-	return lines
+	return treeHelpLines(width)
 }
 
 // renderSearchLine draws "Type to search:" in muted, mirroring tree-selector.ts:1169-1171; the active query renders in accent after it (SearchLine).
@@ -1429,7 +1424,7 @@ func (t *TreeList) HandleInput(data string) {
 			t.recomputeVisible()
 		}
 	case kb.Matches(data, "app.tree.editLabel"):
-		if len(t.rows) > 0 && t.cursor >= 0 && t.cursor < len(t.rows) {
+		if t.cursorInRange() {
 			t.labelNode = t.rows[t.cursor].node
 			t.labelInput = NewInput(InputOptions{})
 			t.labelInput.SetFocused(t.focused)
@@ -1489,9 +1484,6 @@ func (t *TreeList) handleLabelInput(data string) {
 
 // cycleFilterMode cycles the filter, clears folds, and preserves selection through the shared visibility rebuild.
 func (t *TreeList) cycleFilterMode(direction int) {
-	if len(t.filterModes) <= 1 {
-		return
-	}
 	idx := 0
 	for i, m := range t.filterModes {
 		if m == t.filterMode {
