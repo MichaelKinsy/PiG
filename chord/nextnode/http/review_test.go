@@ -769,3 +769,50 @@ func TestReviewAStaleRevokeNeverEndsAConnectionTheNewestRouterAdmits(t *testing.
 		})
 	}
 }
+
+// Pi's hand-out is one synchronous step, so every router delivered after an upgrade's check revokes its connection in turn: a
+// host removed and then restored between the check and the keep ends it at the removal's delivery, though the newest router
+// admits it again.
+func TestReviewAHostRemovedAndRestoredBetweenAnUpgradesCheckAndItsKeepEndsTheConnection(t *testing.T) {
+	entered, release := newGate(), newGate()
+	t.Cleanup(release.resolve)
+	gone, back := make(chan struct{}, 8), make(chan struct{}, 8)
+	var sawGone atomic.Bool
+	tunnel := plugin{"@app/tunnel", contributing(HttpContribution{Hosts: []string{"t.example"}})}
+	server := serving(t, []plugin{tunnel}, servedOptions{
+		revokeHook: func(router *Router) {
+			if !router.Hosts.Has("t.example") {
+				sawGone.Store(true)
+				gone <- struct{}{}
+			} else if sawGone.Load() {
+				back <- struct{}{}
+			}
+		},
+		links: &LinksOptions{Path: "/chord", OptionsFunc: func(HttpRequest, data.Principal) (LinkOptions, error) {
+			entered.resolve()
+			<-release.done()
+			return LinkOptions{}, nil
+		}},
+	})
+	type dialed struct {
+		socket *clientSocket
+		err    error
+	}
+	opening := httpAsync(func() dialed {
+		socket, err := socketTo(server.port, "/chord", withHeaders(owner, map[string]string{"host": "t.example"}), 0)
+		return dialed{socket, err}
+	})
+	receive(t, entered.done(), "the upgrade checked against the router with the host")
+	server.reload(t)
+	receive(t, gone, "the revoke against the router without the host")
+	server.http.revokeTasks.Wait()
+	server.reload(t, tunnel)
+	receive(t, back, "the revoke against the router with the host back")
+	server.http.revokeTasks.Wait()
+	release.resolve()
+	got := receive(t, opening, "the upgrade")
+	if got.err != nil {
+		t.Fatalf("upgrade: %v", got.err)
+	}
+	receive(t, got.socket.closed, "the server ending the connection at the removal of its host")
+}
