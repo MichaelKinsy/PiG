@@ -129,7 +129,6 @@ func (s *rpcShutdown) begin() bool {
 	s.started = true
 	close(s.startedCh)
 	s.mu.Unlock()
-	s.removeSignalHandlers()
 	s.detach()
 	s.dispose()
 	return true
