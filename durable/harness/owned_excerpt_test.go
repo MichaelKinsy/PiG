@@ -14,7 +14,7 @@ func sharesBacking(source, part string) bool {
 	if part == "" {
 		return false
 	}
-	s, p := uintptr(unsafe.Pointer(unsafe.StringData(source))), uintptr(unsafe.Pointer(unsafe.StringData(part)))
+	s, p := uintptr(unsafe.Pointer(unsafe.StringData(source))), uintptr(unsafe.Pointer(unsafe.StringData(part))) //nolint:gosec // the test compares backing-array addresses
 	return p >= s && p < s+uintptr(len(source))
 }
 

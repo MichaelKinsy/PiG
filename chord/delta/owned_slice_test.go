@@ -24,7 +24,7 @@ func TestOwnedSliceIsACopyOfTheSlice(t *testing.T) {
 		}
 	}
 	got := OwnedSlice(source, 0, 500)
-	start, part := uintptr(unsafe.Pointer(unsafe.StringData(source))), uintptr(unsafe.Pointer(unsafe.StringData(got)))
+	start, part := uintptr(unsafe.Pointer(unsafe.StringData(source))), uintptr(unsafe.Pointer(unsafe.StringData(got))) //nolint:gosec // the test compares backing-array addresses
 	if part >= start && part < start+uintptr(len(source)) {
 		t.Error("OwnedSlice result shares the source's backing array")
 	}
