@@ -1,4 +1,5 @@
 # Behavior family: selectors
+# Upstream evidence: Pi 1.5.0 extension-editor.ts:110-126 and the runner's Pi 1.5.0 run of these keys in tmux 100x35, compared byte for byte.
 # Surface: ExtensionEditorComponent.handleInput through the real TUI (extension-editor.ts:110-126)
 #
 # Same /tree -> "Summarize with custom prompt" flow as 10-extension-editor. Every key that is neither tui.select.cancel nor
