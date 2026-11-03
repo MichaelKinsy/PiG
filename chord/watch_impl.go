@@ -77,6 +77,16 @@ func (d *delivery) returned() bool {
 // MarkEntered closes entered, once.
 func (d *delivery) MarkEntered() { d.enter.Do(func() { close(d.entered) }) }
 
+// hasEntered reports whether the call entered.
+func (d *delivery) hasEntered() bool {
+	select {
+	case <-d.entered:
+		return true
+	default:
+		return false
+	}
+}
+
 // finish marks the delivery returned, entered and complete.
 func (d *delivery) finish() {
 	d.retOnce.Do(func() { close(d.ret) })
@@ -224,7 +234,11 @@ func (tracker *pending) awaitEntered(ctx context.Context) error {
 		if own != nil && d.root == own.root {
 			continue
 		}
-		// A cancelled ctx ends the wait whether or not the delivery entered.
+		// A delivery that entered is entered for a caller whose ctx ended since, as an awaited promise that resolved; a cancelled ctx
+		// ends the wait for one that has not.
+		if d.hasEntered() {
+			continue
+		}
 		if ctx.Err() != nil {
 			return context.Cause(ctx)
 		}
@@ -234,6 +248,9 @@ func (tracker *pending) awaitEntered(ctx context.Context) error {
 				continue
 			case <-behind.entered:
 			case <-ctx.Done():
+				if d.hasEntered() {
+					continue
+				}
 				return context.Cause(ctx)
 			}
 			if !behind.returned() {
@@ -245,7 +262,9 @@ func (tracker *pending) awaitEntered(ctx context.Context) error {
 		select {
 		case <-d.entered:
 		case <-ctx.Done():
-			return context.Cause(ctx)
+			if !d.hasEntered() {
+				return context.Cause(ctx)
+			}
 		}
 	}
 	return nil
@@ -523,6 +542,25 @@ func (watch *watchLifecycle[T, L]) takeLocked() (watchFrame[T], *L) {
 
 // drain delivers frame, which takeLocked took, then every frame buffered behind it until the watch ends.
 func (watch *watchLifecycle[T, L]) drain(d *delivery, frame watchFrame[T], listener *L) {
+	completed := false
+	defer func() {
+		if completed {
+			return
+		}
+		// The goroutine ended inside a listener (runtime.Goexit, as t.FailNow does) with the call in flight, so the deliveries this
+		// drain registered are finished here, as a thrown error ends the watch upstream: nothing that awaits them waits for ever.
+		watch.mu.Lock()
+		defer watch.mu.Unlock()
+		d.finish()
+		if queued := watch.queued; queued != nil {
+			watch.queued = nil
+			queued.finish()
+		}
+		watch.running = false
+		if watch.end == nil {
+			watch.terminateLocked(WatchEnd{Kind: WatchListenerError, Error: errors.New("a watch listener ended its goroutine")})
+		}
+	}()
 	watch.mu.Lock()
 	for listener != nil {
 		invoke := watch.invoke
@@ -576,6 +614,7 @@ func (watch *watchLifecycle[T, L]) drain(d *delivery, frame watchFrame[T], liste
 		watch.scheduleLocked()
 	}
 	watch.finishIfReadyLocked()
+	completed = true
 	watch.mu.Unlock()
 }
 

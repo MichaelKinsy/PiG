@@ -39,7 +39,13 @@ func block(continuation *Continuation, done <-chan struct{}, ctx context.Context
 	case <-done:
 		return nil
 	case <-ctx.Done():
-		return context.Cause(ctx)
+		// Both may be ready: a channel that closed before the ctx ended is the settled value, as an awaited promise that resolved.
+		select {
+		case <-done:
+			return nil
+		default:
+			return context.Cause(ctx)
+		}
 	}
 }
 
