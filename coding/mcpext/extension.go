@@ -22,6 +22,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/mcp"
+	"github.com/MichaelKinsy/PiG/mcp/oauth"
 )
 
 // Ports packages/coding-agent/src/extensions/mcp/index.ts.
@@ -1233,7 +1234,7 @@ func (e *Extension) SignIn(ctx context.Context, name string, prompt McpSignInPro
 	})
 	exit()
 	if err != nil {
-		if _, cancelled := errors.AsType[*McpSignInCancelledError](err); cancelled {
+		if _, cancelled := errors.AsType[*oauth.McpSignInCancelledError](err); cancelled {
 			return "Sign-in cancelled."
 		}
 		return "Sign-in failed: " + err.Error()

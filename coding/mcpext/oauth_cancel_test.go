@@ -15,7 +15,7 @@ import (
 // context stops the sign-in at any step with McpSignInCancelledError. The step-by-step session cases are in
 // coding/mcp_oauth_session_upstream_test.go.
 
-func signInStore(t *testing.T, serverURL string) mcpext.McpOAuthServerStore {
+func signInStore(t *testing.T, serverURL string) oauth.McpOAuthServerStore {
 	t.Helper()
 	store, err := mcpext.NewMcpOAuthCredentialStoreWithBackend(&mcpext.InMemoryAuthStorageBackend{}, t.TempDir()).ForServer("test", serverURL)
 	if err != nil {
@@ -25,7 +25,7 @@ func signInStore(t *testing.T, serverURL string) mcpext.McpOAuthServerStore {
 }
 
 func isSignInCancelled(err error) bool {
-	_, ok := errors.AsType[*mcpext.McpSignInCancelledError](err)
+	_, ok := errors.AsType[*oauth.McpSignInCancelledError](err)
 	return ok
 }
 

@@ -1,13 +1,15 @@
-package mcpext
+package oauth_test
 
 import (
-	"net/url"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
+	"github.com/MichaelKinsy/PiG/mcp/oauth"
 )
 
-// responseFromRedirectUrl (extensions/mcp/oauth.ts:395-413) is not exported by Pi's module, so the oracle body transcribes it and runs it on Node's own URL implementation: the pasted URL is parsed, compared with the sign-in's redirect URL by origin and pathname, and read through URLSearchParams.
+// Ports packages/mcp/src/oauth/loopback.ts (responseFromRedirectUrl).
+//
+// Pi's package exports responseFromRedirectUrl; the oracle body transcribes it (and runs it on Node's own URL implementation) so the oracle body transcribes it and runs it on Node's own URL implementation: the pasted URL is parsed, compared with the sign-in's redirect URL by origin and pathname, and read through URLSearchParams.
 func TestResponseFromRedirectURLMatchesNodeURL(t *testing.T) {
 	redirects := []string{"http://127.0.0.1:8080/callback", "http://127.0.0.1/callback", "https://example.com:443/cb", "http://localhost:3000/", "http://[::1]:9/callback", "https://pi.dev/oauth/x/callback"}
 	suffixes := []string{
@@ -46,31 +48,33 @@ func TestResponseFromRedirectURLMatchesNodeURL(t *testing.T) {
 	}
 	var want []result
 	pioracle.Run(t, `
-function responseFromRedirectUrl(input, state, redirectUrl) {
+function responseFromRedirectUrl(input, authorization) {
 	let url;
 	try { url = new URL(input.trim()); } catch { throw new Error("Expected the full redirect URL from the browser address bar"); }
+	const redirectUrl = new URL(authorization.redirectUrl);
 	if (url.origin !== redirectUrl.origin || url.pathname !== redirectUrl.pathname) throw new Error("The redirect URL does not match this sign-in's redirect URI");
 	const error = url.searchParams.get("error");
 	if (error) throw new Error(url.searchParams.get("error_description") ?? error);
-	if (url.searchParams.get("state") !== state) throw new Error("The redirect URL belongs to a different sign-in");
+	const state = url.searchParams.get("state");
+	if (state !== authorization.state) throw new Error("The redirect URL belongs to a different sign-in");
 	const code = url.searchParams.get("code");
 	if (!code) throw new Error("The redirect URL does not contain an authorization code");
-	return { code, iss: url.searchParams.get("iss") ?? undefined };
+	const iss = url.searchParams.get("iss");
+	return { code, state, ...(iss ? { iss } : {}) };
 }
 emit(input.map(({ input, redirect }) => {
-	try { const r = responseFromRedirectUrl(input, "S", new URL(redirect)); return { code: r.code, iss: r.iss ?? null }; } catch (e) { return { error: e.message }; }
+	try { const r = responseFromRedirectUrl(input, { state: "S", redirectUrl: redirect }); return { code: r.code, iss: r.iss ?? null }; } catch (e) { return { error: e.message }; }
 }));`, probes, &want)
 	for i, p := range probes {
-		redirect, err := url.Parse(p.Redirect)
-		if err != nil {
-			t.Fatal(err)
-		}
 		var have result
-		response, err := responseFromRedirectURL(p.Input, "S", redirect)
+		response, err := oauth.ResponseFromRedirectURL(p.Input, oauth.McpSignInRedirect{State: "S", RedirectURL: p.Redirect})
 		if err != nil {
 			have.Error = err.Error()
 		} else {
-			have.Code, have.Iss = response.code, response.iss
+			have.Code = response.Code
+			if response.Iss != "" {
+				have.Iss = &response.Iss
+			}
 		}
 		if have.Error != want[i].Error || have.Code != want[i].Code || (have.Iss == nil) != (want[i].Iss == nil) || (have.Iss != nil && *have.Iss != *want[i].Iss) {
 			t.Errorf("input=%q redirect=%q:\n Go %+v\n Pi %+v", p.Input, p.Redirect, have, want[i])

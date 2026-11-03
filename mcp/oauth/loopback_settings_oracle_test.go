@@ -1,4 +1,4 @@
-package mcpext
+package oauth
 
 import (
 	"testing"
@@ -6,8 +6,10 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
-// callbackSettings (extensions/mcp/oauth.ts:86-107) is not exported by Pi's module, so the oracle body transcribes it and runs it on Node's own URL implementation: the listen host, redirect host, port, path and exact redirect URI for every callbackUrl spelling and callbackPort.
-func TestNewCallbackSettingsMatchesNodeURL(t *testing.T) {
+// Ports packages/mcp/src/oauth/client-settings.ts (loopbackSettings).
+//
+// loopbackSettings is not exported by Pi's package, so the oracle body transcribes it and runs it on Node's own URL implementation: the listen host, redirect host, port, path and exact redirect URI for every callbackUrl spelling and callbackPort.
+func TestLoopbackSettingsMatchesNodeURL(t *testing.T) {
 	callbackURLs := []string{
 		"", "http://127.0.0.1:8080/callback", "http://127.0.0.1/callback", "http://127.0.0.1:80/callback", "https://example.com:443/cb", "https://example.com/cb?x=1#f", "http://localhost/callback", "http://localhost:3000/callback", "HTTP://LOCALHOST/Callback",
 		"http://[::1]/callback", "http://[::1]:8080/callback", "http://[0:0:0:0:0:0:0:1]/callback", "http://127.1/callback", "http://0x7f.0.0.1/callback", "http://exämple.com/cb", "http://127.0.0.1", "http://127.0.0.1/", "http://127.0.0.1/a/../b", "http://127.0.0.1/a b",
@@ -35,7 +37,7 @@ func TestNewCallbackSettingsMatchesNodeURL(t *testing.T) {
 	}
 	var want []result
 	pioracle.Run(t, `
-function callbackSettings(settings) {
+function loopbackSettings(settings) {
 	const url = new URL(settings.callbackUrl ?? "http://127.0.0.1/callback");
 	const address = url.hostname.replace(/^\[|\]$/g, "");
 	const port = url.port ? Number(url.port) : settings.callbackPort;
@@ -46,7 +48,7 @@ function callbackSettings(settings) {
 }
 emit(input.map((p) => {
 	try {
-		const r = callbackSettings({ callbackUrl: p.callbackUrl || undefined, callbackPort: p.callbackPort || undefined });
+		const r = loopbackSettings({ callbackUrl: p.callbackUrl || undefined, callbackPort: p.callbackPort || undefined });
 		return { host: r.host, redirectHost: r.redirectHost, port: r.port ?? null, path: r.path, fixed: r.fixed ?? "" };
 	} catch (e) { return { error: e.message }; }
 }));`, probes, &want)
@@ -57,7 +59,7 @@ emit(input.map((p) => {
 			settings.CallbackPort = &port
 		}
 		var have result
-		got, err := newCallbackSettings(settings)
+		got, err := loopbackSettings(settings)
 		if err != nil {
 			have.Error = "Invalid URL"
 		} else {

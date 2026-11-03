@@ -171,6 +171,13 @@ type OAuthFlowOptions struct {
 	// refreshing stored tokens, for example when the server asks for scopes
 	// the current grant lacks (a refresh keeps the old scope).
 	SkipRefresh bool
+	// RefreshOnly only refreshes the stored tokens: it returns [OAuthRedirect] instead of registering a client or
+	// preparing an authorization request, so a pending authorization (its `state` and PKCE verifier) stays usable.
+	RefreshOnly bool
+	// AuthorizationRedirectURL is, with AuthorizationCode, the redirect URI the authorization request used. The
+	// exchange fails before sending the code when the flow would send another one (RFC 6749 section 4.1.3 requires the
+	// same). Nil: unchecked.
+	AuthorizationRedirectURL *string
 }
 
 // OAuthFlowResult is the outcome of [AuthorizeMcp].
@@ -584,7 +591,13 @@ func scopeFields(scope string) []string {
 	return strings.FieldsFunc(scope, func(r rune) bool { return r == '\uFEFF' || (r != '\u0085' && unicode.IsSpace(r)) })
 }
 
-func runFlow(ctx context.Context, provider OAuthClientProvider, options OAuthFlowOptions) (OAuthFlowResult, error) {
+// flowUse is what a flow used, for deciding what to invalidate after it failed.
+type flowUse struct {
+	// storedClientID is the `client_id` of the stored client the flow used; empty when none was stored.
+	storedClientID string
+}
+
+func runFlow(ctx context.Context, provider OAuthClientProvider, options OAuthFlowOptions, use *flowUse) (OAuthFlowResult, error) {
 	var metadataURL *URL
 	if options.AuthorizationServerMetadataURL != nil {
 		secured, err := secureEndpoint(options.AuthorizationServerMetadataURL.Href())
@@ -661,6 +674,9 @@ func runFlow(ctx context.Context, provider OAuthClientProvider, options OAuthFlo
 	if err != nil {
 		return "", err
 	}
+	if client != nil {
+		use.storedClientID = client.ClientID
+	}
 	var clientDocument *OAuthClientMetadataDocument
 	if p, ok := provider.(ClientMetadataDocumentProvider); ok && client == nil {
 		if clientDocument, err = p.ClientMetadataDocument(metadata); err != nil {
@@ -677,9 +693,21 @@ func runFlow(ctx context.Context, provider OAuthClientProvider, options OAuthFlo
 		}
 		client = &OAuthClientInformationMixed{ClientID: clientDocument.URL}
 	}
+	// The document's redirect URI may differ from the provider's, for example by a server-specific path.
+	redirectURL := provider.RedirectURL()
+	if clientDocument != nil {
+		redirectURL = clientDocument.RedirectURL
+	}
+	// Checked first: another redirect URI also explains a client that is missing for the exchange.
+	if options.AuthorizationCode != "" && options.AuthorizationRedirectURL != nil && redirectURL != *options.AuthorizationRedirectURL {
+		return "", fmt.Errorf("The code exchange would use the redirect URI %s, but the authorization request used %s", redirectURL, *options.AuthorizationRedirectURL)
+	}
 	if client == nil {
+		if options.RefreshOnly {
+			return OAuthRedirect, nil
+		}
 		if options.AuthorizationCode != "" {
-			return "", errors.New("OAuth client information is missing during code exchange")
+			return "", errors.New("OAuth client information is missing during code exchange: the authorization request's client was removed, or the client settings changed")
 		}
 		saver, canSave := provider.(ClientInformationSaver)
 		if !canSave {
@@ -695,11 +723,6 @@ func runFlow(ctx context.Context, provider OAuthClientProvider, options OAuthFlo
 		if err := saver.SaveClientInformation(ctx, *client); err != nil {
 			return "", err
 		}
-	}
-	// The document's redirect URI may differ from the provider's, for example by a server-specific path.
-	redirectURL := provider.RedirectURL()
-	if clientDocument != nil {
-		redirectURL = clientDocument.RedirectURL
 	}
 	tokenOptions := TokenRequestOptions{Metadata: metadata, ClientInformation: *client, Resource: resource, Fetch: options.Fetch}
 	if authenticator, ok := provider.(ClientAuthenticator); ok {
@@ -760,6 +783,9 @@ func runFlow(ctx context.Context, provider OAuthClientProvider, options OAuthFlo
 			return "", err
 		}
 	}
+	if options.RefreshOnly {
+		return OAuthRedirect, nil
+	}
 	state := ""
 	if p, ok := provider.(StateProvider); ok {
 		if state, err = p.State(ctx); err != nil {
@@ -786,28 +812,44 @@ func runFlow(ctx context.Context, provider OAuthClientProvider, options OAuthFlo
 // invalidates all credentials and a rejected grant invalidates the tokens,
 // each followed by one retry.
 func AuthorizeMcp(ctx context.Context, provider OAuthClientProvider, options OAuthFlowOptions) (OAuthFlowResult, error) {
-	result, err := runFlow(ctx, provider, options)
+	var use flowUse
+	result, err := runFlow(ctx, provider, options, &use)
 	if err == nil {
 		return result, nil
 	}
-	if oauthErr, ok := errors.AsType[*OAuthError](err); ok {
-		kind := ""
-		switch oauthErr.Code {
-		case "invalid_client", "unauthorized_client":
-			kind = "all"
-		case "invalid_grant":
-			kind = "tokens"
-		}
-		if kind != "" {
-			if invalidator, ok := provider.(CredentialInvalidator); ok {
-				if err := invalidator.InvalidateCredentials(ctx, kind); err != nil {
-					return "", err
-				}
+	oauthErr, ok := errors.AsType[*OAuthError](err)
+	if !ok {
+		return "", err
+	}
+	var kinds []string
+	switch oauthErr.Code {
+	case "invalid_client", "unauthorized_client":
+		kinds = []string{"all"}
+		// A refresh keeps a pending authorization's `state` and verifier: they are the user's sign-in. A client stored
+		// meanwhile (by a sign-in that completed) is not the one the server rejected, so it stays.
+		if options.RefreshOnly {
+			current, err := provider.ClientInformation(ctx)
+			if err != nil {
+				return "", err
 			}
-			return runFlow(ctx, provider, options)
+			kinds = nil
+			if (current == nil && use.storedClientID == "") || (current != nil && current.ClientID == use.storedClientID) {
+				kinds = []string{"client", "tokens", "discovery"}
+			}
+		}
+	case "invalid_grant":
+		kinds = []string{"tokens"}
+	default:
+		return "", err
+	}
+	if invalidator, ok := provider.(CredentialInvalidator); ok {
+		for _, kind := range kinds {
+			if err := invalidator.InvalidateCredentials(ctx, kind); err != nil {
+				return "", err
+			}
 		}
 	}
-	return "", err
+	return runFlow(ctx, provider, options, &flowUse{})
 }
 
 type refreshFlight struct {
