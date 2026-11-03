@@ -175,9 +175,10 @@ func parseMarkdownList(lines []string, start int, outer []int) (*markdownList, i
 				endsEmpty := firstBlank && j == i+1 && body == ""
 				if nested && (len(ni) < contentIndent || endsEmpty && len(ni) <= 3) && markdownSiblingIndent(len(ni), outer) && markdownOrdered(nm) == list.ordered && nm[len(nm)-1] == delimiter && !isMarkedHr(lines[k]) {
 					// Tokenizer.ts:372-374: the blank lines stay in the item's text; only the last item's text is trimmed, so an indented code block keeps one trailing blank line.
-					for range k - j {
+					for n := j; n < k; n++ {
 						if len(pending) > 0 {
-							pending = append(pending, "")
+							// A line of spaces keeps what is left of it after the content indent, which makes a space token of its own when it is not empty.
+							pending = append(pending, jsstring.Slice(strings.ReplaceAll(lines[n], "\t", "    "), contentIndent))
 						}
 					}
 					list.loose = true
