@@ -15,6 +15,14 @@
 # queue row; the only difference is the tip, which normalize_replace removes (nothing else is normalized apart from the
 # spinner phase).
 
+# Upstream evidence (Pi 1.5.0 source build f9a26365 oracle, parity harness on xd670 in tern-ci:v7, 2026-11-02, 100x35 tmux, test-faux,
+# TERM_PROGRAM=tmux): "Run: tui live tool pause", wait LIVE-TOOL-08, "queued steer text" Enter (shows "Steering: queued steer text"),
+# send hex 1b 5b 41. Pi's pane from the Steering row to the footer, spinner phase aside: the Steering row, "↳ Alt+Up to edit all queued
+# messages", a blank row, "── ⠴ Working ──", the editor holding "queued steer text", the closing border, the cwd row and the stats row
+# (no row under the editor). PiG's pane is the same plus two dim rows under the editor: "↳ That's a copy. The queued message still sends.
+# Alt+Up edits the queue. If this is Terminal.app," and "map Option+Up to \033[1;3A in Terminal Settings > Profiles > Keyboard.".
+# Against a PiG build of 0d8500283a the scenario fails: the tip is absent (pig_contains) and the visible wait for it times out.
+
 name = "59-up-recalls-queued-message-copy-tip"
 description = "Plain Up with an empty editor and a queued steering message recalls history as in Pi; PiG adds one copy tip under the editor"
 covers = [
