@@ -78,8 +78,8 @@ type rpcAdmission struct {
 	// shared, when set, is the task group every Session's admission of one RPC process uses, so a replacement does not fork the set of tasks that shutdown joins.
 	shared *rpcTaskGroup
 	runs   *sync.WaitGroup
-	// commandDone runs after the extension command's synchronous prefix, before its prompt continuation reports success.
-	commandDone func()
+	// shutdown counts the commands in flight for an extension's ctx.shutdown() request (D231); nil counts nothing.
+	shutdown *rpcShutdownGate
 	// commandsInFlight, when set, counts the extension commands whose prompt response is not yet written.
 	commandsInFlight *atomic.Int32
 	// background is the gate that holds the deferred UI calls of a replacement an extension command requested until the last in-flight command answered.
@@ -102,14 +102,17 @@ func (a *rpcAdmission) taskGroup() *rpcTaskGroup {
 // commandTurn opens a Turns command for work that runs outside the executor. Pi runs the command's microtasks to the response without a timer callback between, so the extension runtimes hold theirs until the work's result settled and the loop drained what it queued: settled is called from the task that settles the result, and ends the command once that drain is over. abandoned ends it at once.
 func (a *rpcAdmission) commandTurn() (settled, abandoned func()) {
 	finish := a.turns.Command()
+	// pig divergence (D231): follows Pi main 1708b4788 ahead of the v1.5.0 pin.
+	a.shutdown.Begin()
 	return func() {
 		idle := a.turn.Idle()
 		//portlint:allow asyncorder the goroutine ends the command's timer hold once the executor drained; it writes nothing the client sees, so no output order depends on it
 		go func() {
 			<-idle
 			finish()
+			a.shutdown.End()
 		}()
-	}, finish
+	}, func() { finish(); a.shutdown.End() }
 }
 
 func rpcAwaitWork[T any](a *rpcAdmission, slow bool, work func() (T, error)) *rpcPromise[T] {
@@ -184,13 +187,18 @@ func rpcAwaitHandler[T any](a *rpcAdmission, work func(context.Context) (T, erro
 	entered := make(chan struct{})
 	ctx := invocation.WithSuspensionAcknowledgment(a.ctx, func() { close(entered) })
 	p := &rpcPromise[T]{turn: a.turn}
+	// pig divergence (D231): follows Pi main 1708b4788 ahead of the v1.5.0 pin.
+	// The handler is a command in flight until its continuation was queued; the shutdown check runs as a macrotask, after that continuation (D231).
+	a.shutdown.Begin()
 	if !a.tasks.Go(func() {
 		defer invocation.Acknowledge(ctx)
+		defer a.shutdown.End()
 		value, err := work(ctx)
 		p.resolve(value, err)
 	}) {
 		var zero T
 		p.resolve(zero, context.Canceled)
+		a.shutdown.End()
 	}
 	select {
 	case <-entered:
@@ -273,9 +281,6 @@ func (a *rpcAdmission) command(id rpcRequestID, name, args string) {
 		a.catalog.executeCommand(invocation.WithRunPhase(ctx, flight), name, args)
 		return struct{}{}, nil
 	})
-	if a.commandDone != nil {
-		a.commandDone()
-	}
 	pending.then(func(_ struct{}, _ error) {
 		a.turn.Microtask(func() {
 			// The answer releases a run the handler sent; it is deferred first, so it follows the response.
@@ -612,7 +617,10 @@ func (a *rpcAdmission) startPreparedPrompt(id rpcRequestID, start *coding.RunSta
 				}
 				hasStartHandler := a.runner != nil && a.runner.HasHandlers("agent_start")
 				rpcAwaitWork(a, hasStartHandler, start).then(func(_ struct{}, _ error) {
-					a.runs.Go(func() { stackprime.Prime(); _, _ = run.Run() })
+					// pig divergence (D231): follows Pi main 1708b4788 ahead of the v1.5.0 pin.
+					// The prompt command is in flight until the run settles (rpc-mode.ts activeCommands, D231).
+					a.shutdown.Begin()
+					a.runs.Go(func() { defer a.shutdown.End(); stackprime.Prime(); _, _ = run.Run() })
 				})
 			})
 		})
