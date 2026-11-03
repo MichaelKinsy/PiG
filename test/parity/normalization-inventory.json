@@ -4289,6 +4289,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/interactive-rendering/59-app-action-keys.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Session Tree",
+            "capture_end": ""
+          },
+          "reason": "Owned visible surface: Remapped session keys, thinking and tool toggles, the model selector key reach the same handlers in both binaries.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/json/01-json-mode-streams-events.toml",
       "transforms": [
         {

@@ -358,10 +358,10 @@ func TestSetupKeyHandlersBashModeFollowsTheEditorText(t *testing.T) {
 			t.Fatalf("after %q: text %q, border %q; want %q, border %q", step.key, got, border(), step.text, step.want)
 		}
 	}
-	for text, want := range map[string]string{" \n\t!ls": bash, "\n\n!": bash, "x\n!": idle, "": idle} {
-		r.m.editor.SetText(text)
-		if border() != want {
-			t.Errorf("text %q: border %q, want %q", text, border(), want)
+	for _, c := range []struct{ text, want string }{{" \n\t!ls", bash}, {"\n\n!", bash}, {"x\n!", idle}, {"", idle}} {
+		r.m.editor.SetText(c.text)
+		if border() != c.want {
+			t.Errorf("text %q: border %q, want %q", c.text, border(), c.want)
 		}
 	}
 }
