@@ -3320,19 +3320,24 @@
       "disposition": "divergence",
       "pigTargets": [
         "tui/markdown.go#Render",
-        "tui/markdown.go#renderBlocks"
+        "tui/markdown_blocks.go#renderBlocks",
+        "tui/markdown_marked_lexer.go#blockTokens"
       ],
       "evidence": [
         "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
         "test/parity/scenarios/tui-components/16-markdown-user-components.toml",
+        "tui/markdown_block_edge_contract_test.go#TestMarkdownBlockEdgeDocsMatchPi",
         "tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
+        "tui/markdown_commonmark_contract_test.go#TestMarkdownCommonmarkDocsMatchPi",
         "tui/markdown_contract_oracle_test.go#TestMarkdownCodeAndImageRowsMatchPi",
         "tui/markdown_contract_oracle_test.go#TestMarkdownRenderSequencesMatchPi",
         "tui/markdown_contract_oracle_test.go#TestMarkdownRenderVariantsMatchPi",
+        "tui/markdown_marked_lexer_rules_test.go#TestMarkedBlockRulesEqualTheirPatterns",
         "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
         "tui/markdown_regression_contract_test.go#TestMarkdownRegressionDocsMatchPi",
         "tui/markdown_render_oracle_test.go#TestMarkdownBlockReuseDiffersFromPi",
         "tui/markdown_render_oracle_test.go#TestMarkdownRenderMatchesPi",
+        "tui/markdown_residual_contract_test.go#TestMarkdownResidualDocsMatchPi",
         "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
         "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
         "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi"
@@ -3400,7 +3405,7 @@
       "ownerFamily": "tui-components",
       "disposition": "ported",
       "pigTargets": [
-        "tui/markdown_list.go#renderList"
+        "tui/markdown_blocks.go#renderList"
       ],
       "evidence": [
         "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
@@ -3452,7 +3457,8 @@
       "ownerFamily": "tui-components",
       "disposition": "ported",
       "pigTargets": [
-        "tui/markdown.go#renderContent"
+        "tui/markdown_blocks.go#renderQuote",
+        "tui/markdown_blocks.go#renderToken"
       ],
       "evidence": [
         "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",

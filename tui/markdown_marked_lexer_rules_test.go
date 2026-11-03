@@ -42,10 +42,8 @@ func TestMarkedBlockRulesEqualTheirPatterns(t *testing.T) {
 	latexStart := newMarkedRegexp(`(?:^|\n) {0,3}(?:\$\$|\\\[)`)
 	itemRules := map[string]*markedRegexp{}
 	for _, bull := range []string{"-", "*", "+", "1.", "12)"} {
-		source := bull
-		if len(bull) == 1 {
-			source = `\` + bull
-		} else {
+		source := `\` + bull
+		if len(bull) > 1 {
 			source = `\d{1,9}\` + bull[len(bull)-1:]
 		}
 		itemRules[bull] = newAnchoredMarkedRegexp(`^( {0,3}`+source+`)((?:[\t ][^\n]*)?(?:\n|$))`, false)
@@ -66,10 +64,7 @@ func TestMarkedBlockRulesEqualTheirPatterns(t *testing.T) {
 
 	markedRuleSources(t, func(src string) {
 		runes := []rune(src)
-		line := src
-		if i := strings.IndexByte(src, '\n'); i >= 0 {
-			line = src[:i]
-		}
+		line, _, _ := strings.Cut(src, "\n")
 
 		// Tokenizer.list: the bullet that starts a list.
 		match := listStart.exec(runes)
@@ -156,7 +151,7 @@ func TestMarkedBlockRulesEqualTheirPatterns(t *testing.T) {
 				}
 			}
 		}
-		if got := markedLatexStart(runes); got+1 != wantCut && !(got < 0 && wantCut < 0) {
+		if got := markedLatexStart(runes); got+1 != wantCut && (got >= 0 || wantCut >= 0) {
 			t.Fatalf("latex start of %q: cut %d, the pattern gives %d", src, got+1, wantCut)
 		}
 		// The memoized search of a lexing gives the start of each suffix.
