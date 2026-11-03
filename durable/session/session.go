@@ -50,6 +50,18 @@ import (
 // ErrSessionClosed is upstream's "Session is closed".
 var ErrSessionClosed = errors.New("Session is closed")
 
+// CloseEnds is how a Session's close ends what follows it (session.ts closeEnds, decision "Slice 8 S1"), made once per
+// close: an app's watch ended; a synchronous observer (an adapter following the Session, which may open it again) failed
+// with "session closed", so it follows the next Session; an observed owner that ended (a task document's task) stays
+// ended. A failed Session ends both failed with its error.
+func CloseEnds(failure error) (watch, observer durable.WatchEnd) {
+	if failure != nil {
+		failed := durable.WatchEnd{Kind: durable.WatchFailed, Error: failure}
+		return failed, failed
+	}
+	return durable.WatchEnd{Kind: durable.WatchEnded}, durable.WatchEnd{Kind: durable.WatchFailed, Error: errors.New("session closed")}
+}
+
 var _ durable.Session = (*SessionImpl)(nil)
 
 // maxOutstanding is the number of jobs admitted to the line whose outcome is not delivered yet, beyond which the line waits. A
@@ -1510,10 +1522,8 @@ func (session *SessionImpl) beginClose(ctx context.Context) <-chan struct{} {
 				clear(session.taskDocuments)
 				session.mu.Unlock()
 				// After the last publication: the commits admitted before the seal have settled, held changes are stored.
-				end := durable.WatchEnd{Kind: durable.WatchEnded}
-				if failure := session.failure(); failure != nil {
-					end = durable.WatchEnd{Kind: durable.WatchFailed, Error: failure}
-				}
+				// Commit observers are synchronous observers, all of them.
+				_, end := CloseEnds(session.failure())
 				for _, listener := range observers {
 					listener.observer.End(end)
 				}
@@ -2231,11 +2241,12 @@ func (session *SessionImpl) observeDocument(
 	}
 	closer, err := session.subscribeClose(func() {
 		detach()
-		end := durable.WatchEnd{Kind: durable.WatchEnded}
-		if failure := session.failure(); failure != nil {
-			end = durable.WatchEnd{Kind: durable.WatchFailed, Error: failure}
+		watchEnd, observerEnd := CloseEnds(session.failure())
+		if _, isWatch := observer.(watchObserver); isWatch {
+			observer.End(watchEnd)
+		} else {
+			observer.End(observerEnd)
 		}
-		observer.End(end)
 	})
 	if err != nil {
 		commit()
