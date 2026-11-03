@@ -10,7 +10,7 @@
 # "Thinking blocks: hidden" then "Thinking blocks: visible", C-o "Tool output: expanded", shift+tab "Current model does not support thinking" (faux-1 has no
 # reasoning), C-l the model selector ("Only showing models from configured providers"), F7 "Fork from Message", F8 "Resume Session", F6 "Session Tree"; Escape closes a selector.
 # The double Escape is not driven here: tmux delivers consecutive keys too far apart to hold the 500 ms window reliably; unit tests drive it with a set lastEscapeTime.
-# Mutation proof (PiG, run on xd6702): toggleThinkingVisibility removed, /tree run for app.session.tree, handleModelPicker removed, /resume run for app.session.new and cycleThinkingLevel removed each fail a step.
+# Mutation proof (PiG, run in tern-ci:v7): toggleThinkingVisibility removed, /tree run for app.session.tree, handleModelPicker removed, /resume run for app.session.new and cycleThinkingLevel removed each fail a step.
 
 name = "59-app-action-keys"
 description = "Remapped session keys, thinking and tool toggles, the model selector key reach the same handlers in both binaries."
