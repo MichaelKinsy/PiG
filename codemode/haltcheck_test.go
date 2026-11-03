@@ -3,6 +3,9 @@ package codemode
 import (
 	"bytes"
 	"context"
+	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -161,5 +164,58 @@ func TestHaltStopsAGuestThatNeverReachesTheInterruptCheck(t *testing.T) {
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("the script still runs 10s after halt")
+	}
+}
+
+const haltChildEnv = "PIG_CODEMODE_HALT_CHILD"
+
+// A guest loop must not hold the Go runtime hostage. Go can only stop the world (every garbage collection does) at a
+// Go call, and a compiled loop that never calls Go is not preemptible: if the halt check never leaves the guest, the
+// stop-the-world waits for the loop, no timer or goroutine runs, and the halt that would end the loop is never
+// delivered. The process cannot observe its own hang, so the scenario runs in a child under a deadline.
+func TestHaltIsDeliveredToAGuestLoopWhileTheRuntimeStopsTheWorld(t *testing.T) {
+	if os.Getenv(haltChildEnv) != "" {
+		haltChild(t)
+		return
+	}
+	for _, procs := range []string{"1", "2"} {
+		t.Run("GOMAXPROCS="+procs, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestHaltIsDeliveredToAGuestLoopWhileTheRuntimeStopsTheWorld$", "-test.count=1")
+			cmd.Env = append(os.Environ(), haltChildEnv+"=1", "GOMAXPROCS="+procs)
+			out, err := cmd.CombinedOutput()
+			if ctx.Err() != nil {
+				t.Fatalf("the child was still running after 30s: a guest loop blocks the Go runtime, so the halt never runs\n%s", out)
+			}
+			if err != nil {
+				t.Fatalf("child: %v\n%s", err, out)
+			}
+		})
+	}
+}
+
+func haltChild(t *testing.T) {
+	instrumented, err := instrumentHalt(haltTestModule)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mod := instantiateWithoutContextChecks(t, instrumented)
+	halt := mod.ExportedGlobal(haltExport).(api.MutableGlobal)
+	done := make(chan error, 1)
+	go func() {
+		_, err := mod.ExportedFunction("spin").Call(context.Background())
+		done <- err
+	}()
+	time.Sleep(50 * time.Millisecond)
+	runtime.GC()
+	halt.Set(1)
+	select {
+	case err := <-done:
+		if err == nil || !strings.Contains(err.Error(), "unreachable") {
+			t.Fatalf("spin() = %v, want an unreachable trap", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("spin() still running 10s after the halt global was set")
 	}
 }
