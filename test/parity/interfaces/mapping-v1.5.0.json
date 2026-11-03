@@ -202578,8 +202578,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/extension_session_info_memo_test.go#TestExtensionSessionInfoMemoFollowsEveryInput",
-        "test:internal/codingagent/session_new_session_options_test.go#TestSessionNewSessionOptions",
-        "test:internal/sessionentry/union_test.go#TestDecodeFileEntryReturnsTheHeaderOrAnEntry"
+        "test:internal/codingagent/session_clone_stream_test.go#TestCloneWritesTheSameFileFromResidentAndFileBackedSources",
+        "test:internal/codingagent/session_new_session_options_test.go#TestSessionNewSessionOptions"
       ]
     },
     {
@@ -203821,9 +203821,9 @@
         "call:internal/codingagent/session_branch_runtime.go#Session.CreateBranchedSession"
       ],
       "evidence": [
-        "test:internal/codingagent/session_branched_file_oracle_test.go#TestCreateBranchedSessionMatchesPiOracle",
         "test:coding/session_context_usage_replaced_log_test.go#TestContextUsageRecomputesAfterTheLogIsReplacedInPlace",
-        "test:coding/session_context_usage_reuse_test.go#TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges"
+        "test:coding/session_context_usage_reuse_test.go#TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges",
+        "test:internal/codingagent/session_name_scan_test.go#TestGetSessionNameEqualsTheBackwardScan"
       ]
     },
     {
@@ -203843,9 +203843,9 @@
         "call:internal/codingagent/session_branch_runtime.go#Session.CreateBranchedSession"
       ],
       "evidence": [
-        "test:internal/codingagent/session_branched_file_oracle_test.go#TestCreateBranchedSessionMatchesPiOracle",
         "test:coding/session_context_usage_replaced_log_test.go#TestContextUsageRecomputesAfterTheLogIsReplacedInPlace",
-        "test:coding/session_context_usage_reuse_test.go#TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges"
+        "test:coding/session_context_usage_reuse_test.go#TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges",
+        "test:internal/codingagent/session_name_scan_test.go#TestGetSessionNameEqualsTheBackwardScan"
       ]
     },
     {
@@ -226551,7 +226551,7 @@
       "evidence": [
         "test:durable/harness/harness_deferred_progress_upstream_test.go#TestAHeldDeferredPollIsResumedAfterACrash",
         "test:durable/core/driver/host_inputs_core_test.go#TestCoreHostInputsAreReadAtEachUse",
-        "test:durable/examples/harness_examples_test.go#TestExample06Configuration"
+        "test:durable/core/driver/settings_text_test.go#TestSettingsTextFollowsTheSettingsTheHostReturns"
       ]
     },
     {
@@ -237738,7 +237738,7 @@
       ],
       "evidence": [
         "test:durable/examples/agent_examples_test.go#TestExample25CodingAgent",
-        "test:durable/core/driver/settings_text_test.go#TestSettingsTextIsEncodedOnlyWhenTheSettingsChange",
+        "test:durable/core/driver/settings_text_test.go#TestSettingsTextFollowsTheSettingsTheHostReturns",
         "test:durable/examples/harness_examples_test.go#TestExample06Configuration"
       ]
     },
