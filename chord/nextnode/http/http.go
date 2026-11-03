@@ -180,7 +180,6 @@ type HttpComponent struct {
 	// latest is the router the follower saw last, revoking whether a task is revoking against it, revokeTasks joins that task;
 	// revokeHook (a test's) sees each router the task revokes against.
 	latest        *Router
-	latestNumber  uint64
 	revoking      bool
 	revokeTasks   sync.WaitGroup
 	revokeHook    func(*Router)
@@ -557,7 +556,7 @@ func (c *HttpComponent) follow(router *Router) {
 		return
 	}
 	c.latest = router
-	c.latestNumber = c.upgrades.delivered(router)
+	c.upgrades.delivered(router)
 	if c.revoking {
 		return
 	}
@@ -566,7 +565,7 @@ func (c *HttpComponent) follow(router *Router) {
 	c.revokeTasks.Go(func() {
 		for {
 			c.mu.Lock()
-			next, number := c.latest, c.latestNumber
+			next := c.latest
 			c.latest = nil
 			if next == nil || c.isClosing() {
 				c.revoking = false
@@ -577,7 +576,7 @@ func (c *HttpComponent) follow(router *Router) {
 			if c.revokeHook != nil {
 				c.revokeHook(next)
 			}
-			c.upgrades.revoke(next, number)
+			c.upgrades.revoke(next)
 		}
 	})
 }
@@ -654,6 +653,7 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 	}
 	// The deliveries before the router check: a change delivered after it that misses the connection is seen once it is kept.
 	seen := c.upgrades.admitting()
+	defer c.upgrades.settled(seen)
 	// The router now: a host, a relay or a socket removed while authenticating refuses the upgrade.
 	router := registrySet.router.Value().(*Router)
 	if (admitted.Allowed != "" && !router.Hosts.Has(admitted.Allowed)) || (admitted.Relay != nil && !containsRelay(router.Relays, admitted.Relay)) {
@@ -677,7 +677,7 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 			return
 		}
 		defer c.upgrades.release()
-		c.upgrades.Link(w, r, admission2, options, c.host, c.ctx, seen)
+		c.upgrades.Link(w, r, admission2, options, c.host, c.ctx, router)
 		return
 	}
 	match, status := router.Socket(webRequest.Path())
@@ -698,7 +698,7 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 		return
 	}
 	defer c.upgrades.release()
-	c.upgrades.Socket(w, r, admission2, match, webRequest, c.host, c.ctx, failed, seen)
+	c.upgrades.Socket(w, r, admission2, match, webRequest, c.host, c.ctx, failed, router)
 }
 
 func containsRelay(relays []*HttpRelay, relay *HttpRelay) bool {
