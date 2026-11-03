@@ -990,6 +990,9 @@ func (c *checker) objectLiteral(up string, t types.Type) verdict {
 	if it, ok := t.Underlying().(*types.Interface); ok && it.NumMethods() > 0 {
 		return c.literalAgainstInterface(up, it) // T12b
 	}
+	if v, ok := c.keywordObject(up, t); ok {
+		return v // T12i
+	}
 	st, ok := t.Underlying().(*types.Struct)
 	if m := mappedTypeRe.FindStringSubmatch(strings.TrimPrefix(stripTypeNoise(up), "{")); m != nil {
 		if c.generics[m[1]] && isEmptyInterface(t) {
@@ -2627,4 +2630,25 @@ func (c *checker) overloadSet(up string, sig *types.Signature) (verdict, bool) {
 		vs = append(vs, c.agree(call.Returns, sig.Results().At(0).Type()))
 	}
 	return all(vs...), true
+}
+
+// openObjectRe matches an object literal type that is only an index signature, `{ readonly [keyword: string]: V }`.
+var openObjectRe = regexp.MustCompile(`^\{\s*(?:readonly\s+)?\[\s*\w+\s*:\s*string\s*\]\s*:\s*(.+?)\s*[;,]?\s*\}$`)
+
+// keywordObject applies T12i: an upstream object whose only member is a string index signature (pi-schema's Schema, a JSON Schema
+// node) is the repository's JSON object, the ordered chordjson.Object (the Go form of a pi-schema schema, schema.Object). A Go map is not
+// accepted: it loses the member order JSON.stringify keeps, and a map element type other than any cannot hold every value. Only the unknown or
+// any value type is judged here. It reports ok false for any other shape.
+func (c *checker) keywordObject(up string, t types.Type) (verdict, bool) {
+	m := openObjectRe.FindStringSubmatch(stripTypeNoise(up))
+	if m == nil {
+		return verdict{}, false
+	}
+	if v := strings.TrimSpace(m[1]); v != "unknown" && v != "any" {
+		return verdict{}, false // a typed index signature keeps its own rules (and reviewed decisions)
+	}
+	if n := namedOf(t); n != nil && n.Obj().Name() == "Object" && n.Obj().Pkg() != nil && strings.HasSuffix(n.Obj().Pkg().Path(), "/internal/chord/chordjson") {
+		return yesV(), true
+	}
+	return verdict{}, false
 }
