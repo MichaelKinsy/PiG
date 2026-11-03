@@ -117976,7 +117976,8 @@
         "call:chord/next/host/host_attempt.go#attempt.Follow"
       ],
       "evidence": [
-        "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment"
+        "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment",
+        "test:durable/harness/follow_host_batch_test.go#TestOneCommitChangingTwoFollowedViewsReachesADeriveAsOneBatch"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -117997,7 +117998,8 @@
         "call:chord/next/host/host_attempt.go#attempt.Follow"
       ],
       "evidence": [
-        "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment"
+        "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment",
+        "test:durable/harness/follow_host_batch_test.go#TestOneCommitChangingTwoFollowedViewsReachesADeriveAsOneBatch"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
