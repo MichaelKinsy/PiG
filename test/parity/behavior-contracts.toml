@@ -206,6 +206,7 @@ evidence = [
   "internal/codingagent/loaded_resources_quiet_header_upstream_test.go#TestLoadedResourcesQuietStartupHeaderUpstream",
   "internal/codingagent/loaded_resources_oracle_test.go#TestLoadedResourcesFormattingMatchesPi",
   "internal/codingagent/interactive_changelog_test.go#TestStartupChangelogFollowsPi",
+  "internal/codingagent/interactive_init_changelog_full_test.go#TestInitShowsTheStartupChangelogOfAnUpdate",
   "test/parity/scenarios/startup/05-startup-loaded-resources.toml",
   "internal/codingagent/startup_prompt_commands_test.go#TestInitialExtensionCommandsRunInOrder",
   "internal/codingagent/startup_prompt_commands_test.go#TestTypedExtensionCommandHoldsTheNextPrompt",
