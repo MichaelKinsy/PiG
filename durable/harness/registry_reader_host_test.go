@@ -151,7 +151,7 @@ func rrWait(t *testing.T, what string, condition func() bool) {
 type rrRecorder struct{}
 
 func (rrRecorder) Advance(chord.NativeWatchCall[durable.RegistrySnapshot], context.Context) {}
-func (rrRecorder) End(chord.WatchEnd)                                                        {}
+func (rrRecorder) End(chord.WatchEnd)                                                       {}
 
 func TestRegistryReaderOnAChordHost(t *testing.T) {
 	t.Run("reads the composed snapshot; a listener is called synchronously, inside the batch that composed", func(t *testing.T) {
@@ -303,7 +303,9 @@ func rrServeViews(host chordhost.FacetHost, _ chordhost.FacetSelf) error {
 				}
 				return opened, nil
 			},
-			func(value any, _ chordhost.NativeCloseReason, ctx context.Context) error { return value.(Harness).Close(ctx) },
+			func(value any, _ chordhost.NativeCloseReason, ctx context.Context) error {
+				return value.(Harness).Close(ctx)
+			},
 		)
 		self.(chordhost.StoreSelf).Contribute(rrHarnesses, harness)
 		self.Follow(func(observer chordhost.FollowObserver[any], ctx context.Context) (*chordhost.FollowAttachment[delta.JsonValue], error) {
