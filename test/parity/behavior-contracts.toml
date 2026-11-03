@@ -433,18 +433,35 @@ id = "coding-agent/compaction/retry-queue-flush"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.flushCompactionQueue"
 family = "compaction"
 kind = "async-queue-lifecycle"
-claim = "messages submitted during overflow compaction are moved in order into the imminent retry turn instead of remaining stranded until another user submission"
+claim = "flushCompactionQueue empties the compaction queue first and refreshes the pending display; a rejection (an input-handler failure, a rejected before_agent_start stage, no model or auth) restores the whole queue, clears the Session queues and shows `Failed to send queued message(s): <error>` instead of the error itself, stopping the flush at the failed message. With willRetry an extension command runs and every other message is queued through the input handlers and prompt expansion as a steer or follow-up whether or not a run is active; otherwise a settling run receives each message through its queued mode, and an idle agent runs the leading extension commands, starts a turn from the first message that is not one under a live abort context, and sends the rest through their queued modes with later extension commands running at once. The flush never moves pending bash components into the chat, and no later submission drains a restored queue"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_events.go#handleAgentEvent",
   "coding/session.go#RunAgentPrompt",
   "internal/codingagent/interactive_transcript.go#flushCompactionQueue",
+  "internal/codingagent/interactive_turn.go#queueUserInput",
+  "internal/codingagent/interactive_input_preflight.go#finishPreflight",
+  "internal/codingagent/prompt_rejection.go#rejectPrompt",
 ]
 evidence = [
   "coding/session_run_agent_prompt_test.go#TestRunAgentPromptWaitsForTheEventConsumerBeforeContinuing",
   "internal/codingagent/interactive_session_test.go#TestInteractiveMessageQueuedDuringEndOfTurnCompactionIsDelivered",
   "internal/codingagent/interactive_test.go#TestAC49CompactionEndWillRetryQueuesMessageForRetryTurn",
+  "internal/codingagent/interactive_compaction_queue_contract_test.go#TestFlushCompactionQueueDeliversInOrderToTheActiveRun",
+  "internal/codingagent/interactive_compaction_queue_contract_test.go#TestFlushCompactionQueueWithNothingQueuedChangesNothing",
+  "internal/codingagent/interactive_compaction_queue_contract_test.go#TestFlushCompactionQueueRestoresTheQueueWhenThePromptIsRejected",
+  "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueRestoresAtEveryRejectionSite",
+  "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueStopsAtTheFirstFailedMessage",
+  "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueRetryQueuesThroughInputHandlersAndExpansion",
+  "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueRunsExtensionCommands",
+  "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueIdleRunsCommandsThenStartsTheFirstPrompt",
+  "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueFirstPromptKeepsItsModeWhileTheRunSettles",
+  "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueLeavesPendingBashOutputInThePendingArea",
+  "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestSubmitDoesNotDrainRestoredCompactionQueue",
+  "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueStartsTheTurnUnderALiveAbortContext",
+  "internal/codingagent/interactive_flush_compaction_queue_contract_test.go#TestFlushCompactionQueueIntoASettlingRunKeepsItsAbortContext",
   "test/parity/scenarios/compaction/06-overflow-retry-flushes-queued-message.toml",
+  "test/parity/scenarios/compaction/08-manual-compaction-flushes-entered-message.toml",
 ]
 
 [contract.upstream]

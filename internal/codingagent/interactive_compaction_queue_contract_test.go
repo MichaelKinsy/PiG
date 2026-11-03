@@ -39,14 +39,14 @@ func TestFlushCompactionQueueDeliversInOrderToTheActiveRun(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		name      string
-		startTurn bool
-	}{{"retry", false}, {"settling run", true}} {
+		willRetry bool
+	}{{"retry", true}, {"settling run", false}} {
 		t.Run(tc.name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				m, _ := newTickRenderProbe(t, "regular")
 				m.turnActive.Store(true)
 				m.compactionQueue = slices.Clone(queue)
-				m.flushCompactionQueue(t.Context(), tc.startTurn)
+				m.flushCompactionQueue(t.Context(), tc.willRetry)
 				settleSubmissions(m)
 				steering, followUp := pendingTexts(m)
 				if !slices.Equal(steering, []string{"s1", "s2"}) || !slices.Equal(followUp, []string{"f1", "f2"}) {
@@ -68,8 +68,8 @@ func TestFlushCompactionQueueDeliversInOrderToTheActiveRun(t *testing.T) {
 func TestFlushCompactionQueueWithNothingQueuedChangesNothing(t *testing.T) {
 	m, _ := newTickRenderProbe(t, "regular")
 	m.steerMessageWithImages("already queued", nil)
-	m.flushCompactionQueue(t.Context(), true)
 	m.flushCompactionQueue(t.Context(), false)
+	m.flushCompactionQueue(t.Context(), true)
 	if steering, followUp := pendingTexts(m); !slices.Equal(steering, []string{"already queued"}) || len(followUp) != 0 {
 		t.Fatalf("steering=%q followUp=%q", steering, followUp)
 	}
@@ -87,7 +87,7 @@ func TestFlushCompactionQueueRestoresTheQueueWhenThePromptIsRejected(t *testing.
 				m, _ := newTickRenderProbe(t, "regular")
 				m.agent.SetModel(nil)
 				m.compactionQueue = append([]compactionQueuedMessage(nil), queued...)
-				m.flushCompactionQueue(t.Context(), true)
+				m.flushCompactionQueue(t.Context(), false)
 				// The submission hops between the owner loop and its workers: preflight, then the turn's own goroutine.
 				for range 4 {
 					synctest.Wait()

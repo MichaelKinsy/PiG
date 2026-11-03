@@ -30,13 +30,6 @@ func isUserBashCommand(text string) bool {
 }
 
 func (m *InteractiveMode) handleSubmitWithImages(ctx context.Context, prompt string, images []ai.ImageContent) {
-	// Defensive drain for messages restored after a failed compaction-queue
-	// delivery. Normal compaction completion flushes immediately, including the
-	// WillRetry path that steers into the imminent retry turn.
-	if !m.isCompacting && len(m.compactionQueue) > 0 {
-		m.flushCompactionQueue(ctx, false)
-	}
-
 	// Queue model-bound inputs during compaction, but let local
 	// slash commands and bash run immediately. Upstream's onSubmit handles its
 	// builtin command if-chain (/model, /session, /fork, /tree, /new, ...) and
@@ -125,7 +118,7 @@ func (m *InteractiveMode) promptUserInput(ctx context.Context, text string, imag
 			behavior = "followUp"
 		}
 	}
-	submission := inputPreflight{
+	m.dispatchSubmission(inputPreflight{
 		ctx:       ctx,
 		text:      text,
 		images:    images,
@@ -135,11 +128,39 @@ func (m *InteractiveMode) promptUserInput(ctx context.Context, text string, imag
 		streaming: streaming,
 		source:    source,
 		session:   m.opts.SessionHandle,
+	})
+}
+
+// queueUserInput is upstream _queueUserInput, which steer() and followUp() call: the input handlers see the text with the streaming behavior sampled
+// while a run is active, skill commands and prompt templates expand, and the text is queued as a steering message, or as a follow-up with followUp,
+// whether or not a run is active. A prompt rejected on the way is reported like promptUserInput's.
+func (m *InteractiveMode) queueUserInput(ctx context.Context, text string, images []ai.ImageContent, followUp bool, source extension.InputSource) {
+	behavior := ""
+	if m.runStreaming() {
+		behavior = "steer"
+		if followUp {
+			behavior = "followUp"
+		}
 	}
+	m.dispatchSubmission(inputPreflight{
+		ctx:       ctx,
+		text:      text,
+		images:    images,
+		followUp:  followUp,
+		expand:    true,
+		queueOnly: true,
+		behavior:  behavior,
+		source:    source,
+		session:   m.opts.SessionHandle,
+	})
+}
+
+// dispatchSubmission runs a submission's input handlers on the strategy interactive_input_preflight.go describes.
+func (m *InteractiveMode) dispatchSubmission(submission inputPreflight) {
 	// The synchronous path must not overtake, or clear, a dispatch still in
 	// flight (handlers can be unloaded by /reload while one runs).
 	if !m.inputHandlersRegistered() && !m.preflightPending() {
-		text, images, handled, err := m.runInputHandlers(ctx, text, images, source, behavior)
+		text, images, handled, err := m.runInputHandlers(submission.ctx, submission.text, submission.images, submission.source, submission.behavior)
 		m.finishPreflight(submission, inputPreflightResult{text: text, images: images, handled: handled, err: err})
 		return
 	}

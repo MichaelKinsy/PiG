@@ -1453,7 +1453,7 @@ func TestInteractiveMode_CompactionQueueFlushStartsTurn(t *testing.T) {
 	m.abortFn = func() {}
 
 	m.compactionQueue = []compactionQueuedMessage{{text: "queued during compaction", mode: compactionQueueSteer}}
-	m.flushCompactionQueue(m.runCtx, true)
+	m.flushCompactionQueue(m.runCtx, false)
 
 	select {
 	case opts := <-seen:
@@ -1517,7 +1517,7 @@ func TestInteractiveMode_CompactionQueueFirstFollowUpPreservesModeWhenTurnSettle
 	m.turnActive.Store(true)
 	m.compactionQueue = []compactionQueuedMessage{{text: "follow after compact", mode: compactionQueueFollowUp}}
 
-	m.flushCompactionQueue(m.runCtx, true)
+	m.flushCompactionQueue(m.runCtx, false)
 	steering, followUps := m.agent.PendingMessages()
 	if len(steering) != 0 || len(followUps) != 1 || extractAgentMessageText(followUps[0]) != "follow after compact" {
 		t.Fatalf("first queued follow-up lost mode: steering=%v followUps=%v", steering, followUps)
@@ -1554,7 +1554,7 @@ func TestInteractiveMode_CompactionQueueFlushSkipsTurnWhenBusy(t *testing.T) {
 	m.isIdle = false
 	m.turnActive.Store(true)
 	m.compactionQueue = []compactionQueuedMessage{{text: "queued mid-turn", mode: compactionQueueSteer}}
-	m.flushCompactionQueue(m.runCtx, true)
+	m.flushCompactionQueue(m.runCtx, false)
 
 	select {
 	case <-seen:
@@ -2328,7 +2328,7 @@ func TestCompactionFlushStartsTurnWhenIsIdleIsStaleFalse(t *testing.T) {
 	m.turnActive.Store(false)
 
 	m.compactionQueue = []compactionQueuedMessage{{text: "sent after compaction", mode: compactionQueueSteer}}
-	m.flushCompactionQueue(m.runCtx, true)
+	m.flushCompactionQueue(m.runCtx, false)
 
 	select {
 	case opts := <-seen:

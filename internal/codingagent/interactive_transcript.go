@@ -593,56 +593,55 @@ func (m *InteractiveMode) addBranchSummary(summary string, usage *ai.Usage) {
 	m.addCompactionCostNotice("branch_summary", usage)
 }
 
-// flushCompactionQueue sends all messages that were queued while a compaction
-// was in progress. Called at the end of successful CompactionEndEvent handling.
+// flushCompactionQueue sends the messages queued while a compaction ran (interactive-mode.ts flushCompactionQueue). The queue empties first and the
+// pending display is refreshed. A message that fails to send, or a prompt the run rejects, puts the whole queue back, clears the Session's queues and
+// shows "Failed to send queued message(s): <error>"; the messages after a failed one are not sent.
 //
-// Upstream: flushCompactionQueue in interactive-mode.ts:3561.
-// Now uses the agent's steering queue so compaction-queued messages are
-// injected between tool batches rather than spawning new turns.
-// flushCompactionQueue replays messages queued while compaction was running.
+// With willRetry the retry turn is imminent: an extension command runs and every other message is queued through the input handlers and prompt
+// expansion as a steering message or follow-up, whether or not a run is active.
 //
-// startTurn distinguishes the two call sites:
-//   - false (drain at handleSubmit top): a new prompt or an active overflow
-//     retry will start a turn, so the queued messages only need to be steered
-//     into it.
-//   - true (CompactionEndEvent): the agent is idle, so a bare Steer would be
-//     dropped (the steering queue is only drained by a running loop). The first
-//     non-slash message starts a turn; slash commands dispatch; the remaining
-//     messages steer into the started turn. Mirrors upstream flushCompactionQueue
-//     (interactive-mode.ts:3825), which uses the first non-extension-command
-//     message as session.prompt() and steers the rest.
-func (m *InteractiveMode) flushCompactionQueue(ctx context.Context, startTurn bool) {
+// Otherwise a run still settling (the compaction ran inside it) receives each message through its queued mode. An idle agent runs the extension commands
+// before the first message that is not one, starts a turn from that message, and queues the rest into the started turn. turnActive marks the interval in
+// which a run goroutine exists to drain the queues; isIdle is reset through a queued runOnMain and reads stale-false right after a turn ends, which is
+// what auto-compaction at the end of a turn leaves behind.
+func (m *InteractiveMode) flushCompactionQueue(ctx context.Context, willRetry bool) {
 	if len(m.compactionQueue) == 0 {
 		return
 	}
 	queued := m.compactionQueue
 	m.compactionQueue = nil
-	// The queue moved to the agent (steered) or a new turn; clear its
-	// entries from the pending display so it reflects the live queue.
-	defer m.updatePendingMessagesDisplay()
+	m.updatePendingMessagesDisplay()
 
-	// Steer only when a run goroutine actually exists to drain the steering
-	// queue. turnActive marks exactly that interval; isIdle is reset through a
-	// queued runOnMain and so reads stale-false right after a turn ends, which
-	// is precisely the state auto-compaction leaves behind when it runs at the
-	// end of a turn. Gating on isIdle therefore steered into a queue nothing
-	// would drain: the message vanished from the UI, never reached the session,
-	// and was lost on restart.
-	//
-	// When startTurn is false (the handleSubmit drain) the caller has its own
-	// turn to steer into. Starting a second concurrent turn while one is running
-	// would race the agent loop, so turnActive still suppresses that.
-	if !startTurn {
+	failed := false
+	// upstream: interactive-mode.ts flushCompactionQueue restoreQueue, run when a message or the first prompt is rejected.
+	ctx = withPromptRejection(ctx, func(err error) {
+		failed = true
+		m.agent.ClearAllQueues()
+		m.compactionQueue = queued
+		m.updatePendingMessagesDisplay()
+		plural := ""
+		if len(queued) > 1 {
+			plural = "s"
+		}
+		m.showError(fmt.Sprintf("Failed to send queued message%s: %s", plural, err.Error()))
+	})
+
+	if willRetry {
 		for _, msg := range queued {
-			m.queueCompactionMessageForActiveTurn(msg)
+			if failed {
+				return
+			}
+			m.queueCompactionMessage(ctx, msg)
 		}
 		return
 	}
-	// A run still settling (the compaction ran inside it) receives each
-	// message through upstream's steer()/followUp(), input handlers and
-	// expansion included; extension commands run immediately.
+	// A run still settling receives each message through upstream's steer()/followUp(), input handlers and expansion included; extension commands run
+	// immediately.
 	if m.runStreaming() {
 		for _, msg := range queued {
+			if failed {
+				return
+			}
 			m.deliverCompactionQueued(ctx, msg)
 		}
 		return
@@ -656,47 +655,39 @@ func (m *InteractiveMode) flushCompactionQueue(ctx context.Context, startTurn bo
 	}
 	m.abortCtx, m.abortFn = context.WithCancel(m.runCtx)
 
-	firstIdx := -1
-	for i, msg := range queued {
-		if !m.isExtensionCommand(msg.text) {
-			firstIdx = i
-			break
-		}
-	}
+	firstIdx := slices.IndexFunc(queued, func(msg compactionQueuedMessage) bool { return !m.isExtensionCommand(msg.text) })
 	if firstIdx == -1 {
-		// All extension commands (interactive-mode.ts:4818-4825): run each; none starts a turn.
+		// All extension commands: run each; none starts a turn.
 		for _, msg := range queued {
-			m.handleSubmitWithImages(ctx, msg.text, msg.images)
+			m.dispatchSlash(ctx, msg.text)
 		}
 		return
 	}
 	// Run the extension commands before the first prompt.
 	for _, msg := range queued[:firstIdx] {
-		m.handleSubmitWithImages(ctx, msg.text, msg.images)
+		m.dispatchSlash(ctx, msg.text)
 	}
-	// Preserve the queued message's delivery mode. Upstream passes
-	// streamingBehavior on the first prompt so a still-settling agent run queues
-	// it instead of starting a concurrent turn. turnActive is the same boundary
-	// in PiG; the idle path starts a new prompt, while a live run receives the
-	// message through its requested queue.
-	// upstream: interactive-mode.ts flushCompactionQueue restoreQueue, run when the first prompt is rejected.
-	restoreQueue := func(err error) {
-		m.agent.ClearAllQueues()
-		m.compactionQueue = queued
-		m.updatePendingMessagesDisplay()
-		plural := ""
-		if len(queued) > 1 {
-			plural = "s"
-		}
-		m.showError(fmt.Sprintf("Failed to send queued message%s: %s", plural, err.Error()))
-	}
-	m.handleSubmitWithImages(withPromptRejection(ctx, restoreQueue), queued[firstIdx].text, queued[firstIdx].images)
-	// Remaining messages preserve their queued mode; later extension commands
-	// still dispatch immediately (deliverCompactionQueued). A message that finds the run already
+	// The first prompt keeps its delivery mode: a live run receives it through its requested queue, and the idle agent starts a turn.
+	first := queued[firstIdx]
+	m.promptUserInput(ctx, first.text, first.images, first.mode == compactionQueueFollowUp, extension.InputSourceUser, true)
+	// The remaining messages keep their queued mode; a later extension command still runs immediately. A message that finds the run already
 	// settled starts the next turn instead of waiting in a drained queue.
 	for _, msg := range queued[firstIdx+1:] {
+		if failed {
+			return
+		}
 		m.deliverCompactionQueued(ctx, msg)
 	}
+}
+
+// queueCompactionMessage hands one message queued during compaction to the retry turn: an extension command runs, any other message is queued with its
+// mode through the input handlers and prompt expansion (upstream prompt(), steer() and followUp()).
+func (m *InteractiveMode) queueCompactionMessage(ctx context.Context, msg compactionQueuedMessage) {
+	if m.isExtensionCommand(msg.text) {
+		m.dispatchSlash(ctx, msg.text)
+		return
+	}
+	m.queueUserInput(ctx, msg.text, msg.images, msg.mode == compactionQueueFollowUp, extension.InputSourceUser)
 }
 
 // deliverCompactionQueued hands one message queued during compaction to the
@@ -723,14 +714,6 @@ func (m *InteractiveMode) enqueueIfTurnActive(enqueue func()) bool {
 	}
 	enqueue()
 	return true
-}
-
-func (m *InteractiveMode) queueCompactionMessageForActiveTurn(msg compactionQueuedMessage) {
-	if msg.mode == compactionQueueFollowUp {
-		m.followUpMessageWithImages(msg.text, msg.images)
-		return
-	}
-	m.steerMessageWithImages(msg.text, msg.images)
 }
 
 // steerMessageWithImages queues a steering message, delivered after the

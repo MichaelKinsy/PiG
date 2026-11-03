@@ -411,7 +411,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		FlushCompactionQueue: func() {
 			// Navigation runs on the input loop, so the flush and any turn it
 			// starts stay single-threaded with editor state.
-			m.flushCompactionQueue(m.runCtx, true)
+			m.flushCompactionQueue(m.runCtx, false)
 		},
 		ForkAtEntry: func(entryID string) error {
 			if m.currentSession() == nil {
