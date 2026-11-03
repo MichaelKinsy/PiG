@@ -650,13 +650,14 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 		refuse(w, 403)
 		return
 	}
+	// The revocations before the router check: a change after it that misses the connection is seen once it is kept.
+	seen := c.upgrades.admitting()
 	// The router now: a host, a relay or a socket removed while authenticating refuses the upgrade.
 	router := registrySet.router.Value().(*Router)
 	if (admitted.Allowed != "" && !router.Hosts.Has(admitted.Allowed)) || (admitted.Relay != nil && !containsRelay(router.Relays, admitted.Relay)) {
 		refuse(w, 403)
 		return
 	}
-	current := func() *Router { return registrySet.router.Value().(*Router) }
 	admission2 := UpgradeAdmission{Allowed: admitted.Allowed, Relay: admitted.Relay, Principal: principal}
 	if links := c.options.Links; links != nil && webRequest.Path() == links.Path {
 		options := links.Options
@@ -674,7 +675,7 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 			return
 		}
 		defer c.upgrades.release()
-		c.upgrades.Link(w, r, admission2, options, c.host, c.ctx, current)
+		c.upgrades.Link(w, r, admission2, options, c.host, c.ctx, seen)
 		return
 	}
 	match, status := router.Socket(webRequest.Path())
@@ -695,7 +696,7 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 		return
 	}
 	defer c.upgrades.release()
-	c.upgrades.Socket(w, r, admission2, match, webRequest, c.host, c.ctx, failed, current)
+	c.upgrades.Socket(w, r, admission2, match, webRequest, c.host, c.ctx, failed, seen)
 }
 
 func containsRelay(relays []*HttpRelay, relay *HttpRelay) bool {
