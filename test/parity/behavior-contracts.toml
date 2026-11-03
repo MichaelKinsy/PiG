@@ -3865,14 +3865,17 @@ id = "coding-agent/config-selector/resource-list-render"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.render"
 family = "selectors"
 kind = "render-layout"
-claim = "the list shows the search input, the grouped resources with bold coloured group and subgroup labels, the cursor and bold selected name, dimmed inherited items, the (n/total) counter and the empty message; byte-identical to Pi in every probe of TestConfigSelectorContractMatchesPi except two differences Pi does not have: Pig appends a warning-colored \"  missing\" suffix to a declared Package member whose file is absent (ResourceItem.Health, tui/config_selector.go; Pi renders no such row), and Pig clips \"  No resources found\" and the \"(n/total)\" row to the width where Pi leaves them unclamped (tui/component_width_table_test.go holds the clip); neither has a D-number, so this contract stays pending"
-status = "pending"
+claim = "the list shows the search input, the grouped resources with bold coloured group and subgroup labels, the cursor and bold selected name, dimmed inherited items, the (n/total) counter and the empty message, byte for byte through navigation, search and toggling, in dark and light themes at both color depths and every width (the two rows Pi leaves unclamped stay unclamped); the one difference is D230: a declared Package member whose file is absent is listed with a warning-colored \"  missing\" suffix (ResourceItem.Health), where Pi lists only files that exist"
+status = "divergence"
 pig_targets = [
   "tui/config_selector.go#Render"
 ]
 evidence = [
   "tui/config_selector_oracle_test.go#TestConfigSelectorMatchesPi",
-  "test/parity/scenarios/selectors/02-config-resources-list.toml"
+  "tui/config_selector_contract_test.go#TestConfigSelectorContractMatchesPi",
+  "coding/cli/config_selector_command_test.go#TestConfigSelectorDisablesEnabledMissingPackageMember",
+  "test/parity/scenarios/selectors/02-config-resources-list.toml",
+  "docs/parity/DIVERGENCES.md#D230 `pig config` lists declared Package members that are missing from disk, marked `missing`",
 ]
 
 [contract.upstream]

@@ -123,11 +123,6 @@ func compareConfigContractProbes(t *testing.T, probes []configContractProbe) {
 			wantFrames[k] = make([]string, len(f))
 			for l, line := range f {
 				wantFrames[k][l] = strings.ReplaceAll(line, ".pi/", ".pig/")
-				// Pi's ResourceList leaves "  No resources found" and the "(n/total)" scroll row unclamped, wider than a narrow terminal; Pig clips them
-				// to the width (the component width table holds that), so the expected row is Pi's cut at the width.
-				if widthx.VisibleWidth(wantFrames[k][l]) > probe.Width {
-					wantFrames[k][l] = widthx.TruncateToWidth(wantFrames[k][l], probe.Width, "", false)
-				}
 				// The scope hint row names the settings file: Pi's `.pi/` is one cell shorter than Pig's `.pig/` (D2), so a width that truncates the
 				// row cuts them at different characters. Below that width the row is compared for fitting the width, not for its characters.
 				if l == configScopeHintRow && probe.Width < configScopeHintCells {
