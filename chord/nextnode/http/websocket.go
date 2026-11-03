@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -141,35 +142,46 @@ func (s *WebSocket) BufferedAmount() int64 {
 // on attaches a listener for event and returns its removal (the data is what emit gets).
 func (s *WebSocket) on(event link.WebSocketEvent, fn func(data any)) (remove func()) {
 	listener := &socketListener{event: event, fn: fn}
+	s.attach(listener)
+	return func() { s.detach(listener) }
+}
+
+// attach registers a listener that is complete: emit may run it from another goroutine as soon as this returns.
+func (s *WebSocket) attach(listener *socketListener) {
 	s.mu.Lock()
 	s.listeners = append(s.listeners, listener)
 	s.mu.Unlock()
 	if s.attached != nil {
 		s.attached()
 	}
-	return func() {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		for i, each := range s.listeners {
-			if each == listener {
-				s.listeners = append(append([]*socketListener(nil), s.listeners[:i]...), s.listeners[i+1:]...)
-				return
-			}
+}
+
+// detach removes listener (no-op when it is not attached).
+func (s *WebSocket) detach(listener *socketListener) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, each := range s.listeners {
+		if each == listener {
+			s.listeners = append(append([]*socketListener(nil), s.listeners[:i]...), s.listeners[i+1:]...)
+			return
 		}
 	}
 }
 
-// once is on for the first event only.
+// once is on for the first event only: Node's `once`, whose wrapper removes itself and then calls fn, at most once however
+// emissions race. The listener is built whole (its removal needs only its own identity) before it is attached, so no emission
+// can reach it before it can remove itself.
 func (s *WebSocket) once(event link.WebSocketEvent, fn func(data any)) (remove func()) {
-	var once sync.Once
-	var removed func()
-	removed = s.on(event, func(data any) {
-		once.Do(func() {
-			removed()
+	var fired atomic.Bool
+	listener := &socketListener{event: event}
+	listener.fn = func(data any) {
+		if fired.CompareAndSwap(false, true) {
+			s.detach(listener)
 			fn(data)
-		})
-	})
-	return removed
+		}
+	}
+	s.attach(listener)
+	return func() { s.detach(listener) }
 }
 
 // OnMessage attaches a listener for data frames and returns its removal.
