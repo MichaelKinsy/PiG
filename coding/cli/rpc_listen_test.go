@@ -579,7 +579,7 @@ func (s *listenServer) flood(conn net.Conn, count int, marker string) {
 	s.t.Helper()
 	var batch strings.Builder
 	for i := range count {
-		batch.WriteString(`{"id":"r` + itoa(i) + `","type":"get_available_models"}` + "\n")
+		batch.WriteString(`{"id":"r` + strconv.Itoa(i) + `","type":"get_available_models"}` + "\n")
 	}
 	batch.WriteString(`{"id":"marker","type":"bash","command":": > '` + marker + `'"}` + "\n")
 	written := make(chan error, 1)
@@ -602,8 +602,6 @@ func (s *listenServer) flood(conn net.Conn, count int, marker string) {
 	}
 }
 
-func itoa(i int) string { return strconv.Itoa(i) }
-
 func TestListenSIGTERMFlushesEveryConnectionsPendingRecords(t *testing.T) {
 	server := newListenServer(t)
 	other := server.dial()
@@ -617,7 +615,7 @@ func TestListenSIGTERMFlushesEveryConnectionsPendingRecords(t *testing.T) {
 	seen := 0
 	err := readJSONLRecords(conn, func(r rpcRecord) {
 		if id, _ := r["id"].(string); strings.HasPrefix(id, "r") && r["type"] == "response" {
-			if want := "r" + itoa(seen); id != want {
+			if want := "r" + strconv.Itoa(seen); id != want {
 				t.Fatalf("response %d is %q, want %q", seen, id, want)
 			}
 			seen++
