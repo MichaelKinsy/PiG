@@ -219,7 +219,9 @@ func TestMarkdownBackslashEscapesInEmphasisMatchPi(t *testing.T) {
 			for _, apply := range []func(*markdownContractProbe){
 				func(p *markdownContractProbe) { p.Theme = "dark" },
 				func(p *markdownContractProbe) {},
-				func(p *markdownContractProbe) { p.Theme, p.Style = "light", &markdownContractStyle{Color: true, Italic: true} },
+				func(p *markdownContractProbe) {
+					p.Theme, p.Style = "light", &markdownContractStyle{Color: true, Italic: true}
+				},
 			} {
 				probe := markdownContractProbe{Text: doc, Theme: "tagged", Options: markdownContractOptions{PreserveBackslashEscapes: preserve}, Ops: markdownContractRenderOps(8, 60)}
 				apply(&probe)
