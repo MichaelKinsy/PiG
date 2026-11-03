@@ -1440,8 +1440,8 @@ rationale = "Pi f715a15c1 adds StreamingJsonParser (an incremental, tolerant JSO
 path = "packages/ai/src/utils/string-enum.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:ai/string_enum_test.go#TestStringEnumBuildsThePiSchema"]
-rationale = "StringEnum of string-enum.ts (Pi: type string and enum, plus description and default only when given and non-empty) is ported as ai.StringEnum (ai/string_enum.go), returning the JSON-schema map; the test compares the schema for no options, description and default, empty strings omitted, and description only. Pi types the result with Schema of the union of the values, a type-level member Go does not have."
+evidence = ["test:ai/string_enum_test.go#TestStringEnumWritesTheMembersInPiOrder"]
+rationale = "StringEnum of string-enum.ts (Pi: type string and enum, plus description and default only when given and non-empty) is ported as ai.StringEnum (ai/string_enum.go), returning an ordered pi-schema object whose enum is the caller's slice, as Pi's is the caller's array; the test compares the serialized members in Pi's order for no options, description and default, empty strings omitted, description only and no values, and the sharing test changes the caller's slice after the call. Pi types the result with Schema of the union of the values, a type-level member Go does not have."
 
 [[files]]
 path = "packages/ai/src/utils/text.ts"
