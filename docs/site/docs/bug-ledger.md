@@ -1170,6 +1170,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c7ebb23](#bf-c7ebb23) | A cancelled prompt in a `config.oauth` login now rejects with Pi's `Login cancelled` in every SDK (it was… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c7ebb23-2](#bf-c7ebb23-2) | A `config.oauth` login's `onManualCodeInput` asks "Paste the authorization code", as Pi does, and a provider… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c80895b](#bf-c80895b) | Switching to a long session with `/resume`, `/fork` or `/tree` no longer leaves memory the replaced session… | PiG's own defect | All platforms | Unreleased |
+| [BF-c80895b-2](#bf-c80895b-2) | An entry read from a long session's file no longer keeps the whole shared read (up to 8 MiB) alive: each… | PiG's own defect | All platforms | Unreleased |
 | [BF-c8a90a6](#bf-c8a90a6) | Pressing the login dialog's cancel key again cancels again, and Enter after a cancelled prompt leaves the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c8e3d86](#bf-c8e3d86) | Settings submenus: the type-to-filter box no longer shows a hardware cursor marker (Pi never focuses it), and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c910f98](#bf-c910f98) | fix(photonimage): decode Radiance HDR as Photon does | PiG's own defect | All platforms | Unreleased |
@@ -17457,9 +17458,23 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `c80895bd4f` (2026-11-02)
-- **Tests:** `coding/session_replay_reads_test.go::TestReplayedTranscriptAllocatesAFractionOfTheSessionFile`, `internal/codingagent/session_run_buffer_retention_test.go::TestEntriesDecodedFromAJoinedReadDoNotPinTheRead`
+- **Fix commits:** `c80895bd4f` (2026-11-02), `7fae0d4832` (2026-11-02)
+- **Tests:** `internal/codingagent/switch_heap_release_test.go::TestSessionSwitchesRequestAHeapRelease`
 - **Release note:** Switching to a long session with `/resume`, `/fork` or `/tree` no longer leaves memory the replaced session used: the heap is returned to the OS once the new transcript is painted, as it is at start. A 375 MB session resumed from inside PiG held 2.2 GB until exit; it now holds about 100 MB.
+
+### BF-c80895b-2
+
+**An entry read from a long session's file no longer keeps the whole shared read (up to 8 MiB) alive: each…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An entry read from a long session's file no longer keeps the whole shared read (up to 8 MiB) alive: each entry owns its record, so a context built from scattered records retains what it holds and not the gaps between them.
+- **Root cause:** An entry decoded from a joined file read kept a slice of the read (up to 8 MiB), pinning the gaps between the records while it was resident: read together, 415 entries retained 2.34 x what the same entries read one at a time do. Each entry now owns its record.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c80895bd4f` (2026-11-02)
+- **Tests:** `internal/codingagent/session_run_buffer_retention_test.go::TestEntriesDecodedFromAJoinedReadDoNotPinTheRead`
+- **Release note:** An entry read from a long session's file no longer keeps the whole shared read (up to 8 MiB) alive: each entry owns its record, so a context built from scattered records retains what it holds and not the gaps between them.
 
 ### BF-c8a90a6
 
@@ -20679,8 +20694,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `ed01bf62b4` (2026-11-02)
-- **Tests:** `coding/session_replay_reads_test.go::TestReplayedTranscriptReadsOnlyTheSystemMessagesOfALongBranch`
+- **Fix commits:** `836d58c4c8` (2026-11-02), `ed01bf62b4` (2026-11-02)
+- **Tests:** `coding/session_replay_reads_test.go::TestReplayedTranscriptAllocatesAFractionOfTheSessionFile`, `coding/session_replay_reads_test.go::TestReplayedTranscriptReadsOnlyTheSystemMessagesOfALongBranch`
 - **Release note:** Resuming a very long session no longer reads and decodes every entry of the branch to restore the tool loadout. A 365 MB session peaked at 2 GB of memory at startup; it now peaks at about 130 MB, as the 46 MB one does, and Pi's startup peaks at about 640 MB for the same file.
 
 ### BF-ed05099
