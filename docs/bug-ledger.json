@@ -11552,7 +11552,6 @@
         "test/ci-images/image_inputs_test.go::TestCIImageValidationDerivesToolchainInputs",
         "test/ci-images/image_inputs_test.go::TestCIImageWorkflowWatchesAuthoritativePins",
         "test/ci-images/lint_changed_test.go::TestLintChangedPackageSelection",
-        "test/parity/cmd/upstreamdelta/main_test.go::TestCarryAuditsKeepsOnlyReviewedRowsOfByteIdenticalFiles",
         "test/parity/interface-closure/autobind/rules_test.go::TestTypeBoxEnumPartialRecordSpreadAndHelpers",
         "test/parity/runner/binaries_missing_test.go::TestResolveUpstreamPiBinNeverFallsBackToAMiseInstallWithoutOptIn",
         "test/parity/runner/oracle_commit_test.go::TestOracleCommitMismatch",
@@ -36307,7 +36306,6 @@
         "test/parity/cmd/behaviorcheck/main_test.go::TestGeneratePendingInputMappingCarriesStableOwnersAndResolvesNewScope",
         "test/parity/cmd/behaviorcheck/main_test.go::TestGeneratePendingInputMappingRejectsUnresolvedAndStaleOwners",
         "test/parity/cmd/behaviorcheck/main_test.go::TestUnchangedSurfacesKeepReviewedEntriesAndResetChangedOnes",
-        "test/parity/cmd/upstreamdelta/main_test.go::TestCarryAuditsKeepsOnlyReviewedRowsOfByteIdenticalFiles",
         "test/parity/runner/oracle_commit_test.go::TestOracleCommitMismatch",
         "test/upstream-parity/mirror_version_test.go::TestUpstreamMirror_MatchesPin"
       ]

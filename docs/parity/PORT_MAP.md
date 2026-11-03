@@ -1036,12 +1036,12 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/storage/sqlite/node.ts` | `durable/storage/sqlite/node/node.go` (re-exports chord/sqlite/node; OpenNodeSqliteStorage) | ✅ |
 | `packages/durable/src/storage/sqlite/storage.ts` | `durable/storage/sqlite/storage.go` | ✅ |
 | `packages/durable/src/storage/sqlite/cloudflare.ts` | `durable/storage/sqlite/cloudflare/cloudflare.go` (re-exports chord/sqlite/cloudflare; OpenDurableObjectSqliteStorage) | ✅ |
-| `packages/durable/src/storage/store/commit.ts` | `durable/storage/store/commit.go` | ✅ |
-| `packages/durable/src/storage/store/documents.ts` | `durable/storage/store/documents.go` | ✅ |
+| `packages/durable/src/storage/store/commit.ts` | `durable/storage/store/commit.go` | 🟡 |
+| `packages/durable/src/storage/store/documents.ts` | `durable/storage/store/documents.go` | 🟡 |
 | `packages/durable/src/storage/store/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
-| `packages/durable/src/storage/store/queries.ts` | `durable/storage/store/queries.go` | ✅ |
-| `packages/durable/src/storage/store/storage.ts` | `durable/storage/store/storage.go` | ✅ |
-| `packages/durable/src/storage/store/tables.ts` | `durable/storage/store/tables.go` | ✅ |
+| `packages/durable/src/storage/store/queries.ts` | `durable/storage/store/queries.go` | 🟡 |
+| `packages/durable/src/storage/store/storage.ts` | `durable/storage/store/storage.go` | 🟡 |
+| `packages/durable/src/storage/store/tables.ts` | `durable/storage/store/tables.go` | 🟡 |
 | `packages/durable/src/tasks.ts` | `durable/tasks.go` | ✅ |
 | `packages/durable/src/testing/assertions.ts` | `durable/durabletest/durabletest.go` | ✅ |
 | `packages/durable/src/testing/commit-writes.ts` | `durable/durabletest/commit_writes.go` | 🟡 |
