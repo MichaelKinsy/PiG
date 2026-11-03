@@ -352,7 +352,7 @@ func runWorkerFixture() {
 			if err != nil {
 				return nil, err
 			}
-			fmt.Fprintf(os.Stdout, "owner seen by a spawned program: %s\n", seen)
+			_, _ = fmt.Fprintf(os.Stdout, "owner seen by a spawned program: %s\n", seen)
 		}
 		if behaviour.Exit != nil {
 			exitProcess(*behaviour.Exit)
