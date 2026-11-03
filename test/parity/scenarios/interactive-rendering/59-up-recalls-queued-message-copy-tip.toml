@@ -83,6 +83,6 @@ reason = "Capture timing selects the spinner phase; preserve the Working label a
 
 # normalize-rationale: divergence D228 adds the copy tip under the editor in PiG. The raw pig_contains assertion above requires the tip; this rule removes only its rows (the tip and its wrapped mapping hint), so any other row difference stays visible.
 [[assert.normalize_replace]]
-pattern = '(?m)^ ↳ That.s a copy\. The queued message still sends\. .*\n(?: .*\n)*? ?.*Profiles > Keyboard\.\s*\n'
+pattern = '(?m)^ ↳ That.s a copy\. The queued message still sends\. .*\n(?: .*\n)*? ?.*Profiles > Keyboard\.[ \t]*\n'
 with = ''
 reason = "D228 adds the one-time copy tip, wrapped over two rows because it ends with the Terminal.app mapping hint under TERM_PROGRAM=tmux."
