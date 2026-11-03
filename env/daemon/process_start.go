@@ -18,6 +18,7 @@ import (
 type program struct {
 	cmd                   *exec.Cmd
 	pid                   int
+	group                 *programGroup
 	stdin, stdout, stderr *os.File
 }
 
@@ -70,7 +71,18 @@ func startProgram(request *processRequest) (*program, *Failure) {
 		closeFiles(stdinWrite, stdoutRead, stderrRead)
 		return nil, failure(err)
 	}
-	return &program{cmd: cmd, pid: cmd.Process.Pid, stdin: stdinWrite, stdout: stdoutRead, stderr: stderrRead}, nil
+	// What the program starts in its group dies when it exits: a wrapper such as `npx` that exits does not leave the server it
+	// started running, out of reach of a close and of a lost connection.
+	group, err := newGroup(cmd)
+	if err != nil {
+		killTree(cmd.Process.Pid)
+		// On Windows the group kill spawns taskkill, which can fail; kill the program directly.
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		closeFiles(stdinWrite, stdoutRead, stderrRead)
+		return nil, failure(err)
+	}
+	return &program{cmd: cmd, pid: cmd.Process.Pid, group: group, stdin: stdinWrite, stdout: stdoutRead, stderr: stderrRead}, nil
 }
 
 // closePipes closes the daemon's ends of the pipes, which ends a read or write waiting on them.

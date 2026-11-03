@@ -43,10 +43,10 @@ func parseProcessRequest(request Object) (*processRequest, *Failure) {
 }
 
 // runningProcess is what `processWrite` and `processCloseStdin` reach: the stdin of one running `process` request, and the
-// process group a lost connection kills.
+// group a lost connection kills.
 type runningProcess struct {
 	input *inputQueue
-	pid   int
+	group *programGroup
 }
 
 // processWrite queues input for the program's stdin; it is written in the order it arrives, without holding up other
@@ -129,7 +129,7 @@ func (s *server) runProcess(id uint32, request *processRequest, ctl *control) (O
 	input := newInputQueue()
 	// Registered as soon as the program runs, so a lost connection reaches it and input sent once `started` is out finds it.
 	s.mu.Lock()
-	s.processes[id] = &runningProcess{input: input, pid: program.pid}
+	s.processes[id] = &runningProcess{input: input, group: program.group}
 	s.mu.Unlock()
 	s.out.sendControl(&Frame{Kind: FrameEvent, ID: id, JSON: Object{"kind": "started", "pid": program.pid}})
 
@@ -182,7 +182,7 @@ func (s *server) runProcess(id uint32, request *processRequest, ctl *control) (O
 		}
 	})
 	helpers.Go(func() {
-		code, err := reapProgram(program.cmd)
+		code, err := program.waitAndEnd()
 		if err != nil {
 			send(programMessage{kind: programWaitFailed, err: err})
 			return
@@ -203,7 +203,7 @@ func (s *server) runProcess(id uint32, request *processRequest, ctl *control) (O
 	kill := func() {
 		if !killed {
 			killed = true
-			killTree(program.pid)
+			program.group.kill()
 		}
 	}
 	var graceTimer waitTimer
@@ -229,6 +229,8 @@ func (s *server) runProcess(id uint32, request *processRequest, ctl *control) (O
 			case programEOF:
 				ended[message.stream] = true
 			case programExit:
+				// The waiter already ended the group; nothing is left to kill.
+				killed = true
 				exited, exitCode = true, message.exit
 				idle = time.Now().Add(processExitGrace)
 			case programWaitFailed:

@@ -126,9 +126,9 @@ func (s *server) killAll() {
 	for _, found := range s.terminals {
 		terminals = append(terminals, found)
 	}
-	processes := make([]int, 0, len(s.processes))
+	processes := make([]*programGroup, 0, len(s.processes))
 	for _, found := range s.processes {
-		processes = append(processes, found.pid)
+		processes = append(processes, found.group)
 	}
 	s.mu.Unlock()
 	for _, environment := range running {
@@ -137,8 +137,8 @@ func (s *server) killAll() {
 	for _, found := range terminals {
 		found.proc.killGroup()
 	}
-	for _, pid := range processes {
-		killTree(pid)
+	for _, group := range processes {
+		group.kill()
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 
@@ -104,6 +105,20 @@ func skipWithoutPinnedProcess(t testing.TB) {
 	t.Helper()
 	if _, err := os.Stat(pinnedDaemonSource(t, "process.rs")); err != nil {
 		t.Skip("the pinned Pi has no process operation (process.rs is absent)")
+	}
+}
+
+// skipWithoutPinnedProcessEnding skips a test that needs Pi's daemon to kill what a `process` program left running when it
+// exits: a pin before Pi 032656b6c has a process.rs whose programs leave their group alone.
+func skipWithoutPinnedProcessEnding(t testing.TB) {
+	t.Helper()
+	skipWithoutPinnedProcess(t)
+	source, err := os.ReadFile(pinnedDaemonSource(t, "process.rs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(source), "Ending") {
+		t.Skip("the pinned Pi's process operation does not end the group of a program that exited")
 	}
 }
 

@@ -3,7 +3,8 @@
 package env
 
 // Ports Pi 9c9ce8547 packages/env/test/process.test.ts (describes "openProcess", "input and output", "ending" and
-// "failures to start").
+// "failures to start"), and from Pi 032656b6c the test "kills what the program started when it exits" and the Windows skip of
+// "stops writing to stdin a descendant still holds once the program has exited".
 //
 // The terminal tests' helpers (collector, remoteCode, processExists) are Unix only, so these tests are too; the Windows
 // behavior of the daemon is compiled by `go vet` for Windows and is not run here.
@@ -327,7 +328,38 @@ func TestOpenProcessKillsTheProgramAndWhatItStartedOnClose(t *testing.T) {
 	})
 }
 
-// Pi 9c9ce8547 packages/env/test/process.test.ts:251 "stops writing to stdin a descendant still holds once the program has exited"
+// Pi 032656b6c packages/env/test/process.test.ts:249 "kills what the program started when it exits"
+// mutation-checked: skipping the group kill after the program exited (programGroup.end in program.waitAndEnd) leaves the server running and fails it.
+func TestOpenProcessKillsWhatTheProgramStartedWhenItExits(t *testing.T) {
+	eachDaemonWith(t, skipWithoutPinnedProcessEnding, func(t *testing.T) {
+		connection, cwd := processConnection(t)
+		stdout := newCollector()
+		program := openProcess(t, connection, ProcessOptions{
+			Cwd: cwd,
+			// A wrapper that exits and leaves the server it started running, as npx can once stdin closes. (Upstream detaches the
+			// server on Windows, so that libuv's own job object does not take it down with the wrapper; these tests do not run there.)
+			Argv: nodeProgram(t, `
+				const child = require("node:child_process").spawn(process.execPath, ["-e", "setTimeout(() => {}, 30000)"], { stdio: "ignore" });
+				process.stdout.write(child.pid + "\n", () => process.exit(0));
+			`),
+			OnStdout: stdout.onData,
+		})
+		if code, err := waitProcessExit(t, program); code != 0 || err != nil {
+			t.Fatalf("exit = %d, %v", code, err)
+		}
+		child, err := strconv.Atoi(strings.TrimSpace(string(stdout.bytes())))
+		if err != nil {
+			t.Fatalf("the program reported %q: %v", stdout.bytes(), err)
+		}
+		if !waitUntilGone(child) {
+			t.Fatalf("the server %d still runs after the program exited", child)
+		}
+	})
+}
+
+// Pi 032656b6c packages/env/test/process.test.ts:268 "stops writing to stdin a descendant still holds once the program has exited"
+// Upstream skips it on Windows, where a descendant dies with the program's job object; these tests do not run there. On Unix
+// the descendant leaves the process group.
 // mutation-checked: dropping input.close and program.closePipes from the end of runProcess leaves the writer pushing the input into the stdin the descendant holds, so the program never ends, and fails it.
 func TestOpenProcessStopsWritingToStdinADescendantStillHoldsOnceTheProgramHasExited(t *testing.T) {
 	eachProcessDaemon(t, func(t *testing.T) {
