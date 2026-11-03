@@ -91391,6 +91391,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenPrivateUnixSocket",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenPrivateUnixSocket",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string) (net.Listener, error)"
+      },
+      "shapeHash": "sha256:3b816aeae8b67b4c2e5949f94a7ccb66aa83b8ceaefdea7154d81a90009e9b62"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenTerminationSignals",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "listenTerminationSignals",

@@ -24,6 +24,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-007c91d](#bf-007c91d) | Go, Python and Rust extensions: in a `before_agent_start` handler, the event's `systemPrompt` and the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-00933e5](#bf-00933e5) | `mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load… | PiG's own defect | Windows | 0.5.2 |
 | [BF-02114ff](#bf-02114ff) | fix(tui): filterable list drops the label when no cell remains (Pi select-list) | PiG's own defect | All platforms | Unreleased |
+| [BF-0224f25](#bf-0224f25) | fix(rpc): create the --listen socket with mode 0600 from the moment it exists | PiG's own defect | All platforms | Unreleased |
 | [BF-0225a43](#bf-0225a43) | A device-attributes reply delivered in slow reads no longer reaches the editor as input: an `ESC[?` prefix… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-0225bbf](#bf-0225bbf) | Pressing Escape twice with only whitespace in the editor now opens the tree or fork selector, as in Pi, which… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-022d99f](#bf-022d99f) | fix(tui): the login dialog's input renders at every prompt position | PiG's own defect | All platforms | Unreleased |
@@ -126,6 +127,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-205933e](#bf-205933e) | fix(ai): a Gemini model outside the catalog carries the provider's API, so replay's isSameModel matches Pi… | PiG's own defect | All platforms | Unreleased |
 | [BF-20718f7](#bf-20718f7) | fix(coding-agent): resolve model references through one provider selection policy (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-20aee29](#bf-20aee29) | The crash notice prints the year of a crash time the way Node's toLocaleString does: unpadded, and counted… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-20e1c2a](#bf-20e1c2a) | fix(extension-host): count only the Host's own running tools when a timer call becomes a tick | PiG's own defect | All platforms | Unreleased |
 | [BF-211af49](#bf-211af49) | `/hotkeys` lists extension shortcuts, and the extension shortcut listener tries them, in the order of Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2165463](#bf-2165463) | On Windows, saving credentials to `auth.json`, `models.json` or the MCP OAuth store no longer fails at once… | PiG's own defect | Windows | 0.5.0 |
 | [BF-224dbd9](#bf-224dbd9) | On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a… | PiG's own defect | macOS, Linux | Unreleased |
@@ -1330,6 +1332,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `02114fff5b` (2026-10-11)
 - **Tests:** `internal/codingagent/settings_selector_oracle_test.go::TestSettingsSelectorMatchesPi`, `tui/select_filterable_test.go::TestFilterableListShowsNoLabelWhenNoCellRemains`
+
+### BF-0224f25
+
+**fix(rpc): create the --listen socket with mode 0600 from the moment it exists**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(rpc): create the --listen socket with mode 0600 from the moment it exists
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0224f258c2` (2026-11-03)
+- **Tests:** `coding/cli/rpc_listen_unix_test.go::TestListenSocketIsPrivateUnderAPermissiveUmask`
 
 ### BF-0225a43
 
@@ -2738,6 +2753,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `20aee29744` (2026-10-11)
 - **Tests:** `internal/codingagent/crash_notice_date_oracle_test.go::TestCrashNoticeTimeMatchesToLocaleString`
 - **Release note:** The crash notice prints the year of a crash time the way Node's toLocaleString does: unpadded, and counted back from 1 for years before 1 CE.
+
+### BF-20e1c2a
+
+**fix(extension-host): count only the Host's own running tools when a timer call becomes a tick**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extension-host): count only the Host's own running tools when a timer call becomes a tick
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `20e1c2a698` (2026-11-03)
+- **Tests:** `coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellCountsPendingToolsPerHost`
 
 ### BF-211af49
 

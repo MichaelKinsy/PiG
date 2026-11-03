@@ -140,6 +140,27 @@
       ]
     },
     {
+      "id": "BF-0224f25",
+      "title": "fix(rpc): create the --listen socket with mode 0600 from the moment it exists",
+      "symptom": "fix(rpc): create the --listen socket with mode 0600 from the moment it exists",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "0224f258c2",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_listen_unix_test.go::TestListenSocketIsPrivateUnderAPermissiveUmask"
+      ]
+    },
+    {
       "id": "BF-0225a43",
       "title": "A device-attributes reply delivered in slow reads no longer reaches the editor as input: an `ESC[?` prefix…",
       "symptom": "A device-attributes reply delivered in slow reads no longer reaches the editor as input: an `ESC[?` prefix waits for its final byte (D143, Pi #10657).",
@@ -3366,6 +3387,27 @@
       ],
       "tests": [
         "internal/codingagent/crash_notice_date_oracle_test.go::TestCrashNoticeTimeMatchesToLocaleString"
+      ]
+    },
+    {
+      "id": "BF-20e1c2a",
+      "title": "fix(extension-host): count only the Host's own running tools when a timer call becomes a tick",
+      "symptom": "fix(extension-host): count only the Host's own running tools when a timer call becomes a tick",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "20e1c2a698",
+          "date": "2026-11-03"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_group_scope_test.go::TestSharedNodeCellCountsPendingToolsPerHost"
       ]
     },
     {
