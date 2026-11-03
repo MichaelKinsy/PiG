@@ -44,7 +44,7 @@ To correct detection, set `PI_HYPERLINKS`, `PI_IMAGE_PROTOCOL` or `PI_TRUE_COLOR
 
 ## Automatic theme detection
 
-Without an explicit theme, PiG queries the terminal's default background with OSC 11. An automatic light/dark theme pair also queries the terminal's color-scheme preference. PiG consumes replies to its background queries before editor or extension input. A late OSC 11 reply does not replace a completed fallback or settle a newer query. A color reply that arrives in several pieces waits for its terminator, so its digits are not typed into the editor and its BEL terminator does not open the external editor as `Ctrl+G`. Pi 1.5.0 fixed this; Pi 1.1.0 could type such a reply.
+Without an explicit theme, PiG queries the terminal's default background with OSC 11. An automatic light/dark theme pair also queries the terminal's color-scheme preference. PiG consumes replies to its background queries before editor or extension input. A late OSC 11 reply does not replace a completed fallback or settle a newer query. A color reply that arrives in several pieces waits for its terminator, so its digits are not typed into the editor and its BEL terminator does not open the external editor as `Ctrl+G`. Pi fixed this later; Pi 1.1.0 could type such a reply.
 
 ## Keys that do not respond
 

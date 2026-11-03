@@ -212,7 +212,7 @@
    "pkg:coding-agent/.#ExecResult"
   ],
   "targets": [
-   "coding/extension/opaque_types.go#ExecResult"
+   "coding/extension/exec.go#ExecResult"
   ],
   "struct": {
    "file": "coding/extension/opaque_types.go",

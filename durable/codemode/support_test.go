@@ -582,20 +582,20 @@ func (s *heldStorage) holdCommits() *gate {
 	return g
 }
 
-func (s *heldStorage) Commit(ctx context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+func (s *heldStorage) Commit(ctx context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq)) (durable.CommitResult, error) {
 	s.mu.Lock()
 	held, fail := s.held, s.fail
 	s.fail = nil
 	s.mu.Unlock()
 	if fail != nil {
-		return 0, fail
+		return durable.CommitResult{}, fail
 	}
 	if held != nil {
 		if err := held.wait(ctx); err != nil {
-			return 0, err
+			return durable.CommitResult{}, err
 		}
 	}
-	return s.MemoryStorage.Commit(ctx, writes, adopt)
+	return s.MemoryStorage.Commit(ctx, batches, receive)
 }
 
 // detailsOf is the details of the code mode call's result entry.

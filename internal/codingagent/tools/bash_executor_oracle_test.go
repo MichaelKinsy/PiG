@@ -1,5 +1,7 @@
 package tools
 
+// pi: packages/coding-agent/src/core/bash-executor.ts
+
 import (
 	"bytes"
 	"context"

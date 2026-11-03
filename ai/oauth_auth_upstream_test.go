@@ -1,5 +1,7 @@
 package ai
 
+// pi: packages/ai/src/oauth.ts
+
 import (
 	"go/ast"
 	"go/parser"
@@ -70,6 +72,9 @@ func TestOAuthAuthAdaptersUpstream(t *testing.T) {
 			method, ok := OAuthProviderAuth(id)
 			if !ok || method.IsSubscription != (id != "openrouter") {
 				t.Errorf("%s method=%+v present=%v", id, method, ok)
+			}
+			if got := IsOAuthSubscriptionProvider(id); got != (id != "openrouter") {
+				t.Errorf("%s IsOAuthSubscriptionProvider=%v", id, got)
 			}
 		}
 	})

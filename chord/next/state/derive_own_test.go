@@ -332,16 +332,17 @@ func TestDeriveFailures(t *testing.T) {
 		watch := watchOf(t, f.t.derive)
 		var calls nexttest.Collector[chord.WatchCall[delta.JsonValue]]
 		gate := make(chan struct{})
+		busy := make(chan struct{})
 		watch.Start(func(_ context.Context, c chord.WatchCall[delta.JsonValue]) error {
 			if calls.Append(c) == 1 {
+				close(busy)
 				<-gate
 			}
 			return nil
 		})
 		f.set(t, 5)
-		if err := f.h.scheduler.AwaitEntered(background); err != nil {
-			t.Fatal(err)
-		}
+		// The listener says it is busy: a delivery's start is all AwaitEntered guarantees.
+		<-busy
 		f.set(t, 1)
 		f.set(t, 6)
 		close(gate)

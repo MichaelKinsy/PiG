@@ -1,5 +1,7 @@
 package extension
 
+// Ports packages/coding-agent/src/core/extensions/types.ts (CustomFactory, OverlayOptionsSource and the ctx.ui.custom options).
+
 import "github.com/MichaelKinsy/PiG/tui"
 
 // CustomFactory builds the component [UIContext.Custom] shows, for an extension that runs in the host process

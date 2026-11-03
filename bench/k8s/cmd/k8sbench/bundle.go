@@ -66,11 +66,11 @@ type agentPins struct {
 // version whose sha512 the registry publishes.
 var publishedAgentPins = agentPins{
 	files: map[string]string{
-		"pi-agent/package.json":      "9792b34aba5a94320fde5c68600eac4a5720d0d63ebc527d462bd125665b29ee",
-		"pi-agent/package-lock.json": "eb2c76ac270f099f2af3cbc6ccd08c3d22bf562b914af3690d1abba985461ade",
+		"pi-agent/package.json":      "2c0524e9556a475c087ea43c5b4ef6af232b180dfac5724a33dfe3e309349472",
+		"pi-agent/package-lock.json": "d3d2abb9ed4e078b7978ecd0f6316cc4357cb8d7777d344020acfa23190e24b4",
 		piAgentCLI:                   "e79626f2dd6f94aa45d30f3fa63cd84319a6eefcd150b353cfaf274366926774",
 	},
-	tree: "4000b15fecd5981e749e4413bd015d3fedb9e042c6d6415d357e373662eaaa6c",
+	tree: "df258d6a334f74497115f9f2f0e9bdea855bc8c2319ef321f6c64941a9ed2c02",
 }
 
 // sourceAgentPins pin a commit pin's install, by commit: the project pinnedProject writes from the frozen closure, whose

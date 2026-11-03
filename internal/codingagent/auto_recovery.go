@@ -1,5 +1,7 @@
 package codingagent
 
+// Ports packages/coding-agent/src/core/agent-session.ts (_isRetryableError and the overflow and length classifiers it applies).
+
 // Auto-recovery classifiers for agent messages. They apply pi-ai's
 // isContextOverflow, isRecoverableLength, and isRetryableAssistantError
 // (ai/overflow.go, ai/assistant_retry.go), as upstream agent-session.ts does.

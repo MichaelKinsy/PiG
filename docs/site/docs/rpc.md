@@ -108,7 +108,7 @@ Read message and Session entry shapes in [Session file format](/docs/latest/sess
 
 ## Worked example
 
-This example drives `pig --mode rpc` from a shell with no client library. It sends two commands, waits for the run to finish, then sends three more, one of them invalid, and ends with a line that is not JSON. The provider is a scripted test server that always answers `Hello from the test model.`, so the reply wording is illustrative. The records, their order and the error text are what PiG printed. Pi 1.5.0 printed the same record types, the same order and the same parse error for the same input.
+This example drives `pig --mode rpc` from a shell with no client library. It sends two commands, waits for the run to finish, then sends three more, one of them invalid, and ends with a line that is not JSON. The provider is a scripted test server that always answers `Hello from the test model.`, so the reply wording is illustrative. The records, their order and the error text are what PiG printed. Pi printed the same record types, the same order and the same parse error for the same input.
 
 ```bash
 (

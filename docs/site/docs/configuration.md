@@ -133,7 +133,7 @@ PiG loads the files in this order:
 
 The file closest to your working directory comes last, so its instructions appear after the general ones.
 
-In a Git worktree that sits inside its main checkout, PiG skips the main checkout's context file when the worktree root has its own file with the same name. This prevents the same repository instructions from loading twice. A worktree file that is a symlink to the main checkout's file still loads once. Pi 1.1.0 loaded no project context file in that case; Pi 1.5.0 fixed it ([Pi #10681](https://github.com/earendil-works/pi/issues/10681)).
+In a Git worktree that sits inside its main checkout, PiG skips the main checkout's context file when the worktree root has its own file with the same name. This prevents the same repository instructions from loading twice. A worktree file that is a symlink to the main checkout's file still loads once. Pi 1.1.0 loaded no project context file in that case; Pi fixed it later ([Pi #10681](https://github.com/earendil-works/pi/issues/10681)).
 
 Context files do not need project trust. PiG loads them even when you decline to trust the project. Pi behaves the same way.
 

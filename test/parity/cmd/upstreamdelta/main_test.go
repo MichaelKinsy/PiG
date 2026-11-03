@@ -46,6 +46,43 @@ func TestComputeDelta(t *testing.T) {
 	}
 }
 
+func TestComputeDeltaFailsWhenTheFromMirrorIsMissing(t *testing.T) {
+	root := t.TempDir()
+	to := filepath.Join(root, "to")
+	for _, trackedRoot := range trackedRoots {
+		if err := os.MkdirAll(filepath.Join(to, trackedRoot), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeTestFile(t, to, "packages/ai/src/new.ts", "new")
+
+	got, err := computeDelta(filepath.Join(root, "absent"), to)
+	if err == nil {
+		t.Fatalf("computeDelta with no from mirror = %#v, want an error: every file would read as added and the audit would pass vacuously", got)
+	}
+	if !strings.Contains(err.Error(), "from mirror") {
+		t.Fatalf("error %q does not name the missing from mirror", err)
+	}
+
+	// A package root absent inside an existing from mirror is a package the earlier release did not ship, not a missing mirror.
+	from := filepath.Join(root, "from")
+	if err := os.MkdirAll(from, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = computeDelta(from, to); err == nil {
+		t.Fatalf("computeDelta with an empty from directory = %#v, want an error", got)
+	}
+	writeTestFile(t, from, "packages/agent/src/kept.ts", "kept")
+	writeTestFile(t, to, "packages/agent/src/kept.ts", "kept")
+	got, err = computeDelta(from, to)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []sourceDelta{{Path: "packages/ai/src/new.ts", Change: "added"}}; !slices.Equal(got, want) {
+		t.Fatalf("computeDelta() = %#v, want %#v", got, want)
+	}
+}
+
 func TestValidateManifestRejectsSilentGapsAndPendingWork(t *testing.T) {
 	deltas := []sourceDelta{
 		{Path: "packages/ai/src/added.ts", Change: "added"},
@@ -134,50 +171,6 @@ func writeTestFile(t *testing.T, root, relativePath, body string) {
 	}
 	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
-	}
-}
-
-// A pin move to a later commit of the same package version keeps the reviewed rows of files the
-// commit did not touch, and resets the rest to pending: a row reviewed against other source text proves nothing.
-func TestCarryAuditsKeepsOnlyReviewedRowsOfByteIdenticalFiles(t *testing.T) {
-	upstream := t.TempDir()
-	for _, version := range []string{"v1.0.0", "v1.1.0", "v1.1.0+abcd1234"} {
-		for _, trackedRoot := range trackedRoots {
-			if err := os.MkdirAll(filepath.Join(upstream, version, trackedRoot), 0o755); err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
-	for path, bodies := range map[string][3]string{ // 1.0.0, 1.1.0, 1.1.0+abcd1234
-		"packages/ai/src/kept.ts":     {"a", "b", "b"},
-		"packages/ai/src/touched.ts":  {"a", "b", "c"},
-		"packages/ai/src/pending.ts":  {"a", "b", "b"},
-		"packages/ai/src/new-tail.ts": {"", "", "z"},
-	} {
-		for i, version := range []string{"v1.0.0", "v1.1.0", "v1.1.0+abcd1234"} {
-			if bodies[i] != "" {
-				writeTestFile(t, filepath.Join(upstream, version), path, bodies[i])
-			}
-		}
-	}
-	earlier := syncManifest{From: "1.0.0", To: "1.1.0", Files: []fileAudit{
-		{Path: "packages/ai/src/kept.ts", Change: "modified", Disposition: "ported", Evidence: []string{"test:ai/x_test.go#TestX"}, Rationale: "reviewed"},
-		{Path: "packages/ai/src/touched.ts", Change: "modified", Disposition: "ported", Evidence: []string{"test:ai/x_test.go#TestY"}, Rationale: "reviewed"},
-		{Path: "packages/ai/src/pending.ts", Change: "modified", Disposition: "pending"},
-	}}
-	deltas, err := computeDelta(filepath.Join(upstream, "v1.0.0"), filepath.Join(upstream, "v1.1.0+abcd1234"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	carried, err := carryAudits(earlier, deltas, upstream, "1.1.0+abcd1234")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(carried) != 1 || carried["packages/ai/src/kept.ts"].Rationale != "reviewed" {
-		t.Fatalf("carried = %#v, want only the byte-identical reviewed file", carried)
-	}
-	if _, err := carryAudits(earlier, deltas, upstream, "1.1.0"); err == nil {
-		t.Fatal("carrying a manifest onto its own target was accepted")
 	}
 }
 

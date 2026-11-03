@@ -332,17 +332,36 @@ func NewMemoryStorage() *MemoryStorage {
 	}
 }
 
-// Commit atomically persists one batch, adopts it, and returns its sequence.
-func (storage *MemoryStorage) Commit(_ context.Context, writes []durable.StorageWrite, adopt func(durable.Seq)) (durable.Seq, error) {
+// Commit applies batches one by one, each checked against the state the earlier ones left (prepareCommitLocked only
+// checks and detaches, so a batch it refuses changed nothing); it stops at the first one refused. Memory is durable at
+// once; the receipts follow the last batch, under the storage lock as the old adoption was, so a read never sees a
+// batch before its adoption.
+func (storage *MemoryStorage) Commit(
+	_ context.Context, batches [][]durable.StorageWrite, receive func(index int, seq durable.Seq),
+) (durable.CommitResult, error) {
 	storage.mu.Lock()
 	defer storage.mu.Unlock()
-	prepared, err := storage.prepareCommitLocked(writes, durable.Seq(storage.nextSeq))
-	if err != nil {
-		return 0, err
+	if err := storage.assertOpen(); err != nil {
+		return durable.CommitResult{}, err
 	}
-	prepared.applyLocked()
-	adopt(prepared.seq)
-	return prepared.seq, nil
+	seqs := make([]durable.Seq, 0, len(batches))
+	var refused error
+	// Also when an apply panics: the batches applied before it are stored, and their receipts stand.
+	defer func() {
+		for index, seq := range seqs {
+			receive(index, seq)
+		}
+	}()
+	for _, writes := range batches {
+		prepared, err := storage.prepareCommitLocked(writes, durable.Seq(storage.nextSeq))
+		if err != nil {
+			refused = err
+			break
+		}
+		prepared.applyLocked()
+		seqs = append(seqs, prepared.seq)
+	}
+	return durable.CommitResult{Stored: len(seqs), Refused: refused}, nil
 }
 
 // PrepareCommit validates and detaches one commit at the next sequence without changing observable state.

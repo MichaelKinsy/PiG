@@ -1,5 +1,8 @@
 package coding
 
+// Ports packages/coding-agent/src/core/sdk.ts (createAgent's initial state, convertToLlm and thinking-level restore).
+// Ports packages/coding-agent/src/core/agent-session-runtime.ts (teardownCurrent's session_shutdown emission).
+
 import (
 	"context"
 	"errors"
@@ -804,12 +807,7 @@ func replayedTranscriptIf(replay bool, inner *icodingagent.Session) ([]agent.Age
 //
 // upstream: agent-session.ts:1815-1844 (_restoreToolsFromTranscript)
 func replayedTranscript(inner *icodingagent.Session) ([]agent.AgentMessage, error) {
-	var systems []agent.AgentMessage
-	for _, entry := range inner.GetBranch() {
-		if message, ok := icodingagent.AsMessage(entry); ok && message.Message.System != nil {
-			systems = append(systems, message.Message)
-		}
-	}
+	systems := inner.GetBranchSystemMessages()
 	return systems, agent.ToolReplayError(systems)
 }
 

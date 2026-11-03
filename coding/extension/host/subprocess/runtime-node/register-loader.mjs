@@ -10,13 +10,13 @@ process.emitWarning = () => {};
 
 // shimModules loads each module the shims map serves, by the runtime-tree specifier runtime-modules.mjs lists.
 const shimModules = new Map([
-  ["./shims/pi-agent-core.mjs", () => runtimeRequire("./shims/pi-agent-core.mjs")],
-  ["./shims/pi-ai.mjs", () => runtimeRequire("./shims/pi-ai.mjs")],
-  ["./shims/pi-ai-models.mjs", () => runtimeRequire("./shims/pi-ai-models.mjs")],
-  ["./shims/pi-ai-oauth.mjs", () => runtimeRequire("./shims/pi-ai-oauth.mjs")],
-  ["./shims/pi-coding-agent.mjs", () => runtimeRequire("./shims/pi-coding-agent.mjs")],
-  ["./shims/pi-dist/pi-ai/sdk-bundle/providers.js", () => runtimeRequire("./shims/pi-dist/pi-ai/sdk-bundle/providers.js")],
-  ["./shims/pi-tui.mjs", () => runtimeRequire("./shims/pi-tui.mjs")],
+  ["./shims/pi-dist/pi-agent-core/dist/index.js", () => runtimeRequire("./shims/pi-dist/pi-agent-core/dist/index.js")],
+  ["./shims/pi-dist/pi-ai/dist/index.js", () => runtimeRequire("./shims/pi-dist/pi-ai/dist/index.js")],
+  ["./shims/pi-dist/pi-ai/dist/models.js", () => runtimeRequire("./shims/pi-dist/pi-ai/dist/models.js")],
+  ["./shims/pi-dist/pi-ai/dist/oauth.js", () => runtimeRequire("./shims/pi-dist/pi-ai/dist/oauth.js")],
+  ["./shims/pi-dist/pi-ai/dist/providers/all.js", () => runtimeRequire("./shims/pi-dist/pi-ai/dist/providers/all.js")],
+  ["./shims/pi-dist/pi-coding-agent/dist/index.js", () => runtimeRequire("./shims/pi-dist/pi-coding-agent/dist/index.js")],
+  ["./shims/pi-dist/pi-tui/dist/index.js", () => runtimeRequire("./shims/pi-dist/pi-tui/dist/index.js")],
   ["./shims/typebox-compile.mjs", () => runtimeRequire("./shims/typebox-compile.mjs")],
   ["./shims/typebox.mjs", () => runtimeRequire("./shims/typebox.mjs")],
   ["./shims/typebox-value.mjs", () => runtimeRequire("./shims/typebox-value.mjs")],

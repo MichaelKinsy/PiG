@@ -182,7 +182,10 @@ type InteractiveMode struct {
 	widgetSeq            uint64
 	bridgeWidgetSeqs     map[*subprocess.PushProxy]bridgeWidgetSeq
 	widgetContainerBelow *tui.Container
-	editor               *tui.Editor
+	// queueCopyTip is the one-time line under the editor after Up recalled history while a message was queued (D228), nil when not shown; widgetMu guards it. queueCopyTipShown is set once it was shown in this process run and only the input loop touches it.
+	queueCopyTip      tui.Component
+	queueCopyTipShown bool
+	editor            *tui.Editor
 	// customEditor is Pi's CustomEditor over editor, with the app handlers bound; inputCtx and inputErr carry the key being handled to those handlers.
 	customEditor        *CustomEditor
 	inputCtx            context.Context
@@ -363,6 +366,10 @@ type InteractiveMode struct {
 	// idleCollectPending is set while that wait runs; typed input restarts it.
 	idleCollectPending atomic.Bool
 	idleCollector      idleHeapCollector
+	// switchHeapRelease is set while a heap release after a Session replacement or tree navigation is queued or running.
+	switchHeapRelease atomic.Bool
+	// switchHeapReleases counts the releases requested after a Session replacement or tree navigation, coalesced ones included.
+	switchHeapReleases atomic.Int64
 
 	branchSummaryCancel context.CancelFunc
 

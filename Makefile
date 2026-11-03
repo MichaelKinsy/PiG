@@ -825,6 +825,20 @@ durable-contract-test: durable-contract-setup ## Unit, pipeline and matrix tests
 	@go test ./durable/core/contracttest/...
 	@cd durable/contract && node cli/contract.mjs fixtures 50 >/dev/null && node --test --test-timeout=600000 test/*.test.mjs
 
+# The Go files of durable/harness that mirror the harness test files of Pi's packages/durable/vitest.store.config.ts include list
+# (the files that take a SQLite storage), which Pi re-runs over StoreStorage. See durable/harness/store_variant_support_test.go.
+DURABLE_STORE_FILES = harness_after_run_test.go harness_blocked_test.go harness_compaction_test.go harness_continue_test.go \
+	harness_conversations_test.go harness_generation_recovery_test.go harness_inbox_test.go harness_input_entries_test.go \
+	harness_lifecycle_test.go tool_nested_restart_test.go tool_nested_test.go tool_nested_records_test.go \
+	tool_nested_calls_doc_test.go harness_ownership*_test.go harness_read_only_test.go harness_restart_failure_test.go \
+	scheduler_indexes_test.go scheduler_retention_test.go scheduler_retention_chains_test.go harness_structured_test.go \
+	harness_submissions_test.go harness_task_graph_test.go harness_tasks_recovery_test.go harness_tool_hooks_test.go \
+	harness_tools_recovery_test.go harness_tools_recovery_group_commit_test.go harness_turn_limit_test.go harness_view_test.go
+
+test-durable-store: ## Run those durable/harness tests over Durable's StoreStorage (PIG_DURABLE_TEST_STORAGE=store; the four raw-SQL cases of Pi's config are skipped)
+	@names=$$(cd durable/harness && grep -h '^func Test' $(DURABLE_STORE_FILES) | sed 's/^func \(Test[A-Za-z0-9_]*\).*/\1/' | paste -sd'|' -); \
+	PIG_DURABLE_TEST_STORAGE=store go test -count=1 -timeout 600s -run "^($$names)$$" ./durable/harness/
+
 durable-contract-trace: durable-contract-setup ## Compare a candidate's call/commit interleaving with Pi's golden traces (IMPL=native|wasm-go|wasm-tinygo); red until the core schedules like Pi
 	@cd durable/contract && node cli/trace.mjs check --impl $${IMPL:-native} && node cli/trace.mjs check-u --impl $${IMPL:-native}
 
@@ -843,7 +857,7 @@ durable-counts-update: durable-contract-setup ## Rewrite durable/contract/counts
 durable-contract: durable-contract-setup ## Run the Durable core conformance gate (CONTRACT sections 5-7) against the TinyGo, Go and native builds; per-lane pass/fail
 	@cd durable/contract && node cli/contract.mjs all $(DURABLE_CONTRACT_ARGS)
 
-parity-deps: interface-deps ## Build the Pi comparator from source at the pin (PIG_PARITY_PI_PUBLISHED=1 installs the published release of a tag pin) and the TypeScript compiler its scenarios import
+parity-deps: interface-deps durable-interop-deps ## Build the Pi comparator from source at the pin (PIG_PARITY_PI_PUBLISHED=1 installs the published release of a tag pin) and the TypeScript compiler its scenarios import
 	@$(PIN_TOOL) install-oracle
 	@python3 automation/ci/npm-locked.py internal/typebox/testdata/npm
 	@python3 automation/ci/npm-locked.py ai/testdata/sdk

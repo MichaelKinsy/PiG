@@ -28,6 +28,8 @@ func IsOfflineModeEnabled() bool {
 
 // EnsureConfiguredPackagesInstalled reinstalls missing installations and npm packages whose local manifest does not satisfy the configured version or range. Offline mode reports these sources as missing without installing them.
 //
+// Ports packages/coding-agent/src/core/package-manager.ts (isOfflineModeEnabled, resolvePackageSources missing-source installation).
+//
 // Returns the source strings that were reinstalled and the sources that remain unavailable because installation failed or offline mode prevented it.
 // upstream: packages/coding-agent/src/core/package-manager.ts:resolvePackageSources
 func EnsureConfiguredPackagesInstalled(cwd, agentDir string, sm *codingagent.SettingsManager) (reinstalled, missing []string) {

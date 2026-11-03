@@ -8,6 +8,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 // Ports packages/coding-agent/test/suite/regressions/11520-sdk-summary-oauth-auth.test.ts (Pi 6fed3cfb): a branch summary in a session
@@ -89,5 +90,37 @@ func TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream(t *testing.T) {
 	}
 	if len(requestKeys) != 1 || requestKeys[0] != "oauth-access" {
 		t.Fatalf("provider API keys = %q, want one request with the stored OAuth access token", requestKeys)
+	}
+	assertRegistryBuiltModelSummaryCarriesNoPreResolvedAuth(t)
+}
+
+// assertRegistryBuiltModelSummaryCarriesNoPreResolvedAuth is the getAuth spy of the Pi test for the one model shape whose summary auth a Go
+// Session could pre-resolve: a registry-built provider (BuildModelFromEntry) with a configured API key. The SDK's own stream resolves auth
+// through the runtime, so the summary request carries nothing resolved beforehand.
+func assertRegistryBuiltModelSummaryCarriesNoPreResolvedAuth(t *testing.T) {
+	t.Helper()
+	services, _ := nativeCompatServices(t, `{"providers":{"custom-gw":{"baseUrl":"https://example.test/v1","apiKey":"sk-custom","api":"openai-completions","models":[{"id":"m1"}]}}}`, nil)
+	model, err := BuildModelFromEntry("custom-gw", "m1", icodingagent.ModelEntry{BaseURL: "https://example.test/v1", API: "openai-completions", DisplayName: "m1", Input: []string{"text"}}, services)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, registryBuilt := model.Provider.(*requestOptionsProvider); !registryBuilt {
+		t.Fatalf("model provider is %T, want a registry-built provider", model.Provider)
+	}
+	created, err := CreateAgentSessionFromServices(CreateAgentSessionFromServicesOptions{Services: services, Model: model})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := created.Session.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	request, err := created.Session.prepareSummarizationRequest(t.Context(), model)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if request.apiKey != "" || len(request.headers) != 0 || len(request.env) != 0 {
+		t.Fatalf("the registry-built model's summary request carries pre-resolved auth: apiKey=%q headers=%v env=%v", request.apiKey, request.headers, request.env)
 	}
 }

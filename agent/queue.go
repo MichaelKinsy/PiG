@@ -16,6 +16,7 @@ const (
 	QueueModeOneAtATime QueueMode = "one-at-a-time"
 )
 
+// Ports packages/agent/src/agent.ts (PendingMessageQueue).
 // PendingMessageQueue is a thread-safe FIFO of agent messages with a
 // configurable drain policy. Used for steering and follow-up queues.
 //

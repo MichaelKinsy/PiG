@@ -1,5 +1,6 @@
 package ai
 
+// pi: packages/ai/src/auth/oauth/github-copilot.ts
 // pi: packages/ai/src/providers/github-copilot.ts
 
 import (

@@ -58,6 +58,9 @@ func hasNodeSource(dir string) bool {
 	return ok
 }
 
+// resolveNodeEntrypoint finds the entry file of a Node extension source: a file, or a directory resolved by package.json "pi.extensions" and then the conventional index files.
+//
+// Ports packages/coding-agent/src/core/extensions/loader.ts (resolveExtensionEntries).
 func resolveNodeEntrypoint(src string) (string, error) {
 	info, err := os.Stat(src)
 	if err != nil {

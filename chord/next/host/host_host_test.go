@@ -2417,6 +2417,35 @@ func TestHostReloadAnAbortEndsTheReportsWaitForAListenerStillRunning(t *testing.
 	}
 }
 
+// Pi's report runs the listeners of the batch the reload committed to the end of their synchronous part before it reads the
+// context: a watcher of a reference that left `live` aborts the context from its callback, and the reload rejects `aborted`.
+func TestHostReloadAListenerThatAbortsTheContextFromItsCallbackEndsTheReportAborted(t *testing.T) {
+	// One processor: the listener yields while it works, so a report that did not wait for it would read the context first.
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
+	host := newHost(t, HostOptions{OnError: noopOnError})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/info", Facet: infoFacet("a")}}, background))
+	info := mustGet(t, host, hostInfo, jsonObject())
+	watch, err := info.Member("title").Watch(background)
+	must(t, err)
+	aborting, cancel := chordctx.WithCancel(background)
+	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
+		if call.Value == "b" {
+			// A slow synchronous part: a report that read the context before it ran would succeed.
+			for range 200 {
+				runtime.Gosched()
+			}
+			cancel(errors.New("stop"))
+		}
+		return nil
+	})
+	_, err = host.Reload([]HostFacet{{Name: "@app/info", Facet: infoFacet("b")}}, aborting, ReloadOptions{})
+	chordErr, ok := data.IsChordError(err)
+	if !ok || chordErr.Code != data.CodeAborted {
+		t.Fatalf("reload = %v, want aborted", err)
+	}
+}
+
 // Mirrors "reload: the API › reports a setup's or a factory's throw as failed, naming the plugin, which stays on its old code".
 func TestHostReloadTheAPIReportsASetupsOrAFactorysThrowAsFailedNamingThePluginWhichStaysOnItsOldCode(t *testing.T) {
 	host := newHost(t, HostOptions{OnError: noopOnError})

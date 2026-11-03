@@ -26,10 +26,21 @@ func commitOnLine[T any](ctx context.Context, line *session.SessionImpl, scope s
 	return typed, nil
 }
 
-// readOnLine runs read on the Session line and returns its typed result.
-func readOnLine[T any](line *session.SessionImpl, read func() (T, error)) (T, error) {
+// commitInternal runs change as a scheduler commit on the Session line: its outcome goes to the scheduler only.
+func commitInternal[T any](ctx context.Context, line *session.SessionImpl, change func(tx *session.Transaction) (T, error)) (T, error) {
 	var zero T
-	value, err := line.ReadOnLine(func() (any, error) { return read() })
+	value, err := line.CommitInternal(ctx, func(tx *session.Transaction) (any, error) { return change(tx) })
+	if err != nil {
+		return zero, err
+	}
+	typed, _ := value.(T)
+	return typed, nil
+}
+
+// readOnLine runs read on the Session line, with the line's gated Storage, and returns its typed result.
+func readOnLine[T any](ctx context.Context, line *session.SessionImpl, read func(storage durable.Storage) (T, error)) (T, error) {
+	var zero T
+	value, err := line.ReadOnLineCtx(ctx, func(storage durable.Storage) (any, error) { return read(storage) })
 	if err != nil {
 		return zero, err
 	}
@@ -41,7 +52,6 @@ func readOnLine[T any](line *session.SessionImpl, read func() (T, error)) (T, er
 type Submissions struct {
 	telemetry telemetry.TelemetryContext
 	line      *session.SessionImpl
-	storage   durable.Storage
 	now       func() float64
 	// queueModes is read at each admission, on the Session line.
 	queueModes func() QueueModes
@@ -56,11 +66,11 @@ type Submissions struct {
 
 // NewSubmissions subscribes to the Session's commits and close.
 // telemetry is the Harness's root adapter, the parent of input admissions; nil is the no-op context.
-func NewSubmissions(line *session.SessionImpl, storage durable.Storage, now func() float64, queueModes func() QueueModes, resume func() error, root telemetry.TelemetryContext) *Submissions {
+func NewSubmissions(line *session.SessionImpl, now func() float64, queueModes func() QueueModes, resume func() error, root telemetry.TelemetryContext) *Submissions {
 	if root == nil {
 		root = telemetry.NoopTelemetryContext
 	}
-	submissions := &Submissions{telemetry: root, line: line, storage: storage, now: now, queueModes: queueModes, resume: resume}
+	submissions := &Submissions{telemetry: root, line: line, now: now, queueModes: queueModes, resume: resume}
 	line.FollowCommits(func(ctx context.Context, publication session.ObservedCommit) {
 		submissions.observe(publication)
 	})
@@ -75,8 +85,20 @@ func NewSubmissions(line *session.SessionImpl, storage durable.Storage, now func
 
 // Submit admits a submission in one commit; see AdmitSubmission.
 func (submissions *Submissions) Submit(ctx context.Context, conversationId durable.ConversationId, draft durable.SubmissionDraft) (durable.Submission, error) {
+	return submissions.SubmitUnlessCancelled(ctx, nil, conversationId, draft)
+}
+
+// SubmitUnlessCancelled is Submit for a caller whose cancellation applies only until the job starts (session.ts commit:
+// `context.abortSignal?.throwIfAborted()` as the job begins): ctx carries the commit, so it should not be cancellable, and
+// startCheck, when non-nil, runs as the job starts and rejects it, storing nothing, with the error it returns.
+func (submissions *Submissions) SubmitUnlessCancelled(ctx context.Context, startCheck func() error, conversationId durable.ConversationId, draft durable.SubmissionDraft) (durable.Submission, error) {
 	admission, err := submissions.traced(ctx, conversationId, draft, func(span telemetry.TelemetrySpan) (Admission, error) {
 		return commitOnLine(chordctx.WithTelemetry(ctx, span), submissions.line, session.TransactionScope{}, func(tx *session.Transaction) (Admission, error) {
+			if startCheck != nil {
+				if err := startCheck(); err != nil {
+					return Admission{}, err
+				}
+			}
 			return AdmitSubmission(tx, conversationId, draft, submissions.now(), submissions.queueModes(), span)
 		})
 	})
@@ -147,8 +169,8 @@ func (submissions *Submissions) traced(ctx context.Context, conversationId durab
 
 // Get returns a handle for an existing submission; nil when absent.
 func (submissions *Submissions) Get(ctx context.Context, id durable.SubmissionId) (durable.Submission, error) {
-	record, err := readOnLine(submissions.line, func() (*durable.SubmissionRecord, error) {
-		return submissions.storage.Submission(ctx, id)
+	record, err := readOnLine(ctx, submissions.line, func(storage durable.Storage) (*durable.SubmissionRecord, error) {
+		return storage.Submission(ctx, id)
 	})
 	if err != nil || record == nil {
 		return nil, err
@@ -158,8 +180,8 @@ func (submissions *Submissions) Get(ctx context.Context, id durable.SubmissionId
 
 // Status returns the committed record of a submission.
 func (submissions *Submissions) Status(ctx context.Context, id durable.SubmissionId) (durable.SubmissionRecord, error) {
-	record, err := readOnLine(submissions.line, func() (*durable.SubmissionRecord, error) {
-		return submissions.storage.Submission(ctx, id)
+	record, err := readOnLine(ctx, submissions.line, func(storage durable.Storage) (*durable.SubmissionRecord, error) {
+		return storage.Submission(ctx, id)
 	})
 	if err != nil {
 		return durable.SubmissionRecord{}, err
@@ -171,13 +193,15 @@ func (submissions *Submissions) Status(ctx context.Context, id durable.Submissio
 }
 
 // Wait returns the settled record of a submission; cancelling ctx cancels only this wait, including its wait for the
-// listeners of the batches committed before it to be entered, which it resumes its caller after as upstream's drain
-// microtask runs before the code that awaited the promise.
+// listeners of the batches committed before it to enter (their synchronous part ran, or they went on to a wait of the Session),
+// which it resumes its caller after as upstream's drain microtask runs before the code that awaited the promise.
 func (submissions *Submissions) Wait(ctx context.Context, id durable.SubmissionId) (durable.SettledSubmissionRecord, error) {
 	record, err := submissions.waitSettled(ctx, id)
 	if err != nil {
 		return record, err
 	}
+	// pig divergence (D224): a listener that blocks on something the host cannot see, without calling chord.DeliveryEntered, holds
+	// this wait back; Pi's listener awaits.
 	if err := submissions.line.AwaitDeliveriesEntered(ctx); err != nil {
 		return durable.SubmissionRecord{}, err
 	}
@@ -193,8 +217,8 @@ func (submissions *Submissions) waitSettled(ctx context.Context, id durable.Subm
 		record *durable.SubmissionRecord
 		waiter *Waiter[durable.SettledSubmissionRecord]
 	}
-	result, err := readOnLine(submissions.line, func() (found, error) {
-		record, err := submissions.storage.Submission(ctx, id)
+	result, err := readOnLine(ctx, submissions.line, func(storage durable.Storage) (found, error) {
+		record, err := storage.Submission(ctx, id)
 		if err != nil {
 			return found{}, err
 		}
@@ -210,7 +234,7 @@ func (submissions *Submissions) waitSettled(ctx context.Context, id durable.Subm
 		if submissions.closed {
 			return found{}, closedError(submissions.line)
 		}
-		return found{waiter: submissions.waiters.Add(ctx, id)}, nil
+		return found{waiter: submissions.waiters.Add(ctx, submissions.line, id)}, nil
 	})
 	if err != nil {
 		return durable.SubmissionRecord{}, err
