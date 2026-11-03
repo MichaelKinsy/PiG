@@ -16,15 +16,19 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
+	"sort"
 	"strings"
+	"unicode"
 )
 
 const (
@@ -46,7 +50,9 @@ ignore. Exit 0 clean, 1 findings, 2 usage or I/O error.
 Environment:
   %s  path to a file OUTSIDE the repository with one private term per
       line (at least %d characters, matched case-insensitively against every
-      scanned file's content and path). Blank lines are skipped. A match
+      scanned file's content and path, binary files, vendored trees and this
+      tool's own sources included, and against the text of reassembled stream
+      deltas). Blank lines are skipped; a leading UTF-8 BOM is ignored. A match
       prints only file:line and the term's line number in that file, never the
       term. Unset, the denylist is skipped.
 
@@ -73,18 +79,18 @@ func run(root, termsFile string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintln(stderr, "fixture-guard:", err)
 		return 2
 	}
-	findings, stale := applyAllowlist(findings, scanned)
+	findings, stale := applyAllowlist(findings)
 	for _, f := range findings {
 		_, _ = fmt.Fprintf(stdout, "%s:%d: %s: %s\n", redactPath(f.path, terms), f.line, f.code, f.message)
 	}
 	for _, s := range stale {
-		_, _ = fmt.Fprintf(stdout, "allowlist.go: stale entry %s %s no longer matches; delete it\n", s.path, s.code)
+		_, _ = fmt.Fprintf(stdout, "allowlist.go: stale entry %s %s matches no finding; delete it\n", redactPath(s.path, terms), s.code)
 	}
 	if len(findings) > 0 || len(stale) > 0 {
 		_, _ = fmt.Fprintln(stdout, "fixture-guard: replace the captured content with a minimal synthetic shape generated in the test; do not commit the capture")
 		return 1
 	}
-	_, _ = fmt.Fprintf(stdout, "fixture-guard: clean (%d files)\n", len(scanned))
+	_, _ = fmt.Fprintf(stdout, "fixture-guard: clean (%d files)\n", scanned)
 	return 0
 }
 
@@ -92,52 +98,98 @@ func run(root, termsFile string, stdout, stderr io.Writer) int {
 type term struct {
 	line  int
 	lower []byte
+	runes []rune
 }
+
+var utf8BOM = []byte{0xef, 0xbb, 0xbf}
 
 func loadTerms(root, path string) ([]term, error) {
 	if path == "" {
 		return nil, nil
 	}
-	absolute, err := filepath.Abs(path)
+	resolved, err := filepath.EvalSymlinks(path)
 	if err != nil {
+		return nil, fmt.Errorf("resolve %s: %w", privateTermsEnv, unwrapPathError(err))
+	}
+	repo, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return nil, fmt.Errorf("resolve repository root: %w", unwrapPathError(err))
+	}
+	if resolved, err = filepath.Abs(resolved); err != nil {
 		return nil, err
 	}
-	repo, err := filepath.Abs(root)
-	if err != nil {
+	if repo, err = filepath.Abs(repo); err != nil {
 		return nil, err
 	}
-	if relative, err := filepath.Rel(repo, absolute); err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+	if relative, err := filepath.Rel(repo, resolved); err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 		return nil, fmt.Errorf("%s must name a file outside the repository", privateTermsEnv)
 	}
-	data, err := os.ReadFile(absolute)
+	data, err := os.ReadFile(resolved)
 	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", privateTermsEnv, err)
+		return nil, fmt.Errorf("read %s: %w", privateTermsEnv, unwrapPathError(err))
 	}
+	data = bytes.TrimPrefix(data, utf8BOM)
 	var terms []term
 	for i, raw := range strings.Split(string(data), "\n") {
 		text := strings.TrimSpace(raw)
 		if text == "" {
 			continue
 		}
-		if len(text) < minTermLength {
+		if len([]rune(text)) < minTermLength {
 			return nil, fmt.Errorf("%s line %d is shorter than %d characters", privateTermsEnv, i+1, minTermLength)
 		}
-		terms = append(terms, term{line: i + 1, lower: bytes.ToLower([]byte(text))})
+		lower := bytes.ToLower([]byte(text))
+		terms = append(terms, term{line: i + 1, lower: lower, runes: []rune(string(lower))})
 	}
 	return terms, nil
 }
 
-// redactPath masks any term occurrence in a printed path so a file named after a term does not reveal it. The mask names the term's line in the terms file.
+// unwrapPathError drops the path an I/O error carries: a path may name a private term.
+func unwrapPathError(err error) error {
+	if pathErr, ok := errors.AsType[*fs.PathError](err); ok {
+		return pathErr.Err
+	}
+	return err
+}
+
+// redactPath masks any term occurrence in a printed path so a file named after a term does not reveal it. It works on runes, because lower-casing can change a character's byte length, and falls back to a placeholder if a term still shows after masking.
 func redactPath(path string, terms []term) string {
-	lower := bytes.ToLower([]byte(path))
-	for _, t := range terms {
-		for i := bytes.Index(lower, t.lower); i >= 0; i = bytes.Index(lower, t.lower) {
-			mask := []byte(fmt.Sprintf("<term-%d>", t.line))
-			path = path[:i] + string(mask) + path[i+len(t.lower):]
-			lower = append(append(lower[:i:i], bytes.Repeat([]byte{'#'}, len(mask))...), lower[i+len(t.lower):]...)
+	if len(terms) == 0 {
+		return path
+	}
+	original := []rune(path)
+	lower := make([]rune, len(original))
+	for i, c := range original {
+		lower[i] = unicode.ToLower(c)
+	}
+	var out []rune
+	masked := false
+	for i := 0; i < len(original); {
+		matched := false
+		for _, t := range terms {
+			if n := len(t.runes); n > 0 && i+n <= len(lower) && slices.Equal(lower[i:i+n], t.runes) {
+				out = append(out, []rune(fmt.Sprintf("<term-%d>", t.line))...)
+				i += n
+				matched, masked = true, true
+				break
+			}
+		}
+		if !matched {
+			out = append(out, original[i])
+			i++
 		}
 	}
-	return path
+	if !masked {
+		return path
+	}
+	result := string(out)
+	lowerResult := bytes.ToLower([]byte(result))
+	for _, t := range terms {
+		if bytes.Contains(lowerResult, t.lower) {
+			return "<path-with-private-term>"
+		}
+	}
+	return result
 }
 
 // listFiles returns tracked files plus untracked files git does not ignore, so a fixture is checked before it is committed.
@@ -149,7 +201,7 @@ func listFiles(root string) ([]string, error) {
 		return nil, fmt.Errorf("git ls-files: %w", err)
 	}
 	var files []string
-	for _, name := range strings.Split(string(out), "\x00") {
+	for name := range strings.SplitSeq(string(out), "\x00") {
 		if name != "" {
 			files = append(files, name)
 		}
@@ -158,7 +210,7 @@ func listFiles(root string) ([]string, error) {
 	return slices.Compact(files), nil
 }
 
-// vendored reports third-party code, upstream mirrors and this tool's own sources, which are not fixtures.
+// vendored reports third-party code, upstream mirrors and this tool's own sources, which are not fixtures. The private-term check still covers them.
 func vendored(path string) bool {
 	// The Node runtime shims embed upstream dist code and WASM payloads; this tool's own sources hold the detector patterns it scans for.
 	for _, segment := range []string{"third_party/", ".upstream/", "node_modules/", "vendor/", "runtime-node/shims/", "automation/ci/fixtureguard/"} {
@@ -181,29 +233,31 @@ func isFixture(path string) bool {
 	return strings.HasPrefix(path, "test/") && dataExtensions[strings.ToLower(filepath.Ext(path))]
 }
 
-func scanTree(root string, files []string, terms []term) ([]finding, map[string]bool, error) {
+// scanTree scans every listed path. The private-term check covers every name and every regular file's bytes, binary and vendored included; the structural rules cover non-vendored text files. It returns the findings and the count of files whose content was read.
+func scanTree(root string, files []string, terms []term) ([]finding, int, error) {
 	var findings []finding
-	scanned := map[string]bool{}
+	scanned := 0
 	for _, name := range files {
-		if vendored(name) {
-			continue
-		}
-		data, ok, err := readText(filepath.Join(root, name))
+		findings = append(findings, scanPathTerms(name, terms)...)
+		data, ok, err := readFile(filepath.Join(root, name))
 		if err != nil {
-			return nil, nil, err
+			return nil, 0, fmt.Errorf("read %s: %w", redactPath(name, terms), unwrapPathError(err))
 		}
 		if !ok {
 			continue
 		}
-		scanned[name] = true
-		findings = append(findings, scanText(name, data, isFixture(name))...)
+		scanned++
 		findings = append(findings, scanTerms(name, data, terms)...)
+		if vendored(name) || isBinary(data) {
+			continue
+		}
+		findings = append(findings, scanText(name, data, isFixture(name))...)
 	}
 	return findings, scanned, nil
 }
 
-// readText returns the file's bytes when it is a regular, non-binary file of bounded size. A deleted or unreadable-by-design entry (dangling symlink, submodule directory) is skipped.
-func readText(path string) ([]byte, bool, error) {
+// readFile returns the file's bytes when it is a regular file of bounded size. A path git lists but the working tree lacks, a symlink or a submodule directory is skipped.
+func readFile(path string) ([]byte, bool, error) {
 	info, err := os.Lstat(path)
 	if err != nil || !info.Mode().IsRegular() || info.Size() > maxFileSize {
 		return nil, false, nil //nolint:nilerr // git ls-files can list a path deleted from the working tree; there is nothing to scan.
@@ -212,50 +266,72 @@ func readText(path string) ([]byte, bool, error) {
 	if err != nil {
 		return nil, false, err
 	}
+	return data, true, nil
+}
+
+func isBinary(data []byte) bool {
 	probe := data
 	if len(probe) > 8192 {
 		probe = probe[:8192]
 	}
-	if bytes.IndexByte(probe, 0) >= 0 {
-		return nil, false, nil
-	}
-	return data, true, nil
+	return bytes.IndexByte(probe, 0) >= 0
 }
 
-// scanTerms reports each term occurrence as path:line with the term's line number in the terms file; neither the term nor the matched line is printed.
-func scanTerms(path string, data []byte, terms []term) []finding {
+func scanPathTerms(path string, terms []term) []finding {
 	if len(terms) == 0 {
 		return nil
 	}
+	lower := bytes.ToLower([]byte(path))
 	var found []finding
-	lowerPath := bytes.ToLower([]byte(path))
-	lowerData := bytes.ToLower(data)
 	for _, t := range terms {
-		if bytes.Contains(lowerPath, t.lower) {
+		if bytes.Contains(lower, t.lower) {
 			found = append(found, finding{path, 0, codePrivate, fmt.Sprintf("path matches private term at terms-file line %d", t.line)})
-		}
-		seen := -1
-		line := 1
-		offset := 0
-		for {
-			i := bytes.Index(lowerData[offset:], t.lower)
-			if i < 0 {
-				break
-			}
-			at := offset + i
-			line += bytes.Count(lowerData[offset:at], []byte{'\n'})
-			if line != seen {
-				found = append(found, finding{path, line, codePrivate, fmt.Sprintf("private term at terms-file line %d", t.line)})
-				seen = line
-			}
-			offset = at + len(t.lower)
 		}
 	}
 	return found
 }
 
-// applyAllowlist drops reviewed false positives and reports allowlist entries whose file was scanned but no longer trips the rule.
-func applyAllowlist(findings []finding, scanned map[string]bool) ([]finding, []allowed) {
+// scanTerms reports each term occurrence in a file's bytes, and in its reassembled stream text, as path:line with the term's line number in the terms file; neither the term nor the matched line is printed.
+func scanTerms(path string, data []byte, terms []term) []finding {
+	if len(terms) == 0 {
+		return nil
+	}
+	var found []finding
+	lowerData := bytes.ToLower(data)
+	var newlines []int
+	lineAt := func(off int) int {
+		if newlines == nil {
+			newlines = []int{}
+			for i, c := range lowerData {
+				if c == '\n' {
+					newlines = append(newlines, i)
+				}
+			}
+		}
+		return 1 + sort.SearchInts(newlines, off)
+	}
+	each := func(haystack []byte, line func(int) int) {
+		for _, t := range terms {
+			for offset := 0; ; {
+				i := bytes.Index(haystack[offset:], t.lower)
+				if i < 0 {
+					break
+				}
+				at := offset + i
+				found = append(found, finding{path, line(at), codePrivate, fmt.Sprintf("private term at terms-file line %d", t.line)})
+				offset = at + len(t.lower)
+			}
+		}
+	}
+	each(lowerData, lineAt)
+	for _, s := range reassemble(path, data) {
+		each(bytes.ToLower(s.buf), s.lineAt)
+	}
+	return dedupe(found)
+}
+
+// applyAllowlist drops reviewed false positives and reports every allowlist entry that matched nothing, including one whose file was deleted or renamed.
+func applyAllowlist(findings []finding) ([]finding, []allowed) {
 	used := make([]bool, len(allowlist))
 	var kept []finding
 	for _, f := range findings {
@@ -274,7 +350,7 @@ func applyAllowlist(findings []finding, scanned map[string]bool) ([]finding, []a
 	}
 	var stale []allowed
 	for i, a := range allowlist {
-		if !used[i] && scanned[a.path] {
+		if !used[i] {
 			stale = append(stale, a)
 		}
 	}

@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -145,8 +146,12 @@ func TestIsFixture(t *testing.T) {
 	}
 }
 
+// gitRepo builds a scratch repository. The reviewed allowlist names files of this repository, so it is emptied while a scratch tree is scanned.
 func gitRepo(t *testing.T, files map[string]string) string {
 	t.Helper()
+	saved := allowlist
+	allowlist = nil
+	t.Cleanup(func() { allowlist = saved })
 	root := t.TempDir()
 	for _, args := range [][]string{{"init", "--quiet"}} {
 		command := exec.Command("git", args...)
@@ -245,23 +250,23 @@ func TestAllowlistSuppressesAndReportsStaleEntries(t *testing.T) {
 	t.Cleanup(func() { allowlist = saved })
 	allowlist = []allowed{
 		{path: "a/testdata/x.json", code: codeHomePath, reason: "test"},
-		{path: "a/testdata/gone.json", code: codeHomePath, reason: "test"},
-		{path: "a/testdata/unscanned.json", code: codeHomePath, reason: "test"},
+		{path: "a/testdata/gone.json", code: codeHomePath, reason: "file deleted"},
+		{path: "a/testdata/unscanned.json", code: codeHomePath, reason: "file never matched"},
 	}
 	findings := []finding{
 		{"a/testdata/x.json", 1, codeHomePath, "m"},
 		{"a/testdata/x.json", 2, codeOpaque, "m"},
 		{"a/testdata/x.json", 3, codePrivate, "m"},
 	}
-	kept, stale := applyAllowlist(findings, map[string]bool{"a/testdata/x.json": true, "a/testdata/gone.json": true})
+	kept, stale := applyAllowlist(findings)
 	if len(kept) != 2 || kept[0].code != codeOpaque || kept[1].code != codePrivate {
 		t.Fatalf("kept %v", kept)
 	}
-	if len(stale) != 1 || stale[0].path != "a/testdata/gone.json" {
-		t.Fatalf("stale %v", stale)
+	if len(stale) != 2 || stale[0].path != "a/testdata/gone.json" || stale[1].path != "a/testdata/unscanned.json" {
+		t.Fatalf("an entry for a deleted or unmatched file must be stale: %v", stale)
 	}
 	allowlist = []allowed{{path: "a/testdata/x.json", code: codePrivate, reason: "never"}}
-	if kept, _ := applyAllowlist([]finding{{"a/testdata/x.json", 1, codePrivate, "m"}}, nil); len(kept) != 1 {
+	if kept, _ := applyAllowlist([]finding{{"a/testdata/x.json", 1, codePrivate, "m"}}); len(kept) != 1 {
 		t.Fatal("a private-term finding must not be allowlistable")
 	}
 }
@@ -287,15 +292,219 @@ func TestRepositoryFixturesPass(t *testing.T) {
 	if err != nil || len(files) < 1000 {
 		t.Skipf("not a git checkout of the repository: %v (%d files)", err, len(files))
 	}
-	findings, scanned, err := scanTree(root, files, nil)
+	findings, _, err := scanTree(root, files, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	kept, stale := applyAllowlist(findings, scanned)
+	kept, stale := applyAllowlist(findings)
 	for _, f := range kept {
 		t.Errorf("%s:%d %s %s", f.path, f.line, f.code, f.message)
 	}
 	for _, s := range stale {
 		t.Errorf("stale allowlist entry %s %s", s.path, s.code)
 	}
+}
+
+// copilotDeltas renders a Copilot-style SSE stream whose tool-call arguments arrive in one small fragment per chunk.
+func copilotDeltas(index int, arguments string, size int) string {
+	var out strings.Builder
+	for i := 0; i < len(arguments); i += size {
+		end := min(i+size, len(arguments))
+		out.WriteString(`data: {"choices":[{"index":0,"delta":{"tool_calls":[{"index":` + strconv.Itoa(index) + `,"function":{"arguments":` + strconv.Quote(arguments[i:end]) + `}}]}}]}` + "\n")
+	}
+	return out.String()
+}
+
+func TestSplitStreamDeltasAreReassembled(t *testing.T) {
+	path := `{"path":"/Users/jsmith/work/notes.md"}`
+	stream := copilotDeltas(0, path, 3)
+	if n := strings.Count(stream, "\n"); n < 13 {
+		t.Fatalf("test stream has %d deltas, want at least 13", n)
+	}
+	for line := range strings.SplitSeq(stream, "\n") {
+		if line != "" && len(homeMatches([]byte(line))) != 0 {
+			t.Fatalf("a single delta already holds the whole path: %q", line)
+		}
+	}
+	found := scanText("ai/testdata/split.sse", []byte(stream), true)
+	if !slices.Contains(codes(found), codeHomePath) || found[0].line != strings.Index(path, "jsmith")/3+1 {
+		t.Fatalf("split home path: %v", found)
+	}
+	// Two tool calls interleaved: the index keeps each call's fragments together.
+	var mixed strings.Builder
+	first, second := copilotDeltas(0, path, 3), copilotDeltas(1, `{"x":"ok ok ok ok ok"}`, 3)
+	a, b := strings.Split(first, "\n"), strings.Split(second, "\n")
+	for i := 0; i < max(len(a), len(b)); i++ {
+		if i < len(a) && a[i] != "" {
+			mixed.WriteString(a[i] + "\n")
+		}
+		if i < len(b) && b[i] != "" {
+			mixed.WriteString(b[i] + "\n")
+		}
+	}
+	if found := scanText("ai/testdata/mixed.sse", []byte(mixed.String()), true); !slices.Contains(codes(found), codeHomePath) {
+		t.Fatalf("interleaved split home path: %v", found)
+	}
+	// A JSON-escaped body inside a string field (an SSE body in a fixture's request or response string).
+	escaped := strings.ReplaceAll(strings.ReplaceAll(stream, `\`, `\\`), `"`, `\"`)
+	if found := scanText("ai/testdata/escaped.json", []byte(`{"body":"`+strings.ReplaceAll(escaped, "\n", `\n`)+`"}`), true); !slices.Contains(codes(found), codeHomePath) {
+		t.Fatalf("escaped stream body: %v", found)
+	}
+}
+
+func TestSplitReasoningDeltasAreCounted(t *testing.T) {
+	all := words(120)
+	var out strings.Builder
+	for i := 0; i+3 <= len(all); i += 3 {
+		out.WriteString(`data: {"choices":[{"index":0,"delta":{"reasoning_text":"` + strings.Join(all[i:i+3], " ") + ` "}}]}` + "\n")
+	}
+	if found := scanText("ai/testdata/r.sse", []byte(out.String()), true); !slices.Contains(codes(found), codeReasoning) {
+		t.Fatalf("reasoning stream: %v", found)
+	}
+}
+
+func TestSplitPrivateTermIsFoundAcrossDeltas(t *testing.T) {
+	const secret = "Quillmark-Internal"
+	stream := copilotDeltas(0, `{"path":"src/`+secret+`/plan.md"}`, 2)
+	root := gitRepo(t, map[string]string{"ai/testdata/s.sse": stream, "ai/testdata/clean.sse": copilotDeltas(0, `{"path":"a/b.md"}`, 2)})
+	terms := filepath.Join(t.TempDir(), "terms.txt")
+	if err := os.WriteFile(terms, []byte("other-term\n"+secret+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out, errOut bytes.Buffer
+	if code := run(root, terms, &out, &errOut); code != 1 {
+		t.Fatalf("exit %d: %s%s", code, out.String(), errOut.String())
+	}
+	text := out.String()
+	if !strings.Contains(text, "ai/testdata/s.sse:"+strconv.Itoa(strings.Index(`{"path":"src/`+secret+`/plan.md"}`, secret)/2+1)+": FG006: private term at terms-file line 2") || strings.Contains(text, "clean.sse") {
+		t.Fatalf("output %q", text)
+	}
+	if strings.Contains(strings.ToLower(text), "quillmark") {
+		t.Fatalf("output prints the term: %q", text)
+	}
+}
+
+func TestPrivateTermsCoverBinaryVendoredAndOwnSources(t *testing.T) {
+	const secret = "Zorblax-Internal"
+	root := gitRepo(t, map[string]string{
+		"docs/" + strings.ToLower(secret) + "-notes.png": "\x00\x01binary",
+		"vendor/lib/a.go":                                     "package a // " + strings.ToUpper(secret) + "\n",
+		"third_party/x/b.bin":                                 "\x00\x00" + secret,
+		"automation/ci/fixtureguard/allowlist.go":             "reason: " + secret + "\n",
+		"docs/clean.md":                                       "nothing\n",
+		"runtime-node/shims/lib.js":                           "var x = '" + secret + "'\n",
+		"deep/runtime-node/shims/undici/lib/" + "ok-file.txt": "fine\n",
+	})
+	terms := filepath.Join(t.TempDir(), "terms.txt")
+	if err := os.WriteFile(terms, []byte(secret+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out, errOut bytes.Buffer
+	if code := run(root, terms, &out, &errOut); code != 1 {
+		t.Fatalf("exit %d: %s%s", code, out.String(), errOut.String())
+	}
+	text := out.String()
+	for _, want := range []string{"docs/<term-1>-notes.png:0: FG006", "vendor/lib/a.go:1: FG006", "third_party/x/b.bin:1: FG006", "automation/ci/fixtureguard/allowlist.go:1: FG006", "runtime-node/shims/lib.js:1: FG006"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("missing %q in %q", want, text)
+		}
+	}
+	if strings.Contains(text, "clean.md") || strings.Contains(strings.ToLower(text), "zorblax") {
+		t.Fatalf("output %q", text)
+	}
+}
+
+func TestRedactPathMasksByRune(t *testing.T) {
+	terms := []term{{line: 1, lower: []byte("projectnightjar"), runes: []rune("projectnightjar")}}
+	for _, path := range []string{"docs/ȺȺȺȺprojectnightjar.txt", "docs/ȺProjectNightjar/Ⱥ.txt", "ΣProjectNightjar"} {
+		got := redactPath(path, terms)
+		if strings.Contains(strings.ToLower(got), "proj") || !strings.Contains(got, "<term-1>") {
+			t.Errorf("redactPath(%q) = %q", path, got)
+		}
+	}
+	if got := redactPath("docs/plain.txt", terms); got != "docs/plain.txt" {
+		t.Errorf("unmatched path changed: %q", got)
+	}
+}
+
+func TestReadErrorsDoNotPrintTheTermPath(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads a mode 000 file")
+	}
+	const secret = "Quillmark-Internal"
+	root := gitRepo(t, map[string]string{"docs/" + strings.ToLower(secret) + "-locked.txt": "x\n"})
+	locked := filepath.Join(root, "docs", strings.ToLower(secret)+"-locked.txt")
+	if err := os.Chmod(locked, 0); err != nil {
+		t.Fatal(err)
+	}
+	terms := filepath.Join(t.TempDir(), "terms.txt")
+	if err := os.WriteFile(terms, []byte(secret+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out, errOut bytes.Buffer
+	if code := run(root, terms, &out, &errOut); code != 2 {
+		t.Fatalf("exit %d: %s%s", code, out.String(), errOut.String())
+	}
+	if strings.Contains(strings.ToLower(errOut.String()), "quillmark") || !strings.Contains(errOut.String(), "<term-1>") {
+		t.Fatalf("stderr %q", errOut.String())
+	}
+}
+
+func TestTermsFileSymlinkAndBOM(t *testing.T) {
+	root := gitRepo(t, map[string]string{"docs/a.md": "has Zorblax-Internal inside\n"})
+	real := filepath.Join(root, "docs", "a.md")
+	link := filepath.Join(t.TempDir(), "terms-link.txt")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	var out, errOut bytes.Buffer
+	if code := run(root, link, &out, &errOut); code != 2 || !strings.Contains(errOut.String(), "outside the repository") {
+		t.Fatalf("a symlink into the repository must be rejected: exit %d, %q", code, errOut.String())
+	}
+	bom := filepath.Join(t.TempDir(), "bom.txt")
+	if err := os.WriteFile(bom, append([]byte{0xef, 0xbb, 0xbf}, "Zorblax-Internal\n"...), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out.Reset()
+	if code := run(root, bom, &out, &errOut); code != 1 || !strings.Contains(out.String(), "docs/a.md:1: FG006: private term at terms-file line 1") {
+		t.Fatalf("a BOM must not disable the first term: exit %d, %q", code, out.String())
+	}
+}
+
+func TestMoreCapturedShapes(t *testing.T) {
+	cases := []struct {
+		name, path, content, want string
+	}{
+		{"anthropic redacted thinking", "ai/testdata/r.sse", `data: {"type":"content_block_start","content_block":{"type":"redacted_thinking","data":"` + blob(600) + `"}}`, codeOpaque},
+		{"har request id", "test/x/capture.har", `{"headers":[{"name":"x-request-id","value":"3f2b8c1e-7d4a-4e6b-9a15-c0d8e2f41b37"}]}`, codeBilling},
+		{"bedrock tool id", "ai/testdata/b.sse", `{"id":"toolu_bdrk_01` + blob(22) + `"}`, codeProvider},
+		{"vertex tool id", "ai/testdata/v.sse", `{"id":"toolu_vrtx_01` + blob(22) + `"}`, codeProvider},
+		{"bedrock message id", "ai/testdata/m.sse", `{"id":"msg_bdrk_01` + blob(24) + `"}`, codeProvider},
+		{"go struct reasoning prose", "ai/replay_test.go", goStructReasoning(), codeReasoning},
+	}
+	for _, tc := range cases {
+		if found := scanText(tc.path, []byte(tc.content), isFixture(tc.path)); !slices.Contains(codes(found), tc.want) {
+			t.Errorf("%s: %v, want %s", tc.name, found, tc.want)
+		}
+	}
+	for name, content := range map[string]string{
+		"short redacted thinking":  `{"type":"redacted_thinking","data":"cmVkYWN0ZWQ="}`,
+		"short struct reasoning":   `Thinking: "let me think about it", Reasoning: "short"`,
+		"synthetic bedrock ids":    `{"id":"toolu_bdrk_01AAAA","m":"msg_bdrk_synthetic"}`,
+		"short har request id":     `{"name":"x-request-id","value":"r1"}`,
+		"data key without redacts": `{"data":"` + blob(600) + `"}`,
+	} {
+		if found := scanText("ai/testdata/ok.json", []byte(content), true); len(found) != 0 {
+			t.Errorf("%s: unexpected findings %v", name, found)
+		}
+	}
+}
+
+func goStructReasoning() string {
+	all := words(200)
+	var out strings.Builder
+	for i := 0; i+8 <= len(all); i += 8 {
+		out.WriteString("\t{Thinking: \"" + strings.Join(all[i:i+8], " ") + "\"},\n")
+	}
+	return out.String()
 }

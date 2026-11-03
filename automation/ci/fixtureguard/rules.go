@@ -36,21 +36,30 @@ const (
 	requestIDDistinctMin = 8
 )
 
+const requestIDKeys = `x-request-id|x-github-request-id|x-ms-request-id|x-ms-client-request-id|apim-request-id|request-id|x-amzn-requestid|cf-ray`
+
 var (
-	opaqueField = regexp.MustCompile(`(?i)(?:encrypted_content|reasoning_opaque|thinking_signature|thought_?signature|encrypted_reasoning|reasoning_encrypted_content|redacted_data|signature)\\*["']?\s*[:=]\s*\\*["']([A-Za-z0-9+/_=-]{` + strconv.Itoa(opaqueFieldMin) + `,})`)
-	hexOnly     = regexp.MustCompile(`^[0-9a-fA-F]+$`)
+	// Anthropic's redacted_thinking block carries its encrypted payload under a plain data key.
+	redactedData = regexp.MustCompile(`\\*"data\\*"\s*:\s*\\*"([A-Za-z0-9+/_=-]{` + strconv.Itoa(opaqueFieldMin) + `,})`)
+	opaqueField  = regexp.MustCompile(`(?i)(?:encrypted_content|reasoning_opaque|thinking_signature|thought_?signature|encrypted_reasoning|reasoning_encrypted_content|redacted_data|signature)\\*["']?\s*[:=]\s*\\*["']([A-Za-z0-9+/_=-]{` + strconv.Itoa(opaqueFieldMin) + `,})`)
+	hexOnly      = regexp.MustCompile(`^[0-9a-fA-F]+$`)
 
 	billingKey = regexp.MustCompile(`(?i)\b(?:copilot_usage|cost_per_batch|total_nano_aiu|quota_snapshots|premium_interactions|copilot_quota[a-z_]*|x-copilot-[a-z-]+)\b`)
-	requestID  = regexp.MustCompile(`(?i)\b(?:x-request-id|x-github-request-id|x-ms-request-id|x-ms-client-request-id|apim-request-id|request-id|x-amzn-requestid|cf-ray)\\*["']?\s*[:=,]\s*\\*["']?\s*([0-9A-Za-z:._-]{` + strconv.Itoa(requestIDMin) + `,})`)
+	requestID  = regexp.MustCompile(`(?i)\b(?:` + requestIDKeys + `)\\*["']?\s*[:=,]\s*\\*["']?\s*([0-9A-Za-z:._-]{` + strconv.Itoa(requestIDMin) + `,})`)
+	// HAR headers are {"name":"x-request-id","value":"..."} objects, so the value follows a second key.
+	requestIDHAR = regexp.MustCompile(`(?i)\b(?:` + requestIDKeys + `)\\*"\s*,\s*\\*"value\\*"\s*:\s*\\*"([0-9A-Za-z:._-]{` + strconv.Itoa(requestIDMin) + `,})`)
 
-	providerID   = regexp.MustCompile(`chatcmpl-[A-Za-z0-9]{16,}|\bmsg_(?:01)?[A-Za-z0-9]{20,}|\bresp_[0-9a-f]{24,}|\brs_[0-9a-f]{24,}|\breq_(?:01)?[A-Za-z0-9]{20,}|\btoolu_(?:01)?[A-Za-z0-9]{16,}|\bcall_[A-Za-z0-9]{20,}|\bfc_[0-9a-f]{24,}|\bgen-[0-9]{9,}-[A-Za-z0-9]{10,}`)
+	// Bedrock and Vertex route Anthropic ids through an infix (toolu_bdrk_01..., toolu_vrtx_...).
+	providerID   = regexp.MustCompile(`chatcmpl-[A-Za-z0-9]{16,}|\b(?:toolu|req)_(?:[a-z]{4}_)?(?:01)?[A-Za-z0-9]{16,}|\bmsg_(?:[a-z]{4}_)?(?:01)?[A-Za-z0-9]{20,}|\bresp_[0-9a-f]{24,}|\brs_[0-9a-f]{24,}|\bcall_[A-Za-z0-9]{20,}|\bfc_[0-9a-f]{24,}|\bgen-[0-9]{9,}-[A-Za-z0-9]{10,}`)
 	providerTime = regexp.MustCompile(`"(?:created|created_at)"\s*:\s*(?:(1[6-9][0-9]{8})\b|"20[2-3][0-9]-[0-9]{2}-[0-9]{2}T[0-9:]{8}\.([0-9]{3})[0-9]*)`)
 
 	posixHome   = regexp.MustCompile(`(?:^|[^A-Za-z0-9_])/(?:Users|home)/([A-Za-z0-9._-]+)`)
 	windowsHome = regexp.MustCompile(`[A-Za-z]:\\+Users\\+([A-Za-z0-9._ -]+)`)
 
-	reasoningLine  = regexp.MustCompile(`\\*"(?:reasoning_text|reasoning_content|reasoning|thinking|summary_text|reasoning_summary|thought|text|delta)\\*"\s*:\s*\\*"((?:[^"\\]|\\[^"])*)`)
-	reasoningWords = regexp.MustCompile(`[A-Za-z]{2,}`)
+	reasoningLine = regexp.MustCompile(`\\*"(?:reasoning_text|reasoning_content|reasoning|thinking|summary_text|reasoning_summary|thought|text|delta)\\*"\s*:\s*\\*"((?:[^"\\]|\\[^"])*)`)
+	// Go struct literals in fixture-like sources: Thinking: "...", Reasoning: `...`.
+	goReasoningLine = regexp.MustCompile("\\b(?:Thinking|Reasoning|ReasoningText|ReasoningContent|SummaryText)\\s*:\\s*(?:\"((?:[^\"\\\\]|\\\\.)*)\"|`([^`]*)`)")
+	reasoningWords  = regexp.MustCompile(`[A-Za-z]{2,}`)
 )
 
 // syntheticHomes are the placeholder account names fixtures use. Any other /Users/<name> or /home/<name> is a real account until proven otherwise.
@@ -62,11 +71,11 @@ var syntheticHomes = map[string]bool{
 }
 
 var (
-	preOpaque    = [][]byte{[]byte("ignature"), []byte("ncrypted"), []byte("paque"), []byte("redacted_data")}
+	preOpaque    = [][]byte{[]byte("ignature"), []byte("ncrypted"), []byte("paque"), []byte("redacted_data"), []byte("redacted_thinking")}
 	preBilling   = [][]byte{[]byte("usage"), []byte("batch"), []byte("nano_aiu"), []byte("quota"), []byte("premium"), []byte("x-copilot"), []byte("request-id"), []byte("requestid"), []byte("cf-ray")}
 	preProvider  = [][]byte{[]byte("chatcmpl-"), []byte("msg_"), []byte("resp_"), []byte("rs_"), []byte("req_"), []byte("toolu_"), []byte("call_"), []byte("fc_"), []byte("gen-"), []byte("created")}
 	preHome      = [][]byte{[]byte("/Users/"), []byte("/home/"), []byte(`Users\`)}
-	preReasoning = [][]byte{[]byte("reasoning"), []byte("thinking"), []byte("thought"), []byte("summary_text")}
+	preReasoning = [][]byte{[]byte("reasoning"), []byte("thinking"), []byte("thought"), []byte("summary_text"), []byte("Thinking"), []byte("Reasoning"), []byte("SummaryText")}
 )
 
 func containsAny(line []byte, needles [][]byte) bool {
@@ -132,6 +141,13 @@ func scanText(path string, data []byte, fixture bool) []finding {
 				}
 			}
 		}
+		if bytes.Contains(line, []byte("redacted_thinking")) {
+			for _, m := range redactedData.FindAllSubmatch(line, -1) {
+				if !hexOnly.Match(m[1]) {
+					add(number, codeOpaque, fmt.Sprintf("redacted thinking payload of %d characters", len(m[1])))
+				}
+			}
+		}
 		if len(line) >= opaqueBlobMin {
 			for _, blob := range base64Runs(line, opaqueBlobMin) {
 				if !hexOnly.Match(blob) && mixedBase64(blob) {
@@ -143,15 +159,24 @@ func scanText(path string, data []byte, fixture bool) []finding {
 			if billingKey.Match(line) {
 				add(number, codeBilling, "provider billing or quota row")
 			}
-			for _, m := range requestID.FindAllSubmatch(line, -1) {
-				if randomLooking(m[1]) {
-					add(number, codeBilling, fmt.Sprintf("provider request-id value of %d characters", len(m[1])))
+			for _, re := range []*regexp.Regexp{requestID, requestIDHAR} {
+				for _, m := range re.FindAllSubmatch(line, -1) {
+					if randomLooking(m[1]) {
+						add(number, codeBilling, fmt.Sprintf("provider request-id value of %d characters", len(m[1])))
+					}
 				}
 			}
 		}
 		if containsAny(line, preReasoning) {
 			for _, m := range reasoningLine.FindAllSubmatch(line, -1) {
 				tally.add(number, m[1])
+			}
+			for _, m := range goReasoningLine.FindAllSubmatch(line, -1) {
+				value := m[1]
+				if len(value) == 0 {
+					value = m[2]
+				}
+				tally.add(number, value)
 			}
 		}
 		if !fixture {
@@ -168,22 +193,60 @@ func scanText(path string, data []byte, fixture bool) []finding {
 			}
 		}
 		if containsAny(line, preHome) {
-			for _, m := range posixHome.FindAllSubmatch(line, -1) {
-				if !syntheticHomes[string(bytes.ToLower(m[1]))] {
-					add(number, codeHomePath, "absolute home path of a non-placeholder account")
-				}
-			}
-			for _, m := range windowsHome.FindAllSubmatch(line, -1) {
-				if !syntheticHomes[string(bytes.ToLower(bytes.TrimSpace(m[1])))] {
-					add(number, codeHomePath, "absolute home path of a non-placeholder account")
-				}
+			for range homeMatches(line) {
+				add(number, codeHomePath, homeMessage)
 			}
 		}
 	}
-	if tally.chars >= reasoningCharsMin && len(tally.words) >= reasoningDistinctWordsMin {
-		add(tally.firstLine, codeReasoning, fmt.Sprintf("natural-language reasoning text (%d characters, %d distinct words) in stream or session fields", tally.chars, len(tally.words)))
+	// Reassembled streams: a path or reasoning sentence split across deltas is invisible line by line.
+	var streamTally reasoningTally
+	for _, s := range reassemble(path, data) {
+		if fixture {
+			for _, at := range homeMatches(s.buf) {
+				add(s.lineAt(at), codeHomePath, homeMessage)
+			}
+		}
+		if s.whole && reasoningFields[s.field] {
+			streamTally.add(s.lines[0], s.buf)
+		}
 	}
-	return found
+	for _, t := range []*reasoningTally{&tally, &streamTally} {
+		if t.chars >= reasoningCharsMin && len(t.words) >= reasoningDistinctWordsMin {
+			add(t.firstLine, codeReasoning, fmt.Sprintf("natural-language reasoning text (%d characters, %d distinct words) in stream or session fields", t.chars, len(t.words)))
+		}
+	}
+	return dedupe(found)
+}
+
+const homeMessage = "absolute home path of a non-placeholder account"
+
+// homeMatches returns the start offsets of home paths whose account is not a placeholder.
+func homeMatches(b []byte) []int {
+	var at []int
+	for _, m := range posixHome.FindAllSubmatchIndex(b, -1) {
+		if !syntheticHomes[string(bytes.ToLower(b[m[2]:m[3]]))] {
+			at = append(at, m[2])
+		}
+	}
+	for _, m := range windowsHome.FindAllSubmatchIndex(b, -1) {
+		if !syntheticHomes[string(bytes.ToLower(bytes.TrimSpace(b[m[2]:m[3]])))] {
+			at = append(at, m[2])
+		}
+	}
+	return at
+}
+
+// dedupe drops repeated findings so a value seen both line by line and in a reassembled stream is reported once.
+func dedupe(found []finding) []finding {
+	seen := map[finding]bool{}
+	out := found[:0]
+	for _, f := range found {
+		if !seen[f] {
+			seen[f] = true
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 func isBase64Byte(c byte) bool {
