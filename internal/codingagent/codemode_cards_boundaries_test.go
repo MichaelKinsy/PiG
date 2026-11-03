@@ -35,7 +35,9 @@ func appendCodemodeBoundaryProbes(probes []toolCardProbe, names []string) ([]too
 			}
 		}
 	}
-	ok := func(text string, d map[string]any) *toolCardResult { return &toolCardResult{Content: cardText(header + text), Details: d} }
+	ok := func(text string, d map[string]any) *toolCardResult {
+		return &toolCardResult{Content: cardText(header + text), Details: d}
+	}
 
 	// The call card drops every carriage return of the script, not only those before a newline.
 	for _, code := range []string{"a\rb", "x = 1;\r\rreturn 2", "\rlead", "a\r\n\tb\r", "wide\r" + strings.Repeat("c", 100)} {

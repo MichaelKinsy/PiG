@@ -58,11 +58,11 @@ type toolCardProbe struct {
 	Partial  bool            `json:"partial"`
 	NoImages bool            `json:"noImages"`
 	// Images is the terminal image protocol the card sees ("" shows image fallback text only).
-	Images string `json:"images,omitempty"`
-	Expanded bool            `json:"expanded"`
-	Width    int             `json:"width"`
-	Theme    string          `json:"theme"`
-	CWD      string          `json:"cwd"`
+	Images   string `json:"images,omitempty"`
+	Expanded bool   `json:"expanded"`
+	Width    int    `json:"width"`
+	Theme    string `json:"theme"`
+	CWD      string `json:"cwd"`
 	// Settle waits for the edit call's diff preview before the card is drawn.
 	Settle bool `json:"settle,omitempty"`
 	// Bindings are user keybindings (the expand hint names the keys bound to app.tools.expand).
