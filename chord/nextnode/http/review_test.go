@@ -837,7 +837,9 @@ func serverSideSocket(t *testing.T) *WebSocket {
 // what the check read. Pi's revoke of V1 ran before that check read V2, so it ends nothing; had the check read V0, V1's revoke
 // ends the connection at its delivery.
 func TestReviewAnUpgradeIsJudgedOnlyByTheRoutersDeliveredAfterTheRouterItRead(t *testing.T) {
-	withHost := func() *Router { return &Router{Hosts: NewStringSet("t.example"), SocketHandlers: map[*HttpSocket]struct{}{}} }
+	withHost := func() *Router {
+		return &Router{Hosts: NewStringSet("t.example"), SocketHandlers: map[*HttpSocket]struct{}{}}
+	}
 	for _, read := range []string{"V0", "V2"} {
 		t.Run("the check read "+read, func(t *testing.T) {
 			u := NewUpgrades()
