@@ -234,7 +234,7 @@ id = "coding-agent/extensions/shortcut-reload-authority"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.onExtensionShortcut"
 family = "extensions-runtime"
 kind = "reload-dispatch-ownership"
-claim = "the first registered extension shortcut matching the key consumes it and runs its handler without blocking input, a rejected handler is shown as \"Error: Shortcut handler error: <message>\", and reload replaces the dispatch map so removed handlers stop and added handlers start"
+claim = "the extension shortcuts of the current runner (built with the effective keybindings, so a key bound to a reserved action is skipped and a freed default key is available) are tried in registration order against the raw input with matchesKey semantics (legacy and Kitty encodings, modifier order, case, key release events); the first match consumes the input and runs its handler on its own goroutine without blocking input, an input that matches none is not consumed, a rejected handler is shown as \"Error: Shortcut handler error: <message>\" (a subprocess lifecycle failure only once, D56), no shortcut installs no listener, and reload or a Session replacement replaces the listener so removed handlers stop and added handlers start, compared with Pi's own setupExtensionShortcuts over six directed key corpora"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_helpers.go#setupExtensionShortcutListener",
@@ -245,6 +245,10 @@ evidence = [
   "internal/codingagent/reload_resources_test.go#TestReloadRefreshesRealSubprocessShortcuts",
   "internal/codingagent/interactive_command_error_test.go#TestInteractiveShortcutDiagnosticOwnership",
   "test/parity/scenarios/extensions-runtime/10-shortcut-reload-authority.toml",
+  "internal/codingagent/extension_shortcut_contract_test.go#TestExtensionShortcutDispatchMatchesPi",
+  "internal/codingagent/extension_shortcut_contract_test.go#TestExtensionShortcutHandlerDoesNotBlockInput",
+  "internal/codingagent/extension_shortcut_contract_test.go#TestExtensionShortcutsFollowRemappedKeybindings",
+  "internal/codingagent/extension_shortcut_contract_test.go#TestExtensionShortcutListenerIsReplacedBySetup",
 ]
 
 [contract.upstream]
@@ -261,7 +265,7 @@ id = "coding-agent/extensions/select-dialog-lifecycle"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionSelector"
 family = "extensions-runtime"
 kind = "async-dialog-lifecycle"
-claim = "an extension selector resolves undefined at once for an aborted signal, joins the editor-slot dialog stack (it takes the editor slot and focus on the owning TUI loop and reports the blocked status, also from a focused custom component: a custom overlay gets focus back when the dialog is removed, an editor-slot component below it is shown again), hides a dialog already shown without settling it so the earlier dialog is shown again once this one closes, resolves the chosen option or undefined on cancel, timeout or abort, and its abort removes only its own dialog from the stack"
+claim = "an extension selector resolves undefined at once for an aborted signal and shows nothing (no dialog joins the stack, an active selector is not closed, no blocked status is reported), joins the editor-slot dialog stack (it closes an active selector, takes the editor slot and focus on the owning TUI loop, asks for a render, reports the blocked status question/title or, for a confirm, permission/title, also from a focused custom component: a custom overlay gets focus back when the dialog is removed, an editor-slot component below it is shown again), wires the tools-expand key to the tool output toggle, hides a dialog already shown without settling it so the earlier dialog is shown again once this one closes, resolves the chosen option or undefined on cancel, timeout or abort, and its abort removes only its own dialog from the stack without touching the slot, the focus or the blocked status of the visible one"
 status = "ported"
 pig_targets = [
   "internal/codingagent/ext_ui_context.go#runDialog",
@@ -292,6 +296,11 @@ evidence = [
   "test/parity/scenarios/extensions-runtime/83-extension-dialog-displacement.toml",
   "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
   "test/parity/scenarios/extensions-runtime/12-subprocess-tool-ui-cancel.toml",
+  "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogWithAnAbortedSignalShowsNothing",
+  "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogClosesTheActiveSelector",
+  "internal/codingagent/ext_ui_dialog_contract_test.go#TestRemovingAHiddenExtensionDialogLeavesTheSlotAlone",
+  "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogsRequestARenderWhenTheSlotChanges",
+  "internal/codingagent/ext_ui_dialog_test.go#TestExtensionDialogRemappingThroughOwnerLoop",
 ]
 
 [contract.upstream]
@@ -306,7 +315,7 @@ id = "coding-agent/extensions/input-dialog-lifecycle"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionInput"
 family = "extensions-runtime"
 kind = "async-dialog-lifecycle"
-claim = "an extension input resolves undefined at once for an aborted signal, joins the editor-slot dialog stack with focus on the owning TUI loop, also from a focused custom component (a custom overlay gets focus back when the dialog is removed, an editor-slot component below it is shown again), hides a dialog already shown without settling it, preserves an empty submission, resolves undefined on cancel, timeout or abort, and its abort removes only its own dialog from the stack"
+claim = "an extension input resolves undefined at once for an aborted signal and shows nothing, joins the editor-slot dialog stack with focus on the owning TUI loop (closing an active selector, asking for a render, reporting the blocked status question/title), also from a focused custom component (a custom overlay gets focus back when the dialog is removed, an editor-slot component below it is shown again), hides a dialog already shown without settling it, ignores its placeholder as Pi's ExtensionInputComponent does, preserves an empty submission, resolves undefined on cancel, timeout or abort, and its abort removes only its own dialog from the stack"
 status = "ported"
 pig_targets = [
   "internal/codingagent/ext_ui_context.go#runDialog",
@@ -337,6 +346,10 @@ evidence = [
   "test/parity/scenarios/extensions-runtime/83-extension-dialog-displacement.toml",
   "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
   "coding/extension/host/subprocess/push_proxy_test.go#TestUIBridge_EmptyDialogSubmissionIsSuccessful",
+  "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogWithAnAbortedSignalShowsNothing",
+  "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogClosesTheActiveSelector",
+  "internal/codingagent/ext_ui_dialog_contract_test.go#TestRemovingAHiddenExtensionDialogLeavesTheSlotAlone",
+  "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionInputIgnoresItsPlaceholder",
 ]
 
 [contract.upstream]
@@ -351,7 +364,7 @@ id = "coding-agent/extensions/editor-dialog-lifecycle"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionEditor"
 family = "extensions-runtime"
 kind = "async-dialog-lifecycle"
-claim = "an extension editor joins the editor-slot dialog stack with focus on the owning TUI loop with the prefill, also from a focused custom component (a custom overlay gets focus back when the dialog is removed, an editor-slot component below it is shown again), hides a dialog already shown without settling it, resolves the submitted text or undefined on cancel, and is removed from the stack when it closes"
+claim = "an extension editor joins the editor-slot dialog stack with focus on the owning TUI loop (closing an active selector, asking for a render, reporting the blocked status question/title) with the title, the prefill, the interactive keybindings and the settings' external editor command, also from a focused custom component (a custom overlay gets focus back when the dialog is removed, an editor-slot component below it is shown again), hides a dialog already shown without settling it, is not bound to a signal, resolves the submitted text or undefined on cancel, and is removed from the stack when it closes"
 status = "ported"
 pig_targets = [
   "internal/codingagent/ext_ui_context.go#runDialog",
@@ -381,6 +394,9 @@ evidence = [
   "test/extension-conformance/ui_concurrent_dialogs_test.go#TestConformance_ConcurrentDialogsAgreeAcrossSDKs",
   "test/parity/scenarios/extensions-runtime/83-extension-dialog-displacement.toml",
   "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
+  "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionEditorDialogIsBuiltFromTheModeAndSettings",
+  "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogClosesTheActiveSelector",
+  "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogsRequestARenderWhenTheSlotChanges",
 ]
 
 [contract.upstream]
@@ -503,7 +519,7 @@ id = "coding-agent/extensions/footer-status-composition"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setExtensionFooter"
 family = "extensions-runtime"
 kind = "footer-composition-ownership"
-claim = "setFooter disposes the previous custom footer, replaces the whole built-in footer (including its keyed-status row) with the factory's component, which receives the TUI, theme and footer data provider, and a cleared footer restores the built-in footer; repeated reload keeps one footer"
+claim = "setFooter disposes the previous custom footer first (before the next factory runs, once per component, nothing when none is set), then replaces the whole built-in footer (including its keyed-status row) with the factory's component, which receives the TUI, the active theme and the live footer data provider, or restores the built-in footer with its keyed-status row when cleared, and asks for a render after each change; repeated reload keeps one footer. The clear, replace and ordering boundaries are proven by the unit test through the real ExtUIContext; the parity scenarios drive install, empty footer and reload"
 status = "ported"
 pig_targets = [
   "internal/codingagent/ext_ui_context.go#SetFooter",
@@ -514,6 +530,7 @@ evidence = [
   "internal/codingagent/ext_ui_factories_test.go#TestExtUIContextHeaderAndFooterFactoriesBuildAndDisposeComponents",
   "test/parity/scenarios/extensions-runtime/15-footer-status-reload-composition.toml",
   "test/parity/scenarios/extensions-runtime/34-empty-custom-footer.toml",
+  "internal/codingagent/ext_ui_footer_contract_test.go#TestSetExtensionFooterFollowsUpstreamOrder",
 ]
 
 [contract.upstream]
@@ -528,12 +545,15 @@ id = "coding-agent/extensions/current-session-lifecycle-context"
 upstream_id = "input:packages/coding-agent/src/core/agent-session.ts#AgentSession._emitExtensionEvent"
 family = "extensions-runtime"
 kind = "session-replacement-lifecycle-order"
-claim = "every agent event reaches the current extension runner as Pi's typed extension event (agent_start, agent_end, turn_start with its index, message_start/update/end with an in-place message_end replacement normalized to empty content, tool_execution_*), and a resumed or replacement session exposes its resolved ID and absolute file to that runner before the handlers run"
+claim = "every agent event reaches the current extension runner as Pi's typed event in Pi's member order: agent_start (resetting the turn index), agent_end with its messages (no willRetry), turn_start under the session's turn index with the dispatch time, turn_end dispatching the boundary once per assistant message with the session's turn index unless the finish-turn hook already did (consumed once) and advancing the index for every turn_end, message_start, message_update with the provider event, message_end whose same-role replacement is normalized (missing or null content becomes an empty list for the user, assistant, toolResult and custom roles, never for system) and replaces the event's message in place, tool_execution_start/update/end (durationMs only when the event has one, including 0); a resumed or replacement session exposes its resolved ID and absolute file to that runner before the handlers run. Compared with Pi's own _emitExtensionEvent over 19 directed event sequences in the JSON a handler stringifies"
 status = "ported"
 pig_targets = [
   "internal/codingagent/event_bridge.go#DispatchAgentLoopEvent",
   "coding/session_extension_hooks.go#extensionEventHook",
   "coding/session.go#currentRunner",
+  "coding/session_boundaries.go#handleAgentEvent",
+  "coding/session_extension_hooks.go#normalizeReplacementContent",
+  "coding/session_extension_hooks.go#replaceMessageInPlace",
 ]
 evidence = [
   "coding/session_extension_hooks_test.go#TestMessageEndReplacementPersisted",
@@ -541,6 +561,7 @@ evidence = [
   "coding/session_test.go#TestAC54SessionReplaceRunnerRedirectsAgentLifecycle",
   "test/parity/scenarios/extensions-runtime/16-resumed-session-identity.toml",
   "test/parity/scenarios/json/09-json-extension-object-member-order.toml",
+  "coding/session_emit_extension_event_oracle_test.go#TestEmitExtensionEventMatchesPi",
 ]
 
 [contract.upstream]
@@ -1807,12 +1828,16 @@ id = "coding-agent/mcp/callback-page-render"
 upstream_id = "render:packages/coding-agent/src/extensions/mcp/oauth.ts#<module>.options.renderPage"
 family = "extensions-runtime"
 kind = "render-layout"
-claim = "a successful callback renders the success page with the MCP sign-in message and any other callback renders the error page with the page's message and details, as byte-identical HTML"
+claim = "a successful callback renders the success page with the MCP sign-in message and any other callback renders the error page with the page's message and details (absent, empty, markup, newlines and U+2028), as byte-identical HTML against Pi's oauthSuccessHtml and oauthErrorHtml"
 status = "ported"
-pig_targets = ["coding/mcpext/oauth.go#listenForCallback"]
+pig_targets = [
+  "coding/mcpext/oauth.go#listenForCallback",
+  "coding/mcpext/oauth.go#renderCallbackPage",
+]
 evidence = [
   "coding/mcpext/oauth_callback_page_internal_test.go",
   "test/parity/scenarios/slash-commands/24-mcp-callback-error-page.toml",
+  "coding/mcpext/oauth_callback_render_page_contract_test.go#TestMCPCallbackRenderPageMatchesPi",
 ]
 
 [contract.upstream]
@@ -4481,18 +4506,19 @@ id = "coding-agent/llama-search/handle-input"
 upstream_id = "input:packages/coding-agent/src/extensions/llama/ui.ts#HuggingFaceSearch.handleInput"
 family = "extensions-runtime"
 kind = "boundary-transition"
-claim = "tui.select.up and tui.select.down move the selection with wrap-around over the filtered results, tui.select.confirm takes an owner/repository query as typed or the selected result, tui.select.cancel closes, and every other key edits the input; a changed trimmed query starts a new search: fewer than two characters show the hint, a cached query shows its results, otherwise the status reads Searching and the search starts after 500 ms, aborting the previous one; frames, settlements and completed searches (with their abort flags) agree with Pi over 600 seeded scenarios on a virtual clock; a key after close starts no timer (Q12); tui.select.pageUp and tui.select.pageDown move the selection by ten results, clamped"
+claim = "tui.select.up and tui.select.down move the selection with wrap-around over the filtered results (nothing on an empty list), tui.select.pageUp and tui.select.pageDown move the selection by ten results and clamp, tui.select.confirm takes an owner/repository query as typed or the selected result, tui.select.cancel closes, and every other key edits the input; a changed trimmed query starts a new search while a key that leaves the trimmed query as it is keeps the pending 500 ms debounce: fewer than two characters show the hint, a cached query shows its results, otherwise the status reads Searching and the search starts after 500 ms, aborting the previous one; frames, settlements and completed searches (with their abort flags) agree with Pi over 600 seeded scenarios and eight directed page-key and debounce scenarios on a virtual clock; a key after close starts no timer (Q12)"
 status = "ported"
 pig_targets = [
   "internal/codingagent/llama/ui.go#HandleInput",
   "internal/codingagent/llama/ui.go#scheduleSearch",
-  "internal/codingagent/llama/ui.go#runSearch"
+  "internal/codingagent/llama/ui.go#runSearch",
 ]
 evidence = [
   "internal/codingagent/llama/search_oracle_test.go#TestLlamaSearchMatchesPi",
   "internal/codingagent/llama/search_oracle_test.go#TestLlamaSearchStartsNoSearchAfterClose",
   "test/parity/scenarios/extensions-runtime/76-llama-search.toml",
   "internal/codingagent/llama/ui_test.go#TestHuggingFaceSearchPageKeysMoveTenResults",
+  "internal/codingagent/llama/search_contract_test.go#TestLlamaSearchDirectedKeysMatchPi",
 ]
 
 [contract.upstream]
@@ -4847,7 +4873,7 @@ id = "coding-agent/interactive/render-initial-messages"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderInitialMessages"
 family = "extensions-runtime"
 kind = "resume-transcript-render"
-claim = "the initial render paints the context entries without clearing the loaded resources, adds each user message to the editor history, then shows the project-trust warning, then \"Session compacted N time(s)\" counting every compaction entry in the file"
+claim = "the initial render paints the context entries (updateFooter and populateHistory: each user message goes to the editor history) after the rows already in the chat without clearing them, then shows the project-trust warning, then \"Session compacted 1 time\" or \"Session compacted N times\" for the number of compaction entries of the whole file (a compaction on an abandoned branch counts, none shows nothing), in that order, with Pi's call order and status text taken from Pi's own renderInitialMessages for 0, 1, 2, 3, 9, 10, 11 and 100 compactions; an empty Session paints the trust warning alone"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_transcript.go#renderInitialMessages",
@@ -4858,6 +4884,9 @@ evidence = [
   "internal/codingagent/interactive_compaction_notice_test.go#TestRenderInitialMessagesShowsTheTrustWarningBeforeTheCompactionNotice",
   "internal/codingagent/resume_editor_history_test.go#TestInitialRenderPopulatesTheEditorHistory",
   "test/parity/scenarios/interactive-rendering/57-resume-initial-messages.toml",
+  "internal/codingagent/interactive_initial_messages_contract_test.go#TestRenderInitialMessagesMatchesPi",
+  "internal/codingagent/interactive_initial_messages_contract_test.go#TestRenderInitialMessagesCountsEveryCompactionOfTheFile",
+  "internal/codingagent/interactive_initial_messages_contract_test.go#TestRenderInitialMessagesKeepsTheLoadedRowsAndPaintsAnEmptySession",
 ]
 
 [contract.upstream]
@@ -4872,7 +4901,7 @@ id = "coding-agent/extensions/render-stack"
 upstream_id = "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderStack"
 family = "extensions-runtime"
 kind = "extension-error-stack-render"
-claim = "an extension error's stack renders below its message without its first line, each line trimmed, prefixed with two spaces and dimmed, in one padded text block with no spacer"
+claim = "showExtensionError adds the message block (\"Extension \\\"<path>\\\" error: <message>\" in the error colour, padded 1,0) and then, only when the stack has lines after its first, one ThemedText(1,0) of those lines each JavaScript-trimmed, prefixed with two spaces and dimmed, joined by newlines, with no spacer; a missing, empty or one-line stack adds no block, a blank frame stays a dimmed two-space row, U+FEFF is trimmed and U+0085 is not, CRLF frames lose the carriage return, narrow widths wrap, and the block takes the active theme when the tree is invalidated, byte for byte against Pi's own showExtensionError at four widths in the dark and light themes"
 status = "ported"
 pig_targets = [
   "internal/codingagent/interactive_extension_errors.go#showExtensionError",
@@ -4880,6 +4909,7 @@ pig_targets = [
 evidence = [
   "internal/codingagent/interactive_command_error_test.go#TestExtensionErrorHasNoAddedSpacers",
   "test/parity/scenarios/extensions-runtime/81-extension-error-stack.toml",
+  "internal/codingagent/extension_error_stack_contract_test.go#TestExtensionErrorStackMatchesPi",
 ]
 
 [contract.upstream]
