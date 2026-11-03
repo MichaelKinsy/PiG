@@ -2958,3 +2958,23 @@ Call-site markers: `internal/codingagent/interactive_queue_hint.go` (`dequeueHin
 Evidence: `TestInteractiveTerminalAppPlainUpDequeuesQueuedMessage` (a tool call holds the turn, a steering message is queued, plain Up with `TERM_PROGRAM=Apple_Terminal` restores it, the editor is cleared, the tool ends and no model request body contains the queued text; a request count cannot show this, since a queued steering message rides in the request that carries the tool result; red on 0d8500283a), `TestInteractiveQueuedHistoryRecallShowsTheCopyTipOncePerRun`, `TestInteractiveTerminalAppPlainUpKeepsPiBehaviorOutsideTheDequeueState`, `TestQueuedHintAndTipNameTheConfiguredDequeueKey` and `TestExtensionEditorKeepsPiUpBehavior` (`internal/codingagent/interactive_queue_hint_test.go`; the second drives a delegated remote editor and an installed editor factory), and the byte sweep `TestOptionUpEncodingsPerTerminalAgainstTheKeyDecoder`.
 
 Parity allowance: scenario `interactive-rendering/59-up-recalls-queued-message-copy-tip` compares the screen with Pi's byte for byte under `TERM_PROGRAM=tmux` and removes only the tip rows; scenario `interactive-rendering/60-terminal-app-up-dequeues-queued-message` states each side's outcome under `TERM_PROGRAM=Apple_Terminal`, where the screens differ by this record. Alt+Up bytes stay compared with Pi in `interactive-rendering/58-alt-up-dequeues-queued-message`.
+
+## D229 PiG ships no browser storage backend (`IndexedDbStorage`)
+
+What: Pi's `@earendil-works/pi-durable/storage/indexeddb` (`packages/durable/package.json` `./storage/indexeddb`, source `packages/durable/src/storage/indexeddb.ts`) exports `IndexedDbStorage`, a `Storage` backed by the browser's `IndexedDB`: `IndexedDbStorage.open` and `.delete` take an `IndexedDbStorageOptions` with an `indexedDB?: IDBFactory`, and every member (`mintId`, `conversation`, `scanConversations`, `entry`, `findLatestHeadMarker`, `scanEntries`, `task`, `scanTasks`, `submission`, `scanSubmissions`, `submissionByRequest`, `findDocument`, `document`, `scanDocuments`, `commit`, `close`) drives `IDBDatabase`, `IDBTransaction` and `IDBKeyRange`, which exist only in a browser (the file opens with `/// <reference lib="dom" />`). PiG is a Go process with no browser or WebAssembly build, so it has no `IndexedDbStorage`, no `IndexedDbStorageOptions`, and none of these members. The `Storage` contract is the one `durable/storage` (memory), `durable/storage/jsonl`, `durable/storage/sqlite` and `durable/storage/store` already implement.
+
+Why: a Go program cannot call `IndexedDB`. Porting the class would mean a browser or WebAssembly host that PiG does not ship, and a storage backend that nothing in a Go process can call would be dead code, which AGENTS.md deletes. Every backend a PiG process can run is covered by the shared conformance suite.
+
+Scope: the `./storage/indexeddb` subpath only: the class, its options, its 16 members with their call signatures and `commit`. Every other durable `Storage` backend keeps Pi's behavior.
+
+Owner decision: 2026-11-03, owner Michael Kinsy ("PiG ships no browser storage backend"), recorded in `handoffs/next/owner/2026-11-03-decisions.md` item 2; the 32 member rows, the class row and `commit` are designed out, citing D229.
+
+Call-site markers: `durable/storage/memory.go` (the package's backend list: memory, jsonl, sqlite and store are the Go backends; there is no browser one).
+
+Evidence: `packages/durable/test/indexeddb-storage.test.ts` runs against `fake-indexeddb`, a browser `IDBFactory` simulation in Node that has no Go counterpart; the same `registerStorageConformance` suite runs against the Go backends (`durable/storage/storage_read_contract_test.go`, `durable/storage/sqlite_pi_oracle_test.go`, `durable/storage/jsonl_pi_oracle_test.go`, `durable/storage/memory_pi_oracle_test.go`).
+
+Parity allowance: no scenario compares the browser backend, because PiG has none; `docs/parity/PORT_MAP.md` records `packages/durable/src/storage/indexeddb.ts` as n/a, citing D229.
+
+Remove when: a browser or WebAssembly build of PiG ships.
+
+SCRUTINIZED:approved

@@ -46053,6 +46053,10 @@
       "id": "D228",
       "title": "Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy",
       "entry": "BF-2359a0a"
+    },
+    {
+      "id": "D229",
+      "title": "PiG ships no browser storage backend (`IndexedDbStorage`)"
     }
   ],
   "exemptCommits": {

@@ -6,38 +6,3 @@ pkg:ai/utils/string-enum#StringEnum	ai	child-gap	ai/string_enum.go#StringEnum
 pkg:ai/utils/string-enum#StringEnum::call:0	ai	undecidable	ai/string_enum.go#StringEnum
 pkg:chord/next#isChordError	chord	child-gap	chord/next/data/errors.go#IsChordError
 pkg:chord/next#isChordError::call:0	chord	signature-mismatch	chord/next/data/errors.go#IsChordError
-pkg:durable/storage/indexeddb#IndexedDbStorage	durable	no-go-symbol	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:close	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:close::call:0	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:commit::call:0	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:conversation	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:conversation::call:0	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:document	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:document::call:0	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:entry	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:entry::call:0	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:entry::call:1	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:findDocument	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:findDocument::call:0	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:findLatestHeadMarker	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:findLatestHeadMarker::call:0	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:mintId	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:mintId::call:0	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanConversations	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanConversations::call:0	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanDocuments	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanDocuments::call:0	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanEntries	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanEntries::call:0	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanSubmissions	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanSubmissions::call:0	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanTasks	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:scanTasks::call:0	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:submission	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:submission::call:0	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:submissionByRequest	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:submissionByRequest::call:0	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:task	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorage::property:task::call:0	durable	child-gap	
-pkg:durable/storage/indexeddb#IndexedDbStorageOptions	durable	no-go-symbol	

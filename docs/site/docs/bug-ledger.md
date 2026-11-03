@@ -23098,6 +23098,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D225 | A thread-based SDK's wait for the run it started needs the SDK's yield helper | deliberate difference |
 | D226 | Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs | [BF-D226](#bf-d226) |
 | D228 | Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy | [BF-2359a0a](#bf-2359a0a) |
+| D229 | PiG ships no browser storage backend (`IndexedDbStorage`) | deliberate difference |
 
 ## Fix-titled commits that are not bugs in a release
 
