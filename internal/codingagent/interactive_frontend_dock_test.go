@@ -175,7 +175,7 @@ func TestFrontendDockReportsTheWorkingIndicator(t *testing.T) {
 		t.Fatal("an idle dock reports a working indicator")
 	}
 
-	m.handleAgentEvent(agent.AgentStartEvent{})
+	m.handleAgentEvent(agent.TurnStartEvent{})
 	m.tuiInst.Render()
 	working, ok := dockNode(t, session, "working")
 	if want := (frontend.Working{Kind: frontend.WorkingAgent, Message: "Working", Interval: 80 * time.Millisecond}); !ok || !reflect.DeepEqual(working, want) {

@@ -117,7 +117,7 @@ func TestTimerDrivenFramesReachTerminalWithoutInput(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				m, term := newTickRenderProbe(t, mode)
-				m.handleAgentEvent(agent.AgentStartEvent{})
+				m.handleAgentEvent(agent.TurnStartEvent{})
 				args, err := json.Marshal(map[string]any{"command": "sleep 600"})
 				if err != nil {
 					t.Fatal(err)
@@ -165,7 +165,7 @@ func TestSpinnerCadenceSurvivesDispatchJitter(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				m, term := newTickRenderProbe(t, mode)
-				m.handleAgentEvent(agent.AgentStartEvent{})
+				m.handleAgentEvent(agent.TurnStartEvent{})
 				m.tuiInst.Render()
 				term.take()
 				ctx, cancel := context.WithCancel(t.Context())
@@ -201,7 +201,7 @@ func TestSpinnerCadenceSurvivesDispatchJitter(t *testing.T) {
 func TestSpinnerReplacementKeepsItsFirstDeadline(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		m, term := newTickRenderProbe(t, "regular")
-		m.handleAgentEvent(agent.AgentStartEvent{})
+		m.handleAgentEvent(agent.TurnStartEvent{})
 		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 		go m.tickSpinner(ctx)
@@ -245,7 +245,7 @@ func TestStatusIndicatorRelabelsReachTerminalWithoutInput(t *testing.T) {
 					m.drainMainLoopOnce()
 					return widthx.StripAnsi(term.take())
 				}
-				m.handleAgentEvent(agent.AgentStartEvent{})
+				m.handleAgentEvent(agent.TurnStartEvent{})
 				m.tuiInst.Render()
 				term.take()
 
@@ -370,7 +370,7 @@ func TestGitBranchChangeReachesTerminalWhileIdle(t *testing.T) {
 func TestRetryCountdownSkipsNoSecondUnderSaturatedQueue(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		m, term := newTickRenderProbe(t, "regular")
-		m.handleAgentEvent(agent.AgentStartEvent{})
+		m.handleAgentEvent(agent.TurnStartEvent{})
 		m.handleAgentEvent(agent.AutoRetryStartEvent{Attempt: 1, MaxAttempts: 3, DelayMs: 5000})
 		screen := widthx.StripAnsi(term.take())
 

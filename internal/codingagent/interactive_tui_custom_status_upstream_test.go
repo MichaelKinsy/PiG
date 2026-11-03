@@ -62,7 +62,7 @@ func TestCustomEditorEmbeddedStatusEventPlacement(t *testing.T) {
 				kind    string
 				message string
 			}{
-				{agent.AgentStartEvent{}, "working", "Working"},
+				{agent.TurnStartEvent{}, "working", "Working"},
 				{agent.CompactionStartEvent{Reason: "manual"}, "compaction", "Compacting context... (escape to cancel)"},
 				{agent.AutoRetryStartEvent{Attempt: 1, MaxAttempts: 3, DelayMs: 1000}, "retry", "Retrying (1/3) in 1s... (escape to cancel)"},
 				{agent.SummarizationRetryAttemptStartEvent{Source: "branchSummary"}, "branchSummary", "Summarizing branch... (escape to cancel)"},
@@ -105,7 +105,7 @@ func TestCustomEditorStatusUpdatesAndReplacement(t *testing.T) {
 	m := statusBorderMode(t, true)
 	first := &fakeRemoteEditor{embedWorkingStatus: true}
 	m.setRemoteEditor(first)
-	m.handleAgentEvent(agent.AgentStartEvent{})
+	m.handleAgentEvent(agent.TurnStartEvent{})
 	m.setWorkingMessage(new("Indexing"))
 	m.setWorkingIndicator(&extension.WorkingIndicatorOptions{Frames: &[]string{"A", "B"}, IntervalMs: new(200.0)})
 	status := first.configs[len(first.configs)-1].WorkingStatus
@@ -157,7 +157,7 @@ func TestCustomEditorStatusEventPlacement(t *testing.T) {
 			event agent.AgentEvent
 			label string
 		}{
-			{"working", agent.AgentStartEvent{}, "Working"},
+			{"working", agent.TurnStartEvent{}, "Working"},
 			{"compaction", agent.CompactionStartEvent{Reason: "manual"}, "Compacting context... (escape to cancel)"},
 			{"compaction", agent.CompactionStartEvent{Reason: "threshold"}, "Auto-compacting... (escape to cancel)"},
 			{"compaction", agent.CompactionStartEvent{Reason: "overflow"}, "Context overflow detected, Auto-compacting... (escape to cancel)"},
