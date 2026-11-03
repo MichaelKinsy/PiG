@@ -348,19 +348,19 @@ func runRPCMode(ctx context.Context, flags Args, activePiglet *piglet.Piglet, re
 // the server writes through.
 type rpcModeOptions struct {
 	// exitCode receives the process exit code the server ends with.
-	exitCode          *int
-	host              *rpcHost
-	cancel            context.CancelFunc
-	shutdownGate      *rpcShutdownGate
-	stdoutClosed      *atomic.Bool
-	rawStdout         *stdoutQueue
-	responses         *rpcResponseTurn
-	writeRPC          func(any)
-	writeImmediate    func(any)
-	rpcUI             *rpcUIContext
-	promptWG          *sync.WaitGroup
-	bashWG            *sync.WaitGroup
-	commandWG         *sync.WaitGroup
+	exitCode       *int
+	host           *rpcHost
+	cancel         context.CancelFunc
+	shutdownGate   *rpcShutdownGate
+	stdoutClosed   *atomic.Bool
+	rawStdout      *stdoutQueue
+	responses      *rpcResponseTurn
+	writeRPC       func(any)
+	writeImmediate func(any)
+	rpcUI          *rpcUIContext
+	promptWG       *sync.WaitGroup
+	bashWG         *sync.WaitGroup
+	commandWG      *sync.WaitGroup
 }
 
 type rpcModeOptionsKey struct{}
