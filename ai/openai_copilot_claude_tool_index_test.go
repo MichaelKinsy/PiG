@@ -45,7 +45,7 @@ func TestOpenAICompletionsCopilotClaudeContentBlockIndexes(t *testing.T) {
 				t.Fatal(err)
 			}
 			var chunks []string
-			for _, line := range strings.Split(string(data), "\n") {
+			for line := range strings.SplitSeq(string(data), "\n") {
 				if payload, ok := strings.CutPrefix(line, "data: "); ok && payload != "[DONE]" {
 					chunks = append(chunks, payload)
 				}
