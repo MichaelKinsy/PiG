@@ -33,7 +33,6 @@ process.stdout.write(JSON.stringify(Type.Object({
 	verdict: Type.Union([Type.Literal("match"), Type.Literal("mismatch"), Type.Literal("inconclusive")]),
 	explanation: Type.String({ minLength: 1, maxLength: 2000 }),
 }, { additionalProperties: false })));`
-	//nolint:gosec // G204 (class b): program is node from exec.LookPath; the script is a constant and the argument is the path of the installed Pi comparator.
 	out, err := exec.CommandContext(t.Context(), node, "--input-type=module", "-e", script, typebox).Output()
 	if err != nil {
 		t.Fatalf("Pi's TypeBox: %v", err)
