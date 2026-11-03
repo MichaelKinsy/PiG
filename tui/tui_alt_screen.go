@@ -232,7 +232,7 @@ func newTuiAltScreen(out io.Writer, showHardwareCursor bool, options TuiAltScree
 	copyOnSelect := options.CopyOnSelect == nil || *options.CopyOnSelect
 	t := &TuiAltScreen{
 		tuiBase: tuiBase{
-			out:                out,
+			out:                stdoutWriter(out),
 			terminalBackground: &terminalBackgroundQueries{},
 			showHardwareCursor: showHardwareCursor,
 			now:                time.Now,
