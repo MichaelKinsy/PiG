@@ -136,7 +136,6 @@ func TestStdinInForegroundFollowsTheTerminalProcessGroup(t *testing.T) {
 		t.Fatalf("after the master closed the helper reported %q, want EIO or the no-controlling-terminal answer", last)
 	}
 }
-}
 
 // runForegroundCycle is the shell in TestRawModeEntryFromABackgroundGroupSurvivesTheStopAndFg: the session leader that starts a job in its own
 // process group, waits for the job to stop, then does what `fg` does (tcsetpgrp, then SIGCONT to the group).
