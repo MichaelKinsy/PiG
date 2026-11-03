@@ -2,16 +2,18 @@ package host
 
 import (
 	"context"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 )
 
-// Own test: the section a followed source's calls enter (Attempt.Follow: chordHost.enter) holds the host's delivery
+// Own test: a section of the host (chordHost.enter) holds the host's delivery
 // scheduler, so what two commits of one section change reaches a watch of the followed member as one call, the frames of
 // the section folded as the frames of one publication fold into the single microtask upstream queues for it. Without the
 // hold the first commit's frame is delivered while the section still runs.
@@ -74,4 +76,39 @@ func TestFollowObserverSectionHoldsTheDeliverySchedulerSoTwoCommitsOfOneSectionA
 		}
 	}
 	must(t, host.Close(background))
+}
+
+// sectionRecorder is a loop that records the sections it runs, in order, under its name.
+type sectionRecorder struct {
+	*Loop
+	name     string
+	sections *[]string
+}
+
+func (r sectionRecorder) Run(work func()) {
+	*r.sections = append(*r.sections, r.name)
+	r.Loop.Run(work)
+}
+
+// Own test: a publication step hands each host's followed calls to a section of that host, once: the calls of two sources of
+// one loop enter one section (not one each), and the source of another loop gets its own. Nothing enters before the step ends.
+func TestPublicationStepFlushesEachHostsFollowedCallsInOneSectionOfThatHost(t *testing.T) {
+	var sections []string
+	loopA := sectionRecorder{Loop: NewLoop(), name: "A", sections: &sections}
+	loopB := sectionRecorder{Loop: NewLoop(), name: "B", sections: &sections}
+	a1 := &followSource{loop: loopA, state: followState{kind: followDetached}}
+	b := &followSource{loop: loopB, state: followState{kind: followDetached}}
+	a2 := &followSource{loop: loopA, state: followState{kind: followDetached}}
+	ctx, end := chordctx.WithStep(context.Background())
+	call := chord.WatchCall[delta.JsonValue]{Kind: chord.WatchCallValue}
+	for _, source := range []*followSource{a1, b, a2} {
+		followObserverOf{source}.Advance(call, ctx)
+	}
+	if len(sections) != 0 {
+		t.Fatalf("sections %v entered before the step ended", sections)
+	}
+	end()
+	if want := []string{"A", "B"}; !reflect.DeepEqual(sections, want) {
+		t.Fatalf("sections %v, want %v: one section per host", sections, want)
+	}
 }
