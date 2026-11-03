@@ -187,6 +187,22 @@ func auditEINTR(fset *token.FileSet, path string, file *ast.File) []string {
 		}
 		return true
 	}
+	// sleepingCall is a call the audit demands a retry for: a seam call or a unix call that can sleep.
+	sleepingCall := func(node ast.Node) bool {
+		switch n := node.(type) {
+		case *ast.CallExpr:
+			fn, ok := n.Fun.(*ast.Ident)
+			return ok && (fn.Name == "makeRawTerminal" || fn.Name == "restoreTerminal")
+		case *ast.SelectorExpr:
+			pkg, ok := n.X.(*ast.Ident)
+			if !ok || aliases[pkg.Name] != "golang.org/x/sys/unix" {
+				return false
+			}
+			name := n.Sel.Name
+			return name == "Poll" || name == "Select" || name == "Read" || (strings.HasPrefix(name, "Ioctl") && name != "IoctlFileClone")
+		}
+		return false
+	}
 	for _, decl := range file.Decls {
 		allowedSeam := seamVar(decl)
 		var stack []ast.Node
@@ -197,7 +213,7 @@ func auditEINTR(fset *token.FileSet, path string, file *ast.File) []string {
 			}
 			stack = append(stack, node)
 			if call, ok := node.(*ast.CallExpr); ok {
-				if fn, ok := call.Fun.(*ast.Ident); ok && (fn.Name == "makeRawTerminal" || fn.Name == "restoreTerminal") && !retriedAtCallSite(stack) {
+				if fn, ok := call.Fun.(*ast.Ident); ok && (fn.Name == "makeRawTerminal" || fn.Name == "restoreTerminal") && !retriedAtCallSite(stack, sleepingCall) {
 					report(call.Pos(), fn.Name+" outside a loop that retries on EINTR for this call's error")
 				}
 			}
@@ -220,7 +236,7 @@ func auditEINTR(fset *token.FileSet, path string, file *ast.File) []string {
 			case "golang.org/x/sys/unix":
 				name := selector.Sel.Name
 				sleeps := name == "Poll" || name == "Select" || name == "Read" || (strings.HasPrefix(name, "Ioctl") && name != "IoctlFileClone")
-				if sleeps && !retriedAtCallSite(stack) {
+				if sleeps && !retriedAtCallSite(stack, sleepingCall) {
 					report(selector.Pos(), "unix."+name+" outside a loop that retries on EINTR for this call's error")
 				}
 			}
@@ -266,12 +282,17 @@ func TestEINTRAuditRequiresTheRetryNotTheMention(t *testing.T) {
 	}
 }
 
-// retriedAtCallSite reports whether the call at the top of stack is retried on EINTR: the innermost loop around it goes round again on an
-// EINTR test of the error this very call assigned. A loop that retries on some other call's error, or a call whose error is never tested in
-// the loop (a second unguarded call beside a guarded one), is not a retry.
-func retriedAtCallSite(stack []ast.Node) bool {
+// retriedAtCallSite reports whether the call at the top of stack is retried on EINTR: the innermost loop around it, inside the same function
+// body, goes round again on an EINTR test of the error this very call assigned, and that test is the first one after the call with no other
+// sleeping call between the call and the test. A loop that retries on some other call's error, a call whose error is never tested before the next
+// call in the loop (a second unguarded call that reuses err), or a call in a closure that the loop only creates, is not a retry. sleeps reports
+// whether a node is a call to audit.
+func retriedAtCallSite(stack []ast.Node, sleeps func(ast.Node) bool) bool {
 	loopIndex := -1
 	for i, node := range slices.Backward(stack) {
+		if _, ok := node.(*ast.FuncLit); ok {
+			return false
+		}
 		if _, ok := node.(*ast.ForStmt); ok {
 			loopIndex = i
 			break
@@ -280,34 +301,57 @@ func retriedAtCallSite(stack []ast.Node) bool {
 	if loopIndex < 0 {
 		return false
 	}
-	var assigned map[string]bool
+	loop := stack[loopIndex].(*ast.ForStmt)
+	var assign *ast.AssignStmt
 	for i := len(stack) - 1; i > loopIndex; i-- {
-		if assign, ok := stack[i].(*ast.AssignStmt); ok {
-			assigned = map[string]bool{}
-			for _, lhs := range assign.Lhs {
-				if ident, ok := lhs.(*ast.Ident); ok && ident.Name != "_" {
-					assigned[ident.Name] = true
-				}
-			}
+		if found, ok := stack[i].(*ast.AssignStmt); ok {
+			assign = found
 			break
+		}
+	}
+	if assign == nil {
+		return false
+	}
+	assigned := map[string]bool{}
+	for _, lhs := range assign.Lhs {
+		if ident, ok := lhs.(*ast.Ident); ok && ident.Name != "_" {
+			assigned[ident.Name] = true
 		}
 	}
 	if len(assigned) == 0 {
 		return false
 	}
-	for name := range retriedErrors(stack[loopIndex].(*ast.ForStmt)) {
-		if assigned[name] {
-			return true
+	// The next sleeping call after this one ends the window in which a test counts as this call's.
+	windowEnd := loop.End()
+	ast.Inspect(loop.Body, func(node ast.Node) bool {
+		if node != nil && node.Pos() >= assign.End() && node.Pos() < windowEnd && sleeps(node) {
+			windowEnd = node.Pos()
+		}
+		return true
+	})
+	for _, guard := range retryGuards(loop) {
+		if guard.pos < assign.End() || guard.pos >= windowEnd {
+			continue
+		}
+		for name := range guard.names {
+			if assigned[name] {
+				return true
+			}
 		}
 	}
 	return false
 }
 
-// retriedErrors returns the identifiers tested for EINTR by an if in loop that makes it go round again: an if on isEINTR or EINTR that
-// continues (the interrupted case), or an if on the negation that leaves the loop (the interrupted case falls through to the next iteration).
-// An if that returns on EINTR is no retry.
-func retriedErrors(loop *ast.ForStmt) map[string]bool {
-	names := map[string]bool{}
+type retryGuard struct {
+	pos   token.Pos
+	names map[string]bool
+}
+
+// retryGuards returns the ifs in loop that make it go round again on EINTR: an if on isEINTR or EINTR that continues (the interrupted case),
+// or an if on the negation whose body leaves the loop (the interrupted case falls through to the next iteration). Each carries the identifiers
+// its condition names. An if that returns on EINTR is no retry, and neither is a negated test whose body stays in the loop.
+func retryGuards(loop *ast.ForStmt) []retryGuard {
+	var guards []retryGuard
 	ast.Inspect(loop.Body, func(node ast.Node) bool {
 		stmt, ok := node.(*ast.IfStmt)
 		if !ok || !namesEINTR(stmt.Cond) {
@@ -315,7 +359,17 @@ func retriedErrors(loop *ast.ForStmt) map[string]bool {
 		}
 		retries := false
 		if not, ok := stmt.Cond.(*ast.UnaryExpr); ok && not.Op == token.NOT {
-			retries = true
+			ast.Inspect(stmt.Body, func(inner ast.Node) bool {
+				switch branch := inner.(type) {
+				case *ast.ReturnStmt:
+					retries = true
+				case *ast.BranchStmt:
+					if branch.Tok == token.BREAK || branch.Tok == token.GOTO {
+						retries = true
+					}
+				}
+				return true
+			})
 		} else {
 			ast.Inspect(stmt.Body, func(inner ast.Node) bool {
 				if branch, ok := inner.(*ast.BranchStmt); ok && branch.Tok == token.CONTINUE {
@@ -325,16 +379,18 @@ func retriedErrors(loop *ast.ForStmt) map[string]bool {
 			})
 		}
 		if retries {
+			guard := retryGuard{pos: stmt.Cond.Pos(), names: map[string]bool{}}
 			ast.Inspect(stmt.Cond, func(inner ast.Node) bool {
 				if ident, ok := inner.(*ast.Ident); ok {
-					names[ident.Name] = true
+					guard.names[ident.Name] = true
 				}
 				return true
 			})
+			guards = append(guards, guard)
 		}
 		return true
 	})
-	return names
+	return guards
 }
 
 func namesEINTR(expr ast.Expr) bool {

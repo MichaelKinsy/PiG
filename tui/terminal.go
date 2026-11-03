@@ -768,8 +768,9 @@ func (t *ProcessTerminal) writeUnlogged(data string) {
 // process.stderr that InteractiveMode.registerSignalHandlers adds are in Pi (interactive-mode.ts terminalErrorHandler).
 var terminalWriteErrorHandler atomic.Pointer[func(error)]
 
-// OnTerminalWriteError installs handler for every failed write to a ProcessTerminal's output and returns the call that removes it. The handler
-// runs on the writing goroutine with the output lock held and may end the process. It replaces an earlier handler.
+// OnTerminalWriteError installs handler for every failed terminal write that goes through WriteToTerminal (a ProcessTerminal's own output, the
+// renderer's raw and cursor writes, and the interactive mode's direct stdout writes) and returns the call that removes it. The handler runs on
+// the writing goroutine, with the output lock held for a ProcessTerminal write, and may end the process. It replaces an earlier handler.
 func OnTerminalWriteError(handler func(error)) (remove func()) {
 	registered := &handler
 	terminalWriteErrorHandler.Store(registered)
