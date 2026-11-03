@@ -114,6 +114,9 @@ func TestExample31ParkedDependencies(t *testing.T) {
 	notesRef := exGet(t, tab, notes, jsonObject())
 	exCall(t, notesRef, "add", jsonObject("text", "first"))
 	scopeEventually(t, "panel count", func() bool { return exValue(t, live, "count") == float64(1) })
+	// Pi's `await setTimeout(10)` after the add lets the `live` frame reach the panel's state watch before the references
+	// are released (a release ends a watch with the frames it has not delivered yet: 31-parked-dependencies.ts:139-142).
+	deliveredOn(tab)
 	headerRef.Release()
 	panelRef.Release()
 	live.Release()
