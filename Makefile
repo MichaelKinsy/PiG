@@ -843,7 +843,7 @@ durable-counts-update: durable-contract-setup ## Rewrite durable/contract/counts
 durable-contract: durable-contract-setup ## Run the Durable core conformance gate (CONTRACT sections 5-7) against the TinyGo, Go and native builds; per-lane pass/fail
 	@cd durable/contract && node cli/contract.mjs all $(DURABLE_CONTRACT_ARGS)
 
-parity-deps: interface-deps ## Build the Pi comparator from source at the pin (PIG_PARITY_PI_PUBLISHED=1 installs the published release of a tag pin) and the TypeScript compiler its scenarios import
+parity-deps: interface-deps durable-interop-deps ## Build the Pi comparator from source at the pin (PIG_PARITY_PI_PUBLISHED=1 installs the published release of a tag pin) and the TypeScript compiler its scenarios import
 	@$(PIN_TOOL) install-oracle
 	@python3 automation/ci/npm-locked.py internal/typebox/testdata/npm
 	@python3 automation/ci/npm-locked.py ai/testdata/sdk
