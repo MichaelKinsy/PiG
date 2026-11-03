@@ -105,6 +105,11 @@ func TestExample31ParkedDependencies(t *testing.T) {
 	})
 	live := exGet(t, tab, panel, jsonObject("id", float64(1)))
 	exEqual(t, "panel live, count", exValue(t, live, "count"), float64(0))
+	// Pi's `await tab.get(...)` and the awaits after it run the queued microtasks, so the `live` frame the panel's state
+	// watch was advanced with has reached its listener before the references are released. A release ends a watch and drops
+	// the frames it has not delivered (ref-state.ts `released`: `watch.end`; watch.ts `#terminate`: "drop what is pending").
+	// The read above ran in a section of the tab, so the section that made the panel live has advanced every frame.
+	deliveredOn(tab)
 	panelMu.Lock()
 	if panels != 1 {
 		t.Fatalf("factory runs: %d", panels)
@@ -114,9 +119,6 @@ func TestExample31ParkedDependencies(t *testing.T) {
 	notesRef := exGet(t, tab, notes, jsonObject())
 	exCall(t, notesRef, "add", jsonObject("text", "first"))
 	scopeEventually(t, "panel count", func() bool { return exValue(t, live, "count") == float64(1) })
-	// Pi's `await setTimeout(10)` after the add lets the `live` frame reach the panel's state watch before the references
-	// are released (a release ends a watch with the frames it has not delivered yet: 31-parked-dependencies.ts:139-142).
-	deliveredOn(tab)
 	headerRef.Release()
 	panelRef.Release()
 	live.Release()
