@@ -29,6 +29,7 @@ import re
 import shlex
 import subprocess
 import sys
+import tarfile
 import tomllib
 from pathlib import Path
 
@@ -178,6 +179,27 @@ def derived(pin: Pin) -> dict[str, str]:
     return out
 
 
+INSTALL_LOCK_DIR = "bench/k8s/image/pi-agent"
+
+
+def install_lock(pin: Pin) -> dict[str, bytes]:
+    """Pi's release-published install pair, as the pinned source tarball holds it (packages/coding-agent/install-lock).
+    bench/k8s/image/pi-agent keeps it unmodified: npm would rewrite the lock, and k8sbench pins the published hashes. The
+    mirror drops package lockfiles, so the tarball (cached, downloaded on a miss) is the source."""
+    wanted = {f"packages/coding-agent/install-lock/{name}": name for name in ("package.json", "package-lock.json")}
+    found: dict[str, bytes] = {}
+    with tarfile.open(pinlib.tarball(pin.tag, True) if pin.kind == "tag" else pinlib.tarball(pin.commit, False)) as archive:
+        for member in archive:
+            name = wanted.get(member.name.split("/", 1)[-1])
+            if name and member.isfile():
+                found[name] = archive.extractfile(member).read()
+                if len(found) == len(wanted):
+                    break
+    if len(found) != len(wanted):
+        raise PinError(f"Pi {pin.version}'s tarball has no packages/coding-agent/install-lock pair")
+    return found
+
+
 def cmd_sync(args: argparse.Namespace) -> None:
     pin = pinlib.committed()
     wanted = derived(pin)
@@ -192,11 +214,17 @@ def cmd_sync(args: argparse.Namespace) -> None:
                 for r, _t, lock in RULES:
                     if r == rel and lock:
                         changed_locks.add(lock)
+    lock_pair = install_lock(pin)
+    stale_pair = [f"{INSTALL_LOCK_DIR}/{name}" for name, data in lock_pair.items() if (ROOT / INSTALL_LOCK_DIR / name).read_bytes() != data]
     if args.check:
+        stale += stale_pair
         if stale:
             raise PinError("derived from .upstream/pin but stale (run `make pin-sync`): " + ", ".join(stale))
-        print(f"pin-check: {len(wanted)} derived files match Pi {pin.version}")
+        print(f"pin-check: {len(wanted) + len(lock_pair)} derived files match Pi {pin.version}")
         return
+    for name, data in lock_pair.items():
+        (ROOT / INSTALL_LOCK_DIR / name).write_bytes(data)
+    stale += stale_pair
     for directory in sorted(changed_locks):
         npm = "npm"
         print(f"+ npm install --package-lock-only in {directory}", file=sys.stderr, flush=True)
