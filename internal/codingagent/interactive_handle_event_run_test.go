@@ -201,12 +201,15 @@ func TestHandleEventBashExecutionUpdateChangesNothing(t *testing.T) {
 // settled event is handled.
 func TestHandleEventRunSettledEndsASessionAskedToShutDownDuringTheRun(t *testing.T) {
 	m, ctx, _ := newLifecycleMode(t)
+	started := make(chan chan struct{}, 1)
 	m.runTurn(ctx, "", func(context.Context) ([]agent.AgentMessage, error) {
 		m.requestExtensionShutdown()
+		m.queueMu.Lock()
+		started <- m.turnSettled
+		m.queueMu.Unlock()
 		return nil, nil
 	})
-	settled := m.turnSettled
-	<-settled
+	<-<-started
 	if m.requestExit.Load() {
 		t.Fatal("ctx.shutdown() during the run ended the session before the run settled")
 	}

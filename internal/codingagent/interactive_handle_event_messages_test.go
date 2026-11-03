@@ -86,7 +86,7 @@ func TestHandleEventMessageEndShowsTheNoticesOfAFinishedResponseOnly(t *testing.
 			p.handleAgentEvent(agent.MessageEndEvent{Message: missingCacheMessage(tc.stop, tc.message)})
 			got := p.chat()
 			dropped, miss := strings.Index(got, "Anthropic dropped 1 thinking block"), strings.Index(got, "Cache miss")
-			if tc.notices && dropped < 0 || miss <= dropped {
+			if tc.notices && (dropped < 0 || miss <= dropped) {
 				t.Fatalf("chat = %q, want the thinking-drop notice and then the cache-miss notice", got)
 			}
 			if !tc.notices && (dropped >= 0 || miss >= 0) {
