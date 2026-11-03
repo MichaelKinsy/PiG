@@ -300,7 +300,7 @@ evidence = [
   "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogClosesTheActiveSelector",
   "internal/codingagent/ext_ui_dialog_contract_test.go#TestRemovingAHiddenExtensionDialogLeavesTheSlotAlone",
   "internal/codingagent/ext_ui_dialog_contract_test.go#TestExtensionDialogsRequestARenderWhenTheSlotChanges",
-  "internal/codingagent/ext_ui_dialog_test.go#TestExtensionDialogRemappingThroughOwnerLoop",
+  "internal/codingagent/extension_dialog_remapping_test.go#TestExtensionDialogRemappingThroughOwnerLoop",
 ]
 
 [contract.upstream]

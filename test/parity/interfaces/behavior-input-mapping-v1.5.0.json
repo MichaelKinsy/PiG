@@ -663,7 +663,7 @@
         "internal/codingagent/ext_ui_dialog_stack_test.go#TestSessionReplacementDisposesEveryExtensionDialog",
         "internal/codingagent/ext_ui_dialog_test.go#TestAC48SubprocessDialogsRunOnUILoop",
         "internal/codingagent/ext_ui_dialog_test.go#TestExtUIContextDialogCancellationIsExplicit",
-        "internal/codingagent/ext_ui_dialog_test.go#TestExtensionDialogRemappingThroughOwnerLoop",
+        "internal/codingagent/extension_dialog_remapping_test.go#TestExtensionDialogRemappingThroughOwnerLoop",
         "test/extension-conformance/ui_concurrent_dialogs_test.go#TestConformance_ConcurrentDialogsAgreeAcrossSDKs",
         "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
         "test/parity/scenarios/extensions-runtime/12-subprocess-tool-ui-cancel.toml",
