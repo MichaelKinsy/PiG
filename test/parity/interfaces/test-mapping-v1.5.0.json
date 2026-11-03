@@ -8173,7 +8173,7 @@
         "durable/codemode/output_tool_test.go#TestDurableCodeModeOutputAndToolSearch",
         "durable/codemode/output_tool_test.go#TestDiscoveryGlobalsCheckTheirArguments"
       ],
-      "rationale": "Pi v1.5.0 re-record: the durable code mode cases (including the one of #11015) and the output and tool search cases run in the evidence files."
+      "rationale": "Pi v1.5.0 re-record: the durable code mode cases and the output and tool search cases run in the evidence files; the v1.5.0 changes are ported with the same values: case #11015 (\"resolves the built-in read with an image's block, which image() shows, and with a text file's text\": the same PNG, `hello` and four checks, output_tool_test.go) and the journal-commit counter that follows `observeCommits` (renamed from `subscribeCommits`, codemode_test.go)."
     },
     {
       "path": "packages/durable/test/conversation-transcript.test.ts",
@@ -8643,6 +8643,7 @@
       "upstreamTestHash": "sha256:d668d28507023fe498e47bea0e9b67e479d100f8f09ca88aa813ce483334437b",
       "evidence": [
         "durable/storage/jsonl/jsonl_storage_test.go",
+        "durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream",
         "durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageConformance",
         "durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStoragePoisonsWhenAnAppendFailsAfterItsBatchesApplied",
         "durable/storage/jsonl/jsonl_storage_test.go#TestJsonlStorageBatches",
@@ -8656,6 +8657,7 @@
       "upstreamTestHash": "sha256:ee3a342966cb1439df7388f886c46f74ba7d5cb56d77af9390285948f3f279c0",
       "evidence": [
         "durable/storage/memory_storage_test.go",
+        "durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream",
         "durable/storage/memory_storage_test.go#TestMemoryStorageConformance",
         "durable/storage/memory_storage_test.go#TestMemoryStorageDeliversTheReceiptsOfTheBatchesAppliedBeforeOneWhoseApplyThrowsThenRejects",
         "durable/storage/backend_reads_test.go#TestBackendReadsAgreeWithMemory"
@@ -8686,9 +8688,10 @@
         "durable/session/session_adoption_test.go#TestSessionAdoptionAfterStorageStoredACommit",
         "durable/session/session_adoption_test.go#TestPublicationAfterStorage",
         "durable/session/session_adoption_jsonl_test.go#TestPublishesAJsonlCommitOnceTheStorageReclaimedItsSidecarAndResolved",
-        "durable/session/session_adoption_internal_test.go#TestSessionFailsWithItsOwnAdoptionErrorWhichNeverReachesStorage"
+        "durable/session/session_adoption_internal_test.go#TestSessionFailsWithItsOwnAdoptionErrorWhichNeverReachesStorage",
+        "durable/session/session_adoption_internal_test.go#TestWriterDiscardsAPartOnlyWhenStorageRejectedBeforeItsReceipt"
       ],
-      "rationale": "Pi v1.5.0 re-record: every case runs in the evidence files; the case that a Session fails with its own adoption error, which never reaches Storage, runs on an internal Session and the JSONL sidecar case on a JSONL storage. Pi's `throw of its own observers` is the Go panic of its own observers. The two assertions on a spy of Transaction.prototype.discard (not called after adoption; called once before it) have no Go counterpart, as Go cannot patch a method: the failed Session and the storage order are asserted instead."
+      "rationale": "Pi v1.5.0 re-record: every case runs in the evidence files; the case that a Session fails with its own adoption error, which never reaches Storage, runs on an internal Session and the JSONL sidecar case on a JSONL storage. Pi's `throw of its own observers` is the Go panic of its own observers. The two assertions on a spy of Transaction.prototype.discard (not called after Storage rejected after its receipt, called once when it rejected before one) are TestWriterDiscardsAPartOnlyWhenStorageRejectedBeforeItsReceipt: the Session hands the Writer `Discard: tx.discard` and the Writer alone decides whether to call it, so the test counts a part's Discard on a real Writer with a Storage that rejects after the receipt (\"reclaim failed\": 0 discards, one publication) and before it (\"disk full\": 1 discard, no publication)."
     },
     {
       "path": "packages/durable/test/session-cached-storage.test.ts",
@@ -8814,7 +8817,7 @@
         "durable/session/session_observers_test.go#TestObserveDocDetachedDuringACommit",
         "durable/session/session_observers_test.go#TestObserveDocKeepsNothingAlive"
       ],
-      "rationale": "Pi v1.5.0 re-record: the cases run in the evidence files, the two WeakRef/gc cases on Go weak pointers and runtime.GC (TestObserveDocKeepsNothingAlive), and the end of an observer at the Session's close is `failed` with `session closed`, a watch's `ended` (Pi session.ts closeEnds). One case is designed out under the owner's class approval of Promise/thenable mechanics (owner 2026-10-29): the case \"reports an observer whose call returns a rejected promise, then detaches it and ends it `listener_error`\" tests a rejected promise; a Go observer's Advance returns no value and one that panics is reported, detached and ended listener_error, asserted by TestObserveDoc (\"reports a throwing observer, detaches it and ends it with the error\").",
+      "rationale": "Pi v1.5.0 re-record: the cases run in the evidence files, the two WeakRef/gc cases on Go weak pointers and runtime.GC (TestObserveDocKeepsNothingAlive), and the end of an observer at the Session's close is `failed` with `session closed`, a watch's `ended` (Pi session.ts closeEnds). One case is designed out under the owner's class approval of Promise/thenable mechanics (owner 2026-10-29): the case \"reports an observer whose call returns a rejected promise, then detaches it and ends it `listener_error`\" tests a rejected promise; a Go observer's Advance returns no value and one that panics is reported, detached and ended listener_error, asserted by TestObserveDoc (\"reports a throwing observer, detaches it and ends it with the error\"). The missing scope ID case checks the message of documents.ts:131, as the durable package has no TypeError marker.",
       "designedOutCases": [
         "observeDoc throwing asynchronously › reports an observer whose call returns a rejected promise, then detaches it and ends it `listener_error`"
       ]
@@ -8875,11 +8878,12 @@
       "upstreamTestHash": "sha256:543f793d04c64455b24b1fc7cb0b05c3db9e1f0be29c2cb7e1f6e81846e239f8",
       "evidence": [
         "durable/storage/sqlite/sqlite_storage_test.go",
+        "durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream",
         "durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageConformance",
         "durable/storage/sqlite/sqlite_storage_test.go#TestSqliteStorageBatches",
         "durable/storage/backend_reads_test.go#TestBackendReadsAgreeWithMemory"
       ],
-      "rationale": "Pi v1.5.0 re-record: the conformance suite, the pico storage, the record key order, the batches and the reads agreeing with memory run in the evidence files; the six upstream cases of SqliteStorage batches run as TestSqliteStorageBatches with each failure mode of the check read: Error, primitive and undefined rejections become the error the read returns (a message, a bare string, an empty one) and the synchronous throw its panic, each rejecting the whole call with nothing received or stored."
+      "rationale": "Pi v1.5.0 re-record: the 32-case conformance suite (durabletest, including the continue submissions and the creation-plus-change refusal new in v1.5.0), the pico storage, the record key order, the batches and the reads agreeing with memory run in the evidence files; the six upstream cases of SqliteStorage batches run as TestSqliteStorageBatches with each failure mode of the check read: Error, primitive and undefined rejections become the error the read returns (a message, a bare string, an empty one) and the synchronous throw its panic, each rejecting the whole call with nothing received or stored."
     },
     {
       "path": "packages/durable/test/storage-runtime-boundary.test.ts",
@@ -8900,6 +8904,7 @@
       "upstreamTestHash": "sha256:1c13c21282bbf46e11f942b1b8ac01c24991d9f3825446f3a9e5128df9216e6a",
       "evidence": [
         "durable/storage/store/store_storage_test.go",
+        "durable/durabletest/storage_conformance_cases_test.go#TestCreateStorageConformanceCasesMatchUpstream",
         "durable/storage/store/store_storage_test.go#TestStoreStorageConformance",
         "durable/storage/store/store_storage_test.go#TestStoreStorageCommits",
         "durable/storage/store/store_storage_host_test.go",
@@ -8914,7 +8919,6 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:63729aa1281bb151cb5de3ffe8dc34f201a13cb26eb8a96687b785d0b25bc2fd",
       "evidence": [
-        "durable/harness/system_order_cache_e2e_test.go#TestCommittedOrderPutsTheLeadingSystemMessageBehindTheLeadingUsers",
         "durable/harness/system_order_cache_e2e_live_test.go#TestSystemMessageOrderCacheE2ELive"
       ],
       "rationale": "Pi v1.5.0 re-record: the committed order that puts the leading system message behind the leading users runs offline; the live cache case runs where a provider key is set."

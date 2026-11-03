@@ -692,14 +692,13 @@ func noteBatches(t *testing.T, storage *sqlite.SqliteStorage, count int) ([]dura
 // undefined become the error the read returns (a message, a bare string, an empty one), and its synchronous throw the
 // panic of the read.
 type readFailure struct {
-	name   string
-	fail   func() error
-	panics bool
+	name string
+	fail func() error
 }
 
 var readFailures = []readFailure{
 	{name: "an Error rejection", fail: func() error { return fmt.Errorf("disk I/O error") }},
-	{name: "a synchronous throw", fail: func() error { panic(errors.New("disk I/O error")) }, panics: true},
+	{name: "a synchronous throw", fail: func() error { panic(errors.New("disk I/O error")) }},
 	{name: "a primitive rejection", fail: func() error { return errors.New("disk I/O error") }},
 	{name: "an undefined rejection", fail: func() error { return errors.New("") }},
 }

@@ -115073,8 +115073,7 @@
       ],
       "evidence": [
         "test:chord/next/store/store_test.go#TestStore",
-        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch",
-        "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits"
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch"
       ]
     },
     {
@@ -252332,8 +252331,7 @@
         "call:durable/storage/store/storage.go#StoreStorage.Publishing"
       ],
       "evidence": [
-        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch",
-        "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits"
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch"
       ]
     },
     {
@@ -252353,8 +252351,7 @@
         "call:durable/storage/store/storage.go#StoreStorage.Publishing"
       ],
       "evidence": [
-        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch",
-        "test:durable/storage/store/store_storage_test.go#TestStoreStorageCommits"
+        "test:durable/storage/store/store_storage_host_test.go#TestStoreStorageCommitsInsideTheHostsBatch"
       ]
     },
     {

@@ -481,25 +481,6 @@ func TestStoreStorageReads(t *testing.T) {
 }
 
 func TestStoreStorageCommits(t *testing.T) {
-	t.Run("publishes inside the attached host's batch, and plainly without a host", func(t *testing.T) {
-		store := memoryStore(t).(*chordstore.ChordStore)
-		storage := value(Open(background, store, "harness"))
-		var plain []bool
-		storage.Publishing(background, func() { plain = append(plain, store.Batch() == nil) })
-		if !reflect.DeepEqual(plain, []bool{true}) {
-			t.Fatalf("plain publication = %v, want [true]", plain)
-		}
-		must(t, store.Attach(chordstore.Attachment{Failed: func(error) {}, Batch: state.NewBatch(func(state.BatchError) {}, nil)}))
-		var running []bool
-		for range 2 {
-			storage.Publishing(background, func() { running = append(running, store.Batch().Running()) })
-		}
-		if !reflect.DeepEqual(running, []bool{true, true}) {
-			t.Fatalf("publication in the batch = %v, want [true true]", running)
-		}
-		must(t, store.Close(background))
-	})
-
 	t.Run("counts four statements for an entry append and for a delta, with a host attached", func(t *testing.T) {
 		meter := newMeter(t)
 		store := memoryStore(t).(*chordstore.ChordStore)

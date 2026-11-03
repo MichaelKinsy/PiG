@@ -180,8 +180,9 @@ func TestMemoryStorageDeliversTheReceiptsOfTheBatchesAppliedBeforeOneWhoseApplyT
 			{failingApplyWrite{entry(second)}},
 		}, func(index int, seq durable.Seq) { receipts = append(receipts, receipt{index, seq}) })
 	}()
-	if thrown == nil {
-		t.Fatal("Commit returned although the second batch's apply cannot run")
+	// Pi's `rejects.toBe(failure)`: the very error its apply threw; here the panic of apply's own type switch.
+	if want := "durable storage: unresolved entry write"; thrown != want {
+		t.Fatalf("Commit threw %#v, want %q", thrown, want)
 	}
 	if want := []receipt{{0, root + 1}}; !reflect.DeepEqual(receipts, want) {
 		t.Fatalf("receipts = %v, want %v", receipts, want)

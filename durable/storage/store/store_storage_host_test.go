@@ -217,6 +217,7 @@ func TestStoreStorageCommitsInsideTheHostsBatch(t *testing.T) {
 		})
 		value(kernel.CommitWith(background, func(tx *session.Transaction) (any, error) { return tx.CreateRootConversation() }, session.TransactionScope{}))
 		var group sync.WaitGroup
+		committed := make(chan error, 2)
 		for _, kind := range []string{"a", "b"} {
 			group.Add(1)
 			go func() {
@@ -224,10 +225,14 @@ func TestStoreStorageCommitsInsideTheHostsBatch(t *testing.T) {
 				_, err := kernel.Commit(background, func(tx durable.Tx) (any, error) {
 					return tx.AppendEntry(durable.ROOT_CONVERSATION_ID, durable.EntryDraft{Kind: kind})
 				})
-				must(t, err)
+				committed <- err
 			}()
 		}
 		group.Wait()
+		close(committed)
+		for err := range committed {
+			must(t, err)
+		}
 		mu.Lock()
 		got := append([]bool(nil), running...)
 		mu.Unlock()
