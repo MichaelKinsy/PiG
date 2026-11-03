@@ -1086,6 +1086,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/env/src/remote-env.ts` | `env/remote_env.go + env/paths.go` | ✅ |
 | `packages/env/src/ssh.ts` | `env/ssh.go` | ✅ |
 | `packages/env/src/terminal.ts` | `env/terminal.go` | ✅ |
+| `packages/env/src/process.ts` | `env/process.go` (the tests of packages/env/test/process.test.ts are in env/process_test.go and run against Pi's own daemon as oracle once the pin has the `process` operation) | ✅ |
 | `packages/env/src/watch.ts` | `env/watch.go` | ✅ |
 | `packages/env/src/list-files.ts` | `env/list_files.go` | ✅ |
 
@@ -1104,6 +1105,7 @@ The daemon is a Go program with Pi's command line and wire protocol (D96); the R
 | `packages/env/daemon/src/main.rs` | `env/daemon/server.go`, `env/cmd/pi-env/main.go` (tests in env/daemon/server_test.go and env/cmd/pi-env/main_test.go) | ✅ |
 | `packages/env/daemon/src/output.rs` | `env/daemon/output.go` (tests in env/daemon/output_test.go) | ✅ |
 | `packages/env/daemon/src/pty.rs` | `env/daemon/pty.go + env/daemon/pty_unix.go + env/daemon/pty_linux.go (Linux, Android and macOS terminals through /dev/ptmx and x/sys/unix, no cgo, macOS in pty_darwin; other systems answer ENOTSUP from pty_other; the client tests in env/terminal_test.go and env/terminal_linux_test.go run against Pi's own daemon as oracle)` | ✅ |
+| `packages/env/daemon/src/process.rs` | `env/daemon/process.go + env/daemon/process_start.go + env/daemon/process_unix.go + env/daemon/process_windows.go` (stdin queue and target lookup shared with pty in env/daemon/pty.go; tests in env/process_test.go) | ✅ |
 | `packages/env/daemon/src/scan.rs` | `durable/env/line_scan.go` (LineScanner; tests in env/daemon/scan_test.go) | ✅ |
 | `packages/env/daemon/src/sys/mod.rs` | `(Rust module barrel: Go selects sys_unix.go or sys_windows.go by build constraint)` | n/a |
 | `packages/env/daemon/src/sys/unix.rs` | `env/daemon/sys_unix.go` | ✅ |
