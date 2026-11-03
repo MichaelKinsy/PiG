@@ -83,13 +83,13 @@ func TestInteractiveTerminalAppPlainUpDequeuesQueuedMessage(t *testing.T) {
 	pair, release := queuedDuringTool(t)
 	pair.harness.Do(func() { pair.harness.Key(plainUp) })
 	if got := pair.harness.EditorText(); got != "also update the docs" {
-		t.Fatalf("editor after Up = %q, want the queued message restored", got)
+		t.Errorf("editor after Up = %q, want the queued message restored", got)
 	}
 	if steering, followUp := pair.harness.QueuedMessages(); steering != 0 || followUp != 0 {
-		t.Fatalf("queues after Up: steering=%d followUp=%d, want empty", steering, followUp)
+		t.Errorf("queues after Up: steering=%d followUp=%d, want empty", steering, followUp)
 	}
 	if got := pair.harness.PendingDisplay(); strings.TrimSpace(got) != "" {
-		t.Fatalf("pending display after Up = %q, want empty", got)
+		t.Errorf("pending display after Up = %q, want empty", got)
 	}
 	pair.harness.Do(func() { pair.harness.SetEditorText("") })
 	finishTool(t, pair, release)

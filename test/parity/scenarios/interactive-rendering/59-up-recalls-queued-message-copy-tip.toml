@@ -54,8 +54,9 @@ wait_timeout_seconds = 15
 
 [[tmux.steps]]
 keys = ["hex:1b 5b 41"]
+# The recalled text is a second "queued steer text" on screen in both binaries; the tip row is PiG's. The Working spinner animates, so the pane never rests: the capture follows the waits at once, mid-pause of the tool.
+wait_contains = ["queued steer text"]
 wait_visible_contains_pig = ["That's a copy."]
-wait_stable_milliseconds = 800
 wait_timeout_seconds = 15
 
 [assert]

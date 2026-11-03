@@ -50,12 +50,15 @@ wait_timeout_seconds = 15
 
 [[tmux.steps]]
 keys = ["hex:1b 5b 41"]
-wait_stable_milliseconds = 800
+# PiG restores the queue; Pi recalls history and has nothing new to wait for. tmux delivers the bytes of the next step in order.
+wait_visible_contains_pig = ["Restored 1 queued message to editor"]
 wait_timeout_seconds = 15
 
 [[tmux.steps]]
 keys = ["BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace", "BSpace"]
-wait_contains = ["LIVE-TOOL-24"]
+# The tool ends after about 11 s. PiG answers the tool result; Pi sends the still-queued message, which test-faux does not know.
+wait_visible_contains_pig = ["LIVE-TOOL-DONE"]
+wait_visible_contains_pi = ["unhandled request"]
 wait_not_contains = ["Working"]
 wait_timeout_seconds = 40
 

@@ -841,6 +841,10 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 	// and newlines are editor content: Ctrl+D must fall through to the editor's
 	// delete-char-forward binding rather than exit.
 	editorEmpty := m.editor.Text() == ""
+	// pig divergence (D228): Terminal.app sends Option+Up as plain Up, so with an empty editor and a queued message plain Up is the dequeue key there.
+	if action == actionInsert && tui.MatchesKeyID(data, "up") && m.appleTerminalUpDequeues() {
+		action = actionDequeue
+	}
 	// When the slash-autocomplete popup is open, intercept
 	// Esc (dismiss) and Enter (accept + maybe submit) before the
 	// idle/working state machine sees them. Tab and arrows are
@@ -1136,7 +1140,11 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 		return nil
 
 	default:
+		recalled := m.watchQueuedHistoryRecall(data)
 		m.editor.HandleInput(data)
+		if recalled != nil {
+			recalled()
+		}
 	}
 	m.tuiInst.RequestRender()
 	return nil
