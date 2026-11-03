@@ -205,7 +205,7 @@ func TestMarkdownDefaultColorEqualsAColorTextStyle(t *testing.T) {
 // markdown.ts renderTable returns no lines for a table without a header cell.
 func TestMarkdownTableWithoutHeaderCellsRendersNothing(t *testing.T) {
 	for _, width := range []int{0, 1, 5, 80} {
-		if rows := NewMarkdown("").renderMarkdownTable(markdownTable{}, width); len(rows) != 0 {
+		if rows := NewMarkdown("").renderMarkdownTable(nil, &markedBlock{kind: "table"}, width, nil); len(rows) != 0 {
 			t.Errorf("width %d: %q", width, rows)
 		}
 	}
