@@ -194,7 +194,7 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 		fmt.Fprintf(os.Stderr, "pig --listen: %s exists\n", path)
 		return 1
 	}
-	listener, err := net.Listen("unix", path)
+	listener, err := listenPrivateUnixSocket(path)
 	if err != nil {
 		var opErr *net.OpError
 		if errors.As(err, &opErr) && opErr.Err != nil {
@@ -204,11 +204,6 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 		return 1
 	}
 	defer func() { _ = os.Remove(path) }()
-	if err := os.Chmod(path, 0o600); err != nil {
-		_ = listener.Close()
-		fmt.Fprintf(os.Stderr, "pig --listen: chmod %s: %v\n", path, err)
-		return 1
-	}
 
 	builder := resources.Builder
 	ctx, stop := context.WithCancel(ctx)
