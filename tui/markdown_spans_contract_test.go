@@ -210,3 +210,24 @@ func TestMarkdownTableWithoutHeaderCellsRendersNothing(t *testing.T) {
 		}
 	}
 }
+
+// TestMarkdownBackslashEscapesInEmphasisMatchPi renders escapes inside emphasis, links and plain text with preserveBackslashEscapes on and off, in the stock themes (whose emphasis the one-pass writer renders), the tagged theme and under a text style.
+func TestMarkdownBackslashEscapesInEmphasisMatchPi(t *testing.T) {
+	probes := []markdownContractProbe{{Text: "x", Theme: "tagged", Ops: markdownContractRenderOps(5)}}
+	for _, doc := range []string{"\\*a\\*", "**\\*b\\***", "*a \\_ b* ~~\\~c~~", "[\\[l\\]](u) **\\#**", "a\\\\b **c\\\\d**", "\\<x\\> **\\&**"} {
+		for _, preserve := range []bool{false, true} {
+			for _, apply := range []func(*markdownContractProbe){
+				func(p *markdownContractProbe) { p.Theme = "dark" },
+				func(p *markdownContractProbe) {},
+				func(p *markdownContractProbe) { p.Theme, p.Style = "light", &markdownContractStyle{Color: true, Italic: true} },
+			} {
+				probe := markdownContractProbe{Text: doc, Theme: "tagged", Options: markdownContractOptions{PreserveBackslashEscapes: preserve}, Ops: markdownContractRenderOps(8, 60)}
+				apply(&probe)
+				probes = append(probes, probe)
+			}
+		}
+	}
+	if failures := compareMarkdownContract(t, probes); failures > 0 {
+		t.Errorf("%d of %d probes differ from Pi", failures, len(probes))
+	}
+}
