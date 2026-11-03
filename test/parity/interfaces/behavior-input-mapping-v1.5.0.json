@@ -163,10 +163,25 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.handleInput",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/config_selector.go#HandleInput",
+        "tui/config_selector.go#findNextItem",
+        "tui/config_selector.go#nextProjectOverride",
+        "tui/config_selector.go#updateItem"
+      ],
+      "evidence": [
+        "test/parity/scenarios/selectors/14-config-ctrl-c-exits.toml",
+        "test/parity/scenarios/selectors/15-config-escape-exits.toml",
+        "test/parity/scenarios/selectors/18-config-project-toggle.toml",
+        "tui/config_selector_callbacks_contract_test.go#TestConfigSelectorToggleCallbacks",
+        "tui/config_selector_contract_test.go#TestConfigSelectorContractMatchesPi",
+        "tui/config_selector_oracle_test.go#TestConfigSelectorMatchesPi"
+      ],
+      "contracts": [
+        "coding-agent/config-selector/input-state-machine",
+        "coding-agent/config-selector/toggle-and-scope-transitions"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -223,30 +238,70 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/extension-editor.ts#ExtensionEditorComponent.handleInput",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/ext_ui_context.go#Editor",
+        "internal/codingagent/extension_editor.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorCancelCallsOnCancelOnce",
+        "internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalEditorStatusRow",
+        "internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalKeyIsConsumedWithoutAHandoff",
+        "internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorExternalKeyOpensTheHandoffOncePerPress",
+        "internal/codingagent/extension_editor_contract_test.go#TestExtensionEditorResolvesCancelGloballyAndTheExternalKeyThroughItsOwnManager",
+        "internal/codingagent/extension_editor_test.go#TestExtensionEditorExternalAction",
+        "internal/codingagent/extension_editor_test.go#TestExtensionEditorHandleInputMatchesPi",
+        "internal/codingagent/extension_editor_test.go#TestExtensionEditorHandleInputTransitions",
+        "test/parity/scenarios/selectors/10-extension-editor.toml",
+        "test/parity/scenarios/selectors/16-extension-editor-typing.toml",
+        "test/parity/scenarios/selectors/17-extension-editor-cancel.toml"
+      ],
+      "contracts": [
+        "coding-agent/extension-editor/cancel-and-external",
+        "coding-agent/extension-editor/cancel-before-external-editor"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/extension-input.ts#ExtensionInputComponent.handleInput",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/ext_ui_context.go#Input",
+        "tui/extension_input.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/extension_dialog_remapping_test.go#TestExtensionDialogRemappingThroughOwnerLoop",
+        "test/parity/scenarios/selectors/12-extension-dialog-remapping.toml",
+        "tui/extension_dialog_bindings_test.go#TestExtensionDialogsMatchPiBindingsAndPalette",
+        "tui/extension_dialog_contract_test.go#TestExtensionDialogCallbacksFireOncePerCompletingKey",
+        "tui/extension_dialog_contract_test.go#TestExtensionSelectorBranchOrderAndBoundariesMatchPi"
+      ],
+      "contracts": [
+        "coding-agent/extension-input/remapped-confirm"
+      ],
       "divergence": "",
       "rationale": ""
     },
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/extension-selector.ts#ExtensionSelectorComponent.handleInput",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/ext_ui_context.go#Select",
+        "tui/extension_selector.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/extension_dialog_remapping_test.go#TestExtensionDialogRemappingThroughOwnerLoop",
+        "test/parity/scenarios/selectors/12-extension-dialog-remapping.toml",
+        "tui/extension_dialog_bindings_test.go#TestExtensionDialogsMatchPiBindingsAndPalette",
+        "tui/extension_dialog_contract_test.go#TestExtensionDialogCallbacksFireOncePerCompletingKey",
+        "tui/extension_dialog_contract_test.go#TestExtensionSelectorBranchOrderAndBoundariesMatchPi"
+      ],
+      "contracts": [
+        "coding-agent/extension-selector/empty-and-remapped-actions"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -263,10 +318,21 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/login-dialog.ts#LoginDialogComponent.handleInput",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/login_dialog.go#HandleInput",
+        "tui/login_dialog.go#showInput"
+      ],
+      "evidence": [
+        "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
+        "tui/login_dialog_cancel_order_test.go#TestLoginDialogCancelAbortsBeforeEndingTheInput",
+        "tui/login_dialog_contract_test.go#TestLoginDialogHandleInputBranchOrderAndPreconditions",
+        "tui/login_dialog_device_code_test.go#TestDeviceCodeLoginOpensTheVerificationPageAndCopiesTheCodeOnceAfterConfirmation",
+        "tui/login_dialog_oracle_test.go#TestLoginDialogInputMatchesPi"
+      ],
+      "contracts": [
+        "coding-agent/login-dialog/cancel-copy-input"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -305,10 +371,23 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/oauth_selector.go#HandleInput",
+        "tui/oauth_selector.go#confirm"
+      ],
+      "evidence": [
+        "test/parity/scenarios/oauth/17-login-method-search.toml",
+        "test/parity/scenarios/oauth/26-login-cancel-returns-to-provider-list.toml",
+        "tui/oauth_selector_contract_test.go#TestOAuthSelectorBranchOrderAndBoundariesMatchPi",
+        "tui/oauth_selector_input_test.go#TestOAuthSelectorInputMatchesPi",
+        "tui/oauth_selector_oracle_test.go#TestOAuthSelectorHandleInputMatchesPi",
+        "tui/select_page_keys_test.go#TestSelectorComponentsMoveByTheirPage"
+      ],
+      "contracts": [
+        "coding-agent/oauth-selector/boundary-transitions",
+        "coding-agent/oauth-selector/input-state-machine"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -392,10 +471,22 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/thinking-selector.ts#ThinkingSelectorComponent.handleInput",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/thinking_selector.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/thinking_selector_contract_test.go#TestThinkingSelectorBoundariesMatchPi",
+        "internal/codingagent/thinking_selector_oracle_test.go#TestThinkingSelectorInputMatchesPi",
+        "internal/codingagent/thinking_selector_test.go#TestThinkingSelectorBoundaryTransitions",
+        "internal/codingagent/thinking_selector_test.go#TestThinkingSelectorSearchSelectAndCancel",
+        "internal/codingagent/thinking_selector_test.go#TestThinkingSelectorUsesTheConfiguredSaveBinding",
+        "test/parity/scenarios/settings/06-thinking-selector-search-editing.toml"
+      ],
+      "contracts": [
+        "coding-agent/thinking-selector/empty-list-and-save",
+        "coding-agent/thinking-selector/input-state-machine"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -442,10 +533,20 @@
     {
       "id": "input:packages/coding-agent/src/modes/interactive/components/trust-selector.ts#TrustSelectorComponent.handleInput",
       "ownerFamily": "project-trust",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "internal/codingagent/trust_selector.go#HandleInput"
+      ],
+      "evidence": [
+        "internal/codingagent/trust_selector_caller_test.go#TestTrustSelectorProductionSavesParentWithoutActivatingIt",
+        "internal/codingagent/trust_selector_lifecycle_test.go#TestTrustSelectorBoundaryAndCancellation",
+        "internal/codingagent/trust_selector_oracle_test.go#TestTrustSelectorInputMatchesPi",
+        "test/parity/scenarios/project-trust/09-trust-selector-state.toml",
+        "test/parity/scenarios/project-trust/24-trust-selector-keys.toml"
+      ],
+      "contracts": [
+        "coding-agent/trust-selector/input-state-machine"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -1864,10 +1965,19 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ConfigSelectorHeader.render",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/config_selector.go#configSelectorHeader"
+      ],
+      "evidence": [
+        "test/parity/scenarios/selectors/02-config-resources-list.toml",
+        "test/parity/scenarios/selectors/18-config-project-toggle.toml",
+        "tui/config_selector_contract_test.go#TestConfigSelectorContractMatchesPi",
+        "tui/config_selector_oracle_test.go#TestConfigSelectorMatchesPi"
+      ],
+      "contracts": [
+        "coding-agent/config-selector/header-render"
+      ],
       "divergence": "",
       "rationale": ""
     },
@@ -1884,10 +1994,19 @@
     {
       "id": "render:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.renderCheckbox",
       "ownerFamily": "selectors",
-      "disposition": "pending",
-      "pigTargets": [],
-      "evidence": [],
-      "contracts": [],
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/config_selector.go#configResourceList"
+      ],
+      "evidence": [
+        "test/parity/scenarios/selectors/02-config-resources-list.toml",
+        "test/parity/scenarios/selectors/18-config-project-toggle.toml",
+        "tui/config_selector_contract_test.go#TestConfigSelectorContractMatchesPi",
+        "tui/config_selector_oracle_test.go#TestConfigSelectorMatchesPi"
+      ],
+      "contracts": [
+        "coding-agent/config-selector/resource-checkbox"
+      ],
       "divergence": "",
       "rationale": ""
     },
