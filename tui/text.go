@@ -19,7 +19,6 @@ type Text struct {
 	PaddingX   int
 	PaddingY   int
 	CustomBgFn func(string) string
-	Style      string // pig compatibility: extra ANSI prefix applied per line
 
 	cachedText  string
 	cachedWidth int
@@ -87,10 +86,6 @@ func (t *Text) Render(width int) []string {
 
 	for _, line := range wrapped {
 		lineWithMargins := left + line + right
-		if t.Style != "" {
-			// Close common text styles without resetting background color.
-			lineWithMargins = t.Style + lineWithMargins + SGRFgReset + SGRBoldDimReset + SGRItalicReset + SGRUnderlineReset + SGRStrikeReset + SGRInverseReset
-		}
 		if t.CustomBgFn != nil {
 			contentLines = append(contentLines, t.CustomBgFn(padToWidth(lineWithMargins, width)))
 		} else {
@@ -98,18 +93,19 @@ func (t *Text) Render(width int) []string {
 		}
 	}
 
+	// The background function runs once per padding row, after the content rows, as text.ts calls it.
 	emptyLine := strings.Repeat(" ", max(width, 0))
-	if t.CustomBgFn != nil {
-		emptyLine = t.CustomBgFn(emptyLine)
+	emptyLines := make([]string, max(t.PaddingY, 0))
+	for i := range emptyLines {
+		emptyLines[i] = emptyLine
+		if t.CustomBgFn != nil {
+			emptyLines[i] = t.CustomBgFn(emptyLine)
+		}
 	}
 	result := make([]string, 0, capHint(len(contentLines), 2*t.PaddingY))
-	for range t.PaddingY {
-		result = append(result, emptyLine)
-	}
+	result = append(result, emptyLines...)
 	result = append(result, contentLines...)
-	for range t.PaddingY {
-		result = append(result, emptyLine)
-	}
+	result = append(result, emptyLines...)
 
 	t.cachedText = t.Content
 	t.cachedWidth = width

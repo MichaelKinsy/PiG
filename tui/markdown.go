@@ -35,7 +35,9 @@ type Markdown struct {
 	// lazyIndented are the lazy lines that lost four leading spaces to the quote: they continue the quoted paragraph whatever they now look like.
 	lazyIndented []int
 	// lazyBreaks are the lazy lines that start a block of their own beside the quoted paragraph.
-	lazyBreaks            []int
+	lazyBreaks []int
+	// lastListEnd is set by renderBlocks: the index of the line after the last list block of the text it rendered, or -1 when there is none.
+	lastListEnd           int
 	defaultColorSet       bool
 	defaultStylePrefix    string
 	hasDefaultStylePrefix bool
@@ -437,18 +439,34 @@ func (m *Markdown) renderDocument(content string, width, contentWidth int) []str
 	}
 	m.keepWraps()
 	body := rows[:starts[run.finalBase]]
-	padding := make([]string, m.paddingY)
-	background := func(line string) string { return line }
+	var padding []string
 	if m.defaultTextStyle != nil && m.defaultTextStyle.BgColor != nil {
-		background = m.defaultTextStyle.BgColor
-	}
-	for i := range padding {
-		padding[i] = background(strings.Repeat(" ", width))
+		// The background function runs once per row, in order, then once per padding row, as markdown.ts renderBlock and render call it.
+		background := m.defaultTextStyle.BgColor
+		body, tail = applyMarkdownBackground(body, background), applyMarkdownBackground(tail, background)
+		padding = make([]string, max(m.paddingY, 0))
+		for i := range padding {
+			padding[i] = background(strings.Repeat(" ", width))
+		}
+	} else {
+		padding = slices.Repeat([]string{strings.Repeat(" ", width)}, max(m.paddingY, 0))
 	}
 	out := slices.Concat(padding, body, tail, padding)
 	// markdown.ts render returns [""] when text that is not blank renders no lines (only link definitions).
 	if len(out) == 0 {
 		out = []string{""}
+	}
+	return out
+}
+
+// applyMarkdownBackground is rows with the background function applied to every row that is not an image line.
+func applyMarkdownBackground(rows []string, background func(string) string) []string {
+	out := make([]string, len(rows))
+	for i, row := range rows {
+		out[i] = row
+		if !widthx.IsImageLine(row) {
+			out[i] = background(row)
+		}
 	}
 	return out
 }
@@ -535,7 +553,9 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 	listSpaceEnd := -1
 	// latexNoSpaceEnd is len(out) after a LaTeX block that leaves no space token behind.
 	latexNoSpaceEnd := -1
-	listEnd := -1
+	listEnd, listBlockEnd := -1, -1
+	// absorbedEnd is len(out) after a paragraph whose text ends in a line of spaces, which the paragraph's raw takes.
+	absorbedEnd := -1
 	// htmlEnd is the line after an HTML block that ends on a non-blank line: markdown.ts case "html" adds no spacing row, so a fence that follows it gets none.
 	htmlEnd := -1
 	if from == nil {
@@ -803,7 +823,7 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 				j++
 			}
 		renderQuote:
-			quote, bordered := m.renderQuote(strings.Join(quoted, "\n"), lazyUnderlines, lazyLines, lazyIndented, lazyBreaks, width, !onlyDroppedDefinitions(j))
+			quote, bordered, quoteListEnd := m.renderQuote(strings.Join(quoted, "\n"), lazyUnderlines, lazyLines, lazyIndented, lazyBreaks, width, !onlyDroppedDefinitions(j))
 			if !bordered && j == len(lines) && lines[len(lines)-1] != "" && strings.Trim(lines[len(lines)-1], " \t") == "" {
 				// A lazy last line of spaces is a space token of the quote only when it is longer than one character (below).
 				for len(quote) > 0 && quote[len(quote)-1] == "" {
@@ -830,6 +850,16 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 					out = append(out, "")
 					silentEnd = len(out)
 					listSpaceEnd = len(out)
+				}
+			}
+			if lazyRun := markdownTrailingLazyRun(quoted, lazyLines); lazyRun > 0 && markdownLazyLinesRelexList(quoted, lazyRun, quoteListEnd) && j < len(lines) && lines[j] == "" {
+				// Lazy lines follow a list: marked's blockquote tokenizer lexes the list again with them and its raw ends in a newline, so with a single blank line after the quote the end of the text has no space token, and neither has the text that follows a quote too narrow for a border (a quote with a border adds a blank row of its own when a block follows).
+				switch {
+				case j == len(lines)-2 && lines[j+1] == "":
+					j += 2
+					listSpaceEnd = len(out)
+				case !bordered:
+					j++
 				}
 			}
 			if bordered && !markedBlankLine(spacingNextLine(j-1)) {
@@ -877,11 +907,11 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 					// The residue then starts with the newline that ended the last line, which is a space token of one character and renders no row.
 					i = resume
 				}
-				listEnd = resume
+				listEnd, listBlockEnd = resume, resume
 				continue
 			}
 			i = next - 1
-			listEnd = next
+			listEnd, listBlockEnd = next, next
 			continue
 		}
 
@@ -1003,6 +1033,9 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 			text = strings.Join(clipped, "\n") + "\n" + text
 		}
 		emit(m.inlineMarkdown(text))
+		if strings.HasSuffix(strings.TrimRight(text, " \t"), "\n") {
+			absorbedEnd = len(out)
+		}
 		// Upstream's paragraph adds spacing unless the next token is a space or a list.
 		if j < len(lines) && markdownParagraphFollowedByBlock(lines[j]) {
 			emitBlank()
@@ -1024,6 +1057,7 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 		}
 		out = append(out, m.renderCodeBlock(codeLang, codeLines)...)
 	}
+	m.lastListEnd = listBlockEnd
 	loopOut = out
 	for len(out) > max(silentEnd, emptyFloor, 0) && out[len(out)-1] == "" {
 		out = out[:len(out)-1]
@@ -1040,11 +1074,31 @@ func (m *Markdown) renderBlocks(content string, width int, from *resumePoint, re
 		trailing++
 	}
 	// A paragraph at the end of the text takes a last line of spaces into its own raw, so that line is no space token.
-	absorbed := len(out) > 0 && strings.HasSuffix(strings.TrimRight(out[len(out)-1], " \t"), "\n")
+	absorbed := len(out) > 0 && absorbedEnd == len(out)
 	if (len(out) > 0 || silentEnd >= 0) && !inCode && !absorbed && latexNoSpaceEnd != len(out) && listSpaceEnd != len(out) && base+len(lines) >= 2 && (trailing >= 2 || trailing == 1 && lines[len(lines)-1] != "") {
 		out = append(out, "")
 	}
 	return loopOut, out, finalBase
+}
+
+// markdownTrailingLazyRun is the number of lines at the end of a quote's quoted lines that are lazy continuations.
+func markdownTrailingLazyRun(quoted []string, lazyLines []int) int {
+	run := 0
+	for run < len(quoted) && slices.Contains(lazyLines, len(quoted)-1-run) {
+		run++
+	}
+	return run
+}
+
+// markdownLazyLinesRelexList reports that the lazy lines at the end of a quote's quoted lines follow a list that marked's blockquote tokenizer lexes again with them: the list
+// (listEnd is the line after the last list block the quote rendered) reaches the quoted line before the lazy run, and that line does not end in a hard break, which keeps the lazy lines in the
+// item's own paragraph.
+func markdownLazyLinesRelexList(quoted []string, lazyRun, listEnd int) bool {
+	n := len(quoted) - lazyRun
+	for n > 0 && quoted[n-1] == "" {
+		n--
+	}
+	return n > 0 && listEnd >= n && !strings.HasSuffix(quoted[n-1], "  ")
 }
 
 // markdownQuoteEndsInText reports that the last token of a quote's quoted lines is a paragraph an indented lazy line can join. A last quoted line of spaces or tabs is emptied by marked's spaceLine rule, so the paragraph is the one before it, if any.

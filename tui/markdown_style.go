@@ -107,7 +107,7 @@ func (m *Markdown) childMarkdown(content string) *Markdown {
 func (m *Markdown) latexEnabled() bool { return m.options.RenderLatex == nil || *m.options.RenderLatex }
 
 // renderQuote returns the quote's rows and whether it has a border: a quote narrower than three columns has none, and its own spacing row is not added (Pi 8a2ebd385).
-func (m *Markdown) renderQuote(content string, lazyUnderlines, lazyLines, lazyIndented, lazyBreaks []int, width int, notLast bool) ([]string, bool) {
+func (m *Markdown) renderQuote(content string, lazyUnderlines, lazyLines, lazyIndented, lazyBreaks []int, width int, notLast bool) (rows []string, bordered bool, listEnd int) {
 	theme := m.markdownTheme()
 	quoteStyle := func(text string) string { return theme.Quote(theme.Italic(text)) }
 	prefix := markdownStylePrefix(quoteStyle)
@@ -123,10 +123,11 @@ func (m *Markdown) renderQuote(content string, lazyUnderlines, lazyLines, lazyIn
 	if width < 3 {
 		// A quote of only whitespace has one space token, which renders as an empty row (markdown.ts case "space").
 		if content != "" && strings.Trim(content, " \t\n") == "" {
-			return []string{""}, false
+			return []string{""}, false, -1
 		}
 		child.styleContext = m.styleContext
-		return child.renderContent(content, width), false
+		rows = child.renderContent(content, width)
+		return rows, false, child.lastListEnd
 	}
 	contentWidth := width - 2
 	logical := child.renderContent(content, contentWidth)
@@ -143,5 +144,5 @@ func (m *Markdown) renderQuote(content string, lazyUnderlines, lazyLines, lazyIn
 			out = append(out, theme.QuoteBorder("│ ")+wrapped)
 		}
 	}
-	return out, true
+	return out, true, child.lastListEnd
 }
