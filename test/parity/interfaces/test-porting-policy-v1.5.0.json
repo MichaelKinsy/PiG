@@ -7131,7 +7131,10 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review."
+      "rationale": "New in 0.99.1; area and tags follow the sibling tests under packages/durable/test/ until the production-path review. SCRUTINIZED:approved by Main (lead ruling by IRC, 2026-11-02; owner confirmation pending): the case 'rejects window bounds that are not integers or put `max` below `min`' is designed out for two of its inputs, `min: 1.5` and `from: NaN`, because they are unreachable in Go: ConversationWindow takes Min and Max as *int and From as durable.EntryId, so the type system already excludes a non-integer bound. This is a Go type-system mechanic, not a behavior difference. The case's other inputs (min 0, max below min, observeConversation max 0, max equal to min) are asserted in TestConversationView.",
+      "designedOutCases": [
+        "conversation view window \u203a rejects window bounds that are not integers or put `max` below `min`"
+      ]
     },
     {
       "path": "packages/durable/test/images-wasm-module.test.ts",
