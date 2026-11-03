@@ -678,8 +678,8 @@ func TestCancellationEndsARequestWhoseBytesResponseWasBornSealed(t *testing.T) {
 			var bornSealed atomic.Bool
 			server := serving(t, []plugin{{"@app/b", contributing(HttpContribution{Routes: []HttpRouteEntry{
 				RouteFunc("GET /", func(_ HttpRequest, scope host.Ctx) (HttpResponse, error) {
-					entered.resolve()
 					if when == "inside the route" {
+						entered.resolve()
 						abort(errors.New("client gone"))
 						// An AbortSignal's abort reaches the scope's signal at once; Go links contexts on a goroutine of its own,
 						// so the route waits for the link before it reads the scope.
@@ -689,6 +689,9 @@ func TestCancellationEndsARequestWhoseBytesResponseWasBornSealed(t *testing.T) {
 						}
 					}
 					bornSealed.Store(scope.Err() != nil)
+					// The abort that follows reaches a route that has read its scope (else it could land before the read, and the
+					// stream would be born sealed after all).
+					entered.resolve()
 					return HttpResponse{Kind: KindBytes, Mime: "application/octet-stream", Read: func(int64, int, host.Ctx) ([]byte, error) {
 						reads.Add(1)
 						return []byte{1}, nil
