@@ -194,6 +194,9 @@ func TestStoreStorageClaimsAndClose(t *testing.T) {
 	})
 
 	t.Run("waits at close for its calls underway, then releases its claims", func(t *testing.T) {
+		// Pi commits the root conversation on a fresh store here; Go holds an entry commit at its first statement instead, so
+		// the call is underway at a known point and the test is deterministic. The expectations are Pi's: Close waits for the
+		// call, then the owner is free to claim again.
 		made := counted(t, ":memory:")
 		entered, release := make(chan struct{}), make(chan struct{})
 		made.db.setFaults(faults{hold: func(_ string, index int) {

@@ -9079,7 +9079,7 @@
       "evidence": [
         "durable/harness/system_order_cache_e2e_live_test.go#TestSystemMessageOrderCacheE2ELive"
       ],
-      "rationale": "Pi v1.5.0 re-record: the committed order that puts the leading system message behind the leading users runs offline; the live cache case runs where a provider key is set."
+      "rationale": "Pi v1.5.0 re-record: the file's one case, \"keeps the prompt cache across a tool change only when the system message leads\" (live, #10542), is TestSystemMessageOrderCacheE2ELive and runs where PIG_LIVE_ANTHROPIC_TOKEN is set; v1.5.0 changes only the schema builder of its probe tools (`Type.Object` to `obj({ text: str() })`). Upstream's `retry: 1` and `timeout: 180_000` are not ported: the case runs once (see the comment in the test)."
     },
     {
       "path": "packages/durable/test/tool-args-typebox.test.ts",
