@@ -6673,7 +6673,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New or changed durable harness test; area and tags follow the sibling tests under packages/durable/test/ (production-path review pending)."
+      "rationale": "Production-path review at Pi 1.5.0: the afterRun hook and the tasks it asks for run at the end of every durable run (harness run end, scheduler), reached by every durable session that registers an afterRun hook; hot-path with the sibling packages/durable/test/ rows. The 29 cases run in TestAfterRun and TestEndRun."
     },
     {
       "path": "packages/durable/test/harness-blocked.test.ts",
@@ -6727,7 +6727,7 @@
       "tags": [
         "hot-path"
       ],
-      "rationale": "New or changed durable harness test; area and tags follow the sibling tests under packages/durable/test/ (production-path review pending)."
+      "rationale": "Production-path review at Pi 1.5.0: submit({ type: \"continue\" }) starts a run without a new user message (#11043), the resume path of every durable turn that ends on a tool result or a limit; hot-path with the sibling packages/durable/test/ rows. The 13 cases run in TestContinue."
     },
     {
       "path": "packages/durable/test/harness-conversations.test.ts",

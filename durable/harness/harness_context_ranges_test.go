@@ -1,5 +1,6 @@
 // Ports the task-runtime context read tests of packages/durable/test/harness-context.test.ts: "extends a task's context
-// read with only newer entries", "keeps a conversation's context read across its tasks and for the retention period
+// read with only newer entries", "finds the baseline among the entries an extended read adds" (#10904), "keeps a
+// conversation's context read across its tasks and for the retention period
 // once idle", "derives the same view from extended reads as from whole reads", "keeps returned views and kept ranges
 // apart", "freezes kept entries deeply even when storage freezes them shallowly", "does not keep a read that finishes
 // after its task ended", "drops an idle conversation's context read on a timer when nothing else runs", and "drops a
@@ -229,6 +230,99 @@ func TestTaskContextRanges(t *testing.T) {
 		})
 		setup = openCounting(t, []durable.AnyTask{reads.Erased()}, nil)
 		ctxRunTask(t, setup, reads.Erased())
+		mustClose(t, setup.opened.harness)
+	})
+
+	// harness-context.test.ts:709 (#10904) it("finds the baseline among the entries an extended read adds")
+	t.Run("finds the baseline among the entries an extended read adds", func(t *testing.T) {
+		var setup countingSetup
+		steps := tkOneStep("test.context-baseline", func(ctx context.Context, _ stepRecord, runtime stepRuntime) error {
+			root := setup.opened.root
+			ownerless := ConversationCreateOptions{Ownership: durable.ConversationOwnership{Kind: durable.ConversationOwnerless}}
+			appendTo := func(conversation durable.ConversationId, draft durable.EntryDraft) durable.EntryRecord {
+				var entry durable.EntryRecord
+				if err := ctxCommit(ctx, runtime, func(tx durable.Tx) error {
+					var err error
+					entry, err = tx.AppendEntry(conversation, draft)
+					return err
+				}); err != nil {
+					t.Error(err)
+				}
+				return entry
+			}
+			read := func(conversation Conversation) ([]string, int64) {
+				before := setup.scan.rows.Load()
+				view, err := runtime.Context(ctx, conversation.Id(), nil)
+				if err != nil {
+					t.Error(err)
+				}
+				rows := setup.scan.rows.Load() - before
+				if want := ctxContextOf(t, conversation); !reflect.DeepEqual(view, want) {
+					t.Errorf("the task's view differs from the conversation's\n got %s\nwant %s", jsonText(t, view), jsonText(t, want))
+				}
+				return describeMessages(view.Messages), rows
+			}
+			expectRows := func(what string, rows int64) {
+				t.Helper()
+				// Nothing: the kept range took the added entry as it was committed.
+				if rows != 0 {
+					t.Errorf("%s: the extended read scanned %d rows, want 0", what, rows)
+				}
+			}
+			fork := func() Conversation {
+				conversation, err := root.Fork(ctx, setup.first.Id, ownerless)
+				if err != nil {
+					t.Error(err)
+				}
+				return conversation
+			}
+
+			// The cached range has answers and no system message; the baseline arrives in a later read.
+			if messages, _ := read(root); messages[0] != "user:first" {
+				t.Errorf("first read = %v, want it to lead with user:first", messages)
+			}
+			appendTo(root.Id(), durable.EntryDraft{Kind: "pi.system", Model: []ai.Message{system(ai.PromptSection{Name: "plan", Value: new("Plan.")})}})
+			messages, rows := read(root)
+			expectRows("root", rows)
+			expectStrings(t, messages[:3], []string{"system:plan", "user:first", "assistant:old a"})
+
+			// A system message the cached range already has keeps a later first `pi.system` entry in place.
+			forked := fork()
+			appendTo(forked.Id(), durable.EntryDraft{Kind: "message", Model: []ai.Message{assistant("answer")}})
+			appendTo(forked.Id(), durable.EntryDraft{Kind: "host.system", Model: []ai.Message{system(ai.PromptSection{Name: "note", Value: new("Note.")})}})
+			messages, _ = read(forked)
+			expectStrings(t, messages, []string{"user:first", "assistant:answer", "system:note"})
+			appendTo(forked.Id(), durable.EntryDraft{Kind: "pi.system", Model: []ai.Message{system(ai.PromptSection{Name: "note"})}})
+			messages, rows = read(forked)
+			expectRows("fork", rows)
+			expectStrings(t, messages, []string{"user:first", "assistant:answer", "system:note", "system:note"})
+
+			// An omitted system message still rules out a later baseline; the extended read keeps that.
+			omitted := fork()
+			appendTo(omitted.Id(), durable.EntryDraft{Kind: "message", Model: []ai.Message{assistant("answer")}})
+			host := appendTo(omitted.Id(), durable.EntryDraft{Kind: "host.system", Model: []ai.Message{system(ai.PromptSection{Name: "legacy", Value: new("Legacy.")})}})
+			appendTo(omitted.Id(), durable.EntryDraft{Kind: "edit", Edits: []durable.ContextEdit{{Target: host.Id, Action: durable.EditOmit}}})
+			messages, _ = read(omitted)
+			expectStrings(t, messages, []string{"user:first", "assistant:answer"})
+			appendTo(omitted.Id(), durable.EntryDraft{Kind: "pi.system", Model: []ai.Message{system(ai.PromptSection{Name: "legacy"})}})
+			messages, rows = read(omitted)
+			expectRows("omitted", rows)
+			expectStrings(t, messages, []string{"user:first", "assistant:answer", "system:legacy"})
+
+			// A first `pi.system` entry without a system message leaves no baseline for a later one to take.
+			empty := fork()
+			appendTo(empty.Id(), durable.EntryDraft{Kind: "pi.system"})
+			appendTo(empty.Id(), durable.EntryDraft{Kind: "message", Model: []ai.Message{assistant("answer")}})
+			messages, _ = read(empty)
+			expectStrings(t, messages, []string{"user:first", "assistant:answer"})
+			appendTo(empty.Id(), durable.EntryDraft{Kind: "pi.system", Model: []ai.Message{system(ai.PromptSection{Name: "s", Value: new("Delta.")})}})
+			messages, rows = read(empty)
+			expectRows("empty", rows)
+			expectStrings(t, messages, []string{"user:first", "assistant:answer", "system:s"})
+			return tkComplete(ctx, runtime)
+		})
+		setup = openCounting(t, []durable.AnyTask{steps.Erased()}, nil)
+		ctxRunTask(t, setup, steps.Erased())
 		mustClose(t, setup.opened.harness)
 	})
 
