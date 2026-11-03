@@ -14,6 +14,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -106,7 +107,7 @@ func rrOpenHost(t *testing.T, setup func(chordhost.FacetHost, chordhost.FacetSel
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = host.Close(testContext) })
+	t.Cleanup(func() { rrBounded(t, "closing the host", func() { _ = host.Close(testContext) }) })
 	report, err := host.Load([]chordhost.HostFacet{{Name: "@app/core", Facet: chordhost.DefineFacet(setup)}}, testContext)
 	if err != nil {
 		t.Fatal(err)
@@ -133,6 +134,25 @@ func rrHeld(t *testing.T, host chordhost.Host, typ *contracts.Contract) *chordho
 		t.Fatal(err)
 	}
 	return reference
+}
+
+// rrBounded runs fn on its own goroutine and fails the test with what it panicked with, or when it has not returned in time:
+// a panic that leaves a Chord lock held would otherwise hang the test and its cleanup to the package timeout.
+func rrBounded(t *testing.T, what string, fn func()) {
+	t.Helper()
+	finished := make(chan any, 1)
+	go func() {
+		defer func() { finished <- recover() }()
+		fn()
+	}()
+	select {
+	case recovered := <-finished:
+		if recovered != nil {
+			t.Errorf("%s panicked: %v", what, recovered)
+		}
+	case <-time.After(10 * time.Second):
+		t.Errorf("%s did not return in 10 s", what)
+	}
 }
 
 func rrWait(t *testing.T, what string, condition func() bool) {
@@ -192,10 +212,11 @@ func TestRegistryReaderOnAChordHost(t *testing.T) {
 		if len(got) != 1 || got[0] != "reentrant" {
 			t.Fatalf("calls = %v, want [reentrant]", got)
 		}
-		if task := reader.Snapshot().Task("app.done"); task.Definition == nil {
-			t.Fatal("the snapshot after the install has no app.done task")
+		// Pi: toBe(Done), the definition itself.
+		if task := reader.Snapshot().Task("app.done"); task.Definition == nil || task.Definition != done.Erased().Definition {
+			t.Fatalf("the snapshot after the install holds %+v, want the installed app.done definition", task)
 		}
-		unsubscribe()
+		rrBounded(t, "unsubscribe", unsubscribe)
 	})
 
 	t.Run("wakes a Harness's scheduler: a task blocked on its missing definition runs once a contribution brings it", func(t *testing.T) {
@@ -244,6 +265,27 @@ func TestRegistryReaderOnAChordHost(t *testing.T) {
 		}
 		closeHarness(t, opened)
 	})
+}
+
+// A reader made with a context that is already done: Chord ends its observer before Observe returns, so the reader reads the
+// value itself (Pi's `value.value`) rather than serving the composition it started at.
+func TestRegistryReaderWithACancelledContextReadsTheValueItself(t *testing.T) {
+	done := rrDoneTask()
+	host := rrOpenHost(t, rrServe(done.Erased()))
+	source, err := host.Registry(testContext, rrExtensions, chordhost.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	value := registries.NewRegistryValue[durable.RegistrySnapshot](source)
+	ctx, cancel := context.WithCancel(testContext)
+	cancel()
+	reader := NewRegistryReader(ctx, value)
+	if _, err := rrReference(t, host, rrPlugin).Call("install", nil, testContext); err != nil {
+		t.Fatal(err)
+	}
+	if task := reader.Snapshot().Task("app.done"); task.Definition == nil {
+		t.Fatal("a reader made with a cancelled ctx serves its start composition: the snapshot after the install has no app.done task")
+	}
 }
 
 // rrGraphFollower and rrViewFollower hand a Harness's observer calls to the host's followed source: Chord's watch shapes, the
@@ -325,6 +367,9 @@ func rrServeViews(host chordhost.FacetHost, _ chordhost.FacetSelf) error {
 		})
 		return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
 			"close": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+				// The handler waits for the Harness, whose Session close ends the followers of its task graph: it gives the
+				// section back first (Pi's `await`), so that end enters one.
+				chordctx.Suspend(ctx)
 				opened, err := harness.Value()
 				if err != nil {
 					return nil, err
@@ -332,6 +377,7 @@ func rrServeViews(host chordhost.FacetHost, _ chordhost.FacetSelf) error {
 				return nil, opened.(Harness).Close(ctx)
 			},
 			"write": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+				chordctx.Suspend(ctx)
 				opened, err := harness.Value()
 				if err != nil {
 					return nil, err

@@ -19,7 +19,7 @@ func TestToolTaskIsVersion3(t *testing.T) {
 	}
 }
 
-// harness-nested-tools.test.ts:1237 it("keeps version 2 tool task input as it is") (#11043)
+// harness-nested-tools.test.ts:1239 it("keeps version 2 tool task input as it is") (#11043)
 func TestToolTaskKeepsVersion2InputAsItIs(t *testing.T) {
 	migrate := ToolTask.AnyDefinition().Migrate
 	model := map[string]any{"kind": "model", "assistant": 3.0, "callId": "c1"}

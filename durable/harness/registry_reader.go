@@ -49,11 +49,17 @@ type snapshotCache struct {
 	snapshot durable.RegistrySnapshot
 	attached bool
 	seen     bool
+	// ended is set once the observation ended, also before attach: Chord ends an observer synchronously, before Observe
+	// returns, when ctx is done or its source ended.
+	ended bool
 }
 
 func (cache *snapshotCache) attach(start durable.RegistrySnapshot) {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
+	if cache.ended {
+		return
+	}
 	if !cache.seen {
 		cache.snapshot = start
 	}
@@ -78,7 +84,7 @@ func (cache *snapshotCache) Advance(call chord.NativeWatchCall[durable.RegistryS
 // End stops the cache serving: the observation ended (ctx cancelled, or the host closed).
 func (cache *snapshotCache) End(chord.WatchEnd) {
 	cache.mu.Lock()
-	cache.attached = false
+	cache.attached, cache.ended = false, true
 	cache.mu.Unlock()
 }
 
