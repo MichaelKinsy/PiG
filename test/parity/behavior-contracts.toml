@@ -2930,6 +2930,7 @@ evidence = [
   "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
   "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
   "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+  "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
   "tui/markdown_block_reuse_upstream_test.go#TestMarkdownReusedHighlightingEqualsAFreshRender",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
@@ -2961,6 +2962,7 @@ evidence = [
   "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
   "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
   "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+  "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
 ]
 
@@ -2990,6 +2992,7 @@ evidence = [
   "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
   "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
   "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+  "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
   "tui/markdown_upstream_test.go#TestMarkdownRendersQuotesNestedDeeperThanTheWidthAllowsWithoutExploding",
   "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWiderThanTheContentWidthFallsBackToRawSource",
   "tui/markdown_latex_width_test.go#TestMarkdownDisplayMathWidthFallbackMatchesPi",
@@ -3025,6 +3028,7 @@ evidence = [
   "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
   "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
   "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+  "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
 ]
@@ -3055,6 +3059,7 @@ evidence = [
   "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
   "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
   "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+  "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
 ]
@@ -3085,6 +3090,7 @@ evidence = [
   "tui/markdown_sweep_contract_test.go#TestMarkdownTableWidthSweepMatchesPi",
   "tui/markdown_sweep_contract_test.go#TestMarkdownBlockSweepMatchesPi",
   "tui/markdown_sweep_contract_test.go#TestMarkdownInlineSweepMatchesPi",
+  "tui/markdown_random_contract_test.go#TestMarkdownRandomDocsMatchPi",
   "test/parity/scenarios/tui-components/05-markdown-text-fits.toml",
   "test/parity/scenarios/tui-components/16-markdown-user-components.toml"
 ]
