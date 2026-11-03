@@ -9,12 +9,12 @@ import (
 	"github.com/MichaelKinsy/PiG/durable"
 )
 
-// Pi packages/durable/src/testing/storage-conformance.ts createStorageConformance: the same 30 named cases, each Run returning the provider's failure when the provider fails.
+// Pi packages/durable/src/testing/storage-conformance.ts createStorageConformance: the same 32 named cases, each Run returning the provider's failure when the provider fails.
 // mutation-checked: dropping the reads and writes of StorageConformanceCase.Name, StorageConformanceCase.Run, StorageConformanceOptions.WithStorage fails it
 // Pi: packages/durable/src/testing/runner.ts:7 (name)
 // Pi: packages/durable/src/testing/runner.ts:23 (run)
 // Pi: packages/durable/src/testing/runner.ts:16 (withStorage)
-// Pi packages/durable/src/testing/storage-conformance.ts createStorageConformance (cases are packages/durable/src/testing/types.ts:20 StorageConformanceCase, each with a name and a run): the same 30 named cases, each Run returning the provider's failure when the provider fails.
+// Pi packages/durable/src/testing/storage-conformance.ts createStorageConformance (cases are packages/durable/src/testing/types.ts:20 StorageConformanceCase, each with a name and a run): the same 32 named cases, each Run returning the provider's failure when the provider fails.
 func TestCreateStorageConformanceCasesMatchUpstream(t *testing.T) {
 	want := []string{
 		"commits batches in order, each with its seq, checked against the earlier ones",
@@ -33,6 +33,7 @@ func TestCreateStorageConformanceCasesMatchUpstream(t *testing.T) {
 		"paginates conversations by opaque cursor in ascending ID order",
 		"receives a durable commit once before resolving, and never a refused one",
 		"reconstructs rewindable documents and preserves half-open incarnations",
+		"refuses a creation and a change of one document in one commit, in either order",
 		"refuses a later batch its own malformed actions fail, keeping the batches before it",
 		"rejects every operation after close",
 		"replaces complete task records and pages filtered task scans",
@@ -42,6 +43,7 @@ func TestCreateStorageConformanceCasesMatchUpstream(t *testing.T) {
 		"scans deep fork history newest-first through every ancestor cap",
 		"scans tables in either ID order and continues a cursor in its order",
 		"stores and scans sleeping tasks by status",
+		"stores continue submissions, which have no entry and are never queued",
 		"stores owners and scans waiting and completing tasks by status",
 		"stores passive write submissions without input-only lifecycle states",
 		"stores the batches before the first one refused, and none after it",
