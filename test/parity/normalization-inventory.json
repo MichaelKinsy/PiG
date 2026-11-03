@@ -2538,6 +2538,53 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/94-noop-event-handlers-keep-layout.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "What is 20+22?",
+            "capture_end_regex": "faux-1\\s*$"
+          },
+          "reason": "Owned visible surface: Handlers that return nothing for every agent, turn, message, tool and input event leave the rows between the reply and the editor border as Pi draws them",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/95-noop-event-handlers-keep-tool-layout.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "Took \\d+\\.\\ds",
+          "with": "Took Ns",
+          "reason": "Tool duration varies with process scheduling; only the numeric seconds in the Took label are replaced."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: Handlers that return nothing leave the rows of a tool run between the reply and the editor border as Pi draws them",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Run: expr 20 + 22",
+            "capture_end_regex": "faux-1\\s*$"
+          },
+          "reason": "Owned visible surface: Handlers that return nothing leave the rows of a tool run between the reply and the editor border as Pi draws them",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/footer/01-footer-default.toml",
       "transforms": [
         {
@@ -10415,6 +10462,82 @@
             "capture_end_regex": "─{20}"
           },
           "reason": "Owned visible surface: quietStartup \"header\" keeps the compact startup header, drops the loaded-resources hint and hides the resource listing.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/16-startup-clear-key-before-session-start-completes.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "STARTUP KEYS READY:",
+            "capture_end": "draft=[]"
+          },
+          "reason": "Owned visible surface: A Ctrl-C pressed while extension startup is still running clears the draft in the startup editor",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/17-startup-exit-key-before-session-start-completes.toml",
+      "transforms": [
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: Ctrl-D on the empty startup editor exits while extension startup is still running",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "STARTUP KEYS HOLD"
+          },
+          "reason": "Owned visible surface: Ctrl-D on the empty startup editor exits while extension startup is still running",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/18-startup-model-scope-notice-main-screen.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Model scope:",
+            "capture_end": "to cycle)"
+          },
+          "reason": "Owned visible surface: The main-screen renderer prints the model scope notice before the UI starts, as pi does.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/19-startup-notices-follow-the-resumed-transcript.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "remember zulu-3120",
+            "capture_end": "models.json error:"
+          },
+          "reason": "Owned visible surface: The resumed transcript is painted before the startup notices, as pi orders init() and run().",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
