@@ -1,0 +1,130 @@
+[
+ {
+  "upstream": "packages/ai/src/utils/streaming-json.ts",
+  "package": "./ai",
+  "tests": [
+   "TestToolCallArgumentsStreamFinishFollowsPi"
+  ],
+  "upstream_reference": "packages/ai/src/utils/streaming-json.ts ToolCallArgumentsStream.finish (one full parseToolCallArguments of the complete text)",
+  "mutation": "ai/streaming_json_parser.go: replace 'return parseToolCallArguments(stream.text.String())' with 'return parseToolCallArguments(\"\")'; compiling go test -overlay -run exact test -count=1 fails TestToolCallArgumentsStreamFinishFollowsPi."
+ },
+ {
+  "upstream": "packages/ai/src/utils/identity.ts",
+  "package": "./ai",
+  "tests": [
+   "TestMergeClientIdentityFieldByField"
+  ],
+  "upstream_reference": "packages/ai/src/utils/identity.ts mergeClientIdentity",
+  "mutation": "ai/identity.go: replace 'if source.Version != nil {' with 'if source.Version == nil {'; compiling go test -overlay -run exact test -count=1 fails TestMergeClientIdentityFieldByField."
+ },
+ {
+  "upstream": "packages/ai/src/utils/identity.ts",
+  "package": "./ai",
+  "tests": [
+   "TestIdentitySendsNoAttributionUnlessEnabled"
+  ],
+  "upstream_reference": "packages/ai/src/utils/identity.ts getIdentityHeaders",
+  "mutation": "ai/identity.go: replace 'headers[\"User-Agent\"] = FormatUserAgent(identity)' with 'headers[\"User-Agent\"] = \"mutant\"'; compiling go test -overlay -run exact test -count=1 fails TestIdentitySendsNoAttributionUnlessEnabled."
+ },
+ {
+  "upstream": "packages/ai/src/utils/identity.ts",
+  "package": "./ai",
+  "tests": [
+   "TestWithClientIdentityMergesRequestIdentityOverTheWrapperIdentity",
+   "TestWithClientIdentityKeepsTheOptionalSurfacesItsModelsHave"
+  ],
+  "upstream_reference": "packages/ai/src/utils/identity.ts withClientIdentity",
+  "mutation": "ai/identity_models.go: swap the merge order 'MergeClientIdentity(identity, merged.Identity)' to 'MergeClientIdentity(merged.Identity, identity)'; compiling go test -overlay -run exact test -count=1 fails TestWithClientIdentityMergesRequestIdentityOverTheWrapperIdentity."
+ },
+ {
+  "upstream": "packages/ai/src/utils/json-parse.ts",
+  "package": "./ai",
+  "tests": [
+   "TestParseToolCallArguments",
+   "TestParseToolCallArgumentsErrorKeepsUTF16Units"
+  ],
+  "upstream_reference": "packages/ai/src/utils/json-parse.ts parseToolCallArguments; packages/ai/test/json-parse.test.ts",
+  "mutation": "ai/json_repair.go: replace 'Tool arguments must be a JSON object' with 'Tool arguments must be an object'; compiling go test -overlay -run exact test -count=1 fails TestParseToolCallArguments."
+ },
+ {
+  "upstream": "packages/ai/src/api/constrained-sampling.ts",
+  "package": "./ai",
+  "tests": [
+   "TestIsStrictToolLimitErrorMessage"
+  ],
+  "upstream_reference": "packages/ai/src/api/constrained-sampling.ts isStrictToolLimitErrorMessage",
+  "mutation": "ai/constrained_sampling.go: replace '\"Too many strict tools (\"' with '\"Too many strict tools\"'; compiling go test -overlay -run exact test -count=1 fails TestIsStrictToolLimitErrorMessage."
+ },
+ {
+  "upstream": "packages/ai/src/api/constrained-sampling.ts",
+  "package": "./ai",
+  "tests": [
+   "TestGetJSONSchemaToolParametersFollowsPi"
+  ],
+  "upstream_reference": "packages/ai/src/api/constrained-sampling.ts getJsonSchemaToolParameters",
+  "mutation": "ai/constrained_sampling.go: replace 'if strict != nil && *strict {' with 'if strict != nil {'; compiling go test -overlay -run exact test -count=1 fails TestGetJSONSchemaToolParametersFollowsPi."
+ },
+ {
+  "upstream": "packages/ai/src/api/constrained-sampling.ts",
+  "package": "./ai",
+  "tests": [
+   "TestResolveJSONSchemaStrictSamplingFollowsPi"
+  ],
+  "upstream_reference": "packages/ai/src/api/constrained-sampling.ts resolveJsonSchemaStrictSampling",
+  "mutation": "ai/constrained_sampling.go: replace 'if config.Strict != ConstrainedSamplingStrictRequire {' with '... == ...'; compiling go test -overlay -run exact test -count=1 fails TestResolveJSONSchemaStrictSamplingFollowsPi (prefer fallback, require error, keyword check cases)."
+ },
+ {
+  "upstream": "packages/ai/src/api/constrained-sampling.ts",
+  "package": "./ai",
+  "tests": [
+   "TestPrefersJSONSchemaStrictSamplingFollowsPi"
+  ],
+  "upstream_reference": "packages/ai/src/api/constrained-sampling.ts prefersJsonSchemaStrictSampling",
+  "mutation": "ai/constrained_sampling.go: replace 'config.Strict == ConstrainedSamplingStrictPrefer' with 'config.Strict != ConstrainedSamplingStrictRequire'; compiling go test -overlay -run exact test -count=1 fails TestPrefersJSONSchemaStrictSamplingFollowsPi."
+ },
+ {
+  "upstream": "packages/ai/src/api/constrained-sampling.ts",
+  "package": "./ai",
+  "tests": [
+   "TestStrictSamplingSerializedInOpenAICompletionsAndResponsesToolsLikePi"
+  ],
+  "upstream_reference": "packages/ai/src/api/openai-completions.ts convertTools:1494-1505; packages/ai/src/api/openai-responses-shared.ts convertResponsesTools:460-472",
+  "mutation": "ai/openai.go: replace 'resolveJSONSchemaStrictSampling(t, supportsStrict, nil)' with '(t, false, nil)' and ai/openai_responses.go: replace 'resolveJSONSchemaStrictSampling(t, supportsStrictMode, nil)' with '(t, false, nil)'; each compiling go test -overlay -run exact test -count=1 fails TestStrictSamplingSerializedInOpenAICompletionsAndResponsesToolsLikePi."
+ },
+ {
+  "upstream": "packages/ai/src/api/openai-responses-shared.ts",
+  "package": "./ai",
+  "tests": [
+   "TestGetResponsesToolSupportFollowsPi"
+  ],
+  "upstream_reference": "packages/ai/src/api/openai-responses-shared.ts getResponsesToolSupport",
+  "mutation": "ai/openai_responses.go: replace 'if options.SupportsToolSearch {' with 'if options.SupportsToolSearch || options.SupportsAdditionalTools {'; compiling go test -overlay -run exact test -count=1 fails TestGetResponsesToolSupportFollowsPi."
+ },
+ {
+  "upstream": "packages/ai/src/api/transform-messages.ts",
+  "package": "./ai",
+  "tests": [
+   "TestSplitErrorToolResultImagesFollowsPi"
+  ],
+  "upstream_reference": "packages/ai/src/api/transform-messages.ts splitErrorToolResultImages",
+  "mutation": "ai/transform_messages.go: replace 'if len(images) == 0 {' with 'if len(images) == 1000 {'; compiling go test -overlay -run exact test -count=1 fails TestSplitErrorToolResultImagesFollowsPi."
+ },
+ {
+  "upstream": "packages/ai/src/providers/schema-builders.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestStringLiteralStringRecordAndOneOfBuildTheirPiSchemaShapes"
+  ],
+  "upstream_reference": "packages/ai/src/providers/schema-builders.ts stringLiteral, stringRecord",
+  "mutation": "internal/codingagent/configschema/pischema.go: replace 'Opt{\"const\", value}' with 'Opt{\"const\", value + \"x\"}' and 'node(Opt{\"^.*$\", value})' with 'node(Opt{\"^.+$\", value})'; each compiling go test -overlay -run exact test -count=1 fails TestStringLiteralStringRecordAndOneOfBuildTheirPiSchemaShapes."
+ },
+ {
+  "upstream": "packages/ai/src/providers/schema-builders.ts",
+  "package": "./internal/codingagent/configschema",
+  "tests": [
+   "TestOpenObjectBuildsAnObjectThatAllowsOtherProperties"
+  ],
+  "upstream_reference": "packages/ai/src/providers/schema-builders.ts openObject",
+  "mutation": "internal/codingagent/configschema/pischema.go: replace 'if !p.Optional {' with 'if p.Optional {' in OpenObject; compiling go test -overlay -run exact test -count=1 fails TestOpenObjectBuildsAnObjectThatAllowsOtherProperties."
+ }
+]
