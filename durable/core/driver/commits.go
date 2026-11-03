@@ -296,7 +296,7 @@ func (s *coreSession) advanceCommits(sub *commitSub, ctx context.Context, p dura
 	}
 }
 
-// endAllCommits ends every open observer with the Session's close: failed with session.ClosedSession, or with the failure that
+// endAllCommits ends every open observer with the Session's close: failed with session.ErrSessionClosedEnd, or with the failure that
 // failed the Session (session.CloseEnds). The delivery goroutine has returned, so each saw its last publication.
 func (s *coreSession) endAllCommits() {
 	_, end := session.CloseEnds(s.failure())

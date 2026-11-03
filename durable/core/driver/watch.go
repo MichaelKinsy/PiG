@@ -176,7 +176,7 @@ func (h *watchHub) notice(n abi.Notice) {
 }
 
 // closeSession ends every open watch and observer as Session.close does (session.CloseEnds: a watch ended, an observer failed
-// with session.ClosedSession, both failed with the failure that failed the Session) and waits for the watch.close requests.
+// with session.ErrSessionClosedEnd, both failed with the failure that failed the Session) and waits for the watch.close requests.
 func (h *watchHub) closeSession(failure error) {
 	h.mu.Lock()
 	ends := h.ends

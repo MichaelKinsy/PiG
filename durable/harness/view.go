@@ -130,7 +130,7 @@ func (docs *ViewDocs) UnmarshalJSON(data []byte) error {
 type ViewObserver struct {
 	// Advance receives each next revision.
 	Advance func(ctx context.Context, change chord.WatchCall[ConversationView])
-	// End receives the Session's close (failed with session.ClosedSession, as an adapter following the Session reads it as
+	// End receives the Session's close (failed with session.ErrSessionClosedEnd, as an adapter following the Session reads it as
 	// a reason to follow the next one), or its failure (failed).
 	End func(end chord.WatchEnd)
 	// watch marks the observer of a watch, which a Session's close ends ended (session.CloseEnds).
