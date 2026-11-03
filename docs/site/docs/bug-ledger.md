@@ -55,6 +55,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-084fa64](#bf-084fa64) | fix(interactive): call GetSourcePackageKey with the string scope; extension changelog fragment | PiG's own defect | All platforms | Unreleased |
 | [BF-086395a](#bf-086395a) | `coding.DefaultAgentDir()` (Pi's `getAgentDir`) now returns the directory named by `PIG_CODING_AGENT_DIR`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-08bf076](#bf-08bf076) | An extension login callback (`onPrompt`, `onSelect`, `onManualCodeInput`) whose prompt fails for a reason… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-08edd46](#bf-08edd46) | A terminal that went away while an extension's remote editor, an extension terminal write, the window title… | PiG's own defect | All platforms | Unreleased |
 | [BF-093cf5c](#bf-093cf5c) | Provider error text is written the way Pi writes it | PiG's own defect | All platforms | 0.5.0 |
 | [BF-098e33d](#bf-098e33d) | Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: <token>` in every SDK for a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0a3e8ce](#bf-0a3e8ce) | In print and JSON mode, SIGTERM or SIGHUP no longer hangs when a Go, Python or Rust extension's… | PiG's own defect | All platforms | 0.5.0 |
@@ -2073,6 +2074,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `08bf0761c9` (2026-10-09, #201), `26d302a2d7` (2026-10-09, #201), `da99854d1b` (2026-10-09)
 - **Tests:** `coding/cli/strip_app_features_test.go::TestStripExportHTMLBuildOmitsExportPackage`, `coding/extension/host/subprocess/native_provider_login_test.go::TestDecodeNativeLoginCallback`, `coding/extension/host/subprocess/native_provider_login_test.go::TestNativeAuthInteractionAnswersTheLoginDialog`, `coding/extension/host/subprocess/native_provider_login_test.go::TestNativeProviderCarrierCarriesDeclaredLogins`, `coding/extension/host/subprocess/native_provider_oauth_test.go::TestNativeProviderOAuthLoginCallbacks`, `coding/extension/host/subprocess/oauth_legacy_callbacks_test.go::TestOAuthProxy_LoginRelaysTheLegacyCallbackSurface`, `internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginRunsDeclaredLogin`, `internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginWithoutDeclaredLoginUsesGenericPrompt` and 3 more in docs/bug-ledger.json
 - **Release note:** An extension login callback (`onPrompt`, `onSelect`, `onManualCodeInput`) whose prompt fails for a reason other than the user's cancel now reports that error to the flow. Before, every failure reached the flow as a cancel.
+
+### BF-08edd46
+
+**A terminal that went away while an extension's remote editor, an extension terminal write, the window title…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A terminal that went away while an extension's remote editor, an extension terminal write, the window title, a clipboard copy or the cursor and renderer output wrote to it now ends the session with exit 129 like Pi, instead of the write error being discarded and the session carrying on (#397).
+- **Root cause:** Not recorded.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `08edd46dfc` (2026-11-03, #397)
+- **Tests:** None recorded.
+- **Release note:** A terminal that went away while an extension's remote editor, an extension terminal write, the window title, a clipboard copy or the cursor and renderer output wrote to it now ends the session with exit 129 like Pi, instead of the write error being discarded and the session carrying on (#397).
 
 ### BF-093cf5c
 

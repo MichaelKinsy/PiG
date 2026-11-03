@@ -1032,6 +1032,27 @@
       ]
     },
     {
+      "id": "BF-08edd46",
+      "title": "A terminal that went away while an extension's remote editor, an extension terminal write, the window title…",
+      "symptom": "A terminal that went away while an extension's remote editor, an extension terminal write, the window title, a clipboard copy or the cursor and renderer output wrote to it now ends the session with exit 129 like Pi, instead of the write error being discarded and the session carrying on (#397).",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A terminal that went away while an extension's remote editor, an extension terminal write, the window title, a clipboard copy or the cursor and renderer output wrote to it now ends the session with exit 129 like Pi, instead of the write error being discarded and the session carrying on (#397).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "08edd46dfc",
+          "date": "2026-11-03",
+          "pr": "397"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-093cf5c",
       "title": "Provider error text is written the way Pi writes it",
       "symptom": "Provider error text is written the way Pi writes it.",

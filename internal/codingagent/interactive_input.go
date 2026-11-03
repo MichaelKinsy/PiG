@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"sync"
@@ -47,17 +48,23 @@ func (m *InteractiveMode) exitIfDeadTerminal(err error) {
 	}
 }
 
-// exitOnDeadTerminalWrite makes a terminal write that fails because the terminal is gone (EIO, EPIPE, ENOTCONN, ENOTTY) end the process as
-// emergencyTerminalExit does. Pi's registerSignalHandlers adds this "error" listener to process.stdout and process.stderr and keeps it until
-// shutdown finishes. The returned call removes it.
+// exitOnDeadTerminalWrite is Pi's terminalErrorHandler for a failed terminal write: a write that fails because the terminal is gone (EIO,
+// EPIPE, ENOTCONN, ENOTTY) ends the process as emergencyTerminalExit does, and any other write error is rethrown, which Pi's uncaughtException
+// handler turns into a crash report, a crash record and exit 1 (uncaughtOffLoop here). Pi's registerSignalHandlers adds this "error" listener
+// to process.stdout and process.stderr and keeps it until shutdown finishes. The returned call removes it.
 // Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (registerSignalHandlers terminalErrorHandler).
 func (m *InteractiveMode) exitOnDeadTerminalWrite() (remove func()) {
 	// The exit's own restore writes fail on the same terminal and come back here; only the first failure runs the exit.
 	var exiting atomic.Bool
 	return tui.OnTerminalWriteError(func(err error) {
-		if isDeadTerminalError(err) && exiting.CompareAndSwap(false, true) {
-			m.emergencyTerminalExit("terminal gone: " + err.Error())
+		if !exiting.CompareAndSwap(false, true) {
+			return
 		}
+		if isDeadTerminalError(err) {
+			m.emergencyTerminalExit("terminal gone: " + err.Error())
+			return
+		}
+		m.uncaughtOffLoop(err, debug.Stack())
 	})
 }
 
