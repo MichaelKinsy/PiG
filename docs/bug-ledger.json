@@ -4258,6 +4258,36 @@
       ]
     },
     {
+      "id": "BF-2359a0a",
+      "title": "In macOS Terminal.app, which sends Option+Up as plain Up in its default profile, plain Up with an empty…",
+      "symptom": "In macOS Terminal.app, which sends Option+Up as plain Up in its default profile, plain Up with an empty editor and a queued message now restores the queued messages to the editor and clears the queue, as Option+Up does in other terminals; before, Up recalled history while the message stayed queued and was still sent after the tool, even after you deleted the recalled copy.",
+      "rootCause": "Terminal.app's default profile sends Option+Up as plain Up (ESC [ A), so Alt+Up never reached app.message.dequeue: Up recalled history, the queued message stayed queued and was still sent after the tool.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "macOS",
+      "class": "ahead-of-pi",
+      "divergence": "D228",
+      "removeWhen": "Pi distinguishes or handles plain Up while a message is queued in Terminal.app, or Pi adopts an equivalent fix.",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In macOS Terminal.app, which sends Option+Up as plain Up in its default profile, plain Up with an empty editor and a queued message now restores the queued messages to the editor and clears the queue, as Option+Up does in other terminals; before, Up recalled history while the message stayed queued and was still sent after the tool, even after you deleted the recalled copy. The queued-message hint names Up in that state. Elsewhere (tmux, ssh, other terminals), when Up recalls history while a message is queued, PiG shows one dim line under the editor, once per run, saying the text is a copy and which key edits the queue; tmux, ssh and unknown terminals also get the Terminal.app mapping of Option+Up to `\\033[1;3A`. Pi 1.5.0 behaves as PiG did before (D228).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2359a0a7b8",
+          "date": "2026-11-02",
+          "pr": "402"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_queue_hint_test.go::TestQueuedHintAndTipNameTheConfiguredDequeueKey",
+        "internal/codingagent/interactive_queue_hint_test.go::TestQueuedHistoryRecallTipShowsOnceAndGoesWithTheQueue",
+        "internal/codingagent/interactive_terminal_app_up_test.go::TestInteractiveQueuedHistoryRecallShowsTheCopyTipOncePerRun",
+        "internal/codingagent/interactive_terminal_app_up_test.go::TestInteractiveTerminalAppPlainUpDequeuesQueuedMessage",
+        "internal/codingagent/interactive_terminal_app_up_test.go::TestInteractiveTerminalAppPlainUpKeepsPiBehaviorOutsideTheDequeueState",
+        "internal/codingagent/option_up_encodings_test.go::TestOptionUpEncodingsPerTerminalAgainstTheKeyDecoder"
+      ]
+    },
+    {
       "id": "BF-23ee6e1",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -45490,6 +45520,11 @@
       "id": "D226",
       "title": "Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs",
       "entry": "BF-D226"
+    },
+    {
+      "id": "D228",
+      "title": "Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy",
+      "entry": "BF-2359a0a"
     }
   ],
   "exemptCommits": {
