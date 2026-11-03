@@ -118079,7 +118079,8 @@
         "call:chord/next/host/host_attempt.go#attempt.Follow"
       ],
       "evidence": [
-        "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment"
+        "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment",
+        "test:durable/harness/follow_host_batch_test.go#TestOneCommitChangingTwoFollowedViewsReachesADeriveAsOneBatch"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -118100,7 +118101,8 @@
         "call:chord/next/host/host_attempt.go#attempt.Follow"
       ],
       "evidence": [
-        "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment"
+        "test:chord/next/host/host_follow_test.go#TestFollowAttachIsTypedByItsAttachment",
+        "test:durable/harness/follow_host_batch_test.go#TestOneCommitChangingTwoFollowedViewsReachesADeriveAsOneBatch"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -118121,9 +118123,9 @@
         "call:chord/next/host/host_follow.go#followSource.attach"
       ],
       "evidence": [
+        "test:chord/next/host/host_follow_hold_test.go#TestFollowObserverSectionHoldsTheDeliverySchedulerSoTwoCommitsOfOneSectionAreOneCall",
         "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds",
-        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds",
-        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchAnEndBeforeTheAttachmentResolvedKeepsTheAttachmentsValueOnTheSource"
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds"
       ]
     },
     {
@@ -118143,9 +118145,9 @@
         "public-api:chord/next/host/host_follow.go#FollowObserver"
       ],
       "evidence": [
+        "test:chord/next/host/host_follow_hold_test.go#TestFollowObserverSectionHoldsTheDeliverySchedulerSoTwoCommitsOfOneSectionAreOneCall",
         "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchACallAndAnEndOutsideABatchWithNothingWatchingALaterWatchOpensAtTheValueAndEnds",
-        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds",
-        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchAnEndBeforeTheAttachmentResolvedKeepsTheAttachmentsValueOnTheSource"
+        "test:chord/next/host/host_follow_test.go#TestEndsDuringActivationAndInOneBatchARetirementAndAnEndInsideOneBatchTheWatchGetsTheRetirementThenEnds"
       ]
     },
     {
@@ -123953,10 +123955,11 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/registry_reader.go#chordRegistryReader.Subscribe"
+        "call:durable/harness/registry_reader.go#NewRegistryReader"
       ],
       "evidence": [
-        "test:chord/next/registries/value_test.go#TestRegistryValue"
+        "test:chord/next/registries/value_test.go#TestRegistryValue",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost"
       ]
     },
     {
@@ -123973,10 +123976,11 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/registry_reader.go#chordRegistryReader.Subscribe"
+        "call:durable/harness/registry_reader.go#NewRegistryReader"
       ],
       "evidence": [
-        "test:chord/next/registries/value_test.go#TestRegistryValue"
+        "test:chord/next/registries/value_test.go#TestRegistryValue",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost"
       ]
     },
     {
@@ -231652,6 +231656,8 @@
         "call:durable/harness/registry_reader.go#NewRegistryReader"
       ],
       "evidence": [
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderWithACancelledContextReadsTheValueItself",
         "test:durable/harness/registry_reader_test.go#TestRegistryReader"
       ]
     },
@@ -231694,6 +231700,8 @@
         "call:durable/harness/registry_reader.go#NewRegistryReader"
       ],
       "evidence": [
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderWithACancelledContextReadsTheValueItself",
         "test:durable/harness/registry_reader_test.go#TestRegistryReader"
       ]
     },
@@ -231951,7 +231959,8 @@
       ],
       "evidence": [
         "test:durable/harness/harness_registry_test.go#TestRegistry",
-        "test:durable/harness/registry_reader_test.go#TestRegistryReader"
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderWithACancelledContextReadsTheValueItself"
       ]
     },
     {
@@ -231972,7 +231981,8 @@
       ],
       "evidence": [
         "test:durable/harness/harness_registry_test.go#TestRegistry",
-        "test:durable/harness/registry_reader_test.go#TestRegistryReader"
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderOnAChordHost",
+        "test:durable/harness/registry_reader_host_test.go#TestRegistryReaderWithACancelledContextReadsTheValueItself"
       ]
     },
     {
@@ -239462,7 +239472,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:durable/harness/util.go#sessionEnd"
+        "call:durable/session/observation.go#guard.Advance"
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchDeliversValuesByIdentityInOrderWithAContextNeverInline",

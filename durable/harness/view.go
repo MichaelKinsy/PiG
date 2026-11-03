@@ -130,8 +130,11 @@ func (docs *ViewDocs) UnmarshalJSON(data []byte) error {
 type ViewObserver struct {
 	// Advance receives each next revision.
 	Advance func(ctx context.Context, change chord.WatchCall[ConversationView])
-	// End receives the Session's close (ended), or its failure (failed).
+	// End receives the Session's close (failed with session.ErrSessionClosedEnd, as an adapter following the Session reads it as
+	// a reason to follow the next one), or its failure (failed).
 	End func(end chord.WatchEnd)
+	// watch marks the observer of a watch, which a Session's close ends ended (session.CloseEnds).
+	watch bool
 }
 
 // mountedDocs are the documents a view mounts, in mount order.
@@ -201,7 +204,7 @@ func NewConversationViews(sessionImpl *session.SessionImpl) *ConversationViews {
 		}
 	})
 	sessionImpl.SubscribeClose(func() {
-		end := sessionEnd(views.session.Failure())
+		watchEnd, observerEnd := session.CloseEnds(views.session.Failure())
 		views.mu.Lock()
 		views.closed = true
 		var observers []*windowedObserver
@@ -212,6 +215,10 @@ func NewConversationViews(sessionImpl *session.SessionImpl) *ConversationViews {
 		views.order = nil
 		views.mu.Unlock()
 		for _, windowed := range observers {
+			end := observerEnd
+			if windowed.observer.watch {
+				end = watchEnd
+			}
 			session.Contained(func() { windowed.observer.End(end) }, views.session.Report)
 		}
 	})
@@ -246,6 +253,7 @@ func (views *ConversationViews) Watch(ctx context.Context, id durable.Conversati
 		return &ViewObserver{
 			Advance: watch.Advance,
 			End:     watch.EndWith,
+			watch:   true,
 		}
 	})
 	if err != nil {

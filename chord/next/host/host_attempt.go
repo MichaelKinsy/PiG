@@ -108,7 +108,8 @@ type Self interface {
 	// Follow is a source following another runtime's synchronous observer (Durable's views, slice 6b §3): attach runs
 	// during activation once the natives opened (an error or no attachment fails the activation `transient`), and the
 	// observer is detached when the attempt ends. Its runtime failing fails this object `transient`; its `ended` is final,
-	// the source keeping its last value. A state member, a derive source, an `On` source.
+	// the source keeping its last value. A state member, a derive source, an `On` source. A method handler that waits for the
+	// followed runtime calls chordctx.Suspend first (see FollowObserver).
 	Follow(attach FollowAttach[delta.JsonValue]) chord.Watchable[delta.JsonValue]
 	// Job is this object's job definition (§15), once per job name: Run runs each started run outside transactions, Finish
 	// records its outcome in one. Starts are taken once the object is live.
@@ -535,6 +536,7 @@ func (a *attempt) Follow(attach FollowAttach[delta.JsonValue]) chord.Watchable[d
 	object := a.object
 	owner := followOwner{label: object.text, ctx: a.ctx, ended: a.followEnded}
 	source := newFollowSource(attach, owner, object.host.batch, object.host.loop())
+	source.enter = object.host.enter
 	a.follows = append(a.follows, source)
 	return Expose(source)
 }
@@ -924,8 +926,10 @@ func (a *attempt) call(method string, args any, ctx context.Context, from caller
 			settle(err)
 			// An abort that came before the handler returned wins, as Pi's `awaitWithContext` rejects at the abort: the
 			// listener of `AfterFunc` runs on a goroutine of its own and may not have settled the result yet.
-			if callContext.Err() != nil {
-				result.settle(nil, context.Cause(callContext))
+			// The child context follows its sources on a goroutine of its own, so the sources are read at once: an abort of the
+			// attempt (a followed Session that closed) that came before the handler returned is already one here.
+			if cause := linked.aborted(); cause != nil {
+				result.settle(nil, cause)
 				return
 			}
 			// The handler's result is the current version's: its mapping back is the provider's (results are not validated).

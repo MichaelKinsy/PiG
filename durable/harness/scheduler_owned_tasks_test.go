@@ -88,7 +88,7 @@ func (probe *ownedProbe) ownedBy(name string) ([]durable.TaskId, bool) {
 }
 
 func TestOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen(t *testing.T) {
-	// harness-scheduler-indexes.test.ts:203 it("lists the live tasks a task owns directly, in ID order, also after a reopen")
+	// harness-scheduler-indexes.test.ts:213 it("lists the live tasks a task owns directly, in ID order, also after a reopen")
 	t.Run("lists the live tasks a task owns directly, in ID order, also after a reopen", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "session.sqlite")
 		fixtures := newOwnFixtures()
@@ -158,7 +158,7 @@ func TestOwnedTasksListsTheLiveTasksATaskOwnsDirectlyInIdOrderAlsoAfterAReopen(t
 }
 
 func TestOwnedTasksRejectsOnceItsInvocationHasEnded(t *testing.T) {
-	// harness-scheduler-indexes.test.ts:244 it("rejects once its invocation has ended")
+	// harness-scheduler-indexes.test.ts:254 it("rejects once its invocation has ended")
 	t.Run("rejects once its invocation has ended", func(t *testing.T) {
 		fixtures := newOwnFixtures()
 		probe := newOwnedProbe(fixtures)

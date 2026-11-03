@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
@@ -18,7 +19,13 @@ import (
 // views of one commit computes once with both changes.
 
 // FollowObserver is the observer a followed runtime is given: Chord's watch shapes (Durable's `Observer`). Both calls
-// run inside a section of the host's loop (the runtime's commit step is one).
+// may come from any goroutine: each enters a section of the host's loop, inline when the caller is in one. Calls from
+// outside a section are one batch each, except the calls a publication makes with its step's context (chordctx.WithStep):
+// those of one commit, to any number of followed sources of a host, are one batch.
+//
+// A method handler that waits for the followed runtime, directly or for any work that commits to it, calls
+// chordctx.Suspend(ctx) first: otherwise the runtime's calls wait for the section the handler holds, and both block
+// forever.
 type FollowObserver[T any] interface {
 	// Advance is one change, synchronously and quickly: Chord only records it.
 	Advance(call chord.WatchCall[T], ctx context.Context)
@@ -91,7 +98,9 @@ type followSource struct {
 	attachFn FollowAttach[delta.JsonValue]
 	owner    followOwner
 	loop     sectionLoop
-	state    followState
+	// enter runs work as a section of the host: the loop's, holding the host's delivery scheduler (chordHost.enter).
+	enter func(work func())
+	state followState
 	value    delta.JsonValue
 	hasValue bool
 	// queued is the calls not applied yet: before the attachment resolved, and outside a batch until the next microtask.
@@ -110,7 +119,7 @@ var _ state.SourceHandle = (*followSource)(nil)
 // newFollowSource makes the source of attach, owned by owner, on batch. loop is the host's: the continuation of attach
 // runs in one of its sections.
 func newFollowSource(attach FollowAttach[delta.JsonValue], owner followOwner, batch *state.Batch, loop sectionLoop) *followSource {
-	s := &followSource{attachFn: attach, owner: owner, loop: loop, state: followState{kind: followAttaching}}
+	s := &followSource{attachFn: attach, owner: owner, loop: loop, enter: loop.Run, state: followState{kind: followAttaching}}
 	s.Init(batch, s)
 	return s
 }
@@ -129,11 +138,30 @@ func (s *followSource) Value() (delta.JsonValue, error) {
 // followObserverOf is the observer a followed source gives its runtime.
 type followObserverOf struct{ source *followSource }
 
-func (o followObserverOf) Advance(call chord.WatchCall[delta.JsonValue], _ context.Context) {
-	o.source.advance(call)
+// Advance and End enter a section of the host's loop themselves (Loop.Run: inline when the caller is on it). Pi's observers
+// run inside the runtime's synchronous commit step, on the one thread that is also the host's; a Go runtime calls from its own
+// goroutines (a Harness's close, its line), where the source's state, the batch and the attempt it fails belong to a section.
+// So the end of a followed Session fails its object, and with it the calls in flight, before the call that closed the Session returns.
+//
+// A call carrying the context of a Durable publication (chordctx.WithStep: Pi publishes a commit to all observers in one
+// synchronous turn) is left in that step instead, under the host's loop: when the step ends, the calls of all the sources of the
+// host enter ONE section, so what one commit changes in several followed sources is one batch (follow.ts:3-5 batches the
+// turn's calls on the next microtask). The section also holds the host's delivery scheduler (Attempt.Follow), so it is one frame.
+func (o followObserverOf) Advance(call chord.WatchCall[delta.JsonValue], ctx context.Context) {
+	source := o.source
+	if chordctx.StepBatch(ctx, source.loop, func() { source.advance(call) }, func(items []func()) {
+		source.enter(func() {
+			for _, item := range items {
+				item()
+			}
+		})
+	}) {
+		return
+	}
+	source.enter(func() { source.advance(call) })
 }
 
-func (o followObserverOf) End(end chord.WatchEnd) { o.source.end(end) }
+func (o followObserverOf) End(end chord.WatchEnd) { o.source.loop.Run(func() { o.source.end(end) }) }
 
 // attach attaches (activation, after the natives opened): the calls that came meanwhile apply on the attachment's value,
 // and an end that came meanwhile takes effect then (the value stays). A rejected attachment, or nil (an absent address),

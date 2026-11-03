@@ -104,7 +104,7 @@ func TestANestedCallIsItsOwnToolTaskAndItsResultGoesToTheCaller(t *testing.T) {
 	mustClose(t, run.harness)
 }
 
-// harness-nested-tools.test.ts:428 it("reports nested calls in pi.live.nestedTools with their parent")
+// harness-nested-tools.test.ts:429 it("reports nested calls in pi.live.nestedTools with their parent")
 func TestARunningNestedCallIsInTheLiveNestedToolSlots(t *testing.T) {
 	setup := chatSetup(t)
 	running, release := make(chan struct{}), make(chan struct{})
@@ -172,7 +172,7 @@ func TestARunningNestedCallIsInTheLiveNestedToolSlots(t *testing.T) {
 	mustClose(t, harness)
 }
 
-// harness-nested-tools.test.ts:242 it("runs the tool hooks on nested calls, which see their parent")
+// harness-nested-tools.test.ts:245 it("runs the tool hooks on nested calls, which see their parent")
 func TestToolHooksSeeTheParentOfANestedCall(t *testing.T) {
 	setup := chatSetup(t)
 	var runs int
@@ -441,7 +441,7 @@ func nestedText(result durable.NestedToolExecutionResult) string {
 	return text
 }
 
-// harness-nested-tools.test.ts:216 it("gives each nested call its own task and call ID")
+// harness-nested-tools.test.ts:219 it("gives each nested call its own task and call ID")
 func TestEachNestedCallHasItsOwnTaskAndCallId(t *testing.T) {
 	setup := chatSetup(t)
 	var mu sync.Mutex
@@ -476,7 +476,7 @@ func TestEachNestedCallHasItsOwnTaskAndCallId(t *testing.T) {
 	}
 }
 
-// harness-nested-tools.test.ts:278 it("returns an error result for an unavailable tool and invalid arguments")
+// harness-nested-tools.test.ts:281 it("returns an error result for an unavailable tool and invalid arguments")
 func TestANestedCallToAnUnavailableToolOrWithInvalidArgumentsIsAnErrorResult(t *testing.T) {
 	setup := chatSetup(t)
 	addTool(t, setup.Registry, echoRegistration())
@@ -499,7 +499,7 @@ func TestANestedCallToAnUnavailableToolOrWithInvalidArgumentsIsAnErrorResult(t *
 	}
 }
 
-// harness-nested-tools.test.ts:298 it("returns the call a key already names, and rejects reusing the key for another call")
+// harness-nested-tools.test.ts:301 it("returns the call a key already names, and rejects reusing the key for another call")
 func TestANestedKeyReturnsItsCallAndRejectsAnotherCall(t *testing.T) {
 	setup := chatSetup(t)
 	var runs atomic.Int32
@@ -533,7 +533,7 @@ func TestANestedKeyReturnsItsCallAndRejectsAnotherCall(t *testing.T) {
 	}
 }
 
-// harness-nested-tools.test.ts:321 it("matches a reused key's arguments regardless of key order")
+// harness-nested-tools.test.ts:324 it("matches a reused key's arguments regardless of key order")
 func TestAReusedNestedKeyMatchesArgumentsRegardlessOfKeyOrder(t *testing.T) {
 	setup := chatSetup(t)
 	var runs atomic.Int32
@@ -560,7 +560,7 @@ func TestAReusedNestedKeyMatchesArgumentsRegardlessOfKeyOrder(t *testing.T) {
 	}
 }
 
-// harness-nested-tools.test.ts:788 it("rejects explicit keys that are empty, have a slash, are __proto__, or are positive integers")
+// harness-nested-tools.test.ts:771 it("rejects explicit keys that are empty, have a slash, are __proto__, or are positive integers")
 func TestExplicitNestedKeysAreChecked(t *testing.T) {
 	setup := chatSetup(t)
 	addTool(t, setup.Registry, echoRegistration())
@@ -580,7 +580,7 @@ func TestExplicitNestedKeysAreChecked(t *testing.T) {
 	}
 }
 
-// harness-nested-tools.test.ts:406 it("records a nested call's usage under its tool")
+// harness-nested-tools.test.ts:403 it("records a nested call's usage under its tool")
 func TestANestedCallsUsageIsRecordedUnderItsTool(t *testing.T) {
 	setup := chatSetup(t)
 	usage := ai.Usage{Input: 1, Output: 2, TotalTokens: 3, Cost: ai.UsageCost{Input: 0.1, Output: 0.2, Total: 0.3}}
@@ -618,7 +618,7 @@ func nestedOutcome(t *testing.T, task durable.TaskRecord[durable.JsonValue, dura
 	return state
 }
 
-// harness-nested-tools.test.ts:351 it("aborts the nested calls a caller left running when it returns, keeping their details")
+// harness-nested-tools.test.ts:354 it("aborts the nested calls a caller left running when it returns, keeping their details")
 func TestACallerThatReturnsAbortsTheNestedCallsItLeftRunning(t *testing.T) {
 	setup := chatSetup(t)
 	running := make(chan struct{})
@@ -664,7 +664,7 @@ func TestACallerThatReturnsAbortsTheNestedCallsItLeftRunning(t *testing.T) {
 	mustClose(t, harness)
 }
 
-// harness-nested-tools.test.ts:510 it("aborts nested calls with their caller")
+// harness-nested-tools.test.ts:491 it("aborts nested calls with their caller")
 func TestNestedCallsAreAbortedWithTheirCaller(t *testing.T) {
 	setup := chatSetup(t)
 	running := make(chan struct{})
@@ -693,7 +693,7 @@ func TestNestedCallsAreAbortedWithTheirCaller(t *testing.T) {
 	mustClose(t, harness)
 }
 
-// harness-nested-tools.test.ts:542 it("aborts a running nested call when its caller throws")
+// harness-nested-tools.test.ts:525 it("aborts a running nested call when its caller throws")
 func TestARunningNestedCallIsAbortedWhenItsCallerThrows(t *testing.T) {
 	setup := chatSetup(t)
 	running := make(chan struct{})
@@ -715,7 +715,7 @@ func TestARunningNestedCallIsAbortedWhenItsCallerThrows(t *testing.T) {
 	}
 }
 
-// harness-nested-tools.test.ts:614 it("stops only the wait when a caller cancels it; the call runs on and its key returns its result")
+// harness-nested-tools.test.ts:597 it("stops only the wait when a caller cancels it; the call runs on and its key returns its result")
 func TestCancellingTheWaitForANestedCallStopsOnlyTheWait(t *testing.T) {
 	setup := chatSetup(t)
 	cancelled, release := make(chan struct{}), make(chan struct{})
@@ -743,7 +743,7 @@ func TestCancellingTheWaitForANestedCallStopsOnlyTheWait(t *testing.T) {
 	}
 }
 
-// harness-nested-tools.test.ts:648 it("admits one nested call for a key used by concurrent calls")
+// harness-nested-tools.test.ts:631 it("admits one nested call for a key used by concurrent calls")
 func TestConcurrentCallsWithOneKeyAdmitOneNestedCall(t *testing.T) {
 	setup := chatSetup(t)
 	var runs atomic.Int32
@@ -769,7 +769,7 @@ func TestConcurrentCallsWithOneKeyAdmitOneNestedCall(t *testing.T) {
 	}
 }
 
-// harness-nested-tools.test.ts:568 it("reattaches a replay-safe caller to the nested calls it made before a restart")
+// harness-nested-tools.test.ts:551 it("reattaches a replay-safe caller to the nested calls it made before a restart")
 func TestAReplaySafeCallerReattachesToTheNestedCallsItMadeBeforeARestart(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "session.sqlite")
 	setup := chatSetup(t)
@@ -825,7 +825,7 @@ func TestAReplaySafeCallerReattachesToTheNestedCallsItMadeBeforeARestart(t *test
 	mustClose(t, harness)
 }
 
-// harness-nested-tools.test.ts:670 it("aborts left-running nested calls of a caller interrupted while it cleaned them up")
+// harness-nested-tools.test.ts:653 it("aborts left-running nested calls of a caller interrupted while it cleaned them up")
 func TestTheLeftRunningNestedCallsOfACallerInterruptedWhileItCleanedThemUpAreAborted(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "session.sqlite")
 	setup := chatSetup(t)
@@ -888,7 +888,7 @@ func TestTheLeftRunningNestedCallsOfACallerInterruptedWhileItCleanedThemUpAreAbo
 	mustClose(t, harness)
 }
 
-// harness-nested-tools.test.ts:1267 it("migrates version 1 tool task input to a model-issued call")
+// harness-nested-tools.test.ts:1230 it("migrates version 1 tool task input to a model-issued call")
 func TestToolTaskMigratesVersion1InputToAModelIssuedCall(t *testing.T) {
 	input, checkpoint, err := ToolTask.Definition.Migrate(map[string]any{"assistant": 3.0, "callId": "c1"}, map[string]any{"phase": "call"}, 1)
 	if err != nil {
@@ -917,7 +917,7 @@ func TestANestedCallAfterItsCallerSettledIsRejected(t *testing.T) {
 	}
 }
 
-// harness-nested-tools.test.ts:750 it("aborts every left-running nested call before waiting for any")
+// harness-nested-tools.test.ts:733 it("aborts every left-running nested call before waiting for any")
 func TestEveryNestedCallLeftRunningIsAbortedBeforeAnyIsWaitedFor(t *testing.T) {
 	setup := chatSetup(t)
 	bAborted := make(chan struct{})
@@ -951,7 +951,7 @@ func TestEveryNestedCallLeftRunningIsAbortedBeforeAnyIsWaitedFor(t *testing.T) {
 	}
 }
 
-// harness-nested-tools.test.ts:814 it("runs nested calls of nested calls, and ends them children first")
+// harness-nested-tools.test.ts:797 it("runs nested calls of nested calls, and ends them children first")
 func TestNestedCallsOfNestedCallsEndChildrenFirst(t *testing.T) {
 	setup := chatSetup(t)
 	addTool(t, setup.Registry, echoRegistration())
@@ -995,7 +995,7 @@ func TestNestedCallsOfNestedCallsEndChildrenFirst(t *testing.T) {
 	mustClose(t, harness)
 }
 
-// harness-nested-tools.test.ts:1093 it("finds each nested call's slot after slots in the middle were removed")
+// harness-nested-tools.test.ts:1056 it("finds each nested call's slot after slots in the middle were removed")
 func TestEachNestedCallsSlotIsFoundAfterSlotsInTheMiddleWereRemoved(t *testing.T) {
 	setup := chatSetup(t)
 	addTool(t, setup.Registry, echoRegistration())
@@ -1033,7 +1033,7 @@ func TestEachNestedCallsSlotIsFoundAfterSlotsInTheMiddleWereRemoved(t *testing.T
 	}
 }
 
-// harness-nested-tools.test.ts:1161 it("gives callers what a schema-less tool streamed before it threw")
+// harness-nested-tools.test.ts:1124 it("gives callers what a schema-less tool streamed before it threw")
 func TestACallerGetsWhatASchemaLessToolStreamedBeforeItFailed(t *testing.T) {
 	setup := chatSetup(t)
 	addTool(t, setup.Registry, tlTool("fails", func(_ context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
@@ -1051,7 +1051,7 @@ func TestACallerGetsWhatASchemaLessToolStreamedBeforeItFailed(t *testing.T) {
 	}
 }
 
-// harness-nested-tools.test.ts:1065 it("runs a nested call whose repaired arguments set an optional property to undefined"). Go
+// harness-nested-tools.test.ts:1028 it("runs a nested call whose repaired arguments set an optional property to undefined"). Go
 // has no undefined: the repaired arguments leave the optional property out, which is what Pi's tool receives ({}).
 func TestANestedCallsRepairedArgumentsMayLeaveAnOptionalPropertyOut(t *testing.T) {
 	setup := chatSetup(t)
@@ -1073,7 +1073,7 @@ func TestANestedCallsRepairedArgumentsMayLeaveAnOptionalPropertyOut(t *testing.T
 	}
 }
 
-// harness-nested-tools.test.ts:1187 it("shows a finished nested call as a done slot with its summary until its caller settles")
+// harness-nested-tools.test.ts:1150 it("shows a finished nested call as a done slot with its summary until its caller settles")
 func TestAFinishedNestedCallIsADoneSlotWithItsSummaryUntilItsCallerSettles(t *testing.T) {
 	setup := chatSetup(t)
 	// Diagnostics win over output for the error text, which is cut to 500 characters.
@@ -1133,7 +1133,7 @@ func TestAFinishedNestedCallIsADoneSlotWithItsSummaryUntilItsCallerSettles(t *te
 	expectLiveEmpty(t, run.harness, run.root.Id())
 }
 
-// harness-nested-tools.test.ts:968 it("loses the running output of a nested call made with progress: false when it is aborted")
+// harness-nested-tools.test.ts:943 it("loses the running output of a nested call made with progress: false when it is aborted")
 func TestAnAbortedNestedCallWithoutProgressLosesItsRunningOutput(t *testing.T) {
 	setup := chatSetup(t)
 	running := make(chan struct{})
@@ -1177,7 +1177,7 @@ func TestAnAbortedNestedCallWithoutProgressLosesItsRunningOutput(t *testing.T) {
 	mustClose(t, harness)
 }
 
-// harness-nested-tools.test.ts:861 it("reports the output of several running nested calls, and shows them to a late subscriber")
+// harness-nested-tools.test.ts:834 it("reports the output of several running nested calls, and shows them to a late subscriber")
 func TestSeveralRunningNestedCallsReportTheirOutputAndShowToALateSubscriber(t *testing.T) {
 	setup := chatSetup(t)
 	release := make(chan struct{})

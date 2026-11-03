@@ -30,7 +30,7 @@ func nestedTasksOf(t *testing.T, harness Harness) []anyTaskRecord {
 	return nested
 }
 
-// harness-nested-tools-restart.test.ts:93 it("abandons a replay-unsafe caller's unfinished nested calls before they run again"):
+// harness-nested-tools-restart.test.ts:82 it("abandons a replay-unsafe caller's unfinished nested calls before they run again"):
 // a replay-unsafe caller (the default) that never resumed after a restart has its
 // unfinished nested calls abandoned before they run again; a call stopped before its intent, and one stopped after it,
 // settle aborted with the codes the caller reads.
@@ -139,7 +139,7 @@ func TestAReplayUnsafeCallersUnfinishedNestedCallsAreAbandonedBeforeTheyRunAgain
 	}
 }
 
-// harness-nested-tools-restart.test.ts:363 it("marks nothing when the reopened Harness never starts scheduling"): a reopened
+// harness-nested-tools-restart.test.ts:353 it("marks nothing when the reopened Harness never starts scheduling"): a reopened
 // Harness that never starts scheduling marks nothing, so an inspection-only
 // open does not abandon a caller's nested call.
 func TestAReopenedHarnessThatNeverStartsSchedulingMarksNothing(t *testing.T) {
@@ -349,7 +349,7 @@ func TestAReplaySafeCallerReattachesByDefaultAndExplicitKeysAndARerunThatCallsDi
 	}
 }
 
-// harness-nested-tools-restart.test.ts:621 it("abandons the child tasks a replay-unsafe tool created and awaited in memory"): a
+// harness-nested-tools-restart.test.ts:619 it("abandons the child tasks a replay-unsafe tool created and awaited in memory"): a
 // replay-unsafe tool that created a child task and awaited it in memory has the child
 // abandoned after a restart: its work phase never runs again and its abort handler reads the restart reason.
 func TestTheChildTasksAReplayUnsafeToolCreatedAndAwaitedInMemoryAreAbandoned(t *testing.T) {
@@ -627,7 +627,7 @@ func expectTerminalAborted(t *testing.T, harness Harness, id durable.TaskId) {
 	}
 }
 
-// harness-nested-tools-restart.test.ts:168 it("abandons the work an abandoned nested call owns, which never runs a phase again"):
+// harness-nested-tools-restart.test.ts:158 it("abandons the work an abandoned nested call owns, which never runs a phase again"):
 // the work an abandoned nested call owns is abandoned too and never runs a phase again;
 // the cascade passes the restart reason on to the abort handler.
 func TestTheWorkAnAbandonedNestedCallOwnsIsAbandonedAndNeverRunsAPhaseAgain(t *testing.T) {
@@ -696,7 +696,7 @@ func TestAnAbandonedTaskWhoseDefinitionIsMissingWaitsUntilItIsInstalledThenRunsI
 	}
 }
 
-// harness-nested-tools-restart.test.ts:300 it("orphans an abandoned task whose definition is missing once an abort is requested")
+// harness-nested-tools-restart.test.ts:290 it("orphans an abandoned task whose definition is missing once an abort is requested")
 func TestAnAbandonedTaskWhoseDefinitionIsMissingIsOrphanedOnceAnAbortIsRequested(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "session.sqlite")
 	setup := chatSetup(t)
