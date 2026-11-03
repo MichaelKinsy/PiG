@@ -301,7 +301,8 @@ func runRPCMode(ctx context.Context, flags Args, activePiglet *piglet.Piglet, re
 		ui: rpcUI, writeRPC: writeRPC, responses: responses,
 		promptWG: &promptWG, tasks: &rpcTaskGroup{},
 		conversionErr:   make(chan error, 1),
-		requestShutdown: shutdownGate.Request, shutdown: shutdownGate,
+		requestShutdown: shutdownGate.Request,
+		shutdown:        shutdownGate,
 		stdoutWait:      func(ctx context.Context) { rawStdout.Wait(ctx) },
 	}
 	inputs := builder.rpcInputs(processCtx, initial, &rpcStartup{
