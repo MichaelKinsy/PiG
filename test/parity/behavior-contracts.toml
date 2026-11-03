@@ -106,6 +106,8 @@ pig_targets = [
 evidence = [
   "internal/codingagent/model_cycle_parity_test.go#TestInteractiveCycleUsesSessionSelections",
   "coding/session_model_extension_upstream_test.go#TestSessionModelExtensionCyclesUpstream",
+  "internal/codingagent/interactive_key_handlers_test.go#TestSetupKeyHandlersRunsEachAppActionForItsDefaultAndRemappedKey",
+  "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersRegistrationOrderDecidesOverlappingBindings",
   "test/parity/scenarios/model-resolver-selector/26-interactive-cycle-custom-scope.toml",
 ]
 
@@ -4758,9 +4760,10 @@ id = "coding-agent/interactive/key-handlers"
 upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
 family = "interactive-input"
 kind = "action-registration"
-claim = "Escape aborts and restores queued messages while streaming, aborts a running ! command, leaves bash mode, or arms and fires the configured double-Escape action within 500 ms when the trimmed editor text is empty; app.clear clears then exits on a second press within 500 ms; Ctrl+D on an empty editor exits; app.suspend, app.thinking.cycle, app.model.select, app.tools.expand (status and all expandables), app.thinking.toggle (persisted), app.editor.external, app.message.copy (selection first), app.message.followUp, app.message.dequeue (restored-count status), app.session.new/tree/fork/resume run their handlers without clearing the editor; bash mode is text.trimStart().startsWith(\"!\"); Shift+Ctrl+D writes the debug log; Ctrl+V pastes files, images then text"
+claim = "Escape aborts and restores queued messages while streaming, aborts a running ! command, leaves bash mode, or arms and fires the configured double-Escape action within 500 ms when the trimmed editor text is empty; app.clear clears then exits on a second press within 500 ms; Ctrl+D on an empty editor exits; app.suspend, app.thinking.cycle, app.model.select, app.tools.expand (status and all expandables), app.thinking.toggle (persisted), app.editor.external, app.message.copy (selection first), app.message.followUp, app.message.dequeue (restored-count status), app.session.new/tree/fork/resume run their handlers without clearing the editor; the sixteen app actions register in the order clear, suspend, thinking.cycle, model.cycleForward, model.cycleBackward, model.select, tools.expand, thinking.toggle, editor.external, message.copy, message.followUp, message.dequeue, session.new, session.tree, session.fork, session.resume, so a key bound to two of them runs the earlier one and every one beats an unregistered action on the same key; bash mode is text.trimStart().startsWith(\"!\"); Shift+Ctrl+D writes the debug log; Ctrl+V pastes files, images then text"
 status = "ported"
 pig_targets = [
+  "internal/codingagent/interactive_input.go#setupKeyHandlers",
   "internal/codingagent/interactive_input.go#handleEditorAction",
   "internal/codingagent/keys.go#resolveOutcome",
   "tui/editor.go#IsBashMode",
@@ -4771,7 +4774,17 @@ evidence = [
   "internal/codingagent/interactive_test.go#TestInteractiveMode_EscapeArmsTheDoubleEscapeOverAWhitespaceOnlyEditor",
   "tui/bash_execution_test.go#TestEditorBashModeTrimsTheWholeTextAsJavaScript",
   "internal/codingagent/interactive_test.go#TestInteractiveMode_EscapeAbortsCompactionOnlyBetweenStartAndEnd",
+  "internal/codingagent/interactive_key_handlers_test.go#TestSetupKeyHandlersRunsEachAppActionForItsDefaultAndRemappedKey",
+  "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersEscapeAndClearBranches",
+  "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersRegistrationOrderDecidesOverlappingBindings",
+  "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersModelSelectOpensTheSelectorForItsDefaultAndRemappedKey",
+  "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersDequeueReportsTheRestoredCount",
+  "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersFollowUpBranches",
+  "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersExitRunsOnlyForAnEmptyEditor",
+  "internal/codingagent/interactive_key_handlers_state_test.go#TestSetupKeyHandlersBashModeFollowsTheEditorText",
+  "internal/codingagent/debug_hotkey_test.go#TestShiftCtrlDWritesTheDebugLogThroughTheTuisDebugKey",
   "test/parity/scenarios/interactive-rendering/40-suspend-resume-session.toml",
+  "test/parity/scenarios/interactive-rendering/59-app-action-keys.toml",
 ]
 
 [contract.upstream]
